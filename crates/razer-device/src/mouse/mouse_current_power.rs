@@ -63,6 +63,21 @@ impl Capability {
     pub fn low_battery(&self) -> Option<LowBatteryRange> {
         self.low_battery
     }
+    pub fn receiver_session(
+        &self,
+        physical_product_id: u32,
+        peer_product_id: u32,
+    ) -> anyhow::Result<crate::receiver_session::ReceiverSession> {
+        ensure!(
+            self.dual && self.accepts(physical_product_id, Some(peer_product_id)),
+            "Current power source has no matching DualLink peer"
+        );
+        crate::receiver_session::ReceiverSession::mouse_with_source(
+            &self.transport,
+            physical_product_id,
+            peer_product_id,
+        )
+    }
     pub fn transport(&self, physical: u32, relay: bool) -> anyhow::Result<DeviceReadCapability> {
         ensure!(
             !self.is_ble(physical),

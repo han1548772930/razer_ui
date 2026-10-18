@@ -157,6 +157,12 @@ impl ServiceRequest {
             }));
         }
         let collection = match self {
+            Self::HidNodeMouseBrightness {
+                node,
+                product_id,
+                submission,
+                ..
+            } if submission.is_write() => Some((*product_id, node)),
             Self::HidNodeWrite {
                 node, product_id, ..
             }
@@ -184,10 +190,17 @@ impl ServiceRequest {
             | Self::HidNodeMouseCurrentPolling {
                 node, product_id, ..
             } => Some((*product_id, node)),
+            Self::HidNodeMouseDynamic {
+                node,
+                product_id,
+                change: Some(_),
+                ..
+            } => Some((*product_id, node)),
             Self::HidNodeMouseCurrentPower {
                 node,
                 product_id,
                 change,
+                ..
             } if !matches!(
                 change,
                 razer_device::mouse_current_power::Change::ReadPowerSaving
@@ -201,14 +214,19 @@ impl ServiceRequest {
             return Ok(Some(Scope::collection(product_id, node)));
         }
         let target = match self {
+            Self::DeviceMouseBrightness { target, submission } if submission.is_write() => {
+                Some(target)
+            }
             Self::DeviceWrite { target, .. }
             | Self::DeviceDpiStagesWrite { target, .. }
             | Self::DeviceMouseCurrentDpi {
                 target,
                 change: Some(_),
             }
-            | Self::DeviceMouseCurrentPolling {
-                target, ..
+            | Self::DeviceMouseCurrentPolling { target, .. } => Some(target),
+            Self::DeviceMouseDynamic {
+                target,
+                change: Some(_),
             } => Some(target),
             Self::DeviceMouseCurrentPower { target, change }
                 if !matches!(
@@ -227,6 +245,52 @@ impl ServiceRequest {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn current_power_ipc_preserves_fixed_wire_bytes_and_collection_task_identity() {
+        let bytes = br#"{"operation":"hid_node_mouse_current_power","node":{"path":[255,0,34,92,128],"vendor_id":5426,"product_id":241,"usage_page":65280,"usage":1,"interface_number":0,"release_number":4660,"serial_number":null,"manufacturer":null,"product":null},"product_id":226,"peer_product_id":227,"change":{"field":"power_saving","value":2}}"#;
+        let request: ServiceRequest = serde_json::from_slice(bytes).unwrap();
+        let ServiceRequest::HidNodeMouseCurrentPower {
+            node,
+            product_id,
+            peer_product_id,
+            change,
+        } = &request
+        else {
+            panic!("Power operation changed");
+        };
+        assert_eq!((*product_id, *peer_product_id), (226, Some(227)));
+        assert_eq!(node.path, [255, 0, 34, 92, 128]);
+        assert_eq!(
+            *change,
+            razer_device::mouse_current_power::Change::PowerSaving(2)
+        );
+        assert_eq!(serde_json::to_vec(&request).unwrap().as_slice(), bytes);
+        assert_eq!(
+            request.synchronous_device_task().unwrap(),
+            Some(Scope::collection(226, node))
+        );
+    }
+
+    #[test]
+    fn current_power_ipc_reads_legacy_messages_without_inventing_a_peer() {
+        let bytes = br#"{"operation":"hid_node_mouse_current_power","node":{"path":[255,0,34,92,128],"vendor_id":5426,"product_id":241,"usage_page":65280,"usage":1,"interface_number":0,"release_number":4660,"serial_number":null,"manufacturer":null,"product":null},"product_id":226,"change":{"field":"read_power_saving"}}"#;
+        let request: ServiceRequest = serde_json::from_slice(bytes).unwrap();
+        assert!(request.synchronous_device_task().unwrap().is_none());
+        assert!(matches!(
+            request,
+            ServiceRequest::HidNodeMouseCurrentPower {
+                product_id: 226,
+                peer_product_id: None,
+                change: razer_device::mouse_current_power::Change::ReadPowerSaving,
+                ..
+            }
+        ));
+        let mut wrong_type: serde_json::Value = serde_json::from_slice(bytes).unwrap();
+        wrong_type["peer_product_id"] = serde_json::json!("227");
+        assert!(serde_json::from_value::<ServiceRequest>(wrong_type).is_err());
+    }
+
     #[test]
     fn device_task_exclusive_conflicts_with_all_shared_owners_and_preserves_other_routes() {
         let registry = Registry::default();
@@ -296,6 +360,51 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
+    }
+
+    #[test]
+    fn current_polling_ipc_preserves_slot_scope_and_temporary_semantics() {
+        let target = razer_device::device_reads::DeviceReadTarget {
+            product_id: 190,
+            physical_product_id: 191,
+            peer_product_id: None,
+            device_container_id: "CONTAINER".into(),
+            path: "device-path".into(),
+        };
+        let request = ServiceRequest::DeviceMouseCurrentPolling {
+            target,
+            change: Some(
+                razer_device::mouse_current_polling::Change::new(8000)
+                    .with_profile_guid("active-guid".into()),
+            ),
+        };
+        let json = serde_json::to_value(&request).unwrap();
+        assert_eq!(
+            json,
+            serde_json::json!({"operation":"device_mouse_current_polling", "target":{
+            "product_id":190,"physical_product_id":191,"peer_product_id":null,"device_container_id":"CONTAINER","path":"device-path"
+        },"change":{"hz":8000,"profile_guid":"active-guid"}})
+        );
+        assert_eq!(
+            request.synchronous_device_task().unwrap(),
+            Some(Scope::container(190, "container").unwrap())
+        );
+        let temporary: ServiceRequest = serde_json::from_value(serde_json::json!({"operation":"device_mouse_current_polling", "target":json["target"], "change":{"hz":500,"profile_guid":null}})).unwrap();
+        let ServiceRequest::DeviceMouseCurrentPolling { change, .. } = temporary else {
+            panic!("wrong request")
+        };
+        let change = change.unwrap();
+        assert_eq!(change.hz(), 500);
+        assert_eq!(change.profile_guid(), None);
+        let query: ServiceRequest = serde_json::from_value(serde_json::json!({"operation":"device_mouse_current_polling", "target":json["target"], "change":null})).unwrap();
+        assert_eq!(
+            query.synchronous_device_task().unwrap(),
+            Some(Scope::container(190, "container").unwrap())
+        );
+        assert!(matches!(
+            query,
+            ServiceRequest::DeviceMouseCurrentPolling { change: None, .. }
+        ));
     }
 
     #[test]

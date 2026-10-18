@@ -3,6 +3,7 @@
 use super::{PeerDeviceFactory, PeerExitEffect, PeerSupport};
 use crate::{
     backend::FeatureTransport,
+    lighting_driver::HardwareEffect,
     lighting_engine::EngineFrame,
     receiver_feature_channel::{Channel, WriteProgress, exchange_channel},
 };
@@ -185,7 +186,12 @@ impl PeerHid {
         // Retain its restoration obligation at the transport owner.
         self.restoration_required = true;
         let mut acknowledged = self.both(device, [2, 0, 4], &[3, 0], validate)?;
-        acknowledged += self.both(device, [6, 15, 2], &[0, 0, 8, 0, 0, 0], validate)?;
+        acknowledged += self.both(
+            device,
+            [6, 15, 2],
+            &[0, 0, HardwareEffect::CustomFrame.code(), 0, 0, 0],
+            validate,
+        )?;
         self.custom_selected = true;
         Ok(acknowledged)
     }
@@ -196,9 +202,21 @@ impl PeerHid {
     ) -> anyhow::Result<u32> {
         let mut acknowledged = self.both(device, [2, 0, 4], &[0, 0], validate)?;
         let payload = match self.support.quick_effect_on_exit {
-            PeerExitEffect::Spectrum => vec![1, 0, 3, 0, 0, 0],
+            PeerExitEffect::Spectrum => vec![1, 0, HardwareEffect::Spectrum.code(), 0, 0, 0],
             PeerExitEffect::Static { color } => {
-                vec![1, 0, 6, 0, 0, 1, color[0], color[1], color[2]]
+                // NEW_CHROMA_EFFECT_ID.Static is 1 at the hardware boundary;
+                // the native engine's Static effect uses a separate ID of 6.
+                vec![
+                    1,
+                    0,
+                    HardwareEffect::Static.code(),
+                    0,
+                    0,
+                    1,
+                    color[0],
+                    color[1],
+                    color[2],
+                ]
             }
         };
         acknowledged += self.both(device, [payload.len() as u8, 15, 2], &payload, validate)?;

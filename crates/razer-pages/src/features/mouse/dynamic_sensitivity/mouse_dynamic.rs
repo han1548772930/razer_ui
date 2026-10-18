@@ -13,6 +13,8 @@ use std::{
 #[path = "mouse_dynamic_curve.rs"]
 mod curve;
 use curve::{Curve, Point as CurvePoint};
+use razer_device::mouse_dynamic::{self as dynamic_device, Reading, Report, Setting};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 const LOCAL: &str = "_dynamicSensitivityLocalV1";
 const LABELS: [&str; 4] = ["CLASSIC", "NATURAL", "JUMP", "CUSTOM"];
@@ -25,7 +27,6 @@ pub struct MouseDynamicScope {
 }
 /// Only publish values actually received from the current source transport.
 pub enum MouseDynamicObservation {
-    DynamicSensitivity(Value),
     Loading(bool),
     MouseSpeed(f64),
     FirmwareVersion(Option<String>),
@@ -42,6 +43,14 @@ pub struct MouseDynamicRequested {
     command: &'static str,
     payload: Value,
     timer_tick: Option<u64>,
+    guard: Arc<AtomicBool>,
+    edit_revision: u64,
+}
+#[derive(Clone, Debug)]
+pub enum MouseDynamicAction {
+    Read,
+    Write(Setting),
+    Monitor(bool),
 }
 impl MouseDynamicRequested {
     pub fn request_id(&self) -> u64 {
@@ -62,10 +71,52 @@ impl MouseDynamicRequested {
     pub fn timer_tick(&self) -> Option<u64> {
         self.timer_tick
     }
+    pub fn guard(&self) -> Arc<AtomicBool> {
+        self.guard.clone()
+    }
+    pub fn action(&self) -> anyhow::Result<MouseDynamicAction> {
+        match self.command {
+            "READ_DYNAMIC_SENSITIVITY" => Ok(MouseDynamicAction::Read),
+            "ON_SET_DYNAMIC_SENSITIVITY" => {
+                #[derive(Deserialize)]
+                struct Source {
+                    state: u8,
+                    mode: u8,
+                    #[serde(rename = "customSensorAccelerations")]
+                    accelerations: Vec<f32>,
+                }
+                let source: Source = serde_json::from_value(
+                    self.payload
+                        .get("dynamicSensitivity")
+                        .ok_or_else(|| anyhow::anyhow!("Dynamic request omits its source setting"))?
+                        .clone(),
+                )?;
+                anyhow::ensure!(
+                    source.state <= 1,
+                    "Dynamic state is outside the source range"
+                );
+                let mode = dynamic_device::mode(source.mode)
+                    .ok_or_else(|| anyhow::anyhow!("Dynamic mode is outside the source range"))?;
+                Ok(MouseDynamicAction::Write(Setting::new(
+                    source.state == 1,
+                    mode,
+                    source.accelerations,
+                )?))
+            }
+            "DYNAMIC_SENSITIVITY_UI_COMMAND" => {
+                match self.payload.get("type").and_then(Value::as_str) {
+                    Some("START") => Ok(MouseDynamicAction::Monitor(true)),
+                    Some("STOP") => Ok(MouseDynamicAction::Monitor(false)),
+                    _ => anyhow::bail!("Dynamic monitoring command is invalid"),
+                }
+            }
+            _ => anyhow::bail!("Dynamic request command is invalid"),
+        }
+    }
 }
 pub enum MouseDynamicCompletion {
-    /// Actual refreshed dynamicSensitivity from the source response chain.
-    Observed(Value),
+    Device(Report),
+    Monitoring(bool),
     Failed(String),
     Unsupported(String),
     Cancelled,
@@ -85,9 +136,8 @@ pub(super) struct State {
     owner: EntityId,
     profile_epoch: u64,
     connection_epoch: u64,
-    observed: Option<Value>,
+    observed: Option<Reading>,
     pub(super) firmware: Option<String>,
-    local: bool,
     loading: bool,
     points: Vec<CurvePoint>,
     drag: Option<usize>,
@@ -105,6 +155,10 @@ pub(super) struct State {
     pending: BTreeMap<u64, &'static str>,
     latest_mutation: Option<u64>,
     last_failure: Option<String>,
+    guard: Arc<AtomicBool>,
+    monitor_guard: Arc<AtomicBool>,
+    monitor_requested: bool,
+    edit_revision: u64,
 }
 impl State {
     pub(super) fn refresh_locale(
@@ -131,7 +185,6 @@ impl State {
             connection_epoch: 0,
             observed: None,
             firmware: None,
-            local: false,
             loading: false,
             points: curve::CLASSIC.to_vec(),
             drag: None,
@@ -149,6 +202,10 @@ impl State {
             pending: BTreeMap::new(),
             latest_mutation: None,
             last_failure: None,
+            guard: Arc::new(AtomicBool::new(true)),
+            monitor_guard: Arc::new(AtomicBool::new(false)),
+            monitor_requested: false,
+            edit_revision: 0,
         }
     }
     fn scope(&self) -> MouseDynamicScope {
@@ -198,33 +255,65 @@ impl MouseProductWorkspace {
         self.spec.dynamic.then(|| self.dynamic_state.scope())
     }
     pub fn mouse_dynamic_request_is_current(&self, request: &MouseDynamicRequested) -> bool {
-        self.mouse_dynamic_scope() == Some(request.scope)
-            && self.spec.product_id == request.product_id
+        self.mouse_dynamic_scope_is_current(request)
             && self.dynamic_state.pending.get(&request.request_id) == Some(&request.command)
+    }
+    pub fn mouse_dynamic_scope_is_current(&self, request: &MouseDynamicRequested) -> bool {
+        self.mouse_dynamic_scope() == Some(request.scope)
+            && request.guard.load(Ordering::Acquire)
+            && self.spec.product_id == request.product_id
     }
     pub fn complete_mouse_dynamic(
         &mut self,
         request: &MouseDynamicRequested,
         completion: MouseDynamicCompletion,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         if !self.mouse_dynamic_request_is_current(request) {
             return;
         }
-        self.dynamic_state.pending.remove(&request.request_id);
+        if !matches!(completion, MouseDynamicCompletion::Monitoring(true)) {
+            self.dynamic_state.pending.remove(&request.request_id);
+        }
         let latest = self.dynamic_state.latest_mutation == Some(request.request_id);
         match completion {
-            MouseDynamicCompletion::Observed(value) if latest && valid_state(&value) => {
-                self.dynamic_state.observed = Some(value);
-                self.dynamic_state.local = false;
-                self.dynamic_state.loading = false;
-                self.dynamic_state.last_failure = None;
-                self.sync_dynamic_points(window, cx);
+            MouseDynamicCompletion::Device(report) => {
+                // The mounted source consumes the local profile optimistically.
+                // Its getters have no mounted caller: this independent reading
+                // is diagnostic and must not replace template/control points.
+                if request.edit_revision == self.dynamic_state.edit_revision {
+                    self.dynamic_state.observed = report.reading.clone();
+                    self.dynamic_state.last_failure = if report.write_failure.is_some()
+                        || report.read_failure.is_some()
+                        || report.reading.is_some() && !report.confirmed()
+                    {
+                        Some(
+                        report
+                            .write_failure
+                            .or(report.read_failure)
+                            .unwrap_or_else(|| {
+                                "Independent dynamic readback differs from the requested setting"
+                                    .into()
+                            }),
+                    )
+                    } else {
+                        None
+                    };
+                }
+                if latest {
+                    self.dynamic_state.loading = false;
+                }
+            }
+            MouseDynamicCompletion::Monitoring(started) => {
+                if !started {
+                    self.dynamic_state.mouse_speed = 0.;
+                    self.dynamic_state.speed_task = None;
+                }
             }
             MouseDynamicCompletion::Failed(reason)
             | MouseDynamicCompletion::Unsupported(reason) => {
-                if latest {
+                if latest || request.command == "READ_DYNAMIC_SENSITIVITY" {
                     self.dynamic_state.loading = false;
                 }
                 self.dynamic_state.last_failure = Some(reason);
@@ -234,7 +323,6 @@ impl MouseProductWorkspace {
                     self.dynamic_state.loading = false;
                 }
             }
-            _ => {}
         }
         cx.notify();
     }
@@ -244,6 +332,12 @@ impl MouseProductWorkspace {
             return;
         }
         self.dynamic_state.pending.clear();
+        self.dynamic_state.guard.store(false, Ordering::Release);
+        self.dynamic_state
+            .monitor_guard
+            .store(false, Ordering::Release);
+        self.dynamic_state.guard = Arc::new(AtomicBool::new(true));
+        self.dynamic_state.monitor_requested = false;
         self.dynamic_state.latest_mutation = None;
         self.dynamic_state.loading = false;
         cx.notify();
@@ -286,6 +380,12 @@ impl MouseProductWorkspace {
     }
     pub fn invalidate_dynamic_connection(&mut self, cx: &mut Context<Self>) {
         self.invalidate_legacy_connection();
+        self.dynamic_state.guard.store(false, Ordering::Release);
+        self.dynamic_state
+            .monitor_guard
+            .store(false, Ordering::Release);
+        self.dynamic_state.guard = Arc::new(AtomicBool::new(true));
+        self.dynamic_state.monitor_requested = false;
         self.dynamic_state.connection_epoch = self.dynamic_state.connection_epoch.wrapping_add(1);
         self.dynamic_state.observed = None;
         self.dynamic_state.firmware = None;
@@ -316,24 +416,6 @@ impl MouseProductWorkspace {
             return;
         }
         match observation {
-            MouseDynamicObservation::DynamicSensitivity(value) => {
-                if !valid_state(&value) {
-                    return;
-                }
-                let changing_branch = value["mode"] != self.dynamic_value()["mode"]
-                    || value["state"] != self.dynamic_value()["state"];
-                if changing_branch {
-                    self.finish_dynamic_drag(window, cx);
-                }
-                let drag = self.dynamic_state.drag;
-                self.dynamic_state.observed = Some(value);
-                self.dynamic_state.local = false;
-                self.sync_dynamic_points(window, cx);
-                if !changing_branch {
-                    self.dynamic_state.drag =
-                        drag.filter(|index| *index < self.dynamic_state.points.len());
-                }
-            }
             MouseDynamicObservation::Loading(value) => self.dynamic_state.loading = value,
             MouseDynamicObservation::FirmwareVersion(value) => {
                 self.finish_dynamic_drag(window, cx);
@@ -367,11 +449,6 @@ impl MouseProductWorkspace {
         cx.notify();
     }
     fn dynamic_value(&self) -> &Value {
-        if !self.dynamic_state.local {
-            if let Some(value) = &self.dynamic_state.observed {
-                return value;
-            }
-        }
         &self.draft["dynamicSensitivity"]
     }
     fn dynamic_mode(&self) -> u32 {
@@ -398,6 +475,7 @@ impl MouseProductWorkspace {
         let request_id = self.dynamic_state.next_request;
         self.dynamic_state.pending.insert(request_id, command);
         if command == "ON_SET_DYNAMIC_SENSITIVITY" {
+            self.dynamic_state.edit_revision = self.dynamic_state.edit_revision.wrapping_add(1);
             self.dynamic_state.latest_mutation = Some(request_id);
         }
         cx.emit(MouseDynamicRequested {
@@ -407,15 +485,31 @@ impl MouseProductWorkspace {
             command,
             payload,
             timer_tick,
+            guard: if command == "DYNAMIC_SENSITIVITY_UI_COMMAND" {
+                self.dynamic_state.monitor_guard.clone()
+            } else {
+                self.dynamic_state.guard.clone()
+            },
+            edit_revision: self.dynamic_state.edit_revision,
         });
     }
     pub(super) fn dynamic_ui_command(&mut self, cx: &mut Context<Self>) {
-        if !self.spec.dynamic || !self.advanced_enabled() {
+        if !self.spec.dynamic {
             return;
         }
+        let started =
+            self.active && self.page == "ADVANCED" && self.advanced_enabled() && self.dynamic_on();
+        if started == self.dynamic_state.monitor_requested {
+            return;
+        }
+        self.dynamic_state
+            .monitor_guard
+            .store(false, Ordering::Release);
+        self.dynamic_state.monitor_guard = Arc::new(AtomicBool::new(true));
+        self.dynamic_state.monitor_requested = started;
         self.dynamic_request(
             "DYNAMIC_SENSITIVITY_UI_COMMAND",
-            json!({"type":if self.dynamic_on() { "START" } else { "STOP" }}),
+            json!({"type":if started { "START" } else { "STOP" }}),
             None,
             cx,
         );
@@ -435,7 +529,6 @@ impl MouseProductWorkspace {
         );
         self.draft["dynamicSensitivity"] = value.clone();
         self.draft[LOCAL] = json!(true);
-        self.dynamic_state.local = true;
         let tick = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .ok()
@@ -471,18 +564,18 @@ impl MouseProductWorkspace {
     }
     pub(super) fn restore_dynamic(
         &mut self,
-        saved: Option<&Value>,
+        _saved: Option<&Value>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.dynamic_state.guard.store(false, Ordering::Release);
+        self.dynamic_state
+            .monitor_guard
+            .store(false, Ordering::Release);
+        self.dynamic_state.guard = Arc::new(AtomicBool::new(true));
+        self.dynamic_state.monitor_requested = false;
         self.dynamic_state.profile_epoch = self.dynamic_state.profile_epoch.wrapping_add(1);
         self.dynamic_state.observed = None;
-        self.dynamic_state.local = saved.is_some_and(|saved| {
-            saved.get("dynamicSensitivity").is_some()
-                && saved
-                    .get(LOCAL)
-                    .is_none_or(|value| value.as_bool() == Some(true))
-        });
         self.dynamic_state.loading = false;
         self.dynamic_state.pending.clear();
         self.dynamic_state.latest_mutation = None;
@@ -494,6 +587,10 @@ impl MouseProductWorkspace {
         self.sync_dynamic_points(window, cx);
     }
     pub(super) fn dismiss_dynamic(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.dynamic_state
+            .monitor_guard
+            .store(false, Ordering::Release);
+        self.dynamic_state.monitor_requested = false;
         self.finish_dynamic_drag(window, cx);
         self.dynamic_state.hover = None;
         self.dynamic_state.zoom_hover = None;
@@ -529,8 +626,8 @@ impl MouseProductWorkspace {
             return;
         }
         self.finish_dynamic_drag(window, cx);
-        self.patch_dynamic(json!({"mode":mode}), window, cx);
         if mode == 3 {
+            self.draft["dynamicSensitivity"]["mode"] = json!(mode);
             let template = self.dynamic_value()["templateId"].as_u64().unwrap_or(0) as u32;
             self.dynamic_state.points = if let Some(points) = curve::preset(template) {
                 points.to_vec()
@@ -539,6 +636,7 @@ impl MouseProductWorkspace {
             };
             self.commit_dynamic_points(template, window, cx);
         } else {
+            self.patch_dynamic(json!({"mode":mode}), window, cx);
             self.dynamic_state.points = curve::preset(mode).unwrap().to_vec();
         }
     }
@@ -621,9 +719,9 @@ impl MouseProductWorkspace {
             surface::SynapseSwitch::new("mouse-dynamic-enabled")
                 .accessibility_label(t("DYNAMIC_SENSITIVITY"))
                 .checked(on)
-                .disabled(!self.advanced_enabled())
+                .disabled(!self.advanced_enabled() || self.dynamic_state.loading)
                 .on_change(cx.listener(|this, value: &bool, window, cx| {
-                    if !this.advanced_enabled() {
+                    if !this.advanced_enabled() || this.dynamic_state.loading {
                         return;
                     }
                     this.finish_dynamic_drag(window, cx);
@@ -1206,19 +1304,6 @@ impl RenderOnce for DynamicTutorialIcon {
     }
 }
 
-fn valid_state(value: &Value) -> bool {
-    value["state"].as_u64().is_some_and(|v| v <= 1)
-        && value["mode"].as_u64().is_some_and(|v| v <= 3)
-        && value["templateId"].as_u64().is_some_and(|v| v <= 3)
-        && value["customSensorAccelerations"].as_array().is_some()
-        && value["points"].as_array().is_some_and(|v| {
-            v.is_empty()
-                || serde_json::from_value::<Vec<CurvePoint>>(value["points"].clone())
-                    .ok()
-                    .is_some_and(|points| Curve::new(&points).is_some())
-        })
-}
-
 #[derive(Clone, Copy)]
 struct Grid {
     gap_x: f64,
@@ -1487,3 +1572,7 @@ fn ratio_label(pid: u32) -> Arc<Image> {
             .into_bytes(),
     ))
 }
+
+#[cfg(test)]
+#[path = "mouse_dynamic_tests.rs"]
+mod tests;

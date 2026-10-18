@@ -1,10 +1,15 @@
-"""Pure byte-level tests for static PE routing; no target is loaded or executed."""
+"""Pure static PE and source-contract tests; no target is loaded or executed."""
 from __future__ import annotations
 
+import argparse
+import copy
 import struct
 import unittest
+from unittest.mock import patch
 
-from host import inspect_pe, pe_cursor_groups, pe_resource_entries
+from host import (HostLocalAudit, add_commands, audit_host_local,
+                  help_system_mount_layout, help_system_native_declaration,
+                  inspect_pe, pe_cursor_groups, pe_resource_entries)
 
 
 def pe_fixture(bits=64):
@@ -155,6 +160,70 @@ class StaticCursorTests(unittest.TestCase):
         struct.pack_into("<I", raw, 0x4a4, 0x10000)
         with self.assertRaisesRegex(ValueError, "declared bounds"):
             pe_resource_entries(raw)
+
+
+class HelpSystemSourceContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.parser = HostLocalAudit().parser
+
+    def props(self, text):
+        tree = self.parser.parse(("const props=" + text + ";").encode())
+        self.assertFalse(tree.root_node.has_error)
+        return tree.root_node.named_children[0].named_children[0].child_by_field_name("value")
+
+    def test_mounted_capabilities_select_the_actual_basic_or_image_branch(self):
+        for text, layout in (("{resetObm:reset,hasSystemInfo:!0}", "basic"),
+                             ("{hasSystemInfo:true,hasSystemInfoImage:false}", "basic"),
+                             ("{hasSystemInfo:true,hasSystemInfoImage:!0}", "image")):
+            with self.subTest(props=text):
+                self.assertEqual(help_system_mount_layout(self.props(text)), layout)
+
+    def test_unmounted_dynamic_duplicate_or_spread_capabilities_remain_unresolved(self):
+        for text in ("{hasSystemInfo:false}", "{hasSystemInfoImage:true}",
+                     "{hasSystemInfo:true,hasSystemInfoImage:runtimeFlag}",
+                     "{hasSystemInfo:true,hasSystemInfo:false}",
+                     "{hasSystemInfo:true,...other}"):
+            with self.subTest(props=text), self.assertRaises(ValueError):
+                help_system_mount_layout(self.props(text))
+
+    def declaration(self):
+        original = {"url": "https://app-assets.razer.com/files/blade.dll",
+                    "bytes": 4096, "sha256": "ab" * 32}
+        entry = {"resourceName": "BladeDLL", "resourceVersion": "1.0.50.0",
+                 "url": original["url"], "size": 4096, "sha256": "AB" * 32}
+        return {"resourceManifest": {"resources": [entry]}}, original
+
+    def test_manifest_selection_binds_actual_payload_identity_and_version(self):
+        manifest, original = self.declaration()
+        selected = help_system_native_declaration(manifest, original)
+        self.assertIs(selected, manifest["resourceManifest"]["resources"][0])
+        self.assertEqual(selected["resourceVersion"], "1.0.50.0")
+
+    def test_changed_length_digest_url_or_version_cannot_reuse_native_evidence(self):
+        manifest, original = self.declaration()
+        for field, value in (("size", 4095), ("size", True), ("sha256", "cd" * 32),
+                             ("sha256", "ab"), ("url", "https://invalid.example/other.dll"),
+                             ("resourceVersion", ""), ("resourceVersion", None)):
+            candidate = copy.deepcopy(manifest)
+            candidate["resourceManifest"]["resources"][0][field] = value
+            with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+                help_system_native_declaration(candidate, original)
+
+    def test_absent_or_ambiguous_native_declaration_is_not_success(self):
+        manifest, original = self.declaration()
+        entry = manifest["resourceManifest"]["resources"][0]
+        for entries in ([], [entry, copy.deepcopy(entry)]):
+            with self.subTest(entries=len(entries)), self.assertRaises(ValueError):
+                help_system_native_declaration({"resourceManifest": {"resources": entries}}, original)
+
+    def test_help_audit_is_reachable_through_the_maintained_cli_dispatch(self):
+        parser = argparse.ArgumentParser()
+        add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-host-local", "--query", "help-system-info"])
+        with patch("host.audit_host_help_system_info", return_value="static receipt") as audit:
+            self.assertEqual(audit_host_local(args), "static receipt")
+            audit.assert_called_once_with(args)
 
 
 if __name__ == "__main__":

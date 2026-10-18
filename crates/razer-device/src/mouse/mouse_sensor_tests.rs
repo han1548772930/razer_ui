@@ -122,8 +122,17 @@ fn commands_are_pinned_to_actual_current_sensor_methods() {
         "../../testdata/re/mouse-sensor-current-source.json"
     ))
     .unwrap();
-    assert_eq!(source["products"][0]["product_id"], 226);
-    let rows = source["products"][0]["queries"].as_array().unwrap();
+    assert_eq!(
+        source["products"].as_array().unwrap().len(),
+        AUDITED_PRODUCTS.len()
+    );
+    let product = source["products"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["product_id"] == 226)
+        .expect("current rotation and dynamic owner");
+    let rows = product["queries"].as_array().unwrap();
     for (name, command) in [
         ("getProximitySensorAccelerationState", GET_STATE),
         ("setProximitySensorAccelerationState", SET_STATE),

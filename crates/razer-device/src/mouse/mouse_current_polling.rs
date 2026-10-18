@@ -13,19 +13,91 @@ pub const UI_RATES: [u32; 6] = [125, 500, 1000, 2000, 4000, 8000];
 const GET: [u8; 3] = [2, 0, 0xc0];
 const SET: [u8; 3] = [2, 0, 0x40];
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum Observation {
+    Rate { hz: u32 },
+    Unknown { code: u8 },
+}
+impl Observation {
+    pub fn hz(self) -> Option<u32> {
+        match self {
+            Self::Rate { hz } => Some(hz),
+            Self::Unknown { .. } => None,
+        }
+    }
+}
+
+pub fn read(
+    device: &dyn FeatureTransport,
+    cap: &DeviceReadCapability,
+    mut next: impl FnMut() -> anyhow::Result<u8>,
+    validate: impl Fn() -> anyhow::Result<()>,
+) -> anyhow::Result<Observation> {
+    ensure!(
+        cap.product_id == PRODUCT_ID && cap.source_class == "rzDevice25",
+        "Polling read requires the current PID190 sender"
+    );
+    read_profile(device, cap, 1, &mut next, &validate)
+}
+
+fn read_profile(
+    device: &dyn FeatureTransport,
+    cap: &DeviceReadCapability,
+    profile: u8,
+    next: &mut impl FnMut() -> anyhow::Result<u8>,
+    validate: &impl Fn() -> anyhow::Result<()>,
+) -> anyhow::Result<Observation> {
+    validate()?;
+    let data =
+        crate::feature_exchange::exchange(device, cap, GET, &[profile, 0], next()?, validate)?;
+    validate()?;
+    ensure!(
+        data.len() >= 2 && data[0] == profile,
+        "Polling GET profile or length differs"
+    );
+    Ok(match data[1] {
+        64 => Observation::Rate { hz: 125 },
+        32 => Observation::Rate { hz: 250 },
+        16 => Observation::Rate { hz: 500 },
+        8 => Observation::Rate { hz: 1000 },
+        4 => Observation::Rate { hz: 2000 },
+        2 => Observation::Rate { hz: 4000 },
+        1 => Observation::Rate { hz: 8000 },
+        code => Observation::Unknown { code },
+    })
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Change {
     hz: u32,
     profile_guid: Option<String>,
 }
 impl Change {
-    pub fn new(hz: u32) -> Self { Self { hz, profile_guid: None } }
-    pub fn with_profile_guid(mut self, guid: String) -> Self { self.profile_guid = Some(guid); self }
-    pub fn hz(&self) -> u32 { self.hz }
-    pub fn profile_guid(&self) -> Option<&str> { self.profile_guid.as_deref() }
+    pub fn new(hz: u32) -> Self {
+        Self {
+            hz,
+            profile_guid: None,
+        }
+    }
+    pub fn with_profile_guid(mut self, guid: String) -> Self {
+        self.profile_guid = Some(guid);
+        self
+    }
+    pub fn hz(&self) -> u32 {
+        self.hz
+    }
+    pub fn profile_guid(&self) -> Option<&str> {
+        self.profile_guid.as_deref()
+    }
     pub fn validate(&self) -> anyhow::Result<()> {
         rate_code(self.hz)?;
-        ensure!(self.profile_guid.as_ref().is_none_or(|guid| !guid.is_empty()), "Polling profile GUID is empty");
+        ensure!(
+            self.profile_guid
+                .as_ref()
+                .is_none_or(|guid| !guid.is_empty()),
+            "Polling profile GUID is empty"
+        );
         Ok(())
     }
 }
@@ -38,10 +110,18 @@ pub struct Report {
     slot_writes: Vec<SlotWrite>,
 }
 impl Report {
-    pub fn change(&self) -> &Change { &self.change }
-    pub fn runtime(&self) -> &DeviceWriteResult { &self.runtime }
-    pub fn profile_slots(&self) -> &[crate::mouse_onboard::OnboardProfileAssociation] { &self.profile_slots }
-    pub fn slot_writes(&self) -> &[SlotWrite] { &self.slot_writes }
+    pub fn change(&self) -> &Change {
+        &self.change
+    }
+    pub fn runtime(&self) -> &DeviceWriteResult {
+        &self.runtime
+    }
+    pub fn profile_slots(&self) -> &[crate::mouse_onboard::OnboardProfileAssociation] {
+        &self.profile_slots
+    }
+    pub fn slot_writes(&self) -> &[SlotWrite] {
+        &self.slot_writes
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -51,9 +131,15 @@ pub struct SlotWrite {
     acknowledgment: Option<DeviceWriteAck>,
 }
 impl SlotWrite {
-    pub fn profile_id(&self) -> u8 { self.profile_id }
-    pub fn previous_hz(&self) -> Option<u32> { self.previous_hz }
-    pub fn acknowledgment(&self) -> Option<&DeviceWriteAck> { self.acknowledgment.as_ref() }
+    pub fn profile_id(&self) -> u8 {
+        self.profile_id
+    }
+    pub fn previous_hz(&self) -> Option<u32> {
+        self.previous_hz
+    }
+    pub fn acknowledgment(&self) -> Option<&DeviceWriteAck> {
+        self.acknowledgment.as_ref()
+    }
 }
 
 pub fn request(
@@ -65,10 +151,24 @@ pub fn request(
 ) -> anyhow::Result<Report> {
     change.validate()?;
     let runtime = apply(device, cap, change.hz, &mut next, &validate)?;
-    let mut report = Report { change: change.clone(), runtime, profile_slots: Vec::new(), slot_writes: Vec::new() };
+    let mut report = Report {
+        change: change.clone(),
+        runtime,
+        profile_slots: Vec::new(),
+        slot_writes: Vec::new(),
+    };
     if let Some(guid) = change.profile_guid() {
-        report.profile_slots = crate::mouse_onboard::read_profile_associations(device, cap, &mut next, &validate)?;
-        report.slot_writes = synchronize_slots(device, cap, guid, &report.profile_slots, change.hz, &mut next, &validate)?;
+        report.profile_slots =
+            crate::mouse_onboard::read_profile_associations(device, cap, &mut next, &validate)?;
+        report.slot_writes = synchronize_slots(
+            device,
+            cap,
+            guid,
+            &report.profile_slots,
+            change.hz,
+            &mut next,
+            &validate,
+        )?;
     }
     validate()?;
     Ok(report)
@@ -89,16 +189,28 @@ fn synchronize_slots(
     let mut writes = Vec::new();
     for slot in slots.iter().filter(|slot| slot.guid == guid) {
         validate()?;
-        let getter = ReadCommand { name: DeviceReadKind::Polling, method: "getUSBHighSpeedPollingRate".into(), command: GET, payload: vec![slot.profile_id, 0], min_response_bytes: 2 };
-        let previous = crate::device_query::read_device(device, cap, &getter, next()?, validate).ok();
+        let previous = read_profile(device, cap, slot.profile_id, next, validate).ok();
         validate()?;
-        let previous_hz = previous.and_then(|value| match value { crate::device_reads::DeviceReadValue::Polling { hz } => Some(hz), _ => None });
-        let acknowledgment = if previous_hz == Some(hz) { None } else {
-            let data = crate::feature_exchange::exchange(device, cap, SET, &[slot.profile_id, code], next()?, validate)?;
+        let previous_hz = previous.and_then(Observation::hz);
+        let acknowledgment = if previous_hz == Some(hz) {
+            None
+        } else {
+            let data = crate::feature_exchange::exchange(
+                device,
+                cap,
+                SET,
+                &[slot.profile_id, code],
+                next()?,
+                validate,
+            )?;
             Some(DeviceWriteAck { command: SET, data })
         };
         validate()?;
-        writes.push(SlotWrite { profile_id: slot.profile_id, previous_hz, acknowledgment });
+        writes.push(SlotWrite {
+            profile_id: slot.profile_id,
+            previous_hz,
+            acknowledgment,
+        });
     }
     Ok(writes)
 }
@@ -137,7 +249,7 @@ pub fn transport(physical_product_id: u32) -> anyhow::Result<DeviceReadCapabilit
         .map(|hz| (format!("RATE_{hz}Hz"), rate_code(hz).expect("source rate")))
         .collect();
     cap.polling_value_offset = Some(1);
-    cap.polling_default_hz = Some(8000);
+    cap.polling_default_hz = None;
     cap.polling_physical_product_id = Some(physical_product_id);
     Ok(cap)
 }
@@ -155,15 +267,27 @@ pub fn apply(
     );
     let code = rate_code(hz)?;
     let setting = DeviceWriteSetting::Polling { hz };
-    let getter = cap.queries.iter().find(|query| query.name == DeviceReadKind::Polling)
+    let getter = cap
+        .queries
+        .iter()
+        .find(|query| query.name == DeviceReadKind::Polling)
         .context("High-speed polling getter is absent")?;
-    ensure!(getter.command == GET && getter.payload == [1, 0], "Polling getter profile differs");
+    ensure!(
+        getter.command == GET && getter.payload == [1, 0],
+        "Polling getter profile differs"
+    );
     validate()?;
     // 96204.be catches a failed getter and returns zero to ot's comparison.
     // Missing observations remain explicit; a cancellation still stops SET.
-    let previous = crate::device_query::read_device(device, cap, getter, next()?, &validate).ok();
+    let previous = read(device, cap, &mut next, &validate)
+        .ok()
+        .and_then(Observation::hz)
+        .map(|hz| crate::device_reads::DeviceReadValue::Polling { hz });
     validate()?;
-    if previous.as_ref().is_some_and(|value| setting.matches_value(value)) {
+    if previous
+        .as_ref()
+        .is_some_and(|value| setting.matches_value(value))
+    {
         return Ok(DeviceWriteResult {
             requested: setting,
             observed: previous.clone(),
@@ -175,10 +299,18 @@ pub fn apply(
     }
     let data = crate::feature_exchange::exchange(device, cap, SET, &[1, code], next()?, &validate)?;
     validate()?;
-    let observed = crate::device_query::read_device(device, cap, getter, next()?, &validate)
+    let reading = read(device, cap, &mut next, &validate)
         .context("Polling SET acknowledged, but independent GET failed")?;
+    let observed = crate::device_reads::DeviceReadValue::Polling {
+        hz: reading
+            .hz()
+            .with_context(|| format!("Polling SET acknowledged, but GET returned {reading:?}"))?,
+    };
     validate()?;
-    ensure!(setting.matches_value(&observed), "Polling readback differs from the requested rate");
+    ensure!(
+        setting.matches_value(&observed),
+        "Polling readback differs from the requested rate"
+    );
     Ok(DeviceWriteResult {
         requested: setting,
         previous,

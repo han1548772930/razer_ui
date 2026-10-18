@@ -23,6 +23,11 @@ pub(super) struct Session {
     worker: Option<JoinHandle<()>>,
     _delivery: Option<Task<()>>,
 }
+impl Session {
+    fn matches(&self, request: HelpResetRequest, canceled: &Arc<AtomicBool>) -> bool {
+        self.request.same_operation(request) && Arc::ptr_eq(&self.canceled, canceled)
+    }
+}
 impl Drop for Session {
     fn drop(&mut self) {
         self.canceled.store(true, Ordering::Release);
@@ -81,6 +86,9 @@ impl AppShell {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self.close_requested || !self.devices.contains(&workspace) {
+            return;
+        }
         if request.is_audio_streams() {
             self.request_audio_stream_reset(workspace, request, window, cx);
             return;
@@ -183,8 +191,9 @@ impl AppShell {
     ) {
         let key = if request.is_audio_streams() {
             format!(
-                "{}:audio-streams:{}",
+                "{}:audio-streams:{}:{}",
                 workspace.read(cx).identity(cx),
+                request.owner().as_u64(),
                 request.generation()
             )
         } else {
@@ -193,7 +202,7 @@ impl AppShell {
         if self
             .receiver_reset
             .get(&key)
-            .is_some_and(|session| session.request.generation() == request.generation())
+            .is_some_and(|session| session.request.same_operation(request))
         {
             self.retire_help_reset(&key);
         }
@@ -239,14 +248,17 @@ impl AppShell {
         };
         let observation = (**observation).clone();
         let container = device.device_container_id.clone();
-        let revision = self.discovery_revision;
+        let revision = workspace.read(cx).connection_revision();
         let key = format!(
-            "{}:audio-streams:{}",
+            "{}:audio-streams:{}:{}",
             workspace.read(cx).identity(cx),
+            request.owner().as_u64(),
             request.generation()
         );
+        self.retire_help_reset(&key);
         let canceled = Arc::new(AtomicBool::new(false));
         let signal = canceled.clone();
+        let observed = observation.clone();
         let (sender, receiver) = mpsc::channel();
         let worker = thread::Builder::new()
             .name("audio-stream-reset-client".into())
@@ -271,6 +283,7 @@ impl AppShell {
             }
         };
         let delivery_key = key.clone();
+        let delivery_signal = canceled.clone();
         let _delivery = cx.spawn_in(window, async move |shell, cx| {
             loop {
                 cx.background_executor()
@@ -285,13 +298,24 @@ impl AppShell {
                 };
                 let terminal = result.is_some();
                 let current = shell.update_in(cx, |shell, window, cx| {
-                    if !shell.receiver_reset.contains_key(&delivery_key) {
+                    if !shell
+                        .receiver_reset
+                        .get(&delivery_key)
+                        .is_some_and(|session| session.matches(request, &delivery_signal))
+                    {
                         return false;
                     }
-                    let current = shell.discovery_revision == revision
-                        && shell.devices.contains(&workspace)
+                    let current = shell.devices.contains(&workspace)
+                        && workspace.read(cx).connection_revision() == revision
                         && workspace.read(cx).device(cx).product_id == 1342
                         && workspace.read(cx).device(cx).device_container_id == container
+                        && shell.device_observations.iter().any(|current| {
+                            current.matches(workspace.read(cx).device(cx))
+                                && current.transport() == observed.transport()
+                                && current.physical_product_id() == observed.physical_product_id()
+                                && current.peer_product_id() == observed.peer_product_id()
+                                && current.hid_node() == observed.hid_node()
+                        })
                         && workspace.read(cx).help_reset_matches(request, cx);
                     if !current {
                         shell.retire_help_reset(&delivery_key);
@@ -311,6 +335,18 @@ impl AppShell {
                     }
                     true
                 });
+                if current.is_err() {
+                    delivery_signal.store(true, Ordering::Release);
+                    let _ = shell.update(cx, |shell, _| {
+                        if shell
+                            .receiver_reset
+                            .get(&delivery_key)
+                            .is_some_and(|session| session.matches(request, &delivery_signal))
+                        {
+                            shell.retire_help_reset(&delivery_key);
+                        }
+                    });
+                }
                 if terminal || !matches!(current, Ok(true)) {
                     break;
                 }

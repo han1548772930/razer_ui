@@ -18,6 +18,8 @@ pub mod keyboard_legacy_calibration;
 pub mod keyboard_metadata;
 pub mod leviathan;
 pub mod mouse_current_dpi;
+pub mod mouse_brightness;
+pub mod mouse_dynamic;
 pub mod mouse_current_polling;
 pub mod mouse_current_power;
 pub mod mouse_indicator_led;

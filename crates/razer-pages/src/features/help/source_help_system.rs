@@ -1,6 +1,11 @@
 //! Actual basic and image System Details Help mounts.
 use super::*;
-#[derive(Clone, Copy, Debug)]
+use razer_device::system_info::{self, SystemDetails};
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum HelpSystemInfoCommand {
     Observe,
     SaveLogs,
@@ -14,6 +19,8 @@ pub struct HelpSystemInfoRequested {
     edition_id: u32,
     layout_id: u32,
     command: HelpSystemInfoCommand,
+    device_name: Option<String>,
+    cancelled: Arc<AtomicBool>,
 }
 impl HelpSystemInfoRequested {
     pub fn product_id(&self) -> u32 {
@@ -34,6 +41,26 @@ impl HelpSystemInfoRequested {
     pub fn layout_id(&self) -> u32 {
         self.layout_id
     }
+    pub fn same_mount(&self, other: &Self) -> bool {
+        self.owner == other.owner
+            && self.generation == other.generation
+            && self.product_id == other.product_id
+            && self.page_offset == other.page_offset
+            && self.edition_id == other.edition_id
+            && self.layout_id == other.layout_id
+    }
+    pub fn file_name(&self, timer_tick: u64) -> String {
+        format!(
+            "{} - {timer_tick}.synapse4",
+            self.device_name.as_deref().unwrap_or("undefined")
+        )
+    }
+    pub fn cancellation(&self) -> Arc<AtomicBool> {
+        self.cancelled.clone()
+    }
+    pub fn is_cancelled(&self) -> bool {
+        self.cancelled.load(Ordering::Acquire)
+    }
     pub fn middleware_message(&self, timer_tick: u64) -> Option<serde_json::Value> {
         matches!(self.command, HelpSystemInfoCommand::SaveLogs).then(|| serde_json::json!({"type":"ON_STORE_SYSTEM_INFO_DATA","timerTick":timer_tick,"payload":null}))
     }
@@ -41,7 +68,9 @@ impl HelpSystemInfoRequested {
 pub(super) struct State {
     owner: EntityId,
     generation: u64,
-    source: serde_json::Value,
+    source: Option<SystemDetails>,
+    error: Option<String>,
+    cancelled: Arc<AtomicBool>,
     expanded: bool,
     toggle_generation: u64,
 }
@@ -50,16 +79,26 @@ impl State {
         Self {
             owner,
             generation: 0,
-            source: serde_json::json!({}),
+            source: None,
+            error: None,
+            cancelled: Arc::new(AtomicBool::new(false)),
             expanded: false,
             toggle_generation: 0,
         }
     }
     pub(super) fn unmount(&mut self) {
+        self.cancelled.store(true, Ordering::Release);
+        self.cancelled = Arc::new(AtomicBool::new(false));
         self.generation = self.generation.wrapping_add(1);
-        self.source = serde_json::json!({});
+        self.source = None;
+        self.error = None;
         self.expanded = false;
         self.toggle_generation = 0;
+    }
+}
+impl Drop for State {
+    fn drop(&mut self) {
+        self.cancelled.store(true, Ordering::Release);
     }
 }
 impl EventEmitter<HelpSystemInfoRequested> for SourceHelp {}
@@ -69,30 +108,32 @@ impl SourceHelp {
         command: HelpSystemInfoCommand,
     ) -> Option<HelpSystemInfoRequested> {
         let (_, page) = self.metadata()?;
-        (page.system_info
-            && (matches!(self.device.product_id, 694 | 695 | 696)
-                || image_variant(self.device.product_id)))
-        .then(|| HelpSystemInfoRequested {
-            owner: self.system_info.owner,
-            generation: self.system_info.generation,
-            product_id: self.device.product_id,
-            page_offset: page.offset,
-            edition_id: self.device.edition_id,
-            layout_id: self.device.layout_id,
-            command,
+        (page.system_info && system_info::layout(self.device.product_id).is_some()).then(|| {
+            HelpSystemInfoRequested {
+                owner: self.system_info.owner,
+                generation: self.system_info.generation,
+                product_id: self.device.product_id,
+                page_offset: page.offset,
+                edition_id: self.device.edition_id,
+                layout_id: self.device.layout_id,
+                command,
+                device_name: self
+                    .system_info
+                    .source
+                    .as_ref()
+                    .and_then(|source| source.device_name.clone()),
+                cancelled: self.system_info.cancelled.clone(),
+            }
         })
     }
     pub(in crate::features) fn accepts_system_info_request(
         &self,
         request: &HelpSystemInfoRequested,
     ) -> bool {
-        self.system_info_request(HelpSystemInfoCommand::Observe)
-            .is_some_and(|current| {
-                current.owner == request.owner
-                    && current.generation == request.generation
-                    && current.product_id == request.product_id
-                    && current.page_offset == request.page_offset
-            })
+        !request.is_cancelled()
+            && self
+                .system_info_request(HelpSystemInfoCommand::Observe)
+                .is_some_and(|current| current.same_mount(request))
     }
     pub(super) fn mount_system_info(&mut self, cx: &mut Context<Self>) {
         self.system_info.unmount();
@@ -103,13 +144,22 @@ impl SourceHelp {
     pub(in crate::features) fn observe_system_info(
         &mut self,
         request: &HelpSystemInfoRequested,
-        source: serde_json::Value,
+        source: Result<SystemDetails, String>,
         cx: &mut Context<Self>,
     ) -> bool {
-        if !source.is_object() || !self.accepts_system_info_request(request) {
+        if !self.accepts_system_info_request(request) {
             return false;
         }
-        self.system_info.source = source;
+        match source {
+            Ok(source) => {
+                self.system_info.source = Some(source);
+                self.system_info.error = None;
+            }
+            Err(error) => {
+                self.system_info.source = None;
+                self.system_info.error = Some(error);
+            }
+        }
         cx.notify();
         true
     }
@@ -175,39 +225,78 @@ impl SourceHelp {
                 })),
         );
         if self.system_info.expanded {
-            let source = &self.system_info.source;
+            let source = self.system_info.source.as_ref();
             let mut data = v_flex().mt(surface::css(8.));
             let fields = [
-                ("DEVICE_NAME", "DeviceName", ""),
-                ("PROCESSOR", "CPU", ""),
-                ("INSTALLED_RAM", "RAM", ""),
-                ("SERIAL_NUMBER", "SerialNumber", ""),
-                ("MODEL_NUMBER", "ModelName", ""),
-                ("OS_VERSION", "OSVersion", ""),
-                ("DISPLAY_1", "", ""),
-                ("DISPLAY_2", "", ""),
-                ("NVIDIA_GEFORCE_EXPERIENCE", "NVIDIAGeForceExperience", ""),
-                ("GPU_MODE_NVIDIA_CONTROL_PANEL", "NVIDIAControlPanel", ""),
-                ("COMMAND_CENTER", "IntelGraphicCommandCenter", ""),
-                ("AMD_ADRENALINE", "AMDAdrenalinEdition", "Not Installed"),
-                ("CORTEX", "RazerCortex", "Not Installed"),
-                ("AXON", "RazerAxon", "Not Installed"),
+                (
+                    "DEVICE_NAME",
+                    source.and_then(|s| s.device_name.as_deref()),
+                    "",
+                ),
+                ("PROCESSOR", source.and_then(|s| s.cpu.as_deref()), ""),
+                ("INSTALLED_RAM", source.and_then(|s| s.ram.as_deref()), ""),
+                (
+                    "SERIAL_NUMBER",
+                    source.and_then(|s| s.serial_number.as_deref()),
+                    "",
+                ),
+                (
+                    "MODEL_NUMBER",
+                    source.and_then(|s| s.model_name.as_deref()),
+                    "",
+                ),
+                (
+                    "OS_VERSION",
+                    source.and_then(|s| s.os_version.as_deref()),
+                    "",
+                ),
+                (
+                    "DISPLAY_1",
+                    source
+                        .and_then(|s| s.monitors().first())
+                        .map(|display| display.name.as_str()),
+                    "",
+                ),
+                (
+                    "DISPLAY_2",
+                    source
+                        .and_then(|s| s.monitors().get(1))
+                        .map(|display| display.name.as_str()),
+                    "",
+                ),
+                (
+                    "NVIDIA_GEFORCE_EXPERIENCE",
+                    source.and_then(|s| s.nvidia_geforce_experience.as_deref()),
+                    "",
+                ),
+                (
+                    "GPU_MODE_NVIDIA_CONTROL_PANEL",
+                    source.and_then(|s| s.nvidia_control_panel.as_deref()),
+                    "",
+                ),
+                (
+                    "COMMAND_CENTER",
+                    source.and_then(|s| s.intel_graphic_command_center.as_deref()),
+                    "",
+                ),
+                (
+                    "AMD_ADRENALINE",
+                    source.and_then(|s| s.amd_adrenalin_edition.as_deref()),
+                    "Not Installed",
+                ),
+                (
+                    "CORTEX",
+                    source.and_then(|s| s.razer_cortex.as_deref()),
+                    "Not Installed",
+                ),
+                (
+                    "AXON",
+                    source.and_then(|s| s.razer_axon.as_deref()),
+                    "Not Installed",
+                ),
             ];
-            for (index, (label, key, fallback)) in fields.into_iter().enumerate() {
-                let value = if matches!(index, 6 | 7) {
-                    source
-                        .get("Display")
-                        .and_then(|display| display.get(index - 6))
-                        .and_then(|display| display.get("Name"))
-                        .filter(|value| js_truthy(value))
-                        .map(js_string)
-                        .unwrap_or_default()
-                } else {
-                    source
-                        .get(key)
-                        .map(js_string)
-                        .unwrap_or_else(|| fallback.into())
-                };
+            for (label, value, fallback) in fields {
+                let value = value.unwrap_or(if source.is_some() { fallback } else { "" });
                 data = data.child(format!("{}: {}", i18n::t(label), value));
             }
             info = info.child(data);
@@ -245,15 +334,27 @@ impl SourceHelp {
             .into_any_element()
     }
     fn system_image_panel(&self, exact: bool, cx: &Context<Self>) -> AnyElement {
-        let source = &self.system_info.source;
+        let source = self.system_info.source.as_ref();
         let mut top = v_flex().gap(surface::css(15.));
-        for (label, key, vertical) in [
-            (None, "DeviceName", false),
-            (Some("PROCESSOR"), "CPU", false),
-            (Some("GRAPHICS"), "GPU", false),
-            (Some("INSTALLED_RAM"), "RAM", true),
+        for (label, content, vertical) in [
+            (None, source.and_then(|s| s.device_name.as_deref()), false),
+            (
+                Some("PROCESSOR"),
+                source.and_then(|s| s.cpu.as_deref()),
+                false,
+            ),
+            (
+                Some("GRAPHICS"),
+                source.and_then(|s| s.gpu.as_deref()),
+                false,
+            ),
+            (
+                Some("INSTALLED_RAM"),
+                source.and_then(|s| s.ram.as_deref()),
+                true,
+            ),
         ] {
-            let content = source.get(key).map(js_string).unwrap_or_default();
+            let content = content.unwrap_or("");
             let mut line = v_flex();
             if vertical {
                 line = line.child(format!("{}: {content}", i18n::t(label.unwrap())));
@@ -266,7 +367,7 @@ impl SourceHelp {
                                 .unwrap_or_default(),
                         ),
                     )
-                    .child(content);
+                    .child(content.to_owned());
             }
             top = top.child(line);
         }
@@ -289,44 +390,38 @@ impl SourceHelp {
         if self.system_info.expanded {
             let mut data = v_flex().mt(surface::css(8.)).child(format!(
                 "OS Version: {}",
-                source.get("OSVersion").map(js_string).unwrap_or_default()
+                source.and_then(|s| s.os_version.as_deref()).unwrap_or("")
             ));
-            if let Some(displays) = source.get("Display").and_then(|value| value.as_array()) {
+            if let Some(displays) = source.map(SystemDetails::monitors) {
                 for (index, display) in displays.iter().enumerate() {
-                    data = data.child(format!(
-                        "Display {}: {}",
-                        index + 1,
-                        display
-                            .get("Name")
-                            .filter(|value| js_truthy(value))
-                            .map(js_string)
-                            .unwrap_or_default()
-                    ));
+                    data = data.child(format!("Display {}: {}", index + 1, display.name));
                 }
             }
-            let missing = i18n::t("NOT_INSTALLED");
+            let missing = if source.is_some() {
+                i18n::t("NOT_INSTALLED")
+            } else {
+                "".into()
+            };
             let ge = source
-                .get("NVIDIAGeForceExperience")
-                .map(js_string)
-                .unwrap_or_else(|| missing.to_string());
+                .and_then(|s| s.nvidia_geforce_experience.as_deref())
+                .unwrap_or(&missing);
             let app = source
-                .get("NVIDIANvApp")
-                .map(js_string)
-                .unwrap_or_else(|| missing.to_string());
+                .and_then(|s| s.nvidia_app.as_deref())
+                .unwrap_or(&missing);
             let app = if ge != missing.as_str() && app == missing.as_str() {
                 ge
             } else {
                 app
             };
             data = data.child(format!("NVIDIA App: {app}"));
-            for (label, key) in [("Razer Cortex", "RazerCortex"), ("Razer Axon", "RazerAxon")] {
-                data = data.child(format!(
-                    "{label}: {}",
-                    source
-                        .get(key)
-                        .map(js_string)
-                        .unwrap_or_else(|| missing.to_string())
-                ));
+            for (label, value) in [
+                (
+                    "Razer Cortex",
+                    source.and_then(|s| s.razer_cortex.as_deref()),
+                ),
+                ("Razer Axon", source.and_then(|s| s.razer_axon.as_deref())),
+            ] {
+                data = data.child(format!("{label}: {}", value.unwrap_or(&missing)));
             }
             info = info.child(data);
         }
@@ -359,32 +454,58 @@ impl SourceHelp {
     }
 }
 fn image_variant(product_id: u32) -> bool {
-    matches!(product_id, 709 | 710 | 711 | 736 | 737)
+    matches!(
+        system_info::layout(product_id),
+        Some(system_info::Layout::Image)
+    )
 }
-fn js_truthy(value: &serde_json::Value) -> bool {
-    match value {
-        serde_json::Value::Null => false,
-        serde_json::Value::Bool(value) => *value,
-        serde_json::Value::Number(value) => value.as_f64().is_some_and(|number| number != 0.),
-        serde_json::Value::String(value) => !value.is_empty(),
-        _ => true,
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn request() -> HelpSystemInfoRequested {
+        HelpSystemInfoRequested {
+            owner: EntityId::from(12),
+            generation: 1,
+            product_id: 737,
+            page_offset: 123,
+            edition_id: 2,
+            layout_id: 3,
+            command: HelpSystemInfoCommand::Observe,
+            device_name: Some("Observed laptop".into()),
+            cancelled: Arc::new(AtomicBool::new(false)),
+        }
     }
-}
-fn js_string(value: &serde_json::Value) -> String {
-    match value {
-        serde_json::Value::String(value) => value.clone(),
-        serde_json::Value::Object(_) => "[object Object]".into(),
-        serde_json::Value::Array(values) => values
-            .iter()
-            .map(|value| {
-                if value.is_null() {
-                    String::new()
-                } else {
-                    js_string(value)
-                }
-            })
-            .collect::<Vec<_>>()
-            .join(","),
-        _ => value.to_string(),
+    #[::core::prelude::v1::test]
+    fn help_system_info_mount_identity_includes_owner_product_edition_layout_and_generation() {
+        let original = request();
+        for branch in 0..6 {
+            let mut stale = original.clone();
+            match branch {
+                0 => stale.owner = EntityId::from(13),
+                1 => stale.generation += 1,
+                2 => stale.product_id = 711,
+                3 => stale.page_offset += 1,
+                4 => stale.edition_id += 1,
+                _ => stale.layout_id += 1,
+            }
+            assert!(!original.same_mount(&stale));
+        }
+        let mut save = original.clone();
+        save.command = HelpSystemInfoCommand::SaveLogs;
+        save.device_name = None;
+        assert!(original.same_mount(&save));
+        assert_eq!(original.file_name(456), "Observed laptop - 456.synapse4");
+    }
+    #[::core::prelude::v1::test]
+    fn help_system_info_unmount_cancels_the_old_token_and_preserves_new_mount_admission() {
+        let mut state = State::new(EntityId::from(12));
+        let previous = state.cancelled.clone();
+        state.unmount();
+        assert!(previous.load(Ordering::Acquire));
+        assert!(!state.cancelled.load(Ordering::Acquire));
+        assert!(state.source.is_none());
+        let current = state.cancelled.clone();
+        drop(state);
+        assert!(current.load(Ordering::Acquire));
     }
 }

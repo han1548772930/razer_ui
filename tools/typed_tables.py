@@ -930,14 +930,19 @@ def render_pairing_source_catalog(raw):
 
 
 def prepare_local_protocol_tables(reads=READ_INPUT, identity=IDENTITY_INPUT, queries=QUERY_INPUT,
-                                  pairing=PAIR_CAP_INPUT, catalog=PAIR_CATALOG_INPUT, check=False):
+                                  pairing=PAIR_CAP_INPUT, catalog=PAIR_CATALOG_INPUT, check=False,
+                                  current_reads=False):
     import subprocess
+    if current_reads:
+        return prepare_current_read_table(check=check)
     definitions = [(reads, READ_OUTPUT, render_read_catalog), (identity, IDENTITY_OUTPUT, render_identity_catalog),
                    (queries, QUERY_OUTPUT, render_receiver_query_catalog), (pairing, PAIR_CAP_OUTPUT, render_pairing_capabilities),
                    (catalog, PAIR_CATALOG_OUTPUT, render_pairing_source_catalog)]
     outputs = []
     for source, name, renderer in definitions:
         rendered = renderer(local_path(source).read_bytes())
+        if name == READ_OUTPUT:
+            rendered, _ = current_read_table_projection(rendered, current_read_sources()[0], update=True)
         formatted = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"],
                                    input=rendered, capture_output=True, check=True)
         outputs.append((name, formatted.stdout))
@@ -951,6 +956,578 @@ def prepare_local_protocol_tables(reads=READ_INPUT, identity=IDENTITY_INPUT, que
             output.write_bytes(raw)
     return {"paths": [name for name, _ in outputs], "passed": True,
             "scope": "fixed local protocol data; no runtime JSON, network or device operations"}
+
+
+def current_read_decoder_contract(method, body, *, decoder_only=False):
+    """Check the payload and observed fields against the current typed decoder."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent / "analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    tree = Parser(Language(tree_sitter_javascript.language())).parse(body.encode())
+    if tree.root_node.has_error:
+        raise ValueError("Current observation helper has a JavaScript AST error")
+
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+
+    def one(nodes, label):
+        rows = list(nodes)
+        if len(rows) != 1:
+            raise ValueError("Current observation has absent or ambiguous " + label)
+        return rows[0]
+
+    def member(node, name):
+        return (node is not None and node.type == "member_expression"
+                and node.child_by_field_name("property").text == name)
+
+    nodes = list(walk(tree.root_node))
+    payload = []
+    if not decoder_only:
+        send = one((node for node in nodes if node.type == "call_expression"
+                    and member(node.child_by_field_name("function"), b"sendCommand")), "GET sendCommand")
+        args = send.child_by_field_name("arguments").named_children
+        if method == "getExtendedFirmwareVersion":
+            if len(args) != 2:
+                raise ValueError("Current firmware getter has an unexpected payload")
+        else:
+            if len(args) != 3 or args[2].type != "identifier":
+                raise ValueError("Current getter has a nonliteral payload owner")
+            payload_name = args[2].text
+            declaration = one((node for node in nodes if node.type == "variable_declarator"
+                and node.child_by_field_name("name").text == payload_name), "GET payload declaration")
+            value = declaration.child_by_field_name("value")
+            if (value.type != "new_expression" or value.child_by_field_name("constructor").text != b"Uint8Array"):
+                raise ValueError("Current GET payload is not zero-initialized")
+            allocation = value.child_by_field_name("arguments").named_children
+            if (len(allocation) != 1 or allocation[0].type != "subscript_expression"
+                    or allocation[0].child_by_field_name("object").text != args[0].text
+                    or allocation[0].child_by_field_name("index").text != b"0"):
+                raise ValueError("Current GET payload length differs from its command")
+            writes = [node for node in nodes if node.type == "assignment_expression"
+                      and node.child_by_field_name("left").type == "subscript_expression"
+                      and node.child_by_field_name("left").child_by_field_name("object").text == payload_name]
+            if method in ("getBatteryLevel", "getChargingStatus"):
+                arrow = one((node for node in tree.root_node.named_children[0].named_children[0].named_children
+                             if node.type == "arrow_function"), "battery getter")
+                parameters = arrow.child_by_field_name("parameters").named_children
+                if (len(parameters) != 2 or len(writes) != 1
+                        or writes[0].child_by_field_name("left").child_by_field_name("index").text != b"0"
+                        or writes[0].child_by_field_name("right").text != parameters[1].text):
+                    raise ValueError("Current battery selector is not payload byte zero")
+                payload = [0]
+            elif method != "getTimeToSleep" or writes:
+                raise ValueError("Current idle getter payload is not empty")
+        if method == "getTimeToSleep":
+            return {"payload": payload, "response_decoder": "separate current idle decoder"}
+
+    assignment = one((node for node in nodes if node.type == "assignment_expression"
+                      and member(node.child_by_field_name("left"), b"jsonData")), "observed jsonData")
+    result_name = assignment.child_by_field_name("left").child_by_field_name("object").text
+    result = assignment.child_by_field_name("right")
+    if result.type != "object":
+        raise ValueError("Current observation is not a literal result")
+
+    def expression(node):
+        if node.type == "number":
+            return int(node.text)
+        if node.type == "subscript_expression":
+            obj, index = node.child_by_field_name("object"), node.child_by_field_name("index")
+            if (member(obj, b"data") and obj.child_by_field_name("object").text == result_name
+                    and index.type == "number"):
+                return ["byte", int(index.text)]
+        if node.type == "binary_expression":
+            return [node.child_by_field_name("operator").text.decode(),
+                    expression(node.child_by_field_name("left")), expression(node.child_by_field_name("right"))]
+        if node.type == "call_expression":
+            fn = node.child_by_field_name("function")
+            args = node.child_by_field_name("arguments").named_children
+            if fn.text == b"Math.floor" and len(args) == 1:
+                return ["floor", expression(args[0])]
+            if fn.type == "member_expression" and len(args) == 2:
+                if method == "getChargingStatus" and member(args[0], b"Jz"):
+                    return ["charging_enum", expression(args[1])]
+                if method == "getTimeToSleep":
+                    return ["big_endian", expression(args[0]), expression(args[1])]
+        raise ValueError("Current observation has an unresolved decoder expression")
+
+    observed = {}
+    for pair in result.named_children:
+        key, value = pair.child_by_field_name("key"), pair.child_by_field_name("value")
+        if pair.type != "pair" or key is None or key.type != "property_identifier" or key.text.decode() in observed:
+            raise ValueError("Current observation contains repeated or dynamic result fields")
+        observed[key.text.decode()] = expression(value)
+    expected = {
+        "getExtendedFirmwareVersion": {"major": ["byte", 0], "minor": ["byte", 1],
+                                       "internal": ["byte", 2], "reserved": ["byte", 3]},
+        "getBatteryLevel": {"batteryId": ["byte", 0],
+                            "batteryLevel": ["floor", ["*", ["/", ["byte", 1], 255], 100]]},
+        "getChargingStatus": {"batteryId": ["byte", 0], "chargingStatus": ["byte", 1],
+                              "chargingStatusEnum": ["charging_enum", ["byte", 1]]},
+        "getTimeToSleep": {"timeToSleep": ["big_endian", ["byte", 0], ["byte", 1]]},
+    }
+    if observed != expected.get(method):
+        raise ValueError("Current observation differs from its typed response decoder: " + method)
+    return {"payload": payload, "observed_fields": observed}
+
+
+def current_read_key_inventory(buttons, mapping):
+    """Project the mounted normal-mode UI keys into their firmware identities."""
+    def fields(node):
+        if node.type != "object":
+            raise ValueError("Current keyboard inventory requires literal objects")
+        result = {}
+        for pair in node.named_children:
+            key, value = pair.child_by_field_name("key"), pair.child_by_field_name("value")
+            if pair.type != "pair" or key is None or key.type != "property_identifier" or key.text in result:
+                raise ValueError("Current keyboard inventory has dynamic or repeated fields")
+            result[key.text] = value
+        return result
+
+    if buttons.type != "array":
+        raise ValueError("Current keyboard UI inventory is not a fixed array")
+    defaults = fields(mapping)
+    rows = {}
+    for button in buttons.named_children:
+        row = fields(button)
+        shift = row.get(b"isHyperShift")
+        if shift is not None:
+            if shift.text not in (b"!0", b"!1", b"true", b"false"):
+                raise ValueError("Current keyboard UI inventory has a dynamic mode")
+            if shift.text in (b"!0", b"true"):
+                continue
+        key = row.get(b"inputID")
+        if key is None or key.type != "string":
+            raise ValueError("Current keyboard UI key has no literal identity")
+        key_name = json.loads(key.text)
+        if key_name.encode() not in defaults:
+            raise ValueError("Current keyboard UI key has no firmware mapping: " + key_name)
+        default = fields(defaults[key_name.encode()])
+        firmware = default.get(b"fwID")
+        identity = default.get(b"inputID")
+        if (firmware is None or firmware.type != "number" or identity is None or identity.type != "string"
+                or json.loads(identity.text) != key_name):
+            raise ValueError("Current keyboard firmware identity is absent, dynamic or mismatched")
+        firmware_id = bounded(int(firmware.text), 254, "keyboard firmware key ID", 1)
+        ignored = default.get(b"ignoreInObm")
+        if ignored is not None and ignored.text not in (b"!1", b"false"):
+            raise ValueError("Current keyboard normal-mode ignore branch requires an explicit audit")
+        previous = rows.get(firmware_id)
+        if previous is not None and previous != key_name:
+            raise ValueError("Current keyboard firmware key ID is ambiguous")
+        rows[firmware_id] = key_name
+    if not rows:
+        raise ValueError("Current keyboard firmware inventory is empty")
+    return [{"firmware_key_id": key, "input_id": rows[key]} for key in sorted(rows)]
+
+
+def current_read_inventory_selection_contract(selection, merging):
+    """Reject changed layout or override semantics before projecting the key tables."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent / "analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    parser = Parser(Language(tree_sitter_javascript.language()))
+
+    def syntax(body):
+        tree = parser.parse(body.encode())
+        if tree.root_node.has_error:
+            raise ValueError("Current keyboard inventory selection has a JavaScript AST error")
+
+        def shape(node):
+            children = [child for child in node.children if child.type != "comment"]
+            return (node.type, tuple(shape(child) for child in children)) if children else (node.type, node.text)
+        return shape(tree.root_node)
+
+    expected_selection = ('w=()=>{let e=[];return e=o.Yi0.includes(m.A.runtimeData.layoutId)&&n.BUTTON_LIST_UK?'
+        '[...n.BUTTON_LIST_UK]:m.A.runtimeData.layoutId===_.Z7j.Japanese&&n.BUTTON_LIST_JP?'
+        '[...n.BUTTON_LIST_JP]:[...n.BUTTON_LIST],e}')
+    expected_merging = ('C=()=>{var e,t;if(O)return O;let i={};'
+        'const{inputMapping:n,inputMappingJP:r,inputMappingUK:s}=p.A.getFeatureParam("isObm","yes");'
+        'return i=m.A.runtimeData.layoutId===_.Z7j.Japanese&&r?r:o.Yi0.includes(m.A.runtimeData.layoutId)&&s?s:n,'
+        'i?(O={NormalMode:Object.assign(Object.assign({},a.Bx.NormalMode),'
+        '(null===(e=i.keyboard)||void 0===e?void 0:e.NormalMode)||{}),'
+        'HypershiftMode:Object.assign(Object.assign({},a.Bx.HypershiftMode),'
+        '(null===(t=i.keyboard)||void 0===t?void 0:t.HypershiftMode)||{})},O):(O=a.Bx,O)}')
+    if syntax(selection) != syntax(expected_selection) or syntax(merging) != syntax(expected_merging):
+        raise ValueError("Current keyboard layout inventory or firmware override semantics changed")
+    return {"layout_and_override_selection_equal": True}
+
+
+def verify_current_read_key_fixtures(expected, rust_raw, python_raw):
+    """Keep read-only probe allowlists equal to the source-derived key inventory."""
+    import ast
+    tree = receiver_table_tree(rust_raw)
+    declarations, pending = [], [tree.root_node]
+    while pending:
+        node = pending.pop(); pending.extend(node.named_children)
+        if node.type == "const_item" and node.child_by_field_name("name").text == b"KEYBOARD_679_LAYOUT_1_KEYS":
+            declarations.append(node)
+    if len(declarations) != 1 or declarations[0].parent.type != "source_file":
+        raise ValueError("Keyboard probe has no unique module-owned Rust key inventory")
+    value = declarations[0].child_by_field_name("value")
+    if value.type != "reference_expression" or len(value.named_children) != 1 or value.named_children[0].type != "array_expression":
+        raise ValueError("Keyboard probe Rust inventory is not a literal slice")
+    array = value.named_children[0]
+    if any(node.type != "integer_literal" for node in array.named_children):
+        raise ValueError("Keyboard probe Rust key inventory is dynamic")
+    rust_keys = [int(node.text) for node in array.named_children]
+    declarations = []
+    for node in ast.parse(python_raw).body:
+        targets = node.targets if isinstance(node, ast.Assign) else [node.target] if isinstance(node, ast.AnnAssign) else []
+        if any(isinstance(target, ast.Name) and target.id == "_KEYBOARD_679_LAYOUT_1_KEYS" for target in targets):
+            declarations.append(node)
+    if len(declarations) != 1:
+        raise ValueError("Keyboard probe has no unique module-owned Python key inventory")
+    value = declarations[0].value
+    if (not isinstance(value, ast.Call) or not isinstance(value.func, ast.Name) or value.func.id != "frozenset"
+            or len(value.args) != 1 or value.keywords or not isinstance(value.args[0], (ast.Tuple, ast.List, ast.Set))
+            or any(not isinstance(node, ast.Constant) or type(node.value) is not int for node in value.args[0].elts)):
+        raise ValueError("Keyboard probe Python inventory is not a literal immutable set")
+    python_keys = [node.value for node in value.args[0].elts]
+    for owner, actual in (("Rust", rust_keys), ("Python", python_keys)):
+        if actual != expected or len(actual) != len(set(actual)):
+            raise ValueError("Keyboard probe " + owner + " key inventory differs from current source")
+    return {"keys": len(expected), "rust_and_python_key_order_equal": True}
+
+
+def current_read_sources():
+    """Resolve observation getters through each current mounted Protocol25 class."""
+    import analysis
+    import host
+    audit = host.HostLocalAudit()
+    indexed = json.loads(audit.artifact(ROOT / ".analysis/inputs.json"))
+    physical = analysis.feature_report_callers(audit.parser, {row["path"]: row for row in indexed["inputs"]},
+        selected_capabilities=[{"product_id": 190}, {"product_id": 679}], write_runtime=False)
+    capabilities, products = [], []
+
+    def binding_value(source, binding):
+        if binding["resolution"] != "declaration":
+            raise ValueError("Current observation dependency has no unique declaration")
+        node = audit.tree(source).root_node.descendant_for_byte_range(binding["start_byte"], binding["end_byte"] - 1)
+        if node.type != "variable_declarator":
+            raise ValueError("Current observation dependency is not a literal binding")
+        return node.child_by_field_name("value")
+
+    def imported(source, member, files, role):
+        if member.type != "member_expression":
+            raise ValueError("Current observation dependency is not an imported member")
+        obj, prop = member.child_by_field_name("object"), member.child_by_field_name("property")
+        if obj.type != "identifier" or prop.type != "property_identifier":
+            raise ValueError("Current observation dependency has a dynamic member")
+        binding = audit.binding(role + "_import", source, obj.text.decode(), member.start_byte)
+        value = binding_value(source, binding)
+        if value.type != "call_expression" or value.child_by_field_name("function").type != "identifier":
+            raise ValueError("Current observation import is not a static webpack require")
+        args = value.child_by_field_name("arguments").named_children
+        if len(args) != 1 or args[0].type != "number":
+            raise ValueError("Current observation import ID is not a literal")
+        return audit.webpack_export(role, files, int(args[0].text), prop.text.decode())
+
+    def calls(root, method):
+        found, pending = [], [root]
+        while pending:
+            node = pending.pop(); pending.extend(reversed(node.named_children))
+            if node.type != "call_expression":
+                continue
+            fn = node.child_by_field_name("function")
+            if fn.type == "member_expression" and fn.child_by_field_name("property").text == method:
+                found.append(node)
+        return found
+
+    for factory in physical["products"]:
+        pid = factory["product_id"]
+        if factory["failures"] or not factory["source_owners_complete"]:
+            raise ValueError("Current observation factory is unresolved: " + str(pid) + " " + str(factory["failures"]))
+        source_set, files = audit.source_set(factory["namespace"])
+        owners = [(source, owner) for source in factory["sources"] for owner in source["owners"]
+                  if owner["role"] == "complete_protocol_class" and 'this.name="rzDevice25"' in owner["body"]]
+        source_record, owner = min(owners, key=lambda row: len(row[1]["body"]))
+        source = source_record["original"]
+        root = audit.tree(source).root_node.descendant_for_byte_range(owner["byte_start"], owner["byte_end"] - 1)
+        class_owner = audit.retain_range("current_read_class_" + str(pid), source,
+            owner["byte_start"], owner["byte_end"], root.type)
+        branches = factory["physical_transports_by_pid"]
+        cap = {key: value for key, value in branches[str(pid)].items() if key != "is_duallink"}
+        cap.update(product_id=pid, vendor_id=5426, direct_pids=sorted(map(int, branches)), report_bytes=91,
+                   physical_transports_by_pid=branches,
+                   claim_interfaces_by_pid={key: value["claim_interface"] for key, value in branches.items()},
+                   queries=[], polling_codes={}, charging_codes={})
+        methods = ["getExtendedFirmwareVersion"]
+        if pid == 190:
+            methods += ["getBatteryLevel", "getChargingStatus", "getTimeToSleep"]
+        getters = []
+        for method in methods:
+            member, member_owner = audit.callable_member(str(pid) + "_" + method, source, root, method)
+            delegation = []
+            pending = [member]
+            while pending:
+                node = pending.pop(); pending.extend(reversed(node.named_children))
+                if node.type != "call_expression":
+                    continue
+                args = node.child_by_field_name("arguments").named_children
+                fn = node.child_by_field_name("function")
+                if args and args[0].type == "this" and fn.type == "member_expression":
+                    delegation.append(fn)
+            if len(delegation) != 1:
+                raise ValueError("Current getter helper is unresolved: " + method)
+            helper = imported(source, delegation[0], files, str(pid) + "_" + method + "_helper")
+            helper_source, helper_binding = helper["original"], helper["binding"]
+            helper_node = binding_value(helper_source, helper_binding)
+            sends = calls(helper_node, b"sendCommand")
+            if len(sends) != 1:
+                raise ValueError("Current observation getter selects multiple commands")
+            args = sends[0].child_by_field_name("arguments").named_children
+            constant = imported(helper_source, args[0], files, str(pid) + "_" + method + "_command")
+            value = binding_value(constant["original"], constant["binding"])
+            values = value.child_by_field_name("arguments").named_children if value.type == "new_expression" else []
+            if (value.type != "new_expression" or value.child_by_field_name("constructor").text != b"Uint8Array"
+                    or len(values) != 1 or values[0].type != "array"
+                    or any(item.type != "number" for item in values[0].named_children)):
+                raise ValueError("Current observation command is not a fixed byte array")
+            command = [int(item.text) for item in values[0].named_children]
+            contract = READ_METHODS[method]
+            if command != contract[2]:
+                raise ValueError("Current observation command differs from the typed decoder: " + method)
+            cap["queries"].append({"name": contract[1], "method": method, "command": command,
+                "payload": contract[3], "min_response_bytes": contract[4]})
+            getters.append({"method": method, "member_owner": member_owner,
+                            "helper": helper, "command": constant,
+                            "decoder": current_read_decoder_contract(method, helper_binding["body"])})
+        products.append({"product_id": pid, "deployment": source_set,
+                         "factory": factory, "class_owner": class_owner, "getters": getters})
+        capabilities.append(cap)
+
+    mouse = next(row for row in products if row["product_id"] == 190)
+    _, files = audit.source_set("mouse-mw-190-current")
+    source = next(row for row in files if Path(row["path"]).name.startswith("6120."))
+    battery = audit.retain("current_battery_caller", source, "t.getChargingStatus(e)", {"variable_declarator"})
+    if len(battery) != 1:
+        raise ValueError("Current battery caller is ambiguous")
+    caller = audit.owners[battery[0]]
+    selector_call = re.search(r'const ([\w$]+)=yield ([\w$]+)\(\);if\(\1<0\)', caller["body"])
+    if selector_call is None:
+        raise ValueError("Current battery selector caller is unresolved")
+    selector = audit.binding("current_battery_id", source, selector_call[2], caller["byte_start"])
+    if not re.search(r'else ([\w$]+)=0;return \1', selector["body"]) or '"rzDevice30"' not in selector["body"]:
+        raise ValueError("Current Protocol25 battery selector is not zero")
+    enum_owner = audit.webpack_export("current_charging_codes", files, 91458, "Jz")
+    enum_value = binding_value(enum_owner["original"], enum_owner["binding"])
+    if enum_value.type != "object":
+        raise ValueError("Current charging enum is not a literal object")
+    codes = {}
+    for pair in enum_value.named_children:
+        key, value = pair.child_by_field_name("key"), pair.child_by_field_name("value")
+        if pair.type != "pair" or key.type != "property_identifier" or value.type != "number" or key.text.decode() in codes:
+            raise ValueError("Current charging enum contains dynamic or repeated fields")
+        codes[key.text.decode()] = int(value.text)
+    next(row for row in capabilities if row["product_id"] == 190)["charging_codes"] = codes
+    mouse.update(battery_caller=battery[0], battery_selector=selector, charging_codes=enum_owner)
+    decoder = audit.binding("current_idle_decoder", source, "g", next(
+        row["helper"]["binding"]["start_byte"] for row in mouse["getters"] if row["method"] == "getTimeToSleep"))
+    decoder_value = binding_value(source, decoder)
+    decoder_calls = []
+    pending = [decoder_value]
+    while pending:
+        node = pending.pop(); pending.extend(node.named_children)
+        if node.type == "call_expression":
+            decoder_calls.append(node.child_by_field_name("function"))
+    if len(decoder_calls) != 1:
+        raise ValueError("Current idle decoder calls an unresolved helper")
+    number = imported(source, decoder_calls[0], files, "current_idle_big_endian")
+    if not re.fullmatch(r'[\w$]+=\(([\w$]+),([\w$]+)\)=>\(255&\1\)<<8\|255&\2', number["binding"]["body"]):
+        raise ValueError("Current idle byte order differs from the typed decoder")
+    mouse.update(idle_decoder=decoder, idle_big_endian=number,
+                 idle_decoder_contract=current_read_decoder_contract("getTimeToSleep", decoder["body"], decoder_only=True),
+                 firmware_target="logical mouse currentFWVersion; dongle currentDockFWVersion is a separate getter")
+    firmware = audit.retain("current_firmware_target_consumer", source,
+        "function Je(e=o.razerWindow.rzDevice,t=f.default.runtimeData)", {"function_declaration"})
+    mouse["firmware_consumer"] = firmware
+    keyboard = next(row for row in products if row["product_id"] == 679)
+    _, files = audit.source_set("keyboard-mw-679-current")
+    generic = audit.webpack_export("current_679_firmware_mapping", files, 32906, "Bx")
+    generic_node = binding_value(generic["original"], generic["binding"])
+    normal = next(pair.child_by_field_name("value") for pair in generic_node.named_children
+                  if pair.child_by_field_name("key").text == b"NormalMode")
+    inventories = {}
+    for export in ("BUTTON_LIST", "BUTTON_LIST_UK"):
+        owner = audit.webpack_export("current_679_" + export, files, 26061, export)
+        inventories[export] = {"export": owner, "keys": current_read_key_inventory(
+            binding_value(owner["original"], owner["binding"]), normal)}
+    selection = audit.webpack_export("current_679_layout_key_selection", files, 26192, "NA")
+    merging = audit.webpack_export("current_679_firmware_mapping_selection", files, 26192, "Aq")
+    selection_contract = current_read_inventory_selection_contract(selection["binding"]["body"], merging["binding"]["body"])
+    for name, module_id in (("n", 26061), ("a", 32906), ("o", 11469), ("_", 93490)):
+        dependency = audit.binding("current_679_inventory_dependency_" + name, selection["original"], name,
+                                   selection["binding"]["start_byte"])
+        value = binding_value(selection["original"], dependency)
+        if (value.type != "call_expression" or len(value.child_by_field_name("arguments").named_children) != 1
+                or value.child_by_field_name("arguments").named_children[0].text != str(module_id).encode()):
+            raise ValueError("Current keyboard inventory dependency no longer selects its actual module")
+    uk = audit.webpack_export("current_679_uk_layouts", files, 11469, "Yi0")
+    layout = audit.webpack_export("current_679_layout_enum", files, 93490, "Z7j")
+    layout_node = binding_value(layout["original"], layout["binding"])
+    layout_codes = {pair.child_by_field_name("key").text.decode(): int(pair.child_by_field_name("value").text)
+                    for pair in layout_node.named_children if pair.type == "pair"}
+    uk_node = binding_value(uk["original"], uk["binding"])
+    if uk_node.type != "array" or any(node.type != "member_expression" for node in uk_node.named_children):
+        raise ValueError("Current keyboard UK layout selection is not a fixed enum list")
+    uk_layout_ids = [layout_codes[node.child_by_field_name("property").text.decode()]
+                     for node in uk_node.named_children]
+    main = inventories["BUTTON_LIST"]["export"]["original"]
+    feature = audit.retain("current_679_obm_registration", main, 'useFeature("isObm","yes"', {"call_expression"})
+    if len(feature) != 1:
+        raise ValueError("Current keyboard OBM registration is ambiguous")
+    feature_owner = audit.owners[feature[0]]
+    feature_node = audit.tree(main).root_node.descendant_for_byte_range(feature_owner["byte_start"], feature_owner["byte_end"] - 1)
+    arguments = feature_node.child_by_field_name("arguments").named_children
+    if len(arguments) != 3 or arguments[2].type != "object":
+        raise ValueError("Current keyboard OBM registration is not a literal feature")
+    options = {pair.child_by_field_name("key").text: pair.child_by_field_name("value") for pair in arguments[2].named_children
+               if pair.type == "pair"}
+    if b"inputMappingJP" in options or b"inputMappingUK" in options or options[b"engineType"].text != b'"obmEngineKeyboardCalMaxMem"':
+        raise ValueError("Current keyboard OBM registration adds an unaudited layout or engine override")
+    mapping = options[b"inputMapping"]
+    keyboard_mapping = next(pair.child_by_field_name("value") for pair in mapping.named_children
+                            if pair.child_by_field_name("key").text == b"keyboard")
+    normal_override = next(pair.child_by_field_name("value") for pair in keyboard_mapping.named_children
+                           if pair.child_by_field_name("key").text == b"NormalMode")
+    if normal_override.type != "object" or normal_override.named_children:
+        raise ValueError("Current keyboard adds an unaudited normal-mode firmware key override")
+    if "BUTTON_LIST_JP" in audit.owners[inventories["BUTTON_LIST"]["export"]["complete_factory_owner"]]["body"]:
+        raise ValueError("Current keyboard adds a Japanese inventory requiring its own source projection")
+    factory = audit.webpack_export("current_679_obm_engine", files, 17317, "default")
+    factory_root = binding_value(factory["original"], factory["binding"])
+    callers = {}
+    for method in ("init", "getButtonIdFromUIMappingList", "getAllButtonAssignmentInfo", "getButtonAssignmentListDetail"):
+        _, owner = audit.callable_member("current_679_" + method, factory["original"], factory_root, method,
+                                          receiver="this")
+        callers[method] = owner
+    subclass = audit.webpack_export("current_679_calculated_memory_engine", files, 65711, "default")
+    mounting_source = selection["original"]
+    mounting = audit.retain("current_679_obm_mounting", mounting_source, "obmEngine.init(",
+                            {"function_expression", "function_declaration", "arrow_function"})
+    keyboard["analog_key_inventory"] = {"inventories": inventories, "normal_firmware_mapping": generic,
+        "selection_contract": selection_contract,
+        "layout_selection": selection, "firmware_mapping_selection": merging, "uk_layout_codes": uk,
+        "layout_enum": layout, "uk_layout_ids": uk_layout_ids, "feature_registration": feature[0],
+        "engine": factory, "calculated_memory_subclass": subclass, "callers": callers, "mounting": mounting,
+        "japanese_specific_ui_inventory": "absent; source selector uses BUTTON_LIST when BUTTON_LIST_JP is absent",
+        "other_layouts": "source selector uses BUTTON_LIST for every layout outside uk_layout_ids",
+        "profile_id_source": "obmJson.profiles[e].id from actual profile inventory; caller passes profile ID",
+        "memory_type": 0, "actuation_batch_limit": 15, "rapid_trigger_batch_limit": 13,
+        "key_identity": "firmware fwID from mounted NormalMode mapping; not analogKeyID or HID scan code"}
+    fixture_rust = ROOT / "crates/razer-hid/tests/connected_devices.rs"
+    fixture_python = ROOT / "tools/native_runtime.py"
+    expected_keys = [row["firmware_key_id"] for row in inventories["BUTTON_LIST"]["keys"]]
+    equality = verify_current_read_key_fixtures(expected_keys, fixture_rust.read_bytes(), fixture_python.read_bytes())
+    import families
+    keyboard["analog_key_inventory"]["probe_fixture_equivalence"] = {**equality,
+        "rust": families.identity(fixture_rust), "python": families.identity(fixture_python)}
+    validate_read_catalog(json.dumps({"schema_version": 1, "products": capabilities}).encode())
+    if audit.final_snapshot():
+        raise ValueError("Current observation source bytes changed during extraction")
+    return capabilities, {"products": products, "complete_owners": list(audit.owners.values()),
+                          "inputs": list(audit.artifacts.values()), "parser_versions": audit.parser_versions,
+                          "target_execution": False, "runtime_acceptance": "unverified"}
+
+
+def current_read_table_projection(content, capabilities, *, update=False):
+    """Replace only verified product constructors; preserve the rest of the typed table."""
+    expected_raw = render_read_catalog(json.dumps({"schema_version": 1, "products": capabilities}).encode())
+
+    def constructors(raw):
+        tree = receiver_table_tree(raw)
+        found, pending = {}, [tree.root_node]
+        while pending:
+            node = pending.pop(); pending.extend(reversed(node.named_children))
+            if node.type != "struct_expression" or node.child_by_field_name("name").text != b"DeviceReadCapability":
+                continue
+            fields = {}
+            for field in node.child_by_field_name("body").named_children:
+                if field.type in {"line_comment", "block_comment"}:
+                    continue
+                if field.type != "field_initializer":
+                    raise ValueError("Read constructor requires explicit fields")
+                key = field.child_by_field_name("field").text.decode()
+                if key in fields:
+                    raise ValueError("Read constructor repeats a field")
+                fields[key] = field.child_by_field_name("value")
+            pid = fields.get("product_id")
+            if pid is None or pid.type != "integer_literal" or int(pid.text) in found:
+                raise ValueError("Read constructor has missing or repeated product identity")
+            found[int(pid.text)] = node
+        if found:
+            owner = next(iter(found.values())).parent
+            if owner.type != "array_expression" or any(node.parent != owner for node in found.values()):
+                raise ValueError("Read table production constructors do not share one array owner")
+            function = owner.parent.parent if owner.parent is not None else None
+            if (function is None or function.type != "function_item"
+                    or function.child_by_field_name("name").text != b"products"
+                    or function.parent.type != "source_file"):
+                raise ValueError("Read table constructors are not owned by the production products function")
+        return tree, found
+
+    def shape(node):
+        return (node.type, tuple(shape(child) for child in node.children
+                               if child.type not in {"line_comment", "block_comment"})) if node.children else (node.type, node.text)
+
+    expected_tree, expected = constructors(expected_raw)
+    tree, existing = constructors(content)
+    if not existing:
+        raise ValueError("Read table has no production constructors")
+    edits, missing = [], []
+    for pid, target in expected.items():
+        current = existing.get(pid)
+        if current is None:
+            if not update:
+                raise ValueError("Read table omits current product " + str(pid))
+            missing.append(expected_raw[target.start_byte:target.end_byte])
+        elif shape(current) != shape(target):
+            if not update:
+                raise ValueError("Read table differs from current source product " + str(pid))
+            edits.append((current.start_byte, current.end_byte, expected_raw[target.start_byte:target.end_byte]))
+    if missing:
+        owner = next(iter(existing.values())).parent
+        children = [node for node in owner.children[:-1] if node.type not in {"line_comment", "block_comment"}]
+        position = children[-1].end_byte
+        separator = b"" if children[-1].type == "," else b","
+        replacement = separator + b"\n" + b"\n".join(b"        " + raw + b"," for raw in missing)
+        edits.append((position, position, replacement))
+    for start, end, replacement in sorted(edits, reverse=True):
+        content = content[:start] + replacement + content[end:]
+    receiver_table_tree(content)
+    return content, sorted(expected)
+
+
+def prepare_current_read_table(*, check=False, record=True):
+    import analysis
+    import families
+    import subprocess
+    capabilities, report = current_read_sources()
+    path = ROOT / READ_OUTPUT
+    original = path.read_bytes()
+    rendered, products = current_read_table_projection(original, capabilities, update=not check)
+    if not check and rendered != original:
+        rendered = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"],
+            input=rendered, capture_output=True, check=True).stdout
+        path.write_bytes(rendered)
+    verified, verified_products = current_read_table_projection(path.read_bytes(), capabilities)
+    if verified != path.read_bytes() or products != verified_products:
+        raise ValueError("Current observation constructor verification differs")
+    report.update(tool=families.identity(Path(__file__)), output=families.identity(path), check_only=check,
+                  constructors_verified=products)
+    if record:
+        destination = ROOT / ".analysis/results/typed-data.json"
+        with analysis.index_lock(ROOT / ".work/typed-data-registry.lock"):
+            previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
+            previous["current_local_read_table"] = report
+            analysis.save(destination, previous)
+    return {"products": products, "queries": {row["product_id"]: [query["name"] for query in row["queries"]]
+            for row in capabilities}, "source_factories_and_getters_equal": True, "passed": True,
+            "check_only": check, "runtime_acceptance": "unverified"}
 
 
 def mapping_source_projection(body):
@@ -3038,6 +3615,8 @@ def regenerate_input(path, *, root=None):
         if (root / source).resolve() != Path(path).resolve():
             continue
         content = renderer(Path(path).read_bytes())
+        if output == READ_OUTPUT:
+            content, _ = current_read_table_projection(content, current_read_sources()[0], update=True)
         if formatted:
             content = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"],
                                      input=content, capture_output=True, check=True).stdout
@@ -3064,6 +3643,8 @@ def add_commands(commands):
     p.add_argument("--pairing-json", default=PAIR_CAP_INPUT)
     p.add_argument("--catalog-json", default=PAIR_CATALOG_INPUT)
     p.add_argument("--check", action="store_true")
+    p.add_argument("--current-reads", action="store_true",
+                   help="Prepare source-verified current observation constructors without retired maintenance JSON")
     p = commands.add_parser("prepare-device-write-table", help="Generate typed Rust capabilities from explicit maintenance JSON")
     p.add_argument("--from-json", default=WRITE_INPUT, help="Source-derived maintenance input; never read by Cargo or runtime")
     p.add_argument("--check", action="store_true", help="Verify generated Rust without rewriting")
@@ -3087,7 +3668,8 @@ def run(args):
         return prepare_mapping_capabilities(check=args.check)
     if args.command == "prepare-local-protocol-tables":
         return prepare_local_protocol_tables(args.reads_json, args.identity_json, args.queries_json,
-                                              args.pairing_json, args.catalog_json, args.check)
+                                              args.pairing_json, args.catalog_json, args.check,
+                                              current_reads=args.current_reads)
     if args.command == "prepare-device-write-table":
         return prepare_write_table(args.from_json, args.check)
     if args.command == "prepare-storage-tables":

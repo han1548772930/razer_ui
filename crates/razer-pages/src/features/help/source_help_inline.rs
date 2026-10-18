@@ -310,6 +310,7 @@ impl SourceHelp {
             .flatten();
         self.reset_oled_obm = oled.then_some(true);
         let request = HelpResetRequest {
+            owner: self.reset_owner,
             generation: self.reset_generation,
             audio_streams: false,
             source_action: (!oled).then_some(self.reset_source_action),

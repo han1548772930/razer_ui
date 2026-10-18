@@ -18,6 +18,10 @@ pub mod camera;
 pub mod chroma_connect;
 #[path = "mouse/dpi_matcher.rs"]
 pub mod dpi_matcher;
+#[path = "mouse/mouse_dynamic.rs"]
+pub mod mouse_dynamic;
+#[path = "native/help_system_info.rs"]
+pub mod help_system_info;
 #[path = "native/native_query.rs"]
 pub mod native_query;
 #[path = "native/native_read.rs"]

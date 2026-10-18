@@ -8,6 +8,10 @@ use gpui_kit::component::select::{SelectEvent, SelectState};
 use razer_widgets::source_slider::SourceSlider;
 use razer_widgets::stepper::{Stepper, StepperEvent};
 use razer_widgets::theme::{KeyboardEffectColors, KeyboardRgbEffectColors as Colors};
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 
 #[derive(Deserialize)]
 struct SourceLighting {
@@ -40,8 +44,12 @@ pub struct MouseLightingRequested {
     product_id: u32,
     command: &'static str,
     payload: Value,
+    guard: Arc<AtomicBool>,
 }
 impl MouseLightingRequested {
+    pub fn guard(&self) -> Arc<AtomicBool> {
+        self.guard.clone()
+    }
     pub fn request_id(&self) -> u64 {
         self.request_id
     }
@@ -88,6 +96,7 @@ pub(super) struct State {
     sync_started: Option<std::time::Instant>,
     sync_animation: u64,
     generation: u64,
+    guard: Arc<AtomicBool>,
     request_id: u64,
     pending: BTreeMap<u64, &'static str>,
     latest: BTreeMap<&'static str, u64>,
@@ -98,6 +107,11 @@ pub(super) struct State {
     power_indicator_color: Entity<ColorPickerState>,
     duration: Entity<SliderState>,
     boost: Entity<Stepper>,
+}
+impl Drop for State {
+    fn drop(&mut self) {
+        self.guard.store(false, Ordering::Release);
+    }
 }
 
 impl MouseProductWorkspace {
@@ -537,6 +551,7 @@ impl MouseProductWorkspace {
             product_id: self.spec.product_id,
             command,
             payload,
+            guard: state.guard.clone(),
         });
     }
     fn emit_mouse_effect(&mut self, cx: &mut Context<Self>) {
@@ -799,14 +814,59 @@ impl MouseProductWorkspace {
         request: &MouseLightingRequested,
         cx: &Context<Self>,
     ) -> bool {
-        request.owner == cx.entity_id()
+        self.mouse_lighting_request_matches(request, cx.entity_id())
+    }
+    pub fn mouse_lighting_request_matches(
+        &self,
+        request: &MouseLightingRequested,
+        owner: EntityId,
+    ) -> bool {
+        request.guard.load(Ordering::Acquire)
+            && request.owner == owner
             && request.product_id == self.spec.product_id
             && request.profile_guid.as_deref() == self.draft["guid"].as_str()
             && self.mouse_lighting.as_ref().is_some_and(|state| {
-                state.generation == request.generation
+                Arc::ptr_eq(&request.guard, &state.guard)
+                    && state.generation == request.generation
                     && state.pending.contains_key(&request.request_id)
                     && state.latest.get(request.command) == Some(&request.request_id)
             })
+    }
+    /// Release only this request when its window or physical connection is gone.
+    pub fn abandon_mouse_lighting_request(
+        &mut self,
+        request: &MouseLightingRequested,
+        error: Option<String>,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        if request.owner != cx.entity_id()
+            || request.product_id != self.spec.product_id
+            || request.profile_guid.as_deref() != self.draft["guid"].as_str()
+        {
+            return false;
+        }
+        let Some(state) = &mut self.mouse_lighting else {
+            return false;
+        };
+        if !Arc::ptr_eq(&request.guard, &state.guard)
+            || state.generation != request.generation
+            || state.pending.remove(&request.request_id).is_none()
+        {
+            return false;
+        }
+        if state.latest.get(request.command) == Some(&request.request_id) {
+            if request.command == "TOGGLE_CHROMA" {
+                state.ui_advanced = None;
+            }
+            if request.command == "ON_SET_CHROMA_PROFILE" {
+                state.ui_chroma_profile = None;
+            }
+            if let Some(error) = error {
+                state.error = Some(error);
+            }
+        }
+        cx.notify();
+        true
     }
     pub fn reject_mouse_lighting_request(
         &mut self,
@@ -854,6 +914,8 @@ impl MouseProductWorkspace {
     pub(super) fn reset_mouse_lighting_session(&mut self, cx: &mut Context<Self>) {
         self.dismiss_mouse_lighting(cx);
         if let Some(state) = &mut self.mouse_lighting {
+            state.guard.store(false, Ordering::Release);
+            state.guard = Arc::new(AtomicBool::new(true));
             state.generation = state.generation.wrapping_add(1);
             state.pending.clear();
             state.latest.clear();
@@ -1502,6 +1564,7 @@ impl MouseProductWorkspace {
             ui_advanced: None,
             ui_chroma_profile: None,
             generation,
+            guard: Arc::new(AtomicBool::new(true)),
             request_id: 0,
             custom_colors_draft: None,
             sync_started: None,

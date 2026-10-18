@@ -515,3 +515,56 @@ fn dual_mouse_on_a_keyboard_master_keeps_mouse_counter_and_uses_master_interface
     assert!(source.transport(9999, false).is_err());
     assert!(source.transport(228, false).is_err());
 }
+
+#[test]
+fn every_current_duallink_power_factory_binds_its_own_raw_radio_to_the_selected_master() {
+    for (product, radio) in [
+        (124, 125),
+        (143, 144),
+        (148, 148),
+        (154, 154),
+        (156, 156),
+        (165, 166),
+        (167, 168),
+        (170, 171),
+        (175, 176),
+        (180, 180),
+        (184, 184),
+        (185, 185),
+        (192, 193),
+        (196, 197),
+        (204, 205),
+        (211, 212),
+        (214, 215),
+        (218, 219),
+        (222, 223),
+        (226, 227),
+        (231, 232),
+        (235, 234),
+        (45066, 45067),
+    ] {
+        let source = capability(product).unwrap();
+        for master in [radio, 241, 662] {
+            let session = source.receiver_session(master, radio).unwrap();
+            let expected = source.transport(master, true).unwrap();
+            assert_eq!(session.transport(), &expected);
+            session.validate_peer(&[(radio as u16, 1)]).unwrap();
+            assert!(session.validate_peer(&[(radio as u16, 0)]).is_err());
+            assert!(source.receiver_session(master, 65535).is_err());
+        }
+    }
+    for (product, physical) in [(117, 2308), (190, 191), (2594, 2593)] {
+        assert!(
+            capability(product)
+                .unwrap()
+                .receiver_session(physical, product)
+                .is_err()
+        );
+        assert!(
+            capability(product)
+                .unwrap()
+                .transport(physical, false)
+                .is_ok()
+        );
+    }
+}

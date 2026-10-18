@@ -1,6 +1,9 @@
 //! The COM dialog and cancellation timer stay on one dedicated STA thread.
-use super::{Arc, AtomicBool, Ordering, PathBuf, Result};
-use std::{cell::RefCell, os::windows::ffi::OsStringExt};
+use super::{Arc, AtomicBool, Ordering, PathBuf, Result, SaveFileOptions};
+use std::{
+    cell::RefCell,
+    os::windows::ffi::{OsStrExt, OsStringExt},
+};
 use windows::{
     Win32::{
         Foundation::HWND,
@@ -9,17 +12,18 @@ use windows::{
             CoTaskMemFree, CoUninitialize,
         },
         UI::Shell::{
-            Common::COMDLG_FILTERSPEC, FOS_ALLOWMULTISELECT, FOS_FILEMUSTEXIST,
-            FOS_FORCEFILESYSTEM, FOS_PATHMUSTEXIST, FileOpenDialog, IFileOpenDialog,
-            SIGDN_FILESYSPATH,
+            Common::COMDLG_FILTERSPEC, FOLDERID_Downloads, FOS_ALLOWMULTISELECT, FOS_FILEMUSTEXIST,
+            FOS_FORCEFILESYSTEM, FOS_OVERWRITEPROMPT, FOS_PATHMUSTEXIST, FileOpenDialog,
+            FileSaveDialog, IFileDialog, IFileOpenDialog, IFileSaveDialog, IShellItem,
+            KF_FLAG_DEFAULT, SHCreateItemFromParsingName, SHGetKnownFolderPath, SIGDN_FILESYSPATH,
         },
     },
-    core::{HRESULT, PCWSTR, w},
+    core::{HRESULT, Interface, PCWSTR, w},
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{KillTimer, SetTimer};
 const CANCELLED: HRESULT = HRESULT(0x800704c7u32 as i32);
 thread_local! {
-    static ACTIVE: RefCell<Option<(IFileOpenDialog, Arc<AtomicBool>)>> = const { RefCell::new(None) };
+    static ACTIVE: RefCell<Option<(IFileDialog, Arc<AtomicBool>)>> = const { RefCell::new(None) };
 }
 struct Apartment;
 impl Drop for Apartment {
@@ -87,7 +91,12 @@ pub fn show(
     if cancelled.load(Ordering::Acquire) {
         return Ok(None);
     }
-    ACTIVE.with(|active| *active.borrow_mut() = Some((dialog.clone(), cancelled.clone())));
+    ACTIVE.with(|active| {
+        *active.borrow_mut() = Some((
+            dialog.cast().expect("IFileOpenDialog derives IFileDialog"),
+            cancelled.clone(),
+        ))
+    });
     let timer = unsafe { SetTimer(std::ptr::null_mut(), 0, 50, Some(poll_cancel)) };
     if timer == 0 {
         ACTIVE.with(|active| {
@@ -116,4 +125,77 @@ pub fn show(
         paths.push(PathBuf::from(value));
     }
     Ok(Some(paths))
+}
+
+pub fn save(
+    owner: isize,
+    options: &SaveFileOptions,
+    cancelled: Arc<AtomicBool>,
+) -> Result<Option<PathBuf>> {
+    unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED).ok()? };
+    let _apartment = Apartment;
+    let dialog: IFileSaveDialog =
+        unsafe { CoCreateInstance(&FileSaveDialog, None, CLSCTX_INPROC_SERVER)? };
+    let wide = |text: &str| text.encode_utf16().chain([0]).collect::<Vec<_>>();
+    let title = wide(&options.title);
+    let name = wide(&options.file_name);
+    let button = wide(&options.button_label);
+    let filter_name = wide(&options.filter_name);
+    let extension = wide(options.extension.trim_start_matches('.'));
+    let filter = wide(&super::extension_filter(&[&options.extension])?);
+    unsafe {
+        dialog.SetTitle(PCWSTR(title.as_ptr()))?;
+        dialog.SetFileName(PCWSTR(name.as_ptr()))?;
+        dialog.SetOkButtonLabel(PCWSTR(button.as_ptr()))?;
+        dialog.SetDefaultExtension(PCWSTR(extension.as_ptr()))?;
+        dialog.SetFileTypes(&[COMDLG_FILTERSPEC {
+            pszName: PCWSTR(filter_name.as_ptr()),
+            pszSpec: PCWSTR(filter.as_ptr()),
+        }])?;
+        dialog.SetOptions(
+            dialog.GetOptions()? | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST | FOS_OVERWRITEPROMPT,
+        )?;
+    }
+    let directory = if let Some(directory) = &options.directory {
+        directory.clone()
+    } else {
+        let path = unsafe { SHGetKnownFolderPath(&FOLDERID_Downloads, KF_FLAG_DEFAULT, None)? };
+        let value = unsafe { std::ffi::OsString::from_wide(path.as_wide()) };
+        unsafe { CoTaskMemFree(Some(path.0.cast())) };
+        PathBuf::from(value)
+    };
+    let directory: Vec<u16> = directory.as_os_str().encode_wide().chain([0]).collect();
+    let folder: IShellItem =
+        unsafe { SHCreateItemFromParsingName(PCWSTR(directory.as_ptr()), None)? };
+    unsafe { dialog.SetFolder(&folder)? };
+    if cancelled.load(Ordering::Acquire) {
+        return Ok(None);
+    }
+    ACTIVE.with(|active| {
+        *active.borrow_mut() = Some((
+            dialog.cast().expect("IFileSaveDialog derives IFileDialog"),
+            cancelled.clone(),
+        ))
+    });
+    let timer = unsafe { SetTimer(std::ptr::null_mut(), 0, 50, Some(poll_cancel)) };
+    if timer == 0 {
+        ACTIVE.with(|active| {
+            active.borrow_mut().take();
+        });
+        return Err(std::io::Error::last_os_error().into());
+    }
+    let _timer = CancellationTimer(timer);
+    match unsafe { dialog.Show(Some(HWND(owner as *mut _))) } {
+        Err(error) if error.code() == CANCELLED => return Ok(None),
+        Err(error) => return Err(error.into()),
+        Ok(()) => {}
+    }
+    if cancelled.load(Ordering::Acquire) {
+        return Ok(None);
+    }
+    let item = unsafe { dialog.GetResult()? };
+    let path = unsafe { item.GetDisplayName(SIGDN_FILESYSPATH)? };
+    let value = unsafe { std::ffi::OsString::from_wide(path.as_wide()) };
+    unsafe { CoTaskMemFree(Some(path.0.cast())) };
+    Ok(Some(PathBuf::from(value)))
 }

@@ -9,7 +9,7 @@ impl AppShell {
         workspace: Entity<ProductWorkspace>,
         generation: u64,
         percent: u8,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         if !workspace
@@ -27,7 +27,14 @@ impl AppShell {
         let [route] = routes.as_slice() else {
             self.status = "亮度未发送：没有唯一的在线键盘连接。".into();
             workspace.update(cx, |workspace, cx| {
-                workspace.finish_keyboard_brightness(generation, percent, None, false, cx)
+                workspace.finish_keyboard_brightness(
+                    generation,
+                    percent,
+                    None,
+                    Some("没有唯一的在线键盘连接，未设置亮度".into()),
+                    false,
+                    cx,
+                )
             });
             cx.notify();
             return;
@@ -40,7 +47,14 @@ impl AppShell {
         );
         if self.close_requested || !self.devices.contains(&workspace) || canceled.is_none() {
             workspace.update(cx, |workspace, cx| {
-                workspace.finish_keyboard_brightness(generation, percent, None, false, cx)
+                workspace.finish_keyboard_brightness(
+                    generation,
+                    percent,
+                    None,
+                    Some("键盘亮度请求范围已关闭".into()),
+                    false,
+                    cx,
+                )
             });
             return;
         }
@@ -48,6 +62,7 @@ impl AppShell {
         let scope = Scope::new(&workspace, route, cx);
         let completion_scope = scope.clone();
         let completion_signal = canceled.clone();
+        let window_handle = window.window_handle();
         let workspace = workspace.downgrade();
         self.status = "正在设置键盘亮度并读取设备确认。".into();
         cx.notify();
@@ -62,7 +77,14 @@ impl AppShell {
                 if !this.devices.contains(&workspace) {
                     workspace.update(cx, |workspace, cx| {
                         workspace.cancel_keyboard_brightness_connection(cx);
-                        workspace.finish_keyboard_brightness(generation, percent, None, false, cx);
+                        workspace.finish_keyboard_brightness(
+                            generation,
+                            percent,
+                            None,
+                            Some("键盘亮度页面已关闭".into()),
+                            false,
+                            cx,
+                        );
                     });
                     return;
                 }
@@ -77,6 +99,7 @@ impl AppShell {
                         .read(cx)
                         .keyboard_brightness_request_current(generation, percent, cx);
                 let observed = scope_current.then(|| result.observed()).flatten();
+                let error = result.error();
                 if scope_current
                     || workspace
                         .read(cx)
@@ -85,10 +108,19 @@ impl AppShell {
                     this.status = if !scope_current {
                         "键盘连接已变化，尚未确认当前亮度。".into()
                     } else {
-                        match (result.observed(), result.error()) {
-                            (Some(_), None) => format!("设备已回读确认键盘亮度：{percent}%。"),
-                            (Some(_), Some(error)) => {
-                                format!("设备已确认键盘亮度：{percent}%；{error}")
+                        match (observed, error.as_deref()) {
+                            (Some(actual @ 0..=100), None) => {
+                                format!("设备已回读确认键盘亮度：{actual}%。")
+                            }
+                            (Some(actual @ 0..=100), Some(error)) => {
+                                format!("设备已确认键盘亮度：{actual}%；{error}")
+                            }
+                            (Some(raw), error) => {
+                                let mut message = format!("设备返回未知亮度：{raw}");
+                                if let Some(error) = error {
+                                    message.push_str(&format!("；{error}"));
+                                }
+                                message
                             }
                             (_, Some(error)) => format!("键盘亮度未确认：{error}。"),
                             (None, None) => {
@@ -104,9 +136,15 @@ impl AppShell {
                         generation,
                         percent,
                         observed,
+                        error,
                         scope_current,
                         cx,
                     )
+                });
+                let _ = window_handle.update(cx, |_, window, cx| {
+                    workspace.update(cx, |workspace, cx| {
+                        workspace.sync_keyboard_brightness_controls(window, cx)
+                    });
                 });
                 cx.notify();
             },

@@ -333,7 +333,9 @@ impl AppShell {
                 _ => None,
             } {
                 for workspace in &self.devices {
-                    workspace.update(cx, |workspace, cx| workspace.observe_polling_game_event(started, cx));
+                    workspace.update(cx, |workspace, cx| {
+                        workspace.observe_polling_game_event(started, cx)
+                    });
                 }
             }
             let Some(game) = message["payload"]["entry_guid"].as_str() else {

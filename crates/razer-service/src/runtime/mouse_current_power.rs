@@ -5,8 +5,17 @@ impl PortableRuntime {
         &mut self,
         node: &HidNode,
         product_id: u32,
+        peer_product_id: Option<u32>,
         change: &Change,
     ) -> anyhow::Result<Value> {
+        if let Some(peer) = peer_product_id {
+            return self.receiver_setting(
+                node,
+                product_id,
+                peer,
+                super::super::receiver_settings::Setting::CurrentPower(change),
+            );
+        }
         let source = power::capability(product_id).context("Mouse power source is absent")?;
         let physical = u32::from(node.product_id);
         let cap = source.transport(physical, false)?;
@@ -67,3 +76,7 @@ impl PortableRuntime {
         )
     }
 }
+
+#[cfg(test)]
+#[path = "mouse_current_power_tests.rs"]
+mod tests;

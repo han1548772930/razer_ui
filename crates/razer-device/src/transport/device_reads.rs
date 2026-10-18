@@ -724,11 +724,8 @@ pub fn decode_report(
                 .iter()
                 .find(|(_, value)| *value == code)
                 .map(|(name, _)| name);
-            let hz = if let Some(name) = name {
-                polling_hz(name)?
-            } else {
-                cap.polling_default_hz.context("未知回报率编码")?
-            };
+            let name = name.with_context(|| format!("未知回报率编码：{code}"))?;
+            let hz = polling_hz(name)?;
             DeviceReadValue::Polling { hz }
         }
         DeviceReadKind::Dpi => {
@@ -851,6 +848,7 @@ mod tests {
         let cap = capability(182).unwrap();
         for (kind, data) in [
             (DeviceReadKind::Charging, vec![0, 99]),
+            (DeviceReadKind::Polling, vec![1, 99]),
             (DeviceReadKind::Battery, vec![1, 255]),
             (DeviceReadKind::Dpi, vec![1, 3, 32, 3, 32, 0, 0]),
             (DeviceReadKind::Firmware, vec![1, 2]),

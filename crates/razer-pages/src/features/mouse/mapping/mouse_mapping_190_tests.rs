@@ -55,6 +55,17 @@ fn source_class_placement_scales_without_an_invented_viewport_clamp() {
 }
 
 #[::core::prelude::v1::test]
+fn popup_wrapper_origin_includes_the_source_nav_offset_and_image_scroll() {
+    let root = Bounds::new(point(px(1.), px(126.)), size(px(1430.), px(680.)));
+    // The outer frame contributes40, source nav/config surface86; header top90.
+    assert_eq!(popup_top(root, px(1.), false, px(0.)) - px(36.), px(130.));
+    assert_eq!(popup_top(root, px(1.), false, px(-50.)), px(116.));
+    assert_eq!(popup_top(root, px(1.), true, px(-50.)), px(166.));
+    let scaled = Bounds::new(point(px(20.), px(150.)), size(px(1500.), px(800.)));
+    assert_eq!(popup_top(scaled, px(1.25), false, px(-25.)), px(175.));
+}
+
+#[::core::prelude::v1::test]
 fn cycle_behavior_uses_the_button_key_while_selection_keeps_the_input_id() {
     let cycle = json!({
         "buttonKey": "CycleUpSensitivityStages",

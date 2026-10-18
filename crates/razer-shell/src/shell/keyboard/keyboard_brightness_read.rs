@@ -8,7 +8,7 @@ impl AppShell {
         &mut self,
         workspace: Entity<ProductWorkspace>,
         generation: u64,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         if !workspace
@@ -55,6 +55,7 @@ impl AppShell {
         let scope = Scope::new(&workspace, route, cx);
         let completion_scope = scope.clone();
         let completion_signal = canceled.clone();
+        let window_handle = window.window_handle();
         let workspace = workspace.downgrade();
         self.start_keyboard_brightness_operation(
             scope,
@@ -71,8 +72,8 @@ impl AppShell {
                     return;
                 }
                 let scope_current = completion_scope.current(this, &completion_signal, cx);
-                // Edit revision is owned by the feature. It filters an old read
-                // without cancelling the user's queued write from this connection.
+                // The feature retains the actual reading independently of any
+                // newer preview and queued write from this connection.
                 let observed = result.observed();
                 let error = result.error();
                 workspace.update(cx, |workspace, cx| {
@@ -83,6 +84,12 @@ impl AppShell {
                         scope_current,
                         cx,
                     )
+                });
+                // Acceptance and worker cleanup do not depend on an OS window.
+                let _ = window_handle.update(cx, |_, window, cx| {
+                    workspace.update(cx, |workspace, cx| {
+                        workspace.sync_keyboard_brightness_controls(window, cx)
+                    });
                 });
                 if scope_current {
                     if let Some(message) = workspace.read(cx).keyboard_brightness_diagnostic(cx) {

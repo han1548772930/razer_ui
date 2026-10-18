@@ -1,11 +1,59 @@
 //! Product-scoped lighting requests and observations. A local draft is not a reply.
 use super::*;
 use crate::features::keyboard_products::{
-    KeyboardLightingObservation, KeyboardLightingOwner, KeyboardLightingRequested,
+    KeyboardLightingHostObservation, KeyboardLightingObservation, KeyboardLightingOwner,
+    KeyboardLightingRequested,
 };
 use crate::features::mouse_products::MouseLightingRequested;
 
 impl SourceProductWorkspace {
+    pub fn abandon_keyboard_lighting(
+        &mut self,
+        request: &KeyboardLightingRequested,
+        error: Option<String>,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        match &self.body {
+            FamilyBody::Keyboard(body) => body.update(cx, |body, cx| {
+                body.abandon_lighting_request(request, error, cx)
+            }),
+            _ => false,
+        }
+    }
+    pub fn abandon_mouse_lighting(
+        &mut self,
+        request: &MouseLightingRequested,
+        error: Option<String>,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        match &self.body {
+            FamilyBody::Mouse(body) => body.update(cx, |body, cx| {
+                body.abandon_mouse_lighting_request(request, error, cx)
+            }),
+            _ => false,
+        }
+    }
+    pub fn mouse_lighting_request_matches(
+        &self,
+        request: &MouseLightingRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, FamilyBody::Mouse(body) if body.read(cx).mouse_lighting_request_matches(request, body.entity_id()))
+    }
+    pub fn complete_keyboard_host_lighting(
+        &mut self,
+        request: &KeyboardLightingRequested,
+        observation: KeyboardLightingHostObservation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        match &self.body {
+            FamilyBody::Keyboard(body) => body.update(cx, |body, cx| {
+                body.complete_host_lighting_request(request, observation, window, cx)
+            }),
+            _ => false,
+        }
+    }
     pub fn observe_mouse_customize(
         &mut self,
         owner: &Device,

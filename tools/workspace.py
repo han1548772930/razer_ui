@@ -311,8 +311,21 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
     dpi_caller = "crates/razer-shell/src/shell/mouse/mouse_current_dpi.rs"
     dpi_runtime = "crates/razer-shell/src/shell/mouse/mouse_current_dpi_runtime.rs"
     dpi_worker = "crates/razer-shell/src/shell/mouse/mouse_current_dpi_worker.rs"
-    dpi_gui = owner in {dpi_caller, dpi_runtime,
-        "crates/razer-pages/src/features/mouse/dpi/mouse_current_dpi.rs"}
+    dpi_page = "crates/razer-pages/src/features/mouse/dpi/mouse_current_dpi.rs"
+    dpi_gui = owner in {dpi_caller, dpi_runtime, dpi_page}
+    polling_caller = "crates/razer-shell/src/shell/mouse/mouse_polling_write.rs"
+    polling_runtime = "crates/razer-shell/src/shell/mouse/mouse_polling_runtime.rs"
+    polling_worker = "crates/razer-shell/src/shell/mouse/mouse_polling_worker.rs"
+    polling_gui = owner in {polling_caller, polling_runtime,
+        "crates/razer-pages/src/features/mouse/polling/mouse_polling.rs",
+        "crates/razer-pages/src/features/mouse/polling/mouse_polling_profile.rs",
+        "crates/razer-pages/src/features/mouse/polling/mouse_polling_view.rs"}
+    power_caller = "crates/razer-shell/src/shell/mouse/mouse_current_power.rs"
+    power_runtime = "crates/razer-shell/src/shell/mouse/mouse_current_power_runtime.rs"
+    power_worker = "crates/razer-shell/src/shell/mouse/mouse_current_power_worker.rs"
+    power_gui = owner in {power_caller, power_runtime,
+        "crates/razer-pages/src/features/mouse/power/mouse_current_power.rs"}
+    discovery_owner = "crates/razer-shell/src/shell/devices/device_discovery.rs"
     shutdown_owner = "crates/razer-shell/src/shell/shutdown.rs"
     interdevice_owner = "crates/razer-model/src/mapping/interdevice.rs"
     mapping_adapter = "crates/razer-shell/src/shell/devices/product_mapping.rs"
@@ -360,6 +373,7 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
     receiver_save = "crates/razer-shell/src/shell/receiver/receiver_profile_save.rs"
     chroma_shell = "crates/razer-shell/src/shell.rs"
     chroma_service = "crates/razer-service/src/lighting/chroma_connect.rs"
+    chroma_observation = "crates/razer-shell/src/shell/devices/product_chroma.rs"
     chroma_session = ("razer_service", "chroma_connect", "Session")
     gui_source = owner.startswith(tuple("crates/" + name + "/src/" for name in (
         "razer-pages", "razer-app-pages", "razer-settings", "razer-shell", "razer-dashboard", "razer-widgets", "razer-tray")))
@@ -468,6 +482,25 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                     thread_builders.add(alias)
     def resolved_call(parts):
         return imports.get(parts[0], (parts[0],)) + tuple(parts[1:])
+    def inspect_gui_operation(node, prefix, runtime, worker, targets, native_methods=(), revision_owner=None):
+        if node.type == "call_expression":
+            function = node.child_by_field_name("function")
+            if function.type == "field_expression":
+                method = text(function.child_by_field_name("field"))
+                if method == "detach" or (method == "join" and not node.child_by_field_name("arguments").named_children):
+                    fail(node, prefix + "_gui_detaches_or_waits_for_native_work", runtime)
+                if method in native_methods:
+                    fail(node, prefix + "_gui_owns_device_io", worker)
+            else:
+                target = resolved_call(text(function).split("::"))
+                if (target[-2:] in targets | {("ServiceClient", "spawn")}
+                        or target[-1] in native_methods
+                        or target in {("std", "thread", "spawn"), ("std", "thread", "Builder", "new"),
+                                      ("thread", "spawn"), ("thread", "Builder", "new")}):
+                    fail(node, prefix + "_gui_owns_device_io", worker)
+        if ((node.type == "field_expression" and text(node.child_by_field_name("field")) == "discovery_revision")
+                or node.type == "identifier" and text(node) == "discovery_revision"):
+            fail(node, prefix + "_uses_global_discovery_revision", revision_owner or runtime)
     def owned_type(node):
         if node is None:
             return ((), ())
@@ -638,22 +671,44 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                 fail(node, "include_path_requires_resolution", "Explicit local include path or the installation constants generator")
         if in_test(node):
             continue
-        if dpi_gui and node.type == "call_expression":
+        if gui_source and owner != chroma_observation \
+                and node.type == "call_expression":
             function = node.child_by_field_name("function")
-            if function.type == "field_expression":
-                method = text(function.child_by_field_name("field"))
-                if method == "detach" or (method == "join" and not node.child_by_field_name("arguments").named_children):
-                    fail(node, "mouse_dpi_gui_detaches_or_waits_for_native_work", dpi_runtime)
-            else:
-                target = resolved_call(text(function).split("::"))
-                if (target[-2:] in {("mouse_current_dpi", "request"), ("ServiceClient", "spawn")}
-                        or target in {("std", "thread", "spawn"), ("std", "thread", "Builder", "new"),
-                                      ("thread", "spawn"), ("thread", "Builder", "new")}):
-                    fail(node, "mouse_dpi_gui_owns_device_io", dpi_worker)
-        if dpi_gui and ((node.type == "field_expression"
-                and text(node.child_by_field_name("field")) == "discovery_revision")
-                or node.type == "identifier" and text(node) == "discovery_revision"):
-            fail(node, "mouse_dpi_uses_global_discovery_revision", dpi_runtime)
+            if function.type != "field_expression" and resolved_call(text(function).split("::")) == \
+                    ("razer_platform", "chroma_installation", "inspect"):
+                fail(node, "chroma_installation_has_a_second_observation_owner", chroma_observation)
+        if gui_source and node.type == "call_expression":
+            function = node.child_by_field_name("function")
+            if function is not None and function.type == "field_expression" \
+                    and text(function.child_by_field_name("field")) in {
+                        "hover", "group_hover", "active", "group_active", "focus", "focus_visible", "focus_within"}:
+                arguments = node.child_by_field_name("arguments")
+                for callback in arguments.named_children:
+                    if callback.type != "closure_expression":
+                        continue
+                    display_methods = {"hidden", "block", "flex", "inline", "inline_block", "inline_flex", "grid", "display"}
+                    assigns_display = any(part.type == "assignment_expression" and any(
+                        field.type == "field_expression" and text(field.child_by_field_name("field")) == "display"
+                        for field in walk(part.child_by_field_name("left"))) for part in walk(callback))
+                    if called_methods(callback) & display_methods or assigns_display:
+                        fail(node, "interaction_style_changes_display_between_draw_phases",
+                             "Retained page interaction state selected before layout")
+        if dpi_gui:
+            inspect_gui_operation(node, "mouse_dpi", dpi_runtime, dpi_worker, {("mouse_current_dpi", "request")})
+        if owner == dpi_page and node.type == "function_item" \
+                and text(node.child_by_field_name("name")) == "initialize_connection" \
+                and any(parent.type == "impl_item" and text(parent.child_by_field_name("type")) == "State" for parent in ancestors(node)):
+            self_calls = [call for call in walk(node) if call.type == "call_expression"
+                          and call.child_by_field_name("function").type == "field_expression"
+                          and text(call.child_by_field_name("function").child_by_field_name("value")) == "self"]
+            if not self_calls or text(self_calls[0].child_by_field_name("function").child_by_field_name("field")) != "install_connection":
+                fail(node, "mouse_dpi_initializer_precedes_connection_installation", dpi_page + "::State")
+        if owner == "crates/razer-pages/src/features/workspace/source_workspace.rs" and node.type == "call_expression" \
+                and node.child_by_field_name("function").type == "field_expression" \
+                and text(node.child_by_field_name("function").child_by_field_name("field")) == "initialize_mouse182_profile":
+            scope = next((parent for parent in ancestors(node) if parent.type in {"closure_expression", "function_item"}), None)
+            if scope is not None and "observe_current_dpi_connection" in called_methods(scope):
+                fail(node, "mouse182_initializer_has_a_second_connection_owner", dpi_page + "::State::initialize_connection")
         if node.type == "function_item" and owner == dpi_caller \
                 and text(node.child_by_field_name("name")) == "submit_current_dpi_device":
             if not any(call.type == "call_expression"
@@ -665,24 +720,38 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
             if not any(resolved_call(parts) in {("super", "device_discovery", "retained_connection"),
                     ("crate", "shell", "device_discovery", "retained_connection")} for parts, _ in calls(node)):
                 fail(node, "mouse_dpi_does_not_retain_the_physical_connection", dpi_runtime)
-        if brightness_gui and node.type == "call_expression":
-            function = node.child_by_field_name("function")
-            if function.type == "field_expression":
-                method = text(function.child_by_field_name("field"))
-                if method == "detach" or (method == "join" and not node.child_by_field_name("arguments").named_children):
-                    fail(node, "keyboard_brightness_gui_detaches_or_waits_for_native_work", brightness_runtime)
-                if method == "request_keyboard_brightness":
-                    fail(node, "keyboard_brightness_gui_owns_device_io", brightness_worker)
-            else:
-                target = resolved_call(text(function).split("::"))
-                if (target[-1] == "request_keyboard_brightness" or target[-2:] == ("ServiceClient", "spawn")
-                        or target in {("std", "thread", "spawn"), ("std", "thread", "Builder", "new"),
-                                      ("thread", "spawn"), ("thread", "Builder", "new")}):
-                    fail(node, "keyboard_brightness_gui_owns_device_io", brightness_worker)
-        if brightness_gui and ((node.type == "field_expression"
-                and text(node.child_by_field_name("field")) == "discovery_revision")
-                or node.type == "identifier" and text(node) == "discovery_revision"):
-            fail(node, "keyboard_brightness_uses_global_discovery_revision", brightness_runtime + "::Scope")
+        if polling_gui:
+            inspect_gui_operation(node, "mouse_polling", polling_runtime, polling_worker,
+                                  {("mouse_current_polling", "request"), ("mouse_receiver_polling", "write")})
+        if node.type == "function_item" and owner == polling_caller \
+                and text(node.child_by_field_name("name")) == "write_mouse_polling_device":
+            if not any(call.type == "call_expression"
+                    and text(call.child_by_field_name("function")) == "self.start_mouse_polling_operation"
+                    for call in walk(node)):
+                fail(node, "mouse_polling_bypasses_retained_operation_owner", polling_runtime)
+        if node.type == "function_item" and owner == polling_runtime \
+                and text(node.child_by_field_name("name")) == "current_route":
+            if not any(resolved_call(parts) in {("super", "device_discovery", "retained_connection"),
+                    ("crate", "shell", "device_discovery", "retained_connection")} for parts, _ in calls(node)):
+                fail(node, "mouse_polling_does_not_retain_the_physical_connection", polling_runtime)
+        if brightness_gui:
+            inspect_gui_operation(node, "keyboard_brightness", brightness_runtime, brightness_worker, set(),
+                                  ("request_keyboard_brightness",), brightness_runtime + "::Scope")
+        power_idle_scope = owner == discovery_owner and any(parent.type == "function_item"
+            and text(parent.child_by_field_name("name")) == "write_mouse_idle" for parent in ancestors(node))
+        if power_gui or power_idle_scope:
+            inspect_gui_operation(node, "mouse_power", power_runtime, power_worker,
+                                  {("mouse_current_power", "request"), ("mouse_receiver_polling", "write_idle")})
+        if node.type == "function_item" and ((owner == power_caller
+                and text(node.child_by_field_name("name")) == "submit_current_power_device")
+                or (owner == discovery_owner and text(node.child_by_field_name("name")) == "write_mouse_idle")):
+            if not any(call.type == "call_expression" and text(call.child_by_field_name("function")) == "self.start_mouse_power_operation"
+                       for call in walk(node)):
+                fail(node, "mouse_power_bypasses_retained_operation_owner", power_runtime)
+        if node.type == "function_item" and owner == power_runtime and text(node.child_by_field_name("name")) == "current_route":
+            if not any(resolved_call(parts) in {("super", "device_discovery", "retained_connection"),
+                    ("crate", "shell", "device_discovery", "retained_connection")} for parts, _ in calls(node)):
+                fail(node, "mouse_power_does_not_retain_the_physical_connection", power_runtime)
         if node.type == "function_item" and owner in brightness_callers \
                 and text(node.child_by_field_name("name")) == brightness_callers[owner]:
             dispatches = [call for call in walk(node) if call.type == "call_expression"
@@ -8361,6 +8430,208 @@ def verify_asset_pack_wire_fixture():
     return summary
 
 
+def connected_result(raw):
+    reports = re.findall(r"RAZER_CONNECTED_RESULT (\{[^\r\n]+\})", raw)
+    return json.loads(reports[0]) if len(reports) == 1 else None
+
+
+def connected_get_response(transfers, index):
+    """Select the observed terminal IN after this OUT, retaining busy attempts."""
+    outgoing = transfers[index]
+    if outgoing["operation"] != "send_feature" or outgoing["error"] is not None:
+        raise ValueError("Native comparison requires a successful observed OUT")
+    replies = []
+    for reply in transfers[index + 1:]:
+        if reply["operation"] == "send_feature":
+            break
+        if reply["operation"] != "get_feature" or reply["error"] is not None or reply["count"] != 91:
+            raise ValueError("Native comparison requires complete observed IN reports")
+        raw, request = reply["bytes"], outgoing["bytes"]
+        if raw[2] != request[2] or raw[7:9] != request[7:9]:
+            raise ValueError("Native comparison response transaction or command differs")
+        replies.append(reply)
+        if raw[1] != 1:
+            return raw, len(replies)
+    raise ValueError("Native comparison has no observed terminal IN response")
+
+
+def compare_connected_hid(library):
+    """Compare exact observed GET packets with the verified source C exports."""
+    import native_runtime
+    source_path = ROOT / ".analysis/results/connected-device-verification.json"
+    source_bytes = source_path.read_bytes()
+    source = json.loads(source_bytes)
+    if source.get("mode") != "read-only" or source.get("result") is None:
+        raise ValueError("Run validate-connected-devices read-only first")
+    baseline = rust_inputs()
+    if source.get("inputs_unchanged") is not True or source.get("inputs") != baseline:
+        raise ValueError("Connected-device trace does not match current unchanged Rust inputs; rerun read-only verification")
+    if source["result"].get("backend_released") is not True:
+        raise ValueError("Connected-device trace has no confirmed backend release")
+    requests, expected, skipped, rust_get_attempts = [], [], [], []
+    for device in source["result"]["devices"]:
+        actual = device.get("result")
+        if actual is None:
+            skipped.append({"product_id":device["product_id"], "error":device["error"]})
+            continue
+        transfers = actual["transfers"]
+        for index, transfer in enumerate(transfers):
+            if transfer["operation"] != "send_feature":
+                continue
+            correlation = f"{device['product_id']}:{index}"
+            request = {"path":actual["path"], "report":transfer["bytes"], "trace_index":correlation}
+            try:
+                native_runtime.validate_get_trace([request])
+            except ValueError as error:
+                skipped.append({"trace_index":correlation, "command":transfer["bytes"][6:9], "error":str(error)})
+                continue
+            reply, attempts = connected_get_response(transfers, index)
+            requests.append(request)
+            expected.append(reply)
+            rust_get_attempts.append(attempts)
+    if not requests:
+        raise ValueError("No audited complete GET transfers are available for native comparison")
+    runtime = native_runtime.replay_get_trace(requests, library, timeout_seconds=30)
+    failures = []
+    if runtime["status"] != "completed" or not runtime.get("worker_waited"):
+        failures.append("native_worker_did_not_complete")
+    result = runtime.get("result") or {}
+    queries = result.get("queries", [])
+    if result.get("error") or result.get("init_return") != 0 or len(queries) != len(requests):
+        failures.append("native_queries_incomplete")
+    cleanup = result.get("cleanup", [])
+    if (not cleanup or any(not row.get("returned") for row in cleanup)
+            or not any(row["operation"] == "hid_exit" and row.get("return_value") == 0 for row in cleanup)
+            or cleanup[-1].get("operation") != "release_library"):
+        failures.append("native_cleanup_unconfirmed")
+    comparisons = []
+    for query, request, rust_reply, attempts in zip(queries, requests, expected, rust_get_attempts):
+        received = query.get("received_bytes")
+        same = (query.get("trace_index") == request["trace_index"] and query.get("send_return") == 91
+                and query.get("get_return") == 91 and not query.get("native_error") and received == rust_reply)
+        comparisons.append({"trace_index":request["trace_index"], "command":request["report"][6:9],
+                            "response_status":query.get("response_status"), "bytes_equal":same,
+                            "rust_response":rust_reply,
+                            "rust_get_attempts":attempts,
+                            "different_indices":[index for index, pair in enumerate(zip(rust_reply, received or [])) if pair[0] != pair[1]]})
+        if not same:
+            failures.append({"trace_index":request["trace_index"], "error":"native_response_differs"})
+    trace_unchanged = source_bytes == source_path.read_bytes()
+    unchanged = baseline == rust_inputs()
+    receipt = {"schema_version":1, "updated_at_utc":datetime.now(timezone.utc).isoformat(),
+               "source_trace":relative(source_path), "source_trace_sha256":hashlib.sha256(source_bytes).hexdigest(),
+               "source_trace_unchanged":trace_unchanged,
+               "inputs":baseline, "inputs_unchanged":unchanged, "runtime":runtime,
+               "comparisons":comparisons, "skipped":skipped, "failures":failures,
+               "passed":unchanged and trace_unchanged and not failures,
+               "scope":"Exact byte parity for the selected GETs; a matched offline/error response does not confirm the unavailable device setting"}
+    path = ROOT / ".analysis/results/connected-native-comparison.json"
+    write_json(path, receipt)
+    print(json.dumps({"receipt":relative(path), "passed":receipt["passed"], "compared":len(comparisons),
+                      "skipped":len(skipped), "failures":failures}, ensure_ascii=False), flush=True)
+    return 0 if receipt["passed"] else 1
+
+
+def wait_connected_process(process, output, *, write_restore):
+    try:
+        return process.wait(timeout=240), False
+    except subprocess.TimeoutExpired:
+        if write_restore:
+            # A SET may already have reached the device. Wait for the test's
+            # independent restoration path instead of killing its owner.
+            output.write(b"Connected-device deadline exceeded; waiting for original-value restoration and release.\n")
+            output.flush()
+            return process.wait(), True
+        subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                       stdout=output, stderr=subprocess.STDOUT, timeout=30, check=False)
+        return process.wait(timeout=30), True
+
+
+def connected_execution_scope(raw, result, *, write_restore):
+    baselines = [json.loads(row) for row in re.findall(r"RAZER_CONNECTED_BASELINE (\{[^\r\n]+\})", raw)]
+    admitted = bool(re.search(r"RAZER_CONNECTED_STARTED \{", raw))
+    attempted = admitted or bool(result or baselines)
+    executed = True if result or baselines else None if admitted else False
+    operations = None if admitted else False
+    if result:
+        operations = any(row.get("result") and row["result"].get("transfers") for row in result["devices"])
+    if baselines:
+        operations = True
+    restoration = ("recorded_per_query" if write_restore and result else
+                   "unconfirmed" if write_restore and baselines else "not_attempted")
+    return {"target_execution_attempted":attempted, "target_execution":executed,
+            "real_device_operations":operations, "write_baselines":baselines,
+            "mutation_may_have_started":write_restore and bool(baselines),
+            "restoration_confirmation":restoration}
+
+
+def validate_connected_devices(products, *, write_restore=False):
+    """Explicit hardware checks through the production HID adapter."""
+    import platform
+    if sys.platform != "win32":
+        raise ValueError("Connected-device DLL checks currently require Windows")
+    if not products or any(product <= 0 for product in products) or len(set(products)) != len(products):
+        raise ValueError("Select distinct actual logical product IDs")
+    baseline = rust_inputs()
+    destination = ROOT / ".analysis/verification"
+    destination.mkdir(parents=True, exist_ok=True)
+    mode = "write-restore" if write_restore else "read-only"
+    suffix = "connected-device-writes" if write_restore else "connected-devices"
+    test = "connected_device_write_restore" if write_restore else "connected_device_queries"
+    log = destination / (suffix + ".txt")
+    command = ["cargo", "test", "--locked", "--offline", "-p", "razer-hid", "--test", "connected_devices",
+               test, "--", "--ignored", "--exact", "--nocapture", "--test-threads=1"]
+    environment = os.environ.copy()
+    environment["RAZER_CONNECTED_DEVICE_TEST"] = mode
+    environment["RAZER_CONNECTED_PRODUCTS"] = ",".join(map(str, products))
+    started = datetime.now(timezone.utc).isoformat()
+    print(json.dumps({"checking":"connected-devices", "mode":mode, "products":products, "argv":command}), flush=True)
+    with log.open("wb") as output:
+        with subprocess.Popen(command, cwd=ROOT, env=environment, stdout=output, stderr=subprocess.STDOUT) as process:
+            exit_code, timed_out = wait_connected_process(process, output, write_restore=write_restore)
+    raw = log.read_text(encoding="utf-8", errors="replace")
+    result = connected_result(raw)
+    failures = []
+    if timed_out:
+        failures.append("deadline_exceeded_waited_for_restoration" if write_restore else "process_tree_deadline_expired")
+    if exit_code:
+        failures.append("command_failed")
+    if result is None:
+        failures.append("missing_runtime_result")
+    else:
+        if (result.get("mode") != mode or result.get("backend_released") is not True
+                or [row["product_id"] for row in result["devices"]] != products):
+            failures.append("runtime_scope_or_cleanup_differs")
+        for row in result["devices"]:
+            if row["error"] is not None:
+                failures.append({"product":row["product_id"], "error":row["error"]})
+                continue
+            if not row["result"]["readings"] or row["result"].get("transport_released") is not True:
+                failures.append({"product":row["product_id"], "error":"no readings or transport release receipt"})
+            for reading in row["result"]["readings"]:
+                value = reading["value"]
+                if (reading["error"] is not None or value is None
+                        or isinstance(value, dict) and (value.get("kind") == "unknown" or value.get("verified") is False)):
+                    failures.append({"product":row["product_id"], "query":reading["query"], "error":reading["error"], "value":value})
+    libraries = []
+    for filename in ("hid.dll", "setupapi.dll", "cfgmgr32.dll"):
+        path = Path(os.environ["SystemRoot"]) / "System32" / filename
+        libraries.append({"path":"%SystemRoot%/System32/" + filename, "bytes":path.stat().st_size, "sha256":digest(path)})
+    unchanged = baseline == rust_inputs()
+    receipt = {"schema_version":1, "started_at_utc":started, "finished_at_utc":datetime.now(timezone.utc).isoformat(),
+               "host":platform.platform(), "machine":platform.machine(), "mode":mode, "argv":command,
+               "products":products, "inputs":baseline, "inputs_unchanged":unchanged, "exit_code":exit_code,
+               "system_libraries":libraries, "log":relative(log), "log_sha256":digest(log), "result":result,
+               "failures":failures, **connected_execution_scope(raw, result, write_restore=write_restore),
+               "application_runtime_acceptance":"not performed", "write_acceptance":mode if write_restore else "not performed",
+               "passed":unchanged and not failures}
+    path = ROOT / ".analysis/results" / ("connected-device-write-verification.json" if write_restore else "connected-device-verification.json")
+    write_json(path, receipt)
+    print(json.dumps({"receipt":relative(path), "passed":receipt["passed"], "inputs_unchanged":unchanged,
+                      "failures":failures}, ensure_ascii=False), flush=True)
+    return 0 if receipt["passed"] else 1
+
+
 def validate_rust(selected_suites=None, cargo_config=None):
     """Compile all targets and run only pure Rust / simulated library suites."""
     baseline = rust_inputs()
@@ -8416,6 +8687,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("screen-color-ui", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "screen_color"]),
         ("audio-demo-floating", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "demo::tests"]),
         ("source-feature-transport", ["cargo", "test", "--locked", "--offline", "-p", "razer-hid", "--lib"]),
+        ("connected-verification-boundary", ["cargo", "test", "--locked", "--offline", "-p", "razer-hid", "--test", "connected_devices", "connected_result_validation_"]),
         ("audio-mixer-feature-transport", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "source_feature_tests"]),
         ("app-picker-current", ["cargo", "test", "--locked", "--offline", "-p", "razer-app-pages", "--lib", "current_app_picker_"]),
         ("source-catalog", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "source_catalog::tests"]),
@@ -8438,6 +8710,36 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("mouse-dpi-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "dpi_70::tests"]),
         ("current-dpi-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mouse_current_dpi"]),
         ("current-dpi-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_current_dpi::tests"]),
+        ("current-dpi-routing", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "direct::mouse_current_dpi::tests"]),
+        ("current-polling-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_current_polling::tests"]),
+        ("current-polling-routing", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "direct::mouse_current_polling::tests"]),
+        ("current-polling-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "device_tasks::tests::current_polling_ipc"]),
+        ("current-polling-ingame", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "polling::ingame::tests"]),
+        ("current-polling-observations", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "polling::observation_tests"]),
+        ("current-polling-runtime-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mouse_polling::runtime_observation_tests"]),
+        ("current-polling-profile-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mouse_polling_profile::profile_polling_observation_tests"]),
+        ("current-polling-indicator-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "unobserved_polling_has_no_rate_color_and_confirmed_rate_uses_its_source_color"]),
+        ("current-polling-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mouse_polling_runtime"]),
+        ("current-dpi-observations", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "current_dpi_observation_"]),
+        ("current-dpi-initialization", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "current182_initialization_"]),
+        ("dpi-row-hover-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "dpi_row_hover_"]),
+        ("help-reset-owner", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "help_reset_identity_"]),
+        ("mixer-restart-receipts", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mixer_restart_receipt_"]),
+        ("product-chroma-observations", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "product_chroma::tests"]),
+        ("help-system-info-domain", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "system_info::tests"]),
+        ("help-system-info-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "help_system_info"]),
+        ("help-system-info-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "help_system_info"]),
+        ("help-file-dialog-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "file_dialog::tests"]),
+        ("help-system-info-page", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "help_system_info"]),
+        ("help-system-info-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "help_system_info"]),
+        ("current-power-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "current_power::tests"]),
+        ("current-idle-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mouse_polling_profile::idle_tests"]),
+        ("current-power-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mouse_current_power_runtime"]),
+        ("current-power-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_current_power::tests"]),
+        ("current-power-routing", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "direct::mouse_current_power::tests"]),
+        ("current-power-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "device_tasks::tests::current_power_ipc"]),
+        ("current-power-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mouse_current_power::tests"]),
+        ("current-polling-persistence", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mouse_polling_write::tests"]),
         ("current-dpi190-intents", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "current190_source_separates_stage_table_edits_from_transient_stage_selection"]),
         ("current-dpi182-intents", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "current182_stage_actions_do_not_issue_the_separate_otfs_level_task"]),
         ("mouse-onboard-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_onboard::tests"]),
@@ -8801,6 +9103,11 @@ def main():
     validation = commands.add_parser("validate-rust")
     validation.add_argument("--suite", action="append", help="Run an applicable pure/mock suite; repeat to select multiple suites")
     validation.add_argument("--cargo-config", action="append", help="Per-command Cargo configuration override, retained in verification argv")
+    connected = commands.add_parser("validate-connected-devices", help="Explicit checks on actual connected products through system HID DLLs")
+    connected.add_argument("--product", type=int, action="append", required=True, help="Actual logical product ID; no preview or default device")
+    connected.add_argument("--write-restore", action="store_true", help="Record original settings, verify reversible changes, restore and confirm exact original values")
+    native_compare = commands.add_parser("compare-connected-hid", help="Compare observed GET packet bytes through the verified current source HID exports")
+    native_compare.add_argument("--library", required=True, help="Installed HID.node; its complete current input bytes and exports are verified before loading")
     pack_prepare = commands.add_parser("prepare-asset-pack")
     pack_prepare.add_argument("--manifest", default=".analysis/results/asset-pack-manifest.json")
     pack_prepare.add_argument("--output", default=GENERATED_ASSET_PACK)
@@ -8910,6 +9217,10 @@ def main():
         return 0 if report["static_pack_ready"] else 1
     elif args.command == "validate-rust":
         validate_rust(args.suite, args.cargo_config)
+    elif args.command == "validate-connected-devices":
+        return validate_connected_devices(args.product, write_restore=args.write_restore)
+    elif args.command == "compare-connected-hid":
+        return compare_connected_hid(args.library)
     elif args.command == "prepare-asset-pack":
         print(json.dumps(prepare_asset_pack(args.manifest, args.output), ensure_ascii=False))
     elif args.command == "verify-asset-pack":

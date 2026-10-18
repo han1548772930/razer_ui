@@ -518,6 +518,7 @@ impl NativeRuntime {
             | ServiceRequest::WindowsServiceStart { .. }
             | ServiceRequest::WindowsServiceStop { .. }
             | ServiceRequest::HostStorageClose { .. }
+            | ServiceRequest::HidNodeMouseBrightness { .. }
             | ServiceRequest::HostStorageCall { .. }
             | ServiceRequest::HostStorageEvents { .. }
             | ServiceRequest::AudioEndpoints { .. }
@@ -545,6 +546,7 @@ impl NativeRuntime {
             | ServiceRequest::HidNodeDpiStagesRead { .. }
             | ServiceRequest::HidNodeDpiStagesWrite { .. }
             | ServiceRequest::HidNodeMouseCurrentDpi { .. }
+            | ServiceRequest::HidNodeMouseDynamic { .. }
             | ServiceRequest::HidNodeMouseCurrentPolling { .. }
             | ServiceRequest::HidNodeMouseCurrentPower { .. }
             | ServiceRequest::HidNodeMouseScroll { .. }
@@ -617,6 +619,9 @@ impl NativeRuntime {
                 bail!("便携查询必须由设备会话入口分派")
             }
             ServiceRequest::HidDevices => hid::enumerate(),
+            ServiceRequest::HelpSystemInfo { .. } => {
+                bail!("Help reports must be dispatched through their dedicated worker query")
+            }
             ServiceRequest::UsbDevices => usb::enumerate(),
             ServiceRequest::NativeLibraryVersion {
                 library,
@@ -684,8 +689,14 @@ impl NativeRuntime {
             ServiceRequest::DeviceMouseCurrentDpi { target, change } => {
                 device_reads::mouse_current_dpi(&target, change.as_ref())
             }
+            ServiceRequest::DeviceMouseBrightness { target, submission } => {
+                device_reads::mouse_brightness(&target, &submission)
+            }
+            ServiceRequest::DeviceMouseDynamic { target, change } => {
+                device_reads::mouse_dynamic(&target, change.as_ref())
+            }
             ServiceRequest::DeviceMouseCurrentPolling { target, change } => {
-                device_reads::mouse_current_polling(&target, &change)
+                device_reads::mouse_current_polling(&target, change.as_ref())
             }
             ServiceRequest::DeviceMouseCurrentPower { target, change } => {
                 device_reads::mouse_current_power(&target, &change)

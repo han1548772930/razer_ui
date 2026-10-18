@@ -311,10 +311,10 @@ impl AppShell {
                     session.generation == request.generation()
                         && Arc::ptr_eq(&session.canceled, canceled)
                 }),
-            Operation::Help(request) => self.receiver_reset.get(identity).is_some_and(|session| {
-                session.request.generation() == request.generation()
-                    && Arc::ptr_eq(&session.canceled, canceled)
-            }),
+            Operation::Help(request) => self
+                .receiver_reset
+                .get(identity)
+                .is_some_and(|session| session.matches(request, canceled)),
             Operation::Brightness(request) => self
                 .receiver_brightness_page
                 .get(identity)
@@ -656,10 +656,11 @@ impl AppShell {
                 }
             }
             Operation::Help(request) => {
-                if let Some(session) = self.receiver_reset.get_mut(identity).filter(|session| {
-                    session.request.generation() == request.generation()
-                        && Arc::ptr_eq(&session.canceled, &canceled)
-                }) {
+                if let Some(session) = self
+                    .receiver_reset
+                    .get_mut(identity)
+                    .filter(|session| session.matches(request, &canceled))
+                {
                     if let Some(previous) = session.worker.replace(worker) {
                         self.receiver_reset_cleanup.push(previous);
                     }

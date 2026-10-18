@@ -82,17 +82,16 @@ fn merge_current_dpi_profile(
 mod tests;
 
 impl AppShell {
-    /// Source90012 startup/restore owns initialization; GET observations never
-    /// replace the local profile. A retained connection/profile key prevents
-    /// repeated reads or render notifications from replaying initialization.
-    pub(super) fn initialize_mouse182_profiles(&mut self, cx: &mut Context<Self>) {
+    /// Source profile initialization precedes the connection's DPI observation.
+    /// The page retains the read key and serializes refresh behind accepted edits.
+    pub(super) fn initialize_current_mouse_profiles(&mut self, cx: &mut Context<Self>) {
         if self.close_requested || self.storage_error.is_some() {
             return;
         }
         let macro_recording = self.receiver_macro_exclusive(cx);
         for workspace in &self.devices {
             let device = workspace.read(cx).device(cx);
-            if !matches!(device.product_id, 182 | 190) {
+            if razer_device::mouse_current_dpi::capability(device.product_id).is_none() {
                 continue;
             }
             let routes: Vec<_> = self
@@ -114,7 +113,7 @@ impl AppShell {
                 None
             };
             workspace.update(cx, |workspace, cx| {
-                workspace.initialize_mouse182_profile(key, macro_recording, cx)
+                workspace.initialize_current_mouse_profile(key, macro_recording, cx)
             });
         }
     }
@@ -263,7 +262,7 @@ impl AppShell {
             })
             .collect();
         if routes.len() != 1 {
-            self.status = "DPI 本地配置保留；尚无唯一的当前鼠标或接收器连接，设备未写入。".into();
+            self.status = "DPI 设备状态未确认：尚无唯一的当前鼠标或接收器连接。".into();
             workspace.update(cx, |workspace, cx| {
                 workspace.finish_current_dpi(&request, None, cx)
             });
@@ -273,7 +272,6 @@ impl AppShell {
         let route = routes[0].clone();
         self.status = "正在核对 DPI 设备应答与读回结果。".into();
         cx.notify();
-        let _ = window;
-        self.start_current_dpi_operation(workspace, route, request, cx);
+        self.start_current_dpi_operation(workspace, route, request, window.window_handle(), cx);
     }
 }

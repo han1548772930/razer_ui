@@ -695,9 +695,7 @@ impl MouseProductWorkspace {
         };
         let quality = self.receiver_indicator.quality;
         let battery = self.receiver_indicator.battery;
-        // Ya selects pollingRate.pollingRateWireless. A Rust readback receipt
-        // is not a source reducer action and must not override that UI draft.
-        let rate = self.draft["pollingRateWireless"].as_u64().unwrap_or(1000) as u32;
+        let rate = self.polling_value(PollingField::Wireless);
         let stages = &self.draft["dpiStages"]["stages"];
         let active = self.draft["dpiStages"]["active"].as_u64().unwrap_or(1) as usize;
         let dpi = source::active_dpi_color(stages.as_array().map_or(&[], Vec::as_slice), active);

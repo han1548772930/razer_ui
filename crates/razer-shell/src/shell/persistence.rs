@@ -32,6 +32,8 @@ pub(super) enum ProductSave {
     MouseDpiStages(MouseDpiStagesSave),
     MouseLegacyDpi(MouseLegacyDpiSave),
     MouseCurrentDpi(MouseCurrentDpiSave),
+    MouseDynamic(mouse_dynamic::LocalSave),
+    ProductLighting(product_lighting::ProductLightingSave),
     MouseCurrentPower(MouseCurrentPowerSave),
     MouseTracking(mouse_tracking::TrackingSave),
     MouseMatcher(mouse_matcher::LocalSave),
@@ -58,6 +60,8 @@ impl ProductSave {
             Self::MouseDpiStages(save) => save.owner(),
             Self::MouseLegacyDpi(save) => (&save.identity, save.workspace.downgrade()),
             Self::MouseCurrentDpi(save) => save.owner(),
+            Self::MouseDynamic(save) => save.owner(),
+            Self::ProductLighting(save) => save.owner(),
             Self::MouseCurrentPower(save) => save.owner(),
             Self::MouseTracking(save) => save.owner(),
             Self::MouseMatcher(save) => save.owner(),
@@ -166,6 +170,7 @@ impl AppShell {
         }
         razer_state::ui_preferences::cancel_exit(cx);
         razer_state::chroma_settings::cancel_exit(cx);
+        self.help_system_info.resume_after_cancelled_exit();
         self.runtime
             .update(cx, |runtime, cx| runtime.cancel_exit(cx));
         self.background_exit_task = None;
@@ -306,7 +311,9 @@ impl AppShell {
             }
             ProductSave::Leviathan(sound) => self.finish_leviathan_save(sound, succeeded, cx),
             ProductSave::MouseInGamePolling(_) => {
-                if succeeded { self.status = "游戏内回报率已保存到本机。".into(); }
+                if succeeded {
+                    self.status = "游戏内回报率已保存到本机。".into();
+                }
             }
             ProductSave::MousePolling(polling) => {
                 if succeeded {
@@ -383,6 +390,12 @@ impl AppShell {
             ProductSave::MouseCurrentDpi(dpi) => {
                 self.finish_current_dpi_save(dpi, succeeded, window, cx)
             }
+            ProductSave::MouseDynamic(save) => {
+                self.finish_mouse_dynamic_save(save, succeeded, window, cx)
+            }
+            ProductSave::ProductLighting(save) => {
+                self.finish_product_lighting_save(save, succeeded, window, cx)
+            }
             ProductSave::MouseCurrentPower(power) => {
                 self.finish_current_power_save(power, succeeded, window, cx)
             }
@@ -415,7 +428,7 @@ impl AppShell {
                     && profile.workspace.read(cx).mouse_polling_scope(cx) == profile.scope
                 {
                     if profile.workspace.read(cx).device(cx).product_id == 182 {
-                        self.initialize_mouse182_profiles(cx);
+                        self.initialize_current_mouse_profiles(cx);
                     } else {
                         self.initialize_mouse_scroll_profiles(cx);
                         profile.workspace.update(cx, |workspace, cx| {
@@ -440,7 +453,9 @@ impl AppShell {
             ProductSave::ReceiverProfile(save) => {
                 self.finish_receiver_profile_save(save, succeeded, window, cx)
             }
-            ProductSave::Hyperpolling(save) => self.finish_hyperpolling_save(save, succeeded, window, cx),
+            ProductSave::Hyperpolling(save) => {
+                self.finish_hyperpolling_save(save, succeeded, window, cx)
+            }
         }
     }
 

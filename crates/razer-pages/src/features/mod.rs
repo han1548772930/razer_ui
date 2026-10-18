@@ -65,11 +65,11 @@ pub use source_help_owner::{HelpOwnerCommand, HelpOwnerOverlay, HelpOwnerRequest
 mod source_workspace;
 pub use product_workspace::ProductWorkspace;
 pub use source_controls::{
-    HyperpollingIndicatorRequested, HyperpollingOrigin,
-    HyperfluxOperation, HyperfluxRequested, ReceiverBrightnessReadRequested,
-    ReceiverBrightnessRequested, ReceiverCategory, ReceiverDeviceRequested,
-    ReceiverDevicesObservation, ReceiverOperation, ReceiverPairingEvent, ReceiverPairingIntent,
-    ReceiverPairingObservation, ReceiverPeer, ReceiverProgress, RipsawMonitoringRequested,
+    HyperfluxOperation, HyperfluxRequested, HyperpollingIndicatorRequested, HyperpollingOrigin,
+    ReceiverBrightnessReadRequested, ReceiverBrightnessRequested, ReceiverCategory,
+    ReceiverDeviceRequested, ReceiverDevicesObservation, ReceiverOperation, ReceiverPairingEvent,
+    ReceiverPairingIntent, ReceiverPairingObservation, ReceiverPeer, ReceiverProgress,
+    RipsawMonitoringRequested,
 };
 pub use source_workspace::ReceiverProfileSelectionRequested;
 #[path = "gamepad/mod.rs"]

@@ -646,15 +646,17 @@ fn full_capacity_prevents_new_slot_before_any_mutation() {
 }
 
 #[test]
-fn reserved_profile_one_and_zero_are_rejected_without_io() {
+fn reserved_profile_writes_and_zero_identity_reads_are_rejected_without_io() {
     for profile in [0, 1] {
         let t = Transport::new([]);
         let c = cap(170);
         let m = MouseOnboard::new(&t, &c).unwrap();
-        assert!(
-            m.read_identity(profile, &mut transactions(), &|| Ok(()))
-                .is_err()
-        );
+        if profile == 0 {
+            assert!(
+                m.read_identity(profile, &mut transactions(), &|| Ok(()))
+                    .is_err()
+            );
+        }
         assert_eq!(
             m.write_identity(profile, &request(None), &mut transactions(), &|| Ok(()))
                 .unwrap_err()
@@ -669,6 +671,27 @@ fn reserved_profile_one_and_zero_are_rejected_without_io() {
         );
         t.finish();
     }
+}
+
+#[test]
+fn identity_reader_accepts_profile_one_returned_by_actual_inventory() {
+    let raw = identity([9; 6]);
+    let mut steps = Vec::new();
+    let mut tx = 0;
+    inventory(&mut steps, 5, 1, &[1], &mut tx);
+    read_identity(&mut steps, 1, &raw, &mut tx);
+    let t = Transport::new(steps);
+    let c = cap(170);
+    let m = MouseOnboard::new(&t, &c).unwrap();
+    let mut transactions = transactions();
+    let observed = m.read_inventory(&mut transactions, &|| Ok(())).unwrap();
+    assert_eq!(observed.profile_ids, [1]);
+    let identity = m
+        .read_identity(observed.profile_ids[0], &mut transactions, &|| Ok(()))
+        .unwrap();
+    assert!(identity.source_guid_accepted);
+    assert_eq!(identity.raw_metadata, raw);
+    t.finish();
 }
 
 #[test]

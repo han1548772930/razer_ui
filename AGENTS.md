@@ -13,13 +13,19 @@
 - Local IPC, loopback and sockets communicating with installed local services remain in scope. Classify features by their actual call chains: Cloud EQ local preset storage, DSP/HID writes and local restore are required; remote catalog retrieval and cloud sync are excluded.
 - Keep shared Rust protocol logic independent of the OS. Isolate platform-specific HID, COM, driver and service adapters; unsupported capabilities must be explicit. External projects provide architecture references only. Razer protocol evidence must come from current Razer source and binaries.
 - Distinguish local draft persistence, simulated transport results and device/service write-back. Do not fabricate successful device reads, writes or saves.
+- “本地配置”指移除联网业务、完整实现本机设备与服务能力，不是只维护一份本地配置文件。全部本地读取、状态观察、修改、设备／服务写回及其确认、持久化、取消和清理必须接通，不得省略读取、丢弃真实结果或以本地保存代替设备操作。
+- 设备当前状态以当前连接的真实读取／确认结果为准，并按已核实调用链进入对应页面和控件。持久化配置、默认值及待提交草稿分别建模，不能冒充设备实测状态；打开页面、连接或重连时遵循当前源码的读取与初始化顺序，不得任意将本地旧值或默认值写回覆盖设备。
+- 首次使用且经当前源码／协议证明确需初始化的设备或本地功能保留有依据的默认值，按真实初始化链执行必要写入和确认；默认值在确认前不能标为设备实测。仅本机没有配置文件、首次被本程序发现、读取失败或断开，都不足以判定设备无配置，不得触发默认值覆盖设备已有设置。
+- 默认值内容、首次初始化判定、读取／写入顺序、结果消费者、乐观更新、确认及失败行为都必须追溯当前官方源码；不能自行增加通用初始化、回退、回滚、弹窗或另一套配置界面。源码规定的必要初始化／恢复写入仍须完整实现，不能用只读观察替代。
+- 禁止“读取失败后回退本地配置／默认值”的产品路径。未读取、读取中、失败、断开、未知协议值和已确认值必须明确区分；旧连接结果不得覆盖新连接。协议没有返回的字段保持未观测，不从数值、档位数量或缓存推断开关、能力及成功。
+- 写入必须完成真实传输并按当前协议核对实际应答／读回，结果更新页面；失败或取消不得显示成功，不得将本地文件写入成功当作设备成功。允许保留明确标识的未提交草稿，但不能作为设备状态回退，也不能悄悄丢弃实际读回或后续刷新。
 
 # Full UI implementation
 
 - Implement each local UI page completely from current original JS/CSS and resources. Follow `docs/re/ui-readonly-first-roadmap.md`.
 - Trace the mounted component tree and all product/version/accessory branches. Match layout, sizes, typography, colors, images/icons, wording, tabs, panels, drawers, dialogs, tooltips and keyboard/focus behavior, including normal, selected, disabled, loading, empty and error states.
 - Connect every action, including edit/add/delete and Apply/Save/Cancel, through caller, parameters, transport/service, response, state refresh, confirmation, cancellation, persistence and cleanup.
-- Preserve original optimistic updates, failure and confirmation semantics. Do not invent dialogs, rollback or getter-to-UI updates without a current-source call chain. Keep additional Rust diagnostics separate from source UI state.
+- Preserve source-verified optimistic updates, failure and confirmation semantics, subject to the actual-read requirements above. Trace getters through verified transports into typed page observations and controls; do not invent protocol fields, dialogs or rollback, or discard actual results merely because the original UI reads a profile cache. Keep additional Rust diagnostics separate from device state and user drafts.
 - Record source acquisition, reverse-engineered semantics, Rust implementation, UI/backend connection, static/mock verification and runtime acceptance separately. Partial implementation must list remaining items. A page is complete only when its entire source-to-Rust/UI/backend checklist is satisfied; routes, descriptors, wrappers and subsets of controls are insufficient.
 - Keep missing source, unresolved indirect calls, ABI/protocol branches and absent implementations explicit. Do not label them completed or permanently deferred.
 - 未实现的功能必须继续实现，不得仅登记缺口后留空或结束对应任务。缺项清单用于驱动后续实现，不是交付结果；必须沿当前源码继续完成具体逻辑、平台适配、UI／后端接线、持久化、取消和清理。
@@ -62,7 +68,7 @@
 - Before GPUI changes, read `.agents/skills/gpui-kit/SKILL.md` and `.agents/skills/gpui-kit-design-guides/SKILL.md`, including applicable Coding Guides, Design Guides and mechanism/component references.
 - Confirm API signatures against the locked GPUI Kit version. Keep retained state, subscriptions, tasks, focus, stable domain IDs, scrolling and side effects with their proper owners.
 - Use semantic components for behavior and product-owned theme/scale tokens for source-verified presentation. Match the original Razer pages; source-derived exceptions to guide defaults need current-source citations.
-- Apply the execution limits below to skill verification recipes. Real-window/application/device acceptance remains unverified.
+- Apply the execution limits below to skill verification recipes. Real-window/application acceptance remains unverified; authorized DLL/service/device checks record their actual per-operation scope separately.
 
 # Current source
 
@@ -85,5 +91,6 @@
 # Execution limits
 
 - Allow static analyzers, source parsing, resource preparation/validation, formatting, `cargo check --locked --all-targets`, pure Rust unit tests and simulated transport tests with `cargo test`.
-- Do not run the application, standalone builds for runtime acceptance, vendor JavaScript, target DLLs/exports, helpers or installers. Do not invoke debugger execution or perform real vendor-service/device operations.
+- 用户已授权通过本地 DLL 自行测试功能结果：允许核实来源、版本、架构、ABI 和清理链后执行本地 DLL／导出，查询本地服务／真实设备并比较实现结果；可进行有原值记录、恢复与读回确认的可恢复写入测试。先只读核对，失败不得伪装为一致；不得猜测导出签名或将 DLL 加载成功当成功能通过。
+- Do not run the application, standalone builds for runtime acceptance, vendor JavaScript or installers. Do not invoke debugger execution. The local DLL/service/device tests authorized above are the runtime exception; unrelated helpers, firmware flashing, irreversible changes and installation actions remain outside this authorization.
 - Downloading official source/binary evidence for static analysis is permitted acquisition work. It does not add Internet-dependent product features to the implementation scope.

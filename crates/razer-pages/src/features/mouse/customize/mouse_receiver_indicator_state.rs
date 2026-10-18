@@ -212,14 +212,14 @@ pub(super) fn colors(
     configuration: &Value,
     quality: Quality,
     battery: f64,
-    polling: u32,
+    polling: Option<u32>,
     dpi: Option<u32>,
 ) -> [Option<u32>; 3] {
     std::array::from_fn(|index| match mode(configuration, index) {
         Some(Mode::Off) | None => None,
         Some(Mode::BatteryLevel) => Some(battery_color(battery)),
         Some(Mode::ConnectionQuality) => Some(quality_color(quality)),
-        Some(Mode::PollingRate) => polling_color(polling),
+        Some(Mode::PollingRate) => polling.and_then(polling_color),
         Some(Mode::DpiStage) => dpi,
     })
 }
@@ -256,7 +256,7 @@ mod tests {
                 &json!([{"index":0,"ledStatus":99}]),
                 Quality::Green,
                 0.,
-                1000,
+                Some(1000),
                 None
             ),
             [None, Some(0x00ff00), Some(0x00ff00)]
@@ -334,7 +334,7 @@ mod tests {
                 ])),
                 Quality::Green,
                 0.,
-                333,
+                Some(333),
                 None
             ),
             [None; 3]
@@ -347,10 +347,26 @@ mod tests {
                 &serde_json::json!(Configuration::default()),
                 Quality::Green,
                 0.,
-                1000,
+                Some(1000),
                 None
             ),
             [Some(0x00ff00), Some(0xff0000), Some(0x00ff00)]
+        );
+    }
+    #[test]
+    fn unobserved_polling_has_no_rate_color_and_confirmed_rate_uses_its_source_color() {
+        let configuration = serde_json::json!(Configuration::new([
+            Mode::Off,
+            Mode::PollingRate,
+            Mode::Off,
+        ]));
+        assert_eq!(
+            colors(&configuration, Quality::Green, 0., None, None),
+            [None; 3]
+        );
+        assert_eq!(
+            colors(&configuration, Quality::Green, 0., Some(8000), None),
+            [None, Some(0xff0000), None]
         );
     }
     #[test]

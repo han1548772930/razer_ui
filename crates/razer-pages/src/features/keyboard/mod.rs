@@ -51,7 +51,7 @@ mod rgb_controls;
 #[path = "lighting/keyboard_rgb_effects.rs"]
 mod rgb_effects;
 pub use lighting_runtime::{
-    KeyboardChromaPeer, KeyboardLightingCommand, KeyboardLightingObservation,
+    KeyboardChromaPeer, KeyboardLightingCommand, KeyboardLightingHostObservation, KeyboardLightingObservation,
     KeyboardLightingOwner, KeyboardLightingRequested,
 };
 #[path = "calibration/keyboard_calibration.rs"]
@@ -533,6 +533,9 @@ impl KeyboardProductWorkspace {
         self.clear_actuation_selection();
         self.syncing = true;
         for (path, slider) in &self.sliders {
+            if path == "/brightness/value" {
+                continue;
+            }
             if let Some(value) = self.draft.pointer(path).and_then(Value::as_f64) {
                 slider.update(cx, |s, cx| s.set_value(value as f32, window, cx));
             }
@@ -560,11 +563,12 @@ impl KeyboardProductWorkspace {
             .and_then(Value::as_f64)
             .unwrap_or(min as f64) as f32;
         let slider = cx.new(|_| {
-            SliderState::new()
-                .min(min)
-                .max(max)
-                .step(step)
-                .default_value(value)
+            let state = SliderState::new().min(min).max(max).step(step);
+            if path == "/brightness/value" {
+                state
+            } else {
+                state.default_value(value)
+            }
         });
         let path_owned = path.to_owned();
         self.subscriptions.push(
@@ -576,12 +580,11 @@ impl KeyboardProductWorkspace {
                     if path_owned == "/brightness/value" {
                         if let SliderEvent::Change(value) = event {
                             this.preview_brightness(
-                                Some(value.start().clamp(min, max).round() as u8),
+                                value.start().clamp(min, max).round() as u8,
                                 cx,
                             );
                         }
                         if let SliderEvent::Release(value) = event {
-                            this.preview_brightness(None, cx);
                             let percent = value.start().clamp(min, max).round() as u8;
                             this.draft["brightness"]["value"] = json!(percent);
                             this.draft["brightness"]["isEnabled"] = json!(percent != 0);
@@ -667,11 +670,12 @@ impl KeyboardProductWorkspace {
                     .unwrap_or(false),
             )
             .disabled(!enabled)
-            .on_click(cx.listener(move |this, value, _, cx| {
+            .on_click(cx.listener(move |this, value, window, cx| {
                 if enabled {
                     this.write(&path, json!(value), cx);
                     if path == "/brightness/isEnabled" {
                         this.request_brightness(cx);
+                        this.sync_brightness_controls(window, cx);
                     }
                 }
             }))
@@ -784,9 +788,10 @@ impl KeyboardProductWorkspace {
                 .accessibility_label(t("BRIGHTNESS_HEADER"))
                 .checked(on)
                 .disabled(self.lighting_controls_disabled())
-                .on_change(cx.listener(|this, value: &bool, _, cx| {
+                .on_change(cx.listener(|this, value: &bool, window, cx| {
                     this.write("/brightness/isEnabled", json!(*value), cx);
                     this.request_brightness(cx);
+                    this.sync_brightness_controls(window, cx);
                 })),
             surface::help_control("keyboard-brightness-help", t("BRIGHTNESS_TOOLTIP")),
             cx,
@@ -794,7 +799,7 @@ impl KeyboardProductWorkspace {
         .when(self.spec.analog_gamepad_layout(), |widget| widget.mb_0())
         .children(self.sliders.get("/brightness/value").map(|slider| {
             v_flex()
-                .child(Slider::new(slider).disabled(!on || self.lighting_controls_disabled()))
+                .child(self.brightness_slider(slider, !on || self.lighting_controls_disabled(), cx))
                 .child(surface::slider_tags("0", None, "100", None))
         }));
         let mut left = v_flex().child(brightness);

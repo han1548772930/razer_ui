@@ -229,6 +229,65 @@ class ArchitectureBoundaryTests(unittest.TestCase):
     def inspect(self, source, owner):
         return workspace.inspect_architecture_source(source.encode(), owner=owner, rust_parser=self.rust_parser)
 
+    def test_chroma_installation_observation_has_one_shell_owner(self):
+        shared = 'crates/razer-shell/src/shell/devices/product_chroma.rs'
+        for owner in ('crates/razer-shell/src/shell/gamepad/controller_chroma.rs',
+                      'crates/razer-shell/src/shell/devices/product_lighting.rs',
+                      'crates/razer-shell/src/shell.rs',
+                      'crates/razer-pages/src/features/gamepad/gamepad_chroma_runtime.rs',
+                      'crates/razer-settings/src/preferences/settings_lighting.rs'):
+            for source in (
+                'fn read() { razer_platform::chroma_installation::inspect(); }',
+                'use razer_platform::chroma_installation as installation; fn read() { installation::inspect(); }',
+                'use razer_platform::chroma_installation::{inspect as observe}; fn read() { observe(); }',
+                'use razer_platform as platform; fn read() { platform::chroma_installation::inspect(); }',
+            ):
+                with self.subTest(owner=owner, source=source):
+                    rows = self.inspect(source, owner)
+                    self.assertEqual([row['kind'] for row in rows],
+                                     ['chroma_installation_has_a_second_observation_owner'])
+                    self.assertEqual(rows[0]['expected_owner'], shared)
+                    self.assertFalse(self.inspect(source, shared))
+                    self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + source + ' }', owner))
+            for source in (
+                'fn read() { super::product_chroma::readback(); }',
+                'fn read() { product_chroma::from_snapshot(snapshot); }',
+                'fn read() { let hint = "razer_platform::chroma_installation::inspect()"; other::inspect(); }',
+            ):
+                self.assertFalse(self.inspect(source, owner))
+        self.assertFalse(self.inspect('fn read() { razer_platform::chroma_installation::inspect(); }',
+                                     'crates/razer-platform/src/observation/chroma_installation.rs'))
+        for owner in (shared, 'crates/razer-shell/src/shell/gamepad/controller_chroma.rs'):
+            self.assertFalse(workspace.inspect_architecture_source((workspace.ROOT / owner).read_bytes(),
+                             owner=owner, rust_parser=self.rust_parser))
+
+    def test_interaction_styles_cannot_change_display_after_prepaint(self):
+        owners = (
+            'crates/razer-pages/src/features/mouse/dpi/mouse_dpi_rows.rs',
+            'crates/razer-pages/src/features/keyboard/mapping/keyboard_mapping.rs',
+            'crates/razer-widgets/src/source_tooltip/source_tooltip.rs',
+        )
+        for owner in owners:
+            for interaction in ('hover', 'group_hover', 'active', 'group_active', 'focus', 'focus_visible', 'focus_within'):
+                for change in ('style.flex()', 'style.hidden()', 'style.block()',
+                               'style.when(enabled, |s| s.grid())',
+                               '{ style.style().display = Some(Display::None); style }'):
+                    args = 'group, ' if interaction.startswith('group_') else ''
+                    source = f'fn render() {{ div().hidden().{interaction}({args}|style| {change}); }}'
+                    with self.subTest(owner=owner, source=source):
+                        self.assertEqual([row['kind'] for row in self.inspect(source, owner)],
+                                         ['interaction_style_changes_display_between_draw_phases'])
+                        self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + source + ' }', owner))
+            for source in (
+                'fn render() { div().when(!row_hovered, |row| row.hidden()).child(content); }',
+                'fn render() { div().invisible().group_hover(group, |style| style.visible()); }',
+                'fn render() { div().hover(|style| style.bg(color)).active(|style| style.opacity(0.3)); }',
+                'fn render() { let text = "hidden flex display"; callback(|| div().hidden()); }',
+            ):
+                self.assertFalse(self.inspect(source, owner))
+        self.assertFalse(self.inspect('fn domain() { item.hover(|style| style.block()); }',
+                                     'crates/razer-device/src/domain.rs'))
+
     def test_current_dpi_gui_delegates_native_io_and_retains_delivery(self):
         owners = (
             'crates/razer-shell/src/shell/mouse/mouse_current_dpi.rs',
@@ -280,6 +339,125 @@ class ArchitectureBoundaryTests(unittest.TestCase):
         for source in ('fn current() { shell.discovery_revision == revision }',
                        'fn current() { discovery_revision == revision }'):
             self.assertIn('mouse_dpi_uses_global_discovery_revision',
+                          [row['kind'] for row in self.inspect(source, owner)])
+        self.assertFalse(self.inspect('fn diagnostic() { log("discovery_revision"); }', owner))
+
+    def test_mouse182_initialization_has_one_connection_owner_before_dispatch(self):
+        state = 'crates/razer-pages/src/features/mouse/dpi/mouse_current_dpi.rs'
+        good = 'impl State { fn initialize_connection() { self.install_connection(key, scope); self.initialize_profile(input); } }'
+        self.assertFalse(self.inspect(good, state))
+        for bad in (good.replace('self.install_connection(key, scope);', ''),
+                    good.replace('self.install_connection(key, scope); self.initialize_profile(input);',
+                                 'self.initialize_profile(input); self.install_connection(key, scope);')):
+            self.assertEqual([row['kind'] for row in self.inspect(bad, state)],
+                             ['mouse_dpi_initializer_precedes_connection_installation'])
+        self.assertFalse(self.inspect('impl Other { fn initialize_connection() {} }', state))
+        workspace_owner = 'crates/razer-pages/src/features/workspace/source_workspace.rs'
+        good = 'fn initialize_current_mouse_profile() { body.update(cx, |body,cx| { body.initialize_mouse182_profile(key, guid, cx); }); }'
+        self.assertFalse(self.inspect(good, workspace_owner))
+        bad = good.replace('body.initialize_mouse182_profile(key, guid, cx);',
+                           'body.initialize_mouse182_profile(key, guid, cx); body.observe_current_dpi_connection(key, cx);')
+        self.assertEqual([row['kind'] for row in self.inspect(bad, workspace_owner)],
+                         ['mouse182_initializer_has_a_second_connection_owner'])
+        self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + bad + ' }', workspace_owner))
+        separate = good.replace('fn initialize_current_mouse_profile() {',
+            'fn initialize_current_mouse_profile() { if non182 { body.update(cx, |body,cx| body.observe_current_dpi_connection(key,cx)); return; }')
+        self.assertFalse(self.inspect(separate, workspace_owner))
+        for owner in (state, workspace_owner):
+            self.assertFalse(workspace.inspect_architecture_source((workspace.ROOT / owner).read_bytes(),
+                             owner=owner, rust_parser=self.rust_parser))
+
+    def test_idle_and_current_power_use_the_same_retained_io_boundary(self):
+        caller = 'crates/razer-shell/src/shell/mouse/mouse_current_power.rs'
+        runtime = 'crates/razer-shell/src/shell/mouse/mouse_current_power_runtime.rs'
+        page = 'crates/razer-pages/src/features/mouse/power/mouse_current_power.rs'
+        worker = 'crates/razer-shell/src/shell/mouse/mouse_current_power_worker.rs'
+        discovery = 'crates/razer-shell/src/shell/devices/device_discovery.rs'
+        sources = [
+            'use razer_ipc::ServiceClient as Client; fn start() { Client::spawn(); }',
+            'use razer_discovery::direct::mouse_current_power as power; fn start() { power::request(client, route, change); }',
+            'use razer_discovery::direct::mouse_receiver_polling::write_idle as idle; fn start() { idle(client, route, seconds); }',
+            'use std::thread::Builder as Worker; fn start() { Worker::new(); }',
+        ]
+        for owner in (caller, runtime, page):
+            for source in sources:
+                self.assertEqual([row['kind'] for row in self.inspect(source, owner)], ['mouse_power_gui_owns_device_io'])
+                self.assertFalse(self.inspect(source, worker))
+                self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + source + ' }', owner))
+            self.assertEqual(self.inspect('fn start() { task.detach(); }', owner)[0]['kind'],
+                             'mouse_power_gui_detaches_or_waits_for_native_work')
+            self.assertIn('mouse_power_uses_global_discovery_revision',
+                          [row['kind'] for row in self.inspect('fn current() { self.discovery_revision == old }', owner)])
+            self.assertFalse(self.inspect('fn status() { messages.join(", "); }', owner))
+        good = 'fn write_mouse_idle() { self.start_mouse_power_operation(page, route, request, cx); }'
+        self.assertFalse(self.inspect(good, discovery))
+        bad = good.replace('self.start_mouse_power_operation(page, route, request, cx);',
+                           'ServiceClient::spawn(); task.detach(); self.discovery_revision == old;')
+        self.assertEqual(set(row['kind'] for row in self.inspect(bad, discovery)), {
+            'mouse_power_bypasses_retained_operation_owner', 'mouse_power_gui_owns_device_io',
+            'mouse_power_gui_detaches_or_waits_for_native_work', 'mouse_power_uses_global_discovery_revision'})
+        self.assertFalse(self.inspect('fn other_feature() { ServiceClient::spawn(); }', discovery))
+        good = good.replace('write_mouse_idle', 'submit_current_power_device')
+        self.assertFalse(self.inspect(good, caller))
+        self.assertEqual(self.inspect(good.replace('self.start_mouse_power_operation', 'other.start_mouse_power_operation'), caller)[0]['kind'],
+                         'mouse_power_bypasses_retained_operation_owner')
+        good = 'use super::device_discovery::retained_connection as retained; fn current_route() { retained(old, observed, device) }'
+        self.assertFalse(self.inspect(good, runtime))
+        self.assertEqual(self.inspect(good.replace('retained(old, observed, device)', 'true'), runtime)[0]['kind'],
+                         'mouse_power_does_not_retain_the_physical_connection')
+
+    def test_mouse_polling_gui_delegates_io_without_detaching_or_waiting(self):
+        owners = (
+            'crates/razer-shell/src/shell/mouse/mouse_polling_write.rs',
+            'crates/razer-shell/src/shell/mouse/mouse_polling_runtime.rs',
+            'crates/razer-pages/src/features/mouse/polling/mouse_polling.rs',
+            'crates/razer-pages/src/features/mouse/polling/mouse_polling_profile.rs',
+            'crates/razer-pages/src/features/mouse/polling/mouse_polling_view.rs',
+        )
+        worker = 'crates/razer-shell/src/shell/mouse/mouse_polling_worker.rs'
+        for owner in owners:
+            for source in (
+                'fn start() { ServiceClient::spawn(); }',
+                'use razer_ipc::ServiceClient as Client; fn start() { Client::spawn(); }',
+                'fn start() { direct::mouse_current_polling::request(client, route, change); }',
+                'use razer_discovery::direct::mouse_current_polling as polling; fn start() { polling::request(client, route, change); }',
+                'use razer_discovery::direct::mouse_receiver_polling::write as set; fn start() { set(client, route, hz); }',
+                'fn start() { std::thread::spawn(work); }',
+                'use std::thread::{Builder as Worker}; fn start() { Worker::new(); }',
+            ):
+                with self.subTest(owner=owner, source=source):
+                    rows = self.inspect(source, owner)
+                    self.assertEqual([row['kind'] for row in rows], ['mouse_polling_gui_owns_device_io'])
+                    self.assertEqual(rows[0]['expected_owner'], worker)
+                    self.assertFalse(self.inspect(source, worker))
+                    self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + source + ' }', owner))
+            for call in ('delivery.detach()', 'worker.join()', 'self.worker.take().unwrap().join()'):
+                with self.subTest(owner=owner, call=call):
+                    self.assertEqual([row['kind'] for row in self.inspect('fn start() { ' + call + '; }', owner)],
+                                     ['mouse_polling_gui_detaches_or_waits_for_native_work'])
+            self.assertFalse(self.inspect('fn start() { let message = messages.join(", "); cx.emit(intent); }', owner))
+        self.assertFalse(self.inspect('fn start() { ServiceClient::spawn(); }',
+                                     'crates/razer-shell/src/shell/mouse/unrelated.rs'))
+
+    def test_mouse_polling_dispatch_and_route_use_retained_owners(self):
+        owner = 'crates/razer-shell/src/shell/mouse/mouse_polling_write.rs'
+        source = 'impl AppShell { fn write_mouse_polling_device() { self.start_mouse_polling_operation(workspace, route, request, cx); } }'
+        self.assertFalse(self.inspect(source, owner))
+        for changed in (source.replace('self.start_mouse_polling_operation', 'other.start_mouse_polling_operation'),
+                        source.replace('self.start_mouse_polling_operation', 'self.start_other_operation')):
+            self.assertEqual([row['kind'] for row in self.inspect(changed, owner)],
+                             ['mouse_polling_bypasses_retained_operation_owner'])
+            self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + changed + ' }', owner))
+        owner = 'crates/razer-shell/src/shell/mouse/mouse_polling_runtime.rs'
+        source = 'fn current_route() { super::device_discovery::retained_connection(previous, observations, device) }'
+        self.assertFalse(self.inspect(source, owner))
+        self.assertFalse(self.inspect('use super::device_discovery::retained_connection as retained; '
+                                     + source.replace('super::device_discovery::retained_connection', 'retained'), owner))
+        self.assertEqual([row['kind'] for row in self.inspect(source.replace('super::device_discovery::', 'other::'), owner)],
+                         ['mouse_polling_does_not_retain_the_physical_connection'])
+        for source in ('fn current() { shell.discovery_revision == revision }',
+                       'fn current() { discovery_revision == revision }'):
+            self.assertIn('mouse_polling_uses_global_discovery_revision',
                           [row['kind'] for row in self.inspect(source, owner)])
         self.assertFalse(self.inspect('fn diagnostic() { log("discovery_revision"); }', owner))
 
@@ -1321,7 +1499,7 @@ class ArchitectureBoundaryTests(unittest.TestCase):
         self.assertFalse(self.inspect('fn unrelated() { self.valid.store(false,Ordering::Release); }', worker))
 
     def test_background_cleanup_uses_shell_owner_instead_of_bounded_framework_callbacks(self):
-        owner = 'crates/razer-shell/src/shell/mouse/mouse_polling_write.rs'
+        owner = 'crates/razer-shell/src/shell/mouse/mouse_polling_worker.rs'
         for callback in ('async move { cleanup.await; }',
                          'let work = cx.background_executor().spawn(async move { worker.join(); }); async move { work.await; }',
                          'client.shutdown(); async {}', 'cx.background_spawn(async move { cleanup(); }); async {}'):
@@ -2290,6 +2468,181 @@ class NativeDispatchEvidenceTests(unittest.TestCase):
                     self.verify(*self.prepare(directory, **kwargs))
 
 
+class ConnectedDeviceVerificationTests(unittest.TestCase):
+    def test_native_comparison_uses_correlated_terminal_response_after_busy_reads(self):
+        outgoing = [0] * 91
+        outgoing[2], outgoing[7:9] = 7, [4, 133]
+        busy = outgoing.copy()
+        busy[1] = 1
+        complete = outgoing.copy()
+        complete[1], complete[10:14] = 2, [7, 208, 7, 208]
+        transfers = [
+            {'operation':'send_feature', 'bytes':outgoing, 'count':91, 'error':None},
+            {'operation':'get_feature', 'bytes':busy, 'count':91, 'error':None},
+            {'operation':'get_feature', 'bytes':busy, 'count':91, 'error':None},
+            {'operation':'get_feature', 'bytes':complete, 'count':91, 'error':None},
+        ]
+        self.assertEqual(workspace.connected_get_response(transfers, 0), (complete, 3))
+        for invalid in [transfers[:2], transfers[:1], transfers[:2] + transfers[:1]]:
+            with self.assertRaisesRegex(ValueError, 'terminal IN'):
+                workspace.connected_get_response(invalid, 0)
+        for offset in (2, 7, 8):
+            wrong = copy.deepcopy(transfers)
+            wrong[1]['bytes'][offset] ^= 1
+            with self.assertRaisesRegex(ValueError, 'transaction or command'):
+                workspace.connected_get_response(wrong, 0)
+
+    def test_write_deadline_waits_for_restoration_without_killing_the_owner(self):
+        process = mock.Mock(pid=123, wait=mock.Mock(side_effect=[workspace.subprocess.TimeoutExpired('test', 240), 1]))
+        output = io.BytesIO()
+        with mock.patch.object(workspace.subprocess, 'run') as kill:
+            code, exceeded = workspace.wait_connected_process(process, output, write_restore=True)
+        self.assertEqual((code, exceeded), (1, True))
+        self.assertEqual(process.wait.call_args_list, [mock.call(timeout=240), mock.call()])
+        self.assertIn(b'waiting for original-value restoration', output.getvalue())
+        kill.assert_not_called()
+
+    def test_read_deadline_reclaims_and_waits_for_the_whole_test_process(self):
+        process = mock.Mock(pid=123, wait=mock.Mock(side_effect=[workspace.subprocess.TimeoutExpired('test', 240), 1]))
+        output = io.BytesIO()
+        with mock.patch.object(workspace.subprocess, 'run') as kill:
+            self.assertEqual(workspace.wait_connected_process(process, output, write_restore=False), (1, True))
+        self.assertEqual(kill.call_args.args[0], ['taskkill', '/PID', '123', '/T', '/F'])
+        self.assertEqual(process.wait.call_args_list, [mock.call(timeout=240), mock.call(timeout=30)])
+
+    def test_incomplete_runtime_output_preserves_attempted_hardware_and_unknown_restoration(self):
+        admitted = 'RAZER_CONNECTED_STARTED {"mode":"write-restore","products":[679]}\n'
+        scope = workspace.connected_execution_scope(admitted, None, write_restore=True)
+        self.assertTrue(scope['target_execution_attempted'])
+        self.assertIsNone(scope['target_execution'])
+        self.assertIsNone(scope['real_device_operations'])
+        raw = admitted + 'RAZER_CONNECTED_BASELINE {"product_id":679,"baseline":{"raw_value":255},"target_percent":99}\n'
+        scope = workspace.connected_execution_scope(raw, None, write_restore=True)
+        self.assertTrue(scope['real_device_operations'])
+        self.assertTrue(scope['mutation_may_have_started'])
+        self.assertEqual(scope['restoration_confirmation'], 'unconfirmed')
+        self.assertEqual(scope['write_baselines'][0]['baseline']['raw_value'], 255)
+        scope = workspace.connected_execution_scope('compilation failed', None, write_restore=True)
+        self.assertFalse(scope['target_execution_attempted'])
+        self.assertFalse(scope['real_device_operations'])
+
+    def test_native_comparison_rejects_unstable_or_stale_rust_trace_before_native_execution(self):
+        import native_runtime
+        baseline = [{'path':'crates/razer-hid/tests/connected_devices.rs', 'bytes':10, 'sha256':'current'}]
+        for inputs, unchanged, released in [([], True, True), (baseline, False, True), (baseline, True, False)]:
+            with self.subTest(inputs=inputs, unchanged=unchanged, released=released), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                trace = root / '.analysis/results/connected-device-verification.json'
+                trace.parent.mkdir(parents=True)
+                trace.write_text(json.dumps({'mode':'read-only', 'inputs':inputs, 'inputs_unchanged':unchanged,
+                                             'result':{'devices':[], 'backend_released':released}}), encoding='utf-8')
+                with mock.patch.object(workspace, 'ROOT', root), \
+                        mock.patch.object(workspace, 'rust_inputs', return_value=baseline), \
+                        mock.patch.object(native_runtime, 'replay_get_trace') as replay:
+                    with self.assertRaisesRegex(ValueError, 'unchanged Rust inputs|backend release'):
+                        workspace.compare_connected_hid('verified-library')
+                replay.assert_not_called()
+
+    def test_native_comparison_pins_the_trace_bytes_during_native_queries(self):
+        import native_runtime
+        baseline = [{'path':'fixture.rs', 'bytes':10, 'sha256':'current'}]
+        packet, reply = [0] * 91, [0] * 91
+        reply[1] = 2
+        document = {'mode':'read-only', 'inputs':baseline, 'inputs_unchanged':True,
+                    'result':{'backend_released':True, 'devices':[{'product_id':679, 'error':None,
+                        'result':{'path':'source-collection', 'transfers':[
+                            {'operation':'send_feature', 'bytes':packet, 'error':None, 'count':91},
+                            {'operation':'get_feature', 'bytes':reply, 'error':None, 'count':91}]}}]}}
+        for replace in [False, True]:
+            with self.subTest(replace=replace), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                source = root / '.analysis/results/connected-device-verification.json'
+                source.parent.mkdir(parents=True)
+                source.write_text(json.dumps(document), encoding='utf-8')
+                original_hash = workspace.digest(source)
+                def completed(*args, **kwargs):
+                    if replace:
+                        source.write_text('{}', encoding='utf-8')
+                    return {'status':'completed', 'worker_waited':True, 'result':{
+                        'init_return':0, 'queries':[{'trace_index':'679:0', 'send_return':91,
+                                                   'get_return':91, 'received_bytes':reply}],
+                        'cleanup':[{'operation':'hid_exit', 'return_value':0, 'returned':True},
+                                   {'operation':'release_library', 'returned':True}]}}
+                with mock.patch.object(workspace, 'ROOT', root), \
+                        mock.patch.object(workspace, 'rust_inputs', return_value=baseline), \
+                        mock.patch.object(native_runtime, 'validate_get_trace'), \
+                        mock.patch.object(native_runtime, 'replay_get_trace', side_effect=completed), \
+                        mock.patch.object(workspace, 'write_json') as save, \
+                        mock.patch('sys.stdout', new=io.StringIO()):
+                    self.assertEqual(workspace.compare_connected_hid('verified-library'), int(replace))
+                receipt = save.call_args.args[1]
+                self.assertEqual(receipt['source_trace_sha256'], original_hash)
+                self.assertEqual(receipt['source_trace_unchanged'], not replace)
+                self.assertEqual(receipt['passed'], not replace)
+
+    def test_connected_result_validation_suite_never_selects_ignored_hardware_tests(self):
+        def completed(command, **kwargs):
+            kwargs['stdout'].write(b'test result: ok. 2 passed; 0 failed; 0 ignored\n')
+            return mock.Mock(returncode=0)
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.object(workspace, 'ROOT', Path(directory)), \
+                mock.patch.object(workspace, 'rust_inputs', return_value=[]), \
+                mock.patch.object(workspace, 'verification_environment', side_effect=lambda _: nullcontext((None, None))), \
+                mock.patch.object(workspace.subprocess, 'run', side_effect=completed) as runner, \
+                mock.patch.object(workspace, 'write_json'), \
+                mock.patch('sys.stdout', new=io.StringIO()):
+            workspace.validate_rust(selected_suites=['connected-verification-boundary'])
+        command = runner.call_args.args[0]
+        self.assertEqual(command[-3:], ['--test', 'connected_devices', 'connected_result_validation_'])
+        self.assertNotIn('--ignored', command)
+
+    def test_real_test_harness_prefix_is_accepted_without_losing_its_report(self):
+        document = {"mode":"read-only", "devices":[], "backend_released":True}
+        output = "running 1 test\ntest connected_device_queries ... RAZER_CONNECTED_RESULT " + json.dumps(document) + "\nok\n"
+        self.assertEqual(workspace.connected_result(output), document)
+        self.assertIsNone(workspace.connected_result("test result: ok. 1 passed; 0 failed\n"))
+        self.assertIsNone(workspace.connected_result(output + output))
+
+    def test_selected_current_observation_suites_only_run_pure_filters(self):
+        expected = {
+            'current-dpi-observations': ('razer-pages', 'current_dpi_observation_'),
+            'current-dpi-initialization': ('razer-pages', 'current182_initialization_'),
+            'dpi-row-hover-state': ('razer-pages', 'dpi_row_hover_'),
+            'current-power-state': ('razer-pages', 'current_power::tests'),
+            'current-idle-state': ('razer-pages', 'mouse_polling_profile::idle_tests'),
+            'current-power-shell': ('razer-shell', 'mouse_current_power_runtime'),
+            'current-power-protocol': ('razer-device', 'mouse_current_power::tests'),
+            'current-power-routing': ('razer-discovery', 'direct::mouse_current_power::tests'),
+            'current-power-ipc': ('razer-ipc', 'device_tasks::tests::current_power_ipc'),
+            'current-power-service': ('razer-service', 'mouse_current_power::tests'),
+            'current-polling-observations': ('razer-pages', 'polling::observation_tests'),
+            'current-polling-runtime-state': ('razer-pages', 'mouse_polling::runtime_observation_tests'),
+            'current-polling-profile-state': ('razer-pages', 'mouse_polling_profile::profile_polling_observation_tests'),
+            'current-polling-indicator-state': ('razer-pages', 'unobserved_polling_has_no_rate_color_and_confirmed_rate_uses_its_source_color'),
+            'current-polling-shell': ('razer-shell', 'mouse_polling_runtime'),
+            'current-dpi-routing': ('razer-discovery', 'direct::mouse_current_dpi::tests'),
+        }
+        def completed(command, **kwargs):
+            kwargs['stdout'].write(b'test result: ok. 1 passed; 0 failed; 0 ignored\n')
+            return mock.Mock(returncode=0)
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.object(workspace, 'ROOT', Path(directory)), \
+                mock.patch.object(workspace, 'rust_inputs', return_value=[]), \
+                mock.patch.object(workspace, 'verification_environment', side_effect=lambda _: nullcontext((None, None))), \
+                mock.patch.object(workspace.subprocess, 'run', side_effect=completed) as runner, \
+                mock.patch.object(workspace, 'write_json'), \
+                mock.patch('sys.stdout', new=io.StringIO()):
+            workspace.validate_rust(selected_suites=list(expected))
+        self.assertEqual(len(runner.call_args_list), len(expected))
+        actual_filters = []
+        for call in runner.call_args_list:
+            command = call.args[0]
+            actual_filters.append((command[command.index('-p') + 1], command[-1]))
+            self.assertIn('--lib', command)
+            self.assertNotIn('--ignored', command)
+        self.assertCountEqual(actual_filters, expected.values())
+
+
 class RustValidationBoundaryTests(unittest.TestCase):
     def test_assets_suite_excludes_window_tests_and_records_the_scope(self):
         def completed(command, **kwargs):
@@ -2362,6 +2715,15 @@ class RustValidationBoundaryTests(unittest.TestCase):
             'controller-chroma-state': ('razer-pages', 'chroma_runtime::tests'),
             'controller-calibration-frame': ('razer-pages', 'queued_frames_cannot_advance'),
             'controller-palette': ('razer-model', 'custom_colors::tests'),
+            'help-reset-owner': ('razer-pages', 'help_reset_identity_'),
+            'mixer-restart-receipts': ('razer-shell', 'mixer_restart_receipt_'),
+            'product-chroma-observations': ('razer-shell', 'product_chroma::tests'),
+            'help-system-info-domain': ('razer-device', 'system_info::tests'),
+            'help-system-info-ipc': ('razer-ipc', 'help_system_info'),
+            'help-system-info-native': ('razer-service', 'help_system_info'),
+            'help-file-dialog-lifecycle': ('razer-platform', 'file_dialog::tests'),
+            'help-system-info-page': ('razer-pages', 'help_system_info'),
+            'help-system-info-shell': ('razer-shell', 'help_system_info'),
             'thx-service': ('razer-service', 'thx'),
             'thx-shell-lifecycle': ('razer-shell', 'thx_sound::tests::'),
             'mouse-receiver-polling-routing': ('razer-discovery', 'mouse_receiver_polling'),

@@ -28,12 +28,16 @@ mod keyboard_latest_restore;
 mod keyboard_legacy_calibration;
 #[path = "leviathan.rs"]
 mod leviathan;
+#[path = "mouse_brightness.rs"]
+mod mouse_brightness;
 #[path = "mouse_current_dpi.rs"]
 mod mouse_current_dpi;
 #[path = "mouse_current_polling.rs"]
 mod mouse_current_polling;
 #[path = "mouse_current_power.rs"]
 mod mouse_current_power;
+#[path = "mouse_dynamic.rs"]
+mod mouse_dynamic;
 #[path = "mouse_indicator_led.rs"]
 mod mouse_indicator_led;
 #[path = "mouse_philips.rs"]
@@ -759,11 +763,20 @@ impl PortableRuntime {
                     self.mouse_current_dpi(&node, product_id, change.as_ref())
                 }
             }
-            ServiceRequest::HidNodeMouseCurrentPolling { node, product_id, change } => {
-                self.mouse_current_polling(&node, product_id, &change)
+            ServiceRequest::HidNodeMouseDynamic { node, product_id, peer_product_id, change } => {
+                if let Some(peer) = peer_product_id {
+                    self.receiver_setting(&node, product_id, peer,
+                        super::receiver_settings::Setting::Dynamic(change.as_ref()))
+                } else {
+                    self.mouse_dynamic(&node, product_id, change.as_ref())
+                }
             }
-            ServiceRequest::HidNodeMouseCurrentPower { node, product_id, change } => {
-                self.mouse_current_power(&node, product_id, &change)
+            ServiceRequest::HidNodeMouseBrightness {node, product_id, peer_product_id, submission} => self.mouse_brightness(&node, product_id, peer_product_id, &submission),
+            ServiceRequest::HidNodeMouseCurrentPolling { node, product_id, change } => {
+                self.mouse_current_polling(&node, product_id, change.as_ref())
+            }
+            ServiceRequest::HidNodeMouseCurrentPower { node, product_id, peer_product_id, change } => {
+                self.mouse_current_power(&node, product_id, peer_product_id, &change)
             }
             ServiceRequest::HidNodeMouseScroll { node, product_id, peer_product_id, submission } => {
                 if let Some(peer) = peer_product_id {

@@ -36,6 +36,8 @@ mod controller_trigger_tests;
 #[cfg(test)]
 mod hanbo_cooler_tests;
 #[cfg(test)]
+mod help_system_info_tests;
+#[cfg(test)]
 mod hyperpolling_receiver_tests;
 #[cfg(test)]
 mod mouse_scroll_tests;
@@ -219,6 +221,8 @@ pub enum ServiceRequest {
     HidNodeMouseCurrentPower {
         node: razer_device::backend::HidNode,
         product_id: u32,
+        #[serde(default)]
+        peer_product_id: Option<u32>,
         change: razer_device::mouse_current_power::Change,
     },
     DeviceMouseCurrentPower {
@@ -546,10 +550,22 @@ pub enum ServiceRequest {
         peer_product_id: Option<u32>,
         change: Option<razer_device::mouse_current_dpi::DpiChange>,
     },
+    HidNodeMouseBrightness {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        peer_product_id: Option<u32>,
+        submission: razer_device::mouse_brightness::Submission,
+    },
+    HidNodeMouseDynamic {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        peer_product_id: Option<u32>,
+        change: Option<razer_device::mouse_dynamic::Setting>,
+    },
     HidNodeMouseCurrentPolling {
         node: razer_device::backend::HidNode,
         product_id: u32,
-        change: razer_device::mouse_current_polling::Change,
+        change: Option<razer_device::mouse_current_polling::Change>,
     },
     KeyboardIndicator {
         target: razer_device::keyboard_indicator::Target,
@@ -703,6 +719,11 @@ pub enum ServiceRequest {
         #[serde(default)]
         product_id: Option<u32>,
     },
+    /// Current mounted Help's local Blade display or complete report query.
+    HelpSystemInfo {
+        product_id: u32,
+        query: razer_device::system_info::Query,
+    },
     /// Read-only getter on a declared device library
     /// (`Get*`/`Is*`/`Has*` with one `string` argument). Mutating exports are
     /// refused in the worker; see `backend::native_read`.
@@ -752,9 +773,17 @@ pub enum ServiceRequest {
         target: razer_device::device_reads::DeviceReadTarget,
         change: Option<razer_device::mouse_current_dpi::DpiChange>,
     },
+    DeviceMouseBrightness {
+        target: razer_device::device_reads::DeviceReadTarget,
+        submission: razer_device::mouse_brightness::Submission,
+    },
+    DeviceMouseDynamic {
+        target: razer_device::device_reads::DeviceReadTarget,
+        change: Option<razer_device::mouse_dynamic::Setting>,
+    },
     DeviceMouseCurrentPolling {
         target: razer_device::device_reads::DeviceReadTarget,
-        change: razer_device::mouse_current_polling::Change,
+        change: Option<razer_device::mouse_current_polling::Change>,
     },
     DeviceKeyboardBrightnessWrite {
         target: razer_device::device_reads::DeviceReadTarget,
@@ -1231,8 +1260,22 @@ impl ServiceClient {
                     change: Some(_),
                     ..
                 }
-                | ServiceRequest::HidNodeMouseCurrentPolling { .. }
-                | ServiceRequest::DeviceMouseCurrentPolling { .. }
+                | ServiceRequest::HidNodeMouseDynamic {
+                    change: Some(_),
+                    ..
+                }
+                | ServiceRequest::DeviceMouseDynamic {
+                    change: Some(_),
+                    ..
+                }
+                | ServiceRequest::HidNodeMouseCurrentPolling {
+                    change: Some(_),
+                    ..
+                }
+                | ServiceRequest::DeviceMouseCurrentPolling {
+                    change: Some(_),
+                    ..
+                }
                 | ServiceRequest::DeviceKeyboardBrightnessWrite { .. }
                 | ServiceRequest::MappingKeyboardGamingIndicator { .. }
                 | ServiceRequest::KeyboardIndicator { .. }
@@ -1265,6 +1308,10 @@ impl ServiceClient {
                 | ServiceRequest::HidNodeMixerEqWrite { .. }
                 | ServiceRequest::HidNodeMixerRouteWrite { .. }
                 | ServiceRequest::HidNodeMixerRestartStreams { .. }
+        ) || matches!(
+            &request,
+            ServiceRequest::HidNodeMouseBrightness { submission, .. }
+                | ServiceRequest::DeviceMouseBrightness { submission, .. } if submission.is_write()
         ) || matches!(
             &request,
             ServiceRequest::HidNodeMouseCurrentPower { change, .. }
@@ -1329,7 +1376,17 @@ impl ServiceClient {
                 | ServiceRequest::HidNodeKeyboardRelayMetadataRead { .. }
                 | ServiceRequest::HidNodeKeyboardRelaySerialRead { .. }
                 | ServiceRequest::HidNodeMouseCurrentDpi { change: None, .. }
+                | ServiceRequest::HidNodeMouseBrightness {
+                    submission: razer_device::mouse_brightness::Submission::Read { .. },
+                    ..
+                }
+                | ServiceRequest::DeviceMouseBrightness {
+                    submission: razer_device::mouse_brightness::Submission::Read { .. },
+                    ..
+                }
                 | ServiceRequest::DeviceMouseCurrentDpi { change: None, .. }
+                | ServiceRequest::HidNodeMouseDynamic { change: None, .. }
+                | ServiceRequest::DeviceMouseDynamic { change: None, .. }
                 | ServiceRequest::HidNodeMouseCurrentPower {
                     change: razer_device::mouse_current_power::Change::ReadPowerSaving,
                     ..

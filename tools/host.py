@@ -1694,7 +1694,7 @@ def extract_asar():
 
 def add_commands(parsers):
     local = parsers.add_parser("audit-host-local", help="Trace current local host UI, storage, service and native source chains without executing targets")
-    local.add_argument("--query", required=True, choices=["dynamic-lighting", "macro-recorder", "screen-color"])
+    local.add_argument("--query", required=True, choices=["dynamic-lighting", "macro-recorder", "screen-color", "help-system-info"])
     installed = parsers.add_parser("acquire-installed", help="Read-only snapshot of installed Razer files and public official Service Worker resources")
     installed.add_argument("--app-engine-root", required=True)
     installed.add_argument("--user-data-root", required=True)
@@ -3501,7 +3501,276 @@ def audit_host_screen_color(args):
         raise ValueError("Local screen color source query remains unresolved")
 
 
+def help_system_mount_layout(props):
+    """Classify the actual Help JSX props, rejecting dynamic/duplicate flags."""
+    if props.type != "object":
+        raise ValueError("System Help mount props are not a static object")
+    flags = {}
+    for pair in props.named_children:
+        if pair.type != "pair":
+            raise ValueError("System Help mount props require spread/member analysis")
+        key, value = pair.child_by_field_name("key"), pair.child_by_field_name("value")
+        name = key.text.decode("utf-8")
+        if key.type == "string":
+            name = name[1:-1]
+        if name not in {"hasSystemInfo", "hasSystemInfoImage"}:
+            continue
+        if name in flags:
+            raise ValueError("System Help mount has a duplicate capability flag")
+        if value.text in {b"true", b"!0"}:
+            flags[name] = True
+        elif value.text in {b"false", b"!1"}:
+            flags[name] = False
+        else:
+            raise ValueError("System Help mount has a dynamic capability flag")
+    if flags.get("hasSystemInfo") is not True:
+        raise ValueError("System Help mount does not enable system information")
+    return "image" if flags.get("hasSystemInfoImage", False) else "basic"
+
+
+def help_system_native_declaration(manifest, original):
+    """Bind the selected BladeDLL to its current manifest declaration."""
+    entries = manifest["resourceManifest"]["resources"]
+    matches = [row for row in entries if row.get("resourceName") == "BladeDLL"]
+    if len(matches) != 1:
+        raise ValueError("Current system manifest BladeDLL is absent or ambiguous")
+    row = matches[0]
+    if (not isinstance(row.get("resourceVersion"), str) or not row["resourceVersion"]
+            or not isinstance(row.get("size"), int) or isinstance(row["size"], bool)
+            or row["size"] != original["bytes"]
+            or not isinstance(row.get("sha256"), str)
+            or not re.fullmatch(r"[0-9a-fA-F]{64}", row["sha256"])
+            or row["sha256"].lower() != original["sha256"]
+            or row.get("url") != original["url"]):
+        raise ValueError("Current system manifest BladeDLL differs from acquired bytes")
+    return row
+
+
+def audit_host_help_system_info(args):
+    audit = HostLocalAudit()
+    a, families = audit.a, audit.families
+    products = (694, 695, 696, 709, 710, 711, 736, 737)
+    report = {"recorded_at_utc": a.stamp(), "tool": families.identity(Path(__file__)),
+              "parser": audit.parser_versions, "source_sets": [], "products": [],
+              "native": [], "failures": [], "reused_complete_captures": [],
+              "source_chain_complete": False, "query_writes_product_code": False,
+              "target_execution": False, "real_device_operations": False,
+              "runtime_acceptance": "unverified"}
+
+    def source(files, needle):
+        matches = [row for row in files if Path(row["path"]).suffix == ".js"
+                   and needle.encode("utf-8") in audit.read(row)]
+        if len(matches) != 1:
+            raise ValueError("System Help source owner is absent or ambiguous: " + needle)
+        return matches[0]
+
+    def enclosing(role, original, needle, predicate, *, unique=True):
+        raw = audit.read(original)
+        hits = list(re.finditer(re.escape(needle.encode("utf-8")), raw))
+        if not hits or unique and len(hits) != 1:
+            raise ValueError("System Help source anchor is absent or ambiguous: " + role)
+        result = []
+        for hit in hits:
+            node = audit.tree(original).root_node.descendant_for_byte_range(hit.start(), hit.end() - 1)
+            while node is not None and not predicate(node):
+                node = node.parent
+            if node is None:
+                raise ValueError("System Help complete lexical owner is unavailable: " + role)
+            key = audit.retain_range(role, original, node.start_byte, node.end_byte, node.type)
+            if key not in result:
+                result.append(key)
+        return result
+
+    def callable_owner(node):
+        if node.type in {"function_declaration", "method_definition"}:
+            return True
+        value = node.child_by_field_name("value") if node.type == "variable_declarator" else None
+        return value is not None and value.type in {"arrow_function", "function_expression"}
+
+    try:
+        for name in ("tools/host.py", "tools/evidence.py", "tools/families.py", "tools/analysis.py", "tools/workspace.py"):
+            audit.artifact(a.ROOT / name)
+        middleware = {}
+        for product in products:
+            deployment = {}
+            for name, kind in ((f"system-{product}-current", "ui"), (f"system-mw-{product}-current", "mw")):
+                receipt, files = audit.source_set(name)
+                report["source_sets"].append(receipt)
+                report["reused_complete_captures"].append(audit.frontend_capture(name, files))
+                deployment[kind] = files
+                if kind == "mw":
+                    middleware[product] = json.loads(audit.artifact(a.ROOT / receipt["acquisition"]["path"]))["files"]
+            ui, mw = deployment["ui"], deployment["mw"]
+            page = source(ui, ".convertSystemInfoData(this.props.systemInfo)")
+            state = source(ui, "systemInfoReducer:function")
+            flow = source(mw, "taskRunnerStoreSystemDetailsData SUCCESS")
+            wrapper = source(mw, 'GetAllBladeInfo:["pointer",[]]')
+            row = {"product_id": product, "owners": {}, "exports": []}
+            owners = row["owners"]
+            owners["basic_component"] = audit.retain("system_help_basic_component", page,
+                ".convertSystemInfoData(this.props.systemInfo)", {"class", "class_declaration"})
+            owners["help_parent_and_branch_gates"] = audit.retain("system_help_parent_and_branch_gates", page,
+                "this.props.hasSystemInfo", {"class", "class_declaration"}, unique=False)
+            owners["native_observation_reducer_and_save_dispatch"] = audit.retain("system_help_reducer", state,
+                "systemInfoReducer:function", {"pair"})
+            owners["display_getter"] = enclosing("system_help_display_getter", flow,
+                "e.getBladeDisplayData()", callable_owner)
+            owners["display_initialization_and_observation"] = enclosing("system_help_display_initialization_and_observation", flow,
+                "hasSystemDetails", callable_owner, unique=False)
+            owners["full_save_runner_and_completion"] = audit.retain("system_help_full_save_runner_and_completion", flow,
+                "taskRunnerStoreSystemDetailsData SUCCESS", {"function_declaration"}, unique=False)
+            owners["full_save_task_maker"] = enclosing("system_help_full_save_task_maker", flow,
+                'actionType:"taskMakerStoreSystemDetailsData"', callable_owner)
+            owners["full_save_event_and_state_machine"] = audit.retain("system_help_full_save_event_and_state_machine", flow,
+                "ON_STORE_SYSTEM_INFO_DATA", {"switch_case", "pair"}, unique=False)
+            owners["full_save_state_machine_action"] = audit.retain("system_help_full_save_state_machine_action", flow,
+                "systemInfoAction:", {"pair"})
+            owners["native_complete_wrapper"] = audit.retain("system_help_native_complete_wrapper", wrapper,
+                'GetAllBladeInfo:["pointer",[]]', {"class", "class_declaration"})
+            native_owner = audit.owners[owners["native_complete_wrapper"][0]]
+            native_class = audit.tree(wrapper).root_node.descendant_for_byte_range(
+                native_owner["byte_start"], native_owner["byte_end"] - 1)
+            for method in ("init", "terminate", "getBladeDisplayData", "getAllBladeInfo"):
+                _, owner = audit.callable_member("system_help_native_" + method, wrapper, native_class, method)
+                owners["native_" + method] = [owner]
+            if b"NVIDIANvApp:" in audit.read(page):
+                owners["image_component"] = enclosing("system_help_image_component", page, "NVIDIANvApp:",
+                    lambda node: callable_owner(node) and b"systemInfoReducer.systemInfo" in node.text)
+            # The JSX call's actual props establish which retained component is mounted.
+            raw = audit.read(page)
+            hits = list(re.finditer(rb"(?<![\w$])hasSystemInfo:", raw))
+            if len(hits) != 1:
+                raise ValueError("System Help actual mounted capability props are absent or ambiguous")
+            hit = hits[0]
+            props = audit.tree(page).root_node.descendant_for_byte_range(hit.start(), hit.end() - 1)
+            while props is not None and props.type != "object":
+                props = props.parent
+            if props is None or props.parent.type != "arguments":
+                raise ValueError("System Help capability props are not passed to an actual component")
+            arguments = props.parent.named_children
+            if len(arguments) != 2 or arguments[1] != props or arguments[0].type != "identifier":
+                raise ValueError("System Help mounted component identity requires further analysis")
+            row["layout"] = help_system_mount_layout(props)
+            row["mounted_component"] = audit.binding("system_help_mounted_component", page,
+                arguments[0].text.decode("utf-8"), arguments[0].start_byte)
+            if row["mounted_component"]["resolution"] != "declaration":
+                raise ValueError("System Help mounted component has no unique lexical owner")
+            owners["mounted_product_page"] = enclosing("system_help_mounted_product_page", page,
+                "hasSystemInfo:", lambda node: node.type in {"class", "class_declaration"})
+            owners["mounted_props"] = [audit.retain_range("system_help_mounted_props", page,
+                props.start_byte, props.end_byte, props.type)]
+            if row["layout"] == "image" and "image_component" not in owners:
+                raise ValueError("System Help mounted image component is unavailable")
+            # Exact factory/export resolution preserves the inherited FFI route.
+            for module_id, export in ((34938, "h3"), (77127, "default"), (19635, "oE"), (19635, "yL"), (19635, "I3")):
+                row["exports"].append(audit.webpack_export("system_help_ffi_or_display_export", mw, module_id, export))
+            report["products"].append(row)
+
+        host = verified_host_owners(audit, ("electron/main.js", "electron/preload.js",
+            "electron/modules/ffi/ffiMain.js", "electron/modules/ffi/FFIPreloadMain.js"))
+        report["complete_host_sources"] = list(host.values())
+        main, preload, legacy, ffi = [host[name]["original"] for name in ("electron/main.js", "electron/preload.js",
+            "electron/modules/ffi/ffiMain.js", "electron/modules/ffi/FFIPreloadMain.js")]
+        for role, original, needle, kinds in (
+            ("system_help_host_save_dialog_and_file_write", main, 'case"showFileSaveDialog":', {"switch_case"}),
+            ("system_help_host_ffi_async_registration", main, 'n.handle("ffiPreloadAsync",', {"call_expression"}),
+            ("system_help_host_ffi_sync_registration", main, 'n.handle("ffiPreload",', {"call_expression"}),
+            ("system_help_host_ffi_exit_caller", main, "await b.ffiPreloadMain.callApiWhenExit()", {"function_declaration", "variable_declarator"}),
+            ("system_help_preload_ffi_async", preload, "doDLLMainActionAsync:", {"pair"}),
+            ("system_help_preload_ffi_sync", preload, "doDLLMainAction:", {"pair"}),
+            ("system_help_preload_legacy_deprecated_route", preload, "doDLLAction:", {"pair"}),
+            ("system_help_current_ffi_async_pointer_release", ffi, "async _callDLLFunctionAsync(", {"method_definition"}),
+            ("system_help_current_ffi_sync_pointer_release", ffi, "_handleAction_Default=", {"field_definition"}),
+            ("system_help_current_ffi_async_dispatch", ffi, "callDLLAsync=", {"field_definition"}),
+            ("system_help_current_ffi_sync_dispatch", ffi, "callDLL=", {"field_definition"}),
+            ("system_help_current_ffi_exit_registration", ffi, "_handleAction_ConfigureFFI_APIToCallWhenExit=", {"field_definition"}),
+            ("system_help_current_ffi_exit_consumer", ffi, "callApiWhenExit=", {"field_definition"}),
+            ("system_help_legacy_ffi_async_pointer_release", legacy, "exports.callDLLMainAsync=", {"assignment_expression"}),
+            ("system_help_legacy_ffi_sync_pointer_release", legacy, "exports.callDLLMain=", {"assignment_expression"}),
+        ):
+            audit.retain(role, original, needle, kinds)
+
+        receipt_path = a.ROOT / ".analysis/inputs/official-native-current/acquisition.json"
+        receipt = json.loads(audit.artifact(receipt_path))
+        coverage = {pid: [] for pid in products}
+        for original in receipt["resources"]:
+            if original.get("status") != "verified" or Path(original.get("path", "")).suffix.lower() != ".dll":
+                continue
+            manifests = []
+            for link in original.get("manifests", []):
+                match = re.fullmatch(r"https://apps\.razer\.com/synapse/products/(\d+)/mw/manifest\.json", link["url"])
+                if match is None or int(match[1]) not in coverage or link.get("resource_name") != "BladeDLL":
+                    continue
+                product = int(match[1])
+                acquired = json.loads(audit.artifact(a.ROOT / link["path"], link))
+                declaration = help_system_native_declaration(acquired, original)
+                current = [row for row in middleware[product] if row.get("path") and row["url"] == link["url"]]
+                if len(current) != 1 or audit.read(current[0]) != audit.artifact(a.ROOT / link["path"], link):
+                    raise ValueError("System Help native manifest differs from current middleware deployment")
+                if link.get("resource_version") != declaration["resourceVersion"]:
+                    raise ValueError("System Help native version link differs from its current declaration")
+                manifests.append({"product_id": product, "link": link, "declaration": declaration,
+                                  "current_manifest": current[0]})
+                coverage[product].append(original["sha256"])
+            if not manifests:
+                continue
+            native = audit.native_slice(original, ["GetBladeDisplayData", "GetAllBladeInfo", "GetBladeFirmwareInfo",
+                "GetBladeDriverInfo", "FreeMalloc", "Terminate", "TerminateWhenExit"],
+                needles=("DLL_PROCESS_ATTACH", "ColorProfileStopNew"), depth=0)
+            incomplete_bodies = [row["capture"]["address"] for row in native["complete_functions"]
+                if not (row["capture"].get("pseudocode") or {}).get("lines") or not row["capture"].get("assembly")]
+            if native["failures"] or native["decompiler_failures"] or incomplete_bodies:
+                raise ValueError("Selected Help system information native functions are incomplete")
+            capture = json.loads(audit.artifact(a.ROOT / native["capture"]["path"]))
+            report["native"].append({"products": sorted({row["product_id"] for row in manifests}),
+                "acquisition": families.identity(receipt_path), "manifests": manifests, "slice": native,
+                "whole_capture_failures": capture.get("failures", [])})
+        if any(len(identities) != 1 for identities in coverage.values()):
+            raise ValueError("System Help current native declaration coverage is absent or ambiguous")
+        report["native_product_coverage"] = coverage
+        report["semantics"] = {
+            "display_observation": "The middleware capability gate calls the current h3 export, parses GetBladeDisplayData JSON, stores systemDetails and dispatches FNw; the UI reducer retains the native payload. Getter failure remains unobserved and is not evidence that an application is absent.",
+            "mounted_layout": "The retained product-page JSX props select basic for 694/695/696 and image for 709/710/711/736/737. Bundles may retain both components; availability does not establish that both are mounted.",
+            "display_schema": "Display is always inserted by each selected producer and can be native null when no monitor exists. Monitor Name and the native spelling Manufactuer are preserved. Optional software/system strings are not fabricated when absent; unknown external fields are retained at the JSON boundary.",
+            "full_save": "The UI dispatches ON_STORE_SYSTEM_INFO_DATA. The task maker, queue, runner and completion owners are retained. The runner uses observed systemDetails.DeviceName and Date.now(), queries GetAllBladeInfo, pretty-prints parsed JSON and invokes Save as / Save file with the Synapse 4 .synapse4 filter.",
+            "host_save": "The host owns the sender's BrowserWindow, chooses the remembered directory or Downloads, preserves cancellation, then updates the directory and calls fs.writeFile. Its callback is not awaited. The Rust worker waits for an actual atomic file publication and never treats dialog cancellation or draft state as a successful write.",
+            "native_result": "The no-argument getters return allocated NUL-terminated UTF-8. Current FFIPreloadMain dispatches asynchronous calls, reads pointers and frees decoded text with FreeMalloc. The Rust RAII owner also frees failed UTF-8 parses. GetAllBladeInfo conditionally inserts Display/Firmware/Driver sections; Firmware and Driver may be native null.",
+            "native_cleanup": "Terminate logs and returns true; this does not establish thread termination. TerminateWhenExit may send WM_QUIT, stop the color-profile path and release gCTRAPI. DllMain initializes the logger and module handle. These bodies do not prove a join, so Rust retains the mapped DLL until the exclusive service process exits after both cleanup calls. Each Rust unwind/error path still attempts both cleanups.",
+            "rust_ownership": "Page mount and connection identity/generation guard delivery. A retained shell worker owns IPC, dialog and file I/O; SaveFileDialog has a separate STA and cancellation. Page replacement, connection change and exit cancel outstanding work. Exit waits for worker/service/dialog cleanup and canceled exit admits only new operations after old work drains.",
+        }
+        report["implementation_owners"] = [
+            "crates/razer-device/src/host/system_info.rs", "crates/razer-ipc/src/device_tasks.rs",
+            "crates/razer-service/src/native/help_system_info.rs", "crates/razer-service/src/runtime/mod.rs",
+            "crates/razer-platform/src/file_dialog.rs", "crates/razer-platform/src/platform/windows/file_dialog.rs",
+            "crates/razer-pages/src/features/help/source_help_system.rs",
+            "crates/razer-pages/src/features/workspace/source_workspace/help_system.rs",
+            "crates/razer-shell/src/shell/host/help_system_info.rs"]
+        report["remaining_chains"] = [
+            "Unavailable source maps and failed acquisition/capture probes remain listed in each current deployment receipt. The observed minified sources are byte-verified; this query does not establish every Help/product page or dependency branch is complete.",
+            "Selected native complete bodies are byte-verified. Their indirect/import and unexpanded direct helper edges are retained explicitly; bounded selection is not a claim of complete whole-module native semantics.",
+            "The other local Help actions, support text/popups and product/accessory branches require their own full source-to-device/service and resource acceptance. This query covers system information observation and full local report saving only.",
+            "Rust compile/unit/mock results are recorded separately in the unified validation record. Real windows, installed native calls, reports from hardware, file dialogs and process/device cleanup acceptance remain unverified under the current execution limits."]
+    except (OSError, ValueError, KeyError, TypeError, StopIteration) as error:
+        report["failures"].append(str(error))
+    report["complete_originals"] = list(audit.sources.values())
+    report["complete_source_owners"] = list(audit.owners.values())
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    report["changed_during_query"] = audit.final_snapshot()
+    report["snapshot_stable"] = not report["changed_during_query"]
+    report["failures"].extend("Audit artifact changed during query: " + name for name in report["changed_during_query"])
+    destination = a.ROOT / ".analysis/results/host-current/local-audit.json"
+    previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
+    previous["help_system_info"] = report
+    a.save(destination, previous)
+    print(json.dumps({"receipt": a.rel(destination), "query": args.query, "products": len(report["products"]),
+        "complete_source_owners": len(audit.owners), "failures": report["failures"]}), flush=True)
+    if report["failures"]:
+        raise ValueError("Local Help system information source query remains unresolved")
+
+
 def audit_host_local(args):
+    if args.query == "help-system-info":
+        return audit_host_help_system_info(args)
     if args.query == "macro-recorder":
         return audit_host_macro_recorder(args)
     if args.query == "screen-color":

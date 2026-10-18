@@ -1,9 +1,19 @@
-//! Current lighting host actions. Unrecovered middleware must not acknowledge writes.
+//! Product lighting host actions and local observations. A host observation does
+//! not acknowledge a native engine or physical device write.
 use super::*;
 use razer_pages::features::keyboard_products::{
     KeyboardLightingCommand, KeyboardLightingRequested,
 };
 use razer_pages::features::mouse_products::MouseLightingRequested;
+
+#[path = "product_lighting_observation.rs"]
+mod observation;
+pub(super) use observation::State;
+#[path = "product_lighting_persistence.rs"]
+mod persistence;
+#[path = "product_lighting_worker.rs"]
+mod worker;
+pub(super) use persistence::ProductLightingSave;
 
 impl AppShell {
     pub(super) fn request_keyboard_lighting(
@@ -14,6 +24,10 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         if !entity.read(cx).accepts_keyboard_lighting(request, cx) {
+            return;
+        }
+        if matches!(request.command, KeyboardLightingCommand::Observe) {
+            self.observe_keyboard_product_lighting(entity, request.clone(), window, cx);
             return;
         }
         let result = match &request.command {
@@ -49,9 +63,7 @@ impl AppShell {
             KeyboardLightingCommand::OpenSettings { chroma } => self
                 .open_product_settings(*chroma, window, cx)
                 .map(|_| None),
-            KeyboardLightingCommand::Observe => {
-                Err("Current lighting service observations are not connected".into())
-            }
+            KeyboardLightingCommand::Observe => unreachable!("Observation has its retained owner"),
             KeyboardLightingCommand::InstallChroma => {
                 Err("Current local Chroma installation service is not connected".into())
             }
@@ -75,6 +87,20 @@ impl AppShell {
         }) {
             return;
         }
+        if matches!(
+            request.command(),
+            "checkIsFullyInstall" | "getMemoryStorageItem"
+        ) {
+            self.observe_mouse_product_lighting(entity, request.clone(), window, cx);
+            return;
+        }
+        if matches!(
+            request.command(),
+            "ON_SET_BRIGHTNESS" | "ON_CHANGE_ENABLE_STATE"
+        ) {
+            self.persist_mouse_lighting_brightness(entity, request.clone(), window, cx);
+            return;
+        }
         let result = match request.command() {
             "launchChromaStudio" => self.try_open_chroma_studio(cx).map(|_| None),
             "openChromaStudio" => self.open_mapping_chroma_studio(cx).map(|_| None),
@@ -87,17 +113,16 @@ impl AppShell {
             "triggerInstall" => {
                 Err("Current local Chroma installation service is not connected".into())
             }
-            "focusChromaApps" => self
-                .manage_product_chroma_apps(
-                    request.payload()["installRequired"]
-                        .as_bool()
-                        .unwrap_or(true),
-                    cx,
-                )
-                .map(|_| None),
-            "checkIsFullyInstall" | "getMemoryStorageItem" => {
-                Err("Current lighting service observations are not connected".into())
-            }
+            "focusChromaApps" => match request
+                .payload()
+                .get("installRequired")
+                .and_then(serde_json::Value::as_bool)
+            {
+                Some(install_required) => self
+                    .manage_product_chroma_apps(install_required, cx)
+                    .map(|_| None),
+                None => Err("Missing current Chroma applications installation request".into()),
+            },
             _ => Err("Current mouse lighting middleware/device adapter is not implemented".into()),
         };
         entity.update(cx, |workspace, cx| {

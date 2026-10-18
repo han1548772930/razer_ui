@@ -17,6 +17,7 @@ struct Operation {
     identity: String,
     route: ObservedDevice,
     request: MouseCurrentDpiRequested,
+    window: AnyWindowHandle,
     delivery: Task<()>,
 }
 
@@ -121,6 +122,7 @@ impl AppShell {
         workspace: Entity<ProductWorkspace>,
         route: ObservedDevice,
         request: MouseCurrentDpiRequested,
+        window: AnyWindowHandle,
         cx: &mut Context<Self>,
     ) {
         let Some((id, accepted)) = self.mouse_dpi.accept() else {
@@ -149,10 +151,21 @@ impl AppShell {
                 };
                 let current = operation.matches(shell, &shell.device_observations, cx);
                 if let Some(workspace) = operation.workspace.upgrade() {
-                    let report = current.then(|| completion.report().cloned()).flatten();
+                    let result = if current {
+                        completion.result()
+                    } else {
+                        Err("DPI 设备连接或请求范围已改变".to_owned())
+                    };
                     workspace.update(cx, |workspace, cx| {
-                        workspace.finish_current_dpi(&operation.request, report, cx)
+                        workspace.finish_current_dpi_result(&operation.request, result, cx)
                     });
+                    if current {
+                        let _ = operation.window.update(cx, |_, window, cx| {
+                            workspace.update(cx, |workspace, cx| {
+                                workspace.sync_current_dpi_controls(window, cx)
+                            });
+                        });
+                    }
                 }
                 if current {
                     shell.status = completion.message(&operation.request);
@@ -170,6 +183,7 @@ impl AppShell {
                 identity,
                 route,
                 request,
+                window,
                 delivery,
             },
         );

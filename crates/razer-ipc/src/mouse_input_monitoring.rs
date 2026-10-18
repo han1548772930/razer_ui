@@ -5,6 +5,67 @@ use serde::{Deserialize, Serialize};
 
 pub const MAX_CALLBACK_BYTES: usize = 1024 * 1024;
 
+/// One client's native input-monitor lifetime. A lost START acknowledgement
+/// retains the STOP obligation until that same owner's stop is acknowledged.
+pub struct Session {
+    owner: String,
+    possibly_started: bool,
+}
+impl Session {
+    pub fn new(owner: String) -> anyhow::Result<Self> {
+        ensure!(!owner.is_empty(), "Input monitor owner is empty");
+        Ok(Self {
+            owner,
+            possibly_started: false,
+        })
+    }
+    pub fn possibly_started(&self) -> bool {
+        self.possibly_started
+    }
+    pub fn start(
+        &mut self,
+        mut request: impl FnMut(crate::ServiceRequest) -> anyhow::Result<serde_json::Value>,
+    ) -> anyhow::Result<()> {
+        ensure!(
+            !self.possibly_started,
+            "Input monitor still requires stop acknowledgement"
+        );
+        self.possibly_started = true;
+        let receipt: Receipt =
+            serde_json::from_value(request(crate::ServiceRequest::MouseInputMonitoringStart {
+                owner_guid: self.owner.clone(),
+            })?)?;
+        receipt.validate(&self.owner, true)
+    }
+    pub fn stop(
+        &mut self,
+        mut request: impl FnMut(crate::ServiceRequest) -> anyhow::Result<serde_json::Value>,
+    ) -> anyhow::Result<()> {
+        if self.possibly_started {
+            let receipt: Receipt = serde_json::from_value(request(
+                crate::ServiceRequest::MouseInputMonitoringStop {
+                    owner_guid: self.owner.clone(),
+                },
+            )?)?;
+            receipt.validate(&self.owner, false)?;
+            self.possibly_started = false;
+        }
+        Ok(())
+    }
+    pub fn poll(
+        &self,
+        mut request: impl FnMut(crate::ServiceRequest) -> anyhow::Result<serde_json::Value>,
+    ) -> anyhow::Result<Vec<InputEvent>> {
+        ensure!(self.possibly_started, "Input monitor is not started");
+        let poll: Poll =
+            serde_json::from_value(request(crate::ServiceRequest::MouseInputMonitoringPoll {
+                owner_guid: self.owner.clone(),
+            })?)
+            .context("Invalid input monitor poll receipt")?;
+        poll.into_events(&self.owner)
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct InputEvent {
     #[serde(rename = "containerId")]
@@ -63,6 +124,10 @@ impl InputEvent {
 
     pub fn product_id(&self) -> u32 {
         self.product_id
+    }
+
+    pub fn vendor_id(&self) -> u32 {
+        self.vendor_id
     }
 
     pub fn json_event(&self) -> &str {

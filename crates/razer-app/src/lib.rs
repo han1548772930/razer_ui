@@ -7,6 +7,8 @@
 //! 接口存在不等于设备配置已读取；历史快照和静态能力不能冒充当前读值。
 //! 执行限制见 AGENTS.md：不运行应用、探针或厂商代码。
 
+mod diagnostics;
+
 use razer_assets as resources;
 use razer_i18n as i18n;
 use razer_service as backend;
@@ -23,6 +25,7 @@ pub fn run() {
     if args.iter().any(|arg| arg == "--service-worker") {
         std::process::exit(backend::runtime::run_worker());
     }
+    diagnostics::install_panic_log();
 
     // 语言：`--lang <代码>`，默认中文。
     //

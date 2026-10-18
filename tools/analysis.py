@@ -4082,15 +4082,20 @@ def feature_report_callers(parser, originals, selected_capabilities=None, write_
     """
     import evidence
     capability_path = builtin_data_path("razer-device", "DEVICE_READ_CAPABILITIES")
-    capability_raw = capability_path.read_bytes()
-    capabilities = selected_capabilities if selected_capabilities is not None else json.loads(capability_raw)["products"]
+    if selected_capabilities is None:
+        capability_raw = capability_path.read_bytes()
+        capabilities = json.loads(capability_raw)["products"]
+        capability_input = {"path": rel(capability_path), "bytes": len(capability_raw),
+                            "sha256": hashlib.sha256(capability_raw).hexdigest()}
+    else:
+        capabilities = selected_capabilities
+        capability_input = {"selection": "explicit current-source products", "products": capabilities}
     # These three additional keyboard factories own nonzero-interface receiver
     # senders also used by the dedicated keyboard metadata/restore protocols.
     if selected_capabilities is None:
         capabilities += [{"product_id": pid} for pid in (631, 658, 756)
                          if not any(cap["product_id"] == pid for cap in capabilities)]
-    result = {"capabilities": {"path": rel(capability_path), "bytes": len(capability_raw),
-              "sha256": hashlib.sha256(capability_raw).hexdigest()}, "products": [],
+    result = {"capabilities": capability_input, "products": [],
               "scope": "Every generated basic device-read capability plus 631/658/756 receiver senders; complete retained current MW owners, not a claim of all product/factory implementation",
               "target_execution": False, "runtime_acceptance": "unverified"}
     methods = {b"constructor", b"connectDevice", b"connectHidDevice", b"sendCommand",
@@ -4148,7 +4153,8 @@ def feature_report_callers(parser, originals, selected_capabilities=None, write_
                 if not path.is_file():
                     continue
                 raw, source_identity = actual(path)
-                protocol_file = path.name.startswith("rzDevice25") or b'this.name="rzDevice25' in raw
+                protocol_file = (path.name.startswith("rzDevice25") or b'this.name="rzDevice25' in raw
+                                 or b'this.name="rzDevice"' in raw)
                 factory_file = b'getFeatures("rzDeviceType")' in raw
                 connection_file = b"connectHidDevice({" in raw
                 info_file = path.name.startswith("main.") and b"productId:" in raw

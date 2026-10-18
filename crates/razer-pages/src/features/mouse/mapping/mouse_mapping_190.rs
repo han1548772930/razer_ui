@@ -477,6 +477,18 @@ fn popup_left(
     surface.left() + local
 }
 
+fn popup_top(
+    surface: Bounds<Pixels>,
+    unit: Pixels,
+    from_panel: bool,
+    body_scroll_y: Pixels,
+) -> Pixels {
+    // main.7ce428ff.css positions the wrapper at90 and the config surface at86.
+    // The popup body starts36 below its header; image callers include scrollTop.
+    let wrapper_offset = 90. - 86.;
+    surface.top() + unit * (wrapper_offset + 36.) + if from_panel { px(0.) } else { body_scroll_y }
+}
+
 pub(super) struct PopupLayer {
     content: AnyElement,
     surface: Rc<Cell<Bounds<Pixels>>>,
@@ -550,15 +562,7 @@ impl Element for PopupLayer {
         let root = self.surface.get();
         let unit = window.rem_size() / 16.;
         let left = popup_left(root, unit, self.side, self.panel_open, self.from_panel);
-        // The source top-view caller sets 36-scrollTop; drawer origin stays36.
-        // The header is positioned -36 above this body in the source CSS.
-        let top = root.top()
-            + unit * 36.
-            + if self.from_panel {
-                px(0.)
-            } else {
-                self.body_scroll.offset().y
-            };
+        let top = popup_top(root, unit, self.from_panel, self.body_scroll.offset().y);
         window.with_element_offset(point(left, top) - bounds.origin, |window| {
             self.content.prepaint(window, cx)
         });

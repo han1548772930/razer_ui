@@ -13,9 +13,175 @@ use std::{
 
 #[derive(Clone)]
 pub struct MouseCurrentPowerRead {
+    request: MousePowerSavingRead,
+}
+
+/// Identity of an initial GET, independent of profile selection and edits.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct MousePowerSavingRead {
     scope: MousePollingScope,
-    // None is getPowerSavingFromDevice's source fallback, never a device read.
-    seconds: Option<u16>,
+    sequence: u64,
+    edit_revision: u64,
+}
+impl MousePowerSavingRead {
+    pub fn scope(self) -> MousePollingScope {
+        self.scope
+    }
+}
+
+#[derive(Clone, Copy)]
+struct PowerSavingEdit {
+    seconds: f32,
+    revision: u64,
+}
+
+/// Device seconds, active drag and committed optimistic edit have one owner.
+/// The source reducer's default remains in the draft, outside this observation.
+#[derive(Default)]
+pub(in crate::features) struct PowerSavingValue {
+    scope: Option<MousePollingScope>,
+    observed_seconds: Option<u16>,
+    preview: Option<PowerSavingEdit>,
+    edited: Option<PowerSavingEdit>,
+    edit_revision: u64,
+    read_sequence: u64,
+    read_pending: Option<MousePowerSavingRead>,
+}
+impl PowerSavingValue {
+    fn retain_connection(&mut self, scope: MousePollingScope) {
+        if self
+            .scope
+            .is_some_and(|old| !old.same_device_connection(scope))
+        {
+            self.invalidate();
+        }
+        self.scope = Some(scope);
+    }
+
+    pub(in crate::features) fn invalidate(&mut self) {
+        self.scope = None;
+        self.observed_seconds = None;
+        self.preview = None;
+        self.edited = None;
+        self.read_pending = None;
+        self.edit_revision = self.edit_revision.wrapping_add(1);
+    }
+
+    pub(in crate::features) fn begin_read(
+        &mut self,
+        scope: MousePollingScope,
+    ) -> Option<MousePowerSavingRead> {
+        self.retain_connection(scope);
+        if self.observed_seconds.is_some() || self.read_pending.is_some() {
+            return None;
+        }
+        self.read_sequence = self.read_sequence.wrapping_add(1);
+        let request = MousePowerSavingRead {
+            scope,
+            sequence: self.read_sequence,
+            edit_revision: self.edit_revision,
+        };
+        self.read_pending = Some(request);
+        Some(request)
+    }
+
+    pub(in crate::features) fn begin_requery(
+        &mut self,
+        scope: MousePollingScope,
+    ) -> Option<MousePowerSavingRead> {
+        self.read_pending = None;
+        self.begin_read(scope)
+    }
+
+    pub(in crate::features) fn finish_read(
+        &mut self,
+        request: MousePowerSavingRead,
+        seconds: Option<u16>,
+    ) -> bool {
+        if self.read_pending != Some(request)
+            || !self
+                .scope
+                .is_some_and(|scope| scope.same_device_connection(request.scope))
+        {
+            return false;
+        }
+        self.read_pending = None;
+        if request.edit_revision == self.edit_revision {
+            self.observed_seconds = seconds;
+        }
+        // A GET begun before an edit cannot replace that edit's confirmation.
+        // Failure never installs the source helper's default argument as data.
+        true
+    }
+
+    pub(in crate::features) fn preview(&mut self, scope: MousePollingScope, seconds: f32) {
+        self.retain_connection(scope);
+        self.edit_revision = self.edit_revision.wrapping_add(1);
+        self.preview = Some(PowerSavingEdit {
+            seconds,
+            revision: self.edit_revision,
+        });
+    }
+
+    pub(in crate::features) fn edit(&mut self, scope: MousePollingScope, seconds: u16) -> u64 {
+        self.retain_connection(scope);
+        self.edit_revision = self.edit_revision.wrapping_add(1);
+        self.preview = None;
+        self.edited = Some(PowerSavingEdit {
+            seconds: f32::from(seconds),
+            revision: self.edit_revision,
+        });
+        self.edit_revision
+    }
+
+    pub(in crate::features) fn confirm(
+        &mut self,
+        scope: MousePollingScope,
+        revision: u64,
+        seconds: u16,
+    ) {
+        if !self
+            .scope
+            .is_some_and(|current| current.same_device_connection(scope))
+        {
+            return;
+        }
+        self.observed_seconds = Some(seconds);
+        if self.edited.is_some_and(|edit| edit.revision == revision) {
+            self.edited = None;
+        }
+    }
+
+    pub(in crate::features) fn cancel_preview(&mut self) {
+        if self.preview.take().is_some() {
+            self.edit_revision = self.edit_revision.wrapping_add(1);
+        }
+    }
+
+    pub(in crate::features) fn displayed_seconds(&self) -> Option<f32> {
+        self.preview
+            .or(self.edited)
+            .map(|edit| edit.seconds)
+            .or_else(|| self.observed_seconds.map(f32::from))
+    }
+}
+
+pub(in crate::features) fn unobserved_power_range(state: &Entity<SliderState>) -> Stateful<Div> {
+    div()
+        .id(("power-saving-unobserved", state.entity_id()))
+        .aria_label("Device power saving has not been read")
+        .relative()
+        .w_full()
+        .h(surface::css(64.))
+        .child(
+            div()
+                .absolute()
+                .bottom(surface::css(25.))
+                .w_full()
+                .h(surface::css(6.))
+                .rounded(surface::css(3.))
+                .bg(razer_widgets::theme::SliderColors::track()),
+        )
 }
 
 #[derive(Clone)]
@@ -24,6 +190,8 @@ pub struct MouseCurrentPowerRequested {
     sequence: u64,
     settings: Value,
     change: Option<Change>,
+    read: Option<MousePowerSavingRead>,
+    edit_revision: Option<u64>,
     valid: Arc<AtomicBool>,
 }
 impl MouseCurrentPowerRequested {
@@ -68,7 +236,7 @@ pub(super) struct State {
     // Source task results are diagnostics, never optimistic reducer values.
     observed: Option<Report>,
     restored: bool,
-    initialized_scope: Option<MousePollingScope>,
+    saving: PowerSavingValue,
 }
 impl State {
     fn enqueue(
@@ -101,6 +269,7 @@ impl State {
             queued.cancel();
         }
         self.observed = None;
+        self.saving.invalidate();
     }
 }
 impl Drop for State {
@@ -136,7 +305,6 @@ impl MouseProductWorkspace {
     pub fn invalidate_current_power_connection(&mut self) {
         if razer_device::mouse_current_power::capability(self.spec.product_id).is_some() {
             self.current_power.cancel();
-            self.polling_state.invalidate_connection();
         }
     }
     pub(super) fn snapshot_power(&self, snapshot: &mut Value) {
@@ -163,20 +331,17 @@ impl MouseProductWorkspace {
         let Some(scope) = self.mouse_polling_scope(cx) else {
             return;
         };
-        if self
-            .current_power
-            .initialized_scope
-            .is_some_and(|old| old.same_device_connection(scope))
-        {
+        let Some(read) = self.current_power.saving.begin_read(scope) else {
             return;
-        }
-        self.current_power.initialized_scope = Some(scope);
+        };
         self.current_power.sequence = self.current_power.sequence.wrapping_add(1);
         let request = MouseCurrentPowerRequested {
             scope,
             sequence: self.current_power.sequence,
             settings: json!({}),
             change: Some(Change::ReadPowerSaving),
+            read: Some(read),
+            edit_revision: None,
             valid: Arc::new(AtomicBool::new(true)),
         };
         if let Some(request) = self.current_power.enqueue(request) {
@@ -191,23 +356,83 @@ impl MouseProductWorkspace {
     ) {
         if !self
             .mouse_polling_scope(cx)
-            .is_some_and(|scope| scope.same_device_connection(read.scope))
+            .is_some_and(|scope| scope.same_device_connection(read.request.scope))
         {
             return;
         }
         // READY -> getPowerSavingFromDevice -> WDf is the source's explicit
         // getter-to-UI path. Setter confirmation never reaches this method.
-        let minutes = initialization_minutes(read.seconds);
-        let path = self.spec.power_path();
-        set_pointer(&mut self.draft, path, json!(minutes));
+        self.sync_current_power_controls(window, cx);
+        cx.notify();
+    }
+
+    fn power_saving_value(&self) -> Option<f32> {
+        if always_read_power_saving(self.spec.product_id) {
+            self.current_power
+                .saving
+                .displayed_seconds()
+                .map(|seconds| {
+                    if self.spec.performance_power {
+                        seconds
+                    } else {
+                        seconds / 60.
+                    }
+                })
+        } else {
+            self.draft
+                .pointer(self.spec.power_path())
+                .and_then(Value::as_f64)
+                .map(|value| value as f32)
+        }
+    }
+
+    pub(super) fn sync_current_power_controls(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(value) = self.power_saving_value() else {
+            return;
+        };
         self.syncing = true;
-        if let Some(slider) = self.sliders.get(path) {
-            slider.update(cx, |slider, cx| {
-                slider.set_value(minutes as f32, window, cx)
-            });
+        if let Some(slider) = self.sliders.get(self.spec.power_path()) {
+            slider.update(cx, |slider, cx| slider.set_value(value, window, cx));
         }
         self.syncing = false;
-        cx.notify();
+    }
+
+    pub(super) fn preview_current_power(&mut self, path: &str, value: f32, cx: &App) {
+        if path == self.spec.power_path()
+            && always_read_power_saving(self.spec.product_id)
+            && let Some(scope) = self.mouse_polling_scope(cx)
+        {
+            self.current_power.saving.preview(
+                scope,
+                if self.spec.performance_power {
+                    value
+                } else {
+                    value * 60.
+                },
+            );
+        }
+    }
+
+    pub(super) fn cancel_current_power_preview(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.current_power.saving.cancel_preview();
+        self.sync_current_power_controls(window, cx);
+    }
+
+    pub(super) fn has_observed_power_saving_control(&self, path: &str) -> bool {
+        path == self.spec.power_path() && always_read_power_saving(self.spec.product_id)
+    }
+
+    pub(super) fn power_saving_submission_needed(&self, path: &str, value: &Value) -> bool {
+        self.has_observed_power_saving_control(path)
+            && self.power_saving_value().map(f64::from) != value.as_f64()
     }
     fn power_settings_snapshot(&self) -> Value {
         let mut source = self.draft.clone();
@@ -266,12 +491,24 @@ impl MouseProductWorkspace {
         let Some(scope) = self.mouse_polling_scope(cx) else {
             return;
         };
+        let edit_revision = if let Change::PowerSaving(value) = change {
+            let seconds = if self.spec.performance_power {
+                value
+            } else {
+                value * 60
+            };
+            Some(self.current_power.saving.edit(scope, seconds))
+        } else {
+            None
+        };
         self.current_power.sequence = self.current_power.sequence.wrapping_add(1);
         let request = MouseCurrentPowerRequested {
             scope,
             sequence: self.current_power.sequence,
             settings: self.power_settings_snapshot(),
             change: Some(change),
+            read: None,
+            edit_revision,
             valid: Arc::new(AtomicBool::new(true)),
         };
         if let Some(request) = self.current_power.enqueue(request) {
@@ -306,10 +543,20 @@ impl MouseProductWorkspace {
         if self.current_power_request_matches(request, cx) {
             if request.is_read() {
                 let seconds = observed.as_ref().and_then(|report| report.time_to_sleep);
-                cx.emit(MouseCurrentPowerRead {
-                    scope: request.scope,
-                    seconds,
-                });
+                if let Some(read) = request.read
+                    && self.current_power.saving.finish_read(read, seconds)
+                {
+                    // The observation belongs to this entity, even if its
+                    // window has closed. The retained subscriber only syncs UI.
+                    cx.emit(MouseCurrentPowerRead { request: read });
+                }
+            } else if let (Some(revision), Some(seconds)) = (
+                request.edit_revision,
+                observed.as_ref().and_then(|report| report.time_to_sleep),
+            ) {
+                self.current_power
+                    .saving
+                    .confirm(request.scope, revision, seconds);
             }
             self.current_power.observed = observed;
         }
@@ -330,7 +577,12 @@ impl MouseProductWorkspace {
         }
         // A connection replacement can leave its initialization behind
         // the cancelled worker. Recheck only after that serialization slot ends.
-        self.request_current_power_read(cx);
+        if !self
+            .mouse_polling_scope(cx)
+            .is_some_and(|scope| scope.same_device_connection(request.scope))
+        {
+            self.request_current_power_read(cx);
+        }
         cx.notify();
     }
     /// Drain already requested basic settings and cancel device work on exit.
@@ -410,8 +662,7 @@ impl MouseProductWorkspace {
             } else {
                 razer_i18n::t_value("SEC", i64::from(seconds))
             };
-            let selected = self.draft.get("powerSavingValue").and_then(Value::as_u64)
-                == Some(u64::from(seconds));
+            let selected = self.power_saving_value() == Some(f32::from(seconds));
             gpui_kit::base::Button::new(("mouse-power-saving-seconds", u64::from(seconds)))
                 .accessibility_label(label.clone())
                 .selected(selected)
@@ -460,24 +711,29 @@ impl MouseProductWorkspace {
     ) -> Div {
         let slider = &self.sliders[path];
         let state = slider.read(cx);
-        div()
-            .relative()
-            .child(
-                razer_widgets::source_slider::SourceSlider::new(slider, state.percentage().end)
-                    .tip(Some(state.value().start().to_string()))
-                    .enabled(enabled),
-            )
-            .child(
-                h_flex()
-                    .absolute()
-                    .bottom(surface::css(-2.))
-                    .w_full()
-                    .justify_between()
-                    .text_size(surface::css(14.))
-                    .when(!enabled, |labels| labels.opacity(0.3))
-                    .child(min_tag.to_owned())
-                    .child(max_tag.to_owned()),
-            )
+        let range = if self.has_observed_power_saving_control(path)
+            && self
+                .power_saving_value()
+                .is_none_or(|value| state.value().start() != value)
+        {
+            unobserved_power_range(slider).into_any_element()
+        } else {
+            razer_widgets::source_slider::SourceSlider::new(slider, state.percentage().end)
+                .tip(Some(state.value().start().to_string()))
+                .enabled(enabled)
+                .into_any_element()
+        };
+        div().relative().child(range).child(
+            h_flex()
+                .absolute()
+                .bottom(surface::css(-2.))
+                .w_full()
+                .justify_between()
+                .text_size(surface::css(14.))
+                .when(!enabled, |labels| labels.opacity(0.3))
+                .child(min_tag.to_owned())
+                .child(max_tag.to_owned()),
+        )
     }
 
     pub(super) fn low_power_card(&self, cx: &Context<Self>) -> Div {
@@ -494,8 +750,11 @@ impl MouseProductWorkspace {
             cx,
         )
         .child(surface::h1_body(t("LOW_POWER_MODE_DESC"), cx))
-        .child(self.power_slider("/lowPowerMode", minimum, maximum, enabled, cx))
-        .children((!enabled).then(|| div().mt(surface::css(15.)).child(t("LOW_POWER_MODE_WARN"))))
+        .child(self.power_slider("/lowPowerMode", minimum, maximum, enabled == Some(true), cx))
+        .children(
+            (enabled == Some(false))
+                .then(|| div().mt(surface::css(15.)).child(t("LOW_POWER_MODE_WARN"))),
+        )
     }
 
     /// Mounted LowBatteryEffects slider bounds; the device capability owns
@@ -578,14 +837,6 @@ impl MouseProductWorkspace {
     }
 }
 
-fn initialization_minutes(seconds: Option<u16>) -> f64 {
-    // Current helper Z.kp returns timeToSleep / 60 without rounding; its catch
-    // returns the default argument 5. The report remains None on that failure.
-    seconds
-        .map(|seconds| f64::from(seconds) / 60.)
-        .unwrap_or(5.)
-}
-
 fn always_read_power_saving(product_id: u32) -> bool {
     razer_device::mouse_current_power::capability(product_id)
         .is_some_and(|cap| cap.always_read_power_saving())
@@ -630,13 +881,99 @@ mod tests {
             sequence,
             settings: json!({"powerSavingValue":7,"lowPowerMode":30}),
             change: Some(change),
+            read: None,
+            edit_revision: None,
             valid: Arc::new(AtomicBool::new(true)),
         }
     }
     #[::core::prelude::v1::test]
-    fn initialization_preserves_fractional_device_minutes_and_source_error_fallback() {
-        assert_eq!(initialization_minutes(Some(75)), 1.25);
-        assert_eq!(initialization_minutes(None), 5.);
+    fn initial_read_uses_actual_seconds_and_failure_remains_retryable() {
+        let scope = MousePollingScope::new(EntityId::from(1), 2, 3);
+        let mut value = PowerSavingValue::default();
+        assert_eq!(value.displayed_seconds(), None);
+        let first = value.begin_read(scope).unwrap();
+        assert!(value.finish_read(first, None));
+        assert_eq!(value.displayed_seconds(), None);
+        let retry = value.begin_read(scope).unwrap();
+        assert!(retry != first);
+        assert!(!value.finish_read(first, Some(300)));
+        assert!(value.finish_read(retry, Some(75)));
+        assert_eq!(value.displayed_seconds(), Some(75.));
+        assert!(value.begin_read(scope).is_none());
+    }
+
+    #[::core::prelude::v1::test]
+    fn get_begun_before_drag_cannot_replace_preview_or_its_confirmed_write() {
+        let scope = MousePollingScope::new(EntityId::from(1), 2, 3);
+        let mut value = PowerSavingValue::default();
+        let read = value.begin_read(scope).unwrap();
+        value.preview(scope, 420.);
+        assert_eq!(value.displayed_seconds(), Some(420.));
+        let edit = value.edit(scope, 540);
+        value.confirm(scope, edit, 540);
+        assert!(value.finish_read(read, Some(75)));
+        assert_eq!(value.displayed_seconds(), Some(540.));
+    }
+
+    #[::core::prelude::v1::test]
+    fn get_failure_does_not_erase_newer_drag_or_unconfirmed_edit() {
+        let scope = MousePollingScope::new(EntityId::from(1), 2, 3);
+        let mut value = PowerSavingValue::default();
+        let read = value.begin_read(scope).unwrap();
+        value.preview(scope, 480.);
+        assert!(value.finish_read(read, None));
+        assert_eq!(value.displayed_seconds(), Some(480.));
+        value.edit(scope, 660);
+        let retry = value.begin_read(scope).unwrap();
+        assert!(value.finish_read(retry, Some(75)));
+        assert_eq!(value.displayed_seconds(), Some(660.));
+    }
+
+    #[::core::prelude::v1::test]
+    fn same_connection_profile_switch_retains_hardware_but_reconnect_rejects_old_get() {
+        let owner = EntityId::from(1);
+        let mut value = PowerSavingValue::default();
+        let read = value
+            .begin_read(MousePollingScope::new(owner, 2, 3))
+            .unwrap();
+        value.retain_connection(MousePollingScope::new(owner, 4, 3));
+        assert!(value.finish_read(read, Some(420)));
+        assert_eq!(value.displayed_seconds(), Some(420.));
+        value.invalidate();
+        assert_eq!(value.displayed_seconds(), None);
+        let reconnected = value
+            .begin_read(MousePollingScope::new(owner, 4, 5))
+            .unwrap();
+        assert!(!value.finish_read(read, Some(300)));
+        assert!(value.finish_read(reconnected, Some(75)));
+        assert_eq!(value.displayed_seconds(), Some(75.));
+    }
+
+    #[::core::prelude::v1::test]
+    fn replaced_read_identity_cannot_complete_its_successor() {
+        let scope = MousePollingScope::new(EntityId::from(1), 2, 3);
+        let mut value = PowerSavingValue::default();
+        let old = value.begin_read(scope).unwrap();
+        let new = value.begin_requery(scope).unwrap();
+        assert!(!value.finish_read(old, Some(300)));
+        assert_eq!(value.displayed_seconds(), None);
+        assert!(value.finish_read(new, Some(75)));
+        assert_eq!(value.displayed_seconds(), Some(75.));
+    }
+
+    #[::core::prelude::v1::test]
+    fn older_write_confirmation_preserves_newer_edit_and_preview_cancellation() {
+        let scope = MousePollingScope::new(EntityId::from(1), 2, 3);
+        let mut value = PowerSavingValue::default();
+        let first = value.edit(scope, 420);
+        let second = value.edit(scope, 540);
+        value.confirm(scope, first, 420);
+        assert_eq!(value.displayed_seconds(), Some(540.));
+        value.preview(scope, 660.);
+        value.cancel_preview();
+        assert_eq!(value.displayed_seconds(), Some(540.));
+        value.confirm(scope, second, 540);
+        assert_eq!(value.displayed_seconds(), Some(540.));
     }
     #[::core::prelude::v1::test]
     fn device_observation_and_optimistic_power_edits_never_enter_always_read_disk_storage() {

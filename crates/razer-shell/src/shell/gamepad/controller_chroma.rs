@@ -1,5 +1,6 @@
 //! Current Kitsune Chroma caller, local profile selection and host navigation.
 //! Local storage receipts and native lighting diagnostics remain distinct.
+use super::product_chroma::{Readback, readback};
 use super::*;
 use anyhow::{Context as _, ensure};
 use razer_pages::features::gamepad_products::{
@@ -7,7 +8,7 @@ use razer_pages::features::gamepad_products::{
     ControllerChromaRequested,
 };
 use razer_storage::{
-    chroma_profiles::{self, Change, Snapshot},
+    chroma_profiles::{self, Change},
     host::{HostStorageCall, HostStorageView, HostStoreKind},
 };
 use serde::{Deserialize, Serialize};
@@ -23,7 +24,6 @@ use std::{
 const HOST_VIEW: u64 = 0x4354_524C_4348_524F;
 const SOURCE_UI_URL: &str = "/synapse/products/4115/ui/";
 const SYNC_KEY: &str = "RzWinStorage_sync_quick_effect";
-const DEVICES_KEY: &str = "lighting-engine-chroma-devices";
 
 struct Pending {
     workspace: Entity<ProductWorkspace>,
@@ -52,7 +52,7 @@ pub(super) struct State {
     watchers: BTreeMap<String, Watcher>,
     dynamic_watch: Option<Task<()>>,
     dynamic_watchers: BTreeMap<String, DynamicLightingWatcher>,
-    last_observation: Option<Value>,
+    last_observation: Option<ControllerChromaObservation>,
     revision: u64,
     watch_guard: Arc<AtomicBool>,
 }
@@ -69,24 +69,10 @@ impl ControllerChromaSave {
     }
 }
 
-struct Readback {
-    snapshot: Snapshot,
-    installation: Result<razer_platform::chroma_installation::Installation, String>,
-}
-fn readback() -> anyhow::Result<Readback> {
-    Ok(Readback {
-        snapshot: chroma_profiles::load(
-            &chroma_profiles::path(),
-            &razer_storage::source_local::path(),
-        )?,
-        installation: razer_platform::chroma_installation::inspect()
-            .map_err(|error| format!("{error:#}")),
-    })
-}
-impl Readback {
-    fn observation(&self) -> anyhow::Result<ControllerChromaObservation> {
-        let mut observation = ControllerChromaObservation::new();
-        if let Some(configuration) = self.snapshot.configuration() {
+fn controller_observation(readback: &Readback) -> anyhow::Result<ControllerChromaObservation> {
+    let mut observation = ControllerChromaObservation::new();
+    if let Ok(snapshot) = &readback.snapshot {
+        if let Some(configuration) = snapshot.configuration() {
             observation = observation
                 .with_profiles(
                     configuration
@@ -98,26 +84,17 @@ impl Readback {
                 )?
                 .with_enabled(configuration.enabled());
         }
-        if let Some(enabled) = self.snapshot.dynamic_lighting() {
+        if let Some(enabled) = snapshot.dynamic_lighting() {
             observation = observation.with_dynamic_lighting(enabled);
         }
-        if let Some(installed) = self.snapshot.module_installed() {
+        if let Some(installed) = snapshot.module_installed() {
             observation = observation.with_module_installed(installed);
         }
-        if let Ok(installation) = &self.installation {
-            observation = observation.with_fully_installed(installation.fully_installed());
-        }
-        Ok(observation)
     }
-    fn fingerprint(&self) -> Value {
-        json!({
-            "configuration":self.snapshot.configuration(),
-            "origin":format!("{:?}",self.snapshot.origin()),
-            "dynamic":self.snapshot.dynamic_lighting(),
-            "module":self.snapshot.module_installed(),
-            "installation":self.installation.as_ref().map(|value| (value.folder_exists(),value.engine_registered())).map_err(String::as_str),
-        })
+    if let Ok(installation) = &readback.installation {
+        observation = observation.with_fully_installed(installation.fully_installed());
     }
+    Ok(observation)
 }
 
 #[derive(Deserialize)]
@@ -433,17 +410,17 @@ impl AppShell {
                     ControllerChromaCommand::SyncQuick {source_effect} => (Some(Change::Toggle(false)),Some(QuickEnvelope::from_caller(&source_effect,tick()?)?)),
                     _ => anyhow::bail!("Chroma command does not belong to the local configuration queue"),
                 };
-                let snapshot = if let Some(change) = change {
-                    chroma_profiles::update(&chroma_profiles::path(), &razer_storage::source_local::path(), change, &guard)?
-                } else { chroma_profiles::load(&chroma_profiles::path(), &razer_storage::source_local::path())? };
+                let readback = if let Some(change) = change {
+                    super::product_chroma::from_snapshot(chroma_profiles::update(&chroma_profiles::path(), &razer_storage::source_local::path(), change, &guard)?)
+                } else { readback() };
                 let mut runtime_failures = Vec::new();
-                if let Some(configuration) = snapshot.configuration() {
+                if let Ok(snapshot) = &readback.snapshot && let Some(configuration) = snapshot.configuration() {
                     for owner in owners {
                         if let Err(error) = owner.set_advanced(configuration.enabled(), &guard) { runtime_failures.push(format!("{error:#}")); }
                     }
                 }
                 ensure!(guard.load(Ordering::Acquire), "Chroma response belongs to a replaced profile");
-                Ok::<_,anyhow::Error>((Readback { snapshot, installation: razer_platform::chroma_installation::inspect().map_err(|error| format!("{error:#}")) },sync,runtime_failures))
+                Ok::<_,anyhow::Error>((readback,sync,runtime_failures))
             }).await;
             let _ = this.update(cx, |this, cx| {
                 this.controller_chroma.task = None;
@@ -492,49 +469,7 @@ impl AppShell {
 
     fn observed_chroma_products(&mut self) -> anyhow::Result<Option<Vec<u32>>> {
         self.register_controller_chroma_host();
-        let reply = self.host_storage.call(HostStorageCall {
-            store: HostStoreKind::Memory,
-            sender_id: HOST_VIEW,
-            action: "getMemoryStorageItem".into(),
-            payload: json!({"key":DEVICES_KEY}),
-            target_url_array: Vec::new(),
-        })?;
-        #[derive(Deserialize)]
-        struct Row {
-            value: String,
-        }
-        #[derive(Deserialize)]
-        struct Envelope {
-            payload: Devices,
-        }
-        #[derive(Deserialize)]
-        struct Devices {
-            devices: Vec<Product>,
-        }
-        #[derive(Deserialize)]
-        #[serde(rename_all = "camelCase")]
-        struct Product {
-            product_id: u32,
-        }
-        ensure!(reply.defined, "Chroma memory getter did not return a value");
-        let rows: Vec<Row> = serde_json::from_str(
-            reply
-                .value
-                .as_str()
-                .context("Chroma memory response is not a string")?,
-        )?;
-        let Some(row) = rows.first() else {
-            return Ok(None);
-        };
-        let devices: Envelope = serde_json::from_str(&row.value)?;
-        Ok(Some(
-            devices
-                .payload
-                .devices
-                .into_iter()
-                .map(|device| device.product_id)
-                .collect(),
-        ))
+        super::product_chroma::connected_products(&mut self.host_storage, HOST_VIEW)
     }
 
     fn apply_controller_chroma_readback(
@@ -542,19 +477,36 @@ impl AppShell {
         readback: &Readback,
         cx: &mut Context<Self>,
     ) -> anyhow::Result<ControllerChromaObservation> {
-        let mut observation = readback.observation()?;
+        let mut observation = controller_observation(readback)?;
         self.controller_chroma.enabled = readback
             .snapshot
-            .configuration()
+            .as_ref()
+            .ok()
+            .and_then(|snapshot| snapshot.configuration())
             .map(|configuration| configuration.enabled());
-        if let Some(products) = self.observed_chroma_products()? {
-            observation = observation.with_connected_products(products);
+        let mut diagnostics = Vec::new();
+        if let Err(error) = &readback.snapshot {
+            diagnostics.push(format!("本地配置：{error}"));
+        }
+        match self.observed_chroma_products() {
+            Ok(Some(products)) => observation = observation.with_connected_products(products),
+            Ok(None) => {}
+            Err(error) => diagnostics.push(format!("共享设备列表：{error:#}")),
         }
         if let Err(error) = &readback.installation {
-            self.status = format!("Chroma 安装状态未读取：{error}");
+            diagnostics.push(format!("安装状态：{error}"));
         }
-        self.controller_chroma.last_observation = Some(readback.fingerprint());
-        self.publish_controller_chroma_observation(observation.clone(), cx);
+        if !diagnostics.is_empty() {
+            let status = format!("Chroma 部分状态未读取：{}", diagnostics.join("；"));
+            if self.status != status {
+                self.status = status;
+                cx.notify();
+            }
+        }
+        if self.controller_chroma.last_observation.as_ref() != Some(&observation) {
+            self.controller_chroma.last_observation = Some(observation.clone());
+            self.publish_controller_chroma_observation(observation.clone(), cx);
+        }
         Ok(observation)
     }
 
@@ -605,30 +557,41 @@ impl AppShell {
                     if this.close_requested || this.controller_chroma.watchers.is_empty() {
                         return None;
                     }
+                    if this.controller_chroma.task.is_some()
+                        || !this.controller_chroma.queue.is_empty()
+                    {
+                        return Some(None);
+                    }
+                    this.controller_lighting_workers += 1;
                     let guard = Arc::new(AtomicBool::new(true));
                     this.controller_chroma.watch_guard = guard.clone();
-                    Some((
+                    Some(Some((
                         this.controller_chroma.revision,
-                        this.controller_chroma.task.is_none()
-                            && this.controller_chroma.queue.is_empty(),
                         this.controller_lighting_owners
                             .values()
                             .map(|session| session.owner())
                             .collect::<Vec<_>>(),
                         guard,
-                    ))
+                    )))
                 });
-                let Ok(Some((revision, ready, owners, guard))) = active else {
+                let Ok(Some(operation)) = active else {
                     break;
                 };
-                if !ready {
+                let Some((revision, owners, guard)) = operation else {
                     continue;
-                }
+                };
+                let delivery_guard = guard.clone();
                 let result = cx
                     .background_spawn(async move {
-                        let readback = readback()?;
+                        ensure!(
+                            guard.load(Ordering::Acquire),
+                            "Chroma observation was canceled"
+                        );
+                        let readback = readback();
                         let mut failures = Vec::new();
-                        if let Some(configuration) = readback.snapshot.configuration() {
+                        if let Ok(snapshot) = &readback.snapshot
+                            && let Some(configuration) = snapshot.configuration()
+                        {
                             for owner in owners {
                                 if let Err(error) =
                                     owner.set_advanced(configuration.enabled(), &guard)
@@ -642,22 +605,27 @@ impl AppShell {
                     .await;
                 if this
                     .update(cx, |this, cx| {
+                        this.controller_lighting_workers =
+                            this.controller_lighting_workers.saturating_sub(1);
+                        if this.close_requested {
+                            if this.save_task.is_none() {
+                                this.continue_save_queue(true, cx);
+                            }
+                            return;
+                        }
                         if this.controller_chroma.revision != revision
                             || this.controller_chroma.task.is_some()
+                            || !delivery_guard.load(Ordering::Acquire)
                         {
                             return;
                         }
                         match result {
                             Ok((readback, failures)) => {
-                                if this.controller_chroma.last_observation.as_ref()
-                                    != Some(&readback.fingerprint())
+                                if let Err(error) =
+                                    this.apply_controller_chroma_readback(&readback, cx)
                                 {
-                                    if let Err(error) =
-                                        this.apply_controller_chroma_readback(&readback, cx)
-                                    {
-                                        this.status = format!("Chroma 状态未读取：{error:#}");
-                                        cx.notify();
-                                    }
+                                    this.status = format!("Chroma 状态未读取：{error:#}");
+                                    cx.notify();
                                 }
                                 if !failures.is_empty() {
                                     this.status = format!(
@@ -680,6 +648,14 @@ impl AppShell {
             }
             let _ = this.update(cx, |this, _| this.controller_chroma.watch = None);
         }));
+    }
+
+    pub(super) fn prepare_controller_chroma_exit(&mut self) {
+        self.controller_chroma
+            .watch_guard
+            .store(false, Ordering::Release);
+        self.controller_chroma.watchers.clear();
+        self.controller_chroma.dynamic_watchers.clear();
     }
 
     fn broadcast_controller_sync_quick(

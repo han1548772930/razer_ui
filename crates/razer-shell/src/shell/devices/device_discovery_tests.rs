@@ -139,6 +139,47 @@ fn discovery_preserves_only_a_unique_unchanged_connection() {
 }
 
 #[test]
+fn repeated_same_scope_is_retained_but_removal_and_same_path_reconnect_are_not() {
+    let original = projection(FIRST, &[(183, 1)]);
+    let device = original.devices()[0].clone().into_device().unwrap();
+    let mut observations = original.devices().to_vec();
+    for _ in 0..3 {
+        let repeated = projection(FIRST, &[(183, 1)]);
+        let previous =
+            replace_receiver_observations(&mut observations, FIRST, 179, repeated.devices());
+        assert!(retained_connection(&previous, &observations, &device));
+    }
+    let previous = replace_receiver_observations(&mut observations, FIRST, 179, &[]);
+    assert!(!retained_connection(&previous, &observations, &device));
+    let reconnected = projection(FIRST, &[(183, 1)]);
+    let previous =
+        replace_receiver_observations(&mut observations, FIRST, 179, reconnected.devices());
+    assert!(!retained_connection(&previous, &observations, &device));
+    assert_eq!(
+        observations[0].transport(),
+        original.devices()[0].transport()
+    );
+}
+
+#[test]
+fn partial_receiver_refresh_keeps_unrelated_exact_route_without_accumulating_peers() {
+    let first = projection(FIRST, &[(183, 1)]);
+    let other = projection(SECOND, &[(183, 1)]);
+    let device = first.devices()[0].clone().into_device().unwrap();
+    let mut observations = first.devices().to_vec();
+    observations.extend_from_slice(other.devices());
+    let changed_other = projection(SECOND, &[(183, 0)]);
+    replace_receiver_observations(&mut observations, SECOND, 179, changed_other.devices());
+    assert_eq!(observations.len(), 2);
+    assert!(retained_connection(first.devices(), &observations, &device));
+    let replaced_first = projection(FIRST, &[(227, 1)]);
+    let previous =
+        replace_receiver_observations(&mut observations, FIRST, 179, replaced_first.devices());
+    assert_eq!(observations.len(), 2);
+    assert!(!retained_connection(&previous, &observations, &device));
+}
+
+#[test]
 fn owner_guard_rejects_cached_preview_disconnected_and_replaced_receivers() {
     let mut device = projection(FIRST, &[(183, 1)]).devices()[0]
         .clone()

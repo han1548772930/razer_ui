@@ -6,6 +6,32 @@
 
 use anyhow::{Result, bail};
 
+/// Current engine module 1306 NEW_CHROMA_EFFECT_ID. Hardware commands carry
+/// this namespace; native software-engine effect handles use separate IDs.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u8)]
+pub enum HardwareEffect {
+    Off = 0,
+    Static = 1,
+    Breathing = 2,
+    Spectrum = 3,
+    Wave = 4,
+    Reactive = 5,
+    BasicRipple = 6,
+    Starlite = 7,
+    CustomFrame = 8,
+    Fire = 9,
+    AudioMeter = 10,
+    Immersive = 11,
+    Wheel = 12,
+    ExtendedBreathing = 194,
+}
+impl HardwareEffect {
+    pub const fn code(self) -> u8 {
+        self as u8
+    }
+}
+
 /// Registration fields consumed by the native Rzp25NewChroma translator.
 #[derive(Clone, Copy, Debug)]
 pub struct Registration {

@@ -4,9 +4,12 @@ use razer_device::{backend::FeatureTransport, receiver_session::ReceiverSession}
 use serde_json::{Value, json};
 
 pub(super) enum Setting<'a> {
+    MouseBrightness(&'a razer_device::mouse_brightness::Submission),
     KeyboardBrightness(Option<u8>),
     DpiStages(Option<&'a razer_device::mouse_dpi_stages::DpiStagesDraft>),
     CurrentDpi(Option<&'a razer_device::mouse_current_dpi::DpiChange>),
+    Dynamic(Option<&'a razer_device::mouse_dynamic::Setting>),
+    CurrentPower(&'a razer_device::mouse_current_power::Change),
     Scroll(&'a razer_device::mouse_scroll::Submission),
 }
 
@@ -18,6 +21,24 @@ impl Setting<'_> {
         peer: u32,
     ) -> anyhow::Result<ReceiverSession> {
         match self {
+            Self::MouseBrightness(submission) => {
+                submission.validate(product_id)?;
+                ReceiverSession::mouse(product_id, physical_product_id, peer)
+            }
+            Self::Dynamic(change) => {
+                if let Some(change) = change {
+                    change.validate()?;
+                }
+                razer_device::mouse_dynamic::capability(product_id)
+                    .context("Dynamic current factory is absent")?
+                    .receiver_session(physical_product_id, peer)
+            }
+            Self::CurrentPower(change) => {
+                razer_device::mouse_current_power::validate_change(product_id, change)?;
+                razer_device::mouse_current_power::capability(product_id)
+                    .context("Current power source is absent")?
+                    .receiver_session(physical_product_id, peer)
+            }
             Self::Scroll(submission) => {
                 submission.validate(product_id)?;
                 razer_device::mouse_current_dpi::capability(product_id)
@@ -57,6 +78,62 @@ impl Setting<'_> {
         validate: &dyn Fn() -> anyhow::Result<()>,
     ) -> anyhow::Result<Value> {
         let product_id = session.transport().product_id;
+        if let Self::MouseBrightness(submission) = self {
+            let observation = session.observe(device, next, validate, |next, guard| {
+                razer_device::mouse_brightness::execute(
+                    device,
+                    session.transport(),
+                    submission,
+                    &mut || next(),
+                    &|| guard(),
+                )
+            })?;
+            return Ok(
+                json!({"report":observation.reading,"receiver_before":observation.receiver_before,"receiver_after":observation.receiver_after,"setting_scope":"active_and_matching_obm_brightness","source_class":razer_device::device_reads::capability(product_id).context("Brightness source is absent")?.source_class,"transport_source_class":session.transport().source_class}),
+            );
+        }
+        if let Self::Dynamic(change) = self {
+            let observation = session.observe(device, next, validate, |next, guard| {
+                razer_device::mouse_dynamic::execute(
+                    device,
+                    session.transport(),
+                    *change,
+                    next,
+                    guard,
+                    &mut |duration| {
+                        std::thread::sleep(duration);
+                        guard()
+                    },
+                )
+            })?;
+            return Ok(
+                json!({"report":observation.reading,"receiver_before":observation.receiver_before,
+                "receiver_after":observation.receiver_after,"profile_scope":"dynamic_profile_1",
+                "source_class":razer_device::mouse_dynamic::capability(product_id)
+                    .context("Dynamic source is absent")?.transport().source_class,
+                "transport_source_class":session.transport().source_class}),
+            );
+        }
+        if let Self::CurrentPower(change) = self {
+            let observation = session.observe(device, next, validate, |next, guard| {
+                razer_device::mouse_current_power::execute(
+                    product_id,
+                    device,
+                    session.transport(),
+                    change,
+                    next,
+                    guard,
+                )
+            })?;
+            return Ok(json!({
+                "report": observation.reading,
+                "receiver_before": observation.receiver_before,
+                "receiver_after": observation.receiver_after,
+                "setting_scope": "basic_device",
+                "source_class": session.transport().source_class,
+                "transport_source_class": session.transport().source_class,
+            }));
+        }
         if let Self::Scroll(submission) = self {
             let executor =
                 razer_device::mouse_scroll::MouseScroll::new(device, session.transport())?;
@@ -87,6 +164,11 @@ impl Setting<'_> {
             }));
         }
         let (mut response, write, owner, method) = match self {
+            Self::MouseBrightness(_) => {
+                unreachable!("handled above with its brightness report schema")
+            }
+            Self::Dynamic(_) => unreachable!("handled above with its dynamic report schema"),
+            Self::CurrentPower(_) => unreachable!("handled above with its basic power task schema"),
             Self::CurrentDpi(_) => unreachable!("handled above with its distinct report schema"),
             Self::Scroll(_) => unreachable!("handled above with its source scroll task schema"),
             Self::KeyboardBrightness(percent) => {

@@ -106,6 +106,12 @@ impl DeviceWorkspace {
         // （`Rm.render` 的 `title` 取自 `aE.FGZ`/`aE.lGq`，本地语言包里就是
         // `HYPERPOLLING_WIRELESS` / `HYPERPOLLING`）。
         let wireless = self.device().use_ble || self.device().real_product_id != self.pid();
+        let field = if wireless {
+            crate::features::mouse_polling::PollingField::Wireless
+        } else {
+            crate::features::mouse_polling::PollingField::Wired
+        };
+        let value = self.mouse_polling_value(field);
         let title = if wireless {
             razer_i18n::t_or("HYPERPOLLING_WIRELESS", "HYPERPOLLING WIRELESS")
         } else {
@@ -120,7 +126,7 @@ impl DeviceWorkspace {
                     BaseButton::new(SharedString::from(format!("polling-{rate}")))
                         .accessibility_label(rate.to_string())
                         .child(rate.to_string())
-                        .selected(self.settings().polling == rate)
+                        .selected(value == Some(rate))
                         .flex()
                         .items_center()
                         .justify_center()
@@ -132,7 +138,7 @@ impl DeviceWorkspace {
                         .bg(cx.theme().background)
                         .text_color(cx.theme().foreground)
                         .border_1()
-                        .border_color(if self.settings().polling == rate {
+                        .border_color(if value == Some(rate) {
                             cx.theme().primary
                         } else {
                             cx.theme().border
@@ -141,12 +147,13 @@ impl DeviceWorkspace {
                         .focus_visible(|s| s.border_color(cx.theme().primary))
                         .on_click(
                             cx.listener(move |this, _, w, cx| {
+                                this.edit_mouse_polling_value(field, rate);
                                 this.edit(w, cx, |s| s.polling = rate)
                             }),
                         )
                 }),
             )))
-            .when(self.settings().polling > 1000, |this| {
+            .when(value.is_some_and(|hz| hz > 1000), |this| {
                 // `.polling-warn{margin-top:10px;opacity:.7}`；链接
                 // `.polling-learn-more{align-items:center;display:inline-flex;
                 //  padding-left:5px;text-decoration:underline}` + `.external-link-icon`，
@@ -255,6 +262,18 @@ impl DeviceWorkspace {
         let state = &self.controls.sliders[&key];
         let value = state.read(cx).value().start();
         let progress = state.read(cx).percentage().end;
+        let range = if key == Control::Idle
+            && self
+                .mouse_idle_value()
+                .is_none_or(|observed| observed != value)
+        {
+            crate::features::mouse_products::unobserved_power_range(state).into_any_element()
+        } else {
+            razer_widgets::source_slider::SourceSlider::new(state, progress)
+                .tip(Some(format!("{value:.0}")))
+                .enabled(!disabled)
+                .into_any_element()
+        };
         let opacity = surface::fade_opacity(
             ("power-range-labels", state.entity_id()),
             if disabled { 0.3 } else { 1. },
@@ -266,11 +285,7 @@ impl DeviceWorkspace {
             .id(SharedString::from(format!("control-{key:?}")))
             .relative()
             .w_full()
-            .child(
-                razer_widgets::source_slider::SourceSlider::new(state, progress)
-                    .tip(Some(format!("{value:.0}")))
-                    .enabled(!disabled),
-            )
+            .child(range)
             .child(
                 h_flex()
                     .absolute()
@@ -571,22 +586,25 @@ impl DeviceWorkspace {
                         Control::LowPower,
                         "5%",
                         "100%",
-                        !self.mouse_low_power_enabled(),
+                        self.mouse_low_power_enabled() != Some(true),
                         window,
                         cx,
                     ))
-                    .when(!self.mouse_low_power_enabled(), |this| {
-                        this.child(
-                            surface::note(
-                                razer_i18n::t_or(
-                                    "LOW_POWER_MODE_WARN",
-                                    "回报率高于 1000 Hz 时无法调整此选项。",
-                                ),
-                                cx,
+                    .when(
+                        self.mouse_low_power_enabled() == Some(false),
+                        |this| {
+                            this.child(
+                                surface::note(
+                                    razer_i18n::t_or(
+                                        "LOW_POWER_MODE_WARN",
+                                        "回报率高于 1000 Hz 时无法调整此选项。",
+                                    ),
+                                    cx,
+                                )
+                                .mt(surface::css(15.)),
                             )
-                            .mt(surface::css(15.)),
-                        )
-                    }),
+                        },
+                    ),
                 ))
             })
             .into_any_element()

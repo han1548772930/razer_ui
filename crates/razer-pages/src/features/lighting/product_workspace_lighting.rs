@@ -1,12 +1,60 @@
 //! Shell-facing lighting boundary. Validate the original product/profile owner.
 use super::*;
 use crate::features::keyboard_products::{
-    KeyboardLightingObservation, KeyboardLightingOwner, KeyboardLightingRequested,
+    KeyboardLightingHostObservation, KeyboardLightingObservation, KeyboardLightingOwner,
+    KeyboardLightingRequested,
 };
 use crate::features::mouse_products::MouseLightingRequested;
 use serde_json::Value;
 
 impl ProductWorkspace {
+    pub fn abandon_keyboard_lighting(
+        &mut self,
+        request: &KeyboardLightingRequested,
+        error: Option<String>,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        match &self.body {
+            Body::Source(body) => body.update(cx, |body, cx| {
+                body.abandon_keyboard_lighting(request, error, cx)
+            }),
+            _ => false,
+        }
+    }
+    pub fn abandon_mouse_lighting(
+        &mut self,
+        request: &MouseLightingRequested,
+        error: Option<String>,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        match &self.body {
+            Body::Source(body) => body.update(cx, |body, cx| {
+                body.abandon_mouse_lighting(request, error, cx)
+            }),
+            _ => false,
+        }
+    }
+    pub fn mouse_lighting_request_matches(
+        &self,
+        request: &MouseLightingRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).mouse_lighting_request_matches(request, cx))
+    }
+    pub fn complete_keyboard_host_lighting(
+        &mut self,
+        request: &KeyboardLightingRequested,
+        observation: KeyboardLightingHostObservation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        match &self.body {
+            Body::Source(body) => body.update(cx, |body, cx| {
+                body.complete_keyboard_host_lighting(request, observation, window, cx)
+            }),
+            _ => false,
+        }
+    }
     pub fn observe_mouse_customize(
         &mut self,
         owner: &razer_model::model::Device,

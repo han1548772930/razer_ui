@@ -77,6 +77,8 @@ mod hanbo_cooler;
 mod header_status;
 #[path = "shell/help_owner.rs"]
 mod help_owner;
+#[path = "shell/host/help_system_info.rs"]
+mod help_system_info;
 #[path = "shell/host/host_tabs.rs"]
 mod host_tabs;
 #[path = "shell/keyboard/keyboard_actuation_write.rs"]
@@ -109,6 +111,8 @@ mod mouse_current_dpi;
 mod mouse_current_dpi_runtime;
 #[path = "shell/mouse/mouse_current_power.rs"]
 mod mouse_current_power;
+#[path = "shell/mouse/mouse_current_power_runtime.rs"]
+mod mouse_current_power_runtime;
 #[path = "shell/mouse/mouse_dpi_70.rs"]
 mod mouse_dpi_70;
 #[path = "shell/mouse/mouse_dpi_stages.rs"]
@@ -125,6 +129,8 @@ mod mouse_runtime_artwork;
 mod mouse_scroll;
 #[path = "shell/mouse/mouse_tracking.rs"]
 mod mouse_tracking;
+#[path = "shell/mouse/mouse_dynamic.rs"]
+mod mouse_dynamic;
 use controller_chroma::ControllerChromaSave;
 use controller_lighting::ControllerLightingSave;
 use controller_triggers::ControllerTriggerSave;
@@ -133,10 +139,14 @@ use mouse_current_power::MouseCurrentPowerSave;
 use mouse_dpi_stages::MouseDpiStagesSave;
 #[path = "shell/receiver/hyperpolling_runtime.rs"]
 mod hyperpolling_runtime;
+#[path = "shell/mouse/mouse_polling_runtime.rs"]
+mod mouse_polling_runtime;
 #[path = "shell/mouse/mouse_polling_write.rs"]
 mod mouse_polling_write;
 #[path = "shell/devices/product_lighting.rs"]
 mod product_lighting;
+#[path = "shell/devices/product_chroma.rs"]
+mod product_chroma;
 #[path = "shell/devices/product_mapping.rs"]
 mod product_mapping;
 #[path = "shell/devices/product_settings_navigation.rs"]
@@ -318,7 +328,7 @@ pub struct AppShell {
     keyboard_identity_cache_pending: usize,
     runtime: Entity<runtime_page::RuntimePanel>,
     runtime_exit_wait: Option<Subscription>,
-    device_read_scopes: BTreeMap<String, razer_pages::features::mouse_polling::MousePollingScope>,
+    device_read_scopes: BTreeMap<String, device_discovery::DeviceReadScope>,
     audio_notifications: BTreeMap<String, audio_notifications::Session>,
     audio_global_shortcuts_enabled: bool,
     thx_jobs: BTreeMap<String, thx_sound::Session>,
@@ -344,12 +354,14 @@ pub struct AppShell {
     host_tabs: host_tabs::HostTabs,
     host_storage: razer_storage::host::HostStorage,
     macro_recorder: macro_recorder::State,
+    help_system_info: help_system_info::Runtime,
     game_observer: game_monitor::State,
     keyboard_indicator: keyboard_indicator::State,
     keyboard_brightness: keyboard_brightness_runtime::State,
     keyboard_latest_restore: keyboard_latest_restore::State,
     keyboard_legacy_calibration: keyboard_legacy_calibration::State,
     keyboard_lifecycle: Option<keyboard_lifecycle::Owner>,
+    product_lighting: product_lighting::State,
     product_settings: product_settings_navigation::ProductSettingsState,
     location: Location,
     history: Vec<Location>,
@@ -363,10 +375,11 @@ pub struct AppShell {
     legacy_dpi_workers: usize,
     mouse_dpi: mouse_current_dpi_runtime::State,
     mouse_scroll_workers: usize,
-    mouse_polling_workers: usize,
+    mouse_polling: mouse_polling_runtime::State,
     mouse_tracking_tasks: BTreeMap<String, mouse_tracking::TrackingTask>,
     mouse_matcher: mouse_matcher::State,
-    current_power_workers: usize,
+    mouse_dynamic: mouse_dynamic::State,
+    mouse_power: mouse_current_power_runtime::State,
     controller_trigger_workers: usize,
     controller_lighting_workers: usize,
     controller_lighting_owners: BTreeMap<String, controller_lighting::Session>,
@@ -610,12 +623,14 @@ impl AppShell {
             host_tabs: host_tabs::HostTabs::new(cx),
             host_storage: razer_storage::host::HostStorage::default(),
             macro_recorder: macro_recorder::State::default(),
+            help_system_info: help_system_info::Runtime::default(),
             game_observer: game_monitor::State::default(),
             keyboard_indicator: keyboard_indicator::State::default(),
             keyboard_brightness: keyboard_brightness_runtime::State::default(),
             keyboard_latest_restore: keyboard_latest_restore::State::default(),
             keyboard_legacy_calibration: keyboard_legacy_calibration::State::default(),
             keyboard_lifecycle: None,
+            product_lighting: product_lighting::State::default(),
             product_settings: product_settings_navigation::ProductSettingsState::default(),
             location: Location::Main(Tab::Home),
             history: vec![],
@@ -629,10 +644,11 @@ impl AppShell {
             legacy_dpi_workers: 0,
             mouse_dpi: mouse_current_dpi_runtime::State::default(),
             mouse_scroll_workers: 0,
-            mouse_polling_workers: 0,
+            mouse_polling: mouse_polling_runtime::State::default(),
             mouse_tracking_tasks: BTreeMap::new(),
             mouse_matcher: mouse_matcher::State::default(),
-            current_power_workers: 0,
+            mouse_dynamic: mouse_dynamic::State::default(),
+            mouse_power: mouse_current_power_runtime::State::default(),
             controller_trigger_workers: 0,
             controller_lighting_workers: 0,
             controller_lighting_owners: BTreeMap::new(),
@@ -1230,13 +1246,17 @@ impl AppShell {
         this.install_keyboard_indicator_cleanup(cx);
         this.install_keyboard_brightness_cleanup(cx);
         this.install_current_dpi_cleanup(cx);
+        this.install_mouse_polling_cleanup(cx);
+        this.install_current_power_cleanup(cx);
         this.install_keyboard_latest_restore_cleanup(cx);
         this.install_keyboard_legacy_calibration_cleanup(cx);
         this.install_mouse_runtime_artwork_cleanup(cx);
         this.install_mouse_matcher_cleanup(cx);
+        this.install_mouse_dynamic_cleanup(cx);
         this.install_mouse_receiver_indicator_cleanup(cx);
         this.install_controller_input_cleanup(cx);
         this.install_controller_lighting_cleanup(cx);
+        this.install_product_lighting_cleanup(cx);
         this.install_seiren_audio_capture_cleanup(window, cx);
         this.install_seiren_audio_playback_cleanup(cx);
         this.install_seiren_microphone_setup_cleanup(cx);
@@ -1245,6 +1265,7 @@ impl AppShell {
         this.install_hyperpolling_cleanup();
         this.install_standalone_pairing_transport(window, cx);
         this.install_receiver_reset_cleanup(cx);
+        this.install_help_system_info_cleanup(cx);
         this.install_receiver_brightness_cleanup(cx);
         this.install_receiver_lighting_cleanup();
         this.subscriptions.push(cx.subscribe_in(
@@ -1356,12 +1377,7 @@ impl AppShell {
                     }
                 }
                 WorkspaceEvent::HelpSystemInfoRequested(request) => {
-                    if entity.read(cx).accepts_help_system_info(request, cx) {
-                        // Actual systemInfoReducer reads and the original local
-                        // system-log writer are still required. Host PC values
-                        // cannot replace this product's native observation.
-                        eprintln!("[help-system-info] {:?}: current native system-info/log-save adapter is not implemented", request.command());
-                    }
+                    this.request_help_system_info(entity.clone(), request.clone(), window, cx);
                 }
                 WorkspaceEvent::HelpOwnerRequested(request) => {
                     this.request_help_owner(&entity, request, window, cx);
@@ -1437,16 +1453,7 @@ impl AppShell {
                     this.write_mouse_idle(entity.clone(), *scope, *minutes, window, cx);
                 }
                 WorkspaceEvent::MouseDynamicRequested(request) => {
-                    entity.update(cx, |workspace, cx| {
-                        workspace.complete_mouse_dynamic(
-                            request,
-                            razer_pages::features::mouse_products::MouseDynamicCompletion::Unsupported(
-                                "Mouse dynamic-sensitivity device adapter is not implemented".into(),
-                            ),
-                            window,
-                            cx,
-                        );
-                    });
+                    this.dispatch_mouse_dynamic(entity.clone(), request, window, cx);
                 }
                 WorkspaceEvent::MouseMatcherRequested(request) => {
                     this.dispatch_mouse_matcher(entity.clone(), request, window, cx);
@@ -1483,7 +1490,7 @@ impl AppShell {
                 }
                 WorkspaceEvent::MouseProfileSerialObserved => {
                     entity.update(cx, |workspace, cx| workspace.restore_mouse_profile_after_serial(window, cx));
-                    this.initialize_mouse182_profiles(cx);
+                    this.initialize_current_mouse_profiles(cx);
                 }
                 WorkspaceEvent::ResourceStateChanged => cx.notify(),
                 WorkspaceEvent::MouseReceiverMonitorRequested(request) => {
@@ -2070,7 +2077,7 @@ impl AppShell {
                         let enabled = !page.read(cx).keyboard_shortcut_capture_active()
                             && !page.read(cx).record_shortcut_capture_active();
                         this.set_audio_global_shortcuts_enabled(enabled);
-                        this.initialize_mouse182_profiles(cx);
+                        this.initialize_current_mouse_profiles(cx);
                         this.sync_receiver_macro_access(cx);
                         cx.notify();
                     }));
@@ -2442,6 +2449,12 @@ impl AppShell {
             self.continue_save_queue(false, cx);
             return false;
         }
+        if let Err(error) = self.rebase_mouse_dynamic_save(&mut request, cx) {
+            self.status = format!("动态灵敏度本地保存失败：{error:#}");
+            self.cancel_prepared_save(request, cx);
+            self.continue_save_queue(false, cx);
+            return false;
+        }
         if let Err(error) = self.rebase_mouse_philips_save(&mut request, cx) {
             self.status = format!("Philips calibration local storage failed: {error:#}");
             self.cancel_prepared_save(request, cx);
@@ -2479,6 +2492,12 @@ impl AppShell {
             {
                 self.finish_controller_chroma_save(chroma, false, request.window, cx);
             }
+            self.continue_save_queue(false, cx);
+            return false;
+        }
+        if let Err(error) = self.rebase_product_lighting_save(&mut request, cx) {
+            self.status = format!("灯效本地保存失败：{error:#}");
+            self.cancel_prepared_save(request, cx);
             self.continue_save_queue(false, cx);
             return false;
         }
@@ -2734,11 +2753,13 @@ impl AppShell {
             || self.legacy_dpi_workers > 0
             || self.mouse_dpi.pending()
             || self.mouse_scroll_workers > 0
-            || self.mouse_polling_workers > 0
+            || self.mouse_polling.pending()
             || !self.mouse_tracking_tasks.is_empty()
-            || self.current_power_workers > 0
+            || self.mouse_power.pending()
+            || self.mouse_dynamic.pending()
             || self.controller_trigger_workers > 0
             || self.controller_lighting_workers > 0
+            || self.product_lighting.pending()
             || self.seiren_eq_workers > 0
             || (!self.seiren_audio_captures.is_empty() || !self.seiren_audio_playbacks.is_empty())
                 && self.close_requested;
@@ -2963,6 +2984,8 @@ impl AppShell {
             }
         }
         self.close_requested = true;
+        self.help_system_info.cancel_all();
+        self.prepare_controller_chroma_exit();
         razer_state::ui_preferences::begin_exit(cx);
         razer_state::chroma_settings::begin_exit(cx);
         self.release_interdevice_holds(cx);
@@ -3042,6 +3065,8 @@ impl AppShell {
         razer_service::mapping::active_workers() > 0
             || razer_service::seiren_audio::active_workers() > 0
             || audio_mixer::active_local_workers() > 0
+            || help_system_info::active_workers() > 0
+            || razer_platform::file_dialog::active_dialogs() > 0
             || razer_storage::file_transfer::active_io() > 0
             || razer_state::ui_preferences::active_io() > 0
             || razer_state::chroma_settings::active_io() > 0

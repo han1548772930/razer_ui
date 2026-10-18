@@ -1,72 +1,44 @@
 //! Input-monitor receipts own the partial-start state independently of the
 //! calibration state machine. A lost start acknowledgement still needs stop.
-use anyhow::{Context as _, ensure};
 use razer_device::dpi_matcher::InputBatch;
-use razer_ipc::{
-    ServiceRequest,
-    mouse_input_monitoring::{Poll, Receipt},
-};
+use razer_ipc::{ServiceRequest, mouse_input_monitoring::Session};
 use serde_json::Value;
 
 pub(super) struct InputMonitor {
-    owner: String,
-    possibly_started: bool,
+    session: Session,
 }
 
 impl InputMonitor {
     pub(super) fn new(owner: String) -> Self {
         Self {
-            owner,
-            possibly_started: false,
+            session: Session::new(owner).expect("retained Matcher owner is nonempty"),
         }
     }
 
     pub(super) fn possibly_started(&self) -> bool {
-        self.possibly_started
+        self.session.possibly_started()
     }
 
     pub(super) fn start(
         &mut self,
-        mut request: impl FnMut(ServiceRequest) -> anyhow::Result<Value>,
+        request: impl FnMut(ServiceRequest) -> anyhow::Result<Value>,
     ) -> anyhow::Result<()> {
-        ensure!(
-            !self.possibly_started,
-            "Input monitor still requires stop acknowledgement"
-        );
-        self.possibly_started = true;
-        let receipt: Receipt =
-            serde_json::from_value(request(ServiceRequest::MouseInputMonitoringStart {
-                owner_guid: self.owner.clone(),
-            })?)?;
-        receipt.validate(&self.owner, true)
+        self.session.start(request)
     }
 
     pub(super) fn stop(
         &mut self,
-        mut request: impl FnMut(ServiceRequest) -> anyhow::Result<Value>,
+        request: impl FnMut(ServiceRequest) -> anyhow::Result<Value>,
     ) -> anyhow::Result<()> {
-        if self.possibly_started {
-            let receipt: Receipt =
-                serde_json::from_value(request(ServiceRequest::MouseInputMonitoringStop {
-                    owner_guid: self.owner.clone(),
-                })?)?;
-            receipt.validate(&self.owner, false)?;
-            self.possibly_started = false;
-        }
-        Ok(())
+        self.session.stop(request)
     }
 
     pub(super) fn events(
         &self,
-        mut request: impl FnMut(ServiceRequest) -> anyhow::Result<Value>,
+        request: impl FnMut(ServiceRequest) -> anyhow::Result<Value>,
     ) -> anyhow::Result<Vec<InputBatch>> {
-        ensure!(self.possibly_started, "Input monitor is not started");
-        let poll: Poll =
-            serde_json::from_value(request(ServiceRequest::MouseInputMonitoringPoll {
-                owner_guid: self.owner.clone(),
-            })?)
-            .context("Invalid input monitor poll receipt")?;
-        poll.into_events(&self.owner)?
+        self.session
+            .poll(request)?
             .into_iter()
             .map(|event| {
                 InputBatch::from_event(event.product_id(), event.container_id(), event.json_event())

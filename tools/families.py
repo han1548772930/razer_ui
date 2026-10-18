@@ -1561,6 +1561,8 @@ def audit_family_function(args):
         return audit_receiver_local_runtime(args)
     if getattr(args, "query", None) == "mouse-dpi-matcher":
         return audit_mouse_dpi_matcher(args)
+    if getattr(args, "query", None) == "mouse-dynamic-sensitivity":
+        return audit_mouse_dynamic_sensitivity(args)
     if getattr(args, "query", None) == "mouse-dpi-profile":
         return audit_mouse_dpi_profile(args)
     if getattr(args, "query", None) == "shared-page-layout":
@@ -12771,6 +12773,152 @@ def audit_mouse_dpi_profile(args):
         "inputs_unchanged": True, "target_execution": False}), flush=True)
 
 
+def dynamic_sensitivity_source(audit, files, product_id):
+    """Retain actual protocol, task and monitor owners from verified originals."""
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+    def keep(role, source, node):
+        return audit.retain_range(role, source, node.start_byte, node.end_byte, node.type)
+    def enclosing_module(node):
+        while node is not None:
+            key = node.child_by_field_name("key") if node.type == "pair" else node.child_by_field_name("name") if node.type == "method_definition" else None
+            if key is not None and key.type == "number":
+                return node
+            node = node.parent
+        raise ValueError("Dynamic owner has no complete webpack factory")
+    candidates = [source for source in files if source["path"].endswith(".js")
+                  and b"getProximitySensorAccelerationState(e)" in audit.read(source)]
+    if len(candidates) != 1:
+        raise ValueError("Dynamic protocol source is absent or ambiguous")
+    source = candidates[0]
+    root = audit.tree(source).root_node
+    method = next(node for node in walk(root) if node.type == "method_definition"
+                  and node.child_by_field_name("name").text == b"getProximitySensorAccelerationState")
+    protocol = method.parent.parent
+    commands, method_owners = direct_command_headers(audit, source, protocol, (
+        "getProximitySensorAccelerationState", "setProximitySensorAccelerationState",
+        "getProximitySensorAccelerationMode", "setProximitySensorAccelerationMode",
+        "getProximitySensorAccelerationCurveSetting", "getProximitySensorAccelerationCurveData",
+        "setProximitySensorAccelerationCurveData", "getProximitySensorAngleTune", "setProximitySensorAngleTune"))
+    expected = dict(zip(commands, ([2,11,144], [2,11,16], [2,11,145], [2,11,17],
+                                  [3,11,146], [37,11,147], [37,11,19], [3,11,148], [3,11,20])))
+    if commands != expected:
+        raise ValueError("Dynamic sensor command headers differ from current implemented tasks")
+    runners = [node for node in walk(root) if node.type == "function_declaration"
+               and b"setProximitySensorAccelerationState(1,e.state)" in node.text]
+    if len(runners) != 1:
+        raise ValueError("Dynamic source setter runner is absent or ambiguous")
+    runner = runners[0]
+    body = runner.text.decode()
+    if not all(anchor in body for anchor in ("setProximitySensorAccelerationMode(1,e.mode)",
+            "customSensorAccelerations.length", "250", "Float32Array", "32", "15",
+            "setProximitySensorAccelerationCurveData(1,e.mode,250", "signal.aborted")):
+        raise ValueError("Dynamic complete upload order, chunk or cancellation semantics differs")
+    makers = [node for node in walk(root) if node.type in ("function_declaration", "function_expression")
+              and node.child_by_field_name("parameters") is not None
+              and len(node.child_by_field_name("parameters").named_children) >= 5
+              and re.search(rb"\b[\w$]+\.dynamicSensitivity=[\w$]+", node.text)
+              and b"NORMAL_SKIPPABLE" in node.text and b"nextVersion" in node.text]
+    if len(makers) != 1 or not all(anchor in makers[0].text for anchor in (
+            b"nextVersion", b"enqueueTask", b"NORMAL_SKIPPABLE", b'"setting"')):
+        raise ValueError("Dynamic local version/persistence then device task maker differs")
+    monitor_owners = audit.retain("dynamic_monitor_command", source,
+        'startMouseInputMonitoring();break;', {"variable_declarator"})
+    monitor = audit.owners[monitor_owners[0]]
+    monitor_body = monitor["body"]
+    handler_ref = re.search(r'\.on\("inputMonitoringEvent",([\w$]+)\)', monitor_body)
+    if handler_ref is None:
+        raise ValueError("Dynamic input callback is unresolved")
+    handler = audit.binding("dynamic_monitor_movement", source, handler_ref[1],
+                            monitor["byte_start"] + handler_ref.start(1))
+    if handler["resolution"] != "declaration" or not all(anchor in handler["body"] for anchor in (
+            '"mouseMove"', "Math.abs", "Math.sqrt", "lastTimeTick", "1e4")):
+        raise ValueError("Dynamic actual movement arithmetic is unresolved")
+    getter_names = {"getProximitySensorAccelerationState", "getProximitySensorAccelerationMode",
+                    "getProximitySensorAccelerationCurveSetting", "getProximitySensorAccelerationCurveData"}
+    getter_callers = []
+    for item in files:
+        if not item["path"].endswith(".js"):
+            continue
+        for node in walk(audit.tree(item).root_node):
+            callee = node.child_by_field_name("function") if node.type == "call_expression" else None
+            prop = callee.child_by_field_name("property") if callee is not None and callee.type == "member_expression" else None
+            if prop is not None and prop.text.decode() in getter_names:
+                getter_callers.append(keep("dynamic_getter_direct_caller", item, node))
+    if getter_callers:
+        raise ValueError("Dynamic getter acquired a direct source consumer; review UI observation semantics")
+    return {"product_id": product_id, "original": source,
+        "protocol_factory": keep("dynamic_complete_protocol_factory", source, enclosing_module(protocol)),
+        "protocol_class": keep("dynamic_complete_protocol_class", source, protocol),
+        "commands": commands, "method_owners": method_owners,
+        "runner": keep("dynamic_complete_setter_runner", source, runner),
+        "maker": keep("dynamic_complete_persistence_then_dispatch", source, makers[0]),
+        "monitor_factory": keep("dynamic_complete_monitor_factory", source,
+            enclosing_module(root.descendant_for_byte_range(monitor["byte_start"], monitor["byte_end"]-1))),
+        "monitor_command": monitor_owners, "monitor_callback": handler["owner_id"],
+        "getter_direct_callers": getter_callers,
+        "mounted_state_consumer": "local profile dynamicSensitivity; optimistic editor state; independent Rust GET diagnostics never replace source UI draft"}
+
+
+def audit_mouse_dynamic_sensitivity(args):
+    import host
+    if args.family != "mouse" or args.function != "mw":
+        raise ValueError("mouse-dynamic-sensitivity requires current mouse middleware")
+    ids = sorted(set(args.product or [190, 192, 196, 222, 226, 229, 239]))
+    if set(ids) - {190, 192, 196, 222, 226, 229, 239}:
+        raise ValueError("Resolve the mounted dynamic editor before extending this query")
+    audit, products, source_sets = host.HostLocalAudit(), [], []
+    for product_id in ids:
+        source_set, files = audit.source_set(f"mouse-mw-{product_id}-current")
+        if source_set["deployment"]["failures"]:
+            raise ValueError("Dynamic current deployment selection failed")
+        source_sets.append(source_set)
+        products.append(dynamic_sensitivity_source(audit, files, product_id))
+    indexed = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))
+    physical = a.feature_report_callers(audit.parser, {item["path"]: item for item in indexed["inputs"]},
+        selected_capabilities=[{"product_id": pid} for pid in ids], write_runtime=False)
+    if any(not row["source_owners_complete"] or row["failures"] for row in physical["products"]):
+        raise ValueError("Dynamic effective physical factories are unresolved")
+    # Input START/STOP uses the same native entry points whose full ABI, callback,
+    # registration, stop and shutdown owners are retained by the matcher query.
+    matcher_path = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    document = json.loads(audit.artifact(matcher_path))
+    matcher = document["queries"]["dpi_matcher"]
+    if matcher["failures"]:
+        raise ValueError("Shared input-monitor native evidence has unresolved failures")
+    for artifact in matcher["artifacts"]:
+        if artifact["path"].startswith((".analysis/inputs/host-current/", ".analysis/inputs/installed-current/", ".analysis/results/native/")):
+            audit.artifact(a.ROOT / artifact["path"], artifact)
+    if audit.final_snapshot():
+        raise ValueError("Dynamic current original bytes changed during query")
+    result = {"recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)),
+        "parsers": audit.parser_versions, "source_sets": source_sets, "products": products,
+        "physical_factories": physical, "shared_native_monitor": {key: matcher[key] for key in
+            ("host_originals", "mapping_abi", "mapping_native")},
+        "complete_owners": audit.owners, "verified_artifacts": list(audit.artifacts.values()),
+        "semantics": {"custom_points":250,"chunk_points":8,"full_chunk_delay_ms":15,
+            "write_completion":"source setter ACK; current state GET remains an independent observation",
+            "persistence":"local profile dynamicSensitivity and 53-bit version precede NORMAL_SKIPPABLE setting dispatch",
+            "ui_confirmation":"actual source setter acknowledgement clears source loading; independent Rust readback stays diagnostic without getter-to-draft updates"},
+        "target_execution":False,"runtime_acceptance":"unverified","whole_page_complete":False,
+        "limitations":["Missing source maps and unresolved acquisition references remain explicit in each source set",
+            "Native static evidence and simulated transport checks do not establish real device/window acceptance"]}
+    with a.index_lock():
+        document = json.loads(matcher_path.read_bytes())
+        document.setdefault("queries", {})["dynamic_sensitivity"] = result
+        a.save(matcher_path, document)
+    if args.prepare:
+        a.save(a.ROOT / "crates/razer-device/testdata/re/mouse-sensor-current-source.json", {
+            "schema_version":2,"products":[{"product_id":row["product_id"],
+                "queries":[{"name":name,"command":command} for name,command in row["commands"].items()]}
+                for row in products],"semantics":result["semantics"]})
+    print(json.dumps({"receipt":a.rel(matcher_path),"query":"dynamic_sensitivity",
+        "products":ids,"complete_owners":len(audit.owners),"target_execution":False}),flush=True)
+    return result
+
+
 def audit_mouse_dpi_matcher(args):
     """Retain the current matcher, actual lock owners, host ABI and OS name source."""
     import host
@@ -14685,6 +14833,143 @@ def audit_registry_identity(prepare=False, products=None):
         raise ValueError("Current registry identity audit remains unresolved")
 
 
+def mouse_idle_initialization_source(audit, files):
+    """Resolve the Ready publisher and getter through their real lexical owners."""
+    publisher = audit.webpack_export("idle_ready_publisher", files, 50350, "pH")
+    getter = audit.webpack_export("idle_initial_getter", files, 87887, "kp")
+
+    def require(condition, message):
+        if not condition:
+            raise ValueError("Current mouse idle initialization differs: " + message)
+
+    def walk(root):
+        pending = [root]
+        while pending:
+            node = pending.pop()
+            yield node
+            pending.extend(reversed(node.named_children))
+
+    def unwrap(node):
+        while node is not None and node.type in {"parenthesized_expression", "sequence_expression"}:
+            node = node.named_children[-1] if node.named_children else None
+        return node
+
+    def owner_node(export):
+        binding = export["binding"]
+        node = audit.tree(export["original"]).root_node.descendant_for_byte_range(
+            binding["start_byte"], binding["end_byte"] - 1)
+        require(node.start_byte == binding["start_byte"] and node.end_byte == binding["end_byte"]
+                and node.type == "variable_declarator", "exported callable declaration")
+        return node
+
+    def member_calls(root, name):
+        result = []
+        for node in walk(root):
+            if node.type == "call_expression":
+                target = unwrap(node.child_by_field_name("function"))
+                if target is not None and target.type == "member_expression" \
+                        and target.child_by_field_name("property").text == name:
+                    result.append((node, target))
+        return result
+
+    ready_node, getter_node = owner_node(publisher), owner_node(getter)
+    calls = member_calls(ready_node, getter["export"].encode())
+    require(len(calls) == 1, "one actual exported getter call in the Ready publisher")
+    call, target = calls[0]
+    require(not call.child_by_field_name("arguments").named_children, "initial getter uses its default parameter")
+    receiver = target.child_by_field_name("object")
+    require(receiver.type == "identifier", "getter import receiver")
+    imported = audit.binding("idle_ready_getter_import", publisher["original"],
+                             receiver.text.decode(), receiver.start_byte)
+    require(imported["resolution"] == "declaration", "lexical getter import")
+    import_node = audit.tree(publisher["original"]).root_node.descendant_for_byte_range(
+        imported["start_byte"], imported["end_byte"] - 1)
+    value = import_node.child_by_field_name("value")
+    factory = audit.owners[publisher["complete_factory_owner"]]
+    factory_node = audit.tree(publisher["original"]).root_node.descendant_for_byte_range(
+        factory["byte_start"], factory["byte_end"] - 1)
+    factory_value = factory_node.child_by_field_name("value") or factory_node
+    require_name = factory_value.child_by_field_name("parameters").named_children[2].text
+    require(value is not None and value.type == "call_expression"
+            and value.child_by_field_name("function").text == require_name
+            and [node.text for node in value.child_by_field_name("arguments").named_children] == [b"87887"],
+            "Ready getter import must resolve to factory87887")
+
+    ancestors, node = [], call.parent
+    while node is not None and node.start_byte >= ready_node.start_byte:
+        ancestors.append(node)
+        if node == ready_node:
+            break
+        node = node.parent
+    conditions = [node.child_by_field_name("condition") for node in ancestors if node.type == "if_statement"]
+    require(len(conditions) >= 2, "battery and initial-read feature gates")
+    compact = lambda node: re.sub(rb"\s+", b"", node.text)
+    require(compact(conditions[0]) == b"(null===(y=b.yes)||void0===y?void0:y.alwaysReadPowerSavingFromDevice)",
+            "alwaysReadPowerSavingFromDevice gate")
+    power_gate = unwrap(conditions[1])
+    require(power_gate.type == "binary_expression" and compact(power_gate) == b"b&&C.powerStatus",
+            "isBattery and current powerStatus gate")
+    cases = [node for node in ancestors if node.type == "switch_case"]
+    require(len(cases) == 1 and cases[0].child_by_field_name("value").text == b"c.Dh.READY",
+            "setupStatus Ready branch")
+    declaration = next((node for node in ancestors if node.type == "variable_declarator"), None)
+    require(declaration is not None and declaration.child_by_field_name("value").type == "yield_expression",
+            "await the initial getter before publication")
+    result_name = declaration.child_by_field_name("name").text
+    branch = next(node for node in ancestors if node.type == "if_statement")
+    publications = []
+    for push, member in member_calls(branch.child_by_field_name("consequence"), b"push"):
+        for argument in push.child_by_field_name("arguments").named_children:
+            if argument.type != "object":
+                continue
+            fields = {pair.child_by_field_name("key").text: pair.child_by_field_name("value").text
+                      for pair in argument.named_children if pair.type == "pair"}
+            if fields.get(b"type") == b"i.WDf":
+                publications.append((member.child_by_field_name("object").text, fields.get(b"payload")))
+    require(publications == [(b"e", result_name)], "WDf publishes the awaited getter result")
+
+    function = getter_node.child_by_field_name("value")
+    parameters = function.child_by_field_name("parameters")
+    require(parameters is not None and parameters.named_child_count == 1, "getter fallback parameter")
+    parameter = parameters.named_children[0]
+    require(parameter.type == "assignment_pattern" and parameter.child_by_field_name("right").text == b"5",
+            "source helper default is five minutes")
+    fallback = parameter.child_by_field_name("left").text
+    reads = member_calls(getter_node, b"getTimeToSleep")
+    require(len(reads) == 1 and not reads[0][0].child_by_field_name("arguments").named_children,
+            "actual getTimeToSleep getter")
+    returns = [node for node in walk(getter_node) if node.type == "return_statement"]
+    require(any(node.named_children and compact(node.named_children[0]) == b"t.timeToSleep/60"
+                for node in returns), "seconds-to-minutes projection")
+    catches = [node for node in walk(getter_node) if node.type == "catch_clause"]
+    require(len(catches) == 1, "getter rejection catch")
+    caught_returns = [node for node in walk(catches[0]) if node.type == "return_statement"]
+    require(len(caught_returns) == 1 and caught_returns[0].named_children,
+            "source catch returns the helper fallback parameter")
+    caught_value = unwrap(caught_returns[0].named_children[0])
+    require(caught_value.type == "identifier" and caught_value.text == fallback,
+            "source catch returns the helper fallback parameter")
+    fallback_binding = audit.binding("idle_getter_catch_fallback", getter["original"],
+                                    fallback.decode(), caught_value.start_byte)
+    require(fallback_binding["resolution"] == "parameter_requires_caller_analysis"
+            and fallback_binding["start_byte"] == parameter.child_by_field_name("left").start_byte
+            and fallback_binding["scope"]["start_byte"] == function.start_byte,
+            "source catch fallback is the getter parameter, not a shadowed value")
+    owner_ids = list(dict.fromkeys([publisher["complete_factory_owner"], publisher["export_definition_owner"],
+        publisher["binding"]["owner_id"], imported["owner_id"], getter["complete_factory_owner"],
+        getter["export_definition_owner"], getter["binding"]["owner_id"]]))
+    return {
+        "publisher": {"module_id": 50350, "export": "pH", "binding": publisher["binding"]["name"],
+                      "owner": publisher["binding"]["owner_id"], "getter_import_owner": imported["owner_id"]},
+        "getter": {"module_id": 87887, "export": "kp", "binding": getter["binding"]["name"],
+                   "owner": getter["binding"]["owner_id"], "source_fallback_minutes": 5},
+        "complete_owners": [audit.owners[key] for key in owner_ids],
+        "initialization": "50350._e (export pH) assembles the READY UI batch. With isBattery, current powerStatus and yes.alwaysReadPowerSavingFromDevice, it awaits 87887.kp/Z with no argument and appends WDf with that result; the getter projects getTimeToSleep().jsonData.timeToSleep/60.",
+        "source_failure": "87887.Z has a default parameter of 5 minutes; its catch logs a rejected getter and returns that parameter. The no-argument 50350._e call can therefore publish 5 after a source getter failure; this publication is not proof of a device observation.",
+        "actual_failure": "This application's actual device/service observation retains read failure or unobserved state. The source helper fallback and initial reducer value 5 must not be projected as an actual device value or a successful read/write.",
+    }
+
+
 def audit_mouse_receiver_polling(args):
     """Bind PID182 receiver reads to current middleware, host and native bytes."""
     import importlib.metadata
@@ -14694,7 +14979,6 @@ def audit_mouse_receiver_polling(args):
     if args.family != "mouse" or args.function != "mw" or set(args.product or [182]) != {182}:
         raise ValueError("mouse-receiver-polling currently audits the complete PID182 middleware caller")
     report_path = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
-    report = json.loads(report_path.read_bytes()) if report_path.is_file() else {"schema_version": 1}
     row = {"product_id": 182, "original_inputs": [], "complete_bodies": {},
            "failures": [], "unresolved_chains": [], "runtime_acceptance": "unverified"}
 
@@ -14932,6 +15216,10 @@ def audit_mouse_receiver_polling(args):
             idle_regions.append({"role": role, "source": verified(ui_source),
                 "byte_start": node.start_byte, "byte_end": node.end_byte,
                 "body": body.decode("utf-8"), "body_sha256": hashlib.sha256(body).hexdigest()})
+        import host
+        idle_audit = host.HostLocalAudit()
+        idle_initialization = mouse_idle_initialization_source(idle_audit, [chunks["6259.js"][0]])
+        require(not idle_audit.final_snapshot(), "Idle initialization source bytes changed during query")
         row["idle_ui"] = {"acquisition": identity(ui_acquisition_path), "capture": identity(ui_capture_path),
             "source": verified(ui_source), "complete_regions": idle_regions,
             "mounted_branch": "km Power tab -> Km/Wm -> ym({}) -> connected Fm -> KC.A min1/max15/step1/active:true; usePowerSavingButton is not supplied",
@@ -14939,7 +15227,9 @@ def audit_mouse_receiver_polling(args):
             "local_persistence": "main overrides alwaysReadPowerSavingFromDevice=true;30525.pn skips root localStorage/version. Task-maker and successful runner update host memory storage only; no profile idle draft or workspace auto-save.",
             "task_sequence": "83789 powerSavingAction/w macro-recorder gate ->90012 power ->30525.pn/_Mr ->81988 NORMAL_SKIPPABLE powerSaving ->85191.Rt/ou3 setTimeToSleep(60*minutes), abort check, getTimeToSleep, compare. No pre-read or setter payload comparison.",
             "completion": "85191.wt/taw emits HID then $1T; completed/skipped clear actions, failure records error; no rollback/getter-to-editor update. The verification getter only confirms device delivery.",
-            "initialization": "90012 initial UI assembly invokes87887.Z/kp when isBattery.yes.alwaysReadPowerSavingFromDevice and powerStatus; getTimeToSleep()/60, failure fallback5 ->WDf.",
+            "initialization": idle_initialization["initialization"],
+            "initialization_source": {**idle_initialization, "tool": identity(Path(__file__)),
+                                      "static_parser": idle_audit.parser_versions, "target_execution": False},
             "queue": "81988.g.run retains currentTask and pops latest pendingTask, skipping/disposal of older pending entries; cancellation retains cleanup until settlement.",
             "whole_page_complete": False, "runtime_acceptance": "unverified"}
         dpi_feature = retain("main.js", "current_derived_DPI_task_feature_default", "taskRunnerSetDPI:{setDpiStages:{}}")
@@ -15180,13 +15470,16 @@ def audit_mouse_receiver_polling(args):
             "DPI OBM writes require actual active-profile GUID to observed-slot association; current profile1 readback does not prove OBM persistence"]
     except (OSError, ValueError, KeyError, StopIteration) as error:
         row["failures"].append(str(error))
-    report.setdefault("queries", {})["mouse-receiver-polling"] = {
+    query = {
         "recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)), "python_version": platform.python_version(),
         "static_parser": {name: importlib.metadata.version(name) for name in ("tree-sitter", "tree-sitter-javascript")},
         "method": "Complete original AST module bodies, current ASAR members and hash-verified full IDA function records; no target execution",
         "products": [row], "target_execution": False, "real_device_operations": False,
     }
-    a.save(report_path, report)
+    with a.index_lock():
+        report = json.loads(report_path.read_bytes()) if report_path.is_file() else {"schema_version": 1}
+        report.setdefault("queries", {})["mouse-receiver-polling"] = query
+        a.save(report_path, report)
     print(json.dumps({"receipt": a.rel(report_path), "product_id": 182, "complete_bodies": len(row["complete_bodies"]),
                       "native_functions": len(row.get("native", {}).get("complete_functions", [])), "failures": row["failures"]}), flush=True)
     if row["failures"]:
@@ -19455,7 +19748,7 @@ def add_commands(parsers):
     audit.add_argument("--family", required=True, choices=list(FAMILY_CANDIDATES))
     audit.add_argument("--function", required=True)
     audit.add_argument("--product", type=int, action="append")
-    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-dpi-matcher", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-local-controls", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
+    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-dpi-matcher", "mouse-dynamic-sensitivity", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-local-controls", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
     audit.add_argument("--prepare", action="store_true", help="Prepare verified current artwork resources through the shared workflow")
     audit.add_argument("--receipt-only", action="store_true", help="Refresh supported mouse or mapping-engine evidence without rewriting runtime descriptors")
     parser = parsers.add_parser("acquire-family", help=__doc__)

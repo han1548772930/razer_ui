@@ -315,6 +315,7 @@ impl DeviceWorkspace {
         values: Option<razer_device::device_reads::DeviceReadValues>,
         cx: &mut Context<Self>,
     ) {
+        self.observe_mouse_polling_values(values.as_ref());
         self.device.observe_read_values(values.clone());
         self.saved.observe_read_values(values);
         cx.notify();
@@ -332,6 +333,7 @@ impl DeviceWorkspace {
     ) {
         if self.device.dashboard.connection_observation != observation {
             self.cancel_profile_transfer(cx);
+            self.invalidate_mouse_polling_connection();
         }
         self.device.observe_connection(observation.clone());
         self.saved.observe_connection(observation);
@@ -966,7 +968,10 @@ impl DeviceWorkspace {
                     return;
                 }
                 let value = match event {
-                    SliderEvent::Change(_) if power_range => {
+                    SliderEvent::Change(value) if power_range => {
+                        if target == Control::Idle {
+                            this.preview_mouse_idle(value.start(), cx);
+                        }
                         cx.notify();
                         return;
                     }
@@ -977,7 +982,7 @@ impl DeviceWorkspace {
                 if let Some(value) = value {
                     if target == Control::LowPower
                         && this.mouse_polling_scope(cx).is_some()
-                        && !this.mouse_low_power_enabled()
+                        && this.mouse_low_power_enabled() != Some(true)
                     {
                         this.sync_controls(window, cx);
                         return;
@@ -1023,11 +1028,13 @@ impl DeviceWorkspace {
             (Control::Tracking, s.tracking.tracking as f32),
             (Control::Lift, s.tracking.lift as f32),
             (Control::Landing, s.tracking.landing as f32),
-            (Control::Idle, self.mouse_idle_value()),
             (Control::LowPower, s.low_power as f32),
             (Control::Brightness, s.lighting.brightness as f32),
             (Control::LightingIdle, s.lighting.idle_minutes as f32),
         ];
+        if let Some(value) = self.mouse_idle_value() {
+            values.push((Control::Idle, value));
+        }
         for b in &s.audio.bands {
             values.push((Control::Audio(b.frequency), b.decibel as f32));
         }
@@ -1237,6 +1244,12 @@ impl DeviceWorkspace {
         }
     }
     fn apply_continue(&mut self, next: Continue, window: &mut Window, cx: &mut Context<Self>) {
+        if matches!(
+            next,
+            Continue::Page(_) | Continue::HistoryPage { .. } | Continue::Profile(_)
+        ) {
+            self.cancel_mouse_idle_preview(window, cx);
+        }
         let editor_focused = self.mapping_focus.contains_focused(window, cx);
         let closing_drawer_mapping =
             matches!(next, Continue::Drawer(false)) && self.customize_drawer.source_input.is_some();

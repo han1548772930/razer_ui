@@ -240,10 +240,7 @@ impl AppShell {
             && self
                 .receiver_reset
                 .get(&save.identity)
-                .is_some_and(|session| {
-                    Arc::ptr_eq(&session.canceled, &save.canceled)
-                        && session.request.generation() == save.request.generation()
-                })
+                .is_some_and(|session| session.matches(save.request, &save.canceled))
             && self.devices.contains(&save.workspace)
             && save.workspace.read(cx).identity(cx) == save.identity
             && save.workspace.read(cx).connection_revision() == save.connection_revision

@@ -102,7 +102,7 @@ pub enum Origin {
     ImportedProjection,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Snapshot {
     configuration: Option<Configuration>,
     origin: Option<Origin>,

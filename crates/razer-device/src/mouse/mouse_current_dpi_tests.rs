@@ -524,6 +524,73 @@ fn active_dpi_reads_profile_zero_skips_unchanged_value_and_confirms_each_changed
 }
 
 #[test]
+fn read_keeps_the_actual_2000_pair_when_the_independent_stage_getter_fails() {
+    let device = Mock::new(vec![
+        Reply {
+            status: 5,
+            data: vec![],
+        },
+        reply(active(2000, 2100)),
+    ]);
+    let report = execute(&device, None, next(), || Ok(())).unwrap();
+    assert_eq!(report.active, Some(DpiPair { x: 2000, y: 2100 }));
+    assert!(report.stages.is_none());
+    assert!(report.read_errors.stages().is_some());
+    assert!(report.read_errors.active().is_none());
+    assert!(!report.verified);
+    assert!(report.acknowledgements.is_empty());
+    assert_eq!(
+        device
+            .sent()
+            .iter()
+            .map(|packet| packet[8])
+            .collect::<Vec<_>>(),
+        [134, 133]
+    );
+}
+
+#[test]
+fn read_keeps_the_actual_stage_table_when_the_independent_active_getter_fails() {
+    let mut observed = draft();
+    observed.stages[2].x = 2000;
+    observed.stages[2].y = 2100;
+    let device = Mock::new(vec![
+        reply(getter(&observed)),
+        Reply {
+            status: 5,
+            data: vec![],
+        },
+    ]);
+    let report = execute(&device, None, next(), || Ok(())).unwrap();
+    let stages = report.stages.unwrap();
+    assert_eq!((stages.records[2].x, stages.records[2].y), (2000, 2100));
+    assert!(report.active.is_none());
+    assert!(report.read_errors.stages().is_none());
+    assert!(report.read_errors.active().is_some());
+    assert!(!report.verified);
+    assert!(report.acknowledgements.is_empty());
+}
+
+#[test]
+fn failed_getters_report_each_failure_without_any_cached_or_default_value() {
+    let device = Mock::new(vec![
+        Reply {
+            status: 5,
+            data: vec![],
+        },
+        Reply {
+            status: 5,
+            data: vec![],
+        },
+    ]);
+    let report = execute(&device, None, next(), || Ok(())).unwrap();
+    assert!(report.active.is_none() && report.stages.is_none() && report.stage_level.is_none());
+    assert!(report.read_errors.stages().is_some() && report.read_errors.active().is_some());
+    assert!(!report.verified);
+    assert!(report.acknowledgements.is_empty());
+}
+
+#[test]
 fn hidden_row_unlink_retains_source_active_zero_in_both_staging_modes() {
     let mut table = draft();
     table.stages[2].visible = false;

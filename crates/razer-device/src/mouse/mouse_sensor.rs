@@ -1,4 +1,4 @@
-//! Current PID226 direct sensor rotation and dynamic sensitivity commands.
+//! Current direct sensor rotation and dynamic sensitivity commands.
 //! Source setters resolve after their response; optional independent readback
 //! is explicit below. This module neither chooses a HID node nor saves a profile.
 use crate::{backend::FeatureTransport, device_reads::DeviceReadCapability, feature_exchange};
@@ -6,7 +6,7 @@ use anyhow::{Context as _, ensure};
 use serde::{Deserialize, Serialize};
 use std::{fmt, time::Duration};
 
-pub const AUDITED_PRODUCTS: &[u32] = &[226];
+pub const AUDITED_PRODUCTS: &[u32] = &[190, 192, 196, 222, 226, 229, 239];
 const PROFILE: u8 = 1;
 const POINTS: usize = 250;
 const CHUNK: usize = 8;
@@ -60,7 +60,7 @@ pub enum SensorQuery {
     Rotation,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub enum SensorObservation {
     AccelerationState {
         raw_state: u8,
@@ -84,7 +84,7 @@ pub enum SensorObservation {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct SensorAcknowledgement {
     pub command: [u8; 3],
     pub payload: Vec<u8>,
@@ -92,14 +92,14 @@ pub struct SensorAcknowledgement {
     pub data: Vec<u8>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct SensorConfirmation {
     pub acknowledgement_index: usize,
     pub observation: SensorObservation,
     pub matches_request: bool,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 pub struct SensorWriteReport {
     pub attempted_writes: usize,
     pub acknowledgements: Vec<SensorAcknowledgement>,
@@ -147,7 +147,10 @@ impl std::error::Error for SensorWriteFailure {}
 fn validate_cap(cap: &DeviceReadCapability) -> anyhow::Result<()> {
     ensure!(
         AUDITED_PRODUCTS.contains(&cap.product_id)
-            && cap.source_class == "rzDevice25DualLinkMouse"
+            && matches!(
+                cap.source_class.as_str(),
+                "rzDevice25" | "rzDevice25DualLinkMouse"
+            )
             && cap.transaction_prefix == 0
             && cap.transaction_modulus == 31,
         "Sensor product or direct transport branch is not current-source audited"
@@ -252,6 +255,10 @@ pub fn read(
     validate: impl Fn() -> anyhow::Result<()>,
 ) -> anyhow::Result<SensorObservation> {
     validate_cap(cap)?;
+    ensure!(
+        query != SensorQuery::Rotation || cap.product_id == 226,
+        "Rotation protocol has no current product audit"
+    );
     let (command, payload) = query_request(query)?;
     let data = feature_exchange::exchange(device, cap, command, &payload, transaction, &validate)?;
     parse(query, &data)
@@ -372,6 +379,36 @@ fn matches_request(request: &WriteRequest, observation: &SensorObservation) -> b
     }
 }
 
+pub(crate) fn validate_setter_report(
+    change: &SensorChange,
+    report: &SensorWriteReport,
+    failed: bool,
+) -> anyhow::Result<()> {
+    let requests = prepare(change)?;
+    ensure!(
+        report.confirmations.is_empty()
+            && report.attempted_writes <= requests.len()
+            && report.acknowledgements.len() <= report.attempted_writes
+            && report.attempted_writes <= report.acknowledgements.len() + 1,
+        "Sensor setter report contains impossible delivery status"
+    );
+    for (ack, expected) in report.acknowledgements.iter().zip(&requests) {
+        ensure!(
+            ack.command == expected.command
+                && ack.payload == expected.payload
+                && ack.data.len() <= 80,
+            "Sensor setter acknowledgement belongs to another command or payload"
+        );
+    }
+    ensure!(
+        failed
+            || report.attempted_writes == requests.len()
+                && report.acknowledgements.len() == requests.len(),
+        "Sensor setter report omits successful source tasks"
+    );
+    Ok(())
+}
+
 /// Keep the source mutation order. Independent confirmation is an explicit
 /// optional extension: no request value or setter echo substitutes for a GET.
 /// `wait` is supplied by the caller so tests simulate the source chunk delays.
@@ -392,6 +429,13 @@ pub fn apply(
         error,
     };
     let requests = validate_cap(cap)
+        .and_then(|()| {
+            ensure!(
+                !matches!(change, SensorChange::Rotation { .. }) || cap.product_id == 226,
+                "Rotation protocol has no current product audit"
+            );
+            Ok(())
+        })
         .and_then(|()| prepare(change))
         .map_err(|error| fail(SensorFailurePhase::Prepare, report.clone(), error))?;
     for request in &requests {
@@ -462,7 +506,9 @@ fn ensure_transaction(cap: &DeviceReadCapability, transaction: u8) -> anyhow::Re
     );
     ensure!(
         cap.report_bytes == 91
-            && cap.report_id == 0
+            && (cap.report_id == 0
+                || cap.source_class == "rzDevice25DualLinkMouse"
+                    && cap.report_id == cap.claim_interface)
             && cap.max_retry_in > 0
             && cap.max_retry_out > 0,
         "Sensor packet capability differs from current source"

@@ -21,6 +21,190 @@ def catalog():
 
 
 class TypedTableTests(unittest.TestCase):
+    def current_read_fixture(self):
+        template = json.loads(self.source_fixture("device-read-capabilities.json"))["products"][0]
+        template.pop("alternate_commands")
+        template.update(source_class="rzDevice25", polling_codes={}, queries=[template["queries"][0]])
+        products = []
+        for pid, interface, selector, physical in ((190, 0, 0, [190, 191]), (679, 3, 3, [679])):
+            product = copy.deepcopy(template)
+            product.update(product_id=pid, claim_interface=interface, report_id=selector, direct_pids=physical)
+            product["claim_interfaces_by_pid"] = {str(key): interface for key in physical}
+            product["physical_transports_by_pid"] = {
+                str(key): {**{field: product[field] for field in (
+                    "source_class", "claim_interface", "report_id", "transaction_prefix", "transaction_modulus",
+                    "max_retry_in", "max_retry_out", "sleep_between_out_ms", "sleep_between_out_in_ms", "sleep_between_in_ms")},
+                    "is_duallink": False} for key in physical}
+            if pid == 190:
+                product["queries"] += [{"name": name, "method": method, "command": command,
+                    "payload": payload, "min_response_bytes": minimum} for method, name, command, payload, minimum in (
+                    ("getBatteryLevel", "battery", [2, 7, 128], [0], 2),
+                    ("getChargingStatus", "charging", [2, 7, 132], [0], 2),
+                    ("getTimeToSleep", "idle", [2, 7, 131], [], 2))]
+                product["charging_codes"] = {"NoCharge_BatteryFull": 0, "Charging": 1, "ChargingFailed": 2,
+                    "ForeignObjectDetection": 3, "FastCharging": 4, "FullCharging": 5, "ReachChargingLimit": 6}
+            products.append(product)
+        return products
+
+    def test_current_read_projection_checks_every_transport_command_selector_and_response_field(self):
+        products = self.current_read_fixture()
+        raw = typed_tables.render_read_catalog(json.dumps({"schema_version": 1, "products": products}).encode())
+        self.assertEqual(typed_tables.current_read_table_projection(raw, products), (raw, [190, 679]))
+        decorated = raw.replace(b"command: [4, 0, 135]", b"command: /* retained */ [ 4, 0, 135 ]")
+        self.assertEqual(typed_tables.current_read_table_projection(decorated, products)[0], decorated)
+        for before, after in (
+                (b"claim_interface: 0", b"claim_interface: 3"),
+                (b"report_id: 3", b"report_id: 0"),
+                (b"direct_pids: vec![190, 191]", b"direct_pids: vec![190]"),
+                (b"max_retry_in: 10", b"max_retry_in: 11"),
+                (b"transaction_modulus: 31", b"transaction_modulus: 32"),
+                (b"command: [4, 0, 135]", b"command: [4, 0, 134]"),
+                (b"payload: vec![0]", b"payload: vec![1]"),
+                (b"min_response_bytes: 4", b"min_response_bytes: 3"),
+                (b'("Charging".into(), 1)', b'("Charging".into(), 4)'),
+                (b"is_duallink: false", b"is_duallink: true"),
+                (b"source_class:", b"unexpected_field: 0, source_class:"),
+                (b"product_id: 190,", b"product_id: 190, product_id: 190,")):
+            self.assertIn(before, raw)
+            with self.assertRaises(ValueError, msg=str(before)):
+                typed_tables.current_read_table_projection(raw.replace(before, after, 1), products)
+
+    def test_current_read_projection_updates_only_verified_products_and_rejects_wrong_owners(self):
+        products = self.current_read_fixture()
+        other = copy.deepcopy(products[1])
+        other.update(product_id=708, direct_pids=[708], physical_transports_by_pid={}, claim_interfaces_by_pid={})
+        original = typed_tables.render_read_catalog(json.dumps({"schema_version": 1, "products": [other, products[0]]}).encode())
+        with self.assertRaisesRegex(ValueError, "omits current product 679"):
+            typed_tables.current_read_table_projection(original, products)
+        stale = original.replace(b"claim_interface: 0", b"claim_interface: 2", 1)
+        updated, ids = typed_tables.current_read_table_projection(stale, products, update=True)
+        self.assertEqual(ids, [190, 679])
+        self.assertEqual(typed_tables.current_read_table_projection(updated, products)[0], updated)
+        self.assertFalse(any(line.endswith((b" ", b"\t")) for line in updated.splitlines()))
+        other_start = original.index(b"        DeviceReadCapability {")
+        other_end = original.index(b"        DeviceReadCapability {", other_start + 1)
+        self.assertIn(original[other_start:other_end], updated)
+        no_trailing_comma = original.replace(b"        },\n    ]", b"        }\n    ]")
+        updated, _ = typed_tables.current_read_table_projection(no_trailing_comma, products, update=True)
+        self.assertEqual(typed_tables.current_read_table_projection(updated, products)[0], updated)
+        for invalid in (original.replace(b"fn products()", b"fn fixture()"),
+                        original.replace(b"product_id: 708", b"product_id: 190"),
+                        original.replace(b"product_id: 190", b"product_id: id()"),
+                        b"mod fixture {" + original + b"}"):
+            with self.assertRaises(ValueError):
+                typed_tables.current_read_table_projection(invalid, products, update=True)
+
+    @staticmethod
+    def current_decoder_helpers():
+        return {
+            "getExtendedFirmwareVersion": "f=e=>wrap(function*(){const r=yield e.sendCommand(c.fw,c.description);"
+                "return(r=>{r.status===status.STATUS_SUCCESS&&(r.jsonData={major:r.data[0],minor:r.data[1],"
+                "internal:r.data[2],reserved:r.data[3]})})(r),r})",
+            "getBatteryLevel": "f=(e,id)=>wrap(function*(){const p=new Uint8Array(c.battery[0]);p[0]=id;"
+                "const r=yield e.sendCommand(c.battery,c.description,p);"
+                "return r.jsonData={batteryId:r.data[0],batteryLevel:Math.floor(r.data[1]/255*100)},r})",
+            "getChargingStatus": "f=(e,id)=>wrap(function*(){const p=new Uint8Array(c.charging[0]);p[0]=id;"
+                "const r=yield e.sendCommand(c.charging,c.description,p);return r.jsonData={batteryId:r.data[0],"
+                "chargingStatus:r.data[1],chargingStatusEnum:helper.enumValue(c.Jz,r.data[1])},r})",
+            "getTimeToSleep": "f=e=>wrap(function*(){const p=new Uint8Array(c.idle[0]),r=yield "
+                "e.sendCommand(c.idle,c.description,p);return decoder(r),r})",
+        }
+
+    def test_current_read_decoders_reject_changed_payload_offsets_units_and_missing_fields(self):
+        helpers = self.current_decoder_helpers()
+        for method, body in helpers.items():
+            self.assertIn("payload", typed_tables.current_read_decoder_contract(method, body))
+        for method, before, after in (
+                ("getExtendedFirmwareVersion", "minor:r.data[1]", "minor:r.data[2]"),
+                ("getExtendedFirmwareVersion", ",reserved:r.data[3]", ""),
+                ("getExtendedFirmwareVersion", "c.fw,c.description", "c.fw,c.description,[]"),
+                ("getBatteryLevel", "p[0]=id", "p[1]=id"),
+                ("getBatteryLevel", "p[0]=id", "p[0]=0"),
+                ("getBatteryLevel", "/255*100", "/100*255"),
+                ("getBatteryLevel", "Math.floor", "Math.round"),
+                ("getChargingStatus", "chargingStatus:r.data[1]", "chargingStatus:r.data[0]"),
+                ("getChargingStatus", "c.Jz", "c.otherEnum"),
+                ("getTimeToSleep", "return decoder(r)", "p[0]=1;return decoder(r)")):
+            with self.assertRaises(ValueError, msg=method + " " + before):
+                typed_tables.current_read_decoder_contract(method, helpers[method].replace(before, after))
+        idle = "f=r=>{r.jsonData={timeToSleep:bytes.be(r.data[0],r.data[1])}}"
+        self.assertEqual(typed_tables.current_read_decoder_contract("getTimeToSleep", idle, decoder_only=True)["observed_fields"],
+                         {"timeToSleep": ["big_endian", ["byte", 0], ["byte", 1]]})
+        with self.assertRaises(ValueError):
+            typed_tables.current_read_decoder_contract("getTimeToSleep", idle.replace("r.data[0],r.data[1]", "r.data[1],r.data[0]"),
+                                                       decoder_only=True)
+
+    def test_current_read_key_inventory_uses_normal_fwids_and_rejects_ambiguous_or_dynamic_keys(self):
+        import sys
+        sys.path.insert(0, str(Path(typed_tables.__file__).resolve().parent / "analyzers/python-static"))
+        from tree_sitter import Language, Parser
+        import tree_sitter_javascript
+        parser = Parser(Language(tree_sitter_javascript.language()))
+
+        def project(buttons, mapping):
+            button_tree = parser.parse(("const keys=" + buttons).encode())
+            mapping_tree = parser.parse(("const keys=" + mapping).encode())
+            return typed_tables.current_read_key_inventory(
+                button_tree.root_node.named_children[0].named_children[0].child_by_field_name("value"),
+                mapping_tree.root_node.named_children[0].named_children[0].child_by_field_name("value"))
+
+        buttons = '[{inputID:"W"},{inputID:"A"},{inputID:"W"},{isHyperShift:!0,inputID:"only_shift"}]'
+        mapping = '{W:{fwID:18,inputID:"W",analogKeyID:17},A:{fwID:31,inputID:"A",HID:4}}'
+        self.assertEqual(project(buttons, mapping), [
+            {"firmware_key_id": 18, "input_id": "W"}, {"firmware_key_id": 31, "input_id": "A"}])
+        for changed_buttons, changed_mapping in (
+                (buttons, mapping.replace("fwID:18", "fwID:255")),
+                (buttons, mapping.replace("fwID:31", "fwID:18")),
+                (buttons, mapping.replace("fwID:18", "fwID:deviceKey()")),
+                (buttons, mapping.replace('inputID:"W"', 'inputID:"other"')),
+                (buttons, mapping.replace("analogKeyID:17", "ignoreInObm:!0")),
+                (buttons.replace('inputID:"A"', 'inputID:"missing"'), mapping),
+                (buttons.replace("isHyperShift:!0", "isHyperShift:dynamic"), mapping),
+                (buttons.replace('{inputID:"W"}', '{...deviceKey}'), mapping)):
+            with self.assertRaises(ValueError):
+                project(changed_buttons, changed_mapping)
+
+    def test_current_read_probe_allowlists_match_literal_source_inventory_and_module_ownership(self):
+        expected = [18, 31, 32, 33]
+        rust = b"const KEYBOARD_679_LAYOUT_1_KEYS:&[u8]=&[18,31,32,33];"
+        python = b"_KEYBOARD_679_LAYOUT_1_KEYS=frozenset((18,31,32,33))"
+        self.assertEqual(typed_tables.verify_current_read_key_fixtures(expected, rust, python)["keys"], 4)
+        for invalid_rust, invalid_python in (
+                (rust.replace(b"18,", b"255,"), python),
+                (rust.replace(b"18,", b""), python),
+                (rust.replace(b"18,", b"18,18,"), python),
+                (rust.replace(b"18,", b"id(),"), python),
+                (b"fn fixture(){" + rust + b"}", python),
+                (rust, python.replace(b"18,", b"17,")),
+                (rust, python.replace(b"18,", b"18,18,")),
+                (rust, python.replace(b"frozenset", b"set")),
+                (rust, python + b"\n" + python),
+                (rust, b"def fixture():\n    " + python)):
+            with self.assertRaises(ValueError):
+                typed_tables.verify_current_read_key_fixtures(expected, invalid_rust, invalid_python)
+
+    def test_current_read_inventory_selection_rejects_swapped_layouts_and_override_precedence(self):
+        selection = ('w=()=>{let e=[];return e=o.Yi0.includes(m.A.runtimeData.layoutId)&&n.BUTTON_LIST_UK?'
+            '[...n.BUTTON_LIST_UK]:m.A.runtimeData.layoutId===_.Z7j.Japanese&&n.BUTTON_LIST_JP?'
+            '[...n.BUTTON_LIST_JP]:[...n.BUTTON_LIST],e}')
+        merging = ('C=()=>{var e,t;if(O)return O;let i={};'
+            'const{inputMapping:n,inputMappingJP:r,inputMappingUK:s}=p.A.getFeatureParam("isObm","yes");'
+            'return i=m.A.runtimeData.layoutId===_.Z7j.Japanese&&r?r:o.Yi0.includes(m.A.runtimeData.layoutId)&&s?s:n,'
+            'i?(O={NormalMode:Object.assign(Object.assign({},a.Bx.NormalMode),'
+            '(null===(e=i.keyboard)||void 0===e?void 0:e.NormalMode)||{}),'
+            'HypershiftMode:Object.assign(Object.assign({},a.Bx.HypershiftMode),'
+            '(null===(t=i.keyboard)||void 0===t?void 0:t.HypershiftMode)||{})},O):(O=a.Bx,O)}')
+        self.assertTrue(typed_tables.current_read_inventory_selection_contract(selection, merging)["layout_and_override_selection_equal"])
+        for invalid_selection, invalid_merging in (
+                (selection.replace("[...n.BUTTON_LIST_UK]", "[...n.BUTTON_LIST]"), merging),
+                (selection.replace("===_.Z7j.Japanese", "!==_.Z7j.Japanese"), merging),
+                (selection.replace("&&n.BUTTON_LIST_JP", "||n.BUTTON_LIST_JP"), merging),
+                (selection, merging.replace("a.Bx.NormalMode", "a.Bx.HypershiftMode")),
+                (selection, merging.replace("&&s?s:n", "&&s?n:s")),
+                (selection, merging.replace('getFeatureParam("isObm","yes")', 'getFeatureParam("other","yes")'))):
+            with self.assertRaises(ValueError):
+                typed_tables.current_read_inventory_selection_contract(invalid_selection, invalid_merging)
+
     @staticmethod
     def battery_peer_manifest():
         return {"productId":226,"vendorId":5426,"wiredProductId":226,"dongleProductId":227,"bleProductId":228,

@@ -890,7 +890,7 @@ impl KeyboardProductWorkspace {
                                                 .inset_0()
                                                 .group_hover(
                                                     SharedString::from(format!("snap-delete-{id}")),
-                                                    |s| s.hidden(),
+                                                    |s| s.invisible(),
                                                 ),
                                         )
                                         .child(
@@ -898,7 +898,7 @@ impl KeyboardProductWorkspace {
                                                 .size_full()
                                                 .absolute()
                                                 .inset_0()
-                                                .hidden()
+                                                .invisible()
                                                 .group_hover(
                                                     SharedString::from(format!("snap-delete-{id}")),
                                                     |s| s.visible(),

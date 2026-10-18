@@ -34,6 +34,10 @@ pub use camo::{HelpCamoCommand, HelpCamoObservation, HelpCamoRequested};
 pub use runtime_versions::{HelpRuntimeVersionsObservation, HelpRuntimeVersionsRequest};
 pub use system::{HelpSystemInfoCommand, HelpSystemInfoRequested};
 
+#[cfg(test)]
+#[path = "source_help_reset_identity_tests.rs"]
+mod reset_identity_tests;
+
 #[derive(Deserialize)]
 struct Help {
     product_id: u32,
@@ -101,6 +105,7 @@ pub(super) fn is_internet_only(product_id: u32, offset: usize) -> bool {
 }
 
 pub(super) struct SourceHelp {
+    reset_owner: EntityId,
     device: Device,
     mounted_serial: String,
     localized_product_names: Option<BTreeMap<String, String>>,
@@ -133,6 +138,7 @@ pub(super) struct SourceHelp {
 }
 #[derive(Clone, Copy, Debug)]
 pub struct HelpResetRequest {
+    owner: EntityId,
     generation: u64,
     audio_streams: bool,
     source_action: Option<&'static str>,
@@ -150,6 +156,16 @@ pub struct HelpResetOutcome {
     pub serial_number: String,
 }
 impl HelpResetRequest {
+    pub fn owner(self) -> EntityId {
+        self.owner
+    }
+    /// Generations belong to one retained Help entity and may repeat in a
+    /// replacement entity. Audio restarts are independent of profile resets.
+    pub fn same_operation(self, other: Self) -> bool {
+        self.owner == other.owner
+            && self.generation == other.generation
+            && self.audio_streams == other.audio_streams
+    }
     /// PID 1383's Help broadcasts this independently of its resetObm/BLE branch.
     pub fn oled_factory_reset_message(self) -> Option<serde_json::Value> {
         self.oled_factory_reset
@@ -249,6 +265,7 @@ impl SourceHelp {
     pub(super) fn leave_page(&mut self, cx: &mut Context<Self>) {
         if self.pending_reset {
             cx.emit(HelpResetEvent::Canceled(HelpResetRequest {
+                owner: self.reset_owner,
                 generation: self.reset_generation,
                 audio_streams: false,
                 source_action: Some(self.reset_source_action),
@@ -291,6 +308,7 @@ impl SourceHelp {
     }
     pub(super) fn new(device: Device, cx: &mut Context<Self>) -> Self {
         Self {
+            reset_owner: cx.entity_id(),
             mounted_serial: device.serial_number.clone(),
             device,
             page_offset: None,
@@ -334,6 +352,7 @@ impl SourceHelp {
             self.mounted_serial = device.serial_number.clone();
             if self.pending_reset {
                 cx.emit(HelpResetEvent::Canceled(HelpResetRequest {
+                    owner: self.reset_owner,
                     generation: self.reset_generation,
                     audio_streams: false,
                     source_action: Some(self.reset_source_action),
@@ -377,6 +396,7 @@ impl SourceHelp {
         if self.page_offset != Some(offset) {
             if self.pending_reset {
                 cx.emit(HelpResetEvent::Canceled(HelpResetRequest {
+                    owner: self.reset_owner,
                     generation: self.reset_generation,
                     audio_streams: false,
                     source_action: Some(self.reset_source_action),
@@ -543,6 +563,7 @@ impl SourceHelp {
                                                 view.reset_generation =
                                                     view.reset_generation.wrapping_add(1);
                                                 let request = HelpResetRequest {
+                                                    owner: view.reset_owner,
                                                     generation: view.reset_generation,
                                                     audio_streams: false,
                                                     source_action: Some("ON_RESET_DEVICE"),
@@ -587,6 +608,9 @@ impl SourceHelp {
         });
     }
     pub(super) fn reset_matches(&self, request: HelpResetRequest) -> bool {
+        if self.reset_owner != request.owner {
+            return false;
+        }
         if request.audio_streams {
             return self.audio_reset_generations.contains(&request.generation);
         }
@@ -595,6 +619,7 @@ impl SourceHelp {
     fn cancel_audio_resets(&mut self, cx: &mut Context<Self>) {
         for generation in std::mem::take(&mut self.audio_reset_generations) {
             cx.emit(HelpResetEvent::Canceled(HelpResetRequest {
+                owner: self.reset_owner,
                 generation,
                 audio_streams: true,
                 source_action: None,
@@ -619,6 +644,7 @@ impl SourceHelp {
         self.audio_restart = true;
         self.reset_generation = self.reset_generation.wrapping_add(1);
         let request = HelpResetRequest {
+            owner: self.reset_owner,
             generation: self.reset_generation,
             audio_streams: true,
             source_action: None,

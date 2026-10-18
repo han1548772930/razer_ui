@@ -146,3 +146,25 @@ fn white_manifest_uses_ordinary_sender_and_cancel_rejects_before_device_write() 
     );
     assert!(io.sent.lock().unwrap().is_empty());
 }
+
+#[test]
+fn static_exit_uses_the_hardware_effect_namespace_for_both_physical_routes() {
+    // DeviceManifest_45066_0 / 45067_0 select static #a3e01f. The current
+    // 1306 constant is Static=1; 6411.AL writes that ID without translation.
+    for product in [45066, 45067] {
+        let mut peer = PeerHid::new(immediate_support(product, 0)).unwrap();
+        let io = fake(&[]);
+        peer.select_custom(&io, &|| Ok(())).unwrap();
+        assert_eq!(peer.restore(&io, &|| Ok(())).unwrap(), 2);
+        let sent = io.sent.lock().unwrap();
+        assert_eq!(sent.len(), 4);
+        assert_eq!(&sent[2][6..11], &[2, 0, 4, 0, 0]);
+        assert_eq!(&sent[3][6..18], &[9, 15, 2, 1, 0, 1, 0, 0, 1, 163, 224, 31]);
+        assert_eq!(sent[3][2], 3);
+        assert_eq!(
+            sent[3][89],
+            sent[3][3..89].iter().fold(0, |sum, byte| sum ^ byte)
+        );
+        assert!(!peer.restoration_required());
+    }
+}

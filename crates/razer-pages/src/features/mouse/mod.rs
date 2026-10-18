@@ -27,7 +27,9 @@ pub use current_power::device_fields as power_device_fields;
 mod dpi_70;
 pub use current_dpi::MouseCurrentDpiRequested;
 pub use current_power::MouseCurrentPowerRequested;
+pub use current_power::MousePowerSavingRead;
 pub use current_power::{MouseCurrentPowerRead, filter_power_persistence};
+pub(in crate::features) use current_power::{PowerSavingValue, unobserved_power_range};
 #[path = "dpi/mouse_dpi_grid.rs"]
 mod dpi_grid;
 #[path = "dpi/mouse_dpi_number.rs"]
@@ -50,7 +52,7 @@ mod polling;
 use super::mouse_polling::{
     MousePollingObservation, MousePollingScope, PollingConnection, PollingField,
 };
-pub use polling::{MousePollingRequested, MouseInGamePollingChanged, validate_in_game_polling};
+pub use polling::{MouseInGamePollingChanged, MousePollingRequested, validate_in_game_polling};
 #[path = "calibration/mouse_calibration_190.rs"]
 mod calibration_190;
 #[path = "calibration/mouse_calibration_70.rs"]
@@ -131,7 +133,7 @@ pub use matcher_owner::{MouseMatcherRequest, MouseMatcherScope};
 #[path = "mouse_rotation.rs"]
 mod rotation;
 pub use dynamic::{
-    MouseDynamicCompletion, MouseDynamicObservation, MouseDynamicRequested, MouseDynamicScope,
+    MouseDynamicAction, MouseDynamicCompletion, MouseDynamicObservation, MouseDynamicRequested, MouseDynamicScope,
     MouseDynamicTutorialChanged,
 };
 #[path = "scrolling/mouse_scroll_options.rs"]
@@ -324,6 +326,7 @@ pub struct MouseProductWorkspace {
     dpi_grids: BTreeMap<String, Entity<dpi_grid::GridState>>,
     dpi_single_sliders: BTreeMap<usize, Entity<SliderState>>,
     dpi_dragged_row: Option<usize>,
+    dpi_hover: dpi_rows::HoverState,
     draft_generation: u64,
     dpi_editing_observed: Option<bool>,
     polling_state: polling::State,
@@ -447,6 +450,7 @@ impl MouseProductWorkspace {
             dpi_grids: BTreeMap::new(),
             dpi_single_sliders: BTreeMap::new(),
             dpi_dragged_row: None,
+            dpi_hover: dpi_rows::HoverState::default(),
             draft_generation: 0,
             dpi_editing_observed: None,
             polling_state: polling::State::default(),
@@ -621,6 +625,7 @@ impl MouseProductWorkspace {
         }
     }
     pub fn dismiss_editors(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.cancel_current_power_preview(window, cx);
         self.customize_label_hover = None;
         self.dismiss_receiver_guide(window, cx);
         self.mapping_current_state.launch.cancel_picker();
@@ -645,6 +650,7 @@ impl MouseProductWorkspace {
     fn dismiss_dpi_editors(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.draft_generation = self.draft_generation.wrapping_add(1);
         self.dpi_dragged_row = None;
+        self.dpi_hover.clear();
         for state in self.dpi_numbers.values_mut() {
             *state = dpi_number::EditState::default();
         }
@@ -664,6 +670,7 @@ impl MouseProductWorkspace {
             }
         }
         self.syncing = false;
+        self.sync_current_dpi_controls(window, cx);
         self.reset_dpi_grids(window, cx);
         cx.notify();
     }
@@ -685,6 +692,7 @@ impl MouseProductWorkspace {
             std::mem::replace(&mut self.draft, self.spec.profile_defaults().clone());
         self.seed_power_card_defaults();
         self.dpi_dragged_row = None;
+        self.dpi_hover.clear();
         if let (Some(target), Some(saved)) =
             (self.draft.as_object_mut(), value.and_then(Value::as_object))
         {
@@ -731,6 +739,9 @@ impl MouseProductWorkspace {
         }
         self.syncing = true;
         for (path, state) in &self.sliders {
+            if self.has_observed_power_saving_control(path) {
+                continue;
+            }
             if path == "smart-preset" {
                 let value = self.smart_preset();
                 state.update(cx, |state, cx| state.set_value(value as f32, window, cx));
@@ -748,6 +759,7 @@ impl MouseProductWorkspace {
             }
         }
         self.syncing = false;
+        self.sync_current_power_controls(window, cx);
         self.reset_dpi_grids(window, cx);
         self.sync_dpi_single_controls(window, cx);
         self.sync_matcher_profile(window, cx);
@@ -789,7 +801,8 @@ impl MouseProductWorkspace {
         else {
             return false;
         };
-        self.draft.pointer(stage).is_some()
+        self.current_dpi_row_available(slot)
+            && self.draft.pointer(stage).is_some()
             && (axis == self.spec.dpi_axis(0)
                 || self.boolean(&format!("{stage}/{}", self.spec.independent_key())))
             && (self.boolean(self.spec.stage_enable_path())
@@ -874,7 +887,9 @@ impl MouseProductWorkspace {
         {
             return;
         }
-        if self.draft.pointer(path) == Some(&value) {
+        if self.draft.pointer(path) == Some(&value)
+            && !self.power_saving_submission_needed(path, &value)
+        {
             return;
         }
         let previous_brightness_enabled = self.boolean("/brightness/isEnabled");
@@ -1014,6 +1029,9 @@ impl MouseProductWorkspace {
         }
         self.syncing = true;
         for (other_path, slider) in &self.sliders {
+            if self.has_observed_power_saving_control(other_path) {
+                continue;
+            }
             // A segmented editor synchronizes its model before committing.
             // Plain row number editors also need their originating model
             // normalized; this follows control ownership, not product identity.
@@ -1040,6 +1058,7 @@ impl MouseProductWorkspace {
         self.submit_legacy_dpi_field(path, cx);
         self.submit_current_dpi_field(path, cx);
         self.submit_current_power_field(path, cx);
+        self.sync_current_power_controls(window, cx);
         cx.emit(MouseProductChanged);
         if calibration_70::supports_surface_calibration(self.spec.product_id)
             && path == "/calibration/liftOffRangeValue"
@@ -1063,17 +1082,16 @@ impl MouseProductWorkspace {
             .unwrap_or(false)
     }
 
-    fn low_power_enabled(&self) -> bool {
+    fn low_power_enabled(&self) -> Option<bool> {
         // Current product dl.isEnabled(): >1000 Hz disables the threshold;
         // source evidence is recorded per product, never inferred by category.
         static PRODUCTS: OnceLock<Vec<u32>> = OnceLock::new();
         let limited = PRODUCTS.get_or_init(|| read_mouse_low_power_catalog());
-        !limited.contains(&self.spec.product_id)
-            || if super::mouse_polling::source_spec(self.spec.product_id).is_some() {
-                self.effective_power_polling_rate() <= 1000
-            } else {
-                self.number(self.spec.polling_path()) <= 1000.
-            }
+        if !limited.contains(&self.spec.product_id) {
+            Some(true)
+        } else {
+            self.effective_power_polling_rate().map(|hz| hz <= 1000)
+        }
     }
 
     fn range_enabled(&self, path: &str) -> bool {
@@ -1083,7 +1101,7 @@ impl MouseProductWorkspace {
             return false;
         }
         match path {
-            "/lowPowerMode" => self.low_power_enabled(),
+            "/lowPowerMode" => self.low_power_enabled() == Some(true),
             "/rotation/value" => self.boolean("/rotation/isEnabled") && self.advanced_enabled(),
             "/brightness/value" => self.boolean("/brightness/isEnabled"),
             "/switchOffLighting/idleMinutes" => {
@@ -1148,9 +1166,10 @@ impl MouseProductWorkspace {
                     || (matches!(this.spec.product_id, 117 | 2594)
                         && changed_path == "/dimLighting/value");
                 let value = match event {
-                    SliderEvent::Change(_) if source_power => {
+                    SliderEvent::Change(value) if source_power => {
                         // Current basic-power cards -> slider801 keep drag
                         // previews inside the control and commits on mouse-up.
+                        this.preview_current_power(&changed_path, value.start(), cx);
                         cx.notify();
                         return;
                     }
@@ -1491,6 +1510,25 @@ impl MouseProductWorkspace {
         let Some(slider) = self.sliders.get(path) else {
             return div().into_any_element();
         };
+        if path
+            .strip_prefix(self.spec.stages_path())
+            .and_then(|tail| tail.strip_prefix('/'))
+            .and_then(|tail| tail.split('/').next())
+            .and_then(|index| index.parse::<usize>().ok())
+            .is_some_and(|index| !self.current_dpi_row_available(index))
+        {
+            return v_flex()
+                .gap_3()
+                .mb(surface::css(15.))
+                .child(
+                    h_flex()
+                        .justify_between()
+                        .child(label.to_owned())
+                        .child(self.current_dpi_unknown_number(cx)),
+                )
+                .child(self.current_dpi_unknown_track(cx))
+                .into_any_element();
+        }
         // Source DA.A sliders outside DPI have tooltips and endpoint tags;
         // they do not mount the editable number field used by DPI rows.
         if !path.starts_with(self.spec.stages_path()) && !path.starts_with("/scrollWheelStages/") {
@@ -1638,6 +1676,7 @@ impl MouseProductWorkspace {
         let active = self.number(self.spec.active_path()) as usize;
         let mut sensitivity = surface::panel(t("SENSITIVITY_HEADER"), cx)
             .when(self.spec.block_widget_columns(), |panel| panel.mb_0())
+            .children(self.current_dpi_status(cx))
             .child(self.toggle(self.spec.stage_enable_path(), t("SENSITIVITY_STAGES"), cx))
             .child(
                 h_flex()
@@ -1649,6 +1688,7 @@ impl MouseProductWorkspace {
                             .label((slot + 1).to_string())
                             .outline()
                             .selected(active == slot + 1)
+                            .disabled(!self.current_dpi_row_available(slot))
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 this.write(path, json!(slot + 1), cx)
                             }))
@@ -1711,6 +1751,8 @@ impl MouseProductWorkspace {
             return self.source_polling_panel(cx);
         }
         let path = self.spec.polling_path();
+        let field = self.polling_state.field();
+        let value = self.polling_value(field);
         let rates = self
             .spec
             .rates
@@ -1728,11 +1770,12 @@ impl MouseProductWorkspace {
                         Button::new(SharedString::from(format!("mouse-polling-{rate}")))
                             .label(format!("{rate} Hz"))
                             .outline()
-                            .selected(self.number(path) as u32 == rate)
+                            .selected(value == Some(rate))
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 if this.spec.product_id == 70 {
                                     this.choose_legacy_polling(rate, cx);
                                 } else {
+                                    this.polling_state.edit_rate(field, rate);
                                     this.write(path, json!(rate), cx);
                                 }
                             }))
@@ -2493,12 +2536,7 @@ impl MouseProductWorkspace {
                 div()
                     .w_full()
                     .when(split_viewport, |body| {
-                        body.flex()
-                            .flex_col()
-                            .flex_1()
-                            .h_full()
-                            .min_h_0()
-                            .min_w_0()
+                        body.flex().flex_col().flex_1().h_full().min_h_0().min_w_0()
                     })
                     .child(panel)
                     .into_any_element()
@@ -2533,17 +2571,14 @@ impl Render for MouseProductWorkspace {
             .id("mouse-product-body")
             .test_support()
             .w_full()
-            .when(layout == super::product_surface::BodyLayout::Document, |body| {
-                body.flex_shrink_0()
-            })
-            .when(layout == super::product_surface::BodyLayout::SplitViewport, |body| {
-                body.flex()
-                    .flex_col()
-                    .flex_1()
-                    .h_full()
-                    .min_h_0()
-                    .min_w_0()
-            })
+            .when(
+                layout == super::product_surface::BodyLayout::Document,
+                |body| body.flex_shrink_0(),
+            )
+            .when(
+                layout == super::product_surface::BodyLayout::SplitViewport,
+                |body| body.flex().flex_col().flex_1().h_full().min_h_0().min_w_0(),
+            )
             .child(super::product_surface::body_for(layout).child(content))
             .children(self.calibration_popup(window, cx))
             .children(self.receiver_guide(window, cx))

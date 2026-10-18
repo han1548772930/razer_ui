@@ -5,7 +5,7 @@ use crate::{
     backend::FeatureTransport, device_reads::DeviceReadCapability, feature_exchange::exchange,
 };
 use anyhow::{Context as _, Result, ensure};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 const REGIONS: [u8; 3] = [80, 15, 128];
 const GET: [u8; 3] = [3, 15, 132];
@@ -35,7 +35,7 @@ impl MouseBrightnessCapability {
 }
 
 /// Each source region row contains five bytes. Unknown IDs/types stay observable.
-#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct BrightnessRegion {
     pub region_id: u8,
     pub update_rate: u8,
@@ -61,7 +61,7 @@ fn parse_regions(data: &[u8]) -> Result<Vec<BrightnessRegion>> {
         .collect())
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct BrightnessValue {
     pub profile_id: u8,
     pub region_id: u8,
@@ -97,7 +97,7 @@ fn parse_brightness(data: &[u8], profile_id: u8, region_id: u8) -> Result<Bright
     })
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum BrightnessRegionResolution {
     Explicit,
     FirstAvailable {
@@ -111,7 +111,7 @@ pub enum BrightnessRegionResolution {
     },
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct BrightnessObservation {
     pub requested_region_id: u8,
     pub queried_region_id: u8,
@@ -153,7 +153,7 @@ impl BrightnessProfileObservation {
     }
 }
 
-#[derive(Clone, Copy, Debug, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct BrightnessChange {
     pub is_enabled: bool,
     /// Integral 0..100 API input. Disabling sends zero and retains draft value
@@ -163,13 +163,136 @@ pub struct BrightnessChange {
     pub region_id: u8,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(tag = "operation", rename_all = "snake_case", deny_unknown_fields)]
+pub enum Submission {
+    Read {
+        region_id: u8,
+    },
+    Apply {
+        change: BrightnessChange,
+        profile_guid: String,
+    },
+}
+impl Submission {
+    pub fn validate(&self, product_id: u32) -> Result<()> {
+        ensure!(
+            capability(product_id).is_some(),
+            "Current mouse brightness source is absent"
+        );
+        if let Self::Apply {
+            change,
+            profile_guid,
+        } = self
+        {
+            ensure!(
+                change.percent <= 100,
+                "Mouse brightness percent must be 0..100"
+            );
+            ensure!(
+                !profile_guid.is_empty(),
+                "Mouse brightness has no active profile identity"
+            );
+        }
+        Ok(())
+    }
+    pub fn is_write(&self) -> bool {
+        matches!(self, Self::Apply { .. })
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct TaskReport {
+    requested: Submission,
+    observation: Option<BrightnessObservation>,
+    profile_associations: Vec<crate::mouse_onboard::OnboardProfileAssociation>,
+    writes: Option<BrightnessWriteReport>,
+    failure: Option<String>,
+}
+impl TaskReport {
+    pub fn requested(&self) -> &Submission {
+        &self.requested
+    }
+    pub fn observation(&self) -> Option<&BrightnessObservation> {
+        self.observation.as_ref()
+    }
+    pub fn writes(&self) -> Option<&BrightnessWriteReport> {
+        self.writes.as_ref()
+    }
+    pub fn failure(&self) -> Option<&str> {
+        self.failure.as_deref()
+    }
+    pub fn completed(&self) -> bool {
+        self.failure.is_none()
+            && match &self.requested {
+                Submission::Read { .. } => self.observation.is_some(),
+                Submission::Apply { .. } => self
+                    .writes
+                    .as_ref()
+                    .is_some_and(BrightnessWriteReport::verified),
+            }
+    }
+}
+
+/// Read current OBM associations rather than deriving slot identities from UI
+/// positions or a local profile cache. The service retains the same transport
+/// and source transaction stream for observation, writes and confirmation.
+pub fn execute(
+    device: &dyn FeatureTransport,
+    transport: &DeviceReadCapability,
+    submission: &Submission,
+    next: &mut impl FnMut() -> Result<u8>,
+    validate: &impl Fn() -> Result<()>,
+) -> Result<TaskReport> {
+    submission.validate(transport.product_id)?;
+    let brightness = MouseBrightness::new(device, transport)?;
+    let mut report = TaskReport {
+        requested: submission.clone(),
+        observation: None,
+        profile_associations: Vec::new(),
+        writes: None,
+        failure: None,
+    };
+    match submission {
+        Submission::Read { region_id } => {
+            report.observation = Some(brightness.read(1, *region_id, next, validate)?)
+        }
+        Submission::Apply {
+            change,
+            profile_guid,
+        } => {
+            report.profile_associations =
+                crate::mouse_onboard::read_profile_associations(device, transport, next, validate)?;
+            let profiles = BrightnessProfileObservation {
+                active_guid: profile_guid.clone(),
+                observed_profiles: report
+                    .profile_associations
+                    .iter()
+                    .map(|profile| BrightnessProfileAssociation {
+                        guid: profile.guid.clone(),
+                        slot_id: profile.profile_id,
+                    })
+                    .collect(),
+            };
+            match brightness.apply(*change, &profiles, next, validate) {
+                Ok(writes) => report.writes = Some(writes),
+                Err(error) => {
+                    report.failure = Some(format!("{error:#}"));
+                    report.writes = Some(error.progress);
+                }
+            }
+        }
+    }
+    Ok(report)
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub enum BrightnessScope {
     Active,
     Onboard,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct BrightnessWriteStep {
     pub scope: BrightnessScope,
     pub profile_id: u8,
@@ -205,7 +328,7 @@ impl BrightnessWriteStep {
     }
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct BrightnessWriteReport {
     pub steps: Vec<BrightnessWriteStep>,
     /// Hardware part of the original task only; no local persistence is implied.
@@ -274,8 +397,11 @@ impl<'a> MouseBrightness<'a> {
         let cap = capability(transport.product_id)
             .context("Direct mouse brightness is not source-gated for this product")?;
         ensure!(
-            transport.source_class == "rzDevice25DualLinkMouse",
-            "Mouse brightness requires the audited rzDevice25 DualLink adapter"
+            matches!(
+                transport.source_class.as_str(),
+                "rzDevice25" | "rzDevice25DualLinkMouse"
+            ),
+            "Mouse brightness requires the audited base25 or DualLink physical adapter"
         );
         Ok(Self {
             device,

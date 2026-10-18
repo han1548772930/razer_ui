@@ -40,13 +40,43 @@ pub(super) fn keyboard_indicator(
 ) -> anyhow::Result<Value> {
     keyboard_indicator_adapter::request(target, change)
 }
+#[path = "mouse/mouse_brightness.rs"]
+mod mouse_brightness_adapter;
 #[path = "mouse/mouse_current_dpi.rs"]
 mod mouse_current_dpi_adapter;
+pub(super) fn mouse_brightness(
+    target: &DeviceReadTarget,
+    submission: &razer_device::mouse_brightness::Submission,
+) -> anyhow::Result<Value> {
+    if target.peer_product_id.is_some() {
+        receiver_setting(
+            target,
+            super::super::receiver_settings::Setting::MouseBrightness(submission),
+        )
+    } else {
+        mouse_brightness_adapter::request(target, submission)
+    }
+}
+#[path = "mouse/mouse_dynamic.rs"]
+mod mouse_dynamic_adapter;
+pub(super) fn mouse_dynamic(
+    target: &DeviceReadTarget,
+    change: Option<&razer_device::mouse_dynamic::Setting>,
+) -> anyhow::Result<Value> {
+    if target.peer_product_id.is_some() {
+        receiver_setting(
+            target,
+            super::super::receiver_settings::Setting::Dynamic(change),
+        )
+    } else {
+        mouse_dynamic_adapter::request(target, change)
+    }
+}
 #[path = "mouse/mouse_current_polling.rs"]
 mod mouse_current_polling_adapter;
 pub(super) fn mouse_current_polling(
     target: &DeviceReadTarget,
-    change: &razer_device::mouse_current_polling::Change,
+    change: Option<&razer_device::mouse_current_polling::Change>,
 ) -> anyhow::Result<Value> {
     mouse_current_polling_adapter::request(target, change)
 }

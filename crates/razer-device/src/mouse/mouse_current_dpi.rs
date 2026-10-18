@@ -474,6 +474,28 @@ fn synchronize_ordinary_profile_slots(
     )
 }
 
+/// Independent getter failures accompany the values actually observed by the
+/// other source task; they never turn an unobserved field into a default.
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+pub struct DpiReadErrors {
+    stages: Option<String>,
+    active: Option<String>,
+}
+
+impl DpiReadErrors {
+    pub fn stages(&self) -> Option<&str> {
+        self.stages.as_deref()
+    }
+
+    pub fn active(&self) -> Option<&str> {
+        self.active.as_deref()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.stages.is_none() && self.active.is_none()
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct DpiReport {
@@ -494,6 +516,8 @@ pub struct DpiReport {
     /// Source Mt only pre-reads and conditionally sets; ACK is not readback.
     #[serde(default)]
     pub profile_slot_writes: Vec<crate::mouse_dpi_stages::DpiSlotWriteResult>,
+    #[serde(default)]
+    pub read_errors: DpiReadErrors,
     pub verified: bool,
 }
 
@@ -577,6 +601,7 @@ fn execute_with_capability(
         initialization_mode_error: None,
         profile_slots: vec![],
         profile_slot_writes: vec![],
+        read_errors: DpiReadErrors::default(),
         verified: false,
     };
     if product_id == 182 && change.is_some_and(|change| change.initialize) {
@@ -749,6 +774,9 @@ fn execute_with_capability(
             Ok(())
         })();
         if let Err(error) = stage_result {
+            if change.is_none() {
+                report.read_errors.stages = Some(format!("{error:#}"));
+            }
             errors.push(format!("stage table: {error:#}"));
         }
         // Stage and current X/Y are independent source tasks. Device rejection
@@ -791,16 +819,19 @@ fn execute_with_capability(
             Ok(())
         })();
         if let Err(error) = active_result {
+            if change.is_none() {
+                report.read_errors.active = Some(format!("{error:#}"));
+            }
             errors.push(format!("active DPI: {error:#}"));
         }
     }
     validate()?;
     ensure!(
-        errors.is_empty(),
+        change.is_none() || errors.is_empty(),
         "Current mouse DPI operation is unconfirmed: {}",
         errors.join("; ")
     );
-    report.verified = true;
+    report.verified = errors.is_empty();
     Ok(report)
 }
 

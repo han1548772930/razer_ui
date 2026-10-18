@@ -3950,7 +3950,7 @@ class RustValidationTests(unittest.TestCase):
 def run():
     suite = unittest.defaultTestLoader.loadTestsFromModule(__import__(__name__))
     for module in ("test_rust_data", "test_typed_tables", "test_windows_installer", "test_workspace",
-                   "test_resource_scope", "test_asset_release", "test_host"):
+                   "test_resource_scope", "test_asset_release", "test_host", "test_native_runtime", "test_families"):
         suite.addTests(unittest.defaultTestLoader.loadTestsFromName(module))
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     path = analysis.ROOT / ".analysis/results/tool-verification.json"
@@ -3964,6 +3964,8 @@ def run():
                                       "tools/typed_tables.py", "tools/typed-data.json",
                                       "tools/test_workspace.py", "tools/resource_scope.py", "tools/test_resource_scope.py",
                                       "tools/test_asset_release.py", "tools/test_host.py",
+                                      "tools/native_runtime.py", "tools/test_native_runtime.py",
+                                      "tools/test_families.py",
                                       "tools/windows_installer.py", "tools/test_rust_data.py",
                                       "tools/test_typed_tables.py", "tools/test_windows_installer.py",
                                       "tools/ida/capture.py", "tools/ida/capture_io.py")],

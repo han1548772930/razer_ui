@@ -1,6 +1,6 @@
 //! Current AppFolderInstallationChecker.checkIsFullyInstall and the installed
 //! SysUtilsNative GetInstalledRazerAppEngineProduct registry projection.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Installation {
     folder_exists: bool,
     engine_registered: Option<bool>,

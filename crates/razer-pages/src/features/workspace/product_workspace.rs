@@ -487,6 +487,31 @@ impl ProductWorkspace {
             });
         }
     }
+    pub fn mouse_dynamic_scope_is_current(
+        &self,
+        request: &super::mouse_products::MouseDynamicRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).mouse_dynamic_scope_is_current(request, cx))
+    }
+    pub fn mouse_dynamic_request_is_current(
+        &self,
+        request: &super::mouse_products::MouseDynamicRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).mouse_dynamic_request_is_current(request, cx))
+    }
+    pub fn observe_mouse_dynamic_speed(
+        &mut self,
+        request: &super::mouse_products::MouseDynamicRequested,
+        speed: f64,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.observe_mouse_dynamic_speed(request, speed, window, cx));
+        }
+    }
     pub fn complete_mouse_dynamic(
         &mut self,
         request: &super::mouse_products::MouseDynamicRequested,
@@ -744,6 +769,17 @@ impl ProductWorkspace {
     }
     pub fn keyboard_brightness_read_current(&self, generation: u64, cx: &App) -> bool {
         matches!(&self.body, Body::Source(body) if body.read(cx).keyboard_brightness_read_current(generation,cx))
+    }
+    pub fn sync_keyboard_brightness_controls(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.sync_keyboard_brightness_controls(window, cx)
+            });
+        }
     }
     pub fn finish_keyboard_brightness_read(
         &mut self,
@@ -1145,7 +1181,7 @@ impl ProductWorkspace {
             });
         }
     }
-    pub fn initialize_mouse182_profile(
+    pub fn initialize_current_mouse_profile(
         &mut self,
         key: Option<String>,
         macro_recording: bool,
@@ -1153,7 +1189,7 @@ impl ProductWorkspace {
     ) {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| {
-                body.initialize_mouse182_profile(key, macro_recording, cx)
+                body.initialize_current_mouse_profile(key, macro_recording, cx)
             });
         }
     }
@@ -1185,6 +1221,23 @@ impl ProductWorkspace {
             body.update(cx, |body, cx| {
                 body.finish_current_dpi(request, observed, cx)
             });
+        }
+    }
+    pub fn finish_current_dpi_result(
+        &mut self,
+        request: &super::mouse_products::MouseCurrentDpiRequested,
+        result: Result<razer_device::mouse_current_dpi::DpiReport, String>,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_current_dpi_result(request, result, cx)
+            });
+        }
+    }
+    pub fn sync_current_dpi_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.sync_current_dpi_controls(window, cx));
         }
     }
     pub fn prepare_current_dpi_exit(
@@ -1229,10 +1282,18 @@ impl ProductWorkspace {
             Body::Source(body) => body.read(cx).mouse_polling_device_hz(scope, field, hz, cx),
         }
     }
-    pub fn mouse_polling_synchronizes_profile(&self, scope: super::mouse_polling::MousePollingScope, field: super::mouse_polling::PollingField, hz: u32, cx: &App) -> bool {
+    pub fn mouse_polling_synchronizes_profile(
+        &self,
+        scope: super::mouse_polling::MousePollingScope,
+        field: super::mouse_polling::PollingField,
+        hz: u32,
+        cx: &App,
+    ) -> bool {
         match &self.body {
             Body::Existing(_) => false,
-            Body::Source(body) => body.read(cx).mouse_polling_synchronizes_profile(scope, field, hz, cx),
+            Body::Source(body) => body
+                .read(cx)
+                .mouse_polling_synchronizes_profile(scope, field, hz, cx),
         }
     }
     pub fn mouse_polling_request_matches(
@@ -1311,12 +1372,20 @@ impl ProductWorkspace {
         generation: u64,
         percent: u8,
         observed: Option<u8>,
+        error: Option<String>,
         scope_current: bool,
         cx: &mut Context<Self>,
     ) {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| {
-                body.finish_keyboard_brightness(generation, percent, observed, scope_current, cx)
+                body.finish_keyboard_brightness(
+                    generation,
+                    percent,
+                    observed,
+                    error,
+                    scope_current,
+                    cx,
+                )
             });
         }
     }
@@ -1344,16 +1413,29 @@ impl ProductWorkspace {
         matches!(&self.body, Body::Existing(body) if body.read(cx).mouse_idle_request_matches(scope, minutes, cx))
     }
 
-    pub fn observe_mouse_idle_initial(
+    pub fn begin_mouse_idle_read(
         &mut self,
         scope: super::mouse_polling::MousePollingScope,
+        cx: &mut Context<Self>,
+    ) -> Option<super::mouse_products::MousePowerSavingRead> {
+        match &self.body {
+            Body::Existing(body) => {
+                body.update(cx, |body, cx| body.begin_mouse_idle_read(scope, cx))
+            }
+            _ => None,
+        }
+    }
+
+    pub fn observe_mouse_idle_initial(
+        &mut self,
+        read: super::mouse_products::MousePowerSavingRead,
         raw: Option<u16>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         if let Body::Existing(body) = &self.body {
             body.update(cx, |body, cx| {
-                body.observe_mouse_idle_initial(scope, raw, window, cx)
+                body.observe_mouse_idle_initial(read, raw, window, cx)
             });
         }
     }
@@ -1526,7 +1608,10 @@ impl ProductWorkspace {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| body.set_active(active, window, cx));
         } else if !active && let Body::Existing(body) = &self.body {
-            body.update(cx, |body, cx| body.dismiss_profile_dialog(window, cx));
+            body.update(cx, |body, cx| {
+                body.cancel_mouse_idle_preview(window, cx);
+                body.dismiss_profile_dialog(window, cx);
+            });
         }
     }
 
@@ -1534,6 +1619,7 @@ impl ProductWorkspace {
         match &self.body {
             Body::Source(body) => body.update(cx, |body, cx| body.prepare_exit(window, cx)),
             Body::Existing(body) => body.update(cx, |body, cx| {
+                body.cancel_mouse_idle_preview(window, cx);
                 body.dismiss_profile_dialog(window, cx);
                 body.cancel_snap_capture(window, cx);
             }),

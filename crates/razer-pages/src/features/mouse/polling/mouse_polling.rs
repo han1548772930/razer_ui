@@ -30,7 +30,7 @@ impl PollingField {
         }
     }
 }
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MousePollingScope {
     owner: EntityId,
     profile_epoch: u64,
@@ -97,21 +97,35 @@ pub struct SourceSpec {
 pub fn source_spec(product_id: u32) -> Option<&'static SourceSpec> {
     if product_id == 190 {
         static SOURCE: OnceLock<SourceSpec> = OnceLock::new();
-        return Some(SOURCE.get_or_init(|| SourceSpec {
-            product_id: 190,
-            device_ids: vec![190, 191],
-            pairing_dongle_id: 191,
-            pair_identity: PairIdentity::StrictDongleId,
-            master_supports_8k_flag: false,
-            is_dongle_hyperpolling_device: true,
-            rates: ["POLLING_RATE", "POLLING_RATE_WIRELESS", "HYPER_POLLING_RATE", "HYPER_POLLING_RATE_SUPPORT_8K"]
-                .into_iter().map(|key| (key.into(), vec![125, 500, 1000, 2000, 4000, 8000])).collect(),
-            firmware_floor: Some("1.0.0.0".into()),
-            hyper_master_ids: vec![179, 164],
-            high_rate_threshold_hz: 1000,
-            fallback_wireless_hz: 1000,
-            ble_visibility: BleVisibility::Hidden,
-            limits: None,
+        return Some(SOURCE.get_or_init(|| {
+            SourceSpec {
+                product_id: 190,
+                device_ids: vec![190, 191],
+                pairing_dongle_id: 191,
+                pair_identity: PairIdentity::StrictDongleId,
+                master_supports_8k_flag: false,
+                is_dongle_hyperpolling_device: true,
+                rates: [
+                    "POLLING_RATE",
+                    "POLLING_RATE_WIRELESS",
+                    "HYPER_POLLING_RATE",
+                    "HYPER_POLLING_RATE_SUPPORT_8K",
+                ]
+                .into_iter()
+                .map(|key| {
+                    (
+                        key.into(),
+                        razer_device::mouse_current_polling::UI_RATES.to_vec(),
+                    )
+                })
+                .collect(),
+                firmware_floor: None,
+                hyper_master_ids: vec![],
+                high_rate_threshold_hz: 1000,
+                fallback_wireless_hz: 1000,
+                ble_visibility: BleVisibility::Hidden,
+                limits: None,
+            }
         }));
     }
     static SOURCES: OnceLock<Vec<SourceSpec>> = OnceLock::new();
@@ -203,6 +217,7 @@ pub struct RuntimeState {
     pub profile_epoch: u64,
     pub connection_epoch: u64,
     pub rates: BTreeMap<PollingField, u32>,
+    optimistic_rates: BTreeMap<PollingField, u32>,
     pub topology: Option<Vec<Value>>,
     pub firmware: Option<String>,
 }
@@ -210,6 +225,32 @@ impl RuntimeState {
     pub fn reset_profile(&mut self) {
         self.profile_epoch = self.profile_epoch.wrapping_add(1);
         self.rates.clear();
+        self.optimistic_rates.clear();
+    }
+    pub fn selected_rate(&self, field: PollingField) -> Option<u32> {
+        self.optimistic_rates
+            .get(&field)
+            .copied()
+            .or_else(|| self.rates.get(&field).copied())
+    }
+    pub fn edited_rate(&self, field: PollingField) -> Option<u32> {
+        self.optimistic_rates.get(&field).copied()
+    }
+    pub fn edit_rate(&mut self, field: PollingField, hz: u32) {
+        self.optimistic_rates.insert(field, hz);
+    }
+    pub fn observe_rate(&mut self, field: PollingField, hz: Option<u32>) {
+        if let Some(hz) = hz.filter(|hz| *hz > 0) {
+            self.rates.insert(field, hz);
+        } else {
+            self.rates.remove(&field);
+        }
+    }
+    pub fn confirm_rate(&mut self, field: PollingField, requested_hz: u32, observed_hz: u32) {
+        self.rates.insert(field, observed_hz);
+        if self.optimistic_rates.get(&field) == Some(&requested_hz) {
+            self.optimistic_rates.remove(&field);
+        }
     }
     pub fn apply(&mut self, observation: MousePollingObservation) {
         match observation {
@@ -217,13 +258,12 @@ impl RuntimeState {
                 self.connection = connection;
                 self.connection_epoch = self.connection_epoch.wrapping_add(1);
                 self.rates.clear();
+                self.optimistic_rates.clear();
                 self.topology = None;
                 self.firmware = None;
             }
             MousePollingObservation::Rate(field, rate) => {
-                if rate > 0 {
-                    self.rates.insert(field, rate);
-                }
+                self.observe_rate(field, Some(rate));
             }
             MousePollingObservation::DualLinkSnapshot(rows) => self.topology = Some(rows),
             MousePollingObservation::FirmwareVersion(firmware) => self.firmware = firmware,
@@ -398,6 +438,86 @@ pub(super) fn source_advanced_supported(observed: Option<&str>, required: &str) 
         return false;
     };
     !required.cmp_precedence(&observed).is_gt()
+}
+
+#[cfg(test)]
+mod runtime_observation_tests {
+    use super::*;
+
+    #[test]
+    fn unobserved_rate_and_low_power_gate_have_no_default() {
+        let state = RuntimeState::default();
+        for field in [PollingField::Wired, PollingField::Wireless] {
+            assert_eq!(state.selected_rate(field), None);
+            assert_eq!(state.selected_rate(field).map(|hz| hz <= 1000), None);
+        }
+    }
+
+    #[test]
+    fn failed_or_unknown_read_clears_observation_and_preserves_an_explicit_edit() {
+        let mut state = RuntimeState::default();
+        let field = PollingField::Wired;
+        state.observe_rate(field, Some(2000));
+        assert_eq!(state.selected_rate(field), Some(2000));
+        assert_eq!(state.selected_rate(field).map(|hz| hz <= 1000), Some(false));
+        state.observe_rate(field, None);
+        assert_eq!(state.selected_rate(field), None);
+        state.edit_rate(field, 500);
+        state.observe_rate(field, Some(0));
+        assert_eq!(state.selected_rate(field), Some(500));
+        assert_eq!(state.edited_rate(field), Some(500));
+        assert_eq!(state.selected_rate(field).map(|hz| hz <= 1000), Some(true));
+        assert!(!state.rates.contains_key(&field));
+    }
+
+    #[test]
+    fn delayed_readback_preserves_a_later_edit_until_its_own_confirmation() {
+        let mut state = RuntimeState::default();
+        let field = PollingField::Wireless;
+        state.edit_rate(field, 4000);
+        state.confirm_rate(field, 1000, 2000);
+        assert_eq!(state.rates[&field], 2000);
+        assert_eq!(state.selected_rate(field), Some(4000));
+        state.confirm_rate(field, 4000, 8000);
+        assert_eq!(state.edited_rate(field), None);
+        assert_eq!(state.selected_rate(field), Some(8000));
+    }
+
+    #[test]
+    fn wired_value_never_supplies_an_unobserved_wireless_selection() {
+        let mut state = RuntimeState::default();
+        state.apply(MousePollingObservation::Connection(Some(
+            PollingConnection::Dongle,
+        )));
+        state.observe_rate(PollingField::Wired, Some(500));
+        assert_eq!(state.field(), PollingField::Wireless);
+        assert_eq!(state.selected_rate(state.field()), None);
+        state.observe_rate(PollingField::Wireless, Some(8000));
+        assert_eq!(state.selected_rate(state.field()), Some(8000));
+        state.observe_rate(PollingField::Wireless, None);
+        assert_eq!(state.selected_rate(state.field()), None);
+        assert_eq!(state.selected_rate(PollingField::Wired), Some(500));
+    }
+
+    #[test]
+    fn connection_and_profile_changes_remove_transient_selections() {
+        let mut state = RuntimeState::default();
+        let field = PollingField::Wired;
+        state.observe_rate(field, Some(8000));
+        state.edit_rate(field, 500);
+        state.apply(MousePollingObservation::Connection(None));
+        assert_eq!(state.selected_rate(field), None);
+        assert_eq!(state.connection_epoch, 1);
+        state.apply(MousePollingObservation::Connection(Some(
+            PollingConnection::Wired,
+        )));
+        assert_eq!(state.selected_rate(field), None);
+        state.observe_rate(field, Some(2000));
+        state.edit_rate(field, 1000);
+        state.reset_profile();
+        assert_eq!(state.selected_rate(field), None);
+        assert_eq!(state.profile_epoch, 1);
+    }
 }
 
 // Generated catalog reader: razer-pages/mouse_polling_source_data.

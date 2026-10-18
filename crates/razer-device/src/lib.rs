@@ -77,6 +77,8 @@ pub mod hanbo_cooler;
 pub mod hanbo_profile_restore;
 #[path = "accessory/hanbo_settings.rs"]
 pub mod hanbo_settings;
+#[path = "receiver/hyperpolling_receiver.rs"]
+pub mod hyperpolling_receiver;
 #[path = "keyboard/keyboard_analog.rs"]
 pub mod keyboard_analog;
 #[cfg(test)]
@@ -166,6 +168,8 @@ pub mod mouse_current_polling;
 pub mod mouse_current_power;
 #[path = "mouse/mouse_dpi_stages.rs"]
 pub mod mouse_dpi_stages;
+#[path = "mouse/mouse_dynamic.rs"]
+pub mod mouse_dynamic;
 #[path = "mouse/mouse_haptic.rs"]
 pub mod mouse_haptic;
 #[path = "mouse/mouse_indicator_led.rs"]
@@ -218,8 +222,6 @@ pub mod receiver_dock_mode;
 mod receiver_feature_channel;
 #[path = "receiver/receiver_identity.rs"]
 pub mod receiver_identity;
-#[path = "receiver/hyperpolling_receiver.rs"]
-pub mod hyperpolling_receiver;
 #[path = "receiver/receiver_lighting.rs"]
 pub mod receiver_lighting;
 #[path = "receiver/receiver_pairing.rs"]
@@ -248,6 +250,8 @@ pub mod seiren_stream_mixer;
 pub mod simple_audio;
 #[path = "audio/simple_audio_volume.rs"]
 pub mod simple_audio_volume;
+#[path = "host/system_info.rs"]
+pub mod system_info;
 #[path = "host/system_monitor.rs"]
 pub mod system_monitor;
 #[path = "audio/thx_blackshark_firmware.rs"]

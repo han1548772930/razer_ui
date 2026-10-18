@@ -211,7 +211,7 @@ fn decode_reply(
     let report: DpiReport = serde_json::from_value(reply["report"].clone())?;
     ensure!(
         report.requested == change
-            && report.verified
+            && (report.verified || change.is_none())
             && report
                 .acknowledgements
                 .iter()
@@ -221,6 +221,10 @@ fn decode_reply(
         "Current mouse DPI reply does not confirm its exact request"
     );
     if let Some(change) = &change {
+        ensure!(
+            report.read_errors.is_empty(),
+            "DPI write reply contains failed getter observations"
+        );
         if change.is_identity_read() {
             ensure!(
                 product_id == 182
@@ -266,12 +270,25 @@ fn decode_reply(
             );
         }
     } else {
+        let stages_present =
+            report.stages.is_some() || source.is_stage_level_only() && report.stage_level.is_some();
         ensure!(
-            (report.stages.is_some()
-                || source.is_stage_level_only() && report.stage_level.is_some())
-                && report.active.is_some(),
-            "Current mouse DPI read reply is incomplete"
+            stages_present != report.read_errors.stages().is_some()
+                && report.active.is_some() != report.read_errors.active().is_some()
+                && report.verified == report.read_errors.is_empty()
+                && report.acknowledgements.is_empty()
+                && report.profile_slots.is_empty()
+                && report.profile_slot_writes.is_empty()
+                && report.serial_number.is_none()
+                && report.initialization_mode_error.is_none(),
+            "Current mouse DPI read reply has absent or contradictory observations"
         );
+        if let Some(stages) = &report.stages {
+            ensure!(
+                stages.profile_id == 1,
+                "DPI stages belong to another profile"
+            );
+        }
     }
     Ok(report)
 }
@@ -280,6 +297,44 @@ fn decode_reply(
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn partial_getter_reply_preserves_real_values_and_requires_explicit_errors() {
+        let source = dpi::capability(190).unwrap();
+        let reply = json!({"source_class":source.transport().source_class,"profile_scope":"stage_1_active_0",
+            "report":{"requested":null,"stages":null,"active":{"x":2000,"y":2100},
+                "acknowledgements":[],"read_errors":{"stages":"stage command rejected","active":null},"verified":false}});
+        let report = decode_reply(190, &reply, None).unwrap();
+        assert_eq!(report.active, Some(dpi::DpiPair { x: 2000, y: 2100 }));
+        assert!(!report.verified);
+        for (path, value) in [
+            ("/report/verified", json!(true)),
+            ("/report/read_errors/stages", json!(null)),
+            ("/report/read_errors/active", json!("also failed")),
+            ("/report/active", json!(null)),
+        ] {
+            let mut invalid = reply.clone();
+            *invalid.pointer_mut(path).unwrap() = value;
+            assert!(decode_reply(190, &invalid, None).is_err());
+        }
+    }
+
+    #[test]
+    fn a_partial_getter_cannot_confirm_a_device_write_or_invent_obm_readback() {
+        let source = dpi::capability(190).unwrap();
+        let change = DpiChange {
+            stages: None,
+            active: Some(dpi::DpiPair { x: 2000, y: 2100 }),
+            profile_guid: None,
+            initialize: false,
+        };
+        let mut reply = json!({"source_class":source.transport().source_class,"profile_scope":"stage_1_active_0",
+            "report":{"requested":change,"stages":null,"active":{"x":2000,"y":2100},
+                "acknowledgements":[],"read_errors":{"stages":"failed","active":null},"verified":false}});
+        assert!(decode_reply(190, &reply, Some(change.clone())).is_err());
+        reply["report"]["verified"] = json!(true);
+        assert!(decode_reply(190, &reply, Some(change)).is_err());
+    }
 
     #[test]
     fn identity_reply_requires_a_real_serial_without_claiming_settings_were_written() {

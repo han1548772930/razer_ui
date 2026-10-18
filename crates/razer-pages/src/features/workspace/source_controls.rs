@@ -43,6 +43,8 @@ mod camera_source_state;
 mod camera_theme;
 #[path = "../accessories/hyperflux_207.rs"]
 mod hyperflux_207;
+#[path = "source_controls/hyperpolling_runtime.rs"]
+mod hyperpolling_runtime;
 #[cfg(test)]
 #[path = "source_controls/locale_tests.rs"]
 mod locale_tests;
@@ -54,8 +56,6 @@ mod oled_presets;
 mod oled_system_editor;
 #[path = "source_controls/receiver.rs"]
 mod receiver;
-#[path = "source_controls/hyperpolling_runtime.rs"]
-mod hyperpolling_runtime;
 #[path = "source_controls/receiver_brightness_ui.rs"]
 mod receiver_brightness_ui;
 #[path = "source_controls/receiver_lighting_page.rs"]
@@ -64,13 +64,13 @@ mod receiver_lighting_page;
 mod ripsaw_settings;
 pub use camera_preview::{CameraLocalActionRequested, CameraPreviewSource};
 pub use hyperflux_207::{HyperfluxOperation, HyperfluxRequested};
+pub use hyperpolling_runtime::{HyperpollingIndicatorRequested, HyperpollingOrigin};
 pub use receiver::{
     ReceiverCategory, ReceiverDeviceRequested, ReceiverDevicesObservation, ReceiverOperation,
     ReceiverPairingEvent, ReceiverPairingIntent, ReceiverPairingObservation, ReceiverPeer,
     ReceiverProgress,
 };
 pub use receiver_brightness_ui::{ReceiverBrightnessReadRequested, ReceiverBrightnessRequested};
-pub use hyperpolling_runtime::{HyperpollingIndicatorRequested, HyperpollingOrigin};
 pub use ripsaw_settings::RipsawMonitoringRequested;
 
 #[derive(Deserialize)]

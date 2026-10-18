@@ -92,7 +92,7 @@ impl ControllerChromaCommand {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ControllerChromaObservation {
     fully_installed: Option<bool>,
     module_installed: Option<bool>,

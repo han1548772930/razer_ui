@@ -17,7 +17,7 @@ fn observation(path: &[u8], peer: u16, status: u8) -> ObservedDevice {
         manufacturer: None,
         product: None,
     };
-    discovery::project_hid_receiver_query(
+    let projection = discovery::project_hid_receiver_query(
         &node,
         &json!({
             "node":node, "identity_scope":"hid_collection", "query":"receiver_wireless_status_v2",
@@ -25,9 +25,12 @@ fn observation(path: &[u8], peer: u16, status: u8) -> ObservedDevice {
             "devices":[{"product_id":peer,"status":status}]
         }),
     )
-    .unwrap()
-    .devices()[0]
-        .clone()
+    .unwrap();
+    assert!(projection.errors().is_empty(), "{:?}", projection.errors());
+    let [observed] = projection.devices() else {
+        panic!("one actual receiver peer identity expected");
+    };
+    observed.clone()
 }
 
 #[test]
@@ -69,11 +72,11 @@ fn shutdown_closes_admission_before_waiting_for_deliveries() {
 
 #[test]
 fn ordinary_discovery_refresh_preserves_the_exact_mouse_route() {
-    let route = observation(b"mouse-first", 182, 1);
+    let route = observation(b"mouse-first", 183, 1);
     let device = route.clone().into_device().unwrap();
-    let repeated = observation(b"mouse-first", 182, 1);
+    let repeated = observation(b"mouse-first", 183, 1);
     assert!(super::current_route(&route, &[repeated.clone()], &device));
-    let unrelated = observation(b"keyboard", 656, 1);
+    let unrelated = observation(b"unrelated-mouse", 227, 1);
     assert!(super::current_route(
         &route,
         &[unrelated, repeated],
@@ -83,13 +86,13 @@ fn ordinary_discovery_refresh_preserves_the_exact_mouse_route() {
 
 #[test]
 fn replacement_disconnect_ambiguity_and_peer_change_reject_old_dpi_readback() {
-    let route = observation(b"mouse-first", 182, 1);
+    let route = observation(b"mouse-first", 183, 1);
     let device = route.clone().into_device().unwrap();
     for next in [
         vec![],
-        vec![observation(b"mouse-first", 182, 0)],
-        vec![observation(b"mouse-replaced", 182, 1)],
-        vec![observation(b"mouse-first", 226, 1)],
+        vec![observation(b"mouse-first", 183, 0)],
+        vec![observation(b"mouse-replaced", 183, 1)],
+        vec![observation(b"mouse-first", 227, 1)],
         vec![route.clone(), route.clone()],
     ] {
         assert!(!super::current_route(&route, &next, &device));

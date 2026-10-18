@@ -6,7 +6,9 @@ IDA 路径：`E:/IDA`（9.1）、`D:/ida/IDA Pro 8.3`（8.3）。GPUI 技能读�
 
 `capture-corpus --source retained --ida-root E:/IDA --include-path '\.(dll|node|sys|customactionkey)$' --no-refresh-gaps` 本批选择 884 个不同字节的非 EXE 模块。工具核验完整旧捕获的所有产物后复用，对缺项使用当前 IDA／Hex-Rays；未选 EXE 保留在同一队列，不能把本批结果记为全语料闭合。保留原件的当前版本来源仍另行审计。进度、失败、输入快照及实际工具版本见 [统一原生队列](../../.analysis/results/native-corpus-capture.json)，不使用未结束旧队列的累计数作为本轮完成结论。
 
-维护入口统一为 `python tools/workspace.py`。原件位于 `.analysis/inputs/`，获取收据及索引保存实际字节 SHA-256；结果位于 `.analysis/results/`，临时数据库位于 `.work/`。不运行厂商应用、JavaScript、目标 DLL／导出、helper、installer、调试器或真实设备。
+维护入口统一为 `python tools/workspace.py`。原件位于 `.analysis/inputs/`，获取收据及索引保存实际字节 SHA-256；结果位于 `.analysis/results/`，临时数据库位于 `.work/`。静态分析不执行输入；已授权的本地 DLL／设备测试由显式维护命令记录实际调用、结果与清理，执行边界以根目录规则为准。厂商应用、JavaScript、无关 helper、installer 和调试器仍不运行。
+
+`validate-connected-devices` 使用生产 HID／领域协议所有者，在实际物理 PID、接口和 Feature descriptor 匹配的唯一 collection 上查询；默认忽略的集成测试不会随普通纯测试打开硬件。PID679 先读取实际布局，再对已核实布局 1 的 82 个 firmware key IDs 按源码的 15／13 键分批读取 Actuation／Rapid Trigger，不使用写入专用 ALL_KEYS。`--write-restore` 先核对原值可按字节恢复并写入日志，尝试变更后独立恢复及读回。`compare-connected-hid` 将同一路径、同一事务的 GET 报文交给已核实 x64 C ABI 的当前 `HID.node`，按当前选定工厂的十次、5 ms IN 节奏等待 busy 后的终态，保存每次原始返回，再逐字节比较终态；busy 耗尽、短报文或事务／命令不匹配均不能通过。比较绑定当前未变化的 Rust 输入和原始读取收据字节，分别记录句柄、`hid_exit`、DLL 及进程释放。具体功能结果见 [读取](../../.analysis/results/connected-device-verification.json)、[可恢复写入](../../.analysis/results/connected-device-write-verification.json)与[原库比较](../../.analysis/results/connected-native-comparison.json)；匹配离线应答只证明传输一致，实际设置与窗口验收分别判断。
 
 ## 当前工具
 
@@ -18,7 +20,7 @@ IDA 路径：`E:/IDA`（9.1）、`D:/ida/IDA Pro 8.3`（8.3）。GPUI 技能读�
 | Wakaru 1.14.0 | 全量显式 JS 输入，静态拆包、provenance、输出 map、diagnostics | validate、chunk 枚举和 source map 缺失独立记录；成功退出不证明依赖闭合 |
 | Tree-sitter 0.25.2／JavaScript 0.25.0 | 按 Python ABI 使用项目内解析器，静态定位完整源码 AST 和原始字节范围 | ERROR／missing node 不允许当成功提取；禁止执行 JS |
 | Rust 固定表生成器 | 项目内 Tree-sitter 0.25.2／Rust grammar 0.24.2，`prepare-static-python` 按实际 Python ABI 恢复；`prepare-typed-data` 按实际 Rust 字段和枚举生成多行构造代码，可按 `--symbol` 定向校验；`tools/typed-data.json` 保留输入 SHA-256、字段投影及格式边界 | 仅解析维护输入；不执行厂商代码。恢复自 Rust 的生产字段投影独立标记，不冒充原始证据 JSON；生成成功不代替编译、行为等价性或设备验收 |
-| SQLite 资源目录生成器 | `prepare-resource-database`／`prepare-emoji-search`／`prepare-runtime-assets` 共用 `resource_database.py`；本轮 Python SQLite 3.50.4，schema 2；Rust 使用锁定的 rusqlite 0.40.2／libsqlite3-sys 0.38.2 bundled，整数读取做溢出校验 | 迁移表情、界面静态目录、图片选择／几何元数据及资源索引；不迁移设备协议或用户配置。目录为 EXE 旁独立文件，不内嵌。全字段、顺序、重复项回读核验独立于真实窗口与安装验收 |
+| SQLite 资源目录生成器 | `prepare-resource-database`／`prepare-emoji-search`／`prepare-runtime-assets` 共用 `resource_database.py`；本轮 Python SQLite 3.50.4，schema 4；Rust 使用锁定的 rusqlite 0.40.2／libsqlite3-sys 0.38.2 bundled，整数读取做溢出校验 | 迁移表情、静态界面词表与目录、图片选择／几何元数据及资源索引；不迁移设备协议或用户配置。目录为 EXE 旁独立文件，不内嵌。全字段、顺序、重复项回读核验独立于真实窗口与安装验收 |
 | ccl_chromium_reader 0.24 | 固定提交 `ef840de30221c4d65bc96d2f4d9057e9ef2f526d`，8 个文件按收据校验 | 只读取公共官方静态缓存，不读取账户、cookie、浏览历史；缓存不是当前部署证明 |
 | 7-Zip | 新提取使用 24.02 x64，已有 26.02 收据保留各自身份；版本及 EXE／DLL SHA 随静态提取记录 | 仅识别为 PE 的安装器不能记成已提取全部载荷 |
 | ILSpyCmd 9.1.0.7988 | 固定 NuGet 包与 59 个文件，.NET 8 上静态导出 C# 项目和完整 IL | 不执行输入程序集；保留 unresolved 注释、stderr、两阶段退出码；native C++ 使用 IDA |
@@ -28,6 +30,8 @@ IDA 路径：`E:/IDA`（9.1）、`D:/ida/IDA Pro 8.3`（8.3）。GPUI 技能读�
 工具获取收据位于 `tools/analyzers/`；前端分析器准备记录位于 [.analysis/results/analysis-preparation.json](../../.analysis/results/analysis-preparation.json)。`analyze-host` 按既有 ILSpy 收据恢复精确匹配的官方包成员，不改写预期摘要。
 
 `prepare-emoji-search` 对 mouse190、keyboard679、Macro 与 Dashboard 的已保留 JS 原件核对实际字节和获取收据，用静态 AST 读取完整字符串，逐项比较 1,936 条 `(emo, name)` 及顺序。SQLite 保存 1,857 条唯一记录，顺序表保留 79 个重复项；全部分组、tab、变体及排除列表分别回读核对，保留 Macro 与 Mouse 分支差异。初始词表共享迁移的非搜索 Rust token 等价性、最终数据库全字段往返核验、完整 callable owners 和解析器版本存于统一 [固定表记录](../../.analysis/results/typed-data.json)。旧重复生产数据、数据宏、分区与 Rust 资源索引已清理，设备协议表继续使用普通有类型构造函数。`catalog_data.py` 静态核对完整构造 AST，将相同子树存为有界且无环的目录 DAG，并生成领域所有者内的普通解码函数；每张目录具有纯 Rust 完整解码检查。`tools/resource-mappings.json` 合并资源 alias／选择条件并保留完整顺序与重复项，迁移与数据库字节等价收据保存在同一固定表记录。搜索数据相等不代表各页面过滤规则相同，也不提升原件部署稳定性或依赖闭包状态。
+
+`prepare-locale-exports` 使用 Python 3.14.7、Tree-sitter 0.25.2／JavaScript grammar 0.25.0 和 json5 0.12.1，核验获取收据后静态读取当前完整 main 的工厂、语言路由和每个字典 export。解析保留实际 lexical scope，识别已支持的字面量与 alias getter；路由必须唯一，无法静态证明的动态值明确失败，不执行 JS。当前完整提取 48,150 条 export，向 10 个语种各补 6 个缺键；58,527 条原有翻译保留，94 处当前 export 与旧值的差异逐项记录。完整函数体／字节范围、实际来源与 baseline 身份、工具版本及合并策略见[词表准备收据](../../.analysis/results/locale-preparation.json)。生成器逐字段回读 schema 4 的 58,587 条翻译并校验顺序、重复、类型及已移除的旧生产路径；该迁移不补造旧词表尚未闭合的厂商来源，也不代表真实窗口语言呈现已验收。
 
 ## 主机与安装证据
 
@@ -113,6 +117,8 @@ host 子应用的 [当前部署审计](../../.analysis/results/frontend/host-app
 
 GPUI 修改前读取用户指定目录的两个 SKILL.md 及适用机制／组件参考，核对 Cargo.lock 版本；页面布局、控件、状态及交互由当前原件证明。
 
+主程序在 GUI 初始化前安装标准库 panic hook，日志由 `razer_storage::store_path()` 定位到同目录的 `panic.log`，Windows 通常为 `%APPDATA%\razer_ui\panic.log`。记录进程、线程、时间、Rust panic 位置／内容及调用栈，并保留原 hook；日志不可写或锁不可用时尽力输出到 stderr，不阻止启动或吞掉 panic。它只补充 Rust panic 诊断，不能保证捕获原生 failfast、abort 或系统直接终止，隔离服务 worker 也不使用这份主程序日志。写入及真实崩溃记录受窗口运行限制，静态核对与编译不算运行验收。
+
 输入获取、静态恢复、语义、Rust 实现、UI／服务连接、纯／模拟验证、运行验收分别记录。证据 SHA 不作为产品兼容门禁。共享协议逻辑独立于 OS，HID、COM、驱动、服务和系统适配保持明确边界。
 
-缺失原件、间接调用、ABI／协议分支、未实现本地链进入统一 `.analysis/results/gaps.json` 并驱动后续实现。账号、云同步、远程下载／更新、在线目录等联网产品功能移除；loopback、本地 socket、固件文件传输、DLL 替换、服务生命周期、本地预设仍须实现。纯／模拟测试不冒充设备写回；真实窗口、应用、服务和设备验收依执行限制保持未验证。
+缺失原件、间接调用、ABI／协议分支、未实现本地链进入统一 `.analysis/results/gaps.json` 并驱动后续实现。账号、云同步、远程下载／更新、在线目录等联网产品功能移除；loopback、本地 socket、固件文件传输、DLL 替换、服务生命周期、本地预设仍须实现。纯／模拟测试不冒充设备写回；本地 DLL／导出、服务及设备功能测试按根目录已授权的来源、架构、ABI、清理链核实和只读优先边界执行，可恢复写入保留原值、恢复与回读结果。应用窗口、厂商 JS、无关 helper 和安装器仍不运行；测试实际调用、返回、比较及未验证范围单独记录，不能由加载成功或单次 getter 推导整页验收。

@@ -18,6 +18,12 @@ use razer_pages::features::mouse_polling::PollingField;
 #[path = "device_discovery_tests.rs"]
 mod tests;
 
+#[derive(Clone, Copy)]
+pub(super) struct DeviceReadScope {
+    polling: razer_pages::features::mouse_polling::MousePollingScope,
+    idle: Option<razer_pages::features::mouse_products::MousePowerSavingRead>,
+}
+
 fn receiver_scope_matches(observed: &discovery::ObservedDevice, container: &str, pid: u32) -> bool {
     observed.container().eq_ignore_ascii_case(container)
         && observed.physical_product_id() == pid
@@ -155,7 +161,10 @@ fn same_receiver_peer(a: &discovery::ObservedDevice, b: &discovery::ObservedDevi
         && a.connection() == b.connection()
 }
 
-fn same_connection(a: &discovery::ObservedDevice, b: &discovery::ObservedDevice) -> bool {
+pub(super) fn same_connection(
+    a: &discovery::ObservedDevice,
+    b: &discovery::ObservedDevice,
+) -> bool {
     same_receiver_peer(a, b) && a.transport() == b.transport()
 }
 
@@ -198,7 +207,7 @@ impl AppShell {
         workspace: Entity<ProductWorkspace>,
         scope: razer_pages::features::mouse_polling::MousePollingScope,
         minutes: u8,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         // 83789/w grants only updateLocalStorage while the source macro
@@ -229,23 +238,16 @@ impl AppShell {
             });
             return;
         };
-        let identity = workspace.read(cx).identity(cx);
-        let product_id = workspace.read(cx).device(cx).product_id;
-        let container = workspace.read(cx).device(cx).device_container_id.clone();
-        let routes = self
-            .device_observations
-            .iter()
-            .filter(|observed| {
-                observed.matches(workspace.read(cx).device(cx))
-                    && ((observed.peer_product_id().is_none()
-                        && matches!(
-                            observed.transport(),
-                            Some(discovery::ObservedTransport::Wired)
-                        ))
-                        || razer_discovery::direct::mouse_receiver_polling::available(observed))
-            })
-            .collect::<Vec<_>>();
-        let [observed] = routes.as_slice() else {
+        let request = mouse_current_power_runtime::Request::Idle {
+            scope,
+            minutes,
+            valid: guard,
+        };
+        let Some(route) = mouse_current_power_runtime::select_route(
+            &self.device_observations,
+            workspace.read(cx).device(cx),
+            &request,
+        ) else {
             workspace.update(cx, |workspace, cx| {
                 workspace.finish_mouse_idle(scope, minutes, None, cx)
             });
@@ -254,125 +256,13 @@ impl AppShell {
             cx.notify();
             return;
         };
-        let physical_product_id = observed.physical_product_id();
-        let route_observation = (**observed).clone();
-        let peer_product_id = route_observation.peer_product_id();
-        let observed_transport = route_observation.transport();
-        let retained_node = route_observation.hid_node().cloned();
-        let revision = self.discovery_revision;
-        // An already queued discovery read predates this mutation. It cannot
-        // later replace the confirmed parameter snapshot with an older value.
+        let identity = workspace.read(cx).identity(cx);
+        // An older discovery read must not replace this mutation's readback.
         self.device_value_owners.remove(&identity);
         self.device_read_scopes.remove(&identity);
         self.status = "正在写入休眠时间并读取设备确认。".into();
+        self.start_mouse_power_operation(workspace, route, request, cx);
         cx.notify();
-        let workspace = workspace.downgrade();
-        cx.spawn_in(window, async move |this, cx| {
-            let result = cx
-                .background_spawn(async move {
-                    use anyhow::Context as _;
-                    use razer_device::device_reads::DeviceReadValue;
-                    use razer_device::device_writes::DeviceWriteSetting;
-                    let cap = razer_device::device_reads::capability(product_id)
-                        .context("产品读取能力未核实")?;
-                    let raw_time = u16::from(minutes) * 60;
-                    let setting = DeviceWriteSetting::Idle { raw_time };
-                    anyhow::ensure!(
-                        guard.load(std::sync::atomic::Ordering::Acquire),
-                        "Idle request canceled before service creation"
-                    );
-                    let mut client = ServiceClient::spawn()?;
-                    client.set_request_guard(guard.clone());
-                    let result = (|| {
-                        if peer_product_id.is_some() {
-                            return razer_discovery::direct::mouse_receiver_polling::write_idle(
-                                &mut client,
-                                &route_observation,
-                                raw_time,
-                            );
-                        }
-                        let route =
-                            razer_discovery::direct::resolve(&mut client, &route_observation, cap)?;
-                        match route.write(&mut client, setting)? {
-                            DeviceReadValue::Idle { raw_time: observed }
-                                if observed == raw_time =>
-                            {
-                                Ok(observed)
-                            }
-                            _ => anyhow::bail!("设备回读与休眠设置不一致"),
-                        }
-                    })();
-                    // Preserve a real acknowledgement even if teardown fails; never
-                    // retry a mutation just because the worker could not shut down.
-                    let shutdown_error = if client.is_stopped() {
-                        None
-                    } else {
-                        client
-                            .request(ServiceRequest::Shutdown)
-                            .err()
-                            .map(|error| format!("{error:#}"))
-                    };
-                    result.map(|observed| (observed, shutdown_error))
-                })
-                .await;
-            let _ = this.update_in(cx, |this, _, cx| {
-                let Some(workspace) = workspace.upgrade() else {
-                    return;
-                };
-                if !workspace
-                    .read(cx)
-                    .mouse_idle_in_flight_matches(scope, minutes, cx)
-                {
-                    return;
-                }
-                if !this.devices.contains(&workspace)
-                    || workspace.read(cx).identity(cx) != identity
-                    || !workspace
-                        .read(cx)
-                        .mouse_idle_request_matches(scope, minutes, cx)
-                {
-                    // Restore/disconnect cannot cancel an already sent command.
-                    // Its completion must release the slot without publishing an
-                    // old observation or replacing the current scope's status.
-                    workspace.update(cx, |workspace, cx| {
-                        workspace.finish_mouse_idle(scope, minutes, None, cx)
-                    });
-                    return;
-                }
-                let route_current = this.discovery_revision == revision
-                    && this.device_observations.iter().any(|observed| {
-                        observed.matches(workspace.read(cx).device(cx))
-                            && observed.container().eq_ignore_ascii_case(&container)
-                            && observed.physical_product_id() == physical_product_id
-                            && observed.hid_node() == retained_node.as_ref()
-                            && observed.peer_product_id() == peer_product_id
-                            && observed.transport() == observed_transport
-                    });
-                let confirmed = route_current
-                    .then(|| result.as_ref().ok().map(|(raw, _)| *raw))
-                    .flatten();
-                this.device_value_owners.remove(&identity);
-                this.device_read_scopes.remove(&identity);
-                workspace.update(cx, |workspace, cx| {
-                    workspace.finish_mouse_idle(scope, minutes, confirmed, cx)
-                });
-                this.status = if !route_current {
-                    "设备连接已变化，未确认当前休眠设置。当前选择已保留。".into()
-                } else {
-                    match result {
-                        Ok((_, None)) => format!("设备已回读确认休眠时间：{minutes} 分钟。"),
-                        Ok((_, Some(error))) => format!(
-                            "设备已回读确认休眠时间：{minutes} 分钟；通信进程退出失败：{error}"
-                        ),
-                        Err(error) => format!(
-                            "休眠设置未确认：{error:#}。当前选择已保留，请重新读取设备状态。"
-                        ),
-                    }
-                };
-                cx.notify();
-            });
-        })
-        .detach();
     }
 
     pub(super) fn query_dock_pairing(
@@ -620,6 +510,10 @@ impl AppShell {
         if let Ok(snapshot) = observation {
             self.retain_keyboard_brightness_connections(snapshot.devices(), cx);
             self.retain_current_dpi_connections(snapshot.devices(), cx);
+            self.retain_mouse_polling_connections(snapshot.devices(), cx);
+            self.retain_current_power_connections(snapshot.devices(), cx);
+            self.retain_product_lighting_connections(snapshot.devices(), cx);
+            self.retain_mouse_dynamic_connections(snapshot.devices(), cx);
         }
         let retained = self
             .devices
@@ -682,7 +576,13 @@ impl AppShell {
         };
         let mut errors = snapshot.errors().to_vec();
         self.device_observations = snapshot.devices().to_vec();
-        errors.extend(self.apply_device_observations(snapshot.devices(), true, window, cx));
+        errors.extend(self.apply_device_observations(
+            snapshot.devices(),
+            &retained,
+            true,
+            window,
+            cx,
+        ));
         self.observe_camera_host_window(window, cx);
         self.rebuild_receiver_devices(cx);
         self.receiver_devices_complete = errors.is_empty();
@@ -718,6 +618,7 @@ impl AppShell {
     fn apply_device_observations(
         &mut self,
         observations: &[discovery::ObservedDevice],
+        retained: &[Entity<ProductWorkspace>],
         collect_read_scopes: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
@@ -755,7 +656,11 @@ impl AppShell {
                 if collect_read_scopes {
                     workspace.update(cx, |workspace, cx| workspace.begin_dpi_basic_reads(cx));
                 }
-                observe_polling_connection(workspace, observed.transport(), cx);
+                // An identical full route is the same connection generation.
+                // A real removal already publishes None before a later reappearance.
+                if !retained.contains(workspace) {
+                    observe_polling_connection(workspace, observed.transport(), cx);
+                }
                 if collect_read_scopes {
                     self.device_value_owners
                         .insert(workspace.read(cx).identity(cx));
@@ -763,8 +668,16 @@ impl AppShell {
                 if collect_read_scopes
                     && let Some(scope) = workspace.read(cx).mouse_polling_scope(cx)
                 {
-                    self.device_read_scopes
-                        .insert(workspace.read(cx).identity(cx), scope);
+                    let idle = workspace.update(cx, |workspace, cx| {
+                        workspace.begin_mouse_idle_read(scope, cx)
+                    });
+                    self.device_read_scopes.insert(
+                        workspace.read(cx).identity(cx),
+                        DeviceReadScope {
+                            polling: scope,
+                            idle,
+                        },
+                    );
                 }
             }
         }
@@ -829,6 +742,10 @@ impl AppShell {
             product_id,
             incoming,
         );
+        self.retain_mouse_polling_connections(&self.device_observations, cx);
+        self.retain_current_power_connections(&self.device_observations, cx);
+        self.retain_product_lighting_connections(&self.device_observations, cx);
+        self.retain_mouse_dynamic_connections(&self.device_observations, cx);
         let retired = self
             .devices
             .iter()
@@ -870,7 +787,7 @@ impl AppShell {
             .filter(|new| !removed.iter().any(|old| same_connection(old, new)))
             .cloned()
             .collect::<Vec<_>>();
-        let errors = self.apply_device_observations(&changed, false, window, cx);
+        let errors = self.apply_device_observations(&changed, &[], false, window, cx);
         self.receiver_devices_complete &= errors.is_empty();
         self.rebuild_receiver_devices(cx);
         if !errors.is_empty() {
@@ -897,11 +814,21 @@ impl AppShell {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let scopes = std::mem::take(&mut self.device_read_scopes);
+        let mut scopes = std::mem::take(&mut self.device_read_scopes);
         let owners = std::mem::take(&mut self.device_value_owners);
         let snapshot = match observation {
             Ok(snapshot) => snapshot,
             Err(error) => {
+                for workspace in &self.devices {
+                    if let Some(read) = scopes
+                        .get(&workspace.read(cx).identity(cx))
+                        .and_then(|scope| scope.idle)
+                    {
+                        workspace.update(cx, |workspace, cx| {
+                            workspace.observe_mouse_idle_initial(read, None, window, cx)
+                        });
+                    }
+                }
                 self.status = format!("设备参数读取失败：{error}");
                 self.request_initial_dpi_stage_reads(cx);
                 cx.notify();
@@ -921,15 +848,22 @@ impl AppShell {
             if !owners.contains(&workspace.read(cx).identity(cx)) {
                 continue;
             }
-            let scope = scopes.get(&workspace.read(cx).identity(cx)).copied();
+            let scope = scopes.remove(&workspace.read(cx).identity(cx));
             let values = observed.read_values().cloned();
             workspace.update(cx, |workspace, cx| {
                 workspace.observe_keyboard_metadata(observed.keyboard_metadata().cloned(), cx);
                 workspace.observe_read_values(values.clone(), cx);
-                let (Some(scope), Some(values)) = (scope, values) else {
+                if let Some(read) = scope.and_then(|scope| scope.idle) {
+                    workspace.observe_mouse_idle_initial(
+                        read,
+                        values.as_ref().and_then(|values| values.idle_raw_time),
+                        window,
+                        cx,
+                    );
+                }
+                let (Some(scope), Some(values)) = (scope.map(|scope| scope.polling), values) else {
                     return;
                 };
-                workspace.observe_mouse_idle_initial(scope, values.idle_raw_time, window, cx);
                 workspace.observe_mouse_polling(
                     scope,
                     MousePollingObservation::FirmwareVersion(values.firmware),
@@ -966,6 +900,18 @@ impl AppShell {
                         observed.product_id()
                     );
                 }
+            }
+        }
+        // A partial snapshot can omit a requested device completely. Complete
+        // its GET as unobserved so the retained page can retry a later scan.
+        for workspace in &self.devices {
+            if let Some(read) = scopes
+                .get(&workspace.read(cx).identity(cx))
+                .and_then(|scope| scope.idle)
+            {
+                workspace.update(cx, |workspace, cx| {
+                    workspace.observe_mouse_idle_initial(read, None, window, cx)
+                });
             }
         }
         if !identity_publications.is_empty() {
@@ -1016,7 +962,7 @@ impl AppShell {
         }
         // The basic query worker has completed; do not compete with its retained
         // path lock during discovery's first/second phase handshake.
-        self.initialize_mouse182_profiles(cx);
+        self.initialize_current_mouse_profiles(cx);
         self.initialize_mouse_scroll_profiles(cx);
         self.request_initial_dpi_stage_reads(cx);
         self.sync_known_devices(cx);

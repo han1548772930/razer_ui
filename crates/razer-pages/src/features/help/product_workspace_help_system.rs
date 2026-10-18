@@ -13,7 +13,7 @@ impl ProductWorkspace {
         &mut self,
         owner: &Device,
         request: &HelpSystemInfoRequested,
-        source: serde_json::Value,
+        source: Result<razer_device::system_info::SystemDetails, String>,
         cx: &mut Context<Self>,
     ) -> bool {
         match &self.body {

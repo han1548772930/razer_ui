@@ -65,6 +65,10 @@ pub fn run_worker() -> i32 {
         };
         let shutdown = matches!(envelope.request, ServiceRequest::Shutdown);
         let result = match envelope.request {
+            ServiceRequest::HelpSystemInfo { product_id, query } => {
+                crate::help_system_info::query(product_id, query)
+                    .and_then(|response| serde_json::to_value(response).map_err(Into::into))
+            }
             ServiceRequest::KeyboardLayoutRead => razer_platform::keyboard_layout::get()
                 .map(|layout| serde_json::json!({"layout":layout})),
             ServiceRequest::WindowsServiceStart { name } => {
@@ -141,6 +145,8 @@ pub fn run_worker() -> i32 {
             | ServiceRequest::HidNodeDpiStagesRead { .. }
             | ServiceRequest::HidNodeDpiStagesWrite { .. }
             | ServiceRequest::HidNodeMouseCurrentDpi { .. }
+            | ServiceRequest::HidNodeMouseBrightness { .. }
+            | ServiceRequest::HidNodeMouseDynamic { .. }
             | ServiceRequest::HidNodeMouseCurrentPolling { .. }
             | ServiceRequest::HidNodeMouseCurrentPower { .. }
             | ServiceRequest::HidNodeMouseScroll { .. }

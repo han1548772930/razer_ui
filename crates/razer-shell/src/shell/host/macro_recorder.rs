@@ -121,7 +121,7 @@ impl AppShell {
             eprintln!("[macro storage] {action}: {error:#}");
         }
         self.sync_receiver_macro_access(cx);
-        self.initialize_mouse182_profiles(cx);
+        self.initialize_current_mouse_profiles(cx);
         self.sync_keyboard_latest_restore(window, cx);
     }
 

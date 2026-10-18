@@ -9,7 +9,7 @@
 | [families.py](families.py) | 全产品族 UI／middleware 获取、独立版本配对、native 资源来源闭包与静态恢复矩阵 |
 | [asset_release.py](asset_release.py) | 私有资源仓库快照、上传核验、固定提交与有类型运行时索引 |
 | [catalog_data.py](catalog_data.py) | 完整构造 AST 等价校验、去重目录编码及所属模块的普通有类型读取函数 |
-| [resource_database.py](resource_database.py) | 生成／回读核验随程序交付的 SQLite 表情词表、页面分支与资源索引 |
+| [resource_database.py](resource_database.py) | 生成／回读核验随程序交付的 SQLite 表情、界面词表、页面分支与资源索引 |
 | [resource_scope.py](resource_scope.py) | 检查 Rust overlay／延迟绘制边界的资源缓存所有者，由统一维护入口调用 |
 | [rust_data.py](rust_data.py)、[typed_tables.py](typed_tables.py) | 按实际 Rust schema 校验并生成可读 Rust 数据表、协议能力与本地默认值 |
 | [windows_installer.py](windows_installer.py) | Windows 安装包静态输入准备、PE 依赖闭包和封装校验 |
@@ -55,6 +55,7 @@ python tools/workspace.py prepare-static-python
 python tools/workspace.py prepare-media-analyzer
 python tools/workspace.py prepare-native-cursors --sources INPUTJSON --group 102
 python tools/workspace.py prepare-emoji-search --check
+python tools/workspace.py prepare-locale-exports --acquisition .analysis/inputs/frontend/mouse-190-current/acquisition.json --source .analysis/inputs/frontend/mouse-190-current/raw/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js --check
 python tools/workspace.py prepare-resource-database --check
 python tools/workspace.py prepare-typed-data --check
 python tools/workspace.py prepare-typed-data --check --record-verification
@@ -78,7 +79,7 @@ python tools/workspace.py validate-rust --suite macro-recording-ipc --suite macr
 
 `prepare-static-python` 按当前 Python ABI 恢复项目内固定版本的 JavaScript／Rust 解析器，校验发行元数据、wheel 字节及两种语法的静态解析。`prepare-typed-data` 支持重复的 `--crate`／`--symbol` 定向选择；选项不匹配时失败，不能把零张表记为验证通过。
 
-`audit-runtime-resources` 用 Rust AST 遍历根程序与全部 crate 的生产资源 literal、宏 token、完整函数所有者及生产目录维护输入，核对固定资源目录；动态站点单独列出 caller 有限域与尚未证明的分支，通配命中不能证明覆盖。`--repair` 先依据当前 3884／3886 完整 JS／CSS 原件及固定载荷验证无线 ARGB 交互图层并补 alias，不恢复媒体到源码目录。统一结果保存在 `.analysis/results/resource-audit.json`；文件缺项、资源作用域违规或输入快照变化使命令失败。`resource_scope.py` 检查 overlay 回调、early return、导入别名与显式宏诊断，`organize-sources` 调用同一所有者；它不做 Rust 类型推导或宏展开，间接回调保持显式诊断。
+`audit-runtime-resources` 用 Rust AST 遍历根程序与全部 crate 的生产资源 literal、宏 token、完整函数所有者及生产目录维护输入，核对固定资源目录；动态站点单独列出 caller 有限域与尚未证明的分支，通配命中不能证明覆盖。`--repair` 先依据当前 3884／3886 完整 JS／CSS 原件及固定载荷验证无线 ARGB 交互图层并补 alias，不恢复媒体到源码目录。统一结果保存在 `.analysis/results/resource-audit.json`；文件缺项、资源作用域违规或输入快照变化使命令失败。`resource_scope.py` 检查 overlay 回调、early return、导入别名与显式宏诊断，`organize-sources` 调用同一所有者；它不做 Rust 类型推导或宏展开，间接回调保持显式诊断。生产 overlay 使用共享 `deferred_resource`；`resource_scope` 保留原布局节点与边界，自定义 element 的 `ResourceLayer` 在布局前创建并保留到 prepaint／paint，以同一窗口图片缓存处理弹层内的真实资源请求。静态所有权检查不替代真实窗口显示验收。
 
 `prepare-app-picker --check` 从当前 RzAppMenu 原件核验 34 个分类向量与 331 个产品的首个 favicon fallback，检查固定 alias 字节及原始选择顺序，不依赖已删除的开发媒体目录。目录元数据、两张所属小型 SVG 夹具的纯 CPU 解码、资源作用域结构与真实窗口绘制分别验证，静态通过不代表窗口验收。
 
@@ -86,7 +87,9 @@ python tools/workspace.py validate-rust --suite macro-recording-ipc --suite macr
 
 `prepare-resource-database` 生成唯一的 `assets/synapse/resource-catalog.sqlite3`；`prepare-emoji-search` 和 `prepare-runtime-assets` 使用同一实现。四份原始 JS 核验获取收据、实际字节和完整搜索字符串，数据库保存 1,857 条唯一记录与 1,936 项原始顺序。分组值、变体和排除列表分别去重，Mapping、无排除项的 Mouse 分支和 Macro 保留各自的标签、分组顺序、tab 目标及系统版本规则。工具逐字段回读所有表情与完整资源索引，记录 SQLite 实际版本、输入／输出 SHA；`--check` 校验同一数据库。旧重复词表和生成 Rust 资源索引不再保留。新 JS 来源由 `prepare-emoji-search --source PROJECTREL` 重复登记；完整 callable owner、解析器版本和等价性记录位于 `.analysis/results/typed-data.json`。产品不读取分析目录或远程词表。
 
-schema 3 的 `ui_product`、`ui_product_category`、`ui_product_edition`、`ui_navigation`、`ui_page` 保存完整产品目录，包含 331 个产品、365 条导航分支及 1,459 个页面。维护输入为 `.analysis/inputs/typed-tables/razer-catalog/product_registry.json`，生成时检查全字段、顺序、稳定身份、primary／连接分支和 333 个 Help 展示记录选择键并完整回读；`audit-registry-identity --product PID --prepare` 依据当前原始挂载链更新同一维护源与数据库，保留原有导航／页面身份和展示记录选择键。启动在窗口创建前保留一次有类型的目录快照，未使用的源码路径、哈希、组件表达式与分析状态仅保存在 `.analysis/results/registry-source-evidence.json`，不进入运行时目录。迁移等价性、单独的 Help 连接修复和当前源码覆盖分别记录。
+schema 4 的 `ui_product`、`ui_product_category`、`ui_product_edition`、`ui_navigation`、`ui_page` 保存完整产品目录，包含 331 个产品、365 条导航分支及 1,459 个页面。维护输入为 `.analysis/inputs/typed-tables/razer-catalog/product_registry.json`，生成时检查全字段、顺序、稳定身份、primary／连接分支和 333 个 Help 展示记录选择键并完整回读；`audit-registry-identity --product PID --prepare` 依据当前原始挂载链更新同一维护源与数据库，保留原有导航／页面身份和展示记录选择键。启动在窗口创建前保留一次有类型的目录快照，未使用的源码路径、哈希、组件表达式与分析状态仅保存在 `.analysis/results/registry-source-evidence.json`，不进入运行时目录。迁移等价性、单独的 Help 连接修复和当前源码覆盖分别记录。
+
+同一目录库的 `ui_locale`／`ui_translation` 保存 10 个语种、58,587 条翻译，当前完整数据库为 47,710,208 字节。`prepare-locale-exports --acquisition RECEIPT --source JS [--check]` 核对完整原件、静态字典导出及唯一语言路由，维护 `.analysis/inputs/typed-tables/razer-i18n/locales.json` 和同目录原字节 baseline，并通过统一 SQLite 生成器回读全字段、顺序与重复项。当前导出提取仅向各语种补 6 个缺键，保留全部旧值，94 处已有值差异见[词表准备收据](../.analysis/results/locale-preparation.json)。旧 `locales/*.json` 生产文件与嵌入读取已移除；`prepare-locale-keys` 写入同一 canonical／SQLite 所有者，不重建旧目录。`razer-i18n` 查询保留的不可变 `DictionarySnapshot`，与 GPUI 共用当前语言状态；运行时不读分析输入，旧词表的完整厂商来源仍须继续核实。
 
 `prepare-native-cursors --sources INPUTJSON --group 102` 接受包含 `path` 和 `acquisition` 的 JSON 列表，`--sources -` 从 stdin 读取。它核验原始 PE／获取收据后静态解析 `RT_GROUP_CURSOR` 与 `RT_CURSOR`，校验 RVA、资源边界、尺寸、热点与 DIB／AND 数据，重建完整 CUR；不加载 DLL。原件、解析范围、实际 SHA 和八帧光标位于 `.analysis/inputs/native-resources/acquisition.json`；输出通过统一资源映射与固定版本按需交付。PE 资源恢复不代替原生函数分析或真实取屏色验收。
 
@@ -130,7 +133,9 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 
 `audit-reference --retained-snapshot` 仅适用于已有完整 Git tree 审计收据且当前没有可用 Git 元数据的参考快照，核对原清单、全部文件字节、Git blob 身份、模式及 workspace manifests。`REFERENCE` 是参考目录，`COMMIT` 是原固定提交；该模式不重新获取 Git 对象、不检查上游是否更新，保留原审计时间和适用边界，不能与 upstream 复查或恢复原字节选项混用。
 
-`validate-rust` 将精确命令、实际执行测试数、日志摘要和验证前后代码身份统一写入 `.analysis/validation.json`。架构整理可选择上述工作区、领域、存储与资源套件；`assets-resource-runtime` 在无 GPUI 的 `razer-resources` 中使用模拟传输，`assets-resource-identity` 只做元数据和 CPU codec 检查，`assets-fixed-icons` 核对固定图标。窗口、应用、安装器、厂商代码及真实设备验收仍禁止执行，不应从普通 `#[test]` 属性推断测试没有窗口副作用。
+`validate-rust` 将精确命令、实际执行测试数、日志摘要和验证前后代码身份统一写入 `.analysis/validation.json`。架构整理可选择上述工作区、领域、存储与资源套件；`assets-resource-runtime` 在无 GPUI 的 `razer-resources` 中使用模拟传输，`assets-resource-identity` 只做元数据和 CPU codec 检查，`assets-fixed-icons` 核对固定图标。该命令只执行纯／模拟测试，不应从普通 `#[test]` 属性推断测试没有窗口副作用。已授权的真实 DLL／设备检查使用下述显式维护命令，窗口、应用、厂商 JavaScript 和安装器仍不执行。
+
+设备读取接线的验证必须注入与本地缓存／默认值不同的设备返回，检查数据实际进入原控件的状态入口，并覆盖局部成功、失败、未知、断开、重连与用户编辑。未返回字段不得补造，失败不得回退缓存或默认值；首次初始化与恢复的顺序使用源产品自己的证据，不增加通用只读或默认写入流程。写入分别核对真实发送、应答、协议要求的读回和页面刷新；文件保存、同一输入的序列化往返及附加诊断不能代替这些验证。实际已执行范围仍以统一收据为准，不能从此验证要求推定全部产品链已通过。
 
 `mapping-service` 通过内存传输验证设备映射／按键捕获／宏录制、取消、恢复、替换和 Rust panic 后的收尾；`mapping-connections` 只验证发现连接的纯状态规则。held 跨设备目标、快捷键编码与宏录制解码／XML 编解码由 `model` 覆盖；宏文件传输、旧快捷键归档及偏好磁盘迁移由 `storage` 覆盖。`profiles-transfer-codec` 验证共享源 hash 的导入边界，`ui-preferences-state` 只运行无窗口的偏好状态／队列测试。`mouse-tracking-*` 和 `mouse-philips-*` 选择协议、会话、IPC、发现路由、服务、页面请求状态及 shell 结果语义的纯／模拟测试，共享 feature submission 的取消／join／panic 由这两类 controller 用例覆盖；`mouse-philips-state` 覆盖 `calibration_70::state` 的面板转移与请求生命周期。`keyboard-latest-restore-*` 分别验证设备协调器、保留的退出队列及模拟 publisher 的映射注册／恢复；`keyboard-game-lifecycle` 验证退出冻结、手动配置与回执寿命；`keyboard-actuation-lifecycle` 用屏障与模拟 transport 验证已接受 FIFO、退出取消后的继任队列、真实范围取消及 Shutdown／释放完成。它们不启动应用、窗口或真实设备。`assets` 套件显式排除会创建 headless GPUI 窗口的 `image_cache::tests`，排除清单与边界随验证收据保存。
 
@@ -178,7 +183,13 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 
 完整原图的 `verify-resources` 属于显式准备原文件后的维护校验：SVG 解析完整 XML，检查遗留 React 属性和 `<use>` 的内部目标；位图使用固定 Pillow 验证结构并完整解码像素。输入摘要、逐文件结果、失败及验证期间的图片身份保存在 `.analysis/results/resource-audit.json`，失败与过期收据进入统一 gaps。它不属于 Cargo 前置步骤。资源纯测试通过编译索引检查当前 alias 与产品分支，使用必要的内联合成 SVG／PNG 检查锁定 GPUI codec；真实产品图片不放进 `testdata/`，也不在测试中全量加载或下载。AVIF 的维护转换仍须从核验过的原件准备，两类检查均不能代替布局、交互或设备验收。
 
-工具路径相对项目根，证据哈希从原始字节生成。所有目标只作静态数据处理；禁止执行厂商应用／JavaScript／DLL／helper／installer、真实服务和真实设备。允许的 Rust 检查与纯／模拟测试见 [AGENTS.md](../AGENTS.md)。
+工具路径相对项目根，证据哈希从原始字节生成。来源获取和分析目标只作静态数据处理；已授权的本地 DLL／导出、服务与设备功能测试须先核实来源、版本、架构、ABI 和清理链，先只读核对，可恢复写入保留原值、恢复及回读结果。应用窗口、厂商 JavaScript、无关 helper、installer、固件刷写和不可逆操作仍不运行。实际调用、返回、比较与未验证范围分别记录；允许的 Rust 检查与纯／模拟测试及完整执行边界见 [AGENTS.md](../AGENTS.md)。
+
+`validate-connected-devices --product PID` 显式执行 owning crate 中默认忽略的真实 HID 集成测试，按当前源码的物理 PID、接口与实际 Feature descriptor 选择唯一 collection，并保留实际查询、原始应答与释放结果。PID679 的逐键读取只在实际布局匹配已核实清单后执行，GET 不使用 ALL_KEYS。普通 `cargo test` 不打开硬件。`--write-restore` 覆盖已核实的键盘亮度、PID679 Continuous Rapid Trigger，以及 PID190 临时 DPI、轮询率和休眠时间：先记录完整原始值，仅在可以逐字节恢复时验证变更，写入失败或 panic 仍执行恢复并独立读回。鼠标检查完整档位表、活动 DPI 的 Z 字段、轮询／休眠原始应答及接收器在线状态，不写板载配置；未知或无法精确恢复的原值禁止 SET。失败或进程超时不算恢复成功。新增鼠标夹具本轮仅作纯／模拟验证，没有执行真实操作；实际执行始终受根目录当前执行限制约束。收据分别为 `connected-device-verification.json` 和 `connected-device-write-verification.json`，均归入现有 `.analysis/results/`。
+
+硬件测试直接运行时同样检查每个读取和恢复确认，恢复失败不能返回测试成功。只读测试超时会回收并等待测试进程树；写入测试超过维护时限后继续等待原值恢复与释放，不强杀可能正在恢复的所有者。原值记录和开始事件在操作时立即刷新到日志，缺失最终结果时保留已尝试操作及未知恢复状态。`connected-verification-boundary` 套件只执行这些结果判定的纯测试，不选择默认忽略的硬件测试。
+
+`compare-connected-hid --library PATH` 复用上述只读实测报文，要求读取收据的完整 Rust 输入快照仍与当前字节一致，并在比较期间保留同一份收据。在独立限时进程中调用字节、架构、导出和 ABI 均已核实的当前 `HID.node` C 接口，不执行 JS／N-API。工具拒绝配置 SET、未知产品／接口、错误长度、校验和、profile 和参数。当前已核实工厂按十次、5 ms IN 节奏等待 busy 后的终态，保存每次原始返回，比较读取收据中同一 OUT 后的终态而非第一份 busy 报文；短返回、busy 耗尽和事务／命令不匹配明确失败。相同路径与事务的完整返回字节进入 `connected-native-comparison.json`；相同离线或错误应答只证明传输结果一致，不能证明缺席设备的设置有效。加载、句柄关闭、`hid_exit`、DLL 释放和进程等待分别保留。
 
 `keyboard-metadata` 复用当前 middleware 获取收据，逐产品校验原件字节并保留完整注册、DeviceInfo、继承类、getEdition／getSerialNumber、命令／解码器、传输默认值、物理路由工厂及身份缓存／runtimeData 默认值所有者。结果追加至 `keyboard-mw-audit.json`；通过检查的有线、自有无线接收器及 BLE 产品生成 `razer-device` 元数据传输描述，双链路共享接收器另保留 cached-master 工厂及命令命名空间证据。原始依赖闭包缺项独立保留，不把厂商 UI 的布局／版本默认值视为硬件读取成功。该查询不执行厂商代码或设备操作。
 
@@ -189,6 +200,8 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 `publish-asset-release --add-files .analysis/inputs/resource-publication.json --dry-run` 核对选定原件、获取收据和新增 alias，准备具体增量而不联网；去掉 `--dry-run` 后只复制新文件至禁止 LFS 自动下载及换行转换的隔离仓库，保留既有媒体指针，新增路径逐项使用 `git lfs track --filename`，验证固定基线与全部远端身份后发布并固定新提交。清单必须包含每份原件及获取收据的路径、长度和 SHA-256；已有文件或 alias 的不同内容会明确失败。`--prune-maintenance-tables` 仅允许逐项核对固定远端身份后移除已迁移的 `assets/synapse/tables/*.rs` 维护片段，删除清单和实际身份保留在统一 `.analysis/results/asset-release-update.json`。独立复核远端普通 Git blob 时可用 `verify-asset-release --remote --from-dir SOURCE` 提供同一隔离仓库作为 SHA-256 字节依据；不会恢复源码 `assets/` 或下载 LFS 载荷。发布后运行 `prepare-resource-database` 同步目录库中的固定版本和新增 alias。
 
 `prepare-typed-data [--check] [--crate CRATE]` 使用 `tools/typed-data.json` 和 `.analysis/inputs/typed-tables/` 的维护输入，按实际 Rust struct／enum、字段、值域和产品分支生成普通有类型构造函数；界面目录由 `catalog_data.py` 路由到同一 SQLite，并在领域所有者中生成普通读取函数；专用设备写入、读取／身份／接收器、存储默认值分别由 `prepare-device-write-table`、`prepare-local-protocol-tables`、`prepare-storage-tables` 维护。固定协议构造函数随程序编译，界面目录随独立数据库安装，产品不解析这些维护 JSON；外部报文、动态扩展和用户配置只在有类型的边界读写。原 JSON 不在 crates 中保留第二份生产数据。
+
+`prepare-local-protocol-tables --current-reads [--check]` 直接复核当前产品 190、679 的获取收据、部署稳定性、实际输入字节、物理工厂与 GET／解码链，维护普通 Rust 读取能力构造函数并保留其他产品。键盘布局清单沿当前 UI 映射解析固件键 ID，同时核对 Rust 与 Python 只读验证工具的键清单；完整函数、来源和等价结果写入统一 `typed-data.json` 的 `current_local_read_table`。该模式不执行设备或厂商代码，也不恢复已退役的读取 JSON。
 
 完整 `--check --record-verification` 对全部维护源、实际 Rust schema、构造函数／读取函数及独立目录库作等价性核验，开始与结束分别核对输入字节；成功后在统一 `typed-data.json` 收据登记完整身份，并将维护输入纳入 `inputs.json`。该选项不接受产品、crate 或 symbol 子集，也不修改产品输出。构造数据投影仍标明维护用途及未建立厂商原件来源；`refresh-gaps` 重新按实际文件和该收据判断缺失、身份变化与验证过期，并保留尚未恢复的原始证据字段。
 

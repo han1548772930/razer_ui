@@ -384,6 +384,8 @@ pub struct StreamsResetResult {
     pub confirmation: String,
 }
 
+pub const STREAM_RESET_PROPERTY: &str = "RazerT2ResetStream";
+
 pub fn restart_streams(
     device: &dyn MixerDriverTransport,
     validate: impl Fn() -> anyhow::Result<()>,

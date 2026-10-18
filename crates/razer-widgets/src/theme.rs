@@ -54,6 +54,23 @@ impl ProductSurfaceColors {
     }
 }
 
+/// Current mouse190 main.7ce428ff.css polling button normal/active states.
+pub struct MousePollingColors;
+impl MousePollingColors {
+    pub fn surface() -> Hsla {
+        rgb(0x222222).into()
+    }
+    pub fn text() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+    pub fn border() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub fn selected() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+}
+
 /// Current 3893 `CoolerInfo`, `FirmwareWarning` and `sliderChart` colors in
 /// main.5b87dc95.css and the `yg` canvas drawing body.
 pub struct HanboCoolerColors;

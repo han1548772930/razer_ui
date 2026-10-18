@@ -1,6 +1,4 @@
 use super::*;
-use razer_discovery::{direct, discovery::ObservedTransport};
-use razer_ipc::{ServiceClient, ServiceRequest};
 use razer_pages::features::mouse_products::MouseCurrentPowerRequested;
 
 pub(super) struct MouseCurrentPowerSave {
@@ -23,7 +21,7 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         if !request.requires_local_persistence(workspace.read(cx).device(cx).product_id) {
-            self.submit_current_power_device(workspace, request, window, cx);
+            self.submit_current_power_device(workspace, request, cx);
             return;
         }
         if self.storage_error.is_some()
@@ -107,7 +105,7 @@ impl AppShell {
         &mut self,
         save: MouseCurrentPowerSave,
         succeeded: bool,
-        window: AnyWindowHandle,
+        _window: AnyWindowHandle,
         cx: &mut Context<Self>,
     ) {
         if !succeeded || save.request.change().is_none() || self.close_requested {
@@ -120,11 +118,9 @@ impl AppShell {
         cx.defer(move |cx| {
             let workspace = save.workspace.clone();
             let request = save.request.clone();
-            if window
-                .update(cx, |_, window, cx| {
-                    let _ = owner.update(cx, |this, cx| {
-                        this.submit_current_power_device(save.workspace, save.request, window, cx)
-                    });
+            if owner
+                .update(cx, |this, cx| {
+                    this.submit_current_power_device(save.workspace, save.request, cx)
                 })
                 .is_err()
             {
@@ -139,7 +135,6 @@ impl AppShell {
         &mut self,
         workspace: Entity<ProductWorkspace>,
         request: MouseCurrentPowerRequested,
-        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         if self.close_requested
@@ -154,26 +149,12 @@ impl AppShell {
             });
             return;
         }
-        let routes: Vec<_> = self
-            .device_observations
-            .iter()
-            .filter(|route| {
-                route.matches(workspace.read(cx).device(cx))
-                    && matches!(
-                        route.transport(),
-                        Some(
-                            ObservedTransport::Wired
-                                | ObservedTransport::Dongle
-                                | ObservedTransport::Ble
-                        )
-                    )
-                    && razer_device::mouse_current_power::capability(route.product_id())
-                        .is_some_and(|source| {
-                            source.accepts(route.physical_product_id(), route.peer_product_id())
-                        })
-            })
-            .collect();
-        if routes.len() != 1 {
+        let operation = mouse_current_power_runtime::Request::Current(request.clone());
+        let Some(route) = mouse_current_power_runtime::select_route(
+            &self.device_observations,
+            workspace.read(cx).device(cx),
+            &operation,
+        ) else {
             self.status = if request.is_read() {
                 "当前连接尚不唯一，设备省电设置未读取。".into()
             } else if !request.requires_local_persistence(workspace.read(cx).device(cx).product_id)
@@ -187,119 +168,12 @@ impl AppShell {
             });
             cx.notify();
             return;
-        }
-        let route = routes[0].clone();
+        };
         let identity = workspace.read(cx).identity(cx);
-        let revision = self.discovery_revision;
-        self.current_power_workers += 1;
+        self.device_value_owners.remove(&identity);
+        self.device_read_scopes.remove(&identity);
         self.status = "正在核对电源设置设备应答…".into();
+        self.start_mouse_power_operation(workspace, route, operation, cx);
         cx.notify();
-        // Completion does not need the original window. It must still release
-        // the request and drain the local writer if that window closes.
-        let _ = window;
-        cx.spawn(async move |this, cx| {
-            let selected = route.clone();
-            let guard = request.clone();
-            let result = cx
-                .background_spawn(async move {
-                    anyhow::ensure!(
-                        guard.is_valid(),
-                        "Mouse power scope canceled before service creation"
-                    );
-                    let mut client = ServiceClient::spawn()?;
-                    client.set_request_guard(guard.guard());
-                    let result = (|| {
-                        let direct = direct::mouse_current_power::resolve(&mut client, &selected)?;
-                        anyhow::ensure!(
-                            guard.is_valid(),
-                            "Mouse power scope canceled before device submission"
-                        );
-                        let report = direct.mouse_current_power(
-                            &mut client,
-                            guard.change().cloned().ok_or_else(|| {
-                                anyhow::anyhow!("Power write request has no change")
-                            })?,
-                        )?;
-                        anyhow::ensure!(
-                            guard.is_valid(),
-                            "Mouse power scope canceled after device submission"
-                        );
-                        Ok::<_, anyhow::Error>(report)
-                    })();
-                    let shutdown_error = if client.is_stopped() {
-                        None
-                    } else {
-                        client
-                            .request(ServiceRequest::Shutdown)
-                            .err()
-                            .map(|error| format!("{error:#}"))
-                    };
-                    match (result, shutdown_error) {
-                        (Err(error), Some(cleanup)) => Err(error.context(format!(
-                            "Power communication cleanup also failed: {cleanup}"
-                        ))),
-                        (result, cleanup) => result.map(|report| (report, cleanup)),
-                    }
-                })
-                .await;
-            let _ = this.update(cx, |this, cx| {
-                this.current_power_workers = this.current_power_workers.saturating_sub(1);
-                let current = this.devices.contains(&workspace)
-                    && workspace.read(cx).identity(cx) == identity
-                    && workspace
-                        .read(cx)
-                        .current_power_request_matches(&request, cx)
-                    && this.discovery_revision == revision
-                    && this.device_observations.iter().any(|current| {
-                        current.matches(workspace.read(cx).device(cx))
-                            && current.physical_product_id() == route.physical_product_id()
-                            && current.container().eq_ignore_ascii_case(route.container())
-                            && current.hid_node() == route.hid_node()
-                            && current.peer_product_id() == route.peer_product_id()
-                            && current.connection() == route.connection()
-                            && current.transport() == route.transport()
-                    });
-                let observed = current
-                    .then(|| result.as_ref().ok().map(|(report, _)| report.clone()))
-                    .flatten();
-                workspace.update(cx, |workspace, cx| {
-                    workspace.finish_current_power(&request, observed, cx)
-                });
-                if current {
-                    this.status = match result {
-                        Ok((_, None)) => {
-                            if request.is_read() {
-                                "已读取设备省电设置。".into()
-                            } else if !request.requires_local_persistence(
-                                workspace.read(cx).device(cx).product_id,
-                            ) {
-                                "设备省电设置已确认。".into()
-                            } else {
-                                "电源设置已保存到本机，设备设置已确认。".into()
-                            }
-                        }
-                        Ok((_, Some(error))) => {
-                            format!("电源设置设备操作已确认；通信进程退出失败：{error}")
-                        }
-                        Err(error) => {
-                            if request.is_read() {
-                                format!("设备省电设置读取失败：{error:#}")
-                            } else if !request.requires_local_persistence(
-                                workspace.read(cx).device(cx).product_id,
-                            ) {
-                                format!("设备省电设置写入尚未确认：{error:#}；当前编辑值保留。")
-                            } else {
-                                format!("电源设置设备写入尚未确认：{error:#}；本地设置保留。")
-                            }
-                        }
-                    };
-                }
-                if this.close_requested && this.save_task.is_none() {
-                    this.continue_save_queue(true, cx);
-                }
-                cx.notify();
-            });
-        })
-        .detach();
     }
 }

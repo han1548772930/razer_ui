@@ -607,6 +607,35 @@ impl SourceProductWorkspace {
             .update(cx, |help, cx| help.observe_oled_resetting(resetting, cx));
         true
     }
+    pub fn mouse_dynamic_scope_is_current(
+        &self,
+        request: &super::mouse_products::MouseDynamicRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, FamilyBody::Mouse(body) if body.read(cx).mouse_dynamic_scope_is_current(request))
+    }
+    pub fn mouse_dynamic_request_is_current(
+        &self,
+        request: &super::mouse_products::MouseDynamicRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, FamilyBody::Mouse(body) if body.read(cx).mouse_dynamic_request_is_current(request))
+    }
+    pub fn observe_mouse_dynamic_speed(
+        &mut self,
+        request: &super::mouse_products::MouseDynamicRequested,
+        speed: f64,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| {
+                if request.guard().load(std::sync::atomic::Ordering::Acquire) {
+                    body.observe_mouse_dynamic(request.scope(), super::mouse_products::MouseDynamicObservation::MouseSpeed(speed), window, cx);
+                }
+            });
+        }
+    }
     pub fn complete_mouse_dynamic(
         &mut self,
         request: &super::mouse_products::MouseDynamicRequested,
@@ -711,7 +740,7 @@ impl SourceProductWorkspace {
             });
         }
     }
-    /// Additional Rust readback diagnostics; never a source reducer update.
+    /// Diagnostics remain separate from the original control's observed value.
     pub fn keyboard_brightness_diagnostic(&self, cx: &App) -> Option<String> {
         match &self.body {
             FamilyBody::Keyboard(body) => Some(body.read(cx).brightness_runtime_text()),
@@ -750,6 +779,15 @@ impl SourceProductWorkspace {
     pub fn keyboard_brightness_read_current(&self, generation: u64, cx: &App) -> bool {
         matches!(&self.body,FamilyBody::Keyboard(body) if body.read(cx).brightness_read_current(generation))
     }
+    pub fn sync_keyboard_brightness_controls(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Keyboard(body) = &self.body {
+            body.update(cx, |body, cx| body.sync_brightness_controls(window, cx));
+        }
+    }
     pub fn finish_keyboard_brightness_read(
         &mut self,
         generation: u64,
@@ -777,12 +815,13 @@ impl SourceProductWorkspace {
         generation: u64,
         percent: u8,
         observed: Option<u8>,
+        error: Option<String>,
         scope_current: bool,
         cx: &mut Context<Self>,
     ) {
         if let FamilyBody::Keyboard(body) = &self.body {
             body.update(cx, |body, cx| {
-                body.finish_brightness(generation, percent, observed, scope_current, cx)
+                body.finish_brightness(generation, percent, observed, error, scope_current, cx)
             });
         }
     }
@@ -831,6 +870,11 @@ impl SourceProductWorkspace {
         values: Option<razer_device::device_reads::DeviceReadValues>,
         cx: &mut Context<Self>,
     ) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_mouse_polling_values(values.as_ref(), cx)
+            });
+        }
         if let FamilyBody::Controls(body) = &self.body {
             body.update(cx, |body, cx| {
                 body.observe_camera_firmware(
@@ -884,6 +928,7 @@ impl SourceProductWorkspace {
             }
             if let FamilyBody::Mouse(body) = &self.body {
                 body.update(cx, |body, cx| {
+                    body.invalidate_mouse_polling_connection();
                     body.invalidate_current_power_connection();
                     body.cancel_calibration_requests();
                     body.invalidate_dynamic_connection(cx);
@@ -1779,10 +1824,23 @@ impl SourceProductWorkspace {
         observed: Option<razer_device::mouse_current_dpi::DpiReport>,
         cx: &mut Context<Self>,
     ) {
+        self.finish_current_dpi_result(
+            request,
+            observed.ok_or_else(|| "DPI 设备操作未完成".to_owned()),
+            cx,
+        );
+    }
+    pub fn finish_current_dpi_result(
+        &mut self,
+        request: &super::mouse_products::MouseCurrentDpiRequested,
+        result: Result<razer_device::mouse_current_dpi::DpiReport, String>,
+        cx: &mut Context<Self>,
+    ) {
         let mut source_serial_changed = false;
         if self.current_dpi_request_matches(request, cx)
-            && let Some(serial) = observed
+            && let Some(serial) = result
                 .as_ref()
+                .ok()
                 .and_then(|report| report.serial_number.as_ref())
         {
             self.device.serial_number = serial.clone();
@@ -1799,11 +1857,16 @@ impl SourceProductWorkspace {
         }
         if let FamilyBody::Mouse(body) = &self.body {
             body.update(cx, |body, cx| {
-                body.finish_current_dpi(request, observed, cx)
+                body.finish_current_dpi_result(request, result, cx)
             });
         }
         if source_serial_changed {
             cx.emit(WorkspaceEvent::MouseProfileSerialObserved);
+        }
+    }
+    pub fn sync_current_dpi_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| body.sync_current_dpi_controls(window, cx));
         }
     }
     pub fn restore_mouse_profile_after_serial(
@@ -1828,19 +1891,24 @@ impl SourceProductWorkspace {
             mouse_profile_source::sync_selection(&mut self.device, true);
         }
     }
-    pub fn initialize_mouse182_profile(
+    pub fn initialize_current_mouse_profile(
         &mut self,
         key: Option<String>,
         macro_recording: bool,
         cx: &mut Context<Self>,
     ) {
-        if self.device.product_id == 190 {
-            if let (FamilyBody::Mouse(body), Some(profile)) = (&self.body, self.device.active_profile_obj()) {
-                body.update(cx, |body, cx| body.initialize_current_mouse_polling(key.as_deref(), &profile.guid, cx));
-            }
-            return;
-        }
         if self.device.product_id != 182 {
+            if let (FamilyBody::Mouse(body), Some(profile)) =
+                (&self.body, self.device.active_profile_obj())
+            {
+                body.update(cx, |body, cx| {
+                    body.initialize_current_mouse_polling(key.as_deref(), &profile.guid, cx);
+                    body.observe_current_dpi_connection(
+                        key.map(|key| format!("{key}:{}", profile.guid)),
+                        cx,
+                    );
+                });
+            }
             return;
         }
         if self.mouse_profile_connection_key != key {
@@ -1879,7 +1947,7 @@ impl SourceProductWorkspace {
                 return;
             };
             body.update(cx, |body, cx| {
-                body.initialize_mouse182_profile(key, &profile.guid, macro_recording, cx)
+                body.initialize_mouse182_profile(key, &profile.guid, macro_recording, cx);
             });
         }
     }
@@ -1931,7 +1999,13 @@ impl SourceProductWorkspace {
             _ => None,
         }
     }
-    pub fn mouse_polling_synchronizes_profile(&self, scope: super::mouse_polling::MousePollingScope, field: super::mouse_polling::PollingField, hz: u32, cx: &App) -> bool {
+    pub fn mouse_polling_synchronizes_profile(
+        &self,
+        scope: super::mouse_polling::MousePollingScope,
+        field: super::mouse_polling::PollingField,
+        hz: u32,
+        cx: &App,
+    ) -> bool {
         matches!(&self.body, FamilyBody::Mouse(body) if body.read(cx).mouse_polling_synchronizes_profile(scope, field, hz))
     }
     pub fn mouse_polling_request_matches(
@@ -2569,10 +2643,16 @@ impl SourceProductWorkspace {
                     });
                 },
             ));
-            subscriptions.push(cx.subscribe(&body, |this: &mut Self, body, _: &super::mouse_products::MouseInGamePollingChanged, cx| {
-                this.capture(body.read(cx).snapshot(), cx);
-                cx.emit(WorkspaceEvent::MouseInGamePollingRequested);
-            }));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |this: &mut Self,
+                 body,
+                 _: &super::mouse_products::MouseInGamePollingChanged,
+                 cx| {
+                    this.capture(body.read(cx).snapshot(), cx);
+                    cx.emit(WorkspaceEvent::MouseInGamePollingRequested);
+                },
+            ));
             subscriptions.push(cx.subscribe(
                 &body,
                 |_: &mut Self,

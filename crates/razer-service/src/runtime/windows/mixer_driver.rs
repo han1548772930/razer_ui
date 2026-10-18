@@ -393,7 +393,7 @@ pub(super) fn restart(node: HidNode, product_id: u32) -> anyhow::Result<Value> {
     request(node, product_id, |interface, validate| {
         let driver = StreamDriver(interface);
         Ok(
-            json!({"reset":audio_mixer::restart_streams(&driver, validate)?,"source_property":"RazerT2ResetStream"}),
+            json!({"reset":audio_mixer::restart_streams(&driver, validate)?,"source_property":audio_mixer::STREAM_RESET_PROPERTY}),
         )
     })
 }

@@ -3,8 +3,11 @@
 use super::*;
 use crate::features::controls::Choice;
 use std::cell::{Cell, RefCell};
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 
-#[derive(Default)]
 pub(super) struct State {
     generation: u64,
     next_request: Cell<u64>,
@@ -14,6 +17,28 @@ pub(super) struct State {
     sync_started: Cell<Option<std::time::Instant>>,
     sync_animation: Cell<u64>,
     custom_colors_draft: Option<Vec<Value>>,
+    guard: Arc<AtomicBool>,
+}
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            generation: 0,
+            next_request: Cell::new(0),
+            last_mutation: Cell::new(0),
+            pending: RefCell::new(BTreeMap::new()),
+            last_error: None,
+            sync_started: Cell::new(None),
+            sync_animation: Cell::new(0),
+            custom_colors_draft: None,
+            guard: Arc::new(AtomicBool::new(true)),
+        }
+    }
+}
+
+impl Drop for State {
+    fn drop(&mut self) {
+        self.guard.store(false, Ordering::Release);
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -28,6 +53,60 @@ pub struct KeyboardLightingRequested {
     pub request_id: u64,
     pub owner: KeyboardLightingOwner,
     pub command: KeyboardLightingCommand,
+    guard: Arc<AtomicBool>,
+}
+
+impl KeyboardLightingRequested {
+    pub fn guard(&self) -> Arc<AtomicBool> {
+        self.guard.clone()
+    }
+}
+
+/// Partial host observations do not clear unrelated device/reducer state.
+#[derive(Clone, Default)]
+pub struct KeyboardLightingHostObservation {
+    fully_installed: Option<bool>,
+    module_installed: Option<bool>,
+    configuration: Option<HostConfiguration>,
+    dynamic_lighting: Option<bool>,
+    connected_products: Option<Vec<u32>>,
+}
+#[derive(Clone)]
+struct HostConfiguration {
+    profiles: Vec<Value>,
+    selected_profile: Option<String>,
+    enabled: bool,
+}
+impl KeyboardLightingHostObservation {
+    pub fn with_fully_installed(mut self, installed: bool) -> Self {
+        self.fully_installed = Some(installed);
+        self
+    }
+    pub fn with_module_installed(mut self, installed: bool) -> Self {
+        self.module_installed = Some(installed);
+        self
+    }
+    pub fn with_configuration(
+        mut self,
+        profiles: Vec<Value>,
+        selected: Option<String>,
+        enabled: bool,
+    ) -> Self {
+        self.configuration = Some(HostConfiguration {
+            profiles,
+            selected_profile: selected,
+            enabled,
+        });
+        self
+    }
+    pub fn with_dynamic_lighting(mut self, enabled: bool) -> Self {
+        self.dynamic_lighting = Some(enabled);
+        self
+    }
+    pub fn with_connected_products(mut self, products: Vec<u32>) -> Self {
+        self.connected_products = Some(products);
+        self
+    }
 }
 
 #[derive(Clone, Default)]
@@ -97,12 +176,48 @@ impl EventEmitter<KeyboardLightingRequested> for KeyboardProductWorkspace {}
 
 impl KeyboardProductWorkspace {
     pub fn accepts_lighting_request(&self, request: &KeyboardLightingRequested) -> bool {
-        request.owner == self.lighting_owner()
+        request.guard.load(Ordering::Acquire)
+            && Arc::ptr_eq(&request.guard, &self.lighting_runtime.guard)
+            && request.owner == self.lighting_owner()
             && self
                 .lighting_runtime
                 .pending
                 .borrow()
                 .contains_key(&request.request_id)
+    }
+
+    /// Cleanup can outlive a window, but cannot remove a replacement request.
+    pub fn abandon_lighting_request(
+        &mut self,
+        request: &KeyboardLightingRequested,
+        error: Option<String>,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        if !Arc::ptr_eq(&request.guard, &self.lighting_runtime.guard)
+            || request.owner != self.lighting_owner()
+        {
+            return false;
+        }
+        let Some(command) = self
+            .lighting_runtime
+            .pending
+            .borrow_mut()
+            .remove(&request.request_id)
+        else {
+            return false;
+        };
+        if matches!(command, KeyboardLightingCommand::InstallChroma)
+            && let Some(observation) = &mut self.lighting_observation
+        {
+            observation.installer_busy = false;
+        }
+        if request.request_id >= self.lighting_runtime.last_mutation.get()
+            && let Some(error) = error
+        {
+            self.lighting_runtime.last_error = Some(error);
+        }
+        cx.notify();
+        true
     }
 
     pub fn lighting_owner(&self) -> KeyboardLightingOwner {
@@ -114,6 +229,8 @@ impl KeyboardProductWorkspace {
     }
 
     pub(super) fn cancel_lighting_requests(&mut self) {
+        self.lighting_runtime.guard.store(false, Ordering::Release);
+        self.lighting_runtime.guard = Arc::new(AtomicBool::new(true));
         self.lighting_runtime.generation = self.lighting_runtime.generation.wrapping_add(1);
         self.lighting_runtime.pending.borrow_mut().clear();
         self.lighting_runtime.last_error = None;
@@ -147,7 +264,50 @@ impl KeyboardProductWorkspace {
             request_id,
             owner: self.lighting_owner(),
             command,
+            guard: self.lighting_runtime.guard.clone(),
         });
+    }
+
+    pub fn complete_host_lighting_request(
+        &mut self,
+        request: &KeyboardLightingRequested,
+        host: KeyboardLightingHostObservation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        if !self.accepts_lighting_request(request) {
+            return false;
+        }
+        if request.request_id >= self.lighting_runtime.last_mutation.get() {
+            let mut observation = self.lighting_observation.clone().unwrap_or_default();
+            if let Some(installed) = host.fully_installed {
+                observation.check_is_fully_installed = Some(installed);
+            }
+            if let Some(installed) = host.module_installed {
+                observation.chroma_installed_module = installed;
+            }
+            if let Some(configuration) = host.configuration {
+                observation.chroma_profiles = configuration.profiles;
+                observation.selected_chroma_profile_guid = configuration.selected_profile;
+                observation.is_chroma_enabled = configuration.enabled;
+            }
+            if let Some(enabled) = host.dynamic_lighting {
+                observation.is_dynamic_lighting_enabled = enabled;
+            }
+            if let Some(products) = host.connected_products {
+                observation.connected_chroma_devices = Some(
+                    products
+                        .into_iter()
+                        .map(|product_id| KeyboardChromaPeer {
+                            product_id,
+                            support_effects: Vec::new(),
+                        })
+                        .collect(),
+                );
+            }
+            self.observe_lighting(&request.owner, observation, window, cx);
+        }
+        self.complete_lighting_request(request, Ok(None), window, cx)
     }
 
     /// Called for both delivered responses and dispatch rejection. A local

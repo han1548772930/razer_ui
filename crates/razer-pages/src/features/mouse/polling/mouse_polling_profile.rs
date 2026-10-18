@@ -4,6 +4,7 @@ use crate::features::mouse_polling::{
     MousePollingObservation, MousePollingScope, PollingConnection, PollingField,
 };
 use crate::features::mouse_polling::{RuntimeState, SourceSpec, source_spec};
+use crate::features::mouse_products::{MousePowerSavingRead, PowerSavingValue};
 use gpui_kit::base::Button as BaseButton;
 use std::sync::{
     Arc,
@@ -70,46 +71,90 @@ impl Drop for State {
     }
 }
 
+#[cfg(test)]
+mod profile_polling_observation_tests {
+    use super::*;
+
+    fn state() -> State {
+        State {
+            runtime: RuntimeState::default(),
+            source: None,
+            profile: String::new(),
+            windows_icon: "synapse/windows.svg",
+            idle: IdleState::default(),
+            polling_pending: None,
+            polling_valid: None,
+        }
+    }
+
+    #[::core::prelude::v1::test]
+    fn profile_change_invalidates_selection_without_releasing_the_worker_slot() {
+        let mut state = state();
+        state.sync_profile("first");
+        let scope = MousePollingScope::new(EntityId::from(7), 1, 0);
+        state.polling_pending = Some((scope, PollingField::Wired, 2000));
+        let valid = Arc::new(AtomicBool::new(true));
+        state.polling_valid = Some(valid.clone());
+        state.runtime.edit_rate(PollingField::Wired, 2000);
+        state.runtime.observe_rate(PollingField::Wired, Some(1000));
+        state.sync_profile("second");
+        assert_eq!(state.runtime.selected_rate(PollingField::Wired), None);
+        assert!(!valid.load(Ordering::Acquire));
+        assert!(state.polling_pending == Some((scope, PollingField::Wired, 2000)));
+    }
+
+    #[::core::prelude::v1::test]
+    fn rereading_same_profile_preserves_an_explicit_edit_and_actual_confirmation() {
+        let mut state = state();
+        let field = PollingField::Wireless;
+        state.sync_profile("current");
+        state.runtime.edit_rate(field, 4000);
+        state.runtime.observe_rate(field, None);
+        state.sync_profile("current");
+        assert_eq!(state.runtime.selected_rate(field), Some(4000));
+        state.runtime.confirm_rate(field, 4000, 8000);
+        assert_eq!(state.runtime.selected_rate(field), Some(8000));
+        assert_eq!(state.runtime.edited_rate(field), None);
+        state
+            .runtime
+            .apply(MousePollingObservation::Connection(None));
+        assert_eq!(state.runtime.selected_rate(field), None);
+    }
+}
+
 /// PID182 main installs alwaysReadPowerSavingFromDevice=true. Unlike polling,
 /// 30525/pn does not persist this value in a profile or device localStorage.
 /// UI Rt owns an optimistic session value; 81988/g retains the running task
 /// and only the latest pending NORMAL_SKIPPABLE task of the same name.
 struct IdleState {
-    value: f32,
-    initialized: Option<MousePollingScope>,
+    value: PowerSavingValue,
     pending: Option<(MousePollingScope, u8)>,
+    pending_revision: Option<u64>,
     queued: Option<(MousePollingScope, u8)>,
+    queued_revision: Option<u64>,
     valid: Option<Arc<AtomicBool>>,
 }
 
 impl Default for IdleState {
     fn default() -> Self {
         Self {
-            value: 5.,
-            initialized: None,
+            value: PowerSavingValue::default(),
             pending: None,
+            pending_revision: None,
             queued: None,
+            queued_revision: None,
             valid: None,
         }
     }
 }
 
 impl IdleState {
-    fn initialize(&mut self, scope: MousePollingScope, raw: Option<u16>) -> bool {
-        if self
-            .initialized
-            .is_some_and(|previous| previous.same_device_connection(scope))
-        {
-            return false;
-        }
-        // 87887.Z/kp returns timeToSleep/60, or 5 when the initial query fails.
-        self.value = raw.map_or(5., |raw| f32::from(raw) / 60.);
-        self.initialized = Some(scope);
-        true
+    fn value(&self) -> Option<f32> {
+        self.value.displayed_seconds().map(|seconds| seconds / 60.)
     }
 
     fn request(&mut self, scope: MousePollingScope, minutes: u8) {
-        self.value = f32::from(minutes);
+        self.queued_revision = Some(self.value.edit(scope, u16::from(minutes) * 60));
         self.queued = Some((scope, minutes));
     }
 
@@ -119,9 +164,11 @@ impl IdleState {
         }
         let next = self.queued.take()?;
         if !next.0.same_device_connection(scope) {
+            self.queued_revision = None;
             return None;
         }
         self.pending = Some(next);
+        self.pending_revision = self.queued_revision.take();
         self.valid = Some(Arc::new(AtomicBool::new(true)));
         Some(next)
     }
@@ -131,7 +178,8 @@ impl IdleState {
             guard.store(false, Ordering::Release);
         }
         self.queued = None;
-        self.initialized = None;
+        self.queued_revision = None;
+        self.value.invalidate();
         // Keep the writer slot until its real completion/cleanup.
     }
 
@@ -140,6 +188,7 @@ impl IdleState {
             return false;
         }
         self.pending = None;
+        self.pending_revision = None;
         if let Some(guard) = self.valid.take() {
             guard.store(false, Ordering::Release);
         }
@@ -163,17 +212,22 @@ mod idle_tests {
     }
 
     #[::core::prelude::v1::test]
-    fn initial_getter_uses_native_seconds_and_source_failure_default() {
+    fn initial_getter_uses_native_seconds_without_a_failure_default() {
         let mut state = IdleState::default();
-        assert_eq!(state.value, 5.);
-        assert!(state.initialize(scope(0, 0), Some(420)));
-        assert_eq!(state.value, 7.);
+        assert_eq!(state.value(), None);
+        let read = state.value.begin_requery(scope(0, 0)).unwrap();
+        assert!(state.value.finish_read(read, Some(420)));
+        assert_eq!(state.value(), Some(7.));
         // A profile change is not a new device initialization.
-        assert!(!state.initialize(scope(1, 0), Some(900)));
-        assert_eq!(state.value, 7.);
+        assert!(state.value.begin_requery(scope(1, 0)).is_none());
+        assert_eq!(state.value(), Some(7.));
         state.cancel_connection();
-        assert!(state.initialize(scope(1, 1), None));
-        assert_eq!(state.value, 5.);
+        let read = state.value.begin_requery(scope(1, 1)).unwrap();
+        assert!(state.value.finish_read(read, None));
+        assert_eq!(state.value(), None);
+        let read = state.value.begin_requery(scope(1, 1)).unwrap();
+        assert!(state.value.finish_read(read, Some(75)));
+        assert_eq!(state.value(), Some(1.25));
     }
 
     #[::core::prelude::v1::test]
@@ -187,7 +241,7 @@ mod idle_tests {
         state.request(current, 11);
         assert!(state.next(current).is_none());
         assert!(guard.load(Ordering::Acquire));
-        assert_eq!(state.value, 11.);
+        assert_eq!(state.value(), Some(11.));
         assert!(state.finish(current, 2));
         assert!(!guard.load(Ordering::Acquire));
         assert!(state.next(current) == Some((current, 11)));
@@ -220,7 +274,7 @@ mod idle_tests {
         state.request(current, 13);
         state.next(current);
         assert!(state.finish(current, 13));
-        assert_eq!(state.value, 13.);
+        assert_eq!(state.value(), Some(13.));
         state.request(current, 6);
         state.next(current);
         let guard = state.valid.clone().unwrap();
@@ -230,6 +284,65 @@ mod idle_tests {
 }
 
 impl DeviceWorkspace {
+    pub fn begin_mouse_idle_read(
+        &mut self,
+        scope: MousePollingScope,
+        cx: &App,
+    ) -> Option<MousePowerSavingRead> {
+        if self.device.product_id != 182
+            || self.mouse_polling.runtime.connection.is_none()
+            || !self
+                .mouse_polling_scope(cx)
+                .is_some_and(|current| current.same_device_connection(scope))
+        {
+            return None;
+        }
+        self.mouse_polling.idle.value.begin_requery(scope)
+    }
+
+    pub(super) fn preview_mouse_idle(&mut self, minutes: f32, cx: &App) {
+        if self.device.product_id == 182
+            && let Some(scope) = self.mouse_polling_scope(cx)
+        {
+            self.mouse_polling.idle.value.preview(scope, minutes * 60.);
+        }
+    }
+
+    pub(in crate::features) fn cancel_mouse_idle_preview(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.mouse_polling.idle.value.cancel_preview();
+        if self.device.product_id == 182
+            && let Some(value) = self.mouse_polling.idle.value()
+        {
+            self.controls.sliders[&Control::Idle]
+                .update(cx, |slider, cx| slider.set_value(value, window, cx));
+        }
+        cx.notify();
+    }
+
+    pub(super) fn observe_mouse_polling_values(
+        &mut self,
+        values: Option<&razer_device::device_reads::DeviceReadValues>,
+    ) {
+        let field = self.mouse_polling.field();
+        self.mouse_polling
+            .runtime
+            .observe_rate(field, values.and_then(|values| values.polling_hz));
+    }
+
+    pub(super) fn invalidate_mouse_polling_connection(&mut self) {
+        if let Some(guard) = &self.mouse_polling.polling_valid {
+            guard.store(false, Ordering::Release);
+        }
+        self.mouse_polling
+            .runtime
+            .apply(MousePollingObservation::Connection(None));
+        self.mouse_polling.idle.cancel_connection();
+    }
+
     /// Current UI intents share the original device task category's write slot.
     /// This guards this retained page only; it is not an interprocess HID lock.
     pub(in crate::features) fn mouse_settings_write_pending(&self) -> bool {
@@ -321,7 +434,7 @@ impl DeviceWorkspace {
         if let Some(observed_hz) = observed.filter(|rate| scope_current && *rate == hz) {
             self.mouse_polling
                 .runtime
-                .apply(MousePollingObservation::Rate(field, observed_hz));
+                .confirm_rate(field, hz, observed_hz);
             if field == PollingField::Wired {
                 let mut values = self
                     .device
@@ -368,7 +481,7 @@ impl DeviceWorkspace {
 
     pub fn observe_mouse_idle_initial(
         &mut self,
-        scope: MousePollingScope,
+        read: MousePowerSavingRead,
         raw: Option<u16>,
         window: &mut Window,
         cx: &mut Context<Self>,
@@ -376,21 +489,22 @@ impl DeviceWorkspace {
         if self.device.product_id == 182
             && self
                 .mouse_polling_scope(cx)
-                .is_some_and(|current| current.same_device_connection(scope))
-            && self.mouse_polling.idle.initialize(scope, raw)
+                .is_some_and(|current| current.same_device_connection(read.scope()))
+            && self.mouse_polling.idle.value.finish_read(read, raw)
         {
-            let value = self.mouse_polling.idle.value;
-            self.controls.sliders[&Control::Idle]
-                .update(cx, |slider, cx| slider.set_value(value, window, cx));
+            if let Some(value) = self.mouse_polling.idle.value() {
+                self.controls.sliders[&Control::Idle]
+                    .update(cx, |slider, cx| slider.set_value(value, window, cx));
+            }
             cx.notify();
         }
     }
 
-    pub(super) fn mouse_idle_value(&self) -> f32 {
+    pub(in crate::features) fn mouse_idle_value(&self) -> Option<f32> {
         if self.device.product_id == 182 {
-            self.mouse_polling.idle.value
+            self.mouse_polling.idle.value()
         } else {
-            f32::from(self.settings().idle_minutes)
+            Some(f32::from(self.settings().idle_minutes))
         }
     }
 
@@ -440,6 +554,12 @@ impl DeviceWorkspace {
             return false;
         }
         let scope_current = self.mouse_idle_request_matches(scope, minutes, cx);
+        if let (Some(raw), Some(revision)) = (
+            observed.filter(|raw| scope_current && *raw == u16::from(minutes) * 60),
+            self.mouse_polling.idle.pending_revision,
+        ) {
+            self.mouse_polling.idle.value.confirm(scope, revision, raw);
+        }
         self.mouse_polling.idle.finish(scope, minutes);
         if let Some(raw_time) =
             observed.filter(|raw| scope_current && *raw == u16::from(minutes) * 60)
@@ -504,29 +624,20 @@ impl DeviceWorkspace {
     }
     pub(in crate::features) fn mouse_polling_visible(&self) -> bool {
         self.mouse_polling
-            .runtime
-            .visible(self.mouse_polling.spec())
+            .source
+            .is_none_or(|source| self.mouse_polling.runtime.visible(source))
     }
     pub(in crate::features) fn mouse_windows_icon(&self) -> &'static str {
         self.mouse_polling.windows_icon
     }
-    fn mouse_polling_value(&self, field: PollingField) -> u32 {
-        let settings = self.settings();
-        let local = match field {
-            PollingField::Wired => settings.polling_wired,
-            PollingField::Wireless => settings.polling_wireless,
-        };
-        local
-            .or_else(|| self.mouse_polling.runtime.rates.get(&field).copied())
-            .unwrap_or_else(|| {
-                match field {
-                    PollingField::Wired => settings.polling,
-                    // Current yE initial wireless value; never inherit wired edits.
-                    PollingField::Wireless => self.mouse_polling.spec().fallback_wireless_hz,
-                }
-            })
+    pub(in crate::features) fn mouse_polling_value(&self, field: PollingField) -> Option<u32> {
+        self.mouse_polling.runtime.selected_rate(field)
     }
-    pub(in crate::features) fn mouse_low_power_enabled(&self) -> bool {
+
+    pub(in crate::features) fn edit_mouse_polling_value(&mut self, field: PollingField, hz: u32) {
+        self.mouse_polling.runtime.edit_rate(field, hz);
+    }
+    pub(in crate::features) fn mouse_low_power_enabled(&self) -> Option<bool> {
         let field = if matches!(
             self.mouse_polling.runtime.connection,
             Some(PollingConnection::Dongle | PollingConnection::Ble)
@@ -535,7 +646,11 @@ impl DeviceWorkspace {
         } else {
             PollingField::Wired
         };
-        self.mouse_polling_value(field) <= self.mouse_polling.spec().high_rate_threshold_hz
+        let threshold = self
+            .mouse_polling
+            .source
+            .map_or(1000, |source| source.high_rate_threshold_hz);
+        self.mouse_polling_value(field).map(|hz| hz <= threshold)
     }
     pub(in crate::features) fn mouse_polling_panel(&self, cx: &Context<Self>) -> AnyElement {
         let field = self.mouse_polling.field();
@@ -566,7 +681,7 @@ impl DeviceWorkspace {
                 BaseButton::new(SharedString::from(format!("polling-{rate}")))
                     .accessibility_label(format!("{rate} Hz"))
                     .child(rate.to_string())
-                    .selected(value == rate)
+                    .selected(value == Some(rate))
                     .disabled(self.mouse_settings_write_pending())
                     .flex()
                     .items_center()
@@ -579,7 +694,7 @@ impl DeviceWorkspace {
                     .bg(rgb(0x222222))
                     .text_color(rgb(0xcccccc))
                     .border_1()
-                    .border_color(if value == rate {
+                    .border_color(if value == Some(rate) {
                         rgb(0x44d62c)
                     } else {
                         rgb(0x5d5d5d)
@@ -595,6 +710,7 @@ impl DeviceWorkspace {
                         {
                             return;
                         }
+                        this.edit_mouse_polling_value(field, rate);
                         this.edit(window, cx, |settings| match field {
                             PollingField::Wired => {
                                 settings.polling_wired = Some(rate);
@@ -607,7 +723,7 @@ impl DeviceWorkspace {
             }),
         ))
         .when(
-            value > self.mouse_polling.spec().high_rate_threshold_hz,
+            value.is_some_and(|hz| hz > self.mouse_polling.spec().high_rate_threshold_hz),
             |panel| {
                 panel.child(
                     div()
@@ -621,10 +737,7 @@ impl DeviceWorkspace {
                 )
             },
         );
-        let local = match field {
-            PollingField::Wired => self.settings().polling_wired,
-            PollingField::Wireless => self.settings().polling_wireless,
-        };
+        let edited = self.mouse_polling.runtime.edited_rate(field);
         if self.mouse_polling_pending() {
             panel = panel.child(surface::note("正在提交回报率并等待设备回读确认。", cx));
         } else if self.mouse_settings_write_pending() {
@@ -633,21 +746,16 @@ impl DeviceWorkspace {
                 cx,
             ));
         } else if self.mouse_polling.runtime.connection.is_none() {
-            panel = panel.child(surface::note(
-                "连接状态尚未读取；当前编辑本地有线配置。",
-                cx,
-            ));
-        } else if local
-            .is_some_and(|rate| self.mouse_polling.runtime.rates.get(&field) == Some(&rate))
-        {
+            panel = panel.child(surface::note("连接状态尚未读取，设备回报率尚未确认。", cx));
+        } else if edited.is_some() {
+            panel = panel.child(surface::note("当前显示本次编辑；设备尚未确认。", cx));
+        } else if self.mouse_polling.runtime.rates.contains_key(&field) {
             panel = panel.child(surface::note(
                 "当前选择已由设备回读确认；本地草稿单独保存。",
                 cx,
             ));
-        } else if local.is_some() {
-            panel = panel.child(surface::note("当前显示本地草稿；尚未发送到设备。", cx));
-        } else if !self.mouse_polling.runtime.rates.contains_key(&field) {
-            panel = panel.child(surface::note("当前显示本地配置；设备回报率尚未读取。", cx));
+        } else {
+            panel = panel.child(surface::note("设备回报率尚未读取。", cx));
         }
         if wireless && self.mouse_polling.runtime.topology.is_none() {
             panel = panel.child(surface::note(

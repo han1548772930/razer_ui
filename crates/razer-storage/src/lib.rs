@@ -13,6 +13,8 @@ pub mod file_transfer;
 pub mod game_catalog;
 #[path = "host.rs"]
 pub mod host;
+#[path = "receiver/hyperpolling_profile.rs"]
+pub mod hyperpolling_profile;
 #[path = "keyboard_analog_restore.rs"]
 pub mod keyboard_analog_restore;
 #[path = "keyboard_calibration.rs"]
@@ -31,8 +33,6 @@ mod receiver_defaults;
 mod receiver_document;
 #[path = "receiver/receiver_indicator.rs"]
 pub mod receiver_indicator;
-#[path = "receiver/hyperpolling_profile.rs"]
-pub mod hyperpolling_profile;
 #[path = "receiver/receiver_legacy.rs"]
 pub mod receiver_legacy;
 #[path = "receiver/receiver_pairing.rs"]

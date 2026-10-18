@@ -10,8 +10,13 @@ pub(in crate::shell) struct Completion {
 }
 
 impl Completion {
+    #[cfg(test)]
     pub(super) fn report(&self) -> Option<&DpiReport> {
         self.result.as_ref().ok()
+    }
+
+    pub(super) fn result(&self) -> Result<DpiReport, String> {
+        self.result.clone()
     }
 
     pub(super) fn cleanup_error(&self) -> Option<String> {
@@ -33,8 +38,8 @@ impl Completion {
     }
 
     pub(super) fn message(&self, request: &MouseCurrentDpiRequested) -> String {
-        let message = match &self.result {
-            Err(error) => format!("DPI 设备状态尚未确认：{error}；本地配置保留。"),
+        let mut message = match &self.result {
+            Err(error) => format!("DPI 设备状态尚未确认：{error}"),
             Ok(_)
                 if request
                     .change()
@@ -44,16 +49,24 @@ impl Completion {
             }
             Ok(report) if request.is_read() => match report.active {
                 Some(pair) if pair.x == pair.y => {
-                    format!("设备当前 DPI：{}；页面显示本机配置。", pair.x)
+                    format!("设备当前 DPI：{}", pair.x)
                 }
-                Some(pair) => format!(
-                    "设备当前 DPI：X {} / Y {}；页面显示本机配置。",
-                    pair.x, pair.y
-                ),
-                None => "已读取设备 DPI 档位；页面显示本机配置。".into(),
+                Some(pair) => format!("设备当前 DPI：X {} / Y {}", pair.x, pair.y),
+                None if report.read_errors.active().is_some() => {
+                    format!(
+                        "设备当前 DPI 读取失败：{}",
+                        report.read_errors.active().unwrap()
+                    )
+                }
+                None => "已读取设备 DPI 档位。".into(),
             },
-            Ok(_) => "DPI 已保存到本机，设备写入已应答。".into(),
+            Ok(_) => "DPI 设备写入已应答。".into(),
         };
+        if let Ok(report) = &self.result {
+            if let Some(error) = report.read_errors.stages() {
+                message.push_str(&format!("；DPI 档位读取失败：{error}"));
+            }
+        }
         match self.cleanup_error() {
             Some(error) => format!("{message} 通信清理：{error}"),
             None => message,

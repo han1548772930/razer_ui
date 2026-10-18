@@ -148,7 +148,7 @@ fn invalid_rate_and_cancelled_request_send_nothing() {
     assert!(transport.sent.borrow().is_empty());
 }
 #[test]
-fn unknown_source_code_is_display_fallback_not_an_enabled_ui_choice() {
+fn unknown_source_code_is_unobserved_and_does_not_block_the_source_setter() {
     assert!(!UI_POLLING_RATES.contains(&100));
     let transport = Transport::new([
         step(GET_MODE, &[], Some(&[3, 0])),
@@ -157,10 +157,7 @@ fn unknown_source_code_is_display_fallback_not_an_enabled_ui_choice() {
         step(GET_POLLING, &[], Some(&[8])),
     ]);
     let result = apply_polling(&transport, &cap(), 125, transactions(), || Ok(())).unwrap();
-    assert!(matches!(
-        result.previous,
-        Some(DeviceReadValue::Polling { hz: 100 })
-    ));
+    assert!(result.previous.is_none());
     transport.finished();
 }
 

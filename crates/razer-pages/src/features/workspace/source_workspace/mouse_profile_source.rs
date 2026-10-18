@@ -10,6 +10,7 @@ pub(super) fn accept_saved_version(device: &mut Device, previous: &Device, snaps
     if razer_device::mouse_scroll::capability(device.product_id).is_none()
         && device.product_id != razer_device::mouse_philips::PRODUCT_ID
         && device.product_id != razer_device::dpi_matcher::PRODUCT_ID
+        && !matches!(device.product_id, 182 | 190)
     {
         return;
     }

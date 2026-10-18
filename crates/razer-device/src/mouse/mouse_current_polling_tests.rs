@@ -2,19 +2,36 @@ use super::*;
 use crate::device_reads::DeviceReadValue;
 use std::{cell::RefCell, collections::VecDeque};
 
-struct Step { command: [u8; 3], payload: Vec<u8>, reply: Option<Vec<u8>> }
+struct Step {
+    command: [u8; 3],
+    payload: Vec<u8>,
+    reply: Option<Vec<u8>>,
+}
 struct Transport {
     steps: RefCell<VecDeque<Step>>,
     current: RefCell<Option<(Vec<u8>, Option<Vec<u8>>)>>,
     sent: RefCell<Vec<Vec<u8>>>,
 }
 impl Transport {
-    fn new(steps: impl IntoIterator<Item = Step>) -> Self { Self { steps: RefCell::new(steps.into_iter().collect()), current: RefCell::new(None), sent: RefCell::new(Vec::new()) } }
-    fn finished(&self) { assert!(self.steps.borrow().is_empty()); assert!(self.current.borrow().is_none()); }
+    fn new(steps: impl IntoIterator<Item = Step>) -> Self {
+        Self {
+            steps: RefCell::new(steps.into_iter().collect()),
+            current: RefCell::new(None),
+            sent: RefCell::new(Vec::new()),
+        }
+    }
+    fn finished(&self) {
+        assert!(self.steps.borrow().is_empty());
+        assert!(self.current.borrow().is_none());
+    }
 }
 impl FeatureTransport for Transport {
     fn send_feature(&self, report: &[u8]) -> anyhow::Result<()> {
-        let step = self.steps.borrow_mut().pop_front().expect("unexpected Feature command");
+        let step = self
+            .steps
+            .borrow_mut()
+            .pop_front()
+            .expect("unexpected Feature command");
         assert_eq!(report.len(), 91);
         assert_eq!(report[0], 0);
         assert_eq!(&report[6..9], &step.command);
@@ -34,10 +51,16 @@ impl FeatureTransport for Transport {
         report[9..9 + data.len()].copy_from_slice(&data);
         Ok(report.len())
     }
-    fn metadata(&self) -> serde_json::Value { serde_json::Value::Null }
+    fn metadata(&self) -> serde_json::Value {
+        serde_json::Value::Null
+    }
 }
 fn step(command: [u8; 3], payload: &[u8], reply: Option<&[u8]>) -> Step {
-    Step { command, payload: payload.to_vec(), reply: reply.map(<[u8]>::to_vec) }
+    Step {
+        command,
+        payload: payload.to_vec(),
+        reply: reply.map(<[u8]>::to_vec),
+    }
 }
 fn cap(physical: u32) -> DeviceReadCapability {
     let mut cap = transport(physical).unwrap();
@@ -48,7 +71,14 @@ fn cap(physical: u32) -> DeviceReadCapability {
     cap.max_retry_out = 1;
     cap
 }
-fn transactions() -> impl FnMut() -> anyhow::Result<u8> { let mut n = 0; move || { let value = n; n = (n + 1) % 31; Ok(value) } }
+fn transactions() -> impl FnMut() -> anyhow::Result<u8> {
+    let mut n = 0;
+    move || {
+        let value = n;
+        n = (n + 1) % 31;
+        Ok(value)
+    }
+}
 
 #[test]
 fn wired_and_ordinary_receiver_share_high_speed_profile_one() {
@@ -61,15 +91,63 @@ fn wired_and_ordinary_receiver_share_high_speed_profile_one() {
         assert_eq!(cap.polling_value_offset, Some(1));
         assert_eq!(cap.polling_physical_product_id, Some(physical));
     }
-    for physical in [182, 183, 179, 164] { assert!(transport(physical).is_err()); }
+    for physical in [182, 183, 179, 164] {
+        assert!(transport(physical).is_err());
+    }
     assert!(!UI_RATES.contains(&250));
     assert_eq!(rate_code(250).unwrap(), 32);
 }
 
 #[test]
+fn read_only_preserves_actual_rate_and_unknown_without_sending_a_setter() {
+    for physical in [190, 191] {
+        for (code, expected) in [
+            (4, Observation::Rate { hz: 2000 }),
+            (0x7f, Observation::Unknown { code: 0x7f }),
+        ] {
+            let device = Transport::new([step(GET, &[1, 0], Some(&[1, code]))]);
+            assert_eq!(
+                read(&device, &cap(physical), transactions(), || Ok(())).unwrap(),
+                expected
+            );
+            assert_eq!(device.sent.borrow().len(), 1);
+            device.finished();
+        }
+    }
+}
+
+#[test]
+fn read_only_failure_or_wrong_profile_never_becomes_a_default_or_initialization() {
+    for response in [None, Some(&[1][..]), Some(&[4, 8][..])] {
+        let device = Transport::new([step(GET, &[1, 0], response)]);
+        assert!(read(&device, &cap(190), transactions(), || Ok(())).is_err());
+        assert_eq!(device.sent.borrow().len(), 1);
+        device.finished();
+    }
+}
+
+#[test]
+fn unknown_readback_cannot_verify_an_eight_kilohertz_setter() {
+    let device = Transport::new([
+        step(GET, &[1, 0], Some(&[1, 8])),
+        step(SET, &[1, 1], Some(&[])),
+        step(GET, &[1, 0], Some(&[1, 0x7f])),
+    ]);
+    assert!(apply(&device, &cap(190), 8000, transactions(), || Ok(())).is_err());
+    device.finished();
+}
+
+#[test]
 fn equal_runtime_get_skips_setter_and_temporary_task_never_reads_obm() {
     let device = Transport::new([step(GET, &[1, 0], Some(&[1, 8]))]);
-    let report = request(&device, &cap(190), &Change::new(1000), transactions(), || Ok(())).unwrap();
+    let report = request(
+        &device,
+        &cap(190),
+        &Change::new(1000),
+        transactions(),
+        || Ok(()),
+    )
+    .unwrap();
     assert!(!report.runtime().changed && report.runtime().verified);
     assert!(report.profile_slots().is_empty() && report.slot_writes().is_empty());
     device.finished();
@@ -84,8 +162,14 @@ fn ordinary_sender_uses_source_profile_and_accepts_non_echo_ack_before_independe
     ]);
     let result = apply(&device, &cap(191), 8000, transactions(), || Ok(())).unwrap();
     assert!(result.changed && result.verified);
-    assert_eq!(result.previous, Some(DeviceReadValue::Polling { hz: 1000 }));
-    assert_eq!(result.observed, Some(DeviceReadValue::Polling { hz: 8000 }));
+    assert!(matches!(
+        result.previous,
+        Some(DeviceReadValue::Polling { hz: 1000 })
+    ));
+    assert!(matches!(
+        result.observed,
+        Some(DeviceReadValue::Polling { hz: 8000 })
+    ));
     assert_eq!(result.acknowledged.unwrap().data, [0x99]);
     device.finished();
 }
@@ -93,7 +177,9 @@ fn ordinary_sender_uses_source_profile_and_accepts_non_echo_ack_before_independe
 #[test]
 fn failed_pre_get_remains_unobserved_and_does_not_prevent_source_set_task() {
     let device = Transport::new([
-        step(GET, &[1, 0], None), step(SET, &[1, 4], Some(&[])), step(GET, &[1, 0], Some(&[1, 4])),
+        step(GET, &[1, 0], None),
+        step(SET, &[1, 4], Some(&[])),
+        step(GET, &[1, 0], Some(&[1, 4])),
     ]);
     let result = apply(&device, &cap(190), 2000, transactions(), || Ok(())).unwrap();
     assert!(result.previous.is_none() && result.verified);
@@ -103,7 +189,9 @@ fn failed_pre_get_remains_unobserved_and_does_not_prevent_source_set_task() {
 #[test]
 fn setter_ack_is_not_a_successful_runtime_readback() {
     let device = Transport::new([
-        step(GET, &[1, 0], Some(&[1, 8])), step(SET, &[1, 1], Some(&[])), step(GET, &[1, 0], Some(&[1, 16])),
+        step(GET, &[1, 0], Some(&[1, 8])),
+        step(SET, &[1, 1], Some(&[])),
+        step(GET, &[1, 0], Some(&[1, 16])),
     ]);
     assert!(apply(&device, &cap(190), 8000, transactions(), || Ok(())).is_err());
     device.finished();
@@ -112,9 +200,16 @@ fn setter_ack_is_not_a_successful_runtime_readback() {
 #[test]
 fn cancellation_after_pre_get_stops_the_setter() {
     let device = Transport::new([step(GET, &[1, 0], Some(&[1, 8]))]);
-    assert!(apply(&device, &cap(190), 8000, transactions(), || {
-        ensure!(device.sent.borrow().is_empty(), "connection generation changed"); Ok(())
-    }).is_err());
+    assert!(
+        apply(&device, &cap(190), 8000, transactions(), || {
+            ensure!(
+                device.sent.borrow().is_empty(),
+                "connection generation changed"
+            );
+            Ok(())
+        })
+        .is_err()
+    );
     assert_eq!(device.sent.borrow().len(), 1);
     // The cancelled exchange may not consume its pending IN response.
     assert!(device.steps.borrow().is_empty());
@@ -123,12 +218,30 @@ fn cancellation_after_pre_get_stops_the_setter() {
 #[test]
 fn obm_task_uses_only_matching_observed_slots_and_retains_ack_without_claiming_readback() {
     let device = Transport::new([
-        step(GET, &[4, 0], Some(&[4, 8])), step(SET, &[4, 2], Some(&[0x77])),
+        step(GET, &[4, 0], Some(&[4, 8])),
+        step(SET, &[4, 2], Some(&[0x77])),
         step(GET, &[7, 0], Some(&[7, 2])),
     ]);
-    let slots = [(2, "other"), (4, "active"), (7, "active")].map(|(profile_id, guid)| crate::mouse_onboard::OnboardProfileAssociation { profile_id, guid: guid.into() });
-    let writes = synchronize_slots(&device, &cap(190), "active", &slots, 4000, &mut transactions(), &|| Ok(())).unwrap();
-    assert_eq!(writes.iter().map(SlotWrite::profile_id).collect::<Vec<_>>(), [4, 7]);
+    let slots = [(2, "other"), (4, "active"), (7, "active")].map(|(profile_id, guid)| {
+        crate::mouse_onboard::OnboardProfileAssociation {
+            profile_id,
+            guid: guid.into(),
+        }
+    });
+    let writes = synchronize_slots(
+        &device,
+        &cap(190),
+        "active",
+        &slots,
+        4000,
+        &mut transactions(),
+        &|| Ok(()),
+    )
+    .unwrap();
+    assert_eq!(
+        writes.iter().map(SlotWrite::profile_id).collect::<Vec<_>>(),
+        [4, 7]
+    );
     assert_eq!(writes[0].acknowledgment().unwrap().data, [0x77]);
     assert!(writes[1].acknowledgment().is_none());
     device.finished();
@@ -137,9 +250,33 @@ fn obm_task_uses_only_matching_observed_slots_and_retains_ack_without_claiming_r
 #[test]
 fn missing_guid_match_and_invalid_request_never_mutate_other_profiles() {
     let device = Transport::new([]);
-    let slots = [crate::mouse_onboard::OnboardProfileAssociation { profile_id: 4, guid: "other".into() }];
-    assert!(synchronize_slots(&device, &cap(190), "absent", &slots, 1000, &mut transactions(), &|| Ok(())).unwrap().is_empty());
+    let slots = [crate::mouse_onboard::OnboardProfileAssociation {
+        profile_id: 4,
+        guid: "other".into(),
+    }];
+    assert!(
+        synchronize_slots(
+            &device,
+            &cap(190),
+            "absent",
+            &slots,
+            1000,
+            &mut transactions(),
+            &|| Ok(())
+        )
+        .unwrap()
+        .is_empty()
+    );
     assert!(apply(&device, &cap(190), 16000, transactions(), || Ok(())).is_err());
-    assert!(request(&device, &cap(190), &Change::new(1000).with_profile_guid(String::new()), transactions(), || Ok(())).is_err());
+    assert!(
+        request(
+            &device,
+            &cap(190),
+            &Change::new(1000).with_profile_guid(String::new()),
+            transactions(),
+            || Ok(())
+        )
+        .is_err()
+    );
     assert!(device.sent.borrow().is_empty());
 }
