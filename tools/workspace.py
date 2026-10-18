@@ -295,6 +295,19 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
     resource_bridge = "crates/razer-assets/src/resource_runtime.rs"
     image_cache_owner = "crates/razer-assets/src/image_cache.rs"
     local_image_owner = "crates/razer-assets/src/local_image.rs"
+    camera_page = (owner.startswith("crates/razer-pages/src/features/workspace/source_controls/")
+                   and Path(owner).name.startswith("camera"))
+    camera_workers = "crates/razer-service/src/camera/lifecycle.rs"
+    brightness_runtime = "crates/razer-shell/src/shell/keyboard/keyboard_brightness_runtime.rs"
+    brightness_worker = "crates/razer-shell/src/shell/keyboard/keyboard_brightness_worker.rs"
+    brightness_callers = {
+        "crates/razer-shell/src/shell/keyboard/keyboard_brightness_read.rs": "read_keyboard_brightness",
+        "crates/razer-shell/src/shell/keyboard/keyboard_brightness_write.rs": "write_keyboard_brightness",
+    }
+    brightness_gui = owner in {*brightness_callers, brightness_runtime,
+        "crates/razer-pages/src/features/keyboard/lighting/keyboard_brightness.rs"}
+    brightness_state_types = {("keyboard_brightness_runtime", "State"),
+        ("self", "keyboard_brightness_runtime", "State"), ("crate", "shell", "keyboard_brightness_runtime", "State")}
     shutdown_owner = "crates/razer-shell/src/shell/shutdown.rs"
     interdevice_owner = "crates/razer-model/src/mapping/interdevice.rs"
     mapping_adapter = "crates/razer-shell/src/shell/devices/product_mapping.rs"
@@ -620,6 +633,58 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                 fail(node, "include_path_requires_resolution", "Explicit local include path or the installation constants generator")
         if in_test(node):
             continue
+        if brightness_gui and node.type == "call_expression":
+            function = node.child_by_field_name("function")
+            if function.type == "field_expression":
+                method = text(function.child_by_field_name("field"))
+                if method == "detach" or (method == "join" and not node.child_by_field_name("arguments").named_children):
+                    fail(node, "keyboard_brightness_gui_detaches_or_waits_for_native_work", brightness_runtime)
+                if method == "request_keyboard_brightness":
+                    fail(node, "keyboard_brightness_gui_owns_device_io", brightness_worker)
+            else:
+                target = resolved_call(text(function).split("::"))
+                if (target[-1] == "request_keyboard_brightness" or target[-2:] == ("ServiceClient", "spawn")
+                        or target in {("std", "thread", "spawn"), ("std", "thread", "Builder", "new"),
+                                      ("thread", "spawn"), ("thread", "Builder", "new")}):
+                    fail(node, "keyboard_brightness_gui_owns_device_io", brightness_worker)
+        if brightness_gui and ((node.type == "field_expression"
+                and text(node.child_by_field_name("field")) == "discovery_revision")
+                or node.type == "identifier" and text(node) == "discovery_revision"):
+            fail(node, "keyboard_brightness_uses_global_discovery_revision", brightness_runtime + "::Scope")
+        if node.type == "function_item" and owner in brightness_callers \
+                and text(node.child_by_field_name("name")) == brightness_callers[owner]:
+            dispatches = [call for call in walk(node) if call.type == "call_expression"
+                and text(call.child_by_field_name("function")) == "self.start_keyboard_brightness_operation"]
+            scopes = [call for parts, call in calls(node)
+                if resolved_call(parts)[-3:] == ("keyboard_brightness_runtime", "Scope", "new")]
+            if not dispatches or not scopes:
+                fail(node, "keyboard_brightness_bypasses_retained_operation_owner", brightness_runtime)
+        if node.type == "function_item" and owner == brightness_runtime \
+                and text(node.child_by_field_name("name")) == "current_route":
+            if not any(resolved_call(parts) in {("super", "device_discovery", "retained_connection"),
+                    ("crate", "shell", "device_discovery", "retained_connection")} for parts, _ in calls(node)):
+                fail(node, "keyboard_brightness_does_not_retain_the_physical_connection", brightness_runtime + "::Scope")
+        if camera_page and node.type == "call_expression":
+            function = node.child_by_field_name("function")
+            if function.type == "field_expression":
+                method = text(function.child_by_field_name("field"))
+                if method == "detach" or (method == "join" and not node.child_by_field_name("arguments").named_children):
+                    fail(node, "camera_page_detaches_or_waits_for_native_work", camera_workers)
+            else:
+                target = resolved_call(text(function).split("::"))
+                if (target[:2] == ("std", "thread")
+                        or target[-2:] in {("ServiceClient", "spawn"), ("SessionMonitor", "start")}):
+                    fail(node, "camera_page_starts_unowned_native_work", camera_workers)
+        if (node.type == "function_item" and owner == source_lifecycle
+                and text(node.child_by_field_name("name")) == "prepare_exit"
+                and "prepare_camera_exit" not in called_methods(node)):
+            fail(node, "camera_exit_does_not_close_native_task_admission", camera_workers)
+        if (node.type == "function_item"
+                and owner == "crates/razer-pages/src/features/workspace/source_workspace.rs"
+                and text(node.child_by_field_name("name")) == "sync_camera_activity"
+                and not any(child.type == "unary_expression" and "".join(text(child).split()) == "!self.exiting"
+                            for child in walk(node))):
+            fail(node, "camera_exit_reopens_the_physical_scope", camera_workers)
         if seiren_gui and node.type == "call_expression":
             function = node.child_by_field_name("function")
             if function.type != "field_expression":
@@ -727,6 +792,13 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
             if owner == "crates/razer-shell/src/shell.rs" and name == "AppShell" and "thx_retired_owners" not in fields:
                 fail(node, "thx_spawn_failure_has_no_retained_owner", thx_lifecycle + "::RetiredOwner")
             if owner == chroma_shell and name == "AppShell":
+                brightness = {text(child.child_by_field_name("name")): owned_type(child.child_by_field_name("type"))
+                    for child in body.named_children if child.type == "field_declaration"
+                    and any(contains_owned_type(owned_type(child.child_by_field_name("type")), target)
+                            for target in brightness_state_types)}
+                if (set(brightness) != {"keyboard_brightness"}
+                        or brightness["keyboard_brightness"] not in {(target, ()) for target in brightness_state_types}):
+                    fail(node, "keyboard_brightness_has_no_single_retained_shell_owner", brightness_runtime + "::State")
                 sessions = {text(child.child_by_field_name("name")): owned_type(child.child_by_field_name("type"))
                     for child in body.named_children if child.type == "field_declaration"
                     and contains_owned_type(owned_type(child.child_by_field_name("type")), chroma_session)}
@@ -1463,6 +1535,14 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                         ("razer_state", "ui_preferences", "active_io"), ("razer_state", "chroma_settings", "active_io")}
             if not required <= actual:
                 fail(node, "shared_local_io_not_drained_at_exit", "Shared service, file transfer, Chroma and UI preference owners")
+        if node.type == "function_item" and owner == "crates/razer-shell/src/shell.rs" \
+                and text(node.child_by_field_name("name")) == "new":
+            implementation = node.parent.parent if node.parent is not None and node.parent.parent is not None else None
+            if implementation is not None and implementation.type == "impl_item" \
+                    and text(implementation.child_by_field_name("type")) == "AppShell" \
+                    and not any(call.type == "call_expression" and text(call.child_by_field_name("function")) in {
+                        "this.install_keyboard_brightness_cleanup", "self.install_keyboard_brightness_cleanup"} for call in walk(node)):
+                fail(node, "keyboard_brightness_cleanup_is_not_installed", brightness_runtime)
         if node.type == "function_item" and owner == "crates/razer-shell/src/shell.rs" and text(node.child_by_field_name("name")) == "continue_save_queue":
             methods = [call for call in walk(node) if call.type == "call_expression"
                 and call.child_by_field_name("function").type == "field_expression"]
@@ -1537,6 +1617,11 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                     or any(not any(preceding_return(branch, call) for branch in actuation_waits)
                         for call in finishes + service_finishes + resource_finishes)):
                 fail(node, "exit_cancels_accepted_actuation_or_skips_failure_gate", keyboard_actuation)
+            pending = [child.child_by_field_name("value") for child in node.child_by_field_name("body").named_children
+                if child.type == "let_declaration" and text(child.child_by_field_name("pattern")) == "operations_pending"]
+            if (len(pending) != 1 or pending[0] is None
+                    or not any(method_on_field(term, "pending", "keyboard_brightness") for term in disjunction_terms(pending[0]))):
+                fail(node, "keyboard_brightness_work_is_not_drained_before_exit", brightness_runtime + "::State")
         if node.type == "function_item" and owner == keyboard_actuation:
             name = text(node.child_by_field_name("name"))
             if name in {"finish_keyboard_actuation_save", "submit_keyboard_actuation_device"}:
@@ -8122,6 +8207,8 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("hyperpolling-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "hyperpolling_runtime"]),
         ("hyperpolling-storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib", "hyperpolling_profile"]),
         ("hyperpolling-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "hyperpolling_runtime"]),
+        ("keyboard-brightness-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "keyboard_brightness"]),
+        ("keyboard-brightness-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "brightness::lifecycle_tests"]),
         ("receiver-lighting-owner", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "receiver_lighting_"]),
         ("lighting-engine-session", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "lighting_engine_session::tests"]),
         ("controller-lighting-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "controller_lighting::"]),

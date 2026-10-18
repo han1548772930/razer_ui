@@ -617,6 +617,9 @@ impl AppShell {
         // Expire request observations even on failure. An unchanged physical
         // connection remains owned; absence is unknown, not an offline reply.
         self.discovery_revision = self.discovery_revision.wrapping_add(1);
+        if let Ok(snapshot) = observation {
+            self.retain_keyboard_brightness_connections(snapshot.devices(), cx);
+        }
         let retained = self
             .devices
             .iter()

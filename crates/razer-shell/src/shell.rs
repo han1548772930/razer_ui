@@ -83,6 +83,8 @@ mod host_tabs;
 mod keyboard_actuation_write;
 #[path = "shell/keyboard/keyboard_brightness_read.rs"]
 mod keyboard_brightness_read;
+#[path = "shell/keyboard/keyboard_brightness_runtime.rs"]
+mod keyboard_brightness_runtime;
 #[path = "shell/keyboard/keyboard_brightness_write.rs"]
 mod keyboard_brightness_write;
 #[path = "shell/keyboard/keyboard_indicator.rs"]
@@ -127,6 +129,8 @@ use controller_triggers::ControllerTriggerSave;
 use mouse_current_dpi::MouseCurrentDpiSave;
 use mouse_current_power::MouseCurrentPowerSave;
 use mouse_dpi_stages::MouseDpiStagesSave;
+#[path = "shell/receiver/hyperpolling_runtime.rs"]
+mod hyperpolling_runtime;
 #[path = "shell/mouse/mouse_polling_write.rs"]
 mod mouse_polling_write;
 #[path = "shell/devices/product_lighting.rs"]
@@ -137,8 +141,6 @@ mod product_mapping;
 mod product_settings_navigation;
 #[path = "shell/receiver/receiver_brightness_page.rs"]
 mod receiver_brightness_page;
-#[path = "shell/receiver/hyperpolling_runtime.rs"]
-mod hyperpolling_runtime;
 #[path = "shell/receiver/receiver_lighting_owner.rs"]
 mod receiver_lighting_owner;
 #[path = "shell/receiver/receiver_pairing.rs"]
@@ -342,6 +344,7 @@ pub struct AppShell {
     macro_recorder: macro_recorder::State,
     game_observer: game_monitor::State,
     keyboard_indicator: keyboard_indicator::State,
+    keyboard_brightness: keyboard_brightness_runtime::State,
     keyboard_latest_restore: keyboard_latest_restore::State,
     keyboard_legacy_calibration: keyboard_legacy_calibration::State,
     keyboard_lifecycle: Option<keyboard_lifecycle::Owner>,
@@ -607,6 +610,7 @@ impl AppShell {
             macro_recorder: macro_recorder::State::default(),
             game_observer: game_monitor::State::default(),
             keyboard_indicator: keyboard_indicator::State::default(),
+            keyboard_brightness: keyboard_brightness_runtime::State::default(),
             keyboard_latest_restore: keyboard_latest_restore::State::default(),
             keyboard_legacy_calibration: keyboard_legacy_calibration::State::default(),
             keyboard_lifecycle: None,
@@ -1185,6 +1189,15 @@ impl AppShell {
         this.install_tray(window, cx);
         this.install_service_exit_fallback(cx);
         this.install_hanbo_cooler_cleanup();
+        this.register_exit_cleanup(|_, cx| {
+            let cleanup =
+                cx.background_spawn(async { razer_service::camera::lifecycle::shutdown_all() });
+            async move {
+                if let Err(error) = cleanup.await {
+                    eprintln!("camera service cleanup: {error:#}");
+                }
+            }
+        });
         this.register_exit_cleanup(|this, cx| {
             let discovery = this
                 .runtime
@@ -1213,6 +1226,7 @@ impl AppShell {
         this.install_keyboard_actuation_cleanup(cx);
         this.install_keyboard_wristrest_cleanup(cx);
         this.install_keyboard_indicator_cleanup(cx);
+        this.install_keyboard_brightness_cleanup(cx);
         this.install_keyboard_latest_restore_cleanup(cx);
         this.install_keyboard_legacy_calibration_cleanup(cx);
         this.install_mouse_runtime_artwork_cleanup(cx);
@@ -2707,6 +2721,7 @@ impl AppShell {
         // exit intent until its session reports completion; do not autosave edits.
         let operations_pending = self.studio_save_pending(cx)
             || receiver_pending
+            || self.keyboard_brightness.pending()
             || self.keyboard_game_exit_pending()
             || self.keyboard_identity_cache_pending > 0
             || self.runtime.read(cx).shutdown_pending()

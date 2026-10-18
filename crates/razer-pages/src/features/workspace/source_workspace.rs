@@ -34,6 +34,8 @@ mod help_system;
 mod help_versions;
 #[path = "source_workspace/hyperflux.rs"]
 mod hyperflux;
+#[path = "source_workspace/hyperpolling_runtime.rs"]
+mod hyperpolling_runtime;
 #[path = "source_workspace/keyboard_linked_profiles.rs"]
 mod keyboard_linked_profiles;
 #[path = "source_workspace/keyboard_mapping.rs"]
@@ -62,8 +64,6 @@ mod profile_menu;
 mod profile_transfer;
 #[path = "source_workspace/receiver_profile_selection.rs"]
 mod receiver_profile_selection;
-#[path = "source_workspace/hyperpolling_runtime.rs"]
-mod hyperpolling_runtime;
 pub use receiver_profile_selection::ReceiverProfileSelectionRequested;
 #[path = "source_workspace/ripsaw.rs"]
 mod ripsaw;
@@ -721,6 +721,19 @@ impl SourceProductWorkspace {
     pub fn keyboard_brightness_read_matches(&self, generation: u64, cx: &App) -> bool {
         matches!(&self.body,FamilyBody::Keyboard(body) if body.read(cx).brightness_read_matches(generation))
     }
+    pub fn keyboard_brightness_cancellation_guard(
+        &self,
+        generation: u64,
+        percent: Option<u8>,
+        cx: &App,
+    ) -> Option<std::sync::Arc<std::sync::atomic::AtomicBool>> {
+        match &self.body {
+            FamilyBody::Keyboard(body) => body
+                .read(cx)
+                .brightness_cancellation_guard(generation, percent),
+            _ => None,
+        }
+    }
     pub fn finish_keyboard_actuation(
         &mut self,
         generation: u64,
@@ -1091,7 +1104,8 @@ impl SourceProductWorkspace {
     }
     fn sync_camera_activity(&self, cx: &mut Context<Self>) {
         if let FamilyBody::Controls(body) = &self.body {
-            let active = matches!(self.device.product_id, 3594..=3596)
+            let active = !self.exiting
+                && matches!(self.device.product_id, 3594..=3596)
                 && self
                     .current_page()
                     .is_some_and(|p| p.role() != ProductPageRole::Help)
@@ -3224,9 +3238,14 @@ impl SourceProductWorkspace {
                     this.capture(body.read(cx).snapshot(), cx);
                 },
             ));
-            subscriptions.push(cx.subscribe(&body, |_, _, event: &super::HyperpollingIndicatorRequested, cx| {
-                cx.emit(WorkspaceEvent::HyperpollingIndicatorRequested(event.clone()));
-            }));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_, _, event: &super::HyperpollingIndicatorRequested, cx| {
+                    cx.emit(WorkspaceEvent::HyperpollingIndicatorRequested(
+                        event.clone(),
+                    ));
+                },
+            ));
             subscriptions.push(cx.subscribe(
                 &body,
                 |_, _, request: &super::ReceiverBrightnessRequested, cx| {
@@ -3861,6 +3880,7 @@ impl SourceProductWorkspace {
         });
         if !pending_import {
             mouse_profile_source::accept_saved_version(&mut self.device, &self.saved, &snapshot);
+            hyperpolling_runtime::accept_saved_version(&mut self.device, &self.saved, &snapshot);
         }
         if self.device.product_id == 182
             && snapshot.source_device_settings == self.device.source_device_settings

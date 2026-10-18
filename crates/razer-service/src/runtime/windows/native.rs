@@ -52,8 +52,9 @@ pub(super) fn hyperpolling_receiver(
     path: &str,
     container: &str,
     command: razer_device::hyperpolling_receiver::Command,
+    transaction: u8,
 ) -> anyhow::Result<Value> {
-    hyperpolling_receiver::request(path, container, command)
+    hyperpolling_receiver::request(path, container, command, transaction)
 }
 pub(super) fn keyboard_wristrest(
     target: &razer_device::keyboard_wristrest::Target,
@@ -166,6 +167,8 @@ mod surround_adapter;
 pub(super) fn mixer_lighting_sample(node: &HidNode, sources: [u8; 4]) -> anyhow::Result<Value> {
     mixer_lighting::sample(node, sources)
 }
+#[path = "receiver/hyperpolling_receiver.rs"]
+mod hyperpolling_receiver;
 #[path = "receiver/receiver.rs"]
 mod receiver;
 #[path = "receiver/receiver_brightness.rs"]
@@ -174,8 +177,6 @@ mod receiver_brightness;
 mod receiver_events;
 #[path = "receiver/receiver_identity.rs"]
 mod receiver_identity;
-#[path = "receiver/hyperpolling_receiver.rs"]
-mod hyperpolling_receiver;
 #[path = "receiver/receiver_lighting.rs"]
 mod receiver_lighting;
 #[path = "receiver/receiver_pairing.rs"]

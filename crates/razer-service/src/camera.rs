@@ -1,6 +1,11 @@
 //! Direct camera service entry points. No vendor DLL is loaded.
 //! Only the COM/SetupDi adapter is Windows-specific.
 
+#[path = "camera/commands.rs"]
+pub mod commands;
+#[path = "camera/lifecycle.rs"]
+pub mod lifecycle;
+
 use anyhow::Result;
 #[cfg(windows)]
 use razer_device::camera::CameraSession;

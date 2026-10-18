@@ -411,6 +411,10 @@ READ_INPUT = ".analysis/inputs/typed-tables/razer-device/device-read-capabilitie
 IDENTITY_INPUT = ".analysis/inputs/typed-tables/razer-device/discovery-catalog.json"
 QUERY_INPUT = ".analysis/inputs/typed-tables/razer-device/receiver-query-capabilities.json"
 PAIR_CAP_INPUT = ".analysis/inputs/typed-tables/razer-device/receiver-pairing-capabilities.json"
+RECEIVER_179_PAIRING_NAMESPACES = {
+    "MOUSE": {"scan_pair_prefix": 0, "unpair_prefix": 128, "cancel_prefix": 0, "metadata_prefix": 0},
+    "KEYBOARD": {"scan_pair_prefix": 128, "unpair_prefix": 0, "cancel_prefix": 0, "metadata_prefix": 128},
+}
 PAIR_CATALOG_INPUT = ".analysis/inputs/typed-tables/razer-device/receiver-pairing-catalog.json"
 READ_OUTPUT = "crates/razer-device/src/transport/device_read_capabilities.rs"
 IDENTITY_OUTPUT = "crates/razer-device/src/identity/device_identity_catalog.rs"
@@ -804,6 +808,9 @@ def validate_pairing_capabilities(raw):
             raise ValueError("Pairing owner differs from its transport")
         for field in ("scan_pair_prefix", "unpair_prefix", "cancel_prefix", "metadata_prefix"):
             namespace(capability[field], capability["transport"]["transaction_modulus"])
+        if pid == 179 and any(capability[field] != value
+                              for field, value in RECEIVER_179_PAIRING_NAMESPACES[category].items()):
+            raise ValueError("PID179 pairing namespaces differ from the current category factories and primary Cancel")
         if "metadata_claim_interface" in capability:
             bounded(capability["metadata_claim_interface"], 0xFF, "metadata interface")
         if "metadata_source_class" in capability and capability["metadata_source_class"] not in READ_CLASSES:
@@ -2632,8 +2639,193 @@ def prepare_receiver_battery_peers(*, check=False, record=True):
     return {"output": BATTERY_PEER_OUTPUT, **equivalence, "passed": True, "check_only": check}
 
 
-def receiver_sender_table_projection(content, bindings, *, update=False):
-    """Read actual typed receiver constructors; preserve every other field and caller."""
+def receiver_pairing_namespace_contract(bodies):
+    """Derive the selected UMA factories from complete current JavaScript owners."""
+    import sys
+    sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    parser = Parser(Language(tree_sitter_javascript.language()))
+
+    def parse(text):
+        tree = parser.parse(text.encode())
+        if tree.root_node.has_error:
+            raise ValueError("Receiver namespace source has a JavaScript AST error")
+        return tree.root_node
+
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+
+    def shape(node):
+        children = [child for child in node.children if child.type != "comment"]
+        return (node.type, tuple(shape(child) for child in children)) if children else (node.type, node.text)
+
+    def expression(text):
+        return parse("(" + text + ");").named_children[0].named_children[0].named_children[0]
+
+    def only(nodes, label):
+        nodes = list(nodes)
+        if len(nodes) != 1:
+            raise ValueError("Receiver namespace source has an absent or ambiguous " + label)
+        return nodes[0]
+
+    def member(node, name):
+        return (node.type == "member_expression" and node.child_by_field_name("object").type == "this"
+                and node.child_by_field_name("property").text == name.encode())
+
+    def class_node(role):
+        return expression(bodies[role])
+
+    common = class_node("protocol_common_device")
+    initial = only((node for node in walk(common) if node.type == "assignment_expression"
+                    and member(node.child_by_field_name("left"), "transactionId")), "initial transaction counter")
+    if initial.child_by_field_name("right").text != b"0":
+        raise ValueError("Receiver category factories no longer start their own counter at zero")
+
+    def factory(role):
+        node = class_node(role)
+        method_nodes = [child for child in node.child_by_field_name("body").named_children if child.type == "method_definition"]
+        methods = {child.child_by_field_name("name").text.decode(): child for child in method_nodes}
+        if len(methods) != len(method_nodes) or not {"_getTransactionId", "sendCommand"} <= set(methods):
+            raise ValueError("Receiver namespace factory has absent or repeated transport methods")
+        transaction = methods["_getTransactionId"].child_by_field_name("body").named_children
+        if len(transaction) != 1 or transaction[0].type != "return_statement":
+            raise ValueError("Receiver transaction method must retain one complete return")
+        sequence = transaction[0].named_children[0]
+        if (sequence.type != "sequence_expression" or sequence.named_child_count != 2
+                or shape(sequence.named_children[0]) != shape(expression("31===this.transactionId&&(this.transactionId=0)"))):
+            raise ValueError("Receiver transaction counter reset or modulus changed")
+        result = sequence.named_children[1]
+        prefix = 0
+        if result.type == "binary_expression":
+            left = result.child_by_field_name("left")
+            if left.type != "number" or result.child_by_field_name("operator").text != b"|":
+                raise ValueError("Receiver transaction prefix is not a fixed bitwise namespace")
+            prefix, result = int(left.text), result.child_by_field_name("right")
+        if shape(result) != shape(expression("this.transactionId++")):
+            raise ValueError("Receiver transaction method changed its persistent sequence")
+        sender = methods["sendCommand"]
+        header = sender.child_by_field_name("parameters").named_children[0].text.decode()
+        rewrite = only((child for child in walk(sender) if child.type == "augmented_assignment_expression"
+                        and child.child_by_field_name("left").type == "subscript_expression"
+                        and child.child_by_field_name("left").child_by_field_name("index").text == b"1"),
+                       "command transaction rewrite")
+        target = rewrite.child_by_field_name("left").child_by_field_name("object")
+        value, operator = rewrite.child_by_field_name("right"), rewrite.child_by_field_name("operator")
+        if target.type != "identifier" or value.type != "number" or operator.text not in {b"&=", b"|="}:
+            raise ValueError("Receiver command transaction rewrite is not a fixed mask")
+        condition = rewrite.parent.parent
+        if condition.type != "binary_expression":
+            raise ValueError("Receiver namespace rewrite lost its command guard")
+        guard = condition.child_by_field_name("left")
+        comparisons = guard.named_children
+        if guard.type != "binary_expression" or len(comparisons) != 2:
+            raise ValueError("Receiver namespace rewrite has an unresolved command guard")
+        command = comparisons[0].child_by_field_name("right")
+        if command is None or command.type != "subscript_expression":
+            raise ValueError("Receiver namespace rewrite lost its protocol table")
+        table = command.child_by_field_name("object")
+        if table.type != "member_expression" or table.child_by_field_name("object").type != "identifier":
+            raise ValueError("Receiver namespace command table is unresolved")
+        alias, packet = table.child_by_field_name("object").text.decode(), target.text.decode()
+        expected = f"{header}[2]!=={alias}.pJ[2]&&{header}[2]!=={alias}.fr[2]||({packet}[1]{operator.text.decode()}{int(value.text)})"
+        if shape(condition) != shape(expression(expected)):
+            raise ValueError("Receiver namespace rewrite must apply only to scan and pair commands")
+        declaration = only((child for child in walk(sender) if child.type == "variable_declarator"
+                            and child.child_by_field_name("name").text == target.text), "rewritten command frame")
+        call = declaration.child_by_field_name("value")
+        if (call.type != "call_expression" or not member(call.child_by_field_name("function"), "_createDataSend")
+                or call.child_by_field_name("arguments").named_children[0].text != header.encode()):
+            raise ValueError("Receiver namespace rewrite does not target the constructed command")
+        scan_pair = prefix & int(value.text) if operator.text == b"&=" else prefix | int(value.text)
+        return {"normal_prefix": prefix, "scan_pair_prefix": scan_pair}
+
+    factories = {14770: factory("protocol_pairing_mouse_category"),
+                 48320: factory("protocol_pairing_keyboard_category")}
+    primary = factory("linker_factory")
+    aliases = {}
+    for role in ("pairing_factory_V", "pairing_factory_z"):
+        declaration = parse("const " + bodies[role] + ";").named_children[0].named_children[0]
+        call = declaration.child_by_field_name("value")
+        arguments = call.child_by_field_name("arguments") if call.type == "call_expression" else None
+        if arguments is None or arguments.named_child_count != 1 or arguments.named_children[0].type != "number":
+            raise ValueError("Receiver category factory import is unresolved")
+        name = declaration.child_by_field_name("name").text.decode()
+        if name in aliases:
+            raise ValueError("Receiver category factory repeats an import")
+        aliases[name] = int(arguments.named_children[0].text)
+    selection = parse("const " + bodies["mw_pairing_factory_selection"] + ";")
+    maps = []
+    for node in walk(selection):
+        if node.type == "object" and {child.child_by_field_name("key").text for child in node.named_children
+                                      if child.type == "pair"} == {b"true", b"false"}:
+            maps.append(node)
+    mapping = only(maps, "forward and metadata category map")
+    factory_function = selection.named_children[0].named_children[0].child_by_field_name("value")
+    if factory_function.type != "arrow_function":
+        raise ValueError("Receiver category selector is not the complete current arrow function")
+    parameters = factory_function.child_by_field_name("parameters").named_children
+    if len(parameters) != 2 or parameters[0].type != "identifier" or parameters[1].type != "assignment_pattern":
+        raise ValueError("Receiver category selector has unresolved category or mode parameters")
+    category_parameter = parameters[0].text.decode()
+    mode_parameter = parameters[1].child_by_field_name("left").text.decode()
+    indexed = mapping.parent
+    assignment = indexed.parent
+    if indexed.type != "subscript_expression" or assignment.type != "assignment_expression":
+        raise ValueError("Receiver category mapping no longer feeds the selected factory")
+    temporary = assignment.child_by_field_name("left")
+    if temporary.type != "identifier":
+        raise ValueError("Receiver category mapping has an unresolved intermediate owner")
+    declaration = assignment.parent
+    while declaration is not None and declaration.type != "variable_declarator":
+        declaration = declaration.parent
+    if declaration is None:
+        raise ValueError("Receiver category selection lost its retained factory declaration")
+    temporary_name = temporary.text.decode()
+    expected_selection = (f"null===({temporary_name}={mapping.text.decode()}[String({mode_parameter})])"
+                          f"||void 0==={temporary_name}?void 0:{temporary_name}[{category_parameter}]")
+    if shape(declaration.child_by_field_name("value")) != shape(expression(expected_selection)):
+        raise ValueError("Receiver category map is not selected by the supplied category and mode")
+    selected_factory = declaration.child_by_field_name("name").text
+    only((node for node in walk(factory_function) if node.type == "new_expression"
+          and node.child_by_field_name("constructor").text == selected_factory), "fresh selected category instance")
+    if len(mapping.named_children) != 2:
+        raise ValueError("Receiver category map repeats a mode branch")
+    branches = {}
+    for branch in mapping.named_children:
+        value = branch.child_by_field_name("value")
+        if value.type != "object":
+            raise ValueError("Receiver category map is not an explicit object")
+        categories = {}
+        for pair in value.named_children:
+            key, factory_value = pair.child_by_field_name("key"), pair.child_by_field_name("value")
+            if (key.type != "computed_property_name" or key.named_child_count != 1
+                    or key.named_children[0].type != "member_expression" or factory_value.type != "member_expression"
+                    or factory_value.child_by_field_name("property").text != b"default"):
+                raise ValueError("Receiver category map has an unresolved factory")
+            category = key.named_children[0].child_by_field_name("property").text.decode()
+            alias = factory_value.child_by_field_name("object").text.decode()
+            if category in categories or aliases.get(alias) not in factories:
+                raise ValueError("Receiver category map repeats a branch or selects an unknown module")
+            categories[category] = aliases[alias]
+        if set(categories) != {"MOUSE", "KEYBOARD"}:
+            raise ValueError("Receiver category map is incomplete")
+        branches[branch.child_by_field_name("key").text.decode()] = categories
+    rows = {category: {"scan_pair_prefix": factories[module]["scan_pair_prefix"],
+                       "unpair_prefix": factories[module]["normal_prefix"],
+                       "cancel_prefix": primary["scan_pair_prefix"],
+                       "metadata_prefix": factories[branches["false"][category]]["normal_prefix"]}
+            for category, module in branches["true"].items()}
+    if rows != RECEIVER_179_PAIRING_NAMESPACES or primary["normal_prefix"] != 224:
+        raise ValueError("Current PID179 source namespaces changed; review every primary and category owner")
+    return {"product_id": 179, "primary_prefix": primary["normal_prefix"],
+            "category_modules": branches, "categories": rows}
+
+
+def receiver_table_tree(content):
+    """Parse typed constructors, exposing vec elements without changing byte offsets."""
     import sys
     sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
     from tree_sitter import Language, Parser
@@ -2656,6 +2848,12 @@ def receiver_sender_table_projection(content, bindings, *, update=False):
     tree = parser.parse(expanded)
     if tree.root_node.has_error:
         raise ValueError("Receiver sender vector expansion has a Rust AST error")
+    return tree
+
+
+def receiver_sender_table_projection(content, bindings, *, update=False):
+    """Read actual typed receiver constructors; preserve every other field and caller."""
+    tree = receiver_table_tree(content)
     pending, edits, found, verified = [tree.root_node], [], set(), []
     while pending:
         node = pending.pop(); pending.extend(node.named_children)
@@ -2708,6 +2906,54 @@ def receiver_sender_table_projection(content, bindings, *, update=False):
     return content, sorted(verified, key=lambda row: (row["source_product_id"], row["product_id"]))
 
 
+def receiver_pairing_namespace_table_projection(content, contract, *, update=False):
+    tree = receiver_table_tree(content)
+    pending, edits, found = [tree.root_node], [], {}
+    while pending:
+        node = pending.pop(); pending.extend(node.named_children)
+        if node.type != "struct_expression" or node.child_by_field_name("name").text != b"PairingCapability":
+            continue
+        fields = {}
+        for field in node.child_by_field_name("body").named_children:
+            if field.type != "field_initializer":
+                raise ValueError("Pairing capability requires explicit typed fields")
+            name = field.child_by_field_name("field").text.decode()
+            if name in fields:
+                raise ValueError("Pairing capability repeats a field")
+            fields[name] = field.child_by_field_name("value")
+        pid = fields.get("product_id")
+        if pid is None or pid.type != "integer_literal":
+            raise ValueError("Pairing capability identity is not an integer")
+        if int(pid.text) != contract["product_id"]:
+            continue
+        category = fields.get("category")
+        if category is None or category.type != "call_expression":
+            raise ValueError("Pairing category must be an explicit string")
+        function = category.child_by_field_name("function")
+        if (function.type != "field_expression" or function.child_by_field_name("field").text != b"into"
+                or category.child_by_field_name("arguments").named_children
+                or function.child_by_field_name("value").type != "string_literal"):
+            raise ValueError("Pairing category must retain its typed string conversion")
+        category = json.loads(function.child_by_field_name("value").text)
+        if category not in contract["categories"] or category in found:
+            raise ValueError("PID179 pairing table has an unknown or repeated category")
+        expected = contract["categories"][category]
+        for name, value in expected.items():
+            actual = fields.get(name)
+            if actual is None or actual.type != "integer_literal":
+                raise ValueError("Pairing namespace is not an explicit integer")
+            if int(actual.text) != value:
+                if not update:
+                    raise ValueError("PID179 pairing " + category + " " + name + " differs from its current source owner")
+                edits.append((actual.start_byte, actual.end_byte, str(value).encode()))
+        found[category] = {"product_id": contract["product_id"], "category": category, **expected}
+    if set(found) != set(contract["categories"]):
+        raise ValueError("PID179 pairing table is missing a category branch")
+    for start, end, replacement in sorted(edits, reverse=True):
+        content = content[:start] + replacement + content[end:]
+    return content, [found[key] for key in sorted(found)]
+
+
 def prepare_receiver_sender_tables(*, check=False, record=True):
     import analysis
     import families
@@ -2715,22 +2961,51 @@ def prepare_receiver_sender_tables(*, check=False, record=True):
     audit = host.HostLocalAudit()
     sources = [families.receiver_sender_sources(audit, pid) for pid in (164, 179, 241)]
     bindings = {row["product_id"]: row for row in sources}
+    pairing = families.receiver_179_local_sources(audit)
+    roles = ("protocol_common_device", "protocol_pairing_mouse_category", "protocol_pairing_keyboard_category",
+             "linker_factory", "pairing_factory_V", "pairing_factory_z", "mw_pairing_factory_selection")
+    namespace_owners = {}
+    for role in roles:
+        keys = pairing["roles"][role]
+        if len(keys) != 1:
+            raise ValueError("PID179 namespace source owner is ambiguous: " + role)
+        namespace_owners[role] = audit.owners[keys[0]]
+    for role, module in (("protocol_pairing_mouse_category", 14770), ("protocol_pairing_keyboard_category", 48320)):
+        owner = namespace_owners[role]
+        enclosing = [audit.owners[row["owner"]] for row in pairing["complete_factories"] if row["module_id"] == module]
+        if not any(row["original"] == owner["original"] and row["byte_start"] <= owner["byte_start"]
+                   and owner["byte_end"] <= row["byte_end"] for row in enclosing):
+            raise ValueError("PID179 category class differs from its imported complete factory")
+    namespaces = receiver_pairing_namespace_contract({role: owner["body"] for role, owner in namespace_owners.items()})
+    if (pairing["cancel_contract"]["target"] != "primary_runtime_device"
+            or pairing["cancel_contract"]["scan_status"] != 4 or pairing["cancel_contract"]["category_parameter"]):
+        raise ValueError("PID179 Cancel no longer belongs to the primary runtime owner")
     tables = []
     for name in (QUERY_OUTPUT, PAIR_CAP_OUTPUT):
         path = local_path(name)
         original = path.read_bytes()
         rendered, rows = receiver_sender_table_projection(original, bindings, update=not check)
+        namespace_rows = []
+        if name == PAIR_CAP_OUTPUT:
+            rendered, namespace_rows = receiver_pairing_namespace_table_projection(rendered, namespaces, update=not check)
         if not check and rendered != original:
             path.write_bytes(rendered)
         verified, verified_rows = receiver_sender_table_projection(path.read_bytes(), bindings)
         if verified != path.read_bytes() or rows != verified_rows:
             raise ValueError("Receiver sender typed constructor verification differs")
-        tables.append({"output": families.identity(path), "complete_selector_constructors": rows})
+        if name == PAIR_CAP_OUTPUT:
+            verified, verified_namespaces = receiver_pairing_namespace_table_projection(path.read_bytes(), namespaces)
+            if verified != path.read_bytes() or namespace_rows != verified_namespaces:
+                raise ValueError("Receiver pairing namespace verification differs")
+        tables.append({"output": families.identity(path), "complete_selector_constructors": rows,
+                       "complete_pairing_namespaces": namespace_rows})
     if audit.final_snapshot():
         raise ValueError("Current receiver sender source bytes changed during generation")
     report = {"tool": families.identity(Path(__file__)), "source_extractor": families.identity(Path(families.__file__)),
               "sources": sources, "complete_owners": list(audit.owners.values()),
-              "inputs": list(audit.artifacts.values()), "tables": tables, "check_only": check,
+              "inputs": list(audit.artifacts.values()), "pairing_namespaces": namespaces,
+              "namespace_source_owners": {role: row["id"] for role, row in namespace_owners.items()},
+              "primary_cancel_contract": pairing["cancel_contract"], "tables": tables, "check_only": check,
               "target_execution": False, "runtime_acceptance": "unverified"}
     if record:
         destination = ROOT / ".analysis/results/typed-data.json"
@@ -2739,7 +3014,8 @@ def prepare_receiver_sender_tables(*, check=False, record=True):
             previous["receiver_sender_tables"] = report
             analysis.save(destination, previous)
     return {"products": sorted(bindings), "typed_constructors": sum(len(row["complete_selector_constructors"]) for row in tables),
-            "source_selectors_equal": True, "passed": True, "check_only": check}
+            "pairing_namespace_constructors": sum(len(row["complete_pairing_namespaces"]) for row in tables),
+            "source_selectors_equal": True, "source_pairing_namespaces_equal": True, "passed": True, "check_only": check}
 
 
 def fixed_tables():

@@ -3,7 +3,7 @@ use super::*;
 use razer_device::hyperpolling_receiver::Submission;
 use std::sync::{
     Arc,
-    atomic::{AtomicBool, AtomicU64, Ordering},
+    atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering},
 };
 
 static REQUESTS: AtomicU64 = AtomicU64::new(1);
@@ -22,6 +22,7 @@ pub struct HyperpollingIndicatorRequested {
     status: u8,
     origin: HyperpollingOrigin,
     valid: Arc<AtomicBool>,
+    phase: Arc<AtomicU8>,
 }
 impl HyperpollingIndicatorRequested {
     pub fn epoch(&self) -> u64 {
@@ -42,6 +43,27 @@ impl HyperpollingIndicatorRequested {
     pub fn is_valid(&self) -> bool {
         self.valid.load(Ordering::Acquire)
     }
+    /// NORMAL_SKIPPABLE replaces waiting work but leaves the current setter
+    /// running. Admission and replacement compete at this single boundary.
+    pub fn start_submission(&self) -> bool {
+        self.is_valid()
+            && self
+                .phase
+                .compare_exchange(0, 1, Ordering::AcqRel, Ordering::Acquire)
+                .is_ok()
+    }
+    fn supersede(&self) -> bool {
+        if self
+            .phase
+            .compare_exchange(0, 2, Ordering::AcqRel, Ordering::Acquire)
+            .is_ok()
+        {
+            self.cancel();
+            false
+        } else {
+            self.phase.load(Ordering::Acquire) == 1
+        }
+    }
     fn cancel(&self) {
         self.valid.store(false, Ordering::Release);
     }
@@ -52,6 +74,7 @@ pub(super) struct State {
     epoch: Option<u64>,
     user_edited: bool,
     pending: Option<HyperpollingIndicatorRequested>,
+    in_flight: Vec<HyperpollingIndicatorRequested>,
     diagnostic: Option<Submission>,
 }
 impl State {
@@ -61,6 +84,9 @@ impl State {
         }
         if let Some(pending) = self.pending.take() {
             pending.cancel();
+        }
+        for request in self.in_flight.drain(..) {
+            request.cancel();
         }
         self.epoch = epoch;
         self.user_edited = false;
@@ -76,8 +102,12 @@ impl State {
             return None;
         }
         if let Some(pending) = self.pending.take() {
-            pending.cancel();
+            if pending.supersede() {
+                self.in_flight.push(pending);
+            }
         }
+        self.in_flight
+            .retain(|request| request.phase.load(Ordering::Acquire) == 1);
         self.user_edited |= origin == HyperpollingOrigin::User;
         let request = HyperpollingIndicatorRequested {
             epoch,
@@ -85,6 +115,7 @@ impl State {
             status,
             origin,
             valid: Arc::new(AtomicBool::new(true)),
+            phase: Arc::new(AtomicU8::new(0)),
         };
         self.pending = Some(request.clone());
         Some(request)
@@ -102,6 +133,9 @@ impl State {
         request: &HyperpollingIndicatorRequested,
         diagnostic: Option<Submission>,
     ) -> bool {
+        request.phase.store(3, Ordering::Release);
+        self.in_flight
+            .retain(|active| active.sequence != request.sequence);
         if !self.matches(request) {
             return false;
         }
@@ -114,6 +148,9 @@ impl Drop for State {
     fn drop(&mut self) {
         if let Some(pending) = self.pending.take() {
             pending.cancel();
+        }
+        for request in &self.in_flight {
+            request.cancel();
         }
     }
 }
@@ -196,6 +233,21 @@ impl SourceControls {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[::core::prelude::v1::test]
+    fn hyperpolling_runtime_skips_pending_but_preserves_current_until_connection_cancels() {
+        let mut state = State::default();
+        state.begin(Some(1));
+        let active = state.request(1, HyperpollingOrigin::User).unwrap();
+        assert!(active.start_submission());
+        let waiting = state.request(2, HyperpollingOrigin::User).unwrap();
+        let newest = state.request(3, HyperpollingOrigin::User).unwrap();
+        assert!(active.is_valid());
+        assert!(!waiting.is_valid());
+        assert!(!waiting.start_submission());
+        assert!(newest.is_valid());
+        state.begin(Some(2));
+        assert!(!active.is_valid() && !newest.is_valid());
+    }
     #[::core::prelude::v1::test]
     fn hyperpolling_runtime_old_connection_and_replaced_request_cannot_complete() {
         let mut state = State::default();

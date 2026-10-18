@@ -5,21 +5,32 @@ use super::camera_preview::CameraPreviewState;
 use super::*;
 use razer_device::camera_submission::CameraScope;
 use razer_platform::camera_preview::{Event, Preferences, Session, Source, VideoMode};
-use razer_platform::session_changes::{SessionChange, SessionMonitor};
+use razer_platform::session_changes::SessionChange;
 use std::{
+    collections::BTreeSet,
     sync::{Arc, mpsc},
     time::{Duration, Instant},
 };
 
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub(super) struct MediaOwner(u64);
+
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub(super) struct CaptureOwner {
+    media: MediaOwner,
+    generation: u64,
+}
+
 #[derive(Default)]
 pub(super) struct State {
     scope: Option<CameraScope>,
+    scope_revision: u64,
     session: Option<Session>,
     task: Option<Task<()>>,
     frame: Option<Arc<RenderImage>>,
     preferences: Preferences,
     reconnect: bool,
-    control_locked: bool,
+    capture_holds: BTreeSet<CaptureOwner>,
     restart_after: Option<Instant>,
     focus_after: Option<Instant>,
     focused: bool,
@@ -28,10 +39,90 @@ pub(super) struct State {
     starting: bool,
     playing: bool,
     lifecycle: Option<Lifecycle>,
+    cleanup: razer_service::camera::lifecycle::Owner,
+    retiring: Option<mpsc::Receiver<Result<(), String>>>,
+}
+
+impl State {
+    fn replace_scope(&mut self, scope: Option<CameraScope>) -> bool {
+        if self.scope == scope {
+            return false;
+        }
+        self.scope_revision = self
+            .scope_revision
+            .checked_add(1)
+            .expect("camera media scope exhausted");
+        self.scope = scope;
+        self.capture_holds.clear();
+        true
+    }
+    fn owner(&self) -> Option<MediaOwner> {
+        self.scope.as_ref().map(|_| MediaOwner(self.scope_revision))
+    }
+    fn owns(&self, owner: MediaOwner) -> bool {
+        self.owner() == Some(owner)
+    }
+    fn hold_capture(&mut self, owner: CaptureOwner) -> bool {
+        self.owns(owner.media) && self.capture_holds.insert(owner)
+    }
+    fn release_capture(&mut self, owner: CaptureOwner) -> bool {
+        self.owns(owner.media) && self.capture_holds.remove(&owner) && !self.control_locked()
+    }
+    fn control_locked(&self) -> bool {
+        !self.capture_holds.is_empty()
+    }
+    fn retirement_ready(&mut self) -> Result<bool, ()> {
+        let Some(retiring) = &self.retiring else {
+            return Ok(true);
+        };
+        match retiring.try_recv() {
+            Ok(result) => {
+                if let Err(error) = result {
+                    eprintln!("camera previous preview cleanup: {error}");
+                }
+                self.retiring = None;
+                Ok(true)
+            }
+            Err(mpsc::TryRecvError::Empty) => Ok(false),
+            Err(mpsc::TryRecvError::Disconnected) => {
+                eprintln!("camera previous preview cleanup receipt disconnected");
+                Err(())
+            }
+        }
+    }
+    fn retire_session(&mut self) {
+        if let Some(session) = self.session.take() {
+            // Closing admission is an in-memory channel send; the I/O owner
+            // waits for capture and COM teardown away from the GUI thread.
+            let _ = session.request_shutdown();
+            match self
+                .cleanup
+                .cleanup("camera-preview-release", move || session.shutdown())
+            {
+                Ok(receipt) => self.retiring = Some(receipt),
+                Err(error) => eprintln!("camera preview cleanup admission: {error:#}"),
+            }
+        }
+    }
+    fn retire_lifecycle(&mut self) {
+        if let Some(lifecycle) = self.lifecycle.take() {
+            lifecycle
+                .canceled
+                .store(true, std::sync::atomic::Ordering::Release);
+            drop(lifecycle._task);
+        }
+    }
+}
+impl Drop for State {
+    fn drop(&mut self) {
+        self.task.take();
+        self.retire_session();
+        self.retire_lifecycle();
+    }
 }
 
 struct Lifecycle {
-    _monitor: SessionMonitor,
+    canceled: Arc<std::sync::atomic::AtomicBool>,
     _task: Task<()>,
 }
 
@@ -116,6 +207,13 @@ fn eligible_sources(sources: Vec<Source>, scope: &CameraScope) -> Vec<Source> {
 }
 
 impl SourceControls {
+    pub(super) fn prepare_camera_media_exit(&mut self) {
+        if let Some(state) = &mut self.camera_preview {
+            state.media.task.take();
+            state.media.retire_session();
+            state.media.retire_lifecycle();
+        }
+    }
     pub(super) fn init_camera_media_subscription(
         &mut self,
         window: &mut Window,
@@ -132,8 +230,28 @@ impl SourceControls {
                 this.consume_camera_media_action(action, window, cx);
             },
         ));
-        match SessionMonitor::start() {
-            Ok((monitor, events)) => {
+        self.start_camera_media_lifecycle(cx);
+    }
+
+    fn start_camera_media_lifecycle(&mut self, cx: &mut Context<Self>) {
+        if self
+            .camera_preview
+            .as_ref()
+            .is_none_or(|state| state.media.lifecycle.is_some())
+        {
+            return;
+        }
+        let canceled = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let signal = canceled.clone();
+        let (outgoing, events) = async_channel::unbounded();
+        let jobs = &self.camera_preview.as_ref().unwrap().media.cleanup;
+        match jobs.spawn("camera-session-observation", canceled.clone(), move || {
+            if let Err(error) = razer_service::camera::commands::observe_sessions(signal, outgoing)
+            {
+                eprintln!("camera session observation: {error}");
+            }
+        }) {
+            Ok(_) => {
                 let task = cx.spawn(async move |view, cx| {
                     while let Ok(event) = events.recv().await {
                         match event {
@@ -160,7 +278,7 @@ impl SourceControls {
                 });
                 if let Some(state) = &mut self.camera_preview {
                     state.media.lifecycle = Some(Lifecycle {
-                        _monitor: monitor,
+                        canceled,
                         _task: task,
                     });
                 }
@@ -231,11 +349,9 @@ impl SourceControls {
         let Some(state) = &mut self.camera_preview else {
             return;
         };
-        if state.media.scope == scope {
+        if !state.media.replace_scope(scope) {
             return;
         }
-        state.media.scope = scope;
-        state.media.control_locked = false;
         state.media.restart_after = None;
         state.media.focus_after = None;
         state.media.starting = false;
@@ -244,7 +360,7 @@ impl SourceControls {
         state.media.task.take();
         // Replacing the session also discards callbacks queued for an older
         // source/scope. Its worker receives Shutdown and releases capture.
-        state.media.session.take();
+        state.media.retire_session();
         state.observation.sources.clear();
         state.observation.selected_device_id = None;
         state.observation.selected_app_name.clear();
@@ -279,6 +395,39 @@ impl SourceControls {
         if state.media.scope.is_none() || state.media.session.is_some() {
             return;
         }
+        match state.media.retirement_ready() {
+            Ok(true) => {}
+            Ok(false) => {
+                state.media.task = Some(cx.spawn_in(window, async move |view, cx| {
+                    loop {
+                        cx.background_executor()
+                            .timer(Duration::from_millis(16))
+                            .await;
+                        let waiting = view.update_in(cx, |this, window, cx| {
+                            let Some(state) = &mut this.camera_preview else {
+                                return false;
+                            };
+                            if state.media.scope.is_none() {
+                                return false;
+                            }
+                            match state.media.retirement_ready() {
+                                Ok(false) => true,
+                                Err(()) => false,
+                                Ok(true) => {
+                                    this.start_camera_media_consumer(window, cx);
+                                    false
+                                }
+                            }
+                        });
+                        if !matches!(waiting, Ok(true)) {
+                            break;
+                        }
+                    }
+                }));
+                return;
+            }
+            Err(()) => return,
+        }
         let session = match Session::new() {
             Ok(session) => session,
             Err(error) => {
@@ -291,6 +440,8 @@ impl SourceControls {
             .and_then(|_| session.refresh())
         {
             eprintln!("camera media initialization: {error:#}");
+            state.media.session = Some(session);
+            state.media.retire_session();
             return;
         }
         state.media.session = Some(session);
@@ -307,6 +458,7 @@ impl SourceControls {
                 }
             }
         }));
+        self.start_camera_media_lifecycle(cx);
     }
 
     fn consume_camera_media_action(
@@ -386,16 +538,27 @@ impl SourceControls {
             }
             CameraLocalActionRequested::LaunchInstalledApp(name) => {
                 let name = name.clone();
-                if let Err(error) = std::thread::Builder::new()
-                    .name("camera-app-launch".into())
-                    .spawn(move || {
-                        let result =
-                            razer_platform::camera_apps::CameraApp::from_source_name(&name)
-                                .and_then(razer_platform::camera_apps::launch_installed);
-                        if let Err(error) = result {
-                            eprintln!("camera application launch: {error:#}");
-                        }
-                    })
+                let canceled = Arc::new(std::sync::atomic::AtomicBool::new(false));
+                let signal = canceled.clone();
+                if let Err(error) =
+                    self.camera_runtime
+                        .jobs
+                        .spawn("camera-app-launch", canceled, move || {
+                            if signal.load(std::sync::atomic::Ordering::Acquire) {
+                                return;
+                            }
+                            let result =
+                                razer_platform::camera_apps::CameraApp::from_source_name(&name)
+                                    .and_then(|app| {
+                                        if signal.load(std::sync::atomic::Ordering::Acquire) {
+                                            return Ok(());
+                                        }
+                                        razer_platform::camera_apps::launch_installed(app)
+                                    });
+                            if let Err(error) = result {
+                                eprintln!("camera application launch: {error:#}");
+                            }
+                        })
                 {
                     eprintln!("camera application worker: {error}");
                 }
@@ -425,7 +588,7 @@ impl SourceControls {
         let Some(state) = &mut self.camera_preview else {
             return;
         };
-        if state.media.control_locked {
+        if state.media.control_locked() {
             return;
         }
         state.media.restart_after = None;
@@ -474,15 +637,38 @@ impl SourceControls {
 
     /// Current MW Bn waits for initUITurnOffCameraLocker before touching HDR.
     /// The MF worker supplies a receipt after Flush/OnFlush/Shutdown; holding
-    /// this flag prevents source selection or refresh from reopening capture.
+    /// Each request retains its hold until its own completion, so independent
+    /// source task names cannot reopen capture while another write is active.
+    pub(super) fn camera_media_owner(&self) -> Option<MediaOwner> {
+        self.camera_preview.as_ref()?.media.owner()
+    }
+
+    pub(super) fn camera_media_owner_is_current(&self, owner: MediaOwner) -> bool {
+        self.camera_preview
+            .as_ref()
+            .is_some_and(|state| state.media.owns(owner))
+    }
+
+    pub(super) fn camera_capture_owner(&self, generation: u64) -> Option<CaptureOwner> {
+        Some(CaptureOwner {
+            media: self.camera_media_owner()?,
+            generation,
+        })
+    }
+
     pub(super) fn lock_camera_capture(
         &mut self,
+        owner: CaptureOwner,
         cx: &mut Context<Self>,
     ) -> Result<Option<mpsc::Receiver<Result<(), String>>>, String> {
         let Some(state) = &mut self.camera_preview else {
             return Ok(None);
         };
-        state.media.control_locked = true;
+        if !state.media.hold_capture(owner) {
+            return Err(
+                "camera capture request belongs to a retired scope or is already held".into(),
+            );
+        }
         state.media.restart_after = None;
         state.media.frame = None;
         state.media.starting = false;
@@ -499,9 +685,14 @@ impl SourceControls {
         result
     }
 
-    pub(super) fn finish_camera_capture_control(&mut self, cx: &mut Context<Self>) {
-        if let Some(state) = &mut self.camera_preview {
-            state.media.control_locked = false;
+    pub(super) fn finish_camera_capture_control(
+        &mut self,
+        owner: CaptureOwner,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(state) = &mut self.camera_preview
+            && state.media.release_capture(owner)
+        {
             // Current MW xn broadcasts restart even after failure. EU waits
             // 3000ms before F; retaining a deadline also permits cancellation.
             state.media.restart_after = Some(Instant::now() + Duration::from_secs(3));
@@ -544,7 +735,7 @@ impl SourceControls {
         let frame = session.take_frame();
         let mut changed = false;
         let mut resolution_changed = false;
-        let mut restart = !state.media.control_locked
+        let mut restart = !state.media.control_locked()
             && state
                 .media
                 .restart_after
@@ -589,7 +780,7 @@ impl SourceControls {
                     let sources = eligible_sources(sources, scope);
                     if checks_usb_capacity(self.spec.product_id)
                         && state.observation.resolutions.is_empty()
-                        && !state.media.control_locked
+                        && !state.media.control_locked()
                     {
                         if let Some(hardware) = sources.first() {
                             if let Err(error) = session.probe(hardware.id.clone()) {
@@ -684,7 +875,7 @@ impl SourceControls {
                     changed = true;
                 }
                 Event::Playing => {
-                    if state.media.control_locked {
+                    if state.media.control_locked() {
                         continue;
                     }
                     state.observation.video_loading = false;
@@ -710,8 +901,8 @@ impl SourceControls {
                 Event::Diagnostic(error) => eprintln!("camera media diagnostic: {error}"),
             }
         }
-        if let Some(frame) =
-            frame.filter(|_| state.enabled == Some(true) && !restart && !state.media.control_locked)
+        if let Some(frame) = frame
+            .filter(|_| state.enabled == Some(true) && !restart && !state.media.control_locked())
         {
             if let Some(image) = image::RgbaImage::from_raw(frame.width, frame.height, frame.bgra) {
                 state.media.frame =
@@ -752,6 +943,99 @@ impl SourceControls {
 
 #[cfg(test)]
 mod tests {
+    fn capture_scope() -> super::CameraScope {
+        super::CameraScope {
+            product_id: 3594,
+            container_id: "{camera}".into(),
+        }
+    }
+
+    #[test]
+    fn independent_control_tasks_keep_capture_closed_until_the_last_receipt() {
+        let mut state = super::State::default();
+        state.replace_scope(Some(capture_scope()));
+        let media = state.owner().unwrap();
+        let hdr = super::CaptureOwner {
+            media,
+            generation: 1,
+        };
+        let ldc = super::CaptureOwner {
+            media,
+            generation: 2,
+        };
+        assert!(state.hold_capture(hdr));
+        assert!(state.hold_capture(ldc));
+        assert!(!state.release_capture(hdr));
+        assert!(state.control_locked());
+        assert!(!state.release_capture(hdr));
+        assert!(state.release_capture(ldc));
+        assert!(!state.control_locked());
+    }
+
+    #[test]
+    fn reconnecting_the_same_camera_rejects_old_control_and_save_receipts() {
+        let mut state = super::State::default();
+        state.replace_scope(Some(capture_scope()));
+        let old_media = state.owner().unwrap();
+        let old = super::CaptureOwner {
+            media: old_media,
+            generation: 1,
+        };
+        assert!(state.hold_capture(old));
+        assert!(state.replace_scope(None));
+        assert!(state.replace_scope(Some(capture_scope())));
+        let new_media = state.owner().unwrap();
+        let new = super::CaptureOwner {
+            media: new_media,
+            generation: 1,
+        };
+        assert!(state.hold_capture(new));
+        assert!(!state.owns(old_media));
+        assert!(!state.release_capture(old));
+        assert!(state.control_locked());
+        assert!(state.release_capture(new));
+    }
+
+    #[test]
+    fn profile_invalidation_keeps_the_mounted_control_cleanup_owner() {
+        let mut state = super::State::default();
+        let scope = capture_scope();
+        state.replace_scope(Some(scope.clone()));
+        let owner = super::CaptureOwner {
+            media: state.owner().unwrap(),
+            generation: 1,
+        };
+        assert!(state.hold_capture(owner));
+        let mut queue = razer_device::camera_queue::CameraIntentQueue::default();
+        queue.set_scope(Some(scope.clone()));
+        queue.invalidate();
+        assert!(!state.replace_scope(Some(scope)));
+        assert!(state.release_capture(owner));
+    }
+
+    #[test]
+    fn preview_replacement_waits_for_the_actual_cleanup_receipt() {
+        let mut state = super::State::default();
+        let (reply, receipt) = std::sync::mpsc::channel();
+        state.retiring = Some(receipt);
+        assert_eq!(state.retirement_ready(), Ok(false));
+        reply
+            .send(Err("simulated flush failure after thread release".into()))
+            .unwrap();
+        assert_eq!(state.retirement_ready(), Ok(true));
+        assert!(state.retiring.is_none());
+    }
+
+    #[test]
+    fn missing_preview_cleanup_receipt_does_not_admit_a_replacement() {
+        let mut state = super::State::default();
+        let (reply, receipt) = std::sync::mpsc::channel();
+        state.retiring = Some(receipt);
+        drop(reply);
+        assert_eq!(state.retirement_ready(), Err(()));
+        assert!(state.retiring.is_some());
+    }
+
     use super::{
         CameraScope, Source, VideoMode, checks_usb_capacity, eligible_sources,
         reconcile_resolution, resolution_values,

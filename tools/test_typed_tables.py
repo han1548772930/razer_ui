@@ -116,6 +116,71 @@ class TypedTableTests(unittest.TestCase):
                 typed_tables.receiver_sender_table_projection(invalid,bindings)
 
     @staticmethod
+    def receiver_179_namespace_sources():
+        def factory(prefix, rewrite):
+            sequence = str(prefix) + "|this.transactionId++" if prefix else "this.transactionId++"
+            return ("class Device{_getTransactionId(){return 31===this.transactionId&&(this.transactionId=0),"
+                    + sequence + "}sendCommand(header){const frame=this._createDataSend(header,[]);"
+                    "if(header[2]!==commands.pJ[2]&&header[2]!==commands.fr[2]||(frame[1]"
+                    + rewrite + "),this.isElectron){}}}")
+        return {"protocol_common_device": "class{constructor(){this.transactionId=0}}",
+            "protocol_pairing_mouse_category": factory(128, "&=31"),
+            "protocol_pairing_keyboard_category": factory(0, "|=128"),
+            "linker_factory": factory(224, "&=31"),
+            "pairing_factory_V": "V=require(48320)", "pairing_factory_z": "z=require(14770)",
+            "mw_pairing_factory_selection": "select=(category,mode=!1)=>{const selected="
+                "null===(temp={true:{[types.KEYBOARD]:V.default,[types.MOUSE]:z.default},"
+                "false:{[types.MOUSE]:V.default,[types.KEYBOARD]:z.default}}[String(mode)])"
+                "||void 0===temp?void 0:temp[category];return new selected(info)}"}
+
+    def test_receiver_179_namespaces_derive_fresh_category_factories_and_primary_cancel(self):
+        sources = self.receiver_179_namespace_sources()
+        contract = typed_tables.receiver_pairing_namespace_contract(sources)
+        self.assertEqual(contract["categories"], typed_tables.RECEIVER_179_PAIRING_NAMESPACES)
+        self.assertEqual(contract["primary_prefix"], 224)
+        self.assertEqual(contract["category_modules"]["true"], {"KEYBOARD":48320,"MOUSE":14770})
+        for role, before, after in (
+                ("protocol_common_device", "transactionId=0", "transactionId=1"),
+                ("protocol_pairing_mouse_category", "128|this.transactionId++", "this.transactionId++"),
+                ("protocol_pairing_keyboard_category", "|=128", "&=31"),
+                ("linker_factory", "&=31", "|=128"),
+                ("protocol_pairing_keyboard_category", "commands.fr[2]", "commands.other[2]"),
+                ("protocol_pairing_mouse_category", "31===this.transactionId", "32===this.transactionId"),
+                ("pairing_factory_V", "48320", "14770"),
+                ("mw_pairing_factory_selection", "String(mode)", "String(category)"),
+                ("mw_pairing_factory_selection", "temp[category]", "temp[mode]"),
+                ("mw_pairing_factory_selection", "new selected", "new other"),
+                ("mw_pairing_factory_selection", "[types.KEYBOARD]:V.default,[types.MOUSE]:z.default",
+                    "[types.KEYBOARD]:z.default,[types.MOUSE]:V.default")):
+            changed = dict(sources)
+            self.assertIn(before, changed[role])
+            changed[role] = changed[role].replace(before, after, 1)
+            with self.assertRaises(ValueError, msg=role + " " + before):
+                typed_tables.receiver_pairing_namespace_contract(changed)
+
+    def test_receiver_179_namespace_projection_updates_both_branches_and_preserves_other_owners(self):
+        contract = typed_tables.receiver_pairing_namespace_contract(self.receiver_179_namespace_sources())
+        raw = b'''fn products(){vec![PairingCapability{product_id:179,category:"MOUSE".into(),
+            scan_pair_prefix:128,unpair_prefix:128,cancel_prefix:128,metadata_prefix:0},
+            PairingCapability{product_id:179,category:"KEYBOARD".into(),
+            scan_pair_prefix:0,unpair_prefix:0,cancel_prefix:128,metadata_prefix:128},
+            PairingCapability{product_id:164,category:"MOUSE".into(),scan_pair_prefix:0,
+            unpair_prefix:224,cancel_prefix:0,metadata_prefix:0}]}'''
+        with self.assertRaisesRegex(ValueError, "differs from its current source owner"):
+            typed_tables.receiver_pairing_namespace_table_projection(raw,contract)
+        updated, rows = typed_tables.receiver_pairing_namespace_table_projection(raw,contract,update=True)
+        self.assertEqual(len(rows),2)
+        self.assertIn(b"unpair_prefix:224,cancel_prefix:0,metadata_prefix:0",updated)
+        self.assertEqual(typed_tables.receiver_pairing_namespace_table_projection(updated,contract)[0],updated)
+        for before, after in ((b'scan_pair_prefix:128',b'scan_pair_prefix:0'),
+                              (b'cancel_prefix:0',b'cancel_prefix:128'),
+                              (b'category:"KEYBOARD"',b'category:"MOUSE"'),
+                              (b'category:"KEYBOARD"',b'category:"OTHER"'),
+                              (b'product_id:179,category:"KEYBOARD"',b'product_id:164,category:"KEYBOARD"')):
+            with self.assertRaises(ValueError):
+                typed_tables.receiver_pairing_namespace_table_projection(updated.replace(before,after,1),contract)
+
+    @staticmethod
     def transfer_factory(fields=None, export="DeviceInfo:()=>info"):
         return ('42:(module,exports,require)=>{require.d(exports,{' + export + '});'
                 'const deviceName="A \\"quoted\\" keyboard",base={productId:756,category:"KEYBOARD"},'
@@ -510,6 +575,19 @@ class TypedTableTests(unittest.TestCase):
                 source["products"].append(copy.deepcopy(source["products"][0]))
             with self.assertRaises(ValueError):
                 typed_tables.render_pairing_capabilities(json.dumps(source).encode())
+
+    def test_fixed_pairing_rejects_obsolete_179_category_or_cancel_namespaces(self):
+        source = json.loads(self.source_fixture("receiver-pairing-capabilities.json"))
+        product = source["products"][0]
+        product["product_id"] = product["transport"]["product_id"] = product["transport"]["source_product_id"] = 179
+        for category, namespaces in typed_tables.RECEIVER_179_PAIRING_NAMESPACES.items():
+            product.update(category=category, **namespaces)
+            typed_tables.render_pairing_capabilities(json.dumps(source).encode())
+            for field in namespaces:
+                changed = copy.deepcopy(source)
+                changed["products"][0][field] = 128 if namespaces[field] == 0 else 0
+                with self.assertRaisesRegex(ValueError,"PID179 pairing namespaces differ"):
+                    typed_tables.render_pairing_capabilities(json.dumps(changed).encode())
 
     def test_fixed_pairing_keeps_scalar_array_distinction_and_rejects_edition_loss(self):
         raw = self.source_fixture("receiver-pairing-catalog.json")

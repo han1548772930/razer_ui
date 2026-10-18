@@ -5,7 +5,12 @@ use razer_device::hyperpolling_receiver::{self as uma, Command, Observation, Tar
 use serde_json::Value;
 use std::time::{Duration, Instant};
 
-pub(super) fn request(path: &str, container: &str, command: Command) -> anyhow::Result<Value> {
+pub(super) fn request(
+    path: &str,
+    container: &str,
+    command: Command,
+    transaction: u8,
+) -> anyhow::Result<Value> {
     let (before, cap) = receiver::select_target(&hid::enumerate_metadata()?, path, container)?;
     ensure!(
         cap.product_id == uma::PRODUCT_ID,
@@ -36,13 +41,18 @@ pub(super) fn request(path: &str, container: &str, command: Command) -> anyhow::
         Ok(())
     };
     validate()?;
-    let transaction = receiver::next_transaction(path, container, cap)?;
     let reading = uma::execute(&device, cap, command, transaction, &validate)?;
-    Ok(serde_json::to_value(Observation::new(
-        Target::WindowsContainer {
-            path: path.into(),
-            container: container.into(),
-        },
-        reading,
-    ))?)
+    let instance = before["device_instance_id"]
+        .as_str()
+        .context("Uma physical instance is absent")?;
+    Ok(serde_json::to_value(
+        Observation::new(
+            Target::WindowsContainer {
+                path: path.into(),
+                container: container.into(),
+            },
+            reading,
+        )
+        .with_physical_instance(instance.to_owned()),
+    )?)
 }

@@ -169,9 +169,9 @@ pub(crate) fn products() -> Vec<PairingCapability> {
         PairingCapability {
             product_id: 179,
             category: "MOUSE".into(),
-            scan_pair_prefix: 128,
+            scan_pair_prefix: 0,
             unpair_prefix: 128,
-            cancel_prefix: 224,
+            cancel_prefix: 0,
             metadata_prefix: 0,
             metadata_claim_interface: None,
             metadata_source_class: Some("rzDevice25DualLinkMouse".into()),
@@ -204,9 +204,9 @@ pub(crate) fn products() -> Vec<PairingCapability> {
         PairingCapability {
             product_id: 179,
             category: "KEYBOARD".into(),
-            scan_pair_prefix: 0,
+            scan_pair_prefix: 128,
             unpair_prefix: 0,
-            cancel_prefix: 224,
+            cancel_prefix: 0,
             metadata_prefix: 128,
             metadata_claim_interface: None,
             metadata_source_class: Some("rzDevice25DualLinkKeyboard".into()),

@@ -8,6 +8,7 @@ use serde_json::Value;
 #[non_exhaustive]
 pub struct IndicatorEdit {
     profile_id: String,
+    profile_guid: String,
     status: u8,
 }
 impl IndicatorEdit {
@@ -24,24 +25,30 @@ impl IndicatorEdit {
                     .any(|profile| profile.id == device.active_profile),
             "Indicator local profile is absent"
         );
-        Ok(Self {
+        let edit = Self {
             profile_id: device.active_profile.clone(),
+            profile_guid: device
+                .profiles
+                .iter()
+                .find(|profile| profile.id == device.active_profile)
+                .unwrap()
+                .guid
+                .clone(),
             status,
-        })
+        };
+        edit.validate_profile(device)?;
+        Ok(edit)
     }
     pub fn profile_id(&self) -> &str {
         &self.profile_id
     }
     pub fn rebase(&self, device: &mut Device) -> anyhow::Result<()> {
-        ensure!(
-            device.product_id == 179 && device.active_profile == self.profile_id,
-            "Indicator active profile changed before local publication"
-        );
+        self.validate_profile(device)?;
         let profile = device
             .profiles
             .iter()
             .find(|profile| profile.id == self.profile_id)
-            .context("Indicator profile was removed before local publication")?;
+            .unwrap();
         let mut settings = profile
             .source_settings
             .clone()
@@ -67,6 +74,24 @@ impl IndicatorEdit {
             .unwrap()
             .source_settings = Some(settings);
         device.source_device_settings = Some(root);
+        Ok(())
+    }
+    pub fn validate_profile(&self, device: &Device) -> anyhow::Result<()> {
+        ensure!(
+            device.product_id == 179
+                && device.real_product_id == 179
+                && device.active_profile == self.profile_id,
+            "Indicator active profile changed before local publication"
+        );
+        let profiles = device
+            .profiles
+            .iter()
+            .filter(|profile| profile.id == self.profile_id)
+            .collect::<Vec<_>>();
+        ensure!(
+            profiles.len() == 1 && profiles[0].guid == self.profile_guid,
+            "Indicator profile was removed or replaced before local publication"
+        );
         Ok(())
     }
 }
@@ -145,7 +170,7 @@ mod tests {
     fn hyperpolling_profile_rejects_replaced_profile_and_malformed_revision_atomically() {
         let original = device();
         let edit = IndicatorEdit::capture(&original, 3).unwrap();
-        for case in 0..3 {
+        for case in 0..6 {
             let mut latest = original.clone();
             match case {
                 0 => latest.active_profile = "another-profile".into(),
@@ -154,6 +179,9 @@ mod tests {
                     latest.profiles[0].source_settings.as_mut().unwrap()["runtime"] =
                         serde_json::json!([])
                 }
+                3 => latest.real_product_id = 164,
+                4 => latest.profiles[0].guid = "replacement-guid".into(),
+                5 => latest.profiles.push(latest.profiles[0].clone()),
                 _ => unreachable!(),
             }
             let before = serde_json::to_value(&latest).unwrap();

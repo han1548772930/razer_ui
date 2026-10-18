@@ -9,7 +9,7 @@ use razer_discovery::{
     discovery::ReceiverQueryProjection,
     receiver::{ReceiverRoute, hyperpolling as direct},
 };
-use razer_ipc::{ServiceClient, ServiceRequest};
+use razer_ipc::ServiceClient;
 use razer_pages::features::HyperpollingIndicatorRequested as Request;
 use razer_storage::hyperpolling_profile::IndicatorEdit;
 use std::{
@@ -32,6 +32,11 @@ enum Command {
         session: u64,
         valid: Arc<AtomicBool>,
     },
+    Cancel {
+        session: u64,
+        cleanup: Arc<super::receiver_pairing::standalone::Transport>,
+        master: serde_json::Value,
+    },
     Stop,
 }
 enum Update {
@@ -43,6 +48,11 @@ enum Update {
     Submitted(Request, Submission),
     Unconfirmed(Request, String),
     Diagnostic(String),
+    PairingCanceled {
+        session: u64,
+        result: Result<(), String>,
+        previous: Vec<String>,
+    },
     Stopped,
 }
 
@@ -56,6 +66,7 @@ pub(super) struct Session {
     active: Option<Request>,
     stopped: bool,
     pairing_active: Arc<AtomicU64>,
+    pairing_cancels: Arc<AtomicU64>,
     canceled: Arc<AtomicBool>,
     commands: Sender<Command>,
     worker: Option<JoinHandle<()>>,
@@ -106,17 +117,99 @@ trait Transport {
         true
     }
 }
-struct ServiceTransport<'a> {
-    client: &'a mut ServiceClient,
-    route: &'a ReceiverRoute,
+struct ServiceTransport {
+    client: ServiceClient,
+    route: ReceiverRoute,
     target: uma::Target,
+    sequence: uma::Sequence,
+    canceled: Arc<AtomicBool>,
 }
-impl Transport for ServiceTransport<'_> {
+impl ServiceTransport {
+    fn connect(route: ReceiverRoute, canceled: Arc<AtomicBool>) -> anyhow::Result<Self> {
+        let mut client = ServiceClient::spawn()?;
+        client.set_cancellation_guard(canceled.clone());
+        let target = match direct::resolve(&mut client, &route) {
+            Ok(target) => target,
+            Err(error) => {
+                reap_client(&mut client);
+                return Err(error);
+            }
+        };
+        Ok(Self {
+            client,
+            route,
+            target,
+            sequence: uma::Sequence::default(),
+            canceled,
+        })
+    }
+    fn begin_request(&mut self, valid: Arc<AtomicBool>) -> anyhow::Result<()> {
+        validate(&self.canceled)?;
+        ensure!(
+            valid.load(Ordering::Acquire),
+            "Uma request was replaced before admission"
+        );
+        self.reconnect_after_cleanup()?;
+        self.client
+            .set_scoped_request_guard(valid, self.canceled.clone());
+        Ok(())
+    }
+    fn finish_request(&mut self) -> anyhow::Result<()> {
+        self.client.set_cancellation_guard(self.canceled.clone());
+        // An interrupted exchange closes its I/O process. Reap that process and
+        // both pipe workers before admitting the next queued request. The
+        // logical source factory and its Sequence remain owned by this worker.
+        if self.client.is_stopped() {
+            self.client.finish_termination()?;
+        }
+        Ok(())
+    }
+    fn reconnect_after_cleanup(&mut self) -> anyhow::Result<()> {
+        if !self.client.is_stopped() {
+            return Ok(());
+        }
+        self.client.finish_termination()?;
+        validate(&self.canceled)?;
+        let mut client = ServiceClient::spawn()?;
+        client.set_cancellation_guard(self.canceled.clone());
+        let target = match direct::resolve(&mut client, &self.route) {
+            Ok(target) if target == self.target => target,
+            Ok(_) => {
+                reap_client(&mut client);
+                anyhow::bail!("Uma physical target changed before reconnection");
+            }
+            Err(error) => {
+                reap_client(&mut client);
+                return Err(error);
+            }
+        };
+        self.target = target;
+        self.client = client;
+        Ok(())
+    }
+    fn shutdown(&mut self) -> anyhow::Result<()> {
+        super::receiver_reset::local::shutdown(&mut self.client).map(|_| ())
+    }
+}
+
+fn reap_client(client: &mut ServiceClient) {
+    while client.finish_termination().is_err() {
+        // This I/O worker retains every process/pipe handle until the OS
+        // confirms release. The UI remains responsive and admission stays shut.
+        thread::sleep(Duration::from_millis(100));
+    }
+}
+impl Transport for ServiceTransport {
     fn command(&mut self, command: DeviceCommand) -> anyhow::Result<Reading> {
-        direct::execute(self.client, &self.target, command)
+        direct::execute(
+            &mut self.client,
+            &self.target,
+            command,
+            self.sequence.allocate(),
+        )
     }
     fn peers(&mut self) -> anyhow::Result<ReceiverQueryProjection> {
-        self.route.query(self.client)
+        direct::bindings(&mut self.client, &self.target, self.sequence.allocate())
     }
     fn healthy(&self) -> bool {
         !self.client.is_stopped()
@@ -191,50 +284,18 @@ fn initialize(
     Ok(())
 }
 
-/// Each SET has its own cancellable IPC process. Superseding one request can
-/// terminate its remaining retries without invalidating the connection owner.
 fn submit(
-    route: &ReceiverRoute,
+    transport: &mut impl Transport,
     canceled: &AtomicBool,
     request: &Request,
 ) -> anyhow::Result<Submission> {
     validate(canceled)?;
     ensure!(request.is_valid(), "Uma indicator request replaced");
-    let mut client = ServiceClient::spawn()?;
-    client.set_request_guard(request.guard());
-    let result = (|| {
-        let target = direct::resolve(&mut client, route)?;
-        validate(canceled)?;
-        ensure!(
-            request.is_valid(),
-            "Uma indicator request replaced before SET"
-        );
-        match direct::execute(
-            &mut client,
-            &target,
-            DeviceCommand::SetIndicator {
-                status: request.status(),
-            },
-        )? {
-            Reading::Submitted(receipt) => Ok(receipt),
-            _ => anyhow::bail!("Uma submission response type differs"),
-        }
-    })();
-    let cleanup = super::receiver_reset::local::shutdown(&mut client);
-    match (result, cleanup) {
-        (Ok(mut receipt), Err(error)) => {
-            let message = format!("Uma SET worker cleanup is unconfirmed: {error:#}");
-            receipt.error = Some(
-                receipt
-                    .error
-                    .map_or(message.clone(), |error| format!("{error}; {message}")),
-            );
-            Ok(receipt)
-        }
-        (Err(error), Err(cleanup)) => {
-            Err(anyhow::anyhow!("{error:#}; Uma SET cleanup: {cleanup:#}"))
-        }
-        (result, Ok(_)) => result,
+    match transport.command(DeviceCommand::SetIndicator {
+        status: request.status(),
+    })? {
+        Reading::Submitted(receipt) => Ok(receipt),
+        _ => anyhow::bail!("Uma submission response type differs"),
     }
 }
 
@@ -247,36 +308,6 @@ fn join_predecessors(predecessors: Vec<JoinHandle<()>>) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn bindings(
-    route: &ReceiverRoute,
-    canceled: &AtomicBool,
-    valid: Arc<AtomicBool>,
-) -> anyhow::Result<ReceiverQueryProjection> {
-    validate(canceled)?;
-    ensure!(
-        valid.load(Ordering::Acquire),
-        "Uma binding request canceled"
-    );
-    let mut client = ServiceClient::spawn()?;
-    client.set_request_guard(valid.clone());
-    let result = route.query(&mut client).and_then(|projection| {
-        validate(canceled)?;
-        ensure!(
-            valid.load(Ordering::Acquire),
-            "Uma binding request canceled after query"
-        );
-        Ok(projection)
-    });
-    let cleanup = super::receiver_reset::local::shutdown(&mut client);
-    match (result, cleanup) {
-        (Err(error), Err(cleanup)) => Err(anyhow::anyhow!(
-            "{error:#}; binding worker cleanup: {cleanup:#}"
-        )),
-        (Err(error), _) | (_, Err(error)) => Err(error),
-        (Ok(projection), Ok(_)) => Ok(projection),
-    }
-}
-
 fn run(
     route: ReceiverRoute,
     canceled: Arc<AtomicBool>,
@@ -284,6 +315,7 @@ fn run(
     updates: Sender<Update>,
     predecessors: Arc<std::sync::Mutex<Vec<JoinHandle<()>>>>,
     pairing_active: Arc<AtomicU64>,
+    pairing_cancels: Arc<AtomicU64>,
 ) {
     let result = (|| -> anyhow::Result<()> {
         let predecessors = std::mem::take(
@@ -293,35 +325,65 @@ fn run(
         );
         join_predecessors(predecessors)?;
         validate(&canceled)?;
-        let mut client = ServiceClient::spawn()?;
-        client.set_cancellation_guard(canceled.clone());
+        let mut transport = ServiceTransport::connect(route, canceled.clone())?;
         let result = (|| -> anyhow::Result<()> {
-            let target = direct::resolve(&mut client, &route)?;
-            let mut transport = ServiceTransport {
-                client: &mut client,
-                route: &route,
-                target,
-            };
             let mut initialization = Initialization::default();
             if let Err(error) = initialize(&mut transport, &canceled, &updates, &mut initialization)
             {
                 diagnostic(&updates, error);
             }
+            // The source's setup guard is latched before its indicator getter.
+            // A getter failure is diagnostic, not permission to restart setup.
             let mut next_observation = Instant::now() + Duration::from_secs(2);
             let mut pending_set = None;
             while !canceled.load(Ordering::Acquire) {
-                ensure!(
-                    transport.healthy(),
-                    "Uma observation process terminated; reconnection is required"
-                );
                 match commands.recv_timeout(Duration::from_millis(100)) {
-                    Ok(Command::Set(request)) => {
-                        pending_set = Some(request);
-                    }
+                    Ok(Command::Set(request)) => pending_set = Some(request),
                     Ok(Command::Bindings { session, valid }) => {
-                        let result = bindings(&route, &canceled, valid)
-                            .map_err(|error| format!("{error:#}"));
+                        let result = (|| {
+                            transport.begin_request(valid.clone())?;
+                            let projection = transport.peers()?;
+                            ensure!(
+                                valid.load(Ordering::Acquire),
+                                "Uma binding request canceled"
+                            );
+                            Ok(projection)
+                        })();
+                        let cleanup = transport.finish_request();
+                        let result =
+                            combine_cleanup(result, cleanup).map_err(|error| format!("{error:#}"));
                         updates.send(Update::Bindings(session, result))?;
+                    }
+                    Ok(Command::Cancel {
+                        session,
+                        cleanup,
+                        master,
+                    }) => {
+                        let previous = cleanup.cancel_product_blocking(master);
+                        let result = (|| {
+                            transport.begin_request(Arc::new(AtomicBool::new(true)))?;
+                            ensure!(
+                                matches!(
+                                    transport.command(DeviceCommand::CancelScan)?,
+                                    Reading::ScanCanceled
+                                ),
+                                "Uma Cancel response type differs"
+                            );
+                            Ok(())
+                        })();
+                        let cleanup = transport.finish_request();
+                        let result =
+                            combine_cleanup(result, cleanup).map_err(|error| format!("{error:#}"));
+                        let previous = match previous {
+                            Ok(previous) => previous,
+                            Err(error) => vec![error],
+                        };
+                        pairing_cancels.fetch_sub(1, Ordering::AcqRel);
+                        updates.send(Update::PairingCanceled {
+                            session,
+                            result,
+                            previous,
+                        })?;
                     }
                     Ok(Command::Stop) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
                     Err(mpsc::RecvTimeoutError::Timeout) => {}
@@ -331,8 +393,15 @@ fn run(
                         if !request.is_valid() {
                             continue;
                         }
+                        if !request.start_submission() {
+                            continue;
+                        }
                         validate(&canceled)?;
-                        match submit(&route, &canceled, &request) {
+                        let result = transport
+                            .begin_request(request.guard())
+                            .and_then(|_| submit(&mut transport, &canceled, &request));
+                        let cleanup = transport.finish_request();
+                        match combine_cleanup(result, cleanup) {
                             Ok(report) => {
                                 updates.send(Update::Submitted(request, report))?;
                             }
@@ -342,39 +411,49 @@ fn run(
                         }
                     }
                 }
-                if Instant::now() >= next_observation && pairing_active.load(Ordering::Acquire) == 0
+                if initialization.complete
+                    && Instant::now() >= next_observation
+                    && pairing_active.load(Ordering::Acquire) == 0
+                    && transport.healthy()
                 {
                     validate(&canceled)?;
-                    // Native observation may be absent or coalesced. These are
-                    // bounded physical queries, not fabricated hardware events.
-                    if initialization.complete {
-                        match transport.peers() {
-                            Ok(peers) => {
-                                updates.send(Update::Peers(peers))?;
-                            }
-                            Err(error) => diagnostic(&updates, error),
+                    // Bounded observational refresh handles missing native
+                    // notifications. It never reruns source initialization.
+                    match transport.peers() {
+                        Ok(peers) => {
+                            updates.send(Update::Peers(peers))?;
                         }
-                    } else if let Err(error) =
-                        initialize(&mut transport, &canceled, &updates, &mut initialization)
-                    {
-                        diagnostic(&updates, error);
+                        Err(error) => diagnostic(&updates, error),
                     }
                     next_observation = Instant::now() + Duration::from_secs(2);
                 }
             }
             Ok(())
         })();
-        let cleanup = if client.is_stopped() {
-            client.finish_termination()
-        } else {
-            client.request(ServiceRequest::Shutdown).map(|_| ())
-        };
-        result.and(cleanup)
+        let cleanup = transport.shutdown();
+        // A failed OS termination must retain the same client and pipe handles.
+        // No successor or Stopped notification is admitted until they are reaped.
+        while let Err(error) = transport.client.finish_termination() {
+            diagnostic(
+                &updates,
+                format!("Uma process cleanup remains owned: {error:#}"),
+            );
+            thread::sleep(Duration::from_millis(100));
+        }
+        combine_cleanup(result, cleanup)
     })();
     if let Err(error) = result {
         diagnostic(&updates, error);
     }
     let _ = updates.send(Update::Stopped);
+}
+
+fn combine_cleanup<T>(result: anyhow::Result<T>, cleanup: anyhow::Result<()>) -> anyhow::Result<T> {
+    match (result, cleanup) {
+        (Err(error), Err(cleanup)) => Err(anyhow::anyhow!("{error:#}; Uma cleanup: {cleanup:#}")),
+        (Err(error), _) | (_, Err(error)) => Err(error),
+        (Ok(value), Ok(())) => Ok(value),
+    }
 }
 
 #[cfg(test)]
@@ -473,6 +552,8 @@ impl AppShell {
             let worker_route = route.clone();
             let pairing_active = Arc::new(AtomicU64::new(0));
             let worker_pairing = pairing_active.clone();
+            let pairing_cancels = Arc::new(AtomicU64::new(0));
+            let worker_cancels = pairing_cancels.clone();
             let (sender, receiver) = mpsc::channel();
             let (updates, delivery) = mpsc::channel();
             let mut predecessors = Vec::new();
@@ -497,6 +578,7 @@ impl AppShell {
                         updates,
                         worker_predecessors,
                         worker_pairing,
+                        worker_cancels,
                     )
                 });
             let worker = match worker {
@@ -642,6 +724,15 @@ impl AppShell {
                                     Update::Diagnostic(error) => {
                                         shell.status = format!("接收器初始化或通信未确认：{error}");
                                     }
+                                    Update::PairingCanceled {
+                                        session,
+                                        result,
+                                        previous,
+                                    } => {
+                                        shell.deliver_hyperpolling_cancel(
+                                            &owner_key, session, result, previous, cx,
+                                        );
+                                    }
                                     Update::Stopped => {
                                         shell.hyperpolling_pairing.remove(&owner_key);
                                         if let Some(session) =
@@ -667,17 +758,6 @@ impl AppShell {
                         })
                         .unwrap_or(false);
                     if !current {
-                        // A dead owned process is recovered on the same verified
-                        // physical route; replacement still waits for its join.
-                        cx.background_executor().timer(Duration::from_secs(2)).await;
-                        let _ =
-                            shell.update_in(cx, |shell, window, cx| {
-                                if shell.hyperpolling_receivers.get(&owner_key).is_some_and(
-                                    |session| session.epoch == epoch && session.stopped,
-                                ) {
-                                    shell.sync_hyperpolling_receivers(window, cx);
-                                }
-                            });
                         break;
                     }
                 }
@@ -694,6 +774,7 @@ impl AppShell {
                     active: None,
                     stopped: false,
                     pairing_active,
+                    pairing_cancels,
                     canceled,
                     commands: sender,
                     worker: Some(worker),
@@ -802,6 +883,9 @@ impl AppShell {
         let Some(ProductSave::Hyperpolling(local)) = &save.product else {
             return Ok(());
         };
+        local
+            .edit
+            .validate_profile(local.workspace.read(cx).device(cx))?;
         ensure!(
             local.workspace.read(cx).connection_revision() == local.connection_revision
                 && local
@@ -850,6 +934,10 @@ impl AppShell {
                             .workspace
                             .read(cx)
                             .hyperpolling_request_matches(&save.request, cx)
+                        || save
+                            .edit
+                            .validate_profile(save.workspace.read(cx).device(cx))
+                            .is_err()
                     {
                         return false;
                     }

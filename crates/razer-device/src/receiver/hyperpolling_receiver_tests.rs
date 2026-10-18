@@ -195,3 +195,76 @@ fn hyperpolling_receiver_cancellation_stops_before_io_and_preserves_uncertain_se
     assert!(report.write_attempted && report.write_sent && !report.acknowledged);
     assert!(report.error.unwrap().contains("canceled after send"));
 }
+
+#[test]
+fn hyperpolling_receiver_primary_sequence_survives_get_set_and_idle_cancel() {
+    let mut sequence = Sequence::default();
+    let device = transport(vec![
+        reply(2, 224, 7, 144, &[3]),
+        reply(2, 225, 7, 16, &[3]),
+        reply(2, 2, 0, 70, &[4]),
+        reply(2, 227, 0, 191, &[2, 1, 2, 5, 254, 0, 183]),
+    ]);
+    execute(
+        &device,
+        &cap(),
+        Command::Indicator,
+        sequence.allocate(),
+        &|| Ok(()),
+    )
+    .unwrap();
+    execute(
+        &device,
+        &cap(),
+        Command::SetIndicator { status: 3 },
+        sequence.allocate(),
+        &|| Ok(()),
+    )
+    .unwrap();
+    assert_eq!(
+        execute(
+            &device,
+            &cap(),
+            Command::CancelScan,
+            sequence.allocate(),
+            &|| Ok(())
+        )
+        .unwrap(),
+        Reading::ScanCanceled
+    );
+    let Reading::Bindings(rows) = execute(
+        &device,
+        &cap(),
+        Command::Bindings,
+        sequence.allocate(),
+        &|| Ok(()),
+    )
+    .unwrap() else {
+        panic!()
+    };
+    assert_eq!(
+        rows.iter()
+            .map(|row| (row.product_id, row.status))
+            .collect::<Vec<_>>(),
+        [(517, 1), (183, 254)]
+    );
+    let packets = device.sent.borrow();
+    assert_eq!(
+        packets.iter().map(|packet| packet[2]).collect::<Vec<_>>(),
+        [224, 225, 2, 227]
+    );
+    assert_eq!(&packets[2][6..10], &[1, 0, 70, 4]);
+    assert_eq!(&packets[3][6..9], &[80, 0, 191]);
+    for _ in 4..31 {
+        sequence.allocate();
+    }
+    assert_eq!(sequence.allocate(), 224);
+}
+
+#[test]
+fn hyperpolling_receiver_binding_count_and_records_are_required() {
+    for data in [vec![], vec![1, 1, 2]] {
+        let device = transport(vec![reply(2, 224, 0, 191, &data)]);
+        assert!(execute(&device, &cap(), Command::Bindings, 224, &|| Ok(())).is_err());
+    }
+}

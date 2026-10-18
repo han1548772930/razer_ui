@@ -13,6 +13,20 @@ pub const SERIAL: [u8; 3] = [22, 0, 130];
 pub const EDITION: [u8; 3] = [3, 0, 134];
 pub const GET_INDICATOR: [u8; 3] = [1, 7, 144];
 pub const SET_INDICATOR: [u8; 3] = [1, 7, 16];
+pub const WIRELESS_STATUS: [u8; 3] = [80, 0, 191];
+pub const SCAN: [u8; 3] = [1, 0, 70];
+
+/// The mounted primary factory retains this counter across all its commands.
+/// A replaced I/O process does not create a new logical receiver factory.
+#[derive(Default)]
+pub struct Sequence(u8);
+impl Sequence {
+    pub fn allocate(&mut self) -> u8 {
+        let transaction = 224 | self.0;
+        self.0 = (self.0 + 1) % 31;
+        transaction
+    }
+}
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub enum Target {
@@ -26,6 +40,8 @@ pub enum Command {
     Edition,
     Indicator,
     SetIndicator { status: u8 },
+    Bindings,
+    CancelScan,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -91,16 +107,34 @@ pub enum Reading {
     Edition(Edition),
     Indicator { status: Option<u8> },
     Submitted(Submission),
+    Bindings(Vec<RadioStatus>),
+    ScanCanceled,
+}
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct RadioStatus {
+    pub product_id: u16,
+    pub status: u8,
 }
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Observation {
     pub target: Target,
     pub reading: Reading,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub physical_instance: Option<String>,
 }
 impl Observation {
     pub fn new(target: Target, reading: Reading) -> Self {
-        Self { target, reading }
+        Self {
+            target,
+            reading,
+            physical_instance: None,
+        }
+    }
+    pub fn with_physical_instance(mut self, instance: String) -> Self {
+        self.physical_instance = Some(instance);
+        self
     }
     pub fn validate_for(&self, target: &Target, command: Command) -> anyhow::Result<()> {
         ensure!(
@@ -113,6 +147,8 @@ impl Observation {
                 (Reading::Serial(_), Command::Serial)
                     | (Reading::Edition(_), Command::Edition)
                     | (Reading::Indicator { .. }, Command::Indicator)
+                    | (Reading::Bindings(_), Command::Bindings)
+                    | (Reading::ScanCanceled, Command::CancelScan)
             ) || matches!((&self.reading, command), (Reading::Submitted(report), Command::SetIndicator { status }) if report.requested_status == status),
             "Uma reply belongs to another command"
         );
@@ -164,13 +200,27 @@ pub fn execute(
     transaction: u8,
     validate: &impl Fn() -> anyhow::Result<()>,
 ) -> anyhow::Result<Reading> {
-    let cap = channel(cap)?;
+    let mut cap = channel(cap)?;
+    ensure!(
+        transaction & 0xe0 == 224 && transaction & 31 < 31,
+        "Uma transaction differs from the primary factory counter"
+    );
     let mut progress = WriteProgress::default();
     let (header, payload) = match command {
         Command::Serial => (SERIAL, Vec::new()),
         Command::Edition => (EDITION, Vec::new()),
         Command::Indicator => (GET_INDICATOR, vec![0]),
         Command::SetIndicator { status } => (SET_INDICATOR, vec![status]),
+        Command::Bindings => (WIRELESS_STATUS, Vec::new()),
+        Command::CancelScan => (SCAN, vec![4]),
+    };
+    // Linker.sendCommand clears the namespace bits only for SCAN/PAIR. It
+    // still consumes the primary instance's next counter, including idle Cancel.
+    let transaction = if command == Command::CancelScan {
+        cap.transaction_prefix = 0;
+        transaction & 31
+    } else {
+        transaction
     };
     let result = exchange_channel(
         device,
@@ -210,6 +260,23 @@ pub fn execute(
         Command::Indicator => Reading::Indicator {
             status: data.first().copied(),
         },
+        Command::Bindings => {
+            let count = usize::from(*data.first().context("Uma binding count is absent")?);
+            ensure!(
+                1 + count * 3 <= data.len(),
+                "Uma binding records are truncated"
+            );
+            Reading::Bindings(
+                data[1..1 + count * 3]
+                    .chunks_exact(3)
+                    .map(|row| RadioStatus {
+                        product_id: u16::from_be_bytes([row[1], row[2]]),
+                        status: row[0],
+                    })
+                    .collect(),
+            )
+        }
+        Command::CancelScan => Reading::ScanCanceled,
         Command::SetIndicator { .. } => unreachable!(),
     })
 }

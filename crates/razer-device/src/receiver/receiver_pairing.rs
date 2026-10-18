@@ -745,7 +745,7 @@ impl<'a> Session<'a> {
     ) -> anyhow::Result<T> {
         // Cancellation cannot use the operation's canceled signal. The separate
         // cleanup guard must still verify the original physical owner identity.
-        let canceled = if result.is_err() && cancel_on_error {
+        let canceled = if result.is_err() && cancel_on_error && self.cap.product_id != 179 {
             self.cancel_scan(cleanup_validate).err()
         } else {
             None
@@ -993,6 +993,42 @@ mod tests {
     }
     fn deadline() -> Instant {
         Instant::now() + Duration::from_secs(1)
+    }
+
+    #[test]
+    fn hyperpolling_receiver_category_factories_adjust_scan_pair_namespace_only() {
+        for (category, scan_pair, unpair, metadata) in
+            [("MOUSE", 0, 128, 0), ("KEYBOARD", 128, 0, 128)]
+        {
+            let cap = cap(179, category);
+            let device = Mock::new(&[&[1], &[1], &[1], &[0, 0, 0]]);
+            let mut events = Events::new(&[]);
+            let mut session = Session::new(&device, &mut events, &cap).unwrap();
+            session.exchange(SCAN, &[1], &|| Ok(())).unwrap();
+            session.exchange(PAIR, &[1, 2, 5], &|| Ok(())).unwrap();
+            session.exchange(UNPAIR, &[2, 5], &|| Ok(())).unwrap();
+            session.exchange(EDITION, &[], &|| Ok(())).unwrap();
+            let sent = device.sent.lock().unwrap();
+            assert_eq!(
+                sent.iter().map(|packet| packet[2]).collect::<Vec<_>>(),
+                [scan_pair, scan_pair | 1, unpair | 2, metadata | 3]
+            );
+        }
+    }
+
+    #[test]
+    fn hyperpolling_receiver_category_failure_releases_events_without_a_primary_cancel() {
+        let cap = cap(179, "MOUSE");
+        let device = Mock::new(&[&[1]]);
+        let mut events = Events::new(&[&[5, 54, 3]]);
+        assert!(
+            Session::new(&device, &mut events, &cap)
+                .unwrap()
+                .pair(517, 1, deadline(), || Ok(()), || Ok(()))
+                .is_err()
+        );
+        assert!(events.ended);
+        assert_eq!(device.sent.lock().unwrap().len(), 1);
     }
 
     #[test]

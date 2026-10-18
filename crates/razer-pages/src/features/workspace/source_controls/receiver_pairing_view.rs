@@ -1,4 +1,4 @@
-//! Current 179/9473 re -> ie/oe/ne/ae/_e, with local-only operation intents.
+//! Current 179/6677 Re -> ie/oe/ne/ae/_e, with local-only operation intents.
 use super::pairing_state::{ReceiverCategory as Category, Status};
 use super::*;
 use gpui_kit::base::{Button as BaseButton, Radio as BaseRadio};

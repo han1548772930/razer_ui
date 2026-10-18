@@ -1,7 +1,7 @@
 //! Keyboard brightness intent -> identity-matched direct Feature route -> readback.
+use super::keyboard_brightness_runtime::Scope;
 use super::*;
 use razer_discovery::direct;
-use razer_ipc::{ServiceClient, ServiceRequest};
 
 impl AppShell {
     pub(super) fn write_keyboard_brightness(
@@ -9,7 +9,7 @@ impl AppShell {
         workspace: Entity<ProductWorkspace>,
         generation: u64,
         percent: u8,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         if !workspace
@@ -18,11 +18,7 @@ impl AppShell {
         {
             return;
         }
-        let identity = workspace.read(cx).identity(cx);
         let device = workspace.read(cx).device(cx);
-        let container = device.device_container_id.clone();
-        let profile = device.active_profile.clone();
-        let revision = self.discovery_revision;
         let routes = self
             .device_observations
             .iter()
@@ -36,32 +32,33 @@ impl AppShell {
             cx.notify();
             return;
         };
-        let physical_product_id = route.physical_product_id();
-        let peer_product_id = route.peer_product_id();
-        let hid_node = route.hid_node().cloned();
-        let route_observation = (**route).clone();
+        let route = (**route).clone();
+        let canceled = workspace.read(cx).keyboard_brightness_cancellation_guard(
+            generation,
+            Some(percent),
+            cx,
+        );
+        if self.close_requested || !self.devices.contains(&workspace) || canceled.is_none() {
+            workspace.update(cx, |workspace, cx| {
+                workspace.finish_keyboard_brightness(generation, percent, None, false, cx)
+            });
+            return;
+        }
+        let canceled = canceled.expect("Current request has its cancellation owner");
+        let scope = Scope::new(&workspace, route, cx);
+        let completion_scope = scope.clone();
+        let completion_signal = canceled.clone();
+        let workspace = workspace.downgrade();
         self.status = "正在设置键盘亮度并读取设备确认。".into();
         cx.notify();
-        cx.spawn_in(window, async move |this, cx| {
-            let result = cx
-                .background_spawn(async move {
-                    let mut client = ServiceClient::spawn()?;
-                    let result = (|| {
-                        direct::request_keyboard_brightness(
-                            &mut client,
-                            &route_observation,
-                            Some(percent),
-                        )
-                        .map(|observed| observed.percent)
-                    })();
-                    let shutdown_error = client
-                        .request(ServiceRequest::Shutdown)
-                        .err()
-                        .map(|error| format!("{error:#}"));
-                    result.map(|observed| (observed, shutdown_error))
-                })
-                .await;
-            let _ = this.update_in(cx, |this, _, cx| {
+        self.start_keyboard_brightness_operation(
+            scope,
+            Some(percent),
+            canceled,
+            move |this, result, cx| {
+                let Some(workspace) = workspace.upgrade() else {
+                    return;
+                };
                 if !this.devices.contains(&workspace) {
                     workspace.update(cx, |workspace, cx| {
                         workspace.cancel_keyboard_brightness_connection(cx);
@@ -75,24 +72,11 @@ impl AppShell {
                 {
                     return;
                 }
-                let route_current = this.discovery_revision == revision
-                    && this.device_observations.iter().any(|route| {
-                        route.matches(workspace.read(cx).device(cx))
-                            && route.container().eq_ignore_ascii_case(&container)
-                            && route.physical_product_id() == physical_product_id
-                            && route.peer_product_id() == peer_product_id
-                            && route.hid_node() == hid_node.as_ref()
-                            && direct::keyboard_brightness_available(route)
-                    });
-                let scope_current = route_current
-                    && workspace.read(cx).identity(cx) == identity
-                    && workspace.read(cx).device(cx).active_profile == profile
+                let scope_current = completion_scope.current(this, &completion_signal, cx)
                     && workspace
                         .read(cx)
                         .keyboard_brightness_request_current(generation, percent, cx);
-                let observed = scope_current
-                    .then(|| result.as_ref().ok().map(|(observed, _)| *observed))
-                    .flatten();
+                let observed = scope_current.then(|| result.observed()).flatten();
                 if scope_current
                     || workspace
                         .read(cx)
@@ -101,14 +85,15 @@ impl AppShell {
                     this.status = if !scope_current {
                         "键盘连接已变化，尚未确认当前亮度。".into()
                     } else {
-                        match result {
-                            Ok((_, None)) => {
-                                format!("设备已回读确认键盘亮度：{percent}%。")
+                        match (result.observed(), result.error()) {
+                            (Some(_), None) => format!("设备已回读确认键盘亮度：{percent}%。"),
+                            (Some(_), Some(error)) => {
+                                format!("设备已确认键盘亮度：{percent}%；{error}")
                             }
-                            Ok((_, Some(error))) => {
-                                format!("设备已确认键盘亮度：{percent}%；通信进程退出失败：{error}")
+                            (_, Some(error)) => format!("键盘亮度未确认：{error}。"),
+                            (None, None) => {
+                                unreachable!("Completion without a reading has an error")
                             }
-                            Err(error) => format!("键盘亮度未确认：{error:#}。"),
                         }
                     };
                 }
@@ -124,8 +109,8 @@ impl AppShell {
                     )
                 });
                 cx.notify();
-            });
-        })
-        .detach();
+            },
+            cx,
+        );
     }
 }

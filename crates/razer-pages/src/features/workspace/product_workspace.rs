@@ -723,6 +723,19 @@ impl ProductWorkspace {
     pub fn keyboard_brightness_read_matches(&self, generation: u64, cx: &App) -> bool {
         matches!(&self.body, Body::Source(body) if body.read(cx).keyboard_brightness_read_matches(generation,cx))
     }
+    pub fn keyboard_brightness_cancellation_guard(
+        &self,
+        generation: u64,
+        percent: Option<u8>,
+        cx: &App,
+    ) -> Option<std::sync::Arc<std::sync::atomic::AtomicBool>> {
+        match &self.body {
+            Body::Source(body) => body
+                .read(cx)
+                .keyboard_brightness_cancellation_guard(generation, percent, cx),
+            _ => None,
+        }
+    }
     pub fn keyboard_brightness_diagnostic(&self, cx: &App) -> Option<String> {
         match &self.body {
             Body::Source(body) => body.read(cx).keyboard_brightness_diagnostic(cx),

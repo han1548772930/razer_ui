@@ -19,7 +19,6 @@ use std::{
         atomic::{AtomicBool, Ordering},
         mpsc,
     },
-    thread,
     time::Duration,
 };
 
@@ -52,6 +51,7 @@ pub(super) struct State {
     dirty: bool,
     generation: u64,
     jobs: BTreeMap<u64, Arc<AtomicBool>>,
+    deliveries: BTreeMap<u64, Task<()>>,
     // Diagnostics do not become source reducer state or a synthetic success.
     observation: Option<[u8; 2]>,
     diagnostic: Option<String>,
@@ -232,15 +232,13 @@ impl SourceControls {
         };
         let signal = Arc::new(AtomicBool::new(false));
         let canceled = signal.clone();
-        let (send, receive) = mpsc::sync_channel(1);
         let job_scope = scope.clone();
-        let worker = match thread::Builder::new()
-            .name("camera-microphone-ipc".into())
-            .spawn(move || {
-                let result = camera_runtime::execute_job(job_scope, plan, signal, None);
-                let _ = send.send(result);
-            }) {
-            Ok(worker) => worker,
+        let receive = match self.camera_runtime.jobs.spawn(
+            "camera-microphone-ipc",
+            canceled.clone(),
+            move || razer_service::camera::commands::execute(job_scope, plan, signal, None),
+        ) {
+            Ok(receive) => receive,
             Err(error) => {
                 self.camera_mic
                     .finish(&scope, operation, &Err(error.to_string()));
@@ -252,7 +250,7 @@ impl SourceControls {
         self.camera_mic.generation = self.camera_mic.generation.wrapping_add(1);
         let generation = self.camera_mic.generation;
         self.camera_mic.jobs.insert(generation, canceled.clone());
-        cx.spawn_in(window, async move |view, cx| {
+        let delivery = cx.spawn_in(window, async move |view, cx| {
             loop {
                 cx.background_executor()
                     .timer(Duration::from_millis(40))
@@ -269,9 +267,9 @@ impl SourceControls {
                         Err("camera microphone worker disconnected".into())
                     }
                 };
-                let _ = worker.join();
                 let _ = view.update_in(cx, |this, window, cx| {
                     this.camera_mic.jobs.remove(&generation);
+                    this.camera_mic.deliveries.remove(&generation);
                     if !canceled.load(Ordering::Acquire)
                         && this.camera_mic.scope.as_ref() == Some(&scope)
                     {
@@ -287,8 +285,8 @@ impl SourceControls {
                 });
                 break;
             }
-        })
-        .detach();
+        });
+        self.camera_mic.deliveries.insert(generation, delivery);
     }
     pub(super) fn render_camera_microphone(
         &self,

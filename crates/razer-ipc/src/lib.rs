@@ -98,6 +98,7 @@ pub enum ServiceRequest {
     HyperpollingReceiver {
         target: razer_device::hyperpolling_receiver::Target,
         command: razer_device::hyperpolling_receiver::Command,
+        transaction: u8,
     },
     MouseInputMonitoringStart {
         owner_guid: String,
@@ -958,6 +959,10 @@ pub struct ServiceClient {
 enum RequestGuard {
     Active(std::sync::Arc<std::sync::atomic::AtomicBool>),
     Canceled(std::sync::Arc<std::sync::atomic::AtomicBool>),
+    Scoped {
+        active: std::sync::Arc<std::sync::atomic::AtomicBool>,
+        canceled: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    },
 }
 
 impl RequestGuard {
@@ -966,6 +971,9 @@ impl RequestGuard {
         match self {
             Self::Active(signal) => !signal.load(Ordering::Acquire),
             Self::Canceled(signal) => signal.load(Ordering::Acquire),
+            Self::Scoped { active, canceled } => {
+                !active.load(Ordering::Acquire) || canceled.load(Ordering::Acquire)
+            }
         }
     }
 }
@@ -1096,6 +1104,16 @@ impl ServiceClient {
         self.request_guard = Some(RequestGuard::Canceled(canceled));
     }
 
+    /// A retained connection can be canceled while one operation has its own
+    /// narrower validity guard. Either owner closes the same request admission.
+    pub fn set_scoped_request_guard(
+        &mut self,
+        active: std::sync::Arc<std::sync::atomic::AtomicBool>,
+        canceled: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    ) {
+        self.request_guard = Some(RequestGuard::Scoped { active, canceled });
+    }
+
     fn request_scope_canceled(&self) -> bool {
         self.request_guard
             .as_ref()
@@ -1157,7 +1175,11 @@ impl ServiceClient {
         let writing_device = matches!(
             request,
             ServiceRequest::DeviceWrite { .. }
-                | ServiceRequest::HyperpollingReceiver { command: razer_device::hyperpolling_receiver::Command::SetIndicator { .. }, .. }
+                | ServiceRequest::HyperpollingReceiver {
+                    command: razer_device::hyperpolling_receiver::Command::SetIndicator { .. }
+                        | razer_device::hyperpolling_receiver::Command::CancelScan,
+                    ..
+                }
                 | ServiceRequest::MouseTrackingStart { .. }
                 | ServiceRequest::MouseTrackingPoll { .. }
                 | ServiceRequest::MouseTrackingCancel { .. }
@@ -1249,7 +1271,13 @@ impl ServiceClient {
         let reading_device = matches!(
             request,
             ServiceRequest::DeviceRead { .. }
-                | ServiceRequest::HyperpollingReceiver { command: razer_device::hyperpolling_receiver::Command::Serial | razer_device::hyperpolling_receiver::Command::Edition | razer_device::hyperpolling_receiver::Command::Indicator, .. }
+                | ServiceRequest::HyperpollingReceiver {
+                    command: razer_device::hyperpolling_receiver::Command::Serial
+                        | razer_device::hyperpolling_receiver::Command::Edition
+                        | razer_device::hyperpolling_receiver::Command::Indicator
+                        | razer_device::hyperpolling_receiver::Command::Bindings,
+                    ..
+                }
                 | ServiceRequest::SystemMonitorStart { .. }
                 | ServiceRequest::SystemMonitorPoll { .. }
                 | ServiceRequest::SystemMonitorStop { .. }

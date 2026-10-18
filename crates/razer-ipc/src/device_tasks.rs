@@ -144,7 +144,10 @@ impl ServiceRequest {
     pub(crate) fn synchronous_device_task(&self) -> anyhow::Result<Option<Scope>> {
         if let Self::HyperpollingReceiver {
             target,
-            command: razer_device::hyperpolling_receiver::Command::SetIndicator { .. },
+            command:
+                razer_device::hyperpolling_receiver::Command::SetIndicator { .. }
+                | razer_device::hyperpolling_receiver::Command::CancelScan,
+            ..
         } = self
         {
             use razer_device::hyperpolling_receiver::Target;

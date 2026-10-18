@@ -30,6 +30,216 @@ class ArchitectureBoundaryTests(unittest.TestCase):
     def inspect(self, source, owner):
         return workspace.inspect_architecture_source(source.encode(), owner=owner, rust_parser=self.rust_parser)
 
+    def test_keyboard_brightness_gui_delegates_io_to_its_retained_worker(self):
+        owners = (
+            'crates/razer-shell/src/shell/keyboard/keyboard_brightness_read.rs',
+            'crates/razer-shell/src/shell/keyboard/keyboard_brightness_write.rs',
+            'crates/razer-shell/src/shell/keyboard/keyboard_brightness_runtime.rs',
+            'crates/razer-pages/src/features/keyboard/lighting/keyboard_brightness.rs',
+        )
+        sources = (
+            'fn start() { ServiceClient::spawn(); }',
+            'use razer_ipc::ServiceClient as Client; fn start() { Client::spawn(); }',
+            'use razer_ipc as ipc; fn start() { ipc::ServiceClient::spawn(); }',
+            'fn start() { direct::request_keyboard_brightness(client, route, percent); }',
+            'use razer_discovery::direct::request_keyboard_brightness as request; fn start() { request(client, route, percent); }',
+            'fn start() { client.request_keyboard_brightness(route, percent); }',
+            'fn start() { std::thread::spawn(work); }',
+            'fn start() { std::thread::Builder::new(); }',
+            'use std::thread as worker; fn start() { worker::spawn(work); }',
+            'use std::thread::{spawn as launch, Builder as Worker}; fn start() { launch(work); }',
+            'use std::thread::{Builder as Worker}; fn start() { Worker::new(); }',
+        )
+        worker = 'crates/razer-shell/src/shell/keyboard/keyboard_brightness_worker.rs'
+        for owner in owners:
+            with self.subTest(owner=owner):
+                good = ('fn start() { self.start_keyboard_brightness_operation(scope, percent, canceled, complete, cx); '
+                        'let message = messages.join(", "); let thread = std::thread::current(); }')
+                self.assertFalse(self.inspect(good, owner))
+                for source in sources:
+                    with self.subTest(source=source):
+                        rows = self.inspect(source, owner)
+                        self.assertEqual([row['kind'] for row in rows], ['keyboard_brightness_gui_owns_device_io'])
+                        self.assertEqual(rows[0]['expected_owner'], worker)
+                        self.assertFalse(self.inspect(source, worker))
+                        self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + source + ' }', owner))
+                for call in ('delivery.detach()', 'worker.join()', 'self.worker.take().unwrap().join()'):
+                    source = 'fn start() { ' + call + '; }'
+                    self.assertEqual([row['kind'] for row in self.inspect(source, owner)],
+                                     ['keyboard_brightness_gui_detaches_or_waits_for_native_work'])
+                    self.assertFalse(self.inspect('#[cfg(test)] ' + source, owner))
+        self.assertFalse(self.inspect(sources[0], owners[0].replace('_read.rs', '_runtime_tests.rs')))
+        self.assertFalse(self.inspect(sources[0], 'crates/razer-shell/src/shell/unrelated.rs'))
+
+    def test_keyboard_brightness_callers_use_the_shared_scope_and_operation_owner(self):
+        for operation in ('read', 'write'):
+            owner = f'crates/razer-shell/src/shell/keyboard/keyboard_brightness_{operation}.rs'
+            source = ('use super::keyboard_brightness_runtime::Scope; impl AppShell { '
+                      f'fn {operation}_keyboard_brightness() {{ let scope = Scope::new(workspace, route, cx); '
+                      'self.start_keyboard_brightness_operation(scope, percent, canceled, complete, cx); } }')
+            with self.subTest(operation=operation):
+                self.assertFalse(self.inspect(source, owner))
+                self.assertFalse(self.inspect(source.replace('::Scope;', '::Scope as RequestScope;')
+                                              .replace('Scope::new', 'RequestScope::new'), owner))
+                for changed in (source.replace('self.start_keyboard_brightness_operation', 'other.start_keyboard_brightness_operation'),
+                                source.replace('self.start_keyboard_brightness_operation', 'self.start_unrelated_operation'),
+                                source.replace('Scope::new', 'OtherScope::new')):
+                    self.assertEqual([row['kind'] for row in self.inspect(changed, owner)],
+                                     ['keyboard_brightness_bypasses_retained_operation_owner'])
+                    self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + changed + ' }', owner))
+                changed = source.replace('let scope =', 'let revision = self.discovery_revision; let scope =')
+                self.assertIn('keyboard_brightness_uses_global_discovery_revision',
+                              [row['kind'] for row in self.inspect(changed, owner)])
+                self.assertFalse(self.inspect(source.replace(f'fn {operation}_keyboard_brightness', 'fn unrelated')
+                                              .replace('Scope::new', 'OtherScope::new'), owner))
+
+    def test_keyboard_brightness_scope_uses_the_physical_connection_owner(self):
+        owner = 'crates/razer-shell/src/shell/keyboard/keyboard_brightness_runtime.rs'
+        source = ('fn current_route() { super::device_discovery::retained_connection(previous, observations, device) '
+                  '&& direct::keyboard_brightness_available(route) }')
+        self.assertFalse(self.inspect(source, owner))
+        alias = 'use super::device_discovery::retained_connection as retained; '
+        self.assertFalse(self.inspect(alias + source.replace('super::device_discovery::retained_connection', 'retained'), owner))
+        for changed in (source.replace('super::device_discovery::retained_connection(previous, observations, device)', 'true'),
+                        source.replace('super::device_discovery::retained_connection', 'unrelated::retained_connection')):
+            self.assertEqual([row['kind'] for row in self.inspect(changed, owner)],
+                             ['keyboard_brightness_does_not_retain_the_physical_connection'])
+            self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + changed + ' }', owner))
+        for source in ('fn current() { shell.discovery_revision == revision }',
+                       'fn current() { discovery_revision == revision }'):
+            self.assertIn('keyboard_brightness_uses_global_discovery_revision',
+                          [row['kind'] for row in self.inspect(source, owner)])
+        self.assertFalse(self.inspect('fn diagnostic() { log("discovery_revision"); }', owner))
+
+    def test_keyboard_brightness_state_and_cleanup_belong_to_the_shell(self):
+        owner = 'crates/razer-shell/src/shell.rs'
+        source = ('struct AppShell { thx_retired_owners: Vec<X>, keyboard_brightness: keyboard_brightness_runtime::State, '
+                  'receiver_chroma_connect: std::sync::Arc<std::sync::Mutex<razer_service::chroma_connect::Session>> }')
+        self.assertFalse(self.inspect(source, owner))
+        alias = 'use crate::shell::keyboard_brightness_runtime::State as Brightness; '
+        self.assertFalse(self.inspect(alias + source.replace('keyboard_brightness_runtime::State', 'Brightness'), owner))
+        for changed in (source.replace('keyboard_brightness: keyboard_brightness_runtime::State, ', ''),
+                        source.replace('keyboard_brightness:', 'other:'),
+                        source.replace('keyboard_brightness_runtime::State', 'Option<keyboard_brightness_runtime::State>'),
+                        source.replace('keyboard_brightness_runtime::State', 'unrelated::State'),
+                        source.replace('keyboard_brightness:', 'duplicate: keyboard_brightness_runtime::State, keyboard_brightness:')):
+            self.assertEqual([row['kind'] for row in self.inspect(changed, owner)],
+                             ['keyboard_brightness_has_no_single_retained_shell_owner'])
+            self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + changed + ' }', owner))
+        install = 'impl AppShell { fn new() { this.install_keyboard_brightness_cleanup(cx); } }'
+        self.assertFalse(self.inspect(install, owner))
+        for changed in (install.replace('this.install_keyboard_brightness_cleanup(cx);', ''),
+                        install.replace('this.install_keyboard_brightness_cleanup', 'other.install_keyboard_brightness_cleanup')):
+            self.assertEqual([row['kind'] for row in self.inspect(changed, owner)],
+                             ['keyboard_brightness_cleanup_is_not_installed'])
+        self.assertFalse(self.inspect(install.replace('AppShell', 'Unrelated'), owner))
+
+    def test_keyboard_brightness_work_contributes_to_the_exit_pending_gate(self):
+        owner = 'crates/razer-shell/src/shell.rs'
+        source = ('fn continue_save_queue() { if !succeeded { self.cancel_pending_exit(cx); } '
+                  'if self.save_task.is_some() { return; } '
+                  'let operations_pending = other_pending || self.keyboard_brightness.pending(); '
+                  'if succeeded && !queued && !auxiliary_pending { if operations_pending { return; } '
+                  'if self.close_requested { if self.finish_keyboard_actuation_exit(cx) || !self.close_requested { return; } '
+                  'workspace.finish_exit(cx); self.stop_global_shortcuts(); '
+                  'if Self::background_exit_pending() { self.wait_for_background_exit(cx); return; } '
+                  'if self.finish_service_exit(cx) || self.finish_resource_exit(cx) { return; } } } '
+                  'match continuation { SaveContinuation::Close => cx.quit(), _ => {} } }')
+        self.assertFalse(self.inspect(source, owner))
+        self.assertFalse(self.inspect(source.replace('other_pending || self.keyboard_brightness.pending()',
+                                                    '(self.keyboard_brightness.pending()) || other_pending'), owner))
+        for changed in (source.replace('let operations_pending = other_pending || self.keyboard_brightness.pending(); ', ''),
+                        source.replace('self.keyboard_brightness.pending()', 'self.other.pending()'),
+                        source.replace('self.keyboard_brightness.pending()', '!self.keyboard_brightness.pending()'),
+                        source.replace('other_pending || self.keyboard_brightness.pending()', 'other_pending && self.keyboard_brightness.pending()')):
+            self.assertEqual([row['kind'] for row in self.inspect(changed, owner)],
+                             ['keyboard_brightness_work_is_not_drained_before_exit'])
+            self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + changed + ' }', owner))
+
+    def test_camera_pages_delegate_work_to_the_retained_service_owner(self):
+        source = ('use razer_service::camera::lifecycle::Owner; '
+                  'impl State { fn start(&mut self) { let jobs = Owner::default(); '
+                  'let receipt = jobs.spawn("camera-page-ipc", canceled, move || execute()); '
+                  'self.delivery = Some(cx.spawn(deliver(receipt))); '
+                  'self.retiring = Some(jobs.cleanup("camera-release", move || session.shutdown())); } }')
+        for name in ('camera_runtime', 'camera_media', 'camera_mic', 'camera_source_state', 'camera_shortcuts'):
+            owner = f'crates/razer-pages/src/features/workspace/source_controls/{name}.rs'
+            with self.subTest(owner=owner):
+                self.assertFalse(self.inspect(source, owner))
+                for call in ('delivery.detach()', 'worker.join()', 'self.worker.take().unwrap().join()'):
+                    with self.subTest(call=call):
+                        rows = self.inspect('fn start() { ' + call + '; }', owner)
+                        self.assertEqual([row['kind'] for row in rows],
+                                         ['camera_page_detaches_or_waits_for_native_work'])
+                        self.assertEqual(rows[0]['expected_owner'], 'crates/razer-service/src/camera/lifecycle.rs')
+
+    def test_camera_pages_reject_native_thread_and_service_constructors_through_aliases(self):
+        owner = 'crates/razer-pages/src/features/workspace/source_controls/camera_runtime.rs'
+        sources = (
+            'fn start() { std::thread::spawn(work); }',
+            'fn start() { std::thread::Builder::new(); }',
+            'use std::thread; fn start() { thread::spawn(work); }',
+            'use std::thread as worker; fn start() { worker::spawn(work); }',
+            'use std::thread::{self as worker}; fn start() { worker::spawn(work); }',
+            'use std::thread::spawn as launch; fn start() { launch(work); }',
+            'use std::thread::Builder as Thread; fn start() { Thread::new(); }',
+            'use std::thread::{Builder as Thread}; fn start() { Thread::new(); }',
+            'fn start() { ServiceClient::spawn(); }',
+            'fn start() { razer_ipc::ServiceClient::spawn(); }',
+            'use razer_ipc::ServiceClient as Client; fn start() { Client::spawn(); }',
+            'use razer_ipc as ipc; fn start() { ipc::ServiceClient::spawn(); }',
+            'fn start() { SessionMonitor::start(); }',
+            'fn start() { razer_platform::session_changes::SessionMonitor::start(); }',
+            'use razer_platform::session_changes::SessionMonitor as Monitor; fn start() { Monitor::start(); }',
+            'use razer_platform::session_changes as sessions; fn start() { sessions::SessionMonitor::start(); }',
+        )
+        for source in sources:
+            with self.subTest(source=source):
+                rows = self.inspect(source, owner)
+                self.assertEqual([row['kind'] for row in rows], ['camera_page_starts_unowned_native_work'])
+                self.assertEqual(rows[0]['expected_owner'], 'crates/razer-service/src/camera/lifecycle.rs')
+                self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + source + ' }', owner))
+                self.assertFalse(self.inspect(source, 'crates/razer-service/src/camera/commands.rs'))
+
+    def test_camera_task_guard_keeps_string_join_and_test_workers_valid(self):
+        owner = 'crates/razer-pages/src/features/workspace/source_controls/camera_media.rs'
+        self.assertFalse(self.inspect('fn label() { let text = messages.join(", "); }', owner))
+        self.assertFalse(self.inspect('fn label() { let text = ["camera", "ready"].join(" "); }', owner))
+        source = 'fn start() { std::thread::spawn(work); worker.join(); delivery.detach(); }'
+        self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + source + ' }', owner))
+        self.assertFalse(self.inspect('#[cfg(test)] ' + source, owner))
+        self.assertFalse(self.inspect(source, owner.replace('camera_media.rs', 'camera_media_tests.rs')))
+        self.assertFalse(self.inspect(source, 'crates/razer-service/src/camera/lifecycle.rs'))
+
+    def test_camera_exit_closes_task_admission_before_the_shell_drains(self):
+        owner = 'crates/razer-pages/src/features/workspace/source_workspace/lifecycle.rs'
+        source = ('impl SourceProductWorkspace { fn prepare_exit() { self.exiting = true; '
+                  'body.prepare_camera_exit(cx); self.set_active(false); '
+                  'body.dismiss_editors(); audio.prepare_exit(); } }')
+        self.assertFalse(self.inspect(source, owner))
+        for changed in (source.replace('body.prepare_camera_exit(cx);', ''),
+                        source.replace('body.prepare_camera_exit(cx);', 'body.prepare_unrelated_exit(cx);')):
+            with self.subTest(source=changed):
+                self.assertEqual([row['kind'] for row in self.inspect(changed, owner)],
+                                 ['camera_exit_does_not_close_native_task_admission'])
+                self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + changed + ' }', owner))
+                self.assertFalse(self.inspect(changed, 'crates/razer-pages/src/features/workspace/unrelated.rs'))
+        self.assertFalse(self.inspect('fn unrelated() { body.prepare_exit(); }', owner))
+
+    def test_camera_activity_cannot_reopen_the_scope_during_exit(self):
+        owner = 'crates/razer-pages/src/features/workspace/source_workspace.rs'
+        source = ('impl SourceProductWorkspace { fn sync_camera_activity(&self) { '
+                  'let active = !self.exiting && device.connected(); body.set_camera_scope(active.then(scope)); } }')
+        self.assertFalse(self.inspect(source, owner))
+        for changed in (source.replace('!self.exiting && ', ''), source.replace('!self.exiting', 'self.exiting'),
+                        source.replace('!self.exiting', '!other.exiting'), source.replace('!self.exiting', '!self.active')):
+            with self.subTest(source=changed):
+                self.assertEqual([row['kind'] for row in self.inspect(changed, owner)],
+                                 ['camera_exit_reopens_the_physical_scope'])
+                self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + changed + ' }', owner))
+                self.assertFalse(self.inspect(changed, 'crates/razer-pages/src/features/workspace/unrelated.rs'))
+        self.assertFalse(self.inspect(source.replace('sync_camera_activity', 'unrelated'), owner))
+
     def test_image_decode_admission_and_cleanup_share_the_application_stop(self):
         owner = 'crates/razer-assets/src/image_cache.rs'
         for name, field in (('load', 'images'), ('load_filtered', 'filtered')):
@@ -80,7 +290,7 @@ class ArchitectureBoundaryTests(unittest.TestCase):
 
     def test_chroma_connect_session_is_owned_once_and_shared_by_the_shell(self):
         owner = 'crates/razer-shell/src/shell.rs'
-        source = ('struct AppShell { thx_retired_owners: Vec<X>, receiver_chroma_connect: '
+        source = ('struct AppShell { thx_retired_owners: Vec<X>, keyboard_brightness: keyboard_brightness_runtime::State, receiver_chroma_connect: '
                   'std::sync::Arc<std::sync::Mutex<razer_service::chroma_connect::Session>> }')
         self.assertFalse(self.inspect(source, owner))
         for changed in (source.replace('receiver_chroma_connect:', 'another:'),
@@ -696,7 +906,7 @@ class ArchitectureBoundaryTests(unittest.TestCase):
     def test_exit_finishes_mapping_only_after_requested_saves_drain_and_waits_before_quit(self):
         shell = "crates/razer-shell/src/shell.rs"
         source = ('fn continue_save_queue() { if !succeeded { self.cancel_pending_exit(cx); } '
-                  'if self.save_task.is_some() { return; } '
+                  'if self.save_task.is_some() { return; } let operations_pending = self.keyboard_brightness.pending(); '
                   'if succeeded && !queued && !auxiliary_pending { if operations_pending { return; } '
                   'if self.close_requested { if self.finish_keyboard_actuation_exit(cx) || !self.close_requested { return; } '
                   'workspace.finish_exit(cx); self.stop_global_shortcuts(); '
@@ -728,7 +938,7 @@ class ArchitectureBoundaryTests(unittest.TestCase):
     def test_exit_waits_for_resources_after_product_and_shared_work(self):
         owner = 'crates/razer-shell/src/shell.rs'
         source = ('fn continue_save_queue() { if !succeeded { self.cancel_pending_exit(cx); } '
-                  'if self.save_task.is_some() { return; } '
+                  'if self.save_task.is_some() { return; } let operations_pending = self.keyboard_brightness.pending(); '
                   'if succeeded && !queued && !auxiliary_pending { if operations_pending { return; } '
                   'if self.close_requested { if self.finish_keyboard_actuation_exit(cx) || !self.close_requested { return; } '
                   'workspace.finish_exit(cx); self.stop_global_shortcuts(); '
@@ -748,7 +958,7 @@ class ArchitectureBoundaryTests(unittest.TestCase):
     def test_service_cleanup_precedes_resources_and_platform_quit(self):
         owner = 'crates/razer-shell/src/shell.rs'
         source = ('fn continue_save_queue() { if !succeeded { self.cancel_pending_exit(cx); } '
-                  'if self.save_task.is_some() { return; } '
+                  'if self.save_task.is_some() { return; } let operations_pending = self.keyboard_brightness.pending(); '
                   'if succeeded && !queued && !auxiliary_pending { if operations_pending { return; } '
                   'if self.close_requested { if self.finish_keyboard_actuation_exit(cx) || !self.close_requested { return; } '
                   'workspace.finish_exit(cx); self.stop_global_shortcuts(); '
@@ -809,7 +1019,7 @@ class ArchitectureBoundaryTests(unittest.TestCase):
         owner = 'crates/razer-shell/src/shell.rs'
         wait = 'if self.finish_keyboard_actuation_exit(cx) || !self.close_requested { return; }'
         source = ('fn continue_save_queue() { if !succeeded { self.cancel_pending_exit(cx); } '
-                  'if self.save_task.is_some() { return; } '
+                  'if self.save_task.is_some() { return; } let operations_pending = self.keyboard_brightness.pending(); '
                   'if succeeded && !queued && !auxiliary_pending { if operations_pending { return; } '
                   'if self.close_requested { ' + wait + ' workspace.finish_exit(cx); self.stop_global_shortcuts(); '
                   'if Self::background_exit_pending() { self.wait_for_background_exit(cx); return; } '
@@ -1196,7 +1406,7 @@ class ArchitectureBoundaryTests(unittest.TestCase):
     def test_product_exit_stops_retained_sessions_before_wait_and_reopens_on_cancel(self):
         lifecycle = "crates/razer-pages/src/features/workspace/source_workspace/lifecycle.rs"
         source = ('impl SourceProductWorkspace { fn prepare_exit() { self.exiting = true; self.set_active(false); '
-                  'body.dismiss_editors(); audio.prepare_exit(); } fn finish_exit() { body.finish_mapping_service(); } '
+                  'body.prepare_camera_exit(cx); body.dismiss_editors(); audio.prepare_exit(); } fn finish_exit() { body.finish_mapping_service(); } '
                   'fn cancel_exit() { self.exiting = false; body.cancel_mapping_service_exit(); self.set_active(active); } }')
         self.assertFalse(self.inspect(source, lifecycle))
         for changed in (source.replace('self.exiting = true;', ''), source.replace('body.dismiss_editors();', ''),
@@ -1508,7 +1718,21 @@ class ArchitectureBoundaryTests(unittest.TestCase):
                       "crates/razer-shell/src/shell/keyboard/keyboard_actuation_write.rs",
                       "crates/razer-shell/src/shell/keyboard/keyboard_actuation_worker.rs",
                       "crates/razer-shell/src/shell/keyboard/keyboard_lifecycle.rs",
+                      "crates/razer-shell/src/shell/keyboard/keyboard_brightness_read.rs",
+                      "crates/razer-shell/src/shell/keyboard/keyboard_brightness_write.rs",
+                      "crates/razer-shell/src/shell/keyboard/keyboard_brightness_runtime.rs",
+                      "crates/razer-shell/src/shell/keyboard/keyboard_brightness_worker.rs",
+                      "crates/razer-pages/src/features/keyboard/lighting/keyboard_brightness.rs",
                       "crates/razer-platform/src/platform/windows/session_changes.rs",
+                      "crates/razer-platform/src/camera/camera_preview.rs",
+                      "crates/razer-platform/src/camera/camera_preview/windows.rs",
+                      "crates/razer-service/src/camera/commands.rs", "crates/razer-service/src/camera/lifecycle.rs",
+                      "crates/razer-pages/src/features/workspace/source_controls/camera_runtime.rs",
+                      "crates/razer-pages/src/features/workspace/source_controls/camera_media.rs",
+                      "crates/razer-pages/src/features/workspace/source_controls/camera_mic.rs",
+                      "crates/razer-pages/src/features/workspace/source_controls/camera_source_state.rs",
+                      "crates/razer-pages/src/features/workspace/source_controls/camera_shortcuts.rs",
+                      "crates/razer-pages/src/features/workspace/source_workspace.rs",
                        "crates/razer-platform/src/observation/device_changes.rs",
                        "crates/razer-settings/src/runtime_page.rs", "crates/razer-shell/src/shell/mouse/mouse_dpi_70.rs",
                       "crates/razer-shell/src/shell/audio/thx_sound.rs",
@@ -1552,13 +1776,13 @@ class ArchitectureBoundaryTests(unittest.TestCase):
 
 class ReceiverLocalEvidenceTests(unittest.TestCase):
     def fixture(self, directory, *, receiver='runtime.razerWindow.rzDevice', status='4',
-                parameters='()', runtime_module='95524', flag='scanning=false', second_call=''):
+                parameters='()', runtime_module='95524', flag='scanning=false', second_call='', guarded=False):
         root = Path(directory)
         name = '.analysis/inputs/frontend/receiver-current/raw/main.js'
         raw = ('self.webpackChunk.push([[1],{34340:(mod,exports,require)=>{'
                'const runtime=require(' + runtime_module + ');let scanning=true;'
                'const commands={DUALLINK_CANCEL:' + parameters + '=>Promise.resolve().then(async()=>{'
-               'const target=' + receiver + ';' + flag + ';await target.deviceScan(' + status + ');'
+               'const target=' + receiver + ';' + flag + ';' + ('if(scanning)' if guarded else '') + 'await target.deviceScan(' + status + ');'
                + second_call + '})};require.d(exports,{ZP:()=>commands});}}]);').encode()
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -1575,21 +1799,22 @@ class ReceiverLocalEvidenceTests(unittest.TestCase):
             return audit, exported, contract
 
     def test_arrow_factory_retains_complete_cancel_and_resolves_primary_runtime(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root, source = self.fixture(directory)
-            audit, exported, contract = self.query(root, source)
-            self.assertEqual(contract['target'], 'primary_runtime_device')
-            self.assertEqual(contract['runtime_module_id'], 95524)
-            self.assertEqual(contract['scan_status'], 4)
-            self.assertFalse(contract['category_parameter'])
-            factory = audit.owners[exported['complete_factory_owner']]
-            self.assertTrue(factory['body'].startswith('34340:(mod,exports,require)=>'))
-            cancel = audit.owners[contract['cancel_owner']]
-            self.assertTrue(cancel['body'].startswith('DUALLINK_CANCEL:()=>'))
-            self.assertIn('await target.deviceScan(4)', cancel['body'])
-            self.assertIn('const runtime=require(95524)', factory['body'])
-            self.assertEqual(audit.owners[contract['scan_call_owner']]['body'], 'target.deviceScan(4)')
-            self.assertEqual(audit.owners[contract['scanning_flag_cleanup_owner']]['body'], 'scanning=false')
+        for flag in ('scanning=false', 'scanning=!1'):
+            with self.subTest(flag=flag), tempfile.TemporaryDirectory() as directory:
+                root, source = self.fixture(directory, flag=flag)
+                audit, exported, contract = self.query(root, source)
+                self.assertEqual(contract['target'], 'primary_runtime_device')
+                self.assertEqual(contract['runtime_module_id'], 95524)
+                self.assertEqual(contract['scan_status'], 4)
+                self.assertFalse(contract['category_parameter'])
+                factory = audit.owners[exported['complete_factory_owner']]
+                self.assertTrue(factory['body'].startswith('34340:(mod,exports,require)=>'))
+                cancel = audit.owners[contract['cancel_owner']]
+                self.assertTrue(cancel['body'].startswith('DUALLINK_CANCEL:()=>'))
+                self.assertIn('await target.deviceScan(4)', cancel['body'])
+                self.assertIn('const runtime=require(95524)', factory['body'])
+                self.assertEqual(audit.owners[contract['scan_call_owner']]['body'], 'target.deviceScan(4)')
+                self.assertEqual(audit.owners[contract['scanning_flag_cleanup_owner']]['body'], flag)
 
     def test_category_selected_or_foreign_runtime_cannot_be_reported_as_primary_cancel(self):
         for mutation in ({'receiver': 'pickFactory(category,true)'},
@@ -1604,7 +1829,7 @@ class ReceiverLocalEvidenceTests(unittest.TestCase):
     def test_changed_payload_ambiguous_dispatch_or_missing_cleanup_requires_source_review(self):
         for mutation in ({'status': '1'}, {'status': 'category'}, {'status': '4,category'},
                          {'parameters': '(category)'}, {'flag': 'scanning=true'},
-                         {'second_call': 'await target.deviceScan(4);'}):
+                         {'second_call': 'await target.deviceScan(4);'}, {'guarded': True}):
             with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
                 root, source = self.fixture(directory, **mutation)
                 with self.assertRaises(ValueError):
@@ -1844,6 +2069,8 @@ class RustValidationBoundaryTests(unittest.TestCase):
             'keyboard-latest-restore-publisher': ('razer-shell', 'shell::keyboard_latest_restore::publisher::tests::'),
             'keyboard-game-lifecycle': ('razer-shell', 'game_monitor::lifecycle::tests::'),
             'keyboard-actuation-lifecycle': ('razer-shell', 'keyboard_actuation_write::worker::tests::'),
+            'keyboard-brightness-shell': ('razer-shell', 'keyboard_brightness'),
+            'keyboard-brightness-state': ('razer-pages', 'brightness::lifecycle_tests'),
             'session-monitor-lifecycle': ('razer-platform', 'session_changes::tests::'),
             'device-change-monitor-lifecycle': ('razer-platform', 'device_changes'),
             'settings-runtime-state': ('razer-settings', 'runtime_page::tests::'),

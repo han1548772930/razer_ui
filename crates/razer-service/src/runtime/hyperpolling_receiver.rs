@@ -7,6 +7,7 @@ impl PortableRuntime {
         &mut self,
         target: &Target,
         command: Command,
+        transaction: u8,
     ) -> anyhow::Result<Value> {
         match target {
             Target::Collection(node) => {
@@ -27,12 +28,6 @@ impl PortableRuntime {
                         == Some(cap.report_bytes),
                     "Uma Feature descriptor length differs"
                 );
-                let transaction = self.transaction(
-                    node,
-                    &cap.source_class,
-                    cap.transaction_prefix,
-                    cap.transaction_modulus,
-                )?;
                 let reading =
                     receiver::execute(device.as_ref(), cap, command, transaction, &validate)?;
                 Ok(serde_json::to_value(Observation::new(
@@ -43,7 +38,12 @@ impl PortableRuntime {
             Target::WindowsContainer { path, container } => {
                 #[cfg(windows)]
                 {
-                    super::super::native::hyperpolling_receiver(path, container, command)
+                    super::super::native::hyperpolling_receiver(
+                        path,
+                        container,
+                        command,
+                        transaction,
+                    )
                 }
                 #[cfg(not(windows))]
                 {

@@ -17,6 +17,11 @@ impl SourceProductWorkspace {
         {
             body.update(cx, |body, cx| body.prepare_receiver_exit(cx));
         }
+        if matches!(self.device.product_id, 3594..=3596)
+            && let FamilyBody::Controls(body) = &self.body
+        {
+            body.update(cx, |body, cx| body.prepare_camera_exit(cx));
+        }
         self.dismiss_profile_dialog(window, cx);
         self.set_active(false, window, cx);
         match &self.body {

@@ -2,6 +2,10 @@
 //! Draft persistence is local; only the service readback can confirm hardware.
 use super::KeyboardProductWorkspace;
 use gpui_kit::*;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 
 #[derive(Clone, Copy)]
 pub struct KeyboardBrightnessRequested {
@@ -40,16 +44,93 @@ pub(super) struct State {
     error: Option<String>,
     queued: Option<u8>,
     observed: Option<u8>,
+    operation_cancel: Option<Arc<AtomicBool>>,
 }
 impl State {
     fn invalidate(&mut self) {
-        // A UI reset cannot stop a worker which may already be transmitting.
-        // Keep its serialization slot until its actual completion arrives.
+        if let Some(canceled) = &self.operation_cancel {
+            canceled.store(true, Ordering::Release);
+        }
+        // A command already sent can still affect hardware. Keep its serial
+        // slot until the owned service has completed cancellation and cleanup.
         self.epoch = self.epoch.wrapping_add(1);
         self.queued = None;
         self.observed = None;
         self.error = None;
         self.read_needed = self.active;
+    }
+
+    fn set_active(&mut self, active: bool) {
+        if self.active != active {
+            self.active = active;
+            self.invalidate();
+        }
+    }
+
+    fn preview_edit(&mut self) {
+        self.edit_revision = self.edit_revision.wrapping_add(1);
+    }
+
+    fn begin_write(&mut self, percent: u8) -> Option<KeyboardBrightnessRequested> {
+        // The current skippable task keeps only the newest desired setting.
+        self.preview_edit();
+        self.observed = None;
+        self.error = None;
+        self.read_needed = false;
+        if self.pending.is_some() || self.read_pending.is_some() {
+            self.queued = Some(percent);
+            return None;
+        }
+        self.generation = self.generation.wrapping_add(1);
+        let request = KeyboardBrightnessRequested {
+            generation: self.generation,
+            percent,
+            epoch: self.epoch,
+        };
+        self.pending = Some(request);
+        self.operation_cancel = Some(Arc::new(AtomicBool::new(false)));
+        Some(request)
+    }
+
+    fn begin_read(&mut self) -> Option<KeyboardBrightnessReadRequested> {
+        if !self.active || self.pending.is_some() || self.read_pending.is_some() {
+            return None;
+        }
+        self.generation = self.generation.wrapping_add(1);
+        let request = KeyboardBrightnessReadRequested {
+            generation: self.generation,
+            epoch: self.epoch,
+            edit_revision: self.edit_revision,
+        };
+        self.read_pending = Some(request);
+        self.read_needed = false;
+        self.error = None;
+        self.operation_cancel = Some(Arc::new(AtomicBool::new(false)));
+        Some(request)
+    }
+
+    fn cancellation_guard(&self, generation: u64, percent: Option<u8>) -> Option<Arc<AtomicBool>> {
+        let current = match percent {
+            Some(percent) => self.pending.is_some_and(|request| {
+                request.generation == generation
+                    && request.percent == percent
+                    && request.epoch == self.epoch
+            }),
+            None => self.read_pending.is_some_and(|request| {
+                request.generation == generation && request.epoch == self.epoch
+            }),
+        };
+        // Editing only changes read publication. It does not retire the read's
+        // serial slot or cancel the newer write waiting for this same device.
+        current.then(|| self.operation_cancel.clone()).flatten()
+    }
+}
+
+impl Drop for State {
+    fn drop(&mut self) {
+        if let Some(canceled) = &self.operation_cancel {
+            canceled.store(true, Ordering::Release);
+        }
     }
 }
 impl EventEmitter<KeyboardBrightnessRequested> for KeyboardProductWorkspace {}
@@ -59,7 +140,7 @@ impl KeyboardProductWorkspace {
     // needed here to reject a readback begun before the user started dragging.
     pub(super) fn preview_brightness(&mut self, percent: Option<u8>, cx: &mut Context<Self>) {
         if percent.is_some() {
-            self.brightness.edit_revision = self.brightness.edit_revision.wrapping_add(1);
+            self.brightness.preview_edit();
         }
         cx.notify();
     }
@@ -88,24 +169,9 @@ impl KeyboardProductWorkspace {
         if percent > 100 {
             return;
         }
-        // The original skippable setting task keeps the newest desired setting.
-        // Avoid multiple service workers racing one hardware setting.
-        self.brightness.edit_revision = self.brightness.edit_revision.wrapping_add(1);
-        self.brightness.observed = None;
-        self.brightness.error = None;
-        self.brightness.read_needed = false;
-        if self.brightness.pending.is_some() || self.brightness.read_pending.is_some() {
-            self.brightness.queued = Some(percent);
-            return;
+        if let Some(request) = self.brightness.begin_write(percent) {
+            cx.emit(request);
         }
-        self.brightness.generation = self.brightness.generation.wrapping_add(1);
-        let request = KeyboardBrightnessRequested {
-            generation: self.brightness.generation,
-            percent,
-            epoch: self.brightness.epoch,
-        };
-        self.brightness.pending = Some(request);
-        cx.emit(request);
     }
     pub fn brightness_request_matches(&self, generation: u64, percent: u8) -> bool {
         self.brightness
@@ -121,6 +187,13 @@ impl KeyboardProductWorkspace {
     }
     pub fn cancel_brightness_connection(&mut self) {
         self.brightness.invalidate();
+    }
+    pub fn brightness_cancellation_guard(
+        &self,
+        generation: u64,
+        percent: Option<u8>,
+    ) -> Option<Arc<AtomicBool>> {
+        self.brightness.cancellation_guard(generation, percent)
     }
     pub fn finish_brightness(
         &mut self,
@@ -142,6 +215,7 @@ impl KeyboardProductWorkspace {
             current = false;
         }
         self.brightness.pending = None;
+        self.brightness.operation_cancel = None;
         if current {
             self.brightness.observed = observed;
         }
@@ -156,33 +230,19 @@ impl KeyboardProductWorkspace {
         self.brightness.invalidate();
     }
     pub fn set_brightness_read_active(&mut self, active: bool, cx: &mut Context<Self>) {
-        if self.brightness.active != active {
-            self.brightness.active = active;
-            self.brightness.invalidate();
-        }
+        self.brightness.set_active(active);
         if active && self.brightness.read_needed {
             self.request_brightness_read(cx);
         }
         cx.notify();
     }
     pub(super) fn request_brightness_read(&mut self, cx: &mut Context<Self>) {
-        if !self.brightness.active
-            || self.brightness.pending.is_some()
-            || self.brightness.read_pending.is_some()
-            || razer_device::keyboard_settings::capability(self.spec.product_id).is_none()
-        {
+        if razer_device::keyboard_settings::capability(self.spec.product_id).is_none() {
             return;
         }
-        self.brightness.generation = self.brightness.generation.wrapping_add(1);
-        let request = KeyboardBrightnessReadRequested {
-            generation: self.brightness.generation,
-            epoch: self.brightness.epoch,
-            edit_revision: self.brightness.edit_revision,
-        };
-        self.brightness.read_pending = Some(request);
-        self.brightness.read_needed = false;
-        self.brightness.error = None;
-        cx.emit(request);
+        if let Some(request) = self.brightness.begin_read() {
+            cx.emit(request);
+        }
     }
     pub fn brightness_read_matches(&self, generation: u64) -> bool {
         self.brightness
@@ -222,6 +282,7 @@ impl KeyboardProductWorkspace {
             self.brightness.error = error;
         }
         self.brightness.read_pending = None;
+        self.brightness.operation_cancel = None;
         if self.brightness.queued.take().is_some() {
             self.request_brightness(cx);
         } else if self.brightness.read_needed {
@@ -243,3 +304,7 @@ impl KeyboardProductWorkspace {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "keyboard_brightness_lifecycle_tests.rs"]
+mod lifecycle_tests;

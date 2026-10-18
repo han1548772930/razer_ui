@@ -47,11 +47,13 @@ struct Job {
     owner: Owner,
     canceled: Arc<AtomicBool>,
     worker: JoinHandle<()>,
+    outcome: Arc<Mutex<Option<Result<(), String>>>>,
 }
 #[derive(Default)]
 struct Jobs {
     active: BTreeMap<(Owner, String), Job>,
     retired: Vec<Job>,
+    diagnostics: BTreeMap<Owner, Vec<String>>,
 }
 pub(super) struct Completion {
     pub(super) product_id: u32,
@@ -62,7 +64,7 @@ pub(super) struct Completion {
 }
 pub(in crate::shell) struct Transport {
     executor: BackgroundExecutor,
-    jobs: Mutex<Jobs>,
+    jobs: Arc<Mutex<Jobs>>,
     completions: Arc<Mutex<Vec<Completion>>>,
     reconnects: Arc<reconnect::Owners>,
     closed: AtomicBool,
@@ -77,7 +79,7 @@ impl Transport {
     pub(in crate::shell) fn new(executor: BackgroundExecutor) -> Self {
         Self {
             executor,
-            jobs: Mutex::new(Jobs::default()),
+            jobs: Arc::new(Mutex::new(Jobs::default())),
             completions: Arc::new(Mutex::new(Vec::new())),
             reconnects: Arc::new(reconnect::Owners::default()),
             closed: AtomicBool::new(false),
@@ -177,26 +179,7 @@ impl Transport {
             .jobs
             .lock()
             .map_err(|_| anyhow::anyhow!("配对工作线程锁不可用"))?;
-        let finished: Vec<_> = jobs
-            .active
-            .iter()
-            .filter(|(_, job)| job.worker.is_finished())
-            .map(|(key, _)| key.clone())
-            .collect();
-        for key in finished {
-            if let Some(job) = jobs.active.remove(&key) {
-                let _ = job.worker.join();
-            }
-        }
-        let mut pending = Vec::new();
-        for job in jobs.retired.drain(..) {
-            if job.worker.is_finished() {
-                let _ = job.worker.join();
-            } else {
-                pending.push(job);
-            }
-        }
-        jobs.retired = pending;
+        prune_finished_jobs(&mut jobs);
         ensure!(
             jobs.active.len() + jobs.retired.len() < 8,
             "前次配对清理尚未完成，请稍候"
@@ -213,6 +196,8 @@ impl Transport {
         let reconnect_scope =
             reconnects.scope("standalone-pairing", owner.product_id, &owner.container)?;
         let (sender, receiver) = mpsc::channel();
+        let outcome = Arc::new(Mutex::new(None));
+        let worker_outcome = outcome.clone();
         let worker = thread::Builder::new()
             .name("standalone-pairing".into())
             .spawn(move || {
@@ -250,6 +235,14 @@ impl Transport {
                     (&reconnects, &reconnect_scope),
                     &mut source_response,
                 );
+                if let Ok(mut outcome) = worker_outcome.lock() {
+                    *outcome = Some(
+                        result
+                            .as_ref()
+                            .map(|_| ())
+                            .map_err(|error| format!("{error:#}")),
+                    );
+                }
                 if source_sent || !signal.load(Ordering::Acquire) {
                     if let Ok((value, projection)) = &result {
                         if let Ok(mut completions) = completions.lock() {
@@ -283,6 +276,7 @@ impl Transport {
                 owner,
                 canceled: canceled.clone(),
                 worker,
+                outcome,
             },
         );
         let executor = self.executor.clone();
@@ -301,6 +295,61 @@ impl Transport {
                 }
             }
         }))
+    }
+    pub(in crate::shell) fn cancel_product_blocking(
+        &self,
+        master: Value,
+    ) -> Result<Vec<String>, String> {
+        let owner = Owner::parse(&master).map_err(|error| format!("{error:#}"))?;
+        self.cancel_owner(&owner)
+            .map_err(|error| format!("{error:#}"))?;
+        loop {
+            match finish_product_jobs(&self.jobs, &owner) {
+                Ok(Some(diagnostics)) => return Ok(diagnostics),
+                Err(error) => return Err(format!("{error:#}")),
+                Ok(None) => thread::sleep(Duration::from_millis(25)),
+            }
+        }
+    }
+    /// Cancellation is a request, while the retained Jobs registry owns every
+    /// worker until its full service shutdown and thread join have completed.
+    /// Superseding this future cannot hide an unfinished physical predecessor.
+    pub(in crate::shell) fn cancel_product_and_wait(
+        &self,
+        master: Value,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<String>, String>> + Send>> {
+        self.product_cleanup(master, true)
+    }
+    pub(in crate::shell) fn finish_product_and_wait(
+        &self,
+        master: Value,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<String>, String>> + Send>> {
+        self.product_cleanup(master, false)
+    }
+    fn product_cleanup(
+        &self,
+        master: Value,
+        cancel: bool,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<String>, String>> + Send>> {
+        let owner = match Owner::parse(&master) {
+            Ok(owner) => owner,
+            Err(error) => return Box::pin(async move { Err(format!("{error:#}")) }),
+        };
+        if cancel && let Err(error) = self.cancel_owner(&owner) {
+            return Box::pin(async move { Err(format!("{error:#}")) });
+        }
+        let jobs = self.jobs.clone();
+        let executor = self.executor.clone();
+        Box::pin(async move {
+            loop {
+                let result = finish_product_jobs(&jobs, &owner);
+                match result {
+                    Ok(Some(diagnostics)) => return Ok(diagnostics),
+                    Err(error) => return Err(format!("{error:#}")),
+                    Ok(None) => executor.timer(Duration::from_millis(25)).await,
+                }
+            }
+        })
     }
     /// A mounted product retains its own physical connection scope and refresh
     /// loop. Its completion must not publish through the standalone window.
@@ -329,6 +378,87 @@ impl PairingTransport for Transport {
             Err(error) => Box::pin(async move { Err(format!("{error:#}")) }),
         }
     }
+}
+
+fn finish_product_jobs(jobs: &Mutex<Jobs>, owner: &Owner) -> anyhow::Result<Option<Vec<String>>> {
+    let mut jobs = jobs
+        .lock()
+        .map_err(|_| anyhow::anyhow!("Pairing cleanup lock poisoned"))?;
+    let keys = jobs
+        .active
+        .iter()
+        .filter(|(_, job)| &job.owner == owner && job.worker.is_finished())
+        .map(|(key, _)| key.clone())
+        .collect::<Vec<_>>();
+    let mut finished = Vec::new();
+    for key in keys {
+        if let Some(job) = jobs.active.remove(&key) {
+            finished.push(job);
+        }
+    }
+    let mut pending = Vec::new();
+    for job in jobs.retired.drain(..) {
+        if &job.owner == owner && job.worker.is_finished() {
+            finished.push(job);
+        } else {
+            pending.push(job);
+        }
+    }
+    jobs.retired = pending;
+    for job in finished {
+        record_finished_job(&mut jobs, job);
+    }
+    if jobs
+        .active
+        .values()
+        .chain(&jobs.retired)
+        .any(|job| &job.owner == owner)
+    {
+        return Ok(None);
+    }
+    Ok(Some(
+        jobs.diagnostics.get(owner).cloned().unwrap_or_default(),
+    ))
+}
+
+fn record_finished_job(jobs: &mut Jobs, job: Job) {
+    let result = job
+        .worker
+        .join()
+        .map_err(|_| "Pairing predecessor panicked".to_owned())
+        .and_then(|_| {
+            job.outcome
+                .lock()
+                .map_err(|_| "Pairing predecessor result lock poisoned".to_owned())?
+                .take()
+                .ok_or_else(|| "Pairing predecessor omitted its completion".to_owned())?
+        });
+    if let Err(error) = result {
+        jobs.diagnostics.entry(job.owner).or_default().push(error);
+    }
+}
+
+fn prune_finished_jobs(jobs: &mut Jobs) {
+    let keys = jobs
+        .active
+        .iter()
+        .filter(|(_, job)| job.worker.is_finished())
+        .map(|(key, _)| key.clone())
+        .collect::<Vec<_>>();
+    for key in keys {
+        if let Some(job) = jobs.active.remove(&key) {
+            record_finished_job(jobs, job);
+        }
+    }
+    let mut pending = Vec::new();
+    for job in std::mem::take(&mut jobs.retired) {
+        if job.worker.is_finished() {
+            record_finished_job(jobs, job);
+        } else {
+            pending.push(job);
+        }
+    }
+    jobs.retired = pending;
 }
 
 fn perform(
@@ -409,5 +539,124 @@ mod tests {
         assert_eq!(owner.product_id, 164);
         assert!(Owner::parse(&json!({"productId":164})).is_err());
         assert!(Owner::parse(&json!({"productId":164,"deviceContainerId":"{00000000-0000-0000-0000-000000000000}"})).is_err());
+    }
+
+    #[::core::prelude::v1::test]
+    fn hyperpolling_runtime_pairing_cleanup_joins_and_retains_failed_predecessor() {
+        let owner = Owner::parse(
+            &json!({"productId":179,"deviceContainerId":"{11111111-2222-3333-4444-555555555555}"}),
+        )
+        .unwrap();
+        let (release, gate) = mpsc::channel();
+        let canceled = Arc::new(AtomicBool::new(false));
+        let outcome = Arc::new(Mutex::new(None));
+        let completion = outcome.clone();
+        let worker = thread::spawn(move || {
+            gate.recv().unwrap();
+            *completion.lock().unwrap() = Some(Err("old cleanup failed".into()));
+        });
+        let mut jobs = Jobs::default();
+        jobs.retired.push(Job {
+            owner: owner.clone(),
+            canceled,
+            outcome,
+            worker,
+        });
+        let jobs = Mutex::new(jobs);
+        assert!(finish_product_jobs(&jobs, &owner).unwrap().is_none());
+        release.send(()).unwrap();
+        let diagnostics = loop {
+            if let Some(diagnostics) = finish_product_jobs(&jobs, &owner).unwrap() {
+                break diagnostics;
+            }
+            thread::yield_now();
+        };
+        assert_eq!(diagnostics, ["old cleanup failed"]);
+        assert!(jobs.lock().unwrap().retired.is_empty());
+        // A later successful observation must not erase a previous cleanup
+        // failure or turn it into an acknowledgement for the new operation.
+        assert_eq!(
+            finish_product_jobs(&jobs, &owner).unwrap().unwrap(),
+            diagnostics
+        );
+    }
+
+    #[::core::prelude::v1::test]
+    fn hyperpolling_runtime_global_prune_preserves_each_owners_completion() {
+        let owner = |product_id, container: &str| Owner {
+            product_id,
+            container: container.to_owned(),
+        };
+        let active_owner = owner(164, "{11111111-2222-3333-4444-555555555555}");
+        let retired_owner = owner(241, "{22222222-2222-3333-4444-555555555555}");
+        let pending_owner = owner(179, "{33333333-2222-3333-4444-555555555555}");
+        let completed_job = |owner: Owner, error: &str| {
+            let outcome = Arc::new(Mutex::new(None));
+            let completion = outcome.clone();
+            let error = error.to_owned();
+            let worker = thread::spawn(move || {
+                *completion.lock().unwrap() = Some(Err(error));
+            });
+            while !worker.is_finished() {
+                thread::yield_now();
+            }
+            Job {
+                owner,
+                canceled: Arc::new(AtomicBool::new(false)),
+                outcome,
+                worker,
+            }
+        };
+        let (release, gate) = mpsc::channel();
+        let pending_outcome = Arc::new(Mutex::new(None));
+        let completion = pending_outcome.clone();
+        let pending = Job {
+            owner: pending_owner.clone(),
+            canceled: Arc::new(AtomicBool::new(false)),
+            outcome: pending_outcome,
+            worker: thread::spawn(move || {
+                gate.recv().unwrap();
+                *completion.lock().unwrap() = Some(Ok(()));
+            }),
+        };
+        let mut jobs = Jobs::default();
+        jobs.active.insert(
+            (active_owner.clone(), "MOUSE".to_owned()),
+            completed_job(active_owner.clone(), "active cleanup failed"),
+        );
+        jobs.retired.push(completed_job(
+            retired_owner.clone(),
+            "retired cleanup failed",
+        ));
+        jobs.retired.push(pending);
+
+        prune_finished_jobs(&mut jobs);
+
+        assert!(jobs.active.is_empty());
+        assert_eq!(jobs.retired.len(), 1);
+        assert_eq!(jobs.retired[0].owner, pending_owner);
+        assert!(!jobs.retired[0].canceled.load(Ordering::Acquire));
+        let jobs = Mutex::new(jobs);
+        assert_eq!(
+            finish_product_jobs(&jobs, &active_owner).unwrap().unwrap(),
+            ["active cleanup failed"]
+        );
+        assert_eq!(
+            finish_product_jobs(&jobs, &retired_owner).unwrap().unwrap(),
+            ["retired cleanup failed"]
+        );
+        assert!(
+            finish_product_jobs(&jobs, &pending_owner)
+                .unwrap()
+                .is_none()
+        );
+        release.send(()).unwrap();
+        loop {
+            if let Some(diagnostics) = finish_product_jobs(&jobs, &pending_owner).unwrap() {
+                assert!(diagnostics.is_empty());
+                break;
+            }
+            thread::yield_now();
+        }
     }
 }

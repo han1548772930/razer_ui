@@ -121,6 +121,7 @@ pub struct Session {
     commands: mpsc::Sender<Command>,
     events: mpsc::Receiver<Event>,
     latest: Arc<Mutex<Option<Frame>>>,
+    worker: Option<std::thread::JoinHandle<anyhow::Result<()>>>,
 }
 impl Session {
     pub fn new() -> anyhow::Result<Self> {
@@ -130,17 +131,20 @@ impl Session {
             let (outgoing, events) = mpsc::channel();
             let latest = Arc::new(Mutex::new(None));
             let frames = latest.clone();
-            std::thread::Builder::new()
+            let worker = std::thread::Builder::new()
                 .name("camera-preview".into())
                 .spawn(move || {
-                    if let Err(error) = windows::run(incoming, &outgoing, frames) {
+                    let result = windows::run(incoming, &outgoing, frames);
+                    if let Err(error) = &result {
                         let _ = outgoing.send(Event::Failed(format!("{error:#}")));
                     }
+                    result
                 })?;
             Ok(Self {
                 commands,
                 events,
                 latest,
+                worker: Some(worker),
             })
         }
         #[cfg(not(windows))]
@@ -189,6 +193,22 @@ impl Session {
     }
     pub fn take_frame(&self) -> Option<Frame> {
         self.latest.lock().ok()?.take()
+    }
+
+    pub fn request_shutdown(&self) -> anyhow::Result<()> {
+        self.commands.send(Command::Shutdown).map_err(Into::into)
+    }
+
+    /// Consume on the camera I/O owner after requesting shutdown. Completion
+    /// includes source flush, MF/COM release and the actual capture thread join.
+    pub fn shutdown(mut self) -> anyhow::Result<()> {
+        let _ = self.commands.send(Command::Shutdown);
+        match self.worker.take() {
+            Some(worker) => worker
+                .join()
+                .map_err(|_| anyhow::anyhow!("camera preview worker panicked"))?,
+            None => Ok(()),
+        }
     }
 }
 impl Drop for Session {
@@ -240,6 +260,28 @@ fn copy_frame(bytes: &[u8], width: u32, height: u32, stride: i32) -> anyhow::Res
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn preview_shutdown_awaits_its_owned_thread_and_retains_release_failure() {
+        let (commands, incoming) = mpsc::channel();
+        let (_events, events) = mpsc::channel();
+        let released = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let worker_released = released.clone();
+        let worker = std::thread::spawn(move || {
+            assert!(matches!(incoming.recv().unwrap(), Command::Shutdown));
+            worker_released.store(true, std::sync::atomic::Ordering::Release);
+            anyhow::bail!("simulated MF release failure")
+        });
+        let session = Session {
+            commands,
+            events,
+            latest: Arc::new(Mutex::new(None)),
+            worker: Some(worker),
+        };
+        let error = session.shutdown().unwrap_err().to_string();
+        assert!(error.contains("simulated MF release failure"));
+        assert!(released.load(std::sync::atomic::Ordering::Acquire));
+    }
+
     #[test]
     fn padded_bottom_up_samples_are_upright_and_opaque() {
         let source = [1, 2, 3, 0, 90, 90, 90, 90, 4, 5, 6, 0];

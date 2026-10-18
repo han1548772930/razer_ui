@@ -1,6 +1,32 @@
 use super::*;
 use crate::features::HyperpollingIndicatorRequested;
 
+pub(super) fn accept_saved_version(device: &mut Device, previous: &Device, snapshot: &Device) {
+    if device.product_id != 179 || device.real_product_id != 179 {
+        return;
+    }
+    let version = |device: &Device| {
+        device
+            .source_device_settings
+            .as_ref()
+            .and_then(|settings| settings.get("version"))
+            .cloned()
+    };
+    if version(device) != version(previous) {
+        return;
+    }
+    let Some(saved_version) = version(snapshot) else {
+        return;
+    };
+    if let Some(root) = device
+        .source_device_settings
+        .get_or_insert_with(|| serde_json::json!({}))
+        .as_object_mut()
+    {
+        root.insert("version".into(), saved_version);
+    }
+}
+
 impl SourceProductWorkspace {
     pub fn begin_hyperpolling_connection(&mut self, epoch: Option<u64>, cx: &mut Context<Self>) {
         if let FamilyBody::Controls(body) = &self.body {
@@ -94,5 +120,32 @@ impl SourceProductWorkspace {
                 body.finish_hyperpolling_indicator(request, diagnostic, cx)
             });
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[::core::prelude::v1::test]
+    fn hyperpolling_runtime_saved_version_preserves_live_edits_and_conflicts() {
+        let mut previous = razer_model::product_preview::registered_preview(179).unwrap();
+        previous.source_device_settings = Some(serde_json::json!({"version":3,"extension":1}));
+        let mut snapshot = previous.clone();
+        snapshot.source_device_settings.as_mut().unwrap()["version"] = 4.into();
+        let mut live = previous.clone();
+        live.source_device_settings.as_mut().unwrap()["extension"] = 9.into();
+        accept_saved_version(&mut live, &previous, &snapshot);
+        assert_eq!(live.source_device_settings.as_ref().unwrap()["version"], 4);
+        assert_eq!(
+            live.source_device_settings.as_ref().unwrap()["extension"],
+            9
+        );
+        live.source_device_settings.as_mut().unwrap()["version"] = 8.into();
+        accept_saved_version(&mut live, &previous, &snapshot);
+        assert_eq!(live.source_device_settings.as_ref().unwrap()["version"], 8);
+        previous.source_device_settings = None;
+        live.source_device_settings = None;
+        accept_saved_version(&mut live, &previous, &snapshot);
+        assert_eq!(live.source_device_settings.as_ref().unwrap()["version"], 4);
     }
 }

@@ -488,8 +488,9 @@ pub(super) fn run(
         }
     }
     // Drop the media source before MFShutdown/CoUninitialize.
-    if let Err(error) = stop_capture(&mut capture, &latest) {
+    let cleanup = stop_capture(&mut capture, &latest);
+    if let Err(error) = &cleanup {
         let _ = events.send(Event::Diagnostic(format!("camera shutdown: {error:#}")));
     }
-    Ok(())
+    cleanup
 }

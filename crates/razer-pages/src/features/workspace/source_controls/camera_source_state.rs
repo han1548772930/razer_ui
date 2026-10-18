@@ -16,7 +16,6 @@ use std::{
         atomic::{AtomicBool, Ordering},
         mpsc,
     },
-    thread,
     time::{Duration, Instant},
 };
 
@@ -33,7 +32,6 @@ struct Job {
     scope: CameraScope,
     canceled: Arc<AtomicBool>,
     receiver: mpsc::Receiver<Result<CameraSubmissionProgress, String>>,
-    worker: Option<thread::JoinHandle<()>>,
     settled: bool,
 }
 impl Drop for Job {
@@ -143,6 +141,8 @@ fn cache_plan() -> CameraSubmissionPlan {
 /// The first rejected getter rejects its group; already-issued siblings keep
 /// their own service/COM cleanup and do not become a partial UI cache.
 fn run_cache_getters(
+    jobs: razer_service::camera::lifecycle::Spawner,
+    signal: Arc<AtomicBool>,
     execute: impl Fn(CameraCommand) -> Result<CameraSubmissionProgress, String> + Send + Sync + 'static,
 ) -> Result<CameraSubmissionProgress, String> {
     let execute = Arc::new(execute);
@@ -153,12 +153,10 @@ fn run_cache_getters(
         for (index, command) in batch.iter().cloned().enumerate() {
             let sender = sender.clone();
             let execute = execute.clone();
-            thread::Builder::new()
-                .name("camera-source-getter".into())
-                .spawn(move || {
-                    let _ = sender.send((index, execute(command)));
-                })
-                .map_err(|error| format!("camera getter worker: {error}"))?;
+            jobs.spawn("camera-source-getter", signal.clone(), move || {
+                let _ = sender.send((index, execute(command)));
+            })
+            .map_err(|error| format!("camera getter worker: {error}"))?;
         }
         drop(sender);
         let mut results: Vec<Option<CameraSubmissionProgress>> = vec![None; batch.len()];
@@ -553,9 +551,6 @@ impl SourceControls {
             if let Some(result) = result {
                 let mut job = self.camera_source.job.take().unwrap();
                 job.settled = true;
-                if let Some(worker) = job.worker.take() {
-                    let _ = worker.join();
-                }
                 if job.scope == scope && !job.canceled.load(Ordering::Acquire) {
                     match result {
                         Ok(progress) => match job.kind {
@@ -673,32 +668,37 @@ impl SourceControls {
         let canceled = Arc::new(AtomicBool::new(false));
         let signal = canceled.clone();
         let target = scope.clone();
-        let (send, receiver) = mpsc::sync_channel(1);
-        match thread::Builder::new()
-            .name("camera-source-query".into())
-            .spawn(move || {
-                let result = match kind {
-                    Query::Cache { .. } => run_cache_getters(move |command| {
-                        super::camera_runtime::execute_job(
-                            target.clone(),
-                            CameraSubmissionPlan {
-                                commands: vec![command],
-                            },
-                            signal.clone(),
-                            None,
-                        )
-                    }),
-                    Query::Iso => super::camera_runtime::execute_job(target, plan, signal, None),
-                };
-                let _ = send.send(result);
-            }) {
-            Ok(worker) => {
+        let jobs = self.camera_runtime.jobs.spawner();
+        match self
+            .camera_runtime
+            .jobs
+            .spawn(
+                "camera-source-query",
+                canceled.clone(),
+                move || match kind {
+                    Query::Cache { .. } => {
+                        run_cache_getters(jobs, signal.clone(), move |command| {
+                            razer_service::camera::commands::execute(
+                                target.clone(),
+                                CameraSubmissionPlan {
+                                    commands: vec![command],
+                                },
+                                signal.clone(),
+                                None,
+                            )
+                        })
+                    }
+                    Query::Iso => {
+                        razer_service::camera::commands::execute(target, plan, signal, None)
+                    }
+                },
+            ) {
+            Ok(receiver) => {
                 self.camera_source.job = Some(Job {
                     kind,
                     scope,
                     canceled,
                     receiver,
-                    worker: Some(worker),
                     settled: false,
                 })
             }
@@ -845,7 +845,7 @@ mod tests {
             CameraSubmissionProgress, compile_camera_edit, execute_camera_submission,
         },
     };
-    use std::time::Instant;
+    use std::{sync::atomic::AtomicBool, time::Instant};
 
     #[test]
     fn camera_focus_profile_legacy_fields_follow_edit_and_load_source_precedence() {
@@ -1227,8 +1227,10 @@ mod tests {
         let gate = Arc::new((Mutex::new(0usize), Condvar::new()));
         let worker_gate = gate.clone();
         let (entered, observed) = mpsc::channel();
+        let owner = razer_service::camera::lifecycle::Owner::default();
+        let jobs = owner.spawner();
         let worker = std::thread::spawn(move || {
-            super::run_cache_getters(move |command| {
+            super::run_cache_getters(jobs, Arc::new(AtomicBool::new(false)), move |command| {
                 let CameraCommand::StandardRead(property) = command else {
                     panic!("getter expected")
                 };
@@ -1279,28 +1281,34 @@ mod tests {
         let worker_gate = gate.clone();
         let (entered, observed) = mpsc::channel();
         let (done, result) = mpsc::channel();
+        let owner = razer_service::camera::lifecycle::Owner::default();
+        let jobs = owner.spawner();
         let worker = std::thread::spawn(move || {
-            done.send(super::run_cache_getters(move |command| {
-                let CameraCommand::StandardRead(property) = command else {
-                    panic!("getter expected")
-                };
-                entered.send(property).unwrap();
-                if property == P::VideoProcAmp(V::Contrast) {
-                    return Err("simulated group rejection".into());
-                }
-                let (lock, ready) = &*worker_gate;
-                let (guard, timeout) = ready
-                    .wait_timeout_while(lock.lock().unwrap(), Duration::from_secs(3), |value| {
-                        !*value
+            done.send(super::run_cache_getters(
+                jobs,
+                Arc::new(AtomicBool::new(false)),
+                move |command| {
+                    let CameraCommand::StandardRead(property) = command else {
+                        panic!("getter expected")
+                    };
+                    entered.send(property).unwrap();
+                    if property == P::VideoProcAmp(V::Contrast) {
+                        return Err("simulated group rejection".into());
+                    }
+                    let (lock, ready) = &*worker_gate;
+                    let (guard, timeout) = ready
+                        .wait_timeout_while(lock.lock().unwrap(), Duration::from_secs(3), |value| {
+                            !*value
+                        })
+                        .unwrap();
+                    drop(guard);
+                    assert!(!timeout.timed_out());
+                    Ok(CameraSubmissionProgress {
+                        completed: true,
+                        ..Default::default()
                     })
-                    .unwrap();
-                drop(guard);
-                assert!(!timeout.timed_out());
-                Ok(CameraSubmissionProgress {
-                    completed: true,
-                    ..Default::default()
-                })
-            }))
+                },
+            ))
             .unwrap();
         });
         for _ in 0..4 {

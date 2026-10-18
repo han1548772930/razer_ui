@@ -4,7 +4,14 @@
 use super::*;
 use razer_device::camera_submission::CameraScope;
 use razer_platform::global_shortcuts::{GlobalShortcuts, Shortcut};
-use std::{sync::mpsc, thread, time::Duration};
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+        mpsc,
+    },
+    time::Duration,
+};
 
 const SOURCE_KEYS: &[(&str, u32)] = include!("camera_shortcut_keys.rs");
 
@@ -94,115 +101,127 @@ enum Event {
 struct Session {
     commands: mpsc::Sender<Command>,
     events: mpsc::Receiver<Event>,
+    canceled: Arc<AtomicBool>,
+    completed: mpsc::Receiver<()>,
 }
 impl Session {
-    fn new() -> anyhow::Result<Self> {
+    fn new(jobs: &razer_service::camera::lifecycle::Owner) -> anyhow::Result<Self> {
         let (commands, incoming) = mpsc::channel();
         let (outgoing, events) = mpsc::channel();
-        thread::Builder::new()
-            .name("camera-preset-shortcuts".into())
-            .spawn(move || {
-                let mut os = GlobalShortcuts::default();
-                let mut generation = 0;
-                let mut enabled = true;
-                loop {
-                    match incoming.recv_timeout(Duration::from_millis(25)) {
-                        Err(mpsc::RecvTimeoutError::Disconnected) => break,
-                        Err(mpsc::RecvTimeoutError::Timeout) => {}
-                        Ok(Command::Invalid {
-                            generation: next,
-                            mode,
-                            error,
-                            enabled: active,
-                        }) => {
-                            generation = next;
-                            enabled = active;
-                            // Source se unregisters this preset's old tag before
-                            // te rejects a malformed chord. Other tags stay active.
-                            let cleanup = (|| -> anyhow::Result<()> {
-                                for old in os.registered()? {
-                                    if old.argument == mode.to_string() {
-                                        os.unregister(old.virtual_key, old.modifiers)?;
-                                    }
+        let canceled = Arc::new(AtomicBool::new(false));
+        let signal = canceled.clone();
+        let completed = jobs.spawn("camera-preset-shortcuts", canceled.clone(), move || {
+            let mut os = GlobalShortcuts::default();
+            let mut generation = 0;
+            let mut enabled = true;
+            while !signal.load(Ordering::Acquire) {
+                match incoming.recv_timeout(Duration::from_millis(25)) {
+                    Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                    Err(mpsc::RecvTimeoutError::Timeout) => {}
+                    Ok(Command::Invalid {
+                        generation: next,
+                        mode,
+                        error,
+                        enabled: active,
+                    }) => {
+                        generation = next;
+                        enabled = active;
+                        // Source se unregisters this preset's old tag before
+                        // te rejects a malformed chord. Other tags stay active.
+                        let cleanup = (|| -> anyhow::Result<()> {
+                            for old in os.registered()? {
+                                if old.argument == mode.to_string() {
+                                    os.unregister(old.virtual_key, old.modifiers)?;
                                 }
-                                if !os.registered()?.is_empty() {
-                                    os.enable(active)?;
-                                }
-                                Ok(())
-                            })();
-                            let error = match cleanup {
-                                Ok(()) => error,
-                                Err(e) => format!("{error}; shortcut cleanup: {e:#}"),
-                            };
-                            let _ = outgoing.send(Event::Failed { generation, error });
-                        }
-                        Ok(Command::Sync {
-                            generation: next,
-                            bindings,
-                            enabled: active,
-                        }) => {
-                            generation = next;
-                            enabled = active;
-                            let result = (|| -> anyhow::Result<()> {
-                                // Remove obsolete identities before registering replacements,
-                                // just as se unregisters the old tag before the new chord.
-                                let registered = os.registered()?;
-                                for old in registered {
-                                    if !bindings.iter().any(|b| {
-                                        b.key == old.virtual_key && b.modifiers == old.modifiers
-                                    }) {
-                                        os.unregister(old.virtual_key, old.modifiers)?;
-                                    }
-                                }
-                                for binding in &bindings {
-                                    if !os.registered()?.iter().any(|old| {
-                                        old.virtual_key == binding.key
-                                            && old.modifiers == binding.modifiers
-                                            && old.argument == binding.mode.to_string()
-                                    }) {
-                                        os.register(Shortcut {
-                                            virtual_key: binding.key,
-                                            modifiers: binding.modifiers,
-                                            argument: binding.mode.to_string(),
-                                        })?;
-                                    }
-                                }
-                                if !os.registered()?.is_empty() {
-                                    os.enable(active)?;
-                                }
-                                Ok(())
-                            })();
-                            if let Err(error) = result {
-                                let _ = outgoing.send(Event::Failed {
-                                    generation,
-                                    error: format!("{error:#}"),
-                                });
                             }
-                        }
+                            if !os.registered()?.is_empty() {
+                                os.enable(active)?;
+                            }
+                            Ok(())
+                        })();
+                        let error = match cleanup {
+                            Ok(()) => error,
+                            Err(e) => format!("{error}; shortcut cleanup: {e:#}"),
+                        };
+                        let _ = outgoing.send(Event::Failed { generation, error });
                     }
-                    match os.drain() {
-                        Ok(events) if enabled => {
-                            for event in events {
-                                let _ = outgoing.send(Event::Pressed {
-                                    generation,
-                                    key: event.shortcut().virtual_key,
-                                    modifiers: event.shortcut().modifiers,
-                                });
+                    Ok(Command::Sync {
+                        generation: next,
+                        bindings,
+                        enabled: active,
+                    }) => {
+                        generation = next;
+                        enabled = active;
+                        let result = (|| -> anyhow::Result<()> {
+                            // Remove obsolete identities before registering replacements,
+                            // just as se unregisters the old tag before the new chord.
+                            let registered = os.registered()?;
+                            for old in registered {
+                                if !bindings.iter().any(|b| {
+                                    b.key == old.virtual_key && b.modifiers == old.modifiers
+                                }) {
+                                    os.unregister(old.virtual_key, old.modifiers)?;
+                                }
                             }
-                        }
-                        Ok(_) => {}
-                        Err(error) => {
+                            for binding in &bindings {
+                                if !os.registered()?.iter().any(|old| {
+                                    old.virtual_key == binding.key
+                                        && old.modifiers == binding.modifiers
+                                        && old.argument == binding.mode.to_string()
+                                }) {
+                                    os.register(Shortcut {
+                                        virtual_key: binding.key,
+                                        modifiers: binding.modifiers,
+                                        argument: binding.mode.to_string(),
+                                    })?;
+                                }
+                            }
+                            if !os.registered()?.is_empty() {
+                                os.enable(active)?;
+                            }
+                            Ok(())
+                        })();
+                        if let Err(error) = result {
                             let _ = outgoing.send(Event::Failed {
                                 generation,
                                 error: format!("{error:#}"),
                             });
-                            break;
                         }
                     }
                 }
-                // Dropping the platform listener unregisters each owned accelerator.
-            })?;
-        Ok(Self { commands, events })
+                match os.drain() {
+                    Ok(events) if enabled => {
+                        for event in events {
+                            let _ = outgoing.send(Event::Pressed {
+                                generation,
+                                key: event.shortcut().virtual_key,
+                                modifiers: event.shortcut().modifiers,
+                            });
+                        }
+                    }
+                    Ok(_) => {}
+                    Err(error) => {
+                        let _ = outgoing.send(Event::Failed {
+                            generation,
+                            error: format!("{error:#}"),
+                        });
+                        break;
+                    }
+                }
+            }
+            // Dropping the platform listener unregisters each owned accelerator.
+        })?;
+        Ok(Self {
+            commands,
+            events,
+            canceled,
+            completed,
+        })
+    }
+}
+impl Drop for Session {
+    fn drop(&mut self) {
+        self.canceled.store(true, Ordering::Release);
     }
 }
 
@@ -241,6 +260,13 @@ fn restore_keys(draft: &mut Value, saved: &Value) {
 }
 
 impl SourceControls {
+    pub(super) fn prepare_camera_shortcuts_exit(&mut self) {
+        if let Some(session) = &self.camera_shortcuts.session {
+            session.canceled.store(true, Ordering::Release);
+        }
+        self.camera_shortcuts.requested = None;
+        self.camera_shortcuts.generation = self.camera_shortcuts.generation.wrapping_add(1);
+    }
     pub(super) fn restore_camera_shortcuts(&mut self, saved: &Value) {
         if !matches!(self.spec.product_id, 3594..=3596) {
             return;
@@ -272,6 +298,15 @@ impl SourceControls {
     }
 
     fn poll_camera_shortcuts(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(session) = &self.camera_shortcuts.session
+            && session.canceled.load(Ordering::Acquire)
+        {
+            if matches!(session.completed.try_recv(), Err(mpsc::TryRecvError::Empty)) {
+                return;
+            }
+            self.camera_shortcuts.session.take();
+            self.camera_shortcuts.requested = None;
+        }
         let scope = self.camera_runtime.queue.scope().cloned();
         // Zoom/pan edits do not affect registration. Keep the comparison small
         // and preserve domain preset modes rather than mutable list positions.
@@ -284,12 +319,20 @@ impl SourceControls {
             self.camera_shortcuts.requested = Some(requested);
             self.camera_shortcuts.error = None;
             if scope.is_none() {
-                self.camera_shortcuts.session.take();
+                // Keep one OS registration worker. Its ordered empty update
+                // unregisters the old scope before any replacement registers.
+                if let Some(session) = &self.camera_shortcuts.session {
+                    let _ = session.commands.send(Command::Sync {
+                        generation: self.camera_shortcuts.generation,
+                        bindings: Vec::new(),
+                        enabled: false,
+                    });
+                }
                 return;
             }
             let result = (|| -> anyhow::Result<()> {
                 if self.camera_shortcuts.session.is_none() {
-                    self.camera_shortcuts.session = Some(Session::new()?);
+                    self.camera_shortcuts.session = Some(Session::new(&self.camera_runtime.jobs)?);
                 }
                 let generation = self.camera_shortcuts.generation;
                 let enabled = self.listening.is_none();

@@ -1,14 +1,14 @@
 //! Actual brightness observation, independent of the local draft and source init setter.
+use super::keyboard_brightness_runtime::Scope;
 use super::*;
 use razer_discovery::direct;
-use razer_ipc::{ServiceClient, ServiceRequest};
 
 impl AppShell {
     pub(super) fn read_keyboard_brightness(
         &mut self,
         workspace: Entity<ProductWorkspace>,
         generation: u64,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         if !workspace
@@ -36,62 +36,45 @@ impl AppShell {
             return;
         };
         let route = (**route).clone();
-        let identity = workspace.read(cx).identity(cx);
-        let profile = device.active_profile.clone();
-        let revision = self.discovery_revision;
-        if !self.devices.contains(&workspace) {
+        let canceled = workspace
+            .read(cx)
+            .keyboard_brightness_cancellation_guard(generation, None, cx);
+        if self.close_requested || !self.devices.contains(&workspace) || canceled.is_none() {
             workspace.update(cx, |workspace, cx| {
                 workspace.finish_keyboard_brightness_read(
                     generation,
                     None,
-                    Some("设备页面已关闭".into()),
+                    Some("键盘亮度请求范围已关闭".into()),
                     false,
                     cx,
                 )
             });
             return;
         }
-        cx.spawn_in(window, async move |this, cx| {
-            let selected = route.clone();
-            let result = cx
-                .background_spawn(async move {
-                    let mut client = ServiceClient::spawn()?;
-                    let result = (|| {
-                        direct::request_keyboard_brightness(&mut client, &selected, None)
-                            .map(|reading| reading.percent)
-                    })();
-                    let shutdown_error = client
-                        .request(ServiceRequest::Shutdown)
-                        .err()
-                        .map(|error| format!("{error:#}"));
-                    result.map(|percent| (percent, shutdown_error))
-                })
-                .await;
-            let _ = this.update_in(cx, |this, _, cx| {
+        let canceled = canceled.expect("Current request has its cancellation owner");
+        let scope = Scope::new(&workspace, route, cx);
+        let completion_scope = scope.clone();
+        let completion_signal = canceled.clone();
+        let workspace = workspace.downgrade();
+        self.start_keyboard_brightness_operation(
+            scope,
+            None,
+            canceled,
+            move |this, result, cx| {
+                let Some(workspace) = workspace.upgrade() else {
+                    return;
+                };
                 if !workspace
                     .read(cx)
                     .keyboard_brightness_read_matches(generation, cx)
                 {
                     return;
                 }
-                let scope_current = this.devices.contains(&workspace)
-                    && this.discovery_revision == revision
-                    && workspace.read(cx).identity(cx) == identity
-                    && workspace.read(cx).device(cx).active_profile == profile
-                    && this.device_observations.iter().any(|current| {
-                        current.matches(workspace.read(cx).device(cx))
-                            && current.container().eq_ignore_ascii_case(route.container())
-                            && current.physical_product_id() == route.physical_product_id()
-                            && current.hid_node() == route.hid_node()
-                            && current.peer_product_id() == route.peer_product_id()
-                            && direct::keyboard_brightness_available(current)
-                    });
+                let scope_current = completion_scope.current(this, &completion_signal, cx);
                 // Edit revision is owned by the feature. It filters an old read
                 // without cancelling the user's queued write from this connection.
-                let (observed, error) = match result {
-                    Ok((percent, shutdown_error)) => (Some(percent), shutdown_error),
-                    Err(error) => (None, Some(format!("{error:#}"))),
-                };
+                let observed = result.observed();
+                let error = result.error();
                 workspace.update(cx, |workspace, cx| {
                     workspace.finish_keyboard_brightness_read(
                         generation,
@@ -107,8 +90,8 @@ impl AppShell {
                         cx.notify();
                     }
                 }
-            });
-        })
-        .detach();
+            },
+            cx,
+        );
     }
 }

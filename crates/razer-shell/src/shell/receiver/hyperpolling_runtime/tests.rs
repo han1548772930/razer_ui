@@ -27,6 +27,8 @@ impl Transport for Script {
             DeviceCommand::Edition => "edition",
             DeviceCommand::Indicator => "indicator",
             DeviceCommand::SetIndicator { .. } => "set",
+            DeviceCommand::Bindings => "bindings",
+            DeviceCommand::CancelScan => "cancel",
         });
         let (expected, result) = self
             .commands

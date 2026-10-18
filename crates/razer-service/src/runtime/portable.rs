@@ -18,10 +18,10 @@ enum HanboExchange<'a> {
     Telemetry,
     Startup(razer_device::hanbo_cooler::StartupQuery),
 }
-#[path = "keyboard_indicator.rs"]
-mod keyboard_indicator;
 #[path = "hyperpolling_receiver.rs"]
 mod hyperpolling_receiver;
+#[path = "keyboard_indicator.rs"]
+mod keyboard_indicator;
 #[path = "keyboard_latest_restore.rs"]
 mod keyboard_latest_restore;
 #[path = "keyboard_legacy_calibration.rs"]
@@ -406,7 +406,7 @@ impl PortableRuntime {
 
     pub(super) fn request(&mut self, request: ServiceRequest) -> anyhow::Result<Value> {
         match request {
-            ServiceRequest::HyperpollingReceiver { target, command } => self.hyperpolling_receiver(&target, command),
+            ServiceRequest::HyperpollingReceiver { target, command, transaction } => self.hyperpolling_receiver(&target, command, transaction),
             ServiceRequest::KeyboardIndicator { target, change } => {
                 self.keyboard_indicator(&target, &change)
             }

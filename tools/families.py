@@ -13422,6 +13422,7 @@ def receiver_179_local_sources(audit):
         return matches[0]
 
     ui, main, chunk, uma = original("ui", "main"), original("mw", "main"), original("mw", "6120"), original("mw", "rzDevice25LinkerUma")
+    hardware_parser = original("mw", "rzHardwareEventsProtocol25Parser")
     roles, exports = {}, {}
 
     def retain(role, source, needle, kinds=None):
@@ -13463,6 +13464,7 @@ def receiver_179_local_sources(audit):
         ("mw_default_profile", 21503, "DEFAULTPROFILE"),
         ("mw_default_document", 21503, "getDeviceDefaultLocalData"),
         ("mw_available_editions", 21503, "AVAILABLE_EDITION_ID"),
+        ("mw_runtime_window", 95524, "razerWindow"), ("mw_runtime_constants", 95524, "Pt"),
     ):
         exported(role, main, module, name)
     for role, module, name in (
@@ -13492,6 +13494,19 @@ def receiver_179_local_sources(audit):
     retain("mw_pairing_bind", chunk, "Se=(e,{payload:t})=>", {"variable_declarator"})
     retain("mw_pairing_unbind", chunk, "Te=(e,{payload:t})=>", {"variable_declarator"})
     retain("mw_pairing_hardware_completion", chunk, "Ee=(e,t,n,r=!0)=>", {"variable_declarator"})
+    retain("protocol_common_device", chunk, 'this.transactionId=0,this.sleepTimeBetweenOutIn=', {"class"})
+    retain("protocol_pairing_mouse_category", chunk, 'this.name="rzDevice25DualLinkKeyboard"', {"class_declaration"})
+    retain("protocol_pairing_keyboard_category", chunk, 'this.name="rzDevice25DualLinkMouse"', {"class_declaration"})
+    retain("protocol_hardware_parser", hardware_parser, 'this.parse=e=>', {"class"})
+    for role, module, name in (("hardware_records", 50652, "ZK"), ("hardware_event_ids", 50652, "J7"),
+                               ("hardware_connection_states", 50652, "E3")):
+        exported(role, chunk, module, name)
+    factory_binding = exports["mw_pairing_factory_selection"]["binding"]
+    for name in ("V", "z", "st"):
+        binding = audit.binding("pairing_factory_" + name, chunk, name, factory_binding["start_byte"] + 1)
+        if binding["resolution"] != "declaration":
+            raise ValueError("Current pairing category factory dependency is unresolved: " + name)
+        roles["pairing_factory_" + name] = [binding["owner_id"]]
     cancel = retain("mw_pairing_cancel", chunk, "DUALLINK_CANCEL:", {"pair"})[0]
     cancel_contract = receiver_cancel_scan_contract(audit, chunk, cancel)
     protocols = {}
@@ -13555,7 +13570,8 @@ def receiver_179_local_sources(audit):
             "macro_exclusive": "The shared macro gate allows updateLocalStorage without deviceAccess while exclusive recording runs. For this indicator task the outer deviceAccess guard therefore suppresses both persistence and SET, while the UI reducer retains its optimistic choice.",
             "pairing": "The mounted dialog queries BIND_INFO with an empty object, scans with status1 and uppercased category, binds mode1 plus the complete selected candidate, and unbinds the actual paired dongle ID. Hardware events drive scan/pair completion; transport acknowledgement alone does not confirm pairing.",
             "cancel": "Cancel ignores category, clears the source scanning flag and sends scan4 through the primary runtime instance even while idle. Starting a scan separately chooses a category factory. Cancel catches command failure for diagnostics; it does not fabricate a success response.",
-            "transport": "Uma inherits Linker transaction namespace224 and modulo31 sequence. Scan and pairing-mode command IDs clear namespace bits; other commands keep them. Its selected main channel uses reportId0, claimInterface0 and91-byte host writes. Complete Linker retries and base response matching are retained separately from UI status.",
+            "transport": "Uma inherits Linker transaction namespace224 and modulo31 sequence. On that instance scan and pairing-mode command IDs clear namespace bits; other commands keep them. Its selected main channel uses reportId0, claimInterface0 and91-byte host writes. Complete Linker retries and base response matching are retained separately from UI status.",
+            "pairing_transactions": "20236.f2(category,true) creates a fresh category instance when the primary PID is UMA. Its reversed map selects module14770 DualLinkKeyboard for MOUSE and module48320 DualLinkMouse for KEYBOARD. The former normally uses128|counter but clears namespace bits for scan/pair; the latter normally uses counter but sets128 for scan/pair. Fresh category instances start counter0. Primary Cancel instead retains the Linker counter and clears its224 namespace for scan4. Category instances are not the primary Linker instance.",
             "excluded_online": "Complete original factories include remote firmware-version/catalog orchestration. Those source branches are retained as evidence only and are excluded from local product dispatch under AGENTS.md.",
         }}
 
@@ -13567,12 +13583,37 @@ def audit_receiver_local_runtime(args):
         raise ValueError("receiver-local-runtime requires accessories main and only product179; it never executes vendor code")
     audit = host.HostLocalAudit()
     result = receiver_179_local_sources(audit)
+    implementation_paths = {
+        "protocol": ["crates/razer-device/src/receiver/hyperpolling_receiver.rs",
+            "crates/razer-device/src/receiver/hyperpolling_receiver_tests.rs"],
+        "discovery": ["crates/razer-discovery/src/receiver/hyperpolling.rs"],
+        "service": ["crates/razer-service/src/runtime/hyperpolling_receiver.rs",
+            "crates/razer-service/src/runtime/windows/receiver/hyperpolling_receiver.rs"],
+        "ipc": ["crates/razer-ipc/src/lib.rs", "crates/razer-ipc/src/device_tasks.rs",
+            "crates/razer-ipc/src/hyperpolling_receiver_tests.rs"],
+        "pages": ["crates/razer-pages/src/features/workspace/source_controls/hyperpolling_runtime.rs",
+            "crates/razer-pages/src/features/workspace/source_workspace/hyperpolling_runtime.rs",
+            "crates/razer-pages/src/features/workspace/product_workspace_hyperpolling.rs"],
+        "storage": ["crates/razer-storage/src/receiver/hyperpolling_profile.rs"],
+        "shell": ["crates/razer-shell/src/shell/receiver/hyperpolling_runtime.rs",
+            "crates/razer-shell/src/shell/receiver/hyperpolling_runtime/pairing.rs",
+            "crates/razer-shell/src/shell/receiver/hyperpolling_runtime/tests.rs"],
+        "integration": ["crates/razer-shell/src/shell.rs", "crates/razer-shell/src/shell/persistence.rs",
+            "crates/razer-shell/src/shell/devices/device_discovery.rs",
+            "crates/razer-shell/src/shell/receiver/receiver_pairing/standalone.rs"],
+    }
+    implementation = {layer: [identity(a.ROOT / name) for name in paths]
+                      for layer, paths in implementation_paths.items()}
     changed = audit.final_snapshot()
+    changed.extend(row["path"] for rows in implementation.values() for row in rows if not valid(row))
     if changed:
         raise ValueError("Current PID179 evidence changed during query: " + repr(changed))
     result.update(schema_version=1, recorded_at_utc=a.stamp(), product_id=179,
         tool=identity(Path(__file__)), parsers=audit.parser_versions, complete_owners=audit.owners,
         original_inputs=list(audit.sources.values()), artifacts=list(audit.artifacts.values()),
+        rust_implementation={"module_inputs": implementation,
+            "identity_verified": True, "equivalence_verification": "Reported separately by the owning Rust verification suites",
+            "ui_backend_connection": "Current page, shell, storage, IPC and platform owners are retained by byte identity; this source query does not execute their dispatch"},
         inputs_unchanged=True, target_execution=False, whole_page_complete=False,
         selected_chain_status="statically_traced", unresolved_chains=[],
         validation={"source_acquisition": "Current HTML, manifests, declared originals and actual bytes verified",

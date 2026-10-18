@@ -234,6 +234,7 @@ impl SourceControls {
             return;
         }
         let scope = self.camera_runtime.queue.scope().cloned();
+        let media_owner = self.camera_media_owner();
         // NU's source debounce owns the pending reset. Replacing the task or
         // unmounting/profile replacement cancels it before any device request.
         self.camera_footer.reset = Some(cx.spawn_in(window, async move |view, cx| {
@@ -241,7 +242,9 @@ impl SourceControls {
                 .timer(Duration::from_millis(300))
                 .await;
             let _ = view.update_in(cx, |this, window, cx| {
-                if this.camera_runtime.queue.scope() != scope.as_ref() {
+                if this.camera_runtime.queue.scope() != scope.as_ref()
+                    || !media_owner.is_some_and(|owner| this.camera_media_owner_is_current(owner))
+                {
                     return;
                 }
                 // All reset handlers replace view presets first. Pro then
