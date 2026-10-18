@@ -1152,7 +1152,7 @@ impl Render for SourceHelp {
                         .hover(|style| style.text_color(cx.theme().primary))
                         .child(div().underline().child(label))
                         .child(
-                            svg()
+                            razer_assets::resource_svg()
                                 .path(if self.view_more {
                                     "synapse/help-less.svg"
                                 } else {

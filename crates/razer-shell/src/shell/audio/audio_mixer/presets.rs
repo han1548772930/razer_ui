@@ -1,6 +1,6 @@
-//! Retained 1342 hotkey owner; registration, callbacks and cleanup are real IPC.
+//! Retained 1342 hotkey scope; registration, callbacks and cleanup share mapping ownership.
 use super::super::*;
-use razer_ipc::{ServiceClient, ServiceRequest};
+use razer_service::mapping::hotkeys::{Session as Hotkeys, Shortcut};
 use razer_pages::features::{PresetShortcutBinding, PresetShortcutRequest};
 use razer_service::mapping::mode_capture::{self, Reply as CaptureReply};
 use std::{
@@ -37,7 +37,7 @@ impl Session {
 }
 
 fn synchronize(
-    client: &mut ServiceClient,
+    client: &mut Hotkeys,
     current: &mut BTreeMap<(u32, u32), PresetShortcutBinding>,
     request: &PresetShortcutRequest,
     capture: &mut Option<mode_capture::Session>,
@@ -67,10 +67,7 @@ fn synchronize(
         .map(|(key, _)| *key)
         .collect::<Vec<_>>();
     for (key, modifiers) in removed {
-        match client.request(ServiceRequest::UnregisterShortcut {
-            vkey_code: key,
-            modifiers,
-        }) {
+        match client.unregister(key, modifiers) {
             Ok(_) => {
                 current.remove(&(key, modifiers));
             }
@@ -81,8 +78,8 @@ fn synchronize(
         if current.get(&identity) == Some(&binding) {
             continue;
         }
-        match client.request(ServiceRequest::RegisterShortcut {
-            vkey_code: identity.0,
+        match client.register(Shortcut {
+            virtual_key: identity.0,
             modifiers: identity.1,
             argument: String::new(),
         }) {
@@ -92,9 +89,7 @@ fn synchronize(
             Err(error) => errors.push(format!("Register shortcut {identity:?}: {error:#}")),
         }
     }
-    match client.request(ServiceRequest::EnableGlobalShortcuts {
-        enable: !request.capturing,
-    }) {
+    match client.enable(!request.capturing) {
         Ok(_) => {}
         Err(error) => errors.push(format!("Enable global shortcuts: {error:#}")),
     }
@@ -102,7 +97,7 @@ fn synchronize(
     Ok(())
 }
 fn run(receiver: Receiver<Command>, events: Sender<Message>) -> anyhow::Result<()> {
-    let mut client = ServiceClient::spawn()?;
+    let mut client = Hotkeys::start()?;
     let mut current = BTreeMap::<(u32, u32), PresetShortcutBinding>::new();
     let mut generation = 0;
     let mut capturing = false;
@@ -168,26 +163,9 @@ fn run(receiver: Receiver<Command>, events: Sender<Message>) -> anyhow::Result<(
             if current.is_empty() {
                 continue;
             }
-            let observed = client.request(ServiceRequest::ShortcutEvents)?;
-            for event in observed
-                .as_array()
-                .ok_or_else(|| anyhow::anyhow!("Shortcut owner returned an invalid event array"))?
-            {
-                let payload: serde_json::Value = serde_json::from_str(
-                    event["event"]
-                        .as_str()
-                        .ok_or_else(|| anyhow::anyhow!("Shortcut event JSON missing"))?,
-                )?;
-                let key = u32::try_from(
-                    payload["virtualKey"]
-                        .as_u64()
-                        .ok_or_else(|| anyhow::anyhow!("Shortcut key missing"))?,
-                )?;
-                let modifiers = u32::try_from(
-                    payload["modifiers"]
-                        .as_u64()
-                        .ok_or_else(|| anyhow::anyhow!("Shortcut modifiers missing"))?,
-                )?;
+            for event in client.drain()? {
+                let key = event.shortcut.virtual_key;
+                let modifiers = event.shortcut.modifiers;
                 if !capturing {
                     if let Some(binding) = current.get(&(key, modifiers)) {
                         let _ = events.send(Message::Trigger(generation, binding.clone()));
@@ -204,19 +182,16 @@ fn run(receiver: Receiver<Command>, events: Sender<Message>) -> anyhow::Result<(
             )));
         }
     }
-    // Attempt every removal even if another removal fails. Final worker exit
-    // drops its direct platform owner and releases its thread registrations.
+    // Attempt every removal even if another removal fails. Releasing this
+    // scope preserves registrations retained by other mapping consumers.
     for ((key, modifiers), _) in current {
-        if let Err(error) = client.request(ServiceRequest::UnregisterShortcut {
-            vkey_code: key,
-            modifiers,
-        }) {
+        if let Err(error) = client.unregister(key, modifiers) {
             let _ = events.send(Message::Error(format!(
                 "Shortcut cleanup failed: {error:#}"
             )));
         }
     }
-    if let Err(error) = client.request(ServiceRequest::Shutdown) {
+    if let Err(error) = client.close() {
         let _ = events.send(Message::Error(format!(
             "Shortcut worker shutdown failed: {error:#}"
         )));

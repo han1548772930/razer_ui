@@ -348,7 +348,7 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
     help_report_owner = "crates/razer-service/src/native/help_system_info.rs"
     independent_help_report = owner == help_report_owner or owner.startswith(
         "crates/razer-service/src/native/help_system_info/")
-    macro_native = "crates/razer-service/src/runtime/windows/macro_recording.rs"
+    macro_native = "crates/razer-service/src/runtime/windows/mapping_runtime/capture/recorder.rs"
     macro_receipts = "crates/razer-ipc/src/macro_recording.rs"
     mapping_receipts = "crates/razer-ipc/src/mapping_control.rs"
     mapping_control = mapping_workers + "control.rs"
@@ -1309,17 +1309,15 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                 expected = {("razer_ipc", "macro_recording", "SuspensionReceipt"), ("razer_ipc", "macro_recording", "RestoreReceipt")}
                 if not expected <= observed or not {"suspended", "global_shortcuts", "result"} <= called_methods(node):
                     fail(node, "macro_recorder_bypasses_typed_receipts", macro_receipts)
-            if owner == macro_native and name in {"suspend_macro_mappings", "resume_macro_mappings"}:
-                expected = "SuspensionReceipt" if name == "suspend_macro_mappings" else "RestoreReceipt"
-                if not any(resolved_call(parts) == ("razer_ipc", "macro_recording", expected, "new") for parts, _ in calls(node)):
-                    fail(node, "native_macro_receipt_bypasses_shared_contract", macro_receipts)
-            if owner == macro_native and name == "shutdown_macro_recording":
-                confirmations = [call for call in walk(node) if call.type == "call_expression"
-                    and call.child_by_field_name("function").type == "field_expression"
-                    and text(call.child_by_field_name("function").child_by_field_name("field")) == "and_then"
-                    and any(text(argument) == "confirm_mapping_restoration" for argument in call.child_by_field_name("arguments").named_children)]
-                if "resume_macro_mapping_receipts" not in called_methods(node) or not confirmations:
-                    fail(node, "native_macro_cleanup_accepts_unconfirmed_restore", macro_native + "::confirm_mapping_restoration")
+            if owner == macro_native and name == "recorder_request":
+                for expected in ("SuspensionReceipt", "RestoreReceipt"):
+                    if not any(resolved_call(parts) == ("razer_ipc", "macro_recording", expected, "new") for parts, _ in calls(node)):
+                        fail(node, "native_macro_receipt_bypasses_shared_contract", macro_receipts)
+            if owner == macro_native and name == "release_recorder":
+                methods = called_methods(node)
+                confirmations = [parts for parts, _ in calls(node) if parts[-1:] == ["confirmed"]]
+                if "restore" not in methods or not confirmations:
+                    fail(node, "native_macro_cleanup_accepts_unconfirmed_restore", macro_native + "::release_recorder")
             if owner == shortcut_owner:
                 methods = called_methods(node)
                 direct = calls(node)
@@ -8979,8 +8977,8 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("mapping-control-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mapping_control::tests"]),
         ("global-shortcuts-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "shortcuts::tests"]),
         ("global-shortcut-capture-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "global_shortcut_capture::tests"]),
-        ("global-shortcuts-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "global_shortcuts::tests"]),
-        ("mapping-control-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping_execution::tests"]),
+        ("global-shortcuts-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping_runtime::backend::tests"]),
+        ("mapping-control-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping::owner::tests"]),
         ("global-shortcut-capture-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "global_shortcut_capture::tests"]),
         ("mapping-connections", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "device_discovery::tests"]),
         ("profiles-transfer-codec", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "profile_transfer"]),
@@ -9044,7 +9042,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("mouse-philips-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mouse_tracking_tests::mouse_philips"]),
         ("mouse-philips-routing", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "philips"]),
         ("mouse-philips-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "runtime::mouse_philips_controller::tests::"]),
-        ("mouse-philips-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "philips_measurement::tests::"]),
+        ("mouse-philips-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping_runtime::philips::tests::"]),
         ("mouse-philips-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "shell::mouse_tracking::tests::philips"]),
         ("mouse-philips-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "calibration_70::state::"]),
         ("mouse-profile-source", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mouse_profile_source::tests"]),

@@ -1157,7 +1157,7 @@ impl AudioProductWorkspace {
                                 .text_size(css(14.))
                                 .text_color(C::text())
                                 .hover(|style| style.text_color(C::selected()))
-                                .child(svg().path("synapse/seiren-eq-reset.svg").size(css(20.)))
+                                .child(razer_assets::resource_svg().path("synapse/seiren-eq-reset.svg").size(css(20.)))
                                 .child(div().underline().child(label("Odj")))
                                 .on_click(cx.listener(|this, _, window, cx| {
                                     this.seiren_reset(false, window, cx)

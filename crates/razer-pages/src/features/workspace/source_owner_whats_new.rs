@@ -162,7 +162,7 @@ impl SourceHelpOwner {
                     .size(surface::css(24.))
                     .p_0()
                     .child(
-                        svg()
+                        razer_assets::resource_svg()
                             .path("synapse/owner-whats-new-close.svg")
                             .size(surface::css(24.)),
                     )

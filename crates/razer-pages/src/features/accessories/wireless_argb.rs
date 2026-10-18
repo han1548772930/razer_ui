@@ -48,7 +48,7 @@ fn icon_layer(layer: SharedString, size: f32) -> AnyElement {
         .justify_center()
         .items_center()
         .child(
-            svg()
+            razer_assets::resource_svg()
                 .path(layer)
                 .w(surface::css(size))
                 .h(surface::css(size)),
@@ -113,7 +113,7 @@ fn expanding_layer(asset: SharedString, scale: f32, opacity: f32) -> AnyElement 
         .items_center()
         .opacity(opacity)
         .child(
-            svg()
+            razer_assets::resource_svg()
                 .path(asset)
                 .w(surface::css(20. * scale))
                 .h(surface::css(20. * scale)),

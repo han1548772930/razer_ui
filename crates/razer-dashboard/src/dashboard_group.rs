@@ -1,7 +1,6 @@
 //! 55 CSS's independent max-height, translation, rotation and overflow channels.
 use gpui_kit::base::TestSupportExt as _;
 use gpui_kit::base::motion::{self, Discrete, Easing, Transition};
-use gpui_kit::component::Icon;
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_widgets::surface;
 use std::time::{Duration, Instant};
@@ -36,10 +35,11 @@ impl RenderOnce for CollapseIcon {
             .text_color(rgb(0x999999))
             .group_hover(self.id, |icon| icon.text_color(rgb(0xffffff)))
             .child(
-                Icon::default()
+                razer_assets::resource_svg()
                     .path("synapse/expand.svg")
                     .size(surface::css(10.))
-                    .transform(Transformation::rotate(radians(angle))),
+                    .flex_shrink_0()
+                    .with_transformation(Transformation::rotate(radians(angle))),
             )
     }
 }

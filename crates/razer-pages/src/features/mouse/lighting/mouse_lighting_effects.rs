@@ -72,7 +72,7 @@ impl EventEmitter<MouseLightingRequested> for MouseProductWorkspace {}
 struct MouseChromaInstallSpinner;
 impl RenderOnce for MouseChromaInstallSpinner {
     fn render(self, _: &mut Window, _: &mut App) -> impl IntoElement {
-        svg()
+        razer_assets::resource_svg()
             .path("synapse/keyboard-chroma-install-spinner.svg")
             .size(surface::css(16.))
             .text_color(Colors::background())

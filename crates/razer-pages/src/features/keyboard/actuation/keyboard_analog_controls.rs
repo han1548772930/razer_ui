@@ -467,7 +467,7 @@ impl KeyboardProductWorkspace {
                             .w(surface::css(13.)).h(surface::css(17.)).opacity(0.).text_color(Colors::delete_hover())
                             .when(!disabled, |button|button.group_hover(group,|button|button.opacity(1.)))
                             .focus_visible(|button|button.opacity(1.))
-                            .child(svg().path("synapse/keyboard-key-delete-active.svg").size_full())
+                            .child(razer_assets::resource_svg().path("synapse/keyboard-key-delete-active.svg").size_full())
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 this.analog_controls.configuration.interrupt.interrupts.retain(|key| key != &input);
                                 this.request_interrupt_configuration(cx);

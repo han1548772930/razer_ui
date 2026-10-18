@@ -63,7 +63,6 @@ pub(super) struct PortableRuntime {
     audio_notifications: crate::audio_notification::AudioNotifications,
     audio_router: crate::audio_router::AudioRouter,
     foreground_monitor: razer_platform::foreground_monitor::ForegroundMonitor,
-    global_shortcuts: razer_platform::global_shortcuts::GlobalShortcuts,
     controller_calibration: super::controller_calibration::Controller,
     controller_lighting: super::controller_lighting::Controller,
     keyboard_submission: super::keyboard_submission_controller::Controller,
@@ -108,7 +107,6 @@ impl PortableRuntime {
         cleanup.record("audio_notifications", self.audio_notifications.shutdown());
         cleanup.record("audio_router", self.audio_router.shutdown());
         cleanup.record("foreground_monitor", self.foreground_monitor.shutdown());
-        cleanup.record("global_shortcuts", self.global_shortcuts.shutdown());
         cleanup
     }
 
@@ -538,26 +536,6 @@ impl PortableRuntime {
                 self.controller_calibration.poll(&operation_id),
             ServiceRequest::ControllerTriggerCalibrationCancel { operation_id } =>
                 self.controller_calibration.cancel(&operation_id),
-            ServiceRequest::RegisterShortcut { vkey_code, modifiers, argument } => {
-                self.global_shortcuts.register(razer_platform::global_shortcuts::Shortcut {
-                    virtual_key:vkey_code, modifiers, argument,
-                })?;
-                Ok(json!({"registered":true,"vkey_code":vkey_code,"modifiers":modifiers}))
-            }
-            ServiceRequest::UnregisterShortcut { vkey_code, modifiers } => {
-                self.global_shortcuts.unregister(vkey_code,modifiers)?;
-                Ok(json!({"registered":false,"vkey_code":vkey_code,"modifiers":modifiers}))
-            }
-            ServiceRequest::EnableGlobalShortcuts { enable } => {
-                self.global_shortcuts.enable(enable)?;
-                Ok(json!({"enabled":enable}))
-            }
-            ServiceRequest::GlobalShortcuts => Ok(Value::Array(self.global_shortcuts.registered()?.into_iter().map(|s|
-                json!({"virtualKey":s.virtual_key,"modifiers":s.modifiers,"argument":s.argument})).collect())),
-            ServiceRequest::ShortcutEvents => Ok(Value::Array(self.global_shortcuts.drain()?.into_iter().map(|event| {
-                let shortcut=event.shortcut();
-                json!({"eventType":0,"event":json!({"virtualKey":shortcut.virtual_key,"modifiers":shortcut.modifiers,"argument":shortcut.argument}).to_string(),"timeTick":event.time_tick()})
-            }).collect())),
             ServiceRequest::AudioRoutingEnable { enable } => self.audio_router.enable(enable),
             ServiceRequest::AudioRouteDevice {
                 primary_device,

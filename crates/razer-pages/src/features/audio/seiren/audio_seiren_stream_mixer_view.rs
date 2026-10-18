@@ -135,8 +135,8 @@ impl Render for ChannelDragPreview {
                         .mb(css(10. * scale))
                         .items_center()
                         .justify_between()
-                        .child(svg().path(asset(pid, "menu")).size(css(16.)))
-                        .child(svg().path(asset(pid, "close")).size(css(12.))),
+                        .child(razer_assets::resource_svg().path(asset(pid, "menu")).size(css(16.)))
+                        .child(razer_assets::resource_svg().path(asset(pid, "close")).size(css(12.))),
                 )
                 .child(
                     div()
@@ -164,7 +164,7 @@ impl Render for ChannelDragPreview {
                         ]
                         .into_iter()
                         .map(|(field, icon)| {
-                            svg()
+                            razer_assets::resource_svg()
                                 .path(asset(
                                     pid,
                                     &format!(
@@ -187,19 +187,19 @@ impl Render for ChannelDragPreview {
                         .mb(css(10. * scale))
                         .items_center()
                         .gap(css(2.))
-                        .child(svg().path(asset(pid, "link-left")).w(css(20.)).h(css(12.)))
+                        .child(razer_assets::resource_svg().path(asset(pid, "link-left")).w(css(20.)).h(css(12.)))
                         .child(
-                            svg()
+                            razer_assets::resource_svg()
                                 .path(asset(pid, if linked { "link" } else { "unlink" }))
                                 .size(css(16. * scale)),
                         )
-                        .child(svg().path(asset(pid, "link-right")).w(css(20.)).h(css(12.))),
+                        .child(razer_assets::resource_svg().path(asset(pid, "link-right")).w(css(20.)).h(css(12.))),
                 );
         if configurable {
             let width = if self.connected { 118. } else { 100. };
             let mut footer = h_flex().w(css(118.)).h(css(27. * scale)).items_center();
             if !self.connected {
-                footer = footer.child(svg().path(asset(pid, "device-warning")).size(css(16.)));
+                footer = footer.child(razer_assets::resource_svg().path(asset(pid, "device-warning")).size(css(16.)));
             }
             // The mounted source uses native <select>. This mirrors the
             // retained Kit Select trigger without installing interactive state
@@ -876,7 +876,7 @@ impl AudioProductWorkspace {
                 .p_0()
                 .accessibility_label(title.clone())
                 .child(
-                    svg()
+                    razer_assets::resource_svg()
                         .path(asset(
                             pid,
                             &format!("{icon}{}", if muted { "-disabled" } else { "" }),
@@ -913,7 +913,7 @@ impl AudioProductWorkspace {
                     .p_0()
                     .accessibility_label(t("LISTEN"))
                     .child(
-                        svg()
+                        razer_assets::resource_svg()
                             .path(asset(
                                 pid,
                                 if listening { "listen" } else { "listen-disabled" },
@@ -1032,7 +1032,7 @@ impl AudioProductWorkspace {
                             .size(css(16.))
                             .p_0()
                             .accessibility_label(format!("Reorder {name}"))
-                            .child(svg().path(asset(pid, "menu")).size_full())
+                            .child(razer_assets::resource_svg().path(asset(pid, "menu")).size_full())
                             .on_drag(
                                 ChannelDrag {
                                     owner: owner_id,
@@ -1063,7 +1063,7 @@ impl AudioProductWorkspace {
                             .size(css(12.))
                             .p_0()
                             .accessibility_label(format!("Close {name}"))
-                            .child(svg().path(asset(pid, "close")).size_full())
+                            .child(razer_assets::resource_svg().path(asset(pid, "close")).size_full())
                             .on_click(cx.listener(move |this, _, window, cx| {
                                 this.remove_seiren_stream_mixer_channel(&remove_name, window, cx)
                             })),
@@ -1125,7 +1125,7 @@ impl AudioProductWorkspace {
                             }
                         ))
                         .child(
-                            svg()
+                            razer_assets::resource_svg()
                                 .path(asset(
                                     pid,
                                     &format!("{icon}{}", if muted { "-disabled" } else { "" }),
@@ -1147,7 +1147,7 @@ impl AudioProductWorkspace {
                     .mb(css(10. * scale))
                     .items_center()
                     .gap(css(2.))
-                    .child(svg().path(asset(pid, "link-left")).w(css(20.)).h(css(12.)))
+                    .child(razer_assets::resource_svg().path(asset(pid, "link-left")).w(css(20.)).h(css(12.)))
                     .child(
                         BaseButton::new(SharedString::from(format!("seiren-stream-link-{name}")))
                             .group(SharedString::from(format!("seiren-stream-link-{name}")))
@@ -1157,7 +1157,7 @@ impl AudioProductWorkspace {
                             .p_0()
                             .accessibility_label(text(pid, if linked { "_lP" } else { "psq" }))
                             .child(
-                                svg()
+                                razer_assets::resource_svg()
                                     .path(asset(pid, if linked { "link" } else { "unlink" }))
                                     .size_full()
                                     .group_hover(
@@ -1166,7 +1166,7 @@ impl AudioProductWorkspace {
                                     ),
                             )
                             .child(
-                                svg()
+                                razer_assets::resource_svg()
                                     .absolute()
                                     .top_0()
                                     .left_0()
@@ -1191,7 +1191,7 @@ impl AudioProductWorkspace {
                                 )
                             })),
                     )
-                    .child(svg().path(asset(pid, "link-right")).w(css(20.)).h(css(12.))),
+                    .child(razer_assets::resource_svg().path(asset(pid, "link-right")).w(css(20.)).h(css(12.))),
             )
             .on_drop(cx.listener(move |this, drag: &ChannelDrag, window, cx| {
                 if drag.owner == owner_id {
@@ -1239,7 +1239,7 @@ impl AudioProductWorkspace {
                             "seiren-stream-device-warning-{name}"
                         )))
                         .size(css(16.))
-                        .child(svg().path(asset(pid, "device-warning")).size(css(16.)))
+                        .child(razer_assets::resource_svg().path(asset(pid, "device-warning")).size(css(16.)))
                         .tooltip({
                             let tip = text(pid, "YHN");
                             move |window, cx| {
@@ -1628,7 +1628,7 @@ impl AudioProductWorkspace {
                             .text_size(css(16.))
                             .line_height(css(16.8))
                             .text_color(C::warning())
-                            .child(svg().path(asset(pid, "warning")).size(css(25.)))
+                            .child(razer_assets::resource_svg().path(asset(pid, "warning")).size(css(25.)))
                             .child(text(pid, "Ec2").to_uppercase()),
                     )
                     .child(

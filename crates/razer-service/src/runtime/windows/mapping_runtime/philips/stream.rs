@@ -1,6 +1,6 @@
 //! The hardware HID stream is distinct from filter-driver input notifications.
 //! Only actual protocol reports produce calibration samples.
-use anyhow::{Context, Result, ensure};
+use anyhow::{Result, ensure};
 use razer_device::{
     mouse_philips::measurement::{Input, parse_report},
     receiver_pairing::HardwareEvents,
@@ -69,20 +69,29 @@ impl Owner {
                 // has an independent result so it cannot conceal a released handle.
                 cleanup
             })?;
-        match initialized
-            .recv()
-            .context("Philips hardware initialization disconnected")?
-        {
-            Ok(()) => Ok(Self {
+        match initialized.recv() {
+            Ok(Ok(())) => Ok(Self {
                 stop,
                 events: receiver,
                 overflow,
                 worker: Some(worker),
                 cleanup_error: None,
             }),
-            Err(error) => {
-                let _ = worker.join();
-                anyhow::bail!(error);
+            result => {
+                stop.store(true, Ordering::Release);
+                let error = match result {
+                    Ok(Err(error)) => error,
+                    Err(error) => format!("Philips hardware initialization disconnected: {error}"),
+                    Ok(Ok(())) => unreachable!(),
+                };
+                let cleanup = worker
+                    .join()
+                    .map_err(|_| anyhow::anyhow!("Philips input worker panicked"))
+                    .and_then(|result| result);
+                match cleanup {
+                    Ok(()) => anyhow::bail!(error),
+                    Err(cleanup) => anyhow::bail!("{error}; input cleanup: {cleanup:#}"),
+                }
             }
         }
     }

@@ -64,7 +64,7 @@ fn render_node(node: &Node, pid: u32) -> AnyElement {
             .into_any_element();
     }
     if node.kind == "icon" {
-        return svg()
+        return razer_assets::resource_svg()
             .path("synapse/help-analog-info.svg")
             .size(surface::css(20.))
             .flex_shrink_0()
@@ -191,7 +191,7 @@ impl SourceHelpOwner {
             .size(surface::css(24.))
             .p_0()
             .child(
-                svg()
+                razer_assets::resource_svg()
                     .path("synapse/help-owner-close.svg")
                     .size(surface::css(24.)),
             )

@@ -432,7 +432,7 @@ impl SystemEditor {
                             cx.notify();
                         }))
                         .child(
-                            svg()
+                            razer_assets::resource_svg()
                                 .path(SharedString::from(spec().icons["delete"].clone()))
                                 .size(surface::css(20.))
                                 .text_color(C::delete()),
@@ -456,7 +456,7 @@ impl SystemEditor {
                 .size_full()
                 .p_0()
                 .child(
-                    svg()
+                    razer_assets::resource_svg()
                         .path(SharedString::from(spec().icons["add"].clone()))
                         .size(surface::css(20.))
                         .text_color(if menu_open { C::selected() } else { C::text() }),

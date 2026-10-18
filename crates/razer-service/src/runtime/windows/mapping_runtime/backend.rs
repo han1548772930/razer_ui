@@ -17,8 +17,22 @@ pub(super) struct ExecutionContext {
     pub notifications:mpsc::SyncSender<Notification>,
 }
 pub(super) struct Notification {pub caller:Uuid,pub input:String,pub output:String,pub tick:u64,pub global:bool}
-struct Registration {scope:Uuid,caller:Uuid,target:identity::Target,worker:device::Owner,document:Option<Value>,pending:VecDeque<Value>,failure:Option<String>,revision:Option<u64>,input_registered:bool,modes_removed:bool}
-struct Global {scope:Uuid,owner:String,revision:Option<u64>,execution_revision:Option<u64>,engine:Option<Value>,pending:VecDeque<razer_ipc::shortcuts::UnsupportedMapping>,failure:Option<String>}
+/// Each queue is bound to its connection generation. Overflow makes a drain
+/// fail without presenting a partial stream as a complete observation.
+struct Inbox<T> { generation:Uuid, pending:VecDeque<T>, overflow:bool }
+impl<T> Inbox<T> {
+    fn new(generation:Uuid)->Self {Self{generation,pending:VecDeque::new(),overflow:false}}
+    fn push(&mut self,generation:Uuid,value:T) {
+        if generation!=self.generation{return;}
+        if self.pending.len()==512 {self.overflow=true;}else{self.pending.push_back(value);}
+    }
+    fn drain(&mut self)->Result<Vec<T>> {
+        ensure!(!self.overflow,"Mapping event consumer fell behind; stream is incomplete");
+        Ok(self.pending.drain(..).collect())
+    }
+}
+struct Registration {scope:Uuid,caller:Uuid,target:identity::Target,worker:device::Owner,document:Option<Value>,pending:Inbox<Value>,failure:Option<String>,revision:Option<u64>,input_registered:bool,modes_removed:bool}
+struct Global {scope:Uuid,owner:String,revision:Option<u64>,execution_revision:Option<u64>,engine:Option<Value>,pending:Inbox<razer_ipc::shortcuts::UnsupportedMapping>,failure:Option<String>}
 pub(super) struct Core<E:device::Executor> {
     factory:fn(ExecutionContext)->Result<E>,
     macros:Arc<Mutex<State>>,
@@ -68,7 +82,7 @@ impl<E:device::Executor> Core<E> {
             let modes=self.modes.lock().map_err(|_|anyhow::anyhow!("Mapping modes poisoned"))?.remove_device(caller,tick);
             anyhow::bail!("Device execution initialization: {error:#}; driver cleanup: {release:?}; modes: {modes:?}");
         }};
-        self.devices.insert(owner.clone(),Registration{scope,caller,target,worker,document:None,pending:VecDeque::new(),failure:None,revision:None,input_registered:false,modes_removed:false});
+        self.devices.insert(owner.clone(),Registration{scope,caller,target,worker,document:None,pending:Inbox::new(caller),failure:None,revision:None,input_registered:false,modes_removed:false});
         let current=self.devices.get(&owner).unwrap();
         current.worker.mapping(self.mapping_suppression.is_empty())?;
         current.worker.shortcuts(self.shortcut_suppression.is_empty())?;
@@ -134,9 +148,7 @@ impl<E:device::Executor> Core<E> {
         ensure!(current.scope==scope && current.owner==owner,"Global shortcut owner changed");
         ensure!(current.revision.is_none_or(|old|revision>old),"Stale global shortcut publication");
         document.validate().map_err(anyhow::Error::msg)?;current.revision=Some(revision);
-        for(key,values) in [("synapseDefaultTurbos",document.default_turbos()),("synapseTurbos",document.synapse_turbos()),("synapseMacros",document.macros()),("synapsePhasedMacros",document.phased_macros())] {
-            self.publish_storage_value(key,&Value::Array(values.to_vec()))?;
-        }
+        publish_dependencies(&document,|key,value|self.publish_storage_value(key,value))?;
         let engine=document.app_engine().clone();
         self.replace_global_engine(Some(engine))?;
         Ok(serde_json::to_value(razer_ipc::shortcuts::PublicationReceipt::new(owner.into(),revision,true))?)
@@ -228,7 +240,7 @@ impl<E:device::Executor> philips::Host for Core<E> {
 
 impl Registration {
     fn push(&mut self,value:Value) {
-        if self.pending.len()<512 {self.pending.push_back(value);} else {self.failure.get_or_insert_with(||"Mapping event queue overflowed".into());}
+        self.pending.push(self.caller,value);
     }
 }
 impl<E:device::Executor> crate::mapping::owner::Backend for Backend<E> {
@@ -245,7 +257,7 @@ impl<E:device::Executor> crate::mapping::owner::Backend for Backend<E> {
                 self.poll()?;self.core.registration(scope,&owner_guid)?;
                 let row=self.core.devices.get_mut(&owner_guid).unwrap();
                 if let Some(error)=&row.failure {anyhow::bail!("{error}");}
-                Ok(json!({"owner_guid":owner_guid,"events":row.pending.drain(..).collect::<Vec<_>>()}))
+                Ok(json!({"owner_guid":owner_guid,"events":row.pending.drain()?}))
             }
             MappingDeviceHypershiftActive{owner_guid}=>{
                 self.core.registration(scope,&owner_guid)?.target.revalidate()?;
@@ -264,7 +276,7 @@ impl<E:device::Executor> crate::mapping::owner::Backend for Backend<E> {
             MacroRecorderStorageWrite{key,value}=>{self.core.publish_storage_value(&key,&value)?;Ok(json!({"key":key,"written":true}))}
             GlobalShortcutStart{owner_guid}=>{
                 Uuid::parse_str(&owner_guid)?;ensure!(self.core.global.is_none(),"Global shortcut owner already active");
-                self.core.global=Some(Global{scope,owner:owner_guid.clone(),revision:None,execution_revision:None,engine:None,pending:VecDeque::new(),failure:None});
+                self.core.global=Some(Global{scope,owner:owner_guid.clone(),revision:None,execution_revision:None,engine:None,pending:Inbox::new(scope),failure:None});
                 Ok(serde_json::to_value(razer_ipc::shortcuts::RegistrationReceipt::new(owner_guid,true))?)
             }
             GlobalShortcutPublish{owner_guid,revision,document}=>self.core.global_publish(scope,&owner_guid,revision,document),
@@ -272,7 +284,7 @@ impl<E:device::Executor> crate::mapping::owner::Backend for Backend<E> {
                 self.poll()?;let current=self.core.global.as_mut().context("Global shortcut owner absent")?;
                 ensure!(current.scope==scope && current.owner==owner_guid,"Global shortcut owner changed");
                 if let Some(error)=&current.failure {anyhow::bail!("{error}");}
-                Ok(serde_json::to_value(razer_ipc::shortcuts::EventBatch::new(owner_guid,current.pending.drain(..).collect()))?)
+                Ok(serde_json::to_value(razer_ipc::shortcuts::EventBatch::new(owner_guid,current.pending.drain()?))?)
             }
             GlobalShortcutStop{owner_guid}=>{
                 let current=self.core.global.as_ref().context("Global shortcut owner absent")?;
@@ -290,15 +302,15 @@ impl<E:device::Executor> crate::mapping::owner::Backend for Backend<E> {
                     ensure!(current.revision.is_none_or(|old|revision>old),"Stale mapping execution control");
                     self.core.devices.get_mut(&owner_guid).unwrap().revision=Some(revision);
                 }
-                let mut observations=Vec::new();let mut errors=Vec::new();
-                let result=self.core.mapping(scope,target.mapping_enabled());
-                let operation=if target.mapping_enabled(){mapping_control::Operation::EnableMapping}else{mapping_control::Operation::DisableMapping};
-                match result {Ok(reply)=>{if !reply.result(){errors.push(reply.reason().into());}observations.push(mapping_control::Observation::new(operation,reply.result(),reply.reason().into()));},Err(error)=>errors.push(format!("{error:#}"))}
-                if let Some(enabled)=target.global_shortcuts_enabled(){
-                    let operation=if enabled{mapping_control::Operation::EnableGlobalShortcuts}else{mapping_control::Operation::DisableGlobalShortcuts};
-                    match self.core.shortcuts(scope,enabled){Ok(reply)=>{if !reply.result(){errors.push(reply.reason().into());}observations.push(mapping_control::Observation::new(operation,reply.result(),reply.reason().into()));},Err(error)=>errors.push(format!("{error:#}"))}
-                }
-                ensure!(errors.is_empty(),"{}",errors.join("; "));
+                let observations=apply_execution(target,|operation| {
+                    let reply=match operation {
+                        mapping_control::Operation::EnableMapping=>self.core.mapping(scope,true),
+                        mapping_control::Operation::DisableMapping=>self.core.mapping(scope,false),
+                        mapping_control::Operation::EnableGlobalShortcuts=>self.core.shortcuts(scope,true),
+                        mapping_control::Operation::DisableGlobalShortcuts=>self.core.shortcuts(scope,false),
+                    }?;
+                    Ok(mapping_control::Observation::new(operation,reply.result(),reply.reason().into()))
+                })?;
                 Ok(serde_json::to_value(mapping_control::Receipt::with_observations(owner_guid,revision,target,observations))?)
             }
             EnableGlobalShortcuts{enable}=>{let reply=self.core.shortcuts(scope,enable)?;ensure!(reply.result(),"{}",reply.reason());Ok(json!({"enabled":enable}))}
@@ -332,7 +344,7 @@ impl<E:device::Executor> crate::mapping::owner::Backend for Backend<E> {
                             Ok(decoded)=>{
                                 use razer_device::mapping_native_events::NativeStreamInput;
                                 if let NativeStreamInput::Mouse(mouse)=decoded.input {
-                                    if decoded.kind==NativeStreamKind::Notify && mouse.packed_buttons()==1 { self.philips.input(scope,guid,philips::DriverEvent::LeftDown); }
+                                    if decoded.kind==NativeStreamKind::Notify && mouse.button_flags==1 { self.philips.input(scope,guid,philips::DriverEvent::LeftDown); }
                                     if decoded.kind==NativeStreamKind::Redirect && mouse.packed_buttons()!=0 {self.philips.input(scope,guid,philips::DriverEvent::Redirect);}
                                     if mouse.movement!=[0,0] {self.philips.input(scope,guid,philips::DriverEvent::MouseMove);}
                                 }
@@ -370,8 +382,7 @@ impl<E:device::Executor> crate::mapping::owner::Backend for Backend<E> {
             if let Some(row)=self.core.devices.values_mut().find(|row|row.caller==event.caller) {
                 if event.global {
                     if let Some(global)=self.core.global.as_mut(){
-                        if global.pending.len()<512 {global.pending.push_back(razer_ipc::shortcuts::UnsupportedMapping::new(serde_json::to_string(&row.target.info)?,event.input,event.output,event.tick));}
-                        else {global.failure=Some("Global shortcut event queue overflowed".into());}
+                        global.pending.push(global.scope,razer_ipc::shortcuts::UnsupportedMapping::new(serde_json::to_string(&row.target.info)?,event.input,event.output,event.tick));
                     }
                 } else {row.push(json!({"deviceInfo":row.target.info,"deviceEventType":2,"jsonEvent":{"type":"unsupportedmapping","input":event.input,"output":event.output},"timeTick":event.tick}));}
             }
@@ -443,3 +454,31 @@ impl<E:device::Executor> crate::mapping::owner::Backend for Backend<E> {
         ensure!(errors.is_empty(),"{}",errors.join("; "));Ok(())
     }
 }
+
+fn publish_dependencies(document:&razer_model::shortcuts::CompiledDocument,mut publish:impl FnMut(&str,&Value)->Result<()>)->Result<()> {
+    for(key,values) in [("synapseDefaultTurbos",document.default_turbos()),("synapseTurbos",document.synapse_turbos()),("synapseMacros",document.macros()),("synapsePhasedMacros",document.phased_macros())] {
+        publish(key,&Value::Array(values.to_vec()))?;
+    }
+    Ok(())
+}
+fn execution_confirmed(observation:&mapping_control::Observation)->bool {
+    use mapping_control::Operation::*;
+    observation.result() || matches!((observation.operation(),observation.reason()),
+        (EnableMapping,"already enabled")|(DisableMapping,"already disabled")|(EnableGlobalShortcuts,"hotkey was not disabled"))
+}
+fn apply_execution(target:mapping_control::Target,mut apply:impl FnMut(mapping_control::Operation)->Result<mapping_control::Observation>)->Result<Vec<mapping_control::Observation>> {
+    use mapping_control::Operation::*;
+    let mut operations=vec![if target.mapping_enabled(){EnableMapping}else{DisableMapping}];
+    if let Some(enabled)=target.global_shortcuts_enabled(){operations.push(if enabled{EnableGlobalShortcuts}else{DisableGlobalShortcuts});}
+    let mut observations=Vec::new();let mut errors=Vec::new();
+    for operation in operations {
+        match apply(operation) {
+            Ok(observation)=>{if !execution_confirmed(&observation){errors.push(observation.reason().to_owned());}observations.push(observation);}
+            Err(error)=>errors.push(format!("{error:#}")),
+        }
+    }
+    ensure!(errors.is_empty(),"{}",errors.join("; "));Ok(observations)
+}
+#[cfg(test)]
+#[path="backend/tests.rs"]
+mod tests;

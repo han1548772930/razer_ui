@@ -1292,7 +1292,7 @@ class ArchitectureBoundaryTests(unittest.TestCase):
 
     def test_macro_receipt_producer_and_consumer_share_typed_ipc_contracts(self):
         recorder = "crates/razer-service/src/mapping/recorder.rs"
-        native = "crates/razer-service/src/runtime/windows/macro_recording.rs"
+        native = "crates/razer-service/src/runtime/windows/mapping_runtime/capture/recorder.rs"
         contracts = "crates/razer-ipc/src/macro_recording.rs"
         for name in ("SuspensionReceipt", "RestoreReceipt", "ActionReply"):
             source = 'pub struct ' + name + ' { value: bool }'
@@ -1306,14 +1306,15 @@ class ArchitectureBoundaryTests(unittest.TestCase):
         for changed in (source.replace('let restored: Restored', 'let restored'), source.replace('decode(reply)?', 'local_decode(reply)?'),
                         source.replace('restored.global_shortcuts().result()', 'restored.result()')):
             self.assertEqual(self.inspect(changed, recorder)[0]["kind"], "macro_recorder_bypasses_typed_receipts")
-        for method, contract in (("suspend_macro_mappings", "SuspensionReceipt"), ("resume_macro_mappings", "RestoreReceipt")):
-            source = 'use razer_ipc::macro_recording::' + contract + ' as Receipt; impl NativeRuntime { fn ' + method + '() { Receipt::new(value); } }'
-            self.assertFalse(self.inspect(source, native))
-            self.assertEqual(self.inspect(source.replace('Receipt::new', 'Other::new'), native)[0]["kind"], "native_macro_receipt_bypasses_shared_contract")
-        source = 'fn shutdown_macro_recording() { self.resume_macro_mapping_receipts().and_then(confirm_mapping_restoration); }'
+        source = ('use razer_ipc::macro_recording::{SuspensionReceipt as Paused, RestoreReceipt as Restored}; '
+                  'fn recorder_request() { Paused::new(value); Restored::new(value); }')
         self.assertFalse(self.inspect(source, native))
-        self.assertEqual(self.inspect(source.replace('confirm_mapping_restoration', 'ignore_source_false'), native)[0]["kind"], "native_macro_cleanup_accepts_unconfirmed_restore")
-        self.assertFalse(self.inspect('fn unrelated() { self.resume_macro_mapping_receipts(); }', native))
+        for changed in (source.replace('Paused::new', 'Other::new'), source.replace('Restored::new', 'Other::new')):
+            self.assertEqual(self.inspect(changed, native)[0]["kind"], "native_macro_receipt_bypasses_shared_contract")
+        source = 'fn release_recorder() { let receipts = recorder.restore(host)?; confirmed(receipts.0)?; }'
+        self.assertFalse(self.inspect(source, native))
+        self.assertEqual(self.inspect(source.replace('confirmed(receipts.0)', 'ignore_source_false(receipts.0)'), native)[0]["kind"], "native_macro_cleanup_accepts_unconfirmed_restore")
+        self.assertFalse(self.inspect('fn unrelated() { self.restore(); }', native))
 
     def test_mapping_suppression_receipts_keep_owner_revision_and_target_through_aliases(self):
         contract = "crates/razer-ipc/src/mapping_control.rs"
@@ -2286,7 +2287,7 @@ class ArchitectureBoundaryTests(unittest.TestCase):
                       "crates/razer-service/src/runtime/windows/global_shortcut_capture.rs",
                       "crates/razer-pages/src/features/workspace/product_workspace.rs",
                       "crates/razer-pages/src/features/workspace/source_workspace/lifecycle.rs",
-                      "crates/razer-ipc/src/macro_recording.rs", "crates/razer-service/src/runtime/windows/macro_recording.rs",
+                      "crates/razer-ipc/src/macro_recording.rs", "crates/razer-service/src/runtime/windows/mapping_runtime/capture/recorder.rs",
                       "crates/razer-device/src/profile_transfer.rs",
                       "crates/razer-model/src/profile_transfer.rs", "crates/razer-storage/src/file_transfer.rs",
                       "crates/razer-storage/src/discovery_diagnostics.rs", "crates/razer-platform/src/observation/discovery_diagnostics.rs",

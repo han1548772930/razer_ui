@@ -91,8 +91,9 @@ impl<T: NativeSessionTransport> Driver<T> {
         Ok((self.events.drain(..).collect(), self.stream_error.take()))
     }
 
-    fn poll_motion(&mut self) {
-        let result = self.motion.poll_outputs(&mut self.session, Duration::ZERO);
+    fn poll_motion(&mut self) { self.poll_motion_for(Duration::ZERO); }
+    fn poll_motion_for(&mut self, timeout: Duration) {
+        let result = self.motion.poll_outputs(&mut self.session, timeout);
         let mut errors = Vec::new();
         for observation in result.observations {
             match observation.completion {
@@ -194,8 +195,11 @@ impl<T: NativeSessionTransport> Driver<T> {
             if let Err(error) = self.set_enabled(false) { errors.push(format!("Disable hooks: {error:#}")); }
         }
         self.motion.begin_disconnect(&mut self.session).context("Begin mapping driver drain")?;
+        while self.motion.pending_output_count()!=0 {
+            self.poll_motion_for(Duration::from_millis(16));
+        }
+        if let Some(error)=self.stream_error.take() { errors.push(error); }
         loop {
-            self.poll_motion();
             match self.session.poll_disconnect(Duration::from_millis(16))? {
                 NativeCompletion::Pending => {}
                 NativeCompletion::Completed(result) => {

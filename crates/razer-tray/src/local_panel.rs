@@ -103,7 +103,7 @@ impl TrayPopup {
                     .on_hover(cx.listener(|this, hovered, _, cx| this.hover_settings(*hovered, cx)))
                     .on_click(cx.listener(|this, _, _, _| this.command("settings-quick-panel")))
                     .child(
-                        svg()
+                        razer_assets::resource_svg()
                             .path("synapse/tray-settings-current.svg")
                             .w(surface::css(14.026))
                             .h(surface::css(14.))

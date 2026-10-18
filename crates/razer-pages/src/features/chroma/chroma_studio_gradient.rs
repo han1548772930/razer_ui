@@ -493,7 +493,7 @@ impl StudioGradient {
                                 .w(surface::css(8.))
                                 .h(surface::css(4.))
                                 .child(
-                                    svg()
+                                    razer_assets::resource_svg()
                                         .path("synapse/chroma-studio-brightness-pointer.svg")
                                         .size_full()
                                         .text_color(Colors::white()),
@@ -582,7 +582,7 @@ impl StudioGradient {
                                     style.bg(transparent_black()).text_color(Colors::selected())
                                 })
                                 .child(
-                                    svg()
+                                    razer_assets::resource_svg()
                                         .path("synapse/chroma-studio-trash-white.svg")
                                         .size_full(),
                                 )

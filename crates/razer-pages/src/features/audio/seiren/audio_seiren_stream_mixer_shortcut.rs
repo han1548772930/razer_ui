@@ -397,7 +397,7 @@ impl AudioProductWorkspace {
                         .mr(surface::css(10.))
                         .flex_shrink_0()
                         .child(
-                            svg()
+                            razer_assets::resource_svg()
                                 .path(view::asset(self.spec.product_id, "shortcut-warning"))
                                 .size_full(),
                         )

@@ -922,7 +922,7 @@ impl Render for BannerEditor {
                     .text_color(Colors::text())
                     .hover(|s| s.text_color(Colors::selected()))
                     .child(
-                        svg()
+                        razer_assets::resource_svg()
                             .path(spec().icons["increase"].clone())
                             .size(surface::css(27.)),
                     )
@@ -934,7 +934,7 @@ impl Render for BannerEditor {
                     .text_color(Colors::text())
                     .hover(|s| s.text_color(Colors::selected()))
                     .child(
-                        svg()
+                        razer_assets::resource_svg()
                             .path(spec().icons["decrease"].clone())
                             .size(surface::css(27.)),
                     )

@@ -120,7 +120,7 @@ impl GamepadProductWorkspace {
                                     .child(t("LOW_DEADZONE_INFO_TITLE")),
                             )
                             .child(
-                                svg()
+                                razer_assets::resource_svg()
                                     .path("synapse/history-back.svg")
                                     .size(surface::css(20.))
                                     .text_color(Colors::text())

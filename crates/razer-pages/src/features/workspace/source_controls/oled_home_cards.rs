@@ -307,7 +307,7 @@ fn card_action(
         .font_weight(FontWeight::NORMAL)
         .text_color(color)
         .child(
-            svg()
+            razer_assets::resource_svg()
                 .path(icon)
                 .size(surface::css(24.))
                 .mb(surface::css(8.))

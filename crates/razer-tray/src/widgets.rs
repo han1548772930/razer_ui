@@ -307,7 +307,7 @@ pub fn widget_row_with_click(
                             .justify_center()
                             .child(if matches!(battery, TrayWidgetBattery::Off) {
                                 // CSS uses the SVG alpha as a 26px red mask.
-                                svg()
+                                razer_assets::resource_svg()
                                     .path(battery.icon_path())
                                     .size(surface::css(26.))
                                     .text_color(rgb(0xff0000))

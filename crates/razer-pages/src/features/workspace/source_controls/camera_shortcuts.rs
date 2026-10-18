@@ -3,7 +3,7 @@
 //! local OS state; its receipt is neither a profile save nor a camera write.
 use super::*;
 use razer_device::camera_submission::CameraScope;
-use razer_platform::global_shortcuts::{GlobalShortcuts, Shortcut};
+use razer_service::mapping::hotkeys::{Session as Hotkeys, Shortcut};
 use std::{
     sync::{
         Arc,
@@ -111,7 +111,13 @@ impl Session {
         let canceled = Arc::new(AtomicBool::new(false));
         let signal = canceled.clone();
         let completed = jobs.spawn("camera-preset-shortcuts", canceled.clone(), move || {
-            let mut os = GlobalShortcuts::default();
+            let mut os = match Hotkeys::start() {
+                Ok(owner) => owner,
+                Err(error) => {
+                    let _ = outgoing.send(Event::Failed { generation: 0, error: format!("{error:#}") });
+                    return;
+                }
+            };
             let mut generation = 0;
             let mut enabled = true;
             while !signal.load(Ordering::Acquire) {
@@ -194,8 +200,8 @@ impl Session {
                         for event in events {
                             let _ = outgoing.send(Event::Pressed {
                                 generation,
-                                key: event.shortcut().virtual_key,
-                                modifiers: event.shortcut().modifiers,
+                                key: event.shortcut.virtual_key,
+                                modifiers: event.shortcut.modifiers,
                             });
                         }
                     }
@@ -209,7 +215,9 @@ impl Session {
                     }
                 }
             }
-            // Dropping the platform listener unregisters each owned accelerator.
+            if let Err(error) = os.close() {
+                let _ = outgoing.send(Event::Failed { generation, error: format!("Shortcut cleanup: {error:#}") });
+            }
         })?;
         Ok(Self {
             commands,

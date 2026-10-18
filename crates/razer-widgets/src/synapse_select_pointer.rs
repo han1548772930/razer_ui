@@ -89,10 +89,11 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
                     .items_center()
                     .justify_center()
                     .child(
-                        Icon::default()
+                        razer_assets::resource_svg()
                             .path("synapse/expand.svg")
                             .size(css(10.))
-                            .transform(Transformation::rotate(radians(arrow))),
+                            .flex_shrink_0()
+                            .with_transformation(Transformation::rotate(radians(arrow))),
                     ),
             )
             .on_click(cx.listener(move |this, event, window, cx| {

@@ -463,7 +463,7 @@ impl ArmoryPage {
                                 cx.theme().transparent
                             })
                             .child(
-                                svg()
+                                razer_assets::resource_svg()
                                     .path("synapse/armory-filter.svg")
                                     .size(surface::css(24.))
                                     .text_color(if self.filter_open {
@@ -526,7 +526,7 @@ impl ArmoryPage {
                             cx.theme().transparent
                         })
                         .child(
-                            svg()
+                            razer_assets::resource_svg()
                                 .path("synapse/armory-sort.svg")
                                 .size(surface::css(24.))
                                 .text_color(if self.sort_open {

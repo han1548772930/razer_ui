@@ -8,52 +8,22 @@ pub(super) struct CaptureKey {
     #[serde(rename = "inputID")]
     pub(super) input_id: Option<String>,
     #[serde(rename = "type")]
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "Preserves the complete mounted recorder key schema"
-        )
-    )]
-    key_type: String,
+    pub(super) key_type: String,
     pub(super) scancode: u32,
     #[serde(rename = "virtualKey")]
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "Capture uses keyCode; the source virtualKey is retained separately"
-        )
-    )]
-    virtual_key: String,
+    pub(super) virtual_key: String,
     #[serde(rename = "keyCode")]
     pub(super) key_code: String,
     pub(super) flag: u32,
     #[serde(rename = "outputFlag")]
     pub(super) output_flag: Option<u32>,
     #[serde(rename = "pageID")]
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "Preserves optional source HID page metadata")
-    )]
-    page_id: Option<String>,
+    pub(super) page_id: Option<String>,
     #[serde(rename = "HID")]
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "Preserves optional source HID usage metadata")
-    )]
-    hid: Option<String>,
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "Preserves the source modifier annotation")
-    )]
-    modifier: Option<String>,
+    pub(super) hid: Option<String>,
+    pub(super) modifier: Option<String>,
     #[serde(rename = "ExtendedKey")]
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "Preserves the source extended key annotation")
-    )]
-    extended_key: Option<String>,
+    pub(super) extended_key: Option<String>,
 }
 
 pub(super) fn keys() -> &'static [CaptureKey] {

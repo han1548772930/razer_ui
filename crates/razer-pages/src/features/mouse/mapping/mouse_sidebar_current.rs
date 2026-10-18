@@ -782,7 +782,7 @@ impl MouseProductWorkspace {
                         &policy.filters[self.sidebar_current_state.selected_type].content,
                     )))
                     .child(
-                        svg()
+                        razer_assets::resource_svg()
                             .path(self.current_sidebar_expand_asset())
                             .text_color(PanelColors::icon())
                             .size(surface::css(10.))

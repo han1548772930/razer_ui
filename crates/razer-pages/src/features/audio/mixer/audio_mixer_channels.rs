@@ -460,7 +460,7 @@ impl AudioProductWorkspace {
                             .border_color(C::border())
                             .rounded(surface::css(5.))
                             .child(
-                                svg()
+                                razer_assets::resource_svg()
                                     .path("synapse/audio-mixer-output-info.svg")
                                     .size(surface::css(20.))
                                     .text_color(C::text()),
@@ -478,7 +478,7 @@ impl AudioProductWorkspace {
                                     .top(surface::css(5.))
                                     .accessibility_label("Close alert")
                                     .child(
-                                        svg()
+                                        razer_assets::resource_svg()
                                             .path("synapse/audio-mixer-mic-preview-close.svg")
                                             .size(surface::css(18.)),
                                     )
@@ -626,7 +626,7 @@ impl AudioProductWorkspace {
                             .w_full()
                             .accessibility_label(t(label))
                             .child(
-                                svg()
+                                razer_assets::resource_svg()
                                     .path(if muted {
                                         "synapse/audio-mixer-route-mute.svg"
                                     } else {

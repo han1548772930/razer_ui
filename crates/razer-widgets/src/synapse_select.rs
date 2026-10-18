@@ -5,7 +5,7 @@
 use gpui_kit::base::motion::{self, Easing, Presence, Sequence, Transition};
 use gpui_kit::base::{DeferredPopover, GlobalState, Popover, Popup, Select as BaseSelect};
 use gpui_kit::component::{
-    ActiveTheme, Disableable, ElementExt, Icon, IndexPath, Selectable, StyledExt,
+    ActiveTheme, Disableable, ElementExt, IndexPath, Selectable, StyledExt,
     list::{List, ListDelegate, ListState},
     select::{SelectEvent, SelectItem, SelectState},
 };
@@ -464,11 +464,12 @@ impl<I: SelectItem<Value = String> + 'static> Render for SynapseSelectView<I> {
                     .items_center()
                     .justify_center()
                     .child(
-                        Icon::default()
+                        razer_assets::resource_svg()
                             .path("synapse/expand.svg")
                             .size(css(10.))
                             .when(alexa, |this| this.text_color(AlexaColors::dropdown_arrow()))
-                            .transform(Transformation::rotate(radians(motion::transition(
+                            .flex_shrink_0()
+                            .with_transformation(Transformation::rotate(radians(motion::transition(
                                 (self.id.clone(), "arrow-angle"),
                                 if open { std::f32::consts::PI } else { 0. },
                                 if alexa {

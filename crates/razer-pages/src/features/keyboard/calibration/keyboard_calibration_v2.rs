@@ -1214,7 +1214,7 @@ impl KeyboardProductWorkspace {
                     .w(surface::css(40.))
                     .h(surface::css(36.))
                     .child(
-                        svg()
+                        razer_assets::resource_svg()
                             .path("synapse/mapping-close.svg")
                             .size(surface::css(24.)),
                     )

@@ -170,7 +170,7 @@ impl SourceHelpOwner {
                             .hover(|style| style.text_color(Colors::accent()))
                             .child(msg(&row.card.help))
                             .child(
-                                svg()
+                                razer_assets::resource_svg()
                                     .path("synapse/owner-smart-switch-support.svg")
                                     .w(surface::css(20.))
                                     .h(surface::css(16.)),
@@ -238,7 +238,7 @@ impl SourceHelpOwner {
                                 cx.notify();
                             }))
                             .child(
-                                svg()
+                                razer_assets::resource_svg()
                                     .path(row.tooltip_asset.clone())
                                     .size(surface::css(15.)),
                             ),
@@ -417,7 +417,7 @@ impl SourceHelpOwner {
                     .text_color(Colors::note_text())
                     .hover(|style| style.text_color(Colors::text()))
                     .child(
-                        svg()
+                        razer_assets::resource_svg()
                             .path("synapse/owner-smart-switch-close.svg")
                             .size(surface::css(22.)),
                     )

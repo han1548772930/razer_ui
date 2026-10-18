@@ -132,7 +132,7 @@ impl DeviceWorkspace {
                         .hover(|s| s.text_color(cx.theme().primary))
                         .child(div().underline().child(view_more_label))
                         .child(
-                            svg()
+                            razer_assets::resource_svg()
                                 .path(if self.help.view_more {
                                     "synapse/help-less.svg"
                                 } else {

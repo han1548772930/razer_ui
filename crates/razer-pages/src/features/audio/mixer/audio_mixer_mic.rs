@@ -51,7 +51,7 @@ impl AudioProductWorkspace {
                         .justify_center()
                         .accessibility_label(t("MIC_SETUP_MODE"))
                         .child(
-                            svg()
+                            razer_assets::resource_svg()
                                 .path("synapse/audio-mixer-mic-preview.svg")
                                 .w(surface::css(12.))
                                 .h(surface::css(19.))
@@ -98,7 +98,7 @@ impl AudioProductWorkspace {
                                         .text_color(C::text())
                                         .accessibility_label(t("CLOSE"))
                                         .child(
-                                            svg()
+                                            razer_assets::resource_svg()
                                                 .path("synapse/audio-mixer-mic-preview-close.svg")
                                                 .size(surface::css(15.))
                                                 .text_color(C::text()),

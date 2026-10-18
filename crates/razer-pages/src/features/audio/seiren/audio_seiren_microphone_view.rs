@@ -615,7 +615,7 @@ impl AudioProductWorkspace {
                     .hover(|style| style.text_color(C::selected()))
                     .accessibility_label(t("MICROPHONE"))
                     .child(
-                        svg()
+                        razer_assets::resource_svg()
                             .path(if muted {
                                 "synapse/seiren-eq-mic-off.svg"
                             } else {

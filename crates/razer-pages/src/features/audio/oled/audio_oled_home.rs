@@ -543,7 +543,7 @@ fn card_action(
         .line_height(surface::css(14.))
         .text_color(color)
         .child(
-            svg()
+            razer_assets::resource_svg()
                 .path(icon)
                 .size(surface::css(24.))
                 .m(surface::css(8.))

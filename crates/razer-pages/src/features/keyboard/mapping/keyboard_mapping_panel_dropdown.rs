@@ -199,7 +199,7 @@ impl RenderOnce for Control {
                             .items_center()
                             .justify_center()
                             .child(
-                                svg()
+                                razer_assets::resource_svg()
                                     .path(metadata.arrow.clone())
                                     .text_color(rgb(0x999999))
                                     .size(surface::css(10.))

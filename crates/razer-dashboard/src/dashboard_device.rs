@@ -640,7 +640,7 @@ impl RenderOnce for DashboardBattery {
                             .into_any_element(),
                         // background-size:20px does not size a CSS mask. This
                         // viewBox-only mask fills its 26px positioning area.
-                        Icon::Power(color) => svg()
+                        Icon::Power(color) => razer_assets::resource_svg()
                             .path("synapse/battery-off.svg")
                             .size(css(26.))
                             .text_color(rgb(color))
@@ -651,7 +651,7 @@ impl RenderOnce for DashboardBattery {
                             .size(css(26.))
                             .overflow_hidden()
                             .child(
-                                svg()
+                                razer_assets::resource_svg()
                                     .absolute()
                                     .left_0()
                                     .top_0()

@@ -445,7 +445,7 @@ impl AudioProductWorkspace {
                 .p_0()
                 .text_color(C::text())
                 .hover(|style| style.text_color(C::selected()))
-                .child(svg().path("synapse/seiren-eq-flat.svg").size_full())
+                .child(razer_assets::resource_svg().path("synapse/seiren-eq-flat.svg").size_full())
                 .on_click(cx.listener(|this, _, window, cx| this.seiren_reset(true, window, cx))),
         );
         let mut frequency_axis = div()
@@ -632,7 +632,7 @@ pub(super) fn fader(
                 .hover(|style| style.text_color(C::selected()))
                 .accessibility_label(label(if index == 0 { "$Qz" } else { "Rp1" }))
                 .child(
-                    svg()
+                    razer_assets::resource_svg()
                         .path(SharedString::from(format!(
                             "synapse/seiren-eq-{name}{}.svg",
                             if muted { "-off" } else { "" }

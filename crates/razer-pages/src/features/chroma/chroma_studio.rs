@@ -1114,7 +1114,7 @@ impl ChromaStudio {
                                     || !matches!(self.tool.as_str(), "pen" | "bucket"),
                             )
                             .child(
-                                svg()
+                                razer_assets::resource_svg()
                                     .path(SharedString::from(source().assets["icon_reset"].clone()))
                                     .size_full(),
                             )

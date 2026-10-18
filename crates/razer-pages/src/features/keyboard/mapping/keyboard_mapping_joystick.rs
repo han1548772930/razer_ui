@@ -296,7 +296,7 @@ fn dropdown(
                             .child(label),
                     )
                     .child(
-                        svg()
+                        razer_assets::resource_svg()
                             .path("synapse/expand.svg")
                             .w(surface::css(10.))
                             .h(surface::css(5.))

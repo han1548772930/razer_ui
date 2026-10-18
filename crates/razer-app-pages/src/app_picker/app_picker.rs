@@ -942,7 +942,7 @@ impl RenderOnce for PickerTile {
                     .when(item.busy, |text| {
                         text.child(
                             div().ml(css(5.)).child(
-                                svg()
+                                razer_assets::resource_svg()
                                     .path("synapse/app-picker-spinner.svg")
                                     .size(css(16.))
                                     .text_color(cx.theme().primary)

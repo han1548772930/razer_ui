@@ -339,7 +339,7 @@ pub(super) fn element(
                             .disabled(!program)
                             .ml(surface::css(-25.))
                             .size(surface::css(20.))
-                            .child(svg().path("synapse/macro/launch-folder.svg").size_full())
+                            .child(razer_assets::resource_svg().path("synapse/macro/launch-folder.svg").size_full())
                             .on_click(cx.listener(move |this, _, window, cx| {
                                 this.browse_analog_mapping_program(slot, window, cx)
                             })),

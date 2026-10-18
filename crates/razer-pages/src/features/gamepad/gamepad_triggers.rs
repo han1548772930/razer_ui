@@ -151,7 +151,7 @@ impl GamepadProductWorkspace {
             }))
             // The current empty JSX reset element draws only its 16px mask.
             .child(
-                svg()
+                razer_assets::resource_svg()
                     .path(SharedString::from(format!(
                         "synapse/gamepad-trigger-reset/{}.svg",
                         self.spec.product_id

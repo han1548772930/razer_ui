@@ -1113,7 +1113,7 @@ impl RenderOnce for DynamicSlider {
                                 h_flex()
                                     .items_center()
                                     .child(
-                                        svg()
+                                        razer_assets::resource_svg()
                                             .path(
                                                 "synapse/keyboard-mapping-dynamic/upload-black.svg",
                                             )

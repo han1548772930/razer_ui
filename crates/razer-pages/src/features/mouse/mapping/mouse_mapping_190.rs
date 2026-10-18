@@ -1096,7 +1096,7 @@ impl MouseProductWorkspace {
                             .child(label),
                     )
                     .child(
-                        svg()
+                        razer_assets::resource_svg()
                             .path(self.current_sidebar_expand_asset())
                             .text_color(rgb(0x999999))
                             .absolute()

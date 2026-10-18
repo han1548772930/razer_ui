@@ -476,7 +476,7 @@ impl StudioColor {
             })
             .when(!self.enabled, |button| button.opacity(0.3))
             .child(
-                svg()
+                razer_assets::resource_svg()
                     .path("synapse/chroma-studio-eyedropper-white.svg")
                     .size_full(),
             )
@@ -669,7 +669,7 @@ impl StudioColor {
                     .w(surface::css(8.))
                     .h(surface::css(4.))
                     .child(
-                        svg()
+                        razer_assets::resource_svg()
                             .path("synapse/chroma-studio-brightness-pointer.svg")
                             .size_full()
                             .text_color(Colors::white()),
@@ -951,7 +951,7 @@ impl Render for StudioColor {
                                 view.opacity(0.3)
                             })
                             .child(
-                                svg()
+                                razer_assets::resource_svg()
                                     .path("synapse/chroma-studio-add-gray.svg")
                                     .size(surface::css(14.))
                                     .text_color(Colors::helper()),

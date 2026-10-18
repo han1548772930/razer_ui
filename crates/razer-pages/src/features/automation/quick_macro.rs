@@ -243,7 +243,7 @@ impl QuickMacroEditor {
                             .items_center()
                             .justify_center()
                             .child(
-                                svg()
+                                razer_assets::resource_svg()
                                     .path("synapse/automation-icon_expand.svg")
                                     .size(surface::css(10.))
                                     .text_color(Colors::muted())
@@ -792,7 +792,7 @@ impl QuickMacroEditor {
                             .justify_center()
                             .opacity(delete_opacity)
                             .child(
-                                svg()
+                                razer_assets::resource_svg()
                                     .path("synapse/automation-quick-macro-delete.svg")
                                     .size(surface::css(24.))
                                     .text_color(delete_color),

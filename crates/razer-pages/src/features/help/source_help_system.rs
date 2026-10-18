@@ -164,7 +164,7 @@ impl SourceHelp {
         true
     }
     fn system_info_arrow(&self) -> AnyElement {
-        let icon = svg()
+        let icon = razer_assets::resource_svg()
             .path("synapse/help-system-expand.svg")
             .w(surface::css(10.))
             .h(surface::css(5.))

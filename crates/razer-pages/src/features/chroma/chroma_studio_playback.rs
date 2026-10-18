@@ -298,7 +298,7 @@ impl StudioPlayback {
                 }
             })
             .child(
-                svg()
+                razer_assets::resource_svg()
                     .path("synapse/chroma-studio-brightness-pointer.svg")
                     .w(surface::css(8.))
                     .h(surface::css(4.))

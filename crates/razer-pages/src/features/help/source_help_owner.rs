@@ -517,7 +517,7 @@ impl SourceHelpOwner {
                             })),
                     )
                     .child(
-                        svg()
+                        razer_assets::resource_svg()
                             .path("synapse/help-owner-sound-external.svg")
                             .size(surface::css(16.))
                             .ml(surface::css(4.))
@@ -571,7 +571,7 @@ impl SourceHelpOwner {
                 .hover(|style| style.bg(Colors::close_hover()))
         })
         .child(
-            svg()
+            razer_assets::resource_svg()
                 .path("synapse/help-owner-close.svg")
                 .size(surface::css(24.)),
         )

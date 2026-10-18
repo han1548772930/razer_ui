@@ -905,7 +905,7 @@ impl RenderOnce for PairingSpinner {
     fn render(self, _: &mut Window, cx: &mut App) -> impl IntoElement {
         // HyperPollingWireless / Duallink ::before: 24px SVG in a 26px
         // container, rotation 0..360deg, 1s linear infinite, no state mutation.
-        let icon = svg()
+        let icon = razer_assets::resource_svg()
             .path(self.asset)
             .size(surface::css(24.))
             .text_color(cx.theme().primary);

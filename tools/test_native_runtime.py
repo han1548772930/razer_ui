@@ -76,6 +76,115 @@ class SimpleVersionEvidenceTests(unittest.TestCase):
         process.wait.assert_called_once()
 
 
+class SimpleComparisonTests(unittest.TestCase):
+    def versions(self):
+        return {"Simple Service Version": "1.2.2.10",
+                "Elevation Service Version": {"state": "observed", "value": "2.3"}}
+
+    def test_version_requires_stable_observation_and_exact_original_result(self):
+        before = self.versions()
+        original = {"result": True, "reason": "", "value": {
+            "Simple Service Version": "1.2.2.10", "Elevation Service Version": "2.3"}}
+        self.assertTrue(native._simple_comparison("version", before, original, before)["passed"])
+        for changed in ({**original, "result": False}, {**original, "reason": "failed"},
+                        {**original, "value": {}}, {**original, "result": 1}):
+            self.assertFalse(native._simple_comparison("version", before, changed, before)["passed"])
+        after = self.versions()
+        after["Elevation Service Version"]["value"] = "2.4"
+        self.assertFalse(native._simple_comparison("version", before, original, after)["passed"])
+        for state in ("unobserved", "failed", "disconnected"):
+            before["Elevation Service Version"] = {"state": state}
+            self.assertFalse(native._simple_comparison("version", before, original, before)["passed"])
+
+    def test_inventory_retains_empty_result_order_and_failure_distinctions(self):
+        before = [{"name": name, "rust": {"result": True, "reason": "", "userApps": ""}}
+                  for name in native._APP_FILTERS]
+        before[0]["rust"]["userApps"] = '[{"name":"a","id":1},{"name":"b","id":2}]'
+        original = [{"name": row["name"], "original": copy.deepcopy(row["rust"])} for row in before]
+        original[0]["original"]["userApps"] = '[ {"id": 1, "name": "a"}, {"id": 2, "name": "b"} ]'
+        self.assertTrue(native._simple_comparison("apps", before, original, before)["passed"])
+        for key, value in (("userApps", "[]"), ("result", False), ("reason", "missing")):
+            changed = copy.deepcopy(original)
+            changed[1]["original"][key] = value
+            self.assertFalse(native._simple_comparison("apps", before, changed, before)["passed"])
+        changed = copy.deepcopy(original)
+        changed[0]["original"]["userApps"] = '[{"name":"b","id":2},{"name":"a","id":1}]'
+        self.assertFalse(native._simple_comparison("apps", before, changed, before)["passed"])
+        self.assertFalse(native._simple_comparison("apps", before[:-1], original, before[:-1])["passed"])
+        with self.assertRaises(json.JSONDecodeError):
+            original[0]["original"]["userApps"] = "invalid"
+            native._simple_comparison("apps", before, original, before)
+
+
+class SimpleSessionTests(unittest.TestCase):
+    def session(self, mode="version", replies=None, initialize=True, shutdown=True):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        calls = []
+        def completion(name, enabled):
+            def invoke(callback):
+                calls.append(name)
+                if enabled:
+                    callback()
+            return Mock(side_effect=invoke)
+        def query(*args):
+            calls.append(("query", args[0]) if len(args) == 2 else "query")
+            for reply in replies if replies is not None else [(True, b"", b'{"version":"1"}')]:
+                args[-1](*reply)
+        library = SimpleNamespace(
+            simpleServiceInitialize=completion("initialize", initialize),
+            simpleServiceShutdown=completion("shutdown", shutdown),
+            simpleGetVersionInfo=Mock(side_effect=query),
+            simpleGetUserApps=Mock(side_effect=query))
+        return library, calls
+
+    def test_callbacks_are_owned_until_shutdown_and_query_strings_are_copied(self):
+        library, calls = self.session()
+        events = []
+        with patch.object(native, "_SIMPLE_WORKER_OWNERS", []) as owners:
+            result = native._simple_session(library, "version", events.append, timeout=0)
+            self.assertIs(owners[0][0], library)
+            self.assertEqual(len(owners[0][1]), 3)
+            self.assertEqual(calls, ["initialize", "query", "shutdown"])
+            self.assertEqual(result["value"], {"result": True, "reason": "", "value": {"version": "1"}})
+            self.assertEqual(result["lifecycle"], events)
+
+    def test_exact_app_filter_order_and_arguments_live_through_shutdown(self):
+        library, calls = self.session(replies=[(True, b"", b"")])
+        with patch.object(native, "_SIMPLE_WORKER_OWNERS", []) as owners:
+            result = native._simple_session(library, "apps", lambda _: None, timeout=0)
+            self.assertEqual(calls, ["initialize", *[("query", name.encode()) for name in native._APP_FILTERS], "shutdown"])
+            self.assertEqual([row["name"] for row in result["value"]], list(native._APP_FILTERS))
+            self.assertEqual([value for value in owners[0][1] if isinstance(value, bytes)],
+                             [name.encode() for name in native._APP_FILTERS])
+
+    def test_failed_queries_always_attempt_shutdown_and_preserve_callback_ownership(self):
+        for replies, expected in (([], TimeoutError), ([(True, None, b"{}")], ValueError),
+                                  ([(True, b"", None)], ValueError), ([(True, b"", b"invalid")], ValueError),
+                                  ([(True, b"", b"{}"), (True, b"", b"{}")], ValueError)):
+            with self.subTest(replies=replies), patch.object(native, "_SIMPLE_WORKER_OWNERS", []) as owners:
+                library, calls = self.session(replies=replies)
+                with self.assertRaises(expected):
+                    native._simple_session(library, "version", lambda _: None, timeout=0)
+                self.assertEqual(calls, ["initialize", "query", "shutdown"])
+                self.assertEqual(len(owners[0][1]), 3)
+
+    def test_query_and_cleanup_errors_both_survive(self):
+        library, calls = self.session(replies=[], shutdown=False)
+        with patch.object(native, "_SIMPLE_WORKER_OWNERS", []):
+            with self.assertRaisesRegex(RuntimeError, "Query failed:.*shutdown failed:"):
+                native._simple_session(library, "version", lambda _: None, timeout=0)
+        self.assertEqual(calls, ["initialize", "query", "shutdown"])
+
+    def test_initialization_timeout_keeps_owner_without_calling_uninitialized_service(self):
+        library, calls = self.session(initialize=False)
+        with patch.object(native, "_SIMPLE_WORKER_OWNERS", []) as owners:
+            with self.assertRaisesRegex(TimeoutError, "initialize"):
+                native._simple_session(library, "version", lambda _: None, timeout=0)
+            self.assertEqual(calls, ["initialize"])
+            self.assertEqual(len(owners[0][1]), 1)
+
+
 MOUSE_PATH = r"\\?\HID#VID_1532&PID_00BF&MI_00#8&393c0d0b&0&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}"
 KEYBOARD_PATH = r"\\?\HID#VID_1532&PID_02A7&MI_03#b&25aecbb4&0&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}"
 

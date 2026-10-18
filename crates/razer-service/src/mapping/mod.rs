@@ -3,6 +3,7 @@
 mod control;
 pub(crate) mod owner;
 pub use owner::Client;
+pub mod hotkeys;
 pub mod device;
 pub mod key_capture;
 pub mod mode_capture;

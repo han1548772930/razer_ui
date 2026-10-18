@@ -146,7 +146,7 @@ fn service_icon_with_warning(
         .flex_shrink_0()
         .when_some(selected, |view, key| {
             view.child(
-                svg()
+                razer_assets::resource_svg()
                     .path(SharedString::from(format!(
                         "synapse/service-category-{}.svg",
                         key.to_ascii_lowercase()

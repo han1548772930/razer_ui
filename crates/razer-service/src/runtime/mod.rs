@@ -1,6 +1,6 @@
 //! Worker dispatch only. Wire contract and client are owned by razer-ipc.
 use razer_ipc::{FRAME_PREFIX, RequestEnvelope, ResponseEnvelope, ServiceRequest, read_frame};
-use std::{io::Write, time::Duration};
+use std::io::Write;
 #[path = "camera_controller.rs"]
 mod camera_controller;
 #[path = "controller_calibration.rs"]
@@ -35,7 +35,6 @@ mod seiren_audio_capture_controller;
 mod shutdown;
 #[path = "thx_controller.rs"]
 mod thx_controller;
-const CALLBACK_TIMEOUT: Duration = Duration::from_secs(4);
 
 pub(crate) fn mapping_client() -> anyhow::Result<crate::mapping::owner::Client> {
     #[cfg(windows)]
@@ -147,11 +146,6 @@ pub fn run_worker() -> i32 {
             | ServiceRequest::MouseInputMonitoringStart { .. }
             | ServiceRequest::MouseInputMonitoringPoll { .. }
             | ServiceRequest::MouseInputMonitoringStop { .. }
-            | ServiceRequest::GlobalShortcuts
-            | ServiceRequest::RegisterShortcut { .. }
-            | ServiceRequest::UnregisterShortcut { .. }
-            | ServiceRequest::EnableGlobalShortcuts { .. }
-            | ServiceRequest::ShortcutEvents
             | ServiceRequest::AudioVolumeRead { .. }
             | ServiceRequest::AudioVolumeWrite { .. }
             | ServiceRequest::AudioEndpoints { .. }

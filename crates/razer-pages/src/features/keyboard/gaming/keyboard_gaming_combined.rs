@@ -370,7 +370,7 @@ impl KeyboardProductWorkspace {
                                 .disabled(unavailable || !active).accessibility_label(t("DELETE_KEY"))
                                 .size(surface::css(20.)).ml(surface::css(5.)).text_color(Colors::muted())
                                 .hover(|button|button.text_color(Colors::combo_delete_hover()))
-                                .child(svg().path("synapse/keyboard-key-delete-active.svg").size_full())
+                                .child(razer_assets::resource_svg().path("synapse/keyboard-key-delete-active.svg").size_full())
                                 .on_click(cx.listener(move |this,_,window,cx| {
                                     this.finish_gaming_recording(false,window,cx);
                                     if let Some(combo) = this.gaming_combined.combos.iter_mut().find(|combo|combo.id == id) { combo.key1.clear();combo.key2.clear();combo.enabled = false; }

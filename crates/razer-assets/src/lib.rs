@@ -13,6 +13,8 @@ mod keyboard_source;
 pub mod local_image;
 mod native_icons;
 mod resource_runtime;
+mod resource_svg;
+pub use resource_svg::{ResourceSvg, resource_svg};
 pub mod rotated_label;
 mod window_icons;
 pub use image_cache::{

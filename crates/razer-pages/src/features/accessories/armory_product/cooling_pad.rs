@@ -763,7 +763,7 @@ fn vertical_speed_units(state: &Entity<CoolingState>, window: &mut Window, cx: &
                     })
                     .accessibility_label(if percentage { "%" } else { "RPM" })
                     .child(
-                        svg()
+                        razer_assets::resource_svg()
                             .path(text.asset.clone())
                             .w(css(16.))
                             .h(css(text.advance)),
@@ -778,7 +778,7 @@ fn vertical_speed_units(state: &Entity<CoolingState>, window: &mut Window, cx: &
                 })),
         )
         .child(
-            svg()
+            razer_assets::resource_svg()
                 .path(label.asset.clone())
                 .w(css(14.))
                 .h(css(label.advance))

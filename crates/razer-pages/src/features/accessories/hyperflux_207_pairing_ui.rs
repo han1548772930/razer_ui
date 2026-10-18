@@ -59,7 +59,7 @@ struct PairingSpinner {
 }
 impl RenderOnce for PairingSpinner {
     fn render(self, _: &mut Window, _: &mut App) -> impl IntoElement {
-        svg()
+        razer_assets::resource_svg()
             .path("synapse/hyperflux-207/progress_spinner.svg")
             .size(surface::css(24.))
             .text_color(Colors::green())

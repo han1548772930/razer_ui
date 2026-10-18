@@ -1522,7 +1522,7 @@ impl KeyboardProductWorkspace {
                             cx.notify();
                         }))
                         .child(
-                            svg()
+                            razer_assets::resource_svg()
                                 .path(icon.asset.clone())
                                 .size(surface::css(20.))
                                 .text_color(rgb(if value == mode { 0x111111 } else { 0xcccccc })),

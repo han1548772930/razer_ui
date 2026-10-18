@@ -59,6 +59,7 @@ pub(super) struct Owner {
     overflow: Arc<AtomicBool>,
     cancellation: Arc<Cancellation>,
     worker: Option<JoinHandle<()>>,
+    cleanup_result: Option<Result<(), String>>,
 }
 pub(super) fn native_lookup(input: NativeInput) -> Option<Input> {
     let mut normalized = match input {
@@ -370,6 +371,7 @@ impl Owner {
                 overflow,
                 cancellation,
                 worker: Some(worker),
+                cleanup_result: None,
             }),
             result => {
                 let _ = worker.join();
@@ -426,18 +428,20 @@ impl Owner {
     }
     pub fn stop(&mut self) -> Result<()> {
         let Some(worker) = self.worker.take() else {
-            return Ok(());
+            return self.cleanup_result.clone().unwrap_or(Ok(())).map_err(anyhow::Error::msg);
         };
         self.cancellation.cancel();
         let result = self.control(Command::Stop);
         let joined = worker
             .join()
             .map_err(|_| anyhow::anyhow!("Mapping device worker panicked"));
-        match (result, joined) {
+        let result=match (result, joined) {
             (Ok(()), Ok(())) => Ok(()),
-            (Err(error), Ok(())) | (Ok(()), Err(error)) => Err(error),
-            (Err(error), Err(join)) => anyhow::bail!("{error:#}; {join:#}"),
-        }
+            (Err(error), Ok(())) | (Ok(()), Err(error)) => Err(format!("{error:#}")),
+            (Err(error), Err(join)) => Err(format!("{error:#}; {join:#}")),
+        };
+        self.cleanup_result=Some(result.clone());
+        result.map_err(anyhow::Error::msg)
     }
 }
 impl Drop for Owner {

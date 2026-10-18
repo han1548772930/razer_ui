@@ -396,7 +396,8 @@ mod tests {
             replacement.generation(),
             restarted_at + Duration::from_millis(500)
         ));
-        assert_eq!(state.prompt_progress, 0.75);
+        // The replacement's first actual movement owns this 2-second prompt cycle.
+        assert_eq!(state.prompt_progress, 0.25);
 
         state
             .request(

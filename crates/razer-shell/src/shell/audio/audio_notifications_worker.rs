@@ -282,10 +282,10 @@ pub(super) fn run(
         view_id,
         view_name,
         status.clone(),
-    );
+    )?;
     let result = (|| {
         if !shortcuts_enabled {
-            client.request(ServiceRequest::EnableGlobalShortcuts { enable: false })?;
+            mixer.enable_shortcuts(false)?;
         }
         let route = direct::seiren_eq::resolve(&mut client, &observed)?;
         match initialize(&mut client, &route) {
@@ -309,7 +309,7 @@ pub(super) fn run(
         if stream_enabled {
             let _ = mixer::set_mode(&mut client, &route, true, &status)?;
             mixer.claim(&mut client, &route)?;
-            mixer.register_presets(&mut client)?;
+            mixer.register_presets()?;
         }
         mixer.publish(&mut client)?;
         if native.is_some() {
@@ -348,7 +348,7 @@ pub(super) fn run(
                 Err(mpsc::RecvTimeoutError::Timeout) => {}
                 Ok(Command::GlobalShortcutsEnabled(enable)) => {
                     if let Err(error) =
-                        client.request(ServiceRequest::EnableGlobalShortcuts { enable })
+                        mixer.enable_shortcuts(enable)
                     {
                         report(
                             &status,
@@ -542,7 +542,7 @@ pub(super) fn run(
             );
         }
     }
-    mixer.cleanup_shortcuts(&mut client);
+    mixer.cleanup_shortcuts();
     if let Err(error) = enabled(&mut client, false) {
         report(&status, format!("AudioEnumerator cleanup: {error:#}"));
     }

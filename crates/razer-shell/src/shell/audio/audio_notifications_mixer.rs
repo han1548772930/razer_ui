@@ -5,6 +5,7 @@ use razer_device::{
     seiren_stream_mixer::{self as mixer, Action, Operation},
 };
 use razer_pages::features::SeirenStreamMixerObservation as Observation;
+use razer_service::mapping::hotkeys::{Session as Hotkeys, Shortcut};
 use razer_storage::host::{HostStorageCall, HostStorageReply, HostStoreKind};
 
 pub(super) struct MixerOwner {
@@ -18,6 +19,7 @@ pub(super) struct MixerOwner {
     playback: Vec<String>,
     record: Vec<String>,
     shortcuts: BTreeMap<(u32, u32), String>,
+    hotkeys: Hotkeys,
 }
 impl MixerOwner {
     pub(super) fn new(
@@ -27,8 +29,8 @@ impl MixerOwner {
         view_id: u64,
         view_name: String,
         status: Sender<Update>,
-    ) -> Self {
-        Self {
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
             product_id,
             container_id,
             device_name,
@@ -39,7 +41,11 @@ impl MixerOwner {
             playback: Vec::new(),
             record: Vec::new(),
             shortcuts: BTreeMap::new(),
-        }
+            hotkeys: Hotkeys::start()?,
+        })
+    }
+    pub(super) fn enable_shortcuts(&mut self, enabled: bool) -> anyhow::Result<()> {
+        self.hotkeys.enable(enabled)
     }
     fn host(&self, action: &str, payload: Value) -> anyhow::Result<HostStorageReply> {
         let (reply, receiver) = mpsc::channel();
@@ -350,7 +356,6 @@ impl MixerOwner {
                 .and_then(|presets| presets.iter().find(|preset| preset["guid"] == guid))
             {
                 if let Err(error) = self.change_mapping(
-                    client,
                     &old["shortcutMapping"],
                     &argument["newShortcutMapping"],
                     guid,
@@ -402,7 +407,6 @@ impl MixerOwner {
     }
     fn register_mapping(
         &mut self,
-        client: &mut ServiceClient,
         mapping: &Value,
         guid: &str,
     ) -> anyhow::Result<()> {
@@ -413,60 +417,46 @@ impl MixerOwner {
             eprintln!("[Audio_StreamMixer] shortcut already linked: {binding:?}");
             return Ok(());
         }
-        let reply = client.request(ServiceRequest::RegisterShortcut {
-            vkey_code: binding.0,
+        self.hotkeys.register(Shortcut {
+            virtual_key: binding.0,
             modifiers: binding.1,
             argument: String::new(),
         })?;
-        ensure!(
-            reply["registered"] == true,
-            "Mixer shortcut registration was not confirmed"
-        );
         self.shortcuts.insert(binding, guid.into());
         Ok(())
     }
     fn unregister_mapping(
         &mut self,
-        client: &mut ServiceClient,
         mapping: &Value,
     ) -> anyhow::Result<()> {
         let Some(binding) = mixer::shortcut_binding(self.product_id, mapping)? else {
             return Ok(());
         };
-        let reply = client.request(ServiceRequest::UnregisterShortcut {
-            vkey_code: binding.0,
-            modifiers: binding.1,
-        })?;
-        ensure!(
-            reply["registered"] == false,
-            "Mixer shortcut removal was not confirmed"
-        );
+        self.hotkeys.unregister(binding.0, binding.1)?;
         self.shortcuts.remove(&binding);
         Ok(())
     }
     fn change_mapping(
         &mut self,
-        client: &mut ServiceClient,
         old: &Value,
         new: &Value,
         guid: &str,
     ) -> anyhow::Result<()> {
         if !old.as_object().is_some_and(serde_json::Map::is_empty) {
-            self.unregister_mapping(client, old)?;
+            self.unregister_mapping(old)?;
         }
         if new.get("inputID").is_some() {
-            self.register_mapping(client, new, guid)?;
+            self.register_mapping(new, guid)?;
         }
         Ok(())
     }
-    pub(super) fn register_presets(&mut self, client: &mut ServiceClient) -> anyhow::Result<()> {
+    pub(super) fn register_presets(&mut self) -> anyhow::Result<()> {
         let cache = self.load()?;
         for preset in cache["presets"]
             .as_array()
             .context("Mixer presets is not an array")?
         {
             if let Err(error) = self.register_mapping(
-                client,
                 &preset["shortcutMapping"],
                 preset["guid"]
                     .as_str()
@@ -487,22 +477,9 @@ impl MixerOwner {
         if self.shortcuts.is_empty() {
             return Ok(());
         }
-        let events = client.request(ServiceRequest::ShortcutEvents)?;
-        for envelope in events
-            .as_array()
-            .context("Mixer shortcut event array is absent")?
-        {
-            let event: Value = serde_json::from_str(
-                envelope["event"]
-                    .as_str()
-                    .context("Mixer shortcut event JSON is absent")?,
-            )?;
-            let key = event["virtualKey"]
-                .as_u64()
-                .context("Mixer shortcut key is absent")? as u32;
-            let modifiers = event["modifiers"]
-                .as_u64()
-                .context("Mixer shortcut modifiers are absent")? as u32;
+        for event in self.hotkeys.drain()? {
+            let key = event.shortcut.virtual_key;
+            let modifiers = event.shortcut.modifiers;
             let Some(guid) = self
                 .shortcuts
                 .get(&(key, modifiers))
@@ -533,20 +510,20 @@ impl MixerOwner {
                     product_id: self.product_id,
                     container_id: self.container_id.clone(),
                     preset_name,
-                    timer_tick: envelope["timeTick"].clone(),
+                    timer_tick: event.time_tick.into(),
                 })
                 .context("Mixer notification owner closed")?;
         }
         Ok(())
     }
-    pub(super) fn cleanup_shortcuts(&mut self, client: &mut ServiceClient) {
+    pub(super) fn cleanup_shortcuts(&mut self) {
         for ((key, modifiers), _) in std::mem::take(&mut self.shortcuts) {
-            if let Err(error) = client.request(ServiceRequest::UnregisterShortcut {
-                vkey_code: key,
-                modifiers,
-            }) {
+            if let Err(error) = self.hotkeys.unregister(key, modifiers) {
                 report(&self.status, format!("Mixer shortcut cleanup: {error:#}"));
             }
+        }
+        if let Err(error) = self.hotkeys.close() {
+            report(&self.status, format!("Mixer shortcut scope cleanup: {error:#}"));
         }
     }
 }

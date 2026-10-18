@@ -148,7 +148,7 @@ pub(super) fn arrow(
     cx: &mut App,
 ) -> impl IntoElement {
     use gpui_kit::base::motion::{self, Easing, Transition};
-    svg()
+    razer_assets::resource_svg()
         .path("synapse/chroma-studio-brightness-pointer.svg")
         .w(surface::css(10.))
         .h(surface::css(5.))

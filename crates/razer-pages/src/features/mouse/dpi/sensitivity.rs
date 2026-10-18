@@ -1021,7 +1021,7 @@ impl DeviceWorkspace {
                                     .h(surface::css(32.))
                                     .p_0()
                                     .focus_visible(|s| s.border_1().border_color(cx.theme().ring))
-                                    .child(svg().path("synapse/dpi-draggable.svg").size_full()),
+                                    .child(razer_assets::resource_svg().path("synapse/dpi-draggable.svg").size_full()),
                                 )
                         }),
                 )

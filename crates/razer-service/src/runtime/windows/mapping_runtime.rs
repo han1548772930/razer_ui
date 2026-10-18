@@ -230,7 +230,6 @@ impl State {
     fn spawn(&mut self, dispatch: Dispatch<Parameters>) -> Result<()> {
         let id = dispatch.id;
         let request = dispatch.request;
-        self.completion_callers.insert(id, request.caller);
         let execution = match request.payload.program {
             Program::Macro => ExecutionProgram::Macro(Execution::start(
                 &*self.library.read().map_err(|_| anyhow::anyhow!("Macro library lock poisoned"))?,
@@ -267,6 +266,7 @@ impl State {
                 }
             })
             .context("Start macro execution worker")?;
+        self.completion_callers.insert(id, request.caller);
         self.running.insert(
             id,
             Running {

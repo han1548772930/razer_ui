@@ -1179,7 +1179,7 @@ fn preset_icon_button(
         .bg(rgb(0))
         .text_color(rgb(0xcccccc))
         .hover(|s| s.border_color(rgb(0x44d62c)).text_color(rgb(0x44d62c)))
-        .child(svg().path(asset).size(surface::css(20.)))
+        .child(razer_assets::resource_svg().path(asset).size(surface::css(20.)))
 }
 
 impl PresetEditor {
