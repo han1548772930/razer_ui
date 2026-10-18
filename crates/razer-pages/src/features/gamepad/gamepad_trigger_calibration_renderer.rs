@@ -260,7 +260,9 @@ fn visualization(resources: &Resources, _edition: u32, view: TriggerCalibrationV
                         .map(|image| img(image).w_full().h_full().object_fit(ObjectFit::Contain)),
                 ),
         );
-    if matches!(view.step, 10 | 11) {
+    if matches!(view.step, 10 | 11)
+        && let Some(raw_trigger_percent) = view.raw_trigger_percent
+    {
         let right = view.part == 4;
         let mut meter = div()
             .absolute()
@@ -290,12 +292,14 @@ fn visualization(resources: &Resources, _edition: u32, view: TriggerCalibrationV
             );
         }
         meter = meter.child(
-            div().absolute().inset_0().children(
-                resources
-                    .texts
-                    .text(METER)
-                    .map(|source| img(meter_svg(source, view)).w_full().h_full()),
-            ),
+            div()
+                .absolute()
+                .inset_0()
+                .children(resources.texts.text(METER).map(|source| {
+                    img(meter_svg(source, view, raw_trigger_percent))
+                        .w_full()
+                        .h_full()
+                })),
         );
         area = area.child(meter);
     }
@@ -310,8 +314,8 @@ fn clamp_percentage(value: f64) -> f64 {
     }
 }
 
-fn meter_svg(source: &str, view: TriggerCalibrationView) -> Arc<Image> {
-    let percent = 100. - clamp_percentage(view.raw_trigger_percent.unwrap_or(100.));
+fn meter_svg(source: &str, view: TriggerCalibrationView, raw_trigger_percent: f64) -> Arc<Image> {
+    let percent = 100. - clamp_percentage(raw_trigger_percent);
     // Parent already performs the source's 50ms cubic marker interpolation.
     let angle = -std::f64::consts::FRAC_PI_2
         - clamp_percentage(view.marker_progress) / 100. * std::f64::consts::PI;

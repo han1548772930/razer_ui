@@ -80,15 +80,15 @@ fn stability_requires_five_differences_then_invalid_input_cancels_hold() {
         readback: None,
     };
     let mut s = TriggerCalibrationSession::new(2676, TriggerPart::Left).unwrap();
-    s.start(&mut io);
+    s.start(&mut io).unwrap();
     for _ in 0..5 {
-        assert_eq!(s.poll(Some(raw(300.))), HoldChange::Unchanged);
+        assert_eq!(s.poll(Ok(raw(300.))).unwrap(), HoldChange::Unchanged);
     }
     assert_eq!(
-        s.poll(Some(raw(300.))),
+        s.poll(Ok(raw(300.))).unwrap(),
         HoldChange::Start(Duration::from_secs(2))
     );
-    assert_eq!(s.poll(Some(raw(500.))), HoldChange::Cancel);
+    assert_eq!(s.poll(Ok(raw(500.))).unwrap(), HoldChange::Cancel);
     assert_eq!(s.step(), TriggerStep::Press);
     assert!(io.writes.is_empty());
 }
@@ -114,9 +114,9 @@ fn sampling_waits_and_rounds_margins_then_requires_exact_readback() {
             readback: Some(readback),
         };
         let mut s = TriggerCalibrationSession::new(2676, TriggerPart::Left).unwrap();
-        s.start(&mut io);
+        s.start(&mut io).unwrap();
         for _ in 0..6 {
-            s.poll(Some(raw(300.)));
+            s.poll(Ok(raw(300.))).unwrap();
         }
         let mut waits = vec![];
         s.hold_complete(&mut io, |d| {
@@ -128,7 +128,7 @@ fn sampling_waits_and_rounds_margins_then_requires_exact_readback() {
         assert!(!s.valid());
         assert_eq!(waits.len(), 4);
         for _ in 0..6 {
-            s.poll(Some(raw(2000.)));
+            s.poll(Ok(raw(2000.))).unwrap();
         }
         let result = s.hold_complete(&mut io, |d| {
             waits.push(d);
@@ -160,11 +160,11 @@ fn sampling_waits_and_rounds_margins_then_requires_exact_readback() {
         assert_eq!(s.progress().valid(), result.is_ok());
         assert_eq!(s.stable_polls, 0);
         assert!(s.sample_min.is_none() && s.sample_max.is_none());
-        assert_eq!(s.poll(Some(raw(300.))), HoldChange::Unchanged);
+        assert_eq!(s.poll(Ok(raw(300.))).unwrap(), HoldChange::Unchanged);
         // A new source start resets the internal native operation but does not
         // preserve the previous terminal progress in place of Step10.
         io.samples.extend([2000., 2000.]);
-        s.start(&mut io);
+        s.start(&mut io).unwrap();
         assert_eq!(s.step(), TriggerStep::Press);
         assert!(!s.progress().valid());
     }
@@ -177,11 +177,81 @@ fn invalid_samples_never_write_or_claim_calibration_success() {
         readback: None,
     };
     let mut s = TriggerCalibrationSession::new(2684, TriggerPart::Right).unwrap();
-    s.start(&mut io);
+    s.start(&mut io).unwrap();
     for _ in 0..6 {
-        s.poll(Some(raw(300.)));
+        s.poll(Ok(raw(300.))).unwrap();
     }
     assert!(s.hold_complete(&mut io, |_| Ok(())).is_err());
     assert_eq!(s.step(), TriggerStep::Error);
     assert!(io.writes.is_empty());
+}
+
+#[test]
+fn initialization_requires_both_actual_reads_without_default_measurements() {
+    for samples in [vec![], vec![2000.], vec![f64::NAN], vec![2000., 8193.]] {
+        let mut io = Transport {
+            samples: samples.into(),
+            writes: vec![],
+            readback: None,
+        };
+        let mut session = TriggerCalibrationSession::new(2676, TriggerPart::Left).unwrap();
+        assert_eq!(session.movement_percentage(), None);
+        assert!(session.start(&mut io).is_err());
+        assert_eq!(session.step(), TriggerStep::Error);
+        assert!(!session.valid());
+        assert_eq!(session.movement_percentage(), None);
+        assert!(session.hold_complete(&mut io, |_| Ok(())).is_err());
+        assert!(io.writes.is_empty());
+    }
+}
+
+#[test]
+fn read_failure_during_valid_hold_clears_observation_and_prevents_sampling_or_write() {
+    for read in [
+        Err(anyhow::anyhow!("endpoint disconnected")),
+        Ok(raw(f64::NAN)),
+        Ok(raw(-1.)),
+    ] {
+        let mut io = Transport {
+            samples: [2000., 2000.].into(),
+            writes: vec![],
+            readback: None,
+        };
+        let mut session = TriggerCalibrationSession::new(2676, TriggerPart::Left).unwrap();
+        session.start(&mut io).unwrap();
+        for _ in 0..6 {
+            session.poll(Ok(raw(300.))).unwrap();
+        }
+        assert!(session.valid());
+        assert_eq!(session.movement_percentage(), Some(0.));
+        let error = session.poll(read).unwrap_err();
+        assert!(format!("{error:#}").contains("Trigger ADC"));
+        assert_eq!(session.step(), TriggerStep::Error);
+        assert!(!session.valid());
+        assert_eq!(session.movement_percentage(), None);
+        assert!(session.hold_complete(&mut io, |_| Ok(())).is_err());
+        assert!(io.writes.is_empty());
+    }
+}
+
+#[test]
+fn missing_release_step_read_cannot_reuse_the_resting_value() {
+    let mut io = Transport {
+        samples: [2000., 2000., 300., 300., 300., 300., 300.].into(),
+        writes: vec![],
+        readback: None,
+    };
+    let mut session = TriggerCalibrationSession::new(2676, TriggerPart::Left).unwrap();
+    session.start(&mut io).unwrap();
+    for _ in 0..6 {
+        session.poll(Ok(raw(300.))).unwrap();
+    }
+    assert!(session.hold_complete(&mut io, |_| Ok(())).is_err());
+    assert_eq!(session.step(), TriggerStep::Error);
+    assert_eq!(session.movement_percentage(), None);
+    assert!(io.writes.is_empty());
+    io.samples.extend([1800., 1700.]);
+    session.start(&mut io).unwrap();
+    assert_eq!(session.step(), TriggerStep::Press);
+    assert_eq!(session.movement_percentage(), Some(94.));
 }

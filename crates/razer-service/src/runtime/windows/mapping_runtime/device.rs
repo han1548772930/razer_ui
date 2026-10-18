@@ -49,6 +49,7 @@ enum Command {
     Mapping(bool, mpsc::SyncSender<Result<(), String>>),
     Shortcuts(bool, mpsc::SyncSender<Result<(), String>>),
     HypershiftReleased,
+    HeldCount(mpsc::SyncSender<u8>),
     RedirectActivated(mpsc::SyncSender<Result<(), String>>),
     Stop(mpsc::SyncSender<Result<(), String>>),
 }
@@ -340,6 +341,7 @@ impl Owner {
                             });
                             let _ = reply.send(result.map_err(|e| format!("{e:#}")));
                         }
+                        Ok(Command::HeldCount(reply)) => { let _ = reply.send(state.lookup.held_count()); }
                         Ok(Command::Stop(reply)) => {
                             let result = crate::mapping::guarded(|| state.stop());
                             let _ = reply.send(result.map_err(|e| format!("{e:#}")));
@@ -408,6 +410,11 @@ impl Owner {
     }
     pub fn shortcuts(&self, enabled: bool) -> Result<()> {
         self.control(|reply| Command::Shortcuts(enabled, reply))
+    }
+    pub fn held_count(&self) -> Result<u8> {
+        let (reply,receive)=mpsc::sync_channel(1);
+        self.sender.send(Command::HeldCount(reply)).context("Mapping device stopped")?;
+        receive.recv().context("Mapping held count reply disconnected")
     }
     pub fn hypershift_released(&self) -> Result<()> {
         self.sender

@@ -145,8 +145,7 @@ pub struct TriggerCalibrationSession {
     step: TriggerStep,
     active: bool,
     valid: bool,
-    resting: f64,
-    value: f64,
+    measurement: Option<TriggerMeasurement>,
     previous: Option<f64>,
     stable_polls: u64,
     travelled: bool,
@@ -154,6 +153,11 @@ pub struct TriggerCalibrationSession {
     sample_min: Option<f64>,
     sample_max: Option<f64>,
     progress: TriggerCalibrationProgress,
+}
+
+struct TriggerMeasurement {
+    resting: f64,
+    value: f64,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -180,15 +184,13 @@ pub enum HoldChange {
 impl TriggerCalibrationSession {
     pub fn new(pid: u32, part: TriggerPart) -> Option<Self> {
         let product = product(pid)?;
-        let resting = product.params.range.max;
         Some(Self {
             product,
             part,
             step: TriggerStep::None,
             active: false,
             valid: false,
-            resting,
-            value: resting,
+            measurement: None,
             previous: None,
             stable_polls: 0,
             travelled: false,
@@ -230,51 +232,63 @@ impl TriggerCalibrationSession {
         self.product.params.trigger.press_validity_percent / 100.
             * self.product.params.trigger.trigger_max
     }
-    fn headroom(&self) -> f64 {
-        self.resting - self.product.params.range.min
+    fn headroom(&self, resting: f64) -> f64 {
+        resting - self.product.params.range.min
     }
-    fn release_threshold(&self) -> f64 {
-        self.resting
-            - (self.headroom() * 0.01).min(
+    fn release_threshold(&self, resting: f64) -> f64 {
+        resting
+            - (self.headroom(resting) * 0.01).min(
                 self.product.params.trigger.release_validity_percent / 100.
                     * self.product.params.trigger.trigger_max,
             )
     }
-    fn prepare(&mut self, step: TriggerStep, initial: Option<RawAnalogInput>) {
+    fn prepare(&mut self, step: TriggerStep, resting: f64, value: f64) {
         self.step = step;
         self.valid = false;
         self.previous = None;
         self.stable_polls = 0;
         self.travelled = false;
         self.returned = false;
-        self.value = initial
-            .map(|r| r.trigger(self.part))
-            .filter(|v| self.valid_value(*v))
-            .unwrap_or(self.resting);
+        self.measurement = Some(TriggerMeasurement { resting, value });
         self.progress = TriggerCalibrationProgress { step, valid: false };
     }
     /// Source start makes two distinct raw queries: first captures resting,
-    /// second initializes the Press step. Query failure uses resting fallback.
-    pub fn start(&mut self, transport: &mut dyn TriggerCalibrationTransport) {
+    /// second initializes the Press step. Both values must be actual observations;
+    /// a failed query cannot seed a calibration range or hold timer.
+    pub fn start(&mut self, transport: &mut dyn TriggerCalibrationTransport) -> anyhow::Result<()> {
         self.stop();
-        self.active = true;
-        self.sample_min = None;
-        self.sample_max = None;
-        self.resting = transport
-            .raw_analog_input()
-            .ok()
-            .map(|r| r.trigger(self.part))
-            .filter(|v| self.valid_value(*v))
-            .unwrap_or(self.product.params.range.max);
-        let initial = transport.raw_analog_input().ok();
-        self.prepare(TriggerStep::Press, initial);
+        let result = (|| {
+            let resting = self.read_value(transport.raw_analog_input())?;
+            let value = self.read_value(transport.raw_analog_input())?;
+            self.active = true;
+            self.prepare(TriggerStep::Press, resting, value);
+            Ok(())
+        })();
+        if result.is_err() {
+            self.fail();
+        }
+        result
+    }
+    fn read_value(&self, raw: anyhow::Result<RawAnalogInput>) -> anyhow::Result<f64> {
+        let value = raw.context("Trigger ADC read failed")?.trigger(self.part);
+        ensure!(
+            self.valid_value(value),
+            "Trigger ADC value is outside the source range"
+        );
+        Ok(value)
+    }
+    fn fail(&mut self) {
+        self.progress = TriggerCalibrationProgress {
+            step: TriggerStep::Error,
+            valid: false,
+        };
+        self.stop();
     }
     pub fn stop(&mut self) {
         self.active = false;
         self.step = TriggerStep::None;
         self.valid = false;
-        self.resting = self.product.params.range.max;
-        self.value = self.resting;
+        self.measurement = None;
         self.previous = None;
         self.stable_polls = 0;
         self.travelled = false;
@@ -282,36 +296,43 @@ impl TriggerCalibrationSession {
         self.sample_min = None;
         self.sample_max = None;
     }
-    /// Source polls validate the retained value even on a failed raw query.
-    /// Fresh invalid/missing values do not synthesize a new movement.
-    pub fn poll(&mut self, raw: Option<RawAnalogInput>) -> HoldChange {
+    /// Only the current successful ADC read can validate a hold. Failure removes
+    /// the measurement and terminates the operation through its error state.
+    pub fn poll(&mut self, raw: anyhow::Result<RawAnalogInput>) -> anyhow::Result<HoldChange> {
         if !self.active || !matches!(self.step, TriggerStep::Press | TriggerStep::Release) {
-            return HoldChange::Unchanged;
+            return Ok(HoldChange::Unchanged);
         }
-        if let Some(value) = raw
-            .map(|r| r.trigger(self.part))
-            .filter(|v| self.valid_value(*v))
-        {
-            if self
-                .previous
-                .is_some_and(|previous| (value - previous).abs() <= self.headroom() * 0.01)
-            {
-                self.stable_polls = self.stable_polls.saturating_add(1);
-            } else {
-                self.stable_polls = 0;
+        let value = match self.read_value(raw) {
+            Ok(value) => value,
+            Err(error) => {
+                self.fail();
+                return Err(error);
             }
-            self.previous = Some(value);
-            self.value = value;
+        };
+        let resting = self
+            .measurement
+            .as_ref()
+            .context("Trigger resting observation is missing")?
+            .resting;
+        if self
+            .previous
+            .is_some_and(|previous| (value - previous).abs() <= self.headroom(resting) * 0.01)
+        {
+            self.stable_polls = self.stable_polls.saturating_add(1);
+        } else {
+            self.stable_polls = 0;
         }
+        self.previous = Some(value);
+        self.measurement = Some(TriggerMeasurement { resting, value });
         let previous_valid = self.valid;
         self.valid = match self.step {
             TriggerStep::Press => {
-                self.travelled |= self.value <= self.press_threshold();
-                self.travelled && self.value <= self.press_threshold() && self.stable_polls >= 5
+                self.travelled |= value <= self.press_threshold();
+                self.travelled && value <= self.press_threshold() && self.stable_polls >= 5
             }
             TriggerStep::Release => {
-                self.returned |= self.value >= self.release_threshold();
-                self.returned && self.value >= self.release_threshold() && self.stable_polls >= 5
+                self.returned |= value >= self.release_threshold(resting);
+                self.returned && value >= self.release_threshold(resting) && self.stable_polls >= 5
             }
             _ => false,
         };
@@ -319,18 +340,21 @@ impl TriggerCalibrationSession {
             step: self.step,
             valid: self.valid,
         };
-        match (previous_valid, self.valid) {
+        Ok(match (previous_valid, self.valid) {
             (false, true) => HoldChange::Start(self.step.hold_duration().unwrap()),
             (true, false) => HoldChange::Cancel,
             _ => HoldChange::Unchanged,
-        }
+        })
     }
     /// Exact source {x:0,y:0,t} storage percentage. No elapsed-time value.
-    pub fn movement_percentage(&self) -> f64 {
-        let value = (self.release_threshold() - self.value)
-            / (self.release_threshold() - self.press_threshold())
+    pub fn movement_percentage(&self) -> Option<f64> {
+        let measurement = self.measurement.as_ref()?;
+        let value = (self.release_threshold(measurement.resting) - measurement.value)
+            / (self.release_threshold(measurement.resting) - self.press_threshold())
             * 100.;
-        100. - js_round(value).clamp(0., 100.)
+        value
+            .is_finite()
+            .then(|| 100. - js_round(value).clamp(0., 100.))
     }
     pub fn validate_range(&self, range: TriggerCalibrationRange) -> bool {
         let limits = if self.part == TriggerPart::Left {
@@ -381,11 +405,7 @@ impl TriggerCalibrationSession {
         );
         let result = self.sample_and_advance(transport, &mut wait);
         if result.is_err() {
-            self.progress = TriggerCalibrationProgress {
-                step: TriggerStep::Error,
-                valid: false,
-            };
-            self.stop();
+            self.fail();
         }
         result
     }
@@ -409,8 +429,13 @@ impl TriggerCalibrationSession {
         let sample = js_round(sum / 5.);
         if self.step == TriggerStep::Press {
             self.sample_min = Some(sample);
-            let initial = transport.raw_analog_input().ok();
-            self.prepare(TriggerStep::Release, initial);
+            let initial = self.read_value(transport.raw_analog_input())?;
+            let resting = self
+                .measurement
+                .as_ref()
+                .context("Trigger resting observation is missing")?
+                .resting;
+            self.prepare(TriggerStep::Release, resting, initial);
             return Ok(());
         }
         self.sample_max = Some(sample);

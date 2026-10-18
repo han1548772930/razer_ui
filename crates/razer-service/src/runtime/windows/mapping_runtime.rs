@@ -33,6 +33,8 @@ mod advanced;
 mod display;
 #[path = "mapping_runtime/system.rs"]
 mod system;
+#[path = "mapping_runtime/philips.rs"]
+mod philips;
 
 pub(super) fn client() -> Result<crate::mapping::owner::Client> {
     static REGISTRY: std::sync::OnceLock<crate::mapping::owner::Registry> = std::sync::OnceLock::new();

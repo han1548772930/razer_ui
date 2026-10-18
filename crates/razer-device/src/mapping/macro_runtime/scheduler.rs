@@ -134,6 +134,11 @@ impl<P: Clone> Scheduler<P> {
             .collect()
     }
 
+    /// Manager +224 counts normal registrations and the entire FIFO, including
+    /// its running head; the activity callback copies the low byte (77270).
+    pub fn activity_count(&self) -> u8 {
+        (self.active.len() + self.queued.len() + usize::from(self.queue_active.is_some())) as u8
+    }
     pub fn is_idle(&self) -> bool {
         self.active.is_empty() && self.queue_active.is_none() && self.queued.is_empty()
     }

@@ -86,6 +86,7 @@ pub(super) struct TriggerCalibrationState {
     submission_error: Option<String>,
     pub(super) step: i8,
     pub(super) valid: bool,
+    progress_observed: bool,
     reducer_part: Option<u8>,
     pub(super) selected_part: u8,
     pub(super) raw_trigger_percent: Option<f64>,
@@ -119,7 +120,7 @@ impl TriggerCalibrationState {
             return None;
         }
         self.selected_part = part;
-        self.raw_trigger_percent = Some(100.);
+        self.raw_trigger_percent = None;
         self.marker_started = None;
         self.marker_from = 0.;
         self.marker_target = 0.;
@@ -138,6 +139,9 @@ impl TriggerCalibrationState {
         self.generation = self.generation.wrapping_add(1);
         self.sequence = None;
         self.submission_error = None;
+        self.progress_observed = false;
+        self.raw_trigger_percent = None;
+        self.marker_started = None;
         self.reducer_part = Some(part);
         self.step = if action == CalibrationAction::Start { 10 } else { 0 };
         // Source START/STOP spread the reducer. isStepValid is retained.
@@ -164,6 +168,11 @@ impl TriggerCalibrationState {
             ObservationValue::Progress { step, valid, part } => {
                 self.step = step;
                 self.valid = valid;
+                self.progress_observed = true;
+                if step == -1 {
+                    self.raw_trigger_percent = None;
+                    self.marker_started = None;
+                }
                 // MW_UPDATE_CONTROLLER_CALIBRATION_PROGRESS doesn't change
                 // partId. Optional part is a genuine full reducer observation.
                 if let Some(part) = part {
@@ -184,6 +193,8 @@ impl TriggerCalibrationState {
                 self.timer_started = None;
                 self.marker_started = None;
                 self.prompt_started = None;
+                self.raw_trigger_percent = None;
+                self.progress_observed = false;
                 return true;
             }
         }
@@ -199,7 +210,7 @@ impl TriggerCalibrationState {
         }
     }
     fn show_prompt(&self) -> bool {
-        self.phase() == Some(false) && self.raw_trigger_percent.unwrap_or(100.) >= 95.
+        self.phase() == Some(false) && self.raw_trigger_percent.is_some_and(|value| value >= 95.)
     }
     fn sync_visual_phase(&mut self, now: Instant) {
         let key = self.phase().map(|release| (self.part(), release));
@@ -208,7 +219,7 @@ impl TriggerCalibrationState {
             self.timer_started = None;
             self.timer_progress = 0.;
         }
-        if key.is_none() || !self.valid {
+        if key.is_none() || !self.valid || !self.progress_observed {
             self.timer_started = None;
             self.timer_progress = 0.;
         } else if self.timer_started.is_none() {
@@ -274,6 +285,11 @@ impl TriggerCalibrationState {
         // Transport failure is separate from the service's Step_Error. A
         // completed send must not fabricate Step_3_Trigger_Complete either.
         self.submission_error = result.err();
+        if self.submission_error.is_some() {
+            self.raw_trigger_percent = None;
+            self.progress_observed = false;
+            self.stop_visuals();
+        }
         true
     }
 }
@@ -358,12 +374,21 @@ mod tests {
         let now = Instant::now();
         let mut state = TriggerCalibrationState::default();
         let first = state.open(3, now).unwrap();
+        state.observe(
+            TriggerCalibrationObservation::user_movement(first.generation(), 1, 100.).unwrap(),
+            now,
+        );
         assert!(state.tick_frame(first.generation(), now + Duration::from_millis(100)));
 
         let restarted_at = now + Duration::from_secs(1);
         let replacement = state
             .request(CalibrationAction::Start, 4, restarted_at)
             .unwrap();
+        state.observe(
+            TriggerCalibrationObservation::user_movement(replacement.generation(), 1, 100.)
+                .unwrap(),
+            restarted_at,
+        );
         let retained_prompt = state.prompt_progress;
         assert!(!state.tick_frame(first.generation(), restarted_at + Duration::from_secs(1)));
         assert_eq!(state.prompt_progress, retained_prompt);
@@ -387,5 +412,42 @@ mod tests {
         ));
         assert!(!state.needs_frame());
         assert_eq!(state.prompt_progress, 0.);
+    }
+
+    #[::core::prelude::v1::test]
+    fn new_generation_and_failed_reads_cannot_present_retained_measurements() {
+        let now = Instant::now();
+        let mut state = TriggerCalibrationState::default();
+        let first = state.open(3, now).unwrap();
+        assert_eq!(state.raw_trigger_percent, None);
+        assert!(!state.needs_frame());
+        state.observe(
+            TriggerCalibrationObservation::user_movement(first.generation(), 1, 37.).unwrap(),
+            now,
+        );
+        state.observe(
+            TriggerCalibrationObservation::progress(first.generation(), 2, 10, true, None).unwrap(),
+            now,
+        );
+        let retry = state.request(CalibrationAction::Start, 3, now).unwrap();
+        assert!(state.valid);
+        assert_eq!(state.raw_trigger_percent, None);
+        assert!(!state.needs_frame());
+        assert!(!state.observe(
+            TriggerCalibrationObservation::user_movement(first.generation(), 3, 80.).unwrap(),
+            now,
+        ));
+        state.observe(
+            TriggerCalibrationObservation::user_movement(retry.generation(), 1, 25.).unwrap(),
+            now,
+        );
+        state.observe(
+            TriggerCalibrationObservation::progress(retry.generation(), 2, -1, false, None)
+                .unwrap(),
+            now,
+        );
+        assert_eq!(state.raw_trigger_percent, None);
+        assert_eq!(state.step, -1);
+        assert!(!state.needs_frame());
     }
 }

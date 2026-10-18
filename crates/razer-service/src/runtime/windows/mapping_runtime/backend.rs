@@ -1,5 +1,5 @@
 //! Shared mapping actor: publication, connected driver registrations and capture.
-use super::{State, capture, connections::{self, Lease}, device, driver, identity};
+use super::{State, capture, connections::{self, Lease}, device, driver, identity, philips};
 use anyhow::{Context, Result, ensure};
 use razer_device::{mapping_native_action::device_tables,mapping_native_mode::{ModeState,DeviceInfo}};
 use razer_ipc::{ServiceRequest, macro_recording::ActionReply, mapping_control};
@@ -37,14 +37,14 @@ pub(super) struct Core<E:device::Executor> {
     hotkey_failures:BTreeMap<Uuid,String>,
     scopes:BTreeSet<Uuid>,
 }
-pub(super) struct Backend<E:device::Executor> {core:Core<E>,capture:capture::State}
+pub(super) struct Backend<E:device::Executor> {core:Core<E>,capture:capture::State,philips:philips::State}
 impl<E:device::Executor> Backend<E> {
     pub fn new(factory:fn(ExecutionContext)->Result<E>)->Self {
         let (notification_sender,notifications)=mpsc::sync_channel(512);
         Self {core:Core {factory,macros:Arc::new(Mutex::new(State::new())),modes:Arc::new(Mutex::new(ModeState::default())),
             devices:BTreeMap::new(),connections:connections::Registry::default(),notification_sender,notifications,
             global:None,mapping_suppression:BTreeSet::new(),shortcut_suppression:BTreeSet::new(),mode_subscribers:BTreeSet::new(),
-            hotkeys:Default::default(),hotkey_scopes:BTreeMap::new(),hotkey_events:BTreeMap::new(),hotkey_failures:BTreeMap::new(),scopes:BTreeSet::new()},capture:Default::default()}
+            hotkeys:Default::default(),hotkey_scopes:BTreeMap::new(),hotkey_events:BTreeMap::new(),hotkey_failures:BTreeMap::new(),scopes:BTreeSet::new()},capture:Default::default(),philips:Default::default()}
     }
 }
 impl<E:device::Executor> Core<E> {
@@ -190,6 +190,42 @@ impl<E:device::Executor> capture::Host for Core<E> {
     fn publish_storage(&mut self,_scope:Uuid,key:&str,value:&Value)->Result<()>{self.publish_storage_value(key,value)}
 }
 
+impl<E:device::Executor> philips::Host for Core<E> {
+    fn acquire(&mut self,scope:Uuid,target:&capture::Target)->Result<()> {self.connections.philips(scope,target).map(|_|())}
+    fn remove(&mut self,scope:Uuid,target:&capture::Target)->Result<()> {self.connections.release(&Lease::Philips{scope,guid:target.guid})}
+    fn redirect(&mut self,scope:Uuid,target:&capture::Target,kind:razer_device::mapping_native_session::hooks::RedirectKind,enabled:bool)->Result<()> {
+        self.connections.redirect(&Lease::Philips{scope,guid:target.guid},kind,enabled)
+    }
+    fn activity(&mut self,_scope:Uuid,target:&capture::Target)->Result<(usize,usize)> {
+        let macros=self.macros.lock().map_err(|_|anyhow::anyhow!("Mapping macro owner poisoned"))?.scheduler.activity_count();
+        let mut keys=0u8;
+        for row in self.devices.values().filter(|row|row.target.info.container_id.eq_ignore_ascii_case(&target.container_id)&&row.target.info.product_id==target.product_id) {
+            keys=keys.wrapping_add(row.worker.held_count()?);
+        }
+        Ok((usize::from(macros),usize::from(keys)))
+    }
+    fn mapping(&mut self,scope:Uuid,enabled:bool)->Result<()> {
+        let reply=Core::mapping(self,scope,enabled)?;ensure!(reply.result(),"{}",reply.reason());Ok(())
+    }
+    fn escape(&mut self,scope:Uuid,owner:&str,enabled:bool)->Result<()> {
+        if enabled {
+            self.hotkeys.register(razer_platform::global_shortcuts::Shortcut{virtual_key:27,modifiers:0,argument:owner.into()})?;
+            self.hotkey_scopes.entry((27,0)).or_default().insert(scope);Ok(())
+        } else {self.unregister_hotkey(scope,(27,0))}
+    }
+    fn take_escape(&mut self,scope:Uuid,owner:&str)->Result<bool> {
+        self.poll_hotkeys()?;
+        if let Some(error)=self.hotkey_failures.get(&scope){anyhow::bail!("{error}");}
+        let events=self.hotkey_events.entry(scope).or_default();
+        let mut observed=false;
+        events.retain(|event|{
+            let matched=event.get("event").and_then(Value::as_str).and_then(|event|serde_json::from_str::<Value>(event).ok()).is_some_and(|event|event.get("argument").and_then(Value::as_str)==Some(owner)&&event.get("virtualKey").and_then(Value::as_u64)==Some(27));
+            observed|=matched;!matched
+        });
+        Ok(observed)
+    }
+}
+
 impl Registration {
     fn push(&mut self,value:Value) {
         if self.pending.len()<512 {self.pending.push_back(value);} else {self.failure.get_or_insert_with(||"Mapping event queue overflowed".into());}
@@ -199,6 +235,7 @@ impl<E:device::Executor> crate::mapping::owner::Backend for Backend<E> {
     fn acquire(&mut self,scope:Uuid)->Result<()> {self.core.scopes.insert(scope);Ok(())}
     fn request(&mut self,scope:Uuid,request:ServiceRequest)->Result<Value> {
         if let Some(result)=self.capture.handle(scope,&request,&mut self.core){return result;}
+        if let Some(result)=self.philips.handle(scope,&request,&mut self.core){return result;}
         use ServiceRequest::*;
         match request {
             MappingDeviceStart{product_id,device_container_id,owner_guid}=>self.core.start_device(scope,product_id,&device_container_id,owner_guid),
@@ -290,6 +327,20 @@ impl<E:device::Executor> crate::mapping::owner::Backend for Backend<E> {
                     Lease::Device{caller,..}=>if let Some(row)=self.core.devices.values_mut().find(|row|row.caller==caller){
                         match &input.result {Ok(packet)=>if let Err(error)=row.worker.input(packet.clone()){row.failure=Some(format!("{error:#}"));},Err(error)=>{row.failure=Some(error.clone());}}
                     },
+                    Lease::Philips{scope,guid}=>match &input.result {
+                        Ok(packet)=>match decode_native_stream_packet(&packet.bytes) {
+                            Ok(decoded)=>{
+                                use razer_device::mapping_native_events::NativeStreamInput;
+                                if let NativeStreamInput::Mouse(mouse)=decoded.input {
+                                    if decoded.kind==NativeStreamKind::Notify && mouse.packed_buttons()==1 { self.philips.input(scope,guid,philips::DriverEvent::LeftDown); }
+                                    if decoded.kind==NativeStreamKind::Redirect && mouse.packed_buttons()!=0 {self.philips.input(scope,guid,philips::DriverEvent::Redirect);}
+                                    if mouse.movement!=[0,0] {self.philips.input(scope,guid,philips::DriverEvent::MouseMove);}
+                                }
+                            }
+                            Err(error)=>self.philips.input_failed(scope,guid,error.to_string()),
+                        },
+                        Err(error)=>self.philips.input_failed(scope,guid,error.clone()),
+                    },
                     Lease::Capture{scope,guid}=>match &input.result {
                         Ok(packet)=>match decode_native_stream_packet(&packet.bytes) {
                             Ok(decoded) if decoded.kind==NativeStreamKind::Redirect=>{
@@ -304,6 +355,7 @@ impl<E:device::Executor> crate::mapping::owner::Backend for Backend<E> {
                 }
             }
         }
+        self.philips.poll(&mut self.core)?;
         for row in self.core.devices.values_mut() {
             match row.worker.events() {
                 Ok(events)=>for event in events {match event {
@@ -348,6 +400,7 @@ impl<E:device::Executor> crate::mapping::owner::Backend for Backend<E> {
         Ok(())
     }
     fn release(&mut self,scope:Uuid)->Result<()> {
+        self.philips.release(scope,&mut self.core)?;
         self.capture.release(scope,&mut self.core)?;
         let owners=self.core.devices.iter().filter_map(|(owner,row)|(row.scope==scope).then_some(owner.clone())).collect::<Vec<_>>();
         let mut errors=Vec::new();
@@ -355,7 +408,12 @@ impl<E:device::Executor> crate::mapping::owner::Backend for Backend<E> {
         if self.core.global.as_ref().is_some_and(|global|global.scope==scope){
             if let Err(error)=self.core.replace_global_engine(None){errors.push(format!("{error:#}"));}else{self.core.global=None;}
         }
-        for lease in self.core.connections.leases_for(scope){if let Err(error)=self.core.connections.release(&lease){errors.push(format!("{error:#}"));}}
+        for lease in self.core.connections.leases_for(scope) {
+            if let Lease::Device{caller,..}=&lease {
+                if self.core.devices.values().any(|row|row.caller==*caller) {continue;}
+            }
+            if let Err(error)=self.core.connections.release(&lease){errors.push(format!("{error:#}"));}
+        }
         let keys=self.core.hotkey_scopes.iter().filter_map(|(key,scopes)|scopes.contains(&scope).then_some(*key)).collect::<Vec<_>>();
         for key in keys {if let Err(error)=self.core.unregister_hotkey(scope,key){errors.push(format!("{error:#}"));}}
         if self.core.mapping_suppression.contains(&scope) {

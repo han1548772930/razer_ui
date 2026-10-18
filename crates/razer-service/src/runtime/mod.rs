@@ -266,19 +266,18 @@ pub fn run_worker() -> i32 {
                 }
             }
         };
-        let fatal = false;
         let mut response = match result {
             Ok(data) => ResponseEnvelope {
                 id: envelope.id,
                 data: Some(data),
                 error: None,
-                fatal,
+                fatal: false,
             },
             Err(error) => ResponseEnvelope {
                 id: envelope.id,
                 data: None,
                 error: Some(format!("{error:#}")),
-                fatal,
+                fatal: false,
             },
         };
         if shutdown {
@@ -293,23 +292,13 @@ pub fn run_worker() -> i32 {
             drop(runtime);
             return if write_response(&response).is_err() {
                 2
-            } else if fatal {
-                3
             } else {
                 0
             };
         }
-        if fatal {
-            // A fatal response is also a process-exit receipt. Complete owner
-            // restoration before a client is allowed to release the process.
-            cleanup_owners(&mut portable, #[cfg(windows)] &mut runtime).apply(&mut response);
-        }
         if write_response(&response).is_err() {
-            if !fatal { cleanup_without_reply(&mut portable, #[cfg(windows)] &mut runtime); }
+            cleanup_without_reply(&mut portable, #[cfg(windows)] &mut runtime);
             return 2;
-        }
-        if fatal {
-            return 3;
         }
     }
 }

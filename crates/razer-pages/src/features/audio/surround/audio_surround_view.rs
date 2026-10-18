@@ -322,8 +322,15 @@ impl AudioProductWorkspace {
                     );
             }
         }
-        surface::panel_with_help(
+        surface::panel_with_title_switch(
             t("SPEAKER_MODE"),
+            surface::SynapseSwitch::new("surround-mode-switch")
+                .checked(enabled == Some(true) || self.surround.choosing_front)
+                .disabled(!self.surround.connected || self.surround.endpoints.is_empty())
+                .accessibility_label(t("SPEAKER_MODE"))
+                .on_change(cx.listener(|this, enabled: &bool, window, cx| {
+                    this.select_surround_mode(*enabled, window, cx);
+                })),
             h_flex()
                 .child(self.surround_help("surround-mode-help", "COMBO_MODE_TOOLTIP"))
                 .child(self.surround_tutorial_button("surround-mode-tutorial", 2, cx)),
@@ -408,7 +415,15 @@ impl AudioProductWorkspace {
         ))
         .child(self.surround_horizontal(
             Control::RearVolume,
-            t("REAR_SPEAKERS"),
+            format!(
+                "{} - Speaker ({})",
+                t("REAR_SPEAKERS"),
+                match self.spec.product_id {
+                    1392 => "Razer Clio 2.4".to_owned(),
+                    1442 => "Razer Clio X".to_owned(),
+                    _ => self.surround_product_name(),
+                }
+            ),
             enabled && unmuted,
             cx,
         ))

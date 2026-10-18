@@ -278,6 +278,8 @@ impl<O: Clone> Lookup<O> {
             suppressed: BTreeSet::new(),
         }
     }
+    /// Native QueryRunningMacrosAndKeysPressed copies the low byte of held size.
+    pub fn held_count(&self) -> u8 { self.held.len() as u8 }
     pub fn tables(&self) -> &Tables<O> {
         &self.tables
     }

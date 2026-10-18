@@ -1,5 +1,6 @@
 //! PID 70 calibration owns real Feature commands, HID observations and shared
 //! mapping/redirect leases until the source restoration sequence completes.
+#[path = "philips/stream.rs"]
 mod stream;
 use super::capture::Target;
 use anyhow::{Context, Result, ensure};

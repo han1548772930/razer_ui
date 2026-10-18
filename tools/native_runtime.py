@@ -1,4 +1,4 @@
-"""Replay audited GET packets through the current host's C HID exports.
+"""Compare independent Rust observations with audited local native exports.
 
 Validation only reads bytes. Target execution is confined to the disposable
 worker used by replay_get_trace; no JavaScript or N-API entry point is called.
@@ -17,6 +17,7 @@ import struct
 import subprocess
 import sys
 import time
+import threading
 
 # Python's isolated worker excludes the script directory from its import path.
 if str(Path(__file__).resolve().parent) not in sys.path:
@@ -159,6 +160,72 @@ def verify_simple_version_source(root, *, include_apps=False):
             "remaining": ["This query does not replace other Simple Service methods or the installed Elevation Service implementation"]}
 
 
+_APP_FILTERS = ("", "ChromaApp", "chromaapp", "__razer_inventory_missing__")
+
+
+def _simple_comparison(mode, before, original, after):
+    """Keep state changes and failed observations distinct from equivalence."""
+    if before != after:
+        return {"passed": False, "reason": "Direct observations changed during comparison"}
+    if mode == "version":
+        elevation = before.get("Elevation Service Version", {})
+        if elevation.get("state") != "observed":
+            return {"passed": False, "reason": "Direct service version was not observed"}
+        expected = dict(before)
+        expected["Elevation Service Version"] = elevation["value"]
+        equal = original.get("result") is True and original.get("reason") == "" and original.get("value") == expected
+    elif mode == "apps":
+        if [row.get("name") for row in before] != list(_APP_FILTERS):
+            return {"passed": False, "reason": "Direct inventory filters are incomplete"}
+        def inventory(rows, key):
+            result = []
+            for row in rows:
+                value = dict(row[key])
+                if value["userApps"] != "":
+                    value["userApps"] = json.loads(value["userApps"])
+                result.append({"name": row["name"], "value": value})
+            return result
+        equal = inventory(original, "original") == inventory(before, "rust")
+    else:
+        raise ValueError("Unknown Simple Service comparison")
+    return {"passed": equal, "reason": None if equal else "Original and independent observations differ"}
+
+
+def _marked_result(completed, marker):
+    if completed["exit_code"] != 0 or completed["timed_out"]:
+        raise ValueError("Comparison process did not complete successfully")
+    rows = [line.split(marker + " ", 1)[1] for line in completed["stdout"].splitlines()
+            if marker + " " in line]
+    if len(rows) != 1:
+        raise ValueError("Comparison process must emit exactly one result")
+    return json.loads(rows[0])
+
+
+def _compare_simple(root, mode):
+    test, marker = {
+        "version": ("simple_version::tests::direct_service_version_read_only", "RAZER_VERSION_RESULT"),
+        "apps": ("user_app_files::tests::direct_user_apps_read_only", "RAZER_APPS_RESULT"),
+    }[mode]
+    command = ["cargo", "test", "--locked", "-p", "razer-service", "--lib",
+               "runtime::native::" + test,
+               "--", "--ignored", "--exact", "--nocapture", "--test-threads=1"]
+    worker = [sys.executable, "-I", str(Path(__file__).resolve()), "--simple-worker", str(root), mode]
+    runs = {}
+    try:
+        runs["before"] = _run_service_version_test(command, root, os.environ.copy())
+        before = _marked_result(runs["before"], marker)
+        runs["original"] = _run_service_version_test(worker, root, os.environ.copy())
+        original = _marked_result(runs["original"], "RAZER_SIMPLE_RESULT")
+        runs["after"] = _run_service_version_test(command, root, os.environ.copy())
+        after = _marked_result(runs["after"], marker)
+        result = _simple_comparison(mode, before, original["value"], after)
+        result.update({"before": before, "original": original, "after": after})
+    except (ValueError, KeyError, TypeError) as error:
+        result = {"passed": False, "reason": str(error)}
+    return {"command": command, "original_command": worker, "runs": runs, "result": result,
+            "passed": result["passed"]}
+
+
 def compare_local_service_version(root):
     """Audited read-only original DLL versus direct Rust COM test receipt."""
     import shutil
@@ -196,24 +263,17 @@ def compare_local_service_version(root):
         "crates/razer-service/src/runtime/windows/simple_version.rs",
         "crates/razer-service/src/runtime/windows/simple_version_tests.rs", "tools/native_runtime.py"]
     inputs = {path: hashlib.sha256((root / path).read_bytes()).hexdigest() for path in implementation_paths}
-    command = ["cargo", "test", "--locked", "-p", "razer-service", "--lib",
-        "runtime::native::simple_version::tests::connected_service_version_read_only",
-        "--", "--ignored", "--exact", "--nocapture", "--test-threads=1"]
-    environment = os.environ.copy()
-    environment["RAZER_VERIFIED_SIMPLE_SERVICE"] = str(root / _SIMPLE_INPUT)
-    completed = _run_service_version_test(command, root, environment)
-    reports = re.findall(r"RAZER_VERSION_RESULT (\{[^\r\n]+\})", completed["stdout"])
-    result = json.loads(reports[0]) if len(reports) == 1 else None
+    completed = _compare_simple(root, "version")
     unchanged = all(hashlib.sha256((root / path).read_bytes()).hexdigest() == digest
                     for path, digest in inputs.items()) and server.read_bytes() == raw
-    passed = completed["exit_code"] == 0 and not completed["timed_out"] and result is not None and unchanged
-    return {"evidence": evidence, "mode": "read-only", "command": command,
+    passed = completed["passed"] and unchanged
+    return {"evidence": evidence, "mode": "read-only",
             "server": {"input": server_input.relative_to(root).as_posix(),
                        "sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw),
                        "architecture": pe["architecture"], "versions": pe["version_resources"], "signature": signer},
             "implementation_inputs": inputs, "inputs_unchanged": unchanged,
             **completed,
-            "result": result, "passed": passed,
+            "passed": passed,
             "scope": "Actual source DLL Initialize/GetVersionInfo/Shutdown callbacks and direct Rust local COM version query; no application window, installer, JS, firmware or device write"}
 
 
@@ -235,20 +295,13 @@ def compare_local_app_files(root):
              "crates/razer-service/src/runtime/windows/user_app_files.rs",
              "crates/razer-platform/src/native_paths.rs", "tools/native_runtime.py"]
     inputs = {path: hashlib.sha256((root / path).read_bytes()).hexdigest() for path in paths}
-    command = ["cargo", "test", "--locked", "-p", "razer-service", "--lib",
-               "runtime::native::user_app_files::tests::connected_user_apps_read_only",
-               "--", "--ignored", "--exact", "--nocapture", "--test-threads=1"]
-    environment = os.environ.copy()
-    environment["RAZER_VERIFIED_SIMPLE_SERVICE"] = str(root / _SIMPLE_INPUT)
-    completed = _run_service_version_test(command, root, environment)
-    reports = re.findall(r"RAZER_APPS_RESULT (\{[^\r\n]+\})", completed["stdout"])
-    result = json.loads(reports[0]) if len(reports) == 1 else None
+    completed = _compare_simple(root, "apps")
     unchanged = all(hashlib.sha256((root / path).read_bytes()).hexdigest() == digest
                     for path, digest in inputs.items())
-    return {"evidence": evidence, "mode": "read-only", "command": command,
+    return {"evidence": evidence, "mode": "read-only",
             "implementation_inputs": inputs, "inputs_unchanged": unchanged,
-            **completed, "result": result,
-            "passed": completed["exit_code"] == 0 and not completed["timed_out"] and result is not None and unchanged,
+            **completed,
+            "passed": completed["passed"] and unchanged,
             "scope": "Actual source DLL Initialize/GetUserApps/Shutdown callbacks compared with direct Rust current-file names/hashes; no writes, helpers or application windows"}
 
 
@@ -262,8 +315,8 @@ def _run_service_version_test(command, root, environment):
         stdout, stderr = process.communicate(timeout=180)
     except subprocess.TimeoutExpired:
         timed_out = True
-        # Cargo owns a test child; killing only cargo would abandon the DLL
-        # call. This branch is restricted to this read-only comparison tree.
+        # The command may own a test child; terminate and wait for its entire
+        # read-only comparison tree before returning a timeout receipt.
         termination = subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
             capture_output=True, text=True, errors="replace", timeout=15)
         stdout, stderr = process.communicate(timeout=15)
@@ -272,6 +325,116 @@ def _run_service_version_test(command, root, environment):
             "timed_out": timed_out, "worker_waited": True,
             "forced_tree_cleanup": None if termination is None else {
                 "exit_code": termination.returncode, "stdout": termination.stdout, "stderr": termination.stderr}}
+
+
+# Callbacks and the mapped module remain alive until the isolated process exits,
+# including when a native operation never calls back or shutdown fails.
+_SIMPLE_WORKER_OWNERS = []
+
+
+def _simple_session(library, mode, emit, timeout=30):
+    if mode not in ("version", "apps"):
+        raise ValueError("Unknown Simple Service query")
+    completion_type = ctypes.CFUNCTYPE(None)
+    query_type = ctypes.CFUNCTYPE(None, ctypes.c_bool, ctypes.c_char_p, ctypes.c_char_p)
+    callbacks = []
+    _SIMPLE_WORKER_OWNERS.append((library, callbacks))
+    initialize = library.simpleServiceInitialize
+    initialize.argtypes, initialize.restype = [completion_type], None
+    shutdown = library.simpleServiceShutdown
+    shutdown.argtypes, shutdown.restype = [completion_type], None
+    query = library.simpleGetVersionInfo if mode == "version" else library.simpleGetUserApps
+    query.argtypes = [query_type] if mode == "version" else [ctypes.c_char_p, query_type]
+    query.restype = None
+    events = []
+
+    def record(event):
+        events.append(event)
+        emit(event)
+
+    def complete(function, name):
+        ready = threading.Event()
+        callback = completion_type(ready.set)
+        callbacks.append(callback)
+        record({"operation": name, "phase": "call"})
+        function(callback)
+        if not ready.wait(timeout):
+            raise TimeoutError(name + " callback did not complete")
+        record({"operation": name, "phase": "callback"})
+
+    def read(name=None):
+        ready = threading.Event()
+        values = []
+
+        def receive(result, reason, value):
+            # c_char_p converts bytes while the original callback buffer lives.
+            values.append((bool(result), reason, value))
+            ready.set()
+
+        callback = query_type(receive)
+        callbacks.append(callback)
+        record({"operation": "query", "name": name, "phase": "call"})
+        if name is None:
+            query(callback)
+        else:
+            argument = name.encode("utf-8")
+            callbacks.append(argument)
+            query(argument, callback)
+        if not ready.wait(timeout):
+            raise TimeoutError("Query callback did not complete")
+        if len(values) != 1:
+            raise ValueError("Query emitted multiple callbacks")
+        result, reason, payload = values[0]
+        if reason is None or payload is None:
+            raise ValueError("Query returned a null callback string")
+        reason, payload = reason.decode("utf-8"), payload.decode("utf-8")
+        value = {"result": result, "reason": reason,
+                 "value" if mode == "version" else "userApps":
+                     json.loads(payload) if mode == "version" and payload else payload}
+        record({"operation": "query", "name": name, "phase": "callback", "value": value})
+        return value
+
+    complete(initialize, "initialize")
+    try:
+        result = read() if mode == "version" else [
+            {"name": name, "original": read(name)} for name in _APP_FILTERS]
+    except Exception as error:
+        # A pending query may still own its callback; retain it through shutdown
+        # and process exit even when the shutdown callback itself fails.
+        try:
+            complete(shutdown, "shutdown")
+        except Exception as cleanup:
+            raise RuntimeError(f"Query failed: {error}; shutdown failed: {cleanup}") from error
+        raise
+    complete(shutdown, "shutdown")
+    return {"value": result, "lifecycle": events}
+
+
+def _simple_worker_main(root, mode):
+    def emit(value):
+        print("RAZER_SIMPLE_EVENT " + json.dumps(value, ensure_ascii=True), flush=True)
+
+    try:
+        if sys.platform != "win32" or ctypes.sizeof(ctypes.c_void_p) != 8:
+            raise RuntimeError("Simple Service comparison requires Windows x64 Python")
+        if mode not in ("version", "apps"):
+            raise ValueError("Unknown Simple Service query")
+        root = Path(root).resolve(strict=True)
+        evidence = verify_simple_version_source(root, include_apps=mode == "apps")
+        path = root / evidence["input"]
+        directory = os.add_dll_directory(str(path.parent))
+        _SIMPLE_WORKER_OWNERS.append(directory)
+        emit({"operation": "load", "sha256": evidence["sha256"]})
+        library = ctypes.CDLL(str(path))
+        _SIMPLE_WORKER_OWNERS.append(library)
+        result = _simple_session(library, mode, emit)
+        print("RAZER_SIMPLE_RESULT " + json.dumps(result, ensure_ascii=True), flush=True)
+        return 0
+    except Exception as error:
+        emit({"operation": "error", "error": f"{type(error).__name__}: {error}"})
+        return 1
+
+
 _MOUSE_GETS = {
     # Current PID190 84816.I_ -> 30580.kD; the identity reply is not a setting.
     (22, 0, 130): b"",
@@ -670,6 +833,13 @@ def replay_get_trace(trace, dll_path, timeout_seconds=20):
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 4 and sys.argv[1] == "--simple-worker":
+        # Avoid Python finalization releasing callback objects while native
+        # threads can still return through them after a failed cleanup.
+        status = _simple_worker_main(sys.argv[2], sys.argv[3])
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(status)
     if sys.argv[1:] != ["--worker"]:
         raise SystemExit("Use tools/workspace.py for native runtime verification")
     raise SystemExit(_worker_main())

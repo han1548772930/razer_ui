@@ -20,8 +20,8 @@ impl Key {
     }
 }
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(super) enum Lease { Device {scope:Uuid,caller:Uuid}, Capture {scope:Uuid,guid:Uuid} }
-impl Lease {pub fn scope(&self)->Uuid {match self{Self::Device{scope,..}|Self::Capture{scope,..}=>*scope}}}
+pub(super) enum Lease { Device {scope:Uuid,caller:Uuid}, Capture {scope:Uuid,guid:Uuid}, Philips {scope:Uuid,guid:Uuid} }
+impl Lease {pub fn scope(&self)->Uuid {match self{Self::Device{scope,..}|Self::Capture{scope,..}|Self::Philips{scope,..}=>*scope}}}
 struct Redirect { holders:BTreeSet<Lease>, confirmed:Option<bool> }
 struct Entry { driver:driver::Owner, leases:BTreeSet<Lease>, redirects:BTreeMap<u8,Redirect>, notifications:BTreeSet<Lease> }
 #[derive(Default)]
@@ -51,6 +51,9 @@ impl Registry {
     }
     pub fn capture(&mut self,scope:Uuid,target:&capture::Target)->Result<driver::Route> {
         self.acquire(Key::new(target.vendor_id,target.product_id,&target.container_id)?,Lease::Capture{scope,guid:target.guid})
+    }
+    pub fn philips(&mut self,scope:Uuid,target:&capture::Target)->Result<driver::Route> {
+        self.acquire(Key::new(target.vendor_id,target.product_id,&target.container_id)?,Lease::Philips{scope,guid:target.guid})
     }
     fn entry(&mut self,lease:&Lease)->Result<&mut Entry> {
         let key=self.lease_keys.get(lease).context("Mapping driver registration changed")?;

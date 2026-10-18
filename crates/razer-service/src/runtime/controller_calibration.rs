@@ -311,7 +311,7 @@ fn execute(
         TriggerCalibrationSession::new(product_id, part).context("此产品缺少当前扳机参数")?;
     let mut movement_removed = false;
     let operation = (|| -> anyhow::Result<()> {
-        session.start(&mut protocol);
+        session.start(&mut protocol)?;
         validate()?;
         observe(events, progress(&session, None))?;
         let mut hold_at: Option<Instant> = None;
@@ -338,21 +338,16 @@ fn execute(
                 }
                 match result {
                     Ok(()) => observe(events, progress(&session, None))?,
-                    Err(error) => {
-                        // Source error is the top-level calibration string;
-                        // retain transport context separately in result.error.
-                        observe(events, progress(&session, Some(&error.to_string())))?;
-                        return Err(error);
-                    }
+                    Err(error) => return Err(error),
                 }
                 if session.step() == TriggerStep::Complete {
                     return Ok(());
                 }
                 continue;
             }
-            let raw = protocol.raw_analog_input().ok();
+            let raw = protocol.raw_analog_input();
             validate()?;
-            match session.poll(raw) {
+            match session.poll(raw)? {
                 HoldChange::Start(duration) => {
                     hold_at = Some(Instant::now() + duration);
                     observe(events, progress(&session, None))?;
@@ -363,11 +358,13 @@ fn execute(
                 }
                 HoldChange::Unchanged => {}
             }
-            if Instant::now() >= movement_at {
+            if Instant::now() >= movement_at
+                && let Some(percent) = session.movement_percentage()
+            {
                 observe(
                     events,
                     json!({"kind":"movement","payload":{
-                    "x":0,"y":0,"t":session.movement_percentage()}}),
+                    "x":0,"y":0,"t":percent}}),
                 )?;
                 movement_at = Instant::now() + TriggerCalibrationSession::movement_throttle();
             }
@@ -379,6 +376,11 @@ fn execute(
             events,
             json!({"kind":"remove_movement","key":"CalibrationUserMovement"}),
         )?;
+    }
+    if let Err(error) = &operation
+        && session.step() == TriggerStep::Error
+    {
+        observe(events, progress(&session, Some(&error.to_string())))?;
     }
     let canceled = canceled.load(Ordering::Acquire);
     let verified = operation.is_ok();
