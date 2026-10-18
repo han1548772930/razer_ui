@@ -1,6 +1,7 @@
+use super::held::HeldOutputs;
 use super::{AudioAction, Definition, Event, Keyboard, Launch, Library, Mouse, MovementMode};
 use anyhow::{Context, Result, ensure};
-use std::{collections::BTreeMap, sync::Arc};
+use std::sync::Arc;
 use uuid::Uuid;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -86,24 +87,11 @@ struct Frame {
     loop_frame: Option<LoopFrame>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-enum HeldIdentity {
-    Keyboard {
-        scancode: u16,
-        flag: u16,
-        unit: Option<u16>,
-    },
-    Mouse {
-        buttons: u32,
-        unit: Option<u16>,
-    },
-}
-
 pub struct Execution {
     identity: Uuid,
     sequence: u64,
     stack: Vec<Frame>,
-    held: BTreeMap<HeldIdentity, Action>,
+    held: HeldOutputs,
     pending: Option<PendingAction>,
     delayed_action: Option<Action>,
     deadline: Option<u64>,
@@ -132,7 +120,7 @@ impl Execution {
                 repeat,
                 loop_frame: None,
             }],
-            held: BTreeMap::new(),
+            held: HeldOutputs::default(),
             pending: None,
             delayed_action: None,
             deadline: None,
@@ -180,7 +168,7 @@ impl Execution {
             }
         } else {
             match result {
-                Ok(()) => self.track(&pending.action),
+                Ok(()) => self.held.track(&pending.action),
                 // The source audio/clipboard cases advance regardless of their
                 // operation result. Preserve that control flow and retain the
                 // real failure separately from its macro completion status.
@@ -279,12 +267,7 @@ impl Execution {
             Event::Mouse(mouse) => {
                 // MappingDataMouseWin+224 is precisely packed_buttons==16.
                 // Only duplicate middle-button makes take this source branch.
-                if mouse.input().packed_buttons() == 16
-                    && self.held.contains_key(&HeldIdentity::Mouse {
-                        buttons: 16,
-                        unit: mouse.unit,
-                    })
-                {
+                if mouse.input().packed_buttons() == 16 && self.held.has_middle_make(mouse.unit) {
                     self.previous_keyboard = was_keyboard;
                     return Poll::Progress;
                 }
@@ -382,7 +365,7 @@ impl Execution {
     }
 
     fn finish(&mut self) -> Poll {
-        if let Some((_, action)) = self.held.pop_first() {
+        if let Some(action) = self.held.pop_release() {
             return self.issue(action, true);
         }
         Poll::Complete(Completion {
@@ -398,44 +381,5 @@ impl Execution {
             omitted_operation_errors: self.omitted_operation_errors,
             cleanup_errors: self.cleanup_errors.clone(),
         })
-    }
-
-    fn track(&mut self, action: &Action) {
-        let (identity, released, release) = match action {
-            Action::Keyboard(key) => {
-                let identity = HeldIdentity::Keyboard {
-                    scancode: key.scancode,
-                    flag: key.flag & !1,
-                    unit: key.unit,
-                };
-                let mut release = key.clone();
-                release.flag |= 1;
-                (identity, key.flag & 1 != 0, Action::Keyboard(release))
-            }
-            Action::Mouse(mouse) => {
-                let input = mouse.input();
-                if !input.is_pressed() && !input.is_released() {
-                    return;
-                }
-                let identity = HeldIdentity::Mouse {
-                    buttons: input.pressed().packed_buttons(),
-                    unit: mouse.unit,
-                };
-                let released = input.released();
-                let release = Action::Mouse(Mouse {
-                    id: released.id,
-                    data: released.data,
-                    modifiers: mouse.modifiers,
-                    unit: mouse.unit,
-                });
-                (identity, input.is_released(), release)
-            }
-            _ => return,
-        };
-        if released {
-            self.held.remove(&identity);
-        } else {
-            self.held.entry(identity).or_insert(release);
-        }
     }
 }

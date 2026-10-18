@@ -16,6 +16,8 @@
 use std::{collections::BTreeMap, error::Error, fmt, time::Duration};
 
 use crate::mapping_native_output::DRIVER_SEND_INPUT_IOCTL;
+#[path = "mapping_native_session/hooks.rs"]
+pub mod hooks;
 
 /// RVA `0x1101D0` arms this read when the handle opens. RVA `0x114850`
 /// continuously resubmits it using alternate 304-byte buffers.

@@ -45,25 +45,42 @@ fn msr_wire_low_and_high_words_are_not_out_parameter_order() {
 #[test]
 fn smn_uses_exact_pci_method_and_register_order() {
     let request = [0, 0xc3, 0x24, 0x80, 2, 0, 0, 0, 0, 0x98, 5, 0];
-    assert_eq!(driver(0x9c40_2584, &request, &[0x56, 0x34, 0x12, 0x80], 4)
-        .read_smn(0x24, 24, 3, 2, 0x59800).unwrap(), 0x8012_3456);
+    assert_eq!(
+        driver(0x9c40_2584, &request, &[0x56, 0x34, 0x12, 0x80], 4)
+            .read_smn(0x24, 24, 3, 2, 0x59800)
+            .unwrap(),
+        0x8012_3456
+    );
     for value in [0xaaaa_aaaa_u32, 0xbbbb_bbbb, 0xcccc_cccc] {
-        assert!(driver(0x9c40_2584, &request, &value.to_le_bytes(), 4)
-            .read_smn(0x24, 24, 3, 2, 0x59800).is_err());
+        assert!(
+            driver(0x9c40_2584, &request, &value.to_le_bytes(), 4)
+                .read_smn(0x24, 24, 3, 2, 0x59800)
+                .is_err()
+        );
     }
     for length in [0, 3, 5] {
-        assert!(driver(0x9c40_2584, &request, &[0; 4], length)
-            .read_smn(0x24, 24, 3, 2, 0x59800).is_err());
+        assert!(
+            driver(0x9c40_2584, &request, &[0; 4], length)
+                .read_smn(0x24, 24, 3, 2, 0x59800)
+                .is_err()
+        );
     }
 }
 
 #[test]
 fn pci_read_requires_driver_count_and_preserves_extended_offset() {
     let request = [0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 4, 12, 0, 0];
-    assert_eq!(driver(0x9c40_2720, &request, &[4, 0, 0, 0, 0x80, 0, 0, 0], 8)
-        .read_pci_u32(0, 24, 0, 0xc04).unwrap(), 0x80);
-    assert!(driver(0x9c40_2720, &request, &[0; 8], 8)
-        .read_pci_u32(0, 24, 0, 0xc04).is_err());
+    assert_eq!(
+        driver(0x9c40_2720, &request, &[4, 0, 0, 0, 0x80, 0, 0, 0], 8)
+            .read_pci_u32(0, 24, 0, 0xc04)
+            .unwrap(),
+        0x80
+    );
+    assert!(
+        driver(0x9c40_2720, &request, &[0; 8], 8)
+            .read_pci_u32(0, 24, 0, 0xc04)
+            .is_err()
+    );
 }
 
 #[test]
@@ -161,4 +178,44 @@ fn driver_version_is_an_observation_from_the_protocol() {
             .protocol_version()
             .is_err()
     );
+}
+
+#[test]
+fn msr_write_sends_register_high_low_and_rejects_driver_failure() {
+    let input = [
+        0x8f, 3, 0, 0, 0x78, 0x56, 0x34, 0x12, 0xef, 0xcd, 0xab, 0x90,
+    ];
+    assert!(
+        driver(0x9c402444, &input, &[0; 8], 8)
+            .write_msr(0x38f, 0x1234567890abcdef)
+            .is_ok()
+    );
+    assert!(
+        driver(0x9c402444, &input, &[255; 8], 8)
+            .write_msr(0x38f, 0x1234567890abcdef)
+            .is_err()
+    );
+}
+#[test]
+fn alternate_tsc_uses_the_acpi_port_and_float_high_reply_word() {
+    let mut alternate = [0; 8];
+    alternate[4..].copy_from_slice(&4200_f32.to_bits().to_le_bytes());
+    let script = Script(VecDeque::from([
+        Reply {
+            code: 0x9c402608,
+            input: 0x10_u32.to_le_bytes().to_vec(),
+            output: vec![255; 8],
+            returned: 8,
+        },
+        Reply {
+            code: 0x9c402600,
+            input: vec![8, 4, 0, 0, 16, 0, 0, 0],
+            output: alternate.to_vec(),
+            returned: 8,
+        },
+    ]));
+    let value = Driver::new(script)
+        .measured_tsc_mhz_with_acpi(0x408)
+        .unwrap();
+    assert!((value - 4200.0).abs() < 0.001);
 }

@@ -18,7 +18,7 @@
 - 首次使用且经当前源码／协议证明确需初始化的设备或本地功能保留有依据的默认值，按真实初始化链执行必要写入和确认；默认值在确认前不能标为设备实测。仅本机没有配置文件、首次被本程序发现、读取失败或断开，都不足以判定设备无配置，不得触发默认值覆盖设备已有设置。
 - 默认值内容、首次初始化判定、读取／写入顺序、结果消费者、乐观更新、确认及失败行为都必须追溯当前官方源码；不能自行增加通用初始化、回退、回滚、弹窗或另一套配置界面。源码规定的必要初始化／恢复写入仍须完整实现，不能用只读观察替代。
 - 禁止“读取失败后回退本地配置／默认值”的产品路径。未读取、读取中、失败、断开、未知协议值和已确认值必须明确区分；旧连接结果不得覆盖新连接。协议没有返回的字段保持未观测，不从数值、档位数量或缓存推断开关、能力及成功。
-- 写入必须完成真实传输并按当前协议核对实际应答／读回，结果更新页面；失败或取消不得显示成功，不得将本地文件写入成功当作设备成功。允许保留明确标识的未提交草稿，但不能作为设备状态回退，也不能悄悄丢弃实际读回或后续刷新。
+- 写入必须完成真实传输并按当前协议核对实际应答／读回，结果更新页面；失败或取消不得显示成功，不得将本地文件写入成功当作设备成功。
 
 # Independent implementation; official DLLs are comparison references
 
@@ -32,6 +32,8 @@
 - 完成标准分别记录：完整逆向证据、独立 Rust 实现、UI／后台完整接线、官方 DLL 生产依赖清理、纯／模拟验证和已授权实际对照。局部通过不能提升为整个 DLL、整个产品或整个项目已完成。
 
 # Full UI implementation
+
+- 功能、交互和状态生命周期必须以当前官方源码为依据，不得自行增加或改写。
 
 - Implement each local UI page completely from current original JS/CSS and resources. Follow `docs/re/ui-readonly-first-roadmap.md`.
 - Trace the mounted component tree and all product/version/accessory branches. Match layout, sizes, typography, colors, images/icons, wording, tabs, panels, drawers, dialogs, tooltips and keyboard/focus behavior, including normal, selected, disabled, loading, empty and error states.

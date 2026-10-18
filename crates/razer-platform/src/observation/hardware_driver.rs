@@ -68,29 +68,49 @@ impl<T: Transport> Driver<T> {
         register: u32,
     ) -> anyhow::Result<u32> {
         ensure!(device < 32 && function < 8, "Invalid SMN PCI function");
-        let address = 0x8000_0000 | (u32::from(bus) << 16)
-            | (u32::from(device) << 11) | (u32::from(function) << 8);
+        let address = 0x8000_0000
+            | (u32::from(bus) << 16)
+            | (u32::from(device) << 11)
+            | (u32::from(function) << 8);
         let mut request = [0; 12];
         request[..4].copy_from_slice(&address.to_le_bytes());
         request[4..8].copy_from_slice(&access_method.to_le_bytes());
         request[8..].copy_from_slice(&register.to_le_bytes());
         let value = u32::from_le_bytes(self.read(0x9c40_2584, &request)?);
-        ensure!(!matches!(value, 0xaaaa_aaaa | 0xbbbb_bbbb | 0xcccc_cccc),
-            "SMN register {register:#x} was not observed ({value:#x})");
+        ensure!(
+            !matches!(value, 0xaaaa_aaaa | 0xbbbb_bbbb | 0xcccc_cccc),
+            "SMN register {register:#x} was not observed ({value:#x})"
+        );
         Ok(value)
     }
 
     /// SDK 0x14048: extended PCI configuration dword response includes its
     /// byte count. An all-ones value is retained for the caller's identity check.
-    pub fn read_pci_u32(&mut self, bus: u8, device: u8, function: u8, offset: u16) -> anyhow::Result<u32> {
-        ensure!(device < 32 && function < 8 && offset <= 4092 && offset % 4 == 0,
-            "Invalid PCI configuration address");
+    pub fn read_pci_u32(
+        &mut self,
+        bus: u8,
+        device: u8,
+        function: u8,
+        offset: u16,
+    ) -> anyhow::Result<u32> {
+        ensure!(
+            device < 32 && function < 8 && offset <= 4092 && offset % 4 == 0,
+            "Invalid PCI configuration address"
+        );
         let mut request = [0; 16];
         for (chunk, value) in request.chunks_exact_mut(4).zip([
-            u32::from(bus), u32::from(device), u32::from(function), u32::from(offset),
-        ]) { chunk.copy_from_slice(&value.to_le_bytes()); }
+            u32::from(bus),
+            u32::from(device),
+            u32::from(function),
+            u32::from(offset),
+        ]) {
+            chunk.copy_from_slice(&value.to_le_bytes());
+        }
         let response = self.read::<8>(0x9c40_2720, &request)?;
-        ensure!(u32::from_le_bytes(response[..4].try_into()?) == 4, "PCI register was not observed");
+        ensure!(
+            u32::from_le_bytes(response[..4].try_into()?) == 4,
+            "PCI register was not observed"
+        );
         Ok(u32::from_le_bytes(response[4..].try_into()?))
     }
 
@@ -122,6 +142,29 @@ impl<T: Transport> Driver<T> {
             "The hardware driver did not measure a positive TSC frequency"
         );
         Ok(mhz)
+    }
+
+    /// SDK 0x15c9c retries its ACPI measurement only after the primary driver
+    /// counter fails. The alternate reply's high DWORD is an IEEE-754 float.
+    pub fn measured_tsc_mhz_with_acpi(&mut self, port: u16) -> anyhow::Result<f32> {
+        match self.measured_tsc_mhz() {
+            Ok(value) => Ok(value),
+            Err(primary) => (|| {
+                let mut input = [0; 8];
+                input[..4].copy_from_slice(&u32::from(port).to_le_bytes());
+                input[4..].copy_from_slice(&0x10_u32.to_le_bytes());
+                let reply = self.read::<8>(0x9c40_2600, &input)?;
+                let ratio = f32::from_bits(u32::from_le_bytes(reply[4..].try_into()?));
+                let value =
+                    (3_579_545_f64 / 1_000_000.0) as f32 * (f64::from(ratio) / 3.579545) as f32;
+                ensure!(
+                    value.is_finite() && value > 0.0,
+                    "ACPI TSC driver measurement is invalid"
+                );
+                Ok(value)
+            })()
+            .with_context(|| format!("Primary TSC measurement also failed: {primary:#}")),
+        }
     }
 
     /// SDK RVAs 0x14a00, 0x14ac4 and 0x14b90 return eight wire bytes for

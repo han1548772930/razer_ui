@@ -36,6 +36,7 @@ enum Drag {
 }
 #[derive(Default)]
 pub(super) struct State {
+    pub(super) live: razer_device::seiren_mixer::LiveState,
     numbers: BTreeMap<String, Entity<number::Number>>,
     faders: Vec<Entity<SliderState>>,
     knobs: BTreeMap<String, Entity<SliderState>>,
@@ -75,6 +76,12 @@ pub(super) struct State {
 }
 
 impl State {
+    fn sync_monitor(&mut self, index: usize, value: Value) {
+        if !value.is_null() && self.monitor_observed[index] != value {
+            self.monitor_observed[index] = value.clone();
+            self.monitor_preview[index] = value;
+        }
+    }
     fn sync_filter(&mut self, kind: &str) {
         if self.filter_value.as_deref() != Some(kind) {
             self.filter_value = Some(kind.to_owned());
@@ -122,6 +129,16 @@ mod state_tests {
     // The glob imports above also carry GPUI's `test` macro; name the
     // built-in attribute so this remains an ordinary Rust test.
     use std::prelude::v1::test;
+    #[test]
+    fn seiren_monitor_changed_source_value_replaces_temporary_drag_value() {
+        let mut state = State::default();
+        state.sync_monitor(0, serde_json::json!({"value":37,"isEnabled":true}));
+        state.monitor_preview[0]["value"] = serde_json::json!(82);
+        state.sync_monitor(0, serde_json::json!({"value":37,"isEnabled":true}));
+        assert_eq!(state.monitor_preview[0]["value"], 82);
+        state.sync_monitor(0, serde_json::json!({"value":61,"isEnabled":false}));
+        assert_eq!(state.monitor_preview[0], serde_json::json!({"value":61,"isEnabled":false}));
+    }
     #[test]
     fn seiren_eq_filter_refresh_preserves_navigation_until_value_changes() {
         let mut state = State::default();
@@ -205,6 +222,35 @@ fn source_button(id: impl Into<ElementId>, selected: bool) -> BaseButton {
 }
 
 impl AudioProductWorkspace {
+    pub(super) fn seiren_endpoint_available(&self, index: usize) -> bool {
+        self.seiren_endpoint_value(index).is_some()
+    }
+    pub(super) fn seiren_microphone_volume_preview(&self) -> &Value { &self.seiren_eq.monitor_preview[0] }
+    pub(super) fn preview_seiren_microphone_volume(&mut self, value: Value) { self.seiren_eq.monitor_preview[0] = value; }
+    fn seiren_endpoint_value(&self, index: usize) -> Option<Value> {
+        use razer_device::seiren_mixer::{MICROPHONE, HEADPHONES};
+        let id = *[MICROPHONE, HEADPHONES].get(index)?;
+        let value = self.seiren_eq.live.endpoint(id)?.value()?;
+        Some(json!({"isEnabled": !value.muted, "value": value.level}))
+    }
+    pub(in crate::features) fn observe_seiren_live(&mut self, observed: razer_device::seiren_mixer::LiveState, window: &mut Window, cx: &mut Context<Self>) {
+        if !supported(self.spec.product_id) { return; }
+        for (index, id) in [razer_device::seiren_mixer::MICROPHONE, razer_device::seiren_mixer::HEADPHONES].into_iter().enumerate() {
+            if self.seiren_eq.live.endpoint(id) != observed.endpoint(id) {
+                self.seiren_eq.monitor_observed[index] = Value::Null;
+            }
+        }
+        self.seiren_eq.live = observed;
+        if self.seiren_eq.live.meters().value().is_none() {
+            self.seiren_eq.levels = [[0.; 2]; 2];
+            self.seiren_eq.peaks = [[0.; 2]; 2];
+            self.seiren_eq.peak_task = None;
+            self.clear_seiren_stream_mixer_meters();
+        }
+        self.sync_seiren_eq(window, cx);
+        self.defer_seiren_microphone_volume_sync(cx);
+        cx.notify();
+    }
     pub(super) fn seiren_microphone_native_levels(&self) -> [f32; 2] {
         self.seiren_eq.levels[0]
     }
@@ -506,15 +552,16 @@ impl AudioProductWorkspace {
         let agc = self.draft["device"]["micAgc"]["isEnabled"] == true;
         let stream = self.draft["profile"]["streamMixerSettings"]["isStreamMixerEnabled"] == true;
         for (index, (name, path)) in MONITORS.into_iter().enumerate() {
-            let value = self.draft.pointer(path).cloned().unwrap_or_default();
-            if self.seiren_eq.monitor_observed[index] != value {
-                self.seiren_eq.monitor_observed[index] = value.clone();
-                self.seiren_eq.monitor_preview[index] = value;
-            }
+            let value = if index < 2 { self.seiren_endpoint_value(index).unwrap_or(Value::Null) }
+                else { self.draft.pointer(path).cloned().unwrap_or_default() };
+            // UI6007 T mirrors changed props with useEffect even while its
+            // 300 ms callback is pending. A temporary slider value has no
+            // priority over a later observed endpoint update.
+            self.seiren_eq.sync_monitor(index, value);
             let volume = &self.seiren_eq.monitor_preview[index];
             let value = volume["value"].as_f64().unwrap_or(0.);
             let disabled =
-                volume["isEnabled"] != true || (index == 0 && agc) || (index == 2 && stream);
+                (index < 2 && !self.seiren_endpoint_available(index)) || volume["isEnabled"] != true || (index == 0 && agc) || (index == 2 && stream);
             if let Some(fader) = self.seiren_eq.faders.get(index) {
                 fader.update(cx, |fader, cx| fader.set_value(value as f32, window, cx));
             }
@@ -712,7 +759,7 @@ impl AudioProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.seiren_eq.monitor_preview[index]["isEnabled"] != true {
+        if (index < 2 && !self.seiren_endpoint_available(index)) || self.seiren_eq.monitor_preview[index]["isEnabled"] != true {
             return;
         }
         self.seiren_eq.monitor_preview[index]["value"] = json!(value.clamp(0., 100.));
@@ -722,6 +769,7 @@ impl AudioProductWorkspace {
                 .timer(Duration::from_millis(300))
                 .await;
             let _ = view.update_in(cx, |this, window, cx| {
+                this.seiren_eq.monitor_tasks[index] = None;
                 this.seiren_monitor_commit(index, value, window, cx);
             });
         }));
@@ -770,6 +818,7 @@ impl AudioProductWorkspace {
         self.submit_seiren_eq_payload(operation, json!({(key):value}), cx);
     }
     fn seiren_monitor_mute(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
+        if index < 2 && !self.seiren_endpoint_available(index) { return; }
         let mut value = self.seiren_eq.monitor_preview[index].clone();
         value["isEnabled"] = json!(value["isEnabled"] != true);
         self.seiren_eq.monitor_preview[index] = value.clone();
@@ -911,9 +960,14 @@ impl AudioProductWorkspace {
             return;
         }
         for (index, level) in [(0, &levels.microphone), (1, &levels.headphones)] {
-            if let Some(volume) = self.draft.pointer_mut(MONITORS[index].1) {
-                volume["isEnabled"] = json!(level.is_enabled());
-                volume["value"] = json!(level.value());
+            self.seiren_eq.monitor_observed[index] = Value::Null;
+            let id = [razer_device::seiren_mixer::MICROPHONE, razer_device::seiren_mixer::HEADPHONES][index];
+            if level.value().is_finite() && (0. ..=100.).contains(&level.value()) && level.value().fract() == 0. {
+                let _ = self.seiren_eq.live.observe_endpoint(id, razer_device::seiren_mixer::EndpointObservation {
+                    level: level.value() as u32, muted: !level.is_enabled(),
+                });
+            } else {
+                self.seiren_eq.live.set_endpoint(id, razer_device::seiren_mixer::Reading::Failed("Invalid Marie volume readback".into()));
             }
         }
         self.sync_seiren_eq(window, cx);

@@ -801,6 +801,9 @@ impl AudioProductWorkspace {
         state.data["levelMeter"] = json!(levels);
         cx.notify();
     }
+    pub(super) fn clear_seiren_stream_mixer_meters(&mut self) {
+        if let Some(state) = &mut self.seiren_stream { state.data["levelMeter"] = Value::Null; }
+    }
     fn set_seiren_stream_mixer_input(
         &mut self,
         name: &str,

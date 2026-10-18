@@ -186,6 +186,7 @@ pub use audio_products::{
 pub use audio_products::{
     AudioVolumeCompletion, AudioVolumeOperation, AudioVolumeReply, AudioVolumeRequest,
     LeviathanObservation, LeviathanOperation, LeviathanRequest,
+    SurroundObservation, SurroundOperation, SurroundRequest,
 };
 pub use audio_products::{OledRuntimeObservation, OledRuntimeRequested, StreamMixerObservation};
 pub use keyboard_products::SnapTapObservation;

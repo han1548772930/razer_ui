@@ -120,5 +120,3 @@ pub fn audited_mouse_mat(pid: u32) -> Option<&'static MouseMat> {
     MOUSE_MATS.iter().find(|product| product.id == pid)
 }
 
-pub mod engines;
-pub mod native_library;

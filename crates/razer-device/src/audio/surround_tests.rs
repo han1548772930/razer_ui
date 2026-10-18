@@ -43,10 +43,7 @@ fn source_ranges_and_external_boundaries_reject_invalid_values() {
     assert!(serde_json::from_str::<Change>(r#"{"setting":"delay","value":101}"#).is_err());
     assert!(serde_json::from_str::<Endpoint>(r#"{"id":"","name":"Speaker"}"#).is_err());
     assert!(serde_json::from_str::<Product>("1352").is_err());
-    assert_eq!(
-        Product::try_from(1392).unwrap().library_id(),
-        "ThxVADCarolNative"
-    );
+    assert_eq!(Product::try_from(1392).unwrap(), Product::Clio);
     assert_eq!(Delay::new(-75).unwrap().native_value(), -0.75);
     assert_eq!(Volume::new(37).unwrap().native_value(), 0.37);
     assert_eq!(Volume::from_native(0.374).unwrap().percent(), 37);

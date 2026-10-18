@@ -5,8 +5,20 @@ use anyhow::ensure;
 use std::{mem::size_of, ptr};
 
 #[repr(C)]
-struct Header { size: u32, version: u8, reserved: [u8; 3] }
-impl Header { fn of<T>() -> Self { Self { size: size_of::<T>() as u32, version: 0, reserved: [0; 3] } } }
+struct Header {
+    size: u32,
+    version: u8,
+    reserved: [u8; 3],
+}
+impl Header {
+    fn of<T>() -> Self {
+        Self {
+            size: size_of::<T>() as u32,
+            version: 0,
+            reserved: [0; 3],
+        }
+    }
+}
 #[repr(C)]
 struct Init {
     header: Header,
@@ -35,17 +47,52 @@ struct DeviceProperties {
     reserved: [u8; 128],
 }
 #[repr(C)]
-struct Address { header: Header, domain: u32, bus: u32, device: u32, function: u32 }
+struct Address {
+    header: Header,
+    domain: u32,
+    bus: u32,
+    device: u32,
+    function: u32,
+}
 #[repr(C)]
-struct Speed { header: Header, generation: i32, width: i32, bandwidth: i64 }
+struct Speed {
+    header: Header,
+    generation: i32,
+    width: i32,
+    bandwidth: i64,
+}
 #[repr(C)]
-struct PciProperties { header: Header, address: Address, speed: Speed, bar_supported: u8, bar_enabled: u8 }
+struct PciProperties {
+    header: Header,
+    address: Address,
+    speed: Speed,
+    bar_supported: u8,
+    bar_enabled: u8,
+}
 #[repr(C)]
-struct TemperatureProperties { header: Header, kind: u32, maximum: f64 }
+struct TemperatureProperties {
+    header: Header,
+    kind: u32,
+    maximum: f64,
+}
 #[repr(C)]
-struct FrequencyProperties { header: Header, kind: u32, control: u8, minimum: f64, maximum: f64 }
+struct FrequencyProperties {
+    header: Header,
+    kind: u32,
+    control: u8,
+    minimum: f64,
+    maximum: f64,
+}
 #[repr(C)]
-struct FrequencyState { header: Header, voltage: f64, request: f64, tdp: f64, efficient: f64, actual: f64, throttle_reasons: u32 }
+struct FrequencyState {
+    header: Header,
+    voltage: f64,
+    request: f64,
+    tdp: f64,
+    efficient: f64,
+    actual: f64,
+    throttle_reasons: u32,
+}
 
 type Initialize = unsafe extern "C" fn(*mut Init, *mut Handle) -> i32;
 type Close = unsafe extern "C" fn(Handle) -> i32;
@@ -57,7 +104,13 @@ type TemperatureState = unsafe extern "C" fn(Handle, *mut f64) -> i32;
 type FrequencyProps = unsafe extern "C" fn(Handle, *mut FrequencyProperties) -> i32;
 type FrequencyRead = unsafe extern "C" fn(Handle, *mut FrequencyState) -> i32;
 
-struct Adapter { handle: Handle, address: PciAddress, vendor: u32, device: u32, name: String }
+struct Adapter {
+    handle: Handle,
+    address: PciAddress,
+    vendor: u32,
+    device: u32,
+    name: String,
+}
 
 pub(super) struct Intel {
     context: Handle,
@@ -84,12 +137,23 @@ fn enumerate(api: Enumerate, parent: Handle, label: &str) -> anyhow::Result<Vec<
     // SAFETY: live owner and documented two-call enumeration ABI.
     status(unsafe { api(parent, &mut count, ptr::null_mut()) }, label)?;
     ensure!(count <= 4096, "{label} returned an excessive count");
-    if count == 0 { return Ok(Vec::new()); }
+    if count == 0 {
+        return Ok(Vec::new());
+    }
     let mut values = vec![ptr::null_mut(); count as usize];
-    status(unsafe { api(parent, &mut count, values.as_mut_ptr()) }, label)?;
-    ensure!(count as usize <= values.len(), "{label} changed beyond the allocated count");
+    status(
+        unsafe { api(parent, &mut count, values.as_mut_ptr()) },
+        label,
+    )?;
+    ensure!(
+        count as usize <= values.len(),
+        "{label} changed beyond the allocated count"
+    );
     values.truncate(count as usize);
-    ensure!(values.iter().all(|handle| !handle.is_null()), "{label} returned a null handle");
+    ensure!(
+        values.iter().all(|handle| !handle.is_null()),
+        "{label} returned a null handle"
+    );
     Ok(values)
 }
 
@@ -111,26 +175,70 @@ impl Intel {
             frequencies: unsafe { library.symbol(c"ctlEnumFrequencyDomains")? },
             frequency_properties: unsafe { library.symbol(c"ctlFrequencyGetProperties")? },
             frequency_state: unsafe { library.symbol(c"ctlFrequencyGetState")? },
-            adapters: Vec::new(), _library: library,
+            adapters: Vec::new(),
+            _library: library,
         };
-        let mut args = Init { header: Header::of::<Init>(), app_version: 65537, flags: 1, supported_version: 0, application_id: [0; 4] };
-        status(unsafe { init(&mut args, &mut this.context) }, "IGCL ctlInit")?;
+        let mut args = Init {
+            header: Header::of::<Init>(),
+            app_version: 65537,
+            flags: 1,
+            supported_version: 0,
+            application_id: [0; 4],
+        };
+        status(
+            unsafe { init(&mut args, &mut this.context) },
+            "IGCL ctlInit",
+        )?;
         ensure!(!this.context.is_null(), "IGCL returned a null API context");
         let result = (|| {
             for handle in enumerate(enumerate_devices, this.context, "IGCL device enumeration")? {
                 let mut os_id = 0_u64;
                 let mut props: DeviceProperties = zero();
-                props.header = Header::of::<DeviceProperties>(); props.os_id = &mut os_id; props.os_id_size = 8;
-                status(unsafe { device_properties(handle, &mut props) }, "IGCL device properties")?;
-                if props.device_type != 1 { continue; }
-                let mut pci: PciProperties = zero(); pci.header = Header::of::<PciProperties>();
-                status(unsafe { pci_properties(handle, &mut pci) }, "IGCL PCI properties")?;
-                this.adapters.push(Adapter { handle, address: PciAddress { domain: Some(pci.address.domain), bus: pci.address.bus, device: pci.address.device, function: Some(pci.address.function) }, vendor: props.vendor, device: props.device, name: String::from_utf8_lossy(&props.name[..props.name.iter().position(|&b| b == 0).unwrap_or(props.name.len())]).into_owned() });
+                props.header = Header::of::<DeviceProperties>();
+                props.os_id = &mut os_id;
+                props.os_id_size = 8;
+                status(
+                    unsafe { device_properties(handle, &mut props) },
+                    "IGCL device properties",
+                )?;
+                if props.device_type != 1 {
+                    continue;
+                }
+                let mut pci: PciProperties = zero();
+                pci.header = Header::of::<PciProperties>();
+                status(
+                    unsafe { pci_properties(handle, &mut pci) },
+                    "IGCL PCI properties",
+                )?;
+                this.adapters.push(Adapter {
+                    handle,
+                    address: PciAddress {
+                        domain: Some(pci.address.domain),
+                        bus: pci.address.bus,
+                        device: pci.address.device,
+                        function: Some(pci.address.function),
+                    },
+                    vendor: props.vendor,
+                    device: props.device,
+                    name: String::from_utf8_lossy(
+                        &props.name[..props
+                            .name
+                            .iter()
+                            .position(|&b| b == 0)
+                            .unwrap_or(props.name.len())],
+                    )
+                    .into_owned(),
+                });
             }
             Ok(())
         })();
         if let Err(error) = result {
-            return match this.close() { Ok(()) => Err(error), Err(cleanup) => Err(error.context(format!("IGCL discovery cleanup also failed: {cleanup:#}"))) };
+            return match this.close() {
+                Ok(()) => Err(error),
+                Err(cleanup) => {
+                    Err(error.context(format!("IGCL discovery cleanup also failed: {cleanup:#}")))
+                }
+            };
         }
         Ok(this)
     }
@@ -139,13 +247,24 @@ impl Intel {
         let mut observed = Err(anyhow::anyhow!("IGCL has no observed GPU temperature"));
         // The current SDK keeps the last successful matching GPU sensor.
         for handle in enumerate(self.temperatures, device, "IGCL temperature enumeration")? {
-            let mut props: TemperatureProperties = zero(); props.header = Header::of::<TemperatureProperties>();
-            status(unsafe { (self.temperature_properties)(handle, &mut props) }, "IGCL temperature properties")?;
-            if props.kind != 1 { continue; }
+            let mut props: TemperatureProperties = zero();
+            props.header = Header::of::<TemperatureProperties>();
+            status(
+                unsafe { (self.temperature_properties)(handle, &mut props) },
+                "IGCL temperature properties",
+            )?;
+            if props.kind != 1 {
+                continue;
+            }
             let mut value = f64::NAN;
-            let result = status(unsafe { (self.temperature_state)(handle, &mut value) }, "IGCL temperature state")
-                .and_then(|()| measured(f64::from(value as f32), "IGCL temperature"));
-            if result.is_ok() || observed.is_err() { observed = result; }
+            let result = status(
+                unsafe { (self.temperature_state)(handle, &mut value) },
+                "IGCL temperature state",
+            )
+            .and_then(|()| measured(f64::from(value as f32), "IGCL temperature"));
+            if result.is_ok() || observed.is_err() {
+                observed = result;
+            }
         }
         observed
     }
@@ -153,39 +272,73 @@ impl Intel {
     fn clock(&self, device: Handle) -> anyhow::Result<f64> {
         let mut observed = Err(anyhow::anyhow!("IGCL has no observed GPU core clock"));
         for handle in enumerate(self.frequencies, device, "IGCL frequency enumeration")? {
-            let mut props: FrequencyProperties = zero(); props.header = Header::of::<FrequencyProperties>();
-            status(unsafe { (self.frequency_properties)(handle, &mut props) }, "IGCL frequency properties")?;
-            if props.kind != 0 { continue; }
-            let mut state: FrequencyState = zero(); state.header = Header::of::<FrequencyState>(); state.actual = f64::NAN;
-            let result = status(unsafe { (self.frequency_state)(handle, &mut state) }, "IGCL frequency state").and_then(|()| {
+            let mut props: FrequencyProperties = zero();
+            props.header = Header::of::<FrequencyProperties>();
+            status(
+                unsafe { (self.frequency_properties)(handle, &mut props) },
+                "IGCL frequency properties",
+            )?;
+            if props.kind != 0 {
+                continue;
+            }
+            let mut state: FrequencyState = zero();
+            state.header = Header::of::<FrequencyState>();
+            state.actual = f64::NAN;
+            let result = status(
+                unsafe { (self.frequency_state)(handle, &mut state) },
+                "IGCL frequency state",
+            )
+            .and_then(|()| {
                 ensure!(state.actual >= 0.0, "IGCL actual frequency is unavailable");
                 measured(f64::from(state.actual as f32), "IGCL frequency")
             });
-            if result.is_ok() || observed.is_err() { observed = result; }
+            if result.is_ok() || observed.is_err() {
+                observed = result;
+            }
         }
         observed
     }
 
-    pub(super) fn is_empty(&self) -> bool { self.adapters.is_empty() }
+    pub(super) fn is_empty(&self) -> bool {
+        self.adapters.is_empty()
+    }
 
     pub(super) fn sample(&mut self) -> Vec<GraphicsReading> {
-        self.adapters.iter().map(|adapter| GraphicsReading {
-            address: adapter.address, vendor_id: adapter.vendor, device_id: adapter.device, name: adapter.name.clone(), enabled: None,
-            readings: Readings { temperature_celsius: self.temperature(adapter.handle), clock_mhz: self.clock(adapter.handle) },
-        }).collect()
+        self.adapters
+            .iter()
+            .map(|adapter| GraphicsReading {
+                address: adapter.address,
+                vendor_id: adapter.vendor,
+                device_id: adapter.device,
+                name: adapter.name.clone(),
+                enabled: None,
+                readings: Readings {
+                    temperature_celsius: self.temperature(adapter.handle),
+                    clock_mhz: self.clock(adapter.handle),
+                },
+            })
+            .collect()
     }
 
     pub(super) fn close(&mut self) -> anyhow::Result<()> {
         if !self.context.is_null() {
             // SDK 0x123250 assembly passes the live API handle in RCX.
             status(unsafe { (self.close_api)(self.context) }, "IGCL ctlClose")?;
-            self.context = ptr::null_mut(); self.adapters.clear();
+            self.context = ptr::null_mut();
+            self.adapters.clear();
         }
         Ok(())
     }
 }
 
-impl Drop for Intel { fn drop(&mut self) { if let Err(error) = self.close() { self._library.retain(); eprintln!("IGCL cleanup failed: {error:#}"); } } }
+impl Drop for Intel {
+    fn drop(&mut self) {
+        if let Err(error) = self.close() {
+            self._library.retain();
+            eprintln!("IGCL cleanup failed: {error:#}");
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

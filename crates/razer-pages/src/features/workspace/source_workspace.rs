@@ -1149,6 +1149,11 @@ impl SourceProductWorkspace {
             body.update(cx, |body, cx| {
                 body.set_volume_active(active, cx);
                 body.set_leviathan_active(active, cx);
+                let surround_active = self.active && !self.exiting && matches!(
+                    self.device.dashboard.connection_observation,
+                    Some(razer_model::model::DeviceConnectionObservation::UsbPresent | razer_model::model::DeviceConnectionObservation::HidPresent)
+                );
+                body.set_surround_active(surround_active, &self.device.device_container_id, cx);
             });
         }
     }
@@ -1556,6 +1561,11 @@ impl SourceProductWorkspace {
             body.update(cx, |body, cx| {
                 body.finish_seiren_stream_mixer(request, error, window, cx)
             });
+        }
+    }
+    pub fn observe_seiren_live(&mut self, observed: razer_device::seiren_mixer::LiveState, window: &mut Window, cx: &mut Context<Self>) {
+        if let FamilyBody::Audio(body) = &self.body {
+            body.update(cx, |body, cx| body.observe_seiren_live(observed, window, cx));
         }
     }
     pub fn observe_seiren_native_event(
@@ -3267,6 +3277,12 @@ impl SourceProductWorkspace {
             ));
             subscriptions.push(cx.subscribe(
                 &body,
+                |_: &mut Self, _, request: &super::audio_products::SurroundRequest, cx| {
+                    cx.emit(WorkspaceEvent::SurroundRequested(request.clone()));
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
                 |_: &mut Self, _, request: &super::audio_products::AudioMixerRequest, cx| {
                     cx.emit(WorkspaceEvent::AudioMixerRequested {
                         request: request.clone(),
@@ -4971,6 +4987,10 @@ impl Render for SourceProductWorkspace {
             FamilyBody::Audio(audio) if self.active => audio.read(cx).floating_demo(cx),
             _ => None,
         };
+        let surround_tutorial = match &self.body {
+            FamilyBody::Audio(audio) if self.active => audio.update(cx, |audio, cx| audio.surround_tutorial(window, cx)),
+            _ => None,
+        };
         let mut body_layout = super::product_surface::BodyLayout::Document;
         let body = if is_help {
             self.help.clone().into_any_element()
@@ -5184,5 +5204,6 @@ impl Render for SourceProductWorkspace {
             .children(seiren_tutorial)
             .child(self.help_owner.clone())
             .children(audio_floating)
+            .children(surround_tutorial)
     }
 }

@@ -6,7 +6,6 @@
 //! - 设备名称是按语区索引的 i18n 对象。
 //! - DPI 档位挂在 **profile** 上，不在设备上。
 //! - `dkmKeys` 是设备的物理输入点 → 动作映射表。
-#![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

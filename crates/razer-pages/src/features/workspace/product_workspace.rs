@@ -921,6 +921,11 @@ impl ProductWorkspace {
             });
         }
     }
+    pub fn observe_seiren_live(&mut self, observed: razer_device::seiren_mixer::LiveState, window: &mut Window, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.observe_seiren_live(observed, window, cx));
+        }
+    }
     pub fn observe_seiren_native_event(
         &mut self,
         event: serde_json::Value,

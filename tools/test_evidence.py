@@ -3513,6 +3513,23 @@ class HostLocalAuditTests(unittest.TestCase):
 
 
 class SourceSvgTests(unittest.TestCase):
+    def test_react_svg_decimal_gradient_and_group_visibility_keep_geometry(self):
+        import workspace
+        import xml.etree.ElementTree as ET
+        source = 'const Diagram=(e,t)=>{return R.createElement("svg",{viewBox:"0 0 20 20"},R.createElement("defs",null,R.createElement("stop",{offset:.5,stopColor:"#111"})),R.createElement("g",{id:"primary",style:{opacity:.3}},R.createElement("path",{d:"M1 2H3"})),R.createElement("g",{id:"surround"},R.createElement("path",{d:"M4 5H6"})))};'
+        content, receipt = workspace.static_react_svg(source, 'Diagram=(e,t)=>{')
+        converted, selection = workspace.static_svg_group_visibility(content, {"primary": "hidden", "surround": "visible"})
+        root = ET.fromstring(converted)
+        self.assertEqual([node.get("d") for node in root.iter("path")], ["M1 2H3", "M4 5H6"])
+        self.assertEqual(root.find("defs/stop").get("offset"), "0.5")
+        self.assertEqual(root.find("g[@id='primary']").get("style"), "opacity:0.3;visibility:hidden")
+        self.assertEqual(selection["groups"]["surround"], "visible")
+        self.assertIn('offset:.5', receipt["source_regions"][0]["body"])
+        with self.assertRaisesRegex(ValueError, "absent"):
+            workspace.static_svg_group_visibility(content, {"missing": "visible"})
+        with self.assertRaises(ValueError):
+            workspace.static_svg_group_visibility(content, {"primary": "inherit"})
+
     @staticmethod
     def fixture(kind):
         # Synthetic source only: the maintained extractor parses these bytes;

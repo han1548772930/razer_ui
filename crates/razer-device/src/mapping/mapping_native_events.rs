@@ -501,20 +501,10 @@ impl NativeEventRuntime {
                 result.disposition = NativeEventDisposition::EmptyMouseRedirect;
                 return result;
             }
-            if result.packet.kind == NativeStreamKind::Hook
-                && raw.button_flags != 0
-                && raw.movement != [0, 0]
-            {
-                if raw.flags & 1 != 0 {
-                    result.issues.push(NativeEventIssue::AbsoluteMouseMovement);
-                } else if !self.stopping {
-                    self.queue_movement(raw);
-                    if self.movement_inflight.is_none() {
-                        result.reports.extend(self.flush_movement(session));
-                    }
-                }
-            }
         }
+        let (reports, issues) = self.physical_motion(session, &result.packet);
+        result.reports.extend(reports);
+        result.issues.extend(issues);
         let Some(input) = result.packet.input.normalized(preserve_unit, modifiers) else {
             return result;
         };
@@ -575,6 +565,32 @@ impl NativeEventRuntime {
             NativeStreamKind::Unknown(_) => unreachable!(),
         }
         result
+    }
+
+    /// The retained driver owner calls this before handing button lookup to
+    /// a device worker. Motion and mapped button output share one session.
+    pub fn physical_motion<T: NativeSessionTransport>(
+        &mut self,
+        session: &mut NativeSession<T>,
+        packet: &NativeStreamPacket,
+    ) -> (Vec<NativeEventReportReceipt>, Vec<NativeEventIssue>) {
+        let mut reports = Vec::new();
+        let mut issues = Vec::new();
+        if let NativeStreamInput::Mouse(raw) = packet.input
+            && packet.kind == NativeStreamKind::Hook
+            && raw.button_flags != 0
+            && raw.movement != [0, 0]
+        {
+            if raw.flags & 1 != 0 {
+                issues.push(NativeEventIssue::AbsoluteMouseMovement);
+            } else if !self.stopping {
+                self.queue_movement(raw);
+                if self.movement_inflight.is_none() {
+                    reports.extend(self.flush_movement(session));
+                }
+            }
+        }
+        (reports, issues)
     }
 
     /// Input must already have been decoded/verified by the separate hardware

@@ -1,5 +1,4 @@
-//! Generic-feature local storage precedes source device tasks. Readbacks remain
-//! diagnostics; they do not roll back the EQ reducer's optimistic committed UI.
+//! Local storage, optimistic drafts and actual device readbacks have separate owners.
 use super::*;
 use razer_device::seiren_eq::{Change, Report};
 use std::sync::{
@@ -94,6 +93,7 @@ impl AudioProductWorkspace {
     }
     pub fn cancel_seiren_eq_connection(&mut self) {
         self.seiren_eq_write.cancel();
+        self.seiren_eq.live = razer_device::seiren_mixer::LiveState::disconnected();
     }
     pub fn request_seiren_volume_read(&mut self, cx: &mut Context<Self>) {
         if matches!(self.spec.product_id, 1422 | 1446) {

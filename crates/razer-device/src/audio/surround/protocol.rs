@@ -1,5 +1,6 @@
 //! Wire types recovered from the current routing client descriptor.
-//! Schema: thx_wasapi_routing.proto, routing client v1.0.80.0, RVA 0x200940.
+//! Schema: thx_wasapi_routing.proto, Carol v1.0.80.0 RVA 0x200940,
+//! plus the identical Clio X 1.2.0.51 / Soma Pro 1.2.1.59_2 extensions.
 //! Messages are local-service observations or requests, never device defaults.
 
 use serde::{Deserialize, Serialize};
@@ -193,14 +194,24 @@ pub struct DelayState {
 }
 
 #[derive(Clone, PartialEq, prost::Message, Serialize, Deserialize)]
-pub struct PlayDelayTestSignal {
-}
+pub struct PlayDelayTestSignal {}
 
 #[derive(Clone, PartialEq, prost::Message, Serialize, Deserialize)]
-pub struct StopDelayTestSignal {
-}
+pub struct StopDelayTestSignal {}
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, prost::Enumeration, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    prost::Enumeration,
+    Serialize,
+    Deserialize,
+)]
 #[repr(i32)]
 pub enum StreamState {
     Starting = 0,
@@ -209,7 +220,19 @@ pub enum StreamState {
     Failed = 3,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, prost::Enumeration, Serialize, Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    prost::Enumeration,
+    Serialize,
+    Deserialize,
+)]
 #[repr(i32)]
 pub enum EqType {
     Peak = 0,

@@ -83,15 +83,24 @@ impl Payload {
             Self::PlayDelayTestSignal(v) => v.encode_to_vec(),
             Self::StopDelayTestSignal(v) => v.encode_to_vec(),
         };
-        Any { type_url: format!("{TYPE_PREFIX}{}", self.name()), value }.encode_to_vec()
+        Any {
+            type_url: format!("{TYPE_PREFIX}{}", self.name()),
+            value,
+        }
+        .encode_to_vec()
     }
     pub fn decode(bytes: &[u8]) -> Result<Self> {
         let envelope = Any::decode(bytes).context("Invalid routing protobuf envelope")?;
-        let name = envelope.type_url.strip_prefix(TYPE_PREFIX).context("Unexpected routing protobuf namespace")?;
+        let name = envelope
+            .type_url
+            .strip_prefix(TYPE_PREFIX)
+            .context("Unexpected routing protobuf namespace")?;
         let bytes = envelope.value.as_slice();
         let payload = match name {
             "ClientConnect" => Self::ClientConnect(ClientConnect::decode(bytes)?),
-            "ClientConnectAcknowledge" => Self::ClientConnectAcknowledge(ClientConnectAcknowledge::decode(bytes)?),
+            "ClientConnectAcknowledge" => {
+                Self::ClientConnectAcknowledge(ClientConnectAcknowledge::decode(bytes)?)
+            }
             "WasapiManagerState" => Self::WasapiManagerState(WasapiManagerState::decode(bytes)?),
             "StreamStates" => Self::StreamStates(StreamStates::decode(bytes)?),
             "ChannelMapsState" => Self::ChannelMapsState(ChannelMapsState::decode(bytes)?),
@@ -102,10 +111,18 @@ impl Payload {
             "FrontCtcState" => Self::FrontCtcState(FrontCtcState::decode(bytes)?),
             "SideCtcState" => Self::SideCtcState(SideCtcState::decode(bytes)?),
             "RearCtcState" => Self::RearCtcState(RearCtcState::decode(bytes)?),
-            "FrontVirtualizerState" => Self::FrontVirtualizerState(FrontVirtualizerState::decode(bytes)?),
-            "SideVirtualizerState" => Self::SideVirtualizerState(SideVirtualizerState::decode(bytes)?),
-            "RearVirtualizerState" => Self::RearVirtualizerState(RearVirtualizerState::decode(bytes)?),
-            "SpatialGlobalSettingsState" => Self::SpatialGlobalSettingsState(SpatialGlobalSettingsState::decode(bytes)?),
+            "FrontVirtualizerState" => {
+                Self::FrontVirtualizerState(FrontVirtualizerState::decode(bytes)?)
+            }
+            "SideVirtualizerState" => {
+                Self::SideVirtualizerState(SideVirtualizerState::decode(bytes)?)
+            }
+            "RearVirtualizerState" => {
+                Self::RearVirtualizerState(RearVirtualizerState::decode(bytes)?)
+            }
+            "SpatialGlobalSettingsState" => {
+                Self::SpatialGlobalSettingsState(SpatialGlobalSettingsState::decode(bytes)?)
+            }
             "BassManagementState" => Self::BassManagementState(BassManagementState::decode(bytes)?),
             "PlayDelayTestSignal" => Self::PlayDelayTestSignal(PlayDelayTestSignal::decode(bytes)?),
             "StopDelayTestSignal" => Self::StopDelayTestSignal(StopDelayTestSignal::decode(bytes)?),
@@ -136,14 +153,26 @@ impl Payload {
     }
     pub fn validate(&self) -> Result<()> {
         match self {
-            Self::ClientConnect(v) => ensure!(!v.file_version.is_empty() && v.api_version == "6", "Unsupported routing client handshake"),
-            Self::ClientConnectAcknowledge(v) => ensure!(!v.file_version.is_empty() && v.api_version == "6", "Unsupported routing service handshake"),
-            Self::PlayDelayTestSignal(_) | Self::StopDelayTestSignal(_) => {},
+            Self::ClientConnect(v) => ensure!(
+                !v.file_version.is_empty() && v.api_version == "6",
+                "Unsupported routing client handshake"
+            ),
+            Self::ClientConnectAcknowledge(v) => ensure!(
+                !v.file_version.is_empty() && v.api_version == "6",
+                "Unsupported routing service handshake"
+            ),
+            Self::PlayDelayTestSignal(_) | Self::StopDelayTestSignal(_) => {}
             _ => {
                 let header = self.header().context("Routing state header is absent")?;
-                ensure!(!header.id.is_empty() && !header.id.contains('\0'), "Invalid routing state identity");
+                ensure!(
+                    !header.id.is_empty() && !header.id.contains('\0'),
+                    "Invalid routing state identity"
+                );
                 if !matches!(self, Self::EndpointVolumeState(_)) {
-                    ensure!(header.id == "GLOBAL", "Unexpected global routing state identity");
+                    ensure!(
+                        header.id == "GLOBAL",
+                        "Unexpected global routing state identity"
+                    );
                 }
             }
         }
@@ -151,22 +180,41 @@ impl Payload {
             Self::EndpointsState(v) => {
                 let mut ids = std::collections::BTreeSet::new();
                 for e in &v.endpoints_properties {
-                    ensure!(!e.endpoint_id.is_empty() && ids.insert(&e.endpoint_id), "Missing or duplicate routing endpoint");
-                    ensure!(e.wave_format_extensible.len() == 40, "Invalid endpoint WAVEFORMATEXTENSIBLE length");
+                    ensure!(
+                        !e.endpoint_id.is_empty() && ids.insert(&e.endpoint_id),
+                        "Missing or duplicate routing endpoint"
+                    );
+                    ensure!(
+                        e.wave_format_extensible.len() == 40,
+                        "Invalid endpoint WAVEFORMATEXTENSIBLE length"
+                    );
                 }
             }
-            Self::EndpointVolumeState(v) => ensure!(v.volume.is_finite() && (0.0..=1.0).contains(&v.volume), "Invalid endpoint volume"),
+            Self::EndpointVolumeState(v) => ensure!(
+                v.volume.is_finite() && (0.0..=1.0).contains(&v.volume),
+                "Invalid endpoint volume"
+            ),
             Self::EqState(v) => {
                 for e in &v.endpoint_eqs {
                     ensure!(!e.endpoint_id.is_empty(), "EQ endpoint is absent");
                     for band in &e.eq_bands {
-                        ensure!(band.frequency.is_finite() && band.gain_db.is_finite() && band.q.is_finite(), "Invalid EQ parameters");
+                        ensure!(
+                            band.frequency.is_finite()
+                                && band.gain_db.is_finite()
+                                && band.q.is_finite(),
+                            "Invalid EQ parameters"
+                        );
                     }
                 }
             }
             Self::DelayState(v) => {
                 for e in &v.endpoint_delays {
-                    ensure!(!e.endpoint_id.is_empty() && e.delay_milliseconds.is_finite() && e.delay_milliseconds >= 0.0, "Invalid endpoint delay");
+                    ensure!(
+                        !e.endpoint_id.is_empty()
+                            && e.delay_milliseconds.is_finite()
+                            && e.delay_milliseconds >= 0.0,
+                        "Invalid endpoint delay"
+                    );
                 }
             }
             Self::ChannelMapsState(v) => {
@@ -174,11 +222,16 @@ impl Payload {
                     ensure!(!e.endpoint_id.is_empty(), "Channel-map endpoint is absent");
                     for map in &e.channel_maps {
                         ensure!(map.input_channel >= 0, "Invalid input channel");
-                        ensure!(map.output_channels.iter().all(|c| c.channel >= 0 && c.gain_db.is_finite()), "Invalid output channel");
+                        ensure!(
+                            map.output_channels
+                                .iter()
+                                .all(|c| c.channel >= 0 && c.gain_db.is_finite()),
+                            "Invalid output channel"
+                        );
                     }
                 }
             }
-            _ => {},
+            _ => {}
         }
         Ok(())
     }

@@ -107,7 +107,7 @@ fn text<'a>(row: &'a Map<String, Value>, key: &str) -> Result<&'a str> {
         .with_context(|| format!("Missing macro string {key}"))
 }
 
-pub(super) fn parse(value: &Value) -> Result<Event> {
+pub fn parse(value: &Value) -> Result<Event> {
     let row = value.as_object().context("Macro event is not an object")?;
     Ok(match text(row, "type")? {
         "keyboard" => Event::Keyboard(Keyboard {

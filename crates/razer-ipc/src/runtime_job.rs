@@ -41,7 +41,7 @@ impl WorkerJob {
 
     pub(super) fn assign(&self, child: &Child) -> anyhow::Result<()> {
         // The child only reads stdin before its first request. Assign it before
-        // starting request threads, so no vendor DLL can run outside this job.
+        // starting request threads, so all device work stays inside this job.
         if unsafe { AssignProcessToJobObject(self.0.as_raw_handle(), child.as_raw_handle()) } == 0 {
             return Err(std::io::Error::last_os_error()).context("无法将设备服务加入退出清理作业");
         }

@@ -122,7 +122,9 @@ impl HelpOwnerRequested {
         whats_new::storage_key(self.product_id)
     }
     pub fn tutorial_storage_key(&self) -> Option<String> {
-        if self.product_id == 1453 {
+        if matches!(self.product_id, 1392 | 1442) {
+            Some("showOnboardingTutorialCarol".into())
+        } else if self.product_id == 1453 {
             Some(format!("{}_OnboardingTutorialDismissed", self.product_id))
         } else {
             analog::storage_key(self.product_id)
@@ -132,7 +134,7 @@ impl HelpOwnerRequested {
         (self.command == HelpOwnerCommand::DismissTutorial)
             .then(|| {
                 self.tutorial_storage_key()
-                    .map(|key| (key, Value::Bool(true)))
+                    .map(|key| (key, Value::Bool(!matches!(self.product_id, 1392 | 1442))))
             })
             .flatten()
     }

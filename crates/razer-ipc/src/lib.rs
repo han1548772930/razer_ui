@@ -14,6 +14,7 @@ use std::{
 #[path = "runtime_job.rs"]
 mod job;
 mod worker_diagnostics;
+mod worker_shutdown;
 
 pub const FRAME_PREFIX: &str = "RAZER_UI_SERVICE ";
 pub const MAX_FRAME_BYTES: usize = 4 * 1024 * 1024;
@@ -215,6 +216,9 @@ pub enum ServiceRequest {
     SurroundChange {
         identity: razer_device::audio_surround::Identity,
         change: razer_device::audio_surround::Change,
+    },
+    SurroundObserve {
+        identity: razer_device::audio_surround::Identity,
     },
     SurroundClose {
         identity: razer_device::audio_surround::Identity,
@@ -1124,8 +1128,8 @@ impl ServiceClient {
         self.stop()
     }
 
-    /// An operation owns this worker exclusively. Invalidating its scope stops
-    /// retries and later setters by terminating only this owned process. An
+    /// An operation owns this worker exclusively. Invalidating its scope closes
+    /// admission and drains its shutdown before releasing the owned process. An
     /// already submitted device command cannot be rolled back by cancellation.
     pub fn set_request_guard(&mut self, guard: std::sync::Arc<std::sync::atomic::AtomicBool>) {
         self.request_guard = Some(RequestGuard::Active(guard));
@@ -1562,7 +1566,7 @@ impl ServiceClient {
             return Err(self.stop_after_error(anyhow::anyhow!("设备服务响应状态无效，连接已关闭")));
         }
         let stop = if response.fatal || shutting_down {
-            self.stop()
+            self.finish_process()
         } else {
             Ok(())
         };
@@ -1593,11 +1597,42 @@ impl ServiceClient {
     }
 
     fn stop(&mut self) -> anyhow::Result<()> {
+        let request_shutdown = !self.stopped && self.child.is_some()
+            && self.input_worker.is_some() && self.output_worker.is_some();
+        self.stopped = true;
+        let cleanup = if request_shutdown {
+            let id = self.next_id;
+            self.next_id = self.next_id.wrapping_add(1);
+            let result = (|| {
+                let mut frame = serde_json::to_vec(&RequestEnvelope { id, request: ServiceRequest::Shutdown })?;
+                frame.push(b'\n');
+                self.requests.as_ref().context("设备服务清理管道不可用")?.send(frame)?;
+                // The longest admitted operation has a 180-second budget;
+                // teardown retains its separate 45-second cleanup allowance.
+                worker_shutdown::drain(&self.responses, id, Duration::from_secs(225))
+            })();
+            // Closing stdin also enters explicit server teardown if its reply
+            // channel failed. Preserve that failure even when the process exits.
+            self.requests.take();
+            if result.is_err() {
+                if let Some(child) = self.child.as_mut() {
+                    let deadline = std::time::Instant::now() + Duration::from_secs(45);
+                    while matches!(child.try_wait(), Ok(None)) && std::time::Instant::now() < deadline {
+                        thread::sleep(Duration::from_millis(50));
+                    }
+                }
+            }
+            result
+        } else { Ok(()) };
+        let process = self.finish_process();
+        combine_cleanup([cleanup, process])
+    }
+
+    fn finish_process(&mut self) -> anyhow::Result<()> {
         self.requests.take();
         self.stopped = true;
-        // Job closure also terminates the worker if explicit kill failed. OS
-        // process exit closes this handle even if Rust Drop never gets to run.
-        // Close it before waiting so inherited child pipes cannot outlive it.
+        // A shutdown reply is emitted only after owner teardown. Closing the
+        // job is a final process boundary, never proof of successful restoration.
         #[cfg(windows)]
         self.job.take();
         // If the OS cannot establish process exit, keep the process and pipe

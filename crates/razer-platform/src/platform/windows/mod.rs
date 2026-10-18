@@ -10,7 +10,7 @@ pub(crate) mod global_shortcuts;
 pub(crate) mod hardware_driver;
 #[cfg(target_arch = "x86_64")]
 pub(crate) mod hardware_monitor;
-mod input_clock;
+pub(crate) mod input_clock;
 #[path = "keyboard_capture.rs"]
 pub(crate) mod keyboard_capture;
 #[path = "keyboard_layout.rs"]
@@ -18,6 +18,7 @@ pub(crate) mod keyboard_layout;
 #[path = "keyboard_layout_monitor.rs"]
 pub(crate) mod keyboard_layout_monitor;
 pub(crate) mod macro_recorder;
+pub(crate) mod mouse_monitor;
 #[path = "power_idle.rs"]
 pub(crate) mod power_idle;
 #[path = "screen_color.rs"]

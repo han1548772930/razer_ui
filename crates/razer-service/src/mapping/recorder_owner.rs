@@ -2,7 +2,8 @@
 //! borrow its query path without retaining the process or copying its mode.
 use super::Transport;
 use anyhow::Context as _;
-use razer_ipc::{ServiceClient, ServiceRequest};
+use razer_ipc::ServiceRequest;
+use super::Client;
 use razer_platform::macro_recorder::Mode;
 use serde::Deserialize;
 use serde_json::Value;
@@ -131,13 +132,13 @@ impl<T: Transport> Drop for Owner<T> {
     }
 }
 
-fn global() -> &'static Registry<ServiceClient> {
-    static REGISTRY: OnceLock<Registry<ServiceClient>> = OnceLock::new();
+fn global() -> &'static Registry<Client> {
+    static REGISTRY: OnceLock<Registry<Client>> = OnceLock::new();
     REGISTRY.get_or_init(Registry::default)
 }
 
-pub(super) fn spawn() -> anyhow::Result<Owner<ServiceClient>> {
-    global().register(ServiceClient::spawn()?)
+pub(super) fn spawn() -> anyhow::Result<Owner<Client>> {
+    global().register(Client::spawn()?)
 }
 
 pub(super) fn mode() -> anyhow::Result<Mode> {

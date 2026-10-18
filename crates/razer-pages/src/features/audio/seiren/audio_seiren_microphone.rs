@@ -346,11 +346,8 @@ impl AudioProductWorkspace {
             if let Some(preview) = &mut self.seiren_mic.preview {
                 preview.started.get_or_insert_with(Instant::now);
             }
-            let gain = mic::percent_to_db(
-                self.draft["profile"]["micVolume"]["value"]
-                    .as_f64()
-                    .unwrap_or(0.),
-            );
+            let Some(volume) = self.seiren_eq.live.endpoint(razer_device::seiren_mixer::MICROPHONE).and_then(|reading| reading.value()) else { return true; };
+            let gain = mic::percent_to_db(f64::from(volume.level));
             self.seiren_mic.waveform.observe(&frame, gain);
             self.seiren_mic.retry_count = 0;
         } else {
@@ -595,28 +592,21 @@ impl AudioProductWorkspace {
             Some("deviceVolume" | "deviceMute") => {
                 // Native callbacks contain one endpoint observation. Updating
                 // it never fills the unobserved endpoint with default values.
-                let is_enabled = event["mute"] == 0;
+                let Some(mute) = event["mute"].as_u64().filter(|value| *value <= 1) else { return; };
+                let Some(level) = event["level"].as_u64().filter(|value| *value <= 100) else { return; };
+                let is_enabled = mute == 0;
                 // Current MW handleAddLevelMeterListener toggles background
                 // recording before selecting the endpoint, including HP mute.
                 if event["eventType"] == "deviceMute" {
                     self.seiren_mic.native_capture_enabled = is_enabled;
                     self.sync_seiren_microphone_runtime(cx);
                 }
-                let path = match event["deviceId"].as_u64() {
-                    Some(262145) => "/profile/micVolume",
-                    Some(524289) => "/profile/volume",
+                let id = match event["deviceId"].as_u64() {
+                    Some(262145) => 262145,
+                    Some(524289) => 524289,
                     _ => return,
                 };
-                if let Some(volume) = self.draft.pointer_mut(path) {
-                    volume["isEnabled"] = json!(is_enabled);
-                    // Source handler explicitly uses level ?? 0 for this
-                    // observed endpoint; it does not synthesize its peer.
-                    volume["value"] = event
-                        .get("level")
-                        .filter(|level| !level.is_null())
-                        .cloned()
-                        .unwrap_or(json!(0));
-                }
+                let _ = self.seiren_eq.live.observe_endpoint(id, razer_device::seiren_mixer::EndpointObservation { level: level as u32, muted: !is_enabled });
                 self.sync_seiren_eq(window, cx);
                 self.defer_seiren_microphone_volume_sync(cx);
                 cx.notify();
@@ -625,17 +615,19 @@ impl AudioProductWorkspace {
         }
     }
     fn seiren_microphone_set_volume(&mut self, value: Value, cx: &mut Context<Self>) {
+        if !self.seiren_endpoint_available(0) { return; }
         let operation = if self.draft["profile"]["micVolume"]["isEnabled"] != value["isEnabled"] {
             "ON_SET_MIC_VOLUME_ENABLED"
         } else {
             "ON_SET_MIC_VOLUME_VALUE"
         };
         self.draft["profile"]["micVolume"] = value.clone();
+        self.preview_seiren_microphone_volume(value.clone());
         self.submit_seiren_eq_payload(operation, value, cx);
         self.defer_seiren_microphone_volume_sync(cx);
         cx.notify();
     }
-    fn defer_seiren_microphone_volume_sync(&self, cx: &mut Context<Self>) {
+    pub(super) fn defer_seiren_microphone_volume_sync(&self, cx: &mut Context<Self>) {
         let Some(handle) = self.seiren_mic.window else {
             return;
         };
@@ -650,7 +642,7 @@ impl AudioProductWorkspace {
                         .as_ref()
                         .and_then(|wizard| wizard.fader.as_ref())
                     {
-                        let value = this.draft["profile"]["micVolume"]["value"]
+                        let value = this.seiren_microphone_volume_preview()["value"]
                             .as_f64()
                             .unwrap_or(0.) as f32;
                         fader.update(cx, |fader, cx| fader.set_value(value, window, cx));

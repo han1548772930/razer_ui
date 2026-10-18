@@ -18,6 +18,17 @@ fn source_node_defaults_are_drafts_and_missing_mic_observation_cannot_enable_mon
     assert_eq!(writes[1], Write::Control(AudioControlWrite::monitor_enabled(false)));
     assert_eq!(mixer.endpoint_observation(MICROPHONE).unwrap().level, 43);
 }
+
+#[test]
+fn disconnected_mic_cannot_drive_monitor_from_old_observation() {
+    let mut mixer = mixer(Mode::Advanced);
+    mixer.set_route_enabled(PLAYBACK, MICROPHONE, true).unwrap();
+    mixer.invalidate_endpoint(MICROPHONE);
+    assert_eq!(mixer.endpoint_observation(MICROPHONE), None);
+    assert!(mixer.refresh_monitor().is_err());
+    mixer.observe_endpoint(MICROPHONE, EndpointObservation { level: 17, muted: true }).unwrap();
+    assert_eq!(mixer.refresh_monitor().unwrap()[0], Write::Control(AudioControlWrite::monitor_enabled(false)));
+}
 #[test]
 fn mono_mic_duplicates_first_input_for_stereo_routes_and_monitor_uses_usb_control() {
     let mut mixer = mixer(Mode::Advanced);

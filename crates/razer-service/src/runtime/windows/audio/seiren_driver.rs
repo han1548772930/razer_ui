@@ -4,10 +4,11 @@ use super::super::hid;
 use anyhow::{Context as _, Result, ensure};
 use razer_device::seiren_driver::{self as protocol, Product, Transport};
 use std::{
-    cell::Cell,
+    cell::{Cell, RefCell},
     os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle},
     ptr::{null, null_mut},
     time::{Duration, Instant},
+    sync::{Arc, atomic::{AtomicBool, Ordering}},
 };
 use windows_sys::{
     Win32::{
@@ -26,9 +27,12 @@ pub(super) struct Driver {
     identity: hid::DriverInterface,
     product: Product,
     deadline: Cell<Option<Instant>>,
+    cancellation: RefCell<Option<Arc<AtomicBool>>>,
 }
 impl Driver {
     pub(super) fn set_deadline(&self, deadline: Option<Instant>) { self.deadline.set(deadline); }
+    pub(super) fn set_cancellation(&self, flag: Option<Arc<AtomicBool>>) { *self.cancellation.borrow_mut() = flag; }
+    fn cancelled(&self) -> bool { self.cancellation.borrow().as_ref().is_some_and(|flag| flag.load(Ordering::Acquire)) }
     pub(super) fn control(&self, request: &protocol::AudioControlWrite) -> Result<()> {
         // METHOD_IN_DIRECT maps this second buffer as input to the driver.
         // Keep a mutable owned copy alive through overlapped completion.
@@ -36,7 +40,8 @@ impl Driver {
         self.transfer(protocol::SET_AUDIO_CONTROL, &request.header, &mut payload)?;
         Ok(())
     }
-    pub(super) fn open(product_id: u32, container: &str) -> Result<Self> {
+    pub(super) fn open(product_id: u32, container: &str, deadline: Instant, cancellation: Arc<AtomicBool>) -> Result<Self> {
+        ensure!(!cancellation.load(Ordering::Acquire), "Marie session cancelled before opening driver");
         let product = Product::from_id(product_id)?;
         let identity = hid::select_driver_interface(container, &GUID::from_u128(product.interface_guid()))?;
         // Current API 10b20 -> 5020 -> 5160 opens the selected interface with
@@ -49,7 +54,7 @@ impl Driver {
         ensure!(raw != INVALID_HANDLE_VALUE && !raw.is_null(),
             "Open Marie audio driver: {}", std::io::Error::last_os_error());
         // SAFETY: successful CreateFileW transfers this handle to this owner.
-        let driver = Self { handle: unsafe { OwnedHandle::from_raw_handle(raw) }, identity, product, deadline: Cell::new(None) };
+        let driver = Self { handle: unsafe { OwnedHandle::from_raw_handle(raw) }, identity, product, deadline: Cell::new(Some(deadline)), cancellation: RefCell::new(Some(cancellation)) };
         protocol::verify_driver(&driver, product)?;
         Ok(driver)
     }
@@ -61,6 +66,7 @@ impl Driver {
     }
 
     fn transfer(&self, code: u32, input: &[u8], output: &mut [u8]) -> Result<usize> {
+        ensure!(!self.cancelled(), "Marie operation cancelled");
         ensure!(self.deadline.get().is_none_or(|deadline| Instant::now() < deadline), "Marie operation deadline exceeded");
         self.current()?;
         let input_size = u32::try_from(input.len())?;
@@ -89,6 +95,8 @@ impl Driver {
                 if wait == WAIT_OBJECT_0 { break; }
                 let failure = if wait != WAIT_TIMEOUT {
                     Some(format!("Marie audio completion wait failed: {}", std::io::Error::last_os_error()))
+                } else if self.cancelled() {
+                    Some("Marie operation cancelled".into())
                 } else if Instant::now() >= deadline {
                     Some("Marie audio IOCTL exceeded deadline".into())
                 } else {

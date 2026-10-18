@@ -1,14 +1,21 @@
 //! MacroData publication and MappingExecutor state, independent of platform I/O.
 //! Current native owners: f7106/f6bd0, ecee3 and 128692/12b5b0/12be6e/12a8ca.
 
+#[path = "macro_runtime/advanced.rs"]
+pub mod advanced;
 #[path = "macro_runtime/events.rs"]
 mod events;
 #[path = "macro_runtime/execution.rs"]
 mod execution;
+#[path = "macro_runtime/held.rs"]
+mod held;
 #[path = "macro_runtime/keyboard.rs"]
 mod keyboard;
 #[path = "macro_runtime/scheduler.rs"]
 pub mod scheduler;
+#[path = "macro_runtime/sequence.rs"]
+pub mod sequence;
+pub use events::parse as parse_event;
 pub use events::{AudioAction, AudioTarget, Event, Keyboard, Launch, Mouse, MovementMode};
 pub use execution::{Action, Completion, Execution, Outcome, PendingAction, Poll, Ticket};
 pub use keyboard::{KeyboardExecutor, KeyboardTiming};

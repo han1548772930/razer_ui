@@ -58,12 +58,16 @@ impl AudioProductWorkspace {
         if self.seiren_mic.wizard.is_some() {
             return;
         }
+        let mut snapshot = self.draft.clone();
+        snapshot["profile"]["micVolume"] = self.seiren_eq.live.endpoint(razer_device::seiren_mixer::MICROPHONE)
+            .and_then(|reading| reading.value())
+            .map(|value| json!({"value":value.level,"isEnabled":!value.muted})).unwrap_or(Value::Null);
         self.seiren_mic.wizard = Some(State {
-            snapshot: self.draft.clone(),
+            snapshot,
             intro: true,
             ..Default::default()
         });
-        let value = self.draft["profile"]["micVolume"]["value"]
+        let value = self.seiren_microphone_volume_preview()["value"]
             .as_f64()
             .unwrap_or(0.) as f32;
         let fader = cx.new(|_| {
@@ -78,8 +82,8 @@ impl AudioProductWorkspace {
                 let SliderEvent::Change(value) = event else {
                     return;
                 };
-                let mut volume = this.draft["profile"]["micVolume"].clone();
-                if volume["isEnabled"] != true {
+                let mut volume = this.seiren_microphone_volume_preview().clone();
+                if !this.seiren_endpoint_available(0) || volume["isEnabled"] != true {
                     return;
                 }
                 let value = f64::from(value.start());
@@ -294,9 +298,8 @@ impl AudioProductWorkspace {
                 if let Some(result) = result
                     .filter(|result| result.metric_db.is_finite() && result.metric_db >= -100.)
                 {
-                    let current = self.draft["profile"]["micVolume"]["value"]
-                        .as_f64()
-                        .unwrap_or(0.);
+                    let Some(volume) = self.seiren_eq.live.endpoint(razer_device::seiren_mixer::MICROPHONE).and_then(|reading| reading.value()) else { return; };
+                    let current = f64::from(volume.level);
                     let gain = mic::percent_to_db(current) + result.recommended_db;
                     let percent = (mic::db_to_percent(gain).clamp(0., 100.) * 100.).round() / 100.;
                     let wizard = self.seiren_mic.wizard.as_mut().unwrap();
@@ -460,7 +463,7 @@ impl AudioProductWorkspace {
             self.seiren_mic.wizard = None;
         } else {
             let before = wizard.snapshot;
-            if let Some(value) = before.pointer("/profile/micVolume") {
+            if let Some(value) = before.pointer("/profile/micVolume").filter(|value| !value.is_null()) {
                 self.seiren_microphone_set_volume(value.clone(), cx);
             }
             for (field, module) in [

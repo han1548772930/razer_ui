@@ -1,9 +1,7 @@
 //! 鼠标与键盘的功能模型。
 //!
 //! 用于本地配置兼容与草稿；默认值不是设备读数或产品能力声明。
-//! 产品可用能力由各自当前源码生成的数据决定，读取边界见
-//! `docs/re/dll-readonly-inventory.md`。
-#![allow(dead_code)]
+//! 产品可用能力由当前产品能力表决定，设备读数通过独立观察类型传入。
 
 use serde::{Deserialize, Serialize};
 
@@ -13,10 +11,7 @@ use crate::model::{DeviceCategory, DkmKey};
 // 性能
 // ---------------------------------------------------------------------------
 
-/// 轮询率。雷云实测字段名为 `PollingRate`（日志中出现 544 次）。
-///
-/// 2000 Hz 及以上需要 HyperPolling 无线接收器——本机正好有
-/// `Razer HyperPolling Wireless Dongle`（productId 179）。
+/// 配置中的轮询率；当前设备允许的档位由产品与连接能力决定。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PollingRate {
     Hz125,
@@ -68,7 +63,7 @@ impl PollingRate {
     }
 }
 
-/// 抬升距离。雷云日志中 `Liftoff` 出现 18 次。
+/// 配置中的抬升距离。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LiftOffDistance {
     Low,
@@ -1479,7 +1474,7 @@ pub struct DeviceFeatures {
     pub hypershift_enabled: bool,
     /// Hypershift 第二层绑定：与主层相同的输入点，但动作独立。
     ///
-    /// 雷云实测 `Razer Hypershift` 在日志中出现 24 次（见主规范 §12.2）。
+    /// 配置中的 Hypershift 映射。
     #[serde(default)]
     pub hypershift_bindings: Vec<DkmKey>,
     #[serde(default)]
@@ -1594,10 +1589,7 @@ impl DeviceFeatures {
             }
             _ => {}
         }
-        // 注意：`display` / `haptics` / `oled` **故意不在这里填**。
-        // 这三页虽在标签页词汇表里存在，但我尚未下载到显示它们的设备模块
-        // （笔记本 / Sensa HD / OLED 键盘），因此没有依据说哪台设备有，
-        // 宁可为空让界面显示「该设备没有此设置」。
+        // 显示、触觉和 OLED 配置需要具体产品数据，不能按设备类别生成。
         features
     }
 }

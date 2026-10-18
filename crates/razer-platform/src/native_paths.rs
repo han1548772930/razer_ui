@@ -1,5 +1,4 @@
 //! Read-only filesystem lookup. Never loads a library or validates a live device.
-use razer_catalog::native_library::{self, NativeLibrary, NativeResource};
 use std::path::{Path, PathBuf};
 
 /// 引擎 DLL 的两处安装位置。
@@ -156,77 +155,6 @@ fn collect_dlls(dir: &Path, stem: &str, depth: usize, out: &mut Vec<PathBuf>) {
             out.push(path);
         }
     }
-}
-
-/// Exact paths produced by the current host's manifest resource rule. No name
-/// prefix search, version substitution, installation or DLL load occurs here.
-pub fn resource_candidates(
-    library: &NativeLibrary,
-    product_id: Option<u32>,
-) -> Vec<(&NativeResource, PathBuf)> {
-    let installed = EnginePaths::discover();
-    let user_data = host_user_data_root().ok().map(|root| root.join("Apps"));
-    let mut candidates = Vec::new();
-    for resource in &library.resources {
-        for binding in &resource.bindings {
-            if binding.product_id != product_id {
-                continue;
-            }
-            let Some(name) = binding.static_relative_path() else {
-                continue;
-            };
-            let relative = PathBuf::from(name);
-            if relative.is_absolute()
-                || relative.components().any(|c| {
-                    matches!(
-                        c,
-                        std::path::Component::ParentDir | std::path::Component::Prefix(_)
-                    )
-                })
-            {
-                continue;
-            }
-            let path = if let Some(file) = name.strip_prefix("CommonDLL/") {
-                installed
-                    .common_dll
-                    .as_ref()
-                    .map(|directory| directory.join(file))
-            } else {
-                user_data.as_ref().map(|directory| directory.join(relative))
-            };
-            if let Some(path) = path {
-                candidates.push((resource, path));
-            }
-        }
-    }
-    candidates
-}
-
-pub fn native_library_candidates(
-    id: &str,
-    product_id: Option<u32>,
-) -> Option<Vec<(String, PathBuf)>> {
-    let library = native_library::find(id)?;
-    let installed = EnginePaths::discover();
-    let programs_root = installed
-        .common_dll
-        .as_ref()
-        .and_then(|directory| directory.parent())
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(r"C:\Program Files\Razer\RazerAppEngine"));
-    let user_data_root = installed
-        .apps_common
-        .as_ref()
-        .and_then(|directory| directory.parent())
-        .and_then(|directory| directory.parent())
-        .map(PathBuf::from)
-        .or_else(|| host_user_data_root().ok())?;
-    Some(
-        native_library::candidate_paths(library, product_id, &programs_root, &user_data_root)
-            .into_iter()
-            .map(|(rule, path)| (format!("{rule:?}"), path))
-            .collect(),
-    )
 }
 
 /// Current host constants.js userDataDir. Installation observations and native

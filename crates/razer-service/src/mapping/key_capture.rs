@@ -5,7 +5,8 @@ use super::{Transport, WorkerGuard, guarded, shutdown};
 use razer_ipc::KEY_CAPTURE_LIFECYCLE as LIFECYCLE;
 use razer_ipc::global_shortcut_capture::{Batch as GlobalBatch, Event as GlobalEvent};
 use razer_ipc::mapping_control::{Registry, Suppression};
-use razer_ipc::{ServiceClient, ServiceRequest};
+use razer_ipc::ServiceRequest;
+use super::Client;
 use serde::Deserialize;
 use serde_json::Value;
 use std::{
@@ -69,11 +70,11 @@ impl Drop for Session {
 }
 impl Session {
     pub fn start() -> anyhow::Result<Self> {
-        Self::start_with_registry(ServiceClient::spawn, Registry::global(), Kind::Mapping)
+        Self::start_with_registry(Client::spawn, Registry::global(), Kind::Mapping)
     }
     pub fn start_global_shortcut() -> anyhow::Result<Self> {
         Self::start_with_registry(
-            ServiceClient::spawn,
+            Client::spawn,
             Registry::global(),
             Kind::GlobalShortcut,
         )

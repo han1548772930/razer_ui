@@ -18,6 +18,7 @@ enum Command {
 pub(super) struct EventBatch {
     pub(super) events: Vec<Value>,
     pub(super) diagnostics: Vec<String>,
+    pub(super) observed: routing::LiveState,
 }
 struct Worker { sender: mpsc::Sender<Command>, join: JoinHandle<()> }
 pub(super) struct Session {

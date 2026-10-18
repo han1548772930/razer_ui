@@ -3,14 +3,41 @@
 //! join handles rather than transferring native pointers across threads.
 #[path = "mapping_runtime/acceleration.rs"]
 mod acceleration;
+#[path = "mapping_runtime/backend.rs"]
+mod backend;
 #[path = "mapping_runtime/audio.rs"]
 mod audio;
 #[path = "mapping_runtime/clipboard.rs"]
 mod clipboard;
+#[path = "mapping_runtime/capture.rs"]
+mod capture;
+#[path = "mapping_runtime/driver.rs"]
+mod driver;
+#[path = "mapping_runtime/connections.rs"]
+mod connections;
+#[path = "mapping_runtime/direct.rs"]
+mod direct;
+#[path = "mapping_runtime/executor.rs"]
+mod executor;
+#[path = "mapping_runtime/device.rs"]
+mod device;
+#[path = "mapping_runtime/identity.rs"]
+mod identity;
 #[path = "mapping_runtime/input.rs"]
 mod input;
 #[path = "mapping_runtime/launch.rs"]
 mod launch;
+#[path = "mapping_runtime/advanced.rs"]
+mod advanced;
+#[path = "mapping_runtime/display.rs"]
+mod display;
+#[path = "mapping_runtime/system.rs"]
+mod system;
+
+pub(super) fn client() -> Result<crate::mapping::owner::Client> {
+    static REGISTRY: std::sync::OnceLock<crate::mapping::owner::Registry> = std::sync::OnceLock::new();
+    REGISTRY.get_or_init(Default::default).acquire(||Ok(backend::Backend::new(executor::Executor::open)))
+}
 
 use anyhow::{Context, Result, ensure};
 use razer_device::macro_runtime::{
@@ -39,8 +66,21 @@ pub use input::Receipt as InputReceipt;
 #[derive(Clone, Debug)]
 pub struct Parameters {
     pub repeat: u32,
+    pub(crate) program: Program,
     /// An observed filter-driver route, never a HID collection or saved path.
-    pub driver_path: Option<String>,
+    pub(crate) driver_route: Option<driver::Route>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Program {
+    Macro,
+    Phased { delay_ms: u32 },
+    Turbo { delay_ms: u32 },
+}
+
+enum ExecutionProgram {
+    Macro(Execution),
+    Advanced(razer_device::macro_runtime::advanced::Execution),
 }
 
 pub struct Start {
@@ -96,12 +136,15 @@ impl Cancellation {
 }
 
 struct Running {
+    caller: Uuid,
     cancellation: Arc<Cancellation>,
     thread: JoinHandle<Result<Finished>>,
 }
 
 pub struct State {
     library: Arc<RwLock<Library>>,
+    advanced: Arc<RwLock<razer_device::macro_runtime::advanced::Library>>,
+    completion_callers: BTreeMap<Uuid, Uuid>,
     running: BTreeMap<Uuid, Running>,
     scheduler: Scheduler<Parameters>,
     pending_completions: Vec<(Uuid, Result<Finished>)>,
@@ -119,6 +162,8 @@ impl State {
     pub fn new() -> Self {
         Self {
             library: Arc::new(RwLock::new(Library::default())),
+            advanced: Arc::new(RwLock::new(razer_device::macro_runtime::advanced::Library::default())),
+            completion_callers: BTreeMap::new(),
             running: BTreeMap::new(),
             scheduler: Scheduler::default(),
             pending_completions: Vec::new(),
@@ -134,6 +179,22 @@ impl State {
             .write()
             .map_err(|_| anyhow::anyhow!("Macro library lock poisoned"))?
             .publish(document)
+    }
+
+    pub fn publish_storage(&mut self,key:&str,value:&Value)->Result<()> {
+        use razer_device::macro_runtime::advanced::TurboSource;
+        match key {
+            "synapseMacros"=>{self.publish(value)?;}
+            "synapseDefaultTurbos"=>{self.advanced.write().map_err(|_|anyhow::anyhow!("Advanced macro library poisoned"))?.publish_turbos(TurboSource::Default,value)?;}
+            "synapseTurbos"=>{self.advanced.write().map_err(|_|anyhow::anyhow!("Advanced macro library poisoned"))?.publish_turbos(TurboSource::User,value)?;}
+            "synapsePhasedMacros"=>{self.advanced.write().map_err(|_|anyhow::anyhow!("Advanced macro library poisoned"))?.publish_phased(value)?;}
+            _=>anyhow::bail!("Unknown mapping engine storage key {key}"),
+        }
+        Ok(())
+    }
+
+    fn observed_completions(&mut self)->Vec<(Uuid,Option<Uuid>,Result<Finished>)> {
+        self.take_completed().into_iter().map(|(id,result)| (id,self.completion_callers.remove(&id),result)).collect()
     }
 
     pub fn submit(&mut self, request: Start, mode: Mode) -> Result<Submission> {
@@ -167,17 +228,21 @@ impl State {
     fn spawn(&mut self, dispatch: Dispatch<Parameters>) -> Result<()> {
         let id = dispatch.id;
         let request = dispatch.request;
-        let execution = {
-            let library = self
-                .library
-                .read()
-                .map_err(|_| anyhow::anyhow!("Macro library lock poisoned"))?;
-            Execution::start(&library, &request.guid, request.payload.repeat)?
+        self.completion_callers.insert(id, request.caller);
+        let execution = match request.payload.program {
+            Program::Macro => ExecutionProgram::Macro(Execution::start(
+                &self.library.read().map_err(|_| anyhow::anyhow!("Macro library lock poisoned"))?,
+                &request.guid, request.payload.repeat)?),
+            Program::Phased { delay_ms } => ExecutionProgram::Advanced(
+                razer_device::macro_runtime::advanced::Execution::phased(
+                    &self.advanced.read().map_err(|_| anyhow::anyhow!("Advanced macro library poisoned"))?,
+                    &request.guid, delay_ms)?),
+            Program::Turbo { delay_ms } => ExecutionProgram::Advanced(
+                razer_device::macro_runtime::advanced::Execution::turbo(
+                    &self.advanced.read().map_err(|_| anyhow::anyhow!("Advanced macro library poisoned"))?,
+                    &request.guid, request.payload.repeat, delay_ms)?),
         };
-        if self.clipboard.is_none() {
-            self.clipboard = Some(clipboard::Service::start()?);
-        }
-        let clipboard = self.clipboard.as_ref().unwrap().client();
+        let clipboard = self.clipboard_client()?;
         let cancellation = Arc::new(Cancellation::default());
         let worker_cancel = cancellation.clone();
         let library = self.library.clone();
@@ -185,20 +250,25 @@ impl State {
         let thread = thread::Builder::new()
             .name("razer-macro-execution".into())
             .spawn(move || {
-                run(
+                match execution {
+                    ExecutionProgram::Macro(execution) => run(
                     id,
                     execution,
                     library,
-                    request.payload.driver_path,
+                    request.payload.driver_route,
                     worker_cancel,
                     clipboard,
                     acceleration,
-                )
+                    ),
+                    ExecutionProgram::Advanced(execution) => advanced::run(
+                        id, execution, request.payload.driver_route, worker_cancel, clipboard, acceleration),
+                }
             })
             .context("Start macro execution worker")?;
         self.running.insert(
             id,
             Running {
+                caller: request.caller,
                 cancellation,
                 thread,
             },
@@ -227,6 +297,32 @@ impl State {
         for id in self.scheduler.stop_matching(caller, |_| true) {
             self.cancel(id)?;
         }
+        Ok(())
+    }
+
+    fn clipboard_client(&mut self) -> Result<clipboard::Client> {
+        if self.clipboard.is_none() {
+            self.clipboard = Some(clipboard::Service::start()?);
+        }
+        Ok(self.clipboard.as_ref().unwrap().client())
+    }
+
+    pub fn drain_caller(&mut self, caller: Uuid) -> Result<()> {
+        self.cancel_caller(caller)?;
+        let ids = self.running.iter().filter_map(|(id, run)| (run.caller == caller).then_some(*id)).collect::<Vec<_>>();
+        let mut errors = Vec::new();
+        for id in ids {
+            let run = self.running.remove(&id).unwrap();
+            let result = join(run.thread);
+            if let Err(error) = &result { errors.push(format!("Macro execution {id}: {error:#}")); }
+            if let Ok(finished) = &result { errors.extend(finished.completion.cleanup_errors.iter().cloned()); }
+            self.pending_completions.push((id, result));
+            match self.scheduler.complete(id) {
+                Ok(next) => self.launch_queued(next),
+                Err(error) => errors.push(format!("Macro scheduler completion: {error:#}")),
+            }
+        }
+        ensure!(errors.is_empty(), "{}", errors.join("; "));
         Ok(())
     }
 
@@ -288,6 +384,14 @@ impl State {
                 cleanup_errors.push("Macro library lock was poisoned during cleanup".into());
             }
         }
+        match self.advanced.write() {
+            Ok(mut library) => library.clear(),
+            Err(error) => {
+                error.into_inner().clear();
+                cleanup_errors.push("Advanced macro library lock was poisoned during cleanup".into());
+            }
+        }
+        self.completion_callers.clear();
         Shutdown {
             executions,
             cleanup_errors,
@@ -348,13 +452,13 @@ fn run(
     id: Uuid,
     mut execution: Execution,
     library: Arc<RwLock<Library>>,
-    driver_path: Option<String>,
+    driver_route: Option<driver::Route>,
     cancel: Arc<Cancellation>,
     clipboard: clipboard::Client,
     acceleration: acceleration::Owner,
 ) -> Result<Finished> {
     let started = Instant::now();
-    let mut input = input::Input::open(driver_path.as_deref(), cancel.clone(), acceleration)?;
+    let mut input = input::Input::open(driver_route.as_ref(), cancel.clone(), acceleration)?;
     let mut keyboard = KeyboardExecutor::new(timing());
     let mut audio_observations = Vec::new();
     let mut timer_errors = Vec::new();
@@ -403,7 +507,7 @@ fn run(
                                 origin_epoch,
                             } => input.movement(mode, x, y, origin_epoch),
                             Action::Launch(launch) => launch::execute(&launch),
-                            Action::Clipboard(text) => clipboard.paste(text, driver_path.clone()),
+                            Action::Clipboard(text) => clipboard.paste(text, driver_route.clone()),
                             Action::Audio(action) => audio::execute(action).and_then(|report| {
                                 audio_observations = report.observations;
                                 ensure!(report.errors.is_empty(), "{}", report.errors.join("; "));

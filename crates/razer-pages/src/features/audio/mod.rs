@@ -91,6 +91,9 @@ pub use stream_mixer::StreamMixerObservation;
 mod audio_leviathan;
 #[path = "audio_volume.rs"]
 mod audio_volume;
+#[path = "surround/audio_surround.rs"]
+mod surround;
+pub use surround::{SurroundObservation, SurroundOperation, SurroundRequest};
 #[path = "audio_cloud_eq.rs"]
 mod cloud_eq;
 #[path = "audio_enhancements.rs"]
@@ -278,6 +281,7 @@ pub struct AudioProductWorkspace {
     pod_audio_subscription: Option<Subscription>,
     pod_runtime_devices: Vec<RuntimeAudioDevice>,
     volume: audio_volume::State,
+    surround: surround::State,
     leviathan: audio_leviathan::State,
     pub(super) mixer_io: AudioMixerState,
     mixer_observed: BTreeMap<String, MixerValue>,
@@ -364,6 +368,7 @@ impl AudioProductWorkspace {
             pod_audio_subscription: None,
             pod_runtime_devices: Vec::new(),
             volume: audio_volume::State::default(),
+            surround: surround::State::default(),
             leviathan: audio_leviathan::State::new(pid, window, cx),
             mixer_io: AudioMixerState::default(),
             mixer_observed: BTreeMap::new(),
@@ -400,6 +405,7 @@ impl AudioProductWorkspace {
         this.subscribe_nommo_effects(window, cx);
         this.subscribe_mixer(window, cx);
         this.subscribe_leviathan(window, cx);
+        this.initialize_surround(window, cx);
         for control in spec
             .pages
             .iter()
@@ -663,6 +669,7 @@ impl AudioProductWorkspace {
     }
     pub fn set_page(&mut self, page: &str, window: &mut Window, cx: &mut Context<Self>) {
         if self.page != page {
+            if self.page == "SURROUND" { self.leave_surround_page(cx); }
             if let Some(demo) = &self.demo {
                 demo.update(cx, |demo, cx| demo.set_page(page == "TAB_DEMO", window, cx));
             }
@@ -1411,6 +1418,7 @@ impl AudioProductWorkspace {
     }
 
     pub fn prepare_exit(&mut self, cx: &mut Context<Self>) {
+        self.set_surround_active(false, "", cx);
         self.cancel_oled_editor(cx);
         self.stop_preset_shortcut_capture(cx);
         self.dismiss_seiren_stream_mixer(cx);
@@ -2189,6 +2197,9 @@ impl AudioProductWorkspace {
 }
 impl Render for AudioProductWorkspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if self.page == "SURROUND" && razer_device::audio_surround::Product::try_from(self.spec.product_id).is_ok() {
+            return super::product_surface::body().child(self.surround_page(cx)).into_any_element();
+        }
         if self.page == "TAB_SOUND" {
             self.refresh_sound_images();
         }

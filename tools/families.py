@@ -7297,7 +7297,9 @@ def audit_audio_surround(args):
                                 b'setComboMode:', b'setComboDelay:', b'setComboDelayTestSignal:',
                                 b'setComboReplicateFrontStereo:', b'setComboSpeakerVolume:',
                                 b'setFrontSpeaker:', b'setSpeakerEqualizer:',
-                                b'comboModeReducer:', b'frontSpeakerId:', b'floatingVideoReducer:'])
+                                b'comboModeReducer:', b'frontSpeakerId:', b'floatingVideoReducer:',
+                                b'openTutorial:', b'onboarding-tutorial-popup', b'tutorialList:',
+                                b'TUTORIAL_MAP:', b'showOnboardingTutorialCarol', b'surrounded-containerV2'])
                     offsets = [(anchor, match.start()) for anchor in anchors for match in re.finditer(re.escape(anchor), raw)]
                     if not offsets:
                         continue
@@ -7369,6 +7371,10 @@ def audit_audio_surround(args):
                                 value = value.named_children[-1] if value.named_children else None
                             if value is not None and value.type == "identifier":
                                 references.append((value.text, value.start_byte, "component_alias"))
+                            elif value is not None and value.type == "ternary_expression":
+                                for branch in (value.child_by_field_name("consequence"), value.child_by_field_name("alternative")):
+                                    if branch is not None and branch.type == "identifier":
+                                        references.append((branch.text, branch.start_byte, "conditional_component_branch"))
                             elif value is not None and value.type == "call_expression":
                                 arguments = value.child_by_field_name("arguments")
                                 if arguments is not None:
@@ -7389,7 +7395,8 @@ def audit_audio_surround(args):
                     anchors = [b'.surround-container', b'.front-speaker-selector-popup', b'.time-alignment',
                                b'.alignment-', b'.EqualizerAdjustments_', b'.replicate-front-stereo',
                                b'.surrounded-containerV2', b'.demo-play-wrapper', b'.speaker-',
-                               b'.VolumeMixer_', b'.vertical-slider__', b'.sliderChart__']
+                               b'.VolumeMixer_', b'.vertical-slider__', b'.sliderChart__',
+                               b'.onboarding-tutorial-popup', b'.tutorial-icon']
                     for anchor in anchors:
                         for match in re.finditer(re.escape(anchor), raw):
                             left = max(raw.rfind(b'}', 0, match.start()), raw.rfind(b'{', 0, match.start())) + 1

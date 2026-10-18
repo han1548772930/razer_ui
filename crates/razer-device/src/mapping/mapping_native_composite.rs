@@ -1,0 +1,222 @@
+//! Cascade and D-pad combination ownership (8397a/84508/861ca/87b6e).
+//! Plans preserve the press-time lookup pair; only the transport owner can
+//! confirm output delivery or report a failed release.
+use crate::{
+    mapping_native_action::{Branch, Output},
+    mapping_native_lookup::{HeldMapping, Phase, Resolved, ResolvedOutput},
+};
+use anyhow::{Context, Result, bail};
+use std::collections::{BTreeMap, VecDeque};
+
+#[derive(Clone, Debug)]
+pub struct Dispatch {
+    pub resolved: Resolved<Output>,
+    pub contribution_id: Option<String>,
+}
+
+#[derive(Default)]
+pub struct State {
+    cascades: BTreeMap<(String, String), Resolved<Output>>,
+    dpad: VecDeque<(String, String)>,
+}
+
+impl State {
+    pub fn apply(
+        &mut self,
+        resolved: Resolved<Output>,
+        held: impl Fn(&str) -> Option<HeldMapping<Output>>,
+    ) -> Result<Vec<Dispatch>> {
+        match &resolved.output {
+            ResolvedOutput::Mapped(Output::Cascade(branches)) => {
+                self.cascade(&resolved, branches, &held)
+            }
+            ResolvedOutput::Mapped(Output::Dpad(branches)) => self.dpad(&resolved, branches, &held),
+            _ => Ok(vec![Dispatch {
+                resolved,
+                contribution_id: None,
+            }]),
+        }
+    }
+    pub fn clear(&mut self) {
+        self.cascades.clear();
+        self.dpad.clear();
+    }
+
+    fn cascade(
+        &mut self,
+        resolved: &Resolved<Output>,
+        branches: &[Branch],
+        held: &impl Fn(&str) -> Option<HeldMapping<Output>>,
+    ) -> Result<Vec<Dispatch>> {
+        let input_id = resolved.input.stateless_id();
+        let phase = resolved.input.phase();
+        let mut dispatches = Vec::new();
+        for branch in branches {
+            let condition = branch
+                .input
+                .as_ref()
+                .map(|input| input.stateless_id())
+                .unwrap_or_default();
+            if !condition.is_empty() && held(&condition).is_none() {
+                continue;
+            }
+            let pair = if condition.is_empty() {
+                (input_id.clone(), condition)
+            } else {
+                (condition, input_id.clone())
+            };
+            match phase {
+                Phase::Press => {
+                    if self.cascades.contains_key(&pair) {
+                        continue;
+                    }
+                    let release = held(&input_id)
+                        .context("Cascade input has no retained press-time mapping")?
+                        .release;
+                    self.cascades.insert(pair, release);
+                }
+                Phase::Release if self.cascades.remove(&pair).is_none() => continue,
+                _ => (),
+            }
+            dispatches.push(dispatch(resolved, branch.output.clone(), None));
+            break;
+        }
+        if phase == Phase::Release {
+            let stale: Vec<_> = self
+                .cascades
+                .keys()
+                .filter(|(a, b)| {
+                    (!a.is_empty() && held(a).is_none()) || (!b.is_empty() && held(b).is_none())
+                })
+                .cloned()
+                .collect();
+            for pair in stale {
+                let release = self
+                    .cascades
+                    .remove(&pair)
+                    .expect("Selected cascade is retained");
+                let ResolvedOutput::Mapped(Output::Cascade(branches)) = &release.output else {
+                    bail!("Cascade retained release is not a cascade mapping");
+                };
+                if let Some(branch) = branches.iter().find(|branch| {
+                    branch.input.as_ref().is_none_or(|input| {
+                        let id = input.stateless_id();
+                        id == pair.0 || id == pair.1
+                    })
+                }) {
+                    dispatches.push(dispatch(&release, branch.output.clone(), None));
+                }
+            }
+        }
+        Ok(dispatches)
+    }
+
+    fn dpad(
+        &mut self,
+        resolved: &Resolved<Output>,
+        branches: &[Branch],
+        held: &impl Fn(&str) -> Option<HeldMapping<Output>>,
+    ) -> Result<Vec<Dispatch>> {
+        let Some(branch) = branches.iter().find(|branch| {
+            branch
+                .input
+                .as_ref()
+                .is_none_or(|input| held(&input.stateless_id()).is_some())
+        }) else {
+            return Ok(Vec::new());
+        };
+        let input_id = resolved.input.stateless_id();
+        let condition = branch
+            .input
+            .as_ref()
+            .map(|input| input.stateless_id())
+            .unwrap_or_default();
+        let mut dispatches = Vec::new();
+        if resolved.input.phase() == Phase::Press {
+            self.dpad.push_back((input_id.clone(), condition.clone()));
+            if self.dpad.len() >= 2 {
+                let old = self.dpad.pop_front().expect("D-pad previous pair exists");
+                let release = held(&old.0)
+                    .context("D-pad previous input has no retained mapping")?
+                    .release;
+                if let Some(dispatch) = dpad_named(&release, &old.0, &old.1)? {
+                    dispatches.push(dispatch);
+                }
+            }
+        }
+        dispatches.push(dispatch(
+            resolved,
+            branch.output.clone(),
+            digital_id(&branch.output, &input_id, &condition),
+        ));
+        if resolved.input.phase() == Phase::Release
+            && let Some(old) = self.dpad.pop_front()
+        {
+            let other = if old.0 == input_id {
+                old.1
+            } else if old.1 == input_id {
+                old.0
+            } else {
+                String::new()
+            };
+            if !other.is_empty()
+                && let Some(remaining) = held(&other)
+            {
+                if let Some(dispatch) = dpad_named(&remaining.make, &other, "")? {
+                    dispatches.push(dispatch);
+                }
+                self.dpad.push_back((other, String::new()));
+            }
+        }
+        Ok(dispatches)
+    }
+}
+
+fn dispatch(
+    resolved: &Resolved<Output>,
+    output: Output,
+    contribution_id: Option<String>,
+) -> Dispatch {
+    let mut resolved = resolved.clone();
+    resolved.output = ResolvedOutput::Mapped(output);
+    Dispatch {
+        resolved,
+        contribution_id,
+    }
+}
+fn digital_id(output: &Output, a: &str, b: &str) -> Option<String> {
+    matches!(output, Output::Digital(_)).then(|| {
+        if a < b {
+            format!("{a}{b}")
+        } else {
+            format!("{b}{a}")
+        }
+    })
+}
+fn dpad_named(resolved: &Resolved<Output>, a: &str, b: &str) -> Result<Option<Dispatch>> {
+    let ResolvedOutput::Mapped(Output::Dpad(branches)) = &resolved.output else {
+        bail!("D-pad retained mapping has another output kind");
+    };
+    // ff5ae indexes the exact conditional input, including the empty default.
+    Ok(branches
+        .iter()
+        .find(|branch| {
+            branch
+                .input
+                .as_ref()
+                .map(|input| input.stateless_id())
+                .unwrap_or_default()
+                == b
+        })
+        .map(|branch| {
+            dispatch(
+                resolved,
+                branch.output.clone(),
+                digital_id(&branch.output, a, b),
+            )
+        }))
+}
+
+#[cfg(test)]
+#[path = "mapping_native_composite/tests.rs"]
+mod tests;

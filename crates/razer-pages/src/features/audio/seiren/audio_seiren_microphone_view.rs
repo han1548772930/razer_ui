@@ -542,8 +542,9 @@ impl AudioProductWorkspace {
     fn seiren_wizard_mic_control(&self, cx: &mut Context<Self>) -> AnyElement {
         let wizard = self.seiren_mic.wizard.as_ref().expect("mounted wizard");
         let state = wizard.fader.as_ref().expect("retained wizard fader");
-        let volume = &self.draft["profile"]["micVolume"];
-        let muted = volume["isEnabled"] != true;
+        let volume = self.seiren_microphone_volume_preview();
+        let unavailable = !self.seiren_endpoint_available(0);
+        let muted = unavailable || volume["isEnabled"] != true;
         let progress = volume["value"].as_f64().unwrap_or(0.).clamp(0., 100.) as f32 / 100.;
         let levels = if self
             .seiren_mic
@@ -606,6 +607,7 @@ impl AudioProductWorkspace {
             )
             .child(
                 BaseButton::new("seiren-wizard-mute")
+                    .disabled(unavailable)
                     .p_0()
                     .mt(surface::css(8.))
                     .size(surface::css(20.))
@@ -622,7 +624,7 @@ impl AudioProductWorkspace {
                             .size_full(),
                     )
                     .on_click(cx.listener(|this, _, _, cx| {
-                        let mut volume = this.draft["profile"]["micVolume"].clone();
+                        let mut volume = this.seiren_microphone_volume_preview().clone();
                         volume["isEnabled"] = json!(volume["isEnabled"] != true);
                         this.seiren_microphone_set_volume(volume, cx);
                     })),

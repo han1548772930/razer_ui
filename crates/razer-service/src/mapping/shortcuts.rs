@@ -5,7 +5,8 @@ use razer_ipc::mapping_control::Registry;
 use razer_ipc::shortcuts::{
     EventBatch, PublicationReceipt, RegistrationReceipt, StopReceipt, UnsupportedMapping,
 };
-use razer_ipc::{ServiceClient, ServiceRequest};
+use razer_ipc::ServiceRequest;
+use super::Client;
 use razer_model::{
     macro_library::MacroLibraryFile,
     shortcuts::{Compiler, Shortcut},
@@ -64,7 +65,7 @@ impl Drop for Session {
 
 impl Session {
     pub fn start() -> anyhow::Result<(Self, mpsc::Receiver<Reply>)> {
-        Self::start_with_registry(ServiceClient::spawn, Registry::global())
+        Self::start_with_registry(Client::spawn, Registry::global())
     }
 
     pub fn publish(

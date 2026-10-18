@@ -3,14 +3,16 @@
 use anyhow::{Result, bail, ensure};
 use serde::{Deserialize, Serialize};
 
-#[path = "surround/protocol.rs"]
-pub mod protocol;
-#[path = "surround/wire.rs"]
-pub mod wire;
 #[path = "surround/observed.rs"]
 pub mod observed;
+#[path = "surround/presentation.rs"]
+pub mod presentation;
+#[path = "surround/protocol.rs"]
+pub mod protocol;
 #[path = "surround/routing.rs"]
 pub mod routing;
+#[path = "surround/wire.rs"]
+pub mod wire;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "u32", into = "u32")]
@@ -37,18 +39,6 @@ impl From<Product> for u32 {
             Product::Phantom => 1442,
             Product::VirtualRoute => 3942,
         }
-    }
-}
-impl Product {
-    pub fn library_id(self) -> &'static str {
-        match self {
-            Self::Clio => "ThxVADCarolNative",
-            Self::Phantom => "thxvadvirtualroutenative_1442",
-            Self::VirtualRoute => "thxvadvirtualroutenative_3942",
-        }
-    }
-    pub fn has_monitor(self) -> bool {
-        self != Self::Clio
     }
 }
 
@@ -442,7 +432,12 @@ impl Runtime {
         self.front_volume = front;
         self.rear_volume = rear;
     }
-    pub fn test_signal_requested(&self) -> Option<bool> { self.test_signal_requested }
+    pub fn observe_front_endpoint(&mut self, endpoint: Option<Endpoint>) {
+        self.settings.front_speaker = endpoint;
+    }
+    pub fn test_signal_requested(&self) -> Option<bool> {
+        self.test_signal_requested
+    }
     pub fn observe_volume(&mut self, channel: Channel, volume: Volume) {
         match channel {
             Channel::Front => self.front_volume = Some(volume),
@@ -550,3 +545,7 @@ impl Runtime {
 #[cfg(test)]
 #[path = "surround_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "surround/protocol_tests.rs"]
+mod protocol_tests;

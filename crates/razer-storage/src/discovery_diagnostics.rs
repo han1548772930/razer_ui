@@ -68,7 +68,6 @@ pub struct DeviceObservation<'a, R, H> {
     hid_node: Option<&'a H>,
     connection_observation: String,
     read_values: Option<&'a R>,
-    declared_libraries: Vec<String>,
 }
 
 impl<'a, R, H> DeviceObservation<'a, R, H> {
@@ -78,7 +77,6 @@ impl<'a, R, H> DeviceObservation<'a, R, H> {
         hid_node: Option<&'a H>,
         connection_observation: String,
         read_values: Option<&'a R>,
-        declared_libraries: Vec<String>,
     ) -> Self {
         Self {
             product_id,
@@ -86,7 +84,6 @@ impl<'a, R, H> DeviceObservation<'a, R, H> {
             hid_node,
             connection_observation,
             read_values,
-            declared_libraries,
         }
     }
 }
@@ -143,7 +140,7 @@ impl<'a, R, H, P> Report<'a, R, H, P> {
         successful_fields: usize,
     ) -> Self {
         Self {
-            format_version: 3,
+            format_version: 4,
             platform: std::env::consts::OS,
             recorded_at_utc,
             worker_connected,

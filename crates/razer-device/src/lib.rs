@@ -140,6 +140,12 @@ pub mod mapping_engine;
 pub mod mapping_engine_hash;
 #[path = "mapping/mapping_native_analog.rs"]
 pub mod mapping_native_analog;
+#[path = "mapping/mapping_native_action.rs"]
+pub mod mapping_native_action;
+#[path = "mapping/mapping_native_composite.rs"]
+pub mod mapping_native_composite;
+#[path = "mapping/mapping_native_mode.rs"]
+pub mod mapping_native_mode;
 #[path = "mapping/mapping_native_digital.rs"]
 pub mod mapping_native_digital;
 #[path = "mapping/mapping_native_events.rs"]
@@ -148,6 +154,8 @@ pub mod mapping_native_events;
 pub mod mapping_native_hid;
 #[path = "mapping/mapping_native_input.rs"]
 pub mod mapping_native_input;
+#[path = "mapping/mapping_native_lookup.rs"]
+pub mod mapping_native_lookup;
 #[path = "mapping/mapping_native_output.rs"]
 pub mod mapping_native_output;
 #[path = "mapping/mapping_native_rotation.rs"]
@@ -210,8 +218,6 @@ pub mod onboard_macro_codec;
 pub mod otfm;
 #[path = "profile_transfer.rs"]
 pub mod profile_transfer;
-#[path = "transport/protocol.rs"]
-pub mod protocol;
 #[path = "receiver/receiver_brightness.rs"]
 pub mod receiver_brightness;
 #[path = "receiver/receiver_capabilities.rs"]

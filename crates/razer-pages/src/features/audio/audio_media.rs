@@ -27,6 +27,7 @@ pub(super) struct AudioMedia {
     shown: bool,
     loading: bool,
     start_requested: bool,
+    start_offset_ms: Option<u64>,
     has_started: bool,
     requested_volume: f32,
     requested_rate: PlaybackRate,
@@ -133,6 +134,7 @@ impl AudioMedia {
                 shown: false,
                 loading: false,
                 start_requested: false,
+                start_offset_ms: None,
                 has_started: false,
                 requested_volume: 1.,
                 requested_rate: PlaybackRate::Normal,
@@ -188,6 +190,7 @@ impl AudioMedia {
     }
     pub(super) fn pause(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.start_requested = false;
+        self.start_offset_ms = None;
         self.exit_fullscreen(window);
         if let Some(session) = &self.session {
             if let Err(error) = session.pause() {
@@ -217,6 +220,7 @@ impl AudioMedia {
         self.shown = false;
         self.loading = false;
         self.start_requested = false;
+        self.start_offset_ms = None;
         self.scrubbing = None;
         self.has_started = false;
         self.requested_volume = 1.;
@@ -227,6 +231,43 @@ impl AudioMedia {
         self.reported_error = None;
         self.frame = None;
         self.frame_ix = None;
+        cx.notify();
+    }
+
+    pub(super) fn play_from_offset(
+        &mut self,
+        milliseconds: u64,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.error.is_some() || self.status.error().is_some() {
+            self.stop(window, cx);
+            if let Err(error) = razer_assets::retry_resources(cx) {
+                self.error = Some(format!("{error:#}"));
+            }
+        }
+        self.shown = true;
+        if let (Some(clip), Some(session)) = (&self.clip, &self.session) {
+            let cursor = (milliseconds.saturating_mul(u64::from(clip.sample_rate())) / 1000)
+                .min(clip.sample_count());
+            match session.seek(cursor).and_then(|revision| {
+                session.play()?;
+                Ok(revision)
+            }) {
+                Ok(revision) => {
+                    self.seek_revision = revision;
+                    self.frame_ix = None;
+                }
+                Err(error) => self.error = Some(format!("{error:#}")),
+            }
+        } else {
+            self.start_requested = true;
+            self.start_offset_ms = Some(milliseconds);
+            if !self.loading {
+                self.load(window, cx);
+            }
+        }
+        self.report_error(window, cx);
         cx.notify();
     }
 
@@ -340,6 +381,17 @@ impl AudioMedia {
                             .and_then(|_| session.set_playback_rate(this.requested_rate))
                         {
                             this.error = Some(format!("{error:#}"));
+                        }
+                        if let (Some(milliseconds), Some(clip)) =
+                            (this.start_offset_ms.take(), &this.clip)
+                        {
+                            let cursor =
+                                (milliseconds.saturating_mul(u64::from(clip.sample_rate())) / 1000)
+                                    .min(clip.sample_count());
+                            match session.seek(cursor) {
+                                Ok(revision) => this.seek_revision = revision,
+                                Err(error) => this.error = Some(format!("{error:#}")),
+                            }
                         }
                         if this.start_requested {
                             if let Err(error) = session.play() {

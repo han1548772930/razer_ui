@@ -144,6 +144,7 @@ pub enum WorkspaceEvent {
         request: super::audio_products::AudioVolumeRequest,
     },
     LeviathanRequested(super::audio_products::LeviathanRequest),
+    SurroundRequested(super::audio_products::SurroundRequest),
     AudioMixerRequested {
         request: super::audio_products::AudioMixerRequest,
     },

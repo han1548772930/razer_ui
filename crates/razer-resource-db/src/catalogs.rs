@@ -19,8 +19,6 @@ pub const RAZER_APP_PAGES_RECORD_SHORTCUT_DATA: CatalogId =
 pub const RAZER_APP_PAGES_TRANSFER_DATA: CatalogId = CatalogId("razer-app-pages/transfer_data");
 pub const RAZER_ASSETS_KEYBOARD_SOURCES: CatalogId = CatalogId("razer-assets/keyboard_sources");
 pub const RAZER_ASSETS_LAYOUTS: CatalogId = CatalogId("razer-assets/layouts");
-pub const RAZER_CATALOG_NATIVE_LIBRARY_INVENTORY: CatalogId =
-    CatalogId("razer-catalog/native_library_inventory");
 pub const RAZER_MODEL_CATALOG: CatalogId = CatalogId("razer-model/catalog");
 pub const RAZER_APP_PAGES_RECORDING_KEYBOARD_DATA: CatalogId =
     CatalogId("razer-app-pages/recording_keyboard_data");

@@ -1,4 +1,4 @@
-//! The dedicated actor owns ServiceClient, its pipe, DLL worker and shutdown.
+//! The recorder task retains its shared mapping scope through final cleanup.
 //! UI cancellation sends a command or drops its sender. No native work runs on GPUI.
 use super::{Transport, WorkerGuard, guarded, shutdown};
 #[cfg(test)]

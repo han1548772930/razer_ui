@@ -43,6 +43,8 @@ mod audio_mixer;
 mod audio_notifications;
 #[path = "shell/audio/audio_volume.rs"]
 mod audio_volume;
+#[path = "shell/audio/surround.rs"]
+mod surround;
 #[path = "shell/windows/chroma_studio_window.rs"]
 mod chroma_studio_window;
 #[path = "shell/windows/chroma_window.rs"]
@@ -332,6 +334,8 @@ pub struct AppShell {
     audio_notifications: BTreeMap<String, audio_notifications::Session>,
     audio_global_shortcuts_enabled: bool,
     thx_jobs: BTreeMap<String, thx_sound::Session>,
+    surround_owners: BTreeMap<String, surround::Owner>,
+    surround_cleanup_installed: bool,
     thx_owners: BTreeMap<String, std::sync::Arc<thx_sound::RetainedOwner>>,
     thx_retired_owners: Vec<thx_sound::RetiredOwner>,
     // Actual transport receipts are independent of the source UI/profile draft.
@@ -606,6 +610,8 @@ impl AppShell {
             audio_notifications: BTreeMap::new(),
             audio_global_shortcuts_enabled: true,
             thx_jobs: BTreeMap::new(),
+            surround_owners: BTreeMap::new(),
+            surround_cleanup_installed: false,
             thx_owners: BTreeMap::new(),
             thx_retired_owners: Vec::new(),
             thx_progress: BTreeMap::new(),
@@ -1584,6 +1590,9 @@ impl AppShell {
                 }
                 WorkspaceEvent::LeviathanRequested(request) => {
                     this.request_leviathan(entity.clone(),request.clone(),window,cx);
+                }
+                WorkspaceEvent::SurroundRequested(request) => {
+                    this.request_surround(entity.clone(),request.clone(),window,cx);
                 }
                 WorkspaceEvent::AudioMixerRequested { request } => {
                     this.request_audio_mixer(entity.clone(), request.clone(), window, cx);

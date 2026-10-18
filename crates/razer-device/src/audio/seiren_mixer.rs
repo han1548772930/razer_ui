@@ -4,6 +4,10 @@ use crate::seiren_driver::{self as driver, AudioControlWrite, Channel, ChannelCo
 use anyhow::{Context, Result, ensure};
 use std::collections::BTreeMap;
 
+#[path = "seiren_mixer/observation.rs"]
+mod observation;
+pub use observation::{LiveState, Reading};
+
 pub const HEADPHONES_INPUT: u32 = 65536;
 pub const MICROPHONE_ALIAS: u32 = 131072;
 pub const STREAM: u32 = 131073;
@@ -12,7 +16,7 @@ pub const MICROPHONE: u32 = 262145;
 pub const SERVICE: u32 = 262146;
 pub const HEADPHONES: u32 = 524289;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct EndpointObservation { pub level: u32, pub muted: bool }
 
 #[derive(Clone, Debug)]
@@ -95,6 +99,9 @@ impl Mixer {
     }
     pub fn endpoint_observation(&self, id: u32) -> Option<EndpointObservation> {
         self.nodes.get(&id).and_then(|node| node.observed)
+    }
+    pub fn invalidate_endpoint(&mut self, id: u32) {
+        if let Some(node) = self.nodes.get_mut(&id) { node.observed = None; }
     }
     fn node(&self, id: u32) -> Result<&Node> { self.nodes.get(&id).with_context(|| format!("Marie node {id} is absent")) }
     fn selected_mix(&self) -> u32 { if self.stream_monitor { STREAM } else { PLAYBACK } }

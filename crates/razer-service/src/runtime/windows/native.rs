@@ -136,6 +136,9 @@ mod mapping_device;
 mod mapping_mode_events;
 #[path = "mapping_runtime.rs"]
 mod mapping_runtime;
+pub(super) fn mapping_client() -> anyhow::Result<crate::mapping::owner::Client> {
+    mapping_runtime::client()
+}
 #[path = "mapping_execution.rs"]
 mod mapping_execution;
 #[path = "mapping_key_capture.rs"]
@@ -708,6 +711,10 @@ impl NativeRuntime {
                 let validate = surround_identity(&identity);
                 self.surround.change(&identity, &change, validate)
             }
+            ServiceRequest::SurroundObserve { identity } => {
+                let validate = surround_identity(&identity);
+                self.surround.observe(&identity, validate)
+            }
             ServiceRequest::SurroundClose { identity } => self.surround.close(&identity),
             ServiceRequest::BleMouseCurrentPower { target, change } => {
                 device_reads::mouse_current_power_ble(&target, &change)
@@ -1058,12 +1065,17 @@ fn surround_identity(
 ) -> impl Fn() -> anyhow::Result<()> + use<> {
     let container = identity.container_id().to_owned();
     let product = u32::from(identity.product());
-    move || native_target(&container, Some(product)).map(|_| ())
+    move || native_target_with_scope(&container, Some(product), NativeTargetScope::Surround).map(|_| ())
 }
+#[derive(Clone, Copy)]
+enum NativeTargetScope { Direct, Surround }
 /// Native container getters require a real, uniquely observed physical device.
 /// This uses the same current USB enumeration and product identity projection
 /// as discovery; arbitrary CLI strings and local profiles are not observations.
 fn native_target(container: &str, expected_product: Option<u32>) -> anyhow::Result<(u32, Value)> {
+    native_target_with_scope(container, expected_product, NativeTargetScope::Direct)
+}
+fn native_target_with_scope(container: &str, expected_product: Option<u32>, scope: NativeTargetScope) -> anyhow::Result<(u32, Value)> {
     use razer_device::device_identity;
     use razer_device::device_identity::IdentityLookup;
     anyhow::ensure!(
@@ -1105,7 +1117,9 @@ fn native_target(container: &str, expected_product: Option<u32>) -> anyhow::Resu
         bail!("物理 PID {physical_pid} 没有唯一的当前源码产品归属");
     };
     anyhow::ensure!(
-        !identity.is_dongle && !identity.is_ble,
+        !identity.is_ble && (!identity.is_dongle || matches!(scope, NativeTargetScope::Surround)
+            && matches!(identity.product_id, 1392 | 1442)
+            && physical_pid == identity.product_id),
         "接收器或 BLE PID 不能冒充直接原生设备"
     );
     anyhow::ensure!(

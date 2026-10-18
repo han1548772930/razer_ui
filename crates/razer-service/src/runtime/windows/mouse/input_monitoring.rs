@@ -1,218 +1,116 @@
-//! Current host mapping_engine/win/index.js input-monitor callbacks. The DLL
-//! and callback code remain owned by NativeRuntime through engine shutdown.
-use super::{Callback2, NativeRuntime, callback2};
-use anyhow::{Context as _, ensure};
-use razer_ipc::mouse_input_monitoring::{InputEvent, MAX_CALLBACK_BYTES, Poll, Receipt};
-use serde_json::Value;
-use std::{
-    collections::VecDeque,
-    ffi::c_char,
-    sync::{
-        Mutex,
-        atomic::{AtomicBool, Ordering},
-        mpsc::{self, Receiver, SyncSender},
-    },
-};
-
-type EventCallback = unsafe extern "C" fn(*const c_char, i32, *const c_char, u64);
-type Register = unsafe extern "C" fn(EventCallback, Callback2);
-type Operation = unsafe extern "C" fn(Callback2);
-
-static EVENTS: Mutex<Option<SyncSender<Result<InputEvent, String>>>> = Mutex::new(None);
-static OVERFLOW: AtomicBool = AtomicBool::new(false);
-
-/// The current callback ABI supplies borrowed, NUL-terminated UTF-8 buffers.
-/// Copy at most the remaining IPC budget while those buffers are still valid.
-unsafe fn copy_callback_text(pointer: *const c_char, limit: usize) -> anyhow::Result<String> {
-    ensure!(!pointer.is_null(), "Input monitor callback string is null");
-    let mut bytes = Vec::new();
-    for offset in 0..=limit {
-        // The vendor callback keeps the whole NUL-terminated buffer alive for
-        // this call; no pointer or slice escapes the callback gate.
-        let byte = unsafe { *pointer.add(offset) } as u8;
-        if byte == 0 {
-            return String::from_utf8(bytes).context("Input monitor callback is not UTF-8");
-        }
-        ensure!(
-            offset < limit,
-            "Input monitor callback exceeds the transport limit"
-        );
-        bytes.push(byte);
-    }
-    unreachable!("the callback copy returns at its size boundary")
-}
-
-unsafe extern "C" fn input_event(
-    device_info: *const c_char,
-    event_type: i32,
-    json_event: *const c_char,
-    _time_tick: u64,
-) {
-    match EVENTS.lock() {
-        Ok(slot) => {
-            if let Some(sender) = slot.as_ref() {
-                // Acceptance, temporary-string copying and publication share
-                // this gate. Stop waits for accepted callbacks; callbacks
-                // arriving after closure do not read vendor buffers.
-                let event = (|| {
-                    let info = unsafe { copy_callback_text(device_info, MAX_CALLBACK_BYTES) }?;
-                    let events =
-                        unsafe { copy_callback_text(json_event, MAX_CALLBACK_BYTES - info.len()) }?;
-                    InputEvent::from_native(&info, event_type, events)
-                })()
-                .map_err(|error| format!("{error:#}"));
-                if sender.try_send(event).is_err() {
-                    OVERFLOW.store(true, Ordering::Release);
-                }
-            }
-        }
-        Err(_) => OVERFLOW.store(true, Ordering::Release),
-    }
-}
-
+//! D32B0 emits movement before buttons; CE280 flushes per device on a button
+//! or strictly more than 100000 source-clock microseconds. CC8C0/CE4D0 flush
+//! pending movement before removing a device or stopping the monitor.
+#[path = "input_monitoring/identity.rs"]
+mod identity;
 #[cfg(test)]
-mod tests {
-    use super::*;
+#[path = "input_monitoring/tests.rs"]
+mod tests;
+use super::NativeRuntime;
+use anyhow::{Result, ensure};
+use razer_ipc::mouse_input_monitoring::{InputEvent, Poll, Receipt};
+use razer_platform::mouse_monitor::{Event, MouseMonitor, Sample};
+use serde::Serialize;
+use serde_json::{Value, json};
+use std::collections::{BTreeMap, VecDeque};
 
-    #[test]
-    fn callback_copy_rejects_null_invalid_utf8_and_overlong_buffers() {
-        assert!(unsafe { copy_callback_text(std::ptr::null(), 3) }.is_err());
-        assert!(unsafe { copy_callback_text(b"abcd\0".as_ptr().cast(), 3) }.is_err());
-        assert!(unsafe { copy_callback_text([0xffu8, 0].as_ptr().cast(), 3) }.is_err());
-        assert_eq!(
-            unsafe { copy_callback_text(b"abc\0".as_ptr().cast(), 3) }.unwrap(),
-            "abc"
-        );
-        assert_eq!(
-            unsafe { copy_callback_text(b"\0".as_ptr().cast(), 0) }.unwrap(),
-            ""
-        );
+#[derive(Serialize)]
+struct Row { data:String, #[serde(rename="timeTick")] time_tick:String }
+struct Device { identity:identity::Identity, rows:Vec<Row>, last_publication:Option<u64> }
+impl Device {
+    fn push(&mut self,data:Value,tick:u64,button:bool)->Result<Option<InputEvent>> {
+        ensure!(self.rows.len()<16384,"Mouse monitor device batch overflowed");
+        self.rows.push(Row{data:data.to_string(),time_tick:tick.to_string()});
+        if button || self.last_publication.is_some_and(|previous|tick.wrapping_sub(previous)>100000) {
+            self.last_publication=Some(tick); return self.flush();
+        }
+        self.last_publication.get_or_insert(tick); Ok(None)
+    }
+    fn flush(&mut self)->Result<Option<InputEvent>> {
+        if self.rows.is_empty(){return Ok(None);}
+        let event=InputEvent::from_native(&serde_json::to_string(&self.identity)?,1,serde_json::to_string(&self.rows)?)?;
+        self.rows.clear(); Ok(Some(event))
     }
 }
-
 #[derive(Default)]
 pub(super) struct State {
-    owner: Option<String>,
-    events: Option<Receiver<Result<InputEvent, String>>>,
-    pending: VecDeque<InputEvent>,
-    possibly_started: bool,
+    owner:Option<String>, input:MouseMonitor, devices:BTreeMap<String,Device>,
+    pending:VecDeque<InputEvent>, failure:Option<String>,
 }
-
 impl State {
-    pub(super) fn owner(&self) -> Option<String> {
-        self.owner.clone()
+    pub(super) fn owner(&self)->Option<String>{self.owner.clone()}
+    fn check_owner(&self,owner:&str)->Result<()> {
+        ensure!(!owner.is_empty() && self.owner.as_deref()==Some(owner),"Input monitor request belongs to another owner"); Ok(())
     }
-
-    fn check_owner(&self, owner: &str) -> anyhow::Result<()> {
-        ensure!(
-            !owner.is_empty() && self.owner.as_deref() == Some(owner),
-            "Input monitor request belongs to another owner"
-        );
+    fn publish(&mut self,event:Option<InputEvent>)->Result<()> {
+        if let Some(event)=event {ensure!(self.pending.len()<512,"Mouse input monitor publication queue overflowed");self.pending.push_back(event);}
         Ok(())
     }
-
-    fn poll(&mut self, owner: &str) -> anyhow::Result<Poll> {
-        self.check_owner(owner)?;
-        let receiver = self
-            .events
-            .as_ref()
-            .context("Input monitor inbox is absent")?;
-        let mut failure = OVERFLOW
-            .load(Ordering::Acquire)
-            .then(|| "Input monitor queue overflow; incomplete movement was rejected".into());
-        let mut events = Vec::new();
-        let mut bytes = 0usize;
-        // JSON string escaping can multiply the raw byte size. Measure the
-        // serialized events before they enter the four-MiB framed response.
-        while events.len() < 128 {
-            let next = if let Some(event) = self.pending.pop_front() {
-                Some(event)
-            } else {
-                match receiver.try_recv() {
-                    Ok(Ok(event)) => Some(event),
-                    Ok(Err(error)) => {
-                        failure = Some(error);
-                        break;
-                    }
-                    Err(mpsc::TryRecvError::Empty) => None,
-                    Err(mpsc::TryRecvError::Disconnected) => {
-                        failure = Some("Input monitor callback inbox disconnected".into());
-                        None
-                    }
-                }
-            };
-            let Some(event) = next else { break };
-            let encoded = serde_json::to_vec(&event)?.len();
-            ensure!(
-                encoded < 3 * 1024 * 1024,
-                "Input monitor event exceeds the IPC frame"
-            );
-            if bytes + encoded > 3 * 1024 * 1024 {
-                self.pending.push_front(event);
-                break;
-            }
-            bytes += encoded;
-            events.push(event);
+    fn sample(&mut self,sample:Sample,observe:impl FnOnce(&str)->Result<identity::Identity>)->Result<()> {
+        let key=sample.path.to_ascii_lowercase();
+        if !self.devices.contains_key(&key) {
+            let identity=observe(&sample.path)?;
+            self.devices.insert(key.clone(),Device{identity,rows:Vec::new(),last_publication:None});
         }
-        Ok(Poll::new(owner.to_owned(), events, failure))
+        if sample.x!=0 || sample.y!=0 {
+            let event=self.devices.get_mut(&key).unwrap().push(json!({"type":"mouseMove","x":sample.x,"y":sample.y}),sample.time_tick,false)?;
+            self.publish(event)?;
+        }
+        if sample.button_flags!=0 || sample.button_data!=0 {
+            let mut input=razer_device::mapping_native_lookup::Input::new(razer_device::mapping_native_lookup::InputKind::Mouse{id:sample.button_flags,data:sample.button_data});
+            input.modifiers=sample.modifiers;
+            let event=self.devices.get_mut(&key).unwrap().push(input.to_native_json(),sample.time_tick,true)?;
+            self.publish(event)?;
+        }
+        Ok(())
+    }
+    fn removed(&mut self,path:&str)->Result<()> {
+        let key=path.to_ascii_lowercase();
+        if let Some(device)=self.devices.get_mut(&key) {let event=device.flush()?;self.publish(event)?;self.devices.remove(&key);}
+        Ok(())
+    }
+    fn accept(&mut self,events:Vec<Event>)->Result<()> {
+        for event in events {match event {
+            Event::Input(sample)=>self.sample(sample,identity::observe)?,
+            Event::Removed(path)=>self.removed(&path)?,
+        }} Ok(())
+    }
+    fn collect(&mut self)->Result<()> { let events=self.input.events()?; self.accept(events) }
+    fn poll(&mut self,owner:&str)->Result<Poll> {
+        self.check_owner(owner)?;
+        if let Err(error)=self.collect(){self.failure.get_or_insert_with(||format!("{error:#}"));}
+        let mut events=Vec::new(); let mut bytes=0;
+        while events.len()<128 {
+            let Some(event)=self.pending.front() else {break;};
+            let encoded=serde_json::to_vec(event)?.len();
+            ensure!(encoded<3*1024*1024,"Input monitor event exceeds IPC capacity");
+            if bytes+encoded>3*1024*1024{break;}
+            bytes+=encoded;events.push(self.pending.pop_front().unwrap());
+        }
+        Ok(Poll::new(owner.into(),events,self.failure.clone()))
     }
 }
-
 impl NativeRuntime {
-    pub(super) fn start_mouse_input_monitoring(&mut self, owner: String) -> anyhow::Result<Value> {
-        ensure!(!owner.is_empty(), "Input monitor owner is empty");
-        ensure!(
-            self.mouse_input_monitoring.owner.is_none(),
-            "Input monitor is already owned"
-        );
-        self.mapping()?;
-        let register: Register = unsafe { self.mapping_symbol("setInputMonitoringCallback")? };
-        let start: Operation = unsafe { self.mapping_symbol("startMouseInputMonitoring")? };
-        let (sender, receiver) = mpsc::sync_channel(512);
-        {
-            let mut slot = EVENTS
-                .lock()
-                .map_err(|_| anyhow::anyhow!("Input monitor callback lock poisoned"))?;
-            ensure!(
-                slot.is_none(),
-                "Input monitor callback is already installed"
-            );
-            OVERFLOW.store(false, Ordering::Release);
-            *slot = Some(sender);
-        }
-        self.mouse_input_monitoring = State {
-            owner: Some(owner.clone()),
-            events: Some(receiver),
-            pending: VecDeque::new(),
-            possibly_started: false,
-        };
-        self.call(|| unsafe { register(input_event, callback2) })?;
-        // A rejected or lost acknowledgement cannot establish that the native
-        // monitor did not start. Retain ownership until stop is acknowledged.
-        self.mouse_input_monitoring.possibly_started = true;
-        self.call(|| unsafe { start(callback2) })?;
-        serde_json::to_value(Receipt::new(owner, true)).map_err(Into::into)
+    pub(super) fn start_mouse_input_monitoring(&mut self,owner:String)->Result<Value> {
+        ensure!(!owner.is_empty(),"Input monitor owner is empty");
+        ensure!(self.mouse_input_monitoring.owner.is_none(),"Input monitor is already owned");
+        self.mouse_input_monitoring.owner=Some(owner.clone());
+        self.mouse_input_monitoring.input.start()?;
+        Ok(serde_json::to_value(Receipt::new(owner,true))?)
     }
-
-    pub(super) fn poll_mouse_input_monitoring(&mut self, owner: &str) -> anyhow::Result<Value> {
-        serde_json::to_value(self.mouse_input_monitoring.poll(owner)?).map_err(Into::into)
+    pub(super) fn poll_mouse_input_monitoring(&mut self,owner:&str)->Result<Value> {
+        Ok(serde_json::to_value(self.mouse_input_monitoring.poll(owner)?)?)
     }
-
-    pub(super) fn stop_mouse_input_monitoring(&mut self, owner: &str) -> anyhow::Result<Value> {
+    pub(super) fn stop_mouse_input_monitoring(&mut self,owner:&str)->Result<Value> {
         self.mouse_input_monitoring.check_owner(owner)?;
-        if self.mouse_input_monitoring.possibly_started {
-            let stop: Operation = unsafe { self.mapping_symbol("stopMouseInputMonitoring")? };
-            self.call(|| unsafe { stop(callback2) })?;
-            self.mouse_input_monitoring.possibly_started = false;
-        }
-        // Taking the inbox under the callback's lock also waits for a callback
-        // already publishing a batch. Callback code and DLL stay loaded until
-        // the independent engine shutdown completes.
-        EVENTS
-            .lock()
-            .map_err(|_| anyhow::anyhow!("Input monitor callback lock poisoned"))?
-            .take();
-        self.mouse_input_monitoring = State::default();
-        serde_json::to_value(Receipt::new(owner.to_owned(), false)).map_err(Into::into)
+        let stopped=self.mouse_input_monitoring.input.stop();
+        let collected=stopped.and_then(|events|self.mouse_input_monitoring.accept(events));
+        let paths=self.mouse_input_monitoring.devices.keys().cloned().collect::<Vec<_>>();
+        let mut errors=Vec::new();
+        if let Err(error)=collected {errors.push(format!("Drain monitor: {error:#}"));}
+        for path in paths {if let Err(error)=self.mouse_input_monitoring.removed(&path){errors.push(format!("Flush monitor: {error:#}"));}}
+        ensure!(errors.is_empty(),"{}",errors.join("; "));
+        self.mouse_input_monitoring=State::default();
+        Ok(serde_json::to_value(Receipt::new(owner.into(),false))?)
     }
 }

@@ -1,6 +1,6 @@
-//! Source Audio_StreamMixer -> AudioMarie -> current Marie native exports.
-//! The platform owns library lookup/FFI; this task machine owns source ordering,
-//! unchecked initialization diagnostics, cancellation and unconditional cleanup.
+//! Source Audio_StreamMixer operation ordering over the independent Marie owner.
+//! The platform owns driver/COM resources; this task machine owns source ordering,
+//! initialization diagnostics, cancellation and unconditional cleanup.
 use super::*;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]

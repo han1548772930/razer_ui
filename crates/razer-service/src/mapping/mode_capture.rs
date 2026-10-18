@@ -1,8 +1,9 @@
 //! Audio shortcut fields share the native mode callback and mapping lifecycle.
 //! The worker retains suppression until native shutdown and transport release.
+use super::Client;
 use super::{Transport, WorkerGuard, guarded, lock_lifecycle, shutdown};
 use razer_ipc::{
-    ServiceClient, ServiceRequest,
+    ServiceRequest,
     mapping_control::{Registry, Suppression},
 };
 use serde::Deserialize;
@@ -53,7 +54,7 @@ pub struct Session {
 
 impl Session {
     pub fn start() -> anyhow::Result<Self> {
-        Self::start_with(ServiceClient::spawn, Registry::global())
+        Self::start_with(Client::spawn, Registry::global())
     }
 
     fn start_with<T: Transport + 'static>(

@@ -1,7 +1,4 @@
-use super::super::{
-    mapping_native_input::WindowsOsInputTransport,
-    mapping_native_output::WindowsMappingOutputTransport,
-};
+use super::super::mapping_native_input::WindowsOsInputTransport;
 use anyhow::{Result, ensure};
 use razer_device::{
     macro_runtime::{Keyboard, MovementMode},
@@ -66,7 +63,7 @@ pub enum Receipt {
 }
 
 pub(super) struct Input {
-    driver: Option<WindowsMappingOutputTransport>,
+    driver: Option<super::driver::Output>,
     pub last_receipt: Option<Receipt>,
     pub completed: u64,
     relative: Option<(u64, i32, i32)>,
@@ -82,14 +79,12 @@ pub(super) struct Input {
 
 impl Input {
     pub fn open(
-        path: Option<&str>,
+        route: Option<&super::driver::Route>,
         cancellation: Arc<super::Cancellation>,
         acceleration: super::acceleration::Owner,
     ) -> Result<Self> {
         Ok(Self {
-            driver: path
-                .map(WindowsMappingOutputTransport::open_discovered_driver_path)
-                .transpose()?,
+            driver: route.map(super::driver::Route::output),
             last_receipt: None,
             completed: 0,
             relative: None,
@@ -240,13 +235,22 @@ impl Input {
         Ok(())
     }
 
-    pub fn close(&mut self) -> Result<()> {
+    pub fn release_held(&mut self) -> Result<()> {
         let mut errors = Vec::new();
         self.cancellable = false;
         for release in std::mem::take(&mut self.held).into_values() {
             if let Err(error) = self.send(release) {
                 errors.push(format!("Release held output: {error:#}"));
             }
+        }
+        ensure!(errors.is_empty(), "{}", errors.join("; "));
+        Ok(())
+    }
+
+    pub fn close(&mut self) -> Result<()> {
+        let mut errors = Vec::new();
+        if let Err(error) = self.release_held() {
+            errors.push(format!("{error:#}"));
         }
         if let Some(driver) = &mut self.driver {
             if let Err(error) = driver.close() {

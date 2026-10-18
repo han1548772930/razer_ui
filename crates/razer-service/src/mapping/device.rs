@@ -3,7 +3,8 @@
 //! requests cancellation; the worker removes its device before service shutdown.
 use super::{Transport, WorkerGuard, guarded, shutdown};
 use razer_ipc::mapping_control::Registry;
-use razer_ipc::{ServiceClient, ServiceRequest};
+use razer_ipc::ServiceRequest;
+use super::Client;
 use serde::Deserialize;
 use serde_json::Value;
 use std::{
@@ -176,7 +177,7 @@ impl Session {
         Self::start_with_registry(
             product_id,
             container,
-            ServiceClient::spawn,
+            Client::spawn,
             Registry::global(),
         )
     }

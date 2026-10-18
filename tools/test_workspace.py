@@ -220,6 +220,41 @@ class LocalizationCatalogTests(unittest.TestCase):
                     workspace.rust_inputs()
 
 
+class HardwareInstallationInputTests(unittest.TestCase):
+    def test_generated_driver_constants_track_policy_payload_and_build_script(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            owner = root / "crates/razer-platform/src/observation/hardware_driver.rs"
+            owner.parent.mkdir(parents=True)
+            source = 'include!(concat!(env!("OUT_DIR"), "/hardware_driver_installation.rs"));'
+            owner.write_text(source, encoding="utf-8")
+            build = root / "crates/razer-platform/build.rs"
+            build.write_text('fn main() {}', encoding="utf-8")
+            (root / "Cargo.toml").write_bytes(b"manifest")
+            (root / "Cargo.lock").write_bytes(b"lock")
+            policy = root / "packaging/windows/installation.json"
+            policy.parent.mkdir(parents=True)
+            driver = {"service_name": "cpuz165", "filename": "cpuz165.sys", "directory": "drivers",
+                      "system_directory": "RazerUI", "source": "assets/native/cpuz165.sys", "architecture": "x64"}
+            policy.write_text(json.dumps({"schema_version": 1, "hardware_driver": driver}), encoding="utf-8")
+            payload = root / driver["source"]
+            payload.parent.mkdir(parents=True)
+            payload.write_bytes(b"driver before")
+            with mock.patch.object(workspace, "ROOT", root):
+                first = {item["path"]: item for item in workspace.rust_inputs()}
+                self.assertIn("packaging/windows/installation.json", first)
+                self.assertIn("crates/razer-platform/build.rs", first)
+                payload.write_bytes(b"driver after")
+                second = {item["path"]: item for item in workspace.rust_inputs()}
+                self.assertNotEqual(first[driver["source"]]["sha256"], second[driver["source"]]["sha256"])
+                owner.write_text(source + '\ninclude!(concat!(env!("OUT_DIR"), "/other.rs"));', encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "not a statically audited literal"):
+                    workspace.rust_inputs()
+                owner.write_text(source.replace("hardware_driver_installation.rs", "other.rs"), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "new build-output audit"):
+                    workspace.rust_inputs()
+
+
 class ArchitectureBoundaryTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -881,10 +916,10 @@ class ArchitectureBoundaryTests(unittest.TestCase):
                             'fn ' + name + '() { ' + mutation + validation + ' }'):
                 self.assertEqual(self.inspect(changed, owner)[0]['kind'], 'product_profile_rebase_skips_current_owner')
 
-    def test_existing_capability_directory_is_stable_when_root_protocol_is_organized(self):
-        root = Path("crates/razer-device/src/protocol.rs")
+    def test_existing_capability_directory_is_stable_when_root_transport_is_organized(self):
+        root = Path("crates/razer-device/src/backend.rs")
         capability = Path("crates/razer-device/src/protocol/onboard_macro.rs")
-        self.assertEqual(workspace.source_layout_destination(root), Path("crates/razer-device/src/transport/protocol.rs"))
+        self.assertEqual(workspace.source_layout_destination(root), Path("crates/razer-device/src/transport/backend.rs"))
         self.assertEqual(workspace.source_layout_destination(capability), capability)
 
     def test_gui_filesystem_calls_are_rejected_across_pages_settings_and_shell(self):
@@ -1830,7 +1865,7 @@ class ArchitectureBoundaryTests(unittest.TestCase):
         self.assertFalse(self.inspect(declaration, owner))
         self.assertEqual(self.inspect(declaration.replace('input_worker: Option<JoinHandle<anyhow::Result<()>>>', 'input_worker: bool'), owner)[0]['kind'],
                          'ipc_client_discards_owned_process_or_pipe_workers')
-        shutdown = ('impl ServiceClient { fn stop() { self.requests.take(); self.stopped = true; self.job.take(); '
+        shutdown = ('impl ServiceClient { fn finish_process() { self.requests.take(); self.stopped = true; self.job.take(); '
                     'reap_child(&mut self.child)?; let input = join_pipe(self.input_worker.take(),"input"); '
                     'let output = join_pipe(self.output_worker.take(),"output"); '
                     'let diagnostics = join_pipe(self.diagnostic_worker.take(),"diagnostics"); '
@@ -1850,6 +1885,16 @@ class ArchitectureBoundaryTests(unittest.TestCase):
                         shutdown.replace('combine_cleanup([input,output,diagnostics])', 'combine_cleanup([input,output])'),
                         shutdown.replace('combine_cleanup([input,output,diagnostics])', 'input')):
             self.assertEqual(self.inspect(changed, owner)[0]['kind'], 'ipc_cleanup_does_not_preserve_owner_until_reap_and_pipe_joins')
+        graceful = ('impl ServiceClient { fn stop() { self.stopped = true; '
+                    'let cleanup = worker_shutdown::drain(&self.responses, id, timeout); '
+                    'let process = self.finish_process(); combine_cleanup([cleanup, process]) } }')
+        self.assertFalse(self.inspect(graceful, owner))
+        for changed in (graceful.replace('worker_shutdown::drain(&self.responses, id, timeout)', 'Ok(())'),
+                        graceful.replace('self.stopped = true;', ''),
+                        graceful.replace('self.finish_process()', 'Ok(())'),
+                        graceful.replace('combine_cleanup([cleanup, process])', 'process'),
+                        graceful.replace('let cleanup', 'self.job.take(); let cleanup')):
+            self.assertEqual(self.inspect(changed, owner)[0]['kind'], 'ipc_stop_skips_graceful_owner_cleanup')
         destructor = 'impl Drop for ServiceClient { fn drop(&mut self) { if let Err(error) = self.stop() { log(error); } } }'
         self.assertFalse(self.inspect(destructor, owner))
         self.assertEqual(self.inspect(destructor.replace('if let Err(error) = self.stop()', 'if !self.stopped'), owner)[0]['kind'],
@@ -2069,6 +2114,9 @@ class ArchitectureBoundaryTests(unittest.TestCase):
         owner = "crates/razer-pages/src/features/workspace.rs"
         self.assertFalse(self.inspect('include!("source.rs");', owner))
         self.assertFalse(self.inspect('include!(concat!(env!("OUT_DIR"), "/installation.rs"));', "crates/razer-resource-db/src/lib.rs"))
+        driver = 'include!(concat!(env!("OUT_DIR"), "/hardware_driver_installation.rs"));'
+        self.assertFalse(self.inspect(driver, "crates/razer-platform/src/observation/hardware_driver.rs"))
+        self.assertEqual(self.inspect(driver, owner)[0]["kind"], "include_path_requires_resolution")
         for source in ('include!("../../../razer-model/src/settings.rs");',
                        '#[cfg(test)] mod tests { include!("../../../razer-model/src/settings.rs"); }'):
             self.assertEqual(self.inspect(source, owner)[0]["kind"], "cross_crate_private_include")

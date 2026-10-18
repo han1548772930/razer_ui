@@ -79,7 +79,7 @@ def source_layout_destination(path):
             ("keyboard", ("keyboard_",)), ("mouse", ("mouse_", "dpi_matcher")),
             ("receiver", ("receiver_",)), ("mapping", ("mapping_", "macro_engine")),
             ("identity", ("device_identity", "discovery_catalog")),
-            ("transport", ("backend", "device_query", "device_reads", "device_writes", "feature_exchange", "protocol.rs")),
+            ("transport", ("backend", "device_query", "device_reads", "device_writes", "feature_exchange")),
             ("transport", ("device_read_capabilities", "device_write_capabilities")),
             ("power", ("battery_threshold",)), ("host", ("user_app_files",)),
             ("lighting", ("lighting_driver",)),
@@ -673,7 +673,9 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                     crate_root = ROOT.joinpath(*parts[:2]) if parts[:1] == ("crates",) else ROOT
                     if not target.is_relative_to(crate_root) or (crate_root == ROOT and target.is_relative_to(ROOT / "crates")):
                         fail(node, "cross_crate_private_include", "Public Rust types and modules")
-            elif not (owner == "crates/razer-resource-db/src/lib.rs" and "".join(text(node).split()) == 'include!(concat!(env!("OUT_DIR"),"/installation.rs"))'):
+            elif (owner, "".join(text(node).split())) not in {
+                    ("crates/razer-resource-db/src/lib.rs", 'include!(concat!(env!("OUT_DIR"),"/installation.rs"))'),
+                    ("crates/razer-platform/src/observation/hardware_driver.rs", 'include!(concat!(env!("OUT_DIR"),"/hardware_driver_installation.rs"))')}:
                 fail(node, "include_path_requires_resolution", "Explicit local include path or the installation constants generator")
         if independent_help_report and node.type in {
                 "use_declaration", "scoped_identifier", "scoped_type_identifier"}:
@@ -1905,6 +1907,19 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
             implementation_type = text(implementation.child_by_field_name("type")) if implementation is not None and implementation.type == "impl_item" else None
             name = text(node.child_by_field_name("name"))
             if implementation_type == "ServiceClient" and name == "stop":
+                drains = [call for parts, call in calls(node) if resolved_call(parts) == ("worker_shutdown", "drain")]
+                releases = [call for call in walk(node) if call.type == "call_expression"
+                    and self_field(call.child_by_field_name("function"), "finish_process")]
+                closed = [child for child in walk(node) if child.type == "assignment_expression"
+                    and self_field(child.child_by_field_name("left"), "stopped") and text(child.child_by_field_name("right")) == "true"]
+                merged = [call for parts, call in calls(node) if resolved_call(parts) == ("combine_cleanup",)]
+                if (not drains or not releases or not closed or not merged
+                        or any(method_on_field(call, "take", "job") for call in walk(node))
+                        or any(close.end_byte > drain.start_byte for close in closed for drain in drains)
+                        or any(drain.end_byte > release.start_byte for drain in drains for release in releases)
+                        or any(release.end_byte > merge.start_byte for release in releases for merge in merged)):
+                    fail(node, "ipc_stop_skips_graceful_owner_cleanup", ipc_client + "::ServiceClient::stop")
+            if implementation_type == "ServiceClient" and name == "finish_process":
                 admission = [call for call in walk(node) if method_on_field(call, "take", "requests")]
                 jobs = [call for call in walk(node) if method_on_field(call, "take", "job")]
                 stopped = [child for child in walk(node) if child.type == "assignment_expression"
@@ -3817,6 +3832,9 @@ def finite_resource_domain(row):
         names = ("peaking", "highpass", "lowpass", "highshelf", "lowshelf")
         constraints = ['"' + name + '"' for name in names]
         expected = choices("synapse/seiren-eq-tutorial-", range(1, 6), ".png") if value.endswith(".png") else choices("synapse/seiren-eq-tutorial-", names)
+    elif value == "synapse/audio-surround-{}-tutorial-{}.webp":
+        constraints = ["1392 | 1442 | 3942", "step + 1", "0..6"]
+        expected = [f"synapse/audio-surround-{pid}-tutorial-{step}.webp" for pid in (1392, 1442, 3942) for step in range(1, 7)]
     elif value == "synapse/seiren-eq-{name}{}.svg":
         strings, owner = rust_named_item_strings("crates/razer-pages/src/features/audio/seiren/audio_seiren_eq.rs", "MONITORS")
         owners.append(owner)
@@ -4788,9 +4806,15 @@ def rust_inputs(*, include_asset_pack=True):
     Provenance JSON source fields are descriptions, never filesystem edges.
     """
     import resource_database
+    import windows_installer
     files = {ROOT / "Cargo.toml", ROOT / "Cargo.lock"}
     if (ROOT / "crates/razer-resource-db/Cargo.toml").is_file():
         files.update({ROOT / resource_database.INSTALLATION, ROOT / resource_database.OUTPUT})
+    driver_owner = ROOT / "crates/razer-platform/src/observation/hardware_driver.rs"
+    if driver_owner.is_file():
+        driver = windows_installer.hardware_driver_policy(root=ROOT)
+        files.update({ROOT / windows_installer.INSTALLATION,
+                      product_input(ROOT / driver["source"], driver_owner)})
     for folder in ("app", "crates"):
         for path in (ROOT / folder).rglob("*"):
             if not path.is_file():
@@ -4812,6 +4836,13 @@ def rust_inputs(*, include_asset_pack=True):
             if text.count(generated) != 1:
                 raise ValueError("Resource installation constants need a new build-output audit")
             text = text.replace(generated, "")
+        if path == driver_owner:
+            # The platform build script emits installation names only. Track
+            # its policy and delivered driver bytes, not a machine OUT_DIR.
+            generated = 'include!(concat!(env!("OUT_DIR"), "/hardware_driver_installation.rs"));'
+            if text.count(generated) != 1:
+                raise ValueError("Hardware driver constants need a new build-output audit")
+            text = text.replace(generated, "")
         for kind, literal in rust_embed_references(text):
             if re.match(r"(?:[A-Za-z]:|[/\\])", literal):
                 raise ValueError(f"Nonportable include in {relative(path)}: {literal}")
@@ -4830,6 +4861,8 @@ def rust_inputs(*, include_asset_pack=True):
 def static_react_svg(original_text, anchor):
     """Convert literal createElement SVG trees; reject executable expressions."""
     import families
+    sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
+    import json5
 
     def parts(text):
         result, begin, index = [], 0, 0
@@ -4916,7 +4949,7 @@ def static_react_svg(original_text, anchor):
                 else:
                     fields.append(field)
             attributes = "{" + ",".join(fields) + "}"
-        properties = {} if attributes == "null" else families.static_js_literal(attributes)
+        properties = {} if attributes == "null" else json5.loads(attributes)
         if not isinstance(properties, dict):
             raise ValueError("SVG attributes are not a literal object")
         element = ET.Element(tag)
@@ -4933,8 +4966,6 @@ def static_react_svg(original_text, anchor):
             if child.startswith(('"', "'")):
                 # Object-key rewriting must not enter quoted CSS text. JSON5
                 # decodes the whole literal and rejects expression suffixes.
-                sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
-                import json5
                 text = json5.loads(child)
                 if not isinstance(text, str):
                     raise ValueError("SVG text child is not a literal string")
@@ -4968,6 +4999,62 @@ def static_react_svg(original_text, anchor):
                             "body_sha256": hashlib.sha256(body.encode("utf-8")).hexdigest()}],
         "module": module, "omitted_nonvisual_properties": omitted,
     }
+
+
+def static_svg_group_visibility(content, visibility):
+    """Materialize source-owned visibility without changing SVG geometry."""
+    if not isinstance(visibility, dict) or not visibility or any(
+            not isinstance(name, str) or not name or value not in {"visible", "hidden"}
+            for name, value in visibility.items()):
+        raise ValueError("SVG group visibility requires explicit named visible/hidden states")
+    root = ET.fromstring(content)
+    for name, value in visibility.items():
+        matches = [node for node in root.iter() if node.get("id") == name]
+        if len(matches) != 1 or matches[0].tag.rsplit("}", 1)[-1] != "g":
+            raise ValueError("SVG visibility group is absent, ambiguous or not a group: " + name)
+        node = matches[0]
+        style = node.get("style", "")
+        properties = [field for field in style.split(";") if field and field.split(":", 1)[0].strip() != "visibility"]
+        node.set("style", ";".join([*properties, "visibility:" + value]))
+    return ET.tostring(root, encoding="utf-8", short_empty_elements=False), {
+        "operation": "Materialize caller-selected visibility on unique source SVG groups; preserve every geometry node",
+        "groups": visibility, "target_execution": False,
+    }
+
+
+def muted_video_display(source):
+    """Decode source autoplay/muted/loop media into timed lossless RGBA frames."""
+    import io
+    sys.path.insert(0, str(ROOT / "tools/analyzers/media-python"))
+    sys.path.insert(0, str(ROOT / "tools/analyzers/pillow"))
+    import av
+    import PIL
+    from PIL import Image, features
+    with av.open(str(source)) as container:
+        if len(container.streams.video) != 1:
+            raise ValueError("Muted source tutorial must have exactly one video stream")
+        stream = container.streams.video[0]
+        frames, timestamps = [], []
+        for frame in container.decode(stream):
+            if frame.pts is None or frame.time_base is None:
+                raise ValueError("Muted source frame has no presentation timestamp")
+            timestamps.append(float(frame.pts * frame.time_base))
+            frames.append(frame.to_image().convert("RGBA"))
+        if not frames or any(b <= a for a, b in zip(timestamps, timestamps[1:])):
+            raise ValueError("Muted source frame presentation order is invalid")
+        end = float(stream.duration * stream.time_base) if stream.duration is not None else timestamps[-1] + float(1 / stream.average_rate)
+        boundaries = [round(value * 1000) for value in timestamps + [end]]
+        durations = [right - left for left, right in zip(boundaries, boundaries[1:])]
+        if any(value <= 0 for value in durations):
+            raise ValueError("Muted source timing cannot be represented in millisecond animation frames")
+        buffer = io.BytesIO()
+        frames[0].save(buffer, format="WEBP", save_all=True, append_images=frames[1:], duration=durations, loop=0, lossless=True, quality=100, method=0)
+        content = buffer.getvalue()
+        return content, {"tool": "PyAV / Pillow", "version": {"av": av.__version__, "pillow": PIL.__version__},
+            "codec": "libwebp lossless RGBA", "codec_version": features.version("webp"),
+            "width": frames[0].width, "height": frames[0].height, "decoded_frames": len(frames),
+            "presentation_timestamps_seconds": timestamps, "frame_durations_ms": durations,
+            "muted": True, "loop": True, "target_execution": False}
 
 
 def app_picker_category_literals(original_text):
@@ -6775,9 +6862,13 @@ def prepare_resource_publication(acquisition, resources, publication_manifest):
     snapshots = [(receipt_path, receipt_raw), (Path(__file__), Path(__file__).read_bytes())]
     analyzer_receipt = ROOT / "tools/analyzers/pillow/acquisition.json"
     prepared, derivations = [], []
-    for source_name, request in resources.items():
-        if not isinstance(request, dict) or set(request) != {"display", "table"}:
-            raise ValueError("Publication mapping requires exactly display and table")
+    requests = [(name, request) for name, values in resources.items()
+                for request in (values if isinstance(values, list) else [values])]
+    for source_name, request in requests:
+        required = {"display", "table"}
+        optional = {"inline_react_svg", "svg_group_visibility", "muted_video_animation"}
+        if not isinstance(request, dict) or not required <= set(request) or set(request) - required - optional:
+            raise ValueError("Publication mapping requires display/table and supported static transformations")
         source = safe(ROOT / source_name)
         if not source.is_relative_to(input_root) or (ROOT / source_name).is_symlink():
             raise ValueError("Resource publication must use retained original inputs")
@@ -6793,8 +6884,22 @@ def prepare_resource_publication(acquisition, resources, publication_manifest):
         if not alias.startswith("synapse/") or table not in table_names:
             raise ValueError("Resource publication alias or table is not maintained")
         conversion = None
+        transformation = None
         content = raw
-        if source.suffix.lower() == ".avif":
+        if "inline_react_svg" in request:
+            if source.suffix.lower() != ".js" or Path(alias).suffix.lower() != ".svg":
+                raise ValueError("Inline SVG publication requires acquired JS and an SVG alias")
+            content, transformation = static_react_svg(raw.decode("utf-8"), request["inline_react_svg"])
+            if "svg_group_visibility" in request:
+                content, selection = static_svg_group_visibility(content, request["svg_group_visibility"])
+                transformation["group_visibility"] = selection
+        elif "svg_group_visibility" in request:
+            raise ValueError("Group visibility requires its complete inline SVG producer")
+        elif request.get("muted_video_animation"):
+            if source.suffix.lower() != ".mp4" or Path(alias).suffix.lower() != ".webp":
+                raise ValueError("Muted source video publication requires MP4 and a WebP alias")
+            content, conversion = muted_video_display(source)
+        elif source.suffix.lower() == ".avif":
             if Path(alias).suffix.lower() != ".png":
                 raise ValueError("Acquired AVIF publication requires an explicit PNG alias")
             if not analyzer_receipt.is_file():
@@ -6819,7 +6924,7 @@ def prepare_resource_publication(acquisition, resources, publication_manifest):
             "path": relative(receipt_path), "bytes": len(receipt_raw),
             "sha256": hashlib.sha256(receipt_raw).hexdigest()},
             "output": source_identity, "alias": alias, "table": table,
-            "conversion": conversion, "target_execution": False})
+            "conversion": conversion, "transformation": transformation, "target_execution": False})
     previous_raw = prepared_receipt_path.read_bytes() if prepared_receipt_path.is_file() else None
     previous = json.loads(previous_raw) if previous_raw is not None else {}
     if previous_raw is not None:
@@ -7127,41 +7232,10 @@ def prepare_resources_locked(acquisition, resources=None):
         if request.get("muted_video_animation") and source_hash in muted_animation_cache:
             content, conversion = muted_animation_cache[source_hash]
         elif request.get("muted_video_animation"):
-            import io
-            sys.path.insert(0, str(ROOT / "tools/analyzers/media-python"))
-            sys.path.insert(0, str(ROOT / "tools/analyzers/pillow"))
-            import av
-            import PIL
-            from PIL import Image, features
             if source.suffix.lower() != ".mp4" or not display.endswith(".webp"):
                 raise ValueError("Muted source video preparation requires MP4 and animated WebP")
-            with av.open(str(source)) as container:
-                if len(container.streams.video) != 1:
-                    raise ValueError("Muted source tutorial must have exactly one video stream")
-                stream = container.streams.video[0]
-                frames, timestamps = [], []
-                for frame in container.decode(stream):
-                    if frame.pts is None or frame.time_base is None:
-                        raise ValueError("Muted source frame has no presentation timestamp")
-                    timestamps.append(float(frame.pts * frame.time_base))
-                    frames.append(frame.to_image().convert("RGBA"))
-                if not frames or any(b <= a for a, b in zip(timestamps, timestamps[1:])):
-                    raise ValueError("Muted source frame presentation order is invalid")
-                end = float(stream.duration * stream.time_base) if stream.duration is not None else timestamps[-1] + float(1 / stream.average_rate)
-                boundaries = [round(value * 1000) for value in timestamps + [end]]
-                durations = [right - left for left, right in zip(boundaries, boundaries[1:])]
-                if any(value <= 0 for value in durations):
-                    raise ValueError("Muted source timing cannot be represented in millisecond animation frames")
-                buffer = io.BytesIO()
-                frames[0].save(buffer, format="WEBP", save_all=True, append_images=frames[1:],
-                               duration=durations, loop=0, lossless=True, quality=100, method=0)
-                content = buffer.getvalue()
-                conversion = {"tool": "PyAV / Pillow", "version": {"av": av.__version__, "pillow": PIL.__version__},
-                    "codec": "libwebp lossless RGBA", "codec_version": features.version("webp"),
-                    "width": frames[0].width, "height": frames[0].height, "decoded_frames": len(frames),
-                    "presentation_timestamps_seconds": timestamps, "frame_durations_ms": durations,
-                    "muted": True, "loop": True, "target_execution": False}
-                muted_animation_cache[source_hash] = content, conversion
+            content, conversion = muted_video_display(source)
+            muted_animation_cache[source_hash] = content, conversion
         output_hash = hashlib.sha256(content).hexdigest()
         product_match = re.fullmatch(r"https://apps\.razer\.com/synapse/products/(\d+)/.*", row["url"])
         product_id = int(product_match[1]) if product_match else None

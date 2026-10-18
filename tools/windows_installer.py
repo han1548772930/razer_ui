@@ -246,8 +246,8 @@ def runtime_include(names, driver=None):
     return output.encode("utf-8")
 
 
-def hardware_driver_policy():
-    policy = json.loads((ROOT / INSTALLATION).read_bytes())
+def hardware_driver_policy(*, root=None):
+    policy = json.loads(((ROOT if root is None else root) / INSTALLATION).read_bytes())
     if set(policy) != {"schema_version", "hardware_driver"} or policy["schema_version"] != 1:
         raise ValueError("Invalid Windows installation policy")
     driver = policy["hardware_driver"]

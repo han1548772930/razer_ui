@@ -37,6 +37,13 @@ mod shutdown;
 mod thx_controller;
 const CALLBACK_TIMEOUT: Duration = Duration::from_secs(4);
 
+pub(crate) fn mapping_client() -> anyhow::Result<crate::mapping::owner::Client> {
+    #[cfg(windows)]
+    { native::mapping_client() }
+    #[cfg(not(windows))]
+    { anyhow::bail!("Native mapping execution is unavailable on this platform") }
+}
+
 fn write_response(response: &ResponseEnvelope) -> anyhow::Result<()> {
     let json = serde_json::to_string(response)?;
     let output = std::io::stdout();
@@ -44,6 +51,31 @@ fn write_response(response: &ResponseEnvelope) -> anyhow::Result<()> {
     writeln!(output, "{FRAME_PREFIX}{json}")?;
     output.flush()?;
     Ok(())
+}
+
+fn cleanup_owners(
+    portable: &mut portable::PortableRuntime,
+    #[cfg(windows)] runtime: &mut native::NativeRuntime,
+) -> shutdown::Cleanup {
+    let mut cleanup = shutdown::Cleanup::default();
+    #[cfg(windows)]
+    cleanup.record("native", runtime.request(ServiceRequest::Shutdown));
+    let mut portable_response = ResponseEnvelope {
+        id: 0, data: Some(serde_json::json!({"stopped":true})), error: None, fatal: false,
+    };
+    portable.shutdown().apply(&mut portable_response);
+    if let Some(error) = portable_response.error { cleanup.fail("portable", error); }
+    else if let Some(data) = portable_response.data { cleanup.record("portable", Ok(data)); }
+    cleanup
+}
+
+fn cleanup_without_reply(
+    portable: &mut portable::PortableRuntime,
+    #[cfg(windows)] runtime: &mut native::NativeRuntime,
+) -> bool {
+    let cleanup = cleanup_owners(portable, #[cfg(windows)] runtime);
+    cleanup.log_failures();
+    cleanup.succeeded()
 }
 
 /// `main` must dispatch `--service-worker` here before initializing GPUI, then
@@ -59,10 +91,16 @@ pub fn run_worker() -> i32 {
         let envelope = match read_frame(&mut input) {
             Ok(Some(line)) => match serde_json::from_slice::<RequestEnvelope>(&line) {
                 Ok(envelope) => envelope,
-                Err(_) => return 2,
+                Err(_) => {
+                    cleanup_without_reply(&mut portable, #[cfg(windows)] &mut runtime);
+                    return 2;
+                }
             },
-            Ok(None) => return 0,
-            Err(_) => return 2,
+            Ok(None) => return if cleanup_without_reply(&mut portable, #[cfg(windows)] &mut runtime) { 0 } else { 2 },
+            Err(_) => {
+                cleanup_without_reply(&mut portable, #[cfg(windows)] &mut runtime);
+                return 2;
+            }
         };
         let shutdown = matches!(envelope.request, ServiceRequest::Shutdown);
         let result = match envelope.request {
@@ -264,7 +302,13 @@ pub fn run_worker() -> i32 {
                 0
             };
         }
+        if fatal {
+            // A fatal response is also a process-exit receipt. Complete owner
+            // restoration before a client is allowed to release the process.
+            cleanup_owners(&mut portable, #[cfg(windows)] &mut runtime).apply(&mut response);
+        }
         if write_response(&response).is_err() {
+            if !fatal { cleanup_without_reply(&mut portable, #[cfg(windows)] &mut runtime); }
             return 2;
         }
         if fatal {

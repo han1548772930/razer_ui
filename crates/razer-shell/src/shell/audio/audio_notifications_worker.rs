@@ -34,6 +34,7 @@ pub(super) enum MixerReceipt {
 pub(super) enum Update {
     Diagnostic(String),
     Native(Value),
+    Live(razer_device::seiren_mixer::LiveState),
     Ready(bool),
     Host(
         razer_storage::host::HostStorageCall,
@@ -157,6 +158,10 @@ fn native_events(client: &mut ServiceClient, route: &DirectRoute, status: &Sende
         );
         let diagnostics: Vec<String> = serde_json::from_value(reply["diagnostics"].clone())
             .context("Marie event diagnostics are invalid")?;
+        let observed: razer_device::seiren_mixer::LiveState = serde_json::from_value(reply["observed"].clone())
+            .context("Marie observations are invalid")?;
+        observed.validate()?;
+        let _ = status.send(Update::Live(observed));
         for diagnostic in diagnostics { report(status, diagnostic); }
         return serde_json::from_value(reply["events"].clone()).map_err(Into::into);
     }
@@ -467,7 +472,14 @@ pub(super) fn run(
                 eprintln!("[AudioEnumerator] {}", serde_json::to_string(&event)?);
             }
             if native.is_some() {
-                for event in native_events(&mut client, &route, &status)? {
+                let events = match native_events(&mut client, &route, &status) {
+                    Ok(events) => events,
+                    Err(error) => {
+                        let _ = status.send(Update::Live(razer_device::seiren_mixer::LiveState::failed(format!("{error:#}"))));
+                        return Err(error);
+                    }
+                };
+                for event in events {
                     if event["containerId"] == observed.container() {
                         if event["eventType"] == "deviceMute" {
                             let enabled = event["mute"].as_i64() == Some(0);

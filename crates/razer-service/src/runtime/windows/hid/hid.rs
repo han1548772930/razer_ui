@@ -21,6 +21,7 @@ use windows_sys::{
     core::GUID,
 };
 
+#[path = "driver_interface.rs"]
 mod driver_interface;
 pub(crate) use driver_interface::{DriverInterface, select as select_driver_interface};
 
@@ -307,19 +308,21 @@ fn parent_instance_id(device: &SP_DEVINFO_DATA) -> anyhow::Result<String> {
 }
 
 pub(super) fn enumerate() -> anyhow::Result<Value> {
-    enumerate_with_scope(None, true)
+    enumerate_with_scope(InventoryScope::Razer, true)
 }
 
 pub(super) fn enumerate_metadata() -> anyhow::Result<Value> {
-    enumerate_with_scope(None, false)
+    enumerate_with_scope(InventoryScope::Razer, false)
 }
 
 pub(super) fn enumerate_for_product(vendor_id: u16, product_id: u16) -> anyhow::Result<Value> {
-    enumerate_with_scope(Some((vendor_id, product_id)), false)
+    enumerate_with_scope(InventoryScope::Product(vendor_id, product_id), false)
 }
 
+enum InventoryScope { Razer, Product(u16, u16) }
+
 fn enumerate_with_scope(
-    scope: Option<(u16, u16)>,
+    scope: InventoryScope,
     read_display_metadata: bool,
 ) -> anyhow::Result<Value> {
     let mut guid = GUID::default();
@@ -478,11 +481,11 @@ fn enumerate_with_scope(
             }));
             continue;
         }
-        // The source mapping engine accepts the Razer and acquired-device VIDs.
-        if !matches!(attributes.VendorID, 0x1532 | 0x068e) {
-            continue;
-        }
-        if scope.is_some_and(|identity| identity != (attributes.VendorID, attributes.ProductID)) {
+        let included = match scope {
+            InventoryScope::Razer => matches!(attributes.VendorID, 0x1532 | 0x068e),
+            InventoryScope::Product(vendor, product) => matches!(vendor, 0x1532 | 0x068e) && (vendor, product) == (attributes.VendorID, attributes.ProductID),
+        };
+        if !included {
             continue;
         }
         let (container_id, container_error) = match device_container_id(set.0, &device_info) {

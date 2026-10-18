@@ -1,7 +1,13 @@
 //! ClipboardService's serialized save/write/paste/restore lifecycle.
+#[path = "clipboard_dib.rs"]
+mod dib;
+#[path = "clipboard_formats.rs"]
+mod formats;
+#[path = "clipboard_keys.rs"]
+mod keys;
 use super::{Cancellation, input::Input};
 use anyhow::{Context, Result, ensure};
-use razer_device::macro_runtime::Keyboard;
+use formats::Snapshot;
 use std::{
     collections::VecDeque,
     ptr,
@@ -11,6 +17,7 @@ use std::{
 };
 use windows_sys::Win32::{
     Foundation::{GetLastError, GlobalFree, HGLOBAL, HWND},
+    Globalization::MultiByteToWideChar,
     Security::{ImpersonateAnonymousToken, RevertToSelf},
     System::{
         DataExchange::{
@@ -22,14 +29,18 @@ use windows_sys::Win32::{
     },
     UI::{
         Input::KeyboardAndMouse::GetKeyState,
-        WindowsAndMessaging::{CreateWindowExW, DestroyWindow, HWND_MESSAGE},
+        Shell::DragQueryFileW,
+        WindowsAndMessaging::{
+            CreateWindowExW, DestroyWindow, DispatchMessageW, HWND_MESSAGE, MSG, PM_REMOVE,
+            PeekMessageW, TranslateMessage, WM_QUIT,
+        },
     },
 };
 
 enum Command {
     Paste {
         text: String,
-        path: Option<String>,
+        route: Option<super::driver::Route>,
         reply: mpsc::Sender<Result<(), String>>,
     },
     Stop,
@@ -37,10 +48,10 @@ enum Command {
 #[derive(Clone)]
 pub(super) struct Client(mpsc::Sender<Command>);
 impl Client {
-    pub fn paste(&self, text: String, path: Option<String>) -> Result<()> {
+    pub fn paste(&self, text: String, route: Option<super::driver::Route>) -> Result<()> {
         let (reply, result) = mpsc::channel();
         self.0
-            .send(Command::Paste { text, path, reply })
+            .send(Command::Paste { text, route, reply })
             .context("Clipboard worker stopped")?;
         result
             .recv()
@@ -210,10 +221,6 @@ impl Drop for Allocation {
     }
 }
 
-struct Snapshot {
-    format: u32,
-    bytes: Vec<u8>,
-}
 fn registered(name: &str) -> Result<u32> {
     let name = name.encode_utf16().chain(Some(0)).collect::<Vec<_>>();
     let format = unsafe { RegisterClipboardFormatW(name.as_ptr()) };
@@ -239,46 +246,111 @@ fn read(format: u32) -> Result<Vec<u8>> {
 
 fn snapshot(window: HWND) -> Result<Option<Snapshot>> {
     let _clipboard = Clipboard::acquire(window)?;
-    // bcdd0 chooses the first retained semantic format in this order. Retain
-    // its external Windows payload, including HTML source URL and file names.
-    let formats = [
-        13,
-        registered("HTML Format")?,
-        registered("Rich Text Format")?,
-        15,
-        registered("FileNameW")?,
-        registered("FileName")?,
-        17,
-        8,
-        registered("PNG")?,
-    ];
-    for format in formats {
-        if unsafe { IsClipboardFormatAvailable(format) } != 0 {
-            return Ok(Some(Snapshot {
-                format,
-                bytes: read(format)?,
-            }));
+    let available = |format| unsafe { IsClipboardFormatAvailable(format) } != 0;
+    if available(13) {
+        return Ok(Some(Snapshot::Text(formats::terminated_utf16(&read(13)?)?)));
+    }
+    let html = registered("HTML Format")?;
+    if available(html) {
+        return Ok(Some(formats::parse_html(&read(html)?)?));
+    }
+    let rtf = registered("Rich Text Format")?;
+    if available(rtf) {
+        return Ok(Some(Snapshot::Rtf(
+            formats::nul_bytes(&read(rtf)?).to_vec(),
+        )));
+    }
+    if available(15) {
+        let handle = unsafe { GetClipboardData(15) };
+        ensure!(!handle.is_null(), "GetClipboardData(CF_HDROP) failed");
+        let count = unsafe { DragQueryFileW(handle, u32::MAX, ptr::null_mut(), 0) };
+        let mut paths = Vec::new();
+        for index in 0..count {
+            let mut path = [0u16; 4096];
+            let length = unsafe { DragQueryFileW(handle, index, path.as_mut_ptr(), 4096) };
+            if length != 0 {
+                let end = path
+                    .iter()
+                    .position(|unit| *unit == 0)
+                    .unwrap_or(path.len());
+                paths.push(path[..end].to_vec());
+            }
         }
+        return Ok(Some(Snapshot::Files(paths)));
+    }
+    let wide_file = registered("FileNameW")?;
+    if available(wide_file) {
+        return Ok(Some(Snapshot::Files(vec![formats::terminated_utf16(
+            &read(wide_file)?,
+        )?])));
+    }
+    let ansi_file = registered("FileName")?;
+    if available(ansi_file) {
+        let bytes = read(ansi_file)?;
+        let bytes = formats::nul_bytes(&bytes);
+        let length =
+            i32::try_from(bytes.len()).context("Clipboard file name exceeds Win32 length")?;
+        let size = unsafe { MultiByteToWideChar(0, 0, bytes.as_ptr(), length, ptr::null_mut(), 0) };
+        ensure!(size > 0, "Clipboard ANSI filename conversion failed");
+        let mut wide = vec![0; size as usize];
+        ensure!(
+            unsafe { MultiByteToWideChar(0, 0, bytes.as_ptr(), length, wide.as_mut_ptr(), size) }
+                == size,
+            "Clipboard ANSI filename conversion changed length"
+        );
+        return Ok(Some(Snapshot::Files(vec![wide])));
+    }
+    let png = registered("PNG")?;
+    if available(png) {
+        let bytes = read(png)?;
+        if !bytes.is_empty() {
+            return Ok(Some(Snapshot::Png(bytes)));
+        }
+    }
+    if available(8) {
+        return Ok(Some(Snapshot::Png(dib::png(&read(8)?)?)));
     }
     Ok(None)
 }
 
 fn replace(window: HWND, snapshot: Option<&Snapshot>, mutated: &mut bool) -> Result<()> {
-    let allocation = snapshot
-        .map(|snapshot| Allocation::copy(&snapshot.bytes))
-        .transpose()?;
+    let payloads = match snapshot {
+        None => Vec::new(),
+        Some(Snapshot::Text(text)) => vec![(13, formats::text_bytes(text))],
+        Some(Snapshot::Html { html, source_url }) => vec![(
+            registered("HTML Format")?,
+            formats::html_bytes(html, source_url)?,
+        )],
+        Some(Snapshot::Rtf(bytes)) => vec![(registered("Rich Text Format")?, bytes.clone())],
+        Some(Snapshot::Files(paths)) => vec![(15, formats::files_bytes(paths))],
+        Some(Snapshot::Png(png)) => {
+            let (png, dib) = formats::image_payloads(png)?;
+            vec![(registered("PNG")?, png), (17, dib)]
+        }
+    };
+    let allocations = payloads
+        .iter()
+        .map(|(format, bytes)| Ok((*format, Allocation::copy(bytes)?)))
+        .collect::<Result<Vec<_>>>()?;
     let _clipboard = Clipboard::acquire(window)?;
     ensure!(unsafe { EmptyClipboard() } != 0, "EmptyClipboard failed");
     *mutated = true;
-    if let (Some(snapshot), Some(allocation)) = (snapshot, allocation) {
-        allocation.publish(snapshot.format)?;
-    }
+    let errors = allocations
+        .into_iter()
+        .filter_map(|(format, allocation)| {
+            allocation
+                .publish(format)
+                .err()
+                .map(|error| format!("{error:#}"))
+        })
+        .collect::<Vec<_>>();
+    ensure!(errors.is_empty(), "{}", errors.join("; "));
     Ok(())
 }
 
-fn paste_keys(path: Option<&str>) -> Result<()> {
+fn paste_keys(route: Option<&super::driver::Route>) -> Result<()> {
     let mut input = Input::open(
-        path,
+        route,
         Arc::new(Cancellation::default()),
         super::acceleration::Owner::default(),
     )?;
@@ -302,34 +374,22 @@ fn paste_keys(path: Option<&str>) -> Result<()> {
     ]
     .into_iter()
     .filter(|(vk, _, _)| unsafe { GetKeyState(*vk) } < 0)
+    .map(|(_, scan, flag)| (scan, flag))
     .collect::<Vec<_>>();
-    let mut errors = Vec::new();
-    let mut send = |scancode, flag| {
-        if let Err(error) = input.keyboard(&Keyboard {
-            scancode,
-            flag,
-            unit: None,
-            modifiers: 0,
-            delay_ms: None,
-            release_after_ms: None,
-        }) {
-            errors.push(error);
-            false
-        } else {
-            true
-        }
-    };
-    for (_, scan, flag) in modifiers.iter().rev() {
-        send(*scan, *flag | 1);
-    }
-    for (scan, flag, delay) in [(29, 0, 0), (47, 0, 50), (47, 1, 0), (29, 1, 10)] {
-        if send(scan, flag) && delay != 0 {
-            thread::sleep(Duration::from_millis(delay));
-        }
-    }
-    for (_, scan, flag) in modifiers.iter().rev() {
-        send(*scan, *flag);
-    }
+    let result = keys::run(
+        &modifiers,
+        |operation| match operation {
+            keys::Operation::Key { key, retain } => {
+                input.retain_held_outputs = retain;
+                input.keyboard(&key)
+            }
+            keys::Operation::ReleaseHeld => {
+                input.release_held().map_err(|error| format!("{error:#}"))
+            }
+        },
+        |ms| thread::sleep(Duration::from_millis(ms)),
+    );
+    let mut errors = result.err().into_iter().collect::<Vec<_>>();
     if let Err(error) = input.close() {
         errors.push(format!("{error:#}"));
     }
@@ -395,66 +455,97 @@ impl Restoration {
 fn work(window: Window, receiver: mpsc::Receiver<Command>) -> Result<()> {
     let mut restoration = Restoration::default();
     let mut delayed_failure = None;
-    loop {
-        let command = if let Some(deadline) = restoration.pending.front().copied() {
-            match receiver.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
+    let result = keys::guarded(|| -> Result<()> {
+        loop {
+            // This thread owns the message-only clipboard window. Service incoming
+            // window messages even when no macro command is pending.
+            for _ in 0..64 {
+                let mut message = MSG::default();
+                if unsafe { PeekMessageW(&mut message, ptr::null_mut(), 0, 0, PM_REMOVE) } == 0 {
+                    break;
+                }
+                if message.message == WM_QUIT {
+                    return Ok(());
+                }
+                unsafe {
+                    TranslateMessage(&message);
+                    DispatchMessageW(&message);
+                }
+            }
+            let wait = restoration
+                .pending
+                .front()
+                .map_or(Duration::from_millis(16), |deadline| {
+                    deadline
+                        .saturating_duration_since(Instant::now())
+                        .min(Duration::from_millis(16))
+                });
+            let command = match receiver.recv_timeout(wait) {
                 Ok(command) => Some(command),
                 Err(mpsc::RecvTimeoutError::Timeout) => None,
                 Err(mpsc::RecvTimeoutError::Disconnected) => Some(Command::Stop),
-            }
-        } else {
-            Some(receiver.recv().unwrap_or(Command::Stop))
-        };
-        match command {
-            Some(Command::Paste { text, path, reply }) => {
-                let result = (|| {
-                    restoration.begin(|| snapshot(window.0))?;
-                    let bytes = text
-                        .encode_utf16()
-                        .chain(Some(0))
-                        .flat_map(u16::to_le_bytes)
-                        .collect();
+            };
+            match command {
+                Some(Command::Paste { text, route, reply }) => {
+                    let mut began = false;
                     let mut mutated = false;
-                    // Source writes text before opening the paste endpoint. A
-                    // failed endpoint still owns restoration of that mutation.
-                    let written = replace(
-                        window.0,
-                        Some(&Snapshot { format: 13, bytes }),
-                        &mut mutated,
-                    );
-                    let result = written.and_then(|()| paste_keys(path.as_deref()));
-                    restoration.changed(mutated, Instant::now());
-                    result
-                })();
-                let _ = reply.send(result.map_err(|error| format!("{error:#}")));
-            }
-            Some(Command::Stop) => {
-                let result = restoration.restore(Instant::now(), true, |original| {
-                    replace(window.0, original, &mut false)
-                });
-                return match (result, delayed_failure) {
-                    (Ok(()), None) => Ok(()),
-                    (Ok(()), Some(error)) => Err(anyhow::anyhow!(
-                        "Earlier clipboard restoration failed ({error}); shutdown restored the retained clipboard"
-                    )),
-                    (Err(error), None) => Err(error),
-                    (Err(error), Some(previous)) => Err(anyhow::anyhow!(
-                        "Earlier clipboard restoration: {previous}; shutdown restoration: {error:#}"
-                    )),
-                };
-            }
-            None => {
-                // Keep a failed restore and its bytes owned until shutdown;
-                // subsequent pastes report that failure instead of overwriting
-                // the recovery snapshot or pretending restoration succeeded.
-                if let Err(error) = restoration.restore(Instant::now(), false, |original| {
-                    replace(window.0, original, &mut false)
-                }) {
-                    delayed_failure = Some(format!("{error:#}"));
+                    let result = keys::guarded(|| {
+                        restoration.begin(|| snapshot(window.0))?;
+                        began = true;
+                        let text = text.encode_utf16().collect();
+                        // Source writes text before opening the paste endpoint. A
+                        // failed endpoint still owns restoration of that mutation.
+                        let written = replace(window.0, Some(&Snapshot::Text(text)), &mut mutated);
+                        written.and_then(|()| paste_keys(route.as_ref()))
+                    });
+                    if began {
+                        restoration.changed(mutated, Instant::now());
+                    }
+                    let panicked = result.is_err();
+                    let result = result.map_err(anyhow::Error::msg).and_then(|result| result);
+                    let _ = reply.send(result.map_err(|error| format!("{error:#}")));
+                    ensure!(!panicked, "Clipboard paste owner panicked");
+                }
+                Some(Command::Stop) => return Ok(()),
+                None => {
+                    // Keep a failed restore and its bytes owned until shutdown;
+                    // subsequent pastes report that failure instead of overwriting
+                    // the recovery snapshot or pretending restoration succeeded.
+                    if restoration
+                        .pending
+                        .front()
+                        .is_some_and(|deadline| *deadline <= Instant::now())
+                        && let Err(error) = restoration.restore(Instant::now(), false, |original| {
+                            replace(window.0, original, &mut false)
+                        })
+                    {
+                        delayed_failure = Some(format!("{error:#}"));
+                    }
                 }
             }
         }
+    })
+    .map_err(anyhow::Error::msg)
+    .and_then(|result| result);
+    let cleanup = keys::guarded(|| {
+        restoration.restore(Instant::now(), true, |original| {
+            replace(window.0, original, &mut false)
+        })
+    })
+    .map_err(anyhow::Error::msg)
+    .and_then(|result| result);
+    let mut errors = Vec::new();
+    if let Err(error) = result {
+        errors.push(format!("Clipboard worker: {error:#}"));
     }
+    if let Some(error) = delayed_failure {
+        errors.push(format!("Earlier clipboard restoration: {error}"));
+    }
+    if let Err(error) = cleanup {
+        errors.push(format!("Shutdown clipboard restoration: {error:#}"));
+    }
+    ensure!(errors.is_empty(), "{}", errors.join("; "));
+    Ok(())
 }
 
 #[cfg(test)]
@@ -462,10 +553,7 @@ mod tests {
     use super::*;
 
     fn snapshot(text: &str) -> Option<Snapshot> {
-        Some(Snapshot {
-            format: 13,
-            bytes: text.as_bytes().to_vec(),
-        })
+        Some(Snapshot::Text(text.encode_utf16().collect()))
     }
 
     #[test]
@@ -485,7 +573,10 @@ mod tests {
             .unwrap();
         state
             .restore(start + Duration::from_millis(600), false, |saved| {
-                assert_eq!(saved.unwrap().bytes, b"original");
+                let Snapshot::Text(text) = saved.unwrap() else {
+                    panic!()
+                };
+                assert_eq!(String::from_utf16(text).unwrap(), "original");
                 Ok(())
             })
             .unwrap();
@@ -525,7 +616,10 @@ mod tests {
         );
         state
             .restore(start + Duration::from_millis(600), true, |saved| {
-                assert_eq!(saved.unwrap().bytes, b"original");
+                let Snapshot::Text(text) = saved.unwrap() else {
+                    panic!()
+                };
+                assert_eq!(String::from_utf16(text).unwrap(), "original");
                 Ok(())
             })
             .unwrap();

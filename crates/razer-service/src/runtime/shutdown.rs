@@ -10,6 +10,7 @@ pub(super) struct Cleanup {
 }
 
 impl Cleanup {
+    pub(super) fn succeeded(&self) -> bool { self.errors.is_empty() }
     pub(super) fn log_failures(&self) {
         for error in &self.errors {
             eprintln!("Service owner cleanup: {error}");

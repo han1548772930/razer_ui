@@ -228,6 +228,7 @@ pub enum DriverOutputError {
     ExecutionPending,
     UnknownSubmission(SubmissionId),
     SubmissionIdExhausted,
+    Owner(String),
     Win32 {
         operation: DriverOperation,
         code: u32,
@@ -252,6 +253,7 @@ impl fmt::Display for DriverOutputError {
             Self::ExecutionPending => f.write_str("mapping driver completion is still pending"),
             Self::UnknownSubmission(id) => write!(f, "unknown mapping driver submission {}", id.0),
             Self::SubmissionIdExhausted => f.write_str("mapping driver submission ID exhausted"),
+            Self::Owner(error) => write!(f, "mapping output owner: {error}"),
             Self::Win32 { operation, code } => write!(
                 f,
                 "mapping driver {operation:?} failed with Win32 error {code}"

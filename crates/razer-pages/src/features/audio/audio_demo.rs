@@ -65,6 +65,7 @@ pub(super) struct AudioDemo {
     floating: bool,
     inline: bool,
     floating_open: bool,
+    force_open: bool,
     position: Option<Point<f32>>,
     drag_offset: Option<Point<f32>>,
     bounds: Rc<Cell<Bounds<Pixels>>>,
@@ -100,6 +101,7 @@ impl AudioDemo {
                 floating: spec.floating_default,
                 inline: false,
                 floating_open: false,
+                force_open: false,
                 position: None,
                 drag_offset: None,
                 bounds: Rc::new(Cell::new(Bounds::default())),
@@ -110,12 +112,28 @@ impl AudioDemo {
     }
     pub(super) fn stop(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.floating_open = false;
+        self.force_open = false;
         self.drag_offset = None;
         self.media.update(cx, |media, cx| media.stop(window, cx));
         cx.notify();
     }
     pub(super) fn is_floating(&self) -> bool {
         !self.inline && self.floating_open
+    }
+    pub(super) fn is_forced_open(&self) -> bool {
+        self.force_open
+    }
+    pub(super) fn open_from_surround(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.force_open = true;
+        self.floating_open = true;
+        self.inline = false;
+        self.position = None;
+        self.media.update(cx, |media, cx| {
+            media.leave_fullscreen(window, cx);
+            media.set_size(FLOATING_WIDTH, FLOATING_HEIGHT, cx);
+            media.play_from_offset(100, window, cx);
+        });
+        cx.notify();
     }
 
     pub(super) fn set_page(&mut self, inline: bool, window: &mut Window, cx: &mut Context<Self>) {
@@ -124,12 +142,16 @@ impl AudioDemo {
         }
         let leaving_inline = self.inline && !inline;
         self.inline = inline;
+        if inline {
+            self.force_open = false;
+        }
         self.drag_offset = None;
         self.position = None;
         let has_position = self.media.read(cx).has_position();
         let playing = self.media.read(cx).is_playing();
-        self.floating_open =
-            !inline && self.floating && (has_position || self.spec.product_id != 1392 && playing);
+        self.floating_open = !inline
+            && (self.force_open
+                || self.floating && (has_position || self.spec.product_id != 1392 && playing));
         let show_inline = if self.spec.product_id == 1442 {
             playing
         } else {
@@ -159,6 +181,7 @@ impl AudioDemo {
 
     fn close_floating(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.floating_open = false;
+        self.force_open = false;
         self.drag_offset = None;
         self.media.update(cx, |media, cx| {
             // Current 1442/3942 close handlers dispatch both time=0 and

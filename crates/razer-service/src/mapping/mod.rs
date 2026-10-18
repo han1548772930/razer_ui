@@ -1,6 +1,8 @@
 //! Service-backed mapping publication and focused key capture lifecycles.
 
 mod control;
+pub(crate) mod owner;
+pub use owner::Client;
 pub mod device;
 pub mod key_capture;
 pub mod mode_capture;
@@ -82,7 +84,7 @@ impl Transport for ServiceClient {
 
 /// Keep an unexpected Rust unwind inside the owner that can restore temporary
 /// state. Process aborts and native faults remain outside this boundary.
-fn guarded<T>(operation: impl FnOnce() -> anyhow::Result<T>) -> anyhow::Result<T> {
+pub(crate) fn guarded<T>(operation: impl FnOnce() -> anyhow::Result<T>) -> anyhow::Result<T> {
     match std::panic::catch_unwind(std::panic::AssertUnwindSafe(operation)) {
         Ok(result) => result,
         Err(payload) => {

@@ -362,6 +362,11 @@ impl AppShell {
                                         workspace.observe_seiren_native_event(event, window, cx)
                                     });
                                 }
+                                Update::Live(observed) => {
+                                    workspace.update(cx, |workspace, cx| {
+                                        workspace.observe_seiren_live(observed, window, cx)
+                                    });
+                                }
                                 Update::Host(call, reply) => {
                                     let result = this
                                         .host_storage
@@ -428,6 +433,11 @@ impl AppShell {
                                 }
                             }
                             cx.notify();
+                        }
+                        if disconnected {
+                            workspace.update(cx, |workspace, cx| {
+                                workspace.observe_seiren_live(razer_device::seiren_mixer::LiveState::disconnected(), window, cx)
+                            });
                         }
                         let sessions = this
                             .audio_notifications

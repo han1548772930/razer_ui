@@ -530,11 +530,12 @@ pub(super) fn fader(
         return div().into_any_element();
     };
     let (name, _) = MONITORS[index];
+    let unavailable = index < 2 && !workspace.seiren_endpoint_available(index);
     let volume = &workspace.seiren_eq.monitor_preview[index];
     let muted = volume["isEnabled"] != true;
     let progress = volume["value"].as_f64().unwrap_or(0.).clamp(0., 100.) as f32 / 100.;
     let agc = index == 0 && workspace.draft["device"]["micAgc"]["isEnabled"] == true;
-    let disabled = index == 2
+    let disabled = unavailable || index == 2
         && workspace.draft["profile"]["streamMixerSettings"]["isStreamMixerEnabled"] == true;
     let thumb_height = if index == 2 { 10. } else { 7.33 };
     let slider =
@@ -569,7 +570,7 @@ pub(super) fn fader(
                     .disabled(muted || agc || disabled)
                     .size_full()
                     .child(SliderIndicator::new(state).size_full().relative().when(
-                        !agc,
+                        !agc && !unavailable,
                         |track| {
                             track.child(
                                 SliderThumb::new(state)
@@ -609,7 +610,9 @@ pub(super) fn fader(
         .justify_center()
         .gap(css(5.))
         .mt(css(6.));
-    if let Some(number) = workspace.seiren_eq.numbers.get(name) {
+    if unavailable {
+        middle = middle.child(div().text_color(C::text()).child("—"));
+    } else if let Some(number) = workspace.seiren_eq.numbers.get(name) {
         middle = middle.child(number.clone());
     }
     if index == 0 {

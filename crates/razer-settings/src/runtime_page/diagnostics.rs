@@ -84,12 +84,6 @@ impl Readings {
                             device.hid_node(),
                             format!("{:?}", device.connection()),
                             device.read_values(),
-                            razer_catalog::native_library::libraries_for_product(
-                                device.product_id(),
-                            )
-                            .iter()
-                            .map(|library| library.id.clone())
-                            .collect(),
                         )
                     })
                     .collect();
