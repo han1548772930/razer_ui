@@ -6,6 +6,9 @@ use razer_device::{backend::HidNode, receiver_capabilities};
 use razer_ipc::{ServiceClient, ServiceRequest};
 use razer_model::model::DeviceConnectionObservation;
 
+#[path = "receiver/hyperpolling.rs"]
+pub mod hyperpolling;
+
 #[derive(Clone, PartialEq, Eq)]
 pub enum ReceiverRoute {
     Collection(HidNode),

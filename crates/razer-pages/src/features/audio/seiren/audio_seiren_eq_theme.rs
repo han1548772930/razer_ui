@@ -20,6 +20,10 @@ impl Colors {
     pub fn active() -> Hsla {
         rgb(0x292929).into()
     }
+    /// Current UI7405 setup-button hover in both 684 stylesheets.
+    pub fn microphone_setup_hover() -> Hsla {
+        rgb(0x3a3a3a).into()
+    }
     pub fn knob() -> Hsla {
         rgb(0x222222).into()
     }
@@ -96,6 +100,30 @@ impl Colors {
     /// UI7405 recording status/error, current 684 CSS and source inline style.
     pub fn timer() -> Hsla {
         rgb(0x888888).into()
+    }
+    /// UI9374 is styled by 38.0df290bd / 287.cae4ef23, independently of 684.
+    pub fn microphone_spinner_track() -> Hsla {
+        rgba(0x6666664d).into()
+    }
+    pub fn microphone_record_filters(progress: f32) -> [razer_assets::ImageFilter; 1] {
+        [razer_assets::ImageFilter::Brightness(
+            (100. + 20. * progress.clamp(0., 1.)).round() as u16,
+        )]
+    }
+    pub fn microphone_play_filters(progress: f32) -> [razer_assets::ImageFilter; 8] {
+        use razer_assets::ImageFilter::*;
+        let progress = progress.clamp(0., 1.);
+        let amount = |start: f32, end: f32| (start + (end - start) * progress).round() as u16;
+        [
+            Brightness(amount(100., 0.)),
+            Saturate(100),
+            Invert(amount(0., 76.) as u8),
+            Sepia(amount(0., 65.) as u8),
+            Saturate(amount(100., 531.)),
+            HueRotate(amount(0., 73.) as i16),
+            Brightness(amount(100., 95.)),
+            Contrast(amount(100., 92.)),
+        ]
     }
     pub fn recording_error() -> Hsla {
         rgb(0xe57373).into()

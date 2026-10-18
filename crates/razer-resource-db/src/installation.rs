@@ -1,10 +1,10 @@
+use crate::StagedResource;
 use anyhow::{Context as _, ensure};
 use sha2::{Digest, Sha256};
 use std::{
-    fs::{self, File, OpenOptions},
-    io::{Read, Write},
+    fs::{self, File},
+    io::Read,
     path::{Path, PathBuf},
-    sync::atomic::{AtomicU64, Ordering},
 };
 
 /// All installed catalog and downloaded media paths share this executable's cache.
@@ -78,24 +78,17 @@ impl InstallationPaths {
         fs::create_dir_all(&directory)
             .context("Cannot create the installed resource database directory")?;
         reject_links(&path)?;
-        static SEQUENCE: AtomicU64 = AtomicU64::new(0);
-        let temporary = directory.join(format!(
-            "catalog-{}-{}.partial",
-            std::process::id(),
-            SEQUENCE.fetch_add(1, Ordering::Relaxed)
-        ));
+        let staged = StagedResource::write(&path, seed)
+            .context("Cannot stage the packaged resource database")?;
         let result = (|| -> anyhow::Result<()> {
-            let mut file = OpenOptions::new()
-                .create_new(true)
-                .write(true)
-                .open(&temporary)?;
-            file.write_all(seed)?;
-            file.sync_all()?;
-            drop(file);
             reject_links(&path)?;
             if !matches(&path, seed)? {
-                // Same-volume rename atomically replaces corrupt bytes. Other versions have separate names.
-                fs::rename(&temporary, &path)?;
+                if let Err(error) = staged.publish() {
+                    // A concurrent publisher may have installed this same immutable catalog.
+                    if !matches!(matches(&path, seed), Ok(true)) {
+                        return Err(error.into());
+                    }
+                }
             }
             ensure!(
                 matches(&path, seed)?,
@@ -103,10 +96,6 @@ impl InstallationPaths {
             );
             Ok(())
         })();
-        if temporary.exists() {
-            fs::remove_file(&temporary)
-                .context("Cannot clean up resource database staging file")?;
-        }
         result.context("Cannot publish the packaged resource database")?;
         Ok(path)
     }
@@ -256,13 +245,7 @@ mod tests {
         let next: [u8; 32] = Sha256::digest(b"new version").into();
         assert!(paths.catalog_with_identity(11, &next).is_err());
         assert_eq!(fs::read(&cache).unwrap(), seed);
-        assert!(!cache.parent().unwrap().read_dir().unwrap().any(|entry| {
-            entry
-                .unwrap()
-                .path()
-                .extension()
-                .is_some_and(|extension| extension == "partial")
-        }));
+        assert_eq!(cache.parent().unwrap().read_dir().unwrap().count(), 1);
         remove_test_directory(&root);
     }
 }

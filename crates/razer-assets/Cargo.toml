@@ -10,8 +10,10 @@ serde.workspace = true
 serde_json.workspace = true
 razer-resource-db.workspace = true
 razer-resources.workspace = true
+razer-storage.workspace = true
+usvg = "=0.46.0"
+image = { version = "=0.25.10", default-features = false }
 
 [dev-dependencies]
 sha2 = "=0.10.9"
 gpui-kit = { workspace = true, features = ["test-support"] }
-image = { version = "=0.25.10", default-features = false }

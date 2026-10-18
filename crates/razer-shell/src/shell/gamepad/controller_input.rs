@@ -219,8 +219,8 @@ fn run_attempt(
 }
 
 impl AppShell {
-    pub(super) fn install_controller_input_cleanup(&mut self, cx: &mut Context<Self>) {
-        self.subscriptions.push(cx.on_app_quit(|this, cx| {
+    pub(super) fn install_controller_input_cleanup(&mut self, _cx: &mut Context<Self>) {
+        self.register_exit_cleanup(|this, cx| {
             let sessions = std::mem::take(&mut this.controller_inputs);
             let retired = std::mem::take(&mut this.controller_input_cleanup);
             for session in sessions.values() {
@@ -236,7 +236,7 @@ impl AppShell {
                 }
             });
             async move { cleanup.await }
-        }));
+        });
     }
     pub(super) fn cancel_controller_inputs(&mut self, cx: &mut Context<Self>) {
         for (identity, session) in std::mem::take(&mut self.controller_inputs) {

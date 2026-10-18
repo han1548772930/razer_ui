@@ -837,6 +837,18 @@ struct WriteRequest {
     expected: KeyboardAnalogObservation,
 }
 
+/// Transport owners use the same validated encoder for their pending receipts
+/// and actual writes, including payloads whose ACK has not arrived.
+pub(crate) fn prepared_write_payloads<C: KeyboardAnalogCapabilitySource>(
+    cap: &C,
+    change: &KeyboardAnalogChange,
+) -> anyhow::Result<Vec<([u8; 3], Vec<u8>)>> {
+    Ok(prepare(&cap.analog_capability_view()?, change, false)?
+        .into_iter()
+        .map(|prepared| (prepared.request.command, prepared.request.payload))
+        .collect())
+}
+
 fn prepare(
     cap: &AnalogCapabilityView,
     change: &KeyboardAnalogChange,

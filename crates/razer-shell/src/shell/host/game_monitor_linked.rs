@@ -1,5 +1,6 @@
 //! Serial background owner for local profile-stack I/O and foreground IPC.
 //! No filesystem or service request is performed while borrowing GPUI entities.
+use super::lifecycle::{IoGuard, PendingIo, Queued};
 use gpui_kit::EntityId;
 use razer_ipc::{ServiceClient, ServiceRequest};
 use razer_storage::{
@@ -44,19 +45,30 @@ pub(super) enum Reply {
         owner: EntityId,
         epoch: u64,
         result: Result<ProfileStack, String>,
+        _pending: IoGuard,
     },
     Saved {
         owner: EntityId,
         epoch: u64,
         result: Result<(), String>,
+        _pending: IoGuard,
+    },
+    BaseSelected {
+        result: Result<(), String>,
+        _pending: IoGuard,
+    },
+    ForegroundStopped {
+        result: Result<(), String>,
+        _pending: IoGuard,
     },
     Foreground(Vec<Value>),
     Diagnostic(String),
 }
 pub(super) struct Worker {
-    commands: Sender<Command>,
+    commands: Sender<Queued<Command>>,
     worker: Option<JoinHandle<()>>,
     valid: Arc<AtomicBool>,
+    pending: PendingIo,
 }
 impl Worker {
     pub(super) fn start(view_url: &str) -> anyhow::Result<(Self, Receiver<Reply>)> {
@@ -75,76 +87,94 @@ impl Worker {
                 let mut last_error = None;
                 while signal.load(Ordering::Acquire) {
                     match receiver.recv_timeout(Duration::from_millis(100)) {
-                        Ok(Command::Load {
-                            owner,
-                            epoch,
-                            product_id,
-                            base,
-                            valid,
-                        }) => {
-                            if !valid.load(Ordering::Acquire) {
-                                continue;
+                        Ok(Queued { command, _pending }) => match command {
+                            Command::Load {
+                                owner,
+                                epoch,
+                                product_id,
+                                base,
+                                valid,
+                            } => {
+                                if !valid.load(Ordering::Acquire) {
+                                    continue;
+                                }
+                                let result = linked_profiles::read(&path, product_id)
+                                    .map(|stack| stack.unwrap_or_else(|| ProfileStack::new(base)))
+                                    .map_err(|error| format!("{error:#}"));
+                                if valid.load(Ordering::Acquire)
+                                    && updates
+                                        .send(Reply::Loaded {
+                                            owner,
+                                            epoch,
+                                            result,
+                                            _pending,
+                                        })
+                                        .is_err()
+                                {
+                                    break;
+                                }
                             }
-                            let result = linked_profiles::read(&path, product_id)
-                                .map(|stack| stack.unwrap_or_else(|| ProfileStack::new(base)))
-                                .map_err(|error| format!("{error:#}"));
-                            if valid.load(Ordering::Acquire)
-                                && updates
-                                    .send(Reply::Loaded {
-                                        owner,
-                                        epoch,
-                                        result,
+                            Command::Save {
+                                owner,
+                                epoch,
+                                product_id,
+                                stack,
+                                valid,
+                            } => {
+                                if !valid.load(Ordering::Acquire) {
+                                    continue;
+                                }
+                                let result = linked_profiles::save(&path, product_id, &stack)
+                                    .map_err(|error| format!("{error:#}"));
+                                if valid.load(Ordering::Acquire)
+                                    && updates
+                                        .send(Reply::Saved {
+                                            owner,
+                                            epoch,
+                                            result,
+                                            _pending,
+                                        })
+                                        .is_err()
+                                {
+                                    break;
+                                }
+                            }
+                            Command::SelectBase { product_id, guid } => {
+                                let result = (|| -> anyhow::Result<()> {
+                                    let mut stack = linked_profiles::read(&path, product_id)?
+                                        .unwrap_or_else(|| ProfileStack::new(&guid));
+                                    stack.select_base(guid);
+                                    linked_profiles::save(&path, product_id, &stack)
+                                })();
+                                if updates
+                                    .send(Reply::BaseSelected {
+                                        result: result.map_err(|error| {
+                                            format!("离线键盘配置选择：{error:#}")
+                                        }),
+                                        _pending,
                                     })
                                     .is_err()
-                            {
-                                break;
+                                {
+                                    break;
+                                }
                             }
-                        }
-                        Ok(Command::Save {
-                            owner,
-                            epoch,
-                            product_id,
-                            stack,
-                            valid,
-                        }) => {
-                            if !valid.load(Ordering::Acquire) {
-                                continue;
+                            Command::Foreground(enabled) => {
+                                observe_foreground = enabled;
+                                retry = Instant::now();
+                                if !enabled {
+                                    let result = stop_foreground(&mut foreground, &url)
+                                        .map_err(|error| format!("清理前台窗口观察：{error:#}"));
+                                    if updates
+                                        .send(Reply::ForegroundStopped { result, _pending })
+                                        .is_err()
+                                    {
+                                        break;
+                                    }
+                                }
                             }
-                            let result = linked_profiles::save(&path, product_id, &stack)
-                                .map_err(|error| format!("{error:#}"));
-                            if valid.load(Ordering::Acquire)
-                                && updates
-                                    .send(Reply::Saved {
-                                        owner,
-                                        epoch,
-                                        result,
-                                    })
-                                    .is_err()
-                            {
-                                break;
-                            }
-                        }
-                        Ok(Command::SelectBase { product_id, guid }) => {
-                            let result = (|| -> anyhow::Result<()> {
-                                let mut stack = linked_profiles::read(&path, product_id)?
-                                    .unwrap_or_else(|| ProfileStack::new(&guid));
-                                stack.select_base(guid);
-                                linked_profiles::save(&path, product_id, &stack)
-                            })();
-                            if let Err(error) = result {
-                                let _ = updates.send(Reply::Diagnostic(format!(
-                                    "离线键盘配置选择：{error:#}"
-                                )));
-                            }
-                        }
-                        Ok(Command::Foreground(enabled)) => {
-                            observe_foreground = enabled;
-                            retry = Instant::now();
-                            if !enabled {
-                                stop_foreground(&mut foreground, &url, &updates);
-                            }
-                        }
-                        Ok(Command::Stop) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                            Command::Stop => break,
+                        },
+                        Err(mpsc::RecvTimeoutError::Disconnected) => break,
                         Err(mpsc::RecvTimeoutError::Timeout) => {}
                     }
                     if !observe_foreground || Instant::now() < retry {
@@ -197,51 +227,81 @@ impl Worker {
                             Err(error) => {
                                 let _ = updates
                                     .send(Reply::Diagnostic(format!("前台窗口观察：{error:#}")));
-                                stop_foreground(&mut foreground, &url, &updates);
+                                if let Err(error) = stop_foreground(&mut foreground, &url) {
+                                    let _ = updates.send(Reply::Diagnostic(format!(
+                                        "清理前台窗口观察：{error:#}"
+                                    )));
+                                }
                                 retry = Instant::now() + Duration::from_secs(1);
                             }
                         }
                     }
                 }
-                stop_foreground(&mut foreground, &url, &updates);
+                if let Err(error) = stop_foreground(&mut foreground, &url) {
+                    let _ = updates.send(Reply::Diagnostic(format!("清理前台窗口观察：{error:#}")));
+                }
             })?;
         Ok((
             Self {
                 commands,
                 worker: Some(worker),
                 valid,
+                pending: PendingIo::default(),
             },
             replies,
         ))
     }
     pub(super) fn send(&self, command: Command) -> anyhow::Result<()> {
         self.commands
-            .send(command)
+            .send(self.pending.admit(command))
             .map_err(|_| anyhow::anyhow!("Local keyboard linked-profile worker stopped"))
+    }
+    pub(super) fn is_pending(&self) -> bool {
+        self.pending.is_pending()
     }
     pub(super) fn retire(mut self) -> Option<JoinHandle<()>> {
         self.valid.store(false, Ordering::Release);
-        let _ = self.commands.send(Command::Stop);
+        let _ = self.send(Command::Stop);
         self.worker.take()
     }
 }
 impl Drop for Worker {
     fn drop(&mut self) {
         self.valid.store(false, Ordering::Release);
-        let _ = self.commands.send(Command::Stop);
+        let _ = self.send(Command::Stop);
     }
 }
-fn stop_foreground(client: &mut Option<ServiceClient>, url: &str, updates: &Sender<Reply>) {
+fn stop_foreground(client: &mut Option<ServiceClient>, url: &str) -> anyhow::Result<()> {
     let Some(mut client) = client.take() else {
-        return;
+        return Ok(());
     };
     // Cleanup has its own bounded guard: withdrawing the owner cancels new
     // observations, while the stop request must still reach the local service.
     client.set_request_guard(Arc::new(AtomicBool::new(true)));
-    if let Err(error) = client.request(ServiceRequest::ForegroundMonitorStop {
-        view_url: url.into(),
-    }) {
-        let _ = updates.send(Reply::Diagnostic(format!("清理前台窗口观察：{error:#}")));
+    let stop = client
+        .request(ServiceRequest::ForegroundMonitorStop {
+            view_url: url.into(),
+        })
+        .and_then(|receipt| {
+            anyhow::ensure!(
+                receipt == true,
+                "Foreground monitor did not acknowledge its stop"
+            );
+            Ok(())
+        });
+    let shutdown = client
+        .request(ServiceRequest::Shutdown)
+        .and_then(|receipt| {
+            anyhow::ensure!(
+                receipt["stopped"] == true,
+                "Foreground service did not acknowledge shutdown"
+            );
+            Ok(())
+        });
+    drop(client);
+    match (stop, shutdown) {
+        (Ok(()), Ok(())) => Ok(()),
+        (Err(error), Ok(())) | (Ok(()), Err(error)) => Err(error),
+        (Err(stop), Err(shutdown)) => Err(anyhow::anyhow!("{stop:#}; {shutdown:#}")),
     }
-    let _ = client.request(ServiceRequest::Shutdown);
 }

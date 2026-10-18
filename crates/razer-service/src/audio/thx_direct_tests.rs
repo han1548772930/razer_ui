@@ -21,7 +21,11 @@ struct State {
     inputs: VecDeque<Vec<u8>>,
     firmware_status: u8,
     cancel_on_read: bool,
+    cancel_on_factory_read: bool,
+    last_read_command: Option<u8>,
     read: bool,
+    mic_status: u8,
+    scripted_hid_statuses: Option<VecDeque<(u8, u8)>>,
     roller_index: u8,
     versions: [u8; 24],
 }
@@ -45,6 +49,8 @@ impl FeatureTransport for Hid {
             0xe1 => 0xe1,
             0x95 => 0x95,
             0xe0 => 0xe0,
+            0xef => 0xef,
+            0x55 => 0x55,
             0x6a => 0x6a,
             0xea => {
                 state.roller_index = report[13];
@@ -55,7 +61,21 @@ impl FeatureTransport for Hid {
         // Independently constructed synthetic device success/failure envelope.
         let mut response = vec![0; 64];
         response[0] = 2;
-        response[1] = if command == 0x9e { state.firmware_status } else { 2 };
+        response[1] = if matches!(command, 0x9e | 0xef) {
+            state.firmware_status
+        } else {
+            2
+        };
+        if command == 0x55 {
+            response[13] = state.mic_status;
+        }
+        if let Some(statuses) = state.scripted_hid_statuses.as_mut() {
+            let (expected_command, status) = statuses
+                .pop_front()
+                .expect("Scripted HID response status required");
+            assert_eq!(command, expected_command);
+            response[1] = status;
+        }
         response[2] = 0x60;
         response[10] = command;
         response[11] = 1;
@@ -74,6 +94,7 @@ impl FeatureTransport for Hid {
         let mut state = self.0.borrow_mut();
         state.read = true;
         let response = state.inputs.pop_front().expect("Unscripted input");
+        state.last_read_command = Some(response[10]);
         out[..response.len()].copy_from_slice(&response);
         Ok(response.len())
     }
@@ -187,7 +208,8 @@ fn transport_for(
             assert_eq!(identity.generation, 7);
             let state = checked.borrow();
             ensure!(
-                !(state.cancel_on_read && state.read),
+                !(state.cancel_on_read && state.read)
+                    && !(state.cancel_on_factory_read && state.last_read_command == Some(0xef)),
                 "simulated canceled after actual input"
             );
             Ok(())
@@ -219,6 +241,224 @@ fn render_setup_fixture() -> Vec<Result<Response>> {
         Ok(Response::SetProperty),
         Ok(Response::SetProperty),
     ]
+}
+
+#[test]
+fn help_factory_reset1398_canceled_observer_never_submits_a_factory_write() {
+    let (transport, state) = transport(vec![]);
+    state.borrow_mut().cancel_on_read = true;
+    state.borrow_mut().scripted_hid_statuses = Some([(0x55, 2)].into());
+    let mut controller = razer_device::thx_v4::ThxV4Controller::new(1398, transport).unwrap();
+    let result = crate::thx::execute_retained(
+        scope(),
+        ThxSubmissionPlan::FactoryReset1398,
+        &mut controller,
+        || Ok(()),
+        |_| Ok(()),
+    );
+    assert!(result.error.as_deref().unwrap().contains("Validation"));
+    assert_eq!(state.borrow().events, ["hid:55:0"]);
+    let [ThxFirmwareProgress::Command(mic)] = &result.firmware[..] else {
+        panic!("Only the actual microphone query may be submitted before cancellation");
+    };
+    assert!(mic.acknowledged());
+    assert!(!mic.succeeded());
+    assert!(mic.observed_mic_status().is_none());
+    assert_eq!(
+        mic.failure.as_ref().unwrap().kind,
+        BlackSharkFirmwareFailureKind::Validation
+    );
+    assert_eq!(mic.attempts.len(), 1);
+    assert_eq!(mic.attempts[0].inputs.len(), 1);
+    assert_eq!(mic.attempts[0].reply.as_ref().unwrap().status, 2);
+    let state = state.borrow();
+    assert!(state.scripted_hid_statuses.as_ref().unwrap().is_empty());
+    assert!(state.inputs.is_empty());
+    assert!(controller.transport().rpc().requests.is_empty());
+}
+
+#[test]
+fn help_factory_reset1398_foreign_owner_is_rejected_before_hid_or_rpc() {
+    let (transport, state) = transport_for(1401, 1401, vec![]);
+    let mut controller = razer_device::thx_v4::ThxV4Controller::new(1401, transport).unwrap();
+    let mut foreign = scope();
+    foreign.product_id = 1401;
+    let result = crate::thx::execute_retained(
+        foreign,
+        ThxSubmissionPlan::FactoryReset1398,
+        &mut controller,
+        || Ok(()),
+        |_| Ok(()),
+    );
+    assert!(result.error.is_some());
+    assert!(state.borrow().events.is_empty());
+    assert!(result.firmware.is_empty());
+}
+
+#[test]
+fn help_factory_reset1398_reuses_hid_without_thx_rpc_or_render_setup() {
+    let (transport, state) = transport(vec![]);
+    let mut controller = razer_device::thx_v4::ThxV4Controller::new(1398, transport).unwrap();
+    let result = crate::thx::execute_retained(
+        scope(),
+        ThxSubmissionPlan::FactoryReset1398,
+        &mut controller,
+        || Ok(()),
+        |_| Ok(()),
+    );
+    assert!(result.error.is_none(), "{:?}", result.error);
+    assert_eq!(state.borrow().events, ["hid:55:0", "hid:ef:0"]);
+    assert!(!controller.transport().bound());
+    assert!(
+        matches!(&result.firmware[..], [razer_device::thx_submission::ThxFirmwareProgress::Command(mic),
+        razer_device::thx_submission::ThxFirmwareProgress::Command(command)]
+        if mic.observed_mic_status() == Some(razer_device::thx_blackshark_firmware::BlackSharkMicStatus::Unmuted)
+            && command.command == razer_device::thx_blackshark_firmware::BlackSharkFirmwareCommand::FactoryReset1398
+            && command.succeeded())
+    );
+}
+
+#[test]
+fn help_factory_reset1398_mic_failure_does_not_block_the_independent_factory_command() {
+    let (transport, state) = transport(vec![]);
+    state.borrow_mut().scripted_hid_statuses =
+        Some([(0x55, 4), (0x55, 4), (0x55, 4), (0xef, 2)].into());
+    let mut controller = razer_device::thx_v4::ThxV4Controller::new(1398, transport).unwrap();
+    let result = crate::thx::execute_retained(
+        scope(),
+        ThxSubmissionPlan::FactoryReset1398,
+        &mut controller,
+        || Ok(()),
+        |_| Ok(()),
+    );
+    assert!(result.error.is_none());
+    assert_eq!(
+        state.borrow().events,
+        ["hid:55:0", "hid:55:0", "hid:55:0", "hid:ef:0"]
+    );
+    let [
+        ThxFirmwareProgress::Command(mic),
+        ThxFirmwareProgress::Command(command),
+    ] = &result.firmware[..]
+    else {
+        panic!("The rejected microphone query must be followed by the independent factory reset");
+    };
+    assert!(!mic.succeeded());
+    assert!(!mic.acknowledged());
+    assert!(mic.observed_mic_status().is_none());
+    assert_eq!(
+        mic.failure.as_ref().unwrap().kind,
+        BlackSharkFirmwareFailureKind::DeviceRejected
+    );
+    assert_eq!(mic.attempts.len(), 3);
+    for attempt in &mic.attempts {
+        assert!(attempt.output_completed);
+        assert_eq!(attempt.inputs.len(), 1);
+        assert_eq!(attempt.reply.as_ref().unwrap().status, 4);
+    }
+    assert_eq!(
+        command.command,
+        razer_device::thx_blackshark_firmware::BlackSharkFirmwareCommand::FactoryReset1398
+    );
+    assert!(command.succeeded());
+    assert_eq!(command.attempts.len(), 1);
+    assert!(!controller.transport().bound());
+    let state = state.borrow();
+    assert!(state.scripted_hid_statuses.as_ref().unwrap().is_empty());
+    assert!(state.inputs.is_empty());
+    assert!(controller.transport().rpc().requests.is_empty());
+}
+
+#[test]
+fn help_factory_reset1398_local_profile_invalidates_the_valkyrie_hook_without_a_thx_setter() {
+    let (transport, state) = transport(fixture(false, true));
+    let mut controller = razer_device::thx_v4::ThxV4Controller::new(1398, transport).unwrap();
+    let spatial = crate::thx::execute_retained(
+        scope(),
+        ThxSubmissionPlan::SetSpatial {
+            enabled: true,
+            presets: presets(),
+            timer_tick: 0,
+        },
+        &mut controller,
+        || Ok(()),
+        |_| Ok(()),
+    );
+    assert!(spatial.error.is_none(), "{:?}", spatial.error);
+    assert!(controller.state().valkyrie_spatial_enabled);
+    let cached = controller.state().runtime_spatial_enabled;
+    state.borrow_mut().events.clear();
+    let result = crate::thx::execute_retained(
+        scope(),
+        ThxSubmissionPlan::FactoryReset1398,
+        &mut controller,
+        || Ok(()),
+        |_| Ok(()),
+    );
+    assert!(result.error.is_none());
+    assert!(!controller.state().valkyrie_spatial_enabled);
+    assert_eq!(controller.state().runtime_spatial_enabled, cached);
+    assert_eq!(state.borrow().events, ["hid:55:0", "hid:ef:0"]);
+    assert!(
+        matches!(&result.firmware[result.firmware.len()-1], razer_device::thx_submission::ThxFirmwareProgress::Command(command)
+        if command.command == razer_device::thx_blackshark_firmware::BlackSharkFirmwareCommand::FactoryReset1398
+            && command.succeeded())
+    );
+}
+
+#[test]
+fn help_factory_reset1398_failure_and_cancel_preserve_the_actual_device_receipt() {
+    for canceled in [false, true] {
+        let (transport, state) = transport(vec![]);
+        state.borrow_mut().scripted_hid_statuses = Some(if canceled {
+            [(0x55, 2), (0xef, 2)].into()
+        } else {
+            [(0x55, 2), (0xef, 4), (0xef, 4), (0xef, 4)].into()
+        });
+        state.borrow_mut().cancel_on_factory_read = canceled;
+        let mut controller = razer_device::thx_v4::ThxV4Controller::new(1398, transport).unwrap();
+        let result = crate::thx::execute_retained(
+            scope(),
+            ThxSubmissionPlan::FactoryReset1398,
+            &mut controller,
+            || Ok(()),
+            |_| Ok(()),
+        );
+        assert!(result.error.is_some());
+        let expected_events: &[&str] = if canceled {
+            &["hid:55:0", "hid:ef:0"]
+        } else {
+            &["hid:55:0", "hid:ef:0", "hid:ef:0", "hid:ef:0"]
+        };
+        assert_eq!(state.borrow().events, expected_events);
+        let [
+            ThxFirmwareProgress::Command(mic),
+            ThxFirmwareProgress::Command(command),
+        ] = &result.firmware[..]
+        else {
+            panic!("The factory receipt must retain the preceding microphone query");
+        };
+        assert!(mic.succeeded());
+        assert!(!command.succeeded());
+        assert_eq!(command.acknowledged(), canceled);
+        let (failure, attempts, status) = if canceled {
+            (BlackSharkFirmwareFailureKind::Validation, 1, 2)
+        } else {
+            (BlackSharkFirmwareFailureKind::DeviceRejected, 3, 4)
+        };
+        assert_eq!(command.failure.as_ref().unwrap().kind, failure);
+        assert_eq!(command.attempts.len(), attempts);
+        for attempt in &command.attempts {
+            assert!(attempt.output_completed);
+            assert_eq!(attempt.inputs.len(), 1);
+            assert_eq!(attempt.reply.as_ref().unwrap().status, status);
+        }
+        assert!(!controller.transport().bound());
+        let state = state.borrow();
+        assert!(state.scripted_hid_statuses.as_ref().unwrap().is_empty());
+        assert!(state.inputs.is_empty());
+        assert!(controller.transport().rpc().requests.is_empty());
+    }
 }
 
 #[test]

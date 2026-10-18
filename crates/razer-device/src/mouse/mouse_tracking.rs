@@ -4,6 +4,9 @@
 use crate::{backend::FeatureTransport, device_reads::DeviceReadCapability, feature_exchange};
 use anyhow::{Result, ensure};
 use serde::{Deserialize, Serialize};
+#[path = "mouse_tracking/submission.rs"]
+mod submission;
+pub use submission::{Progress, SmartTracking, SubmissionReport, Target, submit};
 
 const CLASS: u8 = 0;
 const SENSOR: u8 = 4;
@@ -49,7 +52,12 @@ impl TrackingCapability {
     fn validate_transport(&self, cap: &DeviceReadCapability) -> Result<()> {
         ensure!(
             cap.product_id == self.product_id
-                && cap.source_class == "rzDevice25DualLinkMouse"
+                && matches!(
+                    cap.source_class.as_str(),
+                    "rzDevice25" | "rzDevice25DualLinkMouse"
+                )
+                && cap.vendor_id == 0x1532
+                && cap.report_bytes == 91
                 && cap.transaction_prefix == 0
                 && cap.transaction_modulus == 31,
             "Orca Plus tracking product/transport branch has not been audited"
@@ -69,7 +77,7 @@ pub enum TrackingSetting {
     },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum TrackingStep {
     SensorState,
     LiftSetting,
@@ -211,14 +219,14 @@ pub fn read_configuration(
     })
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct TrackingAcknowledgement {
     pub step: TrackingStep,
     /// Raw ACK bytes are not an independent observation of the current setting.
     pub payload: Vec<u8>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct TrackingWriteResult {
     pub requested: TrackingSetting,
     pub acknowledgements: Vec<TrackingAcknowledgement>,
@@ -227,7 +235,7 @@ pub struct TrackingWriteResult {
     pub verified: bool,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum TrackingFailurePhase {
     Prepare,
     BeforeCommand,
@@ -235,7 +243,7 @@ pub enum TrackingFailurePhase {
     AfterAcknowledgement,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct TrackingWriteFailure {
     pub requested: TrackingSetting,
     pub phase: TrackingFailurePhase,
@@ -306,20 +314,23 @@ pub fn apply(
                 e,
             )
         })?;
-        let payload = feature_exchange::exchange(
+        let sent = std::cell::Cell::new(false);
+        let payload = feature_exchange::exchange_with_report_data_size_observing_send(
             device,
             cap,
             command.header,
             &command.payload,
             transaction,
+            command.header[0],
             &validate,
+            &mut || sent.set(true),
         )
         .map_err(|e| {
             failure(
                 TrackingFailurePhase::Command,
                 Some(command.step),
                 acknowledgements.clone(),
-                true,
+                sent.get(),
                 e,
             )
         })?;

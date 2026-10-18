@@ -20,6 +20,11 @@ pub(super) struct ControllerLightingSave {
     identity: String,
     profile_id: String,
 }
+impl ControllerLightingSave {
+    pub(super) fn owner(&self) -> (&str, WeakEntity<ProductWorkspace>) {
+        (&self.identity, self.workspace.downgrade())
+    }
+}
 
 #[derive(Deserialize)]
 struct LightingReply {
@@ -153,16 +158,17 @@ impl AppShell {
                 .collect(),
             cx,
         );
-        self.pending_saves.push_back(PreparedSave {
-            window: window.window_handle(),
+        self.pending_saves.push_back(self.prepare_save(
+            window.window_handle(),
             file,
-            product: Some(ProductSave::ControllerLighting(ControllerLightingSave {
+            Some(ProductSave::ControllerLighting(ControllerLightingSave {
                 workspace,
                 request,
                 identity,
                 profile_id,
             })),
-        });
+            cx,
+        ));
         self.start_pending_save(cx);
     }
 
@@ -213,7 +219,11 @@ impl AppShell {
         window: AnyWindowHandle,
         cx: &mut Context<Self>,
     ) {
-        if succeeded && !self.close_requested {
+        if succeeded
+            && !self.close_requested
+            && self.devices.contains(&save.workspace)
+            && save.workspace.read(cx).identity(cx) == save.identity
+        {
             self.refresh_controller_power_configuration(cx);
             self.submit_controller_lighting(save.workspace, save.request, window, cx);
         } else {
@@ -221,7 +231,7 @@ impl AppShell {
                 &save.workspace,
                 &save.request,
                 Err(if succeeded {
-                    "Controller lighting canceled during shutdown"
+                    "Controller lighting owner canceled after local persistence"
                 } else {
                     "Controller lighting local persistence did not complete"
                 }
@@ -262,6 +272,7 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         if self.close_requested
+            || !self.devices.contains(&workspace)
             || !workspace
                 .read(cx)
                 .controller_lighting_request_matches(&request, cx)

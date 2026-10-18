@@ -18,6 +18,22 @@ pub(crate) struct Notifications {
 
 impl Notifications {
     pub(crate) fn register(events: Sender<DeviceChange>) -> Result<Self, String> {
+        Self::register_with(
+            events,
+            |filter, context, handle| {
+                // The boxed context remains valid until every registration is
+                // removed and its in-flight callbacks have returned.
+                unsafe { CM_Register_Notification(filter, context, Some(on_change), handle) }
+            },
+            unregister,
+        )
+    }
+
+    fn register_with(
+        events: Sender<DeviceChange>,
+        mut register: impl FnMut(&CM_NOTIFY_FILTER, *const c_void, &mut HCMNOTIFICATION) -> CONFIGRET,
+        mut unregister: impl FnMut(HCMNOTIFICATION) -> CONFIGRET,
+    ) -> Result<Self, String> {
         let mut notifications = Self {
             handles: Vec::new(),
             context: Some(Box::new(events)),
@@ -35,23 +51,62 @@ impl Notifications {
             // Box keeps the callback context at a stable address until all
             // registrations have been removed and in-flight callbacks end.
             let context = notifications.context.as_deref().unwrap();
-            let result = unsafe {
-                CM_Register_Notification(
-                    &filter,
-                    (context as *const Sender<DeviceChange>).cast(),
-                    Some(on_change),
-                    &mut handle,
-                )
-            };
+            let result = register(
+                &filter,
+                (context as *const Sender<DeviceChange>).cast(),
+                &mut handle,
+            );
             if result != CR_SUCCESS {
-                return Err(format!(
-                    "设备插拔监听注册失败（CONFIGRET {result:#x}）；可手动刷新设备信息。"
-                ));
+                let error =
+                    format!("设备插拔监听注册失败（CONFIGRET {result:#x}）；可手动刷新设备信息。");
+                return match notifications.release_with(&mut unregister) {
+                    Ok(()) => Err(error),
+                    Err(cleanup) => Err(format!("{error}；{cleanup}")),
+                };
             }
             notifications.handles.push(handle);
         }
         Ok(notifications)
     }
+
+    pub(crate) fn shutdown(mut self) -> Result<(), String> {
+        self.release_with(unregister)
+    }
+
+    fn release_with(
+        &mut self,
+        mut unregister: impl FnMut(HCMNOTIFICATION) -> CONFIGRET,
+    ) -> Result<(), String> {
+        let mut errors = Vec::new();
+        for (ix, handle) in self.handles.drain(..).enumerate() {
+            let result = unregister(handle);
+            if result != CR_SUCCESS {
+                errors.push(format!(
+                    "CM_Unregister_Notification[{ix}] 失败（CONFIGRET {result:#x}）"
+                ));
+            }
+        }
+        if errors.is_empty() {
+            self.context.take();
+            Ok(())
+        } else {
+            // Failed unregistration does not establish callback quiescence.
+            // Its stable context must remain reachable until process teardown.
+            if let Some(context) = self.context.take() {
+                let _ = Box::leak(context);
+            }
+            Err(format!(
+                "{}；回调上下文已保留，原生通知的完全释放尚未确认。",
+                errors.join("；")
+            ))
+        }
+    }
+}
+
+fn unregister(handle: HCMNOTIFICATION) -> CONFIGRET {
+    // Only the dedicated observation worker owns registrations. This may wait
+    // for on_change to return and must never run in that callback or on the UI.
+    unsafe { CM_Unregister_Notification(handle) }
 }
 
 unsafe extern "system" fn on_change(
@@ -76,18 +131,10 @@ unsafe extern "system" fn on_change(
 
 impl Drop for Notifications {
     fn drop(&mut self) {
-        let mut failed = false;
-        for handle in self.handles.drain(..) {
-            // This destructor runs on the dedicated owner thread, never
-            // inside on_change or on the UI thread.
-            failed |= unsafe { CM_Unregister_Notification(handle) } != CR_SUCCESS;
-        }
-        if failed {
-            // A failed unregister cannot prove callback quiescence. Retain
-            // the tiny context rather than risk a callback use-after-free.
-            if let Some(context) = self.context.take() {
-                let _ = Box::leak(context);
-            }
-        }
+        let _ = self.release_with(unregister);
     }
 }
+
+#[cfg(test)]
+#[path = "device_changes/tests.rs"]
+mod tests;

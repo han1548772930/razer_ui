@@ -27,6 +27,7 @@ use std::{collections::BTreeMap, sync::OnceLock};
 mod corex_fan;
 #[path = "accessory_system_products/hanbo_cooler.rs"]
 mod hanbo_cooler;
+pub(crate) use hanbo_cooler::HanboResourceChanged;
 
 #[derive(Deserialize)]
 pub struct AccessorySystemSpec {
@@ -59,13 +60,19 @@ pub fn hdr_tooltip_key(windows_11: bool) -> &'static str {
 
 pub struct AccessorySystemProductChanged;
 
-/// A verified Hanbo 3893 device command emitted after the optimistic profile
-/// draft has been captured. The shell owns transport, cancellation and the
-/// acknowledgement receipt; this page only owns the request generation.
+/// The native command captured with a Hanbo local settings change. The shell
+/// submits it only after that local save succeeds.
 #[derive(Clone, Debug)]
 pub struct HanboCoolerRequested {
     pub generation: u64,
     pub command: razer_device::hanbo_cooler::CoolerCommand,
+}
+
+/// One optimistic source interaction and its optional native continuation.
+#[derive(Clone, Debug)]
+pub struct HanboLocalSettingsChanged {
+    pub change: razer_device::hanbo_settings::LocalChange,
+    pub command: Option<HanboCoolerRequested>,
 }
 
 /// `.btn_group .btn_custom`: the source's flat button — transparent, `1px solid
@@ -335,7 +342,7 @@ pub fn input_source_step(current: i64, requested: i64, ask_again: bool) -> Input
 }
 
 impl EventEmitter<AccessorySystemProductChanged> for AccessorySystemProductWorkspace {}
-impl EventEmitter<HanboCoolerRequested> for AccessorySystemProductWorkspace {}
+impl EventEmitter<HanboLocalSettingsChanged> for AccessorySystemProductWorkspace {}
 
 impl AccessorySystemProductWorkspace {
     pub fn new(pid: u32, window: &mut Window, cx: &mut Context<Self>) -> Self {
@@ -352,7 +359,11 @@ impl AccessorySystemProductWorkspace {
         let mut this = Self {
             spec,
             page: spec.pages[0].clone(),
-            draft: spec.initial.clone(),
+            draft: if pid == razer_device::hanbo_cooler::PRODUCT_ID {
+                razer_device::hanbo_settings::default_profile_settings()
+            } else {
+                spec.initial.clone()
+            },
             sliders: BTreeMap::new(),
             inputs: BTreeMap::new(),
             ranges: BTreeMap::new(),
@@ -492,13 +503,8 @@ impl AccessorySystemProductWorkspace {
         if pid == 3921 {
             this.init_corex(window, cx);
         }
-        if pid == razer_device::hanbo_cooler::PRODUCT_ID
-            && let Some(object) = this.draft.as_object_mut()
-        {
-            object.remove("requestedFanMode");
-            object.remove("requestedPumpMode");
-        }
         this.sync_sliders(window, cx);
+        this.sync_hanbo_axis_labels(cx);
         this
     }
 
@@ -612,15 +618,21 @@ impl AccessorySystemProductWorkspace {
     pub fn set_page(&mut self, key: &str, _: &mut Window, cx: &mut Context<Self>) {
         if self.page != key {
             self.corex_graph.dragging = false;
-            self.hanbo.drag = None;
-            self.hanbo_generation = self.hanbo_generation.wrapping_add(1);
-            self.hanbo_command_status = None;
+            for request in self.flush_hanbo_curve(cx) {
+                cx.emit(request);
+            }
             // The source's prompt lives in the page component, so leaving the page
             // drops a request that was still waiting for confirmation.
             self.pending_input_source = None;
             self.system_command_error = None;
             self.page = key.into();
             cx.notify();
+        }
+        if self.spec.product_id == razer_device::hanbo_cooler::PRODUCT_ID
+            && key == "TAB_PERFORMANCE"
+        {
+            self.hanbo.mount_curves();
+            self.sync_hanbo_axis_labels(cx);
         }
     }
 
@@ -631,7 +643,8 @@ impl AccessorySystemProductWorkspace {
         if let Some(object) = snapshot.as_object_mut() {
             object.remove("uiRestraint");
             if self.spec.product_id == razer_device::hanbo_cooler::PRODUCT_ID {
-                object.insert("ports".into(), self.hanbo.snapshot_ports());
+                let ports = self.hanbo.snapshot_ports(object.get("ports"));
+                object.insert("ports".into(), ports);
             }
         }
         snapshot
@@ -652,7 +665,15 @@ impl AccessorySystemProductWorkspace {
     }
 
     pub fn restore(&mut self, saved: Option<&Value>, window: &mut Window, cx: &mut Context<Self>) {
-        self.draft = self.spec.initial.clone();
+        if self.spec.product_id == razer_device::hanbo_cooler::PRODUCT_ID {
+            self.hanbo_generation = self.hanbo_generation.wrapping_add(1);
+            self.hanbo_command_status = None;
+        }
+        self.draft = if self.spec.product_id == razer_device::hanbo_cooler::PRODUCT_ID {
+            razer_device::hanbo_settings::default_profile_settings()
+        } else {
+            self.spec.initial.clone()
+        };
         if let Some(saved) = saved {
             merge_known(&mut self.draft, saved);
             if self.spec.product_id == 3921 {
@@ -747,14 +768,20 @@ impl AccessorySystemProductWorkspace {
                 self.propagate_fans();
             }
             3893 => {
-                // The catalog's former requested-mode keys have no current
-                // source owner; thermal state lives in the typed port profile.
                 if let Some(object) = self.draft.as_object_mut() {
-                    object.remove("requestedFanMode");
-                    object.remove("requestedPumpMode");
-                    object.remove("ports");
+                    object.insert(
+                        "ports".into(),
+                        saved
+                            .and_then(|saved| saved.get("ports"))
+                            .cloned()
+                            .unwrap_or_else(razer_device::hanbo_settings::default_ports),
+                    );
                 }
                 self.hanbo.restore_ports(saved);
+                if self.page == "TAB_PERFORMANCE" {
+                    self.hanbo.mount_curves();
+                }
+                self.sync_hanbo_axis_labels(cx);
                 self.hanbo_generation = self.hanbo_generation.wrapping_add(1);
                 self.hanbo_command_status = None;
             }

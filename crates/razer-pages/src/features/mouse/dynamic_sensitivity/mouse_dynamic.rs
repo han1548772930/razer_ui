@@ -831,7 +831,9 @@ impl MouseProductWorkspace {
                     .h(relative(1.5))
                     .bg(rgba(0x00000080)),
             )
-            .popup(razer_assets::resource_scope(div().absolute().inset_0().child(panel)))
+            .popup(razer_assets::resource_scope(
+                div().absolute().inset_0().child(panel),
+            ))
             .into_any_element()
     }
     fn dynamic_chart(&self, cx: &Context<Self>) -> AnyElement {

@@ -12,34 +12,92 @@ fn context() -> EngineContext {
     }
 }
 
-/// The saved JSON is intentionally included only in tests as an independent
-/// migration oracle, not loaded by the runtime mapping generator.
-fn audited_literals() -> Value {
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SourceSummary {
+    schema_version: u32,
+    products: Vec<SourceProduct>,
+    tables: Vec<SourceTable>,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SourceProduct {
+    product_id: u32,
+    table: usize,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SourceTable {
+    key_count: usize,
+    keys_without_input_id: usize,
+    keys_md5: String,
+    key_events_md5: String,
+    constants_md5: String,
+    default_turbos: Vec<SourceTurbo>,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SourceTurbo {
+    id: String,
+    event_count: usize,
+    events_md5: String,
+    source_hash: String,
+}
+
+impl SourceSummary {
+    fn for_product(&self, product_id: u32) -> &SourceTable {
+        let product = self
+            .products
+            .iter()
+            .find(|product| product.product_id == product_id)
+            .expect("source summary covers each product");
+        &self.tables[product.table]
+    }
+}
+
+/// Digests are projected from the complete current JavaScript literals by the
+/// static acquisition tool, independently of the generated Rust tables.
+fn source_summary() -> SourceSummary {
     serde_json::from_str(include_str!(
-        "../../testdata/re/mapping-engine-current-data.json"
+        "../../testdata/re/mapping-engine-source-summary.json"
     ))
     .unwrap()
 }
 
 #[test]
 fn typed_tables_preserve_every_audited_key_field_and_used_constant() {
-    let audited = audited_literals();
-    assert_eq!(data::PRODUCTS.len(), audited.as_object().unwrap().len());
+    let source = source_summary();
+    assert_eq!(source.schema_version, 1);
+    assert_eq!(
+        data::PRODUCTS
+            .iter()
+            .map(|product| product.product_id)
+            .collect::<Vec<_>>(),
+        source
+            .products
+            .iter()
+            .map(|product| product.product_id)
+            .collect::<Vec<_>>()
+    );
     for product in data::PRODUCTS {
-        let original = &audited[product.product_id.to_string()];
+        let original = source.for_product(product.product_id);
         let table = product.data;
-        assert_eq!(serde_json::to_value(table.keys).unwrap(), original["keys"]);
+        assert_eq!(table.keys.len(), original.key_count);
         assert_eq!(
-            serde_json::to_value(table.single_state_input_ids).unwrap(),
-            original["constants"]["SINGLE_STATE_INPUT_ID"]
+            source_hash(&serde_json::to_value(table.keys).unwrap()).unwrap(),
+            original.keys_md5
         );
         assert_eq!(
-            serde_json::to_value(table.scroll_input_ids).unwrap(),
-            original["constants"]["SCROLL_INPUT_ID"]
-        );
-        assert_eq!(
-            json!(table.scroll_turbo_delay_ms),
-            original["constants"]["SCROLL_TURBO_DELAY_MS"]
+            source_hash(&json!({
+                "SINGLE_STATE_INPUT_ID": table.single_state_input_ids,
+                "SCROLL_INPUT_ID": table.scroll_input_ids,
+                "SCROLL_TURBO_DELAY_MS": table.scroll_turbo_delay_ms,
+            }))
+            .unwrap(),
+            original.constants_md5
         );
         // Symbols without a physical input identifier must remain absent.
         assert_eq!(
@@ -48,8 +106,9 @@ fn typed_tables_preserve_every_audited_key_field_and_used_constant() {
                 .iter()
                 .filter(|key| key.input_id.is_none())
                 .count(),
-            19
+            original.keys_without_input_id
         );
+        assert_eq!(original.keys_without_input_id, 19);
         let a = table
             .keys
             .iter()
@@ -65,18 +124,14 @@ fn typed_tables_preserve_every_audited_key_field_and_used_constant() {
 }
 
 #[test]
-fn default_turbo_migration_preserves_uuid_order_events_and_source_hashes() {
-    let audited = audited_literals();
+fn default_turbos_preserve_source_uuid_order_events_and_hashes() {
+    let source = source_summary();
     for product in data::PRODUCTS {
-        let original = &audited[product.product_id.to_string()];
-        let ids = original["default_turbo_ids"].as_array().unwrap();
-        assert_eq!(ids.len(), product.data.default_turbos.len());
-        assert_eq!(
-            ids.len(),
-            original["turbo_events"].as_object().unwrap().len()
-        );
+        let original = source.for_product(product.product_id);
+        let expected = &original.default_turbos;
+        assert_eq!(expected.len(), product.data.default_turbos.len());
         let mut c = context();
-        let guids = (0..ids.len())
+        let guids = (0..expected.len())
             .map(|index| format!("12345678-1234-4234-8234-{index:012x}"))
             .collect::<Vec<_>>();
         c.fresh_guids = guids.clone().into();
@@ -84,23 +139,39 @@ fn default_turbo_migration_preserves_uuid_order_events_and_source_hashes() {
             .unwrap()
             .generate_default_turbos(&mut c)
             .unwrap();
-        for (index, id) in ids.iter().enumerate() {
-            let name = id.as_str().unwrap();
+        let double_click = product
+            .data
+            .default_turbos
+            .iter()
+            .find(|turbo| turbo.id == "DoubleClick")
+            .unwrap();
+        assert_eq!(
+            serde_json::to_value(double_click.events).unwrap(),
+            json!([
+                {"type":"mouse","id":1,"data":0},
+                {"type":"mouse","id":2,"data":0},
+                {"type":"delay","ms":10},
+                {"type":"mouse","id":1,"data":0},
+                {"type":"mouse","id":2,"data":0},
+            ])
+        );
+        for (index, expected) in expected.iter().enumerate() {
+            let name = expected.id.as_str();
             let turbo = product.data.default_turbos[index];
             assert_eq!(turbo.id, name);
+            assert_eq!(turbo.events.len(), expected.event_count);
             assert_eq!(
-                serde_json::to_value(turbo.events).unwrap(),
-                original["turbo_events"][name]
+                source_hash(&serde_json::to_value(turbo.events).unwrap()).unwrap(),
+                expected.events_md5
             );
-            let events = json!({"events":original["turbo_events"][name]});
             assert_eq!(generated[index]["name"], name);
             assert_eq!(generated[index]["id"], name);
             assert_eq!(generated[index]["guid"], guids[index]);
-            assert_eq!(generated[index]["appEngine"]["events"], events["events"]);
             assert_eq!(
-                generated[index]["appEngine"]["hash"],
-                source_hash(&events).unwrap()
+                generated[index]["appEngine"]["events"],
+                serde_json::to_value(turbo.events).unwrap()
             );
+            assert_eq!(generated[index]["appEngine"]["hash"], expected.source_hash);
         }
         assert_eq!(c.default_turbos.as_ref().unwrap(), &generated);
         assert!(c.fresh_guids.is_empty());
@@ -109,27 +180,34 @@ fn default_turbo_migration_preserves_uuid_order_events_and_source_hashes() {
 
 #[test]
 fn every_known_key_keeps_audited_make_and_release_flags() {
-    let audited = audited_literals();
+    let source = source_summary();
     for product in data::PRODUCTS {
         let engine = MappingEngine::new(product.product_id).unwrap();
-        for original in audited[product.product_id.to_string()]["keys"]
-            .as_array()
-            .unwrap()
-        {
-            let Some(id) = original.get("inputID") else {
+        let mut actual = Vec::new();
+        for key in product.data.keys {
+            let Some(id) = key.input_id else {
                 continue;
             };
-            let flag = original
-                .get("outputFlag")
-                .unwrap_or(&original["flag"])
-                .as_u64()
-                .unwrap();
+            let mut events = Vec::new();
             for release in [false, true] {
-                let expected = json!({"type":"keyboard","scancode":original["scancode"],"flag":flag+u64::from(release)});
-                assert_eq!(engine.key_event(id, release).unwrap(), expected);
+                let event = engine.key_event(&json!(id), release).unwrap();
                 assert_eq!(
                     engine.key_event(&json!({"inputID":id}), release).unwrap(),
-                    expected
+                    event
+                );
+                events.push(event);
+            }
+            actual.push(json!({"inputID":id,"events":events}));
+        }
+        assert_eq!(
+            source_hash(&json!(actual)).unwrap(),
+            source.for_product(product.product_id).key_events_md5
+        );
+        for (id, scancode, flag) in [("KEY_A", 30, 0), ("KEY_RIGHT_CTRL", 29, 2)] {
+            for release in [false, true] {
+                assert_eq!(
+                    engine.key_event(&json!(id), release).unwrap(),
+                    json!({"type":"keyboard","scancode":scancode,"flag":flag+u32::from(release)})
                 );
             }
         }

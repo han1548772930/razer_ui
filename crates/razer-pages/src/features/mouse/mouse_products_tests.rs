@@ -4,6 +4,39 @@
 //! language changes must preserve the selected command or effect.
 use super::{effect_label, input_label, localized_name};
 
+#[test]
+fn packaged_catalog_mouse_profile_defaults_have_one_product_owner() {
+    for (product_id, factory) in super::read_mouse_products_catalog() {
+        let spec = factory();
+        assert!(spec.profile_defaults().is_object(), "PID{product_id}");
+        if product_id == 182 {
+            assert!(spec.profile.is_none());
+            assert!(spec.device_profile.is_none());
+            assert_eq!(
+                spec.profile_defaults()["dpi"],
+                serde_json::json!({"x":800,"y":800})
+            );
+            assert_eq!(spec.profile_defaults()["pollingRate"], 1000);
+            assert_eq!(spec.device_defaults().unwrap()["productId"], 182);
+        } else {
+            assert!(spec.profile.is_some(), "PID{product_id}");
+        }
+    }
+}
+
+#[test]
+#[should_panic(expected = "Packaged mouse profile defaults are absent")]
+fn packaged_catalog_missing_mouse_defaults_cannot_borrow_another_product() {
+    let factory = super::read_mouse_products_catalog()
+        .into_iter()
+        .find(|(product_id, _)| *product_id == 70)
+        .unwrap()
+        .1;
+    let mut spec = factory();
+    spec.profile = None;
+    spec.profile_defaults();
+}
+
 const PAGE_KEYS: [&str; 22] = [
     "SENSITIVITY_HEADER",
     "SENSITIVITY_STAGES",

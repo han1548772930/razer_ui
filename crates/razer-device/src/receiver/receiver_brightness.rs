@@ -1,9 +1,9 @@
 //! Current 164/241 TaskRunner brightness: profile 1, receiver region 15.
 //! Source: receiver-brightness-current-evidence.json. No OS or vendor DLL.
 use super::{backend::FeatureTransport, receiver_capabilities::ReceiverCapability};
+use crate::receiver_feature_channel::{WriteProgress, exchange};
 use anyhow::{Context as _, ensure};
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 
 const GET: [u8; 3] = [3, 15, 132];
 const SET: [u8; 3] = [3, 15, 4];
@@ -22,7 +22,7 @@ pub struct Brightness {
     pub percent: u8,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Submission {
     pub requested_percent: u8,
     pub previous: Brightness,
@@ -36,105 +36,6 @@ pub struct Submission {
     /// This does not certify a separate hardware readback.
     pub source_completed: bool,
     pub error: Option<String>,
-}
-
-#[derive(Default)]
-struct WriteProgress {
-    attempted: bool,
-    sent: bool,
-}
-
-fn exchange(
-    device: &dyn FeatureTransport,
-    cap: &ReceiverCapability,
-    command: [u8; 3],
-    payload: &[u8],
-    transaction: u8,
-    validate: &impl Fn() -> anyhow::Result<()>,
-    progress: &mut WriteProgress,
-) -> anyhow::Result<Vec<u8>> {
-    ensure!(
-        matches!(cap.product_id, 164 | 241)
-            && cap.report_bytes == 91
-            && cap.report_id == 0
-            && cap.transaction_prefix == 224
-            && cap.transaction_modulus == 31
-            && transaction & 0xe0 == 224
-            && transaction & 0x1f < 31
-            && payload.len() <= usize::from(command[0]),
-        "Receiver brightness does not match its audited primary Linker transport"
-    );
-    let mut outgoing = [0u8; 91];
-    outgoing[2] = transaction;
-    outgoing[6..9].copy_from_slice(&command);
-    outgoing[9..9 + payload.len()].copy_from_slice(payload);
-    outgoing[89] = outgoing[3..89].iter().fold(0, |sum, byte| sum ^ byte);
-    let mut last = String::from("No receiver brightness response");
-    for _ in 0..cap.max_retry_out {
-        validate()?;
-        std::thread::sleep(Duration::from_millis(cap.sleep_between_out_ms));
-        validate()?;
-        progress.attempted = true;
-        let sent = device.send_feature_at_collection_max(&outgoing);
-        if sent.is_ok() {
-            progress.sent = true;
-        }
-        validate()?;
-        if let Err(error) = sent {
-            return Err(error).context("Receiver brightness send transport failed; source exits its send loop on an exception");
-        }
-        std::thread::sleep(Duration::from_millis(cap.sleep_between_out_in_ms));
-        // _getUSBTransferInResult resets this once per OUT, then retains it
-        // across IN attempts. Its catch does not clear a preceding busy flag.
-        let mut resend_out_command = false;
-        for attempt in 0..cap.max_retry_in {
-            if attempt > 0 {
-                std::thread::sleep(Duration::from_millis(cap.sleep_between_in_ms));
-            }
-            validate()?;
-            let mut incoming = [0u8; 91];
-            incoming[0] = cap.get_report_id();
-            let reply = device.get_feature_at_collection_max(&mut incoming);
-            validate()?;
-            let count = match reply {
-                Ok(count) => count,
-                Err(error) if resend_out_command => {
-                    last = format!("Receiver brightness getter transport failed: {error:#}");
-                    break;
-                }
-                Err(error) => return Err(error).context("Receiver brightness getter transport failed before source requested an OUT retry"),
-            };
-            // The backend contract retains Report ID, whereas original host
-            // strips it. Only bounds required to safely inspect that packet
-            // belong here; source slices accept a shorter returned payload.
-            ensure!(
-                (9..=incoming.len()).contains(&count),
-                "Receiver brightness transport packet has no complete header"
-            );
-            if incoming[2] != transaction || incoming[7..9] != command[1..] {
-                last = "Receiver brightness transaction/command differs".into();
-                break;
-            }
-            match incoming[1] {
-                1 => {
-                    last = "Receiver is busy".into();
-                    resend_out_command = true;
-                    continue;
-                }
-                2 => {}
-                0 | 3 | 4 => {
-                    last = format!("Receiver brightness status {}", incoming[1]);
-                    break;
-                }
-                other => anyhow::bail!(
-                    "Receiver brightness is unsupported or returned unknown status {other}"
-                ),
-            }
-            let bytes = usize::from(incoming[6]);
-            return Ok(incoming[9..(9 + bytes).min(count)].to_vec());
-        }
-    }
-    anyhow::bail!("Receiver brightness retry failed: {last}")
 }
 
 fn parse(data: &[u8]) -> anyhow::Result<Brightness> {

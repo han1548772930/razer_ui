@@ -9,15 +9,15 @@ pub(super) struct State {
     tasks: Vec<Task<()>>,
 }
 impl AppShell {
-    pub(super) fn install_seiren_microphone_setup_cleanup(&mut self, cx: &mut Context<Self>) {
-        self.subscriptions.push(cx.on_app_quit(|this, _| {
+    pub(super) fn install_seiren_microphone_setup_cleanup(&mut self, _cx: &mut Context<Self>) {
+        self.register_exit_cleanup(|this, _| {
             let tasks = std::mem::take(&mut this.seiren_microphone_setup.tasks);
             async move {
                 for task in tasks {
                     task.await;
                 }
             }
-        }));
+        });
     }
     pub(super) fn restore_seiren_microphone_setup_seen(
         &mut self,

@@ -1,6 +1,6 @@
 //! 雷云 4 的 Rust 原生替代 UI。
 //!
-//! 当前 UI 文档入口见 `docs/README.md`，DLL 查询审计见 `docs/re/dll-readonly-inventory.md`。
+//! 当前架构、来源和验证边界见 `docs/README.md`。
 //!
 //! UI 编辑使用本地草稿；启动及 USB/HID 拓扑变化会触发后台设备发现。
 //! 经当前源核实的原生查询在隔离 worker 中执行，结果通过观察事件进入 UI。
@@ -11,7 +11,7 @@ use razer_assets as resources;
 use razer_i18n as i18n;
 use razer_service as backend;
 use razer_shell::shell;
-use razer_shell::store;
+use razer_storage::workspace as store;
 
 // Localization and source assets are owned by their dedicated library crates.
 
@@ -26,8 +26,8 @@ pub fn run() {
 
     // 语言：`--lang <代码>`，默认中文。
     //
-    // 用 rust-i18n 的全局语言设置（gpui-component 内部也是这一套），
-    // 语言文件在 `locales/`。放在最前面，让自检等无窗路径也用同一语言。
+    // 词表由安装的本地目录库提供。先确定语言，使无窗口路径和 UI
+    // 使用同一份已校验工作区快照。
     // The shell consumes this validated snapshot so language and profile
     // selection use the same file revision without reparsing on the UI thread.
     let workspace = store::read_workspace(&razer_storage::store_path());

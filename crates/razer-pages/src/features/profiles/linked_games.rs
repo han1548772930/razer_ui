@@ -1,46 +1,22 @@
 //! The source launches /synapse/profiles/index.html?displayMode=embeded.
 //! This local list records executables only; it never starts or monitors games.
 use super::*;
+use razer_storage::file_transfer::{Operation, Transfer};
 use std::path::Path;
 
-pub(super) fn executable_key(path: &str) -> String {
-    path.replace('/', "\\").to_lowercase()
-}
+pub(super) use razer_model::profile_transfer::{executable_key, valid_game};
 
-pub(super) fn valid_game(game: &LinkedGame) -> bool {
-    let path = game.executable.as_str();
-    let bytes = path.as_bytes();
-    let absolute = Path::new(path).is_absolute()
-        || bytes.len() > 3
-            && bytes[0].is_ascii_alphabetic()
-            && bytes[1] == b':'
-            && matches!(bytes[2], b'\\' | b'/')
-        || path.starts_with("\\\\");
-    let file = path.rsplit(['/', '\\']).next().unwrap_or_default();
-    !game.name.trim().is_empty()
-        && game.name.encode_utf16().count() <= 128
-        && !game.name.chars().any(char::is_control)
-        && absolute
-        && path.len() <= 4096
-        && !path.chars().any(char::is_control)
-        && file.len() > 4
-        && file.to_ascii_lowercase().ends_with(".exe")
-}
-
-fn game_from_path(path: &Path) -> Result<LinkedGame, String> {
-    let canonical = path
-        .canonicalize()
-        .map_err(|error| format!("无法读取程序文件：{error}"))?;
-    if !canonical.is_file() {
-        return Err("请选择一个 .exe 程序文件。".into());
-    }
+fn game_from_path(path: &Path, operation: &Operation) -> Result<LinkedGame, String> {
+    use razer_platform::executable::{SelectionError, inspect};
+    let selected = inspect(path, operation).map_err(|error| match error {
+        SelectionError::Read(error) => format!("无法读取程序文件：{error}"),
+        SelectionError::NotExecutable => "请选择一个 .exe 程序文件。".into(),
+        SelectionError::MissingName => "请选择有效的 .exe 程序文件。".into(),
+        SelectionError::Cancelled(error) => error,
+    })?;
     let game = LinkedGame {
-        name: path
-            .file_stem()
-            .and_then(|name| name.to_str())
-            .unwrap_or_default()
-            .into(),
-        executable: canonical.to_string_lossy().into_owned(),
+        name: selected.name().into(),
+        executable: selected.path().to_string_lossy().into_owned(),
     };
     valid_game(&game)
         .then_some(game)
@@ -52,6 +28,8 @@ struct LinkedGamesDialog {
     original: Vec<LinkedGame>,
     games: Vec<LinkedGame>,
     busy: bool,
+    transfer: Option<Transfer>,
+    task: Option<Task<()>>,
     error: Option<String>,
 }
 
@@ -61,6 +39,9 @@ impl LinkedGamesDialog {
             return;
         }
         self.busy = true;
+        let transfer = Transfer::new();
+        let operation = transfer.accept().expect("new executable selection is open");
+        self.transfer = Some(transfer.clone());
         self.error = None;
         let picker = cx.prompt_for_paths(PathPromptOptions {
             files: true,
@@ -68,14 +49,14 @@ impl LinkedGamesDialog {
             multiple: false,
             prompt: Some("选择要关联的 .exe 文件".into()),
         });
-        cx.spawn_in(window, async move |view, cx| {
+        self.task = Some(cx.spawn_in(window, async move |view, cx| {
             let result = match picker.await {
                 Ok(Ok(Some(paths))) => {
                     let path = paths.into_iter().next();
                     match path {
                         Some(path) => Some(
                             cx.background_executor()
-                                .spawn(async move { game_from_path(&path) })
+                                .spawn(async move { game_from_path(&path, &operation) })
                                 .await,
                         ),
                         None => None,
@@ -85,6 +66,16 @@ impl LinkedGamesDialog {
                 _ => Some(Err("无法打开文件选择窗口。".into())),
             };
             _ = view.update_in(cx, |this, _, cx| {
+                if this
+                    .transfer
+                    .as_ref()
+                    .is_none_or(|current| !current.is_same(&transfer))
+                    || transfer.check().is_err()
+                {
+                    return;
+                }
+                this.transfer = None;
+                this.task = None;
                 this.busy = false;
                 if this.target.current(cx).is_none() {
                     this.error = Some("当前配置文件已切换，请关闭后重新打开关联游戏。".into());
@@ -106,8 +97,7 @@ impl LinkedGamesDialog {
                 }
                 cx.notify();
             });
-        })
-        .detach();
+        }));
         cx.notify();
     }
 
@@ -131,6 +121,15 @@ impl LinkedGamesDialog {
             workspace.edit(window, cx, |settings| settings.linked_games = games);
         });
         dismiss_profile_dialog(&self.target.workspace, window, cx);
+    }
+}
+
+impl Drop for LinkedGamesDialog {
+    fn drop(&mut self) {
+        if let Some(transfer) = self.transfer.take() {
+            transfer.cancel();
+        }
+        self.task = None;
     }
 }
 
@@ -238,9 +237,11 @@ impl DeviceWorkspace {
             original: games.clone(),
             games,
             busy: false,
+            transfer: None,
+            task: None,
             error: None,
         });
-        self.show_profile_dialog(format!("关联游戏 — {name}"), view.into(), window, cx);
+        self.show_profile_dialog(format!("关联游戏 — {name}"), view.into(), None, window, cx);
         // 源码 `showLinkedGames` 为真时导航行带 `disabled` 类（`opacity:.5`）。
         self.linked_games_open = true;
     }

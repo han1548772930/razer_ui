@@ -13,16 +13,16 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_assets as resources;
 use razer_i18n as i18n;
+use razer_model::chroma_settings::DashboardPreferences;
 use razer_model::model::SetupStatus;
-use razer_pages::features::ProductWorkspace;
 use razer_pages::features::chroma_product;
 use razer_pages::features::chroma_product::ChromaPreset;
 use razer_pages::features::chroma_product::ChromaProduct;
+use razer_pages::features::{Choice, ProductWorkspace};
+use razer_state::chroma_settings::{AppFilter, Change, ChromaSettings, DashboardGroup};
 use razer_widgets::app_introduction_banner::AppIntroductionBanner;
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::surface::css;
-use serde::{Deserialize, Serialize};
-use std::{collections::BTreeSet, path::PathBuf};
 
 #[path = "chroma_page/presentation.rs"]
 mod presentation;
@@ -53,62 +53,18 @@ pub enum ChromaPageEvent {
     OpenTour(TourKind),
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(default)]
-struct Preferences {
-    introduction: bool,
-    onboard: bool,
-    auto_prioritize: bool,
-    show_disabled: bool,
-    filter: usize,
-    collapsed: BTreeSet<String>,
-}
-impl Default for Preferences {
-    fn default() -> Self {
-        Self {
-            introduction: true,
-            onboard: true,
-            auto_prioritize: false,
-            show_disabled: true,
-            filter: 0,
-            collapsed: BTreeSet::new(),
-        }
-    }
-}
-impl Preferences {
-    fn path() -> PathBuf {
-        std::env::var_os("APPDATA")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join("razer_ui")
-            .join("chroma-ui.json")
-    }
-    fn load() -> Self {
-        std::fs::read(Self::path())
-            .ok()
-            .and_then(|s| serde_json::from_slice(&s).ok())
-            .unwrap_or_default()
-    }
-    fn save(&self) -> Result<(), String> {
-        let path = Self::path();
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-        }
-        let bytes = serde_json::to_vec(self).map_err(|error| error.to_string())?;
-        std::fs::write(path, bytes).map_err(|error| error.to_string())
-    }
-}
 pub struct ChromaPage {
     tab: ChromaTab,
     history: Vec<ChromaTab>,
     history_index: usize,
-    preferences: Preferences,
+    preferences: DashboardPreferences,
+    settings: Entity<ChromaSettings>,
+    window: AnyWindowHandle,
     persistence_error: Option<String>,
     devices: Vec<Entity<ProductWorkspace>>,
     device_subscriptions: Vec<Subscription>,
     search: Entity<InputState>,
-    filter: Entity<SelectState<Vec<String>>>,
-    locale: String,
+    filter: Entity<SelectState<Vec<Choice>>>,
     focus: FocusHandle,
     dialog: Option<(Entity<ProductWorkspace>, Entity<ChromaProduct>)>,
     dialog_return_focus: Option<FocusHandle>,
@@ -118,26 +74,53 @@ impl EventEmitter<ChromaPageEvent> for ChromaPage {}
 
 impl ChromaPage {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let preferences = Preferences::load();
+        let settings = ChromaSettings::acquire(cx);
+        let preferences = settings.read(cx).preferences().dashboard().clone();
+        let persistence_error = settings.read(cx).error().map(str::to_owned);
         let search = cx.new(|cx| InputState::new(window, cx).placeholder(tr("TEXT_SEARCH")));
         let filter = cx.new(|cx| {
             SelectState::new(
                 Self::filter_choices(),
-                Some(IndexPath::new(preferences.filter.min(2))),
+                Some(IndexPath::new(preferences.filter().position())),
                 window,
                 cx,
             )
         });
         let subscriptions = vec![
+            cx.observe(&settings, |this, settings, cx| {
+                let state = settings.read(cx);
+                let previous_filter = this.preferences.filter();
+                this.preferences = state.preferences().dashboard().clone();
+                this.persistence_error = state.error().map(str::to_owned);
+                let selected = this.preferences.filter();
+                if selected != previous_filter {
+                    let handle = this.window;
+                    let owner = cx.entity().downgrade();
+                    cx.defer(move |cx| {
+                        let _ = handle.update(cx, |_, window, cx| {
+                            let _ = owner.update(cx, |this, cx| {
+                                if this.window != handle || this.preferences.filter() != selected {
+                                    return;
+                                }
+                                this.filter.update(cx, |state, cx| {
+                                    state.set_selected_index(
+                                        Some(IndexPath::new(selected.position())),
+                                        window,
+                                        cx,
+                                    );
+                                });
+                            });
+                        });
+                    });
+                }
+                cx.notify();
+            }),
             cx.observe(&search, |_, _, cx| cx.notify()),
-            cx.subscribe_in(&filter, window, |this, _, event, _, cx| {
+            cx.subscribe(&filter, |this, _, event, cx| {
                 if let SelectEvent::Confirm(Some(value)) = event {
-                    this.preferences.filter = Self::filter_choices()
-                        .iter()
-                        .position(|v| v == value)
-                        .unwrap_or(0);
-                    this.save_preferences(cx);
-                    cx.notify();
+                    if let Some(selected) = AppFilter::from_id(value) {
+                        this.change_preferences(vec![Change::Filter(selected)], cx);
+                    }
                 }
             }),
         ];
@@ -146,12 +129,13 @@ impl ChromaPage {
             history: vec![ChromaTab::Dashboard],
             history_index: 0,
             preferences,
-            persistence_error: None,
+            settings,
+            window: window.window_handle(),
+            persistence_error,
             devices: Vec::new(),
             device_subscriptions: Vec::new(),
             search,
             filter,
-            locale: i18n::locale(),
             focus: cx.focus_handle(),
             dialog: None,
             dialog_return_focus: None,
@@ -159,25 +143,48 @@ impl ChromaPage {
         }
     }
     fn save_preferences(&mut self, cx: &mut Context<Self>) {
-        self.persistence_error = self.preferences.save().err();
+        self.persistence_error = self
+            .settings
+            .update(cx, |settings, cx| settings.retry(cx))
+            .err();
+        cx.notify();
+    }
+    fn change_preferences(&mut self, changes: Vec<Change>, cx: &mut Context<Self>) {
+        self.persistence_error = self
+            .settings
+            .update(cx, |settings, cx| settings.change_many(changes, cx))
+            .err();
+        self.preferences = self.settings.read(cx).preferences().dashboard().clone();
         cx.notify();
     }
     pub fn reset_tutorials(&mut self, cx: &mut Context<Self>) {
-        self.preferences.introduction = true;
-        self.preferences.onboard = true;
-        self.save_preferences(cx);
+        self.change_preferences(vec![Change::Introduction(true), Change::Onboard(true)], cx);
     }
     pub fn introduction_enabled(&self) -> bool {
-        self.preferences.introduction
+        self.preferences.introduction_enabled()
     }
-    fn filter_choices() -> Vec<String> {
+    fn filter_choices() -> Vec<Choice> {
         [
-            "TEXT_DROPDOWN_ALL",
-            "TEXT_CHROMA_WORKSHOP_TITLE_APPS",
-            "TEXT_CHROMA_WORKSHOP_TITLE_GAMES",
+            (AppFilter::All, "TEXT_DROPDOWN_ALL"),
+            (AppFilter::Apps, "TEXT_CHROMA_WORKSHOP_TITLE_APPS"),
+            (AppFilter::Games, "TEXT_CHROMA_WORKSHOP_TITLE_GAMES"),
         ]
-        .map(tr)
+        .map(|(filter, key)| Choice::localized(filter.id(), format!("CHROMA_SOURCE.{key}")))
         .to_vec()
+    }
+    pub fn refresh_locale(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.search.update(cx, |search, cx| {
+            search.set_placeholder(tr("TEXT_SEARCH"), window, cx)
+        });
+        cx.notify();
+    }
+    pub fn bind_window(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.window = window.window_handle();
+        let filter = self.preferences.filter();
+        self.filter.update(cx, |state, cx| {
+            state.set_selected_index(Some(IndexPath::new(filter.position())), window, cx);
+        });
+        self.refresh_locale(window, cx);
     }
     pub fn set_devices(&mut self, devices: Vec<Entity<ProductWorkspace>>, cx: &mut Context<Self>) {
         self.devices = devices;
@@ -308,13 +315,14 @@ impl ChromaPage {
     }
     fn group(
         &self,
-        key: &'static str,
+        group: DashboardGroup,
         title: String,
         height: f32,
         children: AnyElement,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        let collapsed = self.preferences.collapsed.contains(key);
+        let key = group.id();
+        let collapsed = self.preferences.is_collapsed(group);
         v_flex()
             .w_full()
             .pb(css(20.))
@@ -334,11 +342,11 @@ impl ChromaPage {
                             .child(title.to_uppercase())
                             .hover(|s| s.text_color(rgb(0xffffff)))
                             .on_click(cx.listener(move |this, _, _, cx| {
-                                if !this.preferences.collapsed.remove(key) {
-                                    this.preferences.collapsed.insert(key.into());
-                                }
-                                this.save_preferences(cx);
-                                cx.notify();
+                                let collapsed = !this.preferences.is_collapsed(group);
+                                this.change_preferences(
+                                    vec![Change::GroupCollapsed { group, collapsed }],
+                                    cx,
+                                );
                             })),
                     )
                     .when(key == "chroma-apply-effects", |row| {
@@ -363,9 +371,7 @@ impl ChromaPage {
             "chroma-introduction-banner",
             "CHROMA_SOURCE.",
             cx.listener(|this, _, _, cx| {
-                this.preferences.introduction = false;
-                this.save_preferences(cx);
-                cx.notify();
+                this.change_preferences(vec![Change::Introduction(false)], cx);
             }),
             cx.listener(|_, _, _, cx| cx.emit(ChromaPageEvent::OpenTour(TourKind::Synapse))),
             cx.listener(|_, _, _, cx| cx.emit(ChromaPageEvent::OpenTour(TourKind::Chroma))),
@@ -373,6 +379,7 @@ impl ChromaPage {
         .into_any_element()
     }
     fn devices(&self, cx: &mut Context<Self>) -> Vec<AnyElement> {
+        let locale = i18n::locale().to_lowercase();
         self.devices
             .iter()
             .filter_map(|entity| {
@@ -391,7 +398,7 @@ impl ChromaPage {
                     .dashboard
                     .edition_name
                     .as_ref()
-                    .map(|text| text.get(&self.locale.to_lowercase()).to_owned())
+                    .map(|text| text.get(&locale).to_owned())
                     .filter(|text| !text.is_empty());
                 let target = entity.clone();
                 let snapshot = chroma_product::lighting_snapshot(workspace, cx);
@@ -637,7 +644,7 @@ impl ChromaPage {
             .when(viewport > 1279., |v| v.mx_auto())
             .mt(css(20.))
             .child(self.group(
-                "chroma-apply-effects",
+                DashboardGroup::ApplyEffects,
                 tr("APPLY_LIGHTING_EFFECTS"),
                 grid_height(width, 8, 120., 130., 10.),
                 self.presets(cx),
@@ -646,7 +653,7 @@ impl ChromaPage {
             .when(has_devices, |v| {
                 v.child(
                     self.group(
-                        "chroma-device-group",
+                        DashboardGroup::Devices,
                         tr("TEXT_RAZER_CHROMA_DEVICES"),
                         grid_height(width, device_count, 290., 245., 20.),
                         h_flex()
@@ -660,7 +667,7 @@ impl ChromaPage {
             });
         v_flex()
             .w_full()
-            .when(self.preferences.introduction, |v| {
+            .when(self.preferences.introduction_enabled(), |v| {
                 v.child(self.introduction(cx))
             })
             .child(groups)
@@ -698,9 +705,7 @@ impl ChromaPage {
                             .size(css(16.)),
                     )
                     .on_click(cx.listener(|this, _, _, cx| {
-                        this.preferences.onboard = false;
-                        this.save_preferences(cx);
-                        cx.notify();
+                        this.change_preferences(vec![Change::Onboard(false)], cx);
                     })),
             );
         v_flex()
@@ -709,7 +714,7 @@ impl ChromaPage {
             .mx_auto()
             .text_size(css(14.))
             .line_height(css(17.))
-            .when(self.preferences.onboard, |v| v.child(onboard))
+            .when(self.preferences.onboard_enabled(), |v| v.child(onboard))
             .child(
                 h_flex()
                     .justify_between()
@@ -742,11 +747,9 @@ impl ChromaPage {
                     .child(
                         Checkbox::new("chroma-auto-prioritize")
                             .label(tr("TEXT_AUTO_PRIORITIZE"))
-                            .checked(self.preferences.auto_prioritize)
+                            .checked(self.preferences.auto_prioritize_enabled())
                             .on_change(cx.listener(|this, value, _, cx| {
-                                this.preferences.auto_prioritize = *value;
-                                this.save_preferences(cx);
-                                cx.notify();
+                                this.change_preferences(vec![Change::AutoPrioritize(*value)], cx);
                             })),
                     )
                     .child(
@@ -767,11 +770,12 @@ impl ChromaPage {
                             .child(
                                 Checkbox::new("chroma-show-disabled")
                                     .label(tr("TEXT_SHOW_DISABLED_APPS"))
-                                    .checked(self.preferences.show_disabled)
+                                    .checked(self.preferences.show_disabled())
                                     .on_change(cx.listener(|this, value, _, cx| {
-                                        this.preferences.show_disabled = *value;
-                                        this.save_preferences(cx);
-                                        cx.notify();
+                                        this.change_preferences(
+                                            vec![Change::ShowDisabled(*value)],
+                                            cx,
+                                        );
                                     })),
                             ),
                     ),
@@ -797,6 +801,7 @@ impl ChromaPage {
         // 65596/P5 is the current Modules allowlist. Service records such as
         // createdAt, firmwareUpdateInfo, descriptions and sizes remain absent
         // until actually supplied; this catalogue never fabricates them.
+        let locale = i18n::locale();
         let viewport =
             f32::from(window.viewport_size().width) * 16. / f32::from(window.rem_size()).max(1.);
         let name_width = if viewport <= 720. {
@@ -848,7 +853,7 @@ impl ChromaPage {
             )
             .children(entries.map(|(module, english, key, icon)| {
                 // 40554/k's current Chinese name overrides.
-                let name = if self.locale.eq_ignore_ascii_case("zh-CN") {
+                let name = if locale.eq_ignore_ascii_case("zh-CN") {
                     match module {
                         PickerModule::ChromaStudio => "幻彩控制室 (Chroma Studio)".to_string(),
                         PickerModule::ChromaConnect => "幻彩互联 (Chroma Connect)".to_string(),
@@ -860,7 +865,7 @@ impl ChromaPage {
                         }
                         _ => unreachable!(),
                     }
-                } else if self.locale.eq_ignore_ascii_case("en") {
+                } else if locale.eq_ignore_ascii_case("en") {
                     english.to_string()
                 } else {
                     tr(key)
@@ -968,13 +973,6 @@ impl ChromaPage {
 }
 impl Render for ChromaPage {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if self.locale != i18n::locale() {
-            self.locale = i18n::locale();
-            self.search
-                .update(cx, |s, cx| s.set_placeholder(tr("TEXT_SEARCH"), window, cx));
-            self.filter
-                .update(cx, |s, cx| s.set_items(Self::filter_choices(), window, cx));
-        }
         let content = match self.tab {
             ChromaTab::Dashboard => self.dashboard(window, cx),
             ChromaTab::Apps => self.apps(cx),
@@ -998,25 +996,28 @@ impl Render for ChromaPage {
             .child(self.toolbar(cx))
             .child(self.navigation(cx))
             .when_some(self.persistence_error.clone(), |view, error| {
+                let saving = self.settings.read(cx).save_error().is_some();
+                let message = if saving {
+                    format!("本地偏好保存失败，更改仍保留在本次会话：{error}")
+                } else {
+                    format!("本地偏好读取失败：{error}")
+                };
+                let retry = if saving { "重试保存" } else { "重试读取" };
                 view.child(
                     h_flex()
                         .id("chroma-preferences-error")
                         .test_support()
-                        .aria_label(format!("本地偏好保存失败：{error}"))
+                        .aria_label(message.clone())
                         .px(css(20.))
                         .py(css(8.))
                         .gap(css(12.))
                         .text_size(css(12.))
-                        .text_color(rgb(0xfd4949))
-                        .child(
-                            div()
-                                .flex_1()
-                                .child(format!("本地偏好保存失败，更改仍保留在本次会话：{error}")),
-                        )
+                        .text_color(cx.theme().danger)
+                        .child(div().flex_1().child(message))
                         .child(
                             BaseButton::new("chroma-preferences-retry")
-                                .accessibility_label("重试保存本地偏好")
-                                .child("重试保存")
+                                .accessibility_label(retry)
+                                .child(retry)
                                 .on_click(cx.listener(|this, _, _, cx| this.save_preferences(cx))),
                         ),
                 )

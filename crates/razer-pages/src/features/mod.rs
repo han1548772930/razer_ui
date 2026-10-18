@@ -4,20 +4,15 @@
 mod audio_page;
 #[path = "workspace/controls.rs"]
 mod controls;
-#[path = "mapping/mapping_device_runtime.rs"]
-pub(crate) mod mapping_device_runtime;
+#[path = "mapping/mapping_callback.rs"]
+mod mapping_callback;
 #[path = "workspace/source_catalog.rs"]
 mod source_catalog;
-pub use mapping_device_runtime::MappingCallbackRequested;
-#[path = "mapping/mapping_key_capture_runtime.rs"]
-mod mapping_key_capture_runtime;
+pub use mapping_callback::MappingCallbackRequested;
 #[path = "mapping/mapping_text_editor.rs"]
 mod mapping_text_editor;
 #[path = "mapping/source_key.rs"]
 pub(crate) mod source_key;
-pub fn active_mapping_workers() -> usize {
-    mapping_device_runtime::active_workers() + mapping_key_capture_runtime::active_workers()
-}
 pub use controls::Choice;
 #[path = "workspace/adjustment_prompt.rs"]
 mod adjustment_prompt;
@@ -45,12 +40,6 @@ mod screen_color;
 #[path = "mouse/dpi/sensitivity.rs"]
 mod sensitivity;
 pub use razer_model::settings;
-// Keep the pure native encoder and its strict input validation available for
-// the eventual transport. The source UI has no standalone diagnostic button;
-// the removed local "apply" control was disabled and never sent a request.
-#[allow(dead_code)]
-#[path = "shortcuts/shortcut_engine.rs"]
-pub mod shortcut_engine;
 #[path = "shortcuts/shortcuts.rs"]
 pub mod shortcuts;
 #[path = "workspace/workspace.rs"]
@@ -76,11 +65,13 @@ pub use source_help_owner::{HelpOwnerCommand, HelpOwnerOverlay, HelpOwnerRequest
 mod source_workspace;
 pub use product_workspace::ProductWorkspace;
 pub use source_controls::{
+    HyperpollingIndicatorRequested, HyperpollingOrigin,
     HyperfluxOperation, HyperfluxRequested, ReceiverBrightnessReadRequested,
     ReceiverBrightnessRequested, ReceiverCategory, ReceiverDeviceRequested,
     ReceiverDevicesObservation, ReceiverOperation, ReceiverPairingEvent, ReceiverPairingIntent,
     ReceiverPairingObservation, ReceiverPeer, ReceiverProgress, RipsawMonitoringRequested,
 };
+pub use source_workspace::ReceiverProfileSelectionRequested;
 #[path = "gamepad/mod.rs"]
 pub mod gamepad_products;
 #[path = "keyboard/mod.rs"]
@@ -205,7 +196,7 @@ mod system_products;
 
 #[path = "accessories/accessory_system_products.rs"]
 mod accessory_system_products;
-pub use accessory_system_products::HanboCoolerRequested;
+pub use accessory_system_products::{HanboCoolerRequested, HanboLocalSettingsChanged};
 #[path = "accessories/aether_strip.rs"]
 pub mod aether_strip;
 #[path = "automation.rs"]

@@ -48,6 +48,13 @@ pub(super) fn mouse_receiver_legacy(
 ) -> anyhow::Result<Value> {
     device_reads::mouse_receiver_legacy(target, change)
 }
+pub(super) fn hyperpolling_receiver(
+    path: &str,
+    container: &str,
+    command: razer_device::hyperpolling_receiver::Command,
+) -> anyhow::Result<Value> {
+    hyperpolling_receiver::request(path, container, command)
+}
 pub(super) fn keyboard_wristrest(
     target: &razer_device::keyboard_wristrest::Target,
     canceled: &std::sync::atomic::AtomicBool,
@@ -69,6 +76,20 @@ pub(super) fn mouse_indicator_led_monitor(
 ) -> anyhow::Result<()> {
     device_reads::mouse_indicator_led_monitor(target, canceled, publish)
 }
+pub(super) fn mouse_tracking(
+    target: &razer_device::device_reads::DeviceReadTarget,
+    setting: razer_device::mouse_tracking::TrackingSetting,
+    canceled: &std::sync::atomic::AtomicBool,
+) -> anyhow::Result<razer_device::mouse_tracking::SubmissionReport> {
+    device_reads::mouse_tracking(target, setting, canceled)
+}
+pub(super) fn mouse_philips(
+    target: &razer_device::device_reads::DeviceReadTarget,
+    setting: razer_device::mouse_philips::Setting,
+    canceled: &std::sync::atomic::AtomicBool,
+) -> anyhow::Result<razer_device::mouse_philips::SubmissionReport> {
+    device_reads::mouse_philips(target, setting, canceled)
+}
 pub(super) fn seiren_audio_capture(
     canceled: &std::sync::atomic::AtomicBool,
     options: &razer_device::seiren_microphone::CaptureOptions,
@@ -84,11 +105,11 @@ pub(super) fn seiren_audio_playback(
     seiren_audio_capture_adapter::playback(canceled, clip, started)
 }
 use std::{
-    ffi::{CStr, CString, c_char},
+    ffi::{CStr, c_char},
     mem::ManuallyDrop,
     sync::{
-        Mutex, OnceLock,
-        mpsc::{self, Receiver, Sender, SyncSender},
+        Mutex,
+        mpsc::{self, Sender},
     },
 };
 
@@ -98,6 +119,10 @@ mod controller_calibration_identity;
 mod controller_input;
 #[path = "device_reads.rs"]
 mod device_reads;
+#[path = "global_shortcut_capture.rs"]
+mod global_shortcut_capture;
+#[path = "global_shortcuts.rs"]
+mod global_shortcuts;
 #[path = "hid/hid.rs"]
 mod hid;
 #[path = "hid/hid_transport.rs"]
@@ -106,6 +131,8 @@ mod hid_transport;
 mod macro_recorder;
 #[path = "mapping_device.rs"]
 mod mapping_device;
+#[path = "mapping_execution.rs"]
+mod mapping_execution;
 #[path = "mapping_key_capture.rs"]
 mod mapping_key_capture;
 #[path = "mapping_native_input.rs"]
@@ -126,12 +153,16 @@ mod mixer_hardware;
 mod mixer_lighting;
 #[path = "mixer_meter.rs"]
 mod mixer_meter;
+#[path = "mouse/input_monitoring.rs"]
+mod mouse_input_monitoring;
+#[path = "mouse/philips_measurement.rs"]
+mod philips_measurement;
 #[path = "audio/seiren_audio_capture.rs"]
 mod seiren_audio_capture_adapter;
-#[path = "audio/surround.rs"]
-mod surround_adapter;
 #[path = "shortcut_capture.rs"]
 mod shortcut_capture;
+#[path = "audio/surround.rs"]
+mod surround_adapter;
 pub(super) fn mixer_lighting_sample(node: &HidNode, sources: [u8; 4]) -> anyhow::Result<Value> {
     mixer_lighting::sample(node, sources)
 }
@@ -143,10 +174,16 @@ mod receiver_brightness;
 mod receiver_events;
 #[path = "receiver/receiver_identity.rs"]
 mod receiver_identity;
+#[path = "receiver/hyperpolling_receiver.rs"]
+mod hyperpolling_receiver;
+#[path = "receiver/receiver_lighting.rs"]
+mod receiver_lighting;
 #[path = "receiver/receiver_pairing.rs"]
 mod receiver_pairing;
 #[path = "receiver/receiver_reconnect.rs"]
 mod receiver_reconnect;
+#[path = "system_monitor.rs"]
+mod system_monitor;
 #[path = "hid/usb.rs"]
 mod usb;
 #[path = "user_app_files.rs"]
@@ -156,17 +193,12 @@ mod user_app_files;
 // call and terminates after a timeout, so a late callback cannot satisfy a later
 // request. Function pointers are static for the entire worker lifetime.
 static PENDING: Mutex<Option<Sender<CallbackReply>>> = Mutex::new(None);
-static SHORTCUT_EVENTS: OnceLock<SyncSender<Value>> = OnceLock::new();
 
 type Callback0 = unsafe extern "C" fn();
 type Callback2 = unsafe extern "C" fn(bool, *const c_char);
 type Callback3 = unsafe extern "C" fn(bool, *const c_char, *const c_char);
-type EventCallback = unsafe extern "C" fn(i32, *const c_char, u64);
 type Initialize = unsafe extern "C" fn(Callback0);
 type Query = unsafe extern "C" fn(Callback3);
-type RegisterShortcut = unsafe extern "C" fn(u32, u32, *const c_char, Callback2);
-type UnregisterShortcut = unsafe extern "C" fn(u32, u32, Callback2);
-type SetShortcutCallback = unsafe extern "C" fn(EventCallback, Callback2);
 
 pub(super) fn controller_calibration_node_proof(node: &HidNode) -> anyhow::Result<Value> {
     controller_feature_node_proof(node, 1)
@@ -230,16 +262,6 @@ unsafe extern "C" fn callback3(success: bool, reason: *const c_char, value: *con
     });
 }
 
-unsafe extern "C" fn shortcut_event(event_type: i32, value: *const c_char, time_tick: u64) {
-    if let Some(sender) = SHORTCUT_EVENTS.get() {
-        let _ = sender.try_send(json!({
-            "event_type": event_type,
-            "event": unsafe { copy_string(value) },
-            "time_tick": time_tick,
-        }));
-    }
-}
-
 pub(super) struct NativeRuntime {
     paths: EnginePaths,
     // Never unload a library while its background callbacks may still be active.
@@ -249,26 +271,28 @@ pub(super) struct NativeRuntime {
     mapping_initialized: bool,
     simple_initialized: bool,
     app_file_owners: Vec<String>,
-    event_callback_installed: bool,
-    shortcut_events: Receiver<Value>,
     macro_recorder: macro_recorder::Recorder,
+    global_shortcuts: global_shortcuts::State,
     receiver_pairing: receiver_pairing::Controller,
+    receiver_lighting: receiver_lighting::Controller,
     receiver_reconnect: receiver_reconnect::Controller,
     mapping_device: mapping_device::State,
+    mapping_execution: mapping_execution::State,
     controller_input: controller_input::State,
+    philips_measurement: philips_measurement::State,
+    mouse_input_monitoring: mouse_input_monitoring::State,
     shortcut_capture: shortcut_capture::State,
     mapping_key_capture: mapping_key_capture::State,
     mixer_meter: Option<mixer_meter::Meter>,
     mixer_hardware: Option<mixer_hardware::Hardware>,
     seiren_audio: device_reads::SeirenAudio,
+    system_monitor: system_monitor::State,
     surround: surround_adapter::State,
     poisoned: bool,
 }
 
 impl NativeRuntime {
     pub(super) fn new() -> Self {
-        let (sender, shortcut_events) = mpsc::sync_channel(512);
-        let _ = SHORTCUT_EVENTS.set(sender);
         Self {
             paths: EnginePaths::discover(),
             mapping: None,
@@ -276,18 +300,22 @@ impl NativeRuntime {
             mapping_initialized: false,
             simple_initialized: false,
             app_file_owners: Vec::new(),
-            event_callback_installed: false,
-            shortcut_events,
             macro_recorder: macro_recorder::Recorder::new(),
+            global_shortcuts: global_shortcuts::State::new(),
             receiver_pairing: receiver_pairing::Controller::default(),
+            receiver_lighting: receiver_lighting::Controller::default(),
             receiver_reconnect: receiver_reconnect::Controller::default(),
             mapping_device: mapping_device::State::new(),
+            mapping_execution: mapping_execution::State::default(),
             controller_input: controller_input::State::new(),
+            philips_measurement: philips_measurement::State::new(),
+            mouse_input_monitoring: mouse_input_monitoring::State::default(),
             shortcut_capture: shortcut_capture::State::new(),
             mapping_key_capture: mapping_key_capture::State::new(),
             mixer_meter: None,
             mixer_hardware: None,
             seiren_audio: device_reads::SeirenAudio::default(),
+            system_monitor: system_monitor::State::default(),
             surround: surround_adapter::State::default(),
             poisoned: false,
         }
@@ -352,6 +380,7 @@ impl NativeRuntime {
     }
 
     fn simple(&mut self) -> anyhow::Result<()> {
+        self.complete_system_monitor_simple_init(std::time::Duration::ZERO)?;
         if self.simple_initialized {
             return Ok(());
         }
@@ -382,10 +411,48 @@ impl NativeRuntime {
     }
 
     pub(super) fn request(&mut self, request: ServiceRequest) -> anyhow::Result<Value> {
-        if self.poisoned {
+        if self.poisoned
+            && !matches!(
+                request,
+                ServiceRequest::Shutdown
+                    | ServiceRequest::SystemMonitorPoll { .. }
+                    | ServiceRequest::SystemMonitorStop { .. }
+            )
+        {
             bail!("设备服务回调状态已失效，请重新连接");
         }
         match request {
+            ServiceRequest::MouseInputMonitoringStart { owner_guid } => {
+                self.start_mouse_input_monitoring(owner_guid)
+            }
+            ServiceRequest::MouseInputMonitoringPoll { owner_guid } => {
+                self.poll_mouse_input_monitoring(&owner_guid)
+            }
+            ServiceRequest::MouseInputMonitoringStop { owner_guid } => {
+                self.stop_mouse_input_monitoring(&owner_guid)
+            }
+            ServiceRequest::SystemMonitorStart {
+                owner_guid,
+                container_id,
+                product_id,
+            } => self.start_system_monitor(owner_guid, container_id, product_id),
+            ServiceRequest::SystemMonitorPoll { owner_guid } => {
+                serde_json::to_value(self.system_monitor.poll(&owner_guid)?).map_err(Into::into)
+            }
+            ServiceRequest::SystemMonitorStop { owner_guid } => {
+                serde_json::to_value(self.system_monitor.stop(&owner_guid)?).map_err(Into::into)
+            }
+            ServiceRequest::MousePhilipsMeasurementStart {
+                operation_id,
+                target,
+                kind,
+            } => self.start_philips_measurement(operation_id, target, kind),
+            ServiceRequest::MousePhilipsMeasurementPoll { operation_id } => {
+                self.poll_philips_measurement(&operation_id)
+            }
+            ServiceRequest::MousePhilipsMeasurementCancel { operation_id } => {
+                self.cancel_philips_measurement(&operation_id)
+            }
             ServiceRequest::ControllerInputStart {
                 product_id,
                 physical_product_id,
@@ -404,11 +471,13 @@ impl NativeRuntime {
                 self.stop_controller_input(&owner_guid)
             }
             ServiceRequest::StartMappingKeyCapture => self.start_mapping_key_capture(),
+            ServiceRequest::StartGlobalShortcutCapture => self.start_global_shortcut_capture(),
             ServiceRequest::StartKeyboardCalibrationCapture {
                 product_id,
                 container_id,
             } => self.start_keyboard_calibration_capture(product_id, &container_id),
             ServiceRequest::MappingKeyCaptureEvents => self.mapping_key_capture_events(),
+            ServiceRequest::GlobalShortcutCaptureEvents => self.global_shortcut_capture_events(),
             ServiceRequest::StopMappingKeyCapture => self.stop_mapping_key_capture(),
             ServiceRequest::StartShortcutCapture => self.start_shortcut_capture(),
             ServiceRequest::ShortcutCaptureEvents => self.shortcut_capture_events(),
@@ -483,6 +552,12 @@ impl NativeRuntime {
             | ServiceRequest::LeviathanEventsStop { .. }
             | ServiceRequest::HidNodeMouseIndicatorLed { .. }
             | ServiceRequest::MouseIndicatorLedStart { .. }
+            | ServiceRequest::MouseTrackingStart { .. }
+            | ServiceRequest::MouseTrackingPoll { .. }
+            | ServiceRequest::MouseTrackingCancel { .. }
+            | ServiceRequest::MousePhilipsStart { .. }
+            | ServiceRequest::MousePhilipsPoll { .. }
+            | ServiceRequest::MousePhilipsCancel { .. }
             | ServiceRequest::MouseIndicatorLedPoll { .. }
             | ServiceRequest::MouseIndicatorLedStop { .. }
             | ServiceRequest::HidNodeSeirenEq { .. }
@@ -490,6 +565,7 @@ impl NativeRuntime {
             | ServiceRequest::KeyboardLatestRestore { .. }
             | ServiceRequest::KeyboardLegacyCalibration { .. }
             | ServiceRequest::MouseReceiverLegacy { .. }
+            | ServiceRequest::HyperpollingReceiver { .. }
             | ServiceRequest::KeyboardAnalogStart { .. }
             | ServiceRequest::KeyboardAnalogPoll { .. }
             | ServiceRequest::KeyboardAnalogCancel { .. }
@@ -519,6 +595,8 @@ impl NativeRuntime {
             | ServiceRequest::HidNodeMouseReceiverIdle { .. }
             | ServiceRequest::HidNodeWrite { .. }
             | ServiceRequest::HidNodeHanboCooler { .. }
+            | ServiceRequest::HidNodeHanboCoolerRead { .. }
+            | ServiceRequest::HidNodeHanboStartupRead { .. }
             | ServiceRequest::HidNodeMixerRead { .. }
             | ServiceRequest::HidNodeMixerLocalWrite { .. }
             | ServiceRequest::HidNodeMixerWrite { .. }
@@ -689,6 +767,38 @@ impl NativeRuntime {
                 path,
                 device_container_id,
             } => receiver::dock_mode(&path, &device_container_id),
+            ServiceRequest::ReceiverLightingApply {
+                operation_id,
+                path,
+                device_container_id,
+                configuration,
+            } => serde_json::to_value(self.receiver_lighting.apply(
+                operation_id,
+                path,
+                device_container_id,
+                configuration,
+            )?)
+            .map_err(Into::into),
+            ServiceRequest::ReceiverLightingPoll { operation_id } => {
+                serde_json::to_value(self.receiver_lighting.poll(&operation_id)?)
+                    .map_err(Into::into)
+            }
+            ServiceRequest::ReceiverLightingChromaAttributeResult {
+                operation_id,
+                worker_id,
+                request_id,
+                receipt,
+            } => serde_json::to_value(self.receiver_lighting.chroma_attribute_result(
+                &operation_id,
+                worker_id,
+                request_id,
+                receipt,
+            )?)
+            .map_err(Into::into),
+            ServiceRequest::ReceiverLightingStop { operation_id } => {
+                serde_json::to_value(self.receiver_lighting.stop(&operation_id)?)
+                    .map_err(Into::into)
+            }
             ServiceRequest::ReceiverBrightnessRead {
                 path,
                 device_container_id,
@@ -782,23 +892,25 @@ impl NativeRuntime {
             | ServiceRequest::ShortcutEvents => {
                 bail!("Global shortcuts must use the direct Rust platform owner")
             }
-            ServiceRequest::SubmitGlobalShortcutMappings { app_engine } => {
-                if !app_engine.get("mappings").is_some_and(Value::is_array)
-                    || app_engine.get("hash").is_none()
-                {
-                    bail!("原引擎映射须包含 generateAppEngineMappings 生成的 mappings 和 hash");
-                }
-                self.mapping()?;
-                let key = c"synapseGlobalShortcuts";
-                let value = CString::new(json!({"appEngine": app_engine}).to_string())?;
-                let set: StorageSetItem = unsafe { self.mapping_symbol("localStorageSetItem")? };
-                let result = self.call(|| unsafe { set(key.as_ptr(), value.as_ptr(), callback2) });
-                if self.poisoned {
-                    std::mem::forget(value);
-                }
-                result?;
-                Ok(json!({"accepted": true}))
+            ServiceRequest::GlobalShortcutStart { owner_guid } => {
+                self.start_global_shortcut_owner(&owner_guid)
             }
+            ServiceRequest::GlobalShortcutPublish {
+                owner_guid,
+                revision,
+                document,
+            } => self.publish_global_shortcuts(&owner_guid, revision, &document),
+            ServiceRequest::GlobalShortcutPoll { owner_guid } => {
+                self.global_shortcut_events(&owner_guid)
+            }
+            ServiceRequest::GlobalShortcutStop { owner_guid } => {
+                self.stop_global_shortcut_owner(&owner_guid)
+            }
+            ServiceRequest::MappingExecution {
+                owner_guid,
+                revision,
+                target,
+            } => self.set_mapping_execution(&owner_guid, revision, target),
             ServiceRequest::AudioMixerHardwareStart { node } => {
                 anyhow::ensure!(
                     self.mixer_hardware.is_none(),
@@ -852,18 +964,60 @@ impl NativeRuntime {
                 Ok(json!({"capture_stopped":true}))
             }
             ServiceRequest::Shutdown => {
+                let mut errors = Vec::new();
+                match self.receiver_lighting.shutdown() {
+                    Ok(Some(status)) => {
+                        if !status.restoration_complete()
+                            || !status.software.cleanup_errors.is_empty()
+                        {
+                            errors.push(format!(
+                                "Receiver lighting restoration or cleanup was not confirmed: {:?}",
+                                status.software
+                            ));
+                        }
+                    }
+                    Ok(None) => {}
+                    Err(error) => {
+                        errors.push(format!("Receiver lighting cleanup failed: {error:#}"));
+                    }
+                }
+                if let Some(owner) = self.mouse_input_monitoring.owner() {
+                    if let Err(error) = self.stop_mouse_input_monitoring(&owner) {
+                        errors.push(format!("Mouse input monitor cleanup failed: {error:#}"));
+                    }
+                }
                 self.mixer_hardware = None;
                 if let Some(meter) = self.mixer_meter.as_mut() {
-                    meter.stop()?;
+                    match meter.stop() {
+                        Ok(()) => self.mixer_meter = None,
+                        Err(error) => errors.push(format!("Mixer meter cleanup failed: {error:#}")),
+                    }
                 }
-                self.mixer_meter = None;
-                let mut errors = Vec::new();
+                let system_monitor_cleanup = match self.system_monitor.shutdown() {
+                    Ok(observation) => observation,
+                    Err(error) => {
+                        errors.push(format!("System monitor cleanup failed: {error:#}"));
+                        None
+                    }
+                };
+                let philips_cleanup = match self.shutdown_philips_measurement() {
+                    Ok(progress) => progress,
+                    Err(error) => {
+                        errors.push(format!("Philips calibration cleanup failed: {error:#}"));
+                        None
+                    }
+                };
                 if let Some(owner) = self.controller_input.owner() {
                     if let Err(error) = self.stop_controller_input(&owner) {
                         errors.push(format!("Controller input cleanup failed: {error:#}"));
                     }
                 }
                 self.shutdown_macro_recording(&mut errors);
+                if let Some(owner) = self.global_shortcuts.owner() {
+                    if let Err(error) = self.stop_global_shortcut_owner(&owner) {
+                        errors.push(format!("Global shortcut cleanup failed: {error:#}"));
+                    }
+                }
                 if let Err(error) = self.stop_mapping_key_capture() {
                     errors.push(format!("Mapping key capture cleanup failed: {error:#}"));
                 }
@@ -889,7 +1043,21 @@ impl NativeRuntime {
                 // A missing export or rejected mapping shutdown must not skip
                 // the independent audio service. A timed-out callback must not
                 // be allowed to satisfy any later native call.
-                if self.simple_initialized && !self.poisoned {
+                if let Err(error) = self.complete_system_monitor_simple_init(CALLBACK_TIMEOUT) {
+                    errors.push(format!(
+                        "System monitor launcher cleanup remains pending: {error:#}"
+                    ));
+                }
+                let monitor_launch_stopped = match self
+                    .complete_system_monitor_launch(CALLBACK_TIMEOUT)
+                {
+                    Ok(()) => true,
+                    Err(error) => {
+                        errors.push(format!("System monitor launcher cleanup failed: {error:#}"));
+                        !self.system_monitor_launch_pending()
+                    }
+                };
+                if self.simple_initialized && !self.poisoned && monitor_launch_stopped {
                     let result = (|| {
                         let shutdown: Initialize =
                             unsafe { self.simple_symbol("simpleServiceShutdown")? };
@@ -906,7 +1074,9 @@ impl NativeRuntime {
                 if !errors.is_empty() {
                     bail!("{}", errors.join("；"));
                 }
-                Ok(json!({"stopped": true}))
+                Ok(
+                    json!({"stopped": true, "mouse_philips_measurement_cleanup": philips_cleanup, "system_monitor_cleanup": system_monitor_cleanup}),
+                )
             }
         }
     }

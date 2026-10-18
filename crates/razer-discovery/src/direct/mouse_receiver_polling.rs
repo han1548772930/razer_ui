@@ -116,6 +116,7 @@ fn write_with(
     ensure!(
         (!matches!(target, DirectRoute::Collection { .. }) || reply["peer_product_id"] == 183)
             && reply["source_class"] == source.transport().source_class
+            && reply["method"] == source.method()
             && reply["profile_scope"] == "current_active_profile"
             && reply["obm_profiles_written"] == false,
         "Polling write response source,peer or profile scope differs"
@@ -131,7 +132,7 @@ fn write_with(
         result.requested_hz == hz
             && result.effective_hz == effective
             && result.observed_hz == effective
-            && result.changed == (result.previous_hz != effective)
+            && result.changed == (result.previous.hz() != Some(effective))
             && match (&result.acknowledgement, result.changed) {
                 (Some(ack), true) => ack.len() <= 80,
                 (None, false) => true,

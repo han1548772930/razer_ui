@@ -14,6 +14,7 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
 use razer_model::model::Device;
+use razer_storage::file_transfer::{Operation, Transfer};
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::surface;
 use std::{path::PathBuf, time::Duration};
@@ -61,6 +62,8 @@ pub(super) struct ProfileLinkedGames {
     adding: bool,
     returned_from_add: bool,
     busy: bool,
+    transfer: Option<Transfer>,
+    task: Option<Task<()>>,
     error: Option<String>,
     _subscriptions: Vec<Subscription>,
 }
@@ -114,6 +117,8 @@ impl ProfileLinkedGames {
             adding: false,
             returned_from_add: false,
             busy: false,
+            transfer: None,
+            task: None,
             error: None,
             _subscriptions: subscriptions,
         }
@@ -124,6 +129,7 @@ impl ProfileLinkedGames {
     }
 
     fn close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.cancel_browse();
         if self.adding {
             self.adding = false;
             self.returned_from_add = true;
@@ -151,6 +157,9 @@ impl ProfileLinkedGames {
             return;
         }
         self.busy = true;
+        let transfer = Transfer::new();
+        let operation = transfer.accept().expect("new executable selection is open");
+        self.transfer = Some(transfer.clone());
         self.error = None;
         let picker = cx.prompt_for_paths(PathPromptOptions {
             files: true,
@@ -158,7 +167,7 @@ impl ProfileLinkedGames {
             multiple: false,
             prompt: Some("Select an .exe file".into()),
         });
-        cx.spawn_in(window, async move |owner, cx| {
+        self.task = Some(cx.spawn_in(window, async move |owner, cx| {
             let result = match picker.await {
                 Ok(Ok(Some(paths))) => paths.into_iter().next().map(Ok),
                 Ok(Ok(None)) => None,
@@ -167,7 +176,7 @@ impl ProfileLinkedGames {
             let result = match result {
                 Some(Ok(path)) => Some(
                     cx.background_executor()
-                        .spawn(async move { read_game_path(path) })
+                        .spawn(async move { read_game_path(path, &operation) })
                         .await,
                 ),
                 Some(Err(error)) => Some(Err(error)),
@@ -175,6 +184,16 @@ impl ProfileLinkedGames {
             };
             let _ =
                 owner.update_in(cx, |this, window, cx| {
+                    if this
+                        .transfer
+                        .as_ref()
+                        .is_none_or(|current| !current.is_same(&transfer))
+                        || transfer.check().is_err()
+                    {
+                        return;
+                    }
+                    this.transfer = None;
+                    this.task = None;
                     this.busy = false;
                     match result {
                         Some(Ok(game)) => {
@@ -193,8 +212,7 @@ impl ProfileLinkedGames {
                     }
                     cx.notify();
                 });
-        })
-        .detach();
+        }));
         cx.notify();
     }
 
@@ -504,30 +522,35 @@ impl ProfileLinkedGames {
     }
 }
 
-fn read_game_path(path: PathBuf) -> Result<Game, String> {
-    let canonical = path
-        .canonicalize()
-        .map_err(|error| format!("Unable to read the selected file: {error}"))?;
-    if !canonical.is_file()
-        || !canonical
-            .extension()
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("exe"))
-    {
-        return Err("Select an .exe file.".into());
-    }
-    let name = path
-        .file_stem()
-        .and_then(|name| name.to_str())
-        .unwrap_or_default()
-        .to_owned();
-    if name.is_empty() {
-        return Err("The selected file has no program name.".into());
-    }
+fn read_game_path(path: PathBuf, operation: &Operation) -> Result<Game, String> {
+    use razer_platform::executable::{SelectionError, inspect};
+    let selected = inspect(&path, operation).map_err(|error| match error {
+        SelectionError::Read(error) => format!("Unable to read the selected file: {error}"),
+        SelectionError::NotExecutable => "Select an .exe file.".into(),
+        SelectionError::MissingName => "The selected file has no program name.".into(),
+        SelectionError::Cancelled(error) => error,
+    })?;
     Ok(Game {
-        name,
-        executable: canonical.to_string_lossy().into_owned(),
+        name: selected.name().into(),
+        executable: selected.path().to_string_lossy().into_owned(),
         profile: None,
     })
+}
+
+impl ProfileLinkedGames {
+    fn cancel_browse(&mut self) {
+        if let Some(transfer) = self.transfer.take() {
+            transfer.cancel();
+        }
+        self.task = None;
+        self.busy = false;
+    }
+}
+
+impl Drop for ProfileLinkedGames {
+    fn drop(&mut self) {
+        self.cancel_browse();
+    }
 }
 
 impl Render for ProfileLinkedGames {
@@ -641,8 +664,8 @@ impl Render for ProfileLinkedGames {
                         )
                     }),
             )
-            .popup(
-                razer_assets::resource_scope(v_flex()
+            .popup(razer_assets::resource_scope(
+                v_flex()
                     .id("source-profile-linked-games")
                     .absolute()
                     .left((viewport.width - width) / 2.)
@@ -693,8 +716,8 @@ impl Render for ProfileLinkedGames {
                                     ),
                             ),
                     )
-                    .child(body)),
-            )
+                    .child(body),
+            ))
             .into_any_element()
     }
 }

@@ -1,11 +1,11 @@
 //! The current Kitsune quick-effect engine survives page and profile changes.
 //! Its child process owns native frame delivery until physical removal or exit.
 use super::*;
+use crate::shell::controller_power::Configuration as PowerConfiguration;
 use anyhow::{Context as _, ensure};
 use razer_device::controller_input::Event;
-use razer_device::controller_lighting::{SoftwarePhase, SoftwareStatus};
 use razer_device::controller_lighting::power_policy::{Event as PowerEvent, Policy};
-use crate::shell::controller_power::Configuration as PowerConfiguration;
+use razer_device::controller_lighting::{SoftwarePhase, SoftwareStatus};
 use razer_discovery::discovery::ObservedDevice;
 use std::sync::{
     Arc, Mutex,
@@ -69,27 +69,30 @@ impl ClientState {
         if matches!(operation, LightingOperation::Software { .. }) {
             // A failed start can still own native handles and requires cleanup.
             self.software_started = true;
-            self.advanced_applied=None;
+            self.advanced_applied = None;
         }
         let mut result = connection.request(operation)?;
         if self.advanced && matches!(operation, LightingOperation::Software { .. }) {
-            let suspended = connection.request(&LightingOperation::SuspendSoftware { suspended: true })?;
+            let suspended =
+                connection.request(&LightingOperation::SuspendSoftware { suspended: true })?;
             result.software = suspended.software;
-            self.advanced_applied=Some(true);
-        } else if matches!(operation, LightingOperation::Software {..}) {
-            self.advanced_applied=Some(false);
+            self.advanced_applied = Some(true);
+        } else if matches!(operation, LightingOperation::Software { .. }) {
+            self.advanced_applied = Some(false);
         }
         if matches!(operation, LightingOperation::StopSoftware) {
             self.software_started = false;
-            self.advanced_applied=None;
+            self.advanced_applied = None;
         }
         Ok(result)
     }
-    fn set_advanced(&mut self,enabled:bool)->anyhow::Result<Option<LightingResult>> {
-        self.advanced=enabled;
-        if !self.software_started||self.advanced_applied==Some(enabled) {return Ok(None);}
-        let result=self.request(&LightingOperation::SuspendSoftware {suspended:enabled})?;
-        self.advanced_applied=Some(enabled);
+    fn set_advanced(&mut self, enabled: bool) -> anyhow::Result<Option<LightingResult>> {
+        self.advanced = enabled;
+        if !self.software_started || self.advanced_applied == Some(enabled) {
+            return Ok(None);
+        }
+        let result = self.request(&LightingOperation::SuspendSoftware { suspended: enabled })?;
+        self.advanced_applied = Some(enabled);
         Ok(Some(result))
     }
     fn release(&mut self) -> anyhow::Result<()> {
@@ -117,7 +120,7 @@ impl ClientState {
             }
         }
         self.software_started = false;
-        self.advanced_applied=None;
+        self.advanced_applied = None;
         if let Err(error) = connection.shutdown() {
             failures.push(format!(
                 "Controller lighting child shutdown failed: {error:#}"
@@ -138,8 +141,8 @@ pub(crate) struct RetainedOwner {
 }
 #[derive(Clone)]
 struct PublishedPowerConfiguration {
-    configuration:PowerConfiguration,
-    guard:Arc<AtomicBool>,
+    configuration: PowerConfiguration,
+    guard: Arc<AtomicBool>,
 }
 #[derive(Default)]
 struct InputQueue {
@@ -147,36 +150,94 @@ struct InputQueue {
     pumping: bool,
 }
 impl RetainedOwner {
-    pub(in crate::shell) fn matches_route(&self,route:&ObservedDevice)->bool {same_route(&self.route,route)}
-    pub(in crate::shell) fn configure_power(&self,configuration:PowerConfiguration)->anyhow::Result<()> {
+    pub(in crate::shell) fn matches_route(&self, route: &ObservedDevice) -> bool {
+        same_route(&self.route, route)
+    }
+    pub(in crate::shell) fn configure_power(
+        &self,
+        configuration: PowerConfiguration,
+    ) -> anyhow::Result<()> {
         configuration.settings.validate()?;
         configuration.brightness.validate()?;
-        let mut published=self.power_configuration.lock().map_err(|_|anyhow::anyhow!("Controller power configuration lock failed"))?;
-        if published.as_ref().is_some_and(|previous|previous.configuration==configuration) {return Ok(());}
-        if let Some(previous)=published.take() {previous.guard.store(false,Ordering::Release);}
-        *published=Some(PublishedPowerConfiguration {configuration,guard:Arc::new(AtomicBool::new(true))});
+        let mut published = self
+            .power_configuration
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Controller power configuration lock failed"))?;
+        if published
+            .as_ref()
+            .is_some_and(|previous| previous.configuration == configuration)
+        {
+            return Ok(());
+        }
+        if let Some(previous) = published.take() {
+            previous.guard.store(false, Ordering::Release);
+        }
+        *published = Some(PublishedPowerConfiguration {
+            configuration,
+            guard: Arc::new(AtomicBool::new(true)),
+        });
         Ok(())
     }
-    pub(in crate::shell) fn apply_power_event(&self,event:PowerEvent)->anyhow::Result<Option<LightingResult>> {
-        let mut state=self.state.lock().map_err(|_|anyhow::anyhow!("Controller lighting owner lock failed"))?;
-        if !self.accepting.load(Ordering::Acquire) {return Ok(None);}
+    pub(in crate::shell) fn apply_power_event(
+        &self,
+        event: PowerEvent,
+    ) -> anyhow::Result<Option<LightingResult>> {
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Controller lighting owner lock failed"))?;
+        if !self.accepting.load(Ordering::Acquire) {
+            return Ok(None);
+        }
         // Configuration publication never holds the I/O lock on the GUI thread.
         // Read it after taking that lock so a queued event uses the current profile.
-        let Some(published)=self.power_configuration.lock().map_err(|_|anyhow::anyhow!("Controller power configuration lock failed"))?.clone() else {return Ok(None);};
-        if !published.guard.load(Ordering::Acquire) {return Ok(None);}
-        let configuration=published.configuration;
+        let Some(published) = self
+            .power_configuration
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Controller power configuration lock failed"))?
+            .clone()
+        else {
+            return Ok(None);
+        };
+        if !published.guard.load(Ordering::Acquire) {
+            return Ok(None);
+        }
+        let configuration = published.configuration;
         match &mut state.power {
-            Some((id,policy)) if *id==configuration.profile_id=>policy.update(configuration.settings,configuration.brightness)?,
-            _=>state.power=Some((configuration.profile_id,Policy::new(configuration.settings,configuration.brightness)?)),
+            Some((id, policy)) if *id == configuration.profile_id => {
+                policy.update(configuration.settings, configuration.brightness)?
+            }
+            _ => {
+                state.power = Some((
+                    configuration.profile_id,
+                    Policy::new(configuration.settings, configuration.brightness)?,
+                ))
+            }
         }
-        let Some(value)=state.power.as_mut().expect("power policy initialized").1.apply(event) else {return Ok(None);};
+        let Some(value) = state
+            .power
+            .as_mut()
+            .expect("power policy initialized")
+            .1
+            .apply(event)
+        else {
+            return Ok(None);
+        };
         if state.connection.is_none() {
-            if let Some(predecessor)=&self.predecessor {predecessor.release()?;}
-            state.connection=Some(Box::new(LocalConnection::open(&self.route)?));
+            if let Some(predecessor) = &self.predecessor {
+                predecessor.release()?;
+            }
+            state.connection = Some(Box::new(LocalConnection::open(&self.route)?));
         }
-        ensure!(self.accepting.load(Ordering::Acquire)&&published.guard.load(Ordering::Acquire),"Controller runtime brightness profile was replaced");
-        let result=state.request(&LightingOperation::Brightness {value})?;
-        ensure!(self.accepting.load(Ordering::Acquire)&&published.guard.load(Ordering::Acquire),"Controller runtime brightness response belongs to a retired owner or profile");
+        ensure!(
+            self.accepting.load(Ordering::Acquire) && published.guard.load(Ordering::Acquire),
+            "Controller runtime brightness profile was replaced"
+        );
+        let result = state.request(&LightingOperation::Brightness { value })?;
+        ensure!(
+            self.accepting.load(Ordering::Acquire) && published.guard.load(Ordering::Acquire),
+            "Controller runtime brightness response belongs to a retired owner or profile"
+        );
         Ok(Some(result))
     }
     pub(in crate::shell) fn set_advanced(
@@ -184,11 +245,23 @@ impl RetainedOwner {
         enabled: bool,
         guard: &AtomicBool,
     ) -> anyhow::Result<Option<LightingResult>> {
-        ensure!(self.accepting.load(Ordering::Acquire) && guard.load(Ordering::Acquire), "Controller lighting owner was retired");
-        let mut state = self.state.lock().map_err(|_| anyhow::anyhow!("Controller lighting owner lock failed"))?;
-        ensure!(self.accepting.load(Ordering::Acquire) && guard.load(Ordering::Acquire), "Controller lighting owner was retired");
+        ensure!(
+            self.accepting.load(Ordering::Acquire) && guard.load(Ordering::Acquire),
+            "Controller lighting owner was retired"
+        );
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Controller lighting owner lock failed"))?;
+        ensure!(
+            self.accepting.load(Ordering::Acquire) && guard.load(Ordering::Acquire),
+            "Controller lighting owner was retired"
+        );
         let result = state.set_advanced(enabled)?;
-        ensure!(self.accepting.load(Ordering::Acquire) && guard.load(Ordering::Acquire), "Controller lighting response belongs to a retired request");
+        ensure!(
+            self.accepting.load(Ordering::Acquire) && guard.load(Ordering::Acquire),
+            "Controller lighting response belongs to a retired request"
+        );
         Ok(result)
     }
     pub(super) fn submit(
@@ -255,8 +328,14 @@ impl RetainedOwner {
         if !self.accepting.load(Ordering::Acquire) {
             return Ok(false);
         }
-        let buttons = events.iter().filter(|event| matches!(event, Event::Buttons { .. })).count();
-        ensure!(input.pending.len().saturating_add(buttons) <= 4096, "Controller lighting input queue is full");
+        let buttons = events
+            .iter()
+            .filter(|event| matches!(event, Event::Buttons { .. }))
+            .count();
+        ensure!(
+            input.pending.len().saturating_add(buttons) <= 4096,
+            "Controller lighting input queue is full"
+        );
         input.pending.extend(
             events
                 .iter()
@@ -361,10 +440,13 @@ impl AppShell {
             }
         }
     }
-    pub(in crate::shell) fn install_controller_lighting_cleanup(&mut self, cx: &mut Context<Self>) {
-        self.subscriptions.push(cx.on_app_quit(|this, cx| {
-            this.controller_power.stop.store(true,Ordering::Release);
-            let power=this.controller_power.task.take();
+    pub(in crate::shell) fn install_controller_lighting_cleanup(
+        &mut self,
+        _cx: &mut Context<Self>,
+    ) {
+        self.register_exit_cleanup(|this, cx| {
+            this.controller_power.stop.store(true, Ordering::Release);
+            let power = this.controller_power.task.take();
             let mut owners = std::mem::take(&mut this.controller_lighting_owners)
                 .into_values()
                 .map(Session::retire)
@@ -377,12 +459,17 @@ impl AppShell {
                     }
                 }
             });
-            async move { if let Some(power)=power {power.await;} cleanup.await }
-        }));
+            async move {
+                if let Some(power) = power {
+                    power.await;
+                }
+                cleanup.await
+            }
+        });
     }
 
     pub(in crate::shell) fn retire_controller_lighting_owners(&mut self, cx: &mut Context<Self>) {
-        self.controller_power.stop.store(true,Ordering::Release);
+        self.controller_power.stop.store(true, Ordering::Release);
         for (_, session) in std::mem::take(&mut self.controller_lighting_owners) {
             self.release_controller_lighting_owner(session.retire(), cx);
         }
@@ -615,7 +702,7 @@ mod tests {
                     fail_stop,
                 })),
                 advanced: false,
-                advanced_applied:None,
+                advanced_applied: None,
                 software_started: false,
                 power: None,
             },
@@ -668,40 +755,53 @@ mod tests {
     }
     #[core::prelude::v1::test]
     fn controller_lighting_advanced_selection_before_start_suspends_each_new_quick_effect() {
-        let (mut state,calls)=state(false,false);
+        let (mut state, calls) = state(false, false);
         assert!(state.set_advanced(true).unwrap().is_none());
         assert!(calls.lock().unwrap().is_empty());
         state.request(&effect()).unwrap();
-        assert_eq!(state.advanced_applied,Some(true));
+        assert_eq!(state.advanced_applied, Some(true));
         assert!(state.set_advanced(true).unwrap().is_none());
         state.request(&effect()).unwrap();
-        assert_eq!(*calls.lock().unwrap(),["effect","suspend","effect","suspend"]);
+        assert_eq!(
+            *calls.lock().unwrap(),
+            ["effect", "suspend", "effect", "suspend"]
+        );
         assert!(state.set_advanced(false).unwrap().is_some());
-        assert_eq!(state.advanced_applied,Some(false));
+        assert_eq!(state.advanced_applied, Some(false));
         assert!(state.set_advanced(false).unwrap().is_none());
     }
     #[core::prelude::v1::test]
     fn controller_lighting_failed_suspend_is_retried_until_an_actual_service_response() {
-        struct FailFirstSuspend {values:Arc<Mutex<Vec<bool>>>}
+        struct FailFirstSuspend {
+            values: Arc<Mutex<Vec<bool>>>,
+        }
         impl Connection for FailFirstSuspend {
-            fn request(&mut self,operation:&LightingOperation)->anyhow::Result<LightingResult> {
-                if let LightingOperation::SuspendSoftware {suspended}=operation {
-                    let mut values=self.values.lock().unwrap();
+            fn request(&mut self, operation: &LightingOperation) -> anyhow::Result<LightingResult> {
+                if let LightingOperation::SuspendSoftware { suspended } = operation {
+                    let mut values = self.values.lock().unwrap();
                     values.push(*suspended);
-                    ensure!(values.len()>1,"simulated suspend failure");
+                    ensure!(values.len() > 1, "simulated suspend failure");
                 }
                 Ok(LightingResult::default())
             }
-            fn shutdown(&mut self)->anyhow::Result<()> {Ok(())}
+            fn shutdown(&mut self) -> anyhow::Result<()> {
+                Ok(())
+            }
         }
-        let values=Arc::new(Mutex::new(Vec::new()));
-        let mut state=ClientState {connection:Some(Box::new(FailFirstSuspend {values:values.clone()})),software_started:true,..Default::default()};
+        let values = Arc::new(Mutex::new(Vec::new()));
+        let mut state = ClientState {
+            connection: Some(Box::new(FailFirstSuspend {
+                values: values.clone(),
+            })),
+            software_started: true,
+            ..Default::default()
+        };
         assert!(state.set_advanced(true).is_err());
         assert!(state.advanced);
-        assert_eq!(state.advanced_applied,None);
+        assert_eq!(state.advanced_applied, None);
         assert!(state.set_advanced(true).unwrap().is_some());
-        assert_eq!(state.advanced_applied,Some(true));
+        assert_eq!(state.advanced_applied, Some(true));
         assert!(state.set_advanced(true).unwrap().is_none());
-        assert_eq!(*values.lock().unwrap(),[true,true]);
+        assert_eq!(*values.lock().unwrap(), [true, true]);
     }
 }

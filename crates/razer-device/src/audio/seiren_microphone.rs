@@ -109,8 +109,8 @@ impl PcmClip {
     }
 }
 
-/// The shell writes actual recorded floats to one owned local file, avoiding
-/// an unbounded IPC JSON frame. It removes the file after the service joins.
+/// Local storage prepares recorded floats in one owned file, avoiding an
+/// unbounded IPC JSON frame. The caller releases it after the service joins.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PcmPlaybackFile {
     path: String,

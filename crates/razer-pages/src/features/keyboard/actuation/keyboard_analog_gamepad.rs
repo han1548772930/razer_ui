@@ -55,40 +55,44 @@ impl KeyboardProductWorkspace {
             .child(img("synapse/automation-tooltip_questionmark.svg").size_full())
             .tooltip(move |window, cx| {
                 gpui_kit::component::tooltip::Tooltip::element(move |_, _| {
-                    razer_assets::resource_scope(h_flex()
-                        .p(surface::css(10.))
-                        .border_1()
-                        .border_color(rgb(0x5d5d5d))
-                        .rounded(surface::css(3.))
-                        .bg(rgb(0x000000))
-                        .text_color(rgb(0xffffff))
-                        .gap(surface::css(20.))
-                        .children(
-                            [
-                                (
-                                    "PRIMARY",
-                                    [
-                                        "RIGHT_SHIFT",
-                                        "RIGHT_ALT",
-                                        if japanese { "Fn" } else { "MENU" },
-                                        "RIGHT_CTRL",
-                                    ],
-                                ),
-                                ("SECONDARY", ["UP", "LEFT", "DOWN", "RIGHT"]),
-                            ]
-                            .map(|(title, keys)| {
-                                v_flex()
-                                    .child(div().mb(surface::css(10.)).underline().child(t(title)))
-                                    .children(keys.map(|key| {
-                                        div().mb(surface::css(5.)).child(if key == "Fn" {
-                                            SharedString::from("Fn")
-                                        } else {
-                                            t(key).into()
-                                        })
-                                    }))
-                            }),
-                        )
-                        .into_any_element())
+                    razer_assets::resource_scope(
+                        h_flex()
+                            .p(surface::css(10.))
+                            .border_1()
+                            .border_color(rgb(0x5d5d5d))
+                            .rounded(surface::css(3.))
+                            .bg(rgb(0x000000))
+                            .text_color(rgb(0xffffff))
+                            .gap(surface::css(20.))
+                            .children(
+                                [
+                                    (
+                                        "PRIMARY",
+                                        [
+                                            "RIGHT_SHIFT",
+                                            "RIGHT_ALT",
+                                            if japanese { "Fn" } else { "MENU" },
+                                            "RIGHT_CTRL",
+                                        ],
+                                    ),
+                                    ("SECONDARY", ["UP", "LEFT", "DOWN", "RIGHT"]),
+                                ]
+                                .map(|(title, keys)| {
+                                    v_flex()
+                                        .child(
+                                            div().mb(surface::css(10.)).underline().child(t(title)),
+                                        )
+                                        .children(keys.map(|key| {
+                                            div().mb(surface::css(5.)).child(if key == "Fn" {
+                                                SharedString::from("Fn")
+                                            } else {
+                                                t(key).into()
+                                            })
+                                        }))
+                                }),
+                            )
+                            .into_any_element(),
+                    )
                 })
                 .build(window, cx)
             });

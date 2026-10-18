@@ -1,7 +1,7 @@
 //! In-memory firmware simulation only. No DLL, vendor script or device execution.
 use super::*;
 use crate::{
-    mouse_button_inventory, mouse_macro::MacroWriteRequest, mouse_onboard::OnboardIdentityRequest,
+    mouse_button_inventory, mouse_onboard::OnboardIdentityRequest, onboard_macro::MacroWriteRequest,
 };
 use std::{
     cell::{Cell, RefCell},
@@ -100,7 +100,7 @@ impl Device {
                 hash: "0123456789abcdef".into(),
                 data: (0..len).map(|n| n as u8).collect(),
             };
-            let mut metadata = crate::mouse_macro::encode_metadata(&request).unwrap();
+            let mut metadata = crate::onboard_macro::encode_metadata(&request).unwrap();
             metadata[120..136].fill(0xb5);
             metadata[230] = 0xed;
             macros.insert(

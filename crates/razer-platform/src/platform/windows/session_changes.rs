@@ -10,12 +10,13 @@ use std::{
         Arc, Mutex,
         atomic::{AtomicBool, AtomicUsize, Ordering},
     },
+    thread::JoinHandle,
 };
 use windows_sys::Win32::System::Power::{
     RegisterSuspendResumeNotification, UnregisterSuspendResumeNotification,
 };
 use windows_sys::Win32::{
-    Foundation::{HWND, LPARAM, LRESULT, WPARAM},
+    Foundation::{HWND, LPARAM, LRESULT, WAIT_FAILED, WAIT_OBJECT_0, WAIT_TIMEOUT, WPARAM},
     System::{
         LibraryLoader::GetModuleHandleW,
         RemoteDesktop::{
@@ -29,6 +30,8 @@ use windows_sys::Win32::{
 const STOP: u32 = WM_APP + 173;
 const SESSION_LOCK: usize = 0x7;
 const SESSION_UNLOCK: usize = 0x8;
+// A missed wakeup must not leave shutdown waiting in a native message receive.
+const STOP_RECHECK_MS: u32 = 100;
 static NEXT_WINDOW: AtomicUsize = AtomicUsize::new(1);
 
 #[derive(Default)]
@@ -36,38 +39,142 @@ struct Shared {
     hwnd: Mutex<usize>,
     stopped: AtomicBool,
 }
-pub(crate) struct Owner(Arc<Shared>);
+pub(crate) struct Owner {
+    shared: Arc<Shared>,
+    worker: Option<JoinHandle<Result<(), String>>>,
+}
 impl Owner {
     pub(crate) fn start(events: Sender<SessionChange>) -> Result<Self, String> {
+        Self::start_worker(events, run)
+    }
+
+    fn start_worker(
+        events: Sender<SessionChange>,
+        run: impl FnOnce(&Shared, &Sender<SessionChange>) -> Result<(), String> + Send + 'static,
+    ) -> Result<Self, String> {
         let shared = Arc::new(Shared::default());
-        let worker = shared.clone();
-        std::thread::Builder::new()
+        let state = shared.clone();
+        let worker = std::thread::Builder::new()
             .name("razer-session-events".into())
             .spawn(move || {
-                if let Err(error) = run(&worker, &events) {
-                    let _ = events.try_send(SessionChange::Failed(error));
+                let result = run(&state, &events);
+                if let Err(error) = &result {
+                    let _ = events.try_send(SessionChange::Failed(error.clone()));
                 }
+                result
             })
             .map_err(|error| error.to_string())?;
-        Ok(Self(shared))
+        Ok(Self {
+            shared,
+            worker: Some(worker),
+        })
+    }
+
+    fn signal_stop(&self) -> Result<(), String> {
+        self.signal_stop_with(post_stop)
+    }
+
+    fn signal_stop_with(
+        &self,
+        wake: impl FnOnce(HWND) -> Result<(), String>,
+    ) -> Result<(), String> {
+        self.shared.stopped.store(true, Ordering::Release);
+        let owned = match self.shared.hwnd.try_lock() {
+            Ok(owned) => owned,
+            Err(std::sync::TryLockError::Poisoned(error)) => error.into_inner(),
+            // Publication and destruction remain on the worker. Its bounded
+            // message wait observes stopped even when this wake cannot be sent.
+            Err(std::sync::TryLockError::WouldBlock) => return Ok(()),
+        };
+        // The mutex excludes DestroyWindow and HWND reuse until posting ends.
+        wake(*owned as HWND)
+    }
+
+    pub(crate) fn shutdown(self) -> Result<(), String> {
+        self.shutdown_with(post_stop)
+    }
+
+    fn shutdown_with(
+        mut self,
+        wake: impl FnOnce(HWND) -> Result<(), String>,
+    ) -> Result<(), String> {
+        let signaled = self.signal_stop_with(wake);
+        let completed = self
+            .worker
+            .take()
+            .expect("Session monitor owns its worker")
+            .join()
+            .map_err(|_| "Session event worker panicked".to_owned())
+            .and_then(|result| result);
+        match (signaled, completed) {
+            (Ok(()), result) | (result, Ok(())) => result,
+            (Err(signal), Err(cleanup)) => Err(format!("{signal}; {cleanup}")),
+        }
     }
 }
 impl Drop for Owner {
     fn drop(&mut self) {
-        self.0.stopped.store(true, Ordering::Release);
-        let owned = self
-            .0
-            .hwnd
-            .lock()
-            .unwrap_or_else(|error| error.into_inner());
-        let hwnd = *owned as HWND;
-        if !hwnd.is_null() {
-            // Cleanup remains on the worker thread; never block the UI in Drop.
-            unsafe {
-                PostMessageW(hwnd, STOP, 0, 0);
+        if self.worker.is_some() {
+            if let Err(error) = self.signal_stop() {
+                eprintln!("[session observer] stop notification failed: {error}");
             }
         }
     }
+}
+
+fn post_stop(hwnd: HWND) -> Result<(), String> {
+    if !hwnd.is_null() && unsafe { PostMessageW(hwnd, STOP, 0, 0) } == 0 {
+        return Err(format!("PostMessageW: {}", std::io::Error::last_os_error()));
+    }
+    Ok(())
+}
+
+enum MessageCycle {
+    Continue,
+    Quit,
+}
+
+fn pump_until_stopped(
+    stopped: &AtomicBool,
+    mut wait_and_dispatch: impl FnMut(u32) -> Result<MessageCycle, String>,
+) -> Result<(), String> {
+    while !stopped.load(Ordering::Acquire) {
+        if matches!(wait_and_dispatch(STOP_RECHECK_MS)?, MessageCycle::Quit) {
+            break;
+        }
+    }
+    Ok(())
+}
+
+fn wait_and_dispatch(milliseconds: u32) -> Result<MessageCycle, String> {
+    // No wait handles are borrowed; native input wakes promptly and timeout
+    // gives the owner another stopped check if posting the STOP message failed.
+    match unsafe {
+        MsgWaitForMultipleObjectsEx(0, null(), milliseconds, QS_ALLINPUT, MWMO_INPUTAVAILABLE)
+    } {
+        WAIT_OBJECT_0 => {}
+        WAIT_TIMEOUT => return Ok(MessageCycle::Continue),
+        WAIT_FAILED => {
+            return Err(format!(
+                "MsgWaitForMultipleObjectsEx: {}",
+                std::io::Error::last_os_error()
+            ));
+        }
+        status => return Err(format!("Session message wait returned {status:#x}")),
+    }
+    let mut message: MSG = unsafe { std::mem::zeroed() };
+    if unsafe { PeekMessageW(&mut message, null_mut(), 0, 0, PM_REMOVE) } == 0 {
+        return Ok(MessageCycle::Continue);
+    }
+    if message.message == WM_QUIT {
+        return Ok(MessageCycle::Quit);
+    }
+    // One dispatch per gate check also keeps a busy queue from starving stop.
+    unsafe {
+        TranslateMessage(&message);
+        DispatchMessageW(&message);
+    }
+    Ok(MessageCycle::Continue)
 }
 
 unsafe extern "system" fn window_proc(hwnd: HWND, message: u32, w: WPARAM, l: LPARAM) -> LRESULT {
@@ -182,21 +289,8 @@ fn run(shared: &Shared, events: &Sender<SessionChange>) -> Result<(), String> {
         .hwnd
         .lock()
         .unwrap_or_else(|error| error.into_inner()) = hwnd as usize;
-    if result.is_ok() && !shared.stopped.load(Ordering::Acquire) {
-        let mut message: MSG = unsafe { std::mem::zeroed() };
-        loop {
-            let status = unsafe { GetMessageW(&mut message, null_mut(), 0, 0) };
-            if status <= 0 {
-                if status == -1 {
-                    result = Err(std::io::Error::last_os_error().to_string());
-                }
-                break;
-            }
-            unsafe {
-                TranslateMessage(&message);
-                DispatchMessageW(&message);
-            }
-        }
+    if result.is_ok() {
+        result = pump_until_stopped(&shared.stopped, wait_and_dispatch);
     }
     // Serialize destruction with Drop posting to avoid a recycled HWND race.
     let mut owned = shared
@@ -204,15 +298,47 @@ fn run(shared: &Shared, events: &Sender<SessionChange>) -> Result<(), String> {
         .lock()
         .unwrap_or_else(|error| error.into_inner());
     *owned = 0;
+    let mut cleanup_errors = Vec::new();
     unsafe {
-        if power != 0 {
-            UnregisterSuspendResumeNotification(power);
+        if power != 0 && UnregisterSuspendResumeNotification(power) == 0 {
+            cleanup_errors.push(format!(
+                "UnregisterSuspendResumeNotification: {}",
+                std::io::Error::last_os_error()
+            ));
         }
-        if registered {
-            WTSUnRegisterSessionNotification(hwnd);
+        if registered && WTSUnRegisterSessionNotification(hwnd) == 0 {
+            cleanup_errors.push(format!(
+                "WTSUnRegisterSessionNotification: {}",
+                std::io::Error::last_os_error()
+            ));
         }
-        DestroyWindow(hwnd);
-        UnregisterClassW(class.as_ptr(), instance);
+        if DestroyWindow(hwnd) == 0 {
+            cleanup_errors.push(format!(
+                "DestroyWindow: {}",
+                std::io::Error::last_os_error()
+            ));
+            // Message dispatch has stopped on this owning thread. A failed
+            // destroy must not leave the borrowed sender reachable after return.
+            SetWindowLongPtrW(hwnd, GWLP_USERDATA, 0);
+        }
+        if UnregisterClassW(class.as_ptr(), instance) == 0 {
+            cleanup_errors.push(format!(
+                "UnregisterClassW: {}",
+                std::io::Error::last_os_error()
+            ));
+        }
     }
-    result
+    if cleanup_errors.is_empty() {
+        result
+    } else {
+        let cleanup = cleanup_errors.join("; ");
+        Err(match result {
+            Ok(()) => cleanup,
+            Err(error) => format!("{error}; {cleanup}"),
+        })
+    }
 }
+
+#[cfg(test)]
+#[path = "session_changes/tests.rs"]
+mod tests;

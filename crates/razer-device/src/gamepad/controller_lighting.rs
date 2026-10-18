@@ -6,10 +6,10 @@ use anyhow::{Context as _, ensure};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-#[path = "controller_software_lighting.rs"]
-pub mod software;
 #[path = "controller_power_policy.rs"]
 pub mod power_policy;
+#[path = "controller_software_lighting.rs"]
+pub mod software;
 pub use software::{
     QuickEffectLevel, SoftwareEffect, SoftwarePhase, SoftwareStatus, WaveDirection,
 };

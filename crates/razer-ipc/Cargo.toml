@@ -8,6 +8,8 @@ anyhow.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 razer-device.workspace = true
+razer-model.workspace = true
+uuid.workspace = true
 razer-storage.workspace = true
 
 [target.'cfg(windows)'.dependencies]

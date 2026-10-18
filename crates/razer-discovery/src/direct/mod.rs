@@ -11,6 +11,7 @@ use razer_device::{
 };
 use razer_ipc::{ServiceClient, ServiceRequest};
 use serde_json::Value;
+mod feature_submission;
 pub mod keyboard_indicator;
 pub mod keyboard_latest_restore;
 pub mod keyboard_legacy_calibration;
@@ -19,10 +20,13 @@ pub mod leviathan;
 pub mod mouse_current_dpi;
 pub mod mouse_current_power;
 pub mod mouse_indicator_led;
+pub mod mouse_philips;
 pub mod mouse_receiver_legacy;
 pub mod mouse_receiver_polling;
 pub mod mouse_runtime_artwork;
 pub mod mouse_scroll;
+pub mod mouse_tracking;
+pub mod philips_measurement;
 mod receiver_settings;
 pub mod seiren_eq;
 

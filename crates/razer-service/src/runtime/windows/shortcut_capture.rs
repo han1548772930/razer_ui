@@ -19,6 +19,9 @@ static EVENTS: Mutex<Option<SyncSender<Value>>> = Mutex::new(None);
 static OVERFLOW: AtomicBool = AtomicBool::new(false);
 unsafe extern "C" fn mode_event(kind: i32, value: *const c_char, tick: u64) {
     let event = json!({"eventType":kind,"event":unsafe { copy_string(value) },"timeTick":tick});
+    let Err(event) = super::global_shortcut_capture::mode(event) else {
+        return;
+    };
     if let Ok(slot) = EVENTS.lock() {
         if let Some(sender) = slot.as_ref() {
             if sender.try_send(event).is_err() {
@@ -55,23 +58,15 @@ impl NativeRuntime {
             "Shortcut capture is already active"
         );
         anyhow::ensure!(
-            !self.macro_recorder.active(),
+            !self.macro_recorder.active() && !self.mapping_key_capture.active(),
             "Macro recording owns temporary mapping suppression"
         );
         self.mapping()?;
-        OVERFLOW.store(false, Ordering::Release);
-        while self.shortcut_capture.events.try_recv().is_ok() {}
         let run = (|| -> anyhow::Result<()> {
             let disable: Operation = unsafe { self.mapping_symbol("disableMapping")? };
             self.call(|| unsafe { disable(callback2) })?;
             self.shortcut_capture.suspended = true;
-            let register: Operation =
-                unsafe { self.mapping_symbol("registerDeviceModeChangedEvent")? };
-            self.call(|| unsafe { register(callback2) })?;
-            self.shortcut_capture.registered = true;
-            let install: Install =
-                unsafe { self.mapping_symbol("setDeviceModeChangedEventCallback")? };
-            self.call(|| unsafe { install(mode_event, callback2) })?;
+            self.register_shortcut_mode_events()?;
             Ok(())
         })();
         if let Err(error) = run {
@@ -83,6 +78,29 @@ impl NativeRuntime {
             };
         }
         Ok(json!({"capturing":true,"mappings_suspended":true,"mode_events_registered":true}))
+    }
+    pub(super) fn register_shortcut_mode_events(&mut self) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            !self.shortcut_capture.registered,
+            "Shortcut mode callback already registered"
+        );
+        OVERFLOW.store(false, Ordering::Release);
+        while self.shortcut_capture.events.try_recv().is_ok() {}
+        let register: Operation = unsafe { self.mapping_symbol("registerDeviceModeChangedEvent")? };
+        self.call(|| unsafe { register(callback2) })?;
+        self.shortcut_capture.registered = true;
+        let install: Install = unsafe { self.mapping_symbol("setDeviceModeChangedEventCallback")? };
+        self.call(|| unsafe { install(mode_event, callback2) })?;
+        Ok(())
+    }
+    pub(super) fn unregister_shortcut_mode_events(&mut self) -> anyhow::Result<()> {
+        if self.shortcut_capture.registered {
+            let unregister: Operation =
+                unsafe { self.mapping_symbol("unregisterDeviceModeChangedEvent")? };
+            self.call(|| unsafe { unregister(callback2) })?;
+            self.shortcut_capture.registered = false;
+        }
+        Ok(())
     }
     pub(super) fn shortcut_capture_events(&mut self) -> anyhow::Result<Value> {
         anyhow::ensure!(
@@ -116,13 +134,7 @@ impl NativeRuntime {
             }
         }
         if self.shortcut_capture.registered && !self.poisoned {
-            let result = (|| -> anyhow::Result<()> {
-                let unregister: Operation =
-                    unsafe { self.mapping_symbol("unregisterDeviceModeChangedEvent")? };
-                self.call(|| unsafe { unregister(callback2) })?;
-                self.shortcut_capture.registered = false;
-                Ok(())
-            })();
+            let result = self.unregister_shortcut_mode_events();
             if let Err(error) = result {
                 errors.push(format!("{error:#}"));
             }

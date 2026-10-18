@@ -1,20 +1,24 @@
 //! Current756 retained restore owner. The UI owns the debounce/FIFO and
 //! generation guard; one joined worker owns actual device/service lifetime.
 use super::*;
-use razer_device::keyboard_latest_restore::{Coordinator, Generation, STORAGE_FIELD, Work};
+use razer_device::keyboard_latest_restore::{
+    Coordinator, Generation, ProfileCollection, STORAGE_FIELD, Work,
+};
 use razer_discovery::discovery::ObservedDevice;
 use serde_json::Value;
 use std::{
     collections::{BTreeMap, BTreeSet},
     sync::{
         Arc,
-        atomic::{AtomicBool, AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
         mpsc,
     },
     thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
 
+#[path = "keyboard_latest_restore_publisher.rs"]
+mod publisher;
 #[path = "keyboard_latest_restore_worker.rs"]
 mod worker;
 
@@ -28,6 +32,25 @@ struct Request {
     switch_input: Option<Value>,
     defer_ble_persistence: bool,
     intent: Option<(u64, Value)>,
+}
+enum Command {
+    Restore(Work<Request>),
+    CollectionOnly {
+        update: CollectionUpdate,
+        _pending: PendingRecovery,
+    },
+}
+#[derive(Clone)]
+struct CollectionUpdate {
+    through_revision: u64,
+    profiles: ProfileCollection,
+}
+impl CollectionUpdate {
+    fn document(&self, document: &Value) -> anyhow::Result<Value> {
+        let mut document = document.clone();
+        self.profiles.append_to(&mut document)?;
+        Ok(document)
+    }
 }
 enum Reply {
     Ready,
@@ -48,7 +71,10 @@ struct Owner {
     identity: String,
     route: String,
     valid: Arc<AtomicBool>,
-    commands: mpsc::Sender<Work<Request>>,
+    automatic: Arc<AtomicBool>,
+    recoveries: Arc<AtomicUsize>,
+    stopping: bool,
+    commands: mpsc::Sender<Command>,
     replies: mpsc::Receiver<Reply>,
     coordinator: Coordinator<Request>,
     ready: bool,
@@ -56,6 +82,7 @@ struct Owner {
     revision_signal: Arc<AtomicU64>,
     document: Option<Value>,
     source: Option<Value>,
+    collection: Option<CollectionUpdate>,
     running_games: Option<usize>,
     brightness_repeats: BTreeMap<String, (Instant, Value)>,
     ble: bool,
@@ -70,7 +97,38 @@ impl Drop for Owner {
     }
 }
 impl Owner {
+    fn prepare_exit(&mut self) {
+        self.automatic.store(false, Ordering::Release);
+        self.brightness_repeats.clear();
+    }
+
+    fn dispatch(&mut self, now: Instant) -> Result<(), String> {
+        if self.ready && !self.stopping {
+            if let Some(work) = self.coordinator.take_ready(now) {
+                if self.commands.send(Command::Restore(work)).is_err() {
+                    self.coordinator.finish();
+                    self.coordinator.invalidate();
+                    self.valid.store(false, Ordering::Release);
+                    self.stopping = true;
+                    return Err("键盘恢复线程已结束".into());
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn stop_if_drained(&mut self) {
+        if self.coordinator.is_idle() && self.recoveries.load(Ordering::Acquire) == 0 {
+            self.prepare_exit();
+            self.valid.store(false, Ordering::Release);
+            self.stopping = true;
+        }
+    }
+
     fn enqueue(&mut self, document: Value, running_games: Option<usize>, games_only: bool) {
+        if self.stopping {
+            return;
+        }
         let full = self
             .document
             .as_ref()
@@ -80,6 +138,7 @@ impl Owner {
         }
         self.revision = self.revision.wrapping_add(1);
         self.revision_signal.store(self.revision, Ordering::Release);
+        self.collection = None;
         let request = Request {
             previous: self.document.clone(),
             document: document.clone(),
@@ -112,12 +171,14 @@ impl Owner {
         defer: bool,
         input: Option<Value>,
     ) -> anyhow::Result<()> {
+        anyhow::ensure!(!self.stopping, "键盘恢复会话正在结束");
         let document = self
             .document
             .clone()
             .ok_or_else(|| anyhow::anyhow!("BLE 配置切换尚未取得当前本地配置"))?;
         self.revision = self.revision.wrapping_add(1);
         self.revision_signal.store(self.revision, Ordering::Release);
+        self.collection = None;
         self.cancelled_intents
             .extend(std::mem::take(&mut self.pending_intents));
         let request = Request {
@@ -135,12 +196,91 @@ impl Owner {
             .request(self.revision, request, Instant::now(), Duration::ZERO);
         Ok(())
     }
+
+    fn acknowledge_collection(
+        &mut self,
+        identity: &str,
+        route: &str,
+        profiles: anyhow::Result<ProfileCollection>,
+        source: Value,
+    ) -> anyhow::Result<bool> {
+        if self.stopping
+            || !self.valid.load(Ordering::Acquire)
+            || self.identity != identity
+            || self.route != route
+        {
+            return Ok(false);
+        }
+        // This domain publication is local-only even when retaining its
+        // collection fails. A failure must not turn into an automatic restore.
+        self.source = Some(source);
+        let update = CollectionUpdate {
+            through_revision: self.revision,
+            profiles: profiles?,
+        };
+        let document = self
+            .document
+            .as_ref()
+            .map(|document| update.document(document))
+            .transpose()?;
+        if self
+            .commands
+            .send(Command::CollectionOnly {
+                update: update.clone(),
+                _pending: PendingRecovery::start(self.recoveries.clone()),
+            })
+            .is_err()
+        {
+            self.coordinator.invalidate();
+            self.valid.store(false, Ordering::Release);
+            self.stopping = true;
+            anyhow::bail!("键盘配置集合的本地恢复线程已结束");
+        }
+        self.document = document;
+        self.collection = Some(update);
+        Ok(true)
+    }
+
+    fn candidate_document(&self, revision: u64, document: Value) -> anyhow::Result<Value> {
+        match self
+            .collection
+            .as_ref()
+            .filter(|update| revision <= update.through_revision)
+        {
+            Some(update) => update.document(&document),
+            None => Ok(document),
+        }
+    }
+}
+
+/// A source-delayed restore remains admitted work until its last side effect
+/// completes, even after the original command has emitted its completion.
+struct PendingRecovery(Arc<AtomicUsize>);
+impl PendingRecovery {
+    fn start(recoveries: Arc<AtomicUsize>) -> Self {
+        recoveries.fetch_add(1, Ordering::AcqRel);
+        Self(recoveries)
+    }
+}
+impl Drop for PendingRecovery {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::AcqRel);
+    }
 }
 #[derive(Default)]
 pub(super) struct State {
     owners: BTreeMap<EntityId, Owner>,
     workers: Vec<JoinHandle<()>>,
     retry: BTreeMap<EntityId, Instant>,
+    exit: Exit,
+    exit_pump: Option<Task<()>>,
+}
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+enum Exit {
+    #[default]
+    Running,
+    Prepared,
+    Draining,
 }
 fn source_signature(device: &Device) -> Value {
     let mut settings = device.source_device_settings.clone();
@@ -152,6 +292,87 @@ fn source_signature(device: &Device) -> Value {
         "device":settings})
 }
 impl AppShell {
+    pub(super) fn prepare_keyboard_latest_exit(&mut self, cx: &mut Context<Self>) {
+        if self.keyboard_latest_restore.exit == Exit::Running {
+            self.keyboard_latest_restore.exit = Exit::Prepared;
+        }
+        for owner in self.keyboard_latest_restore.owners.values_mut() {
+            owner.prepare_exit();
+        }
+        self.start_keyboard_latest_exit_pump(cx);
+    }
+
+    pub(super) fn finish_keyboard_latest_exit(&mut self, cx: &mut Context<Self>) -> bool {
+        self.prepare_keyboard_latest_exit(cx);
+        self.keyboard_latest_restore.exit = Exit::Draining;
+        for owner in self.keyboard_latest_restore.owners.values_mut() {
+            owner.stop_if_drained();
+        }
+        self.keyboard_latest_exit_pending()
+    }
+
+    pub(super) fn keyboard_latest_exit_pending(&self) -> bool {
+        !self.keyboard_latest_restore.owners.is_empty()
+            || !self.keyboard_latest_restore.workers.is_empty()
+    }
+
+    pub(super) fn cancel_keyboard_latest_exit(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.keyboard_latest_restore.exit = Exit::Running;
+        self.keyboard_latest_restore.exit_pump = None;
+        for owner in self.keyboard_latest_restore.owners.values() {
+            if !owner.stopping {
+                owner.automatic.store(true, Ordering::Release);
+            }
+        }
+        self.sync_keyboard_latest_restore(window, cx);
+    }
+
+    fn start_keyboard_latest_exit_pump(&mut self, cx: &mut Context<Self>) {
+        if self.keyboard_latest_restore.exit_pump.is_some() {
+            return;
+        }
+        let window = self.main_window;
+        self.keyboard_latest_restore.exit_pump = Some(cx.spawn(async move |shell, cx| {
+            loop {
+                cx.background_executor()
+                    .timer(Duration::from_millis(25))
+                    .await;
+                let keep_running = window
+                    .update(cx, |_, window, cx| {
+                        shell.update(cx, |shell, cx| {
+                            if shell.keyboard_latest_restore.exit == Exit::Running {
+                                return false;
+                            }
+                            shell.sync_keyboard_latest_restore(window, cx);
+                            if shell.keyboard_latest_restore.exit == Exit::Draining
+                                && shell.close_requested
+                                && shell.save_task.is_none()
+                            {
+                                shell.continue_save_queue(true, cx);
+                            }
+                            let pending = shell.keyboard_latest_restore.exit != Exit::Running
+                                && (shell.keyboard_latest_restore.exit == Exit::Prepared
+                                    || shell.keyboard_latest_exit_pending());
+                            if !pending {
+                                shell.keyboard_latest_restore.exit_pump = None;
+                            }
+                            pending
+                        })
+                    })
+                    .ok()
+                    .and_then(Result::ok)
+                    .unwrap_or(false);
+                if !keep_running {
+                    break;
+                }
+            }
+        }));
+    }
+
     pub(super) fn submit_keyboard_latest_intent(
         &mut self,
         workspace: Entity<ProductWorkspace>,
@@ -184,6 +405,9 @@ impl AppShell {
                 .owners
                 .get_mut(&workspace.entity_id())
                 .ok_or_else(|| "全局行程同步没有当前设备连接".to_owned())?;
+            if owner.stopping {
+                return Err("全局行程同步的设备会话正在结束".into());
+            }
             owner.enqueue(document.clone(), self.game_observer.running_games(), false);
             owner.pending_intents.insert(request.generation());
             owner.coordinator.enqueue_update(
@@ -273,8 +497,9 @@ impl AppShell {
             self.keyboard_latest_diagnostic(format!("{error}（槽位 {slot_id}，{guid}）"), cx);
         }
     }
-    pub(super) fn install_keyboard_latest_restore_cleanup(&mut self, cx: &mut Context<Self>) {
-        self.subscriptions.push(cx.on_app_quit(|shell, cx| {
+    pub(super) fn install_keyboard_latest_restore_cleanup(&mut self, _cx: &mut Context<Self>) {
+        self.register_exit_cleanup(|shell, cx| {
+            shell.keyboard_latest_restore.exit_pump = None;
             shell.keyboard_latest_restore.owners.clear();
             let workers = std::mem::take(&mut shell.keyboard_latest_restore.workers);
             let cleanup = cx.background_executor().spawn(async move {
@@ -285,7 +510,7 @@ impl AppShell {
                 }
             });
             async move { cleanup.await }
-        }));
+        });
     }
     pub(super) fn publish_keyboard_latest_restore(
         &mut self,
@@ -302,8 +527,59 @@ impl AppShell {
             .owners
             .get_mut(&workspace.entity_id())
         {
-            owner.enqueue(document, running, false);
-            owner.source = Some(source_signature(workspace.read(cx).device(cx)));
+            if !owner.stopping {
+                owner.enqueue(document, running, false);
+                owner.source = Some(source_signature(workspace.read(cx).device(cx)));
+            }
+        }
+    }
+    pub(super) fn acknowledge_keyboard_latest_profile_collection(
+        &mut self,
+        workspace: Entity<ProductWorkspace>,
+        cx: &mut Context<Self>,
+    ) {
+        if !self.devices.contains(&workspace) {
+            return;
+        }
+        let device = workspace.read(cx).device(cx);
+        if device.product_id != 756 {
+            return;
+        }
+        let routes = self
+            .device_observations
+            .iter()
+            .filter(|observed| {
+                observed.matches(device)
+                    && observed.peer_product_id().is_none()
+                    && matches!(observed.physical_product_id(), 756 | 757 | 758)
+            })
+            .collect::<Vec<_>>();
+        let [observed] = routes.as_slice() else {
+            return;
+        };
+        let route = format!(
+            "{}:{}",
+            observed.container(),
+            observed.physical_product_id()
+        );
+        let identity = workspace.read(cx).identity(cx);
+        let source = source_signature(device);
+        let profiles = device
+            .source_device_settings
+            .as_ref()
+            .and_then(|settings| settings.get(STORAGE_FIELD))
+            .ok_or_else(|| anyhow::anyhow!("键盘导入集合没有本地配置文档"))
+            .and_then(ProfileCollection::from_document);
+        let Some(owner) = self
+            .keyboard_latest_restore
+            .owners
+            .get_mut(&workspace.entity_id())
+        else {
+            return;
+        };
+        let result = owner.acknowledge_collection(&identity, &route, profiles, source);
+        if let Err(error) = result {
+            self.keyboard_latest_diagnostic(format!("本地配置集合更新：{error:#}"), cx);
         }
     }
     fn keyboard_latest_diagnostic(&mut self, error: String, cx: &mut Context<Self>) {
@@ -316,6 +592,7 @@ impl AppShell {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        let automatic = self.keyboard_latest_restore.exit == Exit::Running;
         let candidates = self
             .devices
             .iter()
@@ -387,7 +664,8 @@ impl AppShell {
         }
         for (workspace, identity, route, observed) in candidates {
             let id = workspace.entity_id();
-            if self.keyboard_latest_restore.owners.contains_key(&id)
+            if !automatic
+                || self.keyboard_latest_restore.owners.contains_key(&id)
                 || self
                     .keyboard_latest_restore
                     .retry
@@ -400,6 +678,10 @@ impl AppShell {
             let (sender, replies) = mpsc::channel();
             let valid = Arc::new(AtomicBool::new(true));
             let signal = valid.clone();
+            let automatic = Arc::new(AtomicBool::new(true));
+            let worker_automatic = automatic.clone();
+            let recoveries = Arc::new(AtomicUsize::new(0));
+            let worker_recoveries = recoveries.clone();
             let ble = observed.physical_product_id() == 758;
             let macro_exclusive = Arc::new(AtomicBool::new(exclusive));
             let worker_exclusive = macro_exclusive.clone();
@@ -411,6 +693,8 @@ impl AppShell {
                     worker::run(
                         observed,
                         signal,
+                        worker_automatic,
+                        worker_recoveries,
                         worker_exclusive,
                         worker_revision,
                         receiver,
@@ -425,6 +709,9 @@ impl AppShell {
                             identity,
                             route,
                             valid,
+                            automatic,
+                            recoveries,
+                            stopping: false,
                             commands,
                             replies,
                             coordinator: Coordinator::default(),
@@ -433,6 +720,7 @@ impl AppShell {
                             revision_signal,
                             document: None,
                             source: None,
+                            collection: None,
                             running_games: None,
                             brightness_repeats: BTreeMap::new(),
                             ble,
@@ -498,6 +786,19 @@ impl AppShell {
                         continue;
                     }
                     if let Some(workspace) = workspace {
+                        let document = match self
+                            .keyboard_latest_restore
+                            .owners
+                            .get(&id)
+                            .expect("validated current restore owner")
+                            .candidate_document(revision, document)
+                        {
+                            Ok(document) => document,
+                            Err(error) => {
+                                diagnostics.push(format!("本地配置集合回执：{error:#}"));
+                                continue;
+                            }
+                        };
                         workspace.update(cx, |workspace, cx| {
                             workspace.observe_keyboard_latest_document(document.clone(), cx)
                         });
@@ -529,6 +830,9 @@ impl AppShell {
                     }
                 }
                 Reply::Event(event) => {
+                    if !automatic {
+                        continue;
+                    }
                     if let Some(workspace) = workspace {
                         // The workspace owns the mounted mapping-event consumers.
                         workspace.update(cx, |workspace, cx| {
@@ -637,7 +941,7 @@ impl AppShell {
         }
         let mut repeats = Vec::new();
         for (id, owner) in &mut self.keyboard_latest_restore.owners {
-            if exclusive {
+            if exclusive || !automatic {
                 owner.brightness_repeats.clear();
             }
             for (next, event) in owner.brightness_repeats.values_mut() {
@@ -667,7 +971,7 @@ impl AppShell {
             };
             let device = workspace.read(cx).device(cx);
             let signature = source_signature(device);
-            if owner.source.as_ref() != Some(&signature) {
+            if automatic && !owner.stopping && owner.source.as_ref() != Some(&signature) {
                 let mut snapshot = device.clone();
                 match super::mouse_dpi_70::prepare_mapping_document(&mut snapshot, &macros) {
                     Ok(()) => {
@@ -685,18 +989,13 @@ impl AppShell {
                         owner.source = Some(signature);
                     }
                 }
-            } else if owner.running_games != running {
+            } else if automatic && !owner.stopping && owner.running_games != running {
                 if let Some(document) = owner.document.clone() {
                     owner.enqueue(document, running, true);
                 }
             }
-            if owner.ready {
-                if let Some(work) = owner.coordinator.take_ready(Instant::now()) {
-                    if owner.commands.send(work).is_err() {
-                        owner.coordinator.finish();
-                        diagnostics.push("键盘恢复线程已结束".into());
-                    }
-                }
+            if let Err(error) = owner.dispatch(Instant::now()) {
+                diagnostics.push(error);
             }
         }
         for worker in std::mem::take(&mut self.keyboard_latest_restore.workers) {
@@ -746,3 +1045,7 @@ impl AppShell {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "keyboard_latest_restore_tests.rs"]
+mod tests;

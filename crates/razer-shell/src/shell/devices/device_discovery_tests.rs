@@ -1,7 +1,7 @@
 //! Receiver scope replacement never treats another container as the same mouse.
 use super::{
     receiver_owner_matches, receiver_scope_matches, replace_receiver_observations,
-    same_receiver_peer,
+    retained_connection, same_receiver_peer,
 };
 use razer_device::receiver_capabilities;
 use razer_discovery::discovery;
@@ -98,6 +98,43 @@ fn metadata_requeries_preserve_reads_only_for_the_same_live_peer() {
     assert!(!same_receiver_peer(
         &original.devices()[0],
         &different_receiver.devices()[0]
+    ));
+}
+
+#[test]
+fn discovery_preserves_only_a_unique_unchanged_connection() {
+    let original = projection(FIRST, &[(183, 1)]);
+    let repeat = projection(&FIRST.to_ascii_lowercase(), &[(183, 1)]);
+    let offline = projection(FIRST, &[(183, 0)]);
+    let different_receiver = projection(SECOND, &[(183, 1)]);
+    let device = original.devices()[0].clone().into_device().unwrap();
+    assert!(retained_connection(
+        original.devices(),
+        repeat.devices(),
+        &device
+    ));
+    assert!(!retained_connection(
+        original.devices(),
+        offline.devices(),
+        &device
+    ));
+    assert!(!retained_connection(
+        original.devices(),
+        different_receiver.devices(),
+        &device
+    ));
+    assert!(!retained_connection(original.devices(), &[], &device));
+    assert!(!retained_connection(&[], original.devices(), &device));
+    let duplicated = [original.devices()[0].clone(), original.devices()[0].clone()];
+    assert!(!retained_connection(
+        &duplicated,
+        original.devices(),
+        &device
+    ));
+    assert!(!retained_connection(
+        original.devices(),
+        &duplicated,
+        &device
     ));
 }
 

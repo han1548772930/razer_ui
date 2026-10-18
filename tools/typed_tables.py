@@ -18,6 +18,25 @@ RESET_INPUT = ".analysis/inputs/typed-tables/razer-storage/receiver-reset-defaul
 PAIRING_OUTPUT = "crates/razer-storage/src/receiver/receiver_pairing_catalog.rs"
 RESET_OUTPUT = "crates/razer-storage/src/receiver/receiver_reset_defaults.rs"
 MAPPING_OUTPUT = "crates/razer-model/src/mapping_requirements/mouse_capabilities.rs"
+TRANSFER_OUTPUT = "crates/razer-device/src/profile_transfer/targets.rs"
+BATTERY_PEER_OUTPUT = "crates/razer-device/src/receiver/receiver_battery_peers_generated.rs"
+BATTERY_PEER_PRODUCTS = (214, 221, 226, 231, 235, 45066)
+BATTERY_PEER_FACTORIES = {name: name[0].upper() + name[1:] for name in (
+    "rzDevice25", "rzDevice25DualLinkMouse", "rzDevice30", "rzDevice25Krakoff")}
+BATTERY_PEER_GEOMETRY_FIELDS = {
+    "Version": "version", "VID": "vendor_id", "PID": "product_id", "EID": "edition",
+    "Layout": "layout", "MatrixMaxRow": "matrix_max_row", "MatrixMaxCol": "matrix_max_col",
+    "DeviceMaxRow": "device_max_row", "DeviceMaxCol": "device_max_col", "LedWidth": "led_width",
+    "LedHeight": "led_height", "LedWidthOffset": "led_width_offset", "LedHeightOffset": "led_height_offset",
+    "MaxRegion": "max_region", "RegionMaxRow": "region_max_row", "RegionMaxCol": "region_max_col",
+}
+TRANSFER_CATEGORIES = {
+    "ACCESSORY": "Accessory", "AUDIO": "Audio", "BROADCASTER": "Broadcaster",
+    "CASE": "Case", "CHAIR": "Chair", "EGPU": "Egpu", "GAMEPAD": "Gamepad",
+    "HUE": "Hue", "IOT": "Iot", "KEYBOARD": "Keyboard", "KEYPAD": "Keypad",
+    "MONITOR": "Monitor", "MOUSE": "Mouse", "MOUSEMAT": "Mousemat",
+    "MOUSEPLUSMAT": "Mouseplusmat", "SYSTEM": "System",
+}
 KINDS = {"dpi": "Dpi", "polling": "Polling", "idle": "Idle"}
 METHODS = {
     "setDpiLevel": ("DpiLevel", "dpi", 7),
@@ -373,6 +392,18 @@ def prepare_receiver_storage(pairing=PAIRING_INPUT, reset=RESET_INPUT, check=Fal
             output.write_bytes(raw)
     return {"paths": [name for name, _ in outputs], "passed": True,
             "scope": "typed local defaults; no runtime JSON catalog, network or device operations"}
+
+
+def check_receiver_reset_storage():
+    source, output = local_path(RESET_INPUT), local_path(RESET_OUTPUT)
+    raw = source.read_bytes()
+    generated = render_reset_storage(raw)
+    if output.read_bytes() != generated:
+        raise ValueError("Typed receiver reset storage differs from complete source defaults")
+    return {"source": RESET_INPUT, "source_sha256": hashlib.sha256(raw).hexdigest(),
+            "output": RESET_OUTPUT, "output_sha256": hashlib.sha256(generated).hexdigest(),
+            "products": [row["product_id"] for row in json.loads(raw)["products"]],
+            "complete_generated_bytes_equal": True, "passed": True}
 
 
 
@@ -1264,6 +1295,1453 @@ def prepare_mapping_capabilities(*, check=False):
     return {"output": MAPPING_OUTPUT, "products": len(products), "bytes": len(formatted), "passed": True, "check_only": check}
 
 
+def profile_transfer_source_owners(raw):
+    """Locate exact exporting factories, including complete concatenated entries."""
+    import sys
+    sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    import families
+    tree = Parser(Language(tree_sitter_javascript.language())).parse(raw)
+    if tree.root_node.has_error:
+        raise ValueError("Current profile transfer source has a JavaScript AST error")
+
+    def source(node):
+        return raw[node.start_byte:node.end_byte].decode("utf-8")
+
+    def capture(node, module_id):
+        return {"module_id": module_id, "byte_start": node.start_byte, "byte_end": node.end_byte,
+                "body": source(node), "body_sha256": hashlib.sha256(raw[node.start_byte:node.end_byte]).hexdigest()}
+
+    owners, modules, pending = {}, {}, [tree.root_node]
+    while pending:
+        node = pending.pop()
+        if node.type in {"pair", "method_definition"}:
+            key = node.child_by_field_name("key" if node.type == "pair" else "name")
+            value = node.child_by_field_name("value") if node.type == "pair" else node
+            if key is not None and key.type == "number" and value is not None and value.type in {
+                    "arrow_function", "function_expression", "method_definition"}:
+                module_id = families.javascript_integer_literal(source(key))
+                if module_id in modules:
+                    raise ValueError("Duplicate current transfer module identity: " + str(module_id))
+                modules[module_id] = capture(node, module_id)
+        if node.type == "call_expression":
+            function = node.child_by_field_name("function")
+            arguments = node.child_by_field_name("arguments").named_children
+            if (function.type == "member_expression" and source(function.child_by_field_name("property")) == "d"
+                    and len(arguments) == 2 and arguments[1].type == "object"
+                    and any(pair.type == "pair" and source(pair.child_by_field_name("key")) == "DeviceInfo"
+                            for pair in arguments[1].named_children)):
+                owner = node.parent
+                while owner is not None and owner.type not in {
+                        "arrow_function", "function_expression", "method_definition", "function_declaration"}:
+                    owner = owner.parent
+                if owner is None:
+                    raise ValueError("Current DeviceInfo export has no complete owner")
+                module_id = "concatenated-entry@" + str(owner.start_byte)
+                if owner.parent is not None and owner.parent.type == "pair":
+                    key = owner.parent.child_by_field_name("key")
+                    if key is not None and key.type == "number":
+                        owner, module_id = owner.parent, families.javascript_integer_literal(source(key))
+                elif owner.type == "method_definition":
+                    key = owner.child_by_field_name("name")
+                    if key is not None and key.type == "number":
+                        module_id = families.javascript_integer_literal(source(key))
+                owners[(owner.start_byte, owner.end_byte)] = capture(owner, module_id)
+        pending.extend(reversed(node.named_children))
+    return list(owners.values()), modules
+
+
+def _profile_transfer_static_fields(body, export_name, consumed, modules, import_chain=()):
+    """Resolve one exported static object without evaluating vendor JavaScript."""
+    import sys
+    sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    import json5
+    import families
+    numeric_factory = re.match(r"\s*" + families.JAVASCRIPT_INTEGER_LITERAL + r"\s*(?::|\()", body) is not None
+    prefix = b"const TRANSFER_MODULE={" if numeric_factory else b"const TRANSFER_MODULE=("
+    raw = prefix + body.encode("utf-8") + (b"};" if numeric_factory else b");")
+    tree = Parser(Language(tree_sitter_javascript.language())).parse(raw)
+    if tree.root_node.has_error:
+        raise ValueError("Current profile transfer factory has a JavaScript AST error")
+    container = tree.root_node.named_children[0].named_children[0].child_by_field_name("value")
+    if len(container.named_children) != 1:
+        raise ValueError("Current profile transfer source is not one complete factory")
+    member = container.named_children[0]
+    factory = member.child_by_field_name("value") if member.type == "pair" else member
+    statements = factory.child_by_field_name("body")
+    if statements is None or statements.type != "statement_block":
+        raise ValueError("Current profile transfer factory has no complete statement body")
+    bindings, exported, retained, dependencies, duplicates, sequences = {}, {}, {}, [], [], []
+    parameters = factory.child_by_field_name("parameters")
+    parameter_names = [raw[node.start_byte:node.end_byte].decode("utf-8") for node in parameters.named_children] if parameters else []
+    require_name = parameter_names[2] if len(parameter_names) == 3 else None
+
+    def source(node):
+        return raw[node.start_byte:node.end_byte].decode("utf-8")
+
+    def capture(node, name):
+        literal = raw[node.start_byte:node.end_byte]
+        retained[(node.start_byte, node.end_byte)] = {
+            "name": name, "byte_start": node.start_byte - len(prefix),
+            "byte_end": node.end_byte - len(prefix), "body": literal.decode("utf-8"),
+            "body_sha256": hashlib.sha256(literal).hexdigest(),
+        }
+
+    for statement in statements.named_children:
+        if statement.type not in ("lexical_declaration", "variable_declaration"):
+            continue
+        for declaration in statement.named_children:
+            if declaration.type != "variable_declarator":
+                continue
+            name = declaration.child_by_field_name("name")
+            if name.type == "identifier":
+                key = source(name)
+                if key in bindings:
+                    raise ValueError("Repeated profile transfer source binding: " + key)
+                bindings[key] = declaration
+
+    def find_exports(node):
+        if node.type == "call_expression":
+            function = node.child_by_field_name("function")
+            arguments = node.child_by_field_name("arguments").named_children
+            if (function.type == "member_expression"
+                    and source(function.child_by_field_name("property")) == "d"
+                    and len(arguments) == 2 and arguments[1].type == "object"):
+                for pair in arguments[1].named_children:
+                    if pair.type != "pair":
+                        continue
+                    key = pair.child_by_field_name("key")
+                    name = json5.loads(source(key)) if key.type == "string" else source(key)
+                    if name != export_name:
+                        continue
+                    getter = pair.child_by_field_name("value")
+                    if getter.type not in ("arrow_function", "function_expression"):
+                        raise ValueError("DeviceInfo export is not a fixed getter")
+                    result = getter.child_by_field_name("body")
+                    if result.type == "statement_block":
+                        returns = [child for child in result.named_children if child.type != "comment"]
+                        if (len(returns) != 1 or returns[0].type != "return_statement"
+                                or len(returns[0].named_children) != 1):
+                            raise ValueError("DeviceInfo getter has an unresolved statement body")
+                        result = returns[0].named_children[0]
+                    if result.type != "identifier" or name in exported:
+                        raise ValueError("DeviceInfo export is ambiguous or dynamic")
+                    exported[name] = source(result)
+                    capture(pair, "DeviceInfo_export")
+        if node.type not in ("arrow_function", "function_expression", "function_declaration", "method_definition"):
+            for child in node.named_children:
+                find_exports(child)
+
+    for statement in statements.named_children:
+        if statement.type == "expression_statement":
+            find_exports(statement)
+    if set(exported) != {export_name}:
+        raise ValueError("Current profile transfer factory does not export " + export_name)
+
+    def resolve(node, chain=()):
+        while node.type == "parenthesized_expression" and len(node.named_children) == 1:
+            node = node.named_children[0]
+        if node.type == "sequence_expression":
+            operands = node.named_children
+            def passive(operand):
+                return (operand.type == "identifier" or operand.type == "member_expression"
+                        and passive(operand.child_by_field_name("object"))
+                        and operand.child_by_field_name("property").type == "property_identifier")
+            if not operands or not all(passive(operand) for operand in operands[:-1]):
+                raise ValueError("DeviceInfo sequence has an unresolved leading operation")
+            sequences.append({"expression": source(node), "result": source(operands[-1])})
+            return resolve(operands[-1], chain)
+        if node.type not in {"identifier", "shorthand_property_identifier"}:
+            return node
+        name = source(node)
+        if name in chain or name not in bindings:
+            raise ValueError("Unresolved profile transfer source binding: " + name)
+        declaration = bindings[name]
+        value = declaration.child_by_field_name("value")
+        if value is None:
+            raise ValueError("Uninitialized profile transfer source binding: " + name)
+        capture(declaration, name)
+        return resolve(value, (*chain, name))
+
+    def value(node):
+        node = resolve(node)
+        if node.type in ("string", "number", "true", "false", "null"):
+            return json5.loads(source(node))
+        if node.type == "unary_expression" and source(node) in ("!0", "!1"):
+            return source(node) == "!0"
+        if node.type == "member_expression":
+            path, root = [], node
+            while root.type == "member_expression":
+                key = root.child_by_field_name("property")
+                if key.type != "property_identifier":
+                    raise ValueError("Computed transfer field member is unresolved")
+                path.insert(0, source(key))
+                root = root.child_by_field_name("object")
+            if root.type == "identifier" and source(root) in bindings:
+                binding = bindings[source(root)]
+                imported = binding.child_by_field_name("value")
+                if imported is not None and imported.type == "call_expression":
+                    arguments = imported.child_by_field_name("arguments").named_children
+                    if (require_name is not None and source(imported.child_by_field_name("function")) == require_name
+                            and len(arguments) == 1 and arguments[0].type == "number" and len(path) == 2):
+                        module_id = families.javascript_integer_literal(source(arguments[0]))
+                        marker = (module_id, *path)
+                        if marker in import_chain or module_id not in modules:
+                            raise ValueError("Imported transfer field module is absent or cyclic: " + str(module_id))
+                        capture(binding, source(root))
+                        dependency = modules[module_id]
+                        fields, evidence = _profile_transfer_static_fields(
+                            dependency["body"], path[0], {path[1]}, modules, (*import_chain, marker))
+                        dependencies.append({"owner": dependency, "export": path[0], "field": path[1], "evidence": evidence})
+                        return fields[path[1]]
+            object_fields = properties(node.child_by_field_name("object"))
+            key = source(node.child_by_field_name("property"))
+            if key not in object_fields:
+                raise ValueError("Static transfer object member is absent: " + key)
+            return value(object_fields[key])
+        raise ValueError("Nonliteral profile transfer field: " + source(node))
+
+    def properties(node, spread_chain=()):
+        node = resolve(node)
+        if node.type != "object" or node.start_byte in spread_chain:
+            raise ValueError("DeviceInfo must resolve to one fixed object")
+        output = {}
+        for item in node.named_children:
+            if item.type == "comment":
+                continue
+            if item.type == "pair":
+                key = item.child_by_field_name("key")
+                if key.type not in ("property_identifier", "string", "number"):
+                    raise ValueError("DeviceInfo has a computed field identity: " + source(key))
+                name = json5.loads(source(key)) if key.type == "string" else source(key)
+                incoming = {name: item.child_by_field_name("value")}
+            elif item.type == "shorthand_property_identifier":
+                incoming = {source(item): item}
+            elif item.type == "spread_element" and len(item.named_children) == 1:
+                incoming = properties(item.named_children[0], (*spread_chain, node.start_byte))
+            else:
+                raise ValueError("DeviceInfo has an unresolved object property: " + source(item))
+            for key, item_value in incoming.items():
+                if key in output and key in consumed:
+                    if value(output[key]) != value(item_value):
+                        raise ValueError("Conflicting profile transfer DeviceInfo field: " + key)
+                    duplicates.append({"field": key, "previous": source(output[key]), "effective": source(item_value),
+                                       "equal_fixed_values": True, "semantics": "last object property wins"})
+                output[key] = item_value
+        return output
+
+    declaration = bindings.get(exported[export_name])
+    if declaration is None:
+        raise ValueError("Exported DeviceInfo binding is absent")
+    capture(declaration, export_name)
+    fields = properties(declaration.child_by_field_name("value"))
+    required = {"productId", "category"} if export_name == "DeviceInfo" else consumed
+    missing = required - fields.keys()
+    if missing:
+        raise ValueError("Required profile transfer DeviceInfo fields are absent: " + ", ".join(sorted(missing)))
+    projection = {}
+    for name in sorted(consumed & fields.keys()):
+        node = fields[name]
+        # Shorthand object keys bind the same top-level identifier.
+        if node.type == "shorthand_property_identifier":
+            if name not in bindings:
+                raise ValueError("Unresolved DeviceInfo shorthand: " + name)
+            node = bindings[name].child_by_field_name("value")
+            capture(bindings[name], name)
+        capture(node, name)
+        projection[name] = value(node)
+    return projection, {
+        "exported_binding": exported[export_name],
+        "bindings": sorted(retained.values(), key=lambda row: (row["byte_start"], row["byte_end"])),
+        "absent_optional_fields": sorted(consumed - required - fields.keys()),
+        "equal_duplicate_properties": duplicates, "sequence_results": sequences, "imported_fixed_fields": dependencies,
+        "scope": "Exact exported fixed fields; unrelated product defaults stay with their product owners",
+    }
+
+
+def profile_transfer_source_projection(body, *, modules=None):
+    """Read only the exported DeviceInfo object through its complete factory AST."""
+    projection, evidence = _profile_transfer_static_fields(body, "DeviceInfo",
+        {"productId", "dongleId", "bleId", "category", "is8kAnalogDevice", "deviceName"}, modules or {})
+    for name in ("productId", "dongleId", "bleId"):
+        if name in projection:
+            bounded(projection[name], 0xFFFFFFFF, name, 1 if name == "productId" else 0)
+    if projection["category"] not in TRANSFER_CATEGORIES:
+        raise ValueError("Unknown current profile transfer category: " + str(projection["category"]))
+    if "deviceName" in projection and (type(projection["deviceName"]) is not str or not projection["deviceName"].strip()):
+        raise ValueError("Current profile transfer deviceName is empty or not a string")
+    if "is8kAnalogDevice" in projection:
+        boolean(projection["is8kAnalogDevice"], "is8kAnalogDevice")
+    return projection, evidence
+
+
+def profile_transfer_semantics(projection):
+    return {
+        "product_id": projection["productId"], "dongle_id": projection.get("dongleId"),
+        "ble_id": projection.get("bleId"), "category": TRANSFER_CATEGORIES[projection["category"]],
+        "is_eight_k_analog_device": projection.get("is8kAnalogDevice", False),
+    }
+
+
+def profile_export_payload_semantics(body):
+    """Verify the observed writer projection and selected-row failure semantics."""
+    import sys
+    sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    raw = b"const writer=" + body.encode("utf-8") + b";"
+    tree = Parser(Language(tree_sitter_javascript.language())).parse(raw)
+    if tree.root_node.has_error:
+        raise ValueError("Current export payload has an invalid complete function")
+    owner = tree.root_node.named_children[0].named_children[0].child_by_field_name("value")
+
+    def source(node):
+        return raw[node.start_byte:node.end_byte].decode("utf-8")
+
+    def unwrapped(node):
+        while node.type == "parenthesized_expression" and len(node.named_children) == 1:
+            node = node.named_children[0]
+        return node
+
+    def descendants(node):
+        pending = [node]
+        while pending:
+            current = pending.pop()
+            yield current
+            pending.extend(reversed(current.named_children))
+
+    def fields(node):
+        output = {}
+        for pair in node.named_children:
+            if pair.type == "comment":
+                continue
+            if pair.type != "pair" or pair.child_by_field_name("key").type != "property_identifier":
+                raise ValueError("Export payload has an unresolved object property")
+            key = source(pair.child_by_field_name("key"))
+            if key in output:
+                raise ValueError("Export payload has a repeated field: " + key)
+            output[key] = pair.child_by_field_name("value")
+        return output
+
+    nodes = list(descendants(owner))
+    files = [fields(node) for node in nodes if node.type == "object"
+             and re.search(r"\bproductId\s*:", source(node))
+             and {"productId", "deviceName", "category", "profiles"} <= fields(node).keys()]
+    if len(files) != 1:
+        raise ValueError("Export payload file object is unresolved")
+    document = files[0]
+    has_macros = "macros" in document
+    exact_fields(document, {"productId", "deviceName", "category", "profiles", *(('macros',) if has_macros else ())}, "export file")
+    if document["profiles"].type != "identifier" or has_macros and document["macros"].type != "identifier":
+        raise ValueError("Export arrays must have explicit local owners")
+    profile_array = source(document["profiles"])
+    macro_array = source(document["macros"]) if has_macros else None
+    copies = [node for node in nodes if node.type == "variable_declarator"
+              and node.child_by_field_name("value") is not None
+              and re.fullmatch(r"JSON\.parse\(JSON\.stringify\([\w$]+\.find\(.+\)\)\)", source(node.child_by_field_name("value")))]
+    if len(copies) != 1:
+        raise ValueError("Export selected profile must be cloned from exactly one GUID lookup")
+    profile_copy = copies[0]
+    profile = source(profile_copy.child_by_field_name("name"))
+    deletes = [source(node) for node in nodes if node.type == "unary_expression" and source(node).startswith("delete ")]
+    if deletes != ["delete " + profile + ".appEngine"]:
+        raise ValueError("Export profile must remove only appEngine")
+    callback = profile_copy.parent
+    while callback is not None and callback.type != "arrow_function":
+        callback = callback.parent
+    if callback is None:
+        raise ValueError("Export selected profile has no row callback")
+    parameters = callback.child_by_field_name("parameters")
+    parameter = callback.child_by_field_name("parameter")
+    if parameter is None and parameters is not None and len(parameters.named_children) == 1:
+        parameter = parameters.named_children[0]
+    if parameter is None or parameter.type != "identifier":
+        raise ValueError("Export selected profile callback must have one row identity")
+    row = source(parameter)
+    copy_text = source(profile_copy.child_by_field_name("value"))
+    if re.search(r"([\w$]+)\.guid===" + re.escape(row) + r"\.id", copy_text) is None:
+        raise ValueError("Export selected profile lookup does not use the row GUID")
+    profile_iteration = callback.parent
+    while profile_iteration is not None and profile_iteration.type != "call_expression":
+        profile_iteration = profile_iteration.parent
+    if profile_iteration is None or re.fullmatch(r"[\w$]+\.forEach", source(profile_iteration.child_by_field_name("function"))) is None:
+        raise ValueError("Export profile selection must preserve input forEach order")
+    for node in descendants(callback):
+        if node.type in {"assignment_expression", "augmented_assignment_expression", "update_expression"}:
+            target = node.child_by_field_name("left") or node.child_by_field_name("argument")
+            if target is not None and re.match(re.escape(profile) + r"(?:\.|\[|$)", source(target)):
+                raise ValueError("Export cloned profile has an unverified mutation")
+
+    def envelope(array, value_name, display_owner):
+        pushes = [node for node in nodes if node.type == "call_expression"
+                  and source(node.child_by_field_name("function")) == array + ".push"]
+        if len(pushes) != 1:
+            raise ValueError("Export payload array must have one ordered envelope push")
+        args = pushes[0].child_by_field_name("arguments").named_children
+        if len(args) != 1 or args[0].type != "object":
+            raise ValueError("Export envelope is not a fixed object")
+        projected = fields(args[0])
+        exact_fields(projected, {"name", "payload", "hash"}, "export envelope")
+        if source(projected["name"]) != display_owner + ".name" or projected["payload"].type != "identifier":
+            raise ValueError("Export envelope name/payload owner differs")
+        hash_call = projected["hash"]
+        if (hash_call.type != "call_expression" or [source(arg) for arg in hash_call.child_by_field_name("arguments").named_children] != [value_name]):
+            raise ValueError("Export hash must consume the exact projected value")
+        scope = pushes[0].parent
+        while scope is not None and scope.type != "statement_block":
+            scope = scope.parent
+        declarations = [node for statement in scope.named_children
+            if statement.type in {"lexical_declaration", "variable_declaration"}
+            for node in statement.named_children if node.type == "variable_declarator"]
+        values = {source(node.child_by_field_name("name")): source(node.child_by_field_name("value")) for node in declarations}
+        serialized = [key for key, value in values.items() if value == "JSON.stringify(" + value_name + ")"]
+        payload = source(projected["payload"])
+        if len(serialized) != 1 or payload not in values or re.fullmatch(
+                r"[\w$]+(?:\.Buffer)?\.from\(" + re.escape(serialized[0]) + r"\)\.toString\([\"']base64[\"']\)", values[payload]) is None:
+            raise ValueError("Export payload must base64-encode the exact JSON projection")
+        return {"push": source(pushes[0]), "hash_expression": source(hash_call.child_by_field_name("function"))}
+
+    profile_envelope = envelope(profile_array, profile, profile)
+    macro_projections = [(node, fields(node)) for node in nodes if node.type == "object"
+                         and {"guid", "macroEvents", "macroPlaybackOption"} <= fields(node).keys()]
+    if len(macro_projections) != (1 if has_macros else 0):
+        raise ValueError("Export macro projection count differs from the file schema")
+    result = {"export_rule": "ProfilesOnly", "profile": {"copy": source(profile_copy),
+        "delete": deletes[0], "selection": source(profile_iteration), "envelope": profile_envelope},
+        "missing_profile": "fail entire export", "macro": None}
+    if has_macros:
+        projection, projected = macro_projections[0]
+        exact_fields(projected, {"guid", "macroEvents", "macroPlaybackOption"}, "export macro")
+        match = re.fullmatch(r"([\w$]+)\.guid", source(projected["guid"]))
+        if match is None or any(source(projected[key]) != match[1] + "." + key for key in projected):
+            raise ValueError("Export macro fields do not share their original owner")
+        macro = match[1]
+        declaration = projection.parent
+        if declaration.type != "variable_declarator":
+            raise ValueError("Export macro projection has no stable local binding")
+        projected_name = source(declaration.child_by_field_name("name"))
+        macro_envelope = envelope(macro_array, projected_name, macro)
+        unique_if = declaration.parent
+        while unique_if is not None and unique_if.type != "if_statement":
+            unique_if = unique_if.parent
+        if unique_if is None:
+            raise ValueError("Export macro projection has no duplicate guard")
+        unique_condition = unwrapped(unique_if.child_by_field_name("condition"))
+        # Compare grammar tokens after removing optional parenthesized arrows.
+        dedup_text = re.sub(r"\s+", "", source(unique_condition)).replace("(", "").replace(")", "")
+        unique_suffix = re.escape(macro_array) + r"\.findIndex([\w$]+)=>\1\.guid===" + re.escape(macro) + r"\.guid"
+        if re.fullmatch(r"(?:" + re.escape(macro) + r"&&)?-1===" + unique_suffix, dedup_text) is None:
+            raise ValueError("Export macros must be deduplicated by original GUID")
+        combined_skip = dedup_text.startswith(macro + "&&")
+        siblings = unique_if.parent.named_children
+        preceding = [node for node in siblings if node.end_byte <= unique_if.start_byte]
+        separate_skip = any(node.type == "if_statement" and re.sub(r"\s+", "", source(node)) == "if(!" + macro + ")return;" for node in preceding)
+        selected_if = unique_if.parent
+        while selected_if is not None and selected_if.type != "if_statement":
+            selected_if = selected_if.parent
+        if selected_if is None:
+            raise ValueError("Export macro selection guard is absent")
+        selected = source(unwrapped(selected_if.child_by_field_name("condition")))
+        selected_match = re.fullmatch(r"([\w$]+)\.isMacroSelected", selected)
+        if selected_match is None:
+            raise ValueError("Export macros do not use the selected row flag")
+        selected_row = selected_match[1]
+        lookup = [node for node in preceding if node.type in {"lexical_declaration", "variable_declaration"}
+                  for node in node.named_children if node.type == "variable_declarator"
+                  and source(node.child_by_field_name("name")) == macro]
+        if len(lookup) != 1 or re.fullmatch(r"[\w$]+\.find\(\(?([\w$]+)=>\1\.guid===" + re.escape(selected_row) + r"\.guid\)?\)", source(lookup[0].child_by_field_name("value"))) is None:
+            raise ValueError("Export selected macro lookup is not the original GUID")
+        macro_iteration = selected_if.parent
+        while macro_iteration is not None and macro_iteration.type != "arrow_function":
+            macro_iteration = macro_iteration.parent
+        macro_iteration = macro_iteration.parent if macro_iteration is not None else None
+        while macro_iteration is not None and macro_iteration.type != "call_expression":
+            macro_iteration = macro_iteration.parent
+        if macro_iteration is None or source(macro_iteration.child_by_field_name("function")) != row + ".listItems.forEach":
+            raise ValueError("Export macros must follow each selected profile's row order")
+        skip = combined_skip or separate_skip
+        result["export_rule"] = "ProfilesWithSelectedMacros" if skip else "ProfilesWithRequiredSelectedMacros"
+        result["macro"] = {"projection": {key: source(value) for key, value in projected.items()},
+            "selection": source(macro_iteration), "envelope": macro_envelope,
+            "missing_selected_macro": "skip" if skip else "fail entire export", "deduplication": "original GUID"}
+    return result
+
+
+def profile_export_name_source(raw, *, device_info_owner=None, device_info_binding=None, verify_payload=False):
+    """Retain complete export functions and classify their exact device-name producer."""
+    import sys
+    sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    import families
+    tree = Parser(Language(tree_sitter_javascript.language())).parse(raw)
+    if tree.root_node.has_error:
+        raise ValueError("Current profile export source has a JavaScript AST error")
+
+    def source(node):
+        return raw[node.start_byte:node.end_byte].decode("utf-8")
+
+    function_kinds = {"function_declaration", "function_expression", "arrow_function", "generator_function", "generator_function_declaration"}
+    candidates, pending = {}, [tree.root_node]
+    while pending:
+        node = pending.pop()
+        if node.type == "string" and source(node) in ('"taskMakerExportProfile"', "'taskMakerExportProfile'"):
+            owner = node.parent
+            while owner is not None:
+                if owner.type in function_kinds:
+                    candidates[(owner.start_byte, owner.end_byte)] = owner
+                owner = owner.parent
+        pending.extend(reversed(node.named_children))
+    captures = []
+    accepted_ranges = []
+    for owner in sorted(candidates.values(), key=lambda node: node.end_byte - node.start_byte):
+        if any(owner.start_byte <= begin and end <= owner.end_byte for begin, end in accepted_ranges):
+            continue
+        pending, exports = [owner], []
+        while pending:
+            node = pending.pop()
+            if node.type == "object":
+                fields = {}
+                for child in node.named_children:
+                    if child.type == "pair":
+                        key = child.child_by_field_name("key")
+                        if key.type == "property_identifier":
+                            fields[source(key)] = child.child_by_field_name("value")
+                if {"productId", "deviceName", "category", "profiles"} <= fields.keys():
+                    exports.append(fields)
+            pending.extend(reversed(node.named_children))
+        if len(exports) != 1:
+            continue
+        fields = exports[0]
+        outer_fields = {"productId", "deviceName", "category", "profiles"}
+        if fields.keys() not in (outer_fields, outer_fields | {"macros"}):
+            raise ValueError("Current profile export file has unresolved fields: " + str(sorted(fields)))
+        export_rule = "ProfilesWithSelectedMacros" if "macros" in fields else "ProfilesOnly"
+        name = source(fields["deviceName"])
+        product, category = source(fields["productId"]), source(fields["category"])
+        direct = re.fullmatch(r"([\w$]+(?:\.DeviceInfo)?)\.productId", product)
+        if direct is None or category != direct[1] + ".category":
+            raise ValueError("Current export product/category do not share their DeviceInfo owner")
+        product_owner = direct[1]
+        if name == product_owner + ".deviceName":
+            mode = "middleware_device_info"
+        elif re.fullmatch(r"[\w$]+(?:\.[\w$]+)*\.getCurLangNameData\(\)\.productName", name):
+            mode = "current_localized_product_name"
+        else:
+            raise ValueError("Unresolved current profile export device-name producer: " + name)
+        pending, deletions, macro_payloads, profile_copies = [owner], [], [], []
+        while pending:
+            node = pending.pop()
+            if node.type == "unary_expression" and source(node).startswith("delete "):
+                deletions.append(source(node))
+            if node.type == "variable_declarator":
+                initializer = node.child_by_field_name("value")
+                if initializer is not None and re.fullmatch(r"JSON\.parse\(JSON\.stringify\(.+\.find\(.+\)\)\)", source(initializer)):
+                    profile_copies.append(source(node))
+            if node.type == "object":
+                projected = {source(pair.child_by_field_name("key")): source(pair.child_by_field_name("value"))
+                    for pair in node.named_children if pair.type == "pair"}
+                if {"guid", "macroEvents", "macroPlaybackOption"} <= projected.keys():
+                    macro_payloads.append(projected)
+            pending.extend(reversed(node.named_children))
+        identifiers, properties = {}, {}
+        def normalized(node):
+            if node.type == "comment":
+                return None
+            if node.type == "identifier":
+                key = source(node)
+                return [node.type, identifiers.setdefault(key, len(identifiers))]
+            if node.type == "property_identifier":
+                key = source(node)
+                # Retain domain fields, built-in operations and enum members;
+                # alpha-renaming only short minified import/export aliases.
+                return [node.type, properties.setdefault(key, len(properties)) if len(key) <= 3 and key not in {"get", "set", "id"} else key]
+            if not node.children:
+                return [node.type, source(node)]
+            return [node.type, [item for child in node.children if (item := normalized(child)) is not None]]
+        structure = json.dumps(normalized(owner), separators=(",", ":")).encode()
+        verified_payload = profile_export_payload_semantics(source(owner)) if verify_payload else None
+        if verified_payload is not None:
+            export_rule = verified_payload["export_rule"]
+        module, enclosing_functions = owner.parent, []
+        while module is not None:
+            if module.type in ("pair", "method_definition"):
+                key = module.child_by_field_name("key" if module.type == "pair" else "name")
+                if key is not None and key.type == "number":
+                    break
+            if module.type in function_kinds:
+                enclosing_functions.append(module)
+            module = module.parent
+        if module is None:
+            matching = [node for node in enclosing_functions if device_info_owner is not None
+                        and hashlib.sha256(raw[node.start_byte:node.end_byte]).hexdigest() == device_info_owner["body_sha256"]]
+            if len(matching) != 1:
+                raise ValueError("Current profile export function is outside a complete verified owner")
+            module = matching[0]
+            module_id = device_info_owner["module_id"]
+        else:
+            module_id = families.javascript_integer_literal(source(module.child_by_field_name("key" if module.type == "pair" else "name")))
+        linkage = None
+        if device_info_owner is not None:
+            if product_owner.endswith(".DeviceInfo"):
+                factory = module.child_by_field_name("value") if module.type == "pair" else module
+                parameters = factory.child_by_field_name("parameters").named_children
+                if len(parameters) != 3 or not isinstance(device_info_owner["module_id"], int):
+                    raise ValueError("Current export DeviceInfo import has no verified module boundary")
+                require_name = source(parameters[2])
+                alias = product_owner.removesuffix(".DeviceInfo")
+                declarations = [declaration for statement in factory.child_by_field_name("body").named_children
+                    if statement.type in {"variable_declaration", "lexical_declaration"}
+                    for declaration in statement.named_children if declaration.type == "variable_declarator"
+                    and source(declaration.child_by_field_name("name")) == alias]
+                if len(declarations) != 1:
+                    raise ValueError("Current export DeviceInfo import binding is unresolved")
+                imported = declarations[0].child_by_field_name("value")
+                arguments = imported.child_by_field_name("arguments") if imported.type == "call_expression" else None
+                if (arguments is None or source(imported.child_by_field_name("function")) != require_name
+                        or len(arguments.named_children) != 1 or arguments.named_children[0].type != "number"
+                        or families.javascript_integer_literal(source(arguments.named_children[0])) != device_info_owner["module_id"]):
+                    raise ValueError("Current export DeviceInfo import does not resolve to the verified writer")
+                linkage = {"kind": "webpack_require", "module_id": device_info_owner["module_id"], "binding": source(declarations[0])}
+            elif (product_owner == device_info_binding and module_id == device_info_owner["module_id"]
+                    and hashlib.sha256(raw[module.start_byte:module.end_byte]).hexdigest() == device_info_owner["body_sha256"]):
+                linkage = {"kind": "same_complete_owner", "binding": product_owner}
+            else:
+                raise ValueError("Current export DeviceInfo binding does not resolve to the verified writer")
+        accepted_ranges.append((owner.start_byte, owner.end_byte))
+        captures.append({"name_source": mode, "device_name_expression": name,
+            "export_rule": export_rule, "file_fields": sorted(fields),
+            "verified_payload_semantics": verified_payload,
+            "processor_observation": {"deletions": deletions, "profile_copies": profile_copies,
+                "macro_payloads": macro_payloads, "alpha_renamed_ast_sha256": hashlib.sha256(structure).hexdigest(),
+                "scope": "Complete writer function structure and observed operations; helper call equivalence is not implied"},
+            "product_expression": product, "category_expression": category,
+            "verified_device_info_linkage": linkage,
+            "function": {"byte_start": owner.start_byte, "byte_end": owner.end_byte,
+                         "body": source(owner), "sha256": hashlib.sha256(raw[owner.start_byte:owner.end_byte]).hexdigest()},
+            "module": {"byte_start": module.start_byte, "byte_end": module.end_byte,
+                       "module_id": module_id,
+                       "complete_body_retained_in_original": True,
+                       "sha256": hashlib.sha256(raw[module.start_byte:module.end_byte]).hexdigest()}})
+    if len(captures) > 1:
+        raise ValueError("Current profile export has ambiguous name producers")
+    return captures[0] if captures else None
+
+
+def render_profile_transfer_products(products):
+    ids = [row["mounted_product_id"] for row in products]
+    if not ids or ids != sorted(set(ids)):
+        raise ValueError("Current profile transfer products must be complete, unique and sorted")
+    lines = [
+        "//! Fixed capabilities from current mounted DeviceInfo factories.",
+        "//! Regenerate with tools/workspace.py prepare-profile-transfer-table.",
+        "use super::{ProfileExportRule, ProfileTransferProduct, TransferCategory, TransferTarget};", "",
+        "pub(super) static PRODUCTS: &[ProfileTransferProduct] = &[",
+    ]
+    for row in products:
+        lines.extend([
+            "    ProfileTransferProduct {",
+            f"        mounted_product_id: {row['mounted_product_id']},",
+        ])
+        for field, projection in (("target", row["projection"]), ("export_target", row["export_projection"])):
+            target = profile_transfer_semantics(projection)
+            lines.extend([
+                f"        {field}: TransferTarget {{",
+                f"            product_id: {target['product_id']},",
+                f"            dongle_id: {'None' if target['dongle_id'] is None else 'Some(' + str(target['dongle_id']) + ')'},",
+                f"            ble_id: {'None' if target['ble_id'] is None else 'Some(' + str(target['ble_id']) + ')'},",
+                f"            category: TransferCategory::{target['category']},",
+                f"            is_eight_k_analog_device: {str(target['is_eight_k_analog_device']).lower()},",
+                "        },",
+            ])
+        lines.extend([
+            f"        export_rule: ProfileExportRule::{row['export_rule']},",
+            f"        device_name: {'None' if row.get('fixed_export_name') is None else 'Some(' + rust_string(row['fixed_export_name']) + ')'},",
+            "    },",
+        ])
+    return ("\n".join([*lines, "];", ""])).encode("utf-8")
+
+
+def verify_profile_transfer_constructor(content, products):
+    """Compare every generated Rust field and row position with the original AST projection."""
+    import sys
+    sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_rust
+    import catalog_data
+    parser = Parser(Language(tree_sitter_rust.language()))
+    tree = parser.parse(content)
+    if tree.root_node.has_error:
+        raise ValueError("Generated profile transfer Rust has an AST error")
+
+    def text(node):
+        return node.text.decode("utf-8")
+
+    def decode(node):
+        if node.type == "reference_expression":
+            if len(node.named_children) != 1:
+                raise ValueError("Generated transfer table reference is ambiguous")
+            return decode(node.named_children[0])
+        if node.type == "array_expression":
+            return [decode(child) for child in node.named_children]
+        if node.type in ("integer_literal", "boolean_literal"):
+            return json.loads(text(node))
+        if node.type == "string_literal":
+            return catalog_data.unstring(text(node))
+        if node.type == "identifier" and text(node) == "None":
+            return None
+        if node.type == "call_expression" and text(node.child_by_field_name("function")) == "Some":
+            arguments = node.child_by_field_name("arguments").named_children
+            if len(arguments) == 1:
+                return decode(arguments[0])
+        if node.type == "scoped_identifier" and text(node).startswith("TransferCategory::"):
+            result = text(node).removeprefix("TransferCategory::")
+            if result in TRANSFER_CATEGORIES.values():
+                return result
+        if node.type == "scoped_identifier" and text(node) in {
+                "ProfileExportRule::ProfilesOnly", "ProfileExportRule::ProfilesWithSelectedMacros",
+                "ProfileExportRule::ProfilesWithRequiredSelectedMacros"}:
+            return text(node).removeprefix("ProfileExportRule::")
+        if node.type == "struct_expression":
+            kind = text(node.child_by_field_name("name"))
+            if kind not in {"ProfileTransferProduct", "TransferTarget"}:
+                raise ValueError("Unexpected generated transfer struct: " + kind)
+            fields = node.child_by_field_name("body")
+            result = {}
+            for field in fields.named_children:
+                if field.type != "field_initializer":
+                    raise ValueError("Generated transfer fields must be explicit")
+                name = text(field.child_by_field_name("field"))
+                if name in result:
+                    raise ValueError("Duplicate generated transfer field: " + name)
+                result[name] = decode(field.child_by_field_name("value"))
+            expected = ({"mounted_product_id", "target", "export_target", "export_rule", "device_name"} if kind == "ProfileTransferProduct" else
+                        {"product_id", "dongle_id", "ble_id", "category", "is_eight_k_analog_device"})
+            exact_fields(result, expected, kind)
+            return result
+        raise ValueError("Nonliteral generated transfer constructor: " + node.type)
+
+    tables = [node for node in tree.root_node.named_children if node.type == "static_item"
+              and text(node.child_by_field_name("name")) == "PRODUCTS"]
+    if len(tables) != 1:
+        raise ValueError("Generated transfer table must have one PRODUCTS owner")
+    actual = decode(tables[0].child_by_field_name("value"))
+    expected = [{"mounted_product_id": row["mounted_product_id"],
+                 "target": profile_transfer_semantics(row["projection"]),
+                 "export_target": profile_transfer_semantics(row["export_projection"]),
+                 "export_rule": row["export_rule"],
+                 "device_name": row.get("fixed_export_name")} for row in products]
+    if actual != expected:
+        raise ValueError("Generated profile transfer fields, order or product branches differ from current source")
+    return {"products": len(actual), "fields_per_product": 13, "all_fields_and_order_equal": True}
+
+
+def profile_transfer_file_inputs(original):
+    import families
+    if not families.valid(original):
+        raise ValueError("Current profile transfer original bytes do not verify")
+    inputs = [{key: original[key] for key in ("path", "bytes", "sha256")}]
+    if original.get("kind") == "installed_cached_official_resource":
+        attempts = original.get("current_http_revalidation", {}).get("attempts", [])
+        if len(attempts) != 2 or not all(row.get("status") == 200 and row.get("matches_retained")
+                and row.get("bytes") == original["bytes"] and row.get("sha256") == original["sha256"]
+                and families.valid(row) for row in attempts):
+            raise ValueError("Current cached transfer original lacks exact retained official HTTP revalidation")
+        inputs.extend({key: row[key] for key in ("path", "bytes", "sha256")} for row in attempts)
+    return inputs
+
+
+def _capture_profile_transfer_product(item):
+    import urllib.parse
+    import families
+    pid, acquisitions = item
+    inputs = []
+    captures = []
+    for role in ("ui", "mw"):
+        receipt_path, receipt = acquisitions[(pid, role)]
+        receipt_identity = families.identity(receipt_path)
+        inputs.append(receipt_identity)
+        files = {row["url"]: row for row in receipt["files"]}
+        entry = files.get(receipt["entry_url"])
+        if entry is None:
+            raise ValueError(f"Current PID {pid} {role} entry is absent from its acquisition")
+        manifest = files.get(urllib.parse.urljoin(entry["url"], "manifest.json"))
+        if manifest is None:
+            raise ValueError(f"Current PID {pid} {role} manifest is absent from its acquisition")
+        for original in (entry, manifest):
+            stable = next((row for row in receipt.get("stability", []) if row["url"] == original["url"]), {})
+            if (not families.valid(original) or not receipt.get("source_current_during_acquisition")
+                    or not stable.get("unchanged") or stable.get("before_sha256") != original["sha256"]
+                    or stable.get("after_sha256") != original["sha256"]):
+                raise ValueError(f"Current PID {pid} {role} entry/manifest bytes or deployment do not verify")
+            inputs.append({key: original[key] for key in ("path", "bytes", "sha256")})
+        scripts = re.findall(r'<script\b[^>]*\bsrc=["\']([^"\']*\bmain\.[\w]+\.js)["\']',
+                             (ROOT / entry["path"]).read_text(encoding="utf-8"))
+        if len(scripts) != 1:
+            raise ValueError(f"Current PID {pid} {role} must mount one main bundle")
+        main = files.get(urllib.parse.urljoin(entry["url"], scripts[0]))
+        if main is None or not families.valid(main):
+            raise ValueError(f"Current PID {pid} {role} mounted main bytes do not verify")
+        inputs.extend(profile_transfer_file_inputs(main))
+        raw = (ROOT / main["path"]).read_bytes()
+        owners, modules = profile_transfer_source_owners(raw)
+        if len(owners) != 1:
+            raise ValueError(f"Current PID {pid} {role} complete DeviceInfo factory is unresolved")
+        owner = owners[0]
+        if raw[owner["byte_start"]:owner["byte_end"]] != owner["body"].encode("utf-8"):
+            raise ValueError("Complete DeviceInfo factory boundaries differ from current original bytes")
+        try:
+            projection, evidence = profile_transfer_source_projection(owner["body"], modules=modules)
+        except ValueError as error:
+            raise ValueError(f"Current PID {pid} {role}: {error}") from error
+        captures.append({"role": role, "acquisition": receipt_identity,
+            "entry": entry, "manifest": manifest, "original_main": main,
+            "complete_owner": owner, "projection": projection, "projection_evidence": evidence})
+        if role == "mw":
+            exports = []
+            for original in receipt["files"]:
+                if ("path" not in original or not original["path"].endswith(".js")
+                        or f"/synapse/products/{pid}/mw/" not in original["path"]):
+                    continue
+                export_raw = (ROOT / original["path"]).read_bytes()
+                if b'"taskMakerExportProfile"' not in export_raw and b"'taskMakerExportProfile'" not in export_raw:
+                    continue
+                if len(export_raw) != original["bytes"] or hashlib.sha256(export_raw).hexdigest() != original["sha256"]:
+                    raise ValueError(f"Current PID {pid} export source bytes do not verify")
+                export = profile_export_name_source(export_raw, device_info_owner=owner,
+                        device_info_binding=evidence["exported_binding"], verify_payload=True)
+                if export is not None:
+                    inputs.extend(profile_transfer_file_inputs(original))
+                    exports.append({"original": original, **export})
+            if len(exports) != 1:
+                raise ValueError(f"Current PID {pid} profile export name source is absent or ambiguous")
+            captures[-1]["profile_export"] = exports[0]
+    reader, writer = captures[0]["projection"], captures[1]["projection"]
+    export = captures[1]["profile_export"]
+    fixed_name = writer.get("deviceName") if export["name_source"] == "middleware_device_info" else None
+    if export["name_source"] == "middleware_device_info" and fixed_name is None:
+        raise ValueError(f"Current PID {pid} export reads an absent DeviceInfo deviceName")
+    product = {"mounted_product_id": pid, "projection": reader, "export_projection": writer, "sources": captures,
+        "fixed_export_name": fixed_name,
+        "export_rule": export["export_rule"],
+        "device_name_owner": export["name_source"],
+        "ui_middleware_target_differs": profile_transfer_semantics(reader) != profile_transfer_semantics(writer),
+        "ui_device_name_differs": reader.get("deviceName") != writer.get("deviceName")}
+    return product, inputs
+
+
+def prepare_profile_transfer_table(*, check=False):
+    import subprocess
+    import urllib.parse
+    from importlib.metadata import version
+    import analysis
+    import families
+    registry_path = ROOT / ".analysis/inputs/typed-tables/razer-catalog/product_registry.json"
+    registered = {row["id"] for row in json.loads(registry_path.read_bytes())["products"]}
+    acquisitions = {}
+    for path in sorted((ROOT / ".analysis/inputs/frontend").glob("*/acquisition.json")):
+        document = json.loads(path.read_bytes(), object_pairs_hook=duplicate_free)
+        match = re.fullmatch(r"https://apps\.razer\.com/synapse/products/(\d+)/(ui|mw)/(?:index\.html)?", document.get("entry_url", ""))
+        if match is None:
+            continue
+        key = (int(match[1]), match[2])
+        if key in acquisitions:
+            raise ValueError("Duplicate mounted profile transfer acquisition: " + str(key))
+        acquisitions[key] = (path, document)
+    mounted = {pid for pid, role in acquisitions if role == "ui"}
+    if not registered <= mounted or mounted != {pid for pid, role in acquisitions if role == "mw"}:
+        raise ValueError("Current profile transfer UI/MW acquisition coverage is incomplete")
+    inputs = [families.identity(registry_path), families.identity(Path(__file__)),
+              families.identity(ROOT / "tools/families.py"), families.identity(ROOT / "tools/workspace.py")]
+    import concurrent.futures
+    items = [(pid, {key: acquisitions[key] for key in ((pid, "ui"), (pid, "mw"))}) for pid in sorted(mounted)]
+    products, failures = [], []
+    if len(items) > 4:
+        import sys
+        with concurrent.futures.ProcessPoolExecutor(max_workers=4) as pool:
+            futures = {pool.submit(_capture_profile_transfer_product, item): item[0] for item in items}
+            for completed, future in enumerate(concurrent.futures.as_completed(futures), 1):
+                try:
+                    product, source_inputs = future.result()
+                    products.append(product)
+                    inputs.extend(source_inputs)
+                except Exception as error:
+                    failures.append({"mounted_product_id": futures[future], "error": str(error)})
+                if completed % 32 == 0 or completed == len(items):
+                    print(f"Profile transfer sources: {completed}/{len(items)} products; unresolved: {len(failures)}", file=sys.stderr, flush=True)
+        analysis.save(ROOT / ".work/profile-transfer-source-captures.json", {
+            "tool": families.identity(Path(__file__)), "products": products, "inputs": inputs,
+            "failures": failures, "application_execution": False, "vendor_execution": False})
+        if failures:
+            failures.sort(key=lambda row: row["mounted_product_id"])
+            scratch = ROOT / ".work/profile-transfer-extraction-errors.json"
+            scratch.parent.mkdir(parents=True, exist_ok=True)
+            analysis.save(scratch, {"tool": families.identity(Path(__file__)), "failures": failures,
+                                    "application_execution": False, "vendor_execution": False})
+            raise ValueError("Current profile transfer source chains are unresolved: " + json.dumps(failures))
+    else:
+        for item in items:
+            product, source_inputs = _capture_profile_transfer_product(item)
+            products.append(product)
+            inputs.extend(source_inputs)
+    products.sort(key=lambda row: row["mounted_product_id"])
+    content = render_profile_transfer_products(products)
+    formatted = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"],
+                               input=content, capture_output=True, check=True).stdout
+    equivalence = verify_profile_transfer_constructor(formatted, products)
+    if not all(families.valid(row) for row in inputs):
+        raise ValueError("Current profile transfer input bytes changed during extraction")
+    output = ROOT / TRANSFER_OUTPUT
+    if check:
+        if not output.is_file() or output.read_bytes() != formatted:
+            raise ValueError("Typed profile transfer products differ; regenerate through workspace.py")
+    else:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(formatted)
+    report = {
+        "tool": families.identity(Path(__file__)),
+        "parsers": {"tree_sitter": version("tree-sitter"), "tree_sitter_javascript": version("tree-sitter-javascript"),
+                    "tree_sitter_rust": version("tree-sitter-rust")},
+        "inputs": inputs, "products": products, "output": families.identity(output),
+        "product_count": len(products), "current_registered_products": len(registered),
+        "ui_middleware_target_difference_count": sum(row["ui_middleware_target_differs"] for row in products),
+        "export_rules": {rule: [row["mounted_product_id"] for row in products if row["export_rule"] == rule]
+            for rule in ("ProfilesOnly", "ProfilesWithSelectedMacros", "ProfilesWithRequiredSelectedMacros")},
+        "writer_structure_groups": [
+            {"alpha_renamed_ast_sha256": key,
+             "mounted_product_ids": [row["mounted_product_id"] for row in products
+                if row["sources"][1]["profile_export"]["processor_observation"]["alpha_renamed_ast_sha256"] == key],
+             "payload_projection_verified_for_every_product": True}
+            for key in sorted({row["sources"][1]["profile_export"]["processor_observation"]["alpha_renamed_ast_sha256"] for row in products})],
+        "constructor_equivalence": equivalence, "inputs_unchanged": True, "check_only": check,
+        "source_scope": "All retained current official product UI and MW acquisitions; exact mounted main DeviceInfo factories",
+        "application_execution": False, "vendor_execution": False, "runtime_acceptance": "unverified",
+    }
+    destination = ROOT / ".analysis/results/typed-data.json"
+    with analysis.index_lock(ROOT / ".work/typed-data-registry.lock"):
+        previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
+        previous["current_profile_transfer_capabilities"] = report
+        analysis.save(destination, previous)
+    return {"output": TRANSFER_OUTPUT, "products": len(products), "bytes": len(formatted),
+            "passed": True, "check_only": check}
+
+
+def receiver_battery_peer_default_effect(quick_effects):
+    """Convert the mounted MW profile default independently of device exit state."""
+    if not isinstance(quick_effects, dict) or type(quick_effects.get("selectedEffectId")) is not int:
+        raise ValueError("Battery peer profile quick effect is unresolved")
+    if quick_effects == {"selectedEffectId": 3}:
+        return "PeerProfileEffect::Spectrum"
+    if quick_effects.get("selectedEffectId") == 1:
+        exact_fields(quick_effects, ("selectedEffectId", "selectedEffectSetting"), "peer profile effect")
+        settings = quick_effects["selectedEffectSetting"]
+        exact_fields(settings, ("color1",), "peer profile effect settings")
+        if isinstance(settings["color1"], str) and re.fullmatch(r"#[0-9a-fA-F]{6}", settings["color1"]):
+            return {"_type": "PeerProfileEffect::Static", "color": list(bytes.fromhex(settings["color1"][1:]))}
+    raise ValueError("Battery peer profile quick effect has no current typed conversion")
+
+
+def receiver_battery_peer_projection(document, source_product_id, edition, profile_quick_effect):
+    """Project the actual manifest branch, including its distinct declared PID."""
+    required = {"productId", "vendorId", "wiredProductId", "dongleProductId", "category",
+                "rzDeviceConfig", "supportBatteryLevelMonitoring", "ledConfig", "quickEffectOnExit"}
+    if not isinstance(document, dict) or not required <= document.keys():
+        raise ValueError("Battery peer manifest is missing required fields")
+    if document["category"] != "MOUSE" or document["vendorId"] != 5426:
+        raise ValueError("Battery peer category or vendor is unresolved")
+    config = document["rzDeviceConfig"]
+    exact_fields(config, ("claimInterface", "maxRetryIn", "maxRetryOut", "rzDeviceName",
+                         "sleepTimeBetweenIn", "sleepTimeBetweenOut", "sleepTimeBetweenOutIn"), "peer transport")
+    if config["rzDeviceName"] not in BATTERY_PEER_FACTORIES:
+        raise ValueError("Battery peer factory has no typed branch")
+    support = {"source_product_id": bounded(source_product_id, 65535, "source PID", 1),
+               "manifest_product_id": bounded(document["productId"], 65535, "manifest PID", 1),
+               "edition": bounded(edition, 255, "edition"),
+               "vendor_id": bounded(document["vendorId"], 65535, "vendor", 1),
+               "wired_product_id": bounded(document["wiredProductId"], 65535, "wired PID"),
+               "dongle_product_id": bounded(document["dongleProductId"], 65535, "dongle PID"),
+               "ble_product_id": bounded(document["bleProductId"], 65535, "BLE PID") if "bleProductId" in document else None,
+               "category": "PeerCategory::Mouse",
+               "rz_device_name": "PeerDeviceFactory::" + BATTERY_PEER_FACTORIES[config["rzDeviceName"]]}
+    for source, target, maximum in (("claimInterface", "claim_interface", 255),
+            ("maxRetryIn", "max_retry_in", 255), ("maxRetryOut", "max_retry_out", 255),
+            ("sleepTimeBetweenIn", "sleep_time_between_in_ms", 65535),
+            ("sleepTimeBetweenOut", "sleep_time_between_out_ms", 65535),
+            ("sleepTimeBetweenOutIn", "sleep_time_between_out_in_ms", 65535)):
+        support[target] = bounded(config[source], maximum, source)
+    for source, target in (("supportBatteryLevelMonitoring", "support_battery_monitoring"),
+            ("supportDockingStation", "support_docking_station"), ("supportDockingStationV2", "support_docking_v2"),
+            ("isDualLink", "is_dual_link"), ("skipRegionsForChargingEffect", "skip_regions_for_charging_effect"),
+            ("useParentContainerIdToSetDeviceHandle", "use_parent_container_id_to_set_device_handle")):
+        boolean(document.get(source, False), source)
+        support[target] = document.get(source, False)
+    for source, target in (("createPreviewEngineMainDevice", "create_preview_engine_main_device"),
+                           ("sendChromaFramesToDock", "send_chroma_frames_to_dock")):
+        if source in document:
+            boolean(document[source], source)
+        support[target] = document.get(source)
+    override = document.get("overwriteDeviceConfig", {})
+    if not isinstance(override, dict) or set(override) - {"ignoreSetDeviceModeTimeoutError"}:
+        raise ValueError("Battery peer device override contains an unresolved field")
+    ignore = override.get("ignoreSetDeviceModeTimeoutError", False)
+    boolean(ignore, "ignoreSetDeviceModeTimeoutError")
+    support["ignore_set_device_mode_timeout_error"] = ignore
+    exit_effect = document["quickEffectOnExit"]
+    exact_fields(exit_effect, ("effectId", "params"), "peer exit effect")
+    if exit_effect == {"effectId": 3, "params": {}}:
+        support["quick_effect_on_exit"] = "PeerExitEffect::Spectrum"
+    elif (exit_effect["effectId"] == 1 and isinstance(exit_effect["params"], dict)
+          and set(exit_effect["params"]) == {"color"}
+          and isinstance(exit_effect["params"]["color"], str)
+          and re.fullmatch(r"#[0-9a-fA-F]{6}", exit_effect["params"]["color"])):
+        color = bytes.fromhex(exit_effect["params"]["color"][1:])
+        support["quick_effect_on_exit"] = {"_type": "PeerExitEffect::Static", "color": list(color)}
+    else:
+        raise ValueError("Battery peer exit effect has no current typed conversion")
+    support["default_profile_effect"] = receiver_battery_peer_default_effect(profile_quick_effect)
+    led_configs = document["ledConfig"]
+    if not isinstance(led_configs, dict) or not led_configs:
+        raise ValueError("Battery peer has no LED geometry")
+    geometries = []
+    for key, geometry in led_configs.items():
+        match = re.fullmatch(r"ledConfig_([0-9]+)_([0-9]+)", key)
+        if match is None or int(match[1]) != edition:
+            raise ValueError("Battery peer LED key does not match its acquired edition")
+        exact_fields(geometry, (*BATTERY_PEER_GEOMETRY_FIELDS, "LedMatrix", "LedRegion", "LedInputMap"), "peer geometry")
+        value = {target: bounded(geometry[source], 65535 if source in ("VID", "PID") else 255, source)
+                 for source, target in BATTERY_PEER_GEOMETRY_FIELDS.items()}
+        if value["edition"] != edition or value["layout"] != int(match[2]):
+            raise ValueError("Battery peer LED key and declared metadata differ")
+        value["led_matrix"], value["led_regions"], value["led_input_map"] = [], [], []
+
+        def pair(raw, maximum, owner):
+            if not isinstance(raw, list) or len(raw) != 2:
+                raise ValueError("Battery peer position is not a pair: " + owner)
+            return [bounded(item, maximum, owner) for item in raw]
+
+        for mapping in geometry["LedMatrix"]:
+            exact_fields(mapping, ("MatrixPos", "DevicePos"), "peer LED mapping")
+            value["led_matrix"].append({"matrix_pos": pair(mapping["MatrixPos"], 255, "LED matrix"),
+                                         "device_pos": pair(mapping["DevicePos"], 255, "device matrix")})
+        for region in geometry["LedRegion"]:
+            exact_fields(region, ("RegionId", "NumLed", "MaxRow", "MaxCol", "RegionMatrix"), "peer LED region")
+            entry = {"region_id": bounded(region["RegionId"], 255, "region ID"),
+                     "num_led": bounded(region["NumLed"], 65535, "region LEDs"),
+                     "max_row": bounded(region["MaxRow"], 255, "region rows"),
+                     "max_col": bounded(region["MaxCol"], 255, "region cols"), "region_matrix": []}
+            for position in region["RegionMatrix"]:
+                exact_fields(position, ("MatrixPos",), "peer region position")
+                entry["region_matrix"].append({"matrix_pos": pair(position["MatrixPos"], 65535, "region matrix")})
+            value["led_regions"].append(entry)
+        input_types = {"dkm": "Dkm", "mou": "Mouse", "kbd": "Keyboard"}
+        for input_map in geometry["LedInputMap"]:
+            exact_fields(input_map, ("InputType", "InputData", "MatrixPos"), "peer input map")
+            if input_map["InputType"] not in input_types:
+                raise ValueError("Battery peer input event type is unresolved")
+            value["led_input_map"].append({"input_type": "LedInputType::" + input_types[input_map["InputType"]],
+                "input_data": pair(input_map["InputData"], 65535, "input data"),
+                "matrix_pos": pair(input_map["MatrixPos"], 65535, "input matrix")})
+        geometries.append(value)
+    effects = {}
+    for source, target in (("batteryLevelEffect", "battery_level_effects"), ("chargingEffect", "charging_effects")):
+        effects[target] = None
+        if source not in document:
+            continue
+        exact_fields(document[source], ("full", "high", "mid", "low", "critical"), source)
+        effects[target] = {}
+        for level, effect in document[source].items():
+            exact_fields(effect, ("min", "max", "effectId", "effectParams"), source + "/" + level)
+            exact_fields(effect["effectParams"], ("color",), source + "/" + level + "/params")
+            minimum, maximum = bounded(effect["min"], 100, "battery minimum"), bounded(effect["max"], 100, "battery maximum")
+            if minimum > maximum:
+                raise ValueError("Battery peer effect has a reversed level range")
+            effects[target][level] = {"minimum": minimum, "maximum": maximum,
+                "effect_id": bounded(effect["effectId"], 65535, "battery effect"),
+                "color": bounded(effect["effectParams"]["color"], 0xFFFFFFFF, "battery color")}
+    return {"support": support, "geometries": sorted(geometries, key=lambda value: value["layout"]), **effects}
+
+
+def receiver_battery_peer_inputs():
+    import families
+    import host
+    audit = host.HostLocalAudit()
+    peers = families.receiver_battery_peer_sources(audit)
+    rows, inputs, seen = [], [], set()
+    for pid, peer in zip(BATTERY_PEER_PRODUCTS, peers["source_sets"], strict=True):
+        source_set = peer["source_set"]
+        acquired = json.loads(local_path(source_set["acquisition"]["path"]).read_bytes(), object_pairs_hook=duplicate_free)
+        if (source_set["name"] != f"mouse-mw-{pid}-current"
+                or acquired.get("entry_url") != f"https://apps.razer.com/synapse/products/{pid}/mw/index.html"):
+            raise ValueError("Battery peer acquisition has a different mounted product")
+        inputs.append(source_set["acquisition"])
+        exported = peer["default_profile_export"]
+        source, binding = exported["original"], exported["binding"]
+        inputs.append(source)
+        node = audit.tree(source).root_node.descendant_for_byte_range(binding["start_byte"], binding["end_byte"] - 1)
+        while node is not None and node.type != "variable_declarator":
+            node = node.parent
+        if node is None or node.start_byte != binding["start_byte"] or node.end_byte != binding["end_byte"]:
+            raise ValueError("Battery peer default profile declaration is unresolved")
+        value = node.child_by_field_name("value")
+        if value.type != "object":
+            raise ValueError("Battery peer default profile is not a complete object")
+        quick = [item.child_by_field_name("value") for item in value.named_children
+                 if item.type == "pair" and item.child_by_field_name("key").text == b"quickEffects"]
+        if len(quick) != 1:
+            raise ValueError("Battery peer default profile quick effect owner is absent or ambiguous")
+        profile_quick_effect = families.keyboard_static_literal(quick[0].text.decode())
+        for item in peer["manifests"]:
+            original = item["original"]
+            name = Path(original["path"]).name
+            match = re.fullmatch(r"DeviceManifest_([0-9]+)_([0-9]+)\.json", name)
+            if match is None:
+                raise ValueError("Battery peer source edition is unresolved")
+            document = json.loads(audit.read(original), object_pairs_hook=duplicate_free)
+            identity = (int(match[1]), int(match[2]))
+            if identity in seen:
+                raise ValueError("Duplicate battery peer edition")
+            seen.add(identity)
+            row = receiver_battery_peer_projection(document, *identity, profile_quick_effect)
+            row["default_profile_export"] = exported
+            rows.append(row)
+            inputs.append({key: original[key] for key in ("path", "bytes", "sha256")})
+    if len(rows) != 25:
+        raise ValueError("Current battery peer edition coverage changed; audit all acquired branches")
+    if audit.final_snapshot():
+        raise ValueError("Battery peer source bytes changed during generation")
+    return sorted(rows, key=lambda row: (row["support"]["source_product_id"], row["support"]["edition"])), inputs
+
+
+def render_receiver_battery_peers(rows):
+    """Share equal geometry with ordinary constructors; metadata remains per branch."""
+    def literal(value, kind=None):
+        if type(value) is bool:
+            return str(value).lower()
+        if type(value) is int:
+            return str(value)
+        if value is None:
+            return "None"
+        if isinstance(value, str):
+            return value
+        if isinstance(value, list):
+            return "[" + ", ".join(literal(item) for item in value) + "]"
+        if isinstance(value, dict):
+            fields = [name + ": " + literal(item) for name, item in value.items() if name != "_type"]
+            return value.get("_type", kind) + " { " + ", ".join(fields) + " }"
+        raise ValueError("Unexpected generated battery peer value")
+
+    lines = ["//! Current battery-monitor peer manifests. Regenerate with workspace.py prepare-receiver-battery-peers.",
+        "use super::{PeerBatteryEffect, PeerBatteryEffects, PeerCategory, PeerDeviceFactory, PeerExitEffect, PeerProfileEffect, PeerSupport};",
+        "use crate::lighting_engine::{LedConfiguration, LedInputMap, LedInputType, LedMapping, LedRegion, RegionMatrix};",
+        "pub(super) const IDENTITIES: &[(u16, u8)] = &[" + ",".join(
+            f"({row['support']['source_product_id']},{row['support']['edition']})" for row in rows) + "];",
+        "pub(super) fn support(source_product_id: u16, edition: u8) -> Option<PeerSupport> {",
+        "match (source_product_id,edition) {"]
+    for row in rows:
+        support = row["support"]
+        fields = [name + ": " + ("Some(" + literal(value) + ")" if name in {"ble_product_id", "create_preview_engine_main_device", "send_chroma_frames_to_dock"} and value is not None else literal(value))
+                  for name, value in support.items()]
+        lines.append(f"({support['source_product_id']},{support['edition']}) => Some(PeerSupport {{" + ",".join(fields) + "}),")
+    lines.extend(["_ => None,", "}", "}"])
+    for name in ("battery_level_effects", "charging_effects"):
+        lines.extend([f"pub(super) fn {name}(source_product_id:u16,edition:u8)->Option<PeerBatteryEffects> {{",
+                      "match (source_product_id,edition) {"])
+        for row in rows:
+            if row[name] is not None:
+                effects = ",".join(level + ": " + literal(effect, "PeerBatteryEffect") for level, effect in row[name].items())
+                lines.append(f"({row['support']['source_product_id']},{row['support']['edition']}) => Some(PeerBatteryEffects {{" + effects + "}),")
+        lines.extend(["_ => None,", "}", "}"])
+    lines.extend([
+        "pub(super) fn led_configuration(source_product_id: u16, edition: u8, layout: u8) -> Option<LedConfiguration> {",
+        "match (source_product_id,edition,layout) {"])
+    shapes = []
+    metadata = ("vendor_id", "product_id", "edition", "layout")
+    for row in rows:
+        for geometry in row["geometries"]:
+            shape = {key: value for key, value in geometry.items() if key not in metadata}
+            if shape not in shapes:
+                shapes.append(shape)
+            arguments = ",".join(str(geometry[key]) for key in metadata)
+            lines.append(f"({row['support']['source_product_id']},{row['support']['edition']},{geometry['layout']}) => Some(geometry_{shapes.index(shape)}({arguments})),")
+    lines.extend(["_ => None,", "}", "}"])
+    for index, shape in enumerate(shapes):
+        lines.append(f"fn geometry_{index}(vendor_id: u16, product_id: u16, edition: u8, layout: u8) -> LedConfiguration {{")
+        lines.append("LedConfiguration { vendor_id: vendor_id, product_id: product_id, edition: edition, layout: layout,")
+        for name, value in shape.items():
+            if name == "led_matrix":
+                expression = "vec![" + ",".join(literal(item, "LedMapping") for item in value) + "]"
+            elif name == "led_input_map":
+                expression = "vec![" + ",".join(literal(item, "LedInputMap") for item in value) + "]"
+            elif name == "led_regions":
+                regions = []
+                for region in value:
+                    fields = [field + ": " + literal(item) for field, item in region.items() if field != "region_matrix"]
+                    fields.append("region_matrix: vec![" + ",".join(literal(item, "RegionMatrix") for item in region["region_matrix"]) + "]")
+                    regions.append("LedRegion {" + ",".join(fields) + "}")
+                expression = "vec![" + ",".join(regions) + "]"
+            else:
+                expression = literal(value)
+            lines.append(name + ": " + expression + ",")
+        lines.extend(["}", "}"])
+    return "\n".join(lines).encode("utf-8")
+
+
+def verify_receiver_battery_peers(content, rows):
+    """Decode the complete Rust constructors and compare every field and array position."""
+    import sys
+    sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_rust
+    parser = Parser(Language(tree_sitter_rust.language()))
+    tree = parser.parse(content)
+    if tree.root_node.has_error:
+        raise ValueError("Generated battery peer Rust has an AST error")
+    functions = {node.child_by_field_name("name").text.decode(): node
+                 for node in tree.root_node.named_children if node.type == "function_item"}
+
+    def decode(node, environment=None):
+        environment = environment or {}
+        text = node.text.decode()
+        if node.type in ("integer_literal", "boolean_literal"):
+            return json.loads(text)
+        if node.type == "identifier":
+            if text == "None":
+                return None
+            if text in environment:
+                return environment[text]
+        if node.type == "scoped_identifier" and text.startswith(("PeerCategory::", "PeerDeviceFactory::", "PeerExitEffect::", "PeerProfileEffect::", "LedInputType::")):
+            return text
+        if node.type == "reference_expression":
+            return decode(node.named_children[0], environment)
+        if node.type in ("array_expression", "tuple_expression"):
+            return [decode(child, environment) for child in node.named_children]
+        if node.type in {"block", "expression_statement"} and len(node.named_children) == 1:
+            return decode(node.named_children[0], environment)
+        if node.type == "macro_invocation" and node.child_by_field_name("macro").text == b"vec":
+            tokens = next(child for child in node.named_children if child.type == "token_tree").text
+            wrapped = parser.parse(b"fn values(){" + tokens + b"}")
+            expression = wrapped.root_node.named_children[0].child_by_field_name("body").named_children[0]
+            return decode(expression, environment)
+        if node.type == "call_expression":
+            name = node.child_by_field_name("function").text.decode()
+            values = [decode(child, environment) for child in node.child_by_field_name("arguments").named_children]
+            if name == "Some" and len(values) == 1:
+                return values[0]
+            if name.startswith("geometry_") and name in functions:
+                function = functions[name]
+                names = [param.child_by_field_name("pattern").text.decode()
+                         for param in function.child_by_field_name("parameters").named_children]
+                if len(names) == len(values):
+                    return decode(function.child_by_field_name("body"), dict(zip(names, values)))
+        if node.type == "struct_expression":
+            name = node.child_by_field_name("name").text.decode()
+            if name not in {"PeerSupport", "PeerBatteryEffect", "PeerBatteryEffects", "LedConfiguration", "LedMapping", "LedRegion", "RegionMatrix", "LedInputMap", "PeerExitEffect::Static", "PeerProfileEffect::Static"}:
+                raise ValueError("Unexpected generated battery peer struct")
+            value = {"_type": name} if name in {"PeerExitEffect::Static", "PeerProfileEffect::Static"} else {}
+            for field in node.child_by_field_name("body").named_children:
+                if field.type == "shorthand_field_initializer" and field.text.decode() in environment:
+                    key = field.text.decode()
+                    if key in value:
+                        raise ValueError("Duplicate generated battery peer field")
+                    value[key] = environment[key]
+                    continue
+                if field.type != "field_initializer":
+                    raise ValueError("Battery peer fields must be explicit")
+                key = field.child_by_field_name("field").text.decode()
+                if key in value:
+                    raise ValueError("Duplicate generated battery peer field")
+                value[key] = decode(field.child_by_field_name("value"), environment)
+            return value
+        raise ValueError("Nonliteral generated battery peer constructor: " + node.type + " " + text[:80])
+
+    def branches(name):
+        body = functions[name].child_by_field_name("body")
+        expression = body.named_children[0] if len(body.named_children) == 1 else None
+        if expression is not None and expression.type == "expression_statement" and len(expression.named_children) == 1:
+            expression = expression.named_children[0]
+        if expression is None or expression.type != "match_expression":
+            raise ValueError("Battery peer entry must contain one complete match")
+        arms = expression.child_by_field_name("body").named_children
+        values, fallback = {}, 0
+        for arm in arms:
+            pattern, value = arm.child_by_field_name("pattern"), arm.child_by_field_name("value")
+            if pattern.text == b"_":
+                if decode(value) is not None:
+                    raise ValueError("Battery peer fallback must preserve absence")
+                fallback += 1
+                continue
+            # match_pattern wraps the concrete tuple pattern.
+            concrete = pattern.named_children[0] if pattern.type == "match_pattern" else pattern
+            if concrete.type != "tuple_pattern":
+                raise ValueError("Battery peer branch identity is not a tuple")
+            key = tuple(json.loads(child.text) for child in concrete.named_children)
+            if key in values:
+                raise ValueError("Duplicate generated battery peer branch")
+            values[key] = decode(value)
+        if fallback != 1:
+            raise ValueError("Battery peer match must preserve one unknown branch")
+        return values
+
+    expected_support = {(row["support"]["source_product_id"], row["support"]["edition"]): row["support"] for row in rows}
+    expected_geometry = {(row["support"]["source_product_id"], row["support"]["edition"], geometry["layout"]): geometry
+                         for row in rows for geometry in row["geometries"]}
+    identities = [node for node in tree.root_node.named_children if node.type == "const_item"
+                  and node.child_by_field_name("name").text == b"IDENTITIES"]
+    if (len(identities) != 1 or decode(identities[0].child_by_field_name("value")) != [list(key) for key in expected_support]
+            or branches("support") != expected_support or branches("led_configuration") != expected_geometry):
+        raise ValueError("Generated battery peer fields, branches or array order differ from current manifests")
+    for name in ("battery_level_effects", "charging_effects"):
+        expected = {(row["support"]["source_product_id"], row["support"]["edition"]): row[name]
+                    for row in rows if row[name] is not None}
+        if branches(name) != expected:
+            raise ValueError("Generated peer battery effect fields or branches differ from current manifests")
+    return {"identities": len(expected_support), "geometries": len(expected_geometry), "all_fields_and_order_equal": True}
+
+
+def prepare_receiver_battery_peers(*, check=False, record=True):
+    import subprocess
+    import analysis
+    import families
+    rows, inputs = receiver_battery_peer_inputs()
+    content = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"],
+                             input=render_receiver_battery_peers(rows), capture_output=True, check=True).stdout
+    output = local_path(BATTERY_PEER_OUTPUT)
+    if check:
+        if not output.is_file() or output.read_bytes() != content:
+            raise ValueError("Typed battery peers differ from the complete current manifests; regenerate them")
+    else:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(content)
+    equivalence = verify_receiver_battery_peers(output.read_bytes(), rows)
+    if not all(families.valid(item) for item in inputs):
+        raise ValueError("Battery peer inputs changed during generation")
+    default_profiles = {row["default_profile_export"]["original"]["path"]: row["default_profile_export"] for row in rows}
+    report = {"tool": families.identity(Path(__file__)), "inputs": inputs,
+              "default_profile_exports": list(default_profiles.values()),
+              "output": families.identity(output), "constructor_equivalence": equivalence,
+              "check_only": check, "target_execution": False, "runtime_acceptance": "unverified"}
+    if record:
+        destination = ROOT / ".analysis/results/typed-data.json"
+        with analysis.index_lock(ROOT / ".work/typed-data-registry.lock"):
+            previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
+            previous["receiver_battery_peers"] = report
+            analysis.save(destination, previous)
+    return {"output": BATTERY_PEER_OUTPUT, **equivalence, "passed": True, "check_only": check}
+
+
+def receiver_sender_table_projection(content, bindings, *, update=False):
+    """Read actual typed receiver constructors; preserve every other field and caller."""
+    import sys
+    sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_rust
+    parser = Parser(Language(tree_sitter_rust.language()))
+    tree = parser.parse(content)
+    if tree.root_node.has_error:
+        raise ValueError("Receiver sender table has a Rust AST error")
+    pending, masks = [tree.root_node], []
+    while pending:
+        node = pending.pop(); pending.extend(node.named_children)
+        if node.type == "macro_invocation" and node.child_by_field_name("macro").text == b"vec":
+            tokens = next(child for child in node.named_children if child.type == "token_tree")
+            if tokens.text[:1] != b"[":
+                raise ValueError("Receiver sender vec macro requires an array constructor")
+            masks.append((node.start_byte, tokens.start_byte))
+    expanded = content
+    for start, end in masks:
+        expanded = expanded[:start] + b" " * (end-start) + expanded[end:]
+    tree = parser.parse(expanded)
+    if tree.root_node.has_error:
+        raise ValueError("Receiver sender vector expansion has a Rust AST error")
+    pending, edits, found, verified = [tree.root_node], [], set(), []
+    while pending:
+        node = pending.pop(); pending.extend(node.named_children)
+        if node.type != "struct_expression" or node.child_by_field_name("name").text != b"ReceiverCapability":
+            continue
+        fields = {}
+        for field in node.child_by_field_name("body").named_children:
+            if field.type != "field_initializer":
+                raise ValueError("Receiver capability requires explicit typed fields")
+            name = field.child_by_field_name("field").text.decode()
+            if name in fields:
+                raise ValueError("Receiver capability repeats a field")
+            fields[name] = field.child_by_field_name("value")
+        identity = {}
+        for name in ("source_product_id", "product_id"):
+            value = fields.get(name)
+            if value is None or value.type != "integer_literal":
+                raise ValueError("Receiver capability identity is not an integer")
+            identity[name] = int(value.text)
+        pid = identity["source_product_id"]
+        if pid not in bindings:
+            continue
+        if identity["product_id"] != pid:
+            raise ValueError("Current Linker sender table changed its physical branch")
+        expected = bindings[pid]
+        source = fields.get("source_class")
+        if source is None or source.type != "call_expression":
+            raise ValueError("Current Linker sender source class must be explicit")
+        function = source.child_by_field_name("function")
+        if (function.type != "field_expression" or function.child_by_field_name("field").text != b"into"
+                or source.child_by_field_name("arguments").named_children
+                or function.child_by_field_name("value").type != "string_literal"
+                or json.loads(function.child_by_field_name("value").text) != expected["source_class"]):
+            raise ValueError("Current Linker table source class differs from its selected adapter")
+        for name in ("claim_interface", "report_id"):
+            value = fields.get(name)
+            if value is None or value.type != "integer_literal":
+                raise ValueError("Current Linker selector is not an integer")
+            if int(value.text) != expected[name]:
+                if not update:
+                    raise ValueError("Current Linker " + name + " differs from its mounted sender")
+                edits.append((value.start_byte, value.end_byte, str(expected[name]).encode()))
+        found.add(pid)
+        verified.append({**identity, "source_class": expected["source_class"],
+                         "claim_interface": expected["claim_interface"], "report_id": expected["report_id"]})
+    if not found:
+        raise ValueError("Receiver sender table contains no current mounted Linker constructor")
+    for start, end, replacement in sorted(edits, reverse=True):
+        content = content[:start] + replacement + content[end:]
+    return content, sorted(verified, key=lambda row: (row["source_product_id"], row["product_id"]))
+
+
+def prepare_receiver_sender_tables(*, check=False, record=True):
+    import analysis
+    import families
+    import host
+    audit = host.HostLocalAudit()
+    sources = [families.receiver_sender_sources(audit, pid) for pid in (164, 179, 241)]
+    bindings = {row["product_id"]: row for row in sources}
+    tables = []
+    for name in (QUERY_OUTPUT, PAIR_CAP_OUTPUT):
+        path = local_path(name)
+        original = path.read_bytes()
+        rendered, rows = receiver_sender_table_projection(original, bindings, update=not check)
+        if not check and rendered != original:
+            path.write_bytes(rendered)
+        verified, verified_rows = receiver_sender_table_projection(path.read_bytes(), bindings)
+        if verified != path.read_bytes() or rows != verified_rows:
+            raise ValueError("Receiver sender typed constructor verification differs")
+        tables.append({"output": families.identity(path), "complete_selector_constructors": rows})
+    if audit.final_snapshot():
+        raise ValueError("Current receiver sender source bytes changed during generation")
+    report = {"tool": families.identity(Path(__file__)), "source_extractor": families.identity(Path(families.__file__)),
+              "sources": sources, "complete_owners": list(audit.owners.values()),
+              "inputs": list(audit.artifacts.values()), "tables": tables, "check_only": check,
+              "target_execution": False, "runtime_acceptance": "unverified"}
+    if record:
+        destination = ROOT / ".analysis/results/typed-data.json"
+        with analysis.index_lock(ROOT / ".work/typed-data-registry.lock"):
+            previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
+            previous["receiver_sender_tables"] = report
+            analysis.save(destination, previous)
+    return {"products": sorted(bindings), "typed_constructors": sum(len(row["complete_selector_constructors"]) for row in tables),
+            "source_selectors_equal": True, "passed": True, "check_only": check}
+
+
 def fixed_tables():
     return {
         ("razer-device", "DEVICE_WRITE_CAPABILITIES"): (WRITE_INPUT, WRITE_OUTPUT, render_write_catalog, False),
@@ -1293,6 +2771,12 @@ def regenerate_input(path, *, root=None):
 
 
 def add_commands(commands):
+    p = commands.add_parser("prepare-receiver-senders", help="Verify typed Linker query and pairing selectors against current mounted senders")
+    p.add_argument("--check", action="store_true")
+    p = commands.add_parser("prepare-receiver-battery-peers", help="Generate typed current battery peer transport and complete LED geometry")
+    p.add_argument("--check", action="store_true")
+    p = commands.add_parser("prepare-profile-transfer-table", help="Generate UI reader and MW writer transfer capabilities from current mounted originals")
+    p.add_argument("--check", action="store_true")
     p = commands.add_parser("prepare-mapping-producers", help="Generate current mouse assignment producer metadata from complete mounted factories")
     p.add_argument("--check", action="store_true")
     p = commands.add_parser("prepare-mapping-capabilities", help="Generate typed mouse mapping capabilities from current mounted original factories")
@@ -1314,6 +2798,12 @@ def add_commands(commands):
 
 
 def run(args):
+    if args.command == "prepare-receiver-senders":
+        return prepare_receiver_sender_tables(check=args.check)
+    if args.command == "prepare-receiver-battery-peers":
+        return prepare_receiver_battery_peers(check=args.check)
+    if args.command == "prepare-profile-transfer-table":
+        return prepare_profile_transfer_table(check=args.check)
     if args.command == "prepare-mapping-producers":
         import mapping_producers
         return mapping_producers.prepare(check=args.check)

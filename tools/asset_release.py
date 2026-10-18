@@ -1004,8 +1004,47 @@ def publish_additions(manifest_name, *, dry_run=False, prune_maintenance_tables=
         save_resource_mappings(mappings)
         report.update(status="published_and_verified", revision=revision, remote_publication=True, verification=verification)
         analysis.save(report_path, report)
+        index_addition_sources(manifest_name, reason="Publish verified targeted resource delivery inputs after remote byte verification")
         return {"report": report_path.relative_to(ROOT).as_posix(), "files": len(additions),
                 "revision": revision, "status": report["status"], "source_files_verified": verification["source_files_verified"]}
+
+
+def index_addition_sources(manifest_name, *, reason):
+    """Publish source identities only after the maintained addition planner verifies them."""
+    original, planned, mappings, additions, snapshots = release_additions(manifest_name)
+    if original["tag"] != planned["tag"]:
+        raise ValueError("Resource source-index reconciliation requires additions in the pinned resource release")
+    current_aliases = {row["key"]: row["path"] for table in
+                       validate_resource_mappings(json.loads((ROOT / MAPPINGS).read_bytes()))["tables"] for row in table["entries"]}
+    if any(current_aliases.get(item["alias"]) != item["asset"]["path"] for item in additions):
+        raise ValueError("Resource source-index reconciliation requires published maintained aliases")
+    indexed = {}
+    for item in additions:
+        source, receipt = item["source"], item["acquisition"]
+        acquisition = json.loads((ROOT / receipt["path"]).read_bytes())
+        declaration = next(row for row in acquisition.get("files", []) + acquisition.get("resources", [])
+                           if all(row.get(key) == source[key] for key in ("path", "bytes", "sha256")))
+        if source["path"].startswith(".analysis/inputs/frontend/"):
+            metadata = {"kind": "official_frontend_artifact"}
+        else:
+            kind = {".analysis/inputs/native-resources/acquisition.json": "prepared_native_cursor",
+                    ".analysis/inputs/prepared-resources/acquisition.json": "prepared_resource"}.get(receipt["path"], "retained_resource_publication_source")
+            metadata = {"kind": kind, "acquisition_receipt": receipt["path"]}
+        indexed[source["path"]] = {**{key: declaration[key] for key in
+            ("path", "bytes", "sha256", "url", "acquired_at_utc") if key in declaration}, **metadata}
+        indexed[receipt["path"]] = {**receipt, "kind": "acquisition_receipt"}
+    manifest_path = ROOT / manifest_name
+    indexed[manifest_name] = {"path": manifest_name, "bytes": manifest_path.stat().st_size,
+                            "sha256": digest(manifest_path), "kind": "resource_publication_manifest"}
+    for path, raw in snapshots:
+        if path.read_bytes() != raw:
+            raise ValueError("Resource publication inputs changed during source-index reconciliation")
+    analysis.index_files(indexed.values(), publication={"owner": "tools/asset_release.py", "receipt": manifest_name,
+        "reason": reason, "verification": {"source_receipt_membership_verified": True,
+            "pinned_resource_and_alias_identities_verified": True, "tag": original["tag"],
+            "revision": original["storage"]["revision"], "files": len(additions),
+            "network_requests": False, "remote_publication_repeated": False}})
+    return additions
 
 
 def publish():

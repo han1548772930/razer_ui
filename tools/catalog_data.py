@@ -23,7 +23,8 @@ MAX_DOCUMENT = 64 * 1024 * 1024
 def selected(row):
     # Device protocol, pairing and restore tables remain code-owned.
     return row["crate"] != "razer-device" and not (
-        row["crate"] == "razer-model" and row["symbol"] != "CATALOG"
+        row["crate"] == "razer-model" and row["symbol"] not in {"CATALOG", "SHORTCUTS_CURRENT"}
+        and row.get("macro") != "recording_keyboard_data"
     ) and row["symbol"] not in {"TEXT_DATA", "KEYBOARD_MAPPING_TEXT_EMOJI_DATA"}
 
 
@@ -299,6 +300,34 @@ class Codec(rust_data.RustData):
         self.decoders, self.frames, self.nodes, self.pool = {}, [], [], {}
         self.excluded, self.value_fields, self.shared_inputs = set(), set(), {}
 
+    def constructor_type(self, typ, module, value):
+        # A catalog reader is emitted into its recipe's module. Keep an
+        # explicitly imported type's lexical identity stable when its owner
+        # moves, instead of inventing a crate-root re-export or changing the
+        # installed codec because a definition moved across crate boundaries.
+        output = getattr(self, "output_module", None)
+        if output is not None and typ in getattr(self, "reader_scoped_types", set()):
+            self.used_reader_scoped_types.add(typ)
+            current = self.definition(typ, module, value)
+            visible = self.definition(typ, output, value)
+            if current.module == visible.module and current.name == visible.name:
+                return typ
+        return super().constructor_type(typ, module, value)
+
+    def definition(self, name, module, value):
+        definition = super().definition(name, module, value)
+        output = getattr(self, "output_module", None)
+        if output is not None and name in getattr(self, "reader_scoped_types", set()):
+            self.used_reader_scoped_types.add(name)
+            visible = super().definition(name, output, value)
+            if visible.module == definition.module and visible.name == definition.name:
+                # Decoder child identities belong to the emitted reader's
+                # explicit type scope, including primitive fields. A physical
+                # owner move must not split an existing shared u32 decoder.
+                from dataclasses import replace
+                return replace(definition, module=output)
+        return definition
+
     def _render(self, value, typ, module, path, allow_value):
         typ = self.aliases.get((module, typ.strip()), typ.strip())
         key = (str(module), typ)
@@ -423,6 +452,17 @@ class Codec(rust_data.RustData):
     def document(self, row, value):
         self.begin()
         module = ROOT / row["module"]
+        self.output_module = module.resolve()
+        scopes = row.get("reader_scoped_types", [])
+        if (not isinstance(scopes, list) or any(not isinstance(name, str) or not re.fullmatch(r"[A-Za-z_]\w*", name) for name in scopes)
+                or len(scopes) != len(set(scopes))):
+            raise ValueError("Invalid reader-scoped catalog type declarations")
+        self.reader_scoped_types, self.used_reader_scoped_types = set(scopes), set()
+        for name in scopes:
+            imported = self.module_imports.get(self.output_module, {}).get(name)
+            if not imported or not (ROOT / "crates" / imported[0].replace("_", "-")).is_dir():
+                raise ValueError("Reader-scoped catalog type requires an explicit workspace import: " + name)
+            super().definition(name, self.output_module, None)
         roots = []
         if row.get("product_factory"):
             typ = re.fullmatch(r"Vec<(.*)>", row["root_type"])[1]
@@ -438,6 +478,9 @@ class Codec(rust_data.RustData):
             typ = row["root_type"]
             decoder = self._render(value, typ, module, "$", row.get("allow_value", False))
             roots.append((0, self.pool_last()))
+        unused = self.reader_scoped_types - self.used_reader_scoped_types
+        if unused:
+            raise ValueError("Reader-scoped catalog types are not used by its schema: " + ", ".join(sorted(unused)))
         code = []
         for definition in self.decoders.values():
             cases = ",\n".join(str(i) + " => {" + expression + "}" for i, expression in enumerate(definition["cases"]))
@@ -521,6 +564,20 @@ def reader_name(row):
     return "read_" + row["macro"].removesuffix("_data") + "_catalog"
 
 
+def format_rust(source, *, context):
+    formatted = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"],
+                               input=source.encode("utf-8"), stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=ROOT, check=False)
+    if formatted.returncode:
+        raise ValueError("Cannot format " + context + ": " + formatted.stderr.decode("utf-8", errors="replace"))
+    return formatted.stdout.replace(b"\r\n", b"\n")
+
+
+def catalog_identities(rows):
+    source = "// Generated stable packaged catalog identities.\nuse crate::CatalogId;\n"
+    source += "".join("pub const " + constant(row) + ': CatalogId = CatalogId("' + catalog_identity(row) + '");\n' for row in rows)
+    return format_rust(source, context="packaged catalog identities")
+
+
 def format_reader(row, body, return_type):
     marker = "// Generated catalog reader: " + catalog_identity(row) + ".\n"
     source = marker + "fn " + reader_name(row) + "() -> " + return_type + " {\n" + body + "\n}\n"
@@ -529,18 +586,45 @@ def format_reader(row, body, return_type):
     source += ("\n#[cfg(test)]\nmod " + row["macro"] + "_catalog_tests {\n"
                + "#[test]\nfn " + test + "() { " + verification + " }\n}\n")
     source += "// End generated catalog reader: " + catalog_identity(row) + ".\n"
-    formatted = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"],
-                               input=source.encode("utf-8"), stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=ROOT, check=False)
-    if formatted.returncode:
-        raise ValueError("Cannot format typed catalog reader: " + formatted.stderr.decode("utf-8", errors="replace"))
-    return formatted.stdout.replace(b"\r\n", b"\n")
+    return format_rust(source, context="typed catalog reader")
+
+
+class AdapterArtifacts(dict):
+    """Retain the exact owner bytes read before publishing generated regions."""
+    def __init__(self):
+        super().__init__()
+        self.baselines = {}
+
+    def baseline(self, path):
+        if path not in self.baselines:
+            self.baselines[path] = path.read_bytes() if path.is_file() else None
+        return self.baselines[path]
+
+    def source(self, path):
+        return self[path] if path in self else self.baseline(path)
+
+    def __setitem__(self, path, value):
+        self.baseline(path)
+        super().__setitem__(path, value)
+
+    def verify(self, paths=None):
+        for path in self if paths is None else paths:
+            current = path.read_bytes() if path.is_file() else None
+            if current != self.baselines[path]:
+                raise ValueError("Catalog adapter owner changed during preparation: " + str(path.relative_to(ROOT)))
+
+
+def adapter_source(artifacts, path):
+    if isinstance(artifacts, AdapterArtifacts):
+        return artifacts.source(path)
+    return artifacts[path] if path in artifacts else path.read_bytes()
 
 
 def place_reader(artifacts, row, body):
     path = ROOT / row["module"]
-    source = artifacts.get(path, path.read_bytes()).decode("utf-8").replace("\r\n", "\n")
-    marker = "// Generated catalog reader: " + row["crate"] + "/" + row["macro"] + ".\n"
-    ending = "// End generated catalog reader: " + row["crate"] + "/" + row["macro"] + ".\n"
+    source = adapter_source(artifacts, path).decode("utf-8").replace("\r\n", "\n")
+    marker = "// Generated catalog reader: " + catalog_identity(row) + ".\n"
+    ending = "// End generated catalog reader: " + catalog_identity(row) + ".\n"
     pattern = re.compile(re.escape(marker) + (r".*?" + re.escape(ending) if ending in source else r".*?\n}\n"), re.S)
     if marker in source:
         source, count = pattern.subn(lambda _: body.decode("utf-8"), source)
@@ -561,7 +645,7 @@ def replace_macro_calls(artifacts, rows):
         for path in (ROOT / "crates" / crate / "src").rglob("*.rs"):
             if "/src/data/" in path.as_posix():
                 continue
-            source = artifacts.get(path, path.read_bytes()).decode("utf-8").replace("\r\n", "\n")
+            source = adapter_source(artifacts, path).decode("utf-8").replace("\r\n", "\n")
             changed = False
             for row in readers:
                 expression = (r"crate::data::(?:" + re.escape(row["macro"]) + r"::)?"
@@ -597,7 +681,7 @@ def prepare_documents(recipes, *, migrate=False, check=False):
         for row in rows:
             row["source"] = rust_data.INPUTS + "/" + row["crate"] + "/" + row["macro"] + ".json"
         recover_inputs(rows)
-    documents, artifacts, reports, codecs, fingerprints = [], {}, [], {}, {}
+    documents, artifacts, reports, codecs, fingerprints = [], AdapterArtifacts(), [], {}, {}
     for row in rows:
         source = ROOT / row["source"]
         raw = source.read_bytes()
@@ -627,11 +711,10 @@ def prepare_documents(recipes, *, migrate=False, check=False):
         reports.append({"id": document["id"], "source": row["source"], "source_sha256": row["source_sha256"],
                         "payload_bytes": len(document["raw"]), "nodes": document["nodes"], "roots": len(document["roots"]),
                         "adapter_bytes": len(body), "codec": document["codec"],
-                        "constructor_fingerprint": row["maintenance_recovery"]["full_constructor_fingerprint"]})
+                        "constructor_fingerprint": row.get("maintenance_recovery", {}).get("full_constructor_fingerprint"),
+                        **({"source_evidence": row["source_evidence"]} if "source_evidence" in row else {})})
         print(json.dumps({"typed_catalog": document["id"], "bytes": len(document["raw"]), "adapter_bytes": len(body)}), flush=True)
-    ids = "// Generated stable packaged catalog identities.\nuse crate::CatalogId;\n"
-    ids += "".join("pub const " + constant(row) + ': CatalogId = CatalogId("' + row["catalog_id"] + '");\n' for row in rows)
-    artifacts[ROOT / "crates/razer-resource-db/src/catalogs.rs"] = ids.encode("utf-8")
+    artifacts[ROOT / "crates/razer-resource-db/src/catalogs.rs"] = catalog_identities(rows)
     profiles = [row for row in recipes["tables"] if row["symbol"] in {"TEXT_DATA", "KEYBOARD_MAPPING_TEXT_EMOJI_DATA"}]
     for row in profiles:
         profile = "Macro" if row["symbol"] == "TEXT_DATA" else "Mapping"
@@ -641,14 +724,18 @@ def prepare_documents(recipes, *, migrate=False, check=False):
                    outputs=[{"path": row["module"], "reader": reader_name(row), "sha256": hashlib.sha256(body).hexdigest()}])
     replace_macro_calls(artifacts, rows + profiles)
     for path, body in artifacts.items():
-        if check and path.read_bytes() != body:
+        if check and path.read_bytes().replace(b"\r\n", b"\n") != body:
             raise ValueError("Typed SQLite adapter differs from maintained schema: " + str(path.relative_to(ROOT)))
     return documents, artifacts, reports
 
 
 def publish_adapters(artifacts, recipes, *, check=False):
+    if not isinstance(artifacts, AdapterArtifacts):
+        raise ValueError("Catalog publication requires retained adapter owner baselines")
+    artifacts.verify()
     for path, body in artifacts.items():
         if not check and (not path.is_file() or path.read_bytes() != body):
+            artifacts.verify([path])
             path.write_bytes(body)
     for row in recipes["tables"]:
         if row.get("storage") not in {"sqlite", "sqlite-profile"}:

@@ -274,18 +274,95 @@ pub struct ScrollProfileObservation {
 pub struct Submission {
     pub changes: Vec<ScrollChange>,
     pub profiles: ScrollProfileObservation,
+    /// When present, GUID associations are read through the retained device
+    /// session. A profile's draft slot list cannot stand in for that inventory.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    profile_guid: Option<String>,
 }
 
 impl Submission {
     pub fn new(changes: Vec<ScrollChange>, profiles: ScrollProfileObservation) -> Self {
-        Self { changes, profiles }
+        Self {
+            changes,
+            profiles,
+            profile_guid: None,
+        }
     }
+
+    pub fn for_profile(
+        changes: Vec<ScrollChange>,
+        guid: String,
+        selected_obm_profile_id: Option<u8>,
+    ) -> Self {
+        Self {
+            changes,
+            profiles: ScrollProfileObservation {
+                selected_obm_profile_id,
+                ..Default::default()
+            },
+            profile_guid: Some(guid),
+        }
+    }
+
+    fn needs_observation(&self, product_id: u32, change: ScrollChange) -> bool {
+        self.profile_guid.is_some()
+            && (matches!(change, ScrollChange::SmartReel(_))
+                || product_id == 45066 && matches!(change, ScrollChange::LegacyMode(_)))
+    }
+
+    fn resolve_profiles(
+        &self,
+        product_id: u32,
+        onboard: Option<&[crate::mouse_onboard::OnboardProfileAssociation]>,
+    ) -> Result<ScrollProfileObservation> {
+        let Some(guid) = &self.profile_guid else {
+            ensure!(onboard.is_none(), "Unrequested scroll profile inventory");
+            return Ok(self.profiles.clone());
+        };
+        if !self
+            .changes
+            .iter()
+            .any(|change| self.needs_observation(product_id, *change))
+        {
+            ensure!(onboard.is_none(), "Unrequested scroll profile inventory");
+            return Ok(self.profiles.clone());
+        }
+        let onboard = onboard.context("Scroll GUID associations have not been observed")?;
+        for (index, profile) in onboard.iter().enumerate() {
+            ensure!(
+                profile.profile_id > 0
+                    && !onboard[..index]
+                        .iter()
+                        .any(|previous| previous.profile_id == profile.profile_id),
+                "Observed scroll profile inventory has a zero or duplicate ID"
+            );
+        }
+        let matching_obm_profile_ids: Vec<_> = onboard
+            .iter()
+            .filter(|profile| profile.guid == *guid)
+            .map(|profile| profile.profile_id)
+            .collect();
+        Ok(ScrollProfileObservation {
+            selected_obm_profile_id: self.profiles.selected_obm_profile_id,
+            first_matching_obm_slot_id: matching_obm_profile_ids.first().copied(),
+            matching_obm_profile_ids,
+        })
+    }
+
     pub fn validate(&self, product_id: u32) -> Result<()> {
         let cap = capability(product_id).context("Current mouse scroll capability is absent")?;
         ensure!(
             !self.changes.is_empty() && self.changes.len() <= 5,
             "Scroll task list is empty or oversized"
         );
+        if let Some(guid) = &self.profile_guid {
+            ensure!(!guid.is_empty(), "Scroll active profile GUID is empty");
+            ensure!(
+                self.profiles.first_matching_obm_slot_id.is_none()
+                    && self.profiles.matching_obm_profile_ids.is_empty(),
+                "Scroll GUID associations must come from the device session"
+            );
+        }
         for change in &self.changes {
             targets(cap, *change, &self.profiles)?;
             for value in change.values()? {
@@ -303,6 +380,9 @@ impl Submission {
 #[non_exhaustive]
 pub struct SubmissionReport {
     pub requested: Submission,
+    /// Actual inventory order and decoded GUIDs, separate from source intent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub onboard_profiles: Option<Vec<crate::mouse_onboard::OnboardProfileAssociation>>,
     pub reports: Vec<ScrollWriteReport>,
     #[serde(default)]
     pub errors: Vec<String>,
@@ -321,12 +401,18 @@ impl SubmissionReport {
         let Some(cap) = capability(product_id) else {
             return false;
         };
+        let Ok(observed) = self
+            .requested
+            .resolve_profiles(product_id, self.onboard_profiles.as_deref())
+        else {
+            return false;
+        };
         self.requested
             .changes
             .iter()
             .zip(&self.reports)
             .all(|(change, report)| {
-                let Ok(profiles) = targets(cap, *change, &self.requested.profiles) else {
+                let Ok(profiles) = targets(cap, *change, &observed) else {
                     return false;
                 };
                 let Ok(values) = change.values() else {
@@ -512,9 +598,38 @@ impl<'a> MouseScroll<'a> {
         submission.validate(self.transport.product_id)?;
         let mut reports = Vec::new();
         let mut errors = Vec::new();
+        let mut onboard_profiles = None;
+        if submission
+            .changes
+            .iter()
+            .any(|change| submission.needs_observation(self.transport.product_id, *change))
+        {
+            match crate::mouse_onboard::read_profile_associations(
+                self.device,
+                self.transport,
+                &mut next,
+                &validate,
+            ) {
+                Ok(profiles) => onboard_profiles = Some(profiles),
+                Err(error) => {
+                    errors.push(format!("OBM profile observation: {error:#}"));
+                    validate()?;
+                }
+            }
+        }
+        let resolved =
+            submission.resolve_profiles(self.transport.product_id, onboard_profiles.as_deref());
         for (index, change) in submission.changes.iter().enumerate() {
             validate()?;
-            match self.apply(*change, &submission.profiles, &mut next, &validate) {
+            let profiles = match &resolved {
+                Ok(profiles) => profiles,
+                Err(_) if submission.needs_observation(self.transport.product_id, *change) => {
+                    reports.push(ScrollWriteReport::default());
+                    continue;
+                }
+                Err(_) => &submission.profiles,
+            };
+            match self.apply(*change, profiles, &mut next, &validate) {
                 Ok(report) => reports.push(report),
                 Err(failure) => {
                     errors.push(format!("task {index} ({change:?}): {failure:#}"));
@@ -527,6 +642,7 @@ impl<'a> MouseScroll<'a> {
         }
         Ok(SubmissionReport {
             requested: submission.clone(),
+            onboard_profiles,
             reports,
             errors,
         })

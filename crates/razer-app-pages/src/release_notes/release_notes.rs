@@ -507,8 +507,8 @@ impl Render for ReleaseNotes {
                     .inset_0()
                     .bg(cx.theme().title_bar.opacity(0.7)),
             )
-            .popup(
-                razer_assets::resource_scope(div()
+            .popup(razer_assets::resource_scope(
+                div()
                     .absolute()
                     .bottom_0()
                     .left_0()
@@ -516,8 +516,8 @@ impl Render for ReleaseNotes {
                     .h(height)
                     .flex()
                     .justify_center()
-                    .child(panel)),
-            )
+                    .child(panel),
+            ))
             .into_any_element()
     }
 }

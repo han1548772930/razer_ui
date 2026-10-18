@@ -1,7 +1,7 @@
 //! PID515/PID679 retained mapping publication after local profile persistence.
 //! Source task failures never roll back the optimistic reducer draft.
 use super::*;
-use crate::features::mapping_device_runtime::{Owner, Reply};
+use razer_service::mapping::device::{Reply, Session};
 use std::time::{Duration, Instant};
 
 pub struct KeyboardLegacyProfileNavigation(pub Value);
@@ -13,7 +13,8 @@ impl EventEmitter<crate::features::MappingCallbackRequested> for KeyboardProduct
 #[derive(Default)]
 pub(super) struct State {
     container: Option<String>,
-    owner: Option<Owner>,
+    owner: Option<Session>,
+    stopping: bool,
     poll: Option<Task<()>>,
     epoch: u64,
     revision: u64,
@@ -36,6 +37,16 @@ impl State {
     }
 }
 impl KeyboardProductWorkspace {
+    pub fn finish_mapping_service(&mut self) {
+        self.legacy_mapping.stopping = true;
+        self.legacy_mapping.held_brightness.clear();
+        if let Some(owner) = &self.legacy_mapping.owner {
+            if let Err(error) = owner.request_stop_after_pending() {
+                self.legacy_mapping.error = Some(error);
+            }
+        }
+    }
+
     pub(super) fn restore_latest_source_gaming_mode(&mut self) {
         self.legacy_mapping.latest_gaming_mode = None;
         if self.spec.product_id != 756 {
@@ -180,25 +191,20 @@ impl KeyboardProductWorkspace {
         }
     }
 
-    pub fn set_legacy_mapping_connection(
-        &mut self,
-        container: Option<String>,
-        cx: &mut Context<Self>,
-    ) {
-        if !matches!(self.spec.product_id, 515 | 679) || self.legacy_mapping.container == container
+    pub fn set_legacy_mapping_connection(&mut self, container: Option<String>) {
+        if !matches!(self.spec.product_id, 515 | 679 | 740 | 746)
+            || self.legacy_mapping.container == container
         {
             return;
         }
         self.legacy_mapping.owner = None;
+        self.legacy_mapping.stopping = false;
         self.legacy_mapping.poll = None;
         self.legacy_mapping.epoch = self.legacy_mapping.epoch.wrapping_add(1);
         self.legacy_mapping.container = container;
         self.legacy_mapping.published = None;
         self.legacy_mapping.error = None;
         self.legacy_mapping.held_brightness.clear();
-        if self.legacy_mapping.container.is_some() && self.legacy_mapping.document.is_some() {
-            self.start_legacy_mapping_owner(cx);
-        }
     }
 
     pub fn publish_legacy_mapping(
@@ -207,10 +213,15 @@ impl KeyboardProductWorkspace {
         document: Value,
         cx: &mut Context<Self>,
     ) {
-        if !matches!(self.spec.product_id, 515 | 679) {
+        if self.legacy_mapping.stopping || !matches!(self.spec.product_id, 515 | 679 | 740 | 746) {
             return;
         }
-        self.set_legacy_mapping_connection(Some(container), cx);
+        if self.legacy_mapping.container.as_deref() != Some(container.as_str()) {
+            self.legacy_mapping.document = Some(document);
+            self.set_legacy_mapping_connection(Some(container));
+            self.start_legacy_mapping_owner(cx);
+            return;
+        }
         if self.legacy_mapping.document.as_ref() == Some(&document)
             && self.legacy_mapping.owner.is_some()
         {
@@ -235,7 +246,7 @@ impl KeyboardProductWorkspace {
         let Some(container) = self.legacy_mapping.container.clone() else {
             return;
         };
-        let (owner, replies) = match Owner::start(self.spec.product_id, container) {
+        let (owner, replies) = match Session::start(self.spec.product_id, container) {
             Ok(value) => value,
             Err(error) => {
                 self.mapping_failure(format!("{error:#}"), cx);
@@ -258,7 +269,7 @@ impl KeyboardProductWorkspace {
                         let mut running = true;
                         for reply in messages {
                             match reply {
-                                Reply::Ready => this.submit_legacy_mapping(cx),
+                                Reply::Ready => {}
                                 Reply::Published {
                                     revision,
                                     result,
@@ -282,8 +293,10 @@ impl KeyboardProductWorkspace {
                                     }
                                 }
                                 Reply::Events(events) => {
-                                    for event in events {
-                                        this.legacy_mapping_event(event, cx);
+                                    if !this.legacy_mapping.stopping {
+                                        for event in events {
+                                            this.legacy_mapping_event(event, cx);
+                                        }
                                     }
                                 }
                                 Reply::Failed(error) => this.mapping_failure(error, cx),
@@ -319,9 +332,16 @@ impl KeyboardProductWorkspace {
                 }
             }
         }));
+        // The service queues this document until native registration is ready.
+        // Admission must precede a possible exit Finish, independently of the
+        // presentation task's next opportunity to observe Ready.
+        self.submit_legacy_mapping(cx);
     }
 
     fn submit_legacy_mapping(&mut self, cx: &mut Context<Self>) {
+        if self.legacy_mapping.stopping {
+            return;
+        }
         let Some(document) = self.legacy_mapping.document.as_ref() else {
             return;
         };
@@ -331,7 +351,13 @@ impl KeyboardProductWorkspace {
             fresh_guids: (0..256).map(|_| uuid::Uuid::new_v4().to_string()).collect(),
             ..Default::default()
         };
-        let compiled = if self.spec.product_id == 679 {
+        let compiled = if razer_device::keyboard_magnetic_mapping::supports(self.spec.product_id) {
+            razer_device::keyboard_magnetic_mapping::compile(
+                document,
+                self.legacy_mapping.running_games,
+                (0..256).map(|_| uuid::Uuid::new_v4().to_string()),
+            )
+        } else if self.spec.product_id == 679 {
             razer_device::keyboard_current_mapping::compile(
                 document,
                 self.legacy_mapping.running_games,
@@ -352,22 +378,24 @@ impl KeyboardProductWorkspace {
                 return;
             }
         };
-        let indicator = match razer_device::keyboard_gaming_mapping::indicator_enabled(
-            &document,
-            self.spec.product_id,
-            self.legacy_mapping.running_games,
-        ) {
-            Ok(indicator) => indicator,
-            Err(error) => {
-                self.mapping_failure(format!("{error:#}"), cx);
-                return;
+        let indicator = if razer_device::keyboard_magnetic_mapping::supports(self.spec.product_id) {
+            None
+        } else {
+            match razer_device::keyboard_gaming_mapping::indicator_enabled(
+                &document,
+                self.spec.product_id,
+                self.legacy_mapping.running_games,
+            ) {
+                Ok(indicator) => Some(indicator),
+                Err(error) => {
+                    self.mapping_failure(format!("{error:#}"), cx);
+                    return;
+                }
             }
         };
         self.legacy_mapping.revision = self.legacy_mapping.revision.wrapping_add(1);
         if let Some(owner) = self.legacy_mapping.owner.as_ref() {
-            if let Err(error) =
-                owner.publish(self.legacy_mapping.revision, document, Some(indicator))
-            {
+            if let Err(error) = owner.publish(self.legacy_mapping.revision, document, indicator) {
                 self.mapping_failure(error, cx);
             }
         }
@@ -440,7 +468,8 @@ impl KeyboardProductWorkspace {
         }
     }
     pub fn consume_interdevice_mapping(&mut self, mut raw: Value, cx: &mut Context<Self>) -> bool {
-        if !(matches!(self.spec.product_id, 515 | 679) && self.legacy_mapping.owner.is_some()
+        if !(matches!(self.spec.product_id, 515 | 679 | 740 | 746)
+            && self.legacy_mapping.owner.is_some()
             || self.spec.product_id == 756 && self.legacy_mapping.latest_connected)
         {
             return false;

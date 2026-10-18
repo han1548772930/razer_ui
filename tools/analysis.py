@@ -136,17 +136,56 @@ def index_lock(path=None):
                 fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
 
 
-def index_files(rows):
+def verify_source_rows(rows):
+    """Validate retained originals before a source owner publishes their index."""
+    snapshots = {}
+    for row in rows:
+        name = row.get("path", "")
+        if (not isinstance(name, str) or Path(name).is_absolute() or ".." in Path(name).parts
+                or not name.startswith((".analysis/inputs/", ".analysis/references/"))):
+            raise ValueError("Source publication requires a retained project-relative input: " + str(name))
+        path = resolve(name, ".analysis/inputs" if name.startswith(".analysis/inputs/") else ".analysis/references")
+        if (ROOT / name).is_symlink():
+            raise ValueError("Source publication cannot follow a symbolic link: " + name)
+        before = path.stat()
+        actual = sha(path)
+        after = path.stat()
+        if ((before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns)
+                or type(row.get("bytes")) is not int or before.st_size != row["bytes"]
+                or actual != row.get("sha256")):
+            raise ValueError("Source publication byte identity differs: " + name)
+        snapshots[path] = (after.st_size, after.st_mtime_ns)
+    return snapshots
+
+
+def index_files(rows, *, publication=None):
+    rows = list(rows)
     path = ROOT / ".analysis/inputs.json"
     with index_lock():
         index = json.loads(path.read_bytes())
+        snapshots = verify_source_rows(rows) if publication is not None else {}
+        if publication is not None:
+            if (not publication.get("owner", "").startswith("tools/") or not publication.get("reason")
+                    or not isinstance(publication.get("verification"), dict) or not publication["verification"]
+                    or publication.get("receipt") not in {row["path"] for row in rows}):
+                raise ValueError("Source publication requires its owner, reason, verification and indexed receipt")
         existing = {row["path"]: row for row in index["inputs"]}
-        changed = False
+        changes = []
         for row in rows:
-            changed |= existing.get(row["path"]) != row
+            previous = existing.get(row["path"])
+            if previous != row:
+                changes.append({"path": row["path"], "previous": previous, "current": row})
             existing[row["path"]] = row
-        if not changed:
+        if not changes:
             return
+        for source, snapshot in snapshots.items():
+            current = source.stat()
+            if (current.st_size, current.st_mtime_ns) != snapshot:
+                raise ValueError("Source changed during index publication: " + rel(source))
+        if publication is not None:
+            index.setdefault("source_publications", []).append({"recorded_at_utc": stamp(), **publication,
+                "changes": changes, "target_execution": False,
+                "scope": "Verified retained input identities; source semantics and runtime acceptance remain separate"})
         index["inputs"] = sorted(existing.values(), key=lambda row: row["path"])
         save(path, index)
 
@@ -570,6 +609,71 @@ def embedded_input_gaps(data, evidence):
     return rows
 
 
+def semantic_query_gaps(value, evidence, pointer="", product_id=None):
+    """Preserve acquisition, analyzer and semantic findings as separate claims."""
+    kinds = {"failures": "semantic_query_failure", "unresolved": "semantic_query_chain_unresolved",
+             "unresolved_chains": "semantic_query_chain_unresolved",
+             "remaining_local_chains": "semantic_query_chain_unresolved",
+             "failed_acquisition": "acquisition_query_failure",
+             "unresolved_acquisition": "acquisition_query_reference_unresolved",
+             "capture_failures": "analyzer_query_failure"}
+    rows = []
+    if isinstance(value, dict):
+        product_id = value.get("product_id", product_id)
+        for key, child in value.items():
+            location = pointer + "/" + key.replace("~", "~0").replace("/", "~1")
+            if key in kinds and isinstance(child, list):
+                rows.extend({"kind": kinds[key], "evidence": evidence, "pointer": location,
+                             "product_id": product_id, "finding": finding} for finding in child)
+            else:
+                rows.extend(semantic_query_gaps(child, evidence, location, product_id))
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            rows.extend(semantic_query_gaps(child, evidence, pointer + "/" + str(index), product_id))
+    return rows
+
+
+def typed_maintenance_gaps(registry):
+    """Recompute maintenance availability without promoting projections to originals."""
+    rows = []
+    for recipe in registry["tables"]:
+        scope = {"crate": recipe["crate"], "symbol": recipe["symbol"], "input": recipe["source"]}
+        try:
+            source = resolve(recipe["source"], ".analysis/inputs/typed-tables")
+            current = sha(source)
+        except FileNotFoundError:
+            rows.append({"kind": "typed_maintenance_input_missing", **scope,
+                         "expected_sha256": recipe["source_sha256"]})
+            continue
+        except (OSError, ValueError) as error:
+            rows.append({"kind": "typed_maintenance_input_unverified", **scope,
+                         "error": str(error).replace(str(ROOT), "<project>")})
+            continue
+        if current != recipe["source_sha256"]:
+            rows.append({"kind": "typed_maintenance_input_identity_mismatch", **scope,
+                         "expected_sha256": recipe["source_sha256"], "current_sha256": current})
+        recovery = recipe.get("maintenance_recovery")
+        if recovery and recovery.get("original_evidence_fields_restored") is not True:
+            rows.append({"kind": "typed_maintenance_source_evidence_pending", **scope,
+                         "maintenance_sha256": current, "recovery": recovery,
+                         "excluded_evidence_fields": recipe.get("excluded_evidence_fields", []),
+                         "scope": "Available maintenance bytes and successful regeneration establish storage equivalence; original acquisition, current version and full source semantics remain separate"})
+    verification = ROOT / ".analysis/results/typed-data.json"
+    report = json.loads(verification.read_bytes()).get("maintenance_inputs", {}) if verification.is_file() else {}
+    current = False
+    if report.get("passed") and report.get("inputs") and report.get("tables") == len(registry["tables"]):
+        import rust_data
+        try:
+            current = report["inputs"] == rust_data.maintenance_verification_inputs(registry)
+        except (OSError, ValueError):
+            pass
+    if not current:
+        rows.append({"kind": "typed_maintenance_regeneration_unverified", "evidence": rel(verification),
+                     "next_step": "python tools/workspace.py prepare-typed-data --check --record-verification",
+                     "scope": "A recorded complete check must match all current maintenance, schema, generator and output bytes"})
+    return rows
+
+
 def host_recheck_gaps(scope, index):
     """Reconcile independent current host rechecks against retained originals."""
     from host import OFFICIAL, STABLE_DOWNLOAD_PAGE, STABLE_BOOTSTRAP
@@ -641,6 +745,9 @@ def _refresh_gaps():
     path = ROOT / ".analysis/results/gaps.json"
     ledger = json.loads(path.read_bytes()) if path.exists() else {"schema_version": 1, "owners": {}}
     derived = {}
+    typed_registry = ROOT / "tools/typed-data.json"
+    if typed_registry.is_file():
+        derived["tools/typed-data.json"] = typed_maintenance_gaps(json.loads(typed_registry.read_bytes()))
     for receipt in sorted((ROOT / ".analysis/inputs/frontend").glob("*/acquisition.json")):
         data = json.loads(receipt.read_bytes())
         rows = list(data.get("unresolved", []))
@@ -714,22 +821,7 @@ def _refresh_gaps():
         if shared_layout:
             data = {key: value for key, value in data.items() if key != "products"}
 
-        def query_gaps(value, pointer="", product_id=None):
-            if isinstance(value, dict):
-                product_id = value.get("product_id", product_id)
-                for key, child in value.items():
-                    location = pointer + "/" + key.replace("~", "~0").replace("/", "~1")
-                    if key in ("failures", "unresolved", "unresolved_chains", "remaining_local_chains") and isinstance(child, list):
-                        kind = "semantic_query_failure" if key == "failures" else "semantic_query_chain_unresolved"
-                        rows.extend({"kind": kind, "evidence": rel(receipt), "pointer": location,
-                                     "product_id": product_id, "finding": finding} for finding in child)
-                    else:
-                        query_gaps(child, location, product_id)
-            elif isinstance(value, list):
-                for index, child in enumerate(value):
-                    query_gaps(child, pointer + "/" + str(index), product_id)
-
-        query_gaps(data)
+        rows.extend(semantic_query_gaps(data, rel(receipt)))
         if not shared_layout:
             rows.append({"kind": "page_implementation_acceptance_pending", "evidence": rel(receipt),
                          "scope": "semantic queries are separate from each full UI/backend checklist and runtime acceptance"})
@@ -738,8 +830,11 @@ def _refresh_gaps():
     for receipt in sorted((ROOT / ".analysis/results/native").glob("*/capture.json")):
         data = json.loads(receipt.read_bytes())
         captures[data["input_sha256"]] = data
+        resolved = native_reanalysis_resolution(receipt.parent, data)
         rows = [{"kind": "native_capture_failure", "evidence": rel(receipt), **row}
-                for row in data["failures"]]
+                for row in resolved["remaining_failures"]]
+        rows.extend({"kind": "native_supplement_verification_failure", "evidence": rel(receipt), **row}
+                    for row in resolved["verification_failures"])
         if not data.get("capture_complete"):
             rows.append({"kind": "native_capture_incomplete", "evidence": rel(receipt)})
         if data.get("semantic_audit") != "complete":
@@ -1380,8 +1475,49 @@ def native_pointer_targets(raw, table_rva, count):
             "raw_hex": table.hex(), "sha256": hashlib.sha256(table).hexdigest(), "targets": targets}
 
 
+def native_function_selection(raw, capture, function_rvas, type_specs=(), type_note=None):
+    """Select retained boundaries and explicit, assembly-reviewed type repairs."""
+    from host import inspect_pe
+
+    pe = inspect_pe(raw)
+    if pe["kind"] not in {"native", "mixed_managed_native"}:
+        raise ValueError("Function selection input is not a native PE image")
+    if not function_rvas or len(function_rvas) > 4096 or len(set(function_rvas)) != len(function_rvas):
+        raise ValueError("Function selection requires unique, bounded function RVAs")
+    existing = {int(row["rva"], 16): row for row in capture["functions"]}
+    types = []
+    for spec in type_specs:
+        rva_text, separator, declaration = spec.partition("=")
+        if not separator or not declaration.strip() or not type_note or not type_note.strip():
+            raise ValueError("Function type recovery requires RVA=DECLARATION and an assembly evidence note")
+        rva = int(rva_text, 0)
+        if rva not in function_rvas or any(row["rva"] == hex(rva) for row in types):
+            raise ValueError("Type recovery must name a unique explicitly selected function boundary")
+        types.append({"rva": hex(rva), "declaration": declaration.strip(), "assembly_evidence": type_note.strip()})
+    base = int(pe["image_base"], 16)
+    pe_offset = int.from_bytes(raw[0x3c:0x40], "little")
+    section_table = pe_offset + 24 + int.from_bytes(raw[pe_offset + 20:pe_offset + 22], "little")
+    targets = []
+    for index, rva in enumerate(function_rvas):
+        row = existing.get(rva)
+        if row is None or int(row["address"], 16) != base + rva:
+            raise ValueError("Function selection must use a retained exact function boundary: " + hex(rva))
+        sections = [(number, section) for number, section in enumerate(pe["sections"])
+                    if 0 <= rva - section["rva"] < section["bytes"]]
+        if len(sections) != 1:
+            raise ValueError("Function selection is not uniquely file-backed: " + hex(rva))
+        number, section = sections[0]
+        flags_at = section_table + number * 40 + 36
+        if not int.from_bytes(raw[flags_at:flags_at + 4], "little") & 0x20000000:
+            raise ValueError("Function selection is not in executable PE code: " + hex(rva))
+        targets.append({"index": index, "address": hex(base + rva), "rva": hex(rva),
+                        "file_offset": section["file_offset"] + rva - section["rva"]})
+    return {"mode": "retained_function_reanalysis", "image_base": hex(base), "architecture": pe["architecture"],
+            "targets": targets, "type_recoveries": types}
+
+
 def supplement_native(args):
-    """Supplement actual pointer-table targets using a copy of the retained IDB."""
+    """Supplement evidenced native entries in a private retained-IDB copy."""
     source = resolve(args.input, ".analysis/inputs")
     index = json.loads((ROOT / ".analysis/inputs.json").read_bytes())
     row = next((item for item in index["inputs"] if item["path"] == rel(source)), None)
@@ -1389,12 +1525,25 @@ def supplement_native(args):
         raise ValueError("Supplement input differs from its original input receipt")
     if row.get("container_extraction_complete") is False or row.get("source_bytes_verified") is False:
         raise ValueError("Supplement input comes from failed static decompression")
-    table = native_pointer_targets(source.read_bytes(), args.pointer_table_rva, args.pointer_count)
     result = ROOT / ".analysis/results/native" / row["sha256"]
     capture_path = result / "capture.json"
     capture = json.loads(capture_path.read_bytes())
     if not capture.get("capture_complete") or capture["input_sha256"] != row["sha256"]:
         raise ValueError("Supplement requires the original complete full-function capture")
+    function_rvas = getattr(args, "function_rva", None)
+    if function_rvas:
+        if args.pointer_table_rva is not None or args.pointer_count is not None:
+            raise ValueError("Function reanalysis and pointer-table selection are separate modes")
+        selection = native_function_selection(source.read_bytes(), capture, function_rvas,
+            getattr(args, "function_type", None) or (), getattr(args, "type_evidence", None))
+        selection_key = "function_selection"
+    else:
+        if getattr(args, "function_type", None) or getattr(args, "type_evidence", None):
+            raise ValueError("Function type recovery requires explicit function reanalysis")
+        if args.pointer_table_rva is None or args.pointer_count is None:
+            raise ValueError("Pointer-table selection requires its RVA and count")
+        selection = native_pointer_targets(source.read_bytes(), args.pointer_table_rva, args.pointer_count)
+        selection_key = "pointer_table"
     existing = {}
     for record in capture["functions"]:
         path = resolve(rel(result / record["path"]), ".analysis/results/native")
@@ -1405,11 +1554,25 @@ def supplement_native(args):
     database = ROOT / ".work/native" / row["sha256"] / "batch" / (source.name + ".i64")
     if not database.is_file():
         raise ValueError("Retained private full-capture IDB is unavailable")
-    selection = hashlib.sha256(json.dumps(table, sort_keys=True).encode()).hexdigest()[:16]
-    output = result / "supplements" / selection
-    scratch = ROOT / ".work/native" / row["sha256"] / "supplements" / selection
+    selection_id = hashlib.sha256(json.dumps(selection, sort_keys=True).encode()).hexdigest()[:16]
+    output = result / "supplements" / selection_id
+    scratch = ROOT / ".work/native" / row["sha256"] / "supplements" / selection_id
     output.mkdir(parents=True, exist_ok=True)
     scratch.mkdir(parents=True, exist_ok=True)
+    previous_attempts = []
+    session_path = output / "session.json"
+    if session_path.is_file():
+        prior = json.loads(session_path.read_bytes())
+        if "finished_at_utc" not in prior:
+            raise ValueError("Previous supplemental session has not finished; inspect it before rerunning")
+        previous_attempts = prior.pop("previous_attempts", [])
+        prior["retained_outputs"] = []
+        for path in (output / "plan.json", output / "capture.json", scratch / "ida.log", scratch / "process.log"):
+            if path.is_file():
+                retained = path.read_bytes()
+                prior["retained_outputs"].append({"path_at_attempt": rel(path), "bytes": len(retained),
+                    "sha256": hashlib.sha256(retained).hexdigest(), "raw_base64": base64.b64encode(retained).decode()})
+        previous_attempts.append(prior)
     private_database = scratch / database.name
     shutil.copyfile(database, private_database)
     if sha(database) != sha(private_database):
@@ -1417,8 +1580,9 @@ def supplement_native(args):
     plan = {"schema_version": 1, "input": rel(source), "sha256": row["sha256"],
             "input_bytes": row["bytes"], "output": rel(output), "acquisition_binding": row,
             "database": {"path": rel(private_database), "sha256": sha(private_database)},
+            "source_database": {"path": rel(database), "sha256": sha(database)},
             "base_capture": {"path": rel(capture_path), "sha256": sha(capture_path)},
-            "pointer_table": table, "existing_functions": existing,
+            selection_key: selection, "existing_functions": existing,
             "target_execution": False, "real_device_operations": False}
     save(output / "plan.json", plan)
     executable = next((Path(args.ida_root) / name for name in ("idat64.exe", "idat.exe")
@@ -1442,6 +1606,8 @@ def supplement_native(args):
                                 stderr=subprocess.STDOUT, **options)
     session = {"pid": proc.pid, "started_at_utc": stamp(), "analyzer": executable.name,
                "analyzer_sha256": sha(executable), "database": plan["database"],
+               "capture_tool": {"path": "tools/ida/supplement.py", "sha256": sha(ROOT / "tools/ida/supplement.py")},
+               "previous_attempts": previous_attempts,
                "argv": [executable.name, "-A", "-Opdb:off", "-L" + rel(scratch / "ida.log"),
                         "-Stools/ida/supplement.py", rel(private_database)],
                "target_execution": False, "real_device_operations": False}
@@ -1457,6 +1623,109 @@ def supplement_native(args):
         refresh_gaps()
     print(json.dumps({"session": rel(output / "session.json"), "passed": session["passed"]}), flush=True)
     return session
+
+
+def native_reanalysis_resolution(result, capture=None):
+    """Verify retained-function supplements and separate recovered decompilations."""
+    capture_path = result / "capture.json"
+    capture = capture if capture is not None else json.loads(capture_path.read_bytes())
+    resolution = {"base_capture": {"path": rel(capture_path), "bytes": capture_path.stat().st_size,
+                                   "sha256": sha(capture_path)},
+                  "supplements": [], "resolved_failures": [], "remaining_failures": list(capture["failures"]),
+                  "verification_failures": [], "complete_functions": {}, "target_execution": False}
+    candidates = sorted((result / "supplements").glob("*/capture.json"))
+    if not candidates:
+        return resolution
+    original = resolve(capture["input"], ".analysis/inputs")
+    raw = None
+    base_functions = {row["rva"]: row for row in capture["functions"]}
+
+    def checked(path, record):
+        path = resolve(rel(path), rel(result))
+        data = path.read_bytes()
+        if hashlib.sha256(data).hexdigest() != record["sha256"] or ("bytes" in record and len(data) != record["bytes"]):
+            raise ValueError("Native supplement evidence changed: " + rel(path))
+        return json.loads(data)
+
+    for path in candidates:
+        try:
+            supplement = json.loads(path.read_bytes())
+            selection = supplement.get("function_selection")
+            if selection is None:
+                continue
+            if (supplement.get("input_sha256") != capture["input_sha256"]
+                    or supplement.get("base_capture") != {"path": rel(capture_path), "sha256": sha(capture_path)}
+                    or supplement.get("capture_complete") is not True
+                    or supplement.get("all_pseudocode_captured") is not True or supplement.get("failures")
+                    or supplement.get("database_integrity", {}).get("verified") is not True
+                    or supplement.get("base_capture_unchanged") is not True
+                    or supplement.get("base_database_unchanged") is not True
+                    or supplement.get("target_execution") is not False):
+                raise ValueError("Native function supplement is incomplete, changed or lacks static integrity evidence")
+            session_path = path.parent / "session.json"
+            session = json.loads(session_path.read_bytes())
+            if session.get("passed") is not True or session.get("exit_code") != 0 or session.get("capture_tool") != supplement.get("capture_tool"):
+                raise ValueError("Native supplement does not have a matching successful analyzer session")
+            plan = json.loads((path.parent / "plan.json").read_bytes())
+            if (plan.get("function_selection") != selection or plan.get("base_capture") != supplement["base_capture"]
+                    or plan.get("source_database") != supplement.get("source_database")):
+                raise ValueError("Native supplement differs from its exact static analysis plan")
+            if raw is None:
+                raw = original.read_bytes()
+                if hashlib.sha256(raw).hexdigest() != capture["input_sha256"] or len(raw) != capture["input_bytes"]:
+                    raise ValueError("Native supplement original bytes changed")
+            recoveries = selection["type_recoveries"]
+            actual = native_function_selection(raw, capture, [int(row["rva"], 16) for row in selection["targets"]],
+                [row["rva"] + "=" + row["declaration"] for row in recoveries],
+                recoveries[0]["assembly_evidence"] if recoveries else None)
+            if actual != selection:
+                raise ValueError("Native supplement selection no longer matches the original bytes")
+            if {row["rva"] for row in supplement["functions"]} != {row["rva"] for row in selection["targets"]}:
+                raise ValueError("Native supplement omitted selected function boundaries")
+            if (len(supplement["type_recoveries"]) != len(recoveries)
+                    or any(any(applied.get(key) != requested[key] for key in requested)
+                           or not applied.get("applied_type") or applied.get("base_database_modified") is not False
+                           for applied, requested in zip(supplement["type_recoveries"], recoveries))):
+                raise ValueError("Native supplement did not retain the exact reviewed type recoveries")
+            recovered = {}
+            for row in supplement["functions"]:
+                record = {**row, "path": rel(path.parent / row["path"])}
+                body = checked(ROOT / record["path"], record)
+                base_record = base_functions.get(row["rva"])
+                if base_record is None:
+                    raise ValueError("Native reanalysis introduced a boundary absent from its base capture")
+                baseline = checked(result / base_record["path"], base_record)
+                if (not row.get("assembly_captured") or not row.get("pseudocode_captured")
+                        or not isinstance(body.get("pseudocode"), dict) or not body["pseudocode"].get("lines")
+                        or not isinstance(body["pseudocode"].get("locals"), list)
+                        or any(body[key] != baseline[key] for key in ("address", "rva", "end", "chunks", "xrefs_to_entry"))
+                        or [(item["address"], item["bytes"]) for item in body["assembly"]]
+                        != [(item["address"], item["bytes"]) for item in baseline["assembly"]]):
+                    raise ValueError("Native supplemental function omitted code or differs from original complete assembly")
+                previous = resolution["complete_functions"].get(row["rva"])
+                if previous and previous["capture"]["sha256"] != record["sha256"]:
+                    raise ValueError("Native supplemental functions conflict for " + row["rva"])
+                recovered[row["rva"]] = {"capture": record, **body}
+            receipt = {"path": rel(path), "bytes": path.stat().st_size, "sha256": sha(path)}
+            resolution["supplements"].append({"receipt": receipt,
+                "session": {"path": rel(session_path), "bytes": session_path.stat().st_size, "sha256": sha(session_path)},
+                "ida_version": supplement["ida_version"], "hexrays_version": supplement["hexrays_version"],
+                "type_recoveries": supplement["type_recoveries"], "functions": list(recovered)})
+            resolution["complete_functions"].update(recovered)
+            pending = []
+            for failure in resolution["remaining_failures"]:
+                match = re.fullmatch(r"([0-9a-fA-F]+):hexrays", failure.get("stage", ""))
+                rva = hex(int(match[1], 16)) if match else None
+                if rva in recovered:
+                    resolution["resolved_failures"].append({"original_failure": failure, "function_rva": rva,
+                        "supplement": receipt, "complete_function": recovered[rva]["capture"]})
+                else:
+                    pending.append(failure)
+            resolution["remaining_failures"] = pending
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            resolution["verification_failures"].append({"supplement": rel(path),
+                "error": str(error).replace(str(ROOT), "<project>")})
+    return resolution
 
 
 def verify_native_capture(result, resource):
@@ -4584,16 +4853,24 @@ def audit_reference(args):
     directory = (ROOT / args.directory).resolve()
     if not directory.is_relative_to((ROOT / ".analysis/references").resolve()) or directory.is_symlink():
         raise ValueError("Architecture references must remain under .analysis/references/")
+    retained_snapshot = getattr(args, "retained_snapshot", False)
+    if not retained_snapshot:
+        top = subprocess.run(["git", "-C", str(directory), "rev-parse", "--show-toplevel"], check=True,
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout.decode().strip()
+        if Path(top).resolve() != directory:
+            raise ValueError("Reference Git metadata is absent; refusing to audit the enclosing workspace repository")
     def git(*arguments):
         return subprocess.run(["git", "-C", str(directory), *arguments], check=True,
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout
-    commit = git("rev-parse", "HEAD").decode().strip()
-    if commit != args.commit or not re.fullmatch(r"[0-9a-f]{40}", commit):
-        raise ValueError("Reference checkout differs from its pinned commit")
-    if git("diff", "--exit-code", "--no-ext-diff", "HEAD", "--").strip():
-        raise ValueError("Reference tracked files have been modified")
     acquisition_path = directory / "acquisition.json"
     previous = json.loads(acquisition_path.read_bytes())
+    commit = previous.get("commit") if retained_snapshot else git("rev-parse", "HEAD").decode().strip()
+    if commit != args.commit or not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise ValueError("Reference checkout differs from its pinned commit")
+    if not retained_snapshot and git("diff", "--exit-code", "--no-ext-diff", "HEAD", "--").strip():
+        raise ValueError("Reference tracked files have been modified")
+    if retained_snapshot and (args.check_upstream or args.restore_original_bytes):
+        raise ValueError("Retained snapshot verification cannot claim an upstream check or restore unretained Git objects")
     latest = None
     if args.check_upstream:
         repository = re.fullmatch(r"https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?", previous["url"])
@@ -4608,7 +4885,26 @@ def audit_reference(args):
         if latest["commit"] != commit:
             raise ValueError("Reference is no longer the current upstream commit; reacquire before comparison")
     files, restored = [], []
-    for entry in git("ls-tree", "-r", "-l", "-z", commit).split(b"\0"):
+    if retained_snapshot:
+        if previous.get("method") != "complete_git_tree_blob_identity_and_workspace_manifest_audit":
+            raise ValueError("Retained reference lacks a complete original Git tree audit")
+        recorded = previous.get("files", [])
+        if (len(recorded) != previous.get("summary", {}).get("files") or
+                sum(row["bytes"] for row in recorded) != previous.get("summary", {}).get("bytes")):
+            raise ValueError("Retained reference tree summary differs")
+        entries = []
+        for row in recorded:
+            path = resolve(row["path"], rel(directory))
+            name = path.relative_to(directory).as_posix()
+            entries.append(f"{row['git_mode']} blob {row['git_blob']} {row['bytes']}\t{name}".encode())
+        actual_paths = {rel(path) for path in directory.rglob("*") if path.is_file()
+                        and path != acquisition_path and ".git" not in path.relative_to(directory).parts}
+        if actual_paths != {row["path"] for row in recorded}:
+            raise ValueError("Retained reference file closure differs from the complete original tree audit")
+        verify_source_rows(recorded)
+    else:
+        entries = git("ls-tree", "-r", "-l", "-z", commit).split(b"\0")
+    for entry in entries:
         if not entry:
             continue
         metadata, spelling = entry.split(b"\t", 1)
@@ -4647,17 +4943,48 @@ def audit_reference(args):
             manifests.append({"name": value["package"]["name"], "manifest": rel(manifest),
                               "internal_dependencies": sorted(name for name, item in resolved.items()
                                                               if isinstance(item, dict) and "path" in item)})
-    result = {"schema_version": 1, "url": previous["url"], "commit": commit,
-              "audited_at_utc": stamp(), "method": "complete_git_tree_blob_identity_and_workspace_manifest_audit",
-              "git_version": subprocess.run(["git", "--version"], capture_output=True, text=True, check=True).stdout.strip(),
+    if retained_snapshot and manifests != previous.get("workspace_members"):
+        raise ValueError("Retained reference workspace manifests differ from the complete original audit")
+    result = {**previous, "schema_version": 1, "url": previous["url"], "commit": commit,
+              "audited_at_utc": previous.get("audited_at_utc") if retained_snapshot else stamp(),
+              "method": "complete_git_tree_blob_identity_and_workspace_manifest_audit",
+              "git_version": previous.get("git_version") if retained_snapshot else subprocess.run(["git", "--version"], capture_output=True, text=True, check=True).stdout.strip(),
               "upstream": latest or previous.get("upstream"), "files": files, "workspace_members": manifests,
               "checkout_filter_restorations": restored or previous.get("checkout_filter_restorations", []),
               "summary": {"files": len(files), "bytes": sum(row["bytes"] for row in files), "members": len(manifests)},
               "target_execution": False,
               "scope": "Complete acquisition/byte and dependency inventory; selected architecture call chains read separately. No device-protocol evidence or runtime acceptance is implied."}
+    if retained_snapshot:
+        result["retained_snapshot_verification"] = {"verified_at_utc": stamp(),
+            "method": "complete_retained_tree_sha256_git_blob_identity_closure_and_manifest_verification",
+            "upstream_rechecked": False, "git_objects_reacquired": False,
+            "scope": "Revalidate the previously audited fixed snapshot; original upstream audit time and currentness scope remain unchanged"}
     save(acquisition_path, result)
+    index_files(files + [{"path": rel(acquisition_path), "bytes": acquisition_path.stat().st_size,
+                          "sha256": sha(acquisition_path), "kind": "acquisition_receipt"}],
+                publication={"owner": "tools/analysis.py", "receipt": rel(acquisition_path),
+                    "reason": "Publish the complete pinned Git tree and workspace audit, including original blob bytes after checkout-filter restoration",
+                    "verification": {"method": result["method"], "commit": commit, **result["summary"],
+                        "upstream_rechecked": args.check_upstream,
+                        "checkout_filter_restorations": result["checkout_filter_restorations"]}})
     print(json.dumps({"receipt": rel(acquisition_path), "commit": commit, **result["summary"], "passed": True}), flush=True)
     return result
+
+
+def reconcile_source_index(args):
+    """Reconcile only inputs validated by their actual acquisition/publication owners."""
+    import families
+    import asset_release
+    if not args.frontend and not args.publication:
+        raise ValueError("Source reconciliation requires explicit frontend receipts or resource publication manifests")
+    for name in args.frontend or []:
+        families.publish_frontend_acquisition(resolve(name, ".analysis/inputs/frontend"),
+            reason="Reconcile retained supplemental frontend acquisition after complete byte, deployment-root, manifest and stability verification")
+    for name in args.publication or []:
+        asset_release.index_addition_sources(name,
+            reason="Reconcile targeted resource publication after source-receipt, pinned resource and alias verification")
+    print(json.dumps({"frontend_receipts": args.frontend or [], "publication_manifests": args.publication or [],
+                      "network_requests": False, "target_execution": False, "passed": True}), flush=True)
 
 
 def add_commands(parsers):
@@ -4668,6 +4995,10 @@ def add_commands(parsers):
     reference.add_argument("--commit", required=True)
     reference.add_argument("--check-upstream", action="store_true")
     reference.add_argument("--restore-original-bytes", action="store_true", help="Replace clean-checkout filter conversions with verified raw Git blobs")
+    reference.add_argument("--retained-snapshot", action="store_true", help="Revalidate a previously complete detached snapshot against its original Git blob and SHA-256 receipt; no new upstream currentness claim")
+    reconcile = parsers.add_parser("reconcile-source-index", help="Verify retained source receipts through their owners before publishing complete input identities")
+    reconcile.add_argument("--frontend", action="append", help="Explicit frontend acquisition receipt; repeat for multiple source sets")
+    reconcile.add_argument("--publication", action="append", help="Explicit targeted resource publication manifest; validates pinned source and alias identities without network")
     parsers.add_parser("configure-ida", help="Regenerate direct IDA MCP configuration and plugin")
     probe = parsers.add_parser("probe-ida", help="Verify static MCP metadata, function lookup, complete pseudocode and assembly")
     probe.add_argument("--input", required=True)
@@ -4697,10 +5028,14 @@ def add_commands(parsers):
     native.add_argument("--mcp-only", action="store_true", help="Open verified private input for static MCP queries without recapturing")
     native.add_argument("--ida-root", default=os.environ.get("RAZER_IDA_ROOT", "E:/IDA"))
     native.add_argument("--no-refresh-gaps", action="store_true", help="Leave gap reconciliation to the caller after concurrent analyses finish")
-    supplement = parsers.add_parser("supplement-native", help="Follow original PE pointer-table targets and capture missing direct-jump thunks in a copied static IDB")
+    supplement = parsers.add_parser("supplement-native", help="Follow original PE pointer tables or reanalyze retained functions with assembly-reviewed types in a copied static IDB")
     supplement.add_argument("--input", required=True)
-    supplement.add_argument("--pointer-table-rva", type=lambda value: int(value, 0), required=True)
-    supplement.add_argument("--pointer-count", type=int, required=True)
+    supplement.add_argument("--pointer-table-rva", type=lambda value: int(value, 0))
+    supplement.add_argument("--pointer-count", type=int)
+    supplement.add_argument("--function-rva", type=lambda value: int(value, 0), action="append",
+                            help="Reanalyze this exact retained function boundary; repeat for callers and callees")
+    supplement.add_argument("--function-type", action="append", help="Explicit RVA=C function declaration backed by the complete retained assembly")
+    supplement.add_argument("--type-evidence", help="Explain the argument/register/return evidence for explicit type recovery")
     supplement.add_argument("--ida-root", default=os.environ.get("RAZER_IDA_ROOT", "E:/IDA"))
     supplement.add_argument("--no-refresh-gaps", action="store_true")
     chain = parsers.add_parser("audit-native-chain", help="Join complete original host callables, literal FFI signatures and verified native bodies/xrefs")
@@ -4731,7 +5066,8 @@ def run(args):
     if args.command in {"acquire-installed", "acquire-host", "inspect-host", "analyze-host"}:
         import host
         return host.run(args)
-    {"audit-reference": audit_reference, "configure-ida": lambda _: configure_ida(), "inspect-corpus": inspect_corpus,
+    {"audit-reference": audit_reference, "reconcile-source-index": reconcile_source_index,
+     "configure-ida": lambda _: configure_ida(), "inspect-corpus": inspect_corpus,
      "extract-native-packages": extract_native_packages,
      "probe-ida": probe_ida,
      "refresh-gaps": lambda _: print(json.dumps({"owners": len(refresh_gaps()["owners"])}), flush=True),

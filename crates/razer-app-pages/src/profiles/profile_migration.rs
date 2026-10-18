@@ -826,8 +826,8 @@ impl MigrationPage {
                     .inset_0()
                     .bg(cx.theme().title_bar.opacity(0.7)),
             )
-            .popup(
-                razer_assets::resource_scope(div()
+            .popup(razer_assets::resource_scope(
+                div()
                     .absolute()
                     .inset_0()
                     .w(window.viewport_size().width)
@@ -846,8 +846,8 @@ impl MigrationPage {
                             .text_size(surface::css(12.))
                             .text_color(PaletteColors.white())
                             .child("界面预览 · 示例状态；按 Esc 返回"),
-                    )),
-            )
+                    ),
+            ))
             .into_any_element()
     }
     fn overlay_body(&self, phase: Overlay, cx: &mut Context<Self>) -> AnyElement {
@@ -1071,15 +1071,17 @@ fn source_tooltip(
         .tooltip(move |window, cx| {
             let text = text.clone();
             Tooltip::element(move |_, _| {
-                razer_assets::resource_scope(div()
-                    .max_w(surface::css(320.))
-                    .px(surface::css(10.))
-                    .py(surface::css(8.))
-                    .border_1()
-                    .border_color(border)
-                    .bg(background)
-                    .text_size(surface::css(14.))
-                    .child(text.clone()))
+                razer_assets::resource_scope(
+                    div()
+                        .max_w(surface::css(320.))
+                        .px(surface::css(10.))
+                        .py(surface::css(8.))
+                        .border_1()
+                        .border_color(border)
+                        .bg(background)
+                        .text_size(surface::css(14.))
+                        .child(text.clone()),
+                )
             })
             .build(window, cx)
         })

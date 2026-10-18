@@ -758,10 +758,9 @@ impl MouseDpiMatcher {
                 this.emit(actions, cx);
                 cx.notify();
             }))
-            .children(
-                (self.state.phase() == Some("error"))
-                    .then(|| razer_assets::deferred_resource(self.warning(window, cx)).with_priority(999)),
-            )
+            .children((self.state.phase() == Some("error")).then(|| {
+                razer_assets::deferred_resource(self.warning(window, cx)).with_priority(999)
+            }))
             // dS.componentDidMount applies overflow:auto to the popup itself.
             // Keep the body's own min-height and scroll limit on the body;
             // short viewports also need to scroll the outer popup.
@@ -840,16 +839,15 @@ impl Render for MouseDpiMatcher {
                         .mt(surface::css(10.))
                         .child(self.profile_bar(window, cx)),
                 )
-                .children(
-                    self.state
-                        .delete_all_open()
-                        .then(|| razer_assets::deferred_resource(self.delete_all_popup(window, cx)).with_priority(112)),
-                ),
+                .children(self.state.delete_all_open().then(|| {
+                    razer_assets::deferred_resource(self.delete_all_popup(window, cx))
+                        .with_priority(112)
+                })),
         )
         .children(
-            self.state
-                .popup()
-                .then(|| razer_assets::deferred_resource(self.overlay(window, cx)).with_priority(106)),
+            self.state.popup().then(|| {
+                razer_assets::deferred_resource(self.overlay(window, cx)).with_priority(106)
+            }),
         )
         .on_click(cx.listener(|this, _, _, cx| {
             let actions = this.state.window_click(false);

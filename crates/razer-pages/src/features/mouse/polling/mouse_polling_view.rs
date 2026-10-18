@@ -368,6 +368,7 @@ impl MouseProductWorkspace {
             self.current_dpi.cancel();
             self.current_power.cancel();
             self.scroll_task.cancel();
+            self.cancel_calibration_requests();
             self.legacy_mapping.stop();
         }
         self.sync_receiver_indicator(cx);

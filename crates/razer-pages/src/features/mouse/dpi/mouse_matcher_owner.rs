@@ -3,10 +3,24 @@
 use super::*;
 use crate::features::mouse_dpi_matcher::{MatcherAction, MatcherObservation, MouseDpiMatcher};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct MouseMatcherScope {
     owner: EntityId,
     epoch: u64,
+    valid: std::sync::Arc<std::sync::atomic::AtomicBool>,
+}
+impl PartialEq for MouseMatcherScope {
+    fn eq(&self, other: &Self) -> bool {
+        self.owner == other.owner
+            && self.epoch == other.epoch
+            && std::sync::Arc::ptr_eq(&self.valid, &other.valid)
+    }
+}
+impl Eq for MouseMatcherScope {}
+impl MouseMatcherScope {
+    pub fn is_valid(&self) -> bool {
+        self.valid.load(std::sync::atomic::Ordering::Acquire)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -75,10 +89,22 @@ impl MouseProductWorkspace {
         self.sync_matcher_profile(window, cx);
     }
 
-    pub(super) fn sync_matcher_mount(&self, cx: &mut Context<Self>) {
+    pub(super) fn sync_matcher_mount(&mut self, cx: &mut Context<Self>) {
+        let mounted = self.active && self.page == "TAB_PERFORMANCE";
+        if mounted
+            && !self
+                .matcher_valid
+                .load(std::sync::atomic::Ordering::Acquire)
+        {
+            self.matcher_epoch = self.matcher_epoch.wrapping_add(1);
+            self.matcher_valid = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true));
+        } else if !mounted {
+            self.matcher_valid
+                .store(false, std::sync::atomic::Ordering::Release);
+        }
         if let Some(matcher) = &self.matcher {
             matcher.update(cx, |matcher, cx| {
-                if self.active && self.page == "TAB_PERFORMANCE" {
+                if mounted {
                     matcher.mount(cx);
                 } else {
                     matcher.unmount(cx);
@@ -118,9 +144,13 @@ impl MouseProductWorkspace {
     }
 
     pub fn mouse_matcher_scope(&self, _cx: &App) -> Option<MouseMatcherScope> {
+        if !self.active || self.page != "TAB_PERFORMANCE" {
+            return None;
+        }
         Some(MouseMatcherScope {
             owner: self.matcher.as_ref()?.entity_id(),
             epoch: self.matcher_epoch,
+            valid: self.matcher_valid.clone(),
         })
     }
 
@@ -150,12 +180,18 @@ impl MouseProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.mouse_matcher_scope(cx).as_ref() != Some(scope) {
+        if !scope.is_valid() || self.mouse_matcher_scope(cx).as_ref() != Some(scope) {
             return;
         }
         if let MatcherObservation::Profiles { profiles, selected } = &observation {
             self.draft["sensitivityMatcher"] = json!({"profiles":profiles});
             self.draft["selectedSensitivityMatcher"] = json!(selected);
+            cx.emit(MouseProductChanged);
+        }
+        if let MatcherObservation::Stages { stages, active } = &observation {
+            set_pointer(&mut self.draft, self.spec.stages_path(), json!(stages));
+            set_pointer(&mut self.draft, self.spec.active_path(), json!(active));
+            self.dismiss_dpi_editors(window, cx);
             cx.emit(MouseProductChanged);
         }
         if let Some(matcher) = &self.matcher {
@@ -170,9 +206,10 @@ impl MouseProductWorkspace {
         reason: String,
         cx: &mut Context<Self>,
     ) {
-        if self.mouse_matcher_scope(cx).as_ref() == Some(scope) {
+        if scope.is_valid() && self.mouse_matcher_scope(cx).as_ref() == Some(scope) {
             // A missing transport is not the source calibration-error response.
             self.matcher_error = Some(reason);
+            cx.notify();
         }
     }
 }

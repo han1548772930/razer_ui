@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 razer-model.workspace = true
+razer-storage.workspace = true
 gpui-kit.workspace = true
 serde.workspace = true
 

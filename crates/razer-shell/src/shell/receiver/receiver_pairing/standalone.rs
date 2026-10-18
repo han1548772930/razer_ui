@@ -121,7 +121,7 @@ impl Transport {
             .active
             .values()
             .chain(&jobs.retired)
-            .filter(|job| &job.owner == owner)
+            .filter(|job| &job.owner == owner && !job.worker.is_finished())
         {
             job.canceled.store(true, Ordering::Release);
             count += 1;
@@ -136,17 +136,24 @@ impl Transport {
         operation: &'static str,
         payload: Value,
         external: bool,
+        publish_refresh: bool,
     ) -> anyhow::Result<Pin<Box<dyn Future<Output = Result<Value, String>> + Send>>> {
         ensure!(!self.closed.load(Ordering::Acquire), "配对服务所有者已关闭");
         let owner = Owner::parse(&info)?;
         if operation == "DUALLINK_CANCEL" {
             let result = self.cancel_owner(&owner)?;
-            return Ok(Box::pin(async move { Ok(result) }));
+            if result["worker_cancellation_requested"]
+                .as_u64()
+                .is_some_and(|count| count > 0)
+            {
+                return Ok(Box::pin(async move { Ok(result) }));
+            }
         }
         ensure!(
             matches!(
                 operation,
                 "DUALLINK_BIND_INFO"
+                    | "DUALLINK_CANCEL"
                     | "DUALLINK_SCAN_DEVICE"
                     | "DUALLINK_BIND_DEVICE"
                     | "DUALLINK_UNBIND_DEVICE"
@@ -249,7 +256,7 @@ impl Transport {
                             completions.push(Completion {
                                 product_id: worker_owner.product_id,
                                 container: worker_owner.container.clone(),
-                                projection: projection.clone(),
+                                projection: projection.clone().filter(|_| publish_refresh),
                                 cache_changed: !early_persistence
                                     && value["local_cache_persisted"] == true,
                                 diagnostic: value["local_cache_error"]
@@ -295,6 +302,19 @@ impl Transport {
             }
         }))
     }
+    /// A mounted product retains its own physical connection scope and refresh
+    /// loop. Its completion must not publish through the standalone window.
+    pub(in crate::shell) fn request_product(
+        &self,
+        master: Value,
+        operation: &'static str,
+        payload: Value,
+    ) -> Pin<Box<dyn Future<Output = Result<Value, String>> + Send>> {
+        match self.start(master, operation, payload, false, false) {
+            Ok(future) => future,
+            Err(error) => Box::pin(async move { Err(format!("{error:#}")) }),
+        }
+    }
 }
 impl PairingTransport for Transport {
     fn request(
@@ -304,7 +324,7 @@ impl PairingTransport for Transport {
         payload: Value,
         external: bool,
     ) -> Pin<Box<dyn Future<Output = Result<Value, String>> + Send>> {
-        match self.start(master, operation, payload, external) {
+        match self.start(master, operation, payload, external, true) {
             Ok(future) => future,
             Err(error) => Box::pin(async move { Err(format!("{error:#}")) }),
         }
@@ -355,6 +375,14 @@ fn perform(
         reconnect_owner,
         source_response,
     )?;
+    if event.kind() == "DUALLINK_CANCEL" {
+        ensure!(
+            actual["operation"] == "cancel"
+                && actual["completion_evidence"] == "feature_acknowledgement",
+            "取消缺少主实例 scan4 确认"
+        );
+        return Ok((actual, None));
+    }
     let projection = receiver_readback_for_refresh(event, &actual)
         .map(|value| {
             razer_discovery::discovery::project_receiver_query(

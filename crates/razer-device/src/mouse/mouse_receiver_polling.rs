@@ -28,10 +28,26 @@ pub struct Observation<T = DeviceReadValue> {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum PollingPreRead {
+    Observed { hz: u32 },
+    Failed { message: String },
+}
+
+impl PollingPreRead {
+    pub fn hz(&self) -> Option<u32> {
+        match self {
+            Self::Observed { hz } => Some(*hz),
+            Self::Failed { .. } => None,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PollingWriteResult {
     pub requested_hz: u32,
     pub effective_hz: u32,
-    pub previous_hz: u32,
+    pub previous: PollingPreRead,
     pub observed_hz: u32,
     pub acknowledgement: Option<Vec<u8>>,
     pub changed: bool,
@@ -173,14 +189,24 @@ impl ReceiverRead {
                     _ => anyhow::bail!("Polling getter returned another value kind"),
                 }
             };
-            let previous_hz = get(next()?)?;
+            // The mounted Ne getter catches a failed read and returns 0, so
+            // ot continues its setter instead of treating the pre-read as a
+            // prerequisite. Keep that failure separate from an observed rate.
+            let previous = match get(next()?) {
+                Ok(hz) => PollingPreRead::Observed { hz },
+                Err(error) => PollingPreRead::Failed {
+                    message: format!("{error:#}"),
+                },
+            };
+            // A caught native getter failure cannot revive a canceled scope
+            // or authorize a setter against a replaced physical device.
             validate()?;
-            if previous_hz == effective_hz {
+            if previous.hz() == Some(effective_hz) {
                 return Ok(PollingWriteResult {
                     requested_hz: hz,
                     effective_hz,
-                    previous_hz,
-                    observed_hz: previous_hz,
+                    previous,
+                    observed_hz: effective_hz,
                     acknowledgement: None,
                     changed: false,
                 });
@@ -203,7 +229,7 @@ impl ReceiverRead {
             Ok(PollingWriteResult {
                 requested_hz: hz,
                 effective_hz,
-                previous_hz,
+                previous,
                 observed_hz,
                 acknowledgement: Some(acknowledgement),
                 changed: true,

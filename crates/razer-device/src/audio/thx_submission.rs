@@ -48,6 +48,7 @@ pub enum ThxSubmissionPlan {
     ShutdownRender,
     ReadSpatial,
     ReadFirmwareVersion,
+    FactoryReset1398,
     ReadRollerMapping,
     SetRollerMappings {
         mappings: Vec<Value>,
@@ -60,7 +61,8 @@ pub enum ThxSubmissionPlan {
 }
 impl ThxSubmissionPlan {
     pub fn is_direct_hid(&self) -> bool {
-        self.is_roller_mapping() || matches!(self, Self::ReadFirmwareVersion)
+        self.is_roller_mapping()
+            || matches!(self, Self::ReadFirmwareVersion | Self::FactoryReset1398)
     }
     pub fn is_roller_mapping(&self) -> bool {
         matches!(

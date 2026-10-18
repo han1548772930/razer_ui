@@ -77,6 +77,8 @@ IDA 9.1 的批处理与补查明确传入 `-Opdb:off`，依据安装的官方 `c
 
 本轮重新取得实际输入并完成全函数捕获的基础模块包括 HID.node、mapping_engine、simple_service、BLE binding、Razer.WMI、SysUtilsNative、两份 Seiren DLL 和 GenericCamera。数量与 Hex-Rays 失败以各自新收据为准。2026-10-16 以 IDA 8.3／Hex-Rays 8.3.0.230608、Python 3.11.6 和当前维护捕获工具完成 GenericCamera 1.0.35.0（2,860 个函数）及 1.0.36.1（2,868 个函数）的完整静态捕获；前者 RVA `0x870c0`、后者 RVA `0x87ad0` 的调用分析失败及完整汇编如实保留。两份原件、工具摘要、私有数据库检查点、全部函数／数据集／聚合产物摘要均记录在对应 [native 结果](../../.analysis/results/native/)；旧 1.0.36.1 收据缺少捕获工具摘要的问题已通过实际重捕获消除，未手填分析器元数据。
 
+两份 Seiren DLL 各 1,947 个函数中的唯一调用分析失败点 RVA `0x3318e`，已使用 IDA 9.1、Hex-Rays 9.1.0.250226、Python 3.11.9 对私有数据库副本定点补查。完整指令和交叉引用证明其为四寄存器参数的 vector reserve 路径，原分析器误推六参数；每份补查各保存八个完整函数，失败及数据库不一致均为零。原全库捕获及其失败记录保持原样，统一 native 收据连接补查的实际字节身份；不能由该点闭合推导其他间接 ABI、产品实现或运行验收已完成。
+
 当前 3595 麦克风查询沿完整 `Ph({})`／动作／reducer／中间件／FFI 到 1.0.35.0 导出和基类 vtable `+304/+312/+80/+336`，逐字节核对设置、读取、闪存保存、重启及两次 10ms 间隔。`DeviceInitialize`、精确 container-ID 匹配、PID `0x0e0b` 工厂分支和基类构造函数的完整函数及实际 PE 指令也纳入查询，验证该产品确实取得相应 vtable。原版开关只设置 dirty，重启动作才执行本地写回；Rust 保留该语义并分离实际传输诊断。证据纳入既有 `camera-local-pages`／`camera-source-review` 查询，纯状态和模拟 KS 测试通过 `camera-mic-state`／`camera-mic-protocol` 套件记录；这些不代表整页或真实设备验收完成。
 
 `audit-native-chain` 连接完整原始 callable、FFI 签名、精确导出、native 函数、imports／xref 和实际 Rust 文件摘要。查询包括 HID feature、mapping engine、simple service、restart notification，统一报告为 [native/chain-audit.json](../../.analysis/results/native/chain-audit.json)。查询无失败不代表完整页面／设备验收；回调、间接目标和 ABI 未解项继续追踪。

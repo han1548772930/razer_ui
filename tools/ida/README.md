@@ -43,6 +43,25 @@ metadata, original/private hashes and complete paginated static bodies before
 claiming connection acceptance. This session uses batch IDAPython and does
 not inherit an old MCP connection result. The `idalib` backend is not used.
 
+`supplement-native` works on a copy of the retained full-capture database.
+Pointer-table mode follows original file-backed executable entries and narrowly
+recognized thunks. Retained-function mode accepts repeated `--function-rva`
+entries at exact existing boundaries. When the complete original assembly proves
+an incorrect inferred prototype, `--function-type "RVA=C declaration"` and
+`--type-evidence` retain the register, stack and return-value reasoning before
+applying the reviewed type only to that database copy. The full function bytes,
+assembly, pseudocode, local types, basic blocks and references are captured again;
+the base capture and database must remain unchanged. Read-only database validation
+must return zero inconsistent records. Analyzer sessions preserve earlier failed
+attempts and their exact logs. A passed session is separate from complete
+pseudocode and semantic acceptance.
+
+`native_reanalysis_resolution` verifies successful session/tool identity, the
+unchanged base capture, original image, exact selection, complete function bytes,
+boundaries, instruction bytes and entry references before resolving a prior
+Hex-Rays failure. The old failure remains in its original capture and in the
+resolution history. Failed, altered or incomplete supplements keep it unresolved.
+
 Only static analysis is permitted. Never invoke target exports, helper or
 installer entry points, vendor JavaScript, debugger execution, device access or
 vendor-service operations. Unresolved branches and decompiler failures remain

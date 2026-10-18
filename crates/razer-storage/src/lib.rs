@@ -3,8 +3,12 @@
 //! Chromium database or vendor profile file formats.
 #[path = "app_features.rs"]
 pub mod app_features;
+pub mod audio_recording;
 #[path = "chroma_profiles.rs"]
 pub mod chroma_profiles;
+pub mod chroma_settings;
+pub mod discovery_diagnostics;
+pub mod file_transfer;
 #[path = "game_catalog.rs"]
 pub mod game_catalog;
 #[path = "host.rs"]
@@ -17,14 +21,18 @@ pub mod keyboard_calibration;
 pub mod linked_profiles;
 #[path = "macro_recorder.rs"]
 pub mod macro_recorder;
+pub mod macro_transfer;
 #[path = "profile_notification.rs"]
 pub mod profile_notification;
+pub mod profile_transfer;
 #[path = "receiver/receiver_defaults.rs"]
 mod receiver_defaults;
 #[path = "receiver/receiver_document.rs"]
 mod receiver_document;
 #[path = "receiver/receiver_indicator.rs"]
 pub mod receiver_indicator;
+#[path = "receiver/hyperpolling_profile.rs"]
+pub mod hyperpolling_profile;
 #[path = "receiver/receiver_legacy.rs"]
 pub mod receiver_legacy;
 #[path = "receiver/receiver_pairing.rs"]
@@ -39,6 +47,7 @@ pub(crate) mod receiver_reset_defaults;
 pub mod source_identity;
 #[path = "source_local.rs"]
 pub mod source_local;
+pub mod ui_preferences;
 use std::{
     fs::{File, OpenOptions},
     path::{Path, PathBuf},
@@ -92,6 +101,14 @@ impl TemporaryDocument {
         output.sync_all()?;
         // Windows requires closing the staging handle before rename/removal.
         self.output.take();
+        Ok(())
+    }
+    fn install_new(mut self, destination: &Path) -> std::io::Result<()> {
+        // A hard link publishes the complete same-directory staging file while
+        // atomically refusing an existing destination, including a symlink.
+        std::fs::hard_link(&self.path, destination)?;
+        std::fs::remove_file(&self.path)?;
+        self.installed = true;
         Ok(())
     }
     fn install(mut self, destination: &Path) -> std::io::Result<()> {

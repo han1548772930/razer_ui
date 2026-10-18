@@ -254,7 +254,7 @@ impl NativeRuntime {
         owner: &str,
     ) -> anyhow::Result<Value> {
         ensure!(
-            matches!(product, 70 | 515 | 679 | 756),
+            razer_device::mapping_document::MappingProduct::for_product_id(product).is_some(),
             "Mapping product registration has not been audited"
         );
         ensure!(

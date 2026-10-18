@@ -54,6 +54,39 @@ impl ProductSurfaceColors {
     }
 }
 
+/// Current 3893 `CoolerInfo`, `FirmwareWarning` and `sliderChart` colors in
+/// main.5b87dc95.css and the `yg` canvas drawing body.
+pub struct HanboCoolerColors;
+impl HanboCoolerColors {
+    pub fn surface() -> Hsla {
+        rgb(0x111111).into()
+    }
+    pub fn text() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+    pub fn metric_border() -> Hsla {
+        rgb(0x707070).into()
+    }
+    pub fn curve_grid() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub fn curve() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+    pub fn held_point() -> Hsla {
+        rgb(0x30961f).into()
+    }
+    pub fn selected_mode() -> Hsla {
+        rgba(0xffffff1a).into()
+    }
+    pub fn mode_hover() -> Hsla {
+        rgba(0x0000001a).into()
+    }
+    pub fn firmware_warning() -> Hsla {
+        rgb(0xfd8611).into()
+    }
+}
+
 /// Current PID199/208 `.powerSaving-value.mouse-power-saving` in
 /// main.2b43a6ba.css / main.739f2ccf.css, including active and hover states.
 pub struct MousePowerColors;
@@ -1726,6 +1759,20 @@ impl KeyboardRgbEffectColors {
     }
     pub fn transparent() -> Hsla {
         rgba(0x00000000).into()
+    }
+}
+
+/// Current controller optionButtonGroup active, normal and disabled colors.
+pub struct GamepadQuickLightingColors;
+impl GamepadQuickLightingColors {
+    pub fn active_background() -> Hsla {
+        rgb(0x292929).into()
+    }
+    pub fn text() -> Hsla {
+        rgba(0xffffffe6).into()
+    }
+    pub fn disabled_text() -> Hsla {
+        rgba(0xffffff80).into()
     }
 }
 

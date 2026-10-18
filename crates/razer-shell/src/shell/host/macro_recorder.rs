@@ -38,7 +38,7 @@ impl AppShell {
             .map(|reply| reply.value)
     }
 
-    pub(super) fn install_macro_recorder_storage(&mut self, cx: &mut Context<Self>) {
+    pub(super) fn install_macro_recorder_storage(&mut self, _cx: &mut Context<Self>) {
         self.host_storage.register_view(HostStorageView {
             id: OBSERVER_VIEW,
             url: "razer-local:macro-recorder-observer".into(),
@@ -59,11 +59,11 @@ impl AppShell {
         self.macro_recorder
             .lock
             .initialize(aggregate.as_ref().and_then(Value::as_str));
-        self.subscriptions.push(cx.on_app_quit(|this, _| {
+        self.register_exit_cleanup(|this, _| {
             this.host_storage.close_view(SOFTWARE_VIEW);
             this.host_storage.close_view(OBSERVER_VIEW);
             async {}
-        }));
+        });
     }
 
     pub(super) fn initialize_macro_recorder_page(&mut self) {

@@ -8,7 +8,7 @@ use anyhow::Context as _;
 use futures::{StreamExt as _, future::BoxFuture, stream};
 use std::{
     collections::BTreeMap,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, MutexGuard},
     thread::JoinHandle,
     time::Duration,
 };
@@ -23,9 +23,17 @@ enum FileState {
     Failed(String),
 }
 
+#[derive(Default, PartialEq, Eq)]
+enum Lifecycle {
+    #[default]
+    Running,
+    Closing,
+    Stopped,
+}
+
 #[derive(Default)]
 struct State {
-    stopped: bool,
+    lifecycle: Lifecycle,
     failure: Option<String>,
     files: BTreeMap<String, FileState>,
 }
@@ -33,6 +41,7 @@ struct State {
 struct Service {
     cache: Cache,
     state: Mutex<State>,
+    publication: Mutex<()>,
     sender: async_channel::Sender<ResourceFile>,
     receiver: async_channel::Receiver<ResourceFile>,
     cancelled: async_channel::Sender<()>,
@@ -88,6 +97,7 @@ impl ResourceRuntime {
         let client = ResourceClient(Arc::new(Service {
             cache,
             state: Mutex::new(State::default()),
+            publication: Mutex::new(()),
             sender,
             receiver,
             cancelled,
@@ -131,7 +141,9 @@ impl ResourceRuntime {
                                         .and_then(|bytes| {
                                             service.ensure_running()?;
                                             if !cache_hit {
-                                                service.cache.publish(&file, &bytes)?;
+                                                service.cache.publish(&file, &bytes, || {
+                                                    service.publication_permit()
+                                                })?;
                                             }
                                             Ok(Arc::<[u8]>::from(bytes))
                                         })
@@ -178,6 +190,13 @@ impl ResourceRuntime {
         self.changes.clone()
     }
 
+    /// Stop accepting requests and cancel asynchronous work without waiting for
+    /// disk I/O or an in-progress cache commit. The owner must still call
+    /// `shutdown` off the presentation thread and await its completion.
+    pub fn begin_shutdown(&self) {
+        self.client.0.begin_shutdown();
+    }
+
     pub fn shutdown(&mut self) -> anyhow::Result<()> {
         self.client.0.stop();
         if let Some(worker) = self.worker.take() {
@@ -212,20 +231,26 @@ impl Service {
             .lock()
             .map_err(|_| anyhow::anyhow!("Resource state lock is poisoned"))?;
         anyhow::ensure!(
-            !state.stopped,
+            state.lifecycle == Lifecycle::Running,
             "{}",
             state.failure.as_deref().unwrap_or("资源加载已取消")
         );
         Ok(())
     }
 
-    fn stop(&self) {
-        // No disk or HTTP is performed while holding the memory-state lock.
-        if let Ok(mut state) = self.state.lock() {
-            state.stopped = true;
-            for value in state.files.values_mut() {
-                if matches!(value, FileState::Pending) {
-                    *value = FileState::Failed("资源加载已取消".into());
+    fn begin_shutdown(&self) {
+        {
+            // This gate does not wait for publication, which can be in a
+            // synchronous filesystem operation. Closing is an intent; stopped
+            // is confirmed only after the commit permit has been released.
+            if let Ok(mut state) = self.state.lock() {
+                if state.lifecycle == Lifecycle::Running {
+                    state.lifecycle = Lifecycle::Closing;
+                }
+                for value in state.files.values_mut() {
+                    if matches!(value, FileState::Pending) {
+                        *value = FileState::Failed("资源加载已取消".into());
+                    }
                 }
             }
         }
@@ -234,13 +259,35 @@ impl Service {
         self.cancelled.close();
     }
 
+    fn stop(&self) {
+        self.begin_shutdown();
+        // A commit already holding the permit finishes before stopped is
+        // published. New commits have been rejected by the closing gate.
+        let _publication = self
+            .publication
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if let Ok(mut state) = self.state.lock() {
+            state.lifecycle = Lifecycle::Stopped;
+        }
+    }
+
+    fn publication_permit(&self) -> anyhow::Result<MutexGuard<'_, ()>> {
+        let permit = self
+            .publication
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Resource publication lock is poisoned"))?;
+        self.ensure_running()?;
+        Ok(permit)
+    }
+
     fn read_or_request(&self, file: &ResourceFile) -> anyhow::Result<Option<Arc<[u8]>>> {
         let mut state = self
             .state
             .lock()
             .map_err(|_| anyhow::anyhow!("Resource state lock is poisoned"))?;
         anyhow::ensure!(
-            !state.stopped,
+            state.lifecycle == Lifecycle::Running,
             "{}",
             state.failure.as_deref().unwrap_or("资源加载已取消")
         );
@@ -264,7 +311,7 @@ impl Service {
         result: Result<Arc<[u8]>, String>,
     ) -> Option<ResourceChanged> {
         let mut state = self.state.lock().ok()?;
-        if state.stopped {
+        if state.lifecycle != Lifecycle::Running {
             return None;
         }
         if let Err(error) = &result {
@@ -285,8 +332,12 @@ impl Service {
     }
 
     fn fail_worker(&self, error: String, finished: &async_channel::Sender<ResourceChanged>) {
+        let _publication = self
+            .publication
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         if let Ok(mut state) = self.state.lock() {
-            state.stopped = true;
+            state.lifecycle = Lifecycle::Stopped;
             state.failure = Some(error.clone());
             for (path, value) in &mut state.files {
                 if matches!(value, FileState::Pending) {
@@ -361,7 +412,7 @@ impl ResourceClient {
             .lock()
             .map_err(|_| anyhow::anyhow!("Resource state lock is poisoned"))?;
         anyhow::ensure!(
-            !state.stopped,
+            state.lifecycle == Lifecycle::Running,
             "{}",
             state.failure.as_deref().unwrap_or("资源加载已取消")
         );

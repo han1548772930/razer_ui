@@ -41,6 +41,36 @@ pub struct MappingEngine {
     data: &'static EngineData,
 }
 
+/// Native input edges encoded by the selected source factory.
+pub struct EncodedShortcutInput {
+    down: Value,
+    up: Value,
+}
+
+impl EncodedShortcutInput {
+    pub fn into_parts(self) -> (Value, Value) {
+        (self.down, self.up)
+    }
+}
+
+fn input_modifier_bit(id: &str) -> Option<u32> {
+    Some(match id {
+        "ALT" => 1,
+        "CTRL" => 2,
+        "SHIFT" => 4,
+        "GUI" => 8,
+        "KEY_LEFT_ALT" => 256,
+        "KEY_LEFT_CTRL" => 512,
+        "KEY_LEFT_SHIFT" => 1024,
+        "KEY_LEFT_GUI" => 2048,
+        "KEY_RIGHT_ALT" => 16,
+        "KEY_RIGHT_CTRL" => 32,
+        "KEY_RIGHT_SHIFT" => 64,
+        "KEY_RIGHT_GUI" => 128,
+        _ => return None,
+    })
+}
+
 fn truthy(v: Option<&Value>) -> bool {
     match v {
         None | Some(Value::Null) => false,
@@ -170,10 +200,57 @@ fn mouse_event(key: MouseKey, up: bool) -> Value {
 }
 
 impl MappingEngine {
+    pub(crate) fn source_keys(&self) -> &'static [KeyDefinition] {
+        self.data.keys
+    }
+
     pub fn new(product_id: u32) -> Result<Self> {
         let data = data::for_product(product_id)
             .with_context(|| format!("Active factory not audited for product {product_id}"))?;
         Ok(Self { data })
+    }
+
+    /// The current Dashboard factory is independent of a connected product.
+    pub fn global_shortcuts() -> Self {
+        Self {
+            data: data::for_global_shortcuts(),
+        }
+    }
+
+    /// Encodes a validated global shortcut through the ordinary source input
+    /// rules, including physical modifier sides and extended release flags.
+    pub fn encode_shortcut_input(
+        &self,
+        input_id: &str,
+        modifiers: &[String],
+        hypershift: bool,
+    ) -> Result<EncodedShortcutInput> {
+        ensure!(
+            modifiers.iter().all(|id| input_modifier_bit(id).is_some()),
+            "Unknown native shortcut modifier"
+        );
+        let input_type = match input_id {
+            "RightClick" | "ScrollButton" | "Button4" | "Button5" => "MouseInput",
+            _ => {
+                ensure!(
+                    self.key(&json!(input_id))?.scancode != 0,
+                    "Shortcut has no native scan code"
+                );
+                "KeyInput"
+            }
+        };
+        let record = json!({
+            "inputID": input_id,
+            "inputType": input_type,
+            "inputModifiers": modifiers,
+            "isHyperShift": hypershift,
+        });
+        let (mut down, up) = self.inputs(&record, &EngineContext::default())?;
+        ensure!(down.len() == 1, "Shortcut must encode one press edge");
+        Ok(EncodedShortcutInput {
+            down: down.pop().expect("Exactly one encoded shortcut input"),
+            up: up.context("Shortcut must encode a release edge")?,
+        })
     }
 
     /// Original `getKeyByInputID` metadata for source transforms such as Snap Tap.
@@ -271,6 +348,11 @@ impl MappingEngine {
         Ok(guid)
     }
 
+    /// Number of fresh UUIDs consumed by the selected source factory.
+    pub fn default_turbo_count(&self) -> usize {
+        self.data().default_turbos.len()
+    }
+
     /// Actual default event data, with caller-provided UUIDs. No storage write.
     pub fn generate_default_turbos(&self, context: &mut EngineContext) -> Result<Vec<Value>> {
         let mut draft = context.clone();
@@ -295,21 +377,7 @@ impl MappingEngine {
         let modifiers = if let Some(m) = record.get("inputModifiers").filter(|m| truthy(Some(m))) {
             let mut mask = 0u32;
             for m in m.as_array().context("Invalid inputModifiers")? {
-                mask |= match m.as_str().unwrap_or("") {
-                    "ALT" => 1,
-                    "CTRL" => 2,
-                    "SHIFT" => 4,
-                    "GUI" => 8,
-                    "KEY_LEFT_ALT" => 256,
-                    "KEY_LEFT_CTRL" => 512,
-                    "KEY_LEFT_SHIFT" => 1024,
-                    "KEY_LEFT_GUI" => 2048,
-                    "KEY_RIGHT_ALT" => 16,
-                    "KEY_RIGHT_CTRL" => 32,
-                    "KEY_RIGHT_SHIFT" => 64,
-                    "KEY_RIGHT_GUI" => 128,
-                    _ => 0,
-                };
+                mask |= m.as_str().and_then(input_modifier_bit).unwrap_or(0);
             }
             Some(mask)
         } else {

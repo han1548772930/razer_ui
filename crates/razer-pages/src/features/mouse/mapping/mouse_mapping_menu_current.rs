@@ -480,6 +480,44 @@ mod tests {
             4
         );
     }
+
+    #[::core::prelude::v1::test]
+    fn representative_product_branches_keep_registered_menu_icon_aliases() {
+        let catalog = super::read_mouse_mapping_menu_current_catalog();
+        for product_id in [70, 162, 190, 229, 231, 2594, 45066] {
+            let policy = catalog
+                .iter()
+                .find(|policy| policy.product_id == product_id)
+                .unwrap_or_else(|| panic!("missing mapping menu policy for PID{product_id}"));
+            assert!(
+                policy
+                    .close_asset
+                    .starts_with("synapse/mouse-mapping-menu-current/"),
+                "PID{product_id} close asset must use the packaged menu namespace"
+            );
+            assert_eq!(
+                policy.icons.len(),
+                if product_id == 162 { 22 } else { 29 },
+                "PID{product_id} icon coverage changed"
+            );
+            for (function, icon) in &policy.icons {
+                let normal = icon
+                    .normal
+                    .as_deref()
+                    .unwrap_or_else(|| panic!("PID{product_id} {function} has no normal icon"));
+                assert!(
+                    normal.starts_with("synapse/mouse-mapping-menu-current/"),
+                    "PID{product_id} {function} normal icon escaped the packaged menu namespace"
+                );
+                if let Some(selected) = icon.selected.as_deref() {
+                    assert!(
+                        selected.starts_with("synapse/mouse-mapping-menu-current/"),
+                        "PID{product_id} {function} selected icon escaped the packaged menu namespace"
+                    );
+                }
+            }
+        }
+    }
 }
 
 // Generated catalog reader: razer-pages/mouse_mapping_menu_current_data.
@@ -613,44 +651,6 @@ mod mouse_mapping_menu_current_data_catalog_tests {
     #[test]
     fn packaged_catalog_mouse_mapping_menu_current_data_decodes() {
         let _ = super::read_mouse_mapping_menu_current_catalog();
-    }
-
-    #[test]
-    fn representative_product_branches_keep_registered_menu_icon_aliases() {
-        let catalog = super::read_mouse_mapping_menu_current_catalog();
-        for product_id in [70, 162, 190, 229, 231, 2594, 45066] {
-            let policy = catalog
-                .iter()
-                .find(|policy| policy.product_id == product_id)
-                .unwrap_or_else(|| panic!("missing mapping menu policy for PID{product_id}"));
-            assert!(
-                policy
-                    .close_asset
-                    .starts_with("synapse/mouse-mapping-menu-current/"),
-                "PID{product_id} close asset must use the packaged menu namespace"
-            );
-            assert_eq!(
-                policy.icons.len(),
-                if product_id == 162 { 22 } else { 29 },
-                "PID{product_id} icon coverage changed"
-            );
-            for (function, icon) in &policy.icons {
-                let normal = icon
-                    .normal
-                    .as_deref()
-                    .unwrap_or_else(|| panic!("PID{product_id} {function} has no normal icon"));
-                assert!(
-                    normal.starts_with("synapse/mouse-mapping-menu-current/"),
-                    "PID{product_id} {function} normal icon escaped the packaged menu namespace"
-                );
-                if let Some(selected) = icon.selected.as_deref() {
-                    assert!(
-                        selected.starts_with("synapse/mouse-mapping-menu-current/"),
-                        "PID{product_id} {function} selected icon escaped the packaged menu namespace"
-                    );
-                }
-            }
-        }
     }
 }
 // End generated catalog reader: razer-pages/mouse_mapping_menu_current_data.

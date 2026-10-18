@@ -130,16 +130,16 @@ impl DialogState {
                     .bg(Colors::black().opacity(0.5))
                     .opacity((elapsed / 0.1).clamp(0., 1.)),
             )
-            .popup(
-                razer_assets::resource_scope(div()
+            .popup(razer_assets::resource_scope(
+                div()
                     .absolute()
                     .left_0()
                     .top(source_top + window.rem_size() * (110. / 16.))
                     .w(window.viewport_size().width)
                     .flex()
                     .justify_center()
-                    .child(panel)),
-            )
+                    .child(panel),
+            ))
             .into_any_element()
     }
 }

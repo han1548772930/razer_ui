@@ -146,6 +146,7 @@ pub struct KeyboardUi {
     focus: FocusHandle,
     generation: u64,
     session: Option<Session>,
+    task: Option<Task<()>>,
 }
 impl KeyboardUi {
     pub fn new(focus: FocusHandle) -> Self {
@@ -153,6 +154,7 @@ impl KeyboardUi {
             focus,
             generation: 0,
             session: None,
+            task: None,
         }
     }
 }
@@ -199,7 +201,7 @@ impl MacroPage {
             capture,
         });
         self.keyboard_ui.focus.focus(window, cx);
-        cx.spawn_in(window, async move |this, cx| {
+        self.keyboard_ui.task = Some(cx.spawn_in(window, async move |this, cx| {
             loop {
                 cx.background_executor()
                     .timer(Duration::from_millis(16))
@@ -236,8 +238,7 @@ impl MacroPage {
                     break;
                 }
             }
-        })
-        .detach();
+        }));
         cx.notify();
     }
 
@@ -323,6 +324,7 @@ impl MacroPage {
         self.poll_keyboard_capture();
         self.commit_keyboard_capture();
         self.keyboard_ui.session = None; // RAII unhooks on every exit path.
+        self.keyboard_ui.task = None;
         self.keyboard_ui.generation = self.keyboard_ui.generation.wrapping_add(1);
     }
     pub fn keyboard_pending(&self) -> bool {

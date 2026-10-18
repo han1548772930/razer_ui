@@ -8,6 +8,11 @@ pub(super) struct MouseCurrentPowerSave {
     request: MouseCurrentPowerRequested,
     identity: String,
 }
+impl MouseCurrentPowerSave {
+    pub(super) fn owner(&self) -> (&str, WeakEntity<ProductWorkspace>) {
+        (&self.identity, self.workspace.downgrade())
+    }
+}
 
 impl AppShell {
     pub(super) fn persist_current_power(
@@ -32,6 +37,9 @@ impl AppShell {
             workspace.update(cx, |workspace, cx| {
                 workspace.finish_current_power(&request, None, cx)
             });
+            if self.storage_error.is_some() {
+                self.cancel_pending_exit(cx);
+            }
             cx.notify();
             return;
         }
@@ -43,15 +51,16 @@ impl AppShell {
                 .collect(),
             cx,
         );
-        self.pending_saves.push_back(PreparedSave {
-            window: window.window_handle(),
+        self.pending_saves.push_back(self.prepare_save(
+            window.window_handle(),
             file,
-            product: Some(ProductSave::MouseCurrentPower(MouseCurrentPowerSave {
+            Some(ProductSave::MouseCurrentPower(MouseCurrentPowerSave {
                 workspace,
                 request,
                 identity,
             })),
-        });
+            cx,
+        ));
         self.start_pending_save(cx);
     }
 
@@ -134,6 +143,7 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         if self.close_requested
+            || !self.devices.contains(&workspace)
             || request.change().is_none()
             || !workspace
                 .read(cx)
@@ -224,7 +234,12 @@ impl AppShell {
                             .err()
                             .map(|error| format!("{error:#}"))
                     };
-                    result.map(|report| (report, shutdown_error))
+                    match (result, shutdown_error) {
+                        (Err(error), Some(cleanup)) => Err(error.context(format!(
+                            "Power communication cleanup also failed: {cleanup}"
+                        ))),
+                        (result, cleanup) => result.map(|report| (report, cleanup)),
+                    }
                 })
                 .await;
             let _ = this.update(cx, |this, cx| {
@@ -241,6 +256,8 @@ impl AppShell {
                             && current.container().eq_ignore_ascii_case(route.container())
                             && current.hid_node() == route.hid_node()
                             && current.peer_product_id() == route.peer_product_id()
+                            && current.connection() == route.connection()
+                            && current.transport() == route.transport()
                     });
                 let observed = current
                     .then(|| result.as_ref().ok().map(|(report, _)| report.clone()))

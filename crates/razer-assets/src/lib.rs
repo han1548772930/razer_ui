@@ -10,12 +10,14 @@ pub struct SynapseAssets {
 mod image_cache;
 mod image_selectors;
 mod keyboard_source;
+pub mod local_image;
 mod native_icons;
 mod resource_runtime;
+pub mod rotated_label;
 mod window_icons;
 pub use image_cache::{
-    ResourceLayer, ResourceScope, deferred_resource, load_resource_image, resource_image_cache,
-    resource_scope,
+    ImageFilter, ResourceLayer, ResourceScope, deferred_resource, filtered_resource_svg,
+    load_resource_image, resource_image_cache, resource_scope,
 };
 pub use keyboard_source::{
     InputCounter, KeyboardSourceGroup, KeyboardSourceInput, keyboard_source_for_layout,
@@ -26,7 +28,7 @@ pub use razer_resources::{
 };
 pub use resource_runtime::{
     ResourceChanged, observe_resources, register_fonts, resource_errors, retry_resources,
-    start_resources,
+    start_resources, take_resource_runtime_for_shutdown,
 };
 
 /// Request through this application's injected asset source.

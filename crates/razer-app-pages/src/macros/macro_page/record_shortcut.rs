@@ -35,6 +35,7 @@ pub struct ShortcutUi {
     released_modifiers: HashSet<String>,
     combination_key: Option<String>,
     hovered: bool,
+    task: Option<Task<()>>,
 }
 impl ShortcutUi {
     pub fn new(focus: FocusHandle) -> Self {
@@ -48,10 +49,12 @@ impl ShortcutUi {
             released_modifiers: HashSet::new(),
             combination_key: None,
             hovered: false,
+            task: None,
         }
     }
     pub fn stop(&mut self) {
         self.capture = None; // Drops the current-thread/window hook immediately.
+        self.task = None;
         self.listening = false;
         self.generation = self.generation.wrapping_add(1);
         self.clear_pending();
@@ -192,7 +195,7 @@ impl MacroPage {
             return;
         }
         let generation = self.record_ui.shortcut.generation;
-        cx.spawn_in(window, async move |this, cx| {
+        self.record_ui.shortcut.task = Some(cx.spawn_in(window, async move |this, cx| {
             loop {
                 cx.background_executor()
                     .timer(Duration::from_millis(16))
@@ -215,8 +218,7 @@ impl MacroPage {
                     break;
                 }
             }
-        })
-        .detach();
+        }));
         cx.notify();
     }
 

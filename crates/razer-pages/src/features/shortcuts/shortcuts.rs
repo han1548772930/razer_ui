@@ -19,6 +19,9 @@ use razer_widgets::source_alert::SourceAlert;
 use razer_widgets::surface;
 use std::time::{Duration, Instant};
 
+#[path = "shortcuts_capture.rs"]
+mod input_capture;
+
 /// HTML textarea maxlength counts UTF-16 units. Trim only the inserted span,
 /// keeping the existing suffix when a paste or IME replacement exceeds 250.
 pub fn limit_shortcut_text(
@@ -63,7 +66,7 @@ fn default_modifiers(value: &mut Shortcut) {
     // Current 94608/Te.updateMapping calls getModifiers for an empty
     // recording. GPUI supplies side-independent modifier booleans.
     if value.modifiers.is_empty() {
-        value.modifiers = vec!["CTRL".into(), "SHIFT".into()];
+        value.modifiers = capture::default_input_modifiers();
     }
 }
 fn kinds() -> Vec<Choice> {
@@ -97,6 +100,7 @@ struct Draft {
 }
 pub struct Shortcuts {
     items: Vec<Shortcut>,
+    input_warnings: InputWarnings,
     saved: Vec<Shortcut>,
     draft: Option<Draft>,
     recording: bool,
@@ -120,6 +124,11 @@ pub struct Shortcuts {
     menu_button_bounds: Bounds<Pixels>,
     recording_id: Option<String>,
     recording_ready: Option<Instant>,
+    recording_generation: u64,
+    recording_state: capture::CaptureState,
+    recording_session: Option<razer_service::mapping::key_capture::Session>,
+    recording_task: Option<Task<()>>,
+    recording_diagnostic: Option<String>,
     recording_focus: FocusHandle,
     empty_device: Entity<SelectState<Vec<Choice>>>,
     empty_catalog: Entity<SelectState<Vec<Choice>>>,
@@ -144,9 +153,13 @@ pub struct Shortcuts {
     emoji_hover: Option<(usize, usize)>,
     emoji_search_generation: u64,
     emoji_resetting: bool,
+    emoji_reset_task: Option<Task<()>>,
+    picker_task: Option<Task<()>>,
 }
 pub struct ShortcutsChanged;
 impl EventEmitter<ShortcutsChanged> for Shortcuts {}
+pub struct ShortcutsCaptureStopped;
+impl EventEmitter<ShortcutsCaptureStopped> for Shortcuts {}
 pub enum ShortcutsOpenModule {
     Macro,
     ChromaStudio,
@@ -220,6 +233,7 @@ impl Shortcuts {
         let mut this = Self {
             saved: items.clone(),
             items,
+            input_warnings: InputWarnings::default(),
             draft: None,
             recording: false,
             focus: cx.focus_handle(),
@@ -242,6 +256,11 @@ impl Shortcuts {
             menu_button_bounds: Bounds::default(),
             recording_id: None,
             recording_ready: None,
+            recording_generation: 0,
+            recording_state: capture::CaptureState::default(),
+            recording_session: None,
+            recording_task: None,
+            recording_diagnostic: None,
             recording_focus: cx.focus_handle(),
             empty_device,
             empty_catalog,
@@ -266,6 +285,8 @@ impl Shortcuts {
             emoji_hover: None,
             emoji_search_generation: 0,
             emoji_resetting: false,
+            emoji_reset_task: None,
+            picker_task: None,
         };
         this.subscriptions.push(cx.subscribe_in(
             &this.emoji_search,
@@ -304,7 +325,7 @@ impl Shortcuts {
                         draft.value.input = value.clone();
                         default_modifiers(&mut draft.value);
                     }
-                    this.recording = false;
+                    this.stop_recording(cx);
                     this.changed(cx);
                 }
             }));
@@ -357,9 +378,7 @@ impl Shortcuts {
             &this.recording_focus,
             window,
             |this, _, _, cx| {
-                this.recording = false;
-                this.recording_id = None;
-                this.recording_ready = None;
+                this.stop_recording(cx);
                 cx.notify();
             },
         ));
@@ -386,11 +405,12 @@ impl Shortcuts {
         }
     }
     fn changed(&mut self, cx: &mut Context<Self>) {
+        self.input_warnings.refresh(&self.items);
         cx.emit(ShortcutsChanged);
         cx.notify();
     }
     pub fn snapshot(&self) -> Vec<Shortcut> {
-        self.items.clone()
+        self.input_warnings.storage_snapshot(&self.items)
     }
     pub fn saved_snapshot(&self) -> Vec<Shortcut> {
         self.saved.clone()
@@ -404,7 +424,7 @@ impl Shortcuts {
         self.committed_pending() || self.draft_dirty()
     }
     pub fn committed_pending(&self) -> bool {
-        self.items != self.saved
+        self.snapshot() != self.saved
     }
     pub fn draft_dirty(&self) -> bool {
         self.draft.as_ref().is_some_and(|draft| {
@@ -557,22 +577,19 @@ impl Shortcuts {
             value,
             original: if duplicate { None } else { original },
         });
-        self.recording = false;
-        self.recording_id = None;
-        self.recording_ready = None;
+        self.stop_recording(cx);
         self.sync(window, cx);
         window.focus(&self.focus, cx);
         self.changed(cx);
     }
     pub fn discard_editor(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.picker_task = None;
         self.emoji_open = false;
         self.emoji_hover = None;
         self.draft_generation = self.draft_generation.wrapping_add(1);
         let restore = self.focus.contains_focused(window, cx);
         self.draft = None;
-        self.recording = false;
-        self.recording_id = None;
-        self.recording_ready = None;
+        self.stop_recording(cx);
         if let Some(focus) = self.return_focus.take()
             && restore
         {
@@ -581,15 +598,16 @@ impl Shortcuts {
         self.changed(cx);
     }
     pub fn dismiss_for_navigation(&mut self, cx: &mut Context<Self>) {
+        self.picker_task = None;
+        self.emoji_reset_task = None;
+        self.emoji_resetting = false;
         self.emoji_open = false;
         self.emoji_hover = None;
         self.delete_confirmation = None;
         self.delete_return_focus = None;
         self.draft_generation = self.draft_generation.wrapping_add(1);
         self.draft = None;
-        self.recording = false;
-        self.recording_id = None;
-        self.recording_ready = None;
+        self.stop_recording(cx);
         self.menu_for = None;
         self.return_focus = None;
         self.changed(cx);
@@ -782,55 +800,6 @@ impl Shortcuts {
             })
             .into_any_element()
     }
-    fn start_recording(&mut self, id: String, window: &mut Window, cx: &mut Context<Self>) {
-        self.discard_editor(window, cx);
-        self.menu_for = None;
-        self.recording_id = Some(id);
-        self.recording = true;
-        // Current be registers browser and native input listeners after 100 ms.
-        self.recording_ready = Some(Instant::now() + Duration::from_millis(100));
-        window.focus(&self.recording_focus, cx);
-        cx.notify();
-    }
-    fn record_input(&mut self, input: String, modifiers: Modifiers, cx: &mut Context<Self>) {
-        if !self.recording || self.recording_ready.is_none_or(|at| Instant::now() < at) {
-            return;
-        }
-        let Some(id) = &self.recording_id else {
-            return;
-        };
-        if let Some(item) = self.items.iter_mut().find(|item| &item.id == id) {
-            item.input = input;
-            // GPUI exposes modifier families, not physical left/right keys.
-            // Current be ignores the Windows key and gets Hypershift from the
-            // unavailable native device-mode event. Do not fabricate either.
-            item.modifiers = [modifiers.control, modifiers.alt, modifiers.shift]
-                .into_iter()
-                .zip(MODIFIERS)
-                .filter(|(on, _)| *on)
-                .map(|(_, (id, _))| (*id).into())
-                .collect();
-            item.hypershift = false;
-            default_modifiers(item);
-        }
-        self.changed(cx);
-    }
-    fn capture(&mut self, event: &KeyDownEvent, _: &mut Window, cx: &mut Context<Self>) {
-        if !self.recording {
-            return;
-        }
-        cx.stop_propagation();
-        if event.is_held {
-            return;
-        }
-        let Some(key) = canonical_key(&event.keystroke.key) else {
-            return;
-        };
-        if modifier_family(&key).is_some() || source_shortcuts().excluded_keys.contains(&key) {
-            return;
-        }
-        self.record_input(key, event.keystroke.modifiers, cx);
-    }
     fn select_category(&mut self, category: String, window: &mut Window, cx: &mut Context<Self>) {
         if self.mapping_category == category {
             return;
@@ -873,7 +842,7 @@ impl Shortcuts {
             multiple: false,
             prompt: Some("选择程序".into()),
         });
-        cx.spawn_in(window, async move |this, cx| {
+        self.picker_task = Some(cx.spawn_in(window, async move |this, cx| {
             if let Ok(Ok(Some(paths))) = picker.await
                 && let Some(path) = paths.first()
             {
@@ -890,8 +859,7 @@ impl Shortcuts {
                     }
                 });
             }
-        })
-        .detach();
+        }));
     }
 }
 

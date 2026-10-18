@@ -12,7 +12,7 @@ use razer_storage::{
 };
 use serde_json::{Value, json};
 use std::{
-    collections::{BTreeMap, VecDeque},
+    collections::BTreeMap,
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering},
@@ -21,19 +21,16 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+#[path = "game_monitor_lifecycle.rs"]
+mod lifecycle;
 #[path = "game_monitor_linked.rs"]
 mod linked;
+use lifecycle::{Input, ProfileQueue};
 
 const OBSERVER_VIEW: u64 = 0xffff_0200;
 const OBSERVER_URL: &str = "razer-local:game-observer";
 const FOREGROUND_KEY: &str = "gms-foregroundWindow";
 
-enum Input {
-    Base(String),
-    Started(String),
-    Stopped(String),
-    Foreground(String),
-}
 struct ProfileOwner {
     workspace: WeakEntity<razer_pages::features::ProductWorkspace>,
     identity: String,
@@ -46,9 +43,7 @@ struct ProfileOwner {
     retry_at: u64,
     load_error: Option<String>,
     initialized: bool,
-    inputs: VecDeque<Input>,
-    effects: VecDeque<Effect>,
-    saving: bool,
+    queue: ProfileQueue,
 }
 impl Drop for ProfileOwner {
     fn drop(&mut self) {
@@ -69,6 +64,7 @@ pub(super) struct State {
     profile_epoch: u64,
     snapshot: Option<GameUpdate>,
     foreground_requested: bool,
+    exit_prepared: bool,
 }
 impl State {
     pub(super) fn running_games(&self) -> Option<usize> {
@@ -77,6 +73,92 @@ impl State {
 }
 
 impl AppShell {
+    pub(super) fn prepare_keyboard_game_exit(&mut self, cx: &mut Context<Self>) {
+        if std::mem::replace(&mut self.game_observer.exit_prepared, true) {
+            return;
+        }
+        let mut selections = Vec::new();
+        for owner in self.game_observer.profiles.values_mut() {
+            for guid in owner.queue.prepare_exit() {
+                Self::retain_keyboard_exit_base(owner, &guid);
+                selections.push((owner.product_id, guid));
+            }
+        }
+        for (product_id, guid) in selections {
+            self.persist_keyboard_linked_base(product_id, guid, cx);
+        }
+        if let Some(worker) = &self.game_observer.linked_worker {
+            if let Err(error) = worker.send(linked::Command::Foreground(false)) {
+                self.game_link_diagnostic(format!("{error:#}"), cx);
+                self.cancel_pending_exit(cx);
+            }
+        }
+        self.game_observer.foreground_requested = false;
+    }
+
+    pub(super) fn keyboard_game_exit_pending(&self) -> bool {
+        self.game_observer
+            .linked_worker
+            .as_ref()
+            .is_some_and(linked::Worker::is_pending)
+            || self
+                .game_observer
+                .profiles
+                .values()
+                .any(|owner| owner.queue.saving)
+    }
+
+    pub(super) fn cancel_keyboard_game_exit(&mut self, cx: &mut Context<Self>) {
+        if !std::mem::take(&mut self.game_observer.exit_prepared) {
+            return;
+        }
+        for owner in self.game_observer.profiles.values_mut() {
+            owner.queue.cancel_exit();
+        }
+        let count = self.game_observer.running_games;
+        for workspace in &self.devices {
+            workspace.update(cx, |workspace, cx| {
+                workspace.observe_running_games(count, cx)
+            });
+        }
+        let requested = !self.game_observer.profiles.is_empty();
+        if let Some(worker) = &self.game_observer.linked_worker {
+            match worker.send(linked::Command::Foreground(requested)) {
+                Ok(()) => self.game_observer.foreground_requested = requested,
+                Err(error) => self.game_link_diagnostic(format!("{error:#}"), cx),
+            }
+        }
+    }
+
+    fn retain_keyboard_exit_base(owner: &mut ProfileOwner, guid: &str) {
+        owner.base = guid.to_owned();
+        if let Some(runtime) = &mut owner.runtime {
+            // The worker will commit this base against its actual latest file.
+            let _ = runtime.select_base(guid);
+        }
+        owner.queue.rebase_pending_stacks(guid);
+    }
+
+    fn persist_keyboard_linked_base(
+        &mut self,
+        product_id: u32,
+        guid: String,
+        cx: &mut Context<Self>,
+    ) {
+        let result = self
+            .game_observer
+            .linked_worker
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Linked-profile storage worker is unavailable"))
+            .and_then(|worker| worker.send(linked::Command::SelectBase { product_id, guid }));
+        if let Err(error) = result {
+            self.game_link_diagnostic(format!("{error:#}"), cx);
+            if self.game_observer.exit_prepared {
+                self.cancel_pending_exit(cx);
+            }
+        }
+    }
+
     pub(super) fn install_game_monitor(&mut self, cx: &mut Context<Self>) {
         self.host_storage.register_view(HostStorageView {
             id: OBSERVER_VIEW,
@@ -146,7 +228,10 @@ impl AppShell {
                                 retry_at = now_millis().saturating_add(1_000);
                             }
                             #[cfg(windows)]
-                            if observations.is_none() && now_millis() >= retry_at {
+                            if !shell.game_observer.exit_prepared
+                                && observations.is_none()
+                                && now_millis() >= retry_at
+                            {
                                 retry_at = now_millis().saturating_add(1_000);
                                 match GameMonitor::start() {
                                     Ok((monitor, events)) => {
@@ -158,7 +243,9 @@ impl AppShell {
                                     }
                                 }
                             }
-                            if shell.game_observer.monitor.is_some() {
+                            if !shell.game_observer.exit_prepared
+                                && shell.game_observer.monitor.is_some()
+                            {
                                 shell.sync_game_links(cx);
                             }
                             shell.sync_keyboard_game_owners(window, cx);
@@ -166,6 +253,13 @@ impl AppShell {
                             shell.sync_keyboard_indicator(cx);
                             shell.sync_keyboard_latest_restore(window, cx);
                             shell.sync_keyboard_legacy_calibration(window, cx);
+                            if shell.game_observer.exit_prepared
+                                && shell.close_requested
+                                && shell.save_task.is_none()
+                                && !shell.keyboard_game_exit_pending()
+                            {
+                                shell.continue_save_queue(true, cx);
+                            }
                             true
                         })
                     })
@@ -177,7 +271,7 @@ impl AppShell {
                 }
             }
         }));
-        self.subscriptions.push(cx.on_app_quit(|shell, cx| {
+        self.register_exit_cleanup(|shell, cx| {
             shell.game_observer.pump = None;
             let worker = shell.game_observer.monitor.take().and_then(GameMonitor::retire);
             shell.game_observer.profiles.clear();
@@ -193,7 +287,7 @@ impl AppShell {
                 }
             });
             async move { cleanup.await }
-        }));
+        });
     }
 
     fn game_memory_call(&mut self, action: &str, value: Option<Value>) -> anyhow::Result<Value> {
@@ -239,10 +333,10 @@ impl AppShell {
             for owner in self.game_observer.profiles.values_mut() {
                 match message["action"].as_str() {
                     Some("GMS_onGameStartedEvent") => {
-                        owner.inputs.push_back(Input::Started(game.into()))
+                        owner.queue.inputs.push_back(Input::Started(game.into()))
                     }
                     Some("GMS_onGameStoppedEvent") => {
-                        owner.inputs.push_back(Input::Stopped(game.into()))
+                        owner.queue.inputs.push_back(Input::Stopped(game.into()))
                     }
                     _ => {}
                 }
@@ -273,6 +367,9 @@ impl AppShell {
             return;
         }
         self.game_observer.running_games = count;
+        if self.game_observer.exit_prepared {
+            return;
+        }
         for workspace in &self.devices {
             workspace.update(cx, |workspace, cx| {
                 workspace.observe_running_games(count, cx)
@@ -305,27 +402,19 @@ impl AppShell {
             return;
         }
         if let Some(owner) = self.game_observer.profiles.get_mut(&workspace.entity_id()) {
-            owner.inputs.push_back(Input::Base(guid.into()));
+            let commit = owner.queue.select_base(guid.into());
             owner.base = guid.into();
+            if let Some(guid) = commit {
+                Self::retain_keyboard_exit_base(owner, &guid);
+                let product_id = owner.product_id;
+                self.persist_keyboard_linked_base(product_id, guid, cx);
+            }
         } else {
             let product_id = workspace.read(cx).device(cx).product_id;
-            if !matches!(product_id, 515 | 679 | 756) {
+            if !matches!(product_id, 515 | 679 | 740 | 746 | 756) {
                 return;
             }
-            let result = self
-                .game_observer
-                .linked_worker
-                .as_ref()
-                .ok_or_else(|| anyhow::anyhow!("Linked-profile storage worker is unavailable"))
-                .and_then(|worker| {
-                    worker.send(linked::Command::SelectBase {
-                        product_id,
-                        guid: guid.into(),
-                    })
-                });
-            if let Err(error) = result {
-                self.game_link_diagnostic(format!("{error:#}"), cx);
-            }
+            self.persist_keyboard_linked_base(product_id, guid.into(), cx);
         }
         cx.notify();
     }
@@ -337,6 +426,9 @@ impl AppShell {
     }
 
     fn sync_keyboard_game_owners(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+        if self.game_observer.exit_prepared {
+            return;
+        }
         use razer_model::model::DeviceConnectionObservation;
         let candidates = self
             .devices
@@ -344,7 +436,7 @@ impl AppShell {
             .filter_map(|workspace| {
                 let view = workspace.read(cx);
                 let device = view.device(cx);
-                if !matches!(device.product_id, 515 | 679 | 756)
+                if !matches!(device.product_id, 515 | 679 | 740 | 746 | 756)
                     || !matches!(
                         device.dashboard.connection_observation,
                         Some(
@@ -377,10 +469,16 @@ impl AppShell {
             .collect::<Vec<_>>();
         for id in stale {
             if let Some(owner) = self.game_observer.profiles.remove(&id) {
-                if let Some(guid) = owner.inputs.iter().rev().find_map(|input| match input {
-                    Input::Base(guid) => Some(guid.clone()),
-                    _ => None,
-                }) {
+                if let Some(guid) = owner
+                    .queue
+                    .inputs
+                    .iter()
+                    .rev()
+                    .find_map(|input| match input {
+                        Input::Base(guid) => Some(guid.clone()),
+                        _ => None,
+                    })
+                {
                     let result = self
                         .game_observer
                         .linked_worker
@@ -437,9 +535,7 @@ impl AppShell {
                             retry_at: 0,
                             load_error: None,
                             initialized: false,
-                            inputs: VecDeque::new(),
-                            effects: VecDeque::new(),
-                            saving: false,
+                            queue: ProfileQueue::default(),
                         },
                     );
                 }
@@ -474,6 +570,7 @@ impl AppShell {
                     owner,
                     epoch,
                     result,
+                    _pending,
                 } => {
                     if let Some(owner) = self
                         .game_observer
@@ -484,7 +581,8 @@ impl AppShell {
                         owner.loading = false;
                         match result {
                             Ok(stack) => {
-                                owner.runtime = Some(Runtime::new(stack));
+                                owner.runtime =
+                                    Some(Runtime::new(owner.queue.reconcile_loaded_stack(stack)));
                                 owner.load_error = None;
                             }
                             Err(error) => {
@@ -501,6 +599,7 @@ impl AppShell {
                     owner,
                     epoch,
                     result,
+                    _pending,
                 } => {
                     if let Some(owner) = self
                         .game_observer
@@ -508,12 +607,14 @@ impl AppShell {
                         .get_mut(&owner)
                         .filter(|owner| owner.epoch == epoch)
                     {
-                        owner.saving = false;
+                        owner.queue.acknowledge_save(&result);
                         if let Err(error) = result {
                             // UI selection is optimistic. A failed local commit
                             // prevents its following task and does not roll it back.
-                            owner.effects.clear();
                             self.game_link_diagnostic(error, cx);
+                            if self.game_observer.exit_prepared {
+                                self.cancel_pending_exit(cx);
+                            }
                         }
                     }
                 }
@@ -533,20 +634,31 @@ impl AppShell {
                             "exe_name":name,
                             "runningGamesDetail":details,
                         }});
-                        if let Err(error) = self.game_memory_key_call(
-                            FOREGROUND_KEY,
-                            "setMemoryStorageItem",
-                            Some(Value::String(message.to_string())),
-                        ) {
+                        if !self.game_observer.exit_prepared
+                            && let Err(error) = self.game_memory_key_call(
+                                FOREGROUND_KEY,
+                                "setMemoryStorageItem",
+                                Some(Value::String(message.to_string())),
+                            )
+                        {
                             self.game_link_diagnostic(format!("{error:#}"), cx);
                             continue;
                         }
                         for owner in self.game_observer.profiles.values_mut() {
-                            owner.inputs.push_back(Input::Foreground(name.into()));
+                            owner.queue.inputs.push_back(Input::Foreground(name.into()));
                         }
                     }
                 }
                 linked::Reply::Diagnostic(error) => self.game_link_diagnostic(error, cx),
+                linked::Reply::BaseSelected { result, _pending }
+                | linked::Reply::ForegroundStopped { result, _pending } => {
+                    if let Err(error) = result {
+                        self.game_link_diagnostic(error, cx);
+                        if self.game_observer.exit_prepared {
+                            self.cancel_pending_exit(cx);
+                        }
+                    }
+                }
             }
         }
         let ids = self
@@ -559,6 +671,10 @@ impl AppShell {
             let Some(mut owner) = self.game_observer.profiles.remove(&id) else {
                 continue;
             };
+            if !owner.queue.automatic() {
+                self.game_observer.profiles.insert(id, owner);
+                continue;
+            }
             let Some(workspace) = owner
                 .workspace
                 .upgrade()
@@ -598,13 +714,13 @@ impl AppShell {
             if !owner.initialized
                 && let Some(runtime) = &mut owner.runtime
             {
-                while matches!(owner.inputs.front(), Some(Input::Base(_))) {
-                    if let Some(Input::Base(guid)) = owner.inputs.pop_front() {
-                        owner.effects.extend(runtime.select_base(guid));
+                while matches!(owner.queue.inputs.front(), Some(Input::Base(_))) {
+                    if let Some(Input::Base(guid)) = owner.queue.inputs.pop_front() {
+                        owner.queue.effects.extend(runtime.select_base(guid));
                     }
                 }
             }
-            if !owner.initialized && !owner.effects.is_empty() {
+            if !owner.initialized && !owner.queue.effects.is_empty() {
                 self.flush_keyboard_link_effects(&workspace, &mut owner, window, cx);
             }
             if let (Some(snapshot), Some(runtime)) =
@@ -622,14 +738,14 @@ impl AppShell {
                         .collect(),
                 );
                 if !owner.initialized {
-                    owner.effects.extend(runtime.initialize(now_millis()));
+                    owner.queue.effects.extend(runtime.initialize(now_millis()));
                     owner.initialized = true;
                 }
             }
-            if owner.initialized && !owner.saving {
+            if owner.initialized && !owner.queue.saving {
                 self.flush_keyboard_link_effects(&workspace, &mut owner, window, cx);
-                while !owner.saving && owner.effects.is_empty() {
-                    let Some(input) = owner.inputs.pop_front() else {
+                while !owner.queue.saving && owner.queue.effects.is_empty() {
+                    let Some(input) = owner.queue.inputs.pop_front() else {
                         break;
                     };
                     let profile = active_guid(workspace.read(cx).device(cx));
@@ -656,15 +772,15 @@ impl AppShell {
                             runtime.foreground(&executable, &details, profile.as_deref(), tick)
                         }
                     };
-                    owner.effects.extend(effects);
+                    owner.queue.effects.extend(effects);
                     self.flush_keyboard_link_effects(&workspace, &mut owner, window, cx);
                 }
-                if !owner.saving
-                    && owner.effects.is_empty()
+                if !owner.queue.saving
+                    && owner.queue.effects.is_empty()
                     && self.game_observer.snapshot.is_some()
                 {
                     let profile = active_guid(workspace.read(cx).device(cx));
-                    owner.effects.extend(
+                    owner.queue.effects.extend(
                         owner
                             .runtime
                             .as_mut()
@@ -685,10 +801,7 @@ impl AppShell {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        while !owner.saving {
-            let Some(effect) = owner.effects.pop_front() else {
-                break;
-            };
+        while let Some(effect) = owner.queue.next_effect() {
             match effect {
                 Effect::RuntimeProfile(guid) => {
                     if !workspace.update(cx, |workspace, cx| {
@@ -724,9 +837,9 @@ impl AppShell {
                         })
                         .and_then(|worker| worker.send(command))
                     {
-                        Ok(()) => owner.saving = true,
+                        Ok(()) => owner.queue.saving = true,
                         Err(error) => {
-                            owner.effects.clear();
+                            owner.queue.effects.clear();
                             self.game_link_diagnostic(format!("{error:#}"), cx);
                             break;
                         }

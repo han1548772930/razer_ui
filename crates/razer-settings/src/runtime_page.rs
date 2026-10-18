@@ -11,11 +11,12 @@ use razer_ipc::ServiceClient;
 use razer_ipc::ServiceRequest;
 use razer_platform::device_changes::DeviceChange;
 use razer_platform::device_changes::DeviceChangeMonitor;
+use razer_storage::file_transfer::{Operation as ReportOperation, Transfer as ReportTransfer};
 use razer_widgets::surface;
 use serde_json::Value;
 use std::{
     sync::{
-        Arc,
+        Arc, Mutex,
         atomic::{AtomicBool, Ordering},
         mpsc,
     },
@@ -26,16 +27,27 @@ use std::{
 mod diagnostics;
 
 #[derive(Clone)]
-struct RuntimeBridge(mpsc::Sender<Command>);
+struct RuntimeBridge(Arc<ConnectionOwner>);
+struct ConnectionOwner {
+    commands: mpsc::Sender<Command>,
+    worker: Mutex<Option<std::thread::JoinHandle<()>>>,
+}
 type DiscoveryProgress = async_channel::Sender<(DiscoverySnapshot, mpsc::Sender<()>)>;
 enum Command {
     Refresh(
         bool,
         DiscoveryProgress,
         Arc<AtomicBool>,
+        ReportOperation,
         mpsc::Sender<Readings>,
     ),
     Disconnect(mpsc::Sender<Result<(), String>>),
+}
+
+#[derive(Clone, Copy)]
+enum DisconnectIntent {
+    User,
+    ApplicationExit,
 }
 
 #[derive(Default)]
@@ -136,94 +148,99 @@ impl Readings {
 
 impl RuntimeBridge {
     fn start() -> Result<Self, String> {
-        let (sender, commands) = mpsc::channel();
-        std::thread::Builder::new()
-            .name("razer-service-connection".into())
-            .spawn(move || {
-                let mut client: Option<ServiceClient> = None;
-                while let Ok(command) = commands.recv() {
-                    match command {
-                        Command::Refresh(services, progress, guard, reply) => {
-                            if !guard.load(Ordering::Acquire) {
-                                let _ = reply.send(Readings::default());
-                                continue;
+        Self::start_worker(move |commands| {
+            let mut client: Option<ServiceClient> = None;
+            while let Ok(command) = commands.recv() {
+                match command {
+                    Command::Refresh(services, progress, guard, report, reply) => {
+                        if !guard.load(Ordering::Acquire) {
+                            let _ = reply.send(Readings::default());
+                            continue;
+                        }
+                        let mut result = match client.as_mut() {
+                            Some(client) => {
+                                client.set_request_guard(guard.clone());
+                                read_services(client, services, &progress, &guard)
                             }
-                            let mut result = match client.as_mut() {
-                                Some(client) => {
-                                    client.set_request_guard(guard.clone());
-                                    read_services(client, services, &progress, &guard)
-                                }
-                                None => match ServiceClient::spawn() {
-                                    Ok(mut connection) => {
-                                        connection.set_request_guard(guard.clone());
-                                        let result = read_services(
-                                            &mut connection,
-                                            services,
-                                            &progress,
-                                            &guard,
-                                        );
-                                        client = Some(connection);
-                                        result
-                                    }
-                                    Err(error) => {
-                                        let error = format!("{error:#}");
-                                        Readings {
-                                            connected: false,
-                                            #[cfg(windows)]
-                                            usb: Some(Err(error.clone())),
-                                            #[cfg(windows)]
-                                            hid: Some(Err(error.clone())),
-                                            #[cfg(not(windows))]
-                                            hid_nodes: Some(Err(error.clone())),
-                                            version: services.then(|| Err(error.clone())),
-                                            audio: services.then(|| Err(error.clone())),
-                                            native: Vec::new(),
-                                            discovery: Some(Err(error)),
-                                            services_requested: services,
-                                            diagnostic_report: None,
-                                            ..Readings::default()
-                                        }
-                                    }
-                                },
-                            };
-                            if !guard.load(Ordering::Acquire) {
-                                result.connected = false;
-                            }
-                            if !result.connected {
-                                client.take();
-                            }
-                            if guard.load(Ordering::Acquire) {
-                                result.diagnostic_report = Some(
+                            None => match ServiceClient::spawn() {
+                                Ok(mut connection) => {
+                                    connection.set_request_guard(guard.clone());
+                                    let result =
+                                        read_services(&mut connection, services, &progress, &guard);
+                                    client = Some(connection);
                                     result
-                                        .write_diagnostic_report()
-                                        .map_err(|error| format!("{error:#}")),
-                                );
-                            }
-                            let _ = reply.send(result);
-                        }
-                        Command::Disconnect(reply) => {
-                            let result = client.take().map_or(Ok(()), |mut client| {
-                                if client.is_stopped() {
-                                    return Ok(());
                                 }
-                                client
-                                    .request(ServiceRequest::Shutdown)
-                                    .map(|_| ())
-                                    .map_err(|error| format!("{error:#}"))
-                            });
-                            let _ = reply.send(result);
-                            return;
+                                Err(error) => {
+                                    let error = format!("{error:#}");
+                                    Readings {
+                                        connected: false,
+                                        #[cfg(windows)]
+                                        usb: Some(Err(error.clone())),
+                                        #[cfg(windows)]
+                                        hid: Some(Err(error.clone())),
+                                        #[cfg(not(windows))]
+                                        hid_nodes: Some(Err(error.clone())),
+                                        version: services.then(|| Err(error.clone())),
+                                        audio: services.then(|| Err(error.clone())),
+                                        native: Vec::new(),
+                                        discovery: Some(Err(error)),
+                                        services_requested: services,
+                                        diagnostic_report: None,
+                                        ..Readings::default()
+                                    }
+                                }
+                            },
+                        };
+                        if !guard.load(Ordering::Acquire) {
+                            result.connected = false;
                         }
+                        if !result.connected {
+                            client.take();
+                        }
+                        if guard.load(Ordering::Acquire) {
+                            result.diagnostic_report = Some(
+                                result
+                                    .write_diagnostic_report(&report)
+                                    .map_err(|error| format!("{error:#}")),
+                            );
+                        }
+                        let _ = reply.send(result);
+                    }
+                    Command::Disconnect(reply) => {
+                        let result = client.take().map_or(Ok(()), |mut client| {
+                            if client.is_stopped() {
+                                return Ok(());
+                            }
+                            client
+                                .request(ServiceRequest::Shutdown)
+                                .map(|_| ())
+                                .map_err(|error| format!("{error:#}"))
+                        });
+                        let _ = reply.send(result);
+                        return;
                     }
                 }
-                // Closing the UI only drops senders. Native shutdown and child.wait
-                // remain here, even when an in-flight UI task has been cancelled.
-                if let Some(mut client) = client {
-                    let _ = client.request(ServiceRequest::Shutdown);
-                }
-            })
+            }
+            // Closing the UI only drops senders. Native shutdown and child.wait
+            // remain here, even when an in-flight UI task has been cancelled.
+            if let Some(mut client) = client {
+                let _ = client.request(ServiceRequest::Shutdown);
+            }
+        })
+    }
+
+    fn start_worker(
+        run: impl FnOnce(mpsc::Receiver<Command>) + Send + 'static,
+    ) -> Result<Self, String> {
+        let (commands, incoming) = mpsc::channel();
+        let worker = std::thread::Builder::new()
+            .name("razer-service-connection".into())
+            .spawn(move || run(incoming))
             .map_err(|error| format!("无法创建服务连接线程：{error}"))?;
-        Ok(Self(sender))
+        Ok(Self(Arc::new(ConnectionOwner {
+            commands,
+            worker: Mutex::new(Some(worker)),
+        })))
     }
 
     fn refresh(
@@ -231,10 +248,12 @@ impl RuntimeBridge {
         services: bool,
         progress: DiscoveryProgress,
         guard: Arc<AtomicBool>,
+        report: ReportOperation,
     ) -> Result<Readings, String> {
         let (reply, response) = mpsc::channel();
         self.0
-            .send(Command::Refresh(services, progress, guard, reply))
+            .commands
+            .send(Command::Refresh(services, progress, guard, report, reply))
             .map_err(|_| "服务连接已结束，请重新连接。".to_string())?;
         response
             // Each worker request already has a deadline. A fixed aggregate
@@ -245,12 +264,33 @@ impl RuntimeBridge {
 
     fn disconnect(&self) -> Result<(), String> {
         let (reply, response) = mpsc::channel();
-        self.0
+        let acknowledged = self
+            .0
+            .commands
             .send(Command::Disconnect(reply))
-            .map_err(|_| "服务连接已经结束。".to_string())?;
-        response
-            .recv_timeout(Duration::from_secs(30))
-            .map_err(|error| format!("服务关闭未完成：{error}"))?
+            .map_err(|_| "服务连接已经结束。".to_string())
+            .and_then(|()| {
+                response
+                    .recv_timeout(Duration::from_secs(30))
+                    .map_err(|error| format!("服务关闭未完成：{error}"))?
+            });
+        // A response confirms the service cleanup result. The background
+        // caller also retains this owner until its actor has actually exited.
+        let worker = self
+            .0
+            .worker
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .take();
+        let completed = worker.map_or(Ok(()), |worker| {
+            worker
+                .join()
+                .map_err(|_| "服务连接线程异常结束。".to_owned())
+        });
+        match (acknowledged, completed) {
+            (Ok(()), result) | (result, Ok(())) => result,
+            (Err(acknowledged), Err(completed)) => Err(format!("{acknowledged}; {completed}")),
+        }
     }
 }
 
@@ -403,11 +443,15 @@ fn read_services(
 
 pub struct RuntimePanel {
     bridge: Option<RuntimeBridge>,
+    retired_bridges: Vec<RuntimeBridge>,
     request_guard: Option<Arc<AtomicBool>>,
+    report_transfer: Option<ReportTransfer>,
     refresh_task: Option<Task<()>>,
     disconnect_task: Option<Task<()>>,
     disconnecting: bool,
+    exit_prepared: bool,
     monitor: Option<DeviceChangeMonitor>,
+    retired_monitors: Vec<DeviceChangeMonitor>,
     monitor_task: Option<Task<()>>,
     monitor_error: Option<String>,
     pending_refresh: Option<bool>,
@@ -422,11 +466,15 @@ impl RuntimePanel {
     pub fn new() -> Self {
         Self {
             bridge: None,
+            retired_bridges: Vec::new(),
             request_guard: None,
+            report_transfer: None,
             refresh_task: None,
             disconnect_task: None,
             disconnecting: false,
+            exit_prepared: false,
             monitor: None,
+            retired_monitors: Vec::new(),
             monitor_task: None,
             monitor_error: None,
             pending_refresh: None,
@@ -464,7 +512,7 @@ impl RuntimePanel {
                                 }
                                 DeviceChange::Failed(error) => {
                                     this.monitor_error = Some(error);
-                                    this.monitor = None;
+                                    this.retired_monitors.extend(this.monitor.take());
                                     cx.notify();
                                 }
                             })
@@ -481,7 +529,7 @@ impl RuntimePanel {
     }
 
     fn refresh_queries(&mut self, services: bool, cx: &mut Context<Self>) {
-        if self.disconnecting {
+        if self.exit_prepared || self.disconnecting {
             return;
         }
         if self.busy {
@@ -514,12 +562,15 @@ impl RuntimePanel {
         let bridge = self.bridge.clone().expect("retained runtime bridge");
         let guard = Arc::new(AtomicBool::new(true));
         self.request_guard = Some(guard.clone());
+        let transfer = ReportTransfer::new();
+        let report = transfer.accept().expect("new report request is open");
+        self.report_transfer = Some(transfer);
         let (progress, snapshots) = async_channel::bounded(1);
         cx.notify();
         self.refresh_task = Some(cx.spawn(async move |this, cx| {
             let request_guard = guard.clone();
             let request = cx.background_spawn(async move {
-                let readings = bridge.refresh(services, progress, request_guard)?;
+                let readings = bridge.refresh(services, progress, request_guard, report)?;
                 Ok::<_, String>((bridge, readings))
             });
             let mut identified = false;
@@ -547,6 +598,7 @@ impl RuntimePanel {
             }
             let _ = this.update(cx, |this, cx| {
                 this.request_guard = None;
+                this.report_transfer = None;
                 this.refresh_task = None;
                 this.busy = false;
                 match result {
@@ -559,13 +611,18 @@ impl RuntimePanel {
                                 _ => cx.emit(DiscoveryObserved(observation.clone(), None)),
                             }
                         }
-                        this.bridge = readings.connected.then_some(bridge);
+                        if readings.connected {
+                            this.bridge = Some(bridge);
+                        } else {
+                            this.retired_bridges.push(bridge);
+                            this.bridge = None;
+                        }
                         this.status = readings.status().into();
                         this.readings = readings;
                     }
                     Err(error) => {
                         cx.emit(DiscoveryObserved(Err(error.clone()), None));
-                        this.bridge = None;
+                        this.retired_bridges.extend(this.bridge.take());
                         this.readings.connected = false;
                         this.status = "连接失败；已有结果未更新。".into();
                         this.error = Some(error);
@@ -580,16 +637,26 @@ impl RuntimePanel {
     }
 
     fn disconnect(&mut self, cx: &mut Context<Self>) {
+        self.begin_disconnect(DisconnectIntent::User, cx);
+    }
+
+    fn begin_disconnect(&mut self, intent: DisconnectIntent, cx: &mut Context<Self>) {
         if self.disconnecting {
             return;
         }
-        if self.bridge.is_none() && self.monitor.is_none() {
+        if self.bridge.is_none()
+            && self.retired_bridges.is_empty()
+            && self.monitor.is_none()
+            && self.retired_monitors.is_empty()
+        {
             return;
         }
-        let bridge = self.bridge.take();
+        let mut bridges = std::mem::take(&mut self.retired_bridges);
+        bridges.extend(self.bridge.take());
         self.cancel_read();
         self.monitor_task = None;
-        self.monitor = None;
+        let mut monitors = std::mem::take(&mut self.retired_monitors);
+        monitors.extend(self.monitor.take());
         self.monitor_error = None;
         self.pending_refresh = None;
         self.busy = true;
@@ -599,16 +666,52 @@ impl RuntimePanel {
         cx.notify();
         self.disconnect_task = Some(cx.spawn(async move |this, cx| {
             let result = cx
-                .background_spawn(
-                    async move { bridge.map_or(Ok(()), |bridge| bridge.disconnect()) },
-                )
+                .background_spawn(async move {
+                    let mut observation_errors = Vec::new();
+                    for monitor in monitors {
+                        if let Err(error) = monitor.shutdown() {
+                            observation_errors.push(error);
+                        }
+                    }
+                    let observation = if observation_errors.is_empty() {
+                        Ok(())
+                    } else {
+                        Err(observation_errors.join("; "))
+                    };
+                    let mut connection_errors = Vec::new();
+                    for bridge in bridges {
+                        if let Err(error) = bridge.disconnect() {
+                            connection_errors.push(error);
+                        }
+                    }
+                    let connection = if connection_errors.is_empty() {
+                        Ok(())
+                    } else {
+                        Err(connection_errors.join("; "))
+                    };
+                    match (observation, connection) {
+                        (Ok(()), result) | (result, Ok(())) => result,
+                        (Err(observation), Err(connection)) => {
+                            Err(format!("{observation}; {connection}"))
+                        }
+                    }
+                })
                 .await;
             let _ = this.update(cx, |this, cx| {
+                if matches!(intent, DisconnectIntent::ApplicationExit) {
+                    if let Err(error) = &result {
+                        eprintln!("[device discovery cleanup] {error}");
+                    }
+                }
                 this.finish_disconnect(result);
-                cx.emit(DiscoveryObserved(
-                    Err("服务连接已断开，此前设备观察已过期".into()),
-                    None,
-                ));
+                // A user disconnect expires routes. Final application cleanup
+                // must not start page reactions after their owners have closed.
+                if matches!(intent, DisconnectIntent::User) {
+                    cx.emit(DiscoveryObserved(
+                        Err("服务连接已断开，此前设备观察已过期".into()),
+                        None,
+                    ));
+                }
                 cx.notify();
             });
         }));
@@ -629,14 +732,34 @@ impl RuntimePanel {
     }
 
     fn cancel_read(&mut self) {
+        if let Some(transfer) = self.report_transfer.take() {
+            transfer.cancel();
+        }
         if let Some(guard) = self.request_guard.take() {
             guard.store(false, Ordering::Release);
         }
         self.refresh_task = None;
     }
 
-    pub fn prepare_exit(&mut self, cx: &mut Context<Self>) {
-        self.disconnect(cx);
+    pub fn prepare_exit(&mut self) {
+        // The discovery connection is distinct from each device session. Keep
+        // its observations valid while accepted product work drains; only the
+        // final application cleanup closes it after product work has drained.
+        self.exit_prepared = true;
+        self.cancel_read();
+        self.pending_refresh = None;
+        if !self.disconnecting {
+            self.busy = false;
+        }
+    }
+
+    pub fn cancel_exit(&mut self, cx: &mut Context<Self>) {
+        if std::mem::take(&mut self.exit_prepared) {
+            if self.bridge.is_some() || self.monitor.is_some() {
+                self.discover_devices(cx);
+            }
+            cx.notify();
+        }
     }
 
     pub fn shutdown_pending(&self) -> bool {
@@ -644,7 +767,8 @@ impl RuntimePanel {
     }
 
     pub fn shutdown_for_app_quit(&mut self, cx: &mut Context<Self>) -> Option<Task<()>> {
-        self.disconnect(cx);
+        self.exit_prepared = true;
+        self.begin_disconnect(DisconnectIntent::ApplicationExit, cx);
         self.disconnect_task.take()
     }
 }
@@ -686,7 +810,13 @@ impl Render for RuntimePanel {
                         Button::new("runtime-disconnect")
                             .label("断开连接")
                             .outline()
-                            .disabled(self.disconnecting || (!connected && self.monitor.is_none()))
+                            .disabled(
+                                self.disconnecting
+                                    || (!connected
+                                        && self.retired_bridges.is_empty()
+                                        && self.monitor.is_none()
+                                        && self.retired_monitors.is_empty()),
+                            )
                             .on_click(cx.listener(|this, _, _, cx| this.disconnect(cx))),
                     ),
             )
@@ -1113,6 +1243,82 @@ mod tests {
             panel.readings.hid.as_ref().unwrap().as_ref().unwrap()["interfaces"][0]["path"],
             "observed"
         );
+    }
+
+    #[test]
+    fn exit_preparation_preserves_the_discovery_connection_until_final_cleanup() {
+        let mut panel = RuntimePanel::new();
+        let (commands, incoming) = std::sync::mpsc::channel();
+        panel.bridge = Some(super::RuntimeBridge(std::sync::Arc::new(
+            super::ConnectionOwner {
+                commands,
+                worker: std::sync::Mutex::new(None),
+            },
+        )));
+        panel.busy = true;
+        panel.pending_refresh = Some(true);
+        panel.readings.connected = true;
+        panel.readings.hid = Some(Ok(json!({"interfaces": [{"path": "observed"}]})));
+        let guard = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true));
+        panel.request_guard = Some(guard.clone());
+
+        panel.prepare_exit();
+
+        assert!(!guard.load(std::sync::atomic::Ordering::Acquire));
+        assert!(panel.request_guard.is_none());
+        assert!(panel.pending_refresh.is_none());
+        assert!(panel.bridge.is_some());
+        assert!(panel.readings.connected);
+        assert!(!panel.shutdown_pending());
+        assert!(matches!(
+            incoming.try_recv(),
+            Err(std::sync::mpsc::TryRecvError::Empty)
+        ));
+        assert_eq!(
+            panel.readings.hid.as_ref().unwrap().as_ref().unwrap()["interfaces"][0]["path"],
+            "observed"
+        );
+    }
+
+    #[test]
+    fn exit_preparation_keeps_an_existing_explicit_disconnect_pending() {
+        let mut panel = RuntimePanel::new();
+        panel.busy = true;
+        panel.disconnecting = true;
+        panel.prepare_exit();
+        assert!(panel.shutdown_pending());
+        assert!(panel.busy);
+    }
+
+    #[test]
+    fn acknowledged_shutdown_still_waits_for_and_reports_a_panicked_connection_worker() {
+        let bridge = super::RuntimeBridge::start_worker(|commands| {
+            let super::Command::Disconnect(reply) = commands.recv().unwrap() else {
+                panic!("expected disconnect");
+            };
+            reply.send(Ok(())).unwrap();
+            panic!("simulated connection cleanup panic");
+        })
+        .unwrap();
+        assert_eq!(bridge.disconnect().unwrap_err(), "服务连接线程异常结束。");
+        assert!(bridge.0.worker.lock().unwrap().is_none());
+    }
+
+    #[test]
+    fn connection_shutdown_preserves_both_the_service_and_worker_failure() {
+        let bridge = super::RuntimeBridge::start_worker(|commands| {
+            let super::Command::Disconnect(reply) = commands.recv().unwrap() else {
+                panic!("expected disconnect");
+            };
+            reply
+                .send(Err("simulated service shutdown failure".into()))
+                .unwrap();
+            panic!("simulated connection cleanup panic");
+        })
+        .unwrap();
+        let error = bridge.disconnect().unwrap_err();
+        assert!(error.contains("simulated service shutdown failure"));
+        assert!(error.contains("服务连接线程异常结束。"));
     }
     #[test]
     fn diagnostics_keep_unicode_boundaries_and_signal_truncation() {

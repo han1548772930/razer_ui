@@ -9,10 +9,13 @@ pub fn read_serial(
     validate: impl Fn() -> anyhow::Result<()>,
 ) -> anyhow::Result<String> {
     ensure!(
-        matches!(cap.product_id, 164 | 241) && cap.report_bytes == 91 && cap.report_id == 0,
+        matches!(cap.product_id, 164 | 241)
+            && cap.report_bytes == 91
+            && cap.report_id == cap.claim_interface,
         "Serial query has no audited receiver capability"
     );
     let mut report = vec![0_u8; 91];
+    report[0] = cap.report_id;
     report[2] = transaction;
     report[6..9].copy_from_slice(&[22, 0, 130]);
     report[89] = report[3..89].iter().fold(0, |sum, byte| sum ^ byte);

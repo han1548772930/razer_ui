@@ -70,7 +70,7 @@ impl SeirenAudioPlaybackRequested {
     pub fn product_id(&self) -> u32 {
         self.product_id
     }
-    pub fn clip(&self) -> &PcmClip {
+    pub fn clip(&self) -> &Arc<PcmClip> {
         &self.clip
     }
     pub fn is_canceled(&self) -> bool {

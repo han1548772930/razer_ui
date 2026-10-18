@@ -551,6 +551,7 @@ impl MouseProductWorkspace {
                         if custom {
                             let owner = owner.clone();
                             let name = name.clone();
+                            let recalibrated_guid = guid.clone();
                             menu = menu
                                 .item(
                                     PopupMenuItem::new(t("RE_CALIBRATE"))
@@ -558,7 +559,7 @@ impl MouseProductWorkspace {
                                         .on_click(move |_, window, cx| {
                                             owner.update(cx, |this, cx| {
                                                 this.begin_calibration(
-                                                    Some(name.clone()),
+                                                    Some((recalibrated_guid.clone(), name.clone())),
                                                     window,
                                                     cx,
                                                 )
@@ -700,7 +701,9 @@ impl MouseProductWorkspace {
                             .object_fit(ObjectFit::Contain),
                     ),
                 )
-                .popup(razer_assets::resource_scope(div().absolute().inset_0().child(panel)))
+                .popup(razer_assets::resource_scope(
+                    div().absolute().inset_0().child(panel),
+                ))
                 .into_any_element(),
         )
     }

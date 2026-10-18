@@ -437,6 +437,16 @@ impl<T: ThxV4Transport> ThxV4Controller<T> {
     pub fn transport_mut(&mut self) -> &mut T {
         &mut self.transport
     }
+    /// DeviceReset changes only Valkyrie's before-hook state from the newly
+    /// persisted profile. It does not acknowledge a THX or firmware setter.
+    pub fn reset_blackshark_local_profile(&mut self) -> Result<()> {
+        ensure!(
+            self.capability.product_id == crate::blackshark_reset::PRODUCT_ID,
+            "Local Help reset is audited only for 1398"
+        );
+        self.state.valkyrie_spatial_enabled = crate::blackshark_reset::DEFAULT_SPATIAL_ENABLED;
+        Ok(())
+    }
     fn require_transport(&self) -> Result<()> {
         match self.transport.kind() {
             ThxTransportKind::Simulated => Ok(()),

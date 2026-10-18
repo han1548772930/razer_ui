@@ -1,5 +1,4 @@
 //! Fixed local receiver query transports.
-//! Maintenance input SHA-256: ba2d2806b3db16119c66ffe16796f071392ba10ad8cafacdf22c4b920acc6fc1
 //! No source JSON parsing or runtime resource access is required.
 use crate::receiver_capabilities::{ReceiverCapability, ReceiverProtocol, ReceiverStartupRetry};
 
@@ -561,7 +560,7 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             product_id: 241,
             claim_interface: 3,
             report_bytes: 91,
-            report_id: 0,
+            report_id: 3,
             transaction_prefix: 224,
             transaction_modulus: 31,
             max_retry_in: 10,

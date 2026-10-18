@@ -25,12 +25,19 @@ unsafe extern "C" fn event(info: *const c_char, kind: i32, data: *const c_char, 
     let parse = |text: String| serde_json::from_str::<Value>(&text).unwrap_or(Value::String(text));
     let value = json!({"deviceInfo":parse(unsafe{copy_string(info)}),"eventType":kind,
         "input":parse(unsafe{copy_string(data)}),"timeTick":tick});
-    if let Ok(slot) = EVENTS.lock() {
-        if let Some(sender) = slot.as_ref() {
-            if sender.try_send(value).is_err() {
-                OVERFLOW.store(true, Ordering::Release);
+    // Activation transfers the ordinary inbox while holding this same lock,
+    // so an input cannot fall between the old inbox and the mixed stream.
+    match EVENTS.lock() {
+        Ok(slot) => {
+            if let Err(value) = super::global_shortcut_capture::input(value) {
+                if let Some(sender) = slot.as_ref() {
+                    if sender.try_send(value).is_err() {
+                        OVERFLOW.store(true, Ordering::Release);
+                    }
+                }
             }
         }
+        Err(_) => OVERFLOW.store(true, Ordering::Release),
     }
 }
 fn mouse_product(pid: u32) -> bool {
@@ -42,6 +49,17 @@ fn mouse_product(pid: u32) -> bool {
     matches!(
         razer_device::device_identity::middleware_category(identity.product_id),
         Some("MOUSE" | "MOUSEPLUSMAT")
+    )
+}
+fn global_input_product(pid: u32) -> bool {
+    let razer_device::device_identity::IdentityLookup::Unique(identity) =
+        razer_device::device_identity::lookup(pid)
+    else {
+        return false;
+    };
+    matches!(
+        razer_device::device_identity::middleware_category(identity.product_id),
+        Some("KEYBOARD" | "KEYPAD" | "SYSTEM")
     )
 }
 fn ble_identity(parent: &str) -> Option<(u32, u32)> {
@@ -94,6 +112,8 @@ pub(super) struct State {
     registrations: Vec<Registration>,
     events: Receiver<Value>,
     suspended: bool,
+    global_shortcut: bool,
+    global_events: super::global_shortcut_capture::State,
 }
 impl State {
     pub(super) fn new() -> Self {
@@ -105,15 +125,35 @@ impl State {
             registrations: Vec::new(),
             events,
             suspended: false,
+            global_shortcut: false,
+            global_events: super::global_shortcut_capture::State::new(),
         }
     }
     pub(super) fn active(&self) -> bool {
-        self.suspended || !self.registrations.is_empty()
+        self.suspended || self.global_shortcut || !self.registrations.is_empty()
+    }
+    fn owns_input(&self, event: &Value) -> anyhow::Result<bool> {
+        if !self
+            .registrations
+            .iter()
+            .any(|registration| registration.info["guid"] == event["deviceInfo"]["guid"])
+        {
+            return Ok(false);
+        }
+        ensure!(
+            event["input"]["type"] != "error",
+            "Capture driver event: {}",
+            event["input"]
+        );
+        Ok(event["eventType"] == 3)
     }
 }
 impl NativeRuntime {
     pub(super) fn start_mapping_key_capture(&mut self) -> anyhow::Result<Value> {
-        self.start_mapping_key_capture_for(None)
+        self.start_mapping_key_capture_for(None, false)
+    }
+    pub(super) fn start_global_shortcut_capture(&mut self) -> anyhow::Result<Value> {
+        self.start_mapping_key_capture_for(None, true)
     }
     pub(super) fn start_keyboard_calibration_capture(
         &mut self,
@@ -124,11 +164,12 @@ impl NativeRuntime {
             [740, 746].contains(&product_id) && super::receiver::valid_container(container_id),
             "Calibration capture has no current keyboard/container identity"
         );
-        self.start_mapping_key_capture_for(Some((product_id, container_id)))
+        self.start_mapping_key_capture_for(Some((product_id, container_id)), false)
     }
     fn start_mapping_key_capture_for(
         &mut self,
         capture_target: Option<(u32, &str)>,
+        global_shortcut: bool,
     ) -> anyhow::Result<Value> {
         ensure!(
             !self.mapping_key_capture.active(),
@@ -146,10 +187,14 @@ impl NativeRuntime {
                     .is_some_and(Vec::is_empty),
             "USB capture enumeration is incomplete"
         );
-        let pairing = razer_storage::receiver_pairing::PairingCache::load(
-            &razer_storage::receiver_pairing::local_path(),
-        )?
-        .records();
+        let pairing = if global_shortcut {
+            json!({})
+        } else {
+            razer_storage::receiver_pairing::PairingCache::load(
+                &razer_storage::receiver_pairing::local_path(),
+            )?
+            .records()
+        };
         let dual_link = pairing
             .as_object()
             .into_iter()
@@ -173,7 +218,11 @@ impl NativeRuntime {
                     .as_u64()
                     .context("USB capture product id missing")?,
             )?;
-            let keyboard_only = capture_target.is_some() || dual_link.contains(&u64::from(pid));
+            if global_shortcut && !global_input_product(pid) {
+                continue;
+            }
+            let keyboard_only = !global_shortcut
+                && (capture_target.is_some() || dual_link.contains(&u64::from(pid)));
             if !keyboard_only && mouse_product(pid) {
                 continue;
             }
@@ -213,6 +262,9 @@ impl NativeRuntime {
                 let Some((vendor, pid)) = ble_identity(parent) else {
                     continue;
                 };
+                if global_shortcut && !global_input_product(pid) {
+                    continue;
+                }
                 if mouse_product(pid) {
                     continue;
                 }
@@ -241,6 +293,7 @@ impl NativeRuntime {
             );
         }
         self.mapping()?;
+        self.mapping_key_capture.global_shortcut = global_shortcut;
         OVERFLOW.store(false, Ordering::Release);
         while self.mapping_key_capture.events.try_recv().is_ok() {}
         let started = (|| -> anyhow::Result<()> {
@@ -311,6 +364,21 @@ impl NativeRuntime {
                 }
                 installed?;
             }
+            if global_shortcut {
+                {
+                    let _callback = EVENTS
+                        .lock()
+                        .map_err(|_| anyhow::anyhow!("Capture callback lock poisoned"))?;
+                    ensure!(
+                        !OVERFLOW.load(Ordering::Acquire),
+                        "Mapping key capture buffer overflowed"
+                    );
+                    self.mapping_key_capture
+                        .global_events
+                        .activate(self.mapping_key_capture.events.try_iter().collect())?;
+                }
+                self.register_shortcut_mode_events()?;
+            }
             Ok(())
         })();
         if let Err(error) = started {
@@ -324,7 +392,7 @@ impl NativeRuntime {
         Ok(
             json!({"capturing":true,"redirected_devices":self.mapping_key_capture.registrations.len(),
                 "devices":self.mapping_key_capture.registrations.iter().map(|registration| registration.info.clone()).collect::<Vec<_>>(),
-                "unresolved_devices":omitted}),
+                "unresolved_devices":omitted,"mode_events_registered":global_shortcut}),
         )
     }
     pub(super) fn mapping_key_capture_events(&mut self) -> anyhow::Result<Value> {
@@ -333,29 +401,37 @@ impl NativeRuntime {
             "Mapping key capture is inactive"
         );
         ensure!(
+            !self.mapping_key_capture.global_shortcut,
+            "Global shortcut capture requires the ordered input/mode event stream"
+        );
+        ensure!(
             !OVERFLOW.load(Ordering::Acquire),
             "Mapping key capture buffer overflowed"
         );
         let mut events = Vec::new();
         for value in self.mapping_key_capture.events.try_iter() {
-            if !self
-                .mapping_key_capture
-                .registrations
-                .iter()
-                .any(|r| r.info["guid"] == value["deviceInfo"]["guid"])
-            {
-                continue;
-            }
-            ensure!(
-                value["input"]["type"] != "error",
-                "Capture driver event: {}",
-                value["input"]
-            );
-            if value["eventType"] == 3 {
+            if self.mapping_key_capture.owns_input(&value)? {
                 events.push(value);
             }
         }
         Ok(json!({"events":events}))
+    }
+    pub(super) fn global_shortcut_capture_events(&mut self) -> anyhow::Result<Value> {
+        ensure!(
+            self.mapping_key_capture.global_shortcut
+                && self.mapping_key_capture.suspended
+                && self.shortcut_capture.active(),
+            "Global shortcut input/mode capture is inactive"
+        );
+        ensure!(
+            !OVERFLOW.load(Ordering::Acquire),
+            "Mapping key capture buffer overflowed"
+        );
+        let batch = super::global_shortcut_capture::decode(
+            self.mapping_key_capture.global_events.drain()?,
+            |event| self.mapping_key_capture.owns_input(event),
+        )?;
+        Ok(serde_json::to_value(batch)?)
     }
     pub(super) fn stop_mapping_key_capture(&mut self) -> anyhow::Result<Value> {
         if !self.mapping_key_capture.active() {
@@ -365,6 +441,7 @@ impl NativeRuntime {
             !self.poisoned,
             "Capture callback timed out; cleanup cannot be confirmed"
         );
+        let global_shortcut = self.mapping_key_capture.global_shortcut;
         let mut errors = Vec::new();
         if self.mapping_key_capture.suspended {
             let result = (|| -> anyhow::Result<()> {
@@ -421,7 +498,16 @@ impl NativeRuntime {
                 Err(e) => errors.push(format!("Remove capture device: {e:#}")),
             }
         }
+        if self.mapping_key_capture.global_shortcut && !self.poisoned {
+            match self.unregister_shortcut_mode_events() {
+                Ok(()) => self.mapping_key_capture.global_shortcut = false,
+                Err(error) => errors.push(format!("Unregister shortcut mode callback: {error:#}")),
+            }
+        }
         ensure!(errors.is_empty(), "{}", errors.join("; "));
+        if global_shortcut {
+            self.mapping_key_capture.global_events.deactivate()?;
+        }
         Ok(json!({"capturing":false}))
     }
 }
@@ -429,6 +515,13 @@ impl NativeRuntime {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn global_shortcut_redirect_requires_a_current_keyboard_keypad_or_system_category() {
+        assert!(global_input_product(515));
+        assert!(global_input_product(740));
+        assert!(!global_input_product(70));
+        assert!(!global_input_product(u32::MAX));
+    }
     #[test]
     fn ble_endpoint_identity_requires_observed_bluetooth_parent() {
         assert_eq!(

@@ -3,10 +3,15 @@
 use super::*;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::radio::Radio;
+use razer_assets::local_image::{ImageRequest, ImportFormat, ImportedImage};
 use razer_i18n::t;
 use razer_widgets::theme::OledColors;
 use serde::Serialize;
-use std::sync::Arc;
+use std::{
+    cell::{Cell, RefCell},
+    rc::{Rc, Weak},
+    sync::Arc,
+};
 
 #[path = "oled_crop.rs"]
 mod crop;
@@ -476,21 +481,24 @@ fn cropped_preview_scaled(
         .bg(OledColors::screen())
         .overflow_hidden()
         .child(
-            img(crop::preview_source(image_id.clone(), source))
-                .id(image_id)
-                .absolute()
-                .left(surface::css((left - WIDTH / 2.) * scale + WIDTH / 2.))
-                .top(surface::css(
-                    (top - CROP_HEIGHT / 2.) * scale + CROP_HEIGHT / 2.,
-                ))
-                .w(surface::css(width * scale))
-                .h(surface::css(height * scale))
-                .grayscale(true)
-                .object_fit(if canvas.is_some() {
-                    ObjectFit::Fill
-                } else {
-                    ObjectFit::Contain
-                }),
+            img(razer_assets::local_image::preview_source(
+                image_id.clone(),
+                source,
+            ))
+            .id(image_id)
+            .absolute()
+            .left(surface::css((left - WIDTH / 2.) * scale + WIDTH / 2.))
+            .top(surface::css(
+                (top - CROP_HEIGHT / 2.) * scale + CROP_HEIGHT / 2.,
+            ))
+            .w(surface::css(width * scale))
+            .h(surface::css(height * scale))
+            .grayscale(true)
+            .object_fit(if canvas.is_some() {
+                ObjectFit::Fill
+            } else {
+                ObjectFit::Contain
+            }),
         )
         .into_any_element()
 }
@@ -566,8 +574,54 @@ fn restore_preset_selection(target: &mut PresetSelection, saved: Option<&Value>,
 struct PresetEditor {
     kind: PresetKind,
     selection: PresetSelection,
-    import_generation: u64,
+    import_scope: Weak<ImportScope>,
+    import_request: Option<ImageRequest>,
+    import_task: Option<Task<()>>,
+    import_error: Option<String>,
     hovered: Option<usize>,
+}
+
+#[derive(Default)]
+pub(super) struct ImportScope {
+    closed: Cell<bool>,
+    opened: Cell<bool>,
+    request: RefCell<Option<ImageRequest>>,
+}
+
+impl ImportScope {
+    fn replace(&self, request: ImageRequest) {
+        if let Some(previous) = self.request.replace(Some(request)) {
+            previous.cancel();
+        }
+    }
+
+    fn accepts(&self, request: &ImageRequest) -> bool {
+        !self.closed.get()
+            && self
+                .request
+                .borrow()
+                .as_ref()
+                .is_some_and(|current| current.is_same(request))
+    }
+
+    pub(super) fn cancel(&self) {
+        self.closed.set(true);
+        if let Some(request) = self.request.take() {
+            request.cancel();
+        }
+    }
+}
+
+impl Drop for ImportScope {
+    fn drop(&mut self) {
+        self.cancel();
+    }
+}
+
+impl Drop for PresetEditor {
+    fn drop(&mut self) {
+        self.close();
+    }
 }
 
 /// Local crop draft used by the source's upload flow. The original cropper
@@ -1129,9 +1183,34 @@ fn preset_icon_button(
 }
 
 impl PresetEditor {
+    fn close(&mut self) {
+        self.cancel_import();
+        if let Some(scope) = self.import_scope.upgrade() {
+            scope.opened.set(false);
+            scope.cancel();
+        }
+    }
+
+    fn cancel_import(&mut self) {
+        if let Some(request) = self.import_request.take() {
+            request.cancel();
+        }
+        self.import_task = None;
+    }
+
     fn import_custom(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
-        self.import_generation = self.import_generation.wrapping_add(1);
-        let generation = self.import_generation;
+        self.cancel_import();
+        let Some(scope) = self
+            .import_scope
+            .upgrade()
+            .filter(|scope| !scope.closed.get())
+        else {
+            return;
+        };
+        let request = ImageRequest::new();
+        scope.replace(request.clone());
+        self.import_request = Some(request.clone());
+        self.import_error = None;
         let prompt = match self.kind {
             PresetKind::Animation => "Choose a GIF animation".into(),
             PresetKind::Image => "Choose an OLED image".into(),
@@ -1144,60 +1223,83 @@ impl PresetEditor {
         });
         let kind = self.kind;
         let renderer = cx.svg_renderer();
-        let parent = cx.weak_entity();
-        cx.spawn_in(window, async move |_, cx| {
-            let path = match picker.await {
-                Ok(Ok(Some(paths))) => paths.into_iter().next(),
-                _ => None,
+        self.import_task = Some(cx.spawn_in(window, async move |parent, cx| {
+            let selected = match picker.await {
+                Ok(Ok(Some(paths))) => Ok(paths.into_iter().next()),
+                Ok(Ok(None)) => Ok(None),
+                Ok(Err(error)) => Err(error.to_string()),
+                Err(error) => Err(error.to_string()),
             };
-            let Some(path) = path else {
-                return;
-            };
-            let extension = path
-                .extension()
-                .and_then(|value| value.to_str())
-                .unwrap_or_default()
-                .to_ascii_lowercase();
-            let allowed = match kind {
-                PresetKind::Animation => extension == "gif",
-                PresetKind::Image => {
-                    matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "bmp")
+            let result = match selected {
+                Ok(Some(path)) if !request.is_cancelled() => {
+                    let format = path
+                        .extension()
+                        .and_then(|value| value.to_str())
+                        .and_then(ImportFormat::from_extension)
+                        .filter(|format| match kind {
+                            PresetKind::Animation => *format == ImportFormat::Gif,
+                            PresetKind::Image => *format != ImportFormat::Gif,
+                        });
+                    match format {
+                        Some(format) => match request.accept() {
+                            Ok(operation) => cx
+                                .background_spawn(async move {
+                                    operation
+                                        .load(&path, format, renderer)
+                                        .map_err(|error| error.to_string())
+                                })
+                                .await
+                                .map(Some),
+                            Err(error) => Err(error.to_string()),
+                        },
+                        None => Err("Unsupported OLED image format".into()),
+                    }
                 }
+                Ok(_) => Ok(None),
+                Err(error) => Err(error),
             };
-            if !allowed {
-                return;
-            }
-            // Disk I/O and base64 encoding can be substantial for imported
-            // animations. Only the completed draft returns to the UI thread.
-            let Ok(imported) = cx
-                .background_spawn(async move { crop::load_preset(&path, &extension, renderer) })
-                .await
-            else {
-                return;
-            };
-            _ = parent.update_in(cx, |this, window, cx| {
-                // A later file selection supersedes an earlier, slower read.
-                if this.import_generation != generation {
+            let _ = parent.update_in(cx, |this, window, cx| {
+                let current = this
+                    .import_request
+                    .as_ref()
+                    .is_some_and(|current| current.is_same(&request));
+                let valid_scope = this
+                    .import_scope
+                    .upgrade()
+                    .is_some_and(|scope| scope.accepts(&request));
+                if !current || !valid_scope || request.is_cancelled() {
                     return;
                 }
-                if this
-                    .selection
-                    .list
-                    .get(index)
-                    .is_some_and(|item| item.enabled)
-                {
-                    this.open_crop(index, kind, imported, window, cx);
+                this.import_request = None;
+                this.import_task = None;
+                match result {
+                    Ok(Some(imported))
+                        if this
+                            .selection
+                            .list
+                            .get(index)
+                            .is_some_and(|item| item.enabled) =>
+                    {
+                        this.open_crop(index, kind, imported, window, cx)
+                    }
+                    Ok(_) => {}
+                    Err(error) => {
+                        // The current upload/crop flow reports failures to its console;
+                        // retain Rust diagnostics separately from source selection state.
+                        eprintln!("[local OLED image import] {error}");
+                        this.import_error = Some(error);
+                    }
                 }
+                cx.notify();
             });
-        })
-        .detach();
+        }));
     }
 
     fn open_crop(
         &mut self,
         index: usize,
         kind: PresetKind,
-        imported: crop::ImportedPreset,
+        imported: ImportedImage,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -1235,6 +1337,13 @@ impl PresetEditor {
                                     }
                                     .normalized();
                                     let _ = parent.update(cx, |this, cx| {
+                                        if this
+                                            .import_scope
+                                            .upgrade()
+                                            .is_none_or(|scope| scope.closed.get())
+                                        {
+                                            return;
+                                        }
                                         if let Some(item) = this
                                             .selection
                                             .list
@@ -1256,32 +1365,15 @@ impl PresetEditor {
     }
 }
 
-/// Tiny dependency-free base64 encoder for local preview data URLs.
-fn base64_encode(bytes: &[u8]) -> String {
-    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut output = String::with_capacity(bytes.len().div_ceil(3) * 4);
-    for chunk in bytes.chunks(3) {
-        let a = chunk[0] as u32;
-        let b = chunk.get(1).copied().unwrap_or(0) as u32;
-        let c = chunk.get(2).copied().unwrap_or(0) as u32;
-        let value = (a << 16) | (b << 8) | c;
-        output.push(TABLE[((value >> 18) & 63) as usize] as char);
-        output.push(TABLE[((value >> 12) & 63) as usize] as char);
-        output.push(if chunk.len() > 1 {
-            TABLE[((value >> 6) & 63) as usize] as char
-        } else {
-            '='
-        });
-        output.push(if chunk.len() > 2 {
-            TABLE[(value & 63) as usize] as char
-        } else {
-            '='
-        });
-    }
-    output
-}
-
 impl SourceControls {
+    pub fn dismiss_oled_editor(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let was_open = self.oled_imports.opened.replace(false);
+        self.oled_imports.cancel();
+        if was_open && self.spec.product_id == 691 {
+            window.close_all_dialogs(cx);
+        }
+    }
+
     /// `merge_known` intentionally ignores extra keys, while preset defaults
     /// have no imported payload. Restore the whitelisted OLED custom fields
     /// against the current source's fixed preset IDs instead of allowing a
@@ -1377,21 +1469,32 @@ impl SourceControls {
             return;
         }
         let selection = self.preset_selection(kind);
+        self.oled_imports.cancel();
+        self.oled_imports = Rc::new(ImportScope::default());
+        self.oled_imports.opened.set(true);
         let editor = cx.new(|_| PresetEditor {
             kind,
             selection,
-            import_generation: 0,
+            import_scope: Rc::downgrade(&self.oled_imports),
+            import_request: None,
+            import_task: None,
+            import_error: None,
             hovered: None,
         });
         let parent = cx.weak_entity();
         let width = surface::css(800.).to_pixels(window.rem_size());
         window.open_dialog(cx, move |dialog, _, _| {
             let editor_for_apply = editor.clone();
+            let editor_for_cancel = editor.clone();
+            let editor_for_close = editor.downgrade();
             let parent = parent.clone();
             dialog
                 .title(razer_assets::resource_scope(t(kind.editor_title())))
                 .width(width)
                 .child(razer_assets::resource_scope(editor.clone()))
+                .on_close(move |_, _, cx| {
+                    let _ = editor_for_close.update(cx, |this, _| this.close());
+                })
                 .footer(razer_assets::resource_scope(
                     h_flex()
                         .justify_end()
@@ -1400,14 +1503,26 @@ impl SourceControls {
                             Button::new("oled-preset-cancel")
                                 .label(t("CANCEL"))
                                 .outline()
-                                .on_click(|_, window, cx| window.close_dialog(cx)),
+                                .on_click(move |_, window, cx| {
+                                    editor_for_cancel.update(cx, |this, _| this.close());
+                                    window.close_dialog(cx);
+                                }),
                         )
                         .child(
                             Button::new("oled-preset-apply")
                                 .label(t("APPLY"))
                                 .primary()
                                 .on_click(move |_, window, cx| {
+                                    if editor_for_apply
+                                        .read(cx)
+                                        .import_scope
+                                        .upgrade()
+                                        .is_none_or(|scope| scope.closed.get())
+                                    {
+                                        return;
+                                    }
                                     let selection = editor_for_apply.read(cx).selection.clone();
+                                    editor_for_apply.update(cx, |this, _| this.close());
                                     let _ = parent.update(cx, |this, cx| {
                                         if !this.is_ble
                                             && this.page == "OLED"
@@ -1432,6 +1547,41 @@ impl SourceControls {
 #[cfg(test)]
 mod tests {
     use super::{CropPlacement, Preset, PresetKind, PresetSelection, restore_preset_selection};
+
+    #[::core::prelude::v1::test]
+    fn import_replacement_rejects_the_previous_request_identity() {
+        let scope = super::ImportScope::default();
+        let first = super::ImageRequest::new();
+        let next = super::ImageRequest::new();
+        scope.replace(first.clone());
+        assert!(scope.accepts(&first));
+        scope.replace(next.clone());
+        assert!(first.is_cancelled());
+        assert!(!scope.accepts(&first));
+        assert!(scope.accepts(&next));
+    }
+
+    #[::core::prelude::v1::test]
+    fn import_parent_drop_cancels_work_borrowed_by_an_open_editor() {
+        let scope = super::Rc::new(super::ImportScope::default());
+        let weak = super::Rc::downgrade(&scope);
+        let request = super::ImageRequest::new();
+        scope.replace(request.clone());
+        drop(scope);
+        assert!(request.is_cancelled());
+        assert!(weak.upgrade().is_none());
+    }
+
+    #[::core::prelude::v1::test]
+    fn import_cancel_stops_new_and_late_publication_in_the_same_scope() {
+        let scope = super::ImportScope::default();
+        let request = super::ImageRequest::new();
+        scope.replace(request.clone());
+        scope.cancel();
+        assert!(request.is_cancelled());
+        assert!(!scope.accepts(&request));
+        assert!(scope.closed.get());
+    }
 
     fn selection() -> PresetSelection {
         PresetSelection {

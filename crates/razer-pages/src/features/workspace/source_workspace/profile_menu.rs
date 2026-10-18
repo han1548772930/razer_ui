@@ -339,56 +339,60 @@ impl SourceProductWorkspace {
                     cx.notify();
                 });
             })
-            .content(move |_, window, cx| razer_assets::resource_scope({
-                let popup = cx.entity().downgrade();
-                list.update(cx, |state, _| {
-                    state.delegate_mut().popup = Some(popup.clone())
-                });
-                if let Some(confirmation) = confirmation {
-                    let opacity = motion::Presence::new("source-profile-confirm-opacity", true)
+            .content(move |_, window, cx| {
+                razer_assets::resource_scope({
+                    let popup = cx.entity().downgrade();
+                    list.update(cx, |state, _| {
+                        state.delegate_mut().popup = Some(popup.clone())
+                    });
+                    if let Some(confirmation) = confirmation {
+                        let opacity = motion::Presence::new("source-profile-confirm-opacity", true)
+                            .transition(
+                                motion::Transition::new(std::time::Duration::from_millis(300))
+                                    .easing(motion::Easing::Linear),
+                            )
+                            .sample(window, cx)
+                            .progress;
+                        return razer_assets::resource_scope(
+                            div()
+                                .opacity(opacity)
+                                .child(confirmation_element(
+                                    confirmation,
+                                    pid,
+                                    owner,
+                                    popup,
+                                    confirm_focus,
+                                    cx,
+                                ))
+                                .into_any_element(),
+                        );
+                    }
+                    let opacity = motion::Presence::new("source-profile-menu-opacity", true)
                         .transition(
-                            motion::Transition::new(std::time::Duration::from_millis(300))
+                            motion::Transition::new(std::time::Duration::from_millis(100))
                                 .easing(motion::Easing::Linear),
                         )
                         .sample(window, cx)
                         .progress;
-                    return razer_assets::resource_scope(div()
+                    div()
+                        .id("source-profile-actions")
+                        .test_support()
+                        .role(Role::Menu)
+                        .w(surface::css(width))
+                        .h(surface::css(height + 2.))
+                        .border_1()
+                        .border_color(cx.theme().border)
+                        .bg(DropdownColors::new().surface())
+                        .overflow_hidden()
                         .opacity(opacity)
-                        .child(confirmation_element(
-                            confirmation,
-                            pid,
-                            owner,
-                            popup,
-                            confirm_focus,
-                            cx,
-                        ))
-                        .into_any_element());
-                }
-                let opacity = motion::Presence::new("source-profile-menu-opacity", true)
-                    .transition(
-                        motion::Transition::new(std::time::Duration::from_millis(100))
-                            .easing(motion::Easing::Linear),
-                    )
-                    .sample(window, cx)
-                    .progress;
-                div()
-                    .id("source-profile-actions")
-                    .test_support()
-                    .role(Role::Menu)
-                    .w(surface::css(width))
-                    .h(surface::css(height + 2.))
-                    .border_1()
-                    .border_color(cx.theme().border)
-                    .bg(DropdownColors::new().surface())
-                    .overflow_hidden()
-                    .opacity(opacity)
-                    .child(
-                        gpui_kit::component::list::List::new(&list)
-                            .p_0()
-                            .h(surface::css(height + 9.)),
-                    )
-                    .into_any_element()
-            }))
+                        .child(
+                            gpui_kit::component::list::List::new(&list)
+                                .p_0()
+                                .h(surface::css(height + 9.)),
+                        )
+                        .into_any_element()
+                })
+            })
             .into_any_element()
     }
 }

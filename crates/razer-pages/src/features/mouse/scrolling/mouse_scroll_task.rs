@@ -1,9 +1,7 @@
 //! Current scroll reducer requests, serialized source profile saves and device
 //! tasks. Task completion never overwrites the optimistic editor value.
 use super::*;
-use razer_device::mouse_scroll::{
-    EnabledScrollModes, ScrollChange, ScrollMode, ScrollProfileObservation, Submission,
-};
+use razer_device::mouse_scroll::{EnabledScrollModes, ScrollChange, ScrollMode, Submission};
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
@@ -15,6 +13,7 @@ pub struct MouseScrollRequested {
     sequence: u64,
     submission: Submission,
     profile: Value,
+    source_events: u8,
     valid: Arc<AtomicBool>,
     saved: Arc<AtomicBool>,
     device_started: Arc<AtomicBool>,
@@ -25,6 +24,9 @@ impl MouseScrollRequested {
     }
     pub fn profile(&self) -> &Value {
         &self.profile
+    }
+    pub fn source_event_count(&self) -> u8 {
+        self.source_events
     }
     pub fn guard(&self) -> Arc<AtomicBool> {
         self.valid.clone()
@@ -57,7 +59,17 @@ pub(super) struct State {
     pending: Option<MouseScrollRequested>,
     queued: Option<MouseScrollRequested>,
     mode_debounce: Option<Task<()>>,
+    initialized: Option<Initialization>,
+    closed: bool,
 }
+
+#[derive(PartialEq, Eq)]
+struct Initialization {
+    scope: MousePollingScope,
+    connection: String,
+    guid: String,
+}
+
 impl State {
     pub(super) fn cancel(&mut self) {
         if let Some(pending) = &self.pending {
@@ -67,6 +79,7 @@ impl State {
             queued.cancel();
         }
         self.mode_debounce = None;
+        self.initialized = None;
     }
 }
 impl Drop for State {
@@ -144,7 +157,127 @@ fn merge(previous: &mut Vec<ScrollChange>, next: &[ScrollChange]) {
     }
 }
 
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RestoredWheel {
+    scroll_mode: ScrollMode,
+    acceleration_enabled: bool,
+    smart_reel_enabled: bool,
+    acceleration_level: Option<u8>,
+    smart_reel_level: Option<u8>,
+    #[serde(default)]
+    disabled_modes: Vec<ScrollMode>,
+}
+
+fn restore_changes(product_id: u32, wheel: &Value) -> anyhow::Result<Vec<ScrollChange>> {
+    let cap = razer_device::mouse_scroll::capability(product_id)
+        .ok_or_else(|| anyhow::anyhow!("Current mouse scrolling capability is absent"))?;
+    let wheel: RestoredWheel = serde_json::from_value(wheel.clone())?;
+    let mut changes = Vec::new();
+    if !cap.supports_mode_v2() {
+        changes.push(ScrollChange::LegacyMode(wheel.scroll_mode));
+    }
+    changes.push(ScrollChange::SmartReel(wheel.smart_reel_enabled));
+    if cap.supports_levels() {
+        if let Some(level) = wheel.smart_reel_level {
+            changes.push(ScrollChange::SmartReelThreshold(level));
+        }
+    }
+    changes.push(ScrollChange::VirtualAcceleration(
+        wheel.acceleration_enabled,
+    ));
+    if cap.supports_levels() {
+        if let Some(level) = wheel.acceleration_level {
+            changes.push(ScrollChange::VirtualAccelerationLevel(level));
+        }
+    }
+    if cap.supports_mode_v2() {
+        let enabled = EnabledScrollModes::from_disabled(&wheel.disabled_modes)?;
+        // Generic restoreDeviceData runs after the ordinary wheel events.
+        // ScrollModeV2Feature restores the mask and its resolved active mode.
+        let selected = if enabled.contains(wheel.scroll_mode) {
+            wheel.scroll_mode
+        } else {
+            [
+                ScrollMode::Tactile,
+                ScrollMode::FreeSpin,
+                ScrollMode::MicroTactile,
+            ]
+            .into_iter()
+            .find(|mode| enabled.contains(*mode))
+            .ok_or_else(|| anyhow::anyhow!("All restored scroll modes are disabled"))?
+        };
+        changes.push(ScrollChange::ModeV2 { selected, enabled });
+    }
+    // Use the protocol owner to reject unsupported modes and out-of-range
+    // levels before accepting any of the source restore events.
+    Submission::new(changes.clone(), Default::default()).validate(product_id)?;
+    Ok(changes)
+}
+
 impl MouseProductWorkspace {
+    pub fn initialize_mouse_scroll_profile(
+        &mut self,
+        key: Option<&str>,
+        guid: &str,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(key) = key else {
+            self.scroll_task.cancel();
+            return;
+        };
+        let Some(spec) = scroll_wheel::source_spec(self.spec.product_id) else {
+            return;
+        };
+        let Some(scope) = self.mouse_polling_scope(cx) else {
+            return;
+        };
+        if self.scroll_task.closed {
+            return;
+        }
+        if guid.is_empty() {
+            self.scroll_task.cancel();
+            return;
+        }
+        let initialization = Initialization {
+            scope,
+            connection: key.to_owned(),
+            guid: guid.to_owned(),
+        };
+        if self.scroll_task.initialized.as_ref() == Some(&initialization) {
+            return;
+        }
+        if self.scroll_task.initialized.is_some() {
+            // A new physical route can retain the same polling epochs. Its
+            // predecessor still owns the writer slot until real cleanup.
+            self.scroll_task.cancel();
+        }
+        let changes = match restore_changes(self.spec.product_id, &self.draft[&spec.profile_key]) {
+            Ok(changes) => changes,
+            Err(error) => {
+                eprintln!("[mouse-scroll] Invalid restored wheel settings: {error:#}");
+                return;
+            }
+        };
+        if let Some(ScrollChange::ModeV2 { selected, .. }) = changes.last() {
+            self.draft[&spec.profile_key]["scrollMode"] = json!(selected);
+            if let Some(editor) = &self.scroll_editor {
+                editor.update(cx, |editor, cx| editor.restore_source_mode(*selected, cx));
+            }
+        }
+        self.scroll_task.initialized = Some(initialization);
+        // Stored values already belong to this profile. Persist one atomic
+        // snapshot with the same number of source version increments, then
+        // execute its ordered independent tasks through the existing queue.
+        // The generic V2 restore saves its resolved mask/mode without minting
+        // a version; the ordinary wheel event makers each advance it once.
+        let source_events = changes
+            .iter()
+            .filter(|change| !matches!(change, ScrollChange::ModeV2 { .. }))
+            .count() as u8;
+        self.enqueue_scroll_for_profile(changes, guid, source_events, cx);
+    }
+
     pub(super) fn submit_scroll_edit(&mut self, previous: &Value, cx: &mut Context<Self>) {
         let Some(spec) = scroll_wheel::source_spec(self.spec.product_id) else {
             return;
@@ -197,7 +330,27 @@ impl MouseProductWorkspace {
         }
     }
     fn enqueue_scroll(&mut self, changes: Vec<ScrollChange>, cx: &mut Context<Self>) {
-        if changes.is_empty() {
+        let Some(guid) = self
+            .scroll_task
+            .initialized
+            .as_ref()
+            .map(|initialized| initialized.guid.as_str())
+            .or_else(|| self.draft.get("guid").and_then(Value::as_str))
+        else {
+            return;
+        };
+        let guid = guid.to_owned();
+        self.enqueue_scroll_for_profile(changes, &guid, 1, cx);
+    }
+
+    fn enqueue_scroll_for_profile(
+        &mut self,
+        changes: Vec<ScrollChange>,
+        guid: &str,
+        source_events: u8,
+        cx: &mut Context<Self>,
+    ) {
+        if changes.is_empty() || self.scroll_task.closed {
             return;
         }
         let Some(scope) = self.mouse_polling_scope(cx) else {
@@ -210,11 +363,7 @@ impl MouseProductWorkspace {
             .and_then(|slots| slots.first())
             .and_then(Value::as_u64)
             .and_then(|slot| u8::try_from(slot).ok());
-        let profiles = ScrollProfileObservation {
-            selected_obm_profile_id: selected,
-            ..Default::default()
-        };
-        let mut submission = Submission::new(changes, profiles);
+        let mut submission = Submission::for_profile(changes, guid.to_owned(), selected);
         if let Some(previous) = self.scroll_task.queued.take() {
             if previous.scope == scope {
                 let mut pending = previous.submission.changes.clone();
@@ -232,6 +381,7 @@ impl MouseProductWorkspace {
             sequence: self.scroll_task.sequence,
             submission,
             profile: self.draft.clone(),
+            source_events,
             valid: Arc::new(AtomicBool::new(true)),
             saved: Arc::new(AtomicBool::new(false)),
             device_started: Arc::new(AtomicBool::new(false)),
@@ -289,6 +439,7 @@ impl MouseProductWorkspace {
         // drains that queue and stops hardware work without duplicating saves.
         self.scroll_task.cancel();
         self.scroll_task.pending = None;
+        self.scroll_task.closed = true;
     }
 }
 fn changes_for_mode(product: u32, previous: &Value, wheel: &Value) -> Option<Vec<ScrollChange>> {
@@ -337,12 +488,78 @@ mod tests {
             ]
         );
     }
+    #[::core::prelude::v1::test]
+    fn restore_keeps_source_event_order_and_v2_generic_mode_restore_last() {
+        let wheel = json!({"scrollMode":"FreeSpin", "disabledModes":["FreeSpin"],
+            "smartReelEnabled":true, "smartReelLevel":4,
+            "accelerationEnabled":false, "accelerationLevel":7});
+        for product_id in [153, 170, 203, 204, 214, 45066] {
+            let mut expected = vec![
+                ScrollChange::LegacyMode(ScrollMode::FreeSpin),
+                ScrollChange::SmartReel(true),
+            ];
+            if !matches!(product_id, 153 | 170) {
+                expected.push(ScrollChange::SmartReelThreshold(4));
+            }
+            expected.push(ScrollChange::VirtualAcceleration(false));
+            if !matches!(product_id, 153 | 170) {
+                expected.push(ScrollChange::VirtualAccelerationLevel(7));
+            }
+            assert_eq!(restore_changes(product_id, &wheel).unwrap(), expected);
+        }
+        assert_eq!(
+            restore_changes(226, &wheel).unwrap(),
+            vec![
+                ScrollChange::SmartReel(true),
+                ScrollChange::SmartReelThreshold(4),
+                ScrollChange::VirtualAcceleration(false),
+                ScrollChange::VirtualAccelerationLevel(7),
+                ScrollChange::ModeV2 {
+                    selected: ScrollMode::Tactile,
+                    enabled: EnabledScrollModes::new(5).unwrap()
+                },
+            ]
+        );
+    }
+    #[::core::prelude::v1::test]
+    fn restore_rejects_malformed_source_values_and_does_not_invent_missing_levels() {
+        let base = json!({"scrollMode":"Tactile", "smartReelEnabled":false,
+            "accelerationEnabled":true});
+        assert_eq!(restore_changes(203, &base).unwrap().len(), 3);
+        for (key, value) in [
+            ("scrollMode", json!("Unknown")),
+            ("smartReelEnabled", json!(1)),
+            ("accelerationEnabled", Value::Null),
+            ("smartReelLevel", json!(256)),
+            ("accelerationLevel", json!(-1)),
+        ] {
+            let mut wheel = base.clone();
+            wheel[key] = value;
+            assert!(restore_changes(203, &wheel).is_err());
+        }
+    }
+    #[::core::prelude::v1::test]
+    fn initialization_identity_contains_owner_profile_and_connection_not_only_route_text() {
+        let identity = |owner, profile, connection| Initialization {
+            scope: MousePollingScope::new(EntityId::from(owner), profile, connection),
+            connection: "same-route".into(),
+            guid: "same-guid".into(),
+        };
+        assert!(identity(1, 0, 0) != identity(2, 0, 0));
+        assert!(identity(1, 0, 0) != identity(1, 1, 0));
+        assert!(identity(1, 0, 0) != identity(1, 0, 1));
+        let mut state = State::default();
+        state.initialized = Some(identity(1, 0, 0));
+        state.cancel();
+        assert!(state.initialized.is_none());
+    }
     fn request(sequence: u64) -> MouseScrollRequested {
         MouseScrollRequested {
             scope: MousePollingScope::new(EntityId::from(1), 2, 3),
             sequence,
             submission: Submission::new(vec![ScrollChange::SmartReel(true)], Default::default()),
             profile: json!({}),
+            source_events: 1,
             valid: Arc::new(AtomicBool::new(true)),
             saved: Arc::new(AtomicBool::new(false)),
             device_started: Arc::new(AtomicBool::new(false)),

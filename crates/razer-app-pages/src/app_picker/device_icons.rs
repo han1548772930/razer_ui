@@ -55,7 +55,7 @@ pub fn device_icon(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_kit::{AssetSource, SvgRenderer};
+    use gpui_kit::SvgRenderer;
     use std::{collections::BTreeSet, sync::Arc};
 
     #[test]

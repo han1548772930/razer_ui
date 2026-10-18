@@ -13,6 +13,7 @@ use razer_i18n as i18n;
 use razer_model::model::Device;
 use razer_widgets::surface;
 use razer_widgets::surface::css;
+use razer_widgets::theme::{HanboCoolerColors as Colors, ProductSurfaceColors};
 
 #[path = "armory_product/cooling_pad.rs"]
 mod cooling_pad;
@@ -28,21 +29,41 @@ pub fn supports(device: &Device) -> bool {
     )
 }
 
-/// 3893's BC.runtimeData initial values. These are source initialization,
-/// never a measurement or acknowledgement from a connected device.
-#[derive(Clone, Copy, Default)]
+/// `BC` initializes each metric to zero. An absent observation retains that
+/// presentation without recording the initialized value as a device sample.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub(crate) struct HanboRuntime {
-    cpu_temp: f32,
-    cpu_speed: f32,
-    fan_speed: f32,
-    pump_speed: f32,
-    liquid_temp: f32,
-    gpu_temp: f32,
-    gpu_speed: f32,
+    system_observed: bool,
+    cpu_temp: Option<f64>,
+    cpu_speed: Option<f64>,
+    fan_speed: Option<u16>,
+    pump_speed: Option<u16>,
+    liquid_temp: Option<u16>,
+    gpu_temp: Option<f64>,
+    gpu_speed: Option<f64>,
+    hardware_outdated: bool,
 }
-struct HanboState {
-    celsius: bool,
-    runtime: HanboRuntime,
+
+impl HanboRuntime {
+    pub(crate) fn observe_system(&mut self, sample: &razer_device::system_monitor::SystemSample) {
+        self.system_observed = true;
+        self.cpu_temp = sample.cpu_temperature;
+        self.cpu_speed = sample.cpu_clock_mhz.map(|value| value / 1000.);
+        self.gpu_temp = sample.gpu_temperature;
+        self.gpu_speed = sample.gpu_clock_mhz.map(|value| value / 1000.);
+    }
+
+    /// MW 34244 publishes only these three fields. CPU/GPU monitor values and
+    /// the hardware warning are independent of this getter pair.
+    pub(crate) fn observe_telemetry(&mut self, sample: &razer_device::hanbo_cooler::Telemetry) {
+        self.fan_speed = Some(sample.fan.rpm);
+        self.pump_speed = Some(sample.pump.rpm);
+        self.liquid_temp = Some(sample.pump.temperature_tenths_celsius);
+    }
+
+    pub(crate) fn hardware_outdated(&self) -> bool {
+        self.hardware_outdated
+    }
 }
 
 #[derive(IntoElement)]
@@ -129,6 +150,50 @@ pub(crate) fn hanbo_cooler_info(
         .relative()
         .child(product_image(artwork, 200., 200., cx))
         .child(hanbo_metrics(celsius, runtime, on_unit, window))
+        .when(runtime.hardware_outdated(), |view| {
+            view.child(resources::deferred_resource(hanbo_firmware_warning()).with_priority(1))
+        })
+        .into_any_element()
+}
+
+fn hanbo_firmware_warning() -> AnyElement {
+    div()
+        .absolute()
+        .top_full()
+        .left_0()
+        .right_0()
+        .mt(css(10.))
+        .child(
+            v_flex()
+                .w(css(315.))
+                .mx_auto()
+                .py(css(20.))
+                .px(css(30.))
+                .bg(Colors::surface())
+                .border_1()
+                .border_color(Colors::firmware_warning())
+                .rounded(css(3.))
+                .text_size(css(14.))
+                .child(
+                    h_flex()
+                        .items_center()
+                        .justify_between()
+                        .mb(css(10.))
+                        .text_color(Colors::firmware_warning())
+                        .font_weight(FontWeight::BOLD)
+                        .child(
+                            img("synapse/hanbo-warning.svg")
+                                .size(css(20.))
+                                .flex_shrink_0(),
+                        )
+                        .child(i18n::t("FIRMWARE_UPDATE_REQUIRED")),
+                )
+                .child(
+                    div()
+                        .text_center()
+                        .child(i18n::t("FIRMWARE_UPDATE_REQUIRED_DESC")),
+                ),
+        )
         .into_any_element()
 }
 
@@ -141,13 +206,13 @@ fn hanbo_metrics(
     let cpu = group([
         detail(
             "CPU_TEMP",
-            temperature(runtime.cpu_temp, celsius),
+            system_temperature(runtime.cpu_temp, celsius, runtime.system_observed),
             118.,
             false,
         ),
         detail(
             "CPU_SPEED",
-            format!("{} GHZ", runtime.cpu_speed),
+            system_clock(runtime.cpu_speed, runtime.system_observed),
             103.,
             true,
         ),
@@ -156,19 +221,19 @@ fn hanbo_metrics(
     let cooling = group([
         detail(
             "FAN_SPEED",
-            format!("{} RPM", runtime.fan_speed),
+            format!("{} RPM", initialized_integer(runtime.fan_speed)),
             141.,
             false,
         ),
         detail(
             "PUMP_SPEED",
-            format!("{} RPM", runtime.pump_speed),
+            format!("{} RPM", initialized_integer(runtime.pump_speed)),
             141.,
             false,
         ),
         detail(
             "LIQUID_TEMP",
-            temperature(runtime.liquid_temp, celsius),
+            liquid_temperature(runtime.liquid_temp, celsius),
             118.,
             true,
         ),
@@ -177,13 +242,13 @@ fn hanbo_metrics(
     let gpu = group([
         detail(
             "GPU_TEMP",
-            temperature(runtime.gpu_temp, celsius),
+            system_temperature(runtime.gpu_temp, celsius, runtime.system_observed),
             118.,
             false,
         ),
         detail(
             "GPU_SPEED",
-            format!("{} GHZ", runtime.gpu_speed),
+            system_clock(runtime.gpu_speed, runtime.system_observed),
             103.,
             false,
         ),
@@ -201,7 +266,7 @@ fn hanbo_metrics(
                     .h(relative(0.5))
                     .selected(value == celsius)
                     .when(value == celsius, |b| {
-                        b.bg(rgb(0x707070)).text_color(rgb(0x111111))
+                        b.bg(Colors::metric_border()).text_color(Colors::surface())
                     })
                     .child(label)
                     .on_click(move |_, window, cx| on_unit(value, window, cx))
@@ -239,7 +304,9 @@ fn detail(label: &'static str, value: String, width: f32, last: bool) -> AnyElem
         .items_center()
         .p(css(20.))
         .text_size(css(14.))
-        .when(!last, |v| v.border_r_1().border_color(rgb(0x707070)))
+        .when(!last, |v| {
+            v.border_r_1().border_color(Colors::metric_border())
+        })
         .child(i18n::t(label).to_uppercase())
         .child(
             div()
@@ -255,17 +322,67 @@ fn group(children: impl IntoIterator<Item = AnyElement>) -> Div {
     h_flex()
         .items_stretch()
         .flex_shrink_0()
-        .bg(rgb(0x111111))
+        .bg(Colors::surface())
         .border_1()
-        .border_color(rgb(0x707070))
+        .border_color(Colors::metric_border())
         .rounded(css(5.))
         .children(children)
 }
-fn temperature(value: f32, celsius: bool) -> String {
-    if celsius {
-        format!("{value} °C")
+fn initialized_number(value: Option<f64>) -> String {
+    match value {
+        Some(value) => value.to_string(),
+        None => "0".into(),
+    }
+}
+
+fn system_clock(value: Option<f64>, observed: bool) -> String {
+    if observed {
+        // MW 48290 formats a null clock as 0.0 without claiming a zero sample.
+        format!("{:.1} GHZ", value.unwrap_or(0.))
     } else {
+        "0 GHZ".into()
+    }
+}
+
+fn system_temperature(value: Option<f64>, celsius: bool, observed: bool) -> String {
+    if !observed {
+        return temperature(None, celsius);
+    }
+    match (value, celsius) {
+        (Some(value), true) => format!("{value:.1} °C"),
+        (Some(value), false) => {
+            let decimal = format!("{value:.1}")
+                .parse::<f64>()
+                .expect("finite temperature decimal");
+            format!("{:.1} °F", decimal * 1.8 + 32.)
+        }
+        (None, true) => " °C".into(),
+        (None, false) => "NaN °F".into(),
+    }
+}
+
+fn initialized_integer(value: Option<u16>) -> String {
+    match value {
+        Some(value) => value.to_string(),
+        None => "0".into(),
+    }
+}
+
+fn temperature(value: Option<f64>, celsius: bool) -> String {
+    if celsius {
+        format!("{} °C", initialized_number(value))
+    } else {
+        let value = value.unwrap_or(0.);
         format!("{:.1} °F", value * 1.8 + 32.)
+    }
+}
+
+/// MW `temperature.toFixed(1)` produces a decimal string only after a sample.
+fn liquid_temperature(tenths: Option<u16>, celsius: bool) -> String {
+    match tenths {
+        Some(tenths) if celsius => format!("{:.1} °C", f64::from(tenths) / 10.),
+        Some(tenths) => temperature(Some(f64::from(tenths) / 10.), false),
+        None => temperature(None, celsius),
     }
 }
 impl RenderOnce for ArmoryProduct {
@@ -276,42 +393,15 @@ impl RenderOnce for ArmoryProduct {
         let root = v_flex()
             .w_full()
             .min_w_0()
-            .bg(rgb(0x222222))
+            .bg(ProductSurfaceColors::background())
             .font_family("Roboto")
             .text_size(css(14.))
-            .text_color(rgb(0xcccccc))
+            .text_color(ProductSurfaceColors::text())
             .child(self.product_image(cx));
-        if self.device.product_id != 3893 {
-            return root.into_any_element();
-        }
-        let state = window.use_keyed_state(
-            (
-                ElementId::from(SharedString::from(format!(
-                    "hanbo-armory-{}",
-                    self.device.device_container_id
-                ))),
-                "runtime",
-            ),
-            cx,
-            |_, _| HanboState {
-                celsius: true,
-                runtime: HanboRuntime::default(),
-            },
-        );
-        let celsius = state.read(cx).celsius;
-        let runtime = state.read(cx).runtime;
-        let unit_state = state.clone();
-        root.child(hanbo_metrics(
-            celsius,
-            &runtime,
-            std::rc::Rc::new(move |value, _, cx| {
-                unit_state.update(cx, |state, cx| {
-                    state.celsius = value;
-                    cx.notify();
-                })
-            }),
-            window,
-        ))
-        .into_any_element()
+        root.into_any_element()
     }
 }
+
+#[cfg(test)]
+#[path = "armory_product/hanbo_tests.rs"]
+mod hanbo_tests;

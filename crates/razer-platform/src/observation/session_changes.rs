@@ -13,7 +13,7 @@ pub enum SessionChange {
 
 pub struct SessionMonitor {
     #[cfg(windows)]
-    _owner: crate::platform::windows::session_changes::Owner,
+    owner: crate::platform::windows::session_changes::Owner,
 }
 
 impl SessionMonitor {
@@ -22,11 +22,24 @@ impl SessionMonitor {
         {
             let (events, changes) = async_channel::unbounded();
             let owner = crate::platform::windows::session_changes::Owner::start(events)?;
-            Ok((Self { _owner: owner }, changes))
+            Ok((Self { owner }, changes))
         }
         #[cfg(not(windows))]
         {
             Err("Screen lock observation is not implemented on this platform".into())
+        }
+    }
+
+    /// Consume on a background executor and wait until the observation thread
+    /// has released its native registrations, window and callback context.
+    pub fn shutdown(self) -> Result<(), String> {
+        #[cfg(windows)]
+        {
+            self.owner.shutdown()
+        }
+        #[cfg(not(windows))]
+        {
+            Ok(())
         }
     }
 }

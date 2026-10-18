@@ -1,7 +1,7 @@
 //! Exact current 43/Ia regions. Reference geometry is converted by css(rem).
 use super::*;
 use gpui_kit::base::{Dialog, DialogPopup};
-use gpui_kit::component::{checkbox::Checkbox, select::Select};
+use gpui_kit::component::checkbox::Checkbox;
 use razer_widgets::theme::ProfilesTransferColors as Colors;
 
 impl ProfileTransfer {
@@ -128,21 +128,6 @@ impl ProfileTransfer {
             .into_any_element()
     }
     fn browse_row(&self, cx: &mut Context<Self>) -> AnyElement {
-        if self.cloud {
-            return h_flex()
-                .h(css(47.))
-                .w_full()
-                .flex_shrink_0()
-                .bg(Colors::chrome())
-                .child(div().ml(css(89.)).child(text("mYs")))
-                .child(
-                    Select::new(&self.cloud_devices)
-                        .disabled(true)
-                        .ml(css(10.))
-                        .w(css(250.)),
-                )
-                .into_any_element();
-        }
         h_flex()
             .h(css(47.))
             .w_full()
@@ -176,27 +161,6 @@ impl ProfileTransfer {
             .into_any_element()
     }
     fn body(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        if self.cloud {
-            return h_flex()
-                .flex_1()
-                .min_h_0()
-                .justify_center()
-                .child(
-                    h_flex()
-                        .h(css(80.))
-                        .px(css(20.))
-                        .border_1()
-                        .border_color(Colors::warning())
-                        .rounded(css(3.))
-                        .child(
-                            img("synapse/profiles-transfer-cone.svg")
-                                .size(css(40.))
-                                .mr(css(10.)),
-                        )
-                        .child(text("mcz")),
-                )
-                .into_any_element();
-        }
         if self.rows.is_empty() {
             return div()
                 .flex_1()
@@ -368,45 +332,7 @@ impl Render for ProfileTransfer {
                             .on_click(cx.listener(|this, _, _, cx| this.dismiss(cx))),
                     ),
             )
-            .when(self.mode == Mode::Import, |v| {
-                v.child(
-                    h_flex()
-                        .justify_center()
-                        .h(css(49.))
-                        .flex_shrink_0()
-                        .w_full()
-                        .bg(Colors::chrome())
-                        .pt(css(10.))
-                        .items_start()
-                        .child(
-                            BaseButton::new("profiles-transfer-local-cloud")
-                                .accessibility_label(format!("{} / {}", text("s2B"), text("GCq")))
-                                .h(css(36.))
-                                .p(css(5.))
-                                .rounded(css(18.))
-                                .bg(Colors::panel())
-                                .border_1()
-                                .border_color(Colors::input_border())
-                                .hover(|s| s.border_color(Colors::selected()))
-                                .children([false, true].map(|cloud| {
-                                    div()
-                                        .h(css(24.))
-                                        .px(css(10.))
-                                        .flex()
-                                        .items_center()
-                                        .rounded(css(12.))
-                                        .when(!cloud, |v| v.mr(css(5.)))
-                                        .when(cloud == self.cloud, |v| {
-                                            v.bg(Colors::selected())
-                                                .text_color(Colors::selected_text())
-                                        })
-                                        .child(text(if cloud { "GCq" } else { "s2B" }))
-                                }))
-                                .on_click(cx.listener(|this, _, _, cx| this.toggle_cloud(cx))),
-                        ),
-                )
-                .child(self.browse_row(cx))
-            })
+            .when(self.mode == Mode::Import, |v| v.child(self.browse_row(cx)))
             .child(body)
             .child(
                 v_flex()
@@ -471,14 +397,14 @@ impl Render for ProfileTransfer {
             .on_ok(|_, _, _| false)
             .close_on_backdrop_press(false)
             .backdrop(div().absolute().inset_0().bg(Colors::backdrop()).occlude())
-            .popup(
-                razer_assets::resource_scope(DialogPopup::new()
+            .popup(razer_assets::resource_scope(
+                DialogPopup::new()
                     .absolute()
                     .left(
                         window.viewport_size().width / 2. - css(300.).to_pixels(window.rem_size()),
                     )
                     .top(css(104.))
-                    .child(panel)),
-            )
+                    .child(panel),
+            ))
     }
 }

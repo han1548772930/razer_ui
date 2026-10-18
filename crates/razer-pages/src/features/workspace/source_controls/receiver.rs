@@ -22,6 +22,7 @@ pub use pairing_state::{
 };
 
 pub(super) struct ReceiverState {
+    pub(super) runtime: super::hyperpolling_runtime::State,
     indicator_since: Instant,
     pairing: PairingState,
     failure_recovery: Option<(pairing_state::FailureRecovery, Task<()>)>,
@@ -36,6 +37,7 @@ pub(super) struct ReceiverState {
 impl Default for ReceiverState {
     fn default() -> Self {
         Self {
+            runtime: Default::default(),
             indicator_since: Instant::now(),
             pairing: PairingState::default(),
             failure_recovery: None,

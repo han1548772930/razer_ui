@@ -116,10 +116,12 @@ impl<R: ThxLocalRpc> DirectThxTransport<R> {
             matches!(
                 command,
                 BlackSharkFirmwareCommand::GetFirmwareVersions
+                    | BlackSharkFirmwareCommand::FactoryReset1398
+                    | BlackSharkFirmwareCommand::GetMicStatus1398
                     | BlackSharkFirmwareCommand::GetRollerFunction
                     | BlackSharkFirmwareCommand::SetRollerFunction(_)
             ),
-            "Expected a firmware-version or roller command"
+            "Expected a source-audited direct headset command"
         );
         // No AddDevice/CheckStatus/THX binding: the current feature owns a
         // direct general-protocol operation on this retained HID collection.
@@ -195,7 +197,7 @@ impl<R: ThxLocalRpc> DirectThxTransport<R> {
         }
     }
 }
-fn exceptional(
+pub(crate) fn exceptional(
     failure: Option<&razer_device::thx_blackshark_firmware::BlackSharkFirmwareFailure>,
 ) -> Result<()> {
     if let Some(failure) = failure {

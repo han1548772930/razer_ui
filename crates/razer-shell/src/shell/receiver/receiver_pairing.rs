@@ -720,8 +720,8 @@ impl AppShell {
         })();
         result.map_err(|error| format!("{error:#}"))
     }
-    pub(super) fn install_receiver_pairing_cleanup(&mut self, cx: &mut Context<Self>) {
-        self.subscriptions.push(cx.on_app_quit(|this, cx| {
+    pub(super) fn install_receiver_pairing_cleanup(&mut self, _cx: &mut Context<Self>) {
+        self.register_exit_cleanup(|this, cx| {
             let sessions = std::mem::take(&mut this.receiver_pairing_operations);
             let retired = std::mem::take(&mut this.receiver_pairing_cleanup);
             let standalone = this.pairing_transport.clone();
@@ -740,7 +740,7 @@ impl AppShell {
                 }
             });
             async move { cleanup.await }
-        }));
+        });
     }
 
     pub(super) fn submit_dock_pairing(

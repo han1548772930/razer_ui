@@ -318,7 +318,7 @@ impl GamepadProductWorkspace {
         if connected {
             self.request_trigger_read(cx);
             self.request_controller_lighting(cx);
-            if self.page == "TAB_LIGHTING" {
+            if self.chroma_runtime.has_observers() {
                 self.refresh_controller_chroma(cx);
             }
         }

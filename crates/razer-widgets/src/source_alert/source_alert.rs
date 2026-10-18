@@ -193,8 +193,8 @@ impl Render for SourceAlert {
                     .inset_0()
                     .bg(cx.theme().title_bar.opacity(0.5)),
             )
-            .popup(
-                razer_assets::resource_scope(div()
+            .popup(razer_assets::resource_scope(
+                div()
                     .absolute()
                     .top_0()
                     .left_0()
@@ -210,8 +210,8 @@ impl Render for SourceAlert {
                         matches!(self.placement, AlertPlacement::UpperCenter),
                         |this| this.items_center(),
                     )
-                    .child(panel)),
-            )
+                    .child(panel),
+            ))
             .into_any_element()
     }
 }

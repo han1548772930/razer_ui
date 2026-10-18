@@ -393,12 +393,12 @@ impl KeyboardProductWorkspace {
                                 div().mt(surface::css(5.)).child(
                                     LightingColorPicker::new(&state.colors[channel], label)
                                         .allow_none(multiple)
-                                        .on_custom_colors_commit(cx.listener(
+                                        .on_custom_color_edit(cx.listener(
                                             move |this,
-                                                  colors: &razer_state::CustomColorSlots,
+                                                  edit: &razer_model::preferences::CustomColorEdit,
                                                   _,
                                                   cx| {
-                                                this.commit_rgb_custom_colors(&owner, colors, cx);
+                                                this.commit_rgb_custom_colors(&owner, *edit, cx);
                                             },
                                         ))
                                         .disabled(

@@ -147,6 +147,40 @@ fn send_collection_feature(
     send(report)
 }
 
+fn write_counted_output(
+    lengths: &ReportLengths,
+    report: &[u8],
+    write: impl FnOnce(&[u8]) -> anyhow::Result<usize>,
+) -> anyhow::Result<usize> {
+    ensure!(!report.is_empty(), "Output Report is empty");
+    let minimum = lengths
+        .output
+        .values()
+        .max()
+        .copied()
+        .filter(|length| *length > 0)
+        .context("Collection has no observed Output Report")?;
+    // Current HID.node hid_write pads to OutputReportByteLength and leaves a
+    // larger caller buffer intact. Its return count is a separate observation.
+    let padded;
+    let bytes = if report.len() < minimum {
+        padded = {
+            let mut bytes = vec![0; minimum];
+            bytes[..report.len()].copy_from_slice(report);
+            bytes
+        };
+        padded.as_slice()
+    } else {
+        report
+    };
+    let count = write(bytes)?;
+    ensure!(
+        count <= bytes.len(),
+        "Output count exceeds the submitted buffer"
+    );
+    Ok(count)
+}
+
 fn read_collection_feature(
     lengths: &ReportLengths,
     report: &mut [u8],
@@ -255,6 +289,14 @@ impl FeatureTransport for NativeTransport {
             .context("HID Output Report 发送失败")?;
         ensure!(sent == report.len(), "HID Output Report 未完整发送");
         Ok(())
+    }
+
+    fn write_output_counted(&self, report: &[u8]) -> anyhow::Result<usize> {
+        write_counted_output(&self.lengths, report, |bytes| {
+            self.device
+                .write(bytes)
+                .context("HID counted Output Report write failed")
+        })
     }
 
     fn get_input(&self, report: &mut [u8]) -> anyhow::Result<usize> {
@@ -375,6 +417,66 @@ impl InterruptTransport for NativeInterrupt {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn counted_output_preserves_elsa_bytes_and_native_length_disagreement() {
+        let observed = ReportLengths {
+            output: [(0, 65)].into(),
+            ..Default::default()
+        };
+        let mut report = [0; 66];
+        report[..6].copy_from_slice(&[0, 32, 1, 0, 0, 0]);
+        report[65] = 0x7a;
+        for native_count in [0, 64, 65, 66] {
+            let count = write_counted_output(&observed, &report, |sent| {
+                assert_eq!(sent, report);
+                Ok(native_count)
+            })
+            .unwrap();
+            assert_eq!(count, native_count);
+        }
+    }
+
+    #[test]
+    fn counted_output_pads_only_the_collection_minimum_and_retains_failures() {
+        let observed = ReportLengths {
+            output: [(0, 65), (4, 33)].into(),
+            ..Default::default()
+        };
+        let count = write_counted_output(&observed, &[4, 10, 20], |sent| {
+            assert_eq!(sent.len(), 65);
+            assert_eq!(&sent[..3], &[4, 10, 20]);
+            assert!(sent[3..].iter().all(|byte| *byte == 0));
+            Ok(65)
+        })
+        .unwrap();
+        assert_eq!(count, 65);
+        assert!(write_counted_output(&observed, &[0; 66], |_| Ok(67)).is_err());
+        assert!(
+            write_counted_output(&observed, &[0; 66], |_| anyhow::bail!(
+                "native write failed"
+            ))
+            .is_err()
+        );
+        for invalid in [
+            ReportLengths::default(),
+            ReportLengths {
+                output: [(0, 0)].into(),
+                ..Default::default()
+            },
+        ] {
+            assert!(
+                write_counted_output(&invalid, &[0; 66], |_| panic!(
+                    "invalid collection must not write"
+                ))
+                .is_err()
+            );
+        }
+        assert!(
+            write_counted_output(&observed, &[], |_| panic!("empty output must not write"))
+                .is_err()
+        );
+    }
 
     #[test]
     fn collection_feature_preserves_host_id_and_windows_native_prefix_count() {

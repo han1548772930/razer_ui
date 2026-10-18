@@ -75,9 +75,9 @@ fn call(sender_id: u64, action: &str, payload: Value) -> HostStorageCall {
 impl AppShell {
     pub(in crate::shell) fn install_profile_switch_notification_cleanup(
         &mut self,
-        cx: &mut Context<Self>,
+        _cx: &mut Context<Self>,
     ) {
-        self.subscriptions.push(cx.on_app_quit(|this, _| {
+        self.register_exit_cleanup(|this, _| {
             let _ = this.host_storage.call(call(
                 NOTIFICATION_VIEW,
                 "unRegisterWindowStorageEvent",
@@ -96,7 +96,7 @@ impl AppShell {
                     task.await;
                 }
             }
-        }));
+        });
     }
 
     pub(in crate::shell) fn initialize_profile_switch_notifications(

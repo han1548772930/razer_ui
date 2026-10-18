@@ -914,8 +914,8 @@ impl FirmwareUpdate {
             .on_ok(|_, _, _| false)
             .on_close(|_, _, _| {})
             .backdrop(div().absolute().inset_0().bg(Colors::border().opacity(0.6)))
-            .popup(
-                razer_assets::resource_scope(div()
+            .popup(razer_assets::resource_scope(
+                div()
                     .absolute()
                     .inset_0()
                     .w(window.viewport_size().width)
@@ -924,8 +924,8 @@ impl FirmwareUpdate {
                     .justify_center()
                     .items_start()
                     .pt(css(306.))
-                    .child(panel)),
-            )
+                    .child(panel),
+            ))
             .into_any_element()
     }
 }

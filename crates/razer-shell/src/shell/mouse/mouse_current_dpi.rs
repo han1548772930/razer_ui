@@ -10,6 +10,11 @@ pub(super) struct MouseCurrentDpiSave {
     identity: String,
     profile: Profile,
 }
+impl MouseCurrentDpiSave {
+    pub(super) fn owner(&self) -> (&str, WeakEntity<ProductWorkspace>) {
+        (&self.identity, self.workspace.downgrade())
+    }
+}
 
 impl AppShell {
     /// Source90012 startup/restore owns initialization; GET observations never
@@ -69,6 +74,9 @@ impl AppShell {
             workspace.update(cx, |workspace, cx| {
                 workspace.finish_current_dpi(&request, None, cx)
             });
+            if self.storage_error.is_some() {
+                self.cancel_pending_exit(cx);
+            }
             cx.notify();
             return;
         }
@@ -92,16 +100,17 @@ impl AppShell {
                 .collect(),
             cx,
         );
-        self.pending_saves.push_back(PreparedSave {
-            window: window.window_handle(),
+        self.pending_saves.push_back(self.prepare_save(
+            window.window_handle(),
             file,
-            product: Some(ProductSave::MouseCurrentDpi(MouseCurrentDpiSave {
+            Some(ProductSave::MouseCurrentDpi(MouseCurrentDpiSave {
                 workspace,
                 request,
                 identity,
                 profile,
             })),
-        });
+            cx,
+        ));
         self.start_pending_save(cx);
     }
 
@@ -223,6 +232,7 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         if self.close_requested
+            || !self.devices.contains(&workspace)
             || !workspace.read(cx).current_dpi_request_matches(&request, cx)
             || request.change().is_none() && !request.is_read()
         {

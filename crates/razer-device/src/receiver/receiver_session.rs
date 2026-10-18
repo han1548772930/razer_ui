@@ -23,6 +23,12 @@ pub struct Observation<T> {
     pub receiver_after: Vec<(u16, u8)>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PeerObservationPhase {
+    Before,
+    After,
+}
+
 impl ReceiverSession {
     pub fn mouse(
         product_id: u32,
@@ -168,9 +174,26 @@ impl ReceiverSession {
     pub fn observe<T, N, V>(
         &self,
         device: &dyn FeatureTransport,
+        next: N,
+        validate: V,
+        operation: impl FnOnce(&mut N, &V) -> anyhow::Result<T>,
+    ) -> anyhow::Result<Observation<T>>
+    where
+        N: FnMut() -> anyhow::Result<u8>,
+        V: Fn() -> anyhow::Result<()>,
+    {
+        self.observe_recording(device, next, validate, operation, |_, _| {})
+    }
+
+    /// Publish each actual peer response before validating it, so a failed
+    /// post-write observation cannot erase acknowledged writes or raw evidence.
+    pub fn observe_recording<T, N, V>(
+        &self,
+        device: &dyn FeatureTransport,
         mut next: N,
         validate: V,
         operation: impl FnOnce(&mut N, &V) -> anyhow::Result<T>,
+        mut record: impl FnMut(PeerObservationPhase, &[(u16, u8)]),
     ) -> anyhow::Result<Observation<T>>
     where
         N: FnMut() -> anyhow::Result<u8>,
@@ -179,11 +202,13 @@ impl ReceiverSession {
         validate()?;
         let before =
             crate::device_query::read_receiver(device, &self.receiver, next()?, &validate)?;
+        record(PeerObservationPhase::Before, &before);
         self.validate_peer(&before)?;
         validate()?;
         let reading = operation(&mut next, &validate)?;
         validate()?;
         let after = crate::device_query::read_receiver(device, &self.receiver, next()?, &validate)?;
+        record(PeerObservationPhase::After, &after);
         self.validate_peer(&after)?;
         validate()?;
         Ok(Observation {

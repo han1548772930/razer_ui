@@ -1,4 +1,5 @@
 //! Device/profile contracts and explicit preview fixtures; no UI or transport I/O.
+pub mod chroma_settings;
 pub mod chroma_studio;
 mod controller_input;
 pub mod domain;
@@ -19,3 +20,6 @@ pub mod mapping;
 pub mod module_service;
 pub mod preferences;
 pub mod shortcuts;
+
+pub mod mouse_matcher;
+pub mod profile_transfer;

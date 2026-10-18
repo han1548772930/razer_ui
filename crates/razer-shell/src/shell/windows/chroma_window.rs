@@ -68,6 +68,21 @@ pub(super) struct ChromaWindow {
 }
 
 impl ChromaWindow {
+    pub(super) fn refresh_locale(&mut self, cx: &mut Context<Self>) {
+        let handle = self.window;
+        let owner = cx.entity().downgrade();
+        cx.defer(move |cx| {
+            let _ = handle.update(cx, |_, window, cx| {
+                let _ = owner.update(cx, |this, cx| {
+                    if this.window == handle {
+                        this.page
+                            .update(cx, |page, cx| page.refresh_locale(window, cx));
+                    }
+                });
+            });
+        });
+        cx.notify();
+    }
     pub(super) fn schedule_mapping_studio(&mut self, cx: &mut Context<Self>) {
         let handle = self.window;
         self.mapping_studio_task = Some(cx.spawn(async move |this, cx| {
@@ -141,6 +156,8 @@ impl ChromaWindow {
     }
     pub(super) fn bind_window(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.window = window.window_handle();
+        self.page
+            .update(cx, |page, cx| page.bind_window(window, cx));
         if let Some(settings) = &self.settings {
             settings.update(cx, |settings, cx| settings.bind_window(window, cx));
         }

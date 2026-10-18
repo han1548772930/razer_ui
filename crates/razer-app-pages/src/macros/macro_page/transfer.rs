@@ -1,34 +1,22 @@
 //! Mn import/export -> 25572.FM, kept local; no DLL mutation or playback.
 use super::*;
-use std::{
-    io::{Read, Write},
-    path::Path,
-};
-#[path = "transfer/xml.rs"]
-mod xml;
+use razer_model::macro_library::xml;
+use razer_storage::macro_transfer::{Operation, Transfer};
+use std::path::Path;
 
-const MAX_BYTES: usize = 16 * 1024 * 1024;
+pub(super) struct PendingTransfer {
+    request: Transfer,
+    _task: Task<()>,
+}
 
-fn read(path: &Path) -> Result<Entry, String> {
-    if !path
-        .extension()
-        .is_some_and(|s| s.eq_ignore_ascii_case("xml"))
-    {
-        return Err("请选择宏 XML 文件。".into());
+impl Drop for PendingTransfer {
+    fn drop(&mut self) {
+        self.request.cancel();
     }
-    let file = std::fs::File::open(path).map_err(|e| format!("无法打开宏文件：{e}"))?;
-    if !file.metadata().map_err(|e| e.to_string())?.is_file() {
-        return Err("请选择宏 XML 文件。".into());
-    }
-    let mut bytes = Vec::new();
-    file.take(MAX_BYTES as u64 + 1)
-        .read_to_end(&mut bytes)
-        .map_err(|e| e.to_string())?;
-    if bytes.len() > MAX_BYTES {
-        return Err("宏 XML 超出 16 MiB 限制。".into());
-    }
-    let text = std::str::from_utf8(&bytes).map_err(|_| "宏 XML 不是有效的 UTF-8 文件。")?;
-    let mut entry = xml::decode(text.trim_start_matches('\u{feff}'))?;
+}
+
+fn read(request: &Operation, path: &Path) -> Result<Entry, String> {
+    let mut entry = request.read_xml(path)?;
     if entry
         .actions
         .iter()
@@ -39,7 +27,7 @@ fn read(path: &Path) -> Result<Entry, String> {
         })?;
         for item in &mut entry.actions {
             if let Some(movement) = &mut item.mouse_movement {
-                movement.geometry = Some(razer_pages::features::macro_library::RecordingGeometry {
+                movement.geometry = Some(razer_model::macro_library::RecordingGeometry {
                     monitors_before: observed.monitors.clone(),
                     monitors_after: observed.monitors.clone(),
                     screen_before: observed.screen.clone(),
@@ -49,27 +37,6 @@ fn read(path: &Path) -> Result<Entry, String> {
         }
     }
     Ok(entry)
-}
-
-fn write(path: &Path, text: &str) -> Result<(), String> {
-    // Save picker confirms replacement. Stage alongside the selected file so
-    // an I/O failure cannot truncate the user's previous export.
-    let temp = path.with_extension(format!("{}.tmp", uuid::Uuid::new_v4()));
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&temp)
-        .map_err(|e| format!("宏 XML 导出失败：{e}"))?;
-    let result = (|| -> std::io::Result<()> {
-        file.write_all(text.as_bytes())?;
-        file.sync_all()?;
-        drop(file);
-        std::fs::rename(&temp, path)
-    })();
-    if result.is_err() {
-        let _ = std::fs::remove_file(&temp);
-    }
-    result.map_err(|e| format!("宏 XML 导出失败：{e}"))
 }
 
 /// 25572.N with the hc operation is also the current import naming rule.
@@ -102,6 +69,12 @@ fn import_name(entries: &[Entry], original: &str) -> String {
 }
 
 impl MacroPage {
+    pub fn cancel_transfer(&mut self, cx: &mut Context<Self>) {
+        self.transfer_task = None;
+        self.transfer_busy = false;
+        cx.notify();
+    }
+
     pub fn import_xml(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.transfer_busy || self.recording_busy() {
             return;
@@ -115,12 +88,22 @@ impl MacroPage {
             multiple: false,
             prompt: Some(format!("{} (.xml)", tr("TEXT_PROFILE_BAR_S3_DROPDOWN_IMPORT")).into()),
         });
-        cx.spawn_in(window, async move |this, cx| {
+        let request = Transfer::new();
+        let current = request.clone();
+        let operation = match request.accept() {
+            Ok(operation) => operation,
+            Err(error) => {
+                self.transfer_busy = false;
+                window.push_notification(error, cx);
+                return;
+            }
+        };
+        let task = cx.spawn_in(window, async move |this, cx| {
             let result = match prompt.await {
                 Ok(Ok(Some(paths))) => match paths.into_iter().next() {
                     Some(path) => Some(
                         cx.background_executor()
-                            .spawn(async move { read(&path) })
+                            .spawn(async move { read(&operation, &path) })
                             .await,
                     ),
                     None => None,
@@ -129,7 +112,15 @@ impl MacroPage {
                 _ => Some(Err("无法打开宏 XML 文件选择器。".into())),
             };
             let _ = this.update_in(cx, |this, window, cx| {
+                if !this
+                    .transfer_task
+                    .as_ref()
+                    .is_some_and(|pending| pending.request.is_same(&current))
+                {
+                    return;
+                }
                 this.transfer_busy = false;
+                this.transfer_task = None;
                 if let Some(result) = result {
                     match result.and_then(|entry| this.accept_xml(entry, cx)) {
                         Ok(name) => window.push_notification(
@@ -141,8 +132,11 @@ impl MacroPage {
                 }
                 cx.notify();
             });
-        })
-        .detach();
+        });
+        self.transfer_task = Some(PendingTransfer {
+            request,
+            _task: task,
+        });
         cx.notify();
     }
 
@@ -228,10 +222,20 @@ impl MacroPage {
                 }
             })
             .collect::<String>();
-        let directory = std::env::current_dir().unwrap_or_else(|_| ".".into());
+        let directory = std::path::PathBuf::from(".");
         let prompt = cx.prompt_for_new_path(&directory, Some(&format!("{name}.xml")));
         self.transfer_busy = true;
-        cx.spawn_in(window, async move |this, cx| {
+        let request = Transfer::new();
+        let current = request.clone();
+        let operation = match request.accept() {
+            Ok(operation) => operation,
+            Err(error) => {
+                self.transfer_busy = false;
+                window.push_notification(error, cx);
+                return;
+            }
+        };
+        let task = cx.spawn_in(window, async move |this, cx| {
             let result = match prompt.await {
                 Ok(Ok(Some(mut path))) => {
                     if path.extension().is_none() {
@@ -245,7 +249,7 @@ impl MacroPage {
                     } else {
                         Some(
                             cx.background_executor()
-                                .spawn(async move { write(&path, &text) })
+                                .spawn(async move { operation.write_xml(&path, &text) })
                                 .await,
                         )
                     }
@@ -254,7 +258,15 @@ impl MacroPage {
                 _ => Some(Err("无法打开宏 XML 保存窗口。".into())),
             };
             let _ = this.update_in(cx, |this, window, cx| {
+                if !this
+                    .transfer_task
+                    .as_ref()
+                    .is_some_and(|pending| pending.request.is_same(&current))
+                {
+                    return;
+                }
                 this.transfer_busy = false;
+                this.transfer_task = None;
                 if let Some(result) = result {
                     window.push_notification(
                         match result {
@@ -266,8 +278,11 @@ impl MacroPage {
                 }
                 cx.notify();
             });
-        })
-        .detach();
+        });
+        self.transfer_task = Some(PendingTransfer {
+            request,
+            _task: task,
+        });
         cx.notify();
     }
 }

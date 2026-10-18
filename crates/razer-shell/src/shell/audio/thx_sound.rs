@@ -39,6 +39,7 @@ enum SubmissionGuard {
 /// Sound jobs and is never reused for a different HID path/connection epoch.
 pub(super) struct RetainedOwner {
     connection: ThxConnectionEpoch,
+    releasing: AtomicBool,
     session: Mutex<OwnerClient>,
 }
 struct OwnerClient {
@@ -47,7 +48,33 @@ struct OwnerClient {
     id: String,
     scope: ThxSubmissionScope,
 }
-type OwnerSlot = Arc<RetainedOwner>;
+pub(super) type OwnerSlot = Arc<RetainedOwner>;
+pub(super) struct RetiredOwner {
+    owner: OwnerSlot,
+    source_close: bool,
+}
+impl RetainedOwner {
+    pub(super) fn connection(&self) -> &ThxConnectionEpoch {
+        &self.connection
+    }
+    fn acquire(&self, canceled: &AtomicBool) -> Result<std::sync::MutexGuard<'_, OwnerClient>> {
+        let accepting = || -> Result<()> {
+            ensure!(!canceled.load(Ordering::Acquire), "THX request is canceled");
+            ensure!(
+                !self.releasing.load(Ordering::Acquire),
+                "THX owner is releasing its transport"
+            );
+            Ok(())
+        };
+        accepting()?;
+        let owner = self
+            .session
+            .lock()
+            .map_err(|_| anyhow::anyhow!("THX owner lock failed"))?;
+        accepting()?;
+        Ok(owner)
+    }
+}
 
 fn record_receipt(
     history: &Arc<Mutex<std::collections::VecDeque<ThxSubmissionProgress>>>,
@@ -150,10 +177,7 @@ fn run(
         )?;
     }
     check()?;
-    let mut owner = owner_slot
-        .session
-        .lock()
-        .map_err(|_| anyhow::anyhow!("THX owner lock failed"))?;
+    let mut owner = owner_slot.acquire(cancellation)?;
     ensure!(
         owner.scope.product_id == scope.product_id
             && owner
@@ -285,6 +309,32 @@ fn run(
     result
 }
 
+/// Help uses the same retained child and serialized client as Sound jobs.
+/// Source resetHardware is a no-op while DeviceResetFeature is installed.
+pub(super) fn run_help_factory_reset1398(
+    scope: ThxSubmissionScope,
+    device: Device,
+    canceled: &AtomicBool,
+    owner: &OwnerSlot,
+    history: &Arc<Mutex<std::collections::VecDeque<ThxSubmissionProgress>>>,
+) -> Result<ThxSubmissionProgress> {
+    ensure!(
+        device.product_id == razer_device::blackshark_reset::PRODUCT_ID,
+        "No current Help hardware reset owner for this product"
+    );
+    let result = run(
+        scope,
+        ThxSubmissionPlan::FactoryReset1398,
+        device,
+        canceled,
+        owner,
+    );
+    if let Ok(progress) = &result {
+        record_receipt(history, progress.clone());
+    }
+    result
+}
+
 /// Keep independent local initialization receipts when the render RPC fails.
 /// This bookkeeping does not manufacture a source UI success notification.
 fn merge_local_initialization(
@@ -339,6 +389,7 @@ fn release_owner(
     source_close: bool,
     history: &Arc<Mutex<std::collections::VecDeque<ThxSubmissionProgress>>>,
 ) {
+    slot.releasing.store(true, Ordering::Release);
     let Ok(mut owner) = slot.session.lock() else {
         return;
     };
@@ -428,22 +479,102 @@ fn release_owner(
     }
 }
 impl AppShell {
-    pub(super) fn install_thx_cleanup(&mut self, cx: &mut Context<Self>) {
-        self.subscriptions.push(cx.on_app_quit(|this, cx| {
+    pub(super) fn help_hardware_reset_owner_current(
+        &self,
+        identity: &str,
+        owner: &OwnerSlot,
+    ) -> bool {
+        !owner.releasing.load(Ordering::Acquire)
+            && self
+                .thx_owners
+                .get(identity)
+                .is_some_and(|current| Arc::ptr_eq(current, owner))
+            && self
+                .thx_render_discovery
+                .current_epoch(&owner.connection.identity)
+                .as_ref()
+                == Some(&owner.connection)
+    }
+    pub(super) fn help_factory_reset1398_owner(
+        &mut self,
+        workspace: &Entity<ProductWorkspace>,
+        scope: &ThxSubmissionScope,
+        cx: &App,
+    ) -> Result<OwnerSlot> {
+        ensure!(
+            self.devices.contains(workspace) && !self.close_requested,
+            "Help reset workspace is no longer accepting requests"
+        );
+        ensure!(
+            self.thx_cleanup.iter().all(JoinHandle::is_finished)
+                && self.thx_retired_owners.is_empty(),
+            "Previous headset owner is still releasing its transport"
+        );
+        let device = workspace.read(cx).device(cx);
+        ensure!(
+            device.product_id == razer_device::blackshark_reset::PRODUCT_ID,
+            "Help reset is not a current 1398 owner"
+        );
+        let connection = self
+            .observed_thx_connection(device)?
+            .and_then(|identity| self.thx_render_discovery.current_epoch(&identity))
+            .context("Help reset has no retained physical connection epoch")?;
+        self.retained_thx_owner(workspace.read(cx).identity(cx), scope, connection)
+    }
+
+    fn retained_thx_owner(
+        &mut self,
+        identity: String,
+        scope: &ThxSubmissionScope,
+        connection: ThxConnectionEpoch,
+    ) -> Result<OwnerSlot> {
+        let owner = self
+            .thx_owners
+            .entry(identity)
+            .or_insert_with(|| {
+                Arc::new(RetainedOwner {
+                    connection: connection.clone(),
+                    releasing: AtomicBool::new(false),
+                    session: Mutex::new(OwnerClient {
+                        client: None,
+                        render_started: false,
+                        id: uuid::Uuid::new_v4().to_string(),
+                        scope: scope.clone(),
+                    }),
+                })
+            })
+            .clone();
+        ensure!(
+            owner.connection == connection,
+            "Retained headset owner belongs to a previous physical connection"
+        );
+        ensure!(
+            !owner.releasing.load(Ordering::Acquire),
+            "Retained headset owner is releasing its transport"
+        );
+        Ok(owner)
+    }
+
+    pub(super) fn install_thx_cleanup(&mut self, _cx: &mut Context<Self>) {
+        self.register_exit_cleanup(|this, cx| {
             this.cancel_thx_jobs();
             let workers = std::mem::take(&mut this.thx_cleanup);
             let owners = std::mem::take(&mut this.thx_owners);
+            let retired = std::mem::take(&mut this.thx_retired_owners);
             let history = this.thx_receipt_history.clone();
             let cleanup = cx.background_executor().spawn(async move {
                 for worker in workers {
                     let _ = worker.join();
+                }
+                for retired in retired {
+                    release_owner(retired.owner, retired.source_close, &history);
                 }
                 for (_, owner) in owners {
                     release_owner(owner, true, &history);
                 }
             });
             async move { cleanup.await }
-        }));
+        });
     }
     pub(super) fn cancel_thx_jobs(&mut self) {
         for (_, session) in std::mem::take(&mut self.thx_jobs) {
@@ -455,11 +586,22 @@ impl AppShell {
             return;
         };
         let history = self.thx_receipt_history.clone();
-        if let Ok(worker) = thread::Builder::new()
+        // Preserve the owner if the OS rejects thread creation. Its client
+        // must remain with a background release owner, including this failure.
+        let release = owner.clone();
+        match thread::Builder::new()
             .name("thx-owner-release".into())
-            .spawn(move || release_owner(owner, source_close, &history))
+            .spawn(move || release_owner(release, source_close, &history))
         {
-            self.thx_cleanup.push(worker);
+            Ok(worker) => self.thx_cleanup.push(worker),
+            Err(error) => {
+                self.thx_retired_owners.push(RetiredOwner {
+                    owner,
+                    source_close,
+                });
+                self.status = format!("THX 清理线程启动失败：{error}");
+                eprintln!("[thx-local] {}", self.status);
+            }
         }
     }
     pub(super) fn cancel_thx_sound_jobs(&mut self) {
@@ -794,21 +936,14 @@ impl AppShell {
             self.status = "THX 未提交：已确认的连接周期不可用".into();
             return;
         };
-        let owner_slot = self
-            .thx_owners
-            .entry(identity.clone())
-            .or_insert_with(|| {
-                Arc::new(RetainedOwner {
-                    connection,
-                    session: Mutex::new(OwnerClient {
-                        client: None,
-                        render_started: false,
-                        id: uuid::Uuid::new_v4().to_string(),
-                        scope: scope.clone(),
-                    }),
-                })
-            })
-            .clone();
+        let owner_slot = match self.retained_thx_owner(identity.clone(), &scope, connection) {
+            Ok(owner) => owner,
+            Err(error) => {
+                self.status = format!("THX retained owner is unavailable: {error:#}");
+                cx.notify();
+                return;
+            }
+        };
         let mut pending = vec![];
         for worker in std::mem::take(&mut self.thx_cleanup) {
             if worker.is_finished() {
@@ -824,6 +959,7 @@ impl AppShell {
         let mut predecessors = std::mem::take(&mut self.thx_cleanup);
         predecessors.extend(self.thx_jobs.remove(&identity).and_then(Session::retire));
         let predecessor = Arc::new(Mutex::new(predecessors));
+        let retired = Arc::new(Mutex::new(std::mem::take(&mut self.thx_retired_owners)));
         self.thx_job_sequence = self.thx_job_sequence.wrapping_add(1);
         let job_revision = self.thx_job_sequence;
         if render_connection.is_some() {
@@ -832,6 +968,7 @@ impl AppShell {
             self.thx_progress.remove(&identity);
         }
         let previous = predecessor.clone();
+        let retired_owners = retired.clone();
         let canceled = Arc::new(AtomicBool::new(false));
         let signal = canceled.clone();
         let retained_scope = scope.clone();
@@ -847,6 +984,9 @@ impl AppShell {
                 let workers = std::mem::take(&mut *previous.lock().unwrap());
                 for worker in workers {
                     let _ = worker.join();
+                }
+                for retired in std::mem::take(&mut *retired_owners.lock().unwrap()) {
+                    release_owner(retired.owner, retired.source_close, &history);
                 }
                 let result = (|| -> Result<ThxSubmissionProgress> {
                     let needs_render_setup = !owner_slot
@@ -909,6 +1049,8 @@ impl AppShell {
             Err(error) => {
                 self.thx_cleanup
                     .extend(std::mem::take(&mut *predecessor.lock().unwrap()));
+                self.thx_retired_owners
+                    .extend(std::mem::take(&mut *retired.lock().unwrap()));
                 self.status = format!("THX 工作线程启动失败：{error}");
                 cx.notify();
                 return;
@@ -1084,6 +1226,58 @@ impl AppShell {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[::core::prelude::v1::test]
+    fn help_hardware_reset_waiting_owner_rejects_release_or_cancel_before_reopening_transport() {
+        for cancel in [false, true] {
+            let scope = ThxSubmissionScope {
+                product_id: 1398,
+                container_id: "simulated".into(),
+                serial_number: "simulated".into(),
+                profile_id: "profile".into(),
+                generation: 1,
+            };
+            let owner = Arc::new(RetainedOwner {
+                connection: ThxConnectionEpoch {
+                    identity: ThxConnectionIdentity::new(
+                        1398,
+                        "simulated",
+                        "simulated",
+                        1398,
+                        b"simulated-hid".to_vec(),
+                    )
+                    .unwrap(),
+                    epoch: 1,
+                },
+                releasing: AtomicBool::new(false),
+                session: Mutex::new(OwnerClient {
+                    client: None,
+                    render_started: false,
+                    id: "simulated-owner".into(),
+                    scope,
+                }),
+            });
+            let signal = Arc::new(AtomicBool::new(false));
+            let barrier = Arc::new(std::sync::Barrier::new(2));
+            let guard = owner.session.lock().unwrap();
+            let waiting = owner.clone();
+            let waiting_signal = signal.clone();
+            let waiting_barrier = barrier.clone();
+            let worker = thread::spawn(move || {
+                waiting_barrier.wait();
+                waiting.acquire(&waiting_signal).is_err()
+            });
+            barrier.wait();
+            if cancel {
+                signal.store(true, Ordering::Release);
+            } else {
+                owner.releasing.store(true, Ordering::Release);
+            }
+            drop(guard);
+            assert!(worker.join().unwrap());
+            assert!(owner.session.lock().unwrap().client.is_none());
+        }
+    }
 
     #[::core::prelude::v1::test]
     fn render_failure_keeps_independent_roller_observation_and_cleanup_errors() {

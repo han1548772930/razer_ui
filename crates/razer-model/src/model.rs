@@ -149,7 +149,7 @@ impl SetupStatus {
 ///
 /// 雷云支持 X/Y 独立 DPI（`support_xy_dpi`），所以两轴各存一份；
 /// 不支持时两者相等。
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DpiStage {
     pub x: u32,
     pub y: u32,
@@ -162,7 +162,7 @@ impl DpiStage {
 }
 
 /// 设备上的 DPI 档位组（实测字段在 **profile** 上，不在设备上）。
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DpiStages {
     /// 是否启用多档位 DPI 切换。
     pub enable: bool,
@@ -186,7 +186,7 @@ impl DpiStages {
 }
 
 /// 一个配置文件。
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Profile {
     /// Per-product source profile, independent from the original ten adapters.
     #[serde(default, skip_serializing_if = "Option::is_none")]

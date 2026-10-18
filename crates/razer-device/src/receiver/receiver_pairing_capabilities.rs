@@ -1,5 +1,4 @@
 //! Fixed local pairing command factories.
-//! Maintenance input SHA-256: 413623b1293d3446228365916adce7887ec3625d0d895e27992ca1631f8f1a89
 //! No source JSON parsing or runtime resource access is required.
 use crate::receiver_capabilities::{ReceiverCapability, ReceiverProtocol, ReceiverStartupRetry};
 use crate::receiver_pairing::PairingCapability;
@@ -87,7 +86,7 @@ pub(crate) fn products() -> Vec<PairingCapability> {
                 product_id: 241,
                 claim_interface: 3,
                 report_bytes: 91,
-                report_id: 0,
+                report_id: 3,
                 transaction_prefix: 224,
                 transaction_modulus: 31,
                 max_retry_in: 10,
@@ -119,7 +118,7 @@ pub(crate) fn products() -> Vec<PairingCapability> {
                 product_id: 241,
                 claim_interface: 3,
                 report_bytes: 91,
-                report_id: 0,
+                report_id: 3,
                 transaction_prefix: 224,
                 transaction_modulus: 31,
                 max_retry_in: 10,

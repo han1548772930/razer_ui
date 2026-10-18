@@ -1,7 +1,6 @@
 //! Source xa/Gr countdown and recorder state, backed by DLL recorder events.
 use super::recording_actor::{Command, Update};
 use super::*;
-use std::sync::mpsc;
 
 #[derive(Default, Clone, Copy, PartialEq, Eq)]
 pub enum Stage {
@@ -22,7 +21,9 @@ pub struct RecordingUi {
     pub preview_offset: usize,
     pub scroll: ScrollHandle,
     generation: u64,
-    command: Option<mpsc::Sender<Command>>,
+    command: Option<recording_actor::Session>,
+    countdown_task: Option<Task<()>>,
+    updates_task: Option<Task<()>>,
     document: Option<u64>,
     cancelled: bool,
 }
@@ -96,7 +97,7 @@ impl MacroPage {
         self.recording.stage = Stage::Countdown(delay);
         self.recording.status = format!("将在 {delay} 秒后开始录制");
         cx.notify();
-        cx.spawn(async move |this, cx| {
+        self.recording.countdown_task = Some(cx.spawn(async move |this, cx| {
             loop {
                 cx.background_executor().timer(Duration::from_secs(1)).await;
                 let keep = this
@@ -122,10 +123,10 @@ impl MacroPage {
                     break;
                 }
             }
-        })
-        .detach();
+        }));
     }
     fn start_recording(&mut self, cx: &mut Context<Self>) {
+        self.recording.countdown_task = None;
         let options = match self.recording_options(cx) {
             Ok(options) => options,
             Err(error) => {
@@ -153,7 +154,7 @@ impl MacroPage {
         self.recording.status = "正在等待原生录制 started 事件…".into();
         let generation = self.recording.generation;
         cx.notify();
-        cx.spawn(async move |this, cx| {
+        self.recording.updates_task = Some(cx.spawn(async move |this, cx| {
             while let Ok(update) = receiver.recv().await {
                 let finished = matches!(&update, Update::Finished(_));
                 if this
@@ -243,8 +244,7 @@ impl MacroPage {
                     cx.notify();
                 }
             });
-        })
-        .detach();
+        }));
     }
     /// Called by shell close/navigation. Actor shutdown stays on its thread.
     pub fn cancel_recording(&mut self, cx: &mut Context<Self>) {
@@ -256,6 +256,7 @@ impl MacroPage {
             self.recording.stage = Stage::Stopping;
             self.recording.status = "正在取消原生录制…".into();
         } else {
+            self.recording.countdown_task = None;
             self.recording.generation = self.recording.generation.wrapping_add(1);
             self.recording.stage = Stage::Idle;
             self.recording.preview.clear();

@@ -9,6 +9,7 @@ use razer_pages::features::SeirenEqRequested;
 use razer_pages::features::{
     SeirenStreamMixerCaptureChanged, SeirenStreamMixerObservation, SeirenStreamMixerRequested,
 };
+use razer_service::mapping::mode_capture::{self, Reply as CaptureReply};
 #[path = "audio_notifications_mixer.rs"]
 mod mixer;
 
@@ -264,6 +265,7 @@ pub(super) fn run(
     let mut native = None;
     let mut stream_enabled = false;
     let mut capturing = false;
+    let mut capture: Option<mode_capture::Session> = None;
     let mut capture_request: Option<SeirenStreamMixerCaptureChanged> = None;
     let mut mixer = mixer::MixerOwner::new(
         observed.product_id(),
@@ -327,7 +329,9 @@ pub(super) fn run(
             {
                 // Blur/unmount invalidates the old request before its Stop can
                 // reach this FIFO. Teardown must not use that invalid guard.
-                client.request(ServiceRequest::StopShortcutCapture)?;
+                if let Some(session) = capture.take() {
+                    session.stop().map_err(anyhow::Error::msg)?;
+                }
                 capturing = false;
                 capture_request = None;
             }
@@ -361,11 +365,18 @@ pub(super) fn run(
                     {
                         continue;
                     }
-                    match client.request(if enabled {
-                        ServiceRequest::StartShortcutCapture
+                    let result = if enabled {
+                        if capture.is_none() {
+                            mode_capture::Session::start().map(|session| capture = Some(session))
+                        } else {
+                            Ok(())
+                        }
                     } else {
-                        ServiceRequest::StopShortcutCapture
-                    }) {
+                        capture
+                            .take()
+                            .map_or(Ok(()), |session| session.stop().map_err(anyhow::Error::msg))
+                    };
+                    match result {
                         Ok(_) => {
                             capturing = enabled;
                             capture_request = enabled.then_some(request);
@@ -480,24 +491,21 @@ pub(super) fn run(
             {
                 eprintln!("[AudioRouter_StatusChange] {}", events["events"]);
             }
-            if capturing {
-                let events = client.request(ServiceRequest::ShortcutCaptureEvents)?;
-                for event in events["events"]
-                    .as_array()
-                    .context("Mixer shortcut mode event array is absent")?
-                {
-                    let event: Value = serde_json::from_str(
-                        event["event"]
-                            .as_str()
-                            .context("Mixer shortcut mode event JSON is absent")?,
-                    )?;
-                    if let (Some(enabled), Some(request)) = (
-                        event["isEnabled"].as_bool(),
-                        capture_request
-                            .as_ref()
-                            .filter(|request| request.is_valid()),
-                    ) {
-                        let _ = status.send(Update::CaptureMode(request.clone(), enabled));
+            if let Some(session) = &capture {
+                for reply in session.drain() {
+                    match reply {
+                        CaptureReply::Ready => {}
+                        CaptureReply::Mode(enabled) => {
+                            if let Some(request) = capture_request
+                                .as_ref()
+                                .filter(|request| request.is_valid())
+                            {
+                                let _ = status.send(Update::CaptureMode(request.clone(), enabled));
+                            }
+                        }
+                        CaptureReply::Failed(error) => {
+                            report(&status, format!("Mixer shortcut capture: {error}"));
+                        }
                     }
                 }
             }
@@ -511,8 +519,8 @@ pub(super) fn run(
     // Teardown must remain possible after the owner invalidates foreground
     // requests. No subsequent product mutation is submitted under this guard.
     client.set_request_guard(Arc::new(AtomicBool::new(true)));
-    if capturing {
-        if let Err(error) = client.request(ServiceRequest::StopShortcutCapture) {
+    if let Some(session) = capture {
+        if let Err(error) = session.stop() {
             report(
                 &status,
                 format!("Mixer shortcut capture cleanup: {error:#}"),

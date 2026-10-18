@@ -112,6 +112,7 @@ pub(super) struct SourceProfileTransfer {
     picker_pending: bool,
     picker_generation: u64,
     picker_task: Option<Task<()>>,
+    request: razer_storage::file_transfer::Transfer,
     error: Option<String>,
     focus: FocusHandle,
     closed: bool,
@@ -127,12 +128,18 @@ pub(super) enum SourceProfileTransferEvent {
         macros: Vec<Value>,
     },
 }
+impl Drop for SourceProfileTransfer {
+    fn drop(&mut self) {
+        self.request.cancel();
+    }
+}
 impl EventEmitter<SourceProfileTransferEvent> for SourceProfileTransfer {}
 impl SourceProfileTransfer {
     pub(super) fn new(
         pid: u32,
         mode: ProfileTransferMode,
         target: Value,
+        request: razer_storage::file_transfer::Transfer,
         profiles: Vec<Value>,
         macros: Vec<Value>,
         active: String,
@@ -180,6 +187,7 @@ impl SourceProfileTransfer {
             picker_pending: false,
             picker_generation: 0,
             picker_task: None,
+            request,
             error: None,
             focus: cx.focus_handle(),
             closed: false,
@@ -193,6 +201,7 @@ impl SourceProfileTransfer {
             return;
         }
         self.closed = true;
+        self.request.cancel();
         self.picker_generation = self.picker_generation.wrapping_add(1);
         self.picker_task = None;
         cx.emit(SourceProfileTransferEvent::Close);
@@ -201,6 +210,14 @@ impl SourceProfileTransfer {
         if self.mode != ProfileTransferMode::Import || self.picker_pending {
             return;
         }
+        let operation = match self.request.accept() {
+            Ok(operation) => operation,
+            Err(error) => {
+                self.error = Some(error);
+                cx.notify();
+                return;
+            }
+        };
         self.picker_pending = true;
         self.error = None;
         self.picker_generation = self.picker_generation.wrapping_add(1);
@@ -232,12 +249,7 @@ impl SourceProfileTransfer {
                 Ok(Some(Ok(path))) => Some(
                     cx.background_executor()
                         .spawn(async move {
-                            std::fs::read(path)
-                                .map_err(|e| e.to_string())
-                                .and_then(|bytes| {
-                                    razer_device::profile_transfer::decode(&bytes, &target)
-                                        .map_err(|e| e.to_string())
-                                })
+                            razer_storage::profile_transfer::read_source(&operation, &path, &target)
                         })
                         .await,
                 ),
@@ -252,7 +264,7 @@ impl SourceProfileTransfer {
                 this.picker_pending = false;
                 this.picker_task = None;
                 if let Some(loaded) = loaded {
-                    match loaded {
+                    match this.request.check().and(loaded) {
                         Ok(file) => {
                             this.profiles = file
                                 .profiles()
@@ -295,20 +307,32 @@ impl SourceProfileTransfer {
                 macros: self.macros.clone(),
             });
         } else {
+            let Some(product) = razer_device::profile_transfer::product_target(self.pid) else {
+                self.error = Some("The product profile file identity is absent".into());
+                cx.notify();
+                return;
+            };
             let mut required = BTreeSet::new();
             let mut macros = Vec::new();
-            for r in self.profiles.iter().filter(|r| r.selected) {
+            for r in self
+                .profiles
+                .iter()
+                .filter(|r| r.selected && product.export_rule.includes_macros())
+            {
                 for mac in r.macros.iter().filter(|m| m.selected) {
                     if !required.insert(mac.guid.clone()) {
                         continue;
                     }
                     let Some(value) = self.macros.iter().find(|v| v["guid"] == mac.guid) else {
-                        self.error = Some(format!(
-                            "The referenced macro {} is absent from local storage",
-                            mac.name
-                        ));
-                        cx.notify();
-                        return;
+                        if product.export_rule.requires_selected_macros() {
+                            self.error = Some(format!(
+                                "The referenced macro {} is absent from local storage",
+                                mac.name
+                            ));
+                            cx.notify();
+                            return;
+                        }
+                        continue;
                     };
                     macros.push(value.clone());
                 }
@@ -609,13 +633,13 @@ impl Render for SourceProfileTransfer {
             .on_ok(|_, _, _| false)
             .close_on_backdrop_press(false)
             .backdrop(div().absolute().inset_0().bg(rgba(0x000000b3)).occlude())
-            .popup(
-                razer_assets::resource_scope(DialogPopup::new()
+            .popup(razer_assets::resource_scope(
+                DialogPopup::new()
                     .absolute()
                     .left(left)
                     .top(surface::css(g.top))
-                    .child(panel)),
-            )
+                    .child(panel),
+            ))
     }
 }
 

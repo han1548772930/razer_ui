@@ -287,6 +287,30 @@ pub fn execute_retained<T: ThxJobTransport>(
             "THX retained owner product differs"
         );
         validate()?;
+        if plan == ThxSubmissionPlan::FactoryReset1398 {
+            ensure!(
+                scope.product_id == razer_device::blackshark_reset::PRODUCT_ID,
+                "Factory reset has no current audit for this product"
+            );
+            controller.reset_blackshark_local_profile()?;
+            // DeviceReset's independent Valkyrie observer reads mic state.
+            // A device-level getter failure must not suppress the reset setter.
+            let mic = controller.transport_mut().exchange_hid(
+                razer_device::thx_blackshark_firmware::BlackSharkFirmwareCommand::GetMicStatus1398,
+            )?;
+            crate::thx_direct::exceptional(mic.failure.as_ref())?;
+            validate()?;
+            let command = controller.transport_mut().exchange_hid(
+                razer_device::thx_blackshark_firmware::BlackSharkFirmwareCommand::FactoryReset1398,
+            )?;
+            validate()?;
+            ensure!(
+                command.succeeded(),
+                "Headset factory reset was not confirmed: {:?}",
+                command.failure
+            );
+            return Ok(());
+        }
         if plan == ThxSubmissionPlan::ReadFirmwareVersion {
             let command = controller.transport_mut().exchange_hid(
                 razer_device::thx_blackshark_firmware::BlackSharkFirmwareCommand::GetFirmwareVersions,
@@ -354,6 +378,7 @@ pub fn execute_retained<T: ThxJobTransport>(
             ThxSubmissionPlan::SetupRender { .. } => unreachable!("handled above"),
             ThxSubmissionPlan::ShutdownRender => unreachable!("handled above"),
             ThxSubmissionPlan::ReadFirmwareVersion
+            | ThxSubmissionPlan::FactoryReset1398
             | ThxSubmissionPlan::ReadRollerMapping
             | ThxSubmissionPlan::SetRollerMappings { .. } => {
                 unreachable!("handled above")

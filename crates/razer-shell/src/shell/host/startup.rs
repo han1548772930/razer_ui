@@ -43,7 +43,7 @@ impl AppShell {
             razer_platform::startup::starts_hidden(arguments.iter().map(String::as_str));
         self.startup.pending = Some(Work::Read(draft));
         self.run_startup_work(cx);
-        self.subscriptions.push(cx.on_app_quit(|this, cx| {
+        self.register_exit_cleanup(|this, cx| {
             this.startup.stopping = true;
             let task = this.startup.task.take();
             let pending = this.startup.pending.take();
@@ -68,7 +68,7 @@ impl AppShell {
                     }
                 }
             }
-        }));
+        });
     }
 
     pub(in crate::shell) fn request_startup(

@@ -1,5 +1,6 @@
 //! Blocking device/service work. The retained UI coordinator owns ordering;
 //! every side effect rechecks its generation and actual transport identity.
+use super::publisher::Publisher;
 use super::*;
 use anyhow::{Context as _, ensure};
 use razer_device::{
@@ -10,11 +11,18 @@ use razer_device::{
     keyboard_latest_protocol::{
         self as protocol, Operation, Reply as DeviceReply, Setting, Target,
     },
-    keyboard_latest_restore::{self as restore, BleProfiles, BleSwitch, Generation, Slot, Work},
+    keyboard_latest_restore::{self as restore, BleProfiles, BleSwitch, Generation, Slot},
 };
 use razer_discovery::direct::{keyboard_latest_restore as direct, keyboard_metadata};
 use razer_ipc::{ServiceClient, ServiceRequest};
 use razer_storage::{keyboard_analog_restore::Journal, source_local};
+
+struct NavigationReset {
+    at: Instant,
+    document: Value,
+    generation: Generation,
+    _recovery: PendingRecovery,
+}
 
 fn execute(
     client: &mut ServiceClient,
@@ -35,8 +43,58 @@ fn write(
 ) -> anyhow::Result<()> {
     execute(client, target, generation, Operation::Setting(setting))?.require_acknowledged()
 }
-fn cache(document: &Value, generation: &Generation) -> anyhow::Result<()> {
+fn collection_document(
+    document: &Value,
+    collection: Option<&CollectionUpdate>,
+) -> anyhow::Result<Value> {
+    match collection {
+        Some(collection) => collection.document(document),
+        None => Ok(document.clone()),
+    }
+}
+
+fn retain_collection(
+    update: &CollectionUpdate,
+    current_ble: &mut Option<(Value, Generation, u64)>,
+    ble: &mut BleProfiles,
+) -> anyhow::Result<()> {
+    let current = current_ble
+        .as_ref()
+        .map(|(document, generation, revision)| -> anyhow::Result<_> {
+            Ok((update.document(document)?, generation.clone(), *revision))
+        })
+        .transpose()?;
+    let mut deferred = ble.clone();
+    deferred.append_collection(&update.profiles)?;
+    *current_ble = current;
+    *ble = deferred;
+    Ok(())
+}
+
+fn cache_collection(profiles: &ProfileCollection, valid: &AtomicBool) -> anyhow::Result<()> {
+    ensure!(valid.load(Ordering::Acquire), "键盘配置集合会话已结束");
+    source_local::update(&source_local::path(), "synapse_756", |stored| {
+        ensure!(valid.load(Ordering::Acquire), "键盘配置集合会话已结束");
+        let Some(mut document) = stored else {
+            return Ok(None);
+        };
+        if profiles.append_to(&mut document)? {
+            Ok(Some(document))
+        } else {
+            Ok(None)
+        }
+    })?;
+    ensure!(valid.load(Ordering::Acquire), "键盘配置集合会话已结束");
+    Ok(())
+}
+
+fn cache(
+    document: &Value,
+    generation: &Generation,
+    collection: Option<&CollectionUpdate>,
+) -> anyhow::Result<()> {
     generation.check()?;
+    let document = collection_document(document, collection)?;
     source_local::update(&source_local::path(), "synapse_756", |_| {
         generation.check()?;
         Ok(Some(document.clone()))
@@ -47,8 +105,10 @@ fn cache_compiled(
     expected: &Value,
     document: &Value,
     generation: &Generation,
+    collection: Option<&CollectionUpdate>,
 ) -> anyhow::Result<bool> {
     generation.check()?;
+    let document = collection_document(document, collection)?;
     let saved = source_local::update(&source_local::path(), "synapse_756", |stored| {
         generation.check()?;
         if stored.as_ref().is_none_or(|stored| {
@@ -515,116 +575,21 @@ fn run_action(
         }
     }
 }
-struct Publisher {
-    client: ServiceClient,
-    owner: String,
-}
-impl Publisher {
-    fn start(container: &str) -> anyhow::Result<Self> {
-        let owner = uuid::Uuid::new_v4().to_string();
-        let mut client = ServiceClient::spawn()?;
-        let result = client
-            .request(ServiceRequest::MappingDeviceStart {
-                product_id: 756,
-                device_container_id: container.into(),
-                owner_guid: owner.clone(),
-            })
-            .and_then(|receipt| {
-                ensure!(
-                    receipt["owner_guid"] == owner
-                        && receipt["registered"] == true
-                        && receipt["driver_ready"] == true,
-                    "756 native mapping registration receipt differs"
-                );
-                Ok(())
-            });
-        if let Err(error) = result {
-            let cleanup = client.request(ServiceRequest::Shutdown);
-            return Err(match cleanup {
-                Ok(_) => error,
-                Err(cleanup) => error.context(format!(
-                    "756 native partial-registration cleanup failed: {cleanup:#}"
-                )),
-            });
-        }
-        Ok(Self { client, owner })
-    }
-    fn publish(&mut self, document: Value, generation: &Generation) -> anyhow::Result<()> {
-        generation.check()?;
-        let receipt = self.client.request(ServiceRequest::MappingDevicePublish {
-            owner_guid: self.owner.clone(),
-            document,
-        })?;
-        ensure!(
-            receipt["owner_guid"] == self.owner && receipt["published"] == true,
-            "756 native mapping publication receipt differs"
-        );
-        generation.check()
-    }
-    fn events(&mut self) -> anyhow::Result<Vec<Value>> {
-        let receipt = self.client.request(ServiceRequest::MappingDeviceEvents {
-            owner_guid: self.owner.clone(),
-        })?;
-        ensure!(
-            receipt["owner_guid"] == self.owner,
-            "756 native mapping event owner differs"
-        );
-        Ok(receipt["events"]
-            .as_array()
-            .context("756 mapping event list is missing")?
-            .clone())
-    }
-    fn macro_mode(&mut self, generation: &Generation) -> anyhow::Result<String> {
-        generation.check()?;
-        let receipt = self
-            .client
-            .request(ServiceRequest::MappingDeviceMacroRecordingMode {
-                owner_guid: self.owner.clone(),
-            })?;
-        ensure!(
-            receipt["owner_guid"] == self.owner,
-            "756 macro-mode owner differs"
-        );
-        let mode = receipt["mode"]
-            .as_str()
-            .context("756 native macro mode is missing")?
-            .to_owned();
-        generation.check()?;
-        Ok(mode)
-    }
-    fn hypershift(&mut self, generation: &Generation) -> anyhow::Result<bool> {
-        generation.check()?;
-        let receipt = self
-            .client
-            .request(ServiceRequest::MappingDeviceHypershiftActive {
-                owner_guid: self.owner.clone(),
-            })?;
-        ensure!(
-            receipt["owner_guid"] == self.owner,
-            "756 Hypershift owner differs"
-        );
-        let enabled = receipt["isEnabled"]
-            .as_bool()
-            .context("756 Hypershift callback value is absent")?;
-        generation.check()?;
-        Ok(enabled)
-    }
-    fn finish(mut self) -> anyhow::Result<()> {
-        self.client.request(ServiceRequest::Shutdown).map(|_| ())
-    }
-}
 pub(super) fn run(
     observed: ObservedDevice,
     valid: Arc<AtomicBool>,
+    automatic: Arc<AtomicBool>,
+    recoveries: Arc<AtomicUsize>,
     macro_exclusive: Arc<AtomicBool>,
     revision_signal: Arc<AtomicU64>,
-    commands: mpsc::Receiver<Work<Request>>,
+    commands: mpsc::Receiver<Command>,
     replies: mpsc::Sender<Reply>,
 ) {
     let mut publisher: Option<Publisher> = None;
     let result = (|| -> anyhow::Result<()> {
         let mut client = ServiceClient::spawn()?;
         client.set_request_guard(valid.clone());
+        let mut event_target = None;
         let result = (|| -> anyhow::Result<()> {
             let identity = keyboard_metadata::resolve(&mut client, &observed)?;
             let serial = identity.read_serial(&mut client)?;
@@ -679,12 +644,12 @@ pub(super) fn run(
             let mut ble = BleProfiles::default();
             let mut ble_initialized = false;
             let mut current_ble: Option<(Value, Generation, u64)> = None;
+            let mut collection: Option<CollectionUpdate> = None;
             let mut current_work: Option<(Generation, u64)> = None;
             let mut pending_power = BTreeSet::new();
             let mut last_active_profile = None;
-            let mut navigation_reset: Option<(Instant, Value, Generation)> = None;
+            let mut navigation_reset: Option<NavigationReset> = None;
             let mut recording_mode = String::from("kUnknown");
-            let mut event_subscription = false;
             match direct::execute(
                 &mut client,
                 &target,
@@ -692,7 +657,7 @@ pub(super) fn run(
                     enabled: Some(true),
                 },
             ) {
-                Ok(DeviceReply::Events { .. }) => event_subscription = true,
+                Ok(DeviceReply::Events { .. }) => event_target = Some(target.clone()),
                 Ok(_) => {
                     let _ = replies.send(Reply::Diagnostic("键盘硬件事件订阅响应不符".into()));
                 }
@@ -702,21 +667,48 @@ pub(super) fn run(
             }
             let _ = replies.send(Reply::Ready);
             while valid.load(Ordering::Acquire) {
+                if let Some(owner) = publisher.as_mut() {
+                    owner.apply_control()?;
+                }
                 if navigation_reset
                     .as_ref()
-                    .is_some_and(|(_, _, generation)| !generation.is_current())
+                    .is_some_and(|reset| !reset.generation.is_current())
                 {
                     navigation_reset = None;
                 }
                 let wait = navigation_reset
                     .as_ref()
-                    .map(|(at, _, _)| {
-                        at.saturating_duration_since(Instant::now())
+                    .map(|reset| {
+                        reset
+                            .at
+                            .saturating_duration_since(Instant::now())
                             .min(Duration::from_millis(100))
                     })
                     .unwrap_or(Duration::from_millis(100));
                 let work = match commands.recv_timeout(wait) {
-                    Ok(work) => Some(work),
+                    Ok(Command::Restore(work)) => {
+                        if collection
+                            .as_ref()
+                            .is_some_and(|update| work.id > update.through_revision)
+                        {
+                            collection = None;
+                        }
+                        Some(work)
+                    }
+                    Ok(Command::CollectionOnly { update, _pending }) => {
+                        // Import updates only retained/local collections. It
+                        // never enters restore compilation, native publication,
+                        // slot selection, or HID writes.
+                        let retained = retain_collection(&update, &mut current_ble, &mut ble)
+                            .and_then(|_| cache_collection(&update.profiles, &valid));
+                        collection = Some(update);
+                        if let Err(error) = retained {
+                            let _ = replies
+                                .send(Reply::Diagnostic(format!("键盘本地配置集合：{error:#}")));
+                        }
+                        drop(_pending);
+                        None
+                    }
                     Err(mpsc::RecvTimeoutError::Timeout) => None,
                     Err(mpsc::RecvTimeoutError::Disconnected) => break,
                 };
@@ -756,8 +748,12 @@ pub(super) fn run(
                                 // locally before26568.yo ->75938.BH publishes
                                 // their UI. Only an explicit ny/sy ->ty request
                                 // sends SET, including after active GUID changes.
-                                cache(&request.document, &generation)?;
-                                current_ble = Some((request.document, generation.clone(), id));
+                                cache(&request.document, &generation, collection.as_ref())?;
+                                current_ble = Some((
+                                    collection_document(&request.document, collection.as_ref())?,
+                                    generation.clone(),
+                                    id,
+                                ));
                                 return generation.check();
                             }
                             let stored = ble.document(&request.document).clone();
@@ -823,11 +819,11 @@ pub(super) fn run(
                                     manual: request.ble_switch.is_some() && !request.defer_ble_persistence,
                                 });
                                 if !ble.persistence_deferred() {
-                                    cache(&document, &generation)?;
+                                    cache(&document, &generation, collection.as_ref())?;
                                 }
-                                current_ble = Some((document, generation.clone(), id));
+                                current_ble = Some((collection_document(&document, collection.as_ref())?, generation.clone(), id));
                             } else {
-                                current_ble = Some((stored, generation.clone(), id));
+                                current_ble = Some((collection_document(&stored, collection.as_ref())?, generation.clone(), id));
                             }
                             if publisher.is_none() {
                                 match Publisher::start(observed.container()) {
@@ -852,8 +848,12 @@ pub(super) fn run(
                                 // This also suppresses a duplicate FN-key effect in
                                 // the following full restore of the same profile.
                                 last_active_profile = Some(active.clone());
-                                navigation_reset = Some((Instant::now() + Duration::from_millis(200),
-                                    request.document.clone(), generation.clone()));
+                                navigation_reset = Some(NavigationReset {
+                                    at: Instant::now() + Duration::from_millis(200),
+                                    document: request.document.clone(),
+                                    generation: generation.clone(),
+                                    _recovery: PendingRecovery::start(recoveries.clone()),
+                                });
                                 if !macro_exclusive.load(Ordering::Acquire) {
                                     if let Some(setting) = feedback {
                                         if let Err(error) = write(&mut client, &target, &generation, setting) {
@@ -866,7 +866,7 @@ pub(super) fn run(
                             if !changed { return generation.check(); }
                             restore::set_active_profile_for_serial(&mut request.document,&serial,
                                 mapping::source()["device_name"].as_str().context("756 source device name is absent")?)?;
-                            cache(&request.document,&generation)?;
+                            cache(&request.document,&generation,collection.as_ref())?;
                             let _=replies.send(Reply::Candidate {revision:id,generation:generation.clone(),document:request.document.clone(),persist:true,manual:false});
                         }
                         let mut context = mapping::source_context(
@@ -876,7 +876,7 @@ pub(super) fn run(
                         let recovered = mapping::recover_document(&request.document, &mut context)?;
                         let recovered = features::remove_dks_conflicts(&recovered)?;
                         if recovered != request.document {
-                            cache(&recovered, &generation)?;
+                            cache(&recovered, &generation, collection.as_ref())?;
                             let _ = replies.send(Reply::Candidate {
                                 revision: id, generation: generation.clone(), document: recovered.clone(),
                                 persist: true, manual: false,
@@ -901,7 +901,7 @@ pub(super) fn run(
                         {
                             compiled = mapping::apply_function_key_snap_tap(&compiled)?;
                         }
-                        cache(&recovered, &generation)?;
+                        cache(&recovered, &generation, collection.as_ref())?;
                         // Native publication failure does not suppress unrelated
                         // queued HID tasks in current RzGenericFeatureManager.
                         if publisher.is_none() {
@@ -945,7 +945,7 @@ pub(super) fn run(
                                 }
                                 match owner.publish(compiled.clone(), &generation) {
                                     Ok(()) => {
-                                        if cache_compiled(&cached, &compiled, &generation)? {
+                                        if cache_compiled(&cached, &compiled, &generation, collection.as_ref())? {
                                             cached = compiled.clone();
                                             let _ = replies.send(Reply::Candidate {
                                                 revision: id, generation: generation.clone(), document: cached.clone(),
@@ -1034,25 +1034,27 @@ pub(super) fn run(
                 if !valid.load(Ordering::Acquire) {
                     break;
                 }
+                if let Some(owner) = publisher.as_mut() {
+                    owner.apply_control()?;
+                }
                 if navigation_reset
                     .as_ref()
-                    .is_some_and(|(at, _, _)| *at <= Instant::now())
+                    .is_some_and(|reset| reset.at <= Instant::now())
                 {
-                    let (_, document, generation) =
-                        navigation_reset.take().expect("due navigation reset");
-                    if generation.is_current() {
+                    let reset = navigation_reset.take().expect("due navigation reset");
+                    if reset.generation.is_current() {
                         if let Err(error) = reset_navigation_feedback(
                             &mut client,
                             &target,
-                            &generation,
-                            &document,
+                            &reset.generation,
+                            &reset.document,
                             &serial,
                             journal
                                 .as_ref()
                                 .context("756 navigation reset journal is absent")?,
                             &mut onboard_profiles,
                         ) {
-                            if generation.is_current() {
+                            if reset.generation.is_current() {
                                 let _ = replies.send(Reply::Diagnostic(format!(
                                     "配置切换行程恢复：{error:#}"
                                 )));
@@ -1060,7 +1062,10 @@ pub(super) fn run(
                         }
                     }
                 }
-                if event_subscription {
+                if !automatic.load(Ordering::Acquire) {
+                    continue;
+                }
+                if event_target.is_some() {
                     match direct::execute(&mut client, &target, Operation::Events { enabled: None })
                     {
                         Ok(DeviceReply::Events { packets }) => {
@@ -1106,7 +1111,11 @@ pub(super) fn run(
                                                         manual: false,
                                                     });
                                                     if persist {
-                                                        cache(&document, &generation)?;
+                                                        cache(
+                                                            &document,
+                                                            &generation,
+                                                            collection.as_ref(),
+                                                        )?;
                                                     }
                                                     current_ble =
                                                         Some((document, generation, revision));
@@ -1197,7 +1206,11 @@ pub(super) fn run(
                                                 if let Some((_, generation, revision)) =
                                                     current_ble.as_ref()
                                                 {
-                                                    match cache(&document, generation) {
+                                                    match cache(
+                                                        &document,
+                                                        generation,
+                                                        collection.as_ref(),
+                                                    ) {
                                                         Ok(()) => {
                                                             ble.persisted();
                                                             let _ =
@@ -1232,20 +1245,39 @@ pub(super) fn run(
                 }
             }
             ble.reset();
-            if event_subscription {
-                direct::execute(
-                    &mut client,
-                    &target,
-                    Operation::Events {
-                        enabled: Some(false),
-                    },
-                )?;
-            }
             Ok(())
         })();
         client.set_request_guard(Arc::new(AtomicBool::new(true)));
-        if let Err(error) = client.request(ServiceRequest::Shutdown) {
-            let _ = replies.send(Reply::Diagnostic(format!("键盘恢复通信清理：{error:#}")));
+        // The callback subscription survives an interrupted command. Disable it
+        // with the actual retained target before the transport is released.
+        if let Some(target) = event_target {
+            let cleanup = direct::execute(
+                &mut client,
+                &target,
+                Operation::Events {
+                    enabled: Some(false),
+                },
+            );
+            match cleanup {
+                Ok(DeviceReply::Events { .. }) => {}
+                Ok(_) => {
+                    let _ = replies.send(Reply::Diagnostic("键盘硬件事件取消订阅响应不符".into()));
+                }
+                Err(error) => {
+                    let _ = replies.send(Reply::Diagnostic(format!(
+                        "键盘硬件事件取消订阅：{error:#}"
+                    )));
+                }
+            }
+        }
+        match client.request(ServiceRequest::Shutdown) {
+            Ok(receipt) if receipt["stopped"] == true => {}
+            Ok(_) => {
+                let _ = replies.send(Reply::Diagnostic("键盘恢复通信清理未确认".into()));
+            }
+            Err(error) => {
+                let _ = replies.send(Reply::Diagnostic(format!("键盘恢复通信清理：{error:#}")));
+            }
         }
         result
     })();

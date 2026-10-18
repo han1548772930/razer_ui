@@ -186,8 +186,8 @@ impl AppShell {
         }
     }
 
-    pub(super) fn install_audio_notification_cleanup(&mut self, cx: &mut Context<Self>) {
-        self.subscriptions.push(cx.on_app_quit(|this, cx| {
+    pub(super) fn install_audio_notification_cleanup(&mut self, _cx: &mut Context<Self>) {
+        self.register_exit_cleanup(|this, cx| {
             let sessions = std::mem::take(&mut this.audio_notifications);
             let retired = std::mem::take(&mut this.audio_notification_cleanup);
             // All retained workers begin teardown concurrently; sequential
@@ -206,7 +206,7 @@ impl AppShell {
                 }
             });
             async move { cleanup.await }
-        }));
+        });
     }
 
     pub(super) fn sync_audio_notifications(&mut self, window: &mut Window, cx: &mut Context<Self>) {

@@ -168,82 +168,15 @@ impl KeyboardGamingMappingPlan {
         let mut mappings = observed_mappings(app_engine, "active")?;
         let mut defaults = observed_mappings(default_engine, "default")?;
         let analog = defaults.iter().any(|m| m["input"]["type"] == "analogKey");
-        let kind = if analog { "analogKey" } else { "keyboard" };
-
-        for hypershift in [None, Some(true)] {
-            for flag in [2, 3] {
-                push(
-                    &mut defaults,
-                    input(kind, 93, flag, hypershift, true),
-                    disabled(),
-                );
-            }
-        }
-        for key in [210, 246] {
-            for hypershift in [true, false] {
-                for flag in [0, 1] {
-                    defaults.push(json!({"input":{"type":"razerKey","key":key,"flag":flag,"hypershift":hypershift,"gamemode":true},"output":disabled()}));
-                }
-            }
-        }
-        if settings.is_windows_key_disabled {
-            for flag in [2, 3] {
-                push(&mut defaults, input(kind, 91, flag, None, true), disabled());
-            }
-        }
-        let any_alt = settings.is_alt_tab_disabled
-            || settings.is_alt_f4_disabled
-            || settings.is_alt_space_disabled
-            || settings.is_alt_enter_disabled;
-        if any_alt {
-            for flag in [0, 1, 2, 3] {
-                push(
-                    &mut mappings,
-                    input(kind, 56, flag, None, true),
-                    cascade(vec![entry(None, keyboard(56, flag), true)]),
-                );
-            }
-        }
-        if context.mod_tap {
-            for flag in [2, 3] {
-                push(
-                    &mut mappings,
-                    input("keyboard", 56, flag, None, true),
-                    cascade(vec![entry(None, keyboard(56, flag), false)]),
-                );
-            }
-        }
-        validate()?;
-        if settings.is_alt_tab_disabled {
-            apply_alt_key(&mut mappings, kind, 15, analog, context.mod_tap)?;
-        }
-        if settings.is_alt_f4_disabled {
-            apply_f4(&mut mappings, &defaults, app_engine, kind, analog, context)?;
-        }
-        if settings.is_alt_space_disabled {
-            apply_alt_key(&mut mappings, kind, 57, analog, context.mod_tap)?;
-        }
-        if settings.is_alt_enter_disabled {
-            apply_alt_key(&mut mappings, kind, 28, analog, context.mod_tap)?;
-        }
-        if settings.is_fn_sleep_enabled && context.compose_f4 {
-            let scancode = settings.scancode.unwrap_or(44);
-            let tail = keyboard(scancode, 0);
-            let inner = cascade(vec![entry(None, tail.clone(), true)]);
-            push(
-                &mut mappings,
-                input(kind, scancode, 0, Some(true), true),
-                cascade(vec![
-                    entry(Some(razer_modifier()), inner, true),
-                    entry(None, tail, true),
-                ]),
-            );
-            push(
-                &mut mappings,
-                input(kind, scancode, 1, Some(true), true),
-                cascade(vec![entry(None, keyboard(scancode, 1), true)]),
-            );
-        }
+        apply_pass(
+            &mut mappings,
+            &mut defaults,
+            app_engine,
+            settings,
+            analog,
+            true,
+            context,
+        )?;
         validate()?;
         plan.active_engine["mappings"] = json!(mappings);
         plan.active_engine["gamemode"] = json!(true);
@@ -487,6 +420,105 @@ fn apply_f4(
     }
     Ok(())
 }
+
+/// Module76435's firmware caller uses the same ordinary cascade rules twice.
+/// Its final argument suppresses the legacy extra mod-tap Alt override.
+fn apply_pass(
+    mappings: &mut Vec<Value>,
+    defaults: &mut Vec<Value>,
+    engine: &Value,
+    settings: GamingModeSettings,
+    analog: bool,
+    include_razer: bool,
+    context: GamingMappingContext,
+) -> Result<()> {
+    let kind = if analog { "analogKey" } else { "keyboard" };
+    for hypershift in [None, Some(true)] {
+        for flag in [2, 3] {
+            push(
+                defaults,
+                input(kind, 93, flag, hypershift, true),
+                disabled(),
+            );
+        }
+    }
+    if include_razer {
+        for key in [210, 246] {
+            for hypershift in [true, false] {
+                for flag in [0, 1] {
+                    defaults.push(json!({"input":{"type":"razerKey","key":key,"flag":flag,"hypershift":hypershift,"gamemode":true},"output":disabled()}));
+                }
+            }
+        }
+    }
+    if settings.is_windows_key_disabled {
+        for flag in [2, 3] {
+            push(defaults, input(kind, 91, flag, None, true), disabled());
+        }
+    }
+    if settings.is_alt_tab_disabled
+        || settings.is_alt_f4_disabled
+        || settings.is_alt_space_disabled
+        || settings.is_alt_enter_disabled
+    {
+        for flag in [0, 1, 2, 3] {
+            push(
+                mappings,
+                input(kind, 56, flag, None, true),
+                cascade(vec![entry(None, keyboard(56, flag), true)]),
+            );
+        }
+    }
+    if context.mod_tap && !context.firmware_analog_mapping {
+        for flag in [2, 3] {
+            push(
+                mappings,
+                input("keyboard", 56, flag, None, true),
+                cascade(vec![entry(None, keyboard(56, flag), false)]),
+            );
+        }
+    }
+    if settings.is_alt_tab_disabled {
+        apply_alt_key(mappings, kind, 15, analog, context.mod_tap)?;
+    }
+    if settings.is_alt_f4_disabled {
+        apply_f4(mappings, defaults, engine, kind, analog, context)?;
+    }
+    for (enabled, key) in [
+        (settings.is_alt_space_disabled, 57),
+        (settings.is_alt_enter_disabled, 28),
+    ] {
+        if enabled {
+            apply_alt_key(mappings, kind, key, analog, context.mod_tap)?;
+        }
+    }
+    if settings.is_fn_sleep_enabled && context.compose_f4 {
+        let key = settings.scancode.unwrap_or(44);
+        let down = keyboard(key, 0);
+        push(
+            mappings,
+            input(kind, key, 0, Some(true), true),
+            cascade(vec![
+                entry(
+                    Some(razer_modifier()),
+                    cascade(vec![entry(None, down.clone(), true)]),
+                    true,
+                ),
+                entry(None, down, true),
+            ]),
+        );
+        push(
+            mappings,
+            input(kind, key, 1, Some(true), true),
+            cascade(vec![entry(None, keyboard(key, 1), true)]),
+        );
+    }
+    Ok(())
+}
+
+#[path = "keyboard_magnetic_gaming.rs"]
+mod magnetic;
+pub(crate) use magnetic::apply as apply_firmware;
 
 /// This logical-product gate is separate from the hardware gaming LED gate.
 pub fn supports_product(product_id: u32) -> bool {

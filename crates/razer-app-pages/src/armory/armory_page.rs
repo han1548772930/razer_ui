@@ -1,5 +1,5 @@
 //! Current Armory 29770 root / 20540 navigation / 77989 feature hook.
-//! See docs/re/armory-default-source.json for scoped source and CSS receipts.
+//! Current frontend originals are indexed in the analysis input manifest.
 use gpui_kit::base::Button as BaseButton;
 use gpui_kit::base::motion::{Easing, Presence, Transition};
 use gpui_kit::component::{
@@ -9,9 +9,10 @@ use gpui_kit::component::{
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use razer_i18n as i18n;
+use razer_state::ui_preferences::{Flag as UiPreference, UiPreferences};
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::surface;
-use std::{path::PathBuf, time::Duration};
+use std::time::Duration;
 
 #[path = "armory_page/device_root.rs"]
 mod device_root;
@@ -22,37 +23,6 @@ use share_profile::{ShareClosed, ShareProfileDialog};
 
 fn tr(key: &str) -> String {
     i18n::t(&format!("ARMORY_SOURCE.{key}"))
-}
-
-/// Armory module 95889 persists the introduction close under this exact
-/// localStorage key. Keep the same default and lifetime in the native shell;
-/// this is UI preference state and does not imply an Armory service session.
-const INTRO_STORAGE_KEY: &str = "isShowArmoryIntroductionBanner";
-
-fn intro_storage_path() -> PathBuf {
-    std::env::var_os("APPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("razer_ui")
-        .join(format!("{INTRO_STORAGE_KEY}.json"))
-}
-
-fn load_intro_visibility() -> bool {
-    match std::fs::read_to_string(intro_storage_path()) {
-        Ok(value) => serde_json::from_str::<bool>(&value).unwrap_or(true),
-        Err(_) => true,
-    }
-}
-
-fn save_intro_visibility(visible: bool) {
-    let path = intro_storage_path();
-    if let Some(parent) = path.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
-    let _ = std::fs::write(
-        path,
-        serde_json::to_string(&visible).unwrap_or_else(|_| "true".into()),
-    );
 }
 
 fn armory_option(
@@ -102,16 +72,8 @@ fn armory_option(
                     .flex_shrink_0()
                     .rounded(surface::css(3.))
                     .border_1()
-                    .border_color(if selected {
-                        rgb(0x44d62c)
-                    } else {
-                        rgb(0x737373)
-                    })
-                    .bg(if selected {
-                        rgb(0x44d62c)
-                    } else {
-                        rgb(0x111111)
-                    })
+                    .border_color(if selected { rgb(0x44d62c) } else { rgb(0x737373) })
+                    .bg(if selected { rgb(0x44d62c) } else { rgb(0x111111) })
                     .when(selected, |view| {
                         view.child(
                             canvas(
@@ -190,7 +152,7 @@ pub struct ArmoryPage {
     history_index: usize,
     phase1: bool,
     guest: bool,
-    banner_open: bool,
+    ui_preferences: Entity<UiPreferences>,
     // The source keeps the filtering bar mounted for Browse and My Downloads
     // even while the service dataset is empty. Keep its local visual state
     // until the service-backed filter actions are connected.
@@ -218,6 +180,8 @@ pub struct ArmoryPage {
 }
 impl ArmoryPage {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let ui_preferences = UiPreferences::acquire(UiPreference::ArmoryIntroduction, cx);
+        let preference_subscription = cx.observe(&ui_preferences, |_, _, cx| cx.notify());
         let search = cx.new(|cx| InputState::new(window, cx));
         let search_subscription =
             cx.subscribe_in(&search, window, |this: &mut Self, _, event, window, cx| {
@@ -232,7 +196,7 @@ impl ArmoryPage {
             history_index: 0,
             phase1: false,
             guest: true,
-            banner_open: load_intro_visibility(),
+            ui_preferences,
             filter_open: false,
             sort_open: false,
             filter_selection: [true, false, false, false, false, false, false, false, false],
@@ -246,7 +210,7 @@ impl ArmoryPage {
             share_profile: None,
             share_subscription: None,
             device_root: None,
-            _subscriptions: vec![search_subscription],
+            _subscriptions: vec![search_subscription, preference_subscription],
             focus: cx.focus_handle(),
         }
     }
@@ -732,8 +696,9 @@ impl ArmoryPage {
                     .accessibility_label(tr("CLOSE"))
                     .child(img("synapse/armory-banner-close.svg").size_full())
                     .on_click(cx.listener(|this, _, _, cx| {
-                        this.banner_open = false;
-                        save_intro_visibility(false);
+                        this.ui_preferences.update(cx, |owner, cx| {
+                            owner.set(UiPreference::ArmoryIntroduction, false, cx);
+                        });
                         cx.notify();
                     })),
             )
@@ -743,7 +708,13 @@ impl ArmoryPage {
 impl Render for ArmoryPage {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let mut body = v_flex().w_full();
-        if self.tab == ArmoryTab::Browse && self.banner_open {
+        if self.tab == ArmoryTab::Browse
+            && self
+                .ui_preferences
+                .read(cx)
+                .snapshot(UiPreference::ArmoryIntroduction)
+                .value()
+        {
             body = body.child(self.banner(cx));
         }
         if let Some(root) = self.device_root.clone() {

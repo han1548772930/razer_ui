@@ -21,22 +21,19 @@ mod profile_transfer;
 #[derive(Clone)]
 struct ProfileTarget {
     workspace: WeakEntity<DeviceWorkspace>,
-    device: String,
-    profile: String,
+    context: razer_model::profile_transfer::ProfileContext,
 }
 impl ProfileTarget {
     fn new(workspace: &DeviceWorkspace, cx: &Context<DeviceWorkspace>) -> Self {
         Self {
             workspace: cx.entity().downgrade(),
-            device: workspace.identity(),
-            profile: workspace.device.active_profile.clone(),
+            context: razer_model::profile_transfer::ProfileContext::from_device(&workspace.device),
         }
     }
     fn current(&self, cx: &App) -> Option<Entity<DeviceWorkspace>> {
         let workspace = self.workspace.upgrade()?;
         let value = workspace.read(cx);
-        (value.identity() == self.device && value.device.active_profile == self.profile)
-            .then_some(workspace)
+        self.context.matches(&value.device).then_some(workspace)
     }
 }
 
@@ -633,53 +630,57 @@ impl DeviceWorkspace {
                             }
                         }
                     })
-                    .content(move |_, window, cx| razer_assets::resource_scope({
-                        let popup = cx.entity().downgrade();
-                        if let Some(confirmation) = confirmation {
-                            // Source bP keeps the reset/delete nodes mounted
-                            // and toggles .show: opacity .3s linear; hiding
-                            // immediately sets visibility:hidden.
-                            let opacity = gpui_kit::base::motion::Presence::new(
-                                "profile-confirm-opacity",
-                                true,
-                            )
-                            .transition(
-                                gpui_kit::base::motion::Transition::new(
-                                    std::time::Duration::from_millis(300),
+                    .content(move |_, window, cx| {
+                        razer_assets::resource_scope({
+                            let popup = cx.entity().downgrade();
+                            if let Some(confirmation) = confirmation {
+                                // Source bP keeps the reset/delete nodes mounted
+                                // and toggles .show: opacity .3s linear; hiding
+                                // immediately sets visibility:hidden.
+                                let opacity = gpui_kit::base::motion::Presence::new(
+                                    "profile-confirm-opacity",
+                                    true,
                                 )
-                                .easing(gpui_kit::base::motion::Easing::Linear),
-                            )
-                            .sample(window, cx)
-                            .progress;
-                            return razer_assets::resource_scope(div()
-                                .opacity(opacity)
-                                .child(profile_confirmation(
-                                    confirmation,
-                                    pid,
-                                    popup,
-                                    workspace,
-                                    confirmation_focus,
-                                    cx,
-                                ))
-                                .into_any_element());
-                        }
-                        list.update(cx, |list, _| list.delegate_mut().popup = Some(popup));
-                        // List sections share footer geometry. Clip its last separator,
-                        // which the original menu omits, without altering keyboard rows.
-                        div()
-                            .id("profile-actions")
-                            .test_support()
-                            .role(Role::Menu)
-                            .w(surface::css(155.))
-                            .h(surface::css(menu_height - 9. + 2.))
-                            .border_1()
-                            .border_color(cx.theme().border)
-                            .rounded_none()
-                            .bg(DropdownColors::new().surface())
-                            .overflow_hidden()
-                            .child(List::new(&list).p_0().h(surface::css(menu_height)))
-                            .into_any_element()
-                    })),
+                                .transition(
+                                    gpui_kit::base::motion::Transition::new(
+                                        std::time::Duration::from_millis(300),
+                                    )
+                                    .easing(gpui_kit::base::motion::Easing::Linear),
+                                )
+                                .sample(window, cx)
+                                .progress;
+                                return razer_assets::resource_scope(
+                                    div()
+                                        .opacity(opacity)
+                                        .child(profile_confirmation(
+                                            confirmation,
+                                            pid,
+                                            popup,
+                                            workspace,
+                                            confirmation_focus,
+                                            cx,
+                                        ))
+                                        .into_any_element(),
+                                );
+                            }
+                            list.update(cx, |list, _| list.delegate_mut().popup = Some(popup));
+                            // List sections share footer geometry. Clip its last separator,
+                            // which the original menu omits, without altering keyboard rows.
+                            div()
+                                .id("profile-actions")
+                                .test_support()
+                                .role(Role::Menu)
+                                .w(surface::css(155.))
+                                .h(surface::css(menu_height - 9. + 2.))
+                                .border_1()
+                                .border_color(cx.theme().border)
+                                .rounded_none()
+                                .bg(DropdownColors::new().surface())
+                                .overflow_hidden()
+                                .child(List::new(&list).p_0().h(surface::css(menu_height)))
+                                .into_any_element()
+                        })
+                    }),
             )
             .when(has_obm, |bar| {
                 bar.child(onboard_memory::OnboardMemoryControl::new(obm_workspace))
@@ -784,9 +785,23 @@ fn profile_confirmation(
 pub(super) struct ProfileDialog {
     title: String,
     content: AnyView,
+    transfer: Option<profile_transfer::DialogTransfer>,
     focus: FocusHandle,
     return_focus: Option<FocusHandle>,
     owner: WeakEntity<DeviceWorkspace>,
+}
+
+impl ProfileDialog {
+    fn cancel_transfer(&self) {
+        if let Some(transfer) = &self.transfer {
+            transfer.cancel();
+        }
+    }
+}
+impl Drop for ProfileDialog {
+    fn drop(&mut self) {
+        self.cancel_transfer();
+    }
 }
 
 fn dismiss_profile_dialog(owner: &WeakEntity<DeviceWorkspace>, window: &mut Window, cx: &mut App) {
@@ -801,6 +816,7 @@ fn dismiss_profile_dialog(owner: &WeakEntity<DeviceWorkspace>, window: &mut Wind
         .ok()
         .flatten();
     if let Some(dialog) = dialog {
+        dialog.read(cx).cancel_transfer();
         if let Some(focus) = dialog.read(cx).return_focus.clone() {
             window.focus(&focus, cx);
         }
@@ -894,8 +910,14 @@ fn profile_dialog_button(
 }
 
 impl DeviceWorkspace {
+    pub(in crate::features::workspace) fn cancel_profile_transfer(&self, cx: &App) {
+        if let Some(dialog) = &self.profile_dialog {
+            dialog.read(cx).cancel_transfer();
+        }
+    }
     pub fn dismiss_profile_dialog(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(dialog) = self.profile_dialog.take() {
+            dialog.read(cx).cancel_transfer();
             if let Some(focus) = dialog.read(cx).return_focus.clone() {
                 window.focus(&focus, cx);
             }
@@ -907,14 +929,17 @@ impl DeviceWorkspace {
         &mut self,
         title: String,
         content: AnyView,
+        transfer: Option<profile_transfer::DialogTransfer>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.dismiss_profile_dialog(window, cx);
         let return_focus = window.focused(cx);
         let owner = cx.entity().downgrade();
         let dialog = cx.new(|cx| ProfileDialog {
             title,
             content,
+            transfer,
             focus: cx.focus_handle(),
             return_focus,
             owner,
@@ -950,8 +975,8 @@ impl Render for ProfileDialog {
                     .size_full()
                     .bg(cx.theme().title_bar.opacity(0.7)),
             )
-            .popup(
-                razer_assets::resource_scope(v_flex()
+            .popup(razer_assets::resource_scope(
+                v_flex()
                     .id("profile-dialog-frame")
                     .test_support()
                     .aria_label(self.title.clone())
@@ -1010,8 +1035,8 @@ impl Render for ProfileDialog {
                             .min_h_0()
                             .w_full()
                             .child(div().absolute().inset_0().child(self.content.clone())),
-                    )),
-            )
+                    ),
+            ))
     }
 }
 

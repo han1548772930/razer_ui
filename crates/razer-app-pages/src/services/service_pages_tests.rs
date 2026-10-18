@@ -56,7 +56,11 @@ fn service_description_rejects_unverified_image_identity_and_origin() {
         "/synapse/products/229/ui/229_0/PluginImages/229_0_0_extra_dashboard1x.avif",
         "/synapse/products/229/ui/229_0/PluginImages/229_0_0_dashboard1x.avif/extra",
     ] {
-        assert_eq!(super::service_description_plugin_image(invalid), None, "{invalid}");
+        assert_eq!(
+            super::service_description_plugin_image(invalid),
+            None,
+            "{invalid}"
+        );
     }
 }
 
@@ -68,15 +72,24 @@ fn service_description_preserves_exact_product_edition_layout_and_density() {
         ),
         razer_assets::dashboard_plugin_image(190, 128, 128, 0, false, 3),
     );
-    assert!(super::service_description_plugin_image(
-        "/synapse/products/190/ui/190_128/PluginImages/190_128_0_dashboard3x.avif",
-    ).is_some());
-    assert!(super::service_description_plugin_image(
-        "/synapse/products/190/ui/190_999/PluginImages/190_999_0_dashboard3x.avif",
-    ).is_none());
-    assert!(super::service_description_plugin_image(
-        "/synapse/products/190/ui/190_128/PluginImages/190_0_0_dashboard3x.avif",
-    ).is_none());
+    assert!(
+        super::service_description_plugin_image(
+            "/synapse/products/190/ui/190_128/PluginImages/190_128_0_dashboard3x.avif",
+        )
+        .is_some()
+    );
+    assert!(
+        super::service_description_plugin_image(
+            "/synapse/products/190/ui/190_999/PluginImages/190_999_0_dashboard3x.avif",
+        )
+        .is_none()
+    );
+    assert!(
+        super::service_description_plugin_image(
+            "/synapse/products/190/ui/190_128/PluginImages/190_0_0_dashboard3x.avif",
+        )
+        .is_none()
+    );
 }
 
 #[test]

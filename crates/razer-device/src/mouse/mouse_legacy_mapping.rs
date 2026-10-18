@@ -6,6 +6,7 @@ use crate::{
     mapping_submission::next_source_version,
 };
 use anyhow::{Context as _, Result, ensure};
+use serde::Deserialize;
 use serde_json::{Value, json};
 use std::sync::LazyLock;
 
@@ -14,6 +15,214 @@ mod source_data;
 use source_data::*;
 
 static SOURCE: LazyLock<LegacyMouseSource> = LazyLock::new(|| make_mouse_legacy_mapping_table());
+
+pub(crate) fn source_profile_defaults() -> Result<Value> {
+    Ok(serde_json::to_value(&SOURCE.profile)?)
+}
+
+pub(crate) fn source_dkm_keys() -> Result<std::collections::BTreeMap<String, Value>> {
+    SOURCE
+        .dkm_keys
+        .iter()
+        .map(|key| Ok((key.input_id.clone(), serde_json::to_value(key)?)))
+        .collect()
+}
+
+#[derive(Deserialize)]
+struct ProfileIdentity {
+    guid: String,
+    name: String,
+}
+
+#[derive(Deserialize)]
+struct DocumentVersion {
+    #[serde(default, deserialize_with = "present_version")]
+    version: Option<u64>,
+}
+
+fn present_version<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> std::result::Result<Option<u64>, D::Error> {
+    u64::deserialize(deserializer).map(Some)
+}
+
+fn default_engine(engine: &MappingEngine, context: &mut EngineContext) -> Result<Value> {
+    if context.default_turbos.as_ref().is_none_or(Vec::is_empty) {
+        engine.generate_default_turbos(context)?;
+    }
+    let mappings = SOURCE
+        .default_mappings
+        .iter()
+        .map(serde_json::to_value)
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(engine.generate(&mappings, context)?.app_engine)
+}
+
+fn compile_profile(
+    source: &Value,
+    engine: &MappingEngine,
+    context: &mut EngineContext,
+) -> Result<Value> {
+    let mut profile = normalize_profile(source)?;
+    let mut mappings = profile["mappings"].as_array().unwrap().clone();
+    // je -> St appends native OTFS scroll interception only when this
+    // profile contains an on-the-fly binding. These are engine inputs;
+    // the user mapping list itself remains unchanged.
+    if mappings
+        .iter()
+        .any(|mapping| mapping["sensitivityGroup"]["sensitivityAssignment"] == "DPI_OnTheFly")
+    {
+        mappings.extend(["ScrollUp", "ScrollDown"].map(|input| {
+            json!({
+                "outputType":"sensitivityGroup","inputType":"MouseInput","inputID":input,
+                "sensitivityGroup":{"sensitivityAssignment":"OTFS_Scroll"}
+            })
+        }));
+    }
+    profile["appEngine"] = engine.generate(&mappings, context)?.app_engine;
+    Ok(profile)
+}
+
+fn assemble_document(
+    profiles: Vec<Value>,
+    active_guid: Option<&str>,
+    previous: Option<&Value>,
+    default_engine: Value,
+    context: &EngineContext,
+) -> Result<Value> {
+    if let Some(active_guid) = active_guid {
+        ensure!(
+            profiles
+                .iter()
+                .filter(|profile| profile.get("guid").and_then(Value::as_str) == Some(active_guid))
+                .count()
+                == 1,
+            "Active mouse profile is not unique"
+        );
+    }
+    let mut document = previous.cloned().unwrap_or_else(|| json!({}));
+    ensure!(document.is_object(), "Invalid prior mouse document");
+    let version: DocumentVersion = serde_json::from_value(document.clone())
+        .context("Current mouse mapping document version is invalid")?;
+    document["version"] = json!(next_source_version(version.version)?);
+    document["productId"] = json!(70);
+    document["vendorId"] = json!(5426);
+    document["category"] = json!("MOUSE");
+    document["reportIDs"] = json!({"4":"razerKeyReportID","5":"hardwareEventReportID"});
+    document["profiles"] = json!(profiles);
+    if let Some(active_guid) = active_guid {
+        document["activeProfile"] = json!(active_guid);
+    }
+    document["defaultMappings"] = json!({"appEngine":default_engine});
+    document["defaultTurbos"] = json!(
+        context
+            .default_turbos
+            .as_ref()
+            .context("Missing mouse default turbos")?
+    );
+    document
+        .as_object_mut()
+        .unwrap()
+        .remove("synapseDefaultTurbos");
+    document["synapseTurbos"] = json!(
+        context
+            .synapse_turbos
+            .as_ref()
+            .context("Missing mouse profile turbos")?
+    );
+    Ok(document)
+}
+
+/// Append the import processor's completed profiles to the retained engine
+/// projection. Old source profiles and their compiled projection have distinct
+/// representations; their identities and selection must still agree.
+/// Existing macros/phasedMacros belong to the prior native publication
+/// projection and remain intact. The import's separate macro-library candidate
+/// and this local document do not acknowledge a native publication.
+pub(crate) fn append_imported_profiles(
+    existing_profiles: &[Value],
+    imported_profiles: &[Value],
+    selected_guid: Option<&str>,
+    previous: Option<&Value>,
+    context: &mut EngineContext,
+) -> Result<Value> {
+    if let Some(selected_guid) = selected_guid {
+        ensure!(
+            existing_profiles
+                .iter()
+                .filter(|profile| profile.get("guid").and_then(Value::as_str) == Some(selected_guid))
+                .count() == 1,
+            "Selected mouse source profile is not unique"
+        );
+    }
+    let engine = MappingEngine::new(70)?;
+    let defaults = match previous {
+        Some(document) => document
+            .get("defaultMappings")
+            .and_then(|mappings| mappings.get("appEngine"))
+            .filter(|engine| engine.is_object())
+            .cloned()
+            .context("Current mouse default mapping projection is absent")?,
+        None => default_engine(&engine, context)?,
+    };
+    let (mut profiles, active_guid) = if let Some(previous) = previous {
+        let profiles = previous
+            .get("profiles")
+            .and_then(Value::as_array)
+            .context("Current mouse mapping profile collection is absent")?;
+        ensure!(
+            profiles.len() == existing_profiles.len(),
+            "Current mouse mapping collection is stale"
+        );
+        for (compiled, source) in profiles.iter().zip(existing_profiles) {
+            let compiled: ProfileIdentity = serde_json::from_value(compiled.clone())
+                .context("Current mouse mapping profile identity is invalid")?;
+            let source: ProfileIdentity = serde_json::from_value(source.clone())
+                .context("Current mouse source profile identity is invalid")?;
+            ensure!(
+                compiled.guid == source.guid && compiled.name == source.name,
+                "Current mouse mapping profile identity is stale"
+            );
+        }
+        let active = previous
+            .get("activeProfile")
+            .map(|value| {
+                value
+                    .as_str()
+                    .context("Current mouse mapping selection is invalid")
+            })
+            .transpose()?;
+        ensure!(
+            existing_profiles.is_empty() || active.is_some(),
+            "Current mouse mapping selection is absent"
+        );
+        if let Some(selected_guid) = selected_guid {
+            ensure!(
+                active == Some(selected_guid),
+                "Current mouse mapping selection is stale"
+            );
+        }
+        if let Some(active) = active {
+            ensure!(
+                profiles
+                    .iter()
+                    .filter(|profile| profile.get("guid").and_then(Value::as_str) == Some(active))
+                    .count()
+                    == 1,
+                "Current mouse mapping selection is not unique"
+            );
+        }
+        (profiles.clone(), active)
+    } else {
+        let profiles = existing_profiles
+            .iter()
+            .map(|source| compile_profile(source, &engine, context))
+            .collect::<Result<Vec<_>>>()?;
+        (profiles, selected_guid)
+    };
+    profiles.extend_from_slice(imported_profiles);
+    assemble_document(profiles, active_guid, previous, defaults, context)
+}
 
 /// Convert the UI's retained sensitivity field names to the middleware's
 /// normalized profile. Active is already one-based in the current UI adapter.
@@ -99,63 +308,12 @@ pub fn prepare_document(
             .dkm_keys
             .insert(key.input_id.clone(), serde_json::to_value(key)?);
     }
-    if context.default_turbos.as_ref().is_none_or(Vec::is_empty) {
-        engine.generate_default_turbos(&mut context)?;
-    }
-    let mappings = SOURCE
-        .default_mappings
-        .iter()
-        .map(serde_json::to_value)
-        .collect::<Result<Vec<_>, _>>()?;
-    let defaults = engine.generate(&mappings, &mut context)?;
+    let defaults = default_engine(&engine, &mut context)?;
     let mut normalized = Vec::with_capacity(profiles.len());
     for source in profiles {
-        let mut profile = normalize_profile(source)?;
-        let mut mappings = profile["mappings"].as_array().unwrap().clone();
-        // je -> St appends native OTFS scroll interception only when this
-        // profile contains an on-the-fly binding. These are engine inputs;
-        // the user mapping list itself remains unchanged.
-        if mappings
-            .iter()
-            .any(|mapping| mapping["sensitivityGroup"]["sensitivityAssignment"] == "DPI_OnTheFly")
-        {
-            mappings.extend(["ScrollUp", "ScrollDown"].map(|input| {
-                json!({
-                    "outputType":"sensitivityGroup","inputType":"MouseInput","inputID":input,
-                    "sensitivityGroup":{"sensitivityAssignment":"OTFS_Scroll"}
-                })
-            }));
-        }
-        profile["appEngine"] = engine.generate(&mappings, &mut context)?.app_engine;
-        normalized.push(profile);
+        normalized.push(compile_profile(source, &engine, &mut context)?);
     }
-    ensure!(
-        normalized
-            .iter()
-            .filter(|profile| profile["guid"] == active_guid)
-            .count()
-            == 1,
-        "Active profile is not unique"
-    );
-    let mut document = previous.cloned().unwrap_or_else(|| json!({}));
-    ensure!(document.is_object(), "Invalid prior mouse document");
-    document["version"] = json!(next_source_version(
-        previous.and_then(|doc| doc["version"].as_u64())
-    )?);
-    document["productId"] = json!(70);
-    document["vendorId"] = json!(5426);
-    document["category"] = json!("MOUSE");
-    document["reportIDs"] = json!({"4":"razerKeyReportID","5":"hardwareEventReportID"});
-    document["profiles"] = json!(normalized);
-    document["activeProfile"] = json!(active_guid);
-    document["defaultMappings"] = json!({"appEngine":defaults.app_engine});
-    document["defaultTurbos"] = json!(context.default_turbos.unwrap_or_default());
-    document
-        .as_object_mut()
-        .unwrap()
-        .remove("synapseDefaultTurbos");
-    document["synapseTurbos"] = json!(context.synapse_turbos.unwrap_or_default());
-    Ok(document)
+    assemble_document(normalized, Some(active_guid), previous, defaults, &context)
 }
 
 /// Current MW 91105 It/Tt: Inter-Device OTFS temporarily publishes only

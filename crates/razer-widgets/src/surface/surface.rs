@@ -208,43 +208,45 @@ pub fn nav_overflow(
                 cx.notify();
             })
         })
-        .content(move |_, _, cx| razer_assets::resource_scope({
-            let popup = cx.entity().downgrade();
-            gpui_kit::component::v_flex()
-                .bg(rgb(0x000000))
-                .border_1()
-                .border_color(cx.theme().border)
-                .min_w(css(155.))
-                .max_w(css(280.))
-                .children(items.iter().enumerate().map(|(index, (label, selected))| {
-                    let foreground = if *selected {
-                        cx.theme().primary
-                    } else {
-                        cx.theme().foreground
-                    };
-                    let on_select = on_select.clone();
-                    let popup = popup.clone();
-                    gpui_kit::base::Button::new((id, index))
-                        .accessibility_label(label.clone())
-                        .child(label.to_uppercase())
-                        .flex()
-                        .items_center()
-                        .justify_start()
-                        .h(css(27.))
-                        .px(css(6.))
-                        .py(css(5.))
-                        .text_size(css(14.))
-                        .line_height(css(17.))
-                        .text_color(foreground)
-                        .bg(rgb(0x000000))
-                        .hover(move |s| s.bg(rgb(0x1a1a1a)).text_color(foreground))
-                        .on_click(move |_, window, cx| {
-                            let _ = popup.update(cx, |popup, cx| popup.dismiss(window, cx));
-                            on_select(index, window, cx);
-                        })
-                }))
-                .into_any_element()
-        }))
+        .content(move |_, _, cx| {
+            razer_assets::resource_scope({
+                let popup = cx.entity().downgrade();
+                gpui_kit::component::v_flex()
+                    .bg(rgb(0x000000))
+                    .border_1()
+                    .border_color(cx.theme().border)
+                    .min_w(css(155.))
+                    .max_w(css(280.))
+                    .children(items.iter().enumerate().map(|(index, (label, selected))| {
+                        let foreground = if *selected {
+                            cx.theme().primary
+                        } else {
+                            cx.theme().foreground
+                        };
+                        let on_select = on_select.clone();
+                        let popup = popup.clone();
+                        gpui_kit::base::Button::new((id, index))
+                            .accessibility_label(label.clone())
+                            .child(label.to_uppercase())
+                            .flex()
+                            .items_center()
+                            .justify_start()
+                            .h(css(27.))
+                            .px(css(6.))
+                            .py(css(5.))
+                            .text_size(css(14.))
+                            .line_height(css(17.))
+                            .text_color(foreground)
+                            .bg(rgb(0x000000))
+                            .hover(move |s| s.bg(rgb(0x1a1a1a)).text_color(foreground))
+                            .on_click(move |_, window, cx| {
+                                let _ = popup.update(cx, |popup, cx| popup.dismiss(window, cx));
+                                on_select(index, window, cx);
+                            })
+                    }))
+                    .into_any_element()
+            })
+        })
         .into_any_element()
 }
 

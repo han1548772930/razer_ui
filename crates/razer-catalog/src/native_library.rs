@@ -469,8 +469,8 @@ fn read_native_library_inventory_catalog() -> Asset {
     fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<LibraryKind> {
         let value = match r.tag()? {
             0 => LibraryKind::Device,
-            1 => LibraryKind::LightingDriver,
-            2 => LibraryKind::Engine,
+            1 => LibraryKind::Engine,
+            2 => LibraryKind::LightingDriver,
             3 => LibraryKind::LightingEngine,
             _ => anyhow::bail!("Invalid typed catalog alternative"),
         };
@@ -612,6 +612,7 @@ fn read_native_library_inventory_catalog() -> Asset {
     ) -> anyhow::Result<std::option::Option<u32>> {
         let value = match r.tag()? {
             0 => Some(r.child(decode_8)?),
+            1 => None,
             _ => anyhow::bail!("Invalid typed catalog alternative"),
         };
         r.finish()?;
@@ -717,7 +718,7 @@ fn read_native_library_inventory_catalog() -> Asset {
     razer_resource_db::read_document(
         razer_resource_db::catalogs::RAZER_CATALOG_NATIVE_LIBRARY_INVENTORY,
         0,
-        "9032c9a732c8c0f74b317d477b31906e742466f9a2b55f230cf3f3509d12db76",
+        "1bea8926492d76adb339f1fffe9083189f026eb5d71c909c561f3c64e5d24462",
         decode_0,
     )
     .expect("Packaged typed catalog must match its domain schema")

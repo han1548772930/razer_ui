@@ -131,6 +131,77 @@ fn idle_write_retains_receiver_identity_and_requires_independent_confirmation() 
 }
 
 #[test]
+fn polling_write_requires_exact_source_identity_and_a_distinct_pre_read_outcome() {
+    for physical in [183, 164, 179, 241] {
+        let observed = observation(physical, 1);
+        let node = observed.hid_node().unwrap();
+        let route = ReceiverRead::new(182, u32::from(physical), Some(183), DeviceReadKind::Polling)
+            .unwrap();
+        let effective = if matches!(physical, 164 | 179) { 8000 } else { 1000 };
+        for mode in 0..12 {
+            let result = write_with(&observed, 8000, |request| {
+                Ok(match request {
+                    ServiceRequest::HidNodes => json!({"nodes":[node]}),
+                    ServiceRequest::HidNodeReports { .. } => descriptor(node),
+                    ServiceRequest::HidNodeMouseReceiverPolling {
+                        node: selected,
+                        product_id,
+                        peer_product_id,
+                        hz,
+                    } => {
+                        assert_eq!(
+                            (&selected, product_id, peer_product_id, hz),
+                            (node, 182, 183, 8000)
+                        );
+                        let mut reply = json!({"node":node,"product_id":182,"peer_product_id":183,
+                            "method":route.method(),"source_class":route.transport().source_class,
+                            "profile_scope":"current_active_profile","obm_profiles_written":false,
+                            "result":{"requested_hz":8000,"effective_hz":effective,
+                                "previous":{"status":"observed","hz":500},"observed_hz":effective,
+                                "changed":true,"acknowledgement":[]}});
+                        match mode {
+                            1 => {
+                                reply["result"]["previous"] =
+                                    json!({"status":"observed","hz":effective});
+                                reply["result"]["changed"] = json!(false);
+                                reply["result"]["acknowledgement"] = Value::Null;
+                            }
+                            2 => {
+                                reply["result"]["previous"] = json!({"status":"failed","message":"simulated pre-read failure"});
+                            }
+                            3 => {
+                                reply["result"]["previous"] = json!({"status":"failed","message":"simulated pre-read failure"});
+                                reply["result"]["changed"] = json!(false);
+                                reply["result"]["acknowledgement"] = Value::Null;
+                            }
+                            4 => {
+                                reply["result"]["previous"] =
+                                    json!({"status":"observed","hz":effective});
+                            }
+                            5 => reply["result"]["acknowledgement"] = Value::Null,
+                            6 => reply["result"]["acknowledgement"] = json!(vec![0u8; 81]),
+                            7 => reply["result"]["previous"] = Value::Null,
+                            8 => reply["result"]["observed_hz"] = json!(125),
+                            9 => reply["peer_product_id"] = json!(182),
+                            10 => reply["method"] = json!("getTimeToSleep"),
+                            11 => reply["node"]["path"] = json!([0]),
+                            _ => {}
+                        }
+                        reply
+                    }
+                    _ => panic!("polling must retain its receiver setter route"),
+                })
+            });
+            assert_eq!(
+                result.is_ok(),
+                mode <= 2,
+                "physical master {physical}, response case {mode}"
+            );
+        }
+    }
+}
+
+#[test]
 fn projected_own_and_shared_mouse_peers_reach_the_exact_portable_polling_request() {
     for physical in [183, 164, 179, 241] {
         let observed = observation(physical, 1);

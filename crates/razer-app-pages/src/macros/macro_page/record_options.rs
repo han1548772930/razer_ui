@@ -50,6 +50,7 @@ pub struct RecordUi {
     mouse: usize,
     generation: [u64; 2],
     ignored_drafts: [Option<String>; 3],
+    number_tasks: Vec<Task<()>>,
     help: Option<usize>,
     help_bounds: Vec<Rc<Cell<Bounds<Pixels>>>>,
     pub trigger_bounds: Rc<Cell<Bounds<Pixels>>>,
@@ -81,6 +82,7 @@ impl RecordUi {
             mouse: 0,
             generation: [0, 0],
             ignored_drafts: [None, None, None],
+            number_tasks: Vec::new(),
             help: None,
             help_bounds: (0..5).map(|_| Default::default()).collect(),
             trigger_bounds: Default::default(),
@@ -342,7 +344,8 @@ impl MacroPage {
         };
         self.record_ui.generation[slot] = self.record_ui.generation[slot].wrapping_add(1);
         let generation = self.record_ui.generation[slot];
-        cx.spawn_in(window, async move |this, cx| {
+        self.record_ui.number_tasks.retain(|task| !task.is_ready());
+        let task = cx.spawn_in(window, async move |this, cx| {
             cx.background_executor()
                 .timer(Duration::from_millis(100))
                 .await;
@@ -359,8 +362,8 @@ impl MacroPage {
                 }
                 cx.notify();
             });
-        })
-        .detach();
+        });
+        self.record_ui.number_tasks.push(task);
         cx.notify();
     }
     pub fn macro_type_status(&self) -> String {

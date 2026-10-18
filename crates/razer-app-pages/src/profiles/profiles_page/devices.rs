@@ -29,6 +29,28 @@ fn profile_choices(device: &razer_model::model::Device) -> Vec<Choice> {
         .collect()
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ProfileCommand {
+    Add,
+    Import,
+    Rename,
+    Duplicate,
+    Export,
+    Delete,
+}
+impl ProfileCommand {
+    fn key(self) -> &'static str {
+        match self {
+            Self::Add => "ADD",
+            Self::Import => "IMPORT",
+            Self::Rename => "RENAME",
+            Self::Duplicate => "DUPLICATE",
+            Self::Export => "EXPORT",
+            Self::Delete => "DELETE",
+        }
+    }
+}
+
 impl ProfilesPage {
     pub fn device_tiles(&self, cx: &mut Context<Self>) -> Vec<AnyElement> {
         self.devices
@@ -91,11 +113,22 @@ impl ProfilesPage {
                                 ),
                         )
                         .on_click(cx.listener(move |this, _, window, cx| {
+                            this.dismiss_for_navigation(window, cx);
                             let dialog = cx.new(|cx| {
                                 DeviceGamesDialog::new(target.clone(), &this.devices, window, cx)
                             });
-                            this._subscriptions
-                                .push(cx.observe(&dialog, |_, _, cx| cx.notify()));
+                            this.device_subscription = Some(cx.subscribe(
+                                &dialog,
+                                |this, source, _: &DeviceGamesClosed, cx| {
+                                    if this.device_dialog.as_ref().is_some_and(|current| {
+                                        current.entity_id() == source.entity_id()
+                                    }) {
+                                        this.device_subscription = None;
+                                        this.device_dialog = None;
+                                        cx.notify();
+                                    }
+                                },
+                            ));
                             this.device_dialog = Some(dialog);
                             cx.notify();
                         }))
@@ -115,6 +148,26 @@ fn game_key(path: &str) -> String {
     path.replace('/', "\\").to_lowercase()
 }
 
+#[derive(Clone)]
+struct TransferContext {
+    device: razer_model::profile_transfer::ProfileContext,
+    connection_revision: u64,
+}
+impl TransferContext {
+    fn capture(workspace: &ProductWorkspace, cx: &App) -> Self {
+        Self {
+            device: razer_model::profile_transfer::ProfileContext::from_device(
+                workspace.device(cx),
+            ),
+            connection_revision: workspace.connection_revision(),
+        }
+    }
+    fn matches(&self, workspace: &ProductWorkspace, cx: &App) -> bool {
+        self.device.matches(workspace.device(cx))
+            && self.connection_revision == workspace.connection_revision()
+    }
+}
+
 pub struct DeviceGamesDialog {
     pub open: bool,
     focus: FocusHandle,
@@ -124,7 +177,7 @@ pub struct DeviceGamesDialog {
     filter: Entity<SelectState<Vec<Choice>>>,
     sort: Entity<SelectState<Vec<Choice>>>,
     name: Entity<InputState>,
-    renaming: bool,
+    rename_target: Option<String>,
     menu_open: bool,
     delete_request: Option<(String, String)>,
     delete_task: Option<Task<()>>,
@@ -132,14 +185,17 @@ pub struct DeviceGamesDialog {
     collection_status: String,
     transfer: Option<Entity<super::transfer::ProfileTransfer>>,
     transfer_subscription: Option<Subscription>,
-    transfer_intent: Option<super::transfer::TransferIntent>,
+    transfer_context: Option<TransferContext>,
     games: Vec<KnownGame>,
     devices: Vec<Entity<ProductWorkspace>>,
     device_subscriptions: Vec<Subscription>,
     add_dialog: Option<Entity<AddGameDialog>>,
+    add_subscription: Option<Subscription>,
     back_from_add: bool,
     _subscriptions: Vec<Subscription>,
 }
+struct DeviceGamesClosed;
+impl EventEmitter<DeviceGamesClosed> for DeviceGamesDialog {}
 
 impl DeviceGamesDialog {
     fn new(
@@ -181,19 +237,21 @@ impl DeviceGamesDialog {
             cx.observe_in(&workspace, window, |this: &mut Self, _, window, cx| {
                 this.sync_profile_choices(window, cx);
             }),
-            cx.subscribe_in(&profile, window, |this: &mut Self, _, event, _, cx| {
+            cx.subscribe_in(&profile, window, |this: &mut Self, _, event, window, cx| {
                 if let SelectEvent::Confirm(Some(_)) = event {
                     // Ua/Y changes the assignment target only. It does not
                     // activate a hardware profile when browsing this list.
                     this.delete_request = None;
                     this.delete_task = None;
+                    this.rename_target = None;
+                    this.cancel_transfer(window, cx);
                     cx.notify();
                 }
             }),
             cx.observe(&filter, |_, _, cx| cx.notify()),
             cx.observe(&sort, |_, _, cx| cx.notify()),
             cx.subscribe_in(&name, window, |this: &mut Self, _, event, window, cx| {
-                if this.renaming
+                if this.rename_target.is_some()
                     && matches!(event, InputEvent::Blur | InputEvent::PressEnter { .. })
                 {
                     this.finish_rename(window, cx);
@@ -212,7 +270,7 @@ impl DeviceGamesDialog {
             filter,
             sort,
             name,
-            renaming: false,
+            rename_target: None,
             menu_open: false,
             delete_request: None,
             delete_task: None,
@@ -220,19 +278,32 @@ impl DeviceGamesDialog {
             collection_status: String::new(),
             transfer: None,
             transfer_subscription: None,
-            transfer_intent: None,
+            transfer_context: None,
             games,
             devices: Vec::new(),
             device_subscriptions: Vec::new(),
             add_dialog: None,
+            add_subscription: None,
             back_from_add: false,
             _subscriptions: subscriptions,
         };
-        dialog.set_devices(devices.to_vec(), cx);
+        dialog.set_devices(devices.to_vec(), window, cx);
         dialog
     }
 
-    pub fn set_devices(&mut self, devices: Vec<Entity<ProductWorkspace>>, cx: &mut Context<Self>) {
+    pub fn set_devices(
+        &mut self,
+        devices: Vec<Entity<ProductWorkspace>>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !devices
+            .iter()
+            .any(|device| device.entity_id() == self.workspace.entity_id())
+        {
+            self.close(window, cx);
+            return;
+        }
         self.device_subscriptions = devices
             .iter()
             .map(|device| cx.observe(device, |this, _, cx| this.refresh_known_games(cx)))
@@ -277,6 +348,13 @@ impl DeviceGamesDialog {
     }
 
     fn sync_profile_choices(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self
+            .transfer_context
+            .as_ref()
+            .is_some_and(|context| !context.matches(self.workspace.read(cx), cx))
+        {
+            self.cancel_transfer(window, cx);
+        }
         let device = self.workspace.read(cx).device(cx);
         let options = profile_choices(device);
         let previous = self.profile.read(cx).selected_value().cloned();
@@ -292,7 +370,7 @@ impl DeviceGamesDialog {
         });
         if retained.is_none() {
             // Never submit a name or delayed deletion against a replacement ID.
-            self.renaming = false;
+            self.rename_target = None;
             self.delete_request = None;
             self.delete_task = None;
         }
@@ -330,7 +408,7 @@ impl DeviceGamesDialog {
         else {
             return;
         };
-        self.renaming = true;
+        self.rename_target = Some(id);
         self.name.update(cx, |input, cx| {
             input.set_value(name, window, cx);
             input.focus(window, cx);
@@ -339,8 +417,10 @@ impl DeviceGamesDialog {
         cx.notify();
     }
     fn finish_rename(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.renaming = false;
-        if let Some(id) = self.selected_profile(cx) {
+        let Some(id) = self.rename_target.take() else {
+            return;
+        };
+        if self.open && self.selected_profile(cx).as_ref() == Some(&id) {
             let name = controls::trim_name(&self.name.read(cx).value()).to_string();
             let duplicate = self
                 .workspace
@@ -364,17 +444,32 @@ impl DeviceGamesDialog {
         self.focus.focus(window, cx);
         cx.notify();
     }
-    fn close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    fn cancel_transfer(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.transfer_context = None;
+        self.transfer_subscription = None;
         if let Some(transfer) = self.transfer.take() {
             transfer.update(cx, |transfer, cx| transfer.dismiss(cx));
+            self.focus.focus(window, cx);
         }
-        self.transfer_subscription = None;
+    }
+    pub(super) fn close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.open {
+            return;
+        }
+        self.cancel_transfer(window, cx);
         self.delete_task = None;
         self.delete_request = None;
+        self.rename_target = None;
+        self.menu_open = false;
+        self.add_subscription = None;
+        if let Some(add) = self.add_dialog.take() {
+            add.update(cx, |add, cx| add.close(window, cx));
+        }
         self.open = false;
         if let Some(focus) = self.return_focus.take() {
             focus.focus(window, cx);
         }
+        cx.emit(DeviceGamesClosed);
         cx.notify();
     }
     fn open_add(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -385,61 +480,100 @@ impl DeviceGamesDialog {
             dialog.from_device = true;
             dialog
         });
-        self._subscriptions.push(cx.observe(&add, |this, _, cx| {
-            this.back_from_add = true;
-            cx.notify();
+        self.add_subscription = Some(cx.subscribe(&add, |this, source, _: &AddGameClosed, cx| {
+            if this
+                .add_dialog
+                .as_ref()
+                .is_some_and(|current| current.entity_id() == source.entity_id())
+            {
+                this.add_subscription = None;
+                this.add_dialog = None;
+                this.back_from_add = true;
+                cx.notify();
+            }
         }));
         self.add_dialog = Some(add);
         cx.notify();
     }
 
-    fn profile_action(&mut self, action: &str, window: &mut Window, cx: &mut Context<Self>) {
+    fn profile_action(
+        &mut self,
+        action: ProfileCommand,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.menu_open = false;
         self.delete_request = None;
         self.delete_task = None;
         self.collection_error = None;
-        if matches!(action, "IMPORT" | "EXPORT") {
-            let mode = if action == "IMPORT" {
+        if matches!(action, ProfileCommand::Import | ProfileCommand::Export) {
+            let mode = if action == ProfileCommand::Import {
                 super::transfer::Mode::Import
             } else {
                 super::transfer::Mode::Export
             };
+            self.cancel_transfer(window, cx);
             let device = self.workspace.read(cx).device(cx);
+            let context = TransferContext::capture(self.workspace.read(cx), cx);
+            let workspace_id = self.workspace.entity_id();
+            let selected = self.selected_profile(cx);
             let pid = device.product_id;
             let name = device_text(&device.product_name);
             let profiles = device.profiles.clone();
+            let macros = self.workspace.read(cx).source_profile_macros(cx);
             let transfer = cx.new(|cx| {
-                super::transfer::ProfileTransfer::new(mode, pid, name, profiles, window, cx)
+                super::transfer::ProfileTransfer::new(mode, pid, name, profiles, macros, window, cx)
             });
             self.transfer_subscription = Some(cx.subscribe_in(
                 &transfer,
                 window,
-                |this, _, event: &super::transfer::Closed, window, cx| {
+                move |this, source, event: &super::transfer::Closed, window, cx| {
+                    if !this.open
+                        || this.workspace.entity_id() != workspace_id
+                        || !context.matches(this.workspace.read(cx), cx)
+                        || this.selected_profile(cx) != selected
+                        || !this
+                            .transfer
+                            .as_ref()
+                            .is_some_and(|current| current.entity_id() == source.entity_id())
+                    {
+                        return;
+                    }
                     if let Some(intent) = event.0.clone() {
                         match intent.validate(&this.workspace.read(cx).device(cx).profiles) {
                             Ok(()) => {
-                                this.collection_status = intent.description();
-                                this.transfer_intent = Some(intent);
+                                let result =
+                                    this.workspace.update(cx, |workspace, cx| match intent {
+                                        super::transfer::TransferIntent::Import { profiles } => {
+                                            workspace.import_global_profiles(&profiles, cx)
+                                        }
+                                        super::transfer::TransferIntent::Export { profiles } => {
+                                            workspace.export_global_profiles(&profiles, window, cx)
+                                        }
+                                    });
+                                this.collection_error = result.err();
                             }
                             Err(error) => this.collection_error = Some(error),
                         }
                     }
                     this.transfer = None;
                     this.transfer_subscription = None;
+                    this.transfer_context = None;
                     this.focus.focus(window, cx);
                     cx.notify();
                 },
             ));
             self.transfer = Some(transfer);
+            self.transfer_context = Some(TransferContext::capture(self.workspace.read(cx), cx));
             cx.notify();
             return;
         }
-        if action == "RENAME" {
+        if action == ProfileCommand::Rename {
             self.begin_rename(window, cx);
             return;
         }
         let selected = self.selected_profile(cx);
-        if action == "DELETE" {
+        if action == ProfileCommand::Delete {
             let Some(id) = selected else { return };
             let Some(name) = self
                 .workspace
@@ -468,12 +602,17 @@ impl DeviceGamesDialog {
             return;
         }
         let result = self.workspace.update(cx, |workspace, cx| match action {
-            "ADD" => workspace.add_local_profile(window, cx),
-            "DUPLICATE" => selected
+            ProfileCommand::Add => workspace.add_local_profile(window, cx),
+            ProfileCommand::Duplicate => selected
                 .as_deref()
                 .ok_or_else(|| "未选择有效配置文件".to_string())
                 .and_then(|id| workspace.duplicate_local_profile(id, window, cx)),
-            _ => Err("此配置操作尚未接入".into()),
+            ProfileCommand::Import
+            | ProfileCommand::Export
+            | ProfileCommand::Rename
+            | ProfileCommand::Delete => {
+                unreachable!("modal and inline commands return before collection edits")
+            }
         });
         self.finish_collection_change(result, window, cx);
     }
@@ -595,75 +734,79 @@ impl DeviceGamesDialog {
                 }
                 cx.notify();
             }))
-            .content(move |_, window, cx| razer_assets::resource_scope({
-                let mut menu = v_flex()
-                    .min_w(css(155.))
-                    .max_w(css(280.))
-                    .bg(rgb(0))
-                    .border_1()
-                    .border_color(rgb(0x5d5d5d))
-                    .text_size(css(14.))
-                    .text_color(rgb(0xcccccc));
-                for key in [
-                    "ADD",
-                    "IMPORT",
-                    "divider",
-                    "RENAME",
-                    "DUPLICATE",
-                    "EXPORT",
-                    "divider",
-                    "DELETE",
-                ] {
-                    if key == "divider" {
-                        menu =
-                            menu.child(div().h(css(1.)).my(css(4.)).mx(css(6.)).bg(rgb(0x5d5d5d)));
-                        continue;
+            .content(move |_, window, cx| {
+                razer_assets::resource_scope({
+                    let mut menu = v_flex()
+                        .min_w(css(155.))
+                        .max_w(css(280.))
+                        .bg(rgb(0))
+                        .border_1()
+                        .border_color(rgb(0x5d5d5d))
+                        .text_size(css(14.))
+                        .text_color(rgb(0xcccccc));
+                    for command in [
+                        Some(ProfileCommand::Add),
+                        Some(ProfileCommand::Import),
+                        None,
+                        Some(ProfileCommand::Rename),
+                        Some(ProfileCommand::Duplicate),
+                        Some(ProfileCommand::Export),
+                        None,
+                        Some(ProfileCommand::Delete),
+                    ] {
+                        let Some(command) = command else {
+                            menu = menu
+                                .child(div().h(css(1.)).my(css(4.)).mx(css(6.)).bg(rgb(0x5d5d5d)));
+                            continue;
+                        };
+                        let key = command.key();
+                        let owner = owner.clone();
+                        let disabled = (command != ProfileCommand::Add && !selected)
+                            || (command == ProfileCommand::Delete && !can_delete);
+                        let pointer = controls::pointer(
+                            (ElementId::from("profiles-profile-menu"), key).into(),
+                            window,
+                            cx,
+                        );
+                        let hovered = pointer.read(cx).hovered && !disabled;
+                        let background = motion::transition(
+                            (ElementId::from("profiles-profile-menu-bg"), key),
+                            Hsla::from(rgba(if hovered { 0xffffff1a } else { 0x00000000 })),
+                            Transition::new(Duration::from_millis(300)).easing(Easing::Ease),
+                            window,
+                            cx,
+                        );
+                        menu = menu.child(
+                            controls::track(BaseButton::new(key), &pointer, window)
+                                .p_0()
+                                .px(css(6.))
+                                .py(css(5.))
+                                .line_height(css(17.))
+                                .justify_start()
+                                .disabled(disabled)
+                                .styles(|style| style.disabled(|s| s.opacity(0.3)))
+                                .bg(background)
+                                .child(i18n::t(key))
+                                .on_click(move |_, window, cx| {
+                                    let _ = owner.update(cx, |this, cx| {
+                                        this.profile_action(command, window, cx);
+                                    });
+                                }),
+                        );
                     }
-                    let owner = owner.clone();
-                    let disabled = (key != "ADD" && !selected) || (key == "DELETE" && !can_delete);
-                    let pointer = controls::pointer(
-                        (ElementId::from("profiles-profile-menu"), key).into(),
-                        window,
-                        cx,
-                    );
-                    let hovered = pointer.read(cx).hovered && !disabled;
-                    let background = motion::transition(
-                        (ElementId::from("profiles-profile-menu-bg"), key),
-                        Hsla::from(rgba(if hovered { 0xffffff1a } else { 0x00000000 })),
-                        Transition::new(Duration::from_millis(300)).easing(Easing::Ease),
-                        window,
-                        cx,
-                    );
-                    menu = menu.child(
-                        controls::track(BaseButton::new(key), &pointer, window)
-                            .p_0()
-                            .px(css(6.))
-                            .py(css(5.))
-                            .line_height(css(17.))
-                            .justify_start()
-                            .disabled(disabled)
-                            .styles(|style| style.disabled(|s| s.opacity(0.3)))
-                            .bg(background)
-                            .child(i18n::t(key))
-                            .on_click(move |_, window, cx| {
-                                let _ = owner.update(cx, |this, cx| {
-                                    this.profile_action(key, window, cx);
-                                });
-                            }),
-                    );
-                }
-                menu.into_any_element()
-            }))
+                    menu.into_any_element()
+                })
+            })
             .into_any_element()
     }
 
     fn toolbar(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let options = profile_choices(self.workspace.read(cx).device(cx));
-        let field = if self.renaming {
+        let field = if self.rename_target.is_some() {
             div()
                 .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
                     if event.keystroke.key == "escape" {
-                        this.renaming = false;
+                        this.rename_target = None;
                         this.focus.focus(window, cx);
                         cx.stop_propagation();
                         cx.notify();
@@ -974,8 +1117,8 @@ impl Render for DeviceGamesDialog {
                             .h(unit * 500.),
                     ),
             )
-            .popup(
-                razer_assets::resource_scope(v_flex()
+            .popup(razer_assets::resource_scope(
+                v_flex()
                     .id("profiles-device-games-dialog")
                     .test_support()
                     .aria_label(title.clone())
@@ -1054,21 +1197,6 @@ impl Render for DeviceGamesDialog {
                                         .child(error),
                                 )
                             })
-                            .when(self.transfer_intent.is_some(), |view| {
-                                view.child(
-                                    BaseButton::new("profiles-transfer-revoke")
-                                        .child(if i18n::locale().starts_with("zh") {
-                                            "撤销尚未应用的传输请求"
-                                        } else {
-                                            "Revoke unapplied transfer request"
-                                        })
-                                        .on_click(cx.listener(|this, _, _, cx| {
-                                            this.transfer_intent = None;
-                                            this.collection_status.clear();
-                                            cx.notify();
-                                        })),
-                                )
-                            })
                             .child(
                                 div()
                                     .id("profiles-device-games-scroll")
@@ -1086,8 +1214,8 @@ impl Render for DeviceGamesDialog {
                                     ),
                             ),
                     )
-                    .children(self.transfer.clone())),
-            )
+                    .children(self.transfer.clone()),
+            ))
             .into_any_element()
     }
 }

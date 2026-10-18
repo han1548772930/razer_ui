@@ -969,8 +969,8 @@ impl Render for DockDialog {
             .on_ok(|_, _, _| false)
             .on_close(cx.listener(|this, _, window, cx| this.escape(window, cx)))
             .backdrop(div().absolute().inset_0().bg(Colors::backdrop()))
-            .popup(
-                razer_assets::resource_scope(div()
+            .popup(razer_assets::resource_scope(
+                div()
                     .absolute()
                     .top(unit * 100.)
                     .left_0()
@@ -979,8 +979,8 @@ impl Render for DockDialog {
                     .flex()
                     .items_start()
                     .justify_center()
-                    .child(panel)),
-            )
+                    .child(panel),
+            ))
             .into_any_element()
     }
 }

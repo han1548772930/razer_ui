@@ -4,6 +4,8 @@
 
 索引保留源表顺序、重复 alias、sprite fragment 和本地音频 demo 控件的优先级，未注册的键仍交给 GPUI Kit `AllAssets`。已声明而加载失败的文件保持真实错误，不能伪装为缺失键或空图。
 
+目录库与媒体共用 [安装资源发布](../razer-resource-db/src/publication.rs) 的 `StagedResource`，由成功独占创建文件的 owner 负责同步、关闭、发布或清理。内容校验仍归各自所有者；媒体最终提交须持有运行时许可，取消不能留下未经授权的新缓存，也不能删除其他任务的暂存文件。
+
 运行时从私有资源仓库的固定提交按所有当前界面（包括设置、宏、帮助、独立窗口与产品页）所需文件获取，缓存到当前 EXE 所在目录的 `assets/cache/`。有效缓存离线复用；不会启动时预取其他产品、恢复源码 `assets/` 或解压整套资源。Cargo 不执行网络获取，也没有 staging pack 的构建脚本；编译及安装均无需 `synapse.pack`。`installation.json` 统一 Cargo、运行时和安装器路径。无 GPUI 依赖的 `razer-resources::ResourceRuntime` 拥有队列、Tokio 工作线程及实际 HTTP 客户端；应用注入 client，本 crate 只保留 GPUI 适配、窗口解码缓存、资源作用域和通知。应用退出等待资源 owner 取消并关闭工作线程。同一界面的实际请求按 8 ms 收集、每批至多 64 文件、最多 4 路并发；客户端初始化、凭据查找、磁盘读取、校验及发布在资源线程执行，界面不等待这些 I/O。教程媒体同样使用等待就绪的缓存，避免首次下载尚未完成就永久记成解码失败。独立的 `razer-asset-pack` 容器核心仍可用于格式验证，详见 [资源交付与容器格式](../../docs/asset-pack-format.md)。
 
 静态检查和允许的纯 Rust library 测试：

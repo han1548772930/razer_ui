@@ -44,6 +44,7 @@ pub(super) struct State {
     read_pending: Option<ReceiverBrightnessReadRequested>,
     edit_revision: u64,
     active: bool,
+    closing: bool,
     read_needed: bool,
     error: Option<String>,
     queued: Option<u8>,
@@ -55,6 +56,65 @@ pub(super) struct State {
     preview: Option<u8>,
 }
 impl State {
+    fn request_matches(&self, generation: u64, percent: u8) -> bool {
+        self.pending
+            .is_some_and(|request| request.generation == generation && request.percent == percent)
+    }
+
+    fn request_current(&self, generation: u64, percent: u8) -> bool {
+        self.request_matches(generation, percent)
+            && self
+                .pending
+                .is_some_and(|request| request.epoch == self.epoch)
+    }
+
+    fn request(
+        &mut self,
+        percent: u8,
+        enabled: bool,
+        value: u8,
+    ) -> Option<ReceiverBrightnessRequested> {
+        if self.closing {
+            return None;
+        }
+        self.edit_revision = self.edit_revision.wrapping_add(1);
+        self.observed = None;
+        self.error = None;
+        self.read_needed = false;
+        if self.pending.is_some() || self.read_pending.is_some() {
+            self.queued = Some(percent);
+            return None;
+        }
+        self.generation = self.generation.wrapping_add(1);
+        let request = ReceiverBrightnessRequested {
+            generation: self.generation,
+            percent,
+            enabled,
+            value,
+            epoch: self.epoch,
+        };
+        self.pending = Some(request);
+        Some(request)
+    }
+
+    fn set_read_active(&mut self, active: bool) {
+        if !self.closing && self.active != active {
+            self.active = active;
+            self.invalidate();
+        }
+    }
+
+    fn prepare_exit(&mut self) {
+        self.closing = true;
+        self.read_needed = false;
+        self.queued = None;
+        self.preview = None;
+    }
+
+    fn cancel_exit(&mut self) {
+        self.closing = false;
+    }
+
     fn invalidate(&mut self) {
         // A UI reset cannot stop a worker which may already be transmitting.
         // Keep its serialization slot until its actual completion arrives.
@@ -101,39 +161,25 @@ impl SourceControls {
         }
         // The original skippable setting task keeps the newest desired setting.
         // Avoid multiple service workers racing one hardware setting.
-        self.brightness.edit_revision = self.brightness.edit_revision.wrapping_add(1);
-        self.brightness.observed = None;
-        self.brightness.error = None;
-        self.brightness.read_needed = false;
-        if self.brightness.pending.is_some() || self.brightness.read_pending.is_some() {
-            self.brightness.queued = Some(percent);
-            return;
+        if let Some(request) = self.brightness.request(percent, enabled, value as u8) {
+            cx.emit(request);
         }
-        self.brightness.generation = self.brightness.generation.wrapping_add(1);
-        let request = ReceiverBrightnessRequested {
-            generation: self.brightness.generation,
-            percent,
-            enabled,
-            value: value as u8,
-            epoch: self.brightness.epoch,
-        };
-        self.brightness.pending = Some(request);
-        cx.emit(request);
     }
     pub fn brightness_request_matches(&self, generation: u64, percent: u8) -> bool {
-        self.brightness
-            .pending
-            .is_some_and(|r| r.generation == generation && r.percent == percent)
+        self.brightness.request_matches(generation, percent)
     }
     pub fn brightness_request_current(&self, generation: u64, percent: u8) -> bool {
-        self.brightness_request_matches(generation, percent)
-            && self
-                .brightness
-                .pending
-                .is_some_and(|r| r.epoch == self.brightness.epoch)
+        self.brightness.request_current(generation, percent)
     }
     pub fn cancel_brightness_connection(&mut self) {
         self.brightness.invalidate();
+    }
+    pub(in crate::features) fn prepare_receiver_exit(&mut self, cx: &mut Context<Self>) {
+        self.brightness.prepare_exit();
+        cx.notify();
+    }
+    pub(in crate::features) fn cancel_receiver_exit(&mut self) {
+        self.brightness.cancel_exit();
     }
     pub fn finish_brightness(
         &mut self,
@@ -175,17 +221,15 @@ impl SourceControls {
         self.brightness.invalidate();
     }
     pub fn set_brightness_read_active(&mut self, active: bool, cx: &mut Context<Self>) {
-        if self.brightness.active != active {
-            self.brightness.active = active;
-            self.brightness.invalidate();
-        }
+        self.brightness.set_read_active(active);
         if active && self.brightness.read_needed {
             self.request_brightness_read(cx);
         }
         cx.notify();
     }
     pub(super) fn request_brightness_read(&mut self, cx: &mut Context<Self>) {
-        if !self.brightness.active
+        if self.brightness.closing
+            || !self.brightness.active
             || self.brightness.pending.is_some()
             || self.brightness.read_pending.is_some()
             || !matches!(self.spec.product_id, 164 | 241)
@@ -214,9 +258,11 @@ impl SourceControls {
                 && request.epoch == self.brightness.epoch
                 && request.edit_revision == self.brightness.edit_revision
         }) && self.brightness.active
+            && !self.brightness.closing
     }
     pub fn brightness_read_scope_current(&self, generation: u64) -> bool {
-        self.brightness.active
+        !self.brightness.closing
+            && self.brightness.active
             && self.brightness.read_pending.is_some_and(|request| {
                 request.generation == generation && request.epoch == self.brightness.epoch
             })
@@ -271,5 +317,51 @@ impl SourceControls {
         } else {
             "设备亮度尚未读取；当前滑条为本地配置".into()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::State;
+
+    #[test]
+    fn receiver_exit_preserves_the_accepted_setter_epoch_and_closes_new_requests() {
+        let mut state = State::default();
+        state.set_read_active(true);
+        let request = state.request(61, true, 61).unwrap();
+        state.prepare_exit();
+        state.set_read_active(false);
+        assert!(state.request_current(request.generation(), request.percent()));
+        assert!(state.request(42, true, 42).is_none());
+        assert_eq!(state.pending.unwrap().percent, 61);
+        assert!(!state.read_needed);
+    }
+
+    #[test]
+    fn ordinary_navigation_and_disconnect_still_expire_accepted_brightness() {
+        let mut state = State::default();
+        state.set_read_active(true);
+        let request = state.request(61, true, 61).unwrap();
+        state.set_read_active(false);
+        assert!(!state.request_current(request.generation(), request.percent()));
+        state.prepare_exit();
+        let disconnected_epoch = state.epoch;
+        state.invalidate();
+        assert_ne!(state.epoch, disconnected_epoch);
+        assert!(!state.request_current(request.generation(), request.percent()));
+    }
+
+    #[test]
+    fn canceling_exit_reopens_admission_without_expiring_the_accepted_setter() {
+        let mut state = State::default();
+        state.set_read_active(true);
+        let request = state.request(61, true, 61).unwrap();
+        state.prepare_exit();
+        state.set_read_active(false);
+        state.cancel_exit();
+        state.set_read_active(true);
+        assert!(state.request_current(request.generation(), request.percent()));
+        state.pending = None;
+        assert!(state.request(42, true, 42).is_some());
     }
 }

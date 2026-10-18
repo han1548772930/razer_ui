@@ -307,7 +307,10 @@ fn text_toolbar_button(
         )
         .when(show_tip && visible, |button| {
             button.child(
-                razer_assets::deferred_resource(text_tip_surface(label, opacity).bottom(surface::css(-38.))).priority(105),
+                razer_assets::deferred_resource(
+                    text_tip_surface(label, opacity).bottom(surface::css(-38.)),
+                )
+                .priority(105),
             )
         })
 }

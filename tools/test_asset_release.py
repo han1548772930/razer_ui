@@ -77,6 +77,46 @@ class AssetAdditionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "identity differs"):
             self.plan()
 
+    def test_publication_source_index_requires_pinned_files_and_keeps_manifest_identity(self):
+        _, lock, mappings, _, _ = self.plan()
+        self.write(assets.LOCK, lock)
+        self.write(assets.MAPPINGS, mappings)
+        index = self.write(".analysis/inputs.json", {"inputs": []})
+        before = (self.root / self.manifest).read_bytes()
+        with patch.object(assets.analysis, "ROOT", self.root), patch.object(assets, "git", side_effect=AssertionError("No remote publication")):
+            assets.index_addition_sources(self.manifest, reason="Verified offline reconciliation")
+        document = json.loads(index.read_bytes())
+        self.assertEqual(len(document["inputs"]), 3)
+        manifest = next(row for row in document["inputs"] if row["path"] == self.manifest)
+        self.assertEqual(manifest["sha256"], hashlib.sha256(before).hexdigest())
+        self.assertEqual((self.root / self.manifest).read_bytes(), before)
+        self.assertTrue(document["source_publications"][0]["verification"]["source_receipt_membership_verified"])
+
+    def test_source_index_cannot_publish_unreleased_resource_additions(self):
+        self.plan()
+        with self.assertRaisesRegex(ValueError, "requires additions in the pinned"):
+            assets.index_addition_sources(self.manifest, reason="Must fail")
+
+    def test_prepared_native_resource_does_not_become_an_official_frontend_original(self):
+        native_name = ".analysis/inputs/native-resources/cursor.cur"
+        raw = (self.root / self.item["source"]["path"]).read_bytes()
+        native = self.root / native_name
+        native.parent.mkdir(parents=True)
+        native.write_bytes(raw)
+        self.item["source"]["path"] = native_name
+        receipt = self.write(".analysis/inputs/native-resources/acquisition.json", {"files": [self.item["source"]]})
+        self.item["acquisition"] = {"path": receipt.relative_to(self.root).as_posix(),
+                                    "bytes": receipt.stat().st_size, "sha256": assets.digest(receipt)}
+        _, lock, mappings, _, _ = self.plan()
+        self.write(assets.LOCK, lock)
+        self.write(assets.MAPPINGS, mappings)
+        index = self.write(".analysis/inputs.json", {"inputs": []})
+        with patch.object(assets.analysis, "ROOT", self.root):
+            assets.index_addition_sources(self.manifest, reason="Verify native provenance")
+        row = next(row for row in json.loads(index.read_bytes())["inputs"] if row["path"] == native_name)
+        self.assertEqual(row["kind"], "prepared_native_cursor")
+        self.assertEqual(row["acquisition_receipt"], self.item["acquisition"]["path"])
+
     def test_source_must_be_declared_by_the_verified_acquisition(self):
         path = self.write(self.item["acquisition"]["path"], {"files": []})
         self.item["acquisition"].update(bytes=path.stat().st_size, sha256=assets.digest(path))

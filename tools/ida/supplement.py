@@ -1,9 +1,11 @@
-"""Capture evidenced pointer-table targets from a private copy of a static IDB.
+"""Capture evidenced native entries from a private copy of a static IDB.
 
 This supplements gaps in IDA's function enumeration without changing the
 original full capture. Missing boundaries may be created only for byte-exact
 x86/x64 direct-jump thunks or the exact x64 embedded-object destructor forwarding
 thunk; other unknown code remains an explicit failure.
+Retained functions can also be reanalyzed with explicit types derived from
+their complete original-byte assembly. Type repairs never modify the base IDB.
 """
 import hashlib
 import json
@@ -18,10 +20,12 @@ import ida_bytes
 import ida_funcs
 import ida_gdl
 import ida_hexrays
+import ida_ida
 import ida_kernwin
 import ida_lines
 import ida_nalt
 import ida_segment
+import ida_typeinf
 import ida_ua
 import idaapi
 import idautils
@@ -50,33 +54,44 @@ def capture():
         raise ValueError("Original capture changed during supplemental analysis")
     ida_auto.auto_wait()
     base = idaapi.get_imagebase()
-    if hex(base) != plan["pointer_table"]["image_base"]:
+    table = plan.get("pointer_table")
+    selection = table or plan["function_selection"]
+    if hex(base) != selection["image_base"]:
         raise ValueError("Database image base differs from actual input")
-    table = plan["pointer_table"]
-    table_ea = base + int(table["rva"], 16)
-    if (ida_bytes.get_bytes(table_ea, table["bytes"]) or b"").hex() != table["raw_hex"]:
-        raise ValueError("Database pointer-table bytes differ from original file")
     raw = original.read_bytes()
     sys.path.insert(0, str(root / "tools"))
     import analysis
     from host import inspect_pe
-    actual = analysis.native_pointer_targets(raw, int(table["rva"], 16), len(table["targets"]))
-    if actual != table:
-        raise ValueError("Pointer table no longer matches its bounded original-byte plan")
+    if table:
+        table_ea = base + int(table["rva"], 16)
+        if (ida_bytes.get_bytes(table_ea, table["bytes"]) or b"").hex() != table["raw_hex"]:
+            raise ValueError("Database pointer-table bytes differ from original file")
+        actual = analysis.native_pointer_targets(raw, int(table["rva"], 16), len(table["targets"]))
+    else:
+        recoveries = selection["type_recoveries"]
+        actual = analysis.native_function_selection(raw, json.loads(base_capture.read_bytes()),
+            [int(row["rva"], 16) for row in selection["targets"]],
+            [row["rva"] + "=" + row["declaration"] for row in recoveries],
+            recoveries[0]["assembly_evidence"] if recoveries else None)
+    if actual != selection:
+        raise ValueError("Native selection no longer matches its bounded original-byte plan")
     pe = inspect_pe(raw)
     output.mkdir(parents=True, exist_ok=True)
     functions = output / "functions"
     functions.mkdir(exist_ok=True)
     manifest = {"schema_version": 1, "input": plan["input"], "input_sha256": plan["sha256"],
-                "image_base": hex(base), "pointer_table": table,
+                "image_base": hex(base),
+                "pointer_table" if table else "function_selection": selection,
                 "base_capture": plan["base_capture"], "database": plan["database"],
+                "source_database": plan.get("source_database"),
                 "ida_version": ida_kernwin.get_kernel_version(),
                 "hexrays_available": bool(ida_hexrays.init_hexrays_plugin()),
                 "hexrays_version": str(ida_hexrays.get_hexrays_version()), "python_version": sys.version,
                 "capture_tool": {"path": "tools/ida/supplement.py",
                                  "sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()},
                 "started_at_utc": datetime.now(timezone.utc).isoformat(),
-                "functions": [], "references": [], "chains": [], "failures": [],
+                "functions": [], "references": [], "chains": [], "failures": [], "type_recoveries": [],
+                "capture_complete": False, "all_pseudocode_captured": False,
                 "boundary_policy": "Only exact direct-jump or x64 embedded-object destructor forwarding thunks receive new function boundaries; existing functions keep IDA boundaries",
                 "target_execution": False, "real_device_operations": False,
                 "semantic_audit": "pending", "implementation_acceptance": "pending"}
@@ -92,9 +107,20 @@ def capture():
             return item
         analysis.save(path, portable(value))
 
+    save(output / "capture.json", manifest)
+
     def ref(x):
         return {"from": hex(x.frm), "to": hex(x.to), "type": int(x.type),
                 "code": bool(x.iscode), "user": bool(x.user)}
+
+    issues = int(ida_ida.validate_idb(ida_ida.VLD_SILENT))
+    manifest["database_integrity"] = {"operation": "read-only validation; no automatic repairs",
+                                      "records_with_issues": issues, "verified": issues == 0}
+    if issues:
+        manifest.update(capture_complete=False, all_pseudocode_captured=False)
+        manifest["failures"].append({"stage": "database_integrity", "error": "{} inconsistent database records".format(issues)})
+        save(output / "capture.json", manifest)
+        raise ValueError("Private supplemental database failed read-only integrity validation")
 
     def file_bytes(rva, length):
         matches = [section for section in pe["sections"]
@@ -105,7 +131,7 @@ def capture():
         return raw[offset:offset + length]
 
     def jump_target(ea):
-        if table["architecture"] not in {"x86", "x64"}:
+        if selection["architecture"] not in {"x86", "x64"}:
             return None
         first = file_bytes(ea - base, 1)
         length = 5 if first == b"\xe9" else 2 if first == b"\xeb" else 0
@@ -129,7 +155,7 @@ def capture():
         # embedded object's virtual destructor with delete=0. Recognize the
         # whole byte sequence and keep its indirect target unresolved here;
         # callers must prove the embedded object's table from its constructor.
-        if table["architecture"] != "x64":
+        if selection["architecture"] != "x64":
             return None
         chunk = file_bytes(ea - base, 13)
         if (chunk[:3] != b"\x48\x8b\x41" or chunk[4:7] != b"\x48\x83\xc1"
@@ -142,7 +168,7 @@ def capture():
 
     def export(ea):
         rva = hex(ea - base)
-        existing = plan["existing_functions"].get(rva)
+        existing = plan["existing_functions"].get(rva) if table else None
         if existing:
             path = (root / existing["path"]).resolve()
             if not path.is_relative_to(root / ".analysis/results/native"):
@@ -229,8 +255,35 @@ def capture():
         ida_hexrays.clear_cached_cfuncs()
         return row
 
-    for target in table["targets"]:
-        chain = {"slot_rva": target["slot_rva"], "index": target["index"], "entries": [], "complete": False}
+    for recovery in selection.get("type_recoveries", []):
+        ea = base + int(recovery["rva"], 16)
+        retained = plan["existing_functions"][recovery["rva"]]
+        evidence = root / retained["path"]
+        if hashlib.sha256(evidence.read_bytes()).hexdigest() != retained["sha256"]:
+            raise ValueError("Assembly evidence changed before type recovery")
+        body = json.loads(evidence.read_bytes())
+        for chunk in body["chunks"]:
+            first, end = int(chunk["start"], 16), int(chunk["end"], 16)
+            if (file_bytes(first - base, end - first).hex() != chunk["raw_hex"]
+                    or ida_bytes.get_bytes(first, end - first).hex() != chunk["raw_hex"]):
+                raise ValueError("Type recovery assembly differs from original image or database")
+        previous = idc.get_type(ea)
+        typ = ida_typeinf.tinfo_t()
+        if not ida_typeinf.parse_decl(typ, None, recovery["declaration"], ida_typeinf.PT_SIL) or not typ.is_func():
+            raise ValueError("Explicit recovery declaration is not a valid function type")
+        if not ida_typeinf.apply_tinfo(ea, typ, ida_typeinf.TINFO_DEFINITE):
+            raise ValueError("IDA rejected the explicit recovered function type")
+        ida_hexrays.clear_cached_cfuncs()
+        applied = ida_typeinf.tinfo_t()
+        if not ida_nalt.get_tinfo(applied, ea) or applied != typ:
+            raise ValueError("Applied recovered type differs from the reviewed declaration")
+        manifest["type_recoveries"].append({**recovery, "address": hex(ea), "previous_type": previous,
+            "applied_type": str(applied), "assembly_evidence_reference": retained,
+            "base_database_modified": False})
+
+    for target in selection["targets"]:
+        identity = {"slot_rva": target["slot_rva"]} if "slot_rva" in target else {"requested_rva": target["rva"]}
+        chain = {**identity, "index": target["index"], "entries": [], "complete": False}
         visited = set()
         ea = int(target["address"], 16)
         try:
@@ -249,7 +302,7 @@ def capture():
             else:
                 raise ValueError("Direct-jump chain exceeds explicit static-analysis limit")
         except Exception:
-            manifest["failures"].append({"slot_rva": target["slot_rva"], "stage": "target", "error": traceback.format_exc()})
+            manifest["failures"].append({**identity, "stage": "target", "error": traceback.format_exc()})
         manifest["chains"].append(chain)
         save(output / "capture.json", manifest)
     manifest["capture_complete"] = all(chain["complete"] for chain in manifest["chains"])
@@ -258,6 +311,14 @@ def capture():
     for path in (original, private):
         if hashlib.sha256(path.read_bytes()).hexdigest() != plan["sha256"]:
             raise ValueError("Original input changed during supplemental analysis")
+    if hashlib.sha256(base_capture.read_bytes()).hexdigest() != plan["base_capture"]["sha256"]:
+        raise ValueError("Base capture changed during supplemental analysis")
+    if plan.get("source_database"):
+        retained = plan["source_database"]
+        if hashlib.sha256((root / retained["path"]).read_bytes()).hexdigest() != retained["sha256"]:
+            raise ValueError("Base database changed during supplemental analysis")
+    manifest["base_capture_unchanged"] = True
+    manifest["base_database_unchanged"] = bool(plan.get("source_database"))
     save(output / "capture.json", manifest)
     return manifest
 

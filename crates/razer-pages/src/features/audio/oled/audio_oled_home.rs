@@ -40,8 +40,32 @@ fn label(symbol: &str) -> String {
 }
 pub(super) struct OledHomeState {
     started: Instant,
-    editor: Option<AnyView>,
+    editor: Option<OledEditor>,
     runtime: runtime::OledRuntimeState,
+}
+
+enum OledEditor {
+    Media(Entity<media::MediaEditor>),
+    Banner(Entity<banner::BannerEditor>),
+    System(Entity<system::SystemEditor>),
+    Artwork(Entity<artwork::ArtworkEditor>),
+}
+
+impl OledEditor {
+    fn view(&self) -> AnyView {
+        match self {
+            Self::Media(editor) => editor.clone().into(),
+            Self::Banner(editor) => editor.clone().into(),
+            Self::System(editor) => editor.clone().into(),
+            Self::Artwork(editor) => editor.clone().into(),
+        }
+    }
+
+    fn cancel(self, cx: &mut App) {
+        if let Self::Artwork(editor) = self {
+            editor.update(cx, |editor, _| editor.deactivate());
+        }
+    }
 }
 impl OledHomeState {
     pub(super) fn new(pid: u32) -> Option<Self> {
@@ -53,8 +77,16 @@ impl OledHomeState {
     }
 }
 impl AudioProductWorkspace {
-    pub(super) fn initialize_oled_home(&mut self, window: &Window) {
+    pub fn cancel_oled_editor(&mut self, cx: &mut Context<Self>) {
+        if let Some(editor) = self.oled_home.as_mut().and_then(|home| home.editor.take()) {
+            editor.cancel(cx);
+            cx.notify();
+        }
+    }
+
+    pub(super) fn initialize_oled_home(&mut self, window: &Window, cx: &mut Context<Self>) {
         if self.spec.product_id == 1383 {
+            self.cancel_oled_editor(cx);
             self.draft["oledHome"] = json!({
                 "home":spec().home,"media":spec().media,
                 "animation": artwork::default_value(0),
@@ -67,7 +99,6 @@ impl AudioProductWorkspace {
             self.draft["oledHome"]["banner"]["local_duration_ms"] = json!(duration);
             if let Some(state) = &mut self.oled_home {
                 state.started = Instant::now();
-                state.editor = None;
             }
         }
     }
@@ -128,7 +159,7 @@ impl AudioProductWorkspace {
             .as_ref()?
             .editor
             .as_ref()
-            .map(|editor| editor.clone().into_any_element())
+            .map(|editor| editor.view().into_any_element())
     }
     pub(super) fn kraken_oled_home(
         &self,
@@ -218,6 +249,7 @@ impl AudioProductWorkspace {
                         is_ble,
                     )
                     .on_click(cx.listener(move |this, _, window, cx| {
+                        this.cancel_oled_editor(cx);
                         if mode == 5 {
                             let draft = this.draft["oledHome"]["media"].clone();
                             let editor = media::MediaEditor::open(
@@ -227,7 +259,7 @@ impl AudioProductWorkspace {
                                 cx,
                             );
                             if let Some(state) = &mut this.oled_home {
-                                state.editor = Some(editor.into());
+                                state.editor = Some(OledEditor::Media(editor));
                             }
                             cx.notify();
                         } else if mode == 2 {
@@ -238,7 +270,7 @@ impl AudioProductWorkspace {
                                 cx,
                             );
                             if let Some(state) = &mut this.oled_home {
-                                state.editor = Some(editor.into());
+                                state.editor = Some(OledEditor::Banner(editor));
                             }
                             cx.notify();
                         } else if mode == 6 {
@@ -249,7 +281,7 @@ impl AudioProductWorkspace {
                                 cx,
                             );
                             if let Some(state) = &mut this.oled_home {
-                                state.editor = Some(editor.into());
+                                state.editor = Some(OledEditor::System(editor));
                             }
                             cx.notify();
                         } else if matches!(mode, 0 | 1 | 4) {
@@ -262,7 +294,7 @@ impl AudioProductWorkspace {
                                 cx,
                             );
                             if let Some(state) = &mut this.oled_home {
-                                state.editor = Some(editor.into());
+                                state.editor = Some(OledEditor::Artwork(editor));
                             }
                             cx.notify();
                         }

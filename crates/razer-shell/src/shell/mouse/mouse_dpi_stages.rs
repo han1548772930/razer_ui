@@ -14,6 +14,11 @@ pub(super) struct MouseDpiStagesSave {
     identity: String,
     profile: Profile,
 }
+impl MouseDpiStagesSave {
+    pub(super) fn owner(&self) -> (&str, WeakEntity<ProductWorkspace>) {
+        (&self.identity, self.workspace.clone())
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -230,10 +235,10 @@ impl AppShell {
                 .collect(),
             cx,
         );
-        self.pending_saves.push_back(PreparedSave {
-            window: window.window_handle(),
+        self.pending_saves.push_back(self.prepare_save(
+            window.window_handle(),
             file,
-            product: Some(ProductSave::MouseDpiStages(MouseDpiStagesSave {
+            Some(ProductSave::MouseDpiStages(MouseDpiStagesSave {
                 workspace: workspace.downgrade(),
                 scope,
                 revision,
@@ -241,7 +246,8 @@ impl AppShell {
                 identity: workspace.read(cx).identity(cx),
                 profile: profile.expect("checked active profile").clone(),
             })),
-        });
+            cx,
+        ));
         self.start_pending_save(cx);
     }
 

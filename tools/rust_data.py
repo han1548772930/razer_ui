@@ -120,6 +120,27 @@ def ancestors(node):
         parent = parent.parent
 
 
+def imported_paths(node, prefix=()):
+    """Resolve explicit Rust use trees; strings/comments never declare an owner."""
+    def text(child):
+        return child.text.decode("utf-8") if child is not None else ""
+    if node.type == "use_declaration":
+        yield from imported_paths(node.child_by_field_name("argument"), prefix)
+    elif node.type == "scoped_use_list":
+        path = prefix + tuple(text(node.child_by_field_name("path")).split("::"))
+        yield from imported_paths(node.child_by_field_name("list"), path)
+    elif node.type == "use_list":
+        for child in node.named_children:
+            yield from imported_paths(child, prefix)
+    elif node.type == "use_as_clause":
+        yield text(node.child_by_field_name("alias")), prefix + tuple(text(node.child_by_field_name("path")).split("::"))
+    elif node.type == "self" and prefix:
+        yield prefix[-1], prefix
+    elif node.type in {"identifier", "scoped_identifier"}:
+        path = prefix + tuple(text(node).split("::"))
+        yield path[-1], path
+
+
 def rust_string(value):
     text = json.dumps(value, ensure_ascii=False)
     text = text.replace("\\b", "\\u{8}").replace("\\f", "\\u{c}")
@@ -142,6 +163,7 @@ def split_types(text):
 
 
 def rename(value, mode):
+    value = value.removeprefix("r#")
     words = re.findall(r"[A-Z]+(?=[A-Z][a-z]|$)|[A-Z]?[a-z]+|[0-9]+", value)
     if mode == "snake_case":
         return "_".join(word.lower() for word in words)
@@ -301,6 +323,7 @@ class RustData:
         self.expression_pool = None
         self.shared_constructors = []
         self.module_sources = {}
+        self.module_imports = {}
         self.resolved_definitions = {}
         self.shared_inputs = {}
         for path in sorted((self.crate_root / "src").rglob("*.rs")):
@@ -311,6 +334,8 @@ class RustData:
     def _parse(self, path):
         raw = path.read_bytes()
         root = self.parser.parse(raw).root_node
+        self.module_imports[path] = {alias: target for node in root.named_children
+                                     if node.type == "use_declaration" for alias, target in imported_paths(node)}
 
         def scan(parent):
             attrs = []
@@ -355,23 +380,23 @@ class RustData:
         if source is None:
             source = module.read_text(encoding="utf-8")
             self.module_sources[module] = source
-        namespace = name.split("::", 1)[0] if "::" in name else None
-        if namespace is None:
-            imported = re.search(r"use\s+([\w_]+)::" + re.escape(name) + r"\s*;", source)
-            if imported:
-                namespace = imported[1]
+        imports = self.module_imports.get(module, {})
+        first = name.split("::", 1)[0]
+        imported = imports.get(first)
+        namespace = imported[0] if imported else first if "::" in name else None
         if namespace:
-            original_namespace = namespace
-            alias = re.search(r"use\s+([\w_]+)\s+as\s+" + re.escape(namespace) + r"\s*;", source)
-            if alias:
-                namespace = alias[1]
             external = ROOT / "crates" / namespace.replace("_", "-")
             if external.is_dir() and external != self.crate_root and external not in self.external_roots:
                 self.external_roots.add(external)
                 for path in sorted((external / "src").rglob("*.rs")):
                     if "/src/data/" not in path.as_posix():
                         self._parse(path)
-        candidates = self.definitions.get(name.rsplit("::", 1)[-1], [])
+        actual_name = imported[-1] if imported and "::" not in name else name.rsplit("::", 1)[-1]
+        candidates = self.definitions.get(actual_name, [])
+        if imported:
+            imported_root = ROOT / "crates" / imported[0].replace("_", "-")
+            if imported_root.is_dir():
+                candidates = [item for item in candidates if item.module.is_relative_to(imported_root)]
         local = [item for item in candidates if item.module == module]
         if len(local) == 1:
             self.resolved_definitions[key] = local[0]
@@ -417,6 +442,9 @@ class RustData:
             return typ
         definition = self.definition(typ, module, value)
         owner = definition.module.relative_to(ROOT / "crates").parts[0]
+        imported = self.module_imports.get(module, {}).get(typ)
+        if owner != self.crate_root.name and imported is not None:
+            return "::".join(imported)
         return owner.replace("-", "_") + "::" + typ if owner != self.crate_root.name and "::" not in typ else typ
 
     def _render(self, value, typ, module, path, allow_value):
@@ -478,6 +506,8 @@ class RustData:
             if not isinstance(value, str):
                 raise ValueError(f"{path}: expected string")
             return rust_string(value)
+        if typ.startswith("&'static [") and typ.endswith("]"):
+            return "&" + self._render(value, typ[len("&'static "):], module, path, allow_value)
         if typ == "bool":
             if type(value) is not bool:
                 raise ValueError(f"{path}: expected bool")
@@ -540,10 +570,7 @@ class RustData:
             self.value_fields.add(path)
             return self._boundary(value)
         definition = self.definition(typ, module, value)
-        constructor = typ
-        owner = definition.module.relative_to(ROOT / "crates").parts[0]
-        if owner != self.crate_root.name and "::" not in typ:
-            constructor = owner.replace("-", "_") + "::" + typ
+        constructor = self.constructor_type(typ, module, value)
         mode = attribute(definition.attrs, "rename_all")
         if definition.kind == "enum_item":
             tag, content = attribute(definition.attrs, "tag"), attribute(definition.attrs, "content")
@@ -639,6 +666,293 @@ class RustData:
         self.shared_constructors.append((name, "serde_json::Value", expression))
         self.expression_pool[key] = name
         return name + "()"
+
+
+MAPPING_ENGINE_SOURCE = ".analysis/results/frontend/mapping-engine-current-data.json"
+MAPPING_ENGINE_MODULE = "crates/razer-device/src/mapping/mapping_engine_data.rs"
+MAPPING_ENGINE_OUTPUT = "crates/razer-device/src/mapping/mapping_engine_data_generated.rs"
+
+
+def mapping_engine_tables(data, *, schema=None):
+    """Validate every source field against its actual static Rust owner."""
+    if type(data) is not dict or not data:
+        raise ValueError("Mapping engine source must contain product branches")
+    module = MAPPING_ENGINE_MODULE
+    schema = schema or RustData(ROOT / "crates/razer-device")
+    tables, products = [], []
+    if any(type(product) is not str or not re.fullmatch(r"[1-9][0-9]*", product)
+           or int(product) > 0xffffffff for product in data):
+        raise ValueError("Mapping engine product identity or fields differ")
+    for product, row in sorted(data.items(), key=lambda item: int(item[0])):
+        if type(row) is not dict or set(row) != {"keys", "default_turbo_ids", "turbo_events", "constants"}:
+            raise ValueError("Mapping engine product identity or fields differ")
+        ids, events, constants = row["default_turbo_ids"], row["turbo_events"], row["constants"]
+        if (type(ids) is not list or not ids or any(type(value) is not str or not value for value in ids)
+                or len(set(ids)) != len(ids) or type(events) is not dict or set(events) != set(ids)
+                or type(constants) is not dict or set(constants) != {
+                    "SINGLE_STATE_INPUT_ID", "SCROLL_INPUT_ID", "SCROLL_TURBO_DELAY_MS"}
+                or type(row["keys"]) is not list or not row["keys"]):
+            raise ValueError("Mapping engine ordered keys, turbo events or constants are incomplete")
+        def non_null(value):
+            if value is None:
+                raise ValueError("Mapping engine fixed fields must not contain null")
+            for child in value.values() if isinstance(value, dict) else value if isinstance(value, list) else []:
+                non_null(child)
+        non_null(row)
+        value = {"keys": row["keys"], "default_turbos": [{"id": key, "events": events[key]} for key in ids],
+                 "single_state_input_ids": constants["SINGLE_STATE_INPUT_ID"],
+                 "scroll_input_ids": constants["SCROLL_INPUT_ID"],
+                 "scroll_turbo_delay_ms": constants["SCROLL_TURBO_DELAY_MS"]}
+        expression = schema.render(value, "EngineData", module)
+        if schema.excluded or schema.value_fields:
+            raise ValueError("Mapping engine source has fields outside the typed Rust schema: " + str(sorted(schema.excluded)))
+        index = next((index for index, previous in enumerate(tables) if previous == expression), len(tables))
+        if index == len(tables):
+            tables.append(expression)
+        products.append((int(product), index))
+    return tables, products
+
+
+def prepare_mapping_engine_data(data, *, check=False):
+    import subprocess
+    tables, products = mapping_engine_tables(data)
+    text = "// Generated by tools/workspace.py audit-family-function --query mapping-engine --prepare.\n"
+    text += "// Complete original array order and independently decoded product branches are retained.\n\n"
+    text += "\n\n".join(f"static DATA_{index}: EngineData = {body};" for index, body in enumerate(tables))
+    text += "\n\npub(super) const PRODUCTS: &[ProductData] = &[\n" + "\n".join(
+        f"ProductData {{ product_id: {product}, data: &DATA_{index} }}," for product, index in products) + "\n];\n"
+    formatted = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"], input=text.encode("utf-8"),
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+    if formatted.returncode:
+        raise ValueError("Mapping engine Rust formatting failed: " + formatted.stderr.decode("utf-8", errors="replace"))
+    output = ROOT / MAPPING_ENGINE_OUTPUT
+    if check:
+        if output.read_bytes() != formatted.stdout:
+            raise ValueError("Mapping engine generated Rust differs from complete typed source")
+    else:
+        output.write_bytes(formatted.stdout)
+    summary = prepare_mapping_engine_summary(data, check=check)
+    return {"output": output.relative_to(ROOT).as_posix(), "sha256": hashlib.sha256(formatted.stdout).hexdigest(),
+            "products": [product for product, _ in products], "shared_tables": len(tables), "checked": check,
+            "source_summary": summary}
+
+
+def check_mapping_engine_data():
+    source = ROOT / MAPPING_ENGINE_SOURCE
+    raw = source.read_bytes()
+    result = prepare_mapping_engine_data(json.loads(raw), check=True)
+    return {"source": MAPPING_ENGINE_SOURCE, "source_sha256": hashlib.sha256(raw).hexdigest(),
+            **result}
+
+
+def mapping_source_md5(value):
+    """Independently encode the closed integer/string source-table projection."""
+    def canonical(item):
+        if type(item) is dict:
+            if any(type(key) is not str for key in item):
+                raise ValueError("Mapping summary keys must be strings")
+            return {key: canonical(item[key]) for key in sorted(item, key=lambda key: key.encode("utf-16-be"))}
+        if type(item) is list:
+            return [canonical(child) for child in item]
+        if type(item) is int:
+            if abs(item) > 9_007_199_254_740_991:
+                raise ValueError("Mapping summary integer exceeds exact JavaScript range")
+        elif item is not None and type(item) not in {str, bool}:
+            raise ValueError("Mapping fixed summary requires integer/string source fields")
+        return item
+    encoded = json.dumps(canonical(value), ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003C")
+    return hashlib.md5(encoded.encode("utf-8")).hexdigest()
+
+
+def mapping_engine_summary(data):
+    """Keep source-derived digests and behavioral counts without copying tables."""
+    tables, products = [], []
+    for product, source in sorted(data.items(), key=lambda item: int(item[0])):
+        key_events = []
+        for key in source["keys"]:
+            if "inputID" in key:
+                flag = key.get("outputFlag", key["flag"])
+                key_events.append({"inputID": key["inputID"], "events": [
+                    {"type": "keyboard", "scancode": key["scancode"], "flag": flag + release}
+                    for release in (0, 1)]})
+        table = {"key_count": len(source["keys"]),
+            "keys_without_input_id": sum("inputID" not in key for key in source["keys"]),
+            "keys_md5": mapping_source_md5(source["keys"]),
+            "key_events_md5": mapping_source_md5(key_events),
+            "constants_md5": mapping_source_md5(source["constants"]),
+            "default_turbos": [{"id": name, "event_count": len(source["turbo_events"][name]),
+                "events_md5": mapping_source_md5(source["turbo_events"][name]),
+                "source_hash": mapping_source_md5({"events": source["turbo_events"][name]})}
+                for name in source["default_turbo_ids"]]}
+        index = next((index for index, previous in enumerate(tables) if previous == table), len(tables))
+        if index == len(tables):
+            tables.append(table)
+        products.append({"product_id": int(product), "table": index})
+    return {"schema_version": 1, "products": products, "tables": tables}
+
+
+def prepare_mapping_engine_summary(data, *, check=False):
+    summary = mapping_engine_summary(data)
+    raw = (json.dumps(summary, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+    output = ROOT / "crates/razer-device/testdata/re/mapping-engine-source-summary.json"
+    if check:
+        if not output.is_file() or output.read_bytes() != raw:
+            raise ValueError("Mapping engine source summary differs from independently decoded source")
+    else:
+        output.write_bytes(raw)
+    if json.loads(output.read_bytes()) != summary:
+        raise ValueError("Mapping engine source summary ordered readback differs")
+    return {"output": output.relative_to(ROOT).as_posix(), "bytes": len(raw),
+            "sha256": hashlib.sha256(raw).hexdigest(), "checked": check}
+
+
+def magnetic_source_expressions(products, *, schema=None):
+    """Render each fixed magnetic branch against the real capability owner."""
+    module = "crates/razer-device/src/keyboard/keyboard_magnetic_source.rs"
+    schema = schema or RustData(ROOT / "crates/razer-device")
+    if set(products) != {740, 746}:
+        raise ValueError("Magnetic fixed tables require both complete product branches")
+    shared = ("DEFAULTPROFILE", "preset_guids", "preset_actuation", "preset_rapid_trigger", "defaultActuation", "defaultRapidTrigger", "guest_profile_owner", "onboard_preset_guids", "macro_scancodes", "bottom_deadzone")
+    if any(products[740][key] != products[746][key] for key in shared):
+        raise ValueError("Magnetic shared defaults differ across product branches")
+    constants, functions, counts = {}, {}, {}
+    def render(value, typ):
+        result = schema.render(value, typ, module)
+        if schema.excluded or schema.value_fields:
+            raise ValueError("Magnetic fixed source has untyped or excluded fields: " + str(sorted(schema.excluded)))
+        return result
+    aliases = {"FACTORY_DEFAULT": "FACTORY", "FPS_RAPID_TRIGGER": "FPS", "ANALOG_WASD": "ANALOG_WASD",
+               "RACING": "RACING", "HIGH_SENSITIVITY": "HIGH", "GENERAL": "GENERAL"}
+    if set(products[740]["preset_guids"]) != set(aliases):
+        raise ValueError("Magnetic preset identities differ")
+    constants.update({aliases[key]: rust_string(guid) for key, guid in products[740]["preset_guids"].items()})
+    constants["GUEST_PROFILE_OWNER"] = rust_string(products[740]["guest_profile_owner"])
+    preset_names = {guid: aliases[key] for key, guid in products[740]["preset_guids"].items()}
+    onboard = products[740]["onboard_preset_guids"]
+    if len(onboard) != len(set(onboard)) or not set(onboard) < set(preset_names) or set(preset_names) - set(onboard) != {products[740]["preset_guids"]["GENERAL"]}:
+        raise ValueError("Magnetic onboard preset predicate differs from the current registration branch")
+    functions["is_onboard_preset"] = "matches!(guid," + "|".join(preset_names[guid] for guid in onboard) + ")"
+    scans, seen = products[740]["macro_scancodes"], set()
+    for row in scans:
+        if (type(row) is not dict or set(row) != {"hid", "scancode"} or type(row["hid"]) is not int
+                or type(row["scancode"]) is not int or not 0 <= row["hid"] <= 65535
+                or not 0 <= row["scancode"] <= 0xffffffff or row["hid"] in seen):
+            raise ValueError("Magnetic macro HID conversion fields or identities differ")
+        seen.add(row["hid"])
+    functions["macro_scancode"] = "match hid{" + ",".join(f"{row['hid']}=>Some({row['scancode']})" for row in scans) + ",_=>None}"
+    deadzone = products[740]["bottom_deadzone"]
+    if (type(deadzone) is not dict or set(deadzone) != {"responsive", "medium", "stable"}
+            or any(type(value) is not int or not 0 <= value <= 255 for value in deadzone.values())):
+        raise ValueError("Magnetic bottom deadzone fields or values differ")
+    functions["bottom_deadzone"] = "match value{" + ",".join(rust_string(key) + "=>" + str(value)
+        for key, value in deadzone.items() if key != "medium") + ",_=>" + str(deadzone["medium"]) + "}"
+    profile_source = dict(products[740]["DEFAULTPROFILE"])
+    polling = profile_source["pollingRate"]
+    if type(polling) is float and math.isfinite(polling) and polling.is_integer():
+        profile_source["pollingRate"] = int(polling)
+    profile = render(profile_source, "ProfileDefaults")
+    functions["default_profile"] = 'serde_json::to_value(' + profile + ').expect("typed magnetic profile defaults")'
+    def mapping(row):
+        kind = row["outputType"]
+        required = {"inputID", "inputType", "isHyperShift", "outputType"}
+        if kind not in {"otfmGroup", "gameModeGroup"}:
+            required.add(kind)
+        if set(row) != required or row["inputType"] != "KeyInput" or row["isHyperShift"] is not True:
+            raise ValueError("Magnetic default mapping fields or branch differ")
+        group = row.get(kind)
+        if kind == "keyboardGroup":
+            if group == {"key": "KEY_PRINT_SCREEN", "keyAssignment": "Prnt Scrn", "modifiers": []}:
+                output = "DefaultOutput::PrintScreen"
+            elif type(group) is dict and set(group) == {"key"} and type(group["key"]) is str:
+                output = "DefaultOutput::Keyboard(" + rust_string(group["key"]) + ")"
+            else:
+                raise ValueError("Magnetic keyboard default output differs")
+        elif kind == "multimediaGroup":
+            if set(group) not in ({"multimediaAssignment"}, {"multimediaAssignment", "useTurbo"}) or group.get("useTurbo", True) is not True:
+                raise ValueError("Magnetic media default fields differ")
+            output = "DefaultOutput::Media{action:" + rust_string(group["multimediaAssignment"]) + ",turbo:" + str(group.get("useTurbo", False)).lower() + "}"
+        elif kind in {"systemGroup", "backlightGroup"}:
+            field = "systemAssignment" if kind == "systemGroup" else "backlightAssignment"
+            if set(group) != {field}:
+                raise ValueError("Magnetic named default output differs")
+            output = "DefaultOutput::" + ("System" if kind == "systemGroup" else "Backlight") + "(" + rust_string(group[field]) + ")"
+        elif kind == "profileNavigationGroup":
+            if set(group) not in ({"profileNavigationAssignment"}, {"profileNavigationAssignment", "guid"}):
+                raise ValueError("Magnetic profile default output differs")
+            output = "DefaultOutput::Profile{action:" + rust_string(group["profileNavigationAssignment"]) + ",guid:" + (
+                "Some(" + rust_string(group["guid"]) + ")" if "guid" in group else "None") + "}"
+        elif kind in {"otfmGroup", "gameModeGroup"}:
+            output = "DefaultOutput::" + ("Otfm" if kind == "otfmGroup" else "GameMode")
+        elif kind == "snapTapGroup" and group == {"snapTapAssignment": "toggle"}:
+            output = "DefaultOutput::SnapTap"
+        else:
+            raise ValueError("Magnetic default output is unresolved: " + str(kind))
+        return "DefaultMapping{input:" + rust_string(row["inputID"]) + ",output:" + output + "}"
+    for pid, source in products.items():
+        if source["DEFAULT_FIRMWARE_MAPPINGS"] != []:
+            raise ValueError("Magnetic firmware default override requires an explicit owner")
+        for suffix, key in [("", "DEFAULTMAPPINGS"), ("_JP", "DEFAULTMAPPINGS_JPN"), ("_UK", "DEFAULTMAPPINGS_UK")]:
+            if key in source:
+                constants[f"DEFAULT_{pid}{suffix}"] = "&[" + ",".join(mapping(row) for row in source[key]) + "]"
+        for suffix, key in [("", "BUTTON_LIST"), ("_JP", "BUTTON_LIST_JP"), ("_UK", "BUTTON_LIST_UK")]:
+            if key not in source:
+                continue
+            # The list intentionally contains repeated source rows; preserve them
+            # in encoded defaults while OBM physical identity keeps first order.
+            constants[f"BUTTONS_{pid}{suffix}"] = render(list(dict.fromkeys(row["inputID"] for row in source[key])), "&'static [&'static str]")
+            defaults = source["obm_default_buttons"][key]
+            constants[f"OBM_DEFAULT_{pid}{suffix}"] = render(defaults, "&'static [DefaultButton]")
+            counts[f"OBM_DEFAULT_{pid}{suffix}"] = len(defaults)
+        firmware = [{"input": name, "id": row["fwID"]} for name, row in source["firmware_keyboard"]["NormalMode"].items()
+                    if type(row.get("fwID")) is int and row["fwID"] != 255]
+        constants[f"FIRMWARE_{pid}"] = render(firmware, "&'static [FirmwareKey]")
+        full = []
+        for row in source["FULLMAPPINGLIST"]:
+            if (set(row) != {"inputID", "inputType", "isHyperShift", "outputType", "disableGroup"}
+                    or row["inputType"] not in {"KeyInput", "AnalogInput"} or row["outputType"] != "disableGroup"
+                    or row["disableGroup"] != {"disableAssignment": "Disable"}):
+                raise ValueError("Magnetic full input fields or disabled output differ")
+            full.append({"input": row["inputID"], "analog": row["inputType"] == "AnalogInput", "hypershift": row["isHyperShift"]})
+        constants[f"FULL_{pid}"] = render(full, "&'static [FullInput]")
+    return constants, functions, counts
+
+
+def prepare_magnetic_source(products, *, check=False):
+    """Update only the AST-owned fixed expressions; keep lifecycle/API code."""
+    import subprocess
+    constants, functions, counts = magnetic_source_expressions(products)
+    path = ROOT / "crates/razer-device/src/keyboard/keyboard_magnetic_source.rs"
+    raw = path.read_bytes()
+    schema = RustData(ROOT / "crates/razer-device")
+    tree = schema.parser.parse(raw)
+    replacements, found = [], set()
+    for node in tree.root_node.named_children:
+        if node.type not in {"const_item", "function_item"}:
+            continue
+        name = node.child_by_field_name("name").text.decode("utf-8")
+        if node.type == "const_item" and name in constants:
+            value = node.child_by_field_name("value")
+            replacements.append((value.start_byte, value.end_byte, constants[name].encode("utf-8")))
+            found.add(name)
+        if node.type == "function_item" and name in functions:
+            body = node.child_by_field_name("body")
+            replacements.append((body.start_byte, body.end_byte, ("{" + functions[name] + "}").encode("utf-8")))
+            found.add(name)
+    if found != set(constants) | set(functions):
+        raise ValueError("Magnetic generated expressions are missing their Rust owner: " + str(sorted((set(constants) | set(functions)) - found)))
+    for start, end, replacement in sorted(replacements, reverse=True):
+        raw = raw[:start] + replacement + raw[end:]
+    formatted = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"], input=raw,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+    if formatted.returncode:
+        raise ValueError("Magnetic typed source formatting failed: " + formatted.stderr.decode("utf-8", errors="replace"))
+    if check:
+        if path.read_bytes().replace(b"\r\n", b"\n") != formatted.stdout.replace(b"\r\n", b"\n"):
+            raise ValueError("Magnetic generated Rust differs from complete typed source")
+    else:
+        path.write_bytes(formatted.stdout)
+    return {"output": path.relative_to(ROOT).as_posix(), "sha256": hashlib.sha256(formatted.stdout).hexdigest(),
+            "products": sorted(products), "fixed_expressions": len(found), "ordered_default_buttons": counts, "checked": check}
 
 
 def owned_constructor(schema, module, marker, function, fragment):
@@ -802,6 +1116,8 @@ def build_table(crate, symbol, module, root_type, *, source=None, check=False,
                              if (item["crate"], item["macro"]) == (crate, macro_name)), None)
             if previous and "maintenance_recovery" in previous:
                 report["maintenance_recovery"] = previous["maintenance_recovery"]
+            if previous and "source_evidence" in previous:
+                report["source_evidence"] = previous["source_evidence"]
             recipes["tables"] = [item for item in recipes["tables"]
                                  if (item["crate"], item["macro"]) != (crate, macro_name)] + [report]
             recipes["tables"].sort(key=lambda item: (item["crate"], item["macro"]))
@@ -910,6 +1226,7 @@ def add_commands(commands):
     parser.add_argument("--symbol", action="append", help="Restrict to registered source symbols")
     parser.add_argument("--check", action="store_true", help="Compare without modifying tables")
     parser.add_argument("--recover-maintenance", action="store_true", help="Recover missing maintained inputs from complete current Rust constructors and verify AST equivalence")
+    parser.add_argument("--record-verification", action="store_true", help="With an unfiltered --check, record complete input/output identities and index maintenance bytes without claiming vendor provenance")
     emoji = commands.add_parser("prepare-emoji-search", help="Share identical emoji entries while preserving the complete source order")
     emoji.add_argument("--check", action="store_true", help="Compare without modifying the shared table")
     emoji.add_argument("--source", action="append", help="Retained original JS; verify the entire ordered vocabulary and register its byte identity")
@@ -919,6 +1236,10 @@ def run(args):
     if args.command == "prepare-emoji-search":
         return prepare_emoji_search(check=args.check, sources=args.source)
     registry = json.loads((ROOT / "tools/typed-data.json").read_bytes())
+    record = getattr(args, "record_verification", False)
+    if record and (not args.check or args.crate or args.symbol or args.recover_maintenance):
+        raise ValueError("Recorded maintenance verification requires an unfiltered --check")
+    snapshots = maintenance_verification_inputs(registry) if record else None
     rows = [item for item in registry["tables"]
             if (not args.crate or item["crate"] in args.crate)
             and (not args.symbol or item["symbol"] in args.symbol)]
@@ -955,4 +1276,94 @@ def run(args):
                            source=item["source"], macro_name=item["macro"], check=args.check,
                            allow_value=item.get("allow_value", False),
                            product_factory=item.get("product_factory", False), schema=schemas[item["crate"]]) for item in rows]
-    return {"tables": len(reports) + len(sqlite_rows), "check_only": args.check, "passed": True}
+    specialized = {}
+    if args.check and not args.symbol and (not args.crate or "razer-device" in args.crate):
+        specialized["mapping_engine"] = check_mapping_engine_data()
+        import typed_tables
+        specialized["receiver_battery_peers"] = typed_tables.prepare_receiver_battery_peers(check=True, record=False)
+        specialized["receiver_sender_tables"] = typed_tables.prepare_receiver_sender_tables(check=True, record=False)
+    if args.check and not args.symbol and (not args.crate or "razer-storage" in args.crate):
+        import typed_tables
+        specialized["receiver_reset_storage"] = typed_tables.check_receiver_reset_storage()
+    if record:
+        record_maintenance_verification(registry, snapshots, len(reports) + len(sqlite_rows), specialized)
+    return {"tables": len(reports) + len(sqlite_rows), "specialized_tables": specialized,
+            "check_only": args.check, "passed": True}
+
+
+def maintenance_verification_inputs(registry):
+    """Snapshot regeneration inputs and outputs; retained source claims stay explicit."""
+    import analysis
+    import resource_database
+    import typed_tables
+    paths = {"Cargo.toml", "Cargo.lock", "tools/typed-data.json", "tools/rust_data.py", "tools/catalog_data.py", "tools/resource_database.py",
+             "tools/analysis.py", "tools/asset_release.py", "tools/asset-release.json", "tools/resource-mappings.json",
+             "tools/typed_tables.py", "tools/analyzers/python-static/acquisition.json",
+             resource_database.INSTALLATION, resource_database.SCHEMA, resource_database.OUTPUT,
+              resource_database.PRODUCT_REGISTRY, resource_database.PRODUCT_HELP, EMOJI_SEARCH_INPUT,
+              MAPPING_ENGINE_SOURCE, "tools/families.py", typed_tables.RESET_INPUT}
+    _, battery_peer_inputs = typed_tables.receiver_battery_peer_inputs()
+    paths.update(item["path"] for item in battery_peer_inputs)
+    paths.add(typed_tables.BATTERY_PEER_OUTPUT)
+    import host
+    import families
+    sender_audit = host.HostLocalAudit()
+    for pid in (164, 179, 241):
+        families.receiver_sender_sources(sender_audit, pid)
+    paths.update(item["path"] for item in sender_audit.artifacts.values() if item["path"] != ".analysis/inputs.json")
+    paths.update((typed_tables.QUERY_OUTPUT, typed_tables.PAIR_CAP_OUTPUT))
+    for recipe in registry["tables"]:
+        source = analysis.resolve(recipe["source"], INPUTS)
+        if analysis.sha(source) != recipe["source_sha256"]:
+            raise ValueError("Maintenance input identity differs: " + recipe["source"])
+        paths.add(recipe["source"])
+        paths.add(recipe["module"])
+        paths.update(row["path"] for row in recipe.get("shared_inputs", []))
+    for source in registry.get("emoji_search", {}).get("original_sources", []):
+        name = source if isinstance(source, str) else source["path"]
+        paths.add(name)
+        path = (ROOT / name).resolve()
+        receipt = next((parent / "acquisition.json" for parent in path.parents
+                        if parent.is_relative_to(ROOT / ".analysis/inputs/frontend") and (parent / "acquisition.json").is_file()), None)
+        if receipt is None:
+            raise ValueError("Emoji source has no acquisition receipt: " + name)
+        paths.add(receipt.relative_to(ROOT).as_posix())
+    paths.update(path.relative_to(ROOT).as_posix() for path in (ROOT / "crates").glob("*/Cargo.toml"))
+    paths.update(path.relative_to(ROOT).as_posix() for path in (ROOT / "crates").rglob("*.rs"))
+    paths.update(path.relative_to(ROOT).as_posix() for directory in (ROOT / "crates").glob("*/testdata")
+                 for path in directory.rglob("*") if path.is_file())
+    paths.update(path.relative_to(ROOT).as_posix() for path in (ROOT / "src").rglob("*.rs"))
+    return [{"path": name, "bytes": (ROOT / name).stat().st_size, "sha256": analysis.sha(ROOT / name)}
+            for name in sorted(paths)]
+
+
+def record_maintenance_verification(registry, snapshots, tables, specialized_tables=None):
+    import analysis
+    from importlib.metadata import version
+    import sqlite3
+    import subprocess
+    if snapshots != maintenance_verification_inputs(registry):
+        raise ValueError("Maintenance inputs changed during complete verification")
+    indexed = []
+    for name in sorted({row["source"] for row in registry["tables"]}):
+        item = next(row for row in snapshots if row["path"] == name)
+        indexed.append({**item, "kind": "typed_table_maintenance_input", "maintenance_only": True,
+                        "vendor_source_provenance_established": False})
+    analysis.verify_source_rows(indexed)
+    analysis.index_files(indexed)
+    path = ROOT / ".analysis/results/typed-data.json"
+    report = json.loads(path.read_bytes()) if path.is_file() else {"schema_version": 1}
+    report.pop("maintenance_verification", None)
+    report["maintenance_inputs"] = {
+        "recorded_at_utc": analysis.stamp(), "command": "python tools/workspace.py prepare-typed-data --check --record-verification",
+        "tables": tables, "specialized_tables": specialized_tables or {},
+        "inputs": snapshots, "maintenance_inputs": indexed,
+        "tools": {"python": sys.version.split()[0], "sqlite": sqlite3.sqlite_version,
+                  "rustfmt": subprocess.run(["rustfmt", "--version"], cwd=ROOT, capture_output=True,
+                                            text=True, check=True).stdout.strip(),
+                  "static_analyzers": {name: version(name) for name in ("tree-sitter", "tree-sitter-javascript", "tree-sitter-rust", "json5")}},
+        "regenerated_rust_and_complete_sqlite_bytes_equal": True,
+        "vendor_source_provenance_established": False,
+        "scope": "Every registered maintenance input, full typed schema, generated constructor/reader and packaged database was compared without product writes; constructor projections are not vendor originals",
+        "target_execution": False, "passed": True}
+    analysis.save(path, report)

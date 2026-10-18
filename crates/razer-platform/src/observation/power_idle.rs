@@ -19,19 +19,25 @@ impl Monitor {
     pub fn start() -> Result<(Self, Receiver<Event>), String> {
         #[cfg(windows)]
         {
-            let (events, receiver)=async_channel::unbounded();
-            let owner=crate::platform::windows::power_idle::Owner::start(events)?;
-            Ok((Self {owner},receiver))
+            let (events, receiver) = async_channel::unbounded();
+            let owner = crate::platform::windows::power_idle::Owner::start(events)?;
+            Ok((Self { owner }, receiver))
         }
         #[cfg(not(windows))]
-        { Err("Display-power and idle observation is unavailable on this platform".into()) }
+        {
+            Err("Display-power and idle observation is unavailable on this platform".into())
+        }
     }
     /// Consumes the monitor on a background executor and waits for callback,
     /// timer, registration and window release before returning.
-    pub fn stop(self) -> Result<(),String> {
+    pub fn stop(self) -> Result<(), String> {
         #[cfg(windows)]
-        { self.owner.stop() }
+        {
+            self.owner.stop()
+        }
         #[cfg(not(windows))]
-        { Ok(()) }
+        {
+            Ok(())
+        }
     }
 }

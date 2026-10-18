@@ -5,6 +5,8 @@ use std::{cell::RefCell, rc::Rc};
 struct Fake {
     calls: Rc<RefCell<Vec<String>>>,
     fail_destroy: bool,
+    fail_terminate: bool,
+    pending_frames: Vec<EngineFrame>,
 }
 impl EngineAdapter for Fake {
     fn create_device(&mut self, c: &LedConfiguration) -> anyhow::Result<u32> {
@@ -41,7 +43,7 @@ impl EngineAdapter for Fake {
     }
     fn frames(&mut self) -> anyhow::Result<Vec<EngineFrame>> {
         self.calls.borrow_mut().push("poll".into());
-        Ok(Vec::new())
+        Ok(std::mem::take(&mut self.pending_frames))
     }
     fn destroy_engine(&mut self, e: u32) -> anyhow::Result<()> {
         self.calls.borrow_mut().push(format!("destroy-engine:{e}"));
@@ -56,6 +58,7 @@ impl EngineAdapter for Fake {
     }
     fn terminate(&mut self) -> anyhow::Result<()> {
         self.calls.borrow_mut().push("terminate".into());
+        anyhow::ensure!(!self.fail_terminate, "native terminate failed");
         Ok(())
     }
 }
@@ -66,6 +69,7 @@ fn source_effect_replacement_keeps_native_handles_and_discards_stale_frames() {
     let mut session = Session::new(Fake {
         calls: calls.clone(),
         fail_destroy: false,
+        ..Default::default()
     });
     session
         .initialize(
@@ -104,6 +108,7 @@ fn cleanup_continues_after_native_failure_and_releases_each_handle_once() {
     let mut session = Session::new(Fake {
         calls: calls.clone(),
         fail_destroy: true,
+        ..Default::default()
     });
     session
         .initialize(
@@ -124,7 +129,137 @@ fn cleanup_continues_after_native_failure_and_releases_each_handle_once() {
             "terminate"
         ]
     );
-    assert!(session.cleanup().is_empty());
+    assert_eq!(session.cleanup(), errors);
     drop(session);
     assert_eq!(calls.borrow().len(), 4);
+}
+
+#[test]
+fn charging_engine_reuses_device_and_rebuilds_normal_before_global_termination() {
+    let calls = Rc::new(RefCell::new(Vec::new()));
+    let mut runtime = SharedEngine::new(Fake {
+        calls: calls.clone(),
+        ..Default::default()
+    });
+    let mut device = DeviceEngines::new(
+        runtime.clone(),
+        razer_device::receiver_lighting::led_configuration(164, 0).unwrap(),
+    );
+    let normal = SoftwareEffect::Spectrum { duration: None }.engine_effect();
+    let special = SoftwareEffect::Static { color: [255, 0, 0] }.engine_effect();
+    device.apply_normal(&normal).unwrap();
+    device.apply_special(&special).unwrap();
+    assert_eq!(
+        calls
+            .borrow()
+            .iter()
+            .filter(|call| call.starts_with("device:"))
+            .count(),
+        1
+    );
+    assert_eq!(
+        calls
+            .borrow()
+            .iter()
+            .filter(|call| call.as_str() == "add:9:7")
+            .count(),
+        2
+    );
+    assert!(
+        !calls
+            .borrow()
+            .iter()
+            .any(|call| call == "destroy-device:7" || call == "terminate")
+    );
+    device.remove_special(Some(&normal)).unwrap();
+    assert_eq!(
+        calls
+            .borrow()
+            .iter()
+            .filter(|call| call.as_str() == "destroy-device:7")
+            .count(),
+        1
+    );
+    assert_eq!(
+        calls
+            .borrow()
+            .iter()
+            .filter(|call| call.starts_with("device:"))
+            .count(),
+        2
+    );
+    assert!(device.cleanup().is_empty());
+    assert_eq!(
+        calls
+            .borrow()
+            .iter()
+            .filter(|call| call.as_str() == "destroy-device:7")
+            .count(),
+        2
+    );
+    runtime.terminate().unwrap();
+    runtime.terminate().unwrap();
+    drop(device);
+    drop(runtime);
+    assert_eq!(
+        calls
+            .borrow()
+            .iter()
+            .filter(|call| call.as_str() == "terminate")
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn shared_runtime_discard_preserves_other_devices_and_termination_failure_receipt() {
+    let calls = Rc::new(RefCell::new(Vec::new()));
+    let frame = |handle| EngineFrame {
+        device_handle: handle,
+        region_id: 0,
+        num_row: 1,
+        num_col: 1,
+        frame: vec![1, 2, 3],
+    };
+    let mut runtime = SharedEngine::new(Fake {
+        calls: calls.clone(),
+        fail_terminate: true,
+        pending_frames: vec![frame(7), frame(12)],
+        ..Default::default()
+    });
+    runtime.discard_frames_for(7).unwrap();
+    assert_eq!(runtime.frames().unwrap(), vec![frame(12)]);
+    let first = runtime.terminate().unwrap_err().to_string();
+    assert_eq!(runtime.terminate().unwrap_err().to_string(), first);
+    drop(runtime);
+    assert_eq!(
+        calls
+            .borrow()
+            .iter()
+            .filter(|call| call.as_str() == "terminate")
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn shared_device_session_never_destroys_borrowed_device_or_global_runtime() {
+    let calls = Rc::new(RefCell::new(Vec::new()));
+    let mut session = Session::with_shared_device(
+        Fake {
+            calls: calls.clone(),
+            ..Default::default()
+        },
+        7,
+    )
+    .unwrap();
+    session
+        .initialize_shared(&SoftwareEffect::Static { color: [0, 255, 0] }.engine_effect())
+        .unwrap();
+    assert!(session.cleanup().is_empty());
+    assert!(
+        !calls.borrow().iter().any(|call| call.starts_with("device:")
+            || call.starts_with("destroy-device:")
+            || call == "terminate")
+    );
 }

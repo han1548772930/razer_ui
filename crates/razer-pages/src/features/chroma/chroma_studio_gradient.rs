@@ -651,16 +651,18 @@ impl Render for StudioGradient {
             .on_open_change(move |open, window, cx| {
                 let _ = owner.update(cx, |this, cx| this.set_open(*open, window, cx));
             })
-            .content(move |_, _, _| razer_assets::resource_scope({
-                div()
-                    .w(surface::css(230.))
-                    .bg(Colors::black())
-                    .border_color(Colors::input_border())
-                    .border_x_1()
-                    .when(revealed, |view| view.border_y_1())
-                    .when(!revealed, |view| view.h_0().overflow_hidden())
-                    .child(body)
-            }))
+            .content(move |_, _, _| {
+                razer_assets::resource_scope({
+                    div()
+                        .w(surface::css(230.))
+                        .bg(Colors::black())
+                        .border_color(Colors::input_border())
+                        .border_x_1()
+                        .when(revealed, |view| view.border_y_1())
+                        .when(!revealed, |view| view.h_0().overflow_hidden())
+                        .child(body)
+                })
+            })
     }
 }
 

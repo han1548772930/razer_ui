@@ -490,95 +490,8 @@ pub fn recover_document(document: &Value, context: &mut EngineContext) -> anyhow
     Ok(result)
 }
 
-fn disabled_duplicate(row: &Value) -> Value {
-    let mut result = row.clone();
-    result["inputType"] = json!("KeyInput");
-    result["outputType"] = json!("disableGroup");
-    // Source15691 deliberately has this nested disableGroup shape.
-    result["disableGroup"] = json!({"disableGroup":{"disableAssignment":"Disable"}});
-    let object = result.as_object_mut().unwrap();
-    object.remove("interrupts");
-    object.remove("mapping");
-    result
-}
 pub fn firmware_mappings(rows: &[Value]) -> Vec<Value> {
-    let mut result = rows.to_vec();
-    let mut disabled = Vec::new();
-    for row in &mut result {
-        let stages = row["mapping"].as_array().cloned().unwrap_or_default();
-        if row["inputType"] == "AnalogInput"
-            && stages.first().is_some_and(|first| {
-                first["outputType"] == "multimediaGroup"
-                    && first["multimediaGroup"]["multimediaAssignment"] == "MuteAll"
-            })
-        {
-            disabled.push(disabled_duplicate(row));
-            continue;
-        }
-        let analog = row["inputType"] == "AnalogInput"
-            && stages.iter().any(|s| {
-                s["outputType"] == "joystickGroup"
-                    && matches!(
-                        s["joystickGroup"]["joystickMode"].as_str(),
-                        Some("axes" | "raxes")
-                    )
-                    || s["outputType"] == "controllerGroup"
-                        && truthy(&s["controllerGroup"]["controllerMode"]["isAnalog"])
-            });
-        let other = stages.iter().any(|s| {
-            !matches!(
-                s["outputType"].as_str(),
-                Some(
-                    "defaultGroup" | "joystickGroup" | "controllerGroup" | "dynamicKeyStrokeGroup"
-                )
-            )
-        });
-        if analog && other {
-            disabled.push(disabled_duplicate(row));
-            continue;
-        }
-        if matches!(row["inputType"].as_str(), Some("DKMInput" | "MouseInput")) {
-            continue;
-        }
-        let contains = |kind: &str| stages.iter().any(|s| s["outputType"] == kind);
-        let keyboard = contains("keyboardGroup");
-        let joystick = contains("joystickGroup");
-        let controller = contains("controllerGroup");
-        if row["inputType"] == "AnalogInput"
-            && stages.len() > 1
-            && (stages.iter().all(|s| s["outputType"] == "keyboardGroup")
-                || keyboard && controller
-                || keyboard && joystick
-                || joystick && controller)
-        {
-            disabled.push(disabled_duplicate(row));
-            continue;
-        }
-        let mut needs_disable = false;
-        for stage in stages {
-            if stage["outputType"] == "defaultGroup" {
-                continue;
-            }
-            if matches!(
-                stage["outputType"].as_str(),
-                Some("joystickGroup" | "controllerGroup" | "dynamicKeyStrokeGroup")
-            ) {
-                needs_disable = true;
-                continue;
-            }
-            if let Some(kind) = stage["outputType"].as_str() {
-                row["outputType"] = json!(kind);
-                row[kind] = stage[kind].clone();
-                row["inputType"] = json!("KeyInput");
-                row.as_object_mut().unwrap().remove("mapping");
-            }
-        }
-        if needs_disable {
-            disabled.push(disabled_duplicate(row));
-        }
-    }
-    result.extend(disabled);
-    result
+    crate::keyboard_firmware_mapping::firmware_mappings_with_options(rows, true)
 }
 
 pub fn default_profile() -> Value {
@@ -798,26 +711,7 @@ pub fn apply_function_key_snap_tap(document: &Value) -> anyhow::Result<Value> {
 
 // Current6258 zm fills empty keyboard assignments before analog generation.
 fn normalize_engine_rows(rows: &[Value]) -> anyhow::Result<Vec<Value>> {
-    let rows = materialize(rows, false)?;
-    Ok(rows.into_iter().filter(|row|truthy(&row["inputID"])).map(|mut row| {
-        let input=row["inputID"].clone();
-        let fill=|stage:&mut Value| {
-            if stage["outputType"]=="keyboardGroup"&&stage["keyboardGroup"].as_object().is_none_or(|group|group.is_empty()) {
-                stage["keyboardGroup"]=json!({"key":input,"keyGroup":0,"modifiers":[]});
-            }
-        };
-        if let Some(stages)=row["mapping"].as_array_mut(){for stage in stages.iter_mut() {fill(stage);}}
-        fill(&mut row);
-        // Current6258 zm keeps one controller primary and the first custom
-        // secondary. Keyboard products use the default-group secondary branch.
-        if row["inputType"]=="AnalogInput"&&row["mapping"][0]["outputType"]=="controllerGroup" {
-            let stages=row["mapping"].as_array().unwrap();
-            let actuation=stages.iter().skip(1).find_map(|stage|stage.get("actuationPoint")).cloned().unwrap_or_else(||json!({"0":19656,"1":18018}));
-            let secondary=stages.iter().skip(1).find(|stage|stage["outputType"]!="defaultGroup").cloned().unwrap_or_else(||json!({"actuationPoint":actuation,"isDefault":false,"outputType":"defaultGroup","isHyperShift":false}));
-            row["mapping"]=json!([stages[0],secondary]);
-        }
-        row
-    }).collect())
+    crate::keyboard_firmware_mapping::normalize_engine_rows(&materialize(rows, false)?)
 }
 
 pub fn compile_with_context(

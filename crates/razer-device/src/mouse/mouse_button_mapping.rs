@@ -5,6 +5,7 @@
 //! does not use the shared `getButtonIDList` method for this mouse engine, so
 //! this API deliberately requires the caller to provide that observed ID. The
 //! encoder is independent of the UI and of local JSON drafts.
+pub use crate::onboard_assignment::MacroPlayback;
 use crate::{
     backend::FeatureTransport, device_reads::DeviceReadCapability,
     feature_exchange::exchange_with_report_data_size_observing_send,
@@ -30,19 +31,13 @@ const REPORT_DATA_SIZE: u8 = 10;
 
 const FN_OFF: u8 = 0;
 const FN_BUTTON: u8 = 1;
-const FN_KEY: u8 = 2;
-const FN_MACRO_ONCE: u8 = 3;
-const FN_MACRO_HELD: u8 = 4;
-const FN_MACRO_TOGGLE: u8 = 5;
 const FN_DPI: u8 = 6;
 const FN_PROFILE: u8 = 7;
 const FN_POWER: u8 = 9;
 const FN_CONSUMER: u8 = 10;
 const FN_DOUBLE_CLICK: u8 = 11;
 const FN_HYPERSHIFT: u8 = 12;
-const FN_TURBO_KEY: u8 = 13;
 const FN_TURBO_BUTTON: u8 = 14;
-const FN_MACRO_SEQUENCE: u8 = 15;
 const FN_RAZER: u8 = 17;
 const FN_SCROLL_MODE: u8 = 18;
 const FN_WINDOWS: u8 = 21;
@@ -134,15 +129,6 @@ pub enum DpiAction {
     Clutch { x: u16, y: u16 },
     CycleUp,
     CycleDown,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
-pub enum MacroPlayback {
-    Once,
-    NTimes(u8),
-    Held,
-    Toggle,
-    Sequence,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -378,15 +364,15 @@ pub fn encode(product_id: u32, action: ButtonAction) -> Result<(u8, u8, [u8; 5])
             }
         },
         ButtonAction::Keyboard(action) => {
-            data[0] = action.modifiers;
-            data[1] = action.hid;
-            if action.turbo {
-                let period = be_u16(period_ms(action.keys_per_second)?);
-                data[2..4].copy_from_slice(&period);
-                (FN_TURBO_KEY, 4)
-            } else {
-                (FN_KEY, 2)
-            }
+            let (function_id, size, encoded) = crate::onboard_assignment::keyboard_function(
+                action.hid,
+                action.modifiers,
+                action.turbo,
+                action.keys_per_second,
+                false,
+            )?;
+            data = encoded;
+            (function_id, size)
         }
         ButtonAction::Dpi(action) => {
             data[0] = match action {
@@ -410,21 +396,13 @@ pub fn encode(product_id: u32, action: ButtonAction) -> Result<(u8, u8, [u8; 5])
             )
         }
         ButtonAction::Macro(action) => {
-            data[..2].copy_from_slice(&be_u16(action.macro_id));
-            match action.playback {
-                MacroPlayback::Once => {
-                    data[2] = 1;
-                    (FN_MACRO_ONCE, 3)
-                }
-                MacroPlayback::NTimes(count) => {
-                    ensure!(count > 0, "Macro repeat count must be greater than zero");
-                    data[2] = count;
-                    (FN_MACRO_ONCE, 3)
-                }
-                MacroPlayback::Held => (FN_MACRO_HELD, 2),
-                MacroPlayback::Toggle => (FN_MACRO_TOGGLE, 2),
-                MacroPlayback::Sequence => (FN_MACRO_SEQUENCE, 2),
+            if let MacroPlayback::NTimes(count) = action.playback {
+                ensure!(count > 0, "Macro repeat count must be greater than zero");
             }
+            let (function, size, encoded) =
+                crate::onboard_assignment::macro_function(action.macro_id, action.playback);
+            data = encoded;
+            (function, size)
         }
         ButtonAction::Profile(action) => {
             let size = match action {

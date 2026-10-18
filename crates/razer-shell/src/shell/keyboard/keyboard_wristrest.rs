@@ -172,8 +172,8 @@ fn run(
 }
 
 impl AppShell {
-    pub(super) fn install_keyboard_wristrest_cleanup(&mut self, cx: &mut Context<Self>) {
-        self.subscriptions.push(cx.on_app_quit(|this, cx| {
+    pub(super) fn install_keyboard_wristrest_cleanup(&mut self, _cx: &mut Context<Self>) {
+        self.register_exit_cleanup(|this, cx| {
             let sessions = std::mem::take(&mut this.keyboard_wristrest);
             let retired = std::mem::take(&mut this.keyboard_wristrest_cleanup);
             for session in sessions.values() {
@@ -189,7 +189,7 @@ impl AppShell {
                 }
             });
             async move { cleanup.await }
-        }));
+        });
     }
 
     pub(super) fn cancel_keyboard_wristrest(&mut self, cx: &mut Context<Self>) {

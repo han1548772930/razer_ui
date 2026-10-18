@@ -211,16 +211,18 @@ impl Render for SystrayActionSelector {
                     }
                 })
             })
-            .content(move |_, _, _| razer_assets::resource_scope({
-                div()
-                    .w(css(200.))
-                    .h(css(height))
-                    .overflow_hidden()
-                    .bg(Palette::background())
-                    .border_x_1()
-                    .border_color(Palette::border())
-                    .when(shown, |view| view.border_y_1())
-                    .child(option)
-            }))
+            .content(move |_, _, _| {
+                razer_assets::resource_scope({
+                    div()
+                        .w(css(200.))
+                        .h(css(height))
+                        .overflow_hidden()
+                        .bg(Palette::background())
+                        .border_x_1()
+                        .border_color(Palette::border())
+                        .when(shown, |view| view.border_y_1())
+                        .child(option)
+                })
+            })
     }
 }

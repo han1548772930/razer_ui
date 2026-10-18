@@ -12,7 +12,7 @@ use razer_device::controller_lighting::{LightingOperation, QuickEffectLevel, Wav
 use razer_widgets::source_tooltip::{SourceTooltip, SourceTooltipKind};
 use razer_widgets::{
     synapse_select::select,
-    theme::{GamepadTriggerColors, KeyboardRgbEffectColors as Colors},
+    theme::{GamepadQuickLightingColors, KeyboardRgbEffectColors as Colors},
 };
 
 pub(super) struct QuickLightingUi {
@@ -222,6 +222,26 @@ impl GamepadProductWorkspace {
                 serde_json::to_value(settings).expect("typed Kitsune quick effects");
         }
     }
+    fn commit_quick_custom_colors(
+        &mut self,
+        edit: razer_model::preferences::CustomColorEdit,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(settings) = &mut self.lighting_runtime.quick else {
+            return;
+        };
+        let colors = match settings.edit_custom_color(edit) {
+            Ok(colors) => colors,
+            Err(error) => {
+                eprintln!("[controller-lighting] Invalid custom-color edit: {error:#}");
+                return;
+            }
+        };
+        self.project_quick_lighting();
+        cx.emit(GamepadProductChanged);
+        self.request_controller_chroma(ControllerChromaCommand::CustomColors(colors), cx);
+        cx.notify();
+    }
     pub(super) fn submit_quick_lighting(&mut self, cx: &mut Context<Self>) {
         self.project_quick_lighting();
         if !self.chroma_runtime.advanced {
@@ -263,12 +283,14 @@ impl GamepadProductWorkspace {
 
     pub(super) fn kitsune_lighting(
         &self,
+        surface: LightingSurface,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         v_flex()
             .relative()
             .w_full()
+            .min_h_full()
             .child(
                 surface::page_columns()
                     .child(surface::page_column(
@@ -280,7 +302,7 @@ impl GamepadProductWorkspace {
             )
             .when(
                 self.chroma_runtime.observation.dynamic_lighting() == Some(true),
-                |body| body.child(self.kitsune_dynamic_warning(cx)),
+                |body| body.child(self.controller_dynamic_warning(surface, cx)),
             )
             .into_any_element()
     }
@@ -381,12 +403,7 @@ impl GamepadProductWorkspace {
                 } else {
                     1.
                 })
-                .child(
-                    div()
-                        .mb(surface::css(20.))
-                        .opacity(0.5)
-                        .child(t("QUICK_EFFECTS_MSG")),
-                )
+                .child(div().mb(surface::css(20.)).child(t("QUICK_EFFECTS_MSG")))
                 .child(
                     h_flex()
                         .items_center()
@@ -552,12 +569,16 @@ impl GamepadProductWorkspace {
                     LightingColorPicker::new(&ui.colors[channel], label)
                         .allow_none(multiple)
                         .disabled(disabled)
-                        .on_custom_colors_commit(cx.listener(
-                            |this, colors: &razer_state::CustomColorSlots, _, cx| {
-                                this.request_controller_chroma(
-                                    ControllerChromaCommand::CustomColors(*colors),
-                                    cx,
-                                )
+                        .custom_colors(
+                            self.lighting_runtime
+                                .quick
+                                .as_ref()
+                                .expect("mounted Kitsune quick settings")
+                                .custom_color_slots(),
+                        )
+                        .on_custom_color_edit(cx.listener(
+                            |this, edit: &razer_model::preferences::CustomColorEdit, _, cx| {
+                                this.commit_quick_custom_colors(*edit, cx)
                             },
                         )),
                 ),
@@ -586,7 +607,7 @@ impl GamepadProductWorkspace {
                 div()
                     .mb(surface::css(10.))
                     .line_height(surface::css(14.))
-                    .child(t(if speed { "TEXT_SPEED" } else { "TEXT_DURATION" })),
+                    .child(t(if speed { "TEXT_SPEED" } else { "TEXT_DURATION" }).to_uppercase()),
             )
             .child(
                 h_flex().gap(surface::css(5.)).children(
@@ -601,6 +622,7 @@ impl GamepadProductWorkspace {
                         let selected = level == value;
                         BaseButton::new(("kitsune-effect-level", u64::from(value.source_value())))
                             .disabled(disabled)
+                            .accessibility_label(t(label))
                             .min_w(surface::css(90.))
                             .h(surface::css(27.))
                             .px(surface::css(16.))
@@ -611,6 +633,11 @@ impl GamepadProductWorkspace {
                             .justify_center()
                             .text_size(surface::css(12.))
                             .line_height(surface::css(14.))
+                            .text_color(if disabled {
+                                GamepadQuickLightingColors::disabled_text()
+                            } else {
+                                GamepadQuickLightingColors::text()
+                            })
                             .rounded(surface::css(3.))
                             .border_1()
                             .border_color(if selected {
@@ -619,11 +646,11 @@ impl GamepadProductWorkspace {
                                 Colors::border()
                             })
                             .bg(if selected {
-                                Colors::background()
+                                GamepadQuickLightingColors::active_background()
                             } else {
                                 gpui_kit::transparent_black()
                             })
-                            .hover(|style| style.bg(Colors::text().opacity(0.1)))
+                            .hover(|style| style.bg(Colors::hover()))
                             .child(t(label).to_uppercase())
                             .on_click(cx.listener(move |this, _, window, cx| {
                                 if let Some(mut setting) =
@@ -648,51 +675,70 @@ impl GamepadProductWorkspace {
             .mt(surface::css(20.))
             .child(t("TEXT_DIRECTION"))
             .child(
-                h_flex().mt(surface::css(10.)).children(
-                    [
-                        (WaveDirection::Left, "left"),
-                        (WaveDirection::Right, "right"),
-                    ]
-                    .map(|(value, name)| {
-                        let selected = direction == value;
-                        BaseButton::new((
-                            "kitsune-wave-direction",
-                            if value == WaveDirection::Left { 1_u64 } else { 2 },
-                        ))
-                        .disabled(disabled)
-                        .w(surface::css(51.))
-                        .h(surface::css(25.))
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .border_1()
-                        .border_color(Colors::border())
-                        .bg(if selected {
-                            Colors::accent()
-                        } else {
-                            Colors::background()
-                        })
-                        .child(
-                            img(SharedString::from(format!(
-                                "synapse/direction-{name}{}.svg",
-                                if selected { "-active" } else { "" }
-                            )))
-                            .size(surface::css(20.)),
-                        )
-                        .on_click(cx.listener(
-                            move |this, _, window, cx| {
-                                if let Some(mut setting) =
-                                    this.lighting_runtime.quick.as_ref().map(|s| s.setting())
-                                {
-                                    if let QuickSetting::Wave { direction, .. } = &mut setting {
-                                        *direction = value;
+                h_flex()
+                    .mt(surface::css(5.))
+                    .h(surface::css(42.))
+                    .p(surface::css(5.))
+                    .self_start()
+                    .gap(surface::css(5.))
+                    .rounded(surface::css(20.))
+                    .border_1()
+                    .border_color(Colors::border())
+                    .bg(Colors::background())
+                    .hover(|style| style.border_color(Colors::accent()))
+                    .children(
+                        [
+                            (WaveDirection::Left, "left"),
+                            (WaveDirection::Right, "right"),
+                        ]
+                        .map(|(value, name)| {
+                            let selected = direction == value;
+                            BaseButton::new((
+                                "kitsune-wave-direction",
+                                if value == WaveDirection::Left { 1_u64 } else { 2 },
+                            ))
+                            .disabled(disabled)
+                            .accessibility_label(t(if value == WaveDirection::Left {
+                                "DIRECTION_LEFT"
+                            } else {
+                                "DIRECTION_RIGHT"
+                            }))
+                            .w(surface::css(40.))
+                            .h(surface::css(30.))
+                            .rounded(surface::css(15.))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .bg(if selected {
+                                Colors::accent()
+                            } else {
+                                Colors::background()
+                            })
+                            .child(
+                                img(SharedString::from(format!(
+                                    "synapse/direction-{name}{}.svg",
+                                    if selected { "-active" } else { "" }
+                                )))
+                                .size(surface::css(20.)),
+                            )
+                            .on_click(cx.listener(
+                                move |this, _, window, cx| {
+                                    if let Some(mut setting) =
+                                        this.lighting_runtime.quick.as_ref().map(|s| s.setting())
+                                    {
+                                        if let QuickSetting::Wave { direction, .. } = &mut setting {
+                                            *direction = if *direction == WaveDirection::Left {
+                                                WaveDirection::Right
+                                            } else {
+                                                WaveDirection::Left
+                                            };
+                                        }
+                                        this.store_quick_lighting(setting, window, cx);
                                     }
-                                    this.store_quick_lighting(setting, window, cx);
-                                }
-                            },
-                        ))
-                    }),
-                ),
+                                },
+                            ))
+                        }),
+                    ),
             )
             .into_any_element()
     }
@@ -868,57 +914,6 @@ impl GamepadProductWorkspace {
                                 )
                                 .into_any_element()
                         }),
-                    ),
-            )
-            .into_any_element()
-    }
-    fn kitsune_dynamic_warning(&self, cx: &Context<Self>) -> AnyElement {
-        div()
-            .absolute()
-            .inset_0()
-            .flex()
-            .items_center()
-            .justify_center()
-            .bg(Colors::backdrop())
-            .child(
-                v_flex()
-                    .w(surface::css(400.))
-                    .p(surface::css(20.))
-                    .rounded(surface::css(3.))
-                    .border_1()
-                    .border_color(Colors::warning())
-                    .bg(Colors::background())
-                    .text_color(GamepadTriggerColors::text())
-                    .text_size(surface::css(14.))
-                    .line_height(surface::css(17.))
-                    .text_center()
-                    .child(
-                        img("synapse/gamepad-lighting/warning.svg")
-                            .size(surface::css(20.))
-                            .self_center(),
-                    )
-                    .child(
-                        div().my(surface::css(10.)).child(
-                            gpui_kit::base::TextView::html(
-                                "kitsune-dynamic-description",
-                                t("POPUP_WARNING_DYNAMIC_LIGHTING_AUDIO_VISUALIZER"),
-                            )
-                            .selectable(false)
-                            .scrollable(false),
-                        ),
-                    )
-                    .child(
-                        BaseButton::new("kitsune-dynamic-settings")
-                            .text_color(Colors::text())
-                            .underline()
-                            .hover(|style| style.text_color(Colors::accent()))
-                            .child(t("MANAGE_SYNAPSE_SETTINGS"))
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.request_controller_chroma(
-                                    ControllerChromaCommand::OpenSettings,
-                                    cx,
-                                )
-                            })),
                     ),
             )
             .into_any_element()

@@ -40,6 +40,8 @@ mod keyboard_linked_profiles;
 mod keyboard_mapping;
 #[path = "source_workspace/keyboard_profile_mutations.rs"]
 mod keyboard_profile_mutations;
+#[path = "source_workspace/lifecycle.rs"]
+mod lifecycle;
 #[path = "source_workspace/lighting.rs"]
 mod lighting;
 #[path = "source_workspace/mouse_profile_source.rs"]
@@ -58,6 +60,11 @@ mod profile_linked_games;
 mod profile_menu;
 #[path = "source_workspace/profile_transfer.rs"]
 mod profile_transfer;
+#[path = "source_workspace/receiver_profile_selection.rs"]
+mod receiver_profile_selection;
+#[path = "source_workspace/hyperpolling_runtime.rs"]
+mod hyperpolling_runtime;
+pub use receiver_profile_selection::ReceiverProfileSelectionRequested;
 #[path = "source_workspace/ripsaw.rs"]
 mod ripsaw;
 #[path = "source_workspace/seiren_local_settings.rs"]
@@ -117,11 +124,16 @@ pub struct SourceProductWorkspace {
     mouse_profile_cache_changed: bool,
     mouse_profile_observed_serial: Option<String>,
     mouse_profile_connection_key: Option<String>,
+    mouse_scroll_connection_key: Option<String>,
     keyboard_latest_ble: bool,
     page: Option<ProductPageId>,
     page_history: Vec<ProductPageId>,
     page_history_index: usize,
     active: bool,
+    hanbo_telemetry_requested: bool,
+    hanbo_profile_revision: u64,
+    receiver_profile_selection: std::cell::RefCell<receiver_profile_selection::State>,
+    exiting: bool,
     trigger_navigation: super::gamepad_products::TriggerNavigation,
     body: FamilyBody,
     help: Entity<super::source_help::SourceHelp>,
@@ -143,7 +155,9 @@ pub struct SourceProductWorkspace {
     profile_confirm_task: Option<Task<()>>,
     profile_transfer: Option<Entity<profile_transfer::SourceProfileTransfer>>,
     profile_transfer_subscription: Option<Subscription>,
-    profile_export_task: Option<Task<()>>,
+    profile_transfer_request: Option<razer_storage::file_transfer::Transfer>,
+    profile_export_task: Option<profile_actions::PendingProfileExport>,
+    profile_import: Option<razer_model::profile_transfer::SourceProfileImport>,
     profile_linked_games: Option<Entity<profile_linked_games::ProfileLinkedGames>>,
     profile_linked_games_subscription: Option<Subscription>,
     _subscriptions: Vec<Subscription>,
@@ -156,6 +170,37 @@ impl EventEmitter<super::DockPairingEvent> for SourceProductWorkspace {}
 impl EventEmitter<super::DockPairingUtilityRequested> for SourceProductWorkspace {}
 
 impl SourceProductWorkspace {
+    pub fn interface_resource_errors(&self, cx: &App) -> Vec<String> {
+        match &self.body {
+            FamilyBody::AccessorySystem(body) => body.read(cx).hanbo_label_errors(cx),
+            _ => Vec::new(),
+        }
+    }
+
+    pub fn retry_interface_resources(&mut self, cx: &mut Context<Self>) {
+        if let FamilyBody::AccessorySystem(body) = &self.body {
+            body.update(cx, |body, cx| body.retry_hanbo_labels(cx));
+        }
+    }
+
+    pub fn initialize_mouse_scroll_profile(&mut self, key: Option<String>, cx: &mut Context<Self>) {
+        self.mouse_scroll_connection_key = key;
+        self.sync_mouse_scroll_profile(cx);
+    }
+
+    fn sync_mouse_scroll_profile(&mut self, cx: &mut Context<Self>) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            let guid = self
+                .device
+                .active_profile_obj()
+                .map(|profile| profile.guid.as_str());
+            let key = guid.and(self.mouse_scroll_connection_key.as_deref());
+            body.update(cx, |body, cx| {
+                body.initialize_mouse_scroll_profile(key, guid.unwrap_or(""), cx)
+            });
+        }
+    }
+
     pub fn refresh_locale(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if let FamilyBody::Mouse(mouse) = &self.body {
             mouse.update(cx, |mouse, cx| mouse.refresh_locale(window, cx));
@@ -165,6 +210,9 @@ impl SourceProductWorkspace {
         }
         if let FamilyBody::Controls(controls) = &self.body {
             controls.update(cx, |controls, cx| controls.refresh_locale(window, cx));
+        }
+        if let FamilyBody::AccessorySystem(body) = &self.body {
+            body.update(cx, |body, cx| body.refresh_hanbo_locale(cx));
         }
         if let Some(controls) = &self.supplement {
             controls.update(cx, |controls, cx| controls.refresh_locale(window, cx));
@@ -195,6 +243,154 @@ impl SourceProductWorkspace {
             });
         }
     }
+    pub fn mouse_calibration_request_matches(
+        &self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, FamilyBody::Mouse(body) if body.read(cx).calibration_request_matches(request, cx))
+    }
+    pub fn finish_mouse_calibration(
+        &mut self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        error: Option<String>,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.complete_calibration_operation(request, error, cx)
+            });
+        }
+    }
+    pub fn cancel_mouse_calibration(&mut self, cx: &mut Context<Self>) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, _| body.cancel_calibration_requests());
+        }
+    }
+    pub fn prepare_mouse_calibration_exit(
+        &mut self,
+        cx: &mut Context<Self>,
+    ) -> Vec<super::mouse_products::MouseCalibrationRequested> {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| body.prepare_calibration_exit(cx))
+        } else {
+            Vec::new()
+        }
+    }
+    pub fn begin_mouse_philips_local_save(
+        &mut self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        matches!(&self.body, FamilyBody::Mouse(body)
+            if body.update(cx, |body, cx| body.begin_philips_local_save(request, cx)))
+    }
+    pub fn mouse_philips_local_save_matches(
+        &self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, FamilyBody::Mouse(body)
+            if body.read(cx).philips_local_save_matches(request, cx))
+    }
+    pub fn finish_mouse_philips_local_save(
+        &mut self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, _| body.finish_philips_local_save(request));
+        }
+    }
+    pub fn record_mouse_tracking_report(
+        &mut self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        report: razer_device::mouse_tracking::Progress,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.record_tracking_report(request, report, cx)
+            });
+        }
+    }
+    pub fn record_mouse_philips_report(
+        &mut self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        report: razer_device::mouse_philips::Progress,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.record_philips_report(request, report, cx)
+            });
+        }
+    }
+    pub fn complete_mouse_philips_context(
+        &mut self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| body.complete_philips_context(request, cx));
+        }
+    }
+    pub fn record_mouse_philips_measurement(
+        &mut self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        progress: razer_device::mouse_philips::measurement::Progress,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.record_philips_measurement(request, progress, window, cx)
+            });
+        }
+    }
+    pub fn finish_mouse_philips_measurement(
+        &mut self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        progress: Option<razer_device::mouse_philips::measurement::Progress>,
+        error: Option<String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_philips_measurement(request, progress, error, window, cx)
+            });
+        }
+    }
+    pub fn publish_mouse_philips_measurement_save(
+        &mut self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        projection: Value,
+        cx: &mut Context<Self>,
+    ) {
+        if !self.mouse_calibration_request_matches(request, cx) {
+            return;
+        }
+        // mark_saved has accepted this writer's snapshot. The source keeps a
+        // separate emitted recalibration profile; retain that difference in
+        // the page without making its projection a second durable writer.
+        if let Some(calibration) = self
+            .saved
+            .source_device_settings
+            .as_ref()
+            .and_then(|root| root.get("calibration"))
+        {
+            self.device
+                .source_device_settings
+                .get_or_insert_with(|| serde_json::json!({}))["calibration"] = calibration.clone();
+        }
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.publish_philips_measurement_save(request, projection, cx)
+            });
+        }
+        cx.notify();
+    }
     pub fn restore_mouse_calibration_welcome(
         &mut self,
         visible: Option<bool>,
@@ -214,6 +410,15 @@ impl SourceProductWorkspace {
     ) {
         if let FamilyBody::Mouse(body) = &self.body {
             body.update(cx, |body, cx| body.reject_mouse_matcher(scope, reason, cx));
+        }
+    }
+    pub fn mouse_matcher_scope(
+        &self,
+        cx: &App,
+    ) -> Option<super::mouse_products::MouseMatcherScope> {
+        match &self.body {
+            FamilyBody::Mouse(body) => body.read(cx).mouse_matcher_scope(cx),
+            _ => None,
         }
     }
     pub fn observe_mouse_matcher(
@@ -656,6 +861,8 @@ impl SourceProductWorkspace {
         let connection_changed = self.device.dashboard.connection_observation != observation;
         let legacy_connection_changed = self.device.product_id == 70 && connection_changed;
         if connection_changed {
+            self.receiver_profile_selection.borrow_mut().invalidate();
+            self.cancel_profile_transfer_requests();
             self.cancel_keyboard_brightness_connection(cx);
             if let FamilyBody::Gamepad(body) = &self.body {
                 body.update(cx, |body, cx| {
@@ -665,6 +872,7 @@ impl SourceProductWorkspace {
             if let FamilyBody::Mouse(body) = &self.body {
                 body.update(cx, |body, cx| {
                     body.invalidate_current_power_connection();
+                    body.cancel_calibration_requests();
                     body.invalidate_dynamic_connection(cx);
                 });
             }
@@ -678,6 +886,7 @@ impl SourceProductWorkspace {
                     body.cancel_seiren_eq_connection();
                     body.cancel_seiren_stream_mixer_connection();
                     body.cancel_seiren_audio_capture();
+                    body.cancel_oled_editor(cx);
                     body.cancel_leviathan(cx);
                 });
             }
@@ -706,7 +915,7 @@ impl SourceProductWorkspace {
                         | DeviceConnectionObservation::HidPresent
                 )
             ) {
-                self.persist_legacy_mouse_profile(true, cx);
+                self.persist_source_profile(true, cx);
             }
         }
         let device = self.device.clone();
@@ -717,6 +926,7 @@ impl SourceProductWorkspace {
         self.sync_audio_mixer_activity(cx);
         self.sync_seiren_audio_activity(cx);
         self.sync_receiver_read_activity(cx);
+        self.sync_receiver_profile_initialization(cx);
         self.sync_camera_activity(cx);
         cx.notify();
     }
@@ -775,7 +985,18 @@ impl SourceProductWorkspace {
         false
     }
     pub fn set_active(&mut self, active: bool, window: &mut Window, cx: &mut Context<Self>) {
+        let active = active && !self.exiting;
+        if !active {
+            self.dismiss_profile_dialog(window, cx);
+        }
         self.active = active;
+        if active
+            && self.device.product_id == razer_device::hanbo_cooler::PRODUCT_ID
+            && !self.hanbo_telemetry_requested
+        {
+            self.hanbo_telemetry_requested = true;
+            cx.emit(WorkspaceEvent::HanboTelemetryActivated);
+        }
         self.help_owner.update(cx, |owner, cx| {
             owner.set_active(active, cx);
             if active {
@@ -799,11 +1020,27 @@ impl SourceProductWorkspace {
             });
         }
         if !active {
-            self.help.update(cx, |help, cx| help.leave_page(cx));
+            if let FamilyBody::Controls(body) = &self.body {
+                body.update(cx, |body, cx| body.dismiss_oled_editor(window, cx));
+            }
+            if let Some(supplement) = &self.supplement {
+                supplement.update(cx, |body, cx| body.dismiss_oled_editor(window, cx));
+            }
+            self.help.update(cx, |help, cx| {
+                if self.exiting && matches!(self.device.product_id, 164 | 241) {
+                    help.prepare_receiver_exit(cx);
+                } else {
+                    help.leave_page(cx);
+                }
+            });
             self.cancel_keyboard_calibration_v2(cx);
+            if let FamilyBody::Keyboard(body) = &self.body {
+                body.update(cx, |body, cx| body.dismiss_editors(window, cx));
+            }
             if let FamilyBody::Audio(body) = &self.body {
                 body.update(cx, |body, cx| {
                     body.cancel_leviathan(cx);
+                    body.cancel_oled_editor(cx);
                     body.stop_media(window, cx);
                 });
             }
@@ -921,7 +1158,7 @@ impl SourceProductWorkspace {
     }
     fn sync_keyboard_read_activity(&self, cx: &mut Context<Self>) {
         if let FamilyBody::Keyboard(body) = &self.body {
-            if matches!(self.device.product_id, 515 | 679) {
+            if !self.exiting && matches!(self.device.product_id, 515 | 679 | 740 | 746) {
                 let connected = matches!(
                     self.device.dashboard.connection_observation,
                     Some(
@@ -935,15 +1172,14 @@ impl SourceProductWorkspace {
                     .source_device_settings
                     .as_ref()
                     .and_then(|s| {
-                        s.get(if self.device.product_id == 679 {
-                            razer_device::keyboard_current_mapping::STORAGE_FIELD
-                        } else {
-                            "_keyboard515_mapping_document"
-                        })
+                        razer_device::mapping_document::MappingProduct::for_product_id(
+                            self.device.product_id,
+                        )
+                        .and_then(|product| s.get(product.storage_field()))
                     })
                     .cloned();
                 body.update(cx, |body, cx| {
-                    body.set_legacy_mapping_connection(container.clone(), cx);
+                    body.set_legacy_mapping_connection(container.clone());
                     if let (Some(container), Some(document)) = (container, document) {
                         body.publish_legacy_mapping(container, document, cx);
                     }
@@ -1615,7 +1851,7 @@ impl SourceProductWorkspace {
             if let Some(root) = root.as_object_mut() {
                 root.entry("version").or_insert(serde_json::json!(1));
             }
-            self.persist_legacy_mouse_profile(true, cx);
+            self.persist_source_profile(true, cx);
             return;
         }
         if let FamilyBody::Mouse(body) = &self.body {
@@ -1643,12 +1879,6 @@ impl SourceProductWorkspace {
     ) -> Option<super::mouse_products::MouseLegacyDpiRequested> {
         if let FamilyBody::Mouse(body) = &self.body {
             body.update(cx, |body, cx| body.prepare_legacy_dpi_exit(cx))
-        } else if let FamilyBody::Keyboard(body) = &self.body {
-            body.update(cx, |body, cx| body.set_legacy_mapping_connection(None, cx));
-            None
-        } else if let FamilyBody::Audio(body) = &self.body {
-            body.update(cx, |body, _| body.invalidate_mixer());
-            None
         } else {
             None
         }
@@ -1905,7 +2135,7 @@ impl SourceProductWorkspace {
                 )
             });
             self.sync_keyboard_mapping_profiles(window, cx);
-            self.persist_legacy_mouse_profile(false, cx);
+            self.persist_source_profile(false, cx);
             cx.emit(WorkspaceEvent::Changed);
             cx.notify();
         }
@@ -1917,20 +2147,20 @@ impl SourceProductWorkspace {
         cx: &mut Context<Self>,
     ) -> Result<String, String> {
         let active = self.device.active_profile.clone();
-        if !matches!(self.device.product_id, 70 | 182 | 756)
-            && matches!(&action, super::product_workspace::ProfileCollectionAction::Delete(id) if id == &active)
+        if !matches!(self.device.product_id, 70 | 182 | 756 | 3893)
+            && matches!(&action, super::product_workspace::ProfileCollectionAction::Delete { id, .. } if id == &active)
             && active_profile_settings_dirty(&self.device, &self.saved)
         {
             return Err("请先保存或取消当前配置的本地设置，再删除活动配置文件。".into());
         }
-        if matches!(&action, super::product_workspace::ProfileCollectionAction::Delete(id) if id == &active)
+        if matches!(&action, super::product_workspace::ProfileCollectionAction::Delete { id, .. } if id == &active)
             && let FamilyBody::Audio(body) = &self.body
             && body.read(cx).pod_editor_dirty(cx)
         {
             return Err("请先保存或取消当前音频编辑，再删除活动配置文件".into());
         }
         let removed_guid =
-            if let super::product_workspace::ProfileCollectionAction::Delete(id) = &action {
+            if let super::product_workspace::ProfileCollectionAction::Delete { id, .. } = &action {
                 self.device
                     .profiles
                     .iter()
@@ -1944,6 +2174,9 @@ impl SourceProductWorkspace {
             &self.saved,
             action,
         )?;
+        let hanbo_profile_deleted = self.device.product_id
+            == razer_device::hanbo_cooler::PRODUCT_ID
+            && removed_guid.is_some();
         if let Some(guid) = removed_guid {
             mouse_profile_source::removed_profile(&mut self.device, &guid);
         }
@@ -1971,7 +2204,10 @@ impl SourceProductWorkspace {
             self.restore_active(window, cx);
             self.restore_seiren_selected_profile(cx);
         }
-        self.persist_legacy_mouse_profile(active != self.device.active_profile, cx);
+        self.persist_source_profile(
+            active != self.device.active_profile || hanbo_profile_deleted,
+            cx,
+        );
         cx.emit(WorkspaceEvent::Changed);
         cx.notify();
         Ok(target)
@@ -1991,7 +2227,19 @@ impl SourceProductWorkspace {
             body.update(cx, |body, cx| body.request_seiren_profile_restore(cx));
         }
     }
-    fn persist_legacy_mouse_profile(&self, apply: bool, cx: &mut Context<Self>) {
+    fn persist_source_profile(&self, apply: bool, cx: &mut Context<Self>) {
+        if matches!(self.device.product_id, 164 | 241) {
+            if apply {
+                self.request_receiver_profile_selection(cx);
+            }
+            return;
+        }
+        if self.device.product_id == razer_device::hanbo_cooler::PRODUCT_ID {
+            cx.emit(WorkspaceEvent::HanboProfileRequested(apply.then_some(
+                razer_device::hanbo_settings::ProfileRestore::Changes,
+            )));
+            return;
+        }
         if self.device.product_id == 182 {
             if let Some(scope) = self.mouse_polling_scope(cx) {
                 cx.emit(WorkspaceEvent::MouseLegacyProfileRequested { scope, apply });
@@ -2004,7 +2252,7 @@ impl SourceProductWorkspace {
             }
             return;
         }
-        if matches!(self.device.product_id, 515 | 679 | 756) {
+        if matches!(self.device.product_id, 515 | 679 | 740 | 746 | 756) {
             cx.emit(WorkspaceEvent::KeyboardLegacyProfileRequested);
             return;
         }
@@ -2069,6 +2317,11 @@ impl SourceProductWorkspace {
                     .any(|page| page.kind().key() == "TAB_LIGHTING")
             })
     }
+    pub fn set_chroma_popup_open(&mut self, owner: EntityId, open: bool, cx: &mut Context<Self>) {
+        if let FamilyBody::Gamepad(body) = &self.body {
+            body.update(cx, |body, cx| body.set_chroma_popup_open(owner, open, cx));
+        }
+    }
     /// The `displayMode=chromaApp` popup content for a source product: its
     /// lighting page built from the family renderer, without the product chrome.
     pub fn lighting_page_element(
@@ -2127,6 +2380,13 @@ impl SourceProductWorkspace {
         cx: &mut Context<Self>,
     ) -> Option<AnyElement> {
         if super::armory_product::supports(&self.device) {
+            if self.device.product_id == razer_device::hanbo_cooler::PRODUCT_ID {
+                if let FamilyBody::AccessorySystem(body) = &self.body {
+                    return Some(body.update(cx, |body, cx| {
+                        body.hanbo_armory_element(&self.device, window, cx)
+                    }));
+                }
+            }
             return Some(
                 super::armory_product::ArmoryProduct::new(&self.device).into_any_element(),
             );
@@ -2241,7 +2501,7 @@ impl SourceProductWorkspace {
                  _: &super::mouse_products::MouseLegacyMappingCommitted,
                  cx| {
                     this.capture(body.read(cx).snapshot(), cx);
-                    this.persist_legacy_mouse_profile(false, cx);
+                    this.persist_source_profile(false, cx);
                 },
             ));
             subscriptions.push(cx.subscribe(
@@ -2460,7 +2720,7 @@ impl SourceProductWorkspace {
                  _: &super::keyboard_products::KeyboardProductChanged,
                  cx| {
                     this.capture(body.read(cx).snapshot(), cx);
-                    this.persist_legacy_mouse_profile(false, cx);
+                    this.persist_source_profile(false, cx);
                 },
             ));
             subscriptions.push(cx.subscribe(
@@ -2904,11 +3164,17 @@ impl SourceProductWorkspace {
             ));
             subscriptions.push(cx.subscribe(
                 &body,
-                |_: &mut Self,
+                |this: &mut Self,
                  _,
-                 request: &super::accessory_system_products::HanboCoolerRequested,
+                 change: &super::accessory_system_products::HanboLocalSettingsChanged,
                  cx| {
-                    cx.emit(WorkspaceEvent::HanboCoolerRequested(request.clone()));
+                    this.capture_hanbo_settings(change, cx);
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_, _, _: &super::accessory_system_products::HanboResourceChanged, cx| {
+                    cx.emit(WorkspaceEvent::ResourceStateChanged);
                 },
             ));
             FamilyBody::AccessorySystem(body)
@@ -2958,6 +3224,9 @@ impl SourceProductWorkspace {
                     this.capture(body.read(cx).snapshot(), cx);
                 },
             ));
+            subscriptions.push(cx.subscribe(&body, |_, _, event: &super::HyperpollingIndicatorRequested, cx| {
+                cx.emit(WorkspaceEvent::HyperpollingIndicatorRequested(event.clone()));
+            }));
             subscriptions.push(cx.subscribe(
                 &body,
                 |_, _, request: &super::ReceiverBrightnessRequested, cx| {
@@ -3198,12 +3467,17 @@ impl SourceProductWorkspace {
             mouse_profile_cache_changed,
             mouse_profile_observed_serial: None,
             mouse_profile_connection_key: None,
+            mouse_scroll_connection_key: None,
             keyboard_latest_ble: false,
             device,
             page,
             page_history: page.into_iter().collect(),
             page_history_index: 0,
             active: false,
+            hanbo_telemetry_requested: false,
+            hanbo_profile_revision: 0,
+            receiver_profile_selection: Default::default(),
+            exiting: false,
             trigger_navigation,
             body,
             help,
@@ -3225,7 +3499,9 @@ impl SourceProductWorkspace {
             profile_confirm_task: None,
             profile_transfer: None,
             profile_transfer_subscription: None,
+            profile_transfer_request: None,
             profile_export_task: None,
+            profile_import: None,
             profile_linked_games: None,
             profile_linked_games_subscription: None,
             _subscriptions: subscriptions,
@@ -3233,6 +3509,10 @@ impl SourceProductWorkspace {
         this.restore_active(window, cx);
         this.select_body_page(window, cx);
         this.saved = this.device.clone();
+        let owner = cx.weak_entity();
+        cx.defer(move |cx| {
+            let _ = owner.update(cx, |this, cx| this.sync_receiver_profile_initialization(cx));
+        });
         this
     }
     pub fn device(&self) -> &Device {
@@ -3246,8 +3526,103 @@ impl SourceProductWorkspace {
         cx: &mut Context<Self>,
     ) {
         if let FamilyBody::AccessorySystem(body) = &self.body {
-            body.update(cx, |body, cx| body.finish_hanbo_command(generation, result, cx));
+            body.update(cx, |body, cx| {
+                body.finish_hanbo_command(generation, result, cx)
+            });
         }
+    }
+
+    pub fn observe_hanbo_telemetry(
+        &mut self,
+        telemetry: &razer_device::hanbo_cooler::Telemetry,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::AccessorySystem(body) = &self.body {
+            body.update(cx, |body, cx| body.observe_hanbo_telemetry(telemetry, cx));
+        }
+    }
+
+    pub fn hanbo_telemetry_requested(&self) -> bool {
+        self.hanbo_telemetry_requested
+    }
+
+    pub fn hanbo_profile_revision(&self) -> u64 {
+        self.hanbo_profile_revision
+    }
+
+    pub fn observe_hanbo_system_sample(
+        &mut self,
+        sample: &razer_device::system_monitor::SystemSample,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::AccessorySystem(body) = &self.body {
+            body.update(cx, |body, cx| body.observe_hanbo_system_sample(sample, cx));
+        }
+    }
+
+    pub fn flush_hanbo_curve(
+        &mut self,
+        cx: &mut Context<Self>,
+    ) -> Vec<super::accessory_system_products::HanboLocalSettingsChanged> {
+        let requests = match &self.body {
+            FamilyBody::AccessorySystem(body) => {
+                body.update(cx, |body, cx| body.flush_hanbo_curve(cx))
+            }
+            _ => return Vec::new(),
+        };
+        requests
+            .into_iter()
+            .filter(|request| self.apply_hanbo_settings(request, cx))
+            .collect()
+    }
+
+    fn capture_hanbo_settings(
+        &mut self,
+        request: &super::accessory_system_products::HanboLocalSettingsChanged,
+        cx: &mut Context<Self>,
+    ) {
+        if self.apply_hanbo_settings(request, cx) {
+            cx.emit(WorkspaceEvent::HanboLocalSettingsChanged(request.clone()));
+        }
+    }
+
+    fn apply_hanbo_settings(
+        &mut self,
+        request: &super::accessory_system_products::HanboLocalSettingsChanged,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        if self.device.product_id != razer_device::hanbo_cooler::PRODUCT_ID {
+            return false;
+        }
+        let change = &request.change;
+        let mut device_settings = self.device.source_device_settings.clone();
+        let profile = self
+            .device
+            .profiles
+            .iter_mut()
+            .find(|profile| profile.id == self.device.active_profile);
+        if matches!(
+            change,
+            razer_device::hanbo_settings::LocalChange::Thermal { .. }
+        ) && profile.is_none()
+        {
+            eprintln!("[hanbo local settings] active profile is absent");
+            return false;
+        }
+        let mut profile_settings = profile
+            .as_ref()
+            .and_then(|profile| profile.source_settings.clone());
+        if let Err(error) = change.apply(&mut profile_settings, &mut device_settings) {
+            eprintln!("[hanbo local settings] {error:#}");
+            return false;
+        }
+        self.device.source_device_settings = device_settings;
+        if let Some(profile) = profile {
+            profile.source_settings = profile_settings;
+        }
+        cx.emit(WorkspaceEvent::Changed);
+        cx.notify();
+        true
     }
 
     pub fn hanbo_command_matches(&self, generation: u64, cx: &App) -> bool {
@@ -3317,45 +3692,18 @@ impl SourceProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.receiver_brightness_matches(generation, percent, true, cx) {
-            self.device.serial_number = outcome.serial_number;
-            self.help.update(cx, |help, cx| {
-                help.accept_source_serial(&self.device.serial_number, cx)
-            });
-            let document = outcome.source_document;
-            self.device
-                .source_device_settings
-                .get_or_insert_with(|| serde_json::json!({}))["_receiver_source_document"] =
-                document.clone();
-            if let Some(profiles) = document["profiles"].as_array() {
-                for profile in profiles {
-                    let (Some(guid), Some(name)) =
-                        (profile["guid"].as_str(), profile["name"].as_str())
-                    else {
-                        continue;
-                    };
-                    if let Some(current) = self.device.profiles.iter_mut().find(|p| p.guid == guid)
-                    {
-                        current.source_settings = Some(profile.clone());
-                        current.name = name.into();
-                    } else {
-                        self.device.profiles.push(Profile {
-                            id: guid.into(),
-                            guid: guid.into(),
-                            name: name.into(),
-                            source_settings: Some(profile.clone()),
-                            settings: None,
-                            dpi_stages: None,
-                        });
-                    }
-                }
-                self.device.active_profile = document["activeProfile"]
-                    .as_str()
-                    .unwrap_or_default()
-                    .into();
-                self.refresh_profile_choices(window, cx);
-                cx.emit(WorkspaceEvent::Changed);
+        match razer_storage::receiver_reset::ReceiverProfileSnapshot::parse(
+            self.device.product_id,
+            self.device.edition_id,
+            &outcome.serial_number,
+            &outcome.source_document,
+        ) {
+            Ok(snapshot) => {
+                self.publish_receiver_brightness_snapshot(
+                    generation, percent, snapshot, window, cx,
+                );
             }
+            Err(error) => eprintln!("[receiver profile boundary] {error:#}"),
         }
         cx.notify();
     }
@@ -3366,7 +3714,7 @@ impl SourceProductWorkspace {
         &mut self,
         request: super::HelpResetRequest,
         outcome: Option<super::HelpResetOutcome>,
-        error: Option<String>,
+        mut error: Option<String>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -3374,49 +3722,19 @@ impl SourceProductWorkspace {
             return;
         }
         if let Some(outcome) = outcome {
-            self.device.serial_number = outcome.serial_number;
-            self.help.update(cx, |help, cx| {
-                help.accept_source_serial(&self.device.serial_number, cx)
-            });
-            let document = outcome.source_document;
-            // Preserve the source document separately. Existing UI snapshots
-            // are never used to construct an original profile document.
-            self.device
-                .source_device_settings
-                .get_or_insert_with(|| serde_json::json!({}))["_receiver_source_document"] =
-                document.clone();
-            if let Some(profiles) = document["profiles"].as_array() {
-                for profile in profiles {
-                    let Some(guid) = profile["guid"].as_str() else {
-                        continue;
-                    };
-                    if let Some(current) = self.device.profiles.iter_mut().find(|p| p.guid == guid)
-                    {
-                        current.source_settings = Some(profile.clone());
-                        if let Some(name) = profile["name"].as_str() {
-                            current.name = name.into();
-                        }
-                        continue;
-                    }
-                    let Some(name) = profile["name"].as_str() else {
-                        continue;
-                    };
-                    self.device.profiles.push(Profile {
-                        id: guid.into(),
-                        guid: guid.into(),
-                        name: name.into(),
-                        source_settings: Some(profile.clone()),
-                        settings: None,
-                        dpi_stages: None,
-                    });
-                }
-                self.device.active_profile = document["activeProfile"]
-                    .as_str()
-                    .unwrap_or_default()
-                    .into();
-                self.refresh_profile_choices(window, cx);
-                self.restore_active(window, cx);
-                cx.emit(WorkspaceEvent::Changed);
+            let result = razer_storage::receiver_reset::ReceiverProfileSnapshot::parse(
+                self.device.product_id,
+                self.device.edition_id,
+                &outcome.serial_number,
+                &outcome.source_document,
+            )
+            .map(|snapshot| self.publish_receiver_help_profile(request, snapshot, window, cx));
+            if !matches!(result, Ok(true)) {
+                let detail = match result {
+                    Err(error) => format!("接收器配置回执无效：{error:#}"),
+                    Ok(_) => "接收器配置回执所属页面已变化。".into(),
+                };
+                error = Some(error.map_or(detail.clone(), |error| format!("{error}; {detail}")));
             }
         }
         if let Some(error) = &error {
@@ -3430,8 +3748,16 @@ impl SourceProductWorkspace {
         self.saved.clone()
     }
     pub fn publish_legacy_mapping(&mut self, document: Value, cx: &mut Context<Self>) {
+        if !self.exiting {
+            self.publish_saved_mapping(document, cx);
+        }
+    }
+
+    /// A captured Save remains admitted while its file write drains at exit.
+    pub fn publish_saved_mapping(&mut self, document: Value, cx: &mut Context<Self>) {
         use razer_model::model::DeviceConnectionObservation;
-        if !matches!(self.device.product_id, 70 | 515 | 679)
+        if !razer_device::mapping_document::MappingProduct::for_product_id(self.device.product_id)
+            .is_some_and(|product| product.uses_retained_mapping_owner())
             || !matches!(
                 self.device.dashboard.connection_observation,
                 Some(
@@ -3528,7 +3854,14 @@ impl SourceProductWorkspace {
                 })
     }
     pub fn mark_saved(&mut self, snapshot: Device, cx: &mut Context<Self>) {
-        mouse_profile_source::accept_saved_version(&mut self.device, &self.saved, &snapshot);
+        let mapping_current = razer_model::mapping::matches_saved_revision(&self.device, &snapshot);
+        let pending_import = self.profile_import.as_ref().is_some_and(|request| {
+            snapshot.profiles == request.candidate().profiles
+                && snapshot.source_device_settings == request.candidate().source_device_settings
+        });
+        if !pending_import {
+            mouse_profile_source::accept_saved_version(&mut self.device, &self.saved, &snapshot);
+        }
         if self.device.product_id == 182
             && snapshot.source_device_settings == self.device.source_device_settings
             && snapshot.profiles.iter().all(|saved| {
@@ -3540,14 +3873,11 @@ impl SourceProductWorkspace {
         {
             self.mouse_profile_cache_changed = false;
         }
-        if matches!(self.device.product_id, 515 | 679 | 756) {
-            let field = if self.device.product_id == 756 {
-                razer_device::keyboard_latest_restore::STORAGE_FIELD
-            } else if self.device.product_id == 679 {
-                razer_device::keyboard_current_mapping::STORAGE_FIELD
-            } else {
-                "_keyboard515_mapping_document"
-            };
+        if let Some(product) =
+            razer_device::mapping_document::MappingProduct::for_product_id(self.device.product_id)
+                .filter(|_| !pending_import && mapping_current)
+        {
+            let field = product.storage_field();
             if let Some(document) = snapshot
                 .source_device_settings
                 .as_ref()
@@ -3556,18 +3886,6 @@ impl SourceProductWorkspace {
                 self.device
                     .source_device_settings
                     .get_or_insert_with(|| serde_json::json!({}))[field] = document.clone();
-            }
-        }
-        if self.device.product_id == 70 {
-            if let Some(document) = snapshot
-                .source_device_settings
-                .as_ref()
-                .and_then(|settings| settings.get("_mouse70_mapping_document"))
-            {
-                self.device
-                    .source_device_settings
-                    .get_or_insert_with(|| serde_json::json!({}))["_mouse70_mapping_document"] =
-                    document.clone();
             }
         }
         self.saved = snapshot;
@@ -3657,6 +3975,9 @@ impl SourceProductWorkspace {
         cx.notify();
     }
     fn restore_active(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.device.product_id == razer_device::hanbo_cooler::PRODUCT_ID {
+            self.hanbo_profile_revision = self.hanbo_profile_revision.wrapping_add(1);
+        }
         if let Some(view) = &self.dock_pairing {
             view.update(cx, |view, cx| view.dismiss(window, cx));
         }
@@ -3673,6 +3994,9 @@ impl SourceProductWorkspace {
             .find(|p| p.id == self.device.active_profile)
             .and_then(|p| p.source_settings.clone());
         self.seed_keyboard_profile_identity(&mut value);
+        if self.device.product_id == razer_device::hanbo_cooler::PRODUCT_ID && value.is_none() {
+            value = Some(razer_device::hanbo_settings::default_profile_settings());
+        }
         if self.device.product_id == 182 {
             let profile = value.get_or_insert_with(|| serde_json::json!({}));
             if let Some(profile) = profile.as_object_mut() {
@@ -3710,13 +4034,7 @@ impl SourceProductWorkspace {
                     fields
                         .iter()
                         .filter(|(key, _)| {
-                            !matches!(
-                                key.as_str(),
-                                "_mouse70_mapping_document"
-                                    | "_keyboard515_mapping_document"
-                                    | "_keyboard679_mapping_document"
-                                    | "_keyboard756_mapping_document"
-                            )
+                            !razer_device::mapping_document::MappingProduct::owns_storage_field(key)
                         })
                         .map(|(key, value)| (key.clone(), value.clone())),
                 );
@@ -3764,7 +4082,17 @@ impl SourceProductWorkspace {
                 Some(e.read(cx).snapshot())
             }
             FamilyBody::AccessorySystem(e) => {
-                e.update(cx, |v, cx| v.restore(value.as_ref(), window, cx));
+                let celsius = razer_device::hanbo_settings::temperature_unit(
+                    self.device.source_device_settings.as_ref(),
+                );
+                e.update(cx, |v, cx| {
+                    v.restore(value.as_ref(), window, cx);
+                    match celsius {
+                        Ok(Some(celsius)) => v.restore_hanbo_celsius(celsius, cx),
+                        Ok(None) => {}
+                        Err(error) => eprintln!("[hanbo temperature unit] {error:#}"),
+                    }
+                });
                 Some(e.read(cx).snapshot())
             }
             FamilyBody::Hue(e) => {
@@ -3816,14 +4144,64 @@ impl SourceProductWorkspace {
             }
         }
         self.sync_keyboard_mapping_profiles(window, cx);
+        self.sync_mouse_scroll_profile(cx);
     }
     fn capture_device_settings(&mut self, value: &mut Value) {
+        if self.device.product_id == razer_device::mouse_philips::PRODUCT_ID {
+            if let Some(calibration) = value.get("calibration") {
+                match razer_device::mouse_philips::capture_projection(
+                    &mut self.device.source_device_settings,
+                    calibration,
+                ) {
+                    Ok(()) => {
+                        value
+                            .as_object_mut()
+                            .expect("source profile object")
+                            .remove("calibration");
+                    }
+                    Err(error) => {
+                        eprintln!("[mouse-philips] Calibration projection failed: {error:#}")
+                    }
+                }
+            }
+        }
+        if razer_device::mouse_tracking::capability(self.device.product_id).is_some() {
+            if let Some(smart) = value.get("smartTracking").cloned() {
+                match serde_json::from_value::<razer_device::mouse_tracking::SmartTracking>(
+                    smart.clone(),
+                ) {
+                    Ok(smart) => {
+                        let mut projection = value
+                            .get("calibration")
+                            .cloned()
+                            .unwrap_or_else(|| serde_json::json!({}));
+                        if let Some(calibration) = projection.as_object_mut() {
+                            calibration
+                                .insert("smartTracking".into(), value["smartTracking"].clone());
+                        }
+                        if let Err(error) = smart.merge_local_settings_from(
+                            &mut self.device.source_device_settings,
+                            Some(&projection),
+                        ) {
+                            eprintln!("[mouse-tracking] Local setting capture failed: {error:#}");
+                        } else if let Some(object) = value.as_object_mut() {
+                            object.remove("smartTracking");
+                            // These products keep calibration in the device
+                            // record. The view's projected copy is not a profile.
+                            object.remove("calibration");
+                        }
+                    }
+                    Err(error) => {
+                        eprintln!("[mouse-tracking] Invalid local setting capture: {error}")
+                    }
+                }
+            }
+        }
         super::mouse_products::filter_power_persistence(self.device.product_id, value);
         if let Some(object) = value.as_object_mut() {
-            object.remove("_mouse70_mapping_document");
-            object.remove("_keyboard515_mapping_document");
-            object.remove(razer_device::keyboard_current_mapping::STORAGE_FIELD);
-            object.remove(razer_device::keyboard_latest_restore::STORAGE_FIELD);
+            for product in razer_device::mapping_document::MappingProduct::ALL {
+                object.remove(product.storage_field());
+            }
         }
         if accessory::device_layout(self.device.product_id) {
             if let Some(object) = value.as_object_mut() {
@@ -3847,6 +4225,11 @@ impl SourceProductWorkspace {
                     .copied(),
             )
             .chain(mouse_profile_source::device_fields(self.device.product_id))
+            .chain(
+                razer_device::hanbo_settings::device_fields(self.device.product_id)
+                    .iter()
+                    .copied(),
+            )
         {
             if let Some(value) = value.as_object_mut().and_then(|v| v.remove(field)) {
                 let settings = self
@@ -3878,6 +4261,11 @@ impl SourceProductWorkspace {
                     .copied(),
             )
             .chain(mouse_profile_source::device_fields(device.product_id))
+            .chain(
+                razer_device::hanbo_settings::device_fields(device.product_id)
+                    .iter()
+                    .copied(),
+            )
             .collect();
         if let Some(settings) = device.source_device_settings.as_mut() {
             super::mouse_products::filter_power_persistence(device.product_id, settings);
@@ -4210,6 +4598,9 @@ impl SourceProductWorkspace {
                     body.leave_calibration(window, cx);
                 }),
                 FamilyBody::Audio(body) => {
+                    body.update(cx, |body, cx| body.set_page("HELP", window, cx));
+                }
+                FamilyBody::AccessorySystem(body) => {
                     body.update(cx, |body, cx| body.set_page("HELP", window, cx));
                 }
                 FamilyBody::Controls(body) if self.device.product_id == 3331 => {

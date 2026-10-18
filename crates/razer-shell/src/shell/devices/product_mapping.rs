@@ -1,12 +1,46 @@
 //! Current MapInterDevice: focus the exact named UI, then SELECTED_TAB.
 use super::*;
+use razer_model::mapping::interdevice::{HeldInterdeviceTarget, TargetObservation};
 use razer_pages::features::keyboard_products::KeyboardMappingInterDeviceConfigureRequested;
 
-#[derive(Clone)]
 pub(super) struct InterdeviceHold {
+    origin: MappingTargetOwner,
     product_id: u32,
     raw: serde_json::Value,
-    target: Option<WeakEntity<ProductWorkspace>>,
+    target: HeldInterdeviceTarget<MappingTargetOwner>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct MappingTargetOwner {
+    workspace: WeakEntity<ProductWorkspace>,
+    identity: String,
+    connection_revision: u64,
+}
+
+impl MappingTargetOwner {
+    fn capture(workspace: &Entity<ProductWorkspace>, cx: &App) -> Self {
+        Self {
+            workspace: workspace.downgrade(),
+            identity: workspace.read(cx).identity(cx),
+            connection_revision: workspace.read(cx).connection_revision(),
+        }
+    }
+
+    fn matches(&self, workspace: &Entity<ProductWorkspace>, cx: &App) -> bool {
+        self.workspace == *workspace
+            && workspace.read(cx).identity(cx) == self.identity
+            && workspace.read(cx).connection_revision() == self.connection_revision
+    }
+}
+
+fn dispatch_to_target(owner: &MappingTargetOwner, raw: serde_json::Value, cx: &mut App) -> bool {
+    let Some(target) = owner.workspace.upgrade() else {
+        return false;
+    };
+    if !owner.matches(&target, cx) {
+        return false;
+    }
+    target.update(cx, |target, cx| target.consume_interdevice_mapping(raw, cx))
 }
 
 fn connected(workspace: &Entity<ProductWorkspace>, cx: &App) -> bool {
@@ -21,24 +55,43 @@ fn connected(workspace: &Entity<ProductWorkspace>, cx: &App) -> bool {
     )
 }
 
-fn release_hold(hold: &InterdeviceHold, cx: &mut App) {
-    let Some(target) = hold.target.as_ref().and_then(WeakEntity::upgrade) else {
-        return;
-    };
-    let mut raw = hold.raw.clone();
+fn release_target(owner: &MappingTargetOwner, pressed: &serde_json::Value, cx: &mut App) {
+    let mut raw = pressed.clone();
     if let Some(mut output) = raw["output"]
         .as_str()
         .and_then(|text| serde_json::from_str::<serde_json::Value>(text).ok())
     {
         output["flag"] = serde_json::json!(1);
         raw["output"] = serde_json::json!(output.to_string());
-        target.update(cx, |target, cx| {
-            target.consume_interdevice_mapping(raw, cx);
-        });
+        if !dispatch_to_target(owner, raw, cx) {
+            eprintln!("[inter-device-mapping] held target is unavailable during release");
+        }
+    }
+}
+
+fn release_hold(hold: InterdeviceHold, cx: &mut App) {
+    if let Some(target) = hold.target.release() {
+        release_target(&target, &hold.raw, cx);
     }
 }
 
 impl AppShell {
+    fn first_mapping_target(
+        &self,
+        product_id: u32,
+        cx: &App,
+    ) -> Option<TargetObservation<MappingTargetOwner>> {
+        // Current 6120/59490 R scans runtime storage in insertion order and
+        // forwards to the first product-ID match; it does not broadcast.
+        let workspace = self.devices.iter().find(|workspace| {
+            workspace.read(cx).device(cx).product_id == product_id && connected(workspace, cx)
+        })?;
+        Some(TargetObservation::new(
+            MappingTargetOwner::capture(workspace, cx),
+            workspace.read(cx).device(cx).setup_status,
+        ))
+    }
+
     pub(super) fn route_mapping_callback(
         &mut self,
         origin: &Entity<ProductWorkspace>,
@@ -46,7 +99,7 @@ impl AppShell {
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if !self.devices.contains(origin) {
+        if self.close_requested || !self.devices.contains(origin) {
             return;
         }
         let raw = request.raw();
@@ -60,45 +113,68 @@ impl AppShell {
             eprintln!("[mapping-callback] local Chroma dispatch remains unacknowledged: {output}");
             return;
         }
-        // Current 6120/59490 R scans runtime storage in insertion order and
-        // forwards to the first product-ID match; it does not broadcast.
-        let target = self
-            .devices
-            .iter()
-            .find(|workspace| {
-                let device = workspace.read(cx).device(cx);
-                output["pid"] == device.product_id && connected(workspace, cx)
-            })
-            .cloned();
+        let Some(product_id) = output["pid"]
+            .as_u64()
+            .and_then(|product_id| u32::try_from(product_id).ok())
+        else {
+            eprintln!("[inter-device-mapping] callback has no valid target product ID");
+            return;
+        };
+        let target = self.first_mapping_target(product_id, cx);
         let mut forwarded = raw.clone();
         forwarded["eventName"] = serde_json::json!("interDevice");
         forwarded["output"] = serde_json::json!(output["value"].to_string());
         if output["value"]["type"] == "sensitivity"
             && output["value"]["sensitivityGroup"]["sensitivityAssignment"] == "DPI_OnTheFly"
         {
-            if output["value"]["flag"] == 0 {
-                if let Some(product_id) =
-                    output["pid"].as_u64().and_then(|id| u32::try_from(id).ok())
-                {
+            match output["value"]["flag"].as_u64() {
+                Some(0) => {
+                    let origin_owner = MappingTargetOwner::capture(origin, cx);
+                    if let Some(mut previous) =
+                        self.mapping_interdevice_holds.remove(&origin.entity_id())
+                    {
+                        if previous.origin != origin_owner {
+                            release_hold(previous, cx);
+                        } else if let Some(released) =
+                            previous.target.observe(target.clone()).released()
+                        {
+                            release_target(released, &previous.raw, cx);
+                        }
+                    }
                     self.mapping_interdevice_holds.insert(
                         origin.entity_id(),
                         InterdeviceHold {
+                            origin: origin_owner,
                             product_id,
                             raw: forwarded.clone(),
-                            target: target.as_ref().map(Entity::downgrade),
+                            target: HeldInterdeviceTarget::new(target.clone()),
                         },
                     );
                 }
-            } else {
-                self.mapping_interdevice_holds.remove(&origin.entity_id());
+                Some(1) => {
+                    if let Some(hold) = self.mapping_interdevice_holds.remove(&origin.entity_id()) {
+                        if let Some(target) = hold.target.release()
+                            && !dispatch_to_target(&target, forwarded, cx)
+                        {
+                            eprintln!(
+                                "[inter-device-mapping] held target is unavailable during release"
+                            );
+                        }
+                        return;
+                    }
+                }
+                _ => {
+                    eprintln!(
+                        "[inter-device-mapping] held callback has no valid press/release flag"
+                    );
+                    return;
+                }
             }
         }
         let Some(target) = target else {
             return;
         };
-        if !target.update(cx, |target, cx| {
-            target.consume_interdevice_mapping(forwarded, cx)
-        }) {
+        if !dispatch_to_target(target.owner(), forwarded, cx) {
             eprintln!(
                 "[inter-device-mapping] target {} has no mounted native callback consumer",
                 output["pid"]
@@ -120,38 +196,67 @@ impl AppShell {
                 workspace.set_local_mapping_targets(&snapshots, window, cx)
             });
         }
-        // Current R retains a release callback and observes DEVICE_RUNTIME_DATA
-        // ready transitions. Keep that lifecycle outside the target UI page.
-        let holds: Vec<_> = self
-            .mapping_interdevice_holds
-            .iter()
-            .map(|(id, hold)| (*id, hold.clone()))
-            .collect();
+        self.sync_interdevice_holds(cx);
+    }
+
+    fn sync_interdevice_holds(&mut self, cx: &mut Context<Self>) {
+        let holds = std::mem::take(&mut self.mapping_interdevice_holds);
         for (origin, mut hold) in holds {
             if !self
                 .devices
                 .iter()
-                .any(|workspace| workspace.entity_id() == origin && connected(workspace, cx))
+                .any(|workspace| hold.origin.matches(workspace, cx) && connected(workspace, cx))
             {
-                release_hold(&hold, cx);
-                self.mapping_interdevice_holds.remove(&origin);
+                release_hold(hold, cx);
                 continue;
             }
-            if let Some(target) = self
-                .devices
-                .iter()
-                .find(|workspace| {
-                    workspace.read(cx).device(cx).product_id == hold.product_id
-                        && connected(workspace, cx)
-                })
-                .cloned()
-            {
-                target.update(cx, |target, cx| {
-                    target.consume_interdevice_mapping(hold.raw.clone(), cx);
-                });
-                hold.target = Some(target.downgrade());
-                self.mapping_interdevice_holds.insert(origin, hold);
+            let transition = hold
+                .target
+                .observe(self.first_mapping_target(hold.product_id, cx));
+            if let Some(released) = transition.released() {
+                release_target(released, &hold.raw, cx);
             }
+            if let Some(replayed) = transition.replayed()
+                && !dispatch_to_target(replayed, hold.raw.clone(), cx)
+            {
+                eprintln!("[inter-device-mapping] ready target has no mounted callback consumer");
+            }
+            self.mapping_interdevice_holds.insert(origin, hold);
+        }
+    }
+
+    pub(super) fn release_interdevice_holds(&mut self, cx: &mut Context<Self>) {
+        for hold in std::mem::take(&mut self.mapping_interdevice_holds).into_values() {
+            release_hold(hold, cx);
+        }
+    }
+
+    /// Release callbacks must reach the outgoing owner before its mapping
+    /// worker is stopped. Holds from retained origins survive target removal.
+    pub(super) fn retain_interdevice_connections(
+        &mut self,
+        retained: &[Entity<ProductWorkspace>],
+        cx: &mut Context<Self>,
+    ) {
+        for (origin, mut hold) in std::mem::take(&mut self.mapping_interdevice_holds) {
+            if !retained
+                .iter()
+                .any(|workspace| hold.origin.matches(workspace, cx))
+            {
+                release_hold(hold, cx);
+                continue;
+            }
+            if hold.target.owner().is_some_and(|owner| {
+                !retained
+                    .iter()
+                    .any(|workspace| owner.matches(workspace, cx))
+            }) {
+                let transition = hold.target.observe(None);
+                if let Some(target) = transition.released() {
+                    release_target(target, &hold.raw, cx);
+                }
+            }
+            self.mapping_interdevice_holds.insert(origin, hold);
         }
     }
     pub(super) fn configure_mouse_mapping_target(

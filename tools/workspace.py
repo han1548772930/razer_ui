@@ -79,7 +79,7 @@ def source_layout_destination(path):
             ("keyboard", ("keyboard_",)), ("mouse", ("mouse_", "dpi_matcher")),
             ("receiver", ("receiver_",)), ("mapping", ("mapping_", "macro_engine")),
             ("identity", ("device_identity", "discovery_catalog")),
-            ("transport", ("backend", "device_query", "device_reads", "device_writes", "feature_exchange", "protocol")),
+            ("transport", ("backend", "device_query", "device_reads", "device_writes", "feature_exchange", "protocol.rs")),
             ("transport", ("device_read_capabilities", "device_write_capabilities")),
             ("power", ("battery_threshold",)), ("host", ("user_app_files",)),
             ("lighting", ("lighting_driver",)),
@@ -211,31 +211,41 @@ def source_structure_inventory():
                     dependencies.append({"name": specification.get("package", alias), "kind": kind})
                 else:
                     external.append({"name": specification.get("package", alias) if isinstance(specification, dict) else alias, "kind": kind})
-        source = ROOT / "app" if path.parent == ROOT else path.parent / "src"
+        source = ROOT / "app" if path.parent == ROOT else path.parent
         files = sorted(source.rglob("*.rs"))
+        fixtures = sorted(item for item in (path.parent / "testdata").rglob("*") if item.is_file())
         packages.append({"name": manifest["package"]["name"], "manifest": relative(path),
                          "internal_dependencies": dependencies,
                          "external_dependencies": external,
                          "rust_files": len(files), "rust_bytes": sum(item.stat().st_size for item in files),
+                         "rust_paths": [relative(item) for item in files],
+                         "declared_targets": {key: manifest[key] for key in ("lib", "bin", "example", "test", "bench") if key in manifest},
+                         "build_script": manifest["package"].get("build", "build.rs" if (path.parent / "build.rs").is_file() else None),
+                         "test_fixture_inputs": [{"path": relative(item), "bytes": item.stat().st_size, "sha256": digest(item)} for item in fixtures],
                          "largest_sources": [{"path": relative(item), "bytes": item.stat().st_size}
                                              for item in sorted(files, key=lambda item: item.stat().st_size, reverse=True)[:3]]})
-    embedded = [row for row in rust_inputs() if row["path"].startswith("assets/")]
+    identities = rust_inputs()
+    embedded = [row for row in identities if row["path"].startswith("assets/")]
     sources = [path for package in (ROOT / "crates").iterdir() if package.is_dir() for path in (package / "src").rglob("*.rs")]
     obsolete = [relative(path) for path in sources if "/src/data/" in path.as_posix() or path.name == "data.rs"]
     stale_calls = [relative(path) for path in sources if re.search(r"crate::data::\w+(?:::\w+)?!\s*\(", path.read_text(encoding="utf-8"))]
-    return {"packages": packages, "packages_scanned": len(packages), "product_asset_inputs": embedded,
+    return {"packages": packages, "packages_scanned": len(packages), "input_identities": identities,
+            "product_asset_inputs": embedded,
             "compiled_asset_inputs": [row for row in embedded if row["path"] != resource_sources.RUNTIME_METADATA],
             "installed_catalog_input": next((row for row in embedded if row["path"] == resource_sources.RUNTIME_METADATA), None),
             "obsolete_data_files": obsolete, "resource_macro_callers": stale_calls,
-            "scope": "All workspace manifests, Rust source files, module/include closure and embedded input identities; not a source-to-device acceptance claim"}
+            "scope": "All workspace manifests, source/test/build Rust, crate fixtures, module/include closure and embedded input identities; not a source-to-device acceptance claim"}
 
 
 def dependency_boundaries(packages):
     """Check normal, test, build and platform branches, including internal transitive edges."""
-    gui = {"gpui-kit", "gpui-fast", "gpui-component", "gpui-base", "gpui-pre"}
     presentation = {"razer_ui", "razer-app", "razer-shell", "razer-pages", "razer-app-pages", "razer-state",
                     "razer-widgets", "razer-assets", "razer-dashboard", "razer-settings", "razer-tray"}
+    # The locked reqwest fork is an HTTP client and has no GPUI dependency.
+    non_gui_gpui_packages = {"gpui-pre-reqwest"}
     domain = {"razer-device", "razer-model", "razer-catalog", "razer-i18n", "razer-resource-db"}
+    foundations = {"razer-assets", "razer-widgets", "razer-state"}
+    features = presentation - foundations - {"razer-app", "razer-shell", "razer_ui"}
     by_name = {row["name"]: row for row in packages}
     violations = []
     for package in packages:
@@ -250,12 +260,16 @@ def dependency_boundaries(packages):
             for edge in row.get("internal_dependencies", []) + row.get("external_dependencies", []):
                 target = edge["name"]
                 reason = None
-                if name not in presentation and target in gui | presentation:
+                if name not in presentation and (target in presentation or (target not in non_gui_gpui_packages and (target == "gpui" or target.startswith(("gpui-", "gpui_"))))):
                     reason = "non_gui_owner_depends_on_presentation"
                 elif name in domain and target.startswith("razer-") and target not in domain:
                     reason = "domain_depends_on_runtime_or_storage"
+                elif name in foundations and target in features | {"razer-app", "razer-shell", "razer_ui"}:
+                    reason = "presentation_foundation_depends_on_feature"
                 elif target == "razer-shell" and name not in {"razer-app", "razer-shell", "razer_ui"}:
                     reason = "feature_depends_on_shell"
+                elif target in {"razer-app", "razer_ui"} and name not in {"razer-app", "razer_ui"}:
+                    reason = "feature_depends_on_application"
                 if reason:
                     violations.append({"owner": name, "kind": reason, "chain": chain + [target], "dependency_kind": edge["kind"]})
                 elif target in by_name:
@@ -263,33 +277,117 @@ def dependency_boundaries(packages):
     return violations
 
 
-def inspect_architecture_source(raw, *, owner, rust_parser):
+def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=False):
     """Inspect actual Rust items and calls, with byte locations for actionable diagnostics."""
     tree = rust_parser.parse(raw)
     violations = []
+    gui_io_violations = []
+    offset = 0
+    if tree.root_node.has_error and expression_fragment:
+        prefix = b"const ARCHITECTURE_INCLUDED_EXPRESSION: () = "
+        wrapped = rust_parser.parse(prefix + raw + b";")
+        if not wrapped.root_node.has_error:
+            raw, tree, offset = prefix + raw + b";", wrapped, len(prefix)
     if tree.root_node.has_error:
         return [{"owner": owner, "kind": "architecture_rust_parse_error"}]
     factory_owner = "crates/razer-shell/src/shell/persistence.rs"
+    publication_owner = "crates/razer-resource-db/src/publication.rs"
+    resource_bridge = "crates/razer-assets/src/resource_runtime.rs"
+    image_cache_owner = "crates/razer-assets/src/image_cache.rs"
+    local_image_owner = "crates/razer-assets/src/local_image.rs"
+    shutdown_owner = "crates/razer-shell/src/shell/shutdown.rs"
+    interdevice_owner = "crates/razer-model/src/mapping/interdevice.rs"
+    mapping_adapter = "crates/razer-shell/src/shell/devices/product_mapping.rs"
+    shortcut_owner = "crates/razer-model/src/shortcuts/native.rs"
+    input_owner = "crates/razer-device/src/mapping/mapping_engine.rs"
+    hash_owner = "crates/razer-device/src/mapping/mapping_engine_hash.rs"
+    mapping_product_owner = "crates/razer-device/src/mapping/mapping_document.rs"
+    mapping_workers = "crates/razer-service/src/mapping/"
+    seiren_workers = "crates/razer-service/src/audio/seiren/"
+    seiren_gui = owner.startswith("crates/razer-pages/src/features/audio/seiren/") or owner in {
+        "crates/razer-shell/src/shell/audio/seiren_audio_capture.rs",
+        "crates/razer-shell/src/shell/audio/seiren_audio_playback.rs"}
+    macro_page = "crates/razer-app-pages/src/macros/macro_page"
+    macro_transfer = macro_page + "/transfer.rs"
+    macro_xml = "crates/razer-model/src/macro_library/xml.rs"
+    macro_io = "crates/razer-storage/src/macro_transfer.rs"
+    macro_recording = "crates/razer-model/src/macro_library/recording.rs"
+    macro_recorder = mapping_workers + "recorder.rs"
+    macro_native = "crates/razer-service/src/runtime/windows/macro_recording.rs"
+    macro_receipts = "crates/razer-ipc/src/macro_recording.rs"
+    mapping_receipts = "crates/razer-ipc/src/mapping_control.rs"
+    mapping_control = mapping_workers + "control.rs"
+    mapping_native_control = "crates/razer-service/src/runtime/windows/mapping_execution.rs"
+    keyboard_restore = "crates/razer-shell/src/shell/keyboard/keyboard_latest_restore.rs"
+    keyboard_publisher = "crates/razer-shell/src/shell/keyboard/keyboard_latest_restore_publisher.rs"
+    keyboard_worker = "crates/razer-shell/src/shell/keyboard/keyboard_latest_restore_worker.rs"
+    legacy_keyboard_mapping = "crates/razer-pages/src/features/keyboard/mapping/keyboard_mapping_runtime_515.rs"
+    keyboard_actuation = "crates/razer-shell/src/shell/keyboard/keyboard_actuation_write.rs"
+    keyboard_actuation_worker = "crates/razer-shell/src/shell/keyboard/keyboard_actuation_worker.rs"
+    session_monitor = "crates/razer-platform/src/platform/windows/session_changes.rs"
+    runtime_panel = "crates/razer-settings/src/runtime_page.rs"
+    device_monitor = "crates/razer-platform/src/observation/device_changes.rs"
+    thx_lifecycle = "crates/razer-shell/src/shell/audio/thx_sound.rs"
+    ipc_client = "crates/razer-ipc/src/lib.rs"
+    keyboard_lifecycle = "crates/razer-shell/src/shell/keyboard/keyboard_lifecycle.rs"
+    retired_shortcuts = "crates/razer-storage/src/workspace/retired_shortcuts.rs"
+    preference_state = "crates/razer-state/src/ui_preferences.rs"
+    preference_storage = "crates/razer-storage/src/ui_preferences.rs"
+    preference_pages = ("crates/razer-pages/src/features/keyboard/", "crates/razer-pages/src/features/accessories/hue/",
+                        "crates/razer-app-pages/src/armory/")
+    preference_page = owner.startswith(preference_pages) or owner == "crates/razer-pages/src/features/accessories/hue.rs"
+    profile_codec = "crates/razer-device/src/profile_transfer.rs"
+    matcher_shell = "crates/razer-shell/src/shell/mouse/mouse_matcher.rs"
+    matcher_worker = "crates/razer-service/src/mouse/dpi_matcher_worker.rs"
+    receiver_save = "crates/razer-shell/src/shell/receiver/receiver_profile_save.rs"
+    chroma_shell = "crates/razer-shell/src/shell.rs"
+    chroma_service = "crates/razer-service/src/lighting/chroma_connect.rs"
+    chroma_session = ("razer_service", "chroma_connect", "Session")
+    gui_source = owner.startswith(tuple("crates/" + name + "/src/" for name in (
+        "razer-pages", "razer-app-pages", "razer-settings", "razer-shell", "razer-dashboard", "razer-widgets", "razer-tray")))
+    source_lifecycle = "crates/razer-pages/src/features/workspace/source_workspace/lifecycle.rs"
+    mapping_pages = ("crates/razer-pages/src/features/mapping/", "crates/razer-pages/src/features/mouse/mapping/",
+                     "crates/razer-pages/src/features/keyboard/mapping/")
+    retired_sources = {"crates/razer-pages/src/features/shortcuts/shortcut_engine.rs": shortcut_owner,
+                       "crates/razer-pages/src/features/shortcuts/shortcut_engine_keys.rs": input_owner,
+                       "crates/razer-pages/src/features/mapping/mapping_device_runtime.rs": mapping_workers + "device.rs",
+                       "crates/razer-pages/src/features/mapping/mapping_key_capture_runtime.rs": mapping_workers + "key_capture.rs",
+                       macro_page + "/transfer/xml.rs": macro_xml,
+                       macro_page + "/recording_decode.rs": macro_recording,
+                       macro_page + "/recording_actor.rs": macro_recorder}
+    shortcut_scope = owner.startswith(("crates/razer-model/src/shortcuts/", "crates/razer-pages/src/features/shortcuts/"))
+    publication_consumers = {"crates/razer-resource-db/src/installation.rs": ("InstallationPaths", "publish_catalog"),
+                             "crates/razer-resources/src/cache.rs": ("Cache", "publish"),
+                             "crates/razer-resource-db/build.rs": (None, "stage")}
     contracts = {"Shortcut": "crates/razer-model/src/shortcuts.rs",
                  "MacroLibraryFile": "crates/razer-model/src/macro_library.rs",
                  "AppPreferences": "crates/razer-model/src/preferences.rs",
                  "ModuleServiceSnapshot": "crates/razer-model/src/module_service.rs",
-                 "WorkspaceFile": "crates/razer-storage/src/workspace.rs"}
+                 "WorkspaceFile": "crates/razer-storage/src/workspace.rs",
+                 "RetiredShortcuts": retired_shortcuts}
     required_fields = {"with_shortcuts", "with_preferences", "with_custom_colors", "with_host_tab_order",
-                       "with_dashboard", "with_module_services", "with_macros"}
-    aliases = {"WorkspaceFile": "WorkspaceFile"}
+                       "with_dashboard", "with_module_services", "with_macros", "with_retired_shortcuts"}
+    aliases = {name: name for name in ("WorkspaceFile", "PreparedSave", "StagedResource",
+                                      "HeldInterdeviceTarget", "TargetObservation", "TargetTransition",
+                                      "MappingEngine", "canonical_json", "source_hash", "ServiceClient",
+                                      "WorkerGuard", "ACTIVE_WORKERS", "thread", "Command", "Admission")}
     def text(node):
         return raw[node.start_byte:node.end_byte].decode("utf-8") if node is not None else ""
     def walk(node):
         yield node
         for child in node.named_children:
             yield from walk(child)
+    def ancestors(node):
+        parent = node.parent
+        while parent is not None:
+            yield parent
+            parent = parent.parent
     def fail(node, kind, expected_owner):
         violations.append({"owner": owner, "kind": kind, "expected_owner": expected_owner,
-                           "byte_start": node.start_byte, "byte_end": node.end_byte})
+                           "byte_start": max(0, node.start_byte - offset), "byte_end": min(len(raw) - offset, node.end_byte - offset)})
     def in_test(node):
         path = Path(owner)
-        if path.stem.endswith(("_tests", "_test")) or path.stem in ("tests", "test") or "testdata" in path.parts:
+        if path.stem.endswith(("_tests", "_test")) or path.stem in ("tests", "test") or {"testdata", "tests"} & set(path.parts):
             return True
         while node is not None:
             sibling = node.prev_named_sibling
@@ -301,60 +399,1605 @@ def inspect_architecture_source(raw, *, owner, rust_parser):
                 sibling = sibling.prev_named_sibling
             node = node.parent
         return False
+    def called_methods(node):
+        methods = {text(call.child_by_field_name("function").child_by_field_name("field")) for call in walk(node)
+                   if call.type == "call_expression" and call.child_by_field_name("function").type == "field_expression"}
+        # Rust macro token trees do not expose their boolean expression as AST.
+        # Parse ensure!'s arguments as an ordinary call without evaluating it.
+        for child in walk(node):
+            if child.type != "macro_invocation" or text(child.child_by_field_name("macro")).split("::")[-1] != "ensure":
+                continue
+            tokens = next((item for item in child.named_children if item.type == "token_tree"), None)
+            if tokens is None:
+                continue
+            source = b"fn __architecture_assertion() { assertion(" + tokens.text[1:-1] + b"); }"
+            parsed = rust_parser.parse(source)
+            if parsed.root_node.has_error:
+                continue
+            methods.update(call.child_by_field_name("function").child_by_field_name("field").text.decode()
+                for call in walk(parsed.root_node) if call.type == "call_expression"
+                and call.child_by_field_name("function").type == "field_expression")
+        return methods
+    def calls(node):
+        return [(text(call.child_by_field_name("function")).split("::"), call) for call in walk(node)
+                if call.type == "call_expression" and call.child_by_field_name("function").type != "field_expression"]
+    if owner in retired_sources:
+        fail(tree.root_node, "retired_architecture_source", retired_sources[owner])
+    declarations = list(walk(tree.root_node))
+    thread_builders = set()
+    imports = {}
+    def imported_paths(node, prefix=()):
+        if node.type == "use_declaration":
+            yield from imported_paths(node.child_by_field_name("argument"), prefix)
+        elif node.type == "scoped_use_list":
+            path = prefix + tuple(text(node.child_by_field_name("path")).split("::"))
+            yield from imported_paths(node.child_by_field_name("list"), path)
+        elif node.type == "use_list":
+            for child in node.named_children:
+                yield from imported_paths(child, prefix)
+        elif node.type == "use_as_clause":
+            yield text(node.child_by_field_name("alias")), prefix + tuple(text(node.child_by_field_name("path")).split("::"))
+        elif node.type == "self":
+            yield prefix[-1], prefix
+        elif node.type in {"identifier", "scoped_identifier"}:
+            path = prefix + tuple(text(node).split("::"))
+            yield path[-1], path
+    for declaration in declarations:
+        if declaration.type == "use_declaration":
+            for alias, path in imported_paths(declaration):
+                imports[alias] = path
+                if path == ("std", "thread", "Builder"):
+                    thread_builders.add(alias)
+    def resolved_call(parts):
+        return imports.get(parts[0], (parts[0],)) + tuple(parts[1:])
+    def owned_type(node):
+        if node is None:
+            return ((), ())
+        if node.type == "generic_type":
+            name = resolved_call(text(node.child_by_field_name("type")).split("::"))
+            arguments = node.child_by_field_name("type_arguments")
+            return (name, tuple(owned_type(child) for child in arguments.named_children))
+        return (resolved_call(text(node).split("::")), ())
+    def contains_owned_type(shape, target):
+        return shape[0] == target or any(contains_owned_type(child, target) for child in shape[1])
+    def path_type(node):
+        if node is None:
+            return False
+        if node.type in {"reference_type", "mutable_specifier"}:
+            return any(path_type(child) for child in node.named_children)
+        return resolved_call(text(node).split("::")) in {
+            ("std", "path", "Path"), ("std", "path", "PathBuf")}
+    def path_expression(node, seen=frozenset()):
+        if node is None or node.id in seen:
+            return False
+        seen = seen | {node.id}
+        if node.type in {"try_expression", "reference_expression", "parenthesized_expression"}:
+            return any(path_expression(child, seen) for child in node.named_children)
+        if node.type == "call_expression":
+            function = node.child_by_field_name("function")
+            if function.type == "field_expression":
+                method = text(function.child_by_field_name("field"))
+                return method in {"join", "with_file_name", "with_extension", "to_path_buf", "canonicalize", "parent", "unwrap", "expect"} \
+                    and path_expression(function.child_by_field_name("value"), seen)
+            return resolved_call(text(function).split("::")) in {
+                ("std", "path", "Path", "new"), ("std", "path", "PathBuf", "from"),
+                ("std", "env", "current_exe"), ("std", "env", "current_dir"), ("std", "env", "temp_dir")}
+        if node.type == "identifier":
+            function = node.parent
+            while function is not None and function.type not in {"function_item", "closure_expression"}:
+                function = function.parent
+            if function is None:
+                return False
+            for declaration in walk(function):
+                if declaration.type not in {"parameter", "let_declaration"} \
+                        or text(declaration.child_by_field_name("pattern")) != text(node):
+                    continue
+                if path_type(declaration.child_by_field_name("type")):
+                    return True
+                if declaration.type == "let_declaration" and declaration.end_byte < node.start_byte \
+                        and path_expression(declaration.child_by_field_name("value"), seen):
+                    return True
+        return False
+    def locks_capture_lifecycle(node):
+        return any(call.type == "call_expression" and call.child_by_field_name("function").type == "field_expression"
+            and text(call.child_by_field_name("function").child_by_field_name("field")) in {"lock", "try_lock"}
+            and resolved_call(text(call.child_by_field_name("function").child_by_field_name("value")).split("::")) == ("razer_ipc", "KEY_CAPTURE_LIFECYCLE")
+            for call in walk(node)) or any(resolved_call(parts) == ("super", "lock_lifecycle") for parts, _ in calls(node))
+    def self_field(node, field):
+        return (node is not None and node.type == "field_expression"
+                and text(node.child_by_field_name("value")) == "self"
+                and text(node.child_by_field_name("field")) == field)
+    def local_variant(node, enum, variant):
+        if node.type == "call_expression":
+            node = node.child_by_field_name("function")
+        if node.type != "scoped_identifier":
+            return False
+        parts = node.text.decode().split("::")
+        return len(parts) == 2 and aliases.get(parts[0], parts[0]) == enum and parts[1] == variant
+    def tuple_pattern(node, constructor):
+        return any(child.type == "tuple_struct_pattern" and resolved_call(text(child.child_by_field_name("type")).split("::")) == (constructor,)
+            for child in walk(node))
+    def macro_arguments(node, name):
+        if node.type != "macro_invocation" or text(node.child_by_field_name("macro")).split("::")[-1] != name:
+            return []
+        tokens = next((child for child in node.named_children if child.type == "token_tree"), None)
+        if tokens is None:
+            return []
+        source = b"fn __architecture_arguments() { arguments(" + tokens.text[1:-1] + b"); }"
+        parsed = rust_parser.parse(source)
+        if parsed.root_node.has_error:
+            return []
+        call = next(child for child in walk(parsed.root_node) if child.type == "call_expression")
+        return call.child_by_field_name("arguments").named_children
+    def conjunction_terms(node):
+        if node.type == "parenthesized_expression":
+            return conjunction_terms(node.named_children[0])
+        if node.type == "binary_expression" and text(node.child_by_field_name("operator")) == "&&":
+            return conjunction_terms(node.child_by_field_name("left")) + conjunction_terms(node.child_by_field_name("right"))
+        return [node]
+    def condition_atoms(node):
+        return {"".join(text(term).split()) for term in conjunction_terms(node)}
+    def disjunction_terms(node):
+        if node.type == "parenthesized_expression":
+            return disjunction_terms(node.named_children[0])
+        if node.type == "binary_expression" and text(node.child_by_field_name("operator")) == "||":
+            return disjunction_terms(node.child_by_field_name("left")) + disjunction_terms(node.child_by_field_name("right"))
+        return [node]
+    def enclosing_conditions(node):
+        conditions = set()
+        child, parent = node, node.parent
+        while parent is not None:
+            if parent.type == "if_expression":
+                body = parent.child_by_field_name("consequence")
+                if body.start_byte <= child.start_byte and child.end_byte <= body.end_byte:
+                    conditions.update(condition_atoms(parent.child_by_field_name("condition")))
+            child, parent = parent, parent.parent
+        return conditions
+    def returning_branch(node):
+        body = node.child_by_field_name("consequence")
+        statements = [child for child in body.named_children if child.type not in {"line_comment", "block_comment"}]
+        return (len(statements) == 1 and (statements[0].type == "return_expression"
+                or statements[0].type == "expression_statement" and statements[0].named_children
+                and statements[0].named_children[0].type == "return_expression"))
+    def background_wait_branch(node):
+        if not any(parts[-1] == "background_exit_pending" for parts, _ in calls(node.child_by_field_name("condition"))):
+            return False
+        body = node.child_by_field_name("consequence")
+        statements = [child for child in body.named_children if child.type not in {"line_comment", "block_comment"}]
+        last = statements[-1] if statements else None
+        return (last is not None and "wait_for_background_exit" in called_methods(body)
+                and (last.type == "return_expression" or last.type == "expression_statement"
+                    and last.named_children and last.named_children[0].type == "return_expression"))
+    def preceding_return(branch, call):
+        parent = branch.parent
+        if parent is not None and parent.type == "expression_statement":
+            parent = parent.parent
+        ancestor = call.parent
+        while ancestor is not None and ancestor != parent:
+            ancestor = ancestor.parent
+        return ancestor is not None and branch.end_byte < call.start_byte and (returning_branch(branch) or background_wait_branch(branch))
+    def method_on_field(node, method, field):
+        return (node.type == "call_expression" and node.child_by_field_name("function").type == "field_expression"
+                and text(node.child_by_field_name("function").child_by_field_name("field")) == method
+                and self_field(node.child_by_field_name("function").child_by_field_name("value"), field))
+    def legacy_mapping_field(node, field):
+        return (node is not None and node.type == "field_expression"
+                and self_field(node.child_by_field_name("value"), "legacy_mapping")
+                and text(node.child_by_field_name("field")) == field)
+    changed = True
+    while changed:
+        changed = False
+        for node in declarations:
+            if node.type == "use_as_clause":
+                original = text(node.child_by_field_name("path")).split("::")[-1]
+                alias = text(node.child_by_field_name("alias"))
+            elif node.type == "type_item":
+                original = text(node.child_by_field_name("type")).split("::")[-1]
+                alias = text(node.child_by_field_name("name"))
+            else:
+                continue
+            if original in aliases and alias not in aliases:
+                aliases[alias], changed = aliases[original], True
     for node in walk(tree.root_node):
-        if node.type == "use_as_clause" and text(node.child_by_field_name("path")).split("::")[-1] == "WorkspaceFile":
-            aliases[text(node.child_by_field_name("alias"))] = "WorkspaceFile"
-    for node in walk(tree.root_node):
+        if node.type == "macro_invocation" and text(node.child_by_field_name("macro")) == "include":
+            token_tree = next(child for child in node.named_children if child.type == "token_tree")
+            values = token_tree.named_children
+            if len(values) == 1 and values[0].type in {"string_literal", "raw_string_literal"}:
+                literal = text(values[0])
+                if values[0].type == "raw_string_literal":
+                    literal = re.sub(r'^r#*"|"#*$', '', literal)
+                else:
+                    literal = literal[1:-1]
+                if "\\" in literal:
+                    fail(node, "include_path_requires_resolution", "Public Rust types and modules")
+                else:
+                    target = (ROOT / owner).parent.joinpath(literal).resolve()
+                    parts = Path(owner).parts
+                    crate_root = ROOT.joinpath(*parts[:2]) if parts[:1] == ("crates",) else ROOT
+                    if not target.is_relative_to(crate_root) or (crate_root == ROOT and target.is_relative_to(ROOT / "crates")):
+                        fail(node, "cross_crate_private_include", "Public Rust types and modules")
+            elif not (owner == "crates/razer-resource-db/src/lib.rs" and "".join(text(node).split()) == 'include!(concat!(env!("OUT_DIR"),"/installation.rs"))'):
+                fail(node, "include_path_requires_resolution", "Explicit local include path or the installation constants generator")
         if in_test(node):
             continue
+        if seiren_gui and node.type == "call_expression":
+            function = node.child_by_field_name("function")
+            if function.type != "field_expression":
+                path = resolved_call(text(function).split("::"))
+                if path in {("ServiceClient", "spawn"), ("razer_ipc", "ServiceClient", "spawn"),
+                            ("std", "thread", "Builder", "new"), ("thread", "Builder", "new"),
+                            ("std", "thread", "spawn"), ("thread", "spawn"),
+                            ("razer_storage", "audio_recording", "RecordingFile", "write")}:
+                    fail(node, "gui_owns_seiren_audio_io", seiren_workers)
+        if seiren_gui and node.type in {"struct_item", "static_item"} \
+                and text(node.child_by_field_name("name")) in {"WorkerGuard", "ACTIVE_WORKERS"}:
+            fail(node, "duplicate_seiren_audio_worker_owner", seiren_workers + "mod.rs")
+        if seiren_gui and node.type in {"scoped_identifier", "scoped_type_identifier"}:
+            path = resolved_call(text(node).split("::"))
+            if len(path) == 3 and path[:2] == ("razer_ipc", "ServiceRequest") and path[-1] in {
+                    "SeirenAudioCaptureStart", "SeirenAudioCapturePoll", "SeirenAudioCaptureStop",
+                    "SeirenAudioPlaybackStart", "SeirenAudioPlaybackPoll", "SeirenAudioPlaybackStop"}:
+                fail(node, "gui_owns_seiren_audio_protocol", seiren_workers)
+        if gui_source and node.type == "call_expression":
+            function = node.child_by_field_name("function")
+            if function.type == "field_expression":
+                method = text(function.child_by_field_name("field"))
+                if method in {"metadata", "symlink_metadata", "canonicalize", "read_dir", "read_link", "try_exists", "exists", "is_file", "is_dir"} \
+                        and path_expression(function.child_by_field_name("value")):
+                    fail(node, "gui_owns_path_observation", "crates/razer-platform/src/")
+                    gui_io_violations.append(violations.pop())
+            else:
+                path = resolved_call(text(function).split("::"))
+                if path[:2] in {("std", "fs"), ("tokio", "fs")} or path[:1] == ("async_fs",):
+                    fail(node, "gui_owns_filesystem_io", "crates/razer-storage/src/file_transfer.rs")
+                    gui_io_violations.append(violations.pop())
+        if gui_source and node.type in {"scoped_identifier", "scoped_type_identifier"}:
+            path = resolved_call(text(node).split("::"))
+            if len(path) == 3 and path[:2] == ("razer_ipc", "ServiceRequest") and path[-1] in {
+                    "MouseInputMonitoringStart", "MouseInputMonitoringPoll", "MouseInputMonitoringStop"}:
+                fail(node, "gui_owns_mouse_input_monitoring_protocol", matcher_worker)
+        if owner != mapping_product_owner and node.type == "or_pattern":
+            numbers = [text(child) for child in walk(node) if child.type == "integer_literal"]
+            if len(numbers) == 6 and set(numbers) == {"70", "515", "679", "740", "746", "756"}:
+                fail(node, "duplicate_mapping_product_gate", mapping_product_owner)
+        if owner != mapping_product_owner and node.type == "string_literal" and text(node) in {
+                '"_mouse70_mapping_document"', '"_keyboard515_mapping_document"'}:
+            fail(node, "duplicate_mapping_document_storage_identity", mapping_product_owner)
+        if node.type in {"mod_item", "use_declaration"}:
+            identifiers = {text(child) for child in walk(node) if child.type in {"identifier", "type_identifier"}}
+            if identifiers & {"mapping_device_runtime", "mapping_key_capture_runtime"}:
+                fail(node, "retired_mapping_worker_module", mapping_workers)
+            if node.type == "mod_item" and owner.startswith(macro_page) and text(node.child_by_field_name("name")) in {"recording_decode", "recording_actor"}:
+                fail(node, "retired_macro_recording_module", macro_recording + " and " + macro_recorder)
         if node.type == "struct_item":
             name = text(node.child_by_field_name("name"))
+            if name == "MappingProduct" and owner != mapping_product_owner:
+                fail(node, "duplicate_mapping_product_owner", mapping_product_owner)
+            body = node.child_by_field_name("body")
+            fields = {text(item.child_by_field_name("name")) for item in body.named_children if item.type == "field_declaration"} if body is not None else set()
             if name in contracts and owner != contracts[name]:
-                fail(node, "duplicate_persisted_contract", contracts[name])
-            if name == "PreparedSave":
-                fields = [item for item in node.child_by_field_name("body").named_children if item.type == "field_declaration"]
-                if {text(item.child_by_field_name("name")) for item in fields} != {"window", "file", "product"}:
-                    fail(node, "multiple_product_save_owners", factory_owner)
+                native_registration = (name == "Shortcut" and owner == "crates/razer-platform/src/input/global_shortcuts.rs"
+                                       and fields == {"virtual_key", "modifiers", "argument"})
+                if not native_registration:
+                    fail(node, "duplicate_persisted_contract", contracts[name])
+            if name == "PreparedSave" and (owner != factory_owner or fields != {
+                    "window", "file", "owners", "product", "device_draft"}):
+                fail(node, "multiple_product_save_owners", factory_owner)
+            if name == "SavedRevisionOwner" and (owner != factory_owner or fields != {
+                    "workspace", "connection_revision"}):
+                fail(node, "duplicate_save_revision_owner", factory_owner)
+            if name == "StagedResource" and owner != publication_owner:
+                fail(node, "duplicate_resource_publication_owner", publication_owner)
+            if name in {"HeldInterdeviceTarget", "TargetObservation", "TargetTransition"} and owner != interdevice_owner:
+                fail(node, "duplicate_interdevice_lifecycle_owner", interdevice_owner)
+            if name == "WorkerGuard" and owner.startswith((*mapping_pages, mapping_workers)) and owner != mapping_workers + "mod.rs":
+                fail(node, "duplicate_mapping_worker_owner", mapping_workers + "mod.rs")
+            if name == "MacroPage" and owner == macro_page + ".rs" and "transfer_task" not in fields:
+                fail(node, "macro_transfer_has_no_page_task_owner", macro_transfer)
+            if name == "PendingTransfer" and owner == macro_transfer and not {"request", "_task"} <= fields:
+                fail(node, "macro_transfer_has_no_cancellation_owner", macro_transfer)
+            if name == "Decoder" and owner.startswith(macro_page):
+                fail(node, "page_owns_macro_recording_decoder", macro_recording)
+            if name in {"SuspensionReceipt", "RestoreReceipt", "ActionReply"} and (owner.startswith(macro_page) or owner in {macro_recorder, macro_native}):
+                fail(node, "duplicate_macro_recording_receipt", macro_receipts)
+            if name == "RecordingUi" and owner == macro_page + "/recording.rs" and not {"command", "countdown_task", "updates_task", "generation", "document", "cancelled"} <= fields:
+                fail(node, "macro_recording_has_no_page_session_owner", macro_page + "/recording.rs")
+            if name == "UiPreferences" and owner.startswith("crates/") and owner != preference_state:
+                fail(node, "duplicate_ui_preference_state_owner", preference_state)
+            if name == "UiPreferences" and owner == preference_state and not {"core", "worker"} <= fields:
+                fail(node, "ui_preferences_has_no_retained_worker", preference_state)
+            if owner == runtime_panel and name == "RuntimeBridge":
+                types = {resolved_call(text(child).split("::"))[-1] for child in walk(body) if child.type == "type_identifier"}
+                if not {"Arc", "ConnectionOwner"} <= types:
+                    fail(node, "discovery_connection_has_no_shared_worker_owner", runtime_panel + "::ConnectionOwner")
+            if owner == runtime_panel and name == "ConnectionOwner":
+                worker = next((child.child_by_field_name("type") for child in body.named_children
+                    if child.type == "field_declaration" and text(child.child_by_field_name("name")) == "worker"), None)
+                types = {resolved_call(text(child).split("::"))[-1] for child in walk(worker) if child.type == "type_identifier"} if worker else set()
+                if not {"commands", "worker"} <= fields or not {"Mutex", "Option", "JoinHandle"} <= types:
+                    fail(node, "discovery_connection_has_no_retained_worker", runtime_panel + "::ConnectionOwner")
+            if owner == runtime_panel and name == "RuntimePanel" and not {"bridge", "retired_bridges", "monitor", "retired_monitors", "monitor_task", "disconnect_task"} <= fields:
+                fail(node, "discovery_panel_discards_observation_cleanup_owner", runtime_panel + "::RuntimePanel")
+            if owner == device_monitor and name == "DeviceChangeMonitor":
+                worker = next((child.child_by_field_name("type") for child in body.named_children
+                    if child.type == "field_declaration" and text(child.child_by_field_name("name")) == "worker"), None)
+                types = {resolved_call(text(child).split("::"))[-1] for child in walk(worker) if child.type == "type_identifier"} if worker else set()
+                if not {"stop", "worker"} <= fields or not {"Option", "JoinHandle"} <= types:
+                    fail(node, "device_observer_has_no_retained_worker", device_monitor + "::DeviceChangeMonitor")
+            if owner == "crates/razer-shell/src/shell.rs" and name == "AppShell" and "thx_retired_owners" not in fields:
+                fail(node, "thx_spawn_failure_has_no_retained_owner", thx_lifecycle + "::RetiredOwner")
+            if owner == chroma_shell and name == "AppShell":
+                sessions = {text(child.child_by_field_name("name")): owned_type(child.child_by_field_name("type"))
+                    for child in body.named_children if child.type == "field_declaration"
+                    and contains_owned_type(owned_type(child.child_by_field_name("type")), chroma_session)}
+                shared_session = (("std", "sync", "Arc"), ((("std", "sync", "Mutex"), ((chroma_session, ()),)),))
+                if sessions != {"receiver_chroma_connect": shared_session}:
+                    fail(node, "chroma_connect_has_no_single_shared_shell_owner", chroma_shell + "::AppShell")
+            if owner == thx_lifecycle and name == "RetiredOwner" and fields != {"owner", "source_close"}:
+                fail(node, "thx_retirement_discards_owner_or_source_close", thx_lifecycle + "::RetiredOwner")
+            if owner == ipc_client and name == "ServiceClient":
+                retained = {}
+                for child in body.named_children:
+                    if child.type == "field_declaration" and text(child.child_by_field_name("name")) in {"input_worker", "output_worker"}:
+                        retained[text(child.child_by_field_name("name"))] = {resolved_call(text(item).split("::"))[-1]
+                            for item in walk(child.child_by_field_name("type")) if item.type == "type_identifier"}
+                if (not {"child", "requests", "input_worker", "output_worker"} <= fields
+                        or set(retained) != {"input_worker", "output_worker"}
+                        or any(not {"Option", "JoinHandle", "Result"} <= types for types in retained.values())):
+                    fail(node, "ipc_client_discards_owned_process_or_pipe_workers", ipc_client + "::ServiceClient")
+            if name == "MappingTargetOwner" and owner == mapping_adapter and fields != {"workspace", "identity", "connection_revision"}:
+                fail(node, "unscoped_interdevice_target_owner", interdevice_owner)
+            if {"revision", "scopes", "owners"} <= fields and owner != mapping_receipts:
+                fail(node, "duplicate_mapping_suppression_registry", mapping_receipts)
+            if name == "InterdeviceHold" and owner == mapping_adapter:
+                target = next((item.child_by_field_name("type") for item in body.named_children
+                    if item.type == "field_declaration" and text(item.child_by_field_name("name")) == "target"), None)
+                identifiers = {text(child) for child in walk(target) if child.type == "type_identifier"} if target else set()
+                if not {"origin", "product_id", "raw", "target"} <= fields or not any(aliases.get(name) == "HeldInterdeviceTarget" for name in identifiers):
+                    fail(node, "interdevice_hold_bypasses_lifecycle_owner", interdevice_owner)
+        if node.type == "impl_item" and aliases.get(text(node.child_by_field_name("type")).split("::")[-1]) == "StagedResource" and owner != publication_owner:
+            fail(node, "duplicate_resource_publication_owner", publication_owner)
+        if node.type == "impl_item" and aliases.get(text(node.child_by_field_name("type")).split("::")[-1]) == "WorkerGuard" and owner.startswith((*mapping_pages, mapping_workers)) and owner != mapping_workers + "mod.rs":
+            fail(node, "duplicate_mapping_worker_owner", mapping_workers + "mod.rs")
+        if node.type == "impl_item" and owner != interdevice_owner:
+            item_type = node.child_by_field_name("type")
+            base = item_type.child_by_field_name("type") if item_type is not None and item_type.type == "generic_type" else item_type
+            if aliases.get(text(base).split("::")[-1]) in {"HeldInterdeviceTarget", "TargetObservation", "TargetTransition"}:
+                fail(node, "duplicate_interdevice_lifecycle_owner", interdevice_owner)
+        if node.type == "struct_expression" and aliases.get(text(node.child_by_field_name("name")).split("::")[-1]) == "PreparedSave" and owner != factory_owner:
+            fail(node, "product_recomposes_save_owners", factory_owner)
         if node.type == "static_item" and owner.startswith("crates/razer-resources/src/"):
             identifiers = {text(child) for child in walk(node.child_by_field_name("type")) if child.type == "type_identifier"}
             if identifiers & {"Service", "ResourceClient", "ResourceRuntime", "State"}:
                 fail(node, "process_global_resource_session", "razer_resources::ResourceRuntime")
+        if node.type == "static_item" and text(node.child_by_field_name("name")) == "ACTIVE_WORKERS" and owner.startswith((*mapping_pages, mapping_workers)) and owner != mapping_workers + "mod.rs":
+            fail(node, "duplicate_mapping_worker_owner", mapping_workers + "mod.rs")
+        if node.type == "static_item" and ((text(node.child_by_field_name("name")) == "KEY_CAPTURE_LIFECYCLE" and owner != "crates/razer-ipc/src/lib.rs")
+                or text(node.child_by_field_name("name")) == "LIFECYCLE" and owner in {macro_recorder, mapping_workers + "key_capture.rs"}):
+            fail(node, "duplicate_native_capture_lifecycle_owner", "crates/razer-ipc/src/lib.rs::KEY_CAPTURE_LIFECYCLE")
+        if node.type in {"const_item", "static_item"} and shortcut_scope:
+            for child in walk(node):
+                if child.type == "tuple_expression" and len(child.named_children) >= 2:
+                    first, *remaining = child.named_children
+                    if first.type == "string_literal" and text(first).startswith('"KEY_') and any(item.type == "integer_literal" for item in remaining):
+                        fail(node, "duplicate_shortcut_key_table", input_owner)
+                        break
+        if node.type == "function_item":
+            name = text(node.child_by_field_name("name"))
+            parent = node.parent.parent if node.parent is not None and node.parent.parent is not None else None
+            free_function = parent is None or parent.type != "impl_item"
+            implementation = text(parent.child_by_field_name("type")) if not free_function else ""
+            if owner == matcher_worker and implementation == "NativeBackend<'_>" and name == "release_transport":
+                body = node.child_by_field_name("body")
+                finish = [call for call in walk(body) if call.type == "call_expression"
+                    and text(call.child_by_field_name("function")) == "client.finish_termination"
+                    and call.parent.type == "try_expression"]
+                releases = [call for call in walk(body) if call.type == "call_expression"
+                    and text(call.child_by_field_name("function")) in {
+                        "self.client.take", "self.device_task.take", "self.lifecycle.take"}]
+                if (len(finish) != 1 or {text(call.child_by_field_name("function")) for call in releases} != {
+                        "self.client.take", "self.device_task.take", "self.lifecycle.take"}
+                        or any(call.start_byte < finish[0].end_byte for call in releases)):
+                    fail(node, "matcher_releases_leases_before_transport_termination", matcher_worker + "::NativeBackend::release_transport")
+            if owner == matcher_worker and implementation == "Handle" and name == "finish":
+                body = node.child_by_field_name("body")
+                joins = [call for call in walk(body) if call.type == "call_expression"
+                    and call.child_by_field_name("function").type == "field_expression"
+                    and text(call.child_by_field_name("function").child_by_field_name("field")) == "join"]
+                publications = [call for call in walk(body) if call.type == "call_expression"
+                    and text(call.child_by_field_name("function")) == "self.completion.publish"
+                    and any(text(ancestor.child_by_field_name("pattern")) == "Ok(exit)"
+                        for ancestor in ancestors(call) if ancestor.type == "match_arm")]
+                if (len(joins) != 1 or len(publications) != 1
+                        or publications[0].start_byte < joins[0].end_byte
+                        or ["".join(text(argument).split()) for argument in publications[0].child_by_field_name("arguments").named_children] != ["&exit.released"]):
+                    fail(node, "matcher_completion_does_not_publish_joined_release", matcher_worker + "::Handle::finish")
+            if owner == matcher_shell and name == "mouse_matcher_save_current":
+                body = node.child_by_field_name("body")
+                terms = conjunction_terms(body.named_children[-1]) if body.named_children else []
+                required = {"save.scope.is_valid()",
+                    "save.workspace.read(cx).connection_revision()==save.connection_revision",
+                    "save.workspace.read(cx).mouse_matcher_scope(cx).as_ref()==Some(&save.scope)"}
+                predicates = [term for term in terms if term.type == "call_expression"
+                    and term.child_by_field_name("function").type == "field_expression"
+                    and text(term.child_by_field_name("function").child_by_field_name("field")) == "is_some_and"]
+                correlated = False
+                for predicate in predicates:
+                    function = predicate.child_by_field_name("function")
+                    receiver = function.child_by_field_name("value")
+                    arguments = predicate.child_by_field_name("arguments").named_children
+                    if ("".join(text(receiver).split()) != "self.mouse_matcher.sessions.get(&save.identity)"
+                            or len(arguments) != 1 or arguments[0].type != "closure_expression"):
+                        continue
+                    closure = arguments[0].child_by_field_name("body")
+                    if closure.type == "block" and closure.named_children:
+                        closure = closure.named_children[-1]
+                    correlated = {"session.id==save.session_id",
+                        "session.workspace.upgrade().as_ref()==Some(&save.workspace)"} <= condition_atoms(closure)
+                if not required <= {"".join(text(term).split()) for term in terms} or not correlated:
+                    fail(node, "matcher_save_accepts_stale_session_or_connection", matcher_shell + "::mouse_matcher_save_current")
+            if owner == matcher_shell and name == "dispatch_mouse_matcher":
+                for call in walk(node):
+                    if call.type != "call_expression" or call.child_by_field_name("function").type != "field_expression":
+                        continue
+                    function = call.child_by_field_name("function")
+                    if text(function.child_by_field_name("field")) != "retire_mouse_matcher":
+                        continue
+                    args = call.child_by_field_name("arguments").named_children
+                    if not args or "".join(text(args[0]).split()) != "&retained_identity":
+                        continue
+                    if not any(condition.endswith(".is_some_and(|session|session.id==session_id)")
+                            and ".sessions.get(&retained_identity)" in condition
+                            for condition in enclosing_conditions(call)):
+                        fail(call, "matcher_retired_worker_removes_successor", matcher_shell + "::dispatch_mouse_matcher")
+            if owner in {matcher_shell, receiver_save} and name in {
+                    "rebase_mouse_matcher_save", "rebase_receiver_profile_save"}:
+                method = "mouse_matcher_save_current" if owner == matcher_shell else "receiver_profile_current"
+                checks = [child for child in walk(node) if child.type == "macro_invocation"
+                    and (arguments := macro_arguments(child, "ensure"))
+                    and any(call.type == "call_expression" and call.child_by_field_name("function").type == "field_expression"
+                        and call.child_by_field_name("function").child_by_field_name("field").text.decode() == method
+                        for call in walk(arguments[0]))]
+                mutations = [call for call in walk(node) if call.type == "call_expression"
+                    and call.child_by_field_name("function").type == "field_expression"
+                    and text(call.child_by_field_name("function").child_by_field_name("field")) in {"apply", "project"}]
+                if not checks or not mutations or any(not any(check.end_byte < call.start_byte for check in checks) for call in mutations):
+                    fail(node, "product_profile_rebase_skips_current_owner", owner + "::" + method)
+            if free_function and name == "encode_shortcuts" and owner != shortcut_owner and owner.startswith(("crates/razer-model/", "crates/razer-pages/", "crates/razer-shell/")):
+                fail(node, "duplicate_native_shortcut_encoder", shortcut_owner)
+            if free_function and name == "input_modifier_bit" and owner != input_owner:
+                fail(node, "duplicate_mapping_modifier_encoder", input_owner)
+            if free_function and shortcut_scope and name in {"stable_json", "canonical_json", "source_hash"}:
+                fail(node, "duplicate_shortcut_hash_encoder", hash_owner)
+            if free_function and owner == profile_codec and name in {"stable_json", "stable_number", "canonical_json", "source_hash"}:
+                fail(node, "duplicate_profile_hash_encoder", hash_owner)
+            if free_function and owner.startswith(macro_page) and name == "parse_delay":
+                fail(node, "page_owns_macro_delay_semantics", "crates/razer-model/src/macro_library.rs")
+            if free_function and owner == profile_codec and name == "entry" and "source_hash" not in {aliases.get(parts[-1]) for parts, _ in calls(node)}:
+                fail(node, "profile_hash_bypasses_shared_owner", hash_owner)
+            if owner == macro_transfer:
+                methods = called_methods(node)
+                if name == "drop" and parent is not None and text(parent.child_by_field_name("type")) == "PendingTransfer" and "cancel" not in methods:
+                    fail(node, "macro_transfer_drop_skips_cancellation", macro_io)
+                if name in {"import_xml", "export_xml"}:
+                    fields = {text(child.child_by_field_name("field")) for child in walk(node) if child.type == "field_expression"}
+                    if "detach" in methods or "transfer_task" not in fields or "is_same" not in methods:
+                        fail(node, "macro_transfer_accepts_unowned_completion", macro_transfer)
+            if owner == preference_state and name == "start_worker" and parent is not None and text(parent.child_by_field_name("type")) == "UiPreferences":
+                fields = {text(child.child_by_field_name("field")) for child in walk(node) if child.type == "field_expression"}
+                if "worker" not in fields or "detach" in called_methods(node):
+                    fail(node, "ui_preferences_has_no_retained_worker", preference_state)
+            if owner == macro_page + "/recording.rs" and name == "start_recording":
+                fields = {text(child.child_by_field_name("field")) for child in walk(node) if child.type == "field_expression"}
+                if not {"command", "updates_task", "generation", "document", "current", "cancelled"} <= fields or "detach" in called_methods(node):
+                    fail(node, "macro_recording_accepts_unowned_completion", macro_page + "/recording.rs")
+            if owner == macro_recorder and free_function and name in {"spawn_with", "spawn_with_registry"}:
+                direct = calls(node)
+                if not any(len(parts) >= 2 and aliases.get(parts[-2]) == "WorkerGuard" and parts[-1] == "start" for parts, _ in direct):
+                    fail(node, "mapping_worker_bypasses_cleanup_accounting", mapping_workers + "mod.rs")
+                if not {"shutdown", "drop"} <= {parts[-1] for parts, _ in direct}:
+                    fail(node, "macro_recorder_skips_transport_cleanup", mapping_workers + "mod.rs")
+                if not locks_capture_lifecycle(node):
+                    fail(node, "macro_recorder_bypasses_shared_capture_lifecycle", "razer_ipc::KEY_CAPTURE_LIFECYCLE")
+            if owner == mapping_workers + "mod.rs" and free_function and name == "lock_lifecycle":
+                if not locks_capture_lifecycle(node) or "load" not in called_methods(node):
+                    fail(node, "capture_lifecycle_bypasses_cancelable_shared_lock", "razer_ipc::KEY_CAPTURE_LIFECYCLE")
+            if owner == mapping_workers + "mod.rs" and free_function and name == "apply_execution_control":
+                if not any(tuple(parts) == ("control", "apply_with") for parts, _ in calls(node)):
+                    fail(node, "mapping_control_helper_bypasses_receipt_owner", mapping_control)
+            if owner == keyboard_restore and name == "stop_if_drained" and parent is not None and text(parent.child_by_field_name("type")) == "Owner":
+                guarded = []
+                for branch in walk(node):
+                    if branch.type != "if_expression":
+                        continue
+                    terms = conjunction_terms(branch.child_by_field_name("condition"))
+                    idle = any(method_on_field(term, "is_idle", "coordinator") for term in terms)
+                    restored = any(term.type == "binary_expression" and text(term.child_by_field_name("operator")) == "=="
+                        and ((method_on_field(term.child_by_field_name("left"), "load", "recoveries") and text(term.child_by_field_name("right")) == "0")
+                            or (method_on_field(term.child_by_field_name("right"), "load", "recoveries") and text(term.child_by_field_name("left")) == "0")) for term in terms)
+                    if idle and restored:
+                        guarded.append(branch.child_by_field_name("consequence"))
+                stops = [child for child in walk(node) if method_on_field(child, "store", "valid")
+                    or child.type == "assignment_expression" and self_field(child.child_by_field_name("left"), "stopping")]
+                if not stops or any(not any(body.start_byte <= stop.start_byte and stop.end_byte <= body.end_byte for body in guarded) for stop in stops):
+                    fail(node, "keyboard_exit_stops_before_queue_and_recovery_drain", keyboard_restore + "::Owner")
+            if owner == keyboard_publisher and name == "start_with" and "register" not in called_methods(node):
+                fail(node, "keyboard_publisher_bypasses_mapping_control_registry", mapping_receipts)
+            if owner == keyboard_publisher and name == "apply_control":
+                if not any(resolved_call(parts) == ("razer_service", "mapping", "apply_execution_control") for parts, _ in calls(node)):
+                    fail(node, "keyboard_publisher_bypasses_receipt_owner", mapping_control)
+            if owner == keyboard_publisher and name == "cleanup":
+                direct = calls(node)
+                shuts = [call for parts, call in direct if resolved_call(parts) == ("shutdown",)
+                    and any("".join(text(argument).split()) == "&mutclient" for argument in call.child_by_field_name("arguments").named_children)]
+                drops = [call for parts, call in direct if resolved_call(parts) in {("drop",), ("std", "mem", "drop")}
+                    and any(text(argument) == "client" for argument in call.child_by_field_name("arguments").named_children)]
+                finishes = [call for call in walk(node) if method_on_field(call, "finish", "control")]
+                if not finishes or any(not any(shut.end_byte < drop.start_byte < finish.start_byte for shut in shuts for drop in drops) for finish in finishes):
+                    fail(node, "keyboard_publisher_releases_registry_before_native_cleanup", keyboard_publisher + "::Publisher")
+            if owner == keyboard_worker and name == "run":
+                resets = [call for parts, call in calls(node) if parts[-1] == "reset_navigation_feedback"]
+                skipped = [branch for branch in walk(node) if branch.type == "if_expression"
+                    and branch.child_by_field_name("condition").type == "unary_expression"
+                    and branch.child_by_field_name("condition").children[0].type == "!"
+                    and any(call.type == "call_expression" and call.child_by_field_name("function").type == "field_expression"
+                        and text(call.child_by_field_name("function")) == "automatic.load"
+                        for call in walk(branch.child_by_field_name("condition")))
+                    and any(child.type == "continue_expression" for child in walk(branch.child_by_field_name("consequence")))]
+                if (not resets or not skipped or any(reset.start_byte > branch.start_byte for reset in resets for branch in skipped)
+                        or not any(tuple(parts) == ("PendingRecovery", "start") for parts, _ in calls(node))):
+                    fail(node, "keyboard_exit_skips_accepted_navigation_recovery", keyboard_worker + "::run")
+            if owner == legacy_keyboard_mapping and name == "start_legacy_mapping_owner":
+                body = node.child_by_field_name("body")
+                retained = {field: [child for child in walk(body) if child.type == "assignment_expression"
+                    and legacy_mapping_field(child.child_by_field_name("left"), field)] for field in ("owner", "poll")}
+                submissions = [call for call in walk(body) if call.type == "call_expression"
+                    and call.child_by_field_name("function").type == "field_expression"
+                    and text(call.child_by_field_name("function").child_by_field_name("field")) == "submit_legacy_mapping"
+                    and call.parent.type == "expression_statement" and call.parent.parent == body]
+                deferred = [branch for branch in walk(body) if branch.type == "match_arm"
+                    and text(branch.child_by_field_name("pattern")) == "Reply::Ready"
+                    and "submit_legacy_mapping" in called_methods(branch.child_by_field_name("value"))]
+                if (not submissions or deferred or any(not retained[field]
+                        or any(assignment.end_byte > call.start_byte for assignment in retained[field] for call in submissions)
+                        for field in retained)):
+                    fail(node, "keyboard_initial_publication_waits_for_presentation_ready", legacy_keyboard_mapping + "::start_legacy_mapping_owner")
+            if owner == legacy_keyboard_mapping and name == "publish_legacy_mapping":
+                connections = [call for call in walk(node) if call.type == "call_expression"
+                    and call.child_by_field_name("function").type == "field_expression"
+                    and text(call.child_by_field_name("function").child_by_field_name("field")) == "set_legacy_mapping_connection"]
+                for call in connections:
+                    block = call.parent
+                    while block is not None and block.type != "block":
+                        block = block.parent
+                    starts = [child for child in walk(block) if child.type == "call_expression"
+                        and child.child_by_field_name("function").type == "field_expression"
+                        and text(child.child_by_field_name("function").child_by_field_name("field")) == "start_legacy_mapping_owner"
+                        and child.start_byte > call.end_byte] if block is not None else []
+                    if block is None or not starts or not any(child.type == "assignment_expression"
+                            and legacy_mapping_field(child.child_by_field_name("left"), "document")
+                            and child.end_byte < call.start_byte for child in walk(block)):
+                        fail(call, "keyboard_replacement_registers_before_current_document", legacy_keyboard_mapping + "::publish_legacy_mapping")
+            if owner == legacy_keyboard_mapping and name == "set_legacy_mapping_connection" and "start_legacy_mapping_owner" in called_methods(node):
+                fail(node, "keyboard_connection_starts_with_retained_stale_document", legacy_keyboard_mapping + "::publish_legacy_mapping")
+            if owner == mapping_control and free_function and name in {"apply", "apply_with"}:
+                observed = set()
+                for child in walk(node):
+                    if child.type != "let_declaration":
+                        continue
+                    declared_type, value = child.child_by_field_name("type"), child.child_by_field_name("value")
+                    if declared_type is not None and value is not None and any(
+                            resolved_call(parts) == ("serde_json", "from_value") for parts, _ in calls(value)):
+                        observed.add(resolved_call(text(declared_type).split("::")))
+                required = {"drain", "owner_guid", "revision", "target", "confirms", "acknowledge"}
+                methods = called_methods(node)
+                direct = {resolved_call(parts) for parts, _ in calls(node)}
+                delegated = name == "apply" and ("apply_with",) in direct
+                if (not delegated and (("razer_ipc", "mapping_control", "Receipt") not in observed
+                        or not required <= methods or not ("request" in methods or ("request",) in direct))):
+                    fail(node, "mapping_control_bypasses_correlated_receipt", mapping_receipts)
+            if owner == mapping_native_control and name == "set_mapping_execution":
+                direct = {resolved_call(parts) for parts, _ in calls(node)}
+                if (("razer_ipc", "mapping_control", "Receipt", "with_observations") not in direct
+                        or not {"owner", "owner_guid", "is_none_or"} <= called_methods(node)):
+                    fail(node, "native_mapping_control_bypasses_owner_revision_receipt", mapping_receipts)
+            if owner == mapping_workers + "key_capture.rs" and name == "start_with_registry":
+                for branch in walk(node):
+                    if branch.type != "match_arm":
+                        continue
+                    pattern, value = branch.child_by_field_name("pattern"), branch.child_by_field_name("value")
+                    if pattern is None or text(pattern) != "Kind::GlobalShortcut" or value is None or value.type != "block":
+                        continue
+                    identifiers = {resolved_call(text(item).split("::")) for item in walk(value) if item.type == "scoped_identifier"}
+                    if (("razer_ipc", "ServiceRequest", "GlobalShortcutCaptureEvents") not in identifiers
+                            or identifiers & {("razer_ipc", "ServiceRequest", "MappingKeyCaptureEvents"),
+                                              ("razer_ipc", "ServiceRequest", "DeviceModeEvents")}
+                            or "into_events" not in called_methods(value)):
+                        fail(branch, "global_capture_splits_input_and_mode_order", "razer_ipc::global_shortcut_capture::Batch")
+            if ((owner == mapping_workers + "device.rs" and name == "start_with_registry")
+                    or (owner == mapping_workers + "shortcuts.rs" and name == "run")):
+                if (not {"register", "finish"} <= called_methods(node)
+                        or not any(tuple(parts) == ("super", "control", "apply") for parts, _ in calls(node))):
+                    fail(node, "mapping_actor_bypasses_registered_control_owner", mapping_control)
+                if owner == mapping_workers + "shortcuts.rs":
+                    receivers = {text(parameter.child_by_field_name("pattern"))
+                        for parameter in node.child_by_field_name("parameters").named_children
+                        if parameter.type == "parameter" and any(kind.type == "generic_type"
+                            and text(kind.child_by_field_name("type")).split("::")[-1] == "Receiver"
+                            and any(aliases.get(text(argument), text(argument)) == "Command"
+                                for argument in kind.child_by_field_name("type_arguments").named_children)
+                            for kind in walk(parameter.child_by_field_name("type")))}
+                    if any(call.type == "call_expression" and call.child_by_field_name("function").type == "field_expression"
+                            and text(call.child_by_field_name("function").child_by_field_name("field")) == "try_recv"
+                            and text(call.child_by_field_name("function").child_by_field_name("value")) in receivers
+                            for call in walk(node)):
+                        fail(node, "shortcut_worker_coalesces_compiler_publications", mapping_workers + "shortcuts.rs::run")
+            if (owner in {mapping_workers + "device.rs", mapping_workers + "shortcuts.rs"}
+                    and (name == "request_stop_after_pending" or name == ("publish" if owner.endswith("/shortcuts.rs") else "publish_with_restore"))):
+                locked = {}
+                for declaration in walk(node):
+                    if declaration.type != "let_declaration":
+                        continue
+                    value = declaration.child_by_field_name("value")
+                    if value is not None and any(call.type == "call_expression"
+                            and call.child_by_field_name("function").type == "field_expression"
+                            and text(call.child_by_field_name("function").child_by_field_name("field")) == "lock"
+                            and self_field(call.child_by_field_name("function").child_by_field_name("value"), "admission")
+                            for call in walk(value)):
+                        locked[text(declaration.child_by_field_name("pattern"))] = declaration
+                variant = "Finish" if name == "request_stop_after_pending" else "Publish"
+                sends = [call for call in walk(node) if call.type == "call_expression"
+                    and call.child_by_field_name("function").type == "field_expression"
+                    and text(call.child_by_field_name("function").child_by_field_name("field")) == "send"
+                    and self_field(call.child_by_field_name("function").child_by_field_name("value"), "commands")
+                    and any(local_variant(argument, "Command", variant)
+                            for argument in call.child_by_field_name("arguments").named_children)]
+                if variant == "Publish":
+                    rejections = []
+                    for branch in walk(node):
+                        if branch.type != "if_expression":
+                            continue
+                        for condition in disjunction_terms(branch.child_by_field_name("condition")):
+                            if condition.type != "unary_expression" or condition.children[0].type != "!":
+                                continue
+                            arguments = macro_arguments(condition.named_children[0], "matches")
+                            if (len(arguments) == 2 and arguments[0].type == "unary_expression"
+                                    and arguments[0].children[0].type == "*"
+                                    and arguments[0].named_children[0].text.decode() in locked
+                                    and local_variant(arguments[1], "Admission", "Accepting")
+                                    and any(child.type == "return_expression" for child in walk(branch.child_by_field_name("consequence")))):
+                                rejections.append(branch)
+                    if (not sends or not rejections or not locked
+                            or any(not any(lock.end_byte < branch.start_byte < send.start_byte
+                                for lock in locked.values() for branch in rejections) for send in sends)):
+                        fail(node, "mapping_publish_bypasses_closed_admission", owner + "::Session")
+                else:
+                    closing = [child for child in walk(node) if child.type == "assignment_expression"
+                        and child.child_by_field_name("left").type == "unary_expression"
+                        and child.child_by_field_name("left").children[0].type == "*"
+                        and text(child.child_by_field_name("left").named_children[0]) in locked
+                        and local_variant(child.child_by_field_name("right"), "Admission", "Draining")]
+                    cancels = [call for call in walk(node) if call.type == "call_expression"
+                        and call.child_by_field_name("function").type == "field_expression"
+                        and any(self_field(call.child_by_field_name("function").child_by_field_name("value"), field) for field in ("canceled", "stop"))]
+                    if (not sends or not closing or cancels or "request_stop" in called_methods(node)
+                            or any(not any(lock.end_byte < close.start_byte < send.start_byte
+                                for lock in locked.values() for close in closing) for send in sends)):
+                        fail(node, "mapping_drain_bypasses_fifo_admission", owner + "::Session")
+            if owner == macro_recorder and free_function and name == "record":
+                observed = set()
+                for child in walk(node):
+                    if child.type != "let_declaration":
+                        continue
+                    declared_type, value = child.child_by_field_name("type"), child.child_by_field_name("value")
+                    if declared_type is None or value is None:
+                        continue
+                    contract = resolved_call(text(declared_type).split("::"))
+                    if any(resolved_call(parts) == ("serde_json", "from_value") for parts, _ in calls(value)):
+                        observed.add(contract)
+                expected = {("razer_ipc", "macro_recording", "SuspensionReceipt"), ("razer_ipc", "macro_recording", "RestoreReceipt")}
+                if not expected <= observed or not {"suspended", "global_shortcuts", "result"} <= called_methods(node):
+                    fail(node, "macro_recorder_bypasses_typed_receipts", macro_receipts)
+            if owner == macro_native and name in {"suspend_macro_mappings", "resume_macro_mappings"}:
+                expected = "SuspensionReceipt" if name == "suspend_macro_mappings" else "RestoreReceipt"
+                if not any(resolved_call(parts) == ("razer_ipc", "macro_recording", expected, "new") for parts, _ in calls(node)):
+                    fail(node, "native_macro_receipt_bypasses_shared_contract", macro_receipts)
+            if owner == macro_native and name == "shutdown_macro_recording":
+                confirmations = [call for call in walk(node) if call.type == "call_expression"
+                    and call.child_by_field_name("function").type == "field_expression"
+                    and text(call.child_by_field_name("function").child_by_field_name("field")) == "and_then"
+                    and any(text(argument) == "confirm_mapping_restoration" for argument in call.child_by_field_name("arguments").named_children)]
+                if "resume_macro_mapping_receipts" not in called_methods(node) or not confirmations:
+                    fail(node, "native_macro_cleanup_accepts_unconfirmed_restore", macro_native + "::confirm_mapping_restoration")
+            if owner == shortcut_owner:
+                methods = called_methods(node)
+                direct = calls(node)
+                if name == "encode_input" and (not {"encode_shortcut_input", "into_parts"} <= methods
+                        or not any(len(parts) >= 2 and aliases.get(parts[-2]) == "MappingEngine" and parts[-1] == "global_shortcuts" for parts, _ in direct)):
+                    fail(node, "shortcut_input_bypasses_shared_engine", input_owner)
+                targets = {aliases.get(parts[-1], parts[-1]) for parts, _ in direct}
+                if (name in {"encode_shortcuts", "encode_with_context"}
+                        and not {"canonical_json", "source_hash"} <= targets
+                        and not (name == "encode_shortcuts" and "encode_with_context" in targets)):
+                    fail(node, "shortcut_hash_bypasses_shared_owner", hash_owner)
+            if owner in {mapping_workers + "device.rs", mapping_workers + "key_capture.rs", mapping_workers + "shortcuts.rs"} and name in {"start_with", "start_with_registry"} and parent is not None and text(parent.child_by_field_name("type")) == "Session":
+                if not any(len(parts) >= 2 and aliases.get(parts[-2]) == "WorkerGuard" and parts[-1] == "start" for parts, _ in calls(node)):
+                    fail(node, "mapping_worker_bypasses_cleanup_accounting", mapping_workers + "mod.rs")
+                if owner == mapping_workers + "key_capture.rs" and not locks_capture_lifecycle(node):
+                    fail(node, "key_capture_bypasses_shared_lifecycle", "razer_ipc::KEY_CAPTURE_LIFECYCLE")
         if node.type == "function_item" and owner == factory_owner:
             name = text(node.child_by_field_name("name"))
+            parent_impl = node.parent.parent if node.parent is not None else None
+            if (name == "current" and parent_impl is not None and parent_impl.type == "impl_item"
+                    and text(parent_impl.child_by_field_name("type")) == "SavedRevisionOwner"):
+                bindings = [child for child in walk(node) if child.type == "let_declaration"
+                    and text(child.child_by_field_name("pattern")) == "owner"
+                    and "".join(text(child.child_by_field_name("value")).split()) == "self.workspace.upgrade()?"]
+                scoped_returns = [call for call in walk(node) if call.type == "call_expression"
+                    and call == node.child_by_field_name("body").named_children[-1]
+                    and call.child_by_field_name("function").type == "field_expression"
+                    and text(call.child_by_field_name("function").child_by_field_name("field")) == "then_some"
+                    and condition_atoms(call.child_by_field_name("function").child_by_field_name("value")) == {
+                        "devices.contains(&owner)", "owner.read(cx).identity(cx)==identity",
+                        "owner.read(cx).connection_revision()==self.connection_revision"}
+                    and [text(argument) for argument in call.child_by_field_name("arguments").named_children] == ["owner"]]
+                if not bindings or not scoped_returns:
+                    fail(node, "save_acknowledgement_ignores_connection_revision", factory_owner + "::SavedRevisionOwner")
+            if name == "cancel_pending_exit":
+                body = node.child_by_field_name("body")
+                resets = [call for parts, call in calls(node) if resolved_call(parts) == ("std", "mem", "take")
+                    and any("".join(text(argument).split()) == "&mutself.close_requested"
+                        for argument in call.child_by_field_name("arguments").named_children)]
+                restores = [call for call in walk(node) if call.type == "call_expression"
+                    and call.child_by_field_name("function").type == "field_expression"
+                    and text(call.child_by_field_name("function").child_by_field_name("field")) in {"cancel_keyboard_latest_exit", "cancel_keyboard_game_exit", "cancel_exit"}
+                    and text(call.child_by_field_name("function").child_by_field_name("value")) != "runtime"]
+                runtime_restores = [call for call in walk(body) if method_on_field(call, "update", "runtime")
+                    and call.parent.type == "expression_statement" and call.parent.parent == body
+                    and any(child.type == "call_expression" and child.child_by_field_name("function").type == "field_expression"
+                        and text(child.child_by_field_name("function").child_by_field_name("field")) == "cancel_exit"
+                        and text(child.child_by_field_name("function").child_by_field_name("value")) == "runtime"
+                        for child in walk(call))]
+                branches = [child for child in walk(node) if child.type == "if_expression"]
+                methods = called_methods(node)
+                if (not resets or not {"resume_global_shortcuts", "cancel_keyboard_latest_exit", "cancel_keyboard_game_exit", "cancel_exit", "defer", "notify"} <= methods
+                        or not any(text(call.child_by_field_name("function").child_by_field_name("field")) == "cancel_exit" for call in restores)
+                        or not runtime_restores or any(not any(reset.end_byte < call.start_byte for reset in resets)
+                            for call in runtime_restores)
+                        or not any(resolved_call(parts) == ("razer_state", "ui_preferences", "cancel_exit") for parts, _ in calls(node))
+                        or any(not any(condition_atoms(branch.child_by_field_name("condition")) == {"shell.close_requested"}
+                            and preceding_return(branch, call) for branch in branches) for call in restores)
+                        or not any(child.type == "assignment_expression" and self_field(child.child_by_field_name("left"), "background_exit_task")
+                            and text(child.child_by_field_name("right")) == "None" for child in walk(node))):
+                    fail(node, "failed_exit_skips_shared_admission_recovery", factory_owner + "::cancel_pending_exit")
             if name == "workspace_file":
                 members = {text(child.child_by_field_name("field")) for child in walk(node) if child.type == "field_expression"}
                 if not required_fields <= members:
                     fail(node, "incomplete_shared_workspace_snapshot", factory_owner)
             if name == "saved_revision_owner":
                 members = {text(child.child_by_field_name("field")) for child in walk(node) if child.type == "field_expression"}
-                if not {"upgrade", "contains", "identity", "workspace_identity"} <= members:
+                if not {"current", "workspace_identity"} <= members:
                     fail(node, "unscoped_save_acknowledgement", factory_owner)
+            if name == "capture_save_owners":
+                captures = [child for child in walk(node) if child.type == "struct_expression"
+                    and text(child.child_by_field_name("name")) == "SavedRevisionOwner"]
+                for capture in captures:
+                    body = capture.child_by_field_name("body")
+                    fields = {text(child.child_by_field_name("field")): "".join(text(child.child_by_field_name("value")).split())
+                        for child in body.named_children if child.type == "field_initializer"}
+                    if fields != {"workspace": "owner.downgrade()",
+                                  "connection_revision": "owner.read(cx).connection_revision()"}:
+                        fail(capture, "save_owner_epoch_is_not_captured_with_entity", factory_owner)
+                if not captures:
+                    fail(node, "save_owner_epoch_is_not_captured_with_entity", factory_owner)
+            if name == "prepare_save":
+                members = {text(child.child_by_field_name("field")) for child in walk(node) if child.type == "field_expression"}
+                if "capture_save_owners" not in members:
+                    fail(node, "uncaptured_save_owners", factory_owner)
+        if node.type == "function_item" and owner.startswith("crates/razer-shell/src/") and text(node.child_by_field_name("name")) == "start_pending_save":
+            methods = [child for child in walk(node) if child.type == "call_expression" and child.child_by_field_name("function").type == "field_expression"]
+            names = [(text(child.child_by_field_name("function").child_by_field_name("field")), child) for child in methods]
+            if any(name == "capture_save_owners" for name, _ in names):
+                fail(node, "save_owners_recaptured_after_queue", factory_owner)
+            validation = next((call for name, call in names if name == "prepared_save_owners_current"), None)
+            rebase = next((call for name, call in names if name.startswith("rebase_")), None)
+            if validation is None or (rebase is not None and validation.start_byte > rebase.start_byte):
+                fail(node, "queued_save_not_validated_before_rebase", factory_owner)
+        consumer = publication_consumers.get(owner)
+        parent_impl = node.parent.parent if node.parent is not None and node.parent.parent is not None else None
+        if (node.type == "function_item" and consumer is not None
+                and text(node.child_by_field_name("name")) == consumer[1]
+                and (consumer[0] is None or (parent_impl is not None and parent_impl.type == "impl_item"
+                     and text(parent_impl.child_by_field_name("type")) == consumer[0]))):
+            staged_bindings = set()
+            for child in walk(node):
+                if child.type != "let_declaration":
+                    continue
+                value = child.child_by_field_name("value")
+                if value is None:
+                    continue
+                for call in walk(value):
+                    if call.type == "call_expression":
+                        parts = text(call.child_by_field_name("function")).split("::")
+                        if len(parts) >= 2 and parts[-1] == "write" and aliases.get(parts[-2]) == "StagedResource":
+                            staged_bindings.add(text(child.child_by_field_name("pattern")))
+            publishes = [child for child in walk(node) if child.type == "call_expression"
+                         and child.child_by_field_name("function").type == "field_expression"
+                         and text(child.child_by_field_name("function").child_by_field_name("field")) == "publish"
+                         and text(child.child_by_field_name("function").child_by_field_name("value")) in staged_bindings]
+            if not staged_bindings or not publishes:
+                fail(node, "resource_publication_bypasses_shared_owner", publication_owner)
+        if node.type == "function_item" and text(node.child_by_field_name("name")) == "atomic_replace" and owner.startswith(("crates/razer-resource-db/", "crates/razer-resources/")) and owner != publication_owner:
+            fail(node, "duplicate_resource_publication_owner", publication_owner)
+        if node.type == "function_item" and owner == mapping_adapter:
+            name = text(node.child_by_field_name("name"))
+            methods = called_methods(node)
+            if name == "sync_local_mapping_targets" and ("sync_interdevice_holds" not in methods or "consume_interdevice_mapping" in methods):
+                fail(node, "ui_refresh_replays_held_interdevice_mapping", interdevice_owner)
+            if name == "sync_interdevice_holds":
+                if not {"observe", "released", "replayed", "first_mapping_target", "matches"} <= methods:
+                    fail(node, "interdevice_sync_bypasses_lifecycle_owner", interdevice_owner)
+                for call in walk(node):
+                    if call.type != "call_expression" or text(call.child_by_field_name("function")) != "dispatch_to_target":
+                        continue
+                    ancestor = call.parent
+                    while ancestor is not None and ancestor != node:
+                        if ancestor.type == "if_expression" and "replayed" in called_methods(ancestor.child_by_field_name("condition")):
+                            break
+                        ancestor = ancestor.parent
+                    if ancestor is None or ancestor == node:
+                        fail(call, "held_interdevice_replay_without_transition", interdevice_owner)
+            if name == "dispatch_to_target" and ("matches" not in methods or "upgrade" not in methods):
+                fail(node, "interdevice_dispatch_accepts_stale_owner", interdevice_owner)
+            if name == "route_mapping_callback":
+                fields = [child for child in walk(node) if child.type == "field_expression" and text(child.child_by_field_name("field")) == "close_requested"]
+                first_dispatch = next((call for _, call in calls(node) if text(call.child_by_field_name("function")) == "dispatch_to_target"), None)
+                if not fields or first_dispatch is not None and fields[0].start_byte > first_dispatch.start_byte:
+                    fail(node, "interdevice_callback_accepted_during_exit", interdevice_owner)
+            if name == "release_interdevice_holds" and ("release_hold" not in {parts[-1] for parts, _ in calls(node)} or "into_values" not in methods):
+                fail(node, "interdevice_exit_skips_held_release", interdevice_owner)
+            if name == "retain_interdevice_connections" and not {"matches", "owner", "observe", "released", "insert"} <= methods:
+                fail(node, "interdevice_disconnect_skips_held_release", interdevice_owner)
+            parent = node.parent.parent if node.parent is not None and node.parent.parent is not None else None
+            if parent is not None and parent.type == "impl_item" and text(parent.child_by_field_name("type")) == "MappingTargetOwner":
+                if name in {"capture", "matches"}:
+                    fields = {text(child.child_by_field_name("field")) for child in walk(node) if child.type == "field_expression"}
+                    if not {"identity", "connection_revision"} <= fields:
+                        fail(node, "interdevice_owner_ignores_connection_revision", interdevice_owner)
+        if node.type == "function_item" and owner == "crates/razer-shell/src/shell.rs" and text(node.child_by_field_name("name")) == "request_exit":
+            release = next((call for call in walk(node) if call.type == "call_expression" and call.child_by_field_name("function").type == "field_expression"
+                            and text(call.child_by_field_name("function").child_by_field_name("field")) == "release_interdevice_holds"), None)
+            closing = [child for child in walk(node) if child.type == "assignment_expression" and text(child.child_by_field_name("left")) == "self.close_requested" and text(child.child_by_field_name("right")) == "true"]
+            stops = [call for call in walk(node) if call.type == "call_expression" and call.child_by_field_name("function").type == "field_expression"
+                     and text(call.child_by_field_name("function").child_by_field_name("field")) in {"prepare_exit", "prepare_legacy_dpi_exit"}]
+            if release is None or not closing or any(call.start_byte < release.start_byte for call in stops):
+                fail(node, "interdevice_release_after_worker_stop", interdevice_owner)
+            starts = [call for parts, call in calls(node) if resolved_call(parts) == ("razer_state", "ui_preferences", "begin_exit")]
+            cancellations = [call for call in walk(node) if call.type == "call_expression" and call.child_by_field_name("function").type == "field_expression"
+                             and text(call.child_by_field_name("function").child_by_field_name("field")) == "cancel_transfer"]
+            if (not starts or not cancellations or any(call.start_byte < starts[0].start_byte for call in stops)
+                    or cancellations[0].start_byte > starts[0].start_byte):
+                fail(node, "shared_local_io_admitted_during_exit", preference_state + " and " + macro_io)
+            if "dismiss_for_navigation" not in called_methods(node) or not any(
+                    call.type == "call_expression" and call.child_by_field_name("function").type == "field_expression"
+                    and text(call.child_by_field_name("function").child_by_field_name("field")) == "prepare_exit"
+                    and text(call.child_by_field_name("function").child_by_field_name("value")) == "workspace"
+                    for call in walk(node)):
+                fail(node, "exit_keeps_retained_capture_or_product_owners", source_lifecycle)
+        if node.type == "function_item" and owner == source_lifecycle:
+            name = text(node.child_by_field_name("name"))
+            if name == "prepare_exit":
+                assignments = [child for child in walk(node) if child.type == "assignment_expression"
+                    and text(child.child_by_field_name("left")) == "self.exiting" and text(child.child_by_field_name("right")) == "true"]
+                stops = [call for call in walk(node) if call.type == "call_expression" and call.child_by_field_name("function").type == "field_expression"
+                    and text(call.child_by_field_name("function").child_by_field_name("field")) in {"set_active", "dismiss_editors", "finish_mapping_service", "prepare_exit"}]
+                if (not assignments or not {"set_active", "dismiss_editors", "prepare_exit"} <= called_methods(node)
+                        or "finish_mapping_service" in called_methods(node)
+                        or any(call.start_byte < assignments[0].start_byte for call in stops)):
+                    fail(node, "product_exit_keeps_session_admission_or_workers", source_lifecycle)
+            if name == "finish_exit" and "finish_mapping_service" not in called_methods(node):
+                fail(node, "product_exit_skips_pending_mapping_drain", source_lifecycle)
+            if name == "cancel_exit":
+                reset = any(child.type == "assignment_expression" and text(child.child_by_field_name("left")) == "self.exiting"
+                    and text(child.child_by_field_name("right")) == "false" for child in walk(node))
+                if not reset or not {"cancel_mapping_service_exit", "set_active"} <= called_methods(node):
+                    fail(node, "failed_exit_does_not_restore_product_admission", source_lifecycle)
+        if node.type == "function_item" and owner == runtime_panel:
+            implementation = node.parent.parent if node.parent is not None and node.parent.parent is not None else None
+            if implementation is not None and implementation.type == "impl_item" and text(implementation.child_by_field_name("type")) == "RuntimeBridge":
+                name = text(node.child_by_field_name("name"))
+                body = node.child_by_field_name("body")
+                if name == "start_worker":
+                    workers = {text(child.child_by_field_name("pattern")) for child in body.named_children
+                        if child.type == "let_declaration" and child.child_by_field_name("value") is not None
+                        and "spawn" in called_methods(child.child_by_field_name("value"))}
+                    retained = [field for child in walk(body) if child.type == "struct_expression"
+                        and text(child.child_by_field_name("name")) == "ConnectionOwner"
+                        for field in child.child_by_field_name("body").named_children if field.type == "field_initializer"
+                        and text(field.child_by_field_name("field")) == "worker"
+                        and any(resolved_call(parts) == ("Some",)
+                            and any(text(argument) in workers for argument in call.child_by_field_name("arguments").named_children)
+                            for parts, call in calls(field.child_by_field_name("value")))]
+                    if not workers or not retained or "detach" in called_methods(node):
+                        fail(node, "discovery_connection_discards_worker_handle", runtime_panel + "::ConnectionOwner")
+                if name == "disconnect":
+                    worker_takes = [child for child in body.named_children if child.type == "let_declaration"
+                        and child.child_by_field_name("value") is not None
+                        and {"lock", "take"} <= called_methods(child.child_by_field_name("value"))
+                        and any(part.type == "field_expression" and text(part.child_by_field_name("field")) == "worker"
+                            for part in walk(child.child_by_field_name("value")))]
+                    completed = [child for child in body.named_children if child.type == "let_declaration"
+                        and child.child_by_field_name("value") is not None and "join" in called_methods(child.child_by_field_name("value"))]
+                    early_exits = []
+                    for child in walk(body):
+                        if child.type not in {"return_expression", "try_expression"}:
+                            continue
+                        ancestor = child.parent
+                        while ancestor is not None and ancestor != body and ancestor.type != "closure_expression":
+                            ancestor = ancestor.parent
+                        if ancestor == body:
+                            early_exits.append(child)
+                    merged = [child for child in body.named_children if child.type == "expression_statement"
+                        and child.named_children and child.named_children[0].type == "match_expression"]
+                    merged.extend(child for child in body.named_children if child.type == "match_expression")
+                    joined_names = {text(child.child_by_field_name("pattern")) for child in completed}
+                    if (not worker_takes or not completed or early_exits
+                            or any(not any(take.end_byte < join.start_byte for take in worker_takes) for join in completed)
+                            or not any(child.child_by_field_name("value").type == "tuple_expression"
+                                and any(text(value) in joined_names for value in child.child_by_field_name("value").named_children)
+                                and len(child.child_by_field_name("value").named_children) == 2
+                                for item in merged for child in [item.named_children[0] if item.type == "expression_statement" else item])):
+                        fail(node, "discovery_connection_shutdown_does_not_join_after_ack_failure", runtime_panel + "::RuntimeBridge")
+            if implementation is not None and implementation.type == "impl_item" and text(implementation.child_by_field_name("type")) == "RuntimePanel":
+                name = text(node.child_by_field_name("name"))
+                if name == "prepare_exit":
+                    prepared = [child for child in walk(node) if child.type == "assignment_expression"
+                        and self_field(child.child_by_field_name("left"), "exit_prepared")
+                        and text(child.child_by_field_name("right")) == "true"]
+                    if (not prepared or "cancel_read" not in called_methods(node) or {"disconnect", "begin_disconnect"} & called_methods(node)
+                            or any(resolved_call(parts)[-1] == "DiscoveryObserved" for parts, _ in calls(node))):
+                        fail(node, "exit_preparation_invalidates_accepted_device_observations", runtime_panel + "::RuntimePanel")
+                if name == "refresh_queries":
+                    statements = [child for child in node.child_by_field_name("body").named_children
+                        if child.type not in {"line_comment", "block_comment"}]
+                    first = statements[0] if statements else None
+                    if first is not None and first.type == "expression_statement" and first.named_children:
+                        first = first.named_children[0]
+                    if (first is None or first.type != "if_expression" or not returning_branch(first)
+                            or not any(self_field(term, "exit_prepared") for term in disjunction_terms(first.child_by_field_name("condition")))):
+                        fail(node, "discovery_queries_admitted_during_exit", runtime_panel + "::RuntimePanel")
+                    retired = [call for call in walk(node) if call.type == "call_expression"
+                        and call.child_by_field_name("function").type == "field_expression"
+                        and text(call.child_by_field_name("function").child_by_field_name("value")) == "this.retired_bridges"]
+                    if (not any(text(call.child_by_field_name("function").child_by_field_name("field")) == "push"
+                            and [text(argument) for argument in call.child_by_field_name("arguments").named_children] == ["bridge"]
+                            for call in retired)
+                            or not any(text(call.child_by_field_name("function").child_by_field_name("field")) == "extend"
+                                and any(child.type == "call_expression" and text(child.child_by_field_name("function")) == "this.bridge.take"
+                                    for child in walk(call)) for call in retired)):
+                        fail(node, "discovery_refresh_failure_discards_connection_join_owner", runtime_panel + "::RuntimePanel")
+                if name == "monitor_device_changes":
+                    retired = [call for call in walk(node) if call.type == "call_expression"
+                        and call.child_by_field_name("function").type == "field_expression"
+                        and text(call.child_by_field_name("function").child_by_field_name("field")) == "extend"
+                        and text(call.child_by_field_name("function").child_by_field_name("value")) == "this.retired_monitors"
+                        and any(child.type == "call_expression" and text(child.child_by_field_name("function")) == "this.monitor.take"
+                            for child in walk(call))]
+                    if not retired or any(child.type == "assignment_expression" and text(child.child_by_field_name("left")) == "this.monitor"
+                            and text(child.child_by_field_name("right")) == "None" for child in walk(node)):
+                        fail(node, "failed_discovery_observer_discards_its_join_owner", runtime_panel + "::RuntimePanel")
+                if name == "disconnect":
+                    invokes = [call for call in walk(node) if call.type == "call_expression"
+                        and text(call.child_by_field_name("function")) == "self.begin_disconnect"
+                        and call.child_by_field_name("arguments").named_children
+                        and local_variant(call.child_by_field_name("arguments").named_children[0], "DisconnectIntent", "User")]
+                    if not invokes:
+                        fail(node, "manual_discovery_disconnect_loses_user_intent", runtime_panel + "::RuntimePanel")
+                if name == "shutdown_for_app_quit":
+                    prepared = [child for child in walk(node) if child.type == "assignment_expression"
+                        and self_field(child.child_by_field_name("left"), "exit_prepared")
+                        and text(child.child_by_field_name("right")) == "true"]
+                    invokes = [call for call in walk(node) if call.type == "call_expression"
+                        and text(call.child_by_field_name("function")) == "self.begin_disconnect"
+                        and call.child_by_field_name("arguments").named_children
+                        and local_variant(call.child_by_field_name("arguments").named_children[0], "DisconnectIntent", "ApplicationExit")]
+                    retained = [call for call in walk(node) if method_on_field(call, "take", "disconnect_task")]
+                    if (not prepared or not invokes or not retained
+                            or not any(prepare.end_byte < invoke.start_byte and invoke.end_byte < task.start_byte
+                                for prepare in prepared for invoke in invokes for task in retained)):
+                        fail(node, "application_discovery_shutdown_loses_completion_or_intent", runtime_panel + "::RuntimePanel")
+                if name == "begin_disconnect":
+                    loops = [child for child in walk(node) if child.type == "for_expression"
+                        and text(child.child_by_field_name("value")) == "monitors"
+                        and "shutdown" in called_methods(child.child_by_field_name("body"))
+                        and not any(part.type in {"try_expression", "return_expression", "break_expression"}
+                            for part in walk(child.child_by_field_name("body")))]
+                    connections = [call for call in walk(node) if call.type == "call_expression"
+                        and text(call.child_by_field_name("function")) == "bridge.disconnect"]
+                    background = [call for call in walk(node) if call.type == "call_expression"
+                        and call.child_by_field_name("function").type == "field_expression"
+                        and text(call.child_by_field_name("function").child_by_field_name("field")) == "background_spawn"
+                        and text(call.child_by_field_name("function").child_by_field_name("value")) == "cx"]
+                    retained = [child for child in walk(node) if child.type == "assignment_expression"
+                        and self_field(child.child_by_field_name("left"), "disconnect_task") and "spawn" in called_methods(child)]
+                    active = [call for call in walk(node) if method_on_field(call, "take", "monitor")]
+                    retired = [call for parts, call in calls(node) if resolved_call(parts) == ("std", "mem", "take")
+                        and any("".join(text(argument).split()) == "&mutself.retired_monitors"
+                            for argument in call.child_by_field_name("arguments").named_children)]
+                    retired_connections = [call for parts, call in calls(node) if resolved_call(parts) == ("std", "mem", "take")
+                        and any("".join(text(argument).split()) == "&mutself.retired_bridges"
+                            for argument in call.child_by_field_name("arguments").named_children)]
+                    active_connections = [call for call in walk(node) if method_on_field(call, "take", "bridge")]
+                    connection_loops = [child for child in walk(node) if child.type == "for_expression"
+                        and text(child.child_by_field_name("value")) == "bridges"
+                        and "disconnect" in called_methods(child.child_by_field_name("body"))
+                        and not any(part.type in {"try_expression", "return_expression", "break_expression"}
+                            for part in walk(child.child_by_field_name("body")))]
+                    gates = [branch for branch in walk(node) if branch.type == "if_expression" and returning_branch(branch)
+                        and condition_atoms(branch.child_by_field_name("condition")) == {
+                            "self.bridge.is_none()", "self.retired_bridges.is_empty()", "self.monitor.is_none()", "self.retired_monitors.is_empty()"}]
+                    if (not retained or not active or not retired or not gates or not loops or not connections
+                            or not active_connections or not retired_connections or not connection_loops
+                            or any(not any(loop.end_byte < connection.start_byte and parent.start_byte < loop.start_byte
+                                and connection.end_byte < parent.end_byte for loop in loops for parent in background)
+                                for connection in connections)):
+                        fail(node, "discovery_shutdown_skips_or_blocks_observation_join", runtime_panel + "::RuntimePanel")
+                    emitted = [call for parts, call in calls(node) if resolved_call(parts)[-1] == "DiscoveryObserved"]
+                    def only_user_branch(call):
+                        ancestor = call.parent
+                        while ancestor is not None and ancestor != node:
+                            if ancestor.type == "if_expression":
+                                body = ancestor.child_by_field_name("consequence")
+                                args = macro_arguments(ancestor.child_by_field_name("condition"), "matches")
+                                if (body.start_byte < call.start_byte and call.end_byte < body.end_byte
+                                        and [part.text for part in args] == [b"intent", b"DisconnectIntent::User"]):
+                                    return True
+                            ancestor = ancestor.parent
+                        return False
+                    if not emitted or any(not only_user_branch(call) for call in emitted):
+                        fail(node, "application_exit_republishes_artificial_device_disconnect", runtime_panel + "::RuntimePanel")
+        if node.type == "function_item" and owner == "crates/razer-shell/src/shell.rs" and text(node.child_by_field_name("name")) == "background_exit_pending":
+            actual = {resolved_call(parts) for parts, _ in calls(node)}
+            required = {("razer_service", "mapping", "active_workers"), ("razer_storage", "file_transfer", "active_io"),
+                        ("razer_service", "seiren_audio", "active_workers"),
+                        ("razer_state", "ui_preferences", "active_io"), ("razer_state", "chroma_settings", "active_io")}
+            if not required <= actual:
+                fail(node, "shared_local_io_not_drained_at_exit", "Shared service, file transfer, Chroma and UI preference owners")
+        if node.type == "function_item" and owner == "crates/razer-shell/src/shell.rs" and text(node.child_by_field_name("name")) == "continue_save_queue":
+            methods = [call for call in walk(node) if call.type == "call_expression"
+                and call.child_by_field_name("function").type == "field_expression"]
+            failures = [call for call in methods
+                if text(call.child_by_field_name("function").child_by_field_name("field")) == "cancel_pending_exit"
+                and "!succeeded" in enclosing_conditions(call)]
+            finishes = [call for call in methods
+                if text(call.child_by_field_name("function").child_by_field_name("field")) in {"finish_exit", "stop_global_shortcuts"}]
+            names = {text(call.child_by_field_name("function").child_by_field_name("field")) for call in finishes}
+            branches = [branch for branch in walk(node) if branch.type == "if_expression"]
+            save_waits = [branch for branch in branches
+                if condition_atoms(branch.child_by_field_name("condition")) == {"self.save_task.is_some()"}
+                and returning_branch(branch)]
+            if not failures or not save_waits or any(not any(failure.end_byte < branch.start_byte for failure in failures) for branch in save_waits):
+                fail(node, "failed_exit_keeps_preferences_closed", factory_owner + "::cancel_pending_exit")
+            gates = {"succeeded", "!queued", "!auxiliary_pending", "self.close_requested"}
+            waiting = [branch for branch in branches if background_wait_branch(branch)]
+            quits = [call for call in methods if text(call.child_by_field_name("function").child_by_field_name("field")) == "quit"]
+            if (not {"finish_exit", "stop_global_shortcuts"} <= names or not quits or not waiting
+                    or any(not gates <= enclosing_conditions(call)
+                        or not any(condition_atoms(branch.child_by_field_name("condition")) == {"self.save_task.is_some()"}
+                            and preceding_return(branch, call) for branch in branches)
+                        or not any(condition_atoms(branch.child_by_field_name("condition")) == {"operations_pending"}
+                            and preceding_return(branch, call) for branch in branches) for call in finishes)
+                    or any(not any(gates <= enclosing_conditions(branch)
+                            and all(call.end_byte < branch.start_byte for call in finishes)
+                            and branch.end_byte < quit.start_byte for branch in waiting) for quit in quits)):
+                fail(node, "exit_stops_mapping_before_requested_saves_drain", source_lifecycle)
+            resource_waits = [branch for branch in branches if returning_branch(branch)
+                and "finish_resource_exit" in called_methods(branch.child_by_field_name("condition"))]
+            resource_finishes = [call for call in methods
+                if text(call.child_by_field_name("function").child_by_field_name("field")) == "finish_resource_exit"]
+            if (not resource_waits or not resource_finishes
+                    or any(not gates <= enclosing_conditions(call)
+                        or not any(condition_atoms(branch.child_by_field_name("condition")) == {"operations_pending"}
+                            and preceding_return(branch, call) for branch in branches)
+                        or not any(preceding_return(branch, call) for branch in waiting) for call in resource_finishes)
+                    or any(not any(branch.end_byte < quit.start_byte for branch in resource_waits) for quit in quits)):
+                fail(node, "exit_quits_before_resource_owner_is_joined", resource_bridge)
+            service_waits = [branch for branch in branches if returning_branch(branch)
+                and "finish_service_exit" in called_methods(branch.child_by_field_name("condition"))]
+            service_finishes = [call for call in methods
+                if text(call.child_by_field_name("function").child_by_field_name("field")) == "finish_service_exit"]
+            def service_before_resource(branch, call):
+                if preceding_return(branch, call):
+                    return True
+                terms = disjunction_terms(branch.child_by_field_name("condition"))
+                service_terms = [index for index, term in enumerate(terms) if "finish_service_exit" in called_methods(term)]
+                resource_terms = [index for index, term in enumerate(terms)
+                    if term.start_byte <= call.start_byte and call.end_byte <= term.end_byte]
+                return any(service < resource for service in service_terms for resource in resource_terms)
+            if (not service_waits or not service_finishes
+                    or any(not gates <= enclosing_conditions(call)
+                        or not any(condition_atoms(branch.child_by_field_name("condition")) == {"operations_pending"}
+                            and preceding_return(branch, call) for branch in branches)
+                        or not any(preceding_return(branch, call) for branch in waiting) for call in service_finishes)
+                    or any(not any(service_before_resource(branch, call) for branch in service_waits)
+                        for call in resource_finishes)
+                    or any(not any(branch.end_byte < quit.start_byte for branch in service_waits) for quit in quits)):
+                fail(node, "exit_quits_before_service_cleanups_complete", shutdown_owner)
+            actuation_waits = [branch for branch in branches if returning_branch(branch)
+                and any("finish_keyboard_actuation_exit" in called_methods(term)
+                    for term in disjunction_terms(branch.child_by_field_name("condition")))
+                and any("".join(text(term).split()) == "!self.close_requested"
+                    for term in disjunction_terms(branch.child_by_field_name("condition")))]
+            actuation_finishes = [call for call in methods
+                if text(call.child_by_field_name("function").child_by_field_name("field")) == "finish_keyboard_actuation_exit"]
+            if (not actuation_waits or not actuation_finishes
+                    or any(not gates <= enclosing_conditions(call)
+                        or not any(condition_atoms(branch.child_by_field_name("condition")) == {"operations_pending"}
+                            and preceding_return(branch, call) for branch in branches) for call in actuation_finishes)
+                    or any(not any(preceding_return(branch, call) for branch in actuation_waits)
+                        for call in finishes + service_finishes + resource_finishes)):
+                fail(node, "exit_cancels_accepted_actuation_or_skips_failure_gate", keyboard_actuation)
+        if node.type == "function_item" and owner == keyboard_actuation:
+            name = text(node.child_by_field_name("name"))
+            if name in {"finish_keyboard_actuation_save", "submit_keyboard_actuation_device"}:
+                def nested_callback(child):
+                    parent = child.parent
+                    while parent is not None and parent != node:
+                        if parent.type == "closure_expression":
+                            return True
+                        parent = parent.parent
+                    return False
+                if any(child.type == "field_expression" and text(child.child_by_field_name("field")) == "close_requested"
+                        and not nested_callback(child)
+                        for child in walk(node)):
+                    fail(node, "accepted_actuation_is_rejected_by_application_close", keyboard_actuation)
+            if name == "finish_keyboard_actuation_exit":
+                methods = called_methods(node)
+                waited_fields = {field for field in ("keyboard_actuation_operations", "keyboard_actuation_workers", "keyboard_actuation_retired")
+                    if any(method_on_field(call, "is_empty", field) for call in walk(node))}
+                if (not {"stop_after_pending", "reap_keyboard_actuation_workers"} <= methods
+                        or len(waited_fields) != 3
+                        or {"store", "clear"} & methods):
+                    fail(node, "actuation_exit_cancels_accepted_native_fifo", keyboard_actuation_worker)
+        if node.type == "function_item" and owner == keyboard_actuation_worker:
+            name = text(node.child_by_field_name("name"))
+            if name == "stop_after_pending" and (not any(method_on_field(call, "take", "commands") for call in walk(node))
+                    or {"store", "clear"} & called_methods(node)):
+                fail(node, "actuation_exit_cancels_accepted_native_fifo", keyboard_actuation_worker)
+            if name == "run_with":
+                stops = [call for call in walk(node) if call.type == "call_expression"
+                    and call.child_by_field_name("function").type == "field_expression"
+                    and text(call.child_by_field_name("function").child_by_field_name("field")) == "shutdown"]
+                drops = [call for parts, call in calls(node) if resolved_call(parts) == ("drop",)
+                    and any(text(argument) == "transport" for argument in call.child_by_field_name("arguments").named_children)]
+                receipts = [call for call in walk(node) if call.type == "call_expression"
+                    and call.child_by_field_name("function").type == "field_expression"
+                    and text(call.child_by_field_name("function").child_by_field_name("field")) == "send"
+                    and any(text(argument) == "Reply::Stopped" for argument in call.child_by_field_name("arguments").named_children)]
+                if (not stops or not drops or not receipts
+                        or any(not any(stop.end_byte < drop.start_byte and drop.end_byte < receipt.start_byte
+                            for stop in stops for drop in drops) for receipt in receipts)):
+                    fail(node, "actuation_stops_before_transport_cleanup", keyboard_actuation_worker)
+        if node.type == "function_item" and owner == session_monitor:
+            name = text(node.child_by_field_name("name"))
+            methods = called_methods(node)
+            if (name == "shutdown" and "shutdown_with" not in methods and not {"signal_stop", "take", "join"} <= methods
+                    or name == "shutdown_with" and not {"signal_stop_with", "take", "join"} <= methods):
+                fail(node, "session_observer_shutdown_does_not_join_its_owner", session_monitor)
+            if (name == "signal_stop" and "signal_stop_with" not in methods and ("try_lock" not in methods or "lock" in methods)
+                    or name == "signal_stop_with" and ("try_lock" not in methods or "lock" in methods)):
+                fail(node, "session_observer_stop_waits_for_native_teardown_on_ui", session_monitor)
+            if name == "drop" and "join" in methods:
+                fail(node, "session_observer_stop_waits_for_native_teardown_on_ui", session_monitor)
+            if name == "pump_until_stopped":
+                loops = [child for child in walk(node) if child.type == "while_expression"
+                    and "load" in called_methods(child.child_by_field_name("condition"))]
+                bounded = [argument for child in walk(node) for argument in macro_arguments(child, "matches")
+                    if argument.type == "try_expression" and argument.named_children
+                    and argument.named_children[0].type == "call_expression"
+                    and argument.named_children[0].child_by_field_name("function").text == b"wait_and_dispatch"
+                    and [item.text for item in argument.named_children[0].child_by_field_name("arguments").named_children] == [b"STOP_RECHECK_MS"]]
+                if not loops or not bounded:
+                    fail(node, "session_observer_wait_has_no_bounded_stop_recheck", session_monitor)
+        if node.type == "function_item" and owner == device_monitor:
+            implementation = node.parent.parent if node.parent is not None and node.parent.parent is not None else None
+            implementation_type = text(implementation.child_by_field_name("type")) if implementation is not None and implementation.type == "impl_item" else None
+            name = text(node.child_by_field_name("name"))
+            methods = called_methods(node)
+            if implementation_type == "DeviceChangeMonitor":
+                if name == "start_worker":
+                    retained = [field for child in walk(node) if child.type == "struct_expression"
+                        and text(child.child_by_field_name("name")) == "Self"
+                        for field in child.child_by_field_name("body").named_children if field.type == "field_initializer"
+                        and text(field.child_by_field_name("field")) == "worker"
+                        and any(resolved_call(parts) == ("Some",) for parts, _ in calls(field))]
+                    if not retained or "spawn" not in methods or "detach" in methods:
+                        fail(node, "device_observer_discards_worker_handle", device_monitor + "::DeviceChangeMonitor")
+                if name == "shutdown":
+                    stops = [call for call in walk(node) if method_on_field(call, "take", "stop")]
+                    joins = [call for call in walk(node) if call.type == "call_expression"
+                        and call.child_by_field_name("function").type == "field_expression"
+                        and text(call.child_by_field_name("function").child_by_field_name("field")) == "join"]
+                    retained = [call for call in walk(node) if method_on_field(call, "take", "worker")]
+                    if (not stops or not joins or not retained
+                            or any(not any(stop.end_byte < take.start_byte and take.end_byte < join.end_byte
+                                for stop in stops for take in retained) for join in joins)):
+                        fail(node, "device_observer_shutdown_does_not_stop_then_join", device_monitor + "::DeviceChangeMonitor")
+                if name == "drop" and ("join" in methods or "lock" in methods or "recv" in methods):
+                    fail(node, "device_observer_drop_waits_for_native_teardown_on_ui", device_monitor + "::DeviceChangeMonitor")
+            if implementation_type == "EventDelivery" and name == "drop" and "close" not in methods:
+                fail(node, "device_observer_delivery_outlives_its_worker", device_monitor + "::EventDelivery")
+            if name == "wait_for_stop" and ("force_send" not in methods or "send_blocking" in methods or "send" in methods):
+                fail(node, "device_observer_stop_waits_for_ui_to_drain_queue", device_monitor + "::wait_for_stop")
+        if node.type == "function_item" and owner == thx_lifecycle:
+            name = text(node.child_by_field_name("name"))
+            if name == "retire_thx_owner":
+                clones = {text(child.child_by_field_name("pattern")) for child in walk(node) if child.type == "let_declaration"
+                    and child.child_by_field_name("value") is not None
+                    and child.child_by_field_name("value").type == "call_expression"
+                    and text(child.child_by_field_name("value").child_by_field_name("function")) == "owner.clone"}
+                jobs = [call for call in walk(node) if call.type == "call_expression"
+                    and call.child_by_field_name("function").type == "field_expression"
+                    and text(call.child_by_field_name("function").child_by_field_name("field")) == "spawn"
+                    and any(parts[-1] == "release_owner" and call.child_by_field_name("arguments").named_children
+                        and text(call.child_by_field_name("arguments").named_children[0]) in clones
+                        for parts, call in calls(call))]
+                errors = [arm.child_by_field_name("value") for arm in walk(node) if arm.type == "match_arm"
+                    and tuple_pattern(arm.child_by_field_name("pattern"), "Err")]
+                retained = [call for branch in errors for call in walk(branch) if call.type == "call_expression"
+                    and text(call.child_by_field_name("function")) == "self.thx_retired_owners.push"
+                    and any(child.type == "struct_expression" and text(child.child_by_field_name("name")) == "RetiredOwner"
+                        and {text(field.child_by_field_name("field")): text(field.child_by_field_name("value"))
+                            if field.type == "field_initializer" else text(field)
+                            for field in child.child_by_field_name("body").named_children
+                            if field.type == "field_initializer"} | {text(field): text(field)
+                            for field in child.child_by_field_name("body").named_children
+                            if field.type == "shorthand_field_initializer"} == {"owner": "owner", "source_close": "source_close"}
+                        for child in walk(call))]
+                if not clones or not jobs or not errors or not retained or not any(method_on_field(call, "push", "thx_cleanup") for call in walk(node)):
+                    fail(node, "thx_release_spawn_failure_discards_its_owner", thx_lifecycle + "::RetiredOwner")
+            if name == "install_thx_cleanup":
+                takes = [call for parts, call in calls(node) if resolved_call(parts) == ("std", "mem", "take")
+                    and any("".join(text(argument).split()) == "&mutthis.thx_retired_owners"
+                        for argument in call.child_by_field_name("arguments").named_children)]
+                release = [call for parts, call in calls(node) if parts[-1] == "release_owner"
+                    and [text(argument) for argument in call.child_by_field_name("arguments").named_children][:2] == ["retired.owner", "retired.source_close"]]
+                background = [call for call in walk(node) if call.type == "call_expression"
+                    and call.child_by_field_name("function").type == "field_expression"
+                    and text(call.child_by_field_name("function").child_by_field_name("field")) == "spawn"
+                    and "background_executor" in called_methods(call.child_by_field_name("function"))]
+                if (not takes or not release or "register_exit_cleanup" not in called_methods(node)
+                        or any(not any(parent.start_byte < call.start_byte and call.end_byte < parent.end_byte for parent in background) for call in release)):
+                    fail(node, "thx_retired_owners_not_released_by_background_exit", thx_lifecycle + "::install_thx_cleanup")
+            if name == "submit_thx_job":
+                errors = [arm.child_by_field_name("value") for arm in walk(node) if arm.type == "match_arm"
+                    and tuple_pattern(arm.child_by_field_name("pattern"), "Err")]
+                restored = [call for branch in errors for call in walk(branch) if method_on_field(call, "extend", "thx_retired_owners")
+                    and any(resolved_call(parts) == ("std", "mem", "take") for parts, _ in calls(call))]
+                releases = [call for parts, call in calls(node) if parts[-1] == "release_owner"
+                    and [text(argument) for argument in call.child_by_field_name("arguments").named_children][:2] == ["retired.owner", "retired.source_close"]]
+                if not restored or not releases:
+                    fail(node, "thx_successor_discards_failed_release_backlog", thx_lifecycle + "::submit_thx_job")
+        if node.type == "function_item" and owner == ipc_client:
+            implementation = node.parent.parent if node.parent is not None and node.parent.parent is not None else None
+            implementation_type = text(implementation.child_by_field_name("type")) if implementation is not None and implementation.type == "impl_item" else None
+            name = text(node.child_by_field_name("name"))
+            if implementation_type == "ServiceClient" and name == "stop":
+                admission = [call for call in walk(node) if method_on_field(call, "take", "requests")]
+                jobs = [call for call in walk(node) if method_on_field(call, "take", "job")]
+                stopped = [child for child in walk(node) if child.type == "assignment_expression"
+                    and self_field(child.child_by_field_name("left"), "stopped") and text(child.child_by_field_name("right")) == "true"]
+                reaped = [call for parts, call in calls(node) if resolved_call(parts) == ("reap_child",)
+                    and call.parent.type == "try_expression"
+                    and any("".join(text(argument).split()) == "&mutself.child"
+                        for argument in call.child_by_field_name("arguments").named_children)]
+                joins = {field: [call for parts, call in calls(node) if resolved_call(parts) == ("join_pipe",)
+                    and call.parent.type != "try_expression"
+                    and any(method_on_field(child, "take", field) for child in walk(call))]
+                    for field in ("input_worker", "output_worker")}
+                merged = [call for parts, call in calls(node) if resolved_call(parts) == ("combine_cleanup",)]
+                if (not admission or not stopped or not jobs or not reaped or any(not value for value in joins.values()) or not merged
+                        or any(start.end_byte > reap.start_byte for start in admission + stopped + jobs for reap in reaped)
+                        or any(not any(reap.end_byte < join.start_byte for reap in reaped)
+                            for values in joins.values() for join in values)
+                        or any(not any(join.end_byte < merge.start_byte for merge in merged) for values in joins.values() for join in values)):
+                    fail(node, "ipc_cleanup_does_not_preserve_owner_until_reap_and_pipe_joins", ipc_client + "::ServiceClient")
+            if implementation_type == "ServiceClient" and name == "drop":
+                branches = [child for child in walk(node) if child.type == "if_expression"
+                    and any(self_field(part, "stopped") for part in walk(child.child_by_field_name("condition")))]
+                if "stop" not in called_methods(node) or branches:
+                    fail(node, "ipc_drop_skips_unfinished_cleanup_after_admission_closed", ipc_client + "::ServiceClient")
+            if name == "reap_child":
+                waits = [call for parts, call in calls(node) if resolved_call(parts) == ("terminate_child",)
+                    and call.parent.type == "try_expression"]
+                takes = [call for call in walk(node) if call.type == "call_expression"
+                    and text(call.child_by_field_name("function")) == "child.take"]
+                if not waits or not takes or any(not any(wait.end_byte < take.start_byte for wait in waits) for take in takes):
+                    fail(node, "ipc_reap_discards_unconfirmed_process_owner", ipc_client + "::reap_child")
+            if name == "join_pipe" and "join" not in called_methods(node):
+                fail(node, "ipc_pipe_completion_does_not_join_its_retained_worker", ipc_client + "::join_pipe")
+        if node.type == "function_item" and owner == keyboard_lifecycle:
+            name = text(node.child_by_field_name("name"))
+            if name == "retire" and not any(resolved_call(parts) == ("drop",)
+                    and any(text(argument) == "pump" for argument in call.child_by_field_name("arguments").named_children)
+                    for parts, call in calls(node)):
+                fail(node, "session_observer_retirement_keeps_its_event_pump", keyboard_lifecycle)
+            if name == "install_keyboard_lifecycle":
+                cleanups = [call for call in walk(node) if call.type == "call_expression"
+                    and call.child_by_field_name("function").type == "field_expression"
+                    and text(call.child_by_field_name("function").child_by_field_name("field")) == "register_exit_cleanup"]
+                if (not cleanups or not any({"spawn", "shutdown"} <= called_methods(cleanup)
+                        and any(child.type == "await_expression" for child in walk(cleanup)) for cleanup in cleanups)):
+                    fail(node, "session_observer_is_not_drained_by_application_exit", shutdown_owner)
+        if node.type == "function_item" and owner == shutdown_owner:
+            name = text(node.child_by_field_name("name"))
+            if name == "register_exit_cleanup":
+                pushes = [call for call in walk(node) if call.type == "call_expression"
+                    and call.child_by_field_name("function").type == "field_expression"
+                    and text(call.child_by_field_name("function").child_by_field_name("field")) == "push"
+                    and "".join(text(call.child_by_field_name("function").child_by_field_name("value")).split()) == "self.service_exit.hooks"]
+                invokes = [call for parts, call in calls(node) if parts == ["cleanup"]
+                    and [text(argument) for argument in call.child_by_field_name("arguments").named_children] == ["shell", "cx"]]
+                if not pushes or not invokes or not any(push.start_byte < call.start_byte and call.end_byte < push.end_byte
+                        for push in pushes for call in invokes):
+                    fail(node, "exit_cleanup_registration_bypasses_shared_owner", shutdown_owner)
+            if name == "take_exit_cleanups":
+                takes = [call for parts, call in calls(node) if resolved_call(parts) == ("std", "mem", "take")
+                    and any("".join(text(argument).split()) == "&mutself.service_exit.hooks"
+                        for argument in call.child_by_field_name("arguments").named_children)]
+                invocations = [call for parts, call in calls(node) if parts == ["cleanup"]
+                    and [text(argument) for argument in call.child_by_field_name("arguments").named_children] == ["self", "cx"]]
+                if (not takes or not invocations or "collect" not in called_methods(node)
+                        or {"filter", "filter_map", "take", "skip"} & called_methods(node)):
+                    fail(node, "exit_cleanup_hooks_have_no_single_consuming_owner", shutdown_owner)
+            if name == "finish_service_exit":
+                branches = [branch for branch in walk(node) if branch.type == "if_expression"]
+                task_waits = [branch for branch in branches if returning_branch(branch)
+                    and "".join(text(branch.child_by_field_name("condition")).split()) == "self.service_exit.task.is_some()"]
+                takes = [call for call in walk(node) if call.type == "call_expression"
+                    and call.child_by_field_name("function").type == "field_expression"
+                    and text(call.child_by_field_name("function").child_by_field_name("field")) == "take_exit_cleanups"]
+                retained = [child for child in walk(node) if child.type == "assignment_expression"
+                    and "".join(text(child.child_by_field_name("left")).split()) == "self.service_exit.task"
+                    and "spawn" in called_methods(child.child_by_field_name("right"))]
+                completions = {text(declaration.child_by_field_name("pattern")) for take in takes for declaration in walk(node)
+                    if declaration.type == "let_declaration"
+                    and declaration.start_byte <= take.start_byte and take.end_byte <= declaration.end_byte}
+                loops = [child for child in walk(node) if child.type == "for_expression"
+                    and text(child.child_by_field_name("value")) in completions
+                    and not any(statement.type in {"break_expression", "return_expression"}
+                        for statement in walk(child.child_by_field_name("body")))]
+                waits = [child for child in walk(node) if child.type == "await_expression"
+                    and any(assignment.start_byte < child.start_byte and child.end_byte < assignment.end_byte
+                        for assignment in retained)
+                    and any(loop.start_byte < child.start_byte and child.end_byte < loop.end_byte
+                        and len(child.named_children) == 1
+                        and text(child.named_children[0]) == text(loop.child_by_field_name("pattern")) for loop in loops)]
+                resets = [child for child in walk(node) if child.type == "assignment_expression"
+                    and "".join(text(child.child_by_field_name("left")).split()) == "shell.service_exit.task"
+                    and text(child.child_by_field_name("right")) == "None"]
+                resumes = [call for call in walk(node) if call.type == "call_expression"
+                    and call.child_by_field_name("function").type == "field_expression"
+                    and text(call.child_by_field_name("function").child_by_field_name("field")) == "continue_save_queue"]
+                if (not task_waits or not takes or not retained or not waits or not resets or not resumes
+                        or any(not any(preceding_return(branch, call) for branch in task_waits) for call in takes)
+                        or any(not any(wait.end_byte < reset.start_byte for wait in waits) for reset in resets)
+                        or any(not any(reset.end_byte < resume.start_byte for reset in resets)
+                            or "shell.close_requested" not in enclosing_conditions(resume) for resume in resumes)
+                        or {"detach", "quit"} & called_methods(node)):
+                    fail(node, "service_cleanups_have_no_retained_completion_barrier", shutdown_owner)
+        if node.type == "function_item" and owner == "crates/razer-shell/src/shell.rs" and text(node.child_by_field_name("name")) == "finish_resource_exit":
+            take_calls = [call for parts, call in calls(node)
+                if resolved_call(parts) == ("razer_assets", "take_resource_runtime_for_shutdown")]
+            branches = [branch for branch in walk(node) if branch.type == "if_expression"]
+            task_waits = [branch for branch in branches if returning_branch(branch)
+                and method_on_field(branch.child_by_field_name("condition"), "is_some", "resource_exit_task")]
+            retained = [child for child in walk(node) if child.type == "assignment_expression"
+                and self_field(child.child_by_field_name("left"), "resource_exit_task")
+                and "spawn" in called_methods(child.child_by_field_name("right"))]
+            bindings = {text(child) for take in take_calls for declaration in walk(node)
+                if declaration.type == "let_declaration"
+                and declaration.start_byte <= take.start_byte and take.end_byte <= declaration.end_byte
+                for child in walk(declaration.child_by_field_name("pattern")) if child.type == "identifier"}
+            waits = [child for child in walk(node) if child.type == "await_expression"
+                and "background_spawn" in called_methods(child)
+                and any(call.type == "call_expression" and call.child_by_field_name("function").type == "field_expression"
+                    and text(call.child_by_field_name("function").child_by_field_name("field")) == "shutdown"
+                    and text(call.child_by_field_name("function").child_by_field_name("value")) in bindings
+                    for call in walk(child))]
+            resets = [child for child in walk(node) if child.type == "assignment_expression"
+                and child.child_by_field_name("left").type == "field_expression"
+                and text(child.child_by_field_name("left").child_by_field_name("field")) == "resource_exit_task"
+                and text(child.child_by_field_name("right")) == "None"]
+            resumes = [call for call in walk(node) if call.type == "call_expression"
+                and call.child_by_field_name("function").type == "field_expression"
+                and text(call.child_by_field_name("function").child_by_field_name("field")) == "continue_save_queue"]
+            if (not take_calls or not task_waits or not retained or not waits or not resets or not resumes
+                    or any(not any(preceding_return(branch, take) for branch in task_waits) for take in take_calls)
+                    or any(not any(assignment.start_byte < wait.start_byte and wait.end_byte < assignment.end_byte
+                        for assignment in retained) for wait in waits)
+                    or any(not any(wait.end_byte < reset.start_byte for wait in waits) for reset in resets)
+                    or any(not any(reset.end_byte < resume.start_byte for reset in resets)
+                        or "shell.close_requested" not in enclosing_conditions(resume) for resume in resumes)
+                    or {"detach", "quit"} & called_methods(node)):
+                fail(node, "resource_shutdown_has_no_retained_completion_barrier", resource_bridge)
+        if node.type == "function_item" and owner == image_cache_owner:
+            name = text(node.child_by_field_name("name"))
+            implementation = next((parent for parent in ancestors(node) if parent.type == "impl_item"), None)
+            cache_method = implementation is not None and text(implementation.child_by_field_name("type")) == "ResourceImageCache"
+            if cache_method and name in {"load", "load_filtered"}:
+                gates = [branch for branch in walk(node) if branch.type == "if_expression" and returning_branch(branch)
+                    and any(resolved_call(parts) in {("ensure_decoders_running",), ("self", "ensure_decoders_running")}
+                        for parts, _ in calls(branch.child_by_field_name("condition")))]
+                entries = [child for child in walk(node) if child.type == "field_expression"
+                    and text(child.child_by_field_name("value")) == "self"
+                    and text(child.child_by_field_name("field")) in {"images", "filtered", "filter_clock"}]
+                if not gates or not entries or any(not any(preceding_return(gate, entry) for gate in gates) for entry in entries):
+                    fail(node, "image_decode_bypasses_application_stop", image_cache_owner + "::ensure_decoders_running")
+            if cache_method and name == "clear":
+                normal = [call for parts, call in calls(node) if resolved_call(parts)[-1] == "discard_image_entries"
+                    and any("".join(text(argument).split()) == "&mutself.images"
+                        for argument in call.child_by_field_name("arguments").named_children)]
+                if not normal or not {"clear_filtered", "drop_image"} <= called_methods(node):
+                    fail(node, "image_cache_cleanup_leaves_normal_or_filtered_loads", image_cache_owner + "::ResourceImageCache::clear")
+            if name == "stop_resource_images":
+                methods = [call for call in walk(node) if call.type == "call_expression"
+                    and call.child_by_field_name("function").type == "field_expression"]
+                stops = [call for call in methods if text(call.child_by_field_name("function").child_by_field_name("field")) == "stop"
+                    and text(call.child_by_field_name("function").child_by_field_name("value")).endswith(".lifecycle")]
+                clears = [call for call in methods if text(call.child_by_field_name("function").child_by_field_name("field")) == "clear"]
+                installs = [call for parts, call in calls(node) if parts == ["WindowResourceCaches", "install"]]
+                if not installs or not stops or not clears or any(not any(stop.end_byte < clear.start_byte for stop in stops) for clear in clears):
+                    fail(node, "image_cache_stop_does_not_close_both_load_paths", image_cache_owner + "::stop_resource_images")
+        if node.type == "function_item" and owner == local_image_owner and text(node.child_by_field_name("name")) == "preview_source":
+            methods = [call for call in walk(node) if call.type == "call_expression"
+                and call.child_by_field_name("function").type in {"field_expression", "generic_function"}]
+            replacements = [call for call in methods if call.child_by_field_name("function").type == "field_expression"
+                and text(call.child_by_field_name("function").child_by_field_name("field")) == "set_source"
+                and text(call.child_by_field_name("function").child_by_field_name("value")) == "lease"]
+            uses = []
+            for call in methods:
+                function = call.child_by_field_name("function")
+                if function.type != "generic_function":
+                    continue
+                field = function.child_by_field_name("function")
+                arguments = function.child_by_field_name("type_arguments")
+                if (field.type == "field_expression" and text(field.child_by_field_name("field")) == "use_asset"
+                        and text(field.child_by_field_name("value")) == "window"
+                        and arguments is not None and len(arguments.named_children) == 1
+                        and resolved_call(text(arguments.named_children[0]).split("::")) == ("ImportedImageAsset",)):
+                    uses.append(call)
+            if not replacements or not uses or any(not any(replacement.end_byte < use.start_byte for replacement in replacements) for use in uses):
+                fail(node, "displayed_image_slot_keeps_the_previous_content_lease", local_image_owner + "::ImportedImageLease::set_source")
+        if node.type == "function_item" and owner == resource_bridge and text(node.child_by_field_name("name")) == "take_resource_runtime_for_shutdown":
+            methods = [call for call in walk(node) if call.type == "call_expression"
+                and call.child_by_field_name("function").type == "field_expression"]
+            takes = [call for call in methods
+                if text(call.child_by_field_name("function").child_by_field_name("field")) == "take"
+                and call.child_by_field_name("function").child_by_field_name("value").type == "field_expression"]
+            owners = [call for call in takes
+                if text(call.child_by_field_name("function").child_by_field_name("value").child_by_field_name("field")) == "owner"]
+            results = [call for call in takes
+                if text(call.child_by_field_name("function").child_by_field_name("value").child_by_field_name("field")) == "results"]
+            stops = [call for call in methods
+                if text(call.child_by_field_name("function").child_by_field_name("field")) == "begin_shutdown"]
+            decoder_stops = [call for parts, call in calls(node)
+                if resolved_call(parts) == ("crate", "image_cache", "stop_resource_images")]
+            if (not owners or not results or not stops
+                    or not decoder_stops or any(not any(stop.end_byte < take.start_byte for stop in decoder_stops) for take in owners)
+                    or not any(owner_take.end_byte < stop.start_byte and stop.end_byte < result.start_byte
+                        for owner_take in owners for stop in stops for result in results)
+                    or {"shutdown", "join"} & called_methods(node)):
+                fail(node, "resource_owner_transfer_keeps_admission_or_blocks_ui", resource_bridge)
+        if node.type == "function_item" and (owner, text(node.child_by_field_name("name"))) in {
+                ("crates/razer-shell/src/shell.rs", "save_auxiliary_preferences"),
+                ("crates/razer-shell/src/shell/mouse/mouse_dpi_70.rs", "persist_legacy_profile")}:
+            failures = [branch for branch in walk(node) if branch.type == "if_expression"
+                and any(child.type == "field_expression" and text(child.child_by_field_name("field")) == "storage_error"
+                    for child in walk(branch.child_by_field_name("condition")))]
+            if (not failures or any("cancel_pending_exit" not in called_methods(branch.child_by_field_name("consequence"))
+                    or not any(child.type == "return_expression" for child in walk(branch.child_by_field_name("consequence")))
+                    for branch in failures)):
+                kind = ("auxiliary_save_failure_keeps_exit_admission_closed" if text(node.child_by_field_name("name")) == "save_auxiliary_preferences"
+                    else "legacy_profile_save_failure_keeps_exit_admission_closed")
+                fail(node, kind, factory_owner + "::cancel_pending_exit")
+        if node.type == "function_item" and owner == "crates/razer-shell/src/shell/devices/device_discovery.rs" and text(node.child_by_field_name("name")) in {"observe_discovery", "publish_receiver_query"}:
+            method_calls = [call for call in walk(node) if call.type == "call_expression" and call.child_by_field_name("function").type == "field_expression"]
+            release = next((call for call in method_calls if text(call.child_by_field_name("function").child_by_field_name("field")) == "retain_interdevice_connections"), None)
+            resets = [call for call in method_calls if text(call.child_by_field_name("function").child_by_field_name("field")) == "observe_connection"]
+            if release is None or any(call.start_byte < release.start_byte for call in resets):
+                fail(node, "interdevice_connection_reset_before_release", interdevice_owner)
         if node.type != "call_expression":
             continue
         function = node.child_by_field_name("function")
         segments = text(function).split("::")
+        canonical = resolved_call(segments)
+        if canonical in {chroma_session + ("new",), chroma_session + ("default",),
+                ("crate", "chroma_connect", "Session", "new"), ("crate", "chroma_connect", "Session", "default")} \
+                and owner not in {chroma_shell, chroma_service}:
+            fail(node, "duplicate_chroma_connect_session_owner", chroma_shell + "::AppShell")
+        if owner == ipc_client:
+            native_spawn = (canonical == ("std", "thread", "spawn") or function.type == "field_expression"
+                and text(function.child_by_field_name("field")) == "spawn"
+                and any(resolved_call(parts) == ("std", "thread", "Builder", "new")
+                    for parts, _ in calls(function.child_by_field_name("value"))))
+            if native_spawn:
+                ancestor = node.parent
+                while ancestor is not None and ancestor.type != "function_item":
+                    if (ancestor.type == "assignment_expression" and ancestor.child_by_field_name("left").type == "field_expression"
+                            and text(ancestor.child_by_field_name("left").child_by_field_name("field")) in {"input_worker", "output_worker"}):
+                        break
+                    ancestor = ancestor.parent
+                if ancestor is None or ancestor.type == "function_item":
+                    fail(node, "ipc_thread_has_no_retained_pipe_owner", ipc_client + "::ServiceClient")
+        if owner == session_monitor and canonical[-1] == "GetMessageW":
+            fail(node, "session_observer_wait_has_no_bounded_stop_recheck", session_monitor)
+        if (owner == keyboard_actuation and function.type == "field_expression"
+                and text(function.child_by_field_name("field")) == "detach"):
+            fail(node, "actuation_delivery_escapes_retained_session_lifetime", keyboard_actuation)
+        if (owner.startswith("crates/razer-shell/src/") and owner != shutdown_owner
+                and function.type == "field_expression" and text(function.child_by_field_name("field")) == "on_app_quit"
+                and (any(child.type == "await_expression" for child in walk(node))
+                    or {"spawn", "background_spawn", "join", "shutdown", "shutdown_for_app_quit"} & called_methods(node))):
+            fail(node, "background_cleanup_relies_on_bounded_framework_quit", shutdown_owner)
+        if owner.startswith(macro_page) and ((canonical[:2] in {("std", "thread"), ("thread", "Builder")})
+                or canonical[-2:] == ("ServiceClient", "spawn")):
+            fail(node, "page_owns_macro_recording_worker", macro_recorder)
+        if canonical[:2] == ("razer_storage", "ui_preferences") and canonical[-1] in {"load", "save"} and owner not in {preference_storage, preference_state}:
+            fail(node, "ui_preference_io_bypasses_shared_state", preference_state)
+        if preference_page and ((canonical[:2] in {("std", "fs"), ("tokio", "fs")})
+                or canonical[:2] in {("razer_storage", "source_local"), ("crate", "source_local")}
+                or (canonical[:2] == ("std", "env") and canonical[-1] in {"var", "var_os"}
+                    and any(text(child) == '"APPDATA"' for child in node.child_by_field_name("arguments").named_children))):
+            fail(node, "preference_page_owns_local_file_io", preference_state)
+        if owner == macro_transfer and len(segments) >= 2 and (("fs" in segments) or segments[-2] == "Document"):
+            fail(node, "page_owns_macro_xml_io_or_codec", macro_xml if segments[-2] == "Document" else macro_io)
+        if owner == profile_codec and segments[0] == "md5":
+            fail(node, "profile_hash_bypasses_shared_owner", hash_owner)
+        if owner.startswith(mapping_pages) and len(segments) >= 2 and ((aliases.get(segments[-2]) == "ServiceClient" and segments[-1] == "spawn")
+                or any(aliases.get(part) == "thread" for part in segments) or segments[-2] in thread_builders):
+            fail(node, "page_owns_mapping_native_worker", mapping_workers)
+        if owner.startswith("crates/razer-shell/src/") and segments[-1] == "active_workers" and any("mapping" in part for part in segments[:-1]) and segments[:-1] != ["razer_service", "mapping"]:
+            fail(node, "shell_counts_mapping_workers_outside_service", mapping_workers + "mod.rs")
         if owner.startswith("crates/razer-shell/src/") and len(segments) >= 2 and segments[-1] == "new" and aliases.get(segments[-2]) == "WorkspaceFile" and owner != factory_owner:
             fail(node, "product_recomposes_workspace", factory_owner)
         if segments[-1] == "inspect_cached":
             fail(node, "blocking_cache_inspection_in_product", "razer_resources::ResourceClient")
         if function is not None and function.type == "field_expression" and text(function.child_by_field_name("field")) == "zip" and owner.startswith("crates/razer-shell/src/"):
-            receiver = text(function.child_by_field_name("value"))
-            if ".devices" in receiver:
+            receiver = function.child_by_field_name("value")
+            if any(child.type == "field_expression" and text(child.child_by_field_name("field")) == "devices" for child in walk(receiver)):
                 fail(node, "positional_device_acknowledgement", factory_owner)
-    return violations
+    return violations + gui_io_violations
 
 
 def architecture_audit(inventory):
     import resource_scope
     rust_parser = resource_scope.parser(ROOT)
     violations = dependency_boundaries(inventory["packages"])
-    sources = sorted({*ROOT.glob("app/**/*.rs"), *ROOT.glob("crates/**/src/**/*.rs")})
+    sources = sorted({*ROOT.glob("app/**/*.rs"), *ROOT.glob("crates/**/*.rs")})
+    included = set()
     for path in sources:
-        violations.extend(inspect_architecture_source(path.read_bytes(), owner=relative(path), rust_parser=rust_parser))
+        raw = path.read_bytes()
+        tree = rust_parser.parse(raw)
+        pending = [tree.root_node]
+        while pending:
+            node = pending.pop()
+            pending.extend(node.named_children)
+            if node.type == "macro_invocation" and raw[node.child_by_field_name("macro").start_byte:node.child_by_field_name("macro").end_byte] == b"include":
+                values = next(child for child in node.named_children if child.type == "token_tree").named_children
+                if len(values) == 1 and values[0].type == "string_literal":
+                    literal = raw[values[0].start_byte + 1:values[0].end_byte - 1].decode("utf-8")
+                    if "\\" not in literal:
+                        included.add((path.parent / literal).resolve())
+    for path in sources:
+        violations.extend(inspect_architecture_source(path.read_bytes(), owner=relative(path), rust_parser=rust_parser,
+                                                      expression_fragment=path.resolve() in included))
     return {"packages_scanned": len(inventory["packages"]), "rust_files_scanned": len(sources),
             "violations": violations, "passed": not violations,
             "scope": "All workspace dependency branches and Rust item/call AST; compilation and runtime acceptance are separate",
-            "limits": ["No Rust type resolution or macro expansion", "Explicit owners do not prove page/device runtime behavior"]}
+            "limits": ["No Rust type resolution or macro expansion; dynamic include paths require an explicit owner exception",
+                       "Literal include expression fragments are parsed inside a const expression with original byte offsets",
+                       "Explicit owners do not prove page/device runtime behavior"]}
 
 
 def source_layout_plan():
@@ -518,6 +2161,7 @@ def source_layout_plan():
               for name in tracked]
     return {"schema_version": 1, "recorded_at_utc": datetime.now(timezone.utc).isoformat(),
             "operation": "physical source organization with stable Rust module namespaces",
+            "tool": {"path": relative(Path(__file__)), "sha256": digest(Path(__file__)), "python_version": sys.version.split()[0]},
             "analyzers": {name: version(name) for name in ("tree-sitter", "tree-sitter-rust")},
             "moves": mapping, "inputs": inputs, "rewrite_files": sorted(rewrites),
             "module_and_include_edges": len(edges), "unresolved": unresolved,
@@ -1285,6 +2929,7 @@ def audit_inputs():
         data = json.loads(raw)
         if not isinstance(data, dict):
             raise ValueError("index root must be an object")
+        report["source_publications"] = data.get("source_publications", [])
     except (OSError, ValueError) as error:
         # Exception filenames can be workstation paths; keep diagnostics portable.
         report["index_errors"].append({"kind": type(error).__name__,
@@ -4560,6 +6205,163 @@ def avif_display_png(source):
                          "png_pixel_roundtrip": True, "target_execution": False}
 
 
+def extract_inline_css_png(content, bitmap):
+    """Retain the complete acquired CSS rule that owns one literal PNG."""
+    candidates = []
+    for rule in re.finditer(r"([^{}]+)\{[^{}]*\}", content.decode("utf-8")):
+        if rule[1].strip() != bitmap["selector"]:
+            continue
+        for literal in re.finditer(r"data:image/png;base64,([A-Za-z0-9+/=]+)", rule[0]):
+            decoded = base64.b64decode(literal[1], validate=True)
+            if hashlib.sha256(decoded).hexdigest() == bitmap["sha256"]:
+                candidates.append((rule, decoded))
+    if len(candidates) != 1 or not candidates[0][1].startswith(b"\x89PNG\r\n\x1a\n"):
+        raise ValueError("Current CSS PNG source rule is absent or ambiguous")
+    rule, content = candidates[0]
+    return content, {
+        "tool": "Python base64", "version": sys.version.split()[0],
+        "operation": "Decode the PNG data URL from the verified complete source CSS rule; no CSS execution",
+        "complete_css_rules": [{"character_start": rule.start(), "character_end": rule.end(), "body": rule[0]}],
+    }
+
+
+def decoded_resource_rgba(content, expected_format):
+    """Decode complete image bytes through the maintained static codec."""
+    import io
+    sys.path.insert(0, str(ROOT / "tools/analyzers/pillow"))
+    from PIL import Image
+    with Image.open(io.BytesIO(content)) as image:
+        if image.format != expected_format:
+            raise ValueError("Resource format differs from its declared transformation")
+        image.verify()
+    with Image.open(io.BytesIO(content)) as image:
+        image.load()
+        rgba = image.convert("RGBA")
+        pixels = rgba.tobytes()
+        return {"format": image.format, "original_mode": image.mode,
+                "comparison_mode": "RGBA", "width": rgba.width, "height": rgba.height,
+                "decoded_rgba_sha256": hashlib.sha256(pixels).hexdigest()}, pixels
+
+
+def compare_resource_pixels(source, output, source_format):
+    original, source_pixels = decoded_resource_rgba(source, source_format)
+    prepared, output_pixels = decoded_resource_rgba(output, "PNG")
+    if (original["width"], original["height"]) != (prepared["width"], prepared["height"]):
+        raise ValueError("Converted resource dimensions differ from the original")
+    if source_pixels != output_pixels:
+        raise ValueError("Converted resource does not retain every decoded original RGBA pixel")
+    return {"source_decode": original, "output_decode": prepared,
+            "all_rgba_pixels_equal": True}
+
+
+def verify_pinned_resource_conversion(original, request, locked, storage):
+    """Compare each pinned PNG with actual decoded source pixels, without UI."""
+    sys.path.insert(0, str(ROOT / "tools/analyzers/pillow"))
+    import PIL
+    from PIL import features
+    report = {"source": {key: original[key] for key in ("path", "bytes", "sha256")},
+              "output": {key: locked[key] for key in ("path", "bytes", "sha256")},
+              "alias": request["display"], "resource_revision": storage["revision"],
+              "tool": {"path": relative(Path(__file__)), "sha256": digest(Path(__file__)),
+                       "python": sys.version.split()[0], "pillow": PIL.__version__,
+                       "avif_codec": features.version("avif")},
+              "errors": [], "target_execution": False}
+    try:
+        source = safe(ROOT / original["path"])
+        content = source.read_bytes()
+        if len(content) != original["bytes"] or hashlib.sha256(content).hexdigest() != original["sha256"]:
+            raise ValueError("Original conversion input differs from its acquisition")
+        if not request["display"].endswith(".png"):
+            raise ValueError("Pinned image conversion requires a PNG display alias")
+        if "inline_css_png" in request:
+            if source.suffix.lower() != ".css":
+                raise ValueError("CSS bitmap extraction requires an acquired CSS original")
+            decoded_source, extraction = extract_inline_css_png(content, request["inline_css_png"])
+            report["extraction"] = extraction
+            source_format = "PNG"
+        elif source.suffix.lower() == ".avif":
+            decoded_source, source_format = content, "AVIF"
+        else:
+            raise ValueError("Pinned conversion has no verified static transformation")
+        # Maintenance downloads only the selected immutable file. Its cache is
+        # analysis scratch and is never a product runtime resource directory.
+        payload = safe(ROOT / ".work/resource-closure/payloads" / Path(locked["path"]).name)
+        if not payload.is_file() or payload.stat().st_size != locked["bytes"] or digest(payload) != locked["sha256"]:
+            url = ("https://huggingface.co/datasets/" + storage["repository"] + "/resolve/"
+                   + storage["revision"] + "/" + locked["path"])
+            with urllib.request.urlopen(urllib.request.Request(url, headers=resource_sources.hf_headers()), timeout=60) as response:
+                raw = response.read(locked["bytes"] + 1)
+            if len(raw) != locked["bytes"] or hashlib.sha256(raw).hexdigest() != locked["sha256"]:
+                raise ValueError("Pinned converted resource payload byte identity differs")
+            payload.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(dir=payload.parent, suffix=".partial", delete=False) as stream:
+                temporary = Path(stream.name)
+                try:
+                    stream.write(raw)
+                    stream.close()
+                    os.replace(temporary, payload)
+                finally:
+                    temporary.unlink(missing_ok=True)
+        raw = payload.read_bytes()
+        report["actual_output"] = {"path": relative(payload), "bytes": len(raw),
+                                   "sha256": hashlib.sha256(raw).hexdigest()}
+        if len(raw) != locked["bytes"] or hashlib.sha256(raw).hexdigest() != locked["sha256"]:
+            raise ValueError("Pinned converted resource changed before decode")
+        report.update(compare_resource_pixels(decoded_source, raw, source_format))
+        report["inputs_unchanged"] = source.read_bytes() == content and payload.read_bytes() == raw
+        if not report["inputs_unchanged"]:
+            raise ValueError("Conversion input or payload changed during static decode")
+    except (OSError, ValueError, SyntaxError) as error:
+        report["errors"].append({"kind": type(error).__name__, "message": str(error)})
+    report["passed"] = not report["errors"]
+    return report
+
+
+def resource_conversion_counterexamples():
+    """Reject wrong pixels, alpha, dimensions and incomplete encoded images."""
+    import io
+    sys.path.insert(0, str(ROOT / "tools/analyzers/pillow"))
+    from PIL import Image
+    def png(size, changed=None):
+        image = Image.new("RGBA", size, (17, 29, 43, 255))
+        if changed is not None:
+            image.putpixel((0, 0), changed)
+        stream = io.BytesIO()
+        image.save(stream, format="PNG")
+        return stream.getvalue()
+    original = png((2, 2))
+    compare_resource_pixels(original, original, "PNG")
+    cases = {"wrong_pixel": png((2, 2), (18, 29, 43, 255)),
+             "wrong_alpha": png((2, 2), (17, 29, 43, 254)),
+             "wrong_dimensions": png((1, 2)), "truncated_png": original[:40]}
+    results = []
+    for name, changed in cases.items():
+        try:
+            compare_resource_pixels(original, changed, "PNG")
+        except (OSError, ValueError, SyntaxError) as error:
+            results.append({"case": name, "rejected": True,
+                            "kind": type(error).__name__, "message": str(error)})
+        else:
+            raise ValueError("Resource conversion counterexample was accepted: " + name)
+    literal = ".bitmap{background:url(data:image/png;base64," + base64.b64encode(original).decode() + ")}"
+    spec = {"selector": ".bitmap", "sha256": hashlib.sha256(original).hexdigest()}
+    if extract_inline_css_png(literal.encode(), spec)[0] != original:
+        raise ValueError("Inline CSS positive control changed its PNG bytes")
+    for name, text, request in (
+            ("wrong_css_selector", literal, {**spec, "selector": ".other"}),
+            ("wrong_css_png_sha256", literal, {**spec, "sha256": "0" * 64}),
+            ("ambiguous_css_png", literal + literal, spec)):
+        try:
+            extract_inline_css_png(text.encode(), request)
+        except ValueError as error:
+            results.append({"case": name, "rejected": True,
+                            "kind": type(error).__name__, "message": str(error)})
+        else:
+            raise ValueError("Resource conversion counterexample was accepted: " + name)
+    return {"positive_controls": ["equal_complete_rgba_png", "unique_complete_css_png"],
+            "counterexamples": results, "passed": True, "target_execution": False}
+
+
 def prepare_resource_publication(acquisition, resources, publication_manifest):
     """Stage verified original media for the existing pinned-file publisher."""
     import analysis
@@ -4888,23 +6690,7 @@ def prepare_resources_locked(acquisition, resources=None):
         if "inline_css_png" in request:
             if source.suffix.lower() != ".css":
                 raise ValueError("CSS bitmap extraction requires an acquired CSS original")
-            bitmap = request["inline_css_png"]
-            candidates = []
-            for rule in re.finditer(r"([^{}]+)\{[^{}]*\}", content.decode("utf-8")):
-                if rule[1].strip() != bitmap["selector"]:
-                    continue
-                for literal in re.finditer(r"data:image/png;base64,([A-Za-z0-9+/=]+)", rule[0]):
-                    decoded = base64.b64decode(literal[1], validate=True)
-                    if hashlib.sha256(decoded).hexdigest() == bitmap["sha256"]:
-                        candidates.append((rule, decoded))
-            if len(candidates) != 1 or not candidates[0][1].startswith(b"\x89PNG\r\n\x1a\n"):
-                raise ValueError("Current CSS PNG source rule is absent or ambiguous")
-            rule, content = candidates[0]
-            transformation = {
-                "tool": "Python base64", "version": sys.version.split()[0],
-                "operation": "Decode the PNG data URL from the verified complete source CSS rule; no CSS execution",
-                "complete_css_rules": [{"character_start": rule.start(), "character_end": rule.end(), "body": rule[0]}],
-            }
+            content, transformation = extract_inline_css_png(content, request["inline_css_png"])
         if "svg_remove_root_ids" in request:
             import families
             if source.suffix.lower() != ".svg":
@@ -6311,12 +8097,46 @@ def validate_rust(selected_suites=None, cargo_config=None):
     destination.mkdir(parents=True, exist_ok=True)
     commands = [
         ("ipc-client", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "client_tests"]),
+        ("mouse-input-monitoring-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mouse_input_monitoring"]),
+        ("device-task-locks", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "device_tasks"]),
+        ("mouse-matcher-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "dpi_matcher"]),
+        ("mouse-matcher-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "dpi_matcher"]),
+        ("mouse-input-monitoring-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mouse_input_monitoring::tests"]),
+        ("mouse-matcher-model", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "--lib", "mouse_matcher"]),
+        ("mouse-matcher-revision", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "matcher_durable_version"]),
+        ("computer-name-platform", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "computer_name_tests"]),
         ("controller-trigger-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "controller_trigger"]),
         ("controller-trigger-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "gamepad_products::trigger_runtime::tests"]),
         ("controller-profile", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "gamepad_products::profile::tests"]),
         ("controller-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "controller_"]),
         ("controller-feature-discovery", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "controller_feature"]),
         ("controller-lighting-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "gamepad_products::lighting"]),
+        ("controller-quick-lighting-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "quick_lighting_state::tests"]),
+        ("controller-chroma-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "chroma_runtime::tests"]),
+        ("controller-calibration-frame", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "queued_frames_cannot_advance"]),
+        ("controller-palette", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "--lib", "custom_colors::tests"]),
+        ("receiver-profile-storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib", "receiver_reset"]),
+        ("receiver-profile-selection", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "receiver_profile_selection::tests"]),
+        ("hyperpolling-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "hyperpolling_receiver"]),
+        ("hyperpolling-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "hyperpolling_receiver"]),
+        ("hyperpolling-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "hyperpolling_runtime"]),
+        ("hyperpolling-storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib", "hyperpolling_profile"]),
+        ("hyperpolling-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "hyperpolling_runtime"]),
+        ("receiver-lighting-owner", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "receiver_lighting_"]),
+        ("lighting-engine-session", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "lighting_engine_session::tests"]),
+        ("controller-lighting-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "controller_lighting::"]),
+        ("chroma-connect", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "chroma_connect::tests"]),
+        ("receiver-lighting-attribute-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "receiver_lighting_attribute_receipt_wire_requires_the_exact_worker_identity"]),
+        ("receiver-brightness-ui", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "receiver_brightness_ui::tests"]),
+        ("receiver-brightness-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "receiver_brightness::tests"]),
+        ("receiver-dock-mode", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "receiver_dock_mode::tests"]),
+        ("device-query-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "device_query::tests"]),
+        ("receiver-lighting-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "receiver_lighting::tests"]),
+        ("receiver-quick-effect", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "receiver_lighting::quick_effect::tests"]),
+        ("receiver-battery-peers", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "receiver_lighting::battery_peers::tests"]),
+        ("receiver-battery-monitor", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "receiver_lighting::battery_monitor::tests"]),
+        ("receiver-peer-lighting", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "receiver_lighting::peer_protocol::tests"]),
+        ("dynamic-lighting-storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib", "dynamic_lighting_read_is_independent"]),
         ("controller-lighting-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "controller_lighting"]),
         ("audio-demo-media", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "media::tests"]),
         ("screen-color-platform", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "screen_color"]),
@@ -6345,29 +8165,94 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("mouse-dpi-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "dpi_70::tests"]),
         ("storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib"]),
         ("shell-store-migration", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib", "workspace::tests"]),
-        ("workspace-domain", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "--lib"]),
         ("catalog-registry", ["cargo", "test", "--locked", "--offline", "-p", "razer-catalog", "--lib", "registry::tests"]),
         ("emoji-search", ["cargo", "test", "--locked", "--offline", "-p", "razer-catalog", "--lib", "emoji::tests"]),
         ("resource-database", ["cargo", "test", "--locked", "--offline", "-p", "razer-resource-db", "--lib"]),
         ("resource-database-index", ["cargo", "test", "--locked", "--offline", "-p", "razer-resources", "--lib", "catalog::database_tests"]),
         ("packaged-catalogs", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "-p", "razer-app-pages", "-p", "razer-assets", "-p", "razer-model", "-p", "razer-catalog", "-p", "razer-shell", "-p", "razer-tray", "-p", "razer-settings", "--lib", "packaged_catalog_"]),
         ("model", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "--lib"]),
+        ("mapping-engine", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mapping_engine"]),
+        ("mapping-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping::"]),
+        ("mapping-control-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mapping_control::tests"]),
+        ("global-shortcuts-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "shortcuts::tests"]),
+        ("global-shortcut-capture-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "global_shortcut_capture::tests"]),
+        ("global-shortcuts-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "global_shortcuts::tests"]),
+        ("mapping-control-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping_execution::tests"]),
+        ("global-shortcut-capture-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "global_shortcut_capture::tests"]),
+        ("mapping-connections", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "device_discovery::tests"]),
+        ("profiles-transfer-codec", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "profile_transfer"]),
+        ("audio-profile-import", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "import_1398"]),
+        ("mouse-profile-import", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_import"]),
+        ("local-profile-codec", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "--lib", "profile_transfer"]),
+        ("help-reset-profile-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "help_owner::tests"]),
+        ("help-reset-defaults", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "blackshark_reset::tests"]),
+        ("help-reset-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "help_factory_reset1398"]),
+        ("help-reset-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "help_factory_reset1398"]),
+        ("help-reset-persistence", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "help_hardware_reset"]),
+        ("resource-css-filters", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "css_filters_"]),
+        ("queued-device-revisions", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib", "workspace::device_save::tests"]),
+        ("chroma-settings-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-state", "--lib", "chroma_settings::tests"]),
+        ("local-image", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "local_image::tests"]),
+        ("rotated-label-outline", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "rotated_label_"]),
+        ("native-diagnostics", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "discovery_diagnostics::tests"]),
+        ("linked-executable", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "executable::tests"]),
+        ("oled-import-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "oled_presets::tests::import_"]),
+        ("ui-preferences-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-state", "--lib", "ui_preferences::"]),
         ("i18n", ["cargo", "test", "--locked", "--offline", "-p", "razer-i18n", "--lib"]),
         ("discovery", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib"]),
         ("mixer-shortcut-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "audio_shortcut_lifecycle_tests"]),
         ("macro-shortcut-resume", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "shortcut_resume_tests"]),
+        ("macro-recording-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "macro_recording::tests::"]),
         ("startup-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "-p", "razer-dashboard", "-p", "razer-device", "-p", "razer-discovery", "-p", "razer-shell", "--lib", "startup_state"]),
         ("hid-inventory", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "hid::inventory_tests"]),
         ("device", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib"]),
         ("mouse-idle-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mouse_polling_profile::idle_tests"]),
         ("mouse-receiver-polling", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_receiver_polling::tests"]),
+        ("mouse-receiver-polling-routing", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "mouse_receiver_polling"]),
+        ("hanbo-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "hanbo_cooler::tests"]),
+        ("hanbo-startup-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "hanbo_startup"]),
+        ("hanbo-settings", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "hanbo_settings::tests"]),
+        ("hanbo-profile-restore", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "hanbo_profile_restore::tests"]),
+        ("hanbo-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "hanbo_"]),
+        ("hanbo-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "hanbo_cooler::tests"]),
+        ("hanbo-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "hanbo_"]),
+        ("hanbo-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "shell::hanbo_cooler::tests::"]),
+        ("profile-collection", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "profile_collection::tests"]),
+        ("system-monitor-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "system_monitor::tests"]),
+        ("system-monitor-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "system_monitor_tests"]),
+        ("system-monitor-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "system_monitor::tests"]),
+        ("keyboard-magnetic-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "keyboard_magnetic"]),
+        ("keyboard-sync-feedback", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "keyboard_products::actuation::sync_feedback::tests::"]),
+        ("keyboard-macro-submission", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "keyboard_macro_submission"]),
+        ("onboard-macro", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "onboard_macro"]),
         ("mouse-scroll-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_scroll::tests"]),
         ("mouse-scroll-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mouse_scroll_tests"]),
         ("mouse-scroll-routing", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "mouse_scroll_tests"]),
         ("mouse-scroll-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "scroll_task::tests"]),
         ("mouse-scroll-persistence", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mouse_scroll::tests"]),
+        ("mouse-tracking-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_tracking::tests::"]),
+        ("mouse-tracking-session", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "receiver_session::tests::"]),
+        ("mouse-tracking-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mouse_tracking_tests::"]),
+        ("mouse-tracking-routing", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "direct::mouse_tracking::tests::"]),
+        ("mouse-tracking-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "runtime::mouse_tracking_controller::tests::"]),
+        ("mouse-tracking-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "request_lifecycle_tests::"]),
+        ("mouse-tracking-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "shell::mouse_tracking::tests::"]),
+        ("mouse-philips-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_philips::"]),
+        ("mouse-philips-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mouse_tracking_tests::mouse_philips"]),
+        ("mouse-philips-routing", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "philips"]),
+        ("mouse-philips-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "runtime::mouse_philips_controller::tests::"]),
+        ("mouse-philips-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "philips_measurement::tests::"]),
+        ("mouse-philips-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "shell::mouse_tracking::tests::philips"]),
+        ("mouse-philips-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "calibration_70::state::"]),
         ("mouse-profile-source", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mouse_profile_source::tests"]),
         ("keyboard-metadata", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "keyboard_metadata::tests"]),
+        ("keyboard-latest-restore-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "keyboard_latest_restore::tests::"]),
+        ("keyboard-latest-restore-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "shell::keyboard_latest_restore::tests::"]),
+        ("keyboard-latest-restore-publisher", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "shell::keyboard_latest_restore::publisher::tests::"]),
+        ("keyboard-game-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "game_monitor::lifecycle::tests::"]),
+        ("keyboard-actuation-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "keyboard_actuation_write::worker::tests::"]),
+        ("session-monitor-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "session_changes::tests::"]),
+        ("device-change-monitor-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "device_changes"]),
         ("hid-interrupt", ["cargo", "test", "--locked", "--offline", "-p", "razer-hid", "--lib", "native::tests"]),
         ("receiver-events-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "receiver_events::tests"]),
         ("receiver-reconnect-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "receiver_reconnect::tests"]),
@@ -6379,7 +8264,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("mouse-connection-navigation", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mouse_connection_navigation"]),
         ("seiren-eq-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "seiren_eq"]),
         ("seiren-audio-capture-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "seiren_audio_capture"]),
-        ("seiren-audio-capture-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "seiren_audio_capture::tests"]),
+        ("seiren-audio-owner-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "seiren_audio::"]),
         ("settings-products", ["cargo", "test", "--locked", "--offline", "-p", "razer-settings", "--lib", "products::tests"]),
         ("settings-runtime-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-settings", "--lib", "runtime_page::tests::", "--", "--skip", "runtime_page::tests::partial_enumeration_is_visible_without_starting_a_service", "--skip", "runtime_page::tests::connection_page_does_not_start_services_on_render", "--test-threads=1"]),
         ("shell-save-queue", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "save_queue_tests::", "--", "--test-threads=1"]),
@@ -6411,6 +8296,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
                                      "--skip", "confirmation_escape_closes_without_invented_focus_restore_and_enter_cannot_fake_binding",
                                      "--skip", "inline_confirmation_uses_content_height_and_a_centered_compact_button"]),
         ("thx-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "thx"]),
+        ("thx-shell-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "thx_sound::tests::"]),
         ("thx-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "thx"]),
         ("camera-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "camera"]),
         ("user-app-files-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "simulated_native_write_retains_bytes_and_failed_callback_without_poisoning"]),
@@ -6420,6 +8306,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("source-slider", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "source_slider::tests"]),
         ("source-hypershift-tooltip", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "hypershift_geometry_tests"]),
         ("source-text-layout", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "source_check_text_preserves_max_content_width"]),
+        ("source-text-tracking", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "source_text::tests"]),
         ("source-locale-choices", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "source_locale_choices"]),
         ("retained-locale-choices", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "retained_source_choices_translate"]),
         ("mouse-inter-device-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mapping_inter_70::locale_tests"]),
@@ -6429,9 +8316,10 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("mouse-svg-button-motion", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "svg_button_motion::tests"]),
         ("mouse-calibration-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "panel_transition_tests"]),
         ("mouse-canvas-projection", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "pid70_canvas_projection"]),
-        ("assets", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib"]),
+        ("assets", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "--", "--skip", "image_cache::tests"]),
         ("asset-pack-core", ["cargo", "test", "--locked", "--offline", "-p", "razer-asset-pack", "--lib"]),
         ("assets-resource-identity", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "asset_decode_tests"]),
+        ("assets-image-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "image_cache::lifecycle_tests"]),
         ("assets-resource-runtime", ["cargo", "test", "--locked", "--offline", "-p", "razer-resources", "--lib"]),
         ("assets-fixed-icons", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "icons::tests"]),
         ("workspace", ["cargo", "check", "--locked", "--offline", "--workspace", "--all-targets"]),
@@ -6475,8 +8363,11 @@ def validate_rust(selected_suites=None, cargo_config=None):
                "exit_code": completed.returncode, "log": relative(log), "log_sha256": digest(log),
                "executed_tests": executed_tests, "errors": errors, "passed": not errors,
                "warning_count": len(warning_lines), "warning_lines": warning_lines,
+               "excluded_test_filters": [command[index + 1] for index, part in enumerate(command[:-1]) if part == "--skip"],
                "test_summaries": [{"result": state, "passed": int(passed), "failed": int(failed),
                                    "ignored": int(ignored)} for state, passed, failed, ignored in totals]}
+        if name == "assets":
+            row["test_scope"] = "Pure codec, catalog and fixed-icon checks; image_cache::tests requires a real GPUI headless window and is excluded"
         results.append(row)
         print(json.dumps(row), flush=True)
     unchanged = baseline == rust_inputs()
@@ -6736,7 +8627,7 @@ def main():
         print(json.dumps(verify_asset_pack(args.pack, args.manifest), ensure_ascii=False))
     elif args.command in {"prepare-asset-release", "verify-asset-release", "fetch-asset-release", "publish-asset-release", "pin-asset-release"}:
         print(json.dumps(asset_release.run(args), ensure_ascii=False), flush=True)
-    elif args.command in {"prepare-device-write-table", "prepare-storage-tables", "prepare-local-protocol-tables", "prepare-mapping-capabilities", "prepare-mapping-producers"}:
+    elif args.command in {"prepare-device-write-table", "prepare-storage-tables", "prepare-local-protocol-tables", "prepare-mapping-capabilities", "prepare-mapping-producers", "prepare-profile-transfer-table", "prepare-receiver-battery-peers", "prepare-receiver-senders"}:
         print(json.dumps(typed_tables.run(args), ensure_ascii=False), flush=True)
     elif args.command in {"prepare-typed-data", "prepare-emoji-search"}:
         print(json.dumps(rust_data.run(args), ensure_ascii=False), flush=True)

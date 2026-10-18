@@ -63,12 +63,10 @@ impl Element for SourceLayer {
         if let Some(priority) = self.priority {
             let offset = window.element_offset() + delta;
             let mask = window.content_mask();
-            self.child.take().unwrap().schedule(
-                window,
-                offset,
-                priority,
-                Some(mask),
-            );
+            self.child
+                .take()
+                .unwrap()
+                .schedule(window, offset, priority, Some(mask));
         } else {
             window.with_element_offset(delta, |window| {
                 self.child.as_mut().unwrap().prepaint(window, cx);

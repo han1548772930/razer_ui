@@ -4,8 +4,15 @@ use super::*;
 use razer_platform::session_changes::{SessionChange, SessionMonitor};
 
 pub(super) struct Owner {
-    _monitor: SessionMonitor,
-    _pump: Task<()>,
+    monitor: SessionMonitor,
+    pump: Task<()>,
+}
+impl Owner {
+    fn retire(self) -> SessionMonitor {
+        let Self { monitor, pump } = self;
+        drop(pump);
+        monitor
+    }
 }
 
 impl AppShell {
@@ -39,22 +46,26 @@ impl AppShell {
                         }
                     }
                 });
-                self.keyboard_lifecycle = Some(Owner {
-                    _monitor: monitor,
-                    _pump: pump,
-                });
+                self.keyboard_lifecycle = Some(Owner { monitor, pump });
             }
             Err(error) => eprintln!("[keyboard lifecycle] {error}"),
         }
-        self.subscriptions.push(cx.on_app_quit(|shell, cx| {
+        self.register_exit_cleanup(|shell, cx| {
             // Source beforeunload sends STOP(false) only while calibrating.
             for workspace in &shell.devices {
                 workspace.update(cx, |workspace, cx| {
                     workspace.cancel_keyboard_calibration_v2(cx)
                 });
             }
-            shell.keyboard_lifecycle = None;
-            async {}
-        }));
+            let monitor = shell.keyboard_lifecycle.take().map(Owner::retire);
+            let cleanup = cx.background_executor().spawn(async move {
+                if let Some(monitor) = monitor {
+                    if let Err(error) = monitor.shutdown() {
+                        eprintln!("[keyboard lifecycle] session observer cleanup failed: {error}");
+                    }
+                }
+            });
+            async move { cleanup.await }
+        });
     }
 }

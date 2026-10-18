@@ -751,23 +751,25 @@ impl IotPopup {
                         .child(img("synapse/iot-new-help.svg").size_full())
                         .tooltip(|window, cx| {
                             Tooltip::element(|_, cx| {
-                                razer_assets::resource_scope(v_flex()
-                                    .w(surface::css(305.))
-                                    .px(surface::css(10.))
-                                    .py(surface::css(8.))
-                                    .bg(cx.theme().popover)
-                                    .border_1()
-                                    .border_color(PaletteColors.picker_border())
-                                    .text_size(surface::css(14.))
-                                    .child(div().mb(surface::css(10.)).child(i18n::t(
-                                        "LIGHTING_DEVICE_SCANNING_SUCCESS_NEW_DEVICE_TOOLTIP",
-                                    )))
-                                    .child(
-                                        img("synapse/iot-new-device-mac.png")
-                                            .w(surface::css(285.))
-                                            .h(surface::css(145.))
-                                            .rounded(surface::css(3.)),
-                                    ))
+                                razer_assets::resource_scope(
+                                    v_flex()
+                                        .w(surface::css(305.))
+                                        .px(surface::css(10.))
+                                        .py(surface::css(8.))
+                                        .bg(cx.theme().popover)
+                                        .border_1()
+                                        .border_color(PaletteColors.picker_border())
+                                        .text_size(surface::css(14.))
+                                        .child(div().mb(surface::css(10.)).child(i18n::t(
+                                            "LIGHTING_DEVICE_SCANNING_SUCCESS_NEW_DEVICE_TOOLTIP",
+                                        )))
+                                        .child(
+                                            img("synapse/iot-new-device-mac.png")
+                                                .w(surface::css(285.))
+                                                .h(surface::css(145.))
+                                                .rounded(surface::css(3.)),
+                                        ),
+                                )
                             })
                             .build(window, cx)
                         }),
@@ -1360,8 +1362,8 @@ impl Render for IotPopup {
                     .on_scroll_wheel(|_, _, cx| cx.stop_propagation())
                     .bg(MainPageColors.banner_shade().opacity(0.7 * opacity)),
             )
-            .popup(
-                razer_assets::resource_scope(v_flex()
+            .popup(razer_assets::resource_scope(
+                v_flex()
                     .id("gamer-room-add-dialog")
                     .test_support()
                     .opacity(opacity)
@@ -1465,8 +1467,8 @@ impl Render for IotPopup {
                                         .child(self.notice.clone()),
                                 )
                             }),
-                    )),
-            )
+                    ),
+            ))
             .into_any_element()
     }
 }

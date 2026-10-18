@@ -461,16 +461,15 @@ fn settings(setting: &Setting) -> anyhow::Result<([u8; 3], Vec<u8>)> {
             data_size,
             data,
         } => {
-            ensure!(
-                *mode <= 1 && *data_size <= 5,
-                "756 button assignment mode/data size is invalid"
-            );
-            let mut payload = vec![*slot, *key_id, *mode, *fn_id, *data_size];
-            payload.extend_from_slice(data);
             // The source passes 80 padded bytes with packetSizeSet=10.
             // exchange supplies that zero padding in its full report; pass
             // only the ten populated bytes so its declared-size check agrees.
-            ([80, 2, 13], payload)
+            (
+                [80, 2, 13],
+                crate::onboard_assignment::payload(
+                    *slot, *key_id, *mode, *fn_id, *data_size, data,
+                )?,
+            )
         }
         Setting::AdjustmentMode { slot, enabled } => ([2, 2, 31], vec![*slot, u8::from(*enabled)]),
         Setting::Brightness {
@@ -553,16 +552,13 @@ fn settings(setting: &Setting) -> anyhow::Result<([u8; 3], Vec<u8>)> {
             enabled,
             mode,
             keys,
-        } => {
-            ensure!(
-                *mode <= 1 && keys.len() <= 4,
-                "756 interrupt key mode/count is invalid"
-            );
-            let mut data = vec![*slot, u8::from(*enabled), *mode];
-            data.extend_from_slice(keys);
-            data.resize(7, 0);
-            ([7, 2, if *dynamic_keystroke { 46 } else { 45 }], data)
-        }
+        } => crate::onboard_assignment::interrupt_keys_payload(
+            *slot,
+            *dynamic_keystroke,
+            *enabled,
+            *mode,
+            keys,
+        )?,
         Setting::ContinuousRapidTrigger { slot, enabled } => {
             ([2, 2, 32], vec![*slot, u8::from(*enabled)])
         }
@@ -587,18 +583,10 @@ fn settings(setting: &Setting) -> anyhow::Result<([u8; 3], Vec<u8>)> {
             slot,
             enabled,
             keys,
-        } => {
-            ensure!(
-                keys.len() <= 4,
-                "Single-key Snap Tap exceeds current source bounds"
-            );
-            let mut payload = vec![*slot, keys.len() as u8, u8::from(*enabled)];
-            for key in keys {
-                payload.extend_from_slice(key);
-            }
-            payload.resize(11, 0);
-            ([11, 2, 44], payload)
-        }
+        } => (
+            crate::onboard_assignment::SET_SINGLE_KEY_SNAP_TAP,
+            crate::onboard_assignment::single_key_snap_tap_payload(*slot, *enabled, keys)?,
+        ),
         Setting::DualKeypressPriority {
             slot,
             enabled,

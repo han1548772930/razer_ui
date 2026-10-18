@@ -1,6 +1,7 @@
 //! Current host 4.0.827 mapping_engine recorder callbacks. Worker process only.
 //! Registration owns observation callbacks; no macro/configuration is written.
 use super::{Callback2, CallbackReply, NativeRuntime, callback2, callback3, copy_string};
+use razer_ipc::macro_recording::{ActionReply, RestoreReceipt, SuspensionReceipt};
 use serde_json::{Value, json};
 use std::{
     ffi::c_char,
@@ -32,6 +33,15 @@ fn resume_operations(
             "mapping: {mapping:#}; global shortcut: {shortcuts:#}"
         )),
     }
+}
+
+fn confirm_mapping_restoration((mapping, _): (CallbackReply, CallbackReply)) -> anyhow::Result<()> {
+    anyhow::ensure!(
+        mapping.success,
+        "enableMapping did not confirm restoration: {}",
+        mapping.reason
+    );
+    Ok(())
 }
 
 static EVENTS: OnceLock<SyncSender<Value>> = OnceLock::new();
@@ -126,11 +136,20 @@ impl NativeRuntime {
             self.call(|| unsafe { disable(callback2) })?;
             self.macro_recorder.mappings_suspended = true;
         }
-        Ok(json!({"suspended":true}))
+        Ok(serde_json::to_value(SuspensionReceipt::new(true))?)
     }
 
     pub(super) fn resume_macro_mappings(&mut self) -> anyhow::Result<Value> {
-        let (mapping, shortcuts) = resume_operations(|name| {
+        let (mapping, shortcuts) = self.resume_macro_mapping_receipts()?;
+        Ok(serde_json::to_value(RestoreReceipt::new(
+            self.macro_recorder.mappings_suspended,
+            ActionReply::new(mapping.success, mapping.reason),
+            ActionReply::new(shortcuts.success, shortcuts.reason),
+        ))?)
+    }
+
+    fn resume_macro_mapping_receipts(&mut self) -> anyhow::Result<(CallbackReply, CallbackReply)> {
+        resume_operations(|name| {
             anyhow::ensure!(
                 !self.poisoned,
                 "Recorder callback owner is unavailable during restoration"
@@ -147,10 +166,7 @@ impl NativeRuntime {
                 }
             }
             Ok(reply)
-        })?;
-        Ok(json!({"suspended":self.macro_recorder.mappings_suspended,
-            "mapping":{"result":mapping.success,"reason":mapping.reason},
-            "global_shortcuts":{"result":shortcuts.success,"reason":shortcuts.reason}}))
+        })
     }
 
     pub(super) fn start_macro_recording(&mut self) -> anyhow::Result<Value> {
@@ -323,8 +339,15 @@ impl NativeRuntime {
         if self.macro_recorder.mappings_suspended {
             if self.poisoned {
                 errors.push("录制连接已失效，无法确认临时映射状态是否恢复".into());
-            } else if let Err(error) = self.resume_macro_mappings() {
-                errors.push(format!("恢复录制前映射状态失败：{error:#}"));
+            } else {
+                // Source false is response data during ordinary resume. An
+                // owned shutdown must still report unconfirmed restoration.
+                if let Err(error) = self
+                    .resume_macro_mapping_receipts()
+                    .and_then(confirm_mapping_restoration)
+                {
+                    errors.push(format!("恢复录制前映射状态失败：{error:#}"));
+                }
             }
         }
         if self.macro_recorder.shortcuts_suspended {
@@ -394,5 +417,76 @@ mod shortcut_resume_tests {
         assert!(!mapping.success);
         assert!(!shortcuts.success);
         assert_eq!(shortcuts.reason, "hotkey was not disabled");
+    }
+
+    #[test]
+    fn recorder_cleanup_rejects_a_second_false_mapping_restore_without_skipping_shortcuts() {
+        let mut calls = Vec::new();
+        let mut restore = || {
+            resume_operations(|name| {
+                calls.push(name);
+                Ok(CallbackReply {
+                    success: name == "enableGlobalShortcut",
+                    reason: if name == "enableMapping" {
+                        "mapping service rejected restore".into()
+                    } else {
+                        String::new()
+                    },
+                    value: None,
+                })
+            })
+        };
+        let (mapping, shortcuts) = restore().unwrap();
+        assert!(!mapping.success);
+        assert!(shortcuts.success);
+        let cleanup = restore().and_then(confirm_mapping_restoration);
+        assert!(
+            cleanup
+                .unwrap_err()
+                .to_string()
+                .contains("mapping service rejected restore")
+        );
+        assert_eq!(
+            calls,
+            [
+                "enableMapping",
+                "enableGlobalShortcut",
+                "enableMapping",
+                "enableGlobalShortcut"
+            ]
+        );
+    }
+
+    #[test]
+    fn recorder_cleanup_accepts_confirmed_restore_after_a_source_false() {
+        let mut attempt = 0;
+        let mut calls = Vec::new();
+        let mut restore = || {
+            attempt += 1;
+            resume_operations(|name| {
+                calls.push(name);
+                Ok(CallbackReply {
+                    success: attempt == 2 || name == "enableGlobalShortcut",
+                    reason: if attempt == 1 && name == "enableMapping" {
+                        "temporary mapping restore failure".into()
+                    } else {
+                        String::new()
+                    },
+                    value: None,
+                })
+            })
+        };
+        let (mapping, _) = restore().unwrap();
+        assert!(!mapping.success);
+        restore().and_then(confirm_mapping_restoration).unwrap();
+        assert_eq!(
+            calls,
+            [
+                "enableMapping",
+                "enableGlobalShortcut",
+                "enableMapping",
+                "enableGlobalShortcut"
+            ]
+        );
     }
 }

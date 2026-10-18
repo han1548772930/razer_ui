@@ -614,16 +614,16 @@ impl Render for DeviceDialog {
             // Current sl.defaultProps.backdrop=false. Keep the native dismissal
             // hit region transparent instead of inventing a darkened surface.
             .backdrop(div().absolute().inset_0())
-            .popup(
-                razer_assets::resource_scope(div()
+            .popup(razer_assets::resource_scope(
+                div()
                     .absolute()
                     .inset_0()
                     .flex()
                     .items_start()
                     .justify_center()
                     .pt(surface::css(113.))
-                    .child(body)),
-            )
+                    .child(body),
+            ))
             .into_any_element()
     }
 }

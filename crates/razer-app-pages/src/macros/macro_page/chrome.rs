@@ -559,16 +559,18 @@ impl MacroPage {
                 }
                 cx.notify();
             }))
-            .content(move |_, window, cx| razer_assets::resource_scope({
-                owner
-                    .update(cx, |this, cx| match menu {
-                        Menu::Selector => this.selector_menu(window, cx),
-                        Menu::More => this.more_menu(window, cx),
-                        Menu::Sort => this.sort_options(cx),
-                        Menu::Tree(id) => this.tree_menu(id, window, cx),
-                    })
-                    .unwrap_or_else(|_| div().into_any_element())
-            }))
+            .content(move |_, window, cx| {
+                razer_assets::resource_scope({
+                    owner
+                        .update(cx, |this, cx| match menu {
+                            Menu::Selector => this.selector_menu(window, cx),
+                            Menu::More => this.more_menu(window, cx),
+                            Menu::Sort => this.sort_options(cx),
+                            Menu::Tree(id) => this.tree_menu(id, window, cx),
+                        })
+                        .unwrap_or_else(|_| div().into_any_element())
+                })
+            })
             .into_any_element()
     }
 

@@ -54,6 +54,8 @@ mod oled_presets;
 mod oled_system_editor;
 #[path = "source_controls/receiver.rs"]
 mod receiver;
+#[path = "source_controls/hyperpolling_runtime.rs"]
+mod hyperpolling_runtime;
 #[path = "source_controls/receiver_brightness_ui.rs"]
 mod receiver_brightness_ui;
 #[path = "source_controls/receiver_lighting_page.rs"]
@@ -68,6 +70,7 @@ pub use receiver::{
     ReceiverProgress,
 };
 pub use receiver_brightness_ui::{ReceiverBrightnessReadRequested, ReceiverBrightnessRequested};
+pub use hyperpolling_runtime::{HyperpollingIndicatorRequested, HyperpollingOrigin};
 pub use ripsaw_settings::RipsawMonitoringRequested;
 
 #[derive(Deserialize)]
@@ -290,6 +293,7 @@ pub struct SourceControls {
     camera_page_initialized: bool,
     camera_firmware: Option<String>,
     camera_exposure: camera_exposure_state::State,
+    oled_imports: Rc<oled_presets::ImportScope>,
 }
 /// 原版 `white box` 的 onMouseDown 状态：光标相对白框四条边的距离。
 #[derive(Clone)]
@@ -346,6 +350,7 @@ impl SourceControls {
             camera_page_initialized: false,
             camera_firmware: None,
             camera_exposure: Default::default(),
+            oled_imports: Rc::new(Default::default()),
         };
         for control in spec
             .pages
@@ -605,6 +610,9 @@ impl SourceControls {
         }
     }
     pub fn set_connection(&mut self, is_ble: bool, cx: &mut Context<Self>) {
+        if self.is_ble != is_ble {
+            self.oled_imports.cancel();
+        }
         self.is_ble = is_ble;
         cx.notify();
     }
@@ -946,6 +954,9 @@ impl SourceControls {
         }
         self.sync(window, cx);
         cx.emit(SourceControlsChanged);
+        if self.spec.product_id == 179 && key == "179:indicator-mode" {
+            self.request_hyperpolling_indicator(&value, cx);
+        }
         if matches!(self.spec.product_id, 164 | 241)
             && matches!(
                 control.path.as_str(),
@@ -1251,6 +1262,7 @@ impl SourceControls {
     pub fn set_page(&mut self, page: &str, window: &mut Window, cx: &mut Context<Self>) {
         let changed = self.page != page;
         if self.page != page {
+            self.dismiss_oled_editor(window, cx);
             self.camera_footer.reset.take();
             self.listening = None;
             self.camera_runtime.invalidate();

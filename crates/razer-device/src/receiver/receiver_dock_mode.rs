@@ -54,6 +54,7 @@ mod tests {
     use std::sync::Mutex;
     struct Mock {
         sent: Mutex<Vec<Vec<u8>>>,
+        get_ids: Mutex<Vec<u8>>,
     }
     impl FeatureTransport for Mock {
         fn send_feature(&self, bytes: &[u8]) -> anyhow::Result<()> {
@@ -61,6 +62,7 @@ mod tests {
             Ok(())
         }
         fn get_feature(&self, bytes: &mut [u8]) -> anyhow::Result<usize> {
+            self.get_ids.lock().unwrap().push(bytes[0]);
             let sent = self.sent.lock().unwrap().last().unwrap().clone();
             bytes.fill(0);
             bytes[1] = 2;
@@ -74,13 +76,18 @@ mod tests {
     }
     #[test]
     fn mode_uses_primary_linker_command_and_status_without_synthetic_version() {
-        let mock = Mock {
-            sent: Mutex::new(Vec::new()),
-        };
-        assert!(read(&mock, 241, 224, || Ok(())).unwrap().is_empty());
-        let sent = mock.sent.lock().unwrap();
-        assert_eq!(sent[0][2], 224);
-        assert_eq!(sent[0][6..9], [4, 0, 147]);
+        for (product_id, report_id) in [(164, 0), (241, 3)] {
+            let mock = Mock {
+                sent: Mutex::new(Vec::new()),
+                get_ids: Mutex::new(Vec::new()),
+            };
+            assert!(read(&mock, product_id, 224, || Ok(())).unwrap().is_empty());
+            let sent = mock.sent.lock().unwrap();
+            assert_eq!(sent[0][0], report_id);
+            assert_eq!(mock.get_ids.lock().unwrap().as_slice(), [report_id]);
+            assert_eq!(sent[0][2], 224);
+            assert_eq!(sent[0][6..9], [4, 0, 147]);
+        }
         assert!(capability(756).is_err());
     }
 }

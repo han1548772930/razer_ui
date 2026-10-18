@@ -30,12 +30,18 @@ struct Pending {
     identity: String,
     request: ControllerChromaRequested,
     window: AnyWindowHandle,
+    revision: u64,
 }
 struct Watcher {
     workspace: WeakEntity<ProductWorkspace>,
     identity: String,
     guard: Arc<AtomicBool>,
     window: AnyWindowHandle,
+}
+struct DynamicLightingWatcher {
+    owner: Watcher,
+    pending: Vec<ControllerChromaRequested>,
+    last_result: Option<Result<Option<bool>, String>>,
 }
 #[derive(Default)]
 pub(super) struct State {
@@ -44,6 +50,8 @@ pub(super) struct State {
     task: Option<Task<()>>,
     watch: Option<Task<()>>,
     watchers: BTreeMap<String, Watcher>,
+    dynamic_watch: Option<Task<()>>,
+    dynamic_watchers: BTreeMap<String, DynamicLightingWatcher>,
     last_observation: Option<Value>,
     revision: u64,
     watch_guard: Arc<AtomicBool>,
@@ -54,6 +62,11 @@ pub(super) struct ControllerChromaSave {
     identity: String,
     profile_id: String,
     request: ControllerChromaRequested,
+}
+impl ControllerChromaSave {
+    pub(super) fn owner(&self) -> (&str, WeakEntity<ProductWorkspace>) {
+        (&self.identity, self.workspace.downgrade())
+    }
 }
 
 struct Readback {
@@ -185,14 +198,21 @@ impl AppShell {
             });
             return;
         }
+        if matches!(
+            request.command(),
+            ControllerChromaCommand::ObserveDynamicLighting
+        ) {
+            self.request_controller_dynamic_lighting(workspace, request, window, cx);
+            return;
+        }
         self.controller_chroma.revision = self.controller_chroma.revision.wrapping_add(1);
         self.controller_chroma
             .watch_guard
             .store(false, Ordering::Release);
         let navigation = match request.command() {
             ControllerChromaCommand::LaunchStudio => Some(self.try_open_chroma_studio(cx)),
-            ControllerChromaCommand::OpenSettings => {
-                Some(self.open_product_settings(false, window, cx))
+            ControllerChromaCommand::OpenSettings { chroma_app } => {
+                Some(self.open_product_settings(*chroma_app, window, cx))
             }
             ControllerChromaCommand::ManageApps => Some(self.manage_product_chroma_apps(false, cx)),
             _ => None,
@@ -212,24 +232,181 @@ impl AppShell {
             return;
         }
         let identity = workspace.read(cx).identity(cx);
-        self.controller_chroma.watchers.insert(
-            identity.clone(),
-            Watcher {
-                workspace: workspace.downgrade(),
-                identity: identity.clone(),
-                guard: request.guard(),
-                window: window.window_handle(),
-            },
-        );
-        self.start_controller_chroma_watch(cx);
+        if matches!(request.command(), ControllerChromaCommand::Observe) {
+            self.controller_chroma.watchers.insert(
+                identity.clone(),
+                Watcher {
+                    workspace: workspace.downgrade(),
+                    identity: identity.clone(),
+                    guard: request.guard(),
+                    window: window.window_handle(),
+                },
+            );
+            self.start_controller_chroma_watch(cx);
+        }
         self.controller_chroma.queue.push_back(Pending {
             workspace,
             identity,
             request: request.clone(),
             window: window.window_handle(),
+            revision: self.controller_chroma.revision,
         });
         self.controller_lighting_workers += 1;
         self.start_controller_chroma_request(cx);
+    }
+
+    fn request_controller_dynamic_lighting(
+        &mut self,
+        workspace: Entity<ProductWorkspace>,
+        request: &ControllerChromaRequested,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let identity = workspace.read(cx).identity(cx);
+        let guard = request.guard();
+        if let Some(watcher) = self.controller_chroma.dynamic_watchers.get_mut(&identity)
+            && Arc::ptr_eq(&watcher.owner.guard, &guard)
+        {
+            watcher.pending.push(request.clone());
+            watcher.owner.window = window.window_handle();
+        } else {
+            self.controller_chroma.dynamic_watchers.insert(
+                identity.clone(),
+                DynamicLightingWatcher {
+                    owner: Watcher {
+                        workspace: workspace.downgrade(),
+                        identity,
+                        guard,
+                        window: window.window_handle(),
+                    },
+                    pending: vec![request.clone()],
+                    last_result: None,
+                },
+            );
+        }
+        self.start_controller_dynamic_lighting_watch(cx);
+    }
+
+    fn start_controller_dynamic_lighting_watch(&mut self, cx: &mut Context<Self>) {
+        if self.controller_chroma.dynamic_watch.is_some() {
+            return;
+        }
+        self.controller_chroma.dynamic_watch = Some(cx.spawn(async move |this, cx| {
+            loop {
+                let active = this.update(cx, |this, cx| {
+                    this.controller_chroma
+                        .dynamic_watchers
+                        .retain(|_, watcher| {
+                            watcher.owner.guard.load(Ordering::Acquire)
+                                && watcher.owner.workspace.upgrade().is_some_and(|workspace| {
+                                    this.devices.contains(&workspace)
+                                        && workspace.read(cx).identity(cx) == watcher.owner.identity
+                                })
+                        });
+                    if this.close_requested || this.controller_chroma.dynamic_watchers.is_empty() {
+                        this.controller_chroma.dynamic_watchers.clear();
+                        return None;
+                    }
+                    this.controller_lighting_workers += 1;
+                    Some(
+                        this.controller_chroma
+                            .dynamic_watchers
+                            .iter()
+                            .map(|(identity, watcher)| {
+                                (identity.clone(), watcher.owner.guard.clone())
+                            })
+                            .collect::<Vec<_>>(),
+                    )
+                });
+                let Ok(Some(owners)) = active else {
+                    break;
+                };
+                let result = cx
+                    .background_spawn(async {
+                        chroma_profiles::load_dynamic_lighting(&razer_storage::source_local::path())
+                            .map_err(|error| format!("{error:#}"))
+                    })
+                    .await;
+                if this
+                    .update(cx, |this, cx| {
+                        this.controller_lighting_workers =
+                            this.controller_lighting_workers.saturating_sub(1);
+                        let mut deliveries = Vec::new();
+                        for (identity, guard) in owners {
+                            let Some(watcher) =
+                                this.controller_chroma.dynamic_watchers.get_mut(&identity)
+                            else {
+                                continue;
+                            };
+                            if !guard.load(Ordering::Acquire)
+                                || !Arc::ptr_eq(&guard, &watcher.owner.guard)
+                            {
+                                continue;
+                            }
+                            let Some(workspace) = watcher.owner.workspace.upgrade() else {
+                                continue;
+                            };
+                            if !this.devices.contains(&workspace)
+                                || workspace.read(cx).identity(cx) != watcher.owner.identity
+                            {
+                                continue;
+                            }
+                            let changed = watcher.last_result.as_ref() != Some(&result);
+                            watcher.last_result = Some(result.clone());
+                            deliveries.push((
+                                workspace,
+                                watcher.owner.window,
+                                std::mem::take(&mut watcher.pending),
+                                changed,
+                            ));
+                        }
+                        for (workspace, handle, pending, changed) in deliveries {
+                            if changed {
+                                match &result {
+                                    Ok(Some(enabled)) => {
+                                        let observation = ControllerChromaObservation::new()
+                                            .with_dynamic_lighting(*enabled);
+                                        let _ = handle.update(cx, |_, window, cx| {
+                                            workspace.update(cx, |workspace, cx| {
+                                                workspace.observe_controller_chroma(
+                                                    observation,
+                                                    window,
+                                                    cx,
+                                                )
+                                            })
+                                        });
+                                    }
+                                    Err(error) => {
+                                        this.status = format!("动态灯光状态未读取：{error}");
+                                        cx.notify();
+                                    }
+                                    Ok(None) => {}
+                                }
+                            }
+                            for request in pending {
+                                this.finish_controller_chroma(
+                                    &workspace,
+                                    &request,
+                                    result.clone().map(|_| None),
+                                    handle,
+                                    cx,
+                                );
+                            }
+                        }
+                        if this.close_requested && this.save_task.is_none() {
+                            this.continue_save_queue(true, cx);
+                        }
+                    })
+                    .is_err()
+                {
+                    return;
+                }
+                cx.background_executor()
+                    .timer(Duration::from_millis(500))
+                    .await;
+            }
+            let _ = this.update(cx, |this, _| this.controller_chroma.dynamic_watch = None);
+        }));
     }
 
     fn start_controller_chroma_request(&mut self, cx: &mut Context<Self>) {
@@ -277,10 +454,14 @@ impl AppShell {
                 if current {
                     let completion = match result {
                         Ok((readback,sync,failures)) => {
-                            let observation = this.apply_controller_chroma_readback(&readback,cx);
+                            let observation = if pending.revision == this.controller_chroma.revision {
+                                this.apply_controller_chroma_readback(&readback,cx).map(Some)
+                            } else {
+                                Ok(None)
+                            };
                             let delivery = sync.map(|sync| this.broadcast_controller_sync_quick(&sync,&pending.workspace,cx)).transpose();
                             match (observation,delivery,failures.is_empty()) {
-                                (Ok(observation),Ok(_),true) => Ok(Some(observation)),
+                                (Ok(observation),Ok(_),true) => Ok(observation),
                                 (Err(error),_,_) | (_,Err(error),_) => Err(format!("{error:#}")),
                                 (_,_,false) => Err(format!("Chroma selection was saved locally; native lighting transition failed: {}", failures.join("; "))),
                             }
@@ -577,16 +758,17 @@ impl AppShell {
                 .collect(),
             cx,
         );
-        self.pending_saves.push_back(PreparedSave {
-            window: window.window_handle(),
+        self.pending_saves.push_back(self.prepare_save(
+            window.window_handle(),
             file,
-            product: Some(ProductSave::ControllerChroma(ControllerChromaSave {
+            Some(ProductSave::ControllerChroma(ControllerChromaSave {
                 workspace,
                 identity,
                 profile_id,
                 request,
             })),
-        });
+            cx,
+        ));
         self.start_pending_save(cx);
     }
 
@@ -632,9 +814,6 @@ impl AppShell {
             .as_mut()
             .context("Chroma source settings are missing")?;
         rebase_profile_settings(source, chroma.request.command())?;
-        if let ControllerChromaCommand::CustomColors(colors) = chroma.request.command() {
-            save.file.custom_colors = *colors;
-        }
         Ok(())
     }
 
@@ -645,13 +824,17 @@ impl AppShell {
         window: AnyWindowHandle,
         cx: &mut Context<Self>,
     ) {
-        if succeeded {
+        let current = self.devices.contains(&save.workspace)
+            && save.workspace.read(cx).identity(cx) == save.identity;
+        if succeeded && current {
             self.refresh_controller_power_configuration(cx);
         }
-        let result = if succeeded {
+        let result = if !succeeded {
+            Err("Chroma local profile persistence did not complete".into())
+        } else if current {
             Ok(None)
         } else {
-            Err("Chroma local profile persistence did not complete".into())
+            Err("Chroma owner changed after local persistence".into())
         };
         self.finish_controller_chroma(&save.workspace, &save.request, result, window, cx);
     }
@@ -676,35 +859,11 @@ fn rebase_profile_settings(
             policy.insert("idleMinutes".into(), setting.idle_minutes().into());
         }
         ControllerChromaCommand::CustomColors(colors) => {
-            #[derive(Deserialize, Serialize)]
-            struct Color {
-                color: String,
-                #[serde(flatten)]
-                fields: Map<String, Value>,
-            }
             let quick = profile
                 .get_mut("quickEffects")
                 .and_then(Value::as_object_mut)
                 .context("Quick-effect settings are missing")?;
-            let old: Vec<Color> = quick
-                .get("customColors")
-                .map(|value| serde_json::from_value(value.clone()))
-                .transpose()?
-                .unwrap_or_default();
-            let next = colors
-                .iter()
-                .flatten()
-                .map(|rgb| {
-                    let color = format!("#{:02x}{:02x}{:02x}", rgb[0], rgb[1], rgb[2]);
-                    let fields = old
-                        .iter()
-                        .find(|old| old.color.eq_ignore_ascii_case(&color))
-                        .map(|old| old.fields.clone())
-                        .unwrap_or_default();
-                    Color { color, fields }
-                })
-                .collect::<Vec<_>>();
-            quick.insert("customColors".into(), serde_json::to_value(next)?);
+            quick.insert("customColors".into(), serde_json::to_value(colors)?);
         }
         _ => anyhow::bail!("Chroma command is not an active-profile persistence operation"),
     }
@@ -746,8 +905,15 @@ mod tests {
         .unwrap();
         assert_eq!(source["profile"]["switchOffLighting"]["isShutdown"], true);
         assert_eq!(source["profile"]["switchOffLighting"]["sourceExtension"], 7);
-        let mut colors = [None; 16];
-        colors[0] = Some([17, 34, 51]);
+        let mut colors: razer_model::preferences::ProfileCustomColors =
+            serde_json::from_value(source["profile"]["quickEffects"]["customColors"].clone())
+                .unwrap();
+        colors
+            .apply_edit(razer_model::preferences::CustomColorEdit::Set {
+                slot: 0,
+                color: [17, 34, 51],
+            })
+            .unwrap();
         rebase_profile_settings(&mut source, &ControllerChromaCommand::CustomColors(colors))
             .unwrap();
         assert_eq!(

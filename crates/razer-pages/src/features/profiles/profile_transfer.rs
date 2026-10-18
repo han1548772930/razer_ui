@@ -1,305 +1,44 @@
-//! Explicitly local JSON, not Synapse's base64/hash envelope or service export.
+//! Local profile transfer dialogs; codecs and disk I/O have lower-layer owners.
 use super::*;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
+use razer_model::profile_transfer::{encode_profile, import_name, valid_name};
+use razer_storage::file_transfer::{Operation, Transfer};
+use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
-const FORMAT: &str = "razer-ui-profile";
-const VERSION: u32 = 1;
-const MAX_BYTES: usize = 2 * 1024 * 1024;
-
-#[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct ProfileDocument {
-    format: String,
-    version: u32,
-    product_id: u32,
-    layout_id: u32,
-    profile: ProfileContent,
-}
-#[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct ProfileContent {
-    name: String,
-    settings: Value,
-}
-
-fn valid_name(name: &str) -> bool {
-    !name.trim().is_empty()
-        && name.trim() == name
-        && name.encode_utf16().count() <= 32
-        && !name.chars().any(char::is_control)
-}
-
-fn import_name(profiles: &[Profile], original: &str) -> String {
-    if !profiles
-        .iter()
-        .any(|profile| profile.name.eq_ignore_ascii_case(original))
-    {
-        return original.into();
+/// The modal owns cancellation independently of the content entity borrow.
+/// Closing from a content callback never reenters that borrowed entity.
+#[derive(Clone, Default)]
+pub(super) struct DialogTransfer(Rc<RefCell<Option<(Transfer, bool)>>>);
+impl DialogTransfer {
+    fn begin(&self) -> Result<(Transfer, Operation), String> {
+        self.cancel();
+        let request = Transfer::new();
+        let operation = request.accept()?;
+        *self.0.borrow_mut() = Some((request.clone(), true));
+        Ok((request, operation))
     }
-    (1..)
-        .map(|index| {
-            let suffix = format!(" ({index})");
-            let mut base = original.to_string();
-            while base.encode_utf16().count() + suffix.len() > 32 {
-                base.pop();
-            }
-            format!("{}{suffix}", base.trim_end())
-        })
-        .find(|name| {
-            !profiles
-                .iter()
-                .any(|profile| profile.name.eq_ignore_ascii_case(name))
-        })
-        .expect("an unused import name")
-}
-
-fn validate_settings(settings: &ProfileSettings, pid: u32) -> Result<(), String> {
-    let mut normalized = settings.clone();
-    normalized.normalize(pid);
-    if normalized != *settings {
-        return Err("配置包含超出范围或不完整的设置。".into());
+    fn is_current(&self, request: &Transfer) -> bool {
+        self.0
+            .borrow()
+            .as_ref()
+            .is_some_and(|(current, _)| current.is_same(request))
     }
-    if ![125, 250, 500, 1000, 2000, 4000, 8000].contains(&settings.polling) {
-        return Err("配置包含无效的轮询率。".into());
+    fn accepts_result(&self, request: &Transfer) -> bool {
+        self.0
+            .borrow()
+            .as_ref()
+            .is_some_and(|(current, valid)| *valid && current.is_same(request))
     }
-    for bindings in [&settings.bindings, &settings.hypershift_bindings] {
-        if bindings.len() > 512
-            || bindings.iter().any(|(key, value)| {
-                key.is_empty()
-                    || key.len() > 128
-                    || key.chars().any(char::is_control)
-                    || value.len() > 65536
-            })
-        {
-            return Err("配置中的按键映射超出限制。".into());
+    fn finish(&self, request: &Transfer) {
+        if self.is_current(request) {
+            self.0.borrow_mut().take();
         }
     }
-    let mut paths = std::collections::BTreeSet::new();
-    if settings.linked_games.len() > 128
-        || settings.linked_games.iter().any(|game| {
-            !linked_games::valid_game(game)
-                || !paths.insert(linked_games::executable_key(&game.executable))
-        })
-    {
-        return Err("配置包含无效或重复的关联程序。".into());
-    }
-    if [&settings.audio, &settings.mic]
-        .iter()
-        .any(|eq| eq.bands.len() > 64 || eq.custom.len() > 64)
-    {
-        return Err("配置中的均衡器频段数量超出限制。".into());
-    }
-    let keyboard = &settings.keyboard;
-    let pairs = keyboard.snap_key_pairs();
-    let mut keys = std::collections::BTreeSet::new();
-    if pairs.is_empty()
-        || pairs.len() > 4
-        || keyboard.snap_keys != pairs[0]
-        || pairs.iter().flatten().any(|key| {
-            crate::features::settings::canonical_snap_key(key).as_ref() != Some(key)
-                || !keys.insert(key)
-        })
-    {
-        return Err("配置包含无效或重复的 Snap Tap 按键。".into());
-    }
-    let defaults = crate::features::settings::Keyboard::default();
-    let mut modes = std::collections::BTreeSet::new();
-    if keyboard.dial_modes.len() > defaults.dial_modes.len() + 100
-        || !keyboard.dial_selection_valid()
-        || defaults.dial_modes.iter().any(|default| {
-            !keyboard
-                .dial_modes
-                .iter()
-                .any(|mode| !mode.is_custom && mode.uid == default.uid)
-        })
-        || keyboard.dial_modes.iter().any(|mode| {
-            mode.uid.is_empty()
-                || mode.uid.len() > 128
-                || !modes.insert(&mode.uid)
-                || mode.uid.chars().any(char::is_control)
-                || !mode.is_custom
-                    && !defaults
-                        .dial_modes
-                        .iter()
-                        .any(|default| default.uid == mode.uid)
-                || mode.is_custom
-                    && (mode.name.trim().is_empty()
-                        || mode.name.encode_utf16().count() > 40
-                        || mode.name.chars().any(char::is_control))
-                || mode.mappings.iter().any(|(input, value)| {
-                    !["ScrollLeft", "ScrollRight"].contains(&input.as_str()) || value.len() > 65536
-                })
-        })
-    {
-        return Err("配置包含无效的拨轮模式或映射。".into());
-    }
-    Ok(())
-}
-
-// Reject duplicate JSON keys at every depth instead of silently accepting the
-// last occurrence. The ordinary serde_json recursion limit also remains active.
-struct UniqueValue(Value);
-impl<'de> Deserialize<'de> for UniqueValue {
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        struct Visitor;
-        impl<'de> serde::de::Visitor<'de> for Visitor {
-            type Value = Value;
-            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                f.write_str("JSON without duplicate keys")
-            }
-            fn visit_bool<E: serde::de::Error>(self, value: bool) -> Result<Value, E> {
-                Ok(value.into())
-            }
-            fn visit_i64<E: serde::de::Error>(self, value: i64) -> Result<Value, E> {
-                Ok(value.into())
-            }
-            fn visit_u64<E: serde::de::Error>(self, value: u64) -> Result<Value, E> {
-                Ok(value.into())
-            }
-            fn visit_f64<E: serde::de::Error>(self, value: f64) -> Result<Value, E> {
-                serde_json::Number::from_f64(value)
-                    .map(Value::Number)
-                    .ok_or_else(|| E::custom("non-finite number"))
-            }
-            fn visit_str<E: serde::de::Error>(self, value: &str) -> Result<Value, E> {
-                Ok(value.into())
-            }
-            fn visit_string<E: serde::de::Error>(self, value: String) -> Result<Value, E> {
-                Ok(value.into())
-            }
-            fn visit_unit<E: serde::de::Error>(self) -> Result<Value, E> {
-                Ok(Value::Null)
-            }
-            fn visit_none<E: serde::de::Error>(self) -> Result<Value, E> {
-                Ok(Value::Null)
-            }
-            fn visit_seq<A: serde::de::SeqAccess<'de>>(
-                self,
-                mut seq: A,
-            ) -> Result<Value, A::Error> {
-                let mut values = Vec::new();
-                while let Some(UniqueValue(value)) = seq.next_element()? {
-                    values.push(value);
-                }
-                Ok(Value::Array(values))
-            }
-            fn visit_map<A: serde::de::MapAccess<'de>>(
-                self,
-                mut map: A,
-            ) -> Result<Value, A::Error> {
-                let mut values = serde_json::Map::new();
-                while let Some((key, UniqueValue(value))) =
-                    map.next_entry::<String, UniqueValue>()?
-                {
-                    if values.insert(key, value).is_some() {
-                        return Err(serde::de::Error::custom("duplicate JSON key"));
-                    }
-                }
-                Ok(Value::Object(values))
-            }
+    pub(super) fn cancel(&self) {
+        if let Some((request, valid)) = self.0.borrow_mut().as_mut() {
+            *valid = false;
+            request.cancel();
         }
-        deserializer.deserialize_any(Visitor).map(Self)
     }
-}
-
-fn decode_profile(bytes: &[u8], pid: u32, layout: u32) -> Result<Profile, String> {
-    if bytes.len() > MAX_BYTES {
-        return Err("配置文件不得大于 2 MiB。".into());
-    }
-    let UniqueValue(value) =
-        serde_json::from_slice(bytes).map_err(|error| format!("无法读取配置 JSON：{error}"))?;
-    let document: ProfileDocument = serde_json::from_value(value)
-        .map_err(|_| "请选择本项目导出的 .razer-ui-profile.json 文件。".to_string())?;
-    if document.format != FORMAT {
-        return Err("此文件不是本项目的配置格式。".into());
-    }
-    if document.version != VERSION {
-        return Err(format!("不支持配置格式版本 {}。", document.version));
-    }
-    if document.product_id != pid || document.layout_id != layout {
-        return Err("此配置的设备型号或键盘布局与当前设备不符。".into());
-    }
-    if !valid_name(&document.profile.name) {
-        return Err("配置名称须为 1–32 个字符，且不能包含控制字符。".into());
-    }
-    let settings: ProfileSettings = serde_json::from_value(document.profile.settings.clone())
-        .map_err(|error| format!("配置设置无效：{error}"))?;
-    // The store accepts older local settings with defaults. The transfer format
-    // is stricter: compare to the current serializer to reject unknown/missing
-    // fields recursively without maintaining a second schema or dropping data.
-    if serde_json::to_value(&settings).map_err(|error| error.to_string())?
-        != document.profile.settings
-    {
-        return Err("配置设置包含未知、缺失或不兼容的字段。".into());
-    }
-    validate_settings(&settings, pid)?;
-    Ok(Profile {
-        source_settings: None,
-        id: String::new(),
-        guid: String::new(),
-        name: document.profile.name,
-        dpi_stages: None,
-        settings: Some(settings),
-    })
-}
-
-fn encode_profile(device: &Device, profile: &Profile) -> Result<Vec<u8>, String> {
-    if !valid_name(&profile.name) {
-        return Err("请先将配置文件重命名为有效名称。".into());
-    }
-    let settings = profile.settings.as_ref().ok_or("配置设置尚未加载。")?;
-    validate_settings(settings, device.product_id)?;
-    let document = ProfileDocument {
-        format: FORMAT.into(),
-        version: VERSION,
-        product_id: device.product_id,
-        layout_id: device.layout_id,
-        profile: ProfileContent {
-            name: profile.name.clone(),
-            settings: serde_json::to_value(settings).map_err(|error| error.to_string())?,
-        },
-    };
-    let bytes = serde_json::to_vec_pretty(&document).map_err(|error| error.to_string())?;
-    if bytes.len() > MAX_BYTES {
-        return Err("配置内容超出 2 MiB 导出限制。".into());
-    }
-    Ok(bytes)
-}
-
-fn read_profile(path: &Path, pid: u32, layout: u32) -> Result<Profile, String> {
-    let file = std::fs::File::open(path).map_err(|error| format!("无法打开配置文件：{error}"))?;
-    let metadata = file.metadata().map_err(|error| error.to_string())?;
-    if !metadata.is_file() || metadata.len() > MAX_BYTES as u64 {
-        return Err("请选择不大于 2 MiB 的配置文件。".into());
-    }
-    let mut bytes = Vec::new();
-    file.take(MAX_BYTES as u64 + 1)
-        .read_to_end(&mut bytes)
-        .map_err(|error| error.to_string())?;
-    decode_profile(&bytes, pid, layout)
-}
-
-fn write_profile(path: &Path, bytes: &[u8]) -> Result<(), String> {
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(path)
-        .map_err(|error| {
-            if error.kind() == std::io::ErrorKind::AlreadyExists {
-                "文件已存在，请选择新的文件名。".into()
-            } else {
-                format!("无法创建导出文件：{error}")
-            }
-        })?;
-    if let Err(error) = file.write_all(bytes).and_then(|_| file.sync_all()) {
-        drop(file);
-        let _ = std::fs::remove_file(path); // Only the newly created incomplete file.
-        return Err(format!("导出失败：{error}"));
-    }
-    Ok(())
 }
 
 struct ImportDialog {
@@ -311,12 +50,22 @@ struct ImportDialog {
     file: Option<String>,
     error: Option<String>,
     busy: bool,
+    transfer: DialogTransfer,
+    task: Option<Task<()>>,
 }
 impl ImportDialog {
     fn browse(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.busy {
             return;
         }
+        let (request, operation) = match self.transfer.begin() {
+            Ok(work) => work,
+            Err(error) => {
+                self.error = Some(error);
+                cx.notify();
+                return;
+            }
+        };
         self.busy = true;
         self.error = None;
         let picker = cx.prompt_for_paths(PathPromptOptions {
@@ -326,7 +75,7 @@ impl ImportDialog {
             prompt: Some("选择本地配置 JSON".into()),
         });
         let (pid, layout) = (self.pid, self.layout);
-        cx.spawn_in(window, async move |view, cx| {
+        self.task = Some(cx.spawn_in(window, async move |view, cx| {
             let result = match picker.await {
                 Ok(Ok(Some(paths))) => match paths.into_iter().next() {
                     Some(path) => {
@@ -334,7 +83,11 @@ impl ImportDialog {
                         Some((
                             label,
                             cx.background_executor()
-                                .spawn(async move { read_profile(&path, pid, layout) })
+                                .spawn(async move {
+                                    razer_storage::profile_transfer::read_local(
+                                        &operation, &path, pid, layout,
+                                    )
+                                })
                                 .await,
                         ))
                     }
@@ -344,6 +97,11 @@ impl ImportDialog {
                 _ => Some((String::new(), Err("无法打开文件选择窗口。".into()))),
             };
             _ = view.update_in(cx, |this, window, cx| {
+                if !this.transfer.is_current(&request) {
+                    return;
+                }
+                this.transfer.finish(&request);
+                this.task = None;
                 this.busy = false;
                 let Some(workspace) = this.target.current(cx) else {
                     this.loaded = None;
@@ -353,7 +111,7 @@ impl ImportDialog {
                 };
                 if let Some((file, result)) = result {
                     this.file = Some(file);
-                    match result {
+                    match request.check().and(result) {
                         Ok(profile) => {
                             let name =
                                 import_name(&workspace.read(cx).device.profiles, &profile.name);
@@ -370,8 +128,7 @@ impl ImportDialog {
                 }
                 cx.notify();
             });
-        })
-        .detach();
+        }));
         cx.notify();
     }
     fn import(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -404,6 +161,11 @@ impl ImportDialog {
         workspace.update(cx, |workspace, cx| {
             workspace.continue_with(Continue::ImportProfile(profile), window, cx)
         });
+    }
+}
+impl Drop for ImportDialog {
+    fn drop(&mut self) {
+        self.transfer.cancel();
     }
 }
 impl Render for ImportDialog {
@@ -500,23 +262,33 @@ struct ExportDialog {
     bytes: Vec<u8>,
     busy: bool,
     result: Option<Result<String, String>>,
+    transfer: DialogTransfer,
+    task: Option<Task<()>>,
 }
 impl ExportDialog {
     fn export(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.busy {
             return;
         }
+        let (request, operation) = match self.transfer.begin() {
+            Ok(work) => work,
+            Err(error) => {
+                self.result = Some(Err(error));
+                cx.notify();
+                return;
+            }
+        };
         self.busy = true;
         self.result = None;
-        let directory = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        let directory = PathBuf::from(".");
         let picker = cx.prompt_for_new_path(&directory, Some("profile.razer-ui-profile.json"));
-        cx.spawn_in(window, async move |view, cx| {
+        self.task = Some(cx.spawn_in(window, async move |view, cx| {
             let path = match picker.await {
                 Ok(Ok(path)) => Ok(path),
                 _ => Err("无法打开保存文件窗口。".to_string()),
             };
             let prepared = view.update_in(cx, |this, _, cx| {
-                if this.target.current(cx).is_none() {
+                if !this.transfer.is_current(&request) || this.target.current(cx).is_none() {
                     Err("当前配置文件已切换，请重新打开导出。".to_string())
                 } else {
                     path.map(|path| path.map(|path| (path, this.bytes.clone())))
@@ -526,7 +298,7 @@ impl ExportDialog {
                 Ok(Ok(Some((path, bytes)))) => Some(
                     cx.background_executor()
                         .spawn(async move {
-                            write_profile(&path, &bytes)
+                            razer_storage::profile_transfer::write_local(&operation, &path, &bytes)
                                 .map(|_| path.to_string_lossy().into_owned())
                         })
                         .await,
@@ -536,13 +308,28 @@ impl ExportDialog {
                 Err(_) => return,
             };
             _ = view.update_in(cx, |this, _, cx| {
+                if !this.transfer.is_current(&request) {
+                    return;
+                }
+                let accepts_result =
+                    this.transfer.accepts_result(&request) && this.target.current(cx).is_some();
+                this.transfer.finish(&request);
+                this.task = None;
                 this.busy = false;
-                this.result = result;
+                this.result = if accepts_result {
+                    result
+                } else {
+                    Some(Err("当前配置文件已切换，请重新打开导出。".into()))
+                };
                 cx.notify();
             });
-        })
-        .detach();
+        }));
         cx.notify();
+    }
+}
+impl Drop for ExportDialog {
+    fn drop(&mut self) {
+        self.transfer.cancel();
     }
 }
 impl Render for ExportDialog {
@@ -626,6 +413,7 @@ impl DeviceWorkspace {
         let target = ProfileTarget::new(self, cx);
         let (pid, layout) = (self.device.product_id, self.device.layout_id);
         let name = cx.new(|cx| InputState::new(window, cx));
+        let transfer = DialogTransfer::default();
         let view = cx.new(|_| ImportDialog {
             target,
             pid,
@@ -635,8 +423,16 @@ impl DeviceWorkspace {
             file: None,
             error: None,
             busy: false,
+            transfer: transfer.clone(),
+            task: None,
         });
-        self.show_profile_dialog("导入本地配置".to_string(), view.into(), window, cx);
+        self.show_profile_dialog(
+            "导入本地配置".to_string(),
+            view.into(),
+            Some(transfer),
+            window,
+            cx,
+        );
     }
     pub(in crate::features::workspace) fn import_local_profile(
         &mut self,
@@ -669,13 +465,22 @@ impl DeviceWorkspace {
         };
         let name = profile.name.clone();
         let target = ProfileTarget::new(self, cx);
+        let transfer = DialogTransfer::default();
         let view = cx.new(|_| ExportDialog {
             target,
             bytes,
             busy: false,
             result: None,
+            transfer: transfer.clone(),
+            task: None,
         });
-        self.show_profile_dialog(format!("导出本地配置 — {name}"), view.into(), window, cx);
+        self.show_profile_dialog(
+            format!("导出本地配置 — {name}"),
+            view.into(),
+            Some(transfer),
+            window,
+            cx,
+        );
     }
 }
 

@@ -138,7 +138,7 @@ pub(super) struct State {
     clear_hover: bool,
     focus: Option<FocusHandle>,
     capture: Option<Capture>,
-    native_capture: Option<super::super::mapping_key_capture_runtime::Owner>,
+    native_capture: Option<razer_service::mapping::key_capture::Session>,
     task: Option<Task<()>>,
     pressed: Vec<String>,
     held_modifiers: Vec<String>,
@@ -481,7 +481,7 @@ impl MouseProductWorkspace {
             return;
         };
         state.capture = Some(capture);
-        match super::super::mapping_key_capture_runtime::Owner::start() {
+        match razer_service::mapping::key_capture::Session::start() {
             Ok(owner) => state.native_capture = Some(owner),
             Err(error) => eprintln!("[mouse70-keyboard] Native capture startup: {error:#}"),
         }
@@ -526,11 +526,12 @@ impl MouseProductWorkspace {
                             view.consume_mouse_keyboard_70(&event, cx);
                         }
                         for reply in native {
-                            use super::super::mapping_key_capture_runtime::Reply;
+                            use razer_service::mapping::key_capture::Reply;
                             match reply {
+                                Reply::Mode(_) => {},
                                 Reply::Ready(receipt) => {
-                                    if receipt["unresolved_devices"].as_array().is_some_and(|items| !items.is_empty()) {
-                                        eprintln!("[mouse70-keyboard] Native capture unresolved endpoints: {}", receipt["unresolved_devices"]);
+                                    if !receipt.unresolved_devices().is_empty() {
+                                        eprintln!("[mouse70-keyboard] Native capture unresolved endpoints: {:?}", receipt.unresolved_devices());
                                     }
                                 }
                                 Reply::Failed(error) => {

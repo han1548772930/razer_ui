@@ -9,11 +9,52 @@ use crate::{
     },
 };
 use anyhow::{Context as _, Result, ensure};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 pub const AUDITED_PRODUCTS: &[u32] = &[170, 182, 204, 226, 45066];
 const METADATA_BYTES: usize = 250;
 const BLOCK_BYTES: usize = 64;
+
+/// An identity read from the device's ordered profile inventory. The source
+/// engine leaves its first inventory entry unnamed, regardless of its ID.
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct OnboardProfileAssociation {
+    pub profile_id: u8,
+    pub guid: String,
+}
+
+/// Current mouse engine inventory/name reads shared by scroll and DPI tasks.
+/// This entry exposes no mutation handle and does not expand the write gate.
+pub fn read_profile_associations(
+    device: &dyn FeatureTransport,
+    capability: &DeviceReadCapability,
+    transactions: &mut impl FnMut() -> Result<u8>,
+    validate: &impl Fn() -> Result<()>,
+) -> Result<Vec<OnboardProfileAssociation>> {
+    ensure!(
+        matches!(
+            capability.product_id,
+            153 | 170 | 182 | 203 | 204 | 214 | 226 | 45066
+        ) && matches!(
+            capability.source_class.as_str(),
+            "rzDevice25" | "rzDevice25DualLinkMouse"
+        ),
+        "No audited mouse profile identity reader for this product"
+    );
+    let onboard = MouseOnboard::with_metadata_transport(device, capability)?;
+    let inventory = onboard.read_inventory(transactions, validate)?;
+    let mut profiles = Vec::new();
+    for profile_id in inventory.profile_ids.into_iter().skip(1) {
+        validate()?;
+        let identity = onboard.read_identity(profile_id, transactions, validate)?;
+        profiles.push(OnboardProfileAssociation {
+            profile_id,
+            guid: identity.guid,
+        });
+    }
+    validate()?;
+    Ok(profiles)
+}
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct OnboardInventory {
@@ -247,6 +288,13 @@ impl<'a> MouseOnboard<'a> {
                 && capability.source_class == "rzDevice25DualLinkMouse",
             "No audited direct mouse OBM adapter for this product"
         );
+        Self::with_metadata_transport(device, capability)
+    }
+
+    fn with_metadata_transport(
+        device: &'a dyn FeatureTransport,
+        capability: &DeviceReadCapability,
+    ) -> Result<Self> {
         // The source temporarily raises both sleeps to extendedSleepTime, which
         // is twice the base out/in delay. This owned copy avoids caller mutation.
         let mut metadata_transport = capability.clone();

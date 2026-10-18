@@ -3,6 +3,7 @@
 use super::lighting_state::HexColor;
 use anyhow::ensure;
 use razer_device::controller_lighting::{QuickEffectLevel, SoftwareEffect, WaveDirection};
+use razer_model::preferences::{CustomColorEdit, CustomColorSlots, ProfileCustomColors};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -350,21 +351,6 @@ struct SourceCached {
     setting: SourceSetting,
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
-struct SourceCustomColor {
-    color: String,
-    #[serde(flatten)]
-    extensions: BTreeMap<String, Value>,
-}
-impl SourceCustomColor {
-    fn validate(&self) -> anyhow::Result<()> {
-        if self.color == "#111" {
-            Ok(())
-        } else {
-            HexColor::try_from(self.color.clone()).map(|_| ())
-        }
-    }
-}
-#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SourceQuick {
     selected_effect_id: QuickEffectId,
@@ -373,7 +359,7 @@ struct SourceQuick {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     effect_settings: Vec<SourceCached>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    custom_colors: Option<Vec<SourceCustomColor>>,
+    custom_colors: Option<ProfileCustomColors>,
     #[serde(flatten)]
     extensions: BTreeMap<String, Value>,
 }
@@ -382,7 +368,7 @@ struct SourceQuick {
 pub(super) struct QuickLightingSettings {
     pub(super) selected: QuickEffectId,
     cache: Vec<CachedSetting>,
-    custom_colors: Option<Vec<SourceCustomColor>>,
+    custom_colors: Option<ProfileCustomColors>,
     extensions: BTreeMap<String, Value>,
 }
 impl Default for QuickLightingSettings {
@@ -424,11 +410,6 @@ impl TryFrom<SourceQuick> for QuickLightingSettings {
                 setting,
                 source: selected,
             });
-        }
-        if let Some(colors) = &source.custom_colors {
-            for color in colors {
-                color.validate()?;
-            }
         }
         Ok(Self {
             selected: source.selected_effect_id,
@@ -477,7 +458,7 @@ impl QuickLightingSettings {
         #[serde(rename_all = "camelCase")]
         struct Envelope {
             effect_settings: SourceSetting,
-            custom_colors: Option<Vec<SourceCustomColor>>,
+            custom_colors: Option<ProfileCustomColors>,
         }
         let identity: Identity = serde_json::from_value(payload.clone())?;
         let Ok(id) = QuickEffectId::try_from(identity.selected_effect_id) else {
@@ -501,23 +482,17 @@ impl QuickLightingSettings {
             source.total_idx_direction = None;
         }
         let setting = QuickSetting::parse(id, source)?;
-        if let Some(colors) = &envelope.custom_colors {
-            for color in colors {
-                color.validate()?;
-            }
-        }
-        if let Some(colors) = envelope.custom_colors {
-            let current = self.custom_colors.get_or_insert_with(Vec::new);
-            let known = current
-                .iter()
-                .map(|entry| entry.color.clone())
-                .collect::<std::collections::BTreeSet<_>>();
-            current.extend(
+        let custom_colors = match envelope.custom_colors {
+            Some(incoming) => {
+                let mut colors = self.custom_colors.clone().unwrap_or_default();
                 colors
-                    .into_iter()
-                    .filter(|entry| !known.contains(&entry.color)),
-            );
-        }
+                    .merge_synchronized(incoming)
+                    .map_err(anyhow::Error::msg)?;
+                Some(colors)
+            }
+            None => self.custom_colors.clone(),
+        };
+        self.custom_colors = custom_colors;
         self.selected = id;
         self.cache.retain(|cached| cached.id != id);
         self.cache.push(CachedSetting {
@@ -526,6 +501,28 @@ impl QuickLightingSettings {
             source: envelope.effect_settings,
         });
         Ok(true)
+    }
+    pub(super) fn custom_color_slots(&self) -> CustomColorSlots {
+        self.custom_colors
+            .as_ref()
+            .map(ProfileCustomColors::slots)
+            .unwrap_or([None; 16])
+    }
+    pub(super) fn edit_custom_color(
+        &mut self,
+        edit: CustomColorEdit,
+    ) -> anyhow::Result<ProfileCustomColors> {
+        let mut colors = self.custom_colors.clone().unwrap_or_default();
+        colors.apply_edit(edit).map_err(anyhow::Error::msg)?;
+        self.custom_colors = Some(colors.clone());
+        Ok(colors)
+    }
+    pub(super) fn rebase_effect_settings(&self, target: &mut Value) -> anyhow::Result<()> {
+        let mut current: Self = serde_json::from_value(target.clone())?;
+        current.selected = self.selected;
+        current.cache = self.cache.clone();
+        *target = serde_json::to_value(current)?;
+        Ok(())
     }
     pub(super) fn setting(&self) -> QuickSetting {
         self.cache
@@ -703,6 +700,38 @@ mod tests {
             assert!(state.apply_sync(&invalid).is_err());
             assert_eq!(serde_json::to_value(&state).unwrap(), before);
         }
+    }
+    #[test]
+    fn saved_palette_survives_effect_switch_and_profile_projection() {
+        let mut state: QuickLightingSettings = serde_json::from_value(json!({
+            "selectedEffectId":3,
+            "customColors":[{"color":"#112233","picked":false,"extension":7}]
+        }))
+        .unwrap();
+        let mut slots = state.custom_color_slots();
+        slots[2] = Some([171, 205, 239]);
+        state
+            .edit_custom_color(razer_model::preferences::CustomColorEdit::Set {
+                slot: 2,
+                color: [171, 205, 239],
+            })
+            .unwrap();
+        state.select(QuickEffectId::Wave);
+        let mut wave = state.setting();
+        wave.set_level(QuickEffectLevel::Three);
+        state.store(wave);
+        assert_eq!(state.custom_color_slots(), slots);
+        let saved = serde_json::to_value(&state).unwrap();
+        assert_eq!(
+            saved["customColors"],
+            json!([
+                {"color":"#112233","picked":true,"extension":7},
+                {"color":"#abcdef","picked":true}
+            ])
+        );
+        let restored: QuickLightingSettings = serde_json::from_value(saved).unwrap();
+        assert_eq!(restored.custom_color_slots()[1], Some([171, 205, 239]));
+        assert_eq!(restored.custom_color_slots()[2], None);
     }
     #[test]
     fn synchronized_direction_uses_only_the_current_receiver_field_pair() {

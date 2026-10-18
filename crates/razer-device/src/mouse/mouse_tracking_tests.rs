@@ -71,7 +71,11 @@ fn exchange(header: [u8; 3], data: &[u8], txn: u8, ack: &[u8]) -> [Io; 2] {
     ]
 }
 fn cap(pid: u32) -> DeviceReadCapability {
-    let mut cap = crate::device_reads::capability(pid).unwrap().clone();
+    let mut cap = crate::mouse_current_dpi::capability(pid)
+        .unwrap()
+        .transport()
+        .for_physical_product(pid)
+        .unwrap();
     cap.sleep_between_out_ms = 0;
     cap.sleep_between_out_in_ms = 0;
     cap.sleep_between_in_ms = 0;
@@ -408,4 +412,171 @@ fn typed_products_and_flags_match_the_reverified_current_engine_evidence() {
         assert_eq!(row["selectors"]["SURFACE_CALIBRATION_CLASS_ID"], CLASS);
         assert_eq!(row["selectors"]["Avago_Proximity_sensor"], SENSOR);
     }
+}
+
+#[test]
+fn tracking_typed_boundary_rejects_missing_wrong_type_and_out_of_range_values() {
+    use serde_json::json;
+    let valid = json!({"isAsymmetric":false,"trackingDistance":2,"liftOffDistance":13,"landingDistance":12});
+    let value: SmartTracking = serde_json::from_value(valid.clone()).unwrap();
+    assert_eq!(
+        value.setting(),
+        TrackingSetting::Symmetric {
+            tracking_distance: 2
+        }
+    );
+    for field in [
+        "isAsymmetric",
+        "trackingDistance",
+        "liftOffDistance",
+        "landingDistance",
+    ] {
+        let mut missing = valid.clone();
+        missing.as_object_mut().unwrap().remove(field);
+        assert!(serde_json::from_value::<SmartTracking>(missing).is_err());
+    }
+    for (field, bad) in [
+        ("isAsymmetric", json!(0)),
+        ("trackingDistance", json!(4)),
+        ("trackingDistance", json!(1.5)),
+        ("landingDistance", json!(13)),
+        ("liftOffDistance", json!(27)),
+        ("landingDistance", json!(0)),
+    ] {
+        let mut invalid = valid.clone();
+        invalid[field] = bad;
+        assert!(serde_json::from_value::<SmartTracking>(invalid).is_err());
+    }
+}
+
+#[test]
+fn tracking_local_storage_rebases_only_accepted_fields_and_preserves_extensions() {
+    use serde_json::json;
+    let smart: SmartTracking = serde_json::from_value(
+        json!({"isAsymmetric":true,"trackingDistance":2,"liftOffDistance":26,"landingDistance":25}),
+    )
+    .unwrap();
+    let mut root = Some(
+        json!({"unknown":7,"version":91,"calibration":{"presetTracking":{"surfaceDistance":5},
+        "profiles":[{"guid":"saved-profile"}],"smartTracking":{"futureSensorField":"retained"}}}),
+    );
+    smart.merge_local_settings(&mut root).unwrap();
+    let root = root.unwrap();
+    assert_eq!(root["version"], 91);
+    assert_eq!(root["unknown"], 7);
+    assert_eq!(
+        root["calibration"]["profiles"],
+        json!([{"guid":"saved-profile"}])
+    );
+    assert_eq!(root["calibration"]["presetTracking"]["surfaceDistance"], 5);
+    assert_eq!(
+        root["calibration"]["smartTracking"]["futureSensorField"],
+        "retained"
+    );
+    assert_eq!(root["calibration"]["smartTracking"]["landingDistance"], 25);
+    for invalid in [
+        json!([]),
+        json!({"calibration":[]}),
+        json!({"calibration":{"smartTracking":null}}),
+    ] {
+        assert!(smart.merge_local_settings(&mut Some(invalid)).is_err());
+    }
+    let mut root =
+        Some(json!({"calibration":{"futureCalibration":2,"smartTracking":{"deviceExtension":7}}}));
+    smart
+        .merge_local_settings_from(
+            &mut root,
+            Some(&json!({"futureCalibration":1,"profileExtension":3,
+        "smartTracking":{"legacyExtension":9,"trackingDistance":1}})),
+        )
+        .unwrap();
+    let calibration = &root.as_ref().unwrap()["calibration"];
+    assert_eq!(calibration["futureCalibration"], 2);
+    assert_eq!(calibration["profileExtension"], 3);
+    assert_eq!(calibration["smartTracking"]["deviceExtension"], 7);
+    assert_eq!(calibration["smartTracking"]["legacyExtension"], 9);
+    assert_eq!(calibration["smartTracking"]["trackingDistance"], 2);
+}
+
+fn receiver_exchange(header: [u8; 3], data: &[u8], txn: u8, ack: &[u8], report_id: u8) -> [Io; 2] {
+    let [Io::Out(mut out), reply] = exchange(header, data, txn, ack) else {
+        unreachable!()
+    };
+    out[0] = report_id;
+    [Io::Out(out), reply]
+}
+
+#[test]
+fn tracking_receiver_post_write_disconnect_keeps_acknowledgements_and_both_real_observations() {
+    let session = crate::mouse_current_dpi::capability(226)
+        .unwrap()
+        .receiver_session(227, 227)
+        .unwrap();
+    let cap = session.transport();
+    let report_id = cap.report_id;
+    let device = Transport::new(
+        receiver_exchange([80, 0, 191], &[], 1, &[1, 1, 0, 227], report_id)
+            .into_iter()
+            .chain(receiver_exchange([3, 11, 3], &[0, 4, 1], 2, &[], report_id))
+            .chain(receiver_exchange(
+                [4, 11, 11],
+                &[0, 4, 1, 2],
+                3,
+                &[],
+                report_id,
+            ))
+            .chain(receiver_exchange(
+                [80, 0, 191],
+                &[],
+                4,
+                &[1, 0, 0, 227],
+                report_id,
+            )),
+    );
+    let report = submit(
+        &device,
+        cap,
+        SYMMETRIC,
+        Some(&session),
+        transactions(),
+        || Ok(()),
+    );
+    assert!(!report.acknowledged());
+    assert_eq!(report.receiver_before, Some(vec![(227, 1)]));
+    assert_eq!(report.receiver_after, Some(vec![(227, 0)]));
+    assert!(report.observation_error.is_some());
+    let outcome = report.outcome.unwrap().unwrap();
+    assert_eq!(outcome.acknowledgements.len(), 2);
+    assert!(outcome.source_chain_acknowledged && !outcome.verified);
+    device.finish();
+}
+
+#[test]
+fn tracking_offline_receiver_does_not_send_a_setter_or_invent_an_attempt() {
+    let session = crate::mouse_current_dpi::capability(170)
+        .unwrap()
+        .receiver_session(171, 171)
+        .unwrap();
+    let cap = session.transport();
+    let device = Transport::new(receiver_exchange(
+        [80, 0, 191],
+        &[],
+        1,
+        &[1, 0, 0, 171],
+        cap.report_id,
+    ));
+    let report = submit(
+        &device,
+        cap,
+        SYMMETRIC,
+        Some(&session),
+        transactions(),
+        || Ok(()),
+    );
+    assert!(!report.acknowledged());
+    assert_eq!(report.receiver_before, Some(vec![(171, 0)]));
+    assert!(report.receiver_after.is_none() && report.outcome.is_none());
+    assert!(report.observation_error.is_some());
+    assert_eq!(device.sends.get(), 1);
+    device.finish();
 }

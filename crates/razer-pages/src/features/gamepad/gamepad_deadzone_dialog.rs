@@ -268,16 +268,16 @@ impl GamepadProductWorkspace {
                     .h(window.viewport_size().height)
                     .bg(Colors::backdrop()),
             )
-            .popup(
-                razer_assets::resource_scope(div()
+            .popup(razer_assets::resource_scope(
+                div()
                     .absolute()
                     .top(top + window.rem_size() * (110. / 16.))
                     .left(left)
                     .w(window.viewport_size().width)
                     .flex()
                     .justify_center()
-                    .child(panel)),
-            )
+                    .child(panel),
+            ))
             .into_any_element()
     }
 }

@@ -554,46 +554,52 @@ impl<I: SelectItem<Value = String> + 'static> Render for SynapseSelectView<I> {
                         .when(visible, |this| {
                             this.content(
                                 // Resolve against the final size throughout the animation.
-                                razer_assets::resource_scope(div().w(width).h(css(menu_height)).child(
-                                    div()
-                                        .id("source-options")
-                                        .test_support()
-                                        .w(width)
-                                        .h(css(menu_height * progress))
-                                        .max_h(css(110.))
-                                        .ml(-px(1.))
-                                        .border_x_1()
-                                        .border_t(px(progress))
-                                        .border_b(px(progress))
-                                        .border_color(cx.theme().border)
-                                        .rounded_none()
-                                        .bg(colors.surface())
-                                        .overflow_hidden()
-                                        .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                                            cx.stop_propagation();
-                                        })
-                                        .when(open, |this| {
-                                            this.on_mouse_down_out(move |_, window, cx| {
-                                                _ = dismiss.update(cx, |view, cx| {
-                                                    view.set_open(false, window, cx);
-                                                });
+                                razer_assets::resource_scope(
+                                    div().w(width).h(css(menu_height)).child(
+                                        div()
+                                            .id("source-options")
+                                            .test_support()
+                                            .w(width)
+                                            .h(css(menu_height * progress))
+                                            .max_h(css(110.))
+                                            .ml(-px(1.))
+                                            .border_x_1()
+                                            .border_t(px(progress))
+                                            .border_b(px(progress))
+                                            .border_color(cx.theme().border)
+                                            .rounded_none()
+                                            .bg(colors.surface())
+                                            .overflow_hidden()
+                                            .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                                                cx.stop_propagation();
                                             })
-                                        })
-                                        .when(!open, |this| {
-                                            // Exit is presentation only: intercept before the
-                                            // retained List can refocus or activate a row.
-                                            this.capture_any_mouse_down(|_, _, cx| {
-                                                cx.stop_propagation()
+                                            .when(open, |this| {
+                                                this.on_mouse_down_out(move |_, window, cx| {
+                                                    _ = dismiss.update(cx, |view, cx| {
+                                                        view.set_open(false, window, cx);
+                                                    });
+                                                })
                                             })
-                                            .capture_any_mouse_up(|_, _, cx| cx.stop_propagation())
-                                        })
-                                        .child(
-                                            List::new(&list)
-                                                .p_0()
-                                                .h(css(menu_height - 2.))
-                                                .scrollbar_visible(open && reveal.is_finished()),
-                                        ),
-                                )),
+                                            .when(!open, |this| {
+                                                // Exit is presentation only: intercept before the
+                                                // retained List can refocus or activate a row.
+                                                this.capture_any_mouse_down(|_, _, cx| {
+                                                    cx.stop_propagation()
+                                                })
+                                                .capture_any_mouse_up(|_, _, cx| {
+                                                    cx.stop_propagation()
+                                                })
+                                            })
+                                            .child(
+                                                List::new(&list)
+                                                    .p_0()
+                                                    .h(css(menu_height - 2.))
+                                                    .scrollbar_visible(
+                                                        open && reveal.is_finished(),
+                                                    ),
+                                            ),
+                                    ),
+                                ),
                             )
                         })
                         .into_any_element()
@@ -610,34 +616,36 @@ impl<I: SelectItem<Value = String> + 'static> Render for SynapseSelectView<I> {
                                 _ = popup_change
                                     .update(cx, |view, cx| view.set_open(*open, window, cx));
                             })
-                            .content(move |_, window, cx| razer_assets::resource_scope({
-                                // height:auto; max-height:0 -> 180px, CSS ease.
-                                // Closing sets height:0 without a slide or fade.
-                                let reveal = Presence::new("options-reveal", true)
-                                    .transition(
-                                        Transition::new(Duration::from_millis(200))
-                                            .easing(Easing::Ease),
+                            .content(move |_, window, cx| {
+                                razer_assets::resource_scope({
+                                    // height:auto; max-height:0 -> 180px, CSS ease.
+                                    // Closing sets height:0 without a slide or fade.
+                                    let reveal = Presence::new("options-reveal", true)
+                                        .transition(
+                                            Transition::new(Duration::from_millis(200))
+                                                .easing(Easing::Ease),
+                                        )
+                                        .sample(window, cx)
+                                        .progress;
+                                    // Resolve placement against the final size, so
+                                    // a popup near the bottom cannot flip mid-animation.
+                                    div().w(width).h(css(menu_height)).child(
+                                        div()
+                                            .id("source-options")
+                                            .test_support()
+                                            .w(width)
+                                            .h(css(menu_height.min(180. * reveal)))
+                                            .max_h(css(180.))
+                                            .ml(-px(1.))
+                                            .border_1()
+                                            .border_color(cx.theme().input)
+                                            .rounded_none()
+                                            .bg(colors.surface())
+                                            .overflow_hidden()
+                                            .child(List::new(&list).p_0().h(css(menu_height - 2.))),
                                     )
-                                    .sample(window, cx)
-                                    .progress;
-                                // Resolve placement against the final size, so
-                                // a popup near the bottom cannot flip mid-animation.
-                                div().w(width).h(css(menu_height)).child(
-                                    div()
-                                        .id("source-options")
-                                        .test_support()
-                                        .w(width)
-                                        .h(css(menu_height.min(180. * reveal)))
-                                        .max_h(css(180.))
-                                        .ml(-px(1.))
-                                        .border_1()
-                                        .border_color(cx.theme().input)
-                                        .rounded_none()
-                                        .bg(colors.surface())
-                                        .overflow_hidden()
-                                        .child(List::new(&list).p_0().h(css(menu_height - 2.))),
-                                )
-                            }))
+                                })
+                            })
                             .into_any_element()
                     }),
             )

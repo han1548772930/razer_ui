@@ -202,9 +202,11 @@ fn unsupported_reply_stops_the_write_and_cancellation_prevents_io() {
     );
     assert_eq!(io.sends.borrow().len(), 1);
     assert!(
-        TriggerProtocol::new(&io, capability(2629).unwrap(), |_| anyhow::bail!("canceled"))
-            .execute(&op)
-            .is_err()
+        TriggerProtocol::new(&io, capability(2629).unwrap(), |_| anyhow::bail!(
+            "canceled"
+        ))
+        .execute(&op)
+        .is_err()
     );
     assert_eq!(io.sends.borrow().len(), 1);
 }

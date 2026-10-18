@@ -48,8 +48,8 @@ fn now() -> u64 {
         .unwrap_or_default()
 }
 impl AppShell {
-    pub(super) fn install_keyboard_legacy_calibration_cleanup(&mut self, cx: &mut Context<Self>) {
-        self.subscriptions.push(cx.on_app_quit(|shell, cx| {
+    pub(super) fn install_keyboard_legacy_calibration_cleanup(&mut self, _cx: &mut Context<Self>) {
+        self.register_exit_cleanup(|shell, cx| {
             shell.keyboard_legacy_calibration.owners.clear();
             shell.keyboard_legacy_calibration.mounts.clear();
             let workers = std::mem::take(&mut shell.keyboard_legacy_calibration.workers);
@@ -61,7 +61,7 @@ impl AppShell {
                 }
             });
             async move { cleanup.await }
-        }));
+        });
     }
     fn calibration_host_active(
         &self,

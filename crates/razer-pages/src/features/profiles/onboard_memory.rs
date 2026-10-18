@@ -569,8 +569,8 @@ impl OnboardMemoryPanel {
                     .inset_0()
                     .bg(cx.theme().title_bar.opacity(0.5)),
             )
-            .popup(
-                razer_assets::resource_scope(div()
+            .popup(razer_assets::resource_scope(
+                div()
                     .absolute()
                     .top_0()
                     .left_0()
@@ -579,8 +579,8 @@ impl OnboardMemoryPanel {
                     .flex()
                     .items_end()
                     .justify_center()
-                    .child(panel)),
-            )
+                    .child(panel),
+            ))
             .into_any_element()
     }
 }
@@ -1210,20 +1210,22 @@ impl Render for OnboardMemoryPanel {
                             })
                             .into_any_element()
                     })
-                    .content(move |_, window, cx| razer_assets::resource_scope({
-                        let popup = cx.entity().downgrade();
-                        let content = panel
-                            .update(cx, |panel, cx| {
-                                panel.popup = Some(popup);
-                                panel.render_panel(window, cx)
-                            })
-                            .ok();
-                        // 270px panel starts at -121 from its 26px trigger.
-                        div()
-                            .w(surface::css(272.))
-                            .pl(surface::css(2.))
-                            .children(content)
-                    })),
+                    .content(move |_, window, cx| {
+                        razer_assets::resource_scope({
+                            let popup = cx.entity().downgrade();
+                            let content = panel
+                                .update(cx, |panel, cx| {
+                                    panel.popup = Some(popup);
+                                    panel.render_panel(window, cx)
+                                })
+                                .ok();
+                            // 270px panel starts at -121 from its 26px trigger.
+                            div()
+                                .w(surface::css(272.))
+                                .pl(surface::css(2.))
+                                .children(content)
+                        })
+                    }),
             )
             .when(
                 self.readback

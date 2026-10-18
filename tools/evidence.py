@@ -347,79 +347,88 @@ def locale_keys(raw, keys):
     return matches[0]
 
 
-def javascript_binding(raw, tree, name, reference_byte):
-    """Resolve an identifier only inside its real enclosing lexical scopes.
+class JavascriptBindings:
+    """Index actual lexical owners once for repeated static source queries."""
+    def __init__(self, raw, tree):
+        if tree.root_node.has_error:
+            raise ValueError("Binding source has invalid syntax")
+        self.raw, self.tree = raw, tree
+        scopes = {"program", "statement_block", "arrow_function", "function_expression",
+                  "function_declaration", "method_definition", "catch_clause",
+                  "for_statement", "for_in_statement", "switch_body"}
+        functions = {"arrow_function", "function_expression", "function_declaration", "method_definition"}
 
-    A preceding same-name declaration in a different webpack function is not
-    evidence. Parameters and destructured bindings remain explicit when this
-    static query cannot follow their value. No JavaScript is evaluated.
-    """
-    if tree.root_node.has_error or not 0 <= reference_byte < len(raw):
-        raise ValueError("Binding reference has invalid syntax or byte boundary")
-    scopes = {"program", "statement_block", "arrow_function", "function_expression",
-              "function_declaration", "method_definition", "catch_clause",
-              "for_statement", "for_in_statement", "switch_body"}
-    functions = {"arrow_function", "function_expression", "function_declaration", "method_definition"}
+        def owner(node, *, function_scoped=False):
+            current = node.parent
+            while current is not None:
+                if current.type in scopes and (not function_scoped or current.type in functions | {"program"}):
+                    return current
+                current = current.parent
+            return tree.root_node
 
-    def owner(node, *, function_scoped=False):
-        current = node.parent
+        def key(node):
+            return node.type, node.start_byte, node.end_byte
+
+        definitions, pending = {}, [tree.root_node]
+        while pending:
+            node = pending.pop()
+            pending.extend(reversed(node.named_children))
+            if node.type == "variable_declarator":
+                binding = node.child_by_field_name("name")
+                if binding is None:
+                    continue
+                is_var = node.parent is not None and node.parent.type == "variable_declaration"
+                target = owner(node, function_scoped=is_var)
+                if binding.type == "identifier":
+                    definitions.setdefault(key(target), []).append((binding.text.decode("utf-8"), node, "declaration"))
+                else:
+                    # Do not invent a value for a destructured binding.
+                    descendants = [binding]
+                    while descendants:
+                        candidate = descendants.pop()
+                        if candidate.type in {"identifier", "shorthand_property_identifier_pattern"}:
+                            definitions.setdefault(key(target), []).append((candidate.text.decode("utf-8"), node, "destructuring_requires_value_analysis"))
+                        descendants.extend(candidate.named_children)
+            elif node.type in {"function_declaration", "class_declaration"}:
+                binding = node.child_by_field_name("name")
+                if binding is not None:
+                    definitions.setdefault(key(owner(node)), []).append((binding.text.decode("utf-8"), node, "declaration"))
+            if node.type in functions | {"catch_clause"}:
+                parameters = node.child_by_field_name("parameters") or node.child_by_field_name("parameter")
+                if parameters is not None:
+                    descendants = [parameters]
+                    while descendants:
+                        candidate = descendants.pop()
+                        if candidate.type in {"identifier", "shorthand_property_identifier_pattern"}:
+                            definitions.setdefault(key(node), []).append((candidate.text.decode("utf-8"), candidate, "parameter_requires_caller_analysis"))
+                        descendants.extend(candidate.named_children)
+        self.definitions, self.key = definitions, key
+
+    def resolve(self, name, reference_byte):
+        raw, tree, definitions = self.raw, self.tree, self.definitions
+        key = self.key
+        if not 0 <= reference_byte < len(raw):
+            raise ValueError("Binding reference has invalid byte boundary")
+        current = tree.root_node.descendant_for_byte_range(reference_byte, reference_byte)
         while current is not None:
-            if current.type in scopes and (not function_scoped or current.type in functions | {"program"}):
-                return current
+            candidates = [item for item in definitions.get(key(current), []) if item[0] == name]
+            if candidates:
+                if len(candidates) != 1:
+                    return {"name": name, "reference_byte": reference_byte, "resolution": "ambiguous_same_scope_declarations",
+                            "candidates": [{"start_byte": item[1].start_byte, "end_byte": item[1].end_byte} for item in candidates]}
+                _, node, resolution = candidates[0]
+                body = raw[node.start_byte:node.end_byte]
+                return {"name": name, "reference_byte": reference_byte, "resolution": resolution,
+                        "start_byte": node.start_byte, "end_byte": node.end_byte,
+                        "syntax": node.type, "body": body.decode("utf-8"), "sha256": hashlib.sha256(body).hexdigest(),
+                        "scope": {"syntax": current.type, "start_byte": current.start_byte, "end_byte": current.end_byte}}
             current = current.parent
-        return tree.root_node
+        return {"name": name, "reference_byte": reference_byte, "resolution": "unresolved_identifier"}
 
-    def key(node):
-        return node.type, node.start_byte, node.end_byte
 
-    definitions, pending = {}, [tree.root_node]
-    while pending:
-        node = pending.pop()
-        pending.extend(reversed(node.named_children))
-        if node.type == "variable_declarator":
-            binding = node.child_by_field_name("name")
-            if binding is None:
-                continue
-            is_var = node.parent is not None and node.parent.type == "variable_declaration"
-            target = owner(node, function_scoped=is_var)
-            if binding.type == "identifier":
-                definitions.setdefault(key(target), []).append((binding.text.decode("utf-8"), node, "declaration"))
-            else:
-                # Do not invent a value for a destructured binding.
-                descendants = [binding]
-                while descendants:
-                    candidate = descendants.pop()
-                    if candidate.type in {"identifier", "shorthand_property_identifier_pattern"}:
-                        definitions.setdefault(key(target), []).append((candidate.text.decode("utf-8"), node, "destructuring_requires_value_analysis"))
-                    descendants.extend(candidate.named_children)
-        elif node.type in {"function_declaration", "class_declaration"}:
-            binding = node.child_by_field_name("name")
-            if binding is not None:
-                definitions.setdefault(key(owner(node)), []).append((binding.text.decode("utf-8"), node, "declaration"))
-        if node.type in functions | {"catch_clause"}:
-            parameters = node.child_by_field_name("parameters") or node.child_by_field_name("parameter")
-            if parameters is not None:
-                descendants = [parameters]
-                while descendants:
-                    candidate = descendants.pop()
-                    if candidate.type in {"identifier", "shorthand_property_identifier_pattern"}:
-                        definitions.setdefault(key(node), []).append((candidate.text.decode("utf-8"), candidate, "parameter_requires_caller_analysis"))
-                    descendants.extend(candidate.named_children)
-    current = tree.root_node.descendant_for_byte_range(reference_byte, reference_byte)
-    while current is not None:
-        candidates = [item for item in definitions.get(key(current), []) if item[0] == name]
-        if candidates:
-            if len(candidates) != 1:
-                return {"name": name, "reference_byte": reference_byte, "resolution": "ambiguous_same_scope_declarations",
-                        "candidates": [{"start_byte": item[1].start_byte, "end_byte": item[1].end_byte} for item in candidates]}
-            _, node, resolution = candidates[0]
-            body = raw[node.start_byte:node.end_byte]
-            return {"name": name, "reference_byte": reference_byte, "resolution": resolution,
-                    "start_byte": node.start_byte, "end_byte": node.end_byte,
-                    "syntax": node.type, "body": body.decode("utf-8"), "sha256": hashlib.sha256(body).hexdigest(),
-                    "scope": {"syntax": current.type, "start_byte": current.start_byte, "end_byte": current.end_byte}}
-        current = current.parent
-    return {"name": name, "reference_byte": reference_byte, "resolution": "unresolved_identifier"}
+def javascript_binding(raw, tree, name, reference_byte):
+    """Resolve an identifier only in its actual enclosing lexical scopes."""
+    return JavascriptBindings(raw, tree).resolve(name, reference_byte)
 
 
 def ui_tree(raw):

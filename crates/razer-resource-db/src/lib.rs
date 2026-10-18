@@ -5,9 +5,11 @@ use std::sync::{Mutex, OnceLock};
 
 mod document;
 mod installation;
+mod publication;
 pub use document::{CatalogId, NodeReader, initialize, read_document};
 pub mod catalogs;
 pub use installation::InstallationPaths;
+pub use publication::StagedResource;
 
 mod packaged {
     include!(concat!(env!("OUT_DIR"), "/installation.rs"));

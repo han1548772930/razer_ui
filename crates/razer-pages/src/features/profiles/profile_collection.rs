@@ -7,16 +7,28 @@ use razer_model::model::Profile;
 pub enum Action {
     Add,
     Duplicate(String),
-    Delete(String),
+    Delete {
+        id: String,
+        successor: Option<String>,
+    },
 }
 
 pub fn edit(device: &mut Device, saved: &Device, action: Action) -> Result<String, String> {
-    if let Action::Delete(id) = &action {
+    if let Action::Delete { id, successor } = &action {
         if device.profiles.len() <= 1 {
             return Err("至少保留一个本地配置文件".into());
         }
         if !device.profiles.iter().any(|profile| &profile.id == id) {
             return Err("待删除的配置文件已不存在".into());
+        }
+        if successor.as_ref().is_some_and(|successor| {
+            successor == id
+                || !device
+                    .profiles
+                    .iter()
+                    .any(|profile| &profile.id == successor)
+        }) {
+            return Err("删除后的目标配置文件已不存在".into());
         }
         let removed_guid = device
             .profiles
@@ -48,14 +60,18 @@ pub fn edit(device: &mut Device, saved: &Device, action: Action) -> Result<Strin
                     });
                 }
             }
-            let target = device.profiles[0].id.clone();
+            let target = successor
+                .clone()
+                .unwrap_or_else(|| device.profiles[0].id.clone());
             device.active_profile = target.clone();
             return Ok(target);
         }
-        // Ua supplies the last profile as its successor. The local successor
-        // must be a surviving identity, including deletion of that last row.
-        let target = device.profiles.last().unwrap().id.clone();
-        if &device.active_profile == id {
+        // Ua selects the last survivor. Product menus can supply the successor
+        // from their current-source ON_DELETE_PROFILE payload instead.
+        let target = successor
+            .clone()
+            .unwrap_or_else(|| device.profiles.last().unwrap().id.clone());
+        if successor.is_some() || &device.active_profile == id {
             device.active_profile = target.clone();
         }
         return Ok(target);
@@ -130,11 +146,101 @@ pub fn edit(device: &mut Device, saved: &Device, action: Action) -> Result<Strin
                 source_settings: None,
             }
         }
-        Action::Delete(_) => unreachable!(),
+        Action::Delete { .. } => unreachable!(),
     };
     profile.id = id.clone();
     profile.guid = id.clone();
     device.profiles.push(profile);
     // The Profiles dropdown is an assignment target, not hardware activation.
     Ok(id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn device() -> Device {
+        let mut device = crate::test_devices::keyboard();
+        device.product_id = razer_device::hanbo_cooler::PRODUCT_ID;
+        let template = device.profiles[0].clone();
+        device.profiles = ["first", "selected", "last"]
+            .into_iter()
+            .map(|id| Profile {
+                id: id.into(),
+                guid: format!("guid-{id}"),
+                name: id.into(),
+                ..template.clone()
+            })
+            .collect();
+        device.active_profile = "selected".into();
+        device
+    }
+
+    #[::core::prelude::v1::test]
+    fn product_delete_selects_the_source_payload_successor() {
+        let mut device = device();
+        let saved = device.clone();
+        let target = edit(
+            &mut device,
+            &saved,
+            Action::Delete {
+                id: "selected".into(),
+                successor: Some("first".into()),
+            },
+        )
+        .unwrap();
+        assert_eq!(target, "first");
+        assert_eq!(device.active_profile, "first");
+        assert_eq!(device.profiles.len(), 2);
+        assert_eq!(saved.active_profile, "selected");
+        assert_eq!(saved.profiles.len(), 3);
+    }
+
+    #[::core::prelude::v1::test]
+    fn profiles_delete_keeps_its_existing_selection_semantics() {
+        let mut device = device();
+        let saved = device.clone();
+        let target = edit(
+            &mut device,
+            &saved,
+            Action::Delete {
+                id: "first".into(),
+                successor: None,
+            },
+        )
+        .unwrap();
+        assert_eq!(target, "last");
+        assert_eq!(device.active_profile, "selected");
+        edit(
+            &mut device,
+            &saved,
+            Action::Delete {
+                id: "selected".into(),
+                successor: None,
+            },
+        )
+        .unwrap();
+        assert_eq!(device.active_profile, "last");
+    }
+
+    #[::core::prelude::v1::test]
+    fn invalid_successor_is_rejected_before_mutating_the_collection() {
+        for successor in ["missing", "selected"] {
+            let mut device = device();
+            let saved = device.clone();
+            assert!(
+                edit(
+                    &mut device,
+                    &saved,
+                    Action::Delete {
+                        id: "selected".into(),
+                        successor: Some(successor.into()),
+                    },
+                )
+                .is_err()
+            );
+            assert_eq!(device.profiles.len(), 3);
+            assert_eq!(device.active_profile, "selected");
+        }
+    }
 }

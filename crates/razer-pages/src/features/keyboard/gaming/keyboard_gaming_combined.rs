@@ -50,7 +50,7 @@ pub(super) struct State {
     focus: Option<FocusHandle>,
     return_focus: Option<FocusHandle>,
     capture: Option<Capture>,
-    native_capture: Option<super::super::mapping_key_capture_runtime::Owner>,
+    native_capture: Option<razer_service::mapping::key_capture::Session>,
     task: Option<Task<()>>,
     generation: u64,
     resume_single_snap: bool,
@@ -429,7 +429,7 @@ impl KeyboardProductWorkspace {
         focus.focus(window, cx);
         state.resume_single_snap = resume;
         state.capture = Capture::start_stream(window);
-        match super::super::mapping_key_capture_runtime::Owner::start() {
+        match razer_service::mapping::key_capture::Session::start() {
             Ok(owner) => state.native_capture = Some(owner),
             Err(error) => eprintln!("[keyboard-game-combo] Capture startup failed: {error:#}"),
         }
@@ -466,10 +466,11 @@ impl KeyboardProductWorkspace {
                     }
                     let events = this.gaming_combined.native_capture.as_ref().map(|owner|owner.drain()).unwrap_or_default();
                     for reply in events {
-                        use super::super::mapping_key_capture_runtime::Reply;
+                        use razer_service::mapping::key_capture::Reply;
                         match reply {
+                            Reply::Mode(_) => {},
                             Reply::Ready(receipt) => {
-                                if receipt["unresolved_devices"].as_array().is_some_and(|items|!items.is_empty()) { eprintln!("[keyboard-game-combo] Unresolved endpoints: {}",receipt["unresolved_devices"]); }
+                                if !receipt.unresolved_devices().is_empty() { eprintln!("[keyboard-game-combo] Unresolved endpoints: {:?}",receipt.unresolved_devices()); }
                             }
                             Reply::Failed(error) => { eprintln!("[keyboard-game-combo] {error}");this.gaming_combined.native_capture = None; }
                             Reply::Events(events) => for event in events {

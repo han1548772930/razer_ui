@@ -4,7 +4,7 @@ use super::*;
 
 impl SourceProductWorkspace {
     pub(super) fn keyboard_linked_base_selected(&self, id: &str, cx: &mut Context<Self>) {
-        if !matches!(self.device.product_id, 515 | 679 | 756) {
+        if !matches!(self.device.product_id, 515 | 679 | 740 | 746 | 756) {
             return;
         }
         if let Some(profile) = self.device.profiles.iter().find(|profile| profile.id == id) {
@@ -52,7 +52,7 @@ impl SourceProductWorkspace {
         }
         if self.device.active_profile == id {
             if publish && !from_ui {
-                self.persist_legacy_mouse_profile(true, cx);
+                self.persist_source_profile(true, cx);
             }
             return;
         }
@@ -84,7 +84,7 @@ impl SourceProductWorkspace {
         self.restore_active(window, cx);
         self.restore_seiren_selected_profile(cx);
         if publish {
-            self.persist_legacy_mouse_profile(true, cx);
+            self.persist_source_profile(true, cx);
         }
         cx.emit(WorkspaceEvent::Changed);
         cx.notify();
@@ -141,7 +141,7 @@ impl SourceProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {
-        if !matches!(self.device.product_id, 515 | 679 | 756)
+        if !matches!(self.device.product_id, 515 | 679 | 740 | 746 | 756)
             || !matches!(&self.body, FamilyBody::Keyboard(_))
         {
             return false;

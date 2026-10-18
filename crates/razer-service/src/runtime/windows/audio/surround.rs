@@ -68,8 +68,8 @@ fn resource(product: Product) -> anyhow::Result<PathBuf> {
 
 impl Session {
     fn open(identity: &Identity) -> anyhow::Result<Self> {
-        let owner = CString::new(identity.container_id())
-            .context("Surround container contains a NUL")?;
+        let owner =
+            CString::new(identity.container_id()).context("Surround container contains a NUL")?;
         let library = EngineLibrary::load(&resource(identity.product())?)?;
         // SAFETY: names and signatures come from the current ConfigureFFI
         // table and match all three retained Hex-Rays export prototypes.
@@ -87,18 +87,34 @@ impl Session {
                 .func::<FreeMalloc>("FreeMalloc")
                 .context("THX VAD FreeMalloc export is absent")?;
             let mut session = Self {
-                terminate: library.func("DeviceTerminate").context("DeviceTerminate absent")?,
-                set_combo: library.func("SetComboMode").context("SetComboMode absent")?,
+                terminate: library
+                    .func("DeviceTerminate")
+                    .context("DeviceTerminate absent")?,
+                set_combo: library
+                    .func("SetComboMode")
+                    .context("SetComboMode absent")?,
                 set_front_endpoint: library
                     .func("SetFrontEndpoint")
                     .context("SetFrontEndpoint absent")?,
-                set_front_volume: library.func("SetFrontVolume").context("SetFrontVolume absent")?,
-                set_rear_volume: library.func("SetRearVolume").context("SetRearVolume absent")?,
+                set_front_volume: library
+                    .func("SetFrontVolume")
+                    .context("SetFrontVolume absent")?,
+                set_rear_volume: library
+                    .func("SetRearVolume")
+                    .context("SetRearVolume absent")?,
                 set_rear_mute: library.func("SetRearMute").context("SetRearMute absent")?,
-                set_front_eq: library.func("SetFrontEqBand").context("SetFrontEqBand absent")?,
-                set_rear_eq: library.func("SetRearEqBand").context("SetRearEqBand absent")?,
-                set_delay: library.func("SetComboDelay").context("SetComboDelay absent")?,
-                set_replicate: library.func("SetReplicate").context("SetReplicate absent")?,
+                set_front_eq: library
+                    .func("SetFrontEqBand")
+                    .context("SetFrontEqBand absent")?,
+                set_rear_eq: library
+                    .func("SetRearEqBand")
+                    .context("SetRearEqBand absent")?,
+                set_delay: library
+                    .func("SetComboDelay")
+                    .context("SetComboDelay absent")?,
+                set_replicate: library
+                    .func("SetReplicate")
+                    .context("SetReplicate absent")?,
                 play_signal: library
                     .func("PlayDelayTestSignal")
                     .context("PlayDelayTestSignal absent")?,
@@ -206,8 +222,10 @@ impl State {
         let key = Self::key(identity);
         if let Some(owned) = self.sessions.get(&key) {
             if owned.identity == *identity {
-                return Ok(json!({"identity":identity,"initialized":owned.session.initialized,
-                    "version":owned.session.version,"retained":true,"setting_scope":"surround"}));
+                return Ok(
+                    json!({"identity":identity,"initialized":owned.session.initialized,
+                    "version":owned.session.version,"retained":true,"setting_scope":"surround"}),
+                );
             }
             self.sessions.remove(&key);
         }
@@ -223,8 +241,10 @@ impl State {
             },
         );
         validate()?;
-        Ok(json!({"identity":identity,"initialized":initialized,"version":version,
-            "retained":false,"setting_scope":"surround"}))
+        Ok(
+            json!({"identity":identity,"initialized":initialized,"version":version,
+            "retained":false,"setting_scope":"surround"}),
+        )
     }
     pub(crate) fn change(
         &mut self,
@@ -250,8 +270,10 @@ impl State {
                 break;
             }
         }
-        Ok(json!({"identity":identity,"requested":change,"outcomes":outcomes,
-            "runtime":owned.runtime,"setting_scope":"surround"}))
+        Ok(
+            json!({"identity":identity,"requested":change,"outcomes":outcomes,
+            "runtime":owned.runtime,"setting_scope":"surround"}),
+        )
     }
     pub(crate) fn close(&mut self, identity: &Identity) -> anyhow::Result<Value> {
         let key = Self::key(identity);
@@ -265,7 +287,9 @@ impl State {
             // teardown before the library owner is released.
             stopped = Some(owned.session.call(&NativeCall::SetTestSignal(false))?);
         }
-        Ok(json!({"identity":identity,"closed":current,"test_signal_stopped":stopped,
-            "setting_scope":"surround"}))
+        Ok(
+            json!({"identity":identity,"closed":current,"test_signal_stopped":stopped,
+            "setting_scope":"surround"}),
+        )
     }
 }

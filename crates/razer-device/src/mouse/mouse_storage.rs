@@ -7,15 +7,15 @@ use crate::{
     feature_exchange::exchange_with_report_data_size_observing_send,
     mouse_button_inventory::{ButtonInventoryReport, MouseButtonInventory},
     mouse_button_mapping::{ButtonWriteReport, MouseButtonMapping},
-    mouse_macro::{
-        MacroFailurePhase, MacroInventory, MacroReading, MacroWriteReport, MacroWriteRequest,
-        MouseMacro,
-    },
     mouse_onboard::{
         MouseOnboard, OnboardIdentityObservation, OnboardInventory, OnboardWriteReport,
     },
     mouse_profile_polling::{
         MouseProfilePolling, ProfilePollingObservation, ProfilePollingWriteReport,
+    },
+    onboard_macro::{
+        MacroFailurePhase, MacroInventory, MacroReading, MacroWriteReport, MacroWriteRequest,
+        OnboardMacro,
     },
 };
 use anyhow::{Context as _, Result, ensure};
@@ -307,7 +307,7 @@ impl<'a> MouseStorage<'a> {
         // Reuse the strict collection/channel gate used by the actual mapping
         // startup selector; class names alone do not authorize an adapter.
         MouseButtonMapping::new(device, transport)?;
-        MouseMacro::new(device, transport)?;
+        OnboardMacro::for_mouse(device, transport)?;
         Ok(Self { device, transport })
     }
 
@@ -324,7 +324,7 @@ impl<'a> MouseStorage<'a> {
         wait: &mut impl FnMut(Duration) -> Result<()>,
     ) -> std::result::Result<MacroStorageWriteReport, MacroStorageWriteFailure> {
         let mut report = MacroStorageWriteReport::default();
-        let macros = MouseMacro::new(self.device, self.transport)
+        let macros = OnboardMacro::for_mouse(self.device, self.transport)
             .expect("Constructor gated current macro transport");
         match macros.write_macro(macro_id, request, transactions, validate) {
             Ok(value) => {
@@ -625,7 +625,7 @@ impl<'a> MouseStorage<'a> {
         let mut progress = StorageBackup::empty(self.transport.product_id);
         let captured = (|| -> Result<()> {
             validate()?;
-            let macros = MouseMacro::new(self.device, self.transport)?;
+            let macros = OnboardMacro::for_mouse(self.device, self.transport)?;
             let inventory = macros.read_macro_inventory(transactions, validate)?;
             let ids = inventory.ids.clone();
             progress.macro_inventory = Some(inventory);
@@ -909,7 +909,7 @@ impl<'a> MouseStorage<'a> {
             ));
         }
         let empty = (|| -> Result<()> {
-            let macros = MouseMacro::new(self.device, self.transport)?
+            let macros = OnboardMacro::for_mouse(self.device, self.transport)?
                 .read_macro_inventory(transactions, validate)?;
             ensure!(
                 macros.ids.is_empty(),
@@ -1065,7 +1065,7 @@ impl<'a> MouseStorage<'a> {
         for index in 0..report.backup.macros.len() {
             let saved = &report.backup.macros[index];
             let macro_id = saved.metadata.macro_id;
-            let result = MouseMacro::new(self.device, self.transport)
+            let result = OnboardMacro::for_mouse(self.device, self.transport)
                 .unwrap()
                 .restore_macro(saved, transactions, validate);
             match result {

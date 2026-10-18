@@ -194,6 +194,8 @@ pub fn decode_blackshark_band(value: u8) -> i16 {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BlackSharkFirmwareCommand {
     GetFirmwareVersions,
+    FactoryReset1398,
+    GetMicStatus1398,
     GetRollerFunction,
     SetRollerFunction(u8),
     SetPresetEqEnabled(bool),
@@ -209,6 +211,8 @@ impl BlackSharkFirmwareCommand {
     pub fn command_header(&self) -> [u8; 3] {
         match self {
             Self::GetFirmwareVersions => [2, 0, 0],
+            Self::FactoryReset1398 => [239, 0, 1],
+            Self::GetMicStatus1398 => [85, 0, 0],
             Self::GetRollerFunction => [0x6a, 0, 0],
             Self::SetRollerFunction(_) => [0xea, 0, 1],
             Self::SetPresetEqEnabled(_) => [0x9e, 0, 1],
@@ -223,6 +227,8 @@ impl BlackSharkFirmwareCommand {
     pub fn expected_response(&self) -> [u8; 3] {
         match self {
             Self::GetFirmwareVersions => [2, 1, 24],
+            Self::FactoryReset1398 => [239, 1, 1],
+            Self::GetMicStatus1398 => [85, 1, 1],
             Self::GetRollerFunction => [0x6a, 1, 1],
             Self::SetRollerFunction(_) => [0xea, 1, 1],
             Self::SetPresetEqEnabled(_) => [0x9e, 1, 1],
@@ -237,6 +243,8 @@ impl BlackSharkFirmwareCommand {
     pub fn payload(&self) -> Result<Vec<u8>> {
         Ok(match self {
             Self::GetFirmwareVersions => vec![],
+            Self::FactoryReset1398 => vec![0],
+            Self::GetMicStatus1398 => vec![],
             Self::GetRollerFunction => vec![],
             Self::SetRollerFunction(index) => {
                 ensure!(
@@ -410,7 +418,24 @@ pub struct BlackSharkFirmwareCommandProgress {
     pub completed: bool,
     pub failure: Option<BlackSharkFirmwareFailure>,
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BlackSharkMicStatus {
+    Unmuted,
+    Muted,
+    Unknown(u8),
+}
 impl BlackSharkFirmwareCommandProgress {
+    pub fn observed_mic_status(&self) -> Option<BlackSharkMicStatus> {
+        if self.command != BlackSharkFirmwareCommand::GetMicStatus1398 || !self.succeeded() {
+            return None;
+        }
+        match self.reply()?.data.as_slice() {
+            [0] => Some(BlackSharkMicStatus::Unmuted),
+            [1] => Some(BlackSharkMicStatus::Muted),
+            [value] => Some(BlackSharkMicStatus::Unknown(*value)),
+            _ => None,
+        }
+    }
     /// Current hasMultipleFwVersions selects the numerically greatest nonzero
     /// four-byte version. Source fallback 1.0.0.0 is not a device observation.
     pub fn observed_firmware_version(&self) -> Option<String> {
@@ -515,6 +540,18 @@ impl BlackSharkFirmwareSession {
     ) -> BlackSharkFirmwareCommandProgress {
         use BlackSharkFirmwareFailureKind::*;
         let mut progress = BlackSharkFirmwareCommandProgress::new(command, self.identity.clone());
+        if matches!(
+            progress.command,
+            BlackSharkFirmwareCommand::FactoryReset1398
+                | BlackSharkFirmwareCommand::GetMicStatus1398
+        ) && self.identity.owner_product_id != crate::blackshark_reset::PRODUCT_ID
+        {
+            progress.fail(
+                InvalidRequest,
+                "Help reset firmware commands are audited only for 1398",
+            );
+            return progress;
+        }
         let connection = match self.identity.connection() {
             Ok(connection) => connection,
             Err(error) => {

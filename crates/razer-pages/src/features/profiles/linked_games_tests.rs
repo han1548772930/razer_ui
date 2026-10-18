@@ -48,7 +48,13 @@ fn linked_paths_are_absolute_executables_and_never_command_lines() {
         }));
     }
     let file = GameFile::new();
-    let saved = game_from_path(&file.0).unwrap();
+    let saved = game_from_path(
+        &file.0,
+        &razer_storage::file_transfer::Transfer::new()
+            .accept()
+            .unwrap(),
+    )
+    .unwrap();
     assert!(valid_game(&saved));
     assert_eq!(
         saved.executable,
@@ -65,7 +71,13 @@ fn adding_duplicate_removing_and_cancelling_linked_games_uses_the_real_dialog(
         cx.set_reduce_motion(true);
     });
     let file = GameFile::new();
-    let game = game_from_path(&file.0).unwrap();
+    let game = game_from_path(
+        &file.0,
+        &razer_storage::file_transfer::Transfer::new()
+            .accept()
+            .unwrap(),
+    )
+    .unwrap();
     let mut workspace = None;
     let handle = cx.open_window(size(px(1280.), px(1000.)), |window, cx| {
         let view =

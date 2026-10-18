@@ -8,9 +8,11 @@ pub(super) fn prepare_mapping_document(
     device: &mut Device,
     macros: &razer_pages::features::macro_library::MacroLibraryFile,
 ) -> anyhow::Result<()> {
-    if !matches!(device.product_id, 70 | 515 | 679 | 756) {
+    let Some(product) =
+        razer_device::mapping_document::MappingProduct::for_product_id(device.product_id)
+    else {
         return Ok(());
-    }
+    };
     let profiles = device
         .profiles
         .iter()
@@ -29,15 +31,7 @@ pub(super) fn prepare_mapping_document(
         .iter()
         .find(|profile| profile.id == device.active_profile)
         .ok_or_else(|| anyhow::anyhow!("Active mouse profile is missing"))?;
-    let key = if device.product_id == 756 {
-        razer_device::keyboard_latest_restore::STORAGE_FIELD
-    } else if device.product_id == 679 {
-        razer_device::keyboard_current_mapping::STORAGE_FIELD
-    } else if device.product_id == 70 {
-        "_mouse70_mapping_document"
-    } else {
-        "_keyboard515_mapping_document"
-    };
+    let key = product.storage_field();
     let previous = device
         .source_device_settings
         .as_ref()
@@ -50,6 +44,15 @@ pub(super) fn prepare_mapping_document(
             device.layout_id,
             previous,
             device.source_device_settings.as_ref(),
+            guids,
+        )?
+    } else if razer_device::keyboard_magnetic_mapping::supports(device.product_id) {
+        razer_device::keyboard_magnetic_mapping::prepare_document(
+            device.product_id,
+            &profiles,
+            &active.guid,
+            device.layout_id,
+            previous,
             guids,
         )?
     } else if device.product_id == 679 {
@@ -172,7 +175,10 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         if !self.devices.contains(&workspace)
-            || !matches!(workspace.read(cx).device(cx).product_id, 515 | 679 | 756)
+            || !razer_device::mapping_document::MappingProduct::for_product_id(
+                workspace.read(cx).device(cx).product_id,
+            )
+            .is_some_and(|product| product.is_keyboard())
         {
             return;
         }
@@ -190,6 +196,7 @@ impl AppShell {
     ) {
         if let Some(error) = &self.storage_error {
             self.status = format!("配置文件未保存：{error}");
+            self.cancel_pending_exit(cx);
             cx.notify();
             return;
         }
@@ -202,10 +209,10 @@ impl AppShell {
         );
         let identity = workspace.read(cx).identity(cx);
         let device = workspace.read(cx).snapshot(cx);
-        self.pending_saves.push_back(PreparedSave {
-            window: window.window_handle(),
+        self.pending_saves.push_back(self.prepare_save(
+            window.window_handle(),
             file,
-            product: Some(ProductSave::MouseProfile(MouseLegacyProfileSave {
+            Some(ProductSave::MouseProfile(MouseLegacyProfileSave {
                 workspace,
                 scope,
                 identity,
@@ -213,7 +220,8 @@ impl AppShell {
                 apply,
                 scroll,
             })),
-        });
+            cx,
+        ));
         self.start_pending_save(cx);
     }
 
@@ -236,10 +244,15 @@ impl AppShell {
         if !valid || profile.is_none() {
             if let Some(error) = &self.storage_error {
                 eprintln!("Mouse DPI profile cannot be persisted: {error}");
+                self.status = format!("DPI 本地保存失败：{error}");
             }
             workspace.update(cx, |workspace, cx| {
                 workspace.finish_legacy_dpi(&request, cx)
             });
+            if self.storage_error.is_some() {
+                self.cancel_pending_exit(cx);
+                cx.notify();
+            }
             return;
         }
         let file = self.workspace_file(
@@ -250,16 +263,17 @@ impl AppShell {
             cx,
         );
         let identity = workspace.read(cx).identity(cx);
-        self.pending_saves.push_back(PreparedSave {
-            window: window.window_handle(),
+        self.pending_saves.push_back(self.prepare_save(
+            window.window_handle(),
             file,
-            product: Some(ProductSave::MouseLegacyDpi(MouseLegacyDpiSave {
+            Some(ProductSave::MouseLegacyDpi(MouseLegacyDpiSave {
                 workspace,
                 request,
                 identity,
                 profile: profile.expect("checked active profile"),
             })),
-        });
+            cx,
+        ));
         self.start_pending_save(cx);
     }
 
@@ -270,7 +284,10 @@ impl AppShell {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.close_requested || !workspace.read(cx).legacy_dpi_request_matches(&request, cx) {
+        if self.close_requested
+            || !self.devices.contains(&workspace)
+            || !workspace.read(cx).legacy_dpi_request_matches(&request, cx)
+        {
             workspace.update(cx, |workspace, cx| {
                 workspace.finish_legacy_dpi(&request, cx)
             });

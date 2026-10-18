@@ -14,6 +14,8 @@ pub mod audio_router;
 pub mod audio_util;
 #[path = "camera.rs"]
 pub mod camera;
+#[path = "lighting/chroma_connect.rs"]
+pub mod chroma_connect;
 #[path = "mouse/dpi_matcher.rs"]
 pub mod dpi_matcher;
 #[path = "native/native_query.rs"]
@@ -22,6 +24,8 @@ pub mod native_query;
 pub mod native_read;
 #[path = "runtime/mod.rs"]
 pub mod runtime;
+#[path = "audio/seiren/mod.rs"]
+pub mod seiren_audio;
 #[path = "audio/simple_audio.rs"]
 pub mod simple_audio;
 #[path = "audio/simple_audio_volume.rs"]
@@ -35,8 +39,11 @@ pub mod thx_rpc;
 
 #[path = "native/dll.rs"]
 pub mod dll;
+#[path = "accessory/hanbo_cooler.rs"]
+pub mod hanbo_cooler;
 #[path = "lighting.rs"]
 pub mod lighting;
+pub mod mapping;
 
 use std::path::PathBuf;
 

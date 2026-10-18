@@ -9,14 +9,16 @@ use gpui_kit::component::{
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
+use razer_model::chroma_settings::SettingsDraft;
 use razer_pages::features::Choice;
 use razer_settings::settings_page::{SettingsEvent, SettingsPage};
+use razer_state::chroma_settings::{Change, ChromaSettings as SettingsOwner};
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::settings_button as source_button;
 use razer_widgets::surface::css;
 use razer_widgets::theme::ChromaSettingsColors as Colors;
-use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, path::PathBuf, sync::OnceLock};
+use serde::Deserialize;
+use std::{collections::BTreeMap, sync::OnceLock};
 
 #[derive(Deserialize)]
 struct Language {
@@ -51,45 +53,6 @@ fn local(zh: &str, en: &str) -> String {
         en.into()
     }
 }
-#[derive(Clone, Default, Serialize, Deserialize)]
-#[serde(default, deny_unknown_fields)]
-struct LocalDraft {
-    auto_start: Option<bool>,
-    start_minimized: Option<bool>,
-    notifications: Option<bool>,
-    dynamic_lighting: Option<bool>,
-    tutorials: BTreeMap<String, bool>,
-}
-impl LocalDraft {
-    fn notifications_enabled(&self) -> bool {
-        // ye treats an absent storage key as true; an explicit false survives.
-        self.notifications.unwrap_or(true)
-    }
-
-    fn toggle_dynamic_lighting(&mut self) {
-        // de/ee toggles from the current value, whichever label was clicked.
-        self.dynamic_lighting = Some(!self.dynamic_lighting.unwrap_or(false));
-    }
-
-    fn path() -> PathBuf {
-        razer_storage::store_path().with_file_name("chroma-settings-local.json")
-    }
-    fn load() -> Result<Self, String> {
-        match std::fs::read(Self::path()) {
-            Ok(bytes) => serde_json::from_slice(&bytes).map_err(|e| e.to_string()),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Self::default()),
-            Err(e) => Err(e.to_string()),
-        }
-    }
-    fn save(&self) -> Result<(), String> {
-        let p = Self::path();
-        if let Some(parent) = p.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-        }
-        let bytes = serde_json::to_vec_pretty(self).map_err(|e| e.to_string())?;
-        std::fs::write(p, bytes).map_err(|e| e.to_string())
-    }
-}
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Page {
     Chroma,
@@ -117,8 +80,8 @@ pub struct ChromaSettings {
     locale_owner: Entity<SettingsPage>,
     dashboard: Entity<crate::chroma_page::ChromaPage>,
     language: Entity<SelectState<Vec<Choice>>>,
-    draft: LocalDraft,
-    saved_draft: LocalDraft,
+    settings_owner: Entity<SettingsOwner>,
+    draft: SettingsDraft,
     error: Option<String>,
     dynamic_supported: bool,
     dynamic_switching: bool,
@@ -146,11 +109,18 @@ impl ChromaSettings {
         language.update(cx, |s, cx| {
             s.set_selected_value(&i18n::locale().to_lowercase(), window, cx)
         });
-        let (draft, error) = match LocalDraft::load() {
-            Ok(d) => (d, None),
-            Err(e) => (LocalDraft::default(), Some(e)),
-        };
+        let settings_owner = SettingsOwner::acquire(cx);
+        let draft = settings_owner.read(cx).preferences().settings().clone();
+        let error = settings_owner.read(cx).error().map(str::to_owned);
+        let unsaved = settings_owner.read(cx).settings_dirty();
         let subscriptions = vec![
+            cx.observe(&settings_owner, |this, owner, cx| {
+                let owner = owner.read(cx);
+                this.draft = owner.preferences().settings().clone();
+                this.unsaved = owner.settings_dirty();
+                this.error = owner.error().map(str::to_owned);
+                cx.notify();
+            }),
             cx.observe(&dashboard, |_, _, cx| cx.notify()),
             cx.subscribe(&locale_owner, |this: &mut Self, _, event, cx| {
                 if matches!(event, SettingsEvent::Language) {
@@ -190,7 +160,7 @@ impl ChromaSettings {
             locale_owner,
             dashboard,
             language,
-            saved_draft: draft.clone(),
+            settings_owner,
             draft,
             error,
             dynamic_supported: razer_platform::system::supports_dynamic_lighting(),
@@ -199,7 +169,7 @@ impl ChromaSettings {
             dualsense_present: false,
             notes: None,
             notes_subscription: None,
-            unsaved: false,
+            unsaved,
             _subscriptions: subscriptions,
         }
     }
@@ -243,17 +213,30 @@ impl ChromaSettings {
         }
     }
     fn save(&mut self, cx: &mut Context<Self>) {
-        self.error = self.draft.save().err();
-        self.unsaved = self.error.is_some();
-        if !self.unsaved {
-            self.saved_draft = self.draft.clone();
-        }
+        self.error = self
+            .settings_owner
+            .update(cx, |owner, cx| owner.retry(cx))
+            .err();
+        cx.notify();
+    }
+    fn change_settings(&mut self, change: Change, cx: &mut Context<Self>) {
+        self.error = self
+            .settings_owner
+            .update(cx, |owner, cx| owner.change(change, cx))
+            .err();
+        let owner = self.settings_owner.read(cx);
+        self.draft = owner.preferences().settings().clone();
+        self.unsaved = owner.settings_dirty();
         cx.notify();
     }
     fn discard(&mut self, cx: &mut Context<Self>) {
-        self.draft = self.saved_draft.clone();
-        self.unsaved = false;
-        self.error = None;
+        self.error = self
+            .settings_owner
+            .update(cx, |owner, cx| owner.discard_settings(cx))
+            .err();
+        let owner = self.settings_owner.read(cx);
+        self.draft = owner.preferences().settings().clone();
+        self.unsaved = owner.settings_dirty();
         cx.notify();
     }
     fn navigate(&mut self, page: Page, cx: &mut Context<Self>) {
@@ -287,14 +270,10 @@ impl ChromaSettings {
             cx.notify();
             return;
         }
-        match LocalDraft::load() {
-            Ok(d) => {
-                self.saved_draft = d.clone();
-                self.draft = d;
-                self.error = None;
-            }
-            Err(e) => self.error = Some(e),
-        }
+        self.error = self
+            .settings_owner
+            .update(cx, |owner, cx| owner.reload(cx))
+            .err();
         cx.notify();
     }
     /// Accept only the current host's WDL/storage and Sensa feature observations.
@@ -316,10 +295,7 @@ impl ChromaSettings {
         if self.tutorials_reset(cx) {
             return;
         }
-        for key in &source().tutorial_keys {
-            self.draft.tutorials.insert(key.clone(), true);
-        }
-        self.save(cx);
+        self.change_settings(Change::ResetTutorials(source().tutorial_keys.clone()), cx);
         cx.emit(SettingsAction::ResetTutorials);
     }
     fn tutorials_reset(&self, cx: &App) -> bool {
@@ -327,7 +303,7 @@ impl ChromaSettings {
             if key == "isShowIntroductionBanner" {
                 self.dashboard.read(cx).introduction_enabled()
             } else {
-                self.draft.tutorials.get(key) == Some(&true)
+                self.draft.tutorial_enabled(key)
             }
         })
     }
@@ -417,8 +393,8 @@ impl ChromaSettings {
             .into_any_element()
     }
     fn startup(&self, cx: &mut Context<Self>) -> AnyElement {
-        let auto = self.draft.auto_start.unwrap_or(true);
-        let minimized = self.draft.start_minimized.unwrap_or(true);
+        let auto = self.draft.auto_start_enabled();
+        let minimized = self.draft.start_minimized_enabled();
         panel("AUTO_LAUNCH")
             .child(
                 checkbox(
@@ -428,8 +404,7 @@ impl ChromaSettings {
                     false,
                 )
                 .on_change(Self::toggle(cx, |this, value, cx| {
-                    this.draft.auto_start = Some(value);
-                    this.save(cx);
+                    this.change_settings(Change::AutoStart(value), cx);
                 })),
             )
             .child(
@@ -468,9 +443,8 @@ impl ChromaSettings {
                             !auto,
                         )
                         .on_change(Self::toggle(cx, |this, value, cx| {
-                            if this.draft.auto_start.unwrap_or(true) {
-                                this.draft.start_minimized = Some(value);
-                                this.save(cx);
+                            if this.draft.auto_start_enabled() {
+                                this.change_settings(Change::StartMinimized(value), cx);
                             }
                         })),
                     ),
@@ -497,8 +471,7 @@ impl ChromaSettings {
                             false,
                         )
                         .on_change(Self::toggle(cx, |this, value, cx| {
-                            this.draft.notifications = Some(value);
-                            this.save(cx);
+                            this.change_settings(Change::Notifications(value), cx);
                         })),
                     )
                     .child(help("chroma-settings-notification-help", tip)),
@@ -506,7 +479,7 @@ impl ChromaSettings {
             .into_any_element()
     }
     fn lighting(&self, cx: &mut Context<Self>) -> AnyElement {
-        let dynamic = self.draft.dynamic_lighting.unwrap_or(false);
+        let dynamic = self.draft.dynamic_lighting_enabled();
         panel("DEVICE_LIGHTING")
             .relative()
             .child(
@@ -553,8 +526,12 @@ impl ChromaSettings {
                                         if !this.dynamic_switching {
                                             // ee invokes the same outer toggle for either half,
                                             // including the already selected mode.
-                                            this.draft.toggle_dynamic_lighting();
-                                            this.save(cx);
+                                            this.change_settings(
+                                                Change::DynamicLighting(
+                                                    !this.draft.dynamic_lighting_enabled(),
+                                                ),
+                                                cx,
+                                            );
                                         }
                                     }))
                                 },
@@ -903,6 +880,7 @@ impl Render for ChromaSettings {
         let content = content.when(self.unsaved, |v| {
             v.child(
                 Button::new("chroma-settings-discard")
+                    .disabled(self.settings_owner.read(cx).is_pending())
                     .accessibility_label(local(
                         "放弃未保存的本地更改",
                         "Discard unsaved local changes",
@@ -936,34 +914,6 @@ impl Render for ChromaSettings {
                     .child(content),
             )
             .when_some(self.notes.clone(), |v, notes| v.child(notes))
-    }
-}
-
-#[cfg(test)]
-mod source_state_tests {
-    use super::LocalDraft;
-
-    #[test]
-    fn missing_notifications_are_enabled_but_an_explicit_choice_is_preserved() {
-        let missing: LocalDraft = serde_json::from_str("{}").unwrap();
-        assert!(missing.notifications_enabled());
-        let disabled: LocalDraft = serde_json::from_str(r#"{"notifications":false}"#).unwrap();
-        assert!(!disabled.notifications_enabled());
-        let enabled: LocalDraft = serde_json::from_str(r#"{"notifications":true}"#).unwrap();
-        assert!(enabled.notifications_enabled());
-    }
-
-    #[test]
-    fn either_lighting_label_toggles_the_current_mode() {
-        let mut draft = LocalDraft::default();
-        draft.toggle_dynamic_lighting();
-        assert_eq!(draft.dynamic_lighting, Some(true));
-        draft.toggle_dynamic_lighting();
-        assert_eq!(draft.dynamic_lighting, Some(false));
-        let stored = serde_json::to_string(&draft).unwrap();
-        let mut restored: LocalDraft = serde_json::from_str(&stored).unwrap();
-        restored.toggle_dynamic_lighting();
-        assert_eq!(restored.dynamic_lighting, Some(true));
     }
 }
 

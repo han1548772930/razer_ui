@@ -11,6 +11,7 @@ use gpui_kit::component::{
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
+use razer_state::ui_preferences::{Flag as UiPreference, UiPreferences};
 use razer_widgets::surface;
 use razer_widgets::theme::HueColors as Colors;
 use serde::{Deserialize, Serialize};
@@ -229,6 +230,7 @@ pub struct HueWorkspace {
     /// `!isLoading && false !== localStorage["isShowTutorialHue"]` 决定，点击后把它写成
     /// `false`（见 `effects.rs` 的同一键名持久化）。这里只保存当前可见状态。
     tutorial_visible: bool,
+    ui_preferences: Entity<UiPreferences>,
     chroma_installed: Option<bool>,
     chroma_profiles: Entity<SelectState<Vec<Choice>>>,
 }
@@ -236,6 +238,7 @@ impl EventEmitter<HueChanged> for HueWorkspace {}
 impl EventEmitter<HueChromaRequested> for HueWorkspace {}
 impl HueWorkspace {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let ui_preferences = UiPreferences::acquire(UiPreference::HueTutorial, cx);
         let ip = std::array::from_fn(|_| {
             cx.new(|cx| {
                 InputState::new(window, cx).validate(|value, _| value.encode_utf16().count() <= 3)
@@ -290,11 +293,17 @@ impl HueWorkspace {
             advanced: false,
             scan_task: None,
             tutorial_visible: false,
+            ui_preferences,
             chroma_installed: None,
             chroma_profiles,
         };
         // 源 `PA` 的挂载 effect 同样按存储值与 `isLoading` 决定初始可见性。
-        this.sync_tutorial_visibility();
+        this.sync_tutorial_visibility(cx);
+        this.subscriptions
+            .push(cx.observe(&this.ui_preferences, |this, _, cx| {
+                this.sync_tutorial_visibility(cx);
+                cx.notify();
+            }));
         for octet in 0..4 {
             this.subscriptions.push(cx.subscribe_in(
                 &this.ip[octet],

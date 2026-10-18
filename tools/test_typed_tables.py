@@ -21,6 +21,391 @@ def catalog():
 
 
 class TypedTableTests(unittest.TestCase):
+    @staticmethod
+    def battery_peer_manifest():
+        return {"productId":226,"vendorId":5426,"wiredProductId":226,"dongleProductId":227,"bleProductId":228,
+            "category":"MOUSE","supportBatteryLevelMonitoring":True,"supportDockingStationV2":True,
+            "rzDeviceConfig":{"claimInterface":3,"maxRetryIn":30,"maxRetryOut":20,"rzDeviceName":"rzDevice25",
+                "sleepTimeBetweenIn":5,"sleepTimeBetweenOut":5,"sleepTimeBetweenOutIn":5},
+            "quickEffectOnExit":{"effectId":1,"params":{"color":"#a3e01f"}},
+            "chargingEffect":{"full":{"min":100,"max":100,"effectId":6,"effectParams":{"color":65280}},
+                "high":{"min":75,"max":99,"effectId":5,"effectParams":{"color":65280}},
+                "mid":{"min":50,"max":74,"effectId":5,"effectParams":{"color":16776960}},
+                "low":{"min":25,"max":49,"effectId":5,"effectParams":{"color":16729344}},
+                "critical":{"min":0,"max":24,"effectId":5,"effectParams":{"color":16711680}}},
+            "ledConfig":{"ledConfig_128_0":{"Version":2,"VID":5426,"PID":226,"EID":128,"Layout":0,
+                "MatrixMaxRow":1,"MatrixMaxCol":2,"DeviceMaxRow":1,"DeviceMaxCol":2,"LedWidth":40,"LedHeight":40,
+                "LedWidthOffset":0,"LedHeightOffset":0,"MaxRegion":0,"RegionMaxRow":0,"RegionMaxCol":0,
+                "LedMatrix":[{"MatrixPos":[0,0],"DevicePos":[0,1]},{"MatrixPos":[0,1],"DevicePos":[0,0]}],
+                "LedRegion":[{"RegionId":1,"NumLed":1,"MaxRow":1,"MaxCol":1,"RegionMatrix":[{"MatrixPos":[0,1]}]}],
+                "LedInputMap":[{"InputType":"dkm","InputData":[81,16],"MatrixPos":[65535,65535]}]}}}
+
+    def test_battery_peer_projection_preserves_declared_pid_optional_flags_geometry_and_exit(self):
+        manifest = self.battery_peer_manifest()
+        row = typed_tables.receiver_battery_peer_projection(manifest,227,128,{"selectedEffectId":3})
+        self.assertEqual(row["support"]["source_product_id"],227)
+        self.assertEqual(row["support"]["manifest_product_id"],226)
+        self.assertFalse(row["support"]["is_dual_link"])
+        self.assertIsNone(row["support"]["send_chroma_frames_to_dock"])
+        self.assertEqual(row["support"]["quick_effect_on_exit"],{"_type":"PeerExitEffect::Static","color":[163,224,31]})
+        self.assertEqual(row["support"]["default_profile_effect"],"PeerProfileEffect::Spectrum")
+        self.assertEqual(row["geometries"][0]["led_input_map"][0]["matrix_pos"],[65535,65535])
+        self.assertEqual(row["charging_effects"]["mid"]["color"],16776960)
+        for mutate in (
+                lambda m:m["rzDeviceConfig"].update(unknown=True),
+                lambda m:m.update(isDualLink=1),
+                lambda m:m["quickEffectOnExit"]["params"].update(speed=1),
+                lambda m:m["ledConfig"]["ledConfig_128_0"].update(EID=0),
+                lambda m:m["ledConfig"]["ledConfig_128_0"]["LedInputMap"][0].update(InputType="unknown"),
+                lambda m:m["chargingEffect"]["low"].update(min=90)):
+            changed = copy.deepcopy(manifest)
+            mutate(changed)
+            with self.assertRaises(ValueError):
+                typed_tables.receiver_battery_peer_projection(changed,227,128,{"selectedEffectId":3})
+
+    def test_battery_peer_default_profile_effect_preserves_current_mw_color_and_rejects_unresolved_fields(self):
+        self.assertEqual(typed_tables.receiver_battery_peer_default_effect({"selectedEffectId":3}),
+                         "PeerProfileEffect::Spectrum")
+        self.assertEqual(typed_tables.receiver_battery_peer_default_effect(
+            {"selectedEffectId":1,"selectedEffectSetting":{"color1":"#a3e01f"}}),
+            {"_type":"PeerProfileEffect::Static","color":[163,224,31]})
+        for invalid in ({}, {"selectedEffectId":True}, {"selectedEffectId":3,"unknown":1},
+                {"selectedEffectId":1,"selectedEffectSetting":{"color1":"#a3e01f","speed":1}},
+                {"selectedEffectId":1,"selectedEffectSetting":{"color1":"green"}},
+                {"effectId":1,"params":{"color":"#a3e01f"}}):
+            with self.assertRaises(ValueError):
+                typed_tables.receiver_battery_peer_default_effect(invalid)
+
+    def test_battery_peer_rust_equivalence_rejects_changed_support_regions_inputs_and_effects(self):
+        row = typed_tables.receiver_battery_peer_projection(self.battery_peer_manifest(),227,128,
+            {"selectedEffectId":1,"selectedEffectSetting":{"color1":"#a3e01f"}})
+        rows = [row]
+        raw = typed_tables.render_receiver_battery_peers(rows)
+        self.assertTrue(typed_tables.verify_receiver_battery_peers(raw,rows)["all_fields_and_order_equal"])
+        for before, after in ((b"manifest_product_id: 226",b"manifest_product_id: 227"),
+                (b"claim_interface: 3",b"claim_interface: 0"),
+                (b"PeerDeviceFactory::RzDevice25",b"PeerDeviceFactory::RzDevice30"),
+                (b"RegionMatrix { matrix_pos: [0, 1] }",b"RegionMatrix { matrix_pos: [0, 0] }"),
+                (b"matrix_pos: [65535, 65535]",b"matrix_pos: [0, 0]"),
+                (b"color: 16776960",b"color: 255"),
+                (b"PeerProfileEffect::Static",b"PeerExitEffect::Static"),
+                (b"[163, 224, 31]",b"[31, 224, 163]"),
+                (b"(227,128,0)",b"(226,128,0)")):
+            self.assertIn(before,raw)
+            with self.assertRaises(ValueError):
+                typed_tables.verify_receiver_battery_peers(raw.replace(before,after),rows)
+
+    def test_receiver_sender_table_uses_mounted_selector_and_keeps_other_factories(self):
+        raw = b'''fn products(){vec![ReceiverCapability{source_product_id:241,product_id:241,
+            claim_interface:3,report_id:0,source_class:"rzDevice25LinkerMultiDevices".into()},
+            PairingCapability{transport:ReceiverCapability{source_product_id:756,product_id:241,
+            claim_interface:3,report_id:0,source_class:"rzDevice25".into()}}]}'''
+        bindings = {241:{"source_class":"rzDevice25LinkerMultiDevices","claim_interface":3,"report_id":3}}
+        with self.assertRaisesRegex(ValueError,"report_id differs"):
+            typed_tables.receiver_sender_table_projection(raw,bindings)
+        updated,rows=typed_tables.receiver_sender_table_projection(raw,bindings,update=True)
+        self.assertEqual(updated.count(b"report_id:3"),1)
+        self.assertEqual(updated.count(b"report_id:0"),1)
+        self.assertEqual(rows,[{"source_product_id":241,"product_id":241,
+            "source_class":"rzDevice25LinkerMultiDevices","claim_interface":3,"report_id":3}])
+        self.assertEqual(typed_tables.receiver_sender_table_projection(updated,bindings)[0],updated)
+        for invalid in (updated.replace(b"claim_interface:3",b"claim_interface:0",1),
+                        updated.replace(b"rzDevice25LinkerMultiDevices",b"rzDevice25",1),
+                        updated.replace(b"report_id:3",b"report_id:3,report_id:3",1)):
+            with self.assertRaises(ValueError):
+                typed_tables.receiver_sender_table_projection(invalid,bindings)
+
+    @staticmethod
+    def transfer_factory(fields=None, export="DeviceInfo:()=>info"):
+        return ('42:(module,exports,require)=>{require.d(exports,{' + export + '});'
+                'const deviceName="A \\"quoted\\" keyboard",base={productId:756,category:"KEYBOARD"},'
+                'info={' + (fields if fields is not None else
+                '...base,dongleId:757,bleId:758,is8kAnalogDevice:!0,deviceName') + '};}')
+
+    def test_receiver_reset_check_compares_complete_product_fields_and_output_bytes(self):
+        source = json.loads((typed_tables.ROOT / typed_tables.RESET_INPUT).read_bytes())
+        with tempfile.TemporaryDirectory() as directory, patch.object(typed_tables, "ROOT", Path(directory)):
+            root = Path(directory)
+            path = root / typed_tables.RESET_INPUT
+            output = root / typed_tables.RESET_OUTPUT
+            path.parent.mkdir(parents=True)
+            output.parent.mkdir(parents=True)
+            raw = json.dumps(source).encode()
+            path.write_bytes(raw)
+            output.write_bytes(typed_tables.render_reset_storage(raw))
+            result = typed_tables.check_receiver_reset_storage()
+            self.assertEqual(result["products"], [164, 241])
+            changed = copy.deepcopy(source)
+            changed["products"][1]["default_profile"]["brightness"]["value"] = 37
+            path.write_bytes(json.dumps(changed).encode())
+            with self.assertRaisesRegex(ValueError, "differs from complete source defaults"):
+                typed_tables.check_receiver_reset_storage()
+            path.write_bytes(raw)
+            output.write_bytes(output.read_bytes() + b" ")
+            with self.assertRaisesRegex(ValueError, "differs from complete source defaults"):
+                typed_tables.check_receiver_reset_storage()
+            for field, value in (("canPairTwoDevices", False), ("unknown", True)):
+                changed = copy.deepcopy(source)
+                changed["products"][1]["default_profile"][field] = value
+                with self.assertRaises(ValueError):
+                    typed_tables.render_reset_storage(json.dumps(changed).encode())
+
+    def test_transfer_projection_resolves_fixed_alias_spread_shorthand_and_getter_forms(self):
+        source = self.transfer_factory()
+        projected, evidence = typed_tables.profile_transfer_source_projection(source)
+        self.assertEqual(projected, {"productId":756,"dongleId":757,"bleId":758,
+            "category":"KEYBOARD","is8kAnalogDevice":True,"deviceName":'A "quoted" keyboard'})
+        self.assertFalse(evidence["absent_optional_fields"])
+        for binding in evidence["bindings"]:
+            self.assertEqual(source.encode()[binding["byte_start"]:binding["byte_end"]].decode(), binding["body"])
+            self.assertEqual(hashlib.sha256(binding["body"].encode()).hexdigest(), binding["body_sha256"])
+        old_getter, _ = typed_tables.profile_transfer_source_projection(
+            self.transfer_factory(export="DeviceInfo:function(){return info}"))
+        self.assertEqual(old_getter, projected)
+
+    def test_transfer_projection_retains_verified_equal_duplicate_fields_and_sequence_result(self):
+        fields = '...base,category:"KEYBOARD",deviceName,deviceName:deviceName'
+        projected, evidence = typed_tables.profile_transfer_source_projection(self.transfer_factory(fields))
+        self.assertEqual(projected["category"],"KEYBOARD")
+        self.assertEqual([row["field"] for row in evidence["equal_duplicate_properties"]],["category","deviceName"])
+        source = self.transfer_factory().replace('info={','info=(require.p,{').replace('};}', '});}')
+        projected, evidence = typed_tables.profile_transfer_source_projection(source)
+        self.assertEqual(projected["productId"],756)
+        self.assertEqual(len(evidence["sequence_results"]),1)
+        with self.assertRaises(ValueError):
+            typed_tables.profile_transfer_source_projection(source.replace('require.p,','sideEffect(),'))
+
+    def test_transfer_projection_resolves_actual_imported_enum_owner(self):
+        factory = self.transfer_factory().replace('const deviceName=', 'const enums=require(43);const deviceName=')
+        factory = factory.replace('category:"KEYBOARD"','category:enums.Kind.KEYBOARD')
+        enum = '43:(module,exports,require)=>{require.d(exports,{Kind:()=>kind});const kind={KEYBOARD:"KEYBOARD",AUDIO:"AUDIO"};}'
+        raw = ('(function(){const modules={' + factory + ',' + enum + '};})();').encode()
+        owners, modules = typed_tables.profile_transfer_source_owners(raw)
+        self.assertEqual(len(owners),1)
+        projection, evidence = typed_tables.profile_transfer_source_projection(owners[0]["body"],modules=modules)
+        self.assertEqual(projection["category"],"KEYBOARD")
+        self.assertEqual(evidence["imported_fixed_fields"][0]["owner"]["module_id"],43)
+        with self.assertRaises(ValueError):
+            typed_tables.profile_transfer_source_projection(owners[0]["body"],modules={})
+
+    def test_transfer_source_owner_is_the_inner_complete_concatenated_entry(self):
+        raw = ('(()=>{const nested=()=>{return 1};(()=>{const exports={};require.d(exports,{DeviceInfo:()=>info});'
+               'const info={productId:769,category:"HUE"};})();})();').encode()
+        owners, _ = typed_tables.profile_transfer_source_owners(raw)
+        self.assertEqual(len(owners),1)
+        owner = owners[0]
+        self.assertEqual(raw[owner["byte_start"]:owner["byte_end"]].decode(),owner["body"])
+        self.assertTrue(owner["body"].startswith('()=>{const exports={}'))
+        projection, _ = typed_tables.profile_transfer_source_projection(owner["body"])
+        self.assertEqual(projection,{"productId":769,"category":"HUE"})
+
+    def test_transfer_projection_preserves_absent_optional_fields_without_inventing_names(self):
+        projected, evidence = typed_tables.profile_transfer_source_projection(
+            self.transfer_factory('...base'))
+        self.assertEqual(projected, {"productId":756,"category":"KEYBOARD"})
+        self.assertEqual(evidence["absent_optional_fields"], ["bleId","deviceName","dongleId","is8kAnalogDevice"])
+        self.assertEqual(typed_tables.profile_transfer_semantics(projected), {
+            "product_id":756,"dongle_id":None,"ble_id":None,"category":"Keyboard","is_eight_k_analog_device":False})
+
+    def test_transfer_projection_rejects_missing_dynamic_conflicting_and_invalid_fields(self):
+        for fields in ('productId:756', 'category:"KEYBOARD"',
+                       '...base,productId:100', '...base,bleId:query()',
+                       'productId:756,category:"UNKNOWN"', '...base,is8kAnalogDevice:1',
+                       '...base,dongleId:-1', '...base,deviceName:""',
+                       '...unknown,deviceName', '...base,["dongleId"]:757'):
+            with self.subTest(fields=fields), self.assertRaises(ValueError):
+                typed_tables.profile_transfer_source_projection(self.transfer_factory(fields))
+        with self.assertRaises(ValueError):
+            typed_tables.profile_transfer_source_projection(
+                self.transfer_factory(export="DeviceInfo:function(){sideEffect();return info}"))
+
+    def test_transfer_constructor_roundtrip_checks_every_field_and_order(self):
+        projection, _ = typed_tables.profile_transfer_source_projection(self.transfer_factory())
+        writer = {**projection,"dongleId":759}
+        products = [{"mounted_product_id":756,"projection":projection,"export_projection":writer,
+                     "export_rule":"ProfilesWithSelectedMacros","fixed_export_name":projection["deviceName"]}]
+        rendered = typed_tables.render_profile_transfer_products(products)
+        self.assertTrue(typed_tables.verify_profile_transfer_constructor(rendered,products)["all_fields_and_order_equal"])
+        for old, new in ((b"mounted_product_id: 756",b"mounted_product_id: 700"),
+                         (b"product_id: 756",b"product_id: 700"),
+                         (b"dongle_id: Some(757)",b"dongle_id: None"),
+                         (b"ble_id: Some(758)",b"ble_id: None"),
+                         (b"dongle_id: Some(759)",b"dongle_id: Some(757)"),
+                         (b"TransferCategory::Keyboard",b"TransferCategory::Mouse"),
+                         (b"is_eight_k_analog_device: true",b"is_eight_k_analog_device: false"),
+                         (b"ProfileExportRule::ProfilesWithSelectedMacros",b"ProfileExportRule::ProfilesOnly"),
+                         (b"device_name: Some(",b"device_name: None, unknown: Some(")):
+            with self.subTest(old=old), self.assertRaises(ValueError):
+                typed_tables.verify_profile_transfer_constructor(rendered.replace(old,new),products)
+        absent = [{"mounted_product_id":756,"projection":{"productId":756,"category":"KEYBOARD"},
+                   "export_projection":{"productId":756,"category":"KEYBOARD"},"export_rule":"ProfilesOnly"}]
+        typed_tables.verify_profile_transfer_constructor(typed_tables.render_profile_transfer_products(absent),absent)
+        for invalid in ([], products + products, [products[0], {"mounted_product_id":70,"projection":projection,"export_projection":projection}]):
+            with self.assertRaises(ValueError):
+                typed_tables.render_profile_transfer_products(invalid)
+
+    def test_transfer_export_name_requires_the_actual_file_producer(self):
+        def factory(expression):
+            return ('1:(module,exports,require)=>{function exportProfiles(){return run(function*(){'
+                    'const file={productId:product.DeviceInfo.productId,deviceName:' + expression + ','
+                    'category:product.DeviceInfo.category,profiles:[],macros:[]};'
+                    'emit({actionType:"taskMakerExportProfile",status:"completed"});});}}').encode()
+        for expression, mode in (("product.DeviceInfo.deviceName","middleware_device_info"),
+                                 ("labels.current.getCurLangNameData().productName","current_localized_product_name")):
+            raw = b"(self.webpackChunk=self.webpackChunk||[]).push([[1],{" + factory(expression) + b"}]);"
+            capture = typed_tables.profile_export_name_source(raw)
+            self.assertEqual(capture["name_source"],mode)
+            body = capture["function"]
+            self.assertEqual(raw[body["byte_start"]:body["byte_end"]].decode(),body["body"])
+            self.assertEqual(hashlib.sha256(body["body"].encode()).hexdigest(),body["sha256"])
+        raw = b"(self.webpackChunk=self.webpackChunk||[]).push([[1],{" + factory("otherDevice.DeviceInfo.deviceName") + b"}]);"
+        with self.assertRaises(ValueError):
+            typed_tables.profile_export_name_source(raw)
+
+    def test_transfer_export_anonymous_function_retains_concatenated_writer_linkage(self):
+        raw = ('(()=>{const exports={};require.d(exports,{DeviceInfo:()=>info});'
+               'const info={productId:162,category:"MOUSE"};'
+               'const exportProfiles=()=>run(function*(){const file={productId:info.productId,'
+               'deviceName:labels.getCurLangNameData().productName,category:info.category,profiles:[],macros:[]};'
+               'emit({actionType:"taskMakerExportProfile"});});})();').encode()
+        owners, modules = typed_tables.profile_transfer_source_owners(raw)
+        _, evidence = typed_tables.profile_transfer_source_projection(owners[0]["body"],modules=modules)
+        captured = typed_tables.profile_export_name_source(raw,device_info_owner=owners[0],
+            device_info_binding=evidence["exported_binding"])
+        self.assertEqual(captured["verified_device_info_linkage"],{"kind":"same_complete_owner","binding":"info"})
+        with self.assertRaisesRegex(ValueError,"binding does not resolve"):
+            typed_tables.profile_export_name_source(raw,device_info_owner=owners[0],device_info_binding="other")
+
+    @staticmethod
+    def transfer_writer(macro_mode="skip_combined"):
+        macro = ('row.listItems.forEach(choice=>{if(choice.isMacroSelected){'
+                 'const macro=localMacros.find(item=>item.guid===choice.guid);'
+                 + ('if(!macro)return;' if macro_mode == "skip_separate" else '')
+                 + 'if(' + ('macro&&' if macro_mode == "skip_combined" else '')
+                 + '-1===selectedMacros.findIndex(item=>item.guid===macro.guid)){'
+                 'const projected={guid:macro.guid,macroEvents:macro.macroEvents,macroPlaybackOption:macro.macroPlaybackOption},'
+                 'payload=JSON.stringify(projected),encoded=Buffer.from(payload).toString("base64");'
+                 'selectedMacros.push({name:macro.name,payload:encoded,hash:hash(projected)})}}});')
+        return ('function*(){const profiles=JSON.parse(JSON.stringify(cache.profiles)),exported=[],selectedMacros=[],localMacros=load();'
+                'selected.forEach(row=>{const profile=JSON.parse(JSON.stringify(profiles.find(item=>item.guid===row.id)));'
+                'delete profile.appEngine;const payload=JSON.stringify(profile),encoded=Buffer.from(payload).toString("base64");'
+                'exported.push({name:profile.name,payload:encoded,hash:hash(profile)});'
+                + (macro if macro_mode != "none" else '')
+                + '});const file={productId:p.DeviceInfo.productId,deviceName:p.DeviceInfo.deviceName,'
+                'category:p.DeviceInfo.category,profiles:exported'
+                + (',macros:selectedMacros' if macro_mode != "none" else '')
+                + '};emit({actionType:"taskMakerExportProfile"});}')
+
+    def test_transfer_writer_payload_projection_preserves_all_three_macro_failure_branches(self):
+        for mode, rule in (("skip_combined","ProfilesWithSelectedMacros"),
+                           ("skip_separate","ProfilesWithSelectedMacros"),
+                           ("required","ProfilesWithRequiredSelectedMacros"),
+                           ("none","ProfilesOnly")):
+            with self.subTest(mode=mode):
+                result = typed_tables.profile_export_payload_semantics(self.transfer_writer(mode))
+                self.assertEqual(result["export_rule"],rule)
+                self.assertEqual(result["missing_profile"],"fail entire export")
+        source = self.transfer_writer()
+        for old, new in (('delete profile.appEngine','delete profile.name'),
+                         ('delete profile.appEngine;','delete profile.appEngine;profile.name="mutated";'),
+                         ('item.guid===row.id','item.guid===row.name'),
+                         ('hash:hash(profile)','hash:hash(cache)'),
+                         ('JSON.stringify(profile),encoded','JSON.stringify(cache),encoded'),
+                         ('macroPlaybackOption:macro.macroPlaybackOption','macroPlaybackOption:macro.macroPlaybackOption,extra:macro.name'),
+                         ('choice.isMacroSelected','choice.isSelected'),
+                         ('item.guid===macro.guid','item.guid===macro.name'),
+                         ('row.listItems.forEach','other.listItems.forEach'),
+                         ('item.guid===choice.guid','item.guid===choice.id')):
+            with self.subTest(old=old), self.assertRaises(ValueError):
+                typed_tables.profile_export_payload_semantics(source.replace(old,new))
+
+    def transfer_acquisition_fixture(self, root):
+        registry = root / ".analysis/inputs/typed-tables/razer-catalog/product_registry.json"
+        registry.parent.mkdir(parents=True)
+        registry.write_text(json.dumps({"products":[{"id":756}]}),encoding="utf-8")
+        (root / "tools").mkdir()
+        for name in ("typed_tables.py","families.py","workspace.py"):
+            (root / "tools" / name).write_text("# test maintenance tool\n",encoding="utf-8")
+        receipts = []
+        for role in ("ui","mw"):
+            base = f"https://apps.razer.com/synapse/products/756/{role}/"
+            directory = root / f".analysis/inputs/frontend/test-{role}-756-current"
+            directory.mkdir(parents=True)
+            main_name = ("static/js/" if role == "ui" else "") + "main.123abc.js"
+            export = ('99:(module,exports,require)=>{function exportProfiles(){return run('
+                      + self.transfer_writer() + ');}const p=require(42);}')
+            main = ('(self.webpackChunk=self.webpackChunk||[]).push([[1],{' + self.transfer_factory()
+                    + ("," + export if role == "mw" else "") + '}]);').encode()
+            rows = []
+            for name, content in (("index.html",f'<script src="{main_name}"></script>'.encode()),
+                                  ("manifest.json",b"{}"),(main_name,main)):
+                path = directory / "raw/apps.razer.com/synapse/products/756" / role / name
+                path.parent.mkdir(parents=True,exist_ok=True)
+                path.write_bytes(content)
+                rows.append({"url":base+name,"path":path.relative_to(root).as_posix(),
+                    "bytes":len(content),"sha256":hashlib.sha256(content).hexdigest()})
+            document = {"entry_url":base+"index.html","files":rows,
+                "source_current_during_acquisition":True,"stability":[
+                    {"url":row["url"],"before_sha256":row["sha256"],"after_sha256":row["sha256"],"unchanged":True}
+                    for row in rows[:2]]}
+            path = directory / "acquisition.json"
+            path.write_text(json.dumps(document),encoding="utf-8")
+            receipts.append((path,document))
+        return receipts
+
+    def test_transfer_generation_verifies_official_entry_bytes_versions_and_required_roles(self):
+        import analysis
+        import sys
+        sys.path.insert(0,str(typed_tables.ROOT / "tools/analyzers/python-static"))
+        errors = {"unstable":"deployment do not verify", "entry_bytes":"deployment do not verify",
+                  "main_bytes":"mounted main bytes do not verify", "missing_mw":"coverage is incomplete"}
+        for mutation in ("unstable","entry_bytes","main_bytes","missing_mw"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                receipts = self.transfer_acquisition_fixture(root)
+                path, document = receipts[1]
+                if mutation == "unstable":
+                    document["stability"][0]["unchanged"] = False
+                elif mutation in ("entry_bytes","main_bytes"):
+                    row = document["files"][0 if mutation == "entry_bytes" else 2]
+                    (root / row["path"]).write_bytes(b"changed bytes")
+                elif mutation == "missing_mw":
+                    path.unlink()
+                if mutation != "missing_mw":
+                    path.write_text(json.dumps(document),encoding="utf-8")
+                with patch.object(typed_tables,"ROOT",root), patch.object(analysis,"ROOT",root), \
+                        patch.object(typed_tables,"__file__",str(root / "tools/typed_tables.py")):
+                    with self.assertRaisesRegex(ValueError,errors[mutation]):
+                        typed_tables.prepare_profile_transfer_table()
+                self.assertFalse((root / typed_tables.TRANSFER_OUTPUT).exists())
+
+    def test_transfer_generation_and_check_use_the_same_source_owned_output(self):
+        import analysis
+        import sys
+        sys.path.insert(0,str(typed_tables.ROOT / "tools/analyzers/python-static"))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            receipts = self.transfer_acquisition_fixture(root)
+            path, document = receipts[1]
+            row = document["files"][2]
+            raw = (root / row["path"]).read_bytes().replace(b"bleId:758",b"bleId:759")
+            (root / row["path"]).write_bytes(raw)
+            row.update(bytes=len(raw),sha256=hashlib.sha256(raw).hexdigest())
+            path.write_text(json.dumps(document),encoding="utf-8")
+            with patch.object(typed_tables,"ROOT",root), patch.object(analysis,"ROOT",root), \
+                    patch.object(typed_tables,"__file__",str(root / "tools/typed_tables.py")):
+                result = typed_tables.prepare_profile_transfer_table()
+                self.assertEqual(result["products"],1)
+                output = root / typed_tables.TRANSFER_OUTPUT
+                self.assertIn(b"product_id: 756",output.read_bytes())
+                self.assertIn(b"ble_id: Some(758)",output.read_bytes())
+                self.assertIn(b"ble_id: Some(759)",output.read_bytes())
+                self.assertTrue(typed_tables.prepare_profile_transfer_table(check=True)["passed"])
+                source = output.read_bytes()
+                output.write_bytes(source.replace(b"product_id: 756",b"product_id: 700"))
+                with self.assertRaisesRegex(ValueError,"products differ"):
+                    typed_tables.prepare_profile_transfer_table(check=True)
+
     def source_fixture(self, name):
         transport = {
             "source_product_id":241,"vendor_id":5426,"product_id":241,"claim_interface":3,

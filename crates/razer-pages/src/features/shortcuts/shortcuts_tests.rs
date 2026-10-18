@@ -136,13 +136,19 @@ fn recording_preserves_legacy_storage_until_input_and_defaults_empty_modifiers(
         });
         w.press("a", cx);
         assert_eq!(view.read(cx).items[0].input, "KEY_A");
-        assert_eq!(view.read(cx).items[0].modifiers, ["CTRL", "SHIFT"]);
+        assert_eq!(
+            view.read(cx).items[0].modifiers,
+            ["KEY_LEFT_CTRL", "KEY_LEFT_SHIFT"]
+        );
         assert!(view.read(cx).committed_pending());
         view.update(cx, |state, cx| {
             state.record_input("ScrollButton".into(), gpui_kit::Modifiers::default(), cx)
         });
         assert_eq!(view.read(cx).items[0].input, "ScrollButton");
-        assert_eq!(view.read(cx).items[0].modifiers, ["CTRL", "SHIFT"]);
+        assert_eq!(
+            view.read(cx).items[0].modifiers,
+            ["KEY_LEFT_CTRL", "KEY_LEFT_SHIFT"]
+        );
     })
     .unwrap();
 }
@@ -155,7 +161,7 @@ fn pure_encoding_keeps_native_dependency_failures_out_of_the_ui() {
     };
     let before = item.clone();
     assert!(
-        super::super::shortcut_engine::encode_shortcuts(&[item.clone()])
+        razer_model::shortcuts::encode_shortcuts(&[item.clone()])
             .unwrap_err()
             .contains("Turbo")
     );

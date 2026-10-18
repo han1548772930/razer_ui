@@ -69,7 +69,7 @@ pub(super) struct State {
     focus: Option<FocusHandle>,
     return_focus: Option<FocusHandle>,
     capture: Option<Capture>,
-    native_capture: Option<super::super::mapping_key_capture_runtime::Owner>,
+    native_capture: Option<razer_service::mapping::key_capture::Session>,
     capture_task: Option<Task<()>>,
     capture_generation: u64,
     toggle_task: Option<Task<()>>,
@@ -199,7 +199,7 @@ impl KeyboardProductWorkspace {
             self.analog_controls.configuration = saved;
             self.analog_controls.local = true;
         }
-        if self.spec.product_id == 756 {
+        if matches!(self.spec.product_id, 740 | 746 | 756) {
             self.restore_latest_analog_configuration();
         }
     }
@@ -533,7 +533,7 @@ impl KeyboardProductWorkspace {
         state.recording = true;
         state.capture_generation = state.capture_generation.wrapping_add(1);
         state.capture = Capture::start_stream(window);
-        match super::super::mapping_key_capture_runtime::Owner::start() {
+        match razer_service::mapping::key_capture::Session::start() {
             Ok(owner) => state.native_capture = Some(owner),
             Err(error) => eprintln!("[keyboard-interrupt-capture] Startup: {error:#}"),
         }
@@ -571,11 +571,12 @@ impl KeyboardProductWorkspace {
                         }
                     }
                     for reply in native {
-                        use super::super::mapping_key_capture_runtime::Reply;
+                        use razer_service::mapping::key_capture::Reply;
                         match reply {
+                            Reply::Mode(_) => {},
                             Reply::Ready(receipt) => {
-                                if receipt["unresolved_devices"].as_array().is_some_and(|items| !items.is_empty()) {
-                                    eprintln!("[keyboard-interrupt-capture] Unresolved endpoints: {}",receipt["unresolved_devices"]);
+                                if !receipt.unresolved_devices().is_empty() {
+                                    eprintln!("[keyboard-interrupt-capture] Unresolved endpoints: {:?}",receipt.unresolved_devices());
                                 }
                             }
                             Reply::Failed(error) => {

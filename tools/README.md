@@ -25,6 +25,10 @@ python tools/workspace.py acquire-family --family mouse --layer ui --stage all -
 python tools/workspace.py acquire-family --family mouse --layer mw --stage all --workers 2
 python tools/workspace.py acquire-family --family mouse --layer mw --stage native --workers 2
 python tools/workspace.py audit-family-function --family keyboard --function mw --query keyboard-metadata
+python tools/workspace.py audit-family-function --family keyboard --function main --query global-shortcuts
+python tools/workspace.py audit-family-function --family mouse --function main --query mouse-tracking --prepare
+python tools/workspace.py audit-family-function --family mouse --function main --query mouse-calibration --prepare
+python tools/workspace.py audit-family-function --family system --function main --query shared-preferences
 python tools/workspace.py acquire-family --family all --layer both --stage probe --workers 12
 python tools/workspace.py acquire-family --family keyboard --layer both --product 515 --stage all --workers 2
 python tools/workspace.py audit-family-function --family system --function main --query shared-page-layout
@@ -53,14 +57,21 @@ python tools/workspace.py prepare-native-cursors --sources INPUTJSON --group 102
 python tools/workspace.py prepare-emoji-search --check
 python tools/workspace.py prepare-resource-database --check
 python tools/workspace.py prepare-typed-data --check
+python tools/workspace.py prepare-typed-data --check --record-verification
 python tools/workspace.py prepare-typed-data --symbol TEXT_DATA --symbol KEYBOARD_MAPPING_TEXT_EMOJI_DATA --symbol MOUSE_MAPPING_TEXT_CURRENT_DATA --symbol SHORTCUTS_CURRENT --check
 python tools/workspace.py prepare-device-write-table --check
 python tools/workspace.py prepare-local-protocol-tables --check
 python tools/workspace.py prepare-storage-tables --check
 python tools/workspace.py organize-sources
+python tools/workspace.py reconcile-source-index --frontend RECEIPT --publication MANIFEST
+python tools/workspace.py audit-reference --directory REFERENCE --commit COMMIT --retained-snapshot
 python tools/workspace.py audit-lfs
 python tools/workspace.py prepare-dashboard-images --source-preview-only --no-refresh-gaps
 python tools/workspace.py validate-rust --suite asset-pack-core
+python tools/workspace.py validate-rust --suite workspace --suite model --suite storage --suite assets-resource-runtime --suite assets-resource-identity --suite assets-fixed-icons
+python tools/workspace.py validate-rust --suite mapping-engine --suite mapping-service --suite mapping-connections --suite mouse-tracking-protocol --suite mouse-tracking-session --suite mouse-tracking-ipc --suite mouse-tracking-routing --suite mouse-tracking-service --suite mouse-tracking-state --suite mouse-tracking-shell
+python tools/workspace.py validate-rust --suite profiles-transfer-codec --suite ui-preferences-state --suite mouse-philips-protocol --suite mouse-philips-ipc --suite mouse-philips-routing --suite mouse-philips-service --suite mouse-philips-shell --suite mouse-philips-state
+python tools/workspace.py validate-rust --suite macro-recording-ipc --suite macro-shortcut-resume
 ```
 
 `PROJECTREL` 为 `.analysis/inputs/` 下已登记的 DLL／NODE／EXE。`capture-native` 使用 IDA 批处理与 Hex-Rays 保存全函数、汇编、CFG、xref、类型、字符串、导出／导入和失败；结束后正常退出。`--resume` 补齐同一输入的缺失结果，`--mcp-only` 使用独立私有副本启动查询会话。
@@ -83,6 +94,18 @@ schema 3 的 `ui_product`、`ui_product_category`、`ui_product_edition`、`ui_n
 
 `audit-host-local --query macro-recorder` 复用并核对当前 PID192／756 middleware、Macro 和 background-manager 完整 Wakaru 捕获的全部输入、输出与工具字节，保留原 validate 失败；从原始 JS 的实际 UTF-8 AST 区间保存完整 An／q、软件录制和 OTFM set/remove、全局锁与订阅／清理、接收器布局与功能配置 owners，统一写入 `.analysis/results/host-current/local-audit.json`。PID756 的预触发对象没有 exclusive mode，和 background 随后写入的独占记录分开；初始扫描和实时事件的字段层级差异、JSON 记录没有硬件 getter、运行时缓存最后匹配语义也分别保留。实际原生 transport、产品接线、完整页面与真实验收仍须独立完成。
 
+`audit-family-function --family keyboard --function main --query global-shortcuts` 核对当前 Dashboard 的完整编译键表、默认 Turbo 顺序、事件序列和常量，保留挂载页面／行警告／输入捕获、store／factory、规范 JSON／hash、Macro 发布和宿主适配器的完整所有者。输入捕获的固定协议解码使用 module 46114.Rk 的独立 144 行 typed Rust 表，由普通构造函数提供，逐字段与原顺序比较并核验生成字节，保留重复 Num Lock 和与编译键表不同的 outputFlag；不从编译表推导，不依赖运行时目录库。查询保存 708／707／706 共享的完整 DKMKEYS、DeviceInfo 与 middleware → connectedDevices → validDevices producer，核对三项 scan redirect。宿主 `NoBrowserInputHandler` 保留完整处理函数、sender 注册／注销、状态初始化及 IPC 分支；该门控只跳过宿主快捷键处理，不能据此禁用 DOM 键盘捕获。原生静态范围覆盖存储 singleton、异步 ACK、开关 vtable／初始值和 shutdown 恢复链；ACK 仅表示原生内存发布，不证明 parser 接受、OS 执行或设备写回。结果写入现有 `keyboard-mw-audit.json`，完整页面和真实运行验收另行记录。
+
+`audit-family-function --family keyboard --function mw --query keyboard-local-controls` 从 PID691／740／746 当前 UI 与 middleware 的 HTML、manifest 和部署稳定收据选择原件，保留指示灯／OLED 与磁轴校准的完整模块和 callable。每个 callable 仅登记自身命中的语义角色，结束时重新核验全部获取字节和收据；缺失 source map、资源闭包及获取失败继续独立保留。结果更新 `keyboard-main-audit.json` 的同一 query，不把该范围的静态调用链闭合记为整个键盘页面或运行验收完成。
+
+`audit-family-function --family mouse --function main --query mouse-tracking` 从当前部署入口与实际 manifest 选择 PID170／204／226／45066 的 main、协议和 tracking engine 原件，保存完整 factory、直接命令、传输分支与界面范围的 AST 所有者。命令头解析真实 lexical binding，逗号表达式取最后值；事务编号与重试规则分别核验。`--prepare` 将所需独立协议期望和原件身份写入设备 crate 的小型夹具；完整函数体保存在统一 `mouse-mw-audit.json`。固定来源字节、未解引用、缺失 source map、实现模拟验证和真实设备验收保持分开。
+
+`audit-family-function --family mouse --function main --query mouse-calibration` 核对 PID70 的真实 Philips 引擎构造分支、预设／手动／Mini apply 顺序、12 个数值的字节序、完整 16 项垫面表和自定义高度／阈值公式。手动／Mini 各六个完整状态包含样本方差、Z／Q 分组统计、超时、结束查询、保存转换、重校准日期和命名碰撞链；硬件记录与 parser、宿主注册／清理和原生 worker join 分别保留。默认 UI 身份沿 lexical binding 验证为 `undefined`，初始 sensorType 和 Mini Halt 面板沿 producer 常量验证；host add ACK 与 driver-ready 事件须同时成功。`--prepare` 准备所属设备协议夹具，完整所有者与独立获取边界写入现有 `mouse-mw-audit.json`。原件 lockMouse 是空操作，不代表原生锁鼠标；静态证据及模拟 transport 测试不证明完整页面或真实窗口／设备／服务验收。
+
+`audit-family-function --family system --function main --query shared-preferences` 从 740／746／756、Hue 与 Armory 的 5 套当前获取收据重新选择 HTML／manifest 指定原件，保存完整页面 factory、存储适配器与 read／write 回调；沿实际 key 常量、默认值、缺值初始化、乐观修改和监听清理确认 4 项本地偏好。结果保存在统一 `system-mw-audit.json`；查询不读取临时调查正文、不执行原始 JS，也不把未获取的引用或 source map 标为已完成。
+
+`audit-family-function --family accessories --function main --query hanbo-local-runtime` 在同一 `accessories-main-audit.json` 查询内保留当前完整页面／设备／本地服务所有者及图表呈现审阅：实际 Roboto font-face、旋转轴标题、语言切换时的 cleanup 提交、模式按钮状态优先级与 300ms CSS 过渡、禁用内容透明度和输入边界。字体测试夹具从获取收据核验的 WOFF 原件逐表解压，与 sfnt 的全部 tag、长度、校验和及原始 table 字节比较；仅允许 head checksumAdjustment 重算，另验证 sfnt 整文件校验和。夹具身份与实现字节分别记录，不能证明所有系统 fallback 字体或真实窗口／服务／设备验收；未闭合 producer 继续保留。
+
 原生批处理与指针表补查使用 IDA 9.1 官方 `pdb.cfg` 支持的 `-Opdb:off`，禁止隐式 PDB 下载阻塞。关闭符号下载不代表原 ABI 已解析。相同 SHA 的活动数据库不得重复启动。
 
 dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留全部字符串或反编译文本；流式输出仍保存全部记录。导出前保存私有 IDB checkpoint；`--resume` 在输入、loader 一致时重新打开已有 packed／unpacked 数据库，不用 `-c` 擦除分析。原失败 session 与日志字节保留于新 session 的 previous_attempts。恢复 DB 用 IDA 只读一致性检查，未解决的不一致阻止完整捕获。
@@ -101,7 +124,21 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 
 `inspect-corpus` 中的 `cached_download_fragments` 从当前 installer HTML 实际声明的 JS 静态解析完整下载 owner、常量和 `pindex`／Range 绑定，逐份比较源码定义的偏移与完整官方资源实际 bytes。本轮 15 份 104,857 字节缓存均通过区间核对并独立保留，从完整 PE／其他模块分类排除；不重建原件或转移完整文件身份。父资源的当前官方来源另行验证，策略／字节／快照失败及未证明的父来源均由同一 corpus gaps owner 保留。
 
-`organize-sources` 用 Rust AST 解析现有模块，再按功能生成物理目录迁移计划，同时核对 `include!`、嵌入数据和维护工具引用。默认只写计划；`--apply` 在确认源字节和目标路径未变后逐文件搬移、同步路径，仅移除已经为空的原目录，不操作 Git 索引。完整映射和摘要保存在 `.analysis/results/source-organization.json`，重复规划应没有迁移或路径改写。它同时记录全部工作区 manifest、各目标／构建／测试依赖、源码规模、实际嵌入资源和独立安装库，保留原模块接口，不替代编译及功能验证。
+`organize-sources` 用 Rust AST 解析现有模块，再按功能生成物理目录迁移计划，同时核对 `include!`、嵌入数据和维护工具引用。默认只写计划；`--apply` 在确认源字节和目标路径未变后逐文件搬移、同步路径，仅移除已经为空的原目录，不操作 Git 索引。完整映射和摘要保存在 `.analysis/results/source-organization.json`，重复规划应没有迁移或路径改写。它同时记录全部工作区 manifest、各目标／构建／测试的内部与外部依赖、源码规模、实际嵌入资源和独立安装库，并检查无 GUI 核心的传递依赖、领域／存储契约所有者、资源会话及产品保存边界。快捷键输入／hash、跨设备 held 目标、原子资源发布、映射／宏录制 worker、宏文件传输、共享 UI 偏好和退出排空使用明确所有者守卫，并用非法副本、别名、旧路径及无关代码反例核对。映射控制检查实际 `start_with_registry` 入口、共享 `apply_with` 与公共 helper，以及关联 owner／revision／target 的 typed 回执；global capture 检查混合 input／mode 的同一 poll。设备与全局快捷键会话检查共用 admission 锁、关闭后拒收和 FIFO Finish；快捷键 actor 不得合并跳过编译上下文。产品退出分别检查停止交互与排空已入队 mapping 两阶段，shell 仅在已请求保存全部排空后停止映射；后台等待者覆盖保存回执后才创建的 worker。统一清理 hooks 单次消费并由保留任务等待全部 completion，再关闭资源请求、后台等待资源线程退出，最后请求平台退出。`on_app_quit` 只作统一清理兜底或同步 UI 回收；功能模块内仅依赖该有限等待回调的后台 await／spawn／join 会被拒绝。边界检查与资源作用域检查各自报告失败；静态检查只将 `ensure!` 和 `matches!` 的参数重新解析为普通 Rust 表达式，不执行或通用展开宏，也不完成类型推导，不能替代编译及功能验证。
+
+来源索引由实际获取／发布所有者维护。`reconcile-source-index` 仅离线核验保留收据的完整字节、官方入口与 manifest、原有部署稳定性证明，或已固定资源版本、alias 与发布清单；`--frontend RECEIPT` 和 `--publication MANIFEST` 均可重复指定。通过后发布完整来源集合，在 `inputs.json` 的 `source_publications` 保留原索引行、新身份、原因和验证范围，不把缺失依赖或 source map 改成完成。它不重新下载、上传或直接按当前文件内容刷新摘要。
+
+`audit-reference --retained-snapshot` 仅适用于已有完整 Git tree 审计收据且当前没有可用 Git 元数据的参考快照，核对原清单、全部文件字节、Git blob 身份、模式及 workspace manifests。`REFERENCE` 是参考目录，`COMMIT` 是原固定提交；该模式不重新获取 Git 对象、不检查上游是否更新，保留原审计时间和适用边界，不能与 upstream 复查或恢复原字节选项混用。
+
+`validate-rust` 将精确命令、实际执行测试数、日志摘要和验证前后代码身份统一写入 `.analysis/validation.json`。架构整理可选择上述工作区、领域、存储与资源套件；`assets-resource-runtime` 在无 GPUI 的 `razer-resources` 中使用模拟传输，`assets-resource-identity` 只做元数据和 CPU codec 检查，`assets-fixed-icons` 核对固定图标。窗口、应用、安装器、厂商代码及真实设备验收仍禁止执行，不应从普通 `#[test]` 属性推断测试没有窗口副作用。
+
+`mapping-service` 通过内存传输验证设备映射／按键捕获／宏录制、取消、恢复、替换和 Rust panic 后的收尾；`mapping-connections` 只验证发现连接的纯状态规则。held 跨设备目标、快捷键编码与宏录制解码／XML 编解码由 `model` 覆盖；宏文件传输、旧快捷键归档及偏好磁盘迁移由 `storage` 覆盖。`profiles-transfer-codec` 验证共享源 hash 的导入边界，`ui-preferences-state` 只运行无窗口的偏好状态／队列测试。`mouse-tracking-*` 和 `mouse-philips-*` 选择协议、会话、IPC、发现路由、服务、页面请求状态及 shell 结果语义的纯／模拟测试，共享 feature submission 的取消／join／panic 由这两类 controller 用例覆盖；`mouse-philips-state` 覆盖 `calibration_70::state` 的面板转移与请求生命周期。`keyboard-latest-restore-*` 分别验证设备协调器、保留的退出队列及模拟 publisher 的映射注册／恢复；`keyboard-game-lifecycle` 验证退出冻结、手动配置与回执寿命；`keyboard-actuation-lifecycle` 用屏障与模拟 transport 验证已接受 FIFO、退出取消后的继任队列、真实范围取消及 Shutdown／释放完成。它们不启动应用、窗口或真实设备。`assets` 套件显式排除会创建 headless GPUI 窗口的 `image_cache::tests`，排除清单与边界随验证收据保存。
+
+`macro-recording-ipc` 核对暂停／恢复回执的完整字段、失败原因与错误类型，`macro-shortcut-resume` 使用模拟原生回调验证普通 source false、独立快捷键恢复及退出必须确认已拥有的映射抑制恢复。原生 producer 和录制 consumer 共用 IPC 类型，普通响应数据与清理失败分别判断；守卫同时检查共享 capture 生命周期和回执所有者。
+
+`session-monitor-lifecycle` 仅调用注入模拟 worker 的会话观察 owner，验证退出前 stop／join、创建前取消、回调上下文释放、错误和 panic；单次停止通知失败后，用显式模拟时间推进验证有界重查、等待失败及清理错误保留，不创建原生窗口或注册实际系统通知。静态守卫要求 shell 先释放事件 pump，经统一退出清理在后台 shutdown；平台 stop 与 Drop 不得等待窗口生命周期锁或 join，消息观察不得恢复为无限 `GetMessageW` 等待。
+
+`device-change-monitor-lifecycle` 通过模拟线程、内存队列和注入注册／注销函数验证 stop／join、失败与 panic、队列已满时停止、部分注册回滚和回调上下文释放；不调用实际系统通知。`settings-runtime-state` 只运行发现状态及模拟连接 worker 测试，显式跳过两项 GPUI 窗口测试；区分退出准备、用户断开和最终应用清理，失败观察与失效连接仍保留后台 join 所有者。`ipc-client` 使用内存流、模拟进程和线程屏障，核对部分启动、进程回收、管道 join、关闭回执、失败保留与再次清理，不启动 helper。`thx-service` 使用模拟 HID／RPC、内存 duplex 和模拟 socket 所有者；`thx-shell-lifecycle` 只验证独立观察与错误的进度合并。THX shell 的线程创建失败归属由 AST 守卫与工作区编译检查覆盖，不能据此宣称执行过真实清理验收。
 
 `audit-lfs` 只读核对 Git 属性、索引中的 LFS 指针和本机对象的实际 SHA-256／长度，同时列出尚未暂存的新增或修改、缺失对象和超过 100 MiB 的普通文件。结果保存在 `.analysis/results/git-lfs-audit.json`，验证前后索引与属性必须不变；不会 stage、commit、push，也不代表远端对象已上传。
 
@@ -152,6 +189,12 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 `publish-asset-release --add-files .analysis/inputs/resource-publication.json --dry-run` 核对选定原件、获取收据和新增 alias，准备具体增量而不联网；去掉 `--dry-run` 后只复制新文件至禁止 LFS 自动下载及换行转换的隔离仓库，保留既有媒体指针，新增路径逐项使用 `git lfs track --filename`，验证固定基线与全部远端身份后发布并固定新提交。清单必须包含每份原件及获取收据的路径、长度和 SHA-256；已有文件或 alias 的不同内容会明确失败。`--prune-maintenance-tables` 仅允许逐项核对固定远端身份后移除已迁移的 `assets/synapse/tables/*.rs` 维护片段，删除清单和实际身份保留在统一 `.analysis/results/asset-release-update.json`。独立复核远端普通 Git blob 时可用 `verify-asset-release --remote --from-dir SOURCE` 提供同一隔离仓库作为 SHA-256 字节依据；不会恢复源码 `assets/` 或下载 LFS 载荷。发布后运行 `prepare-resource-database` 同步目录库中的固定版本和新增 alias。
 
 `prepare-typed-data [--check] [--crate CRATE]` 使用 `tools/typed-data.json` 和 `.analysis/inputs/typed-tables/` 的维护输入，按实际 Rust struct／enum、字段、值域和产品分支生成普通有类型构造函数；界面目录由 `catalog_data.py` 路由到同一 SQLite，并在领域所有者中生成普通读取函数；专用设备写入、读取／身份／接收器、存储默认值分别由 `prepare-device-write-table`、`prepare-local-protocol-tables`、`prepare-storage-tables` 维护。固定协议构造函数随程序编译，界面目录随独立数据库安装，产品不解析这些维护 JSON；外部报文、动态扩展和用户配置只在有类型的边界读写。原 JSON 不在 crates 中保留第二份生产数据。
+
+完整 `--check --record-verification` 对全部维护源、实际 Rust schema、构造函数／读取函数及独立目录库作等价性核验，开始与结束分别核对输入字节；成功后在统一 `typed-data.json` 收据登记完整身份，并将维护输入纳入 `inputs.json`。该选项不接受产品、crate 或 symbol 子集，也不修改产品输出。构造数据投影仍标明维护用途及未建立厂商原件来源；`refresh-gaps` 重新按实际文件和该收据判断缺失、身份变化与验证过期，并保留尚未恢复的原始证据字段。
+
+目录 schema 的类型移动到独立 crate 时，recipe 可用 `reader_scoped_types` 显式保留原有读取函数的词法类型和子解码作用域；工具核对实际工作区导入、唯一声明及该 schema 中的真实使用。既有外部类型继续使用自身作用域，不能因增加 `use` 就改变未迁移目录的 codec 或字节。
+
+目录读取函数发布保留准备时实际读取的所有者字节，整批写入前核验全部输出基线；并行编辑、新增模块或删除文件会使该批失败，避免旧文件快照覆盖其他任务的修改。检查模式仅比较，不发布生成文件。
 
 `prepare-mapping-capabilities [--check]` 校验当前挂载的鼠标入口、manifest 和完整 DeviceInfo factory，从 AST 导出静态固件映射能力，生成 `razer-model` 的普通有类型构造函数。缺失字段保持缺失，稀疏数组与重复属性保留原始语义证据；源投影与生成 Rust AST 全字段回读逐项比对。`prepare-mapping-producers [--check]` 维护当前鼠标按键状态生产函数及依赖元数据；两类命令均不执行厂商 JavaScript，生成或静态等价校验不代表真实设备写入通过。
 

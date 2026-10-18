@@ -13,6 +13,12 @@ use razer_widgets::{
 };
 use std::time::Duration;
 
+#[derive(Clone, Copy)]
+pub(super) enum LightingSurface {
+    Synapse,
+    ChromaApp,
+}
+
 pub(super) struct LightingUi {
     editor: Entity<CustomColorEditor>,
     editor_open: bool,
@@ -58,6 +64,79 @@ impl LightingUi {
 }
 
 impl GamepadProductWorkspace {
+    pub(super) fn controller_dynamic_warning(
+        &self,
+        surface: LightingSurface,
+        cx: &Context<Self>,
+    ) -> AnyElement {
+        use razer_widgets::theme::KeyboardRgbEffectColors as WarningColors;
+        let chroma_app = matches!(surface, LightingSurface::ChromaApp);
+        let unit = cx.theme().font_size / 16.;
+        div()
+            .id("controller-dynamic-lighting-warning")
+            .occlude()
+            .absolute()
+            .inset_0()
+            .flex()
+            .items_center()
+            .justify_center()
+            .bg(WarningColors::backdrop())
+            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+            .child(
+                v_flex()
+                    .w(surface::css(400.))
+                    .p(surface::css(20.))
+                    .rounded(surface::css(3.))
+                    .border_1()
+                    .border_color(WarningColors::warning())
+                    .bg(WarningColors::background())
+                    .shadow(vec![BoxShadow {
+                        color: WarningColors::black(),
+                        offset: point(px(0.), unit * 6.),
+                        blur_radius: unit * 10.,
+                        spread_radius: px(0.),
+                        inset: false,
+                    }])
+                    .text_color(Colors::text())
+                    .text_size(surface::css(14.))
+                    .line_height(surface::css(17.))
+                    .text_center()
+                    .child(
+                        img("synapse/gamepad-lighting/warning.svg")
+                            .size(surface::css(20.))
+                            .self_center(),
+                    )
+                    .child(
+                        div().my(surface::css(10.)).child(
+                            gpui_kit::base::TextView::html(
+                                "controller-dynamic-description",
+                                t("POPUP_WARNING_DYNAMIC_LIGHTING_AUDIO_VISUALIZER"),
+                            )
+                            .selectable(false)
+                            .scrollable(false),
+                        ),
+                    )
+                    .child(
+                        BaseButton::new("controller-dynamic-settings")
+                            .text_color(WarningColors::text())
+                            .underline()
+                            .hover(|style| style.text_color(WarningColors::accent()))
+                            .child(t(if chroma_app {
+                                "MANAGE_CHROMA_APP_SETTINGS"
+                            } else {
+                                "MANAGE_SYNAPSE_SETTINGS"
+                            }))
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.request_controller_chroma(
+                                    ControllerChromaCommand::OpenSettings { chroma_app },
+                                    cx,
+                                )
+                            })),
+                    ),
+            )
+            .into_any_element()
+    }
+
     pub(super) fn controller_preset_panel(&self, cx: &mut Context<Self>) -> AnyElement {
         let Some(settings) = &self.lighting_runtime.settings else {
             return div().into_any_element();
@@ -296,7 +375,9 @@ impl GamepadProductWorkspace {
                                                     cx.notify();
                                                 })),
                                         );
-                                    popover.content(move |_, _, _| razer_assets::resource_scope(content))
+                                    popover.content(move |_, _, _| {
+                                        razer_assets::resource_scope(content)
+                                    })
                                 },
                             )
                             .into_any_element()

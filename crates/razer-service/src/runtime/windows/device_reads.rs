@@ -46,10 +46,29 @@ mod mouse_current_dpi_adapter;
 mod mouse_current_power_adapter;
 #[path = "mouse/mouse_indicator_led.rs"]
 mod mouse_indicator_led_adapter;
+#[path = "mouse/mouse_philips.rs"]
+mod mouse_philips_adapter;
+pub(super) use mouse_philips_adapter::MeasurementConnection;
 #[path = "mouse/mouse_receiver_legacy.rs"]
 mod mouse_receiver_legacy_adapter;
 #[path = "mouse/mouse_scroll.rs"]
 mod mouse_scroll_adapter;
+#[path = "mouse/mouse_tracking.rs"]
+mod mouse_tracking_adapter;
+pub(super) fn mouse_philips(
+    target: &DeviceReadTarget,
+    setting: razer_device::mouse_philips::Setting,
+    canceled: &std::sync::atomic::AtomicBool,
+) -> anyhow::Result<razer_device::mouse_philips::SubmissionReport> {
+    mouse_philips_adapter::request(target, setting, canceled)
+}
+pub(super) fn mouse_tracking(
+    target: &DeviceReadTarget,
+    setting: razer_device::mouse_tracking::TrackingSetting,
+    canceled: &std::sync::atomic::AtomicBool,
+) -> anyhow::Result<razer_device::mouse_tracking::SubmissionReport> {
+    mouse_tracking_adapter::request(target, setting, canceled)
+}
 pub(super) fn mouse_receiver_legacy(
     target: &DeviceReadTarget,
     change: &razer_device::mouse_receiver_legacy::Change,

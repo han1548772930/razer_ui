@@ -8,6 +8,112 @@ use std::{
 };
 
 #[test]
+fn help_factory_reset1398_mic_observer_keeps_the_actual_status_and_wire_header() {
+    for (byte, expected) in [
+        (0, BlackSharkMicStatus::Unmuted),
+        (1, BlackSharkMicStatus::Muted),
+        (7, BlackSharkMicStatus::Unknown(7)),
+    ] {
+        let (mut firmware, state) = session(1398, 1398, vec![reply(85, 2, &[byte])]);
+        let observed = firmware.exchange(
+            BlackSharkFirmwareCommand::GetMicStatus1398,
+            |_| Ok(()),
+            |_| Ok(()),
+        );
+        assert!(observed.succeeded());
+        assert!(observed.acknowledged());
+        assert_eq!(observed.observed_mic_status(), Some(expected));
+        let state = state.borrow();
+        assert_eq!(state.outputs.len(), 1);
+        assert_eq!(state.reads, 1);
+        assert!(state.replies.is_empty());
+        assert_eq!(&state.outputs[0][6..14], &[4, 0, 0, 0, 85, 0, 0, 0]);
+        assert_eq!(state.outputs[0][62], 0x33);
+    }
+    let (mut firmware, state) = session(1398, 1398, vec![reply(85, 4, &[1]); 3]);
+    let observed = firmware.exchange(
+        BlackSharkFirmwareCommand::GetMicStatus1398,
+        |_| Ok(()),
+        |_| Ok(()),
+    );
+    assert_eq!(observed.observed_mic_status(), None);
+    assert!(!observed.succeeded());
+    assert!(!observed.acknowledged());
+    assert_eq!(
+        observed.failure.as_ref().unwrap().kind,
+        BlackSharkFirmwareFailureKind::DeviceRejected
+    );
+    assert_eq!(observed.attempts.len(), 3);
+    let mut output = vec![0; 64];
+    output[0] = 2;
+    output[2] = 0x60;
+    output[6] = 4;
+    output[10] = 85;
+    output[62] = 0x33;
+    for attempt in &observed.attempts {
+        assert_eq!(attempt.output, output);
+        assert!(attempt.output_attempted && attempt.output_completed);
+        assert_eq!(attempt.inputs, [reply(85, 4, &[1])]);
+        assert!(attempt.rejected_inputs.is_empty());
+        assert_eq!(attempt.reply.as_ref().unwrap().status, 4);
+    }
+    let state = state.borrow();
+    assert_eq!(state.outputs, vec![output; 3]);
+    assert_eq!(state.reads, 3);
+    assert!(state.replies.is_empty());
+}
+
+#[test]
+fn help_factory_reset1398_uses_the_source_general_report_and_rejects_foreign_owners() {
+    for connected in [1398, 1399] {
+        let (mut firmware, state) = session(1398, connected, vec![reply(239, 2, &[0])]);
+        let reset = firmware.exchange(
+            BlackSharkFirmwareCommand::FactoryReset1398,
+            |_| Ok(()),
+            |_| Ok(()),
+        );
+        assert!(reset.succeeded());
+        assert!(reset.acknowledged());
+        let state = state.borrow();
+        assert_eq!(&state.outputs[0][..3], &[2, 0, 0x60]);
+        assert_eq!(&state.outputs[0][6..14], &[5, 0, 0, 0, 239, 0, 1, 0]);
+        assert_eq!(state.outputs[0][62], 0x89);
+    }
+    let (mut firmware, state) = session(1401, 1401, vec![]);
+    let reset = firmware.exchange(
+        BlackSharkFirmwareCommand::FactoryReset1398,
+        |_| Ok(()),
+        |_| Ok(()),
+    );
+    assert!(!reset.succeeded());
+    assert_eq!(
+        reset.failure.unwrap().kind,
+        BlackSharkFirmwareFailureKind::InvalidRequest
+    );
+    assert!(state.borrow().outputs.is_empty());
+}
+
+#[test]
+fn help_factory_reset1398_keeps_real_ack_after_cancel_and_never_retries_an_uncertain_write() {
+    let (mut firmware, state) = session(1398, 1398, vec![reply(239, 2, &[0])]);
+    let result = firmware.exchange(
+        BlackSharkFirmwareCommand::FactoryReset1398,
+        |_| {
+            ensure!(state.borrow().reads == 0, "cancel after input");
+            Ok(())
+        },
+        |_| Ok(()),
+    );
+    assert!(!result.succeeded());
+    assert!(result.acknowledged());
+    assert_eq!(state.borrow().outputs.len(), 1);
+    assert_eq!(
+        result.failure.unwrap().kind,
+        BlackSharkFirmwareFailureKind::Validation
+    );
+}
+
+#[test]
 fn roller_current_six_owner_routes_use_actual_get_set_replies() {
     for (owner, pid) in [
         (1398, 1398),

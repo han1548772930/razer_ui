@@ -511,7 +511,9 @@ impl AppShell {
                     .left(surface::css(animated - left));
                 left += width + 4.;
                 if dragging.is_some() {
-                    razer_assets::deferred_resource(view).priority(20).into_any_element()
+                    razer_assets::deferred_resource(view)
+                        .priority(20)
+                        .into_any_element()
                 } else {
                     view.into_any_element()
                 }

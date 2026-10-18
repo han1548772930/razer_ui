@@ -396,7 +396,7 @@ impl AudioProductWorkspace {
         this.initialize_sound();
         this.initialize_sound_sliders(window, cx);
         this.initialize_nommo_draft();
-        this.initialize_oled_home(window);
+        this.initialize_oled_home(window, cx);
         this.subscribe_nommo_effects(window, cx);
         this.subscribe_mixer(window, cx);
         this.subscribe_leviathan(window, cx);
@@ -515,6 +515,25 @@ impl AudioProductWorkspace {
         snapshot
     }
     pub fn restore(&mut self, saved: Option<&Value>, window: &mut Window, cx: &mut Context<Self>) {
+        self.restore_profile(saved, true, window, cx);
+    }
+    /// Refresh the local reducer after reset persistence without starting a
+    /// getter while the separate firmware reset is still outstanding.
+    pub fn restore_after_hardware_reset(
+        &mut self,
+        saved: Option<&Value>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.restore_profile(saved, false, window, cx);
+    }
+    fn restore_profile(
+        &mut self,
+        saved: Option<&Value>,
+        refresh_volume: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.dismiss_seiren_eq(cx);
         self.cancel_seiren_eq_profile();
         self.cancel_leviathan(cx);
@@ -539,7 +558,7 @@ impl AudioProductWorkspace {
         self.initialize_enhancements();
         self.initialize_sound();
         self.initialize_nommo_draft();
-        self.initialize_oled_home(window);
+        self.initialize_oled_home(window, cx);
         if let Some(saved) = saved.filter(|v| v.is_object()) {
             merge_known(&mut self.draft, saved);
             if self.spec.product_id == 1382 {
@@ -637,7 +656,9 @@ impl AudioProductWorkspace {
         }
         self.sync(window, cx);
         self.reset_mixer_numbers(window, cx);
-        self.request_volume_read(cx);
+        if refresh_volume {
+            self.request_volume_read(cx);
+        }
         cx.notify();
     }
     pub fn set_page(&mut self, page: &str, window: &mut Window, cx: &mut Context<Self>) {
@@ -662,6 +683,7 @@ impl AudioProductWorkspace {
             self.pod_audio_editor = None;
             self.pod_audio_subscription = None;
             if self.page == "TAB_OLED" || page == "TAB_OLED" {
+                self.cancel_oled_editor(cx);
                 // Bv's staged selection is local to the mounted OLED page.
                 self.staged.remove("/device/oledLanguage");
                 self.sync_oled_runtime_select(window, cx);
@@ -1386,6 +1408,13 @@ impl AudioProductWorkspace {
         self.mixer_echo_generation = self.mixer_echo_generation.wrapping_add(1);
         self.mixer_observed.clear();
         self.mixer_error = None;
+    }
+
+    pub fn prepare_exit(&mut self, cx: &mut Context<Self>) {
+        self.cancel_oled_editor(cx);
+        self.stop_preset_shortcut_capture(cx);
+        self.dismiss_seiren_stream_mixer(cx);
+        self.invalidate_mixer();
     }
 
     pub fn mixer_request_cancellation(

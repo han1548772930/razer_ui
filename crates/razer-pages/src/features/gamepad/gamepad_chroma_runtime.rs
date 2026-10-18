@@ -1,4 +1,4 @@
-//! Local Chroma storage/host boundary for the mounted Kitsune page. Absence
+//! Local Chroma storage/host boundary for mounted controller lighting. Absence
 //! of an installation/profile observation never becomes a successful result.
 use super::{GamepadProductChanged, GamepadProductWorkspace};
 use gpui_kit::*;
@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{
     cell::{Cell, RefCell},
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering},
@@ -67,6 +67,7 @@ impl ControllerSwitchOffLighting {
 #[derive(Clone, Debug)]
 pub enum ControllerChromaCommand {
     Observe,
+    ObserveDynamicLighting,
     Toggle {
         enabled: bool,
     },
@@ -78,10 +79,17 @@ pub enum ControllerChromaCommand {
         source_effect: Value,
     },
     SwitchOffLighting(ControllerSwitchOffLighting),
-    CustomColors(razer_state::CustomColorSlots),
+    CustomColors(razer_model::preferences::ProfileCustomColors),
     LaunchStudio,
-    OpenSettings,
+    OpenSettings {
+        chroma_app: bool,
+    },
     ManageApps,
+}
+impl ControllerChromaCommand {
+    fn is_observation(&self) -> bool {
+        matches!(self, Self::Observe | Self::ObserveDynamicLighting)
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -263,6 +271,9 @@ impl EventEmitter<ControllerChromaRequested> for GamepadProductWorkspace {}
 
 pub(super) struct ChromaRuntime {
     guard: Arc<AtomicBool>,
+    observation_guard: Arc<AtomicBool>,
+    product_page_observing: bool,
+    popup_observers: BTreeSet<u64>,
     next: Cell<u64>,
     last_mutation: Cell<u64>,
     pending: RefCell<BTreeMap<u64, ControllerChromaCommand>>,
@@ -272,10 +283,17 @@ pub(super) struct ChromaRuntime {
     pub(super) sync_generation: u64,
     pub(super) last_error: Option<String>,
 }
+enum ChromaCompletion {
+    Rejected,
+    Settled(Option<ControllerChromaObservation>),
+}
 impl Default for ChromaRuntime {
     fn default() -> Self {
         Self {
             guard: Arc::new(AtomicBool::new(true)),
+            observation_guard: Arc::new(AtomicBool::new(true)),
+            product_page_observing: false,
+            popup_observers: BTreeSet::new(),
             next: Cell::new(0),
             last_mutation: Cell::new(0),
             pending: RefCell::default(),
@@ -288,7 +306,36 @@ impl Default for ChromaRuntime {
     }
 }
 impl ChromaRuntime {
+    pub(super) fn has_observers(&self) -> bool {
+        self.product_page_observing || !self.popup_observers.is_empty()
+    }
+    pub(super) fn set_product_page_observing(&mut self, open: bool) {
+        self.product_page_observing = open;
+        if !self.has_observers() {
+            self.stop_observing();
+        }
+    }
+    fn set_popup_observing(&mut self, owner: EntityId, open: bool) -> bool {
+        let was_observing = self.has_observers();
+        if open {
+            self.popup_observers.insert(owner.as_u64());
+        } else {
+            self.popup_observers.remove(&owner.as_u64());
+        }
+        if !self.has_observers() {
+            self.stop_observing();
+        }
+        !was_observing && self.has_observers()
+    }
+    fn stop_observing(&mut self) {
+        self.observation_guard.store(false, Ordering::Release);
+        self.observation_guard = Arc::new(AtomicBool::new(true));
+        self.pending
+            .borrow_mut()
+            .retain(|_, command| !command.is_observation());
+    }
     pub(super) fn invalidate(&mut self) {
+        self.stop_observing();
         self.guard.store(false, Ordering::Release);
         self.guard = Arc::new(AtomicBool::new(true));
         self.pending.borrow_mut().clear();
@@ -297,46 +344,89 @@ impl ChromaRuntime {
         self.sync_started = None;
         self.last_error = None;
     }
+    fn request(&self, command: ControllerChromaCommand) -> ControllerChromaRequested {
+        let request_id = self.next.get().wrapping_add(1);
+        self.next.set(request_id);
+        let guard = if command.is_observation() {
+            &self.observation_guard
+        } else {
+            self.last_mutation.set(request_id);
+            &self.guard
+        };
+        self.pending
+            .borrow_mut()
+            .insert(request_id, command.clone());
+        ControllerChromaRequested {
+            request_id,
+            command,
+            guard: Arc::clone(guard),
+        }
+    }
     fn accepts(&self, request: &ControllerChromaRequested) -> bool {
+        let guard = if request.command.is_observation() {
+            &self.observation_guard
+        } else {
+            &self.guard
+        };
         request.is_valid()
-            && Arc::ptr_eq(&self.guard, &request.guard)
+            && Arc::ptr_eq(guard, &request.guard)
             && self.pending.borrow().contains_key(&request.request_id)
+    }
+    fn complete(
+        &mut self,
+        request: &ControllerChromaRequested,
+        result: Result<Option<ControllerChromaObservation>, String>,
+    ) -> ChromaCompletion {
+        if !self.accepts(request) {
+            return ChromaCompletion::Rejected;
+        }
+        self.pending.borrow_mut().remove(&request.request_id);
+        if request.request_id < self.last_mutation.get() {
+            return ChromaCompletion::Settled(None);
+        }
+        match result {
+            Ok(observation) => {
+                self.last_error = None;
+                ChromaCompletion::Settled(observation)
+            }
+            Err(error) => {
+                eprintln!("[controller-chroma] {error}");
+                self.last_error = Some(error);
+                ChromaCompletion::Settled(None)
+            }
+        }
     }
 }
 impl Drop for ChromaRuntime {
     fn drop(&mut self) {
         self.guard.store(false, Ordering::Release);
+        self.observation_guard.store(false, Ordering::Release);
     }
 }
 
 impl GamepadProductWorkspace {
+    pub fn set_chroma_popup_open(&mut self, owner: EntityId, open: bool, cx: &mut Context<Self>) {
+        if self.chroma_runtime.set_popup_observing(owner, open) {
+            self.refresh_controller_chroma(cx);
+        }
+    }
     pub fn accepts_controller_chroma(&self, request: &ControllerChromaRequested) -> bool {
         self.chroma_runtime.accepts(request)
     }
     pub fn refresh_controller_chroma(&self, cx: &mut Context<Self>) {
-        if self.spec.product_id == 4115 {
-            self.request_controller_chroma(ControllerChromaCommand::Observe, cx);
-        }
+        let command = match self.spec.product_id {
+            2636 => ControllerChromaCommand::ObserveDynamicLighting,
+            4115 => ControllerChromaCommand::Observe,
+            _ => return,
+        };
+        self.request_controller_chroma(command, cx);
     }
     pub(super) fn request_controller_chroma(
         &self,
         command: ControllerChromaCommand,
         cx: &mut Context<Self>,
     ) {
-        let request_id = self.chroma_runtime.next.get().wrapping_add(1);
-        self.chroma_runtime.next.set(request_id);
-        if !matches!(command, ControllerChromaCommand::Observe) {
-            self.chroma_runtime.last_mutation.set(request_id);
-        }
-        self.chroma_runtime
-            .pending
-            .borrow_mut()
-            .insert(request_id, command.clone());
-        cx.emit(ControllerChromaRequested {
-            request_id,
-            command,
-            guard: Arc::clone(&self.chroma_runtime.guard),
-        });
+        cx.emit(self.chroma_runtime.request(command));
     }
     pub fn complete_controller_chroma(
         &mut self,
@@ -345,26 +435,12 @@ impl GamepadProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {
-        if !self.chroma_runtime.accepts(request) {
+        let ChromaCompletion::Settled(observation) = self.chroma_runtime.complete(request, result)
+        else {
             return false;
-        }
-        self.chroma_runtime
-            .pending
-            .borrow_mut()
-            .remove(&request.request_id);
-        match result {
-            Ok(observation) => {
-                self.chroma_runtime.last_error = None;
-                if request.request_id >= self.chroma_runtime.last_mutation.get() {
-                    if let Some(observation) = observation {
-                        self.observe_controller_chroma(observation, window, cx);
-                    }
-                }
-            }
-            Err(error) => {
-                eprintln!("[controller-chroma] {error}");
-                self.chroma_runtime.last_error = Some(error);
-            }
+        };
+        if let Some(observation) = observation {
+            self.observe_controller_chroma(observation, window, cx);
         }
         cx.notify();
         true
@@ -418,5 +494,105 @@ impl GamepadProductWorkspace {
         self.sync_quick_lighting_controls(window, cx);
         cx.emit(GamepadProductChanged);
         cx.notify();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        ChromaCompletion, ChromaRuntime, ControllerChromaCommand, ControllerChromaObservation,
+    };
+
+    #[test]
+    fn leaving_lighting_cancels_observers_without_canceling_submitted_changes() {
+        let mut runtime = ChromaRuntime::default();
+        let observe = runtime.request(ControllerChromaCommand::ObserveDynamicLighting);
+        let write = runtime.request(ControllerChromaCommand::Toggle { enabled: true });
+        assert!(runtime.accepts(&observe));
+        assert!(runtime.accepts(&write));
+        assert_eq!(runtime.last_mutation.get(), write.request_id());
+
+        runtime.stop_observing();
+        assert!(!observe.is_valid());
+        assert!(!runtime.accepts(&observe));
+        assert!(runtime.accepts(&write));
+        let replacement = runtime.request(ControllerChromaCommand::ObserveDynamicLighting);
+        assert!(runtime.accepts(&replacement));
+        assert_eq!(runtime.last_mutation.get(), write.request_id());
+
+        runtime.invalidate();
+        assert!(!runtime.accepts(&write));
+        assert!(!runtime.accepts(&replacement));
+    }
+
+    #[test]
+    fn dropping_controller_lighting_cancels_both_request_owners() {
+        let runtime = ChromaRuntime::default();
+        let observe = runtime.request(ControllerChromaCommand::Observe);
+        let write = runtime.request(ControllerChromaCommand::Toggle { enabled: false });
+        drop(runtime);
+        assert!(!observe.is_valid());
+        assert!(!write.is_valid());
+    }
+
+    #[test]
+    fn product_page_and_popup_keep_their_own_observation_lifetimes() {
+        let mut runtime = ChromaRuntime::default();
+        runtime.set_product_page_observing(true);
+        let observation = runtime.request(ControllerChromaCommand::ObserveDynamicLighting);
+        assert!(!runtime.set_popup_observing(1.into(), true));
+        assert!(!runtime.set_popup_observing(2.into(), true));
+        runtime.set_product_page_observing(false);
+        assert!(observation.is_valid());
+        runtime.set_popup_observing(1.into(), false);
+        assert!(observation.is_valid());
+        runtime.set_popup_observing(2.into(), false);
+        assert!(!observation.is_valid());
+        assert!(runtime.set_popup_observing(3.into(), true));
+        let replacement = runtime.request(ControllerChromaCommand::ObserveDynamicLighting);
+        assert!(runtime.accepts(&replacement));
+        assert!(!runtime.accepts(&observation));
+    }
+
+    #[test]
+    fn late_observation_success_keeps_the_newer_mutation_failure() {
+        let mut runtime = ChromaRuntime::default();
+        let observe = runtime.request(ControllerChromaCommand::Observe);
+        let write = runtime.request(ControllerChromaCommand::Toggle { enabled: true });
+        assert!(matches!(
+            runtime.complete(&write, Err("current write failed".into())),
+            ChromaCompletion::Settled(None)
+        ));
+        assert!(matches!(
+            runtime.complete(
+                &observe,
+                Ok(Some(ControllerChromaObservation::new().with_enabled(false)))
+            ),
+            ChromaCompletion::Settled(None)
+        ));
+        assert_eq!(runtime.last_error.as_deref(), Some("current write failed"));
+        assert!(runtime.pending.borrow().is_empty());
+        assert!(!runtime.accepts(&observe));
+    }
+
+    #[test]
+    fn late_observation_failure_keeps_the_newer_mutation_success() {
+        let mut runtime = ChromaRuntime::default();
+        let observe = runtime.request(ControllerChromaCommand::Observe);
+        let write = runtime.request(ControllerChromaCommand::Toggle { enabled: true });
+        assert!(matches!(
+            runtime.complete(
+                &write,
+                Ok(Some(ControllerChromaObservation::new().with_enabled(true)))
+            ),
+            ChromaCompletion::Settled(Some(_))
+        ));
+        assert!(matches!(
+            runtime.complete(&observe, Err("old read failed".into())),
+            ChromaCompletion::Settled(None)
+        ));
+        assert_eq!(runtime.last_error, None);
+        assert!(runtime.pending.borrow().is_empty());
+        assert!(!runtime.accepts(&observe));
     }
 }

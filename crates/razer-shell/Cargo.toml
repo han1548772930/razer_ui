@@ -10,6 +10,7 @@ razer-discovery.workspace = true
 razer-settings.workspace = true
 razer-tray.workspace = true
 razer-ipc.workspace = true
+razer-service.workspace = true
 razer-platform.workspace = true
 razer-app-pages.workspace = true
 razer-i18n.workspace = true

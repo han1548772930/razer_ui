@@ -171,6 +171,17 @@ impl ChromaProduct {
         if !workspace.read(cx).has_chroma_device_page(cx) {
             return None;
         }
+        let owner = cx.entity_id();
+        workspace.update(cx, |workspace, cx| {
+            workspace.set_chroma_popup_open(owner, true, cx)
+        });
+        let release_workspace = workspace.downgrade();
+        cx.on_release(move |_, cx| {
+            let _ = release_workspace.update(cx, |workspace, cx| {
+                workspace.set_chroma_popup_open(owner, false, cx)
+            });
+        })
+        .detach();
         let subscription = cx.observe(workspace, |_, _, cx| cx.notify());
         Some(Self {
             workspace: workspace.clone(),

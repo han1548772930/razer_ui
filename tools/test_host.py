@@ -4,7 +4,7 @@ from __future__ import annotations
 import struct
 import unittest
 
-from tools.host import inspect_pe, pe_cursor_groups, pe_resource_entries
+from host import inspect_pe, pe_cursor_groups, pe_resource_entries
 
 
 def pe_fixture(bits=64):

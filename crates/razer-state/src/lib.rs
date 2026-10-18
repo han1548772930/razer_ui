@@ -1,4 +1,6 @@
-//! Retained application palette state; persisted preferences belong to the model.
+//! Retained application palette and feature-owned local preference state.
+pub mod chroma_settings;
+pub mod ui_preferences;
 use gpui_kit::{App, BorrowAppContext, Global};
 pub use razer_model::preferences::*;
 

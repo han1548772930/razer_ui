@@ -10,7 +10,7 @@ use gpui_kit::component::WindowExt as _;
 pub use live::{KeyboardLegacyCalibrationHostRequested, LegacyCalibrationHostCommand};
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::theme::KeyboardCalibrationColors as Colors;
-use std::{path::PathBuf, time::Duration};
+use std::time::Duration;
 
 #[cfg(test)]
 #[path = "keyboard_calibration_tests.rs"]
@@ -33,37 +33,6 @@ fn specification(pid: u32) -> Option<&'static Spec> {
         .get_or_init(|| read_keyboard_calibration_catalog())
         .iter()
         .find(|spec| spec.product_id == pid)
-}
-
-/// The dashboard source stores this banner in localStorage under the exact
-/// key below. Keep the same cross-startup behavior in the native shell using
-/// the app's local data directory; no device or host service is involved.
-const INTRO_STORAGE_KEY: &str = "showNotificationBannerCalibration";
-
-fn intro_storage_path() -> PathBuf {
-    std::env::var_os("APPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("razer_ui")
-        .join(format!("{INTRO_STORAGE_KEY}.json"))
-}
-
-pub(super) fn load_intro_visibility() -> bool {
-    match std::fs::read_to_string(intro_storage_path()) {
-        Ok(value) => serde_json::from_str::<bool>(&value).unwrap_or(true),
-        Err(_) => true,
-    }
-}
-
-pub(super) fn save_intro_visibility(visible: bool) {
-    let path = intro_storage_path();
-    if let Some(parent) = path.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
-    let _ = std::fs::write(
-        path,
-        serde_json::to_string(&visible).unwrap_or_else(|_| "true".into()),
-    );
 }
 
 fn ease_in_out(phase: f32) -> f32 {
@@ -128,46 +97,63 @@ impl KeyboardProductWorkspace {
         let contents = v_flex()
             .gap(surface::css(20.))
             .when(self.factory_default_profile, |view| view.opacity(0.3))
-            .children(self.calibration_intro_visible.then(|| {
-                v_flex()
-                    .relative()
-                    .max_w(surface::css(760.))
-                    .w_full()
-                    .min_h(surface::css(129.))
-                    .mx_auto()
-                    .py(surface::css(27.5))
-                    .px(surface::css(20.))
-                    .gap(surface::css(16.))
-                    .items_center()
-                    .justify_center()
-                    .text_center()
-                    .bg(Colors::introduction())
-                    .rounded(surface::css(5.))
-                    .child(
-                        div()
-                            .font_family("RazerF5")
-                            .text_size(surface::css(26.))
-                            .text_color(cx.theme().primary)
-                            .child(spec.text("title").to_uppercase()),
-                    )
-                    .child(
-                        div()
-                            .text_size(surface::css(14.))
-                            .child(spec.text("introduction")),
-                    )
-                    .child(
-                        close_button("keyboard-calibration-intro-close", &spec.text("cancel"), cx)
-                            .disabled(self.factory_default_profile)
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                if this.factory_default_profile {
-                                    return;
-                                }
-                                this.calibration_intro_visible = false;
-                                save_intro_visibility(false);
-                                cx.notify();
-                            })),
-                    )
-            }))
+            .children(
+                self.ui_preferences
+                    .read(cx)
+                    .snapshot(UiPreference::KeyboardCalibrationIntro)
+                    .value()
+                    .then(|| {
+                        v_flex()
+                            .relative()
+                            .max_w(surface::css(760.))
+                            .w_full()
+                            .min_h(surface::css(129.))
+                            .mx_auto()
+                            .py(surface::css(27.5))
+                            .px(surface::css(20.))
+                            .gap(surface::css(16.))
+                            .items_center()
+                            .justify_center()
+                            .text_center()
+                            .bg(Colors::introduction())
+                            .rounded(surface::css(5.))
+                            .child(
+                                div()
+                                    .font_family("RazerF5")
+                                    .text_size(surface::css(26.))
+                                    .text_color(cx.theme().primary)
+                                    .child(spec.text("title").to_uppercase()),
+                            )
+                            .child(
+                                div()
+                                    .text_size(surface::css(14.))
+                                    .child(spec.text("introduction")),
+                            )
+                            .child(
+                                close_button(
+                                    "keyboard-calibration-intro-close",
+                                    &spec.text("cancel"),
+                                    cx,
+                                )
+                                .disabled(self.factory_default_profile)
+                                .on_click(cx.listener(
+                                    |this, _, _, cx| {
+                                        if this.factory_default_profile {
+                                            return;
+                                        }
+                                        this.ui_preferences.update(cx, |owner, cx| {
+                                            owner.set(
+                                                UiPreference::KeyboardCalibrationIntro,
+                                                false,
+                                                cx,
+                                            );
+                                        });
+                                        cx.notify();
+                                    },
+                                )),
+                            )
+                    }),
+            )
             // Source la uses pointer-events:none. Calibration must not select or
             // rewrite key mappings through the Customize hit regions.
             .child(self.keyboard_image(false, cx))
@@ -529,7 +515,9 @@ impl Render for CalibrationModal {
                     .bg(rgba(0x00000080))
                     .opacity(opacity),
             )
-            .popup(razer_assets::resource_scope(div().absolute().inset_0().child(panel)))
+            .popup(razer_assets::resource_scope(
+                div().absolute().inset_0().child(panel),
+            ))
             .into_any_element()
     }
 }

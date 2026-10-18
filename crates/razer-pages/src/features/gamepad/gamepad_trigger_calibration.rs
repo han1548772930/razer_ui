@@ -9,6 +9,7 @@ pub(super) struct TriggerDialog {
     focus: FocusHandle,
     return_focus: Option<FocusHandle>,
     tab_focus: razer_model::host_window_focus::PopupTabFocus,
+    pending_frame: Option<u64>,
 }
 
 impl GamepadProductWorkspace {
@@ -45,7 +46,9 @@ impl GamepadProductWorkspace {
             focus,
             return_focus,
             tab_focus: Default::default(),
+            pending_frame: None,
         });
+        self.schedule_trigger_frame(window, cx);
         cx.emit(intent);
         cx.notify();
     }
@@ -74,7 +77,7 @@ impl GamepadProductWorkspace {
     }
     pub(super) fn restart_trigger_calibration(
         &mut self,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         if self.trigger_calibration_popup.is_none() {
@@ -85,6 +88,7 @@ impl GamepadProductWorkspace {
             self.trigger_calibration_state
                 .request(CalibrationAction::Start, part, Instant::now())
         {
+            self.schedule_trigger_frame(window, cx);
             cx.emit(intent);
             cx.notify();
         }
@@ -121,7 +125,7 @@ impl GamepadProductWorkspace {
     pub fn observe_trigger_calibration(
         &mut self,
         observation: TriggerCalibrationObservation,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {
         if self.trigger_calibration_popup.is_none()
@@ -133,6 +137,7 @@ impl GamepadProductWorkspace {
         }
         self.calibration_state
             .set_reducer_valid(self.trigger_calibration_state.valid);
+        self.schedule_trigger_frame(window, cx);
         cx.notify();
         true
     }
@@ -156,20 +161,31 @@ impl GamepadProductWorkspace {
         }
         true
     }
-    pub(super) fn schedule_trigger_frame(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.trigger_calibration_popup.is_none()
-            || !self.trigger_calibration_state.needs_frame()
-            || self.trigger_frame_pending
+    fn schedule_trigger_frame(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(dialog) = &mut self.trigger_calibration_popup else {
+            return;
+        };
+        let generation = self.trigger_calibration_state.generation();
+        if !self.trigger_calibration_state.needs_frame() || dialog.pending_frame == Some(generation)
         {
             return;
         }
-        self.trigger_frame_pending = true;
+        dialog.pending_frame = Some(generation);
         let owner = cx.weak_entity();
-        window.on_next_frame(move |_, cx| {
+        window.on_next_frame(move |window, cx| {
             let _ = owner.update(cx, |this, cx| {
-                this.trigger_frame_pending = false;
-                if this.trigger_calibration_popup.is_some() {
-                    this.trigger_calibration_state.tick(Instant::now());
+                let Some(dialog) = &mut this.trigger_calibration_popup else {
+                    return;
+                };
+                if dialog.pending_frame != Some(generation) {
+                    return;
+                }
+                dialog.pending_frame = None;
+                if this
+                    .trigger_calibration_state
+                    .tick_frame(generation, Instant::now())
+                {
+                    this.schedule_trigger_frame(window, cx);
                     cx.notify();
                 }
             });

@@ -9,15 +9,21 @@ mod controller_calibration;
 mod controller_lighting;
 #[path = "controller_triggers.rs"]
 mod controller_triggers;
+mod feature_submission;
 #[path = "keyboard_submission_controller.rs"]
 mod keyboard_submission_controller;
 #[path = "keyboard_wristrest_controller.rs"]
 mod keyboard_wristrest_controller;
 mod leviathan_events;
+#[cfg(windows)]
+mod lighting_engine_native;
+mod lighting_engine_session;
 #[path = "mouse_indicator_led_controller.rs"]
 mod mouse_indicator_led_controller;
+mod mouse_philips_controller;
 #[path = "mouse_runtime_artwork_controller.rs"]
 mod mouse_runtime_artwork_controller;
+mod mouse_tracking_controller;
 #[cfg(windows)]
 #[path = "windows/native.rs"]
 mod native;
@@ -95,6 +101,9 @@ pub fn run_worker() -> i32 {
                 .drain_events(view_id)
                 .and_then(|events| serde_json::to_value(events).map_err(Into::into)),
             request @ (ServiceRequest::AudioDevices
+            | ServiceRequest::MouseInputMonitoringStart { .. }
+            | ServiceRequest::MouseInputMonitoringPoll { .. }
+            | ServiceRequest::MouseInputMonitoringStop { .. }
             | ServiceRequest::GlobalShortcuts
             | ServiceRequest::RegisterShortcut { .. }
             | ServiceRequest::UnregisterShortcut { .. }
@@ -134,6 +143,12 @@ pub fn run_worker() -> i32 {
             | ServiceRequest::HidNodeMouseCurrentDpi { .. }
             | ServiceRequest::HidNodeMouseCurrentPower { .. }
             | ServiceRequest::HidNodeMouseScroll { .. }
+            | ServiceRequest::MouseTrackingStart { .. }
+            | ServiceRequest::MouseTrackingPoll { .. }
+            | ServiceRequest::MouseTrackingCancel { .. }
+            | ServiceRequest::MousePhilipsStart { .. }
+            | ServiceRequest::MousePhilipsPoll { .. }
+            | ServiceRequest::MousePhilipsCancel { .. }
             | ServiceRequest::HidNodeLeviathan { .. }
             | ServiceRequest::LeviathanEventsStart { .. }
             | ServiceRequest::LeviathanEventsPoll { .. }
@@ -147,6 +162,7 @@ pub fn run_worker() -> i32 {
             | ServiceRequest::KeyboardLatestRestore { .. }
             | ServiceRequest::KeyboardLegacyCalibration { .. }
             | ServiceRequest::MouseReceiverLegacy { .. }
+            | ServiceRequest::HyperpollingReceiver { .. }
             | ServiceRequest::KeyboardAnalogStart { .. }
             | ServiceRequest::KeyboardAnalogPoll { .. }
             | ServiceRequest::KeyboardAnalogCancel { .. }
@@ -169,6 +185,8 @@ pub fn run_worker() -> i32 {
             | ServiceRequest::HidNodeMouseReceiverIdle { .. }
             | ServiceRequest::HidNodeWrite { .. }
             | ServiceRequest::HidNodeHanboCooler { .. }
+            | ServiceRequest::HidNodeHanboCoolerRead { .. }
+            | ServiceRequest::HidNodeHanboStartupRead { .. }
             | ServiceRequest::HidNodeKeyboardBrightnessRead { .. }
             | ServiceRequest::HidNodeKeyboardReceiverBrightness { .. }
             | ServiceRequest::HidNodeKeyboardMetadataRead { .. }
@@ -206,7 +224,7 @@ pub fn run_worker() -> i32 {
         let fatal = runtime.is_poisoned();
         #[cfg(not(windows))]
         let fatal = false;
-        let response = match result {
+        let mut response = match result {
             Ok(data) => ResponseEnvelope {
                 id: envelope.id,
                 data: Some(data),
@@ -221,6 +239,56 @@ pub fn run_worker() -> i32 {
             },
         };
         if shutdown {
+            match portable.shutdown_tracking() {
+                Ok(Some(progress)) => {
+                    if let Some(data) = response
+                        .data
+                        .as_mut()
+                        .and_then(serde_json::Value::as_object_mut)
+                    {
+                        match serde_json::to_value(progress) {
+                            Ok(progress) => {
+                                data.insert("mouse_tracking_cleanup".into(), progress);
+                            }
+                            Err(error) => {
+                                response.data = None;
+                                response.error =
+                                    Some(format!("Tracking cleanup response failed: {error}"));
+                            }
+                        }
+                    }
+                }
+                Ok(None) => {}
+                Err(error) => {
+                    response.data = None;
+                    response.error = Some(format!("Tracking cleanup failed: {error:#}"));
+                }
+            }
+            match portable.shutdown_philips() {
+                Ok(Some(progress)) => {
+                    if let Some(data) = response
+                        .data
+                        .as_mut()
+                        .and_then(serde_json::Value::as_object_mut)
+                    {
+                        match serde_json::to_value(progress) {
+                            Ok(progress) => {
+                                data.insert("mouse_philips_cleanup".into(), progress);
+                            }
+                            Err(error) => {
+                                response.data = None;
+                                response.error =
+                                    Some(format!("Philips cleanup response failed: {error}"));
+                            }
+                        }
+                    }
+                }
+                Ok(None) => {}
+                Err(error) => {
+                    response.data = None;
+                    response.error = Some(format!("Philips cleanup failed: {error:#}"));
+                }
+            }
             // ServiceClient terminates its child after receiving this reply.
             // Finish owned WASAPI pumps, COM notifications and receiver input
             // readers first, so a successful frame cannot race their teardown.

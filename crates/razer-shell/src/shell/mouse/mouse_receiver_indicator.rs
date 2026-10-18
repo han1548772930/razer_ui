@@ -526,8 +526,8 @@ fn run(
 }
 
 impl AppShell {
-    pub(super) fn install_mouse_receiver_indicator_cleanup(&mut self, cx: &mut Context<Self>) {
-        self.subscriptions.push(cx.on_app_quit(|this, cx| {
+    pub(super) fn install_mouse_receiver_indicator_cleanup(&mut self, _cx: &mut Context<Self>) {
+        self.register_exit_cleanup(|this, cx| {
             let sessions = std::mem::take(&mut this.mouse_receiver_indicator);
             let mut retired = std::mem::take(&mut this.mouse_receiver_indicator_cleanup);
             for (owner, session) in sessions {
@@ -541,7 +541,7 @@ impl AppShell {
                 }
             });
             async move { cleanup.await }
-        }));
+        });
     }
     pub(super) fn cancel_mouse_receiver_indicator(&mut self) {
         for (owner, session) in std::mem::take(&mut self.mouse_receiver_indicator) {

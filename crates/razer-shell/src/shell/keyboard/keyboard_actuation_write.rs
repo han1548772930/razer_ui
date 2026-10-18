@@ -2,9 +2,8 @@
 //! subsequent setters and preserves the source's independent optimistic UI.
 use super::*;
 use anyhow::{Context as _, ensure};
-use razer_device::keyboard_submission::{self, Intent};
-use razer_discovery::{direct, discovery};
-use razer_ipc::{ServiceClient, ServiceRequest};
+use razer_device::keyboard_submission;
+use razer_discovery::discovery;
 use std::{
     sync::{
         Arc,
@@ -15,113 +14,76 @@ use std::{
     time::Duration,
 };
 
-struct Command {
-    generation: u64,
-    intent: Intent,
-}
+#[path = "keyboard_actuation_worker.rs"]
+mod worker;
+use worker::{Admission, Command, Reply};
 pub(super) struct KeyboardActuationSave {
     workspace: Entity<ProductWorkspace>,
     request: razer_pages::features::keyboard_products::KeyboardActuationRequested,
     identity: String,
     profile: razer_model::model::Profile,
+    intent: keyboard_submission::Intent,
 }
+impl KeyboardActuationSave {
+    pub(super) fn owner(&self) -> (&str, WeakEntity<ProductWorkspace>) {
+        (&self.identity, self.workspace.downgrade())
+    }
+
+    fn publishes_mapping(&self) -> bool {
+        self.intent.publishes_mapping() || self.request.payload()["type"] == "ON_SET_KEYMAPPING"
+    }
+}
+
+pub(super) fn should_publish_mapping(product: Option<&ProductSave>, identity: &str) -> bool {
+    match product {
+        Some(ProductSave::KeyboardActuation(save)) if save.identity == identity => {
+            save.publishes_mapping()
+        }
+        Some(ProductSave::SourceProfileImport(_)) => false,
+        _ => true,
+    }
+}
+
 pub(super) struct Session {
     identity: String,
     profile: String,
     revision: u64,
+    worker_id: thread::ThreadId,
     valid: Arc<AtomicBool>,
-    commands: mpsc::SyncSender<Command>,
-    pending: std::collections::BTreeSet<u64>,
+    admission: Admission<(
+        razer_pages::features::keyboard_products::KeyboardActuationRequested,
+        keyboard_submission::Intent,
+    )>,
     _delivery: Option<Task<()>>,
+}
+pub(super) struct RetiredDelivery {
+    valid: Arc<AtomicBool>,
+    worker_id: thread::ThreadId,
+    _delivery: Task<()>,
+}
+impl Session {
+    fn owns(&self, valid: &Arc<AtomicBool>, worker_id: thread::ThreadId) -> bool {
+        self.worker_id == worker_id && Arc::ptr_eq(&self.valid, valid)
+    }
 }
 impl Drop for Session {
     fn drop(&mut self) {
         self.valid.store(false, Ordering::Release);
     }
 }
-enum Reply {
-    Finished(u64, Result<(), String>),
-    CleanupFailed(String),
-    Stopped,
-}
-
-fn worker(
-    route_observation: discovery::ObservedDevice,
-    profile_guid: String,
-    valid: Arc<AtomicBool>,
-    commands: mpsc::Receiver<Command>,
-    replies: mpsc::Sender<Reply>,
-) {
-    let result = (|| -> anyhow::Result<()> {
-        let mut client = ServiceClient::spawn()?;
-        client.set_request_guard(valid.clone());
-        let result = (|| -> anyhow::Result<()> {
-            while valid.load(Ordering::Acquire) {
-                let command = match commands.recv_timeout(Duration::from_millis(16)) {
-                    Ok(command) => command,
-                    Err(mpsc::RecvTimeoutError::Timeout) => continue,
-                    Err(mpsc::RecvTimeoutError::Disconnected) => break,
-                };
-                let guard = || -> anyhow::Result<()> {
-                    ensure!(
-                        valid.load(Ordering::Acquire),
-                        "Keyboard connection/profile task was canceled"
-                    );
-                    Ok(())
-                };
-                let submitted = (|| -> anyhow::Result<()> {
-                    guard()?;
-                    let cap = keyboard_submission::validate(
-                        route_observation.product_id(),
-                        &command.intent,
-                    )?;
-                    let route = direct::resolve(
-                        &mut client,
-                        &route_observation,
-                        &cap.device_read_capability(),
-                    )?;
-                    route.submit_keyboard_control(
-                        &mut client,
-                        &profile_guid,
-                        command.intent,
-                        &guard,
-                    )?;
-                    Ok(())
-                })()
-                .map_err(|error| format!("{error:#}"));
-                if replies
-                    .send(Reply::Finished(command.generation, submitted))
-                    .is_err()
-                {
-                    break;
-                }
-            }
-            Ok(())
-        })();
-        let cleanup = if client.is_stopped() {
-            Ok(serde_json::json!({}))
-        } else {
-            client.request(ServiceRequest::Shutdown)
-        };
-        if let Err(error) = cleanup {
-            let _ = replies.send(Reply::CleanupFailed(format!("{error:#}")));
-        }
-        result
-    })();
-    if let Err(error) = result {
-        let reason = format!("{error:#}");
-        for command in commands.try_iter() {
-            let _ = replies.send(Reply::Finished(command.generation, Err(reason.clone())));
-        }
-        let _ = replies.send(Reply::CleanupFailed(reason));
-    }
-    let _ = replies.send(Reply::Stopped);
-}
 
 impl AppShell {
-    pub(super) fn install_keyboard_actuation_cleanup(&mut self, cx: &mut Context<Self>) {
-        self.subscriptions.push(cx.on_app_quit(|this, cx| {
-            this.keyboard_actuation_operations.clear();
+    pub(super) fn install_keyboard_actuation_cleanup(&mut self, _cx: &mut Context<Self>) {
+        self.register_exit_cleanup(|this, cx| {
+            let mut deliveries = std::mem::take(&mut this.keyboard_actuation_retired)
+                .into_iter()
+                .map(|retired| retired._delivery)
+                .collect::<Vec<_>>();
+            for (_, mut session) in std::mem::take(&mut this.keyboard_actuation_operations) {
+                if let Some(delivery) = session._delivery.take() {
+                    deliveries.push(delivery);
+                }
+            }
             let workers = std::mem::take(&mut this.keyboard_actuation_workers);
             let cleanup = cx.background_executor().spawn(async move {
                 for worker in workers {
@@ -130,8 +92,53 @@ impl AppShell {
                     }
                 }
             });
-            async move { cleanup.await }
-        }));
+            async move {
+                cleanup.await;
+                drop(deliveries);
+            }
+        });
+    }
+
+    /// Called after accepted saves have synchronously submitted their native
+    /// follow-ups. Closing each sender preserves the actor's accepted FIFO.
+    pub(super) fn finish_keyboard_actuation_exit(&mut self, cx: &mut Context<Self>) -> bool {
+        for session in self.keyboard_actuation_operations.values_mut() {
+            session.admission.stop_after_pending();
+        }
+        self.reap_keyboard_actuation_workers(cx);
+        !self.keyboard_actuation_operations.is_empty()
+            || !self.keyboard_actuation_workers.is_empty()
+            || !self.keyboard_actuation_retired.is_empty()
+    }
+
+    fn reap_keyboard_actuation_workers(&mut self, cx: &mut Context<Self>) {
+        let mut index = 0;
+        while index < self.keyboard_actuation_workers.len() {
+            if self.keyboard_actuation_workers[index].is_finished() {
+                if self
+                    .keyboard_actuation_workers
+                    .swap_remove(index)
+                    .join()
+                    .is_err()
+                {
+                    self.keyboard_actuation_diagnostic(
+                        "Keyboard submission worker panicked before completing cleanup".into(),
+                        cx,
+                    );
+                }
+            } else {
+                index += 1;
+            }
+        }
+    }
+
+    fn keyboard_actuation_diagnostic(&mut self, error: String, cx: &mut Context<Self>) {
+        eprintln!("[keyboard submission] {error}");
+        self.status = format!("键盘设置提交：{error}");
+        if self.close_requested {
+            self.cancel_pending_exit(cx);
+        }
+        cx.notify();
     }
 
     pub(super) fn submit_keyboard_actuation(
@@ -142,10 +149,19 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         let generation = request.generation();
-        if !workspace
-            .read(cx)
-            .keyboard_actuation_request_current(generation, cx)
+        if self.close_requested
+            || !self.devices.contains(&workspace)
+            || !workspace
+                .read(cx)
+                .keyboard_actuation_request_current(generation, cx)
         {
+            workspace.update(cx, |workspace, cx| {
+                workspace.finish_keyboard_actuation(
+                    generation,
+                    Err("Keyboard owner changed before submission".into()),
+                    cx,
+                )
+            });
             return;
         }
         let prepared = (|| -> anyhow::Result<_> {
@@ -158,7 +174,6 @@ impl AppShell {
                 "Keyboard profile store is unreadable"
             );
             let device = workspace.read(cx).snapshot(cx);
-            keyboard_submission::intent(device.product_id, request.payload())?;
             let mut profile = device
                 .profiles
                 .iter()
@@ -168,13 +183,67 @@ impl AppShell {
                 .context("Active keyboard profile is absent")?
                 .clone();
             let mut settings = request.profile().clone();
-            keyboard_submission::persist_local(request.payload(), &mut settings)?;
+            settings["guid"] = serde_json::json!(profile.guid);
+            let mut previous = profile
+                .source_settings
+                .clone()
+                .unwrap_or_else(|| settings.clone());
+            previous["guid"] = serde_json::json!(profile.guid);
+            if previous.get("mappings").is_none() {
+                previous["mappings"] = serde_json::json!([]);
+            }
+            let (settings, mut intent) = keyboard_submission::prepare_local(
+                device.product_id,
+                device.layout_id,
+                request.payload(),
+                &settings,
+                &previous,
+            )?;
+            if let Some(macro_sync) = intent.macro_synchronization_mut() {
+                let mut profiles = device
+                    .profiles
+                    .iter()
+                    .map(|source| {
+                        let mut settings = source
+                            .source_settings
+                            .clone()
+                            .unwrap_or_else(|| serde_json::json!({}));
+                        settings["guid"] = serde_json::json!(source.guid);
+                        settings
+                    })
+                    .collect::<Vec<_>>();
+                if let Some(active) = profiles
+                    .iter_mut()
+                    .find(|source| source["guid"] == profile.guid)
+                {
+                    *active = settings.clone();
+                }
+                let macros = self
+                    .macro_library
+                    .read(cx)
+                    .snapshot()
+                    .source_macro_documents()
+                    .map_err(anyhow::Error::msg)?;
+                let candidates = (0..256)
+                    .map(|_| {
+                        let bytes = uuid::Uuid::new_v4();
+                        u16::from_le_bytes(bytes.as_bytes()[..2].try_into().unwrap())
+                    })
+                    .collect();
+                *macro_sync = Some(razer_device::onboard_macro_codec::prepare_synchronization(
+                    device.product_id,
+                    &profiles,
+                    &macros,
+                    candidates,
+                )?);
+            }
             profile.source_settings = Some(settings);
             Ok(KeyboardActuationSave {
                 workspace: workspace.clone(),
                 request: request.clone(),
                 identity: workspace.read(cx).identity(cx),
                 profile,
+                intent,
             })
         })();
         let save = match prepared {
@@ -193,11 +262,12 @@ impl AppShell {
                 .collect(),
             cx,
         );
-        self.pending_saves.push_back(PreparedSave {
-            window: window.window_handle(),
+        self.pending_saves.push_back(self.prepare_save(
+            window.window_handle(),
             file,
-            product: Some(ProductSave::KeyboardActuation(save)),
-        });
+            Some(ProductSave::KeyboardActuation(save)),
+            cx,
+        ));
         self.start_pending_save(cx);
     }
 
@@ -230,7 +300,7 @@ impl AppShell {
         &mut self,
         save: KeyboardActuationSave,
         succeeded: bool,
-        window: AnyWindowHandle,
+        _window: AnyWindowHandle,
         cx: &mut Context<Self>,
     ) {
         let generation = save.request.generation();
@@ -245,54 +315,26 @@ impl AppShell {
                 .workspace
                 .read(cx)
                 .keyboard_actuation_request_current(generation, cx);
-        if !succeeded || !current || self.close_requested {
+        if !succeeded || !current {
+            let error = if succeeded {
+                "Keyboard submission scope ended after local persistence"
+            } else {
+                "Keyboard local profile persistence failed"
+            };
             save.workspace.update(cx, |workspace, cx| {
-                workspace.finish_keyboard_actuation(
-                    generation,
-                    Err(if succeeded {
-                        "Keyboard submission scope ended after local persistence"
-                    } else {
-                        "Keyboard local profile persistence failed"
-                    }
-                    .into()),
-                    cx,
-                )
+                workspace.finish_keyboard_actuation(generation, Err(error.into()), cx)
             });
+            self.keyboard_actuation_diagnostic(error.into(), cx);
             return;
         }
-        let owner = cx.entity().downgrade();
-        cx.defer(move |cx| {
-            let workspace = save.workspace.clone();
-            if window
-                .update(cx, |_, window, cx| {
-                    owner.update(cx, |this, cx| {
-                        this.submit_keyboard_actuation_device(
-                            save.workspace,
-                            &save.request,
-                            window,
-                            cx,
-                        )
-                    })
-                })
-                .ok()
-                .is_none_or(|result| result.is_err())
-            {
-                workspace.update(cx, |workspace, cx| {
-                    workspace.finish_keyboard_actuation(
-                        generation,
-                        Err("Keyboard owner window closed after local persistence".into()),
-                        cx,
-                    )
-                });
-            }
-        });
+        self.submit_keyboard_actuation_prepared(save.workspace, &save.request, save.intent, cx);
     }
 
-    pub(super) fn submit_keyboard_actuation_device(
+    fn submit_keyboard_actuation_prepared(
         &mut self,
         workspace: Entity<ProductWorkspace>,
         request: &razer_pages::features::keyboard_products::KeyboardActuationRequested,
-        window: &mut Window,
+        intent: keyboard_submission::Intent,
         cx: &mut Context<Self>,
     ) {
         let generation = request.generation();
@@ -300,11 +342,14 @@ impl AppShell {
             .read(cx)
             .keyboard_actuation_request_current(generation, cx)
         {
+            self.keyboard_actuation_diagnostic(
+                "Keyboard submission scope ended before native admission".into(),
+                cx,
+            );
             return;
         }
         let selected = (|| -> anyhow::Result<_> {
             let device = workspace.read(cx).device(cx);
-            let intent = keyboard_submission::intent(device.product_id, request.payload())?;
             let profile = device
                 .profiles
                 .iter()
@@ -312,6 +357,7 @@ impl AppShell {
                     profile.id == device.active_profile || profile.guid == device.active_profile
                 })
                 .context("Active keyboard profile is absent")?;
+            keyboard_submission::validate(device.product_id, &intent)?;
             let routes = self
                 .device_observations
                 .iter()
@@ -321,12 +367,17 @@ impl AppShell {
                         && matches!(route.transport(), Some(discovery::ObservedTransport::Wired))
                 })
                 .collect::<Vec<_>>();
-            let [route] = routes.as_slice() else {
-                anyhow::bail!("Keyboard submission requires a unique observed wired collection")
+            let route = if !intent.requires_device() {
+                None
+            } else {
+                let [route] = routes.as_slice() else {
+                    anyhow::bail!("Keyboard submission requires a unique observed wired collection")
+                };
+                Some((**route).clone())
             };
             Ok((
                 intent,
-                (**route).clone(),
+                route,
                 workspace.read(cx).identity(cx),
                 device.active_profile.clone(),
                 profile.guid.clone(),
@@ -336,13 +387,20 @@ impl AppShell {
             Ok(selected) => selected,
             Err(error) => {
                 let error = format!("{error:#}");
-                eprintln!("[keyboard submission] {error}");
+                self.keyboard_actuation_diagnostic(error.clone(), cx);
                 workspace.update(cx, |workspace, cx| {
                     workspace.finish_keyboard_actuation(generation, Err(error), cx)
                 });
                 return;
             }
         };
+        if !intent.requires_device() {
+            workspace.update(cx, |workspace, cx| {
+                workspace.finish_keyboard_actuation(generation, Ok(()), cx)
+            });
+            return;
+        }
+        let route = route.expect("Device intents require the observed route");
         let key = workspace.entity_id();
         if self
             .keyboard_actuation_operations
@@ -353,7 +411,25 @@ impl AppShell {
                     || session.revision != self.discovery_revision
             })
         {
-            self.keyboard_actuation_operations.remove(&key);
+            if let Some(mut session) = self.keyboard_actuation_operations.remove(&key) {
+                if let Some(delivery) = session._delivery.take() {
+                    self.keyboard_actuation_retired.push(RetiredDelivery {
+                        valid: session.valid.clone(),
+                        worker_id: session.worker_id,
+                        _delivery: delivery,
+                    });
+                }
+                let reason = "Keyboard connection/profile scope ended";
+                let (pending, waiting) = session.admission.retire();
+                for generation in pending
+                    .into_iter()
+                    .chain(waiting.into_iter().map(|(request, _)| request.generation()))
+                {
+                    workspace.update(cx, |workspace, cx| {
+                        workspace.finish_keyboard_actuation(generation, Err(reason.into()), cx)
+                    });
+                }
+            }
         }
         if !self.keyboard_actuation_operations.contains_key(&key) {
             let (commands, incoming) = mpsc::sync_channel(128);
@@ -362,10 +438,11 @@ impl AppShell {
             let signal = valid.clone();
             let worker = match thread::Builder::new()
                 .name("keyboard-actuation-owner".into())
-                .spawn(move || worker(route, guid, signal, incoming, sender))
+                .spawn(move || worker::run(route, guid, signal, incoming, sender))
             {
                 Ok(worker) => worker,
                 Err(error) => {
+                    self.keyboard_actuation_diagnostic(format!("{error:#}"), cx);
                     workspace.update(cx, |workspace, cx| {
                         workspace.finish_keyboard_actuation(
                             generation,
@@ -376,8 +453,8 @@ impl AppShell {
                     return;
                 }
             };
-            self.keyboard_actuation_workers
-                .retain(|worker| !worker.is_finished());
+            self.reap_keyboard_actuation_workers(cx);
+            let worker_id = worker.thread().id();
             self.keyboard_actuation_workers.push(worker);
             let revision = self.discovery_revision;
             self.keyboard_actuation_operations.insert(
@@ -386,19 +463,28 @@ impl AppShell {
                     identity: identity.clone(),
                     profile: profile.clone(),
                     revision,
+                    worker_id,
                     valid: valid.clone(),
-                    commands,
-                    pending: Default::default(),
+                    admission: Admission::new(commands),
                     _delivery: None,
                 },
             );
             let target = workspace.clone();
-            let delivery = cx.spawn_in(window, async move |this, cx| {
+            let delivery = cx.spawn(async move |this, cx| {
+                let mut stopped = false;
                 loop {
                     cx.background_executor().timer(Duration::from_millis(16)).await;
-                    let events: Vec<_> = replies.try_iter().collect();
+                    let mut events = Vec::new();
+                    let disconnected = loop {
+                        match replies.try_recv() {
+                            Ok(event) => events.push(event),
+                            Err(mpsc::TryRecvError::Empty) => break false,
+                            Err(mpsc::TryRecvError::Disconnected) => break true,
+                        }
+                    };
                     let mut stop = false;
-                    if this.update_in(cx, |this, _, cx| {
+                    if this.update(cx, |this, cx| {
+                        let mut completed_deliveries = Vec::new();
                         let current = this.devices.contains(&target) && this.discovery_revision == revision
                             && target.read(cx).identity(cx) == identity
                             && target.read(cx).device(cx).active_profile == profile;
@@ -406,28 +492,70 @@ impl AppShell {
                         for event in events {
                             match event {
                                 Reply::Finished(generation, result) => {
-                                    if let Some(session) = this.keyboard_actuation_operations.get_mut(&key).filter(|session| Arc::ptr_eq(&session.valid, &valid)) {
-                                        session.pending.remove(&generation);
+                                    if let Some(session) = this.keyboard_actuation_operations.get_mut(&key).filter(|session| session.owns(&valid, worker_id)) {
+                                        session.admission.finish(generation);
                                     }
                                     let result = if current && valid.load(Ordering::Acquire) { result } else { Err("Keyboard connection/profile scope ended".into()) };
+                                    if let Err(error) = &result {
+                                        this.keyboard_actuation_diagnostic(error.clone(), cx);
+                                    }
                                     target.update(cx, |target, cx| target.finish_keyboard_actuation(generation, result, cx));
                                 }
-                                Reply::CleanupFailed(error) => eprintln!("[keyboard submission cleanup] {error}"),
+                                Reply::CleanupFailed(error) => this.keyboard_actuation_diagnostic(error, cx),
                                 Reply::Stopped => {
-                                    stop = true;
-                                    {
-                                        if let Some(session) = this.keyboard_actuation_operations.get_mut(&key).filter(|session| Arc::ptr_eq(&session.valid, &valid)) {
-                                            for generation in std::mem::take(&mut session.pending) {
-                                                target.update(cx, |target, cx| target.finish_keyboard_actuation(generation, Err("Keyboard submission worker exited before completing this request".into()), cx));
-                                            }
-                                        }
-                                    }
+                                    stopped = true;
                                 }
                             }
                         }
-                        if stop && this.keyboard_actuation_operations.get(&key).is_some_and(|session| Arc::ptr_eq(&session.valid, &valid)) {
-                            this.keyboard_actuation_operations.remove(&key);
+                        if disconnected && !stopped {
+                            stopped = true;
+                            this.keyboard_actuation_diagnostic(
+                                "Keyboard submission channel closed before its cleanup receipt".into(), cx);
                         }
+                        let finished = this.keyboard_actuation_workers.iter()
+                            .find(|worker| worker.thread().id() == worker_id)
+                            .is_none_or(thread::JoinHandle::is_finished);
+                        if stopped && finished {
+                            stop = true;
+                            if this.keyboard_actuation_operations.get(&key)
+                                .is_some_and(|session| session.owns(&valid, worker_id))
+                            {
+                                let mut session = this.keyboard_actuation_operations.remove(&key)
+                                    .expect("observed keyboard actor");
+                                let (unfinished, waiting) = session.admission.retire();
+                                let continuing = current && valid.load(Ordering::Acquire);
+                                if let Some(delivery) = session._delivery.take() {
+                                    completed_deliveries.push(delivery);
+                                }
+                                drop(session);
+                                for generation in unfinished {
+                                    let error = "Keyboard submission worker exited before completing this request";
+                                    target.update(cx, |target, cx| target.finish_keyboard_actuation(generation, Err(error.into()), cx));
+                                    this.keyboard_actuation_diagnostic(error.into(), cx);
+                                }
+                                for (request,intent) in waiting {
+                                    if continuing {
+                                        this.submit_keyboard_actuation_prepared(target.clone(), &request, intent, cx);
+                                    } else {
+                                        let error = "Keyboard connection/profile scope ended before successor admission";
+                                        target.update(cx, |target, cx| target.finish_keyboard_actuation(request.generation(), Err(error.into()), cx));
+                                        this.keyboard_actuation_diagnostic(error.into(), cx);
+                                    }
+                                }
+                            }
+                            if let Some(index) = this.keyboard_actuation_retired.iter().position(|retired|
+                                retired.worker_id == worker_id && Arc::ptr_eq(&retired.valid, &valid))
+                            {
+                                completed_deliveries.push(this.keyboard_actuation_retired.swap_remove(index)._delivery);
+                            }
+                            this.reap_keyboard_actuation_workers(cx);
+                        }
+                        if this.close_requested && this.save_task.is_none() {
+                            this.continue_save_queue(true, cx);
+                        }
+                        // No further await follows a completed actor. Keep its
+                        // delivery owner through the final exit continuation.
+                        drop(completed_deliveries);
                     }).is_err() { valid.store(false, Ordering::Release); break; }
                     if stop { break; }
                 }
@@ -437,23 +565,23 @@ impl AppShell {
                 .unwrap()
                 ._delivery = Some(delivery);
         }
-        let queued = self.keyboard_actuation_operations[&key]
-            .commands
-            .try_send(Command { generation, intent });
-        if let Err(error) = queued {
-            workspace.update(cx, |workspace, cx| {
-                workspace.finish_keyboard_actuation(
+        let queued = self
+            .keyboard_actuation_operations
+            .get_mut(&key)
+            .expect("observed keyboard actor")
+            .admission
+            .submit(
+                Command {
                     generation,
-                    Err(format!("Keyboard queue unavailable: {error}")),
-                    cx,
-                )
+                    intent: intent.clone(),
+                },
+                (request.clone(), intent),
+            );
+        if let Err(error) = queued {
+            self.keyboard_actuation_diagnostic(error.clone(), cx);
+            workspace.update(cx, |workspace, cx| {
+                workspace.finish_keyboard_actuation(generation, Err(error), cx)
             });
-        } else {
-            self.keyboard_actuation_operations
-                .get_mut(&key)
-                .unwrap()
-                .pending
-                .insert(generation);
         }
     }
 }

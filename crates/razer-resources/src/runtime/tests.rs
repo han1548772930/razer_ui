@@ -155,6 +155,59 @@ fn shutdown_cancels_active_work_joins_it_and_a_new_owner_reuses_only_verified_ca
 }
 
 #[test]
+fn shutdown_intent_returns_before_a_commit_finishes_then_the_owner_joins_all_work() {
+    let directory = TemporaryDirectory::new();
+    let harness = Harness::new(&directory.0);
+    let client = harness.runtime.client();
+    let pending = file("assets/synapse/shared/pending.svg", b"late");
+    client.0.read_or_request(&pending).unwrap();
+    let late = harness.request();
+
+    let (committing, commit_started) = mpsc::channel();
+    let (release, may_finish) = mpsc::channel();
+    let committer = {
+        let service = client.0.clone();
+        std::thread::spawn(move || {
+            let _permit = service.publication_permit().unwrap();
+            committing.send(()).unwrap();
+            may_finish.recv().unwrap();
+        })
+    };
+    commit_started.recv_timeout(Duration::from_secs(5)).unwrap();
+
+    let (transferred, owner_ready) = mpsc::channel();
+    let runtime = harness.runtime;
+    let closing = std::thread::spawn(move || {
+        runtime.begin_shutdown();
+        transferred.send(runtime).unwrap();
+    });
+    let owner = owner_ready.recv_timeout(Duration::from_secs(5));
+    // Release the simulated slow commit before asserting, including on failure.
+    // Shutdown intent must return while this permit is still held.
+    release.send(()).unwrap();
+    committer.join().unwrap();
+    closing.join().unwrap();
+    let mut runtime = owner.expect("Closing must not wait for synchronous cache publication");
+
+    assert!(client.0.read_or_request(&pending).is_err());
+    assert!(
+        client
+            .0
+            .read_or_request(&file("assets/synapse/shared/new.svg", b"new"))
+            .is_err()
+    );
+    assert!(client.retry().is_err());
+    assert!(client.0.receiver.is_empty());
+    runtime.begin_shutdown();
+    runtime.shutdown().unwrap();
+    assert_eq!(harness.active.load(Ordering::SeqCst), 0);
+    assert!(late.reply.send_blocking(Ok(b"late".to_vec())).is_err());
+    assert!(!client.0.cache.path(&pending).unwrap().exists());
+    assert!(runtime.changes.is_closed());
+    assert!(runtime.changes.try_recv().is_err());
+}
+
+#[test]
 fn independent_owners_do_not_share_results_or_cancellation() {
     let directory = TemporaryDirectory::new();
     let mut first = Harness::new(&directory.0.join("first"));
@@ -241,6 +294,7 @@ fn batch_limit_leaves_remaining_requests_queued() {
             root: "unused-test-cache".into(),
         },
         state: Mutex::new(State::default()),
+        publication: Mutex::new(()),
         sender,
         receiver,
         cancelled,
@@ -336,4 +390,48 @@ fn worker_failure_closes_requests_and_preserves_the_failure_for_clients() {
             .contains("panicked")
     );
     assert!(runtime.changes.is_closed());
+}
+
+#[test]
+fn stopping_after_staging_prevents_commit_and_cleans_only_the_pending_file() {
+    let directory = TemporaryDirectory::new();
+    let mut harness = Harness::new(&directory.0);
+    let service = harness.runtime.client().0;
+    let entry = file("assets/synapse/shared/logo.svg", b"valid");
+    let path = service.cache.path(&entry).unwrap();
+    let (staged, staging_complete) = mpsc::channel();
+    let (resume, commit_allowed) = mpsc::channel();
+    let publisher = {
+        let service = service.clone();
+        let entry = entry.clone();
+        std::thread::spawn(move || {
+            service.cache.publish(&entry, b"valid", || {
+                staged.send(()).unwrap();
+                commit_allowed.recv().unwrap();
+                service.publication_permit()
+            })
+        })
+    };
+    staging_complete
+        .recv_timeout(Duration::from_secs(5))
+        .unwrap();
+    assert!(!path.exists());
+    assert_eq!(
+        std::fs::read_dir(path.parent().unwrap()).unwrap().count(),
+        1
+    );
+    harness.runtime.shutdown().unwrap();
+    resume.send(()).unwrap();
+    let error = publisher.join().unwrap().unwrap_err();
+    assert!(format!("{error:#}").contains("资源加载已取消"));
+    assert!(
+        !path.exists(),
+        "stopped sessions cannot publish staged bytes"
+    );
+    assert!(
+        std::fs::read_dir(path.parent().unwrap())
+            .unwrap()
+            .next()
+            .is_none()
+    );
 }

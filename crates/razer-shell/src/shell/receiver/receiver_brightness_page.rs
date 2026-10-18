@@ -1,12 +1,10 @@
 //! Current receiver Lighting events: local source profile then direct device
 //! setting. Local persistence and the genuine device response stay separate.
 use super::*;
-use anyhow::{Context as _, ensure};
+use anyhow::ensure;
 use razer_ipc::{ServiceClient, ServiceRequest};
-use razer_pages::features::{
-    HelpResetOutcome, ReceiverBrightnessReadRequested, ReceiverBrightnessRequested,
-};
-use serde_json::{Value, json};
+use razer_pages::features::{ReceiverBrightnessReadRequested, ReceiverBrightnessRequested};
+use serde_json::Value;
 use std::{
     sync::{
         Arc,
@@ -20,7 +18,12 @@ pub(super) struct Session {
     generation: u64,
     canceled: Arc<AtomicBool>,
     worker: Option<JoinHandle<()>>,
-    _delivery: Task<()>,
+    _delivery: Option<Task<()>>,
+}
+impl Session {
+    pub(in crate::shell) fn matches(&self, generation: u64, canceled: &Arc<AtomicBool>) -> bool {
+        self.generation == generation && Arc::ptr_eq(&self.canceled, canceled)
+    }
 }
 impl Drop for Session {
     fn drop(&mut self) {
@@ -31,27 +34,18 @@ struct Completion {
     response: Value,
     error: Option<String>,
 }
-enum Delivery {
-    /// Source local/profile publication precedes its queued hardware task.
-    /// This is not a getter, transport acknowledgement or host storage event.
-    LocalProfile(HelpResetOutcome),
-    Finished(Result<Completion, String>),
-}
-fn execute(
-    device: Device,
-    request: Option<ReceiverBrightnessRequested>,
-    cancel: &AtomicBool,
-    delivery: &mpsc::Sender<Delivery>,
-) -> anyhow::Result<Completion> {
+
+fn execute_read(device: Device, cancel: &Arc<AtomicBool>) -> anyhow::Result<Completion> {
     let guard = || -> anyhow::Result<()> {
         ensure!(
             !cancel.load(Ordering::Acquire),
-            "Receiver brightness page scope canceled"
+            "Receiver brightness read canceled"
         );
         Ok(())
     };
     guard()?;
     let mut client = ServiceClient::spawn()?;
+    client.set_cancellation_guard(cancel.clone());
     let result = (|| -> anyhow::Result<Completion> {
         let path = super::receiver_pairing::route::command_path(
             &mut client,
@@ -59,143 +53,21 @@ fn execute(
             &device.device_container_id,
         )?;
         guard()?;
-        let mut storage = None;
-        // Editing follows taskMakerSetBrightness: load real serial-owned
-        // document, mutate active brightness, persist, then enqueue device.
-        if let Some(request) = request {
-            let identity = client.request(ServiceRequest::ReceiverIdentityRead {
-                path: path.clone(),
-                device_container_id: device.device_container_id.clone(),
-            })?;
-            ensure!(
-                identity["product_id"] == device.product_id
-                    && identity["path"] == path
-                    && identity["device_container_id"] == device.device_container_id,
-                "Brightness serial owner differs"
-            );
-            let serial = identity["serial_number"]
-                .as_str()
-                .filter(|s| !s.is_empty())
-                .context("Source serial absent")?
-                .to_owned();
-            let local = razer_storage::receiver_reset::local_path(
-                device.product_id,
-                &device.device_container_id,
-                &serial,
-            )?;
-            let _lock = super::receiver_reset::DOCUMENT_LOCK
-                .lock()
-                .map_err(|_| anyhow::anyhow!("Receiver source storage lock unavailable"))?;
-            guard()?;
-            let previous = razer_storage::receiver_reset::load(
-                &local,
-                device.product_id,
-                &device.device_container_id,
-                &serial,
-            )?;
-            let computer = std::env::var("COMPUTERNAME").unwrap_or_default();
-            let current = match &previous {
-                Some(value) => value.clone(),
-                None => razer_storage::receiver_reset::initial_document(
-                    device.product_id,
-                    device.edition_id,
-                    &serial,
-                    &computer,
-                    &uuid::Uuid::new_v4().to_string(),
-                )?,
-            };
-            let cache = razer_storage::receiver_reset::prepare_serial_cache(
-                device.product_id,
-                device.edition_id,
-                &current,
-                &serial,
-                &computer,
-                &uuid::Uuid::new_v4().to_string(),
-            )?;
-            let guid = cache["activeProfile"]
-                .as_str()
-                .context("Source active profile absent")?;
-            // Existing source UI draft IDs cannot replace the actual serial's
-            // active GUID. An original imported GUID must match that owner.
-            if device.profiles.iter().any(|p| {
-                p.guid == device.active_profile
-                    && cache["profiles"]
-                        .as_array()
-                        .is_some_and(|a| a.iter().any(|p| p["guid"] == device.active_profile))
-            }) {
-                ensure!(
-                    guid == device.active_profile,
-                    "UI active source profile changed before brightness mutation"
-                );
-            }
-            let document = razer_storage::receiver_reset::brightness_document(
-                &cache,
-                guid,
-                request.enabled(),
-                request.value(),
-            )?;
-            guard()?;
-            razer_storage::receiver_reset::persist_document(
-                &local,
-                device.product_id,
-                &device.device_container_id,
-                &serial,
-                previous.as_ref(),
-                &document,
-            )?;
-            delivery
-                .send(Delivery::LocalProfile(HelpResetOutcome {
-                    source_document: document.clone(),
-                    serial_number: serial.clone(),
-                }))
-                .map_err(|_| anyhow::anyhow!("Receiver local profile recipient closed"))?;
-            storage = Some((local, serial, document));
-        }
-        let response = (|| -> anyhow::Result<Value> {
-            guard()?;
-            let response = client.request(match request {
-                Some(request) => ServiceRequest::ReceiverBrightnessWrite {
-                    path: path.clone(),
-                    device_container_id: device.device_container_id.clone(),
-                    percent: request.percent(),
-                },
-                None => ServiceRequest::ReceiverBrightnessRead {
-                    path: path.clone(),
-                    device_container_id: device.device_container_id.clone(),
-                },
-            })?;
-            ensure!(
-                response["product_id"] == device.product_id
-                    && response["path"] == path
-                    && response["device_container_id"] == device.device_container_id,
-                "Brightness device response owner differs"
-            );
-            Ok(response)
-        })();
-        let (response, mut error) = match response {
-            Ok(response) => {
-                let error = response["result"]["error"].as_str().map(str::to_owned);
-                (response, error)
-            }
-            Err(error) => (Value::Null, Some(format!("{error:#}"))),
-        };
-        if let Some((local, serial, document)) = storage {
-            if let Err(receipt) = razer_storage::receiver_reset::record_refresh(
-                &local,
-                device.product_id,
-                &device.device_container_id,
-                &serial,
-                &document,
-                json!({"ON_SET_BRIGHTNESS":{"response":response,"error":error}}),
-            ) {
-                let detail =
-                    format!("Brightness result receipt could not be persisted: {receipt:#}");
-                error = Some(error.map_or(detail.clone(), |error| format!("{error}; {detail}")));
-            }
-        }
+        let response = client.request(ServiceRequest::ReceiverBrightnessRead {
+            path: path.clone(),
+            device_container_id: device.device_container_id.clone(),
+        })?;
+        guard()?;
+        ensure!(
+            response["product_id"] == device.product_id
+                && response["path"] == path
+                && response["device_container_id"] == device.device_container_id,
+            "Receiver brightness read belongs to a different owner"
+        );
+        let error = response["result"]["error"].as_str().map(str::to_owned);
         Ok(Completion { response, error })
     })();
-    let shutdown = client.request(ServiceRequest::Shutdown);
+    let shutdown = super::receiver_reset::local::shutdown(&mut client);
     match (result, shutdown) {
         (Ok(mut result), Err(error)) => {
             let cleanup = format!("Communication process cleanup failed: {error:#}");
@@ -213,7 +85,7 @@ fn execute(
     }
 }
 impl AppShell {
-    fn retire_receiver_brightness(&mut self, key: &str) {
+    pub(in crate::shell) fn retire_receiver_brightness(&mut self, key: &str) {
         if let Some(mut session) = self.receiver_brightness_page.remove(key) {
             session.canceled.store(true, Ordering::Release);
             if let Some(worker) = session.worker.take() {
@@ -230,8 +102,39 @@ impl AppShell {
         }
         self.receiver_brightness_cleanup = pending;
     }
-    pub(super) fn install_receiver_brightness_cleanup(&mut self, cx: &mut Context<Self>) {
-        self.subscriptions.push(cx.on_app_quit(|this, cx| {
+    pub(in crate::shell) fn begin_receiver_brightness_profile(
+        &mut self,
+        key: String,
+        generation: u64,
+        canceled: Arc<AtomicBool>,
+    ) {
+        self.receiver_brightness_page.insert(
+            key,
+            Session {
+                generation,
+                canceled,
+                worker: None,
+                _delivery: None,
+            },
+        );
+    }
+    pub(in crate::shell) fn retain_receiver_brightness_worker(
+        &mut self,
+        key: &str,
+        worker: JoinHandle<()>,
+        delivery: Task<()>,
+    ) {
+        if let Some(session) = self.receiver_brightness_page.get_mut(key) {
+            if let Some(previous) = session.worker.replace(worker) {
+                self.receiver_brightness_cleanup.push(previous);
+            }
+            session._delivery = Some(delivery);
+        } else {
+            self.receiver_brightness_cleanup.push(worker);
+        }
+    }
+    pub(super) fn install_receiver_brightness_cleanup(&mut self, _cx: &mut Context<Self>) {
+        self.register_exit_cleanup(|this, cx| {
             let mut sessions = std::mem::take(&mut this.receiver_brightness_page);
             let mut workers = std::mem::take(&mut this.receiver_brightness_cleanup);
             for session in sessions.values_mut() {
@@ -247,7 +150,7 @@ impl AppShell {
                 drop(sessions);
             });
             async move { cleanup.await }
-        }));
+        });
     }
     pub(super) fn receiver_brightness_write(
         &mut self,
@@ -256,13 +159,19 @@ impl AppShell {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.receiver_brightness_request(
-            workspace,
+        if workspace.read(cx).receiver_brightness_matches(
             request.generation(),
-            Some(request),
-            window,
+            Some(request.percent()),
+            true,
             cx,
-        );
+        ) {
+            self.request_receiver_profile(
+                workspace,
+                super::receiver_reset::local::Operation::Brightness(request),
+                window,
+                cx,
+            );
+        }
     }
     pub(super) fn receiver_brightness_read(
         &mut self,
@@ -318,17 +227,15 @@ impl AppShell {
         let revision = self.discovery_revision;
         let product = device.product_id;
         let container = device.device_container_id.clone();
-        let mut profile = device.active_profile.clone();
+        let profile = device.active_profile.clone();
         let canceled = Arc::new(AtomicBool::new(false));
         let signal = canceled.clone();
         let (sender, receiver) = mpsc::channel();
         let worker = match thread::Builder::new()
             .name("receiver-brightness-page".into())
             .spawn(move || {
-                let _ = sender.send(Delivery::Finished(
-                    execute(device, request, &signal, &sender)
-                        .map_err(|error| format!("{error:#}")),
-                ));
+                let _ = sender
+                    .send(execute_read(device, &signal).map_err(|error| format!("{error:#}")));
             }) {
             Ok(worker) => worker,
             Err(error) => {
@@ -357,11 +264,11 @@ impl AppShell {
                 let result = match receiver.try_recv() {
                     Ok(result) => Some(result),
                     Err(mpsc::TryRecvError::Empty) => None,
-                    Err(mpsc::TryRecvError::Disconnected) => Some(Delivery::Finished(Err(
-                        "Brightness worker disconnected".into(),
-                    ))),
+                    Err(mpsc::TryRecvError::Disconnected) => {
+                        Some(Err("Brightness worker disconnected".into()))
+                    }
                 };
-                let terminal = matches!(result, Some(Delivery::Finished(_)));
+                let terminal = result.is_some();
                 let keep = shell.update_in(cx, |shell, window, cx| {
                     if !shell
                         .receiver_brightness_page
@@ -388,21 +295,7 @@ impl AppShell {
                         }
                         return true;
                     }
-                    if let Some(Delivery::LocalProfile(outcome)) = result {
-                        if current {
-                            workspace.update(cx, |workspace, cx| {
-                                workspace.publish_receiver_brightness_profile(
-                                    generation, percent, outcome, window, cx,
-                                )
-                            });
-                            // The source document may install its serial-owned
-                            // active GUID. Retain that publication as our scope;
-                            // a later user profile change still invalidates it.
-                            profile = workspace.read(cx).device(cx).active_profile.clone();
-                        }
-                        return true;
-                    }
-                    if let Some(Delivery::Finished(result)) = result {
+                    if let Some(result) = result {
                         shell.retire_receiver_brightness(&delivery_key);
                         let (outcome, submitted_requested, observed, error) = match result {
                             Ok(result) => {
@@ -465,7 +358,7 @@ impl AppShell {
                 generation,
                 canceled,
                 worker: Some(worker),
-                _delivery,
+                _delivery: Some(_delivery),
             },
         );
     }

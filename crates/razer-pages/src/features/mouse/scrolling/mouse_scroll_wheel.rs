@@ -257,6 +257,17 @@ impl ScrollWheelEditor {
     pub(super) fn snapshot(&self) -> Value {
         self.draft.clone()
     }
+    pub(super) fn restore_source_mode(
+        &mut self,
+        mode: razer_device::mouse_scroll::ScrollMode,
+        cx: &mut Context<Self>,
+    ) {
+        // ScrollModeV2Feature.restoreScrollDisabledModes publishes the
+        // resolved profile mode before any independent Rust readback.
+        self.draft["scrollMode"] = json!(mode);
+        self.observed.as_object_mut().unwrap().remove("scrollMode");
+        cx.notify();
+    }
     pub(super) fn local_fields(&self) -> Value {
         json!(self.local_fields)
     }

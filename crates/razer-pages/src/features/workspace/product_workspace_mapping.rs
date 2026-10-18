@@ -6,6 +6,12 @@ use crate::features::keyboard_products::{
 };
 
 impl ProductWorkspace {
+    /// Advances when a connection is replaced, including a batched reconnect
+    /// whose final setupStatus is unchanged. Never persisted as a device fact.
+    pub fn connection_revision(&self) -> u64 {
+        self.connection_revision
+    }
+
     pub fn observe_running_games(&mut self, count: Option<usize>, cx: &mut Context<Self>) {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| body.observe_running_games(count, cx));

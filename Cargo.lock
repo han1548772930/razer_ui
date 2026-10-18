@@ -1267,6 +1267,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "data-encoding"
+version = "2.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4583a4551df46e2792f82ceeac45e850d2e2d5debba0b91f102385cda5b11f06"
+
+[[package]]
 name = "data-url"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5725,21 +5731,22 @@ dependencies = [
  "async-channel",
  "chrono",
  "gpui-kit",
- "md5",
  "raw-window-handle",
  "razer-assets",
  "razer-catalog",
+ "razer-device",
  "razer-i18n",
  "razer-ipc",
  "razer-model",
  "razer-pages",
  "razer-platform",
  "razer-resource-db",
+ "razer-service",
  "razer-settings",
+ "razer-state",
  "razer-storage",
  "razer-widgets",
  "regex",
- "roxmltree 0.21.1",
  "serde",
  "serde_json",
  "uuid",
@@ -5762,9 +5769,11 @@ dependencies = [
  "image",
  "razer-resource-db",
  "razer-resources",
+ "razer-storage",
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "usvg 0.46.0",
 ]
 
 [[package]]
@@ -5801,6 +5810,7 @@ dependencies = [
  "md5",
  "serde",
  "serde_json",
+ "uuid",
 ]
 
 [[package]]
@@ -5841,9 +5851,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "razer-device",
+ "razer-model",
  "razer-storage",
  "serde",
  "serde_json",
+ "uuid",
  "windows-sys 0.61.2",
 ]
 
@@ -5857,6 +5869,7 @@ dependencies = [
  "razer-device",
  "razer-i18n",
  "razer-resource-db",
+ "roxmltree 0.21.1",
  "serde",
  "serde_json",
  "uuid",
@@ -5872,7 +5885,6 @@ dependencies = [
  "gpui-kit",
  "image",
  "lyon_tessellation",
- "md5",
  "raw-window-handle",
  "razer-assets",
  "razer-catalog",
@@ -5883,7 +5895,9 @@ dependencies = [
  "razer-platform",
  "razer-resource-db",
  "razer-resources",
+ "razer-service",
  "razer-state",
+ "razer-storage",
  "razer-widgets",
  "regex",
  "semver",
@@ -5916,6 +5930,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5938,6 +5953,7 @@ name = "razer-service"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-channel",
  "bytes",
  "h2",
  "http",
@@ -5945,13 +5961,17 @@ dependencies = [
  "md5",
  "razer-catalog",
  "razer-device",
+ "razer-discovery",
  "razer-hid",
  "razer-ipc",
+ "razer-model",
  "razer-platform",
  "razer-storage",
  "serde",
  "serde_json",
  "tokio",
+ "tungstenite",
+ "uuid",
  "windows 0.61.3",
  "windows-future 0.2.1",
  "windows-sys 0.61.2",
@@ -6002,6 +6022,7 @@ dependencies = [
  "razer-pages",
  "razer-platform",
  "razer-resource-db",
+ "razer-service",
  "razer-settings",
  "razer-state",
  "razer-storage",
@@ -6021,6 +6042,7 @@ version = "0.1.0"
 dependencies = [
  "gpui-kit",
  "razer-model",
+ "razer-storage",
  "serde",
  "serde_json",
 ]
@@ -6033,6 +6055,7 @@ dependencies = [
  "anyhow",
  "base64 0.22.1",
  "md5",
+ "razer-device",
  "razer-model",
  "ring",
  "roxmltree 0.21.1",
@@ -6068,6 +6091,9 @@ dependencies = [
  "razer-assets",
  "razer-i18n",
  "razer-model",
+ "unicode-linebreak",
+ "unicode-script",
+ "unicode-segmentation",
  "windows-sys 0.61.2",
 ]
 
@@ -6764,6 +6790,17 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "sha1"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aacc4cc499359472b4abe1bf11d0b12e688af9a805fa5e3016f9a386dc2d0214"
+dependencies = [
+ "cfg-if",
+ "cpufeatures 0.3.1",
+ "digest 0.11.3",
 ]
 
 [[package]]
@@ -7641,6 +7678,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2df906b07856748fa3f6e0ad0cbaa047052d4a7dd609e231c4f72cee8c36f31"
 dependencies = [
  "core_maths",
+]
+
+[[package]]
+name = "tungstenite"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e48ac77174b19c110a50ab2128b24215ac9cb40e0e12e093fb602d175c569d22"
+dependencies = [
+ "bytes",
+ "data-encoding",
+ "http",
+ "httparse",
+ "log",
+ "rand 0.10.3",
+ "sha1",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

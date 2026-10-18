@@ -222,7 +222,7 @@ fn preset_preview(item: &Value, hovered: bool, enabled: bool) -> AnyElement {
         .overflow_hidden()
         .when(enabled, |view| view.bg(ArtworkColors::black()))
         .child(
-            img(media_decode::preview_source(id, src))
+            img(razer_assets::local_image::preview_source(id, src))
                 .absolute()
                 .w(surface::css(canvas.width() * zoom))
                 .h(surface::css(canvas.height() * zoom))
@@ -245,7 +245,21 @@ pub(super) struct ArtworkEditor {
     search: Entity<InputState>,
     _search_subscription: Subscription,
     crop: Option<crop_editor::CropState>,
+    active: bool,
     import_generation: u64,
+    import: Option<ArtworkImport>,
+}
+
+struct ArtworkImport {
+    index: usize,
+    request: razer_assets::local_image::ImageRequest,
+    _task: Task<()>,
+}
+
+impl Drop for ArtworkEditor {
+    fn drop(&mut self) {
+        self.cancel_import();
+    }
 }
 impl ArtworkEditor {
     pub(super) fn open(
@@ -267,16 +281,41 @@ impl ArtworkEditor {
                 search,
                 _search_subscription: subscription,
                 crop: None,
+                active: true,
                 import_generation: 0,
+                import: None,
             }
         })
     }
     fn close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.import_generation = self.import_generation.wrapping_add(1);
+        self.deactivate();
         self.dialog.close(window, cx);
         cx.notify();
     }
+    pub(super) fn deactivate(&mut self) {
+        self.active = false;
+        self.cancel_import();
+        self.crop = None;
+    }
+    pub(super) fn cancel_import(&mut self) {
+        self.import_generation = self.import_generation.wrapping_add(1);
+        if let Some(pending) = self.import.take() {
+            pending.request.cancel();
+        }
+    }
+    fn cancel_import_for(&mut self, index: usize) {
+        if self
+            .import
+            .as_ref()
+            .is_some_and(|pending| pending.index == index)
+        {
+            self.cancel_import();
+        }
+    }
     fn apply(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.active {
+            return;
+        }
         let value = self.draft.clone();
         let key = mode_key(self.mode);
         let _ = self.owner.update(cx, |owner, cx| {
@@ -296,6 +335,9 @@ impl ArtworkEditor {
             return;
         }
         list[index]["enabled"] = json!(!enabled);
+        if enabled {
+            self.cancel_import_for(index);
+        }
         if enabled && self.draft["selectedIdx"] == index {
             let selected = self.draft["list"]
                 .as_array()
@@ -308,6 +350,7 @@ impl ArtworkEditor {
         cx.notify();
     }
     fn reset(&mut self, index: usize, cx: &mut Context<Self>) {
+        self.cancel_import_for(index);
         let item = &presets(self.mode)[index];
         self.draft["list"][index]["src"] = json!(item.asset);
         self.draft["list"][index]["custom"] = json!(false);
@@ -687,29 +730,6 @@ impl Render for ArtworkEditor {
             Self::close,
         )
     }
-}
-
-fn base64_encode(bytes: &[u8]) -> String {
-    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut output = String::with_capacity(bytes.len().div_ceil(3) * 4);
-    for chunk in bytes.chunks(3) {
-        let value = ((chunk[0] as u32) << 16)
-            | ((chunk.get(1).copied().unwrap_or(0) as u32) << 8)
-            | chunk.get(2).copied().unwrap_or(0) as u32;
-        output.push(TABLE[((value >> 18) & 63) as usize] as char);
-        output.push(TABLE[((value >> 12) & 63) as usize] as char);
-        output.push(if chunk.len() > 1 {
-            TABLE[((value >> 6) & 63) as usize] as char
-        } else {
-            '='
-        });
-        output.push(if chunk.len() > 2 {
-            TABLE[(value & 63) as usize] as char
-        } else {
-            '='
-        });
-    }
-    output
 }
 
 // Generated catalog reader: razer-pages/audio_oled_artwork_data.

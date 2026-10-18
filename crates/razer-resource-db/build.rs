@@ -1,6 +1,9 @@
 use sha2::{Digest as _, Sha256};
 use std::{env, fs, path::Path};
 
+#[path = "src/publication.rs"]
+mod publication;
+
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 struct InstallationPolicy {
@@ -16,9 +19,14 @@ fn stage(directory: &Path, filename: &str, bytes: &[u8]) {
     if fs::read(&target).ok().as_deref() == Some(bytes) {
         return;
     }
-    let temporary = directory.join(format!(".{filename}-{}.partial", std::process::id()));
-    fs::write(&temporary, bytes).expect("Cannot stage packaged catalog");
-    fs::rename(&temporary, &target).expect("Cannot publish packaged catalog beside Cargo output");
+    let staged =
+        publication::StagedResource::write(&target, bytes).expect("Cannot stage packaged catalog");
+    if let Err(error) = staged.publish() {
+        assert!(
+            fs::read(&target).ok().as_deref() == Some(bytes),
+            "Cannot publish packaged catalog beside Cargo output: {error}"
+        );
+    }
 }
 
 fn main() {

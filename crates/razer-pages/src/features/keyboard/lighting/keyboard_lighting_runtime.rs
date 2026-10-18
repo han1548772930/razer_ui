@@ -367,21 +367,42 @@ impl KeyboardProductWorkspace {
     pub(super) fn commit_rgb_custom_colors(
         &mut self,
         owner: &KeyboardLightingOwner,
-        colors: &razer_state::CustomColorSlots,
+        edit: razer_model::preferences::CustomColorEdit,
         cx: &mut Context<Self>,
     ) {
         if owner != &self.lighting_owner() || self.rgb_quick_disabled() {
             return;
         }
-        let colors: Vec<Value> = colors
-            .iter()
-            .map(|color| match color {
-                Some([red, green, blue]) => {
-                    json!({"color":format!("#{red:02x}{green:02x}{blue:02x}"),"picked":true})
-                }
-                None => json!({"color":"#111","picked":false}),
-            })
-            .collect();
+        use razer_model::preferences::ProfileCustomColors;
+        let source = self
+            .lighting_runtime
+            .custom_colors_draft
+            .as_ref()
+            .or_else(|| {
+                self.lighting_observation
+                    .as_ref()
+                    .map(|observation| &observation.custom_colors)
+            });
+        let colors = (|| -> anyhow::Result<_> {
+            let colors = if let Some(source) = source.filter(|source| !source.is_empty()) {
+                let mut colors: ProfileCustomColors = serde_json::from_value(json!(source))?;
+                colors.apply_edit(edit).map_err(anyhow::Error::msg)?;
+                colors
+            } else {
+                ProfileCustomColors::from_slots(cx.global::<razer_state::CustomColors>().colors())
+            };
+            let Value::Array(colors) = serde_json::to_value(colors.slot_records())? else {
+                unreachable!("profile color slots serialize as an array");
+            };
+            Ok(colors)
+        })();
+        let colors = match colors {
+            Ok(colors) => colors,
+            Err(error) => {
+                eprintln!("[keyboard profile custom colors] {error:#}");
+                return;
+            }
+        };
         self.lighting_runtime.custom_colors_draft = Some(colors.clone());
         self.request_lighting_message("SET_CUSTOM_COLORS", json!({"customColors":colors}), cx);
     }

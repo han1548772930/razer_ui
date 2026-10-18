@@ -2013,7 +2013,7 @@ class HostLocalAudit:
         self.parser = Parser(Language(tree_sitter_javascript.language()))
         self.parser_versions = {name: importlib.metadata.version(name) for name in ("tree-sitter", "tree-sitter-javascript")}
         self.raw, self.parsed, self.sources, self.owners = {}, {}, {}, {}
-        self.artifacts, self.module_cache = {}, {}
+        self.artifacts, self.module_cache, self.binding_indexes = {}, {}, {}
 
     def artifact(self, path, expected=None):
         name = self.a.rel(path)
@@ -2169,6 +2169,46 @@ class HostLocalAudit:
             self.owners[key]["roles"].append(role)
         return key
 
+    def callable_member(self, role, source, root, name, *, receiver=None):
+        """Retain one actual callable member inside its lexical owner.
+
+        This handles constructor assignments, class fields, class methods and
+        object callbacks. A same-named nested owner remains ambiguous until
+        the caller supplies its real enclosing class/object.
+        """
+        def walk(node):
+            yield node
+            for child in node.named_children:
+                yield from walk(child)
+        matches = []
+        for node in walk(root):
+            key, value, target = None, None, None
+            if node.type == "assignment_expression":
+                left = node.child_by_field_name("left")
+                if left.type == "member_expression":
+                    key = left.child_by_field_name("property")
+                    target = left.child_by_field_name("object")
+                    value = node.child_by_field_name("right")
+            elif node.type == "field_definition":
+                key = node.child_by_field_name("property")
+                value = node.child_by_field_name("value")
+            elif node.type == "method_definition":
+                key, value = node.child_by_field_name("name"), node
+            elif node.type == "pair":
+                key, value = node.child_by_field_name("key"), node.child_by_field_name("value")
+            if key is None or value is None or key.text != name.encode():
+                continue
+            if receiver is not None and (target is None or target.text != receiver.encode()):
+                continue
+            if value.type not in {"arrow_function", "function_expression", "method_definition"}:
+                continue
+            matches.append(node)
+        if len(matches) != 1:
+            raise ValueError("Complete callable member is absent or ambiguous: " + role)
+        node = matches[0]
+        owner = self.retain_range(role, source, node.start_byte, node.end_byte, node.type)
+        return node, owner
+
     def retain_class_field(self, role, source, name):
         """Retain an exact AST field, never a suffix of another member's name."""
         pending, found = [self.tree(source).root_node], []
@@ -2186,12 +2226,14 @@ class HostLocalAudit:
 
     def binding(self, role, source, name, reference_byte):
         import evidence
-        result = evidence.javascript_binding(self.read(source), self.tree(source), name, reference_byte)
+        if source["path"] not in self.binding_indexes:
+            self.binding_indexes[source["path"]] = evidence.JavascriptBindings(self.read(source), self.tree(source))
+        result = self.binding_indexes[source["path"]].resolve(name, reference_byte)
         if result["resolution"] == "declaration":
             result["owner_id"] = self.retain_range(role, source, result["start_byte"], result["end_byte"], result["syntax"])
         return result
 
-    def webpack_export(self, role, files, module_id, export_name):
+    def webpack_export(self, role, files, module_id, export_name, *, namespace=None):
         """Resolve an observed current factory and its static export getter.
 
         Cross-chunk factories are searched only in the caller's verified
@@ -2240,7 +2282,7 @@ class HostLocalAudit:
             args = candidate.child_by_field_name("arguments").named_children
             if obj is None or prop is None or obj.text != require_name or prop.text != b"d" or len(args) != 2:
                 continue
-            if args[0].text != exports_name or args[1].type != "object":
+            if args[0].text != (namespace.encode("utf-8") if namespace is not None else exports_name) or args[1].type != "object":
                 continue
             for pair in args[1].named_children:
                 if pair.type != "pair":
@@ -2253,10 +2295,17 @@ class HostLocalAudit:
                     name = name[1:-1]
                 if name == export_name:
                     definitions.append((candidate, getter))
-        if len(definitions) != 1 or definitions[0][1].type != "arrow_function":
+        if len(definitions) != 1 or definitions[0][1].type not in {"arrow_function", "function_expression"}:
             raise ValueError(f"Current host export {module_id}.{export_name} is absent, ambiguous or dynamic")
         call, getter = definitions[0]
         body = getter.child_by_field_name("body")
+        parameters = getter.child_by_field_name("parameters")
+        if getter.child_by_field_name("parameter") is not None or parameters is not None and parameters.named_child_count:
+            raise ValueError(f"Current host export {module_id}.{export_name} getter has parameters")
+        if body is not None and body.type == "statement_block":
+            statements = body.named_children
+            if len(statements) == 1 and statements[0].type == "return_statement" and statements[0].named_child_count == 1:
+                body = statements[0].named_children[0]
         if body is None or body.type != "identifier":
             raise ValueError(f"Current host export {module_id}.{export_name} requires expression analysis")
         binding = self.binding(role + "_exported_owner", source, body.text.decode("utf-8"), body.start_byte)
@@ -2648,6 +2697,54 @@ def verified_host_owners(audit, suffixes):
     return retained
 
 
+def retain_no_browser_input_handler(audit):
+    """Retain the host shortcut gate without inferring suppression of DOM keys."""
+    common = "electron/components/Tab/common.js"
+    store = "electron/components/Tab/TabStore.js"
+    main = "electron/main.js"
+    sources = verified_host_owners(audit, (common, store, main))
+    original = sources[common]["original"]
+    role = "host_no_browser_input_handler"
+    key = audit.retain(role, original, "ie=(e,o)=>", {"variable_declarator"})[0]
+    handler = audit.owners[key]["body"]
+    if ('if(o&&!B.noBrowserInputHandlerView.includes(e.webContents.id))' not in handler
+            or 'B.noBrowserInputHandlerView.includes(o.webContents?.id)' not in handler
+            or 'else console.log("handleBeforeInput ~ blocked")' not in handler):
+        raise ValueError("Current host browser-input gate differs from its sender/view branches")
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+    node = audit.tree(original).root_node.descendant_for_byte_range(
+        audit.owners[key]["byte_start"], audit.owners[key]["byte_end"] - 1)
+    methods = {child.child_by_field_name("property").text.decode() for child in walk(node)
+        if child.type == "member_expression"}
+    if methods & {"preventDefault", "stopPropagation", "stopImmediatePropagation"}:
+        raise ValueError("Current host browser-input gate now suppresses input delivery")
+    owners = {"handle_before_input": key}
+    for name in ("registerNoBrowserInputHandler", "unRegisterNoBrowserInputHandler"):
+        _, owners[name] = audit.callable_member("host_" + name, original, audit.tree(original).root_node, name)
+        owners["dispatch_" + name] = audit.retain("host_dispatch_" + name, sources[main]["original"],
+            'case"' + name + '":', {"switch_case"})[0]
+    register = audit.owners[owners["registerNoBrowserInputHandler"]]["body"]
+    unregister = audit.owners[owners["unRegisterNoBrowserInputHandler"]]["body"]
+    if ('if(e?.sender?.id)' not in register or 'const o=e.sender.id' not in register
+            or 'B.noBrowserInputHandlerView.includes(o)||B.noBrowserInputHandlerView.push(o)' not in register
+            or 'if(e?.sender?.id)' not in unregister or 'const o=e.sender.id' not in unregister
+            or 'B.noBrowserInputHandlerView=B.noBrowserInputHandlerView.filter(e=>e!==o)' not in unregister):
+        raise ValueError("Current host browser-input registration no longer retains sender identity")
+    owners["state_initialization"] = audit.retain("host_no_browser_input_state", sources[store]["original"],
+        "this.noBrowserInputHandlerView=[]", {"method_definition"})[0]
+    owners["handler_export"] = audit.retain("host_no_browser_input_export", original,
+        "handleBeforeInput:ie", {"pair"})[0]
+    if not all(('Ro.' + name + '(n)') in audit.owners[owners["dispatch_" + name]]["body"]
+               for name in ("registerNoBrowserInputHandler", "unRegisterNoBrowserInputHandler")):
+        raise ValueError("Current host browser-input IPC dispatch differs from its registration owner")
+    return {"sources": sources, "owners": owners,
+        "semantics": "Registration deduplicates the IPC sender.id in TabStore's noBrowserInputHandlerView and unregistration removes that identity. handleBeforeInput skips its host shortcut actions for a registered webContents or the matching active view; the complete handler does not preventDefault or stop propagation. This gate does not establish suppression of DOM keydown/keyup and cannot justify disabling the mounted browser capture fallback.",
+        "target_execution": False, "runtime_acceptance": "unverified"}
+
+
 def verified_host_native(audit, suffix):
     indexed = json.loads(audit.artifact(audit.a.ROOT / ".analysis/inputs.json"))
     matches = [row for row in indexed["inputs"] if row["path"].startswith(".analysis/inputs/host-current/extracted/")
@@ -2711,6 +2808,115 @@ def retain_global_shortcut_clock(audit):
             "c97c0 calls OS RegisterHotKey and retains the actual key/id on success; OS errors produce failure",
             "c6ba4 invokes backend +16 Enable after successful backend +32 Register; c9790 sets byte96=1 when bit0 is clear and key tree at offset80 is nonempty",
             "StreamMixer therefore needs no separate invented enableGlobalShortcut JS call after successful registration"],
+        "target_execution": False, "runtime_acceptance": "unverified"}
+
+
+def retain_global_shortcut_storage_lifetime(audit):
+    """Verify the native storage acknowledgement and owning DLL lifetime."""
+    original, provenance = verified_host_native(audit, "CommonDLL/mapping_engine.dll")
+    retained = audit.native_slice(original, ("localStorageSetItem", "mappingEngineShutdown",
+        "disableMapping", "enableMapping", "disableGlobalShortcut", "enableGlobalShortcut"), depth=0,
+        rvas=(0x1e454, 0x1000, 0x1060, 0x2090, 0x2510, 0x1fdd0, 0x20680,
+              0x2fa0, 0x3160, 0xd46ec, 0xd4900, 0xd52d2, 0xd539c, 0x562c8,
+              0xe95e0, 0xe9720, 0xe9a2c, 0xdb930, 0xeb281, 0xea410, 0xea7de,
+              0x77550, 0xaa588, 0x19c30, 0x19cb0, 0x19d30, 0x19ed0,
+              0x1a010, 0x1a150, 0x1a290, 0x1a3c0, 0x1a440, 0x1a4c0, 0x1a620,
+              0x56b40, 0x56e70, 0x56f10, 0x57090, 0x571e0, 0x57e60,
+              0x6b90, 0x6900, 0x6d50, 0x6ac0, 0x19180, 0x55de4,
+              0x57f70, 0x5804c, 0x580b0, 0x58192, 0x66870, 0x66d10,
+              0x14fb0, 0x15280, 0x15170, 0x15440, 0xc8cd2, 0xc6fb8,
+              0xc9246, 0xc9282, 0x1ae04),
+        regions=({"role": "main_storage_and_shutdown_vtable", "rva": 0x2df010, "bytes": 896},
+                 {"role": "global_shortcut_data_vtable", "rva": 0x2ec538, "bytes": 40},
+                 {"role": "device_manager_active_mapping_vtable", "rva": 0x2e4a88, "bytes": 32},
+                 {"role": "active_mapping_initial_value", "rva": 0x3811d8, "bytes": 1}))
+    if retained["failures"] or retained["decompiler_failures"]:
+        raise ValueError("Current shortcut storage/lifetime native owners are unavailable")
+    base = int(retained["image_base"], 16)
+    regions = {row["role"]: bytes.fromhex(row["raw_hex"]) for row in retained["verified_data_regions"]}
+    if regions["active_mapping_initial_value"] != b"\x01":
+        raise ValueError("Current native active mapping initial byte differs")
+    slots = (("main_storage_and_shutdown_vtable", 16, 0x2090),
+             ("main_storage_and_shutdown_vtable", 32, 0x2fa0),
+             ("global_shortcut_data_vtable", 8, 0xe9720),
+             ("main_storage_and_shutdown_vtable", 216, 0x6b90),
+             ("main_storage_and_shutdown_vtable", 224, 0x6900),
+             ("main_storage_and_shutdown_vtable", 880, 0x14fb0),
+             ("main_storage_and_shutdown_vtable", 888, 0x15280),
+             ("device_manager_active_mapping_vtable", 16, 0x57f70),
+             ("device_manager_active_mapping_vtable", 24, 0x580b0))
+    dispatch = []
+    for role, offset, target in slots:
+        actual, = struct.unpack_from("<Q", regions[role], offset)
+        if actual - base != target:
+            raise ValueError("Current shortcut storage/lifetime dispatch differs: " + role)
+        dispatch.append({"region": role, "offset": offset, "target_rva": hex(target),
+                         "actual_file_pointer": hex(actual)})
+    return {**provenance, "native": retained, "verified_dispatch": dispatch,
+        "storage_chain": [
+            "20920 localStorageSetItem -> 1e454 -> 1000 module-static MappingEngine singleton -> vtable+32 2fa0",
+            "2fa0 posts 3160 on that engine's thread -> d46ec posts d4900 on its local-storage worker",
+            "d4900 changes its in-memory key map and notifies observers, then separately posts callback true",
+            "562c8 owns key-to-parser registration: synapseDefaultTurbos, synapseGlobalShortcuts, synapseMacros, synapsePhasedMacros, synapseTurbos",
+            "GlobalShortcutData ctor e95e0 -> verified vtable+8 e9720 -> e9a2c JSON parser -> ea410 hash/mappings validation",
+            "e9a2c initializes version=1 and globalHooking=false; db930/eb281 overwrite only when their optional reads succeed",
+            "ea410 validates the source hash after removing hash/gamemode and parses the complete mappings array",
+            "77550 publishes parsed shortcut data to its input device; aa588 applies source data and schedules affected outputs"],
+        "shutdown_chain": [
+            "1fed0 mappingEngineShutdown resolves the same module-static singleton; 1060 installs vtable2df010",
+            "vtable+16 2090 marks that singleton uninitialized, posts 2510 and waits before invoking void completion 1fdd0",
+            "2510 composes cleanup of that engine's owned service threads and device manager",
+            "1a620 -> 56b40 -> 56e70 clears local parser/storage owners -> 56f10 stops owned executors -> 57090 clears pending outputs -> 571e0 cleans owned devices",
+            "571e0 uses per-device cleanup completions and 57e60 removes the corresponding owned entry"],
+        "capture_suspension_chain": [
+            "28c20 disableMapping -> main vtable+216 6b90 -> engine-thread 6d50 -> instance+152 device manager vtable+24 580b0",
+            "19180 constructs that instance's device manager with 55de4 and verified vtable2e4a88",
+            "580b0 changes module-static byte3811d8 to false, then 58192 cancels owned input mappings and schedules 57090 pending-output cleanup",
+            "66870 and 66d10 gate their global-shortcut EA2C6 lookup on byte3811d8; disabling active mapping also excludes the native appEngine global-shortcut branch",
+            "28910 enableMapping -> main vtable+224 6900 -> 6ac0 -> device-manager+16 57f70 sets byte3811d8 true and invokes 5804c",
+            "4d8c0 disableGlobalShortcut -> main+888 15280 -> 15440 retains its +224 HotkeyService disable lease at instance+232",
+            "4d5b0 enableGlobalShortcut -> main+880 14fb0 -> 15170 releases only that instance's +232 lease",
+            "These objects and the active-mapping byte belong to the loaded module, so changing them in one process does not suspend another process's mapping engine"],
+        "switch_observations": {"initial_active_mapping": True,
+            "enableMapping_already_target": {"result": False, "reason": "already enabled"},
+            "disableMapping_already_target": {"result": False, "reason": "already disabled"},
+            "enableGlobalShortcut_no_lease": {"result": False, "reason": "hotkey was not disabled"},
+            "disableGlobalShortcut_existing_lease": {"result": True, "reason": "Warning: Already disabled"}},
+        "acknowledgement_scope": "Successful native storage publication; parser acceptance, OS effects and device writes are separate observations",
+        "process_scope": "MappingEngine state and cleanup ownership reside in the loaded DLL module; each independent service process owns its own instance",
+        "limitations": ["The void shutdown completion has no boolean device-write result",
+            "The storage acknowledgement does not confirm every parsed output or OS effect",
+            "Bounded native ownership evidence does not prove every external device/service callback queue has drained"],
+        "target_execution": False, "runtime_acceptance": "unverified"}
+
+
+def retain_philips_measurement_lifetime(audit):
+    """Preserve current callback ABIs and the owned device removal/join chain."""
+    original, provenance = verified_host_native(audit, "CommonDLL/mapping_engine.dll")
+    retained = audit.native_slice(original, ("addUsbDevice", "removeUsbDevice",
+        "setHardwareEventCallback", "registerHardwareEvent", "unregisterHardwareEvent",
+        "setInputNotificationCallback", "registerInputNotification", "unregisterInputNotification",
+        "enableMouseMoveRedirect", "disableMouseMoveRedirect", "setMouseMoveRedirectCallback",
+        "registerGlobalShortcut", "unregisterGlobalShortcut"), depth=1,
+        rvas=(0x57ac0, 0x53090, 0x54930, 0x57e60, 0x6269e, 0x62708, 0x6127c,
+              0x60dfa, 0x5f917, 0xa92a0, 0xa8c2c, 0x656ca, 0x65c90, 0x1b8670, 0x1a9710))
+    if retained["failures"] or retained["decompiler_failures"]:
+        raise ValueError("Current Philips callback/lifetime native owners are unavailable")
+    return {**provenance, "native": retained,
+        "callback_abi": {
+            "hardware_input_device": "void(const char*, DeviceEventType/int32, const char*, uint64)",
+            "mouse_move": "void(const char*, DeviceEventType/int32, uint8, uint8, uint64)",
+            "completion": "void(bool, const char*, const char*)"},
+        "removal_chain": [
+            "57ac0 -> 53090/54930 -> 57e60 -> 6269e/62708/6127c/60dfa/5f917",
+            "a92a0/a8c2c/656ca -> 65c90 -> 1b8670 StopSoon -> 1a9710 WaitForSingleObject(INFINITE) and CloseHandle",
+            "Device worker completion clears callback slot+768 after its join, before the successful removeUsbDevice callback"],
+        "cancellation_semantics": [
+            "disableMouseMoveRedirect clears only the enabled flag+760; it does not erase callback slot+768",
+            "Already posted callback functors may arrive after redirect is disabled; retained callback context must survive owned device removal and worker completion",
+            "Source per-engine Escape registration, timers and event forwarding are separate from native callback/resource ownership"],
+        "limitations": ["The complete retained functions form a bounded native slice, not proof that all external callback queues drain",
+            "No vendor code, native export, application window, real device or installed service was executed"],
         "target_execution": False, "runtime_acceptance": "unverified"}
 
 

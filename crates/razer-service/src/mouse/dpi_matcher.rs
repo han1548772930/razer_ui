@@ -8,6 +8,9 @@ use razer_device::{
 };
 use serde_json::Value;
 
+#[path = "dpi_matcher_worker.rs"]
+pub mod worker;
+
 #[cfg(test)]
 #[path = "dpi_matcher_tests.rs"]
 mod tests;
@@ -69,12 +72,12 @@ impl Controller {
                     .unwrap_or(100.);
                 self.session.begin(current)?;
                 if let Err(error) = backend.start_input_monitoring() {
-                    self.session.fail();
+                    self.session.reset();
                     return Err(error);
                 }
                 self.monitoring = true;
                 if let Err(error) = backend.acquire_matcher_locks() {
-                    self.session.fail();
+                    self.session.reset();
                     self.cleanup(backend)?;
                     return Err(error);
                 }

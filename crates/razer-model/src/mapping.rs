@@ -1,5 +1,54 @@
 //! Shared mapping vocabulary and input/website normalization.
 
+pub mod interdevice;
+
+/// A compiled save may update the live mapping only while its source profiles,
+/// device settings, selection and route still belong to the captured revision.
+pub fn matches_saved_revision(
+    current: &crate::model::Device,
+    saved: &crate::model::Device,
+) -> bool {
+    crate::profile_transfer::ProfileContext::from_device(saved).matches(current)
+        && current.profiles == saved.profiles
+        && match (
+            mapping_source_settings(current),
+            mapping_source_settings(saved),
+        ) {
+            (Some(current), Some(saved)) => current == saved,
+            _ => false,
+        }
+}
+
+fn mapping_source_settings(
+    device: &crate::model::Device,
+) -> Option<std::collections::BTreeMap<&str, &serde_json::Value>> {
+    let settings = match device.source_device_settings.as_ref() {
+        None => return Some(Default::default()),
+        Some(serde_json::Value::Object(settings)) => settings,
+        Some(_) => return None,
+    };
+    let assigned_version = device.product_id == razer_device::mouse_philips::PRODUCT_ID;
+    if assigned_version
+        && settings.get("version").is_some_and(|version| {
+            !version.as_u64().is_some_and(|version| {
+                version <= razer_device::mapping_submission::MAX_SOURCE_VERSION
+            })
+        })
+    {
+        return None;
+    }
+    Some(
+        settings
+            .iter()
+            .filter(|(field, _)| {
+                !razer_device::mapping_document::MappingProduct::owns_storage_field(field)
+                    && !(assigned_version && field.as_str() == "version")
+            })
+            .map(|(field, value)| (field.as_str(), value))
+            .collect(),
+    )
+}
+
 pub const MEDIA: &[(&str, &str)] = &[
     ("VolumeDown", "VOLUME_DOWN"),
     ("VolumeUp", "VOLUME_UP"),
@@ -19,7 +68,6 @@ pub const WINDOWS: &[(&str, &str)] = &[
     ("Notepad", "LAUNCH_NOTEPAD"),
     ("Snipping_Tool", "LAUNCH_SNIPPING_TOOL"),
     ("LaunchTaskManager", "LAUNCH_TASK_MANAGER"),
-    ("MSCopilot", "LAUNCH_WINDOWS_COPILOT"),
     ("User_Directory", "OPEN_USER_DIRECTORY"),
     ("PowerUserMenu", "OPEN_SYSTEM_UTILITY"),
     ("ShowDesktop", "SHOW_DESKTOP"),
@@ -175,4 +223,91 @@ pub fn normalized_website(target: &str) -> Option<String> {
         return None;
     }
     Some(format!("{prefix}{address}"))
+}
+
+#[cfg(test)]
+mod saved_revision_tests {
+    use super::*;
+
+    fn device() -> crate::model::Device {
+        let mut device = crate::product_preview::registered_preview(70).unwrap();
+        device.fill_defaults();
+        let mut second = device.profiles[0].clone();
+        second.id = "second-profile".into();
+        second.guid = "second-profile".into();
+        device.profiles.push(second);
+        device
+    }
+
+    #[test]
+    fn saved_mapping_does_not_replace_a_new_selection_or_edit() {
+        let saved = device();
+        let mut current = saved.clone();
+        assert!(matches_saved_revision(&current, &saved));
+        current.active_profile = current.profiles[1].id.clone();
+        assert!(!matches_saved_revision(&current, &saved));
+        current = saved.clone();
+        current.profiles[0].name = "Edited during file I/O".into();
+        assert!(!matches_saved_revision(&current, &saved));
+        current = saved.clone();
+        current.profiles[1].source_settings = Some(serde_json::json!({"extension": 42}));
+        assert!(!matches_saved_revision(&current, &saved));
+    }
+
+    #[test]
+    fn compiled_projection_and_metadata_do_not_change_the_source_profile_revision() {
+        let mut saved = device();
+        saved.source_device_settings = None;
+        let mut current = saved.clone();
+        let field = razer_device::mapping_document::MappingProduct::for_product_id(70)
+            .unwrap()
+            .storage_field();
+        current.source_device_settings = Some(serde_json::json!({(field): {"version": 42}}));
+        current
+            .product_name
+            .values
+            .insert("en".into(), "Observed product name".into());
+        assert!(matches_saved_revision(&current, &saved));
+        current.layout_id += 1;
+        assert!(!matches_saved_revision(&current, &saved));
+        current = saved.clone();
+        current.serial_number.push_str("replacement");
+        assert!(!matches_saved_revision(&current, &saved));
+    }
+
+    #[test]
+    fn root_device_edits_invalidate_an_older_mapping_even_when_profiles_are_equal() {
+        let mut saved = crate::product_preview::registered_preview(756).unwrap();
+        saved.fill_defaults();
+        saved.source_device_settings = Some(serde_json::json!({"dimLighting": 15}));
+        let mut current = saved.clone();
+        current.source_device_settings.as_mut().unwrap()["dimLighting"] = 30.into();
+        assert_eq!(current.profiles, saved.profiles);
+        assert!(!matches_saved_revision(&current, &saved));
+        current = saved.clone();
+        current.source_device_settings.as_mut().unwrap()["version"] = 1.into();
+        assert!(!matches_saved_revision(&current, &saved));
+        current = saved.clone();
+        current.source_device_settings.as_mut().unwrap()["unrecognizedBusinessField"] = true.into();
+        assert!(!matches_saved_revision(&current, &saved));
+    }
+
+    #[test]
+    fn only_the_verified_writer_version_is_excluded_and_invalid_roots_are_rejected() {
+        let mut saved = device();
+        saved.source_device_settings = None;
+        let mut current = saved.clone();
+        current.source_device_settings = Some(serde_json::json!({"version": 1}));
+        assert!(matches_saved_revision(&current, &saved));
+        for invalid in [
+            serde_json::Value::Null,
+            serde_json::json!([]),
+            serde_json::json!({"version": "1"}),
+            serde_json::json!({"version": -1}),
+            serde_json::json!({"version": 9_007_199_254_740_992u64}),
+        ] {
+            current.source_device_settings = Some(invalid);
+            assert!(!matches_saved_revision(&current, &saved));
+        }
+    }
 }

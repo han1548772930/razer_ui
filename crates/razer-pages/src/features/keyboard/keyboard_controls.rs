@@ -606,12 +606,12 @@ impl DeviceWorkspace {
             let cancel = entity.clone();
             dialog
                 .title(razer_assets::resource_scope("选择布局按键"))
-                .child(
-                    razer_assets::resource_scope(Select::new(&picker)
+                .child(razer_assets::resource_scope(
+                    Select::new(&picker)
                         .id("snap-layout-key")
                         .placeholder("按名称查找按键")
-                        .w_full()),
-                )
+                        .w_full(),
+                ))
                 .on_close(move |_, window, cx| {
                     entity.update(cx, |this, cx| {
                         this.keyboard_controls.choosing_key = false;
@@ -1309,22 +1309,24 @@ impl DeviceWorkspace {
                     cx.notify();
                 });
             })
-            .content(move |_, _, cx| razer_assets::resource_scope({
-                let popup = cx.entity().downgrade();
-                // The source delete box is left:-141px; translateX(-50%).
-                // At its 300px width that puts its right edge 11px before the
-                // right edge of the 20px trigger. Keep that measured offset in
-                // the popup bounds so Base can still clamp it to the viewport.
-                div()
-                    .when(!reset, |content| content.pr(surface::css(11.)))
-                    .child(dial_confirmation_content(
-                        confirmation,
-                        popup,
-                        workspace,
-                        focus,
-                        cx,
-                    ))
-            }))
+            .content(move |_, _, cx| {
+                razer_assets::resource_scope({
+                    let popup = cx.entity().downgrade();
+                    // The source delete box is left:-141px; translateX(-50%).
+                    // At its 300px width that puts its right edge 11px before the
+                    // right edge of the 20px trigger. Keep that measured offset in
+                    // the popup bounds so Base can still clamp it to the viewport.
+                    div()
+                        .when(!reset, |content| content.pr(surface::css(11.)))
+                        .child(dial_confirmation_content(
+                            confirmation,
+                            popup,
+                            workspace,
+                            focus,
+                            cx,
+                        ))
+                })
+            })
     }
 }
 

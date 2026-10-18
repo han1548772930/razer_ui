@@ -20,11 +20,11 @@ use razer_widgets::source_alert::SourceAlert;
 use razer_widgets::surface;
 use std::collections::BTreeMap;
 
+#[derive(Clone)]
 pub enum WorkspaceEvent {
+    ResourceStateChanged,
     Changed,
-    /// Current profile import has already normalized names and macro GUIDs.
-    /// The shared local library retains these complete source documents.
-    ProfileMacrosImported(Vec<serde_json::Value>),
+    SourceProfileImportRequested(razer_model::profile_transfer::SourceProfileImport),
     MappingCallbackRequested(super::MappingCallbackRequested),
     MouseMappingTargetRequested(super::mouse_products::MouseMappingTargetRequested),
     KeyboardLegacyProfileRequested,
@@ -46,6 +46,8 @@ pub enum WorkspaceEvent {
     HelpOwnerRequested(super::HelpOwnerRequested),
     ReceiverBrightnessRequested(super::ReceiverBrightnessRequested),
     ReceiverBrightnessReadRequested(super::ReceiverBrightnessReadRequested),
+    ReceiverProfileSelectionRequested(super::ReceiverProfileSelectionRequested),
+    HyperpollingIndicatorRequested(super::HyperpollingIndicatorRequested),
     /// Current 182 power slider release. Minutes are a user request, not an ack.
     MouseIdleRequested {
         scope: super::mouse_polling::MousePollingScope,
@@ -105,7 +107,9 @@ pub enum WorkspaceEvent {
         generation: u64,
         percent: u8,
     },
-    HanboCoolerRequested(super::accessory_system_products::HanboCoolerRequested),
+    HanboLocalSettingsChanged(super::accessory_system_products::HanboLocalSettingsChanged),
+    HanboTelemetryActivated,
+    HanboProfileRequested(Option<razer_device::hanbo_settings::ProfileRestore>),
     KeyboardActuationRequested(super::keyboard_products::KeyboardActuationRequested),
     KeyboardLightingRequested(super::keyboard_products::KeyboardLightingRequested),
     MouseLightingRequested(super::mouse_products::MouseLightingRequested),
@@ -325,6 +329,9 @@ impl DeviceWorkspace {
         observation: Option<razer_model::model::DeviceConnectionObservation>,
         cx: &mut Context<Self>,
     ) {
+        if self.device.dashboard.connection_observation != observation {
+            self.cancel_profile_transfer(cx);
+        }
         self.device.observe_connection(observation.clone());
         self.saved.observe_connection(observation);
         cx.notify();
@@ -350,7 +357,7 @@ impl DeviceWorkspace {
         cx: &mut Context<Self>,
     ) -> Result<String, String> {
         let active = self.device.active_profile.clone();
-        if matches!(&action, super::product_workspace::ProfileCollectionAction::Delete(id) if id == &active)
+        if matches!(&action, super::product_workspace::ProfileCollectionAction::Delete { id, .. } if id == &active)
             && self.mapping_dirty()
         {
             return Err("当前配置仍有未提交的按键编辑，请先保存或取消该编辑".into());
@@ -660,6 +667,7 @@ impl DeviceWorkspace {
         };
         // The raw editor belongs to the same restored profile/input. Preserve
         // its text, recording and focus, updating only its comparison baseline.
+        self.cancel_profile_transfer(cx);
         self.device = self.saved.clone();
         self.mouse_polling.reset_profile();
         if let Some(draft) = &mut self.mapping {
@@ -681,6 +689,7 @@ impl DeviceWorkspace {
     pub fn discard(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.cancel_snap_capture(window, cx);
         let mapping_focused = self.mapping_focus.contains_focused(window, cx);
+        self.cancel_profile_transfer(cx);
         self.device = self.saved.clone();
         self.mouse_polling.reset_profile();
         self.mapping = None;
@@ -1248,6 +1257,15 @@ impl DeviceWorkspace {
             if !closing_mapping {
                 self.customize_drawer.source_input = None;
             }
+        }
+        if matches!(
+            next,
+            Continue::Profile(_)
+                | Continue::NewProfile
+                | Continue::DuplicateProfile
+                | Continue::DeleteProfile(_)
+        ) {
+            self.cancel_profile_transfer(cx);
         }
         match next {
             Continue::NewProfile => {

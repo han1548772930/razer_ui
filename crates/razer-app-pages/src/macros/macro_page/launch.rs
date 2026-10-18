@@ -62,6 +62,7 @@ pub struct LaunchUi {
     rows: RefCell<HashMap<(u64, usize), Rc<RefCell<LaunchRow>>>>,
     generation: u64,
     picker_pending: bool,
+    picker_task: Option<Task<()>>,
 }
 
 impl MacroPage {
@@ -119,6 +120,7 @@ impl MacroPage {
             }
             self.launch_ui.generation = self.launch_ui.generation.wrapping_add(1);
             self.launch_ui.picker_pending = false;
+            self.launch_ui.picker_task = None;
         }
     }
 
@@ -133,6 +135,7 @@ impl MacroPage {
             row.armed = true;
             self.launch_ui.generation = self.launch_ui.generation.wrapping_add(1);
             self.launch_ui.picker_pending = false;
+            self.launch_ui.picker_task = None;
         }
         cx.notify();
     }
@@ -155,7 +158,7 @@ impl MacroPage {
             multiple: false,
             prompt: Some("Select Launch App".into()),
         });
-        cx.spawn_in(window, async move |this, cx| {
+        self.launch_ui.picker_task = Some(cx.spawn_in(window, async move |this, cx| {
             let result = picker.await;
             let _ = this.update_in(cx, |this, window, cx| {
                 if this.launch_ui.generation != generation
@@ -184,8 +187,7 @@ impl MacroPage {
                 }
                 cx.notify();
             });
-        })
-        .detach();
+        }));
         cx.notify();
     }
 

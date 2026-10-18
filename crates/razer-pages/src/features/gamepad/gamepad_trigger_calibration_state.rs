@@ -221,7 +221,7 @@ impl TriggerCalibrationState {
             self.prompt_progress = 0.;
         }
     }
-    pub(super) fn tick(&mut self, now: Instant) {
+    fn tick(&mut self, now: Instant) {
         if let Some(start) = self.timer_started {
             let seconds = if self.phase() == Some(true) { 3. } else { 2. };
             self.timer_progress =
@@ -239,6 +239,13 @@ impl TriggerCalibrationState {
         if let Some(start) = self.prompt_started {
             self.prompt_progress = (now.saturating_duration_since(start).as_secs_f64() % 2.) / 2.;
         }
+    }
+    pub(super) fn tick_frame(&mut self, generation: u64, now: Instant) -> bool {
+        if generation != self.generation || !self.needs_frame() {
+            return false;
+        }
+        self.tick(now);
+        true
     }
     pub(super) fn needs_frame(&self) -> bool {
         self.marker_started.is_some()
@@ -345,5 +352,40 @@ mod tests {
         s.tick(now + Duration::from_millis(50));
         assert_eq!(s.marker_progress, 100.);
         assert_eq!(s.step, 10);
+    }
+    #[::core::prelude::v1::test]
+    fn queued_frames_cannot_advance_restarted_or_closed_calibration() {
+        let now = Instant::now();
+        let mut state = TriggerCalibrationState::default();
+        let first = state.open(3, now).unwrap();
+        assert!(state.tick_frame(first.generation(), now + Duration::from_millis(100)));
+
+        let restarted_at = now + Duration::from_secs(1);
+        let replacement = state
+            .request(CalibrationAction::Start, 4, restarted_at)
+            .unwrap();
+        let retained_prompt = state.prompt_progress;
+        assert!(!state.tick_frame(first.generation(), restarted_at + Duration::from_secs(1)));
+        assert_eq!(state.prompt_progress, retained_prompt);
+        assert!(state.tick_frame(
+            replacement.generation(),
+            restarted_at + Duration::from_millis(500)
+        ));
+        assert_eq!(state.prompt_progress, 0.75);
+
+        state
+            .request(
+                CalibrationAction::Stop,
+                4,
+                restarted_at + Duration::from_secs(1),
+            )
+            .unwrap();
+        state.stop_visuals();
+        assert!(!state.tick_frame(
+            replacement.generation(),
+            restarted_at + Duration::from_secs(2)
+        ));
+        assert!(!state.needs_frame());
+        assert_eq!(state.prompt_progress, 0.);
     }
 }

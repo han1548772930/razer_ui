@@ -122,20 +122,22 @@ impl RenderOnce for StudioDropdown {
             .on_open_change(move |open, _, cx| {
                 owner.update(cx, |state, cx| state.set_open(enabled && *open, cx));
             })
-            .content(move |_, _, cx| razer_assets::resource_scope({
-                div()
-                    .w(surface::css(self.width))
-                    .when(self.block, |view| {
-                        view.w(content_state.read(cx).width + px(2.))
-                    })
-                    .ml(surface::css(-self.shift))
-                    .bg(Colors::black())
-                    .border_color(Colors::input_border())
-                    .border_x_1()
-                    .when(shown, |view| view.border_y_1())
-                    .when(!shown, |view| view.h_0().overflow_hidden())
-                    .child(self.body)
-            }))
+            .content(move |_, _, cx| {
+                razer_assets::resource_scope({
+                    div()
+                        .w(surface::css(self.width))
+                        .when(self.block, |view| {
+                            view.w(content_state.read(cx).width + px(2.))
+                        })
+                        .ml(surface::css(-self.shift))
+                        .bg(Colors::black())
+                        .border_color(Colors::input_border())
+                        .border_x_1()
+                        .when(shown, |view| view.border_y_1())
+                        .when(!shown, |view| view.h_0().overflow_hidden())
+                        .child(self.body)
+                })
+            })
     }
 }
 

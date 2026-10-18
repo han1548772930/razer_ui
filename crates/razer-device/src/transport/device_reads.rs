@@ -550,7 +550,7 @@ fn receiver_firmware_capabilities() -> &'static [DeviceReadCapability] {
     })
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct DeviceReadTarget {
     pub product_id: u32,
     pub physical_product_id: u32,

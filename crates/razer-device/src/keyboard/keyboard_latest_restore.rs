@@ -5,7 +5,7 @@ use anyhow::{Context as _, ensure};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::{
-    collections::VecDeque,
+    collections::{BTreeSet, VecDeque},
     sync::{
         Arc,
         atomic::{AtomicU64, Ordering},
@@ -17,6 +17,78 @@ pub const PRODUCT_ID: u32 = 756;
 pub const RECEIVER_ID: u32 = 757;
 pub const BLE_ID: u32 = 758;
 pub const STORAGE_FIELD: &str = "_keyboard756_mapping_document";
+
+/// A validated local profile collection. Import publication can append missing
+/// profiles without replacing an observed active profile or device settings.
+#[derive(Clone, Debug)]
+pub struct ProfileCollection {
+    profiles: Vec<CollectionProfile>,
+}
+#[derive(Clone, Debug)]
+struct CollectionProfile {
+    guid: String,
+    settings: Value,
+}
+impl ProfileCollection {
+    pub fn from_document(document: &Value) -> anyhow::Result<Self> {
+        let profiles = document
+            .get("profiles")
+            .and_then(Value::as_array)
+            .context("756 profile collection is absent")?;
+        let mut guids = BTreeSet::new();
+        let profiles = profiles
+            .iter()
+            .map(|profile| -> anyhow::Result<_> {
+                let guid = collection_guid(profile)?;
+                ensure!(guids.insert(guid), "756 profile collection repeats a GUID");
+                Ok(CollectionProfile {
+                    guid: guid.to_owned(),
+                    settings: profile.clone(),
+                })
+            })
+            .collect::<anyhow::Result<_>>()?;
+        Ok(Self { profiles })
+    }
+
+    /// Existing profiles and all root fields remain owned by the target. The
+    /// collection changes neither source version nor device/serial metadata.
+    pub fn append_to(&self, document: &mut Value) -> anyhow::Result<bool> {
+        let profiles = document
+            .get("profiles")
+            .and_then(Value::as_array)
+            .context("756 retained profile collection is absent")?;
+        let mut guids = BTreeSet::new();
+        for profile in profiles {
+            ensure!(
+                guids.insert(collection_guid(profile)?),
+                "756 retained profile collection repeats a GUID"
+            );
+        }
+        let appended = self
+            .profiles
+            .iter()
+            .filter(|profile| !guids.contains(profile.guid.as_str()))
+            .map(|profile| profile.settings.clone())
+            .collect::<Vec<_>>();
+        if appended.is_empty() {
+            return Ok(false);
+        }
+        document
+            .get_mut("profiles")
+            .and_then(Value::as_array_mut)
+            .expect("validated retained profile collection")
+            .extend(appended);
+        Ok(true)
+    }
+}
+
+fn collection_guid(profile: &Value) -> anyhow::Result<&str> {
+    profile
+        .get("guid")
+        .and_then(Value::as_str)
+        .filter(|guid| !guid.is_empty())
+        .context("756 profile collection GUID is absent or invalid")
+}
 
 /// Explicit source task-maker operations survive the local save queue. They
 /// carry the old mapping owner so clearing a profile cannot lose the keys
@@ -117,6 +189,10 @@ impl<T> Default for Coordinator<T> {
     }
 }
 impl<T> Coordinator<T> {
+    pub fn is_idle(&self) -> bool {
+        !self.running && self.pending.is_none() && self.updates.is_empty()
+    }
+
     /// IDs returned here resolve as superseded; already-running work is guarded
     /// but remains owned until `finish`, matching source Promise completion.
     pub fn invalidate(&mut self) -> Vec<u64> {
@@ -259,6 +335,15 @@ pub struct BleProfiles {
     hypershift: bool,
 }
 impl BleProfiles {
+    pub fn append_collection(&mut self, profiles: &ProfileCollection) -> anyhow::Result<()> {
+        if let Some(document) = &self.deferred {
+            let mut document = document.clone();
+            profiles.append_to(&mut document)?;
+            self.deferred = Some(document);
+        }
+        Ok(())
+    }
+
     pub fn document<'a>(&'a self, stored: &'a Value) -> &'a Value {
         self.deferred.as_ref().unwrap_or(stored)
     }

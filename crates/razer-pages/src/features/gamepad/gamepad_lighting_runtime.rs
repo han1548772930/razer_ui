@@ -72,10 +72,16 @@ impl ControllerLightingRequested {
                 brightness.validate()?;
                 profile.insert("brightness".into(), saved.clone());
             }
-            LightingOperation::Software {..} => {
-                let saved=self.profile.get("quickEffects").ok_or_else(||anyhow::anyhow!("Kitsune quick-effect settings are missing"))?;
-                let _:QuickLightingSettings=serde_json::from_value(saved.clone())?;
-                profile.insert("quickEffects".into(),saved.clone());
+            LightingOperation::Software { .. } => {
+                let saved = self
+                    .profile
+                    .get("quickEffects")
+                    .ok_or_else(|| anyhow::anyhow!("Kitsune quick-effect settings are missing"))?;
+                let submitted: QuickLightingSettings = serde_json::from_value(saved.clone())?;
+                let current = profile
+                    .get_mut("quickEffects")
+                    .ok_or_else(|| anyhow::anyhow!("Current Kitsune quick effects are missing"))?;
+                submitted.rebase_effect_settings(current)?;
             }
             _ => {}
         }
@@ -118,7 +124,7 @@ impl LightingRuntime {
     pub(super) fn new(product_id: u32) -> Self {
         Self {
             settings: (product_id == 2636).then(ControllerLightingSettings::default),
-            quick: (product_id==4115).then(QuickLightingSettings::default),
+            quick: (product_id == 4115).then(QuickLightingSettings::default),
             guard: Arc::new(AtomicBool::new(true)),
             sequence: 0,
             revision: 0,
@@ -172,9 +178,11 @@ impl Drop for LightingRuntime {
 
 impl GamepadProductWorkspace {
     pub(super) fn restore_lighting_profile(&mut self) -> anyhow::Result<()> {
-        if self.spec.product_id==4115 {
-            let saved=self.draft["profile"].get("quickEffects").ok_or_else(||anyhow::anyhow!("Kitsune source profile has no quick effects"))?;
-            self.lighting_runtime.quick=Some(serde_json::from_value(saved.clone())?);
+        if self.spec.product_id == 4115 {
+            let saved = self.draft["profile"]
+                .get("quickEffects")
+                .ok_or_else(|| anyhow::anyhow!("Kitsune source profile has no quick effects"))?;
+            self.lighting_runtime.quick = Some(serde_json::from_value(saved.clone())?);
             self.project_quick_lighting();
             return Ok(());
         }
@@ -284,7 +292,9 @@ impl GamepadProductWorkspace {
             self.enqueue_lighting(operation, cx);
         }
         self.controller_brightness_changed("/profile/brightness/isEnabled", cx);
-        if self.spec.product_id==4115&&!self.chroma_runtime.advanced {self.submit_quick_lighting(cx);}
+        if self.spec.product_id == 4115 && !self.chroma_runtime.advanced {
+            self.submit_quick_lighting(cx);
+        }
     }
     pub fn controller_lighting_request_matches(
         &self,
@@ -348,7 +358,9 @@ impl GamepadProductWorkspace {
 
 #[cfg(test)]
 mod tests {
-    use super::{ControllerLightingSettings, LightingOperation, LightingRuntime};
+    use super::{
+        ControllerLightingSettings, LightingOperation, LightingRuntime, QuickLightingSettings,
+    };
     use serde_json::json;
     #[test]
     fn controller_lighting_queue_and_generation_reject_replaced_profile_results() {
@@ -386,5 +398,39 @@ mod tests {
             3
         );
         assert_eq!(target["controller"]["lighting"]["effectId"], 3);
+    }
+    #[test]
+    fn rebasing_software_effect_keeps_later_profile_palette_and_extensions() {
+        let submitted: QuickLightingSettings = serde_json::from_value(json!({
+            "selectedEffectId":3,
+            "selectedEffectSetting":{"duration":2},
+            "customColors":[{"color":"#112233","picked":true}],
+            "extension":"captured"
+        }))
+        .unwrap();
+        let mut runtime = LightingRuntime::new(4115);
+        runtime.enqueue(
+            LightingOperation::Software {
+                edition: 0,
+                effect: submitted.setting().software(),
+            },
+            json!({"quickEffects": submitted}),
+        );
+        let request = runtime.next().unwrap();
+        let mut target = json!({"profile":{"quickEffects":{
+            "selectedEffectId":1,
+            "selectedEffectSetting":{"color1":"#aabbcc"},
+            "customColors":[{"color":"#abcdef","picked":true,"revision":2}],
+            "extension":"later"
+        }}});
+        request.rebase_settings(&mut target).unwrap();
+        let quick = &target["profile"]["quickEffects"];
+        assert_eq!(quick["selectedEffectId"], 3);
+        assert_eq!(quick["selectedEffectSetting"]["duration"], 2);
+        assert_eq!(quick["extension"], "later");
+        assert_eq!(
+            quick["customColors"],
+            json!([{"color":"#abcdef","picked":true,"revision":2}])
+        );
     }
 }

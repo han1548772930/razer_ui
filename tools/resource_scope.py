@@ -14,8 +14,9 @@ _COMMENTS = {"line_comment", "block_comment"}
 # therefore only valid for the cache implementation itself or for the one
 # local user-import path which has its own keyed lease and release cleanup.
 _ASSET_OWNER_PREFIX = "crates/razer-assets/src/"
-_LOCAL_IMPORTED_ASSET = "crates/razer-pages/src/features/workspace/source_controls/oled_crop.rs"
+_LOCAL_IMPORTED_ASSET = "crates/razer-assets/src/local_image.rs"
 _SHARED_CUSTOM_IMAGE = "crates/razer-app-pages/src/services/module_service_rows.rs"
+_WINDOW_IMAGE_CACHE = "crates/razer-assets/src/image_cache.rs"
 
 
 def parser(root):
@@ -110,6 +111,61 @@ def inspect_source(raw, *, owner, rust_parser):
             node = node.parent
         return None
 
+    def local_import_source(node):
+        if owner != _LOCAL_IMPORTED_ASSET or (context(node) or {}).get("name") != "preview_source":
+            return False
+        imports = []
+        for call in walk(node):
+            if call.type != "call_expression":
+                continue
+            function = call.child_by_field_name("function")
+            if function is not None and function.type == "generic_function":
+                base = function.child_by_field_name("function")
+                if text(base).split(".")[-1] == "use_asset":
+                    imports.append(text(function.child_by_field_name("type_arguments")))
+        if imports != ["<ImportedImageAsset>"]:
+            return False
+        descendant, ancestor = node, node.parent
+        while ancestor is not None and ancestor.type != "function_item":
+            if ancestor.type == "if_expression" and descendant == ancestor.child_by_field_name("consequence"):
+                condition = method(ancestor.child_by_field_name("condition"))
+                if condition is not None and condition[0] == "starts_with" and (
+                        text(condition[1]) == "source" and [text(arg) for arg in condition[2]] == ['"data:"']):
+                    return True
+            descendant, ancestor = ancestor, ancestor.parent
+        return False
+
+    def filtered_source_owner(node):
+        if owner != _WINDOW_IMAGE_CACHE or (context(node) or {}).get("name") != "filtered_resource_svg":
+            return False
+        calls = [call for call in walk(node) if call.type == "call_expression"]
+        functions = {text(call.child_by_field_name("function")) for call in calls}
+        if not {"available", "crate::load_path", "WindowResourceCaches::for_window"} <= functions:
+            return False
+        for call in calls:
+            if text(call.child_by_field_name("function")) != "WindowResourceCaches::for_window":
+                continue
+            binding = call.parent
+            if binding is None or binding.type != "let_declaration":
+                continue
+            cache = text(binding.child_by_field_name("pattern"))
+            for update in calls:
+                update_member = method(update)
+                if update_member is None or update_member[0] != "update" or text(update_member[1]) != cache:
+                    continue
+                for callback in update_member[2]:
+                    if callback.type != "closure_expression":
+                        continue
+                    parameters = children(callback.child_by_field_name("parameters"))
+                    if not parameters:
+                        continue
+                    receiver = text(parameters[0])
+                    if any((member := method(inner)) is not None
+                           and member[0] == "load_filtered" and text(member[1]) == receiver
+                           for inner in walk(callback.child_by_field_name("body"))):
+                        return True
+        return False
+
     def edge(node, kind, valid, detail=None):
         row = {"owner": owner, "line": raw[:node.start_byte].count(b"\n") + 1,
                "byte_start": node.start_byte - offset, "byte_end": node.end_byte - offset,
@@ -161,7 +217,7 @@ def inspect_source(raw, *, owner, rust_parser):
 
         # `Window::use_asset` is the GPUI asset-cache escape hatch.  The
         # resource owner may use it to implement the shared cache, while the
-        # OLED cropper uses a separate keyed local-data lease.  Every other
+        # local-image service uses a separate keyed local-data lease. Every other
         # production call would reintroduce the sticky GPUI AssetLogger cache
         # that this guard is intended to prevent.
         if function is not None and function.type == "generic_function":
@@ -173,8 +229,6 @@ def inspect_source(raw, *, owner, rust_parser):
                 asset_type = type_text.removeprefix("<").removesuffix(">").strip()
                 if owner.startswith(_ASSET_OWNER_PREFIX):
                     valid, detail = True, "resource-owner implementation"
-                elif owner == _LOCAL_IMPORTED_ASSET and asset_type == "ImportedImageAsset":
-                    valid, detail = True, "keyed local-data import with release cleanup"
                 else:
                     valid, detail = False, (
                         f"direct use_asset::<{asset_type or '?'}> must use load_resource_image"
@@ -193,11 +247,13 @@ def inspect_source(raw, *, owner, rust_parser):
 
         # Custom image sources are valid only when their closure is visibly
         # connected to the shared loader, or when they are the documented OLED
-        # local import.  A file-level helper check is deliberately conservative
-        # and keeps this guard independent of macro/type expansion.
+        # local import. Its explicit data URL branch and imported asset type
+        # keep remote resource aliases with the shared loader.
         if function is not None and text(function).endswith("ImageSource::Custom"):
-            if owner == _LOCAL_IMPORTED_ASSET and b"ImportedImageAsset" in raw:
+            if local_import_source(node):
                 valid, detail = True, "keyed local-data import"
+            elif filtered_source_owner(node):
+                valid, detail = True, "verified SVG bytes through the retained window filter cache"
             elif owner == _SHARED_CUSTOM_IMAGE and b"load_resource_image" in raw:
                 valid, detail = True, "shared per-window resource loader"
             else:
@@ -254,10 +310,34 @@ def inspect_source(raw, *, owner, rust_parser):
     candidates = {name for name, original in aliases.items()
                   if original in ("deferred", "Popup", "BasePopup", "Popover", "Dialog", "BaseDialog")}
     candidates.add("defer_draw")
+    def next_token(node):
+        node = node.next_sibling
+        while node is not None and node.type in _COMMENTS:
+            node = node.next_sibling
+        return node
+
+    def argument_group(node):
+        return node is not None and node.type == "token_tree" and text(node).startswith("(")
+
+    def overlay_token(node):
+        if node.type != "identifier" or text(node) not in candidates:
+            return False
+        original = aliases.get(text(node), text(node))
+        following = next_token(node)
+        if original in ("Popup", "BasePopup", "Popover", "Dialog", "BaseDialog"):
+            # A field or enum variant named Popup is not a constructor. Keep
+            # the unresolved macro diagnostic at actual `Popup::new(...)` use.
+            separator = following
+            name = next_token(separator) if separator is not None else None
+            return (text(separator) == "::" and text(name) == "new"
+                    and argument_group(next_token(name)))
+        previous = node.prev_sibling
+        return argument_group(following) and (original == "defer_draw" or text(previous) != ".")
+
     for node in walk(tree.root_node):
         if node.type not in ("macro_definition", "macro_invocation") or is_test(node):
             continue
-        tokens = [n for n in walk(node) if n.type == "identifier" and text(n) in candidates]
+        tokens = [n for n in walk(node) if overlay_token(n)]
         if tokens:
             edge(node, "overlay_macro_requires_audit", False, sorted(set(text(n) for n in tokens)))
     return {"edges": edges, "asset_edges": asset_edges, "violations": violations,

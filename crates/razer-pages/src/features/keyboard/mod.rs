@@ -11,6 +11,7 @@ use gpui_kit::component::{
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n::t;
+use razer_state::ui_preferences::{Flag as UiPreference, UiPreferences};
 use razer_widgets::surface;
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -192,7 +193,7 @@ pub struct KeyboardProductWorkspace {
     syncing: bool,
     actuation: Option<actuation::State>,
     actuation_submission: actuation_submission::State,
-    calibration_intro_visible: bool,
+    ui_preferences: Entity<UiPreferences>,
     /// Source `profileReducer.isFactoryDefaultProfile`; the calibration page
     /// renders a warning and disables its customize surface for this profile.
     factory_default_profile: bool,
@@ -276,6 +277,7 @@ impl KeyboardProductWorkspace {
         cx: &mut Context<Self>,
     ) -> Self {
         let spec = source_product(pid).expect("audited keyboard product");
+        let ui_preferences = UiPreferences::shared(cx);
         let mut this = Self {
             spec,
             page: "TAB_CUSTOMIZE".into(),
@@ -288,7 +290,7 @@ impl KeyboardProductWorkspace {
             syncing: false,
             actuation: None,
             actuation_submission: actuation_submission::State::default(),
-            calibration_intro_visible: calibration::load_intro_visibility(),
+            ui_preferences,
             factory_default_profile,
             calibration_preview: false,
             calibrated_keys: vec![],
@@ -325,6 +327,14 @@ impl KeyboardProductWorkspace {
             lighting_observation: None,
             lighting_runtime: lighting_runtime::State::default(),
         };
+        this.subscriptions.push(cx.observe_in(
+            &this.ui_preferences,
+            window,
+            |this, _, window, cx| {
+                this.resume_calibration_after_preference(window, cx);
+                cx.notify();
+            },
+        ));
         if this.draft.pointer("/brightness/value").is_some() {
             this.add_slider("/brightness/value", 0., 100., 1., window, cx);
         }
@@ -373,6 +383,14 @@ impl KeyboardProductWorkspace {
         self.update_keymap_bar_page(key);
         self.source_history_page_bypass(key, window, cx);
     }
+
+    pub fn dismiss_editors(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.finish_gaming_recording(false, window, cx);
+        self.leave_analog_controls(window, cx);
+        self.mapping_login_warning.unmount();
+        self.clear_analog_mapping();
+        self.dismiss_calibration(window, cx);
+    }
     /// The current 756 root's history handlers bypass changeView's calibration
     /// confirmation. The outer router selects this only for that source path.
     pub fn source_history_page_bypass(
@@ -406,6 +424,15 @@ impl KeyboardProductWorkspace {
                 self.refresh_lighting(cx);
             }
             if key == "TAB_CALIBRATION" {
+                let flag = match self.spec.product_id {
+                    740 | 746 => Some(UiPreference::KeyboardCalibrationIntro),
+                    756 => Some(UiPreference::MagneticCalibrationSkipPrompt),
+                    _ => None,
+                };
+                if let Some(flag) = flag {
+                    self.ui_preferences
+                        .update(cx, |owner, cx| owner.load(flag, cx));
+                }
                 self.enter_calibration_v2(window, cx);
             }
             if key == "TAB_POWER" {
@@ -453,6 +480,7 @@ impl KeyboardProductWorkspace {
         if self.factory_default_profile == factory_default_profile {
             return;
         }
+        self.cancel_pending_calibration_start();
         self.factory_default_profile = factory_default_profile;
         if factory_default_profile {
             self.finish_gaming_recording(false, window, cx);
@@ -473,6 +501,7 @@ impl KeyboardProductWorkspace {
         snapshot
     }
     pub fn restore(&mut self, value: Option<&Value>, window: &mut Window, cx: &mut Context<Self>) {
+        self.cancel_pending_calibration_start();
         self.finish_gaming_recording(false, window, cx);
         self.leave_analog_controls(window, cx);
         self.cancel_lighting_requests();

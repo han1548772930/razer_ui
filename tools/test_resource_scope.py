@@ -54,12 +54,25 @@ class ResourceScopeTests(unittest.TestCase):
         self.assertEqual(result["test_edges"], 1)
 
     def test_macro_overlay_is_reported_as_unverified(self):
-        result = self.inspect("fn view() { custom!(deferred(div())); }")
-        self.assertEqual([v["kind"] for v in result["violations"]], ["overlay_macro_requires_audit"])
+        for call in ('deferred(div())', 'gpui_kit::deferred(div())', 'Popup::new(cx)',
+                     'Dialog::new(cx)', 'window.defer_draw(child, p, 1, None)', 'later(div())'):
+            result = self.inspect('use gpui_kit::deferred as later; fn view() { custom!(' + call + '); }')
+            self.assertEqual([v["kind"] for v in result["violations"]], ["overlay_macro_requires_audit"], call)
+
+    def test_macro_fields_and_enum_variants_do_not_create_overlay_calls(self):
+        owner = 'crates/razer-service/src/mouse/dpi_matcher_worker.rs'
+        for source in ('fn defer() { ensure!(self.deferred.len() < 64, "queue is full"); }',
+                       'fn check() { assert!(value == Mode::Popup); }',
+                       'fn log() { trace!(deferred = state.deferred, popup = mode.Popup); }',
+                       'fn unrelated() { custom!(model.deferred()); }'):
+            self.assertFalse(self.inspect(source, owner)['violations'], source)
+        root = Path(__file__).resolve().parent.parent
+        self.assertFalse(resource_scope.inspect_source((root / owner).read_bytes(),
+            owner=owner, rust_parser=self.parser)['violations'])
 
     def test_direct_use_asset_is_limited_to_the_owner_and_local_import(self):
         owner = "crates/razer-assets/src/image_cache.rs"
-        local = "crates/razer-pages/src/features/workspace/source_controls/oled_crop.rs"
+        local = "crates/razer-assets/src/local_image.rs"
         self.assertEqual(
             self.inspect("fn load(window: &mut Window, cx: &mut App) { window.use_asset::<Foo>(&x, cx); }", owner)["violations"],
             [],
@@ -77,6 +90,11 @@ class ResourceScopeTests(unittest.TestCase):
         )
         self.assertEqual([v["kind"] for v in result["violations"]], ["direct_use_asset"])
         self.assertIn("load_resource_image", result["violations"][0]["detail"])
+        obsolete = self.inspect(
+            "fn load(window: &mut Window, cx: &mut App) { window.use_asset::<ImportedImageAsset>(&x, cx); }",
+            "crates/razer-pages/src/features/workspace/source_controls/oled_crop.rs",
+        )
+        self.assertEqual([v["kind"] for v in obsolete["violations"]], ["direct_use_asset"])
 
     def test_custom_image_source_requires_an_audited_loader(self):
         valid = self.inspect(
@@ -92,12 +110,50 @@ class ResourceScopeTests(unittest.TestCase):
         )
         self.assertCountEqual([v["kind"] for v in invalid["violations"]],
                               ["direct_use_asset", "custom_image_source"])
+        local = ('fn preview_source() { if source.starts_with("data:") { '
+                 'ImageSource::Custom(Arc::new(move |window, cx| '
+                 'window.use_asset::<ImportedImageAsset>(&source, cx))) } else { source.into() } }')
+        self.assertEqual(self.inspect(local, "crates/razer-assets/src/local_image.rs")["violations"], [])
+        for source, owner in (
+            (local, "crates/razer-pages/src/features/workspace/source_controls/oled_crop.rs"),
+            (local, "crates/consumer/src/local_image.rs"),
+            (local.replace('"data:"', '"https:"'), "crates/razer-assets/src/local_image.rs"),
+            (local.replace("ImportedImageAsset", "ImageAssetLoader"), "crates/razer-assets/src/local_image.rs"),
+            (local.replace('if source.starts_with("data:") {', 'if source.starts_with("data:") { source.into() } else {')
+                  .replace(' } else { source.into() }', ' }'), "crates/razer-assets/src/local_image.rs"),
+        ):
+            with self.subTest(source=source, owner=owner):
+                self.assertIn("custom_image_source", [row["kind"] for row in self.inspect(source, owner)["violations"]])
 
     def test_external_svg_path_is_rejected_while_svg_path_is_not(self):
         ordinary = self.inspect("fn view() { svg().path(\"synapse/icon.svg\"); }")
         self.assertEqual(ordinary["violations"], [])
         result = self.inspect("fn view() { svg().external_path(\"synapse/icon.svg\"); }")
         self.assertEqual([v["kind"] for v in result["violations"]], ["external_svg_asset"])
+
+    def test_filtered_svg_uses_the_existing_window_owner_and_verified_resource_bytes(self):
+        owner = "crates/razer-assets/src/image_cache.rs"
+        source = ('fn filtered_resource_svg() { ImageSource::Custom(Arc::new(move |window, cx| { '
+                  'available(&path, cx); let bytes = crate::load_path(&path, cx); '
+                  'let cache = WindowResourceCaches::for_window(window, cx); '
+                  'cache.update(cx, |retained, cx| retained.load_filtered(path, bytes, cx)) })) }')
+        self.assertEqual(self.inspect(source, owner)["violations"], [])
+        for changed, path in (
+            (source, "crates/razer-pages/src/example.rs"),
+            (source, "crates/consumer/src/image_cache.rs"),
+            (source.replace("filtered_resource_svg", "unrelated"), owner),
+            (source.replace("available(&path, cx);", 'let example = "available(&path, cx)";'), owner),
+            (source.replace("crate::load_path", "other::load_path"), owner),
+            (source.replace("WindowResourceCaches::for_window", "OtherCache::for_window"), owner),
+            (source.replace("cache.update", "other.update"), owner),
+            (source.replace("retained.load_filtered", "other.load_filtered"), owner),
+        ):
+            with self.subTest(source=changed, owner=path):
+                self.assertEqual([row["kind"] for row in self.inspect(changed, path)["violations"]],
+                                 ["custom_image_source"])
+        actual = Path(__file__).resolve().parent.parent / owner
+        checked = resource_scope.inspect_source(actual.read_bytes(), owner=owner, rust_parser=self.parser)
+        self.assertEqual(checked["violations"], [])
 
     def test_actual_workspace_paths_and_source_identity_are_preserved(self):
         with tempfile.TemporaryDirectory() as directory:

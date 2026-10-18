@@ -46,10 +46,8 @@ mod record_options;
 mod record_shortcut;
 #[path = "macro_page/recording.rs"]
 mod recording;
-#[path = "macro_page/recording_actor.rs"]
-mod recording_actor;
-#[path = "macro_page/recording_decode.rs"]
-mod recording_decode;
+use razer_model::macro_library::recording as recording_decode;
+use razer_service::mapping::recorder as recording_actor;
 #[path = "macro_page/row_actions.rs"]
 mod row_actions;
 #[path = "macro_page/row_controls.rs"]
@@ -77,16 +75,13 @@ mod transfer;
 mod tree;
 #[path = "macro_page/unsaved.rs"]
 mod unsaved;
+use razer_model::macro_library::parse_delay;
 use state::{ActionItem, ActionKind, Entry, EntryKind, Sort, Tutorial, value_is_translation_key};
 
 use row_drag::{ActionDrag, ActionDragPreview};
 
 /// These are the source WindowStorage calls, independent of busy/recording UI.
-#[derive(Clone, Copy)]
-pub enum MacroRecorderStorageChanged {
-    SoftwareExclusive,
-    Remove,
-}
+pub use razer_service::mapping::recorder::StorageChange as MacroRecorderStorageChanged;
 impl EventEmitter<MacroRecorderStorageChanged> for MacroPage {}
 
 /// The mapping engine acknowledged the source recorder's enable operation.
@@ -156,6 +151,7 @@ pub struct MacroPage {
     tree_menu: Option<u64>,
     tree_scrolling: bool,
     transfer_busy: bool,
+    transfer_task: Option<transfer::PendingTransfer>,
     tree_hover: Option<u64>,
     sort: Sort,
     search: Entity<InputState>,
@@ -173,6 +169,7 @@ pub struct MacroPage {
     randomized_open: Option<usize>,
     editing_action: Option<usize>,
     numeric_generation: u64,
+    numeric_task: Option<Task<()>>,
     launch_open: Option<usize>,
     choice_action: Option<usize>,
     source_viewport: std::rc::Rc<std::cell::Cell<Bounds<Pixels>>>,
@@ -329,6 +326,7 @@ impl MacroPage {
             tree_menu: None,
             tree_scrolling: false,
             transfer_busy: false,
+            transfer_task: None,
             tree_hover: None,
             sort: Sort::Ascending,
             search,
@@ -346,6 +344,7 @@ impl MacroPage {
             randomized_open: None,
             editing_action: None,
             numeric_generation: 0,
+            numeric_task: None,
             launch_open: None,
             choice_action: None,
             source_viewport: Default::default(),
@@ -489,6 +488,7 @@ impl MacroPage {
     }
 
     fn clear_action_editors(&mut self) {
+        self.numeric_task = None;
         self.numeric_generation = self.numeric_generation.wrapping_add(1);
         self.hovered_action = None;
         self.record_ui.close();
@@ -590,6 +590,7 @@ impl MacroPage {
     }
 
     fn finish_action_edit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.numeric_task = None;
         self.numeric_generation = self.numeric_generation.wrapping_add(1);
         let Some(index) = self.editing_action.take() else {
             return;
@@ -885,14 +886,6 @@ impl MacroPage {
         });
         cx.notify();
     }
-}
-
-fn parse_delay(value: &str) -> f64 {
-    value
-        .parse::<f64>()
-        .ok()
-        .filter(|v| v.is_finite())
-        .unwrap_or(0.0)
 }
 
 fn format_delay(value: f64) -> String {

@@ -68,6 +68,13 @@ pub trait FeatureTransport {
     fn write_output(&self, _report: &[u8]) -> anyhow::Result<()> {
         anyhow::bail!("此后端未实现 Output Report")
     }
+    /// Opt-in source-host Output write. Preserve the supplied bytes, padding
+    /// only to the observed collection minimum, and return the native count.
+    /// Protocols with a source-specific count predicate must check it themselves;
+    /// a complete-send adapter cannot supply a fabricated count for this channel.
+    fn write_output_counted(&self, _report: &[u8]) -> anyhow::Result<usize> {
+        anyhow::bail!("此后端未实现带实际字节数的 Output Report")
+    }
     fn get_input(&self, _report: &mut [u8]) -> anyhow::Result<usize> {
         anyhow::bail!("此后端未实现控制 Input Report")
     }

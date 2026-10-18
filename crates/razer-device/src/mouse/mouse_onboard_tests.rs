@@ -94,6 +94,19 @@ fn cap(product_id: u32) -> DeviceReadCapability {
     cap.max_retry_in = 1;
     cap
 }
+fn current_scroll_cap(product_id: u32) -> DeviceReadCapability {
+    let mut capability = crate::mouse_current_dpi::capability(product_id)
+        .unwrap()
+        .transport()
+        .for_physical_product(product_id)
+        .unwrap();
+    capability.sleep_between_out_ms = 0;
+    capability.sleep_between_out_in_ms = 0;
+    capability.sleep_between_in_ms = 0;
+    capability.max_retry_out = 1;
+    capability.max_retry_in = 1;
+    capability
+}
 fn transactions() -> impl FnMut() -> Result<u8> {
     let mut current = 0;
     move || {
@@ -160,6 +173,67 @@ fn write_identity(steps: &mut Vec<Step>, profile: u8, raw: &[u8], ack: &[u8], tx
             next(tx),
         ));
     }
+}
+
+#[test]
+fn scroll_profile_reader_keeps_hardware_inventory_order_and_does_not_expand_writers() {
+    for product_id in [153, 170, 203, 204, 214, 226, 45066] {
+        let mut steps = Vec::new();
+        let mut tx = 0;
+        inventory(&mut steps, 8, 3, &[1, 7, 3], &mut tx);
+        read_identity(&mut steps, 7, &identity([0; 6]), &mut tx);
+        let mut other = identity([0; 6]);
+        other[0] = 0x79;
+        read_identity(&mut steps, 3, &other, &mut tx);
+        let transport = Transport::new(steps);
+        let capability = current_scroll_cap(product_id);
+        let observed =
+            read_profile_associations(&transport, &capability, &mut transactions(), &|| Ok(()))
+                .unwrap();
+        assert_eq!(
+            observed,
+            vec![
+                OnboardProfileAssociation {
+                    profile_id: 7,
+                    guid: "12345678-9abc-def0-1234-56789abcdef0".into(),
+                },
+                OnboardProfileAssociation {
+                    profile_id: 3,
+                    guid: "12345679-9abc-def0-1234-56789abcdef0".into(),
+                },
+            ]
+        );
+        assert_eq!(transport.sends.get(), 11);
+        assert_eq!(
+            MouseOnboard::new(&transport, &capability).is_ok(),
+            AUDITED_PRODUCTS.contains(&product_id)
+                && capability.source_class == "rzDevice25DualLinkMouse"
+        );
+        if !AUDITED_PRODUCTS.contains(&product_id) {
+            assert!(encode_identity(product_id, &request(None)).is_err());
+        }
+        transport.finish();
+    }
+}
+
+#[test]
+fn scroll_profile_inventory_read_cancellation_stops_before_metadata_or_mutations() {
+    let mut steps = Vec::new();
+    inventory(&mut steps, 8, 2, &[1, 7], &mut 0);
+    let transport = Transport::new(steps);
+    let error = read_profile_associations(
+        &transport,
+        &current_scroll_cap(153),
+        &mut transactions(),
+        &|| {
+            ensure!(transport.reads.get() < 3, "Owner canceled after inventory");
+            Ok(())
+        },
+    )
+    .unwrap_err();
+    assert!(error.to_string().contains("canceled"));
+    assert_eq!(transport.sends.get(), 3);
+    transport.finish();
 }
 
 #[test]

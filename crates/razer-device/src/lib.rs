@@ -9,14 +9,16 @@ pub mod audio_mixer_local;
 pub mod audio_notification;
 #[path = "audio/audio_router.rs"]
 pub mod audio_router;
-#[path = "audio/audio_util.rs"]
-pub mod audio_util;
 #[path = "audio/surround.rs"]
 pub mod audio_surround;
+#[path = "audio/audio_util.rs"]
+pub mod audio_util;
 #[path = "transport/backend.rs"]
 pub mod backend;
 #[path = "power/battery_threshold.rs"]
 pub mod battery_threshold;
+#[path = "audio/blackshark_reset.rs"]
+pub mod blackshark_reset;
 #[path = "audio/blackshark_roller_mapping.rs"]
 pub mod blackshark_roller_mapping;
 #[path = "camera/camera.rs"]
@@ -37,10 +39,10 @@ pub mod camera_submission;
 pub mod controller_calibration;
 #[path = "gamepad/controller_calibration_protocol.rs"]
 pub mod controller_calibration_protocol;
-#[path = "gamepad/controller_input.rs"]
-pub mod controller_input;
 #[path = "gamepad/controller_feature.rs"]
 pub(crate) mod controller_feature;
+#[path = "gamepad/controller_input.rs"]
+pub mod controller_input;
 #[path = "gamepad/controller_lighting.rs"]
 pub mod controller_lighting;
 #[path = "gamepad/controller_triggers.rs"]
@@ -63,10 +65,18 @@ pub mod device_writes;
 pub mod dpi_matcher;
 #[path = "mouse/dpi_matcher_storage.rs"]
 pub mod dpi_matcher_storage;
+#[path = "transport/ecmascript_number.rs"]
+mod ecmascript_number;
 #[path = "transport/feature_exchange.rs"]
 mod feature_exchange;
+#[path = "transport/feature_submission.rs"]
+pub mod feature_submission;
 #[path = "accessory/hanbo_cooler.rs"]
 pub mod hanbo_cooler;
+#[path = "accessory/hanbo_profile_restore.rs"]
+pub mod hanbo_profile_restore;
+#[path = "accessory/hanbo_settings.rs"]
+pub mod hanbo_settings;
 #[path = "keyboard/keyboard_analog.rs"]
 pub mod keyboard_analog;
 #[cfg(test)]
@@ -74,6 +84,10 @@ pub mod keyboard_analog;
 mod keyboard_control_test_transport;
 #[path = "keyboard/keyboard_current_mapping.rs"]
 pub mod keyboard_current_mapping;
+#[path = "keyboard/keyboard_firmware_gaming.rs"]
+mod keyboard_firmware_gaming;
+#[path = "keyboard/keyboard_firmware_mapping.rs"]
+mod keyboard_firmware_mapping;
 #[path = "keyboard/keyboard_function_swap.rs"]
 pub mod keyboard_function_swap;
 #[path = "keyboard/keyboard_gaming_mapping.rs"]
@@ -96,6 +110,8 @@ pub mod keyboard_latest_restore;
 pub mod keyboard_legacy_calibration;
 #[path = "keyboard/keyboard_legacy_mapping.rs"]
 pub mod keyboard_legacy_mapping;
+#[path = "keyboard/keyboard_magnetic_mapping.rs"]
+pub mod keyboard_magnetic_mapping;
 #[path = "keyboard/keyboard_metadata.rs"]
 pub mod keyboard_metadata;
 #[path = "keyboard/keyboard_settings.rs"]
@@ -108,8 +124,12 @@ pub mod keyboard_wristrest;
 pub mod leviathan;
 #[path = "lighting/lighting_driver.rs"]
 pub mod lighting_driver;
+#[path = "lighting/lighting_engine.rs"]
+pub mod lighting_engine;
 #[path = "mapping/macro_engine.rs"]
 pub mod macro_engine;
+#[path = "mapping/mapping_document.rs"]
+pub mod mapping_document;
 #[path = "mapping/mapping_engine.rs"]
 pub mod mapping_engine;
 #[path = "mapping/mapping_engine_hash.rs"]
@@ -152,10 +172,10 @@ pub mod mouse_indicator_led;
 pub mod mouse_legacy_mapping;
 #[path = "mouse/mouse_legacy_polling.rs"]
 pub mod mouse_legacy_polling;
-#[path = "mouse/mouse_macro.rs"]
-pub mod mouse_macro;
 #[path = "mouse/mouse_onboard.rs"]
 pub mod mouse_onboard;
+#[path = "mouse/mouse_philips.rs"]
+pub mod mouse_philips;
 #[path = "mouse/mouse_profile_polling.rs"]
 pub mod mouse_profile_polling;
 #[path = "mouse/mouse_receiver_legacy.rs"]
@@ -172,6 +192,12 @@ pub mod mouse_sensor;
 pub mod mouse_storage;
 #[path = "mouse/mouse_tracking.rs"]
 pub mod mouse_tracking;
+#[path = "protocol/onboard_assignment.rs"]
+mod onboard_assignment;
+#[path = "protocol/onboard_macro.rs"]
+pub mod onboard_macro;
+#[path = "protocol/onboard_macro_codec.rs"]
+pub mod onboard_macro_codec;
 #[path = "mapping/otfm.rs"]
 pub mod otfm;
 #[path = "profile_transfer.rs"]
@@ -186,8 +212,14 @@ pub mod receiver_capabilities;
 pub mod receiver_catalog;
 #[path = "receiver/receiver_dock_mode.rs"]
 pub mod receiver_dock_mode;
+#[path = "receiver/receiver_feature_channel.rs"]
+mod receiver_feature_channel;
 #[path = "receiver/receiver_identity.rs"]
 pub mod receiver_identity;
+#[path = "receiver/hyperpolling_receiver.rs"]
+pub mod hyperpolling_receiver;
+#[path = "receiver/receiver_lighting.rs"]
+pub mod receiver_lighting;
 #[path = "receiver/receiver_pairing.rs"]
 pub mod receiver_pairing;
 #[path = "receiver/receiver_pairing_capabilities.rs"]
@@ -214,6 +246,8 @@ pub mod seiren_stream_mixer;
 pub mod simple_audio;
 #[path = "audio/simple_audio_volume.rs"]
 pub mod simple_audio_volume;
+#[path = "host/system_monitor.rs"]
+pub mod system_monitor;
 #[path = "audio/thx_blackshark_firmware.rs"]
 pub mod thx_blackshark_firmware;
 #[path = "audio/thx_lifecycle_discovery.rs"]

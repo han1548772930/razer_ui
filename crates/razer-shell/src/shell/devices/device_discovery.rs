@@ -155,6 +155,23 @@ fn same_receiver_peer(a: &discovery::ObservedDevice, b: &discovery::ObservedDevi
         && a.connection() == b.connection()
 }
 
+fn same_connection(a: &discovery::ObservedDevice, b: &discovery::ObservedDevice) -> bool {
+    same_receiver_peer(a, b) && a.transport() == b.transport()
+}
+
+pub(super) fn retained_connection(
+    previous: &[discovery::ObservedDevice],
+    current: &[discovery::ObservedDevice],
+    device: &Device,
+) -> bool {
+    let mut previous = previous.iter().filter(|observed| observed.matches(device));
+    let mut current = current.iter().filter(|observed| observed.matches(device));
+    let (Some(old), Some(new)) = (previous.next(), current.next()) else {
+        return false;
+    };
+    previous.next().is_none() && current.next().is_none() && same_connection(old, new)
+}
+
 fn observe_polling_connection(
     workspace: &Entity<ProductWorkspace>,
     transport: Option<discovery::ObservedTransport>,
@@ -597,14 +614,26 @@ impl AppShell {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        // Expire the previous observation even on failure. Absence is unknown,
-        // not an invented offline reply. No profile/identity is overwritten.
+        // Expire request observations even on failure. An unchanged physical
+        // connection remains owned; absence is unknown, not an offline reply.
         self.discovery_revision = self.discovery_revision.wrapping_add(1);
+        let retained = self
+            .devices
+            .iter()
+            .filter(|workspace| {
+                let device = workspace.read(cx).device(cx);
+                observation.as_ref().is_ok_and(|snapshot| {
+                    retained_connection(&self.device_observations, snapshot.devices(), device)
+                })
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        self.retain_interdevice_connections(&retained, cx);
         self.cancel_keyboard_wristrest(cx);
         self.cancel_mouse_runtime_artwork(cx);
         self.cancel_mouse_receiver_indicator();
         self.cancel_controller_inputs(cx);
-        self.cancel_hanbo_cooler();
+        self.retain_hanbo_cooler_connections(&retained, cx);
         self.cancel_thx_sound_jobs();
         self.thx_progress.clear();
         self.receiver_queries.clear();
@@ -625,8 +654,10 @@ impl AppShell {
         self.receiver_devices.clear();
         self.receiver_devices_complete = false;
         for workspace in &self.devices {
-            workspace.update(cx, |workspace, cx| workspace.observe_connection(None, cx));
-            observe_polling_connection(workspace, None, cx);
+            if !retained.contains(workspace) {
+                workspace.update(cx, |workspace, cx| workspace.observe_connection(None, cx));
+                observe_polling_connection(workspace, None, cx);
+            }
         }
         let snapshot = match observation {
             Ok(snapshot) => snapshot,
@@ -640,6 +671,7 @@ impl AppShell {
                 self.sync_audio_preset_shortcut_cleanup(cx);
                 self.sync_known_devices(cx);
                 self.sync_local_mapping_targets(window, cx);
+                self.sync_hyperpolling_receivers(window, cx);
                 cx.notify();
                 return;
             }
@@ -666,6 +698,9 @@ impl AppShell {
         self.sync_mouse_runtime_artwork(window, cx);
         self.sync_controller_inputs(cx);
         self.sync_controller_lighting_owners(self.receiver_devices_complete, cx);
+        self.sync_receiver_lighting_owners(self.receiver_devices_complete, cx);
+        self.sync_hanbo_cooler_connections(cx);
+        self.sync_hyperpolling_receivers(window, cx);
         self.sync_audio_preset_shortcut_cleanup(cx);
         self.sync_thx_render_lifecycle(self.receiver_devices_complete, window, cx);
         self.refresh_thx_spatial(window, cx);
@@ -790,30 +825,37 @@ impl AppShell {
             product_id,
             incoming,
         );
-        for workspace in &self.devices {
-            if removed
-                .iter()
-                .chain(incoming)
-                .any(|observed| observed.matches(workspace.read(cx).device(cx)))
-            {
-                let unchanged = removed.iter().any(|old| {
-                    old.matches(workspace.read(cx).device(cx))
-                        && incoming.iter().any(|new| same_receiver_peer(old, new))
-                });
-                if unchanged {
-                    continue;
-                }
-                self.device_read_scopes
-                    .remove(&workspace.read(cx).identity(cx));
-                self.device_value_owners
-                    .remove(&workspace.read(cx).identity(cx));
-                // Discard old parameter observations together with their transport.
-                workspace.update(cx, |workspace, cx| {
-                    workspace.observe_connection(None, cx);
-                    workspace.observe_read_values(None, cx);
-                });
-                observe_polling_connection(workspace, None, cx);
-            }
+        let retired = self
+            .devices
+            .iter()
+            .filter(|workspace| {
+                let device = workspace.read(cx).device(cx);
+                removed
+                    .iter()
+                    .chain(incoming)
+                    .any(|observed| observed.matches(device))
+                    && !retained_connection(&removed, incoming, device)
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        let retained = self
+            .devices
+            .iter()
+            .filter(|workspace| !retired.contains(workspace))
+            .cloned()
+            .collect::<Vec<_>>();
+        self.retain_interdevice_connections(&retained, cx);
+        for workspace in &retired {
+            self.device_read_scopes
+                .remove(&workspace.read(cx).identity(cx));
+            self.device_value_owners
+                .remove(&workspace.read(cx).identity(cx));
+            // Discard old parameter observations together with their transport.
+            workspace.update(cx, |workspace, cx| {
+                workspace.observe_connection(None, cx);
+                workspace.observe_read_values(None, cx);
+            });
+            observe_polling_connection(workspace, None, cx);
         }
         self.receiver_devices_complete &= projection.is_some_and(|p| p.errors().is_empty());
         self.rebuild_receiver_devices(cx);
@@ -821,7 +863,7 @@ impl AppShell {
         // requery must not clear rates/firmware or invalidate outstanding reads.
         let changed = incoming
             .iter()
-            .filter(|new| !removed.iter().any(|old| same_receiver_peer(old, new)))
+            .filter(|new| !removed.iter().any(|old| same_connection(old, new)))
             .cloned()
             .collect::<Vec<_>>();
         let errors = self.apply_device_observations(&changed, false, window, cx);
@@ -971,6 +1013,7 @@ impl AppShell {
         // The basic query worker has completed; do not compete with its retained
         // path lock during discovery's first/second phase handshake.
         self.initialize_mouse182_profiles(cx);
+        self.initialize_mouse_scroll_profiles(cx);
         self.request_initial_dpi_stage_reads(cx);
         self.sync_known_devices(cx);
         self.sync_gamer_room(cx);
@@ -1016,6 +1059,10 @@ impl AppShell {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if workspace.read(cx).device(cx).product_id == 179 {
+            self.request_hyperpolling_pairing(workspace, event, window, cx);
+            return;
+        }
         let identity = workspace.read(cx).identity(cx);
         if matches!(event.intent(), ReceiverPairingIntent::Cancel) {
             self.receiver_queries.remove(&identity);

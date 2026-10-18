@@ -244,6 +244,176 @@ fn another_shared_master_keeps_ordinary_polling_and_its_host_report_id() {
 }
 
 #[test]
+fn polling_write_keeps_the_source_master_cap_setter_and_independent_readback() {
+    for (physical, effective_hz, get_command, set_command, old_code, new_code) in [
+        (183, 1000, 142, 14, 2, 1),
+        (164, 8000, 192, 64, 16, 1),
+        (179, 8000, 192, 64, 16, 1),
+        (241, 1000, 142, 14, 2, 1),
+    ] {
+        let transport = Transport::new([
+            online(),
+            Reply::Data(vec![1, old_code]),
+            Reply::Data(vec![]),
+            Reply::Data(vec![1, new_code]),
+            online(),
+        ]);
+        let result = route(physical)
+            .apply_polling(&transport, 8000, transactions(), || Ok(()))
+            .unwrap();
+
+        assert_eq!(result.reading.requested_hz, 8000);
+        assert_eq!(result.reading.effective_hz, effective_hz);
+        assert_eq!(result.reading.observed_hz, effective_hz);
+        assert_eq!(result.reading.previous.hz(), Some(500));
+        assert!(result.reading.changed);
+        assert_eq!(result.reading.acknowledgement.as_deref(), Some(&[][..]));
+        assert_eq!(result.receiver_before, [(183, 1)]);
+        assert_eq!(result.receiver_after, [(183, 1)]);
+        let reports = transport.outputs.borrow();
+        assert_eq!(reports.len(), 5);
+        assert_eq!(&reports[1][6..11], &[2, 0, get_command, 1, 0]);
+        assert_eq!(&reports[2][6..11], &[2, 0, set_command, 1, new_code]);
+        assert_eq!(&reports[3][6..11], &[2, 0, get_command, 1, 0]);
+        for (ix, report) in reports.iter().enumerate() {
+            assert_eq!(report[0], if physical == 241 { 3 } else { 0 });
+            assert_eq!(report[2], 5 + ix as u8);
+        }
+    }
+}
+
+#[test]
+fn matching_pre_read_skips_the_setter_but_keeps_the_final_live_peer_check() {
+    for (physical, requested_hz, effective_hz, code) in [(183, 8000, 1000, 1), (179, 8000, 8000, 1)]
+    {
+        let transport = Transport::new([online(), Reply::Data(vec![1, code]), online()]);
+        let result = route(physical)
+            .apply_polling(&transport, requested_hz, transactions(), || Ok(()))
+            .unwrap();
+
+        assert_eq!(result.reading.previous.hz(), Some(effective_hz));
+        assert_eq!(result.reading.observed_hz, effective_hz);
+        assert!(!result.reading.changed);
+        assert!(result.reading.acknowledgement.is_none());
+        assert_eq!(transport.outputs.borrow().len(), 3);
+        assert_eq!(&transport.outputs.borrow()[2][6..9], &[80, 0, 191]);
+    }
+}
+
+#[test]
+fn failed_pre_read_continues_the_source_setter_without_fabricating_a_previous_rate() {
+    for physical in [183, 164, 179, 241] {
+        for failed in [
+            Reply::Unsupported,
+            Reply::Short,
+            Reply::Data(vec![2, 1]),
+            Reply::Data(vec![1]),
+        ] {
+            let mut route = route(physical);
+            route.transport.max_retry_out = 1;
+            route.transport.max_retry_in = 1;
+            let high_speed = matches!(physical, 164 | 179);
+            let code = if high_speed { 8 } else { 1 };
+            let transport = Transport::new([
+                online(),
+                failed,
+                Reply::Data(vec![]),
+                Reply::Data(vec![1, code]),
+                online(),
+            ]);
+            let result = route
+                .apply_polling(&transport, 1000, transactions(), || Ok(()))
+                .unwrap();
+
+            assert!(matches!(
+                &result.reading.previous,
+                PollingPreRead::Failed { message } if !message.is_empty()
+            ));
+            assert_eq!(result.reading.previous.hz(), None);
+            assert_eq!(result.reading.observed_hz, 1000);
+            assert!(result.reading.changed);
+            assert!(result.reading.acknowledgement.is_some());
+            let reports = transport.outputs.borrow();
+            assert_eq!(reports.len(), 5);
+            assert_eq!(
+                &reports[2][6..11],
+                &[2, 0, if high_speed { 64 } else { 14 }, 1, code]
+            );
+            assert_eq!(&reports[4][6..9], &[80, 0, 191]);
+        }
+    }
+}
+
+#[test]
+fn caught_pre_read_failure_cannot_resume_a_canceled_or_replaced_owner() {
+    let transport = Transport::new([online(), Reply::Unsupported]);
+    let error = route(183)
+        .apply_polling(&transport, 1000, transactions(), || {
+            ensure!(transport.reads.get() < 2, "owner replaced after pre-read");
+            Ok(())
+        })
+        .err()
+        .expect("canceled pre-read must stop the setter");
+
+    assert!(format!("{error:#}").contains("owner replaced after pre-read"));
+    assert_eq!(transport.outputs.borrow().len(), 2);
+}
+
+#[test]
+fn failed_post_read_never_confirms_the_setter_even_after_a_failed_pre_read() {
+    for post_read in [
+        Reply::Unsupported,
+        Reply::Short,
+        Reply::Data(vec![2, 1]),
+        Reply::Data(vec![1, 2]),
+    ] {
+        let transport =
+            Transport::new([online(), Reply::Unsupported, Reply::Data(vec![]), post_read]);
+        let mut route = route(183);
+        route.transport.max_retry_out = 1;
+        route.transport.max_retry_in = 1;
+
+        assert!(
+            route
+                .apply_polling(&transport, 1000, transactions(), || Ok(()))
+                .is_err()
+        );
+        let reports = transport.outputs.borrow();
+        assert_eq!(reports.len(), 4);
+        assert_eq!(&reports[2][6..11], &[2, 0, 14, 1, 1]);
+        assert_eq!(&reports[3][6..11], &[2, 0, 142, 1, 0]);
+    }
+}
+
+#[test]
+fn polling_setter_ack_cancellation_or_lost_peer_cannot_become_success() {
+    let transport = Transport::new([online(), Reply::Data(vec![1, 2]), Reply::Data(vec![])]);
+    assert!(
+        route(183)
+            .apply_polling(&transport, 1000, transactions(), || {
+                ensure!(transport.reads.get() < 3, "canceled after setter ACK");
+                Ok(())
+            })
+            .is_err()
+    );
+    assert_eq!(transport.outputs.borrow().len(), 3);
+
+    let transport = Transport::new([
+        online(),
+        Reply::Data(vec![1, 2]),
+        Reply::Data(vec![]),
+        Reply::Data(vec![1, 1]),
+        Reply::Data(vec![1, 0, 0, 183]),
+    ]);
+    assert!(
+        route(183)
+            .apply_polling(&transport, 1000, transactions(), || Ok(()))
+            .is_err()
+    );
+    assert_eq!(transport.outputs.borrow().len(), 5);
+}
+
+#[test]
 fn source_decoders_distinguish_ordinary_and_high_speed_response_values() {
     for (physical, codes) in [
         (

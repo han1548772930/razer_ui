@@ -1,5 +1,18 @@
 //! Read-only Windows properties and explicit user-triggered property dialogs.
 
+/// Read the local computer name through the current host's system API contract.
+/// This performs a synchronous OS query and belongs on a background worker.
+pub fn computer_name() -> anyhow::Result<String> {
+    #[cfg(target_os = "windows")]
+    {
+        crate::platform::windows::system::computer_name()
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        anyhow::bail!("computer name observation is only available on Windows")
+    }
+}
+
 /// Settings `Fs` uses `new Date().getFullYear()`, i.e. the local calendar year.
 pub fn copyright_year() -> String {
     #[cfg(target_os = "windows")]

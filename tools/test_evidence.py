@@ -16,6 +16,224 @@ from unittest.mock import MagicMock, patch
 import analysis
 import evidence
 import host
+import families
+
+
+class SemanticQueryGapTests(unittest.TestCase):
+    def test_acquisition_and_analyzer_findings_do_not_become_semantic_failures(self):
+        data = {"queries": {"local": {"products": [{"product_id": 740,
+            "acquisitions": [{"failed_acquisition": [{"url": "missing.js.map", "error": "404"}],
+                              "unresolved_acquisition": ["missing.js.map"],
+                              "capture_failures": [{"stage": "unpack", "exit_code": 1}]}],
+            "native": {"failures": [{"stage": "hexrays", "error": "call analysis failed"}]},
+            "unresolved_chains": ["required local setter is absent"]}]}}}
+        rows = analysis.semantic_query_gaps(data, "audit.json")
+        self.assertEqual([row["kind"] for row in rows], ["acquisition_query_failure",
+            "acquisition_query_reference_unresolved", "analyzer_query_failure", "semantic_query_failure",
+            "semantic_query_chain_unresolved"])
+        self.assertTrue(all(row["product_id"] == 740 for row in rows))
+        self.assertEqual(rows[3]["finding"]["stage"], "hexrays")
+        self.assertTrue(rows[3]["pointer"].endswith("/native/failures"))
+
+    def test_nested_products_and_json_pointer_escaping_keep_the_actual_owner(self):
+        rows = analysis.semantic_query_gaps({"products": [{"product_id": 691,
+            "child/with~name": {"failures": ["missing getter"], "products": [{"product_id": 746,
+                "remaining_local_chains": ["serial storage"]}]},
+            "irrelevant": {"failures": "unverified"}}]}, "receipt.json")
+        self.assertEqual(len(rows), 2)
+        self.assertEqual([row["product_id"] for row in rows], [691, 746])
+        self.assertEqual(rows[0]["pointer"], "/products/0/child~1with~0name/failures")
+        self.assertTrue(all(row["evidence"] == "receipt.json" for row in rows))
+
+    def test_maintenance_gaps_use_actual_recipe_identity_and_keep_projection_limits(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            source = Path(directory) / ".analysis/inputs/typed-tables/fixture/table.json"
+            source.parent.mkdir(parents=True)
+            source.write_bytes(b'{"value":3}')
+            digest = hashlib.sha256(source.read_bytes()).hexdigest()
+            recipe = {"crate": "fixture", "symbol": "TABLE", "source": source.relative_to(directory).as_posix(),
+                      "source_sha256": digest, "maintenance_recovery": {
+                          "kind": "current_rust_constructor_projection", "original_source_sha256": "0" * 64},
+                      "excluded_evidence_fields": ["$.source"]}
+            rows = analysis.typed_maintenance_gaps({"tables": [recipe]})
+            self.assertEqual([row["kind"] for row in rows], ["typed_maintenance_source_evidence_pending",
+                                                            "typed_maintenance_regeneration_unverified"])
+            self.assertEqual(rows[0]["recovery"]["original_source_sha256"], "0" * 64)
+            self.assertEqual(rows[0]["maintenance_sha256"], digest)
+            source.write_bytes(b'{"value":4}')
+            self.assertEqual(analysis.typed_maintenance_gaps({"tables": [recipe]})[0]["kind"],
+                             "typed_maintenance_input_identity_mismatch")
+            source.unlink()
+            self.assertEqual(analysis.typed_maintenance_gaps({"tables": [recipe]})[0]["kind"],
+                             "typed_maintenance_input_missing")
+
+    def test_maintenance_regeneration_requires_current_complete_recorded_inputs(self):
+        import rust_data
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            source = root / "tools/catalog_data.py"
+            source.parent.mkdir(parents=True)
+            source.write_bytes(b"inert parser input")
+            report = root / ".analysis/results/typed-data.json"
+            report.parent.mkdir(parents=True)
+            def snapshot(_):
+                return [{"path": path.relative_to(root).as_posix(), "bytes": path.stat().st_size,
+                         "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+                        for path in sorted((root / "tools").glob("*.py"))]
+            report.write_text(json.dumps({"maintenance_inputs": {"passed": True, "tables": 0,
+                                                                  "inputs": snapshot(None)}}), encoding="utf-8")
+            with patch.object(rust_data, "maintenance_verification_inputs", side_effect=snapshot):
+                self.assertFalse(analysis.typed_maintenance_gaps({"tables": []}))
+                added = root / "tools/new_owner.py"
+                added.write_bytes(b"new schema owner")
+                self.assertEqual(analysis.typed_maintenance_gaps({"tables": []})[0]["kind"],
+                                 "typed_maintenance_regeneration_unverified")
+                added.unlink()
+                source.write_bytes(b"changed parser input")
+                self.assertEqual(analysis.typed_maintenance_gaps({"tables": []})[0]["kind"],
+                                 "typed_maintenance_regeneration_unverified")
+
+
+class FontFixtureEvidenceTests(unittest.TestCase):
+    @staticmethod
+    def fonts():
+        import zlib
+        def checksum(raw):
+            raw += b'\0' * (-len(raw) % 4)
+            return sum(struct.unpack('>' + 'I' * (len(raw) // 4), raw)) & 0xffffffff
+        tables = [(b'head', b'\0' * 12), (b'name', b'font name ' * 8)]
+        offsets, data, offset = [], bytearray(), 44
+        for tag, body in tables:
+            offsets.append((tag, checksum(body), offset, len(body)))
+            data.extend(body)
+            data.extend(b'\0' * (-len(body) % 4))
+            offset += (len(body) + 3) & ~3
+        fixture = bytearray(struct.pack('>IHHHH', 0x10000, 2, 32, 1, 0))
+        fixture.extend(b''.join(struct.pack('>4sIII', *row) for row in offsets))
+        fixture.extend(data)
+        struct.pack_into('>I', fixture, 44 + 8, (0xb1b0afba - checksum(bytes(fixture))) & 0xffffffff)
+        entries, packed, offset = [], bytearray(), 84
+        for tag, body in tables:
+            compressed = zlib.compress(body)
+            payload = compressed if len(compressed) < len(body) else body
+            entries.append(struct.pack('>4sIIII', tag, offset, len(payload), len(body), checksum(body)))
+            packed.extend(payload)
+            packed.extend(b'\0' * (-len(payload) % 4))
+            offset += (len(payload) + 3) & ~3
+        original = (struct.pack('>4sIIHHIHHIIIII', b'wOFF', 0x10000, offset, 2, 0, len(fixture), 1, 0, 0, 0, 0, 0, 0)
+                    + b''.join(entries) + packed)
+        return bytes(original), bytes(fixture)
+
+    def test_all_font_tables_and_whole_sfnt_checksum_are_independent_requirements(self):
+        original, fixture = self.fonts()
+        verified = families.verify_woff_sfnt_fixture(original, fixture)
+        self.assertEqual(verified['tables'], 2)
+        self.assertTrue(verified['complete_table_bytes_equal'])
+        changed_table = bytearray(fixture)
+        changed_table[-1] ^= 1
+        changed_checksum = bytearray(fixture)
+        changed_checksum[52] ^= 1
+        repeated_tag = bytearray(original)
+        repeated_tag[64:68] = b'head'
+        escaped_offset = bytearray(original)
+        struct.pack_into('>I', escaped_offset, 48, len(original) + 4)
+        for source, target in ((original, changed_table), (original, changed_checksum),
+                               (repeated_tag, fixture), (escaped_offset, fixture),
+                               (original[:50], fixture), (original, fixture[:12])):
+            with self.subTest(source_bytes=len(source), target_bytes=len(target)), self.assertRaises(ValueError):
+                families.verify_woff_sfnt_fixture(source, target)
+
+
+class KeyboardLocalControlQueryTests(unittest.TestCase):
+    def test_complete_utf8_callables_keep_only_their_actual_roles(self):
+        sys.path.insert(0, str(analysis.ROOT / "tools/analyzers/python-static"))
+        from tree_sitter import Language, Parser
+        import tree_sitter_javascript
+        parser = Parser(Language(tree_sitter_javascript.language()))
+        raw = ('const label="校准"; const modules={31:(e,t,n)=>{'
+               'function getter(){return "getIndicator";} '
+               'const setter=v=>{if(v)return "setIndicator";return false;};'
+               'function unrelated(){return 42;} }};').encode()
+        regions = families.keyboard_local_control_regions(raw, {"getter": "getIndicator", "setter": "setIndicator"}, parser)
+        self.assertEqual(len(regions), 1)
+        self.assertEqual(regions[0]["owner"]["module_id"], 31)
+        callables = regions[0]["callables"]
+        self.assertEqual([roles for _, roles in callables], [["getter", "setter"], ["getter"], ["setter"]])
+        self.assertEqual([raw[node.start_byte:node.end_byte] for node, _ in callables[1:]], [
+            b'function getter(){return "getIndicator";}',
+            b'v=>{if(v)return "setIndicator";return false;}'])
+        with self.assertRaisesRegex(ValueError, "grammar failed"):
+            families.keyboard_local_control_regions(b"const invalid = {", {"getter": "getIndicator"}, parser)
+
+
+class MappingEngineAuditTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, str(Path(__file__).parent / "analyzers/python-static"))
+
+    @staticmethod
+    def bundle(scancode=30, factory=77898):
+        key = {"name": "A", "inputID": "KEY_A", "type": "Alphanumeric", "scancode": scancode,
+               "analogKeyID": 31, "virtualKey": "65", "keyCode": "65", "flag": 0}
+        return ('({101:(e,t)=>{t.KEYS=' + json.dumps([key]) + ';},'
+                '102:(e,t)=>{var scroll="ScrollUp",si=[scroll],sc=[scroll],delay=30;'
+                'var exports={SINGLE_STATE_INPUT_ID:()=>si,SCROLL_INPUT_ID:()=>sc,SCROLL_TURBO_DELAY_MS:()=>delay};},'
+                '103:(e,t)=>{t.DoubleClickEvent=class{getData(){return[{type:"mouse",id:1,data:0}]}}},'
+                '104:(e,t,n)=>{function select(e){switch(e){case"DoubleClick":return new(0,n.DoubleClickEvent);'
+                'case"Play":return new(0,n.PlayPauseEvent);}}},'
+                + str(factory) + ':(e,t)=>{this.generateDefaultTurbos=()=>(this.defaultTurbos=["DoubleClick"]);},'
+                '106:(e,t)=>{function system(e){return e.systemGroup.systemAssignment;}}})').encode()
+
+    def fixture(self, root, *, wrapper_factory=77898):
+        tool = root / "tools/families.py"
+        tool.parent.mkdir()
+        tool.write_bytes(b"inert analyzer identity")
+        folder = root / ".analysis/inputs/frontend/mouse-mw-182-current"
+        folder.mkdir(parents=True)
+        wrapper = ('({32226:(e,t,n)=>{var o=n(' + str(wrapper_factory) + ');t.A=o.RzAppEngineMapping_default},'
+                   '30525:(e,t,n)=>{var a=n(32226);a.A.generateDefaultTurbos();a.A.generateAppEngineMultiMappings(e);'
+                   'a.A.generateAppEngineMappings(e);a.A.generateAppEngineData(t);}})').encode()
+        rows = []
+        for name, raw in (("7795.current.js", self.bundle()), ("2520.unused.js", self.bundle(99)), ("6259.current.js", wrapper)):
+            path = folder / name
+            path.write_bytes(raw)
+            rows.append({"path": path.relative_to(root).as_posix(), "bytes": len(raw),
+                         "sha256": hashlib.sha256(raw).hexdigest()})
+        (folder / "acquisition.json").write_text(json.dumps({"source_current_during_acquisition": True, "files": rows}))
+        return rows
+
+    def test_182_decodes_its_actual_chunk_and_retains_active_factory_chain(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            self.fixture(root)
+            args = argparse.Namespace(family="mouse", function="mw", product=[182], prepare=False, receipt_only=True)
+            with patch.object(families, "__file__", str(root / "tools/families.py")), redirect_stdout(io.StringIO()):
+                families.audit_mapping_engine_literals(args)
+            data = json.loads((root / ".analysis/results/frontend/mapping-engine-current-data.json").read_bytes())
+            self.assertEqual(list(data), ["182"])
+            self.assertEqual(data["182"]["keys"][0]["scancode"], 30)
+            query = json.loads((root / ".analysis/results/frontend/mouse-mw-audit.json").read_bytes())["queries"]["mapping-engine"]
+            product = query["products"][0]
+            self.assertTrue(product["original"]["path"].endswith("7795.current.js"))
+            self.assertEqual(product["active_factory"]["factory_module"], 77898)
+            for module in product["complete_modules"].values():
+                self.assertEqual(module["byte_end"] - module["byte_start"], len(module["body"].encode()))
+                self.assertEqual(module["sha256"], hashlib.sha256(module["body"].encode()).hexdigest())
+
+    def test_182_missing_corrupt_or_unselected_factory_cannot_fall_back_to_unused_chunk(self):
+        for issue in ("missing", "corrupt", "wrong_wrapper"):
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+                root = Path(directory)
+                rows = self.fixture(root, wrapper_factory=999 if issue == "wrong_wrapper" else 77898)
+                path = root / rows[0]["path"]
+                if issue == "missing":
+                    path.unlink()
+                elif issue == "corrupt":
+                    path.write_bytes(path.read_bytes() + b"changed")
+                args = argparse.Namespace(family="mouse", function="mw", product=[182], prepare=False, receipt_only=True)
+                with self.assertRaises(ValueError), redirect_stdout(io.StringIO()):
+                    families.audit_mapping_engine_literals(args)
+                self.assertFalse((root / ".analysis/results/frontend/mapping-engine-current-data.json").exists())
 
 
 class EvidenceTests(unittest.TestCase):
@@ -116,6 +334,180 @@ class EvidenceTests(unittest.TestCase):
         changed = {**first, "bytes": 3, "sha256": "c" * 64}
         analysis.index_files([changed])
         self.assertEqual(json.loads(path.read_bytes())["inputs"], [changed, second])
+
+    def test_verified_publication_records_prior_identity_and_rejects_unverified_bytes(self):
+        name = ".analysis/inputs/test/acquisition.json"
+        source = self.source(name, b"{}")
+        old = {"path": name, "bytes": 3, "sha256": "0" * 64, "kind": "acquisition_receipt"}
+        index = self.source(".analysis/inputs.json", json.dumps({"inputs": [old]}).encode())
+        row = {**old, "bytes": 2, "sha256": analysis.sha(source)}
+        publication = {"owner": "tools/families.py", "receipt": name, "reason": "Verified supplemental source",
+                       "verification": {"source_membership": True}}
+        analysis.index_files([row], publication=publication)
+        recorded = json.loads(index.read_bytes())
+        change = recorded["source_publications"][0]["changes"][0]
+        self.assertEqual(change["previous"], old)
+        self.assertEqual(change["current"], row)
+        self.assertEqual(recorded["source_publications"][0]["reason"], publication["reason"])
+        before = index.read_bytes()
+        source.write_bytes(b"changed after receipt")
+        with self.assertRaisesRegex(ValueError, "byte identity differs"):
+            analysis.index_files([row], publication=publication)
+        self.assertEqual(index.read_bytes(), before)
+
+    def frontend_publication(self):
+        endpoint = "https://apps.razer.com/test/"
+        rows = []
+        for filename, raw in (("index.html", b'<script src="main.js"></script>'),
+                              ("asset-manifest.json", b'{"files":{"main":"main.js"},"entrypoints":["main.js"]}'),
+                              ("main.js", b"/* inert synthetic source */")):
+            path = self.source(".analysis/inputs/frontend/test/raw/" + filename, raw)
+            rows.append({"path": analysis.rel(path), "bytes": len(raw), "sha256": analysis.sha(path),
+                         "url": endpoint + ("" if filename == "index.html" else filename),
+                         "acquired_at_utc": "synthetic", "http_status": 200})
+        rows.append({"url": endpoint + "main.js.map", "http_status": 404, "error": "synthetic missing debug map"})
+        receipt = {"schema_version": 1, "entry_url": endpoint, "files": rows,
+                   "stability": [{"url": row["url"], "before_sha256": row["sha256"],
+                                  "after_sha256": row["sha256"], "unchanged": True} for row in rows[:2]],
+                   "source_current_during_acquisition": True, "declared_references_fetched": False,
+                   "edges": [{"from": endpoint + "main.js", "to": endpoint + "main.js.map", "kind": "source-map"}]}
+        path = self.source(".analysis/inputs/frontend/test/acquisition.json", json.dumps(receipt).encode())
+        index = self.source(".analysis/inputs.json", b'{"inputs": []}')
+        return path, receipt, index
+
+    def test_frontend_publication_indexes_complete_receipt_preserves_failures_and_checks_stability(self):
+        path, receipt, index = self.frontend_publication()
+        before = path.read_bytes()
+        with patch.object(analysis.urllib.request, "urlopen", side_effect=AssertionError("Static reconciliation must not download")):
+            result = families.publish_frontend_acquisition(path)
+        self.assertEqual(path.read_bytes(), before)
+        self.assertEqual(len(json.loads(index.read_bytes())["inputs"]), 4)
+        self.assertFalse(result["declared_references_fetched"])
+        self.assertEqual(result["reference_gaps"]["declared_source_maps_missing"], 1)
+        self.assertTrue(result["all_retained_bytes_verified"])
+        receipt["stability"][0]["after_sha256"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "stability claim differs"):
+            families.publish_frontend_acquisition(path, receipt)
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_frontend_publication_rejects_any_changed_original_before_republishing_receipt(self):
+        path, receipt, index = self.frontend_publication()
+        before = path.read_bytes()
+        (self.root / receipt["files"][2]["path"]).write_bytes(b"changed")
+        with self.assertRaisesRegex(ValueError, "byte identity differs"):
+            families.publish_frontend_acquisition(path, receipt)
+        self.assertEqual(path.read_bytes(), before)
+        self.assertEqual(json.loads(index.read_bytes())["inputs"], [])
+
+    def frontend_revalidation_publication(self):
+        path, receipt, index = self.frontend_publication()
+        original = receipt["files"][2]
+        response = self.source(".analysis/inputs/frontend/test/official-byte-revalidation/main.js",
+                               (self.root / original["path"]).read_bytes())
+        attempt = {**{key: original[key] for key in ("bytes", "sha256", "url", "acquired_at_utc")},
+                   "path": analysis.rel(response), "final_url": original["url"],
+                   "status": 200, "http_status": 200, "matches_retained": True}
+        original["current_http_revalidation"] = {"attempts": [dict(attempt), dict(attempt)]}
+        path.write_text(json.dumps(receipt), encoding="utf-8")
+        return path, receipt, index, response
+
+    def test_frontend_publication_indexes_verified_revalidation_alias_once_with_its_source(self):
+        path, receipt, index, response = self.frontend_revalidation_publication()
+        before = path.read_bytes()
+        with patch.object(analysis.urllib.request, "urlopen", side_effect=AssertionError("Static reconciliation must not download")):
+            families.publish_frontend_acquisition(path)
+        self.assertEqual(path.read_bytes(), before)
+        published = json.loads(index.read_bytes())
+        self.assertEqual(len(published["inputs"]), 5)
+        aliases = [row for row in published["inputs"] if row.get("revalidation_of")]
+        self.assertEqual(len(aliases), 1)
+        self.assertEqual(aliases[0]["path"], analysis.rel(response))
+        self.assertEqual(aliases[0]["revalidation_of"], receipt["files"][2]["path"])
+        self.assertEqual(aliases[0]["acquisition_receipt"], analysis.rel(path))
+        self.assertTrue(published["source_publications"][0]["verification"]["all_retained_bytes_verified"])
+        self.assertEqual(published["source_publications"][0]["verification"]["retained_http_response_aliases"], 1)
+
+    def test_frontend_publication_rejects_missing_or_changed_revalidation_bytes_before_any_publication(self):
+        for mutation in ("changed", "missing"):
+            with self.subTest(mutation=mutation):
+                path, receipt, index, response = self.frontend_revalidation_publication()
+                before = path.read_bytes()
+                response.write_bytes(b"changed") if mutation == "changed" else response.unlink()
+                with self.assertRaises((ValueError, FileNotFoundError)):
+                    families.publish_frontend_acquisition(path, receipt)
+                self.assertEqual(path.read_bytes(), before)
+                self.assertEqual(json.loads(index.read_bytes())["inputs"], [])
+
+    def test_frontend_publication_rejects_unverified_revalidation_claims_without_rewriting_evidence(self):
+        for field, value in (("url", "https://other.invalid/main.js"),
+                             ("final_url", "https://other.invalid/main.js"),
+                             ("status", 404), ("http_status", 404),
+                             ("matches_retained", False), ("sha256", "0" * 64),
+                             ("bytes", 1), ("path", None), ("acquired_at_utc", None)):
+            with self.subTest(field=field):
+                path, receipt, index, _ = self.frontend_revalidation_publication()
+                receipt["files"][2]["current_http_revalidation"]["attempts"][0][field] = value
+                before = path.read_bytes()
+                with self.assertRaisesRegex(ValueError, "response does not verify"):
+                    families.publish_frontend_acquisition(path, receipt)
+                self.assertEqual(path.read_bytes(), before)
+                self.assertEqual(json.loads(index.read_bytes())["inputs"], [])
+
+    def test_frontend_publication_rejects_single_or_foreign_response_owner(self):
+        for mutation in ("single", "foreign", "original"):
+            with self.subTest(mutation=mutation):
+                path, receipt, index, _ = self.frontend_revalidation_publication()
+                row = receipt["files"][2]
+                attempts = row["current_http_revalidation"]["attempts"]
+                if mutation == "single":
+                    attempts.pop()
+                elif mutation == "original":
+                    attempts[0]["path"] = row["path"]
+                else:
+                    foreign = self.source(".analysis/inputs/frontend/other/response.js",
+                                          (self.root / row["path"]).read_bytes())
+                    attempts[0]["path"] = analysis.rel(foreign)
+                before = path.read_bytes()
+                with self.assertRaisesRegex(ValueError, "two retained official responses|outside its acquisition owner"):
+                    families.publish_frontend_acquisition(path, receipt)
+                self.assertEqual(path.read_bytes(), before)
+                self.assertEqual(json.loads(index.read_bytes())["inputs"], [])
+
+    def test_reference_audit_indexes_full_tree_and_preserves_adaptations(self):
+        folder = ".analysis/references/test"
+        commit = "f" * 40
+        raw_files = {"Cargo.toml": b'[workspace]\nmembers=[]\n', "src/inert.rs": b"// inert reference bytes\n"}
+        entries = []
+        for name, raw in raw_files.items():
+            self.source(folder + "/" + name, raw)
+            blob = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
+            entries.append(f"100644 blob {blob} {len(raw)}\t{name}".encode())
+        receipt = self.source(folder + "/acquisition.json", json.dumps({"url": "https://github.com/owner/test",
+            "commit": commit, "adaptations": [{"scope": "architecture only"}]}).encode())
+        index = self.source(".analysis/inputs.json", b'{"inputs": []}')
+        def run(command, **kwargs):
+            if command == ["git", "--version"]:
+                return argparse.Namespace(stdout="git synthetic static fixture")
+            operation = command[3]
+            if operation == "rev-parse" and command[4] == "--show-toplevel":
+                return argparse.Namespace(stdout=str(self.root / folder).encode())
+            return argparse.Namespace(stdout={"rev-parse": commit.encode(), "diff": b"", "ls-tree": b"\0".join(entries) + b"\0"}[operation])
+        with patch.object(analysis.subprocess, "run", side_effect=run), redirect_stdout(io.StringIO()):
+            result = analysis.audit_reference(argparse.Namespace(directory=folder, commit=commit,
+                check_upstream=False, restore_original_bytes=False))
+        self.assertEqual(result["adaptations"], [{"scope": "architecture only"}])
+        self.assertEqual(len(result["files"]), 2)
+        self.assertEqual(len(json.loads(index.read_bytes())["inputs"]), 3)
+        self.assertEqual(json.loads(receipt.read_bytes())["adaptations"], result["adaptations"])
+        with patch.object(analysis.subprocess, "run", side_effect=AssertionError("Detached snapshot must not invoke Git")), redirect_stdout(io.StringIO()):
+            retained = analysis.audit_reference(argparse.Namespace(directory=folder, commit=commit,
+                check_upstream=False, restore_original_bytes=False, retained_snapshot=True))
+        self.assertEqual(retained["audited_at_utc"], result["audited_at_utc"])
+        self.assertFalse(retained["retained_snapshot_verification"]["upstream_rechecked"])
+        (self.root / folder / "src/inert.rs").write_bytes(b"changed bytes")
+        with self.assertRaisesRegex(ValueError, "byte identity differs"):
+            analysis.audit_reference(argparse.Namespace(directory=folder, commit=commit,
+                check_upstream=False, restore_original_bytes=False, retained_snapshot=True))
 
     def test_historical_and_outside_paths_are_never_read(self):
         graph = evidence.EvidenceGraph()
@@ -1438,6 +1830,120 @@ class NativeSupplementTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "range is invalid"):
                 analysis.native_pointer_targets(bytes(raw), 0x2020, count)
 
+    def test_function_reanalysis_keeps_exact_boundaries_and_reviewed_type_evidence(self):
+        capture = {"functions": [{"rva": "0x1000", "address": "0x140001000"}]}
+        declaration = "void __fastcall recovered(void *a1, void *a2);"
+        result = analysis.native_function_selection(bytes(self.fixture()), capture, [0x1000],
+            ["0x1000=" + declaration], "Complete assembly reads RCX and RDX; no stack argument reads")
+        self.assertEqual(result["mode"], "retained_function_reanalysis")
+        self.assertEqual(result["targets"][0]["file_offset"], 0x200)
+        self.assertEqual(result["type_recoveries"][0]["declaration"], declaration)
+        self.assertIn("no stack argument", result["type_recoveries"][0]["assembly_evidence"])
+
+    def test_function_reanalysis_rejects_interior_entries_data_and_unreviewed_types(self):
+        capture = {"functions": [{"rva": "0x1000", "address": "0x140001000"},
+                                 {"rva": "0x2000", "address": "0x140002000"}]}
+        for selected, specifications, note, message in [
+                ([0x1001], [], None, "exact function boundary"),
+                ([0x2000], [], None, "not in executable"),
+                ([0x1000, 0x1000], [], None, "unique, bounded"),
+                ([0x1000], ["0x1000=void recovered();"], None, "evidence note"),
+                ([0x1000], ["0x2000=void recovered();"], "assembly", "explicitly selected"),
+                ([0x1000], ["0x1000=void recovered();"] * 2, "assembly", "unique explicitly")]:
+            with self.subTest(selected=selected, specifications=specifications):
+                with self.assertRaisesRegex(ValueError, message):
+                    analysis.native_function_selection(bytes(self.fixture()), capture, selected, specifications, note)
+
+    def reanalysis_fixture(self, root):
+        raw = bytes(self.fixture())
+        digest = hashlib.sha256(raw).hexdigest()
+        original = root / ".analysis/inputs/native/fixture.dll"
+        result = root / ".analysis/results/native" / digest
+        supplemental = result / "supplements/selected"
+
+        def write(path, data):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(json.dumps(data).encode())
+            return {"path": path.relative_to(root).as_posix(), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+
+        original.parent.mkdir(parents=True)
+        original.write_bytes(raw)
+        body = {"address": "0x140001000", "rva": "0x1000", "end": "0x140001005",
+                "chunks": [{"start": "0x140001000", "end": "0x140001005", "raw_hex": raw[0x200:0x205].hex()}],
+                "assembly": [{"address": "0x140001000", "bytes": raw[0x200:0x205].hex()}],
+                "xrefs_to_entry": [], "pseudocode": None}
+        baseline = write(result / "functions/1000.json", body)
+        baseline.update(path="functions/1000.json", rva="0x1000", address="0x140001000")
+        capture = {"input": original.relative_to(root).as_posix(), "input_bytes": len(raw), "input_sha256": digest,
+                   "functions": [baseline], "failures": [{"stage": "1000:hexrays", "error": "call analysis -12"}]}
+        capture_ref = write(result / "capture.json", capture)
+        selection = analysis.native_function_selection(raw, capture, [0x1000])
+        body["pseudocode"] = {"lines": [{"line": 0, "text": "void recovered() {}"}], "locals": []}
+        recovered = write(supplemental / "functions/1000.json", body)
+        recovered.update(path="functions/1000.json", rva="0x1000", address="0x140001000",
+                         assembly_captured=True, pseudocode_captured=True)
+        source_database = {"path": ".work/private.i64", "sha256": "a" * 64}
+        tool = {"path": "tools/ida/supplement.py", "sha256": "b" * 64}
+        supplement = {"input_sha256": digest, "base_capture": capture_ref, "capture_complete": True,
+                      "all_pseudocode_captured": True, "failures": [], "database_integrity": {"verified": True},
+                      "base_capture_unchanged": True, "base_database_unchanged": True, "target_execution": False,
+                      "capture_tool": tool, "function_selection": selection, "functions": [recovered],
+                      "type_recoveries": [], "source_database": source_database,
+                      "ida_version": "synthetic", "hexrays_version": "synthetic"}
+        write(supplemental / "capture.json", supplement)
+        write(supplemental / "session.json", {"passed": True, "exit_code": 0, "capture_tool": tool})
+        write(supplemental / "plan.json", {"function_selection": selection, "base_capture": capture_ref,
+                                          "source_database": source_database})
+        return result, supplemental, capture, supplement, body, write
+
+    def test_reanalysis_resolves_only_exact_verified_hexrays_failure_and_preserves_history(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            result, _, capture, _, _, _ = self.reanalysis_fixture(Path(directory))
+            resolved = analysis.native_reanalysis_resolution(result)
+            self.assertFalse(resolved["verification_failures"])
+            self.assertFalse(resolved["remaining_failures"])
+            self.assertEqual(resolved["resolved_failures"][0]["original_failure"], capture["failures"][0])
+            self.assertEqual(set(resolved["complete_functions"]), {"0x1000"})
+            self.assertEqual(json.loads((result / "capture.json").read_bytes()), capture)
+
+    def test_reanalysis_changed_or_incomplete_evidence_does_not_hide_original_failure(self):
+        for issue in ["changed_original", "changed_base", "changed_body", "incomplete_locals", "changed_instruction",
+                      "failed_session", "unverified_database", "unselected_boundary", "unapplied_type"]:
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                with patch.object(analysis, "ROOT", root):
+                    result, supplemental, capture, supplement, body, write = self.reanalysis_fixture(root)
+                    if issue == "changed_original":
+                        (root / capture["input"]).write_bytes(b"changed original")
+                    elif issue == "changed_base":
+                        (result / "capture.json").write_bytes((result / "capture.json").read_bytes() + b" ")
+                    elif issue == "changed_body":
+                        (supplemental / "functions/1000.json").write_bytes(b"changed function")
+                    elif issue in {"incomplete_locals", "changed_instruction"}:
+                        if issue == "incomplete_locals":
+                            del body["pseudocode"]["locals"]
+                        else:
+                            body["assembly"][0]["bytes"] = "90"
+                        ref = write(supplemental / "functions/1000.json", body)
+                        supplement["functions"][0]["sha256"] = ref["sha256"]
+                        write(supplemental / "capture.json", supplement)
+                    elif issue == "failed_session":
+                        write(supplemental / "session.json", {"passed": False, "exit_code": 1,
+                                                              "capture_tool": supplement["capture_tool"]})
+                    elif issue == "unverified_database":
+                        supplement["database_integrity"]["verified"] = False
+                        write(supplemental / "capture.json", supplement)
+                    elif issue == "unselected_boundary":
+                        supplement["functions"] = []
+                        write(supplemental / "capture.json", supplement)
+                    else:
+                        supplement["type_recoveries"] = [{"rva": "0x1000", "applied_type": "invented"}]
+                        write(supplemental / "capture.json", supplement)
+                    resolved = analysis.native_reanalysis_resolution(result)
+                    self.assertTrue(resolved["verification_failures"])
+                    self.assertEqual(resolved["remaining_failures"], capture["failures"])
+                    self.assertFalse(resolved["resolved_failures"])
+
 
 class FrontendAcquisitionTests(unittest.TestCase):
     def test_chunk_capture_reuses_only_exact_input_analyzer_and_complete_output_bytes(self):
@@ -2119,6 +2625,21 @@ class LocaleKeysTests(unittest.TestCase):
 
 
 class JavascriptBindingTests(unittest.TestCase):
+    def test_repeated_index_preserves_shadowing_and_rejects_invalid_references(self):
+        sys.path.insert(0, str(analysis.ROOT / "tools/analyzers/python-static"))
+        from tree_sitter import Language, Parser
+        import tree_sitter_javascript
+        raw = b'const child="outer";function f(child){inside(child)}outside(child)'
+        tree = Parser(Language(tree_sitter_javascript.language())).parse(raw)
+        bindings = evidence.JavascriptBindings(raw, tree)
+        self.assertEqual(bindings.resolve("child", raw.index(b"inside"))["resolution"], "parameter_requires_caller_analysis")
+        outer = bindings.resolve("child", raw.index(b"outside"))
+        self.assertEqual(outer["body"], 'child="outer"')
+        self.assertEqual(outer, evidence.javascript_binding(raw, tree, "child", raw.index(b"outside")))
+        for offset in (-1, len(raw)):
+            with self.assertRaises(ValueError):
+                bindings.resolve("child", offset)
+
     def test_profile_root_report_id_numeric_keys_are_literal_data(self):
         import families
         self.assertEqual(
@@ -2159,10 +2680,142 @@ class JavascriptBindingTests(unittest.TestCase):
         self.assertEqual(self.binding(raw, "data", b'outside(data)')["body"], 'data="outer"')
 
 
+class GamepadLightingTreeTests(unittest.TestCase):
+    def tree(self, raw):
+        sys.path.insert(0, str(analysis.ROOT / "tools/analyzers/python-static"))
+        from tree_sitter import Language, Parser
+        import tree_sitter_javascript
+        tree = Parser(Language(tree_sitter_javascript.language())).parse(raw)
+        source = {"path": ".analysis/inputs/fixture/main.js", "bytes": len(raw),
+                  "sha256": hashlib.sha256(raw).hexdigest()}
+        bodies = {}
+        def keep(node):
+            digest = hashlib.sha256(node.text).hexdigest()
+            bodies[digest] = node.text.decode()
+            return {"byte_start": node.start_byte, "byte_end": node.end_byte, "body_sha256": digest}
+        result = families.gamepad_lighting_component_tree(raw, tree, source,
+            families.keyboard_source_modules(raw.decode()), keep)
+        return result, bodies
+
+    def test_tabs_iframe_wrappers_and_conditional_effects_keep_complete_owners(self):
+        raw = (b'(()=>{const Static=()=>R.jsx("div",{}),Wave=()=>R.jsx("svg",{});'
+               b'class Effects{renderEffect(){let picked;switch(this.id){case 1:picked=Static;break;'
+               b'case 2:picked=Wave}return function(Component,props){return R.jsx(Component,props)}(picked,{})}}'
+               b'class Root{render(){return (0,R.jsx)(Effects,{})}}'
+               b'const Connected=connect(e=>({lightingEffectState:e.controllerLightingEffectReducer}))(Root);'
+               b'const tabs=[{renderComponent:()=>(0,R.jsx)(Connected,{})}];'
+               b'class Frame{render(){return (0,R.jsx)(Connected,{isIframe:!0})}}})()')
+        result, bodies = self.tree(raw)
+        self.assertTrue(result["product_tab_lighting_present"])
+        self.assertEqual(len(result["product_tab_mounts"]), 1)
+        self.assertEqual(len(result["iframe_mounts"]), 1)
+        complete = [bodies[row["body_sha256"]] for row in result["components"]]
+        self.assertTrue(any(value.startswith("class Root") for value in complete))
+        self.assertTrue(any(value.startswith("class Effects") for value in complete))
+        self.assertTrue(any(value.startswith("Static=") for value in complete))
+        self.assertTrue(any(value.startswith("Wave=") for value in complete))
+        self.assertTrue(any(edge["kind"] == "immediate_parameter" for edge in result["edges"]))
+        for row in result["components"]:
+            self.assertEqual(raw[row["byte_start"]:row["byte_end"]].decode(), bodies[row["body_sha256"]])
+
+    def test_bundled_iframe_component_does_not_prove_product_tab_mount(self):
+        raw = (b'(()=>{const Other=()=>R.jsx("div",{}),Root=()=>R.jsx(Other,{});'
+               b'const Connected=connect(e=>({lightingEffectState:e.controllerLightingEffectReducer}))(Root);'
+               b'class Frame{render(){return (0,R.jsx)(Connected,{isIframe:!0})}}})()')
+        result, _ = self.tree(raw)
+        self.assertFalse(result["product_tab_lighting_present"])
+        self.assertEqual(result["product_tab_mounts"], [])
+        self.assertTrue(result["iframe_mounts"])
+
+
 class FrontendDeploymentTests(unittest.TestCase):
     setUp = EvidenceTests.setUp
     tearDown = EvidenceTests.tearDown
     source = EvidenceTests.source
+
+    def test_host_capture_module_resolution_uses_verified_asar_input_and_real_command_root(self):
+        original_path = self.source(".analysis/inputs/host-current/asar/archive/electron/common.js", b"complete source")
+        original = families.identity(original_path)
+        output = self.source(".analysis/results/host-current/javascript/modules/common.js", b"complete parsed source")
+        provenance = self.source(".analysis/results/host-current/javascript/modules/provenance.json", json.dumps({
+            "modules": {"common.js": {"input": str(original_path.resolve()), "ranges": [[0, 15]], "extraction": "heuristic"}}}).encode())
+        capture = {"original_inputs": [original], "outputs": [families.identity(output), families.identity(provenance)],
+            "application_js_inputs": 1, "integration_dependency_js_inputs": 0, "target_execution": False,
+            "commands": [{"stage": "unpack", "exit_code": 0, "argv": [original["path"]]}]}
+        resolved = families.source_capture_modules(capture, original)
+        self.assertEqual(len(resolved), 1)
+        self.assertEqual(resolved[0]["original_ranges"], [[0, 15]])
+        other = {**original, "path": ".analysis/inputs/frontend/elsewhere/common.js"}
+        with self.assertRaisesRegex(ValueError, "outside its retained input root"):
+            families.source_capture_modules({**capture, "original_inputs": [other]}, other)
+        output.write_bytes(b"damaged complete output")
+        with self.assertRaisesRegex(ValueError, "differs from its receipt"):
+            families.source_capture_modules(capture, original)
+
+    def test_receiver_manifest_records_primary_failure_and_fallback_without_repeating_requests(self):
+        receipt = self.source(".analysis/inputs/frontend/accessories-mw-164-current/acquisition.json",
+                              b'{"files":[]}')
+        root = receipt.parent
+        fallback = self.source(str((root / "raw/manifest.json").relative_to(analysis.ROOT)).replace("\\", "/"),
+            b'{"productId":164,"vendorId":5426,"rzDeviceConfig":{"claimInterface":0}}')
+        primary_url = "https://apps.razer.com/synapse/products/164/mw/lighting-manifests/DeviceManifest_164_0.json"
+        fallback_url = "https://apps.razer.com/synapse/lighting-engine/manifest/DeviceManifest_164_0.json"
+        attempts = [{"url": primary_url, "error": "HTTP Error 404"},
+                    {"url": fallback_url, "http_status": 200, **families.identity(fallback)}]
+        def publication(path, data, **kwargs):
+            analysis.save(path, data)
+        with patch.object(analysis, "download", side_effect=attempts) as fetch, \
+                patch.object(families, "publish_frontend_acquisition", side_effect=publication):
+            result = families.receiver_lighting_manifest_sources(164, acquire=True)
+            self.assertEqual(fetch.call_count, 2)
+        self.assertEqual(result["actual_attempts"], attempts)
+        self.assertEqual(result["complete_manifest"]["rzDeviceConfig"]["claimInterface"], 0)
+        with patch.object(analysis, "download", side_effect=AssertionError("cache must be reused")):
+            self.assertEqual(families.receiver_lighting_manifest_sources(164)["original"], attempts[1])
+        fallback.write_bytes(b"another product")
+        with self.assertRaisesRegex(ValueError, "identity differs"):
+            families.receiver_lighting_manifest_sources(164)
+
+    def test_middleware_audit_uses_mounted_mw_capture_and_preserves_query_sections(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parent / "analyzers/python-static"))
+        name = "gamepad-mw-2636-current"
+        base = "https://apps.razer.com/synapse/products/2636/mw/"
+        files = []
+        for filename, raw in (("index.html", b'<script src="main.current.js"></script>'),
+                              ("main.current.js", b"current()"), ("child.js", b"child()")):
+            path = self.source(f".analysis/inputs/frontend/{name}/raw/{filename}", raw)
+            files.append({"url": base + filename, **families.identity(path)})
+        acquisition = {"entry_url": base + "index.html", "files": files,
+            "source_current_during_acquisition": True, "declared_references_fetched": False,
+            "edges": [{"from": base + "main.current.js", "to": base + "child.js", "kind": "js-literal"}],
+            "unresolved": [{"kind": "source-map", "url": base + "main.js.map"}]}
+        self.source(f".analysis/inputs/frontend/{name}/acquisition.json", json.dumps(acquisition).encode())
+        tool = self.source("tools/analyzers/wakaru-1.14.0/wakaru.exe", b"inert synthetic analyzer")
+        outputs = []
+        for filename in ("main.current.js", "child.js"):
+            output = self.source(f".analysis/results/frontend/{name}/modules/{filename}", b"complete inert fixture")
+            outputs.append(families.identity(output))
+        capture = {"input": f".analysis/inputs/frontend/{name}", "original_inputs": files[1:],
+            "original_js_inputs": [row["path"] for row in files[1:]], "outputs": outputs,
+            "tool": {"version": "1.14.0", "sha256": analysis.sha(tool)}, "commands": []}
+        self.source(f".analysis/results/frontend/{name}/analysis.json", json.dumps(capture).encode())
+        report = self.source(".analysis/results/frontend/gamepad-mw-audit.json", b'{"queries":{"retained":{"products":[]}}}')
+        args = argparse.Namespace(family="gamepad", function="mw", product=[2636], query=None)
+        maintainer = self.source("tools/families.py", b"inert synthetic maintainer")
+        with redirect_stdout(io.StringIO()), patch.object(families, "__file__", str(maintainer)):
+            families.audit_family_function(args)
+        result = json.loads(report.read_bytes())
+        row = result["products"][0]
+        self.assertEqual(row["failures"], [])
+        self.assertTrue(row["mounted_main"]["path"].endswith("main.current.js"))
+        self.assertEqual(len(row["original_inputs"]), 2)
+        self.assertEqual(row["complete_capture"]["outputs_verified"], 2)
+        self.assertIn("retained", result["queries"])
+        self.assertEqual(row["source_set"]["unresolved_acquisition"], acquisition["unresolved"])
+        self.source(files[1]["path"], b"changed")
+        with redirect_stdout(io.StringIO()), patch.object(families, "__file__", str(maintainer)):
+            families.audit_family_function(args)
+        self.assertTrue(json.loads(report.read_bytes())["products"][0]["failures"])
 
     def fixture(self, entry_text, manifests=None, scripts=None):
         base = "https://apps.razer.com/synapse/products/190/ui/"
@@ -2323,6 +2976,82 @@ class HostLocalAuditTests(unittest.TestCase):
             self.audit.retain_class_field("ambiguous", ambiguous, "register")
         self.assertEqual(self.audit.final_snapshot(), [])
 
+    def test_browser_input_gate_retains_sender_owners_without_inventing_dom_suppression(self):
+        common = ('const ie=(e,o)=>{return(i,s)=>{'
+                  'if(o&&!B.noBrowserInputHandlerView.includes(e.webContents.id)){'
+                  'if("number"==typeof e.id){const o=pe(e.id);'
+                  'if(o?.windowId===e.id&&B.noBrowserInputHandlerView.includes(o.webContents?.id))return}'
+                  'runHostShortcut(s)}else console.log("handleBeforeInput ~ blocked")}};'
+                  'class BrowserUtil{static registerNoBrowserInputHandler(e){if(e?.sender?.id){const o=e.sender.id;'
+                  'B.noBrowserInputHandlerView.includes(o)||B.noBrowserInputHandlerView.push(o)}}'
+                  'static unRegisterNoBrowserInputHandler(e){if(e?.sender?.id){const o=e.sender.id;'
+                  'B.noBrowserInputHandlerView=B.noBrowserInputHandlerView.filter(e=>e!==o)}}}'
+                  'module.exports={handleBeforeInput:ie};')
+        main = ('switch(message.action){case"registerNoBrowserInputHandler":Ro.registerNoBrowserInputHandler(n);break;'
+                'case"unRegisterNoBrowserInputHandler":Ro.unRegisterNoBrowserInputHandler(n);break;}')
+        for index, (change, expected) in enumerate((
+                (lambda value: value, None),
+                (lambda value: value.replace('runHostShortcut(s)', 's.preventDefault()'), 'suppresses input delivery'),
+                (lambda value: value.replace('const o=e.sender.id', 'const o=e.id'), 'sender identity'),
+                (lambda value: value.replace('if(o&&!B.', 'if(o&&B.'), 'sender/view branches'))):
+            files = {
+                'electron/components/Tab/common.js': change(common),
+                'electron/components/Tab/TabStore.js': 'module.exports=new class{constructor(){this.noBrowserInputHandlerView=[];this.other=[]}};',
+                'electron/main.js': main,
+            }
+            sources = {suffix: {'original': self.original(f'.analysis/inputs/test/gate-{index}/{Path(suffix).name}', body.encode())}
+                       for suffix, body in files.items()}
+            with self.subTest(index=index), patch.object(host, 'verified_host_owners', return_value=sources):
+                if expected:
+                    with self.assertRaisesRegex(ValueError, expected):
+                        host.retain_no_browser_input_handler(self.audit)
+                else:
+                    result = host.retain_no_browser_input_handler(self.audit)
+                    self.assertEqual(len(result['owners']), 7)
+                    handler = self.audit.owners[result['owners']['handle_before_input']]
+                    self.assertTrue(handler['body'].startswith('ie=(e,o)=>'))
+                    self.assertTrue(handler['body'].endswith('blocked")}}'))
+                    self.assertEqual(handler['body'].encode(), self.audit.read(sources['electron/components/Tab/common.js']['original'])[
+                        handler['byte_start']:handler['byte_end']])
+                    self.assertIn('cannot justify disabling', result['semantics'])
+                    self.assertFalse(result['target_execution'])
+                    self.assertEqual(result['runtime_acceptance'], 'unverified')
+
+    def test_callable_member_retains_whole_assignment_field_method_and_object_callback(self):
+        source = self.original(".analysis/inputs/test/members.js",
+            b'class Engine{constructor(){this.start=async value=>{return value}}'
+            b'stop=()=>{return "stopped"};onExit(){return "exit"}}'
+            b'const state={onEnter:function(){return "entered"}};')
+        root = self.audit.tree(source).root_node
+        for name, expected in (("start", 'this.start=async value=>{return value}'),
+                               ("stop", 'stop=()=>{return "stopped"}'),
+                               ("onExit", 'onExit(){return "exit"}'),
+                               ("onEnter", 'onEnter:function(){return "entered"}')):
+            node, owner = self.audit.callable_member(name, source, root, name)
+            self.assertEqual(node.text.decode(), expected)
+            self.assertEqual(self.audit.owners[owner]["body"], expected)
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_callable_member_requires_real_receiver_and_rejects_nested_ambiguity_or_noncallable(self):
+        source = self.original(".analysis/inputs/test/member-owners.js",
+            b'class Outer{constructor(){this.start=()=>1;other.start=()=>2;this.value=3}'
+            b'onExit(){const inner={onExit:()=>4};return inner}}')
+        root = self.audit.tree(source).root_node
+        with self.assertRaisesRegex(ValueError, "absent or ambiguous"):
+            self.audit.callable_member("unscoped_start", source, root, "start")
+        _, actual = self.audit.callable_member("own_start", source, root, "start", receiver="this")
+        self.assertEqual(self.audit.owners[actual]["body"], "this.start=()=>1")
+        for name in ("onExit", "value", "missing"):
+            with self.assertRaisesRegex(ValueError, "absent or ambiguous"):
+                self.audit.callable_member(name, source, root, name)
+        class_body = root.named_children[0].child_by_field_name("body")
+        method = next(node for node in class_body.named_children
+            if node.type == "method_definition" and node.child_by_field_name("name").text == b"onExit")
+        inner = next(node for node in method.child_by_field_name("body").named_children[0].named_children
+            if node.type == "variable_declarator").child_by_field_name("value")
+        _, actual = self.audit.callable_member("nested_callback", source, inner, "onExit")
+        self.assertEqual(self.audit.owners[actual]["body"], "onExit:()=>4")
+
     def test_conflicting_cached_claims_and_changes_to_receipts_remain_failures(self):
         item = self.original(".analysis/inputs/test/a.js", b"const value=1;")
         self.audit.read(item)
@@ -2347,7 +3076,200 @@ class HostLocalAuditTests(unittest.TestCase):
         owner = self.audit.owners[result["complete_factory_owner"]]
         self.assertEqual(owner["body"], '2(e,t,n){n.d(t,{A:()=>v});const v="correct"}')
         self.assertEqual(owner["body"].encode(), self.audit.read(second)[owner["byte_start"]:owner["byte_end"]])
+
+    def test_function_export_getters_and_nested_namespace_are_static_and_unambiguous(self):
+        source = self.original(".analysis/inputs/test/function-getter.js",
+            b'self.chunks.push([[1],{7:function(e,t,n){var nested={};'
+            b'n.d(t,{A:function(){return value}});n.d(nested,{MATS:function(){return mats}});'
+            b'const value="actual",mats=[{id:"source"}]}}]);')
+        result = self.audit.webpack_export("function_getter", [source], 7, "A")
+        self.assertEqual(result["binding"]["body"], 'value="actual"')
+        result = self.audit.webpack_export("nested_getter", [source], 7, "MATS", namespace="nested")
+        self.assertEqual(result["binding"]["body"], 'mats=[{id:"source"}]')
+        with self.assertRaisesRegex(ValueError, "absent, ambiguous or dynamic"):
+            self.audit.webpack_export("wrong_namespace", [source], 7, "MATS")
+        for number, replacement in enumerate((b'function(){sideEffect();return value}', b'function(){return value+1}', b'function(arg){return value}')):
+            changed = self.original(".analysis/inputs/test/dynamic-getter-" + str(number) + ".js",
+                self.audit.read(source).replace(b'function(){return value}', replacement))
+            with self.assertRaises(ValueError):
+                self.audit.webpack_export("dynamic_getter", [changed], 7, "A")
         self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_numeric_word_helpers_use_observed_mask_and_shift_directions(self):
+        def extracted(expression):
+            source = self.original(".analysis/inputs/test/numeric-" + hashlib.sha256(expression).hexdigest() + ".js",
+                b'const helper=e=>' + expression + b';')
+            node = self.audit.tree(source).root_node.named_children[0].named_children[0].child_by_field_name("value")
+            return families.numeric_word_helper(node)
+        self.assertEqual(extracted(b'e>>16&65535'), {"shift": 16, "mask": 65535})
+        self.assertEqual(extracted(b'65535&e'), {"shift": 0, "mask": 65535})
+        self.assertEqual(extracted(b'e>>8&255'), {"shift": 8, "mask": 255})
+        self.assertEqual(extracted(b'255&e'), {"shift": 0, "mask": 255})
+        for changed in (b'e>>16|65535', b'external&255', b'e>>shift&255'):
+            with self.assertRaises(ValueError):
+                extracted(changed)
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_philips_mats_require_the_complete_branch_and_field_schema(self):
+        mats = [{"id": str(i), "surfaceDistance": i + 1, "sqList": list(range(10))} for i in range(16)]
+        families.validate_philips_mats(mats)
+        for change in (lambda x: x.pop(), lambda x: x[1].update(id=x[0]["id"]),
+                       lambda x: x[0].update(extra=True), lambda x: x[0].update(surfaceDistance=True),
+                       lambda x: x[0].update(surfaceDistance=0), lambda x: x[0]["sqList"].pop(),
+                       lambda x: x[0]["sqList"].__setitem__(0, 65536), lambda x: x[0]["sqList"].__setitem__(0, False)):
+            changed = json.loads(json.dumps(mats))
+            change(changed)
+            with self.assertRaisesRegex(ValueError, "complete mat table"):
+                families.validate_philips_mats(changed)
+
+    def test_philips_measurement_requires_complete_literal_timeouts_and_enum_branches(self):
+        selectors = {"SURFACE_CALIBRATION_SAMPLE_RATE": 10, "SURFACE_CALIBRATION_SAMPLE_COUNT": 0,
+            "SURFACE_CALIBRATION_MEASURED_RESULT": 0, "CALIBRATION_INITIATING_TIMEOUT": 35000,
+            "CALIBRATION_GENERAL_TIMEOUT": 60000, "TEMP_MINI_CALIBRATION_TIMEOUT": 5000,
+            "CALIBRATION_CONTROL_TYPE": {"Preset": 1, "Manual": 0, "SmartTracking": 3, "Mini_Calibration": 4},
+            "CALIBRATION_CONTROL_STAGE": {"Start": 0, "Stop": 1},
+            "CALIBRATION_EVENTS_ENUM": {"Start": 0, "End": 1, "Halt": 2, "Reset": 3,
+                "Normal_Speed": 4, "Too_Fast": 5, "Cancelled": 6}}
+        actual = families.philips_measurement_constants(selectors)
+        self.assertEqual(actual["timeouts_ms"], {"initiating": 35000, "general": 60000, "mini_calibrating": 5000})
+        self.assertEqual(actual["control_types"]["Mini_Calibration"], 4)
+        for change in (lambda x: x.pop("SURFACE_CALIBRATION_SAMPLE_COUNT"),
+                       lambda x: x.update(CALIBRATION_GENERAL_TIMEOUT=True),
+                       lambda x: x["CALIBRATION_CONTROL_TYPE"].pop("Mini_Calibration"),
+                       lambda x: x["CALIBRATION_EVENTS_ENUM"].update(Cancelled=False),
+                       lambda x: x["CALIBRATION_CONTROL_STAGE"].update(extra=2)):
+            changed = json.loads(json.dumps(selectors))
+            change(changed)
+            with self.assertRaisesRegex(ValueError, "Philips .* differs or is absent"):
+                families.philips_measurement_constants(changed)
+
+    def test_shortcut_capture_catalog_preserves_optional_fields_and_duplicate_order(self):
+        row = {"name": "Num Lock", "inputID": "KEY_NUMPAD_NUM_LOCK", "type": "Modifiers",
+               "scancode": 69, "virtualKey": "144", "keyCode": "144", "flag": 0}
+        rows = [row, {**row, "type": "Navigation", "flag": 2, "outputFlag": 0, "HID": "83"}]
+        self.assertIs(families.validate_shortcut_capture_keys(rows), rows)
+        self.assertNotIn("outputFlag", rows[0])
+        self.assertEqual(rows[1]["outputFlag"], 0)
+        self.assertEqual([item["type"] for item in rows], ["Modifiers", "Navigation"])
+        for change in (lambda x: x.clear(), lambda x: x[0].pop("keyCode"),
+                       lambda x: x[0].update(scancode=True), lambda x: x[0].update(scancode=-1),
+                       lambda x: x[0].update(flag=2**32), lambda x: x[0].update(outputFlag="2"),
+                       lambda x: x[0].update(analogKeyID=69), lambda x: x[0].update(inputID=None)):
+            changed = json.loads(json.dumps(rows))
+            change(changed)
+            with self.assertRaisesRegex(ValueError, "Mounted recorder key"):
+                families.validate_shortcut_capture_keys(changed)
+
+    def test_preference_calls_have_exact_storage_key_and_complete_callback_owners(self):
+        source = self.original(".analysis/inputs/test/preferences.js",
+            b'const mounted=()=>{const flag=storage.A.get(key);storage.A.set(key,false);other.A.get(key);storage.A.get(otherKey)};')
+        operations = families.preference_storage_operations(self.audit, source, self.audit.tree(source).root_node,
+            namespace="storage.A", key_expression="key", expected_count=2)
+        self.assertEqual([op["method"] for op in operations], ["get", "set"])
+        self.assertEqual([op["value_source"] for op in operations], [None, "false"])
+        self.assertEqual(len({op["callback_owner"] for op in operations}), 1)
+        self.assertEqual(self.audit.owners[operations[0]["callback_owner"]]["body"],
+            '()=>{const flag=storage.A.get(key);storage.A.set(key,false);other.A.get(key);storage.A.get(otherKey)}')
+        for body, message in ((b'const mounted=()=>storage.A.set(key);', "argument count"),
+                              (b'const flag=storage.A.get(key);', "callback owner"),
+                              (b'const mounted=()=>other.A.get(key);', "call count")):
+            changed = self.original(".analysis/inputs/test/preferences-" + hashlib.sha256(body).hexdigest() + ".js", body)
+            with self.assertRaisesRegex(ValueError, message):
+                families.preference_storage_operations(self.audit, changed, self.audit.tree(changed).root_node,
+                    namespace="storage.A", key_expression="key", expected_count=1)
+
+    def test_tracking_headers_follow_actual_methods_and_last_comma_expression(self):
+        names = ("getProximitySensorState", "setProximitySensorState", "getProximitySensorConfiguration",
+                 "setProximitySensorConfiguration", "setProximitySensorLiftSetting")
+        headers = ([3, 11, 131], [3, 11, 3], [10, 11, 133], [10, 11, 5], [4, 11, 11])
+        declarations = ";".join("const h" + str(i) + "=" +
+            ("(new Uint8Array([4,11,139]),new Uint8Array(" + json.dumps(header) + "))" if i == 4 else
+             "new Uint8Array(" + json.dumps(header) + ")") for i, header in enumerate(headers))
+        body = declarations + ";class Effective{" + "".join(
+            name + "(){return device.sendCommand(h" + str(i) + ",name,bytes)}" for i, name in enumerate(names)) + "}"
+        source = self.original(".analysis/inputs/test/tracking.js", body.encode())
+        result, owners = families.tracking_command_headers(self.audit, source, self.audit.tree(source).root_node)
+        self.assertEqual(result, dict(zip(names, headers)))
+        self.assertEqual(len(owners), 5)
+        changed = self.original(".analysis/inputs/test/changed-tracking.js", body.replace('[3, 11, 131]', '[3, 11, 132]').encode())
+        result, _ = families.tracking_command_headers(self.audit, changed, self.audit.tree(changed).root_node)
+        self.assertEqual(result["getProximitySensorState"], [3, 11, 132])
+        duplicated = self.original(".analysis/inputs/test/duplicated-tracking.js", (body +
+            'class Misleading{getProximitySensorState(){return device.sendCommand(h0,name,bytes)}}').encode())
+        with self.assertRaisesRegex(ValueError, "absent or ambiguous"):
+            families.tracking_command_headers(self.audit, duplicated, self.audit.tree(duplicated).root_node)
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_shortcut_defaults_are_scoped_to_the_complete_actual_generator(self):
+        body = (b'self.chunks.push([[1],{42358(e,t,n){class Factory{constructor(){'
+                b'this.defaultTurbos=["misleading"];'
+                b'this.generateDefaultTurbos=()=>{this.defaultTurbos = ["first","second"];return this.defaultTurbos}'
+                b'}}}}]);')
+        source = self.original(".analysis/inputs/test/shortcut-defaults.js", body)
+        module = families.keyboard_source_modules(body.decode())[0]
+        values, owner, builder = families.global_shortcut_default_turbos(self.audit, source, module)
+        self.assertEqual(values, ["first", "second"])
+        self.assertIsNone(builder)
+        self.assertEqual(self.audit.owners[owner]["body"],
+            'this.generateDefaultTurbos=()=>{this.defaultTurbos = ["first","second"];return this.defaultTurbos}')
+        duplicated = self.original(".analysis/inputs/test/duplicate-shortcut-defaults.js",
+            body.replace(b';return this.defaultTurbos', b';this.defaultTurbos=["other"];return this.defaultTurbos'))
+        with self.assertRaisesRegex(ValueError, "list is absent or ambiguous"):
+            families.global_shortcut_default_turbos(self.audit, duplicated,
+                families.keyboard_source_modules(self.audit.read(duplicated).decode())[0])
+        missing = self.original(".analysis/inputs/test/missing-shortcut-defaults.js",
+            body.replace(b'generateDefaultTurbos', b'generateOtherTurbos'))
+        with self.assertRaisesRegex(ValueError, "generator is absent or ambiguous"):
+            families.global_shortcut_default_turbos(self.audit, missing,
+                families.keyboard_source_modules(self.audit.read(missing).decode())[0])
+        mapped = self.original(".analysis/inputs/test/mapped-shortcut-defaults.js", body.replace(
+            b'class Factory', b'const makeRecord=key=>({name:key});class Factory').replace(
+            b'["first","second"];', b'["first","second"].map(key=>makeRecord(key));'))
+        values, _, builder = families.global_shortcut_default_turbos(self.audit, mapped,
+            families.keyboard_source_modules(self.audit.read(mapped).decode())[0])
+        self.assertEqual(values, ["first", "second"])
+        self.assertEqual(builder["body"], 'makeRecord=key=>({name:key})')
+        self.assertEqual(self.audit.owners[builder["owner_id"]]["body"], builder["body"])
+        self.assertEqual(self.audit.final_snapshot(), [])
+
+    def test_shortcut_comparison_checks_all_key_fields_event_order_and_real_branches(self):
+        def copied(value):
+            return json.loads(json.dumps(value))
+        actual = {"keys": [{"inputID": "KEY_A", "scancode": 30, "analogKeyID": 31, "virtualKey": "65"}],
+                  "default_turbo_ids": ["first", "second"],
+                  "turbo_events": {"first": [{"type": "keyboard", "scancode": 30, "flag": 2}, {"type": "delay", "ms": 10}], "second": []},
+                  "constants": {"SINGLE_STATE_INPUT_ID": ["ScrollUp"], "SCROLL_INPUT_ID": ["ScrollUp"], "SCROLL_TURBO_DELAY_MS": 30}}
+        oracle = {"70": copied(actual), "190": copied(actual)}
+        oracle["190"]["constants"]["SINGLE_STATE_INPUT_ID"].append("different-actual-branch")
+        comparisons = families.compare_global_shortcut_mapping(actual, oracle)
+        self.assertTrue(all(comparisons["70"].values()))
+        self.assertFalse(comparisons["190"]["constants"])
+        changed = copied(oracle)
+        changed["190"]["keys"][0]["analogKeyID"] = 32
+        with self.assertRaisesRegex(ValueError, "differs"):
+            families.compare_global_shortcut_mapping(actual, changed)
+        for field in ("keys", "default_turbo_ids", "turbo_events", "constants"):
+            changed = copied(actual)
+            if field == "keys":
+                changed[field][0]["virtualKey"] = "66"
+            elif field == "default_turbo_ids":
+                changed[field].reverse()
+            elif field == "turbo_events":
+                changed[field]["first"].reverse()
+            else:
+                changed[field]["SCROLL_TURBO_DELAY_MS"] = 31
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "differs"):
+                families.compare_global_shortcut_mapping(changed, oracle)
+        with self.assertRaisesRegex(ValueError, "differs"):
+            families.compare_global_shortcut_mapping(actual, {"190": copied(actual)})
+        changed = copied(actual)
+        changed["default_turbo_ids"].append("first")
+        with self.assertRaisesRegex(ValueError, "incomplete or ambiguous"):
+            families.compare_global_shortcut_mapping(changed, oracle)
+        changed = copied(oracle)
+        del changed["190"]["constants"]
+        with self.assertRaisesRegex(ValueError, "incomplete fields"):
+            families.compare_global_shortcut_mapping(actual, changed)
 
     def test_complete_frontend_capture_checks_all_bytes_and_keeps_failed_stages(self):
         original = self.original(".analysis/inputs/frontend/test/raw/a.js",
@@ -2980,7 +3902,8 @@ class RustValidationTests(unittest.TestCase):
 
 def run():
     suite = unittest.defaultTestLoader.loadTestsFromModule(__import__(__name__))
-    for module in ("test_rust_data", "test_typed_tables", "test_windows_installer"):
+    for module in ("test_rust_data", "test_typed_tables", "test_windows_installer", "test_workspace",
+                   "test_resource_scope", "test_asset_release", "test_host"):
         suite.addTests(unittest.defaultTestLoader.loadTestsFromName(module))
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     path = analysis.ROOT / ".analysis/results/tool-verification.json"
@@ -2990,7 +3913,10 @@ def run():
                          for name in ("tools/evidence.py", "tools/test_evidence.py", "tools/analysis.py",
                                       "tools/host.py", "tools/families.py", "tools/workspace.py",
                                       "tools/asset_release.py", "tools/asset-release.json",
-                                      "tools/rust_data.py", "tools/typed_tables.py", "tools/typed-data.json",
+                                      "tools/rust_data.py", "tools/catalog_data.py", "tools/resource_database.py",
+                                      "tools/typed_tables.py", "tools/typed-data.json",
+                                      "tools/test_workspace.py", "tools/resource_scope.py", "tools/test_resource_scope.py",
+                                      "tools/test_asset_release.py", "tools/test_host.py",
                                       "tools/windows_installer.py", "tools/test_rust_data.py",
                                       "tools/test_typed_tables.py", "tools/test_windows_installer.py",
                                       "tools/ida/capture.py", "tools/ida/capture_io.py")],

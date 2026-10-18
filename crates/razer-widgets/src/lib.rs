@@ -31,6 +31,7 @@ pub mod source_alert;
 pub mod source_link;
 #[path = "source_slider.rs"]
 pub mod source_slider;
+pub mod source_text;
 #[path = "source_tooltip/source_tooltip.rs"]
 pub mod source_tooltip;
 #[path = "stepper.rs"]

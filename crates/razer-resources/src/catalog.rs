@@ -250,7 +250,7 @@ mod database_tests {
     #[test]
     fn database_index_retains_duplicate_priority_list_order_and_svg_viewports() {
         let manifest = manifest().unwrap();
-        assert_eq!(manifest.entries.len(), 12012);
+        assert_eq!(manifest.entries.len(), 12014);
         assert_eq!(manifest.files.len(), 7784);
         assert_eq!(manifest.fonts.len(), 14);
         let duplicate = "synapse/mouse-customize/f4f5f13b5ea47e5816fbf38f.png";
@@ -260,7 +260,7 @@ mod database_tests {
             .enumerate()
             .filter_map(|(index, entry)| (entry.key == duplicate).then_some(index))
             .collect::<Vec<_>>();
-        assert_eq!(positions, [1255, 11900]);
+        assert_eq!(positions, [1257, 11902]);
         assert_eq!(manifest.keys[duplicate], positions[0]);
         assert_eq!(
             list("synapse/mouse-customize/")
@@ -346,6 +346,18 @@ mod database_tests {
                 "assets/synapse/products/3886/6844a1a2812121f0-wireless-argb-3886-power-base.svg",
                 1169,
                 "6844a1a2812121f0801780528331a228c879c9c1b60ec11e23e50a267935602d",
+            ),
+            (
+                "synapse/hanbo-warning.svg",
+                "assets/synapse/products/1422/863d6b3c0cb80e81929ab6e647c5aa12a460372dc0602e3a062770d6f46a4c0f.svg",
+                643,
+                "863d6b3c0cb80e81929ab6e647c5aa12a460372dc0602e3a062770d6f46a4c0f",
+            ),
+            (
+                "synapse/keyboard-actuation-spinner.svg",
+                "assets/synapse/shared/products/1990cb6a1e1e856e-alexa-spinner.svg",
+                1166,
+                "1990cb6a1e1e856e53bbe87d05f85802eeeaec9397ce1db31b0510c1e633ee83",
             ),
         ] {
             assert_eq!(identity(key), Some((path, bytes, sha256)));

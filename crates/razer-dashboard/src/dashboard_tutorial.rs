@@ -152,11 +152,13 @@ impl Render for DashboardTutorial {
                             this.complete(cx);
                         }
                     }))
-                    .content(move |_, window, cx| razer_assets::resource_scope({
-                        owner
-                            .update(cx, |this, cx| this.content(window, cx))
-                            .unwrap_or_else(|_| div().into_any_element())
-                    })),
+                    .content(move |_, window, cx| {
+                        razer_assets::resource_scope({
+                            owner
+                                .update(cx, |this, cx| this.content(window, cx))
+                                .unwrap_or_else(|_| div().into_any_element())
+                        })
+                    }),
             )
             .when(ready, |view| {
                 // Source uses position:fixed for this marker, independently of

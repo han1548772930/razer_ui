@@ -95,13 +95,17 @@ fn text_toolbar_button(
         )
         .when(show_tip && visible, |button| {
             button.child(
-                razer_assets::deferred_resource(text_tip_surface(label, opacity).bottom(surface::css(-38.))).priority(105),
+                razer_assets::deferred_resource(
+                    text_tip_surface(label, opacity).bottom(surface::css(-38.)),
+                )
+                .priority(105),
             )
         })
 }
 
 impl Shortcuts {
     fn reset_emoji_mapping(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.emoji_reset_task = None;
         self.emoji_open = false;
         self.emoji_hover = None;
         self.emoji_category = 0;
@@ -115,6 +119,7 @@ impl Shortcuts {
     }
 
     fn emoji_search_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.emoji_reset_task = None;
         self.emoji_category = 0;
         self.emoji_cursor = 0;
         self.emoji_hover = None;
@@ -123,7 +128,7 @@ impl Shortcuts {
         self.emoji_resetting = self.emoji_search.read(cx).value().is_empty();
         self.emoji_scroll.set_offset(point(px(0.), px(0.)));
         if self.emoji_resetting {
-            cx.spawn_in(window, async move |this, cx| {
+            self.emoji_reset_task = Some(cx.spawn_in(window, async move |this, cx| {
                 cx.background_executor()
                     .timer(Duration::from_millis(200))
                     .await;
@@ -133,8 +138,7 @@ impl Shortcuts {
                         cx.notify();
                     }
                 });
-            })
-            .detach();
+            }));
         }
         cx.notify();
     }
@@ -160,13 +164,20 @@ impl Shortcuts {
             return vec![];
         }
         let data = &source_shortcuts().emoji;
-        let allowed = |emoji: &str| !data.excluded_without_windows_10.iter().any(|excluded| excluded == emoji);
+        let allowed = |emoji: &str| {
+            !data
+                .excluded_without_windows_10
+                .iter()
+                .any(|excluded| excluded == emoji)
+        };
         let query = self.emoji_search.read(cx).value().to_lowercase();
         if !query.is_empty() {
             return vec![
                 data.search
                     .iter()
-                    .filter(|item| item.name().to_lowercase().contains(&query) && allowed(item.emoji()))
+                    .filter(|item| {
+                        item.name().to_lowercase().contains(&query) && allowed(item.emoji())
+                    })
                     .map(|item| item.emoji().to_owned())
                     .collect(),
             ];

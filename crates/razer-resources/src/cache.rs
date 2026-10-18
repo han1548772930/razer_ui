@@ -1,12 +1,12 @@
 //! Content-verified installation cache; all callers run on resource workers.
 use crate::catalog::{ResourceFile, safe_relative};
 use anyhow::{Context as _, ensure};
+use razer_resource_db::StagedResource;
 use sha2::{Digest, Sha256};
 use std::{
-    fs::{self, File, OpenOptions},
-    io::{Read, Write},
+    fs::{self, File},
+    io::Read,
     path::{Path, PathBuf},
-    sync::atomic::{AtomicU64, Ordering},
 };
 
 pub(crate) struct Cache {
@@ -58,7 +58,12 @@ impl Cache {
         Ok(Some(bytes))
     }
 
-    pub(crate) fn publish(&self, file: &ResourceFile, bytes: &[u8]) -> anyhow::Result<()> {
+    pub(crate) fn publish<Permit>(
+        &self,
+        file: &ResourceFile,
+        bytes: &[u8],
+        authorize_commit: impl FnOnce() -> anyhow::Result<Permit>,
+    ) -> anyhow::Result<()> {
         ensure!(
             verified(file, bytes),
             "Downloaded resource length or SHA-256 differs"
@@ -68,79 +73,39 @@ impl Cache {
         fs::create_dir_all(path.parent().context("Cache file has no directory")?)
             .context("Cannot create the installation resource cache")?;
         reject_links(&self.root, &path)?;
-        static SEQUENCE: AtomicU64 = AtomicU64::new(0);
-        let temporary = path.with_extension(format!(
-            "partial-{}-{}",
-            std::process::id(),
-            SEQUENCE.fetch_add(1, Ordering::Relaxed)
-        ));
-        let (temporary, mut output) = TemporaryFile::create(temporary)
+        let staged = StagedResource::write(&path, bytes)
             .context("Cannot create the resource cache staging file")?;
         let result = (|| -> anyhow::Result<()> {
-            output.write_all(bytes)?;
-            output.sync_all()?;
-            drop(output);
             // A previous valid cache entry wins; a corrupt entry is replaced only now.
             if path.exists() {
                 if self.read(file)?.is_some() {
                     return Ok(());
                 }
             }
-            atomic_replace(&temporary.path, &path)?;
-            Ok(())
+            // The service holds its commit permit through the final rename.
+            // Staging, synchronization and old-cache validation happen before it.
+            let permit = authorize_commit()?;
+            let published = staged.publish();
+            drop(permit);
+            self.resolve_publication(file, published)
         })();
         result.context("Cannot publish the verified installation resource")
     }
-}
 
-/// Cleans only a staging path this process successfully created exclusively.
-struct TemporaryFile {
-    path: PathBuf,
-}
-
-impl TemporaryFile {
-    fn create(path: PathBuf) -> std::io::Result<(Self, File)> {
-        let output = OpenOptions::new()
-            .create_new(true)
-            .write(true)
-            .open(&path)?;
-        Ok((Self { path }, output))
-    }
-}
-
-impl Drop for TemporaryFile {
-    fn drop(&mut self) {
-        let _ = fs::remove_file(&self.path);
-    }
-}
-
-#[cfg(windows)]
-fn atomic_replace(source: &Path, target: &Path) -> std::io::Result<()> {
-    use std::os::windows::ffi::OsStrExt as _;
-    use windows_sys::Win32::Storage::FileSystem::{
-        MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH, MoveFileExW,
-    };
-    let source: Vec<u16> = source.as_os_str().encode_wide().chain(Some(0)).collect();
-    let target: Vec<u16> = target.as_os_str().encode_wide().chain(Some(0)).collect();
-    // SAFETY: Both buffers are live, terminated paths in the same cache directory.
-    // Replacement preserves any existing entry until the verified file is published.
-    if unsafe {
-        MoveFileExW(
-            source.as_ptr(),
-            target.as_ptr(),
-            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
-        )
-    } == 0
-    {
-        Err(std::io::Error::last_os_error())
-    } else {
+    fn resolve_publication(
+        &self,
+        file: &ResourceFile,
+        published: std::io::Result<()>,
+    ) -> anyhow::Result<()> {
+        if let Err(error) = published {
+            // Another owner may have published these same immutable bytes.
+            // A failed replacement is acceptable only after verifying that result.
+            if !matches!(self.read(file), Ok(Some(_))) {
+                return Err(error.into());
+            }
+        }
         Ok(())
     }
-}
-
-#[cfg(not(windows))]
-fn atomic_replace(source: &Path, target: &Path) -> std::io::Result<()> {
-    fs::rename(source, target)
 }
 
 pub(crate) fn verified(file: &ResourceFile, bytes: &[u8]) -> bool {

@@ -7,12 +7,38 @@ use razer_ipc::{ServiceClient, ServiceRequest};
 use razer_pages::features::mouse_products::MouseScrollRequested;
 use serde_json::Value;
 
-pub(super) fn merge_profile(
-    mut saved: Device,
+fn unique_route<'a>(
+    observations: &'a [razer_discovery::discovery::ObservedDevice],
+    device: &Device,
+) -> Option<&'a razer_discovery::discovery::ObservedDevice> {
+    let mut routes = observations
+        .iter()
+        .filter(|route| route.matches(device) && direct::mouse_scroll::available(route));
+    let route = routes.next()?;
+    routes.next().is_none().then_some(route)
+}
+
+#[cfg(test)]
+fn merge_profile(
+    saved: Device,
     captured: &Device,
     source_profile: &Value,
     changes: &[ScrollChange],
 ) -> anyhow::Result<Device> {
+    merge_profile_events(saved, captured, source_profile, changes, 1)
+}
+
+fn merge_profile_events(
+    mut saved: Device,
+    captured: &Device,
+    source_profile: &Value,
+    changes: &[ScrollChange],
+    source_events: u8,
+) -> anyhow::Result<Device> {
+    anyhow::ensure!(
+        (1..=5).contains(&source_events),
+        "Invalid scroll source event count"
+    );
     anyhow::ensure!(
         source_profile.is_object()
             && source_profile
@@ -94,9 +120,13 @@ pub(super) fn merge_profile(
                 .ok_or_else(|| anyhow::anyhow!("Scroll source version is not an unsigned integer"))
         })
         .transpose()?;
-    root["version"] = serde_json::json!(razer_device::mapping_submission::next_source_version(
-        previous
-    )?);
+    let mut version = previous;
+    for _ in 0..source_events {
+        version = Some(razer_device::mapping_submission::next_source_version(
+            version,
+        )?);
+    }
+    root["version"] = serde_json::json!(version);
     Ok(saved)
 }
 
@@ -263,9 +293,64 @@ mod tests {
         assert!(wheel.get("scrollMode").is_none());
         assert_eq!(wheel["smartReelEnabled"], true);
     }
+
+    #[::core::prelude::v1::test]
+    fn restored_profile_persists_one_snapshot_with_each_source_event_version_increment() {
+        let captured = device();
+        let source = json!({"scrollWheel":{"scrollMode":"Tactile","smartReelEnabled":false,
+            "smartReelLevel":4,"accelerationEnabled":true,"accelerationLevel":7}});
+        let changes = [
+            ScrollChange::SmartReel(false),
+            ScrollChange::SmartReelThreshold(4),
+            ScrollChange::VirtualAcceleration(true),
+            ScrollChange::VirtualAccelerationLevel(7),
+            ScrollChange::ModeV2 {
+                selected: razer_device::mouse_scroll::ScrollMode::Tactile,
+                enabled: razer_device::mouse_scroll::EnabledScrollModes::new(7).unwrap(),
+            },
+        ];
+        let mut source = source;
+        source["scrollWheel"]["disabledModes"] = json!([]);
+        let saved =
+            merge_profile_events(captured.clone(), &captured, &source, &changes, 4).unwrap();
+        assert_eq!(
+            saved.source_device_settings.as_ref().unwrap()["version"],
+            11
+        );
+        assert_eq!(
+            saved.profiles[0].source_settings.as_ref().unwrap()["scrollWheel"],
+            source["scrollWheel"]
+        );
+        assert!(merge_profile_events(captured.clone(), &captured, &source, &changes, 0).is_err());
+        assert!(merge_profile_events(captured.clone(), &captured, &source, &changes, 6).is_err());
+    }
 }
 
 impl AppShell {
+    pub(super) fn initialize_mouse_scroll_profiles(&mut self, cx: &mut Context<Self>) {
+        if self.close_requested || self.storage_error.is_some() {
+            return;
+        }
+        for workspace in &self.devices {
+            let device = workspace.read(cx).device(cx);
+            if razer_device::mouse_scroll::capability(device.product_id).is_none() {
+                continue;
+            }
+            let key = unique_route(&self.device_observations, device).map(|route| {
+                format!(
+                    "{}:{}:{:?}:{:?}",
+                    route.container(),
+                    route.physical_product_id(),
+                    route.peer_product_id(),
+                    route.hid_node()
+                )
+            });
+            workspace.update(cx, |workspace, cx| {
+                workspace.initialize_mouse_scroll_profile(key, cx)
+            });
+        }
+    }
+
     pub(super) fn rebase_mouse_scroll_save(
         &self,
         save: &mut PreparedSave,
@@ -283,11 +368,12 @@ impl AppShell {
             .map(|entity| {
                 let saved = entity.read(cx).saved_snapshot(cx);
                 if entity.read(cx).identity(cx) == profile.identity {
-                    merge_profile(
+                    merge_profile_events(
                         saved,
                         &profile.device,
                         request.profile(),
                         &request.submission().changes,
+                        request.source_event_count(),
                     )
                 } else {
                     Ok(saved)
@@ -373,6 +459,7 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         if self.close_requested
+            || !self.devices.contains(&workspace)
             || !workspace
                 .read(cx)
                 .mouse_scroll_request_matches(&request, cx)
@@ -385,23 +472,16 @@ impl AppShell {
         if !request.is_saved() || !request.begin_device() {
             return;
         }
-        let routes: Vec<_> = self
-            .device_observations
-            .iter()
-            .filter(|route| {
-                route.matches(workspace.read(cx).device(cx))
-                    && direct::mouse_scroll::available(route)
-            })
-            .collect();
-        if routes.len() != 1 {
+        let Some(route) =
+            unique_route(&self.device_observations, workspace.read(cx).device(cx)).cloned()
+        else {
             self.status = "滚轮设置已保存；尚无唯一的鼠标或接收器连接，设备未写入。".into();
             workspace.update(cx, |workspace, cx| {
                 workspace.finish_mouse_scroll(&request, cx)
             });
             cx.notify();
             return;
-        }
-        let route = routes[0].clone();
+        };
         let identity = workspace.read(cx).identity(cx);
         let revision = self.discovery_revision;
         self.mouse_scroll_workers += 1;

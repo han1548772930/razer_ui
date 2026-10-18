@@ -101,8 +101,8 @@ fn worker(
     let _ = replies.send(Reply::Stopped);
 }
 impl AppShell {
-    pub(super) fn install_keyboard_indicator_cleanup(&mut self, cx: &mut Context<Self>) {
-        self.subscriptions.push(cx.on_app_quit(|shell, cx| {
+    pub(super) fn install_keyboard_indicator_cleanup(&mut self, _cx: &mut Context<Self>) {
+        self.register_exit_cleanup(|shell, cx| {
             shell.keyboard_indicator.owners.clear();
             let workers = std::mem::take(&mut shell.keyboard_indicator.workers);
             let cleanup = cx.background_executor().spawn(async move {
@@ -113,7 +113,7 @@ impl AppShell {
                 }
             });
             async move { cleanup.await }
-        }));
+        });
     }
     pub(super) fn sync_keyboard_indicator(&mut self, cx: &mut Context<Self>) {
         let candidates = self

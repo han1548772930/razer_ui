@@ -68,13 +68,28 @@ fn breathing_none_swap_two_colors_random_and_colorref_follow_complete_source_con
     assert_eq!(swapped, single);
     assert_eq!(
         single.parameters.color_stops.as_ref().unwrap()[2],
-        stop(50, 0x563412)
+        ColorStop {
+            stop: 50,
+            color: 0x563412
+        }
     );
     let both = make(Some([1, 2, 3]), Some([4, 5, 6]), false);
     assert_eq!(both.parameters.duration, Some(14000));
-    assert_eq!(both.parameters.color_stops.unwrap()[6], stop(75, 0x060504));
+    assert_eq!(
+        both.parameters.color_stops.unwrap()[6],
+        ColorStop {
+            stop: 75,
+            color: 0x060504
+        }
+    );
     let none = make(None, None, false);
-    assert_eq!(none.parameters.color_stops.unwrap()[2], stop(50, NO_COLOR));
+    assert_eq!(
+        none.parameters.color_stops.unwrap()[2],
+        ColorStop {
+            stop: 50,
+            color: 0x6400_0000
+        }
+    );
     let random = make(None, Some([1, 2, 3]), true);
     assert_eq!(random.parameters.mode, Some(1));
     assert_eq!(random.parameters.color_stops, Some(Vec::new()));

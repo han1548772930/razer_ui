@@ -189,30 +189,32 @@ impl MacroPage {
                     this.binding_menu = open.then(|| key.clone());
                     cx.notify();
                 }))
-                .content(move |_, _, _| razer_assets::resource_scope({
-                    let owner = owner.clone();
-                    let key = remove_key.clone();
-                    BaseButton::new("macro-remove-binding")
-                        .w(css(130.))
-                        .px(css(10.))
-                        .py(css(5.))
-                        .bg(Colors::card())
-                        .border_1()
-                        .border_color(Colors::hover())
-                        .text_color(Colors::text())
-                        .text_size(css(14.))
-                        .hover(|style| style.bg(Colors::hover()))
-                        .focus_visible(|style| style.border_color(Colors::accent()))
-                        .child(tr("TEXT_REMOVE_KEY_BIND"))
-                        .on_click(move |_, _, cx| {
-                            let _ = owner.update(cx, |this, cx| {
-                                this.local_bindings.retain(|binding| binding.key() != key);
-                                this.binding_menu = None;
-                                cx.notify();
-                            });
-                        })
-                        .into_any_element()
-                }));
+                .content(move |_, _, _| {
+                    razer_assets::resource_scope({
+                        let owner = owner.clone();
+                        let key = remove_key.clone();
+                        BaseButton::new("macro-remove-binding")
+                            .w(css(130.))
+                            .px(css(10.))
+                            .py(css(5.))
+                            .bg(Colors::card())
+                            .border_1()
+                            .border_color(Colors::hover())
+                            .text_color(Colors::text())
+                            .text_size(css(14.))
+                            .hover(|style| style.bg(Colors::hover()))
+                            .focus_visible(|style| style.border_color(Colors::accent()))
+                            .child(tr("TEXT_REMOVE_KEY_BIND"))
+                            .on_click(move |_, _, cx| {
+                                let _ = owner.update(cx, |this, cx| {
+                                    this.local_bindings.retain(|binding| binding.key() != key);
+                                    this.binding_menu = None;
+                                    cx.notify();
+                                });
+                            })
+                            .into_any_element()
+                    })
+                });
                 let image = resources::dashboard_image(
                     device.product_id,
                     device.edition_id,
@@ -1147,8 +1149,8 @@ impl Render for BindingDialog {
                             .h(unit * 500.),
                     ),
             )
-            .popup(
-                razer_assets::resource_scope(v_flex()
+            .popup(razer_assets::resource_scope(
+                v_flex()
                     .id("macro-binding-dialog")
                     .absolute()
                     .left((viewport.width - width) / 2.)
@@ -1226,8 +1228,8 @@ impl Render for BindingDialog {
                                     self.chooser(cx)
                                 },
                             )),
-                    )),
-            )
+                    ),
+            ))
             .into_any_element()
     }
 }

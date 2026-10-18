@@ -1,5 +1,5 @@
 //! Source local reset documents; no JSON parsing or remote resource is required.
-//! Maintenance input SHA-256: 22d675e2911e19d055810deab6bff80e7bc390de3d1ada4e1db430ffcecfae10
+//! Maintenance input SHA-256: e2a00f15ea1486264c76bcfae8fde8ad7b45553df8acc3fe509cfd7b947ca948
 use crate::receiver_defaults::{
     Brightness, GlobalDocument, ProfileDocument, QuickEffects, ReportIds, ResetDefaults,
     SwitchOffLighting,

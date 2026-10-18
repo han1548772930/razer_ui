@@ -115,7 +115,7 @@ fn dpi_matcher_write_and_storage_failures_do_not_acknowledge() {
 }
 
 #[test]
-fn dpi_matcher_lock_failure_stops_monitoring_and_preserves_error() {
+fn dpi_matcher_lock_failure_stops_monitoring_and_returns_to_source_idle() {
     let mut controller = Controller::default();
     let mut backend = SimulatedBackend {
         fail: Some("lock"),
@@ -123,7 +123,9 @@ fn dpi_matcher_lock_failure_stops_monitoring_and_preserves_error() {
     };
     assert!(controller.command("START", None, &mut backend).is_err());
     assert_eq!(backend.calls, ["read", "start", "lock", "stop"]);
-    assert_eq!(controller.response()["payload"]["state"], "error");
+    // Current 41374 requestingLock.onError targets idle; a transport diagnostic
+    // does not manufacture the source's calibration-error state.
+    assert_eq!(controller.response()["payload"]["state"], "ready");
     assert!(!controller.monitoring);
     assert!(!controller.locked);
 }

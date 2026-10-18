@@ -5,6 +5,9 @@ pub use razer_model::macro_library::*;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MacroLibraryChanged;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MacroLibraryProfileImported;
+
 /// Shared `Entity<MacroLibrary>` content. The shell owns subscriptions and
 /// persistence; a completed write acknowledges only the snapshot it wrote.
 pub struct MacroLibrary {
@@ -13,6 +16,7 @@ pub struct MacroLibrary {
 }
 
 impl EventEmitter<MacroLibraryChanged> for MacroLibrary {}
+impl EventEmitter<MacroLibraryProfileImported> for MacroLibrary {}
 
 impl MacroLibrary {
     pub fn new(mut file: MacroLibraryFile) -> Self {
@@ -49,18 +53,18 @@ impl MacroLibrary {
         self.saved = file;
         cx.notify();
     }
-}
 
-impl MacroLibrary {
-    pub fn import_source_documents(
+    pub fn publish_profile_import(
         &mut self,
-        documents: &[serde_json::Value],
+        import: &razer_model::profile_transfer::ProfileMacroImport,
+        merged: MacroLibraryFile,
         cx: &mut Context<Self>,
-    ) -> Result<(), String> {
-        let mut candidate = self.snapshot();
-        candidate.append_source_documents(documents)?;
-        self.replace(candidate, cx);
-        Ok(())
+    ) {
+        debug_assert!(merged.validate().is_ok());
+        self.live = merged;
+        self.saved = import.candidate().clone();
+        cx.emit(MacroLibraryProfileImported);
+        cx.notify();
     }
 }
 

@@ -6,6 +6,7 @@ use std::{
     io::{BufRead, BufReader, Write},
     process::{Child, Command, Stdio},
     sync::mpsc::{self, Receiver, Sender},
+    thread::{self, JoinHandle},
     time::Duration,
 };
 
@@ -15,6 +16,13 @@ mod job;
 
 pub const FRAME_PREFIX: &str = "RAZER_UI_SERVICE ";
 pub const MAX_FRAME_BYTES: usize = 4 * 1024 * 1024;
+pub mod device_tasks;
+pub mod global_shortcut_capture;
+pub mod macro_recording;
+pub mod mapping_control;
+pub mod mouse_input_monitoring;
+pub mod shortcuts;
+
 /// Serializes owners of the process-wide vendor input redirection lifecycle.
 /// A previous owner's stop/restore must finish before the next owner starts.
 pub static KEY_CAPTURE_LIFECYCLE: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -26,15 +34,129 @@ mod client_tests;
 #[cfg(test)]
 mod controller_trigger_tests;
 #[cfg(test)]
+mod hanbo_cooler_tests;
+#[cfg(test)]
+mod hyperpolling_receiver_tests;
+#[cfg(test)]
 mod mouse_scroll_tests;
 #[cfg(test)]
+mod mouse_tracking_tests;
+#[cfg(test)]
+mod system_monitor_tests;
+#[cfg(test)]
 mod thx_tests;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HanboCoolerObservation {
+    pub node: razer_device::backend::HidNode,
+    pub product_id: u32,
+    pub telemetry: razer_device::hanbo_cooler::Telemetry,
+}
+
+impl HanboCoolerObservation {
+    pub fn validate_for(&self, node: &razer_device::backend::HidNode) -> anyhow::Result<()> {
+        razer_device::hanbo_cooler::validate_node(node, self.product_id)?;
+        anyhow::ensure!(
+            self.node == *node,
+            "Hanbo observation belongs to a different collection"
+        );
+        self.telemetry.validate()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HanboStartupObservation {
+    pub node: razer_device::backend::HidNode,
+    pub product_id: u32,
+    pub reading: razer_device::hanbo_cooler::StartupReading,
+}
+
+impl HanboStartupObservation {
+    pub fn validate_for(
+        &self,
+        node: &razer_device::backend::HidNode,
+        query: razer_device::hanbo_cooler::StartupQuery,
+    ) -> anyhow::Result<()> {
+        razer_device::hanbo_cooler::validate_node(node, self.product_id)?;
+        anyhow::ensure!(
+            self.node == *node,
+            "Hanbo startup observation belongs to a different collection"
+        );
+        anyhow::ensure!(
+            self.reading.query() == query,
+            "Hanbo startup getter response changed"
+        );
+        Ok(())
+    }
+}
 
 /// `operation` is the internal wire tag, so no variant payload may declare a
 /// field named `operation`; payloads carry their own operation instead.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "operation", rename_all = "snake_case")]
 pub enum ServiceRequest {
+    HyperpollingReceiver {
+        target: razer_device::hyperpolling_receiver::Target,
+        command: razer_device::hyperpolling_receiver::Command,
+    },
+    MouseInputMonitoringStart {
+        owner_guid: String,
+    },
+    MouseInputMonitoringPoll {
+        owner_guid: String,
+    },
+    MouseInputMonitoringStop {
+        owner_guid: String,
+    },
+    HidNodeHanboStartupRead {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        query: razer_device::hanbo_cooler::StartupQuery,
+    },
+    SystemMonitorStart {
+        owner_guid: String,
+        container_id: String,
+        product_id: u32,
+    },
+    SystemMonitorPoll {
+        owner_guid: String,
+    },
+    SystemMonitorStop {
+        owner_guid: String,
+    },
+    MouseTrackingStart {
+        operation_id: String,
+        target: razer_device::mouse_tracking::Target,
+        setting: razer_device::mouse_tracking::TrackingSetting,
+    },
+    MouseTrackingPoll {
+        operation_id: String,
+    },
+    MouseTrackingCancel {
+        operation_id: String,
+    },
+    MousePhilipsStart {
+        operation_id: String,
+        target: razer_device::feature_submission::Target,
+        setting: razer_device::mouse_philips::Setting,
+    },
+    MousePhilipsPoll {
+        operation_id: String,
+    },
+    MousePhilipsCancel {
+        operation_id: String,
+    },
+    MousePhilipsMeasurementStart {
+        operation_id: String,
+        target: razer_device::device_reads::DeviceReadTarget,
+        kind: razer_device::mouse_philips::measurement::Kind,
+    },
+    MousePhilipsMeasurementPoll {
+        operation_id: String,
+    },
+    MousePhilipsMeasurementCancel {
+        operation_id: String,
+    },
     SeirenAudioCaptureStart {
         session_id: u64,
         product_id: u32,
@@ -271,6 +393,24 @@ pub enum ServiceRequest {
     CameraCancel {
         operation_id: String,
     },
+    ReceiverLightingApply {
+        operation_id: String,
+        path: String,
+        device_container_id: String,
+        configuration: razer_device::receiver_lighting::Configuration,
+    },
+    ReceiverLightingPoll {
+        operation_id: String,
+    },
+    ReceiverLightingChromaAttributeResult {
+        operation_id: String,
+        worker_id: uuid::Uuid,
+        request_id: u64,
+        receipt: razer_device::receiver_lighting::ChromaAttributeReceipt,
+    },
+    ReceiverLightingStop {
+        operation_id: String,
+    },
     ReceiverBrightnessRead {
         path: String,
         device_container_id: String,
@@ -373,6 +513,11 @@ pub enum ServiceRequest {
         node: razer_device::backend::HidNode,
         product_id: u32,
         command: razer_device::hanbo_cooler::CoolerCommand,
+    },
+    /// The source publishes one sample after its fan and pump getters finish.
+    HidNodeHanboCoolerRead {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
     },
     HidNodeReceiverStatus {
         node: razer_device::backend::HidNode,
@@ -653,11 +798,13 @@ pub enum ServiceRequest {
     },
     StartShortcutCapture,
     StartMappingKeyCapture,
+    StartGlobalShortcutCapture,
     StartKeyboardCalibrationCapture {
         product_id: u32,
         container_id: String,
     },
     MappingKeyCaptureEvents,
+    GlobalShortcutCaptureEvents,
     StopMappingKeyCapture,
     ShortcutCaptureEvents,
     StopShortcutCapture,
@@ -734,10 +881,24 @@ pub enum ServiceRequest {
         vkey_code: u32,
         modifiers: u32,
     },
-    /// Caller supplies the original generateAppEngineMappings result and hash.
-    /// This does not accept an arbitrary UI mapping object.
-    SubmitGlobalShortcutMappings {
-        app_engine: Value,
+    GlobalShortcutStart {
+        owner_guid: String,
+    },
+    GlobalShortcutPublish {
+        owner_guid: String,
+        revision: u64,
+        document: razer_model::shortcuts::CompiledDocument,
+    },
+    GlobalShortcutPoll {
+        owner_guid: String,
+    },
+    GlobalShortcutStop {
+        owner_guid: String,
+    },
+    MappingExecution {
+        owner_guid: String,
+        revision: u64,
+        target: mapping_control::Target,
     },
     ShortcutEvents,
     Shutdown,
@@ -777,17 +938,36 @@ pub struct ResponseEnvelope {
     pub fatal: bool,
 }
 
-/// A single long-lived worker. Drop terminates only this owned child process.
+/// A single long-lived worker and its pipe threads. Construction, requests and
+/// destruction perform blocking I/O and belong to the caller's I/O worker.
 pub struct ServiceClient {
     child: Option<Child>,
     #[cfg(windows)]
     job: Option<job::WorkerJob>,
     requests: Option<Sender<Vec<u8>>>,
     responses: Receiver<anyhow::Result<ResponseEnvelope>>,
+    input_worker: Option<JoinHandle<anyhow::Result<()>>>,
+    output_worker: Option<JoinHandle<anyhow::Result<()>>>,
     timeout: Duration,
     next_id: u64,
     stopped: bool,
-    request_guard: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+    philips_measurement_started: bool,
+    request_guard: Option<RequestGuard>,
+}
+
+enum RequestGuard {
+    Active(std::sync::Arc<std::sync::atomic::AtomicBool>),
+    Canceled(std::sync::Arc<std::sync::atomic::AtomicBool>),
+}
+
+impl RequestGuard {
+    fn canceled(&self) -> bool {
+        use std::sync::atomic::Ordering;
+        match self {
+            Self::Active(signal) => !signal.load(Ordering::Acquire),
+            Self::Canceled(signal) => signal.load(Ordering::Acquire),
+        }
+    }
 }
 
 impl ServiceClient {
@@ -821,73 +1001,105 @@ impl ServiceClient {
             // CREATE_NO_WINDOW: do not expose a console for a background service.
             command.creation_flags(0x0800_0000);
         }
-        let mut child = command.spawn().context("无法启动设备服务子进程")?;
-        #[cfg(windows)]
-        if let Err(error) = job.assign(&child) {
-            return Err(with_cleanup_error(error, terminate_child(child)));
-        }
-        let (Some(mut stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
-            return Err(with_cleanup_error(
-                anyhow::anyhow!("设备服务通信管道不可用"),
-                terminate_child(child),
-            ));
-        };
+        let child = command.spawn().context("无法启动设备服务子进程")?;
         let (requests, pending) = mpsc::channel::<Vec<u8>>();
-        // Writing a pipe can block if startup hangs before the worker reads it.
-        // Keep it off the request thread so recv_timeout covers the full request.
-        if let Err(error) = std::thread::Builder::new()
-            .name("razer-service-input".into())
-            .spawn(move || {
-                while let Ok(frame) = pending.recv() {
-                    if stdin.write_all(&frame).and_then(|_| stdin.flush()).is_err() {
-                        break;
-                    }
-                }
-            })
-        {
-            return Err(with_cleanup_error(
-                anyhow::Error::new(error).context("无法创建设备服务输入线程"),
-                terminate_child(child),
-            ));
-        }
         let (sender, responses) = mpsc::channel();
-        if let Err(error) = std::thread::Builder::new()
-            .name("razer-service-output".into())
-            .spawn(move || {
-                let mut reader = BufReader::new(stdout);
-                forward_responses(&mut reader, sender);
-            })
-        {
-            drop(requests);
-            return Err(with_cleanup_error(
-                anyhow::Error::new(error).context("无法创建设备服务输出线程"),
-                terminate_child(child),
-            ));
-        }
-        Ok(Self {
+        let mut client = Self {
             child: Some(child),
             #[cfg(windows)]
             job: Some(job),
             requests: Some(requests),
             responses,
+            input_worker: None,
+            output_worker: None,
             // First registration can perform initialization, event registration,
             // and registration itself (three bounded native callbacks).
             timeout: Duration::from_secs(15),
             next_id: 1,
             stopped: false,
+            philips_measurement_started: false,
             request_guard: None,
-        })
+        };
+        #[cfg(windows)]
+        if let Err(error) = client
+            .job
+            .as_ref()
+            .expect("owned worker job")
+            .assign(client.child.as_ref().expect("owned worker process"))
+        {
+            return Err(client.stop_after_error(error));
+        }
+        let child = client.child.as_mut().expect("owned worker process");
+        let (Some(stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
+            return Err(client.stop_after_error(anyhow::anyhow!("设备服务通信管道不可用")));
+        };
+        // Writing a pipe can block if startup hangs before the worker reads it.
+        // Keep it off the request thread so recv_timeout covers the full request.
+        client.input_worker = Some(
+            match thread::Builder::new()
+                .name("razer-service-input".into())
+                .spawn(move || forward_requests(stdin, pending))
+            {
+                Ok(worker) => worker,
+                Err(error) => {
+                    return Err(client.stop_after_error(
+                        anyhow::Error::new(error).context("无法创建设备服务输入线程"),
+                    ));
+                }
+            },
+        );
+        client.output_worker = Some(
+            match thread::Builder::new()
+                .name("razer-service-output".into())
+                .spawn(move || {
+                    let mut reader = BufReader::new(stdout);
+                    forward_responses(&mut reader, sender)
+                }) {
+                Ok(worker) => worker,
+                Err(error) => {
+                    return Err(client.stop_after_error(
+                        anyhow::Error::new(error).context("无法创建设备服务输出线程"),
+                    ));
+                }
+            },
+        );
+        Ok(client)
     }
 
+    /// Request admission has closed. Any cleanup failure was returned to its
+    /// caller; unreaped resources remain owned for another cleanup attempt.
     pub fn is_stopped(&self) -> bool {
         self.stopped
+    }
+
+    /// Confirm that the owned process has exited and both pipe workers joined.
+    /// This closes admission without acknowledging native service shutdown or
+    /// any in-flight device write. Unreaped handles remain owned on failure so
+    /// the caller's I/O worker can retry termination.
+    pub fn finish_termination(&mut self) -> anyhow::Result<()> {
+        self.stop()
     }
 
     /// An operation owns this worker exclusively. Invalidating its scope stops
     /// retries and later setters by terminating only this owned process. An
     /// already submitted device command cannot be rolled back by cancellation.
     pub fn set_request_guard(&mut self, guard: std::sync::Arc<std::sync::atomic::AtomicBool>) {
-        self.request_guard = Some(guard);
+        self.request_guard = Some(RequestGuard::Active(guard));
+    }
+
+    /// Observe the operation owner's cancellation flag directly. This shares
+    /// request admission, in-flight termination and cleanup with active guards.
+    pub fn set_cancellation_guard(
+        &mut self,
+        canceled: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    ) {
+        self.request_guard = Some(RequestGuard::Canceled(canceled));
+    }
+
+    fn request_scope_canceled(&self) -> bool {
+        self.request_guard
+            .as_ref()
+            .is_some_and(RequestGuard::canceled)
     }
 
     pub fn request(&mut self, request: ServiceRequest) -> anyhow::Result<Value> {
@@ -895,16 +1107,17 @@ impl ServiceClient {
             bail!("设备服务已停止，请重新连接");
         }
         let shutting_down = matches!(request, ServiceRequest::Shutdown);
-        if !shutting_down
-            && self
-                .request_guard
-                .as_ref()
-                .is_some_and(|guard| !guard.load(std::sync::atomic::Ordering::Acquire))
-        {
+        if !shutting_down && self.request_scope_canceled() {
             return Err(
                 self.stop_after_error(anyhow::anyhow!("设备操作范围已取消，独占服务已关闭"))
             );
         }
+        let _device_task = request
+            .synchronous_device_task()?
+            .map(|scope| {
+                device_tasks::Registry::global().shared(scope, || self.request_scope_canceled())
+            })
+            .transpose()?;
         let starting_recorder = matches!(
             request,
             ServiceRequest::StartMacroRecording
@@ -913,7 +1126,10 @@ impl ServiceClient {
         );
         let controller_triggers = matches!(
             &request,
-            ServiceRequest::ControllerTriggers { .. } | ServiceRequest::ControllerLighting { .. }
+            ServiceRequest::ControllerTriggers { .. }
+                | ServiceRequest::ControllerLighting { .. }
+                | ServiceRequest::ReceiverLightingApply { .. }
+                | ServiceRequest::ReceiverLightingStop { .. }
         );
         let starting_mapping = matches!(
             request,
@@ -924,13 +1140,33 @@ impl ServiceClient {
         let starting_key_capture = matches!(
             request,
             ServiceRequest::StartMappingKeyCapture
+                | ServiceRequest::MouseInputMonitoringStart { .. }
+                | ServiceRequest::StartGlobalShortcutCapture
                 | ServiceRequest::StartKeyboardCalibrationCapture { .. }
         );
+        let publishing_shortcuts = matches!(request, ServiceRequest::GlobalShortcutPublish { .. });
+        let philips_measurement = matches!(
+            request,
+            ServiceRequest::MousePhilipsMeasurementStart { .. }
+                | ServiceRequest::MousePhilipsMeasurementPoll { .. }
+                | ServiceRequest::MousePhilipsMeasurementCancel { .. }
+        );
+        self.philips_measurement_started |= philips_measurement;
         let writing_app_files =
             matches!(&request, ServiceRequest::UserAppFiles { command } if command.mutates_files());
         let writing_device = matches!(
             request,
             ServiceRequest::DeviceWrite { .. }
+                | ServiceRequest::HyperpollingReceiver { command: razer_device::hyperpolling_receiver::Command::SetIndicator { .. }, .. }
+                | ServiceRequest::MouseTrackingStart { .. }
+                | ServiceRequest::MouseTrackingPoll { .. }
+                | ServiceRequest::MouseTrackingCancel { .. }
+                | ServiceRequest::MousePhilipsStart { .. }
+                | ServiceRequest::MousePhilipsPoll { .. }
+                | ServiceRequest::MousePhilipsCancel { .. }
+                | ServiceRequest::MousePhilipsMeasurementStart { .. }
+                | ServiceRequest::MousePhilipsMeasurementPoll { .. }
+                | ServiceRequest::MousePhilipsMeasurementCancel { .. }
                 | ServiceRequest::HidNodeMouseScroll { .. }
                 | ServiceRequest::DeviceMouseScroll { .. }
                 | ServiceRequest::HidNodeSeirenEq { .. }
@@ -976,8 +1212,10 @@ impl ServiceClient {
                 | ServiceRequest::MacroRecorderGlobalState
                 | ServiceRequest::MacroRecorderStorageWrite { .. }
                 | ServiceRequest::StartMappingKeyCapture
+                | ServiceRequest::StartGlobalShortcutCapture
                 | ServiceRequest::StartKeyboardCalibrationCapture { .. }
                 | ServiceRequest::MappingKeyCaptureEvents
+                | ServiceRequest::GlobalShortcutCaptureEvents
                 | ServiceRequest::StopMappingKeyCapture
                 | ServiceRequest::StartShortcutCapture
                 | ServiceRequest::HidNodeWrite { .. }
@@ -1011,6 +1249,10 @@ impl ServiceClient {
         let reading_device = matches!(
             request,
             ServiceRequest::DeviceRead { .. }
+                | ServiceRequest::HyperpollingReceiver { command: razer_device::hyperpolling_receiver::Command::Serial | razer_device::hyperpolling_receiver::Command::Edition | razer_device::hyperpolling_receiver::Command::Indicator, .. }
+                | ServiceRequest::SystemMonitorStart { .. }
+                | ServiceRequest::SystemMonitorPoll { .. }
+                | ServiceRequest::SystemMonitorStop { .. }
                 | ServiceRequest::HidNodeLeviathan {
                     command: razer_device::leviathan::Operation::ReadIo,
                     ..
@@ -1074,6 +1316,8 @@ impl ServiceClient {
                 | ServiceRequest::ForegroundMonitorStop { .. }
                 | ServiceRequest::ForegroundMonitorEvents { .. }
                 | ServiceRequest::HidNodeRead { .. }
+                | ServiceRequest::HidNodeHanboCoolerRead { .. }
+                | ServiceRequest::HidNodeHanboStartupRead { .. }
                 | ServiceRequest::HidNodeMouseReceiverRead { .. }
                 | ServiceRequest::HidNodeMouseIndicatorLed {
                     change: razer_device::mouse_indicator_led::Change::ReadConfiguration
@@ -1113,13 +1357,21 @@ impl ServiceClient {
         // Recorder setup can require initialize/register/callback/start, each
         // with its own bounded native completion. Other queries retain their
         // existing timeout; a timeout still terminates this owned worker.
-        let timeout = if shutting_down {
-            // Recorder stop, mapping restore, callback unregister and two
-            // independent engine shutdowns can each consume CALLBACK_TIMEOUT.
-            Duration::from_secs(25)
+        let timeout = if philips_measurement || (shutting_down && self.philips_measurement_started)
+        {
+            // Measurement registration/release may combine native callbacks
+            // with several bounded 20-second Feature transactions. Cancellation
+            // is its own protocol command and must finish restoration first.
+            Duration::from_secs(180)
+        } else if shutting_down {
+            // Recorder/mapping restoration, monitor thread completion and its
+            // independent launcher callbacks precede the engine shutdowns.
+            Duration::from_secs(45)
         } else if controller_triggers {
             // Eight current getters or four ordered setters retain their source
-            // retry budgets. Scope cancellation still interrupts every 50ms.
+            // retry budgets. Retained receiver lighting can wait for its first
+            // real frame and independent native/Feature cleanup. Scope
+            // cancellation still interrupts every 50ms.
             Duration::from_secs(95)
         } else if starting_key_capture {
             // One initialization plus bounded registration/readiness/redirect
@@ -1131,6 +1383,10 @@ impl ServiceClient {
             Duration::from_secs(40)
         } else if starting_recorder {
             Duration::from_secs(20)
+        } else if publishing_shortcuts {
+            // Four dependency documents and the referencing shortcut document
+            // each retain their own bounded native storage callback.
+            Duration::from_secs(25)
         } else if writing_device || writing_app_files {
             // Retained route: pre-read, setter acknowledgement, then readback.
             // Keyboard brightness has a 20-second service confirmation deadline;
@@ -1150,11 +1406,7 @@ impl ServiceClient {
         } else {
             let started = std::time::Instant::now();
             loop {
-                if self
-                    .request_guard
-                    .as_ref()
-                    .is_some_and(|guard| !guard.load(std::sync::atomic::Ordering::Acquire))
-                {
+                if self.request_scope_canceled() {
                     break Err(anyhow::anyhow!(
                         "设备操作范围已取消；已发送的设置需重新读取确认"
                     ));
@@ -1197,12 +1449,7 @@ impl ServiceClient {
         // Recheck at delivery so that receipt cannot become a current result.
         // Shutdown still runs for an expired scope; cancellation cannot undo an
         // already submitted device command or establish its present state.
-        if !shutting_down
-            && self
-                .request_guard
-                .as_ref()
-                .is_some_and(|guard| !guard.load(std::sync::atomic::Ordering::Acquire))
-        {
+        if !shutting_down && self.request_scope_canceled() {
             return Err(self.stop_after_error(anyhow::anyhow!(
                 "设备操作范围已取消；旧响应未提交，已发送的设置仍可能生效"
             )));
@@ -1219,7 +1466,19 @@ impl ServiceClient {
             bail!("{error}");
         }
         stop?;
-        response.data.context("设备服务返回了空响应")
+        let data = response.data.context("设备服务返回了空响应")?;
+        if shutting_down {
+            #[derive(Deserialize)]
+            struct ShutdownReceipt {
+                stopped: bool,
+            }
+            let receipt: ShutdownReceipt =
+                serde_json::from_value(data.clone()).context("设备服务关闭回执格式无效")?;
+            if !receipt.stopped {
+                bail!("设备服务未确认完成关闭");
+            }
+        }
+        Ok(data)
     }
 
     fn stop_after_error(&mut self, error: anyhow::Error) -> anyhow::Error {
@@ -1229,42 +1488,94 @@ impl ServiceClient {
     fn stop(&mut self) -> anyhow::Result<()> {
         self.requests.take();
         self.stopped = true;
-        let result = self.child.take().map(terminate_child).unwrap_or(Ok(()));
         // Job closure also terminates the worker if explicit kill failed. OS
         // process exit closes this handle even if Rust Drop never gets to run.
+        // Close it before waiting so inherited child pipes cannot outlive it.
         #[cfg(windows)]
         self.job.take();
-        result
+        // If the OS cannot establish process exit, keep the process and pipe
+        // handles with this owner so another cleanup attempt can inspect them.
+        reap_child(&mut self.child)?;
+        // Terminating the process unblocks pipe reads/writes. Every handle stays
+        // owned through its join, including partial startup and request failure.
+        let input = join_pipe(self.input_worker.take(), "输入");
+        let output = join_pipe(self.output_worker.take(), "输出");
+        combine_cleanup([input, output])
+    }
+}
+
+fn forward_requests(mut writer: impl Write, pending: Receiver<Vec<u8>>) -> anyhow::Result<()> {
+    while let Ok(frame) = pending.recv() {
+        writer
+            .write_all(&frame)
+            .and_then(|_| writer.flush())
+            .context("写入设备服务请求失败")?;
+    }
+    Ok(())
+}
+
+fn join_pipe(worker: Option<JoinHandle<anyhow::Result<()>>>, name: &str) -> anyhow::Result<()> {
+    match worker {
+        Some(worker) => worker
+            .join()
+            .map_err(|_| anyhow::anyhow!("设备服务{name}线程异常退出"))?,
+        None => Ok(()),
+    }
+}
+
+fn combine_cleanup<const N: usize>(results: [anyhow::Result<()>; N]) -> anyhow::Result<()> {
+    let errors = results
+        .into_iter()
+        .filter_map(Result::err)
+        .map(|error| format!("{error:#}"))
+        .collect::<Vec<_>>();
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        bail!("{}", errors.join("；"))
     }
 }
 
 /// Unprefixed vendor diagnostics may use a legacy code page. Once the worker
 /// emits our prefix, however, every byte belongs to the owned IPC protocol:
 /// decoding or framing failure is terminal, never a log line to skip.
-fn forward_responses(reader: &mut impl BufRead, sender: Sender<anyhow::Result<ResponseEnvelope>>) {
+fn forward_responses(
+    reader: &mut impl BufRead,
+    sender: Sender<anyhow::Result<ResponseEnvelope>>,
+) -> anyhow::Result<()> {
+    enum Frame {
+        Diagnostic,
+        Response(ResponseEnvelope),
+        Closed,
+    }
     loop {
         let response = (|| {
             let Some(line) = read_frame(reader).context("读取设备服务响应失败，连接已关闭")?
             else {
-                bail!("设备服务输出已关闭");
+                return Ok(Frame::Closed);
             };
             let Some(json) = line.strip_prefix(FRAME_PREFIX.as_bytes()) else {
-                return Ok(None);
+                return Ok(Frame::Diagnostic);
             };
             let response = serde_json::from_slice::<ResponseEnvelope>(json)
                 .context("设备服务响应格式无效，连接已关闭")?;
-            Ok(Some(response))
+            Ok(Frame::Response(response))
         })();
         match response {
-            Ok(None) => continue,
-            Ok(Some(response)) => {
+            Ok(Frame::Closed) => {
+                let _ = sender.send(Err(anyhow::anyhow!("设备服务输出已关闭")));
+                return Ok(());
+            }
+            Ok(Frame::Diagnostic) => continue,
+            Ok(Frame::Response(response)) => {
                 if sender.send(Ok(response)).is_err() {
-                    return;
+                    return Ok(());
                 }
             }
             Err(error) => {
+                let failure = anyhow::anyhow!("{error:#}");
                 let _ = sender.send(Err(error));
-                return;
+                return Err(failure);
             }
         }
     }
@@ -1279,31 +1590,75 @@ fn with_cleanup_error(error: anyhow::Error, cleanup: anyhow::Result<()>) -> anyh
 
 impl Drop for ServiceClient {
     fn drop(&mut self) {
-        if !self.stopped {
-            let _ = self.stop();
+        if let Err(error) = self.stop() {
+            eprintln!("[device service cleanup] {error:#}");
         }
     }
 }
 
-// Terminate only our owned child. `wait` can block in the OS, so even after a
-// successful kill it belongs to a detached reaper, never the request thread.
-fn terminate_child(mut child: Child) -> anyhow::Result<()> {
-    if child.try_wait().ok().flatten().is_some() {
+/// A test seam for owned-process cleanup; tests never launch a helper.
+trait ChildProcess {
+    fn exited(&mut self) -> std::io::Result<bool>;
+    fn terminate(&mut self) -> std::io::Result<()>;
+    fn wait_for_exit(&mut self) -> std::io::Result<()>;
+}
+
+impl ChildProcess for Child {
+    fn exited(&mut self) -> std::io::Result<bool> {
+        self.try_wait().map(|status| status.is_some())
+    }
+
+    fn terminate(&mut self) -> std::io::Result<()> {
+        self.kill()
+    }
+
+    fn wait_for_exit(&mut self) -> std::io::Result<()> {
+        self.wait().map(|_| ())
+    }
+}
+
+// This wait belongs to the same background owner as the request and pipe joins.
+// A successful kill alone does not prove that the child has exited or been reaped.
+fn terminate_child(child: &mut impl ChildProcess) -> anyhow::Result<()> {
+    let observed = child.exited();
+    if matches!(observed, Ok(true)) {
         return Ok(());
     }
-    if let Err(error) = child.kill() {
-        // Exiting between try_wait and kill is an ordinary race.
-        if child.try_wait().ok().flatten().is_none() {
-            return Err(error).context("无法结束设备服务子进程");
+    if let Err(error) = child.terminate() {
+        // A failed kill may mean the child exited between the two operations.
+        // If it is still running or the OS cannot tell, retain ownership and
+        // return the failure instead of waiting indefinitely on a live process.
+        let raced = child.exited();
+        if matches!(raced, Ok(true)) {
+            return Ok(());
         }
-        return Ok(());
+        return combine_cleanup([
+            observed.map(|_| ()).context("查询设备服务子进程状态失败"),
+            Err(anyhow::Error::new(error).context("无法结束设备服务子进程")),
+            raced
+                .map(|_| ())
+                .context("结束失败后查询设备服务子进程状态失败"),
+        ]);
     }
-    std::thread::Builder::new()
-        .name("razer-service-reaper".into())
-        .spawn(move || {
-            let _ = child.wait();
-        })
-        .context("无法创建设备服务回收线程")?;
+    // A successful termination request still needs a completed wait before any
+    // pipe-thread joins or owner destruction can report completion.
+    match child.wait_for_exit() {
+        Ok(()) => Ok(()),
+        Err(error) => {
+            let mut cleanup = anyhow::Error::new(error).context("等待设备服务子进程退出失败");
+            if let Err(error) = observed {
+                cleanup = cleanup.context(format!("查询设备服务子进程状态失败：{error}"));
+            }
+            Err(cleanup)
+        }
+    }
+}
+
+fn reap_child(child: &mut Option<impl ChildProcess>) -> anyhow::Result<()> {
+    if let Some(child) = child.as_mut() {
+        terminate_child(child)?;
+    }
+    child.take();
     Ok(())
 }
 

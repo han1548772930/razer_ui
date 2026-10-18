@@ -1,5 +1,5 @@
 //! Current /synapse/profiles/ module 43: Ba mounts Games (oe) and Devices (Ga).
-//! Current UI/data boundaries are maintained in docs/re/profiles-ui-current.md.
+//! Current UI/data boundaries are maintained in docs/re/architecture.md.
 //! Device workspaces provide local profiles and links; the global game catalog
 //! still requires a real service publisher. Empty observations stay empty.
 use gpui_kit::base::{
@@ -77,9 +77,11 @@ pub struct ProfilesPage {
     search: Entity<InputState>,
     searching: bool,
     add_dialog: Option<Entity<AddGameDialog>>,
+    add_subscription: Option<Subscription>,
     devices: Vec<Entity<ProductWorkspace>>,
     device_subscriptions: Vec<Subscription>,
     device_dialog: Option<Entity<devices::DeviceGamesDialog>>,
+    device_subscription: Option<Subscription>,
     locale: String,
     _subscriptions: Vec<Subscription>,
 }
@@ -112,15 +114,22 @@ impl ProfilesPage {
             search,
             searching: false,
             add_dialog: None,
+            add_subscription: None,
             devices: Vec::new(),
             device_subscriptions: Vec::new(),
             device_dialog: None,
+            device_subscription: None,
             locale: i18n::locale(),
             _subscriptions: subscriptions,
         }
     }
 
-    pub fn set_devices(&mut self, devices: Vec<Entity<ProductWorkspace>>, cx: &mut Context<Self>) {
+    pub fn set_devices(
+        &mut self,
+        devices: Vec<Entity<ProductWorkspace>>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.device_subscriptions = devices
             .iter()
             .map(|device| cx.observe(device, |_, _, cx| cx.notify()))
@@ -128,7 +137,7 @@ impl ProfilesPage {
         self.devices = devices;
         if let Some(dialog) = &self.device_dialog {
             dialog.update(cx, |dialog, cx| {
-                dialog.set_devices(self.devices.clone(), cx)
+                dialog.set_devices(self.devices.clone(), window, cx)
             });
         }
         cx.notify();
@@ -204,17 +213,40 @@ impl ProfilesPage {
             });
         }
     }
+    pub fn dismiss_for_navigation(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.add_subscription = None;
+        if let Some(dialog) = self.add_dialog.take() {
+            dialog.update(cx, |dialog, cx| dialog.close(window, cx));
+        }
+        self.device_subscription = None;
+        if let Some(dialog) = self.device_dialog.take() {
+            dialog.update(cx, |dialog, cx| dialog.close(window, cx));
+        }
+        cx.notify();
+    }
     pub fn refresh(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.add_dialog = None;
-        self.device_dialog = None;
+        self.dismiss_for_navigation(window, cx);
         self.reset_search(window, cx);
         self.focus.focus(window, cx);
         cx.notify();
     }
     fn open_add(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.dismiss_for_navigation(window, cx);
         let dialog = cx.new(|cx| AddGameDialog::new(window, cx));
-        self._subscriptions
-            .push(cx.observe(&dialog, |_, _, cx| cx.notify()));
+        self.add_subscription = Some(cx.subscribe(
+            &dialog,
+            |this, source, _: &AddGameClosed, cx| {
+                if this
+                    .add_dialog
+                    .as_ref()
+                    .is_some_and(|current| current.entity_id() == source.entity_id())
+                {
+                    this.add_subscription = None;
+                    this.add_dialog = None;
+                    cx.notify();
+                }
+            },
+        ));
         self.add_dialog = Some(dialog);
         cx.notify();
     }
@@ -578,6 +610,8 @@ struct AddGameDialog {
     from_device: bool,
     _search_subscription: Subscription,
 }
+struct AddGameClosed;
+impl EventEmitter<AddGameClosed> for AddGameDialog {}
 impl AddGameDialog {
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let focus = cx.focus_handle();
@@ -596,10 +630,14 @@ impl AddGameDialog {
         }
     }
     fn close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.open {
+            return;
+        }
         self.open = false;
         if let Some(focus) = self.return_focus.take() {
             focus.focus(window, cx);
         }
+        cx.emit(AddGameClosed);
         cx.notify();
     }
 }
@@ -723,8 +761,8 @@ impl Render for AddGameDialog {
                     .bottom_0()
                     .bg(cx.theme().title_bar.opacity((128. / 255.) * opacity)),
             )
-            .popup(
-                razer_assets::resource_scope(v_flex()
+            .popup(razer_assets::resource_scope(
+                v_flex()
                     .id("profiles-add-dialog")
                     .absolute()
                     .left((viewport.width - width) / 2.)
@@ -794,8 +832,8 @@ impl Render for AddGameDialog {
                                     .min_h_0()
                                     .scrollable_y(),
                             ),
-                    )),
-            )
+                    ),
+            ))
             .into_any_element()
     }
 }

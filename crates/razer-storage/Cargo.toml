@@ -13,4 +13,5 @@ aes = "=0.8.4"
 roxmltree.workspace = true
 md5.workspace = true
 razer-model.workspace = true
+razer-device.workspace = true
 serde_ignored.workspace = true

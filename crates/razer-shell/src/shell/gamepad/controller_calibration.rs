@@ -143,8 +143,8 @@ fn run(
 }
 
 impl AppShell {
-    pub(super) fn install_controller_calibration_cleanup(&mut self, cx: &mut Context<Self>) {
-        self.subscriptions.push(cx.on_app_quit(|this, cx| {
+    pub(super) fn install_controller_calibration_cleanup(&mut self, _cx: &mut Context<Self>) {
+        self.register_exit_cleanup(|this, cx| {
             let sessions = std::mem::take(&mut this.controller_calibrations);
             let mut retired = std::mem::take(&mut this.controller_calibration_cleanup);
             let stopped = std::mem::take(&mut this.controller_calibration_stop_cleanup);
@@ -160,7 +160,7 @@ impl AppShell {
                 }
             });
             async move { cleanup.await }
-        }));
+        });
     }
 
     pub(super) fn request_controller_calibration(

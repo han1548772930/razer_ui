@@ -502,6 +502,7 @@ fn every_current_factory_selects_physical_report_ids_and_counter_namespace() {
 #[test]
 fn all_nonzero_receiver_interfaces_use_their_selected_sender_prefix() {
     for (pid, interface) in [
+        (241, 3),
         (227, 3),
         (232, 3),
         (234, 3),
@@ -525,9 +526,39 @@ fn all_nonzero_receiver_interfaces_use_their_selected_sender_prefix() {
             crate::receiver_protocol::query_report(cap, cap.transaction_prefix | 3).unwrap();
         assert_eq!(report[0], interface);
     }
-    for pid in [241, 756] {
-        let cap = crate::receiver_capabilities::capability(pid).unwrap();
-        assert_eq!(cap.report_id, 0, "source ordinary/linker sender {pid}");
-        assert_eq!(cap.get_report_id(), 3);
+    let cap = crate::receiver_capabilities::capability(756).unwrap();
+    assert_eq!(cap.report_id, 0, "source ordinary keyboard sender");
+    assert_eq!(cap.get_report_id(), 3);
+    let cap = crate::receiver_capabilities::capability(164).unwrap();
+    assert_eq!(cap.report_id, 0, "source Linker interface zero");
+    assert_eq!(cap.get_report_id(), 0);
+}
+
+#[test]
+fn linker_query_firmware_and_serial_share_the_selected_primary_report_id() {
+    for (product, report_id) in [(164, 0), (241, 3)] {
+        let transport = FramingTransport::default();
+        let cap = crate::receiver_capabilities::capability(product).unwrap();
+        let mut cap = cap.clone();
+        cap.sleep_between_out_ms = 0;
+        cap.sleep_between_out_in_ms = 0;
+        cap.sleep_between_in_ms = 0;
+        // The source serial reader accepts printable bytes within its returned
+        // length; this fixture returns a complete four-byte firmware payload.
+        let serial = crate::receiver_identity::read_serial(&transport, &cap, 224, || Ok(()));
+        assert_eq!(serial.unwrap(), "");
+        assert_eq!(transport.sent.borrow()[0], report_id);
+        assert_eq!(transport.get_ids.borrow().as_slice(), [report_id]);
+        transport.get_ids.borrow_mut().clear();
+        let mut firmware = device_reads::capability(u32::from(product))
+            .unwrap()
+            .clone();
+        firmware.sleep_between_out_ms = 0;
+        firmware.sleep_between_out_in_ms = 0;
+        firmware.sleep_between_in_ms = 0;
+        let value = read_device(&transport, &firmware, &firmware.queries[0], 225, || Ok(()));
+        assert!(matches!(value.unwrap(), DeviceReadValue::Firmware { .. }));
+        assert_eq!(transport.sent.borrow()[0], report_id);
+        assert_eq!(transport.get_ids.borrow().as_slice(), [report_id]);
     }
 }

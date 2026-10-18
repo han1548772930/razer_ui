@@ -289,36 +289,45 @@ impl MacroPage {
                     this.choice_action = if *open { Some(index) } else { None };
                     cx.notify();
                 }))
-                .content(move |_, _, cx| razer_assets::resource_scope({
-                    owner
-                        .update(cx, |_, cx| {
-                            v_flex()
-                                .w(css(160.))
-                                .bg(rgb(0x111111))
-                                .border_1()
-                                .border_color(rgb(0x515151))
-                                .children(editors::MOUSE_ACTION_KEYS.into_iter().enumerate().map(
-                                    |(choice, key)| {
-                                        BaseButton::new(("macro-mouse-option", choice))
-                                            .w_full()
-                                            .h(css(27.))
-                                            .px(css(5.))
-                                            .py_0()
-                                            .justify_start()
-                                            .text_size(css(14.))
-                                            .hover(|s| {
-                                                s.bg(rgb(0x222222)).text_color(rgb(0x44d62c))
-                                            })
-                                            .child(tr(key))
-                                            .on_click(cx.listener(move |this, _, _, cx| {
-                                                this.choose_mouse_action(index, choice as u8, cx);
-                                            }))
-                                    },
-                                ))
-                                .into_any_element()
-                        })
-                        .unwrap_or_else(|_| div().into_any_element())
-                }))
+                .content(move |_, _, cx| {
+                    razer_assets::resource_scope({
+                        owner
+                            .update(cx, |_, cx| {
+                                v_flex()
+                                    .w(css(160.))
+                                    .bg(rgb(0x111111))
+                                    .border_1()
+                                    .border_color(rgb(0x515151))
+                                    .children(
+                                        editors::MOUSE_ACTION_KEYS.into_iter().enumerate().map(
+                                            |(choice, key)| {
+                                                BaseButton::new(("macro-mouse-option", choice))
+                                                    .w_full()
+                                                    .h(css(27.))
+                                                    .px(css(5.))
+                                                    .py_0()
+                                                    .justify_start()
+                                                    .text_size(css(14.))
+                                                    .hover(|s| {
+                                                        s.bg(rgb(0x222222))
+                                                            .text_color(rgb(0x44d62c))
+                                                    })
+                                                    .child(tr(key))
+                                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                                        this.choose_mouse_action(
+                                                            index,
+                                                            choice as u8,
+                                                            cx,
+                                                        );
+                                                    }))
+                                            },
+                                        ),
+                                    )
+                                    .into_any_element()
+                            })
+                            .unwrap_or_else(|_| div().into_any_element())
+                    })
+                })
                 .into_any_element();
         }
         if kind == ActionKind::Loop {
@@ -698,7 +707,10 @@ impl MacroPage {
                             )
                         })
                         .when(self.record_ui.open, |v| {
-                            v.child(razer_assets::deferred_resource(self.record_options(window, cx)).with_priority(99))
+                            v.child(
+                                razer_assets::deferred_resource(self.record_options(window, cx))
+                                    .with_priority(99),
+                            )
                         }),
                 ),
             )

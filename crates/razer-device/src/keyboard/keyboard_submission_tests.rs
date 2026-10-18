@@ -121,6 +121,438 @@ fn sequence() -> impl FnMut() -> anyhow::Result<u8> {
         Ok(value)
     }
 }
+
+#[test]
+fn magnetic_assignments_precede_ordered_analog_batches_and_keep_changed_key_resets() {
+    let mock = Mock {
+        sent: Mutex::new(vec![]),
+        fail_slot: None,
+    };
+    let receipt = submit(
+        &mock,
+        740,
+        GUID,
+        Intent::MappingChanges {
+            assignments: vec![
+                PreparedAssignment::Button(ButtonAssignment {
+                    key_id: 31,
+                    mode: 0,
+                    function_id: 2,
+                    data_size: 2,
+                    data: [0, 4, 0, 0, 0],
+                }),
+                PreparedAssignment::Button(ButtonAssignment {
+                    key_id: 31,
+                    mode: 0,
+                    function_id: 2,
+                    data_size: 2,
+                    data: [0, 5, 0, 0, 0],
+                }),
+            ],
+            points: vec![
+                ActuationPoint {
+                    key_id: 31,
+                    threshold_high: 256,
+                    threshold_low: 19656,
+                },
+                ActuationPoint {
+                    key_id: 31,
+                    threshold_high: 1638,
+                    threshold_low: 3276,
+                },
+            ],
+            keys: vec![RapidTriggerKey {
+                key_id: 31,
+                enabled: 0,
+                up_sensitivity: 1638,
+                down_sensitivity: 3276,
+            }],
+            macro_sync: None,
+            single_key_snap_tap: None,
+        },
+        sequence(),
+        || Ok(()),
+    )
+    .unwrap();
+    assert!(receipt.completed);
+    assert_eq!(receipt.matched_slots, [3]);
+    assert_eq!(
+        receipt
+            .submissions
+            .iter()
+            .map(|step| (step.profile_id, step.command, step.payload.clone()))
+            .collect::<Vec<_>>(),
+        vec![
+            (3, [80, 2, 13], vec![3, 31, 0, 2, 2, 0, 4, 0, 0, 0]),
+            (1, [80, 2, 13], vec![1, 31, 0, 2, 2, 0, 4, 0, 0, 0]),
+            (3, [80, 2, 13], vec![3, 31, 0, 2, 2, 0, 5, 0, 0, 0]),
+            (1, [80, 2, 13], vec![1, 31, 0, 2, 2, 0, 5, 0, 0, 0]),
+            (3, [80, 2, 25], vec![0, 3, 31, 1, 0, 0x4c, 0xc8]),
+            (3, [80, 2, 25], vec![0, 3, 31, 6, 0x66, 0x0c, 0xcc]),
+            (1, [80, 2, 25], vec![0, 1, 31, 1, 0, 0x4c, 0xc8]),
+            (1, [80, 2, 25], vec![0, 1, 31, 6, 0x66, 0x0c, 0xcc]),
+            (3, [80, 2, 26], vec![0, 3, 31, 0, 6, 0x66, 0x0c, 0xcc]),
+            (1, [80, 2, 26], vec![0, 1, 31, 0, 6, 0x66, 0x0c, 0xcc]),
+        ]
+    );
+    assert!(
+        receipt
+            .submissions
+            .iter()
+            .all(|step| { step.attempted && step.acknowledgement == Some(Vec::new()) })
+    );
+    let sent = mock.sent.lock().unwrap();
+    for packet in sent.iter().filter(|packet| packet[7..9] == [2, 13]) {
+        assert_eq!(packet[6], 10);
+    }
+}
+
+#[test]
+fn magnetic_assignment_cancellation_retains_the_attempt_without_inventing_ack() {
+    let mock = Mock {
+        sent: Mutex::new(vec![]),
+        fail_slot: None,
+    };
+    let failure = submit(
+        &mock,
+        746,
+        GUID,
+        Intent::MappingChanges {
+            assignments: vec![PreparedAssignment::Button(ButtonAssignment {
+                key_id: 31,
+                mode: 1,
+                function_id: 0,
+                data_size: 0,
+                data: [0; 5],
+            })],
+            points: vec![],
+            keys: vec![],
+            macro_sync: None,
+            single_key_snap_tap: None,
+        },
+        sequence(),
+        || {
+            ensure!(
+                !mock
+                    .sent
+                    .lock()
+                    .unwrap()
+                    .iter()
+                    .any(|packet| packet[7..9] == [2, 13]),
+                "canceled after actual assignment send"
+            );
+            Ok(())
+        },
+    )
+    .unwrap_err();
+    assert!(!failure.receipt.completed);
+    assert_eq!(failure.receipt.submissions.len(), 1);
+    assert!(failure.receipt.submissions[0].attempted);
+    assert!(failure.receipt.submissions[0].acknowledgement.is_none());
+    assert_eq!(failure.receipt.submissions[0].profile_id, 3);
+}
+
+#[test]
+fn source_select_all_mapping_is_local_and_cannot_claim_a_hardware_receipt() {
+    let message = serde_json::json!({"type":"ON_SET_KEYMAPPING","payload":{"isSelectAll":true,"mappingList":[]}});
+    assert_eq!(
+        intent_with_profile(740, &message, &Value::Null, &Value::Null, 1).unwrap(),
+        Intent::MappingDraftOnly
+    );
+    let mock = Mock {
+        sent: Mutex::new(vec![]),
+        fail_slot: None,
+    };
+    assert!(
+        submit(
+            &mock,
+            740,
+            GUID,
+            Intent::MappingDraftOnly,
+            sequence(),
+            || Ok(())
+        )
+        .is_err()
+    );
+    assert!(mock.sent.lock().unwrap().is_empty());
+}
+
+#[test]
+fn magnetic_bottom_deadzone_uses_current_product_thresholds_and_medium_fallback() {
+    for product in [740, 746] {
+        for (name, raw) in [
+            ("responsive", 3),
+            ("RESPONSIVE", 3),
+            ("Responsive", 3),
+            ("medium", 5),
+            ("stable", 8),
+            ("STABLE", 8),
+            ("other", 5),
+            ("", 5),
+            (" responsive ", 5),
+        ] {
+            let mock = Mock {
+                sent: Mutex::new(vec![]),
+                fail_slot: None,
+            };
+            let receipt = submit(
+                &mock,
+                product,
+                GUID,
+                Intent::BottomDeadzone { value: name.into() },
+                sequence(),
+                || Ok(()),
+            )
+            .unwrap();
+            assert_eq!(
+                receipt
+                    .submissions
+                    .iter()
+                    .map(|step| (step.command, step.payload.clone()))
+                    .collect::<Vec<_>>(),
+                vec![([2, 2, 40], vec![1, raw]), ([2, 2, 40], vec![3, raw])]
+            );
+            assert!(!receipt.intent.publishes_mapping());
+        }
+    }
+}
+
+#[test]
+fn magnetic_gamepad_controls_capture_engine_mode_and_disabled_override_only_persists() {
+    let mut profile = crate::keyboard_magnetic_mapping::default_profile(740).unwrap();
+    profile["guid"] = serde_json::json!(GUID);
+    let disabled = serde_json::json!({"type":"ON_SET_ENABLE_KEYBOARD_KEYS","payload":{"isEnableKeyboardKeys":false}});
+    let (saved, intent) = prepare_local(740, 1, &disabled, &profile, &profile).unwrap();
+    assert_eq!(saved["isEnableKeyboardKeys"], false);
+    assert_eq!(saved["_magneticEnginePreparation"], "gamepad");
+    assert_eq!(intent, Intent::AppEngineOnly);
+    assert!(!intent.requires_device());
+    assert!(intent.publishes_mapping());
+    let override_message = serde_json::json!({"type":"ON_SET_GAMEPAD_OVERRIDE_KEYS","payload":{"isGamepadOverride":false}});
+    let (overridden, intent) = prepare_local(740, 1, &override_message, &saved, &saved).unwrap();
+    assert_eq!(overridden["isGamepadOverride"], false);
+    assert_eq!(overridden["mappings"], profile["mappings"]);
+    assert_eq!(intent, Intent::ProfileDraftOnly);
+    assert!(!intent.publishes_mapping());
+    assert!(!intent.requires_device());
+    let enabled = serde_json::json!({"type":"ON_SET_ENABLE_KEYBOARD_KEYS","payload":{"isEnableKeyboardKeys":true}});
+    let (enabled, _) = prepare_local(740, 1, &enabled, &overridden, &overridden).unwrap();
+    let (_, intent) = prepare_local(740, 1, &override_message, &enabled, &enabled).unwrap();
+    assert_eq!(intent, Intent::AppEngineOnly);
+    let mock = Mock {
+        sent: Mutex::new(vec![]),
+        fail_slot: None,
+    };
+    assert!(submit(&mock, 740, GUID, intent, sequence(), || Ok(())).is_err());
+    assert!(mock.sent.lock().unwrap().is_empty());
+    assert!(prepare_local(742, 1, &disabled, &profile, &profile).is_err());
+}
+
+#[test]
+fn magnetic_interrupt_settings_preserve_dedicated_keys_on_any_and_write_both_families() {
+    let profile = serde_json::json!({"guid":GUID,"mappings":[],"interruptKey":{"isEnabled":false,"interruptionKey":"dedicated","interrupts":["KEY_C"]}});
+    let message = serde_json::json!({"type":"ON_SET_INTERRUPT_KEYS","payload":{"isEnabled":true,"interruptionKey":"dedicated","interrupts":["KEY_A","KEY_D","KEY_A"]}});
+    let (saved, intent) = prepare_local(746, 1, &message, &profile, &profile).unwrap();
+    assert_eq!(
+        saved["interruptKey"]["interrupts"],
+        serde_json::json!(["KEY_A", "KEY_D"])
+    );
+    assert!(!intent.publishes_mapping());
+    let mock = Mock {
+        sent: Mutex::new(vec![]),
+        fail_slot: None,
+    };
+    let receipt = submit(&mock, 746, GUID, intent, sequence(), || Ok(())).unwrap();
+    assert_eq!(
+        receipt
+            .submissions
+            .iter()
+            .map(|step| (step.command, step.payload.clone()))
+            .collect::<Vec<_>>(),
+        vec![
+            ([7, 2, 45], vec![1, 1, 1, 31, 33, 0, 0]),
+            ([7, 2, 45], vec![3, 1, 1, 31, 33, 0, 0]),
+            ([7, 2, 46], vec![1, 1, 1, 31, 33, 0, 0]),
+            ([7, 2, 46], vec![3, 1, 1, 31, 33, 0, 0]),
+        ]
+    );
+    assert!(
+        receipt
+            .submissions
+            .iter()
+            .all(|step| step.attempted && step.acknowledgement == Some(vec![]))
+    );
+    let any = serde_json::json!({"type":"ON_SET_INTERRUPT_KEYS","payload":{"isEnabled":true,"interruptionKey":"any","interrupts":["KEY_ANY"]}});
+    let (any_saved, any_intent) = prepare_local(746, 1, &any, &saved, &saved).unwrap();
+    assert_eq!(
+        any_saved["interruptKey"]["interrupts"],
+        serde_json::json!(["KEY_A", "KEY_D"])
+    );
+    let mock = Mock {
+        sent: Mutex::new(vec![]),
+        fail_slot: None,
+    };
+    let receipt = submit(&mock, 746, GUID, any_intent, sequence(), || Ok(())).unwrap();
+    assert_eq!(receipt.submissions[0].payload, vec![1, 1, 0, 0, 0, 0, 0]);
+    assert!(prepare_local(742, 1, &any, &saved, &saved).is_err());
+}
+
+#[test]
+fn magnetic_interrupt_partial_failure_keeps_independent_mapping_task_and_real_acknowledgements() {
+    let settings = InterruptSettings::parse(
+        &serde_json::json!({"isEnabled":true,"interruptionKey":"dedicated","interrupts":["KEY_A"]}),
+    )
+    .unwrap();
+    let intent = Intent::InterruptKeys {
+        settings,
+        mapping: Some(Box::new(Intent::MappingChanges {
+            assignments: vec![PreparedAssignment::Button(ButtonAssignment {
+                key_id: 31,
+                mode: 0,
+                function_id: 2,
+                data_size: 2,
+                data: [0, 5, 0, 0, 0],
+            })],
+            points: vec![],
+            keys: vec![],
+            macro_sync: None,
+            single_key_snap_tap: None,
+        })),
+    };
+    let mock = Mock {
+        sent: Mutex::new(vec![]),
+        fail_slot: Some(3),
+    };
+    let failure = submit(&mock, 740, GUID, intent, sequence(), || Ok(())).unwrap_err();
+    assert!(!failure.receipt.completed);
+    assert_eq!(failure.receipt.submissions.len(), 2);
+    assert_eq!(failure.receipt.submissions[0].acknowledgement, Some(vec![]));
+    assert!(failure.receipt.submissions[1].attempted);
+    assert!(failure.receipt.submissions[1].acknowledgement.is_none());
+    let mapping = failure.receipt.mapping_followup.as_ref().unwrap();
+    assert!(!mapping.completed);
+    assert_eq!(mapping.submissions[0].command, [80, 2, 13]);
+    assert_eq!(mapping.submissions[0].profile_id, 3);
+    assert!(mapping.submissions[0].attempted);
+    assert!(mapping.submissions[0].acknowledgement.is_none());
+}
+
+#[test]
+fn magnetic_interrupt_cancellation_stops_both_families_and_the_enqueued_mapping() {
+    let settings = InterruptSettings::parse(
+        &serde_json::json!({"isEnabled":true,"interruptionKey":"any","interrupts":["KEY_ANY"]}),
+    )
+    .unwrap();
+    let intent = Intent::InterruptKeys {
+        settings,
+        mapping: Some(Box::new(Intent::MappingChanges {
+            assignments: vec![],
+            points: vec![],
+            keys: vec![],
+            macro_sync: None,
+            single_key_snap_tap: None,
+        })),
+    };
+    let mock = Mock {
+        sent: Mutex::new(vec![]),
+        fail_slot: None,
+    };
+    let failure = submit(&mock, 740, GUID, intent, sequence(), || {
+        anyhow::ensure!(
+            !mock
+                .sent
+                .lock()
+                .unwrap()
+                .iter()
+                .any(|report| report[7..9] == [2, 45]),
+            "canceled"
+        );
+        Ok(())
+    })
+    .unwrap_err();
+    assert_eq!(failure.receipt.submissions.len(), 1);
+    assert!(failure.receipt.submissions[0].attempted);
+    assert!(failure.receipt.submissions[0].acknowledgement.is_none());
+    assert!(failure.receipt.mapping_followup.is_none());
+}
+
+#[test]
+fn magnetic_dks_cleanup_persists_reindexed_keys_and_writes_source_single_key_snap_slots() {
+    let profile = serde_json::json!({"guid":GUID,"mappings":[],"singleKeySnapTap":{"isEnabled":true,"keyList":[
+        {"id":1,"keyMapMake":"KEY_A","keyMapBreak":"KEY_B"},
+        {"id":5,"keyMapMake":"KEY_C","keyMapBreak":"KEY_D"}]}});
+    let message = serde_json::json!({"type":"ON_SET_KEYMAPPING","payload":{"isSelectAll":true,"mappingList":[{
+        "inputID":"KEY_A","inputType":"AnalogInput","isHyperShift":false,"mapping":[
+            {"outputType":"dynamicKeyStrokeGroup","dynamicKeyStrokeGroup":{},"actuationPoint":{"0":7000,"1":256}},
+            {"outputType":"defaultGroup","actuationPoint":{"0":7000,"1":256}}]}]}});
+    let (saved, intent) = prepare_local(740, 1, &message, &profile, &profile).unwrap();
+    assert_eq!(
+        saved["singleKeySnapTap"]["keyList"],
+        serde_json::json!([
+        {"id":1,"keyMapMake":"KEY_C","keyMapBreak":"KEY_D"}])
+    );
+    let Intent::SingleKeySnapTap { settings, global } = &intent else {
+        panic!("source DKS cleanup must retain its hardware task")
+    };
+    assert!(!global);
+    assert_eq!(settings.keys, [[48, 7]]);
+    let mock = Mock {
+        sent: Mutex::new(vec![]),
+        fail_slot: None,
+    };
+    let receipt = submit(&mock, 740, GUID, intent, sequence(), || Ok(())).unwrap();
+    assert!(receipt.completed);
+    assert_eq!(
+        receipt
+            .submissions
+            .iter()
+            .map(|step| (step.command, step.payload.clone()))
+            .collect::<Vec<_>>(),
+        vec![
+            ([11, 2, 44], vec![1, 1, 1, 48, 7, 0, 0, 0, 0, 0, 0]),
+            ([11, 2, 44], vec![3, 1, 1, 48, 7, 0, 0, 0, 0, 0, 0])
+        ]
+    );
+    assert!(
+        receipt
+            .submissions
+            .iter()
+            .all(|step| step.attempted && step.acknowledgement == Some(vec![]))
+    );
+}
+
+#[test]
+fn magnetic_single_key_snap_toggle_uses_global_class_and_retains_partial_failure() {
+    // Current746 MW6737 module34737 ri uses make.analogKeyID and break.HID.
+    // Its module24592 key table gives W analog18 (scan0x11) and S HID22.
+    let profile = serde_json::json!({"guid":GUID,"mappings":[],"singleKeySnapTap":{"isEnabled":false,
+        "keyList":[{"id":1,"keyMapMake":"KEY_W","keyMapBreak":"KEY_S"}]}});
+    let message =
+        serde_json::json!({"type":"ON_TOGGLE_SINGLE_KEY_SNAP_TAP","payload":{"isEnabled":true}});
+    let (saved, intent) = prepare_local(746, 1, &message, &profile, &profile).unwrap();
+    assert_eq!(saved["singleKeySnapTap"]["isEnabled"], true);
+    let mock = Mock {
+        sent: Mutex::new(vec![]),
+        fail_slot: Some(3),
+    };
+    let failure = submit(&mock, 746, GUID, intent, sequence(), || Ok(())).unwrap_err();
+    assert!(!failure.receipt.completed);
+    assert_eq!(failure.receipt.submissions.len(), 2);
+    assert_eq!(
+        failure.receipt.submissions[0].payload,
+        vec![0, 1, 1, 18, 22, 0, 0, 0, 0, 0, 0]
+    );
+    assert_eq!(failure.receipt.submissions[0].acknowledgement, Some(vec![]));
+    assert_eq!(
+        failure.receipt.submissions[1].payload,
+        vec![3, 1, 1, 18, 22, 0, 0, 0, 0, 0, 0]
+    );
+    assert!(failure.receipt.submissions[1].attempted);
+    assert!(failure.receipt.submissions[1].acknowledgement.is_none());
+    assert_eq!(saved["singleKeySnapTap"]["isEnabled"], true);
+    let empty = serde_json::json!({"guid":GUID,"mappings":[],"singleKeySnapTap":{"isEnabled":false,"keyList":[]}});
+    assert!(prepare_local(746, 1, &message, &empty, &empty).is_err());
+}
 #[test]
 fn writes_active_then_only_observed_matching_guid_slot_without_readback() {
     let mock = Mock {

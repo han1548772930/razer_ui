@@ -66,12 +66,12 @@ fn corrupt_truncated_and_wrong_version_bytes_are_never_loaded() {
         root: directory.0.clone(),
     };
     let entry = file("assets/synapse/products/182/icon.svg", b"correct");
-    assert!(cache.publish(&entry, b"incorrect").is_err());
-    cache.publish(&entry, b"correct").unwrap();
+    assert!(cache.publish(&entry, b"incorrect", || Ok(())).is_err());
+    cache.publish(&entry, b"correct", || Ok(())).unwrap();
     assert_eq!(cache.read(&entry).unwrap().unwrap(), b"correct");
     fs::write(cache.path(&entry).unwrap(), b"bad").unwrap();
     assert!(cache.read(&entry).unwrap().is_none());
-    cache.publish(&entry, b"correct").unwrap();
+    cache.publish(&entry, b"correct", || Ok(())).unwrap();
     assert_eq!(cache.read(&entry).unwrap().unwrap(), b"correct");
 }
 
@@ -94,8 +94,10 @@ fn concurrent_cache_repair_keeps_the_complete_verified_result() {
             };
             let entry = entry.clone();
             std::thread::spawn(move || {
-                barrier.wait();
-                cache.publish(&entry, b"complete")
+                cache.publish(&entry, b"complete", || {
+                    barrier.wait();
+                    Ok(())
+                })
             })
         })
         .collect();
@@ -108,19 +110,28 @@ fn concurrent_cache_repair_keeps_the_complete_verified_result() {
 }
 
 #[test]
-fn failed_staging_creation_preserves_the_existing_file() {
+fn failed_replacement_reuses_only_a_complete_verified_concurrent_result() {
     let directory = TemporaryDirectory::new();
-    let path = directory.0.join("occupied.partial");
-    fs::write(&path, b"owned by another publisher").unwrap();
-    assert!(TemporaryFile::create(path.clone()).is_err());
-    assert_eq!(fs::read(path).unwrap(), b"owned by another publisher");
-
-    let path = directory.0.join("owned.partial");
-    let (staging, output) = TemporaryFile::create(path.clone()).unwrap();
-    drop(output);
-    assert!(path.exists());
-    drop(staging);
-    assert!(!path.exists());
+    let cache = Cache {
+        root: directory.0.clone(),
+    };
+    let entry = file("assets/synapse/shared/icon.svg", b"complete");
+    let path = cache.path(&entry).unwrap();
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(&path, b"corrupt").unwrap();
+    let failure = || {
+        std::io::Error::new(
+            std::io::ErrorKind::PermissionDenied,
+            "original replacement error",
+        )
+    };
+    let error = cache
+        .resolve_publication(&entry, Err(failure()))
+        .unwrap_err();
+    assert_eq!(error.to_string(), "original replacement error");
+    fs::write(&path, b"complete").unwrap();
+    cache.resolve_publication(&entry, Err(failure())).unwrap();
+    assert_eq!(cache.read(&entry).unwrap().unwrap(), b"complete");
 }
 
 #[test]
@@ -130,7 +141,7 @@ fn unrelated_products_are_neither_created_nor_requested() {
         root: directory.0.clone(),
     };
     let first = file("assets/synapse/products/182/icon.svg", b"one");
-    cache.publish(&first, b"one").unwrap();
+    cache.publish(&first, b"one", || Ok(())).unwrap();
     assert!(!directory.0.join("synapse/products/214").exists());
     assert_eq!(cache.read(&first).unwrap().unwrap(), b"one");
 }

@@ -65,6 +65,15 @@ impl ObservedDevice {
     pub fn container(&self) -> &str {
         &self.container
     }
+    pub fn device_task_scope(&self) -> anyhow::Result<razer_ipc::device_tasks::Scope> {
+        match self.hid_node() {
+            Some(node) => Ok(razer_ipc::device_tasks::Scope::collection(
+                self.product_id(),
+                node,
+            )),
+            None => razer_ipc::device_tasks::Scope::container(self.product_id(), self.container()),
+        }
+    }
     pub fn physical_product_id(&self) -> u32 {
         self.physical_product_id
     }

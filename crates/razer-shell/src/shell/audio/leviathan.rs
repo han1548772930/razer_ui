@@ -15,6 +15,12 @@ pub(super) struct LeviathanSave {
     identity: String,
     profile_id: String,
 }
+impl LeviathanSave {
+    pub(super) fn owner(&self) -> (&str, WeakEntity<ProductWorkspace>) {
+        (&self.identity, self.workspace.downgrade())
+    }
+}
+
 impl AppShell {
     pub(super) fn request_leviathan(
         &mut self,
@@ -49,17 +55,18 @@ impl AppShell {
                 .collect(),
             cx,
         );
-        self.pending_saves.push_back(PreparedSave {
-            window: window.window_handle(),
+        self.pending_saves.push_back(self.prepare_save(
+            window.window_handle(),
             file,
-            product: Some(ProductSave::Leviathan(LeviathanSave {
+            Some(ProductSave::Leviathan(LeviathanSave {
                 workspace,
                 page,
                 request,
                 identity,
                 profile_id,
             })),
-        });
+            cx,
+        ));
         self.start_pending_save(cx);
     }
     pub(super) fn rebase_leviathan_save(
@@ -119,13 +126,16 @@ impl AppShell {
         succeeded: bool,
         cx: &mut Context<Self>,
     ) {
-        if succeeded && !save.request.writes_device() {
+        let current = self.devices.contains(&save.workspace)
+            && save.workspace.read(cx).identity(cx) == save.identity;
+        if succeeded && current && !save.request.writes_device() {
             save.page.update(cx, |page, cx| {
                 page.finish_leviathan_local(save.request.generation, cx)
             });
             return;
         }
         if !succeeded
+            || !current
             || self.close_requested
             || !save.page.read(cx).leviathan_request_current(&save.request)
         {
@@ -152,7 +162,17 @@ impl AppShell {
         request: LeviathanRequest,
         cx: &mut Context<Self>,
     ) {
-        if self.close_requested || !page.read(cx).leviathan_request_current(&request) {
+        if self.close_requested
+            || !self.devices.contains(&workspace)
+            || !page.read(cx).leviathan_request_current(&request)
+        {
+            page.update(cx, |page, cx| {
+                page.finish_leviathan_task(
+                    request.generation,
+                    Err("声音设备会话已变化，未提交设备操作".into()),
+                    cx,
+                )
+            });
             return;
         }
         let device = workspace.read(cx).device(cx);

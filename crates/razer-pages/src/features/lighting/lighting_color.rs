@@ -13,6 +13,7 @@ use gpui_kit::component::{
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
+use razer_model::preferences::CustomColorEdit;
 use razer_state::{CustomColorSlots, CustomColors};
 use razer_widgets::surface;
 use razer_widgets::theme::PaletteColors;
@@ -34,7 +35,8 @@ pub(super) struct LightingColorPicker {
     disabled: bool,
     allow_none: bool,
     dial_trigger: bool,
-    on_custom_colors_commit: Option<Rc<dyn Fn(&CustomColorSlots, &mut Window, &mut App)>>,
+    custom_colors: Option<CustomColorSlots>,
+    on_custom_color_edit: Option<Rc<dyn Fn(&CustomColorEdit, &mut Window, &mut App)>>,
 }
 impl LightingColorPicker {
     pub(super) fn new(state: &Entity<ColorPickerState>, label: impl Into<SharedString>) -> Self {
@@ -44,7 +46,8 @@ impl LightingColorPicker {
             disabled: false,
             allow_none: true,
             dial_trigger: false,
-            on_custom_colors_commit: None,
+            custom_colors: None,
+            on_custom_color_edit: None,
         }
     }
     pub(super) fn disabled(mut self, disabled: bool) -> Self {
@@ -59,13 +62,18 @@ impl LightingColorPicker {
         self.dial_trigger = dial;
         self
     }
-    /// A source palette Save/Delete submission belongs to the visible owner.
-    /// Observed global palette replacements never invoke this callback.
-    pub(super) fn on_custom_colors_commit(
+    /// A page with a source-owned palette supplies its observed UI slots.
+    pub(super) fn custom_colors(mut self, colors: CustomColorSlots) -> Self {
+        self.custom_colors = Some(colors);
+        self
+    }
+    /// Explicit slot edits keep source records with their profile owner.
+    /// Observed palette replacements never invoke this callback.
+    pub(super) fn on_custom_color_edit(
         mut self,
-        callback: impl Fn(&CustomColorSlots, &mut Window, &mut App) + 'static,
+        callback: impl Fn(&CustomColorEdit, &mut Window, &mut App) + 'static,
     ) -> Self {
-        self.on_custom_colors_commit = Some(Rc::new(callback));
+        self.on_custom_color_edit = Some(Rc::new(callback));
         self
     }
 }
@@ -158,6 +166,7 @@ impl RenderOnce for LightingColorPicker {
                 view.cancel_screen_color(cx);
             }
             view.props = self;
+            view.reconcile_custom_color_selection(cx);
         });
         view
     }
@@ -220,16 +229,10 @@ impl LightingColorView {
                 },
             ),
             cx.observe_global::<CustomColors>(|this, cx| {
-                let colors = cx.global::<CustomColors>().colors();
-                if this
-                    .selected_slot
-                    .is_some_and(|slot| colors[slot] != this.last_value)
-                {
-                    this.selected_slot = colors
-                        .iter()
-                        .position(|color| color.is_some() && *color == this.last_value);
+                if this.props.custom_colors.is_none() {
+                    this.reconcile_custom_color_selection(cx);
+                    cx.notify();
                 }
-                cx.notify();
             }),
             cx.subscribe_in(
                 &brightness,
@@ -298,6 +301,41 @@ fn hex_value(color: [u8; 3]) -> String {
 }
 
 impl LightingColorView {
+    fn custom_colors(&self, cx: &App) -> CustomColorSlots {
+        self.props
+            .custom_colors
+            .unwrap_or_else(|| cx.global::<CustomColors>().colors())
+    }
+
+    fn reconcile_custom_color_selection(&mut self, cx: &App) {
+        let colors = self.custom_colors(cx);
+        if self
+            .selected_slot
+            .is_some_and(|slot| colors[slot] != self.last_value)
+        {
+            self.selected_slot = colors
+                .iter()
+                .position(|color| color.is_some() && *color == self.last_value);
+        }
+    }
+
+    fn commit_custom_colors(
+        &mut self,
+        colors: CustomColorSlots,
+        edit: CustomColorEdit,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.props.custom_colors.is_some() {
+            self.props.custom_colors = Some(colors);
+        } else {
+            CustomColors::replace(colors, cx);
+        }
+        if let Some(commit) = self.props.on_custom_color_edit.clone() {
+            commit(&edit, window, cx);
+        }
+    }
+
     fn receive_screen_color(
         &mut self,
         update: ScreenColorUpdateKind,
@@ -365,7 +403,7 @@ impl LightingColorView {
     }
     fn open_editor(&mut self, requested: usize, window: &mut Window, cx: &mut Context<Self>) {
         self.cancel_screen_color(cx);
-        let slots = cx.global::<CustomColors>().colors();
+        let slots = self.custom_colors(cx);
         let slot = if self.editor_only {
             0
         } else {
@@ -408,12 +446,17 @@ impl LightingColorView {
             cx.notify();
             return;
         }
-        let mut colors = cx.global::<CustomColors>().colors();
+        let mut colors = self.custom_colors(cx);
         colors[slot] = Some(self.draft);
-        CustomColors::replace(colors, cx);
-        if let Some(commit) = self.props.on_custom_colors_commit.clone() {
-            commit(&colors, window, cx);
-        }
+        self.commit_custom_colors(
+            colors,
+            CustomColorEdit::Set {
+                slot,
+                color: self.draft,
+            },
+            window,
+            cx,
+        );
         self.select(Some(self.draft), Some(slot), window, cx);
         // The source's saveColor closes the editor and reopens the palette.
         self.props
@@ -422,13 +465,10 @@ impl LightingColorView {
         cx.notify();
     }
     fn delete_slot(&mut self, slot: usize, window: &mut Window, cx: &mut Context<Self>) {
-        let mut colors = cx.global::<CustomColors>().colors();
+        let mut colors = self.custom_colors(cx);
         colors.copy_within(slot + 1.., slot);
         colors[15] = None;
-        CustomColors::replace(colors, cx);
-        if let Some(commit) = self.props.on_custom_colors_commit.clone() {
-            commit(&colors, window, cx);
-        }
+        self.commit_custom_colors(colors, CustomColorEdit::Delete { slot }, window, cx);
         self.context_slot = None;
         if self.selected_slot == Some(slot) {
             self.select(self.last_value, None, window, cx);
@@ -634,7 +674,7 @@ impl LightingColorView {
     fn render_palette(&self, cx: &mut Context<Self>) -> AnyElement {
         let palette = PaletteColors;
         let current = self.props.state.read(cx).value().map(color_bytes);
-        let colors = cx.global::<CustomColors>().colors();
+        let colors = self.custom_colors(cx);
         let has_preset =
             current.is_some_and(|c| PRESETS.iter().any(|v| color_bytes(rgb(*v).into()) == c));
         v_flex()
@@ -726,7 +766,7 @@ impl LightingColorView {
                                 cx,
                             )
                             .on_click(cx.listener(move |this, _, window, cx| {
-                                if let Some(color) = cx.global::<CustomColors>().colors()[slot] {
+                                if let Some(color) = this.custom_colors(cx)[slot] {
                                     this.select(Some(color), Some(slot), window, cx);
                                 } else {
                                     this.open_editor(slot, window, cx);
@@ -791,7 +831,9 @@ impl LightingColorView {
                                                     },
                                                 )),
                                         );
-                                    menu.content(move |_, _, _| razer_assets::resource_scope(content))
+                                    menu.content(move |_, _, _| {
+                                        razer_assets::resource_scope(content)
+                                    })
                                 }),
                         )
                     })),
@@ -1226,24 +1268,26 @@ impl Render for LightingColorView {
                             self.render_palette(cx)
                         };
                         let editing = self.editing.is_some();
-                        popover.content(move |_, window, cx| razer_assets::resource_scope({
-                            // The secondary picker uses display:none/block;
-                            // only the palette has the .1s opacity transition.
-                            let opacity = if editing {
-                                1.
-                            } else {
-                                gpui_kit::base::motion::Presence::new("palette-fade", true)
-                                    .transition(
-                                        gpui_kit::base::motion::Transition::new(
-                                            std::time::Duration::from_millis(100),
+                        popover.content(move |_, window, cx| {
+                            razer_assets::resource_scope({
+                                // The secondary picker uses display:none/block;
+                                // only the palette has the .1s opacity transition.
+                                let opacity = if editing {
+                                    1.
+                                } else {
+                                    gpui_kit::base::motion::Presence::new("palette-fade", true)
+                                        .transition(
+                                            gpui_kit::base::motion::Transition::new(
+                                                std::time::Duration::from_millis(100),
+                                            )
+                                            .easing(gpui_kit::base::motion::Easing::Ease),
                                         )
-                                        .easing(gpui_kit::base::motion::Easing::Ease),
-                                    )
-                                    .sample(window, cx)
-                                    .progress
-                            };
-                            div().opacity(opacity).child(content)
-                        }))
+                                        .sample(window, cx)
+                                        .progress
+                                };
+                                div().opacity(opacity).child(content)
+                            })
+                        })
                     }),
             )
             .into_any_element()
@@ -1356,9 +1400,7 @@ mod screen_color_tests {
             view.update(cx, |view, cx| {
                 let commits = commits.clone();
                 view.props = super::LightingColorPicker::new(&state, "Color")
-                    .on_custom_colors_commit(move |colors, _, _| {
-                        commits.borrow_mut().push(*colors)
-                    });
+                    .on_custom_color_edit(move |edit, _, _| commits.borrow_mut().push(*edit));
                 view.open_editor(0, window, cx);
             });
             retained = Some((view.clone(), state));

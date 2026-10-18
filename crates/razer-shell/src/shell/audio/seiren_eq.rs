@@ -21,6 +21,14 @@ pub(super) struct SeirenMixerVersionSave {
     version: Option<u64>,
     reply: std::sync::mpsc::Sender<Result<u64, String>>,
 }
+impl SeirenEqSave {
+    pub(super) fn owner(&self) -> (&str, WeakEntity<ProductWorkspace>) {
+        match self {
+            Self::Settings(save) => (&save.identity, save.workspace.downgrade()),
+            Self::MixerVersion(save) => (&save.identity, save.workspace.downgrade()),
+        }
+    }
+}
 impl AppShell {
     pub(super) fn persist_seiren_device_version(
         &mut self,
@@ -49,10 +57,10 @@ impl AppShell {
             cx,
         );
         let identity = workspace.read(cx).identity(cx);
-        self.pending_saves.push_back(PreparedSave {
-            window: window.window_handle(),
+        self.pending_saves.push_back(self.prepare_save(
+            window.window_handle(),
             file,
-            product: Some(ProductSave::SeirenEq(SeirenEqSave::MixerVersion(
+            Some(ProductSave::SeirenEq(SeirenEqSave::MixerVersion(
                 SeirenMixerVersionSave {
                     workspace,
                     request,
@@ -61,7 +69,8 @@ impl AppShell {
                     reply,
                 },
             ))),
-        });
+            cx,
+        ));
         self.start_pending_save(cx);
     }
     pub(super) fn persist_seiren_eq(
@@ -84,6 +93,9 @@ impl AppShell {
             workspace.update(cx, |workspace, cx| {
                 workspace.finish_seiren_eq(&request, None, cx)
             });
+            if self.storage_error.is_some() {
+                self.cancel_pending_exit(cx);
+            }
             cx.notify();
             return;
         }
@@ -107,10 +119,10 @@ impl AppShell {
                 .collect(),
             cx,
         );
-        self.pending_saves.push_back(PreparedSave {
-            window: window.window_handle(),
+        self.pending_saves.push_back(self.prepare_save(
+            window.window_handle(),
             file,
-            product: Some(ProductSave::SeirenEq(SeirenEqSave::Settings(
+            Some(ProductSave::SeirenEq(SeirenEqSave::Settings(
                 SeirenEqSettingsSave {
                     workspace,
                     request,
@@ -118,7 +130,8 @@ impl AppShell {
                     profile,
                 },
             ))),
-        });
+            cx,
+        ));
         self.start_pending_save(cx);
     }
     pub(super) fn rebase_seiren_eq_save(
@@ -268,16 +281,16 @@ impl AppShell {
                     save.version
                         .ok_or_else(|| "Seiren device document has an invalid version".to_owned())
                         .and_then(|version| {
-                            if self.devices.contains(&save.workspace)
-                                && save.workspace.read(cx).identity(cx) == save.identity
-                            {
+                            let current = self.devices.contains(&save.workspace)
+                                && save.workspace.read(cx).identity(cx) == save.identity;
+                            if current {
                                 // A canceled in-flight save can still have reached disk.
                                 // Observe that local version without authorizing native work.
                                 save.workspace.update(cx, |workspace, cx| {
                                     workspace.observe_seiren_document_version(version, cx)
                                 });
                             }
-                            if self.close_requested || !save.request.is_valid() {
+                            if !current || self.close_requested || !save.request.is_valid() {
                                 Err("Seiren mixer owner canceled after local persistence".into())
                             } else {
                                 Ok(version)
@@ -322,6 +335,7 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         if self.close_requested
+            || !self.devices.contains(&workspace)
             || request.change().is_none()
             || !workspace.read(cx).seiren_eq_request_matches(&request, cx)
         {

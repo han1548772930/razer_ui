@@ -1,6 +1,9 @@
 //! Local preferences; saving these does not change the Synapse host.
 use serde::{Deserialize, Serialize};
 
+mod custom_colors;
+pub use custom_colors::{CustomColorEdit, ProfileCustomColors};
+
 /// Source group-item-order and groupsCollapsed, kept outside Settings drafts.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]

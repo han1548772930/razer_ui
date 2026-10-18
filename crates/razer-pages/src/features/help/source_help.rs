@@ -260,6 +260,25 @@ impl SourceHelp {
                 oled_source_clone_failure: false,
             }));
         }
+        self.unmount_page_resources();
+        self.pending_reset = false;
+        self.reset_cooldown = false;
+        self.reset_cooldown_task = None;
+        self.reset_error = None;
+        self.reset_generation = self.reset_generation.wrapping_add(1);
+        self.page_offset = None;
+        self.cancel_audio_resets(cx);
+        cx.notify();
+    }
+
+    pub(in crate::features) fn prepare_receiver_exit(&mut self, cx: &mut Context<Self>) {
+        self.unmount_page_resources();
+        // The shell still owns an accepted serial-profile write. Its reset
+        // generation and page identity survive until that write settles.
+        cx.notify();
+    }
+
+    fn unmount_page_resources(&mut self) {
         self.copy_task = None;
         self.runtime_versions.unmount();
         self.camo.unmount();
@@ -267,16 +286,8 @@ impl SourceHelp {
         self.copied_serial = false;
         self.view_more = false;
         self.inline_reset = false;
-        self.pending_reset = false;
-        self.reset_cooldown = false;
-        self.reset_cooldown_task = None;
-        self.reset_error = None;
         self.confirmation_generation = self.confirmation_generation.wrapping_add(1);
-        self.reset_generation = self.reset_generation.wrapping_add(1);
-        self.page_offset = None;
         self.popup_layout.unmount();
-        self.cancel_audio_resets(cx);
-        cx.notify();
     }
     pub(super) fn new(device: Device, cx: &mut Context<Self>) -> Self {
         Self {
@@ -493,8 +504,8 @@ impl SourceHelp {
                         });
                     }
                 })
-                .footer(
-                    razer_assets::resource_scope(h_flex()
+                .footer(razer_assets::resource_scope(
+                    h_flex()
                         .justify_end()
                         .gap_3()
                         .child(
@@ -571,8 +582,8 @@ impl SourceHelp {
                                         }
                                     }
                                 }),
-                        )),
-                )
+                        ),
+                ))
         });
     }
     pub(super) fn reset_matches(&self, request: HelpResetRequest) -> bool {

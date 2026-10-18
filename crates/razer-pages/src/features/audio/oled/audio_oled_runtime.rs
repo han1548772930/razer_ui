@@ -134,6 +134,14 @@ impl AudioProductWorkspace {
         // Bv's counter effect reads the rendered selection before its raw-value
         // synchronization effects run for the incoming observation.
         let selected_language = self.oled_language_values().2;
+        if let OledRuntimeObservation::Connection { is_ble, is_dongle } = &observation
+            && self.oled_home.as_ref().is_some_and(|home| {
+                home.runtime.connection.is_ble != *is_ble
+                    || home.runtime.connection.is_dongle != *is_dongle
+            })
+        {
+            self.cancel_oled_editor(cx);
+        }
         let Some(home) = self.oled_home.as_mut() else {
             return;
         };

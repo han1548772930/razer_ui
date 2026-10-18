@@ -20,6 +20,8 @@ mod help_system;
 mod help_versions;
 #[path = "product_workspace_hyperflux.rs"]
 mod hyperflux;
+#[path = "product_workspace_hyperpolling.rs"]
+mod hyperpolling;
 #[path = "product_workspace_keyboard_linked.rs"]
 mod keyboard_linked_profiles;
 #[path = "../lighting/product_workspace_lighting.rs"]
@@ -28,6 +30,8 @@ mod lighting;
 mod mapping;
 #[path = "../profiles/profile_collection.rs"]
 mod profile_collection;
+#[path = "../profiles/product_workspace_transfer.rs"]
+mod profile_transfer;
 #[path = "product_workspace_receiver_indicator.rs"]
 mod receiver_indicator;
 #[path = "product_workspace_ripsaw.rs"]
@@ -106,6 +110,7 @@ pub(super) fn edit_profile_metadata(
 }
 pub struct ProductWorkspace {
     body: Body,
+    connection_revision: u64,
     _subscription: Subscription,
     _oled_subscription: Option<Subscription>,
     _receiver_subscription: Option<Subscription>,
@@ -163,6 +168,141 @@ impl ProductWorkspace {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| {
                 body.reject_mouse_calibration(request, error, cx)
+            });
+        }
+    }
+    pub fn mouse_calibration_request_matches(
+        &self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).mouse_calibration_request_matches(request, cx))
+    }
+    pub fn finish_mouse_calibration(
+        &mut self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        error: Option<String>,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_mouse_calibration(request, error, cx)
+            });
+        }
+    }
+    pub fn cancel_mouse_calibration(&mut self, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.cancel_mouse_calibration(cx));
+        }
+    }
+    pub fn prepare_mouse_calibration_exit(
+        &mut self,
+        cx: &mut Context<Self>,
+    ) -> Vec<super::mouse_products::MouseCalibrationRequested> {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.prepare_mouse_calibration_exit(cx))
+        } else {
+            Vec::new()
+        }
+    }
+    pub fn begin_mouse_philips_local_save(
+        &mut self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        matches!(&self.body, Body::Source(body)
+            if body.update(cx, |body, cx| body.begin_mouse_philips_local_save(request, cx)))
+    }
+    pub fn mouse_philips_local_save_matches(
+        &self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Source(body)
+            if body.read(cx).mouse_philips_local_save_matches(request, cx))
+    }
+    pub fn finish_mouse_philips_local_save(
+        &mut self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_mouse_philips_local_save(request, cx)
+            });
+        }
+    }
+    pub fn record_mouse_tracking_report(
+        &mut self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        report: razer_device::mouse_tracking::Progress,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.record_mouse_tracking_report(request, report, cx)
+            });
+        }
+    }
+    pub fn record_mouse_philips_report(
+        &mut self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        report: razer_device::mouse_philips::Progress,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.record_mouse_philips_report(request, report, cx)
+            });
+        }
+    }
+    pub fn complete_mouse_philips_context(
+        &mut self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.complete_mouse_philips_context(request, cx)
+            });
+        }
+    }
+    pub fn record_mouse_philips_measurement(
+        &mut self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        progress: razer_device::mouse_philips::measurement::Progress,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.record_mouse_philips_measurement(request, progress, window, cx)
+            });
+        }
+    }
+    pub fn finish_mouse_philips_measurement(
+        &mut self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        progress: Option<razer_device::mouse_philips::measurement::Progress>,
+        error: Option<String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_mouse_philips_measurement(request, progress, error, window, cx)
+            });
+        }
+    }
+    pub fn publish_mouse_philips_measurement_save(
+        &mut self,
+        request: &super::mouse_products::MouseCalibrationRequested,
+        projection: serde_json::Value,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.publish_mouse_philips_measurement_save(request, projection, cx)
             });
         }
     }
@@ -323,6 +463,15 @@ impl ProductWorkspace {
     ) {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| body.reject_mouse_matcher(scope, reason, cx));
+        }
+    }
+    pub fn mouse_matcher_scope(
+        &self,
+        cx: &App,
+    ) -> Option<super::mouse_products::MouseMatcherScope> {
+        match &self.body {
+            Body::Source(body) => body.read(cx).mouse_matcher_scope(cx),
+            _ => None,
         }
     }
     pub fn observe_mouse_matcher(
@@ -995,6 +1144,24 @@ impl ProductWorkspace {
             });
         }
     }
+    pub fn interface_resource_errors(&self, cx: &App) -> Vec<String> {
+        match &self.body {
+            Body::Source(body) => body.read(cx).interface_resource_errors(cx),
+            _ => Vec::new(),
+        }
+    }
+
+    pub fn retry_interface_resources(&mut self, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.retry_interface_resources(cx));
+        }
+    }
+
+    pub fn initialize_mouse_scroll_profile(&mut self, key: Option<String>, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.initialize_mouse_scroll_profile(key, cx));
+        }
+    }
     pub fn finish_current_dpi(
         &mut self,
         request: &super::mouse_products::MouseCurrentDpiRequested,
@@ -1274,6 +1441,9 @@ impl ProductWorkspace {
         observation: Option<razer_model::model::DeviceConnectionObservation>,
         cx: &mut Context<Self>,
     ) {
+        if self.device(cx).dashboard.connection_observation != observation {
+            self.connection_revision = self.connection_revision.wrapping_add(1);
+        }
         match &self.body {
             Body::Existing(body) => {
                 body.update(cx, |body, cx| body.observe_connection(observation, cx))
@@ -1324,6 +1494,30 @@ impl ProductWorkspace {
     pub fn set_active(&mut self, active: bool, window: &mut Window, cx: &mut Context<Self>) {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| body.set_active(active, window, cx));
+        } else if !active && let Body::Existing(body) = &self.body {
+            body.update(cx, |body, cx| body.dismiss_profile_dialog(window, cx));
+        }
+    }
+
+    pub fn prepare_exit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        match &self.body {
+            Body::Source(body) => body.update(cx, |body, cx| body.prepare_exit(window, cx)),
+            Body::Existing(body) => body.update(cx, |body, cx| {
+                body.dismiss_profile_dialog(window, cx);
+                body.cancel_snap_capture(window, cx);
+            }),
+        }
+    }
+
+    pub fn cancel_exit(&mut self, active: bool, window: &mut Window, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.cancel_exit(active, window, cx));
+        }
+    }
+
+    pub fn finish_exit(&mut self, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.finish_exit(cx));
         }
     }
 
@@ -1535,280 +1729,13 @@ impl ProductWorkspace {
     pub fn new(device: Device, intro: bool, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let workspace = if !Tab::for_product(device.product_id).is_empty() {
             let entity = cx.new(|cx| DeviceWorkspace::new(device, intro, window, cx));
-            let subscription = cx.subscribe(&entity, |_, _, event, cx| {
-                cx.emit(match event {
-                    WorkspaceEvent::Changed => WorkspaceEvent::Changed,
-                    WorkspaceEvent::ProfileMacrosImported(macros) => {
-                        WorkspaceEvent::ProfileMacrosImported(macros.clone())
-                    }
-                    WorkspaceEvent::MouseMappingSaveRejected(reason) => {
-                        WorkspaceEvent::MouseMappingSaveRejected(*reason)
-                    }
-                    WorkspaceEvent::HelpResetRequested(request) => {
-                        WorkspaceEvent::HelpResetRequested(*request)
-                    }
-                    WorkspaceEvent::HelpResetCanceled(request) => {
-                        WorkspaceEvent::HelpResetCanceled(*request)
-                    }
-                    WorkspaceEvent::HelpCamoRequested(request) => {
-                        WorkspaceEvent::HelpCamoRequested(request.clone())
-                    }
-                    WorkspaceEvent::HelpSystemInfoRequested(request) => {
-                        WorkspaceEvent::HelpSystemInfoRequested(request.clone())
-                    }
-                    WorkspaceEvent::HelpOwnerRequested(request) => {
-                        WorkspaceEvent::HelpOwnerRequested(request.clone())
-                    }
-                    WorkspaceEvent::ReceiverBrightnessRequested(request) => {
-                        WorkspaceEvent::ReceiverBrightnessRequested(*request)
-                    }
-                    WorkspaceEvent::ReceiverBrightnessReadRequested(request) => {
-                        WorkspaceEvent::ReceiverBrightnessReadRequested(*request)
-                    }
-                    WorkspaceEvent::KeyboardBrightnessRequested {
-                        generation,
-                        percent,
-                    } => WorkspaceEvent::KeyboardBrightnessRequested {
-                        generation: *generation,
-                        percent: *percent,
-                    },
-                    WorkspaceEvent::HanboCoolerRequested(request) => {
-                        WorkspaceEvent::HanboCoolerRequested(request.clone())
-                    }
-                    WorkspaceEvent::KeyboardActuationRequested(request) => {
-                        WorkspaceEvent::KeyboardActuationRequested(request.clone())
-                    }
-                    WorkspaceEvent::KeyboardLightingRequested(request) => {
-                        WorkspaceEvent::KeyboardLightingRequested(request.clone())
-                    }
-                    WorkspaceEvent::MouseLightingRequested(request) => {
-                        WorkspaceEvent::MouseLightingRequested(request.clone())
-                    }
-                    WorkspaceEvent::KeyboardMappingLoginWarningReadRequested => {
-                        WorkspaceEvent::KeyboardMappingLoginWarningReadRequested
-                    }
-                    WorkspaceEvent::KeyboardMappingSensitivityWarningReadRequested {
-                        product_id,
-                    } => WorkspaceEvent::KeyboardMappingSensitivityWarningReadRequested {
-                        product_id: *product_id,
-                    },
-                    WorkspaceEvent::KeyboardMappingDialReadRequested(request) => {
-                        WorkspaceEvent::KeyboardMappingDialReadRequested(request.clone())
-                    }
-                    WorkspaceEvent::KeyboardMappingBrightnessReadRequested(request) => {
-                        WorkspaceEvent::KeyboardMappingBrightnessReadRequested(request.clone())
-                    }
-                    WorkspaceEvent::KeyboardMappingSensitivityWarningHidden { product_id } => {
-                        WorkspaceEvent::KeyboardMappingSensitivityWarningHidden {
-                            product_id: *product_id,
-                        }
-                    }
-                    WorkspaceEvent::RipsawMonitoringRequested(request) => {
-                        WorkspaceEvent::RipsawMonitoringRequested(request.clone())
-                    }
-                    WorkspaceEvent::HyperfluxRequested(request) => {
-                        WorkspaceEvent::HyperfluxRequested(request.clone())
-                    }
-                    WorkspaceEvent::KeyboardMappingLoginWarningHidden => {
-                        WorkspaceEvent::KeyboardMappingLoginWarningHidden
-                    }
-                    WorkspaceEvent::KeyboardCharacterMapRequested => {
-                        WorkspaceEvent::KeyboardCharacterMapRequested
-                    }
-                    WorkspaceEvent::KeyboardMappingInterDeviceConfigureRequested(request) => {
-                        WorkspaceEvent::KeyboardMappingInterDeviceConfigureRequested(
-                            request.clone(),
-                        )
-                    }
-                    WorkspaceEvent::KeyboardLegacyCalibrationHostRequested(request) => {
-                        WorkspaceEvent::KeyboardLegacyCalibrationHostRequested(request.clone())
-                    }
-                    WorkspaceEvent::TriggerCalibrationRequested(request) => {
-                        WorkspaceEvent::TriggerCalibrationRequested(request.clone())
-                    }
-                    WorkspaceEvent::ControllerTriggerRequested(request) => {
-                        WorkspaceEvent::ControllerTriggerRequested(request.clone())
-                    }
-                    WorkspaceEvent::ControllerLightingRequested(request) => {
-                        WorkspaceEvent::ControllerLightingRequested(request.clone())
-                    }
-                    WorkspaceEvent::ControllerChromaRequested(request) => {
-                        WorkspaceEvent::ControllerChromaRequested(request.clone())
-                    }
-                    WorkspaceEvent::KeyboardIndicatorLedRequested(request) => {
-                        WorkspaceEvent::KeyboardIndicatorLedRequested(request.clone())
-                    }
-                    WorkspaceEvent::MouseReceiverIndicatorRequested(request) => {
-                        WorkspaceEvent::MouseReceiverIndicatorRequested(request.clone())
-                    }
-                    WorkspaceEvent::KeyboardLinkedBaseSelected(guid) => {
-                        WorkspaceEvent::KeyboardLinkedBaseSelected(guid.clone())
-                    }
-                    WorkspaceEvent::MouseReceiverMonitorRequested(request) => {
-                        WorkspaceEvent::MouseReceiverMonitorRequested(request.clone())
-                    }
-                    WorkspaceEvent::KeyboardBrightnessReadRequested { generation } => {
-                        WorkspaceEvent::KeyboardBrightnessReadRequested {
-                            generation: *generation,
-                        }
-                    }
-                    WorkspaceEvent::AudioPresetShortcutRequested { request } => {
-                        WorkspaceEvent::AudioPresetShortcutRequested {
-                            request: request.clone(),
-                        }
-                    }
-                    WorkspaceEvent::AudioVolumeRequested { request } => {
-                        WorkspaceEvent::AudioVolumeRequested { request: *request }
-                    }
-                    WorkspaceEvent::LeviathanRequested(request) => {
-                        WorkspaceEvent::LeviathanRequested(request.clone())
-                    }
-                    WorkspaceEvent::AudioMixerRequested { request } => {
-                        WorkspaceEvent::AudioMixerRequested {
-                            request: request.clone(),
-                        }
-                    }
-                    WorkspaceEvent::MouseLegacyProfileRequested { scope, apply } => {
-                        WorkspaceEvent::MouseLegacyProfileRequested {
-                            scope: *scope,
-                            apply: *apply,
-                        }
-                    }
-                    WorkspaceEvent::KeyboardLegacyProfileRequested => {
-                        WorkspaceEvent::KeyboardLegacyProfileRequested
-                    }
-                    WorkspaceEvent::KeyboardLatestProfileSwitchRequested {
-                        guid,
-                        defer_persistence,
-                    } => WorkspaceEvent::KeyboardLatestProfileSwitchRequested {
-                        guid: guid.clone(),
-                        defer_persistence: *defer_persistence,
-                    },
-                    WorkspaceEvent::KeyboardLatestProfileMutationRequested(mutation) => {
-                        WorkspaceEvent::KeyboardLatestProfileMutationRequested(mutation.clone())
-                    }
-                    WorkspaceEvent::KeyboardLatestOnboardProfileRequested { slot_id, guid } => {
-                        WorkspaceEvent::KeyboardLatestOnboardProfileRequested {
-                            slot_id: *slot_id,
-                            guid: guid.clone(),
-                        }
-                    }
-                    WorkspaceEvent::KeyboardLegacyRuntimeStatus(message) => {
-                        WorkspaceEvent::KeyboardLegacyRuntimeStatus(message.clone())
-                    }
-                    WorkspaceEvent::MouseLegacyProfileNavigate(event) => {
-                        WorkspaceEvent::MouseLegacyProfileNavigate(event.clone())
-                    }
-                    WorkspaceEvent::MouseLegacyDpiRequested(request) => {
-                        WorkspaceEvent::MouseLegacyDpiRequested(request.clone())
-                    }
-                    WorkspaceEvent::MouseCurrentDpiRequested(request) => {
-                        WorkspaceEvent::MouseCurrentDpiRequested(request.clone())
-                    }
-                    WorkspaceEvent::MouseScrollRequested(request) => {
-                        WorkspaceEvent::MouseScrollRequested(request.clone())
-                    }
-                    WorkspaceEvent::MouseCurrentPowerRequested(request) => {
-                        WorkspaceEvent::MouseCurrentPowerRequested(request.clone())
-                    }
-                    WorkspaceEvent::SeirenEqRequested(request) => {
-                        WorkspaceEvent::SeirenEqRequested(request.clone())
-                    }
-                    WorkspaceEvent::SeirenAudioCaptureRequested(request) => {
-                        WorkspaceEvent::SeirenAudioCaptureRequested(request.clone())
-                    }
-                    WorkspaceEvent::SeirenAudioPlaybackRequested(request) => {
-                        WorkspaceEvent::SeirenAudioPlaybackRequested(request.clone())
-                    }
-                    WorkspaceEvent::SeirenMicrophoneSetupSeen(seen) => {
-                        WorkspaceEvent::SeirenMicrophoneSetupSeen(*seen)
-                    }
-                    WorkspaceEvent::SeirenStreamMixerRequested(request) => {
-                        WorkspaceEvent::SeirenStreamMixerRequested(request.clone())
-                    }
-                    WorkspaceEvent::SeirenStreamMixerCaptureChanged(request) => {
-                        WorkspaceEvent::SeirenStreamMixerCaptureChanged(request.clone())
-                    }
-                    WorkspaceEvent::MousePollingRequested { scope, field, hz } => {
-                        WorkspaceEvent::MousePollingRequested {
-                            scope: *scope,
-                            field: *field,
-                            hz: *hz,
-                        }
-                    }
-                    WorkspaceEvent::MousePollingRestoreRequested { scope, field, hz } => {
-                        WorkspaceEvent::MousePollingRestoreRequested {
-                            scope: *scope,
-                            field: *field,
-                            hz: *hz,
-                        }
-                    }
-                    WorkspaceEvent::MouseProfileSerialObserved => {
-                        WorkspaceEvent::MouseProfileSerialObserved
-                    }
-                    WorkspaceEvent::MouseDpiStagesRequested {
-                        scope,
-                        revision,
-                        draft,
-                        persist_local,
-                    } => WorkspaceEvent::MouseDpiStagesRequested {
-                        scope: *scope,
-                        revision: *revision,
-                        draft: draft.clone(),
-                        persist_local: *persist_local,
-                    },
-                    WorkspaceEvent::MouseDpiStagesReadRequested { scope, revision } => {
-                        WorkspaceEvent::MouseDpiStagesReadRequested {
-                            scope: *scope,
-                            revision: *revision,
-                        }
-                    }
-                    WorkspaceEvent::MouseIdleRequested { scope, minutes } => {
-                        WorkspaceEvent::MouseIdleRequested {
-                            scope: *scope,
-                            minutes: *minutes,
-                        }
-                    }
-                    WorkspaceEvent::MouseMatcherRequested(request) => {
-                        WorkspaceEvent::MouseMatcherRequested(request.clone())
-                    }
-                    WorkspaceEvent::MouseDynamicRequested(request) => {
-                        WorkspaceEvent::MouseDynamicRequested(request.clone())
-                    }
-                    WorkspaceEvent::MouseDynamicTutorialChanged(visible) => {
-                        WorkspaceEvent::MouseDynamicTutorialChanged(*visible)
-                    }
-                    WorkspaceEvent::MouseCalibrationWelcomeChanged(visible) => {
-                        WorkspaceEvent::MouseCalibrationWelcomeChanged(*visible)
-                    }
-                    WorkspaceEvent::MouseCalibrationRequested(request) => {
-                        WorkspaceEvent::MouseCalibrationRequested(request.clone())
-                    }
-                    WorkspaceEvent::IntroDismissed => WorkspaceEvent::IntroDismissed,
-                    WorkspaceEvent::OpenChroma => WorkspaceEvent::OpenChroma,
-                    WorkspaceEvent::OpenStudio => WorkspaceEvent::OpenStudio,
-                    WorkspaceEvent::OpenMacro => WorkspaceEvent::OpenMacro,
-                    WorkspaceEvent::MappingCallbackRequested(event) => {
-                        WorkspaceEvent::MappingCallbackRequested(event.clone())
-                    }
-                    WorkspaceEvent::MouseMappingTargetRequested(request) => {
-                        WorkspaceEvent::MouseMappingTargetRequested(request.clone())
-                    }
-                    WorkspaceEvent::PairingRequested(device) => {
-                        WorkspaceEvent::PairingRequested(device.clone())
-                    }
-                    WorkspaceEvent::OpenDevice {
-                        product_id,
-                        edition_id,
-                    } => WorkspaceEvent::OpenDevice {
-                        product_id: *product_id,
-                        edition_id: *edition_id,
-                    },
-                });
+            let subscription = cx.subscribe(&entity, |_, _, event: &WorkspaceEvent, cx| {
+                cx.emit(event.clone());
                 cx.notify();
             });
             Self {
                 body: Body::Existing(entity),
+                connection_revision: 0,
                 _subscription: subscription,
                 _oled_subscription: None,
                 _receiver_subscription: None,
@@ -1818,276 +1745,8 @@ impl ProductWorkspace {
             }
         } else {
             let entity = cx.new(|cx| SourceProductWorkspace::new(device, window, cx));
-            let subscription = cx.subscribe(&entity, |_, _, event, cx| {
-                cx.emit(match event {
-                    WorkspaceEvent::Changed => WorkspaceEvent::Changed,
-                    WorkspaceEvent::ProfileMacrosImported(macros) => {
-                        WorkspaceEvent::ProfileMacrosImported(macros.clone())
-                    }
-                    WorkspaceEvent::MouseMappingSaveRejected(reason) => {
-                        WorkspaceEvent::MouseMappingSaveRejected(*reason)
-                    }
-                    WorkspaceEvent::HelpResetRequested(request) => {
-                        WorkspaceEvent::HelpResetRequested(*request)
-                    }
-                    WorkspaceEvent::HelpResetCanceled(request) => {
-                        WorkspaceEvent::HelpResetCanceled(*request)
-                    }
-                    WorkspaceEvent::HelpCamoRequested(request) => {
-                        WorkspaceEvent::HelpCamoRequested(request.clone())
-                    }
-                    WorkspaceEvent::HelpSystemInfoRequested(request) => {
-                        WorkspaceEvent::HelpSystemInfoRequested(request.clone())
-                    }
-                    WorkspaceEvent::HelpOwnerRequested(request) => {
-                        WorkspaceEvent::HelpOwnerRequested(request.clone())
-                    }
-                    WorkspaceEvent::ReceiverBrightnessRequested(request) => {
-                        WorkspaceEvent::ReceiverBrightnessRequested(*request)
-                    }
-                    WorkspaceEvent::ReceiverBrightnessReadRequested(request) => {
-                        WorkspaceEvent::ReceiverBrightnessReadRequested(*request)
-                    }
-                    WorkspaceEvent::KeyboardBrightnessRequested {
-                        generation,
-                        percent,
-                    } => WorkspaceEvent::KeyboardBrightnessRequested {
-                        generation: *generation,
-                        percent: *percent,
-                    },
-                    WorkspaceEvent::HanboCoolerRequested(request) => {
-                        WorkspaceEvent::HanboCoolerRequested(request.clone())
-                    }
-                    WorkspaceEvent::KeyboardActuationRequested(request) => {
-                        WorkspaceEvent::KeyboardActuationRequested(request.clone())
-                    }
-                    WorkspaceEvent::KeyboardLightingRequested(request) => {
-                        WorkspaceEvent::KeyboardLightingRequested(request.clone())
-                    }
-                    WorkspaceEvent::MouseLightingRequested(request) => {
-                        WorkspaceEvent::MouseLightingRequested(request.clone())
-                    }
-                    WorkspaceEvent::KeyboardMappingLoginWarningReadRequested => {
-                        WorkspaceEvent::KeyboardMappingLoginWarningReadRequested
-                    }
-                    WorkspaceEvent::KeyboardMappingSensitivityWarningReadRequested {
-                        product_id,
-                    } => WorkspaceEvent::KeyboardMappingSensitivityWarningReadRequested {
-                        product_id: *product_id,
-                    },
-                    WorkspaceEvent::KeyboardMappingDialReadRequested(request) => {
-                        WorkspaceEvent::KeyboardMappingDialReadRequested(request.clone())
-                    }
-                    WorkspaceEvent::KeyboardMappingBrightnessReadRequested(request) => {
-                        WorkspaceEvent::KeyboardMappingBrightnessReadRequested(request.clone())
-                    }
-                    WorkspaceEvent::KeyboardMappingSensitivityWarningHidden { product_id } => {
-                        WorkspaceEvent::KeyboardMappingSensitivityWarningHidden {
-                            product_id: *product_id,
-                        }
-                    }
-                    WorkspaceEvent::RipsawMonitoringRequested(request) => {
-                        WorkspaceEvent::RipsawMonitoringRequested(request.clone())
-                    }
-                    WorkspaceEvent::HyperfluxRequested(request) => {
-                        WorkspaceEvent::HyperfluxRequested(request.clone())
-                    }
-                    WorkspaceEvent::KeyboardMappingLoginWarningHidden => {
-                        WorkspaceEvent::KeyboardMappingLoginWarningHidden
-                    }
-                    WorkspaceEvent::KeyboardCharacterMapRequested => {
-                        WorkspaceEvent::KeyboardCharacterMapRequested
-                    }
-                    WorkspaceEvent::KeyboardMappingInterDeviceConfigureRequested(request) => {
-                        WorkspaceEvent::KeyboardMappingInterDeviceConfigureRequested(
-                            request.clone(),
-                        )
-                    }
-                    WorkspaceEvent::KeyboardLegacyCalibrationHostRequested(request) => {
-                        WorkspaceEvent::KeyboardLegacyCalibrationHostRequested(request.clone())
-                    }
-                    WorkspaceEvent::TriggerCalibrationRequested(request) => {
-                        WorkspaceEvent::TriggerCalibrationRequested(request.clone())
-                    }
-                    WorkspaceEvent::ControllerTriggerRequested(request) => {
-                        WorkspaceEvent::ControllerTriggerRequested(request.clone())
-                    }
-                    WorkspaceEvent::ControllerLightingRequested(request) => {
-                        WorkspaceEvent::ControllerLightingRequested(request.clone())
-                    }
-                    WorkspaceEvent::ControllerChromaRequested(request) => {
-                        WorkspaceEvent::ControllerChromaRequested(request.clone())
-                    }
-                    WorkspaceEvent::KeyboardIndicatorLedRequested(request) => {
-                        WorkspaceEvent::KeyboardIndicatorLedRequested(request.clone())
-                    }
-                    WorkspaceEvent::MouseReceiverIndicatorRequested(request) => {
-                        WorkspaceEvent::MouseReceiverIndicatorRequested(request.clone())
-                    }
-                    WorkspaceEvent::KeyboardLinkedBaseSelected(guid) => {
-                        WorkspaceEvent::KeyboardLinkedBaseSelected(guid.clone())
-                    }
-                    WorkspaceEvent::MouseReceiverMonitorRequested(request) => {
-                        WorkspaceEvent::MouseReceiverMonitorRequested(request.clone())
-                    }
-                    WorkspaceEvent::KeyboardBrightnessReadRequested { generation } => {
-                        WorkspaceEvent::KeyboardBrightnessReadRequested {
-                            generation: *generation,
-                        }
-                    }
-                    WorkspaceEvent::AudioPresetShortcutRequested { request } => {
-                        WorkspaceEvent::AudioPresetShortcutRequested {
-                            request: request.clone(),
-                        }
-                    }
-                    WorkspaceEvent::AudioVolumeRequested { request } => {
-                        WorkspaceEvent::AudioVolumeRequested { request: *request }
-                    }
-                    WorkspaceEvent::LeviathanRequested(request) => {
-                        WorkspaceEvent::LeviathanRequested(request.clone())
-                    }
-                    WorkspaceEvent::AudioMixerRequested { request } => {
-                        WorkspaceEvent::AudioMixerRequested {
-                            request: request.clone(),
-                        }
-                    }
-                    WorkspaceEvent::MouseLegacyProfileRequested { scope, apply } => {
-                        WorkspaceEvent::MouseLegacyProfileRequested {
-                            scope: *scope,
-                            apply: *apply,
-                        }
-                    }
-                    WorkspaceEvent::KeyboardLegacyProfileRequested => {
-                        WorkspaceEvent::KeyboardLegacyProfileRequested
-                    }
-                    WorkspaceEvent::KeyboardLatestProfileSwitchRequested {
-                        guid,
-                        defer_persistence,
-                    } => WorkspaceEvent::KeyboardLatestProfileSwitchRequested {
-                        guid: guid.clone(),
-                        defer_persistence: *defer_persistence,
-                    },
-                    WorkspaceEvent::KeyboardLatestProfileMutationRequested(mutation) => {
-                        WorkspaceEvent::KeyboardLatestProfileMutationRequested(mutation.clone())
-                    }
-                    WorkspaceEvent::KeyboardLatestOnboardProfileRequested { slot_id, guid } => {
-                        WorkspaceEvent::KeyboardLatestOnboardProfileRequested {
-                            slot_id: *slot_id,
-                            guid: guid.clone(),
-                        }
-                    }
-                    WorkspaceEvent::KeyboardLegacyRuntimeStatus(message) => {
-                        WorkspaceEvent::KeyboardLegacyRuntimeStatus(message.clone())
-                    }
-                    WorkspaceEvent::MouseLegacyProfileNavigate(event) => {
-                        WorkspaceEvent::MouseLegacyProfileNavigate(event.clone())
-                    }
-                    WorkspaceEvent::MouseLegacyDpiRequested(request) => {
-                        WorkspaceEvent::MouseLegacyDpiRequested(request.clone())
-                    }
-                    WorkspaceEvent::MousePollingRequested { scope, field, hz } => {
-                        WorkspaceEvent::MousePollingRequested {
-                            scope: *scope,
-                            field: *field,
-                            hz: *hz,
-                        }
-                    }
-                    WorkspaceEvent::MousePollingRestoreRequested { scope, field, hz } => {
-                        WorkspaceEvent::MousePollingRestoreRequested {
-                            scope: *scope,
-                            field: *field,
-                            hz: *hz,
-                        }
-                    }
-                    WorkspaceEvent::MouseProfileSerialObserved => {
-                        WorkspaceEvent::MouseProfileSerialObserved
-                    }
-                    WorkspaceEvent::MouseCurrentDpiRequested(request) => {
-                        WorkspaceEvent::MouseCurrentDpiRequested(request.clone())
-                    }
-                    WorkspaceEvent::MouseCurrentPowerRequested(request) => {
-                        WorkspaceEvent::MouseCurrentPowerRequested(request.clone())
-                    }
-                    WorkspaceEvent::MouseScrollRequested(request) => {
-                        WorkspaceEvent::MouseScrollRequested(request.clone())
-                    }
-                    WorkspaceEvent::SeirenEqRequested(request) => {
-                        WorkspaceEvent::SeirenEqRequested(request.clone())
-                    }
-                    WorkspaceEvent::SeirenAudioCaptureRequested(request) => {
-                        WorkspaceEvent::SeirenAudioCaptureRequested(request.clone())
-                    }
-                    WorkspaceEvent::SeirenAudioPlaybackRequested(request) => {
-                        WorkspaceEvent::SeirenAudioPlaybackRequested(request.clone())
-                    }
-                    WorkspaceEvent::SeirenMicrophoneSetupSeen(seen) => {
-                        WorkspaceEvent::SeirenMicrophoneSetupSeen(*seen)
-                    }
-                    WorkspaceEvent::SeirenStreamMixerRequested(request) => {
-                        WorkspaceEvent::SeirenStreamMixerRequested(request.clone())
-                    }
-                    WorkspaceEvent::SeirenStreamMixerCaptureChanged(request) => {
-                        WorkspaceEvent::SeirenStreamMixerCaptureChanged(request.clone())
-                    }
-                    WorkspaceEvent::MouseDpiStagesRequested {
-                        scope,
-                        revision,
-                        draft,
-                        persist_local,
-                    } => WorkspaceEvent::MouseDpiStagesRequested {
-                        scope: *scope,
-                        revision: *revision,
-                        draft: draft.clone(),
-                        persist_local: *persist_local,
-                    },
-                    WorkspaceEvent::MouseDpiStagesReadRequested { scope, revision } => {
-                        WorkspaceEvent::MouseDpiStagesReadRequested {
-                            scope: *scope,
-                            revision: *revision,
-                        }
-                    }
-                    WorkspaceEvent::MouseIdleRequested { scope, minutes } => {
-                        WorkspaceEvent::MouseIdleRequested {
-                            scope: *scope,
-                            minutes: *minutes,
-                        }
-                    }
-                    WorkspaceEvent::MouseMatcherRequested(request) => {
-                        WorkspaceEvent::MouseMatcherRequested(request.clone())
-                    }
-                    WorkspaceEvent::MouseDynamicRequested(request) => {
-                        WorkspaceEvent::MouseDynamicRequested(request.clone())
-                    }
-                    WorkspaceEvent::MouseDynamicTutorialChanged(visible) => {
-                        WorkspaceEvent::MouseDynamicTutorialChanged(*visible)
-                    }
-                    WorkspaceEvent::MouseCalibrationWelcomeChanged(visible) => {
-                        WorkspaceEvent::MouseCalibrationWelcomeChanged(*visible)
-                    }
-                    WorkspaceEvent::MouseCalibrationRequested(request) => {
-                        WorkspaceEvent::MouseCalibrationRequested(request.clone())
-                    }
-                    WorkspaceEvent::IntroDismissed => WorkspaceEvent::IntroDismissed,
-                    WorkspaceEvent::OpenChroma => WorkspaceEvent::OpenChroma,
-                    WorkspaceEvent::OpenStudio => WorkspaceEvent::OpenStudio,
-                    WorkspaceEvent::OpenMacro => WorkspaceEvent::OpenMacro,
-                    WorkspaceEvent::MappingCallbackRequested(event) => {
-                        WorkspaceEvent::MappingCallbackRequested(event.clone())
-                    }
-                    WorkspaceEvent::MouseMappingTargetRequested(request) => {
-                        WorkspaceEvent::MouseMappingTargetRequested(request.clone())
-                    }
-                    WorkspaceEvent::PairingRequested(device) => {
-                        WorkspaceEvent::PairingRequested(device.clone())
-                    }
-                    WorkspaceEvent::OpenDevice {
-                        product_id,
-                        edition_id,
-                    } => WorkspaceEvent::OpenDevice {
-                        product_id: *product_id,
-                        edition_id: *edition_id,
-                    },
-                });
+            let subscription = cx.subscribe(&entity, |_, _, event: &WorkspaceEvent, cx| {
+                cx.emit(event.clone());
                 cx.notify();
             });
             let oled_subscription = cx
@@ -2112,6 +1771,7 @@ impl ProductWorkspace {
             );
             Self {
                 body: Body::Source(entity),
+                connection_revision: 0,
                 _subscription: subscription,
                 _oled_subscription: Some(oled_subscription),
                 _receiver_subscription: Some(receiver_subscription),
@@ -2172,7 +1832,50 @@ impl ProductWorkspace {
         cx: &mut Context<Self>,
     ) {
         if let Body::Source(body) = &self.body {
-            body.update(cx, |body, cx| body.finish_hanbo_command(generation, result, cx));
+            body.update(cx, |body, cx| {
+                body.finish_hanbo_command(generation, result, cx)
+            });
+        }
+    }
+
+    pub fn observe_hanbo_telemetry(
+        &mut self,
+        telemetry: &razer_device::hanbo_cooler::Telemetry,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.observe_hanbo_telemetry(telemetry, cx));
+        }
+    }
+
+    pub fn hanbo_telemetry_requested(&self, cx: &App) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).hanbo_telemetry_requested())
+    }
+
+    pub fn hanbo_profile_revision(&self, cx: &App) -> Option<u64> {
+        match &self.body {
+            Body::Source(body) => Some(body.read(cx).hanbo_profile_revision()),
+            Body::Existing(_) => None,
+        }
+    }
+
+    pub fn observe_hanbo_system_sample(
+        &mut self,
+        sample: &razer_device::system_monitor::SystemSample,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.observe_hanbo_system_sample(sample, cx));
+        }
+    }
+
+    pub fn flush_hanbo_curve(
+        &mut self,
+        cx: &mut Context<Self>,
+    ) -> Vec<super::accessory_system_products::HanboLocalSettingsChanged> {
+        match &self.body {
+            Body::Source(body) => body.update(cx, |body, cx| body.flush_hanbo_curve(cx)),
+            _ => Vec::new(),
         }
     }
 
@@ -2219,6 +1922,11 @@ impl ProductWorkspace {
         match &self.body {
             Body::Existing(_) => Tab::for_product(device.product_id).contains(&Tab::Lighting),
             Body::Source(workspace) => workspace.read(cx).supports_lighting_page(),
+        }
+    }
+    pub fn set_chroma_popup_open(&mut self, owner: EntityId, open: bool, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.set_chroma_popup_open(owner, open, cx));
         }
     }
     /// The popup content the Chroma application mounts for one device: the
@@ -2336,7 +2044,14 @@ impl ProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Result<String, String> {
-        self.change_profile_collection(ProfileCollectionAction::Delete(profile.into()), window, cx)
+        self.change_profile_collection(
+            ProfileCollectionAction::Delete {
+                id: profile.into(),
+                successor: None,
+            },
+            window,
+            cx,
+        )
     }
     fn change_profile_collection(
         &mut self,
@@ -2391,6 +2106,86 @@ impl ProductWorkspace {
     }
     pub fn help_reset_matches(&self, request: super::HelpResetRequest, cx: &App) -> bool {
         matches!(&self.body,Body::Source(entity) if entity.read(cx).help_reset_matches(request,cx))
+    }
+    pub fn publish_help_hardware_reset(
+        &mut self,
+        request: super::HelpResetRequest,
+        candidate: Device,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        match &self.body {
+            Body::Source(entity) => entity.update(cx, |workspace, cx| {
+                workspace.publish_help_hardware_reset(request, candidate, window, cx)
+            }),
+            Body::Existing(_) => false,
+        }
+    }
+    pub fn publish_receiver_help_profile(
+        &mut self,
+        request: super::HelpResetRequest,
+        snapshot: razer_storage::receiver_reset::ReceiverProfileSnapshot,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        match &self.body {
+            Body::Source(entity) => entity.update(cx, |workspace, cx| {
+                workspace.publish_receiver_help_profile(request, snapshot, window, cx)
+            }),
+            Body::Existing(_) => false,
+        }
+    }
+    pub fn publish_receiver_brightness_snapshot(
+        &mut self,
+        generation: u64,
+        percent: Option<u8>,
+        snapshot: razer_storage::receiver_reset::ReceiverProfileSnapshot,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        match &self.body {
+            Body::Source(entity) => entity.update(cx, |workspace, cx| {
+                workspace
+                    .publish_receiver_brightness_snapshot(generation, percent, snapshot, window, cx)
+            }),
+            Body::Existing(_) => false,
+        }
+    }
+    pub fn receiver_profile_selection_matches(
+        &self,
+        generation: u64,
+        guid: &str,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).receiver_profile_selection_matches(generation, guid, cx))
+    }
+    pub fn publish_receiver_selection_profile(
+        &mut self,
+        request: super::ReceiverProfileSelectionRequested,
+        snapshot: razer_storage::receiver_reset::ReceiverProfileSnapshot,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        match &self.body {
+            Body::Source(body) => body.update(cx, |workspace, cx| {
+                workspace.publish_receiver_selection_profile(request, snapshot, window, cx)
+            }),
+            Body::Existing(_) => false,
+        }
+    }
+    pub fn finish_receiver_profile_selection(
+        &mut self,
+        request: super::ReceiverProfileSelectionRequested,
+        error: Option<String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |workspace, cx| {
+                workspace.finish_receiver_profile_selection(request, error, window, cx)
+            });
+        }
+        cx.notify();
     }
     pub fn receiver_brightness_matches(
         &self,
@@ -2536,6 +2331,12 @@ impl ProductWorkspace {
     pub fn publish_legacy_mapping(&mut self, document: serde_json::Value, cx: &mut Context<Self>) {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| body.publish_legacy_mapping(document, cx));
+        }
+    }
+
+    pub fn publish_saved_mapping(&mut self, document: serde_json::Value, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.publish_saved_mapping(document, cx));
         }
     }
     pub fn observe_keyboard_latest_document(

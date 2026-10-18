@@ -9,7 +9,13 @@ serde_json.workspace = true
 sha2 = "=0.10.9"
 rusqlite = { version = "=0.40.2", default-features = false, features = ["bundled", "fallible_uint"] }
 
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_Storage_FileSystem"] }
+
 [build-dependencies]
 sha2 = "=0.10.9"
 serde.workspace = true
 serde_json.workspace = true
+
+[target.'cfg(windows)'.build-dependencies]
+windows-sys = { workspace = true, features = ["Win32_Storage_FileSystem"] }

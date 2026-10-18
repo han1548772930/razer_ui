@@ -58,12 +58,19 @@ impl State {
 impl EventEmitter<KeyboardActuationRequested> for KeyboardProductWorkspace {}
 impl KeyboardProductWorkspace {
     pub(super) fn request_actuation_mapping(&mut self, cx: &mut Context<Self>) {
+        self.request_actuation_mapping_with_selection(false, cx);
+    }
+    pub(super) fn request_actuation_mapping_with_selection(
+        &mut self,
+        is_select_all: bool,
+        cx: &mut Context<Self>,
+    ) {
         let Some(mapping_list) = self.draft.pointer(&self.mapping_path()).cloned() else {
             return;
         };
         self.request_actuation_message(
             json!({
-                "type":"ON_SET_KEYMAPPING", "payload":{"mappingList":mapping_list}
+                "type":"ON_SET_KEYMAPPING", "payload":{"mappingList":mapping_list,"isSelectAll":is_select_all}
             }),
             cx,
         );
@@ -72,6 +79,28 @@ impl KeyboardProductWorkspace {
     pub(super) fn request_actuation_message(&mut self, payload: Value, cx: &mut Context<Self>) {
         if self.reduce_latest_source_action(&payload, cx) {
             return;
+        }
+        if matches!(self.spec.product_id, 740 | 746)
+            && matches!(
+                payload["type"].as_str(),
+                Some(
+                    "ON_SET_KEYMAPPING"
+                        | "ON_SET_ENABLE_KEYBOARD_KEYS"
+                        | "ON_SET_GAMEPAD_OVERRIDE_KEYS"
+                        | "ON_SET_BOTTOM_DEADZONE"
+                        | "ON_SET_INTERRUPT_KEYS"
+                )
+            )
+        {
+            if let Err(error) = razer_device::keyboard_submission::persist_magnetic_controls(
+                self.spec.product_id,
+                &payload,
+                &mut self.draft,
+            ) {
+                self.actuation_submission.error = Some(format!("{error:#}"));
+                cx.notify();
+                return;
+            }
         }
         let profile = self.snapshot();
         let state = &mut self.actuation_submission;
@@ -170,6 +199,7 @@ impl KeyboardProductWorkspace {
         self.actuation_submission.pending.contains(&generation)
     }
     pub fn cancel_actuation_connection(&mut self) {
+        self.cancel_sync_feedback();
         self.analog_controls.cancel();
         self.gaming_combined.cancel();
         self.actuation_submission.generation = self.actuation_submission.generation.wrapping_add(1);

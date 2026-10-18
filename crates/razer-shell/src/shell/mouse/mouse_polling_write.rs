@@ -31,6 +31,7 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         if self.close_requested
+            || !self.devices.contains(&workspace)
             || !workspace
                 .read(cx)
                 .mouse_polling_request_matches(scope, field, hz, cx)
@@ -81,10 +82,14 @@ impl AppShell {
         let revision = self.discovery_revision;
         self.device_value_owners.remove(&identity);
         self.device_read_scopes.remove(&identity);
+        self.mouse_polling_workers += 1;
         self.status = "正在设置回报率并读取设备确认。".into();
         cx.notify();
         let workspace = workspace.downgrade();
-        cx.spawn_in(window, async move |this, cx| {
+        // The product owns the request. Window closure cannot discard its
+        // completion or bypass the service shutdown awaited by application exit.
+        let _ = window;
+        cx.spawn(async move |this, cx| {
             let selected = route.clone();
             let result = cx
                 .background_spawn(async move {
@@ -128,61 +133,65 @@ impl AppShell {
                             .err()
                             .map(|error| format!("{error:#}"))
                     };
-                    result.map(|observed| (observed, shutdown_error))
+                    match (result, shutdown_error) {
+                        (Err(error), Some(cleanup)) => Err(error.context(format!(
+                            "Polling communication cleanup also failed: {cleanup}"
+                        ))),
+                        (result, cleanup) => result.map(|observed| (observed, cleanup)),
+                    }
                 })
                 .await;
-            let _ = this.update_in(cx, |this, _, cx| {
-                let Some(workspace) = workspace.upgrade() else {
-                    return;
-                };
-                if !workspace
-                    .read(cx)
-                    .mouse_polling_in_flight_matches(scope, field, hz, cx)
-                {
-                    return;
-                }
-                if !this.devices.contains(&workspace)
-                    || workspace.read(cx).identity(cx) != identity
-                    || !workspace
+            let _ = this.update(cx, |this, cx| {
+                this.mouse_polling_workers = this.mouse_polling_workers.saturating_sub(1);
+                if let Some(workspace) = workspace.upgrade().filter(|workspace| {
+                    workspace
                         .read(cx)
-                        .mouse_polling_request_matches(scope, field, hz, cx)
-                {
-                    workspace.update(cx, |workspace, cx| {
-                        workspace.finish_mouse_polling(scope, field, hz, None, cx)
-                    });
-                    return;
-                }
-                let current = this.discovery_revision == revision
-                    && this.device_observations.iter().any(|current| {
-                        current.matches(workspace.read(cx).device(cx))
-                            && current.container().eq_ignore_ascii_case(route.container())
-                            && current.physical_product_id() == route.physical_product_id()
-                            && current.hid_node() == route.hid_node()
-                            && current.peer_product_id() == route.peer_product_id()
-                            && current.connection() == route.connection()
-                            && current.transport() == route.transport()
-                    });
-                let observed = current
-                    .then(|| result.as_ref().ok().map(|(hz, _)| *hz))
-                    .flatten();
-                this.device_value_owners.remove(&identity);
-                this.device_read_scopes.remove(&identity);
-                workspace.update(cx, |workspace, cx| {
-                    workspace.finish_mouse_polling(scope, field, hz, observed, cx)
-                });
-                this.status = if !current {
-                    "设备连接已变化，回报率尚未确认。".into()
-                } else {
-                    match result {
-                        Ok((observed, None)) => {
-                            format!("设备已回读确认回报率：{observed} Hz。")
-                        }
-                        Ok((observed, Some(error))) => {
-                            format!("设备已确认回报率：{observed} Hz；通信进程退出失败：{error}")
-                        }
-                        Err(error) => format!("回报率未确认：{error:#}。请重新读取设备状态。"),
+                        .mouse_polling_in_flight_matches(scope, field, hz, cx)
+                }) {
+                    let current = this.devices.contains(&workspace)
+                        && workspace.read(cx).identity(cx) == identity
+                        && workspace
+                            .read(cx)
+                            .mouse_polling_request_matches(scope, field, hz, cx)
+                        && this.discovery_revision == revision
+                        && this.device_observations.iter().any(|current| {
+                            current.matches(workspace.read(cx).device(cx))
+                                && current.container().eq_ignore_ascii_case(route.container())
+                                && current.physical_product_id() == route.physical_product_id()
+                                && current.hid_node() == route.hid_node()
+                                && current.peer_product_id() == route.peer_product_id()
+                                && current.connection() == route.connection()
+                                && current.transport() == route.transport()
+                        });
+                    let observed = current
+                        .then(|| result.as_ref().ok().map(|(hz, _)| *hz))
+                        .flatten();
+                    if current {
+                        this.device_value_owners.remove(&identity);
+                        this.device_read_scopes.remove(&identity);
                     }
-                };
+                    workspace.update(cx, |workspace, cx| {
+                        workspace.finish_mouse_polling(scope, field, hz, observed, cx)
+                    });
+                    if current {
+                        this.status = match result {
+                            Ok((observed, None)) => {
+                                format!("设备已回读确认回报率：{observed} Hz。")
+                            }
+                            Ok((observed, Some(error))) => {
+                                format!(
+                                    "设备已确认回报率：{observed} Hz；通信进程退出失败：{error}"
+                                )
+                            }
+                            Err(error) => {
+                                format!("回报率未确认：{error:#}。请重新读取设备状态。")
+                            }
+                        };
+                    }
+                }
+                if this.close_requested && this.save_task.is_none() {
+                    this.continue_save_queue(true, cx);
+                }
                 cx.notify();
             });
         })

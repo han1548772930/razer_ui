@@ -6,6 +6,7 @@ edition.workspace = true
 [dependencies]
 razer-resource-db.workspace = true
 razer-ipc.workspace = true
+razer-service.workspace = true
 razer-platform.workspace = true
 raw-window-handle.workspace = true
 razer-i18n.workspace = true
@@ -21,11 +22,11 @@ serde_json = { workspace = true, features = ["raw_value"] }
 chrono.workspace = true
 regex.workspace = true
 uuid.workspace = true
-md5.workspace = true
 semver.workspace = true
 razer-assets.workspace = true
 razer-catalog.workspace = true
 razer-model.workspace = true
+razer-storage.workspace = true
 razer-widgets.workspace = true
 
 [dev-dependencies]

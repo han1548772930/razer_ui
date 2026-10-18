@@ -8,6 +8,9 @@ razer-i18n.workspace = true
 gpui-kit.workspace = true
 razer-assets.workspace = true
 razer-model.workspace = true
+unicode-segmentation.workspace = true
+unicode-linebreak.workspace = true
+unicode-script.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 raw-window-handle.workspace = true

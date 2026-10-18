@@ -13,3 +13,4 @@ razer-device.workspace = true
 razer-catalog.workspace = true
 chrono.workspace = true
 uuid.workspace = true
+roxmltree.workspace = true

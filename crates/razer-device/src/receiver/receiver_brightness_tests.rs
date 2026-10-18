@@ -84,6 +84,7 @@ fn unchanged_real_percentage_does_not_send_a_setter() {
     assert_eq!(result.observed.unwrap().raw_value, 255);
     let reports = device.sent.borrow();
     assert_eq!(reports.len(), 1);
+    assert_eq!(reports[0][0], 0);
     assert_eq!(&reports[0][6..12], &[3, 15, 132, 1, 15, 0]);
 }
 
@@ -296,6 +297,12 @@ fn linker_brightness_and_serial_use_host_get_selector_without_matching_returned_
         );
         assert_eq!(device.collection_sends.get(), 3);
         assert_eq!(*device.get_selectors.borrow(), [selector; 3]);
-        assert!(device.sent.borrow().iter().all(|packet| packet[0] == 0));
+        assert!(
+            device
+                .sent
+                .borrow()
+                .iter()
+                .all(|packet| packet[0] == selector)
+        );
     }
 }

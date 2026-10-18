@@ -4,6 +4,16 @@ use razer_catalog::emoji::EmojiSearchTable;
 use razer_i18n as i18n;
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
+
+pub mod capture;
+mod capture_keys;
+mod input_warnings;
+mod native;
+mod publication;
+pub use input_warnings::InputWarnings;
+pub use native::encode_shortcuts;
+pub use publication::{CompiledDocument, Compiler};
+
 pub const MODIFIERS: &[(&str, &str)] = &[
     ("CTRL", "Ctrl"),
     ("ALT", "Alt"),
@@ -76,7 +86,13 @@ pub struct SourceEmojiTab {
 }
 pub fn source_shortcuts() -> &'static SourceShortcutData {
     static DATA: OnceLock<SourceShortcutData> = OnceLock::new();
-    DATA.get_or_init(|| read_shortcuts_current_catalog())
+    DATA.get_or_init(|| {
+        let mut source = read_shortcuts_current_catalog();
+        source
+            .windows
+            .retain(|choice| WINDOWS.iter().any(|(id, _)| *id == choice.id));
+        source
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -220,8 +236,6 @@ impl ShortcutOutput {
     }
 }
 
-// Accessors for the retained pure native encoder (no transport is connected).
-#[allow(dead_code)]
 impl Shortcut {
     pub fn id(&self) -> &str {
         &self.id
@@ -254,7 +268,9 @@ impl Shortcut {
             && self.modifiers == other.modifiers
             && self.hypershift == other.hypershift
     }
-    pub fn validate(&self) -> Result<(), String> {
+    /// Validate the input identity and chord independently of its output.
+    /// Storage migrations use this for records excluded from local dispatch.
+    pub fn validate_input(&self) -> Result<(), String> {
         if self.id.is_empty() {
             return Err("快捷键缺少身份。".into());
         }
@@ -277,6 +293,11 @@ impl Shortcut {
         if families.windows(2).any(|pair| pair[0] >= pair[1]) {
             return Err("辅助键无效或重复。".into());
         }
+        Ok(())
+    }
+
+    pub fn validate(&self) -> Result<(), String> {
+        self.validate_input()?;
         if let Some(error) = self.output.error() {
             return Err(error.into());
         }
@@ -350,6 +371,11 @@ impl Shortcut {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "shortcuts/tests.rs"]
+mod tests;
+
 // Generated catalog reader: razer-pages/shortcuts_current.
 fn read_shortcuts_current_catalog() -> SourceShortcutData {
     fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SourceShortcutData> {

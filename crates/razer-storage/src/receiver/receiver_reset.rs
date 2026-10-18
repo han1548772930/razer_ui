@@ -9,6 +9,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::Path;
 
+#[path = "receiver_profile_snapshot.rs"]
+mod snapshot;
+pub use snapshot::{ReceiverBrightness, ReceiverProfileRevision, ReceiverProfileSnapshot};
+
 pub(crate) const MAX_SAFE_INTEGER: u64 = (1_u64 << 53) - 1;
 
 fn unique_name(profiles: &[ProfileData], base: String) -> String {
@@ -139,22 +143,6 @@ struct StoredReceiverDocument {
 }
 
 impl StoredReceiverDocument {
-    fn new(product: u32, container: &str, serial: &str, document: DeviceDocument) -> Self {
-        Self {
-            schema_version: 1,
-            product_id: product,
-            container: container.to_owned(),
-            serial: serial.to_owned(),
-            document,
-            storage_kind: Field::set("local_source_document_adaptation".to_owned()),
-            runtime_projection: Field::Missing,
-            required_refresh_events: Field::Missing,
-            executed_refresh_events: Field::Missing,
-            device_refresh_complete: Field::set(false),
-            extensions: Extensions::new(),
-        }
-    }
-
     fn read(text: &str) -> anyhow::Result<Self> {
         let file: Self = serde_json::from_str(text)?;
         file.document.validate()?;
@@ -399,75 +387,6 @@ pub fn load(
     })
 }
 
-/// Record an actual follow-up response separately from the saved profile.
-/// Missing executors never become successful device refreshes.
-pub fn record_refresh(
-    path: &Path,
-    product: u32,
-    container: &str,
-    serial: &str,
-    document: &Value,
-    receipt: Value,
-) -> anyhow::Result<()> {
-    let mut file = crate::read_document(path, StoredReceiverDocument::read)?
-        .context("Local reset document disappeared before refresh receipt")?;
-    file.require_owner(product, container, serial)?;
-    ensure!(
-        file.document == DeviceDocument::parse(document)?,
-        "Local reset document changed before device refresh receipt"
-    );
-    let previous = file.clone();
-    file.executed_refresh_events = Field::set(receipt);
-    file.device_refresh_complete = Field::set(false);
-    crate::write_document(path, &file, |text| {
-        let current = StoredReceiverDocument::read(text)?;
-        ensure!(
-            current == previous,
-            "Local reset file changed before refresh receipt"
-        );
-        Ok(())
-    })
-}
-
-/// Persist exactly the captured local source document and its required refresh
-/// intents. Reject external changes; do not erase another owner's document.
-pub fn persist(
-    path: &Path,
-    product: u32,
-    container: &str,
-    serial: &str,
-    previous: &Value,
-    plan: &ResetPlan,
-) -> anyhow::Result<()> {
-    let disk = crate::read_document(path, StoredReceiverDocument::read)?;
-    if let Some(disk) = &disk {
-        disk.require_owner(product, container, serial)?;
-        ensure!(
-            disk.document == DeviceDocument::parse(previous)?,
-            "Local reset document changed; reload it before resetting"
-        );
-    }
-    let mut file = StoredReceiverDocument::new(
-        product,
-        container,
-        serial,
-        DeviceDocument::parse(plan.document())?,
-    );
-    if let Some(previous) = &disk {
-        file.extensions = previous.extensions.clone();
-    }
-    file.runtime_projection = Field::set(plan.runtime_projection().clone());
-    file.required_refresh_events = Field::set(plan.refresh_events().to_vec());
-    crate::write_document(path, &file, |text| {
-        let current = StoredReceiverDocument::read(text)?;
-        ensure!(
-            disk.as_ref() == Some(&current),
-            "Local reset file changed during preparation"
-        );
-        Ok(())
-    })
-}
-
 pub fn local_path(
     product: u32,
     container: &str,
@@ -529,43 +448,6 @@ pub fn brightness_document(
     Ok(serde_json::to_value(document)?)
 }
 
-/// Source first producer stores its default document independently of later
-/// device submission. This is the application's local storage adaptation.
-pub fn persist_document(
-    path: &Path,
-    product: u32,
-    container: &str,
-    serial: &str,
-    previous: Option<&Value>,
-    document: &Value,
-) -> anyhow::Result<()> {
-    let disk = crate::read_document(path, StoredReceiverDocument::read)?;
-    match (&disk, previous) {
-        (None, None) => {}
-        (Some(disk), Some(previous)) => {
-            disk.require_owner(product, container, serial)?;
-            ensure!(
-                disk.document == DeviceDocument::parse(previous)?,
-                "Source document state changed"
-            );
-        }
-        _ => anyhow::bail!("Source document changed before local submission"),
-    }
-    let mut file =
-        StoredReceiverDocument::new(product, container, serial, DeviceDocument::parse(document)?);
-    if let Some(previous) = &disk {
-        file.extensions = previous.extensions.clone();
-    }
-    crate::write_document(path, &file, |text| {
-        let current = StoredReceiverDocument::read(text)?;
-        ensure!(
-            disk.as_ref() == Some(&current),
-            "Source document changed during local submission"
-        );
-        Ok(())
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -585,7 +467,7 @@ mod tests {
                     std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
                         .unwrap()
-                        .as_nanos(),
+                        .as_nanos()
                 )))
         }
     }
@@ -741,49 +623,27 @@ mod tests {
     }
 
     #[test]
-    fn persistence_keeps_ownership_conflicts_extensions_and_refresh_receipts_separate() {
+    fn previous_receiver_document_migration_checks_schema_owner_and_complete_source_bytes() {
         let path = TestFile::new();
-        let current = initial_document(164, 0, SERIAL, "PC", OLD_GUID).unwrap();
-        persist_document(&path.0, 164, CONTAINER, SERIAL, None, &current).unwrap();
-        let mut stored: Value = serde_json::from_slice(&std::fs::read(&path.0).unwrap()).unwrap();
-        stored["futureFileExtension"] = json!({"value":null});
+        let mut document = initial_document(164, 0, SERIAL, "PC", OLD_GUID).unwrap();
+        document["futureDocumentExtension"] = json!({"value":null});
+        let stored = json!({"schema_version":1,"product_id":164,"container":CONTAINER,
+            "serial":SERIAL,"document":document,"futureFileExtension":{"flag":true}});
         std::fs::write(&path.0, serde_json::to_vec(&stored).unwrap()).unwrap();
-        let loaded = load(&path.0, 164, CONTAINER, SERIAL).unwrap().unwrap();
-        let plan = ResetPlan::prepare(164, 0, &loaded, SERIAL, CONTAINER, "PC", NEW_GUID).unwrap();
-        persist(&path.0, 164, CONTAINER, SERIAL, &loaded, &plan).unwrap();
-        record_refresh(
-            &path.0,
-            164,
-            CONTAINER,
-            SERIAL,
-            plan.document(),
-            json!({"brightness":"failed"}),
-        )
-        .unwrap();
-        let saved: Value = serde_json::from_slice(&std::fs::read(&path.0).unwrap()).unwrap();
-        assert_eq!(saved["futureFileExtension"], stored["futureFileExtension"]);
-        assert_eq!(saved["device_refresh_complete"], false);
         assert_eq!(
-            saved["executed_refresh_events"],
-            json!({"brightness":"failed"})
+            load(&path.0, 164, CONTAINER, SERIAL).unwrap(),
+            Some(document)
         );
-        assert!(
-            record_refresh(
-                &path.0,
-                164,
-                CONTAINER,
-                "other-serial",
-                plan.document(),
-                json!({})
-            )
-            .is_err()
-        );
-        assert!(
-            persist_document(&path.0, 164, CONTAINER, SERIAL, Some(&current), &current).is_err()
-        );
-        assert_eq!(
-            load(&path.0, 164, CONTAINER, SERIAL).unwrap().unwrap(),
-            *plan.document()
-        );
+        assert!(load(&path.0, 241, CONTAINER, SERIAL).is_err());
+        assert!(load(&path.0, 164, "other-container", SERIAL).is_err());
+        assert!(load(&path.0, 164, CONTAINER, "other-serial").is_err());
+        let mut invalid = stored.clone();
+        invalid["schema_version"] = json!(2);
+        std::fs::write(&path.0, serde_json::to_vec(&invalid).unwrap()).unwrap();
+        assert!(load(&path.0, 164, CONTAINER, SERIAL).is_err());
+        invalid = stored;
+        invalid["document"]["profiles"][0]["brightness"]["value"] = json!(101);
+        std::fs::write(&path.0, serde_json::to_vec(&invalid).unwrap()).unwrap();
+        assert!(load(&path.0, 164, CONTAINER, SERIAL).is_err());
     }
 }

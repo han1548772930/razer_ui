@@ -61,14 +61,35 @@ struct IdentityFields {
 impl TryFrom<IdentityFields> for Identity {
     type Error = anyhow::Error;
     fn try_from(value: IdentityFields) -> Result<Self> {
-        Self::new(value.product, value.container_id, value.owner, value.generation)
+        Self::new(
+            value.product,
+            value.container_id,
+            value.owner,
+            value.generation,
+        )
     }
 }
 impl Identity {
-    pub fn new(product: Product, container_id: String, owner: String, generation: u64) -> Result<Self> {
-        ensure!(!container_id.is_empty() && !container_id.contains('\0'), "Surround container identity is absent or invalid");
-        ensure!(!owner.is_empty() && owner.len() <= 256 && !owner.contains('\0'), "Surround session owner is absent or invalid");
-        Ok(Self { product, container_id, owner, generation })
+    pub fn new(
+        product: Product,
+        container_id: String,
+        owner: String,
+        generation: u64,
+    ) -> Result<Self> {
+        ensure!(
+            !container_id.is_empty() && !container_id.contains('\0'),
+            "Surround container identity is absent or invalid"
+        );
+        ensure!(
+            !owner.is_empty() && owner.len() <= 256 && !owner.contains('\0'),
+            "Surround session owner is absent or invalid"
+        );
+        Ok(Self {
+            product,
+            container_id,
+            owner,
+            generation,
+        })
     }
     pub fn product(&self) -> Product {
         self.product
@@ -99,7 +120,10 @@ impl Volume {
         f32::from(self.0) / 100.0
     }
     pub fn from_native(value: f32) -> Result<Self> {
-        ensure!(value.is_finite() && (0.0..=1.0).contains(&value), "Invalid native Surround volume");
+        ensure!(
+            value.is_finite() && (0.0..=1.0).contains(&value),
+            "Invalid native Surround volume"
+        );
         Self::new((value * 100.0).round() as u8)
     }
 }
@@ -121,7 +145,10 @@ pub struct Delay(i16);
 impl Delay {
     pub const ZERO: Self = Self(0);
     pub fn new(value: i16) -> Result<Self> {
-        ensure!((-100..=100).contains(&value), "Surround delay is outside -100..100");
+        ensure!(
+            (-100..=100).contains(&value),
+            "Surround delay is outside -100..100"
+        );
         Ok(Self(value))
     }
     pub fn milliseconds(self) -> i16 {
@@ -150,7 +177,10 @@ pub struct Equalizer([i8; 3]);
 impl Equalizer {
     pub const FLAT: Self = Self([0; 3]);
     pub fn new(bands: [i8; 3]) -> Result<Self> {
-        ensure!(bands.iter().all(|band| (-6..=6).contains(band)), "Surround EQ exceeds -6..6 dB");
+        ensure!(
+            bands.iter().all(|band| (-6..=6).contains(band)),
+            "Surround EQ exceeds -6..6 dB"
+        );
         Ok(Self(bands))
     }
     pub fn bands(self) -> [i8; 3] {
@@ -188,8 +218,14 @@ impl TryFrom<EndpointFields> for Endpoint {
 }
 impl Endpoint {
     pub fn new(id: String, name: String) -> Result<Self> {
-        ensure!(!id.is_empty() && !name.is_empty(), "Front speaker identity is absent");
-        ensure!(!id.contains('\0') && !name.contains('\0'), "Front speaker contains a NUL");
+        ensure!(
+            !id.is_empty() && !name.is_empty(),
+            "Front speaker identity is absent"
+        );
+        ensure!(
+            !id.contains('\0') && !name.contains('\0'),
+            "Front speaker contains a NUL"
+        );
         Ok(Self { id, name })
     }
     pub fn id(&self) -> &str {
@@ -255,8 +291,14 @@ impl Settings {
             Change::Enabled(enabled) => self.enabled = *enabled,
             Change::FrontSpeaker(endpoint) => self.front_speaker = Some(endpoint.clone()),
             Change::Delay(delay) => self.delay = *delay,
-            Change::Equalizer { channel: Channel::Front, equalizer } => self.front_equalizer = *equalizer,
-            Change::Equalizer { channel: Channel::Rear, equalizer } => self.rear_equalizer = *equalizer,
+            Change::Equalizer {
+                channel: Channel::Front,
+                equalizer,
+            } => self.front_equalizer = *equalizer,
+            Change::Equalizer {
+                channel: Channel::Rear,
+                equalizer,
+            } => self.rear_equalizer = *equalizer,
             Change::Replicate(enabled) => self.replicate_front_stereo = *enabled,
             Change::Volume { .. } | Change::TestSignal(_) => {}
         }
@@ -268,8 +310,14 @@ impl Settings {
 pub enum Change {
     Enabled(bool),
     FrontSpeaker(Endpoint),
-    Volume { channel: Channel, volume: Volume },
-    Equalizer { channel: Channel, equalizer: Equalizer },
+    Volume {
+        channel: Channel,
+        volume: Volume,
+    },
+    Equalizer {
+        channel: Channel,
+        equalizer: Equalizer,
+    },
     Delay(Delay),
     Replicate(bool),
     TestSignal(bool),
@@ -285,9 +333,15 @@ impl Change {
 pub enum NativeCall {
     SetEnabled(bool),
     SetFrontEndpoint(String),
-    SetVolume { channel: Channel, volume: Volume },
+    SetVolume {
+        channel: Channel,
+        volume: Volume,
+    },
     SetRearMute(bool),
-    SetEqualizer { channel: Channel, equalizer: Equalizer },
+    SetEqualizer {
+        channel: Channel,
+        equalizer: Equalizer,
+    },
     SetDelay(Delay),
     SetReplicate(bool),
     SetTestSignal(bool),
@@ -337,7 +391,10 @@ impl Outcome {
         Ok(accepted)
     }
     fn required(&mut self, transport: &mut impl Transport, call: NativeCall) -> Result<()> {
-        ensure!(self.call(transport, call)?, "Surround native call returned false");
+        ensure!(
+            self.call(transport, call)?,
+            "Surround native call returned false"
+        );
         Ok(())
     }
 }
@@ -354,7 +411,10 @@ impl Runtime {
     /// Initial runtime from the stored comboMode preferences. Volumes and the
     /// audition signal stay unobserved until a native receipt exists.
     pub fn with_settings(settings: Settings) -> Self {
-        Self { settings, ..Self::default() }
+        Self {
+            settings,
+            ..Self::default()
+        }
     }
     pub fn settings(&self) -> &Settings {
         &self.settings
@@ -374,14 +434,25 @@ impl Runtime {
             Channel::Rear => self.rear_volume = Some(volume),
         }
     }
-    pub fn execute(&mut self, change: &Change, transport: &mut impl Transport, mut validate: impl FnMut() -> Result<()>) -> Outcome {
-        let mut outcome = Outcome { calls: Vec::new(), follow_ups: Vec::new(), completed: false, failure: None };
+    pub fn execute(
+        &mut self,
+        change: &Change,
+        transport: &mut impl Transport,
+        mut validate: impl FnMut() -> Result<()>,
+    ) -> Outcome {
+        let mut outcome = Outcome {
+            calls: Vec::new(),
+            follow_ups: Vec::new(),
+            completed: false,
+            failure: None,
+        };
         let result = (|| {
             validate()?;
             match change {
                 Change::Enabled(enabled) => self.set_enabled(*enabled, transport, &mut outcome)?,
                 Change::FrontSpeaker(endpoint) => {
-                    outcome.required(transport, NativeCall::SetFrontEndpoint(endpoint.id.clone()))?;
+                    outcome
+                        .required(transport, NativeCall::SetFrontEndpoint(endpoint.id.clone()))?;
                     self.settings.front_speaker = Some(endpoint.clone());
                     if self.settings.enabled {
                         // eo starts Xn without awaiting it. The endpoint task
@@ -393,11 +464,23 @@ impl Runtime {
                     if *channel == Channel::Rear && volume.percent() > 0 {
                         outcome.required(transport, NativeCall::SetRearMute(false))?;
                     }
-                    outcome.required(transport, NativeCall::SetVolume { channel: *channel, volume: *volume })?;
+                    outcome.required(
+                        transport,
+                        NativeCall::SetVolume {
+                            channel: *channel,
+                            volume: *volume,
+                        },
+                    )?;
                     self.observe_volume(*channel, *volume);
                 }
                 Change::Equalizer { channel, equalizer } => {
-                    outcome.required(transport, NativeCall::SetEqualizer { channel: *channel, equalizer: *equalizer })?;
+                    outcome.required(
+                        transport,
+                        NativeCall::SetEqualizer {
+                            channel: *channel,
+                            equalizer: *equalizer,
+                        },
+                    )?;
                     self.settings.apply(change);
                 }
                 Change::Delay(delay) => {
@@ -422,13 +505,25 @@ impl Runtime {
         }
         outcome
     }
-    fn set_enabled(&mut self, enabled: bool, transport: &mut impl Transport, outcome: &mut Outcome) -> Result<()> {
+    fn set_enabled(
+        &mut self,
+        enabled: bool,
+        transport: &mut impl Transport,
+        outcome: &mut Outcome,
+    ) -> Result<()> {
         // Xn publishes this runtime field before checking the endpoint or ACK.
         self.settings.enabled = enabled;
-        ensure!(!enabled || self.settings.front_speaker.is_some(), "Front speaker is not set");
+        ensure!(
+            !enabled || self.settings.front_speaker.is_some(),
+            "Front speaker is not set"
+        );
         outcome.required(transport, NativeCall::SetEnabled(enabled))?;
         for channel in [Channel::Rear, Channel::Front] {
-            let equalizer = if enabled { self.settings.equalizer(channel) } else { Equalizer::FLAT };
+            let equalizer = if enabled {
+                self.settings.equalizer(channel)
+            } else {
+                Equalizer::FLAT
+            };
             // Current Xn awaits both EQ calls but does not inspect their bools.
             // Keep each response for diagnostics without inventing rollback.
             outcome.call(transport, NativeCall::SetEqualizer { channel, equalizer })?;

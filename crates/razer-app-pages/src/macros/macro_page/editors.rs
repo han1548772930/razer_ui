@@ -7,18 +7,7 @@
 use super::*;
 use gpui_kit::base::{NumberInput, StepAction};
 
-pub const MOUSE_ACTION_KEYS: [&str; 10] = [
-    "TEXT_LEFT_CLICK",
-    "TEXT_RIGHT_CLICK",
-    "TEXT_SCROLL_CLICK",
-    "TEXT_MOUSE_BUTTON_4",
-    "TEXT_MOUSE_BUTTON_5",
-    "TEXT_DOUBLE_CLICK",
-    "TEXT_SCROLL_LEFT",
-    "TEXT_SCROLL_RIGHT",
-    "TEXT_SCROLL_UP",
-    "TEXT_SCROLL_DOWN",
-];
+pub use razer_model::macro_library::MOUSE_ACTION_KEYS;
 
 pub fn loop_state_key(state: &str) -> &'static str {
     if state == "end" {
@@ -81,6 +70,7 @@ impl MacroPage {
     /// Invalidate on document/editor changes so a late callback cannot edit
     /// a different row after reorder, undo, save or navigation.
     pub fn schedule_delay_edit(&mut self, cx: &mut Context<Self>) {
+        self.numeric_task = None;
         self.numeric_generation = self.numeric_generation.wrapping_add(1);
         let Some(index) = self.editing_action else {
             return;
@@ -99,7 +89,7 @@ impl MacroPage {
         let value = format_delay(parse_delay(&raw));
         let generation = self.numeric_generation;
         let document = self.current;
-        cx.spawn(async move |this, cx| {
+        self.numeric_task = Some(cx.spawn(async move |this, cx| {
             cx.background_executor()
                 .timer(Duration::from_millis(150))
                 .await;
@@ -124,8 +114,7 @@ impl MacroPage {
                 this.redo.clear();
                 cx.notify();
             });
-        })
-        .detach();
+        }));
     }
 
     pub fn numeric_value_editor(

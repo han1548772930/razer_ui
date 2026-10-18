@@ -8,6 +8,7 @@ use razer_discovery::{
     direct::{keyboard_legacy_calibration as route, keyboard_metadata},
     discovery::ObservedDevice,
 };
+use razer_ipc::mapping_control::{Suppression, Suspension};
 use razer_ipc::{KEY_CAPTURE_LIFECYCLE, ServiceClient, ServiceRequest};
 use razer_storage::{keyboard_calibration, source_local};
 use serde_json::{Value, json};
@@ -66,10 +67,11 @@ fn cleanup(
     target: &Target,
     initialized: &mut bool,
     lifecycle: &mut Option<MutexGuard<'static, ()>>,
+    suppression: &mut Option<Suspension>,
     replies: &mpsc::Sender<Reply>,
     epoch: u64,
 ) -> anyhow::Result<()> {
-    if !*initialized && lifecycle.is_none() {
+    if !*initialized && lifecycle.is_none() && suppression.is_none() {
         return Ok(());
     }
     // Ea.Z resets local state before enabling mappings and releasing redirects.
@@ -78,19 +80,24 @@ fn cleanup(
     let capture = client
         .request(ServiceRequest::StopMappingKeyCapture)
         .map_err(|error| anyhow::anyhow!("恢复键盘映射及输入重定向：{error:#}"));
-    match route::execute(client, target.clone(), Operation::Stop) {
+    let stop = match route::execute(client, target.clone(), Operation::Stop) {
         Ok(report) => {
-            if let Some(error) = report.error {
-                diagnostic(replies, error)
-            }
             modal_reply(replies, epoch, Reply::Messages(report.messages));
+            report
+                .error
+                .map_or(Ok(()), |error| Err(anyhow::anyhow!(error)))
         }
-        Err(error) => diagnostic(replies, format!("退出键盘校准模式：{error:#}")),
-    }
+        Err(error) => Err(error.context("退出键盘校准模式")),
+    };
     *initialized = false;
     // If native cleanup failed, retain the lock until the service's final
     // Shutdown attempt. A new recorder must not race the old restoration.
     capture?;
+    stop?;
+    if let Some(scope) = suppression.as_mut() {
+        scope.release().map_err(anyhow::Error::msg)?;
+    }
+    *suppression = None;
     *lifecycle = None;
     Ok(())
 }
@@ -156,6 +163,7 @@ pub(super) fn run(
         client.set_request_guard(valid.clone());
         let mut initialized = false;
         let mut lifecycle = None;
+        let mut suppression = None;
         let mut monitoring = false;
         let mut mounted = false;
         let mut host_active = false;
@@ -255,6 +263,7 @@ pub(super) fn run(
                             &target,
                             &mut initialized,
                             &mut lifecycle,
+                            &mut suppression,
                             &replies,
                             modal_epoch,
                         )?;
@@ -284,6 +293,7 @@ pub(super) fn run(
                             &target,
                             &mut initialized,
                             &mut lifecycle,
+                            &mut suppression,
                             &replies,
                             modal_epoch,
                         )?;
@@ -299,6 +309,12 @@ pub(super) fn run(
                         };
                         if let Some(guard) = guard {
                             lifecycle = Some(guard);
+                            suppression = Some(
+                                Suspension::acquire_while(Suppression::Mapping, || {
+                                    valid.load(Ordering::Acquire)
+                                })
+                                .map_err(anyhow::Error::msg)?,
+                            );
                             let ready = client.request(
                                 ServiceRequest::StartKeyboardCalibrationCapture {
                                     product_id: observed.product_id(),
@@ -359,6 +375,7 @@ pub(super) fn run(
                 &target,
                 &mut initialized,
                 &mut lifecycle,
+                &mut suppression,
                 &replies,
                 modal_epoch,
             ) {
@@ -370,6 +387,14 @@ pub(super) fn run(
         if let Err(error) = client.request(ServiceRequest::Shutdown) {
             diagnostic(&replies, format!("清理键盘校准服务：{error:#}"))
         }
+        drop(client);
+        if let Some(scope) = suppression.as_mut() {
+            if let Err(error) = scope.release() {
+                diagnostic(&replies, format!("恢复校准期间暂停的映射：{error}"));
+            }
+        }
+        drop(suppression);
+        drop(lifecycle);
         result
     })();
     if let Err(error) = result {

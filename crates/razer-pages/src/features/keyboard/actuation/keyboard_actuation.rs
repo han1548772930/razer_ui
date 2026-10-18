@@ -4,7 +4,11 @@ use super::*;
 use gpui_kit::base::Button as BaseButton;
 use gpui_kit::component::tooltip::Tooltip;
 use std::collections::BTreeSet;
-use std::time::Duration;
+use std::time::Instant;
+
+#[path = "keyboard_sync_feedback.rs"]
+mod sync_feedback;
+use sync_feedback::SyncFeedback;
 
 fn rapid_help_control(id: &'static str, text: SharedString) -> AnyElement {
     BaseButton::new(id)
@@ -19,58 +23,60 @@ fn rapid_help_control(id: &'static str, text: SharedString) -> AnyElement {
         .tooltip(move |window, cx| {
             let text = text.clone();
             Tooltip::element(move |_, cx| {
-                razer_assets::resource_scope(v_flex()
-                    .max_w(surface::css(300.))
-                    .px(surface::css(10.))
-                    .py(surface::css(8.))
-                    .border_1()
-                    .border_color(razer_widgets::theme::TooltipColors::border())
-                    .bg(razer_widgets::theme::TooltipColors::background())
-                    .text_color(razer_widgets::theme::TooltipColors::foreground())
-                    .child(div().child(text.clone()))
-                    .child(
-                        img("synapse/rapid-trigger-tooltip-slider.gif")
-                            .w(surface::css(200.))
-                            .h_auto(),
-                    )
-                    .child(
-                        h_flex()
-                            .justify_center()
-                            .gap(surface::css(20.))
-                            .child(t("TRADITIONAL_SWITCH"))
-                            .child(t("RAPID_TRIGGER_BREAK_LINE")),
-                    )
-                    .child(
-                        h_flex()
-                            .justify_center()
-                            .gap(surface::css(8.))
-                            .mt(surface::css(10.))
-                            .child(t("LEGEND"))
-                            .child(
-                                h_flex()
-                                    .gap(surface::css(8.))
-                                    .text_color(cx.theme().primary)
-                                    .child(
-                                        div()
-                                            .size(surface::css(14.))
-                                            .rounded_full()
-                                            .bg(cx.theme().primary),
-                                    )
-                                    .child(t("ACTIVE")),
-                            )
-                            .child(
-                                h_flex()
-                                    .gap(surface::css(8.))
-                                    .text_color(cx.theme().danger)
-                                    .child(
-                                        div()
-                                            .size(surface::css(14.))
-                                            .rounded_full()
-                                            .bg(cx.theme().danger),
-                                    )
-                                    .child(t("RESET_LOWERCASE")),
-                            ),
-                    ))
+                razer_assets::resource_scope(
+                    v_flex()
+                        .max_w(surface::css(300.))
+                        .px(surface::css(10.))
+                        .py(surface::css(8.))
+                        .border_1()
+                        .border_color(razer_widgets::theme::TooltipColors::border())
+                        .bg(razer_widgets::theme::TooltipColors::background())
+                        .text_color(razer_widgets::theme::TooltipColors::foreground())
+                        .child(div().child(text.clone()))
+                        .child(
+                            img("synapse/rapid-trigger-tooltip-slider.gif")
+                                .w(surface::css(200.))
+                                .h_auto(),
+                        )
+                        .child(
+                            h_flex()
+                                .justify_center()
+                                .gap(surface::css(20.))
+                                .child(t("TRADITIONAL_SWITCH"))
+                                .child(t("RAPID_TRIGGER_BREAK_LINE")),
+                        )
+                        .child(
+                            h_flex()
+                                .justify_center()
+                                .gap(surface::css(8.))
+                                .mt(surface::css(10.))
+                                .child(t("LEGEND"))
+                                .child(
+                                    h_flex()
+                                        .gap(surface::css(8.))
+                                        .text_color(cx.theme().primary)
+                                        .child(
+                                            div()
+                                                .size(surface::css(14.))
+                                                .rounded_full()
+                                                .bg(cx.theme().primary),
+                                        )
+                                        .child(t("ACTIVE")),
+                                )
+                                .child(
+                                    h_flex()
+                                        .gap(surface::css(8.))
+                                        .text_color(cx.theme().danger)
+                                        .child(
+                                            div()
+                                                .size(surface::css(14.))
+                                                .rounded_full()
+                                                .bg(cx.theme().danger),
+                                        )
+                                        .child(t("RESET_LOWERCASE")),
+                                ),
+                        ),
+                )
             })
             .build(window, cx)
         })
@@ -111,6 +117,7 @@ pub(super) struct State {
     sync_all_disabled: bool,
     lifecycle: u64,
     pub(super) selected: BTreeSet<String>,
+    select_all: bool,
     selection_history: Vec<String>,
     slider: Entity<SliderState>,
     /// Rapid Trigger controls are part of the ACTUATION route for analog
@@ -123,6 +130,9 @@ pub(super) struct State {
     rapid_continuous: bool,
     continuous_enabled: bool,
     reset_popup: bool,
+    sync_feedback: [SyncFeedback; 2],
+    feedback_origin: Instant,
+    feedback_timer: Option<Task<()>>,
 }
 
 fn presentation(pid: u32) -> &'static Presentation {
@@ -230,6 +240,7 @@ impl KeyboardProductWorkspace {
             sync_all_disabled: true,
             lifecycle: 0,
             selected: BTreeSet::new(),
+            select_all: false,
             selection_history: Vec::new(),
             slider,
             rapid_enabled: false,
@@ -239,6 +250,9 @@ impl KeyboardProductWorkspace {
             rapid_continuous: false,
             continuous_enabled: false,
             reset_popup: false,
+            sync_feedback: Default::default(),
+            feedback_origin: Instant::now(),
+            feedback_timer: None,
         });
     }
 
@@ -356,6 +370,7 @@ impl KeyboardProductWorkspace {
             return;
         }
         let state = self.actuation.as_mut().unwrap();
+        state.select_all = false;
         if state.selected.remove(input) {
             state.selection_history.retain(|id| id != input);
         } else {
@@ -669,6 +684,14 @@ impl KeyboardProductWorkspace {
         };
         self.apply_rapid_mapping(ids, true, rapid, cx);
         self.request_actuation_mapping(cx);
+        let state = self.actuation.as_ref().unwrap();
+        let rapid = json!({"makeSensitivity":Self::rapid_raw(state.rapid_make.read(cx).value().start()),
+            "breakSensitivity":Self::rapid_raw(state.rapid_break.read(cx).value().start()),"continuous":state.rapid_continuous,"isEnableUpStroke":state.rapid_upstroke});
+        self.request_actuation_message(
+            json!({"type":"ON_SYNC_GLOBAL_RAPID_TRIGGER","payload":{"value":rapid}}),
+            cx,
+        );
+        self.start_sync_feedback(true, all, false, cx);
         cx.notify();
     }
 
@@ -798,7 +821,18 @@ impl KeyboardProductWorkspace {
                 cx.emit(KeyboardProductChanged);
             }
         }
-        self.request_actuation_mapping(cx);
+        let select_all = !synchronize
+            && self
+                .actuation
+                .as_ref()
+                .is_some_and(|state| state.select_all);
+        self.request_actuation_mapping_with_selection(select_all, cx);
+        if select_all {
+            self.request_actuation_message(
+                json!({"type":"ON_SYNC_GLOBAL_ACTUATION","payload":{"value":points}}),
+                cx,
+            );
+        }
         cx.notify();
     }
 
@@ -816,7 +850,6 @@ impl KeyboardProductWorkspace {
             return;
         }
         let raw = state.make_point;
-        let lifecycle = state.lifecycle;
         let has_mappings = self
             .draft
             .pointer(&self.mapping_path())
@@ -832,23 +865,75 @@ impl KeyboardProductWorkspace {
             state.selected.iter().cloned().collect()
         };
         self.apply_actuation_points(ids, raw, true, cx);
-        if all && has_mappings {
-            // Source disables Sync all after 2500ms. Scope its delayed view
-            // state to this profile/page rather than mutating a restored owner.
-            cx.spawn(async move |this, cx| {
-                cx.background_executor()
-                    .timer(Duration::from_millis(2500))
-                    .await;
-                let _ = this.update(cx, |this, cx| {
-                    if let Some(state) = &mut this.actuation {
-                        if state.lifecycle == lifecycle && this.page == "ACTUATION" {
-                            state.sync_all_disabled = true;
-                            cx.notify();
-                        }
+        self.request_actuation_message(json!({"type":"ON_SYNC_GLOBAL_ACTUATION","payload":{"value":{"0":raw as u32,"1":raw as u32}}}),cx);
+        self.start_sync_feedback(false, all, has_mappings, cx);
+    }
+
+    fn start_sync_feedback(
+        &mut self,
+        rapid: bool,
+        all: bool,
+        has_mappings: bool,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(state) = &mut self.actuation else {
+            return;
+        };
+        let origin = state.feedback_origin;
+        state.sync_feedback[usize::from(rapid)].begin(origin.elapsed(), all, has_mappings);
+        let lifecycle = state.lifecycle;
+        state.feedback_timer = Some(cx.spawn(async move |this, cx| {
+            loop {
+                let Ok(next) = this.update(cx, |this, _| {
+                    let state = this.actuation.as_ref()?;
+                    if state.lifecycle != lifecycle || this.page != "ACTUATION" {
+                        return None;
                     }
-                });
-            })
-            .detach();
+                    let now = origin.elapsed();
+                    state
+                        .sync_feedback
+                        .iter()
+                        .filter_map(|feedback| feedback.next(now))
+                        .min()
+                }) else {
+                    return;
+                };
+                let Some(next) = next else {
+                    return;
+                };
+                cx.background_executor()
+                    .timer(next.saturating_sub(origin.elapsed()))
+                    .await;
+                let Ok(current) = this.update(cx, |this, cx| {
+                    let Some(state) = &mut this.actuation else {
+                        return false;
+                    };
+                    if state.lifecycle != lifecycle || this.page != "ACTUATION" {
+                        return false;
+                    }
+                    let now = origin.elapsed();
+                    if state.sync_feedback[0].advance(now) {
+                        state.sync_all_disabled = true;
+                    }
+                    state.sync_feedback[1].advance(now);
+                    cx.notify();
+                    true
+                }) else {
+                    return;
+                };
+                if !current {
+                    return;
+                }
+            }
+        }));
+        cx.notify();
+    }
+
+    pub(super) fn cancel_sync_feedback(&mut self) {
+        if let Some(state) = &mut self.actuation {
+            state.feedback_timer = None;
+            state.sync_feedback = Default::default();
+            state.lifecycle = state.lifecycle.wrapping_add(1);
         }
     }
 
@@ -919,7 +1004,10 @@ impl KeyboardProductWorkspace {
         }
         if let Some(state) = &mut self.actuation {
             state.reset_popup = false;
+            state.feedback_timer = None;
+            state.sync_feedback = Default::default();
             state.selected.clear();
+            state.select_all = false;
             state.selection_history.clear();
         }
         self.refresh_actuation_selection(window, cx);
@@ -931,6 +1019,7 @@ impl KeyboardProductWorkspace {
         self.cancel_actuation_connection();
         if let Some(state) = &mut self.actuation {
             state.selected.clear();
+            state.select_all = false;
             state.selection_history.clear();
             state.sync_all_disabled = true;
             state.rapid_enabled = false;
@@ -986,6 +1075,7 @@ impl KeyboardProductWorkspace {
                             .collect();
                         if let Some(state) = &mut this.actuation {
                             state.selected = selected;
+                            state.select_all = true;
                             state.selection_history.clear();
                             state.sync_all_disabled = state.selected.is_empty();
                         }
@@ -1007,6 +1097,7 @@ impl KeyboardProductWorkspace {
                     .on_click(cx.listener(|this, _, window, cx| {
                         if let Some(state) = &mut this.actuation {
                             state.selected.clear();
+                            state.select_all = false;
                             state.selection_history.clear();
                             state.sync_all_disabled = true;
                         }
@@ -1190,6 +1281,8 @@ impl KeyboardProductWorkspace {
                            cx: &Context<Self>| {
             use razer_widgets::theme::KeyboardActuationColors as Colors;
             let label = t(label);
+            let spinning = state.sync_feedback[usize::from(rapid)]
+                .spinner(state.feedback_origin.elapsed(), all);
             h_flex()
                 .w(relative(0.5))
                 .flex_shrink_0()
@@ -1258,6 +1351,14 @@ impl KeyboardProductWorkspace {
                             }
                         })),
                 )
+                .when(spinning, |row| {
+                    row.child(
+                        img("synapse/keyboard-actuation-spinner.svg")
+                            .w(surface::css(20.))
+                            .h(surface::css(20.))
+                            .ml(surface::css(5.)),
+                    )
+                })
         };
         panel = panel.child(
             h_flex()

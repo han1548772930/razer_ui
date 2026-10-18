@@ -175,8 +175,6 @@ impl MouseProductWorkspace {
     /// Exit cancels transport work while draining already requested automatic
     /// persistence, including the last edit waiting behind an in-flight SET.
     pub fn prepare_legacy_dpi_exit(&mut self, cx: &App) -> Option<MouseLegacyDpiRequested> {
-        self.legacy_mapping.stop();
-        self.mapping_current_state.keyboard.stop();
         let latest = self
             .legacy_dpi
             .queued

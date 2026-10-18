@@ -690,8 +690,8 @@ impl MouseProductWorkspace {
                             .w_full(),
                     ),
             )
-            .popup(
-                razer_assets::resource_scope(div()
+            .popup(razer_assets::resource_scope(
+                div()
                     .absolute()
                     .inset_0()
                     .on_mouse_move(cx.listener(move |this, e: &MouseMoveEvent, window, cx| {
@@ -700,8 +700,8 @@ impl MouseProductWorkspace {
                     .capture_any_mouse_up(
                         cx.listener(|this, _, _, cx| this.release_scroll_curve(cx)),
                     )
-                    .child(panel)),
-            )
+                    .child(panel),
+            ))
             .into_any_element()
     }
 }

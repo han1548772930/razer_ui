@@ -30,7 +30,7 @@ pub fn observe_resources<T: 'static>(
 struct Runtime {
     owner: Option<ResourceRuntime>,
     client: ResourceClient,
-    _results: Task<()>,
+    results: Option<Task<()>>,
     _quit: Subscription,
 }
 impl Global for Runtime {}
@@ -60,10 +60,10 @@ pub fn start_resources(owner: ResourceRuntime, cx: &mut App) -> anyhow::Result<(
             });
         }
     });
-    // Joining is part of quit, on the background executor. Drop also joins when
-    // the application is torn down without a quit notification.
+    // The shell drains this owner before requesting platform quit. This
+    // callback is only a fallback because the framework bounds quit handlers.
     let quit = cx.on_app_quit(|cx| {
-        let owner = cx.global_mut::<Runtime>().owner.take();
+        let owner = take_resource_runtime_for_shutdown(cx);
         let cleanup = cx.background_executor().spawn(async move {
             if let Some(mut owner) = owner {
                 if let Err(error) = owner.shutdown() {
@@ -76,10 +76,25 @@ pub fn start_resources(owner: ResourceRuntime, cx: &mut App) -> anyhow::Result<(
     cx.set_global(Runtime {
         owner: Some(owner),
         client,
-        _results: results,
+        results: Some(results),
         _quit: quit,
     });
     Ok(())
+}
+
+/// Transfer the application owner to its retained background shutdown task.
+/// Requests and presentation notifications stop immediately; the caller must
+/// finish `ResourceRuntime::shutdown` before completing application exit.
+pub fn take_resource_runtime_for_shutdown(cx: &mut App) -> Option<ResourceRuntime> {
+    crate::image_cache::stop_resource_images(cx);
+    if !cx.has_global::<Runtime>() {
+        return None;
+    }
+    let runtime = cx.global_mut::<Runtime>();
+    let owner = runtime.owner.take()?;
+    owner.begin_shutdown();
+    runtime.results.take();
+    Some(owner)
 }
 
 pub fn register_fonts(cx: &App) -> anyhow::Result<()> {

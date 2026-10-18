@@ -3,14 +3,130 @@
 use anyhow::{Context as _, Result, ensure};
 use html5ever::{LocalName, QualName, namespace_url, ns, parse_fragment, tendril::TendrilSink};
 use markup5ever_rcdom::{Handle, NodeData, RcDom};
+use serde::Deserialize;
 use serde_json::{Value, json};
 
+pub const MAX_BYTES: usize = 16 * 1024 * 1024;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[non_exhaustive]
+pub struct TransferTarget {
+    pub product_id: u32,
+    pub dongle_id: Option<u32>,
+    pub ble_id: Option<u32>,
+    pub category: TransferCategory,
+    #[serde(default, rename = "is8kAnalogDevice")]
+    pub is_eight_k_analog_device: bool,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, serde::Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TransferCategory {
+    Accessory,
+    Audio,
+    Broadcaster,
+    Case,
+    Chair,
+    Egpu,
+    Gamepad,
+    Hue,
+    Iot,
+    Keyboard,
+    Keypad,
+    Monitor,
+    Mouse,
+    Mousemat,
+    Mouseplusmat,
+    System,
+}
+impl TransferCategory {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Accessory => "ACCESSORY",
+            Self::Audio => "AUDIO",
+            Self::Broadcaster => "BROADCASTER",
+            Self::Case => "CASE",
+            Self::Chair => "CHAIR",
+            Self::Egpu => "EGPU",
+            Self::Gamepad => "GAMEPAD",
+            Self::Hue => "HUE",
+            Self::Iot => "IOT",
+            Self::Keyboard => "KEYBOARD",
+            Self::Keypad => "KEYPAD",
+            Self::Monitor => "MONITOR",
+            Self::Mouse => "MOUSE",
+            Self::Mousemat => "MOUSEMAT",
+            Self::Mouseplusmat => "MOUSEPLUSMAT",
+            Self::System => "SYSTEM",
+        }
+    }
+}
+impl TransferTarget {
+    pub fn matches_category(&self, category: Option<&str>) -> bool {
+        category == Some(self.category.as_str())
+    }
+
+    pub fn matches_product(&self, product: Option<f64>) -> bool {
+        product.is_some_and(|product| {
+            [Some(self.product_id), self.dongle_id, self.ble_id]
+                .into_iter()
+                .flatten()
+                .any(|identity| f64::from(identity) == product)
+        })
+    }
+}
+
+#[non_exhaustive]
+pub struct ProfileTransferProduct {
+    pub mounted_product_id: u32,
+    pub target: TransferTarget,
+    pub export_target: TransferTarget,
+    pub export_rule: ProfileExportRule,
+    pub device_name: Option<&'static str>,
+}
+
+#[path = "profile_transfer/blackshark.rs"]
+mod blackshark;
+#[path = "profile_transfer/mouse.rs"]
+mod mouse;
+#[path = "profile_transfer/mouse_defaults.rs"]
+mod mouse_defaults;
+#[path = "profile_transfer/targets.rs"]
+mod targets;
+pub use blackshark::{PreparedGlobalImport1398, prepare_global_import_1398};
+pub use mouse::{
+    MouseImportContext, PreparedMouseImport, prepare_global_mouse_import, prepare_mouse_import,
+};
+pub use mouse_defaults::{default_device_182, default_profile_182};
+
+pub fn product_target(product_id: u32) -> Option<&'static ProfileTransferProduct> {
+    targets::PRODUCTS
+        .binary_search_by_key(&product_id, |product| product.mounted_product_id)
+        .ok()
+        .map(|index| &targets::PRODUCTS[index])
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProfileExportRule {
+    ProfilesOnly,
+    ProfilesWithSelectedMacros,
+    ProfilesWithRequiredSelectedMacros,
+}
+impl ProfileExportRule {
+    pub fn includes_macros(self) -> bool {
+        self != Self::ProfilesOnly
+    }
+    pub fn requires_selected_macros(self) -> bool {
+        self == Self::ProfilesWithRequiredSelectedMacros
+    }
+}
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct DecodedFile {
-    profiles: Vec<Value>,
-    macros: Vec<Value>,
-    device_name: String,
-    warning: bool,
+    pub profiles: Vec<Value>,
+    pub macros: Vec<Value>,
+    pub device_name: String,
+    pub warning: bool,
 }
 impl DecodedFile {
     pub fn profiles(&self) -> &[Value] {
@@ -149,24 +265,38 @@ fn encode_base64(input: &[u8]) -> String {
     out
 }
 
-fn decode_entry(encoded: &Value) -> Result<Value> {
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Reader {
+    Product,
+    Profiles,
+}
+
+fn decode_entry(encoded: &Value, reader: Reader) -> Result<Value> {
     let bytes = decode_base64(
         encoded["payload"]
             .as_str()
             .context("Profile payload is absent")?,
     )?;
-    // js-base64 decodes malformed UTF-8 with replacement characters.
-    let mut value: Value = serde_json::from_str(&String::from_utf8_lossy(&bytes))?;
-    let mut hashed = value.clone();
-    let object = hashed
-        .as_object_mut()
-        .context("Profile payload is not an object")?;
-    object.remove("hash");
-    object.remove("gamemode");
-    let digest = format!(
-        "{:x}",
-        md5::compute(crate::mapping_engine_hash::canonical_json(&hashed)?)
-    );
+    // The product's js-base64 path replaces malformed UTF-8. The global
+    // Profiles reader retains its own strict JSON payload boundary.
+    let mut value: Value = match reader {
+        Reader::Product => serde_json::from_str(&String::from_utf8_lossy(&bytes))?,
+        Reader::Profiles => serde_json::from_slice(&bytes)?,
+    };
+    ensure!(value.is_object(), "Profile payload is not an object");
+    let digest = match reader {
+        Reader::Profiles => crate::mapping_engine_hash::source_hash(&value)?,
+        Reader::Product => {
+            let mut hashed = value.clone();
+            let object = hashed.as_object_mut().expect("validated profile object");
+            object.remove("hash");
+            object.remove("gamemode");
+            format!(
+                "{:x}",
+                md5::compute(crate::mapping_engine_hash::canonical_json(&hashed)?)
+            )
+        }
+    };
     ensure!(
         encoded["hash"].as_str() == Some(digest.as_str()),
         "Profile hash does not match"
@@ -178,23 +308,64 @@ fn decode_entry(encoded: &Value) -> Result<Value> {
 /// The file reader's category/PID compatibility and corrupt-entry semantics.
 /// Payload hashes are verified before applying the outer display name.
 pub fn decode(bytes: &[u8], target: &Value) -> Result<DecodedFile> {
+    let target: TransferTarget =
+        serde_json::from_value(target.clone()).context("Invalid profile compatibility target")?;
+    decode_file(bytes, &target, Reader::Product)
+}
+
+/// Global Profiles 43/Ea and 1867/D reject incompatible files while the
+/// product reader can still return independent macro entries from that file.
+pub fn decode_global(
+    bytes: &[u8],
+    target: &TransferTarget,
+    default_profile: Option<&Value>,
+) -> Result<DecodedFile> {
+    let mut file = decode_file(bytes, target, Reader::Profiles)?;
+    // Current Profiles useDa reads DEFAULTPROFILE from updateDeviceInfo's
+    // first cached profile. It does not use a product's factory defaults.
+    if let Some(mode) = default_profile
+        .and_then(|profile| profile.pointer("/snapTap/keyList/0/mode"))
+        .filter(|mode| truthy(mode))
+    {
+        for profile in &mut file.profiles {
+            if let Some(keys) = profile
+                .pointer_mut("/snapTap/keyList")
+                .and_then(Value::as_array_mut)
+            {
+                for key in keys {
+                    let key = key
+                        .as_object_mut()
+                        .context("Imported Snap Tap key is not an object")?;
+                    if !key.get("mode").is_some_and(truthy) {
+                        key.insert("mode".into(), mode.clone());
+                    }
+                }
+            }
+        }
+    }
+    Ok(file)
+}
+
+fn decode_file(bytes: &[u8], target: &TransferTarget, reader: Reader) -> Result<DecodedFile> {
+    ensure!(bytes.len() <= MAX_BYTES, "Profile file exceeds 16 MiB");
+    if reader == Reader::Profiles && bytes.starts_with(b"PK") {
+        anyhow::bail!("Synapse 3 migration is not connected");
+    }
     let text = String::from_utf8_lossy(bytes);
     let document: Value = serde_json::from_str(text.strip_prefix('\u{feff}').unwrap_or(&text))?;
     let rows = document["profiles"]
         .as_array()
         .context("Profile file has no profiles array")?;
-    let same_number =
-        |a: &Value, b: &Value| a.as_f64().zip(b.as_f64()).is_some_and(|(a, b)| a == b);
-    let same_category =
-        document["category"].is_string() && document["category"] == target["category"];
-    let compatible = same_category
-        || ["productId", "dongleId", "bleId"]
-            .into_iter()
-            .any(|field| same_number(&document["productId"], &target[field]));
-    let mut warning = same_category && !same_number(&document["productId"], &target["productId"]);
+    let same_category = target.matches_category(document["category"].as_str());
+    let product_id = document["productId"].as_f64();
+    let compatible = same_category || target.matches_product(product_id);
+    if reader == Reader::Profiles && !compatible {
+        anyhow::bail!("No compatible profiles for this product");
+    }
+    let mut warning = same_category && product_id != Some(f64::from(target.product_id));
     let mut decode_rows = |rows: &[Value]| {
         rows.iter()
-            .filter_map(|entry| match decode_entry(entry) {
+            .filter_map(|entry| match decode_entry(entry, reader) {
                 Ok(value) => Some(value),
                 Err(_) => {
                     warning = true;
@@ -210,7 +381,7 @@ pub fn decode(bytes: &[u8], target: &Value) -> Result<DecodedFile> {
             .map(Vec::as_slice)
             .unwrap_or(&[]),
     );
-    if !truthy(&target["is8kAnalogDevice"]) {
+    if !target.is_eight_k_analog_device {
         for profile in &mut profiles {
             let mut rows = profile["mappings"].as_array().cloned().unwrap_or_default();
             rows.retain(|row| {
@@ -241,6 +412,20 @@ fn encode_entry(value: &Value, name: &str) -> Result<Value> {
 /// MW50574.ry excludes only profile appEngine and exports only the three macro
 /// payload fields. Game links and external Chroma effects live in other stores.
 pub fn encode(target: &Value, profiles: &[Value], macros: &[Value]) -> Result<Vec<u8>> {
+    encode_with_rule(
+        target,
+        profiles,
+        macros,
+        ProfileExportRule::ProfilesWithSelectedMacros,
+    )
+}
+
+pub fn encode_with_rule(
+    target: &Value,
+    profiles: &[Value],
+    macros: &[Value],
+    rule: ProfileExportRule,
+) -> Result<Vec<u8>> {
     let profiles = profiles
         .iter()
         .map(|profile| {
@@ -257,7 +442,7 @@ pub fn encode(target: &Value, profiles: &[Value], macros: &[Value]) -> Result<Ve
             )
         })
         .collect::<Result<Vec<_>>>()?;
-    let macros = macros
+    let macros = if rule.includes_macros() { macros } else { &[] }
         .iter()
         .map(|mac| {
             encode_entry(
@@ -269,10 +454,17 @@ pub fn encode(target: &Value, profiles: &[Value], macros: &[Value]) -> Result<Ve
             )
         })
         .collect::<Result<Vec<_>>>()?;
-    Ok(serde_json::to_vec_pretty(
-        &json!({"productId":target["productId"],"deviceName":target["deviceName"],
-        "category":target["category"],"profiles":profiles,"macros":macros}),
-    )?)
+    let mut document = json!({"productId":target["productId"],"deviceName":target["deviceName"],
+        "category":target["category"],"profiles":profiles});
+    if rule.includes_macros() {
+        document["macros"] = macros.into();
+    }
+    let bytes = serde_json::to_vec_pretty(&document)?;
+    ensure!(
+        bytes.len() <= MAX_BYTES,
+        "Profile file exceeds 16 MiB export limit"
+    );
+    Ok(bytes)
 }
 
 /// The current middleware helper preserves an existing numeric suffix. The UI
@@ -306,6 +498,52 @@ pub fn prepare_import_756(
     existing_macros: &[Value],
     active_guid: &str,
     layout: u32,
+    fresh_guid: impl FnMut() -> String,
+) -> Result<(Vec<Value>, Vec<Value>)> {
+    prepare_import_756_inner(
+        rows,
+        macros,
+        existing_profiles,
+        existing_macros,
+        ImportStage::ProductUi { active_guid },
+        layout,
+        fresh_guid,
+    )
+}
+
+/// Global Profiles Ua dispatches selectedMacroData as an empty array and sends
+/// the decoded rows directly to MW50574.ay. Product UI analog conversion is a
+/// separate caller stage and must not run for that command.
+pub fn prepare_global_import_756(
+    rows: &[Value],
+    existing_profiles: &[Value],
+    existing_macros: &[Value],
+    layout: u32,
+    fresh_guid: impl FnMut() -> String,
+) -> Result<(Vec<Value>, Vec<Value>)> {
+    prepare_import_756_inner(
+        rows,
+        &[],
+        existing_profiles,
+        existing_macros,
+        ImportStage::Middleware,
+        layout,
+        fresh_guid,
+    )
+}
+
+enum ImportStage<'a> {
+    ProductUi { active_guid: &'a str },
+    Middleware,
+}
+
+fn prepare_import_756_inner(
+    rows: &[Value],
+    macros: &[Value],
+    existing_profiles: &[Value],
+    existing_macros: &[Value],
+    stage: ImportStage<'_>,
+    layout: u32,
     mut fresh_guid: impl FnMut() -> String,
 ) -> Result<(Vec<Value>, Vec<Value>)> {
     use std::collections::BTreeMap;
@@ -335,6 +573,11 @@ pub fn prepare_import_756(
         imported_macros.push(value);
     }
     let target = &source["profile_transfer_target"];
+    let product_ui = matches!(stage, ImportStage::ProductUi { .. });
+    let active_guid = match stage {
+        ImportStage::ProductUi { active_guid } => active_guid,
+        ImportStage::Middleware => "",
+    };
     let info = if active_guid
         == source["preset_guids"]["HIGH_SENSITIVITY"]
             .as_str()
@@ -428,14 +671,24 @@ pub fn prepare_import_756(
         let mut mappings = mappings
             .iter()
             .filter(|mapping| {
-                !((mapping["isHyperShift"] == true || mapping["IsHyperShift"] == true)
+                !(product_ui
+                    && (mapping["isHyperShift"] == true || mapping["IsHyperShift"] == true)
                     && mapping["inputID"]
                         .as_str()
                         .is_some_and(|id| disabled.contains(&id)))
             })
-            .map(&convert_analog)
+            .map(|mapping| {
+                if product_ui {
+                    convert_analog(mapping)
+                } else {
+                    mapping.clone()
+                }
+            })
             .collect::<Vec<_>>();
-        let mut deselected = row["listItems"].as_array().cloned().unwrap_or_default();
+        let mut deselected = row["listItems"]
+            .as_array()
+            .context("Imported profile macro choices are absent")?
+            .clone();
         for mac in &all_macros {
             if !deselected.iter().any(|item| item["guid"] == mac["guid"]) {
                 deselected.push(json!({"guid":mac["guid"],"text":mac["name"]}));
@@ -472,7 +725,7 @@ pub fn prepare_import_756(
             for keymap in keymaps {
                 if let Some(mappings) = keymap.get_mut("mappings").and_then(Value::as_array_mut) {
                     for mapping in mappings {
-                        if !keymap_passthrough.contains(&mapping["inputID"]) {
+                        if product_ui && !keymap_passthrough.contains(&mapping["inputID"]) {
                             *mapping = convert_analog(mapping);
                         }
                         rewrite(mapping);
@@ -484,6 +737,7 @@ pub fn prepare_import_756(
             .get_mut("snapTap")
             .and_then(|tap| tap.get_mut("keyList"))
             .and_then(Value::as_array_mut)
+            .filter(|_| product_ui)
         {
             let mode = &source["default_profile"]["snapTap"]["keyList"][0]["mode"];
             for key in keys {
@@ -541,5 +795,247 @@ mod tests {
         assert!(loaded.profiles().is_empty());
         assert!(loaded.has_warning());
         assert_eq!(decode_base64("e=y!J4I joxfQ==").unwrap(), br#"{"x":1}"#);
+    }
+
+    #[test]
+    fn profiles_only_writer_omits_macros_and_preserves_external_profile_fields() {
+        let target = json!({"productId":1398,"category":"AUDIO","deviceName":"Headset"});
+        let profile = json!({"guid":"profile","name":"Profile","extension":{"keep":42},"appEngine":{"stale":true}});
+        let bytes = encode_with_rule(
+            &target,
+            &[profile.clone()],
+            &[Value::Null],
+            ProfileExportRule::ProfilesOnly,
+        )
+        .unwrap();
+        let document: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(
+            document
+                .as_object()
+                .unwrap()
+                .keys()
+                .map(String::as_str)
+                .collect::<std::collections::BTreeSet<_>>(),
+            ["productId", "deviceName", "category", "profiles"]
+                .into_iter()
+                .collect()
+        );
+        let payload = decode_base64(document["profiles"][0]["payload"].as_str().unwrap()).unwrap();
+        let payload: Value = serde_json::from_slice(&payload).unwrap();
+        assert_eq!(payload["extension"], profile["extension"]);
+        assert!(payload.get("appEngine").is_none());
+        assert_eq!(
+            document["profiles"][0]["hash"],
+            crate::mapping_engine_hash::source_hash(&payload).unwrap()
+        );
+        assert_eq!(profile["appEngine"], json!({"stale":true}));
+    }
+}
+
+#[cfg(test)]
+mod global_tests {
+    use super::{decode_base64 as base64, truthy as js_truthy};
+    use crate::mapping_engine_hash::canonical_json;
+    use serde_json::json;
+
+    fn target() -> super::TransferTarget {
+        super::TransferTarget {
+            product_id: 756,
+            dongle_id: Some(45098),
+            ble_id: None,
+            category: super::TransferCategory::Keyboard,
+            is_eight_k_analog_device: false,
+        }
+    }
+
+    #[test]
+    fn product_and_global_readers_keep_distinct_hash_and_compatibility_semantics() {
+        let target = target();
+        let source = serde_json::to_value(&target).unwrap();
+        let bytes = super::encode(&source, &[json!({"name":"<tag>","mappings":[],"extension":{"retained":true}})], &[
+            json!({"guid":"macro","name":"Macro","macroEvents":[],"macroPlaybackOption":"standard"})
+        ]).unwrap();
+        let global = super::decode_global(&bytes, &target, None).unwrap();
+        assert_eq!(global.profiles()[0]["name"], "<tag>");
+        assert_eq!(global.profiles()[0]["extension"], json!({"retained":true}));
+        assert!(!global.has_warning());
+        let product = super::decode(&bytes, &source).unwrap();
+        assert!(product.profiles().is_empty());
+        assert!(product.has_warning());
+        assert_eq!(product.macros().len(), 1);
+        let mut document: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        document["category"] = json!("AUDIO");
+        document["productId"] = json!(1234);
+        let bytes = serde_json::to_vec(&document).unwrap();
+        assert!(super::decode_global(&bytes, &target, None).is_err());
+        let product = super::decode(&bytes, &source).unwrap();
+        assert!(product.profiles().is_empty());
+        assert_eq!(product.macros().len(), 1);
+    }
+
+    #[test]
+    fn entry_validation_precedes_dks_filtering_and_retains_external_fields() {
+        let target = target();
+        let source = serde_json::to_value(&target).unwrap();
+        let profile = json!({"name":"Profile","vendorExtension":{"a":1},"mappings":[
+            {"inputID":"KEY_A","mapping":[{"dynamicKeyStrokeGroup":{}}]},
+            {"inputID":"KEY_B","mapping":[{"dynamicKeyStrokeGroup":0}]}
+        ]});
+        let bytes = super::encode(&source, &[profile], &[]).unwrap();
+        let decoded = super::decode_global(&bytes, &target, None).unwrap();
+        assert_eq!(
+            decoded.profiles()[0]["mappings"].as_array().unwrap().len(),
+            1
+        );
+        assert_eq!(decoded.profiles()[0]["mappings"][0]["inputID"], "KEY_B");
+        assert_eq!(decoded.profiles()[0]["vendorExtension"], json!({"a":1}));
+        let mut document: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        document["profiles"][0]["hash"] = json!("invalid");
+        let decoded =
+            super::decode_global(&serde_json::to_vec(&document).unwrap(), &target, None).unwrap();
+        assert!(decoded.profiles().is_empty());
+        assert!(decoded.has_warning());
+    }
+
+    #[test]
+    fn global_reader_matches_receiver_pid_and_limits_file_size() {
+        let target = target();
+        let source = json!({"productId":45098,"category":"AUDIO"});
+        let bytes =
+            super::encode(&source, &[json!({"name":"Profile","mappings":[]})], &[]).unwrap();
+        let decoded = super::decode_global(&bytes, &target, None).unwrap();
+        assert_eq!(decoded.profiles().len(), 1);
+        assert!(!decoded.has_warning());
+        assert!(super::decode_global(&vec![b' '; super::MAX_BYTES + 1], &target, None).is_err());
+    }
+
+    #[test]
+    fn source_truthiness_preserves_zero_and_empty_string_mappings() {
+        for value in [json!(null), json!(false), json!(0), json!(-0.0), json!("")] {
+            assert!(!js_truthy(&value));
+        }
+        for value in [json!(true), json!(1), json!("false"), json!([]), json!({})] {
+            assert!(js_truthy(&value));
+        }
+        let target = super::TransferTarget {
+            product_id: 1318,
+            dongle_id: None,
+            ble_id: None,
+            category: super::TransferCategory::Audio,
+            is_eight_k_analog_device: false,
+        };
+        assert!(target.matches_product(json!(1318.0).as_f64()));
+        assert!(target.matches_product(json!(1318).as_f64()));
+        assert!(!target.matches_product(json!("1318").as_f64()));
+        assert!(!target.matches_product(json!(null).as_f64()));
+        assert!(target.matches_category(Some("AUDIO")));
+        assert!(!target.matches_category(Some("MOUSE")));
+    }
+
+    #[test]
+    fn decoder_uses_the_source_normalized_base64_alphabet() {
+        assert_eq!(base64("e=y!J4I joxfQ==").unwrap(), br#"{"x":1}"#);
+        assert_eq!(base64("-_8=").unwrap(), [251, 255]);
+        assert!(base64("A").is_err());
+    }
+
+    #[test]
+    fn global_snap_tap_defaults_come_from_the_captured_first_profile() {
+        let target = target();
+        let source = serde_json::to_value(target).unwrap();
+        let profile = json!({"name":"Imported","mappings":[],"snapTap":{"keyList":[{"mode":0},{"mode":"FIRST_INPUT"},{}]}});
+        let bytes = super::encode(&source, &[profile.clone()], &[]).unwrap();
+        let default = json!({"snapTap":{"keyList":[{"mode":"HIGH_SENSITIVITY"}]}});
+        let loaded = super::decode_global(&bytes, &target, Some(&default)).unwrap();
+        assert_eq!(
+            loaded.profiles[0]["snapTap"]["keyList"][0]["mode"],
+            "HIGH_SENSITIVITY"
+        );
+        assert_eq!(
+            loaded.profiles[0]["snapTap"]["keyList"][1]["mode"],
+            "FIRST_INPUT"
+        );
+        assert_eq!(
+            loaded.profiles[0]["snapTap"]["keyList"][2]["mode"],
+            "HIGH_SENSITIVITY"
+        );
+        assert_eq!(
+            super::decode_global(&bytes, &target, None)
+                .unwrap()
+                .profiles[0],
+            profile
+        );
+    }
+
+    #[test]
+    fn global_import_keeps_middleware_mapping_semantics_and_does_not_import_file_macros() {
+        let rows = vec![json!({"profile":{
+            "guid":"old","name":"Imported","extension":{"keep":42},
+            "mappings":[
+                {"inputID":"KEY_A","inputType":"KeyboardInput","outputType":"defaultGroup"},
+                {"inputID":"KEY_B","outputType":"macroGroup","macroGroup":{"guid":"off","name":"Old"}},
+                {"inputID":"KEY_C","inputType":"AnalogInput","mapping":[{"outputType":"macroGroup","macroGroup":{"guid":"off","name":"Old"}}]},
+                {"inputID":"KEY_D","outputType":"macroGroup","macroGroup":{"guid":"known","name":"Old"}}
+            ],
+            "keymaps":[{"mappings":[{"inputID":"KEY_A","macroGroup":{"guid":"known","name":"Old"}}]}]
+        },"listItems":[{"guid":"off","isMacroSelected":false},{"guid":"known","isMacroSelected":true}],"hasWarning":false})];
+        let existing = [json!({"guid":"existing","name":"Imported"})];
+        let macros = [
+            json!({"guid":"known","name":"Current"}),
+            json!({"guid":"off","name":"Unselected"}),
+        ];
+        let before = rows.clone();
+        let (profiles, imported_macros) =
+            super::prepare_global_import_756(&rows, &existing, &macros, 1, || "fresh".into())
+                .unwrap();
+        assert!(imported_macros.is_empty());
+        assert_eq!(profiles[0]["guid"], "fresh");
+        assert_eq!(profiles[0]["name"], "Imported (1)");
+        assert_eq!(profiles[0]["extension"]["keep"], 42);
+        assert_eq!(profiles[0]["mappings"][0]["inputType"], "KeyboardInput");
+        assert_eq!(profiles[0]["mappings"].as_array().unwrap().len(), 3);
+        assert_eq!(
+            profiles[0]["mappings"][1]["mapping"][0]["macroGroup"]["guid"],
+            "off"
+        );
+        assert_eq!(profiles[0]["mappings"][2]["macroGroup"]["name"], "Current");
+        assert_eq!(
+            profiles[0]["keymaps"][0]["mappings"][0]["macroGroup"]["name"],
+            "Current"
+        );
+        assert_eq!(rows, before);
+    }
+
+    #[test]
+    fn stable_hash_text_uses_utf16_key_order_and_javascript_number_thresholds() {
+        assert_eq!(
+            canonical_json(&json!({"\u{e000}":1,"\u{10000}":2})).unwrap(),
+            "{\"\u{10000}\":2,\"\u{e000}\":1}"
+        );
+        for (value, expected) in [
+            (json!(-0.0), "0"),
+            (json!(1e-6), "0.000001"),
+            (json!(1e-7), "1e-7"),
+            (json!(1e20), "100000000000000000000"),
+            (json!(1e21), "1e+21"),
+        ] {
+            assert_eq!(canonical_json(&value).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn source_profile_hash_excludes_engine_metadata_before_applying_the_outer_name() {
+        let encoded = json!({
+            "payload":"eyJ4IjoxLCJoYXNoIjoib2xkIiwiZ2FtZW1vZGUiOnRydWV9",
+            "hash":"ac3ef48caa08fa3ed5e025da69edc645",
+            "name":"Outer name",
+        });
+        assert_eq!(
+            super::decode_entry(&encoded, super::Reader::Profiles).unwrap(),
+            json!({"x":1,"hash":"old","gamemode":true,"name":"Outer name"})
+        );
+        let mut invalid = encoded;
+        invalid["hash"] = json!("bad");
+        assert!(super::decode_entry(&invalid, super::Reader::Profiles).is_err());
     }
 }

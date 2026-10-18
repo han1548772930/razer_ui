@@ -2,6 +2,7 @@
 use super::super::*;
 use razer_ipc::{ServiceClient, ServiceRequest};
 use razer_pages::features::{PresetShortcutBinding, PresetShortcutRequest};
+use razer_service::mapping::mode_capture::{self, Reply as CaptureReply};
 use std::{
     sync::mpsc::{self, Receiver, Sender},
     thread::{self, JoinHandle},
@@ -39,18 +40,19 @@ fn synchronize(
     client: &mut ServiceClient,
     current: &mut BTreeMap<(u32, u32), PresetShortcutBinding>,
     request: &PresetShortcutRequest,
-    capture_active: &mut bool,
+    capture: &mut Option<mode_capture::Session>,
 ) -> anyhow::Result<()> {
     let mut errors = request.registration_errors.clone();
-    if request.capturing != *capture_active {
-        let operation = if request.capturing {
-            ServiceRequest::StartShortcutCapture
-        } else {
-            ServiceRequest::StopShortcutCapture
-        };
-        match client.request(operation) {
-            Ok(_) => *capture_active = request.capturing,
+    if request.capturing && capture.is_none() {
+        match mode_capture::Session::start() {
+            Ok(session) => *capture = Some(session),
             Err(error) => errors.push(format!("Shortcut capture lifecycle: {error:#}")),
+        }
+    } else if !request.capturing {
+        if let Some(session) = capture.take() {
+            if let Err(error) = session.stop() {
+                errors.push(format!("Shortcut capture lifecycle: {error}"));
+            }
         }
     }
     let desired = request
@@ -104,83 +106,99 @@ fn run(receiver: Receiver<Command>, events: Sender<Message>) -> anyhow::Result<(
     let mut current = BTreeMap::<(u32, u32), PresetShortcutBinding>::new();
     let mut generation = 0;
     let mut capturing = false;
-    let mut capture_active = false;
-    let result =
-        (|| {
-            loop {
-                let command = match receiver.recv_timeout(Duration::from_millis(80)) {
-                    Ok(command) => Some(command),
-                    Err(mpsc::RecvTimeoutError::Timeout) => None,
-                    Err(_) => break,
-                };
-                match command {
-                    Some(Command::Stop) => break,
-                    Some(Command::Update(mut request)) => {
-                        // Replace unsent capture edits with the newest complete library.
-                        while let Ok(command) = receiver.try_recv() {
-                            match command {
-                                Command::Update(next) => request = next,
-                                Command::Stop => return Ok(()),
-                            }
+    let mut capture = None;
+    let mut capture_ready = false;
+    let mut pending_capture = None;
+    let result = (|| {
+        loop {
+            let command = match receiver.recv_timeout(Duration::from_millis(80)) {
+                Ok(command) => Some(command),
+                Err(mpsc::RecvTimeoutError::Timeout) => None,
+                Err(_) => break,
+            };
+            match command {
+                Some(Command::Stop) => break,
+                Some(Command::Update(mut request)) => {
+                    // Replace unsent capture edits with the newest complete library.
+                    while let Ok(command) = receiver.try_recv() {
+                        match command {
+                            Command::Update(next) => request = next,
+                            Command::Stop => return Ok(()),
                         }
-                        generation = request.generation;
-                        capturing = request.capturing;
-                        let result =
-                            synchronize(&mut client, &mut current, &request, &mut capture_active)
-                                .map_err(|e| format!("{e:#}"));
+                    }
+                    generation = request.generation;
+                    capturing = request.capturing;
+                    if !capturing {
+                        capture_ready = false;
+                        pending_capture = None;
+                    }
+                    let result = synchronize(&mut client, &mut current, &request, &mut capture)
+                        .map_err(|e| format!("{e:#}"));
+                    if capturing && capture.is_some() && !capture_ready {
+                        pending_capture = Some((request.generation, result.err()));
+                    } else {
                         let _ = events.send(Message::Completion(request.generation, result.err()));
                     }
-                    None => {}
                 }
-                if capture_active {
-                    let observed = client.request(ServiceRequest::ShortcutCaptureEvents)?;
-                    for event in observed["events"]
-                        .as_array()
-                        .ok_or_else(|| anyhow::anyhow!("Shortcut capture event array missing"))?
-                    {
-                        let payload: serde_json::Value =
-                            serde_json::from_str(event["event"].as_str().ok_or_else(|| {
-                                anyhow::anyhow!("Shortcut mode event JSON missing")
-                            })?)?;
-                        let enabled = payload["isEnabled"].as_bool().ok_or_else(|| {
-                            anyhow::anyhow!("Shortcut mode event isEnabled missing")
-                        })?;
-                        let _ = events.send(Message::Mode(generation, enabled));
-                    }
-                }
-                if current.is_empty() {
-                    continue;
-                }
-                let observed = client.request(ServiceRequest::ShortcutEvents)?;
-                for event in observed.as_array().ok_or_else(|| {
-                    anyhow::anyhow!("Shortcut owner returned an invalid event array")
-                })? {
-                    let payload: serde_json::Value = serde_json::from_str(
-                        event["event"]
-                            .as_str()
-                            .ok_or_else(|| anyhow::anyhow!("Shortcut event JSON missing"))?,
-                    )?;
-                    let key = u32::try_from(
-                        payload["virtualKey"]
-                            .as_u64()
-                            .ok_or_else(|| anyhow::anyhow!("Shortcut key missing"))?,
-                    )?;
-                    let modifiers = u32::try_from(
-                        payload["modifiers"]
-                            .as_u64()
-                            .ok_or_else(|| anyhow::anyhow!("Shortcut modifiers missing"))?,
-                    )?;
-                    if !capturing {
-                        if let Some(binding) = current.get(&(key, modifiers)) {
-                            let _ = events.send(Message::Trigger(generation, binding.clone()));
+                None => {}
+            }
+            if let Some(session) = &capture {
+                for reply in session.drain() {
+                    match reply {
+                        CaptureReply::Ready => {
+                            capture_ready = true;
+                            if let Some((generation, error)) = pending_capture.take() {
+                                let _ = events.send(Message::Completion(generation, error));
+                            }
+                        }
+                        CaptureReply::Mode(enabled) => {
+                            let _ = events.send(Message::Mode(generation, enabled));
+                        }
+                        CaptureReply::Failed(error) => {
+                            capture_ready = false;
+                            let error = match pending_capture.take().and_then(|(_, error)| error) {
+                                Some(previous) => format!("{previous}; {error}"),
+                                None => error,
+                            };
+                            let _ = events.send(Message::Completion(generation, Some(error)));
                         }
                     }
                 }
             }
-            Ok::<_, anyhow::Error>(())
-        })();
-    if capture_active {
-        if let Err(error) = client.request(ServiceRequest::StopShortcutCapture) {
+            if current.is_empty() {
+                continue;
+            }
+            let observed = client.request(ServiceRequest::ShortcutEvents)?;
+            for event in observed
+                .as_array()
+                .ok_or_else(|| anyhow::anyhow!("Shortcut owner returned an invalid event array"))?
+            {
+                let payload: serde_json::Value = serde_json::from_str(
+                    event["event"]
+                        .as_str()
+                        .ok_or_else(|| anyhow::anyhow!("Shortcut event JSON missing"))?,
+                )?;
+                let key = u32::try_from(
+                    payload["virtualKey"]
+                        .as_u64()
+                        .ok_or_else(|| anyhow::anyhow!("Shortcut key missing"))?,
+                )?;
+                let modifiers = u32::try_from(
+                    payload["modifiers"]
+                        .as_u64()
+                        .ok_or_else(|| anyhow::anyhow!("Shortcut modifiers missing"))?,
+                )?;
+                if !capturing {
+                    if let Some(binding) = current.get(&(key, modifiers)) {
+                        let _ = events.send(Message::Trigger(generation, binding.clone()));
+                    }
+                }
+            }
+        }
+        Ok::<_, anyhow::Error>(())
+    })();
+    if let Some(session) = capture {
+        if let Err(error) = session.stop() {
             let _ = events.send(Message::Error(format!(
                 "Shortcut capture cleanup failed: {error:#}"
             )));
@@ -366,9 +384,9 @@ impl AppShell {
     }
     pub(in crate::shell) fn install_audio_preset_shortcut_cleanup(
         &mut self,
-        cx: &mut Context<Self>,
+        _cx: &mut Context<Self>,
     ) {
-        self.subscriptions.push(cx.on_app_quit(|this, cx| {
+        self.register_exit_cleanup(|this, cx| {
             let sessions = std::mem::take(&mut this.audio_preset_shortcuts);
             let retired = std::mem::take(&mut this.audio_preset_shortcut_cleanup);
             for session in sessions.values() {
@@ -385,6 +403,6 @@ impl AppShell {
                 }
             });
             async move { task.await }
-        }));
+        });
     }
 }

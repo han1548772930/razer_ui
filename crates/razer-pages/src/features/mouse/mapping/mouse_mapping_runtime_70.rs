@@ -1,13 +1,14 @@
 //! Retained current PID70 native mapping owner. Publication acknowledgements
 //! and callback diagnostics never replace the optimistic source profile.
 use super::*;
-use crate::features::mapping_device_runtime::{Owner, Reply};
+use razer_service::mapping::device::{Reply, Session};
 use std::time::Duration;
 impl EventEmitter<crate::features::MappingCallbackRequested> for MouseProductWorkspace {}
 
 #[derive(Default)]
 pub(super) struct State {
-    owner: Option<Owner>,
+    owner: Option<Session>,
+    stopping: bool,
     task: Option<Task<()>>,
     container: String,
     revision: u64,
@@ -25,6 +26,7 @@ pub(super) struct State {
 impl State {
     pub(super) fn stop(&mut self) {
         self.owner = None;
+        self.stopping = false;
         self.task = None;
         self.published = None;
         self.requested = None;
@@ -40,13 +42,26 @@ impl State {
 }
 
 impl MouseProductWorkspace {
+    pub fn cancel_mapping_service_exit(&mut self) {
+        self.legacy_mapping.stop();
+    }
+
+    pub fn finish_mapping_service(&mut self) {
+        self.legacy_mapping.stopping = true;
+        if let Some(owner) = &self.legacy_mapping.owner {
+            if let Err(error) = owner.request_stop_after_pending() {
+                self.legacy_mapping.diagnostic = Some(error);
+            }
+        }
+    }
+
     pub fn publish_legacy_mapping(
         &mut self,
         container: String,
         document: Value,
         cx: &mut Context<Self>,
     ) {
-        if self.spec.product_id != 70 {
+        if self.spec.product_id != 70 || self.legacy_mapping.stopping {
             return;
         }
         let Some(scope) = self.mouse_polling_scope(cx) else {
@@ -56,7 +71,7 @@ impl MouseProductWorkspace {
             self.legacy_mapping.stop();
         }
         if self.legacy_mapping.owner.is_none() {
-            let (owner, replies) = match Owner::start(70, container.clone()) {
+            let (owner, replies) = match Session::start(70, container.clone()) {
                 Ok(owner) => owner,
                 Err(error) => {
                     self.legacy_mapping.diagnostic = Some(format!("{error:#}"));
@@ -113,8 +128,9 @@ impl MouseProductWorkspace {
                                         }
                                     }
                                     Reply::Events(events) => {
-                                        if this.legacy_mapping.published
-                                            == this.mouse_polling_scope(cx)
+                                        if !this.legacy_mapping.stopping
+                                            && this.legacy_mapping.published
+                                                == this.mouse_polling_scope(cx)
                                             && this.legacy_mapping.published.is_some()
                                         {
                                             for event in events {

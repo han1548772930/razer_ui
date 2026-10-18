@@ -74,4 +74,10 @@ pub(super) fn for_product(product_id: u32) -> Option<&'static EngineData> {
         .map(|product| product.data)
 }
 
+/// Dashboard 36383 selects 42358 directly. Its complete 629 key table,
+/// 51480 default events and 998 constants are identical to this shared table.
+pub(super) fn for_global_shortcuts() -> &'static EngineData {
+    &DATA_0
+}
+
 include!("mapping_engine_data_generated.rs");

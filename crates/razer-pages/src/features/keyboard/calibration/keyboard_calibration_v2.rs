@@ -76,6 +76,7 @@ pub(super) struct State {
     switch_segment: bool,
     auto_start_after_switch: bool,
     dont_show: bool,
+    waiting_start_preference: bool,
     pending_page: Option<String>,
     generation: u64,
     timer: Option<Task<()>>,
@@ -113,26 +114,6 @@ fn formatted(symbol: &str, values: &[(&str, String)]) -> String {
         result = result.replace(&format!("{{{{{name}}}}}"), value);
     }
     result
-}
-fn preference_path() -> std::path::PathBuf {
-    std::env::var_os("APPDATA")
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| ".".into())
-        .join("razer_ui")
-        .join("MagneticSwitchCalibrationPrompt.json")
-}
-fn skip_start_prompt() -> bool {
-    std::fs::read(preference_path())
-        .ok()
-        .and_then(|bytes| serde_json::from_slice::<bool>(&bytes).ok())
-        .unwrap_or(false)
-}
-fn store_start_preference(value: bool) {
-    let path = preference_path();
-    if let Some(parent) = path.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
-    let _ = std::fs::write(path, if value { "true" } else { "false" });
 }
 impl State {
     fn apply(&mut self, action: &str, payload: &Value) -> bool {
@@ -358,6 +339,7 @@ impl KeyboardProductWorkspace {
         }
     }
     pub(super) fn unmount_calibration_v2_page(&mut self) {
+        self.cancel_pending_calibration_start();
         self.calibration_v2.artwork.unmount();
         self.calibration_v2.timer = None;
         self.calibration_v2.generation = self.calibration_v2.generation.wrapping_add(1);
@@ -370,6 +352,11 @@ impl KeyboardProductWorkspace {
     ) {
         if self.spec.product_id != 756 {
             return;
+        }
+        if self.calibration_v2.is_ble != Some(is_ble)
+            || self.calibration_v2.normal_mode != normal_mode
+        {
+            self.cancel_pending_calibration_start();
         }
         let first_non_ble = !is_ble && self.calibration_v2.is_ble != Some(false);
         self.calibration_v2.is_ble = Some(is_ble);
@@ -440,6 +427,7 @@ impl KeyboardProductWorkspace {
         if !self.calibration_v2_key_enabled(id) {
             return;
         }
+        self.cancel_pending_calibration_start();
         if !self.calibration_v2.selected.remove(id) {
             if !control {
                 self.calibration_v2.selected.clear();
@@ -449,9 +437,13 @@ impl KeyboardProductWorkspace {
         cx.notify();
     }
     pub fn cancel_calibration_v2(&mut self, cx: &mut Context<Self>) {
+        self.cancel_pending_calibration_start();
         if self.calibration_v2.phase == Phase::Calibrating {
             self.stop_calibration_v2(false, cx);
         }
+    }
+    pub(super) fn cancel_pending_calibration_start(&mut self) {
+        self.calibration_v2.waiting_start_preference = false;
     }
     pub(super) fn calibration_v2_before_page(
         &mut self,
@@ -493,12 +485,40 @@ impl KeyboardProductWorkspace {
             self.stop_calibration_v2(true, cx);
             return;
         }
-        if skip_start_prompt() {
+        let preferences = self.ui_preferences.read(cx);
+        if preferences.closing() {
+            return;
+        }
+        let preference = preferences.snapshot(UiPreference::MagneticCalibrationSkipPrompt);
+        if !preference.ready() {
+            self.calibration_v2.waiting_start_preference = true;
+            return;
+        }
+        if preference.value() {
             self.begin_calibration_v2(window, cx);
         } else {
             self.calibration_v2.prompt = Prompt::Start;
             self.calibration_v2.dont_show = false;
             cx.notify();
+        }
+    }
+    pub(super) fn resume_calibration_after_preference(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !self.calibration_v2.waiting_start_preference
+            || !self
+                .ui_preferences
+                .read(cx)
+                .snapshot(UiPreference::MagneticCalibrationSkipPrompt)
+                .ready()
+        {
+            return;
+        }
+        self.calibration_v2.waiting_start_preference = false;
+        if self.page == "TAB_CALIBRATION" && self.calibration_v2.is_ble != Some(true) {
+            self.start_or_save_calibration_v2(window, cx);
         }
     }
     fn begin_calibration_v2(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -1224,7 +1244,13 @@ impl KeyboardProductWorkspace {
                     )
                     .child(Button::new("v2-confirm-start").label(label("OK")).on_click(
                         cx.listener(|this, _, window, cx| {
-                            store_start_preference(this.calibration_v2.dont_show);
+                            this.ui_preferences.update(cx, |owner, cx| {
+                                owner.set(
+                                    UiPreference::MagneticCalibrationSkipPrompt,
+                                    this.calibration_v2.dont_show,
+                                    cx,
+                                );
+                            });
                             this.begin_calibration_v2(window, cx);
                         }),
                     ));

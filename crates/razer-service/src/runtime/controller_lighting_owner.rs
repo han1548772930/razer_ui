@@ -22,12 +22,7 @@ use std::{
 };
 
 #[cfg(windows)]
-#[path = "controller_lighting_native.rs"]
-mod native;
-#[path = "controller_lighting_session.rs"]
-mod session;
-#[cfg(windows)]
-use session::Session;
+use crate::runtime::{lighting_engine_native as native, lighting_engine_session::Session};
 
 enum Message {
     Update {
@@ -73,9 +68,7 @@ impl Job {
         let restored_before_stop = self.snapshot()?.restore_acknowledged;
         let software = self.stop()?;
         Ok(LightingResult {
-            acknowledged_writes: u32::from(
-                !restored_before_stop && software.restore_acknowledged,
-            ),
+            acknowledged_writes: u32::from(!restored_before_stop && software.restore_acknowledged),
             software: Some(software),
             ..Default::default()
         })
@@ -445,7 +438,8 @@ fn run_checked(
                     operation,
                     response,
                 }) => {
-                    let suspend_request = matches!(operation, LightingOperation::SuspendSoftware { .. });
+                    let suspend_request =
+                        matches!(operation, LightingOperation::SuspendSoftware { .. });
                     let result = (|| -> anyhow::Result<LightingResult> {
                         if let LightingOperation::SuspendSoftware { suspended } = operation {
                             if !suspended {
@@ -487,9 +481,13 @@ fn run_checked(
                         }
                         Ok(result)
                     })();
-                    let fatal = suspend_request.then(|| result.as_ref().err().map(|error| format!("{error:#}"))).flatten();
+                    let fatal = suspend_request
+                        .then(|| result.as_ref().err().map(|error| format!("{error:#}")))
+                        .flatten();
                     let _ = response.send(result.map_err(|error| format!("{error:#}")));
-                    if let Some(error) = fatal { return Err(anyhow::anyhow!(error)); }
+                    if let Some(error) = fatal {
+                        return Err(anyhow::anyhow!(error));
+                    }
                 }
                 Ok(Message::Wake) => {}
                 Err(mpsc::RecvTimeoutError::Disconnected) => break,

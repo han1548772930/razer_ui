@@ -11,11 +11,7 @@ impl Shortcuts {
             .draft
             .as_ref()
             .is_some_and(|draft| draft.value.id == item.id);
-        let warning = !item.input.is_empty()
-            && self
-                .items
-                .iter()
-                .any(|other| other.id != item.id && other.same_chord(item));
+        let warning = self.input_warnings.contains(item.id());
         let recording = self.recording_id.as_deref() == Some(item.id.as_str());
         let menu = self.menu_for.as_deref() == Some(item.id.as_str());
         let row_id = item.id.clone();
@@ -131,6 +127,9 @@ impl Shortcuts {
                 .when(recording, |s| s.track_focus(&self.recording_focus))
                 .capture_key_down(
                     cx.listener(|this, event, window, cx| this.capture(event, window, cx)),
+                )
+                .capture_key_up(
+                    cx.listener(|this, event, _, cx| this.release_captured_input(event, cx)),
                 )
                 .w(surface::css(190.))
                 .min_h(surface::css(27.))

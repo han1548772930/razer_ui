@@ -49,11 +49,11 @@ def valid(row):
 
 
 def pinned_resources(acquisition, requests, mappings=None):
-    """Verify display aliases against the pinned resource lock without media.
+    """Verify display aliases and converted pixels against the pinned lock.
 
     Same-format originals must equal the pinned bytes, allowing only the lock's
     explicit LF to CRLF proof. Converted media (AVIF to PNG, CSS data URIs)
-    records its pinned output; regenerating it requires ``--prepare``.
+    loads only its pinned output and compares all decoded RGBA pixels.
     """
     mappings = resource_sources.load_resource_mappings(root=a.ROOT) if mappings is None else mappings
     receipt = json.loads((a.ROOT / acquisition).read_bytes())
@@ -87,10 +87,13 @@ def pinned_resources(acquisition, requests, mappings=None):
                                                                   root=a.ROOT, mappings=mappings)
                 entry["locked_alias_reuse"] = proof
             else:
+                import workspace
                 entry["conversion"] = ("inline CSS PNG " + request["inline_css_png"]["sha256"]
                                        if "inline_css_png" in request else
                                        Path(source_name).suffix.lower() + " to " + Path(display).suffix.lower())
-                entry["conversion_rechecked"] = False
+                proof = workspace.verify_pinned_resource_conversion(source_row, request, locked, lock["storage"])
+                entry["conversion_verification"] = proof
+                entry["conversion_rechecked"] = proof["passed"]
             verified.append(entry)
     return verified
 
@@ -226,17 +229,97 @@ def route_evidence():
 
 
 def rows_for_index(rows, receipt):
-    indexed = []
+    indexed, responses = [], {}
+    receipt = a.resolve(a.rel(receipt), ".analysis/inputs/frontend")
     for row in rows:
         if "path" in row:
             indexed.append({**{key: row[key] for key in ("path", "bytes", "sha256", "url", "acquired_at_utc")},
                             "kind": "official_frontend_artifact"})
+            proof = row.get("current_http_revalidation")
+            if proof is None:
+                continue
+            attempts = proof.get("attempts") if isinstance(proof, dict) else None
+            if not isinstance(attempts, list) or len(attempts) < 2:
+                raise ValueError("Frontend revalidation requires two retained official responses")
+            parsed = urllib.parse.urlsplit(row["url"])
+            if parsed.scheme != "https" or parsed.netloc != "apps.razer.com":
+                raise ValueError("Frontend revalidation requires its official HTTPS source")
+            source = a.resolve(row["path"], ".analysis/inputs/frontend")
+            retained = []
+            for attempt in attempts:
+                if (not isinstance(attempt, dict) or attempt.get("url") != row["url"]
+                        or attempt.get("final_url") != row["url"]
+                        or attempt.get("http_status") != 200 or attempt.get("status") != 200
+                        or attempt.get("matches_retained") is not True
+                        or any(attempt.get(key) != row[key] for key in ("bytes", "sha256"))
+                        or not isinstance(attempt.get("acquired_at_utc"), str) or not attempt["acquired_at_utc"]
+                        or not isinstance(attempt.get("path"), str)):
+                    raise ValueError("Frontend revalidation response does not verify against its original")
+                path = a.resolve(attempt["path"], ".analysis/inputs/frontend")
+                if path == source or not path.is_relative_to(receipt.parent):
+                    raise ValueError("Frontend revalidation response is outside its acquisition owner")
+                claim = {**{key: attempt[key] for key in ("path", "bytes", "sha256", "url", "acquired_at_utc")},
+                         "kind": "official_frontend_artifact", "revalidation_of": row["path"],
+                         "acquisition_receipt": a.rel(receipt)}
+                previous = responses.get(claim["path"])
+                if previous and any(previous[key] != claim[key] for key in (
+                        "bytes", "sha256", "url", "revalidation_of", "acquisition_receipt")):
+                    raise ValueError("Frontend revalidation response has conflicting source owners")
+                responses[claim["path"]] = claim
+                retained.append(claim)
+            a.verify_source_rows([row, *retained])
+    indexed.extend(responses.values())
     indexed.append({**identity(receipt), "kind": "acquisition_receipt"})
     return indexed
 
 
 def index_rows(rows, receipt):
     a.index_files(rows_for_index(rows, receipt))
+
+
+def publish_frontend_acquisition(receipt, data=None, *, reason="Publish supplemental frontend acquisition with its complete source index"):
+    """Keep a completed receipt mutation and its full verified input index together."""
+    import evidence
+    receipt = a.resolve(a.rel(receipt), ".analysis/inputs/frontend")
+    retained = json.loads(receipt.read_bytes()) if data is None else data
+    if not isinstance(retained.get("files"), list) or not retained["files"]:
+        raise ValueError("Frontend publication has no retained acquisition files")
+    originals = [row for row in retained["files"] if "path" in row]
+    a.verify_source_rows(originals)
+    files = {row["url"]: row for row in originals}
+    parsed_entry = urllib.parse.urlsplit(retained.get("entry_url", ""))
+    if parsed_entry.scheme != "https" or parsed_entry.netloc != "apps.razer.com":
+        raise ValueError("Frontend publication requires its official application entry")
+    for claim in retained.get("stability", []):
+        original = files.get(claim.get("url"))
+        if claim.get("unchanged") is True and (original is None or
+                claim.get("before_sha256") != original["sha256"] or
+                claim.get("after_sha256") != original["sha256"]):
+            raise ValueError("Frontend publication stability claim differs from retained original bytes")
+    if retained.get("source_current_during_acquisition") is True and (
+            not retained.get("stability") or any(row.get("unchanged") is not True for row in retained["stability"])):
+        raise ValueError("Frontend publication claims current bytes without stable deployment roots")
+    deployment = evidence.frontend_deployment_sources(retained)
+    invalid = {"deployment_original_invalid", "deployment_manifest_invalid", "deployment_entry_redirect_outside_origin",
+               "duplicate_acquisition_url", "deployment_stability_identity_mismatch"}
+    if deployment["entry_original"] is None or any(row["kind"] in invalid for row in deployment["failures"]):
+        raise ValueError("Frontend publication deployment roots or manifests are invalid")
+    verification = {"all_retained_bytes_verified": True, "files": len(originals),
+        "entry_original": deployment["entry_original"], "manifests": deployment["manifests"],
+        "stability": retained.get("stability", []),
+        "source_current_during_acquisition": retained.get("source_current_during_acquisition", False),
+        "declared_references_fetched": retained.get("declared_references_fetched", False),
+        "deployment_failures": deployment["failures"], "reference_gaps": frontend_reference_gaps(retained),
+        "source_semantics_complete": False, "network_requests": False}
+    indexed = rows_for_index(retained["files"], receipt)
+    verification["retained_http_response_aliases"] = sum("revalidation_of" in row for row in indexed)
+    if data is not None:
+        a.save(receipt, retained)
+        indexed[-1] = {**identity(receipt), "kind": "acquisition_receipt"}
+    a.index_files(indexed,
+        publication={"owner": "tools/families.py", "receipt": a.rel(receipt), "reason": reason,
+                     "verification": verification})
+    return verification
 
 
 def save_matrix(path, matrix):
@@ -1396,10 +1479,32 @@ def _run(args, shared=None):
     print(json.dumps({"family_matrix": a.rel(matrix_path), **matrix["summary"]}), flush=True)
 
 
+def audit_middleware_capture(family, pid):
+    """Verify the current MW deployment and its reusable complete capture."""
+    import host
+    audit = host.HostLocalAudit()
+    name = f"{family}-mw-{pid}-current"
+    source_set, originals = audit.source_set(name)
+    deployment = source_set["deployment"]
+    if deployment["failures"]:
+        raise ValueError("Current middleware deployment differs: " + json.dumps(deployment["failures"]))
+    mounted = [row for row in deployment["sources"] if row["deployment_role"] == "html_include"
+               and row["original"] is not None and Path(row["original"]["path"]).name.startswith("main.")
+               and row["original"]["path"].endswith(".js")]
+    if len(mounted) != 1:
+        raise ValueError("Current middleware mounted main is absent or ambiguous")
+    capture = audit.frontend_capture(name, originals)
+    if audit.final_snapshot():
+        raise ValueError("Current middleware original/capture bytes changed during verification")
+    return {"source_set": source_set, "mounted_main": mounted[0]["original"],
+            "original_inputs": originals, "complete_capture": capture,
+            "failures": ["complete_capture_stage_failed"] if capture["capture_failures"] else []}
+
+
 def audit_family_function(args):
     """Reuse full Wakaru captures while checking original/capture byte identities."""
-    if getattr(args, "receipt_only", False) and getattr(args, "query", None) not in ("mouse-customize", "mouse-dpi-backend"):
-        raise ValueError("Receipt-only refresh is supported for mouse-customize and mouse-dpi-backend")
+    if getattr(args, "receipt_only", False) and getattr(args, "query", None) not in ("mouse-customize", "mouse-dpi-backend", "mapping-engine", "audio-seiren-eq"):
+        raise ValueError("Receipt-only refresh is supported for mouse-customize, mouse-dpi-backend, mapping-engine and audio-seiren-eq")
     if getattr(args, "query", None) == "mouse-dpi":
         if args.family != "mouse" or args.function != "main":
             raise ValueError("mouse-dpi queries the current mouse main and mounted dependency chunks")
@@ -1416,6 +1521,16 @@ def audit_family_function(args):
         return audit_mouse_scroll(args)
     if getattr(args, "query", None) == "mouse-dpi-backend":
         return audit_mouse_dpi_backend(args)
+    if getattr(args, "query", None) == "mouse-tracking":
+        return audit_mouse_tracking(args)
+    if getattr(args, "query", None) == "global-shortcuts":
+        return audit_global_shortcut_mapping(args)
+    if getattr(args, "query", None) == "mouse-calibration":
+        return audit_mouse_calibration(args)
+    if getattr(args, "query", None) == "shared-preferences":
+        return audit_shared_preferences(args)
+    if getattr(args, "query", None) == "profile-import-processors":
+        return audit_profile_import_processors(args)
     if getattr(args, "query", None) == "mouse-runtime-artwork":
         return audit_mouse_runtime_artwork(args)
     if getattr(args, "query", None) == "mouse-receiver-polling":
@@ -1442,6 +1557,10 @@ def audit_family_function(args):
         return audit_keyboard_actuation_selection(args)
     if getattr(args, "query", None) == "receiver-page-layout":
         return audit_receiver_page_layout(args)
+    if getattr(args, "query", None) == "receiver-local-runtime":
+        return audit_receiver_local_runtime(args)
+    if getattr(args, "query", None) == "mouse-dpi-matcher":
+        return audit_mouse_dpi_matcher(args)
     if getattr(args, "query", None) == "shared-page-layout":
         return audit_shared_page_layout(args)
     if getattr(args, "query", None) == "gamepad-artwork":
@@ -1458,6 +1577,8 @@ def audit_family_function(args):
         return audit_mapping_engine_literals(args)
     if getattr(args, "query", None) == "audio-firmware-selector":
         return audit_audio_firmware_selector(args)
+    if getattr(args, "query", None) == "audio-help-reset":
+        return audit_audio_help_reset(args)
     if getattr(args, "query", None) == "audio-seiren-eq":
         return audit_audio_seiren_eq(args)
     if getattr(args, "query", None) == "audio-leviathan":
@@ -1470,6 +1591,8 @@ def audit_family_function(args):
         return audit_camera_local_pages(args)
     if getattr(args, "query", None) == "camera-source-review":
         return audit_camera_source_review(args)
+    if getattr(args, "query", None) == "hanbo-local-runtime":
+        return audit_hanbo_local_runtime(args)
     if not re.fullmatch(r"[A-Za-z0-9_-]+", args.function):
         raise ValueError("Function must be a simple source chunk name")
     ids = args.product or candidates(a.builtin_data_path("razer-pages", FAMILY_CANDIDATES[args.family]))
@@ -1477,6 +1600,12 @@ def audit_family_function(args):
     for pid in ids:
         row = {"product_id": pid, "failures": [], "original_inputs": [], "complete_bodies": []}
         rows.append(row)
+        if args.function == "mw":
+            try:
+                row.update(audit_middleware_capture(args.family, pid))
+            except (OSError, ValueError, KeyError, TypeError) as error:
+                row["failures"].append(type(error).__name__ + ":" + str(error))
+            continue
         receipt = a.ROOT / f".analysis/inputs/frontend/{args.family}-{pid}-current/acquisition.json"
         capture = a.ROOT / f".analysis/results/frontend/{args.family}-{pid}-current/analysis.json"
         try:
@@ -1516,6 +1645,11 @@ def audit_family_function(args):
               "recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)), "products": rows,
               "target_execution": False, "runtime_acceptance": "unverified"}
     destination = a.ROOT / f".analysis/results/frontend/{args.family}-{args.function}-audit.json"
+    if destination.is_file():
+        previous = json.loads(destination.read_bytes())
+        existing = {row["product_id"]: row for row in previous.get("products", [])}
+        existing.update({row["product_id"]: row for row in rows})
+        report = {**previous, **report, "products": [existing[pid] for pid in sorted(existing)]}
     a.save(destination, report)
     print(json.dumps({"receipt": a.rel(destination), "products": len(rows),
                       "verified": sum(not r["failures"] for r in rows),
@@ -1625,14 +1759,26 @@ def source_capture_modules(captured, source):
         raise ValueError("Verified complete parser provenance is missing")
     provenance_path = a.ROOT / provenance_row["path"]
     provenance = json.loads(provenance_path.read_bytes())
-    raw_root = (a.ROOT / captured["input"] / "raw").resolve()
+    if "input" in captured:
+        raw_root = (a.ROOT / captured["input"] / "raw").resolve()
+        command_root = raw_root
+    elif (type(captured.get("application_js_inputs")) is int
+          and type(captured.get("integration_dependency_js_inputs")) is int
+          and captured["application_js_inputs"] + captured["integration_dependency_js_inputs"] == len(sources)
+          and captured.get("target_execution") is False):
+        raw_root = (a.ROOT / ".analysis/inputs/host-current/asar").resolve()
+        command_root = a.ROOT.resolve()
+    else:
+        raise ValueError("Complete parser capture has an unknown input schema")
     source_path = (a.ROOT / source["path"]).resolve()
+    if not source_path.is_relative_to(raw_root):
+        raise ValueError("Parser original is outside its retained input root")
     unpack_roots = []
     for command in captured.get("commands", []):
         if command.get("stage") != "unpack" or command.get("exit_code") != 0:
             continue
-        cwd = (a.ROOT / command.get("cwd", "")).resolve()
-        if not cwd.is_relative_to(raw_root):
+        cwd = (a.ROOT / command["cwd"]).resolve() if command.get("cwd") else command_root
+        if not cwd.is_relative_to(raw_root) and cwd != command_root:
             raise ValueError("Parser working directory is outside its retained original input root")
         arguments = {str(argument).replace("\\", "/") for argument in command.get("argv", [])}
         unpack_roots.append((cwd, arguments))
@@ -1687,6 +1833,72 @@ def source_component_regions(text, anchors):
         else:
             unresolved.append(role)
     return retained, unresolved
+
+
+def mouse_scroll_lifecycle_regions(sources, product_id, parser):
+    """Read complete restore and OBM association owners from verified JS bytes."""
+    candidates = {}
+    function_types = {"function_declaration", "function_expression", "generator_function",
+                      "generator_function_declaration", "arrow_function"}
+
+    def retain(role, node, original, raw):
+        body = raw[node.start_byte:node.end_byte]
+        row = {"role": role, "original": original, "byte_start": node.start_byte,
+               "byte_end": node.end_byte, "source_sha256": hashlib.sha256(body).hexdigest(),
+               "source": body.decode("utf-8")}
+        previous = candidates.get(role)
+        if previous is None or len(body) < previous["byte_end"] - previous["byte_start"]:
+            candidates[role] = row
+
+    for original, text in sources:
+        if not any(anchor in text for anchor in ("case\"scrollWheel\"", "getProfileNameStructure=", "this.loadProfilesFromDevice=",
+                                                "obmJson.profiles.forEach", "restoreScrollDisabledModes=")):
+            continue
+        raw = (a.ROOT / original["path"]).read_bytes()
+        tree = parser.parse(raw)
+        if tree.root_node.has_error:
+            raise ValueError("Current mouse lifecycle AST has an error: " + original["path"])
+        pending = [tree.root_node]
+        while pending:
+            node = pending.pop()
+            pending.extend(reversed(node.children))
+            if node.type not in function_types | {"assignment_expression"}:
+                continue
+            # Large webpack wrappers are not function-level evidence owners.
+            if node.end_byte - node.start_byte > 100_000:
+                continue
+            body = raw[node.start_byte:node.end_byte]
+            if node.type in function_types:
+                if (b'case"scrollWheel"' in body and b"MW_ACTION_FROM_LOCALSTORAGE" in body
+                        and b"RzGenericFeatureManager.restoreDeviceData" in body):
+                    retain("profile_restore", node, original, raw)
+                if (b'"SmartReel"' in body and b"obmJson.profiles.forEach" in body
+                        and b".scrollWheel.smartReelEnabled" in body):
+                    retain("smart_reel_guid_maker", node, original, raw)
+                if b'"ScrollMode"' in body and b".scrollWheel.scrollMode" in body:
+                    retain("scroll_mode_maker", node, original, raw)
+                if (product_id == 45066 and b".obmData" in body and b".profiles.find(" in body
+                        and b".slotId" in body and node.end_byte - node.start_byte < 1000):
+                    retain("first_matching_slot", node, original, raw)
+            else:
+                if body.startswith(b"this.loadProfilesFromDevice=") and b"getMaxProfilesSupported" in body:
+                    retain("ordered_profile_inventory", node, original, raw)
+                if body.startswith(b"this.getProfileNameStructure=") and b"250" in body and b"getGuidFromDevice" in body:
+                    retain("profile_guid_reader", node, original, raw)
+                if body.startswith(b"this.getGuidFromDevice="):
+                    retain("profile_guid_decoder", node, original, raw)
+                if product_id == 226 and body.startswith(b"this.restoreScrollDisabledModes="):
+                    retain("mode_v2_restore", node, original, raw)
+    required = {"profile_restore", "smart_reel_guid_maker", "scroll_mode_maker",
+                "ordered_profile_inventory", "profile_guid_reader", "profile_guid_decoder"}
+    if product_id == 45066:
+        required.add("first_matching_slot")
+    if product_id == 226:
+        required.add("mode_v2_restore")
+    missing = required - candidates.keys()
+    if missing:
+        raise ValueError(f"Current mouse lifecycle owners are unresolved for {product_id}: {sorted(missing)}")
+    return [candidates[role] for role in sorted(required)]
 
 
 def audit_mouse_scroll(args):
@@ -1745,6 +1957,8 @@ def audit_mouse_scroll(args):
                         row["complete_owners"].append({"layer": layer, "key": key, "roles": roles})
                         found.update(roles)
                 if layer == "mw":
+                    row["lifecycle_association_chains"] = mouse_scroll_lifecycle_regions(
+                        sources, pid, Parser(Language(tree_sitter_javascript.language())))
                     joined = "\n".join(text for _, text in sources)
                     for header in ([2,2,20], [2,2,148], [2,2,22], [2,2,150], [80,2,23], [80,2,151]):
                         if "new Uint8Array([" + ",".join(map(str, header)) + "])" not in joined:
@@ -1761,8 +1975,11 @@ def audit_mouse_scroll(args):
                 "failure": "Keep source optimistic state; additional Rust ACK/readback diagnostics never overwrite source reducer values",
                 "transport": "Exact current DPI physical factory is reused; wired rzDevice25 and receiver rzDevice25DualLinkMouse remain distinct",
                 "onboard": "Source selected obmSlotId[0] is retained; matching GUID associations must come from actual OBM observations"}
-            row["unresolved"] = ["Startup/profile restore scroll events are not yet connected to the Rust scroll task owner",
-                                 "UI profile observation does not yet obtain current OBM GUID associations for Smart Reel and the older 45066 mode task"]
+            row["semantics"]["restore"] = ("Stored wheel events enter the retained serialized profile writer; "
+                "Mode, SmartReel, optional threshold, Acceleration, optional level; 226 restores mode-v2 mask/mode last")
+            row["semantics"]["onboard"] = ("Retained device session queries ordered inventory and complete 250-byte identities; "
+                "Smart Reel preserves every matching GUID ID, 45066 mode selects only its first actual matching slot")
+            row["unresolved"] = []
             native = [owners[owner["key"]] for owner in row["complete_owners"]
                       if owner["layer"] == "mw" and owners[owner["key"]]["module_id"] == protocol_modules[pid]]
             if len(native) != 1:
@@ -1815,7 +2032,31 @@ def audit_mouse_scroll(args):
                     if len(headers) != 1:
                         raise ValueError("Current scroll command alias/literal differs: " + name)
                     methods.append({"name": name, "command": command, "receipt": method, "header_receipt": headers[0]})
+            for name, command in (("getMaxProfilesSupported", [1,5,138]), ("getNumberOfProfiles", [1,5,128]),
+                                  ("getProfileIDList", [80,5,129]), ("getProfileName", [80,5,136])):
+                definitions = [node for node in nodes if node.type == "method_definition"
+                               and (key := node.child_by_field_name("name")) is not None
+                               and raw[key.start_byte:key.end_byte].decode("utf-8") == name]
+                if len(definitions) != 1:
+                    raise ValueError("Current profile identity getter is missing or ambiguous: " + name)
+                method = receipt(definitions[0])
+                aliases = set(re.findall(r'sendCommand\(([\w$]+)', method["source"]))
+                headers = []
+                for node in nodes:
+                    key, value = node.child_by_field_name("name"), node.child_by_field_name("value")
+                    if node.type != "variable_declarator" or key is None or value is None:
+                        continue
+                    if raw[key.start_byte:key.end_byte].decode("utf-8") not in aliases:
+                        continue
+                    while value.type in {"parenthesized_expression", "sequence_expression"}:
+                        value = value.named_children[-1]
+                    if raw[value.start_byte:value.end_byte].decode("utf-8") == "new Uint8Array(" + json.dumps(command, separators=(",", ":")) + ")":
+                        headers.append(receipt(node))
+                if len(headers) != 1:
+                    raise ValueError("Current profile identity command differs: " + name)
+                methods.append({"name": name, "command": command, "receipt": method, "header_receipt": headers[0]})
             fixture_rows.append({"product_id": pid, "gate": row["semantics"], "methods": methods,
+                                 "lifecycle_association_chains": row["lifecycle_association_chains"],
                                  "layers": {name: {**{key: layer[key] for key in ("acquisition", "capture", "analyzer", "capture_failures")},
                                                    "original_inputs": [{key: source[key] for key in ("path", "bytes", "sha256", "url")} for source in layer["original_inputs"]],
                                                    "closure_unresolved_count": len(layer["closure_unresolved"])} for name, layer in row["layers"].items()},
@@ -1974,7 +2215,12 @@ def audit_mouse_dpi(args):
                     css_geometry["header_left"] = headers
         if len(css_geometry) != 4:
             raise ValueError(f"PID{pid} DPI CSS geometry is incomplete")
-        legacy = "DPIStages" in spec["profile"]
+        if pid == 182:
+            if "profile" in spec or "device_profile" in spec:
+                raise ValueError("PID182 defaults must come from their typed device owner")
+            legacy = False
+        else:
+            legacy = "DPIStages" in spec["profile"]
         profile_marker = "DPIStage" if legacy else "dpiStages"
         if profile_marker not in main_text:
             raise ValueError(f"PID{pid} profile schema lacks its source selector")
@@ -4875,8 +5121,7 @@ def audit_keyboard_artwork(args):
                     {key: value for key, value in source.items() if key != "previous_attempts"}]
                 acquired["files"][index] = repaired
                 files[source["url"]] = repaired
-                a.save(receipt_path, acquired)
-                index_rows([repaired], receipt_path)
+                publish_frontend_acquisition(receipt_path, acquired)
             sources = [(item, (a.ROOT / item["path"]).read_text(encoding="utf-8")) for url, item in files.items()
                        if url in reachable and item["path"].endswith(".js")]
             mounted_scripts = {urllib.parse.urljoin(root_urls[0], literal) for literal, kind in entry_parser.refs
@@ -4975,8 +5220,7 @@ def audit_keyboard_artwork(args):
                                              "kind": "keyboard-artwork-current-export-literal"}
                         if supplemental_edge not in acquired.setdefault("edges", []): acquired["edges"].append(supplemental_edge)
                         row.setdefault("supplemental_acquisition", []).append(source)
-                        a.save(receipt_path, acquired)
-                        index_rows([source], receipt_path)
+                        publish_frontend_acquisition(receipt_path, acquired)
                         reachable.add(url)
                     if source is None or url not in reachable or not valid(source):
                         raise ValueError("Original resource bytes are missing/unverified/unreachable: " + url)
@@ -6139,57 +6383,325 @@ def verified_acquired_chunk(family, pid, prefix):
     return path, rows[0], (a.ROOT / rows[0]["path"]).read_text(encoding="utf-8")
 
 
+def keyboard_magnetic_mapping_sources(pid):
+    """Decode current magnetic defaults while retaining their complete modules."""
+    import host
+    audit = host.HostLocalAudit()
+    sets, files = audit.source_set(f"keyboard-mw-{pid}-current")
+    main = next(row for row in files if Path(row["path"]).name.startswith("main."))
+    runtime = next(row for row in files if Path(row["path"]).name.startswith("6737."))
+    engine = next(row for row in files if Path(row["path"]).name.startswith("obmEngineKeyboard."))
+    worker = next(row for row in files if Path(row["path"]).name.startswith("obmHelper.worker."))
+    mapping_engine = next(row for row in files if Path(row["path"]).name.startswith("7795."))
+    memory_engine = next(row for row in files if Path(row["path"]).name.startswith("obmEngineKeyboardCalMaxMem."))
+    command_constants = next(row for row in files if Path(row["path"]).name.startswith("3159."))
+    modules, originals = {}, {}
+    for source, ids in [(main, [26061, 11469, 86191, 7414, 39158]),
+                        (runtime, [32906, 72233, 51765, 93494, 36475, 68214, 4849,
+                                   61450, 56839, 6258, 34737]),
+                        (engine, [26803, 49886, 66487, 39674]),
+                        (mapping_engine, [11936]), (memory_engine, [48363, 96236]),
+                        (command_constants, [48967])]:
+        rows = {row["module_id"]: row for row in keyboard_source_modules(audit.read(source).decode("utf-8"))}
+        selected = set(ids)
+        selected.update(mid for mid, row in rows.items() if isinstance(mid, int) and any(anchor in row["body"]
+            for anchor in ["taskmakerSyncGlobalActuation", "ON_SYNC_GLOBAL_ACTUATION", "onTaskRunnerMapping",
+                           "storeDeviceMapping", "compileAnalogMapping", "getAnalogInputMap",
+                           "setActuationPoint", "getRazerKey", "convertInputMapping"]))
+        for mid in sorted(selected):
+            if mid not in rows:
+                raise ValueError(f"Current magnetic module {pid}/{mid} is absent")
+            row = rows[mid]
+            start = row["byte_start"]
+            body = row["body"].encode("utf-8")
+            key = audit.retain_range("module_" + str(mid), source, start, start + len(body), "method_definition")
+            modules[mid] = key
+            originals[mid] = source
+    def body(mid):
+        return audit.owners[modules[mid]]["body"]
+    def expression(text, name):
+        found = re.search(r'(?<![\w$])' + re.escape(name) + r'=(\{|\[)', text)
+        if found is None:
+            raise ValueError("Current magnetic literal is absent: " + name)
+        return text[found.end()-1:javascript_delimited(text, found.end()-1)]
+    def literal(text):
+        text = text.replace("!0", "true").replace("!1", "false")
+        text = re.sub(r'([{,])(\d+):', r'\1"\2":', text)
+        text = re.sub(r'(?<=[\[:,])\.(\d+)', r'0.\1', text)
+        return static_js_literal(text)
+    config, aliases, preset = body(26061), body(11469), body(72233)
+    exports = dict(re.findall(r'([\w$]+):\(\)=>([\w$]+)', config))
+    alias_exports = dict(re.findall(r'([\w$]+):\(\)=>([\w$]+)', aliases))
+    strings = dict(re.findall(r'\b([\w$]+)="([^"\\]*)"(?=[,;])', aliases))
+    mjm = re.search(r'\b' + re.escape(alias_exports["MJm"]) + r'=\(', aliases)
+    mjm_body = aliases[mjm.end()-1:javascript_delimited(aliases, mjm.end()-1)]
+    strings[alias_exports["MJm"]] = re.search(r',"([^"\\]*)"\)$', mjm_body)[1]
+    alias_import = re.search(r'\b([\w$]+)=[\w$]+\(11469\)', config)[1]
+    def config_literal(text):
+        return literal(re.sub(r'`\$\{' + re.escape(alias_import) + r'\.([\w$]+)\}`',
+            lambda match: json.dumps(strings[alias_exports[match[1]]]), text))
+    values = {name: config_literal(expression(config, exports[name])) for name in
+              ["DEFAULTPROFILE", "DEFAULTMAPPINGS", "FULLMAPPINGLIST", "BUTTON_LIST", "DEFAULT_FIRMWARE_MAPPINGS"]}
+    if "bottomDeadzone" in exports or "bottomDeadzoneMap" in config:
+        raise ValueError("Magnetic bottom deadzone product override requires an explicit branch")
+    values["bottom_deadzone"] = literal(expression(body(34737), "Mt"))
+    headers = {}
+    for name in ["Eid", "r6_", "PeF"]:
+        captured = audit.webpack_export("magnetic_command_" + name, [command_constants], 48967, name)
+        header = re.fullmatch(r"new Uint8Array\((\[[^\[\]]+\])\)", captured["binding"]["body"].split("=", 1)[1])
+        if header is None:
+            raise ValueError("Magnetic command header is not a closed byte array: " + name)
+        headers[name] = literal(header[1])
+        if len(headers[name]) != 3 or any(type(value) is not int or not 0 <= value <= 255 for value in headers[name]):
+            raise ValueError("Magnetic command header fields differ: " + name)
+    values["interrupt_and_deadzone_headers"] = headers
+    device = next(row for row in files if Path(row["path"]).name.startswith("rzDevice25."))
+    for method, parameters in [("setAnalogKeyBottomDeadZoneValue", "t,n"),
+                               ("setInterruptibleMacroSettings", "t,n,e,o,a=-1"),
+                               ("setInterruptibleDynamicKeystrokeSettings", "t,n,e,o,a=-1"),
+                               ("setSingleKeySnapTapCtrl", "t,n,e")]:
+        owners = audit.retain("magnetic_" + method, device, method + "(" + parameters + "){", {"method_definition"})
+        if len(owners) != 1:
+            raise ValueError("Magnetic setter does not have one complete method owner: " + method)
+    guest = audit.webpack_export("guest_profile_owner", files, 7414, "KK")
+    values["guest_profile_owner"] = static_js_literal(guest["binding"]["body"].split("=", 1)[1])
+    for name in ["DEFAULTMAPPINGS_JPN", "DEFAULTMAPPINGS_UK", "BUTTON_LIST_JP", "BUTTON_LIST_UK"]:
+        if name in exports:
+            values[name] = config_literal(expression(config, exports[name]))
+    guids = literal(expression(preset, "f"))
+    common = literal(expression(preset, "v"))
+    common_call = re.search(r'\bm=\(\)=>\(\{(.*?)\}\)', preset)[1]
+    common_keys = re.findall(r'([\w$]+):Object\.assign\(\{\},v\)', common_call)
+    if ",".join(name + ":Object.assign({},v)" for name in common_keys) != common_call:
+        raise ValueError("Current magnetic preset common keys contain unresolved expressions")
+    def preset_literal(text):
+        text = re.sub(r'\bf\.([\w$]+)', lambda match: json.dumps(guids[match[1]]), text)
+        return literal(text.replace("m()", json.dumps({name: common for name in common_keys})))
+    values.update({"preset_guids": guids, "preset_mappings": preset_literal(expression(preset, "y")),
+                   "preset_actuation": preset_literal(expression(preset, "h")),
+                   "preset_rapid_trigger": preset_literal(expression(preset, "_"))})
+    for name in ["defaultActuation", "defaultRapidTrigger"]:
+        at = preset.index("this." + name + "=") + len("this." + name + "=")
+        values[name] = literal(preset[at:javascript_delimited(preset, at)])
+    registration = body(86191)
+    if "ignoreProfiles" in registration:
+        raise ValueError("Magnetic onboard preset gate requires an explicit current branch")
+    presets = preset_literal(expression(preset, "I"))
+    if {row["guid"] for row in presets} != set(guids.values()) or len(presets) != len(guids):
+        raise ValueError("Magnetic preset registration identities are incomplete")
+    values["onboard_preset_guids"] = [row["guid"] for row in presets if row["guid"] != guids["GENERAL"]]
+    scan_tables = []
+    worker_table_source = worker
+    if b"72:57414" not in audit.read(worker):
+        bootstrap = audit.retain("macro_worker_bootstrap", worker, "importScripts(", {"call_expression"})
+        if len(bootstrap) != 1 or not re.search(rb'7338:"([a-f0-9]+)"', audit.read(worker)):
+            raise ValueError("Magnetic worker scancode import closure is unresolved")
+        worker_table_source = next(row for row in files if Path(row["path"]).name.startswith("7338."))
+    for source, role in [(worker_table_source, "macro_worker_scancodes"), (engine, "macro_engine_scancodes")]:
+        owner = audit.retain(role, source, "72:57414", {"variable_declarator"})[0]
+        fragment = audit.owners[owner]["body"]
+        start = fragment.index("{")
+        table = literal(fragment[start:javascript_delimited(fragment, start)])
+        if any(not key.isdecimal() or type(value) is not int or not 0 <= int(key) <= 65535
+               or not 0 <= value <= 0xffffffff for key, value in table.items()):
+            raise ValueError("Magnetic macro HID conversion table contains invalid typed values")
+        scan_tables.append(table)
+    if scan_tables[0] != scan_tables[1]:
+        raise ValueError("Magnetic worker and inline macro scancode tables differ")
+    values["macro_scancodes"] = [{"hid": int(key), "scancode": value} for key, value in scan_tables[0].items()]
+    at = registration.index("inputMapping:{keyboard:") + len("inputMapping:")
+    firmware = literal(expression(body(32906), "a"))
+    for mode, overrides in literal(registration[at:javascript_delimited(registration, at)])["keyboard"].items():
+        firmware[mode].update(overrides)
+    values["firmware_keyboard"] = firmware
+    values["physical_keys"] = [{"inputID": key, "fwID": row["fwID"]}
+        for key, row in firmware["NormalMode"].items()
+        if type(row.get("fwID")) is int and row["fwID"] != 255 and any(
+            button.get("inputID") == key and button.get("inputType") in ["KeyInput", "AnalogInput"]
+            for button in values["BUTTON_LIST"])]
+    values["obm_encoding"] = {"function_ids": literal(expression(body(36475), "o")),
+        "modifier_bits": literal(expression(body(39674), "s")),
+        "modifier_names": literal(expression(body(68214), "f")),
+        "media_codes": literal(expression(body(39674), "n")),
+        "media_names": literal(expression(body(68214), "d")),
+        "power_codes": literal(expression(body(39674), "i")),
+        "razer_codes": literal(expression(body(68214), "m"))}
+    values["obm_default_buttons"] = {name: magnetic_default_button_bytes(rows, values["obm_encoding"])
+                                    for name, rows in values.items() if name.startswith("BUTTON_LIST")}
+    changed = audit.final_snapshot()
+    if changed:
+        raise ValueError("Magnetic mapping originals changed during query")
+    return {"product_id": pid, "acquisition": sets, "parsers": audit.parser_versions,
+            "complete_owners": audit.owners, "modules": modules, "values": values,
+            "semantics": {"onboard_macro_hash": "Current4849.Zd delegates to11936.getHash, which canonicalizes through39158 stable stringify, excludes configured fields, escapes less-than and hashes MD5. Rust shares mapping_engine_hash::source_hash rather than a keyboard-specific encoder.",
+                "memory_owner": "Current48363 selects maxMemoryType availableMemory;96236 selects macroMemoryType calculate. Complete66487 addMacro only invokes defrag for deviceType equal to literal mouse. Magnetic keyboard macro allocation updates its typed calculation ledger without automatically formatting/resetting profile or unrelated actuation, lighting and mapping state.",
+                "macro_hid_conversion": "Current worker and complete66487 inline macro paths contain equal132-entry HID-to-scancode maps for both products. These include extended scancodes and are distinct from mapping-engine page key identities.",
+                "preset_registration": "Current72233 isPreset uses the dynamic registration list. Current isObm feature omits ignoreProfiles, so its five onboard presets exclude GENERAL although the broader fixed preset/default table contains that sixth GUID."},
+            "originals": list(audit.sources.values()), "inputs_unchanged": True,
+            "target_execution": False, "runtime_acceptance": "unverified"}
+
+
+def magnetic_default_button_bytes(rows, encoding):
+    """Independently project the closed fixed BUTTON_LIST encoding branches.
+
+    Sources are complete 66487 buttonMappingToFnDataByte/setSingleButtonMapping,
+    26803 CS/Yc/S8/m4/qd and their 36475/39674/68214 constants. This parser never
+    accepts a dynamic mapping or invents a protocol for an unknown branch.
+    """
+    def fields(value, required, optional=()):
+        if type(value) is not dict or set(value) - set(required) - set(optional) or set(required) - set(value):
+            raise ValueError("Magnetic fixed button fields are incomplete or changed")
+    def byte(value):
+        if type(value) is not int or not 0 <= value <= 255:
+            raise ValueError("Magnetic fixed button value is outside u8")
+        return value
+    result = []
+    ids = encoding["function_ids"]
+    reverse_modifiers = {name: encoding["modifier_bits"][key] for key, name in encoding["modifier_names"].items()}
+    media = {name: encoding["media_codes"][key] for key, name in encoding["media_names"].items()}
+    for row in rows:
+        kind = row.get("outputType")
+        fields(row, {"inputID", "inputType", "keyInput", "outputType", kind}, {"isHyperShift"})
+        if (row["inputType"] != "KeyInput" or type(row["inputID"]) is not str
+                or type(row.get("isHyperShift", False)) is not bool):
+            raise ValueError("Magnetic fixed button identity or shift branch differs")
+        fields(row["keyInput"], {"pageID", "HID"})
+        group, data = row[kind], [0] * 5
+        if kind == "keyboardGroup":
+            fields(group, {"key", "modifiers"}, {"extendedKey"})
+            fields(group["key"], {"HID", "flag", "pageID"})
+            modifiers = group["modifiers"]
+            if modifiers == "Extended_Key" and group.get("extendedKey") == "Extended_00":
+                modifiers = []
+            if group["key"]["pageID"] != "7" or group["key"]["flag"] != 0 or type(modifiers) is not list:
+                raise ValueError("Magnetic fixed keyboard page or flag differs")
+            hid = byte(int(group["key"]["HID"]))
+            if 224 <= hid <= 231:
+                data[0] = 1 << (hid - 224)
+            else:
+                for modifier in modifiers:
+                    if modifier != "Extended_Key":
+                        if modifier not in reverse_modifiers:
+                            raise ValueError("Magnetic fixed keyboard modifier is unresolved")
+                        data[0] |= reverse_modifiers[modifier]
+                data[1] = hid
+            function, size = ids["KeyCode"], 2
+        elif kind == "multimediaGroup":
+            fields(group, {"multimediaAssignment"})
+            code = media[group["multimediaAssignment"]]
+            data[:2] = [code >> 8, code & 255]
+            function, size = ids["MediaKeys"], 2
+        elif kind == "profileNavigationGroup":
+            fields(group, {"profileNavigationAssignment"}, {"profileId"})
+            action = group["profileNavigationAssignment"]
+            data[0] = {"Up": 1, "Down": 2, "Specific": 3, "CycleUp": 4, "CycleDown": 5}[action]
+            if action == "Specific":
+                data[1] = byte(group.get("profileId", 0))
+            function, size = ids["Profile"], 2 if action == "Specific" else 1
+        elif kind == "razerKeyGroup":
+            fields(group, {"razerKeyAssignment"})
+            data[0] = byte(encoding["razer_codes"][group["razerKeyAssignment"]])
+            function, size = ids["RazerKey"], 1
+        elif kind == "powerKeyGroup":
+            fields(group, {"powerKeyAssignment"})
+            data[0] = byte(encoding["power_codes"][group["powerKeyAssignment"]])
+            function, size = ids["PowerKeys"], 1
+        else:
+            raise ValueError("Magnetic fixed button output is unresolved: " + str(kind))
+        result.append({"input": row["inputID"], "hyper": row.get("isHyperShift", False),
+                       "function_id": byte(function), "size": byte(size), "data": data})
+    return result
+
+
+def mapping_engine_literals(text):
+    """Decode only complete source modules and their closed fixed expressions."""
+    modules = {role: complete_raw_module(text, anchor) for role, anchor in {
+        "keys": ".KEYS=", "constants": "SINGLE_STATE_INPUT_ID:",
+        "events": ".DoubleClickEvent=", "event_selector": 'case"Play":return new',
+        "factory": "this.generateDefaultTurbos=", "system": ".systemGroup.systemAssignment",
+    }.items()}
+    for module in modules.values():
+        module["byte_start"] = len(text[:module["character_start"]].encode("utf-8"))
+        module["byte_end"] = len(text[:module["character_end"]].encode("utf-8"))
+        module["sha256"] = hashlib.sha256(module["body"].encode("utf-8")).hexdigest()
+    key_body = modules["keys"]["body"]
+    direct = re.search(r'\.KEYS=\[', key_body)
+    if direct:
+        start = direct.end() - 1
+    else:
+        alias = re.search(r'\.KEYS=([\w$]+)', key_body)[1]
+        start = re.search(r'\b' + re.escape(alias) + r'=\[', key_body).end() - 1
+    keys = static_js_literal(key_body[start:javascript_delimited(key_body, start)])
+    factory = modules["factory"]["body"]
+    start = factory.index("this.defaultTurbos=[", factory.index("this.generateDefaultTurbos=")) + len("this.defaultTurbos=")
+    default_ids = static_js_literal(factory[start:javascript_delimited(factory, start)])
+    selector = modules["event_selector"]["body"]
+    classes = dict(re.findall(r'case"([^"]+)":return new\(0,[\w$]+\.([\w$]+)\)', selector))
+    events_body = modules["events"]["body"]
+    events = {}
+    for name in default_ids:
+        pattern = r'\.' + re.escape(classes[name]) + r'=class\{getData\(\)\{return\['
+        start = re.search(pattern, events_body).end() - 1
+        end = javascript_delimited(events_body, start)
+        if not events_body[end:].startswith("}}"):
+            raise ValueError("Event return contains nonliteral continuation: " + name)
+        events[name] = static_js_literal(events_body[start:end])
+    constants_body = modules["constants"]["body"]
+    string_aliases = dict(re.findall(r'\b([\w$]+)=(?:[\w$]+\.[\w$]+=)?("(?:[^"\\]|\\.)*")(?=[,;])', constants_body))
+    constants = {}
+    for exported in ["SINGLE_STATE_INPUT_ID", "SCROLL_INPUT_ID", "SCROLL_TURBO_DELAY_MS"]:
+        symbol = re.search(re.escape(exported) + r':\(\)=>([\w$]+)', constants_body)[1]
+        expression = re.search(r'\b' + re.escape(symbol) + r'=(?:[\w$]+\.[\w$]+=)?(\[[^\[\]]*\]|\d+)(?=[,;])', constants_body)[1]
+        if expression.startswith("["):
+            expression = "[" + ",".join(string_aliases[part] for part in expression[1:-1].split(",")) + "]"
+        constants[exported] = static_js_literal(expression)
+    return {"keys": keys, "default_turbo_ids": default_ids,
+            "turbo_events": events, "constants": constants}, modules
+
+
+def mapping_engine_active_binding_182(family, factory):
+    """Verify the middleware selects this factory, rather than an unused bundle."""
+    if family != "mouse" or factory["module_id"] != 77898:
+        raise ValueError("PID182 mapping requires its current mouse factory 77898")
+    receipt, original, text = verified_acquired_chunk(family, 182, "6259")
+    captured = {row["module_id"]: row for row in keyboard_source_modules(text)}
+    wrapper, caller = captured[32226], captured[30525]
+    if ("var o=n(77898);" not in wrapper["body"]
+            or not wrapper["body"].endswith("t.A=o.RzAppEngineMapping_default}")
+            or "a=n(32226)" not in caller["body"]
+            or any("a.A." + method not in caller["body"] for method in (
+                "generateDefaultTurbos()", "generateAppEngineMultiMappings(e)",
+                "generateAppEngineMappings(e)", "generateAppEngineData(t)"))):
+        raise ValueError("PID182 active mapping factory linkage differs from current source")
+    modules = {}
+    for role, row in (("factory_export_wrapper", wrapper), ("profile_mapping_caller", caller)):
+        modules[role] = {**row, "sha256": hashlib.sha256(row["body"].encode("utf-8")).hexdigest()}
+    return {"acquisition": identity(receipt), "original": original, "complete_modules": modules,
+            "factory_module": factory["module_id"], "wrapper_module": 32226, "caller_module": 30525,
+            "scope": "Current product profile caller selects its independently decoded mapping factory; no other device capability is enabled"}
+
+
 def audit_mapping_engine_literals(args):
     """Independently decode current KEYS/default events for the typed-table oracle."""
     if args.function != "mw" or not args.product:
         raise ValueError("mapping-engine requires selected products and function mw")
-    destination = a.ROOT / "crates/razer-device/testdata/re/mapping-engine-current-data.json"
-    previous = destination if destination.exists() else a.ROOT / "assets/data/mapping-engine-current-data.json"
-    data = json.loads(previous.read_bytes())
+    if args.prepare and getattr(args, "receipt_only", False):
+        raise ValueError("Mapping engine prepare and receipt-only are mutually exclusive")
+    destination = a.ROOT / ".analysis/results/frontend/mapping-engine-current-data.json"
+    data = json.loads(destination.read_bytes()) if destination.is_file() else {}
     products = []
     for pid in args.product:
-        receipt_path, source, text = verified_acquired_chunk(args.family, pid, "1451" if pid == 756 else "2520")
-        modules = {role: complete_raw_module(text, anchor) for role, anchor in {
-            "keys": ".KEYS=", "constants": "SINGLE_STATE_INPUT_ID:",
-            "events": ".DoubleClickEvent=", "event_selector": 'case"Play":return new',
-            "factory": "this.generateDefaultTurbos=", "system": ".systemGroup.systemAssignment",
-        }.items()}
-        key_body = modules["keys"]["body"]
-        direct = re.search(r'\.KEYS=\[', key_body)
-        if direct:
-            start = direct.end() - 1
-        else:
-            alias = re.search(r'\.KEYS=([\w$]+)', key_body)[1]
-            start = re.search(r'\b' + re.escape(alias) + r'=\[', key_body).end() - 1
-        keys = static_js_literal(key_body[start:javascript_delimited(key_body, start)])
-        factory = modules["factory"]["body"]
-        start = factory.index("this.defaultTurbos=[", factory.index("this.generateDefaultTurbos=")) + len("this.defaultTurbos=")
-        default_ids = static_js_literal(factory[start:javascript_delimited(factory, start)])
-        selector = modules["event_selector"]["body"]
-        classes = dict(re.findall(r'case"([^"]+)":return new\(0,[\w$]+\.([\w$]+)\)', selector))
-        events_body = modules["events"]["body"]
-        events = {}
-        for name in default_ids:
-            pattern = r'\.' + re.escape(classes[name]) + r'=class\{getData\(\)\{return\['
-            start = re.search(pattern, events_body).end() - 1
-            end = javascript_delimited(events_body, start)
-            if not events_body[end:].startswith("}}"):
-                raise ValueError("Event return contains nonliteral continuation: " + name)
-            events[name] = static_js_literal(events_body[start:end])
-        constants_body = modules["constants"]["body"]
-        string_aliases = dict(re.findall(r'\b([\w$]+)=(?:[\w$]+\.[\w$]+=)?("(?:[^"\\]|\\.)*")(?=[,;])', constants_body))
-        constants = {}
-        for exported in ["SINGLE_STATE_INPUT_ID", "SCROLL_INPUT_ID", "SCROLL_TURBO_DELAY_MS"]:
-            symbol = re.search(re.escape(exported) + r':\(\)=>([\w$]+)', constants_body)[1]
-            expression = re.search(r'\b' + re.escape(symbol) + r'=(?:[\w$]+\.[\w$]+=)?(\[[^\[\]]*\]|\d+)(?=[,;])', constants_body)[1]
-            if expression.startswith("["):
-                expression = "[" + ",".join(string_aliases[part] for part in expression[1:-1].split(",")) + "]"
-            constants[exported] = static_js_literal(expression)
-        data[str(pid)] = {"keys": keys, "default_turbo_ids": default_ids,
-                          "turbo_events": events, "constants": constants}
+        chunk = "1451" if pid == 756 else "7795" if pid in (182, 740, 746) else "2520"
+        receipt_path, source, text = verified_acquired_chunk(args.family, pid, chunk)
+        data[str(pid)], modules = mapping_engine_literals(text)
         products.append({"product_id": pid, "acquisition": identity(receipt_path),
                          "original": source, "complete_modules": modules,
-                         "keys": len(keys), "default_turbos": len(default_ids), "failures": []})
+                          "keys": len(data[str(pid)]["keys"]),
+                          "default_turbos": len(data[str(pid)]["default_turbo_ids"]), "failures": []})
+        if pid == 182:
+            products[-1]["active_factory"] = mapping_engine_active_binding_182(args.family, modules["factory"])
+        if pid in (740, 746):
+            products[-1]["magnetic_mapping"] = keyboard_magnetic_mapping_sources(pid)
         if pid == 756:
             # Current latest-restore defaults are runtime data. Decode only
             # the closed literal expressions below, never execute vendor JS.
@@ -6358,19 +6870,17 @@ def audit_mapping_engine_literals(args):
                              "runtime_acceptance": "not executed"}}]
             a.save(menu_path, menu_data)
             migration_receipt_path = a.ROOT / ".analysis/inputs/frontend/profile-migration-current/acquisition.json"
-            migration = json.loads(migration_receipt_path.read_bytes()) if migration_receipt_path.is_file() else {
-                "schema_version": 1, "recorded_at_utc": a.stamp(),
-                "caller": {"original": ui_originals[1], "module_id": 55714,
-                           "expression": "new SharedWorker(`${window.location.origin}/profile-migration/worker.js`,{name:'s3FileWorker'})"},
-                "files": [a.download(url, migration_receipt_path.parent) for url in [
-                    "https://apps.razer.com/profile-migration/worker.js",
-                    "https://apps.razer.com/synapse/profile-migration/worker.js"]],
-            }
+            if not migration_receipt_path.is_file():
+                a.fetch_frontend(SimpleNamespace(url="https://apps.razer.com/profile-migration/",
+                    output=a.rel(migration_receipt_path.parent), no_refresh_gaps=True), refresh_ledger=False)
+            migration = json.loads(migration_receipt_path.read_bytes())
+            migration["caller"] = {"original": ui_originals[1], "module_id": 55714,
+                "expression": "new SharedWorker(`${window.location.origin}/profile-migration/worker.js`,{name:'s3FileWorker'})"}
             for url in ["https://apps.razer.com/profile-migration/worker.js",
                         "https://apps.razer.com/synapse/profile-migration/worker.js"]:
                 if not any(row["url"] == url for row in migration["files"]):
                     migration["files"].append(a.download(url, migration_receipt_path.parent))
-            a.save(migration_receipt_path, migration)
+            publish_frontend_acquisition(migration_receipt_path, migration)
             for name, label in [("defaultActuation", "default_actuation"),
                                 ("defaultRapidTrigger", "default_rapid_trigger")]:
                 at = preset.index("this." + name + "=") + len("this." + name + "=")
@@ -6391,12 +6901,28 @@ def audit_mapping_engine_literals(args):
                 "runtime": identity(runtime_path), "firmware_modes": {mode: len(keys) for mode, keys in firmware.items()},
             }
     a.save(destination, data)
+    generated = None
+    generated_magnetic = None
+    if args.prepare:
+        import rust_data
+        generated = rust_data.prepare_mapping_engine_data(data)
+        generated = rust_data.prepare_mapping_engine_data(data, check=True)
+        magnetic = {row["product_id"]: row["magnetic_mapping"] for row in products if "magnetic_mapping" in row}
+        if magnetic:
+            for pid in {740, 746} - set(magnetic):
+                magnetic[pid] = keyboard_magnetic_mapping_sources(pid)
+                products.append({"product_id": pid, "magnetic_mapping": magnetic[pid], "generator_dependency": True,
+                                 "keys": len(data[str(pid)]["keys"]), "failures": []})
+            generated_magnetic = rust_data.prepare_magnetic_source({pid: row["values"] for pid, row in magnetic.items()})
+            generated_magnetic = rust_data.prepare_magnetic_source({pid: row["values"] for pid, row in magnetic.items()}, check=True)
     report_path = a.ROOT / f".analysis/results/frontend/{args.family}-mw-audit.json"
     report = json.loads(report_path.read_bytes()) if report_path.exists() else {"schema_version": 1}
     report.setdefault("queries", {})["mapping-engine"] = {
         "recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)),
         "method": "Complete original webpack modules and constrained literal parsing; no JavaScript evaluation",
         "products": products, "fixture": identity(destination), "target_execution": False,
+        "generated_typed_tables": generated,
+        "generated_magnetic_source": generated_magnetic,
     }
     a.save(report_path, report)
     print(json.dumps({"receipt": a.rel(report_path), "fixture": a.rel(destination),
@@ -7046,6 +7572,576 @@ def prepare_audible_demo(original):
     return result
 
 
+def audit_profile_import_processors(args):
+    """Capture global dispatch and product import stages from current sources."""
+    import importlib.metadata
+    import platform
+    import sys
+    sys.path.insert(0, str(a.ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    supported = {"mouse": {70, 182}, "audio": {1398}, "keyboard": {756}}
+    if args.family not in supported or args.function != "mw":
+        raise ValueError("profile-import-processors requires current mouse, audio or keyboard middleware")
+    products = sorted(set(args.product or supported[args.family]))
+    if not set(products) <= supported[args.family]:
+        raise ValueError("The requested product import processor has no audited owner recipe")
+    parser = Parser(Language(tree_sitter_javascript.language()))
+    sources, source_sets, trees, regions, failures = {}, {}, {}, {}, []
+
+    def load(folder):
+        if folder in sources:
+            return
+        receipt = a.ROOT / f".analysis/inputs/frontend/{folder}/acquisition.json"
+        capture_path = a.ROOT / f".analysis/results/frontend/{folder}/analysis.json"
+        acquired, captured = json.loads(receipt.read_bytes()), json.loads(capture_path.read_bytes())
+        if not acquired.get("source_current_during_acquisition") or not captured.get("input_bytes_unchanged"):
+            raise ValueError("Current profile import acquisition/capture is unverified: " + folder)
+        originals = [item for item in acquired["files"] if item.get("path")]
+        if any(not valid(item) for item in originals):
+            raise ValueError("Current profile import original identity differs: " + folder)
+        reachable = {acquired["entry_url"]}
+        for manifest in ("asset-manifest.json", "webpackManifest.json", "manifest.json"):
+            reachable.add(urllib.parse.urljoin(acquired["entry_url"], manifest))
+        while True:
+            following = reachable | {edge["to"] for edge in acquired["edges"] if edge["from"] in reachable}
+            if following == reachable:
+                break
+            reachable = following
+        sources[folder] = [(item, (a.ROOT / item["path"]).read_bytes()) for item in originals
+                           if item["url"] in reachable and item["path"].endswith(".js")]
+        source_sets[folder] = {"acquisition": identity(receipt), "capture": identity(capture_path),
+            "analyzer": captured["tool"], "original_inputs": originals,
+            "deployment_stability": acquired.get("stability", []),
+            "closure_unresolved": acquired.get("unresolved", []),
+            "failed_acquisition": [item for item in acquired["files"] if item.get("error")],
+            "capture_failures": [item for item in captured.get("commands", []) if item.get("exit_code")],
+            "complete_capture_modules": {}, "capture_document": captured}
+
+    def retain(folder, role, anchor, kinds, owners, *, prefix=None, module_id=None):
+        load(folder)
+        needle, candidates = anchor.encode("utf-8"), {}
+        for original, raw in sources[folder]:
+            if prefix is not None and not Path(original["path"]).name.startswith(prefix):
+                continue
+            if needle not in raw:
+                continue
+            tree = trees.setdefault(original["path"], parser.parse(raw))
+            if tree.root_node.has_error:
+                raise ValueError("Current profile import AST has an error: " + original["path"])
+            offset = 0
+            while (at := raw.find(needle, offset)) >= 0:
+                offset = at + len(needle)
+                node = tree.root_node.descendant_for_byte_range(at, offset)
+                owner, module = None, None
+                while node is not None:
+                    key = (node.child_by_field_name("key") if node.type == "pair" else
+                           node.child_by_field_name("name") if node.type == "method_definition" else None)
+                    if key is not None and key.type == "number":
+                        module = int(raw[key.start_byte:key.end_byte])
+                        if "module" in kinds:
+                            owner = node
+                        break
+                    if owner is None and node.type in kinds:
+                        owner = node
+                    node = node.parent
+                if owner is None or module_id is not None and module != module_id:
+                    continue
+                body = raw[owner.start_byte:owner.end_byte]
+                candidates.setdefault((original["sha256"], owner.start_byte, owner.end_byte),
+                                      (original, owner, module, body))
+        if len(candidates) != 1:
+            raise ValueError(f"Current profile import owner is absent or ambiguous: {role} ({len(candidates)})")
+        original, owner, module, body = next(iter(candidates.values()))
+        key = f"{original['sha256']}:{owner.start_byte}:{owner.end_byte}"
+        regions.setdefault(key, {"original": original, "module_id": module, "syntax": owner.type,
+            "byte_start": owner.start_byte, "byte_end": owner.end_byte,
+            "body_sha256": hashlib.sha256(body).hexdigest(), "body": body.decode("utf-8")})
+        owners.append({"role": role, "source_set": folder, "key": key})
+        layer = source_sets[folder]
+        if original["path"] not in layer["complete_capture_modules"]:
+            layer["complete_capture_modules"][original["path"]] = source_capture_modules(
+                layer["capture_document"], original)
+        return regions[key]["body"]
+
+    shared, rows = [], []
+    try:
+        global_source = "synapse-profiles-current"
+        retain(global_source, "global_profile_dialog", 'Ua=(0,d.connect)', {"variable_declarator"}, shared, prefix="9449.")
+        dispatch = retain(global_source, "global_user_command_dispatch", 'ja=e=>{let t=e.productId',
+                          {"variable_declarator"}, shared, prefix="9449.")
+        dialog = retain(global_source, "global_file_selection", 'Ia=function(e){let t=e.IEMode',
+                        {"variable_declarator"}, shared, prefix="9449.")
+        if 'msgName:"userCommand"' not in dispatch or 'handleImportProfiles' not in dialog:
+            raise ValueError("Current global Profiles import dispatch differs")
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        failures.append(str(error))
+    for pid in products:
+        row = {"product_id": pid, "complete_owners": [], "failures": [], "unresolved_chains": [],
+               "runtime_acceptance": "unverified"}
+        rows.append(row)
+        folder = f"{args.family}-mw-{pid}-current"
+        try:
+            owners = row["complete_owners"]
+            if pid == 756:
+                retain(folder, "middleware_import_dispatch", 'case"ON_IMPORT_PROFILE":',
+                       {"switch_case"}, owners, prefix="6737.", module_id=26568)
+                body = retain(folder, "middleware_import_processor", 'function ay(e,t,i,n,o,r)',
+                              {"function_declaration"}, owners, prefix="6737.", module_id=50574)
+                retain(folder, "middleware_task_locks_and_feedback", '36305(', {"module"}, owners,
+                       prefix="6737.", module_id=36305)
+                retain(folder, "middleware_state_machine_owner", '91554(', {"module"}, owners,
+                       prefix="6737.", module_id=91554)
+                retain(folder, "middleware_import_state_transition", 'ON_IMPORT_PROFILE:{actions:',
+                       {"module"}, owners, prefix="6737.", module_id=39449)
+                source_window = retain(folder, "middleware_window_and_storage_keys", '7414(',
+                                       {"module"}, owners, prefix="main.", module_id=7414)
+                storage = retain(folder, "local_device_storage_hooks", '89423(', {"module"}, owners,
+                                 prefix="6737.", module_id=89423)
+                hook = retain(folder, "local_storage_hook_implementation", '67403(', {"module"}, owners,
+                              prefix="6737.", module_id=67403)
+                lockable = retain(folder, "local_lockable_storage_implementation", '81988(',
+                                  {"module"}, owners, prefix="6737.", module_id=81988)
+                observer = retain(folder, "other_window_device_storage_observer", 'ie=e=>j(',
+                                  {"variable_declarator"}, owners, prefix="6737.", module_id=97161)
+                registration = retain(folder, "device_storage_observer_registration", 'te=()=>{',
+                                      {"variable_declarator"}, owners, prefix="6737.", module_id=97161)
+                restore = retain(folder, "storage_observer_restore_dispatch", 'Eo=(e,t,i)=>',
+                                 {"variable_declarator"}, owners, prefix="6737.", module_id=26568)
+                runner = retain(folder, "storage_observer_restore_runner", 'yo=(e,t,i,n)=>',
+                                {"variable_declarator"}, owners, prefix="6737.", module_id=26568)
+                mapping = retain(folder, "local_mapping_engine_storage_projection", 'Ie=(()=>{',
+                                 {"variable_declarator"}, owners, prefix="6737.", module_id=51765)
+                window_storage = retain(folder, "device_runtime_window_storage_projection", 'le=(e,t=',
+                                        {"variable_declarator"}, owners, prefix="6737.", module_id=51765)
+                macros = retain(folder, "macro_indexed_db_transaction_and_other_window_broadcast", '255(',
+                                {"module"}, owners, prefix="6737.", module_id=255)
+                changes = retain(folder, "existing_macro_change_projection", 'function Te(e,t)',
+                                 {"function_declaration"}, owners, prefix="6737.", module_id=51765)
+                ordered = ['t.profiles=p', 'RzVersion53bits.nextVersion(t.version)', 'yield x.A.set(f)',
+                           'yield(0,L.setLocalStorageDeviceCache)(t)',
+                           'yield(0,d.saveDeviceDataToWindowStorage)(t)',
+                           'selectedProfileGuid:t.activeProfile']
+                locations = [body.rfind(token) for token in ordered]
+                if min(locations) < 0 or locations != sorted(locations):
+                    raise ValueError("Current 756 local import storage/publication order differs")
+                if any(token in body for token in ('loadActiveProfile', 'Eo(', 'yo(', 'setDeviceMode')):
+                    raise ValueError("Current 756 import directly invokes a device restore owner")
+                if not all(token in source_window for token in ('R=window', 'DEVICE_LOCALSTORAGE_KEY:y')):
+                    raise ValueError("Current 756 storage observer no longer belongs to its middleware window")
+                if not all(token in storage for token in ('PostSetLocalStorage', 'mappingEngineSetLocalStorage',
+                                                         'yield b(o.wI.DEVICE_LOCALSTORAGE_KEY,e)')):
+                    raise ValueError("Current 756 local cache or mapping storage hooks differ")
+                if ('yield this.setItem(e,t)' not in hook or 'window.localStorage.setItem(t,n)' not in lockable
+                        or 'l.jf.addEventListener("storage",ie)' not in registration
+                        or 'n.version===r.version' not in observer or 'o().diff(l,c)||{}' not in observer
+                        or '(0,A.loadActiveProfile)(r,d)' not in observer):
+                    raise ValueError("Current 756 same-window writer/other-window storage event chain differs")
+                if ('vo.enqueueUpdate({deviceData:e,diffs:t})' not in restore
+                        or 't&&(l=Object.keys(t))' not in runner
+                        or 'RzGenericFeatureManager.restoreDeviceData(e,n)' not in runner
+                        or 'localStorageSetItem(' not in mapping or 'setWindowStorageItem(' not in window_storage):
+                    raise ValueError("Current 756 cross-window differential restore or local storage projections differ")
+                if ('t.commit(),yield i,u.postMessage' not in macros or 'u.onmessage=e=>{p.emit("change",e.data)}' not in macros
+                        or 'if(!r)return!1' not in changes):
+                    raise ValueError("Current 756 macro commit/broadcast/change intersection differs")
+                row["semantics"] = {
+                    "input": "Product UI supplies selected profile and macro rows. Global Profiles supplies no new macro rows. Both invoke the complete ay processor; origin selects feedback actions.",
+                    "local_transaction": "The importing middleware appends normalized profiles and macros, advances the source version, commits MacroStorage, writes its local device cache, then projects device runtime data and profile/macro lists without selecting an imported profile.",
+                    "same_import_owner": "ay does not invoke loadActiveProfile. jf is the same browser window as LocalStorageHook -> RzLockableStorage -> window.localStorage.setItem; browser storage events do not return to the window performing that write.",
+                    "local_service_projection": "PostSetLocalStorage compiles local mapping metadata and mappingEngineSetLocalStorage writes the installed host localStorageSetItem projection. Device runtime projection uses host setWindowStorageItem; neither is proof of a physical device write.",
+                    "other_windows": "97161.ie receives storage events in other windows. A changed version updates the source hash, compares the old/new active profile and invokes loadActiveProfile with diff or {}. Stable active plus an initialized latest queue uses enqueueUpdate. Empty diff skips per-profile fields, while restore setup and generic-feature cleanup still exist; no universal no-restore claim is made.",
+                    "macro_broadcast": "MacroStorage commits IndexedDB under an exclusive lock before broadcasting. Its current object emits change only for incoming channel messages; checkMacrosChange compares the existing GUID intersection, so a pure append does not become an existing-macro rewrite.",
+                    "rust_transaction": "SourceProfileImport and ProfileMacroImport validate both retained owners, persist profiles/macros together in WorkspaceFile, publish both locally after the receipt, then acknowledge the importing latest-restore owner's collection and signature without admitting a new hardware restore.",
+                }
+                row["unresolved_chains"].append("The documented browser storage cross-window behavior is statically traced; actual multiple-window vendor execution and installed host/device acceptance remain unverified.")
+            elif pid == 1398:
+                dispatch = retain(folder, "middleware_user_command", 'function On({msgData:e})',
+                                  {"function_declaration"}, owners, prefix="main.")
+                retain(folder, "middleware_user_command_registration", 'onBCEvent(s.qg.USER_COMMAND,On)',
+                       {"function_declaration"}, owners, prefix="main.")
+                body = retain(folder, "middleware_import_dispatch_and_processor", 'case E.pF.ON_IMPORT_PROFILE:',
+                              {"switch_case"}, owners, prefix="main.")
+                quick = retain(folder, "quick_effect_validation", 'function ur(e){const t=m.getDefaultProfile()',
+                               {"function_declaration"}, owners, prefix="main.")
+                defaults = retain(folder, "current_middleware_product_info", 'getDefaultProfile:()=>g',
+                                  {"module"}, owners, prefix="main.", module_id=13513)
+                retain(folder, "duplicate_name_reexport", 't.d9=n.getDuplicateName', {"module"}, owners,
+                       prefix="main.", module_id=4849)
+                retain(folder, "duplicate_name", 'v=(e,t)=>{let i="";const n=t;', {"variable_declarator"},
+                       owners, prefix="main.")
+                retain(folder, "local_storage_writer", '52671:', {"module"}, owners, prefix="main.", module_id=52671)
+                retain(folder, "local_state_broadcast", '44857:', {"module"}, owners, prefix="main.", module_id=44857)
+                ui = "audio-1398-current"
+                reducer = retain(ui, "product_ui_profile_reducer", 'Ye=function(e,t){if("undefined"===typeof e)return Fe;',
+                                 {"variable_declarator"}, owners, prefix="main.")
+                button_list = retain(ui, "product_ui_button_list", '1368:', {"module"}, owners,
+                                     prefix="main.", module_id=1368)
+                filter_body = retain(ui, "product_ui_hypershift_filter", '5380:', {"module"}, owners,
+                                     prefix="main.", module_id=5380)
+                ui_info = retain(ui, "current_ui_product_info", '9696:', {"module"}, owners,
+                                 prefix="main.", module_id=9696)
+                retain(ui, "product_ui_optional_sanitizer_binding", 'sanitizeImportedProfileMappings:be',
+                       {"variable_declarator"}, owners, prefix="main.")
+                if ('}(e.timerTick,e.from,t,0,0,r,R)' not in body or 'm.QUICK_EFFECTS.find' not in quick
+                        or 'QUICK_EFFECTS' in defaults or 'quickEffects:' in defaults):
+                    raise ValueError("Current 1398 import macro arguments or unavailable quick-effects branch differs")
+                if ('disableHypershiftMapping' in button_list or 'sanitizeImportedProfileMappings' in ui_info
+                        or 'analogSpecs' in ui_info or '0===a.size?e:' not in filter_body
+                        or '"function"===typeof be' not in reducer):
+                    raise ValueError("Current 1398 product UI import preprocessing differs")
+                ordered = ['ur(e)', 'm.getDefaultProfile()', '(0,v.d9)(t,n.name)', 'n.guid=(0,v.gZ)()',
+                           'o.push(n)', 'e.profiles=o', 'p.l9.nextVersion(e.version)', '(0,u.Pf)(e)', 'yield(0,A.qw)(e)']
+                locations = [body.find(token) for token in ordered]
+                if min(locations) < 0 or locations != sorted(locations):
+                    raise ValueError("Current 1398 local import transformation/publication order differs")
+                row["semantics"] = {
+                    "input": "Global Profiles passes selected rows and no macros. Product UI filters selected rows and macros, but MW discards its macro/cloud arguments.",
+                    "product_ui_stage": "1368 has no disabled Hypershift keys, so 5380.qS returns mappings unchanged. 9696 exports neither sanitizeImportedProfileMappings nor analogSpecs; both optional conversion branches are absent.",
+                    "merge": "ur validation, shallow current middleware profile defaults, source duplicate name, fresh UUID, append in order, next 53-bit source version.",
+                    "quick_effects_failure": "Truthy quickEffects accesses missing ProductInfo13513.QUICK_EFFECTS.find and fails before persistence. Falsy values survive the shallow merge; UI9696 lighting defaults cannot supply this MW catalog.",
+                    "publication": "Local Pf then awaited qw and profile-list broadcast. Active profile is unchanged; this handler performs no restore or device write.",
+                }
+            else:
+                prefix, export, module, generate, registration = ({
+                    70: ("6120.", "EMz", 25947, "function je(e,t,n=!1,i=[])", "USER_COMMAND,(0,oe.Z)(ve"),
+                    182: ("6259.", "WjM", 30525, "function $e(e,t,n=!1,i=[])", "USER_COMMAND,(0,oe.A)(fe"),
+                })[pid]
+                retain(folder, "middleware_user_command_registration", registration, {"function_declaration"}, owners, prefix=prefix)
+                retain(folder, "middleware_import_dispatch", 'case"ON_IMPORT_PROFILE":', {"switch_case"}, owners, prefix=prefix)
+                retain(folder, "middleware_import_export", export + ':', {"pair"}, owners, prefix=prefix, module_id=module)
+                body = retain(folder, "middleware_import_processor", 'function Xt(e,t,n,a,',
+                              {"function_declaration"}, owners, prefix=prefix, module_id=module)
+                retain(folder, "profile_app_engine_and_turbo_storage", generate, {"function_declaration"},
+                       owners, prefix=prefix, module_id=module)
+                retain(folder, "product_profile_defaults", 'getDefaultProfile:', {"module"}, owners,
+                       prefix="main.", module_id=47277 if pid == 70 else 3298)
+                collection, singleton, runtime, feature, injector, engine, macro = ({
+                    70: (71258, 95414, 11579, 88443, 8683, 71616, 67306),
+                    182: (52448, 47973, 35924, 93305, 80759, 77898, 89788),
+                })[pid]
+                retain(folder, "profile_collection_adapter", f'{collection}:', {"module"}, owners,
+                       prefix=prefix, module_id=collection)
+                singleton_body = retain(folder, "feature_singleton", f'{singleton}:', {"module"}, owners,
+                                        prefix="main.", module_id=singleton)
+                runtime_body = retain(folder, "initial_runtime_cache", f'{runtime}:', {"module"}, owners,
+                                      prefix="main.", module_id=runtime)
+                feature_body = retain(folder, "derived_features_and_accessor", f'{feature}:', {"module"}, owners,
+                                      prefix="main.", module_id=feature)
+                retain(folder, "feature_injector", f'{injector}:', {"module"}, owners,
+                       prefix="main.", module_id=injector)
+                bootstrap = retain(folder, "product_bootstrap_features",
+                                   'A.Z.useFeature("taskRunnerSetDPI","setDpiLevel")' if pid == 70
+                                   else 'A.A.useFeature("rzDeviceType","rzDevice25",',
+                                   {"arrow_function"}, owners, prefix="main.")
+                retain(folder, "bootstrap_singleton_binding", f'A={"o" if pid == 70 else "r"}({singleton})',
+                       {"variable_declarator"}, owners, prefix="main.")
+                retain(folder, "ordinary_mapping_factory", f'{engine}:', {"module"}, owners,
+                       prefix="2520." if pid == 70 else "7795.", module_id=engine)
+                retain(folder, "macro_event_factory", f'{macro}:', {"module"}, owners,
+                       prefix="2520." if pid == 70 else "7795.", module_id=macro)
+                for role, anchor in (
+                        ("direct_turbo_references", 'function We(e){return Array.isArray(e)' if pid == 70
+                         else 'function ze(e){return Array.isArray(e)'),
+                        ("turbo_pruning", 'function ze(e,t,n,o=[])' if pid == 70 else 'function We(e,t,n,o=[])'),
+                        ("otfs_engine_projection", 'function St(e,t){const n=e.filter')):
+                    retain(folder, role, anchor, {"function_declaration"}, owners, prefix=prefix, module_id=module)
+                ui = f"mouse-{pid}-current"
+                reducer = retain(ui, "product_ui_profile_reducer",
+                                 'ke=function(e,E){if("undefined"===typeof e)return Ke;' if pid == 70
+                                 else 'We=function(e,E){if("undefined"===typeof e)return be;',
+                                 {"variable_declarator"}, owners, prefix="main.")
+                buttons = retain(ui, "product_ui_button_list", '1368:', {"module"}, owners,
+                                 prefix="main.", module_id=1368)
+                filter_body = retain(ui, "product_ui_hypershift_filter", '5380:', {"module"}, owners,
+                                     prefix="main.", module_id=5380)
+                ui_info_id = 6047 if pid == 70 else 1057
+                ui_info = retain(ui, "current_ui_product_info", f'{ui_info_id}:', {"module"}, owners,
+                                 prefix="main.", module_id=ui_info_id)
+                if ('disableHypershiftMapping' in buttons or 'sanitizeImportedProfileMappings' in ui_info
+                        or 'analogSpecs' in ui_info or '0===a.size?e:' not in filter_body
+                        or 'isMacroSelected&&e.add(a.guid)' not in reducer):
+                    raise ValueError("Current mouse product UI import preprocessing differs")
+                if any(flag in text for flag in ('supportDpiMatcher', 'serialNumberBasedProfileStorage')
+                       for text in (singleton_body, runtime_body, feature_body, bootstrap)):
+                    raise ValueError("Current mouse fixed feature registration differs")
+                feature_calls = []
+                for original, raw in sources[folder]:
+                    if not any(token in raw for token in (b'useFeature', b'injectData', b'featuresList')):
+                        continue
+                    tree = trees.setdefault(original['path'], parser.parse(raw))
+                    stack = [tree.root_node]
+                    while stack:
+                        node = stack.pop()
+                        if node.type == 'call_expression':
+                            target = node.child_by_field_name('function')
+                            prop = target.child_by_field_name('property') if target is not None and target.type == 'member_expression' else None
+                            if prop is not None and raw[prop.start_byte:prop.end_byte] in (b'useFeature', b'injectData', b'injectDataFromObject'):
+                                arguments = node.child_by_field_name('arguments')
+                                values = arguments.named_children if arguments is not None else []
+                                if not values or values[0].type != 'string':
+                                    raise ValueError("Current mouse feature injection has an unresolved dynamic name")
+                                name = static_js_literal(raw[values[0].start_byte:values[0].end_byte].decode('utf-8'))
+                                if name in ('supportDpiMatcher', 'serialNumberBasedProfileStorage', 'featuresList'):
+                                    raise ValueError("Current mouse import feature flags are injected outside its bootstrap")
+                                feature_calls.append({'original': original, 'byte_start': node.start_byte,
+                                                      'byte_end': node.end_byte, 'name': name,
+                                                      'body_sha256': hashlib.sha256(raw[node.start_byte:node.end_byte]).hexdigest()})
+                        stack.extend(reversed(node.children))
+                if len(feature_calls) != (6 if pid == 70 else 8):
+                    raise ValueError("Current mouse feature injection closure differs")
+                row['feature_injections'] = feature_calls
+                if ('sidePanelMappings' not in body or 'supportDpiMatcher' not in body
+                        or 'RzVersion53bits.nextVersion' not in body or 'synapseMacros' not in body):
+                    raise ValueError("Current mouse import transformation/storage branches differ")
+                row["semantics"] = {
+                    "shared_stages": "Selected profile/listItems and macro rows; duplicate names/GUID remap; source defaults; mapping repair; append; next 53-bit version; serialized local storage and profile/macro UI publication.",
+                    "product_ui_stage": "Current button lists have no disabled Hypershift rows. ProductInfo exports neither sanitizeImportedProfileMappings nor analogSpecs. Mapping preprocessing is unchanged; listItems selects the imported macro-data subset in original order.",
+                    "fixed_features": "Complete singleton defaults, initial runtime data, derived features, product bootstrap and every static useFeature/injectData call enable neither supportDpiMatcher nor serialNumberBasedProfileStorage. The current products use ordinary profiles storage and preserve selectedSensitivityMatcher without adding it.",
+                    "product_branches": "Physical product defaults and serial/container cache selection; side-panel mapping and multi-stage macro repair; app-engine compilation and turbo storage; equalizer/camera carry-forward.",
+                    "global_macro_argument": "Global dispatch supplies no macro rows, but existing macro references still participate in mapping repair and compiled profile engines.",
+                    "multi_engine": "Xt passes its profile-array expression as je/$e's third argument, selecting multi mappings because all JavaScript arrays are truthy. The fourth turbo keep-alive argument is absent. St filters old OTFS engine records and appends ordinary OTFS scroll interception before hashing.",
+                    "macros": "Existing name collisions receive source suffixes; existing GUID collisions receive fresh UUIDs and remap the first macro group with an immediate return. Without remapping, the first group's resolved macro supplies every nested macro stage; unresolved stages become the source keyboard/default outputs. Unchecked removal consults the original macro store.",
+                    "hardware": "The importing Xt owner appends the local collection and publishes lists without selecting an imported profile or directly issuing a hardware restore. Other-window storage observers remain a separate call chain.",
+                }
+                row["unresolved_chains"].append("Actual vendor-window storage observation, installed host projection and physical device acceptance remain unverified. The synapse3 monitor-coordinate conversion branch is retained as source evidence; the implemented file picker accepts synapse4 files.")
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+            row["failures"].append(str(error))
+    for layer in source_sets.values():
+        layer.pop("capture_document", None)
+    query = {"query": "profile-import-processors", "recorded_at_utc": a.stamp(),
+        "tool": identity(Path(__file__)), "python_version": platform.python_version(),
+        "analyzers": {name: importlib.metadata.version(name) for name in ("tree-sitter", "tree-sitter-javascript")},
+        "method": "Verified current acquisition bytes and complete captures; full AST owners; no vendor JavaScript execution",
+        "offset_units": "UTF-8 bytes, end exclusive", "source_sets": source_sets,
+        "shared_owners": shared, "products": rows, "complete_owners": regions, "failures": failures,
+        "target_execution": False, "runtime_acceptance": "unverified"}
+    destination = a.ROOT / f".analysis/results/frontend/{args.family}-mw-audit.json"
+    report = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1, "queries": {}}
+    report.setdefault("queries", {})["profile-import-processors"] = query
+    a.save(destination, report)
+    failed = failures + [error for row in rows for error in row["failures"]]
+    print(json.dumps({"receipt": a.rel(destination), "query": query["query"], "products": len(rows),
+                      "complete_owners": len(regions), "failures": failed}), flush=True)
+    if failed:
+        raise ValueError("Current profile import source chains remain unresolved")
+
+
+def audit_audio_help_reset(args):
+    """Read complete mounted 1398 Help reset owners from verified original bytes."""
+    import importlib.metadata
+    import platform
+    import sys
+    sys.path.insert(0, str(a.ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    if args.family != "audio" or args.function != "mw" or set(args.product or [1398]) != {1398}:
+        raise ValueError("audio-help-reset currently requires the source-audited 1398 audio middleware")
+    parser = Parser(Language(tree_sitter_javascript.language()))
+    product = {"product_id": 1398, "layers": {}, "complete_owners": [], "failures": [],
+               "unresolved_chains": [], "runtime_acceptance": "unverified"}
+    owners, parsed = {}, {}
+    try:
+        sources = {}
+        for layer, folder in (("mw", "audio-mw-1398-current"), ("ui", "audio-1398-current")):
+            acquisition_path = a.ROOT / f".analysis/inputs/frontend/{folder}/acquisition.json"
+            capture_path = a.ROOT / f".analysis/results/frontend/{folder}/analysis.json"
+            acquired = json.loads(acquisition_path.read_bytes())
+            captured = json.loads(capture_path.read_bytes())
+            if not acquired.get("source_current_during_acquisition") or not captured.get("input_bytes_unchanged"):
+                raise ValueError("Current Help reset acquisition/capture is unverified: " + layer)
+            originals = [row for row in acquired["files"] if row.get("path")]
+            if any(not valid(row) for row in originals):
+                raise ValueError("Current Help reset original byte identity differs: " + layer)
+            reachable = {acquired["entry_url"], urllib.parse.urljoin(acquired["entry_url"], "webpackManifest.json")}
+            while True:
+                following = reachable | {edge["to"] for edge in acquired["edges"] if edge["from"] in reachable}
+                if following == reachable:
+                    break
+                reachable = following
+            sources[layer] = [(row, (a.ROOT / row["path"]).read_bytes()) for row in originals
+                              if row["url"] in reachable and row["path"].endswith(".js")]
+            product["layers"][layer] = {"acquisition": identity(acquisition_path), "capture": identity(capture_path),
+                "original_inputs": originals, "analyzer": captured["tool"],
+                "closure_unresolved": acquired.get("unresolved", []),
+                "failed_acquisition": [row for row in acquired.get("files", []) if row.get("error")],
+                "capture_failures": [row for row in captured.get("commands", []) if row.get("exit_code")],
+                "complete_capture_modules": {}}
+            for original, raw in sources[layer]:
+                parsed[original["path"]] = parser.parse(raw)
+                if parsed[original["path"]].root_node.has_error:
+                    raise ValueError("Current Help reset AST contains an error: " + original["path"])
+            product["layers"][layer]["capture_document"] = captured
+
+        def retain(role, layer, anchor, node_type, filename=None):
+            candidates = {}
+            needle = anchor.encode("utf-8")
+            for original, raw in sources[layer]:
+                if filename is not None and not Path(original["path"]).name.startswith(filename):
+                    continue
+                offset = 0
+                while (at := raw.find(needle, offset)) >= 0:
+                    offset = at + len(needle)
+                    node = parsed[original["path"]].root_node.descendant_for_byte_range(at, offset)
+                    while node is not None and node.type != node_type:
+                        node = node.parent
+                    if node is None:
+                        continue
+                    body = raw[node.start_byte:node.end_byte]
+                    if len(body) > 200_000:
+                        raise ValueError("Help reset owner exceeds function/class scope: " + role)
+                    candidates.setdefault(body, (original, node, body))
+            if len(candidates) != 1:
+                raise ValueError(f"Help reset source owner is missing or ambiguous: {role} ({len(candidates)})")
+            original, node, body = next(iter(candidates.values()))
+            key = f"{original['sha256']}:{node.start_byte}:{node.end_byte}"
+            owners.setdefault(key, {"original": original, "syntax": node.type,
+                "byte_start": node.start_byte, "byte_end": node.end_byte,
+                "body_sha256": hashlib.sha256(body).hexdigest(), "body": body.decode("utf-8")})
+            product["complete_owners"].append({"role": role, "layer": layer, "key": key})
+            retained = product["layers"][layer]
+            if original["path"] not in retained["complete_capture_modules"]:
+                retained["complete_capture_modules"][original["path"]] = source_capture_modules(
+                    retained["capture_document"], original)
+            return body.decode("utf-8")
+
+        required = [
+            ("reset_feature", "mw", 'this.setDeviceReset=(e=o.UserData)', "class_declaration", "main."),
+            ("generic_event_manager", "mw", '[!][onDeviceEvent] Completing pending reset', "class_declaration", "main."),
+            ("unique_profile_name", "mw", '"Keymap"===t', "variable_declarator", "main."),
+            ("fallback_reset", "mw", 'if(Ue.X.getFeature("deviceReset"))return;', "variable_declarator", "main."),
+            ("profile_defaults", "mw", 'gameChatBalance:{balanceMode:10},bassBoost:', "variable_declarator", "main."),
+            ("eq_defaults", "mw", 'voicePromptIndex:0,bandValues:[0,0,0,0,0,0,0,0,0,0]', "variable_declarator", "main."),
+            ("device_defaults", "mw", 'v={version:1,vendorId:p.vendorId,productId:p.productId', "variable_declarator", "main."),
+            ("profile_factory", "mw", 'e.name=`${(0,a.rf)()}-Default`', "variable_declarator", "main."),
+            ("device_default_factory", "mw", 'function C(){const e=g();return{...v,profiles:[e],activeProfile:e.guid}}', "function_declaration", "main."),
+            ("valkyrie_reset_observer", "mw", 'this.featureKey="valkyrie_thx"', "class_declaration", "main."),
+            ("eq_initialization_reset", "mw", 'resetState(){this.initDone=!1,this.dataRestoreDone=!1}', "class_declaration", "main."),
+            ("factory_command_header", "mw", 'Yn=[239,0,1]', "variable_declarator", "6555."),
+            ("factory_response_header", "mw", 'On=[239,1,1]', "variable_declarator", "6555."),
+            ("mic_command_header", "mw", 'sr=new Uint8Array([85,0,0])', "variable_declarator", "6555."),
+            ("mic_response_header", "mw", 'Sr=new Uint8Array([85,1,1])', "variable_declarator", "6555."),
+            ("factory_command_helper", "mw", 's.lUR,Array.from(s.pgx),null,Array.from(s.D6Z)', "variable_declarator", "AudioMxicDevice."),
+            ("mic_command_helper", "mw", 't.sendCommand(s.OWw,s.mcT,null,s.eDI)', "variable_declarator", "AudioMxicDevice."),
+            ("physical_device_adapter", "mw", 'this.name="AudioValkyrie"', "class_declaration", "AudioValkyrie."),
+            ("wired_general_transport", "mw", 'this.name="AudioBillieT1Wired"', "class_declaration", "AudioBillieT1Wired."),
+            ("dongle_general_transport", "mw", 'this.name="AudioBillieT1Dongle"', "class_declaration", "AudioBillieT1Dongle."),
+            ("ui_firmware_confirmation", "ui", 'mI(al.qg.UI_REQUEST_MW,"resetHardware")', "variable_declarator", "main."),
+            ("ui_help_reset_owner", "ui", 'this.resetDevice=()=>', "class_declaration", "main."),
+            ("ui_mounted_product_root", "ui", 'Gf,{firmwareResetProps:{shouldPowerOff:!0,modalMsg:il.MVq}', "class_declaration", "main."),
+        ]
+        bodies = {role: retain(role, layer, anchor, syntax, filename)
+                  for role, layer, anchor, syntax, filename in required}
+        reset = bodies["reset_feature"]
+        ordered = ['JSON.parse(JSON.stringify(n.profiles))', '(0,l.getDeviceDefaultLocalData)()',
+                   '(0,l.getDefaultProfile)()', 'v.push(y)', 'yield(0,s.Pf)(m)', 'yield(0,d.qw)(m)',
+                   'onDeviceEvent(a.I.DeviceReset)', 'yield f.getInstance().setFWDeviceReset(e)', 'this.isPendingReset=!0']
+        positions = [reset.find(token) for token in ordered]
+        if min(positions) < 0 or positions != sorted(positions):
+            raise ValueError("Current reset persistence/publication/firmware order differs")
+        if 'if(this.isPendingReset)' not in reset or '(0,d.EA)(e.activeProfile)' not in reset:
+            raise ValueError("Current pending reconnect reset owner is incomplete")
+        if 'yield this.isDeviceMicMuted()' not in bodies["valkyrie_reset_observer"]:
+            raise ValueError("Current independent mic reset observer is incomplete")
+        module = retain("product_info_module", "mw", 'v={version:1,vendorId:p.vendorId,productId:p.productId', "pair", "main.")
+        raw_module = ("const modules={" + module + "};").encode("utf-8")
+        module_tree = parser.parse(raw_module)
+        pending = [module_tree.root_node]
+        module_node = None
+        while pending:
+            node = pending.pop()
+            pending.extend(node.children)
+            key = node.child_by_field_name("key") if node.type == "pair" else None
+            if key is not None and key.type == "number" and raw_module[key.start_byte:key.end_byte] == b"13513":
+                module_node = node
+                break
+        if module_node is None:
+            raise ValueError("Current product default module identity differs")
+        block = module_node.child_by_field_name("value").child_by_field_name("body")
+        bindings = {}
+        for declaration in block.named_children:
+            if declaration.type not in {"lexical_declaration", "variable_declaration"}:
+                continue
+            for node in declaration.named_children:
+                if node.type == "variable_declarator":
+                    name, value = node.child_by_field_name("name"), node.child_by_field_name("value")
+                    if name is not None and name.type == "identifier" and value is not None:
+                        bindings[raw_module[name.start_byte:name.end_byte].decode()] = value
+        def literal(node, active=()):
+            text = raw_module[node.start_byte:node.end_byte].decode()
+            if node.type in {"string", "number", "true", "false", "null"}:
+                value = static_js_literal(text)
+                return int(value) if node.type == "number" and isinstance(value, float) and value.is_integer() else value
+            if node.type == "identifier":
+                if text not in bindings or text in active:
+                    raise ValueError("Unresolved/cyclic product default binding: " + text)
+                return literal(bindings[text], (*active, text))
+            if node.type == "unary_expression":
+                operand = node.named_children[-1]
+                if text.startswith("!"):
+                    return not literal(operand, active)
+                if text.startswith("-"):
+                    return -literal(operand, active)
+            if node.type == "array":
+                return [literal(child, active) for child in node.named_children]
+            if node.type == "object":
+                result = {}
+                for child in node.named_children:
+                    if child.type == "spread_element":
+                        result.update(literal(child.named_children[0], active))
+                    elif child.type == "pair":
+                        key, value = child.child_by_field_name("key"), child.child_by_field_name("value")
+                        key_text = raw_module[key.start_byte:key.end_byte].decode()
+                        result[static_js_literal(key_text) if key.type == "string" else key_text] = literal(value, active)
+                    else:
+                        raise ValueError("Unresolved product default object branch: " + child.type)
+                return result
+            if node.type == "member_expression":
+                return literal(node.child_by_field_name("object"), active)[
+                    raw_module[node.child_by_field_name("property").start_byte:node.child_by_field_name("property").end_byte].decode()]
+            raise ValueError("Nonliteral current product default: " + node.type)
+        profile, eq, device = (literal(bindings[name]) for name in ("_", "E", "v"))
+        if len(eq) != 9 or device["productId"] != 1398 or len(profile["speakerCalibration"]["speakers"]) != 11:
+            raise ValueError("Current 1398 reset default branches differ")
+        product["source_defaults"] = {"profile": profile, "device": device}
+        fixture_profile = {key: value for key, value in profile.items() if key not in {"guid", "name"}}
+        fixture_device = {key: value for key, value in device.items() if key not in {"profiles", "activeProfile", "version"}}
+        fixture_path = a.ROOT / "crates/razer-device/testdata/re/blackshark-reset-current-source.json"
+        a.save(fixture_path, {"schema_version": 1, "product_id": 1398,
+            "method": "Only the independently decoded current reset defaults under test; dynamic profile identity and next version are tested separately",
+            "source": [{"role": role,
+                        "original": {key: owners[entry["key"]]["original"][key] for key in ("path", "bytes", "sha256")},
+                        **{key: owners[entry["key"]][key] for key in ("syntax", "byte_start", "byte_end", "body_sha256")}}
+                       for role in ("profile_defaults", "device_defaults", "eq_defaults", "product_info_module")
+                       for entry in product["complete_owners"] if entry["role"] == role],
+            "profile_defaults": fixture_profile, "device_defaults": fixture_device})
+        product["defaults_fixture"] = identity(fixture_path)
+        product["semantics"] = {
+            "local_order": "Preserve profiles; merge current device defaults; append one uniquely named UUID-v4 default profile; increment source version; persist; publish UI; notify independent feature observers; submit factory reset",
+            "reset_hardware_message": "The mounted firmware confirmation sends resetHardware after ON_RESET_DEVICE; the installed DeviceResetFeature makes its fallback a no-op",
+            "device_reset_observers": "CloudBasedEqualizer clears initialization flags; Valkyrie reads real mic status and adopts the new profile's spatial flag without a THX setter",
+            "pending_reconnect": "On DeviceConnected, pendingDeviceReset republishes current active profile; it sends no second factory reset",
+            "acknowledgement": "Original setFWDeviceReset does not inspect native status; Rust retains actual receipt, cancellation and failure separately from the persisted local profile",
+            "local_storage": "The application workspace is the local profile owner; it is not Chromium/vendor storage",
+        }
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+        product["failures"].append(str(error))
+    for layer in product["layers"].values():
+        layer.pop("capture_document", None)
+    destination = a.ROOT / ".analysis/results/frontend/audio-help-reset-audit.json"
+    report = {"schema_version": 1, "family": "audio", "query": "audio-help-reset", "recorded_at_utc": a.stamp(),
+        "tool": identity(Path(__file__)), "python_version": platform.python_version(),
+        "analyzers": {name: importlib.metadata.version(name) for name in ("tree-sitter", "tree-sitter-javascript")},
+        "method": "Verified current acquisition and complete captures; full Tree-sitter function/class bodies and static literal decoding; no vendor JavaScript execution",
+        "offset_units": "UTF-8 bytes, end exclusive", "products": [product], "complete_owners": owners,
+        "target_execution": False, "runtime_acceptance": "unverified"}
+    a.save(destination, report)
+    print(json.dumps({"receipt": a.rel(destination), "products": 1, "complete_owners": len(owners),
+                      "failures": product["failures"]}), flush=True)
+    if product["failures"]:
+        raise ValueError("Current Help reset source chains remain unresolved")
+
+
 def audit_audio_seiren_eq(args):
     """Retain verified complete Seiren EQ feature/protocol/storage call chains."""
     import base64
@@ -7057,6 +8153,26 @@ def audit_audio_seiren_eq(args):
     parser = Parser(Language(tree_sitter_javascript.language()))
     if args.family != "audio" or args.function != "mw":
         raise ValueError("audio-seiren-eq requires current audio middleware captures")
+    receipt_only = getattr(args, "receipt_only", False)
+    if receipt_only and getattr(args, "prepare", False):
+        raise ValueError("Seiren EQ prepare and receipt-only are mutually exclusive")
+
+    def publish_or_verify(path, data, product=None):
+        if not receipt_only:
+            a.save(path, data)
+            return
+        current = json.loads(path.read_bytes())
+        if product is not None:
+            key = str(product)
+            matches = current.get(key) == data[key]
+        elif isinstance(data, list):
+            matches = all(next((entry for entry in current if entry["product_id"] == item["product_id"]), None) == item
+                          for item in data)
+        else:
+            matches = current == data
+        if not matches:
+            raise ValueError("Seiren maintained runtime data differs from current source: " + a.rel(path))
+
     rows, modules, runtime = [], {}, []
     roles = {
         "current_eq_feature": 'ParametricEQFeature:',
@@ -7308,11 +8424,13 @@ def audit_audio_seiren_eq(args):
             ui_config = retain('DEVICE_NAME:()=>', "current_ui_device_config", ui_sources, ui_captured)
             hook = retain('fftSize=8192', "current_ui_eq_webaudio_and_meter_owner", ui_sources, ui_captured)
             dropdown = retain('this.windowClick=', "current_ui_dropdown_owner", ui_sources, ui_captured)
+            expected_modules["current_ui_two_way_tab"] = 2741
             for role in ("current_ui_setup_route", "current_ui_ready_product_root", "current_ui_mic_actions",
                          "current_ui_headphone_actions", "current_ui_monitor_actions", "current_ui_eq_effect_actions",
                          "current_ui_microphone_effect_actions", "current_ui_recording_playback",
                          "current_ui_measurement_exports", "current_ui_gain_measurement", "current_ui_noise_measurement",
-                         "current_ui_microphone_gain_curve", "current_ui_stream_mixer_v2", "current_ui_stream_mixer_capture_keys"):
+                         "current_ui_microphone_gain_curve", "current_ui_stream_mixer_v2", "current_ui_stream_mixer_capture_keys",
+                         "current_ui_two_way_tab"):
                 retain(str(expected_modules[role]) + ":", role, ui_sources, ui_captured)
             module_by_role = {item["role"]: modules[item["key"]] for item in row["complete_modules"]}
             setup_body = module_by_role["current_ui_setup_route"]["body"]
@@ -7579,8 +8697,8 @@ def audit_audio_seiren_eq(args):
                 "semantics": "presetChangedByDeviceHandler passes DEVICE_NAME to MW44857 Ds; writer resolves runtime edition via L/context9736, lowercases dictionary locale keys, and indexes PRODUCT by exact localStorage[currentLanguage]",
                 "failure_semantics": "No edition or locale fallback in L/writer; retain missing-context, missing-field and missing-language diagnostics instead of substituting deviceName",
                 "runtime_field": "productNames", "runtime_acceptance": "unverified"}
-            a.save(stream_destination, stream_data)
-            a.save(a.builtin_data_path("razer-pages", "SEIREN_STREAM_MIXER"), stream_data)
+            publish_or_verify(stream_destination, stream_data, pid)
+            publish_or_verify(a.builtin_data_path("razer-pages", "SEIREN_STREAM_MIXER"), stream_data, pid)
             row["stream_mixer_defaults"] = {"runtime_data": identity(stream_destination),
                 "dynamic_fields": ["activePresetGuid and preset.guid use the current local UUID generator", "device.productId is current connected PID"],
                 "source_owners": [owner["role"] for owner in stream_owners.values()],
@@ -7620,12 +8738,34 @@ def audit_audio_seiren_eq(args):
                                  'this.props.selectOption(')
             if not all(token in dropdown for token in required_dropdown):
                 raise ValueError("Seiren current dropdown close/select/cleanup chain is unresolved")
+            recording_chunk = Path(module_by_role["current_ui_recording_playback"]["original"]["path"]).name.split(".", 1)[0]
             css_urls = {mounted_css} | {url for url in asset_urls if url
-                        and Path(urllib.parse.urlsplit(url).path).name.startswith("684.") and url.endswith(".css")}
+                        and Path(urllib.parse.urlsplit(url).path).name.startswith(("684.", recording_chunk + "."))
+                        and url.endswith(".css")}
             ui_styles = [source for source in ui_originals if source["url"] in css_urls]
-            if len(css_urls) != 2 or {source["url"] for source in ui_styles} != css_urls:
-                raise ValueError("Seiren current main/684 CSS is absent or ambiguous")
+            if len(css_urls) != 3 or {source["url"] for source in ui_styles} != css_urls:
+                raise ValueError("Seiren current main/684/recording CSS is absent or ambiguous")
+            css_order_owners = [
+                retain_owner("microphone_ready_lazy_css_order", ".e(" + recording_chunk + ")",
+                             {"arrow_function"}, module_role="current_ui_setup_route"),
+                retain_owner("webpack_css_link_insertion", 'document.createElement("link")',
+                             {"arrow_function"}, original=main_ui_source),
+            ]
+            ready_body = css_order_owners[0]["body"]
+            ready_chunks = [int(value) for value in re.findall(r'\.e\((\d+)\)', ready_body)]
+            if (not ready_body.startswith("()=>Promise.all(") or not re.search(r'\.bind\(\w+,7405\)', ready_body)
+                    or int(recording_chunk) not in ready_chunks or 684 not in ready_chunks
+                    or ready_chunks.index(int(recording_chunk)) >= ready_chunks.index(684)):
+                raise ValueError("Seiren recording/684 stylesheet insertion order differs")
+            order = [mounted_css,
+                     next(url for url in css_urls if Path(urllib.parse.urlsplit(url).path).name.startswith(recording_chunk + ".")),
+                     next(url for url in css_urls if Path(urllib.parse.urlsplit(url).path).name.startswith("684."))]
+            ui_styles.sort(key=lambda source: order.index(source["url"]))
+            if "document.head.appendChild(" not in css_order_owners[-1]["body"]:
+                raise ValueError("Seiren CSS loader no longer appends stylesheet links synchronously")
+            owners.extend(css_order_owners)
             css = []
+            pulse_definitions = []
             for source in ui_styles:
                 text = (a.ROOT / source["path"]).read_text(encoding="utf-8")
                 rules = []
@@ -7637,26 +8777,77 @@ def audit_audio_seiren_eq(args):
                                "mic-controls", "mic-live-preview", "mic-setup", "mic-sampling", "sampling-rate-tab", "waveform",
                                "mic-recording", "intro-slide", "test-step", "suggested-setting", "duallink-device", "mic-box", "box-item",
                                "mixer-channel-custom", "recording-status", "recording-timer", "stop-recording",
-                               "profile-del", "warning-alert", "keyboard_listen", "shortcut_item", "info-text", "modal", "backdrop")):
+                               "ParametricEqFilterTutorial_",
+                               "profile-del", "warning-alert", "keyboard_listen", "shortcut_item", "info-text", "modal", "backdrop", "modes-tab")):
                         continue
                     rules.append({"selector": selector, "body": match[0],
                                   "character_start": match.start(), "character_end": match.end(),
                                   "body_sha256": hashlib.sha256(match[0].encode("utf-8")).hexdigest()})
-                css.append({"original": source, "complete_body": text, "complete_rules": rules})
+                keyframes = []
+                for match in re.finditer(r'@keyframes\s+(pulse|spin)\s*\{', text):
+                    start = match.start()
+                    end = javascript_delimited(text, text.index("{", start))
+                    body = text[start:end]
+                    record = {"name": match[1], "body": body, "character_start": start,
+                              "character_end": end, "body_sha256": hashlib.sha256(body.encode("utf-8")).hexdigest()}
+                    keyframes.append(record)
+                    if match[1] == "pulse":
+                        pulse_definitions.append({"source": source, **record})
+                css.append({"original": source, "complete_body": text, "complete_rules": rules,
+                            "complete_keyframes": keyframes})
+            if (len(pulse_definitions) != 2 or "opacity:.6" not in pulse_definitions[0]["body"]
+                    or "opacity:.4" not in pulse_definitions[-1]["body"]):
+                raise ValueError("Seiren mounted recording pulse cascade differs")
+            tracking_rules = []
+            for selector, spacing, scope in (
+                    (".mic-recording-playback__title", ".5px", "footer recording title"),
+                    (".recording-timer", ".5px", "wizard waiting label and elapsed timer"),
+                    (".ParametricEqFilterTutorial_root__UvdLK .ParametricEqFilterTutorial_onboarding__Q-PuC",
+                     ".1px", "inherited by tutorial heading, filter title, both descriptions and close label")):
+                matches = [{"original": sheet["original"], **rule} for sheet in css
+                           for rule in sheet["complete_rules"] if rule["selector"] == selector]
+                if len(matches) != 1 or "letter-spacing:" + spacing not in matches[0]["body"]:
+                    raise ValueError("Seiren source tracking rule differs: " + selector)
+                tracking_rules.append({"scope": scope, "source_pixels": float(spacing[:-2]), **matches[0]})
+            timer_owner = next(owner for owner in owners if owner["role"] == "mounted_microphone_setup_wizard")
+            if (timer_owner["body"].count('className:"recording-timer"') != 2
+                    or not re.search(r'className:"recording-timer",children:.*?\.xoD', timer_owner["body"])
+                    or not re.search(r'className:"recording-timer",children:\[[\w$]+,"s"\]', timer_owner["body"])):
+                raise ValueError("Seiren waiting and elapsed timer tracking branches differ")
+            tutorial_owner = retain_owner("eq_tutorial_text_sibling_owner", ".DYl", {"variable_declarator"},
+                                          module_role="current_ui_ready_product_root")
+            if not re.search(r'\.desc\.map\(', tutorial_owner["body"]):
+                raise ValueError("Seiren tutorial description sibling owner is unresolved")
+            owners.append(tutorial_owner)
             row["ui_capture"].update({"query_completed": True, "capture_device_name": name, "css": css,
+                "css_load_order": order, "css_load_order_owners": css_order_owners,
+                "source_text_tracking": {"rules": tracking_rules,
+                    "timer_owner_role": timer_owner["role"], "tutorial_owner_role": tutorial_owner["role"],
+                    "implementation": "SourceText uses whole-paragraph framework shaping and preserves glyph IDs, combining offsets, required clusters and accessibility text; source spacing scales from the product rem basis",
+                    "wrapping": "Unicode line opportunities intersect grapheme and actual shaping-cluster boundaries; no per-character flex or font I/O",
+                    "scope": "These mounted labels have no source line-clamp or ellipsis; all five tutorial filter branches keep the source description siblings and inherited font sizes",
+                    "verification": "Pure shaped-layout fixtures cover tracked advances, negative bearings, required/cursive forms, bidi indices, mixed-direction rows, CJK punctuation, empty lines, scale and accessibility; real-window typography remains unverified"},
+                "recording_pulse_cascade": {"definitions": pulse_definitions, "winning_definition": pulse_definitions[-1],
+                    "reason": "Ready-route chunk calls synchronously append recording CSS before 684 CSS; the later global pulse keyframes override the earlier definition"},
                 "source_semantics": {
                     "filters": "EQ6007 selects lowpass/highpass/peaking/lowshelf/highshelf by current band.type; pass filters reset gain to zero",
                     "dropdown": "Dropdown7734 closes on outside click, window blur, option select, and changed value; selection dispatches the current band ID",
                     "options": "Five border-box rows; base height25/min-height25 overridden by filter min-height32 and padding8; no background change for selected SVG",
                     "spectrum": "useU readiness/visibility cleanup stops tracks, closes AudioContext, invalidates pending initialization, clears canvas and cancels animation",
                     "meters": "The independent T component reads micReducer.levelMeter; spectrum cleanup does not clear those native observations",
-                    "keyboard": "Original Dropdown7734 has no keyboard handler; GPUI semantic select owns Enter/Escape/navigation/focus adaptation"},
+                    "keyboard": "Original Dropdown7734 has no keyboard handler; GPUI semantic select owns Enter/Escape/navigation/focus adaptation",
+                    "sampling_pill": "UI2741 calls the same toggleTab from either mode and outer pill; UI7405 flips current 48/96 kHz, including selected-mode clicks",
+                    "footer": "Outer height 145/45 transitions 400ms cubic-bezier(.4,0,.2,1); live background/color and setup hover transition 200ms; source responsive label/control spacing retained",
+                    "recording": "UI9374 uses initialized isRecording, independent playback loading and actual clip availability; 24px record/stop, 12x16 play, .5 disabled opacity; source icon filters operate on all RGB channels and preserve alpha",
+                    "wizard_cards": "Wizard box-item has no dashboard ancestor; dashboard hover/active borders do not apply. Source auto100% image backgrounds match the acquired 3:2 or 210x118 image aspect branches"},
                 "limitations": ["Retained complete CSS and relevant rules do not constitute browser cascade/layout acceptance",
                                 "Static source-query completion is separate from complete product implementation and runtime acceptance"]})
             row["rust_ui_implementation"] = [identity(path) for path in sorted(
                 (a.ROOT / "crates/razer-pages/src/features/audio/seiren").glob("audio_seiren_*.rs"))]
             row["rust_ui_implementation"].append(identity(
                 a.builtin_data_path("razer-pages", "AUDIO_SEIREN_EQ_DATA")))
+            row["rust_ui_implementation"].extend(identity(a.ROOT / path) for path in (
+                "crates/razer-widgets/src/source_text.rs", "crates/razer-widgets/src/source_text/tests.rs"))
             # Resolve text exports within their complete current module. A
             # bundle-wide variable search is ambiguous because webpack modules
             # reuse short variable names.
@@ -7722,8 +8913,9 @@ def audit_audio_seiren_eq(args):
             mic_destination = a.builtin_data_path("razer-pages", "AUDIO_SEIREN_MICROPHONE_DATA")
             presentation = {} if pid == 1422 or not mic_destination.is_file() else json.loads(mic_destination.read_bytes())
             presentation[str(pid)] = mic_data
-            a.save(mic_destination, presentation)
+            publish_or_verify(mic_destination, presentation, pid)
             row["microphone_footer_and_wizard"].update({"presentation": identity(mic_destination), "assets": microphone_assets})
+            row["microphone_footer_and_wizard"]["resource_conversion_counterexamples"] = workspace.resource_conversion_counterexamples()
             mixer_body = module_by_role["current_ui_stream_mixer_v2"]["body"]
             mixer_labels = {}
             for symbol in sorted(set(re.findall(r'W\.([\w$]+)', mixer_body))):
@@ -7775,10 +8967,15 @@ def audit_audio_seiren_eq(args):
                 prepared = next(item for item in prepared_mixer if item["display"] == asset["runtime_key"])
                 asset.update({"physical": {"path": prepared["output"], "sha256": prepared["output_sha256"]},
                               "preparation": prepared})
+            for prepared in [*prepared_mic, *prepared_mixer]:
+                proof = prepared.get("conversion_verification")
+                if proof is not None and not proof["passed"]:
+                    row["failures"].append("Resource conversion failed: " + prepared["display"])
+                    row["failure_stages"].append({"stage": "resource_conversion", "verification": proof})
             mixer_destination = a.builtin_data_path("razer-pages", "AUDIO_SEIREN_STREAM_MIXER_DATA")
             mixer_presentation = {} if pid == 1422 or not mixer_destination.is_file() else json.loads(mixer_destination.read_bytes())
             mixer_presentation[str(pid)] = {"labels": mixer_labels, "assets": {key: value["runtime_key"] for key, value in mixer_assets.items()}}
-            a.save(mixer_destination, mixer_presentation)
+            publish_or_verify(mixer_destination, mixer_presentation, pid)
             row["stream_mixer_presentation"] = {"runtime_data": identity(mixer_destination), "assets": mixer_assets,
                 "excluded_internet_feature": "routeGuideLink opens a remote guide and is excluded from the local product"}
             if pid == 1422:
@@ -7923,7 +9120,14 @@ def audit_audio_seiren_eq(args):
                 "receipt": identity(native_path), "outputs": outputs, "exports": exported, "complete_functions": functions,
                 **{key: native[key] for key in ("image_base", "ida_version", "hexrays_version", "capture_tool", "functions_total", "functions_captured",
                                                "capture_complete", "all_pseudocode_captured", "failures")},
-                "limitations": "One retained unrelated Hex-Rays call-analysis failure does not erase complete assembly. Captured current ABI does not establish real device runtime acceptance."}
+                "limitations": "Captured current ABI does not establish real device runtime acceptance."}
+            resolution = a.native_reanalysis_resolution(native_root, native)
+            if resolution["verification_failures"]:
+                raise ValueError("Current Marie supplemental native capture failed verification: "
+                                 + "; ".join(resolution["verification_failures"]))
+            row["native_capture"]["function_reanalysis"] = resolution
+            row["native_capture"]["failures"] = resolution["remaining_failures"]
+            row["native_capture"]["all_pseudocode_captured"] = not resolution["remaining_failures"]
             host_capture_path = a.ROOT / ".analysis/results/host-current/javascript/capture.json"
             host_capture = json.loads(host_capture_path.read_bytes())
             if not host_capture.get("input_bytes_unchanged"):
@@ -7950,7 +9154,7 @@ def audit_audio_seiren_eq(args):
         print(json.dumps({"product_id": pid, "failures": row["failures"]}), flush=True)
     destination = a.builtin_data_path("razer-device", "SEIREN_EQ_DATA")
     if len(runtime) == len(rows):
-        a.save(destination, runtime)
+        publish_or_verify(destination, runtime)
     # Product branches share generated files. Record their final bytes after
     # all branches have appended, not an earlier single-product snapshot.
     for row in rows:
@@ -7963,7 +9167,8 @@ def audit_audio_seiren_eq(args):
     report["seiren_eq"] = {"recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)), "static_parser": {
         name: importlib.metadata.version(name) for name in ("tree-sitter", "tree-sitter-javascript")},
         "products": rows, "complete_modules": modules, "runtime_data": identity(destination) if destination.is_file() else None,
-        "runtime_data_regenerated": len(runtime) == len(rows),
+        "runtime_data_regenerated": len(runtime) == len(rows) and not receipt_only,
+        "receipt_only": receipt_only,
         "target_execution": False, "runtime_acceptance": "unverified"}
     a.save(report_path, report)
     print(json.dumps({"receipt": a.rel(report_path), "products": len(rows),
@@ -9186,7 +10391,7 @@ def audit_gamepad_artwork(args):
                     files[url] = source
                     edge = {"from": export["original"]["url"], "to": url, "kind": "gamepad-artwork-current-export-literal"}
                     if edge not in acquired.setdefault("edges", []): acquired["edges"].append(edge)
-                    a.save(receipt_path, acquired); index_rows([source], receipt_path)
+                    publish_frontend_acquisition(receipt_path, acquired)
                 if not valid(source): raise ValueError("Original image identity differs: " + url)
                 content = (a.ROOT / source["path"]).read_bytes()
                 if filename.endswith(".svg"):
@@ -9282,12 +10487,13 @@ def audit_gamepad_artwork(args):
                       "failures": [{"product_id": row["product_id"], "failures": row["failures"]} for row in rows if row["failures"]]}), flush=True)
 
 
-def verify_native_functions(original, roles, slots=()):
+def verify_native_functions(original, roles, slots=(), *, exports=None):
     """Recheck complete IDA records against their original PE bytes.
 
     ``roles`` maps selected RVAs to evidence roles. Optional virtual slots have
     role, vtable_rva, slot_byte_offset and target_rva fields. Selection expresses
     an analysis query; it never establishes semantic closure or compatibility.
+    Optional exports bind exact names to code RVAs in the actual PE table.
     """
     import host
 
@@ -9301,6 +10507,14 @@ def verify_native_functions(original, roles, slots=()):
     pe = host.inspect_pe(raw)
     image_base = integer(pe["image_base"])
     pointer_bytes = 8 if pe["format"] == "pe32+" else 4
+    verified_exports = []
+    for name, rva in sorted((exports or {}).items()):
+        matches = [item for item in pe.get("exports", []) if name in item.get("names", [])]
+        if (len(matches) != 1 or matches[0].get("forwarder") is not None
+                or integer(matches[0]["rva"]) != integer(rva)):
+            raise ValueError("Native export target differs from original PE bytes: " + name)
+        verified_exports.append({"name": name, "rva": hex(integer(rva)),
+                                 "ordinal": matches[0]["ordinal"], "actual_pe_bytes_verified": True})
     capture_path = a.ROOT / ".analysis/results/native" / original["sha256"] / "capture.json"
     capture = json.loads(capture_path.read_bytes())
     if (capture.get("input_sha256") != original["sha256"]
@@ -9369,6 +10583,7 @@ def verify_native_functions(original, roles, slots=()):
             "functions_total": capture["functions_total"], "functions_captured": capture["functions_captured"],
             "capture_complete": capture["capture_complete"], "failures": capture["failures"],
             "complete_selected_functions": selected, "verified_indirect_slots": virtual,
+            "verified_exports": verified_exports,
             "target_execution": False, "runtime_acceptance": "unverified"}
 
 
@@ -9691,6 +10906,38 @@ def audit_mouse_receiver_runtime(args):
                       "target_execution": False, "runtime_acceptance": "unverified"}), flush=True)
 
 
+def keyboard_local_control_regions(raw, anchors, parser):
+    """Select complete current modules and actual callable roles from UTF-8 AST."""
+    tree = parser.parse(raw)
+    if tree.root_node.has_error:
+        raise ValueError("Current original JavaScript grammar failed")
+    owners = keyboard_source_modules(raw.decode("utf-8"))
+    numeric = [owner for owner in owners if isinstance(owner["module_id"], int)]
+    regions = []
+    for owner in owners:
+        roles = [role for role, anchor in anchors.items() if anchor in owner["body"]]
+        if not roles or (not isinstance(owner["module_id"], int) and any(
+                owner["byte_start"] < child["byte_start"] < child["byte_end"] < owner["byte_end"] for child in numeric)):
+            continue
+        node = tree.root_node.descendant_for_byte_range(owner["byte_start"], owner["byte_end"] - 1)
+        while node is not None and (node.start_byte != owner["byte_start"] or node.end_byte != owner["byte_end"]):
+            node = node.parent
+        if node is None:
+            raise ValueError("Complete current module boundary differs")
+        callables = []
+        pending = list(reversed(node.named_children))
+        while pending:
+            candidate = pending.pop()
+            pending.extend(reversed(candidate.named_children))
+            if candidate.type in {"class_declaration", "class", "function_declaration", "generator_function_declaration",
+                                  "method_definition", "arrow_function", "function_expression"}:
+                callable_roles = [role for role, anchor in anchors.items() if anchor.encode() in candidate.text]
+                if callable_roles:
+                    callables.append((candidate, callable_roles))
+        regions.append({"owner": owner, "node": node, "roles": roles, "callables": callables})
+    return regions
+
+
 def audit_keyboard_local_controls(args):
     """Retain complete original owners for indicator and magnetic calibration.
 
@@ -9698,6 +10945,7 @@ def audit_keyboard_local_controls(args):
     extracted/deformatted modules are not substituted for original evidence.
     """
     import importlib.metadata
+    import evidence
     import sys
     sys.path.insert(0, str(a.ROOT / "tools/analyzers/python-static"))
     from tree_sitter import Language, Parser
@@ -9723,7 +10971,7 @@ def audit_keyboard_local_controls(args):
         "magnetic_protocol_constants": "Analog User Bottom Calibration",
         "device_serial_edition": "Get Serial Number",
     }
-    modules, callables, originals, products = {}, {}, {}, []
+    modules, callables, originals, products, snapshots = {}, {}, {}, [], {}
     def retain(raw, node, store):
         body = raw[node.start_byte:node.end_byte]
         digest = hashlib.sha256(body).hexdigest()
@@ -9743,52 +10991,36 @@ def audit_keyboard_local_controls(args):
                 files = [item for item in acquired["files"] if item.get("path")]
                 if not all(valid(item) for item in files):
                     raise ValueError("Current original bytes differ from acquisition receipt")
+                deployment = evidence.frontend_deployment_sources(acquired)
+                if not deployment["entry_original"] or deployment["failures"]:
+                    raise ValueError("Current HTML/manifest/stability chain differs: " + json.dumps(deployment["failures"]))
+                current_sources = {item["original"]["path"] for item in deployment["sources"]
+                                   if item.get("identity_verified") and item.get("original")}
+                snapshots[receipt_snapshot["path"]] = receipt_snapshot
+                snapshots.update((item["path"], {key: item[key] for key in ("path", "bytes", "sha256")}) for item in files)
                 manifests = [{"original": identity(a.ROOT / item["path"]), "complete_manifest": json.loads((a.ROOT / item["path"]).read_bytes())}
                              for item in files if Path(item["path"]).name == "manifest.json"]
                 product["acquisitions"].append({"name": name, "receipt": receipt_snapshot,
                     "stable": True, "stability": acquired.get("stability"), "manifests": manifests,
+                    "deployment": deployment,
                     "complete_original_inputs": files, "declared_references_fetched": acquired.get("declared_references_fetched"),
-                    "unresolved": acquired.get("unresolved", []),
-                    "failures": [item for item in acquired["files"] if not item.get("path")]})
+                    "unresolved_acquisition": acquired.get("unresolved", []),
+                    "failed_acquisition": [item for item in acquired["files"] if not item.get("path")]})
                 for original in files:
-                    if not original["path"].endswith(".js"):
+                    if not original["path"].endswith(".js") or original["path"] not in current_sources:
                         continue
                     raw = (a.ROOT / original["path"]).read_bytes()
                     if not any(anchor.encode() in raw for anchor in anchors.values()):
                         continue
-                    text = raw.decode("utf-8")
-                    tree = parser.parse(raw)
-                    if tree.root_node.has_error:
-                        raise ValueError("Current original JavaScript grammar failed: " + original["path"])
                     originals[original["path"]] = identity(a.ROOT / original["path"])
-                    owners = keyboard_source_modules(text)
-                    numeric = [owner for owner in owners if isinstance(owner["module_id"], int)]
-                    for owner in owners:
-                        roles = [role for role, anchor in anchors.items() if anchor in owner["body"]]
-                        if not roles:
-                            continue
-                        if not isinstance(owner["module_id"], int) and any(
-                                owner["byte_start"] < child["byte_start"] < child["byte_end"] < owner["byte_end"] for child in numeric):
-                            continue
-                        node = tree.root_node.descendant_for_byte_range(owner["byte_start"], owner["byte_end"] - 1)
-                        while node is not None and (node.start_byte != owner["byte_start"] or node.end_byte != owner["byte_end"]):
-                            node = node.parent
-                        if node is None:
-                            raise ValueError("Complete current module boundary differs")
+                    for region in keyboard_local_control_regions(raw, anchors, parser):
+                        owner, node, roles = region["owner"], region["node"], region["roles"]
                         product["modules"].append({"module_id": owner["module_id"], "roles": roles,
                             "original": originals[original["path"]], **retain(raw, node, modules)})
-                        pending = list(reversed(node.named_children))
-                        while pending:
-                            candidate = pending.pop()
-                            pending.extend(reversed(candidate.named_children))
-                            if candidate.type not in {"class_declaration", "class", "function_declaration", "generator_function_declaration", "method_definition", "arrow_function", "function_expression"}:
-                                continue
-                            callable_roles = [role for role, anchor in anchors.items() if anchor.encode() in candidate.text]
-                            if not callable_roles:
-                                continue
+                        for candidate, callable_roles in region["callables"]:
                             # Keep the complete function/class containing each
                             # selected chain, including all of its branches.
-                            product["callables"].append({"module_id": owner["module_id"], "roles": roles,
+                            product["callables"].append({"module_id": owner["module_id"], "roles": callable_roles,
                                 "original": originals[original["path"]], **retain(raw, candidate, callables)})
                 if not valid(receipt_snapshot):
                     raise ValueError("Acquisition receipt changed during source capture")
@@ -9806,11 +11038,15 @@ def audit_keyboard_local_controls(args):
         "semantics": {"691": "Physical receiver692 interface2, rzDevice25Oled transaction0..30 and 25ms delays; GET[1,7,144] truthy status initializes SET[1,7,16]; UI setter optimistic/device-wide with no invented readback",
             "740_746": "Mounted magnetic_analog_configuration owner se; interface3/5ms; Testing2/Driver3 via[2,0,4]; bottomSET[1,254,46],bottomGET[2,254,174],topSET[1,254,45],topGET[2,254,173]; getter result is data[1]; realserial local calibration cache saved before verified-top UI; keyboard-only redirect K/Z follows source enableMapping/release/stop ordering",
             "host_adaptation": "Source vendor executable name is accepted only for an observed current application executable; selected native host tab/window visibility follows current21107/1107 helper; no fake foreground observation"},
-        "implementation": {"status": "protocol/direct/service/shell/storage/UI implemented; current batch not yet compiled or tested",
+        "implementation": {"status": "Source review; Rust implementation and verification are recorded independently",
             "device_runtime": "unverified", "local_storage_runtime": "unverified", "source_ui_runtime": "unverified"},
         "target_execution": False, "runtime_acceptance": "unverified"}
-    if not all(valid(item) for item in originals.values()):
+    if not all(valid(item) for item in snapshots.values()):
         raise ValueError("Current original changed during local-control query")
+    result["reproduction"] = {"command": "python tools/workspace.py audit-family-function --family keyboard --function mw --query keyboard-local-controls",
+        "requested_products": requested, "complete_input_identities": list(snapshots.values()),
+        "inputs_unchanged": True, "source_sets": "Independent current UI and middleware HTML, manifests, stability records and acquired bytes; missing source maps remain acquisition findings",
+        "scope": "Indicator/OLED 691 and magnetic calibration 740/746 complete module/callable owners; this query does not establish other keyboard pages or runtime acceptance"}
     receipt_path = a.ROOT / ".analysis/results/frontend/keyboard-main-audit.json"
     current = json.loads(receipt_path.read_bytes())
     current["local_controls_source_review"] = result
@@ -10438,6 +11674,231 @@ def gamepad_input_ui(pid):
     return result
 
 
+def gamepad_lighting_component_tree(raw, tree, original, modules, keep):
+    """Follow actual JSX targets and their lexical owners without running JS.
+
+    Conditional registrations remain candidates. Iframe mounts are recorded
+    separately from product tabs, and parameter/component factories remain
+    explicit when their callers cannot be resolved statically.
+    """
+    import evidence
+    bindings = evidence.JavascriptBindings(raw, tree)
+    result = {"root_connections": [], "product_tab_mounts": [], "iframe_mounts": [],
+              "components": [], "edges": [], "hooks": [], "unresolved": []}
+    pending, seen, imported = [], set(), {}
+
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+
+    def exact(start, end, syntax=None):
+        node = tree.root_node.descendant_for_byte_range(start, end - 1)
+        while node is not None and (node.start_byte != start or node.end_byte != end
+                                    or syntax is not None and node.type != syntax):
+            node = node.parent
+        if node is None:
+            raise ValueError("Component owner no longer matches its complete AST boundary")
+        return node
+
+    def retain(node):
+        return {"original": original, **keep(node)}
+
+    def choices(node):
+        if node.type in {"identifier", "member_expression"}:
+            return [node]
+        if node.type in {"ternary_expression", "conditional_expression"}:
+            return choices(node.child_by_field_name("consequence")) + choices(node.child_by_field_name("alternative"))
+        return []
+
+    def resolve(reference, role, caller=None, trail=()):
+        if reference.type == "string":
+            return
+        if reference.type == "member_expression":
+            namespace = reference.child_by_field_name("object")
+            exported = reference.child_by_field_name("property")
+            if namespace.type != "identifier":
+                result["unresolved"].append({"role": role, "reference": retain(reference), "reason": "dynamic_component_namespace"})
+                return
+            resolution = bindings.resolve(namespace.text.decode(), reference.start_byte)
+            if resolution["resolution"] != "declaration":
+                result["unresolved"].append({"role": role, "reference": retain(reference), "binding": resolution})
+                return
+            declaration = exact(resolution["start_byte"], resolution["end_byte"], resolution["syntax"])
+            match = re.fullmatch(rb"[\w$]+=[\w$]+\((\d+)\)", declaration.text)
+            if match is None:
+                result["unresolved"].append({"role": role, "reference": retain(reference), "binding": retain(declaration), "reason": "component_namespace_requires_expression_analysis"})
+                return
+            mid = int(match[1])
+            candidates = [module for module in modules if module["module_id"] == mid]
+            if len(candidates) != 1:
+                result["unresolved"].append({"role": role, "reference": retain(reference), "module_id": mid, "reason": "component_factory_missing_or_ambiguous"})
+                return
+            module = candidates[0]
+            factory = exact(module["byte_start"], module["byte_end"])
+            factory_ref = imported.setdefault(mid, {"module_id": mid, **retain(factory)})
+            result["edges"].append({"caller": caller, "kind": role, "reference": retain(reference), "import": factory_ref, "export": exported.text.decode()})
+            # Fragment/React mechanics are an explicit framework boundary.
+            if exported.text == b"Fragment":
+                return
+            exports = []
+            for node in walk(factory):
+                if node.type != "pair" or node.child_by_field_name("key").text != exported.text:
+                    continue
+                value = node.child_by_field_name("value")
+                if value.type == "arrow_function":
+                    body = value.child_by_field_name("body")
+                    if body.type == "identifier":
+                        exports.append(body)
+            if len(exports) == 1:
+                resolve(exports[0], "imported_component", caller, trail)
+            else:
+                result["unresolved"].append({"role": role, "module_id": mid, "export": exported.text.decode(), "reason": "export_getter_requires_expression_analysis", "complete_factory": factory_ref})
+            return
+        if reference.type != "identifier":
+            result["unresolved"].append({"role": role, "reference": retain(reference), "reason": "dynamic_component_expression"})
+            return
+        resolution = bindings.resolve(reference.text.decode(), reference.start_byte)
+        if resolution["resolution"] == "parameter_requires_caller_analysis":
+            parameter = exact(resolution["start_byte"], resolution["end_byte"], resolution["syntax"])
+            function = parameter.parent
+            while function is not None and function.type not in {"function_expression", "arrow_function"}:
+                function = function.parent
+            call = function.parent if function is not None else None
+            if call is not None and call.type == "call_expression" and call.child_by_field_name("function") == function:
+                params = function.child_by_field_name("parameters")
+                params = params.named_children if params is not None else [function.child_by_field_name("parameter")]
+                args = call.child_by_field_name("arguments").named_children
+                positions = [index for index, param in enumerate(params) if param == parameter]
+                if len(positions) == 1 and positions[0] < len(args):
+                    result["edges"].append({"caller": caller, "kind": "immediate_parameter", "reference": retain(reference), "call": retain(call)})
+                    resolve(args[positions[0]], role, caller, trail)
+                    return
+        if resolution["resolution"] != "declaration":
+            result["unresolved"].append({"role": role, "reference": retain(reference), "binding": resolution})
+            return
+        declaration = exact(resolution["start_byte"], resolution["end_byte"], resolution["syntax"])
+        key = (declaration.start_byte, declaration.end_byte)
+        result["edges"].append({"caller": caller, "kind": role, "reference": retain(reference), "callee": retain(declaration)})
+        if key in trail:
+            return
+        value = declaration.child_by_field_name("value") if declaration.type == "variable_declarator" else declaration
+        if value is None:
+            # A JSX local selected by a switch/conditional is not a single
+            # mounted component. Preserve all actual assignments and branches.
+            scope = declaration.parent
+            while scope is not None and scope.type not in {"arrow_function", "function_expression", "method_definition", "function_declaration"}:
+                scope = scope.parent
+            assignments = [node for node in walk(scope) if node.type == "assignment_expression"
+                and node.child_by_field_name("left").text == reference.text] if scope is not None else []
+            for assignment in assignments:
+                result["edges"].append({"caller": caller, "kind": "conditional_component_assignment", "assignment": retain(assignment)})
+                for candidate in choices(assignment.child_by_field_name("right")):
+                    resolve(candidate, "conditional_component_candidate", caller, (*trail, key))
+            if not assignments:
+                result["unresolved"].append({"role": role, "binding": retain(declaration), "reason": "component_value_unassigned_in_owner"})
+            return
+        if value.type == "identifier":
+            resolve(value, role, caller, (*trail, key))
+        elif key not in seen:
+            seen.add(key)
+            pending.append(declaration)
+
+    roots = []
+    for match in re.finditer(rb"lightingEffectState:[\w$]+\.controllerLightingEffectReducer", raw):
+        node = tree.root_node.descendant_for_byte_range(match.start(), match.end() - 1)
+        while node is not None and node.type != "variable_declarator":
+            node = node.parent
+        if node is not None and node.child_by_field_name("name").type == "identifier" and node not in roots:
+            roots.append(node)
+    for connection in roots:
+        result["root_connections"].append(retain(connection))
+        resolve(connection.child_by_field_name("name"), "connected_lighting_root")
+        name = connection.child_by_field_name("name").text
+        for match in re.finditer(rb"(?:jsx|jsxs)\)\(" + re.escape(name) + rb",", raw):
+            node = tree.root_node.descendant_for_byte_range(match.start(), match.end() - 1)
+            tab, call = None, None
+            while node is not None:
+                if node.type == "call_expression" and call is None:
+                    call = node
+                if node.type == "pair" and node.child_by_field_name("key").text == b"renderComponent":
+                    tab = node
+                    while tab is not None and tab.type != "array":
+                        tab = tab.parent
+                    break
+                if node.type == "class_declaration":
+                    break
+                node = node.parent
+            if tab is not None:
+                result["product_tab_mounts"].append(retain(tab))
+            elif call is not None and b"isIframe:" in call.text:
+                result["iframe_mounts"].append(retain(node if node is not None else call))
+    while pending:
+        owner = pending.pop(0)
+        reference = retain(owner)
+        result["components"].append(reference)
+        value = owner.child_by_field_name("value") if owner.type == "variable_declarator" else owner
+        # Connected HOC owners have their actual wrapped component as the
+        # final call's positional argument; retain that declaration too.
+        if value is not None and value.type == "call_expression":
+            args = value.child_by_field_name("arguments").named_children
+            if len(args) == 1 and args[0].type == "identifier":
+                resolve(args[0], "wrapped_component", reference)
+        for node in walk(owner):
+            if node.type != "call_expression":
+                continue
+            callee = node.child_by_field_name("function")
+            text = callee.text.decode() if callee is not None else ""
+            if re.fullmatch(r"\(?0,[\w$]+\.(?:jsx|jsxs|createElement)\)?", text) or re.fullmatch(r"[\w$]+\.(?:jsx|jsxs|createElement)", text):
+                args = node.child_by_field_name("arguments").named_children
+                if args:
+                    resolve(args[0], "jsx_component", reference)
+            elif re.search(r"\.use[A-Z]\w*\)?$", text):
+                result["hooks"].append({"caller": reference, "call": retain(node), "callee": text})
+    result["complete_imported_factories"] = list(imported.values())
+    result["product_tab_lighting_present"] = bool(result["product_tab_mounts"])
+    result["whole_page_complete"] = False
+    return result
+
+
+def gamepad_lighting_palette_sources():
+    """Retain the mounted palette editor and its profile-owned save/refresh chain."""
+    import host
+    audit, source_sets, files = host.HostLocalAudit(), [], {}
+    for kind, name in (("ui", "gamepad-4115-current"), ("middleware", "gamepad-mw-4115-current")):
+        source_set, originals = audit.source_set(name)
+        if source_set["deployment"]["failures"]:
+            raise ValueError("Current palette deployment selection failed")
+        source_sets.append(source_set)
+        main = [source for source in originals if Path(source["path"]).name.startswith("main.")
+                and source["path"].endswith(".js")]
+        if len(main) != 1:
+            raise ValueError("Current palette main is absent or ambiguous")
+        files[kind] = main[0]
+    roles = {}
+    for role, source, anchor, syntax in (
+        ("mounted_palette_editor", files["ui"], "this.loadCustomColors=", {"class_declaration", "class"}),
+        ("optimistic_palette_and_observed_refresh_reducer", files["ui"], "case Se.HmZ:", {"function_declaration", "arrow_function"}),
+        ("palette_task", files["middleware"], 'actionType:"taskMakerSetCustomColorsSetting"', {"function_declaration"}),
+        ("effect_task_preserves_palette", files["middleware"], 'actionType:"taskMakerSetQuickEffect"', {"function_declaration"}),
+        ("profile_palette_refresh", files["middleware"], ".customColors)&&void 0!==", {"arrow_function"}),
+        ("palette_command_dispatch", files["middleware"], 'case"SET_CUSTOM_COLORS":', {"function_declaration", "arrow_function"}),
+    ):
+        roles[role] = audit.retain(role, source, anchor, syntax, unique=False)
+    if audit.final_snapshot():
+        raise ValueError("Current palette original changed during static query")
+    return {"product_id": 4115, "source_sets": source_sets, "roles": roles,
+        "complete_owners": list(audit.owners.values()), "artifacts": list(audit.artifacts.values()),
+        "semantics": {
+            "owner": "Active profile.quickEffects.customColors owns persisted colors; no independent global GET_CUSTOM_COLORS command exists in these current sources",
+            "editor": "Sixteen editor slots start at #111; loadCustomColors assigns each incoming color and picked=(color!==#111). Editor metadata remains with each record",
+            "save": "SET_CUSTOM_COLORS updates UI optimistically; task filters #111 records, preserves each other complete record, updates active profile, increments version, persists and broadcasts; memory cache retains the submitted slot array",
+            "refresh": "Full active-profile refresh publishes MW_SET_CUSTOM_COLORS from quickEffects.customColors or the source empty list. Profile selection therefore refreshes the palette",
+            "effect_rebase": "Ordinary quick-effect task updates selectedEffectId, selectedEffectSetting, region and global-effect fields while retaining customColors and other profile fields",
+            "acceptance": "Complete retained source owners do not establish real window, service or device acceptance"},
+        "target_execution": False, "runtime_acceptance": "unverified"}
+
+
 def audit_gamepad_lighting(args):
     """Retain current mounted gates, complete lighting owners and native ABI.
 
@@ -10541,6 +12002,18 @@ def audit_gamepad_lighting(args):
                 result["mounted_scripts"].append(original)
             if path.endswith(".css") and original["url"] in reachable:
                 result["source_css"].append({"original": original, "complete_body": raw.decode("utf-8")})
+                if kind == "ui" and Path(path).name.startswith("main."):
+                    rules = [{"original": original, "byte_start": match.start(), "byte_end": match.end(),
+                              "complete_rule": match[0].decode("utf-8"),
+                              "sha256": hashlib.sha256(match[0]).hexdigest()}
+                             for match in re.finditer(rb"[^{}]+\{[^{}]*\}", raw)
+                             if b".warning-backdrop" in match[0].split(b"{", 1)[0]]
+                    result["lighting_warning_css"] = rules
+            if kind == "ui" and Path(path).name == "warning.ad3f47f8.svg":
+                result["lighting_warning_asset"] = {"original": original,
+                    "complete_svg": raw.decode("utf-8"),
+                    "pinned_alias": pinned_resources(a.rel(receipt_path), {
+                        path: "synapse/gamepad-lighting/warning.svg"})}
             if not path.endswith(".js") or original["url"] not in reachable:
                 continue
             if not any(anchor in raw for anchor in anchors.values()) and not any(
@@ -10550,6 +12023,9 @@ def audit_gamepad_lighting(args):
             tree = parser.parse(raw)
             if tree.root_node.has_error:
                 raise ValueError("Current lighting JavaScript grammar failed: " + path)
+            if kind == "ui" and original["url"] in mounted and Path(path).name.startswith("main."):
+                result["mounted_component_tree"] = gamepad_lighting_component_tree(
+                    raw, tree, original, modules, lambda node: keep(raw, node, callable_bodies))
             selected_modules = []
             for module in modules:
                 body = module["body"].encode("utf-8")
@@ -10631,6 +12107,10 @@ def audit_gamepad_lighting(args):
             "software": "4115 uses current RzLightingEngineApi at25fps,8x10 perimeter mapped to1x32,source BGR conversion/no-color sentinel and fractional wave speed; frameOUT chunks25+7 have noIN/deviceACK",
             "lifecycle": "Retained engine/device/effect handles, generation-aware frame discard, source input bridge, suspend without device destruction, exit spectrum restore and all native releases are distinct operations",
             "verification": "Rust/static/simulated checks and real service/device/UI acceptance remain separate; source acquisition and selected bodies do not establish whole-page completion"}}
+    try:
+        result["palette_profile_chain"] = gamepad_lighting_palette_sources()
+    except (KeyError, ValueError, OSError, IndexError, TypeError) as error:
+        result["failures"].append({"source_set": "palette_profile_chain", "error": str(error)})
     try:
         result["lighting_engine"] = source_set("synapse-lighting-engine-current", "engine")
         native_path = a.ROOT / ".analysis/inputs/host-current/blobs/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/RzLightingEngineApi_v4.0.55.0.dll"
@@ -11192,6 +12672,923 @@ def audit_gamepad_triggers(args):
                       "failures": [{"product_id": row["product_id"], "failures": row["failures"]} for row in rows if row["failures"]]}), flush=True)
 
 
+def audit_mouse_dpi_matcher(args):
+    """Retain the current matcher, actual lock owners, host ABI and OS name source."""
+    import host
+    if args.family != "mouse" or args.function != "mw" or set(args.product or [190]) != {190}:
+        raise ValueError("mouse-dpi-matcher requires current mouse190 middleware")
+    audit = host.HostLocalAudit()
+    source_set, files = audit.source_set("mouse-mw-190-current")
+    if source_set["deployment"]["failures"]:
+        raise ValueError("Current matcher deployment selection failed")
+    complete_capture = audit.frontend_capture("mouse-mw-190-current", files)
+    factories = {}
+    for source in files:
+        if not source["path"].endswith(".js"):
+            continue
+        raw = audit.read(source)
+        for module in keyboard_source_modules(raw.decode("utf-8")):
+            if isinstance(module["module_id"], int):
+                factories.setdefault(module["module_id"], []).append((source, module))
+
+    def factory(module_id, role):
+        found = factories.get(module_id, [])
+        if len(found) != 1:
+            raise ValueError(f"Current matcher factory {module_id} is absent or ambiguous")
+        source, module = found[0]
+        owner = audit.retain_range(role, source, module["byte_start"], module["byte_end"], "webpack_factory")
+        node = audit.tree(source).root_node.descendant_for_byte_range(module["byte_start"], module["byte_end"] - 1)
+        while node is not None and (node.start_byte != module["byte_start"] or node.end_byte != module["byte_end"]):
+            node = node.parent
+        if node is None:
+            raise ValueError("Matcher factory has no exact AST node")
+        return source, node, {"module_id": module_id, "original": source, "complete_factory_owner": owner}
+
+    source, node, matcher = factory(32807, "matcher_complete_session")
+    value = node.child_by_field_name("value") if node.type == "pair" else node
+    parameters = value.child_by_field_name("parameters").named_children
+    if len(parameters) != 3 or parameters[2].type != "identifier":
+        raise ValueError("Matcher factory require parameter is unresolved")
+    require = parameters[2]
+    dependencies, pending = {}, [value]
+    while pending:
+        current = pending.pop(); pending.extend(reversed(current.named_children))
+        if current.type != "call_expression":
+            continue
+        callee = current.child_by_field_name("function")
+        arguments = current.child_by_field_name("arguments").named_children
+        if callee.type != "identifier" or callee.text != require.text:
+            continue
+        binding = audit.binding("matcher_require_binding", source, callee.text.decode(), callee.start_byte)
+        if binding.get("start_byte") != require.start_byte:
+            continue
+        if len(arguments) != 1 or arguments[0].type != "number":
+            raise ValueError("Matcher contains an unresolved dynamic dependency")
+        module_id = javascript_integer_literal(arguments[0].text.decode("ascii"))
+        dependencies[module_id] = factory(module_id, "matcher_direct_dependency")[2]
+    lifecycle = {}
+    for module_id, role in ((41374, "device_state_machine"), (18863, "task_maker_lock_scheduler"),
+                            (19877, "state_machine_lifecycle"), (95524, "route_and_lock_identity")):
+        lifecycle[role] = factory(module_id, role)[2]
+    machine = audit.webpack_export("matcher_state_machine", files, 41374, "g5")
+    machine_source = machine["original"]
+    machine_body = audit.owners[machine["binding"]["owner_id"]]
+    lock_ref = machine_body["body"].find("N(")
+    if lock_ref < 0:
+        raise ValueError("Matcher state machine lock factory call is unresolved")
+    lock = audit.binding("request_all_locks", machine_source, "N", machine_body["byte_start"] + lock_ref)
+    state_ref = audit.read(machine_source).find(b"dpiMatcher:_({requestAllLocks:")
+    if state_ref < 0:
+        raise ValueError("Matcher state mount is unresolved")
+    state = audit.binding("matcher_state_lifecycle", machine_source, "_", state_ref)
+    name_property = audit.retain("frontend_computer_name", source_set_source(files, "computerName"),
+        "get computerName()", {"method_definition"})
+    owners = host.verified_host_owners(audit, ["electron/main.js",
+        "electron/modules/mapping_engine/win/index.js", "electron/modules/sysutil/win/index.js",
+        "electron/modules/sysutil/mac/index.js"])
+    mapping_source = owners["electron/modules/mapping_engine/win/index.js"]["original"]
+    sysutil_source = owners["electron/modules/sysutil/win/index.js"]["original"]
+    mapping_abi = {name: audit.retain_class_field("mapping_" + name, mapping_source, name)
+        for name in ("setInputMonitoringCallback", "startMouseInputMonitoring", "stopMouseInputMonitoring")}
+    mapping_abi["api_table"] = audit.retain("mapping_api_table", mapping_source,
+        "setInputMonitoringCallback:", {"variable_declarator"})
+    for name in ("initDll", "callDLL"):
+        audit.retain_class_field("computer_name_sysutil_" + name, sysutil_source, name)
+    audit.retain("host_computer_name_dispatch", owners["electron/main.js"]["original"],
+        'case"computerName":', {"arrow_function", "function_declaration"})
+    mapping_native, mapping_provenance = host.verified_host_native(audit, "CommonDLL/mapping_engine.dll")
+    mapping_capture = audit.native_slice(mapping_native,
+        ["setInputMonitoringCallback", "startMouseInputMonitoring", "stopMouseInputMonitoring",
+         "hasMouseInputMonitoringStarted", "mappingEngineInitialize", "mappingEngineShutdown"], depth=1,
+        rvas=(0x4f5e0, 0x4f8f0, 0x4fc00, 0x4ff10, 0x500e0))
+    sysutil_native, sysutil_provenance = host.verified_host_native(audit, "CommonDLL/SysUtilsNative.dll")
+    sysutil_capture = audit.native_slice(sysutil_native, ["computerName"], depth=0,
+        rvas=(0x5bf00, 0x40460, 0xc4fc8, 0xc5007))
+    changed = audit.final_snapshot()
+    if changed:
+        raise ValueError("Matcher original changed during query: " + str(changed))
+    result = {"recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)),
+        "product_id": 190, "source_set": source_set, "complete_capture": complete_capture,
+        "matcher": matcher, "direct_dependencies": [dependencies[key] for key in sorted(dependencies)],
+        "lifecycle_owners": lifecycle, "state_machine_export": machine,
+        "request_all_locks_binding": lock, "matcher_state_binding": state,
+        "computer_name_frontend": name_property, "host_originals": owners, "mapping_abi": mapping_abi,
+        "mapping_native": {"provenance": mapping_provenance, "complete_slice": mapping_capture},
+        "computer_name_native": {"provenance": sysutil_provenance, "complete_slice": sysutil_capture},
+        "complete_owners": list(audit.owners.values()), "artifacts": list(audit.artifacts.values()),
+        "source_semantics": {
+            "locks": "Macro lock RzGlobalLock_macro_recorder is shared; device RzDoorLock_usb_VID_PID_containerId is exclusive. Matcher requests both with ifAvailable=true and rejects immediately on conflict. Ordinary TaskMaker shared route requests wait; exclusive route requests use ifAvailable=true",
+            "storage": "TaskMaker owns a separate STORAGE_LOCK_storageKey exclusive lease. A decision with lockHeld=true does not acquire another device lease. Getter presence alone does not imply the device lock is taken",
+            "session": "Idle/error release retained lock and remove task. Confirming releases the capture lock before the source confirm decision updates local storage; lock failure returns to idle",
+            "monitoring": "Input monitoring event callback and acknowledgements have separate ABIs. Start/stop acknowledgement, listener removal and mapping-engine shutdown are distinct lifecycle operations",
+            "computer_name": "Host computerName dispatches SysUtilsNative::computerName RVA0x703b0: GetComputerNameA into256 bytes, MultiByteToWideChar codepage3, WideCharToMultiByte65001. It is not an environment-variable read",
+            "native_scope": "Complete native slices retain direct edges and unresolved indirect calls; they do not establish full DLL semantic closure or actual execution"},
+        "failures": [], "target_execution": False, "runtime_acceptance": "unverified"}
+    path = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    report = json.loads(path.read_bytes()) if path.is_file() else {"schema_version": 1}
+    report.setdefault("queries", {})["dpi_matcher"] = result
+    a.save(path, report)
+    print(json.dumps({"receipt": a.rel(path), "query": "dpi_matcher", "owners": len(audit.owners),
+        "direct_dependencies": len(dependencies), "target_execution": False}), flush=True)
+
+
+def source_set_source(files, member):
+    """Select one verified source by an exact uncommon current member name."""
+    found = [source for source in files if source["path"].endswith(".js")
+             and ("get " + member + "()").encode() in (a.ROOT / source["path"]).read_bytes()]
+    if len(found) != 1:
+        raise ValueError("Current source member is absent or ambiguous: " + member)
+    return found[0]
+
+
+def receiver_lighting_manifest_sources(pid, *, acquire=False):
+    """Keep the actual primary/fallback manifest requests with their acquisition."""
+    if pid not in (164, 241):
+        raise ValueError("Receiver lighting manifest requires a current product query")
+    receipt = a.ROOT / f".analysis/inputs/frontend/accessories-mw-{pid}-current/acquisition.json"
+    acquired = json.loads(receipt.read_bytes())
+    urls = [f"https://apps.razer.com/synapse/products/{pid}/mw/lighting-manifests/DeviceManifest_{pid}_0.json",
+            f"https://apps.razer.com/synapse/lighting-engine/manifest/DeviceManifest_{pid}_0.json"]
+    files = {row["url"]: row for row in acquired["files"]}
+    attempts, selected, changed = [], None, False
+    for url in urls:
+        original = files.get(url)
+        if original is None and acquire:
+            original = a.download(url, receipt.parent)
+            acquired["files"].append(original)
+            files[url], changed = original, True
+        if original is None:
+            raise ValueError("Receiver lighting manifest request has not been acquired: " + url)
+        attempts.append(original)
+        if original.get("path"):
+            if original.get("http_status") != 200 or not valid(original):
+                raise ValueError("Receiver lighting manifest identity differs: " + url)
+            document = json.loads((a.ROOT / original["path"]).read_bytes())
+            if document.get("productId") != pid or document.get("vendorId") != 5426:
+                raise ValueError("Receiver lighting manifest has another product identity")
+            selected = {"original": original, "complete_manifest": document}
+            break
+    if changed:
+        acquired.setdefault("supplemental_queries", []).append({
+            "kind": "receiver_lighting_manifest", "product_id": pid,
+            "request_order": urls, "selected_url": selected["original"]["url"] if selected else None,
+            "source_owner": "synapse-lighting-engine-current:8199:getManifestData",
+            "recorded_at_utc": a.stamp(), "target_execution": False})
+        publish_frontend_acquisition(receipt, acquired,
+            reason="Publish the current receiver lighting manifest primary and fallback requests")
+    if selected is None:
+        raise ValueError("Both current official receiver lighting manifest requests failed")
+    return {"acquisition": identity(receipt), "request_order": urls,
+            "actual_attempts": attempts, **selected, "target_execution": False}
+
+
+def receiver_sender_sources(audit, pid):
+    """Resolve the mounted Linker sender and its actual host report selector."""
+    classes = {164: ("rzDevice25Linker", "LINKER"), 179: ("rzDevice25LinkerUma", "LINKER"),
+               241: ("rzDevice25LinkerMultiDevices", "LINKERMULTIDEVICES")}
+    if pid not in classes:
+        raise ValueError("Current receiver sender requires its mounted factory audit")
+    source_class, feature = classes[pid]
+    source_set, originals = audit.source_set(f"accessories-mw-{pid}-current")
+    if source_set["deployment"]["failures"]:
+        raise ValueError("Current receiver sender deployment is unresolved")
+    mains = [row for row in originals if Path(row["path"]).name.startswith("main.") and row["path"].endswith(".js")]
+    senders = [row for row in originals if Path(row["path"]).name.startswith(source_class + ".") and row["path"].endswith(".js")]
+    if len(mains) != 1 or len(senders) != 1:
+        raise ValueError("Current receiver sender main or adapter is absent or ambiguous")
+    main, sender = mains[0], senders[0]
+    modules = [module for module in keyboard_source_modules(audit.read(main).decode())
+               if isinstance(module["module_id"], int) and any(token in module["body"]
+                   for token in ("DeviceInfo:()=>", "DeviceInfo:function()"))]
+    if len(modules) != 1:
+        raise ValueError("Current receiver DeviceInfo export is unresolved")
+    exported = audit.webpack_export("receiver_sender_device_info", [main], modules[0]["module_id"], "DeviceInfo")
+    binding = exported["binding"]
+    node = audit.tree(main).root_node.descendant_for_byte_range(binding["start_byte"], binding["end_byte"] - 1)
+    while node is not None and node.type != "variable_declarator":
+        node = node.parent
+    if node is None or node.start_byte != binding["start_byte"] or node.end_byte != binding["end_byte"]:
+        raise ValueError("Current receiver DeviceInfo complete binding is unresolved")
+    value = node.child_by_field_name("value")
+    if value.type != "object":
+        raise ValueError("Current receiver DeviceInfo must be an object")
+    fields = {}
+    for item in value.named_children:
+        if item.type != "pair":
+            continue
+        name, expression = item.child_by_field_name("key").text.decode(), item.child_by_field_name("value")
+        if name in {"productId", "dongleId", "vendorId", "claimInterface"}:
+            if name in fields or expression.type != "number" or not expression.text.isdigit():
+                raise ValueError("Current receiver identity/claim is not a unique integer")
+            fields[name] = int(expression.text)
+    if (set(fields) != {"productId", "dongleId", "vendorId", "claimInterface"}
+            or fields["productId"] != pid or fields["dongleId"] != pid or fields["vendorId"] != 5426
+            or not 0 <= fields["claimInterface"] <= 255):
+        raise ValueError("Current receiver sender identity or claim differs")
+    roles = {"mounted_factory_registration": audit.retain(
+        "receiver_sender_mounted_factory", main, 'duallinkDeviceType:"' + feature + '"', {"arrow_function"}, unique=False)}
+    factory_sources = [row for row in originals if row["path"].endswith(".js")
+                       and (b'yield t.' + source_class.encode() + b'()') in audit.read(row)]
+    if len(factory_sources) != 1:
+        raise ValueError("Current receiver selected factory is absent or ambiguous")
+    factory = factory_sources[0]
+    roles["selected_factory"] = audit.retain("receiver_sender_selected_factory", factory,
+        'yield t.' + source_class + '()', {"arrow_function", "function_expression"}, unique=False)
+    roles["adapter"] = audit.retain_range("receiver_sender_complete_adapter", sender, 0, len(audit.read(sender)), "program")
+    roots = audit.tree(sender).root_node
+    pending, commands = [roots], []
+    while pending:
+        item = pending.pop(); pending.extend(item.named_children)
+        if item.type == "method_definition" and item.child_by_field_name("name").text == b"sendCommand":
+            commands.append(item)
+    if len(commands) != 1:
+        raise ValueError("Current receiver actual sender is unresolved")
+    command = commands[0]
+    pending, payloads = [command], []
+    while pending:
+        item = pending.pop(); pending.extend(item.named_children)
+        if item.type != "pair" or item.child_by_field_name("key").text != b"payload":
+            continue
+        payload = item.child_by_field_name("value")
+        if payload.type == "object":
+            properties = {field.child_by_field_name("key").text.decode(): field.child_by_field_name("value")
+                          for field in payload.named_children if field.type == "pair"}
+            if {"dataSend", "reportLength", "claimInterface"} <= properties.keys():
+                payloads.append(properties)
+    if (len(payloads) != 1 or "reportId" in payloads[0]
+            or payloads[0]["claimInterface"].text != b"this.claimInterface"
+            or payloads[0]["reportLength"].text != b"this.reportLength"):
+        raise ValueError("Current receiver sender report selector requires a new audit")
+    host_sources = __import__("host").verified_host_owners(audit, ("electron/UsbRzDeviceAction.js",))
+    host_source = host_sources["electron/UsbRzDeviceAction.js"]["original"]
+    host_raw = audit.read(host_source)
+    if b't.payload?.reportId??t.payload.claimInterface' not in host_raw:
+        raise ValueError("Current host receiver report selector differs")
+    roles["host_sender"] = audit.retain("receiver_sender_host_dispatch", host_source,
+        'case"hid.sendFeatureReport"', {"class", "class_declaration"})
+    return {"product_id": pid, "source_class": source_class, "claim_interface": fields["claimInterface"],
+            "report_id": fields["claimInterface"], "source_set": source_set, "device_info_export": exported,
+            "roles": roles, "host_sources": host_sources, "target_execution": False,
+            "semantics": "The mounted Linker sender omits reportId and sends the protocol body; the current host nullish selector prepends its actual claimInterface. Native frame registration and other factory callers keep their independent selectors."}
+
+
+def receiver_battery_peer_sources(audit):
+    """Keep every acquired edition of the current battery-monitor peers."""
+    result = []
+    for pid in (214, 221, 226, 231, 235, 45066):
+        name = f"mouse-mw-{pid}-current"
+        source_set, _ = audit.source_set(name)
+        if source_set["deployment"]["failures"]:
+            raise ValueError("Current receiver battery peer deployment is unresolved: " + name)
+        mains = [row for row in source_set["deployment"]["sources"]
+                 if Path(row["original"]["path"]).name.startswith("main.")
+                 and row["original"]["path"].endswith(".js")]
+        if len(mains) != 1:
+            raise ValueError("Current battery peer mounted middleware main is unresolved")
+        main = mains[0]["original"]
+        modules = keyboard_source_modules(audit.read(main).decode())
+        default_modules = [module for module in modules if isinstance(module["module_id"], int)
+                           and "DEFAULTPROFILE:" in module["body"]]
+        if len(default_modules) != 1:
+            raise ValueError("Current battery peer default profile owner is unresolved")
+        default = audit.webpack_export("battery_peer_default_profile_" + str(pid), [main],
+                                      default_modules[0]["module_id"], "DEFAULTPROFILE")
+        path = a.ROOT / ".analysis/inputs/frontend" / name / "acquisition.json"
+        acquired = json.loads(audit.artifact(path))
+        manifests = []
+        for original in acquired["files"]:
+            if "DeviceManifest_" not in original.get("path", "") or not original["path"].endswith(".json"):
+                continue
+            document = json.loads(audit.read(original))
+            if not document.get("supportBatteryLevelMonitoring"):
+                continue
+            if (document.get("vendorId") != 5426 or document.get("category") != "MOUSE"
+                    or not isinstance(document.get("productId"), int)
+                    or not isinstance(document.get("rzDeviceConfig"), dict)):
+                raise ValueError("Current receiver battery peer manifest identity is invalid")
+            manifests.append({"original": original, "complete_manifest": document})
+        if not manifests:
+            raise ValueError("Current receiver battery peer manifests are absent: " + name)
+        result.append({"source_set": source_set, "manifests": manifests,
+                       "default_profile_export": default})
+    return {"source_sets": result, "target_execution": False,
+        "semantics": "Manifest request PID/edition and the document productId are kept separately. In particular DeviceManifest_227_128 declares productId226 with rzDevice25; the corresponding source branch must not be silently normalized into the227 DualLinkMouse branch."}
+
+
+def receiver_chroma_connect_native_sources(audit):
+    """Bind the selected local WebSocket dispatch and API lifecycle to current bytes."""
+    receipt_path = a.ROOT / ".analysis/inputs/official-native-current/acquisition.json"
+    acquisition = json.loads(audit.artifact(receipt_path))
+    resource_name = "ExtraInstaller_Razer Chroma SDK Core"
+    packages = [row for row in acquisition["resources"] if row.get("status") == "verified"
+        and any(item.get("resource_name") == resource_name for item in row.get("manifests", []))]
+    if len(packages) != 1:
+        raise ValueError("Current declared Chroma SDK Core package is absent or ambiguous")
+    package = packages[0]
+    audit.read(package)
+    if (package["sha256"] != package["declared_sha256"]
+            or package["bytes"] != package["declared_bytes"]):
+        raise ValueError("Current Chroma SDK Core package differs from its declaration")
+    manifests = [item for item in package["manifests"] if item.get("resource_name") == resource_name]
+    for manifest in manifests:
+        current = json.loads(audit.artifact(a.ROOT / manifest["path"], manifest))
+        declarations = [row for row in current["resourceManifest"]["resources"]
+                        if row.get("resourceName") == resource_name]
+        if (len(declarations) != 1 or declarations[0]["sha256"].lower() != package["sha256"]
+                or declarations[0]["size"] != package["bytes"]
+                or declarations[0]["url"] != package["url"]
+                or declarations[0]["resourceVersion"] != manifest["resource_version"]):
+            raise ValueError("Current Chroma SDK Core manifest resource differs")
+        stability = [row for row in acquisition["stability"] if row["url"] == manifest["url"]]
+        if (len(stability) != 1 or stability[0].get("unchanged") is not True
+                or stability[0]["before_sha256"] != manifest["sha256"]
+                or stability[0]["after_sha256"] != manifest["sha256"]):
+            raise ValueError("Current Chroma SDK Core deployment stability is unverified")
+    extraction_path = a.ROOT / ".analysis/results/native-packages" / package["sha256"] / "inspection.json"
+    extraction = json.loads(audit.artifact(extraction_path))
+    if (extraction["container"] != {key: package[key] for key in ("path", "bytes", "sha256")}
+            or extraction.get("extracted") is not True or extraction.get("extraction_exit_code") != 0
+            or extraction.get("listing_exit_code") != 0 or extraction.get("input_bytes_unchanged") is not True
+            or extraction.get("duplicate_entry_paths") or extraction.get("target_execution") is not False):
+        raise ValueError("Current Chroma SDK Core static extraction is incomplete")
+    def member(name):
+        members = [row for row in extraction["files"] if Path(row["path"]).name == name]
+        if len(members) != 1:
+            raise ValueError("Current Chroma native member is absent or ambiguous: " + name)
+        original = members[0]
+        if (original.get("container") != package["path"] or original.get("container_sha256") != package["sha256"]
+                or original.get("declared_container_sha256") != package["sha256"]
+                or original.get("container_extraction_complete") is not True
+                or original.get("verified_against_manifest") is not True):
+            raise ValueError("Current Chroma native member has no verified package owner: " + name)
+        audit.read(original)
+        return original
+
+    native = verify_native_functions(member("RzAPIChromaSDK.dll"), {
+        0x22820: "Init_export_GUID_by_value", 0x1530: "Init_registration_impl",
+        0x22840: "UnInit_export_no_arguments_int_result", 0x1990: "UnInit_GUID_gate_stop_close_return_status",
+        0x22bc0: "SetAttribute_export_three_int_arguments", 0x48e0: "SetAttribute_impl_attribute_2_event",
+        0x22fc0: "SetDockPairedMouse_export", 0x4bb0: "SetDockPairedMouse_impl",
+        0x22c50: "RegisterEventNotification_global_callback", 0x22d50: "UnregisterEventNotification_global_callback",
+        0x22f50: "SetSynapseStatus_global_online_event", 0x62a0: "online_worker_mutex_state_and_cleanup",
+        0x9f80: "UnInit_app_refresh_event_dispatch", 0x6720: "callback_app_count_observer",
+        0x12c0: "online_thread_entry_complete_assembly", 0x12d0: "app_count_thread_entry_complete_assembly",
+        0x12e0: "shared_memory_thread_entry_complete_assembly",
+        0x12f0: "callback_type4_complete_assembly", 0xed30: "callback_type2_enabled_state",
+        0xee00: "callback_type1_app_count", 0xee70: "callback_type1_unchanged_app_count_refresh",
+        0xef00: "callback_type2_shared_memory_state"}, exports={
+            "Init": 0x22820, "UnInit": 0x22840, "SetAttribute": 0x22bc0,
+            "SetDockPairedMouse": 0x22fc0, "RegisterEventNotification": 0x22c50,
+            "UnregisterEventNotification": 0x22d50, "SetSynapseStatus": 0x22f50})
+    service = verify_native_functions(member("RzSDKServer.exe"), {
+        0x14d0: "local_endpoint_URI_owner", 0x73c30: "incoming_session_subscribe_message_unsubscribe",
+        0x76660: "loopback_listener_port_candidates", 0x76ba0: "service_stop_endpoint_destruction_complete_assembly",
+        0x450a0: "endpoint_deleting_destructor", 0x450d0: "endpoint_destructor_UnInit",
+        0x452f0: "endpoint_ProcessMessage_JSON_dispatch_and_CoTaskMemAlloc",
+        0x463f0: "endpoint_SetCallback_global_owner", 0x46420: "endpoint_ClearCallback_global_owner",
+        0x46440: "Init_handler_LoadLibrary_GUID_native_export_and_callback",
+        0x46c20: "UnInit_handler_unregister_native_status_FreeLibrary",
+        0x4cff0: "SetAttribute_handler_three_int_arguments_numeric_result",
+        0x4f020: "SetSynapseStatus_handler_bool_argument_numeric_result",
+        0x524a0: "SetDockPairedMouse_handler_int_argument_numeric_result",
+        0x547c0: "endpoint_destructor_UnInit_token_constructor",
+        0x54b50: "JSON_int32_getter_types_and_exceptions", 0x54670: "JSON_online_numeric_getter_types_and_exceptions",
+        0x5bb80: "JSON_unsigned_int32_writer", 0x5bba0: "JSON_signed_int32_writer",
+        0x75280: "message_worker_virtual_dispatch_UTF16_UTF8_CoTaskMemFree_response_queue",
+        0x75500: "message_queue_payload_copy", 0x77d90: "message_worker_task_creation",
+        0x7a0f0: "message_worker_PPL_task_handle_owner", 0x842c0: "message_worker_PPL_task_invoke",
+        0x97180: "message_worker_callback_function_object", 0x98570: "message_worker_callback_body",
+        0x32a50: "message_worker_callback_wrapper_owner", 0x32a20: "message_worker_callback_wrapper_invoke",
+        0x75630: "outgoing_queue_UTF8_validation_WebSocket_text_send",
+        0x44df0: "native_callback_type_value_JSON", 0x72ac0: "native_callback_local_endpoint_route",
+        0x76130: "native_callback_broadcast_to_live_endpoint_connections"}, slots=(
+            {"role": "endpoint_deleting_destructor", "vtable_rva": 0x1443ec, "slot_byte_offset": 0, "target_rva": 0x450a0},
+            {"role": "endpoint_ProcessMessage", "vtable_rva": 0x1443ec, "slot_byte_offset": 4, "target_rva": 0x452f0},
+            {"role": "endpoint_SetCallback", "vtable_rva": 0x1443ec, "slot_byte_offset": 8, "target_rva": 0x463f0},
+            {"role": "endpoint_ClearCallback", "vtable_rva": 0x1443ec, "slot_byte_offset": 12, "target_rva": 0x46420},
+            {"role": "message_PPL_task_invoke", "vtable_rva": 0x149410, "slot_byte_offset": 4, "target_rva": 0x842c0},
+            {"role": "message_callback_wrapper_invoke", "vtable_rva": 0x141114, "slot_byte_offset": 8, "target_rva": 0x32a20},
+            {"role": "message_callback_body", "vtable_rva": 0x1490b4, "slot_byte_offset": 8, "target_rva": 0x98570}))
+    for capture in (native, service):
+        audit.artifact(a.ROOT / capture["capture_receipt"]["path"], capture["capture_receipt"])
+        for function in capture["complete_selected_functions"]:
+            audit.artifact(a.ROOT / function["artifact"]["path"], function["artifact"])
+    return {"package": package, "acquisition": identity(receipt_path),
+        "static_extraction": identity(extraction_path), "current_manifests": manifests, "native": native,
+        "websocket_service": service,
+        "selected_dispatch": {
+            "status": "statically_traced",
+            "scope": ["Init", "UnInit", "SetAttribute", "SetSynapseStatus", "SetDockPairedMouse"],
+            "endpoint": "ws://127.0.0.1:1337/razer/rzapichromasdk",
+            "listener": "RzSDKServer uses 127.0.0.1 and tries ports1337,1338,1339; the current frontend selects1337 only.",
+            "owner": "Each subscribed connection receives a sessionID and a new endpoint with its own initially-null HMODULE. The endpoint map is keyed by sessionID; callbacks broadcast by URI to live connections.",
+            "request": "ProcessMessage parses func/param/token; selected handlers copy the entire token unchanged, including caller-supplied token.param. They do not independently return a top-level param.",
+            "response": "Selected handlers put the native status in numeric result. Init success is overwritten with RegisterEventNotification status; UnInit status overwrites UnregisterEventNotification status. The current JS wrapper reads result only for Init and otherwise return, so the native response schema is authoritative for status observations.",
+            "ownership": "ProcessMessage allocates UTF-16 response memory using CoTaskMemAlloc. The message worker calls the byte-verified endpoint virtual slot, converts output to UTF-8, frees CoTaskMem memory, and only queues a normal response when ProcessMessage status is0. Unknown commands or conversion/parse failures must not be treated as successful responses.",
+            "abi": "Init is a cdecl GUID passed by value, UnInit is cdecl with no arguments and int result, SetAttribute is cdecl(pid:int,attribute:int,value:int), SetDockPairedMouse is cdecl(pid:int), SetSynapseStatus is cdecl(online:int); its getter accepts bool/numeric JSON and current JS supplies a bool. Required non-null fields are not strict numeric type validation; other getter types can throw. Assembly verifies argument pushes where Hex-Rays inferred FARPROC without arguments.",
+            "notifications": "The registered native callback receives two int32 values and serializes unsigned numeric type/value with no token. Current JS maps type1/type4 to apps-changed and type2 to Boolean(value) enabled-changed; these broadcasts are not attribute receipts.",
+        },
+        "semantics": {
+            "frontend_online": "After Init0, the mounted initialize handler sets its initialized state, reads shared memory, awaits SetSynapseStatus(true), then refreshes apps/devices. The status wrapper discards response values and logs errors, so nonzero status alone does not roll back initialization or forbid attributes. Exit awaits SetSynapseStatus(false) before UnInit.",
+            "online_receipt": "SetSynapseStatus updates the process-global online value and signals its worker event if present. Return0 does not confirm the background mutex change has been observed. UnInit does not reset the stored online value; its worker shutdown attempts mutex release independently.",
+            "registration_release": "UnInit() GUID mismatch returns5; after stop/wait/CloseHandle it clears the stored GUID and returns0. It does not itself clear the native callback. UnregisterEventNotification clears that pointer, but the handler replaces its status with UnInit status.",
+            "endpoint_release": "UnInit0 calls FreeLibrary and clears only the current endpoint HMODULE; FreeLibrary BOOL is ignored. UNSUBSCRIBE erases only the live-connection weak map, retaining the old endpoint and DLL reference until service stop, whose virtual ClearCallback/destructor/UnInit chain is retained in full.",
+            "lost_connection_release": "A new endpoint has no HMODULE, so direct UnInit returns126. Init loads its DLL reference; Init1247 can indicate the process-global registration already exists. A subsequent UnInit can release that registration, but cannot confirm destruction of the retained old endpoint or its DLL reference.",
+        },
+        "limitations": [
+            "Wait/CloseHandle/FreeLibrary results do not provide independent cleanup confirmation; native registration acknowledgement, callback cleanup, OS handles and retained server endpoints are separate observations.",
+            "The service-stop pseudocode reports a bad stack-pointer warning; endpoint-map ClearCallback/destructor calls are also checked in the complete assembly at VA0x477141..0x4771f9.",
+            "Three API thread-entry wrappers have complete assembly and retained Hex-Rays failures. All original capture failures remain visible; selected dispatch closure does not establish full-binary semantics.",
+        ],
+        "unresolved": [],
+        "target_execution": False, "runtime_acceptance": "unverified"}
+
+
+def receiver_help_reset_sources(pid, *, acquire=False):
+    """Retain current receiver defaults and actual local reset owners."""
+    import host
+    if pid not in (164, 241):
+        raise ValueError("Receiver reset defaults require a current product-specific query")
+    manifest = receiver_lighting_manifest_sources(pid, acquire=acquire)
+    audit = host.HostLocalAudit()
+    sets, files, sources = [], {}, {}
+    for kind, name in (("ui", f"accessories-{pid}-current"), ("mw", f"accessories-mw-{pid}-current")):
+        source_set, originals = audit.source_set(name)
+        if source_set["deployment"]["failures"]:
+            raise ValueError("Current receiver deployment selection failed")
+        sets.append(source_set)
+        files[kind] = originals
+        for prefix in (("main",) if kind == "ui" else ("main", "6120")):
+            found = [row for row in originals if Path(row["path"]).name.startswith(prefix + ".")
+                     and row["path"].endswith(".js")]
+            if len(found) != 1:
+                raise ValueError("Current receiver original is absent or ambiguous: " + kind + "/" + prefix)
+            sources[kind + "_" + prefix] = found[0]
+    main, middleware = sources["mw_main"], sources["mw_6120"]
+    engine_set, engine_files = audit.source_set("synapse-lighting-engine-current")
+    if engine_set["deployment"]["failures"]:
+        raise ValueError("Current lighting engine deployment selection failed")
+    sets.append(engine_set)
+    engine_mains = [source for source in engine_files if Path(source["path"]).name.startswith("main.")
+                    and source["path"].endswith(".js")]
+    if len(engine_mains) != 1:
+        raise ValueError("Current mounted lighting engine main is absent or ambiguous")
+    sources["lighting_engine_main"] = engine = engine_mains[0]
+    peer_adapter_prefixes = ("4026", "2314", "8508", "9375", "8086", "rzHardwareEventsProtocol25Parser")
+    for prefix in peer_adapter_prefixes:
+        matches = [source for source in engine_files
+                   if Path(source["path"]).name.startswith(prefix + ".")
+                   and source["path"].endswith(".js")]
+        if len(matches) != 1:
+            raise ValueError("Current receiver lighting adapter is absent or ambiguous: " + prefix)
+        sources["lighting_adapter_" + prefix] = matches[0]
+    help_sources = [source for source in files["ui"] if source["path"].endswith(".js")
+                    and b"this.retryDeviceSerial=()=>" in audit.read(source)
+                    and b"this.resetDevice=()=>" in audit.read(source)]
+    if len(help_sources) != 1:
+        raise ValueError("Current receiver Help component source is absent or ambiguous")
+    sources["ui_help"] = help_sources[0]
+    roles = {}
+    for role, source, needle, syntax in (
+        ("mounted_help_reset", sources["ui_help"], "this.retryDeviceSerial=()=>", {"class_declaration"}),
+        ("mounted_middleware_configuration", main, '.useFeature("rzDeviceType",', {"arrow_function"}),
+        ("reset_task", middleware, 'actionType:"taskMakerResetOBM"', {"function_declaration"}),
+        ("quick_effect_task", middleware, 'actionType:"taskMakerSetQuickEffect"', {"function_declaration", "function_expression"}),
+        ("key_mapping_task", middleware, 'actionType:"taskMakerSetKeyMapping"', {"function_declaration", "function_expression", "class_declaration", "class"}),
+        ("reset_dispatch", middleware, ".deviceResetOverrides", {"function_declaration", "variable_declarator"}),
+        ("state_machine", middleware, 'ON_SET_EFFECTS:{actions:"quickEffectAction"}', {"function_declaration", "variable_declarator"}),
+        ("bundled_reset_feature", middleware, 'this.featureKey="deviceReset"', {"class_declaration"}),
+        ("lighting_manifest_request", engine, "async getManifestData(", {"method_definition"}),
+        ("lighting_storage_device_refresh", engine, "this.onStorageChange_device=", {"assignment_expression"}),
+        ("lighting_storage_event_dispatch", engine, "async onStorageChange(", {"method_definition"}),
+        ("lighting_region_quick_effect", engine, "this.applyRegionQuickEffect=", {"assignment_expression"}),
+        ("lighting_software_quick_effect", engine, "this.applyCustomQuickEffect=", {"assignment_expression"}),
+        ("lighting_connected_device_observer", engine, 'this.name="WindowStorageHandler"', {"class"}),
+        ("lighting_dock_battery_monitor", engine, "this.applyDockBatteryLevelQuickEffect=", {"class", "class_declaration"}),
+        ("lighting_driver_registration", engine, "this.createLightingDeviceEx=", {"assignment_expression"}),
+        ("lighting_exit_defaults", engine, "this.configureDevicesDefaultData=", {"assignment_expression"}),
+        ("lighting_normal_mode_restore", engine, "this.createSetDeviceModeData=", {"assignment_expression"}),
+        ("lighting_driver_protocol_configuration", engine, 'type:"protocol.use_base_class"', {"assignment_expression"}),
+        ("lighting_frame_callback_fallback", engine, "setChromaFrame error:", {"method_definition"}),
+        ("lighting_base_protocol_factory", engine, 'this.name="rzDevice25"', {"class_declaration", "class"}),
+        ("lighting_base_frame_submission", engine, "async setChromaFrameLightingEngine(e){let{eventData:t}=e;const n=h.COMMAND_SET_CHROMA_FRAME_HEADER", {"method_definition"}),
+        ("lighting_base_power_query", engine, 'this.getPowerOnStatusCommon=async()=>{const e="getPowerOnStatusCommon",t=this.generateDefaultResult([],e);let n=!1', {"assignment_expression"}),
+        ("lighting_hardware_event_consumer", engine, 'this.name="HardwareEventHandler"', {"class_declaration", "class"}),
+        ("lighting_peer_factory_registration", engine, "rzDevice25Krakoff:()=>", {"variable_declarator"}),
+        ("lighting_missing_ui_power_on", engine, "missing deviceInfo.getUIEffect(), force to static green", {"assignment_expression"}),
+        ("lighting_peer_initialization_charging", engine, "await O.A.dockingStationMonitoring.addDock", {"method_definition", "assignment_expression"}),
+        ("lighting_peer_relay_claim_interface", engine, "E.rzDeviceConfig.claimInterface=n.rzDeviceConstructor.claimInterface", {"assignment_expression"}),
+        ("lighting_peer_relay_creation", engine, "this.prepareDualLinkPairedDevice=", {"assignment_expression"}),
+        ("lighting_peer_chroma_connect_attributes", engine, 'this.setAttribute=async(e,t,n)=>{try{await this.send({func:"SetAttribute"', {"assignment_expression"}),
+        ("lighting_chroma_connect_local_service", engine, 'this.name="ChromaConnectApps"', {"class_declaration", "class"}),
+        ("lighting_chroma_connect_mounted_initialization", engine, 'const e="initChromaConnect()"', {"arrow_function", "function_expression"}),
+        ("lighting_chroma_connect_status_wrapper", engine, 'this.setSynapseStatus=async e=>', {"assignment_expression"}),
+        ("lighting_chroma_connect_mounted_lifecycle_effect", engine, 'return m.A.on(Ui.d4,t),m.A.on(Ui.bS,n),m.A.on(Ui.JX,i)', {"arrow_function"}),
+        ("lighting_chroma_connect_exit_order", engine, 'await N.A.setSynapseStatus(!1),await N.A.unInit()', {"function_expression"}),
+        ("mounted_quick_effect_editor", sources["ui_main"], "this.changeEffect=", {"class", "class_declaration"}),
+    ):
+        roles[role] = audit.retain(role, source, needle, syntax, unique=False)
+    for prefix in peer_adapter_prefixes:
+        source = sources["lighting_adapter_" + prefix]
+        roles["lighting_adapter_" + prefix] = audit.retain_range(
+            "lighting_adapter_" + prefix, source, 0, len(audit.read(source)), "program")
+    ui_effect_exports = {name: audit.webpack_export("receiver_ui_" + name, [sources["ui_main"]], module, name)
+                         for module, name in ((8193, "QUICK_EFFECTS"), (8193, "DeviceInfo"),
+                                              (3254, "U2A"), (3254, "AoV"), (9228, "hz"))}
+    protocol_exports = {name: audit.webpack_export("receiver_protocol_" + name, [engine], module, name)
+                        for module, name in ((9935, "L4"), (9935, "Kl"), (9935, "z4"),
+                            (9816, "ul"), (9816, "_e"), (2968, "COMMAND_SET_DEVICE_MODE_HEADER"),
+                            (2968, "COMMAND_GET_DEVICE_ON_DOCK_CHARGING_STATUS_HEADER"),
+                            (2968, "COMMAND_GET_EDITION_INFORMATION_HEADER"),
+                            (6729, "COMMAND_GET_BATTERY_LEVEL_HEADER"),
+                            (6729, "COMMAND_GET_DEVICE_CHARGING_STATUS_HEADER"),
+                            (1306, "NEW_CHROMA_EFFECT_ID"), (5668, "COMMAND_SET_CHROMA_FRAME_HEADER"),
+                            (5668, "COMMAND_SET_CHROMA_EFFECT_HEADER"), (6411, "AL"), (6411, "Cx"),
+                            (7809, "makeWord"), (6042, "HARDWARE_EVENT_RECORD_ID"),
+                            (6042, "NOTIFICATION_EVENTS_ID"), (6042, "WIRELESS_CHANGE_EVENT_STATES"))}
+    edition_getter = protocol_exports["z4"]["binding"]
+    protocol_exports["edition_response_decoder"] = audit.binding(
+        "receiver_protocol_edition_decoder", engine, "h", edition_getter["start_byte"])
+    # Keep the entire UI editor's actual lexical default/renderer owners.
+    for kind, needle, syntax in (("audio_meter", "this.changeColorBoost=", {"class_declaration", "class"}),
+                                 ("tidal", 'value:1},{id:"dir-in",value:0}', {"arrow_function"})):
+        roles["mounted_" + kind] = audit.retain("mounted_" + kind, sources["ui_main"], needle,
+            syntax, unique=False)
+    driver_path = a.ROOT / ".analysis/inputs/host-current/blobs/9b701a56c5ed0c1c30d26452fb5752ee328304a197f9a36cd3c51e0cd6a4de6b/lighting_driver_v1.9.14.0.dll"
+    driver_registration = verify_native_functions(identity(driver_path), {
+        "0xa770": "AddDevice_registration_dock_category_report_id_and_row_delay_defaults",
+        "0xdbd0": "category_string_conversion", "0x2e500": "registered_native_protocol_factories", "0x2edd0": "Rzp25NewChroma_factory",
+        "0x7feb0": "Rzp25NewChroma_frame_translator", "0x7fc30": "frame_checksum"})
+    battery_peers = receiver_battery_peer_sources(audit)
+    selected_sender = receiver_sender_sources(audit, pid)
+    chroma_connect_native = receiver_chroma_connect_native_sources(audit)
+    verified_hosts = host.verified_host_owners(audit, ("electron/UsbRzDeviceAction.js",))
+    host_source = verified_hosts["electron/UsbRzDeviceAction.js"]["original"]
+    roles["host_hid_report_id_dispatch"] = audit.retain(
+        "host_hid_report_id_dispatch", host_source, 'case"hid.sendFeatureReport"', {"class", "class_declaration"})
+    modules = keyboard_source_modules(audit.read(middleware).decode())
+    refresh_modules = [module for module in modules if isinstance(module["module_id"], int)
+                       and all(needle in module["body"] for needle in
+                               ("Fk:()=>", '"ON_INIT_BRIGHTNESS"', '"ON_SET_EFFECTS"', '"ON_SET_KEYMAPPING"'))]
+    if len(refresh_modules) != 1:
+        raise ValueError("Current receiver profile refresh factory is unresolved")
+    refresh = audit.webpack_export("reset_profile_refresh", [middleware], refresh_modules[0]["module_id"], "Fk")
+    roles["profile_refresh"] = refresh["binding"]["owner_id"]
+    runtime = {name: audit.webpack_export("reset_runtime_" + name, [middleware], 20236, name)
+               for name in ("lY", "I4")}
+    lighting_effect_exports = {name: audit.webpack_export("reset_lighting_" + name, [engine], 8905, name)
+                              for name in ("JF", "rc", "k9", "DB")}
+    defaults = {name: audit.webpack_export("reset_default_" + name, [main], 21503, name)
+                for name in ("DEFAULTPROFILE", "DEVICE_NAME", "getDeviceDefaultLocalData", "getDefaultProfile", "DEFAULTMAPPINGS")}
+
+    def value(binding, source):
+        item = binding["binding"]
+        node = audit.tree(source).root_node.descendant_for_byte_range(item["start_byte"], item["end_byte"] - 1)
+        while node is not None and node.type not in {"variable_declarator", "function_declaration"}:
+            node = node.parent
+        if node is None:
+            raise ValueError("Current receiver default has no complete declaration")
+        return node.child_by_field_name("value") if node.type == "variable_declarator" else node
+
+    profile = keyboard_static_literal(value(defaults["DEFAULTPROFILE"], main).text.decode())
+    device_name = keyboard_static_literal(value(defaults["DEVICE_NAME"], main).text.decode())
+    generator = value(defaults["getDeviceDefaultLocalData"], main)
+    pending, spreads = [generator], []
+    while pending:
+        node = pending.pop(); pending.extend(node.named_children)
+        if node.type == "spread_element" and node.named_child_count == 1 and node.named_children[0].type == "identifier":
+            spreads.append(node.named_children[0])
+    if len(spreads) != 1:
+        raise ValueError("Current receiver global document is not a unique literal spread")
+    global_binding = audit.binding("reset_global_defaults", main, spreads[0].text.decode(), spreads[0].start_byte)
+    global_document = keyboard_static_literal(value({"binding": global_binding}, main).text.decode())
+    raw = audit.read(middleware)
+    version_matches = list(re.finditer(rb"currentSchemaVersion:\(\)=>([\w$]+)", raw))
+    if len(version_matches) != 1:
+        raise ValueError("Current receiver migration version export is unresolved")
+    match = version_matches[0]
+    schema_binding = audit.binding("reset_schema_version", middleware, match[1].decode(), match.start())
+    schema = keyboard_static_literal(value({"binding": schema_binding}, middleware).text.decode())
+    if type(schema) is not int:
+        raise ValueError("Current receiver migration version is not a source integer")
+    complete_modules = {}
+    for source in sources.values():
+        body_modules = keyboard_source_modules(audit.read(source).decode())
+        for owner in list(audit.owners.values()):
+            if owner["original"]["path"] != source["path"]:
+                continue
+            found = [module for module in body_modules if module["byte_start"] <= owner["byte_start"]
+                     and owner["byte_end"] <= module["byte_end"]]
+            if found:
+                module = min(found, key=lambda item: item["byte_end"] - item["byte_start"])
+                key = source["sha256"] + ":" + str(module["module_id"])
+                if key not in complete_modules:
+                    complete_modules[key] = {"original": source, **module,
+                        "body_sha256": hashlib.sha256(module["body"].encode()).hexdigest()}
+    maintenance = {"product_id": pid, "edition_id": 0, "device_name": device_name,
+        "schema_version": schema, "default_profile": profile, "default_global": global_document,
+        "actual_task": "taskMakerResetOBM", "factory_reset_command_reachable": False,
+        "preserves_existing_profiles": True,
+        "refresh_events": ["ON_INIT_BRIGHTNESS", "ON_SET_EFFECTS", "ON_SET_KEYMAPPING"]}
+    if audit.final_snapshot():
+        raise ValueError("Current receiver reset source changed during static query")
+    return {"product_id": pid, "source_sets": sets, "roles": roles, "defaults": maintenance,
+        "lighting_manifest": manifest,
+        "default_exports": defaults, "runtime_exports": runtime, "global_binding": global_binding,
+        "lighting_effect_exports": lighting_effect_exports,
+        "ui_effect_exports": ui_effect_exports, "protocol_exports": protocol_exports,
+        "lighting_driver_registration": driver_registration,
+        "verified_host_sources": verified_hosts,
+        "battery_monitor_peers": battery_peers,
+        "selected_sender": selected_sender,
+        "chroma_connect_native": chroma_connect_native,
+        "schema_binding": schema_binding, "complete_owners": list(audit.owners.values()),
+        "complete_modules": complete_modules, "artifacts": list(audit.artifacts.values()),
+        "target_execution": False, "runtime_acceptance": "unverified",
+        "semantics": {"reset": "Mounted legacy task appends a source-default profile, selects it, increments version, persists and invokes the full refresh. Bundled DeviceResetFeature does not establish an enabled firmware reset.",
+            "quick_effect": "The ordinary task persists the active-profile quickEffects. Lighting engine onStorageChange_device receives the old/new serial document, resolves the active profile and invokes applyRegionQuickEffect. connectedDevices WindowStorageHandler has separate ready/driver/power flags and does not consume quickEffects. BLE hardware/ports and explicit hardware effects remain separate branches.",
+            "dock_battery": "UI battery14 converts to global effect193, which ordinary applyCustomQuickEffect skips. DockingStationMonitoring owns selected-device filtering, actual battery queries, charging updates and conversion to manifest-specific normal effects. It must not be treated as an ordinary native spectrum request.",
+            "driver_registration": "Current AddDevice RVA0xa770 overrides category to7 for is_dock=true; report_id defaults0, row_delay_ms defaults1. The current JS registration omits row_delay_ms. A one-row frame does not wait, but its registration default is still1.",
+            "peer_protocols": "Eligible rzDevice25 and DualLinkMouse peers use protocol25. Krakoff5423 inherits8086.Dl ->4026.Linker ->4001.rzDevice25; its dock transactions are224|counter and mouse transactions use a separate0..30 counter. Krakoff mode/effect writes target dock then mouse; inherited frame submission targets dock only. The native driver protocol registry does not directly register Krakoff or rzDevice30; the full engine frame callback supplies the JS adapter fallback. Protocol30 BLE uses its own8-byte header and is not a91-byte protocol25 report. The retained current BLE peer manifests do not enable DockingStationV2 eligibility.",
+            "peer_queries": "Protocol25 getPowerOnStatusCommon probes the actual edition getter and marks power true only after SUCCESS. Edition[3,0,134] decodes layout,edition,firmware at0,1,2; battery[2,7,128] takes batteryId0 and converts response byte1 with floor(raw/255*100). Dock charging[1,0,187] reads response byte0; battery charging[2,7,132] reads byte1 and is a distinct getter. Complete protocol25 notification parser and HardwareEventHandler are retained with the registered factory branches.",
+            "mapping": "Empty source mappings still enter the state machine. Storage update, app-engine generation and OBM synchronization flags must be evaluated against the mounted feature owner; bundled protocol methods do not establish a write.",
+            "whole_page": "This static reset query and retained complete bodies do not establish entire-page completion or physical-device acceptance"}}
+
+
+def receiver_cancel_scan_contract(audit, source, owner_id):
+    """Resolve the observed cancel receiver and payload without evaluating JS."""
+    owner = audit.owners[owner_id]
+    root = audit.tree(source).root_node.descendant_for_byte_range(owner["byte_start"], owner["byte_end"] - 1)
+    if root.type != "pair" or root.child_by_field_name("key").text != b"DUALLINK_CANCEL":
+        raise ValueError("Receiver cancel requires its complete command property")
+    handler = root.child_by_field_name("value")
+    parameters = handler.child_by_field_name("parameters")
+    if handler.type != "arrow_function" or handler.child_by_field_name("parameter") is not None or parameters is None or parameters.named_child_count:
+        raise ValueError("Receiver cancel no longer has a parameter-free handler")
+    calls, clears, pending = [], [], [handler]
+    while pending:
+        node = pending.pop()
+        pending.extend(reversed(node.named_children))
+        if node.type == "call_expression":
+            callee = node.child_by_field_name("function")
+            if callee.type == "member_expression" and callee.child_by_field_name("property").text == b"deviceScan":
+                calls.append(node)
+        elif node.type == "assignment_expression":
+            left, right = node.child_by_field_name("left"), node.child_by_field_name("right")
+            if left.type == "identifier" and right.type in {"false", "unary_expression"} and right.text in {b"false", b"!1"}:
+                clears.append(node)
+    if len(calls) != 1 or len(clears) != 1:
+        raise ValueError("Receiver cancel scan call or scanning-flag cleanup is absent or ambiguous")
+    call = calls[0]
+    if clears[0].end_byte > call.start_byte:
+        raise ValueError("Receiver cancel no longer clears scanning before command submission")
+    for selected in (call, clears[0]):
+        ancestor = selected.parent
+        while ancestor is not None and ancestor != handler:
+            if ancestor.type in {"if_statement", "ternary_expression", "switch_statement", "while_statement", "for_statement"}:
+                raise ValueError("Receiver cancel acquired an unverified active-operation guard")
+            if ancestor.type == "binary_expression":
+                operator = ancestor.child_by_field_name("operator")
+                if operator is not None and operator.text in {b"&&", b"||", b"??"}:
+                    raise ValueError("Receiver cancel command is conditionally submitted")
+            ancestor = ancestor.parent
+    arguments = call.child_by_field_name("arguments").named_children
+    if len(arguments) != 1 or arguments[0].type != "number" or javascript_integer_literal(arguments[0].text.decode()) != 4:
+        raise ValueError("Receiver cancel no longer sends the observed scan status 4")
+    receiver = call.child_by_field_name("function").child_by_field_name("object")
+    if receiver.type != "identifier":
+        raise ValueError("Receiver cancel target requires renewed lexical analysis")
+    binding = audit.binding("receiver_cancel_device", source, receiver.text.decode(), receiver.start_byte)
+    if binding["resolution"] != "declaration":
+        raise ValueError("Receiver cancel device has no unique declaration")
+    declaration = audit.tree(source).root_node.descendant_for_byte_range(binding["start_byte"], binding["end_byte"] - 1)
+    value = declaration.child_by_field_name("value")
+    properties = []
+    while value is not None and value.type == "member_expression":
+        prop = value.child_by_field_name("property")
+        if prop.type != "property_identifier":
+            raise ValueError("Receiver cancel uses a dynamic device property")
+        properties.insert(0, prop.text.decode())
+        value = value.child_by_field_name("object")
+    if properties != ["razerWindow", "rzDevice"] or value is None or value.type != "identifier":
+        raise ValueError("Receiver cancel does not target the primary runtime device")
+    runtime = audit.binding("receiver_cancel_runtime", source, value.text.decode(), value.start_byte)
+    if runtime["resolution"] != "declaration":
+        raise ValueError("Receiver cancel runtime has no unique declaration")
+    runtime_node = audit.tree(source).root_node.descendant_for_byte_range(runtime["start_byte"], runtime["end_byte"] - 1)
+    runtime_value = runtime_node.child_by_field_name("value")
+    imported = runtime_value.child_by_field_name("arguments") if runtime_value.type == "call_expression" else None
+    if imported is None or imported.named_child_count != 1 or imported.named_children[0].type != "number" or javascript_integer_literal(imported.named_children[0].text.decode()) != 95524:
+        raise ValueError("Receiver cancel runtime import is not the current product runtime")
+    require = runtime_value.child_by_field_name("function")
+    if require.type != "identifier":
+        raise ValueError("Receiver cancel runtime requires an exact webpack import")
+    factory = handler
+    while factory is not None:
+        parent = factory.parent
+        if parent is not None and parent.type == "pair" and parent.child_by_field_name("key").type == "number":
+            break
+        factory = parent
+    factory_parameters = factory.child_by_field_name("parameters") if factory is not None else None
+    required_binding = audit.binding("receiver_cancel_webpack_require", source, require.text.decode(), require.start_byte)
+    if factory_parameters is None or factory_parameters.named_child_count != 3 or required_binding["resolution"] != "parameter_requires_caller_analysis":
+        raise ValueError("Receiver cancel runtime loader is not its webpack factory parameter")
+    require_parameter = factory_parameters.named_children[2]
+    if require_parameter.text != require.text or required_binding["start_byte"] != require_parameter.start_byte:
+        raise ValueError("Receiver cancel runtime loader resolves outside its current webpack factory")
+    return {"command": "DUALLINK_CANCEL", "target": "primary_runtime_device", "runtime_module_id": 95524,
+        "scan_status": 4, "category_parameter": False, "cancel_owner": owner_id,
+        "device_binding": binding, "runtime_binding": runtime, "webpack_require_parameter": required_binding,
+        "scan_call_owner": audit.retain_range("receiver_cancel_scan_call", source, call.start_byte, call.end_byte, call.type),
+        "scanning_flag_cleanup_owner": audit.retain_range("receiver_cancel_flag_cleanup", source,
+            clears[0].start_byte, clears[0].end_byte, clears[0].type),
+        "idle_cancel": "The handler has no active-scan guard; the primary command is still submitted when idle"}
+
+
+def receiver_179_local_sources(audit):
+    """Retain current mounted PID179 initialization, indicator and pairing chains."""
+    import host
+    sets, files = {}, {}
+    for layer, name in (("ui", "accessories-179-current"), ("mw", "accessories-mw-179-current")):
+        sets[layer], files[layer] = audit.source_set(name)
+        if sets[layer]["deployment"]["failures"]:
+            raise ValueError("Current receiver deployment failed: " + layer)
+
+    def original(layer, prefix):
+        matches = [row for row in files[layer] if Path(row["path"]).name.startswith(prefix + ".")
+                   and row["path"].endswith(".js")]
+        if len(matches) != 1:
+            raise ValueError("Current PID179 source is absent or ambiguous: " + layer + "/" + prefix)
+        return matches[0]
+
+    ui, main, chunk, uma = original("ui", "main"), original("mw", "main"), original("mw", "6120"), original("mw", "rzDevice25LinkerUma")
+    roles, exports = {}, {}
+
+    def retain(role, source, needle, kinds=None):
+        keys = audit.retain(role, source, needle, kinds or {"variable_declarator", "function_declaration", "class_declaration", "class"})
+        roles[role] = keys
+        return keys
+
+    def exported(role, source, module, name, **kwargs):
+        row = audit.webpack_export(role, [source], module, name, **kwargs)
+        exports[role] = row
+        roles[role] = [row["binding"]["owner_id"]]
+        return row
+
+    releases = {}
+    for layer, source, release in (("ui", ui, "8778dbead6c272702dd75cc1771d483e263c4f7e"),
+                                   ("mw", main, "914469f328a00b1277bcb74a7b832811ceab78cf")):
+        releases[layer] = {"release": release,
+            "owner": retain(layer + "_release", source, 'SENTRY_RELEASE={id:"' + release + '"}', {"assignment_expression"})[0]}
+    for role, needle, kinds in (
+        ("ui_product_root", "class fE extends t.Component", {"class_declaration"}),
+        ("ui_pairing_dialog", "le=(0,s.connect)", None),
+        ("ui_pairing_widget", "HyperPollingWirelessUma: latestVersionInfo must be an array", {"variable_declarator"}),
+        ("ui_pairing_reducer", "function te(e,E){if([\"SET_BINDINFO\"", {"function_declaration"}),
+        ("ui_pairing_broadcast", 'oe=(e,E,a)=>{var _;', {"variable_declarator"}),
+        ("ui_pairing_error_cleanup", "ne=()=>{_e&&(clearTimeout(_e),_e=null)}", {"variable_declarator"}),
+        ("ui_indicator_component", "class CE extends t.Component", {"class_declaration"}),
+        ("ui_indicator_connector", "uE=(0,s.connect)", None),
+        ("ui_indicator_initial_state", "p_={indicatorLedStatus:1,", None),
+        ("ui_indicator_reducer", "M_=function(e,E){", None),
+    ):
+        retain(role, ui, needle, kinds)
+    exported("ui_product_export", ui, 6677, "default")
+    exported("ui_indicator_action", ui, 6677, "setIndicatorLedStatus", namespace="_")
+    exported("ui_indicator_values", ui, 3254, "Phh")
+    exported("ui_device_identity", ui, 8193, "DeviceInfo")
+    retain("mw_mounted_configuration", main, '.useFeature("supportIndicatorLed",', {"arrow_function"})
+    for role, module, name in (
+        ("mw_device_identity", 21503, "DeviceInfo"),
+        ("mw_default_profile", 21503, "DEFAULTPROFILE"),
+        ("mw_default_document", 21503, "getDeviceDefaultLocalData"),
+        ("mw_available_editions", 21503, "AVAILABLE_EDITION_ID"),
+    ):
+        exported(role, main, module, name)
+    for role, module, name in (
+        ("mw_setup", 31468, "m3"), ("mw_connection_setup", 31468, "J7"),
+        ("mw_identity_setup", 31468, "f"), ("mw_runtime_setup", 31468, "n3"),
+        ("mw_setup_when_ready", 31468, "B7"), ("mw_onload", 36120, "default"),
+        ("mw_serial_query", 96204, "I_"), ("mw_serial_observation", 96204, "cu"),
+        ("mw_edition_observation", 96204, "Js"), ("mw_mode_setup", 96204, "iS"),
+        ("mw_macro_access_gate", 41374, "ar"), ("mw_state_machine", 41374, "g5"),
+        ("mw_indicator_task", 25947, "i7K"), ("mw_indicator_runner", 96571, "jO6"),
+        ("mw_indicator_completion", 96571, "MLf"), ("mw_event_queue", 18863, "Q"),
+        ("mw_document_read", 60763, "Tb"), ("mw_profile_selection", 60763, "OI"),
+        ("mw_document_save", 60763, "mZ"), ("mw_pairing_factory_selection", 20236, "f2"),
+        ("mw_pairing_setup", 34340, "Dq"), ("mw_pairing_dispatch", 34340, "ZP"),
+        ("mw_pairing_information", 34340, "Wi"),
+        ("mw_hardware_event_registration", 78548, "lq"), ("mw_hardware_event_removal", 78548, "EW"),
+        ("protocol_serial", 84816, "I_"), ("protocol_edition", 84816, "ki"),
+        ("protocol_scan", 84816, "O7"), ("protocol_paired_status", 84816, "VO"),
+        ("protocol_bind", 84816, "ox"), ("protocol_unbind", 84816, "Mk"),
+        ("protocol_indicator_get", 55052, "Wo"), ("protocol_indicator_set", 55052, "aJ"),
+    ):
+        exported(role, chunk, module, name)
+    retain("mw_profile_initialization", chunk, "function vn(){return nn(", {"function_declaration"})
+    retain("mw_indicator_initial_observation", chunk, "const n=yield t.getIndicatorLedConfiguration();", {"function_expression"})
+    retain("mw_wireless_reconnect", chunk, 'Pe=(e,t,n)=>Se(void 0,void 0,void 0,', {"variable_declarator"})
+    retain("mw_pairing_command_table", chunk, "Ke={DUALLINK_CONNECT_TYPE:", {"variable_declarator"})
+    retain("mw_pairing_bind", chunk, "Se=(e,{payload:t})=>", {"variable_declarator"})
+    retain("mw_pairing_unbind", chunk, "Te=(e,{payload:t})=>", {"variable_declarator"})
+    retain("mw_pairing_hardware_completion", chunk, "Ee=(e,t,n,r=!0)=>", {"variable_declarator"})
+    cancel = retain("mw_pairing_cancel", chunk, "DUALLINK_CANCEL:", {"pair"})[0]
+    cancel_contract = receiver_cancel_scan_contract(audit, chunk, cancel)
+    protocols = {}
+    for role, module, name, expected in (
+        ("serial", 30580, "kD", [22, 0, 130]), ("edition", 30580, "Se", [3, 0, 134]),
+        ("scan", 30580, "pJ", [1, 0, 70]), ("bind", 30580, "fr", [3, 0, 65]),
+        ("unbind", 30580, "jI", [2, 0, 66]), ("paired_status", 30580, "IZ", [80, 0, 191]),
+        ("indicator_get", 96578, "UT", [1, 7, 144]), ("indicator_set", 96578, "kr", [1, 7, 16]),
+    ):
+        row = exported("protocol_header_" + role, chunk, module, name)
+        binding = row["binding"]
+        node = audit.tree(chunk).root_node.descendant_for_byte_range(binding["start_byte"], binding["end_byte"] - 1)
+        value = node.child_by_field_name("value")
+        arguments = value.child_by_field_name("arguments") if value.type == "new_expression" else None
+        if arguments is None or value.child_by_field_name("constructor").text != b"Uint8Array" or arguments.named_child_count != 1:
+            raise ValueError("Current receiver protocol header is not a direct byte-array constructor: " + role)
+        header = keyboard_static_literal(arguments.named_children[0].text.decode())
+        if header != expected:
+            raise ValueError("Current receiver protocol header changed: " + role + " " + repr(header))
+        protocols[role] = {"header": header, "owner": binding["owner_id"]}
+    base_pos = audit.read(chunk).index(b'this.name="rzDevice25"')
+    base = audit.tree(chunk).root_node.descendant_for_byte_range(base_pos, base_pos)
+    while base.type not in {"class", "class_declaration"}:
+        base = base.parent
+    for name in ("constructor", "getSerialNumber", "getEdition", "getIndicatorLedConfiguration", "setIndicatorLedConfiguration",
+                 "deviceScan", "getMultipleDeviceWirelessConnectionStatusV2", "setDevicePairingMode", "setDeviceUnpair",
+                 "_createDataSend", "_calculateChecksum", "_getUSBTransferInResult"):
+        _, key = audit.callable_member("base_" + name, chunk, base, name)
+        roles["base_" + name] = [key]
+    for role, needle in (("linker_factory", 'this.name="rzDevice25Linker"'),
+                         ("uma_factory", 'this.name="rzDevice25LinkerUma"')):
+        retain(role, uma, needle, {"class_declaration"})
+    hosts = host.verified_host_owners(audit, ("electron/UsbRzDeviceAction.js",))
+    host_source = hosts["electron/UsbRzDeviceAction.js"]["original"]
+    retain("host_hid_dispatch", host_source, 'case"hid.sendFeatureReport"', {"class", "class_declaration"})
+    factories = {}
+    for owner in list(audit.owners.values()):
+        source = audit.sources[owner["original"]["path"]]
+        node = audit.tree(source).root_node.descendant_for_byte_range(owner["byte_start"], owner["byte_end"] - 1)
+        while node is not None:
+            key = node.child_by_field_name("key" if node.type == "pair" else "name") if node.type in {"pair", "method_definition"} else None
+            value = node.child_by_field_name("value") if node.type == "pair" else node
+            if key is not None and key.type == "number" and value is not None and value.type in {"arrow_function", "function_expression", "method_definition"}:
+                mid = javascript_integer_literal(key.text.decode())
+                owner_key = audit.retain_range("complete_factory_" + str(mid), source, node.start_byte, node.end_byte, node.type)
+                factories[owner_key] = {"module_id": mid, "owner": owner_key}
+                break
+            node = node.parent
+    return {"source_sets": sets, "releases": releases, "roles": roles, "exports": exports,
+        "protocols": protocols, "cancel_contract": cancel_contract,
+        "complete_factories": list(factories.values()), "verified_host_sources": hosts,
+        "semantics": {
+            "initialization": "Complete setup reads serial and edition, initializes DualLink and hardware events, then checks the actual serial gate. It initializes state/task owners, applies source-local Uma driver mode, loads the profile document, registers input events, and performs the indicator getter. These are distinct observations and writes.",
+            "identity": "Serial decoder retains every printable ASCII byte32..126, including printable bytes after NUL. A successful empty query maps to NOSERIALNUMBER; a thrown getter returns empty. Edition getter retries three times with100ms only between failures and decodes layout/edition/firmware bytes. The mounted identity projection fixes layoutId0 and accepts only source-listed editions.",
+            "uma_mode": "Uma overrides get/setDeviceMode using only its isDriverMode flag. Its local SUCCESS result does not establish a HID device-mode transaction.",
+            "indicator_initialization": "The mounted getter dispatches its runtime action only for a truthy jsonData.status. Empty responses and zero do not dispatch. Nonzero unknown bytes retain their source value. The ordinary runtime task can subsequently persist and submit SET; the getter alone is not a successful write.",
+            "initialization_failure": "The complete gn setup has no catch around the indicator getter; its rejection propagates through mn(B7) and onLoad to the top-level diagnostic catch. gn sets yn before state/task/profile initialization, so a subsequent B7 can be stopped by its already-setup guard. No automatic two-second serial or indicator retry is established by this chain.",
+            "serial_reconnect": "A thrown serial query leaves an empty source serial and reaches the early setup gate after hardware registration. The normal wireless CONNECT_EVENT path calls B7 when setupStatus is READY and serial remains empty. The source generic-devicePowerMode path can call gn directly, but the PID179 main configuration does not enable that feature.",
+            "preinitialization_actions": "18863.Q.enqueueEvent first calls static get, which throws when Q.init has not created its instance; it does not retain a pending preinitialization queue. The UI indicator reducer remains optimistic. This source behavior does not justify persisting an intent as a confirmed device save.",
+            "indicator_command": "Eo puts both persistence and SET dispatch inside deviceAccess. Normal UI/runtime actions save the profile value and version before queuing SET and posting source UI state. The runner writes once and updates its memory cache only after the call succeeds. It performs no getter readback and no optimistic rollback.",
+            "macro_exclusive": "The shared macro gate allows updateLocalStorage without deviceAccess while exclusive recording runs. For this indicator task the outer deviceAccess guard therefore suppresses both persistence and SET, while the UI reducer retains its optimistic choice.",
+            "pairing": "The mounted dialog queries BIND_INFO with an empty object, scans with status1 and uppercased category, binds mode1 plus the complete selected candidate, and unbinds the actual paired dongle ID. Hardware events drive scan/pair completion; transport acknowledgement alone does not confirm pairing.",
+            "cancel": "Cancel ignores category, clears the source scanning flag and sends scan4 through the primary runtime instance even while idle. Starting a scan separately chooses a category factory. Cancel catches command failure for diagnostics; it does not fabricate a success response.",
+            "transport": "Uma inherits Linker transaction namespace224 and modulo31 sequence. Scan and pairing-mode command IDs clear namespace bits; other commands keep them. Its selected main channel uses reportId0, claimInterface0 and91-byte host writes. Complete Linker retries and base response matching are retained separately from UI status.",
+            "excluded_online": "Complete original factories include remote firmware-version/catalog orchestration. Those source branches are retained as evidence only and are excluded from local product dispatch under AGENTS.md.",
+        }}
+
+
+def audit_receiver_local_runtime(args):
+    """Write a reproducible selected PID179 source audit, preserving failures."""
+    import host
+    if args.family != "accessories" or args.function != "main" or args.product not in (None, [], [179]) or args.prepare:
+        raise ValueError("receiver-local-runtime requires accessories main and only product179; it never executes vendor code")
+    audit = host.HostLocalAudit()
+    result = receiver_179_local_sources(audit)
+    changed = audit.final_snapshot()
+    if changed:
+        raise ValueError("Current PID179 evidence changed during query: " + repr(changed))
+    result.update(schema_version=1, recorded_at_utc=a.stamp(), product_id=179,
+        tool=identity(Path(__file__)), parsers=audit.parser_versions, complete_owners=audit.owners,
+        original_inputs=list(audit.sources.values()), artifacts=list(audit.artifacts.values()),
+        inputs_unchanged=True, target_execution=False, whole_page_complete=False,
+        selected_chain_status="statically_traced", unresolved_chains=[],
+        validation={"source_acquisition": "Current HTML, manifests, declared originals and actual bytes verified",
+            "source_extraction": "Complete original AST owners and enclosing factories retained; failed prior Wakaru validate stages remain in source_sets",
+            "rust_implementation": "Owned by the product, protocol, store, IPC and shell modules; source retention does not verify implementation equivalence",
+            "static_or_mock_tests": "Reported separately by the maintained verification suites",
+            "runtime_acceptance": "unverified", "device_or_service_writeback": "unverified"},
+        reproduction={"command": "python -X utf8 tools/workspace.py audit-family-function --family accessories --function main --query receiver-local-runtime --product 179"})
+    output = a.ROOT / ".analysis/results/frontend/receiver-local-runtime-audit.json"
+    a.save(output, result)
+    print(json.dumps({"receipt": a.rel(output), "product_id": 179, "complete_owners": len(audit.owners),
+        "complete_factories": len(result["complete_factories"]), "inputs_unchanged": True,
+        "selected_chain_status": result["selected_chain_status"], "target_execution": False,
+        "runtime_acceptance": "unverified"}), flush=True)
+
+
 def audit_receiver_page_layout(args):
     """Reuse current receiver captures for page insets, modal owners and images.
 
@@ -11296,8 +13693,9 @@ def audit_receiver_page_layout(args):
                "runtime_acceptance": "unverified"}
         rows.append(row)
         try:
-            acquisition_path = a.ROOT / f".analysis/inputs/frontend/{namespace}-{pid}-current/acquisition.json"
-            capture_path = a.ROOT / f".analysis/results/frontend/{namespace}-{pid}-current/analysis.json"
+            source_family = "keyboard" if pid == 756 else "accessories"
+            acquisition_path = a.ROOT / f".analysis/inputs/frontend/{source_family}-{pid}-current/acquisition.json"
+            capture_path = a.ROOT / f".analysis/results/frontend/{source_family}-{pid}-current/analysis.json"
             acquired = json.loads(acquisition_path.read_bytes())
             captured = json.loads(capture_path.read_bytes())
             if not acquired.get("source_current_during_acquisition") or not captured.get("input_bytes_unchanged"):
@@ -11426,6 +13824,11 @@ def audit_receiver_page_layout(args):
             }
         except (OSError, ValueError, KeyError, StopIteration) as error:
             row["failures"].append(type(error).__name__ + ":" + str(error))
+        if pid in (164, 241):
+            try:
+                row["help_reset"] = receiver_help_reset_sources(pid, acquire=getattr(args, "prepare", False))
+            except (OSError, ValueError, KeyError, StopIteration, TypeError) as error:
+                row["failures"].append("help_reset:" + type(error).__name__ + ":" + str(error))
         print(json.dumps({"product_id": pid, "complete_functions": len(row["complete_functions"]),
                           "unresolved_chains": len(row["unresolved_chains"]), "failures": row["failures"]}), flush=True)
     host_viewport = {"failures": [], "complete_original_files": [], "complete_functions": [],
@@ -11512,14 +13915,41 @@ def audit_receiver_page_layout(args):
     except (OSError, ValueError, KeyError, StopIteration) as error:
         host_viewport["failures"].append(type(error).__name__ + ":" + str(error))
 
+    preparation = None
+    if getattr(args, "prepare", False):
+        import typed_tables
+        reset_rows = [row["help_reset"]["defaults"] for row in rows if row.get("help_reset")]
+        if {row["product_id"] for row in reset_rows} != {164, 241}:
+            raise ValueError("Reset maintenance publication requires both complete current source products")
+        source_path = a.ROOT / typed_tables.RESET_INPUT
+        a.save(source_path, {"schema_version": 1, "products": reset_rows})
+        generated = typed_tables.render_reset_storage(source_path.read_bytes())
+        destination = a.ROOT / typed_tables.RESET_OUTPUT
+        # Restoring a missing input must preserve every typed field and branch.
+        prior = destination.read_bytes()
+        normalized = lambda value: re.sub(rb"Maintenance input SHA-256: [0-9a-f]{64}", b"Maintenance input SHA-256: SOURCE", value)
+        if normalized(prior) != normalized(generated):
+            raise ValueError("Current receiver defaults differ from the existing complete typed table")
+        destination.write_bytes(generated)
+        preparation = {"input": identity(source_path), "output": identity(destination),
+            "source_fields_equal_existing_typed_output": True, "owner": "receiver_help_reset_sources"}
+        a.index_files([{**identity(source_path), "kind": "typed_maintenance_input",
+                       "source_receipt": ".analysis/results/frontend/receiver-page-layout-audit.json"}])
     report = {"schema_version": 2, "recorded_at_utc": a.stamp(), "query_tool": query_tool,
               "static_parser": {"tree_sitter": importlib.metadata.version("tree-sitter"),
                                 "tree_sitter_javascript": importlib.metadata.version("tree-sitter-javascript")},
-              "products": rows, "complete_modules": modules, "host_viewport": host_viewport, "target_execution": False,
+              "products": rows, "complete_modules": modules, "host_viewport": host_viewport,
+              "maintenance_preparation": preparation, "target_execution": False,
               "limitations": ["No CSS cascade evaluation, browser layout or vendor JavaScript execution",
                               "Missing source maps and capture failures are retained per input",
                               "Source acquisition/static query are separate from implementation and real-window acceptance"]}
     output = a.ROOT / ".analysis/results/frontend/receiver-page-layout-audit.json"
+    if output.is_file():
+        previous = json.loads(output.read_bytes())
+        previous_rows = {row["product_id"]: row for row in previous.get("products", [])}
+        previous_rows.update({row["product_id"]: row for row in rows})
+        report["products"] = [previous_rows[pid] for pid in sorted(previous_rows)]
+        report["complete_modules"] = {**previous.get("complete_modules", {}), **modules}
     a.save(output, report)
     failures = sum(len(row["failures"]) + len(row["unresolved_chains"]) for row in rows) + len(host_viewport["failures"])
     print(json.dumps({"report": identity(output), "products": len(rows), "failures": failures}), flush=True)
@@ -12219,11 +14649,12 @@ def audit_mouse_receiver_polling(args):
         spec_path = a.builtin_data_path("razer-pages", "MOUSE_PRODUCTS_DATA")
         specs = json.loads(spec_path.read_bytes())
         product_spec = next(item for item in specs if item["product_id"] == 182)
-        product_spec["profile"] = default_profile
-        product_spec["device_profile"] = default_devices[0]
-        a.save(spec_path, specs)
+        require("profile" not in product_spec and "device_profile" not in product_spec,
+                "PID182 fixed defaults must remain with their typed device owner")
+        default_owner = identity(a.ROOT / "crates/razer-device/src/profile_transfer/mouse_defaults.rs")
         row["default_profile"] = {"owner": "3298.DEFAULTPROFILE/C", "value": default_profile,
-                                  "generated": identity(spec_path)}
+                                  "rust_owner": default_owner,
+                                  "runtime_source": "razer_device::profile_transfer::default_profile_182"}
         retain("main.js", "initialization_device_mode_and_macro_storage_keys", module_id=70035)
         retain("6259.js", "OBM_identity_complete_guid_name_owner_reader", module_id=58689)
         retain("7303.js", "OBM_inventory_actual_profile_id_order_and_identity_loader", module_id=77303)
@@ -12260,13 +14691,14 @@ def audit_mouse_receiver_polling(args):
         require("e.deviceMetadatas[t].activeProfileGuid" in source_cache
                 and "void 0!==e.isDefault&&!0===n" in source_cache,
                 "PID182 serial selection/default-marker persistence semantics differ")
-        product_spec["profile_schema_version"] = 13
-        a.save(spec_path, specs)
+        require(product_spec.get("profile_schema_version") == 13,
+                "PID182 maintained profile schema differs from its current source")
         row["profile_lifecycle"] = {"root": default_devices[0], "schema_version": 13,
             "profile_owner": "3298.C/G/F", "storage_owner": "77846.w/k/A/T/M", "startup_owner": "90012.fn/Dn/Mn",
             "selection": "Per-serial deviceMetadatas.activeProfileGuid; absent metadata creates a new default for that serial; an existing dangling GUID is not replaced by the first profile",
             "initialization": "UUID v4 and computerName-Default, schema13/isDefault=true; initial Pf(false) retains marker, subsequent mutation clears it; source cache is not a device GET result",
-            "generated": identity(spec_path)}
+            "rust_owner": default_owner, "presentation_catalog": identity(spec_path),
+            "runtime_source": "razer_device::profile_transfer::default_device_182"}
         dpi_state_machine = retain("6259.js", "DPI_idle_macro_recorder_guard_and_exclusive_modes", module_id=83789)
         dpi_task_queue = retain("6259.js", "DPI_task_queue_skipping_abort_and_settlement", module_id=81988)
         dpi_hardware = retain("6259.js", "complete_hardware_notification_handler_and_registration", module_id=84910)
@@ -12964,8 +15396,7 @@ def audit_mouse_receiver_indicator(args):
                     else:
                         acquired["files"].append(image)
                     files[url] = image
-                    a.save(receipt_path, acquired)
-                    index_rows([image], receipt_path)
+                    publish_frontend_acquisition(receipt_path, acquired)
                 if image is None or not valid(image):
                     raise ValueError("Receiver resource bytes do not verify")
                 row.setdefault("resources", []).append({"original": image, "alias": alias})
@@ -13936,6 +16367,1345 @@ def review_legacy_host_native():
     return result
 
 
+def compare_global_shortcut_mapping(actual, oracle):
+    """Compare every source field while retaining genuine product branches."""
+    fields = {"keys", "default_turbo_ids", "turbo_events", "constants"}
+    constant_fields = {"SINGLE_STATE_INPUT_ID", "SCROLL_INPUT_ID", "SCROLL_TURBO_DELAY_MS"}
+    if (set(actual) != fields or set(actual["constants"]) != constant_fields or not actual["keys"]
+            or not actual["default_turbo_ids"] or len(set(actual["default_turbo_ids"])) != len(actual["default_turbo_ids"])
+            or set(actual["turbo_events"]) != set(actual["default_turbo_ids"])):
+        raise ValueError("Dashboard complete mapping vocabulary is incomplete or ambiguous")
+    comparisons = {}
+    for pid, expected in oracle.items():
+        if set(expected) != fields:
+            raise ValueError("Shared mapping oracle has incomplete fields for product " + pid)
+        comparisons[pid] = {key: actual[key] == expected[key] for key in actual}
+    if not all(comparisons.get("70", {}).values()) or "70" not in comparisons or not all(row["keys"] for row in comparisons.values()):
+        raise ValueError("Dashboard complete mapping data differs from the shared typed-table oracle")
+    return comparisons
+
+
+def global_shortcut_default_turbos(audit, source, module):
+    """Resolve the default list inside its actual generator, without JS execution."""
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+    tree = audit.tree(source)
+    generators = []
+    for node in walk(tree.root_node):
+        if node.type != "assignment_expression" or not module["byte_start"] <= node.start_byte < node.end_byte <= module["byte_end"]:
+            continue
+        left = node.child_by_field_name("left")
+        if left.type == "member_expression" and left.child_by_field_name("object").type == "this" and left.child_by_field_name("property").text == b"generateDefaultTurbos":
+            generators.append(node)
+    if len(generators) != 1:
+        raise ValueError("Dashboard default generator is absent or ambiguous")
+    defaults = []
+    for node in walk(generators[0].child_by_field_name("right")):
+        if node.type == "assignment_expression":
+            left, right = node.child_by_field_name("left"), node.child_by_field_name("right")
+            if (left.type == "member_expression" and left.child_by_field_name("object").type == "this"
+                    and left.child_by_field_name("property").text == b"defaultTurbos"):
+                builder = None
+                if right.type == "call_expression":
+                    function, arguments = right.child_by_field_name("function"), right.child_by_field_name("arguments").named_children
+                    if function.type != "member_expression" or function.child_by_field_name("property").text != b"map" or len(arguments) != 1:
+                        raise ValueError("Dashboard default list uses an unresolved transform")
+                    callback = arguments[0]
+                    parameter = callback.child_by_field_name("parameter")
+                    body = callback.child_by_field_name("body")
+                    if (callback.type != "arrow_function" or parameter is None or body is None or body.type != "call_expression"
+                            or body.child_by_field_name("function").type != "identifier"
+                            or [child.text for child in body.child_by_field_name("arguments").named_children] != [parameter.text]):
+                        raise ValueError("Dashboard default record builder is unresolved")
+                    reference = body.child_by_field_name("function")
+                    builder = audit.binding("dashboard_default_turbo_builder", source, reference.text.decode(), reference.start_byte)
+                    if builder["resolution"] != "declaration":
+                        raise ValueError("Dashboard default record builder has no lexical owner")
+                    right = function.child_by_field_name("object")
+                if right.type != "array":
+                    raise ValueError("Dashboard default list is not a complete literal array")
+                defaults.append((right, builder))
+    if len(defaults) != 1:
+        raise ValueError("Dashboard default list is absent or ambiguous inside its generator")
+    owner = audit.retain_range("dashboard_default_turbo_generator", source, generators[0].start_byte, generators[0].end_byte, "complete_source_assignment")
+    return static_js_literal(defaults[0][0].text.decode()), owner, defaults[0][1]
+
+
+def validate_shortcut_capture_keys(rows):
+    """Require every mounted-recorder field without merging compiler metadata."""
+    required = {"name": str, "type": str, "scancode": int, "virtualKey": str, "keyCode": str, "flag": int}
+    optional = {"inputID": str, "outputFlag": int, "pageID": str, "HID": str, "modifier": str, "ExtendedKey": str}
+    if type(rows) is not list or not rows:
+        raise ValueError("Mounted recorder keys must be a complete ordered list")
+    for row in rows:
+        if type(row) is not dict or not required.keys() <= row.keys() or not row.keys() <= required.keys() | optional.keys():
+            raise ValueError("Mounted recorder key fields differ from the complete source schema")
+        for name, value in row.items():
+            if type(value) is not (required | optional)[name] or (type(value) is int and not 0 <= value < 2**32):
+                raise ValueError("Mounted recorder key field has an invalid type or range: " + name)
+    return rows
+
+
+def shortcut_capture_sources(audit, modules, roles):
+    """Retain the UI-specific key table and the current DKM producer closure."""
+    keys_source = modules[46114][0]
+    exported = audit.webpack_export("shortcut_capture_keys", [keys_source], 46114, "Rk")
+    roles["shortcut_capture_keys"] = exported["binding"]["owner_id"]
+    declaration = exported["binding"]["body"]
+    keys = validate_shortcut_capture_keys(static_js_literal(declaration[declaration.index("=") + 1:]))
+    maintained = a.ROOT / ".analysis/inputs/typed-tables/razer-model/shortcut_capture_keys.json"
+    if json.loads(audit.artifact(maintained)) != keys:
+        raise ValueError("Maintained capture protocol table differs from the original fields or row order")
+    import rust_data
+    recipes = json.loads(audit.artifact(a.ROOT / "tools/typed-data.json"))
+    recipe = next(row for row in recipes["tables"] if row["symbol"] == "SHORTCUT_CAPTURE_KEYS")
+    if recipe.get("storage") != "rust" or recipe.get("excluded_evidence_fields") or recipe.get("external_json_boundaries"):
+        raise ValueError("Capture protocol keys must remain a complete ordinary typed Rust table")
+    generation = rust_data.build_table(recipe["crate"], recipe["symbol"], recipe["module"], recipe["root_type"],
+        source=recipe["source"], macro_name=recipe["macro"], check=True)
+
+    receipt = a.ROOT / ".analysis/inputs/frontend/keyboard-mw-708-current/acquisition.json"
+    acquired = json.loads(audit.artifact(receipt))
+    if not acquired.get("source_current_during_acquisition"):
+        raise ValueError("Current DKM middleware deployment stability is unverified")
+    files = [row for row in acquired["files"] if row.get("path", "").endswith(".js")]
+    def original(prefix):
+        found = [row for row in files if Path(row["path"]).name.startswith(prefix)]
+        if len(found) != 1:
+            raise ValueError("Current DKM original is absent or ambiguous: " + prefix)
+        return found[0]
+    main, middleware = original("main."), original("6737.")
+    dkm = audit.webpack_export("shortcut_capture_dkm_keys", [main], 26061, "DKMKEYS")
+    dkm_declaration = dkm["binding"]["body"]
+    dkm_keys = static_js_literal(dkm_declaration[dkm_declaration.index("=") + 1:])
+    for row in dkm_keys:
+        if (type(row) is not dict or not {"inputID", "buttonKey", "key"} <= row.keys()
+                or not row.keys() <= {"inputID", "buttonKey", "key", "scancodeRedirect"}
+                or any(type(row[name]) is not str for name in ("inputID", "buttonKey"))
+                or type(row["key"]) is not int
+                or ("scancodeRedirect" in row and type(row["scancodeRedirect"]) is not int)):
+            raise ValueError("Current DKM key schema is incomplete")
+    device = audit.webpack_export("shortcut_capture_dkm_device", [main], 26061, "DeviceInfo")
+    device_node = audit.tree(main).root_node.descendant_for_byte_range(device["binding"]["start_byte"], device["binding"]["end_byte"] - 1)
+    while device_node is not None and device_node.type != "variable_declarator":
+        device_node = device_node.parent
+    if device_node is None:
+        raise ValueError("Current DKM product branches have no complete declaration")
+    branches = {pair.child_by_field_name("key").text.decode(): static_js_literal(pair.child_by_field_name("value").text.decode())
+        for pair in device_node.child_by_field_name("value").named_children if pair.type == "pair"
+        and pair.child_by_field_name("key").text in {b"productId", b"bleId", b"dongleId"}}
+    if branches != {"productId": 708, "bleId": 707, "dongleId": 706}:
+        raise ValueError("Current DKM product/connection branches differ")
+    redirects = {row["key"]: row["scancodeRedirect"] for row in dkm_keys if row.get("scancodeRedirect")}
+    if redirects != {251: 14, 252: 48, 253: 57}:
+        raise ValueError("Current DKM scan redirect differs from the typed decoder")
+    producer = audit.webpack_export("shortcut_capture_runtime_producer", [middleware], 51765, "w6")
+    roles["shortcut_capture_dkm_keys"] = dkm["binding"]["owner_id"]
+    roles["shortcut_capture_dkm_product_branches"] = device["binding"]["owner_id"]
+    roles["shortcut_capture_dkm_runtime_storage"] = producer["binding"]["owner_id"]
+    audit.retain("shortcut_capture_dkm_startup", middleware, "P.DKMKEYS&&", {"generator_function"})
+    storage_modules = [row for row in keyboard_source_modules(audit.read(middleware).decode()) if row["module_id"] == 52844]
+    if len(storage_modules) != 1:
+        raise ValueError("Current connected-device storage constants are absent or ambiguous")
+    storage_module = storage_modules[0]
+    constants_owner = audit.retain_range("shortcut_capture_runtime_storage_key_factory", middleware,
+        storage_module["byte_start"], storage_module["byte_end"], "complete_webpack_factory")
+    constants_literal = audit.retain("shortcut_capture_runtime_storage_key", middleware, '"R9",0,{DEVICE_RUNTIME_DATA:', {"array"})[0]
+    constants_body = audit.owners[constants_literal]["body"]
+    entries = static_js_literal(constants_body)
+    constants = [entries[ix + 2] for ix in range(0, len(entries), 3)
+        if entries[ix] == "R9" and entries[ix + 1] == 0]
+    if len(constants) != 1 or constants[0].get("DEVICE_RUNTIME_DATA") != "connectedDevices":
+        raise ValueError("Current connected-device runtime storage export differs")
+    constants = {"complete_factory_owner": constants_owner, "export": "52844.R9", "value": constants[0]}
+
+    dashboard_receipt = a.ROOT / ".analysis/inputs/frontend/synapse-dashboard-current/acquisition.json"
+    dashboard = json.loads(audit.artifact(dashboard_receipt))
+    app = [row for row in dashboard["files"] if Path(row.get("path", "")).name.startswith("App.") and row.get("path", "").endswith(".js")]
+    if len(app) != 1:
+        raise ValueError("Current Dashboard connected-device observer is absent or ambiguous")
+    # These complete lexical declarations keep transformation, insertion, initial
+    # read and storage notification semantics together with the mounted hook.
+    source = app[0]
+    body = audit.read(source)
+    observer_modules = [row for row in keyboard_source_modules(body.decode()) if row["module_id"] == 35378]
+    if len(observer_modules) != 1:
+        raise ValueError("Dashboard connected-device observer factory is absent or ambiguous")
+    observer_scope = observer_modules[0]
+    roles["shortcut_capture_connected_device_factory"] = audit.retain_range("shortcut_capture_connected_device_factory", source,
+        observer_scope["byte_start"], observer_scope["byte_end"], "complete_webpack_factory")
+    for name, role in (("tt", "device_projection"), ("st", "valid_device_insertion"),
+                       ("$e", "valid_device_action"), ("ot", "connected_device_initial_read_and_listener")):
+        binding = audit.binding("shortcut_capture_" + role, source, name, observer_scope["byte_end"] - 2)
+        if binding["resolution"] != "declaration":
+            raise ValueError("Dashboard connected-device producer is unresolved: " + name)
+        roles["shortcut_capture_" + role] = binding["owner_id"]
+    return {"keys_export": exported, "maintenance_input": identity(maintained), "ordered_keys": len(keys),
+        "typed_rust_generation": generation,
+        "schema_fields": sorted({name for row in keys for name in row}),
+        "dkm_acquisition": identity(receipt), "dkm_keys": dkm, "dkm_complete_rows": dkm_keys,
+        "dkm_device": device, "dkm_runtime_storage": producer, "dkm_storage_key": constants,
+        "dkm_product_branches": branches, "dkm_redirects": redirects,
+        "semantics": "708/707/706 share DKMKEYS; middleware merges dkmKeys into runtimeData and publishes connectedDevices; Dashboard retains that field through its initial read, storage listener, projection and validDevices reducer. Capture applies the first valid 706/707/708 device's truthy scancodeRedirect only for events from those products."}
+
+
+def global_shortcut_runtime_owners(audit, modules, roles):
+    """Retain current mounted callers, storage observers and native adapters."""
+    import host
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+    def module(identifier, role):
+        source, descriptor = modules[identifier]
+        root = audit.tree(source).root_node.descendant_for_byte_range(descriptor["byte_start"], descriptor["byte_end"] - 1)
+        while root is not None and root.start_byte != descriptor["byte_start"]:
+            root = root.parent
+        if root is None:
+            raise ValueError("Dashboard runtime factory has no complete AST owner: " + str(identifier))
+        roles[role] = audit.retain_range(role, source, root.start_byte, root.end_byte, root.type)
+        return source, root
+    def member(source, root, name, role, receiver=None):
+        node, roles[role] = audit.callable_member(role, source, root, name, receiver=receiver)
+        return node
+    def binding(source, root, name, role):
+        resolved = audit.binding(role, source, name, root.end_byte - 2)
+        if resolved["resolution"] != "declaration":
+            raise ValueError("Dashboard runtime lexical owner is unresolved: " + role)
+        roles[role] = resolved["owner_id"]
+        return resolved
+    factory_source, factory = module(42358, "mapping_factory_runtime")
+    for name, role in (("O", "macro_output"), ("fe", "windows_shortcut_output"),
+                       ("yt", "windows_launch_paths"), ("ot", "default_turbo_lookup"), ("we", "output_dispatch")):
+        binding(factory_source, factory, name, role)
+    launch_source, launch = module(74488, "launch_output_factory")
+    launch_export = audit.webpack_export("dashboard_launch_output", [launch_source], 74488, "o")
+    roles["launch_output"] = launch_export["binding"]["owner_id"]
+    for name in ("setIsGlobalShortcuts", "getDefaultTurbos", "setDefaultTurbos", "getSynapseTurbos", "setSynapseTurbos",
+                 "getAppEngineMapping", "generateAppEngineMappings"):
+        member(factory_source, factory, name, "mapping_factory_" + name, "this")
+    store_source, store = module(59007, "runtime_shortcut_store")
+    member(store_source, store, "customizeReducer", "shortcut_compile_and_publish_reducer")
+    for name, role in (("ye", "shortcut_input_duplication"), ("f", "dashboard_macro_storage"),
+                       ("B", "dashboard_macro_snapshot"), ("b", "dashboard_macro_publish"),
+                       ("V", "dashboard_macro_reducer")):
+        binding(store_source, store, name, role)
+    page_source, page = module(94608, "mounted_shortcut_page")
+    init = next(node for node in walk(page) if node.type == "assignment_expression"
+        and node.child_by_field_name("left").text == b"this.initDefaultTurbos")
+    container = init.parent
+    while container is not None and container.type not in {"class_declaration", "class"}:
+        container = container.parent
+    if container is None:
+        raise ValueError("Mounted shortcuts have no lifecycle owner")
+    for name in ("initDefaultTurbos", "setDataToMappingEngine", "loadShortcuts", "loadShortcutsFromMappings",
+                 "updateMappingToButton", "updateShortcut", "assignMacroGroup", "addNewShortcut", "duplicateShortcut"):
+        member(page_source, container, name, "shortcut_page_" + name, "this")
+    for name in ("componentDidMount", "componentDidUpdate", "componentWillUnmount"):
+        member(page_source, container, name, "shortcut_page_" + name)
+    row_anchor = member(page_source, page, "updateMappingFromEvents", "shortcut_row_warning_to_mapping", "this")
+    row_class = row_anchor.parent
+    while row_class is not None and row_class.type not in {"class_declaration", "class"}:
+        row_class = row_class.parent
+    if row_class is None:
+        raise ValueError("Shortcut warning has no mounted row owner")
+    roles["shortcut_complete_row"] = audit.retain_range("shortcut_complete_row", page_source,
+        row_class.start_byte, row_class.end_byte, row_class.type)
+    for name in ("hasShortcutDuplicates", "updateMapping", "getModifiers", "updateKeyInputMapping",
+                 "updateMouseInputMapping", "removeMapping", "renderWarning", "renderShortcutKey"):
+        member(page_source, row_class, name, "shortcut_row_" + name, "this")
+    member(page_source, row_class, "componentDidUpdate", "shortcut_row_warning_revalidation")
+    capture_anchor = member(page_source, page, "startListen", "shortcut_capture_start", "this")
+    capture_class = capture_anchor.parent
+    while capture_class is not None and capture_class.type not in {"class_declaration", "class"}:
+        capture_class = capture_class.parent
+    if capture_class is None:
+        raise ValueError("Shortcut input capture has no retained owner")
+    roles["shortcut_complete_capture"] = audit.retain_range("shortcut_complete_capture", page_source,
+        capture_class.start_byte, capture_class.end_byte, capture_class.type)
+    for name in ("stopListen", "enableInputRedirect", "disableInputRedirect", "isValidDevicesInputRedirect",
+                 "isKeyAllowedToRecord", "getKey", "handleKeyDown", "handleKeyUp", "onInputRedirectEvent",
+                 "hypershiftKeyListener", "isHypershiftKey", "onMouseUp", "clickAway"):
+        member(page_source, capture_class, name, "shortcut_capture_" + name, "this")
+    member(page_source, capture_class, "componentDidUpdate", "shortcut_capture_focus_change")
+    for name in ("Ce", "fe", "ye", "Se", "xe", "de", "he", "ue", "ge", "ve", "me"):
+        binding(page_source, capture_class, name, "shortcut_capture_constant_" + name)
+    loader_source, loader = module(69782, "shortcut_storage_loader")
+    member(loader_source, loader, "loadMappingEngine", "shortcut_storage_load_and_native_publish", "this")
+    binding(loader_source, loader, "E", "shortcut_empty_native_document")
+    _, observer = module(38683, "dashboard_storage_observer")
+    observer_source = modules[38683][0]
+    member(observer_source, observer, "synapseGlobalShortcuts", "shortcut_storage_change_callback")
+    binding(observer_source, observer, "Y", "dashboard_storage_observer_mount_and_cleanup")
+    module(10642, "dashboard_macro_change_listener")
+    module(22478, "dashboard_browser_storage_adapter")
+    module(17922, "dashboard_storage_key_constants")
+    adapter_source, adapter = module(39356, "dashboard_native_mapping_adapter")
+    for name in ("localStorageSetItem", "enableMapping", "disableMapping", "enableGlobalShortcut", "disableGlobalShortcut", "callMappingEngineAction"):
+        member(adapter_source, adapter, name, "dashboard_mapping_adapter_" + name, "this")
+    host_sources = host.verified_host_owners(audit, ("electron/modules/mapping_engine/win/index.js",))
+    host_original = host_sources["electron/modules/mapping_engine/win/index.js"]["original"]
+    for name in ("callDLL", "callDLLAsync", "localStorageSetItem", "enableMapping", "disableMapping", "enableGlobalShortcut", "disableGlobalShortcut",
+                 "createCbGlobalShortcutEnableEvent", "registerGlobalShortcut", "unregisterGlobalShortcuts"):
+        _, roles["host_mapping_" + name] = audit.callable_member("host_mapping_" + name,
+            host_original, audit.tree(host_original).root_node, name)
+    macro_receipt = a.ROOT / ".analysis/inputs/frontend/synapse-macro-current/acquisition.json"
+    macro_acquired = json.loads(audit.artifact(macro_receipt))
+    if not macro_acquired.get("source_current_during_acquisition"):
+        raise ValueError("Current macro deployment stability is unverified")
+    macro_files = [row for row in macro_acquired["files"] if row.get("path", "").endswith(".js")
+                   and not row["path"].endswith("/react.js")]
+    macro_mains = [row for row in macro_files if re.search(r"/static/js/main\.[^/]+\.js$", row["path"])]
+    if len(macro_mains) != 1:
+        raise ValueError("Current macro publisher original is absent or ambiguous")
+    macro_source = macro_mains[0]
+    for role, anchor, kind in (("macro_complete_document_transform", "function Js(", "function_declaration"),
+                              ("macro_document_key_selection", "qs=async function(", "variable_declarator")):
+        retained = audit.retain(role, macro_source, anchor, {kind})
+        roles[role] = retained[0]
+    macro_exports = {name: audit.webpack_export("macro_publish_" + name, macro_files, identifier, name)
+        for identifier, name in ((69937, "w9p"), (69937, "Y9B"), (62141, "Il"))}
+    for name, exported in macro_exports.items():
+        roles["macro_publish_export_" + name] = exported["binding"]["owner_id"]
+    browser_gate = host.retain_no_browser_input_handler(audit)
+    roles.update({"shortcut_" + role: owner for role, owner in browser_gate["owners"].items()})
+    return {"host_sources": host_sources, "macro_acquisition": identity(macro_receipt),
+        "host_browser_input_gate": browser_gate,
+        "capture_sources": shortcut_capture_sources(audit, modules, roles),
+        "macro_exports": macro_exports, "native_lifetime": host.retain_global_shortcut_storage_lifetime(audit),
+        "semantics": {
+            "default_turbos": "Mounted shortcut container reuses stored defaults or generates and stores the complete ordered list",
+            "ordinary_edit": "customizeReducer compiles mappings, appends source input variants, hashes and publishes native appEngine plus the local editable document",
+            "storage_notification": "The source storage callback dispatches its distinct update; its reducer recompiles and publishes native appEngine",
+            "row_warning": "Mounted row computes duplicate key text or the same input/modifier/hypershift tuple, keeps the attempted input for row display and sets that mapping's hasWarning; store publication clears warned inputID/modifiers in its derived local/native document",
+            "row_warning_revalidation": "A warned inactive row recomputes its attempted key events when the shortcut-updated flag or mapping-list length changes",
+            "unsupported_event": "The current native adapter emits globalshortcutunsupportedmappingevent but current mounted Oe and Te contain no subscription or handler; native type3 is not source evidence for a row warning",
+            "shortcut_capture": "Mounted input capture disables/re-enables active mapping only, owns input redirect and device-mode subscriptions, preserves browser/native modifier and hypershift rules, and republishes the stored appEngine on stop",
+            "shortcut_capture_cleanup_boundary": "The current capture source has stop-on-outside/focus-change but no capture unmount cleanup; Rust lifetime cleanup must not infer an unobserved original native callback join",
+            "macro_list": "Both native macro keys receive the same complete transformed savedMacros list; currentProfile macroType selects which key is published",
+            "source_cleanup": "The mounted storage hook removes its storage listener and MacroStorage change listener on cleanup",
+            "success": "Native storage publication is distinct from parser acceptance, OS effects and device write-back"},
+        "limitations": ["Excluded account gating is recorded only as source evidence and does not authorize an account feature",
+            "Complete original owners and bounded native slices do not constitute whole-page or runtime acceptance"]}
+
+
+def audit_global_shortcut_mapping(args):
+    """Check the Dashboard factory's entire shared mapping vocabulary."""
+    import host
+    if args.function != "main" or args.prepare:
+        raise ValueError("global-shortcuts is an evidence-only current Dashboard main query")
+    audit = host.HostLocalAudit()
+    receipt = a.ROOT / ".analysis/inputs/frontend/synapse-dashboard-current/acquisition.json"
+    acquired = json.loads(audit.artifact(receipt))
+    if not acquired.get("source_current_during_acquisition"):
+        raise ValueError("Current Dashboard deployment stability is unverified")
+    files = [row for row in acquired["files"] if row.get("path") and row["path"].endswith(".js")]
+    selected = [row for row in files if any(Path(row["path"]).name.startswith(prefix) for prefix in ("main.", "2280.", "55.", "4608."))]
+    if len(selected) != 4:
+        raise ValueError("Dashboard current main, mapping and store originals are absent or ambiguous")
+    modules = {}
+    for source in selected:
+        for item in keyboard_source_modules(audit.read(source).decode()):
+            identifier = item["module_id"]
+            if identifier in modules:
+                raise ValueError("Dashboard mapping factory ID is ambiguous: " + str(identifier))
+            modules[identifier] = (source, item)
+    owners = {}
+    def module(identifier, role):
+        if identifier not in modules:
+            raise ValueError("Dashboard mapping factory is unavailable: " + str(identifier))
+        source, item = modules[identifier]
+        owners[role] = audit.retain_range(role, source, item["byte_start"], item["byte_end"], "complete_webpack_factory")
+        return source, item["body"]
+    keys_source, keys_body = module(629, "keys")
+    keys_export = audit.webpack_export("dashboard_mapping_keys", [keys_source], 629, "R")
+    keys_declaration = keys_export["binding"]["body"]
+    keys = static_js_literal(keys_declaration[keys_declaration.index("=") + 1:])
+    factory_source, factory = module(42358, "factory")
+    default_ids, owners["default_turbo_generator"], builder = global_shortcut_default_turbos(audit, factory_source, modules[42358][1])
+    if builder is None:
+        raise ValueError("Dashboard default records do not resolve through the actual event selector")
+    owners["default_turbo_record_builder"] = builder["owner_id"]
+    selector = re.search(r'\b([\w$]+)\.c\.createEvent\(', builder["body"])
+    if selector is None or not re.search(r'\b' + re.escape(selector[1]) + r'=n\(51480\)', factory):
+        raise ValueError("Dashboard default record builder does not resolve to the complete event selector")
+    event_source, event_body = module(51480, "events_and_selector")
+    event_tree = audit.tree(event_source)
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+    event_module = modules[51480][1]
+    node = event_tree.root_node.descendant_for_byte_range(event_module["byte_start"], event_module["byte_end"] - 1)
+    while node is not None and node.start_byte != event_module["byte_start"]:
+        node = node.parent
+    if node is None:
+        raise ValueError("Dashboard complete event module has no AST owner")
+    classes, events = {}, {}
+    for candidate in walk(node):
+        if candidate.type != "switch_case":
+            continue
+        value = candidate.child_by_field_name("value")
+        news = [child for child in walk(candidate) if child.type == "new_expression"]
+        if value is not None and value.type == "string" and len(news) == 1:
+            classes[static_js_literal(value.text.decode())] = news[0].child_by_field_name("constructor")
+    if set(classes) != set(default_ids):
+        raise ValueError("Dashboard default-event selector differs from the complete default list")
+    for name in default_ids:
+        reference = classes[name]
+        binding = audit.binding("dashboard_event_" + name, event_source, reference.text.decode(), reference.start_byte)
+        if binding["resolution"] != "declaration":
+            raise ValueError("Dashboard event class has no lexical owner: " + name)
+        class_node = event_tree.root_node.descendant_for_byte_range(binding["start_byte"], binding["end_byte"] - 1)
+        while class_node is not None and class_node.type != "variable_declarator":
+            class_node = class_node.parent
+        returned = [child for child in walk(class_node) if child.type == "return_statement"] if class_node is not None else []
+        if len(returned) != 1 or len(returned[0].named_children) != 1 or returned[0].named_children[0].type != "array":
+            raise ValueError("Dashboard event result is not one complete literal array: " + name)
+        events[name] = static_js_literal(returned[0].named_children[0].text.decode())
+    constants_source, constants_body = module(998, "constants")
+    def literal(node, active=()):
+        if node.type in {"number", "string"}:
+            return static_js_literal(node.text.decode())
+        if node.type == "array":
+            return [literal(child, active) for child in node.named_children]
+        if node.type == "identifier" and node.text not in active:
+            binding = audit.binding("dashboard_mapping_constant", constants_source, node.text.decode(), node.start_byte)
+            if binding["resolution"] == "declaration":
+                resolved = audit.tree(constants_source).root_node.descendant_for_byte_range(binding["start_byte"], binding["end_byte"] - 1)
+                while resolved is not None and resolved.type != "variable_declarator":
+                    resolved = resolved.parent
+                if resolved is not None:
+                    return literal(resolved.child_by_field_name("value"), active + (node.text,))
+        raise ValueError("Dashboard mapping constant requires unsupported dynamic evaluation")
+    constants = {}
+    raw = audit.read(constants_source)
+    item = modules[998][1]
+    for name in ("SINGLE_STATE_INPUT_ID", "SCROLL_INPUT_ID", "SCROLL_TURBO_DELAY_MS"):
+        pattern = re.compile(re.escape(name.encode()) + rb':\(\)=>([\w$]+)')
+        matches = list(pattern.finditer(raw, item["byte_start"], item["byte_end"]))
+        if len(matches) != 1:
+            raise ValueError("Dashboard mapping constant export is absent or ambiguous: " + name)
+        match = matches[0]
+        reference = audit.tree(constants_source).root_node.descendant_for_byte_range(match.start(1), match.end(1) - 1)
+        constants[name] = literal(reference)
+    _, factory_export = module(36383, "factory_reexport")
+    _, hash_export = module(95670, "hash_reexport")
+    _, hash_body = module(19019, "hash")
+    _, store = module(59007, "shortcut_store")
+    for identifier, role in ((5371, "canonical_json"), (32937, "md5")):
+        module(identifier, role)
+    if not re.search(r'A:\(\)=>([\w$]+)\.yx\}\);var \1=n\(42358\)', factory_export):
+        raise ValueError("Dashboard shortcut factory re-export no longer resolves to the actual mapping factory")
+    if not re.search(r'Zd:\(\)=>([\w$]+)\.Zd\}\);var \1=n\(19019\)', hash_export):
+        raise ValueError("Dashboard shortcut hash re-export no longer resolves to the shared source hash")
+    factory_alias = re.search(r'\b([\w$]+)=n\(36383\)', store)
+    hash_alias = re.search(r'\b([\w$]+)=n\(95670\)', store)
+    if (factory_alias is None or factory_alias[1] + ".A.generateAppEngineMappings" not in store
+            or hash_alias is None or hash_alias[1] + ".Zd" not in store
+            or "n(32937)" not in hash_body or "n(5371)" not in hash_body):
+        raise ValueError("Dashboard shortcut store/factory/hash call chain differs")
+    oracle_path = a.ROOT / ".analysis/results/frontend/mapping-engine-current-data.json"
+    oracle_raw = oracle_path.read_bytes()
+    oracle = json.loads(oracle_raw)
+    actual = {"keys": keys, "default_turbo_ids": default_ids, "turbo_events": events, "constants": constants}
+    comparisons = compare_global_shortcut_mapping(actual, oracle)
+    runtime = global_shortcut_runtime_owners(audit, modules, owners)
+    changed = audit.final_snapshot()
+    if changed or oracle_path.read_bytes() != oracle_raw:
+        raise ValueError("Dashboard mapping evidence changed during comparison")
+    result = {"recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)), "parsers": audit.parser_versions,
+        "acquisition": identity(receipt), "verified_artifacts": list(audit.artifacts.values()),
+        "complete_owners": audit.owners, "roles": owners,
+        "oracle": {"path": a.rel(oracle_path), "bytes": len(oracle_raw), "sha256": hashlib.sha256(oracle_raw).hexdigest()},
+        "comparisons": comparisons, "runtime": runtime,
+        "counts": {"full_keys": len(keys), "ordered_default_turbos": len(default_ids),
+            "complete_events": len(events), "full_constants": len(constants), "complete_owners": len(audit.owners)},
+        "factory_chain": [59007, 36383, 42358], "hash_chain": [59007, 95670, 19019, 5371, 32937],
+        "default_turbo_event_chain": [42358, 51480],
+        "declared_reference_closure": acquired.get("declared_references_fetched", False),
+        "unresolved_acquisition": acquired.get("unresolved", []),
+        "scope": "Complete source data equality, compiler outputs, mounted runtime/store/macro owners and bounded native storage/cleanup ownership; full runtime acceptance is separate",
+        "target_execution": False, "runtime_acceptance": "unverified", "passed": True}
+    output = a.ROOT / ".analysis/results/frontend/keyboard-mw-audit.json"
+    document = json.loads(output.read_bytes()) if output.is_file() else {"schema_version": 1}
+    document.setdefault("queries", {})["global-shortcuts"] = result
+    a.save(output, document)
+    print(json.dumps({"receipt": a.rel(output), "query": "global-shortcuts", **result["counts"], "passed": True}), flush=True)
+    return result
+
+
+def preference_storage_operations(audit, source, module, *, namespace, key_expression, expected_count):
+    """Retain actual preference calls and their complete enclosing callbacks."""
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+    operations = []
+    for node in walk(module):
+        if node.type != "call_expression":
+            continue
+        function = node.child_by_field_name("function")
+        arguments = node.child_by_field_name("arguments").named_children
+        if function.type != "member_expression" or not arguments or arguments[0].text.decode() != key_expression:
+            continue
+        receiver, method = function.child_by_field_name("object"), function.child_by_field_name("property")
+        if receiver.text.decode() != namespace or method.text not in {b"get", b"set"}:
+            continue
+        if len(arguments) != (1 if method.text == b"get" else 2):
+            raise ValueError("Preference storage call has an unsupported argument count")
+        callback = node.parent
+        while callback is not None and callback != module and callback.type not in {
+                "arrow_function", "function_expression", "function_declaration", "method_definition"}:
+            callback = callback.parent
+        if callback is None or callback == module:
+            raise ValueError("Preference call has no complete callback owner")
+        operations.append({"method": method.text.decode(), "key_expression": key_expression,
+            "value_source": arguments[1].text.decode() if len(arguments) == 2 else None,
+            "byte_start": node.start_byte,
+            "call_owner": audit.retain_range("ui_preference_storage_call", source, node.start_byte, node.end_byte, node.type),
+            "callback_owner": audit.retain_range("ui_preference_callback", source, callback.start_byte, callback.end_byte, callback.type)})
+    if len(operations) != expected_count:
+        raise ValueError("Complete preference storage call count differs")
+    return operations
+
+
+def audit_shared_preferences(args):
+    """Capture the current local flags without executing any original code."""
+    import host
+    if args.family != "system" or args.function != "main" or args.prepare or args.product:
+        raise ValueError("shared-preferences is an evidence-only shared system main query")
+    audit = host.HostLocalAudit()
+    specifications = [
+        ("keyboard-740-current", "9908", 63183, "St.A", '"showNotificationBannerCalibration"',
+         "showNotificationBannerCalibration", True, True, 4),
+        ("keyboard-746-current", "9908", 63183, "St.A", '"showNotificationBannerCalibration"',
+         "showNotificationBannerCalibration", True, True, 4),
+        ("keyboard-756-current", "3021", 5962, "ft.A", "mo", "MagneticSwitchCalibrationPrompt", False, False, 2),
+        ("accessories-769-current", "main", None, "k.A", "u_", "isShowTutorialHue", True, False, 2),
+        ("synapse-armory-current", "458", 95889, "s.A", "i.IS", "isShowArmoryIntroductionBanner", True, False, 2),
+    ]
+    source_sets, flags = [], []
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+    def owner_node(source, row):
+        node = audit.tree(source).root_node.descendant_for_byte_range(row["byte_start"], row["byte_end"] - 1)
+        while node is not None and (node.start_byte != row["byte_start"] or node.end_byte != row["byte_end"]):
+            node = node.parent
+        if node is None:
+            raise ValueError("Current preference module has no complete AST owner")
+        return node
+    def binding_node(source, binding):
+        node = audit.tree(source).root_node.descendant_for_byte_range(binding["start_byte"], binding["end_byte"] - 1)
+        while node is not None and node.type != "variable_declarator":
+            node = node.parent
+        if node is None:
+            raise ValueError("Current preference binding has no complete declaration")
+        return node
+    for name, chunk, module_id, namespace, key_expression, expected_key, default, initialize, count in specifications:
+        receipt = a.ROOT / ".analysis/inputs/frontend" / name / "acquisition.json"
+        acquired = json.loads(audit.artifact(receipt))
+        if not acquired.get("source_current_during_acquisition"):
+            raise ValueError("Current preference deployment stability is unverified: " + name)
+        files = {row["url"]: row for row in acquired["files"] if row.get("path")}
+        entry_url = acquired["entry_url"]
+        entry = files[entry_url]
+        entry_parser = a.References()
+        entry_parser.feed(audit.read(entry).decode())
+        manifest_url = urllib.parse.urljoin(entry_url, "asset-manifest.json")
+        manifest = json.loads(audit.read(files[manifest_url]))
+        main_url = urllib.parse.urljoin(manifest_url, manifest["files"]["main.js"])
+        if main_url not in {urllib.parse.urljoin(entry_url, ref) for ref, _ in entry_parser.refs}:
+            raise ValueError("Preference main is not mounted by the current HTML entry")
+        candidate_urls = {urllib.parse.urljoin(manifest_url, value) for value in manifest["files"].values()
+            if re.fullmatch(re.escape(chunk) + r'\.[^/]+\.js', Path(urllib.parse.urlsplit(value).path).name)}
+        if len(candidate_urls) != 1:
+            raise ValueError("Current preference chunk is absent or ambiguous in asset-manifest")
+        selected = [files[url] for url in sorted(candidate_urls | {main_url})]
+        source = files[next(iter(candidate_urls))]
+        modules = keyboard_source_modules(audit.read(source).decode())
+        candidates = [row for row in modules if row["module_id"] == module_id] if module_id is not None else [
+            row for row in modules if str(row["module_id"]).startswith("concatenated-entry@") and expected_key in row["body"]]
+        if module_id is None:
+            candidates = [row for row in candidates if not any(other != row and row["byte_start"] < other["byte_start"]
+                and other["byte_end"] < row["byte_end"] for other in candidates)]
+        if len(candidates) != 1:
+            raise ValueError("Current preference page factory is absent or ambiguous: " + name + ":" + str(module_id))
+        row = candidates[0]
+        module = owner_node(source, row)
+        complete_owner = audit.retain_range("ui_preference_complete_page_factory", source,
+            module.start_byte, module.end_byte, module.type)
+        operations = preference_storage_operations(audit, source, module, namespace=namespace,
+            key_expression=key_expression, expected_count=count)
+        storage_binding = audit.binding("ui_preference_storage_import", source, namespace.split(".")[0], operations[0]["byte_start"])
+        imported = binding_node(source, storage_binding).child_by_field_name("value")
+        if imported.type != "call_expression" or imported.child_by_field_name("arguments").named_child_count != 1:
+            raise ValueError("Preference storage import is not a direct webpack module")
+        imported_id = static_js_literal(imported.child_by_field_name("arguments").named_children[0].text.decode())
+        storage = audit.webpack_export("ui_preference_storage_adapter", selected, imported_id, "A")
+        if key_expression.startswith('"'):
+            key = static_js_literal(key_expression)
+            key_owner = operations[0]["call_owner"]
+        elif "." in key_expression:
+            key_import = audit.binding("ui_preference_key_import", source, key_expression.split(".")[0], operations[0]["byte_start"])
+            imported_key = binding_node(source, key_import).child_by_field_name("value")
+            if imported_key.type != "call_expression" or imported_key.child_by_field_name("arguments").named_child_count != 1:
+                raise ValueError("Preference key import is not a direct webpack module")
+            key_module = static_js_literal(imported_key.child_by_field_name("arguments").named_children[0].text.decode())
+            exported = audit.webpack_export("ui_preference_key", selected, key_module, key_expression.split(".")[1])
+            key = static_js_literal(binding_node(exported["original"], exported["binding"]).child_by_field_name("value").text.decode())
+            key_owner = exported["binding"]["owner_id"]
+        else:
+            binding = audit.binding("ui_preference_key", source, key_expression, operations[0]["byte_start"])
+            key = static_js_literal(binding_node(source, binding).child_by_field_name("value").text.decode())
+            key_owner = binding["owner_id"]
+        if key != expected_key:
+            raise ValueError("Current preference storage identity differs")
+        if initialize:
+            anchors = ['null===St.A.get("showNotificationBannerCalibration")&&(St.A.set("showNotificationBannerCalibration",!0),t(!0))',
+                'const[e,t]=(0,o.useState)(!0)', 'return null!==t?t:e', 't(!1),St.A.set("showNotificationBannerCalibration",!1)']
+        elif expected_key == "MagneticSwitchCalibrationPrompt":
+            anchors = ['!0!==ft.A.get(mo)?P(!0):ge()', 'const[i,n]=(0,o.useState)(!1)', 'ft.A.set(mo,i),s()']
+        elif expected_key == "isShowTutorialHue":
+            anchors = ['!1===k.A.get(u_)?o(!1):e||o(!0)', 'n.current&&i.current&&(o(!1),k.A.set(u_,!1))',
+                'document.removeEventListener("click",T)', 'e.removeEventListener("click",T)']
+        else:
+            anchors = ['useState)(!0)', 'l(null===e||Boolean(e))', 'l(!1),s.A.set(i.IS,!1)',
+                'e.key===i.IS&&"true"===e.newValue&&l(!0)', 'window.removeEventListener("storage",a)']
+        semantics = {}
+        for index, anchor in enumerate(anchors):
+            if anchor not in row["body"]:
+                raise ValueError("Current preference default, update or cleanup semantics differs: " + expected_key)
+            semantics[str(index)] = audit.retain("ui_preference_semantics", source, anchor,
+                {"arrow_function", "function_expression", "function_declaration", "method_definition"}, unique=False)
+        flags.append({"source_set": name, "key": key, "presentation_default": default,
+            "initialize_missing": initialize, "complete_page_owner": complete_owner,
+            "key_owner": key_owner, "storage_resolution": storage, "operations": operations, "semantics": semantics})
+        source_sets.append({"name": name, "acquisition": identity(receipt),
+            "deployment_stability": acquired.get("stability"), "selected_inputs": [audit.sources[item["path"]] for item in selected],
+            "declared_reference_closure": acquired.get("declared_references_fetched", False),
+            "unresolved_acquisition": acquired.get("unresolved", [])})
+    if audit.final_snapshot():
+        raise ValueError("Preference original bytes changed during static capture")
+    result = {"recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)), "parsers": audit.parser_versions,
+        "source_sets": source_sets, "flags": flags, "complete_owners": audit.owners,
+        "verified_artifacts": list(audit.artifacts.values()), "target_execution": False,
+        "passed": True, "runtime_acceptance": "unverified", "whole_page_complete": False,
+        "limitations": ["Local preference ownership and current read/write/default/cleanup semantics only",
+            "Missing source maps, unresolved deployment references and full source-to-page acceptance remain separate",
+            "Local file publication does not acknowledge device or service write-back"]}
+    output = a.ROOT / ".analysis/results/frontend/system-mw-audit.json"
+    document = json.loads(output.read_bytes()) if output.is_file() else {"schema_version": 1}
+    document.setdefault("queries", {})["shared-preferences"] = result
+    a.save(output, document)
+    print(json.dumps({"receipt": a.rel(output), "query": "shared-preferences", "source_sets": len(source_sets),
+        "flags": len({item["key"] for item in flags}), "complete_owners": len(audit.owners), "passed": True}), flush=True)
+    return result
+
+
+def direct_command_headers(audit, source, module, names):
+    """Resolve direct methods to their actual lexical header arrays."""
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+    commands, owners = {}, []
+    for name in names:
+        methods = [node for node in walk(module) if node.type == "method_definition"
+                   and node.child_by_field_name("name").text.decode() == name]
+        if len(methods) != 1:
+            raise ValueError("Effective tracking method is absent or ambiguous: " + name)
+        method = methods[0]
+        calls = [node for node in walk(method) if node.type == "call_expression"
+                 and node.child_by_field_name("function").type == "member_expression"
+                 and node.child_by_field_name("function").child_by_field_name("property").text == b"sendCommand"]
+        if len(calls) != 1:
+            raise ValueError("Tracking method has no unique command dispatch: " + name)
+        header = calls[0].child_by_field_name("arguments").named_children[0]
+        if header.type != "identifier":
+            raise ValueError("Tracking command header is not a lexical binding: " + name)
+        binding = audit.binding("tracking_header_" + name, source, header.text.decode(), header.start_byte)
+        if binding["resolution"] != "declaration":
+            raise ValueError("Tracking command header declaration is unresolved: " + name)
+        tree = audit.tree(source)
+        declaration = tree.root_node.descendant_for_byte_range(binding["start_byte"], binding["end_byte"] - 1)
+        while declaration is not None and declaration.type != "variable_declarator":
+            declaration = declaration.parent
+        value = declaration.child_by_field_name("value") if declaration is not None else None
+        while value is not None and value.type in {"parenthesized_expression", "sequence_expression"}:
+            value = value.named_children[-1]
+        arguments = value.child_by_field_name("arguments") if value is not None and value.type == "new_expression" else None
+        array = arguments.named_children[0] if arguments is not None and len(arguments.named_children) == 1 else None
+        if (value is None or value.type != "new_expression" or value.child_by_field_name("constructor").text != b"Uint8Array"
+                or array is None or array.type != "array" or len(array.named_children) != 3
+                or any(node.type != "number" for node in array.named_children)):
+            raise ValueError("Tracking header is not a fixed three-byte Uint8Array: " + name)
+        numbers = [javascript_integer_literal(node.text.decode()) for node in array.named_children]
+        if any(number > 255 for number in numbers):
+            raise ValueError("Tracking command header exceeds a protocol byte: " + name)
+        commands[name] = numbers
+        owners.append(audit.retain_range("tracking_method_" + name, source, method.start_byte, method.end_byte, method.type))
+    return commands, owners
+
+
+def tracking_command_headers(audit, source, module):
+    return direct_command_headers(audit, source, module, ("getProximitySensorState", "setProximitySensorState",
+        "getProximitySensorConfiguration", "setProximitySensorConfiguration", "setProximitySensorLiftSetting"))
+
+
+def numeric_word_helper(node):
+    """Decode a source shift-and-mask helper as syntax, never JavaScript execution."""
+    if node.type != "arrow_function" or node.child_by_field_name("parameter") is None:
+        raise ValueError("Numeric helper has no single source parameter")
+    parameter = node.child_by_field_name("parameter").text
+    body = node.child_by_field_name("body")
+    if body is None or body.type != "binary_expression":
+        raise ValueError("Numeric helper is not a source bit mask")
+    def operator(expression):
+        left, right = expression.child_by_field_name("left"), expression.child_by_field_name("right")
+        return expression.text[left.end_byte - expression.start_byte:right.start_byte - expression.start_byte].strip()
+    if operator(body) != b"&":
+        raise ValueError("Numeric helper is not a source bit mask")
+    left, right = body.child_by_field_name("left"), body.child_by_field_name("right")
+    mask, value = (left, right) if left.type == "number" else (right, left)
+    if mask.type != "number":
+        raise ValueError("Numeric helper mask is unresolved")
+    shift = 0
+    if value.type == "binary_expression" and operator(value) == b">>":
+        shift_node = value.child_by_field_name("right")
+        if shift_node.type != "number":
+            raise ValueError("Numeric helper shift is unresolved")
+        shift = javascript_integer_literal(shift_node.text.decode())
+        value = value.child_by_field_name("left")
+    if value.type != "identifier" or value.text != parameter:
+        raise ValueError("Numeric helper value does not match its parameter")
+    return {"shift": shift, "mask": javascript_integer_literal(mask.text.decode())}
+
+
+def validate_philips_mats(mats):
+    if (not isinstance(mats, list) or len(mats) != 16
+            or any(not isinstance(row, dict) or set(row) != {"id", "surfaceDistance", "sqList"}
+                or not isinstance(row["id"], str) or not row["id"]
+                or type(row["surfaceDistance"]) is not int or not 0 < row["surfaceDistance"] <= 65535
+                or not isinstance(row["sqList"], list) or len(row["sqList"]) != 10
+                or any(type(value) is not int or not 0 <= value <= 65535 for value in row["sqList"]) for row in mats)
+            or len({row["id"] for row in mats}) != len(mats)):
+        raise ValueError("Philips complete mat table differs")
+
+
+def philips_measurement_constants(selectors):
+    """Project only the complete, statically observed measurement selectors."""
+    scalars = {"SURFACE_CALIBRATION_SAMPLE_RATE": 10, "SURFACE_CALIBRATION_SAMPLE_COUNT": 0,
+        "SURFACE_CALIBRATION_MEASURED_RESULT": 0, "CALIBRATION_INITIATING_TIMEOUT": 35000,
+        "CALIBRATION_GENERAL_TIMEOUT": 60000, "TEMP_MINI_CALIBRATION_TIMEOUT": 5000}
+    tables = {"CALIBRATION_CONTROL_TYPE": {"Preset": 1, "Manual": 0, "SmartTracking": 3, "Mini_Calibration": 4},
+        "CALIBRATION_CONTROL_STAGE": {"Start": 0, "Stop": 1},
+        "CALIBRATION_EVENTS_ENUM": {"Start": 0, "End": 1, "Halt": 2, "Reset": 3,
+            "Normal_Speed": 4, "Too_Fast": 5, "Cancelled": 6}}
+    for key, expected in scalars.items():
+        if type(selectors.get(key)) is not int or selectors[key] != expected:
+            raise ValueError("Philips measurement scalar differs or is absent: " + key)
+    for key, expected in tables.items():
+        actual = selectors.get(key)
+        if (not isinstance(actual, dict) or set(actual) != set(expected)
+                or any(type(actual[name]) is not int or actual[name] != value for name, value in expected.items())):
+            raise ValueError("Philips complete measurement enum differs or is absent: " + key)
+    return {"sample_rate": selectors["SURFACE_CALIBRATION_SAMPLE_RATE"],
+        "sample_count": selectors["SURFACE_CALIBRATION_SAMPLE_COUNT"],
+        "measured_result": selectors["SURFACE_CALIBRATION_MEASURED_RESULT"],
+        "timeouts_ms": {"initiating": selectors["CALIBRATION_INITIATING_TIMEOUT"],
+            "general": selectors["CALIBRATION_GENERAL_TIMEOUT"], "mini_calibrating": selectors["TEMP_MINI_CALIBRATION_TIMEOUT"]},
+        "control_types": selectors["CALIBRATION_CONTROL_TYPE"],
+        "control_stages": selectors["CALIBRATION_CONTROL_STAGE"], "events": selectors["CALIBRATION_EVENTS_ENUM"]}
+
+
+def audit_mouse_calibration(args):
+    """Capture current Philips measurement states, source save and device writes."""
+    import host
+    if args.family != "mouse" or args.function != "main" or set(args.product or [70]) != {70}:
+        raise ValueError("mouse-calibration currently requires the verified PID70 main chain")
+    audit = host.HostLocalAudit()
+    receipt = a.ROOT / ".analysis/inputs/frontend/mouse-mw-70-current/acquisition.json"
+    acquired = json.loads(audit.artifact(receipt))
+    if not acquired.get("source_current_during_acquisition"):
+        raise ValueError("Philips current deployment stability is unverified")
+    files = {row["url"]: row for row in acquired["files"] if row.get("path")}
+    manifest_url = urllib.parse.urljoin(acquired["entry_url"], "webpackManifest.json")
+    manifest = json.loads(audit.read(files[manifest_url]))
+    selected = {name: files[urllib.parse.urljoin(manifest_url, manifest[name + ".js"])]
+                for name in ("main", "6120", "philipsEngineManager", "rzHardwareEventsProtocol25Parser")}
+    entry = files[acquired["entry_url"]]
+    entry_parser = a.References()
+    entry_parser.feed(audit.read(entry).decode())
+    if selected["main"]["url"] not in {urllib.parse.urljoin(acquired["entry_url"], ref) for ref, _ in entry_parser.refs}:
+        raise ValueError("Philips main is not mounted by the current entry")
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+    modules, roles = {}, {}
+    for name, source in selected.items():
+        modules[name] = {row["module_id"]: row for row in keyboard_source_modules(audit.read(source).decode())}
+    def complete_module(name, identifier, role):
+        module = modules[name][identifier]
+        source = selected[name]
+        node = audit.tree(source).root_node.descendant_for_byte_range(module["byte_start"], module["byte_end"] - 1)
+        while node is not None and node.start_byte != module["byte_start"]:
+            node = node.parent
+        if node is None:
+            raise ValueError("Philips factory has no complete AST owner")
+        roles[role] = audit.retain_range(role, source, node.start_byte, node.end_byte, node.type)
+        return node
+    def binding_value(exported):
+        binding = exported["binding"]
+        node = audit.tree(exported["original"]).root_node.descendant_for_byte_range(binding["start_byte"], binding["end_byte"] - 1)
+        while node is not None and node.type != "variable_declarator":
+            node = node.parent
+        if node is None:
+            raise ValueError("Philips export has no complete lexical binding")
+        return node.child_by_field_name("value")
+    startup = audit.retain("philips_startup_feature", selected["main"],
+        'useFeature("calibrationInterfaces","philipsCalibrationEngine")', {"arrow_function"})
+    protocol = complete_module("6120", 7755, "philips_device_protocol")
+    complete_module("philipsEngineManager", 37641, "philips_engine_manager")
+    mats_module = complete_module("main", 47277, "philips_device_info")
+    commands, method_owners = direct_command_headers(audit, selected["6120"], protocol,
+        ("setProximitySensorCalibrationData", "setProximitySensorThreshold", "setProximitySensorState",
+         "getProximitySensorCalibration", "setProximitySensorCalibration", "getProximitySensorCalibrationData",
+         "getProximitySensorControl", "setProximitySensorControl"))
+    calibration_method = next(node for node in walk(protocol) if node.type == "method_definition"
+        and node.child_by_field_name("name").text == b"setProximitySensorCalibrationData")
+    helper_import = audit.binding("philips_numeric_helper_import", selected["6120"], "a", calibration_method.start_byte)
+    if helper_import["body"] != "a=n(52975)":
+        raise ValueError("Philips calibration byte helper import changed")
+    helpers, helper_resolutions = {}, {}
+    for name in ("TK", "dV", "ft", "Zz"):
+        exported = audit.webpack_export("philips_numeric_" + name, list(selected.values()), 52975, name)
+        helpers[name] = numeric_word_helper(binding_value(exported))
+        helper_resolutions[name] = exported
+    info = audit.webpack_export("philips_device_info", [selected["main"]], 47277, "DeviceInfo")
+    sensor = next((pair.child_by_field_name("value") for pair in binding_value(info).named_children
+        if pair.type == "pair" and pair.child_by_field_name("key").text == b"sensorData"), None)
+    if sensor is None or sensor.type != "identifier":
+        raise ValueError("Philips sensor data namespace is unresolved")
+    mats_export = audit.webpack_export("philips_mat_presets", [selected["main"]], 47277,
+        "MATS_PRESETS", namespace=sensor.text.decode())
+    mats = static_js_literal(binding_value(mats_export).text.decode())
+    validate_philips_mats(mats)
+    transform = audit.webpack_export("philips_preset_transform", [selected["6120"]], 98570, "TP")
+    transform_node = binding_value(transform)
+    transformed = []
+    for node in walk(transform_node):
+        if node.type == "assignment_expression" and node.child_by_field_name("left").type == "member_expression":
+            field = node.child_by_field_name("left").child_by_field_name("property").text.decode()
+            if "ReferenceHeight" in field:
+                transformed.append(field)
+    if len(set(transformed)) != 4 or not all(value in transform["binding"]["body"] for value in
+            ('c.sqList[n-1]', 'c.surfaceDistance', 'i="mini"===e.calibrationType?l:e.presetSensorData', 'p=p+_-5*d,f=f+_-5*d,v=v+_-5*d,y=y+_-5*d')):
+        raise ValueError("Philips preset baseline/threshold transform differs")
+    manager_source = selected["philipsEngineManager"]
+    manager = audit.tree(manager_source)
+    def assignment(root, name):
+        found = [node for node in walk(root) if node.type == "assignment_expression"
+            and node.child_by_field_name("left").type == "member_expression"
+            and node.child_by_field_name("left").child_by_field_name("object").type == "this"
+            and node.child_by_field_name("left").child_by_field_name("property").text == name.encode()]
+        if len(found) != 1:
+            raise ValueError("Philips preset state assignment is absent or ambiguous: " + name)
+        return found[0].child_by_field_name("right")
+    def resolve_class(reference, role):
+        seen = set()
+        while reference.type == "identifier":
+            binding = audit.binding(role, manager_source, reference.text.decode(), reference.start_byte)
+            if binding["resolution"] != "declaration" or binding["owner_id"] in seen:
+                raise ValueError("Philips preset class alias is unresolved or cyclic")
+            seen.add(binding["owner_id"])
+            node = manager.root_node.descendant_for_byte_range(binding["start_byte"], binding["end_byte"] - 1)
+            while node is not None and node.type not in {"variable_declarator", "class_declaration"}:
+                node = node.parent
+            if node is None:
+                raise ValueError("Philips preset class has no declaration")
+            reference = node if node.type == "class_declaration" else node.child_by_field_name("value")
+        if reference.type not in {"class_declaration", "class"}:
+            raise ValueError("Philips preset class alias does not resolve to a class")
+        return reference
+    preset_new = assignment(manager.root_node, "philipsPresetCalibrationEngine")
+    if preset_new.type != "new_expression":
+        raise ValueError("Philips preset engine constructor is unresolved")
+    preset_class = resolve_class(preset_new.child_by_field_name("constructor"), "philips_preset_engine_class")
+    roles["philips_preset_engine"] = audit.retain_range("philips_preset_engine", manager_source,
+        preset_class.start_byte, preset_class.end_byte, preset_class.type)
+    apply_new = assignment(preset_class, "applyState")
+    if apply_new.type != "new_expression":
+        raise ValueError("Philips preset apply state constructor is unresolved")
+    apply = resolve_class(apply_new.child_by_field_name("constructor"), "philips_preset_apply_state_class")
+    roles["philips_preset_apply_state"] = audit.retain_range("philips_preset_apply_state", selected["philipsEngineManager"], apply.start_byte, apply.end_byte, apply.type)
+    writes = [node for node in walk(apply) if node.type == "call_expression"
+        and node.child_by_field_name("function").type == "member_expression"
+        and node.child_by_field_name("function").child_by_field_name("property").text == b"setProximitySensorCalibrationData"]
+    if len(writes) != 1:
+        raise ValueError("Philips preset calibration write is unresolved")
+    calibration_fields = [node.child_by_field_name("property").text.decode()
+        for node in writes[0].child_by_field_name("arguments").named_children[2:]]
+    if len(calibration_fields) != 12 or len(set(calibration_fields)) != 12:
+        raise ValueError("Philips calibration data field order is incomplete")
+    apply_branches, engine_states = {}, {}
+    for kind, field in (("preset", "philipsPresetCalibrationEngine"), ("manual", "philipsManualCalibrationEngine"), ("mini", "philipsMiniCalibrationEngine")):
+        constructor = assignment(manager.root_node, field)
+        if constructor.type != "new_expression":
+            raise ValueError("Philips engine branch has no constructor: " + kind)
+        engine_class = resolve_class(constructor.child_by_field_name("constructor"), "philips_" + kind + "_engine_class")
+        roles["philips_" + kind + "_engine"] = audit.retain_range("philips_" + kind + "_engine",
+            manager_source, engine_class.start_byte, engine_class.end_byte, engine_class.type)
+        state = assignment(engine_class, "applyState")
+        if state.type != "new_expression":
+            raise ValueError("Philips apply branch has no constructor: " + kind)
+        state_class = resolve_class(state.child_by_field_name("constructor"), "philips_" + kind + "_apply_class")
+        sequence = [node.child_by_field_name("function").child_by_field_name("property").text.decode()
+            for node in walk(state_class) if node.type == "call_expression"
+            and node.child_by_field_name("function").type == "member_expression"
+            and node.child_by_field_name("function").child_by_field_name("property").text.decode() in commands]
+        apply_branches[kind] = sequence
+        if kind == "preset":
+            continue
+        state_owners = {}
+        for state_name in ("readyState", "initiatingState", "startingState", "calibratingState", "stopCalibrationState", "applyState"):
+            created = assignment(engine_class, state_name)
+            if created.type != "new_expression":
+                raise ValueError("Philips measurement state has no constructor: " + kind + ":" + state_name)
+            state_class = resolve_class(created.child_by_field_name("constructor"), "philips_" + kind + "_" + state_name + "_class")
+            role = "philips_" + kind + "_" + state_name
+            state_owners[state_name] = audit.retain_range(role, manager_source,
+                state_class.start_byte, state_class.end_byte, state_class.type)
+            for node in walk(state_class):
+                name = node.child_by_field_name("name") if node.type == "method_definition" else None
+                if name is None or name.text == b"constructor":
+                    continue
+                audit.callable_member(role + "_" + name.text.decode(), manager_source, state_class, name.text.decode())
+            for node in walk(state_class):
+                left = node.child_by_field_name("left") if node.type == "assignment_expression" else None
+                if (left is not None and left.type == "member_expression" and left.child_by_field_name("object").type == "this"
+                        and node.child_by_field_name("right").type in {"arrow_function", "function_expression"}):
+                    name = left.child_by_field_name("property").text.decode()
+                    audit.callable_member(role + "_" + name, manager_source, state_class, name, receiver="this")
+        stop_body = audit.owners[state_owners["stopCalibrationState"]]["body"]
+        for expected in ("t*=32", "a/(i-1)", "Math.sqrt(r)", "o>31744", "a=1e4", "128&e[n]", "127&e[n]", "t[e]/4", "i[e]/4", "Math.pow(2", "a=n>s?s:n"):
+            if expected not in stop_body:
+                raise ValueError("Philips measured statistics formula differs: " + kind + ":" + expected)
+        engine_states[kind] = state_owners
+    custom_transform = audit.webpack_export("philips_custom_transform", [selected["6120"]], 98570, "Jd")
+    custom_calls = [node for node in walk(binding_value(custom_transform)) if node.type == "call_expression"
+        and node.child_by_field_name("function").type == "identifier"
+        and len(node.child_by_field_name("arguments").named_children) == 2
+        and node.child_by_field_name("arguments").named_children[1].type == "member_expression"
+        and node.child_by_field_name("arguments").named_children[1].child_by_field_name("property").text == b"liftOff"]
+    if len(custom_calls) != 1:
+        raise ValueError("Philips custom height/threshold transform is unresolved")
+    custom_reference = custom_calls[0].child_by_field_name("function")
+    custom_formula = audit.binding("philips_custom_height_threshold_transform", selected["6120"], custom_reference.text.decode(), custom_reference.start_byte)
+    if custom_formula["resolution"] != "declaration":
+        raise ValueError("Philips custom transform has no complete lexical owner")
+    roles["philips_custom_transform"] = custom_transform["binding"]["owner_id"]
+    roles["philips_custom_height_threshold_transform"] = custom_formula["owner_id"]
+    roles["philips_saved_baseline_task"] = audit.retain("philips_saved_baseline_task", selected["6120"],
+        "presetSensorData=_.calibration.presetSensorData", {"function_declaration"})
+    manual_save = audit.webpack_export("philips_new_manual_save_transform", [selected["6120"]], 98570, "Sk")
+    roles["philips_new_manual_save_transform"] = manual_save["binding"]["owner_id"]
+    if ("h(l,e.liftOff)" not in manual_save["binding"]["body"]
+            or "sensorData:Object.assign({},l)" not in manual_save["binding"]["body"]
+            or any(field + "+=i" not in custom_formula["body"] for field in transformed)):
+        raise ValueError("Philips initial manual save no longer mutates the measured height copy once")
+    end_task = audit.webpack_export("philips_measured_end_task", [selected["6120"]], 25947, "ot_")
+    roles["philips_measured_end_task"] = end_task["binding"]["owner_id"]
+    if ("O[e]=Object.assign(Object.assign({},O[e]),{calibrationDate:" not in end_task["binding"]["body"]
+            or "O.push(w?w.profile:R)" not in end_task["binding"]["body"]):
+        raise ValueError("Philips recalibration persistence identity/date branch differs")
+    save_exports = {name: audit.webpack_export("philips_task_" + name, [selected["6120"]], 25947, name)
+        for name in ("crQ", "vAw", "yKH", "cun")}
+    configured_save = save_exports["cun"]["binding"]["body"]
+    local_write = configured_save.find("yield(0,y.mZ)(e),I=e.version")
+    device_write = configured_save.find("v?o.RzTaskManager.enqueueTask(o.RzTaskCategory.NORMAL_SKIPPABLE")
+    if (not configured_save.startswith("function wt(e,t,n,r,a,s,c,u,l,f,v,g=0)")
+            or "try{if(f){" not in configured_save or local_write < 0 or device_write < local_write
+            or 'status:"completed",value:{oldCalibration:m,newCalibration:{selectedProfileGuid:c,profiles:S},version:I}' not in configured_save):
+        raise ValueError("Philips configured save no longer separates admitted local persistence from device dispatch")
+    save_boundaries = {"owner": save_exports["cun"]["binding"]["owner_id"],
+        "local_persistence_parameter": "f", "device_dispatch_parameter": "v",
+        "semantics": "The f branch awaits the local root/calibration/version write before publishing the completed version; the independent v branch enqueues NORMAL_SKIPPABLE hardware work. Local completion is not a device acknowledgement. Canceling hardware during exit does not authorize discarding already admitted local persistence."}
+    name_check = audit.webpack_export("philips_mat_name_collision", list(selected.values()), 76665, "W$")
+    roles["philips_mat_name_collision"] = name_check["binding"]["owner_id"]
+    for role, anchor, kind in (
+            ("philips_feature_engine_selector", 'xe=()=>Ue(void 0,void 0', "variable_declarator"),
+            ("philips_engine_notification_to_end_event", 'Ke=e=>{switch((0,i._G)(e)', "variable_declarator"),
+            ("philips_manual_or_mini_start_caller", 'Ve=e=>{let t;const n="mini"===e.calibrationType', "variable_declarator"),
+            ("philips_selected_mat_caller", 'ze=()=>"mini"===Ge.calibrationType', "variable_declarator"),
+            ("philips_measurement_ui_input", 'nt=e=>{console.log("setCalibrationDataFromUI")', "variable_declarator"),
+            ("philips_measurement_save_transform_selection", 'rt=(e,t)=>{const n={liftOff:e,data:t,calibrationType:Ge.calibrationType}', "variable_declarator"),
+            ("philips_end_dispatch", 'case"ON_CALIBRATION_END":{const e=v.Q.getCurrentEvent()', "switch_case")):
+        roles[role] = audit.retain(role, selected["6120"], anchor, {kind})
+    roles["philips_initial_sensor_projection"] = audit.retain("philips_initial_sensor_projection", selected["6120"],
+        'e.push({type:i.xZv,payload:"philips"})', {"variable_declarator"})
+    sensor_action = audit.webpack_export("philips_sensor_projection_action", list(selected.values()), 25129, "xZv")
+    roles["philips_initial_sensor_projection_action"] = sensor_action["binding"]["owner_id"]
+    mini_halt_panel = audit.webpack_export("philips_mini_halt_panel", [selected["main"]], 8713, "Xi8")
+    if mini_halt_panel["binding"]["body"] != 'M="mats"':
+        raise ValueError("Philips Mini Halt no longer selects the original mats panel")
+    roles["philips_mini_halt_panel"] = mini_halt_panel["binding"]["owner_id"]
+    redirect_manager = complete_module("6120", 15986, "philips_hardware_registration_and_parser_selector")
+    _, roles["philips_actual_hardware_dispatch"] = audit.callable_member("philips_actual_hardware_dispatch",
+        selected["6120"], redirect_manager, "onhardwareevent", receiver="this")
+    protocol_parser = complete_module("rzHardwareEventsProtocol25Parser", 57368, "philips_protocol25_hardware_parser")
+    for name in ("parseZandQData", "parseMouseRedirectData"):
+        _, roles["philips_protocol25_" + name] = audit.callable_member("philips_protocol25_" + name,
+            selected["rzHardwareEventsProtocol25Parser"], protocol_parser, name)
+    records = audit.webpack_export("philips_hardware_record_ids", [selected["6120"]], 50652, "ZK")
+    record_values = static_js_literal(binding_value(records).text.decode())
+    hardware_records = {name: record_values[name] for name in ("CALIBRATION_MOUSE_REDIRECT", "CALIBRATION_Z_Q_DATA_EVENT")}
+    if hardware_records != {"CALIBRATION_MOUSE_REDIRECT": 77, "CALIBRATION_Z_Q_DATA_EVENT": 90}:
+        raise ValueError("Philips measurement hardware record identities differ")
+    get_data = next(node for node in walk(protocol) if node.type == "method_definition"
+        and node.child_by_field_name("name").text == b"getProximitySensorCalibrationData")
+    data_decoder = audit.binding("philips_measured_device_data_decoder", selected["6120"], "Sr", get_data.start_byte)
+    if data_decoder["resolution"] != "declaration":
+        raise ValueError("Philips measured device data decoder is unresolved")
+    roles["philips_measured_device_data_decoder"] = data_decoder["owner_id"]
+    event_adapters = {}
+    for name, binding_name in (("hardware", "C"), ("input", "K"), ("keyboard", "I")):
+        imported = audit.binding("philips_" + name + "_adapter_import", manager_source, binding_name, preset_class.start_byte)
+        if imported["resolution"] != "declaration":
+            raise ValueError("Philips event adapter import is unresolved: " + name)
+        declared = manager.root_node.descendant_for_byte_range(imported["start_byte"], imported["end_byte"] - 1)
+        while declared is not None and declared.type != "variable_declarator":
+            declared = declared.parent
+        value = declared.child_by_field_name("value") if declared is not None else None
+        adapter_args = value.child_by_field_name("arguments") if value is not None and value.type == "call_expression" else None
+        if adapter_args is None or adapter_args.named_child_count != 1 or adapter_args.named_children[0].type != "number":
+            raise ValueError("Philips event adapter import is not a static module: " + name)
+        identifier = javascript_integer_literal(adapter_args.named_children[0].text.decode())
+        found = [key for key, rows in modules.items() if identifier in rows]
+        if len(found) != 1:
+            raise ValueError("Philips event adapter module is absent or ambiguous: " + name)
+        adapter = complete_module(found[0], identifier, "philips_" + name + "_complete_adapter")
+        event_adapters[name] = {"import": imported, "module_id": identifier,
+            "complete_factory_owner": roles["philips_" + name + "_complete_adapter"]}
+        if name == "hardware":
+            _, roles["philips_collect_redirect_registration"] = audit.callable_member("philips_collect_redirect_registration",
+                selected[found[0]], adapter, "manageDeviceRedirect", receiver="this")
+    ui_receipt = a.ROOT / ".analysis/inputs/frontend/mouse-70-current/acquisition.json"
+    ui_acquired = json.loads(audit.artifact(ui_receipt))
+    if not ui_acquired.get("source_current_during_acquisition"):
+        raise ValueError("Philips current UI deployment stability is unverified")
+    ui_mains = [row for row in ui_acquired["files"] if row.get("path") and re.search(r"/ui/static/js/main\.[^/]+\.js$", row["url"])]
+    if len(ui_mains) != 1:
+        raise ValueError("Philips current UI main is absent or ambiguous")
+    ui_source = ui_mains[0]
+    default_states = []
+    for node in walk(audit.tree(ui_source).root_node):
+        if node.type != "object":
+            continue
+        fields = {pair.child_by_field_name("key").text.decode(): pair.child_by_field_name("value")
+            for pair in node.named_children if pair.type == "pair"}
+        profiles = fields.get("profiles")
+        if profiles is None or profiles.type != "array" or profiles.named_child_count != 1 or profiles.named_children[0].type != "object":
+            continue
+        profile = {pair.child_by_field_name("key").text.decode(): pair.child_by_field_name("value")
+            for pair in profiles.named_children[0].named_children if pair.type == "pair"}
+        if profile.get("type") is not None and profile["type"].text == b'"default"' and profile.get("guid") is not None:
+            default_states.append((node, fields, profile))
+    if len(default_states) != 1:
+        raise ValueError("Philips default calibration UI state is absent or ambiguous")
+    default_state, default_fields, default_profile = default_states[0]
+    default_guid = default_profile["guid"]
+    if default_guid.type != "identifier":
+        raise ValueError("Philips default calibration GUID requires source analysis")
+    guid_binding = audit.binding("philips_default_guid", ui_source, default_guid.text.decode(), default_guid.start_byte)
+    selected_guid = next((pair.child_by_field_name("value") for pair in default_fields["selectedProfile"].named_children
+        if pair.type == "pair" and pair.child_by_field_name("key").text == b"guid"), None)
+    if guid_binding["body"] != default_guid.text.decode() + "=void 0" or selected_guid is None or selected_guid.text != default_guid.text:
+        raise ValueError("Philips default identity no longer resolves to the source undefined sentinel")
+    roles["philips_default_ui_state"] = audit.retain_range("philips_default_ui_state", ui_source,
+        default_state.start_byte, default_state.end_byte, default_state.type)
+    roles["philips_ui_calibration_reducer"] = audit.retain("philips_ui_calibration_reducer", ui_source,
+        "YE=function(e,E){if(\"undefined\"===typeof e)return yE;", {"variable_declarator"})
+    selector_resolutions, selectors = {}, {}
+    for name in ("CALIBRATION_SENSOR_ID", "SURFACE_CALIBRATION_CLASS_ID", "SURFACE_CALIBRATION_SAMPLE_RATE",
+            "SURFACE_CALIBRATION_SAMPLE_COUNT", "SURFACE_CALIBRATION_MEASURED_RESULT", "CALIBRATION_INITIATING_TIMEOUT",
+            "CALIBRATION_GENERAL_TIMEOUT", "TEMP_MINI_CALIBRATION_TIMEOUT", "CALIBRATION_CONTROL_TYPE",
+            "CALIBRATION_CONTROL_STAGE", "CALIBRATION_EVENTS_ENUM"):
+        exported = audit.webpack_export("philips_selector_" + name, list(selected.values()), 83536, name)
+        selector_resolutions[name] = exported
+        value = binding_value(exported)
+        selectors[name] = (javascript_integer_literal(value.text.decode()) if value.type == "number"
+            else static_js_literal(value.text.decode()))
+    measurement = philips_measurement_constants(selectors)
+    measurement.update(hardware_records=hardware_records,
+        statistics={"z_multiplier": 32, "variance": "sample", "q_group_mask": 128, "q_value_mask": 127,
+            "q_exponent_divisor": 4, "q_group_mean_selection": "minimum", "q_overflow_length": 31744,
+            "q_overflow_v_power": 10000},
+        save={"manual_height_mean_additions": 1, "mini_apply_writes_threshold": False,
+            "recalibrate_persisted_profile_fields": ["calibrationDate"], "new_profile_name": "MOUSE MAT",
+            "name_collision_separator": " ", "name_collision_first_suffix": 1, "name_collision_last_suffix": 100})
+    host_sources = host.verified_host_owners(audit, ("electron/modules/mapping_engine/win/index.js",))
+    host_source = host_sources["electron/modules/mapping_engine/win/index.js"]["original"]
+    for name in ("addUsbDevice", "removeUsbDevice", "createCbDeviceEvent", "createCbInputNotification",
+            "createCbMouseMoveRedirect", "setHardwareEventCallback", "setInputNotificationCallback",
+            "setMouseMoveRedirectCallback", "enableMouseMoveRedirect", "disableMouseMoveRedirect",
+            "registerHardwareEvent", "unregisterHardwareEvent", "registerInputNotification", "unregisterInputNotification",
+            "registerGlobalShortcut", "unregisterGlobalShortcut"):
+        _, roles["philips_host_" + name] = audit.callable_member("philips_host_" + name, host_source,
+            audit.tree(host_source).root_node, name)
+    add_body = audit.owners[roles["philips_host_addUsbDevice"]]["body"]
+    for expected in ('Promise.all([u,g])', '"info"===n.type&&n.info===$', 'this.eventEmitter.on(c,n)'):
+        if expected not in add_body:
+            raise ValueError("Philips host registration no longer waits for the owned driver-ready event")
+    ready_constant = audit.binding("philips_host_driver_ready_constant", host_source, "$",
+        audit.owners[roles["philips_host_addUsbDevice"]]["byte_start"])
+    if ready_constant.get("body") != '$="driver ready"':
+        raise ValueError("Philips host registration readiness constant differs")
+    roles["philips_host_driver_ready_constant"] = ready_constant["owner_id"]
+    native_lifetime = host.retain_philips_measurement_lifetime(audit)
+    fixture = {"schema_version": 1, "product": {"product_id": 70, "source_class": "rzDevice25",
+        "engine_feature": "philipsCalibrationEngine", "class_id": selectors["SURFACE_CALIBRATION_CLASS_ID"],
+        "sensor_id": selectors["CALIBRATION_SENSOR_ID"]["Philips_Proximity_sensor"]}, "commands": commands,
+        "calibration_fields": calibration_fields, "numeric_helpers": helpers, "apply_branches": apply_branches,
+        "measurement": measurement,
+        "default_identity": {"type": "default", "guid_is_undefined": True},
+        "preset_transform": {"height_fields": list(dict.fromkeys(transformed)), "surface_distance_multiplier": 5, "lift_off_index_base": 1},
+        "mats": mats, "source_identities": [audit.sources[row["path"]] for row in selected.values()]}
+    if audit.final_snapshot():
+        raise ValueError("Philips original bytes changed during static capture")
+    result = {"recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)), "parsers": audit.parser_versions,
+        "acquisition": {"mw": identity(receipt), "ui": identity(ui_receipt)}, "product": fixture["product"], "fixture_expectations": fixture,
+        "roles": roles, "startup_owners": startup, "method_owners": method_owners,
+        "helper_resolutions": helper_resolutions, "selector_resolutions": selector_resolutions,
+        "engine_states": engine_states, "save_task_resolutions": save_exports,
+        "save_boundaries": save_boundaries, "event_adapters": event_adapters,
+        "host_sources": host_sources, "native_lifetime": native_lifetime,
+        "complete_owners": audit.owners, "verified_artifacts": list(audit.artifacts.values()),
+        "declared_reference_closure": acquired.get("declared_references_fetched", False),
+        "unresolved_acquisition": acquired.get("unresolved", []), "target_execution": False,
+        "runtime_acceptance": "unverified", "whole_page_complete": False,
+        "limitations": ["Preset transformation requires the source local presetSensorData baseline; no fabricated getter or successful calibration",
+            "Native callback lifetime evidence is a bounded static slice; real device, service and window acceptance is unverified",
+            "Current source has no-op lockMouse/unLockMouse; these calls do not prove native mouse locking",
+            "Current manager hardware/input listeners are process-lifetime subscriptions; per-engine Escape and timer cleanup are preserved separately",
+            "Full original state bodies and the calibration reducer do not constitute entire product-page completion"]}
+    output = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    document = json.loads(output.read_bytes()) if output.is_file() else {"schema_version": 1}
+    document.setdefault("queries", {})["calibration"] = result
+    a.save(output, document)
+    if args.prepare:
+        a.save(a.ROOT / "crates/razer-device/testdata/re/mouse-philips-current-source.json", fixture)
+    print(json.dumps({"receipt": a.rel(output), "query": "calibration", "products": [70],
+        "mats": len(mats), "complete_owners": len(audit.owners), "fixture_prepared": args.prepare, "passed": True}), flush=True)
+    return result
+
+
+def audit_mouse_tracking(args):
+    """Capture the feature-selected tracking engine and its real command owners."""
+    import host
+    if args.family != "mouse" or args.function != "main":
+        raise ValueError("mouse-tracking requires current mouse main originals")
+    ids = sorted(set(args.product or [170, 204, 226, 45066]))
+    if set(ids) - {170, 204, 226, 45066}:
+        raise ValueError("Resolve the current tracking factory before extending this query")
+    if args.prepare:
+        ids = [170, 204, 226, 45066]
+    audit, products = host.HostLocalAudit(), []
+
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+
+    def complete_module(source, identifier, role):
+        modules = []
+        for node in walk(audit.tree(source).root_node):
+            key = node.child_by_field_name("key") if node.type == "pair" else node.child_by_field_name("name") if node.type == "method_definition" else None
+            value = node.child_by_field_name("value") if node.type == "pair" else node
+            if (key is not None and key.type == "number" and value.type in {"arrow_function", "function_expression", "method_definition"}
+                    and javascript_integer_literal(key.text.decode()) == identifier):
+                modules.append(node)
+        if len(modules) != 1:
+            raise ValueError("Tracking factory is absent or ambiguous: " + str(identifier))
+        node = modules[0]
+        return node, audit.retain_range(role, source, node.start_byte, node.end_byte, node.type)
+
+    def exported_value(files, module, name):
+        exported = audit.webpack_export("tracking_" + name, files, module, name)
+        source = exported["original"]
+        binding = exported["binding"]
+        node = audit.tree(source).root_node.descendant_for_byte_range(binding["start_byte"], binding["end_byte"] - 1)
+        while node is not None and node.type != "variable_declarator":
+            node = node.parent
+        if node is None:
+            raise ValueError("Tracking constant has no complete lexical declaration: " + name)
+        return node.child_by_field_name("value"), exported
+
+    def literal_number(node):
+        if node is None or node.type != "number":
+            raise ValueError("Tracking numeric selector is not a source literal")
+        return javascript_integer_literal(node.text.decode())
+
+    for pid in ids:
+        receipts, source_sets = {}, {}
+        for layer in ("mw", "ui"):
+            name = f"mouse-{'mw-' if layer == 'mw' else ''}{pid}-current"
+            path = a.ROOT / f".analysis/inputs/frontend/{name}/acquisition.json"
+            data = json.loads(audit.artifact(path))
+            if not data.get("source_current_during_acquisition"):
+                raise ValueError("Tracking acquisition deployment is not stable: " + name)
+            source_sets[layer] = data
+            receipts[layer] = identity(path)
+        data = source_sets["mw"]
+        files = {row["url"]: row for row in data["files"] if row.get("path")}
+        manifest_url = urllib.parse.urljoin(data["entry_url"], "webpackManifest.json")
+        manifest_source = files[manifest_url]
+        manifest = json.loads(audit.read(manifest_source))
+        selected = {name: files[urllib.parse.urljoin(manifest_url, manifest[name + ".js"])] for name in ("main", "7846", "9318")}
+        for source in selected.values():
+            audit.read(source)
+        entry = files[data["entry_url"]]
+        entry_parser = a.References()
+        entry_parser.feed(audit.read(entry).decode())
+        if selected["main"]["url"] not in {urllib.parse.urljoin(data["entry_url"], ref) for ref, _ in entry_parser.refs}:
+            raise ValueError("Tracking main is not mounted by the actual entry")
+        startup = audit.retain("tracking_startup_feature", selected["main"],
+            'useFeature("calibrationInterfaces","orca5PlusCalibrationEngine")', {"arrow_function"})
+        startup_body = audit.owners[startup[0]]["body"]
+        if 'useFeature("rzDeviceType","rzDevice25",{isDualLinkDevice:!0})' not in startup_body:
+            raise ValueError("Tracking startup physical device feature branch differs")
+        raw = audit.read(selected["7846"])
+        selector = re.compile(rb'getFeatureParam\("calibrationInterfaces","orca5PlusCalibrationEngine"\)[\s\S]{0,180}\.e\(9318\)\.then\([\w$]+\.bind\([\w$]+,69318\)\)')
+        candidates = list(selector.finditer(raw))
+        if len(candidates) != 1:
+            raise ValueError("Tracking actual feature selector is absent or ambiguous")
+        at = candidates[0].start()
+        factory_node = audit.tree(selected["7846"]).root_node.descendant_for_byte_range(at, candidates[0].end() - 1)
+        while factory_node is not None:
+            key = factory_node.child_by_field_name("key") if factory_node.type == "pair" else factory_node.child_by_field_name("name") if factory_node.type == "method_definition" else None
+            value = factory_node.child_by_field_name("value") if factory_node.type == "pair" else factory_node
+            if (key is not None and key.type == "number" and value.type in {"arrow_function", "function_expression", "method_definition"}):
+                break
+            factory_node = factory_node.parent
+        if factory_node is None:
+            raise ValueError("Tracking selector has no complete webpack factory owner")
+        factory_owner = audit.retain_range("tracking_feature_factory", selected["7846"],
+            factory_node.start_byte, factory_node.end_byte, factory_node.type)
+        if not selector.search(factory_node.text):
+            raise ValueError("The actual Plus feature no longer selects chunk 9318/module 69318")
+        engine, engine_owner = complete_module(selected["9318"], 69318, "tracking_actual_plus_engine")
+        protocol, protocol_owner = complete_module(selected["7846"], 87969, "tracking_device_protocol")
+        radio, radio_owner = complete_module(selected["7846"], 48957, "tracking_radio_transport")
+        commands, method_owners = tracking_command_headers(audit, selected["7846"], protocol)
+        selectors, resolutions = {}, []
+        for exported, key in (("CALIBRATION_SENSOR_ID", "Avago_Proximity_sensor"),
+                              ("SURFACE_CALIBRATION_CLASS_ID", None),
+                              ("CALIBRATION_LIFT_MODE_ENUM", "Universal_Lift_Cut_off"),
+                              ("CALIBRATION_LIFT_MODE_ENUM", "Preset_Calibration_Hysteresis")):
+            value, resolution = exported_value([selected["7846"]], 24671, exported)
+            resolutions.append(resolution)
+            if key is not None:
+                pairs = [node for node in value.named_children if node.type == "pair"
+                         and node.child_by_field_name("key").text.decode() == key] if value.type == "object" else []
+                if len(pairs) != 1:
+                    raise ValueError("Tracking selector object field is absent or ambiguous: " + key)
+                value = pairs[0].child_by_field_name("value")
+            selectors[key or exported] = literal_number(value)
+        enabled = {}
+        for method in ("smartTracking", "presetTracking"):
+            bodies = [node for node in walk(engine) if node.type == "method_definition"
+                      and node.child_by_field_name("name").text.decode() == method]
+            calls = [node for body in bodies for node in walk(body) if node.type == "call_expression"
+                     and node.child_by_field_name("function").type == "member_expression"
+                     and node.child_by_field_name("function").child_by_field_name("property").text == b"setProximitySensorState"]
+            if len(calls) != 1:
+                raise ValueError("Tracking engine sensor branch is unresolved: " + method)
+            value = calls[0].child_by_field_name("arguments").named_children[2].text
+            if value not in (b"!0", b"!1", b"true", b"false"):
+                raise ValueError("Tracking sensor state is not a literal boolean")
+            enabled[method] = value in (b"!0", b"true")
+        transport = {"transaction_prefix": 0, "transaction_modulus": 31}
+        transport_owners = []
+        for source_node in (protocol, radio):
+            methods = [node for node in walk(source_node) if node.type == "method_definition"
+                       and node.child_by_field_name("name").text == b"_getTransactionId"]
+            if len(methods) != 1 or methods[0].text != b'_getTransactionId(){return 31===this.transactionId&&(this.transactionId=0),this.transactionId++}':
+                raise ValueError("Tracking transport transaction branch differs")
+            transport_owners.append(audit.retain_range("tracking_transaction_owner", selected["7846"],
+                methods[0].start_byte, methods[0].end_byte, methods[0].type))
+        for exported, key in (("MAX_RETRY_IN", "max_retry_in"), ("MAX_RETRY_OUT", "max_retry_out"),
+                              ("SLEEP_TIME_BETWEEN_OUT", "sleep_between_out_ms"),
+                              ("SLEEP_TIME_BETWEEN_OUT_IN", "sleep_between_out_in_ms"),
+                              ("SLEEP_TIME_BETWEEN_IN", "sleep_between_in_ms")):
+            value, resolution = exported_value(list(selected.values()), 68560, exported)
+            resolutions.append(resolution)
+            transport[key] = literal_number(value)
+        ui_files = [row for row in source_sets["ui"]["files"] if row.get("path") and row["path"].endswith(".js")
+                    and f"/products/{pid}/ui/" in row["url"]]
+        ranges, ui_owners = [], []
+        for name in ("liftOffDistance", "landingDistance", "trackingDistance"):
+            matches = []
+            for source in ui_files:
+                raw = audit.read(source)
+                if name.encode() not in raw:
+                    continue
+                for node in walk(audit.tree(source).root_node):
+                    if node.type != "object":
+                        continue
+                    fields = {field.child_by_field_name("key").text.decode(): field.child_by_field_name("value")
+                              for field in node.named_children if field.type == "pair"}
+                    if (set(fields) >= {"min", "max", "step", "value"} and fields["value"].type == "member_expression"
+                            and fields["value"].child_by_field_name("property").text.decode() == name):
+                        matches.append((source, node, fields))
+            unique = {node.text for _, node, _ in matches}
+            if len(unique) != 1:
+                raise ValueError("Tracking UI range is absent or ambiguous: " + name)
+            source, node, fields = matches[0]
+            maximum = fields["max"]
+            if maximum.type == "binary_expression" and b"||" in maximum.text:
+                maximum = maximum.child_by_field_name("right")
+            ranges.append({"kind": name, "min": literal_number(fields["min"]),
+                           "max": literal_number(maximum), "step": literal_number(fields["step"])})
+            ui_owners.append(audit.retain_range("tracking_ui_range_" + name, source, node.start_byte, node.end_byte, node.type))
+        products.append({"product_id": pid, "source_class": "rzDevice25", "engine_feature": "orca5PlusCalibrationEngine",
+            "selectors": selectors, "sensor_enabled_by_branch": enabled, "commands": commands,
+            "manager_path": selected["9318"]["path"], "transport": transport,
+            "transport_branches": [{"source_class": "rzDevice25", "owner": protocol_owner},
+                                   {"source_class": "rzDevice25DualLinkMouse", "owner": radio_owner}],
+            "editor_ranges": ranges, "acquisition": receipts,
+            "complete_owners": startup + [factory_owner, engine_owner, protocol_owner, radio_owner] + method_owners + transport_owners + ui_owners,
+            "constant_resolutions": resolutions, "source_current_during_acquisition": True,
+            "declared_reference_closure": {layer: source_sets[layer].get("declared_references_fetched", False) for layer in source_sets},
+            "unresolved_acquisition": {layer: source_sets[layer].get("unresolved", []) for layer in source_sets},
+            "runtime_acceptance": "unverified", "whole_page_complete": False})
+    changed = audit.final_snapshot()
+    if changed:
+        raise ValueError("Tracking original inputs changed during static capture: " + json.dumps(changed))
+    result = {"recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)), "parsers": audit.parser_versions,
+        "method": "Current mounted entry/webpack manifest, feature-selected numeric factory, complete AST owners and lexical command/selector resolution; no vendor execution",
+        "products": products, "complete_owners": audit.owners, "verified_artifacts": list(audit.artifacts.values()),
+        "target_execution": False, "runtime_acceptance": "unverified",
+        "limitations": ["Setter acknowledgement does not prove lift-setting readback; the effective engine has no matching getter",
+                        "This bounded tracking-chain audit does not complete the full product page or unresolved source-map closure"]}
+    report_path = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    report = json.loads(report_path.read_bytes()) if report_path.is_file() else {"schema_version": 1}
+    report.setdefault("queries", {})["tracking"] = result
+    a.save(report_path, report)
+    if args.prepare:
+        fixture = {"schema_version": 1, "generator_sha256": result["tool"]["sha256"], "method": result["method"],
+            "products": [{key: value for key, value in row.items() if key not in ("constant_resolutions", "complete_owners", "unresolved_acquisition")}
+                         for row in products], "limitations": result["limitations"]}
+        a.save(a.ROOT / "crates/razer-device/testdata/re/mouse-tracking-current-source.json", fixture)
+    print(json.dumps({"receipt": a.rel(report_path), "query": "tracking", "products": ids,
+        "complete_owners": len(audit.owners), "fixture_prepared": args.prepare, "passed": True}), flush=True)
+    return result
+
+
 def audit_mouse_receiver_legacy(args):
     """Read current mounted single-LED and pairing chains and prepare proved assets.
 
@@ -14623,6 +18393,429 @@ def review_camera_task_scheduling(report, selected):
             "products": products, "complete_owners": owners, "target_execution": False, "runtime_acceptance": "unverified"}
 
 
+def hanbo_native_inventory(audit, inputs, wrapper, *, prepare=False):
+    """Project observed installed-resource identities into the existing catalog."""
+    import host
+    manifest_path = ".analysis/inputs/host-current/blobs/47feea84a40638fbe9f5091a896d878251f2593d39921c89fb26dd589f75f4f8/manifest-1.0.136.json"
+    manifest = json.loads(audit.artifact(a.ROOT / manifest_path))
+    names = {"RzSystemCommon", "RzSystemService", "RzDLLService", "cpuidsdk64Common"}
+    resources = {row["resourceName"]: row for row in manifest["resources"] if row["resourceName"] in names}
+    if set(resources) != names:
+        raise ValueError("Current local system-monitor resource closure is incomplete")
+    root = audit.tree(wrapper).root_node
+    windows_module = next(row for row in keyboard_source_modules(audit.read(wrapper).decode("utf-8"))
+                          if row["module_id"] == 68623)
+    marker = audit.read(wrapper).index(b'this.name="rzSystemCommon"', windows_module["byte_start"], windows_module["byte_end"])
+    cls = root.descendant_for_byte_range(marker, marker)
+    while cls.type not in {"class", "class_declaration"}:
+        cls = cls.parent
+    node, key = audit.callable_member("mw_system_common_init_and_ffi_declarations", wrapper, cls, "init")
+    text = node.text.decode("utf-8")
+    api = {}
+    for name in ("r", "c"):
+        at = re.search(r'\b' + name + r'=\{', text).end() - 1
+        api.update(static_js_literal(text[at:javascript_delimited(text, at)]))
+    receipt = {"path": wrapper["path"], "offset": node.start_byte, "end": node.end_byte,
+               "sha256": wrapper["sha256"], "source": text}
+    rows, originals = [], []
+    for name in sorted(names):
+        resource = resources[name]
+        filename = Path(urllib.parse.urlparse(resource["url"]).path).name
+        expected = resource["sha256"].lower()
+        matches = [row for row in inputs.values() if Path(row["path"]).name == filename and row["sha256"] == expected]
+        if not matches:
+            raise ValueError("Current installed system-monitor binary was not retained: " + name)
+        original = sorted(matches, key=lambda row: row["path"])[0]
+        raw = audit.read(original)
+        if len(raw) != resource["size"] or resource["path"] != "RzDLLService" or resource["action"]["saveToDisk"]["filePath"] != "":
+            raise ValueError("Current system-monitor manifest length or installation branch differs")
+        pe = host.inspect_pe(raw)
+        relative = "common/RzDLLService/" + filename
+        rows.append({"id": name, "kind": "device" if name == "RzSystemCommon" else "engine",
+            "channel": "ConfigureFFI" if name == "RzSystemCommon" else "RzDLLService",
+            "file_names": [filename], "path_rules": ["apps_common"], "products": [3893],
+            "declared_functions": [{"name": function, "returns": signature[0], "args": signature[1], "calls": []}
+                                   for function, signature in api.items()] if name == "RzSystemCommon" else [],
+            "receipts": [receipt] if name == "RzSystemCommon" else [], "sessions": [],
+            "resources": [{"file": filename, "bytes": len(raw), "sha256": expected,
+                "md5": hashlib.md5(raw).hexdigest(), "machine": int(pe["machine"], 0) if isinstance(pe["machine"], str) else pe["machine"],
+                "exports": sorted(export for entry in pe["exports"] for export in entry["names"]),
+                "bindings": [{"product_id": product, "install_relative_path": relative}
+                             for product in (None, 3893)]}]})
+        originals.append({"resource_name": name, "manifest_resource": resource,
+                          "original": audit.sources[original["path"]], "install_relative_path": relative})
+    path = a.ROOT / ".analysis/inputs/typed-tables/razer-catalog/native_library_inventory.json"
+    document = json.loads(path.read_bytes())
+    document["libraries"] = sorted([row for row in document["libraries"] if row["id"] not in names] + rows,
+                                   key=lambda row: row["id"].lower())
+    if prepare:
+        a.save(path, document)
+    return {"manifest": audit.artifacts[manifest_path], "resources": originals,
+            "complete_wrapper": key, "catalog_source": identity(path), "prepared": prepare,
+            "catalog_rows_match": all(row in json.loads(path.read_bytes())["libraries"] for row in rows)}
+
+
+def verify_woff_sfnt_fixture(original, fixture):
+    """Prove all source font tables survive WOFF decompression without execution."""
+    import struct
+    import sys
+    import zlib
+
+    def read(raw, fmt, offset):
+        if offset < 0 or offset + struct.calcsize(fmt) > len(raw):
+            raise ValueError("Font directory exceeds input bytes")
+        return struct.unpack_from(fmt, raw, offset)
+
+    def checksum(raw):
+        padded = raw + b"\0" * (-len(raw) % 4)
+        return sum(struct.unpack(">" + "I" * (len(padded) // 4), padded)) & 0xffffffff
+
+    signature, flavor, length, count, reserved, sfnt_size = read(original, ">4sIIHHI", 0)
+    fixture_flavor, fixture_count = read(fixture, ">IH", 0)
+    if (signature != b"wOFF" or length != len(original) or reserved != 0 or not 0 < count <= 4096
+            or fixture_flavor != flavor or fixture_count != count or sfnt_size != len(fixture)):
+        raise ValueError("WOFF and sfnt headers disagree")
+    expected, observed, source_spans, fixture_spans = {}, {}, [], []
+
+    def retain(raw, tag, offset, size, directory_end, spans):
+        if offset % 4 or offset < directory_end or size <= 0 or offset + size > len(raw):
+            raise ValueError("Font table exceeds its retained byte boundary")
+        if any(offset < end and start < offset + size for start, end in spans):
+            raise ValueError("Font table byte ranges overlap")
+        spans.append((offset, offset + size))
+        return raw[offset:offset + size]
+
+    for index in range(count):
+        tag, offset, compressed, size, digest = read(original, ">4sIIII", 44 + index * 20)
+        if tag in expected or compressed > size or size > 64 * 1024 * 1024:
+            raise ValueError("WOFF table identities or lengths are invalid")
+        body = retain(original, tag, offset, compressed, 44 + count * 20, source_spans)
+        if compressed < size:
+            decoder = zlib.decompressobj()
+            body = decoder.decompress(body, size + 1)
+            if not decoder.eof or decoder.unused_data or decoder.unconsumed_tail:
+                raise ValueError("WOFF compressed table is incomplete or exceeds its length")
+        if len(body) != size:
+            raise ValueError("WOFF original table length differs")
+        if tag == b"head":
+            if len(body) < 12:
+                raise ValueError("Font head table has no checksum adjustment")
+            body = body[:8] + b"\0" * 4 + body[12:]
+        if checksum(body) != digest:
+            raise ValueError("WOFF original table checksum differs")
+        expected[tag] = (digest, body)
+        tag, digest, offset, size = read(fixture, ">4sIII", 12 + index * 16)
+        if tag in observed:
+            raise ValueError("sfnt repeats a table identity")
+        body = retain(fixture, tag, offset, size, 12 + count * 16, fixture_spans)
+        if tag == b"head":
+            if len(body) < 12:
+                raise ValueError("Font head table has no checksum adjustment")
+            body = body[:8] + b"\0" * 4 + body[12:]
+        observed[tag] = (digest, body)
+    if expected != observed:
+        raise ValueError("sfnt fixture differs from the complete WOFF table set")
+    if checksum(fixture) != 0xb1b0afba:
+        raise ValueError("sfnt whole-file checksum adjustment differs")
+    return {"tables": len(expected), "complete_table_bytes_equal": True,
+            "head_checksum_adjustment_only": True, "sfnt_whole_file_checksum_verified": True,
+            "tools": {"python": sys.version.split()[0], "zlib": zlib.ZLIB_RUNTIME_VERSION},
+            "verification": "Static WOFF table decompression and complete sfnt table comparison; no target font code executed"}
+
+
+def hanbo_page_source_review(audit, ui, css, roles, ui_set):
+    curve = audit.owners[roles["ui_curve_editor"][0]]["body"]
+    if not all(token in curve for token in ('e.font="14px Roboto"', 'e.translate(0,Fg-c/2)',
+            'e.rotate(-Math.PI/2)', 'e.textAlign="center"', 'e.textBaseline="top"', '},[l])',
+            '},[y,m,G])', 'toFixed(1)')):
+        raise ValueError("Current Hanbo canvas or locale cleanup semantics changed")
+    css_raw = audit.read(css)
+    selectors = {'roboto_regular': '@font-face', 'disabled_contents': '.body-widgets .widget.disabled>div',
+        'preset': '.sliderChart__preset-list div', 'hover': '.sliderChart__preset-list div:hover',
+        'active': '.sliderChart__preset-list div.active,.sliderChart__preset-list div:active'}
+    rules = {}
+    for match in re.finditer(rb'([^{}]+)\{([^{}]*)\}', css_raw):
+        selector = match[1].decode('utf-8')
+        for name, expected in selectors.items():
+            if selector == expected and (name != 'roboto_regular' or b'font-weight:400' in match[2] and b'Roboto-Regular.woff' in match[2]):
+                if name in rules:
+                    raise ValueError("Hanbo presentation source selector is ambiguous: " + name)
+                rules[name] = {"byte_start": match.start(), "byte_end": match.end(),
+                    "sha256": hashlib.sha256(match[0]).hexdigest(), "complete_rule": match[0].decode('utf-8')}
+    if set(rules) != set(selectors):
+        raise ValueError("Hanbo presentation source selectors are incomplete")
+    if (not all(token in rules['preset']['complete_rule'] for token in ('height:27px', 'min-width:90px',
+            'padding:6px 16px 7px', 'font-size:12px', 'line-height:14px', 'white-space:nowrap',
+            'transition:border-color .3s,background-color .3s'))
+            or 'opacity:.3;pointer-events:none' not in rules['disabled_contents']['complete_rule']
+            or not rules['hover']['byte_start'] < rules['active']['byte_start']):
+        raise ValueError("Hanbo preset or disabled CSS semantics changed")
+    acquisition = json.loads(audit.artifact(a.ROOT / ui_set['acquisition']['path'], ui_set['acquisition']))
+    font = [row for row in acquisition['files'] if row.get('path')
+            and row.get('url') == 'https://apps.razer.com/synapse/assets/fonts/Roboto-Regular.woff']
+    if len(font) != 1:
+        raise ValueError("Hanbo source Roboto font is absent or ambiguous")
+    fixture = a.ROOT / 'crates/razer-assets/testdata/rotated_label/Roboto-Regular.ttf'
+    fixture_identity = identity(fixture)
+    equivalence = verify_woff_sfnt_fixture(audit.read(font[0]), fixture.read_bytes())
+    implementation = [identity(a.ROOT / name) for name in (
+        'crates/razer-pages/src/features/accessories/accessory_system_products/hanbo_cooler.rs',
+        'crates/razer-pages/src/features/accessories/accessory_system_products/hanbo_cooler_tests.rs',
+        'crates/razer-pages/src/features/workspace/source_workspace.rs',
+        'crates/razer-assets/src/rotated_label.rs', 'crates/razer-assets/src/rotated_label/tests.rs')]
+    return {"source_review": {"source_owners": {name: roles[name] for name in ('ui_curve_editor', 'ui_fan_controls', 'ui_pump_controls')},
+        "ui_original": audit.sources[ui['path']], "css_original": audit.sources[css['path']], "complete_css_rules": rules,
+        "axis_titles": "yg uses 14px Roboto, centered text and top baseline after translate(0,Fg-c/2) and -PI/2 rotation. Current fan/pump grids place the rotated label at y164.5; chart right edges are510/512 and top9.",
+        "locale_cleanup": "The label callback depends on language l and the canvas effect depends on[y,m,G]. A locale change runs cleanup that submits visible points rounded to one decimal; Rust retains unrounded visible geometry and drag state, submits mounted Fans then Pump once per locale change, and leaves unmounted curves alone.",
+        "page_cleanup": "CH.renderView mounts only the selected navigation component. Leaving Performance for Help must unmount yg and submit the last visible points before discarding its drag and retained label. The Rust Help branch calls the same AccessorySystemProductWorkspace.set_page owner used by normal page navigation; late drag/release has no editor, and returning mounts the saved curve afresh.",
+        "mode_presentation": "Preset height27px/min90px/padding6px16px7px/font12px/line14px; border and background transition independently for300ms with CSS ease. Selected and active rules follow hover, so selected background takes priority. Disabled interiors have opacity0.3 and no pointer input while the opaque#111card remains. Fans skip unchanged mode; Pump still dispatches.",
+        "rust_implementation": {"inputs": implementation,
+            "lifecycle": "Mounted Advanced CurveEditor retains LabelState and subscriptions. Assets obtains the cached source font and shapes text into path-only SVG on the background executor; request identity includes text, locale, geometry and actual font bytes. Cancellation and identity reject stale completion. Rendering only composes retained state; diagnostics do not dispatch source settings actions."},
+        "runtime_acceptance": "unverified", "all_language_fallback_visual_acceptance": "unverified",
+        "whole_page_complete": False},
+        "fixtures": [{"fixture": fixture_identity, "original": audit.sources[font[0]['path']],
+            "source_acquisition": ui_set['acquisition'],
+            "conversion": "WOFF to sfnt with all original tables retained; only sfnt directory and head checksumAdjustment are rebuilt",
+            "equivalence": equivalence, "scope": "Pure rotated-label outline tests; not a product runtime resource"}]}
+
+
+def audit_hanbo_local_runtime(args):
+    """Keep current mounted Hanbo controls and their actual local transports."""
+    import host
+    if args.family != "accessories" or args.function != "main" or args.product not in (None, [], [3893]):
+        raise ValueError("hanbo-local-runtime requires the current 3893 main query")
+    audit = host.HostLocalAudit()
+    ui_set, ui_files = audit.source_set("accessories-3893-current")
+    mw_set, mw_files = audit.source_set("accessories-mw-3893-current")
+    ui = next(row for row in ui_files if Path(row["path"]).name == "main.a7630c14.js")
+    css = next(row for row in ui_files if Path(row["path"]).name == "main.5b87dc95.css")
+    chunk = next(row for row in mw_files if Path(row["path"]).name.startswith("6259."))
+    main = next(row for row in mw_files if Path(row["path"]).name.startswith("main."))
+    elsa = next(row for row in mw_files if Path(row["path"]).name.startswith("rzDeviceElsa."))
+    roles, modules = {}, {}
+    def owner(role, source, needle, kinds=None):
+        keys = audit.retain(role, source, needle, kinds or {
+            "variable_declarator", "function_declaration", "method_definition", "field_definition"})
+        roles[role] = keys
+        return keys
+    for role, needle in {
+        "ui_runtime_defaults": "BC={runtimeData:{cpuTemp:",
+        "ui_runtime_reducer": "FC=(e,E)=>",
+        "ui_thermal_ports_reducer": "DC=(e,E)=>",
+        "ui_thermal_ports_update": "function CC(e,E,a){",
+        "ui_ports_save_action": "GC=(e,E)=>",
+        "ui_ports_action_state": "HC=(e,E,a)=>",
+        "ui_ports_broadcast": "vC=(e,E)=>",
+        "ui_firmware_warning": "function _g(){return(0,b.jsx)(\"div\",{className:JG",
+        "ui_cooler_info": "fg=(0,F.connect)(e=>({isCelsius:",
+        "ui_curve_editor": "function yg(e){let E=e.xAxis",
+        "ui_fan_controls": "Yg=(0,F.connect)(e=>{var E,a;return{fanMode:",
+        "ui_pump_controls": "Kg=(0,F.connect)(e=>{var E,a;return{pumpMode:",
+        "ui_performance_root": "function xg(){",
+        "ui_product_root": 'args:"getSpeedOfFanAndPumpTimer",device:"HANBO"',
+        "ui_celsius_action": "type:se.Y6R,payload:{isCelsius:",
+        "ui_temperature_unit": "Gg=e=>{let E=e.isCelsius",
+    }.items():
+        owner(role, ui, needle, {"class", "class_declaration"} if role == "ui_product_root" else None)
+    focus_reference = audit.read(ui).index(b'OH("synapse",window.name||e')
+    roles["ui_product_tab_observation"] = [audit.binding("ui_product_tab_observation", ui, "OH", focus_reference)["owner_id"]]
+    roles["ui_profile_menu"] = [key for key in audit.retain("ui_profile_menu", ui, "this.confirmDel=async",
+        {"class", "class_declaration"}, unique=False) if "this.props.deleteProfile" in audit.owners[key]["body"]]
+    owner("ui_profile_delete_reducer", ui, "case se.OCz:")
+    owner("ui_profile_delete_action", ui, 'to=e=>E=>{E({type:se.OCz,payload:e})}')
+    module_sets = [(chunk, [34244, 48290, 30525, 85191, 83789, 90012, 58070, 29346, 68623, 77846, 76760, 91684, 67403, 96183, 87887, 89750, 66342, 92332, 96744]),
+                   (main, [68560, 76912, 35924, 69427]), (elsa, [40991])]
+    for source, required in module_sets:
+        audit.tree(source)
+        rows = {row["module_id"]: row for row in keyboard_source_modules(audit.read(source).decode("utf-8"))}
+        for mid in required:
+            row = rows[mid]
+            modules[str(mid)] = audit.retain_range("mw_complete_module_" + str(mid), source,
+                row["byte_start"], row["byte_end"], "method_definition" if row["body"].startswith(str(mid) + "(") else "pair")
+    for role, needle in {
+        "mw_mode_task_maker": 'function Eo(e,t,n,i,r){return Be',
+        "mw_celsius_task_maker": 'function Bo(e,t,n,i,r,a=0){return Be',
+        "mw_ports_task_maker": 'function co(e,t,n,i,r,a,s=0){',
+        "mw_ports_diff_dispatch": 'Mn=(e,t=y.A.runtimeData,n)=>',
+        "mw_polling_owner": 'u={getSpeedOfFanAndPumpTimer:',
+        "mw_fan_pump_getters": 'A=e=>()=>p(void 0,void 0,void 0,function*(){const t=i.jf.rzDevice;',
+        "mw_system_monitor_start": 's=(e,t,n,s)=>a(void 0,void 0,void 0,function*(){const{systemHelper:',
+        "mw_hanbo_device_setup": 'getHanboDeviceHWInfo get error',
+        "mw_device_setup_system_monitor_caller": 'i?yield(0,P.GJ)()',
+        "mw_product_cleanup_monitors": 'En=()=>{st.mZ.stopService("rzSystemMon"),We.oK.stopService("rzSystemMon")}',
+        "mw_profile_switch_restore": 'function Zt(e,t,n,r,a,s=void 0,l=0){',
+        "mw_profile_reset_restore": 'function Jt(e,t,n,r,a,s=void 0,l=0){',
+        "mw_profile_delete_restore": 'function Yt(e,t,n,r,a,s,l=void 0,c=0){',
+        "mw_device_connected_restore": 'function Dn(e=y.A.runtimeData,t){',
+    }.items():
+        owner(role, chunk, needle)
+    owner("mw_mode_runner", chunk, "taskRunnerHanboSetModeResults error", {"function_declaration"})
+    owner("mw_mode_completion", chunk, "error: onTaskRunnerHanboSetMode exist error", {"function_declaration"})
+    owner("elsa_ecmascript_temperature_parts", elsa, 'He=e=>{const t=e.toString().split(".");')
+    storage_binding = audit.webpack_export("mw_local_save", mw_files, 77846, "Pf")
+    roles["mw_local_save"] = [storage_binding["binding"]["owner_id"]]
+    save_pos = storage_binding["binding"]["reference_byte"]
+    for label, symbol in [("mw_local_save_hash", "I"), ("mw_local_save_hook", "h")]:
+        binding = audit.binding(label, chunk, symbol, save_pos)
+        roles[label] = [binding.get("owner_id") or audit.retain_range(label, chunk,
+            binding["start_byte"], binding["end_byte"], binding["syntax"])]
+    for role, exported in [("mw_profile_ports", "FF"), ("mw_runtime_ports_projection", "l3"),
+                           ("mw_installed_library_paths", "Hy")]:
+        resolved = audit.webpack_export(role, mw_files, 96183, exported)
+        roles[role] = [resolved["binding"]["owner_id"]]
+    owner("mw_system_monitor_configuration", main,
+          'useFeature("systemHelper","config",{clientDllName:"RzSystemCommon",serverDllName:"RzSystemService"})',
+          {"call_expression"})
+    owner("mw_hanbo_port_configuration", main, 'useFeature("hanboConfigure","config",', {"call_expression"})
+    for role, exported in [("mw_external_power_query", "SM"), ("mw_fan_power_query", "cq")]:
+        resolved = audit.webpack_export(role, mw_files, 87887, exported)
+        roles[role] = [resolved["binding"]["owner_id"]]
+    for name in ["constructor", "_sendCommand", "_getHIDInputReportResult", "getFanControllerInfo",
+                 "getPumpControllerFunctionalityInfo", "getDeviceInformation", "getErrorcodeInfo", "getCPUGPUTemperature", "setFanControllerParameter",
+                 "setCoolerPumpControllerParameter", "setCPUGPUFanControllerSpeedsCurve", "setCoolerPumpControllerSpeedsCurve"]:
+        root = audit.tree(elsa).root_node
+        # constructor belongs to the exact current Elsa class rather than a
+        # shared same-named class in a concatenated dependency.
+        if name == "constructor":
+            pos = audit.read(elsa).index(b'this.name="rzDeviceElsa"')
+            root = root.descendant_for_byte_range(pos, pos)
+            while root.type not in {"class", "class_declaration"}:
+                root = root.parent
+        _, key = audit.callable_member("elsa_" + name, elsa, root, name)
+        roles["elsa_" + name] = [key]
+    css_raw = audit.read(css)
+    css_rules = []
+    for match in re.finditer(rb'([^{}]+)\{([^{}]*)\}', css_raw):
+        if any(token in match[1] for token in (b"CoolerInfo_", b"FanGraph_", b"Temperature_", b"Graph_", b"Pump_", b"Fan_", b"FirmwareWarning_")):
+            css_rules.append({"byte_start": match.start(), "byte_end": match.end(),
+                "sha256": hashlib.sha256(match[0]).hexdigest(), "complete_rule": match[0].decode("utf-8")})
+    index = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))
+    inputs = {row["path"]: row for row in index["inputs"]}
+    native_inventory = hanbo_native_inventory(audit, inputs, chunk, prepare=args.prepare)
+    host_source = inputs[".analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/UsbRzDeviceAction.js"]
+    root = audit.tree(host_source).root_node
+    for name in ["handleAction", "hidRead"]:
+        _, key = audit.callable_member("host_" + name, host_source, root, name)
+        roles["host_" + name] = [key]
+    hid_path = ".analysis/inputs/installed-current/files/app-engine/resources/app.asar.unpacked/node_modules/node-rz-hid/build/Release/HID.node"
+    native = verify_native_functions(inputs[hid_path], {"0xcc90": "node_hid_prototype_registration",
+        "0xa110": "node_hid_write_array_and_native_return_count", "0x6fb0": "node_hid_read_timeout",
+        "0x175e0": "hid_write_windows_WriteFile", "0x17800": "hid_read_timeout_windows_ReadFile_and_zero_report_id"})
+    common_path = ".analysis/inputs/host-current/blobs/cc8c6aee3515f96f5bed7a11c4a4b3653b525ec2a09a87c2d062ec183af4a76d/RzSystemCommon_v1.0.29.0.dll"
+    common = verify_native_functions(inputs[common_path], {
+        "0x66df0": "common_initialize_window_receiver_buffer_and_pipe",
+        "0x67230": "common_device_init_logging_only", "0x673c0": "common_device_terminate_logging_only",
+        "0x67260": "common_terminate_timers_receiver_join_pipe_and_buffer",
+        "0x673f0": "common_free_malloc", "0x67560": "common_set_node_callback_pointer",
+        "0x6d900": "common_register_container_mask_interval", "0x6dd50": "common_unregister_container_and_timers",
+        "0x6e120": "common_get_hardware_data_by_mask_malloc_json", "0x6f380": "common_get_hardware_data_by_name",
+        "0x667f0": "common_hardware_name_mask", "0x66af0": "common_observed_numeric_cache_or_null",
+        "0x66d20": "common_observed_string_cache", "0x676e0": "common_flatten_cur_min_max",
+        "0x67df0": "common_emit_hardware_monitor_callback",
+        "0x6bc20": "common_parse_complete_pipe_message_cpu_gpu_selection",
+        "0x68ec0": "common_update_cpu_numeric_and_string_cache", "0x6a2f0": "common_update_gpu_numeric_and_string_cache",
+        "0x6b4e0": "common_update_other_hardware_cache", "0x6c9e0": "common_hardware_sync_timer_pipe_request",
+        "0x6cf00": "common_pipe_receiver_thread", "0x6d110": "common_hidden_window_message_thread",
+        "0x675a0": "common_hidden_window_destroy_kills_timers_and_posts_quit",
+        "0x72040": "common_copy_nonempty_server_library_path", "0x72110": "common_copy_nonempty_external_library_path",
+        "0x61610": "common_pipe_init", "0x616e0": "common_pipe_connect",
+        "0x619c0": "common_pipe_write_complete_message", "0x61de0": "common_pipe_read_partial_and_complete_message",
+        "0x62380": "common_pipe_cleanup", "0x6d600": "common_server_running_check",
+        "0x6d7d0": "common_explicit_close_server", "0x722b0": "common_close_callback_timer",
+        "0x72350": "common_close_hardware_sync_timer"})
+    common_raw = audit.read(inputs[common_path])
+    common_pe = host.inspect_pe(common_raw)
+    def common_span(rva, count):
+        part = next(part for part in common_pe["sections"] if part["rva"] <= rva
+                    and rva + count <= part["rva"] + part["bytes"])
+        offset = part["file_offset"] + rva - part["rva"]
+        return offset, common_raw[offset:offset + count]
+    pointer_offset, pointer_bytes = common_span(0xc2278, 8)
+    window_va = int.from_bytes(pointer_bytes, "little")
+    window_offset, window_bytes = common_span(window_va - int(common_pe["image_base"], 0), 128)
+    end = next(index for index in range(0, len(window_bytes), 2) if window_bytes[index:index + 2] == b"\0\0")
+    window_bytes = window_bytes[:end + 2]
+    window_identity = {"original": audit.sources[common_path], "pointer_rva": "0xc2278",
+        "pointer_file_offset": pointer_offset, "pointer_bytes": pointer_bytes.hex(), "window_string_va": hex(window_va),
+        "window_string_file_offset": window_offset, "window_string_bytes": window_bytes.hex(),
+        "window_class_and_title": window_bytes[:-2].decode("utf-16-le"),
+        "initialize_unregisters_different_class": "RazerHardWareMonHidenWindowClass"}
+    if window_identity["window_class_and_title"] != "RazerSystemCommonHidenWindow":
+        raise ValueError("Current Common hidden-window identity differs and requires renewed source review")
+    native_by_name = {Path(path).name: row for path, row in inputs.items()
+                      if path.startswith(".analysis/inputs/host-current/blobs/")}
+    server = verify_native_functions(native_by_name["RzDLLService_v1.0.29.0.exe"], {
+        "0x2f590": "server_resolve_initialize_and_json_pointer_dispatch_with_free_malloc",
+        "0x31990": "server_terminate_and_free_loaded_libraries",
+        "0x38150": "server_pipe_message_thread_and_one_thread_selection"})
+    system = verify_native_functions(native_by_name["RzSystemService_v1.0.29.0.dll"], {
+        "0x43310": "system_initialize_monitor", "0x43810": "system_terminate_monitor_and_native_objects",
+        "0x43a00": "system_free_malloc", "0x46840": "system_all_hardware_json_pointer_to_malloc_string",
+        "0x15df0": "system_collect_hardware_snapshot", "0x448b0": "system_copy_response_request_fields"})
+    ffi_path = ".analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/modules/ffi_subprocess/FFIPreloadSubProcess.js"
+    ffi_source = inputs[ffi_path]
+    ffi_root = audit.tree(ffi_source).root_node
+    for name in ["_handleAction_SetNodeFFIEvent", "_callDLLFunctionAsync", "_handleAction_Default"]:
+        _, key = audit.callable_member("host_ffi_" + name, ffi_source, ffi_root, name)
+        roles["host_ffi_" + name] = [key]
+    hardware_producer_search = []
+    power_feature_search = []
+    for source in mw_files:
+        if source["path"].endswith(".js"):
+            hardware_producer_search.append({"original": audit.sources.get(source["path"], source),
+                "isHardwareOutdated_occurrences": audit.read(source).count(b"isHardwareOutdated")})
+            power_feature_search.append({"original": audit.sources.get(source["path"], source),
+                "usesExternalPowerSupply_occurrences": audit.read(source).count(b"usesExternalPowerSupply"),
+                "hasFanPowerStatus_occurrences": audit.read(source).count(b"hasFanPowerStatus")})
+    presentation = hanbo_page_source_review(audit, ui, css, roles, ui_set)
+    changed = audit.final_snapshot()
+    if not all(valid(row) for row in presentation['source_review']['rust_implementation']['inputs']
+               + [row['fixture'] for row in presentation['fixtures']]):
+        changed.append('Hanbo presentation implementation or fixture changed')
+    if changed:
+        raise ValueError("Hanbo originals changed during query: " + str(changed))
+    result = {"recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)), "product_id": 3893,
+        "parsers": audit.parser_versions, "source_sets": [ui_set, mw_set], "complete_owners": audit.owners,
+        "roles": roles, "complete_modules": modules, "css": {"original": audit.sources[css["path"]], "rules": css_rules},
+        "native_hid": native, "native_system_common": common,
+        "native_system_service": system, "native_dll_server": server,
+        "native_installation": native_inventory,
+        "native_hidden_window_identity": window_identity,
+        "hardware_outdated_producer_search": hardware_producer_search,
+        "power_feature_search": power_feature_search,
+        "verified_artifacts": list(audit.artifacts.values()),
+        "semantics": {
+            "mounted_tree": "xg mounts fg, left Yg and right Kg. fg consumes elsaReducer.runtimeData; BC supplies source UI initial zero values and FC merges B8N payloads. yg owns curve pointer state and both full fan/pump branches remain retained.",
+            "polling": "48290 owns a repeating 5000ms fan/pump query. 34244 A awaits getFanControllerInfo then getPumpControllerFunctionalityInfo and publishes rpm/rpm/temperature.toFixed(1). Its VO system monitor start uses y=1000ms and no requested-type list, producing native mask0. The callback merges CPU/GPU temperatures and clocks then writes changed temperatures through getCPUGPUTemperature. Service stop unregisters and terminates via 29346.",
+            "monitor_lifecycle": "90012 setup calls 87887.GJ for rzDeviceElsa; that complete Hanbo initializer reads device information, disables the unavailable edition port and starts 48290 rzSystemMon independently of UI visibility. The UI product root registers OH tab observation, debounced 400ms: first active product tab sends startService(getSpeedOfFanAndPumpTimer), while inactive sends stopService. The complete 48290 dispatcher deliberately only handles startService, so source loss of focus does not stop this getter after activation. Changing the internal Performance/Lighting tab does not independently own these services. Cleanup 90012 En stops rzSystemMon; connection-owner Rust cleanup must also release retained periodic work.",
+            "profile_restore": "30525 Zt changes active profile only when its storage flag r is true, advances version, awaits Pf, refreshes UI qw, computes new-profile versus prior-profile diff and invokes 90012 IF/Mn with that diff. Jt profile reset similarly requires its storage flag and invokes IF without a diff after save and refresh. Yt delete requires its local flag a and more than one profile; it picks supplied r if still present, otherwise first remaining, then saves, refreshes and invokes IF with the new-active versus old-active diff. Dn connected setup loads local cache, refreshes UI, awaits Pf without clearing isDefault, then invokes Mn unless both external/fan power states are defined and either is false. Mn always appends ports to profile diff field selection when the active profile has ports. With a diff that has no ports field, all active thermal ports still dispatch. Only an actual n.ports row diff restricts a port's fields: source ~,+,- markers select row fields unless isActive is true, removed rows are skipped, and unmarked rows select no fields. No generic lighting-only suppression is inferred.",
+            "setup_port_and_power": "Main35924 initializes every runtime port active. Main hanboConfigure disables only port2147483651 when getDeviceInformation reports edition0; thermal pump2/fan1 remain active. Its device information response [2,2] reads edition as data26 low/data27 high. Generic setup only reads externalPowerSupplyStatus/fanPowerStatus when features usesExternalPowerSupply/hasFanPowerStatus are enabled. Current main declares neither and the complete Elsa class implements neither generic power getter, so these branches do not supply Hanbo power observations. ErrorcodeInfo [160,1]->[161,2] data2 bits are source fault flags and must not be substituted for those unobserved runtime power fields.",
+            "profile_menu": "Current3893 cM menu deletes only its selected profile after the GP confirmation and disables delete when only one remains. OCz filters the deleted GUID and, for this non-KEYPAD category, selects the first remaining GUID; it sends that value as newSelectedProfileGUID to MW Yt. Generic reset is excluded from ACCESSORY menus unless DeviceInfo.supportResetProfile is true; current Hanbo declares no such exception, so the MW reset function does not prove a reachable Hanbo reset menu.",
+            "missing_profile_ports": "96183 FF returns active/global projected profile ports or an empty array. Runtime35924 ports contain only id/isActive, so l3 merging an absent saved port does not synthesize its thermal settings. A missing profile or ports field has no thermal write; new-profile creation separately supplies the verified typed default profile.",
+            "array_matching": "89750 computes the actual current-profile versus previous-profile diff using66342->92332 SequenceMatcher with object scalarization, score/distance matching and earliest-block tie behavior. Removing current Pump thermal scores its prior Pump90 against that row but113.6 against current Fan; the exact Fan match400 wins that token, leaving delete/insert before equal rows. Mn indexes the insert at runtime Fan position and therefore dispatches current Fan once. Added/deleted object field suffixes alone do not select thermal. These source quirks are preserved rather than replaced by an identity-keyed thermal comparison.",
+            "mode_dispatch": "83789 declares updateLocalStorage exclusive and deviceAccess flags for ON_HANBO_SET_MODE; this array does not execute an ordered storage-then-device transaction. 90012 obtains the flags through 76760 executeEventTask and calls 30525 Eo. Eo ignores its storage argument i and queues only when deviceAccess r is true, using NORMAL and literal identifier undefined. The 85191 ko device runner selects Fans by exact name and uses actual preset/curve setters; Lo only logs a task error and has no storage write. No source storage-success gate is inferred.",
+            "celsius": "UI Y6R optimistically updates temperatureReducer. The temperature feature routes ON_SET_TEMPERATURE_MEASUREMENT to 30525 Bo; when storage is allowed it reads local data, writes isCelsius, advances its version and awaits Pf. Restore broadcasts Y6R without device access.",
+            "ui_ports_save_dispatch": "The UI port action reaches 30525 co before Eo. co clones the selected profile, assigns ports and advances the device version once. In its existing-profile-ports branch it awaits Pf then D.IF, then repeats Pf and D.IF with the same original-profile diff. D.IF resolves to complete 90012 Mn: it routes each active port thermal field to ON_HANBO_SET_MODE. A thrown first save prevents its first D.IF; a later failure does not undo previously enqueued events. Its NORMAL queue and 76760 push/shift event queue do not deduplicate these events.",
+            "ports_order": "UI DC/CC updates the matching id without reordering ports; GC/HC retains optimistic state and vC broadcasts that state. Main35924 runtime ports start at 2 Pump Cap, then 1 Fans, then 4 and the three ARGB ids. Main69427 profile defaults retain the same leading order. 96183 FF selects saved/global profile ports; l3 maps runtimeData.ports and merges the saved item by id, so Mn executes active thermal ports in runtime order, Pump then Fans, regardless of UI column order or payload order.",
+            "equal_ports_cleanup": "An equal profile diff is undefined. Mn uses full restore when its diff argument is absent; its ports branch only restricts fields when n.ports exists. Thus an equal cleanup cannot be assumed to suppress native work: active thermal ports are dispatched by both Mn invocations. Pf's hash closure excludes version and caches the hash before its local setter, so repeated equal saves can skip actual localStorage writes while both dispatch calls still execute. PostSetLocalStorage launches asynchronous work without returning its promise, so those background failures are not a synchronous save gate.",
+            "hid_channel": "Host hid.read calls hidRead, up to five readTimeout(10) calls, and ignores payload reportId/reportLength. Native readTimeout reaches hid_read_timeout/ReadFile; only a leading zero report ID is removed. hid.getInputReport is a different host branch.",
+            "write_length": "Elsa constructor sets reportLength65, then _sendCommand allocates65 and prefixes claimInterface, producing66 bytes while accepting native write count65. The current host forwards all dataSend bytes; native hid_write pads shorter-than-caps buffers but never truncates larger ones. No static conclusion asserts that OS/device accepts this combination.",
+            "system_monitor_native": "RzSystemCommon Initialize owns the hidden message thread, pipe receiver and buffer. TimerFunc sends GetAllHardwareInfo JSON to the fixed local named pipe; the server passes a nlohmann JSON object pointer to RzSystemService and frees its malloc C-string response. Common's receiver assembles complete messages, parses CPUInfo/GPUInfo and updates typed-mask caches. Callback timer flattens cur/min/max values and adds container event, dllName RzSystemCommon and dllFunc HardwareMonitorCallback. Host FFI decodes a void(string) callback as JSON. Missing numeric observations are null, not zero.",
+            "system_monitor_cleanup": "Product 29346 unregisters its container then calls JS terminate, whose DeviceTerminate native body only logs. Unregister removes callback ownership and kills both timers only when no containers remain. Native Common Terminate separately posts WM_DESTROY and closes its hidden-window thread handle without joining that thread; it joins only its separate pipe receiver, then closes pipe and frees its buffer. WndProc675a0 WM_DESTROY kills both timers and posts WM_QUIT. Rust retains the callback and library until an independently retained OS window-thread handle confirms exit, then unregisters the verified process-owned class before library release. Initialize unregisters a different source class name, which does not prove repeat-initialization cleanup. RzDLLService unload dispatch calls each loaded DLL Terminate before FreeLibrary. CloseAPPServer is an explicit server-wide operation and is not inferred from product stop."},
+        "unresolved_chains": ["Current installed external sensor implementation and selected native vtable sensor branches still require full ABI closure before Rust CPU/GPU monitoring can be declared complete",
+                              "No acquired current 3893 MW JavaScript contains isHardwareOutdated; its true producer remains unresolved rather than invented",
+                              "Source write66/accepted-count65 behavior requires explicit transport semantics and remains without real-device acceptance"],
+        "target_execution": False, "inputs_unchanged": True, "whole_page_complete": False,
+        "runtime_acceptance": "unverified", **presentation}
+    output = a.ROOT / ".analysis/results/frontend/accessories-main-audit.json"
+    document = json.loads(output.read_bytes()) if output.is_file() else {"schema_version": 1}
+    document.setdefault("queries", {})["hanbo-local-runtime"] = result
+    a.save(output, document)
+    print(json.dumps({"receipt": a.rel(output), "query": "hanbo-local-runtime",
+        "complete_owners": len(audit.owners), "native_functions": len(native["complete_selected_functions"]),
+        "inputs_unchanged": True, "target_execution": False}), flush=True)
+
+
 def audit_camera_source_review(args):
     """Bind selected implemented camera chains to complete current evidence."""
     if args.family != "accessories" or args.function != "main" or args.prepare:
@@ -15122,9 +19315,9 @@ def add_commands(parsers):
     audit.add_argument("--family", required=True, choices=list(FAMILY_CANDIDATES))
     audit.add_argument("--function", required=True)
     audit.add_argument("--product", type=int, action="append")
-    audit.add_argument("--query", choices=["mouse-dpi", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-local-controls", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "mapping-engine", "audio-firmware-selector", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review"], help="Append a semantic query to an existing complete capture audit")
+    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-matcher", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-local-controls", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
     audit.add_argument("--prepare", action="store_true", help="Prepare verified current artwork resources through the shared workflow")
-    audit.add_argument("--receipt-only", action="store_true", help="Refresh mouse-customize or mouse-dpi-backend evidence without rewriting runtime descriptors")
+    audit.add_argument("--receipt-only", action="store_true", help="Refresh supported mouse or mapping-engine evidence without rewriting runtime descriptors")
     parser = parsers.add_parser("acquire-family", help=__doc__)
     parser.add_argument("--family", required=True, choices=[*FAMILY_CANDIDATES, "all"])
     parser.add_argument("--layer", choices=["ui", "mw", "both"], default="ui")

@@ -15,7 +15,7 @@ impl HueWorkspace {
                 } else {
                     this.bridge.bridge_enabled = false;
                     this.bridge.is_loading = false;
-                    this.sync_tutorial_visibility();
+                    this.sync_tutorial_visibility(cx);
                     this.last_command = Some("ON_SET_BRIDGE_ENABLE: false".into());
                 }
                 cx.notify();
@@ -49,7 +49,7 @@ impl HueWorkspace {
                         .on_click(cx.listener(|this, _, _, cx| {
                             if this.preview {
                                 this.bridge.is_loading = true;
-                                this.sync_tutorial_visibility();
+                                this.sync_tutorial_visibility(cx);
                                 this.last_command = Some("ON_REFRESH_BRIDGE".into());
                                 cx.notify();
                             }
@@ -153,11 +153,13 @@ impl HueWorkspace {
                                 cx.notify();
                             }
                         }))
-                        .content(move |_, _, cx| razer_assets::resource_scope({
-                            owner
-                                .update(cx, |this, cx| this.bridge_alert(cx))
-                                .unwrap_or_else(|_| div().into_any_element())
-                        })),
+                        .content(move |_, _, cx| {
+                            razer_assets::resource_scope({
+                                owner
+                                    .update(cx, |this, cx| this.bridge_alert(cx))
+                                    .unwrap_or_else(|_| div().into_any_element())
+                            })
+                        }),
                 ),
         )
         .into_any_element()
@@ -213,7 +215,7 @@ impl HueWorkspace {
                         if enable {
                             this.bridge.bridge_enabled = true;
                             this.bridge.is_loading = true;
-                            this.sync_tutorial_visibility();
+                            this.sync_tutorial_visibility(cx);
                             this.last_command = Some("ON_SET_BRIDGE_ENABLE: true".into());
                         } else {
                             // Source sends a command and waits for MW_SET_IS_PAIRED.

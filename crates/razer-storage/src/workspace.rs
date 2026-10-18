@@ -6,6 +6,11 @@ use std::path::Path;
 #[cfg(test)]
 use std::path::PathBuf;
 const VERSION: u32 = 2;
+mod retired_shortcuts;
+pub use retired_shortcuts::RetiredShortcuts;
+mod device_save;
+pub use device_save::DeviceSaveDraft;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkspaceFile {
     version: u32,
@@ -14,6 +19,8 @@ pub struct WorkspaceFile {
     pub tracking_intro_seen: bool,
     #[serde(default)]
     pub shortcuts: Vec<razer_model::shortcuts::Shortcut>,
+    #[serde(default, skip_serializing_if = "RetiredShortcuts::is_empty")]
+    retired_shortcuts: RetiredShortcuts,
     #[serde(default)]
     pub macros: razer_model::macro_library::MacroLibraryFile,
     #[serde(default)]
@@ -34,6 +41,7 @@ impl WorkspaceFile {
             devices,
             tracking_intro_seen,
             shortcuts: vec![],
+            retired_shortcuts: RetiredShortcuts::default(),
             macros: Default::default(),
             preferences: razer_model::preferences::AppPreferences::default(),
             custom_colors: [None; 16],
@@ -44,6 +52,13 @@ impl WorkspaceFile {
     }
     pub fn with_shortcuts(mut self, shortcuts: Vec<razer_model::shortcuts::Shortcut>) -> Self {
         self.shortcuts = shortcuts;
+        self
+    }
+    pub fn retired_shortcuts(&self) -> &RetiredShortcuts {
+        &self.retired_shortcuts
+    }
+    pub fn with_retired_shortcuts(mut self, shortcuts: RetiredShortcuts) -> Self {
+        self.retired_shortcuts = shortcuts;
         self
     }
     pub fn with_preferences(
@@ -114,6 +129,7 @@ fn decode_workspace(text: &str) -> anyhow::Result<WorkspaceFile> {
         );
         file
     };
+    file.retired_shortcuts.migrate(&mut file.shortcuts)?;
     razer_model::shortcuts::validate_stored_shortcuts(&file.shortcuts)
         .map_err(anyhow::Error::msg)?;
     file.preferences.validate().map_err(anyhow::Error::msg)?;
@@ -130,12 +146,84 @@ pub fn write_workspace(path: &Path, file: &WorkspaceFile) -> anyhow::Result<()> 
     file.macros.validate().map_err(anyhow::Error::msg)?;
     razer_model::shortcuts::validate_stored_shortcuts(&file.shortcuts)
         .map_err(anyhow::Error::msg)?;
+    file.retired_shortcuts.validate(&file.shortcuts)?;
     crate::write_document(path, file, |text| decode_workspace(text).map(|_| ()))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn old_online_shortcuts_are_retained_across_saves_outside_local_actions() {
+        let path = test_path("retired-shortcuts");
+        let document = serde_json::json!({
+            "version": 2,
+            "devices": [],
+            "shortcuts": [
+                {
+                    "id": "online", "input": "KEY_C", "modifiers": ["GUI"],
+                    "hypershift": false,
+                    "output": {"kind": "windows", "action": "MSCopilot"}
+                },
+                {
+                    "id": "local", "input": "KEY_K", "modifiers": ["CTRL"],
+                    "hypershift": false,
+                    "output": {"kind": "windows", "action": "Calculator"}
+                }
+            ]
+        });
+        let original = document.to_string();
+        std::fs::write(&path, &original).unwrap();
+        let loaded = read_workspace(&path).unwrap().unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), original);
+        assert_eq!(loaded.shortcuts.len(), 1);
+        assert_eq!(loaded.shortcuts[0].id, "local");
+        razer_model::shortcuts::encode_shortcuts(&loaded.shortcuts).unwrap();
+        let retained = loaded.retired_shortcuts().clone();
+        let active = loaded.shortcuts;
+        for _ in 0..2 {
+            let next = WorkspaceFile::new(vec![], true)
+                .with_shortcuts(active.clone())
+                .with_retired_shortcuts(retained.clone());
+            write_workspace(&path, &next).unwrap();
+            let saved = read_workspace(&path).unwrap().unwrap();
+            assert_eq!(saved.shortcuts, active);
+            let value = serde_json::to_value(saved).unwrap();
+            assert_eq!(
+                value["retired_shortcuts"],
+                serde_json::json!([document["shortcuts"][0]])
+            );
+        }
+        std::fs::remove_file(&path).unwrap();
+        std::fs::remove_file(path.with_extension("json.bak")).unwrap();
+    }
+
+    #[test]
+    fn retained_online_records_cannot_hide_local_actions_or_invalid_input() {
+        let archived = serde_json::json!({
+            "id": "archived", "input": "KEY_C", "modifiers": ["GUI"],
+            "hypershift": false,
+            "output": {"kind": "windows", "action": "MSCopilot"}
+        });
+        let mut document = serde_json::json!({
+            "version": 2, "devices": [], "retired_shortcuts": [archived.clone()]
+        });
+        assert!(
+            decode_workspace(&document.to_string())
+                .unwrap()
+                .shortcuts
+                .is_empty()
+        );
+        document["retired_shortcuts"][0]["input"] = serde_json::json!("NOT_A_KEY");
+        assert!(decode_workspace(&document.to_string()).is_err());
+        document["retired_shortcuts"][0] = archived.clone();
+        document["retired_shortcuts"][0]["output"]["action"] = serde_json::json!("Calculator");
+        assert!(decode_workspace(&document.to_string()).is_err());
+        document["retired_shortcuts"][0] = archived.clone();
+        document["shortcuts"] = serde_json::json!([archived]);
+        assert!(decode_workspace(&document.to_string()).is_err());
+    }
+
     #[test]
     fn legacy_synthetic_keyboard_is_removed_without_relabeling_or_losing_other_devices() {
         let preview = razer_model::product_preview::registered_preview(653).unwrap();

@@ -23,6 +23,7 @@ pub use calibration::state::{CalibrationIntent, CalibrationObservation};
 mod chroma_runtime;
 #[path = "gamepad_lighting.rs"]
 mod lighting;
+use lighting::LightingSurface;
 #[path = "gamepad_lighting_runtime.rs"]
 mod lighting_runtime;
 #[path = "gamepad_lighting_state.rs"]
@@ -199,7 +200,6 @@ pub struct GamepadProductWorkspace {
     calibration_popup: Option<calibration::CalibrationDialog>,
     trigger_calibration_state: trigger_calibration_state::TriggerCalibrationState,
     trigger_calibration_popup: Option<trigger_calibration::TriggerDialog>,
-    trigger_frame_pending: bool,
     trigger_runtime: trigger_runtime::TriggerRuntime,
     lighting_runtime: lighting_runtime::LightingRuntime,
     lighting_ui: lighting::LightingUi,
@@ -246,7 +246,6 @@ impl GamepadProductWorkspace {
             calibration_popup: None,
             trigger_calibration_state: Default::default(),
             trigger_calibration_popup: None,
-            trigger_frame_pending: false,
             trigger_runtime: Default::default(),
             lighting_runtime: lighting_runtime::LightingRuntime::new(pid),
             lighting_ui: lighting::LightingUi::new(window, cx),
@@ -326,6 +325,7 @@ impl GamepadProductWorkspace {
             if self.page == "TAB_LIGHTING" {
                 self.lighting_ui.cancel(cx);
                 self.dismiss_quick_lighting_controls(cx);
+                self.chroma_runtime.set_product_page_observing(false);
             }
             self.customize_hover = None;
             self.cancel_range_edits(cx);
@@ -358,6 +358,7 @@ impl GamepadProductWorkspace {
             self.low_deadzone = None;
             self.request_trigger_read(cx);
             if key == "TAB_LIGHTING" {
+                self.chroma_runtime.set_product_page_observing(true);
                 self.refresh_controller_chroma(cx);
             }
             cx.notify();
@@ -403,6 +404,9 @@ impl GamepadProductWorkspace {
         self.refresh_thumbstick_artwork(cx);
         self.request_trigger_read(cx);
         self.request_controller_lighting(cx);
+        if self.chroma_runtime.has_observers() {
+            self.refresh_controller_chroma(cx);
+        }
         cx.notify();
     }
 
@@ -1116,23 +1120,38 @@ impl GamepadProductWorkspace {
     /// The `displayMode=chromaApp` popup mounts this page without the product
     /// chrome; the renderer itself is shared, so no separate layout is faked.
     pub fn lighting_element(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        self.lighting(window, cx)
+        self.lighting(LightingSurface::ChromaApp, window, cx)
     }
 
     /// 源码灯光页：左侧亮度组件（标题 `BRIGHTNESS_HEADER`、标题行开关、
     /// 右上帮助 `BRIGHTNESS_TOOLTIP`、0–100 滑条）加上「关闭灯光」组件
     /// （`SWITCH_OFF_LIGHTING_HEADER` + `SWITCH_OFF_LIGHTING_TOOLTIP`，两个
     /// `.check-item` 与 1–15 滑条），右侧快速效果。
-    fn lighting(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn lighting(
+        &self,
+        surface: LightingSurface,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         if self.spec.product_id == 4115 {
-            return self.kitsune_lighting(window, cx);
+            return self.kitsune_lighting(surface, window, cx);
         }
         if self.spec.controller_lighting {
-            return surface::page_columns()
-                .child(surface::page_column(
-                    self.controller_brightness_panel(window, cx),
-                ))
-                .child(surface::page_column(self.controller_preset_panel(cx)))
+            return v_flex()
+                .relative()
+                .w_full()
+                .min_h_full()
+                .child(
+                    surface::page_columns()
+                        .child(surface::page_column(
+                            self.controller_brightness_panel(window, cx),
+                        ))
+                        .child(surface::page_column(self.controller_preset_panel(cx))),
+                )
+                .when(
+                    self.chroma_runtime.observation.dynamic_lighting() == Some(true),
+                    |body| body.child(self.controller_dynamic_warning(surface, cx)),
+                )
                 .into_any_element();
         }
         surface::page_columns()
@@ -1272,12 +1291,11 @@ impl GamepadProductWorkspace {
 
 impl Render for GamepadProductWorkspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        self.schedule_trigger_frame(window, cx);
         let content = match self.page.as_str() {
             "TAB_CUSTOMIZE" => self.customize(cx),
             "TRIGGERS" => self.triggers(window, cx),
             "THUMBSTICKS" => self.thumbsticks(window, cx),
-            "TAB_LIGHTING" => self.lighting(window, cx),
+            "TAB_LIGHTING" => self.lighting(LightingSurface::Synapse, window, cx),
             "TAB_POWER" => self.power(cx),
             "TAB_CALIBRATION" => self.calibration(window, cx),
             // The workspace routes only catalog page keys here; HELP is mounted by

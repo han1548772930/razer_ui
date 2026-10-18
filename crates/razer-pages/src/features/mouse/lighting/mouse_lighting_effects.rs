@@ -340,9 +340,9 @@ impl MouseProductWorkspace {
                 LightingColorPicker::new(&state.power_indicator_color, "")
                     .allow_none(false)
                     .disabled(mouse_disabled)
-                    .on_custom_colors_commit(cx.listener(
-                        |this, slots: &razer_state::CustomColorSlots, _, cx| {
-                            this.commit_mouse_custom_colors(slots, cx)
+                    .on_custom_color_edit(cx.listener(
+                        |this, edit: &razer_model::preferences::CustomColorEdit, _, cx| {
+                            this.commit_mouse_custom_colors(*edit, cx)
                         },
                     )),
             )
@@ -383,19 +383,38 @@ impl MouseProductWorkspace {
     }
     fn commit_mouse_custom_colors(
         &mut self,
-        slots: &razer_state::CustomColorSlots,
+        edit: razer_model::preferences::CustomColorEdit,
         cx: &mut Context<Self>,
     ) {
         if !self.active || self.page != "TAB_LIGHTING" {
             return;
         }
-        let colors: Vec<Value> = slots
-            .iter()
-            .map(|color| match color {
-                Some([r, g, b]) => json!({"color":format!("#{r:02x}{g:02x}{b:02x}"),"picked":true}),
-                None => json!({"color":"#111","picked":false}),
-            })
-            .collect();
+        use razer_model::preferences::ProfileCustomColors;
+        let source = self
+            .mouse_lighting
+            .as_ref()
+            .and_then(|state| state.custom_colors_draft.as_ref())
+            .or_else(|| self.lighting_observation()["customColors"].as_array());
+        let colors = (|| -> anyhow::Result<_> {
+            let colors = if let Some(source) = source.filter(|source| !source.is_empty()) {
+                let mut colors: ProfileCustomColors = serde_json::from_value(json!(source))?;
+                colors.apply_edit(edit).map_err(anyhow::Error::msg)?;
+                colors
+            } else {
+                ProfileCustomColors::from_slots(cx.global::<razer_state::CustomColors>().colors())
+            };
+            let Value::Array(colors) = serde_json::to_value(colors.slot_records())? else {
+                unreachable!("profile color slots serialize as an array");
+            };
+            Ok(colors)
+        })();
+        let colors = match colors {
+            Ok(colors) => colors,
+            Err(error) => {
+                eprintln!("[mouse profile custom colors] {error:#}");
+                return;
+            }
+        };
         if let Some(state) = &mut self.mouse_lighting {
             state.custom_colors_draft = Some(colors.clone());
         }
@@ -1775,12 +1794,12 @@ impl MouseProductWorkspace {
                                 div().mt(surface::css(5.)).child(
                                     LightingColorPicker::new(&state.colors[channel], label)
                                         .allow_none(multiple)
-                                        .on_custom_colors_commit(cx.listener(
+                                        .on_custom_color_edit(cx.listener(
                                             |this,
-                                             colors: &razer_state::CustomColorSlots,
+                                             edit: &razer_model::preferences::CustomColorEdit,
                                              _,
                                              cx| {
-                                                this.commit_mouse_custom_colors(colors, cx)
+                                                this.commit_mouse_custom_colors(*edit, cx)
                                             },
                                         ))
                                         .disabled(

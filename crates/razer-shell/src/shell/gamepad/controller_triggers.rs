@@ -11,6 +11,11 @@ pub(super) struct ControllerTriggerSave {
     identity: String,
     profile_id: String,
 }
+impl ControllerTriggerSave {
+    pub(super) fn owner(&self) -> (&str, WeakEntity<ProductWorkspace>) {
+        (&self.identity, self.workspace.downgrade())
+    }
+}
 
 impl AppShell {
     pub(super) fn persist_controller_trigger(
@@ -47,16 +52,17 @@ impl AppShell {
                 .collect(),
             cx,
         );
-        self.pending_saves.push_back(PreparedSave {
-            window: window.window_handle(),
+        self.pending_saves.push_back(self.prepare_save(
+            window.window_handle(),
             file,
-            product: Some(ProductSave::ControllerTrigger(ControllerTriggerSave {
+            Some(ProductSave::ControllerTrigger(ControllerTriggerSave {
                 workspace,
                 request,
                 identity,
                 profile_id,
             })),
-        });
+            cx,
+        ));
         self.start_pending_save(cx);
     }
     pub(super) fn rebase_controller_trigger_save(&self, save: &mut PreparedSave, cx: &App) {
@@ -176,6 +182,7 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         if self.close_requested
+            || !self.devices.contains(&workspace)
             || !workspace
                 .read(cx)
                 .controller_trigger_request_matches(&request, cx)

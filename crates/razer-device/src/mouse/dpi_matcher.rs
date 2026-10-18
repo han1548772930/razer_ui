@@ -4,6 +4,8 @@ use anyhow::{Context as _, ensure};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
+pub const PRODUCT_ID: u32 = 190;
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum State {
     #[default]
@@ -41,20 +43,61 @@ impl InputBatch {
     /// Host callback jsonEvent contains JSON rows whose `data` is another JSON
     /// string. Only mouseMove participates; callback identity remains separate.
     pub fn from_callback(value: &Value) -> anyhow::Result<Self> {
-        let rows: Vec<Value> =
-            serde_json::from_str(value["jsonEvent"].as_str().context("missing jsonEvent")?)?;
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Callback {
+            product_id: u32,
+            container_id: String,
+            json_event: String,
+        }
+        let callback: Callback = serde_json::from_value(value.clone())?;
+        Self::from_event(
+            callback.product_id,
+            &callback.container_id,
+            &callback.json_event,
+        )
+    }
+
+    pub fn from_event(
+        product_id: u32,
+        container_id: &str,
+        json_event: &str,
+    ) -> anyhow::Result<Self> {
+        ensure!(
+            product_id != 0 && !container_id.is_empty(),
+            "missing input identity"
+        );
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Tick {
+            Number(f64),
+            Text(String),
+        }
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Row {
+            data: String,
+            time_tick: Option<Tick>,
+        }
+        #[derive(Deserialize)]
+        #[serde(tag = "type")]
+        enum Data {
+            #[serde(rename = "mouseMove")]
+            MouseMove { x: f64 },
+            #[serde(other)]
+            Other,
+        }
+        let rows: Vec<Row> = serde_json::from_str(json_event)?;
         let mut movement = Vec::new();
         for row in rows {
-            let data: Value =
-                serde_json::from_str(row["data"].as_str().context("missing movement data")?)?;
-            if data["type"].as_str() != Some("mouseMove") {
+            let data: Data = serde_json::from_str(&row.data)?;
+            let Data::MouseMove { x } = data else {
                 continue;
-            }
-            let time_tick = row["timeTick"]
-                .as_f64()
-                .or_else(|| row["timeTick"].as_str()?.parse().ok())
-                .context("invalid timeTick")?;
-            let x = data["x"].as_f64().context("invalid mouseMove.x")?;
+            };
+            let time_tick = match row.time_tick.context("missing movement timeTick")? {
+                Tick::Number(number) => number,
+                Tick::Text(text) => text.parse::<f64>().context("invalid movement timeTick")?,
+            };
             ensure!(
                 time_tick.is_finite() && x.is_finite(),
                 "nonfinite source sample"
@@ -62,14 +105,8 @@ impl InputBatch {
             movement.push(Movement { x, time_tick });
         }
         Ok(Self {
-            product_id: value["productId"]
-                .as_u64()
-                .and_then(|n| u32::try_from(n).ok())
-                .context("missing productId")?,
-            container_id: value["containerId"]
-                .as_str()
-                .context("missing containerId")?
-                .to_owned(),
+            product_id,
+            container_id: container_id.to_owned(),
             movement,
         })
     }
@@ -91,6 +128,8 @@ pub struct Session {
     pub source_product_id: Option<u32>,
     main_last_received: Option<u64>,
     source_last_received: Option<u64>,
+    main_timeout_received: Option<u64>,
+    source_timeout_received: Option<u64>,
 }
 impl Session {
     pub fn begin(&mut self, current_dpi: f64) -> anyhow::Result<()> {
@@ -162,12 +201,18 @@ impl Session {
         if main {
             self.main_container = batch.container_id;
             self.main_last_received = Some(received_ms);
+            if self.source_last_received.is_some() {
+                self.main_timeout_received = Some(received_ms);
+            }
             self.buffered.extend_from_slice(&batch.movement);
             self.main.extend(batch.movement);
         } else {
             self.source_container = batch.container_id;
             self.source_product_id = Some(batch.product_id);
             self.source_last_received = Some(received_ms);
+            if self.main_last_received.is_some() {
+                self.source_timeout_received = Some(received_ms);
+            }
             self.source.extend(batch.movement);
         }
         self.advance()
@@ -223,19 +268,28 @@ impl Session {
         }
         Ok(false)
     }
-    /// Source arms per-stream 500 ms expiry only after both streams have arrived.
+    /// P arms only the current stream's timer once both allEvents arrays contain
+    /// a callback, even if a callback contains no mouseMove rows.
     pub fn check_timeout(&mut self, now_ms: u64) -> bool {
-        if self.state != State::Calibrating || self.main.is_empty() || self.source.is_empty() {
+        if self.state != State::Calibrating {
             return false;
         }
-        if [self.main_last_received, self.source_last_received]
+        if [self.main_timeout_received, self.source_timeout_received]
             .into_iter()
             .flatten()
             .any(|last| now_ms.saturating_sub(last) >= 500)
         {
-            self.fail();
+            // P sends the error transition, then K resets the movement record.
+            *self = Self {
+                state: State::Error,
+                ..Self::default()
+            };
             return true;
         }
         false
     }
 }
+
+#[cfg(test)]
+#[path = "dpi_matcher_tests.rs"]
+mod tests;

@@ -12,8 +12,16 @@ use razer_device::device_query;
 use razer_device::device_reads;
 use razer_device::receiver_capabilities;
 use razer_hid::with_backend;
+
+enum HanboExchange<'a> {
+    Command(&'a razer_device::hanbo_cooler::CoolerCommand),
+    Telemetry,
+    Startup(razer_device::hanbo_cooler::StartupQuery),
+}
 #[path = "keyboard_indicator.rs"]
 mod keyboard_indicator;
+#[path = "hyperpolling_receiver.rs"]
+mod hyperpolling_receiver;
 #[path = "keyboard_latest_restore.rs"]
 mod keyboard_latest_restore;
 #[path = "keyboard_legacy_calibration.rs"]
@@ -26,10 +34,14 @@ mod mouse_current_dpi;
 mod mouse_current_power;
 #[path = "mouse_indicator_led.rs"]
 mod mouse_indicator_led;
+#[path = "mouse_philips.rs"]
+mod mouse_philips;
 #[path = "mouse_receiver_legacy.rs"]
 mod mouse_receiver_legacy;
 #[path = "mouse_scroll.rs"]
 mod mouse_scroll;
+#[path = "mouse_tracking.rs"]
+mod mouse_tracking;
 #[path = "seiren_eq.rs"]
 mod seiren_eq;
 use serde_json::{Value, json};
@@ -52,6 +64,8 @@ pub(super) struct PortableRuntime {
     keyboard_wristrest: super::keyboard_wristrest_controller::Controller,
     mouse_runtime_artwork: super::mouse_runtime_artwork_controller::Controller,
     mouse_indicator_led: super::mouse_indicator_led_controller::Controller,
+    mouse_tracking: super::mouse_tracking_controller::Controller,
+    mouse_philips: super::mouse_philips_controller::Controller,
     leviathan_events: super::leviathan_events::Controller,
     seiren_audio_capture: super::seiren_audio_capture_controller::Controller,
     camera: super::camera_controller::Controller,
@@ -59,6 +73,16 @@ pub(super) struct PortableRuntime {
 }
 
 impl PortableRuntime {
+    pub(in crate::runtime) fn shutdown_tracking(
+        &mut self,
+    ) -> anyhow::Result<Option<razer_device::mouse_tracking::Progress>> {
+        self.mouse_tracking.shutdown()
+    }
+    pub(in crate::runtime) fn shutdown_philips(
+        &mut self,
+    ) -> anyhow::Result<Option<razer_device::mouse_philips::Progress>> {
+        self.mouse_philips.shutdown()
+    }
     fn transaction(
         &mut self,
         node: &HidNode,
@@ -320,14 +344,11 @@ impl PortableRuntime {
         &self,
         node: &HidNode,
         product_id: u32,
-        command: &razer_device::hanbo_cooler::CoolerCommand,
+        exchange: HanboExchange<'_>,
     ) -> anyhow::Result<Value> {
-        use razer_device::hanbo_cooler::{self, PRODUCT_ID, REPORT_LENGTH};
+        use razer_device::hanbo_cooler;
 
-        ensure!(
-            product_id == PRODUCT_ID,
-            "Hanbo cooler command requires source product 3893"
-        );
+        hanbo_cooler::validate_node(node, product_id)?;
         let started = Instant::now();
         let validate = || {
             ensure!(
@@ -340,9 +361,34 @@ impl PortableRuntime {
         let device = with_backend(|backend| backend.open(node))?;
         let lengths = device.report_lengths()?;
         ensure!(
-            lengths.output.values().any(|length| *length == REPORT_LENGTH),
-            "Hanbo Output Report differs from the source descriptor"
+            !lengths.output.is_empty() && !lengths.input.is_empty(),
+            "Hanbo collection does not expose the source Output/Interrupt channels"
         );
+        let command = match exchange {
+            HanboExchange::Command(command) => command,
+            HanboExchange::Telemetry => {
+                let telemetry = hanbo_cooler::read_telemetry(device.as_ref(), validate)?;
+                validate()?;
+                let observation = razer_ipc::HanboCoolerObservation {
+                    node: node.clone(),
+                    product_id,
+                    telemetry,
+                };
+                observation.validate_for(node)?;
+                return serde_json::to_value(observation).map_err(Into::into);
+            }
+            HanboExchange::Startup(query) => {
+                let reading = hanbo_cooler::read_startup(device.as_ref(), query, validate)?;
+                validate()?;
+                let observation = razer_ipc::HanboStartupObservation {
+                    node: node.clone(),
+                    product_id,
+                    reading,
+                };
+                observation.validate_for(node, query)?;
+                return serde_json::to_value(observation).map_err(Into::into);
+            }
+        };
         hanbo_cooler::exchange(device.as_ref(), command, validate)?;
         validate()?;
         Ok(json!({
@@ -360,6 +406,7 @@ impl PortableRuntime {
 
     pub(super) fn request(&mut self, request: ServiceRequest) -> anyhow::Result<Value> {
         match request {
+            ServiceRequest::HyperpollingReceiver { target, command } => self.hyperpolling_receiver(&target, command),
             ServiceRequest::KeyboardIndicator { target, change } => {
                 self.keyboard_indicator(&target, &change)
             }
@@ -395,6 +442,24 @@ impl PortableRuntime {
                 Ok(json!({"operation_id":operation_id,"target":target,"started":true}))
             }
             ServiceRequest::MouseIndicatorLedPoll { operation_id } => self.mouse_indicator_led.poll(&operation_id),
+            ServiceRequest::MouseTrackingStart { operation_id, target, setting } => {
+                Ok(serde_json::to_value(self.mouse_tracking.start(operation_id, target, setting)?)?)
+            }
+            ServiceRequest::MouseTrackingPoll { operation_id } => {
+                Ok(serde_json::to_value(self.mouse_tracking.poll(&operation_id)?)?)
+            }
+            ServiceRequest::MouseTrackingCancel { operation_id } => {
+                Ok(serde_json::to_value(self.mouse_tracking.cancel(&operation_id)?)?)
+            }
+            ServiceRequest::MousePhilipsStart { operation_id, target, setting } => {
+                Ok(serde_json::to_value(self.mouse_philips.start(operation_id, target, setting)?)?)
+            }
+            ServiceRequest::MousePhilipsPoll { operation_id } => {
+                Ok(serde_json::to_value(self.mouse_philips.poll(&operation_id)?)?)
+            }
+            ServiceRequest::MousePhilipsCancel { operation_id } => {
+                Ok(serde_json::to_value(self.mouse_philips.cancel(&operation_id)?)?)
+            }
             ServiceRequest::MouseIndicatorLedStop { operation_id } => self.mouse_indicator_led.stop(&operation_id),
             ServiceRequest::KeyboardWristrestStart { operation_id, target } => {
                 self.keyboard_wristrest.start(operation_id.clone(), target.clone())?;
@@ -790,7 +855,11 @@ impl PortableRuntime {
                 node,
                 product_id,
                 command,
-            } => self.hanbo_cooler(&node, product_id, &command),
+            } => self.hanbo_cooler(&node, product_id, HanboExchange::Command(&command)),
+            ServiceRequest::HidNodeHanboCoolerRead { node, product_id } =>
+                self.hanbo_cooler(&node, product_id, HanboExchange::Telemetry),
+            ServiceRequest::HidNodeHanboStartupRead { node, product_id, query } =>
+                self.hanbo_cooler(&node, product_id, HanboExchange::Startup(query)),
             ServiceRequest::HidNodeReceiverStatus { node } => {
                 self.receiver_status(&node, None)
             }

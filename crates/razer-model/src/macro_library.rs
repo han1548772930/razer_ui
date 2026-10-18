@@ -9,6 +9,30 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 mod compile;
 mod import;
+pub mod recording;
+pub mod xml;
+
+pub const MOUSE_ACTION_KEYS: [&str; 10] = [
+    "TEXT_LEFT_CLICK",
+    "TEXT_RIGHT_CLICK",
+    "TEXT_SCROLL_CLICK",
+    "TEXT_MOUSE_BUTTON_4",
+    "TEXT_MOUSE_BUTTON_5",
+    "TEXT_DOUBLE_CLICK",
+    "TEXT_SCROLL_LEFT",
+    "TEXT_SCROLL_RIGHT",
+    "TEXT_SCROLL_UP",
+    "TEXT_SCROLL_DOWN",
+];
+
+/// Source numeric editor coercion, including empty and nonnumeric drafts.
+pub fn parse_delay(value: &str) -> f64 {
+    value
+        .parse::<f64>()
+        .ok()
+        .filter(|value| value.is_finite())
+        .unwrap_or(0.0)
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]

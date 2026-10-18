@@ -200,13 +200,13 @@ impl Render for DeleteConfirmation {
                     .bottom_0()
                     .occlude(),
             )
-            .popup(
-                razer_assets::resource_scope(DialogPopup::new()
+            .popup(razer_assets::resource_scope(
+                DialogPopup::new()
                     .absolute()
                     .left(left)
                     .top(top)
-                    .child(panel)),
-            )
+                    .child(panel),
+            ))
     }
 }
 

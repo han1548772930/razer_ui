@@ -16,7 +16,10 @@ fn cancellation_finishes_production_without_inventing_a_failure_or_hardware_ack(
 #[test]
 fn stop_does_not_hide_an_independent_identity_or_native_failure() {
     let state = Mutex::new(SoftwareStatus::starting(5));
-    complete_status(&state, Err(anyhow::anyhow!("Retained device identity changed")));
+    complete_status(
+        &state,
+        Err(anyhow::anyhow!("Retained device identity changed")),
+    );
     complete_status(&state, Err(LightingCanceled.into()));
     let state = state.into_inner().unwrap();
     assert_eq!(state.phase, SoftwarePhase::Failed);
@@ -40,7 +43,9 @@ fn stopping_job(restore_acknowledged: bool) -> Job {
         if restore_acknowledged {
             status.acknowledged_writes = 3;
         } else {
-            status.cleanup_errors.push("Simulated restore rejected".into());
+            status
+                .cleanup_errors
+                .push("Simulated restore rejected".into());
         }
     });
     Job {

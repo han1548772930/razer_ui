@@ -48,6 +48,41 @@ pub(super) fn next_transaction(
 
 pub(super) struct ReceiverLock(HANDLE);
 impl ReceiverLock {
+    pub(super) fn lighting_owner(
+        container: &str,
+        validate: &impl Fn() -> anyhow::Result<()>,
+    ) -> anyhow::Result<Self> {
+        let name: Vec<u16> = format!(
+            "Local\\RazerUi-LightingOwner-{}",
+            container.to_ascii_lowercase()
+        )
+        .encode_utf16()
+        .chain(Some(0))
+        .collect();
+        let handle = unsafe { CreateMutexW(std::ptr::null(), 0, name.as_ptr()) };
+        ensure!(
+            !handle.is_null(),
+            "Cannot create the physical lighting owner lease: {}",
+            std::io::Error::last_os_error()
+        );
+        let result = (|| {
+            loop {
+                validate()?;
+                match unsafe { WaitForSingleObject(handle, 40) } {
+                    WAIT_OBJECT_0 | WAIT_ABANDONED => return Ok(()),
+                    windows_sys::Win32::Foundation::WAIT_TIMEOUT => {}
+                    status => bail!("Physical lighting owner lease failed: {status}"),
+                }
+            }
+        })();
+        if let Err(error) = result {
+            unsafe {
+                CloseHandle(handle);
+            };
+            return Err(error);
+        }
+        Ok(Self(handle))
+    }
     pub(super) fn acquire(container: &str) -> anyhow::Result<Self> {
         let name: Vec<u16> = format!("Local\\RazerUi-Receiver-{}", container.to_ascii_lowercase())
             .encode_utf16()

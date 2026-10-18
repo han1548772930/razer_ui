@@ -5,7 +5,7 @@ use super::*;
 use gpui_kit::base::motion::{self, Easing, Presence, Transition};
 use gpui_kit::base::{Button as BaseButton, Popover, Select as BaseSelect};
 use gpui_kit::component::{Icon, IndexPath};
-use razer_widgets::{surface::css, synapse_select};
+use razer_widgets::{source_text::SourceText, surface::css, synapse_select};
 use std::time::Duration;
 
 #[path = "audio_seiren_eq_theme.rs"]
@@ -1372,18 +1372,20 @@ impl AudioProductWorkspace {
                     cx.notify();
                 });
             })
-            .content(move |_, window, cx| razer_assets::resource_scope({
-                let up = owner.clone();
-                let down = owner.clone();
-                let confirm = owner.clone();
-                let cancel = owner.clone();
-                let colors = razer_widgets::theme::DropdownColors::new();
-                let reveal = Presence::new("seiren-filter-options-reveal", true)
-                    .transition(Transition::new(Duration::from_millis(200)).easing(Easing::Ease))
-                    .sample(window, cx)
-                    .progress;
-                let options =
-                    v_flex()
+            .content(move |_, window, cx| {
+                razer_assets::resource_scope({
+                    let up = owner.clone();
+                    let down = owner.clone();
+                    let confirm = owner.clone();
+                    let cancel = owner.clone();
+                    let colors = razer_widgets::theme::DropdownColors::new();
+                    let reveal = Presence::new("seiren-filter-options-reveal", true)
+                        .transition(
+                            Transition::new(Duration::from_millis(200)).easing(Easing::Ease),
+                        )
+                        .sample(window, cx)
+                        .progress;
+                    let options = v_flex()
                         .id("seiren-eq-filter-options")
                         .role(Role::ListBox)
                         .track_focus(&menu_focus)
@@ -1467,8 +1469,9 @@ impl AudioProductWorkspace {
                                 )
                             },
                         ));
-                div().w(css(96.)).h(css(162.)).child(options)
-            }));
+                    div().w(css(96.)).h(css(162.)).child(options)
+                })
+            });
         select.child(popup).into_any_element()
     }
     fn seiren_confirm_filter(&mut self, kind: &str, window: &mut Window, cx: &mut Context<Self>) {
@@ -1812,7 +1815,15 @@ impl AudioProductWorkspace {
                                             div()
                                                 .text_size(css(20.))
                                                 .line_height(css(20.))
-                                                .child(label("DYl").to_uppercase()),
+                                                // The onboarding selector's
+                                                // .1px tracking is inherited.
+                                                .child(
+                                                    SourceText::new(
+                                                        "seiren-eq-tutorial-heading",
+                                                        label("DYl").to_uppercase(),
+                                                    )
+                                                    .letter_spacing(0.1),
+                                                ),
                                         )
                                         .child(
                                             v_flex()
@@ -1825,11 +1836,29 @@ impl AudioProductWorkspace {
                                                         .text_size(css(14.))
                                                         .line_height(css(14.))
                                                         .text_color(C::selected())
-                                                        .child(label(title).to_uppercase()),
+                                                        .child(
+                                                            SourceText::new(
+                                                                "seiren-eq-tutorial-filter-title",
+                                                                label(title).to_uppercase(),
+                                                            )
+                                                            .letter_spacing(0.1),
+                                                        ),
                                                 ),
                                         )
-                                        .child(label(first))
-                                        .child(label(second)),
+                                        .child(
+                                            SourceText::new(
+                                                "seiren-eq-tutorial-description-first",
+                                                label(first),
+                                            )
+                                            .letter_spacing(0.1),
+                                        )
+                                        .child(
+                                            SourceText::new(
+                                                "seiren-eq-tutorial-description-second",
+                                                label(second),
+                                            )
+                                            .letter_spacing(0.1),
+                                        ),
                                 )
                                 .child(
                                     BaseButton::new("seiren-eq-tutorial-close")
@@ -1838,7 +1867,13 @@ impl AudioProductWorkspace {
                                         .bg(C::selected())
                                         .text_color(C::knob())
                                         .hover(|style| style.opacity(0.8))
-                                        .child(label("Ndl"))
+                                        .child(
+                                            SourceText::new(
+                                                "seiren-eq-tutorial-close-label",
+                                                label("Ndl"),
+                                            )
+                                            .letter_spacing(0.1),
+                                        )
                                         .on_click(cx.listener(|this, _, _, cx| {
                                             this.seiren_eq.tutorial_open = false;
                                             cx.notify();

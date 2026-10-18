@@ -1,6 +1,7 @@
 //! 1383 rh/nh local crop surface. Never reports the vendor worker's completion.
 use super::*;
 use media_decode::{CROP_HEIGHT, CROP_TOP, CropCanvas, HEIGHT, WIDTH};
+use razer_assets::local_image::{ImageRequest, ImportFormat};
 use std::sync::Arc;
 
 pub(super) struct CropState {
@@ -22,8 +23,19 @@ impl ArtworkEditor {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.import_generation = self.import_generation.wrapping_add(1);
+        if !self.active
+            || !self.dialog.is_open()
+            || self.draft["list"][index]["enabled"] != true
+            || !matches!(self.mode, 0 | 1)
+        {
+            return;
+        }
+        self.cancel_import();
         let generation = self.import_generation;
+        let request = ImageRequest::new();
+        let Ok(operation) = request.accept() else {
+            return;
+        };
         let picker = cx.prompt_for_paths(PathPromptOptions {
             files: true,
             directories: false,
@@ -32,40 +44,54 @@ impl ArtworkEditor {
         });
         let mode = self.mode;
         let renderer = cx.svg_renderer();
-        let parent = cx.weak_entity();
-        cx.spawn_in(window, async move |_, cx| {
-            let path = match picker.await {
-                Ok(Ok(Some(paths))) => paths.into_iter().next(),
-                _ => None,
-            };
-            let Some(path) = path else {
-                return;
-            };
-            let extension = path
-                .extension()
-                .and_then(|value| value.to_str())
-                .unwrap_or_default()
-                .to_ascii_lowercase();
-            if !(mode == 0 && extension == "gif"
-                || mode == 1 && matches!(extension.as_str(), "png" | "jpg" | "jpeg" | "bmp"))
-            {
-                return;
+        let task_request = request.clone();
+        let task = cx.spawn_in(window, async move |parent, cx| {
+            let imported = async {
+                let path = match picker.await {
+                    Ok(Ok(Some(paths))) => paths.into_iter().next(),
+                    _ => None,
+                }?;
+                if task_request.is_cancelled() {
+                    return None;
+                }
+                let format = path
+                    .extension()
+                    .and_then(|value| value.to_str())
+                    .and_then(ImportFormat::from_extension)?;
+                if !(mode == 0 && format == ImportFormat::Gif
+                    || mode == 1
+                        && matches!(
+                            format,
+                            ImportFormat::Png | ImportFormat::Jpeg | ImportFormat::Bmp
+                        ))
+                {
+                    return None;
+                }
+                cx.background_spawn(async move { operation.load(&path, format, renderer) })
+                    .await
+                    .ok()
             }
-            let Ok(imported) = cx
-                .background_spawn(
-                    async move { media_decode::load_preset(&path, &extension, renderer) },
-                )
-                .await
-            else {
-                return;
-            };
+            .await;
             let _ = parent.update_in(cx, |this, window, cx| {
                 if this.import_generation != generation
+                    || !this
+                        .import
+                        .as_ref()
+                        .is_some_and(|pending| pending.request.is_same(&task_request))
+                {
+                    return;
+                }
+                this.import = None;
+                if !this.active
+                    || task_request.is_cancelled()
                     || !this.dialog.is_open()
                     || this.draft["list"][index]["enabled"] != true
                 {
                     return;
                 }
+                let Some(imported) = imported else {
+                    return;
+                };
                 let (source, _, image) = imported.into_parts();
                 let dimensions = image.size(0);
                 let canvas = CropCanvas::new(dimensions.width.0 as f32, dimensions.height.0 as f32);
@@ -108,11 +134,16 @@ impl ArtworkEditor {
                 });
                 cx.notify();
             });
-        })
-        .detach();
+        });
+        self.import = Some(ArtworkImport {
+            index,
+            request,
+            _task: task,
+        });
     }
 
     pub(super) fn cancel_crop(&mut self, cx: &mut Context<Self>) {
+        self.cancel_import();
         self.crop = None;
         cx.notify();
     }

@@ -5,6 +5,7 @@
 //! body @111940. No vendor JS is evaluated. Saves below are LOCAL DRAFTS.
 //! Native setMappingList -> profile/service submission/ack remains unconnected.
 use super::*;
+use razer_model::mapping::{MEDIA, WINDOWS};
 use razer_widgets::source_tooltip::SourceTooltip;
 use std::time::Duration;
 use std::{
@@ -750,46 +751,6 @@ const MOUSE: &[(&str, &str)] = &[
     ("RepeatScrollDown", "REPEAT_SCROLL_DOWN"),
     ("RepeatScrollLeft", "REPEAT_SCROLL_LEFT"),
     ("RepeatScrollRight", "REPEAT_SCROLL_RIGHT"),
-];
-const MEDIA: &[(&str, &str)] = &[
-    ("VolumeDown", "VOLUME_DOWN"),
-    ("VolumeUp", "VOLUME_UP"),
-    ("MuteVolume", "MUTE_VOLUME"),
-    ("MicVolumeUp", "MIC_VOLUME_UP"),
-    ("MicVolumeDown", "MIC_VOLUME_DOWN"),
-    ("MuteMic", "MUTE_MIC"),
-    ("MuteAll", "MUTE_ALL"),
-    ("Play", "PLAY_PAUSE"),
-    ("PrevTrack", "PREVIOUS_TRACK"),
-    ("NextTrack", "NEXT_TRACK"),
-];
-const WINDOWS: &[(&str, &str)] = &[
-    ("Calculator", "LAUNCH_CALCULATOR"),
-    ("MSPaint", "LAUNCH_MSPAINT"),
-    ("Notepad", "LAUNCH_NOTEPAD"),
-    ("Snipping_Tool", "LAUNCH_SNIPPING_TOOL"),
-    ("LaunchTaskManager", "LAUNCH_TASK_MANAGER"),
-    ("MSCopilot", "LAUNCH_WINDOWS_COPILOT"),
-    ("User_Directory", "OPEN_USER_DIRECTORY"),
-    ("PowerUserMenu", "OPEN_SYSTEM_UTILITY"),
-    ("ShowDesktop", "SHOW_DESKTOP"),
-    ("CycleApps", "CYCLE_APPS"),
-    ("SwitchApps", "SWITCH_APPS"),
-    ("CloseApp", "CLOSE_APP"),
-    ("Cut", "CUT"),
-    ("Copy", "COPY"),
-    ("Paste", "PASTE"),
-    ("Mail", "MAIL"),
-    ("ThisPC", "THIS_PC"),
-    ("Refresh", "REFRESH"),
-    ("DisplayBrightnessUp", "DISPLAY_BRIGHTNESS_UP"),
-    ("DisplayBrightnessDown", "DISPLAY_BRIGHTNESS_DOWN"),
-    ("File_Explorer", "OPEN_FILE_EXPLORER"),
-    ("LockComputer", "LOCK_COMPUTER"),
-    ("WindowsZoomIn", "WINDOWS_ZOOM_IN"),
-    ("WindowsZoomOut", "WINDOWS_ZOOM_OUT"),
-    ("OfficeZoomIn", "OFFICE_ZOOM_IN"),
-    ("OfficeZoomOut", "OFFICE_ZOOM_OUT"),
 ];
 const SENSITIVITY: &[(&str, &str)] = &[
     ("DPI_Clutch", "SENSITIVITY_CLUTCH"),

@@ -7,7 +7,10 @@ use super::*;
 /// that durable revision into live state only while its prior version still
 /// matches; later profile/device edits and their unrelated fields remain live.
 pub(super) fn accept_saved_version(device: &mut Device, previous: &Device, snapshot: &Device) {
-    if razer_device::mouse_scroll::capability(device.product_id).is_none() {
+    if razer_device::mouse_scroll::capability(device.product_id).is_none()
+        && device.product_id != razer_device::mouse_philips::PRODUCT_ID
+        && device.product_id != razer_device::dpi_matcher::PRODUCT_ID
+    {
         return;
     }
     let version = |device: &Device| {
@@ -448,6 +451,49 @@ mod tests {
         assert_eq!(
             live.source_device_settings.as_ref().unwrap()["unknown"],
             serde_json::json!({"new":true})
+        );
+        live.source_device_settings.as_mut().unwrap()["version"] = serde_json::json!(10);
+        accept_saved_version(&mut live, &previous, &snapshot);
+        assert_eq!(live.source_device_settings.as_ref().unwrap()["version"], 10);
+    }
+    #[::core::prelude::v1::test]
+    fn philips_durable_version_keeps_new_calibration_and_rejects_a_later_revision() {
+        let mut previous = razer_model::product_preview::registered_preview(70).unwrap();
+        previous.source_device_settings =
+            Some(serde_json::json!({"version":7,"calibration":{"liftOffRangeValue":3}}));
+        let mut live = previous.clone();
+        live.source_device_settings.as_mut().unwrap()["calibration"]["liftOffRangeValue"] =
+            serde_json::json!(5);
+        let mut snapshot = previous.clone();
+        snapshot.source_device_settings.as_mut().unwrap()["version"] = serde_json::json!(8);
+        accept_saved_version(&mut live, &previous, &snapshot);
+        assert_eq!(live.source_device_settings.as_ref().unwrap()["version"], 8);
+        assert_eq!(
+            live.source_device_settings.as_ref().unwrap()["calibration"]["liftOffRangeValue"],
+            5
+        );
+        live.source_device_settings.as_mut().unwrap()["version"] = serde_json::json!(10);
+        accept_saved_version(&mut live, &previous, &snapshot);
+        assert_eq!(live.source_device_settings.as_ref().unwrap()["version"], 10);
+    }
+
+    #[::core::prelude::v1::test]
+    fn matcher_durable_version_keeps_later_profile_edits_and_rejects_a_newer_revision() {
+        let mut previous =
+            razer_model::product_preview::registered_preview(razer_device::dpi_matcher::PRODUCT_ID)
+                .unwrap();
+        previous.source_device_settings =
+            Some(serde_json::json!({"version":7,"sensitivityMatcher":{"profiles":[]}}));
+        let mut live = previous.clone();
+        live.source_device_settings.as_mut().unwrap()["sensitivityMatcher"] =
+            serde_json::json!({"profiles":[{"guid":"new-draft"}]});
+        let mut snapshot = previous.clone();
+        snapshot.source_device_settings.as_mut().unwrap()["version"] = serde_json::json!(8);
+        accept_saved_version(&mut live, &previous, &snapshot);
+        assert_eq!(live.source_device_settings.as_ref().unwrap()["version"], 8);
+        assert_eq!(
+            live.source_device_settings.as_ref().unwrap()["sensitivityMatcher"]["profiles"][0]["guid"],
+            "new-draft"
         );
         live.source_device_settings.as_mut().unwrap()["version"] = serde_json::json!(10);
         accept_saved_version(&mut live, &previous, &snapshot);

@@ -1,6 +1,6 @@
 //! Active factory hash: top-level exclusions, stable UTF-16 key ordering,
 //! JSON number formatting, '<' escaping, then MD5 of UTF-8 bytes.
-use anyhow::{Result, bail, ensure};
+use anyhow::{Result, ensure};
 use serde_json::Value;
 
 /// Stable JSON used by the current profile-file reader. Its hash omits the
@@ -72,68 +72,11 @@ fn stable_json(value: &Value, out: &mut String) -> Result<()> {
                     "Integer exceeds exact JS range"
                 );
             }
-            out.push_str(&js_number(f)?);
+            out.push_str(&crate::ecmascript_number::to_string(f)?);
         }
         other => out.push_str(&serde_json::to_string(other)?),
     }
     Ok(())
-}
-
-// serde_json's shortest decimal, with ECMAScript's fixed/exponent thresholds.
-// No host locale, fractional .0, exponent leading zeros or negative zero.
-fn js_number(f: f64) -> Result<String> {
-    if f == 0.0 {
-        return Ok("0".into());
-    }
-    let raw = serde_json::to_string(&f)?;
-    let (sign, raw) = if let Some(rest) = raw.strip_prefix('-') {
-        ("-", rest)
-    } else {
-        ("", raw.as_str())
-    };
-    let (mantissa, exponent) = match raw.split_once(['e', 'E']) {
-        Some((m, e)) => (m, e.parse::<i32>()?),
-        None => (raw, 0),
-    };
-    let dot = mantissa.find('.').unwrap_or(mantissa.len()) as i32;
-    let mut digits = mantissa.replace('.', "");
-    let mut point = dot + exponent;
-    while digits.starts_with('0') && digits.len() > 1 {
-        digits.remove(0);
-        point -= 1;
-    }
-    while digits.ends_with('0') && digits.len() > 1 {
-        digits.pop();
-    }
-    if digits.is_empty() {
-        bail!("Empty JS decimal");
-    }
-    if f.abs() >= 1e-6 && f.abs() < 1e21 {
-        if point <= 0 {
-            Ok(format!("{sign}0.{}{digits}", "0".repeat((-point) as usize)))
-        } else if point as usize >= digits.len() {
-            Ok(format!(
-                "{sign}{digits}{}",
-                "0".repeat(point as usize - digits.len())
-            ))
-        } else {
-            let (a, b) = digits.split_at(point as usize);
-            Ok(format!("{sign}{a}.{b}"))
-        }
-    } else {
-        let exp = point - 1;
-        let exp = if exp >= 0 {
-            format!("+{exp}")
-        } else {
-            exp.to_string()
-        };
-        let (first, rest) = digits.split_at(1);
-        Ok(if rest.is_empty() {
-            format!("{sign}{first}e{exp}")
-        } else {
-            format!("{sign}{first}.{rest}e{exp}")
-        })
-    }
 }
 
 #[cfg(test)]

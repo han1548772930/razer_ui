@@ -235,6 +235,64 @@ pub fn native_library_candidates(
     )
 }
 
+/// The current monitor's client, server and server-side dependency are one
+/// installed resource group. These paths never fall back to analysis inputs.
+#[derive(Debug, Clone)]
+pub struct SystemMonitorPaths {
+    pub client_dll: PathBuf,
+    pub server_dll: PathBuf,
+    pub server_executable: PathBuf,
+    pub helper_folder: String,
+    pub helper_name: String,
+}
+
+pub fn system_monitor_paths(product_id: u32) -> anyhow::Result<SystemMonitorPaths> {
+    fn installed_resource(id: &str, product_id: u32) -> anyhow::Result<PathBuf> {
+        let library = native_library::find(id).ok_or_else(|| {
+            anyhow::anyhow!("System monitor resource is absent from the catalog: {id}")
+        })?;
+        resource_candidates(library, Some(product_id))
+            .into_iter()
+            .chain(resource_candidates(library, None))
+            .map(|(_, path)| path)
+            .find(|path| path.is_file())
+            .ok_or_else(|| anyhow::anyhow!("System monitor installed resource is missing: {id}"))
+    }
+
+    let client_dll = installed_resource("RzSystemCommon", product_id)?;
+    let server_dll = installed_resource("RzSystemService", product_id)?;
+    let server_executable = installed_resource("RzDLLService", product_id)?;
+    let server_dependency = installed_resource("cpuidsdk64Common", product_id)?;
+    let directory = server_executable
+        .parent()
+        .ok_or_else(|| anyhow::anyhow!("System monitor helper has no parent directory"))?;
+    anyhow::ensure!(
+        [&client_dll, &server_dll, &server_dependency]
+            .into_iter()
+            .all(|path| path.parent() == Some(directory)),
+        "System monitor installed resources do not share their manifest directory"
+    );
+    let applications = host_user_data_root()?.join("Apps");
+    let helper_folder = directory
+        .strip_prefix(applications)
+        .map_err(|_| anyhow::anyhow!("System monitor helper is outside installed Apps resources"))?
+        .to_str()
+        .ok_or_else(|| anyhow::anyhow!("System monitor helper folder is not valid Unicode"))?
+        .replace('/', "\\");
+    let helper_name = server_executable
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| anyhow::anyhow!("System monitor helper filename is not valid Unicode"))?
+        .to_owned();
+    Ok(SystemMonitorPaths {
+        client_dll,
+        server_dll,
+        server_executable,
+        helper_folder,
+        helper_name,
+    })
+}
+
 /// Current host constants.js userDataDir. Installation observations and native
 /// resource discovery share this source-confirmed platform path.
 pub fn host_user_data_root() -> anyhow::Result<PathBuf> {

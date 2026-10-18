@@ -102,6 +102,20 @@ fn cap(product_id: u32) -> DeviceReadCapability {
     cap
 }
 
+fn current_cap(product_id: u32) -> DeviceReadCapability {
+    let mut capability = crate::mouse_current_dpi::capability(product_id)
+        .unwrap()
+        .transport()
+        .for_physical_product(product_id)
+        .unwrap();
+    capability.sleep_between_out_ms = 0;
+    capability.sleep_between_out_in_ms = 0;
+    capability.sleep_between_in_ms = 0;
+    capability.max_retry_out = 1;
+    capability.max_retry_in = 1;
+    capability
+}
+
 fn transactions() -> impl FnMut() -> Result<u8> {
     let mut next = 0;
     move || {
@@ -247,6 +261,101 @@ fn typed_commands_match_receipt_pinned_source_literals() {
                     assert_eq!(method["receipt"]["sha256"].as_str().unwrap().len(), 64);
                 }
             }
+        }
+        for (name, command) in [
+            ("getMaxProfilesSupported", [1, 5, 138]),
+            ("getNumberOfProfiles", [1, 5, 128]),
+            ("getProfileIDList", [80, 5, 129]),
+            ("getProfileName", [80, 5, 136]),
+        ] {
+            let method = product["methods"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|method| method["name"] == name)
+                .unwrap();
+            assert_eq!(method["command"], serde_json::json!(command));
+            assert!(
+                method["header_receipt"]["source"]
+                    .as_str()
+                    .unwrap()
+                    .contains(&format!(
+                        "new Uint8Array([{},{},{}])",
+                        command[0], command[1], command[2]
+                    ))
+            );
+        }
+    }
+}
+
+#[test]
+fn source_receipts_cover_profile_restore_and_actual_guid_association() {
+    for product in audit()["products"].as_array().unwrap() {
+        let product_id = product["product_id"].as_u64().unwrap();
+        let chains = product["lifecycle_association_chains"].as_array().unwrap();
+        assert_eq!(
+            chains.len(),
+            6 + usize::from(matches!(product_id, 226 | 45066))
+        );
+        let roles: std::collections::BTreeSet<_> = chains
+            .iter()
+            .map(|chain| chain["role"].as_str().unwrap())
+            .collect();
+        assert_eq!(roles.len(), chains.len(), "Duplicate lifecycle owner");
+        for chain in chains {
+            let source = chain["source"].as_str().unwrap();
+            let start = chain["byte_start"].as_u64().unwrap();
+            let end = chain["byte_end"].as_u64().unwrap();
+            assert_eq!(end - start, source.len() as u64);
+            assert!(start < end && end <= chain["original"]["bytes"].as_u64().unwrap());
+            assert_eq!(chain["source_sha256"].as_str().unwrap().len(), 64);
+            assert!(
+                product["layers"]["mw"]["original_inputs"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|original| original["path"] == chain["original"]["path"]
+                        && original["sha256"] == chain["original"]["sha256"])
+            );
+        }
+        let source = |role: &str| {
+            chains.iter().find(|chain| chain["role"] == role).unwrap()["source"]
+                .as_str()
+                .unwrap()
+        };
+        let inventory = source("ordered_profile_inventory");
+        let max = inventory.find("getMaxProfilesSupported()").unwrap();
+        let count = inventory.find("getNumberOfProfiles()").unwrap();
+        let ids = inventory.find("getProfileIDList()").unwrap();
+        let metadata = inventory.find("getProfileNameStructure(").unwrap();
+        assert!(max < count && count < ids && ids < metadata);
+        assert!(inventory.contains("0!=="));
+        let reader = source("profile_guid_reader");
+        assert!(reader.contains("250;") && reader.contains("getProfileName("));
+        assert!(reader.contains("00000000-0000-0000-0000-000000000000"));
+        assert!(reader.contains("ffffffff-ffff-ffff-ffff-ffffffffffff"));
+        let decoder = source("profile_guid_decoder");
+        assert!(decoder.contains("e[3],e[2]") && decoder.contains("slice(8,16)"));
+        let smart_reel = source("smart_reel_guid_maker");
+        assert!(smart_reel.contains("obmJson.profiles.forEach"));
+        assert!(smart_reel.contains(".guid===") && smart_reel.contains("1!==e.id"));
+        assert!(smart_reel.contains("nextVersion") && smart_reel.contains("\"SmartReel\""));
+        let restore = source("profile_restore");
+        assert!(restore.contains("smartReelEnabled") && restore.contains("accelerationEnabled"));
+        assert!(
+            restore.rfind("restoreDeviceData").unwrap() > restore.find("smartReelEnabled").unwrap()
+        );
+        assert!(source("scroll_mode_maker").contains("nextVersion"));
+        if product_id == 226 {
+            let restore = source("mode_v2_restore");
+            assert!(restore.contains("setScrollDisabledModes(r)"));
+            assert!(restore.contains("updateScrollModeV2UI({scrollMode:a,disabledModes:r})"));
+        }
+        if product_id == 45066 {
+            let matching = source("first_matching_slot");
+            assert!(matching.contains("profiles.find((t=>t.guid===e))"));
+            assert!(matching.contains(".slotId") && matching.contains("return null"));
+            assert!(source("scroll_mode_maker").contains("[1,oo(r.guid)].filter"));
         }
     }
 }
@@ -1313,6 +1422,7 @@ fn submission_confirmation_requires_the_exact_profiles_values_and_source_order()
         .collect();
     let original = SubmissionReport {
         requested,
+        onboard_profiles: None,
         reports: vec![ScrollWriteReport { steps }],
         errors: Vec::new(),
     };
@@ -1408,4 +1518,166 @@ fn failed_source_task_preserves_progress_and_does_not_discard_an_independent_edi
     assert!(!report.reports[0].steps[0].acknowledgment_received);
     assert!(report.reports[1].verified());
     device.finish();
+}
+
+fn profile_inventory_script() -> (Vec<Step>, u8) {
+    let mut steps = Vec::new();
+    let mut tx = 0;
+    let mut exchange = |header: [u8; 3], payload: &[u8], response: &[u8]| {
+        tx += 1;
+        steps.push(send(header, payload, tx));
+        steps.push(receive(header, response, tx, 2));
+    };
+    exchange([1, 5, 138], &[], &[8]);
+    exchange([1, 5, 128], &[], &[4]);
+    exchange([80, 5, 129], &[], &[4, 1, 7, 3, 5]);
+    for profile_id in [7, 3, 5] {
+        let mut metadata = [0; 250];
+        metadata[..16].copy_from_slice(&[
+            if profile_id == 3 { 0x79 } else { 0x78 },
+            0x56,
+            0x34,
+            0x12,
+            0xbc,
+            0x9a,
+            0xf0,
+            0xde,
+            0x12,
+            0x34,
+            0x56,
+            0x78,
+            0x9a,
+            0xbc,
+            0xde,
+            0xf0,
+        ]);
+        for (offset, count) in [(0usize, 64usize), (64, 64), (128, 64), (192, 58)] {
+            let offset_bytes = (offset as u16).to_be_bytes();
+            let request = [profile_id, offset_bytes[0], offset_bytes[1], 0, 0];
+            let mut response = vec![profile_id, offset_bytes[0], offset_bytes[1], 0, 250];
+            response.extend_from_slice(&metadata[offset..offset + count]);
+            exchange([(count + 5) as u8, 5, 136], &request, &response);
+        }
+    }
+    (steps, tx)
+}
+
+fn append_change_script(
+    steps: &mut Vec<Step>,
+    tx: &mut u8,
+    set: [u8; 3],
+    get: [u8; 3],
+    profiles: &[u8],
+) {
+    for profile in profiles {
+        *tx += 1;
+        steps.push(send(set, &[*profile, 1], *tx));
+        steps.push(receive(set, &[], *tx, 2));
+    }
+    for profile in profiles {
+        *tx += 1;
+        steps.push(send(get, &[*profile], *tx));
+        steps.push(receive(get, &[*profile, 1], *tx, 2));
+    }
+}
+
+#[test]
+fn actual_profile_guids_drive_all_smart_reel_matches_and_45066_first_mode_match() {
+    for (product_id, change, set, get, expected) in [
+        (
+            153,
+            ScrollChange::SmartReel(true),
+            [80, 2, 23],
+            [80, 2, 151],
+            vec![1, 7, 5],
+        ),
+        (
+            226,
+            ScrollChange::SmartReel(true),
+            [80, 2, 23],
+            [80, 2, 151],
+            vec![1, 7, 5],
+        ),
+        (
+            45066,
+            ScrollChange::LegacyMode(ScrollMode::FreeSpin),
+            [2, 2, 20],
+            [2, 2, 148],
+            vec![1, 7],
+        ),
+    ] {
+        let (mut steps, mut tx) = profile_inventory_script();
+        append_change_script(&mut steps, &mut tx, set, get, &expected);
+        let transport = Transport::new(steps);
+        let capability = current_cap(product_id);
+        let requested = Submission::for_profile(
+            vec![change],
+            "12345678-9abc-def0-1234-56789abcdef0".into(),
+            Some(3),
+        );
+        let report = MouseScroll::new(&transport, &capability)
+            .unwrap()
+            .submit(&requested, transactions(), || Ok(()))
+            .unwrap();
+        assert_eq!(report.requested, requested);
+        assert!(report.verified_for(product_id));
+        assert_eq!(
+            report.reports[0]
+                .steps
+                .iter()
+                .map(|step| step.profile_id)
+                .collect::<Vec<_>>(),
+            expected
+        );
+        let observed = report.onboard_profiles.as_ref().unwrap();
+        assert_eq!(
+            observed
+                .iter()
+                .map(|profile| profile.profile_id)
+                .collect::<Vec<_>>(),
+            vec![7, 3, 5]
+        );
+        let mut stale_inventory = report.clone();
+        stale_inventory.onboard_profiles.as_mut().unwrap()[0].guid = "other-profile".into();
+        assert!(!stale_inventory.verified_for(product_id));
+        let mut missing_inventory = report;
+        missing_inventory.onboard_profiles = None;
+        assert!(!missing_inventory.verified_for(product_id));
+        transport.finish();
+    }
+}
+
+#[test]
+fn failed_obm_observation_does_not_fabricate_absence_or_block_independent_active_tasks() {
+    let mut steps = vec![send([1, 5, 138], &[], 1), receive([1, 5, 138], &[], 1, 3)];
+    append_change_script(&mut steps, &mut 1, [2, 2, 22], [2, 2, 150], &[1, 3]);
+    let device = Transport::new(steps);
+    let requested = Submission::for_profile(
+        vec![
+            ScrollChange::SmartReel(true),
+            ScrollChange::VirtualAcceleration(true),
+        ],
+        "12345678-9abc-def0-1234-56789abcdef0".into(),
+        Some(3),
+    );
+    let report = MouseScroll::new(&device, &cap(170))
+        .unwrap()
+        .submit(&requested, transactions(), || Ok(()))
+        .unwrap();
+    assert!(!report.verified_for(170));
+    assert!(report.onboard_profiles.is_none());
+    assert!(report.errors[0].contains("OBM profile observation"));
+    assert!(report.reports[0].steps.is_empty());
+    assert!(report.reports[1].verified());
+    device.finish();
+}
+
+#[test]
+fn profile_guid_requests_reject_fabricated_associations_and_empty_identity_before_io() {
+    let mut request =
+        Submission::for_profile(vec![ScrollChange::SmartReel(true)], String::new(), None);
+    assert!(request.validate(226).is_err());
+    request.profile_guid = Some("actual-profile".into());
+    request.profiles.matching_obm_profile_ids = vec![7];
+    assert!(request.validate(226).is_err());
 }
