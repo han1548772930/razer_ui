@@ -1,4 +1,4 @@
-//! Current PID70/182 polling intents -> shared direct route -> readback.
+//! Current mouse polling intents, source profile persistence and device tasks.
 use super::*;
 use razer_discovery::{direct, discovery};
 use razer_ipc::{ServiceClient, ServiceRequest};
@@ -14,7 +14,7 @@ impl AppShell {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if matches!(workspace.read(cx).device(cx).product_id, 70 | 182) {
+        if matches!(workspace.read(cx).device(cx).product_id, 70 | 182 | 190) {
             self.persist_mouse_polling(workspace, scope, field, hz, window, cx);
         } else {
             self.write_mouse_polling_device(workspace, scope, field, hz, window, cx);
@@ -42,6 +42,23 @@ impl AppShell {
             return;
         }
         let device = workspace.read(cx).device(cx);
+        let Some(device_hz) = workspace.read(cx).mouse_polling_device_hz(scope, field, hz, cx) else {
+            workspace.update(cx, |workspace, cx| workspace.finish_mouse_polling(scope, field, hz, None, cx));
+            return;
+        };
+        let change = if device.product_id == 190 {
+            let mut change = razer_device::mouse_current_polling::Change::new(device_hz);
+            if workspace.read(cx).mouse_polling_synchronizes_profile(scope, field, hz, cx) {
+                let Some(profile) = device.active_profile_obj().filter(|profile| !profile.guid.is_empty()) else {
+                    self.status = "回报率未写入：当前本地配置缺少实际 profile GUID。".into();
+                    workspace.update(cx, |workspace, cx| workspace.finish_mouse_polling(scope, field, hz, None, cx));
+                    cx.notify();
+                    return;
+                };
+                change = change.with_profile_guid(profile.guid.clone());
+            }
+            Some(change)
+        } else { None };
         let Some(guard) = workspace
             .read(cx)
             .mouse_polling_write_guard(scope, field, hz, cx)
@@ -56,6 +73,7 @@ impl AppShell {
             .iter()
             .filter(|route| {
                 route.matches(device)
+                    && (device.product_id != 190 || direct::mouse_current_polling::available(route))
                     && match field {
                         PollingField::Wired => {
                             route.peer_product_id().is_none()
@@ -64,12 +82,14 @@ impl AppShell {
                                     Some(discovery::ObservedTransport::Wired)
                                 )
                         }
-                        PollingField::Wireless => direct::mouse_receiver_polling::available(route),
+                        PollingField::Wireless => if device.product_id == 190 {
+                            route.transport() == Some(discovery::ObservedTransport::Dongle)
+                        } else { direct::mouse_receiver_polling::available(route) },
                     }
             })
             .collect::<Vec<_>>();
         if routes.len() != 1 {
-            self.status = "回报率本地配置已保存；没有唯一匹配的当前设备连接，设备未写入。".into();
+            self.status = "回报率配置保留；没有唯一匹配的当前设备连接，设备未写入。".into();
             workspace.update(cx, |workspace, cx| {
                 workspace.finish_mouse_polling(scope, field, hz, None, cx)
             });
@@ -104,16 +124,22 @@ impl AppShell {
                     let mut client = ServiceClient::spawn()?;
                     client.set_request_guard(guard.clone());
                     let result = (|| {
-                        let observed = if field == PollingField::Wireless {
-                            direct::mouse_receiver_polling::write(&mut client, &selected, hz)?
+                        let observed = if let Some(change) = &change {
+                            let report = direct::mouse_current_polling::request(&mut client, &selected, change)?;
+                            match &report.runtime().observed {
+                                Some(DeviceReadValue::Polling { hz: observed }) if *observed == device_hz => *observed,
+                                _ => anyhow::bail!("回报率读回与实际任务频率不一致"),
+                            }
+                        } else if field == PollingField::Wireless {
+                            direct::mouse_receiver_polling::write(&mut client, &selected, device_hz)?
                                 .observed_hz
                         } else {
                             let cap = razer_device::device_reads::capability(product_id)
                                 .context("产品回报率读取能力尚未核实")?;
                             match direct::resolve(&mut client, &selected, cap)?
-                                .write(&mut client, DeviceWriteSetting::Polling { hz })?
+                                .write(&mut client, DeviceWriteSetting::Polling { hz: device_hz })?
                             {
-                                DeviceReadValue::Polling { hz: observed } if observed == hz => {
+                                DeviceReadValue::Polling { hz: observed } if observed == device_hz => {
                                     observed
                                 }
                                 _ => anyhow::bail!("回报率读回与请求不一致"),

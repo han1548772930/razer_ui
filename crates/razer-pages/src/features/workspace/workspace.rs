@@ -85,6 +85,7 @@ pub enum WorkspaceEvent {
         field: super::mouse_polling::PollingField,
         hz: u32,
     },
+    MouseInGamePollingRequested,
     MouseProfileSerialObserved,
     MouseDynamicRequested(super::mouse_products::MouseDynamicRequested),
     MouseMatcherRequested(super::mouse_products::MouseMatcherRequest),

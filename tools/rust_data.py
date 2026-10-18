@@ -1300,8 +1300,13 @@ def maintenance_verification_inputs(registry):
              "tools/analysis.py", "tools/asset_release.py", "tools/asset-release.json", "tools/resource-mappings.json",
              "tools/typed_tables.py", "tools/analyzers/python-static/acquisition.json",
              resource_database.INSTALLATION, resource_database.SCHEMA, resource_database.OUTPUT,
-              resource_database.PRODUCT_REGISTRY, resource_database.PRODUCT_HELP, EMOJI_SEARCH_INPUT,
+              resource_database.PRODUCT_REGISTRY, resource_database.PRODUCT_HELP, resource_database.LOCALES,
+              resource_database.LOCALE_REPORT, "tools/workspace.py", "tools/evidence.py", EMOJI_SEARCH_INPUT,
               MAPPING_ENGINE_SOURCE, "tools/families.py", typed_tables.RESET_INPUT}
+    locale_preparation = json.loads((ROOT / resource_database.LOCALE_REPORT).read_bytes())
+    paths.update(row["path"] for row in locale_preparation.get("baseline", []))
+    for entry in locale_preparation["entries"]:
+        paths.update(row["path"] for row in entry["provenance"]["inputs"])
     _, battery_peer_inputs = typed_tables.receiver_battery_peer_inputs()
     paths.update(item["path"] for item in battery_peer_inputs)
     paths.add(typed_tables.BATTERY_PEER_OUTPUT)

@@ -1834,6 +1834,12 @@ impl SourceProductWorkspace {
         macro_recording: bool,
         cx: &mut Context<Self>,
     ) {
+        if self.device.product_id == 190 {
+            if let (FamilyBody::Mouse(body), Some(profile)) = (&self.body, self.device.active_profile_obj()) {
+                body.update(cx, |body, cx| body.initialize_current_mouse_polling(key.as_deref(), &profile.guid, cx));
+            }
+            return;
+        }
         if self.device.product_id != 182 {
             return;
         }
@@ -1912,6 +1918,21 @@ impl SourceProductWorkspace {
             FamilyBody::Mouse(body) => body.read(cx).mouse_polling_scope(cx),
             _ => None,
         }
+    }
+    pub fn mouse_polling_device_hz(
+        &self,
+        scope: super::mouse_polling::MousePollingScope,
+        field: super::mouse_polling::PollingField,
+        hz: u32,
+        cx: &App,
+    ) -> Option<u32> {
+        match &self.body {
+            FamilyBody::Mouse(body) => body.read(cx).mouse_polling_device_hz(scope, field, hz),
+            _ => None,
+        }
+    }
+    pub fn mouse_polling_synchronizes_profile(&self, scope: super::mouse_polling::MousePollingScope, field: super::mouse_polling::PollingField, hz: u32, cx: &App) -> bool {
+        matches!(&self.body, FamilyBody::Mouse(body) if body.read(cx).mouse_polling_synchronizes_profile(scope, field, hz))
     }
     pub fn mouse_polling_request_matches(
         &self,
@@ -2548,6 +2569,10 @@ impl SourceProductWorkspace {
                     });
                 },
             ));
+            subscriptions.push(cx.subscribe(&body, |this: &mut Self, body, _: &super::mouse_products::MouseInGamePollingChanged, cx| {
+                this.capture(body.read(cx).snapshot(), cx);
+                cx.emit(WorkspaceEvent::MouseInGamePollingRequested);
+            }));
             subscriptions.push(cx.subscribe(
                 &body,
                 |_: &mut Self,
@@ -4017,7 +4042,7 @@ impl SourceProductWorkspace {
         if self.device.product_id == razer_device::hanbo_cooler::PRODUCT_ID && value.is_none() {
             value = Some(razer_device::hanbo_settings::default_profile_settings());
         }
-        if self.device.product_id == 182 {
+        if matches!(self.device.product_id, 182 | 190) {
             let profile = value.get_or_insert_with(|| serde_json::json!({}));
             if let Some(profile) = profile.as_object_mut() {
                 if let Some(active) = self
@@ -4781,6 +4806,7 @@ impl Render for SourceProductWorkspace {
             FamilyBody::Audio(audio) if self.active => audio.read(cx).floating_demo(cx),
             _ => None,
         };
+        let mut body_layout = super::product_surface::BodyLayout::Document;
         let body = if is_help {
             self.help.clone().into_any_element()
         } else if let Some(view) = self.dock_pairing.as_ref().filter(|_| {
@@ -4801,7 +4827,10 @@ impl Render for SourceProductWorkspace {
             controls.clone().into_any_element()
         } else {
             match &self.body {
-                FamilyBody::Mouse(e) => e.clone().into_any_element(),
+                FamilyBody::Mouse(e) => {
+                    body_layout = e.read(cx).body_layout();
+                    e.clone().into_any_element()
+                }
                 FamilyBody::Keyboard(e) => e.clone().into_any_element(),
                 FamilyBody::Gamepad(e) => e.clone().into_any_element(),
                 FamilyBody::Controls(e) => e.clone().into_any_element(),
@@ -4825,6 +4854,33 @@ impl Render for SourceProductWorkspace {
         let audio_preview = match &self.body {
             FamilyBody::Audio(body) => body.update(cx, |body, cx| body.mixer_preview_indicator(cx)),
             _ => None,
+        };
+        let content = div()
+            .id("source-product-content")
+            .on_prepaint(move |bounds, _, _| {
+                if let Some(handle) = &mapping_body_bounds {
+                    // Source openFunctionsView compares against BodyWrapper's
+                    // viewport, whose content has its own retained scroll owner.
+                    handle.set(bounds);
+                }
+                if let Some(handle) = &keyboard_body_bounds {
+                    handle.set(bounds);
+                }
+            })
+            .flex_1()
+            .min_h_0()
+            .min_w_0()
+            .w_full()
+            .bg(razer_widgets::theme::ProductSurfaceColors::background())
+            .child(body);
+        let content = match body_layout {
+            super::product_surface::BodyLayout::Document => content
+                .scrollable_both()
+                .track_scroll(&self.body_scroll)
+                .into_any_element(),
+            super::product_surface::BodyLayout::SplitViewport => {
+                content.flex().flex_col().into_any_element()
+            }
         };
         let keymap_owner = cx.entity().downgrade();
         v_flex()
@@ -4956,32 +5012,7 @@ impl Render for SourceProductWorkspace {
                             ),
                     ),
             )
-            .child(
-                div()
-                    .id("source-product-content")
-                    .on_prepaint(move |bounds, _, _| {
-                        if let Some(handle) = &mapping_body_bounds {
-                            // Source openFunctionsView compares against the
-                            // outer .body-wrapper, not the Customize surface.
-                            handle.set(bounds);
-                        }
-                        if let Some(handle) = &keyboard_body_bounds {
-                            // Mapping popups use the fixed BodyWrapper viewport,
-                            // independent from the naturally sized page content.
-                            handle.set(bounds);
-                        }
-                    })
-                    .flex_1()
-                    .min_h_0()
-                    .min_w_0()
-                    .w_full()
-                    // Current product html/body keeps #222 behind the complete
-                    // BodyWrapper viewport, even when its content is shorter.
-                    .bg(razer_widgets::theme::ProductSurfaceColors::background())
-                    .scrollable_both()
-                    .track_scroll(&self.body_scroll)
-                    .child(body),
-            )
+            .child(content)
             .children(self.profile_transfer.clone())
             .children(self.profile_linked_games.clone())
             .children(dynamic_tutorial_popup)

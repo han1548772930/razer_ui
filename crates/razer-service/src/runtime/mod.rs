@@ -141,6 +141,7 @@ pub fn run_worker() -> i32 {
             | ServiceRequest::HidNodeDpiStagesRead { .. }
             | ServiceRequest::HidNodeDpiStagesWrite { .. }
             | ServiceRequest::HidNodeMouseCurrentDpi { .. }
+            | ServiceRequest::HidNodeMouseCurrentPolling { .. }
             | ServiceRequest::HidNodeMouseCurrentPower { .. }
             | ServiceRequest::HidNodeMouseScroll { .. }
             | ServiceRequest::MouseTrackingStart { .. }

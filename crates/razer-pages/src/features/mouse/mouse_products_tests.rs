@@ -25,6 +25,68 @@ fn packaged_catalog_mouse_profile_defaults_have_one_product_owner() {
 }
 
 #[test]
+fn customize_viewport_mounted_sidebar_routes_share_one_scroll_owner() {
+    use super::super::product_surface::BodyLayout;
+
+    for product_id in [70, 190, 120, 229, 239] {
+        assert_eq!(
+            super::source_body_layout(product_id, "TAB_CUSTOMIZE", 0, 16),
+            BodyLayout::SplitViewport,
+            "PID{product_id}"
+        );
+    }
+    // The two dedicated renderers use their first source group directly.
+    for product_id in [70, 190] {
+        assert_eq!(
+            super::source_body_layout(product_id, "TAB_CUSTOMIZE", 0, 0),
+            BodyLayout::SplitViewport,
+            "PID{product_id}"
+        );
+    }
+}
+
+#[test]
+fn customize_viewport_missing_surface_preserves_document_scroll() {
+    use super::super::product_surface::BodyLayout;
+
+    for (product_id, group_index, button_count) in [
+        (u32::MAX, 0, 16),
+        (229, usize::MAX, 16),
+        (229, 0, 0),
+        (239, 0, 1),
+    ] {
+        assert_eq!(
+            super::source_body_layout(product_id, "TAB_CUSTOMIZE", group_index, button_count),
+            BodyLayout::Document,
+            "PID{product_id} group {group_index} buttons {button_count}"
+        );
+    }
+}
+
+#[test]
+fn customize_viewport_other_pages_preserve_document_scroll_for_every_product() {
+    use super::super::product_surface::BodyLayout;
+
+    for (product_id, _) in super::read_mouse_products_catalog() {
+        for page in [
+            "TAB_PERFORMANCE",
+            "TAB_POWER",
+            "TAB_LIGHTING",
+            "TAB_CALIBRATION",
+            "TAB_SCROLLING",
+            "ADVANCED",
+            "HELP",
+        ] {
+            assert_eq!(
+                super::source_body_layout(product_id, page, 0, 16),
+                BodyLayout::Document,
+                "PID{product_id} {page}"
+            );
+        }
+    }
+}
+
+#[test]
 #[should_panic(expected = "Packaged mouse profile defaults are absent")]
 fn packaged_catalog_missing_mouse_defaults_cannot_borrow_another_product() {
     let factory = super::read_mouse_products_catalog()

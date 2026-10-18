@@ -189,12 +189,7 @@ fn all_products_filters_search_names_ids_and_exact_categories() {
 
 #[::core::prelude::v1::test]
 fn all_products_categories_are_explicit_localized_and_never_internal_keys() {
-    let locales = [
-        serde_json::from_str::<serde_json::Value>(include_str!("../../../../locales/en.json"))
-            .unwrap(),
-        serde_json::from_str::<serde_json::Value>(include_str!("../../../../locales/zh-CN.json"))
-            .unwrap(),
-    ];
+    let locales = ["en", "zh-CN"];
     assert_eq!(
         product_categories(&[]),
         vec!["LOCAL_PRODUCTS_CATEGORY_OTHER"]
@@ -233,7 +228,7 @@ fn all_products_categories_are_explicit_localized_and_never_internal_keys() {
         for key in categories {
             assert!(key.starts_with("LOCAL_PRODUCTS_CATEGORY_"));
             for locale in &locales {
-                let label = locale[key].as_str().expect("explicit category translation");
+                let label = razer_i18n::t_locale(key, locale);
                 assert!(!label.is_empty());
                 assert!(!label.contains('_'));
                 assert_ne!(label, "productCategoryIcon");

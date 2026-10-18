@@ -327,6 +327,15 @@ impl AppShell {
                 "setMemoryStorageItem",
                 Some(Value::String(message.to_string())),
             )?;
+            if let Some(started) = match message["action"].as_str() {
+                Some("GMS_onGameStartedEvent") => Some(true),
+                Some("GMS_onGameStoppedEvent") => Some(false),
+                _ => None,
+            } {
+                for workspace in &self.devices {
+                    workspace.update(cx, |workspace, cx| workspace.observe_polling_game_event(started, cx));
+                }
+            }
             let Some(game) = message["payload"]["entry_guid"].as_str() else {
                 continue;
             };

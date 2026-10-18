@@ -160,6 +160,8 @@ pub mod mouse_button_inventory;
 pub mod mouse_button_mapping;
 #[path = "mouse/mouse_current_dpi.rs"]
 pub mod mouse_current_dpi;
+#[path = "mouse/mouse_current_polling.rs"]
+pub mod mouse_current_polling;
 #[path = "mouse/mouse_current_power.rs"]
 pub mod mouse_current_power;
 #[path = "mouse/mouse_dpi_stages.rs"]

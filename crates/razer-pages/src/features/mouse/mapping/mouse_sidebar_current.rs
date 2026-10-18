@@ -45,6 +45,10 @@ fn policy(pid: u32) -> Option<&'static Policy> {
         .iter()
         .find(|p| p.product_id == pid)
 }
+
+pub(super) fn supports_sidebar(pid: u32) -> bool {
+    policy(pid).is_some()
+}
 #[derive(Deserialize)]
 struct Assets {
     product_id: u32,
@@ -382,8 +386,6 @@ impl MouseProductWorkspace {
             window,
             cx,
         );
-        let height = (window.viewport_size().height - window.rem_size() * (218. / 16.))
-            .max(window.rem_size() * (380. / 16.));
         let rotation = gpui_kit::base::motion::transition(
             ElementId::from(("mouse-sidebar-dropdown-rotation", cx.entity_id())),
             if state.filter_open { 180_f32 } else { 0. },
@@ -456,7 +458,6 @@ impl MouseProductWorkspace {
             .w_full()
             .flex_1()
             .min_h_0()
-            .max_h(height - window.rem_size() * (145. / 16.))
             .overflow_y_scroll()
             .track_scroll(&state.panel_scroll);
         for (index, button) in panel_rows {
@@ -465,7 +466,13 @@ impl MouseProductWorkspace {
             }
         }
         div()
+            .flex()
+            .flex_col()
+            .flex_1()
             .w_full()
+            .h_full()
+            .min_h_0()
+            .min_w_0()
             .relative()
             .on_prepaint({
                 let root = self.mapping_menu_current_state.root.clone();
@@ -474,8 +481,11 @@ impl MouseProductWorkspace {
             .child(
                 h_flex()
                     .relative()
+                    .flex_1()
                     .w_full()
-                    .h(height)
+                    .h_full()
+                    .min_h_0()
+                    .min_w_0()
                     .items_stretch()
                     .child(
                         div()
@@ -500,6 +510,7 @@ impl MouseProductWorkspace {
                                         h_flex()
                                             .relative()
                                             .h(surface::css(67.))
+                                            .flex_shrink_0()
                                             .w_full()
                                             .items_center()
                                             .justify_center()
@@ -540,10 +551,15 @@ impl MouseProductWorkspace {
                             .id("mouse-current-sidebar-body")
                             .flex_1()
                             .min_w_0()
+                            .min_h_0()
                             .h_full()
                             .overflow_scroll()
                             .track_scroll(&state.body_scroll)
-                            .child(content.when(state.open, |c| c.w(surface::css(1000.)))),
+                            .child(super::super::product_surface::body_inset(
+                                div()
+                                    .w_full()
+                                    .child(content.when(state.open, |c| c.w(surface::css(1000.)))),
+                            )),
                     ),
             )
             .children(state.open.then(|| {

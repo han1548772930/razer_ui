@@ -18,6 +18,12 @@ impl ProductWorkspace {
         }
     }
 
+    pub fn observe_polling_game_event(&mut self, started: bool, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.observe_polling_game_event(started, cx));
+        }
+    }
+
     pub fn consume_interdevice_mapping(
         &mut self,
         raw: serde_json::Value,

@@ -1,4 +1,12 @@
 PRAGMA foreign_keys = ON;
+CREATE TABLE ui_locale (
+    id TEXT PRIMARY KEY CHECK(length(id)>0), position INTEGER NOT NULL UNIQUE CHECK(position>=0)
+) STRICT;
+CREATE TABLE ui_translation (
+    locale TEXT NOT NULL REFERENCES ui_locale(id), position INTEGER NOT NULL CHECK(position>=0),
+    key TEXT NOT NULL CHECK(length(key)>0), value TEXT NOT NULL,
+    PRIMARY KEY(locale, key), UNIQUE(locale, position)
+) STRICT;
 CREATE TABLE typed_catalog (
     id TEXT PRIMARY KEY, codec TEXT NOT NULL CHECK(length(codec)=64),
     sha256 TEXT NOT NULL CHECK(length(sha256)=64), payload BLOB NOT NULL

@@ -73,7 +73,7 @@ hidapi = { version = "=2.6.7", default-features = false, features = [
   "linux-native-basic-udev",
   "macos-shared-device",
 ] }
-# 与 gpui-component 内部使用的是同一套 i18n（`rust_i18n::i18n!` + `t!`）。
+# 产品词表来自本地目录库；rust-i18n 与 GPUI 共享当前界面语言。
 rust-i18n = "4"
 
 

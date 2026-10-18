@@ -30,6 +30,8 @@ mod keyboard_legacy_calibration;
 mod leviathan;
 #[path = "mouse_current_dpi.rs"]
 mod mouse_current_dpi;
+#[path = "mouse_current_polling.rs"]
+mod mouse_current_polling;
 #[path = "mouse_current_power.rs"]
 mod mouse_current_power;
 #[path = "mouse_indicator_led.rs"]
@@ -756,6 +758,9 @@ impl PortableRuntime {
                 } else {
                     self.mouse_current_dpi(&node, product_id, change.as_ref())
                 }
+            }
+            ServiceRequest::HidNodeMouseCurrentPolling { node, product_id, change } => {
+                self.mouse_current_polling(&node, product_id, &change)
             }
             ServiceRequest::HidNodeMouseCurrentPower { node, product_id, change } => {
                 self.mouse_current_power(&node, product_id, &change)

@@ -1561,6 +1561,8 @@ def audit_family_function(args):
         return audit_receiver_local_runtime(args)
     if getattr(args, "query", None) == "mouse-dpi-matcher":
         return audit_mouse_dpi_matcher(args)
+    if getattr(args, "query", None) == "mouse-dpi-profile":
+        return audit_mouse_dpi_profile(args)
     if getattr(args, "query", None) == "shared-page-layout":
         return audit_shared_page_layout(args)
     if getattr(args, "query", None) == "gamepad-artwork":
@@ -12672,6 +12674,103 @@ def audit_gamepad_triggers(args):
                       "failures": [{"product_id": row["product_id"], "failures": row["failures"]} for row in rows if row["failures"]]}), flush=True)
 
 
+def audit_mouse_dpi_profile(args):
+    """Keep profile initialization and the distinct stage/transient DPI owners."""
+    import host
+    if args.family != "mouse" or args.function != "mw" or set(args.product or [190]) != {190}:
+        raise ValueError("mouse-dpi-profile requires current mouse190 UI and middleware")
+    audit = host.HostLocalAudit()
+    sets, files, captures = {}, {}, {}
+    for role, name in (("ui", "mouse-190-current"), ("middleware", "mouse-mw-190-current")):
+        sets[role], files[role] = audit.source_set(name)
+        if sets[role]["deployment"]["failures"]:
+            raise ValueError("Current DPI deployment differs: " + name)
+        captures[role] = audit.frontend_capture(name, files[role])
+
+    def unique_source(role, needle):
+        matches = [source for source in files[role] if source["path"].endswith(".js")
+                   and needle.encode() in audit.read(source)]
+        if len(matches) != 1:
+            raise ValueError("Current DPI owner source is absent or ambiguous: " + needle)
+        return matches[0]
+
+    ui = unique_source("ui", "this.toggleStages=")
+    mw = unique_source("middleware", "function ft(e,t,n,r,a,s,l,c=0)")
+    owners = {}
+    for role, source, needle, kinds in (
+        ("mounted_sensitivity_component", ui, "this.toggleStages=", {"class_declaration"}),
+        ("stage_reducer", ui, "IE=function(e,E)", {"variable_declarator"}),
+        ("transient_action", ui, "IA=(e,E,a)=>async", {"variable_declarator"}),
+        ("profile_initialization", mw, "loadProfileDataFromDevice:t", {"function_declaration"}),
+        ("profile_restore_selection", mw, "loadProfileDataFromDevice:e", {"variable_declarator"}),
+        ("profile_restore_dispatch", mw, "Mn=(e,t=y.default.runtimeData", {"variable_declarator"}),
+        ("serial_profile_cache", mw, "function w(e=a.default.runtimeData)", {"function_declaration"}),
+        ("stage_task_maker", mw, "function ft(e,t,n,r,a,s,l,c=0)", {"function_declaration"}),
+        ("stage_runner", mw, "getDPIStages(1)", {"function_declaration"}),
+        ("transient_runner", mw, "function et(e,t,n,o,i,r,a,s,c)", {"function_declaration"}),
+        ("onboard_slot_selection", mw, "function Ye(e,t){", {"function_declaration"}),
+        ("onboard_stage_sync", mw, "function Mt(e,t,n,o){", {"function_declaration"}),
+        ("onboard_engine_mount", mw, "n.e(7116)", {"function_declaration"}),
+        ("onboard_max_profiles", mw, "getMaxProfilesSupported(){", {"method_definition"}),
+        ("onboard_profile_count", mw, "getNumberOfProfiles(){", {"method_definition"}),
+        ("onboard_profile_ids", mw, "getProfileIDList(){", {"method_definition"}),
+        ("onboard_profile_metadata_sender", mw, "getProfileName(e,t,n,o=-1)", {"method_definition"}),
+    ):
+        owners[role] = audit.retain("current_dpi_" + role, source, needle, kinds)
+    exports = {}
+    for role, module_id, names in (
+        ("ui", 8193, ("DEFAULTPROFILE", "DeviceInfo")),
+        ("middleware", 4638, ("DEFAULTPROFILE", "getDeviceDefaultLocalData", "DeviceInfo")),
+        ("middleware", 88443, ("N$",)),
+        ("middleware", 27116, ("default",)),
+        ("middleware", 71416, ("Z",)),
+    ):
+        for name in names:
+            exports[role + ":" + str(module_id) + ":" + name] = audit.webpack_export(
+                "current_dpi_" + role + "_" + name, files[role], module_id, name)
+    mounted = [row["original"] for row in sets["middleware"]["deployment"]["sources"]
+               if row["deployment_role"] == "html_include" and row["original"] is not None
+               and Path(row["original"]["path"]).name.startswith("main.")
+               and row["original"]["path"].endswith(".js")]
+    if len(mounted) != 1:
+        raise ValueError("Current DPI mounted middleware main is absent or ambiguous")
+    mounted_main = mounted[0]
+    mounted_owner = audit.retain_range("current_dpi_mounted_feature_configuration", mounted_main,
+        0, len(audit.read(mounted_main)), "complete_mounted_script")
+    changed = audit.final_snapshot()
+    if changed:
+        raise ValueError("Current DPI original/capture changed during query: " + str(changed))
+    result = {
+        "recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)),
+        "parser_versions": audit.parser_versions, "product_id": 190,
+        "source_sets": sets, "complete_captures": captures,
+        "mounted_main": mounted_main, "mounted_feature_configuration": mounted_owner,
+        "owners": owners, "exports": exports,
+        "complete_owners": list(audit.owners.values()), "artifacts": list(audit.artifacts.values()),
+        "source_semantics": {
+            "initialization": "31468.fn reads the serial-selected local cache through60763.w; an absent cache uses the current middleware defaults.31468.Dn/An/Mn restore that selected profile and publish MW_SET_STAGES before ON_STAGES_INIT",
+            "default_profile": "Both current190 UI8193 and middleware4638 retain five stages400/800/1600/3200/6400, active3 and enable=true. A screenshot with2000 and stages disabled represents another selected local profile, not evidence for a new fixed default",
+            "device_profile_loading": "The mounted190 middleware does not enable loadProfileDataFromDevice. The two generic31468 branches do not establish an active getter-to-page restoration path for this product",
+            "getter_scope": "96571.Xe reads profile1 to validate the stage task;96571.et reads profile0 to validate transient X/Y. These getters do not restore local visible/independent/enable flags",
+            "editing": "pA numeric edits, staging toggle, visibility, reorder and XY reset emit IE/ON_STAGES_CHANGE. Only pA.setStage additionally invokes IA/setActiveDPI. Stage changes persist dpiStages and advance the device document version in25947.ft",
+            "onboard": "25947.Ye selects all actual OBM entries whose GUID matches the active profile.96571.Mt pre-reads each selected slot, conditionally sets it and collects errors; setter ACK is not post-set readback",
+            "onboard_identity": "31468.gn mounts current7116/27116. Its loadProfilesFromDevice queries maximum/count/ordered profile IDs and omits metadata only at index0.71416.getProfileNameStructure reads250 bytes in64/64/64/58-byte blocks with the source GUID retry and decoding rules; rzDevice25.getProfileName uses command[80,5,136] with the actual packet-size override",
+            "storage_boundary": "This application's own versioned profile store is distinct from the official application's private local cache. The source does not authorize silently importing that cache or overwriting page flags from a DPI getter",
+        },
+        "capture_failures": {role: capture["capture_failures"] for role, capture in captures.items()},
+        "inputs_unchanged": True, "target_execution": False, "runtime_acceptance": "unverified",
+    }
+    path = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    with a.index_lock():
+        report = json.loads(path.read_bytes()) if path.is_file() else {"schema_version": 1}
+        report.setdefault("queries", {})["current_dpi_profile"] = result
+        a.save(path, report)
+    print(json.dumps({"receipt": a.rel(path), "query": "current_dpi_profile",
+        "owners": len(audit.owners), "capture_failures": {
+            role: len(capture["capture_failures"]) for role, capture in captures.items()},
+        "inputs_unchanged": True, "target_execution": False}), flush=True)
+
+
 def audit_mouse_dpi_matcher(args):
     """Retain the current matcher, actual lock owners, host ABI and OS name source."""
     import host
@@ -19356,7 +19455,7 @@ def add_commands(parsers):
     audit.add_argument("--family", required=True, choices=list(FAMILY_CANDIDATES))
     audit.add_argument("--function", required=True)
     audit.add_argument("--product", type=int, action="append")
-    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-matcher", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-local-controls", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
+    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-dpi-matcher", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-local-controls", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
     audit.add_argument("--prepare", action="store_true", help="Prepare verified current artwork resources through the shared workflow")
     audit.add_argument("--receipt-only", action="store_true", help="Refresh supported mouse or mapping-engine evidence without rewriting runtime descriptors")
     parser = parsers.add_parser("acquire-family", help=__doc__)

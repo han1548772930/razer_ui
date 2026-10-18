@@ -28,6 +28,7 @@ impl SavedRevisionOwner {
 pub(super) enum ProductSave {
     Leviathan(leviathan::LeviathanSave),
     MousePolling(MousePollingSave),
+    MouseInGamePolling(mouse_polling_write::InGameSave),
     MouseDpiStages(MouseDpiStagesSave),
     MouseLegacyDpi(MouseLegacyDpiSave),
     MouseCurrentDpi(MouseCurrentDpiSave),
@@ -53,6 +54,7 @@ impl ProductSave {
         match self {
             Self::Leviathan(save) => save.owner(),
             Self::MousePolling(save) => (&save.identity, save.workspace.downgrade()),
+            Self::MouseInGamePolling(save) => save.owner(),
             Self::MouseDpiStages(save) => save.owner(),
             Self::MouseLegacyDpi(save) => (&save.identity, save.workspace.downgrade()),
             Self::MouseCurrentDpi(save) => save.owner(),
@@ -303,6 +305,9 @@ impl AppShell {
                 self.finish_source_profile_import(save, succeeded, window, cx)
             }
             ProductSave::Leviathan(sound) => self.finish_leviathan_save(sound, succeeded, cx),
+            ProductSave::MouseInGamePolling(_) => {
+                if succeeded { self.status = "游戏内回报率已保存到本机。".into(); }
+            }
             ProductSave::MousePolling(polling) => {
                 if succeeded {
                     let owner = cx.entity().downgrade();

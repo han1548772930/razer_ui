@@ -19,27 +19,31 @@ pub(super) struct Popup {
 }
 fn left(
     anchor: Bounds<Pixels>,
-    body_width: Pixels,
+    body: Bounds<Pixels>,
     scroll_left: Pixels,
     popup_width: Pixels,
     margin: Pixels,
     drawer_width: Pixels,
+    drawer_clamp: Pixels,
     panel_open: bool,
     from_panel: bool,
 ) -> Pixels {
     if panel_open && from_panel {
-        return drawer_width;
+        return body.left() + drawer_width;
     }
-    let candidate = if anchor.right() + scroll_left + popup_width < body_width - margin {
-        anchor.right()
+    let anchor_left = anchor.left() - body.left();
+    let anchor_right = anchor.right() - body.left();
+    let candidate = if anchor_right + scroll_left + popup_width < body.size.width - margin {
+        anchor_right
     } else {
-        anchor.left() - popup_width
+        anchor_left - popup_width
     };
-    if panel_open && candidate < drawer_width {
-        drawer_width
-    } else {
-        candidate.max(px(0.))
-    }
+    body.left()
+        + if panel_open && candidate < drawer_width {
+            drawer_clamp
+        } else {
+            candidate.max(px(0.))
+        }
 }
 impl MouseProductWorkspace {
     pub(in super::super) fn current_mouse_mapping_popup_layer(
@@ -123,15 +127,16 @@ impl Element for Popup {
             px(0.)
         };
         let scroll_left = -self.scroll.offset().x;
-        // The source currentKey rect is in viewport coordinates; clientWidth is
-        // the outer body width. Do not replace either with an image descriptor.
+        // GPUI measurements are in window coordinates. The source popup's
+        // containing block starts at zero, so normalize against the body once.
         let x = left(
             anchor,
-            root.size.width,
+            root,
             scroll_left,
             width,
             unit * if self.babel_162 { 0. } else { 20. },
             drawer,
+            unit * 230.,
             self.panel_open,
             self.from_panel,
         );
@@ -146,7 +151,7 @@ impl Element for Popup {
                         self.scroll.offset().y
                     }
             };
-        window.with_element_offset(point(root.left() + x, y) - bounds.origin, |window| {
+        window.with_element_offset(point(x, y) - bounds.origin, |window| {
             self.content.prepaint(window, cx)
         });
     }
@@ -166,17 +171,23 @@ impl Element for Popup {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn area(left: f32, width: f32) -> Bounds<Pixels> {
+        Bounds::new(point(px(left), px(0.)), size(px(width), px(30.)))
+    }
+
     #[::core::prelude::v1::test]
     fn source_margin_and_drawer_protection_change_placement() {
         let anchor = Bounds::new(point(px(20.), px(0.)), size(px(30.), px(30.)));
         assert_eq!(
             left(
                 anchor,
-                px(360.),
+                area(0., 360.),
                 px(0.),
                 px(290.),
                 px(0.),
                 px(0.),
+                px(230.),
                 false,
                 false
             ),
@@ -185,11 +196,12 @@ mod tests {
         assert_eq!(
             left(
                 anchor,
-                px(360.),
+                area(0., 360.),
                 px(0.),
                 px(290.),
                 px(20.),
                 px(0.),
+                px(230.),
                 false,
                 false
             ),
@@ -198,10 +210,11 @@ mod tests {
         assert_eq!(
             left(
                 anchor,
-                px(360.),
+                area(0., 360.),
                 px(0.),
                 px(290.),
                 px(20.),
+                px(230.),
                 px(230.),
                 true,
                 false
@@ -211,15 +224,114 @@ mod tests {
         assert_eq!(
             left(
                 anchor,
-                px(360.),
+                area(0., 360.),
                 px(0.),
                 px(290.),
                 px(20.),
                 px(218.),
+                px(230.),
                 true,
                 true
             ),
             px(218.)
+        );
+    }
+
+    #[::core::prelude::v1::test]
+    fn shifted_body_preserves_the_source_side_and_applies_its_origin_once() {
+        assert_eq!(
+            left(
+                area(310., 40.),
+                area(80., 600.),
+                px(0.),
+                px(300.),
+                px(20.),
+                px(0.),
+                px(230.),
+                false,
+                false
+            ),
+            px(350.)
+        );
+        assert_eq!(
+            left(
+                area(310., 40.),
+                area(80., 500.),
+                px(0.),
+                px(300.),
+                px(20.),
+                px(0.),
+                px(230.),
+                false,
+                false
+            ),
+            px(80.)
+        );
+    }
+
+    #[::core::prelude::v1::test]
+    fn horizontal_scroll_changes_fit_without_moving_the_measured_anchor() {
+        assert_eq!(
+            left(
+                area(230., 40.),
+                area(0., 600.),
+                px(20.),
+                px(300.),
+                px(20.),
+                px(0.),
+                px(230.),
+                false,
+                false
+            ),
+            px(0.)
+        );
+        assert_eq!(
+            left(
+                area(230., 40.),
+                area(0., 600.),
+                px(0.),
+                px(300.),
+                px(20.),
+                px(0.),
+                px(230.),
+                false,
+                false
+            ),
+            px(270.)
+        );
+    }
+
+    #[::core::prelude::v1::test]
+    fn drawer_click_uses_actual_width_but_image_click_uses_source_clamp() {
+        let body = area(25., 640.);
+        let anchor = area(65., 40.);
+        assert_eq!(
+            left(
+                anchor,
+                body,
+                px(0.),
+                px(362.5),
+                px(25.),
+                px(260.),
+                px(287.5),
+                true,
+                true
+            ),
+            px(285.)
+        );
+        assert_eq!(
+            left(
+                anchor,
+                body,
+                px(0.),
+                px(362.5),
+                px(25.),
+                px(260.),
+                px(287.5),
+                true,
+                false
+            ),
+            px(312.5)
         );
     }
 }

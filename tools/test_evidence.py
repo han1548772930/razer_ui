@@ -2624,6 +2624,53 @@ class LocaleKeysTests(unittest.TestCase):
                 evidence.locale_keys(raw, ["TITLE"])
 
 
+class LocaleExportDictionaryTests(unittest.TestCase):
+    def source(self):
+        return ("const outside='unrelated'; const other=()=>{const en={},zh={};w.d(en,{TITLE:()=>outside});};"
+                "(()=>{var en={},zh={};const english='en',chinese='zh-CN',title='Show Guide',alias=title,"
+                "cn='显示指南',line='first\\nsecond';w.d(en,{SHOW_GUIDE:()=>alias,LINE:()=>line});"
+                "w.d(zh,{SHOW_GUIDE:()=>cn,LINE:()=>line});const words={[english]:en,[chinese]:zh};"
+                "function Localizer(key,lang){return words[lang][key]||words.en[key]}})()").encode()
+
+    def test_complete_routing_getters_and_lexical_strings_preserve_source_bytes(self):
+        raw = self.source()
+        result = evidence.locale_export_dictionaries(raw, ["en", "zh-CN"])
+        self.assertEqual(result["values"], {
+            "en": {"SHOW_GUIDE": "Show Guide", "LINE": "first\nsecond"},
+            "zh-CN": {"SHOW_GUIDE": "显示指南", "LINE": "first\nsecond"}})
+        self.assertEqual(result["locale_order"], ["en", "zh-CN"])
+        self.assertFalse(result["javascript_executed"])
+        regions = [result["routing_owner"], result["complete_factory"]]
+        regions += [row["export_object"] for row in result["dictionaries"]]
+        regions += [pair["export"] for row in result["dictionaries"] for pair in row["resolved_exports"]]
+        for region in regions:
+            body = raw[region["start_byte"]:region["end_byte"]]
+            self.assertEqual(body.decode(), region["body"])
+            self.assertEqual(hashlib.sha256(body).hexdigest(), region["sha256"])
+        self.assertIn("function Localizer", result["complete_factory"]["body"])
+
+    def test_dynamic_cyclic_ambiguous_and_escaped_owner_dictionaries_are_rejected(self):
+        source = self.source()
+        invalid = (
+            source.replace(b"title='Show Guide'", b"title=window.guide"),
+            source.replace(b"title='Show Guide'", b"title=alias"),
+            source.replace(b"SHOW_GUIDE:()=>alias,LINE", b"SHOW_GUIDE:()=>alias,SHOW_GUIDE:()=>alias,LINE"),
+            source.replace(b"SHOW_GUIDE:()=>alias", b"SHOW_GUIDE:(key)=>alias"),
+            source.replace(b"SHOW_GUIDE:()=>alias", b"SHOW_GUIDE:()=>outside"),
+            source.replace(b"w.d(zh,{", b"w.other(zh,{"),
+            source.replace(b"var en={},zh={}", b"var en=getWords(),zh={}"),
+            source + b"const a={},b={};const duplicate={en:a,'zh-CN':b}",
+            source.replace(b"const words={[english]:en,[chinese]:zh}", b"const words={[english]:en,[chinese]:en}"),
+            source[:-1],
+        )
+        for raw in invalid:
+            with self.subTest(raw=raw), self.assertRaises(ValueError):
+                evidence.locale_export_dictionaries(raw, ["en", "zh-CN"])
+        for locales in (["en", "en"], ["zh-CN"], []):
+            with self.subTest(locales=locales), self.assertRaises(ValueError):
+                evidence.locale_export_dictionaries(source, locales)
+
+
 class JavascriptBindingTests(unittest.TestCase):
     def test_repeated_index_preserves_shadowing_and_rejects_invalid_references(self):
         sys.path.insert(0, str(analysis.ROOT / "tools/analyzers/python-static"))

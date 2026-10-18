@@ -7,6 +7,7 @@
 use super::*;
 use razer_model::mapping::{MEDIA, WINDOWS};
 use razer_widgets::source_tooltip::SourceTooltip;
+use razer_widgets::theme::{MouseCustomizeColors, MouseMappingMenuColors};
 use std::time::Duration;
 use std::{
     cell::{Cell, RefCell},
@@ -438,25 +439,64 @@ impl Element for DropdownLayer {
     }
 }
 
-// The current shared caller measures actual button rectangles every animation
-// frame. This layer reads rectangles captured during the same GPUI prepaint,
-// so resizing and scrolling do not rely on guessed canvas/label coordinates.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PopupSide {
+    Left,
+    Right,
+}
+
+impl PopupSide {
+    fn from_button(button: Option<&Value>) -> Self {
+        if button.is_some_and(|button| button["buttonPos"] == "right") {
+            Self::Right
+        } else {
+            Self::Left
+        }
+    }
+}
+
+// Current190 CO.clickBtn forwards the button key without nT's element ref.
+// gO's mappingCurrentKey therefore remains absent for an ordinary image click;
+// Ut keeps its source CSS left/right placement instead of measuring the label.
+fn popup_left(
+    surface: Bounds<Pixels>,
+    unit: Pixels,
+    side: PopupSide,
+    panel_open: bool,
+    from_panel: bool,
+) -> Pixels {
+    if panel_open && from_panel {
+        return surface.left() + unit * 230.;
+    }
+    let local = match (side, panel_open) {
+        (PopupSide::Left, false) => surface.size.width / 2. - unit * 622.,
+        (PopupSide::Right, false) => surface.size.width / 2. + unit * 320.,
+        (PopupSide::Left, true) => surface.size.width / 2. - unit * 507.,
+        (PopupSide::Right, true) => unit * 210.,
+    };
+    surface.left() + local
+}
+
 pub(super) struct PopupLayer {
     content: AnyElement,
     surface: Rc<Cell<Bounds<Pixels>>>,
-    anchors: Rc<RefCell<BTreeMap<String, Bounds<Pixels>>>>,
-    input: String,
+    side: PopupSide,
     from_panel: bool,
     panel_open: bool,
     body_scroll: ScrollHandle,
 }
 impl PopupLayer {
-    pub(super) fn new(content: AnyElement, state: &State, input: &str) -> Self {
+    pub(super) fn new(content: AnyElement, workspace: &MouseProductWorkspace) -> Self {
+        let state = &workspace.mapping_190_state;
         Self {
             content,
             surface: state.surface_bounds.clone(),
-            anchors: state.anchors.clone(),
-            input: input.into(),
+            side: PopupSide::from_button(
+                workspace
+                    .mapping_input
+                    .as_deref()
+                    .and_then(|input| workspace.mapping_190_button(input)),
+            ),
             from_panel: state.from_panel,
             panel_open: state.panel_open,
             body_scroll: state.body_scroll.clone(),
@@ -509,31 +549,7 @@ impl Element for PopupLayer {
     ) {
         let root = self.surface.get();
         let unit = window.rem_size() / 16.;
-        let key = if self.from_panel {
-            format!("panel:{}", self.input)
-        } else {
-            self.input.clone()
-        };
-        let anchor = self.anchors.borrow().get(&key).copied().unwrap_or(root);
-        let popup_width = unit * 292.;
-        // calculateKeyConfigPopupLeft: drawer origin uses measured width;
-        // image origin chooses right of the label if the viewport has space,
-        // otherwise left of it, then clamps the left edge / drawer overlap.
-        let left = if self.panel_open && self.from_panel {
-            root.left() + unit * 230.
-        } else {
-            let candidate =
-                if anchor.right() + popup_width < window.viewport_size().width - unit * 20. {
-                    anchor.right()
-                } else {
-                    anchor.left() - popup_width
-                };
-            if self.panel_open && candidate < root.left() + unit * 230. {
-                root.left() + unit * 230.
-            } else {
-                candidate.max(px(0.))
-            }
-        };
+        let left = popup_left(root, unit, self.side, self.panel_open, self.from_panel);
         // The source top-view caller sets 36-scrollTop; drawer origin stays36.
         // The header is positioned -36 above this body in the source CSS.
         let top = root.top()
@@ -559,6 +575,37 @@ impl Element for PopupLayer {
     ) {
         self.content.paint(window, cx);
     }
+}
+
+fn function_button(function: &str, active: bool) -> BaseButton {
+    BaseButton::new(SharedString::from(format!("mouse-190-function-{function}")))
+        .w_full()
+        .h(surface::css(40.))
+        .flex_shrink_0()
+        .p_0()
+        // The source .head keeps its 20px icon at left10 while the 250px
+        // function row is clipped to40. Button's default centering would move
+        // that fixed-width content outside the collapsed rail.
+        .justify_start()
+        .bg(if active {
+            MouseCustomizeColors::selected_surface()
+        } else {
+            MouseMappingMenuColors::background()
+        })
+        .text_color(if active {
+            MouseCustomizeColors::selected()
+        } else {
+            MouseCustomizeColors::text()
+        })
+        .hover(|style| style.bg(MouseMappingMenuColors::hover()))
+        .active(|style| style.bg(MouseCustomizeColors::selected_surface()))
+        .text_size(surface::css(12.))
+        .line_height(surface::css(14.))
+        .accessibility_label(t(function))
+}
+
+fn is_cycle_button(button: &Value) -> bool {
+    button["buttonKey"] == "CycleUpSensitivityStages"
 }
 
 // Current190 main module6114 literal fields (no downloaded code evaluated).
@@ -1102,6 +1149,11 @@ impl MouseProductWorkspace {
             .iter()
             .find(|b| b["inputID"] == input)
     }
+    pub(super) fn mapping_190_is_cycle_input(&self, input: Option<&str>) -> bool {
+        input
+            .and_then(|input| self.mapping_190_button(input))
+            .is_some_and(is_cycle_button)
+    }
     pub(super) fn mapping_190_current(&self, input: &str) -> Option<&Value> {
         self.draft["mappings"].as_array()?.iter().find(|m| {
             m["inputID"] == input && m["isHyperShift"].as_bool().unwrap_or(false) == self.hypershift
@@ -1175,7 +1227,8 @@ impl MouseProductWorkspace {
             self.mapping_190_state.pending = Some(next);
             cx.notify();
         } else {
-            self.mapping_190_next(next, window, cx);
+            let image_click = matches!(&next, Next::Open(_));
+            self.mapping_190_apply_next(next, image_click, window, cx);
         }
     }
     pub fn defer_mapping_page(
@@ -1203,6 +1256,16 @@ impl MouseProductWorkspace {
         true
     }
     fn mapping_190_next(&mut self, next: Next, window: &mut Window, cx: &mut Context<Self>) {
+        self.mapping_190_apply_next(next, false, window, cx);
+    }
+    fn mapping_190_apply_next(
+        &mut self,
+        next: Next,
+        image_click: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let previous = self.mapping_input.clone();
         let from_panel = self.mapping_190_state.from_panel;
         self.mapping_190_state.clear_editor();
         self.mapping_current_state.clear();
@@ -1234,6 +1297,9 @@ impl MouseProductWorkspace {
             }
             Next::Open(input) => self.mapping_190_reopen(input, false, window, cx),
             Next::PanelOpen(input) => self.mapping_190_reopen(input, true, window, cx),
+        }
+        if self.spec.product_id == 190 {
+            self.customize_190_mapping_changed(previous.as_deref(), image_click);
         }
         cx.notify();
     }
@@ -1279,6 +1345,7 @@ impl MouseProductWorkspace {
         if self.mapping_190_state.function == fun {
             return;
         }
+        let cycle = self.mapping_190_is_cycle_input(self.mapping_input.as_deref());
         let state = &mut self.mapping_190_state;
         state.function = fun.to_owned();
         state.value = if function(&state.original) == fun {
@@ -1334,10 +1401,7 @@ impl MouseProductWorkspace {
         state.include_modifiers = state.value["modifiers"]
             .as_array()
             .is_some_and(|m| !m.is_empty());
-        if fun == "SENSITIVITY"
-            && self.mapping_input.as_deref() == Some("CycleUpSensitivityStages")
-            && state.value["sensitivityAssignment"] == "DPI_Clutch"
-        {
+        if fun == "SENSITIVITY" && cycle && state.value["sensitivityAssignment"] == "DPI_Clutch" {
             state.value["sensitivityAssignment"] = json!("DPI_Up");
         }
         if matches!(fun, "MOUSE_FUNCTION" | "KEYBOARD_FUNCTION") {
@@ -1575,7 +1639,7 @@ impl MouseProductWorkspace {
                 )
             }
             "SENSITIVITY" => {
-                let cycle = self.mapping_input.as_deref() == Some("CycleUpSensitivityStages");
+                let cycle = self.mapping_190_is_cycle_input(self.mapping_input.as_deref());
                 (
                     "sensitivityAssignment",
                     SENSITIVITY
@@ -2373,17 +2437,11 @@ impl MouseProductWorkspace {
                     .map(|fun| {
                         let fun = fun.to_owned();
                         let active = state.function == fun;
-                        BaseButton::new(SharedString::from(format!("mouse-190-function-{fun}")))
-                            .w_full()
-                            .h(surface::css(40.))
-                            .p_0()
-                            .bg(if active { rgb(0x111111) } else { rgb(0x222222) })
-                            .text_color(rgb(if active { 0x44d62c } else { 0xcccccc }))
-                            .hover(|s| s.bg(razer_widgets::theme::MouseMappingMenuColors::hover()))
-                            .text_size(surface::css(12.))
+                        function_button(&fun, active)
                             .child(
                                 h_flex()
                                     .w(surface::css(250.))
+                                    .h(surface::css(40.))
                                     .flex_shrink_0()
                                     .child(
                                         div()
@@ -2601,3 +2659,7 @@ impl MouseProductWorkspace {
         Some(ConfirmationLayer { backdrop, dialog }.into_any_element())
     }
 }
+
+#[cfg(test)]
+#[path = "mouse_mapping_190_tests.rs"]
+mod tests;

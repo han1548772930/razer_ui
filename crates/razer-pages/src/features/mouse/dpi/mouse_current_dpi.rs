@@ -26,6 +26,24 @@ mod tests {
     use gpui_kit::{AppContext, EntityId, TestAppContext, px, size};
     use std::sync::{Arc, atomic::AtomicBool};
 
+    #[::core::prelude::v1::test]
+    fn current190_source_separates_stage_table_edits_from_transient_stage_selection() {
+        use super::{Edit, Tasks};
+        for edit in [Edit::Stages, Edit::Profile, Edit::AxisMode { reset_y: true }] {
+            assert_eq!(edit.tasks(190), Tasks { stages: true, active: false });
+        }
+        assert_eq!(Edit::SelectStage.tasks(190), Tasks { stages: true, active: true });
+        assert_eq!(Edit::AxisMode { reset_y: false }.tasks(190), Tasks { stages: false, active: false });
+    }
+
+    #[::core::prelude::v1::test]
+    fn current182_stage_actions_do_not_issue_the_separate_otfs_level_task() {
+        use super::{Edit, Tasks};
+        for edit in [Edit::Stages, Edit::SelectStage, Edit::Profile, Edit::AxisMode { reset_y: true }] {
+            assert_eq!(edit.tasks(182), Tasks { stages: true, active: false });
+        }
+    }
+
     // Compile-checked GPUI owner integration. No application/window acceptance
     // is inferred from this test; execution remains outside static verification.
     #[gpui_kit::test]
@@ -142,6 +160,36 @@ pub(super) struct State {
     initialization_key: Option<String>,
     macro_recording: bool,
 }
+
+#[derive(Clone, Copy)]
+pub(super) enum Edit {
+    Stages,
+    SelectStage,
+    AxisMode { reset_y: bool },
+    Profile,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct Tasks {
+    stages: bool,
+    active: bool,
+}
+
+impl Edit {
+    fn tasks(self, product_id: u32) -> Tasks {
+        let stages = match self {
+            Self::AxisMode { reset_y } => reset_y,
+            _ => true,
+        };
+        // Current190 pA's row edits, enable, visibility and reorder emit only
+        // IE/ON_STAGES_CHANGE. pA.setStage also emits IA's transient DPI task.
+        // Current182 ZE has no transient task for any stage edit.
+        let active = product_id != 182
+            && stages
+            && (product_id != 190 || matches!(self, Self::SelectStage));
+        Tasks { stages, active }
+    }
+}
 impl State {
     pub(super) fn cancel(&mut self) {
         if let Some(pending) = &self.pending {
@@ -171,7 +219,7 @@ impl MouseProductWorkspace {
         if self.spec.product_id != 182 {
             return;
         }
-        self.initialize_mouse182_polling(key.as_deref(), profile_guid, cx);
+        self.initialize_current_mouse_polling(key.as_deref(), profile_guid, cx);
         self.current_dpi.macro_recording = macro_recording;
         if macro_recording {
             if let Some(pending) = &self.current_dpi.pending {
@@ -218,7 +266,7 @@ impl MouseProductWorkspace {
         );
     }
     pub fn apply_current_dpi_profile(&mut self, cx: &mut Context<Self>) {
-        self.submit_current_dpi(true, true, cx);
+        self.submit_current_dpi(Edit::Profile, cx);
     }
     fn current_dpi_draft(&self) -> Option<DpiStagesDraft> {
         let stages = self
@@ -255,22 +303,20 @@ impl MouseProductWorkspace {
         {
             return;
         }
-        // uA / cA / CA / NA update the full stage table. Selecting a stage,
-        // changing a visible row, hiding/reordering or staging enable also
-        // dispatches IA's independent current X/Y task.
-        self.submit_current_dpi(true, true, cx);
+        let edit = if path == self.spec.active_path() {
+            Edit::SelectStage
+        } else {
+            Edit::Stages
+        };
+        self.submit_current_dpi(edit, cx);
     }
 
     pub(super) fn submit_current_dpi(
         &mut self,
-        stages: bool,
-        active: bool,
+        edit: Edit,
         cx: &mut Context<Self>,
     ) {
-        // Current182 UI ZE -> ON_STAGES_CHANGE -> 90012.dn -> 30525.ft
-        // queues only85191.Xe/setDPIStages(1). et/setDpiLevel(0) belongs to
-        // separate temporary/OTFS actions and is not an extra stage edit.
-        let active = active && self.spec.product_id != 182;
+        let Tasks { stages, active } = edit.tasks(self.spec.product_id);
         if razer_device::mouse_current_dpi::capability(self.spec.product_id).is_none() {
             return;
         }
@@ -314,7 +360,7 @@ impl MouseProductWorkspace {
                 DpiChange {
                     stages: stage_change.then_some(draft),
                     active: active_change.then_some(selected).flatten(),
-                    profile_guid: (self.spec.product_id == 182).then(|| {
+                    profile_guid: matches!(self.spec.product_id, 182 | 190).then(|| {
                         self.draft
                             .get("guid")
                             .and_then(Value::as_str)

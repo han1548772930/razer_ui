@@ -546,6 +546,11 @@ pub enum ServiceRequest {
         peer_product_id: Option<u32>,
         change: Option<razer_device::mouse_current_dpi::DpiChange>,
     },
+    HidNodeMouseCurrentPolling {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        change: razer_device::mouse_current_polling::Change,
+    },
     KeyboardIndicator {
         target: razer_device::keyboard_indicator::Target,
         change: razer_device::keyboard_indicator::Change,
@@ -746,6 +751,10 @@ pub enum ServiceRequest {
     DeviceMouseCurrentDpi {
         target: razer_device::device_reads::DeviceReadTarget,
         change: Option<razer_device::mouse_current_dpi::DpiChange>,
+    },
+    DeviceMouseCurrentPolling {
+        target: razer_device::device_reads::DeviceReadTarget,
+        change: razer_device::mouse_current_polling::Change,
     },
     DeviceKeyboardBrightnessWrite {
         target: razer_device::device_reads::DeviceReadTarget,
@@ -1222,6 +1231,8 @@ impl ServiceClient {
                     change: Some(_),
                     ..
                 }
+                | ServiceRequest::HidNodeMouseCurrentPolling { .. }
+                | ServiceRequest::DeviceMouseCurrentPolling { .. }
                 | ServiceRequest::DeviceKeyboardBrightnessWrite { .. }
                 | ServiceRequest::MappingKeyboardGamingIndicator { .. }
                 | ServiceRequest::KeyboardIndicator { .. }

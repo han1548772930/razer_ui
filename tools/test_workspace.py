@@ -21,6 +21,205 @@ import typed_tables
 import catalog_data
 
 
+class LocalizationCatalogTests(unittest.TestCase):
+    def document(self):
+        return {"schema_version": 1, "locales": [
+            {"locale": "en", "messages": {"EMPTY": "", "RESET": "RESET", "SOURCE.BODY": "first\nsecond"}},
+            {"locale": "zh-CN", "messages": {"RESET": "重置", "SHOW_GUIDE": "显示指南"}}]}
+
+    def test_legacy_flattening_preserves_complete_namespaces_and_rejects_loss(self):
+        original = {"Z": "same", "SOURCE": {"BODY": "first\nsecond", "NESTED": {"TITLE": "设备"}}, "EMPTY": ""}
+        self.assertEqual(resource_database.flatten_locale(original),
+                         {"EMPTY": "", "SOURCE.BODY": "first\nsecond", "SOURCE.NESTED.TITLE": "设备", "Z": "same"})
+        for value in ({"A": {"B": "one"}, "A.B": "two"}, {"A": 1}, {"A": None},
+                      {"A": []}, {"A": {}}, {"": "empty"}, []):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                resource_database.flatten_locale(value)
+        with self.assertRaisesRegex(ValueError, "Duplicate"):
+            resource_database.unique_json('{"A":"one","A":"two"}')
+
+    def test_catalog_requires_full_typed_canonical_language_and_key_schema(self):
+        valid = self.document()
+        self.assertEqual(resource_database.validate_locales(valid), valid["locales"])
+        invalid = []
+        for path, value in ((["schema_version"], True), (["locales"], []),
+                            (["locales", 0, "locale"], "../en"), (["locales", 0, "messages"], {}),
+                            (["locales", 0, "messages", "RESET"], None),
+                            (["locales", 0, "messages", "RESET"], {"nested": "wrong"})):
+            item = copy.deepcopy(valid)
+            owner = item
+            for key in path[:-1]:
+                owner = owner[key]
+            owner[path[-1]] = value
+            invalid.append(item)
+        invalid += [{**valid, "extra": 1}, {**valid, "locales": list(reversed(valid["locales"]))},
+                    {**valid, "locales": valid["locales"][1:]},
+                    {**valid, "locales": [valid["locales"][0], valid["locales"][0]]}]
+        reordered = copy.deepcopy(valid)
+        reordered["locales"][0]["messages"] = dict(reversed(list(reordered["locales"][0]["messages"].items())))
+        invalid.append(reordered)
+        for item in invalid:
+            with self.subTest(document=item), self.assertRaises(ValueError):
+                resource_database.validate_locales(item)
+
+    def test_sqlite_verifies_every_language_key_text_namespace_and_position(self):
+        locales = resource_database.validate_locales(self.document())
+        with closing(sqlite3.connect(":memory:")) as connection:
+            connection.executescript((resource_database.ROOT / resource_database.SCHEMA).read_text(encoding="utf-8"))
+            self.assertEqual(resource_database.fill_locales(connection, locales), {"en": 3, "zh-CN": 2})
+            resource_database.verify_locales(connection, locales)
+            with self.assertRaises(sqlite3.IntegrityError):
+                connection.execute("INSERT INTO ui_translation VALUES ('en',3,'RESET','duplicate')")
+            for statement in ("DELETE FROM ui_translation WHERE locale='en' AND key='EMPTY'",
+                              "UPDATE ui_translation SET value='wrong' WHERE key='SOURCE.BODY'",
+                              "UPDATE ui_translation SET position=3 WHERE locale='en' AND position=0",
+                              "UPDATE ui_locale SET position=3 WHERE id='en'"):
+                connection.execute("SAVEPOINT changed")
+                connection.execute(statement)
+                with self.subTest(statement=statement), self.assertRaisesRegex(ValueError, "locale fields"):
+                    resource_database.verify_locales(connection, locales)
+                connection.execute("ROLLBACK TO changed")
+                connection.execute("RELEASE changed")
+
+    def test_current_reference_and_revalidated_cached_source_are_required(self):
+        import evidence
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            folder = root / ".analysis/inputs/frontend/current"
+            folder.mkdir(parents=True)
+            raw = b"const dictionary={TITLE:'current'}"
+            source = folder / "main.current.js"
+            source.write_bytes(raw)
+            name = source.relative_to(root).as_posix()
+            identity = {"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+            url = "https://apps.razer.com/synapse/products/190/ui/static/js/main.current.js"
+            attempts = []
+            for index in range(2):
+                path = folder / f"revalidation-{index}.js"
+                path.write_bytes(raw)
+                attempts.append({**identity, "path": path.relative_to(root).as_posix(), "url": url,
+                                 "http_status": 200, "matches_retained": True})
+            original = {**identity, "url": url, "kind": "installed_cached_official_resource",
+                        "current_http_revalidation": {"attempts": attempts}}
+            receipt = {"entry_url": "https://apps.razer.com/synapse/products/190/ui/index.html",
+                       "source_current_during_acquisition": True, "stability": [{"unchanged": True}],
+                       "files": [original]}
+            acquisition = folder / "acquisition.json"
+            acquisition.write_text(json.dumps(receipt), encoding="utf-8")
+            mounted = {"identity_verified": True, "original": identity, "deployment_role": "html_include"}
+            deployment = {"entry_original": identity, "manifests": [], "sources": [mounted], "failures": []}
+            with mock.patch.object(workspace, "ROOT", root), \
+                    mock.patch.object(evidence, "frontend_deployment_sources", return_value=deployment):
+                loaded, provenance = workspace.locale_preparation_source(acquisition.relative_to(root).as_posix(), name)
+                self.assertEqual(loaded, raw)
+                self.assertEqual(provenance["deployment_reference"], mounted)
+                self.assertEqual(len(provenance["inputs"]), 5)
+                deployment["sources"] = []
+                with self.assertRaisesRegex(ValueError, "current deployment reference"):
+                    workspace.locale_preparation_source(acquisition.relative_to(root).as_posix(), name)
+                deployment["sources"] = [mounted]
+                (folder / "revalidation-1.js").write_bytes(b"different bytes")
+                with self.assertRaisesRegex(ValueError, "revalidation bytes differ"):
+                    workspace.locale_preparation_source(acquisition.relative_to(root).as_posix(), name)
+                original["current_http_revalidation"]["attempts"] = attempts[:1]
+                acquisition.write_text(json.dumps(receipt), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "official HTTP revalidation"):
+                    workspace.locale_preparation_source(acquisition.relative_to(root).as_posix(), name)
+
+    def test_export_migration_verifies_sqlite_before_retiring_complete_legacy_files(self):
+        import analysis
+        import sys
+        sys.path.insert(0, str(workspace.ROOT / "tools/analyzers/python-static"))
+        source = ("(()=>{var en={},zh={};const english='Show Guide',chinese='显示指南',"
+                  "old='current source',cn='当前原件';w.d(en,{SHOW_GUIDE:()=>english,OLD:()=>old});"
+                  "w.d(zh,{SHOW_GUIDE:()=>chinese,OLD:()=>cn});const words={en:en,'zh-CN':zh};})()").encode()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            legacy = root / "locales"
+            legacy.mkdir()
+            originals = {"en": {"OLD": "retained", "SOURCE": {"BODY": "first\nsecond"}},
+                         "zh-CN": {"OLD": "保留", "EMPTY": ""}}
+            raw = {}
+            for locale, values in originals.items():
+                raw[locale] = (json.dumps(values, ensure_ascii=False, indent=2) + "\r\n").encode()
+                (legacy / (locale + ".json")).write_bytes(raw[locale])
+            for name in ("tools/workspace.py", "tools/evidence.py", "tools/resource_database.py"):
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"static maintenance tool fixture")
+            database = {"output": "assets/catalog.sqlite3", "bytes": 1, "sha256": "a" * 64, "schema_version": 4}
+
+            def prepare_database(**kwargs):
+                self.assertTrue((legacy / "en.json").is_file())
+                installed = resource_database.localization_document()
+                self.assertEqual(installed[0]["messages"],
+                                 {"OLD": "retained", "SHOW_GUIDE": "Show Guide", "SOURCE.BODY": "first\nsecond"})
+                self.assertEqual(installed[1]["messages"], {"EMPTY": "", "OLD": "保留", "SHOW_GUIDE": "显示指南"})
+                return database
+
+            patches = (mock.patch.object(workspace, "ROOT", root), mock.patch.object(analysis, "ROOT", root),
+                       mock.patch.object(resource_database, "ROOT", root),
+                       mock.patch.object(workspace, "locale_preparation_source", return_value=(source, {"inputs": []})),
+                       mock.patch.object(resource_database, "prepare", side_effect=prepare_database),
+                       mock.patch.object(analysis, "index_files"))
+            with patches[0], patches[1], patches[2], patches[3], patches[4], patches[5]:
+                result = workspace.prepare_locale_exports("acquisition.json", "source.js", migrate_legacy=True)
+                self.assertEqual(result["added"], {"en": 1, "zh-CN": 1})
+                self.assertEqual(result["retained_differences"], {"en": 1, "zh-CN": 1})
+                self.assertFalse(legacy.exists())
+                for locale, content in raw.items():
+                    self.assertEqual((root / resource_database.LOCALE_BASELINE / (locale + ".json")).read_bytes(), content)
+                snapshot, _, baseline = workspace.locale_preparation_catalog()
+                self.assertFalse(baseline)
+                self.assertEqual(snapshot["locales"], resource_database.localization_document())
+                receipt = json.loads((root / resource_database.LOCALE_REPORT).read_bytes())
+                self.assertFalse(receipt["legacy_vendor_source_provenance_established"])
+                self.assertFalse(receipt["vendor_javascript_executed"])
+                with mock.patch.object(resource_database, "prepare", return_value=database) as verify_database:
+                    for newline in ("\n", "\r\n"):
+                        path = root / resource_database.LOCALES
+                        path.write_bytes((json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n")
+                                         .replace("\n", newline).encode())
+                        checked = workspace.prepare_locale_exports("acquisition.json", "source.js", check=True)
+                        self.assertTrue(checked["check_only"])
+                    self.assertEqual(verify_database.call_args_list, [mock.call(check=True), mock.call(check=True)])
+
+    def test_failed_database_preparation_retains_every_legacy_input(self):
+        import analysis
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            legacy = root / "locales/en.json"
+            legacy.parent.mkdir(parents=True)
+            legacy.write_bytes(b'{"RESET":"RESET"}')
+            with mock.patch.object(workspace, "ROOT", root), mock.patch.object(analysis, "ROOT", root), \
+                    mock.patch.object(resource_database, "ROOT", root), \
+                    mock.patch.object(resource_database, "prepare", side_effect=ValueError("database preparation failed")):
+                document, snapshots, baseline = workspace.locale_preparation_catalog(migrate_legacy=True)
+                with self.assertRaisesRegex(ValueError, "database preparation failed"):
+                    workspace.publish_locale_preparation(document, snapshots, baseline, [])
+                self.assertEqual(legacy.read_bytes(), b'{"RESET":"RESET"}')
+                document, _, retry_baseline = workspace.locale_preparation_catalog(migrate_legacy=True)
+                self.assertEqual(document["locales"], [{"locale": "en", "messages": {"RESET": "RESET"}}])
+                self.assertEqual(len(retry_baseline), 1)
+
+    def test_product_input_closure_requires_the_installed_locale_owner(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "crates/example/src/lib.rs"
+            source.parent.mkdir(parents=True)
+            (root / "Cargo.toml").write_bytes(b"workspace manifest")
+            (root / "Cargo.lock").write_bytes(b"locked dependencies")
+            with mock.patch.object(workspace, "ROOT", root):
+                source.write_text('rust_i18n::i18n!("../../locales", fallback="en");', encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "installed locale snapshot"):
+                    workspace.rust_inputs()
+                source.write_text('pub fn label() { let _ = razer_i18n::t("RESET"); }', encoding="utf-8")
+                self.assertEqual(len(workspace.rust_inputs()), 3)
+                source.write_text('const COPY: &str = include_str!("../../../locales/en.json");', encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "outside installed inputs"):
+                    workspace.rust_inputs()
+
+
 class ArchitectureBoundaryTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -29,6 +228,60 @@ class ArchitectureBoundaryTests(unittest.TestCase):
 
     def inspect(self, source, owner):
         return workspace.inspect_architecture_source(source.encode(), owner=owner, rust_parser=self.rust_parser)
+
+    def test_current_dpi_gui_delegates_native_io_and_retains_delivery(self):
+        owners = (
+            'crates/razer-shell/src/shell/mouse/mouse_current_dpi.rs',
+            'crates/razer-shell/src/shell/mouse/mouse_current_dpi_runtime.rs',
+            'crates/razer-pages/src/features/mouse/dpi/mouse_current_dpi.rs',
+        )
+        worker = 'crates/razer-shell/src/shell/mouse/mouse_current_dpi_worker.rs'
+        for owner in owners:
+            for source in (
+                'fn start() { ServiceClient::spawn(); }',
+                'use razer_ipc::ServiceClient as Client; fn start() { Client::spawn(); }',
+                'use razer_ipc as ipc; fn start() { ipc::ServiceClient::spawn(); }',
+                'fn start() { direct::mouse_current_dpi::request(client, route, change); }',
+                'use razer_discovery::direct::mouse_current_dpi as dpi; fn start() { dpi::request(client, route, change); }',
+                'use razer_discovery::direct::mouse_current_dpi::request as read; fn start() { read(client, route, change); }',
+                'fn start() { std::thread::spawn(work); }',
+                'use std::thread::{Builder as Worker}; fn start() { Worker::new(); }',
+            ):
+                with self.subTest(owner=owner, source=source):
+                    rows = self.inspect(source, owner)
+                    self.assertEqual([row['kind'] for row in rows], ['mouse_dpi_gui_owns_device_io'])
+                    self.assertEqual(rows[0]['expected_owner'], worker)
+                    self.assertFalse(self.inspect(source, worker))
+                    self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + source + ' }', owner))
+            for call in ('delivery.detach()', 'worker.join()', 'self.worker.take().unwrap().join()'):
+                with self.subTest(owner=owner, call=call):
+                    self.assertEqual([row['kind'] for row in self.inspect('fn start() { ' + call + '; }', owner)],
+                                     ['mouse_dpi_gui_detaches_or_waits_for_native_work'])
+            self.assertFalse(self.inspect('fn start() { let message = messages.join(", "); cx.emit(intent); }', owner))
+        self.assertFalse(self.inspect('fn start() { ServiceClient::spawn(); }',
+                                     'crates/razer-shell/src/shell/mouse/unrelated.rs'))
+
+    def test_current_dpi_dispatch_and_route_use_their_retained_owners(self):
+        owner = 'crates/razer-shell/src/shell/mouse/mouse_current_dpi.rs'
+        source = 'impl AppShell { fn submit_current_dpi_device() { self.start_current_dpi_operation(workspace, route, request, cx); } }'
+        self.assertFalse(self.inspect(source, owner))
+        for changed in (source.replace('self.start_current_dpi_operation', 'other.start_current_dpi_operation'),
+                        source.replace('self.start_current_dpi_operation', 'self.start_other_operation')):
+            self.assertEqual([row['kind'] for row in self.inspect(changed, owner)],
+                             ['mouse_dpi_bypasses_retained_operation_owner'])
+            self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + changed + ' }', owner))
+        owner = 'crates/razer-shell/src/shell/mouse/mouse_current_dpi_runtime.rs'
+        source = 'fn current_route() { super::device_discovery::retained_connection(previous, observations, device) }'
+        self.assertFalse(self.inspect(source, owner))
+        self.assertFalse(self.inspect('use super::device_discovery::retained_connection as retained; '
+                                     + source.replace('super::device_discovery::retained_connection', 'retained'), owner))
+        self.assertEqual([row['kind'] for row in self.inspect(source.replace('super::device_discovery::', 'other::'), owner)],
+                         ['mouse_dpi_does_not_retain_the_physical_connection'])
+        for source in ('fn current() { shell.discovery_revision == revision }',
+                       'fn current() { discovery_revision == revision }'):
+            self.assertIn('mouse_dpi_uses_global_discovery_revision',
+                          [row['kind'] for row in self.inspect(source, owner)])
+        self.assertFalse(self.inspect('fn diagnostic() { log("discovery_revision"); }', owner))
 
     def test_keyboard_brightness_gui_delegates_io_to_its_retained_worker(self):
         owners = (

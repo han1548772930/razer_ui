@@ -363,10 +363,10 @@ pub fn verify_wireless_online_for(
     Ok(())
 }
 
-fn stage_reading(ack: &Acknowledgement) -> anyhow::Result<DpiStagesReading> {
+fn stage_reading(ack: &Acknowledgement, profile: u8) -> anyhow::Result<DpiStagesReading> {
     let data = &ack.data;
     ensure!(
-        data.len() >= 3 && (data.len() - 3).is_multiple_of(7) && data[0] == 1,
+        data.len() >= 3 && (data.len() - 3).is_multiple_of(7) && data[0] == profile,
         "DPI stage response is truncated or belongs to another profile"
     );
     Ok(DpiStagesReading {
@@ -405,9 +405,9 @@ fn level_reading(
     Ok(value)
 }
 
-fn stage_payload(packed: &PackedStages) -> Vec<u8> {
+fn stage_payload(packed: &PackedStages, profile: u8) -> Vec<u8> {
     let mut bytes = vec![0; 3 + 7 * usize::from(packed.number_of_active_stages)];
-    bytes[..3].copy_from_slice(&[1, packed.active_stage, packed.number_of_active_stages]);
+    bytes[..3].copy_from_slice(&[profile, packed.active_stage, packed.number_of_active_stages]);
     for (index, row) in packed.records.iter().enumerate() {
         let start = 3 + index * 7;
         bytes[start] = row.index;
@@ -419,18 +419,59 @@ fn stage_payload(packed: &PackedStages) -> Vec<u8> {
 }
 
 pub fn same_stages(sent: &PackedStages, got: &DpiStagesReading) -> bool {
-    let records: Vec<_> = got
-        .records
-        .iter()
-        .take_while(|row| row.index != 0)
-        .collect();
     got.profile_id == 1
-        && got.active_stage == sent.active_stage
-        && got.number_of_active_stages == sent.number_of_active_stages
-        && records.len() == sent.records.len()
-        && records.iter().zip(&sent.records).all(|(got, sent)| {
-            got.index == sent.index + 1 && (got.x, got.y, got.z) == (sent.x, sent.y, sent.z)
-        })
+        && crate::mouse_dpi_stages::matches_packed_stage_records(
+            sent.active_stage,
+            usize::from(sent.number_of_active_stages),
+            &sent.records,
+            got,
+        )
+}
+
+fn synchronize_ordinary_profile_slots(
+    device: &dyn FeatureTransport,
+    cap: &Capability,
+    active_guid: &str,
+    observed_slots: &[crate::mouse_dpi_stages::ObservedProfileSlot],
+    table: &PackedStages,
+    next: &mut impl FnMut() -> anyhow::Result<u8>,
+    validate: &impl Fn() -> anyhow::Result<()>,
+) -> anyhow::Result<Vec<crate::mouse_dpi_stages::DpiSlotWriteResult>> {
+    crate::mouse_dpi_stages::synchronize_profile_slots_with(
+        active_guid,
+        observed_slots,
+        next,
+        validate,
+        |next, slot| {
+            stage_reading(
+                &exchange(device, cap, [80, 4, 134], &[slot], next()?, validate)?,
+                slot,
+            )
+        },
+        |before| {
+            crate::mouse_dpi_stages::matches_packed_stage_records(
+                table.active_stage,
+                usize::from(table.number_of_active_stages),
+                &table.records,
+                before,
+            )
+        },
+        |next, slot| {
+            let payload = stage_payload(table, slot);
+            let ack = exchange(
+                device,
+                cap,
+                [payload.len() as u8, 4, 6],
+                &payload,
+                next()?,
+                validate,
+            )?;
+            Ok(crate::mouse_dpi_stages::DpiStagesAcknowledgement {
+                response_bytes: ack.response_bytes,
+                raw_data: ack.data,
+            })
+        },
+    )
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -626,7 +667,7 @@ fn execute_with_capability(
                 return Ok(());
             }
             if let Some(packed) = &packed {
-                let payload = stage_payload(packed);
+                let payload = stage_payload(packed, 1);
                 report.acknowledgements.push(exchange(
                     device,
                     cap,
@@ -636,14 +677,10 @@ fn execute_with_capability(
                     &validate,
                 )?);
             }
-            let observed = stage_reading(&exchange(
-                device,
-                cap,
-                [80, 4, 134],
-                &[1],
-                next()?,
-                &validate,
-            )?)?;
+            let observed = stage_reading(
+                &exchange(device, cap, [80, 4, 134], &[1], next()?, &validate)?,
+                1,
+            )?;
             if let Some(packed) = &packed {
                 ensure!(
                     same_stages(packed, &observed),
@@ -651,36 +688,53 @@ fn execute_with_capability(
                 );
             }
             report.stages = Some(observed);
-            if product_id == 182
+            if matches!(product_id, 182 | 190)
                 && let Some(change) = change
                 && let (Some(guid), Some(draft)) = (&change.profile_guid, &change.stages)
             {
-                ensure!(!guid.is_empty(), "PID182 active profile GUID is empty");
-                let onboard = crate::mouse_onboard::MouseOnboard::new(device, cap.transport())?;
-                let inventory = onboard.read_inventory(&mut next, &validate)?;
-                // Current77303 skips the first profile's identity by index.
-                for slot in inventory.profile_ids.iter().skip(1) {
-                    let identity = onboard.read_identity(*slot, &mut next, &validate)?;
-                    report
-                        .profile_slots
-                        .push(crate::mouse_dpi_stages::ObservedProfileSlot {
-                            slot_id: *slot,
-                            guid: identity.guid,
-                        });
-                }
-                let mut stages_cap = crate::mouse_dpi_stages::capability(182)
-                    .context("PID182 stage capability absent")?
-                    .clone();
-                stages_cap.transport = cap.transport().clone();
-                report.profile_slot_writes = crate::mouse_dpi_stages::synchronize_profile_slots(
+                ensure!(
+                    !guid.is_empty(),
+                    "PID{product_id} active profile GUID is empty"
+                );
+                report.profile_slots = crate::mouse_onboard::read_profile_associations(
                     device,
-                    &stages_cap,
-                    guid,
-                    &report.profile_slots,
-                    draft,
+                    cap.transport(),
                     &mut next,
                     &validate,
-                )?;
+                )?
+                .into_iter()
+                .map(|slot| crate::mouse_dpi_stages::ObservedProfileSlot {
+                    slot_id: slot.profile_id,
+                    guid: slot.guid,
+                })
+                .collect();
+                report.profile_slot_writes = if product_id == 182 {
+                    let mut stages_cap = crate::mouse_dpi_stages::capability(182)
+                        .context("PID182 stage capability absent")?
+                        .clone();
+                    stages_cap.transport = cap.transport().clone();
+                    crate::mouse_dpi_stages::synchronize_profile_slots(
+                        device,
+                        &stages_cap,
+                        guid,
+                        &report.profile_slots,
+                        draft,
+                        &mut next,
+                        &validate,
+                    )?
+                } else {
+                    synchronize_ordinary_profile_slots(
+                        device,
+                        cap,
+                        guid,
+                        &report.profile_slots,
+                        packed
+                            .as_ref()
+                            .context("DPI stage task has no packed table")?,
+                        &mut next,
+                        &validate,
+                    )?
+                };
                 let failures: Vec<_> = report
                     .profile_slot_writes
                     .iter()
@@ -688,7 +742,7 @@ fn execute_with_capability(
                     .collect();
                 ensure!(
                     failures.is_empty(),
-                    "PID182 OBM stage synchronization failed: {}",
+                    "PID{product_id} OBM stage synchronization failed: {}",
                     failures.join("; ")
                 );
             }

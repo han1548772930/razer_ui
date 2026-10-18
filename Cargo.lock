@@ -5842,6 +5842,7 @@ dependencies = [
 name = "razer-i18n"
 version = "0.1.0"
 dependencies = [
+ "razer-resource-db",
  "rust-i18n",
 ]
 

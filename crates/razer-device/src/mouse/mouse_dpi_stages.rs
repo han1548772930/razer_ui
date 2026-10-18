@@ -200,15 +200,31 @@ fn parse(data: &[u8], profile: u8) -> anyhow::Result<DpiStagesReading> {
 }
 
 pub fn same_table(table: &PackedDpiStages, reading: &DpiStagesReading) -> bool {
+    matches_packed_stage_records(
+        table.active_stage,
+        table.stages.len(),
+        &table.stages,
+        reading,
+    )
+}
+
+/// Setter indices are zero-based; the source getter returns one-based records.
+/// Declared count is independent of retained rows in ordinary mouse edge cases.
+pub(crate) fn matches_packed_stage_records(
+    active_stage: u8,
+    number_of_active_stages: usize,
+    packed: &[PackedDpiStage],
+    reading: &DpiStagesReading,
+) -> bool {
     let records: Vec<_> = reading
         .records
         .iter()
         .take_while(|row| row.index != 0)
         .collect();
-    reading.active_stage == table.active_stage
-        && usize::from(reading.number_of_active_stages) == table.stages.len()
-        && records.len() == table.stages.len()
-        && table.stages.iter().zip(records).all(|(sent, got)| {
+    reading.active_stage == active_stage
+        && usize::from(reading.number_of_active_stages) == number_of_active_stages
+        && records.len() == packed.len()
+        && packed.iter().zip(records).all(|(sent, got)| {
             got.index == sent.index + 1 && (got.x, got.y, got.z) == (sent.x, sent.y, sent.z)
         })
 }
@@ -563,6 +579,29 @@ pub fn synchronize_profile_slots(
     validate: impl Fn() -> anyhow::Result<()>,
 ) -> anyhow::Result<Vec<DpiSlotWriteResult>> {
     let table = pack(cap, draft)?;
+    synchronize_profile_slots_with(
+        active_guid,
+        observed_slots,
+        &mut next_transaction,
+        &validate,
+        |next, slot| read_profile(device, cap, slot, next, &validate),
+        |before| same_table(&table, before),
+        |next, slot| set_profile(device, cap, slot, &table, next, &validate),
+    )
+}
+
+/// Shared Mt task order with product-owned packing and transport validation.
+/// A failed slot is retained and later matching slots still run; cancellation
+/// stops before any later write. Setter acknowledgements have no readback.
+pub(crate) fn synchronize_profile_slots_with<C>(
+    active_guid: &str,
+    observed_slots: &[ObservedProfileSlot],
+    context: &mut C,
+    validate: &impl Fn() -> anyhow::Result<()>,
+    mut read: impl FnMut(&mut C, u8) -> anyhow::Result<DpiStagesReading>,
+    same: impl Fn(&DpiStagesReading) -> bool,
+    mut write: impl FnMut(&mut C, u8) -> anyhow::Result<DpiStagesAcknowledgement>,
+) -> anyhow::Result<Vec<DpiSlotWriteResult>> {
     let mut results = Vec::new();
     for slot in select_profile_slots(active_guid, observed_slots) {
         validate()?;
@@ -573,21 +612,14 @@ pub fn synchronize_profile_slots(
             acknowledged: None,
             error: None,
         };
-        match read_profile(device, cap, slot.slot_id, &mut next_transaction, &validate) {
+        match read(context, slot.slot_id) {
             Err(error) => result.error = Some(format!("{error:#}")),
             Ok(before) => {
-                result.was_equal = same_table(&table, &before);
+                result.was_equal = same(&before);
                 result.before = Some(before);
                 if !result.was_equal {
                     validate()?;
-                    match set_profile(
-                        device,
-                        cap,
-                        slot.slot_id,
-                        &table,
-                        &mut next_transaction,
-                        &validate,
-                    ) {
+                    match write(context, slot.slot_id) {
                         Ok(ack) => result.acknowledged = Some(ack),
                         Err(error) => result.error = Some(format!("{error:#}")),
                     }

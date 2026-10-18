@@ -42,6 +42,14 @@ pub(super) fn keyboard_indicator(
 }
 #[path = "mouse/mouse_current_dpi.rs"]
 mod mouse_current_dpi_adapter;
+#[path = "mouse/mouse_current_polling.rs"]
+mod mouse_current_polling_adapter;
+pub(super) fn mouse_current_polling(
+    target: &DeviceReadTarget,
+    change: &razer_device::mouse_current_polling::Change,
+) -> anyhow::Result<Value> {
+    mouse_current_polling_adapter::request(target, change)
+}
 #[path = "mouse/mouse_current_power.rs"]
 mod mouse_current_power_adapter;
 #[path = "mouse/mouse_indicator_led.rs"]

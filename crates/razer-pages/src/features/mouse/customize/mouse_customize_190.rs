@@ -7,7 +7,102 @@ pub(super) mod source_mapping;
 use razer_widgets::scroll::SourceScrollable as _;
 use source_mapping::Next;
 
+const CYCLE_ARTWORK: &str = "synapse/mouse-customize/8bd13c4f3a94a3834d2a05c6.svg";
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CycleSelection {
+    Empty,
+    Cycle,
+    Other,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum CycleTarget {
+    #[default]
+    Hidden,
+    Magnified,
+}
+
+impl CycleTarget {
+    fn coordinates(self) -> (f32, f32) {
+        match self {
+            Self::Hidden => (214., 169.),
+            Self::Magnified => (186., 173.),
+        }
+    }
+}
+
+/// CO retains displayCycleButton and Xcycle/Ycycle independently of selection.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(super) struct CycleState {
+    shown: bool,
+    target: CycleTarget,
+}
+
+impl CycleState {
+    fn hover(&mut self, index: usize) {
+        if index == 7 {
+            self.shown = true;
+            self.target = CycleTarget::Magnified;
+        }
+    }
+
+    fn leave(&mut self, selected: CycleSelection) {
+        let selected = selected == CycleSelection::Cycle;
+        self.shown = selected;
+        self.target = if selected {
+            CycleTarget::Magnified
+        } else {
+            CycleTarget::Hidden
+        };
+    }
+
+    fn selection_changed(
+        &mut self,
+        previous: CycleSelection,
+        current: CycleSelection,
+        image_click: bool,
+    ) {
+        if previous == CycleSelection::Cycle {
+            if current == CycleSelection::Empty {
+                self.shown = false;
+                self.target = CycleTarget::Hidden;
+            } else if current == CycleSelection::Cycle && !self.shown {
+                self.shown = true;
+                self.target = CycleTarget::Magnified;
+            }
+            // CO.clickBtn applies this only to an immediately accepted image
+            // click; panel and save-alert confirmation callers omit it.
+            if image_click {
+                self.shown = false;
+                self.target = CycleTarget::Magnified;
+            }
+        }
+    }
+}
+
 impl MouseProductWorkspace {
+    fn customize_190_cycle_selection(&self, input: Option<&str>) -> CycleSelection {
+        if input.is_none() {
+            CycleSelection::Empty
+        } else if self.mapping_190_is_cycle_input(input) {
+            CycleSelection::Cycle
+        } else {
+            CycleSelection::Other
+        }
+    }
+
+    pub(super) fn customize_190_mapping_changed(
+        &mut self,
+        previous: Option<&str>,
+        image_click: bool,
+    ) {
+        let previous = self.customize_190_cycle_selection(previous);
+        let current = self.customize_190_cycle_selection(self.mapping_input.as_deref());
+        self.customize_190_cycle
+            .selection_changed(previous, current, image_click);
+    }
+
     pub(super) fn customize_190(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let state = &self.mapping_190_state;
         let drawer_width = gpui_kit::base::motion::transition(
@@ -19,30 +114,33 @@ impl MouseProductWorkspace {
             cx,
         );
         let root_bounds = state.surface_bounds.clone();
-        let height = (window.viewport_size().height - window.rem_size() * (218. / 16.))
-            .max(window.rem_size() * (380. / 16.));
         let content = div()
             .id("mouse-190-config-scroll")
             .relative()
             .h_full()
             .flex_1()
             .min_w_0()
+            .min_h_0()
             .on_scroll_wheel(cx.listener(|_, _, _, cx| cx.notify()))
             .scrollable_both()
             .track_scroll(&state.body_scroll)
-            .child(
-                div()
-                    .min_w(surface::css(770.))
-                    .w_full()
-                    .when(state.panel_open, |body| body.w(surface::css(1000.)))
-                    .child(self.customize_190_image(cx))
-                    .child(self.receiver_indicator_panel(cx)),
-            );
+            .child(super::super::product_surface::body_inset(
+                div().w_full().child(
+                    div()
+                        .min_w(surface::css(770.))
+                        .w_full()
+                        .when(state.panel_open, |body| body.w(surface::css(1000.)))
+                        .child(self.customize_190_image(cx))
+                        .child(self.receiver_indicator_panel(cx)),
+                ),
+            ));
         h_flex()
             .id("mouse-190-customize-surface")
             .relative()
+            .flex_1()
             .w_full()
-            .h(height)
+            .h_full()
+            .min_h_0()
             .min_w_0()
             .items_stretch()
             .on_prepaint(move |bounds, _, _| root_bounds.set(bounds))
@@ -59,8 +157,7 @@ impl MouseProductWorkspace {
             .children(self.mapping_input.as_ref().map(|_| {
                 razer_assets::deferred_resource(source_mapping::PopupLayer::new(
                     self.mapping_190_drawer(window, cx),
-                    &self.mapping_190_state,
-                    self.mapping_input.as_deref().unwrap_or(""),
+                    self,
                 ))
                 .with_priority(103)
             }))
@@ -104,10 +201,6 @@ impl MouseProductWorkspace {
             .w_full()
             .flex_1()
             .min_h_0()
-            .max_h(
-                (window.viewport_size().height - window.rem_size() * (363. / 16.))
-                    .max(window.rem_size() * (235. / 16.)),
-            )
             .overflow_y_scroll()
             .track_scroll(&state.panel_scroll);
         for button in buttons {
@@ -247,6 +340,7 @@ impl MouseProductWorkspace {
                 h_flex()
                     .relative()
                     .h(surface::css(67.))
+                    .flex_shrink_0()
                     .w_full()
                     .items_center()
                     .justify_center()
@@ -334,6 +428,7 @@ impl MouseProductWorkspace {
             .iter()
             .position(|button| button["inputID"].as_str() == self.mapping_input.as_deref());
         let hypershift = self.hypershift;
+        let cycle = self.customize_190_cycle;
         let enabled: [bool; 8] =
             std::array::from_fn(|index| self.mapping_190_enabled(&buttons[index]));
         let lines = canvas(
@@ -353,7 +448,7 @@ impl MouseProductWorkspace {
                         )
                     });
                 };
-                let cycle_shown = hovered == Some(7) || selected == Some(7);
+                let cycle_shown = cycle.shown;
                 let targets = [
                     (114., 55.),
                     (181., 55.),
@@ -362,7 +457,7 @@ impl MouseProductWorkspace {
                     (148., 105.),
                     (88., 135.),
                     (88., 175.),
-                    if cycle_shown { (186., 173.) } else { (214., 169.) },
+                    cycle.target.coordinates(),
                 ];
                 for (left, indices) in [(true, [0, 2, 5, 6]), (false, [1, 3, 4, 7])] {
                     for (row, index) in indices.into_iter().enumerate() {
@@ -433,6 +528,18 @@ impl MouseProductWorkspace {
                     .h(surface::css(296.))
                     .w(surface::css(176.)),
             )
+            .when(cycle.shown, |block| {
+                block.child(
+                    img(CYCLE_ARTWORK)
+                        .id("mouse-190-cycle-image")
+                        .absolute()
+                        // Current CSS: left 48.5%, bottom 32%; CI is 102x102.
+                        .left(surface::css(770. * 0.485))
+                        .top(surface::css(340. * (1. - 0.32) - 102.))
+                        .size(surface::css(102.))
+                        .object_fit(ObjectFit::Contain),
+                )
+            })
             .child(lines)
             .child(self.customize_190_labels(true, [0, 2, 5, 6], buttons, cx))
             .child(self.customize_190_labels(false, [1, 3, 4, 7], buttons, cx));
@@ -581,6 +688,14 @@ impl MouseProductWorkspace {
                             .active(|style| style.bg(rgb(0x111111)))
                             .child(self.mapping_190_label(button))
                             .on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
+                                if *hovered {
+                                    this.customize_190_cycle.hover(index);
+                                } else {
+                                    let selected = this.customize_190_cycle_selection(
+                                        this.mapping_input.as_deref(),
+                                    );
+                                    this.customize_190_cycle.leave(selected);
+                                }
                                 this.customize_hover = hovered.then_some(index);
                                 cx.notify();
                             }))
@@ -592,3 +707,7 @@ impl MouseProductWorkspace {
             .into_any_element()
     }
 }
+
+#[cfg(test)]
+#[path = "mouse_customize_190_tests.rs"]
+mod tests;

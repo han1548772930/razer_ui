@@ -15,6 +15,15 @@ pub const AUDITED_PRODUCTS: &[u32] = &[170, 182, 204, 226, 45066];
 const METADATA_BYTES: usize = 250;
 const BLOCK_BYTES: usize = 64;
 
+fn extend_metadata_sleeps(out_in: &mut u64, input: &mut u64) -> Result<()> {
+    let extended = out_in
+        .checked_mul(2)
+        .context("OBM extended sleep overflow")?;
+    *out_in = extended;
+    *input = (*input).max(extended);
+    Ok(())
+}
+
 /// An identity read from the device's ordered profile inventory. The source
 /// engine leaves its first inventory entry unnamed, regardless of its ID.
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -34,7 +43,7 @@ pub fn read_profile_associations(
     ensure!(
         matches!(
             capability.product_id,
-            153 | 170 | 182 | 203 | 204 | 214 | 226 | 45066
+            153 | 170 | 182 | 190 | 203 | 204 | 214 | 226 | 45066
         ) && matches!(
             capability.source_class.as_str(),
             "rzDevice25" | "rzDevice25DualLinkMouse"
@@ -298,13 +307,18 @@ impl<'a> MouseOnboard<'a> {
         // The source temporarily raises both sleeps to extendedSleepTime, which
         // is twice the base out/in delay. This owned copy avoids caller mutation.
         let mut metadata_transport = capability.clone();
-        let extended = metadata_transport
-            .sleep_between_out_in_ms
-            .checked_mul(2)
-            .context("OBM extended sleep overflow")?;
-        metadata_transport.sleep_between_out_in_ms = extended;
-        metadata_transport.sleep_between_in_ms =
-            metadata_transport.sleep_between_in_ms.max(extended);
+        extend_metadata_sleeps(
+            &mut metadata_transport.sleep_between_out_in_ms,
+            &mut metadata_transport.sleep_between_in_ms,
+        )?;
+        // for_exchange selects the live sender after this adapter is created.
+        // Preserve its metadata timing together with its namespace/interface.
+        for branch in metadata_transport.physical_transports_by_pid.values_mut() {
+            extend_metadata_sleeps(
+                &mut branch.sleep_between_out_in_ms,
+                &mut branch.sleep_between_in_ms,
+            )?;
+        }
         Ok(Self {
             device,
             transport: capability.clone(),
@@ -407,8 +421,8 @@ impl<'a> MouseOnboard<'a> {
         progress: &mut Vec<OnboardIdentityBlock>,
     ) -> Result<OnboardIdentityObservation> {
         ensure!(
-            profile > 1,
-            "Source mouse identity loader reserves profile 1"
+            profile != 0,
+            "Source mouse identity loader requires an observed nonzero profile"
         );
         for attempt in 1..=10 {
             let mut assembled = Vec::with_capacity(METADATA_BYTES);

@@ -177,7 +177,7 @@ fn write_identity(steps: &mut Vec<Step>, profile: u8, raw: &[u8], ack: &[u8], tx
 
 #[test]
 fn scroll_profile_reader_keeps_hardware_inventory_order_and_does_not_expand_writers() {
-    for product_id in [153, 170, 203, 204, 214, 226, 45066] {
+    for product_id in [153, 170, 190, 203, 204, 214, 226, 45066] {
         let mut steps = Vec::new();
         let mut tx = 0;
         inventory(&mut steps, 8, 3, &[1, 7, 3], &mut tx);
@@ -233,6 +233,31 @@ fn scroll_profile_inventory_read_cancellation_stops_before_metadata_or_mutations
     .unwrap_err();
     assert!(error.to_string().contains("canceled"));
     assert_eq!(transport.sends.get(), 3);
+    transport.finish();
+}
+
+#[test]
+fn profile_association_reader_skips_the_first_inventory_entry_by_position() {
+    let mut steps = Vec::new();
+    let mut tx = 0;
+    inventory(&mut steps, 8, 3, &[7, 1, 3], &mut tx);
+    read_identity(&mut steps, 1, &identity([0; 6]), &mut tx);
+    read_identity(&mut steps, 3, &identity([0; 6]), &mut tx);
+    let transport = Transport::new(steps);
+    let observed = read_profile_associations(
+        &transport,
+        &current_scroll_cap(190),
+        &mut transactions(),
+        &|| Ok(()),
+    )
+    .unwrap();
+    assert_eq!(
+        observed
+            .iter()
+            .map(|slot| slot.profile_id)
+            .collect::<Vec<_>>(),
+        [1, 3]
+    );
     transport.finish();
 }
 
@@ -1060,4 +1085,40 @@ fn owned_extended_sleep_settings_do_not_mutate_caller_capability() {
     assert_eq!(m.metadata_transport.sleep_between_in_ms, 25);
     assert_eq!(c.sleep_between_out_in_ms, 10);
     t.finish();
+}
+
+#[test]
+fn metadata_extended_sleeps_survive_actual_sender_selection_without_mutating_callers() {
+    let mut capability = crate::mouse_current_dpi::capability(190)
+        .unwrap()
+        .transport()
+        .clone();
+    capability.sleep_between_out_in_ms = 7;
+    capability.sleep_between_in_ms = 19;
+    for (pid, out_in, input) in [("190", 11, 3), ("191", 15, 35)] {
+        let branch = capability.physical_transports_by_pid.get_mut(pid).unwrap();
+        branch.sleep_between_out_in_ms = out_in;
+        branch.sleep_between_in_ms = input;
+    }
+    let transport = Transport::new([]);
+    let onboard = MouseOnboard::with_metadata_transport(&transport, &capability).unwrap();
+    assert_eq!(onboard.metadata_transport.sleep_between_out_in_ms, 14);
+    assert_eq!(onboard.metadata_transport.sleep_between_in_ms, 19);
+    for (pid, original_out_in, original_input, expected_out_in, expected_input) in
+        [(190, 11, 3, 22, 22), (191, 15, 35, 30, 35)]
+    {
+        let selected = onboard
+            .metadata_transport
+            .for_physical_product(pid)
+            .unwrap();
+        assert_eq!(selected.sleep_between_out_in_ms, expected_out_in);
+        assert_eq!(selected.sleep_between_in_ms, expected_input);
+        let original = capability.for_physical_product(pid).unwrap();
+        assert_eq!(original.sleep_between_out_in_ms, original_out_in);
+        assert_eq!(original.sleep_between_in_ms, original_input);
+        assert_eq!(selected.source_class, original.source_class);
+        assert_eq!(selected.transaction_prefix, original.transaction_prefix);
+        assert_eq!(selected.claim_interface, original.claim_interface);
+    }
+    transport.finish();
 }

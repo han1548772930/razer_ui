@@ -1217,6 +1217,24 @@ impl ProductWorkspace {
         }
     }
 
+    pub fn mouse_polling_device_hz(
+        &self,
+        scope: super::mouse_polling::MousePollingScope,
+        field: super::mouse_polling::PollingField,
+        hz: u32,
+        cx: &App,
+    ) -> Option<u32> {
+        match &self.body {
+            Body::Existing(_) => Some(hz),
+            Body::Source(body) => body.read(cx).mouse_polling_device_hz(scope, field, hz, cx),
+        }
+    }
+    pub fn mouse_polling_synchronizes_profile(&self, scope: super::mouse_polling::MousePollingScope, field: super::mouse_polling::PollingField, hz: u32, cx: &App) -> bool {
+        match &self.body {
+            Body::Existing(_) => false,
+            Body::Source(body) => body.read(cx).mouse_polling_synchronizes_profile(scope, field, hz, cx),
+        }
+    }
     pub fn mouse_polling_request_matches(
         &self,
         scope: super::mouse_polling::MousePollingScope,

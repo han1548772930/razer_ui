@@ -308,6 +308,11 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
         "crates/razer-pages/src/features/keyboard/lighting/keyboard_brightness.rs"}
     brightness_state_types = {("keyboard_brightness_runtime", "State"),
         ("self", "keyboard_brightness_runtime", "State"), ("crate", "shell", "keyboard_brightness_runtime", "State")}
+    dpi_caller = "crates/razer-shell/src/shell/mouse/mouse_current_dpi.rs"
+    dpi_runtime = "crates/razer-shell/src/shell/mouse/mouse_current_dpi_runtime.rs"
+    dpi_worker = "crates/razer-shell/src/shell/mouse/mouse_current_dpi_worker.rs"
+    dpi_gui = owner in {dpi_caller, dpi_runtime,
+        "crates/razer-pages/src/features/mouse/dpi/mouse_current_dpi.rs"}
     shutdown_owner = "crates/razer-shell/src/shell/shutdown.rs"
     interdevice_owner = "crates/razer-model/src/mapping/interdevice.rs"
     mapping_adapter = "crates/razer-shell/src/shell/devices/product_mapping.rs"
@@ -633,6 +638,33 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                 fail(node, "include_path_requires_resolution", "Explicit local include path or the installation constants generator")
         if in_test(node):
             continue
+        if dpi_gui and node.type == "call_expression":
+            function = node.child_by_field_name("function")
+            if function.type == "field_expression":
+                method = text(function.child_by_field_name("field"))
+                if method == "detach" or (method == "join" and not node.child_by_field_name("arguments").named_children):
+                    fail(node, "mouse_dpi_gui_detaches_or_waits_for_native_work", dpi_runtime)
+            else:
+                target = resolved_call(text(function).split("::"))
+                if (target[-2:] in {("mouse_current_dpi", "request"), ("ServiceClient", "spawn")}
+                        or target in {("std", "thread", "spawn"), ("std", "thread", "Builder", "new"),
+                                      ("thread", "spawn"), ("thread", "Builder", "new")}):
+                    fail(node, "mouse_dpi_gui_owns_device_io", dpi_worker)
+        if dpi_gui and ((node.type == "field_expression"
+                and text(node.child_by_field_name("field")) == "discovery_revision")
+                or node.type == "identifier" and text(node) == "discovery_revision"):
+            fail(node, "mouse_dpi_uses_global_discovery_revision", dpi_runtime)
+        if node.type == "function_item" and owner == dpi_caller \
+                and text(node.child_by_field_name("name")) == "submit_current_dpi_device":
+            if not any(call.type == "call_expression"
+                    and text(call.child_by_field_name("function")) == "self.start_current_dpi_operation"
+                    for call in walk(node)):
+                fail(node, "mouse_dpi_bypasses_retained_operation_owner", dpi_runtime)
+        if node.type == "function_item" and owner == dpi_runtime \
+                and text(node.child_by_field_name("name")) == "current_route":
+            if not any(resolved_call(parts) in {("super", "device_discovery", "retained_connection"),
+                    ("crate", "shell", "device_discovery", "retained_connection")} for parts, _ in calls(node)):
+                fail(node, "mouse_dpi_does_not_retain_the_physical_connection", dpi_runtime)
         if brightness_gui and node.type == "call_expression":
             function = node.child_by_field_name("function")
             if function.type == "field_expression":
@@ -4626,14 +4658,14 @@ def rust_embed_references(text, *, spans=False):
         yield (*result, argument[2], argument[3]) if spans else result
 
 
-def product_input(path, source, *, locale=False):
-    """Resolve every embedded edge, including locale files, inside product roots."""
+def product_input(path, source):
+    """Resolve every embedded edge inside the installed product roots."""
     path = safe(path)
     parts = path.relative_to(ROOT).parts
-    allowed = ("app", "crates", "assets", "locales")
+    allowed = ("app", "crates", "assets")
     if not parts or parts[0] not in allowed or any(
             part in (".analysis", ".work", ".ref", "target") for part in parts):
-        raise ValueError(f"Product include depends on analysis/tooling: {relative(source)} -> {relative(path)}")
+        raise ValueError(f"Product include is outside installed inputs: {relative(source)} -> {relative(path)}")
     return path
 
 
@@ -4673,18 +4705,7 @@ def rust_inputs(*, include_asset_pack=True):
             if re.match(r"(?:[A-Za-z]:|[/\\])", literal):
                 raise ValueError(f"Nonportable include in {relative(path)}: {literal}")
             if kind == "locale":
-                owner = path.parent
-                while not (owner / "Cargo.toml").is_file():
-                    owner = owner.parent
-                    if owner == ROOT.parent:
-                        raise ValueError(f"No crate owns locale include: {relative(path)}")
-                locale_root = product_input(owner / literal, path, locale=True)
-                if not locale_root.is_dir():
-                    raise ValueError(f"Missing product locale directory: {relative(path)} -> {relative(locale_root)}")
-                for child in locale_root.rglob("*"):
-                    if child.is_file():
-                        files.add(product_input(child, path, locale=True))
-                continue
+                raise ValueError(f"Product words must use the installed locale snapshot: {relative(path)}")
             included = product_input(path.parent / literal, path)
             if not included.is_file():
                 raise ValueError(f"Missing product include: {relative(path)} -> {relative(included)}")
@@ -5353,7 +5374,7 @@ def static_smil_svg(content, seconds):
 def resource_reference_files(excluded=()):
     excluded_directories = {".git", "target", "node_modules", "__pycache__", "analyzers", "ida"}
     extensions = {".rs", ".json", ".py", ".toml", ".md", ".txt", ".css", ".js", ".ps1", ".yml", ".yaml"}
-    for folder in ("app", "crates", "assets", "locales", "tools", "docs"):
+    for folder in ("app", "crates", "assets", "tools", "docs"):
         for directory, children, names in os.walk(ROOT / folder):
             children[:] = sorted(name for name in children if name not in excluded_directories)
             for name in sorted(names):
@@ -5966,63 +5987,228 @@ def shared_resource_output(content, extension, pool, *, product_id=None):
     return output
 
 
-def prepare_locale_keys(acquisition, namespace, bindings, keys):
-    """Prepare scoped UI strings from verified current literal JS dictionaries."""
+def locale_preparation_source(acquisition, source_name):
+    """Validate the current deployment reference and actual inert source bytes."""
     import evidence
-    if not re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*", namespace):
-        raise ValueError("Invalid locale namespace")
+    import resource_database
     receipt_path = safe(ROOT / acquisition)
     if not receipt_path.is_relative_to(ROOT / ".analysis/inputs"):
         raise ValueError("Locale acquisition must be a retained current input")
-    receipt = json.loads(receipt_path.read_bytes())
-    if not receipt.get("source_current_during_acquisition"):
+    receipt_raw = receipt_path.read_bytes()
+    receipt = resource_database.unique_json(receipt_raw)
+    stability = receipt.get("stability", [])
+    if (receipt.get("source_current_during_acquisition") is not True or not stability
+            or any(row.get("unchanged") is not True for row in stability)):
         raise ValueError("Locale acquisition has no deployment-stability proof")
-    originals = {row.get("path"): row for row in receipt.get("files", [])}
-    prepared = []
+    source = safe(ROOT / source_name)
+    if not source.is_relative_to(ROOT / ".analysis/inputs") or source.suffix != ".js":
+        raise ValueError("Locale source is outside retained JavaScript originals")
+    originals = [row for row in receipt.get("files", []) if row.get("path") == relative(source)]
+    raw = source.read_bytes()
+    if (len(originals) != 1 or originals[0].get("sha256") != hashlib.sha256(raw).hexdigest()
+            or originals[0].get("bytes") != len(raw)):
+        raise ValueError("Locale original identity does not verify: " + source_name)
+    original = originals[0]
+    def official_url(value):
+        parsed = urllib.parse.urlsplit(value or "")
+        host = parsed.hostname or ""
+        return (parsed.scheme == "https" and (host == "razer.com" or host.endswith(".razer.com")
+                or host == "razerzone.com" or host.endswith(".razerzone.com")))
+    if (not official_url(original.get("url")) or not official_url(receipt.get("entry_url"))
+            or not official_url(original.get("final_url", original.get("url")))):
+        raise ValueError("Locale source must use current official HTTPS endpoints")
+    revalidation = original.get("current_http_revalidation", {}).get("attempts", [])
+    if original.get("http_status") != 200:
+        if len(revalidation) < 2 or any(
+                row.get("http_status") != 200 or row.get("url") != original.get("url")
+                or not official_url(row.get("final_url", row.get("url")))
+                or row.get("bytes") != len(raw) or row.get("sha256") != original["sha256"]
+                or row.get("matches_retained") is not True for row in revalidation):
+            raise ValueError("Cached locale original lacks matching official HTTP revalidation")
+        for row in revalidation:
+            path = safe(ROOT / row["path"])
+            if not path.is_relative_to(ROOT / ".analysis/inputs") or path.read_bytes() != raw:
+                raise ValueError("Locale revalidation bytes differ from retained original")
+    deployment = evidence.frontend_deployment_sources(receipt)
+    mounted = [row for row in deployment["sources"] if row.get("original", {}).get("path") == relative(source)
+               and row.get("identity_verified")]
+    if (not deployment.get("entry_original") or len(mounted) != 1
+            or any(row["kind"] == "deployment_stability_identity_mismatch" for row in deployment["failures"])):
+        raise ValueError("Locale original has no verified current deployment reference")
+    identities = [{"path": relative(receipt_path), "bytes": len(receipt_raw),
+                   "sha256": hashlib.sha256(receipt_raw).hexdigest()},
+                  {key: original[key] for key in ("path", "bytes", "sha256")},
+                  deployment["entry_original"], *[row["original"] for row in deployment["manifests"]],
+                  *[{key: row[key] for key in ("path", "bytes", "sha256")} for row in revalidation]]
+    return raw, {"acquisition": acquisition, "source": original,
+                 "deployment_reference": mounted[0], "stability": stability,
+                 "deployment_failures": deployment["failures"],
+                 "acquisition_unresolved": receipt.get("unresolved", []), "inputs": identities}
+
+
+def locale_preparation_catalog(*, migrate_legacy=False):
+    """Keep legacy bytes only as evidence, and flatten their complete semantics."""
+    import resource_database
+    destination = ROOT / resource_database.LOCALES
+    legacy = sorted((ROOT / "locales").glob("*.json"))
+    if legacy and not migrate_legacy:
+        raise ValueError("Migrate legacy locale files before preparing the installed catalog")
+    current_raw = destination.read_bytes() if destination.is_file() else None
+    if current_raw is not None:
+        document = resource_database.unique_json(current_raw)
+        resource_database.validate_locales(document)
+    elif not legacy:
+        raise ValueError("Locale maintenance catalog is missing; a legacy migration is required")
+    else:
+        document = {"schema_version": 1, "locales": []}
+    baseline, snapshots = [], []
+    if current_raw is not None:
+        snapshots.append((destination, current_raw))
+    existing = {row["locale"]: row["messages"] for row in document["locales"]}
+    for path in legacy:
+        raw = path.read_bytes()
+        words = resource_database.flatten_locale(resource_database.unique_json(raw))
+        if existing:
+            if path.stem not in existing or any(existing[path.stem].get(key) != value for key, value in words.items()):
+                raise ValueError("Legacy locale differs from its migrated catalog: " + path.name)
+        else:
+            document["locales"].append({"locale": path.stem, "messages": words})
+        target = safe(ROOT / resource_database.LOCALE_BASELINE / path.name)
+        if target.is_file() and target.read_bytes() != raw:
+            raise ValueError("Retained locale baseline differs: " + path.name)
+        snapshots.append((path, raw))
+        baseline.append({"original_path": relative(path), "path": relative(target), "bytes": len(raw),
+                         "sha256": hashlib.sha256(raw).hexdigest(), "messages": len(words), "_raw": raw})
+    resource_database.validate_locales(document)
+    return document, snapshots, baseline
+
+
+def publish_locale_preparation(document, snapshots, baseline, prepared, *, check=False):
+    """Publish verified maintenance words, regenerate SQLite, then retire old inputs."""
+    import analysis
+    import resource_database
+    resource_database.validate_locales(document)
+    destination = ROOT / resource_database.LOCALES
+    output = (json.dumps(document, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+    for path, before in snapshots:
+        if path.read_bytes() != before:
+            raise ValueError("Locale input changed during preparation: " + relative(path))
+    for row in prepared:
+        for item in row["provenance"]["inputs"]:
+            path = ROOT / item["path"]
+            if path.stat().st_size != item["bytes"] or digest(path) != item["sha256"]:
+                raise ValueError("Locale original changed during preparation: " + item["path"])
+    if check:
+        if not destination.is_file() or destination.read_text(encoding="utf-8") != output.decode("utf-8"):
+            raise ValueError("Locale maintenance words differ; regenerate through workspace.py")
+        database = resource_database.prepare(check=True)
+    else:
+        for row in baseline:
+            target = ROOT / row["path"]
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if not target.is_file():
+                descriptor, temporary = tempfile.mkstemp(prefix=".locale-baseline-", dir=target.parent)
+                try:
+                    with os.fdopen(descriptor, "wb") as stream:
+                        stream.write(row["_raw"])
+                    Path(temporary).replace(target)
+                finally:
+                    Path(temporary).unlink(missing_ok=True)
+        write_json(destination, document)
+        # No legacy input is removed until all catalog fields and final SQLite
+        # bytes have passed the producer's complete roundtrip verification.
+        database = resource_database.prepare()
+        if resource_database.localization_document() != document["locales"]:
+            raise ValueError("Published locale maintenance semantics differ")
+        for row in baseline:
+            source, target = ROOT / row["original_path"], ROOT / row["path"]
+            if source.read_bytes() != target.read_bytes() or digest(target) != row["sha256"]:
+                raise ValueError("Locale baseline changed before legacy retirement")
+        for row in baseline:
+            (ROOT / row["original_path"]).unlink()
+        legacy_directory = ROOT / "locales"
+        if baseline and not any(legacy_directory.iterdir()):
+            legacy_directory.rmdir()
+    report_path = ROOT / resource_database.LOCALE_REPORT
+    if not check:
+        previous = resource_database.unique_json(report_path.read_bytes()) if report_path.is_file() else {"entries": []}
+        identities = {(row["kind"], row.get("namespace")) for row in prepared}
+        previous["entries"] = [row for row in previous["entries"]
+                               if (row["kind"], row.get("namespace")) not in identities] + prepared
+        if baseline:
+            previous["baseline"] = [{key: value for key, value in row.items() if key != "_raw"} for row in baseline]
+        from importlib.metadata import version
+        previous.update(schema_version=1, recorded_at_utc=datetime.now(timezone.utc).isoformat(),
+            tools={"python": sys.version.split()[0],
+                   "analyzers": {name: version(name) for name in ("tree-sitter", "tree-sitter-javascript", "json5")},
+                   "inputs": [{"path": relative(path), "sha256": digest(path), "bytes": path.stat().st_size}
+                              for path in (ROOT / "tools/workspace.py", ROOT / "tools/evidence.py", ROOT / "tools/resource_database.py")]},
+            output={"path": resource_database.LOCALES, "sha256": digest(destination), "bytes": destination.stat().st_size},
+            database={key: database[key] for key in ("output", "bytes", "sha256", "schema_version")},
+            legacy_vendor_source_provenance_established=False,
+            legacy_semantics_preserved=True, static_only=True, vendor_javascript_executed=False,
+            runtime_acceptance="not performed")
+        write_json(report_path, previous)
+        indexed = [{"path": row["path"], "bytes": row["bytes"], "sha256": row["sha256"],
+                    "kind": "retained_locale_baseline", "maintenance_only": True,
+                    "vendor_source_provenance_established": False} for row in previous.get("baseline", [])]
+        indexed.append({**previous["output"], "kind": "ui_locale_maintenance", "maintenance_only": True,
+                        "preparation_receipt": resource_database.LOCALE_REPORT})
+        analysis.verify_source_rows(indexed)
+        analysis.index_files(indexed)
+    return {"report": resource_database.LOCALE_REPORT, "destination": resource_database.LOCALES,
+            "locales": {row["locale"]: len(row["messages"]) for row in document["locales"]},
+            "database": database["output"], "check_only": check, "passed": True}
+
+
+def prepare_locale_exports(acquisition, source_name, *, migrate_legacy=False, check=False):
+    """Fill every missing key from complete current exports; retain audited values."""
+    import analysis
+    import evidence
+    if check and migrate_legacy:
+        raise ValueError("A locale migration cannot run in check-only mode")
     with analysis.index_lock(ROOT / ".work/resource-writer.lock"):
+        document, snapshots, baseline = locale_preparation_catalog(migrate_legacy=migrate_legacy)
+        raw, provenance = locale_preparation_source(acquisition, source_name)
+        selected = evidence.locale_export_dictionaries(raw, [row["locale"] for row in document["locales"]])
+        added, retained_differences = {}, {}
+        for row in document["locales"]:
+            words, current = row["messages"], selected["values"][row["locale"]]
+            added[row["locale"]] = {key: value for key, value in current.items() if key not in words}
+            retained_differences[row["locale"]] = {key: {"retained": words[key], "current_export": value}
+                for key, value in current.items() if key in words and words[key] != value}
+            row["messages"] = dict(sorted((words | added[row["locale"]]).items()))
+        prepared = [{"kind": "complete_export_dictionaries", "provenance": provenance, "dictionary": selected,
+                     "merge_policy": "Add missing keys; preserve every existing value and namespaced key",
+                     "added": added, "retained_differences": retained_differences}]
+        report = publish_locale_preparation(document, snapshots, baseline, prepared, check=check)
+        return {**report, "added": {locale: len(values) for locale, values in added.items()},
+                "retained_differences": {locale: len(values) for locale, values in retained_differences.items()}}
+
+
+def prepare_locale_keys(acquisition, namespace, bindings, keys):
+    """Prepare scoped source words in the sole installed SQLite catalog owner."""
+    import analysis
+    import evidence
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*", namespace):
+        raise ValueError("Invalid locale namespace")
+    if type(bindings) is not dict or not bindings:
+        raise ValueError("Locale bindings must be a nonempty language-to-original map")
+    with analysis.index_lock(ROOT / ".work/resource-writer.lock"):
+        document, snapshots, baseline = locale_preparation_catalog()
+        by_locale = {row["locale"]: row for row in document["locales"]}
+        prepared = []
         for locale, source_name in bindings.items():
-            if not re.fullmatch(r"[A-Za-z]+(?:-[A-Za-z]+)*", locale):
-                raise ValueError("Invalid locale name")
-            source = safe(ROOT / source_name)
-            if not source.is_relative_to(ROOT / ".analysis/inputs"):
-                raise ValueError("Locale source is outside retained originals")
-            original = originals.get(relative(source))
-            raw = source.read_bytes()
-            if (not original or original.get("http_status") != 200
-                    or original.get("sha256") != hashlib.sha256(raw).hexdigest()
-                    or original.get("bytes") != len(raw)):
-                raise ValueError("Locale original identity does not verify: " + source_name)
+            if locale not in by_locale or type(source_name) is not str:
+                raise ValueError("Unknown locale binding")
+            raw, provenance = locale_preparation_source(acquisition, source_name)
             selected = evidence.locale_keys(raw, keys)
-            destination = ROOT / "locales" / (locale + ".json")
-            before = destination.read_bytes()
-            dictionary = json.loads(before)
-            dictionary[namespace] = selected["values"]
-            output = json.dumps(dictionary, ensure_ascii=False, indent=2) + "\n"
-            if b"\r\n" in before:
-                output = output.replace("\n", "\r\n")
-            prepared.append({"locale": locale, "namespace": namespace,
-                "acquisition": acquisition, "source": original, "dictionary": selected,
-                "destination": relative(destination), "before_sha256": hashlib.sha256(before).hexdigest(),
-                "_before": before, "_output": output.encode("utf-8")})
-        # Validate the whole batch before changing any product locale.
-        for row in prepared:
-            if (ROOT / row["destination"]).read_bytes() != row["_before"]:
-                raise ValueError("Locale changed during preparation")
-            if digest(ROOT / row["source"]["path"]) != row["source"]["sha256"]:
-                raise ValueError("Locale original changed during preparation")
-        for row in prepared:
-            (ROOT / row["destination"]).write_bytes(row.pop("_output"))
-            row.pop("_before")
-            row["output"] = {"path": row["destination"], "sha256": digest(ROOT / row["destination"]),
-                             "bytes": (ROOT / row["destination"]).stat().st_size}
-        report_path = ROOT / ".analysis/results/locale-preparation.json"
-        previous = json.loads(report_path.read_bytes()) if report_path.is_file() else {"entries": []}
-        previous["entries"] = [row for row in previous["entries"] if row.get("namespace") != namespace] + prepared
-        previous.update(recorded_at_utc=datetime.now(timezone.utc).isoformat(),
-            tool={"path": "tools/workspace.py", "sha256": digest(Path(__file__))},
-            static_only=True, vendor_javascript_executed=False)
-        report_path.write_text(json.dumps(previous, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    return {"report": relative(report_path), "namespace": namespace, "locales": len(prepared), "keys": keys}
+            words = by_locale[locale]["messages"]
+            words.update({namespace + "." + key: value for key, value in selected["values"].items()})
+            by_locale[locale]["messages"] = dict(sorted(words.items()))
+            prepared.append({"kind": "literal_namespace", "locale": locale, "namespace": namespace,
+                             "provenance": provenance, "dictionary": selected})
+        return {**publish_locale_preparation(document, snapshots, baseline, prepared), "namespace": namespace, "keys": keys}
 
 
 def prepare_image_analyzer():
@@ -8250,6 +8436,19 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("restart-notification-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-dashboard", "--lib", "restart_notification::tests"]),
         ("restart-notification-storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "restart_notification::tests"]),
         ("mouse-dpi-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "dpi_70::tests"]),
+        ("current-dpi-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mouse_current_dpi"]),
+        ("current-dpi-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_current_dpi::tests"]),
+        ("current-dpi190-intents", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "current190_source_separates_stage_table_edits_from_transient_stage_selection"]),
+        ("current-dpi182-intents", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "current182_stage_actions_do_not_issue_the_separate_otfs_level_task"]),
+        ("mouse-onboard-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_onboard::tests"]),
+        ("mouse-dpi-slot-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_dpi_stages::tests"]),
+        ("mouse190-customize-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "customize_190::tests::"]),
+        ("mouse-customize-viewport", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "customize_viewport"]),
+        ("mouse-cycle-selectors", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "every_cycle_branch_keeps_its_current_product_and_edition_selector"]),
+        ("mouse229-cycle-alias", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "pid229_cycle_artwork_uses_a_registered_runtime_alias"]),
+        ("mouse190-mapping-popup", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "customize_190::source_mapping::tests"]),
+        ("mouse-mapping-popup", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mapping_menu_current::popup::tests"]),
+        ("audio-mapping-popup", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "sound_mapping::popup::tests"]),
         ("storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib"]),
         ("shell-store-migration", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib", "workspace::tests"]),
         ("catalog-registry", ["cargo", "test", "--locked", "--offline", "-p", "razer-catalog", "--lib", "registry::tests"]),
@@ -8536,8 +8735,6 @@ def asset_pack_manifest(*, prepare=False):
             continue
         if "testdata" in path.parts or "tests" in path.parts:
             fixture_inputs.append(entry)
-        elif path.parts[0] == "locales":
-            runtime_inputs.append({**entry, "role": "compiled_locale_dictionary"})
         else:
             mixed_inputs.append({**entry, "role": "direct_compile_input_requires_cfg_and_owner_audit_before_pack_migration"})
     referenced_assets = {entry["path"] for entry in source_inputs.values() if entry["path"].startswith("assets/")}
@@ -8624,6 +8821,11 @@ def main():
     locale_keys.add_argument("--namespace", required=True)
     locale_keys.add_argument("--bindings", required=True, help="JSON locale-to-original-path map; '-' reads stdin")
     locale_keys.add_argument("--key", action="append", required=True)
+    locale_exports = commands.add_parser("prepare-locale-exports", help="Statically merge complete current export dictionaries and prepare the installed SQLite catalog")
+    locale_exports.add_argument("--acquisition", required=True)
+    locale_exports.add_argument("--source", required=True)
+    locale_exports.add_argument("--migrate-legacy", action="store_true", help="Verify all legacy locale semantics, retain original bytes as evidence and remove old production files")
+    locale_exports.add_argument("--check", action="store_true")
     commands.add_parser("prepare-host-favicons", help="Verify all current product HTML first favicons and attach existing bytes to resource provenance")
     app_picker = commands.add_parser("prepare-app-picker", help="Verify current menu category vectors against pinned media and maintain native presentation fallbacks")
     app_picker.add_argument("--check", action="store_true", help="Require the existing typed directory to match; never materialize media")
@@ -8742,6 +8944,9 @@ def main():
     elif args.command == "prepare-locale-keys":
         bindings = json.loads(sys.stdin.read() if args.bindings == "-" else args.bindings)
         print(json.dumps(prepare_locale_keys(args.acquisition, args.namespace, bindings, args.key), ensure_ascii=False))
+    elif args.command == "prepare-locale-exports":
+        print(json.dumps(prepare_locale_exports(args.acquisition, args.source,
+                         migrate_legacy=args.migrate_legacy, check=args.check), ensure_ascii=False), flush=True)
     elif args.command == "prepare-host-favicons":
         print(json.dumps(prepare_host_favicons(), ensure_ascii=False))
     elif args.command == "prepare-app-picker":

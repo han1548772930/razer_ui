@@ -545,6 +545,7 @@ impl NativeRuntime {
             | ServiceRequest::HidNodeDpiStagesRead { .. }
             | ServiceRequest::HidNodeDpiStagesWrite { .. }
             | ServiceRequest::HidNodeMouseCurrentDpi { .. }
+            | ServiceRequest::HidNodeMouseCurrentPolling { .. }
             | ServiceRequest::HidNodeMouseCurrentPower { .. }
             | ServiceRequest::HidNodeMouseScroll { .. }
             | ServiceRequest::HidNodeLeviathan { .. }
@@ -682,6 +683,9 @@ impl NativeRuntime {
             }
             ServiceRequest::DeviceMouseCurrentDpi { target, change } => {
                 device_reads::mouse_current_dpi(&target, change.as_ref())
+            }
+            ServiceRequest::DeviceMouseCurrentPolling { target, change } => {
+                device_reads::mouse_current_polling(&target, &change)
             }
             ServiceRequest::DeviceMouseCurrentPower { target, change } => {
                 device_reads::mouse_current_power(&target, &change)

@@ -31,7 +31,7 @@
 //!    `viewBox` 裁成 `battery-paused-N.svg`（见 `tools/prepare-resources.py`）。
 //! 4. 文案 —— `BATTERY_OFF`／`BATTERY_CHARGING`／`BATTERY_CHARGED_FULL`／
 //!    `BATTERY_PERCENT`（含 `{{level}}` 占位）／`BATTERY_ERROR_TIPS`，
-//!    取自雷云语言包（`locales/*.json`），与源码里的 key 同名。
+//!    由已安装的本地词表目录库读取，与源码里的 key 同名。
 use crate::source_tooltip::SourceTooltip;
 use crate::source_tooltip::SourceTooltipKind;
 use crate::surface;

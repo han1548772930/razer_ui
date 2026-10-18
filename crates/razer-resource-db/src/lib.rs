@@ -5,6 +5,7 @@ use std::sync::{Mutex, OnceLock};
 
 mod document;
 mod installation;
+pub mod localization;
 mod publication;
 pub use document::{CatalogId, NodeReader, initialize, read_document};
 pub mod catalogs;
@@ -17,7 +18,7 @@ mod packaged {
 pub use packaged::CACHE_RELATIVE;
 
 const APPLICATION_ID: u32 = 0x525A5549;
-const SCHEMA_VERSION: u32 = 3;
+const SCHEMA_VERSION: u32 = 4;
 
 fn open(path: &std::path::Path) -> anyhow::Result<Connection> {
     let connection = Connection::open_with_flags(

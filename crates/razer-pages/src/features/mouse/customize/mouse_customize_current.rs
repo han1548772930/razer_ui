@@ -413,6 +413,15 @@ fn source_surface(pid: u32, group_index: usize) -> Option<&'static Surface> {
         .find(|surface| surface.product_id == pid && surface.group_index == group_index)
 }
 
+pub(super) fn supports_surface(pid: u32, group_index: usize, button_count: usize) -> bool {
+    source_surface(pid, group_index).is_some_and(|surface| {
+        surface
+            .shapes
+            .iter()
+            .all(|shape| shape.index < button_count)
+    })
+}
+
 impl MouseProductWorkspace {
     pub(super) fn customize_footer_margins(&self) -> (f32, f32) {
         source_surface(self.spec.product_id, self.group_ix)
@@ -647,11 +656,7 @@ impl MouseProductWorkspace {
         cx: &mut Context<Self>,
     ) -> Option<Div> {
         let surface = source_surface(self.spec.product_id, self.group_ix)?;
-        if surface
-            .shapes
-            .iter()
-            .any(|shape| shape.index >= buttons.len())
-        {
+        if !supports_surface(self.spec.product_id, self.group_ix, buttons.len()) {
             return None;
         }
         let edition = self.mouse_customize_observation["editionId"]

@@ -105,6 +105,8 @@ mod leviathan;
 mod macro_recorder;
 #[path = "shell/mouse/mouse_current_dpi.rs"]
 mod mouse_current_dpi;
+#[path = "shell/mouse/mouse_current_dpi_runtime.rs"]
+mod mouse_current_dpi_runtime;
 #[path = "shell/mouse/mouse_current_power.rs"]
 mod mouse_current_power;
 #[path = "shell/mouse/mouse_dpi_70.rs"]
@@ -359,7 +361,7 @@ pub struct AppShell {
     pending_saves: VecDeque<PreparedSave>,
     close_requested: bool,
     legacy_dpi_workers: usize,
-    current_dpi_workers: usize,
+    mouse_dpi: mouse_current_dpi_runtime::State,
     mouse_scroll_workers: usize,
     mouse_polling_workers: usize,
     mouse_tracking_tasks: BTreeMap<String, mouse_tracking::TrackingTask>,
@@ -625,7 +627,7 @@ impl AppShell {
             pending_saves: VecDeque::new(),
             close_requested: false,
             legacy_dpi_workers: 0,
-            current_dpi_workers: 0,
+            mouse_dpi: mouse_current_dpi_runtime::State::default(),
             mouse_scroll_workers: 0,
             mouse_polling_workers: 0,
             mouse_tracking_tasks: BTreeMap::new(),
@@ -1227,6 +1229,7 @@ impl AppShell {
         this.install_keyboard_wristrest_cleanup(cx);
         this.install_keyboard_indicator_cleanup(cx);
         this.install_keyboard_brightness_cleanup(cx);
+        this.install_current_dpi_cleanup(cx);
         this.install_keyboard_latest_restore_cleanup(cx);
         this.install_keyboard_legacy_calibration_cleanup(cx);
         this.install_mouse_runtime_artwork_cleanup(cx);
@@ -1474,6 +1477,9 @@ impl AppShell {
                 }
                 WorkspaceEvent::MousePollingRestoreRequested { scope, field, hz } => {
                     this.write_mouse_polling_device(entity.clone(), *scope, *field, *hz, window, cx);
+                }
+                WorkspaceEvent::MouseInGamePollingRequested => {
+                    this.persist_mouse_in_game_polling(entity.clone(), window, cx);
                 }
                 WorkspaceEvent::MouseProfileSerialObserved => {
                     entity.update(cx, |workspace, cx| workspace.restore_mouse_profile_after_serial(window, cx));
@@ -2726,7 +2732,7 @@ impl AppShell {
             || self.keyboard_identity_cache_pending > 0
             || self.runtime.read(cx).shutdown_pending()
             || self.legacy_dpi_workers > 0
-            || self.current_dpi_workers > 0
+            || self.mouse_dpi.pending()
             || self.mouse_scroll_workers > 0
             || self.mouse_polling_workers > 0
             || !self.mouse_tracking_tasks.is_empty()

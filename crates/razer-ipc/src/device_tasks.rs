@@ -180,6 +180,9 @@ impl ServiceRequest {
                 product_id,
                 change: Some(_),
                 ..
+            }
+            | Self::HidNodeMouseCurrentPolling {
+                node, product_id, ..
             } => Some((*product_id, node)),
             Self::HidNodeMouseCurrentPower {
                 node,
@@ -203,6 +206,9 @@ impl ServiceRequest {
             | Self::DeviceMouseCurrentDpi {
                 target,
                 change: Some(_),
+            }
+            | Self::DeviceMouseCurrentPolling {
+                target, ..
             } => Some(target),
             Self::DeviceMouseCurrentPower { target, change }
                 if !matches!(

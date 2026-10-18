@@ -1,6 +1,5 @@
 use super::*;
 use razer_discovery::direct;
-use razer_ipc::{ServiceClient, ServiceRequest};
 use razer_model::model::Profile;
 use razer_pages::features::mouse_products::MouseCurrentDpiRequested;
 
@@ -16,6 +15,72 @@ impl MouseCurrentDpiSave {
     }
 }
 
+/// Rebase only the accepted DPI fields onto the latest durable profile. The
+/// current182/190 stage task makers advance the device document's 53-bit version.
+fn merge_current_dpi_profile(
+    saved: &mut Device,
+    profile_id: &str,
+    source: &serde_json::Value,
+) -> anyhow::Result<()> {
+    anyhow::ensure!(source.is_object(), "DPI source profile is not an object");
+    let profile = saved
+        .profiles
+        .iter()
+        .find(|profile| profile.id == profile_id)
+        .ok_or_else(|| anyhow::anyhow!("DPI profile was removed before persistence"))?;
+    let mut settings = profile
+        .source_settings
+        .clone()
+        .unwrap_or_else(|| serde_json::json!({}));
+    anyhow::ensure!(settings.is_object(), "DPI local profile is not an object");
+    let next_version = if matches!(saved.product_id, 182 | 190) {
+        let root = saved.source_device_settings.as_ref();
+        anyhow::ensure!(
+            root.is_none_or(serde_json::Value::is_object),
+            "DPI local device settings is not an object"
+        );
+        let previous = root
+            .and_then(|root| root.get("version"))
+            .map(|value| {
+                value
+                    .as_u64()
+                    .ok_or_else(|| anyhow::anyhow!("DPI local version is not an unsigned integer"))
+            })
+            .transpose()?;
+        Some(razer_device::mapping_submission::next_source_version(
+            previous,
+        )?)
+    } else {
+        None
+    };
+    let keys = if saved.product_id == 182 {
+        &["dpiStages"][..]
+    } else {
+        &["dpiStages", "dpi", "DPIStages", "DPI", "version"][..]
+    };
+    for key in keys {
+        if let Some(value) = source.get(key) {
+            settings[*key] = value.clone();
+        }
+    }
+    saved
+        .profiles
+        .iter_mut()
+        .find(|profile| profile.id == profile_id)
+        .expect("validated profile identity")
+        .source_settings = Some(settings);
+    if let Some(version) = next_version {
+        saved
+            .source_device_settings
+            .get_or_insert_with(|| serde_json::json!({}))["version"] = serde_json::json!(version);
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+#[path = "mouse_current_dpi_save_tests.rs"]
+mod tests;
+
 impl AppShell {
     /// Source90012 startup/restore owns initialization; GET observations never
     /// replace the local profile. A retained connection/profile key prevents
@@ -27,7 +92,7 @@ impl AppShell {
         let macro_recording = self.receiver_macro_exclusive(cx);
         for workspace in &self.devices {
             let device = workspace.read(cx).device(cx);
-            if device.product_id != 182 {
+            if !matches!(device.product_id, 182 | 190) {
                 continue;
             }
             let routes: Vec<_> = self
@@ -131,59 +196,7 @@ impl AppShell {
             .map(|entity| -> anyhow::Result<Device> {
                 let mut saved = entity.read(cx).saved_snapshot(cx);
                 if entity.read(cx).identity(cx) == dpi.identity {
-                    let next_version = if saved.product_id == 182 {
-                        let root = saved
-                            .source_device_settings
-                            .get_or_insert_with(|| serde_json::json!({}));
-                        anyhow::ensure!(
-                            root.is_object(),
-                            "PID182 local device settings is not an object"
-                        );
-                        let previous = root
-                            .get("version")
-                            .map(|value| {
-                                value.as_u64().ok_or_else(|| {
-                                    anyhow::anyhow!(
-                                        "PID182 local version is not an unsigned integer"
-                                    )
-                                })
-                            })
-                            .transpose()?;
-                        Some(razer_device::mapping_submission::next_source_version(
-                            previous,
-                        )?)
-                    } else {
-                        None
-                    };
-                    if let Some(profile) = saved
-                        .profiles
-                        .iter_mut()
-                        .find(|profile| profile.id == dpi.profile.id)
-                    {
-                        let settings = profile
-                            .source_settings
-                            .get_or_insert_with(|| serde_json::json!({}));
-                        anyhow::ensure!(settings.is_object(), "DPI local profile is not an object");
-                        let keys = if saved.product_id == 182 {
-                            &["dpiStages"][..]
-                        } else {
-                            &["dpiStages", "dpi", "DPIStages", "DPI", "version"][..]
-                        };
-                        for key in keys {
-                            if let Some(value) = source.get(key) {
-                                settings[*key] = value.clone();
-                            }
-                        }
-                    } else {
-                        anyhow::bail!("DPI profile was removed before persistence");
-                    }
-                    if let Some(version) = next_version {
-                        saved
-                            .source_device_settings
-                            .as_mut()
-                            .expect("validated root settings")["version"] =
-                            serde_json::json!(version);
-                    }
+                    merge_current_dpi_profile(&mut saved, &dpi.profile.id, source)?;
                 }
                 Ok(saved)
             })
@@ -258,99 +271,9 @@ impl AppShell {
             return;
         }
         let route = routes[0].clone();
-        let identity = workspace.read(cx).identity(cx);
-        let revision = self.discovery_revision;
-        self.current_dpi_workers += 1;
         self.status = "正在核对 DPI 设备应答与读回结果。".into();
         cx.notify();
-        let workspace = workspace.downgrade();
-        cx.spawn_in(window, async move |this, cx| {
-            let selected = route.clone();
-            let guard = request.clone();
-            let result = cx
-                .background_spawn(async move {
-                    anyhow::ensure!(
-                        guard.is_valid(),
-                        "Current mouse DPI scope canceled before service creation"
-                    );
-                    let mut client = ServiceClient::spawn()?;
-                    client.set_request_guard(guard.guard());
-                    let result = (|| {
-                        let report = direct::mouse_current_dpi::request(
-                            &mut client,
-                            &selected,
-                            guard.change().cloned(),
-                        )?;
-                        anyhow::ensure!(
-                            guard.is_valid(),
-                            "Current mouse DPI scope canceled after submission"
-                        );
-                        Ok::<_, anyhow::Error>(report)
-                    })();
-                    let shutdown_error = if client.is_stopped() {
-                        None
-                    } else {
-                        client
-                            .request(ServiceRequest::Shutdown)
-                            .err()
-                            .map(|error| format!("{error:#}"))
-                    };
-                    result.map(|report| (report, shutdown_error))
-                })
-                .await;
-            let _ = this.update_in(cx, |this, _, cx| {
-                this.current_dpi_workers = this.current_dpi_workers.saturating_sub(1);
-                let Some(workspace) = workspace.upgrade() else {
-                    if this.close_requested && this.save_task.is_none() {
-                        this.continue_save_queue(true, cx);
-                    }
-                    return;
-                };
-                let current = this.devices.contains(&workspace)
-                    && workspace.read(cx).identity(cx) == identity
-                    && workspace.read(cx).current_dpi_request_matches(&request, cx)
-                    && this.discovery_revision == revision
-                    && this.device_observations.iter().any(|current| {
-                        current.matches(workspace.read(cx).device(cx))
-                            && current.physical_product_id() == route.physical_product_id()
-                            && current.container().eq_ignore_ascii_case(route.container())
-                            && current.hid_node() == route.hid_node()
-                            && current.peer_product_id() == route.peer_product_id()
-                            && current.connection() == route.connection()
-                            && direct::mouse_current_dpi::available(current)
-                    });
-                let report = current
-                    .then(|| result.as_ref().ok().map(|(report, _)| report.clone()))
-                    .flatten();
-                workspace.update(cx, |workspace, cx| {
-                    workspace.finish_current_dpi(&request, report, cx)
-                });
-                if current {
-                    this.status = match result {
-                        Ok((_, None)) => {
-                            if request
-                                .change()
-                                .is_some_and(|change| change.is_identity_read())
-                            {
-                                "已读取设备序列号，正在载入对应配置。".into()
-                            } else if request.is_read() {
-                                "已读取当前 DPI。".into()
-                            } else {
-                                "DPI 已保存到本机，设备写入已应答。".into()
-                            }
-                        }
-                        Ok((_, Some(error))) => {
-                            format!("DPI 设备操作已确认；通信进程退出失败：{error}")
-                        }
-                        Err(error) => format!("DPI 设备状态尚未确认：{error:#}；本地配置保留。"),
-                    };
-                }
-                if this.close_requested && this.save_task.is_none() {
-                    this.continue_save_queue(true, cx);
-                }
-                cx.notify();
-            });
-        })
-        .detach();
+        let _ = window;
+        self.start_current_dpi_operation(workspace, route, request, cx);
     }
 }

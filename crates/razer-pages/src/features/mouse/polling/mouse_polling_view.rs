@@ -7,6 +7,10 @@ use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
 };
+#[path = "mouse_polling_ingame.rs"]
+mod ingame;
+use ingame::InGamePolling;
+pub use ingame::{MouseInGamePollingChanged, validate_in_game_polling};
 
 pub(super) const LOCAL_FIELDS: &str = "_pollingLocalFieldsV1";
 
@@ -14,10 +18,13 @@ pub(super) const LOCAL_FIELDS: &str = "_pollingLocalFieldsV1";
 pub(super) struct State {
     runtime: super::super::mouse_polling::RuntimeState,
     local_fields: BTreeSet<String>,
-    pending: Option<(MousePollingScope, PollingField, u32)>,
+    pending: Option<MousePollingRequested>,
     pending_valid: Option<Arc<AtomicBool>>,
-    queued: Option<(MousePollingScope, PollingField, u32, bool)>,
+    queued: Option<MousePollingRequested>,
     initialization_key: Option<String>,
+    in_game: Option<InGamePolling>,
+    in_game_error: Option<String>,
+    running_games: Option<usize>,
 }
 
 impl State {
@@ -53,8 +60,13 @@ pub struct MousePollingRequested {
     field: PollingField,
     hz: u32,
     initialization: bool,
+    device_hz: u32,
+    synchronize_profile: bool,
 }
 impl MousePollingRequested {
+    fn matches(self, scope: MousePollingScope, field: PollingField, hz: u32) -> bool {
+        self.scope == scope && self.field == field && self.hz == hz
+    }
     pub fn is_initialization(self) -> bool {
         self.initialization
     }
@@ -70,10 +82,35 @@ impl MousePollingRequested {
 }
 impl EventEmitter<MousePollingRequested> for MouseProductWorkspace {}
 
+fn polling_button(id: ElementId, rate: u32, selected: bool, disabled: bool, colored: bool) -> BaseButton {
+    BaseButton::new(id)
+        .accessibility_label(format!("{rate} Hz"))
+        .selected(selected).disabled(disabled)
+        .flex().items_center().justify_center()
+        .w(surface::css(72.)).h(surface::css(27.)).p_0()
+        .rounded(surface::css(3.)).text_size(surface::css(14.))
+        .bg(rgb(0x222222)).text_color(rgb(0xcccccc)).border_1()
+        .border_color(rgb(if selected { 0x44d62c } else { 0x5d5d5d }))
+        .hover(|style| style.border_color(rgb(0x44d62c)))
+        .when(colored, |button| button.when_some(super::receiver_indicator::polling_color(rate), |button, color| {
+            button.child(div().size(surface::css(6.)).mr(surface::css(4.)).rounded_full().bg(rgb(color)))
+        }))
+        .child(rate.to_string())
+}
+
 impl MouseProductWorkspace {
+    fn submit_polling(&mut self, request: MousePollingRequested, cx: &mut Context<Self>) {
+        if self.polling_state.pending.is_some() {
+            self.polling_state.queued = Some(request);
+        } else {
+            self.polling_state.pending = Some(request);
+            self.polling_state.pending_valid = Some(Arc::new(AtomicBool::new(true)));
+            cx.emit(request);
+        }
+    }
     /// Current90012.Mn applies the stored wired rate. Its wireless branch
     /// reloads the actual rate and breaks before ON_POLLING_RATE.
-    pub(super) fn initialize_mouse182_polling(
+    pub fn initialize_current_mouse_polling(
         &mut self,
         key: Option<&str>,
         guid: &str,
@@ -87,7 +124,7 @@ impl MouseProductWorkspace {
         if guid.is_empty() || self.polling_state.initialization_key.as_ref() == Some(&key) {
             return;
         }
-        if self.spec.product_id != 182
+        if !matches!(self.spec.product_id, 182 | 190)
             || self.polling_state.connection() != Some(PollingConnection::Wired)
         {
             return;
@@ -96,22 +133,12 @@ impl MouseProductWorkspace {
             return;
         };
         let hz = self.number(self.spec.polling_path()) as u32;
-        if ![125, 500, 1000].contains(&hz) {
+        if !source_spec(self.spec.product_id).is_some_and(|spec| self.polling_state.runtime.rate_choices(spec).contains(&hz)) {
             return;
         }
         self.polling_state.initialization_key = Some(key);
-        if self.polling_state.pending.is_some() {
-            self.polling_state.queued = Some((scope, PollingField::Wired, hz, true));
-        } else {
-            self.polling_state.pending = Some((scope, PollingField::Wired, hz));
-            self.polling_state.pending_valid = Some(Arc::new(AtomicBool::new(true)));
-            cx.emit(MousePollingRequested {
-                scope,
-                field: PollingField::Wired,
-                hz,
-                initialization: true,
-            });
-        }
+        let device_hz = self.polling_state.in_game.as_ref().map_or(hz, |setting| setting.rate_for_current_games(PollingField::Wired, hz, self.polling_state.running_games));
+        self.submit_polling(MousePollingRequested { scope, field: PollingField::Wired, hz, device_hz, initialization: true, synchronize_profile: self.spec.product_id == 190 }, cx);
     }
     pub(super) fn invalidate_legacy_connection(&mut self) {
         if self.spec.product_id == 70 {
@@ -186,18 +213,7 @@ impl MouseProductWorkspace {
         if ![125, 500, 1000].contains(&hz) {
             return;
         }
-        if self.polling_state.pending.is_some() {
-            self.polling_state.queued = Some((scope, PollingField::Wired, hz, false));
-        } else {
-            self.polling_state.pending = Some((scope, PollingField::Wired, hz));
-            self.polling_state.pending_valid = Some(Arc::new(AtomicBool::new(true)));
-            cx.emit(MousePollingRequested {
-                scope,
-                field: PollingField::Wired,
-                hz,
-                initialization: false,
-            });
-        }
+        self.submit_polling(MousePollingRequested { scope, field: PollingField::Wired, hz, device_hz: hz, initialization: false, synchronize_profile: false }, cx);
     }
     /// PID70 UI main.8f24b6a1:133060 preserves its optimistic value; MW
     /// 6120.7fff31f083f844383e26:92960 persists it before the skippable task.
@@ -214,18 +230,7 @@ impl MouseProductWorkspace {
             return;
         };
         self.write(self.spec.polling_path(), json!(hz), cx);
-        if self.polling_state.pending.is_some() {
-            self.polling_state.queued = Some((scope, PollingField::Wired, hz, false));
-        } else {
-            self.polling_state.pending = Some((scope, PollingField::Wired, hz));
-            self.polling_state.pending_valid = Some(Arc::new(AtomicBool::new(true)));
-            cx.emit(MousePollingRequested {
-                scope,
-                field: PollingField::Wired,
-                hz,
-                initialization: false,
-            });
-        }
+        self.submit_polling(MousePollingRequested { scope, field: PollingField::Wired, hz, device_hz: hz, initialization: false, synchronize_profile: false }, cx);
     }
 
     pub fn mouse_polling_in_flight_matches(
@@ -234,8 +239,15 @@ impl MouseProductWorkspace {
         field: PollingField,
         hz: u32,
     ) -> bool {
-        matches!(self.spec.product_id, 70 | 182)
-            && self.polling_state.pending == Some((scope, field, hz))
+        matches!(self.spec.product_id, 70 | 182 | 190)
+            && self.polling_state.pending.is_some_and(|request| request.matches(scope, field, hz))
+    }
+
+    pub fn mouse_polling_device_hz(&self, scope: MousePollingScope, field: PollingField, hz: u32) -> Option<u32> {
+        self.polling_state.pending.filter(|request| request.matches(scope, field, hz)).map(|request| request.device_hz)
+    }
+    pub fn mouse_polling_synchronizes_profile(&self, scope: MousePollingScope, field: PollingField, hz: u32) -> bool {
+        self.polling_state.pending.is_some_and(|request| request.matches(scope, field, hz) && request.synchronize_profile)
     }
 
     pub fn mouse_polling_write_guard(
@@ -276,13 +288,13 @@ impl MouseProductWorkspace {
         if !self.mouse_polling_in_flight_matches(scope, field, hz) {
             return false;
         }
-        self.polling_state.pending = None;
+        let pending = self.polling_state.pending.take().expect("matched pending request");
         if let Some(guard) = self.polling_state.pending_valid.take() {
             guard.store(false, Ordering::Release);
         }
-        if self.mouse_polling_scope(cx) == Some(scope) && observed == Some(hz) {
+        if self.mouse_polling_scope(cx) == Some(scope) && observed == Some(pending.device_hz) {
             // Device diagnostics remain separate from the optimistic profile.
-            self.polling_state.runtime.rates.insert(field, hz);
+            self.polling_state.runtime.rates.insert(field, pending.device_hz);
         }
         //85191.ot publishes Q.RA (wireless rate) when an ordinary master caps
         // a previous high-rate profile. This changes source UI state only.
@@ -299,18 +311,9 @@ impl MouseProductWorkspace {
                 .local_fields
                 .remove(PollingField::Wireless.key());
         }
-        if let Some((next_scope, next_field, next_hz, initialization)) =
-            self.polling_state.queued.take()
-        {
-            if self.mouse_polling_scope(cx) == Some(next_scope) {
-                self.polling_state.pending = Some((next_scope, next_field, next_hz));
-                self.polling_state.pending_valid = Some(Arc::new(AtomicBool::new(true)));
-                cx.emit(MousePollingRequested {
-                    scope: next_scope,
-                    field: next_field,
-                    hz: next_hz,
-                    initialization,
-                });
+        if let Some(next) = self.polling_state.queued.take() {
+            if self.mouse_polling_scope(cx) == Some(next.scope) {
+                self.submit_polling(next, cx);
             }
         }
         cx.notify();
@@ -378,6 +381,7 @@ impl MouseProductWorkspace {
     }
 
     pub(super) fn restore_polling(&mut self, saved: Option<&Value>) {
+        self.restore_in_game_polling(saved);
         let dpi_supported = self.spec.product_id == 70
             || razer_device::mouse_current_dpi::capability(self.spec.product_id).is_some();
         let polling_supported = source_spec(self.spec.product_id).is_some();
@@ -416,7 +420,7 @@ impl MouseProductWorkspace {
     }
 
     fn polling_value(&self, field: PollingField) -> u32 {
-        if !self.polling_state.local_fields.contains(field.key()) {
+        if self.spec.product_id != 190 && !self.polling_state.local_fields.contains(field.key()) {
             if let Some(value) = self.polling_state.runtime.rates.get(&field) {
                 return *value;
             }
@@ -470,19 +474,10 @@ impl MouseProductWorkspace {
         self.draft[LOCAL_FIELDS] = json!(self.polling_state.local_fields);
         // Even if the old default draft equals rate, replacing a different
         // displayed observation is an explicit local edit and must persist.
-        if self.spec.product_id == 182 {
-            if self.polling_state.pending.is_some() {
-                self.polling_state.queued = Some((scope, field, rate, false));
-            } else {
-                self.polling_state.pending = Some((scope, field, rate));
-                self.polling_state.pending_valid = Some(Arc::new(AtomicBool::new(true)));
-                cx.emit(MousePollingRequested {
-                    initialization: false,
-                    scope,
-                    field,
-                    hz: rate,
-                });
-            }
+        if matches!(self.spec.product_id, 182 | 190) {
+            let device_hz = self.polling_state.in_game.as_ref()
+                .map_or(rate, |setting| setting.rate_for_current_games(field, rate, self.polling_state.running_games));
+            self.submit_polling(MousePollingRequested { scope, field, hz: rate, device_hz, initialization: false, synchronize_profile: self.spec.product_id == 190 }, cx);
         }
         cx.emit(MouseProductChanged);
         cx.notify();
@@ -533,29 +528,8 @@ impl MouseProductWorkspace {
                 .children(rates.iter().map(|rate| {
                     let rate = *rate;
                     let disabled = limit.is_some_and(|limit| rate > limit.hz);
-                    BaseButton::new(SharedString::from(format!("source-polling-{rate}")))
-                        .accessibility_label(format!("{rate} Hz"))
-                        .selected(value == rate)
-                        .disabled(disabled)
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .w(surface::css(72.))
-                        .h(surface::css(27.))
-                        .p_0()
-                        .rounded(surface::css(3.))
-                        .text_size(surface::css(14.))
-                        .bg(rgb(0x222222))
-                        .text_color(rgb(0xcccccc))
-                        .border_1()
-                        .border_color(if value == rate {
-                            rgb(0x44d62c)
-                        } else {
-                            rgb(0x5d5d5d)
-                        })
+                    polling_button(SharedString::from(format!("source-polling-{rate}")).into(), rate, value == rate, disabled, self.spec.product_id == 190)
                         .when(disabled, |button| button.opacity(0.4))
-                        .hover(|style| style.border_color(rgb(0x44d62c)))
-                        .child(rate.to_string())
                         .on_click(cx.listener(move |this, _, _, cx| {
                             this.choose_polling(scope, field, rate, cx)
                         }))
@@ -594,6 +568,9 @@ impl MouseProductWorkspace {
                         "POLLING_RATE_WARN_NOBATTERY"
                     })),
             );
+        }
+        if self.spec.product_id == 190 {
+            panel = panel.child(self.in_game_polling_panel(scope, field, rates, cx));
         }
         panel
             .when(self.spec.block_widget_columns(), |panel| panel.mb_0())

@@ -317,7 +317,7 @@ impl MouseProductWorkspace {
                 }
             }
             self.syncing = false;
-            self.submit_current_dpi(true, true, cx);
+            self.submit_current_dpi(current_dpi::Edit::Stages, cx);
             cx.emit(MouseProductChanged);
         }
         self.dismiss_editors(window, cx);
@@ -462,7 +462,10 @@ impl MouseProductWorkspace {
             self.syncing = false;
         }
         self.submit_legacy_dpi(!independent && x != y, cx);
-        self.submit_current_dpi(!independent && x != y, !independent && x != y, cx);
+        self.submit_current_dpi(
+            current_dpi::Edit::AxisMode { reset_y: !independent && x != y },
+            cx,
+        );
         cx.emit(MouseProductChanged);
         cx.notify();
     }
@@ -584,7 +587,7 @@ impl MouseProductWorkspace {
         self.syncing = false;
         self.dismiss_editors(window, cx);
         self.submit_legacy_dpi(true, cx);
-        self.submit_current_dpi(true, true, cx);
+        self.submit_current_dpi(current_dpi::Edit::Stages, cx);
         cx.emit(MouseProductChanged);
         cx.notify();
     }

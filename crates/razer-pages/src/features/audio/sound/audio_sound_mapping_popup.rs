@@ -21,6 +21,18 @@ struct Popup {
     root: Rc<Cell<Bounds<Pixels>>>,
     anchor: Rc<Cell<Bounds<Pixels>>>,
 }
+
+fn left(root: Bounds<Pixels>, anchor: Bounds<Pixels>, width: Pixels, margin: Pixels) -> Pixels {
+    let anchor_left = anchor.left() - root.left();
+    let anchor_right = anchor.right() - root.left();
+    root.left()
+        + if anchor_right + width < root.size.width - margin {
+            anchor_right
+        } else {
+            (anchor_left - width).max(px(0.))
+        }
+}
+
 impl IntoElement for Popup {
     type Element = Self;
     fn into_element(self) -> Self {
@@ -70,11 +82,7 @@ impl Element for Popup {
         let unit = window.rem_size() / 16.;
         // Source clientWidth excludes the two popup border pixels.
         let width = (window.layout_bounds(*child).size.width - unit * 2.).max(px(0.));
-        let x = if anchor.right() + width < root.size.width - unit * 20. {
-            anchor.right()
-        } else {
-            (anchor.left() - width).max(px(0.))
-        };
+        let x = left(root, anchor, width, unit * 20.);
         // The source dot-bg moves with the product body's vertical scroll.
         // The wrapper includes the heading above source body top = 36px.
         let target = point(x, root.top());
@@ -93,5 +101,51 @@ impl Element for Popup {
         cx: &mut App,
     ) {
         self.content.paint(window, cx);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn area(left: f32, width: f32) -> Bounds<Pixels> {
+        Bounds::new(point(px(left), px(0.)), size(px(width), px(100.)))
+    }
+
+    #[::core::prelude::v1::test]
+    fn shifted_body_does_not_change_the_available_side() {
+        // There is 30px of room after the popup in the source body.
+        assert_eq!(
+            left(area(80., 600.), area(310., 40.), px(300.), px(20.)),
+            px(350.)
+        );
+        assert_eq!(
+            left(area(0., 600.), area(230., 40.), px(300.), px(20.)),
+            px(270.)
+        );
+    }
+
+    #[::core::prelude::v1::test]
+    fn flipped_popup_clamps_to_the_product_body_origin() {
+        assert_eq!(
+            left(area(80., 500.), area(310., 40.), px(300.), px(20.)),
+            px(80.)
+        );
+        assert_eq!(
+            left(area(80., 600.), area(470., 40.), px(300.), px(20.)),
+            px(170.)
+        );
+    }
+
+    #[::core::prelude::v1::test]
+    fn source_strict_margin_is_preserved_under_scale() {
+        assert_eq!(
+            left(area(25., 600.), area(275., 40.), px(290.), px(20.)),
+            px(25.)
+        );
+        assert_eq!(
+            left(area(25., 750.), area(337.5, 50.), px(362.5), px(25.)),
+            px(25.)
+        );
     }
 }

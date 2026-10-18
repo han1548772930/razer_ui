@@ -16,8 +16,16 @@ fn source_guid(profile: &Profile) -> Option<&str> {
 
 impl SourceProductWorkspace {
     pub fn observe_running_games(&mut self, count: Option<usize>, cx: &mut Context<Self>) {
-        if let FamilyBody::Keyboard(body) = &self.body {
-            body.update(cx, |body, cx| body.observe_running_games(count, cx));
+        match &self.body {
+            FamilyBody::Keyboard(body) => body.update(cx, |body, cx| body.observe_running_games(count, cx)),
+            FamilyBody::Mouse(body) => body.update(cx, |body, cx| body.observe_running_games(count, cx)),
+            _ => {}
+        }
+    }
+
+    pub fn observe_polling_game_event(&mut self, started: bool, cx: &mut Context<Self>) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| body.observe_polling_game_event(started, cx));
         }
     }
 

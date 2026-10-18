@@ -347,6 +347,162 @@ def locale_keys(raw, keys):
     return matches[0]
 
 
+def locale_export_dictionaries(raw, locales):
+    """Resolve the mounted locale map and webpack exports without evaluating JS.
+
+    A key in another dictionary or lexical scope is not a translation. Export
+    getters may only refer to literal strings in their own complete factory.
+    """
+    sys.path.insert(0, str(a.ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    tree = Parser(Language(tree_sitter_javascript.language())).parse(raw)
+    if tree.root_node.has_error:
+        raise ValueError("Locale export source has JavaScript parse errors")
+    wanted = set(locales)
+    if not wanted or len(wanted) != len(locales) or "en" not in wanted:
+        raise ValueError("Locale map must contain unique language identities and English")
+    bindings = JavascriptBindings(raw, tree)
+
+    def string(node):
+        try:
+            return json.loads(node.text)
+        except json.JSONDecodeError:
+            import json5
+            value = json5.loads(node.text.decode())
+            if not isinstance(value, str):
+                raise ValueError("Locale source literal is not a string")
+            return value
+
+    def region(node):
+        body = raw[node.start_byte:node.end_byte]
+        return {"start_byte": node.start_byte, "end_byte": node.end_byte,
+                "body": body.decode("utf-8"), "sha256": hashlib.sha256(body).hexdigest()}
+
+    def scope(node):
+        while node.parent is not None and node.type not in {"statement_block", "program"}:
+            node = node.parent
+        return node
+
+    def literal(node, owner, seen=()):
+        if node.type == "string":
+            return string(node)
+        if node.type != "identifier" or node.text in seen or len(seen) > 32:
+            raise ValueError("Locale binding is dynamic or cyclic")
+        found = bindings.resolve(node.text.decode(), node.start_byte)
+        if found["resolution"] != "declaration":
+            raise ValueError("Locale binding does not resolve to one declaration")
+        declaration = tree.root_node.descendant_for_byte_range(found["start_byte"], found["end_byte"] - 1)
+        if scope(declaration) != owner:
+            raise ValueError("Locale binding escapes its lexical owner")
+        value = declaration.child_by_field_name("value")
+        if value is None:
+            raise ValueError("Locale binding has no value")
+        return literal(value, owner, (*seen, node.text))
+
+    def property_key(node, owner):
+        if node.type in {"property_identifier", "identifier"}:
+            return node.text.decode()
+        if node.type == "string":
+            return string(node)
+        if node.type == "computed_property_name" and len(node.named_children) == 1:
+            return literal(node.named_children[0], owner)
+        raise ValueError("Locale map key is dynamic")
+
+    objects, exports, pending = [], [], [tree.root_node]
+    while pending:
+        node = pending.pop()
+        pending.extend(reversed(node.named_children))
+        if node.type == "object":
+            # Filter structurally before resolving computed keys. A computed
+            # English identity is valid; unrelated dynamic objects are not
+            # subject to dictionary restrictions.
+            if (len(node.named_children) == len(wanted)
+                    and all(pair.type == "pair"
+                            and pair.child_by_field_name("value").type == "identifier"
+                            for pair in node.named_children)):
+                objects.append(node)
+        elif node.type == "call_expression":
+            function = node.child_by_field_name("function")
+            arguments = node.child_by_field_name("arguments")
+            if function is None or function.type != "member_expression" or arguments is None:
+                continue
+            method = function.child_by_field_name("property")
+            parts = arguments.named_children
+            if (method is not None and method.text == b"d" and len(parts) == 2
+                    and parts[0].type == "identifier" and parts[1].type == "object"):
+                exports.append((node, parts[0], parts[1]))
+    candidates = []
+    for node in objects:
+        pairs = [pair for pair in node.named_children if pair.type == "pair"]
+        if len(pairs) != len(wanted) or len(pairs) != len(node.named_children):
+            continue
+        owner = scope(node)
+        try:
+            entries = [(property_key(pair.child_by_field_name("key"), owner),
+                        pair.child_by_field_name("value")) for pair in pairs]
+        except ValueError:
+            continue
+        if set(key for key, _ in entries) == wanted and all(value.type == "identifier" for _, value in entries):
+            if len({key for key, _ in entries}) != len(entries):
+                raise ValueError("Locale map contains duplicate language identities")
+            candidates.append((node, owner, entries))
+    if len(candidates) != 1:
+        raise ValueError(f"Mounted locale map is not unique: {len(candidates)}")
+    route, owner, entries = candidates[0]
+    dictionaries, dictionary_owners, namespaces = {}, [], set()
+    for locale, reference in entries:
+        found = bindings.resolve(reference.text.decode(), reference.start_byte)
+        if found["resolution"] != "declaration":
+            raise ValueError("Locale dictionary reference is unresolved: " + locale)
+        if found["start_byte"] in namespaces:
+            raise ValueError("Locale languages share the same export namespace")
+        namespaces.add(found["start_byte"])
+        declaration = tree.root_node.descendant_for_byte_range(found["start_byte"], found["end_byte"] - 1)
+        initial = declaration.child_by_field_name("value")
+        if initial is None or initial.type != "object" or initial.named_children or scope(declaration) != owner:
+            raise ValueError("Locale export target is not its empty module namespace: " + locale)
+        matches = []
+        for call, target, export_object in exports:
+            if target.text != reference.text or scope(call) != owner:
+                continue
+            resolved_target = bindings.resolve(target.text.decode(), target.start_byte)
+            if resolved_target.get("start_byte") == found["start_byte"]:
+                matches.append((call, export_object))
+        if len(matches) != 1:
+            raise ValueError("Locale export namespace is not unique: " + locale)
+        call, export_object = matches[0]
+        values, resolved = {}, []
+        for pair in export_object.named_children:
+            if pair.type != "pair":
+                raise ValueError("Locale exports contain a spread or shorthand")
+            key = property_key(pair.child_by_field_name("key"), owner)
+            getter = pair.child_by_field_name("value")
+            if key in values or getter.type != "arrow_function":
+                raise ValueError("Locale export key is duplicate or not a getter: " + key)
+            parameters = getter.child_by_field_name("parameters")
+            body = getter.child_by_field_name("body")
+            if parameters is None or parameters.named_children or body is None:
+                raise ValueError("Locale export getter requires dynamic arguments: " + key)
+            # Arrow getters introduce their own scope. The referenced constant
+            # must resolve into the containing source factory instead.
+            value = literal(body, owner)
+            if not isinstance(value, str):
+                raise ValueError("Locale export is not a string: " + key)
+            values[key] = value
+            resolved.append({"key": key, "export": region(pair)})
+        if not values:
+            raise ValueError("Locale export dictionary is empty: " + locale)
+        dictionaries[locale] = values
+        dictionary_owners.append({"locale": locale, "namespace": reference.text.decode(),
+                                  "export_object": region(export_object), "resolved_exports": resolved})
+    factory = owner.parent if owner.parent is not None else owner
+    return {"values": dictionaries, "locale_order": [locale for locale, _ in entries],
+            "routing_owner": region(route), "complete_factory": region(factory),
+            "dictionaries": dictionary_owners,
+            "javascript_executed": False}
+
+
 class JavascriptBindings:
     """Index actual lexical owners once for repeated static source queries."""
     def __init__(self, raw, tree):
@@ -403,6 +559,10 @@ class JavascriptBindings:
                             definitions.setdefault(key(node), []).append((candidate.text.decode("utf-8"), candidate, "parameter_requires_caller_analysis"))
                         descendants.extend(candidate.named_children)
         self.definitions, self.key = definitions, key
+        self.named_definitions = {}
+        for scope_key, entries in definitions.items():
+            for item in entries:
+                self.named_definitions.setdefault(scope_key, {}).setdefault(item[0], []).append(item)
 
     def resolve(self, name, reference_byte):
         raw, tree, definitions = self.raw, self.tree, self.definitions
@@ -411,7 +571,7 @@ class JavascriptBindings:
             raise ValueError("Binding reference has invalid byte boundary")
         current = tree.root_node.descendant_for_byte_range(reference_byte, reference_byte)
         while current is not None:
-            candidates = [item for item in definitions.get(key(current), []) if item[0] == name]
+            candidates = self.named_definitions.get(key(current), {}).get(name, [])
             if candidates:
                 if len(candidates) != 1:
                     return {"name": name, "reference_byte": reference_byte, "resolution": "ambiguous_same_scope_declarations",

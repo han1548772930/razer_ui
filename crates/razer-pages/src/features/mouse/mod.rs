@@ -50,7 +50,7 @@ mod polling;
 use super::mouse_polling::{
     MousePollingObservation, MousePollingScope, PollingConnection, PollingField,
 };
-pub use polling::MousePollingRequested;
+pub use polling::{MousePollingRequested, MouseInGamePollingChanged, validate_in_game_polling};
 #[path = "calibration/mouse_calibration_190.rs"]
 mod calibration_190;
 #[path = "calibration/mouse_calibration_70.rs"]
@@ -341,6 +341,7 @@ pub struct MouseProductWorkspace {
     syncing: bool,
     mapping_input: Option<String>,
     mapping_190_state: customize_190::source_mapping::State,
+    customize_190_cycle: customize_190::CycleState,
     receiver_indicator: receiver_indicator::State,
     mapping_assignment: Option<String>,
     mapping_current_state: mapping_current::State,
@@ -378,6 +379,37 @@ pub struct MouseProductWorkspace {
 impl EventEmitter<MouseProductChanged> for MouseProductWorkspace {}
 
 impl MouseProductWorkspace {
+    fn customize_source_buttons(&self) -> Vec<Value> {
+        let mut buttons: Vec<&Value> = self
+            .spec
+            .groups
+            .get(self.group_ix)
+            .and_then(|group| group["buttonList"].as_array())
+            .map(|buttons| buttons.iter().collect())
+            .unwrap_or_default();
+        if self.spec.groups.is_empty() {
+            for button in self.spec.buttons.iter().chain(&self.spec.dkm) {
+                if button["inputID"].is_string()
+                    && !buttons
+                        .iter()
+                        .any(|other| other["inputID"] == button["inputID"])
+                {
+                    buttons.push(button);
+                }
+            }
+        }
+        buttons.into_iter().cloned().collect()
+    }
+
+    pub(super) fn body_layout(&self) -> super::product_surface::BodyLayout {
+        source_body_layout(
+            self.spec.product_id,
+            &self.page,
+            self.group_ix,
+            self.customize_source_buttons().len(),
+        )
+    }
+
     pub fn refresh_locale(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(select) = &self.mapping_current_state.select {
             let choices = self.mapping_current_state.choice_items();
@@ -437,6 +469,7 @@ impl MouseProductWorkspace {
             syncing: false,
             mapping_input: None,
             mapping_190_state: customize_190::source_mapping::State::default(),
+            customize_190_cycle: customize_190::CycleState::default(),
             receiver_indicator: receiver_indicator::State::new(cx),
             mapping_assignment: None,
             mapping_current_state: mapping_current::State::default(),
@@ -475,6 +508,7 @@ impl MouseProductWorkspace {
             this.draft["presetTracking"] = preset.initial_state["presetTracking"].clone();
         }
         this.prepare_controls(window, cx);
+        this.restore_in_game_polling(None);
         this.prepare_receiver_indicator(window, cx);
         this.init_mouse_lighting(window, cx);
         this.prepare_dynamic(window, cx);
@@ -543,6 +577,7 @@ impl MouseProductWorkspace {
                 self.customize_label_hover = None;
             }
             self.mapping_190_state.clear();
+            self.customize_190_cycle = customize_190::CycleState::default();
             self.mapping_assignment = None;
             cx.notify();
         }
@@ -597,6 +632,7 @@ impl MouseProductWorkspace {
             self.set_current_customize_input(None, false);
             self.mapping_assignment = None;
             self.mapping_190_state.clear();
+            self.customize_190_cycle = customize_190::CycleState::default();
             self.customize_hover = None;
         }
         self.dismiss_dynamic(window, cx);
@@ -670,6 +706,7 @@ impl MouseProductWorkspace {
         }
         self.set_current_customize_input(None, false);
         self.mapping_190_state.clear();
+        self.customize_190_cycle = customize_190::CycleState::default();
         self.mapping_assignment = None;
         self.restore_power_session(&previous_draft);
         self.restore_polling(value);
@@ -2334,25 +2371,7 @@ impl MouseProductWorkspace {
         if self.spec.product_id == 70 {
             return self.customize_70(window, cx);
         }
-        let mut buttons: Vec<&Value> = self
-            .spec
-            .groups
-            .get(self.group_ix)
-            .and_then(|group| group["buttonList"].as_array())
-            .map(|buttons| buttons.iter().collect())
-            .unwrap_or_default();
-        if self.spec.groups.is_empty() {
-            for button in self.spec.buttons.iter().chain(&self.spec.dkm) {
-                if button["inputID"].is_string()
-                    && !buttons
-                        .iter()
-                        .any(|other| other["inputID"] == button["inputID"])
-                {
-                    buttons.push(button);
-                }
-            }
-        }
-        let original_buttons: Vec<Value> = buttons.into_iter().cloned().collect();
+        let original_buttons = self.customize_source_buttons();
         let all_buttons: Vec<Value> = if self.spec.groups.is_empty() {
             self.spec
                 .buttons
@@ -2381,6 +2400,12 @@ impl MouseProductWorkspace {
         let source_surface =
             self.customize_current_surface(&buttons, button_state_unavailable, window, cx);
         let has_source_surface = source_surface.is_some();
+        let split_viewport = source_body_layout(
+            self.spec.product_id,
+            &self.page,
+            self.group_ix,
+            buttons.len(),
+        ) == super::product_surface::BodyLayout::SplitViewport;
         let mut panel =
             if let Some(source_surface) = source_surface {
                 source_surface
@@ -2461,8 +2486,22 @@ impl MouseProductWorkspace {
         }
 
         v_flex()
+            .when(split_viewport, |body| {
+                body.flex_1().h_full().min_h_0().min_w_0()
+            })
             .child(if has_source_surface {
-                div().w_full().child(panel).into_any_element()
+                div()
+                    .w_full()
+                    .when(split_viewport, |body| {
+                        body.flex()
+                            .flex_col()
+                            .flex_1()
+                            .h_full()
+                            .min_h_0()
+                            .min_w_0()
+                    })
+                    .child(panel)
+                    .into_any_element()
             } else {
                 surface::page_columns()
                     .child(surface::page_column(panel))
@@ -2479,6 +2518,7 @@ impl MouseProductWorkspace {
 
 impl Render for MouseProductWorkspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let layout = self.body_layout();
         let content = match self.page.as_str() {
             "TAB_PERFORMANCE" => self.performance(cx),
             "TAB_POWER" => self.power(cx),
@@ -2492,19 +2532,44 @@ impl Render for MouseProductWorkspace {
         div()
             .id("mouse-product-body")
             .test_support()
-            // The mounted source body is ordinary document content. The
-            // product workspace owns the .body-wrapper viewport and both
-            // scroll axes; a percentage-height nested scroll region prevents
-            // the outer viewport from measuring the full card/artwork height.
             .w_full()
-            .flex_shrink_0()
-            .child(super::product_surface::body().child(content))
+            .when(layout == super::product_surface::BodyLayout::Document, |body| {
+                body.flex_shrink_0()
+            })
+            .when(layout == super::product_surface::BodyLayout::SplitViewport, |body| {
+                body.flex()
+                    .flex_col()
+                    .flex_1()
+                    .h_full()
+                    .min_h_0()
+                    .min_w_0()
+            })
+            .child(super::product_surface::body_for(layout).child(content))
             .children(self.calibration_popup(window, cx))
             .children(self.receiver_guide(window, cx))
             .children(
                 self.adjustment_mode_prompt
                     .then(|| super::adjustment_prompt::render(window)),
             )
+    }
+}
+
+fn source_body_layout(
+    product_id: u32,
+    page: &str,
+    group_ix: usize,
+    button_count: usize,
+) -> super::product_surface::BodyLayout {
+    use super::product_surface::BodyLayout;
+    if page == "TAB_CUSTOMIZE"
+        && (product_id == 190
+            || (sidebar_current::supports_sidebar(product_id)
+                && (product_id == 70
+                    || customize_current::supports_surface(product_id, group_ix, button_count))))
+    {
+        BodyLayout::SplitViewport
+    } else {
+        BodyLayout::Document
     }
 }
 

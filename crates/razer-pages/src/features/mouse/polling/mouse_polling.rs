@@ -95,6 +95,25 @@ pub struct SourceSpec {
     limits: Option<LinkLimits>,
 }
 pub fn source_spec(product_id: u32) -> Option<&'static SourceSpec> {
+    if product_id == 190 {
+        static SOURCE: OnceLock<SourceSpec> = OnceLock::new();
+        return Some(SOURCE.get_or_init(|| SourceSpec {
+            product_id: 190,
+            device_ids: vec![190, 191],
+            pairing_dongle_id: 191,
+            pair_identity: PairIdentity::StrictDongleId,
+            master_supports_8k_flag: false,
+            is_dongle_hyperpolling_device: true,
+            rates: ["POLLING_RATE", "POLLING_RATE_WIRELESS", "HYPER_POLLING_RATE", "HYPER_POLLING_RATE_SUPPORT_8K"]
+                .into_iter().map(|key| (key.into(), vec![125, 500, 1000, 2000, 4000, 8000])).collect(),
+            firmware_floor: Some("1.0.0.0".into()),
+            hyper_master_ids: vec![179, 164],
+            high_rate_threshold_hz: 1000,
+            fallback_wireless_hz: 1000,
+            ble_visibility: BleVisibility::Hidden,
+            limits: None,
+        }));
+    }
     static SOURCES: OnceLock<Vec<SourceSpec>> = OnceLock::new();
     SOURCES
         .get_or_init(|| read_mouse_polling_source_catalog())

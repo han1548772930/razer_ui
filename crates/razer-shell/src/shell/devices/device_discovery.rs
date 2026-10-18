@@ -619,6 +619,7 @@ impl AppShell {
         self.discovery_revision = self.discovery_revision.wrapping_add(1);
         if let Ok(snapshot) = observation {
             self.retain_keyboard_brightness_connections(snapshot.devices(), cx);
+            self.retain_current_dpi_connections(snapshot.devices(), cx);
         }
         let retained = self
             .devices

@@ -29,7 +29,10 @@ def installation_policy(root=None):
 OUTPUT = installation_policy()["catalog_source"]
 SCHEMA = "crates/razer-resource-db/src/schema.sql"
 APPLICATION_ID = 0x525A5549
-VERSION = 3
+VERSION = 4
+LOCALES = ".analysis/inputs/typed-tables/razer-i18n/locales.json"
+LOCALE_BASELINE = ".analysis/inputs/typed-tables/razer-i18n/baseline"
+LOCALE_REPORT = ".analysis/results/locale-preparation.json"
 PRODUCT_REGISTRY = ".analysis/inputs/typed-tables/razer-catalog/product_registry.json"
 PRODUCT_REGISTRY_EVIDENCE = ".analysis/results/registry-source-evidence.json"
 PRODUCT_HELP = ".analysis/inputs/typed-tables/razer-pages/source_help_data.json"
@@ -39,6 +42,91 @@ INPUTS = {
     "shortcuts": ".analysis/inputs/typed-tables/razer-pages/shortcuts_current.json",
     "macro": ".analysis/inputs/typed-tables/razer-app-pages/text_data.json",
 }
+
+
+def unique_json(raw):
+    """Maintenance files must not discard a repeated field during JSON parsing."""
+    def pairs(items):
+        result = {}
+        for key, value in items:
+            if key in result:
+                raise ValueError("Duplicate locale maintenance field: " + key)
+            result[key] = value
+        return result
+    return json.loads(raw, object_pairs_hook=pairs)
+
+
+def flatten_locale(document):
+    """Preserve the locked i18n dotted namespace representation of legacy words."""
+    if type(document) is not dict or not document:
+        raise ValueError("Locale dictionary is not a nonempty object")
+    result = {}
+
+    def visit(value, prefix):
+        if type(value) is str:
+            if not prefix or prefix in result:
+                raise ValueError("Empty or colliding locale key: " + prefix)
+            result[prefix] = value
+        elif type(value) is dict and value:
+            for key in sorted(value):
+                if type(key) is not str or not key:
+                    raise ValueError("Invalid locale namespace key")
+                visit(value[key], prefix + "." + key if prefix else key)
+        else:
+            raise ValueError("Locale words must be string leaves in nonempty namespaces")
+
+    visit(document, "")
+    return dict(sorted(result.items()))
+
+
+def validate_locales(document):
+    import re
+    if (type(document) is not dict or set(document) != {"schema_version", "locales"}
+            or type(document["schema_version"]) is not int or document["schema_version"] != 1
+            or type(document["locales"]) is not list or not 0 < len(document["locales"]) <= 128):
+        raise ValueError("Invalid locale maintenance schema")
+    identities = []
+    for row in document["locales"]:
+        if (type(row) is not dict or set(row) != {"locale", "messages"}
+                or type(row["locale"]) is not str or len(row["locale"]) > 64
+                or not re.fullmatch(r"[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*", row["locale"])
+                or type(row["messages"]) is not dict or not 0 < len(row["messages"]) <= 1_000_000):
+            raise ValueError("Invalid locale identity or dictionary")
+        identities.append(row["locale"])
+        for key, value in row["messages"].items():
+            if (type(key) is not str or not 0 < len(key.encode("utf-8")) <= 4096
+                    or type(value) is not str or len(value.encode("utf-8")) > 1024 * 1024):
+                raise ValueError("Invalid locale key or value")
+        if list(row["messages"]) != sorted(row["messages"]):
+            raise ValueError("Locale key order is not canonical: " + row["locale"])
+    if identities != sorted(set(identities)) or "en" not in identities:
+        raise ValueError("Locale order is repeated, noncanonical or lacks English")
+    return document["locales"]
+
+
+def localization_document(path=None):
+    return validate_locales(unique_json((path or ROOT / LOCALES).read_bytes()))
+
+
+def verify_locales(connection, locales):
+    restored_locales = connection.execute("SELECT id, position FROM ui_locale ORDER BY position").fetchall()
+    expected_locales = [(row["locale"], position) for position, row in enumerate(locales)]
+    expected_messages = [(row["locale"], position, key, value) for row in locales
+                         for position, (key, value) in enumerate(row["messages"].items())]
+    restored_messages = connection.execute(
+        "SELECT locale, position, key, value FROM ui_translation ORDER BY locale, position").fetchall()
+    if restored_locales != expected_locales or restored_messages != expected_messages:
+        raise ValueError("Complete locale fields, namespace, order or text differ")
+
+
+def fill_locales(connection, locales):
+    connection.executemany("INSERT INTO ui_locale VALUES (?, ?)",
+                           ((row["locale"], position) for position, row in enumerate(locales)))
+    connection.executemany("INSERT INTO ui_translation VALUES (?, ?, ?, ?)",
+                           ((row["locale"], position, key, value) for row in locales
+                            for position, (key, value) in enumerate(row["messages"].items())))
+    verify_locales(connection, locales)
+    return {row["locale"]: len(row["messages"]) for row in locales}
 
 
 def product_registry(path=None):
@@ -338,6 +426,7 @@ def prepare(*, check=False, sources=None, check_local=False, migrate_data=False)
     import rust_data
     import catalog_data
     products = product_registry()
+    locales = localization_document()
     help_bindings = validate_product_help_bindings(products, json.loads((ROOT / PRODUCT_HELP).read_bytes()))
     if migrate_data:
         if check:
@@ -357,6 +446,7 @@ def prepare(*, check=False, sources=None, check_local=False, migrate_data=False)
         connection.execute("PRAGMA page_size=4096")
         connection.execute("PRAGMA foreign_keys=ON")
         fill(connection, manifest, datasets, search)
+        locale_counts = fill_locales(connection, locales)
         product_counts = fill_product_registry(connection, products)
         fill_selectors(connection, selectors)
         connection.executemany("INSERT INTO typed_catalog VALUES (?, ?, ?, ?)",
@@ -367,6 +457,7 @@ def prepare(*, check=False, sources=None, check_local=False, migrate_data=False)
         if restored_documents != expected_documents:
             raise ValueError("Complete typed catalog byte roundtrip differs")
         verify_rows(connection, manifest, datasets, search)
+        verify_locales(connection, locales)
         connection.execute("VACUUM")
         raw = connection.serialize()
     catalog_data.publish_adapters(adapters, recipes, check=check)
@@ -389,13 +480,15 @@ def prepare(*, check=False, sources=None, check_local=False, migrate_data=False)
               "list_entries": len(manifest["list_entries"]), "files": len(manifest["files"]),
               "fonts": len(manifest["fonts"]), "original_sources": sources,
               "typed_catalogs": typed_reports,
+              "localization": {"source": LOCALES, "languages": locale_counts,
+                               "full_field_namespace_and_order_roundtrip_verified": True},
               "product_registry": {"source": PRODUCT_REGISTRY, "tables": product_counts,
                                     "full_field_and_branch_roundtrip_verified": True,
                                     "help_presentation_bindings_verified": help_bindings},
               "selectors": {name: len(rows) for name, rows in selectors.items()},
               "inputs": [{"path": path, "bytes": (ROOT / path).stat().st_size,
                           "sha256": hashlib.sha256((ROOT / path).read_bytes()).hexdigest()}
-                         for path in [SCHEMA, INSTALLATION, PRODUCT_REGISTRY, rust_data.EMOJI_SEARCH_INPUT, *INPUTS.values(), asset_release.LOCK,
+                         for path in [SCHEMA, INSTALLATION, LOCALES, PRODUCT_REGISTRY, rust_data.EMOJI_SEARCH_INPUT, *INPUTS.values(), asset_release.LOCK,
                                       "tools/resource_database.py", "tools/asset_release.py", "tools/rust_data.py", "tools/catalog_data.py",
                                       *[item["source"] for item in recipes["tables"] if catalog_data.selected(item)]]]
                         + table_inputs,

@@ -2,7 +2,11 @@
 //! Complete source owners/resources: mouse-receiver-indicator unified query.
 use super::*;
 use crate::features::controls::Choice;
-use gpui_kit::base::{Button as BaseButton, DialogBackdrop, DialogPopup};
+use gpui_kit::base::{
+    Button as BaseButton, DialogBackdrop, DialogPopup, InlineElement, InlineRenderContext,
+    MarkdownExtensions, MarkdownNode, MarkdownParseContext, MarkdownPlugin,
+    TextView as BaseTextView, TextViewStyle as BaseTextViewStyle, markdown_ast,
+};
 use gpui_kit::component::{
     IndexPath,
     select::{SelectEvent, SelectState},
@@ -39,6 +43,111 @@ fn source(product_id: u32) -> Option<&'static Source> {
         .get_or_init(|| read_mouse_receiver_indicator_catalog())
         .iter()
         .find(|source| source.product_id == product_id)
+}
+
+pub(super) fn polling_color(hz: u32) -> Option<u32> {
+    source::polling_color(hz)
+}
+
+const GUIDE_LINK: &str = "razer-receiver-guide:open";
+
+struct GuideLink(WeakEntity<MouseProductWorkspace>);
+
+impl MarkdownPlugin for GuideLink {
+    fn name(&self) -> &str {
+        "mouse-receiver-guide"
+    }
+
+    fn parse(
+        &self,
+        node: &markdown_ast::Node,
+        _: &MarkdownParseContext<'_>,
+    ) -> Option<MarkdownNode> {
+        let markdown_ast::Node::Link(link) = node else {
+            return None;
+        };
+        if link.url != GUIDE_LINK {
+            return None;
+        }
+        let label = link
+            .children
+            .iter()
+            .map(|node| match node {
+                markdown_ast::Node::Text(text) => Some(text.value.as_str()),
+                _ => None,
+            })
+            .collect::<Option<Vec<_>>>()?
+            .concat();
+        Some(
+            MarkdownNode::new("mouse-receiver-guide", ())
+                .text(label.clone())
+                .accessibility_label(label),
+        )
+    }
+
+    fn render_inline(
+        &self,
+        node: &MarkdownNode,
+        context: &InlineRenderContext,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> Option<InlineElement> {
+        let spec = self
+            .0
+            .read_with(cx, |owner, _| source(owner.spec.product_id))
+            .ok()??;
+        let owner = self.0.clone();
+        let label: SharedString = node.as_text().to_owned().into();
+        let line = window.text_system().shape_line(
+            label.clone(),
+            context.font_size(),
+            &[context.text_style().to_run(label.len())],
+            None,
+        );
+        let unit = context.rem_size() / 16.;
+        // Current inline-flex link uses a 20px line and vertical-align:-2px.
+        let baseline = (unit * 20. - line.ascent - line.descent) / 2. + line.ascent - unit * 2.;
+        Some(
+            InlineElement::new(razer_assets::resource_scope(
+                BaseButton::new("mouse-receiver-show-guide")
+                    .ml(surface::css(5.))
+                    .p_0()
+                    .h(surface::css(20.))
+                    .min_w(surface::css(99.))
+                    .gap(surface::css(4.))
+                    .text_size(surface::css(14.))
+                    .line_height(surface::css(20.))
+                    .text_color(Colors::accent())
+                    .focusable(false)
+                    .cursor_pointer()
+                    .child(div().underline().child(label))
+                    .child(img(spec.guide_icon.clone()).size(surface::css(20.)))
+                    .on_click(move |_, _, cx| {
+                        let _ = owner.update(cx, |this, cx| {
+                            this.receiver_indicator.guide = true;
+                            this.receiver_indicator.guide_tab = 0;
+                            this.receiver_indicator.preview = "none";
+                            cx.notify();
+                        });
+                    }),
+            ))
+            .with_baseline(baseline),
+        )
+    }
+}
+
+fn description_markup(description: &str, guide: &str) -> String {
+    fn escape(text: &str) -> String {
+        let mut escaped = String::with_capacity(text.len());
+        for character in text.chars() {
+            if character.is_ascii_punctuation() {
+                escaped.push('\\');
+            }
+            escaped.push(character);
+        }
+        escaped
+    }
+    format!("{}[{}]({GUIDE_LINK})", escape(description), escape(guide))
 }
 
 #[derive(Clone)]
@@ -117,6 +226,7 @@ pub(super) struct State {
     diagnostic: Option<Report>,
     guide: bool,
     guide_tab: usize,
+    guide_markup: MarkdownExtensions,
     preview: &'static str,
     help: Entity<Help>,
     widget_mounted: bool,
@@ -142,6 +252,7 @@ impl State {
             diagnostic: None,
             guide: false,
             guide_tab: 0,
+            guide_markup: MarkdownExtensions::default().plugin(GuideLink(cx.entity().downgrade())),
             preview: "none",
             help: cx.new(|_| Help::default()),
             widget_mounted: false,
@@ -603,33 +714,28 @@ impl MouseProductWorkspace {
             cx,
         )
         .id("mouse-receiver-indicator-panel")
+        .w(surface::css(600.))
+        .min_w(surface::css(600.))
+        .max_w(surface::css(600.))
+        .mx_auto()
         .child(
             v_flex()
                 .items_center()
                 .gap(surface::css(20.))
                 .child(
-                    h_flex()
-                        .items_center()
-                        .child(t("INDICATOR_LED_V2_DESC"))
-                        .child(
-                            BaseButton::new("mouse-receiver-show-guide")
-                                .ml(surface::css(5.))
-                                .p_0()
-                                .h(surface::css(20.))
-                                .min_w(surface::css(99.))
-                                .gap(surface::css(4.))
-                                .text_color(Colors::accent())
-                                .focusable(false)
-                                .cursor_pointer()
-                                .child(div().underline().child(t(&spec.show_guide)))
-                                .child(img(spec.guide_icon.clone()).size(surface::css(20.)))
-                                .on_click(cx.listener(|this, _, _, cx| {
-                                    this.receiver_indicator.guide = true;
-                                    this.receiver_indicator.guide_tab = 0;
-                                    this.receiver_indicator.preview = "none";
-                                    cx.notify();
-                                })),
-                        ),
+                    BaseTextView::markdown(
+                        "mouse-receiver-description",
+                        description_markup(&t("INDICATOR_LED_V2_DESC"), &t(&spec.show_guide)),
+                    )
+                    .markdown_extensions(self.receiver_indicator.guide_markup.clone())
+                    .style(
+                        BaseTextViewStyle::default()
+                            .with_foreground(Colors::text())
+                            .with_paragraph_gap(rems(0.)),
+                    )
+                    .selectable(false)
+                    .scrollable(false)
+                    .w_full(),
                 )
                 .child(receiver_image(&spec.image, colors))
                 .child(

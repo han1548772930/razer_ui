@@ -19,6 +19,7 @@ struct Mock {
     response_prefix: u8,
     canceled: AtomicBool,
     cancel_on_send: bool,
+    cancel_after_reply: Option<(u8, u8)>,
 }
 impl Mock {
     fn new(replies: Vec<Reply>) -> Self {
@@ -29,6 +30,7 @@ impl Mock {
             response_prefix: 0,
             canceled: AtomicBool::new(false),
             cancel_on_send: false,
+            cancel_after_reply: None,
         }
     }
     fn sent(&self) -> Vec<Vec<u8>> {
@@ -62,6 +64,9 @@ impl FeatureTransport for Mock {
         report[7..9].copy_from_slice(&sent[7..9]);
         report[6] = reply.data.len() as u8;
         report[9..9 + reply.data.len()].copy_from_slice(&reply.data);
+        if self.cancel_after_reply == Some((sent[8], sent[9])) {
+            self.canceled.store(true, Ordering::Release);
+        }
         Ok(report.len())
     }
     fn metadata(&self) -> serde_json::Value {
@@ -182,6 +187,289 @@ fn active(x: u16, y: u16) -> Vec<u8> {
     value
 }
 
+const OBM_GUID: &str = "12345678-9abc-def0-1234-56789abcdef0";
+const OTHER_OBM_GUID: &str = "22345678-9abc-def0-1234-56789abcdef0";
+
+fn obm_capability() -> Capability {
+    let mut cap = required(190).unwrap().clone();
+    cap.transport = cap.transport.for_physical_product(190).unwrap();
+    cap.transport.sleep_between_out_ms = 0;
+    cap.transport.sleep_between_out_in_ms = 0;
+    cap.transport.sleep_between_in_ms = 0;
+    cap.transport.max_retry_in = 1;
+    cap.transport.max_retry_out = 1;
+    cap
+}
+
+fn source_stage_data(profile: u8, active: u8, declared: u8, xy: &[(u16, u16)]) -> Vec<u8> {
+    let mut bytes = vec![profile, active, declared];
+    for (index, (x, y)) in xy.iter().enumerate() {
+        bytes.push(index as u8 + 1);
+        bytes.extend_from_slice(&x.to_be_bytes());
+        bytes.extend_from_slice(&y.to_be_bytes());
+        bytes.extend_from_slice(&[0, 0]);
+    }
+    bytes
+}
+
+fn source_default_stage_data(profile: u8, active: u8) -> Vec<u8> {
+    // Current190's five local defaults; independent of the packer under test.
+    source_stage_data(
+        profile,
+        active,
+        5,
+        &[
+            (400, 400),
+            (800, 800),
+            (1600, 1600),
+            (3200, 3200),
+            (6400, 6400),
+        ],
+    )
+}
+
+fn obm_inventory_replies(slots: &[(u8, bool)]) -> Vec<Reply> {
+    let count = slots.len() as u8 + 1;
+    let mut ids = vec![count, 1];
+    ids.extend(slots.iter().map(|(id, _)| *id));
+    let mut replies = vec![reply(vec![count]), reply(vec![count]), reply(ids)];
+    for (slot, matching) in slots {
+        let mut metadata = vec![0; 250];
+        metadata[..16].copy_from_slice(&[
+            0x78, 0x56, 0x34, 0x12, 0xbc, 0x9a, 0xf0, 0xde, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc,
+            0xde, 0xf0,
+        ]);
+        if !matching {
+            metadata[3] = 0x22;
+        }
+        for offset in (0..250).step_by(64) {
+            let count = (250 - offset).min(64);
+            let mut block = vec![*slot];
+            block.extend_from_slice(&(offset as u16).to_be_bytes());
+            block.extend_from_slice(&(count as u16).to_be_bytes());
+            block.extend_from_slice(&metadata[offset..offset + count]);
+            replies.push(reply(block));
+        }
+    }
+    replies
+}
+
+fn obm_change() -> DpiChange {
+    DpiChange {
+        stages: Some(draft()),
+        active: None,
+        profile_guid: Some(OBM_GUID.into()),
+        initialize: false,
+    }
+}
+
+#[test]
+fn ordinary_obm_current190_reads_actual_associations_and_updates_all_unequal_matching_slots() {
+    let mut replies = vec![reply(vec![]), reply(source_default_stage_data(1, 3))];
+    replies.extend(obm_inventory_replies(&[(4, true), (2, false), (3, true)]));
+    replies.extend([
+        reply(source_default_stage_data(4, 3)),
+        reply(source_default_stage_data(3, 1)),
+        reply(vec![0x5a]),
+    ]);
+    let device = Mock::new(replies);
+    let cap = obm_capability();
+    assert!(crate::mouse_onboard::MouseOnboard::new(&device, cap.transport()).is_err());
+    let report =
+        execute_with_capability(&cap, &device, Some(&obm_change()), next(), || Ok(())).unwrap();
+    assert!(report.verified);
+    assert_eq!(
+        report
+            .profile_slots
+            .iter()
+            .map(|slot| (slot.slot_id, slot.guid.as_str()))
+            .collect::<Vec<_>>(),
+        [(4, OBM_GUID), (2, OTHER_OBM_GUID), (3, OBM_GUID)]
+    );
+    assert_eq!(report.profile_slot_writes.len(), 2);
+    let equal = &report.profile_slot_writes[0];
+    assert_eq!(equal.slot_id, 4);
+    assert!(equal.was_equal && equal.before.is_some() && equal.acknowledged.is_none());
+    let changed = &report.profile_slot_writes[1];
+    assert_eq!(changed.slot_id, 3);
+    assert!(!changed.was_equal && changed.error.is_none());
+    assert_eq!(changed.before.as_ref().unwrap().active_stage, 1);
+    assert_eq!(changed.acknowledged.as_ref().unwrap().raw_data, [0x5a]);
+    let sent = device.sent();
+    assert_eq!(&sent[2][6..9], &[1, 5, 138]);
+    assert_eq!(&sent[3][6..9], &[1, 5, 128]);
+    assert_eq!(&sent[4][6..9], &[80, 5, 129]);
+    for (index, slot) in [4, 2, 3].into_iter().enumerate() {
+        for (block, (offset, size)) in [(0u16, 69), (64, 69), (128, 69), (192, 63)]
+            .into_iter()
+            .enumerate()
+        {
+            let frame = &sent[5 + index * 4 + block];
+            assert_eq!(&frame[6..9], &[size, 5, 136]);
+            assert_eq!(frame[9], slot);
+            assert_eq!(&frame[10..12], &offset.to_be_bytes());
+            assert_eq!(&frame[12..14], &[0, 0]);
+        }
+    }
+    assert_eq!(
+        sent[17..]
+            .iter()
+            .map(|frame| (frame[8], frame[9]))
+            .collect::<Vec<_>>(),
+        [(134, 4), (134, 3), (6, 3)]
+    );
+    assert_eq!(&sent.last().unwrap()[6..12], &[38, 4, 6, 3, 3, 5]);
+    assert!(device.replies.lock().unwrap().is_empty());
+}
+
+#[test]
+fn ordinary_obm_current190_missing_guid_match_keeps_the_observed_inventory_without_writes() {
+    let mut replies = vec![reply(vec![]), reply(source_default_stage_data(1, 3))];
+    replies.extend(obm_inventory_replies(&[(2, false)]));
+    let device = Mock::new(replies);
+    let report = execute_with_capability(
+        &obm_capability(),
+        &device,
+        Some(&obm_change()),
+        next(),
+        || Ok(()),
+    )
+    .unwrap();
+    assert!(report.verified && report.profile_slot_writes.is_empty());
+    assert_eq!(report.profile_slots[0].guid, OTHER_OBM_GUID);
+    assert_eq!(device.sent().len(), 9);
+    assert!(device.replies.lock().unwrap().is_empty());
+}
+
+#[test]
+fn ordinary_obm_current190_collects_multiple_slot_errors_and_finishes_other_slots_and_active_task()
+{
+    let mut replies = vec![reply(vec![]), reply(source_default_stage_data(1, 3))];
+    replies.extend(obm_inventory_replies(&[(2, true), (3, true), (4, true)]));
+    replies.extend([
+        reply(vec![2, 1, 1, 1]),
+        reply(source_default_stage_data(3, 1)),
+        Reply {
+            status: 5,
+            data: vec![],
+        },
+        reply(source_default_stage_data(4, 1)),
+        reply(vec![]),
+        reply(active(1600, 1600)),
+    ]);
+    let device = Mock::new(replies);
+    let mut change = obm_change();
+    change.active = Some(DpiPair { x: 1600, y: 1600 });
+    let error =
+        execute_with_capability(&obm_capability(), &device, Some(&change), next(), || Ok(()))
+            .unwrap_err();
+    let error = format!("{error:#}");
+    assert!(error.contains("PID190 OBM stage synchronization failed"));
+    assert!(error.contains("truncated or belongs to another profile"));
+    assert!(error.contains("device status 5"));
+    let sent = device.sent();
+    assert_eq!(
+        sent[17..]
+            .iter()
+            .map(|frame| (frame[8], frame[9]))
+            .collect::<Vec<_>>(),
+        [(134, 2), (134, 3), (6, 3), (134, 4), (6, 4), (133, 0)]
+    );
+    assert!(device.replies.lock().unwrap().is_empty());
+}
+
+#[test]
+fn ordinary_obm_current190_cancellation_after_slot_read_or_set_ack_stops_later_tasks() {
+    for cancel_command in [134, 6] {
+        let mut replies = vec![reply(vec![]), reply(source_default_stage_data(1, 3))];
+        replies.extend(obm_inventory_replies(&[(2, true), (3, true)]));
+        replies.push(reply(source_default_stage_data(2, 1)));
+        if cancel_command == 6 {
+            replies.push(reply(vec![]));
+        }
+        let mut device = Mock::new(replies);
+        device.cancel_after_reply = Some((cancel_command, 2));
+        let mut change = obm_change();
+        change.active = Some(DpiPair { x: 1600, y: 1600 });
+        let error =
+            execute_with_capability(&obm_capability(), &device, Some(&change), next(), || {
+                ensure!(
+                    !device.canceled.load(Ordering::Acquire),
+                    "Canceled slot task"
+                );
+                Ok(())
+            })
+            .unwrap_err();
+        assert!(format!("{error:#}").contains("Canceled slot task"));
+        let sent = device.sent();
+        assert_eq!(
+            (sent.last().unwrap()[8], sent.last().unwrap()[9]),
+            (cancel_command, 2)
+        );
+        assert_eq!(sent.len(), 14 + usize::from(cancel_command == 6));
+        assert!(device.replies.lock().unwrap().is_empty());
+    }
+}
+
+#[test]
+fn ordinary_obm_current190_preserves_hidden_selection_and_disabled_declared_count() {
+    let slots = [crate::mouse_dpi_stages::ObservedProfileSlot {
+        slot_id: 2,
+        guid: OBM_GUID.into(),
+    }];
+    for enabled in [true, false] {
+        let mut draft = draft();
+        draft.enabled = enabled;
+        draft.stages[2].visible = false;
+        let table = pack_for(190, &draft).unwrap();
+        let device = Mock::new(vec![reply(source_default_stage_data(2, 3)), reply(vec![])]);
+        let result = synchronize_ordinary_profile_slots(
+            &device,
+            &obm_capability(),
+            OBM_GUID,
+            &slots,
+            &table,
+            &mut next(),
+            &|| Ok(()),
+        )
+        .unwrap();
+        assert!(!result[0].was_equal && result[0].acknowledged.is_some());
+        assert!(result[0].error.is_none());
+        let sent = device.sent();
+        assert_eq!(sent.len(), 2);
+        assert_eq!(&sent[0][6..10], &[80, 4, 134, 2]);
+        if enabled {
+            assert_eq!(&sent[1][6..12], &[31, 4, 6, 2, 0, 4]);
+            assert_eq!(&sent[1][27..31], &[12, 128, 12, 128]);
+        } else {
+            assert_eq!(&sent[1][6..19], &[10, 4, 6, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0]);
+        }
+    }
+}
+
+#[test]
+fn ordinary_obm_current190_disabled_stage_matches_the_selected_visible_row_only() {
+    let slots = [crate::mouse_dpi_stages::ObservedProfileSlot {
+        slot_id: 2,
+        guid: OBM_GUID.into(),
+    }];
+    let mut draft = draft();
+    draft.enabled = false;
+    let device = Mock::new(vec![reply(source_stage_data(2, 1, 1, &[(1600, 1600)]))]);
+    let result = synchronize_ordinary_profile_slots(
+        &device,
+        &obm_capability(),
+        OBM_GUID,
+        &slots,
+        &pack_for(190, &draft).unwrap(),
+        &mut next(),
+        &|| Ok(()),
+    )
+    .unwrap();
+    assert!(result[0].was_equal && result[0].acknowledged.is_none());
+    assert_eq!(device.sent().len(), 1);
+}
+
 #[test]
 fn stage_table_uses_profile_one_and_source_transactions_checksum_and_big_endian_records() {
     let mut table = draft();
@@ -249,7 +537,10 @@ fn hidden_row_unlink_retains_source_active_zero_in_both_staging_modes() {
         (0, 1)
     );
     assert!(packed.records.is_empty());
-    assert_eq!(stage_payload(&packed), vec![1, 0, 1, 0, 0, 0, 0, 0, 0, 0]);
+    assert_eq!(
+        stage_payload(&packed, 1),
+        vec![1, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+    );
 }
 
 #[test]
