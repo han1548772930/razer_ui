@@ -1,4 +1,4 @@
-//! Source xa/Gr countdown and recorder state, backed by DLL recorder events.
+//! Source xa/Gr countdown and recorder state, fed by the retained recording actor.
 use super::recording_actor::{Command, Update};
 use super::*;
 

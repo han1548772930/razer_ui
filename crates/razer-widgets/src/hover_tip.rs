@@ -29,8 +29,7 @@ use gpui_kit::{prelude::FluentBuilder as _, *};
 use std::time::Duration;
 
 /// 源组件还带 `bottom-left-edge` / `bottom-right-edge` / `top-left` / `top-right` 等位置；
-/// 这里保留当前源已经用到或即将用到的四种，尚未接入的位置不臆造页面。
-#[allow(dead_code)]
+/// 调用方按对应控件的源码位置选择对齐方式。
 #[derive(Clone, Copy, PartialEq)]
 pub enum SourceTipPlacement {
     /// `.tooltip-razer.bottom-left`：贴目标下沿、右缘对齐。

@@ -1,5 +1,4 @@
 //! Current host HD/_checkUSBDetail identity projection, without hardware state.
-//! See docs/re/device-identity-current-contract.md for source boundaries.
 #[cfg(test)]
 use anyhow::{Context as _, ensure};
 use serde::Deserialize;

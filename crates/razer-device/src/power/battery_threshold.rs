@@ -1,13 +1,13 @@
 //! Current direct-mouse critical battery threshold (low-power mode setting).
 //! The source sends setCriticalLevel, then confirms getCriticalLevel separately.
-//! This changes the active device setting; profile/task-cache persistence is not
-//! implemented here. See docs/re/battery-threshold-current.md for product gates.
+//! This changes the active device setting; the caller owns profile/task-cache
+//! persistence.
 use crate::{backend::FeatureTransport, device_reads::DeviceReadCapability, feature_exchange};
 use anyhow::{Context as _, ensure};
 use serde::{Deserialize, Serialize};
 
-/// Each product was rechecked against its current official HTML/main manifest,
-/// effective class, battery feature, command builders and setter/readback task.
+/// Products whose selected class, battery feature and command builders expose
+/// this setter/readback task.
 /// Receivers, BLE and unknown classes must not inherit this list automatically.
 pub const AUDITED_PRODUCTS: &[u32] = &[
     124, 143, 148, 156, 165, 167, 170, 175, 180, 182, 184, 185, 192, 196, 204, 211, 218, 222, 226,

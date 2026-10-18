@@ -1,7 +1,6 @@
 //! Current 190 mouse and 678/679/688 analog-keyboard submission preparation.
 //! This is source-derived profile/engine input normalization. A prepared plan
 //! does not acknowledge persistence, engine publication, or a hardware write.
-//! See docs/re/mapping-submission-current.md for the still-missing executors.
 use anyhow::{Context as _, ensure};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};

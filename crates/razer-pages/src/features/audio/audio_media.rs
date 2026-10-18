@@ -393,7 +393,7 @@ impl AudioMedia {
                                 Err(error) => this.error = Some(format!("{error:#}")),
                             }
                         }
-                        if this.start_requested {
+                        if this.start_requested && this.error.is_none() {
                             if let Err(error) = session.play() {
                                 this.error = Some(format!("{error:#}"));
                             }

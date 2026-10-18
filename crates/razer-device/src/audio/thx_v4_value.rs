@@ -1,8 +1,6 @@
-//! Current THX V4 native JSON/Property conversion, reconstructed statically.
+//! THX V4 native JSON/Property conversion.
 //!
 //! The native converters are registered at RVAs 0x0FCE00 / 0x0FCF70.
-//! Evidence: `docs/re/evidence/thx-v4-converters-current.json` and the live
-//! IDA/Hex-Rays bundle `rea-thx-v4-converters-current.json`. No target executes.
 //! These native compatibility conversions are not property observation checks:
 //! acknowledged Bool reads must use `Property::observed_bool` first.
 use crate::thx_v4::{ThxPropertyRequest, ThxPropertyType};

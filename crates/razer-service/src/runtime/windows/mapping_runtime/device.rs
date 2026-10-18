@@ -163,6 +163,7 @@ impl<E: Executor> Worker<E> {
                     }
                     Err(error) => errors.push(format!("{error:#}")),
                 }
+                errors.extend(self.composites.take_diagnostics());
             } else if let Err(error) =
                 self.executor
                     .execute(resolved, tick, cleanup, contribution_id)

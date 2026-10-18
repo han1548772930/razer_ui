@@ -76,8 +76,8 @@ fn independent_descriptors_pin_each_product_gate_and_transport_without_brightnes
             ),
             (5, 5, 5)
         );
-        // The original settings-based path remains its original six-product
-        // audit. The independent analog descriptor carries no brightness flag.
+        // The settings capability is limited to its six registered products.
+        // The independent analog descriptor carries no brightness flag.
         assert!(capability(pid).is_none());
     }
     for pid in [678, 679, 688, 716, 724, 727] {

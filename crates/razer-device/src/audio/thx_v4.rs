@@ -1,7 +1,6 @@
 //! Current THX V4 JSON semantics and six BlackShark spatial submission chains.
 //!
-//! Source: `docs/re/evidence/thx-source-current.json`. Native property packing:
-//! `rea-thx-v4-static-current.json`, SetProperty RVA 0x17de80, inference 0x17dc30,
+//! Native property packing: SetProperty RVA 0x17de80, inference 0x17dc30,
 //! GetProperty 0x17d4d0. This is an OS-independent logical protocol; the external
 //! driver/service transport uses the source-audited local RPC/HID adapters.
 //! No vendor DLL is loaded here.

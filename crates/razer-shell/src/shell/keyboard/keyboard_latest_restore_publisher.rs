@@ -1,15 +1,16 @@
-//! One worker owns the native756 mapping process, coordinated execution gate,
-//! source callbacks and cleanup acknowledgement through transport destruction.
+//! The keyboard mapping publisher retains its shared service scope, execution
+//! gate and confirmed cleanup through transport destruction.
 use super::*;
 use anyhow::{Context as _, ensure};
-use razer_ipc::{ServiceClient, ServiceRequest, mapping_control};
+use razer_ipc::{ServiceRequest, mapping_control};
+use razer_service::mapping::Client;
 
 pub(super) trait Transport {
     fn request(&mut self, request: ServiceRequest) -> anyhow::Result<Value>;
 }
-impl Transport for ServiceClient {
+impl Transport for Client {
     fn request(&mut self, request: ServiceRequest) -> anyhow::Result<Value> {
-        ServiceClient::request(self, request)
+        Client::request(self, request)
     }
 }
 
@@ -29,7 +30,7 @@ fn shutdown(client: &mut impl Transport) -> anyhow::Result<()> {
     })
 }
 
-pub(super) struct Publisher<T: Transport = ServiceClient> {
+pub(super) struct Publisher<T: Transport = Client> {
     client: Option<T>,
     owner: String,
     control: mapping_control::Owner,
@@ -40,7 +41,7 @@ impl Publisher {
     pub(super) fn start(container: &str) -> anyhow::Result<Self> {
         Self::start_with(
             container,
-            ServiceClient::spawn,
+            Client::spawn,
             mapping_control::Registry::global(),
         )
     }

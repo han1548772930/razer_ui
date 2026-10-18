@@ -6869,6 +6869,9 @@ def prepare_resource_publication(acquisition, resources, publication_manifest):
         optional = {"inline_react_svg", "svg_group_visibility", "muted_video_animation"}
         if not isinstance(request, dict) or not required <= set(request) or set(request) - required - optional:
             raise ValueError("Publication mapping requires display/table and supported static transformations")
+        if "muted_video_animation" in request and (request["muted_video_animation"] is not True
+                or "inline_react_svg" in request or "svg_group_visibility" in request):
+            raise ValueError("Muted video publication requires one explicit, exclusive transformation")
         source = safe(ROOT / source_name)
         if not source.is_relative_to(input_root) or (ROOT / source_name).is_symlink():
             raise ValueError("Resource publication must use retained original inputs")

@@ -64,6 +64,7 @@ fn current_executable(event: &Value) -> bool {
 }
 fn cleanup(
     client: &mut ServiceClient,
+    mapping: &mut razer_service::mapping::Client,
     target: &Target,
     initialized: &mut bool,
     lifecycle: &mut Option<MutexGuard<'static, ()>>,
@@ -77,7 +78,7 @@ fn cleanup(
     // Ea.Z resets local state before enabling mappings and releasing redirects.
     modal_reply(replies, epoch, Reply::Capture(false));
     client.set_request_guard(Arc::new(AtomicBool::new(true)));
-    let capture = client
+    let capture = mapping
         .request(ServiceRequest::StopMappingKeyCapture)
         .map_err(|error| anyhow::anyhow!("恢复键盘映射及输入重定向：{error:#}"));
     let stop = match route::execute(client, target.clone(), Operation::Stop) {
@@ -160,6 +161,7 @@ pub(super) fn run(
 ) {
     let result = (|| -> anyhow::Result<()> {
         let mut client = ServiceClient::spawn()?;
+        let mut mapping = razer_service::mapping::Client::spawn()?;
         client.set_request_guard(valid.clone());
         let mut initialized = false;
         let mut lifecycle = None;
@@ -260,6 +262,7 @@ pub(super) fn run(
                     if !desired && initialized {
                         cleanup(
                             &mut client,
+                            &mut mapping,
                             &target,
                             &mut initialized,
                             &mut lifecycle,
@@ -290,6 +293,7 @@ pub(super) fn run(
                     if !desired && initialized {
                         cleanup(
                             &mut client,
+                            &mut mapping,
                             &target,
                             &mut initialized,
                             &mut lifecycle,
@@ -315,7 +319,7 @@ pub(super) fn run(
                                 })
                                 .map_err(anyhow::Error::msg)?,
                             );
-                            let ready = client.request(
+                            let ready = mapping.request(
                                 ServiceRequest::StartKeyboardCalibrationCapture {
                                     product_id: observed.product_id(),
                                     container_id: observed.container().into(),
@@ -337,7 +341,7 @@ pub(super) fn run(
                         }
                     }
                     if initialized {
-                        let events = client.request(ServiceRequest::MappingKeyCaptureEvents)?;
+                        let events = mapping.request(ServiceRequest::MappingKeyCaptureEvents)?;
                         for event in events["events"]
                             .as_array()
                             .ok_or_else(|| anyhow::anyhow!("校准输入事件列表缺失"))?
@@ -372,6 +376,7 @@ pub(super) fn run(
             }
             if let Err(error) = cleanup(
                 &mut client,
+                            &mut mapping,
                 &target,
                 &mut initialized,
                 &mut lifecycle,
@@ -387,6 +392,10 @@ pub(super) fn run(
         if let Err(error) = client.request(ServiceRequest::Shutdown) {
             diagnostic(&replies, format!("清理键盘校准服务：{error:#}"))
         }
+        if let Err(error) = mapping.request(ServiceRequest::Shutdown) {
+            diagnostic(&replies, format!("Mapping capture cleanup: {error:#}"));
+        }
+        drop(mapping);
         drop(client);
         if let Some(scope) = suppression.as_mut() {
             if let Err(error) = scope.release() {

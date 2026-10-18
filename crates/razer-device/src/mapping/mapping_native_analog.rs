@@ -1,9 +1,8 @@
-//! Native analog mapping curves and contribution state recovered with IDA 8.3.
+//! Native analog mapping curves and contribution state.
 //!
 //! JSON is confined to the original mapping-engine input boundary. Curve
 //! compilation and event evaluation use typed points, tables and device state.
 //! The tables are native mapping data, not HID reports or a driver write ACK.
-//! Evidence: docs/re/mapping-native-analog-current.md.
 
 use anyhow::{Context as _, bail, ensure};
 use serde_json::Value;

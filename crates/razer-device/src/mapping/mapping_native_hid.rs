@@ -1,5 +1,5 @@
 //! Descriptor-selected hardware HID input, separate from the mapping driver
-//! stream. IDA 8.3 evidence: docs/re/mapping-native-hid-current.md.
+//! stream.
 //!
 //! Report IDs are supplied by the current native `reportIDs` descriptor. No
 //! product, report ID, capture or device capability is inferred here. The three
@@ -231,7 +231,7 @@ pub struct NativeHidAnalogReport {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum NativeHidPayload {
     Analog(NativeHidAnalogReport),
-    /// Dispatch is known, but the corresponding decoder is still a gap.
+    /// Retains a source-selected report kind with no payload decoder in this module.
     Unsupported {
         kind: NativeHidReportKind,
     },
@@ -624,8 +624,8 @@ impl NativeHidRuntime {
         // 0x7EB92 uses a different held set (+1896), and does not insert into
         // the analog missing-key release table (+1472). Missing signed entries
         // alone therefore cannot establish a native release. Explicit zero or
-        // below-threshold signed entries do; cross-handler native cleanup is a
-        // separate caller branch whose registration remains unresolved.
+        // below-threshold signed entries do. Cross-handler cleanup requires its
+        // separate source registration and is not inferred from missing entries.
         if !updates.is_empty() {
             result.output = Some(
                 runtime

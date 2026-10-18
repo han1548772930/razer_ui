@@ -17,9 +17,8 @@
 //! vendor DLL. Submission/completion remains the transport concern of the
 //! mapping transport. Failed primary requests can be passed to the recovered
 //! operating-system fallback; its result stays separate from driver delivery.
-//! Keyboard executor timers and external path discovery
-//! require their own caller implementation; these packets represent an input
-//! already dispatched to the driver.
+//! The macro keyboard executor owns repeat timers; the platform adapter owns
+//! driver discovery. These packets encode inputs selected by those owners.
 
 use crate::mapping_native_output::{
     CompletionPoll, DriverOutputError, MappingOutputTransport, ReportDelivery,

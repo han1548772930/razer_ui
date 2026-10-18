@@ -278,7 +278,6 @@ impl ChromaSettings {
     }
     /// Accept only the current host's WDL/storage and Sensa feature observations.
     /// Local checkbox drafts never supply these service facts.
-    #[allow(dead_code)]
     pub fn observe(
         &mut self,
         switching: bool,

@@ -1,7 +1,6 @@
 //! Local device protocols, service adapters and owned background sessions.
 //! Remaining vendor implementations and analysis evidence are tracked separately
 //! in the unified workflow.
-#![allow(dead_code)]
 #[path = "audio/audio_notification.rs"]
 pub mod audio_notification;
 #[path = "audio/audio_router.rs"]

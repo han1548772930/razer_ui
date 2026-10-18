@@ -2,10 +2,7 @@
 //!
 //! The SHA-pinned Pro class uses topology node 3 and an eight-byte ISP command
 //! through IKsControl::KsProperty (SET, 10 ms, GET). These are native wire
-//! requests, not calls into a vendor DLL. IDA/Hex-Rays evidence and the current
-//! Complete native bodies and class dispatch are retained in the analysis
-//! corpus. `camera-extension-export-semantics.json` records supplemental
-//! native exports independently of their current JavaScript/UI callers.
+//! requests supplied to the caller-owned transport. Vendor code is not loaded.
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};

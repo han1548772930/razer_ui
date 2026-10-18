@@ -18,6 +18,8 @@ pub struct Dispatch {
 pub struct State {
     cascades: BTreeMap<(String, String), Resolved<Output>>,
     dpad: VecDeque<(String, String)>,
+    diagnostics: Vec<String>,
+    omitted_diagnostics: u64,
 }
 
 impl State {
@@ -40,6 +42,26 @@ impl State {
     pub fn clear(&mut self) {
         self.cascades.clear();
         self.dpad.clear();
+    }
+
+    pub fn take_diagnostics(&mut self) -> Vec<String> {
+        let mut errors = std::mem::take(&mut self.diagnostics);
+        if self.omitted_diagnostics != 0 {
+            errors.push(format!(
+                "{} additional composite errors",
+                self.omitted_diagnostics
+            ));
+            self.omitted_diagnostics = 0;
+        }
+        errors
+    }
+
+    fn diagnostic(&mut self, error: String) {
+        if self.diagnostics.len() < 64 {
+            self.diagnostics.push(error);
+        } else {
+            self.omitted_diagnostics = self.omitted_diagnostics.saturating_add(1);
+        }
     }
 
     fn cascade(
@@ -136,11 +158,13 @@ impl State {
             self.dpad.push_back((input_id.clone(), condition.clone()));
             if self.dpad.len() >= 2 {
                 let old = self.dpad.pop_front().expect("D-pad previous pair exists");
-                let release = held(&old.0)
-                    .context("D-pad previous input has no retained mapping")?
-                    .release;
-                if let Some(dispatch) = dpad_named(&release, &old.0, &old.1)? {
-                    dispatches.push(dispatch);
+                match held(&old.0) {
+                    Some(previous) => match dpad_named(&previous.release, &old.0, &old.1) {
+                        Ok(Some(dispatch)) => dispatches.push(dispatch),
+                        Ok(None) => (),
+                        Err(error) => self.diagnostic(format!("{error:#}")),
+                    },
+                    None => self.diagnostic("D-pad previous input has no retained mapping".into()),
                 }
             }
         }
@@ -162,8 +186,10 @@ impl State {
             if !other.is_empty()
                 && let Some(remaining) = held(&other)
             {
-                if let Some(dispatch) = dpad_named(&remaining.make, &other, "")? {
-                    dispatches.push(dispatch);
+                match dpad_named(&remaining.make, &other, "") {
+                    Ok(Some(dispatch)) => dispatches.push(dispatch),
+                    Ok(None) => (),
+                    Err(error) => self.diagnostic(format!("{error:#}")),
                 }
                 self.dpad.push_back((other, String::new()));
             }

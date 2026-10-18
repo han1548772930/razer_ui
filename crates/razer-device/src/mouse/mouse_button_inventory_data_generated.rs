@@ -1,5 +1,4 @@
-// Generated from current production input defaults and actual OBM initialization.
-// tools/audit-mouse-button-inventory-current.cjs; no runtime JSON parsing.
+// Fixed input defaults and firmware assignments used by OBM initialization.
 pub const AUDITED_BUTTON_INVENTORIES: &[MouseButtonInventoryDescriptor] = &[
     MouseButtonInventoryDescriptor {
         product_id: 170,

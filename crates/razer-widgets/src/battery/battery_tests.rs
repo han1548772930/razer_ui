@@ -1,6 +1,6 @@
-//! 电量档位与原版状态机的逐值对照（只编译、不运行）。
+//! 电量档位与原版状态机的纯函数逐值对照。
 //!
-//! 依据：`.ref/devices/104/static/js/main.9b94769e.js` 的 `Sa`／`qe`。
+//! 依据：`.analysis/inputs/frontend/mouse-104-current/raw/apps.razer.com/synapse/products/104/ui/static/js/main.9b94769e.js` 的 `Sa`／`qe`。
 // 只取需要的符号：`use super::*` 会把父模块的 `gpui_kit::*` 一并带进来，
 // 其中的 `test` 会遮蔽内置的 `#[test]` 属性（展开递归超限）。
 use super::{badge, bucket};

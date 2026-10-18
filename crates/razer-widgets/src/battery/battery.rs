@@ -1,14 +1,14 @@
 //! 设备页右上角电量（`.right .battery` 里的 `.batt` 图标与百分比）。
 //!
-//! # 依据（全部来自当前源码，未做推测）
+//! # 源码依据
 //!
-//! 1. 渲染条件与结构 —— `.ref/devices/100/static/js/main.1734869e.js`：
+//! 1. 渲染条件与结构 —— `.analysis/inputs/frontend/mouse-100-current/raw/apps.razer.com/synapse/products/100/ui/static/js/main.1734869e.js`：
 //!    `this.props.hasBattery && undefined !== this.props.batteryState` 才渲染
 //!    `div.battery`（`role="img" id="battery-level-tips"`），子节点顺序是
 //!    先 `<span>{level>=0 ? "{level} %" : "-"}</span>`、再
 //!    `<div class={this.getBatteryState()}/>`，最后是悬停才挂载的 tooltip；
 //!    `level >= 0 && level <= 10` 时 span 额外带 `low-batt` 类。
-//! 2. 状态机 —— `.ref/devices/104/static/js/main.9b94769e.js` 的
+//! 2. 状态机 —— `.analysis/inputs/frontend/mouse-104-current/raw/apps.razer.com/synapse/products/104/ui/static/js/main.9b94769e.js` 的
 //!    `chargingStatus → battName/battTips` 映射（下面的 [`badge`]）：
 //!    `off` → `batt batt-off`／`BATTERY_OFF`；`Charging` 且 `level>=99` →
 //!    `batt charging100`／`BATTERY_CHARGED_FULL`；`Charging` → `batt charging`／
@@ -18,7 +18,7 @@
 //!    分档函数：`level <= 0` → `batt batt-disconnected`；`level === 10` → 10；
 //!    `10 < level < 20` → 20；其余 `10 * floor(level / 10)`；暂停充电再加 `paused`。
 //!    负载里没有 `chargingStatus` 时 `batteryState` 为 `undefined`，即整块不渲染。
-//! 3. 样式 —— `.ref/devices/100/static/css/main.dd229426.css`：
+//! 3. 样式 —— `.analysis/inputs/frontend/mouse-100-current/raw/apps.razer.com/synapse/products/100/ui/static/css/main.dd229426.css`：
 //!    `.right .battery{align-items:center;color:#ccc;display:flex;font-size:14px;height:46px;justify-content:center}`、
 //!    `.battery .low-batt{color:#c8323c}`、
 //!    `.nav-tabs .batt{background-position:50%;background-repeat:no-repeat;background-size:20px;height:26px;margin:0 5px;width:26px}`、
@@ -28,7 +28,7 @@
 //!    `.batt.batt-N.paused{…icon_battery_paused.svg#N…}`、
 //!    `.batt.batt-warning{…icon_battery_error…}`。
 //!    暂停档位在原文件里是 20×220 图标条上的 `view` 片段，资源准备阶段已按原
-//!    `viewBox` 裁成 `battery-paused-N.svg`（见 `tools/prepare-resources.py`）。
+//!    `viewBox` 裁成 `battery-paused-N.svg`（见 `tools/resource-mappings.json`）。
 //! 4. 文案 —— `BATTERY_OFF`／`BATTERY_CHARGING`／`BATTERY_CHARGED_FULL`／
 //!    `BATTERY_PERCENT`（含 `{{level}}` 占位）／`BATTERY_ERROR_TIPS`，
 //!    由已安装的本地词表目录库读取，与源码里的 key 同名。
@@ -166,9 +166,9 @@ fn bucket_badge(level: i32, paused: bool) -> (&'static str, &'static str, String
 }
 
 /// 当前源里把 `hideBattValue` 传成 `!0` 的产品（例如
-/// `.ref/devices/1330/static/js/main.f0797abf.js` 的产品工作区
+/// `.analysis/inputs/frontend/audio-1330-current/raw/apps.razer.com/synapse/products/1330/ui/static/js/main.f0797abf.js` 的产品工作区
 /// `hideBattValue:!0`）。原版这是**产品代码里写死的 prop**，不是设备数据，
-/// 所以这里按产品 id 列表；`tools/audit-battery-indicator.cjs` 会从当前包重算这张表。
+/// 因此按产品 id 选择是否显示百分比。
 /// 这些产品的顶栏只显示电量图标：不渲染百分比 `<span>`、不挂载悬停提示，
 /// 并按 `.hideBattValue{margin-right:17px}` 加右边距。
 const HIDE_BATTERY_VALUE: &[u32] = &[

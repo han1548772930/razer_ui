@@ -1,5 +1,5 @@
 //! Current 164/241 TaskRunner brightness: profile 1, receiver region 15.
-//! Source: receiver-brightness-current-evidence.json. No OS or vendor DLL.
+//! The retained Feature transport owns platform I/O and actual acknowledgements.
 use super::{backend::FeatureTransport, receiver_capabilities::ReceiverCapability};
 use crate::receiver_feature_channel::{WriteProgress, exchange};
 use anyhow::{Context as _, ensure};

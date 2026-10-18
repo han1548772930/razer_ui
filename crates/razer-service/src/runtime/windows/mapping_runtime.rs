@@ -231,15 +231,15 @@ impl State {
         self.completion_callers.insert(id, request.caller);
         let execution = match request.payload.program {
             Program::Macro => ExecutionProgram::Macro(Execution::start(
-                &self.library.read().map_err(|_| anyhow::anyhow!("Macro library lock poisoned"))?,
+                &*self.library.read().map_err(|_| anyhow::anyhow!("Macro library lock poisoned"))?,
                 &request.guid, request.payload.repeat)?),
             Program::Phased { delay_ms } => ExecutionProgram::Advanced(
                 razer_device::macro_runtime::advanced::Execution::phased(
-                    &self.advanced.read().map_err(|_| anyhow::anyhow!("Advanced macro library poisoned"))?,
+                    &*self.advanced.read().map_err(|_| anyhow::anyhow!("Advanced macro library poisoned"))?,
                     &request.guid, delay_ms)?),
             Program::Turbo { delay_ms } => ExecutionProgram::Advanced(
                 razer_device::macro_runtime::advanced::Execution::turbo(
-                    &self.advanced.read().map_err(|_| anyhow::anyhow!("Advanced macro library poisoned"))?,
+                    &*self.advanced.read().map_err(|_| anyhow::anyhow!("Advanced macro library poisoned"))?,
                     &request.guid, request.payload.repeat, delay_ms)?),
         };
         let clipboard = self.clipboard_client()?;

@@ -1,7 +1,7 @@
 //! Original migration root `OD -> wg -> mg/pg/ct/yg/hg`.
 //!
-//! The DLL-backed scanner/import queue is not connected. Preview records and
-//! callbacks stay inside this entity and never enter device/profile storage.
+//! Preview records and callbacks are entity-local; this view does not publish
+//! them as imported device profiles.
 use gpui_kit::base::{
     Button as BaseButton, Checkbox as BaseCheckbox, CheckboxState, Progress, ProgressIndicator,
     ProgressTrack,

@@ -266,9 +266,6 @@ pub fn run_worker() -> i32 {
                 }
             }
         };
-        #[cfg(windows)]
-        let fatal = runtime.is_poisoned();
-        #[cfg(not(windows))]
         let fatal = false;
         let mut response = match result {
             Ok(data) => ResponseEnvelope {

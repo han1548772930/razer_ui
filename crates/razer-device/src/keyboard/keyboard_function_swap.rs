@@ -1,6 +1,5 @@
 //! Current Joro wired function-key swap. The Pro Type Ergo single-profile
 //! caller skips this command and must use its separate mapping/storage chain.
-//! See docs/re/keyboard-function-swap-current-source.json for current evidence.
 use crate::{
     backend::FeatureTransport, feature_exchange, keyboard_settings,
     keyboard_settings::KeyboardSettingsCapability,

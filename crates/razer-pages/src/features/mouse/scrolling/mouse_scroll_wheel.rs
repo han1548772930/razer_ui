@@ -114,9 +114,8 @@ pub(super) fn source_spec(product_id: u32) -> Option<&'static ScrollWheelSpec> {
 }
 
 /// Projections of the six current reducer observation actions, not UI write acknowledgements.
-/// A real transport publisher is still required. This module never invokes a device API.
+/// The page consumes transport observations separately from its local editing state.
 #[derive(Clone)]
-#[allow(dead_code)]
 pub enum ScrollWheelObservation {
     Mode(String),
     DisabledModes(Vec<String>),

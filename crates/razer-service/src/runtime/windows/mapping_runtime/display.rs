@@ -15,7 +15,7 @@ use windows::{
             RPC_C_IMP_LEVEL_IMPERSONATE,
         },
         Ole::{SafeArrayGetDim, SafeArrayGetElement, SafeArrayGetLBound, SafeArrayGetUBound},
-        Variant::{VARIANT, VT_ARRAY, VT_BSTR, VT_I4, VT_UI1, VT_UI4, VariantClear},
+        Variant::{VARIANT, VT_ARRAY, VT_BSTR, VT_UI1, VariantClear},
         Wmi::{
             IWbemClassObject, IWbemLocator, IWbemServices, WBEM_FLAG_FORWARD_ONLY,
             WBEM_FLAG_RETURN_IMMEDIATELY, WBEM_GENERIC_FLAG_TYPE, WbemLocator,
@@ -163,14 +163,6 @@ impl Property {
             Ok(values)
         }
     }
-    fn return_code(&self) -> Result<u32> {
-        let inner = unsafe { &self.0.Anonymous.Anonymous };
-        match inner.vt {
-            VT_UI4 => Ok(unsafe { inner.Anonymous.ulVal }),
-            VT_I4 => Ok(unsafe { inner.Anonymous.lVal } as u32),
-            _ => anyhow::bail!("WMI method return code is not uint32"),
-        }
-    }
 }
 fn property(object: &IWbemClassObject, name: PCWSTR) -> Result<Property> {
     let mut value = Property(VARIANT::default());
@@ -258,15 +250,13 @@ fn set_brightness(service: &IWbemServices, value: u8) -> Result<()> {
             WBEM_GENERIC_FLAG_TYPE(0),
             None,
             &parameters,
-            Some(&mut result),
             None,
+            Some(&mut result),
         )?;
-        let code = property(
-            &result.context("WMI omitted brightness method result")?,
-            w!("ReturnValue"),
-        )?
-        .return_code()?;
-        ensure!(code == 0, "WmiSetBrightness returned {code}");
+        let status = result
+            .context("WMI omitted brightness call result")?
+            .GetCallStatus(0)?;
+        ensure!(status == 0, "WmiSetBrightness call status: {status:#x}");
     }
     Ok(())
 }

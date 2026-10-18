@@ -194,8 +194,8 @@ fn source_gates_do_not_expand_from_shared_methods() {
                                 && source["sha256"].as_str().unwrap().len() == 64
                         })
                 );
-                // Original captures retain Wakaru validator limitations. The
-                // current query parses original AST bytes independently.
+                // Capture failures remain explicit even when the independent
+                // query successfully parses the retained source bytes.
                 assert!(layer["capture_failures"].is_array());
             }
         }

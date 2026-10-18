@@ -163,3 +163,18 @@ fn dpad_no_matching_condition_produces_no_output() {
             .is_empty()
     );
 }
+
+#[test]
+fn dpad_missing_previous_mapping_retains_error_and_dispatches_new_output() {
+    let mut state = State::default();
+    let first = Output::Dpad(branches(None, marker(1), marker(2)));
+    state.apply(resolved(input(30), first), |_| None).unwrap();
+    let next = Output::Dpad(branches(None, marker(3), marker(4)));
+    let selected = state.apply(resolved(input(31), next), |_| None).unwrap();
+    assert_eq!(selected.iter().map(flag).collect::<Vec<_>>(), [3]);
+    assert_eq!(
+        state.take_diagnostics(),
+        ["D-pad previous input has no retained mapping"]
+    );
+    assert!(state.take_diagnostics().is_empty());
+}

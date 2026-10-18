@@ -1,7 +1,7 @@
 //! Current RzAudioUtil 1.0.3.1 AudioEnumerator semantics, independent of COM.
 //!
-//! Evidence: docs/re/audio-util-enumerator-current-evidence.json. These are
-//! system audio endpoints, not USB products or Mixer jack identifiers.
+//! These are system audio endpoints, separate from USB products and Mixer
+//! jack identifiers.
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 

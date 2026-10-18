@@ -12,9 +12,8 @@ const PLAYBACK: &str = "/device/streamMixerSettings/playbackMixDevice";
 const PAGE: &str = "STREAM_MIXER_HEADER";
 
 /// Typed projections of the three current MW reducer actions (see receipts).
-/// A transport adapter must supply real observations; no publisher is connected yet.
+/// Device choices and mixer state are supplied by the transport observation owner.
 #[derive(Clone)]
-#[allow(dead_code)]
 pub enum StreamMixerObservation {
     ActiveMixer(bool),
     PlaybackDevices(Vec<String>),

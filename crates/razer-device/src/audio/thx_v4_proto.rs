@@ -1,6 +1,6 @@
 //! THX V4 protobuf declarations recovered from current shipped PE bytes.
 //!
-//! Evidence: `docs/re/evidence/thx-v4-protobuf-current.json`, descriptor RVA
+//! Native descriptor RVA
 //! 0xB61520, SHA-256 03dc9f18e6a984a3df19dcd2113adef733352ab1035ac599014ef96bb553876f.
 //! This module performs no I/O. JSON conversion and service availability are
 //! separate from the observed descriptor. Size/field/depth limits are Rust

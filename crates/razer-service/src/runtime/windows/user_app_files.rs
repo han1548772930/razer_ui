@@ -131,14 +131,7 @@ impl NativeRuntime {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{Callback2, callback2};
     use super::*;
-    use std::{
-        ffi::{CStr, CString, c_char},
-        sync::Mutex,
-    };
-
-    static WRITTEN: Mutex<Option<(String, String, Vec<u8>)>> = Mutex::new(None);
 
     #[test]
     fn subscriptions_deduplicate_and_end_with_their_last_owner() {
@@ -194,139 +187,15 @@ mod tests {
         assert!(runtime.app_files.events.is_empty());
         runtime.app_files.clear();
         assert!(runtime.app_files.owners.is_empty());
-        assert!(runtime.simple.is_none());
     }
 
     #[test]
-    #[ignore = "requires audited original DLL; use tools/workspace.py"]
-    fn connected_user_apps_read_only() {
-        use super::super::{Callback3, Initialize, callback0, callback3};
-        use crate::dll::EngineLibrary;
-        use std::mem::ManuallyDrop;
-        type ReadApps = unsafe extern "C" fn(*const c_char, Callback3);
-
-        let path = std::env::var_os("RAZER_VERIFIED_SIMPLE_SERVICE")
-            .expect("the maintained verifier must supply the audited original");
-        let mut original = NativeRuntime::new();
-        original.simple = Some(ManuallyDrop::new(
-            EngineLibrary::load(std::path::Path::new(&path)).unwrap(),
-        ));
-        let compared = (|| -> anyhow::Result<Vec<Value>> {
-            original.simple()?;
-            let call: ReadApps = unsafe { original.simple_symbol("simpleGetUserApps")? };
-            let root = razer_platform::native_paths::user_apps_directory()?;
-            let mut results = Vec::new();
-            for name in ["", "ChromaApp", "chromaapp", "__razer_inventory_missing__"] {
-                let before = razer_storage::user_app_files::read(&root, name)?;
-                let argument = CString::new(name)?;
-                let source =
-                    original.call_source(|| unsafe { call(argument.as_ptr(), callback3) })?;
-                let after = razer_storage::user_app_files::read(&root, name)?;
-                let source_value = source.value.unwrap_or_default();
-                let parse = |text: &str| -> anyhow::Result<Value> {
-                    if text.is_empty() {
-                        Ok(Value::Null)
-                    } else {
-                        Ok(serde_json::from_str(text)?)
-                    }
-                };
-                let unchanged = serde_json::to_value(&before)? == serde_json::to_value(&after)?;
-                let matched = source.success == before.result
-                    && source.reason == before.reason
-                    && parse(&source_value)? == parse(&before.user_apps)?;
-                results.push(serde_json::json!({
-                    "name":name,"rust":before,
-                    "original":{"result":source.success,"reason":source.reason,"userApps":source_value},
-                    "input_unchanged":unchanged,"matched":matched
-                }));
-            }
-            Ok(results)
-        })();
-        let cleanup = if original.simple_initialized && !original.poisoned {
-            (|| -> anyhow::Result<()> {
-                let shutdown: Initialize =
-                    unsafe { original.simple_symbol("simpleServiceShutdown")? };
-                original.call(|| unsafe { shutdown(callback0) })?;
-                original.simple_initialized = false;
-                Ok(())
-            })()
-        } else {
-            Err(anyhow::anyhow!(
-                "original did not reach a callable initialized state"
-            ))
-        };
-        let compared = compared.map_err(|error| format!("{error:#}"));
-        let cleanup = cleanup.map_err(|error| format!("{error:#}"));
-        println!(
-            "RAZER_APPS_RESULT {}",
-            serde_json::json!({"comparisons":compared,"cleanup":cleanup})
-        );
-        assert!(cleanup.is_ok(), "original cleanup must complete");
-        for row in compared.unwrap() {
-            assert_eq!(
-                row["input_unchanged"], true,
-                "installed files changed during the comparison"
-            );
-            assert_eq!(row["matched"], true, "direct observation differs: {row}");
-        }
-    }
-
-    unsafe extern "C" fn mock_add(
-        folder: *const c_char,
-        path: *const c_char,
-        bytes: *const u8,
-        length: u32,
-        callback: Callback2,
-    ) {
-        let args = (
-            unsafe { CStr::from_ptr(folder) }
-                .to_string_lossy()
-                .into_owned(),
-            unsafe { CStr::from_ptr(path) }
-                .to_string_lossy()
-                .into_owned(),
-            unsafe { std::slice::from_raw_parts(bytes, length as usize) }.to_vec(),
-        );
-        *WRITTEN.lock().unwrap() = Some(args);
-        unsafe { callback(false, c"Error: This PE file is not trusted".as_ptr()) };
-    }
-
-    #[test]
-    fn simulated_native_write_retains_bytes_and_failed_callback_without_poisoning() {
-        // No DLL loading or export dispatch: the callback is produced entirely
-        // by this Rust mock. Runtime construction only inspects local paths.
-        let mut runtime = NativeRuntime::new();
-        let folder = c"Common";
-        let path = c"engine.dll";
-        let bytes = [0x4d, 0x5a, 0, 0xff, 0];
-        let reply = runtime
-            .call_source(|| unsafe {
-                mock_add(
-                    folder.as_ptr(),
-                    path.as_ptr(),
-                    bytes.as_ptr(),
-                    bytes.len() as u32,
-                    callback2,
-                )
-            })
-            .unwrap();
-        assert!(!reply.success);
-        assert_eq!(reply.reason, "Error: This PE file is not trusted");
-        assert_eq!(
-            WRITTEN.lock().unwrap().take().unwrap(),
-            ("Common".into(), "engine.dll".into(), bytes.to_vec())
-        );
-        assert!(!runtime.is_poisoned());
-        let next = runtime
-            .call_source(|| unsafe { callback2(true, c"".as_ptr()) })
-            .unwrap();
-        assert!(next.success);
-        // Existing native users still receive an error for rejected callbacks.
-        assert!(
-            runtime
-                .call(|| unsafe { callback2(false, c"rejected".as_ptr()) })
-                .is_err()
-        );
-        assert!(!runtime.is_poisoned());
+    #[ignore = "requires audited local user-app files; use tools/workspace.py"]
+    fn direct_user_apps_read_only() {
+        let root=razer_platform::native_paths::user_apps_directory().unwrap();
+        let rows=["","ChromaApp","chromaapp","__razer_inventory_missing__"].into_iter().map(|name| {
+            serde_json::json!({"name":name,"rust":razer_storage::user_app_files::read(&root,name).unwrap()})
+        }).collect::<Vec<_>>();
+        println!("RAZER_APPS_RESULT {}",serde_json::to_string(&rows).unwrap());
     }
 }

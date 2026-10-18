@@ -1659,14 +1659,12 @@ impl ProductWorkspace {
         }
     }
 
-    #[allow(dead_code)]
     pub fn mouse_polling_scope(&self, cx: &App) -> Option<super::mouse_polling::MousePollingScope> {
         match &self.body {
             Body::Source(body) => body.read(cx).mouse_polling_scope(cx),
             Body::Existing(body) => body.read(cx).mouse_polling_scope(cx),
         }
     }
-    #[allow(dead_code)]
     pub fn observe_mouse_polling(
         &mut self,
         scope: super::mouse_polling::MousePollingScope,
@@ -1683,7 +1681,6 @@ impl ProductWorkspace {
         }
     }
 
-    #[allow(dead_code)]
     pub fn observe_dpi_editing_enabled(
         &mut self,
         enabled: bool,
@@ -1696,7 +1693,6 @@ impl ProductWorkspace {
             });
         }
     }
-    #[allow(dead_code)]
     pub fn observe_scroll_wheel(
         &mut self,
         observation: super::ScrollWheelObservation,
@@ -1718,7 +1714,6 @@ impl ProductWorkspace {
         }
     }
     /// Dedicated current Snap Tap observations; never a synthetic input/read reply.
-    #[allow(dead_code)]
     pub fn observe_snap_tap(
         &mut self,
         observation: super::SnapTapObservation,
@@ -1733,7 +1728,6 @@ impl ProductWorkspace {
     }
 
     /// Current calibration query scope; no query is started by reading this ID.
-    #[allow(dead_code)]
     pub fn calibration_generation(&self, cx: &App) -> Option<u64> {
         match &self.body {
             Body::Source(body) => body.read(cx).calibration_generation(cx),
@@ -1795,7 +1789,6 @@ impl ProductWorkspace {
     }
 
     /// Local UI request only; never a device acknowledgement or a write call.
-    #[allow(dead_code)]
     pub fn calibration_intent(
         &self,
         cx: &App,
@@ -1806,7 +1799,6 @@ impl ProductWorkspace {
         }
     }
 
-    #[allow(dead_code)]
     pub fn observe_calibration(
         &mut self,
         observation: super::gamepad_products::CalibrationObservation,
@@ -1821,7 +1813,6 @@ impl ProductWorkspace {
         }
     }
     /// Dedicated Stream Mixer MW observations; never substitute generic audio enumeration.
-    #[allow(dead_code)]
     pub fn observe_stream_mixer(
         &mut self,
         observation: super::StreamMixerObservation,
@@ -1836,7 +1827,6 @@ impl ProductWorkspace {
     }
     /// Adapter boundary for real 1383 runtime observations. Profile data never
     /// supplies BLE/dongle status or a synthetic download reply.
-    #[allow(dead_code)]
     pub fn observe_oled_runtime(
         &mut self,
         observation: super::OledRuntimeObservation,
@@ -1851,7 +1841,6 @@ impl ProductWorkspace {
     }
 
     /// Read-only adapter boundary; no monitor-service publisher is synthesized.
-    #[allow(dead_code)]
     pub fn observe_monitor_runtime(
         &mut self,
         runtime: Option<&serde_json::Value>,

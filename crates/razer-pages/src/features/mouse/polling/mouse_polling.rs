@@ -51,7 +51,6 @@ impl MousePollingScope {
     }
 }
 #[derive(Clone)]
-#[allow(dead_code)]
 pub enum MousePollingObservation {
     Connection(Option<PollingConnection>),
     Rate(PollingField, u32),

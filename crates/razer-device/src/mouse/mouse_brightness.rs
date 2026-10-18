@@ -1,6 +1,5 @@
 //! Current 170/204/226/45066 mouse brightness over the retained Feature session.
-//! Current source gates, byte layouts and task order are recorded separately in
-//! `docs/re/mouse-brightness-current-source.json`. No local draft is hardware state.
+//! Local drafts remain separate from hardware observations and acknowledgements.
 use crate::{
     backend::FeatureTransport, device_reads::DeviceReadCapability, feature_exchange::exchange,
 };

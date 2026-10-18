@@ -1,5 +1,5 @@
 //! Current CmMixerLib DSP and hardware endpoint reports, independent of OS/DLL.
-//! Recipes are source-gated by tools/audit-cmmixer-controls-current.py.
+//! Typed recipes select each control's command, range and response decoder.
 use crate::backend::{FeatureTransport, ReportLengths};
 use anyhow::{Context as _, bail, ensure};
 use serde::{Deserialize, Serialize};

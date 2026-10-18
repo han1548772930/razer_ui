@@ -44,7 +44,7 @@ pub struct GamingMappingContext {
     pub compose_f4: bool,
     pub mod_tap: bool,
     /// A separate current-source pass for firmware analog devices; it is not
-    /// enabled by any of this batch's twelve DeviceInfo registrations.
+    /// enabled by the twelve DeviceInfo registrations in this capability table.
     pub firmware_analog_mapping: bool,
 }
 

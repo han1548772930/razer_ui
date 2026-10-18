@@ -1,5 +1,4 @@
 //! Current camera profile/task submissions, separate from local draft storage.
-//! See camera-submission-current-source.json for actual callers/conversions.
 use crate::camera::{
     CameraControlProperty as C, CameraSetting, StandardCameraProperty as P, StandardCameraRead,
     StandardCameraSetting, StandardCameraWrite, VideoProcAmpProperty as V,

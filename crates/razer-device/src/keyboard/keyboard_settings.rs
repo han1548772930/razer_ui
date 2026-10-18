@@ -471,7 +471,7 @@ pub fn apply(
 
 #[cfg(test)]
 mod tests {
-    // Per-product current receipts in keyboard-brightness-expanded-current-source.json:
+    // Current rzDevice25 Chroma brightness task:
     // getBrightness resolves AllRegion through the first stride-5 region record,
     // catches a rejected query with region 1, and retains region 0 for no records.
     // The setter floors percent/100*255; its parser ceils raw/255*100.

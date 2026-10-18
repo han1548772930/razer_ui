@@ -1,109 +1,121 @@
-# Engineering rules
+# AGENTS.md — 工作区工程与架构最高准则
 
-- Read [.agents/rules/engineering.md](.agents/rules/engineering.md) before diagnosis, implementation or review. These rules apply across the workspace; the scope and execution limits in this file take precedence.
-- Before changing Rust state or task ownership, read [.agents/rules/rust-lifecycle.md](.agents/rules/rust-lifecycle.md); for IPC, protocols or persistence, also read [.agents/rules/contracts-storage.md](.agents/rules/contracts-storage.md).
-- For platform adapters or native code, read [.agents/rules/platform-ffi.md](.agents/rules/platform-ffi.md). For GUI or localization, read [.agents/rules/gui.md](.agents/rules/gui.md) together with the applicable GPUI skills.
-- Select and report checks using [.agents/rules/verification.md](.agents/rules/verification.md). It also covers maintenance tools, generators, static guards and installation inputs.
+本文件定义全工作区的最高工程准则、产品范围与执行红线。在进行任何诊断、逆向、实现或代码审查前，必须首先遵守本文件；本文件中的范围与执行限制具有最高优先级。
 
-# Local-first product scope
+---
 
-- The product must work without an account or Internet connection. Implement all local device configuration, host/background services, native libraries and plugins, storage, OS integration, local installation and lifecycle paths. See `docs/re/local-first-scope.md`.
-- Implement device discovery, direct communication, queries, state observation, mutations, device/service write-back, profiles, mappings/macros, lighting, audio/camera settings, local presets, persistence, errors, cancellation and cleanup. Local firmware transfer from a local file and local DLL replacement/write-back remain in scope.
-- Remove accounts/login, cloud identity, cloud synchronization/storage, online catalogs/content, remote downloads, remote update orchestration and other Internet-dependent features from product UI and dispatch paths. Do not retain disabled placeholders or fabricate successful operations.
-- Local IPC, loopback and sockets communicating with installed local services remain in scope. Classify features by their actual call chains: Cloud EQ local preset storage, DSP/HID writes and local restore are required; remote catalog retrieval and cloud sync are excluded.
-- Keep shared Rust protocol logic independent of the OS. Isolate platform-specific HID, COM, driver and service adapters; unsupported capabilities must be explicit. External projects provide architecture references only. Razer protocol evidence must come from current Razer source and binaries.
-- Distinguish local draft persistence, simulated transport results and device/service write-back. Do not fabricate successful device reads, writes or saves.
-- “本地配置”指移除联网业务、完整实现本机设备与服务能力，不是只维护一份本地配置文件。全部本地读取、状态观察、修改、设备／服务写回及其确认、持久化、取消和清理必须接通，不得省略读取、丢弃真实结果或以本地保存代替设备操作。
-- 设备当前状态以当前连接的真实读取／确认结果为准，并按已核实调用链进入对应页面和控件。持久化配置、默认值及待提交草稿分别建模，不能冒充设备实测状态；打开页面、连接或重连时遵循当前源码的读取与初始化顺序，不得任意将本地旧值或默认值写回覆盖设备。
-- 首次使用且经当前源码／协议证明确需初始化的设备或本地功能保留有依据的默认值，按真实初始化链执行必要写入和确认；默认值在确认前不能标为设备实测。仅本机没有配置文件、首次被本程序发现、读取失败或断开，都不足以判定设备无配置，不得触发默认值覆盖设备已有设置。
-- 默认值内容、首次初始化判定、读取／写入顺序、结果消费者、乐观更新、确认及失败行为都必须追溯当前官方源码；不能自行增加通用初始化、回退、回滚、弹窗或另一套配置界面。源码规定的必要初始化／恢复写入仍须完整实现，不能用只读观察替代。
-- 禁止“读取失败后回退本地配置／默认值”的产品路径。未读取、读取中、失败、断开、未知协议值和已确认值必须明确区分；旧连接结果不得覆盖新连接。协议没有返回的字段保持未观测，不从数值、档位数量或缓存推断开关、能力及成功。
-- 写入必须完成真实传输并按当前协议核对实际应答／读回，结果更新页面；失败或取消不得显示成功，不得将本地文件写入成功当作设备成功。
+## 1. 前置必读规则与技能路由
 
-# Independent implementation; official DLLs are comparison references
+在修改具体模块前，必须先读取对应的细分规则文档：
+- **全局工程规范**（诊断、实现、审查必读）：[.agents/rules/engineering.md](.agents/rules/engineering.md)
+- **Rust 状态与任务生命周期**：[.agents/rules/rust-lifecycle.md](.agents/rules/rust-lifecycle.md)
+- **IPC、协议与持久化契约**：[.agents/rules/contracts-storage.md](.agents/rules/contracts-storage.md)
+- **平台适配与原生 FFI**：[.agents/rules/platform-ffi.md](.agents/rules/platform-ffi.md)
+- **GUI 与本地化**：[.agents/rules/gui.md](.agents/rules/gui.md)，并同时加载 `.agents/skills/gpui-kit/SKILL.md` 与 `.agents/skills/gpui-kit-design-guides/SKILL.md`（含相关 Coding/Design Guides 及组件参考）。
+- **验证、生成器与静态检查**：[.agents/rules/verification.md](.agents/rules/verification.md)
 
-- 全部范围内功能必须先沿当前官方源码与二进制完整逆向，再由本项目实现真实逻辑。官方 DLL 是静态分析原件和功能对照对象，不是本产品的功能后端；允许拿官方 DLL 与本地 Rust 实现测试比较，不等于允许生产程序接入官方 DLL。
-- 禁止以官方 DLL 的动态加载、静态链接、导出包装、FFI 转发或运行时回退代替独立实现；不得把这类调用搬到 helper、子进程、IPC 或服务代理后称为已替代。隔离 worker、ABI 核实、加载成功和导出调用成功都不证明功能已由 Rust 实现。
-- 逆向与实现必须覆盖完整调用链及产品／版本分支：状态来源、输入与协议、读取、观察、计算、修改、真实写入、应答／读回、事件消费者、持久化、失败、取消、恢复和释放。不得只迁移版本常量、查询入口或少量 getter 后宣称该 DLL／功能已替代。
-- 先修正全工作区的职责、状态和生命周期架构，再迁移实现与全部调用方。功能迁移完成后删除对应生产加载器、`EngineLibrary` 调用、`PathRule::CommonDll` 等厂商实现定位规则、导出声明、FFI 分发表、安装依赖及失效生成数据；同步维护生成器和检查，不能仅改名、改注释、隐藏入口或删除功能。
-- 当前残留的官方 DLL 生产调用属于未完成实现，必须继续逆向和替换，不是允许长期保留的兼容层。证据不足时继续获取和静态分析；不得用空结果、固定“不支持”、仅 mock 或缺项登记替代范围内功能，也不得以读取配置文件冒充设备／服务操作。
-- 操作系统 API、系统 DLL、HID、驱动和已核实的本地服务协议仍是平台适配范围；本地 DLL 文件替换／写回仍是文件及安装生命周期能力。这些范围不构成加载官方业务 DLL 来执行本项目功能的例外。
-- 官方 DLL 的实际执行仅通过独立维护／显式对照测试入口，生产启动、页面、普通诊断和普通纯测试不得隐式触发。先核实来源、版本、架构、ABI 与清理，先只读；可恢复写入按下述执行限制记录原值、恢复和读回。对照输入、原版结果、本地实现结果、差异与清理分别记录，失败不能放宽比较后算一致。
-- 完成标准分别记录：完整逆向证据、独立 Rust 实现、UI／后台完整接线、官方 DLL 生产依赖清理、纯／模拟验证和已授权实际对照。局部通过不能提升为整个 DLL、整个产品或整个项目已完成。
+---
 
-# Full UI implementation
+## 2. 本地优先（Local-First）产品范围与真实设备语义
 
-- 功能、交互和状态生命周期必须以当前官方源码为依据，不得自行增加或改写。
+参考文档：`docs/re/local-first-scope.md`
 
-- Implement each local UI page completely from current original JS/CSS and resources. Follow `docs/re/ui-readonly-first-roadmap.md`.
-- Trace the mounted component tree and all product/version/accessory branches. Match layout, sizes, typography, colors, images/icons, wording, tabs, panels, drawers, dialogs, tooltips and keyboard/focus behavior, including normal, selected, disabled, loading, empty and error states.
-- Connect every action, including edit/add/delete and Apply/Save/Cancel, through caller, parameters, transport/service, response, state refresh, confirmation, cancellation, persistence and cleanup.
-- Preserve source-verified optimistic updates, failure and confirmation semantics, subject to the actual-read requirements above. Trace getters through verified transports into typed page observations and controls; do not invent protocol fields, dialogs or rollback, or discard actual results merely because the original UI reads a profile cache. Keep additional Rust diagnostics separate from device state and user drafts.
-- Record source acquisition, reverse-engineered semantics, Rust implementation, UI/backend connection, static/mock verification and runtime acceptance separately. Partial implementation must list remaining items. A page is complete only when its entire source-to-Rust/UI/backend checklist is satisfied; routes, descriptors, wrappers and subsets of controls are insufficient.
-- Keep missing source, unresolved indirect calls, ABI/protocol branches and absent implementations explicit. Do not label them completed or permanently deferred.
-- 未实现的功能必须继续实现，不得仅登记缺口后留空或结束对应任务。缺项清单用于驱动后续实现，不是交付结果；必须沿当前源码继续完成具体逻辑、平台适配、UI／后端接线、持久化、取消和清理。
-- 不得用 TODO、空函数、占位接口、恒定返回“不支持／未连接”或仅有 mock 的实现代替范围内功能。尚缺证据时继续获取和静态逆向，查清实际调用链后实现；不得杜撰协议、界面行为或伪造成功。仅 AGENTS.md 已明确排除的联网功能可以移除；受执行限制禁止的真实运行验收须如实保持未验证。
+### 2.1 范围内与排除项
+- **纯离线与去账户化**：产品必须在无账号、无互联网连接下完整运行（按需静态资源下载除外，见第 6 节）。彻底从 UI 与分发路径中移除账号/登录、云身份、云同步/云存储、在线目录/内容、远程下载及远程更新编排。**严禁保留禁用占位符或伪造成功操作。**
+- **完整本机能力（必做）**：完整实现本机设备发现、直接通信、查询、状态观察、修改、设备/服务写回及确认、配置档（Profiles）、按键映射/宏、灯光、音频/摄像头设置、本地预设（如 Cloud EQ 本地预设存储、DSP/HID 写入与本地恢复）、持久化、错误处理、取消与清理。支持从本地文件传输固件、本地 DLL 替换/写回、本地后台服务/插件、OS 集成及本地安装生命周期。
+- **跨平台隔离**：共享 Rust 协议与存储核心必须与 OS 及 GUI 解耦。隔离平台特定的 HID、COM、驱动与服务适配器；不支持的能力必须显式声明。外部项目仅作架构参考，Razer 协议证据必须源自当前官方源码与二进制。
 
-# Configuration and typed data
+### 2.2 真实读写、状态建模与初始化铁律
+- **“本地配置”的真实含义**：指移除联网业务并完整实现本机设备与服务交互，**绝不是只维护一份本地配置文件**。严禁省略读取、丢弃真实结果或以修改内存/本地文件代替真实的设备/服务写入。
+- **三态严格分离**：设备实测状态（当前连接的真实读取/确认结果）、本地持久化配置（默认值）与待提交草稿（Draft）必须分别建模，严禁混用或冒充设备实测状态。
+- **读取与重连顺序**：打开页面、连接或重连时，严格遵循当前官方源码的读取与初始化顺序。**严禁任意将本地旧值或默认值写回覆盖设备已有设置；旧连接结果不得覆盖新连接。**
+- **首次初始化严格判定**：仅对经官方源码/协议证明确需首次初始化的设备或本地功能，保留有依据的默认值并按真实初始化链执行写入与确认（确认前不得标为设备实测）。仅凭“本机无配置文件”、“首次发现设备”、“读取失败”或“设备断开”，均不足以判定设备无配置，**严禁触发默认值覆盖设备**。源码规定的必要初始化/恢复写入必须完整实现，不得用只读观察替代。
+- **禁止失败回退伪装**：**严禁“读取失败后回退到本地配置/默认值”的产品路径。** 未读取、读取中、失败、断开、未知协议值和已确认值必须明确区分。协议未返回的字段保持“未观测”（Unobserved），严禁从数值、档位数量或缓存推断开关、能力及成功状态。
+- **真实写回确认**：写入必须完成真实传输并按当前协议核对实际应答/读回，据此更新页面；失败或取消不得显示成功。
+- **遵循官方交互语义**：默认值内容、首次初始化判定、读写顺序、结果消费者、乐观更新（Optimistic Updates）、确认及失败行为必须全部追溯至当前官方源码；严禁自行增加通用初始化、回退、回滚、弹窗或另一套配置界面。
 
-- 按完整工作区整理架构，覆盖根程序、全部 crate、目标平台分支、模块依赖、生成器、测试夹具及安装生命周期；维护入口为 `tools/workspace.py organize-sources`。目录规划必须核对所有模块／嵌入引用，记录全工作区清单，不以只整理一个产品族或几个大文件代替全量检查。
-- 依赖朝稳定的下层流动：根程序和 shell 组合功能，页面负责交互与页面状态，领域类型、存储、IPC、协议及系统适配各有明确所有者。共享协议和存储核心不得依赖页面或 GPUI；公共能力经类型、命令、事件和访问器提供，禁止跨 crate `include!` 私有实现。
-- crate 内按能力组织文件，视图、状态、命令、服务、取消／清理和测试归同一功能；不建立全局 `data/`、`views/`、`models/` 等杂物目录。小型 crate 保持简单，只有独立状态、生命周期或稳定共享边界时才拆 crate。
-- 静态目录使用普通有类型函数读取，协议固定表使用普通构造函数或常量；不得生成 `xxx_data!()` 包装宏、巨量字面量分区或空的数据注册模块。生成器必须同步维护所有者、调用方、清理路径和完整验证，不能重新生成已移除的旧布局。
-- 页面 entity、任务、订阅、焦点和滚动状态由实际生命周期所有者保留；render 只读取状态和组合界面。设备／连接切换时取消在途工作，拒绝旧代次结果；后台停止须完成已核实的恢复和释放链，不能用伪造成功或直接退出代替。
-- 文档描述本项目的规则、现有实现与验证边界，不写外部参考项目名称；参考原件的完整来源、固定版本、实际字节和适用范围单独留在分析获取收据中。
+---
 
-- 集中管理路径与资源来源：内置数据文件、安装目录、运行时资源目录、缓存目录、资源仓库及版本须有明确的统一入口。业务模块引用命名常量、类型或访问器，不在调用点散布 `include_str!`／`include_bytes!` 相对路径、拼接安装路径或重复远端地址。编译期内置数据与可变运行时配置分别建模，避免任意文件路径替代已核实的协议数据。
-- 稳定的设备能力、协议参数、设置、命令、响应与持久化结构使用 Rust `struct`／`enum` 和具名字段；解析时校验必需字段、值域、版本与产品分支。业务逻辑不得大量使用 `serde_json::Value` 的字符串下标并依靠 `null` 或 `unwrap_or_default()` 掩盖缺字段、错误类型和未观测状态。
-- 随程序版本固定的能力表、配对规则、协议映射、初始化值及恢复默认值，直接使用有类型的 Rust 常量、静态表、构造函数或 `Default` 实现；默认值必须有当前源码依据。不得只把 JSON 移到 crate 的 `src/data/`、包装成字符串常量或在启动时反序列化，就视为完成类型化。由维护工具生成 Rust 表时，生成器须校验完整字段及产品分支，原始证据保留在分析输入或维护来源中，不成为产品运行时依赖。
-- 固定数据完成 Rust 转换、调用接线及等价性验证后，删除 `crates` 内对应原 JSON 和失效读取路径，避免双份生产数据。确需保留的原始证据存放统一分析输入目录；测试夹具只保留验证具体行为所需的内容，不把整份生产 JSON 搬进 `testdata/` 作为替代清理。
-- 原始 JSON 仅在明确的文件／通信反序列化、版本迁移及动态扩展边界使用；通过有类型的转换／访问器进入业务逻辑。只有当前调用链确实要求读取、导出或写回某种厂商文件／本地服务报文时，才保留该外部格式及已核实的扩展字段；不得把“兼容原版文件格式”泛化为内部数据继续使用 JSON 的理由，也不得在没有实际交互需求时复制厂商内部存储格式。
-- 用户实际配置与固定默认值分别建模：内存中使用有类型的领域对象，磁盘文件在读写边界序列化／反序列化；本程序自己的持久化格式按实际需求设计，维护版本迁移、扩展字段保留、冲突检测及失败语义。不得为消除 JSON 而丢字段、杜撰默认值或改变已核实协议。修改内存对象或本地文件不等于设备／服务已写入成功。
-- 字段、命令、资源及产品身份采用稳定的领域类型或具名常量；禁止把文案、列表下标或分散的字符串当作持久化身份。集中入口应有清晰职责，避免把所有业务状态堆入一个全局配置对象。
-- 代码注释只解释当前行为、协议依据、安全约束和必要设计原因；不保留“修正记录”、修改日期、开发过程、自述或历史前后对比。验证状态、缺项及变更过程写入现有的统一工作流记录，必要的来源引用、生成器标识和安全说明保留。
+## 3. 独立 Rust 实现与官方 DLL 对照边界
 
-# Installation and runtime resources
+- **官方 DLL 仅作逆向与对照参考**：范围内全部功能必须先沿当前官方源码与二进制完整逆向，再由本项目用纯 Rust 独立实现真实逻辑。官方 DLL 仅作为静态分析原件与测试对照对象，**绝不是本产品的功能后端**。
+- **严禁生产环境接入官方业务 DLL**：禁止在生产代码中通过动态加载、静态链接、导出包装、FFI 转发、运行时回退，或将其转移至 helper、子进程、IPC、服务代理后声称“已替代”。隔离 worker、ABI 核实、加载成功或导出调用成功均不代表功能已由 Rust 实现。当前残留的官方 DLL 生产调用均属未完成实现，必须继续逆向并彻底替换。（注：操作系统 API、系统 DLL、HID、驱动、已核实的本地服务协议，以及安装生命周期中的本地 DLL 文件替换/写回属于合法平台能力，不在此禁令内。）
+- **全链路覆盖与清理闭环**：逆向与迁移必须覆盖完整调用链及所有产品/版本分支（状态来源、输入与协议、读取、观察、计算、修改、真实写入、应答/读回、事件消费者、持久化、失败、取消、恢复和释放），不得仅迁移版本常量、查询入口或少量 getter 就宣称完成。
+- **先正架构，再迁实现，彻底清理**：先修正全工作区的职责、状态和生命周期架构，再迁移实现与全部调用方。迁移完成后，必须同步删除对应的生产加载器、`EngineLibrary` 调用、`PathRule::CommonDll` 等厂商定位规则、导出声明、FFI 分发表、安装依赖及失效生成数据，并同步更新生成器与静态检查（严禁仅改名、改注释、隐藏入口或直接删除功能）。
 
-- 静态界面词表、图像选择／几何元数据及资源索引使用随程序交付的本地 SQLite 目录库，由统一维护入口校验完整字段、产品分支、顺序和重复项并生成；业务通过有类型的普通函数读取。数据库以独立文件随安装交付，禁止 `include_bytes!` 内嵌数据库；在安装缓存内原子发布只读版本，不依赖网络、开发目录或分析输入。迁移验证通过后删除旧生产词表、读取宏、数据分区、索引副本和空注册模块；设备能力、协议表、配对规则、初始化值和恢复默认值仍按上述规则使用有类型的 Rust 数据。
-- `crates/razer-resource-db/installation.json` 是目录库来源、安装文件名及资源缓存相对目录的唯一配置；Cargo 准备、运行时定位和安装器共用。Cargo 只生成小型安装常量并复制独立目录库到输出目录，不下载资源或把目录库编入程序。缺少目录库且没有有效缓存时明确失败，不恢复到开发目录，不静默返回空数据。
-- 必需的 9 个原生 RGBA 图标集中由 `razer-assets::NativeIcon` 提供；最小化、最大化、还原、关闭的 4 个原版 SVG 集中由 `razer-assets` 的窗口图标入口内嵌，离线可用。托盘、菜单和资源加载器复用唯一字节入口，不在业务模块重复嵌入。其余图片、字体和视频按实际资源请求进入缓存。
-- 按需资源加载覆盖全部实际打开的界面，包括设置、宏、帮助、弹窗、独立窗口、共享导航及产品页；界面打开并呈现对应资源时开始请求，不能仅按产品 ID 下载。共享依赖进入同一去重队列，未打开的其他页面和产品不全量预取。资源服务拥有真实 HTTP 客户端及 I/O 生命周期，不依赖 GUI 框架的默认空客户端；模拟测试必须覆盖共享界面资源、产品资源、缓存命中、失败重试与取消。界面实际请求的文件应合批调度并有界并行下载；HTTP／TLS 初始化、凭据查找、磁盘读取、完整性校验与原子发布均在后台执行，界面线程只查内存状态、排队和处理完成通知，不等待网络或文件 I/O。
-- 资源 alias、图片选择条件与原始列表顺序统一维护于 `tools/resource-mappings.json`，媒体身份和仓库固定版本由 `tools/asset-release.json` 维护。禁止保留维护用 Rust `include!`／`include_bytes!` 片段、虚拟旧目录解析和并行索引副本；维护清单不进入产品运行路径。
-- 面向用户交付安装包；安装目录、版本、快捷方式、卸载及资源清理由同一安装生命周期配置维护。普通权限运行必须能够写入其资源缓存；不以要求管理员权限规避目录选择错误。
-- 用户明确授权的静态资源下载是本地优先范围的资源交付例外：应用运行时从配置的资源仓库按当前产品、当前实际用到的文件加载，禁止启动时全量下载／解压或将资源恢复到源码仓库 `assets/`。账户、云同步、在线目录及其他已排除的联网业务仍不在范围内。
-- 已获取资源缓存在程序安装目录的统一资源缓存位置，供再次启动和离线复用；程序不依赖开发机、分析报告或临时目录。资源索引和安装必需的小型资源保留在代码仓库，图片／视频等载荷不内嵌为整套程序镜像，也不要求整套本地 pack 才能启动或编译。
-- 资源流向固定为“私有资源仓库 → 当前界面请求合批并行获取 → 安装目录缓存 → 当前界面及共享依赖”，有效缓存供后续启动及离线复用；仅请求当前界面实际需要的文件及共享依赖，缓存命中时不请求网络。固定协议表、配对规则和恢复默认值随程序交付，不放入远程图片／视频资源仓库作为本地设备功能的运行前提。
-- 加载任务由明确的生命周期所有者管理：异步执行、同一文件请求去重、有界并发、长度与内容校验、原子发布，以及真实的加载／失败／重试／取消和清理。缓存命中不联网；未请求的其他产品不预取。资源失败不得伪装为空图、成功或设备已连接。
-- 私有资源访问凭据由本机凭据存储或显式配置提供，不写入源码、资源清单、安装包或日志。资源更新保留可用缓存；卸载清理范围限定为本程序安装及缓存目录，并明确保留用户配置的语义。
+---
 
-# GPUI Kit implementation
+## 4. 完整 UI 与 GPUI Kit 实现准则
 
-- Before GPUI changes, read `.agents/skills/gpui-kit/SKILL.md` and `.agents/skills/gpui-kit-design-guides/SKILL.md`, including applicable Coding Guides, Design Guides and mechanism/component references.
-- Confirm API signatures against the locked GPUI Kit version. Keep retained state, subscriptions, tasks, focus, stable domain IDs, scrolling and side effects with their proper owners.
-- Use semantic components for behavior and product-owned theme/scale tokens for source-verified presentation. Match the original Razer pages; source-derived exceptions to guide defaults need current-source citations.
-- Apply the execution limits below to skill verification recipes. Real-window/application acceptance remains unverified; authorized DLL/service/device checks record their actual per-operation scope separately.
+参考路线图：`docs/re/ui-readonly-first-roadmap.md`
 
-# Current source
+- **1:1 源码还原**：所有本地 UI 页面、交互和状态生命周期必须完全依据当前官方 JS/CSS 与资源实现。完整追踪挂载组件树及所有产品/版本/配件分支，精确匹配布局、尺寸、排版、颜色、图标/图片、文案、标签页、面板、抽屉、弹窗、提示框（Tooltips）及键盘/焦点行为，涵盖正常、选中、禁用、加载、空状态与错误状态。
+- **全动作闭环接线**：每一个 UI 动作（包括编辑/新增/删除、Apply/Save/Cancel）必须完整打通：调用方 → 参数 → 传输/服务 → 响应 → 状态刷新 → 确认 → 取消 → 持久化 → 清理。不得因为原版 UI 读取了缓存就丢弃真实设备读回结果；额外的 Rust 诊断信息必须与设备状态和用户草稿严格分离。
+- **GPUI Kit 规范**：修改前核对锁定的 GPUI Kit 版本 API 签名。页面 `Entity`、保留状态、异步任务（Tasks）、订阅（Subscriptions）、焦点、稳定领域 ID、滚动状态及副作用必须由实际生命周期所有者持有；`render` 方法只负责读取状态与组合界面。设备/连接切换时必须取消在途工作并拒绝旧代次（stale generation）结果；后台停止必须完成已核实的恢复和释放链。使用语义化组件处理行为，使用产品自有的主题/缩放 Token 呈现原版视觉；因还原原版而偏离设计指南默认值的，需附上当前官方源码依据。
+- **严禁半成品与占位符**：不得用 `TODO`、空函数、占位接口、恒定返回“不支持/未连接”或纯 Mock 实现代替范围内功能。证据不足时必须继续获取源码并静态逆向，查清调用链后实现。缺项清单（`gaps.json`）仅用于驱动后续实现，不能作为交付结果结束任务。页面只有在其“源码 → Rust → UI → 后端”完整检查单全部满足时才算完成。
 
-- Use the latest official stable Razer Synapse sources. Dashboard originals and their deployment-stability receipt are under `.analysis/inputs/frontend/synapse-dashboard-current/`; 124 referenced source maps are unavailable. Complete current host and device source sets still require acquisition and a version audit.
-- Retained originals are under `.analysis/inputs/`, indexed by `.analysis/inputs.json`. Verify acquisition provenance, current version, manifests, byte identity and dependency/resource closure before using them as implementation evidence.
-- Do not recreate, read or use `.ref/frontend/`, `.ref/synapse-asar/`, `.ref/host-4.0.821/` or `.work/latest-source-check/host-4.0.821/` as implementation evidence.
-- Use maintained static extraction tools in `tools/`. Do not use historical `.ref/tools/` scripts.
-- Analysis results must identify complete original inputs, tool versions, full source/function bodies, failures and unresolved chains.
+---
 
-# Analysis workflow and layout
+## 5. 工作区架构、类型化数据与代码卫生
 
-- Use installed `E:/IDA` (IDA Pro 9.1) or `D:/ida/IDA Pro 8.3` and Hex-Rays for native static analysis. Analyze verified private input copies; retain byte hashes, image base, RVA/function boundaries, complete pseudocode/disassembly, types and cross references. Inspect current JS/CSS directly for page behavior.
-- Record analyzer versions, capabilities and limitations in `docs/re/tooling.md`.
-- Maintain one comprehensive workflow through `tools/workspace.py`. Capture all pages, branches, JS/CSS/resources, host/background services, native libraries, local IPC/storage/OS integration and lifecycle paths. Reuse complete captures for queries; supplement explicit unresolved items.
-- Keep current workflow documents in `docs/`, maintained tools in `tools/`, original inputs/references/results in `.analysis/`, and disposable scratch in `.work/`. IDA MCP configuration and plugins belong under `tools/ida/`. Keep analysis tools separate from product runtime dependencies.
-- Keep missing inputs, unresolved calls and unimplemented local chains in `.analysis/results/gaps.json`. Do not create a separate script or progress document for each detail, or retain historical archives.
-- Build/test fixtures belong to the owning crate's `testdata/`. Builds and tests must not depend on scratch paths or analysis reports.
-- Compute evidence SHA-256 from actual input bytes and store it in evidence manifests. Use project-relative paths. Do not use workstation paths or source/code evidence hashes as runtime compatibility gates. Preserve protocol-defined hashes, checksums and versions.
+### 5.1 目录规划与依赖流向
+- **全量架构整理**：按完整工作区整理架构（覆盖根程序、全部 crate、平台分支、模块依赖、生成器、测试夹具及安装生命周期），统一维护入口为 `tools/workspace.py organize-sources`。目录规划须核对所有模块与嵌入引用，不得仅整理单个产品族或几个大文件。
+- **单向依赖与能力内聚**：依赖必须朝稳定的下层单向流动（根程序与 Shell 组合功能 → 页面负责交互与页面状态 → 领域类型、存储、IPC、协议及系统适配各司其职）。共享核心不得依赖页面或 GPUI；禁止跨 crate `include!` 私有实现。Crate 内部按业务能力（Feature）组织文件（视图、状态、命令、服务、取消/清理和测试归属同一模块），**禁止建立全局 `data/`、`views/`、`models/` 等杂物目录**。小型 crate 保持简单，仅在具备独立状态、生命周期或稳定共享边界时才拆分 crate。
 
-# Execution limits
+### 5.2 强类型建模与 JSON 边界清理
+- **全面强类型化**：设备能力、协议参数、设置、命令、响应与持久化结构必须使用具名字段的 Rust `struct` / `enum`，并在解析边界校验必需字段、值域、版本与产品分支。**严禁在业务逻辑中大量使用 `serde_json::Value` 字符串下标，或依赖 `null` / `unwrap_or_default()` 掩盖缺字段、错误类型和未观测状态。**
+- **静态固定表直接转 Rust 代码**：随版本固定的能力表、配对规则、协议映射、初始化值及恢复默认值，必须直接使用有类型的 Rust 常量、静态表、构造函数或 `Default` 实现（默认值须有官方源码依据）。**严禁仅将 JSON 移入 `src/data/`、包装成字符串常量、在启动时反序列化，或生成 `xxx_data!()` 包装宏、巨量字面量分区及空的数据注册模块。**
+- **清理双份数据**：由维护工具生成 Rust 表时，生成器必须校验完整字段及产品分支，并同步维护所有者、调用方、清理路径和验证。固定数据完成 Rust 转换与验证后，**必须立即删除 `crates/` 下对应的原 JSON 与失效读取路径**。原始证据统一存入 `.analysis/inputs/`；`testdata/` 仅保留测试特定行为所需的最小夹具，严禁把整份生产 JSON 搬入 `testdata/` 充当清理。
+- **严格的 JSON 边界**：原始 JSON 仅限在明确的文件/通信反序列化、版本迁移及动态扩展边界使用，且必须立即通过类型化转换进入业务逻辑。仅当调用链确实要求读写某种厂商外部文件或本地服务报文时，才保留该外部格式；本程序自有的持久化格式按实际需求设计，维护版本迁移、扩展字段保留、冲突检测及失败语义。
+- **稳定领域标识**：字段、命令、资源及产品身份必须采用稳定的领域类型或具名常量；严禁把 UI 文案、列表下标或分散的字符串当作持久化身份。避免把所有业务状态堆入单一的全局配置对象。
 
-- Allow static analyzers, source parsing, resource preparation/validation, formatting, `cargo check --locked --all-targets`, pure Rust unit tests and simulated transport tests with `cargo test`.
-- 用户已授权通过本地 DLL 自行测试功能结果：允许核实来源、版本、架构、ABI 和清理链后执行本地 DLL／导出，查询本地服务／真实设备并比较实现结果；可进行有原值记录、恢复与读回确认的可恢复写入测试。先只读核对，失败不得伪装为一致；不得猜测导出签名或将 DLL 加载成功当成功能通过。
-- Do not run the application, standalone builds for runtime acceptance, vendor JavaScript or installers. Do not invoke debugger execution. The local DLL/service/device tests authorized above are the runtime exception; unrelated helpers, firmware flashing, irreversible changes and installation actions remain outside this authorization.
-- Downloading official source/binary evidence for static analysis is permitted acquisition work. It does not add Internet-dependent product features to the implementation scope.
+### 5.3 注释与文档卫生
+- **代码注释规范**：代码注释仅解释当前行为、协议依据、安全约束和必要的设计原因；**严禁在代码中保留“修正记录”、修改日期、开发过程自述或历史前后对比。**
+- **文档去外部化**：项目文档只描述本项目的规则、现有实现与验证边界，**不写外部参考项目名称**；参考原件的来源、版本、字节哈希和适用范围单独记录在分析获取收据中。
+
+---
+
+## 6. 安装生命周期与运行时资源架构
+
+### 6.1 本地 SQLite 目录库与内置核心图标
+- **独立 SQLite 目录库**：静态界面词表、图像选择/几何元数据及资源索引使用随安装包交付的本地 SQLite 目录库，由统一维护入口校验完整字段、产品分支、顺序和重复项后生成，业务代码通过普通强类型函数读取。数据库作为独立文件随安装交付並在安装缓存内原子发布只读版本，**严禁使用 `include_bytes!` 内嵌数据库**，也不得依赖网络、开发目录或分析输入。迁移验证通过后，彻底删除旧词表、读取宏、数据分区、索引副本和空注册模块。
+- **唯一安装配置源**：`crates/razer-resource-db/installation.json` 是目录库来源、安装文件名及资源缓存相对目录的唯一配置，供 Cargo 准备、运行时定位和安装器共用。Cargo 仅生成小型安装常量并复制独立目录库到输出目录，不下载资源或将库编入二进制。缺少目录库且无有效缓存时必须显式报错失败，严禁回退到开发目录或静默返回空数据。
+- **集中管理路径与内置图标**：内置数据、安装目录、运行时资源目录、缓存目录及资源仓库版本必须通过统一命名常量或访问器访问，严禁在业务调用点散布 `include_str!` / `include_bytes!` 相对路径、硬编码拼接路径或远端地址。必需的 9 个原生 RGBA 图标由 `razer-assets::NativeIcon` 统一提供；最小化、最大化、还原、关闭 4 个原版窗口 SVG 由 `razer-assets` 集中内嵌并离线可用（托盘、菜单和加载器复用唯一入口，禁止重复嵌入）。
+- **维护清单隔离**：资源 alias、图片选择条件与原始列表顺序统一维护于 `tools/resource-mappings.json`，媒体身份和仓库固定版本维护于 `tools/asset-release.json`。严禁保留维护用 Rust `include!` 片段、虚拟旧目录解析和并行索引副本；维护清单绝不进入产品运行路径。
+
+### 6.2 按需资源下载与缓存流转（本地优先的唯一例外）
+- **固定资源流向**：经用户明确授权的静态媒体（图片/字体/视频）按需下载是本地优先范围的唯一联网例外。流向固定为：`私有资源仓库 → 当前打开界面请求合批并行获取 → 安装目录统一缓存 → 当前界面及共享依赖`。禁止启动时全量下载/解压，禁止将资源恢复到源码仓库 `assets/`，禁止要求整套本地 pack 才能编译或启动。
+- **按需触发与后台异步 I/O**：按需加载覆盖全部实际打开的界面（设置、宏、帮助、弹窗、独立窗口、共享导航及产品页），仅在界面打开并呈现对应资源时发起请求（严禁仅按产品 ID 全量预取未打开的页面）。资源服务拥有真实的 HTTP 客户端及明确的生命周期所有者：请求去重、合批调度、有界并发、HTTP/TLS 初始化、凭据查找、磁盘读写、长度与完整性校验、原子发布、失败重试与取消清理**全部在后台线程执行**；UI 线程只查询内存状态、排队和处理完成通知，绝不阻塞等待网络或磁盘 I/O。缓存命中时绝不联网；加载失败必须真实反映，严禁伪装为空图、成功或设备已连接。
+- **凭据安全与普通权限运行**：私有资源访问凭据由本机凭据存储或显式配置提供，严禁写入源码、资源清单、安装包或日志。安装包、快捷方式、卸载及缓存清理由统一安装配置维护（卸载仅清理本程序安装及缓存目录，保留用户配置语义）。**程序在普通用户权限下必须能正常写入资源缓存，严禁通过要求管理员权限来规避目录选择错误。**
+
+---
+
+## 7. 逆向分析工作流与目录布局
+
+- **当前官方证据源**：必须使用最新官方稳定版 Razer Synapse 源码与二进制。前端原件及部署稳定性收据位于 `.analysis/inputs/frontend/synapse-dashboard-current/`（已知 124 个引用的 source map 不可用；完整的主机与设备端源码集仍需持续获取与版本审计）。所有保留原件位于 `.analysis/inputs/` 并由 `.analysis/inputs.json` 索引。作为实现证据前，必须核实获取来源、版本、清单、实际字节 SHA-256（使用项目相对路径，严禁将工作站路径或证据哈希作为运行时兼容性门禁，但须保留协议定义的哈希/校验和/版本）及依赖闭包。
+- **严禁使用的历史废弃路径**：**严禁重新创建、读取或使用** `.ref/frontend/`、`.ref/synapse-asar/`、`.ref/host-4.0.821/`、`.work/latest-source-check/host-4.0.821/` 或历史脚本 `.ref/tools/` 作为实现证据或工具。
+- **原生与前端分析工具**：使用已安装的 `E:/IDA` (IDA Pro 9.1) 或 `D:/ida/IDA Pro 8.3` 及 Hex-Rays 分析经校验的私有副本（保留字节哈希、Image Base、RVA/函数边界、完整伪代码/反汇编、类型及交叉引用）；直接检查当前 JS/CSS 获取页面行为。分析器版本、能力与限制记录于 `docs/re/tooling.md`。
+- **目录职责边界**：
+  - `tools/workspace.py`：统一维护工作流入口（捕获所有页面、分支、资源、服务、原生库、IPC/存储及生命周期；优先复用完整捕获，仅补充未决项）。
+  - `tools/` 及 `tools/ida/`：受维护的静态提取工具及 IDA MCP 配置/插件（与产品运行时依赖严格隔离）。
+  - `docs/`：当前工作流与架构文档。
+  - `.analysis/`：原始输入（`inputs/`）、参考与分析结果。所有缺失输入、未决间接调用和未实现的本地链路统一登记在 `.analysis/results/gaps.json`（**严禁为每个细节单独创建脚本、进度文档或保留历史归档**）。
+  - `.work/`：随时可丢弃的临时草稿（构建与测试严禁依赖 `.work/` 或分析报告）。
+  - `crates/*/testdata/`：所属 crate 独立的构建/测试夹具。
+- **完成度五维独立记录**：源码获取、逆向语义、Rust 独立实现、UI/后端接线、静态/模拟验证与运行时验收必须分别独立记录。局部通过绝不能夸大为整个 DLL、整个产品或整个项目已完成。
+
+---
+
+## 8. 执行限制与测试授权边界（Execution Limits）
+
+1. **允许的常规静态与纯测试操作**：
+   - 允许运行静态分析器、源码解析、资源准备与校验、代码格式化、`cargo check --locked --all-targets`、纯 Rust 单元测试及基于 `cargo test` 的模拟传输测试（需覆盖共享资源、产品资源、缓存命中、失败重试与取消）。
+   - 允许为静态分析目的下载官方源码/二进制证据（属于合法证据获取，不改变产品离线范围）。
+2. **已授权的本地 DLL / 服务 / 真实设备对照测试（唯一运行时例外）**：
+   - 用户已授权通过独立维护的显式对照测试入口，在核实来源、版本、架构、ABI 和清理链的前提下，加载执行官方本地 DLL 导出函数、查询本地服务与真实设备，并将原版结果与本地 Rust 实现结果进行对照。
+   - **测试安全守则**：**先执行只读核对**；对于可恢复的写入测试，必须严格记录初始原值、执行写入、读回确认并完整恢复原值与清理。详细记录对照输入、原版结果、本地实现结果、差异与清理情况。比较失败必须如实记录，**严禁放宽比较条件伪装一致，严禁猜测导出签名，严禁将 DLL 加载成功当成功能测试通过。**
+   - 生产启动、UI 页面、普通诊断和常规 `cargo test` 纯测试严禁隐式触发官方 DLL。
+3. **严格禁止的运行时操作**：
+   - **严禁直接运行主应用程序（Application）、运行独立构建产物进行运行时验收、执行厂商 JavaScript 或运行安装程序（Installers）。**
+   - **严禁调用调试器（Debugger）执行动态调试。**
+   - 除上述第 2 条明确授权的本地 DLL/服务/设备对照测试外，任何无关的 helper 执行、固件刷写（Firmware Flashing）、不可逆修改及安装动作均在授权范围之外；受此限制无法执行的真实运行验收项，必须在报告中如实保持“未验证（Unverified）”状态。

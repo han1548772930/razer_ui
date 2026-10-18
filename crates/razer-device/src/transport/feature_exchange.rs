@@ -27,8 +27,8 @@ pub(crate) fn exchange(
 
 /// Source `sendCommand` may keep the command header's maximum payload while
 /// overriding packet byte 5 (HID report byte 6) with the actual data size. Profile-name
-/// blocks use this for 69-byte and 63-byte writes; the ordinary executor keeps
-/// its historical report-byte behavior through [`exchange`].
+/// blocks use this for 69-byte and 63-byte writes. [`exchange`] instead copies
+/// the command header's data size into report byte 6.
 pub(crate) fn exchange_with_report_data_size(
     device: &dyn FeatureTransport,
     cap: &DeviceReadCapability,

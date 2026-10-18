@@ -635,10 +635,8 @@ pub(crate) fn synchronize_profile_slots_with<C>(
 
 #[cfg(test)]
 mod tests {
-    // Assertions use current per-product receipts in
-    // docs/re/mouse-dpi-expanded-current-source.json: visibility remapping,
-    // setDPIStages' 3+7*count packet-size override, and the getter parser's
-    // one-based records. No historical bundle or vendor implementation runs.
+    // Source expectations cover visibility remapping, setDPIStages'
+    // 3+7*count packet-size override and the getter's one-based records.
     use super::*;
     use serde_json::json;
     use std::cell::Cell;

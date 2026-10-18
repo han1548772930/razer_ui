@@ -28,8 +28,11 @@ impl MouseMonitor {
     pub fn start(&mut self) -> anyhow::Result<()> {
         #[cfg(windows)]
         {
-            anyhow::ensure!(self.owner.is_none(), "Mouse input monitoring is already owned");
-            self.owner=Some(crate::platform::windows::mouse_monitor::Owner::spawn()?);
+            anyhow::ensure!(
+                self.owner.is_none(),
+                "Mouse input monitoring is already owned"
+            );
+            self.owner = Some(crate::platform::windows::mouse_monitor::Owner::spawn()?);
             Ok(())
         }
         #[cfg(not(windows))]
@@ -38,17 +41,20 @@ impl MouseMonitor {
     pub fn events(&self) -> anyhow::Result<Vec<Event>> {
         #[cfg(windows)]
         {
-            self.owner.as_ref().ok_or_else(||anyhow::anyhow!("Mouse monitor is inactive"))?.events()
+            self.owner
+                .as_ref()
+                .ok_or_else(|| anyhow::anyhow!("Mouse monitor is inactive"))?
+                .events()
         }
         #[cfg(not(windows))]
         anyhow::bail!("Mouse input monitoring requires Windows RawInput")
     }
     pub fn stop(&mut self) -> anyhow::Result<Vec<Event>> {
         #[cfg(windows)]
-        if let Some(owner)=self.owner.as_mut() {
+        if let Some(owner) = self.owner.as_mut() {
             owner.shutdown()?;
-            let final_events=owner.final_events()?;
-            self.owner=None;
+            let final_events = owner.final_events()?;
+            self.owner = None;
             return Ok(final_events);
         }
         Ok(Vec::new())

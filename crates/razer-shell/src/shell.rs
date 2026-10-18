@@ -1823,7 +1823,7 @@ impl AppShell {
         };
         let name = display_window::multi_device_pairing_name(&identity);
         // `allMasters` 来自宿主写入的 connectedDeviceInfo 投影（Dashboard `jt`/`Et`），
-        // 该投影尚未审计；没有真实记录时传 None，窗口显示 4130 页面原有的空态。
+        // 没有宿主实际提供的记录时，保留页面的未观测状态。
         // The source URL serializes `allMasters` and parses it again in the
         // product root. Accept both representations at this native boundary.
         let all_masters = device.get("allMasters").and_then(|value| {

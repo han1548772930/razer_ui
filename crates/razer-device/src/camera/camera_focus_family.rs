@@ -1,6 +1,6 @@
 //! Independently audited 1.0.35.0 autofocus private commands for PID 3595/3596.
 //! These products scan topology nodes and use different GUIDs/selectors and
-//! FDAF payloads from PID 3594. No vendor code, OS API or real device is used.
+//! FDAF payloads from PID 3594. Platform I/O belongs to the injected transport.
 use crate::camera_extensions::CameraKsCallOutcome;
 use anyhow::{Result, ensure};
 use serde::{Deserialize, Serialize};

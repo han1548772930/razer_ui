@@ -115,6 +115,7 @@ pub(super) struct State {
     failure: Option<String>,
     pending: BTreeMap<u64, SurroundOperation>,
     preview: BTreeMap<Control, SliderEdit>,
+    slider_tasks: BTreeMap<Control, Task<()>>,
     sliders: BTreeMap<Control, Entity<SliderState>>,
     select: Option<Entity<SelectState<Vec<Choice>>>>,
     selected: Option<String>,
@@ -207,6 +208,7 @@ impl State {
         }
         if !self.connected {
             self.preview.clear();
+            self.slider_tasks.clear();
             self.pending.clear();
             self.selected = None;
             self.choosing_front = false;
@@ -430,6 +432,14 @@ impl AudioProductWorkspace {
                                     submitted: None,
                                 },
                             );
+                            let debounce = match control {
+                                Control::Master => Some(50),
+                                Control::FrontVolume | Control::RearVolume => Some(120),
+                                _ => None,
+                            };
+                            if let Some(milliseconds) = debounce {
+                                this.queue_surround_slider(control, v.start(), milliseconds, cx);
+                            }
                             cx.notify();
                         }
                         SliderEvent::Release(v) => {
@@ -479,6 +489,7 @@ impl AudioProductWorkspace {
         self.surround.master = None;
         self.surround.endpoints.clear();
         self.surround.preview.clear();
+        self.surround.slider_tasks.clear();
         self.surround.pending.clear();
         self.surround.choosing_front = false;
         self.surround.signal_requested = false;
@@ -523,6 +534,9 @@ impl AudioProductWorkspace {
         cx.notify();
     }
     fn submit_surround_slider(&mut self, control: Control, value: f32, cx: &mut Context<Self>) {
+        if self.surround.actual(control).is_none() {
+            return;
+        }
         let operation = match control {
             Control::Master => self
                 .surround
@@ -585,6 +599,27 @@ impl AudioProductWorkspace {
         } else {
             self.surround.preview.remove(&control);
         }
+    }
+    fn queue_surround_slider(
+        &mut self,
+        control: Control,
+        value: f32,
+        milliseconds: u64,
+        cx: &mut Context<Self>,
+    ) {
+        let identity = self.surround.identity.clone();
+        let timer = cx
+            .background_executor()
+            .timer(std::time::Duration::from_millis(milliseconds));
+        let task = cx.spawn(async move |this, cx| {
+            timer.await;
+            let _ = this.update(cx, |this, cx| {
+                if this.surround.identity == identity {
+                    this.submit_surround_slider(control, value, cx);
+                }
+            });
+        });
+        self.surround.slider_tasks.insert(control, task);
     }
     fn submit_surround_front(&mut self, enable: bool, cx: &mut Context<Self>) {
         let endpoint = self

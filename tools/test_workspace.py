@@ -3349,6 +3349,46 @@ class ResourcePublicationTests(unittest.TestCase):
         self.assertEqual(prepared["derivations"][0]["original"], self.source_row)
         self.assertEqual(hashlib.sha256((self.root / item["acquisition"]["path"]).read_bytes()).hexdigest(), item["acquisition"]["sha256"])
 
+    def test_inline_source_can_publish_two_visibility_branches_with_complete_geometry(self):
+        import sys
+        import xml.etree.ElementTree as ET
+        analyzer_path = str(Path(__file__).resolve().parent / "analyzers/python-static")
+        analyzer_imports = mock.patch.object(sys, "path", [analyzer_path, *sys.path])
+        analyzer_imports.start()
+        self.addCleanup(analyzer_imports.stop)
+        self.source = self.source.with_suffix(".js")
+        self.source.write_text('const Diagram=(e,t)=>{return R.createElement("svg",{viewBox:"0 0 20 20"},R.createElement("g",{id:"primary"},R.createElement("path",{d:"M1 2H3"})),R.createElement("g",{id:"surround"},R.createElement("path",{d:"M4 5H6"})))};', encoding="utf-8")
+        self.source_row = {"path": self.source.relative_to(self.root).as_posix(),
+            "bytes": self.source.stat().st_size, "sha256": hashlib.sha256(self.source.read_bytes()).hexdigest(), "http_status": 200}
+        self.receipt.write_text(json.dumps({"source_current_during_acquisition": True,
+            "stability": [{"unchanged": True}], "files": [self.source_row]}), encoding="utf-8")
+        self.mapping = {self.source_row["path"]: [{"display": f"synapse/{branch}.svg", "table": "MODULE_SERVICE_ASSETS",
+            "inline_react_svg": 'Diagram=(e,t)=>{', "svg_group_visibility": {
+                "primary": "visible" if branch == "primary" else "hidden",
+                "surround": "visible" if branch == "surround" else "hidden"}} for branch in ("primary", "surround")]}
+        report = self.prepare()
+        self.assertEqual(len(report["files"]), 2)
+        for item in report["files"]:
+            tree = ET.fromstring((self.root / item["source"]["path"]).read_bytes())
+            self.assertEqual([node.get("d") for node in tree.iter("path")], ["M1 2H3", "M4 5H6"])
+            visible = Path(item["alias"]).stem
+            self.assertEqual(tree.find(f"g[@id='{visible}']").get("style"), "visibility:visible")
+        proof = json.loads((self.root / report["acquisition"]["path"]).read_bytes())
+        self.assertEqual(len(proof["derivations"]), 2)
+        self.assertTrue(all(row["transformation"]["source_regions"] for row in proof["derivations"]))
+        self.assertFalse((self.root / "assets").exists())
+
+    def test_incompatible_static_transformations_fail_before_staging(self):
+        for values in ({"muted_video_animation": False},
+                       {"muted_video_animation": True, "inline_react_svg": "Diagram="},
+                       {"muted_video_animation": True, "svg_group_visibility": {"primary": "visible"}}):
+            with self.subTest(values=values):
+                self.mapping[self.source_row["path"]] = {
+                    "display": "synapse/invalid.png", "table": "MODULE_SERVICE_ASSETS", **values}
+                with self.assertRaisesRegex(ValueError, "exclusive transformation"):
+                    self.prepare()
+                self.assertFalse((self.root / self.manifest).exists())
+
     def test_mutated_original_and_retained_payload_cannot_be_published(self):
         item = self.prepare()["files"][0]
         retained = self.root / item["source"]["path"]

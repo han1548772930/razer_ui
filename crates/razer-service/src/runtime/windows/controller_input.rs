@@ -1,104 +1,60 @@
-//! Current host mapping_engine hardware-event callback ABI, verified against
-//! the same official DLL/ASAR. The native producer owns its HID transformations;
-//! only its callback JSON is passed to the host-neutral current MW parsers.
-use super::{NativeRuntime, callback3, copy_string};
-use anyhow::{Context as _, ensure};
-use razer_device::controller_input::{Event, Parser, Throttle};
-use serde_json::{Value, json};
-use std::{
-    ffi::{CString, c_char},
-    sync::{
-        Mutex,
-        atomic::{AtomicBool, Ordering},
-        mpsc::{self, Receiver, SyncSender},
-    },
-    time::{Duration, Instant},
-};
-
-type HardwareEvent = unsafe extern "C" fn(*const c_char, i32, *const c_char, u64);
-type AddDevice = unsafe extern "C" fn(*const c_char, HardwareEvent, super::Callback3);
-type Operation = unsafe extern "C" fn(*const c_char, super::Callback3);
-type IntervalOperation = unsafe extern "C" fn(*const c_char, u32, super::Callback3);
-type SetCallback = unsafe extern "C" fn(*const c_char, HardwareEvent, super::Callback3);
-static EVENTS: Mutex<Option<SyncSender<RawEvent>>> = Mutex::new(None);
-static OVERFLOW: AtomicBool = AtomicBool::new(false);
-struct RawEvent {
-    info: String,
-    data: String,
-    device_event: bool,
-    tick: u64,
-}
-unsafe fn enqueue(info: *const c_char, data: *const c_char, device_event: bool, tick: u64) {
-    let event = RawEvent {
-        info: unsafe { copy_string(info) },
-        data: unsafe { copy_string(data) },
-        device_event,
-        tick,
-    };
-    if let Ok(slot) = EVENTS.lock() {
-        if let Some(sender) = slot.as_ref() {
-            if sender.try_send(event).is_err() {
-                OVERFLOW.store(true, Ordering::Release);
-            }
-        }
-    }
-}
-unsafe extern "C" fn hardware_event(
-    info: *const c_char,
-    kind: i32,
-    data: *const c_char,
-    tick: u64,
-) {
-    if kind == 0 {
-        unsafe { enqueue(info, data, false, tick) };
-    }
-}
-unsafe extern "C" fn device_event(info: *const c_char, _kind: i32, data: *const c_char, tick: u64) {
-    unsafe { enqueue(info, data, true, tick) };
-}
+//! Controller observations from the current hardware HID endpoint stream.
+//! The descriptor-free controller registration passes complete reports to the
+//! product parser; interval batches follow 7f9fe/7fc20 before UI throttling.
+use super::NativeRuntime;
+use anyhow::{Context, Result, ensure};
+use razer_device::{controller_input::{Event, Parser, Sample, Throttle}, receiver_pairing::HardwareEvents};
+use serde_json::{Value,json};
+use std::{sync::{Arc,atomic::{AtomicBool,Ordering},mpsc},thread::{self,JoinHandle},time::{Duration,Instant}};
 
 struct Registration {
-    product_id: u32,
-    physical: Value,
-    info: Value,
-    register_attempted: bool,
-    callback_ready: bool,
-    parser: Parser,
-    throttle: Throttle,
-    clock: Instant,
-    last_validation: Instant,
+    owner:String,
+    product:u32,
+    info:Value,
+    stop:Arc<AtomicBool>,
+    worker:Option<JoinHandle<Result<()>>>,
+    events:mpsc::Receiver<Result<Update,String>>,
+    overflow:Arc<AtomicBool>,
 }
-pub(super) struct State {
-    registration: Option<Registration>,
-    receiver: Receiver<RawEvent>,
-}
+struct Update {samples:Vec<Sample>,notifications:Vec<Event>,last_tick:Option<u64>,unsupported:u64}
+#[derive(Default)]
+pub(super) struct State {registration:Option<Registration>}
 impl State {
-    pub(super) fn new() -> Self {
-        let (sender, receiver) = mpsc::sync_channel(32);
-        if let Ok(mut slot) = EVENTS.lock() {
-            *slot = Some(sender);
-        }
-        OVERFLOW.store(false, Ordering::Release);
-        Self {
-            registration: None,
-            receiver,
+    pub(super) fn new()->Self {Self::default()}
+    pub(super) fn owner(&self)->Option<String>{self.registration.as_ref().map(|row|row.owner.clone())}
+    fn registration(&self,owner:&str)->Result<&Registration>{
+        let row=self.registration.as_ref().context("Controller input is not registered")?;
+        ensure!(row.owner==owner,"Controller input owner changed");Ok(row)
+    }
+}
+impl Drop for State {
+    fn drop(&mut self){
+        if let Some(mut row)=self.registration.take(){
+            row.stop.store(true,Ordering::Release);
+            if let Some(worker)=row.worker.take(){match worker.join(){Ok(Ok(()))=>(),Ok(Err(error))=>eprintln!("Controller input cleanup: {error:#}"),Err(_)=>eprintln!("Controller input worker panicked")}}
         }
     }
-    pub(super) fn owner(&self) -> Option<String> {
-        self.registration.as_ref()?.info["guid"]
-            .as_str()
-            .map(str::to_owned)
+}
+
+struct Batcher {interval:u64,last:u64,deadline:Option<u64>,frames:Vec<Vec<u8>>}
+impl Batcher {
+    fn new(milliseconds:u32)->Self{Self{interval:u64::from(milliseconds)*1000,last:0,deadline:None,frames:Vec::new()}}
+    fn push(&mut self,frame:Vec<u8>,tick:u64)->Option<Vec<Vec<u8>>>{
+        self.frames.push(frame);
+        if self.frames.len()>=10001{return self.flush();}
+        if self.deadline.is_none(){
+            let elapsed=tick.wrapping_sub(self.last);self.last=tick;
+            if elapsed>=self.interval{return self.flush();}
+            self.deadline=Some(tick.saturating_add(self.interval-elapsed));
+        }
+        None
     }
-    fn registration(&self, owner: &str) -> anyhow::Result<&Registration> {
-        let registered = self
-            .registration
-            .as_ref()
-            .context("Controller hardware events are not registered")?;
-        ensure!(
-            registered.info["guid"].as_str() == Some(owner),
-            "Controller hardware-event owner changed"
-        );
-        Ok(registered)
+    fn poll(&mut self,tick:u64)->Option<Vec<Vec<u8>>>{
+        if self.deadline.is_some_and(|deadline|tick>=deadline){self.flush()}else{None}
+    }
+    fn flush(&mut self)->Option<Vec<Vec<u8>>>{
+        self.deadline=None;
+        (!self.frames.is_empty()).then(||std::mem::take(&mut self.frames))
     }
 }
 
@@ -142,244 +98,107 @@ fn physical_target(product: u32, physical_pid: u32, container: &str) -> anyhow::
     }
     Ok((*device).clone())
 }
-fn matches(info: &Value, registered: &Value) -> bool {
-    info["vendorId"] == registered["vendorId"]
-        && info["productId"] == registered["productId"]
-        && info["containerId"]
-            .as_str()
-            .zip(registered["containerId"].as_str())
-            .is_some_and(|(a, b)| a.eq_ignore_ascii_case(b))
-        && info["usbInstanceId"] == registered["usbInstanceId"]
-        && info
-            .get("guid")
-            .is_none_or(|guid| guid == &registered["guid"])
+fn run(product:u32,physical_pid:u32,container:String,physical:Value,mut parser:Parser,
+    stop:Arc<AtomicBool>,events:mpsc::SyncSender<Result<Update,String>>,overflow:Arc<AtomicBool>,ready:mpsc::SyncSender<Result<(),String>>)->Result<()> {
+    let mut source=super::receiver_events::Events::new(physical_pid.try_into()?,&container);
+    let begin=(||->Result<()>{source.begin()?;ensure!(physical_target(product,physical_pid,&container)?==physical,"Controller USB identity changed during registration");Ok(())})();
+    if let Err(error)=begin {
+        let cleanup=source.finish();
+        let error=format!("Controller input registration: {error:#}; cleanup: {cleanup:?}");
+        let _=ready.send(Err(error.clone()));anyhow::bail!(error);
+    }
+    let _=ready.send(Ok(()));
+    let mut batch=parser.interval_ms().map(Batcher::new);
+    let mut throttle=Throttle::default();let clock=Instant::now();
+    let mut last_validation=Instant::now();
+    let result=crate::mapping::guarded(||->Result<()>{
+        while !stop.load(Ordering::Acquire){
+            if last_validation.elapsed()>=Duration::from_millis(250){
+                ensure!(physical_target(product,physical_pid,&container)?==physical,"Controller USB identity changed during observation");
+                last_validation=Instant::now();
+            }
+            let report=source.receive(Duration::from_millis(2))?;
+            let tick=razer_platform::event_clock::tick()?;
+            let mut inputs=Vec::new();
+            if let Some(report)=report {
+                if let Some(batch)=&mut batch {if let Some(frames)=batch.push(report,tick){inputs.push(serde_json::to_value(frames)?);}}
+                else {inputs.push(serde_json::to_value(report)?);}
+            }
+            if let Some(batch)=&mut batch {if let Some(frames)=batch.poll(tick){inputs.push(serde_json::to_value(frames)?);}}
+            let mut samples=Vec::new();let mut notifications=Vec::new();let mut unsupported=0;
+            let observed=!inputs.is_empty();
+            for input in inputs {for event in parser.parse(&input)? {match event {
+                Event::Buttons{sample}=>if let Some(sample)=throttle.observe(sample,clock.elapsed().as_millis() as u64){samples.push(sample);},
+                event@Event::Notification{..}=>notifications.push(event),
+                Event::Unsupported{..}=>unsupported+=1,
+            }}}
+            if let Some(sample)=throttle.flush(clock.elapsed().as_millis() as u64){samples.push(sample);}
+            if observed || !samples.is_empty(){
+                let value=Update{samples,notifications,last_tick:observed.then_some(tick),unsupported};
+                if events.try_send(Ok(value)).is_err(){overflow.store(true,Ordering::Release);anyhow::bail!("Controller input consumer fell behind");}
+            }
+        }
+        Ok(())
+    });
+    let cleanup=source.finish();
+    match (result,cleanup){(Ok(()),Ok(()))=>Ok(()),(Err(error),Ok(()))|(Ok(()),Err(error))=>{let _=events.try_send(Err(format!("{error:#}")));Err(error)},(Err(error),Err(cleanup))=>{let error=anyhow::anyhow!("{error:#}; controller input cleanup: {cleanup:#}");let _=events.try_send(Err(format!("{error:#}")));Err(error)}}
 }
 
 impl NativeRuntime {
-    pub(super) fn start_controller_input(
-        &mut self,
-        product: u32,
-        physical_pid: u32,
-        container: &str,
-        owner: &str,
-    ) -> anyhow::Result<Value> {
-        ensure!(
-            !owner.is_empty() && !owner.contains('\0'),
-            "Invalid controller input owner"
-        );
-        ensure!(
-            self.controller_input.registration.is_none(),
-            "Controller input worker already has an owner"
-        );
-        let physical = physical_target(product, physical_pid, container)?;
-        let info = json!({"vendorId":0x1532,"productId":physical_pid,"containerId":physical["device_container_id"],
-            "usbInstanceId":physical["device_instance_id"],"guid":owner});
-        let parser = Parser::new(product, physical_pid)?;
-        let interval = parser.interval_ms();
-        self.mapping()?;
-        while self.controller_input.receiver.try_recv().is_ok() {}
-        OVERFLOW.store(false, Ordering::Release);
-        self.controller_input.registration = Some(Registration {
-            product_id: product,
-            physical,
-            info: info.clone(),
-            register_attempted: false,
-            callback_ready: false,
-            parser,
-            throttle: Throttle::default(),
-            clock: Instant::now(),
-            last_validation: Instant::now(),
-        });
-        let result = (|| {
-            let text = CString::new(info.to_string())?;
-            let add: AddDevice = unsafe { self.mapping_symbol("addUsbDeviceWithoutFilterDriver")? };
-            let result = self.call(|| unsafe { add(text.as_ptr(), device_event, callback3) });
-            if self.poisoned {
-                std::mem::forget(text);
-                return result.map(|_| ());
-            }
-            result?;
-            self.controller_input
-                .registration
-                .as_mut()
-                .unwrap()
-                .register_attempted = true;
-            let result = if let Some(interval) = interval {
-                let register: IntervalOperation =
-                    unsafe { self.mapping_symbol("registerIntervaledHardwareEvent")? };
-                self.call(|| unsafe { register(text.as_ptr(), interval, callback3) })
-            } else {
-                let register: Operation = unsafe { self.mapping_symbol("registerHardwareEvent")? };
-                self.call(|| unsafe { register(text.as_ptr(), callback3) })
-            };
-            if self.poisoned {
-                std::mem::forget(text);
-                return result.map(|_| ());
-            }
-            result?;
-            let install: SetCallback = unsafe { self.mapping_symbol("setHardwareEventCallback")? };
-            let result = self.call(|| unsafe { install(text.as_ptr(), hardware_event, callback3) });
-            if self.poisoned {
-                std::mem::forget(text);
-                return result.map(|_| ());
-            }
-            result?;
-            let current = physical_target(product, physical_pid, container)?;
-            ensure!(
-                current
-                    == self
-                        .controller_input
-                        .registration
-                        .as_ref()
-                        .unwrap()
-                        .physical,
-                "Controller USB identity changed during registration"
-            );
-            self.controller_input
-                .registration
-                .as_mut()
-                .unwrap()
-                .callback_ready = true;
-            Ok(())
-        })();
-        if let Err(error) = result {
-            let cleanup = if !self.poisoned {
-                self.stop_controller_input(owner)
-                    .err()
-                    .map(|error| format!("{error:#}"))
-            } else {
-                None
-            };
-            anyhow::bail!(
-                "Controller hardware-event registration failed: {error:#}; cleanup: {cleanup:?}"
-            );
+    pub(super) fn start_controller_input(&mut self,product:u32,physical_pid:u32,container:&str,owner:&str)->Result<Value>{
+        ensure!(!owner.is_empty()&&!owner.contains('\0'),"Invalid controller input owner");
+        ensure!(self.controller_input.registration.is_none(),"Controller input already has an owner");
+        let physical=physical_target(product,physical_pid,container)?;
+        let info=json!({"vendorId":0x1532,"productId":physical_pid,"containerId":physical["device_container_id"],"usbInstanceId":physical["device_instance_id"],"guid":owner});
+        let parser=Parser::new(product,physical_pid)?;let interval=parser.interval_ms();
+        let stop=Arc::new(AtomicBool::new(false));let cancel=stop.clone();
+        let overflow=Arc::new(AtomicBool::new(false));let worker_overflow=overflow.clone();
+        let (sender,events)=mpsc::sync_channel(512);let (ready,initialized)=mpsc::sync_channel(1);
+        let worker_container=container.to_owned();let observed=physical.clone();
+        let worker=thread::Builder::new().name("razer-controller-input".into()).spawn(move||run(product,physical_pid,worker_container,observed,parser,cancel,sender,worker_overflow,ready))?;
+        match initialized.recv(){
+            Ok(Ok(()))=>(),
+            value=>{let cleanup=worker.join();anyhow::bail!("Controller initialization: {value:?}; cleanup: {cleanup:?}");}
         }
-        Ok(
-            json!({"started":true,"owner_guid":owner,"product_id":product,"device_info":info,"interval_ms":interval}),
-        )
+        self.controller_input.registration=Some(Registration{owner:owner.into(),product,info:info.clone(),stop,worker:Some(worker),events,overflow});
+        Ok(json!({"started":true,"owner_guid":owner,"product_id":product,"device_info":info,"interval_ms":interval}))
     }
-    pub(super) fn controller_input_events(&mut self, owner: &str) -> anyhow::Result<Value> {
-        let registered = self.controller_input.registration(owner)?;
-        ensure!(
-            registered.callback_ready,
-            "Controller hardware callback was not installed"
-        );
-        ensure!(
-            !OVERFLOW.load(Ordering::Acquire),
-            "Controller native callback queue overflowed; observation is incomplete"
-        );
-        if registered.last_validation.elapsed() >= Duration::from_millis(250) {
-            let current = physical_target(
-                registered.product_id,
-                registered.info["productId"].as_u64().unwrap() as u32,
-                registered.info["containerId"].as_str().unwrap(),
-            )?;
-            ensure!(
-                current == registered.physical,
-                "Controller USB identity changed while observing input"
-            );
-            self.controller_input
-                .registration
-                .as_mut()
-                .unwrap()
-                .last_validation = Instant::now();
+    pub(super) fn controller_input_events(&mut self,owner:&str)->Result<Value>{
+        let row=self.controller_input.registration(owner)?;
+        ensure!(!row.overflow.load(Ordering::Acquire),"Controller input consumer fell behind");
+        let mut samples=Vec::new();let mut notifications=Vec::new();let mut last_tick=None;let mut unsupported=0u64;
+        for event in row.events.try_iter(){
+            let value=event.map_err(anyhow::Error::msg)?;
+            samples.extend(value.samples);
+            notifications.extend(value.notifications);
+            if let Some(tick)=value.last_tick{last_tick=Some(tick);}
+            unsupported+=value.unsupported;
         }
-        let registered = self.controller_input.registration.as_mut().unwrap();
-        let mut samples = Vec::new();
-        let mut notifications = Vec::new();
-        let mut last_tick = None;
-        let mut unsupported = 0u32;
-        while let Ok(event) = self.controller_input.receiver.try_recv() {
-            let info: Value = serde_json::from_str(&event.info)
-                .context("Controller callback identity is malformed")?;
-            if !matches(&info, &registered.info) {
-                continue;
-            }
-            let data: Value = serde_json::from_str(&event.data)
-                .context("Controller callback data is malformed")?;
-            if event.device_event {
-                ensure!(
-                    data["type"] != "error",
-                    "Controller input device reported error: {data}"
-                );
-                continue;
-            }
-            last_tick = Some(event.tick);
-            for event in registered.parser.parse(&data)? {
-                match event {
-                    Event::Buttons { sample } => {
-                        if let Some(sample) = registered
-                            .throttle
-                            .observe(sample, registered.clock.elapsed().as_millis() as u64)
-                        {
-                            samples.push(sample);
-                        }
-                    }
-                    event @ Event::Notification { .. } => {
-                        ensure!(
-                            notifications.len() < 512,
-                            "Controller notification consumer fell behind"
-                        );
-                        notifications.push(event);
-                    }
-                    Event::Unsupported { .. } => {
-                        unsupported += 1;
-                    }
-                }
-            }
-        }
-        if let Some(sample) = registered
-            .throttle
-            .flush(registered.clock.elapsed().as_millis() as u64)
-        {
-            samples.push(sample);
-        }
-        Ok(
-            json!({"owner_guid":owner,"product_id":registered.product_id,"device_info":registered.info,
-            "samples":samples,"notifications":notifications,"last_tick":last_tick,"unsupported_reports":unsupported}),
-        )
+        if row.worker.as_ref().is_some_and(JoinHandle::is_finished){anyhow::bail!("Controller input stream stopped before cleanup");}
+        Ok(json!({"owner_guid":owner,"product_id":row.product,"device_info":row.info,"samples":samples,"notifications":notifications,"last_tick":last_tick,"unsupported_reports":unsupported}))
     }
-    pub(super) fn stop_controller_input(&mut self, owner: &str) -> anyhow::Result<Value> {
-        let registered = self.controller_input.registration(owner)?;
-        let info = registered.info.clone();
-        let product = registered.product_id;
-        let attempted = registered.register_attempted;
-        let text = CString::new(info.to_string())?;
-        let mut errors = Vec::new();
-        if attempted {
-            let result = (|| {
-                let unregister: Operation =
-                    unsafe { self.mapping_symbol("unregisterHardwareEvent")? };
-                self.call(|| unsafe { unregister(text.as_ptr(), callback3) })
-            })();
-            match result {
-                Ok(_) => {
-                    let registered = self.controller_input.registration.as_mut().unwrap();
-                    registered.register_attempted = false;
-                    registered.callback_ready = false;
-                }
-                Err(error) => errors.push(format!("unregisterHardwareEvent: {error:#}")),
-            }
-        }
-        if !self.poisoned {
-            let result = (|| {
-                let remove: Operation = unsafe { self.mapping_symbol("removeUsbDevice")? };
-                self.call(|| unsafe { remove(text.as_ptr(), callback3) })
-            })();
-            match result {
-                Ok(_) => self.controller_input.registration = None,
-                Err(error) => errors.push(format!("removeUsbDevice: {error:#}")),
-            }
-        }
-        if self.poisoned {
-            std::mem::forget(text);
-        }
-        ensure!(
-            errors.is_empty(),
-            "Controller input cleanup was not confirmed: {}",
-            errors.join("; ")
-        );
-        while self.controller_input.receiver.try_recv().is_ok() {}
-        Ok(json!({"stopped":true,"owner_guid":owner,"product_id":product,"device_info":info}))
+    pub(super) fn stop_controller_input(&mut self,owner:&str)->Result<Value>{
+        self.controller_input.registration(owner)?;
+        let mut row=self.controller_input.registration.take().unwrap();row.stop.store(true,Ordering::Release);
+        if let Some(worker)=row.worker.take(){worker.join().map_err(|_|anyhow::anyhow!("Controller input worker panicked"))??;}
+        Ok(json!({"stopped":true,"owner_guid":owner,"product_id":row.product,"device_info":row.info}))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn source_batch_deadline_uses_first_queued_report_and_cap_flushes(){
+        let mut batch=Batcher::new(60);
+        assert_eq!(batch.push(vec![1],100_000),Some(vec![vec![1]]));
+        assert_eq!(batch.push(vec![2],110_000),None);
+        assert_eq!(batch.push(vec![3],120_000),None);
+        assert_eq!(batch.poll(159_999),None);
+        assert_eq!(batch.poll(160_000),Some(vec![vec![2],vec![3]]));
+        assert_eq!(batch.push(vec![4],170_000),Some(vec![vec![4]]));
+        for _ in 0..10000{assert_eq!(batch.push(vec![5],171_000),None);}
+        assert_eq!(batch.push(vec![6],171_000).unwrap().len(),10001);
+        assert_eq!(batch.poll(999_999),None);
     }
 }

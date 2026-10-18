@@ -9,7 +9,6 @@ use theme::RuntimeColors as C;
 
 #[derive(Clone, Debug)]
 // Constructed by a real transport adapter; this UI never manufactures replies.
-#[allow(dead_code)]
 pub enum OledRuntimeObservation {
     Connection {
         is_ble: bool,
@@ -35,8 +34,7 @@ pub struct OledRuntimeRequested {
     message_type: &'static str,
     payload: Option<Value>,
 }
-// The forwarded request is consumed by a real transport adapter when present.
-#[allow(dead_code)]
+// Requests retain the source message identity and payload at the transport boundary.
 impl OledRuntimeRequested {
     pub fn message_type(&self) -> &'static str {
         self.message_type

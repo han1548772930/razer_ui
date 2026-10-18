@@ -16,7 +16,6 @@ use std::cell::RefCell;
 /// The application modules live in host tabs. Product-side macro/armory roots
 /// are separate embedded modes, not an OS-window policy. Product pairing uses
 /// a named host tab; `chromaApp` belongs to Chroma.
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum DisplayMode {
     Macro,
@@ -67,7 +66,6 @@ pub(super) struct WindowIdentity {
 /// Dashboard policy flags. Same attaches a named tab to the current host
 /// window; Different and DifferentSingleProcess create OS windows. Name
 /// deduplication happens before policy dispatch in the original host.
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum WindowPolicy {
     Same,
@@ -76,7 +74,6 @@ pub(super) enum WindowPolicy {
 }
 
 impl WindowPolicy {
-    #[allow(dead_code)]
     pub(super) fn flag(self) -> &'static str {
         match self {
             Self::Same => "policy=3",
@@ -157,7 +154,6 @@ pub(super) fn open_or_focus<V: Render + 'static>(
 }
 
 /// 该具名窗口当前是否存在（登记表按实际窗口列表清理后判断）。
-#[allow(dead_code)] // 供入口判断是否已经打开过，尚未接线。
 pub(super) fn is_open(name: &SharedString, cx: &App) -> bool {
     let live = cx.windows();
     OPEN_WINDOWS.with(|windows| {

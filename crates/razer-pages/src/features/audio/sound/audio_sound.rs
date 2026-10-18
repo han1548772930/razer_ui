@@ -7,7 +7,6 @@ use razer_widgets::theme::AudioEnhancementColors as Colors;
 #[path = "audio_sound_profile.rs"]
 mod profile_spatial;
 
-#[allow(dead_code)]
 #[path = "audio_sound_payload_schema.rs"]
 pub(super) mod fixed;
 use fixed::*;

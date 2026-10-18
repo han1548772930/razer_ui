@@ -1,7 +1,7 @@
 //! Current lighting_driver 1.9.14.0 `protocol::Rzp25NewChroma` replacement.
 //!
 //! Native factory RVA 0x2edd0, translator 0x7feb0, checksum 0x7fc30.
-//! See docs/re/lighting-native-current.md. Reports include the HID report ID;
+//! Reports include the HID report ID;
 //! the transport owns platform IO and delay scheduling. No vendor DLL is loaded.
 
 use anyhow::{Result, bail};

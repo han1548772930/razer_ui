@@ -1,10 +1,7 @@
-//! Worker-only vendor bindings. Each signature is paired with the original
-//! `apiObj`, callback declaration and invocation in the Electron wrapper.
-use super::{CALLBACK_TIMEOUT, ServiceRequest};
-use crate::dll::EngineLibrary;
+//! Independent Windows service owners and device transport dispatch.
+use super::ServiceRequest;
 use anyhow::{Context as _, bail};
 use razer_device::backend::HidNode;
-use razer_platform::native_paths::EnginePaths;
 use serde_json::{Value, json};
 pub(super) fn leviathan_event_source(
     target: &razer_device::leviathan::EventTarget,
@@ -105,44 +102,21 @@ pub(super) fn seiren_audio_playback(
 ) -> anyhow::Result<()> {
     seiren_audio_capture_adapter::playback(canceled, clip, started)
 }
-use std::{
-    ffi::{CStr, c_char},
-    mem::ManuallyDrop,
-    sync::{
-        Mutex,
-        mpsc::{self, Sender},
-    },
-};
-
 #[path = "controller_calibration_identity.rs"]
 mod controller_calibration_identity;
 #[path = "controller_input.rs"]
 mod controller_input;
 #[path = "device_reads.rs"]
 mod device_reads;
-#[path = "global_shortcut_capture.rs"]
-mod global_shortcut_capture;
-#[path = "global_shortcuts.rs"]
-mod global_shortcuts;
 #[path = "hid/hid.rs"]
 mod hid;
 #[path = "hid/hid_transport.rs"]
 mod hid_transport;
-#[path = "macro_recording.rs"]
-mod macro_recorder;
-#[path = "mapping_device.rs"]
-mod mapping_device;
-#[path = "mapping_mode_events.rs"]
-mod mapping_mode_events;
 #[path = "mapping_runtime.rs"]
 mod mapping_runtime;
 pub(super) fn mapping_client() -> anyhow::Result<crate::mapping::owner::Client> {
     mapping_runtime::client()
 }
-#[path = "mapping_execution.rs"]
-mod mapping_execution;
-#[path = "mapping_key_capture.rs"]
-mod mapping_key_capture;
 #[path = "mapping_native_input.rs"]
 pub mod mapping_native_input;
 #[path = "mapping_native_output.rs"]
@@ -163,12 +137,8 @@ mod mixer_lighting;
 mod mixer_meter;
 #[path = "mouse/input_monitoring.rs"]
 mod mouse_input_monitoring;
-#[path = "mouse/philips_measurement.rs"]
-mod philips_measurement;
 #[path = "audio/seiren_audio_capture.rs"]
 mod seiren_audio_capture_adapter;
-#[path = "shortcut_capture.rs"]
-mod shortcut_capture;
 #[path = "simple_version.rs"]
 mod simple_version;
 #[path = "audio/surround.rs"]
@@ -199,17 +169,6 @@ mod usb;
 #[path = "user_app_files.rs"]
 mod user_app_files;
 
-// No userdata argument exists in these APIs. The worker permits one outstanding
-// call and terminates after a timeout, so a late callback cannot satisfy a later
-// request. Function pointers are static for the entire worker lifetime.
-static PENDING: Mutex<Option<Sender<CallbackReply>>> = Mutex::new(None);
-
-type Callback0 = unsafe extern "C" fn();
-type Callback2 = unsafe extern "C" fn(bool, *const c_char);
-type Callback3 = unsafe extern "C" fn(bool, *const c_char, *const c_char);
-type Initialize = unsafe extern "C" fn(Callback0);
-type Query = unsafe extern "C" fn(Callback3);
-
 pub(super) fn controller_calibration_node_proof(node: &HidNode) -> anyhow::Result<Value> {
     controller_feature_node_proof(node, 1)
 }
@@ -220,230 +179,88 @@ pub(super) fn controller_feature_node_proof(
 ) -> anyhow::Result<Value> {
     controller_calibration_identity::proof(node, claim_interface)
 }
-type StorageSetItem = unsafe extern "C" fn(*const c_char, *const c_char, Callback2);
-
-struct CallbackReply {
-    success: bool,
-    reason: String,
-    value: Option<String>,
-}
-
-unsafe fn copy_string(value: *const c_char) -> String {
-    if value.is_null() {
-        String::new()
-    } else {
-        // SAFETY: the original API callback supplies a borrowed NUL-terminated
-        // string. Copy it during this invocation; the DLL retains ownership.
-        unsafe { CStr::from_ptr(value) }
-            .to_string_lossy()
-            .into_owned()
-    }
-}
-
-fn complete(reply: CallbackReply) {
-    if let Ok(mut slot) = PENDING.lock() {
-        if let Some(sender) = slot.take() {
-            let _ = sender.send(reply);
-        }
-    }
-}
-
-unsafe extern "C" fn callback0() {
-    complete(CallbackReply {
-        success: true,
-        reason: String::new(),
-        value: None,
-    });
-}
-
-unsafe extern "C" fn callback2(success: bool, reason: *const c_char) {
-    complete(CallbackReply {
-        success,
-        reason: unsafe { copy_string(reason) },
-        value: None,
-    });
-}
-
-unsafe extern "C" fn callback3(success: bool, reason: *const c_char, value: *const c_char) {
-    complete(CallbackReply {
-        success,
-        reason: unsafe { copy_string(reason) },
-        value: (!value.is_null()).then(|| unsafe { copy_string(value) }),
-    });
-}
-
 pub(super) struct NativeRuntime {
-    paths: EnginePaths,
-    // Never unload a library while its background callbacks may still be active.
-    // Shutdown is explicit; process exit reclaims the module after this returns.
-    mapping: Option<ManuallyDrop<EngineLibrary>>,
-    #[cfg(test)]
-    simple: Option<ManuallyDrop<EngineLibrary>>,
-    mapping_initialized: bool,
-    #[cfg(test)]
-    simple_initialized: bool,
+    mapping_scope: Option<crate::mapping::Client>,
     app_files: user_app_files::Events,
-    macro_recorder: macro_recorder::Recorder,
-    global_shortcuts: global_shortcuts::State,
     receiver_pairing: receiver_pairing::Controller,
     receiver_lighting: receiver_lighting::Controller,
     receiver_reconnect: receiver_reconnect::Controller,
-    mapping_device: mapping_device::State,
-    mapping_execution: mapping_execution::State,
-    mapping_mode_events: mapping_mode_events::State,
     controller_input: controller_input::State,
-    philips_measurement: philips_measurement::State,
     mouse_input_monitoring: mouse_input_monitoring::State,
-    shortcut_capture: shortcut_capture::State,
-    mapping_key_capture: mapping_key_capture::State,
     mixer_meter: Option<mixer_meter::Meter>,
     mixer_hardware: Option<mixer_hardware::Hardware>,
     seiren_audio: device_reads::SeirenAudio,
     system_monitor: system_monitor::State,
     surround: surround_adapter::State,
-    poisoned: bool,
 }
 
 impl NativeRuntime {
     pub(super) fn new() -> Self {
         Self {
-            paths: EnginePaths::discover(),
-            mapping: None,
-            #[cfg(test)]
-            simple: None,
-            mapping_initialized: false,
-            #[cfg(test)]
-            simple_initialized: false,
+            mapping_scope: None,
             app_files: user_app_files::Events::default(),
-            macro_recorder: macro_recorder::Recorder::new(),
-            global_shortcuts: global_shortcuts::State::new(),
             receiver_pairing: receiver_pairing::Controller::default(),
             receiver_lighting: receiver_lighting::Controller::default(),
             receiver_reconnect: receiver_reconnect::Controller::default(),
-            mapping_device: mapping_device::State::new(),
-            mapping_execution: mapping_execution::State::default(),
-            mapping_mode_events: mapping_mode_events::State::default(),
             controller_input: controller_input::State::new(),
-            philips_measurement: philips_measurement::State::new(),
             mouse_input_monitoring: mouse_input_monitoring::State::default(),
-            shortcut_capture: shortcut_capture::State::new(),
-            mapping_key_capture: mapping_key_capture::State::new(),
             mixer_meter: None,
             mixer_hardware: None,
             seiren_audio: device_reads::SeirenAudio::default(),
             system_monitor: system_monitor::State::default(),
             surround: surround_adapter::State::default(),
-            poisoned: false,
         }
     }
 
-    pub(super) fn is_poisoned(&self) -> bool {
-        self.poisoned
-    }
-
-    fn call(&mut self, invoke: impl FnOnce()) -> anyhow::Result<CallbackReply> {
-        let reply = self.call_source(invoke)?;
-        if !reply.success {
-            bail!("原生服务拒绝请求：{}", reply.reason);
-        }
-        Ok(reply)
-    }
-
-    // Source callback failures are data; transport failure/timeout still poison
-    // this owner so a late callback cannot complete a later request.
-    fn call_source(&mut self, invoke: impl FnOnce()) -> anyhow::Result<CallbackReply> {
-        if self.poisoned {
-            bail!("设备服务回调状态已失效，请重新连接");
-        }
-        let (sender, receiver) = mpsc::channel();
-        match PENDING.lock() {
-            Ok(mut pending) if pending.is_none() => *pending = Some(sender),
-            _ => {
-                self.poisoned = true;
-                bail!("设备服务回调状态不可用，请重新连接");
-            }
-        }
-        invoke();
-        let reply = match receiver.recv_timeout(CALLBACK_TIMEOUT) {
-            Ok(reply) => reply,
-            Err(error) => {
-                self.poisoned = true;
-                if let Ok(mut pending) = PENDING.lock() {
-                    pending.take();
-                }
-                return Err(error).context("原生服务未在时限内返回回调");
-            }
-        };
-        Ok(reply)
-    }
-
-    fn mapping(&mut self) -> anyhow::Result<()> {
-        if self.mapping_initialized {
-            return Ok(());
-        }
-        if self.mapping.is_none() {
-            let path = self.paths.resolve_host_service("mapping_engine")?;
-            self.mapping = Some(ManuallyDrop::new(EngineLibrary::load(&path)?));
-        }
-        // mapping_engine/win/index.js: ["void",["pointer"]], Callback("void",[]).
-        let initialize: Initialize = unsafe { self.mapping_symbol("mappingEngineInitialize")? };
-        if let Err(error) = self.call(|| unsafe { initialize(callback0) }) {
-            self.poisoned = true;
-            return Err(error);
-        }
-        self.mapping_initialized = true;
-        Ok(())
-    }
-
-    #[cfg(test)]
-    #[cfg(test)]
-    fn simple(&mut self) -> anyhow::Result<()> {
-        if self.simple_initialized {
-            return Ok(());
-        }
-        if self.simple.is_none() {
-            let path = self.paths.resolve_host_service("simple_service")?;
-            self.simple = Some(ManuallyDrop::new(EngineLibrary::load(&path)?));
-        }
-        // simple_service/win/index.js: identical void(callback0) lifecycle.
-        let initialize: Initialize = unsafe { self.simple_symbol("simpleServiceInitialize")? };
-        if let Err(error) = self.call(|| unsafe { initialize(callback0) }) {
-            self.poisoned = true;
-            return Err(error);
-        }
-        self.simple_initialized = true;
-        Ok(())
-    }
-
-    unsafe fn mapping_symbol<T: Copy>(&self, name: &str) -> anyhow::Result<T> {
-        let library = self.mapping.as_ref().context("映射引擎未加载")?;
-        unsafe { library.func(name) }
-            .with_context(|| format!("{} 缺少当前封装所需导出 {name}", library.path().display()))
-    }
-
-    #[cfg(test)]
-    unsafe fn simple_symbol<T: Copy>(&self, name: &str) -> anyhow::Result<T> {
-        let library = self.simple.as_ref().context("音频服务未加载")?;
-        unsafe { library.func(name) }
-            .with_context(|| format!("{} 缺少当前封装所需导出 {name}", library.path().display()))
+    fn mapping_request(&mut self, request: ServiceRequest) -> anyhow::Result<Value> {
+        if self.mapping_scope.is_none() { self.mapping_scope = Some(mapping_client()?); }
+        self.mapping_scope.as_mut().unwrap().request(request)
     }
 
     pub(super) fn request(&mut self, request: ServiceRequest) -> anyhow::Result<Value> {
-        if self.poisoned
-            && !matches!(
-                request,
-                ServiceRequest::Shutdown
-                    | ServiceRequest::StopMacroRecording
-                    | ServiceRequest::MacroRecordingEvents
-                    | ServiceRequest::QueryMacroRecordingStarted
-                    | ServiceRequest::MacroRecordingMode
-                    | ServiceRequest::SystemMonitorPoll { .. }
-                    | ServiceRequest::SystemMonitorStop { .. }
-            )
-        {
-            bail!("设备服务回调状态已失效，请重新连接");
-        }
         match request {
+            request @ (ServiceRequest::MousePhilipsMeasurementStart { .. }
+                | ServiceRequest::MousePhilipsMeasurementPoll { .. }
+                | ServiceRequest::MousePhilipsMeasurementCancel { .. }
+                | ServiceRequest::StartMappingKeyCapture
+                | ServiceRequest::StartGlobalShortcutCapture
+                | ServiceRequest::StartKeyboardCalibrationCapture { .. }
+                | ServiceRequest::MappingKeyCaptureEvents
+                | ServiceRequest::GlobalShortcutCaptureEvents
+                | ServiceRequest::StopMappingKeyCapture
+                | ServiceRequest::StartShortcutCapture
+                | ServiceRequest::ShortcutCaptureEvents
+                | ServiceRequest::StopShortcutCapture
+                | ServiceRequest::MappingDeviceStart { .. }
+                | ServiceRequest::MappingDevicePublish { .. }
+                | ServiceRequest::MappingDeviceEvents { .. }
+                | ServiceRequest::MappingDeviceHypershiftActive { .. }
+                | ServiceRequest::MappingDeviceStop { .. }
+                | ServiceRequest::MappingKeyboardGamingIndicator { .. }
+                | ServiceRequest::StartMacroRecording
+                | ServiceRequest::PrepareOtfmRecorder
+                | ServiceRequest::StartOtfmRecording
+                | ServiceRequest::QueryMacroRecordingStarted
+                | ServiceRequest::MacroRecordingMode
+                | ServiceRequest::MacroRecorderGlobalState
+                | ServiceRequest::SetOtfmMappingsSuspended { .. }
+                | ServiceRequest::MappingOtfmInputStart { .. }
+                | ServiceRequest::MacroRecorderStorageWrite { .. }
+                | ServiceRequest::StopMacroRecording
+                | ServiceRequest::MacroRecordingEvents
+                | ServiceRequest::SuspendMacroMappings
+                | ServiceRequest::ResumeMacroMappings
+                | ServiceRequest::GlobalMode
+                | ServiceRequest::GlobalShortcuts
+                | ServiceRequest::RegisterShortcut { .. }
+                | ServiceRequest::UnregisterShortcut { .. }
+                | ServiceRequest::EnableGlobalShortcuts { .. }
+                | ServiceRequest::ShortcutEvents
+                | ServiceRequest::GlobalShortcutStart { .. }
+                | ServiceRequest::GlobalShortcutPublish { .. }
+                | ServiceRequest::GlobalShortcutPoll { .. }
+                | ServiceRequest::GlobalShortcutStop { .. }
+                | ServiceRequest::MappingExecution { .. }) => self.mapping_request(request),
             ServiceRequest::MouseInputMonitoringStart { owner_guid } => {
                 self.start_mouse_input_monitoring(owner_guid)
             }
@@ -464,17 +281,6 @@ impl NativeRuntime {
             ServiceRequest::SystemMonitorStop { owner_guid } => {
                 serde_json::to_value(self.system_monitor.stop(&owner_guid)?).map_err(Into::into)
             }
-            ServiceRequest::MousePhilipsMeasurementStart {
-                operation_id,
-                target,
-                kind,
-            } => self.start_philips_measurement(operation_id, target, kind),
-            ServiceRequest::MousePhilipsMeasurementPoll { operation_id } => {
-                self.poll_philips_measurement(&operation_id)
-            }
-            ServiceRequest::MousePhilipsMeasurementCancel { operation_id } => {
-                self.cancel_philips_measurement(&operation_id)
-            }
             ServiceRequest::ControllerInputStart {
                 product_id,
                 physical_product_id,
@@ -492,40 +298,6 @@ impl NativeRuntime {
             ServiceRequest::ControllerInputStop { owner_guid } => {
                 self.stop_controller_input(&owner_guid)
             }
-            ServiceRequest::StartMappingKeyCapture => self.start_mapping_key_capture(),
-            ServiceRequest::StartGlobalShortcutCapture => self.start_global_shortcut_capture(),
-            ServiceRequest::StartKeyboardCalibrationCapture {
-                product_id,
-                container_id,
-            } => self.start_keyboard_calibration_capture(product_id, &container_id),
-            ServiceRequest::MappingKeyCaptureEvents => self.mapping_key_capture_events(),
-            ServiceRequest::GlobalShortcutCaptureEvents => self.global_shortcut_capture_events(),
-            ServiceRequest::StopMappingKeyCapture => self.stop_mapping_key_capture(),
-            ServiceRequest::StartShortcutCapture => self.start_shortcut_capture(),
-            ServiceRequest::ShortcutCaptureEvents => self.shortcut_capture_events(),
-            ServiceRequest::StopShortcutCapture => self.stop_shortcut_capture(),
-            ServiceRequest::MappingDeviceStart {
-                product_id,
-                device_container_id,
-                owner_guid,
-            } => self.start_mapping_device(product_id, &device_container_id, &owner_guid),
-            ServiceRequest::MappingDevicePublish {
-                owner_guid,
-                document,
-            } => self.publish_mapping_device(&owner_guid, document),
-            ServiceRequest::MappingDeviceEvents { owner_guid } => {
-                self.mapping_device_events(&owner_guid)
-            }
-            ServiceRequest::MappingDeviceHypershiftActive { owner_guid } => {
-                self.mapping_device_hypershift_active(&owner_guid)
-            }
-            ServiceRequest::MappingDeviceStop { owner_guid } => {
-                self.stop_mapping_device(&owner_guid)
-            }
-            ServiceRequest::MappingKeyboardGamingIndicator {
-                owner_guid,
-                enabled,
-            } => self.mapping_keyboard_indicator(&owner_guid, enabled),
             ServiceRequest::HostStorageView { .. }
             | ServiceRequest::KeyboardLayoutRead
             | ServiceRequest::AudioVolumeRead { .. }
@@ -719,25 +491,6 @@ impl NativeRuntime {
             ServiceRequest::BleMouseCurrentPower { target, change } => {
                 device_reads::mouse_current_power_ble(&target, &change)
             }
-            ServiceRequest::StartMacroRecording => self.start_macro_recording(),
-            ServiceRequest::PrepareOtfmRecorder => self.prepare_otfm_recorder(),
-            ServiceRequest::StartOtfmRecording => self.start_otfm_recording(),
-            ServiceRequest::QueryMacroRecordingStarted => self.query_macro_recording_started(),
-            ServiceRequest::MacroRecordingMode => self.query_macro_recording_mode(),
-            ServiceRequest::MacroRecorderGlobalState => self.macro_recorder_global_state(),
-            ServiceRequest::SetOtfmMappingsSuspended { suspended } => {
-                self.set_otfm_mappings_suspended(suspended)
-            }
-            ServiceRequest::MappingOtfmInputStart { owner_guid } => {
-                self.start_otfm_input(&owner_guid)
-            }
-            ServiceRequest::MacroRecorderStorageWrite { key, value } => {
-                self.macro_recorder_storage_write(&key, &value)
-            }
-            ServiceRequest::StopMacroRecording => self.stop_macro_recording(),
-            ServiceRequest::MacroRecordingEvents => self.macro_recorder.events(),
-            ServiceRequest::SuspendMacroMappings => self.suspend_macro_mappings(),
-            ServiceRequest::ResumeMacroMappings => self.resume_macro_mappings(),
             ServiceRequest::ReceiverWirelessStatus {
                 path,
                 device_container_id,
@@ -841,45 +594,6 @@ impl NativeRuntime {
             }
             ServiceRequest::UserAppFiles { command } => self.user_app_files(command),
             ServiceRequest::SimpleVersion => Ok(serde_json::to_value(simple_version::query()?)?),
-            ServiceRequest::GlobalMode => {
-                self.mapping()?;
-                let query: Query = unsafe { self.mapping_symbol("getGlobalMode")? };
-                let value = self
-                    .call(|| unsafe { query(callback3) })?
-                    .value
-                    .context("Mapping engine did not return global mode")?;
-                anyhow::ensure!(
-                    !value.trim().is_empty(),
-                    "getGlobalMode returned empty data"
-                );
-                Ok(serde_json::from_str(&value).unwrap_or(Value::String(value)))
-            }
-            ServiceRequest::GlobalShortcuts
-            | ServiceRequest::RegisterShortcut { .. }
-            | ServiceRequest::UnregisterShortcut { .. }
-            | ServiceRequest::EnableGlobalShortcuts { .. }
-            | ServiceRequest::ShortcutEvents => {
-                bail!("Global shortcuts must use the direct Rust platform owner")
-            }
-            ServiceRequest::GlobalShortcutStart { owner_guid } => {
-                self.start_global_shortcut_owner(&owner_guid)
-            }
-            ServiceRequest::GlobalShortcutPublish {
-                owner_guid,
-                revision,
-                document,
-            } => self.publish_global_shortcuts(&owner_guid, revision, &document),
-            ServiceRequest::GlobalShortcutPoll { owner_guid } => {
-                self.global_shortcut_events(&owner_guid)
-            }
-            ServiceRequest::GlobalShortcutStop { owner_guid } => {
-                self.stop_global_shortcut_owner(&owner_guid)
-            }
-            ServiceRequest::MappingExecution {
-                owner_guid,
-                revision,
-                target,
-            } => self.set_mapping_execution(&owner_guid, revision, target),
             ServiceRequest::AudioMixerHardwareStart { node } => {
                 anyhow::ensure!(
                     self.mixer_hardware.is_none(),
@@ -969,57 +683,22 @@ impl NativeRuntime {
                         None
                     }
                 };
-                let philips_cleanup = match self.shutdown_philips_measurement() {
-                    Ok(progress) => progress,
-                    Err(error) => {
-                        errors.push(format!("Philips calibration cleanup failed: {error:#}"));
-                        None
-                    }
-                };
                 if let Some(owner) = self.controller_input.owner() {
                     if let Err(error) = self.stop_controller_input(&owner) {
                         errors.push(format!("Controller input cleanup failed: {error:#}"));
                     }
                 }
-                self.shutdown_macro_recording(&mut errors);
-                if let Some(owner) = self.global_shortcuts.owner() {
-                    if let Err(error) = self.stop_global_shortcut_owner(&owner) {
-                        errors.push(format!("Global shortcut cleanup failed: {error:#}"));
-                    }
-                }
-                if let Err(error) = self.stop_mapping_key_capture() {
-                    errors.push(format!("Mapping key capture cleanup failed: {error:#}"));
-                }
-                if let Err(error) = self.stop_shortcut_capture() {
-                    errors.push(format!("Shortcut capture cleanup failed: {error:#}"));
-                }
-                for owner in self.mapping_device.owners() {
-                    if let Err(error) = self.stop_mapping_device(&owner) {
-                        errors.push(format!("Mapping device cleanup failed: {error:#}"));
-                    }
-                }
-                for owner in self.mapping_mode_events.owners() {
-                    if let Err(error) = self.release_mapping_mode_events(owner) {
-                        errors.push(format!("Mapping mode event cleanup failed: {error:#}"));
-                    }
-                }
-                if self.mapping_initialized && !self.poisoned {
-                    let result = (|| {
-                        let shutdown: Initialize =
-                            unsafe { self.mapping_symbol("mappingEngineShutdown")? };
-                        self.call(|| unsafe { shutdown(callback0) })
-                    })();
-                    match result {
-                        Ok(_) => self.mapping_initialized = false,
-                        Err(error) => errors.push(format!("映射引擎关闭失败：{error:#}")),
-                    }
+                if let Some(scope) = self.mapping_scope.as_mut() {
+                    if let Err(error) = scope.request(ServiceRequest::Shutdown) {
+                        errors.push(format!("Mapping scope cleanup failed: {error:#}"));
+                    } else { self.mapping_scope = None; }
                 }
                 self.app_files.clear();
                 if !errors.is_empty() {
                     bail!("{}", errors.join("；"));
                 }
                 Ok(
-                    json!({"stopped": true, "mouse_philips_measurement_cleanup": philips_cleanup, "system_monitor_cleanup": system_monitor_cleanup}),
+                    json!({"stopped": true, "system_monitor_cleanup": system_monitor_cleanup}),
                 )
             }
         }

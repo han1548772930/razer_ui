@@ -158,53 +158,8 @@ fn failed_live_service_keeps_source_build_metadata_and_explicit_failure() {
 
 #[test]
 #[ignore = "requires an audited installed local COM service; use tools/workspace.py"]
-fn connected_service_version_read_only() {
-    use super::super::{Initialize, NativeRuntime, Query, callback0, callback3};
-    use crate::dll::EngineLibrary;
-    use std::mem::ManuallyDrop;
-
-    let path = std::env::var_os("RAZER_VERIFIED_SIMPLE_SERVICE")
-        .expect("the maintained verifier must supply the audited source library");
-    let report = query().unwrap();
-    let mut original = NativeRuntime::new();
-    // This original library is used only by this opt-in comparison test. Its
-    // process retains the module through shutdown and callback completion.
-    original.simple = Some(ManuallyDrop::new(
-        EngineLibrary::load(std::path::Path::new(&path)).unwrap(),
-    ));
-    let initialize = original.simple();
-    let source = initialize.and_then(|()| {
-        let call: Query = unsafe { original.simple_symbol("simpleGetVersionInfo")? };
-        let reply = original.call_source(|| unsafe { call(callback3) })?;
-        Ok(serde_json::json!({
-            "success":reply.success, "reason":reply.reason,
-            "value":reply.value.as_deref().map(serde_json::from_str::<serde_json::Value>).transpose()?
-        }))
-    });
-    let cleanup = if original.simple_initialized && !original.poisoned {
-        (|| -> Result<()> {
-            let shutdown: Initialize = unsafe { original.simple_symbol("simpleServiceShutdown")? };
-            original.call(|| unsafe { shutdown(callback0) })?;
-            original.simple_initialized = false;
-            Ok(())
-        })()
-    } else {
-        Err(anyhow::anyhow!(
-            "original lifecycle did not reach a callable initialized state"
-        ))
-    };
-    let source = source.map_err(|error| format!("{error:#}"));
-    let cleanup = cleanup.map_err(|error| format!("{error:#}"));
-    let receipt = serde_json::json!({"rust":report, "original":source, "cleanup":cleanup});
-    println!("RAZER_VERSION_RESULT {receipt}");
-    assert!(cleanup.is_ok(), "original shutdown must complete");
-    let source = source.unwrap();
-    assert_eq!(source["success"], true);
-    let ElevationVersion::Observed { value } = &report.elevation else {
-        panic!("live COM observation failed");
-    };
-    assert_eq!(source["value"]["Elevation Service Version"], *value);
-    assert_eq!(source["value"]["Simple Service Version"], report.simple);
-    assert_eq!(source["value"]["Apps Service Version"], report.apps);
-    assert_eq!(source["value"]["Audio Service Version"], report.audio);
+fn direct_service_version_read_only() {
+    let report=query().unwrap();
+    println!("RAZER_VERSION_RESULT {}",serde_json::to_string(&report).unwrap());
+    assert!(matches!(report.elevation,ElevationVersion::Observed{..}));
 }

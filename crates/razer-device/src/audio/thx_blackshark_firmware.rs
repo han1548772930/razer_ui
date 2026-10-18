@@ -1,9 +1,8 @@
 //! Current six-owner BlackShark/Valkyrie firmware EQ and local preset restore.
 //!
-//! SHA-bound caller evidence: `docs/re/evidence/thx-blackshark-source-current.json`.
 //! AudioValkyrie -> AudioBillieT1Wired general reports use `hid.write`/`hid.read`,
 //! report 2, transaction 0x60, and the source sign-magnitude band encoding.
-//! No OS API, vendor DLL, vendor JavaScript, network or real device is used here.
+//! Platform I/O is supplied through the transport; this module loads no vendor code.
 //!
 //! Rust boundary policy is separate from observed source behavior: descriptor
 //! lengths and retained identity are checked, all input loops have a finite

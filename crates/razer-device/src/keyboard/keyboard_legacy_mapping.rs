@@ -1,7 +1,7 @@
 //! Wired PID 515 current middleware document preparation. Original inputs:
 //! main.8342a5d11f2dd0d29680.js DeviceInfo/defaults; 2520.0964e34572ce7e761fa8.js
 //! factories; 2592.ca84d3908676d84b1779.js modules 72937/42731/31064.
-//! Compiling a local profile never acknowledges DLL publication or HID writes.
+//! Compiling a local profile never acknowledges mapping-engine publication or HID writes.
 use crate::{
     keyboard_gaming_mapping::{
         GamingMappingContext, GamingModeSettings, KeyboardGamingMappingPlan,

@@ -70,10 +70,9 @@ fn data() -> &'static SnapTapData {
     DATA.get_or_init(|| read_keyboard_snap_tap_catalog())
 }
 
-/// Only a real middleware adapter may publish these observations. No adapter is
-/// connected yet; native keystrokes are a separate local editing input channel.
+/// Middleware observations and native keystrokes have separate entry points;
+/// keystrokes describe local editing input, not device configuration.
 #[derive(Clone)]
-#[allow(dead_code)]
 pub enum SnapTapObservation {
     Configuration(Value),
     AdjustmentMode(bool),
@@ -573,7 +572,6 @@ impl KeyboardProductWorkspace {
             self.submit_analog_snap(cx);
         }
     }
-    #[allow(dead_code)]
     pub fn observe_snap_tap(
         &mut self,
         observation: SnapTapObservation,

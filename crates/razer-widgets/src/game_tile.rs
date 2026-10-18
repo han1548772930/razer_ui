@@ -2,7 +2,7 @@
 //!
 //! # 依据
 //!
-//! - 结构：`.ref/applications/synapse/profiles/static/js/1255.b556ae48.chunk.js`
+//! - 结构：`.analysis/inputs/frontend/synapse-profiles-current/raw/apps.razer.com/synapse/profiles/static/js/1255.b556ae48.chunk.js`
 //!   的 `renderGameTiles()`：
 //!   ```jsx
 //!   <div className="list-box">
@@ -13,7 +13,7 @@
 //!     </div>
 //!   </div>
 //!   ```
-//! - 样式：`.ref/applications/synapse/profiles/static/css/1255.d3d31cbf.chunk.css`
+//! - 样式：`.analysis/inputs/frontend/synapse-profiles-current/raw/apps.razer.com/synapse/profiles/static/css/1255.d3d31cbf.chunk.css`
 //!   与 `9449.b8e7f39a.chunk.css`：
 //!   `.list-box{display:flex;flex-wrap:wrap;margin-right:-5px}`、
 //!   `.linked-game-tile{background-color:#111;border:1px solid #111;border-radius:5px;

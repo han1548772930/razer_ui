@@ -123,12 +123,23 @@ impl AudioProductWorkspace {
     ) -> AnyElement {
         let value = self.surround_value(control);
         let enabled = enabled && value.is_some() && self.surround.connected;
-        let mut row = v_flex().gap(surface::css(8.)).mb(surface::css(20.)).child(
-            h_flex()
-                .justify_between()
-                .child(label)
-                .child(value.map_or_else(|| "—".into(), |v| format!("{v:.0}"))),
-        );
+        let mut row = v_flex()
+            .capture_key_down(|event, _, cx| {
+                if matches!(
+                    event.keystroke.key.as_str(),
+                    "home" | "end" | "up" | "down" | "left" | "right"
+                ) {
+                    cx.stop_propagation();
+                }
+            })
+            .gap(surface::css(8.))
+            .mb(surface::css(20.))
+            .child(
+                h_flex()
+                    .justify_between()
+                    .child(label)
+                    .child(value.map_or_else(|| "—".into(), |v| format!("{v:.0}"))),
+            );
         if let Some(value) = value {
             row = row.child(
                 SourceSlider::new(&self.surround.sliders[&control], value / 100.)
@@ -157,6 +168,7 @@ impl AudioProductWorkspace {
         let (min, max) = control.limits();
         let enabled = enabled && value.is_some() && self.surround.connected;
         let mut body = v_flex()
+            .capture_key_down(|_, _, cx| cx.stop_propagation())
             .items_center()
             .gap(surface::css(10.))
             .child(value.map_or_else(|| "—".into(), |v| format!("{v:+.0}")));

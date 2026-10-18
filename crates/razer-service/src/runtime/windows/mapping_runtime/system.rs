@@ -1,5 +1,5 @@
 //! System mappings at RVA 0xae48e, including the AoAc monitor-power path.
-use anyhow::{Context, Result, ensure};
+use anyhow::{Result, ensure};
 use razer_device::mapping_native_action::SystemAction;
 use std::{ptr, sync::OnceLock, time::Duration};
 use windows_sys::{
