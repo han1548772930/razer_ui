@@ -139,6 +139,7 @@ impl EventEmitter<SeirenStreamMixerRequested> for AudioProductWorkspace {}
 impl EventEmitter<SeirenStreamMixerCaptureChanged> for AudioProductWorkspace {}
 
 pub(super) struct State {
+    stopped: bool,
     owner: EntityId,
     data: Value,
     generation: u64,
@@ -298,6 +299,7 @@ impl AudioProductWorkspace {
             },
         ));
         self.seiren_stream = Some(State {
+            stopped: false,
             owner: cx.entity_id(),
             data: source_initial(),
             generation: NEXT_GENERATION.fetch_add(1, Ordering::Relaxed),
@@ -415,6 +417,21 @@ impl AudioProductWorkspace {
             state.data["levelMeter"] = json!([]);
         }
     }
+    pub(super) fn stop_seiren_stream_mixer_admission(&mut self) {
+        if let Some(state) = &mut self.seiren_stream {
+            state.stopped = true;
+        }
+    }
+    pub(super) fn resume_seiren_stream_mixer_admission(&mut self) {
+        if let Some(state) = &mut self.seiren_stream {
+            state.stopped = false;
+        }
+    }
+    pub(super) fn seiren_stream_mixer_pending(&self) -> bool {
+        self.seiren_stream
+            .as_ref()
+            .is_some_and(|state| !state.pending.is_empty())
+    }
     pub fn observe_seiren_stream_mixer(
         &mut self,
         observation: SeirenStreamMixerObservation,
@@ -495,6 +512,9 @@ impl AudioProductWorkspace {
         let Some(state) = &mut self.seiren_stream else {
             return;
         };
+        if state.stopped {
+            return;
+        }
         let action = match Action::new(event, payload.clone()) {
             Ok(action) => action,
             Err(error) => {
@@ -808,7 +828,9 @@ impl AudioProductWorkspace {
         cx.notify();
     }
     pub(super) fn clear_seiren_stream_mixer_meters(&mut self) {
-        if let Some(state) = &mut self.seiren_stream { state.data["levelMeter"] = Value::Null; }
+        if let Some(state) = &mut self.seiren_stream {
+            state.data["levelMeter"] = Value::Null;
+        }
     }
     fn set_seiren_stream_mixer_input(
         &mut self,

@@ -72,9 +72,15 @@ impl CommandQueue {
     }
 
     fn drain_next(&mut self) -> Option<Command> {
-        self.deferred
-            .pop_front()
-            .or_else(|| self.receiver.try_recv().ok())
+        loop {
+            let command = self
+                .deferred
+                .pop_front()
+                .or_else(|| self.receiver.try_recv().ok())?;
+            if !matches!(command, Command::Start) {
+                return Some(command);
+            }
+        }
     }
 }
 
@@ -308,10 +314,16 @@ impl Completion {
                 return Ok(false);
             }
             if let Some(result) = outcome.as_ref() {
-                result
-                    .released
-                    .as_ref()
-                    .map_err(|error| anyhow::anyhow!("Prior Matcher cleanup failed: {error}"))?;
+                let errors = [&result.cleanup, &result.released]
+                    .into_iter()
+                    .filter_map(|result| result.as_ref().err())
+                    .cloned()
+                    .collect::<Vec<_>>();
+                ensure!(
+                    errors.is_empty(),
+                    "Prior Matcher cleanup failed: {}",
+                    errors.join("; ")
+                );
                 return Ok(true);
             }
             (outcome, _) = self
@@ -471,16 +483,7 @@ impl NativeBackend<'_> {
     }
 
     fn wait<T>(&self, reply: Receiver<Result<T, String>>) -> anyhow::Result<T> {
-        loop {
-            self.check()?;
-            match reply.recv_timeout(Duration::from_millis(25)) {
-                Ok(result) => return result.map_err(anyhow::Error::msg),
-                Err(mpsc::RecvTimeoutError::Timeout) => {}
-                Err(mpsc::RecvTimeoutError::Disconnected) => {
-                    anyhow::bail!("Matcher page response owner closed")
-                }
-            }
-        }
+        wait_reply(reply, self.canceled)
     }
 
     fn client(&mut self) -> anyhow::Result<&mut ServiceClient> {
@@ -529,6 +532,22 @@ impl NativeBackend<'_> {
         self.device_task.take();
         self.lifecycle.take();
         Ok(())
+    }
+}
+
+fn wait_reply<T>(reply: Receiver<Result<T, String>>, canceled: &AtomicBool) -> anyhow::Result<T> {
+    loop {
+        ensure!(
+            !canceled.load(Ordering::Acquire),
+            "Matcher owner was canceled"
+        );
+        match reply.recv_timeout(Duration::from_millis(25)) {
+            Ok(result) => return result.map_err(anyhow::Error::msg),
+            Err(mpsc::RecvTimeoutError::Timeout) => {}
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                anyhow::bail!("Matcher page response owner closed")
+            }
+        }
     }
 }
 
@@ -687,7 +706,6 @@ fn run(
             // blocking this same owner on a shared lease would deadlock it.
             let command = if draining {
                 match commands.drain_next() {
-                    Some(Command::Start) => continue,
                     Some(command) => Ok(command),
                     None => break,
                 }
@@ -695,6 +713,9 @@ fn run(
                 commands.next(controller.locked)
             };
             let starting = matches!(&command, Ok(Command::Start));
+            if starting && closing.load(Ordering::Acquire) {
+                continue;
+            }
             let result = match command {
                 Ok(command) if controller.locked && command.requires_unlocked_device() => {
                     if let Err(error) = commands.defer(command) {
@@ -741,7 +762,7 @@ fn run(
                     }
                 }
             }
-            if !draining && controller.state() == State::Calibrating {
+            if !closing.load(Ordering::Acquire) && controller.state() == State::Calibrating {
                 for batch in backend.events()? {
                     let initial_is_main = options.is_initial_main(batch.product_id);
                     let response = controller.ingest(
@@ -787,6 +808,93 @@ mod tests {
     use super::*;
 
     #[test]
+    fn dpi_matcher_exit_drains_only_accepted_commands_and_does_not_restart_capture() {
+        let (send, receiver) = mpsc::channel();
+        let mut queue = CommandQueue {
+            receiver,
+            deferred: VecDeque::new(),
+        };
+        queue.defer(Command::Select("first".into())).unwrap();
+        queue
+            .defer(Command::DeleteProfile("second".into()))
+            .unwrap();
+        send.send(Command::Start).unwrap();
+        send.send(Command::Confirm).unwrap();
+        send.send(Command::UpdateProfiles(json!({"profiles":[]})))
+            .unwrap();
+        assert!(matches!(queue.drain_next(), Some(Command::Select(guid)) if guid == "first"));
+        assert!(
+            matches!(queue.drain_next(), Some(Command::DeleteProfile(guid)) if guid == "second")
+        );
+        assert!(matches!(queue.drain_next(), Some(Command::Confirm)));
+        assert!(matches!(
+            queue.drain_next(),
+            Some(Command::UpdateProfiles(_))
+        ));
+        assert!(queue.drain_next().is_none());
+    }
+
+    #[test]
+    fn dpi_matcher_exit_keeps_accepted_persistence_wait_until_real_receipt() {
+        for receipt in [Ok(()), Err("disk commit failed".to_owned())] {
+            let (ready, waiting) = mpsc::channel();
+            let (reply, persistence) = mpsc::channel();
+            let (observed, completed) = mpsc::channel();
+            let (mut handle, _updates) = Handle::spawn(vec![], move |_, _, canceled, closing| {
+                ready.send((canceled.clone(), closing)).unwrap();
+                let result = wait_reply(persistence, &canceled);
+                observed
+                    .send(
+                        result
+                            .as_ref()
+                            .map(|_| ())
+                            .map_err(|error| error.to_string()),
+                    )
+                    .unwrap();
+                WorkerExit {
+                    operation: result,
+                    cleanup: Ok(()),
+                    released: Ok(()),
+                }
+            });
+            let (canceled, closing) = waiting.recv().unwrap();
+            handle.begin_exit();
+            assert!(closing.load(Ordering::Acquire));
+            assert!(!canceled.load(Ordering::Acquire));
+            assert!(handle.send(Command::DeleteAllProfiles).is_err());
+            assert!(completed.try_recv().is_err());
+            reply.send(receipt.clone()).unwrap();
+            assert_eq!(completed.recv().unwrap(), receipt);
+            let completion = handle.completion();
+            assert_eq!(handle.finish().is_ok(), receipt.is_ok());
+            assert!(completion.is_finished());
+            assert!(completion.is_released());
+            assert!(completion.cleanup_error().is_none());
+        }
+    }
+
+    #[test]
+    fn dpi_matcher_exit_disconnected_reply_and_replaced_owner_are_real_failures() {
+        let (send, reply) = mpsc::channel::<Result<(), String>>();
+        drop(send);
+        let canceled = AtomicBool::new(false);
+        assert!(
+            wait_reply(reply, &canceled)
+                .unwrap_err()
+                .to_string()
+                .contains("response owner closed")
+        );
+        let (_send, reply) = mpsc::channel::<Result<(), String>>();
+        canceled.store(true, Ordering::Release);
+        assert!(
+            wait_reply(reply, &canceled)
+                .unwrap_err()
+                .to_string()
+                .contains("owner was canceled")
+        );
+    }
+
+    #[test]
     fn dpi_matcher_queued_edits_preserve_order_without_blocking_cancel() {
         let (send, receiver) = mpsc::channel();
         let mut commands = CommandQueue {
@@ -818,7 +926,7 @@ mod tests {
     fn dpi_matcher_handoff_waits_for_cleanup_and_join_receipt() {
         let (entered, started) = mpsc::channel();
         let (release, stopped) = mpsc::channel();
-        let (handle, _updates) = Handle::spawn(vec![], move |_, _, _| {
+        let (handle, _updates) = Handle::spawn(vec![], move |_, _, _, _| {
             entered.send(()).unwrap();
             stopped.recv().unwrap();
             WorkerExit {
@@ -864,7 +972,7 @@ mod tests {
             &Ok(()),
             &Err(anyhow::anyhow!("native stop not acknowledged")),
         );
-        let (handle, updates) = Handle::spawn(vec![failed], |_, _, _| {
+        let (handle, updates) = Handle::spawn(vec![failed], |_, _, _, _| {
             panic!("failed cleanup must reject replacement")
         });
         let update = updates.0.recv_blocking().unwrap();
@@ -882,7 +990,7 @@ mod tests {
 
     #[test]
     fn dpi_matcher_canceled_operation_does_not_block_a_clean_replacement() {
-        let (handle, _updates) = Handle::spawn(vec![], |_, _, _| WorkerExit {
+        let (handle, _updates) = Handle::spawn(vec![], |_, _, _, _| WorkerExit {
             operation: Err(anyhow::anyhow!("owner canceled while awaiting source")),
             cleanup: Ok(()),
             released: Ok(()),
@@ -892,7 +1000,7 @@ mod tests {
         assert!(completion.cleanup_error().is_none());
         assert!(completion.wait(|| false).unwrap());
         let (accepted, observed) = mpsc::channel();
-        let (replacement, _updates) = Handle::spawn(vec![completion], move |_, _, _| {
+        let (replacement, _updates) = Handle::spawn(vec![completion], move |_, _, _, _| {
             accepted.send(()).unwrap();
             WorkerExit {
                 operation: Ok(()),
@@ -906,7 +1014,7 @@ mod tests {
 
     #[test]
     fn dpi_matcher_cleanup_failure_survives_successful_transport_release() {
-        let (handle, _updates) = Handle::spawn(vec![], |_, _, _| WorkerExit {
+        let (handle, _updates) = Handle::spawn(vec![], |_, _, _, _| WorkerExit {
             operation: Ok(()),
             cleanup: Err(anyhow::anyhow!("native stop was not acknowledged")),
             released: Ok(()),
@@ -923,12 +1031,32 @@ mod tests {
                 .unwrap()
                 .contains("native stop was not acknowledged")
         );
-        assert!(completion.wait(|| false).unwrap());
+        assert!(
+            completion
+                .wait(|| false)
+                .unwrap_err()
+                .to_string()
+                .contains("native stop was not acknowledged")
+        );
+        let (replacement, updates) = Handle::spawn(vec![completion], |_, _, _, _| {
+            panic!("successful transport release cannot replace failed native cleanup")
+        });
+        assert!(matches!(
+            updates.0.recv_blocking().unwrap(),
+            Update::Failure(error) if error.contains("native stop was not acknowledged")
+        ));
+        assert!(
+            replacement
+                .finish()
+                .unwrap_err()
+                .to_string()
+                .contains("native stop was not acknowledged")
+        );
     }
 
     #[test]
     fn dpi_matcher_join_preserves_both_cleanup_and_transport_failures() {
-        let (handle, _updates) = Handle::spawn(vec![], |_, _, _| WorkerExit {
+        let (handle, _updates) = Handle::spawn(vec![], |_, _, _, _| WorkerExit {
             operation: Err(anyhow::anyhow!("measurement failed")),
             cleanup: Err(anyhow::anyhow!("monitor stop failed")),
             released: Err(anyhow::anyhow!("transport join failed")),

@@ -875,17 +875,15 @@ class ArchitectureBoundaryTests(unittest.TestCase):
     def test_matcher_save_requires_complete_workspace_scope_session_and_connection(self):
         owner = 'crates/razer-shell/src/shell/mouse/mouse_matcher.rs'
         source = ('fn mouse_matcher_save_current(&self, save: &LocalSave, cx: &App) -> bool { '
-                  'save.scope.is_valid() '
-                  '&& save.workspace.read(cx).connection_revision() == save.connection_revision '
-                  '&& save.workspace.read(cx).mouse_matcher_scope(cx).as_ref() == Some(&save.scope) '
-                  '&& self.mouse_matcher.sessions.get(&save.identity).is_some_and(|session| { '
-                  'session.id == save.session_id && session.workspace.upgrade().as_ref() == Some(&save.workspace) }) }')
+                  'self.mouse_matcher.sessions.get(&save.owner.identity).is_some_and(|session| { '
+                  'session.owner.id == save.owner.id && session.owner.scope == save.owner.scope '
+                  '&& session.owner.workspace.upgrade().as_ref() == Some(&save.workspace) '
+                  '&& save.owner.current(self, session.closing, cx) }) }')
         self.assertFalse(self.inspect(source, owner))
-        changes = ('save.scope.is_valid()',
-                   'save.workspace.read(cx).connection_revision() == save.connection_revision',
-                   'save.workspace.read(cx).mouse_matcher_scope(cx).as_ref() == Some(&save.scope)',
-                   'session.id == save.session_id',
-                   'session.workspace.upgrade().as_ref() == Some(&save.workspace)')
+        changes = ('session.owner.id == save.owner.id',
+                   'session.owner.scope == save.owner.scope',
+                   'session.owner.workspace.upgrade().as_ref() == Some(&save.workspace)',
+                   'save.owner.current(self, session.closing, cx)')
         for condition in changes:
             with self.subTest(condition=condition):
                 self.assertEqual(self.inspect(source.replace(condition, 'true'), owner)[0]['kind'],
@@ -896,15 +894,39 @@ class ArchitectureBoundaryTests(unittest.TestCase):
 
     def test_retiring_matcher_delivery_cannot_remove_the_replacement_session(self):
         owner = 'crates/razer-shell/src/shell/mouse/mouse_matcher.rs'
-        source = ('fn dispatch_mouse_matcher() { if shell.mouse_matcher.sessions.get(&retained_identity) '
-                  '.is_some_and(|session| session.id == session_id) { '
-                  'shell.retire_mouse_matcher(&retained_identity, cx); } }')
+        source = ('fn dispatch_mouse_matcher() { if shell.mouse_matcher.sessions.get(&delivery_owner.identity) '
+                  '.is_some_and(|session| session.owner.id == delivery_owner.id) { '
+                  'shell.retire_mouse_matcher(&delivery_owner.identity, cx); } }')
         self.assertFalse(self.inspect(source, owner))
-        for changed in (source.replace('session.id == session_id', 'true'),
-                        source.replace('.get(&retained_identity)', '.get(&other_identity)'),
-                        'fn dispatch_mouse_matcher() { shell.retire_mouse_matcher(&retained_identity, cx); }'):
+        for changed in (source.replace('session.owner.id == delivery_owner.id', 'true'),
+                        source.replace('.get(&delivery_owner.identity)', '.get(&other_identity)'),
+                        'fn dispatch_mouse_matcher() { shell.retire_mouse_matcher(&delivery_owner.identity, cx); }'):
             self.assertEqual(self.inspect(changed, owner)[0]['kind'], 'matcher_retired_worker_removes_successor')
         self.assertFalse(self.inspect('fn unrelated() { shell.retire_mouse_matcher(&retained_identity, cx); }', owner))
+
+    def test_matcher_exit_drain_keeps_the_exact_profile_scope_and_physical_route(self):
+        owner = 'crates/razer-shell/src/shell/mouse/mouse_matcher.rs'
+        conditions = [
+            'shell.devices.contains(&workspace)',
+            'workspace_state.identity(cx) == self.identity',
+            'workspace_state.connection_revision() == self.connection_revision',
+            'workspace_state.mouse_polling_scope(cx) == Some(self.domain_scope)',
+            'device.active_profile == self.profile_id',
+            'device.profiles.iter().any(|profile| profile.id == self.profile_id && profile.guid == self.profile_guid)',
+            'workspace_state.retains_mouse_matcher_scope(&self.scope, cx)',
+            '(draining || self.scope.is_valid() && workspace_state.mouse_matcher_scope(cx).as_ref() == Some(&self.scope))',
+            'super::device_discovery::retained_connection(std::slice::from_ref(&self.route), &shell.device_observations, device)',
+        ]
+        source = 'impl Owner { fn current() -> bool { ' + ' && '.join(conditions) + ' } }'
+        self.assertFalse(self.inspect(source, owner))
+        for condition in conditions:
+            with self.subTest(condition=condition):
+                self.assertEqual(self.inspect(source.replace(condition, 'true'), owner)[0]['kind'],
+                                 'matcher_drain_bypasses_profile_or_connection_owner')
+        self.assertEqual(self.inspect(source.replace('self.route', 'other_route'), owner)[0]['kind'],
+                         'matcher_drain_bypasses_profile_or_connection_owner')
+        self.assertFalse(self.inspect(source.replace('impl Owner', 'impl Unrelated'), owner))
+        self.assertFalse(self.inspect(source, 'crates/razer-shell/src/shell/unrelated.rs'))
 
     def test_receiver_and_matcher_rebase_validate_owner_before_applying_the_mutation(self):
         rows = [('crates/razer-shell/src/shell/mouse/mouse_matcher.rs',
@@ -1532,7 +1554,7 @@ class ArchitectureBoundaryTests(unittest.TestCase):
             self.assertTrue(any(row['kind'] == 'exit_quits_before_service_cleanups_complete'
                                 for row in self.inspect(changed, owner)))
 
-    def test_service_hooks_are_consumed_once_and_all_completions_are_retained_until_exit(self):
+    def test_service_hooks_are_retained_for_retries_and_completions_are_awaited(self):
         owner = 'crates/razer-shell/src/shell/shutdown.rs'
         register = ('fn register_exit_cleanup() { self.service_exit.hooks.push('
                     'Box::new(move |shell,cx| Box::pin(cleanup(shell,cx)))); }')
@@ -1541,14 +1563,18 @@ class ArchitectureBoundaryTests(unittest.TestCase):
                         register.replace('cleanup(shell,cx)', 'other(shell,cx)'),
                         register.replace('self.service_exit.hooks.push(', 'drop(')):
             self.assertEqual(self.inspect(changed, owner)[0]['kind'], 'exit_cleanup_registration_bypasses_shared_owner')
-        take = ('fn take_exit_cleanups() { std::mem::take(&mut self.service_exit.hooks).into_iter()'
-                '.map(|cleanup| cleanup(self,cx)).collect() }')
+        take = ('fn take_exit_cleanups() { let mut hooks = std::mem::take(&mut self.service_exit.hooks); '
+                'let completions = hooks.iter_mut().map(|cleanup| cleanup(self,cx)).collect(); '
+                'hooks.append(&mut self.service_exit.hooks); self.service_exit.hooks = hooks; completions }')
         self.assertFalse(self.inspect(take, owner))
         self.assertFalse(self.inspect('use std::mem::take as consume; ' + take.replace('std::mem::take(', 'consume('), owner))
         for changed in (take.replace('std::mem::take(&mut self.service_exit.hooks)', 'self.service_exit.hooks.clone()'),
                         take.replace('cleanup(self,cx)', 'unrelated(self,cx)'), take.replace('.collect()', ''),
-                        take.replace('.into_iter()', '.into_iter().take(1)')):
-            self.assertEqual(self.inspect(changed, owner)[0]['kind'], 'exit_cleanup_hooks_have_no_single_consuming_owner')
+                        take.replace('.iter_mut()', '.iter_mut().take(1)'),
+                        take.replace('.iter_mut()', '.into_iter()'),
+                        take.replace('self.service_exit.hooks = hooks;', ''),
+                        take.replace('self.service_exit.hooks = hooks;', 'self.service_exit.hooks = Vec::new();')):
+            self.assertEqual(self.inspect(changed, owner)[0]['kind'], 'exit_cleanup_hooks_have_no_single_retained_owner')
         finish = ('fn finish_service_exit() { if self.service_exit.task.is_some() { return true; } '
                   'if self.service_exit.hooks.is_empty() { return false; } let completions = self.take_exit_cleanups(cx); '
                   'self.service_exit.task = Some(cx.spawn(async move |shell,cx| { '
@@ -1568,6 +1594,27 @@ class ArchitectureBoundaryTests(unittest.TestCase):
                               .replace('shell.update(cx,|shell,cx| { shell.service_exit.task = None;', 'shell.update(cx,|shell,cx| {'),
                         finish.replace('if shell.close_requested { shell.continue_save_queue(true,cx); }', 'shell.continue_save_queue(true,cx);')):
             self.assertEqual(self.inspect(changed, owner)[0]['kind'], 'service_cleanups_have_no_retained_completion_barrier')
+
+    def test_failed_save_completion_waits_for_service_cleanup_before_consuming_exit(self):
+        owner = 'crates/razer-shell/src/shell.rs'
+        guard = 'if self.service_exit.defer_save_continuation(succeeded) { return; } '
+        source = ('fn continue_save_queue() { ' + guard +
+                  'if !succeeded { self.cancel_pending_exit(cx); } '
+                  'if self.save_task.is_some() { return; } let operations_pending = self.keyboard_brightness.pending(); '
+                  'if succeeded && !queued && !auxiliary_pending { if operations_pending { return; } '
+                  'if self.close_requested { if self.finish_keyboard_actuation_exit(cx) || !self.close_requested { return; } '
+                  'workspace.finish_exit(cx); self.stop_global_shortcuts(); '
+                  'if Self::background_exit_pending() { self.wait_for_background_exit(cx); return; } '
+                  'if self.finish_service_exit(cx) || self.finish_resource_exit(cx) { return; } } } '
+                  'match save_continuation(&mut self.close_requested,succeeded,queued,auxiliary_pending) '
+                  '{ SaveContinuation::Close => cx.quit(), _ => {} } }')
+        self.assertFalse(self.inspect(source, owner))
+        for changed in (source.replace(guard, ''), source.replace('defer_save_continuation(succeeded)', 'defer_save_continuation(true)'),
+                        source.replace(guard, '').replace('if self.save_task.is_some()', guard + 'if self.save_task.is_some()'),
+                        source.replace(guard, 'self.service_exit.defer_save_continuation(succeeded); ')):
+            self.assertTrue(any(row['kind'] == 'cleanup_completion_consumes_exit_before_owners_resume'
+                                for row in self.inspect(changed, owner)))
+        self.assertFalse(self.inspect(source.replace(guard, ''), 'crates/other/src/lib.rs'))
 
     def test_actuation_exit_preserves_admitted_writes_and_rechecks_failure_before_final_cleanup(self):
         owner = 'crates/razer-shell/src/shell.rs'
@@ -2894,9 +2941,12 @@ class RustValidationBoundaryTests(unittest.TestCase):
             'mouse-input-monitoring-native': ('razer-service', 'mouse_input_monitoring::tests'),
             'device-task-locks': ('razer-ipc', 'device_tasks'),
             'mouse-matcher-service': ('razer-service', 'dpi_matcher'),
+            'service-exit-lifecycle': ('razer-shell', 'shutdown::tests'),
             'mouse-matcher-protocol': ('razer-device', 'dpi_matcher'),
             'mouse-matcher-model': ('razer-model', 'mouse_matcher'),
             'mouse-matcher-revision': ('razer-pages', 'matcher_durable_version'),
+            'mouse-matcher-exit-state': ('razer-pages', 'matcher_exit_'),
+            'profile-notification-lifecycle': ('razer-shell', 'profile_switch_notification::tests'),
             'computer-name-platform': ('razer-platform', 'computer_name_tests'),
             'receiver-profile-storage': ('razer-storage', 'receiver_reset'),
             'receiver-profile-selection': ('razer-pages', 'receiver_profile_selection::tests'),
@@ -2975,6 +3025,10 @@ class RustValidationBoundaryTests(unittest.TestCase):
             'keyboard-magnetic-protocol': ('razer-device', 'keyboard_magnetic'),
             'keyboard-sync-feedback': ('razer-pages', 'keyboard_products::actuation::sync_feedback::tests::'),
             'seiren-audio-owner-service': ('razer-service', 'seiren_audio::'),
+            'seiren-audio-operation-state': ('razer-pages', 'seiren_audio_'),
+            'seiren-audio-operation-owner': ('razer-shell', 'seiren_audio_'),
+            'audio-notification-cleanup': ('razer-shell', 'audio_cleanup_'),
+            'audio-shortcut-lifecycle': ('razer-shell', 'audio_shortcut_lifecycle_tests'),
             'source-text-tracking': ('razer-widgets', 'source_text::tests'),
             'assets-image-lifecycle': ('razer-assets', 'image_cache::lifecycle_tests'),
             'keyboard-macro-submission': ('razer-device', 'keyboard_macro_submission'),
@@ -2996,6 +3050,11 @@ class RustValidationBoundaryTests(unittest.TestCase):
             'mouse-otfs-mapping': ('razer-device', 'interdevice_otfs'),
             'mapping-document-model': ('razer-model', 'mapping::'),
             'mapping-reconnect-state': ('razer-pages', 'mapping_reconnect::tests'),
+            'chroma-commit-storage': ('razer-storage', 'chroma_commit_revisions_'),
+            'chroma-commit-publication': ('razer-shell', 'chroma_configuration_commits_'),
+            'keyboard-mapping-audio-inventory': ('razer-shell', 'keyboard_mapping_audio_inventory_'),
+            'mouse-dpi-stage-operations': ('razer-shell', 'dpi_stage_'),
+            'mouse-dpi-stage-observations': ('razer-pages', 'dpi_stage_observation_'),
             'mouse-receiver-callbacks': ('razer-pages', 'mapping_runtime_158::tests'),
             'mapping-gamepad-observation-ipc': ('razer-ipc', 'gamepad_observation'),
             'mapping-gamepad-observation-service': ('razer-service', 'gamepad_observation'),

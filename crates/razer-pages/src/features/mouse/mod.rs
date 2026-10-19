@@ -133,6 +133,7 @@ mod matcher_owner;
 mod performance_layout;
 #[path = "mouse_properties.rs"]
 mod properties;
+pub(in crate::features) use matcher_owner::SavedMatcherProfiles;
 pub use matcher_owner::{MouseMatcherRequest, MouseMatcherScope};
 #[path = "mouse_rotation.rs"]
 mod rotation;
@@ -621,6 +622,12 @@ impl MouseProductWorkspace {
     pub fn set_active(&mut self, active: bool, window: &mut Window, cx: &mut Context<Self>) {
         if self.active != active {
             self.active = active;
+            if active {
+                // The unmounted owner can receive a durable Matcher save while
+                // its window observations are inactive. Bind those retained
+                // props before mount emits any source actions.
+                self.sync_matcher_profile(window, cx);
+            }
             self.sync_matcher_mount(cx);
             if !active {
                 self.invalidate_mouse_rotation();

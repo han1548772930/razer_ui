@@ -95,6 +95,12 @@ impl Drop for AcceptedOperation {
 }
 
 impl State {
+    fn resume_after_exit(&mut self) {
+        if !self.pending() {
+            self.lifecycle = Lifecycle::Running;
+        }
+    }
+
     pub(super) fn pending(&self) -> bool {
         !self.operations.is_empty() || self.accepted.load(Ordering::Acquire) > 0
     }
@@ -139,6 +145,7 @@ impl Drop for State {
 
 impl AppShell {
     pub(super) fn install_keyboard_brightness_cleanup(&mut self, _cx: &mut Context<Self>) {
+        self.register_exit_resume(|shell, _| shell.keyboard_brightness.resume_after_exit());
         self.register_exit_cleanup(|shell, _| {
             let deliveries = shell.keyboard_brightness.take_for_shutdown();
             async move {

@@ -259,7 +259,7 @@ impl AppShell {
         request: &razer_pages::features::HanboLocalSettingsChanged,
         window: &mut Window,
         cx: &mut Context<Self>,
-    ) {
+    ) -> bool {
         let prepare = (|| -> anyhow::Result<LocalSave> {
             anyhow::ensure!(
                 !self.close_requested && self.devices.contains(&workspace),
@@ -303,7 +303,7 @@ impl AppShell {
             Err(error) => {
                 self.status = format!("Hanbo local settings: {error:#}");
                 cx.notify();
-                return;
+                return false;
             }
         };
         let file = self.workspace_file(
@@ -319,7 +319,7 @@ impl AppShell {
             Some(ProductSave::HanboSettings(save)),
             cx,
         ));
-        self.start_pending_save(cx);
+        self.start_pending_save(cx)
     }
 
     pub(super) fn rebase_hanbo_settings_save(

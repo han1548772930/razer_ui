@@ -398,6 +398,7 @@ pub struct RuntimePanel {
     disconnect_task: Option<Task<()>>,
     disconnecting: bool,
     exit_prepared: bool,
+    reconnect_after_exit: bool,
     monitor: Option<DeviceChangeMonitor>,
     retired_monitors: Vec<DeviceChangeMonitor>,
     monitor_task: Option<Task<()>>,
@@ -421,6 +422,7 @@ impl RuntimePanel {
             disconnect_task: None,
             disconnecting: false,
             exit_prepared: false,
+            reconnect_after_exit: false,
             monitor: None,
             retired_monitors: Vec::new(),
             monitor_task: None,
@@ -703,7 +705,14 @@ impl RuntimePanel {
 
     pub fn cancel_exit(&mut self, cx: &mut Context<Self>) {
         if std::mem::take(&mut self.exit_prepared) {
-            if self.bridge.is_some() || self.monitor.is_some() {
+            let reconnect = std::mem::take(&mut self.reconnect_after_exit);
+            if reconnect {
+                cx.emit(DiscoveryObserved(
+                    Err("退出清理已结束此前连接，正在重新读取设备。".into()),
+                    None,
+                ));
+            }
+            if reconnect || self.bridge.is_some() || self.monitor.is_some() {
                 self.discover_devices(cx);
             }
             cx.notify();
@@ -716,6 +725,7 @@ impl RuntimePanel {
 
     pub fn shutdown_for_app_quit(&mut self, cx: &mut Context<Self>) -> Option<Task<()>> {
         self.exit_prepared = true;
+        self.reconnect_after_exit |= self.bridge.is_some() || self.monitor.is_some();
         self.begin_disconnect(DisconnectIntent::ApplicationExit, cx);
         self.disconnect_task.take()
     }

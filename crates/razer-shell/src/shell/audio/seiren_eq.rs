@@ -37,8 +37,7 @@ impl AppShell {
         window: AnyWindowHandle,
         cx: &mut Context<Self>,
     ) {
-        if self.close_requested
-            || self.storage_error.is_some()
+        if self.storage_error.is_some()
             || !workspace
                 .read(cx)
                 .seiren_stream_mixer_request_matches(&request, cx)
@@ -76,11 +75,11 @@ impl AppShell {
         &mut self,
         workspace: Entity<ProductWorkspace>,
         request: SeirenEqRequested,
-        window: &mut Window,
+        window: AnyWindowHandle,
         cx: &mut Context<Self>,
     ) {
         if !request.persists_local_settings() {
-            self.submit_seiren_eq_device(workspace, request, window.window_handle(), cx);
+            self.submit_seiren_eq_device(workspace, request, window, cx);
             return;
         }
         if self.storage_error.is_some()
@@ -119,7 +118,7 @@ impl AppShell {
             cx,
         );
         self.pending_saves.push_back(self.prepare_save(
-            window.window_handle(),
+            window,
             file,
             Some(ProductSave::SeirenEq(SeirenEqSave::Settings(
                 SeirenEqSettingsSave {
@@ -289,7 +288,7 @@ impl AppShell {
                                     workspace.observe_seiren_document_version(version, cx)
                                 });
                             }
-                            if !current || self.close_requested || !save.request.is_valid() {
+                            if !current || !save.request.is_valid() {
                                 Err("Seiren mixer owner canceled after local persistence".into())
                             } else {
                                 Ok(version)
@@ -302,7 +301,7 @@ impl AppShell {
                 return;
             }
         };
-        if !succeeded || save.request.change().is_none() || self.close_requested {
+        if !succeeded || save.request.change().is_none() {
             save.workspace.update(cx, |workspace, cx| {
                 workspace.finish_seiren_eq(&save.request, None, cx)
             });
@@ -317,8 +316,7 @@ impl AppShell {
         window: AnyWindowHandle,
         cx: &mut Context<Self>,
     ) {
-        if self.close_requested
-            || !self.devices.contains(&workspace)
+        if !self.devices.contains(&workspace)
             || request.change().is_none()
             || !workspace.read(cx).seiren_eq_request_matches(&request, cx)
         {
@@ -356,6 +354,12 @@ impl AppShell {
         self.sync_audio_notification_owners(window, cx);
         self.status = "正在确认麦克风 EQ 设备设置…".into();
         cx.notify();
-        self.start_seiren_audio_operation(workspace, seiren_audio_operations::Request::Eq(request), Some(route), window, cx);
+        self.start_seiren_audio_operation(
+            workspace,
+            seiren_audio_operations::Request::Eq(request),
+            Some(route),
+            window,
+            cx,
+        );
     }
 }

@@ -51,6 +51,74 @@ enum UnpairStep {
 // This is an application file guard, not the vendor's hardware mutex.
 static CACHE_LOCK: Mutex<()> = Mutex::new(());
 
+#[derive(Default)]
+struct CleanupFailures {
+    physical: Mutex<std::collections::BTreeMap<(u32, String), Vec<String>>>,
+}
+
+impl CleanupFailures {
+    fn record(&self, product_id: u32, container: &str, error: String) {
+        let mut failures = self.physical.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let errors = failures.entry((product_id, container.to_ascii_lowercase())).or_default();
+        if !errors.contains(&error) {
+            errors.push(error);
+        }
+    }
+
+    fn for_owner(&self, product_id: u32, container: &str) -> Vec<String> {
+        self.physical.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get(&(product_id, container.to_ascii_lowercase())).cloned().unwrap_or_default()
+    }
+
+    fn summary(&self) -> Option<String> {
+        let failures = self.physical.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        (!failures.is_empty()).then(|| failures.iter().map(|((product, container), errors)| {
+            format!("{product}/{container}: {}", errors.join("; "))
+        }).collect::<Vec<_>>().join("; "))
+    }
+}
+
+struct CleanupWitness {
+    failures: Arc<CleanupFailures>,
+    product_id: u32,
+    container: String,
+    result: Result<(), String>,
+}
+
+impl CleanupWitness {
+    fn new(failures: Arc<CleanupFailures>, product_id: u32, container: &str) -> Self {
+        Self { failures, product_id, container: container.to_owned(), result: Ok(()) }
+    }
+}
+
+impl Drop for CleanupWitness {
+    fn drop(&mut self) {
+        let error = if thread::panicking() {
+            Some("receiver worker panicked before cleanup completed".to_owned())
+        } else {
+            self.result.as_ref().err().cloned()
+        };
+        if let Some(error) = error {
+            self.failures.record(self.product_id, &self.container, error);
+        }
+    }
+}
+
+fn finish_pairing_service(
+    client: &mut ServiceClient,
+    cleanup: &mut Result<(), String>,
+) -> anyhow::Result<Value> {
+    let shutdown = client.request(ServiceRequest::Shutdown);
+    let termination = client.finish_termination();
+    let errors = shutdown.as_ref().err().map(|error| format!("service Shutdown: {error:#}"))
+        .into_iter().chain(termination.as_ref().err().map(|error| format!("service termination: {error:#}"))).collect::<Vec<_>>();
+    *cleanup = if errors.is_empty() { Ok(()) } else { Err(errors.join("; ")) };
+    match (shutdown, termination) {
+        (Ok(reply), Ok(())) => Ok(reply),
+        (Err(error), _) | (_, Err(error)) => Err(error),
+    }
+}
+
 // Current164/241 u(success) precedes the independent p()/ge()/500ms
 // reconnect path. An additional getter cannot revoke that source response.
 fn validate_unpair_completion(result: &Value, dongle_id: u16) -> anyhow::Result<()> {
@@ -298,6 +366,7 @@ fn run(
     delivery: &mpsc::Sender<Delivery>,
     reconnect_owner: (&reconnect::Owners, &reconnect::Scope),
     source_response: &mut dyn FnMut(UnpairStep),
+    cleanup: &mut Result<(), String>,
 ) -> anyhow::Result<Value> {
     //756's opposite-category factory owns the command category, including an
     // unknown scan candidate whose source presentation category is empty.
@@ -315,6 +384,7 @@ fn run(
     );
     ensure!(!canceled.load(Ordering::Acquire), "配对请求已取消，未启动");
     let mut client = ServiceClient::spawn()?;
+    *cleanup = Err("receiver pairing service cleanup receipt is missing".into());
     let id = format!("dock-{}", event.session());
     let result = (|| {
         let path = route::command_path(&mut client, product_id, container)?;
@@ -463,7 +533,7 @@ fn run(
     })();
     // Controller shutdown cancels and joins its operation. A failed shutdown
     // cannot be silently presented as a fully cleaned-up successful submission.
-    let shutdown = client.request(ServiceRequest::Shutdown);
+    let shutdown = finish_pairing_service(&mut client, cleanup);
     match (result, shutdown) {
         (Ok(mut result), cleanup) if matches!(action, PairingAction::Unpair { .. }) => {
             // Source u(ACK) precedes ge()/its independent500ms timer. Later
@@ -496,70 +566,118 @@ impl AppShell {
         self.pairing.update(cx, |page, cx| {
             page.set_transport(Some(transport.clone()), window, cx)
         });
-        self.pairing_transport_delivery = Some(cx.spawn_in(window, async move |shell, cx| {
+        self.start_standalone_pairing_delivery(window.window_handle(), cx);
+    }
+
+    fn start_standalone_pairing_delivery(
+        &mut self,
+        window: AnyWindowHandle,
+        cx: &mut Context<Self>,
+    ) {
+        let transport = self.pairing_transport.clone();
+        self.pairing_transport_delivery = Some(cx.spawn(async move |shell, cx| {
             loop {
                 cx.background_executor()
                     .timer(Duration::from_millis(100))
                     .await;
-                let completions = transport.take_completions();
-                let reconnect_reports = transport.reconnect_owners().take_reports();
-                if completions.is_empty() && reconnect_reports.is_empty() {
-                    continue;
-                }
-                if shell
-                    .update_in(cx, |shell, window, cx| {
-                        for report in reconnect_reports {
-                            // Diagnostics belong to this separate local owner;
-                            // no getter or retry outcome mutates source pairing UI.
-                            let owner = report.operation_id;
-                            let diagnostic = shell
-                                .receiver_reconnect_diagnostics
-                                .entry(owner)
-                                .or_insert_with(|| json!({}));
-                            diagnostic
-                                .as_object_mut()
-                                .unwrap()
-                                .extend(report.state.as_object().unwrap().clone());
-                            diagnostic["physical_product_id"] = json!(report.product_id);
-                            diagnostic["device_container_id"] = json!(report.container);
-                            if let Some(error) = report.state["error"]
-                                .as_str()
-                                .or_else(|| report.state["outcome"]["last_error"].as_str())
-                            {
-                                shell.status = format!(
-                                    "接收器 {}/{} 独立重连或清理未确认：{error}",
-                                    report.product_id, report.container
-                                );
-                            }
+                let delivery = window.update(cx, |_, window, cx| {
+                    shell.update(cx, |shell, cx| {
+                        if !Arc::ptr_eq(&shell.pairing_transport, &transport) {
+                            return false;
                         }
-                        let mut reload_cache = false;
-                        for completion in completions {
-                            if let Some(diagnostic) = completion.diagnostic {
-                                shell.status =
-                                    format!("设备操作已确认，后续本地处理未确认：{diagnostic}");
-                            }
-                            reload_cache |= completion.cache_changed;
-                            if let Some(projection) = completion.projection {
-                                shell.publish_receiver_query(
-                                    &completion.container,
-                                    completion.product_id,
-                                    Some(&projection),
-                                    window,
-                                    cx,
-                                );
-                            }
-                        }
-                        if reload_cache {
-                            shell.load_local_pairing_context(window, cx);
-                        }
-                        cx.notify();
+                        shell.consume_pairing_transport_delivery(
+                            &transport,
+                            Some(window),
+                            None,
+                            cx,
+                        );
+                        true
                     })
-                    .is_err()
-                {
+                });
+                if !matches!(delivery, Ok(Ok(true))) {
+                    let _ = shell.update(cx, |shell, cx| {
+                        if Arc::ptr_eq(&shell.pairing_transport, &transport) {
+                            shell.status = "接收器配对窗口不可用，操作结果未发布到页面".into();
+                            shell.consume_pairing_transport_delivery(&transport, None, None, cx);
+                            cx.notify();
+                        }
+                    });
                     break;
                 }
             }
         }));
+    }
+
+    fn consume_pairing_transport_delivery(
+        &mut self,
+        transport: &standalone::Transport,
+        mut window: Option<&mut Window>,
+        shutdown_cache: Option<Result<Value, String>>,
+        cx: &mut Context<Self>,
+    ) {
+        let completions = transport.take_completions();
+        let reports = transport.reconnect_owners().take_reports();
+        if completions.is_empty() && reports.is_empty() {
+            return;
+        }
+        for report in reports {
+            // Reconnect and cleanup diagnostics are independent of the
+            // already-delivered original pairing command response.
+            let diagnostic = self
+                .receiver_reconnect_diagnostics
+                .entry(report.operation_id)
+                .or_insert_with(|| json!({}));
+            diagnostic
+                .as_object_mut()
+                .unwrap()
+                .extend(report.state.as_object().unwrap().clone());
+            diagnostic["physical_product_id"] = json!(report.product_id);
+            diagnostic["device_container_id"] = json!(report.container);
+            if let Some(error) = report.state["error"]
+                .as_str()
+                .or_else(|| report.state["outcome"]["last_error"].as_str())
+            {
+                self.status = format!(
+                    "接收器 {}/{} 独立重连或清理未确认：{error}",
+                    report.product_id, report.container
+                );
+            }
+        }
+        let mut reload_cache = false;
+        for completion in completions {
+            if let Some(diagnostic) = completion.diagnostic {
+                self.status = format!("接收器本地处理未确认：{diagnostic}");
+            }
+            reload_cache |= completion.cache_changed;
+            if let Some(projection) = completion.projection {
+                if let Some(window) = window.as_deref_mut() {
+                    self.publish_receiver_query(
+                        &completion.container,
+                        completion.product_id,
+                        Some(&projection),
+                        window,
+                        cx,
+                    );
+                } else {
+                    self.status = "接收器配对窗口不可用，读取结果未发布到页面".into();
+                }
+            }
+        }
+        if reload_cache {
+            if let Some(cache) = shutdown_cache {
+                match cache {
+                    Ok(cache) => self.local_pairing_records = Some(cache),
+                    Err(error) => {
+                        self.status = format!("配对缓存已写入，清理后的本地重读失败：{error}");
+                    }
+                }
+            } else if let Some(window) = window {
+                self.load_local_pairing_context(window, cx);
+            } else {
+                self.status = "配对缓存已写入，窗口不可用，页面未刷新".into();
+            }
+        }
+        cx.notify();
     }
     pub(super) fn retire_receiver_pairing(&mut self, identity: &str) {
         if let Some(mut session) = self.receiver_pairing_operations.remove(identity) {
@@ -742,10 +860,32 @@ impl AppShell {
         result.map_err(|error| format!("{error:#}"))
     }
     pub(super) fn install_receiver_pairing_cleanup(&mut self, _cx: &mut Context<Self>) {
+        self.register_exit_resume(|this, cx| {
+            // All cleanup futures, including both native worker registries,
+            // have finished before the application invokes this resume hook.
+            this.pairing_transport =
+                Arc::new(standalone::Transport::new(cx.background_executor().clone()));
+            let transport = this.pairing_transport.clone();
+            let page = this.pairing.clone();
+            if let Err(error) = this.main_window.update(cx, |_, window, cx| {
+                page.update(cx, |page, cx| {
+                    page.set_transport(Some(transport), window, cx)
+                });
+            }) {
+                this.status = format!("接收器配对恢复时窗口不可用：{error:#}");
+                cx.notify();
+            }
+            this.start_standalone_pairing_delivery(this.main_window, cx);
+        });
         self.register_exit_cleanup(|this, cx| {
+            this.pairing_transport_delivery = None;
+            this.pairing.update(cx, |page, cx| page.deactivate(cx));
             let sessions = std::mem::take(&mut this.receiver_pairing_operations);
             let retired = std::mem::take(&mut this.receiver_pairing_cleanup);
             let standalone = this.pairing_transport.clone();
+            standalone.stop_admission();
+            let delivery_transport = standalone.clone();
+            let window = this.main_window;
             let reconnect = standalone.reconnect_owners().clone();
             for session in sessions.values() {
                 session.canceled.store(true, Ordering::Release);
@@ -759,8 +899,35 @@ impl AppShell {
                 for worker in retired {
                     let _ = worker.join();
                 }
+                razer_storage::receiver_pairing::PairingCache::load(
+                    &razer_storage::receiver_pairing::local_path(),
+                )
+                .map(|cache| Value::Array(cache.ordered_records()))
+                .map_err(|error| format!("{error:#}"))
             });
-            async move { cleanup.await }
+            cx.spawn(async move |shell, cx| {
+                let mut cache = Some(cleanup.await);
+                let delivered = window.update(cx, |_, window, cx| {
+                    shell.update(cx, |shell, cx| {
+                        shell.consume_pairing_transport_delivery(
+                            &delivery_transport,
+                            Some(window),
+                            cache.take(),
+                            cx,
+                        );
+                    })
+                });
+                if !matches!(delivered, Ok(Ok(()))) {
+                    let _ = shell.update(cx, |shell, cx| {
+                        shell.consume_pairing_transport_delivery(
+                            &delivery_transport,
+                            None,
+                            cache.take(),
+                            cx,
+                        );
+                    });
+                }
+            })
         });
     }
 

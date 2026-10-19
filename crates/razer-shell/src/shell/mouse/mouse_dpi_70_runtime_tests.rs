@@ -36,3 +36,20 @@ fn legacy_dpi_shutdown_rejects_new_work_and_waits_for_accepted_worker_release() 
     drop(guard);
     assert!(!state.pending());
 }
+
+#[test]
+fn legacy_dpi_exit_resume_reopens_admission_without_replaying_old_requests() {
+    let mut state = State::default();
+    let (first, accepted) = state.accept().unwrap();
+    state.take_for_shutdown();
+    state.resume_after_exit();
+    assert!(state.accept().is_none());
+    assert!(state.pending());
+    drop(accepted);
+    state.resume_after_exit();
+    assert!(!state.pending());
+    let (next, next_accepted) = state.accept().unwrap();
+    assert!(next > first);
+    drop(next_accepted);
+    assert!(!state.pending());
+}

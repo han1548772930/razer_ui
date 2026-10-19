@@ -53,6 +53,12 @@ impl Drop for Accepted {
 }
 
 impl State {
+    fn resume_after_exit(&mut self) {
+        if !self.pending() {
+            self.stopped = false;
+        }
+    }
+
     pub(in crate::shell) fn pending(&self) -> bool {
         !self.operations.is_empty() || self.accepted.load(Ordering::Acquire) > 0
     }
@@ -91,6 +97,7 @@ impl Drop for State {
 
 impl AppShell {
     pub(in crate::shell) fn install_mouse_scroll_cleanup(&mut self, _cx: &mut Context<Self>) {
+        self.register_exit_resume(|shell, _| shell.mouse_scroll.resume_after_exit());
         self.register_exit_cleanup(|shell, _| {
             let deliveries = shell.mouse_scroll.take_for_shutdown();
             async move {

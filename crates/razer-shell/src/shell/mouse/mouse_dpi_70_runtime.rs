@@ -82,7 +82,9 @@ impl State {
     }
 
     fn resume_after_exit(&mut self) {
-        self.stopped = false;
+        if !self.pending() {
+            self.stopped = false;
+        }
     }
 }
 

@@ -67,6 +67,14 @@ fn shutdown_closes_admission_before_any_window_or_request_exists() {
     assert!(state.accept().is_none());
     assert!(!state.pending());
     assert!(state.take_for_shutdown().is_empty());
+    state.resume_after_exit();
+    let (_, accepted) = state.accept().unwrap();
+    assert!(state.take_for_shutdown().is_empty());
+    state.resume_after_exit();
+    assert!(state.accept().is_none());
+    drop(accepted);
+    state.resume_after_exit();
+    assert!(state.accept().is_some());
 }
 
 #[test]

@@ -42,6 +42,7 @@ impl SeirenEqRequested {
 }
 #[derive(Default)]
 pub(super) struct State {
+    stopped: bool,
     epoch: u64,
     sequence: u64,
     pending: Option<SeirenEqRequested>,
@@ -49,8 +50,58 @@ pub(super) struct State {
     observed: Option<Report>,
     error: Option<String>,
 }
+struct Finished {
+    native_levels: Option<razer_device::seiren_eq::NativeLevels>,
+    next: Option<SeirenEqRequested>,
+}
 impl State {
+    fn owns(&self, request: &SeirenEqRequested) -> bool {
+        self.pending.as_ref().is_some_and(|pending| {
+            pending.owner == request.owner
+                && pending.sequence == request.sequence
+                && pending.epoch == request.epoch
+                && Arc::ptr_eq(&pending.valid, &request.valid)
+        })
+    }
+    fn matches(&self, request: &SeirenEqRequested) -> bool {
+        request.is_valid() && request.epoch == self.epoch && self.owns(request)
+    }
+    fn complete(
+        &mut self,
+        request: &SeirenEqRequested,
+        observed: Option<Report>,
+    ) -> Option<Finished> {
+        if !self.owns(request) {
+            return None;
+        }
+        let native_levels = if self.matches(request) {
+            let levels = observed.as_ref().and_then(Report::native_levels).cloned();
+            self.observed = observed;
+            levels
+        } else {
+            None
+        };
+        self.pending.take().expect("matching task").cancel();
+        let next = loop {
+            let Some(next) = self.queued.pop_front() else {
+                break None;
+            };
+            if next.is_valid() && next.epoch == self.epoch {
+                self.pending = Some(next.clone());
+                break Some(next);
+            }
+            next.cancel();
+        };
+        Some(Finished {
+            native_levels,
+            next,
+        })
+    }
     fn enqueue(&mut self, request: SeirenEqRequested) -> Option<SeirenEqRequested> {
+        if self.stopped {
+            request.cancel();
+            return None;
+        }
         if self.pending.is_none() {
             self.pending = Some(request.clone());
             return Some(request);
@@ -205,6 +256,9 @@ impl AudioProductWorkspace {
         persist_before_device: bool,
         cx: &mut Context<Self>,
     ) {
+        if self.seiren_eq_write.stopped {
+            return;
+        }
         if let Err(error) = razer_device::seiren_eq::validate_change(self.spec.product_id, &change)
         {
             self.seiren_eq_write.error = Some(format!("{error:#}"));
@@ -227,18 +281,7 @@ impl AudioProductWorkspace {
         }
     }
     pub fn seiren_eq_request_matches(&self, request: &SeirenEqRequested, _cx: &App) -> bool {
-        request.is_valid()
-            && request.epoch == self.seiren_eq_write.epoch
-            && self
-                .seiren_eq_write
-                .pending
-                .as_ref()
-                .is_some_and(|pending| {
-                    pending.owner == request.owner
-                        && pending.sequence == request.sequence
-                        && pending.epoch == request.epoch
-                        && Arc::ptr_eq(&pending.valid, &request.valid)
-                })
+        self.seiren_eq_write.matches(request)
     }
     pub fn finish_seiren_eq(
         &mut self,
@@ -246,69 +289,31 @@ impl AudioProductWorkspace {
         observed: Option<Report>,
         cx: &mut Context<Self>,
     ) {
-        if !self
-            .seiren_eq_write
-            .pending
-            .as_ref()
-            .is_some_and(|pending| {
-                pending.owner == request.owner
-                    && pending.sequence == request.sequence
-                    && pending.epoch == request.epoch
-                    && Arc::ptr_eq(&pending.valid, &request.valid)
-            })
-        {
+        let Some(finished) = self.seiren_eq_write.complete(request, observed) else {
             return;
+        };
+        if let Some(levels) = finished.native_levels {
+            self.record_seiren_native_levels(&levels, cx);
         }
-        if self.seiren_eq_request_matches(request, cx) {
-            if let Some(levels) = observed.as_ref().and_then(Report::native_levels) {
-                self.record_seiren_native_levels(levels, cx);
-            }
-            self.seiren_eq_write.observed = observed;
-        }
-        self.seiren_eq_write
-            .pending
-            .take()
-            .expect("matching task")
-            .cancel();
-        while let Some(next) = self.seiren_eq_write.queued.pop_front() {
-            if next.is_valid() && next.epoch == self.seiren_eq_write.epoch {
-                self.seiren_eq_write.pending = Some(next.clone());
-                cx.emit(next);
-                break;
-            }
-            next.cancel();
+        if let Some(next) = finished.next {
+            cx.emit(next);
         }
         cx.notify();
     }
-    pub fn prepare_seiren_eq_exit(&mut self, _cx: &App) -> Option<SeirenEqRequested> {
-        let latest = self
-            .seiren_eq_write
-            .queued
-            .iter()
-            .rev()
-            .find(|request| request.persists_local_settings())
-            .cloned()
-            .or_else(|| {
-                self.seiren_eq_write
-                    .pending
-                    .clone()
-                    .filter(SeirenEqRequested::persists_local_settings)
-            });
-        let old_epoch = self.seiren_eq_write.epoch;
-        self.seiren_eq_write.cancel();
-        self.seiren_eq_write.pending = None;
-        let mut latest = latest?;
-        if latest.epoch != old_epoch {
-            return None;
-        }
-        self.seiren_eq_write.sequence = self.seiren_eq_write.sequence.wrapping_add(1);
-        latest.epoch = self.seiren_eq_write.epoch;
-        latest.sequence = self.seiren_eq_write.sequence;
-        latest.settings = self.snapshot();
-        latest.change = None;
-        latest.valid = Arc::new(AtomicBool::new(true));
-        self.seiren_eq_write.pending = Some(latest.clone());
-        Some(latest)
+    pub fn prepare_seiren_eq_exit(&mut self) {
+        self.seiren_eq_write.stopped = true;
+        self.stop_seiren_stream_mixer_admission();
+    }
+
+    pub fn seiren_audio_exit_pending(&self) -> bool {
+        self.seiren_eq_write.pending.is_some()
+            || !self.seiren_eq_write.queued.is_empty()
+            || self.seiren_stream_mixer_pending()
+    }
+
+    pub fn resume_seiren_audio_after_cancelled_exit(&mut self) {
+        self.seiren_eq_write.stopped = false;
+        self.resume_seiren_stream_mixer_admission();
     }
 
     pub fn sync_seiren_audio_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -330,6 +335,98 @@ mod tests {
             persist_before_device: true,
             valid: Arc::new(AtomicBool::new(true)),
         }
+    }
+    fn readback() -> Report {
+        use razer_device::seiren_eq::{NativeOperation, NativeReply, NativeTransport};
+        struct Readback;
+        impl NativeTransport for Readback {
+            fn call(&self, operation: &NativeOperation) -> anyhow::Result<NativeReply> {
+                Ok(match operation {
+                    NativeOperation::GetDeviceVolume { device_id: 524289 } => NativeReply::Long(61),
+                    NativeOperation::GetDeviceVolume { device_id: 262145 } => NativeReply::Long(37),
+                    NativeOperation::GetDeviceMute { device_id: 524289 } => {
+                        NativeReply::Boolean(false)
+                    }
+                    NativeOperation::GetDeviceMute { device_id: 262145 } => {
+                        NativeReply::Boolean(true)
+                    }
+                    _ => panic!("unexpected operation {operation:?}"),
+                })
+            }
+        }
+        razer_device::seiren_eq::execute_native_in_session(
+            1422,
+            &Readback,
+            &Change::ReadVolumes,
+            || Ok(()),
+        )
+        .unwrap()
+    }
+    #[::core::prelude::v1::test]
+    fn seiren_audio_completion_retains_real_readback_and_rejects_equal_counter_foreign_guards() {
+        let mut state = State::default();
+        let first = request(1, Change::ReadVolumes);
+        state.enqueue(first.clone());
+        let impostor = request(1, Change::ReadVolumes);
+        assert!(state.complete(&impostor, Some(readback())).is_none());
+        assert!(state.pending.is_some());
+        let finished = state.complete(&first, Some(readback())).unwrap();
+        let levels = finished.native_levels.unwrap();
+        assert_eq!(levels.microphone.value(), 37.);
+        assert!(!levels.microphone.is_enabled());
+        assert_eq!(
+            state
+                .observed
+                .as_ref()
+                .unwrap()
+                .native_levels()
+                .unwrap()
+                .headphones
+                .value(),
+            61.
+        );
+        assert!(state.pending.is_none());
+    }
+
+    #[::core::prelude::v1::test]
+    fn seiren_audio_exit_drains_original_fifo_without_replacing_accepted_changes() {
+        let mut state = State::default();
+        let first = request(1, Change::ReadVolumes);
+        let next = request(
+            2,
+            Change::VocalBass(razer_device::seiren_eq::Effect::new(true, 73)),
+        );
+        state.enqueue(first.clone());
+        state.enqueue(next.clone());
+        state.stopped = true;
+        let rejected = request(3, Change::ReadVolumes);
+        assert!(state.enqueue(rejected.clone()).is_none());
+        assert!(!rejected.is_valid());
+        let finished = state.complete(&first, Some(readback())).unwrap();
+        let submitted = finished.next.unwrap();
+        assert_eq!(submitted.sequence, 2);
+        assert_eq!(submitted.change, next.change);
+        assert!(submitted.persist_before_device);
+        assert!(state.matches(&next));
+        assert!(state.complete(&next, None).unwrap().next.is_none());
+        assert!(state.pending.is_none());
+    }
+
+    #[::core::prelude::v1::test]
+    fn seiren_audio_canceled_old_completion_releases_only_its_slot_and_never_publishes_readback() {
+        let mut state = State::default();
+        let old = request(1, Change::ReadVolumes);
+        state.enqueue(old.clone());
+        state.cancel();
+        let mut next = request(2, Change::ReadVolumes);
+        next.epoch = state.epoch;
+        state.enqueue(next.clone());
+        let finished = state.complete(&old, Some(readback())).unwrap();
+        assert!(finished.native_levels.is_none());
+        assert!(state.observed.is_none());
+        assert_eq!(finished.next.unwrap().sequence, 2);
+        assert!(state.complete(&old, Some(readback())).is_none());
+        assert!(state.matches(&next));
     }
     #[::core::prelude::v1::test]
     fn queue_retains_other_effects_and_cancels_replaced_amounts() {

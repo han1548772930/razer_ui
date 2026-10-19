@@ -54,6 +54,7 @@ struct Jobs {
     active: BTreeMap<(Owner, String), Job>,
     retired: Vec<Job>,
     diagnostics: BTreeMap<Owner, Vec<String>>,
+    failures: Arc<CleanupFailures>,
 }
 pub(super) struct Completion {
     pub(super) product_id: u32,
@@ -68,6 +69,8 @@ pub(in crate::shell) struct Transport {
     completions: Arc<Mutex<Vec<Completion>>>,
     reconnects: Arc<reconnect::Owners>,
     closed: AtomicBool,
+    shutdown_complete: AtomicBool,
+    failures: Arc<CleanupFailures>,
 }
 struct RequestGuard(Arc<AtomicBool>);
 impl Drop for RequestGuard {
@@ -77,13 +80,27 @@ impl Drop for RequestGuard {
 }
 impl Transport {
     pub(in crate::shell) fn new(executor: BackgroundExecutor) -> Self {
+        let failures = Arc::new(CleanupFailures::default());
         Self {
             executor,
-            jobs: Arc::new(Mutex::new(Jobs::default())),
+            jobs: Arc::new(Mutex::new(Jobs { failures: failures.clone(), ..Jobs::default() })),
             completions: Arc::new(Mutex::new(Vec::new())),
-            reconnects: Arc::new(reconnect::Owners::default()),
+            reconnects: Arc::new(reconnect::Owners::with_failures(failures.clone())),
             closed: AtomicBool::new(false),
+            shutdown_complete: AtomicBool::new(false),
+            failures,
         }
+    }
+    pub(super) fn replacement(&self) -> anyhow::Result<Self> {
+        ensure!(self.shutdown_complete.load(Ordering::Acquire) && self.reconnects.shutdown_complete(), "接收器旧所有者清理尚未结束");
+        ensure!(self.cleanup_failure().is_none(), "接收器旧所有者清理失败：{}", self.cleanup_failure().unwrap_or_default());
+        Ok(Self::new(self.executor.clone()))
+    }
+    pub(super) fn cleanup_failure(&self) -> Option<String> {
+        self.failures.summary()
+    }
+    pub(super) fn cleanup_witness(&self, product_id: u32, container: &str) -> CleanupWitness {
+        CleanupWitness::new(self.failures.clone(), product_id, container)
     }
     pub(in crate::shell) fn reconnect_owners(&self) -> &Arc<reconnect::Owners> {
         &self.reconnects
@@ -95,17 +112,47 @@ impl Transport {
             }
         }
     }
-    pub(super) fn shutdown(&self) {
+    pub(super) fn stop_admission(&self) {
         self.closed.store(true, Ordering::Release);
+        self.reconnects.stop_admission();
         self.cancel_all();
-        if let Ok(mut jobs) = self.jobs.lock() {
+    }
+    pub(super) fn shutdown(&self) {
+        self.stop_admission();
+        let (active, retired, diagnostics) = {
+            let mut jobs = self
+                .jobs
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             let active = std::mem::take(&mut jobs.active);
             let retired = std::mem::take(&mut jobs.retired);
-            drop(jobs);
-            for job in active.into_values().chain(retired) {
-                let _ = job.worker.join();
-            }
+            (active, retired, std::mem::take(&mut jobs.diagnostics))
+        };
+        let mut joined = Jobs {
+            diagnostics,
+            failures: self.failures.clone(),
+            ..Jobs::default()
+        };
+        for job in active.into_values().chain(retired) {
+            record_finished_job(&mut joined, job);
         }
+        let mut completions = self
+            .completions
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        for (owner, diagnostics) in joined.diagnostics {
+            if diagnostics.is_empty() {
+                continue;
+            }
+            completions.push(Completion {
+                product_id: owner.product_id,
+                container: owner.container,
+                projection: None,
+                cache_changed: false,
+                diagnostic: Some(diagnostics.join("; ")),
+            });
+        }
+        self.shutdown_complete.store(true, Ordering::Release);
     }
     pub(super) fn take_completions(&self) -> Vec<Completion> {
         self.completions
@@ -179,7 +226,10 @@ impl Transport {
             .jobs
             .lock()
             .map_err(|_| anyhow::anyhow!("配对工作线程锁不可用"))?;
+        ensure!(!self.closed.load(Ordering::Acquire), "配对服务所有者已关闭");
         prune_finished_jobs(&mut jobs);
+        let cleanup_failures = self.failures.for_owner(owner.product_id, &owner.container);
+        ensure!(cleanup_failures.is_empty(), "配对前次资源清理失败：{}", cleanup_failures.join("; "));
         ensure!(
             jobs.active.len() + jobs.retired.len() < 8,
             "前次配对清理尚未完成，请稍候"
@@ -195,6 +245,7 @@ impl Transport {
         let reconnects = self.reconnects.clone();
         let reconnect_scope =
             reconnects.scope("standalone-pairing", owner.product_id, &owner.container)?;
+        let mut cleanup = self.cleanup_witness(owner.product_id, &owner.container);
         let (sender, receiver) = mpsc::channel();
         let outcome = Arc::new(Mutex::new(None));
         let worker_outcome = outcome.clone();
@@ -234,6 +285,7 @@ impl Transport {
                     &signal,
                     (&reconnects, &reconnect_scope),
                     &mut source_response,
+                    &mut cleanup.result,
                 );
                 if let Ok(mut outcome) = worker_outcome.lock() {
                     *outcome = Some(
@@ -416,25 +468,23 @@ fn finish_product_jobs(jobs: &Mutex<Jobs>, owner: &Owner) -> anyhow::Result<Opti
     {
         return Ok(None);
     }
-    Ok(Some(
-        jobs.diagnostics.get(owner).cloned().unwrap_or_default(),
-    ))
+    let mut diagnostics = jobs.diagnostics.get(owner).cloned().unwrap_or_default();
+    diagnostics.extend(jobs.failures.for_owner(owner.product_id, &owner.container));
+    Ok(Some(diagnostics))
 }
 
 fn record_finished_job(jobs: &mut Jobs, job: Job) {
-    let result = job
-        .worker
-        .join()
-        .map_err(|_| "Pairing predecessor panicked".to_owned())
-        .and_then(|_| {
-            job.outcome
-                .lock()
-                .map_err(|_| "Pairing predecessor result lock poisoned".to_owned())?
-                .take()
-                .ok_or_else(|| "Pairing predecessor omitted its completion".to_owned())?
-        });
-    if let Err(error) = result {
-        jobs.diagnostics.entry(job.owner).or_default().push(error);
+    if job.worker.join().is_err() {
+        jobs.failures.record(job.owner.product_id, &job.owner.container, "Pairing predecessor panicked".into());
+        return;
+    }
+    match job.outcome.lock() {
+        Ok(mut outcome) => match outcome.take() {
+            Some(Err(error)) => jobs.diagnostics.entry(job.owner).or_default().push(error),
+            Some(Ok(())) => {}
+            None => jobs.failures.record(job.owner.product_id, &job.owner.container, "Pairing predecessor omitted its completion".into()),
+        },
+        Err(_) => jobs.failures.record(job.owner.product_id, &job.owner.container, "Pairing predecessor result lock poisoned".into()),
     }
 }
 
@@ -467,10 +517,12 @@ fn perform(
     canceled: &AtomicBool,
     reconnect_owner: (&reconnect::Owners, &reconnect::Scope),
     source_response: &mut dyn FnMut(UnpairStep),
+    cleanup: &mut Result<(), String>,
 ) -> anyhow::Result<(Value, Option<ReceiverQueryProjection>)> {
     if event.kind() == "DUALLINK_BIND_INFO" {
         ensure!(!canceled.load(Ordering::Acquire), "配对读取已取消");
         let mut client = ServiceClient::spawn()?;
+        *cleanup = Err("receiver read service cleanup receipt is missing".into());
         let result = (|| {
             let path = route::command_path(&mut client, owner.product_id, &owner.container)?;
             ensure!(!canceled.load(Ordering::Acquire), "配对读取已取消，未提交");
@@ -487,7 +539,7 @@ fn perform(
             ensure!(!canceled.load(Ordering::Acquire), "配对读取已取消，未发布");
             Ok((projection.pairing_payload()?, Some(projection)))
         })();
-        let shutdown = client.request(ServiceRequest::Shutdown);
+        let shutdown = finish_pairing_service(&mut client, cleanup);
         return match (result, shutdown) {
             (Ok(value), Ok(_)) => Ok(value),
             (Err(error), _) | (_, Err(error)) => Err(error),
@@ -504,6 +556,7 @@ fn perform(
         &sender,
         reconnect_owner,
         source_response,
+        cleanup,
     )?;
     if event.kind() == "DUALLINK_CANCEL" {
         ensure!(
@@ -530,6 +583,68 @@ fn perform(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[gpui_kit::test]
+    fn standalone_pairing_exit_cleanup_keeps_old_owner_closed_and_replacement_independent(
+        cx: &mut gpui_kit::TestAppContext,
+    ) {
+        let old = Transport::new(cx.background_executor.clone());
+        let owner = Owner {
+            product_id: 164,
+            container: "physical-owner".into(),
+        };
+        let canceled = Arc::new(AtomicBool::new(false));
+        let signal = canceled.clone();
+        let outcome = Arc::new(Mutex::new(None));
+        let result = outcome.clone();
+        let (ready, admitted) = mpsc::channel();
+        let worker = thread::spawn(move || {
+            ready.send(()).unwrap();
+            while !signal.load(Ordering::Acquire) {
+                thread::yield_now();
+            }
+            *result.lock().unwrap() = Some(Err("retired worker cleanup failed".into()));
+        });
+        old.jobs.lock().unwrap().retired.push(Job {
+            owner,
+            canceled,
+            outcome,
+            worker,
+        });
+        admitted.recv_timeout(Duration::from_secs(1)).unwrap();
+        old.stop_admission();
+        assert!(old.reconnects.scope("late", 164, "physical-owner").is_err());
+        old.shutdown();
+        assert!(old.jobs.lock().unwrap().retired.is_empty());
+        let completion = old.take_completions();
+        assert_eq!(completion.len(), 1);
+        assert_eq!(
+            completion[0].diagnostic.as_deref(),
+            Some("retired worker cleanup failed")
+        );
+        assert!(!completion[0].cache_changed);
+        assert!(completion[0].projection.is_none());
+
+        let replacement = Transport::new(cx.background_executor.clone());
+        assert!(
+            replacement
+                .reconnects
+                .scope("resumed", 164, "physical-owner")
+                .is_ok()
+        );
+        assert!(
+            old.start(Value::Null, "DUALLINK_BIND_INFO", json!({}), false, true)
+                .is_err()
+        );
+        assert!(
+            old.reconnects
+                .scope("resumed", 164, "physical-owner")
+                .is_err()
+        );
+        assert!(!Arc::ptr_eq(&old.reconnects, &replacement.reconnects));
+        old.shutdown();
+        assert!(old.take_completions().is_empty());
+        replacement.shutdown();
+    }
     #[::core::prelude::v1::test]
     fn owner_uses_actual_radio_and_requires_external_physical_scope() {
         let owner = Owner::parse(

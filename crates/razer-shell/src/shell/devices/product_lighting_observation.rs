@@ -134,6 +134,12 @@ impl Drop for Accepted {
     }
 }
 impl State {
+    fn resume_after_exit(&mut self) {
+        if !self.pending() {
+            self.stopped = false;
+        }
+    }
+
     pub(in crate::shell) fn pending(&self) -> bool {
         !self.operations.is_empty() || self.accepted.load(Ordering::Acquire) > 0
     }
@@ -231,6 +237,7 @@ fn mouse_host(readback: &product_chroma::Readback) -> Value {
 
 impl AppShell {
     pub(in crate::shell) fn install_product_lighting_cleanup(&mut self, _cx: &mut Context<Self>) {
+        self.register_exit_resume(|shell, _| shell.product_lighting.resume_after_exit());
         self.register_exit_cleanup(|shell, _| {
             let deliveries = shell.product_lighting.take_for_shutdown();
             async move {

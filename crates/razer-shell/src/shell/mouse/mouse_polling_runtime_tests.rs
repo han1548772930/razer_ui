@@ -71,10 +71,14 @@ fn shutdown_closes_admission_while_accepted_work_remains_pending() {
     assert!(state.take_for_shutdown().is_empty());
     assert!(state.accept().is_none());
     assert!(state.pending());
+    state.resume_after_exit();
+    assert!(state.accept().is_none());
     drop(accepted);
     assert!(!state.pending());
     assert!(state.take_for_shutdown().is_empty());
     assert!(state.accept().is_none());
+    state.resume_after_exit();
+    assert!(state.accept().is_some());
 }
 
 #[test]

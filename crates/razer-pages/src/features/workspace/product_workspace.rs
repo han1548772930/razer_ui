@@ -474,6 +474,25 @@ impl ProductWorkspace {
             _ => None,
         }
     }
+    pub fn retains_mouse_matcher_scope(
+        &self,
+        scope: &super::mouse_products::MouseMatcherScope,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).retains_mouse_matcher_scope(scope, cx))
+    }
+    pub fn accept_mouse_matcher_saved_profiles(
+        &mut self,
+        scope: &super::mouse_products::MouseMatcherScope,
+        cx: &mut Context<Self>,
+    ) -> anyhow::Result<()> {
+        match &self.body {
+            Body::Source(body) => body.update(cx, |body, cx| {
+                body.accept_mouse_matcher_saved_profiles(scope, cx)
+            }),
+            _ => anyhow::bail!("Matcher saved workspace is not a source product"),
+        }
+    }
     pub fn observe_mouse_matcher(
         &mut self,
         scope: &super::mouse_products::MouseMatcherScope,
@@ -973,7 +992,11 @@ impl ProductWorkspace {
             });
         }
     }
-    pub fn record_seiren_live(&mut self, observed: razer_device::seiren_mixer::LiveState, cx: &mut Context<Self>) {
+    pub fn record_seiren_live(
+        &mut self,
+        observed: razer_device::seiren_mixer::LiveState,
+        cx: &mut Context<Self>,
+    ) {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| body.record_seiren_live(observed, cx));
         }
@@ -983,9 +1006,15 @@ impl ProductWorkspace {
             body.update(cx, |body, cx| body.record_seiren_native_event(event, cx));
         }
     }
-    pub fn record_seiren_stream_mixer(&mut self, observation: super::audio_products::SeirenStreamMixerObservation, cx: &mut Context<Self>) {
+    pub fn record_seiren_stream_mixer(
+        &mut self,
+        observation: super::audio_products::SeirenStreamMixerObservation,
+        cx: &mut Context<Self>,
+    ) {
         if let Body::Source(body) = &self.body {
-            body.update(cx, |body, cx| body.record_seiren_stream_mixer(observation, cx));
+            body.update(cx, |body, cx| {
+                body.record_seiren_stream_mixer(observation, cx)
+            });
         }
     }
     pub fn sync_seiren_audio_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -1074,14 +1103,19 @@ impl ProductWorkspace {
             body.update(cx, |body, cx| body.finish_seiren_eq(request, observed, cx));
         }
     }
-    pub fn prepare_seiren_eq_exit(
-        &mut self,
-        cx: &mut Context<Self>,
-    ) -> Option<super::audio_products::SeirenEqRequested> {
+    pub fn prepare_seiren_eq_exit(&mut self, cx: &mut Context<Self>) {
         if let Body::Source(body) = &self.body {
-            body.update(cx, |body, cx| body.prepare_seiren_eq_exit(cx))
-        } else {
-            None
+            body.update(cx, |body, cx| body.prepare_seiren_eq_exit(cx));
+        }
+    }
+    pub fn seiren_audio_exit_pending(&self, cx: &App) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).seiren_audio_exit_pending(cx))
+    }
+    pub fn resume_seiren_audio_after_cancelled_exit(&mut self, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.resume_seiren_audio_after_cancelled_exit(cx)
+            });
         }
     }
     pub fn controller_trigger_request_matches(
@@ -1247,7 +1281,9 @@ impl ProductWorkspace {
     }
     pub fn resume_mouse_scroll_after_cancelled_exit(&mut self, cx: &mut Context<Self>) {
         if let Body::Source(body) = &self.body {
-            body.update(cx, |body, cx| body.resume_mouse_scroll_after_cancelled_exit(cx));
+            body.update(cx, |body, cx| {
+                body.resume_mouse_scroll_after_cancelled_exit(cx)
+            });
         }
     }
     pub fn finish_mouse_scroll_report(
@@ -1258,7 +1294,9 @@ impl ProductWorkspace {
         cx: &mut Context<Self>,
     ) {
         if let Body::Source(body) = &self.body {
-            body.update(cx, |body, cx| body.finish_mouse_scroll_report(request, report, cleanup_succeeded, cx));
+            body.update(cx, |body, cx| {
+                body.finish_mouse_scroll_report(request, report, cleanup_succeeded, cx)
+            });
         }
     }
     pub fn sync_mouse_scroll_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -1382,7 +1420,9 @@ impl ProductWorkspace {
         cx: &mut Context<Self>,
     ) {
         if let Body::Source(body) = &self.body {
-            body.update(cx, |body, cx| body.finish_legacy_dpi_result(request, confirmed, cx));
+            body.update(cx, |body, cx| {
+                body.finish_legacy_dpi_result(request, confirmed, cx)
+            });
         }
     }
     pub fn finish_legacy_dpi(

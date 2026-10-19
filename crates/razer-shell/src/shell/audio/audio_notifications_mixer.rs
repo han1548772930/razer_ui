@@ -405,11 +405,7 @@ impl MixerOwner {
         self.publish(client)?;
         Ok(())
     }
-    fn register_mapping(
-        &mut self,
-        mapping: &Value,
-        guid: &str,
-    ) -> anyhow::Result<()> {
+    fn register_mapping(&mut self, mapping: &Value, guid: &str) -> anyhow::Result<()> {
         let Some(binding) = mixer::shortcut_binding(self.product_id, mapping)? else {
             return Ok(());
         };
@@ -425,10 +421,7 @@ impl MixerOwner {
         self.shortcuts.insert(binding, guid.into());
         Ok(())
     }
-    fn unregister_mapping(
-        &mut self,
-        mapping: &Value,
-    ) -> anyhow::Result<()> {
+    fn unregister_mapping(&mut self, mapping: &Value) -> anyhow::Result<()> {
         let Some(binding) = mixer::shortcut_binding(self.product_id, mapping)? else {
             return Ok(());
         };
@@ -436,12 +429,7 @@ impl MixerOwner {
         self.shortcuts.remove(&binding);
         Ok(())
     }
-    fn change_mapping(
-        &mut self,
-        old: &Value,
-        new: &Value,
-        guid: &str,
-    ) -> anyhow::Result<()> {
+    fn change_mapping(&mut self, old: &Value, new: &Value, guid: &str) -> anyhow::Result<()> {
         if !old.as_object().is_some_and(serde_json::Map::is_empty) {
             self.unregister_mapping(old)?;
         }

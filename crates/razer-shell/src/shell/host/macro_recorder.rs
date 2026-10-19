@@ -39,6 +39,22 @@ impl AppShell {
     }
 
     pub(super) fn install_macro_recorder_storage(&mut self, _cx: &mut Context<Self>) {
+        self.start_macro_recorder_storage();
+        self.register_exit_cleanup(|this, _| {
+            this.host_storage.close_view(SOFTWARE_VIEW);
+            this.host_storage.close_view(OBSERVER_VIEW);
+            this.macro_recorder.software_mounted = false;
+            async {}
+        });
+        self.register_exit_resume(|shell, _| {
+            shell.start_macro_recorder_storage();
+            if shell.macro_page.is_some() {
+                shell.initialize_macro_recorder_page();
+            }
+        });
+    }
+
+    fn start_macro_recorder_storage(&mut self) {
         self.host_storage.register_view(HostStorageView {
             id: OBSERVER_VIEW,
             url: "razer-local:macro-recorder-observer".into(),
@@ -59,11 +75,6 @@ impl AppShell {
         self.macro_recorder
             .lock
             .initialize(aggregate.as_ref().and_then(Value::as_str));
-        self.register_exit_cleanup(|this, _| {
-            this.host_storage.close_view(SOFTWARE_VIEW);
-            this.host_storage.close_view(OBSERVER_VIEW);
-            async {}
-        });
     }
 
     pub(super) fn initialize_macro_recorder_page(&mut self) {

@@ -159,7 +159,17 @@ impl AppShell {
         }
     }
 
-    pub(super) fn install_game_monitor(&mut self, cx: &mut Context<Self>) {
+    fn start_game_monitor(&mut self, cx: &mut Context<Self>) {
+        if self.game_observer.pump.is_some() {
+            return;
+        }
+        self.game_observer.running_games = None;
+        self.game_observer.snapshot = None;
+        for workspace in &self.devices {
+            workspace.update(cx, |workspace, cx| {
+                workspace.observe_running_games(None, cx)
+            });
+        }
         self.host_storage.register_view(HostStorageView {
             id: OBSERVER_VIEW,
             url: OBSERVER_URL.into(),
@@ -271,6 +281,11 @@ impl AppShell {
                 }
             }
         }));
+    }
+
+    pub(super) fn install_game_monitor(&mut self, cx: &mut Context<Self>) {
+        self.start_game_monitor(cx);
+        self.register_exit_resume(|shell, cx| shell.start_game_monitor(cx));
         self.register_exit_cleanup(|shell, cx| {
             shell.game_observer.pump = None;
             let worker = shell.game_observer.monitor.take().and_then(GameMonitor::retire);

@@ -174,6 +174,7 @@ impl AppShell {
             return;
         }
         self.resume_service_exit(cx);
+        self.resume_mapping_observations();
         razer_state::ui_preferences::cancel_exit(cx);
         razer_state::chroma_settings::cancel_exit(cx);
         self.help_system_info.resume_after_cancelled_exit();
@@ -181,7 +182,8 @@ impl AppShell {
             .update(cx, |runtime, cx| runtime.cancel_exit(cx));
         for workspace in &self.devices {
             workspace.update(cx, |workspace, cx| {
-                workspace.resume_mouse_scroll_after_cancelled_exit(cx)
+                workspace.resume_mouse_scroll_after_cancelled_exit(cx);
+                workspace.resume_seiren_audio_after_cancelled_exit(cx);
             });
         }
         self.background_exit_task = None;

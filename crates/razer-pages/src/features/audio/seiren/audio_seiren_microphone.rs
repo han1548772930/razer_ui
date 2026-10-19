@@ -346,7 +346,14 @@ impl AudioProductWorkspace {
             if let Some(preview) = &mut self.seiren_mic.preview {
                 preview.started.get_or_insert_with(Instant::now);
             }
-            let Some(volume) = self.seiren_eq.live.endpoint(razer_device::seiren_mixer::MICROPHONE).and_then(|reading| reading.value()) else { return true; };
+            let Some(volume) = self
+                .seiren_eq
+                .live
+                .endpoint(razer_device::seiren_mixer::MICROPHONE)
+                .and_then(|reading| reading.value())
+            else {
+                return true;
+            };
             let gain = mic::percent_to_db(f64::from(volume.level));
             self.seiren_mic.waveform.observe(&frame, gain);
             self.seiren_mic.retry_count = 0;
@@ -600,8 +607,12 @@ impl AudioProductWorkspace {
             Some("deviceVolume" | "deviceMute") => {
                 // Native callbacks contain one endpoint observation. Updating
                 // it never fills the unobserved endpoint with default values.
-                let Some(mute) = event["mute"].as_u64().filter(|value| *value <= 1) else { return; };
-                let Some(level) = event["level"].as_u64().filter(|value| *value <= 100) else { return; };
+                let Some(mute) = event["mute"].as_u64().filter(|value| *value <= 1) else {
+                    return;
+                };
+                let Some(level) = event["level"].as_u64().filter(|value| *value <= 100) else {
+                    return;
+                };
                 let is_enabled = mute == 0;
                 // Current MW handleAddLevelMeterListener toggles background
                 // recording before selecting the endpoint, including HP mute.
@@ -614,7 +625,13 @@ impl AudioProductWorkspace {
                     Some(524289) => 524289,
                     _ => return,
                 };
-                let _ = self.seiren_eq.live.observe_endpoint(id, razer_device::seiren_mixer::EndpointObservation { level: level as u32, muted: !is_enabled });
+                let _ = self.seiren_eq.live.observe_endpoint(
+                    id,
+                    razer_device::seiren_mixer::EndpointObservation {
+                        level: level as u32,
+                        muted: !is_enabled,
+                    },
+                );
                 self.defer_seiren_microphone_volume_sync(cx);
                 cx.notify();
             }
@@ -622,7 +639,9 @@ impl AudioProductWorkspace {
         }
     }
     fn seiren_microphone_set_volume(&mut self, value: Value, cx: &mut Context<Self>) {
-        if !self.seiren_endpoint_available(0) { return; }
+        if !self.seiren_endpoint_available(0) {
+            return;
+        }
         let operation = if self.draft["profile"]["micVolume"]["isEnabled"] != value["isEnabled"] {
             "ON_SET_MIC_VOLUME_ENABLED"
         } else {

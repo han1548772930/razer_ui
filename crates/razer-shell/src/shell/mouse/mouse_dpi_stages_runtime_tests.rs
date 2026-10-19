@@ -40,6 +40,24 @@ fn dpi_stage_shutdown_rejects_new_work_and_waits_for_accepted_release() {
     assert!(!state.pending());
 }
 
+#[::core::prelude::v1::test]
+fn dpi_stage_exit_resume_reopens_admission_without_replaying_old_requests() {
+    let mut state = State::default();
+    let (first, accepted) = state.accept().unwrap();
+    state.take_for_shutdown();
+    state.resume_after_exit();
+    assert!(state.accept().is_none());
+    assert!(state.pending());
+    drop(accepted);
+    state.resume_after_exit();
+    assert!(!state.pending());
+    let (next, next_accepted) = state.accept().unwrap();
+    assert!(next > first);
+    assert!(state.operations.is_empty());
+    drop(next_accepted);
+    assert!(!state.pending());
+}
+
 fn receiver(container: &str, status: u8) -> discovery::ReceiverQueryProjection {
     let capability = receiver_capabilities::capability(179).unwrap();
     discovery::project_receiver_query(

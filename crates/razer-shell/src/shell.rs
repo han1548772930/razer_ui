@@ -165,12 +165,12 @@ mod receiver_pairing;
 mod receiver_reset;
 #[path = "shell/audio/seiren_audio_capture.rs"]
 mod seiren_audio_capture;
+#[path = "shell/audio/seiren_audio_operations.rs"]
+mod seiren_audio_operations;
 #[path = "shell/audio/seiren_audio_playback.rs"]
 mod seiren_audio_playback;
 #[path = "shell/audio/seiren_eq.rs"]
 mod seiren_eq;
-#[path = "shell/audio/seiren_audio_operations.rs"]
-mod seiren_audio_operations;
 #[path = "shell/audio/seiren_microphone_setup.rs"]
 mod seiren_microphone_setup;
 #[path = "shell/audio/thx_sound.rs"]
@@ -1273,6 +1273,7 @@ impl AppShell {
         this.install_thx_cleanup(cx);
         this.install_controller_calibration_cleanup(cx);
         this.install_keyboard_lifecycle(cx);
+        this.install_mapping_observation_cleanup(cx);
         this.install_game_monitor(cx);
         this.install_global_shortcuts(cx);
         this.install_keyboard_actuation_cleanup(cx);
@@ -1378,6 +1379,23 @@ impl AppShell {
             workspace.set_saved_mapping_macro_library(&saved_macros, cx);
             workspace.set_mapping_macro_library(&macros, window, cx)
         });
+        self.subscriptions.push(cx.subscribe(
+            &entity,
+            |this, entity, event: &WorkspaceEvent, cx| match event {
+                WorkspaceEvent::SeirenEqRequested(request) => {
+                    this.persist_seiren_eq(entity.clone(), request.clone(), this.main_window, cx);
+                }
+                WorkspaceEvent::SeirenStreamMixerRequested(request) => {
+                    this.request_seiren_stream_mixer(
+                        entity.clone(),
+                        request.clone(),
+                        this.main_window,
+                        cx,
+                    );
+                }
+                _ => {}
+            },
+        ));
         self.subscriptions.push(cx.subscribe_in(
             &entity,
             window,
@@ -1559,15 +1577,11 @@ impl AppShell {
                 WorkspaceEvent::MouseCurrentPowerRequested(request) => {
                     this.persist_current_power(entity.clone(), request.clone(), window, cx);
                 }
-                WorkspaceEvent::SeirenStreamMixerRequested(request) => {
-                    this.request_seiren_stream_mixer(entity.clone(),request.clone(),window,cx);
-                }
+                WorkspaceEvent::SeirenStreamMixerRequested(_) => {}
                 WorkspaceEvent::SeirenStreamMixerCaptureChanged(request) => {
                     this.set_seiren_stream_mixer_capture(entity.clone(),request.clone(),window,cx);
                 }
-                WorkspaceEvent::SeirenEqRequested(request) => {
-                    this.persist_seiren_eq(entity.clone(), request.clone(), window, cx);
-                }
+                WorkspaceEvent::SeirenEqRequested(_) => {}
                 WorkspaceEvent::SeirenAudioCaptureRequested(request) => {
                     this.start_seiren_audio_capture(entity.clone(), request.clone(), window, cx);
                 }
@@ -2777,6 +2791,9 @@ impl AppShell {
         true
     }
     fn continue_save_queue(&mut self, succeeded: bool, cx: &mut Context<Self>) {
+        if self.service_exit.defer_save_continuation(succeeded) {
+            return;
+        }
         if !succeeded {
             self.cancel_pending_exit(cx);
         }
@@ -2802,6 +2819,7 @@ impl AppShell {
             || self.devices.iter().any(|workspace| {
                 workspace.read(cx).current_dpi_exit_pending(cx)
                     || workspace.read(cx).legacy_dpi_exit_pending(cx)
+                    || workspace.read(cx).seiren_audio_exit_pending(cx)
             })
             || self.mouse_scroll.pending()
             || self.mouse_matcher.pending()
@@ -3036,7 +3054,9 @@ impl AppShell {
         for workspace in self.devices.clone() {
             let requests = workspace.update(cx, |workspace, cx| workspace.flush_hanbo_curve(cx));
             for request in requests {
-                self.persist_hanbo_settings(workspace.clone(), &request, window, cx);
+                if !self.persist_hanbo_settings(workspace.clone(), &request, window, cx) {
+                    return;
+                }
             }
         }
         self.close_requested = true;
@@ -3052,6 +3072,9 @@ impl AppShell {
         razer_state::chroma_settings::begin_exit(cx);
         self.release_interdevice_holds(cx);
         self.prepare_keyboard_game_exit(cx);
+        if !self.close_requested {
+            return;
+        }
         self.prepare_keyboard_latest_exit(cx);
         self.shortcuts
             .update(cx, |page, cx| page.dismiss_for_navigation(cx));
@@ -3076,27 +3099,35 @@ impl AppShell {
             });
             for request in calibration {
                 self.persist_mouse_philips(workspace.clone(), request, window, cx);
+                if !self.close_requested {
+                    return;
+                }
             }
             workspace.update(cx, |workspace, cx| workspace.prepare_mouse_scroll_exit(cx));
-            let eq = workspace.update(cx, |workspace, cx| workspace.prepare_seiren_eq_exit(cx));
-            if let Some(request) = eq {
-                self.persist_seiren_eq(workspace.clone(), request, window, cx);
-            }
+            workspace.update(cx, |workspace, cx| workspace.prepare_seiren_eq_exit(cx));
             let power =
                 workspace.update(cx, |workspace, cx| workspace.prepare_current_power_exit(cx));
             if let Some(request) = power {
                 self.persist_current_power(workspace.clone(), request, window, cx);
+                if !self.close_requested {
+                    return;
+                }
             }
             let current =
                 workspace.update(cx, |workspace, cx| workspace.prepare_current_dpi_exit(cx));
             match current {
-                Ok(Some(request)) => self.persist_current_dpi(workspace.clone(), request, window, cx),
+                Ok(Some(request)) => {
+                    self.persist_current_dpi(workspace.clone(), request, window, cx)
+                }
                 Ok(None) => {}
                 Err(error) => {
                     self.status = error;
                     self.cancel_pending_exit(cx);
                     return;
                 }
+            }
+            if !self.close_requested {
+                return;
             }
             let request =
                 workspace.update(cx, |workspace, cx| workspace.prepare_legacy_dpi_exit(cx));
@@ -3113,6 +3144,9 @@ impl AppShell {
                     self.cancel_pending_exit(cx);
                     return;
                 }
+            }
+            if !self.close_requested {
+                return;
             }
             workspace.update(cx, |workspace, cx| workspace.prepare_exit(window, cx));
         }

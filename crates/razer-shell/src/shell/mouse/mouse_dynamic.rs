@@ -55,6 +55,12 @@ pub(super) struct State {
     queued: BTreeMap<Key, Queued>,
 }
 impl State {
+    fn resume_after_exit(&mut self) {
+        if !self.pending() {
+            self.stopped = false;
+        }
+    }
+
     fn admits(&self, closing: bool, admission: Admission) -> bool {
         !self.stopped && (!closing || matches!(admission, Admission::AcceptedWrite))
     }
@@ -162,6 +168,7 @@ impl AppShell {
     }
 
     pub(super) fn install_mouse_dynamic_cleanup(&mut self, _cx: &mut Context<Self>) {
+        self.register_exit_resume(|shell, _| shell.mouse_dynamic.resume_after_exit());
         self.register_exit_cleanup(|shell, _| {
             let deliveries = shell.mouse_dynamic.take_for_shutdown();
             async move {

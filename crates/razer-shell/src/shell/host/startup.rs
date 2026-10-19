@@ -32,6 +32,10 @@ impl State {
 
 impl AppShell {
     pub(in crate::shell) fn install_startup(&mut self, cx: &mut Context<Self>) {
+        self.register_exit_resume(|shell, cx| {
+            shell.startup.stopping = false;
+            shell.run_startup_work(cx);
+        });
         let draft = self
             .settings
             .read(cx)

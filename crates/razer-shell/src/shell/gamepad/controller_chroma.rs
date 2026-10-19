@@ -739,6 +739,9 @@ impl AppShell {
         snapshot: &chroma_profiles::Snapshot,
         cx: &mut Context<Self>,
     ) -> anyhow::Result<()> {
+        self.controller_chroma
+            .watch_guard
+            .store(false, Ordering::Release);
         self.apply_controller_chroma_readback(
             &Readback {
                 snapshot: Ok(snapshot.clone()),

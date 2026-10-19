@@ -155,7 +155,7 @@ struct AudioReadback {
     endpoints: anyhow::Result<Vec<SimpleAudioEndpoint>>,
     cleanup_error: Option<String>,
 }
-fn read_playback(guard: &AtomicBool) -> AudioReadback {
+fn read_playback(guard: Arc<AtomicBool>) -> AudioReadback {
     let started = (|| {
         ensure!(
             guard.load(Ordering::Acquire),
@@ -172,6 +172,7 @@ fn read_playback(guard: &AtomicBool) -> AudioReadback {
             };
         }
     };
+    client.set_request_guard(guard.clone());
     let endpoints = (|| {
         ensure!(
             guard.load(Ordering::Acquire),
@@ -179,10 +180,19 @@ fn read_playback(guard: &AtomicBool) -> AudioReadback {
         );
         decode_playback(client.request(ServiceRequest::AudioDevices)?)
     })();
-    let cleanup_error = client
+    // ServiceClient requires ShutdownReceipt.stopped=true and completes its
+    // response-side process join before returning this result.
+    let mut cleanup = client
         .request(ServiceRequest::Shutdown)
         .err()
-        .map(|error| format!("{error:#}"));
+        .map(|error| format!("Shutdown: {error:#}"))
+        .into_iter()
+        .collect::<Vec<_>>();
+    if let Err(error) = client.finish_termination() {
+        cleanup.push(format!("process/pipe cleanup: {error:#}"));
+    }
+    drop(client);
+    let cleanup_error = (!cleanup.is_empty()).then(|| cleanup.join("; "));
     AudioReadback {
         endpoints,
         cleanup_error,
@@ -190,6 +200,24 @@ fn read_playback(guard: &AtomicBool) -> AudioReadback {
 }
 
 impl AppShell {
+    pub(in crate::shell) fn install_mapping_observation_cleanup(
+        &mut self,
+        _cx: &mut Context<Self>,
+    ) {
+        self.register_exit_cleanup(|shell, _| {
+            shell.prepare_mapping_observation_exit();
+            let deliveries = std::mem::take(&mut shell.mapping_observations.operations)
+                .into_values()
+                .map(|operation| operation._delivery)
+                .collect::<Vec<_>>();
+            async move {
+                for delivery in deliveries {
+                    delivery.await;
+                }
+            }
+        });
+        self.register_exit_resume(|shell, _| shell.resume_mapping_observations());
+    }
     pub(in crate::shell) fn mapping_observation_pending(&self) -> bool {
         !self.mapping_observations.operations.is_empty()
             || self.mapping_observations.accepted.load(Ordering::Acquire) > 0
@@ -277,6 +305,7 @@ impl AppShell {
             previous.guard.store(false, Ordering::Release);
             self.host_storage.close_view(previous.view_id);
         }
+        self.start_mapping_memory_watch(cx);
         if dial {
             self.mapping_observations
                 .accepted
@@ -288,7 +317,7 @@ impl AppShell {
                 let result = cx
                     .background_spawn(async move {
                         let _accepted = accepted;
-                        read_playback(&background_guard)
+                        read_playback(background_guard)
                     })
                     .await;
                 let _ =
@@ -361,21 +390,21 @@ impl AppShell {
         let result = super::super::product_chroma::connected_products(
             &mut self.host_storage,
             observer.view_id,
-        )
-        .and_then(|devices| {
-            self.host_storage.call(HostStorageCall {
-                store: HostStoreKind::Memory,
-                sender_id: observer.view_id,
-                action: "registerMemoryStorageEvent".into(),
-                payload: serde_json::json!({}),
-                target_url_array: Vec::new(),
-            })?;
-            Ok(devices)
+        );
+        let subscribed = self.host_storage.call(HostStorageCall {
+            store: HostStoreKind::Memory,
+            sender_id: observer.view_id,
+            action: "registerMemoryStorageEvent".into(),
+            payload: serde_json::json!({}),
+            target_url_array: Vec::new(),
         });
+        observer.subscribed = subscribed.is_ok();
+        if let Err(error) = subscribed {
+            self.status = format!("键盘映射灯光事件未订阅：{error:#}");
+        }
         match result {
             Ok(devices) => {
                 observer.lighting = devices.map(|devices| !devices.is_empty());
-                observer.subscribed = true;
             }
             Err(error) => {
                 self.status = format!("键盘映射灯光设备未读取：{error:#}");
@@ -427,10 +456,15 @@ impl AppShell {
                                 continue;
                             }
                             #[derive(Deserialize)]
-                            #[serde(rename_all = "camelCase")]
                             struct MemoryEvent {
                                 key: String,
-                                new_value: Option<String>,
+                                #[serde(flatten)]
+                                fields: serde_json::Map<String, Value>,
+                            }
+                            #[derive(Deserialize)]
+                            #[serde(rename_all = "camelCase")]
+                            struct DeviceEvent {
+                                new_value: String,
                             }
                             let decoded = serde_json::from_value::<MemoryEvent>(event.payload)
                                 .and_then(|event| {
@@ -439,19 +473,19 @@ impl AppShell {
                                     {
                                         return Ok(None);
                                     }
-                                    Ok(Some(event.new_value))
+                                    serde_json::from_value::<DeviceEvent>(Value::Object(
+                                        event.fields,
+                                    ))
+                                    .map(Some)
                                 });
                             let result = match decoded {
                                 Ok(None) => continue,
-                                Ok(Some(Some(value))) => {
+                                Ok(Some(event)) => {
                                     super::super::product_chroma::decode_connected_devices_value(
-                                        &value,
+                                        &event.new_value,
                                     )
                                     .map(|devices| !devices.is_empty())
                                 }
-                                Ok(Some(None)) => Err(anyhow::anyhow!(
-                                    "Lighting memory event has no new device payload"
-                                )),
                                 Err(error) => Err(error.into()),
                             };
                             match result {

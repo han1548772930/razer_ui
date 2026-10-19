@@ -39,8 +39,14 @@ fn accepted_brightness_keeps_exit_pending_until_its_worker_releases_the_receipt(
     assert!(state.pending());
     assert!(state.accept(false, true).is_none());
     assert!(state.accept(true, true).is_none());
+    state.resume_after_exit();
+    assert!(state.accept(false, true).is_none());
     drop(brightness);
     assert!(!state.pending());
+    state.resume_after_exit();
+    let (next_id, next) = state.accept(false, false).unwrap();
+    assert!(next_id > brightness_id);
+    drop(next);
 }
 
 #[::core::prelude::v1::test]

@@ -4,6 +4,7 @@ use super::*;
 use anyhow::{Context as _, ensure};
 use razer_pages::features::{
     mouse_dpi_matcher::{MatcherAction, MatcherCommand, MatcherObservation},
+    mouse_polling::MousePollingScope,
     mouse_products::{MouseMatcherRequest, MouseMatcherScope},
 };
 use razer_service::dpi_matcher::worker::{
@@ -31,25 +32,60 @@ impl State {
     }
 }
 struct Session {
-    id: uuid::Uuid,
-    workspace: WeakEntity<ProductWorkspace>,
-    scope: MouseMatcherScope,
-    connection_revision: u64,
+    owner: Owner,
+    closing: bool,
     handle: Option<Handle>,
     _delivery: Task<()>,
 }
+#[derive(Clone)]
+struct Owner {
+    id: uuid::Uuid,
+    workspace: WeakEntity<ProductWorkspace>,
+    identity: String,
+    scope: MouseMatcherScope,
+    domain_scope: MousePollingScope,
+    connection_revision: u64,
+    profile_id: String,
+    profile_guid: String,
+    route: razer_discovery::discovery::ObservedDevice,
+}
+
+impl Owner {
+    fn current(&self, shell: &AppShell, draining: bool, cx: &App) -> bool {
+        let Some(workspace) = self.workspace.upgrade() else {
+            return false;
+        };
+        let workspace_state = workspace.read(cx);
+        let device = workspace_state.device(cx);
+        shell.devices.contains(&workspace)
+            && workspace_state.identity(cx) == self.identity
+            && workspace_state.connection_revision() == self.connection_revision
+            && workspace_state.mouse_polling_scope(cx) == Some(self.domain_scope)
+            && device.active_profile == self.profile_id
+            && device
+                .profiles
+                .iter()
+                .any(|profile| profile.id == self.profile_id && profile.guid == self.profile_guid)
+            && workspace_state.retains_mouse_matcher_scope(&self.scope, cx)
+            && (draining
+                || self.scope.is_valid()
+                    && workspace_state.mouse_matcher_scope(cx).as_ref() == Some(&self.scope))
+            && super::device_discovery::retained_connection(
+                std::slice::from_ref(&self.route),
+                &shell.device_observations,
+                device,
+            )
+    }
+}
 pub(super) struct LocalSave {
     workspace: Entity<ProductWorkspace>,
-    identity: String,
-    session_id: uuid::Uuid,
-    connection_revision: u64,
-    scope: MouseMatcherScope,
+    owner: Owner,
     mutation: razer_model::mouse_matcher::Mutation,
     reply: Option<Sender<Result<(), String>>>,
 }
 impl LocalSave {
     pub(super) fn owner(&self) -> (&str, WeakEntity<ProductWorkspace>) {
-        (&self.identity, self.workspace.downgrade())
+        (&self.owner.identity, self.workspace.downgrade())
     }
 }
 impl Drop for LocalSave {
@@ -91,15 +127,17 @@ impl AppShell {
     }
 
     fn retire_mouse_matcher(&mut self, identity: &str, cx: &mut Context<Self>) {
-        self.mouse_matcher
-            .cleanup
-            .retain(|cleanup| !cleanup.reported || !cleanup.completion.is_released());
+        self.mouse_matcher.cleanup.retain(|cleanup| {
+            !cleanup.reported
+                || !cleanup.completion.is_released()
+                || cleanup.completion.cleanup_error().is_some()
+        });
         if let Some(mut session) = self.mouse_matcher.sessions.remove(identity) {
             if let Some(handle) = session.handle.take() {
                 handle.cancel();
                 let completion = handle.completion();
                 let received = completion.clone();
-                let id = session.id;
+                let id = session.owner.id;
                 let task = cx.spawn(async move |shell, cx| {
                     let result = cx.background_spawn(async move { handle.finish() }).await;
                     let _ = shell.update(cx, |shell, cx| {
@@ -140,22 +178,23 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) -> Result<(), String> {
         for cleanup in &self.mouse_matcher.cleanup {
-            if cleanup.completion.is_finished() && !cleanup.completion.is_released() {
+            if cleanup.completion.is_finished()
+                && (!cleanup.completion.is_released()
+                    || cleanup.completion.cleanup_error().is_some())
+            {
                 return Err(cleanup
                     .completion
                     .cleanup_error()
                     .unwrap_or_else(|| "DPI Matcher 传输资源尚未确认释放".into()));
             }
         }
-        let identities = self
-            .mouse_matcher
-            .sessions
-            .keys()
-            .cloned()
-            .collect::<Vec<_>>();
-        for identity in identities {
-            self.retire_mouse_matcher(&identity, cx);
+        for session in self.mouse_matcher.sessions.values_mut() {
+            session.closing = true;
+            if let Some(handle) = &mut session.handle {
+                handle.begin_exit();
+            }
         }
+        cx.notify();
         Ok(())
     }
 
@@ -188,9 +227,10 @@ impl AppShell {
             .sessions
             .get(&identity)
             .is_some_and(|session| {
-                session.workspace.upgrade().as_ref() == Some(&workspace)
-                    && session.scope == *request.scope()
-                    && session.connection_revision == revision
+                !session.closing
+                    && session.owner.workspace.upgrade().as_ref() == Some(&workspace)
+                    && session.owner.scope == *request.scope()
+                    && session.owner.connection_revision == revision
             });
         if !retained {
             self.retire_mouse_matcher(&identity, cx);
@@ -259,60 +299,61 @@ impl AppShell {
                 .filter(|cleanup| cleanup.identity == identity)
                 .map(|cleanup| cleanup.completion.clone())
                 .collect();
+            let device = workspace.read(cx).device(cx);
+            let Some(profile) = device
+                .profiles
+                .iter()
+                .find(|profile| profile.id == device.active_profile)
+            else {
+                return;
+            };
+            let Some(domain_scope) = workspace.read(cx).mouse_polling_scope(cx) else {
+                return;
+            };
+            let owner = Owner {
+                id: uuid::Uuid::new_v4(),
+                workspace: workspace.downgrade(),
+                identity: identity.clone(),
+                scope: request.scope().clone(),
+                domain_scope,
+                connection_revision: revision,
+                profile_id: profile.id.clone(),
+                profile_guid: profile.guid.clone(),
+                route: route.clone(),
+            };
             let (handle, updates) = Handle::start(options, predecessors);
-            let weak = workspace.downgrade();
-            let scope = request.scope().clone();
-            let retained_identity = identity.clone();
-            let retained_route = route.clone();
-            let session_id = uuid::Uuid::new_v4();
-            let delivery = cx.spawn_in(window, async move |shell, cx| {
+            let delivery_owner = owner.clone();
+            let window = window.window_handle();
+            let delivery = cx.spawn(async move |shell, cx| {
                 loop {
                     cx.background_executor()
                         .timer(std::time::Duration::from_millis(16))
                         .await;
-                    let current = cx.update(|window, cx| {
-                        shell.update(cx, |shell, cx| {
-                            let Some(workspace) = weak.upgrade() else {
-                                return false;
-                            };
-                            let current = !shell.close_requested
-                                && scope.is_valid()
-                                && shell
-                                    .mouse_matcher
-                                    .sessions
-                                    .get(&retained_identity)
-                                    .is_some_and(|session| session.id == session_id)
-                                && shell.devices.contains(&workspace)
-                                && workspace.read(cx).connection_revision() == revision
-                                && workspace.read(cx).mouse_matcher_scope(cx).as_ref()
-                                    == Some(&scope)
-                                && super::device_discovery::retained_connection(
-                                    std::slice::from_ref(&retained_route),
-                                    &shell.device_observations,
-                                    workspace.read(cx).device(cx),
-                                );
-                            if !current {
-                                return false;
-                            }
-                            for _ in 0..64 {
-                                match updates.try_next() {
-                                    Ok(Some(update)) => shell.receive_mouse_matcher(
-                                        workspace.clone(),
-                                        &scope,
-                                        session_id,
-                                        revision,
-                                        update,
-                                        window,
-                                        cx,
-                                    ),
-                                    Ok(None) => return true,
-                                    Err(_) => return false,
+                    let current = shell.update(cx, |shell, cx| {
+                        let current = shell
+                            .mouse_matcher
+                            .sessions
+                            .get(&delivery_owner.identity)
+                            .is_some_and(|session| {
+                                session.owner.id == delivery_owner.id
+                                    && (!shell.close_requested || session.closing)
+                                    && delivery_owner.current(shell, session.closing, cx)
+                            });
+                        if !current {
+                            return false;
+                        }
+                        for _ in 0..64 {
+                            match updates.try_next() {
+                                Ok(Some(update)) => {
+                                    shell.receive_mouse_matcher(&delivery_owner, update, window, cx)
                                 }
+                                Ok(None) => return true,
+                                Err(_) => return false,
                             }
-                            true
-                        })
+                        }
+                        true
                     });
-                    if !matches!(current, Ok(Ok(true))) {
+                    if !matches!(current, Ok(true)) {
                         break;
                     }
                 }
@@ -320,20 +361,18 @@ impl AppShell {
                     if shell
                         .mouse_matcher
                         .sessions
-                        .get(&retained_identity)
-                        .is_some_and(|session| session.id == session_id)
+                        .get(&delivery_owner.identity)
+                        .is_some_and(|session| session.owner.id == delivery_owner.id)
                     {
-                        shell.retire_mouse_matcher(&retained_identity, cx);
+                        shell.retire_mouse_matcher(&delivery_owner.identity, cx);
                     }
                 });
             });
             self.mouse_matcher.sessions.insert(
                 identity.clone(),
                 Session {
-                    id: session_id,
-                    workspace: workspace.downgrade(),
-                    scope: request.scope().clone(),
-                    connection_revision: revision,
+                    owner,
+                    closing: false,
                     handle: Some(handle),
                     _delivery: delivery,
                 },
@@ -368,14 +407,31 @@ impl AppShell {
 
     fn receive_mouse_matcher(
         &mut self,
-        workspace: Entity<ProductWorkspace>,
-        scope: &MouseMatcherScope,
-        session_id: uuid::Uuid,
-        connection_revision: u64,
+        owner: &Owner,
         update: Update,
-        window: &mut Window,
+        window: AnyWindowHandle,
         cx: &mut Context<Self>,
     ) {
+        let current = self
+            .mouse_matcher
+            .sessions
+            .get(&owner.identity)
+            .is_some_and(|session| {
+                session.owner.id == owner.id && owner.current(self, session.closing, cx)
+            });
+        let Some(workspace) = owner.workspace.upgrade().filter(|_| current) else {
+            match update {
+                Update::ReadSource(reply) => {
+                    let _ = reply.send(Err("Matcher source owner changed".into()));
+                }
+                Update::Persist { reply, .. } => {
+                    let _ = reply.send(Err("Matcher save owner changed".into()));
+                }
+                _ => {}
+            }
+            return;
+        };
+        let scope = &owner.scope;
         match update {
             Update::ReadSource(reply) => {
                 let result = razer_model::mouse_matcher::source_record(
@@ -389,11 +445,8 @@ impl AppShell {
                     return;
                 }
                 let save = LocalSave {
-                    identity: workspace.read(cx).identity(cx),
                     workspace,
-                    session_id,
-                    connection_revision,
-                    scope: scope.clone(),
+                    owner: owner.clone(),
                     mutation,
                     reply: Some(reply),
                 };
@@ -405,7 +458,7 @@ impl AppShell {
                     cx,
                 );
                 self.pending_saves.push_back(self.prepare_save(
-                    window.window_handle(),
+                    window,
                     file,
                     Some(ProductSave::MouseMatcher(save)),
                     cx,
@@ -419,17 +472,15 @@ impl AppShell {
                     active: usize,
                 }
                 match serde_json::from_value::<StageDraft>(stages) {
-                    Ok(draft) => workspace.update(cx, |workspace, cx| {
-                        workspace.observe_mouse_matcher(
-                            scope,
-                            MatcherObservation::Stages {
-                                stages: draft.stages,
-                                active: draft.active,
-                            },
-                            window,
-                            cx,
-                        )
-                    }),
+                    Ok(draft) => self.publish_mouse_matcher_observation(
+                        owner,
+                        MatcherObservation::Stages {
+                            stages: draft.stages,
+                            active: draft.active,
+                        },
+                        window,
+                        cx,
+                    ),
                     Err(error) => workspace.update(cx, |workspace, cx| {
                         workspace.reject_mouse_matcher(
                             scope,
@@ -471,17 +522,40 @@ impl AppShell {
                         return;
                     }
                 };
-                workspace.update(cx, |workspace, cx| {
-                    workspace.observe_mouse_matcher(scope, observation, window, cx)
-                });
+                self.publish_mouse_matcher_observation(owner, observation, window, cx);
             }
             Update::Failure(error) => {
                 eprintln!("[dpi-matcher] {error}");
                 workspace.update(cx, |workspace, cx| {
-                    workspace.reject_mouse_matcher(scope, error, cx)
+                    workspace.reject_mouse_matcher(scope, error.clone(), cx)
                 });
+                if self.close_requested {
+                    self.status = format!("DPI Matcher 操作未完成：{error}");
+                    self.cancel_pending_exit(cx);
+                }
             }
         }
+    }
+
+    fn publish_mouse_matcher_observation(
+        &mut self,
+        owner: &Owner,
+        observation: MatcherObservation,
+        window: AnyWindowHandle,
+        cx: &mut Context<Self>,
+    ) {
+        if !owner.current(self, false, cx) {
+            return;
+        }
+        let Some(workspace) = owner.workspace.upgrade() else {
+            return;
+        };
+        let scope = owner.scope.clone();
+        let _ = window.update(cx, |_, window, cx| {
+            workspace.update(cx, |workspace, cx| {
+                workspace.observe_mouse_matcher(&scope, observation, window, cx)
+            });
+        });
     }
 
     pub(super) fn rebase_mouse_matcher_save(
@@ -496,11 +570,16 @@ impl AppShell {
             self.mouse_matcher_save_current(matcher, cx),
             "Matcher profile owner changed before persistence"
         );
+        save.file.devices = self
+            .devices
+            .iter()
+            .map(|workspace| workspace.read(cx).saved_snapshot(cx))
+            .collect();
         let target = save
             .file
             .devices
             .iter_mut()
-            .find(|device| device.workspace_identity() == matcher.identity)
+            .find(|device| device.workspace_identity() == matcher.owner.identity)
             .context("Matcher workspace was removed before persistence")?;
         matcher.mutation.apply(target)
     }
@@ -511,7 +590,15 @@ impl AppShell {
         succeeded: bool,
         cx: &mut Context<Self>,
     ) {
-        let current = succeeded && self.mouse_matcher_save_current(&save, cx);
+        let mut current = succeeded && self.mouse_matcher_save_current(&save, cx);
+        if current {
+            if let Err(error) = save.workspace.update(cx, |workspace, cx| {
+                workspace.accept_mouse_matcher_saved_profiles(&save.owner.scope, cx)
+            }) {
+                eprintln!("[dpi-matcher saved profiles] {error:#}");
+                current = false;
+            }
+        }
         if let Some(reply) = save.reply.take() {
             let _ = reply.send(if current {
                 Ok(())
@@ -519,19 +606,21 @@ impl AppShell {
                 Err("Matcher save failed or its profile owner changed".into())
             });
         }
+        if !current {
+            self.status = "DPI Matcher 本地保存失败或其设备、配置会话已变化。".into();
+            self.cancel_pending_exit(cx);
+        }
     }
 
     fn mouse_matcher_save_current(&self, save: &LocalSave, cx: &App) -> bool {
-        save.scope.is_valid()
-            && save.workspace.read(cx).connection_revision() == save.connection_revision
-            && save.workspace.read(cx).mouse_matcher_scope(cx).as_ref() == Some(&save.scope)
-            && self
-                .mouse_matcher
-                .sessions
-                .get(&save.identity)
-                .is_some_and(|session| {
-                    session.id == save.session_id
-                        && session.workspace.upgrade().as_ref() == Some(&save.workspace)
-                })
+        self.mouse_matcher
+            .sessions
+            .get(&save.owner.identity)
+            .is_some_and(|session| {
+                session.owner.id == save.owner.id
+                    && session.owner.scope == save.owner.scope
+                    && session.owner.workspace.upgrade().as_ref() == Some(&save.workspace)
+                    && save.owner.current(self, session.closing, cx)
+            })
     }
 }

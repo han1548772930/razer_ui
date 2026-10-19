@@ -11,7 +11,9 @@ type Resume = Box<dyn FnMut(&mut AppShell, &mut Context<AppShell>)>;
 enum Phase {
     #[default]
     Running,
-    Cleaning { cancel_requested: bool },
+    Cleaning {
+        cancel_requested: bool,
+    },
     Cleaned,
 }
 
@@ -20,7 +22,9 @@ impl Phase {
         if !matches!(self, Self::Running) {
             return false;
         }
-        *self = Self::Cleaning { cancel_requested: false };
+        *self = Self::Cleaning {
+            cancel_requested: false,
+        };
         true
     }
 
@@ -35,7 +39,12 @@ impl Phase {
     }
 
     fn complete(&mut self) -> bool {
-        let cancelled = matches!(self, Self::Cleaning { cancel_requested: true });
+        let cancelled = matches!(
+            self,
+            Self::Cleaning {
+                cancel_requested: true
+            }
+        );
         *self = Self::Cleaned;
         cancelled
     }
@@ -54,7 +63,20 @@ pub(super) struct State {
     hooks: Vec<Cleanup>,
     resumes: Vec<Resume>,
     phase: Phase,
+    quitting: bool,
     task: Option<Task<()>>,
+}
+
+impl State {
+    pub(super) fn defer_save_continuation(&mut self, succeeded: bool) -> bool {
+        if !matches!(self.phase, Phase::Cleaning { .. }) {
+            return false;
+        }
+        if !succeeded {
+            self.phase.defer_cancel();
+        }
+        true
+    }
 }
 
 impl AppShell {
@@ -95,10 +117,7 @@ impl AppShell {
         // Invoke every hook before waiting so independent cancellation starts
         // together. Each feature retains its own verified release order.
         let mut hooks = std::mem::take(&mut self.service_exit.hooks);
-        let completions = hooks
-            .iter_mut()
-            .map(|cleanup| cleanup(self, cx))
-            .collect();
+        let completions = hooks.iter_mut().map(|cleanup| cleanup(self, cx)).collect();
         hooks.append(&mut self.service_exit.hooks);
         self.service_exit.hooks = hooks;
         completions
@@ -106,6 +125,7 @@ impl AppShell {
 
     pub(super) fn install_service_exit_fallback(&mut self, cx: &mut Context<Self>) {
         self.subscriptions.push(cx.on_app_quit(|shell, cx| {
+            shell.service_exit.quitting = true;
             let retained = shell.service_exit.task.take();
             let completions = if retained.is_none() && shell.service_exit.phase.begin() {
                 shell.take_exit_cleanups(cx)
@@ -138,6 +158,9 @@ impl AppShell {
             let _ = shell.update(cx, |shell, cx| {
                 shell.service_exit.task = None;
                 let cancelled = shell.service_exit.phase.complete();
+                if shell.service_exit.quitting {
+                    return;
+                }
                 if cancelled {
                     shell.cancel_pending_exit(cx);
                 } else if shell.close_requested {
@@ -151,7 +174,33 @@ impl AppShell {
 
 #[cfg(test)]
 mod tests {
-    use super::Phase;
+    use super::{Phase, State};
+    use crate::shell::{SaveContinuation, save_continuation};
+
+    #[test]
+    fn failed_completion_during_cleanup_retains_exit_until_owners_can_resume() {
+        let mut state = State::default();
+        let mut close_requested = true;
+        assert!(state.phase.begin());
+        // A cleanup failure and its operation completion can both report the
+        // same failure before the remaining independent cleanups finish.
+        assert!(state.phase.defer_cancel());
+        if !state.defer_save_continuation(false) {
+            save_continuation(&mut close_requested, false, false, false);
+        }
+        assert!(close_requested);
+        assert!(!state.phase.resume());
+        assert!(state.defer_save_continuation(true));
+        assert!(state.phase.complete());
+        assert!(std::mem::take(&mut close_requested));
+        assert!(state.phase.resume());
+        assert!(!state.defer_save_continuation(true));
+        assert_eq!(
+            save_continuation(&mut close_requested, true, false, false),
+            SaveContinuation::Idle
+        );
+        assert!(state.phase.begin());
+    }
 
     #[test]
     fn exit_cancellation_waits_for_all_cleanup_completions() {

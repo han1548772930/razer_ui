@@ -12,6 +12,9 @@ fn mouse_dynamic_exit_drains_accepted_writes_and_rejects_new_work() {
     assert!(state.take_for_shutdown().is_empty());
     assert!(!state.admits(true, Admission::AcceptedWrite));
     assert!(!state.admits(false, Admission::New));
+    state.resume_after_exit();
+    assert!(state.admits(false, Admission::New));
+    assert!(!state.admits(true, Admission::New));
 }
 
 #[::core::prelude::v1::test]

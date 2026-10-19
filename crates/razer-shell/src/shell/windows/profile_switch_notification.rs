@@ -4,7 +4,7 @@ use super::AppShell;
 use gpui_kit::base::Button;
 use gpui_kit::*;
 use razer_storage::{
-    host::{HostStorageCall, HostStorageView, HostStoreKind},
+    host::{HostStorage, HostStorageCall, HostStorageView, HostStoreKind},
     profile_notification::{Consumer, Notification, Producer, STORAGE_KEY},
 };
 use razer_widgets::{surface, theme::ProfileNotificationColors as Colors};
@@ -29,6 +29,7 @@ pub(in crate::shell) struct State {
     local_snapshot: Option<Value>,
     origin: Instant,
     initialized: bool,
+    suspended: bool,
 }
 impl Default for State {
     fn default() -> Self {
@@ -45,6 +46,7 @@ impl Default for State {
             local_snapshot: None,
             origin: Instant::now(),
             initialized: false,
+            suspended: false,
         }
     }
 }
@@ -72,12 +74,48 @@ fn call(sender_id: u64, action: &str, payload: Value) -> HostStorageCall {
     }
 }
 
+fn register_notification_host(storage: &mut HostStorage) -> anyhow::Result<()> {
+    storage.register_view(HostStorageView {
+        id: NOTIFICATION_VIEW,
+        url: "razer-local:notification-manager-main".into(),
+        remote: false,
+        destroyed: false,
+        crashed: false,
+        disposed: false,
+        tracked_url: true,
+    });
+    storage.call(call(
+        NOTIFICATION_VIEW,
+        "registerWindowStorageEvent",
+        json!({}),
+    ))?;
+    Ok(())
+}
+
 impl AppShell {
     pub(in crate::shell) fn install_profile_switch_notification_cleanup(
         &mut self,
         _cx: &mut Context<Self>,
     ) {
+        self.register_exit_resume(|this, cx| {
+            if !this.profile_notifications.suspended {
+                return;
+            }
+            this.profile_notifications.suspended = false;
+            if this.profile_notifications.window.is_some()
+                && let Err(error) = this.start_profile_switch_notifications(cx)
+            {
+                this.status = format!("Profile notification: {error:#}");
+                cx.notify();
+            }
+        });
         self.register_exit_cleanup(|this, _| {
+            this.profile_notifications.suspended = true;
+            this.profile_notifications.initialized = false;
+            this.profile_notifications.display_revision =
+                this.profile_notifications.display_revision.wrapping_add(1);
+            this.profile_notifications.display_snapshot.clear();
+            this.profile_notifications.display_enabled = None;
             let _ = this.host_storage.call(call(
                 NOTIFICATION_VIEW,
                 "unRegisterWindowStorageEvent",
@@ -104,23 +142,44 @@ impl AppShell {
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) -> anyhow::Result<()> {
+        self.start_profile_switch_notifications(cx)
+    }
+
+    fn start_profile_switch_notifications(&mut self, cx: &mut Context<Self>) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            !self.profile_notifications.suspended,
+            "Profile notification owner is stopping"
+        );
         if self.profile_notifications.initialized {
             return Ok(());
         }
-        self.host_storage.register_view(HostStorageView {
-            id: NOTIFICATION_VIEW,
-            url: "razer-local:notification-manager-main".into(),
-            remote: false,
-            destroyed: false,
-            crashed: false,
-            disposed: false,
-            tracked_url: true,
-        });
-        self.host_storage.call(call(
-            NOTIFICATION_VIEW,
-            "registerWindowStorageEvent",
-            json!({}),
-        ))?;
+        register_notification_host(&mut self.host_storage)?;
+        if self.profile_notifications.window.is_none() {
+            self.create_profile_notification_window(cx)?;
+        }
+        let aggregate = self
+            .host_storage
+            .call(call(
+                NOTIFICATION_VIEW,
+                "getWindowStorageItem",
+                json!({"key":STORAGE_KEY}),
+            ))?
+            .value;
+        self.profile_notifications.initialized = true;
+        let now = self.profile_notifications.now();
+        self.profile_notifications.consumer.advance(now);
+        let restored = self
+            .profile_notifications
+            .consumer
+            .restore(&aggregate, now, || {
+                is_fullscreen().map_err(|error| format!("{error:#}"))
+            });
+        self.start_profile_notification_pump(cx);
+        self.refresh_profile_notification_window(cx)?;
+        restored.map_err(anyhow::Error::msg)
+    }
+
+    fn create_profile_notification_window(&mut self, cx: &mut Context<Self>) -> anyhow::Result<()> {
         let options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(Bounds::new(
                 point(px(0.), px(0.)),
@@ -139,6 +198,9 @@ impl AppShell {
         let (handle, view) =
             gpui_kit::open_window(options, cx, |_, cx| cx.new(|_| ProfileWindow::new()))?;
         let subscription = cx.subscribe(&view, move |this, _, event, cx| {
+            if this.profile_notifications.suspended {
+                return;
+            }
             let result = match event {
                 ProfileWindowEvent::Dismissed(notification) => {
                     this.profile_notifications.consumer.close(notification);
@@ -156,25 +218,7 @@ impl AppShell {
             }
         });
         self.profile_notifications.window = Some((handle, view, subscription));
-        self.profile_notifications.initialized = true;
-        let aggregate = self
-            .host_storage
-            .call(call(
-                NOTIFICATION_VIEW,
-                "getWindowStorageItem",
-                json!({"key":STORAGE_KEY}),
-            ))?
-            .value;
-        let now = self.profile_notifications.now();
-        let restored = self
-            .profile_notifications
-            .consumer
-            .restore(&aggregate, now, || {
-                is_fullscreen().map_err(|error| format!("{error:#}"))
-            });
-        self.refresh_profile_notification_window(cx)?;
-        self.start_profile_notification_pump(cx);
-        restored.map_err(anyhow::Error::msg)
+        Ok(())
     }
 
     pub(in crate::shell) fn publish_stream_mixer_profile_notification(
@@ -265,7 +309,9 @@ impl AppShell {
     }
 
     fn start_profile_notification_pump(&mut self, cx: &mut Context<Self>) {
-        if self.profile_notifications.pump.is_some()
+        if self.profile_notifications.suspended
+            || !self.profile_notifications.initialized
+            || self.profile_notifications.pump.is_some()
             || self.profile_notifications.next_delay().is_none()
         {
             return;
@@ -327,6 +373,9 @@ impl AppShell {
         &mut self,
         cx: &mut Context<Self>,
     ) -> anyhow::Result<()> {
+        if self.profile_notifications.suspended {
+            return Ok(());
+        }
         let current = self.profile_notifications.consumer.notifications();
         if self.profile_notifications.display_snapshot != current {
             self.profile_notifications.display_snapshot = current.to_vec();
@@ -361,11 +410,12 @@ impl AppShell {
     }
 
     fn request_profile_notification_visibility(&mut self, cx: &mut Context<Self>) {
-        if self
-            .profile_notifications
-            .consumer
-            .notifications()
-            .is_empty()
+        if self.profile_notifications.suspended
+            || self
+                .profile_notifications
+                .consumer
+                .notifications()
+                .is_empty()
         {
             return;
         }
@@ -411,6 +461,9 @@ impl AppShell {
     }
 
     fn persist_profile_notification_measurements(&mut self, cx: &mut Context<Self>) {
+        if self.profile_notifications.suspended {
+            return;
+        }
         let Some((_, view, _)) = self.profile_notifications.window.as_ref() else {
             return;
         };
@@ -905,7 +958,70 @@ fn position_and_show(
 
 #[cfg(test)]
 mod tests {
-    use super::{display_preference, ease_in_out};
+    use super::{
+        HostStorage, HostStorageView, NOTIFICATION_VIEW, STORAGE_KEY, call, display_preference,
+        ease_in_out, json, register_notification_host,
+    };
+    #[test]
+    fn profile_notification_exit_resume_restores_actual_host_subscription_once() {
+        let mut storage = HostStorage::default();
+        storage.register_view(HostStorageView {
+            id: 7,
+            url: "razer-local:stream-mixer-test".into(),
+            remote: false,
+            destroyed: false,
+            crashed: false,
+            disposed: false,
+            tracked_url: true,
+        });
+        register_notification_host(&mut storage).unwrap();
+        storage
+            .call(call(
+                7,
+                "setWindowStorageItem",
+                json!({"key":STORAGE_KEY,"value":"first"}),
+            ))
+            .unwrap();
+        assert_eq!(storage.drain_events(NOTIFICATION_VIEW).unwrap().len(), 1);
+        storage
+            .call(call(
+                NOTIFICATION_VIEW,
+                "unRegisterWindowStorageEvent",
+                json!({}),
+            ))
+            .unwrap();
+        storage.close_view(NOTIFICATION_VIEW);
+        storage
+            .call(call(
+                7,
+                "setWindowStorageItem",
+                json!({"key":STORAGE_KEY,"value":"during-cleanup"}),
+            ))
+            .unwrap();
+        assert!(storage.drain_events(NOTIFICATION_VIEW).is_err());
+
+        register_notification_host(&mut storage).unwrap();
+        register_notification_host(&mut storage).unwrap();
+        let aggregate = storage
+            .call(call(
+                NOTIFICATION_VIEW,
+                "getWindowStorageItem",
+                json!({"key":STORAGE_KEY}),
+            ))
+            .unwrap();
+        assert!(aggregate.value.as_str().unwrap().contains("during-cleanup"));
+        assert!(storage.drain_events(NOTIFICATION_VIEW).unwrap().is_empty());
+        storage
+            .call(call(
+                7,
+                "setWindowStorageItem",
+                json!({"key":STORAGE_KEY,"value":"resumed"}),
+            ))
+            .unwrap();
+        let events = storage.drain_events(NOTIFICATION_VIEW).unwrap();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].payload["newValue"], "resumed");
+    }
     #[test]
     fn source_display_preference_preserves_null_default_and_parse_catch_string() {
         assert_eq!(display_preference(None), (true, true));

@@ -27,7 +27,9 @@ pub(super) fn terminate(
             Ok(()) => break,
             Err(error) => {
                 let error = format!("Audio service termination: {error}");
-                if !errors.contains(&error) { errors.push(error); }
+                if !errors.contains(&error) {
+                    errors.push(error);
+                }
                 wait();
             }
         }
@@ -35,7 +37,10 @@ pub(super) fn terminate(
 }
 
 pub(super) fn completed(result: Result<(), String>, errors: Vec<String>) -> Completion {
-    Completion { result, cleanup_failure: (!errors.is_empty()).then(|| errors.join("; ")) }
+    Completion {
+        result,
+        cleanup_failure: (!errors.is_empty()).then(|| errors.join("; ")),
+    }
 }
 
 #[cfg(test)]

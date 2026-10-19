@@ -31,6 +31,7 @@ struct Worker {
     scheduled: Instant,
     operation_id: String,
     reports: Arc<Mutex<Vec<Report>>>,
+    failures: Arc<CleanupFailures>,
 }
 
 #[derive(Default)]
@@ -51,9 +52,17 @@ pub(in crate::shell) struct Owners {
     state: Mutex<State>,
     reports: Arc<Mutex<Vec<Report>>>,
     closed: AtomicBool,
+    shutdown_complete: AtomicBool,
+    failures: Arc<CleanupFailures>,
 }
 
 impl Owners {
+    pub(super) fn with_failures(failures: Arc<CleanupFailures>) -> Self {
+        Self { failures, ..Self::default() }
+    }
+    pub(super) fn shutdown_complete(&self) -> bool {
+        self.shutdown_complete.load(Ordering::Acquire)
+    }
     pub(super) fn scope(
         &self,
         view: &str,
@@ -61,6 +70,8 @@ impl Owners {
         container: &str,
     ) -> anyhow::Result<Scope> {
         ensure!(!self.closed.load(Ordering::Acquire), "独立重连所有者已关闭");
+        let errors = self.failures.for_owner(product_id, container);
+        ensure!(errors.is_empty(), "重连前次资源清理失败：{}", errors.join("; "));
         let key = Key {
             view: view.into(),
             product_id,
@@ -70,6 +81,9 @@ impl Owners {
             .state
             .lock()
             .map_err(|_| anyhow::anyhow!("重连所有者状态锁不可用"))?;
+        ensure!(!self.closed.load(Ordering::Acquire), "独立重连所有者已关闭");
+        let errors = self.failures.for_owner(product_id, container);
+        ensure!(errors.is_empty(), "重连前次资源清理失败：{}", errors.join("; "));
         let valid = state
             .scopes
             .entry(key.clone())
@@ -120,10 +134,12 @@ impl Owners {
             !self.closed.load(Ordering::Acquire) && scope.valid.load(Ordering::Acquire),
             "重连所有者已退出，未启动"
         );
+        let errors = self.failures.for_owner(scope.key.product_id, &scope.key.container);
+        ensure!(errors.is_empty(), "重连前次资源清理失败：{}", errors.join("; "));
         let mut pending = Vec::new();
         for job in state.jobs.drain(..) {
             if job.worker.is_finished() {
-                let _ = job.worker.join();
+                join_job(job, &self.failures);
             } else {
                 pending.push(job);
             }
@@ -143,6 +159,7 @@ impl Owners {
             scheduled: Instant::now(),
             operation_id: format!("unpair-reconnect-{}", uuid::Uuid::new_v4()),
             reports: self.reports.clone(),
+            failures: self.failures.clone(),
         };
         let worker = thread::Builder::new().name("receiver-reconnect-client".into()).spawn(move || {
             let result = execute(&work);
@@ -218,7 +235,7 @@ impl Owners {
             let mut pending = Vec::new();
             for job in state.jobs.drain(..) {
                 if job.worker.is_finished() {
-                    let _ = job.worker.join();
+                    join_job(job, &self.failures);
                 } else {
                     pending.push(job);
                 }
@@ -231,8 +248,12 @@ impl Owners {
             .unwrap_or_default()
     }
 
-    pub(super) fn shutdown(&self) {
+    pub(super) fn stop_admission(&self) {
         self.closed.store(true, Ordering::Release);
+    }
+
+    pub(super) fn shutdown(&self) {
+        self.stop_admission();
         {
             let mut state = self
                 .state
@@ -248,9 +269,16 @@ impl Owners {
             }
             drop(state);
             for job in jobs {
-                let _ = job.worker.join();
+                join_job(job, &self.failures);
             }
         }
+        self.shutdown_complete.store(true, Ordering::Release);
+    }
+}
+
+fn join_job(job: Job, failures: &CleanupFailures) {
+    if job.worker.join().is_err() {
+        failures.record(job.scope.key.product_id, &job.scope.key.container, "receiver reconnect worker panicked before cleanup completed".into());
     }
 }
 
@@ -266,7 +294,9 @@ fn run(worker: &Worker) -> anyhow::Result<()> {
     let reports = &worker.reports;
     let valid = || scope.valid.load(Ordering::Acquire) && worker.alive.load(Ordering::Acquire);
     ensure!(valid(), "重连所有者已退出，未创建服务");
+    let mut cleanup = CleanupWitness::new(worker.failures.clone(), scope.key.product_id, &scope.key.container);
     let mut client = ServiceClient::spawn()?;
+    cleanup.result = Err("receiver reconnect service cleanup receipt is missing".into());
     let started = (|| {
         ensure!(valid(), "重连所有者已退出，未启动");
         let receipt = client.request(ServiceRequest::ReceiverReconnectStart {
@@ -315,7 +345,7 @@ fn run(worker: &Worker) -> anyhow::Result<()> {
         }
         Ok(())
     })();
-    let shutdown = client.request(ServiceRequest::Shutdown);
+    let shutdown = finish_pairing_service(&mut client, &mut cleanup.result);
     match (started, shutdown) {
         (Ok(()), Ok(_)) => {
             if let Ok(mut reports) = reports.lock() {

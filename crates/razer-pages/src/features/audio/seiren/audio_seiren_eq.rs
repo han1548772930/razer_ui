@@ -76,6 +76,52 @@ pub(super) struct State {
 }
 
 impl State {
+    fn record_native_levels(&mut self, levels: &razer_device::seiren_eq::NativeLevels) {
+        use razer_device::seiren_mixer::{EndpointObservation, HEADPHONES, MICROPHONE, Reading};
+        for (index, id, level) in [
+            (0, MICROPHONE, &levels.microphone),
+            (1, HEADPHONES, &levels.headphones),
+        ] {
+            self.monitor_observed[index] = Value::Null;
+            if level.value().is_finite()
+                && (0. ..=100.).contains(&level.value())
+                && level.value().fract() == 0.
+            {
+                let _ = self.live.observe_endpoint(
+                    id,
+                    EndpointObservation {
+                        level: level.value() as u32,
+                        muted: !level.is_enabled(),
+                    },
+                );
+            } else {
+                self.live
+                    .set_endpoint(id, Reading::Failed("Invalid Marie volume readback".into()));
+            }
+        }
+    }
+
+    fn record_live(&mut self, observed: razer_device::seiren_mixer::LiveState) -> bool {
+        for (index, id) in [
+            razer_device::seiren_mixer::MICROPHONE,
+            razer_device::seiren_mixer::HEADPHONES,
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            if self.live.endpoint(id) != observed.endpoint(id) {
+                self.monitor_observed[index] = Value::Null;
+            }
+        }
+        self.live = observed;
+        let unavailable = self.live.meters().value().is_none();
+        if unavailable {
+            self.levels = [[0.; 2]; 2];
+            self.peaks = [[0.; 2]; 2];
+            self.peak_task = None;
+        }
+        unavailable
+    }
     fn sync_monitor(&mut self, index: usize, value: Value) {
         if !value.is_null() && self.monitor_observed[index] != value {
             self.monitor_observed[index] = value.clone();
@@ -129,6 +175,124 @@ mod state_tests {
     // The glob imports above also carry GPUI's `test` macro; name the
     // built-in attribute so this remains an ordinary Rust test.
     use std::prelude::v1::test;
+    #[test]
+    fn seiren_audio_readback_enters_observed_state_without_a_window_and_keeps_drafts_separate() {
+        use razer_device::{
+            seiren_eq::{Level, NativeLevels},
+            seiren_mixer::{HEADPHONES, MICROPHONE},
+        };
+        let mut state = State::default();
+        state.monitor_preview = [
+            serde_json::json!({"value":82}),
+            serde_json::json!({"value":10}),
+            serde_json::Value::Null,
+        ];
+        let draft = state.monitor_preview.clone();
+        state.record_native_levels(&NativeLevels {
+            microphone: Level::new(false, 37.),
+            headphones: Level::new(true, 61.),
+        });
+        assert_eq!(
+            state
+                .live
+                .endpoint(MICROPHONE)
+                .unwrap()
+                .value()
+                .unwrap()
+                .level,
+            37
+        );
+        assert!(
+            state
+                .live
+                .endpoint(MICROPHONE)
+                .unwrap()
+                .value()
+                .unwrap()
+                .muted
+        );
+        assert_eq!(
+            state
+                .live
+                .endpoint(HEADPHONES)
+                .unwrap()
+                .value()
+                .unwrap()
+                .level,
+            61
+        );
+        assert_eq!(state.monitor_preview, draft);
+        assert!(state.monitor_observed[0].is_null());
+        state.record_native_levels(&NativeLevels {
+            microphone: Level::new(true, 37.5),
+            headphones: Level::new(true, 101.),
+        });
+        assert!(state.live.endpoint(MICROPHONE).unwrap().value().is_none());
+        assert!(state.live.endpoint(HEADPHONES).unwrap().value().is_none());
+        assert_eq!(state.monitor_preview, draft);
+    }
+
+    #[test]
+    fn seiren_audio_failed_disconnected_and_reconnected_observations_never_fall_back_to_saved_values()
+     {
+        use razer_device::seiren_mixer::{EndpointObservation, LiveState, MICROPHONE, Reading};
+        let mut state = State::default();
+        state.monitor_preview[0] = serde_json::json!({"value":82});
+        let mut observed = LiveState::default();
+        observed
+            .observe_endpoint(
+                MICROPHONE,
+                EndpointObservation {
+                    level: 37,
+                    muted: false,
+                },
+            )
+            .unwrap();
+        assert!(state.record_live(observed));
+        assert_eq!(
+            state
+                .live
+                .endpoint(MICROPHONE)
+                .unwrap()
+                .value()
+                .unwrap()
+                .level,
+            37
+        );
+        state.record_live(LiveState::failed("endpoint read failed".into()));
+        assert!(
+            matches!(state.live.endpoint(MICROPHONE), Some(Reading::Failed(error)) if error == "endpoint read failed")
+        );
+        state.record_live(LiveState::disconnected());
+        assert_eq!(
+            state.live.endpoint(MICROPHONE),
+            Some(&Reading::Disconnected)
+        );
+        state.record_live(LiveState::default());
+        assert_eq!(state.live.endpoint(MICROPHONE), Some(&Reading::Unobserved));
+        let mut reconnected = LiveState::default();
+        reconnected
+            .observe_endpoint(
+                MICROPHONE,
+                EndpointObservation {
+                    level: 61,
+                    muted: true,
+                },
+            )
+            .unwrap();
+        state.record_live(reconnected);
+        assert_eq!(
+            state
+                .live
+                .endpoint(MICROPHONE)
+                .unwrap()
+                .value()
+                .unwrap()
+                .level,
+            61
+        );
+        assert_eq!(state.monitor_preview[0]["value"], 82);
+    }
     #[test]
     fn seiren_monitor_changed_source_value_replaces_temporary_drag_value() {
         let mut state = State::default();
@@ -257,22 +421,7 @@ impl AudioProductWorkspace {
         if !supported(self.spec.product_id) {
             return;
         }
-        for (index, id) in [
-            razer_device::seiren_mixer::MICROPHONE,
-            razer_device::seiren_mixer::HEADPHONES,
-        ]
-        .into_iter()
-        .enumerate()
-        {
-            if self.seiren_eq.live.endpoint(id) != observed.endpoint(id) {
-                self.seiren_eq.monitor_observed[index] = Value::Null;
-            }
-        }
-        self.seiren_eq.live = observed;
-        if self.seiren_eq.live.meters().value().is_none() {
-            self.seiren_eq.levels = [[0.; 2]; 2];
-            self.seiren_eq.peaks = [[0.; 2]; 2];
-            self.seiren_eq.peak_task = None;
+        if self.seiren_eq.record_live(observed) {
             self.clear_seiren_stream_mixer_meters();
         }
         self.defer_seiren_microphone_volume_sync(cx);
@@ -1003,32 +1152,7 @@ impl AudioProductWorkspace {
         if !supported(self.spec.product_id) {
             return;
         }
-        for (index, level) in [(0, &levels.microphone), (1, &levels.headphones)] {
-            self.seiren_eq.monitor_observed[index] = Value::Null;
-            let id = [
-                razer_device::seiren_mixer::MICROPHONE,
-                razer_device::seiren_mixer::HEADPHONES,
-            ][index];
-            if level.value().is_finite()
-                && (0. ..=100.).contains(&level.value())
-                && level.value().fract() == 0.
-            {
-                let _ = self.seiren_eq.live.observe_endpoint(
-                    id,
-                    razer_device::seiren_mixer::EndpointObservation {
-                        level: level.value() as u32,
-                        muted: !level.is_enabled(),
-                    },
-                );
-            } else {
-                self.seiren_eq.live.set_endpoint(
-                    id,
-                    razer_device::seiren_mixer::Reading::Failed(
-                        "Invalid Marie volume readback".into(),
-                    ),
-                );
-            }
-        }
+        self.seiren_eq.record_native_levels(levels);
         self.defer_seiren_microphone_volume_sync(cx);
         cx.notify();
     }

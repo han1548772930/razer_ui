@@ -1031,9 +1031,6 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
             if owner == matcher_shell and name == "mouse_matcher_save_current":
                 body = node.child_by_field_name("body")
                 terms = conjunction_terms(body.named_children[-1]) if body.named_children else []
-                required = {"save.scope.is_valid()",
-                    "save.workspace.read(cx).connection_revision()==save.connection_revision",
-                    "save.workspace.read(cx).mouse_matcher_scope(cx).as_ref()==Some(&save.scope)"}
                 predicates = [term for term in terms if term.type == "call_expression"
                     and term.child_by_field_name("function").type == "field_expression"
                     and text(term.child_by_field_name("function").child_by_field_name("field")) == "is_some_and"]
@@ -1042,16 +1039,35 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                     function = predicate.child_by_field_name("function")
                     receiver = function.child_by_field_name("value")
                     arguments = predicate.child_by_field_name("arguments").named_children
-                    if ("".join(text(receiver).split()) != "self.mouse_matcher.sessions.get(&save.identity)"
+                    if ("".join(text(receiver).split()) != "self.mouse_matcher.sessions.get(&save.owner.identity)"
                             or len(arguments) != 1 or arguments[0].type != "closure_expression"):
                         continue
                     closure = arguments[0].child_by_field_name("body")
                     if closure.type == "block" and closure.named_children:
                         closure = closure.named_children[-1]
-                    correlated = {"session.id==save.session_id",
-                        "session.workspace.upgrade().as_ref()==Some(&save.workspace)"} <= condition_atoms(closure)
-                if not required <= {"".join(text(term).split()) for term in terms} or not correlated:
+                    correlated = {"session.owner.id==save.owner.id",
+                        "session.owner.scope==save.owner.scope",
+                        "session.owner.workspace.upgrade().as_ref()==Some(&save.workspace)",
+                        "save.owner.current(self,session.closing,cx)"} <= condition_atoms(closure)
+                if not correlated:
                     fail(node, "matcher_save_accepts_stale_session_or_connection", matcher_shell + "::mouse_matcher_save_current")
+            if owner == matcher_shell and implementation == "Owner" and name == "current":
+                body = node.child_by_field_name("body")
+                terms = condition_atoms(body.named_children[-1]) if body.named_children else set()
+                required = {"shell.devices.contains(&workspace)",
+                    "workspace_state.identity(cx)==self.identity",
+                    "workspace_state.connection_revision()==self.connection_revision",
+                    "workspace_state.mouse_polling_scope(cx)==Some(self.domain_scope)",
+                    "device.active_profile==self.profile_id",
+                    "device.profiles.iter().any(|profile|profile.id==self.profile_id&&profile.guid==self.profile_guid)",
+                    "workspace_state.retains_mouse_matcher_scope(&self.scope,cx)",
+                    "draining||self.scope.is_valid()&&workspace_state.mouse_matcher_scope(cx).as_ref()==Some(&self.scope)"}
+                routes = [call for parts, call in calls(node)
+                    if parts == ["super", "device_discovery", "retained_connection"]
+                    and ["".join(text(argument).split()) for argument in call.child_by_field_name("arguments").named_children]
+                        == ["std::slice::from_ref(&self.route)", "&shell.device_observations", "device"]]
+                if not required <= terms or not routes:
+                    fail(node, "matcher_drain_bypasses_profile_or_connection_owner", matcher_shell + "::Owner::current")
             if owner == matcher_shell and name == "dispatch_mouse_matcher":
                 for call in walk(node):
                     if call.type != "call_expression" or call.child_by_field_name("function").type != "field_expression":
@@ -1060,10 +1076,10 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                     if text(function.child_by_field_name("field")) != "retire_mouse_matcher":
                         continue
                     args = call.child_by_field_name("arguments").named_children
-                    if not args or "".join(text(args[0]).split()) != "&retained_identity":
+                    if not args or "".join(text(args[0]).split()) != "&delivery_owner.identity":
                         continue
-                    if not any(condition.endswith(".is_some_and(|session|session.id==session_id)")
-                            and ".sessions.get(&retained_identity)" in condition
+                    if not any(condition.endswith(".is_some_and(|session|session.owner.id==delivery_owner.id)")
+                            and ".sessions.get(&delivery_owner.identity)" in condition
                             for condition in enclosing_conditions(call)):
                         fail(call, "matcher_retired_worker_removes_successor", matcher_shell + "::dispatch_mouse_matcher")
             if owner in {matcher_shell, receiver_save} and name in {
@@ -1728,6 +1744,14 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                 if text(call.child_by_field_name("function").child_by_field_name("field")) in {"finish_exit", "stop_global_shortcuts"}]
             names = {text(call.child_by_field_name("function").child_by_field_name("field")) for call in finishes}
             branches = [branch for branch in walk(node) if branch.type == "if_expression"]
+            continuations = [call for parts, call in calls(node)
+                if resolved_call(parts) == ("save_continuation",)]
+            cleanup_waits = [branch for branch in branches if returning_branch(branch)
+                and method_on_field(branch.child_by_field_name("condition"), "defer_save_continuation", "service_exit")
+                and [text(argument) for argument in branch.child_by_field_name("condition").child_by_field_name("arguments").named_children] == ["succeeded"]]
+            if continuations and any(not any(preceding_return(branch, call) for branch in cleanup_waits)
+                    for call in continuations + failures):
+                fail(node, "cleanup_completion_consumes_exit_before_owners_resume", shutdown_owner + "::State")
             save_waits = [branch for branch in branches
                 if condition_atoms(branch.child_by_field_name("condition")) == {"self.save_task.is_some()"}
                 and returning_branch(branch)]
@@ -2026,9 +2050,22 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                         for argument in call.child_by_field_name("arguments").named_children)]
                 invocations = [call for parts, call in calls(node) if parts == ["cleanup"]
                     and [text(argument) for argument in call.child_by_field_name("arguments").named_children] == ["self", "cx"]]
+                bindings = {text(declaration.child_by_field_name("pattern")).removeprefix("mut ")
+                    for declaration in walk(node) if declaration.type == "let_declaration"
+                    and any(declaration.start_byte <= take.start_byte and take.end_byte <= declaration.end_byte
+                        for take in takes)}
+                restores = [child for child in walk(node) if child.type == "assignment_expression"
+                    and "".join(text(child.child_by_field_name("left")).split()) == "self.service_exit.hooks"
+                    and text(child.child_by_field_name("right")) in bindings]
+                iterators = [call for call in walk(node) if call.type == "call_expression"
+                    and call.child_by_field_name("function").type == "field_expression"
+                    and text(call.child_by_field_name("function").child_by_field_name("field")) == "iter_mut"
+                    and text(call.child_by_field_name("function").child_by_field_name("value")) in bindings]
                 if (not takes or not invocations or "collect" not in called_methods(node)
+                        or not iterators or not restores
+                        or any(not any(call.end_byte < restore.start_byte for call in invocations) for restore in restores)
                         or {"filter", "filter_map", "take", "skip"} & called_methods(node)):
-                    fail(node, "exit_cleanup_hooks_have_no_single_consuming_owner", shutdown_owner)
+                    fail(node, "exit_cleanup_hooks_have_no_single_retained_owner", shutdown_owner)
             if name == "finish_service_exit":
                 branches = [branch for branch in walk(node) if branch.type == "if_expression"]
                 task_waits = [branch for branch in branches if returning_branch(branch)
@@ -8878,10 +8915,13 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("mouse-input-monitoring-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mouse_input_monitoring"]),
         ("device-task-locks", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "device_tasks"]),
         ("mouse-matcher-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "dpi_matcher"]),
+        ("service-exit-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "shutdown::tests"]),
         ("mouse-matcher-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "dpi_matcher"]),
         ("mouse-input-monitoring-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mouse_input_monitoring::tests"]),
         ("mouse-matcher-model", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "--lib", "mouse_matcher"]),
         ("mouse-matcher-revision", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "matcher_durable_version"]),
+        ("mouse-matcher-exit-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "matcher_exit_"]),
+        ("profile-notification-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "profile_switch_notification::tests"]),
         ("computer-name-platform", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "computer_name_tests"]),
         ("controller-trigger-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "controller_trigger"]),
         ("controller-trigger-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "gamepad_products::trigger_runtime::tests"]),
@@ -9054,6 +9094,11 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("mapping-observation-completion", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "observation_completion_distinguishes"]),
         ("mapping-chroma-actions", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mapping_chroma_"]),
         ("mapping-chroma-storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib", "mapped_chroma_"]),
+        ("chroma-commit-storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib", "chroma_commit_revisions_"]),
+        ("chroma-commit-publication", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "chroma_configuration_commits_"]),
+        ("keyboard-mapping-audio-inventory", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "keyboard_mapping_audio_inventory_"]),
+        ("mouse-dpi-stage-operations", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "dpi_stage_"]),
+        ("mouse-dpi-stage-observations", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "dpi_stage_observation_"]),
         ("keyboard-shared-chroma-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "keyboard_shared_selection_"]),
         ("legacy-dpi-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mouse_dpi_70::"]),
         ("keyboard-snaptap-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "snap_tap::observation::tests"]),
@@ -9157,6 +9202,10 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("mouse-current-power-migration", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mouse_current_power_migration"]),
         ("mouse-connection-navigation", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mouse_connection_navigation"]),
         ("seiren-eq-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "seiren_eq"]),
+        ("seiren-audio-operation-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "seiren_audio_"]),
+        ("seiren-audio-operation-owner", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "seiren_audio_"]),
+        ("audio-notification-cleanup", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "audio_cleanup_"]),
+        ("audio-shortcut-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "audio_shortcut_lifecycle_tests"]),
         ("seiren-audio-capture-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "seiren_audio_capture"]),
         ("seiren-audio-owner-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "seiren_audio::"]),
         ("settings-products", ["cargo", "test", "--locked", "--offline", "-p", "razer-settings", "--lib", "products::tests"]),

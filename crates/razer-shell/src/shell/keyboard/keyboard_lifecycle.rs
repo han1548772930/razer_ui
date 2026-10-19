@@ -17,6 +17,31 @@ impl Owner {
 
 impl AppShell {
     pub(super) fn install_keyboard_lifecycle(&mut self, cx: &mut Context<Self>) {
+        self.start_keyboard_lifecycle(cx);
+        self.register_exit_resume(|shell, cx| shell.start_keyboard_lifecycle(cx));
+        self.register_exit_cleanup(|shell, cx| {
+            // Source beforeunload sends STOP(false) only while calibrating.
+            for workspace in &shell.devices {
+                workspace.update(cx, |workspace, cx| {
+                    workspace.cancel_keyboard_calibration_v2(cx)
+                });
+            }
+            let monitor = shell.keyboard_lifecycle.take().map(Owner::retire);
+            let cleanup = cx.background_executor().spawn(async move {
+                if let Some(monitor) = monitor {
+                    if let Err(error) = monitor.shutdown() {
+                        eprintln!("[keyboard lifecycle] session observer cleanup failed: {error}");
+                    }
+                }
+            });
+            async move { cleanup.await }
+        });
+    }
+
+    fn start_keyboard_lifecycle(&mut self, cx: &mut Context<Self>) {
+        if self.keyboard_lifecycle.is_some() {
+            return;
+        }
         match SessionMonitor::start() {
             Ok((monitor, events)) => {
                 let pump = cx.spawn(async move |shell, cx| {
@@ -50,22 +75,5 @@ impl AppShell {
             }
             Err(error) => eprintln!("[keyboard lifecycle] {error}"),
         }
-        self.register_exit_cleanup(|shell, cx| {
-            // Source beforeunload sends STOP(false) only while calibrating.
-            for workspace in &shell.devices {
-                workspace.update(cx, |workspace, cx| {
-                    workspace.cancel_keyboard_calibration_v2(cx)
-                });
-            }
-            let monitor = shell.keyboard_lifecycle.take().map(Owner::retire);
-            let cleanup = cx.background_executor().spawn(async move {
-                if let Some(monitor) = monitor {
-                    if let Err(error) = monitor.shutdown() {
-                        eprintln!("[keyboard lifecycle] session observer cleanup failed: {error}");
-                    }
-                }
-            });
-            async move { cleanup.await }
-        });
     }
 }
