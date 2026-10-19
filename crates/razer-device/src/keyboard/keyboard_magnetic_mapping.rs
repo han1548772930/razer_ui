@@ -120,21 +120,38 @@ pub fn prepare_document(
     previous: Option<&Value>,
     fresh_guids: impl IntoIterator<Item = String>,
 ) -> anyhow::Result<Value> {
+    prepare_document_with_device_settings(
+        product,
+        profiles,
+        active_profile,
+        layout,
+        previous,
+        None,
+        fresh_guids,
+    )
+}
+
+pub fn prepare_document_with_device_settings(
+    product: u32,
+    profiles: &[Value],
+    active_profile: &str,
+    layout: u32,
+    previous: Option<&Value>,
+    device_settings: Option<&Value>,
+    fresh_guids: impl IntoIterator<Item = String>,
+) -> anyhow::Result<Value> {
     ensure!(supports(product), "Magnetic mapping product differs");
+    let device_settings = device_settings
+        .or(previous)
+        .context("Magnetic source device settings are absent")?;
+    crate::keyboard_current_profile::high_speed::decode_device_settings(device_settings)?;
     let normalized = profiles
         .iter()
         .map(|profile| -> anyhow::Result<Value> {
-            let mut value = source::default_profile();
-            value.as_object_mut().unwrap().extend(
-                profile
-                    .as_object()
-                    .context("Magnetic profile is not an object")?
-                    .clone(),
-            );
-            ensure!(
-                value["guid"].as_str().is_some_and(|guid| !guid.is_empty()),
-                "Magnetic profile GUID is absent"
-            );
+            crate::keyboard_current_profile::high_speed::decode_profile_for_product(
+                product, profile,
+            )?;
+            let mut value = profile.clone();
             if let Some(engine) = previous
                 .and_then(|document| document["profiles"].as_array())
                 .and_then(|profiles| profiles.iter().find(|old| old["guid"] == value["guid"]))
@@ -145,15 +162,21 @@ pub fn prepare_document(
             Ok(value)
         })
         .collect::<anyhow::Result<Vec<_>>>()?;
-    let mut document=previous.cloned().unwrap_or_else(||json!({"version":1,"vendorId":5426,"productId":product,"category":"KEYBOARD",
-        "analogData":{"defaultMakeActuation":19656,"defaultBreakActuation":1638},"turnOffAnalogToKey":true,"gameModeEnabled":false,
-        "reportIDs":{"11":"analogKeyboardV2ReportID","4":"razerKeyReportID"},"selectedProfile":{}}));
+    let mut document = previous.cloned().unwrap_or_else(|| json!({}));
+    for &field in crate::keyboard_current_profile::high_speed::DeviceSettings::FIELDS {
+        document[field] = device_settings
+            .get(field)
+            .with_context(|| format!("Magnetic source device field {field} is absent"))?
+            .clone();
+    }
     document["version"] = json!(crate::mapping_submission::next_source_version(
         previous.and_then(|document| document["version"].as_u64())
     )?);
     document["profiles"] = json!(normalized);
     document["activeProfile"] = json!(active_profile);
+    document["vendorId"] = json!(5426);
     document["productId"] = json!(product);
+    document["category"] = json!("KEYBOARD");
     document["_source_layout_id"] = json!(layout);
     let mut context = context(previous, fresh_guids);
     compile_with_context(&document, None, &mut context)
@@ -179,6 +202,7 @@ fn compile_with_context(
             .context("Magnetic document product is absent")?,
     )?;
     ensure!(supports(product), "Magnetic compiler product differs");
+    crate::keyboard_current_profile::high_speed::decode_device_settings(document)?;
     let layout = u32::try_from(
         document["_source_layout_id"]
             .as_u64()
@@ -218,6 +242,7 @@ fn compile_with_context(
     );
     let mut identities = BTreeSet::new();
     for profile in profiles.iter_mut() {
+        crate::keyboard_current_profile::high_speed::decode_profile_for_product(product, profile)?;
         let guid = profile["guid"]
             .as_str()
             .context("Magnetic profile GUID is invalid")?;

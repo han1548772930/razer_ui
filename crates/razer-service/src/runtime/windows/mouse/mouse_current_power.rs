@@ -36,7 +36,7 @@ pub(super) fn request(target: &DeviceReadTarget, change: &Change) -> anyhow::Res
     };
     check_peer()?;
     let report = {
-        let _lock = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+        let _lock = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
         validate()?;
         let bytes = before["feature_report_bytes"]
             .as_u64()

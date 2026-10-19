@@ -83,7 +83,10 @@ impl Transport {
         let failures = Arc::new(CleanupFailures::default());
         Self {
             executor,
-            jobs: Arc::new(Mutex::new(Jobs { failures: failures.clone(), ..Jobs::default() })),
+            jobs: Arc::new(Mutex::new(Jobs {
+                failures: failures.clone(),
+                ..Jobs::default()
+            })),
             completions: Arc::new(Mutex::new(Vec::new())),
             reconnects: Arc::new(reconnect::Owners::with_failures(failures.clone())),
             closed: AtomicBool::new(false),
@@ -92,8 +95,13 @@ impl Transport {
         }
     }
     pub(super) fn replacement(&self) -> anyhow::Result<Self> {
-        ensure!(self.shutdown_complete.load(Ordering::Acquire) && self.reconnects.shutdown_complete(), "接收器旧所有者清理尚未结束");
-        ensure!(self.cleanup_failure().is_none(), "接收器旧所有者清理失败：{}", self.cleanup_failure().unwrap_or_default());
+        ensure!(
+            self.shutdown_complete.load(Ordering::Acquire) && self.reconnects.shutdown_complete(),
+            "接收器旧所有者清理尚未结束"
+        );
+        if let Some(error) = self.cleanup_failure() {
+            anyhow::bail!("接收器旧所有者清理失败：{error}");
+        }
         Ok(Self::new(self.executor.clone()))
     }
     pub(super) fn cleanup_failure(&self) -> Option<String> {
@@ -229,7 +237,11 @@ impl Transport {
         ensure!(!self.closed.load(Ordering::Acquire), "配对服务所有者已关闭");
         prune_finished_jobs(&mut jobs);
         let cleanup_failures = self.failures.for_owner(owner.product_id, &owner.container);
-        ensure!(cleanup_failures.is_empty(), "配对前次资源清理失败：{}", cleanup_failures.join("; "));
+        ensure!(
+            cleanup_failures.is_empty(),
+            "配对前次资源清理失败：{}",
+            cleanup_failures.join("; ")
+        );
         ensure!(
             jobs.active.len() + jobs.retired.len() < 8,
             "前次配对清理尚未完成，请稍候"
@@ -287,6 +299,7 @@ impl Transport {
                     &mut source_response,
                     &mut cleanup.result,
                 );
+                drop(cleanup);
                 if let Ok(mut outcome) = worker_outcome.lock() {
                     *outcome = Some(
                         result
@@ -475,16 +488,28 @@ fn finish_product_jobs(jobs: &Mutex<Jobs>, owner: &Owner) -> anyhow::Result<Opti
 
 fn record_finished_job(jobs: &mut Jobs, job: Job) {
     if job.worker.join().is_err() {
-        jobs.failures.record(job.owner.product_id, &job.owner.container, "Pairing predecessor panicked".into());
+        jobs.failures.record(
+            job.owner.product_id,
+            &job.owner.container,
+            "Pairing predecessor panicked".into(),
+        );
         return;
     }
     match job.outcome.lock() {
         Ok(mut outcome) => match outcome.take() {
             Some(Err(error)) => jobs.diagnostics.entry(job.owner).or_default().push(error),
             Some(Ok(())) => {}
-            None => jobs.failures.record(job.owner.product_id, &job.owner.container, "Pairing predecessor omitted its completion".into()),
+            None => jobs.failures.record(
+                job.owner.product_id,
+                &job.owner.container,
+                "Pairing predecessor omitted its completion".into(),
+            ),
         },
-        Err(_) => jobs.failures.record(job.owner.product_id, &job.owner.container, "Pairing predecessor result lock poisoned".into()),
+        Err(_) => jobs.failures.record(
+            job.owner.product_id,
+            &job.owner.container,
+            "Pairing predecessor result lock poisoned".into(),
+        ),
     }
 }
 
@@ -583,11 +608,10 @@ fn perform(
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[gpui_kit::test]
-    fn standalone_pairing_exit_cleanup_keeps_old_owner_closed_and_replacement_independent(
-        cx: &mut gpui_kit::TestAppContext,
-    ) {
-        let old = Transport::new(cx.background_executor.clone());
+    #[::core::prelude::v1::test]
+    fn standalone_pairing_successful_cleanup_resumes_after_normal_operation_cancellation() {
+        let executor = BackgroundExecutor::new(Arc::new(gpui_kit::TestDispatcher::new(0)));
+        let old = Transport::new(executor);
         let owner = Owner {
             product_id: 164,
             container: "physical-owner".into(),
@@ -602,7 +626,7 @@ mod tests {
             while !signal.load(Ordering::Acquire) {
                 thread::yield_now();
             }
-            *result.lock().unwrap() = Some(Err("retired worker cleanup failed".into()));
+            *result.lock().unwrap() = Some(Err("operation canceled".into()));
         });
         old.jobs.lock().unwrap().retired.push(Job {
             owner,
@@ -613,18 +637,24 @@ mod tests {
         admitted.recv_timeout(Duration::from_secs(1)).unwrap();
         old.stop_admission();
         assert!(old.reconnects.scope("late", 164, "physical-owner").is_err());
+        assert!(
+            old.replacement().is_err(),
+            "an unfinished owner cannot be replaced"
+        );
+        old.reconnects.shutdown();
         old.shutdown();
         assert!(old.jobs.lock().unwrap().retired.is_empty());
         let completion = old.take_completions();
         assert_eq!(completion.len(), 1);
         assert_eq!(
             completion[0].diagnostic.as_deref(),
-            Some("retired worker cleanup failed")
+            Some("operation canceled")
         );
         assert!(!completion[0].cache_changed);
         assert!(completion[0].projection.is_none());
 
-        let replacement = Transport::new(cx.background_executor.clone());
+        assert!(old.cleanup_failure().is_none());
+        let replacement = old.replacement().unwrap();
         assert!(
             replacement
                 .reconnects
@@ -644,6 +674,72 @@ mod tests {
         old.shutdown();
         assert!(old.take_completions().is_empty());
         replacement.shutdown();
+    }
+
+    #[::core::prelude::v1::test]
+    fn standalone_pairing_cleanup_failure_survives_delivery_and_blocks_replacement() {
+        let executor = BackgroundExecutor::new(Arc::new(gpui_kit::TestDispatcher::new(0)));
+        let old = Transport::new(executor);
+        let container = "{11111111-2222-3333-4444-555555555555}";
+        let owner = Owner {
+            product_id: 164,
+            container: container.into(),
+        };
+        let outcome = Arc::new(Mutex::new(None));
+        let result = outcome.clone();
+        let mut cleanup = old.cleanup_witness(164, container);
+        let worker = thread::spawn(move || {
+            cleanup.result = Err("service release failed".into());
+            drop(cleanup);
+            *result.lock().unwrap() = Some(Ok(()));
+        });
+        old.jobs.lock().unwrap().retired.push(Job {
+            owner: owner.clone(),
+            canceled: Arc::new(AtomicBool::new(false)),
+            outcome,
+            worker,
+        });
+        loop {
+            if let Some(errors) = finish_product_jobs(&old.jobs, &owner).unwrap() {
+                assert_eq!(errors, ["service release failed"]);
+                break;
+            }
+            thread::yield_now();
+        }
+        assert!(
+            old.take_completions().is_empty(),
+            "cleanup failure is not an operation completion"
+        );
+        assert!(old.reconnects.scope("next-view", 164, container).is_err());
+        assert!(
+            old.start(
+                json!({"productId":164,"deviceContainerId":container}),
+                "DUALLINK_BIND_INFO",
+                json!({}),
+                false,
+                true
+            )
+            .is_err()
+        );
+        old.reconnects.shutdown();
+        old.shutdown();
+        assert!(old.shutdown_complete.load(Ordering::Acquire));
+        assert!(old.reconnects.shutdown_complete());
+        assert!(
+            old.replacement()
+                .err()
+                .unwrap()
+                .to_string()
+                .contains("service release failed")
+        );
+        assert!(old.take_completions().is_empty());
+        old.shutdown();
+        assert!(
+            old.cleanup_failure()
+                .unwrap()
+                .contains("service release failed")
+        );
+        assert!(old.replacement().is_err());
     }
     #[::core::prelude::v1::test]
     fn owner_uses_actual_radio_and_requires_external_physical_scope() {

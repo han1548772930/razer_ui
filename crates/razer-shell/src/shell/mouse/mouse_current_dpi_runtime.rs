@@ -17,6 +17,7 @@ struct Operation {
     identity: String,
     route: ObservedDevice,
     request: MouseCurrentDpiRequested,
+    local_profile_baseline: Device,
     window: AnyWindowHandle,
     delivery: Task<()>,
 }
@@ -143,6 +144,7 @@ impl AppShell {
         let worker_request = request.clone();
         let worker_route = route.clone();
         let serial = workspace.read(cx).device(cx).serial_number.clone();
+        let local_profile_baseline = workspace.read(cx).device(cx).clone();
         let delivery = cx.spawn(async move |shell, cx| {
             let completion = cx
                 .background_spawn(async move {
@@ -174,6 +176,7 @@ impl AppShell {
                         if current && let Some(profile) = completion.local_profile() {
                             workspace.accept_current_dpi_local_profile(
                                 &operation.request,
+                                &operation.local_profile_baseline,
                                 result
                                     .as_ref()
                                     .ok()
@@ -213,6 +216,7 @@ impl AppShell {
                 identity,
                 route,
                 request,
+                local_profile_baseline,
                 window,
                 delivery,
             },

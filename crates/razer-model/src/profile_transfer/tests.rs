@@ -688,9 +688,8 @@ fn profile_macro_receipt_merge_preserves_existing_macro_deletion() {
 }
 
 fn device() -> crate::model::Device {
-    let mut device = crate::product_preview::registered_preview(653).unwrap();
+    let mut device = crate::test_devices::with_profile(653);
     device.layout_id = 1;
-    device.fill_defaults();
     device.profiles[0].name = "Work".into();
     let mut settings = ProfileSettings::default();
     settings.normalize(device.product_id);

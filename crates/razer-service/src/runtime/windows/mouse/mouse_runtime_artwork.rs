@@ -143,7 +143,7 @@ pub(super) fn run(
                 (self.guard)()
             };
             check()?;
-            let _lock = receiver::ReceiverLock::acquire(&self.target.device_container_id)?;
+            let _lock = receiver::ReceiverLock::acquire(&self.target.device_container_id, &check)?;
             check()?;
             let device = hid_transport::open(&self.target.path, self.cap.report_bytes)?;
             artwork::query_hid(

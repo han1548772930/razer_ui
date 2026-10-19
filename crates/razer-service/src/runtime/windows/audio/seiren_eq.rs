@@ -56,9 +56,22 @@ impl State {
             );
         }
         let before = Self::verified(target)?;
-        let _lock = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+        let started = Instant::now();
+        let validate = || {
+            ensure!(
+                started.elapsed() < Duration::from_secs(20),
+                "Marie initialization exceeded deadline"
+            );
+            ensure!(
+                Self::verified(target)?["device_instance_id"] == before["device_instance_id"],
+                "Marie initialization device instance changed"
+            );
+            Ok(())
+        };
+        let _lock = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
         let session = audio_session::Session::open(target.product_id, &target.device_container_id)?;
         let initialization = session.call(&NativeOperation::DeviceInitialize)?;
+        validate()?;
         let version = session.version().map(str::to_owned);
         self.sessions.insert(
             key,
@@ -84,15 +97,16 @@ impl State {
         }
         let started = Instant::now();
         let owned = self.current(target)?;
-        let _lock = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+        let validate = || {
+            ensure!(
+                started.elapsed() < Duration::from_secs(20),
+                "Marie retained operation exceeded deadline"
+            );
+            self.current(target).map(|_| ())
+        };
+        let _lock = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
         let report =
-            eq::execute_native_in_session(target.product_id, &owned.session, change, || {
-                ensure!(
-                    started.elapsed() < Duration::from_secs(20),
-                    "Marie retained operation exceeded deadline"
-                );
-                self.current(target).map(|_| ())
-            })?;
+            eq::execute_native_in_session(target.product_id, &owned.session, change, &validate)?;
         self.current(target)?;
         Ok(
             json!({"target":target,"source_class":eq::capability(target.product_id).unwrap().source_class,"report":report,"setting_scope":"seiren_eq_profile","elapsed_ms":started.elapsed().as_millis() as u64}),
@@ -128,7 +142,15 @@ impl State {
             _ => {}
         }
         let owned = self.current(target)?;
-        let _lock = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+        let started = Instant::now();
+        let validate = || {
+            ensure!(
+                started.elapsed() < Duration::from_secs(20),
+                "Marie native operation exceeded deadline"
+            );
+            self.current(target).map(|_| ())
+        };
+        let _lock = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
         let reply = owned.session.call(operation)?;
         self.current(target)?;
         Ok(json!({"target":target,"operation":operation,"reply":reply}))
@@ -178,7 +200,7 @@ pub(super) fn request(target: &DeviceReadTarget, change: &Change) -> anyhow::Res
         Ok(())
     };
     let report = {
-        let _lock = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+        let _lock = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
         validate()?;
         let bytes = before["feature_report_bytes"]
             .as_u64()

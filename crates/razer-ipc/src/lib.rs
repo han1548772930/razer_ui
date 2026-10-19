@@ -19,10 +19,12 @@ mod worker_shutdown;
 pub const FRAME_PREFIX: &str = "RAZER_UI_SERVICE ";
 pub const MAX_FRAME_BYTES: usize = 4 * 1024 * 1024;
 pub mod analog_observation;
-pub mod gamepad_observation;
 pub mod device_tasks;
+pub mod gamepad_observation;
 pub mod global_shortcut_capture;
 pub mod input_observation;
+pub mod keyboard_profile_inventory;
+pub mod keyboard_onboard_profiles;
 pub mod macro_recording;
 pub mod mapping_control;
 pub mod mapping_observation;
@@ -650,6 +652,13 @@ pub enum ServiceRequest {
     HidNodeKeyboardMetadataRead {
         node: razer_device::backend::HidNode,
         product_id: u32,
+    },
+    KeyboardProfileInventoryRead {
+        target: keyboard_profile_inventory::Target,
+    },
+    KeyboardOnboardProfilesRead {
+        target: keyboard_profile_inventory::Target,
+        options: razer_device::keyboard_onboard_profiles::ReadOptions,
     },
     HidNodeKeyboardSerialRead {
         node: razer_device::backend::HidNode,
@@ -1346,9 +1355,18 @@ impl ServiceClient {
                     change: Some(_),
                     ..
                 }
-                | ServiceRequest::HidNodeMouseRotation { change: Some(_), .. }
-                | ServiceRequest::DeviceMouseRotation { change: Some(_), .. }
-                | ServiceRequest::BleMouseRotation { change: Some(_), .. }
+                | ServiceRequest::HidNodeMouseRotation {
+                    change: Some(_),
+                    ..
+                }
+                | ServiceRequest::DeviceMouseRotation {
+                    change: Some(_),
+                    ..
+                }
+                | ServiceRequest::BleMouseRotation {
+                    change: Some(_),
+                    ..
+                }
                 | ServiceRequest::HidNodeMouseCurrentPolling {
                     change: Some(_),
                     ..
@@ -1411,6 +1429,9 @@ impl ServiceClient {
             &request,
             ServiceRequest::HidNodeLeviathan { command, .. } | ServiceRequest::DeviceLeviathan { command, .. } if !command.is_read()
         );
+        let reading_keyboard_inventory =
+            matches!(request, ServiceRequest::KeyboardProfileInventoryRead { .. }
+                | ServiceRequest::KeyboardOnboardProfilesRead { .. });
         let reading_device = matches!(
             request,
             ServiceRequest::DeviceRead { .. }
@@ -1457,6 +1478,8 @@ impl ServiceClient {
                 | ServiceRequest::HidNodeKeyboardBrightnessRead { .. }
                 | ServiceRequest::HidNodeKeyboardReceiverBrightness { percent: None, .. }
                 | ServiceRequest::HidNodeKeyboardMetadataRead { .. }
+                | ServiceRequest::KeyboardProfileInventoryRead { .. }
+                | ServiceRequest::KeyboardOnboardProfilesRead { .. }
                 | ServiceRequest::HidNodeKeyboardSerialRead { .. }
                 | ServiceRequest::HidNodeKeyboardRelayMetadataRead { .. }
                 | ServiceRequest::HidNodeKeyboardRelaySerialRead { .. }
@@ -1551,8 +1574,9 @@ impl ServiceClient {
         // Recorder setup can require initialize/register/callback/start, each
         // with its own bounded native completion. Other queries retain their
         // existing timeout; a timeout still terminates this owned worker.
-        let timeout = if philips_measurement || (shutting_down && self.philips_measurement_started)
-        {
+        let timeout = if reading_keyboard_inventory {
+            Duration::from_secs(125)
+        } else if philips_measurement || (shutting_down && self.philips_measurement_started) {
             // Measurement registration/release may combine native callbacks
             // with several bounded 20-second Feature transactions. Cancellation
             // is its own protocol command and must finish restoration first.

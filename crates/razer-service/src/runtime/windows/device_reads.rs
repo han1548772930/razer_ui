@@ -79,7 +79,10 @@ pub(super) fn mouse_rotation(
     change: Option<&razer_device::mouse_rotation::Setting>,
 ) -> anyhow::Result<Value> {
     if target.peer_product_id.is_some() {
-        receiver_setting(target, super::super::receiver_settings::Setting::Rotation(change))
+        receiver_setting(
+            target,
+            super::super::receiver_settings::Setting::Rotation(change),
+        )
     } else {
         mouse_rotation_adapter::request(target, change)
     }
@@ -389,7 +392,7 @@ pub(super) fn query(target: &DeviceReadTarget, kind: DeviceReadKind) -> anyhow::
         Ok(())
     };
     let (reading, transport_metadata) = {
-        let _guard = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+        let _guard = receiver::ReceiverLock::acquire(&target.device_container_id, &deadline)?;
         let feature_bytes = before["feature_report_bytes"]
             .as_u64()
             .and_then(|count| usize::try_from(count).ok())
@@ -452,7 +455,7 @@ fn with_mouse_receiver(
         );
         Ok(())
     };
-    let _guard = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+    let _guard = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
     validate()?;
     let feature_bytes = before["feature_report_bytes"]
         .as_u64()
@@ -545,7 +548,7 @@ pub(super) fn write(
         );
         Ok(())
     };
-    let _guard = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+    let _guard = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
     let feature_bytes = before["feature_report_bytes"]
         .as_u64()
         .and_then(|count| usize::try_from(count).ok())
@@ -569,8 +572,43 @@ pub(super) fn keyboard_metadata_ble(
     keyboard_metadata_ble_adapter::request(target, serial)
 }
 
-pub(super) fn keyboard_metadata(target: &DeviceReadTarget, serial: bool) -> anyhow::Result<Value> {
+fn keyboard_peer_online(
+    device: &dyn razer_device::backend::FeatureTransport,
+    target: &DeviceReadTarget,
+    validate: &impl Fn() -> anyhow::Result<()>,
+) -> anyhow::Result<()> {
+    let receiver_cap =
+        razer_device::receiver_capabilities::capability(u16::try_from(target.physical_product_id)?)
+            .context("Keyboard relay has no current receiver query capability")?;
+    let receiver_transaction =
+        receiver::next_transaction(&target.path, &target.device_container_id, receiver_cap)?;
+    let peers = razer_device::device_query::read_receiver(
+        device,
+        receiver_cap,
+        receiver_transaction,
+        validate,
+    )?;
+    razer_device::keyboard_metadata::validate_peer(
+        target.product_id,
+        target
+            .peer_product_id
+            .context("Keyboard relay peer is absent")?,
+        &peers,
+    )
+}
+
+pub(super) fn keyboard_metadata(
+    target: &DeviceReadTarget,
+    query: super::super::KeyboardRead,
+) -> anyhow::Result<Value> {
+    use super::super::KeyboardRead;
     use razer_device::keyboard_metadata;
+    if matches!(query, KeyboardRead::ProfileInventory) {
+        ensure!(
+            razer_device::keyboard_profile_inventory::supports(target.product_id),
+            "Keyboard does not mount the current HID OBM inventory"
+        );
+    }
     let selected =
         match keyboard_metadata::hid_capability(target.product_id, target.physical_product_id) {
             Some(cap) => std::borrow::Cow::Borrowed(cap),
@@ -611,7 +649,7 @@ pub(super) fn keyboard_metadata(target: &DeviceReadTarget, serial: bool) -> anyh
     let started = Instant::now();
     let validate = || {
         ensure!(
-            started.elapsed() < Duration::from_secs(20),
+            started.elapsed() < query.deadline(),
             "Keyboard metadata read deadline expired"
         );
         ensure!(
@@ -621,7 +659,7 @@ pub(super) fn keyboard_metadata(target: &DeviceReadTarget, serial: bool) -> anyh
         );
         Ok(())
     };
-    let _guard = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+    let _guard = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
     let feature_bytes = before["feature_report_bytes"]
         .as_u64()
         .and_then(|count| usize::try_from(count).ok())
@@ -631,29 +669,33 @@ pub(super) fn keyboard_metadata(target: &DeviceReadTarget, serial: bool) -> anyh
         "Keyboard metadata Feature descriptor differs from source"
     );
     let device = hid_transport::open(&target.path, feature_bytes)?;
-    if relay {
-        let receiver_cap = razer_device::receiver_capabilities::capability(u16::try_from(
-            target.physical_product_id,
-        )?)
-        .context("Keyboard relay has no current receiver query capability")?;
-        let receiver_transaction =
-            receiver::next_transaction(&target.path, &target.device_container_id, receiver_cap)?;
-        let peers = razer_device::device_query::read_receiver(
+    let observe_peer = relay
+        || (matches!(query, KeyboardRead::ProfileInventory) && target.peer_product_id.is_some());
+    if observe_peer {
+        keyboard_peer_online(&device, target, &validate)?;
+    }
+    if matches!(query, KeyboardRead::ProfileInventory) {
+        let inventory = razer_device::keyboard_profile_inventory::read_hid(
             &device,
-            receiver_cap,
-            receiver_transaction,
+            cap,
+            || transaction(target, cap),
             &validate,
         )?;
-        keyboard_metadata::validate_peer(
-            target.product_id,
-            target
-                .peer_product_id
-                .context("Keyboard relay peer is absent")?,
-            &peers,
-        )?;
+        if observe_peer {
+            keyboard_peer_online(&device, target, &validate)?;
+        }
+        validate()?;
+        return Ok(serde_json::to_value(
+            razer_ipc::keyboard_profile_inventory::Observation {
+                target: razer_ipc::keyboard_profile_inventory::Target::WindowsContainer {
+                    target: target.clone(),
+                },
+                inventory,
+            },
+        )?);
     }
     let mut response = json!({"target": target, "source_class": cap.source_class, "transport_metadata": device.metadata()});
-    if serial {
+    if matches!(query, KeyboardRead::Serial) {
         response["method"] = json!("getSerialNumber");
         response["serial_number"] = json!(keyboard_metadata::read_serial(
             &device,
@@ -697,7 +739,7 @@ fn receiver_setting(
         );
         Ok(())
     };
-    let _lock = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+    let _lock = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
     let feature_bytes = before["feature_report_bytes"]
         .as_u64()
         .and_then(|bytes| usize::try_from(bytes).ok())
@@ -752,7 +794,7 @@ pub(super) fn keyboard_brightness(
         );
         Ok(())
     };
-    let _guard = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+    let _guard = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
     let feature_bytes = before["feature_report_bytes"]
         .as_u64()
         .and_then(|count| usize::try_from(count).ok())
@@ -816,7 +858,7 @@ pub(super) fn keyboard_submission(
         );
         Ok(())
     };
-    let _lock = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+    let _lock = receiver::ReceiverLock::acquire(&target.device_container_id, &guard)?;
     let feature_bytes = before["feature_report_bytes"]
         .as_u64()
         .context("Keyboard descriptor has no Feature report size")?
@@ -858,7 +900,7 @@ pub(super) fn keyboard_gaming_indicator(
         );
         Ok(())
     };
-    let _guard = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+    let _guard = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
     let feature_bytes = before["feature_report_bytes"]
         .as_u64()
         .context("Missing gaming LED feature report length")? as usize;
@@ -950,7 +992,7 @@ pub(super) fn dpi_stages(
         );
         Ok(())
     };
-    let _guard = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+    let _guard = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
     let feature_bytes = before["feature_report_bytes"]
         .as_u64()
         .and_then(|count| usize::try_from(count).ok())

@@ -39,7 +39,9 @@ impl LocalSettings {
     /// One worker serializes patches, so a second click cannot overtake the first.
     /// Dropping the page closes its sender; queued local writes drain before exit.
     pub(super) fn open() -> Result<(Self, async_channel::Receiver<StorageResult>), String> {
-        let path: PathBuf = razer_storage::store_path().with_file_name("alexa-settings.json");
+        let path: PathBuf = razer_storage::store_path()
+            .map_err(|error| format!("{error:#}"))?
+            .with_file_name("alexa-settings.json");
         let (sender, receiver) = mpsc::channel();
         let (results, observations) = async_channel::unbounded();
         std::thread::Builder::new()

@@ -1,7 +1,7 @@
 //! Portable worker routes: native nodes and source-proved Razer queries.
 //! Platform-specific audio/driver calls delegate to isolated OS adapters.
 //! No guessed peer routing, downloaded DLL or direct OS API in this layer.
-use super::ServiceRequest;
+use super::{KeyboardRead, ServiceRequest};
 use anyhow::{Context as _, bail, ensure};
 use razer_device::audio_mixer::{MatrixRoute, MixerRoute, MixerSession, MixerTarget, MixerValue};
 use razer_device::backend::HidBackend;
@@ -750,16 +750,34 @@ impl PortableRuntime {
                 self.receiver_setting(&node, product_id, peer_product_id, super::receiver_settings::Setting::KeyboardBrightness(percent))
             }
             ServiceRequest::HidNodeKeyboardMetadataRead { node, product_id } => {
-                self.keyboard_metadata(&node, product_id, false, None)
+                self.keyboard_metadata(&node, product_id, KeyboardRead::Metadata, None)
             }
             ServiceRequest::HidNodeKeyboardSerialRead { node, product_id } => {
-                self.keyboard_metadata(&node, product_id, true, None)
+                self.keyboard_metadata(&node, product_id, KeyboardRead::Serial, None)
             }
             ServiceRequest::HidNodeKeyboardRelayMetadataRead { node, product_id, peer_product_id } => {
-                self.keyboard_metadata(&node, product_id, false, Some(peer_product_id))
+                self.keyboard_metadata(&node, product_id, KeyboardRead::Metadata, Some(peer_product_id))
             }
             ServiceRequest::HidNodeKeyboardRelaySerialRead { node, product_id, peer_product_id } => {
-                self.keyboard_metadata(&node, product_id, true, Some(peer_product_id))
+                self.keyboard_metadata(&node, product_id, KeyboardRead::Serial, Some(peer_product_id))
+            }
+            ServiceRequest::KeyboardProfileInventoryRead { target } => {
+                use razer_ipc::keyboard_profile_inventory::Target;
+                target.validate()?;
+                match target {
+                    Target::Collection { node, product_id, peer_product_id } => self.keyboard_metadata(
+                        &node, product_id, KeyboardRead::ProfileInventory, peer_product_id,
+                    ),
+                    Target::WindowsContainer { target } => {
+                        #[cfg(windows)]
+                        { super::native::keyboard_profile_inventory(&target) }
+                        #[cfg(not(windows))]
+                        {
+                            let _ = target;
+                            bail!("Windows keyboard inventory requires its platform HID adapter")
+                        }
+                    }
+                }
             }
             ServiceRequest::HidNodeMouseCurrentDpi { node, product_id, peer_product_id, change } => {
                 if let Some(peer) = peer_product_id {
@@ -999,14 +1017,41 @@ impl PortableRuntime {
         Ok(response)
     }
 
+    fn keyboard_peer_online(
+        &mut self,
+        device: &dyn razer_device::backend::FeatureTransport,
+        node: &HidNode,
+        product_id: u32,
+        peer_product_id: u32,
+        validate: &impl Fn() -> anyhow::Result<()>,
+    ) -> anyhow::Result<()> {
+        let receiver = razer_device::receiver_capabilities::capability(node.product_id)
+            .context("Keyboard relay has no current receiver query capability")?;
+        let transaction = self.transaction(
+            node,
+            &receiver.source_class,
+            receiver.transaction_prefix,
+            receiver.transaction_modulus,
+        )?;
+        let peers =
+            razer_device::device_query::read_receiver(device, receiver, transaction, validate)?;
+        razer_device::keyboard_metadata::validate_peer(product_id, peer_product_id, &peers)
+    }
+
     fn keyboard_metadata(
         &mut self,
         node: &HidNode,
         product_id: u32,
-        serial: bool,
+        query: KeyboardRead,
         peer_product_id: Option<u32>,
     ) -> anyhow::Result<Value> {
         use razer_device::keyboard_metadata;
+        if matches!(query, KeyboardRead::ProfileInventory) {
+            ensure!(
+                razer_device::keyboard_profile_inventory::supports(product_id),
+                "Keyboard does not mount the current HID OBM inventory"
+            );
+        }
         let selected =
             match keyboard_metadata::hid_capability(product_id, u32::from(node.product_id)) {
                 Some(cap) => std::borrow::Cow::Borrowed(cap),
@@ -1037,7 +1082,7 @@ impl PortableRuntime {
         let started = Instant::now();
         let validate = || {
             ensure!(
-                started.elapsed() < Duration::from_secs(20),
+                started.elapsed() < query.deadline(),
                 "Keyboard metadata read deadline expired"
             );
             Self::revalidate(node)
@@ -1049,21 +1094,7 @@ impl PortableRuntime {
             "Keyboard metadata Feature descriptor differs from source"
         );
         if let Some(peer) = peer_product_id {
-            let receiver = razer_device::receiver_capabilities::capability(node.product_id)
-                .context("Keyboard relay has no current receiver query capability")?;
-            let transaction = self.transaction(
-                node,
-                &receiver.source_class,
-                receiver.transaction_prefix,
-                receiver.transaction_modulus,
-            )?;
-            let peers = razer_device::device_query::read_receiver(
-                device.as_ref(),
-                receiver,
-                transaction,
-                &validate,
-            )?;
-            keyboard_metadata::validate_peer(product_id, peer, &peers)?;
+            self.keyboard_peer_online(device.as_ref(), node, product_id, peer, &validate)?;
         }
         let next_transaction = || {
             self.transaction(
@@ -1073,9 +1104,31 @@ impl PortableRuntime {
                 cap.transaction_modulus,
             )
         };
+        if matches!(query, KeyboardRead::ProfileInventory) {
+            let inventory = razer_device::keyboard_profile_inventory::read_hid(
+                device.as_ref(),
+                cap,
+                next_transaction,
+                &validate,
+            )?;
+            if let Some(peer) = peer_product_id {
+                self.keyboard_peer_online(device.as_ref(), node, product_id, peer, &validate)?;
+            }
+            validate()?;
+            return Ok(serde_json::to_value(
+                razer_ipc::keyboard_profile_inventory::Observation {
+                    target: razer_ipc::keyboard_profile_inventory::Target::Collection {
+                        node: node.clone(),
+                        product_id,
+                        peer_product_id,
+                    },
+                    inventory,
+                },
+            )?);
+        }
         let mut response = json!({"node": node, "product_id": product_id, "peer_product_id": peer_product_id,
             "source_class": cap.source_class, "identity_scope": "hid_collection", "transport_metadata": device.metadata()});
-        if serial {
+        if matches!(query, KeyboardRead::Serial) {
             response["method"] = json!("getSerialNumber");
             response["serial_number"] = json!(keyboard_metadata::read_serial(
                 device.as_ref(),

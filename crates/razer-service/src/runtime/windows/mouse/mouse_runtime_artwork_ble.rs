@@ -505,7 +505,7 @@ impl Transport for Feature<'_> {
             "Current mouse BLE source has no Hyperflux wireless query branch"
         );
         validate()?;
-        let _lock = receiver::ReceiverLock::acquire(&self.target.device_container_id)?;
+        let _lock = receiver::ReceiverLock::acquire(&self.target.device_container_id, validate)?;
         let result = (|| {
             if self.connection.is_none() {
                 self.connection = Some(Connection::connect_with_retry(self.target, validate)?);

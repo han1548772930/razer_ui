@@ -430,7 +430,7 @@ impl AppShell {
             let result = cx
                 .background_spawn(async move {
                     use razer_storage::source_local;
-                    let path = source_local::path();
+                    let path = source_local::path()?;
                     let raw = source_local::get_raw(&path, "displayNotifications")?;
                     let (enabled, initialize) = display_preference(raw.as_deref());
                     if initialize {
@@ -496,7 +496,7 @@ impl AppShell {
                     // undefined. 8531.set then passes JSON.stringify(undefined)
                     // to localStorage, which coerces it to this exact raw string.
                     razer_storage::source_local::set_raw(
-                        &razer_storage::source_local::path(),
+                        &razer_storage::source_local::path()?,
                         "notifications",
                         "undefined",
                     )

@@ -211,7 +211,7 @@ fn local_snapshot(
     let guid = uuid::Uuid::new_v4().to_string();
     let mut snapshot = None;
     razer_storage::source_local::update(
-        &razer_storage::source_local::path(),
+        &razer_storage::source_local::path()?,
         mixer::STORAGE_KEY,
         |old| {
             let (mut cache, created) = mixer::prepare_cache(old, product_id, &guid)?;

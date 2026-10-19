@@ -47,9 +47,23 @@ pub fn run() -> std::process::ExitCode {
     if args.iter().any(|arg| arg == "--service-worker") {
         return std::process::ExitCode::from(backend::runtime::run_worker() as u8);
     }
+    let paths = razer_storage::store_path().and_then(|workspace| {
+        Ok((
+            workspace,
+            razer_storage::runtime_log_path()?,
+            razer_storage::panic_log_path()?,
+        ))
+    });
+    let (workspace_path, runtime_log, panic_log) = match paths {
+        Ok(paths) => paths,
+        Err(error) => {
+            eprintln!("User configuration directory: {error:#}");
+            return std::process::ExitCode::FAILURE;
+        }
+    };
     // The owner drains startup diagnostics and outlives the application cleanup.
-    let _diagnostics = diagnostics::Runtime::install(razer_storage::runtime_log_path());
-    diagnostics::install_panic_log();
+    let _diagnostics = diagnostics::Runtime::install(runtime_log);
+    diagnostics::install_panic_log(panic_log);
 
     // 语言：`--lang <代码>`，默认中文。
     //
@@ -57,7 +71,7 @@ pub fn run() -> std::process::ExitCode {
     // 使用同一份已校验工作区快照。
     // The shell consumes this validated snapshot so language and profile
     // selection use the same file revision without reparsing on the UI thread.
-    let workspace = store::read_workspace(&razer_storage::store_path());
+    let workspace = store::read_workspace(&workspace_path);
     let lang = args
         .iter()
         .position(|arg| arg == "--lang")

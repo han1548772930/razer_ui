@@ -168,22 +168,6 @@ pub struct DpiStages {
     pub stages: Vec<DpiStage>,
 }
 
-impl DpiStages {
-    /// 鼠标默认 5 档，取自雷云 DPI 页的档位数。
-    pub fn mouse_default() -> Self {
-        Self {
-            enable: true,
-            stages: vec![
-                DpiStage::new(400),
-                DpiStage::new(800),
-                DpiStage::new(1600),
-                DpiStage::new(3200),
-                DpiStage::new(6400),
-            ],
-        }
-    }
-}
-
 /// 一个配置文件。
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Profile {
@@ -415,7 +399,7 @@ pub struct Device {
     pub dkm_keys: Vec<DkmKey>,
     pub firmware_info: FirmwareInfo,
     pub features: DeviceFeatures,
-    /// 功能块是否已按类别填充过（[`Device::fill_defaults`] 的幂等标记）。
+    /// 旧版持久化标记；不据此创建功能块或设备设置。
     pub features_initialized: bool,
 }
 
@@ -495,6 +479,12 @@ impl Device {
             };
             self.dashboard.local_snapshot = false;
         }
+    }
+
+    /// Publish the serial returned by the current keyboard query. Profile
+    /// selection belongs to the storage owner and is not inferred here.
+    pub fn observe_keyboard_serial(&mut self, actual_serial: &str) {
+        self.serial_number = actual_serial.to_owned();
     }
 
     pub fn observe_keyboard_metadata(
@@ -621,67 +611,38 @@ impl Device {
 
     /// 当前激活的 profile。
     pub fn active_profile_obj(&self) -> Option<&Profile> {
-        self.profiles
-            .iter()
-            .find(|p| p.id == self.active_profile)
-            // 找不到时退回第一个：`active_profile` 可能与 `profiles` 不一致
-            // （雷云在切换 profile 的瞬间会短暂如此）。
-            .or_else(|| self.profiles.first())
+        if self.active_profile.is_empty() {
+            return None;
+        }
+        self.profiles.iter().find(|p| p.id == self.active_profile)
     }
 
     /// 当前 profile 的 DPI 档位（可变）。非鼠标或没有档位时为 `None`。
     pub fn dpi_stages_mut(&mut self) -> Option<&mut DpiStages> {
-        // 先算出下标再取可变引用：直接在 `iter_mut()` 上接 `or_else(|| first_mut())`
-        // 会让闭包与迭代器同时借用 `profiles`，借用检查不通过。
-        let index = self
-            .profiles
-            .iter()
-            .position(|p| p.id == self.active_profile)
-            .or(if self.profiles.is_empty() { None } else { Some(0) })?;
-        self.profiles[index].dpi_stages.as_mut()
+        if self.active_profile.is_empty() {
+            return None;
+        }
+        self.profiles
+            .iter_mut()
+            .find(|profile| profile.id == self.active_profile)?
+            .dpi_stages
+            .as_mut()
     }
 
     /// DPI 的 `(最小, 最大, 步进)`。
     ///
-    /// 设备上报缺失时用雷云通用值兜底（100 / 30000 / 50）。
-    pub fn dpi_bounds(&self) -> (u32, u32, u32) {
-        (
-            self.min_dpi.unwrap_or(100),
-            self.max_dpi.unwrap_or(30_000),
-            self.dpi_step.unwrap_or(50),
-        )
+    /// 元数据不完整或范围无效时保持缺失。
+    pub fn dpi_bounds(&self) -> Option<(u32, u32, u32)> {
+        let bounds = (self.min_dpi?, self.max_dpi?, self.dpi_step?);
+        (bounds.0 <= bounds.1 && bounds.2 != 0).then_some(bounds)
     }
 
     /// 把 DPI 夹到该设备的合法范围并按步进对齐。
-    pub fn clamp_dpi(&self, dpi: u32) -> u32 {
-        let (min, max, step) = self.dpi_bounds();
+    pub fn clamp_dpi(&self, dpi: u32) -> Option<u32> {
+        let (min, max, step) = self.dpi_bounds()?;
         let clamped = dpi.clamp(min, max);
-        if step == 0 {
-            return clamped;
-        }
         // 对齐到步进的整数倍，再夹一次（对齐可能越过边界）。
-        (min + ((clamped - min) / step) * step).clamp(min, max)
-    }
-
-    /// 按类别补齐功能块与 DPI 档位。**幂等**：`features_initialized` 为真时直接返回。
-    pub fn fill_defaults(&mut self) {
-        if self.features_initialized {
-            return;
-        }
-        self.features =
-            DeviceFeatures::for_category(self.category, self.has_battery, self.is_chroma_device);
-        // 鼠标默认给一组 DPI 档位，否则 DPI 页没有可编辑对象。
-        if self.is_mouse() {
-            let active = self.active_profile.clone();
-            for profile in &mut self.profiles {
-                if profile.id == active || profile.dpi_stages.is_none() {
-                    profile
-                        .dpi_stages
-                        .get_or_insert_with(DpiStages::mouse_default);
-                }
-            }
-        }
-        self.features_initialized = true;
+        Some((min + ((clamped - min) / step) * step).clamp(min, max))
     }
 }
 
@@ -820,9 +781,62 @@ mod tests {
     #[test]
     fn clamp_dpi_clamps_and_snaps_to_step() {
         let device = &crate::test_devices::mouse();
-        assert_eq!(device.clamp_dpi(1), 100); // 下界
-        assert_eq!(device.clamp_dpi(999_999), 30_000); // 上界
-        assert_eq!(device.clamp_dpi(1234), 1200); // 对齐到 50 的倍数
+        assert_eq!(device.clamp_dpi(1), Some(100)); // 下界
+        assert_eq!(device.clamp_dpi(999_999), Some(30_000)); // 上界
+        assert_eq!(device.clamp_dpi(1234), Some(1200)); // 对齐到 50 的倍数
+    }
+
+    #[test]
+    fn dpi_bounds_require_complete_valid_metadata() {
+        let device = crate::test_devices::mouse();
+        for (min, max, step) in [
+            (None, Some(30_000), Some(50)),
+            (Some(100), None, Some(50)),
+            (Some(100), Some(30_000), None),
+            (Some(1600), Some(800), Some(50)),
+            (Some(100), Some(30_000), Some(0)),
+        ] {
+            let mut missing = device.clone();
+            missing.min_dpi = min;
+            missing.max_dpi = max;
+            missing.dpi_step = step;
+            assert_eq!(missing.dpi_bounds(), None);
+            assert_eq!(missing.clamp_dpi(1200), None);
+        }
+    }
+
+    #[test]
+    fn missing_active_profile_cannot_read_or_edit_another_profile() {
+        let mut device = crate::test_devices::mouse();
+        let profiles = device.profiles.clone();
+        for active in ["missing", ""] {
+            device.active_profile = active.into();
+            assert!(device.active_profile_obj().is_none());
+            assert!(device.dpi_stages_mut().is_none());
+            assert_eq!(device.profiles, profiles);
+        }
+    }
+
+    #[test]
+    fn active_profile_dpi_edits_target_only_the_selected_identity() {
+        let mut device = crate::test_devices::mouse();
+        let first = device.profiles[0].clone();
+        let mut selected = first.clone();
+        selected.id = "selected".into();
+        selected.guid = "selected-guid".into();
+        selected.dpi_stages = Some(DpiStages {
+            enable: false,
+            stages: vec![DpiStage { x: 1200, y: 1800 }],
+        });
+        device.profiles.push(selected);
+        device.active_profile = "selected".into();
+        assert_eq!(device.active_profile_obj().unwrap().guid, "selected-guid");
+        device.dpi_stages_mut().unwrap().stages[0].x = 2400;
+        assert_eq!(device.profiles[0], first);
+        assert_eq!(
+            device.profiles[1].dpi_stages.as_ref().unwrap().stages[0].x,
+            2400
+        );
     }
 
     /// `NOT_CHARGING` 里也含 `CHARGING`，充电判断不能只看包含。
@@ -854,6 +868,25 @@ mod tests {
     }
 
     #[test]
+    fn observed_keyboard_serial_preserves_profiles_and_container_identity() {
+        let mut device = crate::test_devices::mouse();
+        device.product_id = 653;
+        device.device_container_id = "physical-container".into();
+        let identity = device.workspace_identity();
+        let profiles = device.profiles.clone();
+        let active = device.active_profile.clone();
+        device.observe_keyboard_serial("CN-OBSERVED-SERIAL");
+        assert_eq!(device.serial_number, "CN-OBSERVED-SERIAL");
+        assert_eq!(device.workspace_identity(), identity);
+        assert_eq!(device.profiles, profiles);
+        assert_eq!(device.active_profile, active);
+        device.observe_keyboard_serial("");
+        assert!(device.serial_number.is_empty());
+        assert_eq!(device.profiles, profiles);
+        assert_eq!(device.active_profile, active);
+    }
+
+    #[test]
     fn queried_values_never_change_saved_drafts_and_expire_with_connection() {
         let mut device = crate::test_devices::mouse();
         device.begin_local_session();
@@ -877,14 +910,22 @@ mod tests {
     }
 
     #[test]
-    fn fill_defaults_is_idempotent() {
-        let mut device = crate::test_devices::mouse();
-        device.features_initialized = false;
-        device.fill_defaults();
-        let first = device.features.performance.polling_rate;
-        device.fill_defaults();
-        assert_eq!(device.features.performance.polling_rate, first);
-        assert!(device.features_initialized);
+    fn opening_a_local_session_preserves_missing_features_and_dpi() {
+        let mut device = crate::product_preview::registered_preview(182).unwrap();
+        device.has_battery = true;
+        device.is_chroma_device = true;
+        let features = serde_json::to_value(&device.features).unwrap();
+        let profiles = device.profiles.clone();
+        device.begin_local_session();
+        assert_eq!(serde_json::to_value(&device.features).unwrap(), features);
+        assert_eq!(device.profiles, profiles);
+        assert!(!device.features_initialized);
+        assert!(
+            device
+                .profiles
+                .iter()
+                .all(|profile| profile.dpi_stages.is_none())
+        );
     }
 
     #[test]
@@ -946,25 +987,6 @@ mod tests {
         assert!(restored.dashboard.is_mat_plugged.is_none());
         assert!(restored.dashboard.is_mouse_connected.is_none());
         assert_eq!(serde_json::to_value(&restored.profiles).unwrap(), profiles);
-    }
-
-    #[test]
-    fn chroma_capability_does_not_imply_a_battery() {
-        let mut mat = crate::product_preview::mouse_mat_preview(3076).unwrap();
-        mat.is_chroma_device = true;
-        mat.features_initialized = false;
-        mat.fill_defaults();
-        assert!(!mat.features.lighting.is_empty());
-        assert!(mat.features.power.is_none());
-        assert!(mat.features.keyboard.is_none());
-
-        let mut mouse = crate::test_devices::mouse();
-        mouse.has_battery = true;
-        mouse.is_chroma_device = false;
-        mouse.features_initialized = false;
-        mouse.fill_defaults();
-        assert!(mouse.features.lighting.is_empty());
-        assert!(mouse.features.power.is_some());
     }
 
     #[test]

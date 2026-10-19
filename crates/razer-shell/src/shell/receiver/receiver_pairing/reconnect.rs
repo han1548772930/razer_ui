@@ -58,7 +58,13 @@ pub(in crate::shell) struct Owners {
 
 impl Owners {
     pub(super) fn with_failures(failures: Arc<CleanupFailures>) -> Self {
-        Self { failures, ..Self::default() }
+        Self {
+            state: Mutex::new(State::default()),
+            reports: Arc::new(Mutex::new(Vec::new())),
+            closed: AtomicBool::new(false),
+            shutdown_complete: AtomicBool::new(false),
+            failures,
+        }
     }
     pub(super) fn shutdown_complete(&self) -> bool {
         self.shutdown_complete.load(Ordering::Acquire)
@@ -71,7 +77,11 @@ impl Owners {
     ) -> anyhow::Result<Scope> {
         ensure!(!self.closed.load(Ordering::Acquire), "独立重连所有者已关闭");
         let errors = self.failures.for_owner(product_id, container);
-        ensure!(errors.is_empty(), "重连前次资源清理失败：{}", errors.join("; "));
+        ensure!(
+            errors.is_empty(),
+            "重连前次资源清理失败：{}",
+            errors.join("; ")
+        );
         let key = Key {
             view: view.into(),
             product_id,
@@ -83,7 +93,11 @@ impl Owners {
             .map_err(|_| anyhow::anyhow!("重连所有者状态锁不可用"))?;
         ensure!(!self.closed.load(Ordering::Acquire), "独立重连所有者已关闭");
         let errors = self.failures.for_owner(product_id, container);
-        ensure!(errors.is_empty(), "重连前次资源清理失败：{}", errors.join("; "));
+        ensure!(
+            errors.is_empty(),
+            "重连前次资源清理失败：{}",
+            errors.join("; ")
+        );
         let valid = state
             .scopes
             .entry(key.clone())
@@ -134,8 +148,14 @@ impl Owners {
             !self.closed.load(Ordering::Acquire) && scope.valid.load(Ordering::Acquire),
             "重连所有者已退出，未启动"
         );
-        let errors = self.failures.for_owner(scope.key.product_id, &scope.key.container);
-        ensure!(errors.is_empty(), "重连前次资源清理失败：{}", errors.join("; "));
+        let errors = self
+            .failures
+            .for_owner(scope.key.product_id, &scope.key.container);
+        ensure!(
+            errors.is_empty(),
+            "重连前次资源清理失败：{}",
+            errors.join("; ")
+        );
         let mut pending = Vec::new();
         for job in state.jobs.drain(..) {
             if job.worker.is_finished() {
@@ -145,6 +165,14 @@ impl Owners {
             }
         }
         state.jobs = pending;
+        let errors = self
+            .failures
+            .for_owner(scope.key.product_id, &scope.key.container);
+        ensure!(
+            errors.is_empty(),
+            "重连前次资源清理失败：{}",
+            errors.join("; ")
+        );
         let alive = Arc::new(AtomicBool::new(true));
         let scope = scope.clone();
         // Current241 f2(category,true) constructs a fresh factory on every
@@ -278,7 +306,11 @@ impl Owners {
 
 fn join_job(job: Job, failures: &CleanupFailures) {
     if job.worker.join().is_err() {
-        failures.record(job.scope.key.product_id, &job.scope.key.container, "receiver reconnect worker panicked before cleanup completed".into());
+        failures.record(
+            job.scope.key.product_id,
+            &job.scope.key.container,
+            "receiver reconnect worker panicked before cleanup completed".into(),
+        );
     }
 }
 
@@ -294,7 +326,11 @@ fn run(worker: &Worker) -> anyhow::Result<()> {
     let reports = &worker.reports;
     let valid = || scope.valid.load(Ordering::Acquire) && worker.alive.load(Ordering::Acquire);
     ensure!(valid(), "重连所有者已退出，未创建服务");
-    let mut cleanup = CleanupWitness::new(worker.failures.clone(), scope.key.product_id, &scope.key.container);
+    let mut cleanup = CleanupWitness::new(
+        worker.failures.clone(),
+        scope.key.product_id,
+        &scope.key.container,
+    );
     let mut client = ServiceClient::spawn()?;
     cleanup.result = Err("receiver reconnect service cleanup receipt is missing".into());
     let started = (|| {
@@ -361,6 +397,55 @@ fn run(worker: &Worker) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[::core::prelude::v1::test]
+    fn receiver_reconnect_cleanup_failure_survives_reports_and_blocks_physical_successor() {
+        let owners = Owners::default();
+        let scope = owners.scope("original", 164, "physical-owner").unwrap();
+        owners
+            .start_with(&scope, "MOUSE", None, 1, |work| {
+                let mut cleanup = CleanupWitness::new(
+                    work.failures.clone(),
+                    work.scope.key.product_id,
+                    &work.scope.key.container,
+                );
+                cleanup.result = Err("reconnect service release failed".into());
+                Ok(())
+            })
+            .unwrap();
+        loop {
+            let reports = owners.take_reports();
+            assert!(
+                reports.is_empty(),
+                "cleanup failure is not an operation failure report"
+            );
+            if owners.state.lock().unwrap().jobs.is_empty() {
+                break;
+            }
+            thread::yield_now();
+        }
+        assert!(owners.scope("replacement", 164, "PHYSICAL-OWNER").is_err());
+        assert!(
+            owners
+                .start_with(&scope, "MOUSE", None, 2, |_| Ok(()))
+                .is_err()
+        );
+        assert!(
+            owners
+                .scope("unrelated", 164, "other-physical-owner")
+                .is_ok()
+        );
+        owners.shutdown();
+        assert!(owners.shutdown_complete());
+        assert!(
+            owners
+                .failures
+                .summary()
+                .unwrap()
+                .contains("reconnect service release failed")
+        );
+        assert!(owners.take_reports().is_empty());
+        assert!(owners.failures.summary().is_some());
+    }
     #[::core::prelude::v1::test]
     fn view_close_and_physical_disconnect_expire_pending_reconnect_scopes_only() {
         let owners = Owners::default();

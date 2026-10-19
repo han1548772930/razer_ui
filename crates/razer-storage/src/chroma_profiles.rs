@@ -153,8 +153,8 @@ struct SourceUser {
     enabled: bool,
 }
 
-pub fn path() -> PathBuf {
-    crate::store_path().with_file_name("chroma-profiles.json")
+pub fn path() -> anyhow::Result<PathBuf> {
+    Ok(crate::store_path()?.with_file_name("chroma-profiles.json"))
 }
 
 fn decode(text: &str) -> anyhow::Result<Document> {
@@ -541,7 +541,7 @@ pub fn load_legacy_studio_draft<T: serde::de::DeserializeOwned>(
     validate: impl Fn(&T) -> anyhow::Result<()>,
 ) -> anyhow::Result<Option<T>> {
     load_legacy_studio_draft_at(
-        &crate::store_path().with_file_name("chroma-studio-draft.json"),
+        &crate::store_path()?.with_file_name("chroma-studio-draft.json"),
         validate,
     )
 }

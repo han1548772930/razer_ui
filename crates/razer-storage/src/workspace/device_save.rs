@@ -417,11 +417,23 @@ fn merge_profiles(
 mod tests {
     use super::*;
 
-    fn device() -> Device {
-        let mut device = razer_model::product_preview::registered_preview(756).unwrap();
-        device.fill_defaults();
+    fn device_for_product(pid: u32) -> Device {
+        let mut device = razer_model::product_preview::registered_preview(pid).unwrap();
+        device.active_profile = "test-profile".into();
+        device.profiles = vec![razer_model::model::Profile {
+            id: device.active_profile.clone(),
+            guid: device.active_profile.clone(),
+            name: "Test profile".into(),
+            settings: None,
+            source_settings: None,
+            dpi_stages: None,
+        }];
         device.source_device_settings = Some(serde_json::json!({"version": 1}));
         device
+    }
+
+    fn device() -> Device {
+        device_for_product(756)
     }
 
     #[test]
@@ -619,9 +631,7 @@ mod tests {
     #[test]
     fn selection_during_import_preserves_appended_profiles_and_latest_compiler_input() {
         for product_id in [70, 182, 756] {
-            let mut previous =
-                razer_model::product_preview::registered_preview(product_id).unwrap();
-            previous.fill_defaults();
+            let mut previous = device_for_product(product_id);
             previous.source_device_settings = None;
             let mut second = previous.profiles[0].clone();
             second.id = "selected".into();

@@ -193,26 +193,13 @@ pub struct ProfileMetadata {
     pub key_mapping_hash: [u8; 6],
 }
 pub fn profile_metadata(slot_id: u8, bytes: &[u8]) -> anyhow::Result<ProfileMetadata> {
-    ensure!(
-        slot_id > 0 && bytes.len() == 250,
-        "756 onboard profile metadata is incomplete"
-    );
-    let name = &bytes[16..116];
-    // JS slice(0,indexOf(0)) uses -1 when the field has no terminator.
-    let length = name
-        .iter()
-        .position(|byte| *byte == 0)
-        .unwrap_or(name.len() - 1);
-    let owner = bytes[116..180]
-        .iter()
-        .copied()
-        .map(char::from)
-        .collect::<String>();
+    ensure!(slot_id > 0, "756 onboard profile metadata slot is zero");
+    let identity = crate::keyboard_profile_inventory::decode_identity(bytes)?;
     Ok(ProfileMetadata {
         slot_id,
-        guid: guid_text(&bytes[..16]),
-        name: String::from_utf8_lossy(&name[..length]).into_owned(),
-        owner: owner.trim_matches('\0').to_owned(),
+        guid: identity.guid,
+        name: identity.name,
+        owner: identity.owner,
         key_mapping_hash: bytes[244..250].try_into()?,
     })
 }
@@ -434,22 +421,6 @@ fn key_list(keys: &[u8]) -> anyhow::Result<()> {
         "756 restore key list is empty or repeated"
     );
     Ok(())
-}
-fn guid_text(bytes: &[u8]) -> String {
-    format!(
-        "{:08x}-{:04x}-{:04x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
-        u32::from_le_bytes(bytes[..4].try_into().unwrap()),
-        u16::from_le_bytes(bytes[4..6].try_into().unwrap()),
-        u16::from_le_bytes(bytes[6..8].try_into().unwrap()),
-        bytes[8],
-        bytes[9],
-        bytes[10],
-        bytes[11],
-        bytes[12],
-        bytes[13],
-        bytes[14],
-        bytes[15]
-    )
 }
 fn settings(setting: &Setting) -> anyhow::Result<([u8; 3], Vec<u8>)> {
     let (command, payload) = match setting {
@@ -824,65 +795,17 @@ pub fn execute_hid(
                 && ids.iter().collect::<std::collections::BTreeSet<_>>().len() == ids.len(),
             "756 onboard slot IDs are zero or repeated"
         );
-        let mut cap = cap.clone();
-        cap.sleep_between_out_in_ms *= 2;
-        cap.sleep_between_in_ms = cap.sleep_between_in_ms.max(cap.sleep_between_out_in_ms);
         let mut slots = Vec::new();
         let mut metadata = Vec::new();
         for &slot_id in ids {
-            let mut bytes = Vec::new();
-            let mut last_error = None;
-            for _ in 0..10 {
-                bytes.clear();
-                for offset in (0u16..250).step_by(64) {
-                    let length = (250 - offset).min(64) as usize;
-                    let [high, low] = offset.to_be_bytes();
-                    let result = feature_exchange::exchange_with_report_data_size(
-                        device,
-                        &cap,
-                        [80, 5, 136],
-                        &[slot_id, high, low, 0, 0],
-                        next()?,
-                        (length + 5) as u8,
-                        validate,
-                    );
-                    match result {
-                        Ok(chunk) => {
-                            ensure!(
-                                chunk.len() >= length + 5
-                                    && chunk[0] == slot_id
-                                    && chunk[1..3] == [high, low],
-                                "756 onboard metadata identity/length differs"
-                            );
-                            bytes.extend_from_slice(&chunk[5..5 + length]);
-                        }
-                        Err(error) => {
-                            validate()?;
-                            last_error = Some(error);
-                            bytes.clear();
-                            break;
-                        }
-                    }
-                }
-                if bytes.len() == 250 {
-                    let guid = guid_text(&bytes[..16]);
-                    if !guid.contains("ffff") && !guid.contains("0000") {
-                        break;
-                    }
-                }
-            }
-            ensure!(
-                bytes.len() == 250,
-                "756 onboard metadata failed: {}",
-                last_error
-                    .map(|error| format!("{error:#}"))
-                    .unwrap_or_default()
-            );
+            let bytes = crate::keyboard_profile_inventory::read_raw_metadata_hid(
+                device, cap, slot_id, &mut next, validate,
+            )?;
             slots.push(Slot {
                 slot_id,
-                guid: guid_text(&bytes[..16]),
+                guid: crate::keyboard_profile_inventory::guid_text(bytes[..16].try_into()?),
             });
-            metadata.push(bytes);
+            metadata.push(bytes.to_vec());
         }
         validate()?;
         return Ok(Reply::Inventory { slots, metadata });

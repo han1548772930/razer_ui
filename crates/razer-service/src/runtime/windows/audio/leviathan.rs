@@ -82,7 +82,7 @@ pub(super) fn request(target: &DeviceReadTarget, operation: Operation) -> anyhow
         Ok(())
     };
     let report = {
-        let _lock = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+        let _lock = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
         validate()?;
         ensure!(
             before["feature_report_bytes"] == 65,

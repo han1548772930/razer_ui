@@ -1589,6 +1589,8 @@ def audit_family_function(args):
         return audit_audio_firmware_selector(args)
     if getattr(args, "query", None) == "audio-help-reset":
         return audit_audio_help_reset(args)
+    if getattr(args, "query", None) == "audio-local-profiles":
+        return audit_audio_local_profiles(args)
     if getattr(args, "query", None) == "audio-seiren-eq":
         return audit_audio_seiren_eq(args)
     if getattr(args, "query", None) == "audio-leviathan":
@@ -7942,6 +7944,83 @@ def audit_profile_import_processors(args):
                       "complete_owners": len(regions), "failures": failed}), flush=True)
     if failed:
         raise ValueError("Current profile import source chains remain unresolved")
+
+
+def audit_audio_local_profiles(args):
+    """Retain current 1342 setup, profile/preset restore and mutation owners."""
+    import platform
+    from host import HostLocalAudit
+    if args.family != "audio" or args.function != "mw" or set(args.product or [1342]) != {1342}:
+        raise ValueError("audio-local-profiles requires current 1342 audio middleware")
+    audit = HostLocalAudit()
+    source_sets, files = {}, {}
+    for layer, name in (("ui", "audio-1342-current"), ("mw", "audio-mw-1342-current")):
+        metadata, originals = audit.source_set(name)
+        source_sets[layer] = {**metadata, "full_capture": audit.frontend_capture(name, originals)}
+        files[layer] = originals
+    main = next(item for item in files["mw"] if Path(item["path"]).name == "main.6861ee97d479a87c4d7a.js")
+    chunk = next(item for item in files["mw"] if Path(item["path"]).name == "5736.fdd55044a41484df28aa.js")
+    ui = next(item for item in files["ui"] if Path(item["path"]).name == "main.2623357c.js")
+    roles = {}
+    def retain(role, source, anchor, kinds):
+        keys = audit.retain(role, source, anchor, set(kinds))
+        if len(keys) != 1:
+            raise ValueError("Current Audio Mixer owner is ambiguous: " + role)
+        roles[role] = keys[0]
+        return audit.owners[keys[0]]["body"]
+    initial = retain("ui_provisional_preset", ui,
+        'ed={presets:[{guid:"6633f08d-8467-4fad-b854-635acf9c2315",name:"Default",mapping:void 0}]',
+        ["variable_declarator"])
+    setup = retain("connected_device_setup", chunk, 'function ws(e=!1,t=!1)', ["function_declaration"])
+    profile = retain("selected_profile_restore", chunk, 'il=(e,t,i)=>gs(', ["variable_declarator"])
+    preset = retain("selected_preset_restore", chunk, 'nl=(e,t)=>gs(', ["variable_declarator"])
+    retain("bus_restore", chunk, 'ol=(e,t,i,n=!0)=>', ["variable_declarator"])
+    retain("default_device_factory", main,
+        'function w(){const e=P(),t=D();return{...y,profiles:[e],activeProfile:e.guid,presets:[t],activePreset:t.guid}}',
+        ["function_declaration"])
+    for role, action in (
+            ("fader_edit", "ON_SET_FADER"), ("preset_add", "ON_ADD_PRESET"),
+            ("preset_duplicate", "ON_DUPLICATE_PRESET"), ("preset_reset", "ON_RESET_PRESET"),
+            ("preset_rename", "ON_RENAME_PRESET"), ("preset_delete", "ON_DELETE_PRESET"),
+            ("preset_select", "ON_SWITCH_PRESET")):
+        retain(role, chunk, "case _.pF." + action + ":", ["switch_case"])
+    if any(field in initial for field in ("voiceChanger:", "echoReverb:", "keyShifter:", "vocalFading:")):
+        raise ValueError("Current provisional UI row contains persisted DSP fields")
+    required_setup = ['const O=Mo.A.get(`synapse_${f.DeviceInfo.productId}`)',
+                      'else Mo.A.set(`synapse_${f.DeviceInfo.productId}`,f.getDeviceDefaultLocalData())',
+                      'yield Xr.X.getInstance().init()']
+    if any(token not in setup for token in required_setup):
+        raise ValueError("Current connected document initialization chain differs")
+    if 'if(E){for(const[o,m]of Object.entries(e))' not in profile or 'let g=Object.keys(E||{})' not in profile:
+        raise ValueError("Current selected profile restore no longer consumes only its own keys")
+    if 'let a=Object.keys(o||{})' not in preset or 'e.presets)||void 0===i?void 0:i.find' not in preset:
+        raise ValueError("Current preset restore selection/key ownership differs")
+    changed = audit.final_snapshot()
+    if changed:
+        raise ValueError("Audio Mixer audit inputs changed: " + ", ".join(changed))
+    query = {
+        "query": "audio-local-profiles", "recorded_at_utc": a.stamp(),
+        "tool": identity(Path(__file__)), "python_version": platform.python_version(),
+        "analyzers": audit.parser_versions,
+        "method": "Byte-verified current deployments and complete captures; complete lexical AST owners; no target execution",
+        "offset_units": "UTF-8 bytes, end exclusive", "source_sets": source_sets,
+        "products": [{"product_id": 1342, "roles": roles, "semantics": {
+            "ui_initial_state": "ed supplies one provisional Default identity and no DSP fields; it is independent of the persisted local library.",
+            "first_document": "Connected ws checks the real per-device local document and only its absent-document branch invokes getDeviceDefaultLocalData before the feature/device initialization chain. A page restore or absent preset field does not invoke this factory.",
+            "profile_restore": "il resolves activeProfile by exact GUID and restores the selected profile's own keys. ol restores each present bus as volume followed by fixed source routes; voiceChat excludes chat. UI initial fields do not supply missing restore inputs.",
+            "preset_restore": "nl resolves activePreset by exact GUID and iterates the actual preset's own fields in device scope. No first-preset fallback or missing-library creation occurs.",
+            "explicit_mutations": "Add and Reset use DEFAULTPRESET in their explicit source actions; Duplicate requires the exact source preset. The fader edit creates only its field object when absent and shallow-merges the supplied action payload.",
+            "implementation_boundary": "Rust keeps provisional presentation separate, stores one device library and builds restore requests from real source inputs. Full family snapshot persistence and connected first-document initialization remain separate implementation work.",
+        }, "failures": [], "runtime_acceptance": "unverified"}],
+        "complete_owners": audit.owners, "originals": list(audit.sources.values()),
+        "failures": [], "target_execution": False, "runtime_acceptance": "unverified",
+    }
+    destination = a.ROOT / ".analysis/results/frontend/audio-mw-audit.json"
+    report = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1, "queries": {}}
+    report.setdefault("queries", {})[query["query"]] = query
+    a.save(destination, report)
+    print(json.dumps({"receipt": a.rel(destination), "query": query["query"],
+        "products": 1, "complete_owners": len(audit.owners), "target_execution": False}), flush=True)
 
 
 def audit_audio_help_reset(args):
@@ -20947,7 +21026,7 @@ def add_commands(parsers):
     audit.add_argument("--family", required=True, choices=list(FAMILY_CANDIDATES))
     audit.add_argument("--function", required=True)
     audit.add_argument("--product", type=int, action="append")
-    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-local-profile-schema", "mouse-dpi-matcher", "mouse-dynamic-sensitivity", "mouse-rotation", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-gamepad-tester", "keyboard-local-controls", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
+    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-local-profile-schema", "mouse-dpi-matcher", "mouse-dynamic-sensitivity", "mouse-rotation", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-gamepad-tester", "keyboard-local-controls", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-local-profiles", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
     audit.add_argument("--prepare", action="store_true", help="Prepare verified current artwork resources through the shared workflow")
     audit.add_argument("--receipt-only", action="store_true", help="Refresh supported mouse or mapping-engine evidence without rewriting runtime descriptors")
     parser = parsers.add_parser("acquire-family", help=__doc__)

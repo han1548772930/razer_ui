@@ -2,12 +2,16 @@
 mod runtime;
 pub(super) use runtime::Runtime;
 use std::{
-    backtrace::Backtrace, fmt::Display, fs::OpenOptions, io::Write, path::Path, sync::Mutex,
+    backtrace::Backtrace,
+    fmt::Display,
+    fs::OpenOptions,
+    io::Write,
+    path::{Path, PathBuf},
+    sync::Mutex,
     time::SystemTime,
 };
 
-pub(super) fn install_panic_log() {
-    let path = razer_storage::panic_log_path();
+pub(super) fn install_panic_log(path: PathBuf) {
     let opened = (|| {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;

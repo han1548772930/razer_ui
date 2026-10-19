@@ -13,10 +13,9 @@ impl AppShell {
             return;
         }
         let owner = workspace.read(cx).device(cx).clone();
-        let result = razer_storage::source_local::get_raw(
-            &razer_storage::source_local::path(),
-            &format!("synapse_{product_id}"),
-        )
+        let result = razer_storage::source_local::path().and_then(|path| {
+            razer_storage::source_local::get_raw(&path, &format!("synapse_{product_id}"))
+        })
         .and_then(|raw| {
             self.settings.update(cx, |settings, cx| {
                 settings.observe_source_product_preference(product_id, raw, cx)
@@ -46,8 +45,8 @@ impl AppShell {
             return;
         }
         let key = format!("synapse_{product_id}");
-        let path = razer_storage::source_local::path();
         let result = (|| -> anyhow::Result<bool> {
+            let path = razer_storage::source_local::path()?;
             let raw = razer_storage::source_local::get_raw(&path, &key)?;
             self.settings.update(cx, |settings, cx| {
                 settings.observe_source_product_preference(product_id, raw, cx)

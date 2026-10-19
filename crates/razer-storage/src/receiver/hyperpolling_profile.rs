@@ -124,9 +124,17 @@ mod tests {
     fn device() -> Device {
         let mut device = razer_model::product_preview::registered_preview(179).unwrap();
         device.source_device_settings = Some(serde_json::json!({"version":4,"extension":{"x":9}}));
-        device.profiles[0].source_settings = Some(
-            serde_json::json!({"indicatorLedStatus":1,"runtime":{"indicatorLedStatus":1},"extension":{"y":8}}),
-        );
+        device.active_profile = "indicator-profile".into();
+        device.profiles = vec![razer_model::model::Profile {
+            id: device.active_profile.clone(),
+            guid: "indicator-source-guid".into(),
+            name: "Indicator profile".into(),
+            settings: None,
+            dpi_stages: None,
+            source_settings: Some(
+                serde_json::json!({"indicatorLedStatus":1,"runtime":{"indicatorLedStatus":1},"extension":{"y":8}}),
+            ),
+        }];
         device
     }
     #[test]

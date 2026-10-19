@@ -46,6 +46,19 @@ pub(super) fn next_transaction(
 }
 
 pub(super) struct ReceiverLock(HANDLE);
+
+fn wait_for_query_lease(
+    validate: &dyn Fn() -> anyhow::Result<()>,
+    mut wait: impl FnMut() -> anyhow::Result<bool>,
+) -> anyhow::Result<()> {
+    loop {
+        validate()?;
+        if wait()? {
+            return Ok(());
+        }
+    }
+}
+
 impl ReceiverLock {
     pub(super) fn lighting_owner(
         container: &str,
@@ -82,7 +95,10 @@ impl ReceiverLock {
         }
         Ok(Self(handle))
     }
-    pub(super) fn acquire(container: &str) -> anyhow::Result<Self> {
+    pub(super) fn acquire(
+        container: &str,
+        validate: &dyn Fn() -> anyhow::Result<()>,
+    ) -> anyhow::Result<Self> {
         let name: Vec<u16> = format!("Local\\RazerUi-Receiver-{}", container.to_ascii_lowercase())
             .encode_utf16()
             .chain(Some(0))
@@ -95,14 +111,81 @@ impl ReceiverLock {
         );
         // Coordinates our workers only. Other applications use private locks;
         // transaction/command validation detects a conflicting device response.
-        let status = unsafe { WaitForSingleObject(handle, 500) };
-        if !matches!(status, WAIT_OBJECT_0 | WAIT_ABANDONED) {
+        let started = Instant::now();
+        let result = wait_for_query_lease(
+            &|| {
+                check_deadline(started)?;
+                validate()
+            },
+            || match unsafe { WaitForSingleObject(handle, 40) } {
+                WAIT_OBJECT_0 | WAIT_ABANDONED => Ok(true),
+                windows_sys::Win32::Foundation::WAIT_TIMEOUT => Ok(false),
+                status => bail!("Physical device query lease failed: {status}"),
+            },
+        );
+        if let Err(error) = result {
             unsafe {
                 CloseHandle(handle);
             }
-            bail!("接收器正在被其他查询使用（锁状态 {status}）");
+            return Err(error);
         }
-        Ok(Self(handle))
+        let owned = Self(handle);
+        validate()?;
+        Ok(owned)
+    }
+}
+
+#[cfg(test)]
+mod lease_tests {
+    use super::*;
+    use std::cell::Cell;
+
+    #[test]
+    fn query_lease_contention_uses_owner_budget_instead_of_500ms_failure() {
+        let elapsed_ms = Cell::new(0);
+        let checks = Cell::new(0);
+        wait_for_query_lease(
+            &|| {
+                checks.set(checks.get() + 1);
+                ensure!(elapsed_ms.get() < 2_000, "owner deadline elapsed");
+                Ok(())
+            },
+            || {
+                elapsed_ms.set(elapsed_ms.get() + 40);
+                Ok(elapsed_ms.get() >= 800)
+            },
+        )
+        .unwrap();
+        assert_eq!(elapsed_ms.get(), 800);
+        assert_eq!(checks.get(), 20);
+    }
+
+    #[test]
+    fn query_lease_cancellation_prevents_the_next_wait() {
+        let waits = Cell::new(0);
+        let result = wait_for_query_lease(
+            &|| {
+                ensure!(waits.get() < 2, "owner canceled");
+                Ok(())
+            },
+            || {
+                waits.set(waits.get() + 1);
+                Ok(false)
+            },
+        );
+        assert_eq!(result.unwrap_err().to_string(), "owner canceled");
+        assert_eq!(waits.get(), 2);
+    }
+
+    #[test]
+    fn query_lease_wait_failure_is_preserved_without_retry() {
+        let waits = Cell::new(0);
+        let result = wait_for_query_lease(&|| Ok(()), || {
+            waits.set(waits.get() + 1);
+            bail!("simulated OS wait failure")
+        });
+        assert_eq!(result.unwrap_err().to_string(), "simulated OS wait failure");
+        assert_eq!(waits.get(), 1);
     }
 }
 impl Drop for ReceiverLock {
@@ -191,7 +274,7 @@ pub(super) fn select_target(
     Ok((target.clone(), selected))
 }
 
-fn check_deadline(started: Instant) -> anyhow::Result<()> {
+pub(super) fn check_deadline(started: Instant) -> anyhow::Result<()> {
     ensure!(
         started.elapsed() < APPLICATION_QUERY_BUDGET,
         "接收器查询已过期，未将结果作为设备观察"
@@ -207,12 +290,6 @@ pub(super) fn dock_mode(path: &str, device_container_id: &str) -> anyhow::Result
         device_container_id,
     )?;
     razer_device::receiver_dock_mode::capability(selected.product_id)?;
-    let _receiver_lock = ReceiverLock::acquire(device_container_id)?;
-    let bytes = before["feature_report_bytes"]
-        .as_u64()
-        .and_then(|count| usize::try_from(count).ok())
-        .context("Dock mode target lacks its Feature Report length")?;
-    let device = transport::open(path, bytes)?;
     let guard = || -> anyhow::Result<()> {
         check_deadline(started)?;
         let (current, _) = select_target(
@@ -226,6 +303,12 @@ pub(super) fn dock_mode(path: &str, device_container_id: &str) -> anyhow::Result
         );
         Ok(())
     };
+    let _receiver_lock = ReceiverLock::acquire(device_container_id, &guard)?;
+    let bytes = before["feature_report_bytes"]
+        .as_u64()
+        .and_then(|count| usize::try_from(count).ok())
+        .context("Dock mode target lacks its Feature Report length")?;
+    let device = transport::open(path, bytes)?;
     guard()?;
     let transaction = next_transaction(path, device_container_id, selected)?;
     let data =
@@ -252,14 +335,8 @@ pub(super) fn query(
     )?;
     let selected =
         razer_device::receiver_capabilities::for_source(selected.product_id, source_product_id)?;
-    let _receiver_lock = ReceiverLock::acquire(device_container_id)?;
-    check_deadline(started)?;
-    let feature_bytes = before["feature_report_bytes"]
-        .as_u64()
-        .and_then(|count| usize::try_from(count).ok())
-        .context("缺少接收器实际 Feature Report 长度")?;
-    let device = transport::open(path, feature_bytes)?;
     let revalidate = || -> anyhow::Result<Value> {
+        check_deadline(started)?;
         let (current, current_capability) = select_target(
             &super::hid::enumerate_collection(selected.vendor_id, selected.product_id, path)?,
             path,
@@ -273,6 +350,13 @@ pub(super) fn query(
         check_deadline(started)?;
         Ok(current)
     };
+    let _receiver_lock =
+        ReceiverLock::acquire(device_container_id, &|| revalidate().map(|_| ()))?;
+    let feature_bytes = before["feature_report_bytes"]
+        .as_u64()
+        .and_then(|count| usize::try_from(count).ok())
+        .context("缺少接收器实际 Feature Report 长度")?;
+    let device = transport::open(path, feature_bytes)?;
     revalidate()?;
     let transaction = next_transaction(path, device_container_id, &selected)?;
     let devices =

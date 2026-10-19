@@ -16,12 +16,6 @@ pub(super) fn request(
         cap.product_id == uma::PRODUCT_ID,
         "Uma request targets another receiver"
     );
-    let _lock = receiver::ReceiverLock::acquire(container)?;
-    let maximum = before["feature_report_bytes"]
-        .as_u64()
-        .and_then(|n| usize::try_from(n).ok())
-        .context("Uma Feature length is unavailable")?;
-    let device = hid_transport::open(path, maximum)?;
     let started = Instant::now();
     let validate = || {
         ensure!(
@@ -40,6 +34,12 @@ pub(super) fn request(
         );
         Ok(())
     };
+    let _lock = receiver::ReceiverLock::acquire(container, &validate)?;
+    let maximum = before["feature_report_bytes"]
+        .as_u64()
+        .and_then(|n| usize::try_from(n).ok())
+        .context("Uma Feature length is unavailable")?;
+    let device = hid_transport::open(path, maximum)?;
     validate()?;
     let reading = uma::execute(&device, cap, command, transaction, &validate)?;
     let instance = before["device_instance_id"]

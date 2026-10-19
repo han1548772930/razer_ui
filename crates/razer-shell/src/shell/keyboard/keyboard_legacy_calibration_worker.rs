@@ -119,7 +119,7 @@ fn perform(
                 .as_str()
                 .ok_or_else(|| anyhow::anyhow!("Calibration input missing"))?;
             let (input, input_type) = calibration::key_record(pid, input)?;
-            keyboard_calibration::save_key(&source_local::path(), pid, serial, input, input_type)
+            keyboard_calibration::save_key(&source_local::path()?, pid, serial, input, input_type)
         })();
         match saved {
             Ok(keys) => report.messages.push(Message {
@@ -178,7 +178,7 @@ pub(super) fn run(
             let serial = identity.read_serial(&mut client)?;
             anyhow::ensure!(!serial.is_empty(), "键盘没有返回可用于校准记录的序列号");
             let keys =
-                keyboard_calibration::read(&source_local::path(), observed.product_id(), &serial)?;
+                keyboard_calibration::read(&source_local::path()?, observed.product_id(), &serial)?;
             if !keys.is_empty() {
                 let _ = replies.send(Reply::Messages(vec![Message {
                     action: "MW_UPDATE_ANALOG_CALIBRATED_KEY_LIST_TO_UI".into(),

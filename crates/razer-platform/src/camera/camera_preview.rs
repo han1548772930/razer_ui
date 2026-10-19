@@ -83,19 +83,19 @@ pub struct Preferences {
     pub enabled: Option<bool>,
     pub sources: std::collections::BTreeMap<String, String>,
 }
-fn preference_path(product: u16) -> std::path::PathBuf {
-    razer_storage::store_path().with_file_name(format!("camera-preview-{product}.json"))
+fn preference_path(product: u16) -> anyhow::Result<std::path::PathBuf> {
+    Ok(razer_storage::store_path()?.with_file_name(format!("camera-preview-{product}.json")))
 }
 fn load_preferences(product: u16) -> anyhow::Result<Preferences> {
     Ok(
-        razer_storage::read_document(&preference_path(product), |text| {
+        razer_storage::read_document(&preference_path(product)?, |text| {
             Ok(serde_json::from_str(text)?)
         })?
         .unwrap_or_default(),
     )
 }
 fn save_preferences(product: u16, preferences: &Preferences) -> anyhow::Result<()> {
-    razer_storage::write_document(&preference_path(product), preferences, |text| {
+    razer_storage::write_document(&preference_path(product)?, preferences, |text| {
         serde_json::from_str::<Preferences>(text)?;
         Ok(())
     })

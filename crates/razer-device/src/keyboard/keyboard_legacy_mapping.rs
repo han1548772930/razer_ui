@@ -13,10 +13,8 @@ use anyhow::{Context as _, ensure};
 use serde_json::{Value, json};
 
 pub fn default_profile() -> Value {
-    json!({"guid":"","name":"","switchOffLighting":{"isDisplayOn":false,"isIdleEnabled":false,"idleMinutes":1},
-        "brightness":{"isEnabled":true,"value":100},"quickEffects":{"selectedEffectId":3},
-        "gamingMode":{"state":0,"isWindowsKeyDisabled":false,"isAltTabDisabled":false,"isAltF4Disabled":false},
-        "snapTap":{"isEnabled":false,"keyList":[{"key1":"KEY_A","key2":"KEY_D","id":1}]},"macro":{},"mappings":[]})
+    serde_json::to_value(crate::keyboard_current_profile::initial_legacy_profile())
+        .expect("typed current515 profile defaults")
 }
 
 pub fn source_defaults() -> Vec<Value> {
@@ -69,13 +67,8 @@ pub fn prepare_document(
     let profiles = profiles
         .iter()
         .map(|profile| -> anyhow::Result<Value> {
-            let mut normalized = default_profile();
-            normalized.as_object_mut().unwrap().extend(
-                profile
-                    .as_object()
-                    .context("Local keyboard profile is not an object")?
-                    .clone(),
-            );
+            crate::keyboard_current_profile::decode_legacy_profile(profile)?;
+            let mut normalized = profile.clone();
             if let Some(old_engine) = previous
                 .and_then(|p| p["profiles"].as_array())
                 .and_then(|p| p.iter().find(|p| p["guid"] == normalized["guid"]))
@@ -147,6 +140,7 @@ pub fn compile(
         "Active local profile must be unique"
     );
     for profile in profiles.iter_mut() {
+        crate::keyboard_current_profile::decode_legacy_profile(profile)?;
         let replaced = profile["appEngine"]["mappings"]
             .as_array()
             .into_iter()
@@ -319,7 +313,9 @@ mod tests {
     #[test]
     fn ordinary_gaming_mode_filters_keys_and_retains_local_profile() {
         let mut p = profile();
-        p["gamingMode"] = json!({"state":1,"isWindowsKeyDisabled":true,"isAltTabDisabled":true});
+        p["gamingMode"]["state"] = json!(1);
+        p["gamingMode"]["isWindowsKeyDisabled"] = json!(true);
+        p["gamingMode"]["isAltTabDisabled"] = json!(true);
         let result = prepare_document(&[p.clone()], "profile", None, guids()).unwrap();
         assert_eq!(p["mappings"], json!([]));
         assert_eq!(result["profiles"][0]["appEngine"]["gamemode"], true);

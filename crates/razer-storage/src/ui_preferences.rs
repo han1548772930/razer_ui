@@ -139,13 +139,13 @@ fn save_at(path: &Path, flag: Flag, value: bool) -> anyhow::Result<()> {
 
 /// Call from the retained preference worker, never from a UI callback.
 pub fn load(flag: Flag) -> anyhow::Result<Observation> {
-    load_at(&crate::source_local::path(), flag)
+    load_at(&crate::source_local::path()?, flag)
 }
 
 /// Atomic publication preserves unrelated raw entries and rejects malformed
 /// existing values. Success acknowledges only this local preference file.
 pub fn save(flag: Flag, value: bool) -> anyhow::Result<()> {
-    save_at(&crate::source_local::path(), flag, value)
+    save_at(&crate::source_local::path()?, flag, value)
 }
 
 #[cfg(test)]

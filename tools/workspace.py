@@ -20,6 +20,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import tomllib
 import urllib.request
 import xml.etree.ElementTree as ET
 import asset_release as resource_sources
@@ -380,6 +381,9 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
     chroma_shell = "crates/razer-shell/src/shell.rs"
     chroma_service = "crates/razer-service/src/lighting/chroma_connect.rs"
     chroma_observation = "crates/razer-shell/src/shell/devices/product_chroma.rs"
+    configuration_paths_owner = "crates/razer-storage/src/paths.rs"
+    configuration_path_accessors = {"configuration_directory", "platform_configuration_directory",
+                                    "store_path", "runtime_log_path", "panic_log_path"}
     chroma_session = ("razer_service", "chroma_connect", "Session")
     gui_source = owner.startswith(tuple("crates/" + name + "/src/" for name in (
         "razer-pages", "razer-app-pages", "razer-settings", "razer-shell", "razer-dashboard", "razer-widgets", "razer-tray")))
@@ -695,6 +699,45 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                     break
         if in_test(node):
             continue
+        if node.type == "function_item" and owner.startswith("crates/") \
+                and text(node.child_by_field_name("name")) in configuration_path_accessors \
+                and owner != configuration_paths_owner:
+            fail(node, "configuration_path_has_a_second_owner", configuration_paths_owner)
+        if owner == configuration_paths_owner and node.type == "call_expression":
+            function = node.child_by_field_name("function")
+            if function.type == "field_expression" and text(function.child_by_field_name("field")) in {
+                    "unwrap", "expect", "unwrap_or", "unwrap_or_default", "unwrap_or_else", "or", "or_else"}:
+                fail(node, "configuration_path_replaces_a_resolution_failure", configuration_paths_owner)
+            elif function.type != "field_expression" and resolved_call(text(function).split("::")) == \
+                    ("std", "env", "current_dir"):
+                fail(node, "configuration_path_uses_working_directory", configuration_paths_owner)
+        profile_workspace = owner in {
+            "crates/razer-pages/src/features/workspace/workspace.rs",
+            "crates/razer-pages/src/features/workspace/source_workspace.rs",
+            "crates/razer-model/src/product_preview.rs",
+        }
+        enclosing_function = next((parent for parent in ancestors(node)
+                                   if parent.type == "function_item"), None) if profile_workspace else None
+        function_name = text(enclosing_function.child_by_field_name("name")) if enclosing_function else ""
+        constructing_workspace = function_name in {"new", "new_loaded", "registered_preview", "mouse_mat_preview"}
+        restoring_workspace = function_name in {"restore_active", "restore_active_with_dpi_observation", "restore_from_device"}
+        if constructing_workspace and node.type == "call_expression":
+            function = node.child_by_field_name("function")
+            if function.type == "field_expression" \
+                    and text(function.child_by_field_name("field")) in {"push", "insert", "extend", "get_or_insert_with"}:
+                receiver = function.child_by_field_name("value")
+                if receiver.type == "field_expression" and text(receiver.child_by_field_name("field")) == "profiles":
+                    fail(node, "workspace_constructor_creates_profile_collection",
+                         "Verified source initialization or explicit profile mutation")
+        if node.type == "assignment_expression" and (constructing_workspace or restoring_workspace):
+            fields = {text(part.child_by_field_name("field")) for part in walk(node.child_by_field_name("left"))
+                      if part.type == "field_expression"}
+            if fields & {"profiles", "source_settings", "source_device_settings", "saved"}:
+                fail(node, "workspace_restore_or_constructor_persists_reducer_state",
+                     "Observed input, retained reducer state, and explicit persistence owner")
+            if constructing_workspace and "active_profile" in fields:
+                fail(node, "workspace_constructor_selects_unobserved_profile",
+                     "Source serial metadata or explicit profile selection")
         if node.type == "enum_variant" and text(node.child_by_field_name("name")) == "NativeLibrarySnapshot" \
                 and owner == ipc_client:
             fail(node, "product_protocol_exposes_vendor_analysis", "Explicit tools/workspace.py comparisons")
@@ -8905,6 +8948,195 @@ def validate_connected_devices(products, *, write_restore=False):
     return 0 if receipt["passed"] else 1
 
 
+def rust_test_inventory(package, target=None):
+    """Resolve test owners and window calls without executing Rust."""
+    import resource_scope
+    import rust_data
+    parser = resource_scope.parser(Path(__file__).resolve().parent.parent)
+    crate = ROOT / "crates" / package
+    manifest = tomllib.loads((crate / "Cargo.toml").read_text(encoding="utf-8"))
+    if manifest["package"]["name"] != package:
+        raise ValueError("Rust test package identity differs: " + package)
+    if target is None:
+        entry = crate / manifest.get("lib", {}).get("path", "src/lib.rs")
+    else:
+        declarations = [row for row in manifest.get("test", []) if row["name"] == target]
+        if len(declarations) > 1:
+            raise ValueError("Rust integration test target is ambiguous: " + target)
+        entry = crate / (declarations[0].get("path", "tests/" + target + ".rs") if declarations
+                         else "tests/" + target + ".rs")
+        if not entry.is_file() and not declarations:
+            entry = crate / "tests" / target / "main.rs"
+    functions, sources, visiting, loaded = {}, {}, set(), set()
+
+    def text(node):
+        return node.text.decode("utf-8") if node is not None else ""
+
+    def attributes(node):
+        rows, sibling = [], node.prev_named_sibling
+        while sibling is not None and sibling.type in {"attribute_item", "line_comment", "block_comment"}:
+            if sibling.type == "attribute_item":
+                rows.append("".join(text(sibling).split()))
+            sibling = sibling.prev_named_sibling
+        return rows
+
+    def walk(node):
+        if node is None:
+            return
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+
+    def load(path, module):
+        path = path.resolve()
+        identity = (path, module)
+        if identity in visiting:
+            raise ValueError("Recursive Rust test module: " + relative(path))
+        if identity in loaded:
+            return
+        visiting.add(identity)
+        raw = path.read_bytes()
+        sources[relative(path)] = hashlib.sha256(raw).hexdigest()
+        tree = parser.parse(raw)
+        if tree.root_node.has_error:
+            raise ValueError("Rust test module has unresolved syntax: " + relative(path))
+
+        def visit(node, current, inline=(), inherited_imports=None):
+            imports = dict(inherited_imports or {})
+            imports.update(alias_target for child in node.named_children if child.type == "use_declaration"
+                           for alias_target in rust_data.imported_paths(child))
+            for child in node.named_children:
+                if child.type == "mod_item":
+                    name = text(child.child_by_field_name("name"))
+                    body = child.child_by_field_name("body")
+                    if body is not None:
+                        visit(body, (*current, name), (*inline, name), imports)
+                        continue
+                    base = path.parent
+                    if inline:
+                        if path.name not in {"lib.rs", "main.rs", "mod.rs"}:
+                            base /= path.stem
+                        base = base.joinpath(*inline)
+                    literal = next((match[1] for attribute in attributes(child)
+                                    if (match := re.fullmatch(r'#\[path="([^"\r\n]+)"\]', attribute))), None)
+                    if literal is not None:
+                        candidates = [base / literal]
+                    else:
+                        if not inline and path.name not in {"lib.rs", "main.rs", "mod.rs"}:
+                            base /= path.stem
+                        candidates = [base / (name + ".rs"), base / name / "mod.rs"]
+                    found = [candidate for candidate in candidates if candidate.is_file()]
+                    if len(found) != 1:
+                        raise ValueError("Rust test module is absent or ambiguous: " + relative(path) + "::" + name)
+                    load(found[0], (*current, name))
+                elif child.type == "function_item":
+                    name = text(child.child_by_field_name("name"))
+                    attrs = attributes(child)
+                    calls, window_calls = [], []
+                    for call in walk(child.child_by_field_name("body")):
+                        if call.type != "call_expression":
+                            continue
+                        function = call.child_by_field_name("function")
+                        if function is not None and function.type == "generic_function":
+                            function = function.child_by_field_name("function")
+                        method = function is not None and function.type == "field_expression"
+                        target = text(function.child_by_field_name("field")) if method else text(function)
+                        if target.split("::")[-1] in {"open_window", "add_window", "new_window"}:
+                            window_calls.append(target)
+                        calls.append((method, tuple(target.split("::"))))
+                    key = (*current, name)
+                    functions.setdefault(key, []).append({
+                        "name": "::".join(key), "module": current, "owner": relative(path),
+                        "line": child.start_point.row + 1, "calls": calls, "imports": imports,
+                        "test": any(attribute in {"#[test]", "#[::core::prelude::v1::test]", "#[core::prelude::v1::test]"}
+                                    or attribute.startswith("#[gpui_kit::test") for attribute in attrs),
+                        "ignored": any(attribute.startswith("#[ignore") for attribute in attrs),
+                        "window_calls": window_calls,
+                    })
+                elif child.type not in {"macro_definition", "macro_invocation"}:
+                    visit(child, current, inline, imports)
+
+        visit(tree.root_node, module)
+        visiting.remove(identity)
+        loaded.add(identity)
+
+    load(entry, ())
+
+    def resolve(module, target):
+        if target[0] == "crate":
+            return target[1:]
+        if target[0] == "self":
+            return (*module, *target[1:])
+        while target and target[0] == "super":
+            module, target = module[:-1], target[1:]
+        return (*module, *target)
+
+    rows = [row for owners in functions.values() for row in owners]
+    local_methods = {}
+    for key, owners in functions.items():
+        for owner in owners:
+            local_methods.setdefault((owner["owner"], key[-1]), set()).add(key)
+    for row in rows:
+        row["dependencies"] = set()
+        for method, called in row["calls"]:
+            if not called or not called[0]:
+                continue
+            if method:
+                row["dependencies"].update(local_methods.get((row["owner"], called[-1]), ()))
+                continue
+            if called[0] in row["imports"]:
+                called = (*row["imports"][called[0]], *called[1:])
+            row["dependencies"].add(resolve(row["module"], called))
+    window_owners = {key for key, owners in functions.items() if any(row["window_calls"] for row in owners)}
+    while True:
+        inherited = {key for key, owners in functions.items()
+                     if any(row["dependencies"] & window_owners for row in owners)}
+        if inherited <= window_owners:
+            break
+        window_owners.update(inherited)
+    tests = [{key: row[key] for key in ("name", "owner", "line", "ignored")}
+             | {"requires_window": tuple(row["name"].split("::")) in window_owners}
+             for row in rows if row["test"]]
+    return {"package": package, "target": target or "lib", "sources": sources, "tests": tests,
+            "limits": "Rust AST and local callable edges; no type resolution, cfg evaluation or macro expansion"}
+
+
+def rust_test_scope(command, inventories):
+    """Reject window tests before any ordinary verification command starts."""
+    if command[1] != "test":
+        return None
+    packages = [command[index + 1] for index, part in enumerate(command[:-1]) if part in {"-p", "--package"}]
+    if not packages or ("--lib" in command) == ("--test" in command) or any(
+            part in command for part in ("--ignored", "--include-ignored")):
+        raise ValueError("Ordinary Rust verification requires nonignored library or named integration tests")
+    target = command[command.index("--test") + 1] if "--test" in command else None
+    cargo = command[:command.index("--")] if "--" in command else command
+    start = cargo.index("--test") + 2 if target is not None else cargo.index("--lib") + 1
+    filters = [part for part in cargo[start:] if not part.startswith("-")]
+    if len(filters) > 1:
+        raise ValueError("Rust verification has ambiguous test filters")
+    skipped = [command[index + 1] for index, part in enumerate(command[:-1]) if part == "--skip"]
+    scopes = []
+    def matches(value, name):
+        return name == value if "--exact" in command else value in name
+    for package in packages:
+        key = (package, target)
+        inventory = inventories.get(key)
+        if inventory is None:
+            inventory = inventories[key] = rust_test_inventory(package, target)
+        selected = [row for row in inventory["tests"] if not row["ignored"]
+                    and (not filters or matches(filters[0], row["name"]))
+                    and not any(matches(skip, row["name"]) for skip in skipped)]
+        windows = [row for row in selected if row["requires_window"]]
+        if windows:
+            raise ValueError("Rust verification selects prohibited window tests: " +
+                             ", ".join(package + "::" + row["name"] for row in windows))
+        scopes.append({"package": package, "target": inventory["target"],
+                       "selected_tests": [row["name"] for row in selected],
+                       "source_count": len(inventory["sources"]), "limits": inventory["limits"]})
+    return {"targets": scopes, "window_tests_selected": 0}
+
+
 def validate_rust(selected_suites=None, cargo_config=None):
     """Compile all targets and run only pure Rust / simulated library suites."""
     baseline = rust_inputs()
@@ -8928,7 +9160,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("controller-profile", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "gamepad_products::profile::tests"]),
         ("controller-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "controller_"]),
         ("controller-feature-discovery", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "controller_feature"]),
-        ("controller-lighting-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "gamepad_products::lighting"]),
+        ("controller-lighting-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "gamepad_products::lighting_"]),
         ("controller-quick-lighting-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "quick_lighting_state::tests"]),
         ("controller-chroma-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "chroma_runtime::tests"]),
         ("controller-calibration-frame", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "queued_frames_cannot_advance"]),
@@ -8961,7 +9193,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("audio-demo-media", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "media::tests"]),
         ("macro-recorder-platform", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "macro_recorder"]),
         ("screen-color-platform", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "screen_color"]),
-        ("screen-color-ui", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "screen_color"]),
+        ("screen-color-ui", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "features::screen_color::tests::"]),
         ("audio-demo-floating", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "demo::tests"]),
         ("source-feature-transport", ["cargo", "test", "--locked", "--offline", "-p", "razer-hid", "--lib"]),
         ("connected-verification-boundary", ["cargo", "test", "--locked", "--offline", "-p", "razer-hid", "--test", "connected_devices", "connected_result_validation_"]),
@@ -9054,6 +9286,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("resource-database-index", ["cargo", "test", "--locked", "--offline", "-p", "razer-resources", "--lib", "catalog::database_tests"]),
         ("packaged-catalogs", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "-p", "razer-app-pages", "-p", "razer-assets", "-p", "razer-model", "-p", "razer-catalog", "-p", "razer-shell", "-p", "razer-tray", "-p", "razer-settings", "--lib", "packaged_catalog_"]),
         ("model", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "--lib"]),
+        ("existing-workspace-reducers", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "workspace::reducer_state::tests::"]),
         ("mapping-engine", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mapping_engine"]),
         ("mapping-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mapping_native"]),
         ("mouse-rotation-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mouse_rotation"]),
@@ -9166,7 +9399,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("mouse-scroll-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mouse_scroll_tests"]),
         ("mouse-scroll-routing", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "mouse_scroll_tests"]),
         ("mouse-scroll-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "scroll_task::tests"]),
-        ("mouse-scroll-readback", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mouse_scroll_"]),
+        ("mouse-scroll-readback", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "scroll_wheel::tests::mouse_scroll_"]),
         ("mouse-scroll-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mouse_worker::tests"]),
         ("mouse-scroll-persistence", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mouse_scroll::"]),
         ("mouse-tracking-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_tracking::tests::"]),
@@ -9221,6 +9454,8 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("shell-preview-artwork", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "every_catalog_preview_variant_keeps_its_dashboard_artwork", "--", "--nocapture"]),
         ("shell-product-favicons", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "every_registered_product_tab_has_a_loadable_source_favicon"]),
         ("audio-mixer-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "audio_mixer"]),
+        ("audio-local-settings", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "audio_mixer_local_settings::tests"]),
+        ("seiren-local-settings", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "seiren_local_settings::tests"]),
         ("audio-sound-mapping", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "sound_mapping::tests"]),
         ("keyboard-dynamic-metadata", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "all_current_dynamic_mapping_metadata_loads"]),
         ("keyboard-source-artwork", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "source_artwork::tests"]),
@@ -9234,6 +9469,12 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("receiver-discovery-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "receiver_pairing::tests"]),
         ("receiver-discovery-projection", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "receiver_projection::tests"]),
         ("receiver-service-metadata", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "receiver_pairing::tests"]),
+        ("receiver-query-lease", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "query_lease_"]),
+        ("keyboard-local-profiles-storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib", "host_keyboard_profiles::tests"]),
+        ("keyboard-current-profile-schema", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "keyboard_current_profile"]),
+        ("keyboard-profile-inventory-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "keyboard_profile_inventory"]),
+        ("keyboard-profile-inventory-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "keyboard_profile_inventory"]),
+        ("keyboard-profile-inventory-discovery", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "keyboard_profile_inventory"]),
         ("standalone-pairing-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-app-pages", "--lib", "pairing_page::tests", "--",
                                      "--skip", "initial_pairing_loading_has_no_unmounted_toolbar_or_status_messages",
                                      "--skip", "confirmation_escape_closes_without_invented_focus_restore_and_enter_cannot_fake_binding",
@@ -9282,6 +9523,8 @@ def validate_rust(selected_suites=None, cargo_config=None):
         # exact overrides with argv; never modify the project's build config.
         options = [part for value in cargo_config for part in ("--config", value)]
         commands = [(name, command[:2] + options + command[2:]) for name, command in commands]
+    inventories = {}
+    test_scopes = {name: rust_test_scope(command, inventories) for name, command in commands}
     results = []
     for name, command in commands:
         print(json.dumps({"checking": name, "argv": command}), flush=True)
@@ -9310,6 +9553,8 @@ def validate_rust(selected_suites=None, cargo_config=None):
                "excluded_test_filters": [command[index + 1] for index, part in enumerate(command[:-1]) if part == "--skip"],
                "test_summaries": [{"result": state, "passed": int(passed), "failed": int(failed),
                                    "ignored": int(ignored)} for state, passed, failed, ignored in totals]}
+        if test_scopes[name] is not None:
+            row["static_test_scope"] = test_scopes[name]
         if name == "assets":
             row["test_scope"] = "Pure codec, catalog and fixed-icon checks; image_cache::tests requires a real GPUI headless window and is excluded"
         results.append(row)

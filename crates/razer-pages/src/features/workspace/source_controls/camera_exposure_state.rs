@@ -47,6 +47,31 @@ pub(super) fn apply_metering_effect(
     true
 }
 
+pub(super) fn apply_restored_metering_effect(
+    profile: &mut Value,
+    saved: Option<&Value>,
+    previous: Option<&Value>,
+    initialized: bool,
+) -> bool {
+    // The selector effect consumes the restored camera fields. A reducer's
+    // initial metering or compensation is not a restored profile value.
+    let Some(saved) = saved else {
+        return false;
+    };
+    if saved
+        .pointer("/camera/autoExposure/metering")
+        .and_then(Value::as_u64)
+        .is_none()
+        || saved
+            .pointer("/camera/autoExposure/compensation")
+            .and_then(Value::as_f64)
+            .is_none()
+    {
+        return false;
+    }
+    apply_metering_effect(profile, previous, initialized)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -70,6 +95,37 @@ mod tests {
         assert!(!apply_metering_effect(&mut value, None, false));
         assert!(!apply_metering_effect(&mut value, Some(&5.into()), true));
         assert_eq!(value["camera"]["autoExposure"]["compensation"], -2.5);
+    }
+
+    #[test]
+    fn restoring_missing_camera_fields_cannot_submit_reducer_defaults() {
+        for saved in [
+            None,
+            Some(serde_json::json!({})),
+            Some(serde_json::json!({"camera":{"autoExposure":{"metering":5}}})),
+            Some(serde_json::json!({"camera":{"autoExposure":{"compensation":-2.5}}})),
+            Some(
+                serde_json::json!({"camera":{"autoExposure":{"metering":null,"compensation":-2.5}}}),
+            ),
+        ] {
+            let mut value = profile();
+            assert!(!apply_restored_metering_effect(
+                &mut value,
+                saved.as_ref(),
+                Some(&0.into()),
+                true,
+            ));
+            assert_eq!(value["camera"]["autoExposure"]["compensation"], -2.5);
+        }
+        let saved = profile();
+        let mut value = saved.clone();
+        assert!(apply_restored_metering_effect(
+            &mut value,
+            Some(&saved),
+            Some(&0.into()),
+            true,
+        ));
+        assert_eq!(value["camera"]["autoExposure"]["compensation"], -1);
     }
 
     #[test]

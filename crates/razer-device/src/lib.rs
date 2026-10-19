@@ -86,6 +86,8 @@ pub mod keyboard_analog;
 mod keyboard_control_test_transport;
 #[path = "keyboard/keyboard_current_mapping.rs"]
 pub mod keyboard_current_mapping;
+#[path = "keyboard/keyboard_current_profile.rs"]
+pub mod keyboard_current_profile;
 #[path = "keyboard/keyboard_firmware_gaming.rs"]
 mod keyboard_firmware_gaming;
 #[path = "keyboard/keyboard_firmware_mapping.rs"]
@@ -116,6 +118,12 @@ pub mod keyboard_legacy_mapping;
 pub mod keyboard_magnetic_mapping;
 #[path = "keyboard/keyboard_metadata.rs"]
 pub mod keyboard_metadata;
+#[path = "keyboard/keyboard_onboard_inventory.rs"]
+pub mod keyboard_onboard_inventory;
+#[path = "keyboard/keyboard_onboard_profiles.rs"]
+pub mod keyboard_onboard_profiles;
+#[path = "keyboard/keyboard_profile_inventory.rs"]
+pub mod keyboard_profile_inventory;
 #[path = "keyboard/keyboard_settings.rs"]
 pub mod keyboard_settings;
 #[path = "keyboard/keyboard_submission.rs"]
@@ -180,6 +188,8 @@ pub mod mouse_button_inventory;
 pub mod mouse_button_mapping;
 #[path = "mouse/mouse_current_dpi.rs"]
 pub mod mouse_current_dpi;
+#[path = "mouse/mouse_current_profile.rs"]
+pub mod mouse_current_profile;
 #[path = "mouse/mouse_current_polling.rs"]
 pub mod mouse_current_polling;
 #[path = "mouse/mouse_current_power.rs"]

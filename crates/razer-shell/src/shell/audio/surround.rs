@@ -72,7 +72,7 @@ fn local_key(identity: &Identity) -> String {
 }
 fn preferences(identity: &Identity) -> Result<Settings> {
     match razer_storage::source_local::get(
-        &razer_storage::source_local::path(),
+        &razer_storage::source_local::path()?,
         &local_key(identity),
     )? {
         Some(value) => {
@@ -91,7 +91,7 @@ fn persist(identity: &Identity, change: &razer_device::audio_surround::Change) -
         return Ok(());
     }
     razer_storage::source_local::update(
-        &razer_storage::source_local::path(),
+        &razer_storage::source_local::path()?,
         &local_key(identity),
         |previous| {
             let mut stored = match previous {

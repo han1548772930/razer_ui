@@ -36,11 +36,32 @@ mod shutdown;
 #[path = "thx_controller.rs"]
 mod thx_controller;
 
+#[derive(Clone, Copy)]
+enum KeyboardRead<'a> {
+    Metadata,
+    Serial,
+    ProfileInventory,
+    OnboardProfiles(&'a razer_device::keyboard_onboard_profiles::ReadOptions),
+}
+
+impl KeyboardRead<'_> {
+    fn deadline(self) -> std::time::Duration {
+        std::time::Duration::from_secs(match self {
+            Self::ProfileInventory | Self::OnboardProfiles(_) => 120,
+            Self::Metadata | Self::Serial => 20,
+        })
+    }
+}
+
 pub(crate) fn mapping_client() -> anyhow::Result<crate::mapping::owner::Client> {
     #[cfg(windows)]
-    { native::mapping_client() }
+    {
+        native::mapping_client()
+    }
     #[cfg(not(windows))]
-    { anyhow::bail!("Native mapping execution is unavailable on this platform") }
+    {
+        anyhow::bail!("Native mapping execution is unavailable on this platform")
+    }
 }
 
 fn write_response(response: &ResponseEnvelope) -> anyhow::Result<()> {
@@ -60,11 +81,17 @@ fn cleanup_owners(
     #[cfg(windows)]
     cleanup.record("native", runtime.request(ServiceRequest::Shutdown));
     let mut portable_response = ResponseEnvelope {
-        id: 0, data: Some(serde_json::json!({"stopped":true})), error: None, fatal: false,
+        id: 0,
+        data: Some(serde_json::json!({"stopped":true})),
+        error: None,
+        fatal: false,
     };
     portable.shutdown().apply(&mut portable_response);
-    if let Some(error) = portable_response.error { cleanup.fail("portable", error); }
-    else if let Some(data) = portable_response.data { cleanup.record("portable", Ok(data)); }
+    if let Some(error) = portable_response.error {
+        cleanup.fail("portable", error);
+    } else if let Some(data) = portable_response.data {
+        cleanup.record("portable", Ok(data));
+    }
     cleanup
 }
 
@@ -72,7 +99,11 @@ fn cleanup_without_reply(
     portable: &mut portable::PortableRuntime,
     #[cfg(windows)] runtime: &mut native::NativeRuntime,
 ) -> bool {
-    let cleanup = cleanup_owners(portable, #[cfg(windows)] runtime);
+    let cleanup = cleanup_owners(
+        portable,
+        #[cfg(windows)]
+        runtime,
+    );
     cleanup.log_failures();
     cleanup.succeeded()
 }
@@ -91,13 +122,31 @@ pub fn run_worker() -> i32 {
             Ok(Some(line)) => match serde_json::from_slice::<RequestEnvelope>(&line) {
                 Ok(envelope) => envelope,
                 Err(_) => {
-                    cleanup_without_reply(&mut portable, #[cfg(windows)] &mut runtime);
+                    cleanup_without_reply(
+                        &mut portable,
+                        #[cfg(windows)]
+                        &mut runtime,
+                    );
                     return 2;
                 }
             },
-            Ok(None) => return if cleanup_without_reply(&mut portable, #[cfg(windows)] &mut runtime) { 0 } else { 2 },
+            Ok(None) => {
+                return if cleanup_without_reply(
+                    &mut portable,
+                    #[cfg(windows)]
+                    &mut runtime,
+                ) {
+                    0
+                } else {
+                    2
+                };
+            }
             Err(_) => {
-                cleanup_without_reply(&mut portable, #[cfg(windows)] &mut runtime);
+                cleanup_without_reply(
+                    &mut portable,
+                    #[cfg(windows)]
+                    &mut runtime,
+                );
                 return 2;
             }
         };
@@ -230,6 +279,8 @@ pub fn run_worker() -> i32 {
             | ServiceRequest::HidNodeKeyboardBrightnessRead { .. }
             | ServiceRequest::HidNodeKeyboardReceiverBrightness { .. }
             | ServiceRequest::HidNodeKeyboardMetadataRead { .. }
+            | ServiceRequest::KeyboardProfileInventoryRead { .. }
+            | ServiceRequest::KeyboardOnboardProfilesRead { .. }
             | ServiceRequest::HidNodeKeyboardSerialRead { .. }
             | ServiceRequest::HidNodeKeyboardRelayMetadataRead { .. }
             | ServiceRequest::HidNodeKeyboardRelaySerialRead { .. }
@@ -284,14 +335,14 @@ pub fn run_worker() -> i32 {
             drop(portable);
             #[cfg(windows)]
             drop(runtime);
-            return if write_response(&response).is_err() {
-                2
-            } else {
-                0
-            };
+            return if write_response(&response).is_err() { 2 } else { 0 };
         }
         if write_response(&response).is_err() {
-            cleanup_without_reply(&mut portable, #[cfg(windows)] &mut runtime);
+            cleanup_without_reply(
+                &mut portable,
+                #[cfg(windows)]
+                &mut runtime,
+            );
             return 2;
         }
     }

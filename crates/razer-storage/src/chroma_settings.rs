@@ -77,8 +77,8 @@ impl Document {
     }
 }
 
-pub fn path() -> PathBuf {
-    crate::store_path().with_file_name(FILE_NAME)
+pub fn path() -> anyhow::Result<PathBuf> {
+    Ok(crate::store_path()?.with_file_name(FILE_NAME))
 }
 
 fn bytes(path: &Path) -> anyhow::Result<Option<Vec<u8>>> {
@@ -192,7 +192,7 @@ fn update_at(path: &Path, changes: &[Change]) -> anyhow::Result<Preferences> {
 /// Run on the retained settings worker. Missing data remains an observation,
 /// while malformed/unsupported files fail without replacing the previous file.
 pub fn load() -> anyhow::Result<Observation> {
-    let (document, origin, _) = load_at(&path())?;
+    let (document, origin, _) = load_at(&path()?)?;
     Ok(Observation {
         preferences: document.preferences(),
         origin,
@@ -202,7 +202,7 @@ pub fn load() -> anyhow::Result<Observation> {
 /// Apply idempotent changes to the newest file under the writer lock. Unknown
 /// fields and unrelated settings survive; success confirms only this local file.
 pub fn update(changes: &[Change]) -> anyhow::Result<Preferences> {
-    update_at(&path(), changes)
+    update_at(&path()?, changes)
 }
 
 #[cfg(test)]

@@ -39,7 +39,7 @@ impl AppShell {
         let task = cx.spawn_in(window, async move |this, cx| {
             let result = cx
                 .background_spawn(async move {
-                    source_local::get(&source_local::path(), "micSetupPopupSeen")
+                    source_local::get(&source_local::path()?, "micSetupPopupSeen")
                 })
                 .await;
             let _ = this.update_in(cx, |this, window, cx| {
@@ -71,7 +71,7 @@ impl AppShell {
             let result = cx
                 .background_spawn(async move {
                     source_local::set(
-                        &source_local::path(),
+                        &source_local::path()?,
                         "micSetupPopupSeen",
                         &serde_json::json!(seen),
                     )

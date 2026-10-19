@@ -39,7 +39,7 @@ pub(super) fn should_publish_mapping(product: Option<&ProductSave>, identity: &s
         Some(ProductSave::KeyboardActuation(save)) if save.identity == identity => {
             save.publishes_mapping()
         }
-        Some(ProductSave::SourceProfileImport(_)) => false,
+        Some(ProductSave::SourceProfileImport(_) | ProductSave::KeyboardLocalProfiles(_)) => false,
         _ => true,
     }
 }
@@ -187,11 +187,8 @@ impl AppShell {
             let mut previous = profile
                 .source_settings
                 .clone()
-                .unwrap_or_else(|| settings.clone());
+                .context("Active keyboard source profile has not been read")?;
             previous["guid"] = serde_json::json!(profile.guid);
-            if previous.get("mappings").is_none() {
-                previous["mappings"] = serde_json::json!([]);
-            }
             let (settings, mut intent) = keyboard_submission::prepare_local(
                 device.product_id,
                 device.layout_id,
@@ -203,15 +200,15 @@ impl AppShell {
                 let mut profiles = device
                     .profiles
                     .iter()
-                    .map(|source| {
+                    .map(|source| -> anyhow::Result<_> {
                         let mut settings = source
                             .source_settings
                             .clone()
-                            .unwrap_or_else(|| serde_json::json!({}));
+                            .context("Keyboard macro synchronization source profile has not been read")?;
                         settings["guid"] = serde_json::json!(source.guid);
-                        settings
+                        Ok(settings)
                     })
-                    .collect::<Vec<_>>();
+                    .collect::<anyhow::Result<Vec<_>>>()?;
                 if let Some(active) = profiles
                     .iter_mut()
                     .find(|source| source["guid"] == profile.guid)

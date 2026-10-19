@@ -284,7 +284,7 @@ fn run(
             .request(configuration.selected_docking_mouse.clone());
         if configuration.effect.source_id() != 14 {
             let acknowledgements = {
-                let _lock = receiver::ReceiverLock::acquire(container)?;
+                let _lock = receiver::ReceiverLock::acquire(container, &validate)?;
                 let device = hid_transport::open(path, bytes)?;
                 if let Ok(mut state) = status.lock() {
                     state.restoration = RestorationDisposition::AwaitingAcknowledgements;
@@ -344,7 +344,7 @@ fn run(
                         let _ = reply.send(Ok(()));
                     } else if next_configuration.effect.source_id() != 14 {
                         let acknowledgements = {
-                            let _lock = receiver::ReceiverLock::acquire(container)?;
+                            let _lock = receiver::ReceiverLock::acquire(container, &validate)?;
                             let device = hid_transport::open(path, bytes)?;
                             if let Ok(mut state) = status.lock() {
                                 state.restoration =
@@ -400,7 +400,7 @@ fn run(
             if effects.normal.is_some() || effects.special.is_some() {
                 pending_deadline = Instant::now() + Duration::from_secs(30);
                 if !custom_selected {
-                    let _lock = receiver::ReceiverLock::acquire(container)?;
+                    let _lock = receiver::ReceiverLock::acquire(container, &validate)?;
                     let device = hid_transport::open(path, bytes)?;
                     if let Ok(mut state) = status.lock() {
                         state.restoration = RestorationDisposition::AwaitingAcknowledgements;
@@ -448,7 +448,7 @@ fn run(
                 let dock_frame = engine.device_handle == Some(frame.device_handle);
                 let delivery = (|| -> anyhow::Result<u32> {
                     if dock_frame {
-                        let _lock = receiver::ReceiverLock::acquire(container)?;
+                        let _lock = receiver::ReceiverLock::acquire(container, &validate)?;
                         let device = hid_transport::open(path, bytes)?;
                         lighting.send_frame(&device, &frame, frame.device_handle, &validate)?;
                         Ok(1)
@@ -514,7 +514,7 @@ fn run(
     }
     if lighting.restoration_required() {
         let restore = (|| {
-            let _lock = receiver::ReceiverLock::acquire(container)?;
+            let _lock = receiver::ReceiverLock::acquire(container, &validate_identity)?;
             let device = hid_transport::open(path, bytes)?;
             lighting.restore_on_exit(
                 &device,

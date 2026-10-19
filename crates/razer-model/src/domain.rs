@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::model::{DeviceCategory, DkmKey};
+use crate::model::DkmKey;
 
 // ---------------------------------------------------------------------------
 // 性能
@@ -1541,81 +1541,6 @@ impl Default for DeviceFeatures {
     }
 }
 
-impl DeviceFeatures {
-    /// 按设备类别补齐合理默认值。
-    ///
-    /// 接上设备模块后，应以模块下发的值为准而不再调用本方法。
-    pub fn for_category(category: DeviceCategory, has_battery: bool, is_chroma: bool) -> Self {
-        let mut features = Self {
-            performance: match category {
-                DeviceCategory::Keyboard | DeviceCategory::Keypad => Performance::for_keyboard(),
-                _ => Performance::default(),
-            },
-            ..Default::default()
-        };
-
-        if is_chroma {
-            features.lighting = default_lighting_zones(category);
-        }
-        if has_battery {
-            features.power = Some(PowerManagement::default());
-        }
-        if matches!(category, DeviceCategory::Keyboard | DeviceCategory::Keypad) {
-            features.keyboard = Some(KeyboardSettings::default());
-        }
-
-        // 下面三项按**实测的每设备标签页**决定，不是猜的：
-        //   滚动  → 鼠标(182) 有、键盘(653) 有、耳机(777) 无
-        //   校准  → 鼠标(182) 有、键盘(653) 无、耳机(777) 有
-        //   配对  → 鼠标(182) 有、键盘(653) 无、耳机(777) 无
-        // 见 docs/screens/README.md「按设备看标签页」。
-        match category {
-            DeviceCategory::Mouse => {
-                features.scrolling = Some(Scrolling::default());
-                features.calibration = Some(Calibration::default());
-                features.pairing = Some(Pairing::default());
-                // `BOSS_KEY_CONFIGURATION_TIP`「配置鼠标的老板键功能。」
-                features.boss_key = Some(BossKey::default());
-            }
-            DeviceCategory::Keyboard | DeviceCategory::Keypad => {
-                features.scrolling = Some(Scrolling::default());
-            }
-            DeviceCategory::Headset | DeviceCategory::Audio => {
-                features.calibration = Some(Calibration::default());
-                features.sound = Some(Sound::default());
-                features.mic = Some(Mic::default());
-                // `KEY_SHIFTER_TOOLTIP`「…调整线路输入端口上任意音频输入的音高和速度。」
-                features.key_shifter = Some(KeyShifter::default());
-            }
-            _ => {}
-        }
-        // 显示、触觉和 OLED 配置需要具体产品数据，不能按设备类别生成。
-        features
-    }
-}
-
-/// 按类别给出默认灯光区域（[推断]）。
-fn default_lighting_zones(category: DeviceCategory) -> Vec<LightingZone> {
-    // 雷蛇绿 #44D62C
-    const RAZER_GREEN: [u8; 3] = [0x44, 0xD6, 0x2C];
-    match category {
-        DeviceCategory::Mouse => vec![
-            LightingZone::new("标志", LightingEffect::Static, RAZER_GREEN),
-            LightingZone::new("滚轮", LightingEffect::SpectrumCycling, RAZER_GREEN),
-        ],
-        DeviceCategory::Keyboard => vec![LightingZone::new(
-            "整块键盘",
-            LightingEffect::Wave,
-            RAZER_GREEN,
-        )],
-        _ => vec![LightingZone::new(
-            "整机",
-            LightingEffect::Static,
-            RAZER_GREEN,
-        )],
-    }
-}
-
 /// 预设色板。首项是雷蛇绿 #44D62C，与界面主题色一致。
 pub const COLOR_PALETTE: [[u8; 3]; 8] = [
     [0x44, 0xD6, 0x2C], // 雷蛇绿
@@ -1721,38 +1646,5 @@ mod tests {
         let act = Actuation::default();
         assert!(act.primary_mm >= ACTUATION_MIN_MM && act.primary_mm <= ACTUATION_MAX_MM);
         assert!(act.secondary_mm >= ACTUATION_MIN_MM && act.secondary_mm <= ACTUATION_MAX_MM);
-    }
-
-    #[test]
-    fn boss_key_and_key_shifter_are_not_keyboard_features() {
-        use crate::model::DeviceCategory;
-
-        let keyboard = DeviceFeatures::for_category(DeviceCategory::Keyboard, false, false);
-        assert!(keyboard.boss_key.is_none(), "键盘不该有老板键");
-        assert!(keyboard.key_shifter.is_none(), "键盘不该有变调");
-
-        let mouse = DeviceFeatures::for_category(DeviceCategory::Mouse, false, false);
-        assert!(
-            mouse.boss_key.is_some(),
-            "BOSS_KEY_CONFIGURATION_TIP 说的是鼠标"
-        );
-
-        let headset = DeviceFeatures::for_category(DeviceCategory::Headset, false, false);
-        assert!(
-            headset.key_shifter.is_some(),
-            "KEY_SHIFTER_TOOLTIP 说的是线路输入端口"
-        );
-    }
-
-    /// 键盘必备的三项进阶功能。
-    #[test]
-    fn keyboard_gets_snap_tap_stroke_and_actuation() {
-        use crate::model::DeviceCategory;
-
-        let keyboard = DeviceFeatures::for_category(DeviceCategory::Keyboard, false, false);
-        let settings = keyboard.keyboard.expect("键盘应有键盘设置");
-        assert!(settings.snap_tap.is_some());
-        assert!(settings.dynamic_key_stroke.is_some());
-        assert!(settings.actuation.is_some());
     }
 }

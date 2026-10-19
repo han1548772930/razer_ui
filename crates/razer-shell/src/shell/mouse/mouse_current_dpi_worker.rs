@@ -4,7 +4,7 @@ use razer_ipc::{ServiceClient, ServiceRequest};
 
 pub(in crate::shell) struct Completion {
     result: Result<DpiReport, String>,
-    local_profile: Option<Result<Option<razer_storage::host_local_profile::LocalProfile>, String>>,
+    local_profile: Option<Result<Option<razer_storage::host_local_profile::LocalProfiles>, String>>,
     shutdown_error: Option<String>,
     termination_error: Option<String>,
     destruction_error: Option<String>,
@@ -13,7 +13,7 @@ pub(in crate::shell) struct Completion {
 impl Completion {
     pub(super) fn local_profile(
         &self,
-    ) -> Option<Result<Option<razer_storage::host_local_profile::LocalProfile>, String>> {
+    ) -> Option<Result<Option<razer_storage::host_local_profile::LocalProfiles>, String>> {
         self.local_profile.clone()
     }
     #[cfg(test)]
@@ -168,7 +168,7 @@ fn observe_local_profile(
     valid: &std::sync::atomic::AtomicBool,
     identity_read: bool,
     previous_serial: &str,
-    read: impl FnOnce(&str) -> anyhow::Result<Option<razer_storage::host_local_profile::LocalProfile>>,
+    read: impl FnOnce(&str) -> anyhow::Result<Option<razer_storage::host_local_profile::LocalProfiles>>,
 ) {
     completion.local_profile = Some(guarded(|| {
         check(valid)?;

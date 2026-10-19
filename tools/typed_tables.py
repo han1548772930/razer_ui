@@ -417,6 +417,7 @@ RECEIVER_179_PAIRING_NAMESPACES = {
 }
 PAIR_CATALOG_INPUT = ".analysis/inputs/typed-tables/razer-device/receiver-pairing-catalog.json"
 READ_OUTPUT = "crates/razer-device/src/transport/device_read_capabilities.rs"
+ONBOARD_KEY_OUTPUT = "crates/razer-device/src/keyboard/keyboard_onboard_inventory.rs"
 IDENTITY_OUTPUT = "crates/razer-device/src/identity/device_identity_catalog.rs"
 QUERY_OUTPUT = "crates/razer-device/src/receiver/receiver_query_capabilities.rs"
 PAIR_CAP_OUTPUT = "crates/razer-device/src/receiver/receiver_pairing_capabilities.rs"
@@ -1122,6 +1123,125 @@ def current_read_key_inventory(buttons, mapping):
     return [{"firmware_key_id": key, "input_id": rows[key]} for key in sorted(rows)]
 
 
+def current_onboard_key_inventory(buttons, generic, overrides, mouse):
+    """Apply the source's per-mode shallow overrides and shared ignore lists."""
+    def fields(node):
+        if node.type != "object":
+            raise ValueError("Current onboard key inventory requires literal objects")
+        result = {}
+        for pair in node.named_children:
+            key, value = pair.child_by_field_name("key"), pair.child_by_field_name("value")
+            if pair.type != "pair" or key is None or key.type != "property_identifier" or key.text in result:
+                raise ValueError("Current onboard key inventory has dynamic or repeated fields")
+            result[key.text] = value
+        return result
+
+    def boolean(node):
+        if node is None:
+            return False
+        if node.text not in (b"!0", b"!1", b"true", b"false"):
+            raise ValueError("Current onboard key inventory has a dynamic boolean")
+        return node.text in (b"!0", b"true")
+
+    def identity(name, node):
+        row = fields(node)
+        key = row.get(b"inputID")
+        if key is None or key.type != "string" or json.loads(key.text).encode() != name:
+            raise ValueError("Current onboard key inventory has a mismatched identity")
+        firmware = row.get(b"fwID")
+        if firmware is not None:
+            if firmware.type != "number":
+                raise ValueError("Current onboard key inventory has a dynamic firmware ID")
+            firmware = bounded(int(firmware.text), 254, "onboard firmware key ID", 1)
+        return firmware, boolean(row.get(b"ignoreInObm"))
+
+    generic_modes, override_modes, mouse_modes = fields(generic), fields(overrides), fields(mouse)
+    if set(generic_modes) != {b"NormalMode", b"HypershiftMode"} or set(mouse_modes) != set(generic_modes):
+        raise ValueError("Current onboard key inventory has unknown modes")
+    if set(override_modes) - set(generic_modes):
+        raise ValueError("Current onboard key inventory has an unknown override mode")
+    modes, ignored = {}, {}
+    for mode in generic_modes:
+        merged = fields(generic_modes[mode])
+        if mode in override_modes:
+            merged.update(fields(override_modes[mode]))
+        modes[mode] = {name: identity(name, node) for name, node in merged.items()}
+        mouse_rows = [identity(name, node) for name, node in fields(mouse_modes[mode]).items()]
+        ignored[mode] = {firmware for firmware, skip in [*modes[mode].values(), *mouse_rows] if skip}
+        if None in ignored[mode]:
+            raise ValueError("Current onboard ignore list contains an absent firmware ID")
+
+    if buttons.type != "array":
+        raise ValueError("Current onboard UI inventory is not a fixed array")
+    rows = {}
+    for button in buttons.named_children:
+        row = fields(button)
+        if boolean(row.get(b"isHyperShift")):
+            continue
+        key = row.get(b"inputID")
+        if key is None or key.type != "string":
+            raise ValueError("Current onboard UI key has no literal identity")
+        name = json.loads(key.text)
+        normal = modes[b"NormalMode"].get(name.encode())
+        if normal is None or normal[0] is None:
+            raise ValueError("Current onboard UI key has no firmware mapping: " + name)
+        firmware = normal[0]
+        hyper_matches = [key for key, value in modes[b"HypershiftMode"].items() if value[0] == firmware]
+        if hyper_matches != [name.encode()]:
+            raise ValueError("Current onboard key has an ambiguous or mismatched Hypershift identity")
+        projected = {"input_id": name, "firmware_key_id": firmware,
+                     "ignore_normal": firmware in ignored[b"NormalMode"],
+                     "ignore_hypershift": firmware in ignored[b"HypershiftMode"]}
+        if firmware in rows and rows[firmware] != projected:
+            raise ValueError("Current onboard physical firmware key ID is ambiguous")
+        rows[firmware] = projected
+    if not rows:
+        raise ValueError("Current onboard physical key inventory is empty")
+    return [rows[key] for key in sorted(rows)]
+
+
+def render_current_onboard_inventory(inventory):
+    """Render every source-selected physical key and its two independent filters."""
+    exact_fields(inventory, {"inventories", "uk_layout_ids"}, "current onboard inventory")
+    exact_fields(inventory["inventories"], {"BUTTON_LIST", "BUTTON_LIST_UK"}, "current onboard layouts")
+    layouts = inventory["uk_layout_ids"]
+    if not isinstance(layouts, list) or not layouts or len(layouts) != len(set(layouts)):
+        raise ValueError("Current onboard UK layout identities are empty or repeated")
+    for layout in layouts:
+        bounded(layout, 0xffffffff, "onboard layout ID")
+    lines = ["//! Source-selected physical keys and onboard mode filters.",
+        "//! Generated by tools/workspace.py prepare-local-protocol-tables --current-reads.", "",
+        "#[derive(Clone, Copy, Debug, PartialEq, Eq)]", "#[non_exhaustive]", "pub struct Key {",
+        "    pub input_id: &'static str,", "    pub firmware_key_id: u8,",
+        "    pub ignore_normal: bool,", "    pub ignore_hypershift: bool,", "}", "",
+        "impl Key {", "    const fn new(input_id: &'static str, firmware_key_id: u8, ignore_normal: bool, ignore_hypershift: bool) -> Self {",
+        "        Self { input_id, firmware_key_id, ignore_normal, ignore_hypershift }", "    }", "}", ""]
+    for source, target in (("BUTTON_LIST", "KEYS"), ("BUTTON_LIST_UK", "UK_KEYS")):
+        rows = inventory["inventories"][source]
+        if not isinstance(rows, list) or not rows:
+            raise ValueError("Current onboard key table is empty")
+        firmware_ids, input_ids = [], []
+        lines.append("const " + target + ": &[Key] = &[")
+        for row in rows:
+            exact_fields(row, {"input_id", "firmware_key_id", "ignore_normal", "ignore_hypershift"}, "onboard physical key")
+            if not isinstance(row["input_id"], str) or not row["input_id"]:
+                raise ValueError("Current onboard key identity is absent")
+            bounded(row["firmware_key_id"], 254, "onboard physical firmware ID", 1)
+            if type(row["ignore_normal"]) is not bool or type(row["ignore_hypershift"]) is not bool:
+                raise ValueError("Current onboard key filter is not boolean")
+            firmware_ids.append(row["firmware_key_id"]); input_ids.append(row["input_id"])
+            lines.append("    Key::new(" + json.dumps(row["input_id"]) + ", " + str(row["firmware_key_id"]) + ", "
+                         + str(row["ignore_normal"]).lower() + ", " + str(row["ignore_hypershift"]).lower() + "),")
+        if firmware_ids != sorted(set(firmware_ids)) or len(input_ids) != len(set(input_ids)):
+            raise ValueError("Current onboard physical key identities repeat or are out of order")
+        lines.extend([" ];", ""])
+    lines.extend(["/// Selects the mounted source inventory for the device's observed layout.",
+        "pub fn current_679_inventory(layout_id: u32) -> &'static [Key] {",
+        "    if [" + ", ".join(map(str, layouts)) + "].contains(&layout_id) {", "        UK_KEYS", "    } else {",
+        "        KEYS", "    }", "}", ""])
+    return "\n".join(lines).encode()
+
+
 def current_read_inventory_selection_contract(selection, merging):
     """Reject changed layout or override semantics before projecting the key tables."""
     import sys
@@ -1395,6 +1515,13 @@ def current_read_sources():
                            if pair.child_by_field_name("key").text == b"NormalMode")
     if normal_override.type != "object" or normal_override.named_children:
         raise ValueError("Current keyboard adds an unaudited normal-mode firmware key override")
+    mouse_mapping = audit.webpack_export("current_679_mount_mouse_mapping", files, 32906, "InputIDToMapping_Mouse_Generic")
+    onboard_inventories = {
+        name: current_onboard_key_inventory(
+            binding_value(item["export"]["original"], item["export"]["binding"]), generic_node,
+            keyboard_mapping, binding_value(mouse_mapping["original"], mouse_mapping["binding"]))
+        for name, item in inventories.items()
+    }
     if "BUTTON_LIST_JP" in audit.owners[inventories["BUTTON_LIST"]["export"]["complete_factory_owner"]]["body"]:
         raise ValueError("Current keyboard adds a Japanese inventory requiring its own source projection")
     factory = audit.webpack_export("current_679_obm_engine", files, 17317, "default")
@@ -1409,6 +1536,8 @@ def current_read_sources():
     mounting = audit.retain("current_679_obm_mounting", mounting_source, "obmEngine.init(",
                             {"function_expression", "function_declaration", "arrow_function"})
     keyboard["analog_key_inventory"] = {"inventories": inventories, "normal_firmware_mapping": generic,
+        "onboard_physical_keys": {"inventories": onboard_inventories, "uk_layout_ids": uk_layout_ids},
+        "shared_mouse_mapping": mouse_mapping,
         "selection_contract": selection_contract,
         "layout_selection": selection, "firmware_mapping_selection": merging, "uk_layout_codes": uk,
         "layout_enum": layout, "uk_layout_ids": uk_layout_ids, "feature_registration": feature[0],
@@ -1522,8 +1651,18 @@ def prepare_current_read_table(*, check=False, record=True):
     verified, verified_products = current_read_table_projection(path.read_bytes(), capabilities)
     if verified != path.read_bytes() or products != verified_products:
         raise ValueError("Current observation constructor verification differs")
+    keyboard = next(row for row in report["products"] if row["product_id"] == 679)
+    inventory = keyboard["analog_key_inventory"]["onboard_physical_keys"]
+    inventory_path = ROOT / ONBOARD_KEY_OUTPUT
+    inventory_bytes = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"],
+        input=render_current_onboard_inventory(inventory), capture_output=True, check=True).stdout
+    receiver_table_tree(inventory_bytes)
+    if not check:
+        inventory_path.write_bytes(inventory_bytes)
+    if inventory_path.read_bytes() != inventory_bytes:
+        raise ValueError("Current onboard physical key inventory differs from source keys or mode filters")
     report.update(tool=families.identity(Path(__file__)), output=families.identity(path), check_only=check,
-                  constructors_verified=products)
+                  constructors_verified=products, onboard_key_output=families.identity(inventory_path))
     if record:
         destination = ROOT / ".analysis/results/typed-data.json"
         with analysis.index_lock(ROOT / ".work/typed-data-registry.lock"):
@@ -1532,6 +1671,7 @@ def prepare_current_read_table(*, check=False, record=True):
             analysis.save(destination, previous)
     return {"products": products, "queries": {row["product_id"]: [query["name"] for query in row["queries"]]
             for row in capabilities}, "source_factories_and_getters_equal": True, "passed": True,
+            "onboard_key_counts": {name: len(rows) for name, rows in inventory["inventories"].items()},
             "check_only": check, "runtime_acceptance": "unverified"}
 
 

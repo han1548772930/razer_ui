@@ -1,7 +1,7 @@
 use super::*;
 
 fn device() -> Device {
-    let mut device = crate::product_preview::registered_preview(190).unwrap();
+    let mut device = crate::test_devices::with_profile(190);
     device.active_profile = device.profiles[0].id.clone();
     device.profiles[0].source_settings = Some(json!({
         "guid": device.profiles[0].guid,

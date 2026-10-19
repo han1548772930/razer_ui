@@ -381,6 +381,32 @@ pub fn read_regions(
 pub fn read(
     device: &dyn FeatureTransport,
     cap: &KeyboardSettingsCapability,
+    next_transaction: impl FnMut() -> anyhow::Result<u8>,
+    validate: impl Fn() -> anyhow::Result<()>,
+) -> anyhow::Result<KeyboardBrightness> {
+    read_at_profile(device, cap, cap.active_profile, next_transaction, validate)
+}
+
+/// OBM callers pass an ID from their observed profile inventory. This does not
+/// change the active-profile capability or select a profile on the device.
+pub fn read_profile(
+    device: &dyn FeatureTransport,
+    cap: &KeyboardSettingsCapability,
+    profile_id: u8,
+    next_transaction: impl FnMut() -> anyhow::Result<u8>,
+    validate: impl Fn() -> anyhow::Result<()>,
+) -> anyhow::Result<KeyboardBrightness> {
+    ensure!(
+        crate::keyboard_profile_inventory::supports(cap.product_id) && profile_id > 0,
+        "Stored keyboard brightness requires an observed HID OBM profile ID"
+    );
+    read_at_profile(device, cap, profile_id, next_transaction, validate)
+}
+
+fn read_at_profile(
+    device: &dyn FeatureTransport,
+    cap: &KeyboardSettingsCapability,
+    profile_id: u8,
     mut next_transaction: impl FnMut() -> anyhow::Result<u8>,
     validate: impl Fn() -> anyhow::Result<()>,
 ) -> anyhow::Result<KeyboardBrightness> {
@@ -390,12 +416,16 @@ pub fn read(
             device,
             cap,
             cap.get_command,
-            &[cap.active_profile, cap.all_region],
+            &[profile_id, cap.all_region],
             next_transaction()?,
             &validate,
         )?;
         validate()?;
-        return parse_device_brightness(&data, cap, cap.all_region);
+        let mut reading = parse_brightness(&data, profile_id, cap.all_region)?;
+        if cap.product_id == BLACKWIDOW_CHROMA.product_id {
+            reading.percent = (u16::from(reading.raw_value) * 100 / 255) as u8;
+        }
+        return Ok(reading);
     }
     let transaction = next_transaction()?;
     let regions = exchange(
@@ -419,11 +449,11 @@ pub fn read(
         device,
         cap,
         cap.get_command,
-        &[cap.active_profile, region],
+        &[profile_id, region],
         next_transaction()?,
         &validate,
     )?;
-    parse_brightness(&data, cap.active_profile, region)
+    parse_brightness(&data, profile_id, region)
 }
 
 /// Source active setter targets BacklightLED on 515 and all regions on Chroma.

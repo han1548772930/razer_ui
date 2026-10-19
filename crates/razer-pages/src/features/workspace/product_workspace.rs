@@ -85,6 +85,9 @@ pub(super) fn edit_profile_metadata(
             executable,
             linked,
         } => {
+            if linked && device.profiles[index].settings.is_none() {
+                return false;
+            }
             let key = |value: &str| value.replace('/', "\\").to_lowercase();
             let requested = key(&executable);
             // Source linkedDeviceToGame assigns at most one profile per device.
@@ -96,11 +99,10 @@ pub(super) fn edit_profile_metadata(
                 }
             }
             if linked {
-                device.profiles[index]
-                    .settings
-                    .get_or_insert_with(|| {
-                        super::settings::ProfileSettings::for_product(device.product_id)
-                    })
+                let Some(settings) = device.profiles[index].settings.as_mut() else {
+                    return false;
+                };
+                settings
                     .linked_games
                     .push(super::settings::LinkedGame { name, executable });
             }
@@ -1372,13 +1374,14 @@ impl ProductWorkspace {
     pub fn accept_current_dpi_local_profile(
         &mut self,
         request: &super::mouse_products::MouseCurrentDpiRequested,
+        baseline: &Device,
         serial: Option<&str>,
-        result: Result<Option<razer_storage::host_local_profile::LocalProfile>, String>,
+        result: Result<Option<razer_storage::host_local_profile::LocalProfiles>, String>,
         cx: &mut Context<Self>,
     ) {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| {
-                body.accept_current_dpi_local_profile(request, serial, result, cx)
+                body.accept_current_dpi_local_profile(request, baseline, serial, result, cx)
             });
         }
     }
@@ -1680,6 +1683,32 @@ impl ProductWorkspace {
             Body::Source(body) => {
                 body.update(cx, |body, cx| body.observe_keyboard_metadata(reading, cx))
             }
+        }
+    }
+
+    pub fn observe_keyboard_serial(&mut self, serial: &str, cx: &mut Context<Self>) {
+        match &self.body {
+            Body::Existing(body) => {
+                body.update(cx, |body, cx| body.observe_keyboard_serial(serial, cx));
+            }
+            Body::Source(body) => {
+                body.update(cx, |body, cx| body.observe_keyboard_serial(serial, cx));
+            }
+        }
+    }
+
+    pub fn accept_keyboard_local_profiles(
+        &mut self,
+        baseline: &Device,
+        source: &razer_storage::host_keyboard_profiles::LocalProfiles,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Result<bool, String> {
+        match &self.body {
+            Body::Source(body) => body.update(cx, |body, cx| {
+                body.accept_keyboard_local_profiles(baseline, source, window, cx)
+            }),
+            Body::Existing(_) => Err("Keyboard local document does not match this workspace".into()),
         }
     }
 

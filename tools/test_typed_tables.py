@@ -183,6 +183,63 @@ class TypedTableTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 typed_tables.verify_current_read_key_fixtures(expected, invalid_rust, invalid_python)
 
+    def test_current_onboard_inventory_applies_whole_entry_overrides_and_independent_mode_filters(self):
+        import sys
+        sys.path.insert(0, str(Path(typed_tables.__file__).resolve().parent / "analyzers/python-static"))
+        from tree_sitter import Language, Parser
+        import tree_sitter_javascript
+        parser = Parser(Language(tree_sitter_javascript.language()))
+
+        def value(source):
+            tree = parser.parse(("const value=" + source).encode())
+            self.assertFalse(tree.root_node.has_error)
+            return tree.root_node.named_children[0].named_children[0].child_by_field_name("value")
+
+        buttons = '[{inputID:"B"},{inputID:"A"},{inputID:"A"},{inputID:"only_shift",isHyperShift:!0}]'
+        generic = ('{NormalMode:{A:{inputID:"A",fwID:18},B:{inputID:"B",fwID:31}},'
+            'HypershiftMode:{A:{inputID:"A",fwID:18,ignoreInObm:!0},B:{inputID:"B",fwID:31}}}')
+        overrides = '{HypershiftMode:{A:{inputID:"A",fwID:18},B:{inputID:"B",fwID:31,ignoreInObm:!0}}}'
+        mouse = '{NormalMode:{M:{inputID:"M",fwID:18,ignoreInObm:!0}},HypershiftMode:{}}'
+
+        def project(ui=buttons, base=generic, patch=overrides, shared=mouse):
+            return typed_tables.current_onboard_key_inventory(value(ui), value(base), value(patch), value(shared))
+
+        self.assertEqual(project(), [
+            {"input_id": "A", "firmware_key_id": 18, "ignore_normal": True, "ignore_hypershift": False},
+            {"input_id": "B", "firmware_key_id": 31, "ignore_normal": False, "ignore_hypershift": True}])
+        for changed_ui, changed_base, changed_patch, changed_mouse in (
+                (buttons, generic, overrides.replace("ignoreInObm:!0", "ignoreInObm:enabled"), mouse),
+                (buttons, generic, overrides.replace('A:{inputID:"A",fwID:18}', 'A:{inputID:"A",fwID:19}'), mouse),
+                (buttons, generic.replace('B:{inputID:"B",fwID:31}', 'B:{inputID:"B",fwID:18}'), overrides, mouse),
+                (buttons.replace('inputID:"B"', 'inputID:"missing"'), generic, overrides, mouse),
+                (buttons.replace('isHyperShift:!0', 'isHyperShift:enabled'), generic, overrides, mouse),
+                (buttons, generic, '{OtherMode:{}}', mouse),
+                (buttons, generic, overrides, mouse.replace('fwID:18,', '')),
+                (buttons, generic, overrides, mouse.replace('fwID:18', 'fwID:getKey()')),
+                (buttons, generic, overrides, mouse.replace('inputID:"M"', 'inputID:"other"'))):
+            with self.assertRaises(ValueError):
+                project(changed_ui, changed_base, changed_patch, changed_mouse)
+
+    def test_current_onboard_inventory_renderer_checks_fields_identity_order_and_all_layouts(self):
+        keys = [{"input_id": "A", "firmware_key_id": 18, "ignore_normal": False, "ignore_hypershift": True},
+                {"input_id": "B", "firmware_key_id": 31, "ignore_normal": True, "ignore_hypershift": False}]
+        inventory = {"inventories": {"BUTTON_LIST": keys, "BUTTON_LIST_UK": keys[:1]}, "uk_layout_ids": [2, 9]}
+        output = typed_tables.render_current_onboard_inventory(inventory)
+        typed_tables.receiver_table_tree(output)
+        self.assertIn(b'Key::new("A", 18, false, true)', output)
+        self.assertIn(b'Key::new("B", 31, true, false)', output)
+        self.assertIn(b'if [2, 9].contains(&layout_id)', output)
+        for changed in (
+                {**inventory, "uk_layout_ids": [2, 2]},
+                {**inventory, "uk_layout_ids": []},
+                {**inventory, "inventories": {"BUTTON_LIST": keys}},
+                {**inventory, "inventories": {"BUTTON_LIST": list(reversed(keys)), "BUTTON_LIST_UK": keys}},
+                {**inventory, "inventories": {"BUTTON_LIST": keys + keys[:1], "BUTTON_LIST_UK": keys}},
+                {**inventory, "inventories": {"BUTTON_LIST": [{**keys[0], "ignore_normal": 0}], "BUTTON_LIST_UK": keys}},
+                {**inventory, "inventories": {"BUTTON_LIST": [{**keys[0], "unknown": True}], "BUTTON_LIST_UK": keys}}):
+            with self.assertRaises(ValueError):
+                typed_tables.render_current_onboard_inventory(changed)
+
     def test_current_read_inventory_selection_rejects_swapped_layouts_and_override_precedence(self):
         selection = ('w=()=>{let e=[];return e=o.Yi0.includes(m.A.runtimeData.layoutId)&&n.BUTTON_LIST_UK?'
             '[...n.BUTTON_LIST_UK]:m.A.runtimeData.layoutId===_.Z7j.Japanese&&n.BUTTON_LIST_JP?'

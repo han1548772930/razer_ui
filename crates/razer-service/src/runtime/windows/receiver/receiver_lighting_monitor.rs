@@ -91,14 +91,12 @@ impl Peer {
         ) -> anyhow::Result<T>,
     ) -> anyhow::Result<T> {
         let candidate = &self.candidate;
-        let _lock = receiver::ReceiverLock::acquire(&candidate.container)?;
-        validate()?;
-        candidate.validate()?;
-        let device = hid_transport::open(&candidate.path, candidate.bytes)?;
         let guard = || {
             validate()?;
             candidate.validate()
         };
+        let _lock = receiver::ReceiverLock::acquire(&candidate.container, &guard)?;
+        let device = hid_transport::open(&candidate.path, candidate.bytes)?;
         let peer_check = || -> anyhow::Result<()> {
             if candidate.relay {
                 let peers = razer_device::device_query::read_receiver(
@@ -131,7 +129,7 @@ impl Peer {
         Ok(result)
     }
     fn normal_effect(&self) -> anyhow::Result<EngineEffect> {
-        let workspace = razer_storage::workspace::read_workspace(&razer_storage::store_path())?;
+        let workspace = razer_storage::workspace::read_workspace(&razer_storage::store_path()?)?;
         let owners = workspace
             .as_ref()
             .map(|workspace| {
@@ -745,15 +743,18 @@ impl Monitor {
         };
         // Streaming rows follow source checkIN=false. Identity and the current
         // physical collection are re-observed without inventing a frame ACK.
-        validate()?;
-        peer.candidate.validate()?;
-        let _lock = receiver::ReceiverLock::acquire(&peer.candidate.container)?;
+        let candidate = &peer.candidate;
+        let guard = || {
+            validate()?;
+            candidate.validate()
+        };
+        let _lock = receiver::ReceiverLock::acquire(&candidate.container, &guard)?;
         let device = hid_transport::open(&peer.candidate.path, peer.candidate.bytes)?;
         let submitted = peer
             .io
             .as_mut()
             .context("Peer frame has no Feature sender")?
-            .send_frame(&device, frame, frame.device_handle, rows, columns, validate)?;
+            .send_frame(&device, frame, frame.device_handle, rows, columns, &guard)?;
         Ok(Some(submitted))
     }
     pub(super) fn cleanup(&mut self, validate: &impl Fn() -> anyhow::Result<()>) -> Vec<String> {

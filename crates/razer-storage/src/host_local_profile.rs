@@ -1,14 +1,28 @@
 //! Source-confirmed local profile selection. The Chromium store is only read;
 //! imported settings retain provenance and are never device observations.
+mod catalog;
 mod leveldb;
 use anyhow::{Context, Result, ensure};
-use razer_device::mouse_dpi_stages::{DpiStage, DpiStagesDraft};
+pub use catalog::{LocalProfiles, Profile, SerialInitialization, SourceSelection};
+use razer_device::{mouse_current_profile::Stages, mouse_dpi_stages::DpiStagesDraft};
 use razer_model::model::Device;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, path::Path};
 
 const ORIGIN: &str = "https://apps.razer.com";
 const OWNERSHIP_KEY: &str = "razerUiMouseDpiOwnership";
+
+fn storage_key(key: &str) -> Vec<u8> {
+    format!("_{ORIGIN}\0\u{1}{key}").into_bytes()
+}
+
+/// Read one source-owned key through the same coherent LevelDB snapshot and
+/// Chromium string decoder used by the mouse profile importer.
+pub(crate) fn read_local_storage(root: &Path, key: &str) -> Result<Option<String>> {
+    leveldb::read(root, &storage_key(key))?
+        .map(|value| text(&value.bytes))
+        .transpose()
+}
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 struct SourceIdentity {
@@ -19,12 +33,6 @@ struct SourceIdentity {
     sha256: String,
     #[serde(flatten)]
     extensions: BTreeMap<String, serde_json::Value>,
-}
-#[derive(Clone, Debug)]
-pub struct LocalProfile {
-    identity: SourceIdentity,
-    name: String,
-    stages: DpiStagesDraft,
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
 struct ProfileOwnership {
@@ -42,36 +50,6 @@ struct Ownership {
     #[serde(flatten)]
     extensions: BTreeMap<String, serde_json::Value>,
 }
-#[derive(Deserialize)]
-struct Document {
-    #[serde(rename = "productId")]
-    product_id: u32,
-    #[serde(rename = "schemaVersion")]
-    schema_version: u32,
-    #[serde(rename = "deviceMetadatas")]
-    metadata: BTreeMap<String, Metadata>,
-    profiles: Vec<Profile>,
-}
-#[derive(Deserialize)]
-struct Metadata {
-    #[serde(rename = "activeProfileGuid")]
-    active: String,
-}
-#[derive(Deserialize)]
-struct Profile {
-    guid: String,
-    name: String,
-    #[serde(rename = "dpiStages")]
-    stages: Stages,
-}
-#[derive(Deserialize)]
-struct Stages {
-    enable: bool,
-    active: usize,
-    count: usize,
-    stages: Vec<DpiStage>,
-}
-
 fn text(bytes: &[u8]) -> Result<String> {
     match bytes.split_first() {
         Some((1, bytes)) => Ok(bytes.iter().map(|b| char::from(*b)).collect()),
@@ -94,84 +72,23 @@ pub fn supported(product_id: u32) -> bool {
     matches!(product_id, 182 | 190)
 }
 
-pub fn read(root: &Path, product_id: u32, serial: &str) -> Result<Option<LocalProfile>> {
+pub fn read(root: &Path, product_id: u32, serial: &str) -> Result<Option<LocalProfiles>> {
     ensure!(
         supported(product_id),
         "current local profile schema is not verified for this product"
     );
     ensure!(
-        !serial.is_empty() && !serial.starts_with("PREVIEW-"),
+        !serial.is_empty() && !serial.starts_with("PREVIEW-") && !serial.contains('\0'),
         "local profile requires the observed device serial"
     );
-    let key = format!("_{ORIGIN}\0\u{1}synapse_{product_id}");
-    let Some(value) = leveldb::read(root, key.as_bytes())? else {
+    let key = storage_key(&format!("synapse_{product_id}"));
+    let Some(value) = leveldb::read(root, &key)? else {
         return Ok(None);
     };
-    decode(product_id, serial, value)
+    Ok(Some(decode(product_id, serial, value)?))
 }
-fn decode(product_id: u32, serial: &str, value: leveldb::Value) -> Result<Option<LocalProfile>> {
-    let decoded = text(&value.bytes)?;
-    let document: Document =
-        serde_json::from_str(&decoded).context("invalid current host local profile")?;
-    ensure!(
-        document.product_id == product_id,
-        "host profile product does not match the requested storage key"
-    );
-    ensure!(
-        document.schema_version == 13,
-        "host local profile requires the current schema version 13"
-    );
-    let Some(metadata) = document.metadata.get(serial) else {
-        return Ok(None);
-    };
-    ensure!(
-        !metadata.active.is_empty(),
-        "host local profile has an empty active GUID"
-    );
-    let mut matching = document
-        .profiles
-        .into_iter()
-        .filter(|p| p.guid == metadata.active);
-    let profile = matching
-        .next()
-        .context("host serial selects a missing profile GUID")?;
-    ensure!(matching.next().is_none(), "host profile GUID is duplicated");
-    let stages = validate(Stages { ..profile.stages })?;
-    razer_device::mouse_current_dpi::pack_for(product_id, &stages)?;
-    let hash = ring::digest::digest(&ring::digest::SHA256, &value.bytes);
-    let sha256 = hash.as_ref().iter().map(|b| format!("{b:02x}")).collect();
-    Ok(Some(LocalProfile {
-        identity: SourceIdentity {
-            product_id,
-            serial: serial.to_owned(),
-            guid: profile.guid,
-            sequence: value.sequence,
-            sha256,
-            extensions: BTreeMap::new(),
-        },
-        name: profile.name,
-        stages,
-    }))
-}
-fn validate(value: Stages) -> Result<DpiStagesDraft> {
-    ensure!(
-        value.stages.len() == 5 && (1..=5).contains(&value.active),
-        "invalid current host DPI row selection"
-    );
-    ensure!(
-        (1..=5).contains(&value.count)
-            && value.stages.iter().filter(|s| s.visible).count() == value.count,
-        "invalid current host DPI visibility/count"
-    );
-    ensure!(
-        value.stages.iter().all(|s| s.x > 0 && s.y > 0),
-        "invalid current host DPI value"
-    );
-    Ok(DpiStagesDraft {
-        enabled: value.enable,
-        active_stage: value.active,
-        stages: value.stages,
-    })
+fn decode(product_id: u32, serial: &str, value: leveldb::Value) -> Result<LocalProfiles> {
+    catalog::decode(product_id, serial, value)
 }
 fn ownership(device: &Device) -> Result<Ownership> {
     ensure!(
@@ -269,75 +186,138 @@ pub fn accept_saved(device: &mut Device, previous: &Device, snapshot: &Device) -
     Ok(())
 }
 
-/// Refresh source-owned metadata from the exact host revision. Explicit local
-/// edits retain ownership and cannot be overwritten by an external revision.
-pub fn import(device: &mut Device, source: &LocalProfile) -> Result<bool> {
+/// Refresh the complete checked catalog. Explicit local edits retain ownership
+/// and cannot be overwritten by an external revision. Only local fields move;
+/// connection observations, device writes and mapping publication stay separate.
+pub fn import(device: &mut Device, baseline: &Device, source: &LocalProfiles) -> Result<bool> {
+    crate::workspace::ensure_local_profiles_unchanged(device, baseline)?;
     ensure!(
-        device.product_id == source.identity.product_id
-            && device.serial_number == source.identity.serial,
+        device.product_id == source.product_id() && device.serial_number == source.serial(),
         "host profile belongs to another device"
     );
     let mut state = ownership(device)?;
-    if let Some(previous) = state.profiles.get(&device.active_profile) {
+    let mut guids = std::collections::BTreeSet::new();
+    let mut ids = std::collections::BTreeSet::new();
+    for profile in &device.profiles {
         ensure!(
-            previous.serial == device.serial_number,
-            "DPI profile belongs to another serial"
+            !profile.guid.is_empty()
+                && guids.insert(profile.guid.as_str())
+                && !profile.id.is_empty()
+                && ids.insert(profile.id.as_str()),
+            "local mouse profile identities are empty or duplicated"
         );
-        let same_source = previous.imported.as_ref().is_some_and(|imported| {
-            imported.guid == source.identity.guid && imported.sha256 == source.identity.sha256
-        });
-        if previous.explicitly_edited {
+    }
+    let mut profiles = Vec::with_capacity(source.profiles().len());
+    for profile in source.profiles() {
+        let previous = device
+            .profiles
+            .iter()
+            .find(|existing| existing.guid == profile.guid());
+        let id = previous.map_or(profile.guid(), |existing| existing.id.as_str());
+        let old = state.profiles.get(id);
+        let mut identity = source.identity(profile);
+        let mut extensions = BTreeMap::new();
+        if let Some(old) = old {
             ensure!(
-                previous.imported.is_none() || same_source,
+                old.serial == device.serial_number,
+                "DPI profile belongs to another serial"
+            );
+            let same_source = old.imported.as_ref().is_some_and(|imported| {
+                imported.guid == profile.guid() && imported.sha256 == identity.sha256
+            });
+            ensure!(
+                !old.explicitly_edited || old.imported.is_none() || same_source,
                 "host active profile or revision changed; local DPI profile retained"
             );
-            return Ok(false);
+            if old.explicitly_edited {
+                profiles.push(
+                    previous
+                        .context("edited local mouse profile is missing")?
+                        .clone(),
+                );
+                continue;
+            }
+            extensions = old.extensions.clone();
+            if let Some(imported) = &old.imported {
+                identity.extensions = imported.extensions.clone();
+            }
         }
-        if same_source {
-            return Ok(false);
+        profiles.push(razer_model::model::Profile {
+            source_settings: Some(profile.source_settings()?),
+            settings: None,
+            name: profile.name().to_owned(),
+            guid: profile.guid().to_owned(),
+            id: id.to_owned(),
+            dpi_stages: None,
+        });
+        state.profiles.insert(
+            id.to_owned(),
+            ProfileOwnership {
+                serial: device.serial_number.clone(),
+                imported: Some(identity),
+                explicitly_edited: false,
+                stages: profile.stages()?,
+                extensions,
+            },
+        );
+    }
+    for profile in &device.profiles {
+        if profiles.iter().any(|imported| imported.id == profile.id) {
+            continue;
+        }
+        if let Some(old) = state.profiles.get(&profile.id) {
+            ensure!(
+                !old.explicitly_edited || old.imported.is_none(),
+                "host removed an explicitly edited profile; local DPI profile retained"
+            );
+            if old.explicitly_edited {
+                profiles.push(profile.clone());
+            }
+        } else {
+            profiles.push(profile.clone());
         }
     }
-    let profile = device
-        .profiles
-        .iter_mut()
-        .find(|p| p.id == device.active_profile)
-        .context("active local DPI profile is missing")?;
-    let root = profile
-        .source_settings
-        .get_or_insert_with(|| serde_json::json!({}));
-    let root = root
-        .as_object_mut()
-        .context("local DPI profile is not an object")?;
-    root.insert("dpiStages".to_owned(), stage_value(&source.stages));
-    root.insert("guid".to_owned(), source.identity.guid.clone().into());
-    root.insert("name".to_owned(), source.name.clone().into());
-    profile.guid = source.identity.guid.clone();
-    profile.name = source.name.clone();
-    let extensions = state
-        .profiles
-        .get(&device.active_profile)
-        .map(|entry| entry.extensions.clone())
-        .unwrap_or_default();
-    let mut imported = source.identity.clone();
-    if let Some(previous) = state
-        .profiles
-        .get(&device.active_profile)
-        .and_then(|entry| entry.imported.as_ref())
-    {
-        imported.extensions = previous.extensions.clone();
-    }
-    state.profiles.insert(
-        device.active_profile.clone(),
-        ProfileOwnership {
-            serial: device.serial_number.clone(),
-            imported: Some(imported),
-            explicitly_edited: false,
-            stages: source.stages.clone(),
-            extensions,
-        },
+    let mut projected_ids = std::collections::BTreeSet::new();
+    ensure!(
+        profiles
+            .iter()
+            .all(|profile| projected_ids.insert(profile.id.as_str())),
+        "imported and local mouse profile identities collide"
     );
-    store(device, state)?;
-    Ok(true)
+    let active = match source.active_guid() {
+        Some(guid) => profiles
+            .iter()
+            .find(|profile| profile.guid == guid)
+            .map(|profile| profile.id.clone())
+            .context("selected host mouse profile was not projected")?,
+        None => String::new(),
+    };
+    let mut candidate = device.clone();
+    candidate.profiles = profiles;
+    candidate.active_profile = active;
+    let mut settings = source.device_settings()?;
+    if let Some(local) = &device.source_device_settings {
+        let target = settings
+            .as_object_mut()
+            .expect("typed mouse settings object");
+        for (key, value) in local
+            .as_object()
+            .context("device settings is not an object")?
+        {
+            if !target.contains_key(key) {
+                target.insert(key.clone(), value.clone());
+            }
+        }
+    }
+    candidate.source_device_settings = Some(settings);
+    store(&mut candidate, state)?;
+    let changed = candidate.profiles != device.profiles
+        || candidate.active_profile != device.active_profile
+        || candidate.source_device_settings != device.source_device_settings;
+    device.profiles = candidate.profiles;
+    device.active_profile = candidate.active_profile;
+    device.source_device_settings = candidate.source_device_settings;
+    Ok(changed)
 }
 pub fn stage_value(stages: &DpiStagesDraft) -> serde_json::Value {
     serde_json::json!({"enable":stages.enabled,"active":stages.active_stage,"count":stages.stages.iter().filter(|s| s.visible).count(),"stages":stages.stages})
@@ -350,12 +330,13 @@ pub fn mark_edited(
     if !supported(device.product_id) {
         return Ok(());
     }
-    let stages = validate(serde_json::from_value(
+    let stages: Stages = serde_json::from_value(
         source
             .get("dpiStages")
             .context("edited DPI profile has no stage settings")?
             .clone(),
-    )?)?;
+    )?;
+    let stages = stages.draft()?;
     razer_device::mouse_current_dpi::pack_for(device.product_id, &stages)?;
     let mut state = ownership(device)?;
     let imported = state

@@ -70,7 +70,7 @@ impl StudioSession {
             let result = cx
                 .background_spawn(async {
                     let library = chroma_profiles::load_studio::<ChromaStudioSnapshot>(
-                        &chroma_profiles::path(),
+                        &chroma_profiles::path()?,
                         ChromaStudioSnapshot::validate,
                     )?;
                     let legacy = if library.profiles().is_empty() {
@@ -208,8 +208,8 @@ impl StudioSession {
             let result = cx
                 .background_spawn(async move {
                     chroma_profiles::update_studio(
-                        &chroma_profiles::path(),
-                        &razer_storage::source_local::path(),
+                        &chroma_profiles::path()?,
+                        &razer_storage::source_local::path()?,
                         change,
                         &guard,
                         ChromaStudioSnapshot::validate,
@@ -303,7 +303,7 @@ impl StudioSession {
                 let observed = cx
                     .background_spawn(async {
                         chroma_profiles::load_studio::<ChromaStudioSnapshot>(
-                            &chroma_profiles::path(),
+                            &chroma_profiles::path()?,
                             ChromaStudioSnapshot::validate,
                         )
                     })

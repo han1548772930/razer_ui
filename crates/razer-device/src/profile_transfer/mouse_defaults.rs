@@ -4,78 +4,6 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 
 #[derive(Serialize)]
-struct Dpi {
-    x: u32,
-    y: u32,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct LedPower {
-    idle_state: u8,
-    idle_value: u8,
-}
-
-#[derive(Serialize)]
-struct Stage {
-    x: u32,
-    y: u32,
-    independent: bool,
-    visible: bool,
-}
-
-#[derive(Serialize)]
-struct Stages {
-    stages: [Stage; 5],
-    active: u8,
-    enable: bool,
-    count: u8,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct Mouse182Profile {
-    guid: String,
-    name: String,
-    dpi: Dpi,
-    led_power_settings: LedPower,
-    low_power_mode: u8,
-    mappings: Vec<Value>,
-    dpi_stages: Stages,
-    polling_rate_wireless: u32,
-    polling_rate: u32,
-}
-
-impl Default for Mouse182Profile {
-    fn default() -> Self {
-        Self {
-            guid: String::new(),
-            name: String::new(),
-            dpi: Dpi { x: 800, y: 800 },
-            led_power_settings: LedPower {
-                idle_state: 1,
-                idle_value: 60,
-            },
-            low_power_mode: 30,
-            mappings: Vec::new(),
-            dpi_stages: Stages {
-                stages: [400, 800, 1600, 3200, 6400].map(|dpi| Stage {
-                    x: dpi,
-                    y: dpi,
-                    independent: false,
-                    visible: true,
-                }),
-                active: 3,
-                enable: true,
-                count: 5,
-            },
-            polling_rate_wireless: 1000,
-            polling_rate: 1000,
-        }
-    }
-}
-
-#[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SmartTracking {
     is_asymmetric: bool,
@@ -181,7 +109,7 @@ impl Default for Mouse182Device {
 
 /// The fixed profile before the source's computer-name and UUID assignment.
 pub fn default_profile_182() -> Value {
-    serde_json::to_value(Mouse182Profile::default()).expect("typed mouse profile")
+    serde_json::to_value(crate::mouse_current_profile::template_182()).expect("typed mouse profile")
 }
 
 /// The fixed root before adding a profile and selecting its GUID.

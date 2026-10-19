@@ -114,6 +114,9 @@ impl AudioProductWorkspace {
         }
     }
     fn begin_preset_shortcut_capture(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.require_effect_preset_source(cx) {
+            return;
+        }
         if let Some(state) = &mut self.effect_presets {
             if state.capturing {
                 return;

@@ -305,8 +305,8 @@ impl PairingCache {
     }
 }
 
-pub fn local_path() -> std::path::PathBuf {
-    super::store_path().with_file_name("duallink-devices.json")
+pub fn local_path() -> anyhow::Result<std::path::PathBuf> {
+    Ok(super::store_path()?.with_file_name("duallink-devices.json"))
 }
 
 #[cfg(test)]

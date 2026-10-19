@@ -424,7 +424,8 @@ impl AppShell {
                 };
                 let result = cx
                     .background_spawn(async {
-                        chroma_profiles::load_dynamic_lighting(&razer_storage::source_local::path())
+                        razer_storage::source_local::path()
+                            .and_then(|path| chroma_profiles::load_dynamic_lighting(&path))
                             .map_err(|error| format!("{error:#}"))
                     })
                     .await;
@@ -541,7 +542,7 @@ impl AppShell {
                 let committed = change.is_some();
                 let readback = if let Some(change) = change {
                     let update = if existing { chroma_profiles::update_existing } else { chroma_profiles::update };
-                    super::product_chroma::from_snapshot(update(&chroma_profiles::path(), &razer_storage::source_local::path(), change, &guard)?)
+                    super::product_chroma::from_snapshot(update(&chroma_profiles::path()?, &razer_storage::source_local::path()?, change, &guard)?)
                 } else { readback() };
                 let mut runtime_failures = Vec::new();
                 if let Ok(snapshot) = &readback.snapshot && let Some(configuration) = snapshot.configuration() {

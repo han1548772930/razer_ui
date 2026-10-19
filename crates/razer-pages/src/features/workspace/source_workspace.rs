@@ -22,6 +22,8 @@ use serde_json::Value;
 
 #[path = "source_workspace/accessory.rs"]
 mod accessory;
+#[path = "source_workspace/audio_mixer_local_settings.rs"]
+mod audio_mixer_local_settings;
 #[path = "source_workspace/help_camo.rs"]
 mod help_camo;
 #[path = "source_workspace/help_owner.rs"]
@@ -38,6 +40,8 @@ mod hyperflux;
 mod hyperpolling_runtime;
 #[path = "source_workspace/keyboard_linked_profiles.rs"]
 mod keyboard_linked_profiles;
+#[path = "source_workspace/keyboard_local_profiles.rs"]
+mod keyboard_local_profiles;
 #[path = "source_workspace/keyboard_mapping.rs"]
 mod keyboard_mapping;
 #[path = "source_workspace/keyboard_profile_mutations.rs"]
@@ -2097,8 +2101,9 @@ impl SourceProductWorkspace {
     pub fn accept_current_dpi_local_profile(
         &mut self,
         request: &super::mouse_products::MouseCurrentDpiRequested,
+        baseline: &Device,
         serial: Option<&str>,
-        result: Result<Option<razer_storage::host_local_profile::LocalProfile>, String>,
+        result: Result<Option<razer_storage::host_local_profile::LocalProfiles>, String>,
         cx: &mut Context<Self>,
     ) {
         let FamilyBody::Mouse(body) = &self.body else {
@@ -2114,8 +2119,12 @@ impl SourceProductWorkspace {
         let mut changed = false;
         let result = result.and_then(|source| {
             if let Some(source) = source {
-                changed = razer_storage::host_local_profile::import(&mut self.device, &source)
-                    .map_err(|e| format!("{e:#}"))?;
+                changed = razer_storage::host_local_profile::import(
+                    &mut self.device,
+                    baseline,
+                    &source,
+                )
+                .map_err(|e| format!("{e:#}"))?;
             } else {
                 return razer_storage::host_local_profile::stages_without_host(&self.device)
                     .map_err(|e| format!("{e:#}"));
@@ -2835,27 +2844,6 @@ impl SourceProductWorkspace {
         }
     }
     pub fn new(mut device: Device, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        if device.profiles.is_empty() {
-            let initial = mouse_profile_source::default_profile(
-                &device,
-                mouse_profile_source::default_name(),
-            );
-            device.profiles.push(initial.unwrap_or_else(|| Profile {
-                id: "local-default".into(),
-                guid: "local-default".into(),
-                name: "Default".into(),
-                dpi_stages: None,
-                settings: None,
-                source_settings: None,
-            }));
-        }
-        if !device
-            .profiles
-            .iter()
-            .any(|p| p.id == device.active_profile)
-        {
-            device.active_profile = device.profiles[0].id.clone();
-        }
         let registered = product::registered(device.product_id);
         Self::migrate_device_settings(&mut device);
         let page = registered
@@ -3959,7 +3947,6 @@ impl SourceProductWorkspace {
         };
         this.restore_active(window, cx);
         this.select_body_page(window, cx);
-        this.saved = this.device.clone();
         let owner = cx.weak_entity();
         cx.defer(move |cx| {
             let _ = owner.update(cx, |this, cx| this.sync_receiver_profile_initialization(cx));
@@ -4367,21 +4354,13 @@ impl SourceProductWorkspace {
             &mut self.device.source_device_settings,
             &mut value,
         );
-        // Current 1342 middleware stores Effects presets at device scope,
-        // outside profiles. Mirror that local library into every profile's
-        // persisted source snapshot so profile navigation cannot fork it.
-        if self.device.product_id == 1342 {
-            if let Some(presets) = value.get("_audioMixerPresets").cloned() {
-                for profile in &mut self.device.profiles {
-                    let settings = profile
-                        .source_settings
-                        .get_or_insert_with(|| serde_json::json!({}));
-                    if !settings.is_object() {
-                        *settings = serde_json::json!({});
-                    }
-                    settings["_audioMixerPresets"] = presets.clone();
-                }
-            }
+        if let Err(error) = audio_mixer_local_settings::capture(
+            self.device.product_id,
+            &mut self.device.source_device_settings,
+            &mut value,
+        ) {
+            eprintln!("[Audio Mixer local presets] {error:#}");
+            return;
         }
         self.capture_device_settings(&mut value);
         if let Some(p) = self
@@ -4465,9 +4444,6 @@ impl SourceProductWorkspace {
             .find(|p| p.id == self.device.active_profile)
             .and_then(|p| p.source_settings.clone());
         self.seed_keyboard_profile_identity(&mut value);
-        if self.device.product_id == razer_device::hanbo_cooler::PRODUCT_ID && value.is_none() {
-            value = Some(razer_device::hanbo_settings::default_profile_settings());
-        }
         if matches!(self.device.product_id, 182 | 190) {
             let profile = value.get_or_insert_with(|| serde_json::json!({}));
             if let Some(profile) = profile.as_object_mut() {
@@ -4512,20 +4488,20 @@ impl SourceProductWorkspace {
                 );
             }
         }
-        let accessory = self.accessory.as_ref().map(|view| {
+        if let Some(view) = &self.accessory {
             let settings = if accessory::device_layout(self.device.product_id) {
                 self.device.source_device_settings.as_ref()
             } else {
                 value.as_ref()
             };
-            view.restore(settings.and_then(|v| v.get("_accessory")), window, cx)
-        });
+            view.restore(settings.and_then(|v| v.get("_accessory")), window, cx);
+        }
         seiren_local_settings::project(
             self.device.product_id,
             self.device.source_device_settings.as_ref(),
             &mut value,
         );
-        let snapshot = match &self.body {
+        match &self.body {
             FamilyBody::Mouse(e) => {
                 let dpi = (!preserve_current_dpi_observation).then(|| {
                     razer_storage::host_local_profile::known_stages(&self.device)
@@ -4537,30 +4513,24 @@ impl SourceProductWorkspace {
                         v.restore_current_dpi_local_profile(dpi, cx);
                     }
                 });
-                Some(e.read(cx).snapshot())
             }
             FamilyBody::Keyboard(e) => {
                 e.update(cx, |v, cx| v.restore(value.as_ref(), window, cx));
-                Some(e.read(cx).snapshot())
             }
             FamilyBody::Gamepad(e) => {
                 e.update(cx, |v, cx| v.restore(value.as_ref(), window, cx));
-                Some(e.read(cx).snapshot())
             }
             FamilyBody::Controls(e) => {
                 e.update(cx, |v, cx| {
                     v.set_connection(self.device.use_ble, cx);
                     v.restore(value.as_ref(), window, cx);
                 });
-                Some(e.read(cx).snapshot())
             }
             FamilyBody::Audio(e) => {
                 e.update(cx, |v, cx| v.restore(value.as_ref(), window, cx));
-                Some(e.read(cx).snapshot())
             }
             FamilyBody::System(e) => {
                 e.update(cx, |v, cx| v.restore(value.as_ref(), window, cx));
-                Some(e.read(cx).snapshot())
             }
             FamilyBody::AccessorySystem(e) => {
                 let celsius = razer_device::hanbo_settings::temperature_unit(
@@ -4574,15 +4544,13 @@ impl SourceProductWorkspace {
                         Err(error) => eprintln!("[hanbo temperature unit] {error:#}"),
                     }
                 });
-                Some(e.read(cx).snapshot())
             }
             FamilyBody::Hue(e) => {
                 e.update(cx, |v, cx| v.restore(value.as_ref(), window, cx));
-                Some(e.read(cx).snapshot())
             }
-            FamilyBody::Pending => None,
-        };
-        let mut supplement = self.supplement.as_ref().map(|controls| {
+            FamilyBody::Pending => {}
+        }
+        if let Some(controls) = &self.supplement {
             controls.update(cx, |v, cx| {
                 v.set_connection(self.device.use_ble, cx);
                 v.restore(
@@ -4593,36 +4561,6 @@ impl SourceProductWorkspace {
                     cx,
                 )
             });
-            controls.read(cx).snapshot()
-        });
-        if let Some(value) = &mut supplement {
-            self.capture_device_settings(value);
-        }
-        if let Some(mut snapshot) = snapshot {
-            self.capture_device_settings(&mut snapshot);
-            if let Some(supplement) = supplement {
-                snapshot["_supplement"] = supplement;
-            }
-            if let Some(accessory) = accessory {
-                if accessory::device_layout(self.device.product_id) {
-                    self.device
-                        .source_device_settings
-                        .get_or_insert_with(|| serde_json::json!({}))["_accessory"] = accessory;
-                    if let Some(object) = snapshot.as_object_mut() {
-                        object.remove("_accessory");
-                    }
-                } else {
-                    snapshot["_accessory"] = accessory;
-                }
-            }
-            if let Some(p) = self
-                .device
-                .profiles
-                .iter_mut()
-                .find(|p| p.id == self.device.active_profile)
-            {
-                p.source_settings = Some(snapshot);
-            }
         }
         self.sync_keyboard_mapping_profiles(window, cx);
         self.sync_mouse_scroll_profile(cx);
@@ -4762,6 +4700,11 @@ impl SourceProductWorkspace {
                     super::mouse_products::filter_power_persistence(device.product_id, supplement);
                 }
                 seiren_local_settings::migrate_profile(
+                    device.product_id,
+                    &mut device.source_device_settings,
+                    profile,
+                );
+                audio_mixer_local_settings::migrate_profile(
                     device.product_id,
                     &mut device.source_device_settings,
                     profile,

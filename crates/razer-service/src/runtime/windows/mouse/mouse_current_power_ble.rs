@@ -48,7 +48,7 @@ pub(super) fn request(target: &WindowsBleTarget, change: &Change) -> anyhow::Res
         gatt::current_target(target)
     };
     validate()?;
-    let _lock = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+    let _lock = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
     validate()?;
     let mut session = Session {
         connection: Connection::connect_with_retry(target, &validate)?,

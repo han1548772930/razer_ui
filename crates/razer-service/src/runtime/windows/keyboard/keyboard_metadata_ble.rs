@@ -65,7 +65,7 @@ pub(super) fn request(target: &WindowsBleTarget, serial: bool) -> anyhow::Result
         gatt::current_target(target)
     };
     validate()?;
-    let _lock = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+    let _lock = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
     let mut connection = None;
     let mut last_error = None;
     for _ in 0..2 {

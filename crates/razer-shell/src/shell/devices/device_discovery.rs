@@ -356,10 +356,9 @@ impl AppShell {
                         )
                     };
                     let physical = client.request(ServiceRequest::HidDevices);
-                    let connected = match razer_storage::source_local::get(
-                        &razer_storage::source_local::path(),
-                        "connectedDeviceInfo",
-                    ) {
+                    let connected = match razer_storage::source_local::path().and_then(|path| {
+                        razer_storage::source_local::get(&path, "connectedDeviceInfo")
+                    }) {
                         Ok(Some(serde_json::Value::Array(rows))) => rows,
                         Ok(None) => Vec::new(),
                         Ok(Some(_)) => {
@@ -581,6 +580,7 @@ impl AppShell {
         };
         let mut errors = snapshot.errors().to_vec();
         self.device_observations = snapshot.devices().to_vec();
+        self.retain_keyboard_local_profile_connections(cx);
         errors.extend(self.apply_device_observations(
             snapshot.devices(),
             &retained,
@@ -845,6 +845,7 @@ impl AppShell {
             }
         };
         let mut identity_publications = Vec::new();
+        let mut keyboard_local_profiles = Vec::new();
         for observed in snapshot.devices() {
             let matches = self
                 .devices
@@ -860,6 +861,9 @@ impl AppShell {
             let scope = scopes.remove(&workspace.read(cx).identity(cx));
             let values = observed.read_values().cloned();
             workspace.update(cx, |workspace, cx| {
+                if let Some(serial) = observed.keyboard_serial() {
+                    workspace.observe_keyboard_serial(serial, cx);
+                }
                 workspace.observe_keyboard_metadata(observed.keyboard_metadata().cloned(), cx);
                 workspace.observe_read_values(values.clone(), cx);
                 if let Some(read) = scope.and_then(|scope| scope.idle) {
@@ -910,7 +914,11 @@ impl AppShell {
                     );
                 }
             }
+            if observed.keyboard_serial().is_some() {
+                keyboard_local_profiles.push(((*workspace).clone(), observed.clone()));
+            }
         }
+        self.read_keyboard_local_profiles(keyboard_local_profiles, window, cx);
         // A partial snapshot can omit a requested device completely. Complete
         // its GET as unobserved so the retained page can retry a later scan.
         for workspace in &self.devices {
@@ -931,7 +939,13 @@ impl AppShell {
                     previous.await;
                 }
                 cx.background_spawn(async move {
-                    let path = razer_storage::source_local::path();
+                    let path = match razer_storage::source_local::path() {
+                        Ok(path) => path,
+                        Err(error) => {
+                            log::warn!("[keyboard identity cache] configuration path failed: {error:#}");
+                            return;
+                        }
+                    };
                     for (policy, record) in identity_publications {
                         let policy = match policy {
                             "replace_product" => {

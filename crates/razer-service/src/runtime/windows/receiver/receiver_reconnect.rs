@@ -194,7 +194,7 @@ impl Adapter for WindowsAdapter {
     }
     fn open_and_send(&mut self, target: &Value, report: &[u8]) -> anyhow::Result<()> {
         self.check_owner()?;
-        let _lock = receiver::ReceiverLock::acquire(&self.container)?;
+        let _lock = receiver::ReceiverLock::acquire(&self.container, &|| self.check_owner())?;
         let path = target["path"].as_str().context("重连接口缺少实际路径")?;
         let snapshot =
             hid::enumerate_for_product(self.cap.transport.vendor_id, self.cap.product_id)?;

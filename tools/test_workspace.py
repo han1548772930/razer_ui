@@ -264,6 +264,72 @@ class ArchitectureBoundaryTests(unittest.TestCase):
     def inspect(self, source, owner):
         return workspace.inspect_architecture_source(source.encode(), owner=owner, rust_parser=self.rust_parser)
 
+    def test_workspace_constructors_preserve_missing_profiles_and_selection(self):
+        owners = (
+            'crates/razer-pages/src/features/workspace/workspace.rs',
+            'crates/razer-pages/src/features/workspace/source_workspace.rs',
+            'crates/razer-model/src/product_preview.rs',
+        )
+        for owner in owners:
+            for name in ('new', 'new_loaded', 'registered_preview', 'mouse_mat_preview'):
+                for body, kind in (
+                    ('device.profiles.push(Profile { id, guid, name });', 'workspace_constructor_creates_profile_collection'),
+                    ('if device.profiles.is_empty() { device.profiles.extend(defaults); }', 'workspace_constructor_creates_profile_collection'),
+                    ('device.active_profile = device.profiles[0].id.clone();', 'workspace_constructor_selects_unobserved_profile'),
+                    ('this.saved = this.device.clone();', 'workspace_restore_or_constructor_persists_reducer_state'),
+                ):
+                    with self.subTest(owner=owner, name=name, body=body):
+                        source = 'fn ' + name + '() { ' + body + ' }'
+                        self.assertIn(kind, [row['kind'] for row in self.inspect(source, owner)])
+                        self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + source + ' }', owner))
+            self.assertFalse(self.inspect('fn explicit_add() { device.profiles.push(profile); device.active_profile = id; }', owner))
+            self.assertFalse(self.inspect('fn new() { let device = Device { profiles: Vec::new(), active_profile: String::new() }; }', owner))
+        self.assertFalse(self.inspect('fn new() { cache.profiles.push(row); }', 'crates/razer-storage/src/unrelated.rs'))
+
+    def test_workspace_restore_cannot_store_reducer_defaults(self):
+        owners = (
+            'crates/razer-pages/src/features/workspace/workspace.rs',
+            'crates/razer-pages/src/features/workspace/source_workspace.rs',
+        )
+        for owner in owners:
+            for name in ('restore_active', 'restore_active_with_dpi_observation', 'restore_from_device'):
+                for body in ('profile.source_settings = Some(body.snapshot());',
+                             'self.device.source_device_settings = Some(body.device_snapshot());',
+                             'self.saved = self.device.clone();'):
+                    with self.subTest(owner=owner, name=name, body=body):
+                        self.assertIn('workspace_restore_or_constructor_persists_reducer_state',
+                                      [row['kind'] for row in self.inspect('fn ' + name + '() { ' + body + ' }', owner)])
+            self.assertFalse(self.inspect('fn restore_active() { body.restore(input); self.reducer = observed; }', owner))
+            self.assertFalse(self.inspect('fn accept_saved() { self.saved = snapshot; }', owner))
+            self.assertFalse(workspace.inspect_architecture_source((workspace.ROOT / owner).read_bytes(),
+                             owner=owner, rust_parser=self.rust_parser))
+
+    def test_configuration_paths_keep_resolution_errors_and_one_owner(self):
+        owner = 'crates/razer-storage/src/paths.rs'
+        for body in (
+            'std::env::var("APPDATA").unwrap_or_else(|_| ".".into())',
+            'std::env::var_os("APPDATA").unwrap_or_default()',
+            'directory().or_else(|_| Ok(PathBuf::from(".")))',
+            'directory().expect("config")',
+        ):
+            source = 'fn configuration_directory() { let path = ' + body + '; }'
+            with self.subTest(body=body):
+                self.assertIn('configuration_path_replaces_a_resolution_failure',
+                              [row['kind'] for row in self.inspect(source, owner)])
+                self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + source + ' }', owner))
+        source = 'use std::env as location; fn configuration_directory() { location::current_dir(); }'
+        self.assertIn('configuration_path_uses_working_directory',
+                      [row['kind'] for row in self.inspect(source, owner)])
+        for consumer in ('crates/razer-shell/src/shell.rs', 'crates/razer-platform/src/camera/camera_preview.rs',
+                         'crates/razer-storage/src/lib.rs'):
+            self.assertIn('configuration_path_has_a_second_owner',
+                          [row['kind'] for row in self.inspect('fn store_path() {}', consumer)])
+            self.assertFalse(self.inspect('fn save() { let path = razer_storage::store_path()?; }', consumer))
+        self.assertFalse(self.inspect('fn restore() { directory().unwrap_or_default(); }',
+                                      'crates/razer-storage/src/unrelated.rs'))
+        self.assertFalse(workspace.inspect_architecture_source((workspace.ROOT / owner).read_bytes(),
+                         owner=owner, rust_parser=self.rust_parser))
+
     def test_independent_help_report_cannot_reintroduce_vendor_loading(self):
         for owner in ("crates/razer-service/src/native/help_system_info.rs",
                       "crates/razer-service/src/native/help_system_info/windows.rs"):
@@ -2661,6 +2727,11 @@ class NativeDispatchEvidenceTests(unittest.TestCase):
 
 
 class ConnectedDeviceVerificationTests(unittest.TestCase):
+    def setUp(self):
+        scope = mock.patch.object(workspace, 'rust_test_scope', return_value={'targets': [], 'window_tests_selected': 0})
+        scope.start()
+        self.addCleanup(scope.stop)
+
     def test_native_comparison_uses_correlated_terminal_response_after_busy_reads(self):
         outgoing = [0] * 91
         outgoing[2], outgoing[7:9] = 7, [4, 133]
@@ -2899,7 +2970,125 @@ class LocalRuntimeReceiptTests(unittest.TestCase):
             publish.assert_not_called()
 
 
+class RustTestScopeTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        root = mock.patch.object(workspace, 'ROOT', self.root)
+        root.start()
+        self.addCleanup(root.stop)
+
+    def crate(self, library, files=None, package='fixture'):
+        root = self.root / 'crates' / package
+        root.mkdir(parents=True)
+        (root / 'Cargo.toml').write_text('[package]\nname = "' + package + '"\nversion = "0.0.0"\n', encoding='utf-8')
+        for path, text in {'src/lib.rs': library, **(files or {})}.items():
+            target = root / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(text, encoding='utf-8')
+
+    def scope(self, *arguments, package='fixture', inventories=None):
+        return workspace.rust_test_scope(['cargo', 'test', '--locked', '-p', package, *arguments],
+                                         {} if inventories is None else inventories)
+
+    def test_broad_scroll_filter_rejects_windows_and_module_filter_keeps_both_pure_tests(self):
+        self.crate('''
+mod scroll_wheel { mod tests {
+    #[test] fn mouse_scroll_readback() {}
+    #[test] fn mouse_scroll_missing_readback() {}
+}}
+mod mapping { mod tests {
+    #[gpui_kit::test] fn mouse_scroll_controls(cx: &mut TestAppContext) { cx.open_window(); }
+}}
+''')
+        with self.assertRaisesRegex(ValueError, 'mapping::tests::mouse_scroll_controls'):
+            self.scope('--lib', 'mouse_scroll_')
+        scope = self.scope('--lib', 'scroll_wheel::tests::mouse_scroll_')
+        self.assertEqual(scope['targets'][0]['selected_tests'], [
+            'scroll_wheel::tests::mouse_scroll_readback', 'scroll_wheel::tests::mouse_scroll_missing_readback'])
+
+    def test_inline_path_modules_and_imported_helpers_preserve_the_real_owner(self):
+        self.crate('''
+#[path = "support.rs"] mod helper;
+mod nested {
+    use crate::helper::open as present;
+    #[path = "case.rs"] mod renamed;
+    #[gpui_kit::test] fn window(cx: &mut TestAppContext) { present(cx); }
+}
+''', {'src/support.rs': 'pub fn open(cx: &mut TestAppContext) { cx.open_window(); }',
+      'src/nested/case.rs': '#[test] fn pure() {}'})
+        with self.assertRaisesRegex(ValueError, 'nested::window'):
+            self.scope('--lib', 'nested::window')
+        scope = self.scope('--lib', 'nested::renamed::pure')
+        self.assertEqual(scope['targets'][0]['selected_tests'], ['nested::renamed::pure'])
+
+    def test_indirect_local_method_window_dependency_is_rejected(self):
+        self.crate('''
+struct Owner;
+impl Owner { fn present(&self, cx: &mut TestAppContext) { cx.add_window(); } }
+fn helper(cx: &mut TestAppContext) { Owner.present(cx); }
+#[gpui_kit::test] fn uses_helper(cx: &mut TestAppContext) { helper(cx); }
+''')
+        with self.assertRaisesRegex(ValueError, 'uses_helper'):
+            self.scope('--lib')
+
+    def test_entity_only_gpui_tests_and_window_words_in_text_are_allowed(self):
+        self.crate('''
+#[gpui_kit::test] fn entity_only(cx: &mut TestAppContext) {
+    // cx.open_window() is documentation, not a call.
+    let text = "cx.add_window()";
+    cx.new(|_| State::new());
+}
+#[test] fn literal_only() { let text = "new_window()"; }
+''')
+        scope = self.scope('--lib')
+        self.assertEqual(scope['targets'][0]['selected_tests'], ['entity_only', 'literal_only'])
+        self.assertEqual(scope['window_tests_selected'], 0)
+
+    def test_ignored_tests_and_explicit_skip_follow_test_harness_selection(self):
+        self.crate('''
+#[test] fn pure() {}
+#[test] fn window() { cx.open_window(); }
+#[test] #[ignore] fn ignored_window() { cx.open_window(); }
+''')
+        scope = self.scope('--lib', '--', '--skip', 'window')
+        self.assertEqual(scope['targets'][0]['selected_tests'], ['pure'])
+        scope = self.scope('--lib', 'pure', '--', '--exact')
+        self.assertEqual(scope['targets'][0]['selected_tests'], ['pure'])
+        with self.assertRaisesRegex(ValueError, 'nonignored'):
+            self.scope('--lib', '--', '--ignored')
+
+    def test_multi_package_command_checks_every_package(self):
+        self.crate('#[test] fn packaged_catalog_pure() {}', package='first')
+        self.crate('#[test] fn packaged_catalog_window() { cx.open_window(); }', package='second')
+        with self.assertRaisesRegex(ValueError, 'second::packaged_catalog_window'):
+            self.scope('-p', 'second', '--lib', 'packaged_catalog_', package='first')
+
+    def test_named_integration_filter_does_not_select_ignored_device_operations(self):
+        self.crate('', {'tests/connected.rs': '''
+#[test] fn connected_result_validation() {}
+#[test] #[ignore] fn connected_device_queries() { cx.open_window(); }
+'''})
+        scope = self.scope('--test', 'connected', 'connected_result_validation')
+        self.assertEqual(scope['targets'][0]['target'], 'connected')
+        self.assertEqual(scope['targets'][0]['selected_tests'], ['connected_result_validation'])
+
+    def test_preflight_rejects_windows_before_any_compile_or_test_command_executes(self):
+        self.crate('#[test] fn window() { cx.open_window(); }', package='razer-model')
+        with mock.patch.object(workspace, 'rust_inputs', return_value=[]), \
+                mock.patch.object(workspace.subprocess, 'run') as runner:
+            with self.assertRaisesRegex(ValueError, 'prohibited window'):
+                workspace.validate_rust(selected_suites=['workspace', 'model'])
+        runner.assert_not_called()
+
+
 class RustValidationBoundaryTests(unittest.TestCase):
+    def setUp(self):
+        scope = mock.patch.object(workspace, 'rust_test_scope', return_value={'targets': [], 'window_tests_selected': 0})
+        scope.start()
+        self.addCleanup(scope.stop)
+
     def test_assets_suite_excludes_window_tests_and_records_the_scope(self):
         def completed(command, **kwargs):
             kwargs["stdout"].write(b"test result: ok. 8 passed; 0 failed; 0 ignored\n")

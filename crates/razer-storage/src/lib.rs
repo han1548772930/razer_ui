@@ -13,6 +13,7 @@ pub mod file_transfer;
 pub mod game_catalog;
 #[path = "host.rs"]
 pub mod host;
+pub mod host_keyboard_profiles;
 pub mod host_local_profile;
 #[path = "receiver/hyperpolling_profile.rs"]
 pub mod hyperpolling_profile;
@@ -25,6 +26,8 @@ pub mod linked_profiles;
 #[path = "macro_recorder.rs"]
 pub mod macro_recorder;
 pub mod macro_transfer;
+mod paths;
+pub use paths::{configuration_directory, panic_log_path, runtime_log_path, store_path};
 #[path = "profile_notification.rs"]
 pub mod profile_notification;
 pub mod profile_transfer;
@@ -173,24 +176,5 @@ pub fn write_document<T: serde::Serialize>(
     temporary.install(path)?;
     Ok(())
 }
-// Kept for the existing explicit CLI self-test.
-
-pub fn store_path() -> std::path::PathBuf {
-    std::env::var_os("APPDATA")
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join("razer_ui")
-        .join("profiles.json")
-}
-
-/// Local diagnostics share the user configuration directory, not the installation cache.
-pub fn runtime_log_path() -> std::path::PathBuf {
-    store_path().with_file_name("runtime.log")
-}
-
-pub fn panic_log_path() -> std::path::PathBuf {
-    store_path().with_file_name("panic.log")
-}
-
 pub mod user_app_files;
 pub mod workspace;

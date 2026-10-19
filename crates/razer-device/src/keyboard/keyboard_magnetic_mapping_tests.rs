@@ -145,14 +145,22 @@ fn magnetic_obm_keyboard_remap_restores_default_before_current_nkro_assignment()
 #[test]
 fn magnetic_engine_compiles_both_products_with_retained_turbo_identifiers() {
     for product in [740, 746] {
-        let profiles = vec![json!({"guid":"11223344-5566-7788-99aa-bbccddeeff12","mappings":[]})];
+        let mut profile = default_profile(product).unwrap();
+        profile["guid"] = json!("11223344-5566-7788-99aa-bbccddeeff12");
+        profile["name"] = json!("Local");
+        let profiles = vec![profile];
+        let settings = serde_json::to_value(
+            crate::keyboard_current_profile::high_speed::initial_device_settings(),
+        )
+        .unwrap();
         let ids = || (0..256).map(|index| format!("11223344-5566-4788-99aa-{index:012x}"));
-        let initial = prepare_document(
+        let initial = prepare_document_with_device_settings(
             product,
             &profiles,
             "11223344-5566-7788-99aa-bbccddeeff12",
             1,
             None,
+            Some(&settings),
             ids(),
         )
         .unwrap();

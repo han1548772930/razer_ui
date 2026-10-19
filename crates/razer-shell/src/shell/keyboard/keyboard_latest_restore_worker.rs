@@ -73,7 +73,7 @@ fn retain_collection(
 
 fn cache_collection(profiles: &ProfileCollection, valid: &AtomicBool) -> anyhow::Result<()> {
     ensure!(valid.load(Ordering::Acquire), "键盘配置集合会话已结束");
-    source_local::update(&source_local::path(), "synapse_756", |stored| {
+    source_local::update(&source_local::path()?, "synapse_756", |stored| {
         ensure!(valid.load(Ordering::Acquire), "键盘配置集合会话已结束");
         let Some(mut document) = stored else {
             return Ok(None);
@@ -95,7 +95,7 @@ fn cache(
 ) -> anyhow::Result<()> {
     generation.check()?;
     let document = collection_document(document, collection)?;
-    source_local::update(&source_local::path(), "synapse_756", |_| {
+    source_local::update(&source_local::path()?, "synapse_756", |_| {
         generation.check()?;
         Ok(Some(document.clone()))
     })?;
@@ -109,7 +109,7 @@ fn cache_compiled(
 ) -> anyhow::Result<bool> {
     generation.check()?;
     let document = collection_document(document, collection)?;
-    let saved = source_local::update(&source_local::path(), "synapse_756", |stored| {
+    let saved = source_local::update(&source_local::path()?, "synapse_756", |stored| {
         generation.check()?;
         if stored.as_ref().is_none_or(|stored| {
             stored["activeProfile"] != expected["activeProfile"]
@@ -138,7 +138,7 @@ fn observe_power_change(
         .collect::<anyhow::Result<Vec<_>>>()?;
     generation.check()?;
     let mut candidate = None;
-    source_local::update(&source_local::path(), "synapse_756", |stored| {
+    source_local::update(&source_local::path()?, "synapse_756", |stored| {
         generation.check()?;
         // A queued local edit keeps ownership until it has reached this
         // worker. Retain the event and read again after that edit completes.
@@ -603,7 +603,7 @@ pub(super) fn run(
             let slots_key = format!("keyboard756-onboard-slots:{serial}");
             let mut onboard_profiles = Vec::new();
             let mut slots = if target.ble() {
-                source_local::get(&source_local::path(), &slots_key)?
+                source_local::get(&source_local::path()?, &slots_key)?
                     .map(serde_json::from_value::<Vec<Slot>>)
                     .transpose()?
                     .unwrap_or_default()
@@ -620,7 +620,7 @@ pub(super) fn run(
                             .map(|(slot, bytes)| protocol::profile_metadata(slot.slot_id, bytes))
                             .collect::<anyhow::Result<Vec<_>>>()?;
                         source_local::set(
-                            &source_local::path(),
+                            &source_local::path()?,
                             &slots_key,
                             &serde_json::to_value(&slots)?,
                         )?;
@@ -639,7 +639,7 @@ pub(super) fn run(
             let journal = if target.ble() {
                 None
             } else {
-                Some(Journal::new(&source_local::path(), 756, &serial)?)
+                Some(Journal::new(&source_local::path()?, 756, &serial)?)
             };
             let mut ble = BleProfiles::default();
             let mut ble_initialized = false;

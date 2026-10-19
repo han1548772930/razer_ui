@@ -157,12 +157,12 @@ impl<'a, R, H, P> Report<'a, R, H, P> {
     }
 }
 
-pub fn path() -> PathBuf {
-    crate::store_path().with_file_name("discovery-latest.json")
+pub fn path() -> anyhow::Result<PathBuf> {
+    Ok(crate::store_path()?.with_file_name("discovery-latest.json"))
 }
 
 pub fn write(report: &impl Serialize, operation: &Operation) -> Result<PathBuf, String> {
-    let path = path();
+    let path = path().map_err(|error| format!("{error:#}"))?;
     write_at(&path, report, operation)?;
     Ok(path)
 }

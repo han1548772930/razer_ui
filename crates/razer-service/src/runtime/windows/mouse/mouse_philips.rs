@@ -29,7 +29,19 @@ impl MeasurementConnection {
             before["feature_report_bytes"] == cap.report_bytes,
             "Philips Feature length differs"
         );
-        let lock = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+        let started = Instant::now();
+        let validate = || {
+            ensure!(
+                started.elapsed() < Duration::from_secs(20),
+                "Philips measurement initialization deadline exceeded"
+            );
+            ensure!(
+                current_target(target, cap)?["device_instance_id"] == before["device_instance_id"],
+                "Philips measurement device instance changed"
+            );
+            Ok(())
+        };
+        let lock = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
         let connection = Self {
             target: target.clone(),
             instance: before["device_instance_id"]
@@ -43,7 +55,10 @@ impl MeasurementConnection {
             &connection.device,
             cap,
             &mut || transaction(target, cap),
-            &|| connection.validate(),
+            &|| {
+                validate()?;
+                connection.validate()
+            },
         )
         .err()
         .map(|error| format!("{error:#}"));
@@ -111,7 +126,7 @@ pub(super) fn request(
         Ok(())
     };
     validate()?;
-    let _lock = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+    let _lock = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
     validate()?;
     ensure!(
         before["feature_report_bytes"] == cap.report_bytes,

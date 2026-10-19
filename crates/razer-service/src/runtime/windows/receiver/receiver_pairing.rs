@@ -245,7 +245,6 @@ fn execute(
     let cap = for_source(query_cap.product_id, category, source_product_id)?;
     let query_cap =
         razer_device::receiver_capabilities::for_source(query_cap.product_id, source_product_id)?;
-    let _receiver_lock = receiver::ReceiverLock::acquire(container)?;
     let identity = || {
         let (current, current_cap) = receiver::select_target(
             &hid::enumerate_collection(query_cap.vendor_id, query_cap.product_id, path)?,
@@ -264,6 +263,7 @@ fn execute(
         ensure!(started.elapsed() < OPERATION_BUDGET, "配对操作等待超时");
         identity()
     };
+    let _receiver_lock = receiver::ReceiverLock::acquire(container, &validate)?;
     validate()?;
     let feature_bytes = before["feature_report_bytes"]
         .as_u64()
@@ -360,7 +360,7 @@ fn execute(
                                 &rows,
                                 || {
                                     razer_storage::source_local::get_raw(
-                                        &razer_storage::source_local::path(),
+                                        &razer_storage::source_local::path()?,
                                         "connectedDeviceInfo",
                                     )
                                 },

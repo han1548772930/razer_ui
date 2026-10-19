@@ -51,6 +51,7 @@ pub(super) enum ProductSave {
     ReceiverProfile(receiver_reset::local::LocalSave),
     Hyperpolling(hyperpolling_runtime::LocalSave),
     SourceProfileImport(profile_transfer::ImportSave),
+    KeyboardLocalProfiles(keyboard_local_profiles::LocalSave),
 }
 impl ProductSave {
     fn owner(&self) -> (&str, WeakEntity<ProductWorkspace>) {
@@ -80,6 +81,7 @@ impl ProductSave {
             Self::ReceiverProfile(save) => save.owner(),
             Self::Hyperpolling(save) => save.owner(),
             Self::SourceProfileImport(save) => save.owner(),
+            Self::KeyboardLocalProfiles(save) => save.owner(),
         }
     }
 }
@@ -222,6 +224,14 @@ impl AppShell {
         cx: &App,
     ) -> PreparedSave {
         let device_draft = match &product {
+            Some(ProductSave::KeyboardLocalProfiles(local)) => {
+                let baseline = self.devices.iter().map(|owner| owner.read(cx).saved_snapshot(cx)).collect::<Vec<_>>();
+                let mut proposed = baseline.clone();
+                if let Some(target) = proposed.iter_mut().find(|device| device.workspace_identity() == local.owner().0) {
+                    *target = local.snapshot().clone();
+                }
+                Some(store::DeviceSaveDraft::new(baseline, proposed))
+            }
             None => Some(store::DeviceSaveDraft::new(
                 self.devices
                     .iter()
@@ -319,6 +329,7 @@ impl AppShell {
             return;
         };
         match product {
+            ProductSave::KeyboardLocalProfiles(_) => {}
             ProductSave::SourceProfileImport(save) => {
                 self.finish_source_profile_import(save, succeeded, window, cx)
             }

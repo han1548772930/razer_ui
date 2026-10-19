@@ -198,7 +198,19 @@ fn device_settings_reach_compiler_and_global_only_edits_keep_version() {
     profile["guid"] = json!("p");
     profile["name"] = json!("Local");
     let guids = || (0..512).map(|id| format!("00000000-0000-4000-8000-{id:012}"));
-    let old = prepare_document(&[profile.clone()], "p", 0, None, guids()).unwrap();
+    let mut settings = serde_json::to_value(
+        crate::keyboard_current_profile::high_speed::initial_latest_device_settings(),
+    )
+    .unwrap();
+    let old = prepare_document_with_device_settings(
+        &[profile.clone()],
+        "p",
+        0,
+        None,
+        Some(&settings),
+        guids(),
+    )
+    .unwrap();
     let old_profile = old["profiles"]
         .as_array()
         .unwrap()
@@ -207,12 +219,13 @@ fn device_settings_reach_compiler_and_global_only_edits_keep_version() {
         .unwrap();
     let mut updated = old_profile.clone();
     updated["gamingMode"]["state"] = json!(1);
+    settings["gameModeEnabled"] = json!(true);
     let document = prepare_document_with_device_settings(
         &[updated.clone()],
         "p",
         0,
         Some(&old),
-        Some(&json!({"gameModeEnabled":true})),
+        Some(&settings),
         guids(),
     )
     .unwrap();
@@ -222,7 +235,8 @@ fn device_settings_reach_compiler_and_global_only_edits_keep_version() {
         features::profile(&document).unwrap()["appEngine"]["gamemode"],
         true
     );
-    let settings = json!({"gameModeEnabled":true,"dimLighting":{"isEnabled":false,"value":3},"powerSaving":{"isEnabled":true,"value":10}});
+    settings["dimLighting"] = json!({"isEnabled":false,"value":3});
+    settings["powerSaving"] = json!({"isEnabled":true,"value":10});
     let changed = prepare_document_with_device_settings(
         &[updated],
         "p",

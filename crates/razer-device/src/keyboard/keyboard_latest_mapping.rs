@@ -526,9 +526,8 @@ pub fn source_context(
     context
 }
 
-/// Current main26061 local defaults followed by So/default-engine preparation.
-/// Local settings survive recompilation; transport identity is supplied by the
-/// retained connection owner rather than inferred from a profile.
+/// Compile complete source profiles with explicitly supplied device settings.
+/// Transport identity belongs to the retained connection owner.
 pub fn prepare_document(
     profiles: &[Value],
     active_profile: &str,
@@ -554,20 +553,15 @@ pub fn prepare_document_with_device_settings(
     device_settings: Option<&Value>,
     fresh_guids: impl IntoIterator<Item = String>,
 ) -> anyhow::Result<Value> {
+    let device_settings = device_settings
+        .or(previous)
+        .context("756 source device settings are absent")?;
+    crate::keyboard_current_profile::high_speed::decode_latest_device_settings(device_settings)?;
     let normalized = profiles
         .iter()
         .map(|profile| -> anyhow::Result<Value> {
-            let mut value = default_profile();
-            value.as_object_mut().unwrap().extend(
-                profile
-                    .as_object()
-                    .context("756 local profile is not an object")?
-                    .clone(),
-            );
-            ensure!(
-                value["guid"].as_str().is_some_and(|guid| !guid.is_empty()),
-                "756 local profile GUID is absent"
-            );
+            crate::keyboard_current_profile::high_speed::decode_profile_for_product(756, profile)?;
+            let mut value = profile.clone();
             if let Some(engine) = previous
                 .and_then(|document| document["profiles"].as_array())
                 .and_then(|profiles| profiles.iter().find(|old| old["guid"] == value["guid"]))
@@ -578,17 +572,12 @@ pub fn prepare_document_with_device_settings(
             Ok(value)
         })
         .collect::<anyhow::Result<Vec<_>>>()?;
-    let mut document=previous.cloned().unwrap_or_else(||json!({
-        "version":1,"vendorId":5426,"productId":756,"category":"KEYBOARD",
-        "analogData":{"defaultMakeActuation":19656,"defaultBreakActuation":1638},
-        "turnOffAnalogToKey":true,"gameModeEnabled":false,
-        "reportIDs":{"11":"analogKeyboardV2ReportID","4":"razerKeyReportID"},
-        "dimLighting":{"enabled":true,"value":5},"powerSaving":{"enabled":true,"value":15},"lowPowerMode":"Disable"
-    }));
-    for &field in features::DEVICE_FIELDS {
-        if let Some(value) = device_settings.and_then(|settings| settings.get(field)) {
-            document[field] = value.clone();
-        }
+    let mut document = previous.cloned().unwrap_or_else(|| json!({}));
+    for &field in crate::keyboard_current_profile::high_speed::LatestDeviceSettings::FIELDS {
+        document[field] = device_settings
+            .get(field)
+            .with_context(|| format!("756 source device field {field} is absent"))?
+            .clone();
     }
     document["version"] = json!(next_source_version(
         previous.and_then(|document| document["version"].as_u64())
@@ -626,7 +615,7 @@ pub fn prepare_document_with_device_settings(
         if unchanged_profiles
             && previous["activeProfile"] == document["activeProfile"]
             && previous["_source_layout_id"] == document["_source_layout_id"]
-            && features::DEVICE_FIELDS
+            && crate::keyboard_current_profile::high_speed::LatestDeviceSettings::FIELDS
                 .iter()
                 .filter(|&&field| field != "gameModeEnabled")
                 .all(|&field| previous[field] == document[field])
@@ -739,6 +728,7 @@ fn compile_with_caps(
         document["productId"] == 756,
         "756 compiler document product differs"
     );
+    crate::keyboard_current_profile::high_speed::decode_latest_device_settings(document)?;
     let layout = document["_source_layout_id"]
         .as_u64()
         .context("756 keyboard layout is absent")?;
@@ -781,6 +771,7 @@ fn compile_with_caps(
     );
     let mut guids = BTreeSet::new();
     for profile in profiles.iter_mut() {
+        crate::keyboard_current_profile::high_speed::decode_profile_for_product(756, profile)?;
         ensure!(
             guids.insert(
                 profile["guid"]

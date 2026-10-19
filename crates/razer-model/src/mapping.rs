@@ -50,21 +50,25 @@ pub fn prepare_document(
             settings,
             fresh_guids,
         )?,
-        679 => razer_device::keyboard_current_mapping::prepare_document(
+        679 => razer_device::keyboard_current_mapping::prepare_document_with_device_settings(
             &profiles,
             &active.guid,
             device.layout_id,
             previous,
+            settings,
             fresh_guids,
         )?,
-        740 | 746 => razer_device::keyboard_magnetic_mapping::prepare_document(
-            device.product_id,
-            &profiles,
-            &active.guid,
-            device.layout_id,
-            previous,
-            fresh_guids,
-        )?,
+        740 | 746 => {
+            razer_device::keyboard_magnetic_mapping::prepare_document_with_device_settings(
+                device.product_id,
+                &profiles,
+                &active.guid,
+                device.layout_id,
+                previous,
+                settings,
+                fresh_guids,
+            )?
+        }
         756 => razer_device::keyboard_latest_mapping::prepare_document_with_device_settings(
             &profiles,
             &active.guid,
@@ -327,13 +331,43 @@ pub fn normalized_website(target: &str) -> Option<String> {
 mod saved_revision_tests {
     use super::*;
 
+    fn initialized_source(product: u32) -> crate::model::Device {
+        use razer_device::keyboard_current_profile as keyboard;
+        let mut source = crate::test_devices::with_profile(product);
+        let profile = match product {
+            515 => razer_device::keyboard_legacy_mapping::default_profile(),
+            679 => {
+                source.source_device_settings =
+                    Some(serde_json::to_value(keyboard::initial_device_settings()).unwrap());
+                serde_json::to_value(keyboard::initial_profile()).unwrap()
+            }
+            740 | 746 => {
+                source.source_device_settings = Some(
+                    serde_json::to_value(keyboard::high_speed::initial_device_settings()).unwrap(),
+                );
+                razer_device::keyboard_magnetic_mapping::default_profile(product).unwrap()
+            }
+            756 => {
+                source.source_device_settings = Some(
+                    serde_json::to_value(keyboard::high_speed::initial_latest_device_settings())
+                        .unwrap(),
+                );
+                razer_device::keyboard_latest_mapping::default_profile()
+            }
+            70 => serde_json::json!({"mappings":[]}),
+            158 => serde_json::json!({"mappings":[]}),
+            _ => panic!("Missing audited source fixture for PID{product}"),
+        };
+        source.profiles[0].source_settings = Some(profile);
+        source
+    }
+
     #[test]
     fn software_mapping_compiler_routes_all_audited_products_without_mutating_source() {
         for product in razer_device::mapping_document::MappingProduct::ALL {
-            let mut source =
-                crate::product_preview::registered_preview(product.product_id()).unwrap();
-            source.profiles[0].source_settings =
-                Some(serde_json::json!({"mappings":[],"retainedExtension":{"sample":73}}));
+            let mut source = initialized_source(product.product_id());
+            source.profiles[0].source_settings.as_mut().unwrap()["retainedExtension"] =
+                serde_json::json!({"sample":73});
             let before = source.clone();
             let document = prepare_document(
                 &source,
@@ -362,16 +396,44 @@ mod saved_revision_tests {
 
     #[test]
     fn software_mapping_compiler_rejects_missing_source_without_manufacturing_defaults() {
-        let mut source = crate::product_preview::registered_preview(158).unwrap();
+        let mut source = crate::test_devices::with_profile(158);
         assert!(prepare_document(&source, &Default::default(), []).is_err());
         source.profiles[0].source_settings = Some(serde_json::json!({"mappings":[]}));
         source.active_profile = "missing-profile".into();
         assert!(prepare_document(&source, &Default::default(), []).is_err());
     }
 
+    #[test]
+    fn keyboard_compiler_rejects_partial_profiles_and_absent_device_metadata() {
+        for product in [515, 679, 740, 746, 756] {
+            let source = initialized_source(product);
+            for field in ["mappings", "brightness", "gamingMode", "snapTap"] {
+                let mut incomplete = source.clone();
+                incomplete.profiles[0]
+                    .source_settings
+                    .as_mut()
+                    .unwrap()
+                    .as_object_mut()
+                    .unwrap()
+                    .remove(field);
+                assert!(
+                    prepare_document(&incomplete, &Default::default(), []).is_err(),
+                    "PID{product} {field}"
+                );
+            }
+            if product != 515 {
+                let mut missing = source;
+                missing.source_device_settings = None;
+                assert!(
+                    prepare_document(&missing, &Default::default(), []).is_err(),
+                    "PID{product}"
+                );
+            }
+        }
+    }
+
     fn device() -> crate::model::Device {
-        let mut device = crate::product_preview::registered_preview(70).unwrap();
-        device.fill_defaults();
+        let mut device = crate::test_devices::with_profile(70);
         let mut second = device.profiles[0].clone();
         second.id = "second-profile".into();
         second.guid = "second-profile".into();
@@ -418,7 +480,6 @@ mod saved_revision_tests {
     #[test]
     fn root_device_edits_invalidate_an_older_mapping_even_when_profiles_are_equal() {
         let mut saved = crate::product_preview::registered_preview(756).unwrap();
-        saved.fill_defaults();
         saved.source_device_settings = Some(serde_json::json!({"dimLighting": 15}));
         let mut current = saved.clone();
         current.source_device_settings.as_mut().unwrap()["dimLighting"] = 30.into();

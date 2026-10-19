@@ -93,7 +93,7 @@ impl MixerOwner {
             .is_some_and(|name| !name.is_empty() && name != self.view_name)
     }
     fn load(&self) -> anyhow::Result<Value> {
-        let path = razer_storage::source_local::path();
+        let path = razer_storage::source_local::path()?;
         let guid = uuid::Uuid::new_v4().to_string();
         let mut snapshot = None;
         razer_storage::source_local::update(&path, mixer::STORAGE_KEY, |old| {
@@ -104,7 +104,7 @@ impl MixerOwner {
         snapshot.context("Mixer cache read did not produce data")
     }
     fn edit(&self, action: &Action) -> anyhow::Result<(Value, bool)> {
-        let path = razer_storage::source_local::path();
+        let path = razer_storage::source_local::path()?;
         let guid = uuid::Uuid::new_v4().to_string();
         let mut snapshot = None;
         let mut applied = false;
@@ -270,7 +270,7 @@ impl MixerOwner {
         if self.other_active() && current["isStreamMixerEnabled"] == true {
             // setupActiveStreamMixer's direct cache edit does not increment.
             let _ = set_mode(client, route, false, &self.status)?;
-            let path = razer_storage::source_local::path();
+            let path = razer_storage::source_local::path()?;
             razer_storage::source_local::update(&path, mixer::STORAGE_KEY, |old| {
                 let mut cache = old.context("Mixer cache vanished during active-owner change")?;
                 for device in cache["devices"]

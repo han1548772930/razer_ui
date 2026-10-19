@@ -200,6 +200,7 @@ pub(super) enum Continue {
 pub struct DeviceWorkspace {
     device: Device,
     saved: Device,
+    reducer: reducer_state::ReducerState,
     pub(super) page: Tab,
     /// 原版设备页自己维护导航历史：`sessionStorage` 里的 `tabNavigations` 与
     /// `currentTabNavigation`（见 `addNavigationToStorage` / `navigateBack` /
@@ -258,6 +259,8 @@ mod mapping_editor;
 mod mouse_dpi_profile;
 #[path = "../mouse/polling/mouse_polling_profile.rs"]
 mod mouse_polling_profile;
+#[path = "reducer_state.rs"]
+mod reducer_state;
 pub(super) use razer_model::mapping::{canonical_key, normalized_website};
 #[cfg(test)]
 #[path = "../mapping/mapping_focus_tests.rs"]
@@ -312,6 +315,12 @@ impl DeviceWorkspace {
         cx.notify();
     }
 
+    pub fn observe_keyboard_serial(&mut self, serial: &str, cx: &mut Context<Self>) {
+        self.device.observe_keyboard_serial(serial);
+        self.saved.observe_keyboard_serial(serial);
+        cx.notify();
+    }
+
     pub fn observe_read_values(
         &mut self,
         values: Option<razer_device::device_reads::DeviceReadValues>,
@@ -350,6 +359,7 @@ impl DeviceWorkspace {
         cx: &mut Context<Self>,
     ) {
         if super::product_workspace::edit_profile_metadata(&mut self.device, id, change) {
+            self.reducer.restore(&self.device);
             self.refresh_profile_choices(window, cx);
             self.changed(cx);
             cx.notify();
@@ -379,42 +389,20 @@ impl DeviceWorkspace {
             self.mapping = None;
             self.mapping_recording = false;
             self.customize_drawer.source_input = None;
+            self.reducer.restore(&self.device);
             self.sync_controls(window, cx);
         }
         self.changed(cx);
         Ok(target)
     }
     pub fn new(
-        mut device: Device,
+        device: Device,
         intro_seen: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        if device.profiles.is_empty() {
-            device.profiles.push(Profile {
-                source_settings: None,
-                id: "local-default".into(),
-                guid: "local-default".into(),
-                name: "Default".into(),
-                dpi_stages: None,
-                settings: None,
-            });
-        }
-        if !device
-            .profiles
-            .iter()
-            .any(|p| p.id == device.active_profile)
-        {
-            device.active_profile = device.profiles[0].id.clone();
-        }
-        for index in 0..device.profiles.len() {
-            let mut settings = device.profiles[index]
-                .settings
-                .clone()
-                .unwrap_or_else(|| ProfileSettings::from_legacy(&device, &device.profiles[index]));
-            settings.normalize(device.product_id);
-            device.profiles[index].settings = Some(settings);
-        }
+        let mut reducer = reducer_state::ReducerState::new(device.product_id);
+        reducer.restore(&device);
         let choices = device
             .profiles
             .iter()
@@ -510,6 +498,7 @@ impl DeviceWorkspace {
         let mut this = Self {
             saved: device.clone(),
             device,
+            reducer,
             page,
             page_history: vec![page],
             page_history_index: 0,
@@ -674,6 +663,7 @@ impl DeviceWorkspace {
         // its text, recording and focus, updating only its comparison baseline.
         self.cancel_profile_transfer(cx);
         self.device = self.saved.clone();
+        self.reducer.restore(&self.device);
         self.mouse_polling.reset_profile();
         if let Some(draft) = &mut self.mapping {
             draft.original = original;
@@ -696,6 +686,7 @@ impl DeviceWorkspace {
         let mapping_focused = self.mapping_focus.contains_focused(window, cx);
         self.cancel_profile_transfer(cx);
         self.device = self.saved.clone();
+        self.reducer.restore(&self.device);
         self.mouse_polling.reset_profile();
         self.mapping = None;
         self.mapping_recording = false;
@@ -769,20 +760,10 @@ impl DeviceWorkspace {
     }
 
     pub(super) fn settings(&self) -> &ProfileSettings {
-        self.device
-            .profiles
-            .iter()
-            .find(|p| p.id == self.device.active_profile)
-            .and_then(|p| p.settings.as_ref())
-            .expect("normalized profile")
+        &self.reducer.settings
     }
     fn settings_mut(&mut self) -> &mut ProfileSettings {
-        self.device
-            .profiles
-            .iter_mut()
-            .find(|p| p.id == self.device.active_profile)
-            .and_then(|p| p.settings.as_mut())
-            .expect("normalized profile")
+        &mut self.reducer.settings
     }
     pub(super) fn edit(
         &mut self,
@@ -794,7 +775,8 @@ impl DeviceWorkspace {
         self.sync_controls(window, cx);
         self.changed(cx);
     }
-    fn changed(&self, cx: &mut Context<Self>) {
+    fn changed(&mut self, cx: &mut Context<Self>) {
+        self.reducer.capture(&mut self.device);
         cx.emit(WorkspaceEvent::Changed);
         cx.notify();
     }
@@ -1283,6 +1265,15 @@ impl DeviceWorkspace {
         ) {
             self.cancel_profile_transfer(cx);
         }
+        let restore_profile = matches!(
+            next,
+            Continue::Profile(_)
+                | Continue::NewProfile
+                | Continue::DuplicateProfile
+                | Continue::DeleteProfile(_)
+                | Continue::ImportProfile(_)
+                | Continue::ResetProfile { .. }
+        );
         match next {
             Continue::NewProfile => {
                 profile::create_local_profile(&mut self.device, &self.saved, false);
@@ -1358,6 +1349,9 @@ impl DeviceWorkspace {
                 window.focus(&self.workspace_focus, cx);
             }
             self.mapping_return_focus = None;
+        }
+        if restore_profile {
+            self.reducer.restore(&self.device);
         }
         self.sync_controls(window, cx);
         self.changed(cx);

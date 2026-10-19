@@ -10,6 +10,8 @@ mod retired_shortcuts;
 pub use retired_shortcuts::RetiredShortcuts;
 mod device_save;
 pub use device_save::DeviceSaveDraft;
+mod profile_state;
+pub use profile_state::{ensure_local_profiles_unchanged, same_local_profiles};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkspaceFile {

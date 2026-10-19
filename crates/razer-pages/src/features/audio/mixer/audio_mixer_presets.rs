@@ -5,6 +5,8 @@ use gpui_kit::component::{
     input::{Input, InputEvent, InputState},
     menu::{DropdownMenu, PopupMenuItem},
 };
+#[path = "audio_mixer_restore.rs"]
+mod restore;
 #[path = "audio_mixer_preset_shortcuts.rs"]
 mod shortcuts;
 
@@ -13,6 +15,8 @@ pub(super) struct Library {
     pub presets: Vec<Value>,
     pub active_preset: String,
     pub version: u64,
+    #[serde(flatten)]
+    extensions: std::collections::BTreeMap<String, Value>,
 }
 
 #[derive(Deserialize)]
@@ -46,21 +50,18 @@ fn recipe() -> &'static Recipe {
     static RECIPE: OnceLock<Recipe> = OnceLock::new();
     RECIPE.get_or_init(|| read_audio_mixer_presets_current_catalog())
 }
-impl Default for Library {
-    fn default() -> Self {
-        let mut preset = recipe().default_preset.clone();
-        // getDeviceDefaultLocalData uses getDefaultPreset(), not the UI
-        // reducer's provisional Default row.
-        preset["guid"] = json!(uuid::Uuid::new_v4().to_string());
-        preset["name"] = json!("Preset");
+impl Library {
+    fn provisional() -> Self {
+        // ed is the UI reducer's initial row. It has no persisted DSP fields;
+        // getDeviceDefaultLocalData belongs to the connected setup chain.
+        let guid = "6633f08d-8467-4fad-b854-635acf9c2315";
         Self {
-            active_preset: preset["guid"].as_str().unwrap().into(),
-            presets: vec![preset],
-            version: 1,
+            active_preset: guid.into(),
+            presets: vec![json!({"guid":guid,"name":"Default"})],
+            version: 0,
+            extensions: std::collections::BTreeMap::new(),
         }
     }
-}
-impl Library {
     fn active(&self) -> Option<&Value> {
         self.presets
             .iter()
@@ -77,28 +78,26 @@ impl Library {
         presets
     }
     fn valid(&self) -> bool {
-        !self.presets.is_empty()
-            && self.active().is_some()
-            && self.presets.iter().all(|p| {
-                p["guid"].as_str().is_some_and(|id| !id.is_empty())
-                    && p["name"]
-                        .as_str()
-                        .is_some_and(|name| !name.trim().is_empty())
-                    && recipe()
-                        .restore_order
-                        .iter()
-                        .all(|field| p[field].is_object())
-            })
-            && self.presets.iter().enumerate().all(|(index, p)| {
-                !self.presets[..index]
+        self.presets.iter().all(|p| {
+            p["guid"].as_str().is_some_and(|id| !id.is_empty())
+                && p["name"]
+                    .as_str()
+                    .is_some_and(|name| !name.trim().is_empty())
+                && recipe()
+                    .restore_order
                     .iter()
-                    .any(|previous| previous["guid"] == p["guid"])
-            })
+                    .all(|field| p.get(field).is_none_or(Value::is_object))
+        }) && self.presets.iter().enumerate().all(|(index, p)| {
+            !self.presets[..index]
+                .iter()
+                .any(|previous| previous["guid"] == p["guid"])
+        })
     }
 }
 
 pub(super) struct State {
     library: Library,
+    source_loaded: bool,
     choices: Entity<SelectState<Vec<Choice>>>,
     rename: Entity<InputState>,
     renaming: Option<String>,
@@ -161,7 +160,8 @@ impl AudioProductWorkspace {
             },
         ));
         self.effect_presets = Some(State {
-            library: Library::default(),
+            library: Library::provisional(),
+            source_loaded: false,
             choices,
             rename,
             renaming: None,
@@ -182,7 +182,11 @@ impl AudioProductWorkspace {
     }
 
     pub(super) fn effect_preset_snapshot(&self, snapshot: &mut Value) {
-        if let Some(state) = &self.effect_presets {
+        if let Some(state) = self
+            .effect_presets
+            .as_ref()
+            .filter(|state| state.source_loaded)
+        {
             snapshot["_audioMixerPresets"] = json!(state.library);
         }
     }
@@ -223,13 +227,27 @@ impl AudioProductWorkspace {
             state.capture_hypershift = false;
             state.warning = false;
             state.warning_value = None;
-            state.library = saved
-                .and_then(|v| serde_json::from_value(v["_audioMixerPresets"].clone()).ok())
-                .filter(Library::valid)
-                .unwrap_or_default();
-            if let Some(preset) = state.library.active() {
+            state.source_loaded = false;
+            state.library = Library::provisional();
+            if let Some(source) = saved.and_then(|value| value.get("_audioMixerPresets")) {
+                match serde_json::from_value::<Library>(source.clone()) {
+                    Ok(library) if library.valid() => {
+                        state.library = library;
+                        state.source_loaded = true;
+                    }
+                    Ok(_) => {
+                        self.mixer_error = Some("Invalid Audio Mixer preset library".into());
+                    }
+                    Err(error) => {
+                        self.mixer_error = Some(format!("Audio Mixer preset library: {error}"));
+                    }
+                }
+            }
+            if let Some(preset) = state.library.active().filter(|_| state.source_loaded) {
                 for field in &recipe().restore_order {
-                    self.draft["device"][field] = preset[field].clone();
+                    if let Some(value) = preset.get(field) {
+                        self.draft["device"][field] = value.clone();
+                    }
                 }
             }
         }
@@ -238,55 +256,33 @@ impl AudioProductWorkspace {
     }
 
     pub(super) fn submit_restored_effect_preset(&mut self, cx: &mut Context<Self>) {
-        // Current il() iterates the stored profile's own keys. For the local
-        // Default persisted profile: fader, mixerBind, outputMixer, four buses,
-        // micSetup and micMonitor. Each ol() bus restores volume then all routes.
-        // NoiseGate/Compressor restore has no changeKey and ki/wi do not set
-        // parameters; do not synthesize a switch action for those branches.
-        if self.spec.product_id == 1342 {
-            self.request_mixer_write("/profile/brightness", None, cx);
-            self.request_mixer_write("/profile/quickEffects", None, cx);
-            let channel = if self.draft["device"]["micSetup"]["useMode"] == 0 {
-                "xlr"
-            } else {
-                "mic"
-            };
-            self.request_mixer_write("/device/fader/useMode", None, cx);
-            self.request_mixer_write("/device/mixerBind/bleepButton", None, cx);
-            for channel in [
-                channel, "chat", "music", "game", "optical", "lineIn", "system",
-            ] {
-                self.request_mixer_write(
-                    &format!("/device/outputMixerReducer/{channel}/value"),
-                    None,
-                    cx,
-                );
-            }
-            for reducer in [
-                "playbackMixReducer",
-                "streamMixReducer",
-                "lineOutReducer",
-                "voiceChatReducer",
-            ] {
-                self.request_mixer_write(&format!("/device/{reducer}/volume/value"), None, cx);
-                for (channel, _) in audio_mixer_channels::CHANNELS {
-                    if reducer == "voiceChatReducer" && channel == "chat" {
-                        continue;
+        let source = self.mixer_restore_source.clone();
+        if let Some(source) = source {
+            for action in restore::profile_actions(Some(&source)) {
+                match action {
+                    restore::Action::Write(path) => {
+                        self.request_mixer_write_from(&path, &source, cx);
                     }
-                    self.request_mixer_write(
-                        &format!("/device/{reducer}/{channel}/isEnabled"),
-                        None,
+                    restore::Action::MicEqualizer => self.request_mic_eq_write_from(&source, cx),
+                }
+            }
+        }
+        let preset = self
+            .effect_presets
+            .as_ref()
+            .filter(|state| state.source_loaded)
+            .and_then(|state| state.library.active())
+            .cloned();
+        if let Some(preset) = preset {
+            let source = json!({"device":preset});
+            for field in &recipe().restore_order {
+                if source["device"].get(field).is_some() {
+                    self.request_mixer_write_from(
+                        &format!("/device/{field}/isEnabled"),
+                        &source,
                         cx,
                     );
                 }
-            }
-            self.request_mixer_write("/device/micSetup", None, cx);
-            self.request_mixer_write("/device/micMonitor/value", None, cx);
-            self.request_mic_eq_write(cx);
-        }
-        if self.effect_presets.is_some() {
-            for field in &recipe().restore_order {
-                self.request_mixer_write(&format!("/device/{field}/isEnabled"), None, cx);
             }
         }
         self.emit_preset_shortcuts(cx);
@@ -320,9 +316,11 @@ impl AudioProductWorkspace {
             return;
         };
         if let Some(state) = &mut self.effect_presets {
-            if let Some(preset) = state.library.active_mut() {
-                preset[field] = self.draft["device"][field].clone();
-                state.library.version = state.library.version.saturating_add(1);
+            if state.source_loaded {
+                if let Some(preset) = state.library.active_mut() {
+                    preset[field] = self.draft["device"][field].clone();
+                    state.library.version = state.library.version.saturating_add(1);
+                }
             }
         }
     }
@@ -346,7 +344,9 @@ impl AudioProductWorkspace {
                 .cloned();
             if let Some(preset) = preset {
                 for field in &recipe().restore_order {
-                    self.draft["device"][field] = preset[field].clone();
+                    if let Some(value) = preset.get(field) {
+                        self.draft["device"][field] = value.clone();
+                    }
                 }
                 // Source nl() submits four independent effect tasks in this
                 // order. Replaced unsent work must not leak from the old preset.
@@ -360,7 +360,14 @@ impl AudioProductWorkspace {
                         .any(|field| path.starts_with(&format!("/device/{field}/")))
                 });
                 for field in &recipe().restore_order {
-                    self.request_mixer_write(&format!("/device/{field}/isEnabled"), None, cx);
+                    if preset.get(field).is_some() {
+                        let source = json!({"device":preset});
+                        self.request_mixer_write_from(
+                            &format!("/device/{field}/isEnabled"),
+                            &source,
+                            cx,
+                        );
+                    }
                 }
             }
         }
@@ -377,6 +384,9 @@ impl AudioProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if !self.require_effect_preset_source(cx) {
+            return;
+        }
         let Some(state) = &mut self.effect_presets else {
             return;
         };
@@ -394,15 +404,19 @@ impl AudioProductWorkspace {
     }
 
     fn add_effect_preset(&mut self, duplicate: bool, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.require_effect_preset_source(cx) {
+            return;
+        }
         let Some(state) = &mut self.effect_presets else {
             return;
         };
         let mut preset = if duplicate {
-            state
-                .library
-                .active()
-                .cloned()
-                .unwrap_or_else(|| recipe().default_preset.clone())
+            let Some(preset) = state.library.active().cloned() else {
+                self.mixer_error = Some("Audio Mixer active preset was not found".into());
+                cx.notify();
+                return;
+            };
+            preset
         } else {
             recipe().default_preset.clone()
         };
@@ -453,14 +467,22 @@ impl AudioProductWorkspace {
     }
 
     fn begin_effect_preset_rename(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.require_effect_preset_source(cx) {
+            return;
+        }
         let Some(state) = &mut self.effect_presets else {
             return;
         };
-        let name = state
+        let Some(name) = state
             .library
             .active()
-            .map(|p| p["name"].as_str().unwrap_or("").to_owned())
-            .unwrap_or_default();
+            .and_then(|preset| preset["name"].as_str())
+        else {
+            self.mixer_error = Some("Audio Mixer active preset was not found".into());
+            cx.notify();
+            return;
+        };
+        let name = name.to_owned();
         state.renaming = Some(state.library.active_preset.clone());
         state.rename.update(cx, |input, cx| {
             input.set_value(name, window, cx);
@@ -499,14 +521,36 @@ impl AudioProductWorkspace {
     }
 
     fn confirm_effect_preset(&mut self, reset: bool, _window: &mut Window, cx: &mut Context<Self>) {
+        if !self.require_effect_preset_source(cx) {
+            return;
+        }
         let Some(state) = &mut self.effect_presets else {
             return;
         };
+        if state.library.active().is_none() {
+            self.mixer_error = Some("Audio Mixer active preset was not found".into());
+            cx.notify();
+            return;
+        }
         if !reset && state.library.presets.len() == 1 {
             return;
         }
         state.confirmation = Some((reset, state.library.active_preset.clone(), state.generation));
         cx.notify();
+    }
+
+    fn require_effect_preset_source(&mut self, cx: &mut Context<Self>) -> bool {
+        if self
+            .effect_presets
+            .as_ref()
+            .is_some_and(|state| state.source_loaded)
+        {
+            true
+        } else {
+            self.mixer_error = Some("Audio Mixer preset library has not been loaded".into());
+            cx.notify();
+            false
+        }
     }
 
     fn apply_effect_preset_confirmation(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -736,6 +780,27 @@ impl AudioProductWorkspace {
                     .child(self.render_preset_shortcut(cx)),
             )
             .into_any_element()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Library;
+    use std::prelude::v1::test;
+
+    #[test]
+    fn initial_preset_row_has_no_local_dsp_configuration() {
+        let library = Library::provisional();
+        assert_eq!(
+            library.active_preset,
+            "6633f08d-8467-4fad-b854-635acf9c2315"
+        );
+        let preset = library.active().unwrap().as_object().unwrap();
+        assert_eq!(preset.len(), 2);
+        assert_eq!(preset["name"], "Default");
+        for field in ["voiceChanger", "echoReverb", "keyShifter", "vocalFading"] {
+            assert!(!preset.contains_key(field));
+        }
     }
 }
 

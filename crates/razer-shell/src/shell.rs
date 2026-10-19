@@ -97,6 +97,8 @@ mod keyboard_latest_restore;
 mod keyboard_legacy_calibration;
 #[path = "shell/keyboard/keyboard_lifecycle.rs"]
 mod keyboard_lifecycle;
+#[path = "shell/keyboard/keyboard_local_profiles.rs"]
+mod keyboard_local_profiles;
 #[path = "shell/keyboard/keyboard_sensitivity_preference.rs"]
 mod keyboard_sensitivity_preference;
 #[path = "shell/keyboard/keyboard_wristrest.rs"]
@@ -332,6 +334,7 @@ pub struct AppShell {
     device_value_owners: std::collections::BTreeSet<String>,
     keyboard_identity_cache_task: Option<Task<()>>,
     keyboard_identity_cache_pending: usize,
+    keyboard_local_profiles: keyboard_local_profiles::State,
     runtime: Entity<runtime_page::RuntimePanel>,
     runtime_exit_wait: Option<Subscription>,
     device_read_scopes: BTreeMap<String, device_discovery::DeviceReadScope>,
@@ -607,6 +610,7 @@ impl AppShell {
             device_value_owners: std::collections::BTreeSet::new(),
             keyboard_identity_cache_task: None,
             keyboard_identity_cache_pending: 0,
+            keyboard_local_profiles: keyboard_local_profiles::State::default(),
             runtime: runtime.clone(),
             runtime_exit_wait: None,
             receiver_devices: BTreeMap::new(),
@@ -1273,6 +1277,7 @@ impl AppShell {
         this.install_thx_cleanup(cx);
         this.install_controller_calibration_cleanup(cx);
         this.install_keyboard_lifecycle(cx);
+        this.install_keyboard_local_profiles_cleanup();
         this.install_mapping_observation_cleanup(cx);
         this.install_game_monitor(cx);
         this.install_global_shortcuts(cx);
@@ -2445,6 +2450,12 @@ impl AppShell {
         // current owners when the queued device operation actually starts.
         let devices = std::mem::take(&mut request.file.devices);
         request.file = self.workspace_file(devices, cx);
+        if let Err(error) = self.rebase_keyboard_local_profiles_save(&request, cx) {
+            self.status = error;
+            self.cancel_prepared_save(request, cx);
+            self.continue_save_queue(false, cx);
+            return false;
+        }
         if let Err(error) = self.rebase_source_profile_import(&mut request, cx) {
             self.status = error;
             self.cancel_prepared_save(request, cx);
@@ -2671,7 +2682,9 @@ impl AppShell {
         cx.notify();
         self.save_task = Some(cx.spawn(async move |this, cx| {
             let result = cx
-                .background_spawn(async move { store::write_workspace(&path, &file) })
+                .background_spawn(async move {
+                    path.and_then(|path| store::write_workspace(&path, &file))
+                })
                 .await;
             let _ = this.update(cx, |this, cx| {
                 this.save_task = None;
@@ -2813,6 +2826,7 @@ impl AppShell {
             || self.keyboard_brightness.pending()
             || self.keyboard_game_exit_pending()
             || self.keyboard_identity_cache_pending > 0
+            || self.keyboard_local_profiles.pending_batches > 0
             || self.runtime.read(cx).shutdown_pending()
             || self.legacy_dpi.pending()
             || self.mouse_dpi.pending()
@@ -2929,7 +2943,9 @@ impl AppShell {
         let path = razer_storage::store_path();
         self.save_task = Some(cx.spawn(async move |this, cx| {
             let result = cx
-                .background_spawn(async move { store::write_workspace(&path, &file) })
+                .background_spawn(async move {
+                    path.and_then(|path| store::write_workspace(&path, &file))
+                })
                 .await;
             let _ = this.update(cx, |this, cx| {
                 this.save_task = None;

@@ -404,7 +404,7 @@ pub fn local_path(
             .map(|b| format!("{b:02x}"))
             .collect::<String>()
     };
-    let mut path = crate::store_path();
+    let mut path = crate::store_path()?;
     path.pop();
     Ok(path.join("receiver-documents").join(format!(
         "{product}-{}-{}.json",

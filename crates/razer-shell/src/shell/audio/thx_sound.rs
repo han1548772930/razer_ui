@@ -117,7 +117,7 @@ fn roller_local_key(scope: &ThxSubmissionScope) -> String {
     )
 }
 fn local_presets(scope: &ThxSubmissionScope, device: &Device) -> Result<Vec<Value>> {
-    let path = razer_storage::source_local::path();
+    let path = razer_storage::source_local::path()?;
     let key = local_key(scope, "cloudAudioEqualizer");
     let profile = device
         .profiles
@@ -171,7 +171,7 @@ fn run(
         *presets = local_presets(&scope, &device)?;
         check()?;
         razer_storage::source_local::set(
-            &razer_storage::source_local::path(),
+            &razer_storage::source_local::path()?,
             &local_key(&scope, "spatialDraft"),
             &json!({"isEnabled":enabled,"timerTick":timer_tick}),
         )?;
@@ -801,10 +801,9 @@ impl AppShell {
                 profile_id: device.active_profile.clone(),
                 generation: request.audio_revision(),
             };
-            match razer_storage::source_local::get(
-                &razer_storage::source_local::path(),
-                &roller_local_key(&scope),
-            ) {
+            match razer_storage::source_local::path().and_then(|path| {
+                razer_storage::source_local::get(&path, &roller_local_key(&scope))
+            }) {
                 Ok(Some(mappings)) if mappings.is_array() => {
                     workspace.update(cx, |workspace, cx| {
                         workspace.observe_help_audio_sound(
@@ -900,7 +899,7 @@ impl AppShell {
             let saved = razer_device::blackshark_roller_mapping::validate_mappings(mappings)
                 .and_then(|_| {
                     razer_storage::source_local::set(
-                        &razer_storage::source_local::path(),
+                        &razer_storage::source_local::path()?,
                         &roller_local_key(&scope),
                         &json!(mappings),
                     )
@@ -1140,11 +1139,15 @@ impl AppShell {
                                         );
                                     }
                                     if let Some(mappings) = &mapping.source_mappings {
-                                        if let Err(error) = razer_storage::source_local::set(
-                                            &razer_storage::source_local::path(),
-                                            &roller_local_key(&scope),
-                                            &json!(mappings),
-                                        ) {
+                                        if let Err(error) = razer_storage::source_local::path()
+                                            .and_then(|path| {
+                                                razer_storage::source_local::set(
+                                                    &path,
+                                                    &roller_local_key(&scope),
+                                                    &json!(mappings),
+                                                )
+                                            })
+                                        {
                                             messages
                                                 .push(format!("旋钮映射本地保存失败：{error:#}"));
                                         }

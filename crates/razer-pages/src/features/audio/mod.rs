@@ -297,6 +297,7 @@ pub struct AudioProductWorkspace {
     mixer_echo_generation: u64,
     mixer_echo_committed: Option<Value>,
     effect_presets: Option<audio_mixer_presets::State>,
+    mixer_restore_source: Option<Value>,
     enhancements: enhancements::State,
     sound: sound::State,
     seiren_eq: audio_seiren_eq::State,
@@ -384,6 +385,7 @@ impl AudioProductWorkspace {
             mixer_echo_generation: 0,
             mixer_echo_committed: None,
             effect_presets: None,
+            mixer_restore_source: None,
             enhancements: enhancements::State::default(),
             sound: sound::State::default(),
             seiren_eq: audio_seiren_eq::State::default(),
@@ -541,6 +543,7 @@ impl AudioProductWorkspace {
         cx: &mut Context<Self>,
     ) {
         self.dismiss_seiren_eq(cx);
+        self.mixer_restore_source = saved.filter(|value| value.is_object()).cloned();
         self.cancel_seiren_eq_profile();
         self.cancel_leviathan(cx);
         self.invalidate_volume();
@@ -669,7 +672,9 @@ impl AudioProductWorkspace {
     }
     pub fn set_page(&mut self, page: &str, window: &mut Window, cx: &mut Context<Self>) {
         if self.page != page {
-            if self.page == "SURROUND" { self.leave_surround_page(cx); }
+            if self.page == "SURROUND" {
+                self.leave_surround_page(cx);
+            }
             if let Some(demo) = &self.demo {
                 demo.update(cx, |demo, cx| demo.set_page(page == "TAB_DEMO", window, cx));
             }
@@ -1087,20 +1092,24 @@ impl AudioProductWorkspace {
     /// the actual AudioMixer instance. Other endpoints are omitted by
     /// `mixer_path` until their distinct source caller chains are connected.
     fn request_mixer_write(&mut self, path: &str, _value: Option<Value>, cx: &mut Context<Self>) {
+        let snapshot = self.snapshot();
+        self.request_mixer_write_from(path, &snapshot, cx);
+    }
+
+    fn request_mixer_write_from(&mut self, path: &str, source: &Value, cx: &mut Context<Self>) {
         if path.starts_with("/equalizers/mic/bands/")
             || path.starts_with("/equalizers/mic_basic/bands/")
         {
-            self.request_mic_eq_write(cx);
+            self.request_mic_eq_write_from(source, cx);
             return;
         }
         if !self.mixer_io.active {
             return;
         }
         if razer_device::audio_mixer_local::handles(path) {
-            self.mixer_profile_routing.get_or_insert_with(|| {
-                audio_mixer_local_state::ProfileRouting::from_draft(&self.draft)
-            });
-            let saved = self.snapshot();
+            self.mixer_profile_routing
+                .get_or_insert_with(|| audio_mixer_local_state::ProfileRouting::from_draft(source));
+            let saved = source.clone();
             self.mixer_io.edit_revision = self.mixer_io.edit_revision.wrapping_add(1);
             self.mixer_revisions
                 .insert(path.into(), self.mixer_io.edit_revision);
@@ -1117,7 +1126,7 @@ impl AudioProductWorkspace {
             self.dispatch_next_mixer_read(cx);
             return;
         }
-        let actions = match super::audio_mixer::write_plan(path, &self.draft) {
+        let actions = match super::audio_mixer::write_plan(path, source) {
             Ok(actions) => actions,
             Err(error) => {
                 eprintln!("Audio Mixer source action {path}: {error:#}");
@@ -1173,10 +1182,15 @@ impl AudioProductWorkspace {
     }
 
     fn request_mic_eq_write(&mut self, cx: &mut Context<Self>) {
+        let snapshot = self.snapshot();
+        self.request_mic_eq_write_from(&snapshot, cx);
+    }
+
+    fn request_mic_eq_write_from(&mut self, source: &Value, cx: &mut Context<Self>) {
         if !self.mixer_io.active {
             return;
         }
-        let bands = match super::audio_mixer::mic_eq_bands(&self.draft) {
+        let bands = match super::audio_mixer::mic_eq_bands(source) {
             Ok(bands) => bands,
             Err(error) => {
                 self.mixer_error = Some(error.to_string());
@@ -2197,8 +2211,12 @@ impl AudioProductWorkspace {
 }
 impl Render for AudioProductWorkspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if self.page == "SURROUND" && razer_device::audio_surround::Product::try_from(self.spec.product_id).is_ok() {
-            return super::product_surface::body().child(self.surround_page(cx)).into_any_element();
+        if self.page == "SURROUND"
+            && razer_device::audio_surround::Product::try_from(self.spec.product_id).is_ok()
+        {
+            return super::product_surface::body()
+                .child(self.surround_page(cx))
+                .into_any_element();
         }
         if self.page == "TAB_SOUND" {
             self.refresh_sound_images();

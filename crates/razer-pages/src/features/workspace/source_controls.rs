@@ -1237,8 +1237,9 @@ impl SourceControls {
         // from the metering button; the first mount remains excluded by useKM.
         if matches!(self.spec.product_id, 3594 | 3595)
             && self.page == "CAMERA"
-            && camera_exposure_state::apply_metering_effect(
+            && camera_exposure_state::apply_restored_metering_effect(
                 &mut self.draft,
+                value,
                 previous_metering.as_ref(),
                 self.camera_page_initialized,
             )

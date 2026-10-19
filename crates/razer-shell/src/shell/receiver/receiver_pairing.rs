@@ -58,23 +58,41 @@ struct CleanupFailures {
 
 impl CleanupFailures {
     fn record(&self, product_id: u32, container: &str, error: String) {
-        let mut failures = self.physical.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        let errors = failures.entry((product_id, container.to_ascii_lowercase())).or_default();
+        let mut failures = self
+            .physical
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let errors = failures
+            .entry((product_id, container.to_ascii_lowercase()))
+            .or_default();
         if !errors.contains(&error) {
             errors.push(error);
         }
     }
 
     fn for_owner(&self, product_id: u32, container: &str) -> Vec<String> {
-        self.physical.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
-            .get(&(product_id, container.to_ascii_lowercase())).cloned().unwrap_or_default()
+        self.physical
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get(&(product_id, container.to_ascii_lowercase()))
+            .cloned()
+            .unwrap_or_default()
     }
 
     fn summary(&self) -> Option<String> {
-        let failures = self.physical.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        (!failures.is_empty()).then(|| failures.iter().map(|((product, container), errors)| {
-            format!("{product}/{container}: {}", errors.join("; "))
-        }).collect::<Vec<_>>().join("; "))
+        let failures = self
+            .physical
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        (!failures.is_empty()).then(|| {
+            failures
+                .iter()
+                .map(|((product, container), errors)| {
+                    format!("{product}/{container}: {}", errors.join("; "))
+                })
+                .collect::<Vec<_>>()
+                .join("; ")
+        })
     }
 }
 
@@ -87,7 +105,12 @@ struct CleanupWitness {
 
 impl CleanupWitness {
     fn new(failures: Arc<CleanupFailures>, product_id: u32, container: &str) -> Self {
-        Self { failures, product_id, container: container.to_owned(), result: Ok(()) }
+        Self {
+            failures,
+            product_id,
+            container: container.to_owned(),
+            result: Ok(()),
+        }
     }
 }
 
@@ -99,7 +122,8 @@ impl Drop for CleanupWitness {
             self.result.as_ref().err().cloned()
         };
         if let Some(error) = error {
-            self.failures.record(self.product_id, &self.container, error);
+            self.failures
+                .record(self.product_id, &self.container, error);
         }
     }
 }
@@ -110,9 +134,23 @@ fn finish_pairing_service(
 ) -> anyhow::Result<Value> {
     let shutdown = client.request(ServiceRequest::Shutdown);
     let termination = client.finish_termination();
-    let errors = shutdown.as_ref().err().map(|error| format!("service Shutdown: {error:#}"))
-        .into_iter().chain(termination.as_ref().err().map(|error| format!("service termination: {error:#}"))).collect::<Vec<_>>();
-    *cleanup = if errors.is_empty() { Ok(()) } else { Err(errors.join("; ")) };
+    let errors = shutdown
+        .as_ref()
+        .err()
+        .map(|error| format!("service Shutdown: {error:#}"))
+        .into_iter()
+        .chain(
+            termination
+                .as_ref()
+                .err()
+                .map(|error| format!("service termination: {error:#}")),
+        )
+        .collect::<Vec<_>>();
+    *cleanup = if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("; "))
+    };
     match (shutdown, termination) {
         (Ok(reply), Ok(())) => Ok(reply),
         (Err(error), _) | (_, Err(error)) => Err(error),
@@ -227,7 +265,7 @@ fn persist_confirmed(
         let _guard = CACHE_LOCK
             .lock()
             .map_err(|_| anyhow::anyhow!("配对本地缓存锁不可用"))?;
-        let path = razer_storage::receiver_pairing::local_path();
+        let path = razer_storage::receiver_pairing::local_path()?;
         let mut cache = razer_storage::receiver_pairing::PairingCache::load(&path)?;
         let category = result["category"]
             .as_str()
@@ -502,10 +540,9 @@ fn run(
                             }
                         }
                     }
-                    match razer_storage::source_local::get(
-                        &razer_storage::source_local::path(),
-                        "connectedDeviceInfo",
-                    ) {
+                    match razer_storage::source_local::path().and_then(|path| {
+                        razer_storage::source_local::get(&path, "connectedDeviceInfo")
+                    }) {
                         Ok(Some(Value::Array(records))) => {
                             result["source_connected_device_info"] = json!(records)
                         }
@@ -617,7 +654,8 @@ impl AppShell {
     ) {
         let completions = transport.take_completions();
         let reports = transport.reconnect_owners().take_reports();
-        if completions.is_empty() && reports.is_empty() {
+        let cleanup_failure = transport.cleanup_failure();
+        if completions.is_empty() && reports.is_empty() && cleanup_failure.is_none() {
             return;
         }
         for report in reports {
@@ -676,6 +714,10 @@ impl AppShell {
             } else {
                 self.status = "配对缓存已写入，窗口不可用，页面未刷新".into();
             }
+        }
+        if let Some(error) = cleanup_failure {
+            self.status = format!("接收器资源清理失败：{error}");
+            self.cancel_pending_exit(cx);
         }
         cx.notify();
     }
@@ -863,8 +905,15 @@ impl AppShell {
         self.register_exit_resume(|this, cx| {
             // All cleanup futures, including both native worker registries,
             // have finished before the application invokes this resume hook.
-            this.pairing_transport =
-                Arc::new(standalone::Transport::new(cx.background_executor().clone()));
+            let replacement = match this.pairing_transport.replacement() {
+                Ok(replacement) => replacement,
+                Err(error) => {
+                    this.status = format!("接收器配对未恢复：{error:#}");
+                    cx.notify();
+                    return;
+                }
+            };
+            this.pairing_transport = Arc::new(replacement);
             let transport = this.pairing_transport.clone();
             let page = this.pairing.clone();
             if let Err(error) = this.main_window.update(cx, |_, window, cx| {
@@ -899,9 +948,8 @@ impl AppShell {
                 for worker in retired {
                     let _ = worker.join();
                 }
-                razer_storage::receiver_pairing::PairingCache::load(
-                    &razer_storage::receiver_pairing::local_path(),
-                )
+                razer_storage::receiver_pairing::local_path()
+                .and_then(|path| razer_storage::receiver_pairing::PairingCache::load(&path))
                 .map(|cache| Value::Array(cache.ordered_records()))
                 .map_err(|error| format!("{error:#}"))
             });
@@ -1001,6 +1049,9 @@ impl AppShell {
         let (sender, receiver) = mpsc::channel();
         let worker_event = event.clone();
         let worker_container = container.clone();
+        let mut cleanup = self
+            .pairing_transport
+            .cleanup_witness(product_id, &container);
         let worker = thread::Builder::new()
             .name("dock-pairing-client".into())
             .spawn(move || {
@@ -1020,8 +1071,10 @@ impl AppShell {
                     &sender,
                     (&reconnects, &reconnect_scope),
                     &mut source_response,
+                    &mut cleanup.result,
                 )
                 .map_err(|error| format!("{error:#}"));
+                drop(cleanup);
                 let _ = sender.send(Delivery::Finished(result));
             });
         let worker = match worker {

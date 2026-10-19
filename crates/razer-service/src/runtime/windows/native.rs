@@ -33,6 +33,11 @@ pub(super) fn keyboard_indicator(
 ) -> anyhow::Result<Value> {
     device_reads::keyboard_indicator(target, change)
 }
+pub(super) fn keyboard_profile_inventory(
+    target: &razer_device::device_reads::DeviceReadTarget,
+) -> anyhow::Result<Value> {
+    device_reads::keyboard_metadata(target, super::KeyboardRead::ProfileInventory)
+}
 pub(super) fn keyboard_legacy_calibration(
     target: &razer_device::device_reads::DeviceReadTarget,
     operation: &razer_device::keyboard_legacy_calibration::Operation,
@@ -393,6 +398,7 @@ impl NativeRuntime {
             | ServiceRequest::HidNodeKeyboardBrightnessRead { .. }
             | ServiceRequest::HidNodeKeyboardReceiverBrightness { .. }
             | ServiceRequest::HidNodeKeyboardMetadataRead { .. }
+            | ServiceRequest::KeyboardProfileInventoryRead { .. }
             | ServiceRequest::HidNodeKeyboardSerialRead { .. }
             | ServiceRequest::HidNodeKeyboardRelayMetadataRead { .. }
             | ServiceRequest::HidNodeKeyboardRelaySerialRead { .. }
@@ -436,10 +442,10 @@ impl NativeRuntime {
                 device_reads::keyboard_brightness(&target, None)
             }
             ServiceRequest::DeviceKeyboardMetadataRead { target } => {
-                device_reads::keyboard_metadata(&target, false)
+                device_reads::keyboard_metadata(&target, super::KeyboardRead::Metadata)
             }
             ServiceRequest::DeviceKeyboardSerialRead { target } => {
-                device_reads::keyboard_metadata(&target, true)
+                device_reads::keyboard_metadata(&target, super::KeyboardRead::Serial)
             }
             ServiceRequest::BleKeyboardMetadataRead { target } => {
                 device_reads::keyboard_metadata_ble(&target, false)

@@ -21,10 +21,13 @@ impl SourceProductWorkspace {
             return;
         };
         let profile = &self.device.profiles[index];
-        let mut previous = profile
-            .source_settings
-            .clone()
-            .unwrap_or_else(razer_device::keyboard_latest_mapping::default_profile);
+        let Some(mut previous) = profile.source_settings.clone() else {
+            cx.emit(WorkspaceEvent::KeyboardLegacyRuntimeStatus(
+                "Keyboard profile reset requires the current source profile for mapping cleanup"
+                    .into(),
+            ));
+            return;
+        };
         previous["guid"] = serde_json::json!(profile.guid);
         previous["name"] = serde_json::json!(profile.name);
         let candidate = match razer_device::keyboard_latest_restore::reset_profile_candidate(

@@ -85,30 +85,21 @@ impl AccessoryPage {
             Self::Automation(_) => crate::features::automation::supports_page(pid, key),
         }
     }
-    pub(super) fn restore(
-        &self,
-        value: Option<&Value>,
-        window: &mut Window,
-        cx: &mut App,
-    ) -> Value {
+    pub(super) fn restore(&self, value: Option<&Value>, window: &mut Window, cx: &mut App) {
         match self {
             Self::Wireless(view) => {
                 view.update(cx, |view, cx| view.restore(value, window, cx));
-                view.read(cx).snapshot()
             }
             Self::Wired(view) => {
                 view.update(cx, |view, cx| {
                     view.restore(value.unwrap_or(&Value::Null), window, cx)
                 });
-                view.read(cx).snapshot()
             }
             Self::Aether { strip: view, .. } => {
                 view.update(cx, |view, cx| view.restore(value, window, cx));
-                view.read(cx).snapshot()
             }
             Self::Automation(view) => {
                 view.update(cx, |view, cx| view.restore(value, window, cx));
-                view.read(cx).snapshot()
             }
         }
     }

@@ -415,7 +415,7 @@ fn run(
             valid: &guard,
             updates,
             route,
-            path: source_local::path(),
+            path: source_local::path()?,
             serial: serial.runtime_serial_number,
             local_tasks: Vec::new(),
             connected: true,

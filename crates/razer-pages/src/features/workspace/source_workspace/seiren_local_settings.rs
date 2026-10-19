@@ -44,13 +44,9 @@ pub(super) fn project(product: u32, settings: Option<&Value>, snapshot: &mut Opt
         return;
     }
     for (section, field) in FIELDS {
-        let value = settings
-            .and_then(|settings| settings.get(field))
-            .cloned()
-            .unwrap_or_else(|| match field {
-                "samplingRate" => json!(48_000),
-                _ => json!({"isEnabled":true,"value":70}),
-            });
+        let Some(value) = settings.and_then(|settings| settings.get(field)).cloned() else {
+            continue;
+        };
         let target = snapshot.get_or_insert_with(|| json!({}));
         if target.get(section).is_none() {
             target[section] = json!({});
@@ -65,6 +61,18 @@ mod tests {
     // The glob imports above also carry GPUI's `test` macro; name the
     // built-in attribute so this remains an ordinary Rust test.
     use std::prelude::v1::test;
+    #[test]
+    fn missing_global_settings_do_not_become_profile_defaults() {
+        let mut empty = None;
+        project(1422, None, &mut empty);
+        assert!(empty.is_none());
+        let mut partial = Some(json!({"profile":{"dialControl":2}}));
+        project(1446, Some(&json!({"samplingRate":96000})), &mut partial);
+        let partial = partial.unwrap();
+        assert_eq!(partial["profile"]["samplingRate"], 96000);
+        assert!(partial.get("device").is_none());
+        assert_eq!(partial["profile"]["dialControl"], 2);
+    }
     #[test]
     fn global_seiren_settings_survive_switching_and_leave_profile_fields_intact() {
         let mut global = None;

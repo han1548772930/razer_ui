@@ -139,9 +139,24 @@ impl Drop for Lease {
 }
 
 impl ServiceRequest {
-    /// These requests complete their setter/ACK chain before returning. Retained
+    /// Synchronous requests finish their device chain before returning. Retained
     /// operations acquire one lease around their entire start/poll/cleanup path.
     pub(crate) fn synchronous_device_task(&self) -> anyhow::Result<Option<Scope>> {
+        if let Self::KeyboardProfileInventoryRead { target }
+            | Self::KeyboardOnboardProfilesRead { target, .. } = self {
+            use crate::keyboard_profile_inventory::Target;
+            target.validate()?;
+            if let Self::KeyboardOnboardProfilesRead { options, .. } = self {
+                crate::keyboard_onboard_profiles::validate_target(target)?;
+                options.validate()?;
+            }
+            return Ok(Some(match target {
+                Target::Collection {
+                    node, product_id, ..
+                } => Scope::collection(*product_id, node),
+                Target::WindowsContainer { target } => Scope::target(target)?,
+            }));
+        }
         if let Self::BleMouseRotation {
             target,
             change: Some(_),

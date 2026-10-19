@@ -14,15 +14,6 @@ use serde_json::{Value, json};
 
 pub const STORAGE_FIELD: &str = "_keyboard679_mapping_document";
 
-fn default_profile() -> Value {
-    json!({"guid":"","name":"","actuationPoint":{"0":1.2,"1":1.2},
-        "switchOffLighting":{"isDisplayOn":false,"isIdleEnabled":false,"idleMinutes":1},
-        "brightness":{"isEnabled":true,"value":100},"quickEffects":{"selectedEffectId":3},
-        "gamingMode":{"state":0,"isWindowsKeyDisabled":false,"isAltF4Disabled":false,"isAltTabDisabled":false},
-        "snapTap":{"isEnabled":false,"keyList":[{"key1":"KEY_A","key2":"KEY_D","id":1}]},
-        "continuousRapidTrigger":false,"macro":{},"mappings":[]})
-}
-
 fn source_defaults() -> Vec<Value> {
     let mut records = Vec::new();
     for hypershift in [false, true] {
@@ -135,17 +126,34 @@ pub fn prepare_document(
     previous: Option<&Value>,
     fresh_guids: impl IntoIterator<Item = String>,
 ) -> anyhow::Result<Value> {
+    prepare_document_with_device_settings(
+        profiles,
+        active_profile,
+        layout,
+        previous,
+        None,
+        fresh_guids,
+    )
+}
+
+pub fn prepare_document_with_device_settings(
+    profiles: &[Value],
+    active_profile: &str,
+    layout: u32,
+    previous: Option<&Value>,
+    device_settings: Option<&Value>,
+    fresh_guids: impl IntoIterator<Item = String>,
+) -> anyhow::Result<Value> {
+    let device_settings = device_settings
+        .or(previous)
+        .context("Keyboard source device settings are absent")?;
+    crate::keyboard_current_profile::decode_device_settings(device_settings)?;
     let mut context = source_context(previous, fresh_guids);
     let normalized = profiles
         .iter()
         .map(|profile| -> anyhow::Result<Value> {
-            let mut value = default_profile();
-            value.as_object_mut().unwrap().extend(
-                profile
-                    .as_object()
-                    .context("Keyboard profile is not an object")?
-                    .clone(),
-            );
+            crate::keyboard_current_profile::decode_profile(profile)?;
+            let mut value = profile.clone();
             if let Some(engine) = previous
                 .and_then(|document| document["profiles"].as_array())
                 .and_then(|profiles| profiles.iter().find(|old| old["guid"] == value["guid"]))
@@ -159,20 +167,31 @@ pub fn prepare_document(
     let version = crate::mapping_submission::next_source_version(
         previous.and_then(|value| value["version"].as_u64()),
     )?;
-    let analog = previous
-        .and_then(|document| document.get("analogData"))
-        .cloned()
-        .unwrap_or_else(|| {
-            json!({"defaultMakeActuation":19656,"defaultBreakActuation":18018,
-            "keyIdToKeyInput":{"59":{"type":"razerKey","key":1,"flag":0}}})
-        });
-    let mut document = json!({"version":version,"profiles":normalized,"activeProfile":active_profile,
-        "vendorId":5426,"productId":679,"category":"KEYBOARD","analogData":analog,
-        "reportIDs":{"11":"analogKeyboardV2ReportID","4":"razerKeyReportID"},
-        "bluetoothLE":false,"_source_layout_id":layout});
-    if let Some(enabled) = previous.and_then(|document| document.get("gameModeEnabled")) {
-        document["gameModeEnabled"] = enabled.clone();
+    let mut document = previous.cloned().unwrap_or_else(|| json!({}));
+    for field in [
+        "analogData",
+        "reportIDs",
+        "selectedProfile",
+        "gameModeEnabled",
+    ] {
+        if let Some(value) = device_settings.get(field) {
+            document[field] = value.clone();
+        } else {
+            document
+                .as_object_mut()
+                .context("Previous keyboard document is not an object")?
+                .remove(field);
+        }
     }
+    crate::keyboard_current_profile::decode_device_settings(&document)?;
+    document["version"] = json!(version);
+    document["profiles"] = json!(normalized);
+    document["activeProfile"] = json!(active_profile);
+    document["vendorId"] = json!(5426);
+    document["productId"] = json!(679);
+    document["category"] = json!("KEYBOARD");
+    document["bluetoothLE"] = json!(false);
+    document["_source_layout_id"] = json!(layout);
     compile_with_context(&document, &mut context, None)
 }
 
@@ -195,9 +214,12 @@ fn compile_with_context(
         document["productId"] == 679,
         "Current keyboard compiler product differs"
     );
-    let layout = document["_source_layout_id"]
-        .as_u64()
-        .context("Keyboard layout is missing")? as u32;
+    crate::keyboard_current_profile::decode_device_settings(document)?;
+    let layout = u32::try_from(
+        document["_source_layout_id"]
+            .as_u64()
+            .context("Keyboard layout is missing")?,
+    )?;
     let factory = MappingEngine::new(679)?;
     let mut draft = context.clone();
     if draft.default_turbos.is_none() {
@@ -229,6 +251,7 @@ fn compile_with_context(
         "Active keyboard profile is not unique"
     );
     for profile in profiles.iter_mut() {
+        crate::keyboard_current_profile::decode_profile(profile)?;
         let replaced = profile["appEngine"]["mappings"]
             .as_array()
             .into_iter()
@@ -420,13 +443,34 @@ mod tests {
         (0..256).map(|value| format!("00000000-0000-4000-8000-{value:012x}"))
     }
     fn profile() -> Value {
-        let mut value = default_profile();
+        let mut value =
+            serde_json::to_value(crate::keyboard_current_profile::initial_profile()).unwrap();
         value["guid"] = json!("profile");
         value
     }
+
+    fn prepare(
+        profiles: &[Value],
+        active: &str,
+        layout: u32,
+        previous: Option<&Value>,
+        guids: impl IntoIterator<Item = String>,
+    ) -> anyhow::Result<Value> {
+        let settings =
+            serde_json::to_value(crate::keyboard_current_profile::initial_device_settings())
+                .unwrap();
+        prepare_document_with_device_settings(
+            profiles,
+            active,
+            layout,
+            previous,
+            Some(&settings),
+            guids,
+        )
+    }
     #[test]
     fn source_defaults_keep_dkm_analog_and_scroll_inputs() {
-        let document = prepare_document(&[profile()], "profile", 1, None, guids()).unwrap();
+        let document = prepare(&[profile()], "profile", 1, None, guids()).unwrap();
         assert_eq!(source_defaults().len(), 28);
         let mappings = document["defaultMappings"]["appEngine"]["mappings"]
             .as_array()
@@ -456,7 +500,7 @@ mod tests {
     fn snap_tap_publishes_analog_tags_then_removes_them_from_rebuilt_engine() {
         let mut source = profile();
         source["snapTap"]["isEnabled"] = json!(true);
-        let first = prepare_document(&[source.clone()], "profile", 1, None, guids()).unwrap();
+        let first = prepare(&[source.clone()], "profile", 1, None, guids()).unwrap();
         let mappings = first["profiles"][0]["appEngine"]["mappings"]
             .as_array()
             .unwrap();
@@ -478,7 +522,7 @@ mod tests {
                 .any(|mapping| mapping["input"]["scancode"] == 32)
         );
         source["snapTap"]["isEnabled"] = json!(false);
-        let second = prepare_document(&[source], "profile", 1, Some(&first), guids()).unwrap();
+        let second = prepare(&[source], "profile", 1, Some(&first), guids()).unwrap();
         assert_eq!(second["profiles"][0]["appEngine"]["mappings"], json!([]));
         assert_eq!(second["defaultTurbos"], first["defaultTurbos"]);
     }
@@ -490,7 +534,7 @@ mod tests {
             {"outputType":"defaultGroup","actuationPoint":{"0":65520,"1":256}}]},
             {"inputID":"KEY_BACKSLASH","inputType":"KeyInput","outputType":"disableGroup"},
             {"inputID":"KEY_NON_US_POUND","inputType":"KeyInput","outputType":"disableGroup"}]);
-        let document = prepare_document(&[source], "profile", 3, None, guids()).unwrap();
+        let document = prepare(&[source], "profile", 3, None, guids()).unwrap();
         let engine = &document["profiles"][0]["appEngine"];
         assert_eq!(
             engine["actuations"][0],
@@ -515,8 +559,9 @@ mod tests {
     #[test]
     fn game_mode_and_snap_tags_are_regenerated_from_saved_records() {
         let mut source = profile();
-        source["gamingMode"] = json!({"state":2,"isWindowsKeyDisabled":true});
-        let first = prepare_document(&[source], "profile", 1, None, guids()).unwrap();
+        source["gamingMode"]["state"] = json!(2);
+        source["gamingMode"]["isWindowsKeyDisabled"] = json!(true);
+        let first = prepare(&[source], "profile", 1, None, guids()).unwrap();
         assert!(first["profiles"][0]["appEngine"].get("gamemode").is_none());
         let running = compile(&first, Some(1), guids()).unwrap();
         assert_eq!(running["profiles"][0]["appEngine"]["gamemode"], true);
@@ -527,5 +572,53 @@ mod tests {
                 .is_none()
         );
         assert_eq!(stopped["profiles"][0]["gamingMode"]["state"], 2);
+    }
+
+    #[test]
+    fn compiler_requires_complete_profiles_and_explicit_device_settings() {
+        assert!(prepare_document(&[profile()], "profile", 1, None, guids()).is_err());
+        for field in [
+            "gamingMode",
+            "snapTap",
+            "mappings",
+            "actuationPoint",
+            "brightness",
+        ] {
+            let mut incomplete = profile();
+            incomplete.as_object_mut().unwrap().remove(field);
+            assert!(
+                prepare(&[incomplete], "profile", 1, None, guids()).is_err(),
+                "{field}"
+            );
+        }
+        let settings =
+            serde_json::to_value(crate::keyboard_current_profile::initial_device_settings())
+                .unwrap();
+        let first = prepare(&[profile()], "profile", 1, None, guids()).unwrap();
+        let mut changed = settings;
+        changed["analogData"]["defaultMakeActuation"] = json!(29484);
+        changed["analogData"]["defaultBreakActuation"] = json!(256);
+        let rebuilt = prepare_document_with_device_settings(
+            &[profile()],
+            "profile",
+            1,
+            Some(&first),
+            Some(&changed),
+            guids(),
+        )
+        .unwrap();
+        assert_eq!(rebuilt["analogData"], changed["analogData"]);
+        changed.as_object_mut().unwrap().remove("analogData");
+        assert!(
+            prepare_document_with_device_settings(
+                &[profile()],
+                "profile",
+                1,
+                Some(&first),
+                Some(&changed),
+                guids(),
+            )
+            .is_err()
+        );
     }
 }

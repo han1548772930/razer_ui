@@ -40,7 +40,7 @@ pub(super) fn request(
         );
         Ok(())
     };
-    let _lock = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+    let _lock = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
     let feature_bytes = before["feature_report_bytes"]
         .as_u64()
         .context("Current mouse DPI Feature Report size is absent")?

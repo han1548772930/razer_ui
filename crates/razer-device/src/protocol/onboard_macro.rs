@@ -102,6 +102,28 @@ pub struct MacroCatalog {
     pub macros: Vec<MacroSummary>,
 }
 
+impl MacroCatalog {
+    pub fn validate(&self) -> Result<()> {
+        ensure!(
+            self.inventory.ids.len() == usize::from(self.inventory.count)
+                && self.macros.len() == self.inventory.ids.len(),
+            "Macro catalog count differs from its observed inventory"
+        );
+        let mut ids = std::collections::BTreeSet::new();
+        for (summary, id) in self.macros.iter().zip(&self.inventory.ids) {
+            ensure!(ids.insert(*id) && summary.metadata.macro_id == *id,
+                "Macro catalog contains a repeated or foreign ID");
+            let mut decoded = decode_metadata(*id, summary.metadata.raw.clone())?;
+            decoded.blocks = summary.metadata.blocks.clone();
+            ensure!(decoded == summary.metadata, "Macro metadata differs from its observed bytes");
+            ensure!(summary.data_size <= self.inventory.storage.max_memory
+                && summary.allocated_size_with_name == required_memory(summary.data_size as usize)?,
+                "Macro catalog size differs from its observed storage");
+        }
+        Ok(())
+    }
+}
+
 /// Current keyboard CalMaxMem loader starts from the observed available-memory
 /// field, subtracts allocated macros and non-live profile metadata, and tracks
 /// deletions separately. The keyboard branch reuses this allowance directly;
@@ -410,6 +432,75 @@ pub struct OnboardMacro<'a> {
     metadata_transport: DeviceReadCapability,
     write_transport: DeviceReadCapability,
     metadata_write_transport: DeviceReadCapability,
+}
+
+/// The current 679 loader shares the captured macro read protocol. Its write
+/// branch is deliberately outside this capability's public surface.
+pub(crate) struct CurrentKeyboardMacroReader<'a> {
+    inner: OnboardMacro<'a>,
+}
+
+impl<'a> CurrentKeyboardMacroReader<'a> {
+    pub(crate) fn new(
+        device: &'a dyn FeatureTransport,
+        cap: &DeviceReadCapability,
+    ) -> Result<Self> {
+        let audited = crate::keyboard_metadata::capability(679)
+            .context("Current keyboard macro factory is absent")?;
+        ensure!(
+            cap.product_id == 679
+                && cap.source_class == audited.source_class
+                && cap.vendor_id == audited.vendor_id
+                && cap.claim_interface == audited.claim_interface
+                && cap.claim_interfaces_by_pid == audited.claim_interfaces_by_pid
+                && cap.direct_pids == audited.direct_pids,
+            "Current keyboard macro reader differs from its captured HID factory"
+        );
+        Ok(Self {
+            inner: OnboardMacro::from_transport(device, cap)?,
+        })
+    }
+
+    pub(crate) fn load(
+        &self,
+        transactions: &mut impl FnMut() -> Result<u8>,
+        validate: &impl Fn() -> Result<()>,
+    ) -> Result<MacroCatalog> {
+        self.inner.load_macros(transactions, validate)
+    }
+
+    /// The consumer has already read metadata in the catalog. Its detail phase
+    /// rereads size and content only, retaining that same observed metadata.
+    pub(crate) fn read_details(
+        &self,
+        summary: &MacroSummary,
+        max_data_bytes: u32,
+        transactions: &mut impl FnMut() -> Result<u8>,
+        validate: &impl Fn() -> Result<()>,
+    ) -> Result<MacroReading> {
+        let macro_id = summary.metadata.macro_id;
+        let data_size = self
+            .inner
+            .read_data_size(macro_id, transactions, validate)?;
+        ensure!(
+            data_size <= max_data_bytes,
+            "Macro content exceeds its read bound"
+        );
+        let mut data_blocks = Vec::new();
+        let data = self.inner.read_data_bytes(
+            macro_id,
+            data_size,
+            transactions,
+            validate,
+            &mut data_blocks,
+        )?;
+        Ok(MacroReading {
+            metadata: summary.metadata.clone(),
+            data_size,
+            data,
+            data_blocks,
+        })
+    }
 }
 
 impl<'a> OnboardMacro<'a> {

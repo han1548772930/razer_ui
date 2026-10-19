@@ -7,11 +7,14 @@ pub(super) enum DriverInstallation {
 }
 
 pub(super) fn driver_installation(arguments: &[String]) -> Option<DriverInstallation> {
-    arguments.iter().skip(1).find_map(|argument| match argument.as_str() {
-        "--install-hardware-driver" => Some(DriverInstallation::Install),
-        "--uninstall-hardware-driver" => Some(DriverInstallation::Uninstall),
-        _ => None,
-    })
+    arguments
+        .iter()
+        .skip(1)
+        .find_map(|argument| match argument.as_str() {
+            "--install-hardware-driver" => Some(DriverInstallation::Install),
+            "--uninstall-hardware-driver" => Some(DriverInstallation::Uninstall),
+            _ => None,
+        })
 }
 
 pub(super) fn validate(arguments: &[String]) -> Result<(), String> {

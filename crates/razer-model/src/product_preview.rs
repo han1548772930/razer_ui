@@ -1,5 +1,5 @@
 use crate::domain::DeviceFeatures;
-use crate::model::{Device, DeviceCategory, FirmwareInfo, Profile, SetupStatus};
+use crate::model::{Device, DeviceCategory, FirmwareInfo, SetupStatus};
 
 mod catalog;
 pub use catalog::{
@@ -63,7 +63,6 @@ pub fn registered_preview(pid: u32) -> Option<Device> {
     } else {
         DeviceCategory::Other
     };
-    let profile_id = format!("preview-profile-{pid}");
     let mut device = Device {
         dashboard: Default::default(),
         sub_devices: None,
@@ -76,15 +75,8 @@ pub fn registered_preview(pid: u32) -> Option<Device> {
         device_container_id: format!("preview-{pid}"),
         category,
         setup_status: SetupStatus::Unknown,
-        active_profile: profile_id.clone(),
-        profiles: vec![Profile {
-            id: profile_id.clone(),
-            guid: profile_id,
-            name: "Default".into(),
-            settings: None,
-            source_settings: None,
-            dpi_stages: None,
-        }],
+        active_profile: String::new(),
+        profiles: Vec::new(),
         is_single_profile: false,
         is_chroma_device: false,
         has_battery: false,
@@ -112,7 +104,6 @@ pub fn mouse_mat_preview(pid: u32) -> Option<Device> {
     razer_catalog::audited_mouse_mat(pid)?;
     let mut device = registered_preview(pid)?;
     device.category = DeviceCategory::Mousepad;
-    device.profiles[0].settings = Some(crate::settings::ProfileSettings::for_product(pid));
     Some(device)
 }
 
@@ -136,6 +127,8 @@ mod tests {
             assert!(device.firmware_info.current_fw_version.is_empty());
             assert!(device.power_status.is_none());
             assert!(device.dkm_keys.is_empty());
+            assert!(device.profiles.is_empty());
+            assert!(device.active_profile.is_empty());
             assert!(!device.features_initialized);
             assert!(!device.is_chroma_device);
             assert!(!device.has_battery);

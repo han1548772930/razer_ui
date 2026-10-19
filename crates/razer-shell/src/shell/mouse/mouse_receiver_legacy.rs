@@ -41,7 +41,7 @@ fn binding_info(
     razer_device::receiver_pairing::source192_binding_info(
         observed.container(),
         &rows,
-        || source_local::get_raw(&source_local::path(), "connectedDeviceInfo"),
+        || source_local::get_raw(&source_local::path()?, "connectedDeviceInfo"),
         || client.request(ServiceRequest::HidDevices),
         runtime,
     )
@@ -113,7 +113,7 @@ fn prepare(
             }
             {
                 let records = razer_storage::receiver_pairing::PairingCache::load(
-                    &razer_storage::receiver_pairing::local_path(),
+                    &razer_storage::receiver_pairing::local_path()?,
                 )?
                 .ordered_records();
                 if source_slave(
@@ -153,7 +153,7 @@ fn prepare(
     );
     if persist {
         storage::save_selection(
-            &source_local::path(),
+            &source_local::path()?,
             observed.product_id(),
             serial,
             &profile,

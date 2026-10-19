@@ -77,10 +77,10 @@ impl Worker {
         let valid = Arc::new(AtomicBool::new(true));
         let signal = valid.clone();
         let url = view_url.to_owned();
+        let path = source_local::path()?;
         let worker = thread::Builder::new()
             .name("local-keyboard-game-links".into())
             .spawn(move || {
-                let path = source_local::path();
                 let mut foreground: Option<ServiceClient> = None;
                 let mut observe_foreground = false;
                 let mut retry = Instant::now();

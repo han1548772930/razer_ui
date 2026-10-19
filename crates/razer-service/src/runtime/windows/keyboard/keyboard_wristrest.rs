@@ -106,7 +106,7 @@ pub(super) fn run(
             guard()
         };
         validate()?;
-        let _lock = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+        let _lock = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
         validate()?;
         let device = hid_transport::open(&target.path, cap.report_bytes)?;
         wristrest::query(&device, transaction(&target, cap)?, &validate)
