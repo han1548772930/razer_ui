@@ -44,7 +44,9 @@ razer-shell = { path = "crates/razer-shell" }
 razer-state = { path = "crates/razer-state" }
 razer-storage = { path = "crates/razer-storage" }
 razer-widgets = { path = "crates/razer-widgets" }
-gpui-kit = { version = "0.7", features = ["gpui-fast"] }
+gpui-kit = { git = "https://github.com/longbridge/gpui-kit.git", features = [
+  "gpui-fast",
+] }
 anyhow = "1"
 log = { version = "0.4.34", features = ["std"] }
 async-channel = "2"
