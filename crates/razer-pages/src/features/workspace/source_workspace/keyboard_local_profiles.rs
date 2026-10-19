@@ -2,6 +2,16 @@
 use super::*;
 use razer_storage::host_keyboard_profiles::LocalProfiles;
 
+pub(super) fn active_keyboard_factory_profile(device: &Device) -> bool {
+    device
+        .profiles
+        .iter()
+        .find(|profile| profile.id == device.active_profile)
+        .is_some_and(|profile| {
+            super::super::keyboard_products::is_factory_profile(device.product_id, &profile.guid)
+        })
+}
+
 impl SourceProductWorkspace {
     pub fn observe_keyboard_serial(&mut self, serial: &str, cx: &mut Context<Self>) {
         self.device.observe_keyboard_serial(serial);

@@ -6,6 +6,7 @@ edition.workspace = true
 [dependencies]
 anyhow.workspace = true
 async-channel.workspace = true
+sys-locale.workspace = true
 razer-catalog.workspace = true
 razer-storage.workspace = true
 serde.workspace = true

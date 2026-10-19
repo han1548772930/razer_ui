@@ -1,4 +1,5 @@
 //! Current 58190 Za/$r/Ur/vr and 25572.G recording preferences.
+use super::editors::{source_float, source_number};
 use super::*;
 use gpui_kit::component::select::SelectState;
 use razer_pages::features::macro_library::MacroType;
@@ -123,71 +124,6 @@ fn normalized_number(raw: &str, random: bool) -> Option<String> {
         return None;
     }
     Some(value)
-}
-
-// The source uses Number/isNaN for acceptance and parseFloat for submission.
-// Keep those distinct (for example Number("0x5")=5, parseFloat("0x5")=0).
-fn source_number(raw: &str) -> Option<f64> {
-    let value = raw.trim();
-    if value.is_empty() {
-        return Some(0.);
-    }
-    let radix = if value.starts_with("0x") || value.starts_with("0X") {
-        Some(16)
-    } else if value.starts_with("0b") || value.starts_with("0B") {
-        Some(2)
-    } else if value.starts_with("0o") || value.starts_with("0O") {
-        Some(8)
-    } else {
-        None
-    };
-    let number = if let Some(radix) = radix {
-        if value.len() == 2 {
-            return None;
-        }
-        value[2..].chars().try_fold(0., |n, c| {
-            c.to_digit(radix).map(|d| n * radix as f64 + d as f64)
-        })?
-    } else {
-        value.parse::<f64>().ok()?
-    };
-    number.is_finite().then_some(number)
-}
-fn source_float(raw: &str) -> Option<f64> {
-    let value = raw.trim_start();
-    let bytes = value.as_bytes();
-    let mut end = usize::from(bytes.first().is_some_and(|c| matches!(c, b'+' | b'-')));
-    let start = end;
-    while bytes.get(end).is_some_and(u8::is_ascii_digit) {
-        end += 1;
-    }
-    let mut digits = end - start;
-    if bytes.get(end) == Some(&b'.') {
-        end += 1;
-        let start = end;
-        while bytes.get(end).is_some_and(u8::is_ascii_digit) {
-            end += 1;
-        }
-        digits += end - start;
-    }
-    if digits == 0 {
-        return None;
-    }
-    if bytes.get(end).is_some_and(|c| matches!(c, b'e' | b'E')) {
-        let exponent = end;
-        end += 1;
-        if bytes.get(end).is_some_and(|c| matches!(c, b'+' | b'-')) {
-            end += 1;
-        }
-        let start = end;
-        while bytes.get(end).is_some_and(u8::is_ascii_digit) {
-            end += 1;
-        }
-        if end == start {
-            end = exponent;
-        }
-    }
-    value[..end].parse::<f64>().ok().filter(|n| n.is_finite())
 }
 
 impl MacroPage {

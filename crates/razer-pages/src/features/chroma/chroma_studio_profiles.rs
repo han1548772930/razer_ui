@@ -147,8 +147,8 @@ impl ChromaStudio {
         let id = profile.id.clone();
         let name = profile.name.clone();
         let input = cx.new(|cx| {
-            let mut input = InputState::new(window, cx);
-            input.set_value(name, window, cx);
+            let mut input = source_input::input_state(32, window, cx);
+            source_input::set_value(&mut input, name, 32, window, cx);
             input
         });
         self.profile_rename_subscription = Some(cx.subscribe(&input, |page, _, event, cx| {
@@ -158,16 +158,11 @@ impl ChromaStudio {
                 };
                 page.profile_rename_subscription = None;
                 let value = input.read(cx).value();
-                let mut length = 0;
-                let name = value
-                    .trim()
-                    .chars()
-                    .take_while(|character| {
-                        length += character.len_utf16();
-                        length <= 32
-                    })
-                    .collect::<String>();
-                if !name.is_empty() && !page.profiles.iter().any(|profile| profile.name == name) {
+                let name = studio_layers::renamed_title(
+                    &value,
+                    page.profiles.iter().map(|profile| profile.name.as_str()),
+                );
+                if let Some(name) = name.map(str::to_owned) {
                     cx.emit(ChromaStudioEvent::Profile(StudioProfileCommand::Rename {
                         id,
                         name,
@@ -181,6 +176,14 @@ impl ChromaStudio {
             input.select_all(window, cx);
         });
         self.profile_rename = Some((id, input));
+        cx.notify();
+    }
+    pub(super) fn cancel_profile_rename(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.profile_rename.take().is_none() {
+            return;
+        }
+        self.profile_rename_subscription = None;
+        self.focus.focus(window, cx);
         cx.notify();
     }
     pub(super) fn profile_header(
@@ -227,7 +230,17 @@ impl ChromaStudio {
         let selector = if let Some((_, input)) = &self.profile_rename {
             div()
                 .w(surface::css(180.))
-                .child(Input::new(input))
+                .capture_action(cx.listener(
+                    |this, _: &gpui_kit::component::input::Escape, window, cx| {
+                        this.cancel_profile_rename(window, cx);
+                        cx.stop_propagation();
+                    },
+                ))
+                .child(
+                    Input::new(input)
+                        .id("studio-profile-rename-input")
+                        .source_max_length(input, 32),
+                )
                 .into_any_element()
         } else {
             StudioDropdown::new(
@@ -346,5 +359,273 @@ impl ChromaStudio {
                 0.,
             ))
             .into_any_element()
+    }
+}
+
+#[cfg(test)]
+mod rename_window_tests {
+    use super::super::{
+        ChromaStudio, ChromaStudioEvent, ChromaStudioSnapshot, StudioProfileCommand,
+        StudioProfileItem,
+    };
+    use gpui_kit::base::Dialog;
+    use gpui_kit::component::Root;
+    use gpui_kit::prelude::*;
+    use gpui_kit::test::TestWindowExt;
+    use gpui_kit::{
+        AppContext as _, Context, Entity, FocusHandle, IntoElement, Render, Subscription,
+        TestAppContext, Window, WindowHandle, div, px, size,
+    };
+    use std::{
+        cell::{Cell, RefCell},
+        rc::Rc,
+        time::Duration,
+    };
+
+    // The production Studio window has no Dialog ancestor. This fixture checks
+    // the actual Kit action consumer that runs before raw key-down handlers.
+    struct DialogHost {
+        studio: Entity<ChromaStudio>,
+        cancelled: Rc<Cell<usize>>,
+        focus: FocusHandle,
+    }
+    impl Render for DialogHost {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            let cancelled = self.cancelled.clone();
+            Dialog::new(cx)
+                .focus_handle(self.focus.clone())
+                .on_cancel(move |_, _, _| {
+                    cancelled.set(cancelled.get() + 1);
+                    false
+                })
+                .popup(div().size_full().child(self.studio.clone()))
+        }
+    }
+
+    struct RenameWindow {
+        handle: WindowHandle<Root>,
+        studio: Entity<ChromaStudio>,
+        cancelled: Rc<Cell<usize>>,
+        events: Rc<RefCell<Vec<ChromaStudioEvent>>>,
+        initial: ChromaStudioSnapshot,
+        _subscription: Subscription,
+    }
+    impl RenameWindow {
+        fn new(cx: &mut TestAppContext) -> Self {
+            cx.update(|cx| {
+                gpui_kit::init(cx);
+                cx.set_reduce_motion(true);
+            });
+            let cancelled = Rc::new(Cell::new(0));
+            let mut initial = ChromaStudioSnapshot::default_profile().unwrap();
+            initial.document.layers[0].title =
+                "Source layer name beyond thirty-two UTF16 units".into();
+            let mut retained = None;
+            let handle = cx.open_window(size(px(1280.), px(800.)), |window, cx| {
+                let studio = cx.new(ChromaStudio::new);
+                studio.update(cx, |studio, cx| {
+                    studio.restore(initial.clone(), cx);
+                    studio.set_profiles(
+                        vec![StudioProfileItem {
+                            id: "source-profile".into(),
+                            name: "Source profile name beyond thirty-two UTF16 units".into(),
+                        }],
+                        Some("source-profile".into()),
+                        false,
+                        cx,
+                    );
+                    studio.focus(window, cx);
+                });
+                retained = Some(studio.clone());
+                let host = cx.new(|cx| DialogHost {
+                    studio,
+                    cancelled: cancelled.clone(),
+                    focus: cx.focus_handle(),
+                });
+                Root::new(host, window, cx)
+            });
+            let studio = retained.unwrap();
+            let events = Rc::new(RefCell::new(Vec::new()));
+            let recorded = events.clone();
+            let subscription = cx.update(|cx| {
+                cx.subscribe(&studio, move |_, event: &ChromaStudioEvent, _| {
+                    recorded.borrow_mut().push(event.clone());
+                })
+            });
+            Self {
+                handle,
+                studio,
+                cancelled,
+                events,
+                initial,
+                _subscription: subscription,
+            }
+        }
+        fn open_profile_rename(&self, cx: &mut TestAppContext) {
+            cx.update_window(self.handle.into(), |_, window, cx| {
+                window.render_frame(cx);
+                window.click("studio-profile-actions-trigger", cx);
+            })
+            .unwrap();
+            cx.run_until_parked();
+            cx.executor().advance_clock(Duration::from_millis(100));
+            cx.run_until_parked();
+            cx.update_window(self.handle.into(), |_, window, cx| {
+                window.render_frame(cx);
+                window.click("studio-profile-action-RENAME", cx);
+            })
+            .unwrap();
+            cx.run_until_parked();
+            cx.executor().advance_clock(Duration::from_millis(100));
+            cx.run_until_parked();
+        }
+    }
+
+    #[gpui_kit::test]
+    fn studio_profile_escape_cancels_before_parent_dialog_and_later_enter_submits_once(
+        cx: &mut TestAppContext,
+    ) {
+        let scene = RenameWindow::new(cx);
+        scene.open_profile_rename(cx);
+        cx.update_window(scene.handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            let input = window.find("studio-profile-rename-input");
+            assert_eq!(input.focused(), Some(true));
+            assert_eq!(
+                input.value(),
+                Some("Source profile name beyond thirty-two UTF16 units")
+            );
+            window.input("Discarded profile draft", cx);
+            window.press("escape", cx);
+        })
+        .unwrap();
+        cx.run_until_parked();
+        cx.update_window(scene.handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            assert!(window.try_find("studio-profile-rename-input").is_none());
+            let studio = scene.studio.read(cx);
+            assert!(studio.profile_rename.is_none());
+            assert!(studio.profile_rename_subscription.is_none());
+            assert_eq!(
+                studio.profiles[0].name,
+                "Source profile name beyond thirty-two UTF16 units"
+            );
+            assert_eq!(studio.snapshot(), scene.initial);
+            assert!(!studio.has_unsaved_changes());
+            assert!(studio.focus.is_focused(window));
+        })
+        .unwrap();
+        assert_eq!(scene.cancelled.get(), 0);
+        assert!(scene.events.borrow().is_empty());
+
+        cx.update_window(scene.handle.into(), |_, window, cx| {
+            window.press("escape", cx);
+        })
+        .unwrap();
+        assert_eq!(scene.cancelled.get(), 1);
+
+        scene.open_profile_rename(cx);
+        cx.update_window(scene.handle.into(), |_, window, cx| {
+            window.input("  Accepted profile  ", cx);
+            window.press("enter", cx);
+        })
+        .unwrap();
+        cx.run_until_parked();
+        cx.update_window(scene.handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            assert!(window.try_find("studio-profile-rename-input").is_none());
+            window.click(("studio-layer", 1_u64), cx);
+        })
+        .unwrap();
+        cx.run_until_parked();
+        let events = scene.events.borrow();
+        assert_eq!(events.len(), 1);
+        assert!(matches!(
+            &events[0],
+            ChromaStudioEvent::Profile(StudioProfileCommand::Rename { id, name })
+                if id == "source-profile" && name == "Accepted profile"
+        ));
+        assert_eq!(scene.cancelled.get(), 1);
+    }
+
+    #[gpui_kit::test]
+    fn studio_layer_escape_cancels_before_parent_dialog_and_later_enter_changes_only_draft(
+        cx: &mut TestAppContext,
+    ) {
+        let scene = RenameWindow::new(cx);
+        cx.update_window(scene.handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            window.click(("studio-layer", 1_u64), cx);
+            window.press("ctrl-e", cx);
+        })
+        .unwrap();
+        cx.run_until_parked();
+        cx.update_window(scene.handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            let input = window.find(("studio-layer-rename-input", 1_u64));
+            assert_eq!(input.focused(), Some(true));
+            assert_eq!(
+                input.value(),
+                Some("Source layer name beyond thirty-two UTF16 units")
+            );
+            window.input("Discarded layer draft", cx);
+            window.press("escape", cx);
+        })
+        .unwrap();
+        cx.run_until_parked();
+        cx.update_window(scene.handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            assert!(
+                window
+                    .try_find(("studio-layer-rename-input", 1_u64))
+                    .is_none()
+            );
+            let studio = scene.studio.read(cx);
+            assert!(studio.renaming.is_none());
+            assert!(studio.rename_subscription.is_none());
+            assert_eq!(studio.snapshot(), scene.initial);
+            assert!(!studio.has_unsaved_changes());
+            assert!(studio.past.is_empty());
+            assert!(studio.focus.is_focused(window));
+        })
+        .unwrap();
+        assert_eq!(scene.cancelled.get(), 0);
+        assert!(scene.events.borrow().is_empty());
+
+        cx.update_window(scene.handle.into(), |_, window, cx| {
+            window.press("escape", cx);
+        })
+        .unwrap();
+        assert_eq!(scene.cancelled.get(), 1);
+
+        cx.update_window(scene.handle.into(), |_, window, cx| {
+            window.press("ctrl-e", cx);
+        })
+        .unwrap();
+        cx.run_until_parked();
+        cx.update_window(scene.handle.into(), |_, window, cx| {
+            window.input("  Accepted layer  ", cx);
+            window.press("enter", cx);
+        })
+        .unwrap();
+        cx.run_until_parked();
+        cx.update_window(scene.handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            assert!(
+                window
+                    .try_find(("studio-layer-rename-input", 1_u64))
+                    .is_none()
+            );
+            window.click("studio-profile-actions-trigger", cx);
+            let studio = scene.studio.read(cx);
+            assert_eq!(studio.document.layers[0].title, "Accepted layer");
+            assert_eq!(studio.saved, *scene.initial.document());
+            assert_eq!(studio.past.len(), 1);
+            assert!(studio.has_unsaved_changes());
+        })
+        .unwrap();
+        cx.run_until_parked();
+        assert_eq!(scene.cancelled.get(), 1);
+        assert!(scene.events.borrow().is_empty());
     }
 }

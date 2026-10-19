@@ -34,9 +34,7 @@ impl PortDraft {
     }
     pub(super) fn valid(&self, minimum: u32, fan_counts: &[u32]) -> bool {
         let mut ids = BTreeSet::new();
-        !self.name.is_empty()
-            && self.name.encode_utf16().count() <= 32
-            && (1..=4).contains(&self.strip.len())
+        (1..=4).contains(&self.strip.len())
             && (1..=14).contains(&self.fan.len())
             && self
                 .strip

@@ -396,7 +396,7 @@ impl MatcherState {
     }
     pub fn commit_rename(&mut self, name: &str) -> Vec<MatcherAction> {
         self.rename = None;
-        let name = name.trim_matches(js_whitespace);
+        let name = razer_device::source_string::trim(name);
         if name.is_empty()
             || matches!(name, "none" | "None")
             || self.profiles.iter().any(|profile| profile["name"] == name)
@@ -437,24 +437,6 @@ impl MatcherState {
             self.delete_all_open = false;
         }
     }
-}
-/// ECMAScript WhiteSpace and LineTerminator used by trim and /\s/g. Rust's
-/// Unicode whitespace additionally includes U+0085 and omits the U+FEFF BOM.
-fn js_whitespace(value: char) -> bool {
-    matches!(
-        value,
-        '\u{0009}'..='\u{000d}'
-            | '\u{0020}'
-            | '\u{00a0}'
-            | '\u{1680}'
-            | '\u{2000}'..='\u{200a}'
-            | '\u{2028}'
-            | '\u{2029}'
-            | '\u{202f}'
-            | '\u{205f}'
-            | '\u{3000}'
-            | '\u{feff}'
-    )
 }
 fn localized(value: &Value, language: &str) -> String {
     if let Some(value) = value.as_str() {

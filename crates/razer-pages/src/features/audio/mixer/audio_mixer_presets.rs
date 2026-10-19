@@ -5,10 +5,33 @@ use gpui_kit::component::{
     input::{Input, InputEvent, InputState},
     menu::{DropdownMenu, PopupMenuItem},
 };
+use razer_widgets::source_input::{self, SourceInputExt as _};
 #[path = "audio_mixer_restore.rs"]
 mod restore;
 #[path = "audio_mixer_preset_shortcuts.rs"]
 mod shortcuts;
+
+#[derive(Clone, Copy)]
+pub(super) enum PresetNameSubmit {
+    Submit,
+    Escape,
+}
+
+/// Current 1342 kU and 1422/1446 Se callbacks share trim and exact-name checks.
+/// Their text editor forwards the previous prop on Escape to that same callback.
+pub(super) fn submitted_preset_name<'a, 'b>(
+    submit: PresetNameSubmit,
+    previous: &'a str,
+    draft: &'a str,
+    names: impl Iterator<Item = &'b str>,
+) -> Option<&'a str> {
+    let value = match submit {
+        PresetNameSubmit::Submit => draft,
+        PresetNameSubmit::Escape => previous,
+    };
+    let name = razer_device::source_string::trim(value);
+    (!name.is_empty() && !names.into_iter().any(|existing| existing == name)).then_some(name)
+}
 
 #[derive(Clone, Deserialize, serde::Serialize)]
 pub(super) struct Library {
@@ -50,6 +73,78 @@ fn recipe() -> &'static Recipe {
     static RECIPE: OnceLock<Recipe> = OnceLock::new();
     RECIPE.get_or_init(|| read_audio_mixer_presets_current_catalog())
 }
+
+#[cfg(test)]
+mod preset_name_tests {
+    use super::{PresetNameSubmit, submitted_preset_name};
+
+    #[test]
+    fn audio_names_trim_source_whitespace_and_compare_exact_case() {
+        let names = ["Exact", "Old"];
+        for (draft, expected) in [
+            ("\u{feff}\u{00a0}Fresh\u{2028}", Some("Fresh")),
+            ("\u{feff}\u{2029}\u{3000}", None),
+            ("\u{feff}Exact\u{feff}", None),
+            (" exact ", Some("exact")),
+            ("\u{0085}", Some("\u{0085}")),
+            ("\u{0085}Fresh\u{0085}", Some("\u{0085}Fresh\u{0085}")),
+            ("\u{180e}", Some("\u{180e}")),
+        ] {
+            assert_eq!(
+                submitted_preset_name(PresetNameSubmit::Submit, "Old", draft, names.into_iter()),
+                expected,
+                "draft {draft:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn audio_escape_forwards_previous_prop_through_the_same_submit_callback() {
+        let names = ["Old", "Exact"];
+        assert_eq!(
+            submitted_preset_name(PresetNameSubmit::Escape, "Old", "Fresh", names.into_iter()),
+            None
+        );
+        assert_eq!(
+            submitted_preset_name(PresetNameSubmit::Submit, "Old", "Fresh", names.into_iter()),
+            Some("Fresh")
+        );
+        // The current callback still trims the prop forwarded by Escape.
+        assert_eq!(
+            submitted_preset_name(
+                PresetNameSubmit::Escape,
+                "\u{feff} Old \u{feff}",
+                "Edited draft",
+                ["\u{feff} Old \u{feff}"].into_iter()
+            ),
+            Some("Old")
+        );
+    }
+
+    #[test]
+    fn audio_submit_does_not_truncate_a_name_supplied_by_the_source() {
+        let previous = "😀".repeat(17);
+        assert_eq!(
+            submitted_preset_name(
+                PresetNameSubmit::Escape,
+                &previous,
+                "Draft",
+                [&*previous].into_iter()
+            ),
+            None
+        );
+        let padded = format!("\u{feff}{previous}\u{feff}");
+        assert_eq!(
+            submitted_preset_name(
+                PresetNameSubmit::Escape,
+                &padded,
+                "Draft",
+                [&*padded].into_iter()
+            ),
+            Some(previous.as_str())
+        );
+    }
+}
 impl Library {
     fn provisional() -> Self {
         // ed is the UI reducer's initial row. It has no persisted DSP fields;
@@ -82,7 +177,7 @@ impl Library {
             p["guid"].as_str().is_some_and(|id| !id.is_empty())
                 && p["name"]
                     .as_str()
-                    .is_some_and(|name| !name.trim().is_empty())
+                    .is_some_and(|name| !razer_device::source_string::trim(name).is_empty())
                 && recipe()
                     .restore_order
                     .iter()
@@ -131,9 +226,7 @@ impl AudioProductWorkspace {
             return;
         }
         let choices = cx.new(|cx| SelectState::new(Vec::<Choice>::new(), None, window, cx));
-        let rename = cx.new(|cx| {
-            InputState::new(window, cx).validate(|value, _| value.encode_utf16().count() <= 32)
-        });
+        let rename = cx.new(|cx| source_input::input_state(32, window, cx));
         let capture = cx.focus_handle();
         self.subscriptions
             .push(cx.on_focus_out(&capture, window, |this, _, _, cx| {
@@ -149,16 +242,13 @@ impl AudioProductWorkspace {
                 }
             }),
         );
-        self.subscriptions.push(cx.subscribe_in(
-            &rename,
-            window,
-            |this, input, event, window, cx| {
+        self.subscriptions.push(
+            cx.subscribe_in(&rename, window, |this, _, event, window, cx| {
                 if matches!(event, InputEvent::Blur | InputEvent::PressEnter { .. }) {
-                    let name = input.read(cx).value().trim().to_owned();
-                    this.rename_effect_preset(&name, window, cx);
+                    this.rename_effect_preset(PresetNameSubmit::Submit, window, cx);
                 }
-            },
-        ));
+            }),
+        );
         self.effect_presets = Some(State {
             library: Library::provisional(),
             source_loaded: false,
@@ -485,30 +575,54 @@ impl AudioProductWorkspace {
         let name = name.to_owned();
         state.renaming = Some(state.library.active_preset.clone());
         state.rename.update(cx, |input, cx| {
-            input.set_value(name, window, cx);
+            source_input::set_value(input, name, 32, window, cx);
             input.focus(window, cx);
+            input.select_all(window, cx);
         });
         cx.notify();
     }
 
-    fn rename_effect_preset(&mut self, name: &str, window: &mut Window, cx: &mut Context<Self>) {
+    fn cancel_effect_preset_rename(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.rename_effect_preset(PresetNameSubmit::Escape, window, cx);
+    }
+
+    fn rename_effect_preset(
+        &mut self,
+        submit: PresetNameSubmit,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let Some(state) = &mut self.effect_presets else {
             return;
         };
         let Some(id) = state.renaming.take() else {
             return;
         };
-        if name.is_empty()
-            || name.encode_utf16().count() > 32
-            || state
+        let previous = state.library.presets.iter().find_map(|preset| {
+            (preset.get("guid").and_then(Value::as_str) == Some(&id))
+                .then(|| preset.get("name").and_then(Value::as_str))
+                .flatten()
+        });
+        let Some(previous) = previous else {
+            cx.notify();
+            return;
+        };
+        let draft = state.rename.read(cx).value();
+        let name = submitted_preset_name(
+            submit,
+            previous,
+            &draft,
+            state
                 .library
                 .presets
                 .iter()
-                .any(|p| p["name"].as_str() == Some(name))
-        {
+                .filter_map(|preset| preset.get("name").and_then(Value::as_str)),
+        )
+        .map(str::to_owned);
+        let Some(name) = name else {
             cx.notify();
             return;
-        }
+        };
         if let Some(preset) = state
             .library
             .presets
@@ -705,7 +819,21 @@ impl AudioProductWorkspace {
                             .gap_0()
                             .w(surface::css(276.))
                             .child(if state.renaming.is_some() {
-                                Input::new(&state.rename).into_any_element()
+                                div()
+                                    .id("audio-effects-preset-name")
+                                    .on_action(cx.listener(
+                                        |this,
+                                         _: &gpui_kit::component::input::Escape,
+                                         window,
+                                         cx| {
+                                            this.cancel_effect_preset_rename(window, cx);
+                                        },
+                                    ))
+                                    .child(
+                                        Input::new(&state.rename)
+                                            .source_max_length(&state.rename, 32),
+                                    )
+                                    .into_any_element()
                             } else {
                                 Select::new(&state.choices)
                                     .w(surface::css(250.))

@@ -2,7 +2,7 @@
 use gpui_kit::{
     AnyImageCache, App, AppContext as _, Context, Entity, Global, Image, ImageCache,
     ImageCacheError, ImageCacheItem, ImageCacheProvider, ImageFormat, ImageSource, RenderImage,
-    Resource, SharedString, Subscription, Task, Window, WindowId,
+    Resource, SharedString, Subscription, Task, WeakEntity, Window, WindowId,
 };
 use razer_storage::file_transfer::Transfer;
 use std::{
@@ -85,6 +85,9 @@ mod scope;
 pub use scope::{ResourceLayer, ResourceScope, deferred_resource, resource_scope};
 mod filters;
 pub use filters::ImageFilter;
+mod leases;
+use leases::{CacheIdentity, DisplayOwnership};
+mod animation;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 struct FilteredIdentity {
@@ -111,24 +114,52 @@ struct ResourceImageCache {
     images: HashMap<Resource, ImageCacheItem>,
     filtered: HashMap<FilteredIdentity, FilteredEntry>,
     filter_clock: u64,
+    owner: WeakEntity<Self>,
+    displayed: HashMap<CacheIdentity, DisplayOwnership>,
+    animations: animation::Players,
 }
 impl ResourceImageCache {
     fn new(cx: &mut App) -> Entity<Self> {
-        let cache = cx.new(|_| Self {
+        let cache = cx.new(|cx| Self {
             images: HashMap::new(),
             filtered: HashMap::new(),
             filter_clock: 0,
+            owner: cx.entity().downgrade(),
+            displayed: HashMap::new(),
+            animations: animation::Players::default(),
         });
         cx.observe_release(&cache, |cache, cx| cache.clear(cx))
             .detach();
         cache
     }
 
-    fn retry_failed(&mut self) {
+    fn retry_failed(&mut self, cx: &mut App) {
         self.images
             .retain(|_, item| !matches!(item.get(), Some(Err(_))));
         self.filtered
             .retain(|_, entry| !matches!(entry.result, Some(Err(_))));
+        self.displayed.retain(|identity, _| match identity {
+            CacheIdentity::Image(source) => self.images.contains_key(source),
+            CacheIdentity::Filtered(identity) => self.filtered.contains_key(identity),
+        });
+        self.animations.retry_failed(cx);
+    }
+
+    fn retain_displayed(&mut self, identity: CacheIdentity, key: SharedString, window: &mut Window, cx: &mut App) {
+        let ownership = self.displayed.entry(identity.clone()).or_default().clone();
+        leases::retain(self.owner.clone(), identity, ownership, key, window, cx);
+    }
+
+    fn release_displayed(&mut self, identity: &CacheIdentity, ownership: &DisplayOwnership, cx: &mut App) {
+        if !ownership.unused() || !self.displayed.get(identity).is_some_and(|current| current.is_same(ownership)) {
+            return;
+        }
+        self.displayed.remove(identity);
+        let image = match identity {
+            CacheIdentity::Image(source) => self.images.remove(source).and_then(|entry| entry.get().and_then(Result::ok)),
+            CacheIdentity::Filtered(identity) => self.filtered.remove(identity).and_then(|entry| entry.result.as_ref().and_then(|result| result.as_ref().ok()).cloned()),
+        };
+        if let Some(image) = image { cx.drop_image(image, None); }
     }
 
     fn clear_filtered(&mut self, cx: &mut App) {
@@ -141,7 +172,7 @@ impl ResourceImageCache {
                     .and_then(|result| result.as_ref().ok())
                     .cloned()
             },
-            |image| cx.drop_image(image, None),
+            |image| cx.defer(move |cx| cx.drop_image(image, None)),
         );
     }
 
@@ -149,20 +180,29 @@ impl ResourceImageCache {
         discard_image_entries(
             &mut self.images,
             |entry| entry.get().and_then(Result::ok),
-            |image| cx.drop_image(image, None),
+            |image| cx.defer(move |cx| cx.drop_image(image, None)),
         );
         self.clear_filtered(cx);
+        self.displayed.clear();
+        self.animations.clear(cx);
     }
 
     fn load_filtered(
         &mut self,
         path: SharedString,
         identity: FilteredIdentity,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Option<Result<Arc<RenderImage>, ImageCacheError>> {
         if let Err(error) = ensure_decoders_running(cx) {
             return Some(Err(error));
         }
+        self.retain_displayed(
+            CacheIdentity::Filtered(identity.clone()),
+            format!("resource-filtered:{path}:{:?}", identity.filters).into(),
+            window,
+            cx,
+        );
         self.filter_clock = self.filter_clock.wrapping_add(1);
         if let Some(entry) = self.filtered.get_mut(&identity) {
             entry.last_used = self.filter_clock;
@@ -174,13 +214,16 @@ impl ResourceImageCache {
             let oldest = self
                 .filtered
                 .iter()
+                .filter(|(identity, _)| self.displayed.get(&CacheIdentity::Filtered((*identity).clone())).is_none_or(DisplayOwnership::unused))
                 .min_by_key(|(_, entry)| entry.last_used)
                 .map(|(identity, _)| identity.clone());
             if let Some(oldest) = oldest {
                 if let Some(entry) = self.filtered.remove(&oldest) {
                     if let Some(Ok(image)) = entry.result.as_ref() {
-                        cx.drop_image(image.clone(), None);
+                        let image = image.clone();
+                        cx.defer(move |cx| cx.drop_image(image, None));
                     }
+                    self.displayed.remove(&CacheIdentity::Filtered(oldest));
                 }
             }
         }
@@ -257,7 +300,7 @@ impl ResourceImageCache {
         None
     }
 
-    fn errors(&self) -> impl Iterator<Item = String> + '_ {
+    fn errors(&self, cx: &App) -> Vec<String> {
         self.images
             .iter()
             .filter_map(|(source, item)| {
@@ -277,6 +320,8 @@ impl ResourceImageCache {
                 };
                 Some(format!("{} (CSS filter): {error}", entry.path))
             }))
+            .chain(self.animations.errors(cx))
+            .collect()
     }
 }
 impl ImageCache for ResourceImageCache {
@@ -289,10 +334,8 @@ impl ImageCache for ResourceImageCache {
         if let Err(error) = ensure_decoders_running(cx) {
             return Some(Err(error));
         }
-        if let Some(item) = self.images.get_mut(source) {
-            return item.use_image(window);
-        }
-        if let Resource::Embedded(path) = source {
+        if !self.images.contains_key(source) {
+            if let Resource::Embedded(path) = source {
             match available(path, cx) {
                 Ok(false) => {
                     razer_resources::trace("image", path, "pending bytes");
@@ -304,7 +347,17 @@ impl ImageCache for ResourceImageCache {
                 }
                 Ok(true) => razer_resources::trace("image", path, "decode started"),
             }
+            }
         }
+        if animation::candidate(source) {
+            return self.animations.load(source, window, cx);
+        }
+        self.retain_displayed(
+            CacheIdentity::Image(source.clone()),
+            format!("resource-image:{source:?}").into(),
+            window,
+            cx,
+        );
         self.images
             .entry(source.clone())
             .or_insert_with(|| ImageCacheItem::new(source, cx))
@@ -368,7 +421,7 @@ pub fn filtered_resource_svg(
         };
         let cache = WindowResourceCaches::for_window(window, cx);
         cache.update(cx, |cache, cx| {
-            cache.load_filtered(path.clone(), identity, cx)
+            cache.load_filtered(path.clone(), identity, window, cx)
         })
     }))
 }
@@ -397,7 +450,7 @@ pub(super) fn resource_image_errors(cx: &App) -> BTreeSet<String> {
     cx.global::<WindowResourceCaches>()
         .by_window
         .values()
-        .flat_map(|cache| cache.read(cx).errors())
+        .flat_map(|cache| cache.read(cx).errors(cx))
         .collect()
 }
 
@@ -412,7 +465,7 @@ pub(super) fn retry_resource_images(cx: &mut App) {
         .cloned()
         .collect::<Vec<_>>();
     for cache in caches {
-        cache.update(cx, |cache, _| cache.retry_failed());
+        cache.update(cx, |cache, cx| cache.retry_failed(cx));
     }
 }
 

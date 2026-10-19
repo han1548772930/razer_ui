@@ -6,6 +6,8 @@ edition.workspace = true
 [dependencies]
 anyhow.workspace = true
 regex.workspace = true
+icu_collator.workspace = true
+icu_locale_core.workspace = true
 prost = "=0.14.1"
 md5.workspace = true
 html5ever = "0.27.0"

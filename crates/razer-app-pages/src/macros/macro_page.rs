@@ -12,6 +12,7 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
 use razer_widgets::scroll::SourceScrollable as _;
+use razer_widgets::source_input;
 use razer_widgets::surface::css;
 use razer_widgets::tutorial::TutorialIndicator;
 use std::time::Duration;
@@ -75,7 +76,6 @@ mod transfer;
 mod tree;
 #[path = "macro_page/unsaved.rs"]
 mod unsaved;
-use razer_model::macro_library::parse_delay;
 use state::{ActionItem, ActionKind, Entry, EntryKind, Sort, Tutorial, value_is_translation_key};
 
 use row_drag::{ActionDrag, ActionDragPreview};
@@ -169,7 +169,7 @@ pub struct MacroPage {
     randomized_open: Option<usize>,
     editing_action: Option<usize>,
     numeric_generation: u64,
-    numeric_task: Option<Task<()>>,
+    action_edit_tasks: Vec<Task<()>>,
     launch_open: Option<usize>,
     choice_action: Option<usize>,
     source_viewport: std::rc::Rc<std::cell::Cell<Bounds<Pixels>>>,
@@ -201,9 +201,7 @@ impl MacroPage {
             .map(|entry| entry.actions.clone())
             .unwrap_or_default();
         let search = cx.new(|cx| InputState::new(window, cx).placeholder(tr("TEXT_MACRO_SEARCH")));
-        let name = cx.new(|cx| {
-            InputState::new(window, cx).validate(|value, _| value.encode_utf16().count() <= 32)
-        });
+        let name = cx.new(|cx| source_input::input_state(32, window, cx));
         let action_editor = cx.new(|cx| InputState::new(window, cx));
         let text_editor = cx.new(|cx| {
             TextareaState::new(window, cx).placeholder(tr("TEXT_TEXT_FUNCTION_PLACEHOLDER"))
@@ -272,7 +270,7 @@ impl MacroPage {
             }),
             cx.subscribe_in(&action_editor, window, |this, _, event, window, cx| {
                 if matches!(event, InputEvent::Change) {
-                    this.schedule_delay_edit(cx);
+                    this.action_input_changed(window, cx);
                     cx.notify();
                 }
                 if matches!(event, InputEvent::Blur | InputEvent::PressEnter { .. })
@@ -345,7 +343,7 @@ impl MacroPage {
             randomized_open: None,
             editing_action: None,
             numeric_generation: 0,
-            numeric_task: None,
+            action_edit_tasks: Vec::new(),
             launch_open: None,
             choice_action: None,
             source_viewport: Default::default(),
@@ -493,7 +491,7 @@ impl MacroPage {
     }
 
     fn clear_action_editors(&mut self) {
-        self.numeric_task = None;
+        self.action_edit_tasks.clear();
         self.numeric_generation = self.numeric_generation.wrapping_add(1);
         self.hovered_action = None;
         self.record_ui.close();
@@ -537,7 +535,8 @@ impl MacroPage {
                 .and_then(|index| self.actions().get(index))
                 .is_some_and(|item| {
                     item.kind != ActionKind::Text
-                        && self.action_editor.read(cx).value().trim() != item.value
+                        && editors::committed_value(item.kind, &self.action_editor.read(cx).value())
+                            != item.value
                 })
             || self
                 .randomized_open
@@ -585,6 +584,8 @@ impl MacroPage {
             return;
         }
         let value = item.value;
+        self.action_edit_tasks.clear();
+        self.numeric_generation = self.numeric_generation.wrapping_add(1);
         self.editing_action = Some(index);
         self.action_editor.update(cx, |input, cx| {
             input.set_value(value, window, cx);
@@ -595,7 +596,7 @@ impl MacroPage {
     }
 
     fn finish_action_edit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.numeric_task = None;
+        self.action_edit_tasks.clear();
         self.numeric_generation = self.numeric_generation.wrapping_add(1);
         let Some(index) = self.editing_action.take() else {
             return;
@@ -612,16 +613,7 @@ impl MacroPage {
             cx.notify();
             return;
         }
-        let raw = self.action_editor.read(cx).value().trim().to_string();
-        let value = match kind {
-            ActionKind::Delay => format_delay(parse_delay(&raw)),
-            ActionKind::Loop => raw
-                .parse::<u32>()
-                .ok()
-                .map(|value| value.clamp(1, 99_999).to_string())
-                .unwrap_or_else(|| self.actions[index].value.clone()),
-            _ => raw,
-        };
+        let value = editors::committed_value(kind, &self.action_editor.read(cx).value());
         let current = &self.actions[index].value;
         if value == *current
             && !(kind == ActionKind::Delay && self.actions[index].state == "randomized")
@@ -903,7 +895,18 @@ impl MacroPage {
 }
 
 fn format_delay(value: f64) -> String {
-    ((value.clamp(0.0, 99_999.999) * 1000.).round() / 1000.).to_string()
+    let bits = value.clamp(0., 99_999.999).to_bits();
+    let shift = 1075 - ((bits >> 52) & 0x7ff) as u32;
+    if shift >= 128 {
+        return "0".into();
+    }
+    // St.w uses Number(value.toFixed(3)): round the exact binary value,
+    // choosing the larger decimal integer on a tie. Multiplying f64 first
+    // can change which side of the tie an entered value lies on.
+    let scaled = u128::from((bits & ((1 << 52) - 1)) | (1 << 52)) * 1000;
+    let divisor = 1u128 << shift;
+    let rounded = (scaled + divisor / 2) / divisor;
+    (rounded as f64 / 1000.).to_string()
 }
 
 impl Render for MacroPage {

@@ -62,6 +62,9 @@ regex = "1"
 unicode-segmentation = "1.13.3"
 unicode-linebreak = "0.1.5"
 unicode-script = "0.5.8"
+icu_collator = "=2.3.1"
+icu_locale_core = "=2.3.0"
+sys-locale = "=0.3.2"
 uuid = { version = "1", features = ["v4"] }
 md5 = "0.8"
 libloading = "0.9"
@@ -83,13 +86,30 @@ windows-sys = "0.61.2"
 bytes = "=1.12.1"
 h2 = "=0.4.20"
 http = "=1.5.0"
-tokio = { version = "=1.53.2", features = ["rt", "io-util", "sync", "time", "net", "macros"] }
-tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake"] }
+tokio = { version = "=1.53.2", features = [
+  "rt",
+  "io-util",
+  "sync",
+  "time",
+  "net",
+  "macros",
+] }
+tungstenite = { version = "=0.30.0", default-features = false, features = [
+  "handshake",
+] }
 
 [profile.dev]
 codegen-units = 16
 debug = "limited"
 split-debuginfo = "unpacked"
+
+[profile.dev.package]
+gpui-fast = { opt-level = 3 }
+gpui-fast-platform = { opt-level = 3 }
+gpui-fast-macros = { opt-level = 3 }
+resvg = { opt-level = 3 }
+rustybuzz = { opt-level = 3 }
+taffy = { opt-level = 3 }
 
 # MSVC 14.42 D8050 rejects hidapi's C -Z7 debug records in this environment.
 # Limit the workaround to hidapi; application/Rust debug information remains.
@@ -100,6 +120,7 @@ debug = 0
 debug = 0
 
 [profile.release]
-lto = true
 opt-level = 3
+lto = "thin"
 codegen-units = 1
+strip = "symbols"

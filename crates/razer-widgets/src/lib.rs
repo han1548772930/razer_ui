@@ -27,6 +27,7 @@ pub mod scroll;
 pub mod settings_button;
 #[path = "source_alert/source_alert.rs"]
 pub mod source_alert;
+pub mod source_input;
 #[path = "source_link.rs"]
 pub mod source_link;
 #[path = "source_slider.rs"]

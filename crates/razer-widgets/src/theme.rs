@@ -1221,6 +1221,20 @@ impl DropdownColors {
     pub fn hover(&self) -> Hsla {
         self.hover
     }
+
+    /// `.dropdown-divider` in the current product stylesheet.
+    pub fn separator(&self) -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+
+    /// `.profile-bar .dropdown-area .tipIcon` and its hover state.
+    pub fn preset_tip(&self, hovered: bool) -> Hsla {
+        if hovered {
+            rgba(0xffffff4d).into()
+        } else {
+            rgb(0x4a4a4a).into()
+        }
+    }
 }
 
 /// Original `.profile-del` border, title and confirmation button color.

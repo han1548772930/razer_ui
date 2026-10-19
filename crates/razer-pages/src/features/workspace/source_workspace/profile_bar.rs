@@ -104,6 +104,16 @@ impl SourceProductWorkspace {
                             ))
                             .child(
                                 gpui_kit::component::input::Input::new(&self.profile_name)
+                                    .when_some(
+                                        profile_menu::spec(self.device.product_id),
+                                        |input, spec| {
+                                            use razer_widgets::source_input::SourceInputExt as _;
+                                            input.source_max_length(
+                                                &self.profile_name,
+                                                spec.name_limit(),
+                                            )
+                                        },
+                                    )
                                     .id("source-profile-name")
                                     .aria_label(razer_i18n::t("PROFILE"))
                                     .h(surface::css(27.))

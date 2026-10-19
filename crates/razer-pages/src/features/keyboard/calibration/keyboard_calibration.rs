@@ -40,12 +40,6 @@ fn ease_in_out(phase: f32) -> f32 {
     Easing::EaseInOut.sample(phase)
 }
 
-/// 740/746 root componentDidUpdate compares selectedProfileGuid exactly.
-/// A user-renamed profile must never acquire factory restrictions by its name.
-pub fn is_factory_profile(product_id: u32, guid: &str) -> bool {
-    specification(product_id).is_some() && guid == "af06d371-861f-4b98-8d78-bfaef5cfdebf"
-}
-
 impl KeyboardProductWorkspace {
     /// Current 1891 SVG caller replaces isAssignment with the retained
     /// calibratedKeys list. 740 main.50621167.css fills it with #44d62c66;

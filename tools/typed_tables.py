@@ -418,6 +418,7 @@ RECEIVER_179_PAIRING_NAMESPACES = {
 PAIR_CATALOG_INPUT = ".analysis/inputs/typed-tables/razer-device/receiver-pairing-catalog.json"
 READ_OUTPUT = "crates/razer-device/src/transport/device_read_capabilities.rs"
 ONBOARD_KEY_OUTPUT = "crates/razer-device/src/keyboard/keyboard_onboard_inventory.rs"
+ONBOARD_MAPPING_OUTPUT = "crates/razer-device/src/keyboard/keyboard_onboard_mapping_source.rs"
 IDENTITY_OUTPUT = "crates/razer-device/src/identity/device_identity_catalog.rs"
 QUERY_OUTPUT = "crates/razer-device/src/receiver/receiver_query_capabilities.rs"
 PAIR_CAP_OUTPUT = "crates/razer-device/src/receiver/receiver_pairing_capabilities.rs"
@@ -1242,6 +1243,293 @@ def render_current_onboard_inventory(inventory):
     return "\n".join(lines).encode()
 
 
+def current_onboard_literal(node):
+    """Decode closed AST literals without executing a vendor expression."""
+    if node.has_error:
+        raise ValueError("Onboard mapping contains a JavaScript AST error")
+    if node.type == "object":
+        result = {}
+        for pair in node.named_children:
+            if pair.type == "comment":
+                continue
+            key, value = pair.child_by_field_name("key"), pair.child_by_field_name("value")
+            if pair.type != "pair" or key is None or value is None:
+                raise ValueError("Onboard mapping contains a dynamic object member")
+            if key.type == "property_identifier":
+                name = key.text.decode()
+            elif key.type == "string":
+                name = json.loads(key.text)
+            elif key.type == "number" and re.fullmatch(rb"0|[1-9][0-9]*", key.text):
+                name = key.text.decode()
+            else:
+                raise ValueError("Onboard mapping contains a dynamic object key")
+            if name in result:
+                raise ValueError("Onboard mapping repeats a literal field: " + name)
+            result[name] = current_onboard_literal(value)
+        return result
+    if node.type == "array":
+        result, expects_value = [], True
+        for child in node.children:
+            if child.type in {"[", "]", "comment"}:
+                continue
+            if child.type == ",":
+                if expects_value:
+                    raise ValueError("Onboard mapping contains an array hole")
+                expects_value = True
+            else:
+                if not expects_value or child.type == "spread_element":
+                    raise ValueError("Onboard mapping contains a dynamic array")
+                result.append(current_onboard_literal(child))
+                expects_value = False
+        return result
+    if node.type == "string":
+        return json.loads(node.text)
+    if node.type == "number" and re.fullmatch(rb"0|[1-9][0-9]*", node.text):
+        return int(node.text)
+    if node.text in (b"!0", b"true"):
+        return True
+    if node.text in (b"!1", b"false"):
+        return False
+    raise ValueError("Onboard mapping is not a closed typed literal: " + node.type)
+
+
+def render_current_onboard_mapping(projection):
+    """Generate source enums and complete firmware/HID default lookup rows."""
+    exact_fields(projection, {"keyboard", "mouse", "encoding"}, "onboard mapping projection")
+    encoding = projection["encoding"]
+    expected = {"function_ids", "modifier_bits", "modifier_names", "media_codes", "media_names",
+                "power_codes", "razer_codes", "shortcut_codes", "shortcut_names", "mouse_names", "profile_names"}
+    exact_fields(encoding, expected, "onboard mapping encoding")
+
+    def variant(value):
+        if not isinstance(value, str) or re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", value) is None:
+            raise ValueError("Onboard mapping enum identity is invalid")
+        return "".join(part[:1].upper() + part[1:] for part in value.split("_"))
+
+    def number(value, maximum=255):
+        if isinstance(value, str) and value.isdecimal():
+            value = int(value)
+        return bounded(value, maximum, "onboard mapping number")
+
+    def enum_values(values):
+        values = list(values)
+        if not values:
+            raise ValueError("Onboard mapping enum is empty")
+        names = [variant(value) for value in values]
+        if len(names) != len(set(names)):
+            raise ValueError("Onboard mapping enum variants collide")
+        return values
+
+    for field in expected:
+        if not isinstance(encoding[field], dict) or not encoding[field]:
+            raise ValueError("Onboard mapping encoding is not a nonempty table: " + field)
+    for codes, names in (("media_codes", "media_names"), ("shortcut_codes", "shortcut_names"),
+                         ("modifier_bits", "modifier_names")):
+        if set(encoding[codes]) != set(encoding[names]):
+            raise ValueError("Onboard mapping wire codes and source names differ: " + codes)
+
+    lines = ["//! Current 679 onboard output and default mapping tables.",
+             "//! Generated by tools/workspace.py prepare-local-protocol-tables --current-reads.",
+             "use super::{DefaultMapping, ExtendedKey, HidKey, KeyboardOutput, Mode, Output, ProfileNavigation};",
+             "use serde::{Deserialize, Serialize};", ""]
+
+    def enum(name, values):
+        lines.extend(["#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]", "pub enum " + name + " {"])
+        for value in enum_values(values):
+            lines.extend(["    #[serde(rename = " + json.dumps(value) + ")]", "    " + variant(value) + ","])
+        lines.extend(["}", ""])
+
+    def codes_function(name, enum_name, values, maximum=255):
+        values = {key: number(value, maximum) for key, value in values.items()}
+        if len(values.values()) != len(set(values.values())):
+            raise ValueError("Onboard mapping wire codes repeat")
+        lines.extend(["pub(super) fn " + name + "(code: u16) -> Option<" + enum_name + "> {", "    match code {"])
+        for key, value in values.items():
+            lines.append("        " + str(value) + " => Some(" + enum_name + "::" + variant(key) + "),")
+        lines.extend(["        _ => None,", "    }", "}", ""])
+
+    enum("FunctionId", encoding["function_ids"])
+    codes_function("function_id", "FunctionId", encoding["function_ids"])
+    enum("MediaAction", encoding["media_names"].values())
+    codes_function("media_action", "MediaAction", {encoding["media_names"][key]: value for key, value in encoding["media_codes"].items()}, 65535)
+    enum("PowerAction", encoding["power_codes"])
+    codes_function("power_action", "PowerAction", encoding["power_codes"])
+    enum("RazerAction", encoding["razer_codes"])
+    codes_function("razer_action", "RazerAction", encoding["razer_codes"])
+    enum("ShortcutAction", encoding["shortcut_names"].values())
+    codes_function("shortcut_action", "ShortcutAction", {encoding["shortcut_names"][key]: value for key, value in encoding["shortcut_codes"].items()})
+    enum("MouseAction", encoding["mouse_names"].values())
+    enum("ProfileAction", encoding["profile_names"].values())
+
+    def action(family, value, values):
+        if value not in values:
+            raise ValueError("Onboard mapping selects an unknown " + family)
+        return family + "::" + variant(value)
+
+    modifier_bits = encoding["modifier_bits"]
+    modifier_names = encoding["modifier_names"]
+    for bit in modifier_bits.values():
+        bounded(bit, 255, "onboard modifier bit", 1)
+    enum_values(modifier_names.values())
+    if (list(modifier_bits.values()) != [1, 2, 4, 8, 16, 32, 64, 128]
+            or set(modifier_bits) != set(modifier_names)):
+        raise ValueError("Onboard modifier bit order or names changed")
+    lines.extend(["pub(super) const MODIFIER_NAMES: &[(u8, &str)] = &["])
+    for key, bit in modifier_bits.items():
+        lines.append("    (" + str(bit) + ", " + json.dumps(modifier_names[key]) + "),")
+    lines.extend([
+        "];", "",
+    ])
+
+    def output(row):
+        kind = row["outputType"]
+        group = row.get(kind)
+        if kind == "disableGroup":
+            if group is not None:
+                raise ValueError("Onboard disabled default adds a group")
+            return "Output::Disabled"
+        if kind == "hyperShiftGroup":
+            if group is not None:
+                raise ValueError("Onboard Hypershift default adds a group")
+            return "Output::Hypershift"
+        if kind == "keyboardGroup":
+            if not isinstance(group, dict) or set(group) - {"key", "modifiers", "extendedKey"} or not {"key", "modifiers"} <= set(group):
+                raise ValueError("Onboard keyboard group fields changed")
+            exact_fields(group["key"], {"HID", "flag", "pageID"}, "onboard keyboard key")
+            mask, extended = 0, False
+            if not isinstance(group["modifiers"], list):
+                raise ValueError("Onboard modifiers are not a list")
+            for value in group["modifiers"]:
+                if value == "Extended_Key":
+                    if extended:
+                        raise ValueError("Onboard extended modifier repeats")
+                    extended = True
+                else:
+                    matches = [modifier_bits[key] for key, name in modifier_names.items() if name == value]
+                    if len(matches) != 1 or mask & matches[0]:
+                        raise ValueError("Onboard physical modifier is unknown or repeated")
+                    mask |= matches[0]
+            extension = group.get("extendedKey")
+            if extension not in (None, "Extended_00"):
+                raise ValueError("Onboard extended keyboard group changed")
+            return ("Output::Keyboard(KeyboardOutput { key: HidKey { hid: " + str(number(group["key"]["HID"], 65535))
+                + ", flag: " + str(number(group["key"]["flag"])) + ", page_id: " + str(number(group["key"]["pageID"], 65535))
+                + " }, modifiers: " + str(mask) + ", extended_modifier: " + str(extended).lower()
+                + ", extended_key: " + ("Some(ExtendedKey::Extended00)" if extension else "None") + ", turbo: None })")
+        if kind in {"multimediaGroup", "powerKeyGroup", "razerKeyGroup", "win8ShortcutsGroup"}:
+            field, family, values, result = {
+                "multimediaGroup": ("multimediaAssignment", "MediaAction", encoding["media_names"].values(), "Media"),
+                "powerKeyGroup": ("powerKeyAssignment", "PowerAction", encoding["power_codes"], "Power"),
+                "razerKeyGroup": ("razerKeyAssignment", "RazerAction", encoding["razer_codes"], "Razer"),
+                "win8ShortcutsGroup": ("windowsShortcutAssignment", "ShortcutAction", encoding["shortcut_names"].values(), "WindowsShortcut"),
+            }[kind]
+            exact_fields(group, {field}, "onboard " + kind)
+            return "Output::" + result + "(" + action(family, group[field], values) + ")"
+        if kind == "profileNavigationGroup":
+            exact_fields(group, {"profileNavigationAssignment"}, "onboard profile default")
+            return "Output::Profile(ProfileNavigation { action: " + action("ProfileAction", group["profileNavigationAssignment"], encoding["profile_names"].values()) + ", slot_id: None })"
+        raise ValueError("Onboard keyboard default output requires a typed implementation: " + kind)
+
+    exact_fields(projection["keyboard"], {"NormalMode", "HypershiftMode"}, "onboard keyboard modes")
+
+    def input_row(name, row, mouse=False):
+        if not isinstance(name, str) or not name or not isinstance(row, dict):
+            raise ValueError("Onboard default mapping has no source identity")
+        base = {"inputID", "inputType", "outputType"}
+        kind = row.get("outputType")
+        inputs = {"KeyInput": "keyInput", "DKMInput": "dkmInput"}
+        if mouse:
+            inputs["MouseInput"] = "mouseInput"
+            base.add("fwID")
+        input_field = inputs.get(row.get("inputType"))
+        if input_field is None:
+            raise ValueError("Onboard default input type changed")
+        base.add(input_field)
+        optional = {"fwID", "isHyperShift", "ignoreInObm"}
+        if not isinstance(kind, str):
+            raise ValueError("Onboard default output type is absent")
+        if kind not in {"disableGroup", "hyperShiftGroup"}:
+            base.add(kind)
+        if set(row) - base - optional or not base <= set(row) or row["inputID"] != name:
+            raise ValueError("Onboard default mapping fields or identity changed")
+        firmware_id = row.get("fwID")
+        if "fwID" in row:
+            number(firmware_id)
+        if input_field == "keyInput":
+            exact_fields(row["keyInput"], {"HID", "pageID"}, "onboard input key")
+            number(row["keyInput"]["pageID"], 65535)
+            input_hid = number(row["keyInput"]["HID"], 65535)
+        else:
+            if row[input_field] != name:
+                raise ValueError("Onboard default input identity changed")
+            input_hid = None
+        if any(type(row[field]) is not bool for field in ("isHyperShift", "ignoreInObm") if field in row):
+            raise ValueError("Onboard default mode or filter is not boolean")
+        return firmware_id, input_hid
+
+    lines.append("pub(super) const KEYBOARD: &[DefaultMapping] = &[")
+    for mode, rows in projection["keyboard"].items():
+        ids = set()
+        if not isinstance(rows, dict) or not rows:
+            raise ValueError("Onboard keyboard mapping rows are empty")
+        for name, row in rows.items():
+            firmware_id, input_hid = input_row(name, row)
+            if firmware_id is not None:
+                number(firmware_id)
+                if firmware_id in ids:
+                    raise ValueError("Onboard default firmware identity repeats")
+                ids.add(firmware_id)
+            hid = "None" if input_hid is None else "Some(" + str(input_hid) + ")"
+            lines.append("    DefaultMapping { input_id: " + json.dumps(name) + ", mode: Mode::"
+                + ("Normal" if mode == "NormalMode" else "Hypershift") + ", firmware_key_id: "
+                + ("None" if firmware_id is None else "Some(" + str(firmware_id) + ")")
+                + ", input_hid: " + hid + ", output: " + output(row) + " },")
+    lines.extend([
+        "];", "", "pub(super) const MOUSE: &[(Mode, u8, MouseAction)] = &["])
+    exact_fields(projection["mouse"], {"NormalMode", "HypershiftMode"}, "onboard mouse modes")
+    for mode, rows in projection["mouse"].items():
+        ids = set()
+        if not isinstance(rows, dict) or not rows:
+            raise ValueError("Onboard mouse mapping rows are empty")
+        for name, row in rows.items():
+            firmware_id, _ = input_row(name, row, mouse=True)
+            if firmware_id in ids:
+                raise ValueError("Onboard mouse firmware identity repeats")
+            ids.add(firmware_id)
+            kind = row["outputType"]
+            if kind in {"keyboardGroup", "profileNavigationGroup"}:
+                output(row)
+                continue
+            if kind == "sensitivityGroup":
+                group = row[kind]
+                if (not isinstance(group, dict) or "sensitivityAssignment" not in group
+                        or set(group) - {"sensitivityAssignment", "x", "y"}
+                        or group["sensitivityAssignment"] not in {"DPI_Up", "DPI_Down", "DPI_CycleUp", "DPI_Clutch"}):
+                    raise ValueError("Onboard unused mouse sensitivity fields changed")
+                for field in ("x", "y"):
+                    if field in group:
+                        number(group[field], 65535)
+                continue
+            if kind == "scrollingGroup":
+                exact_fields(row[kind], {"scrollingAssignment"}, "onboard unused mouse scrolling")
+                if row[kind]["scrollingAssignment"] != "SCROLL_CycleUp":
+                    raise ValueError("Onboard unused mouse scrolling action changed")
+                continue
+            if kind != "mouseGroup":
+                raise ValueError("Onboard mouse default output requires a typed implementation: " + kind)
+            group = row["mouseGroup"]
+            if not isinstance(group, dict) or set(group) - {"mouseAssignment", "turboMode"} or "mouseAssignment" not in group:
+                raise ValueError("Onboard mouse assignment fields changed")
+            if "turboMode" in group:
+                exact_fields(group["turboMode"], {"isTurbo", "keysPerSecond"}, "onboard mouse default turbo")
+                if group["turboMode"] != {"isTurbo": True, "keysPerSecond": 7}:
+                    raise ValueError("Onboard mouse default turbo changed")
+            lines.append("    (Mode::" + ("Normal" if mode == "NormalMode" else "Hypershift") + ", " + str(firmware_id)
+                + ", " + action("MouseAction", group["mouseAssignment"], encoding["mouse_names"].values()) + "),")
+    lines.extend([" ];", ""])
+    return "\n".join(lines).encode()
+
+
 def current_read_inventory_selection_contract(selection, merging):
     """Reject changed layout or override semantics before projecting the key tables."""
     import sys
@@ -1527,10 +1815,38 @@ def current_read_sources():
     factory = audit.webpack_export("current_679_obm_engine", files, 17317, "default")
     factory_root = binding_value(factory["original"], factory["binding"])
     callers = {}
-    for method in ("init", "getButtonIdFromUIMappingList", "getAllButtonAssignmentInfo", "getButtonAssignmentListDetail"):
+    for method in ("init", "getButtonIdFromUIMappingList", "getAllButtonAssignmentInfo", "getButtonAssignmentListDetail",
+                   "createButtonMappingFromFnDataByte"):
         _, owner = audit.callable_member("current_679_" + method, factory["original"], factory_root, method,
                                           receiver="this")
         callers[method] = owner
+    engine_source = next(row for row in files if Path(row["path"]).name.startswith("obmEngineKeyboard."))
+    encoding, encoding_owners = {}, {}
+    for field, module, export in (
+            ("function_ids", 36475, "rA"), ("modifier_bits", 39674, "rw"),
+            ("modifier_names", 68214, "_A"), ("media_codes", 39674, "w0"),
+            ("media_names", 68214, "tC"), ("power_codes", 39674, "ox"),
+            ("razer_codes", 68214, "ZI"), ("shortcut_codes", 39674, "V7"),
+            ("shortcut_names", 68214, "wo"), ("mouse_names", 68214, "AX"),
+            ("profile_names", 68214, "E7")):
+        owner = audit.webpack_export("current_679_mapping_" + field,
+                                    [engine_source] if module == 39674 else files, module, export)
+        encoding[field] = current_onboard_literal(binding_value(owner["original"], owner["binding"]))
+        encoding_owners[field] = owner
+    defaults = current_onboard_literal(generic_node)
+    overrides = current_onboard_literal(keyboard_mapping)
+    for mode, rows in overrides.items():
+        if mode not in defaults:
+            raise ValueError("Current onboard mapping adds an unaudited mode")
+        defaults[mode].update(rows)
+    keyboard["onboard_mapping"] = {
+        "projection": {"keyboard": defaults, "mouse": current_onboard_literal(
+            binding_value(mouse_mapping["original"], mouse_mapping["binding"])), "encoding": encoding},
+        "encoding_owners": encoding_owners,
+        "decoder": callers["createButtonMappingFromFnDataByte"],
+        "raw_observation_preserved": True,
+        "unknown_output_preserved": True,
+    }
     subclass = audit.webpack_export("current_679_calculated_memory_engine", files, 65711, "default")
     mounting_source = selection["original"]
     mounting = audit.retain("current_679_obm_mounting", mounting_source, "obmEngine.init(",
@@ -1661,8 +1977,18 @@ def prepare_current_read_table(*, check=False, record=True):
         inventory_path.write_bytes(inventory_bytes)
     if inventory_path.read_bytes() != inventory_bytes:
         raise ValueError("Current onboard physical key inventory differs from source keys or mode filters")
+    mapping_path = ROOT / ONBOARD_MAPPING_OUTPUT
+    mapping_bytes = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"],
+        input=render_current_onboard_mapping(keyboard["onboard_mapping"]["projection"]),
+        capture_output=True, check=True).stdout
+    receiver_table_tree(mapping_bytes)
+    if not check:
+        mapping_path.write_bytes(mapping_bytes)
+    if mapping_path.read_bytes() != mapping_bytes:
+        raise ValueError("Current onboard output mapping differs from its source enums or complete defaults")
     report.update(tool=families.identity(Path(__file__)), output=families.identity(path), check_only=check,
-                  constructors_verified=products, onboard_key_output=families.identity(inventory_path))
+                  constructors_verified=products, onboard_key_output=families.identity(inventory_path),
+                  onboard_mapping_output=families.identity(mapping_path))
     if record:
         destination = ROOT / ".analysis/results/typed-data.json"
         with analysis.index_lock(ROOT / ".work/typed-data-registry.lock"):

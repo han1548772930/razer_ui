@@ -248,7 +248,7 @@ impl MacroPage {
             self.more_open = false;
             self.tree_menu = None;
             self.name.update(cx, |input, cx| {
-                input.set_value(name, window, cx);
+                source_input::set_value(input, name, 32, window, cx);
                 input.focus(window, cx);
                 input.select_all(window, cx);
             });

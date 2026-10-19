@@ -786,9 +786,20 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                 fail(node, "mouse182_initializer_has_a_second_connection_owner", dpi_page + "::State::initialize_connection")
         if node.type == "function_item" and owner == dpi_caller \
                 and text(node.child_by_field_name("name")) == "submit_current_dpi_device":
-            if not any(call.type == "call_expression"
-                    and text(call.child_by_field_name("function")) == "self.start_current_dpi_operation"
-                    for call in walk(node)):
+            def uses_operation(function):
+                return any(call.type == "call_expression"
+                        and text(call.child_by_field_name("function")) == "self.start_current_dpi_operation"
+                        for call in walk(function))
+            implementation = next((parent for parent in ancestors(node)
+                                   if parent.type == "impl_item"), None)
+            delegates = any(call.type == "call_expression"
+                            and text(call.child_by_field_name("function")) == "self.submit_current_dpi_at"
+                            for call in walk(node))
+            retained_delegate = delegates and implementation is not None and any(
+                item.type == "function_item" and not in_test(item)
+                and text(item.child_by_field_name("name")) == "submit_current_dpi_at"
+                and uses_operation(item) for item in walk(implementation))
+            if not uses_operation(node) and not retained_delegate:
                 fail(node, "mouse_dpi_bypasses_retained_operation_owner", dpi_runtime)
         if node.type == "function_item" and owner == dpi_runtime \
                 and text(node.child_by_field_name("name")) == "current_route":
@@ -9134,15 +9145,14 @@ def rust_test_scope(command, inventories):
         scopes.append({"package": package, "target": inventory["target"],
                        "selected_tests": [row["name"] for row in selected],
                        "source_count": len(inventory["sources"]), "limits": inventory["limits"]})
+    if not any(scope["selected_tests"] for scope in scopes):
+        raise ValueError("Rust verification selects no current tests")
     return {"targets": scopes, "window_tests_selected": 0}
 
 
-def validate_rust(selected_suites=None, cargo_config=None):
-    """Compile all targets and run only pure Rust / simulated library suites."""
-    baseline = rust_inputs()
-    destination = ROOT / ".analysis/verification"
-    destination.mkdir(parents=True, exist_ok=True)
-    commands = [
+def rust_validation_commands():
+    """Current pure/mock suites, shared by execution and owner validation."""
+    return [
         ("ipc-client", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "client_tests"]),
         ("mouse-input-monitoring-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mouse_input_monitoring"]),
         ("device-task-locks", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "device_tasks"]),
@@ -9371,7 +9381,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("i18n", ["cargo", "test", "--locked", "--offline", "-p", "razer-i18n", "--lib"]),
         ("discovery", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib"]),
         ("mixer-shortcut-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "audio_shortcut_lifecycle_tests"]),
-        ("macro-shortcut-resume", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "shortcut_resume_tests"]),
+        ("macro-shortcut-resume", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "recorder_source_started_waits_for_both_mapping_processes_and_restores_them"]),
         ("macro-recording-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "macro_recording::tests::"]),
         ("startup-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "-p", "razer-dashboard", "-p", "razer-device", "-p", "razer-discovery", "-p", "razer-shell", "--lib", "startup_state"]),
         ("hid-inventory", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "hid::inventory_tests"]),
@@ -9393,7 +9403,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("system-monitor-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "system_monitor::tests"]),
         ("keyboard-magnetic-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "keyboard_magnetic"]),
         ("keyboard-sync-feedback", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "keyboard_products::actuation::sync_feedback::tests::"]),
-        ("keyboard-macro-submission", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "keyboard_macro_submission"]),
+        ("keyboard-macro-submission", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "keyboard_submission::macro_submission::tests"]),
         ("onboard-macro", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "onboard_macro"]),
         ("mouse-scroll-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_scroll::tests"]),
         ("mouse-scroll-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mouse_scroll_tests"]),
@@ -9452,9 +9462,11 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("dashboard-artwork", ["cargo", "test", "--locked", "--offline", "-p", "razer-dashboard", "--lib", "artwork_tests"]),
         ("dashboard-preview-artwork", ["cargo", "test", "--locked", "--offline", "-p", "razer-dashboard", "--lib", "preview_artwork_does_not_replace_source_dashboard_images_or_live_device_failures"]),
         ("shell-preview-artwork", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "every_catalog_preview_variant_keeps_its_dashboard_artwork", "--", "--nocapture"]),
-        ("shell-product-favicons", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "every_registered_product_tab_has_a_loadable_source_favicon"]),
+        ("shell-product-favicons", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "every_registered_product_tab_has_a_manifested_source_favicon"]),
         ("audio-mixer-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "audio_mixer"]),
         ("audio-local-settings", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "audio_mixer_local_settings::tests"]),
+        ("audio-preset-names", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "audio_mixer_presets::preset_name_tests"]),
+        ("chroma-layer-names", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "studio_layers::rename_tests"]),
         ("seiren-local-settings", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "seiren_local_settings::tests"]),
         ("audio-sound-mapping", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "sound_mapping::tests"]),
         ("keyboard-dynamic-metadata", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "all_current_dynamic_mapping_metadata_loads"]),
@@ -9475,13 +9487,18 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("mapping-hardware-session", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping_runtime::hardware::tests"]),
         ("keyboard-local-profiles-storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib", "host_keyboard_profiles::tests"]),
         ("keyboard-current-profile-schema", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "keyboard_current_profile"]),
+        ("keyboard-factory-profile-identity", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "factory_profile_identity_does_not_depend_on_a_calibration_page"]),
+        ("keyboard-factory-profile-selection", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "active_keyboard_factory_profile_follows_selected_identity_after_library_replacement"]),
+        ("accessory-port-names", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "features::argb_name::tests"]),
+        ("macro-action-inputs", ["cargo", "test", "--locked", "--offline", "-p", "razer-app-pages", "--lib", "action_input_coercion_matches_current_st_yt_and_ot"]),
+        ("macro-randomized-input", ["cargo", "test", "--locked", "--offline", "-p", "razer-app-pages", "--lib", "randomized_action_draft_truncates_before_range_checks"]),
         ("keyboard-profile-inventory-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "keyboard_profile_inventory"]),
         ("keyboard-profile-inventory-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "keyboard_profile_inventory"]),
         ("keyboard-profile-inventory-discovery", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "keyboard_profile_inventory"]),
         ("keyboard-onboard-profiles-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "keyboard_onboard_profiles"]),
         ("keyboard-onboard-profiles-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "keyboard_onboard_profiles"]),
         ("keyboard-onboard-profiles-discovery", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "keyboard_onboard_profiles"]),
-        ("hue-profile-edits", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "accessories::hue::profile_edit::tests"]),
+        ("hue-profile-edits", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "features::hue::profile_edit::tests"]),
         ("standalone-pairing-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-app-pages", "--lib", "pairing_page::tests", "--",
                                      "--skip", "initial_pairing_loading_has_no_unmounted_toolbar_or_status_messages",
                                      "--skip", "confirmation_escape_closes_without_invented_focus_restore_and_enter_cannot_fake_binding",
@@ -9490,7 +9507,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("thx-shell-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "thx_sound::tests::"]),
         ("thx-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "thx"]),
         ("camera-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "camera"]),
-        ("user-app-files-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "simulated_native_write_retains_bytes_and_failed_callback_without_poisoning"]),
+        ("user-app-files-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "runtime::native::user_app_files::write::tests"]),
         ("camera-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "camera"]),
         ("camera-image-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "camera_image_state::tests"]),
         ("camera-exposure-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "camera_exposure_state::tests"]),
@@ -9498,6 +9515,10 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("source-hypershift-tooltip", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "hypershift_geometry_tests"]),
         ("source-text-layout", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "source_check_text_preserves_max_content_width"]),
         ("source-text-tracking", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "source_text::tests"]),
+        ("source-input-length", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "source_input::tests"]),
+        ("source-string-semantics", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "source_string::tests"]),
+        ("profile-document-compiler", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "--lib", "profile_document_compiler_retains_existing_catalogs_and_extensions"]),
+        ("profile-import-candidate", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "imported_profile_candidate_"]),
         ("source-locale-choices", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "source_locale_choices"]),
         ("retained-locale-choices", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "retained_source_choices_translate"]),
         ("mouse-inter-device-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mapping_inter_70::locale_tests"]),
@@ -9516,6 +9537,14 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("assets-fixed-icons", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "icons::tests"]),
         ("workspace", ["cargo", "check", "--locked", "--offline", "--workspace", "--all-targets"]),
     ]
+
+
+def validate_rust(selected_suites=None, cargo_config=None):
+    """Compile all targets and run only pure Rust / simulated library suites."""
+    baseline = rust_inputs()
+    destination = ROOT / ".analysis/verification"
+    destination.mkdir(parents=True, exist_ok=True)
+    commands = rust_validation_commands()
     available = {name for name, _ in commands}
     if selected_suites:
         unknown = set(selected_suites) - available

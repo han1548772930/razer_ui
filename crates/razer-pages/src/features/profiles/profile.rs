@@ -8,6 +8,7 @@ use gpui_kit::component::{
     list::{List, ListDelegate, ListState},
     tooltip::Tooltip,
 };
+use razer_widgets::source_input::SourceInputExt as _;
 use razer_widgets::theme::DropdownColors;
 use razer_widgets::theme::ProfileAlertColors;
 
@@ -421,7 +422,7 @@ impl DeviceWorkspace {
         let name = profile.name.clone();
         self.profile_rename = Some(profile.id.clone());
         self.profile_name.update(cx, |input, cx| {
-            input.set_value(name, window, cx);
+            razer_widgets::source_input::set_value(input, name, 32, window, cx);
             input.focus(window, cx);
             input.select_all(window, cx);
         });
@@ -552,6 +553,7 @@ impl DeviceWorkspace {
                             }))
                             .child(
                                 Input::new(&self.profile_name)
+                                    .source_max_length(&self.profile_name, 32)
                                     .id("profile-name-input")
                                     .aria_label("配置文件名称")
                                     .h(surface::css(27.))

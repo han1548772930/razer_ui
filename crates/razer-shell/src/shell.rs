@@ -2660,7 +2660,7 @@ impl AppShell {
             }
             if let Err(error) = mouse_dpi_70::prepare_mapping_document(device, &request.file.macros)
             {
-                self.status = format!("Mouse profile preparation failed: {error:#}");
+                self.status = format!("Profile preparation failed: {error:#}");
                 self.cancel_prepared_save(request, cx);
                 cx.notify();
                 self.continue_save_queue(false, cx);

@@ -205,8 +205,7 @@ pub fn source_configuration_number(value: Option<&serde_json::Value>) -> f64 {
         Some(Value::Bool(value)) => u8::from(*value) as f64,
         Some(Value::Number(value)) => value.as_f64().unwrap_or(f64::NAN),
         Some(Value::String(value)) => {
-            // ECMAScript WhiteSpace and LineTerminator, including FEFF.
-            let value = value.trim_matches(|ch| matches!(ch, '\u{0009}'..='\u{000d}' | '\u{0020}' | '\u{00a0}' | '\u{1680}' | '\u{2000}'..='\u{200a}' | '\u{2028}' | '\u{2029}' | '\u{202f}' | '\u{205f}' | '\u{3000}' | '\u{feff}'));
+            let value = crate::source_string::trim(value);
             if value.is_empty() {
                 return 0.;
             }

@@ -90,7 +90,14 @@ impl SourceProductWorkspace {
                     || uuid::Uuid::new_v4().to_string(),
                 )
                 .map_err(|error| error.to_string())?;
-                (self.prepare_imported_profile_candidate(&profiles)?, macros)
+                (
+                    Self::prepare_imported_profile_candidate(
+                        &self.device,
+                        &profiles,
+                        (0..8192).map(|_| uuid::Uuid::new_v4().to_string()),
+                    )?,
+                    macros,
+                )
             }
             _ => unreachable!("validated profile processor"),
         };
@@ -103,61 +110,51 @@ impl SourceProductWorkspace {
         Ok(())
     }
 
-    fn prepare_imported_profile_candidate(&self, profiles: &[Value]) -> Result<Device, String> {
-        use razer_device::{
-            keyboard_latest_mapping as mapping, keyboard_latest_restore as restore,
-        };
-        let ids = self
-            .device
-            .profiles
-            .iter()
-            .map(|profile| profile.id.clone())
-            .collect::<Vec<_>>();
-        let mut combined =
-            razer_model::profile_transfer::source_profile_payloads(&self.device, &ids)?;
-        combined.extend_from_slice(profiles);
-        let active = self
-            .device
-            .active_profile_obj()
-            .map(|profile| profile.guid.as_str())
-            .ok_or("The selected profile is absent")?;
-        let previous = self
-            .device
-            .source_device_settings
-            .as_ref()
-            .and_then(|settings| settings.get(restore::STORAGE_FIELD));
-        let compiled = mapping::prepare_document_with_device_settings(
-            &combined,
-            active,
-            self.device.layout_id,
-            previous,
-            self.device.source_device_settings.as_ref(),
-            (0..8192).map(|_| uuid::Uuid::new_v4().to_string()),
-        )
-        .map_err(|e| e.to_string())?;
-        restore::ProfileCollection::from_document(&compiled).map_err(|error| error.to_string())?;
-        let mut candidate = self.device.clone();
+    fn prepare_imported_profile_candidate(
+        device: &Device,
+        profiles: &[Value],
+        fresh_guids: impl IntoIterator<Item = String>,
+    ) -> Result<Device, String> {
+        use razer_device::keyboard_latest_restore as restore;
+        if device.product_id != restore::PRODUCT_ID {
+            return Err("The imported profile collection is not a PID756 owner".into());
+        }
+        let mut candidate = device.clone();
         for profile in profiles {
-            let guid = profile["guid"]
-                .as_str()
+            let guid = profile
+                .get("guid")
+                .and_then(Value::as_str)
                 .ok_or("Imported profile GUID is absent")?
                 .to_owned();
-            let source_settings = compiled["profiles"]
-                .as_array()
-                .and_then(|rows| rows.iter().find(|row| row["guid"] == guid))
-                .cloned()
-                .ok_or("The compiled imported profile is absent")?;
             candidate.profiles.push(Profile {
                 id: guid.clone(),
-                guid: guid.clone(),
-                name: profile["name"]
-                    .as_str()
+                guid,
+                name: profile
+                    .get("name")
+                    .and_then(Value::as_str)
                     .ok_or("Imported profile name is absent")?
                     .into(),
                 dpi_stages: None,
                 settings: None,
-                source_settings: Some(source_settings),
+                source_settings: Some(profile.clone()),
             });
+        }
+        let compiled = razer_model::mapping::prepare_profile_document(&candidate, fresh_guids)
+            .map_err(|error| error.to_string())?
+            .ok_or("The imported profile has no mapping document compiler")?;
+        restore::ProfileCollection::from_document(&compiled).map_err(|error| error.to_string())?;
+        let compiled_profiles = compiled
+            .get("profiles")
+            .and_then(Value::as_array)
+            .ok_or("The compiled imported profile collection is absent")?;
+        for profile in &mut candidate.profiles[device.profiles.len()..] {
+            profile.source_settings = Some(
+                compiled_profiles
+                    .iter()
+                    .find(|row| row.get("guid").and_then(Value::as_str) == Some(&profile.guid))
+                    .cloned()
+                    .ok_or("The compiled imported profile is absent")?,
+            );
         }
         let settings = candidate
             .source_device_settings
@@ -249,7 +246,11 @@ impl SourceProductWorkspace {
                 if !macros.is_empty() {
                     return Err("The global profile command unexpectedly imported macros".into());
                 }
-                self.prepare_imported_profile_candidate(&profiles)?
+                Self::prepare_imported_profile_candidate(
+                    &self.device,
+                    &profiles,
+                    (0..8192).map(|_| uuid::Uuid::new_v4().to_string()),
+                )?
             }
             1398 => {
                 let prepared = razer_device::profile_transfer::prepare_global_import_1398(
@@ -681,8 +682,13 @@ impl SourceProductWorkspace {
                 };
                 let name = profile.name.clone();
                 self.profile_rename = Some(profile.id.clone());
+                let name_limit = profile_menu::spec(self.device.product_id).map(|spec| spec.name_limit());
                 self.profile_name.update(cx, |input, cx| {
-                    input.set_value(name, window, cx);
+                    if let Some(limit) = name_limit {
+                        razer_widgets::source_input::set_value(input, name, limit, window, cx);
+                    } else {
+                        input.set_value(name, window, cx);
+                    }
                     input.focus(window, cx);
                     input.select_all(window, cx);
                 });
@@ -853,5 +859,160 @@ impl SourceProductWorkspace {
             _ => return,
         }
         cx.notify();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SourceProductWorkspace;
+    use razer_model::{
+        model::{Device, Profile},
+        profile_transfer::SourceProfileImport,
+    };
+    use serde_json::{Value, json};
+
+    fn fresh_guids() -> impl Iterator<Item = String> {
+        (0..8192).map(|index| format!("00000000-0000-4000-8000-{index:012}"))
+    }
+
+    fn saved_device() -> Device {
+        let mut device = razer_model::product_preview::registered_preview(756).unwrap();
+        device.active_profile = "retained-local-id".into();
+        device.profiles = vec![Profile {
+            id: device.active_profile.clone(),
+            guid: "2a8e0fbd-dbc6-401a-b9d2-4f9ddf5ae05e".into(),
+            name: "Retained profile".into(),
+            source_settings: Some(razer_device::keyboard_latest_mapping::default_profile()),
+            settings: None,
+            dpi_stages: None,
+        }];
+        device.source_device_settings = Some(
+            serde_json::to_value(
+                razer_device::keyboard_current_profile::high_speed::initial_latest_device_settings(
+                ),
+            )
+            .unwrap(),
+        );
+        let mut document = razer_model::mapping::prepare_profile_document(&device, fresh_guids())
+            .unwrap()
+            .unwrap();
+        document["version"] = json!(17);
+        document["macros"] = json!([{
+            "guid":"c1fe7476-cab7-46b8-861a-5192540d60cd", "name":"Retained macro",
+            "macroEvents":[], "appEngine":{"events":[]}
+        }]);
+        document["phasedMacros"] = json!([{
+            "guid":"03ee0ae6-c109-48dc-87fa-3bd80fb33d2f", "name":"Retained phased macro",
+            "macroEvents":[],
+            "appEngine":{"pressEvents":[],"holdEvents":[],"releaseEvents":[]}
+        }]);
+        document["retainedRootExtension"] = json!({"sample":39});
+        let settings = device.source_device_settings.as_mut().unwrap();
+        settings[razer_device::keyboard_latest_restore::STORAGE_FIELD] = document;
+        settings["retainedDeviceExtension"] = json!({"sample":41});
+        device
+    }
+
+    fn imported_profile() -> Value {
+        let mut profile = razer_device::keyboard_latest_mapping::default_profile();
+        profile["guid"] = json!("91d3d24c-fb89-44b5-8b5c-69610b96b19f");
+        profile["name"] = json!("Imported profile");
+        profile["retainedProfileExtension"] = json!({"sample":43});
+        profile
+    }
+
+    #[::core::prelude::v1::test]
+    fn imported_profile_candidate_uses_shared_compiler_without_replacing_saved_catalogs() {
+        let device = saved_device();
+        let before = device.clone();
+        let candidate = SourceProductWorkspace::prepare_imported_profile_candidate(
+            &device,
+            &[imported_profile()],
+            fresh_guids(),
+        )
+        .unwrap();
+        assert_eq!(candidate.active_profile, "retained-local-id");
+        assert_eq!(&candidate.profiles[..1], device.profiles.as_slice());
+        assert_eq!(
+            candidate.profiles[1].guid,
+            "91d3d24c-fb89-44b5-8b5c-69610b96b19f"
+        );
+        let compiled = &candidate.source_device_settings.as_ref().unwrap()
+            [razer_device::keyboard_latest_restore::STORAGE_FIELD];
+        assert_eq!(compiled["productId"], 756);
+        assert_eq!(
+            compiled["activeProfile"],
+            "2a8e0fbd-dbc6-401a-b9d2-4f9ddf5ae05e"
+        );
+        assert_eq!(compiled["version"], 18);
+        assert_eq!(compiled["retainedRootExtension"], json!({"sample":39}));
+        assert_eq!(
+            candidate.source_device_settings.as_ref().unwrap()["retainedDeviceExtension"],
+            json!({"sample":41})
+        );
+        assert_eq!(
+            compiled["macros"],
+            json!([{
+                "guid":"c1fe7476-cab7-46b8-861a-5192540d60cd", "name":"Retained macro",
+                "macroEvents":[], "appEngine":{"events":[]}
+            }])
+        );
+        assert_eq!(
+            compiled["phasedMacros"],
+            json!([{
+                "guid":"03ee0ae6-c109-48dc-87fa-3bd80fb33d2f", "name":"Retained phased macro",
+                "macroEvents":[],
+                "appEngine":{"pressEvents":[],"holdEvents":[],"releaseEvents":[]}
+            }])
+        );
+        let source = candidate.profiles[1].source_settings.as_ref().unwrap();
+        assert_eq!(source["retainedProfileExtension"], json!({"sample":43}));
+        assert!(source["appEngine"]["mappings"].is_array());
+        let request = SourceProfileImport::new(&device, candidate).unwrap();
+        assert!(request.matches(&device));
+        assert_eq!(request.candidate().profiles.len(), 2);
+        assert_eq!(device.profiles, before.profiles);
+        assert_eq!(device.source_device_settings, before.source_device_settings);
+    }
+
+    #[::core::prelude::v1::test]
+    fn imported_profile_candidate_failure_keeps_the_source_owner_unchanged() {
+        let valid = saved_device();
+        let mut malformed_profile = imported_profile();
+        malformed_profile
+            .as_object_mut()
+            .unwrap()
+            .remove("mappings");
+        let mut malformed_settings = valid.clone();
+        malformed_settings
+            .source_device_settings
+            .as_mut()
+            .unwrap()
+            .as_object_mut()
+            .unwrap()
+            .remove("selectedProfile");
+        let mut missing_active = valid.clone();
+        missing_active.active_profile = "removed-local-id".into();
+        let mut absent_identity = valid.clone();
+        absent_identity.profiles[0].guid.clear();
+        for (device, imported) in [
+            (valid, malformed_profile),
+            (malformed_settings, imported_profile()),
+            (missing_active, imported_profile()),
+            (absent_identity, imported_profile()),
+        ] {
+            let before = device.clone();
+            assert!(
+                SourceProductWorkspace::prepare_imported_profile_candidate(
+                    &device,
+                    &[imported],
+                    fresh_guids(),
+                )
+                .is_err()
+            );
+            assert_eq!(device.profiles, before.profiles);
+            assert_eq!(device.source_device_settings, before.source_device_settings);
+            assert_eq!(device.active_profile, before.active_profile);
+        }
     }
 }

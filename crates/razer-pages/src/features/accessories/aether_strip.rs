@@ -13,6 +13,7 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
 use razer_model::model::Device;
+use razer_widgets::source_input::{self, SourceInputExt as _};
 use razer_widgets::surface;
 use razer_widgets::theme::AetherStripColors as Colors;
 use serde::Deserialize;
@@ -112,8 +113,7 @@ impl AetherStrip {
                 })
             })
             .collect();
-        let rename_input =
-            cx.new(|cx| InputState::new(window, cx).validate(|text, _| text.chars().count() <= 32));
+        let rename_input = cx.new(|cx| source_input::input_state(32, window, cx));
         let mut this = Self {
             edition,
             selected: id.clone(),

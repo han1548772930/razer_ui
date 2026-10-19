@@ -1,6 +1,6 @@
 //! Bounded typed snapshots. Constructors are generated in their domain owners.
 use anyhow::{Context as _, ensure};
-use std::{collections::BTreeMap, ops::Range, sync::OnceLock};
+use std::{collections::BTreeMap, ops::Range, sync::{Arc, OnceLock}};
 
 const MAX_DOCUMENT: usize = 64 * 1024 * 1024;
 const MAX_DEPTH: usize = 128;
@@ -96,7 +96,7 @@ fn take_u32(bytes: &[u8], cursor: &mut usize) -> anyhow::Result<u32> {
     ))
 }
 
-static DOCUMENTS: OnceLock<Result<BTreeMap<String, Document>, String>> = OnceLock::new();
+static DOCUMENTS: OnceLock<Result<BTreeMap<String, Arc<Document>>, String>> = OnceLock::new();
 
 /// Prepare immutable encoded catalogs before constructing views. Domain objects
 /// remain lazy in their existing OnceLock or per-product owners.
@@ -104,7 +104,7 @@ pub fn initialize() -> anyhow::Result<()> {
     documents().map(|_| ())
 }
 
-fn documents() -> anyhow::Result<&'static BTreeMap<String, Document>> {
+fn documents() -> anyhow::Result<&'static BTreeMap<String, Arc<Document>>> {
     DOCUMENTS
         .get_or_init(|| {
             super::read_catalog(|connection| {
@@ -133,7 +133,7 @@ fn documents() -> anyhow::Result<&'static BTreeMap<String, Document>> {
                     let document = Document::parse(codec, bytes)
                         .with_context(|| format!("Invalid typed catalog {id}"))?;
                     ensure!(
-                        documents.insert(id, document).is_none(),
+                        documents.insert(id, Arc::new(document)).is_none(),
                         "Duplicate typed catalog identity"
                     );
                 }
@@ -174,7 +174,7 @@ pub fn read_document<T>(
 
 /// A single typed constructor node. Generated domain decoders own field meaning.
 pub struct NodeReader<'a> {
-    document: &'a Document,
+    document: &'a Arc<Document>,
     scalar: &'a [u8],
     children: &'a [u8],
     depth: usize,
@@ -189,7 +189,7 @@ macro_rules! numbers {
 }
 
 impl<'a> NodeReader<'a> {
-    fn new(document: &'a Document, node: usize, depth: usize) -> anyhow::Result<Self> {
+    fn new(document: &'a Arc<Document>, node: usize, depth: usize) -> anyhow::Result<Self> {
         ensure!(depth <= MAX_DEPTH, "Typed catalog nesting exceeds limit");
         let node = document
             .nodes
@@ -263,6 +263,30 @@ impl<'a> NodeReader<'a> {
             values.push(self.child(decode)?);
         }
         Ok(values)
+    }
+
+    /// Retain only validated node identities. Domain objects are constructed
+    /// on first access without SQL, disk I/O or another copy of the document.
+    pub fn lazy_sequence<T>(
+        &mut self,
+        decode: fn(&mut NodeReader<'_>) -> anyhow::Result<T>,
+    ) -> anyhow::Result<CatalogSequence<T>> {
+        ensure!(self.children.len().is_multiple_of(4), "Catalog sequence is truncated");
+        let nodes = self.children.chunks_exact(4)
+            .map(|bytes| u32::from_le_bytes(bytes.try_into().expect("Four byte child"))))
+            .collect::<Vec<_>>();
+        for &node in &nodes {
+            ensure!((node as usize) < self.document.nodes.len(), "Invalid lazy catalog child");
+        }
+        self.children = &[];
+        let values = (0..nodes.len()).map(|_| OnceLock::new()).collect();
+        Ok(CatalogSequence {
+            document: Arc::clone(self.document),
+            nodes,
+            depth: self.depth + 1,
+            decode,
+            values,
+        })
     }
     pub fn array<T, const N: usize>(
         &mut self,
@@ -341,6 +365,50 @@ impl<'a> NodeReader<'a> {
     }
 }
 
+/// An ordered immutable catalog whose entries have independent construction
+/// lifetimes. Merely opening a product does not decode other layouts.
+pub struct CatalogSequence<T> {
+    document: Arc<Document>,
+    nodes: Vec<u32>,
+    depth: usize,
+    decode: fn(&mut NodeReader<'_>) -> anyhow::Result<T>,
+    values: Vec<OnceLock<Result<T, String>>>,
+}
+
+impl<T> CatalogSequence<T> {
+    pub fn len(&self) -> usize {
+        self.nodes.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.nodes.is_empty()
+    }
+
+    pub fn try_get(&self, index: usize) -> anyhow::Result<Option<&T>> {
+        let Some(value) = self.values.get(index) else { return Ok(None); };
+        value.get_or_init(|| {
+            (|| {
+                let mut reader = NodeReader::new(&self.document, self.nodes[index] as usize, self.depth)?;
+                let value = (self.decode)(&mut reader)?;
+                reader.finish()?;
+                Ok(value)
+            })().map_err(|error: anyhow::Error| format!("{error:#}"))
+        }).as_ref().map(Some).map_err(|error| anyhow::anyhow!("{error}"))
+    }
+
+    pub fn get(&self, index: usize) -> Option<&T> {
+        self.try_get(index).expect("Packaged typed catalog must match its domain schema")
+    }
+}
+
+impl<T> std::ops::Index<usize> for CatalogSequence<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.get(index).expect("Catalog sequence index exceeds its length")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -363,7 +431,7 @@ mod tests {
 
     #[test]
     fn shared_children_decode_in_order_and_field_consumption_is_checked() {
-        let document = Document::parse(String::new(), fixture()).unwrap();
+        let document = Arc::new(Document::parse(String::new(), fixture()).unwrap());
         fn boolean(r: &mut NodeReader<'_>) -> anyhow::Result<bool> {
             assert_eq!(r.tag()?, 0);
             r.boolean()

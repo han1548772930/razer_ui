@@ -1,9 +1,11 @@
 //! One observed ARGB port owns its retained editors and local layout draft.
 use super::*;
+use crate::features::argb_name::{self, NameEdit, NameSubmit};
 use gpui_kit::component::{
     input::{Input, InputEvent, InputState},
     select::{SelectEvent, SelectState},
 };
+use razer_widgets::source_input::{self, SourceInputExt as _};
 use std::time::Duration;
 
 pub(super) struct PortChanged {
@@ -44,8 +46,7 @@ impl PortEditor {
     ) -> Self {
         let mode =
             cx.new(|cx| SelectState::new(mode_choices(spec, fact.maximum_leds), None, window, cx));
-        let name = cx
-            .new(|cx| InputState::new(window, cx).validate(|s, _| s.encode_utf16().count() <= 32));
+        let name = cx.new(|cx| source_input::input_state(32, window, cx));
         let subscriptions = vec![
             cx.subscribe_in(&mode, window, |this: &mut Self, _, event, window, cx| {
                 if let SelectEvent::Confirm(Some(value)) = event {
@@ -65,17 +66,9 @@ impl PortEditor {
                 &name,
                 window,
                 |this: &mut Self, input, event, window, cx| {
-                    if this.editing_name
-                        && matches!(event, InputEvent::Blur | InputEvent::PressEnter { .. })
-                    {
+                    if matches!(event, InputEvent::PressEnter { .. }) {
                         let value = input.read(cx).value().to_string();
-                        this.editing_name = false;
-                        if this.editable() && !value.is_empty() && value != this.draft.name {
-                            this.draft.name = value;
-                            this.changed(cx);
-                        }
-                        this.sync(window, cx);
-                        cx.notify();
+                        this.commit_name(value, NameSubmit::Enter, window, cx);
                     }
                 },
             ),
@@ -117,6 +110,28 @@ impl PortEditor {
     fn editable(&self) -> bool {
         self.fact.active && self.fact.maximum_leds >= self.spec.minimum_leds
     }
+    fn commit_name(
+        &mut self,
+        value: String,
+        submit: NameSubmit,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !self.editing_name || !self.editable() {
+            return;
+        }
+        let edit = argb_name::name_edit(self.spec.product_id, &self.draft.name, &value, submit);
+        if edit == NameEdit::KeepEditing {
+            return;
+        }
+        self.editing_name = false;
+        if edit == NameEdit::Commit {
+            self.draft.name = value;
+            self.changed(cx);
+        }
+        self.sync(window, cx);
+        cx.notify();
+    }
     fn changed(&self, cx: &mut Context<Self>) {
         cx.emit(PortChanged {
             id: self.fact.id,
@@ -130,7 +145,7 @@ impl PortEditor {
             .update(cx, |state, cx| state.set_selected_value(&mode, window, cx));
         if !self.editing_name {
             self.name.update(cx, |state, cx| {
-                state.set_value(self.draft.name.clone(), window, cx)
+                source_input::set_value(state, self.draft.name.clone(), 32, window, cx)
             });
         }
         let all = self
@@ -560,12 +575,22 @@ impl Render for PortEditor {
         let mut title = h_flex().h(surface::css(27.)).justify_between();
         if self.editing_name {
             title = title.child(
-                Input::new(&self.name)
-                    .aria_label(self.spec.text("RENAME"))
-                    .h(surface::css(25.))
+                div()
+                    .id(("argb-name-editor", self.fact.id))
                     .w(surface::css(160.))
-                    .font_family("RazerF5")
-                    .text_size(surface::css(16.)),
+                    .on_mouse_down_out(cx.listener(|this, _, window, cx| {
+                        let value = this.name.read(cx).value().to_string();
+                        this.commit_name(value, NameSubmit::OutsideClick, window, cx);
+                    }))
+                    .child(
+                        Input::new(&self.name)
+                            .source_max_length(&self.name, 32)
+                            .aria_label(self.spec.text("RENAME"))
+                            .h(surface::css(25.))
+                            .w_full()
+                            .font_family("RazerF5")
+                            .text_size(surface::css(16.)),
+                    ),
             );
         } else {
             title = title.child(
@@ -586,7 +611,12 @@ impl Render for PortEditor {
                     .child(img(self.spec.asset("rename")).size(surface::css(14.)))
                     .on_click(cx.listener(|this, _, window, cx| {
                         this.editing_name = true;
-                        this.name.focus_handle(cx).focus(window, cx);
+                        let name = this.draft.name.clone();
+                        this.name.update(cx, |state, cx| {
+                            source_input::set_value(state, name, 32, window, cx);
+                            state.focus(window, cx);
+                            state.select_all(window, cx);
+                        });
                         cx.notify();
                     })),
             );
@@ -669,14 +699,6 @@ impl Render for PortEditor {
             .rounded(surface::css(5.))
             .bg(cx.theme().group_box)
             .text_size(surface::css(14.))
-            .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
-                if event.keystroke.key == "escape" && this.editing_name {
-                    this.editing_name = false;
-                    this.sync(window, cx);
-                    cx.notify();
-                    cx.stop_propagation();
-                }
-            }))
             .child(title)
             // 源把 `.help`/`.tip` 直接放在 `.port-container.widget` 里
             // （`<div className="help"/><div className="tip">{getTextItem(OT.gt9)}</div>`），

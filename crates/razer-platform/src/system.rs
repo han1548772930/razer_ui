@@ -1,5 +1,13 @@
 //! Read-only Windows properties and explicit user-triggered property dialogs.
 
+/// The browser's default collation locale follows the host rather than the
+/// product's independently selected interface language.
+pub fn collation_locale() -> anyhow::Result<String> {
+    sys_locale::get_locale()
+        .filter(|locale| !locale.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("The host collation locale was not observed"))
+}
+
 /// Read the local computer name through the current host's system API contract.
 /// This performs a synchronous OS query and belongs on a background worker.
 pub fn computer_name() -> anyhow::Result<String> {

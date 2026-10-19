@@ -1,6 +1,13 @@
 //! Factory-default Customize is its own mounted component, not an editor.
 use super::*;
 
+/// The product root compares the selected profile GUID, independently of its
+/// calibration capability or the profile's editable display name.
+pub(in crate::features) fn is_factory_profile(product_id: u32, guid: &str) -> bool {
+    guid == razer_device::keyboard_current_profile::FACTORY_GUID
+        && source_product(product_id).is_some()
+}
+
 impl KeyboardProductWorkspace {
     pub(super) fn customize_factory_root(&self) -> bool {
         self.factory_default_profile
@@ -62,5 +69,32 @@ impl RenderOnce for FactoryDescription {
             .image_source(|_| "synapse/profile-more.svg".into())
             .selectable(false)
             .scrollable(false)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_factory_profile;
+
+    #[::core::prelude::v1::test]
+    fn factory_profile_identity_does_not_depend_on_a_calibration_page() {
+        for product_id in [
+            614, 642, 678, 679, 688, 719, 720, 721, 740, 741, 742, 746, 756,
+        ] {
+            assert!(
+                is_factory_profile(
+                    product_id,
+                    razer_device::keyboard_current_profile::FACTORY_GUID,
+                ),
+                "product {product_id}"
+            );
+            for other in ["", "Factory Default", "local-default", "user-profile"] {
+                assert!(!is_factory_profile(product_id, other));
+            }
+        }
+        assert!(!is_factory_profile(
+            190,
+            razer_device::keyboard_current_profile::FACTORY_GUID,
+        ));
     }
 }

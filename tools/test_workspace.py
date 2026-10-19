@@ -461,6 +461,20 @@ class ArchitectureBoundaryTests(unittest.TestCase):
             self.assertEqual([row['kind'] for row in self.inspect(changed, owner)],
                              ['mouse_dpi_bypasses_retained_operation_owner'])
             self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + changed + ' }', owner))
+        delegated = ('impl AppShell { '
+                     'fn submit_current_dpi_device() { self.submit_current_dpi_at(workspace, request, window, cx); } '
+                     'fn submit_current_dpi_at() { self.start_current_dpi_operation(workspace, route, request, window, cx); } }')
+        self.assertFalse(self.inspect(delegated, owner))
+        for changed in (
+                delegated.replace('self.submit_current_dpi_at', 'other.submit_current_dpi_at'),
+                delegated.replace('self.start_current_dpi_operation', 'other.start_current_dpi_operation'),
+                delegated.replace('self.start_current_dpi_operation', 'self.start_other_operation'),
+                delegated.replace('fn submit_current_dpi_at()', '#[cfg(test)] fn submit_current_dpi_at()'),
+                delegated.replace('fn submit_current_dpi_at()', 'fn unrelated()'),
+                delegated.replace('self.start_current_dpi_operation', 'self.submit_current_dpi_at')):
+            with self.subTest(source=changed):
+                self.assertEqual([row['kind'] for row in self.inspect(changed, owner)],
+                                 ['mouse_dpi_bypasses_retained_operation_owner'])
         owner = 'crates/razer-shell/src/shell/mouse/mouse_current_dpi_runtime.rs'
         source = 'fn current_route() { super::device_discovery::retained_connection(previous, observations, device) }'
         self.assertFalse(self.inspect(source, owner))
@@ -3082,6 +3096,36 @@ fn helper(cx: &mut TestAppContext) { Owner.present(cx); }
                 workspace.validate_rust(selected_suites=['workspace', 'model'])
         runner.assert_not_called()
 
+    def test_missing_filter_or_only_ignored_matches_cannot_select_a_suite(self):
+        self.crate('''
+#[test] fn pure() {}
+#[test] #[ignore] fn offline_only() {}
+''')
+        for value in ('missing_module::tests', 'offline_only'):
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, 'no current tests'):
+                self.scope('--lib', value)
+
+    def test_preflight_rejects_empty_filter_before_any_compile_or_test_command_executes(self):
+        self.crate('#[test] fn unrelated() {}', package='razer-widgets')
+        with mock.patch.object(workspace, 'rust_inputs', return_value=[]), \
+                mock.patch.object(workspace.subprocess, 'run') as runner:
+            with self.assertRaisesRegex(ValueError, 'no current tests'):
+                workspace.validate_rust(selected_suites=['workspace', 'source-input-length'])
+        runner.assert_not_called()
+
+
+class ConfiguredRustSuiteOwnerTests(unittest.TestCase):
+    def test_every_configured_filter_selects_current_nonwindow_tests(self):
+        commands = workspace.rust_validation_commands()
+        self.assertEqual(len(commands), len({name for name, _ in commands}))
+        inventories = {}
+        for name, command in commands:
+            with self.subTest(suite=name):
+                scope = workspace.rust_test_scope(command, inventories)
+                if command[1] == 'test':
+                    self.assertGreater(sum(len(row['selected_tests']) for row in scope['targets']), 0)
+                    self.assertEqual(scope['window_tests_selected'], 0)
+
 
 class RustValidationBoundaryTests(unittest.TestCase):
     def setUp(self):
@@ -3220,7 +3264,7 @@ class RustValidationBoundaryTests(unittest.TestCase):
             'audio-shortcut-lifecycle': ('razer-shell', 'audio_shortcut_lifecycle_tests'),
             'source-text-tracking': ('razer-widgets', 'source_text::tests'),
             'assets-image-lifecycle': ('razer-assets', 'image_cache::lifecycle_tests'),
-            'keyboard-macro-submission': ('razer-device', 'keyboard_macro_submission'),
+            'keyboard-macro-submission': ('razer-device', 'keyboard_submission::macro_submission::tests'),
             'onboard-macro': ('razer-device', 'onboard_macro'),
             'macro-page-phases': ('razer-app-pages', 'macro_page::phased::tests'),
             'mapping-observation': ('razer-service', 'mapping::observation::'),

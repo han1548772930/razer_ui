@@ -1595,6 +1595,12 @@ def audit_family_function(args):
         return audit_audio_local_profiles(args)
     if getattr(args, "query", None) == "hue-profile-actions":
         return audit_hue_profile_actions(args)
+    if getattr(args, "query", None) == "accessory-text-inputs":
+        return audit_accessory_text_inputs(args)
+    if getattr(args, "query", None) == "audio-preset-inputs":
+        return audit_audio_preset_inputs(args)
+    if getattr(args, "query", None) == "chroma-text-inputs":
+        return audit_chroma_text_inputs(args)
     if getattr(args, "query", None) == "audio-seiren-eq":
         return audit_audio_seiren_eq(args)
     if getattr(args, "query", None) == "audio-leviathan":
@@ -4381,6 +4387,73 @@ def static_js_literal(text):
     return json.loads(text)
 
 
+def keyboard_factory_customize_chain(audit, files):
+    """Resolve679 profile identity publication through both mounted subtrees."""
+    source = next(item for item in files if Path(item["path"]).name.startswith("main.") and item["path"].endswith(".js"))
+    raw = audit.read(source)
+    root = audit.binding("factory_main_root", source, "JU", raw.index(b"class JU extends"))
+    macro = audit.binding("factory_macro_root", source, "Ng", root["start_byte"])
+    connector = audit.binding("factory_customize_connector", source, "Gh", root["start_byte"])
+    branch = audit.binding("factory_customize_branch", source, "fh", connector["start_byte"])
+    static_connector = audit.binding("factory_static_connector", source, "gh", branch["start_byte"])
+    static = audit.binding("factory_static_subtree", source, "Uh", static_connector["start_byte"])
+    image_alias = audit.binding("factory_image_alias", source, "bM", static["start_byte"])
+    image = audit.binding("factory_image_component", source, "BM", image_alias["start_byte"])
+    notice_connector = audit.binding("factory_notice_connector", source, "hh", static["start_byte"])
+    notice = audit.binding("factory_notice_component", source, "Mh", notice_connector["start_byte"])
+    editable_connector = audit.binding("factory_editable_connector", source, "Ph", branch["start_byte"])
+    editable = audit.binding("factory_editable_subtree", source, "mh", editable_connector["start_byte"])
+    action = audit.binding("factory_profile_action_creator", source, "tr", root["start_byte"])
+    flag_identity = audit.webpack_export("factory_profile_flag_identity", files, 13254, "ZUI")
+    profiles_identity = audit.webpack_export("factory_profile_publication_identity", files, 13254, "Bj5")
+    device = audit.webpack_export("factory_product_descriptor", files, 78193, "DeviceInfo")
+    presets = audit.binding("factory_preset_guid_owner", device["original"], "r", device["binding"]["start_byte"])
+    roles = {"main_root": root, "macro_root": macro, "customize_connector": connector, "customize_branch": branch,
+        "static_connector": static_connector, "static_subtree": static, "image_alias": image_alias, "image": image,
+        "notice_connector": notice_connector, "notice": notice, "editable_connector": editable_connector,
+        "editable_subtree": editable, "flag_action": action, "flag_identity": flag_identity,
+        "profiles_identity": profiles_identity, "product_descriptor": device, "preset_identities": presets}
+    for role, anchor in (("profile_publication_reducer", "case de.Bj5:{const a=t.payload,n=a.selectedProfileGuid,o=a.profiles;"),
+                         ("factory_flag_reducer", "case de.ZUI:return")):
+        keys = audit.retain(role, source, anchor, {"switch_case"})
+        if len(keys) != 1:
+            raise ValueError("Current factory profile state consumer is ambiguous: " + role)
+        roles[role] = keys[0]
+    expected = ('this.props.isFactoryDefaultProfile?(0,un.jsx)(gh,{}):(0,un.jsx)(Ph,',
+                'hasKeyboardControls:!0,isTwoTapKeyMap:!0,disableActuationPoint:!0')
+    if any(part not in branch["body"] for part in expected):
+        raise ValueError("Current679 factory/default customize subtree selection differs")
+    if ('id:1,name:be.M9m,renderComponent:()=>(0,un.jsx)(Gh,' not in root["body"]
+            or 'payload:{profiles:JSON.parse(JSON.stringify(r)),selectedProfileGuid:o.activeProfile}' not in root["body"]
+            or '"af06d371-861f-4b98-8d78-bfaef5cfdebf"===this.props.selectedProfileGuid' not in root["body"]
+            or 'isFactoryPreset:!0' not in presets["body"]
+            or 'guid:"af06d371-861f-4b98-8d78-bfaef5cfdebf"' not in presets["body"]):
+        raise ValueError("Current679 factory identity/navigation/publication chain differs")
+    if ('className:"config-wrapper dot-bg"' not in static["body"]
+            or '(0,un.jsx)(bM,{pid:_e.DeviceInfo.productId' not in static["body"]
+            or 'className:"dim-corner"' not in static["body"] or '(0,un.jsx)(hh,{})' not in static["body"]
+            or 'this.checkFactoryDefaultAndMacroDisplay(this.props.selectedProfileGuid)' not in macro["body"]):
+        raise ValueError("Current679 static factory/macro subtree differs")
+    css = next(item for item in files if Path(item["path"]).name.startswith("main.") and item["path"].endswith(".css"))
+    css_raw = audit.read(css)
+    css_rules = []
+    for match in re.finditer(rb"([^{}]+)\{([^{}]*)\}", css_raw):
+        selectors = match[1].decode("utf-8").split(",")
+        if any(selector.strip() in {".dot-bg", ".dot-bg .dim-corner", ".macro-body-widget .dot-bg .dim-corner",
+                                   ".factory-default .warning-alert", ".factory-default .warning-alert .title"}
+               for selector in selectors):
+            css_rules.append(audit.retain_range("factory_static_css", css, match.start(), match.end(), "css_rule"))
+    if not css_rules:
+        raise ValueError("Current factory static-surface CSS is absent")
+    return {"roles": roles, "css": css_rules, "complete_owners": audit.owners,
+        "semantics": {
+            "identity": "Current679 DeviceInfo.OBMSpecs.presetProfiles owns Factory Default GUID af06d371-861f-4b98-8d78-bfaef5cfdebf and isFactoryPreset. JU.loadActiveProfileSettings publishes the actual profile list and active GUID through MW_SET_PROFILE_TO_UI; that reducer preserves the selected GUID. JU.componentDidUpdate derives SET_IS_FACTORY_DEFAULT_PROFILE from the exact selected identity, and its reducer owns the boolean consumed by Gh.",
+            "navigation": "The Customize navigation always mounts Gh; Factory Default does not disable opening the tab. fh selects the static gh/Uh subtree while the flag is true and the editable Ph/mh subtree otherwise.",
+            "static_subtree": "Uh mounts the real product/edition/layout image bM/BM, dim-corner and hh/Mh notice inside config-wrapper dot-bg. It does not mount the mapping editor. Ph/mh remains the complete alternate editable subtree with keyboard controls, two-tap mapping and disabled actuation-point affordance.",
+            "macro": "Ng independently compares the selected profile with the isFactoryPreset identity in the product descriptor and selects the same gh/Ph subtrees. The source's ordinary missing-active fallback is retained as evidence only and is not a generic Rust restore rule.",
+        }, "target_execution": False, "runtime_acceptance": "unverified"}
+
+
 def audit_keyboard_page_layout(args):
     """Reuse complete current captures for keyboard page/column/scroll owners.
 
@@ -4680,6 +4753,16 @@ def audit_keyboard_page_layout(args):
                     row["css"].append({"original": source, "complete_rules": rules})
             if not row["css"]:
                 raise ValueError("Current page layout/scroll CSS is missing")
+            if pid == 679:
+                from host import HostLocalAudit
+                factory_audit = HostLocalAudit()
+                metadata, files = factory_audit.source_set("keyboard-679-current")
+                factory = keyboard_factory_customize_chain(factory_audit, files)
+                factory["source_set"] = metadata
+                factory["full_capture"] = factory_audit.frontend_capture("keyboard-679-current", files)
+                if factory_audit.final_snapshot():
+                    raise ValueError("Current keyboard factory subtree inputs changed")
+                row["factory_customize_chain"] = factory
         except (OSError, ValueError, KeyError, StopIteration) as error:
             row["failures"].append(type(error).__name__ + ":" + str(error))
         print(json.dumps({"product_id": pid, "navigation": len(row["navigation"]),
@@ -7998,6 +8081,248 @@ def audit_keyboard_local_profile_adoption(args):
     a.save(destination, report)
     print(json.dumps({"receipt": a.rel(destination), "query": query["query"],
         "products": 1, "complete_owners": len(audit.owners), "target_execution": False}), flush=True)
+
+
+def audit_chroma_text_inputs(args):
+    """Retain the mounted Studio title editors and native maxlength owner."""
+    from host import HostLocalAudit
+    if args.family != "system" or args.function != "main" or args.product:
+        raise ValueError("chroma-text-inputs requires the shared Studio main without a product selector")
+    audit = HostLocalAudit()
+    name = "synapse-chroma-studio-current"
+    metadata, files = audit.source_set(name)
+    capture = audit.frontend_capture(name, files)
+    main = next(item for item in files if Path(item["path"]).name.startswith("main.") and item["path"].endswith(".js"))
+    canvas = next(item for item in files if Path(item["path"]).name.startswith("EditorCanvas.") and item["path"].endswith(".js"))
+    titles = audit.webpack_export("studio_title_limit", files, 6257, "TH")
+    limit_body = titles["binding"]["body"]
+    # Both conditional operands are complete production environment literals.
+    # Their absent REACT_APP_TITLE_LIMIT property selects the numeric else arm.
+    if (limit_body.count(".REACT_APP_TITLE_LIMIT") != 2 or not limit_body.endswith(":32")
+            or "REACT_APP_TITLE_LIMIT:" in limit_body or "REACT_APP_TITLE_LIMIT\"" in limit_body):
+        raise ValueError("Current Studio native title maxlength no longer resolves to32")
+    profile = audit.retain("studio_profile_title_editor", main,
+        "function Z(){const t=(0,S.useSelector)(e=>e.profile.items)", {"function_declaration"})
+    layer = audit.retain("studio_layer_title_editor", canvas,
+        "function Z(e){let{layer:t,prevLayer:s,nextLayer:i,effectLayers:o", {"function_declaration"})
+    if len(profile) != 1 or len(layer) != 1:
+        raise ValueError("Current Studio mounted title editors are ambiguous")
+    imports = {}
+    for label, original, anchor, bindings in (
+            ("profile", main, b"maxLength:m.TH", {"m": 6257, "V": 99, "N": 8480}),
+            ("layer", canvas, b"maxLength:f.TH", {"f": 6257, "U": 8473, "d": 9286})):
+        at = audit.read(original).index(anchor)
+        imports[label] = {}
+        for symbol, expected in bindings.items():
+            resolved = audit.binding("studio_" + label + "_input_import_" + symbol, original, symbol, at)
+            if not re.fullmatch(re.escape(symbol) + r"=\w+\(" + str(expected) + r"\)", resolved["body"]):
+                raise ValueError("Current Studio title editor import differs: " + label + "." + symbol)
+            imports[label][symbol] = resolved
+    dropdown = audit.webpack_export("studio_profile_dropdown", files, 99, "A")
+    native = audit.webpack_export("studio_native_text_input", files, 8473, "A")
+    profile_action = audit.webpack_export("studio_profile_rename_action", files, 8480, "Ts")
+    layer_action = audit.webpack_export("studio_layer_rename_action", files, 9286, "aM")
+    profile_body, layer_body = (audit.owners[keys[0]]["body"] for keys in (profile, layer))
+    for body, marker in ((profile_body, "maxLength:m.TH"), (layer_body, "maxLength:f.TH")):
+        if marker not in body or "t.select()" not in body or '"Enter"===t?e.target.blur():"Escape"===t&&' not in body:
+            raise ValueError("Current Studio title focus/key/maxlength semantics differ")
+    if ('n=n.trim(),n&&d((0,N.Ts)(n))' not in profile_body
+            or 'r.title===e||o.some(t=>t.title===e)' not in profile_action["binding"]["body"]
+            or 'if(i=i.trim(),i)' not in layer_body or 'e.title===i&&"group"===e.type' not in layer_body
+            or 'e.concat(t.layers)' not in layer_body or 'R((0,d.aM)(t,i))' not in layer_body
+            or 'case"input":return(0,p.jsx)(d.A,{className:"box",...s})' not in audit.owners[dropdown["complete_factory_owner"]]["body"]
+            or '("input",{ref:t,className:' not in audit.owners[native["complete_factory_owner"]]["body"]):
+        raise ValueError("Current Studio title submission/native input forwarding differs")
+    if audit.final_snapshot():
+        raise ValueError("Current Studio title sources changed during query")
+    query = {"query": "chroma-text-inputs", "recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)),
+        "analyzers": audit.parser_versions, "offset_units": "UTF-8 bytes, end exclusive",
+        "source_set": metadata, "full_capture": capture, "imports": imports,
+        "roles": {"profile_editor": profile[0], "layer_editor": layer[0], "title_limit": titles,
+                  "dropdown": dropdown, "native_input": native, "profile_action": profile_action, "layer_action": layer_action},
+        "semantics": {
+            "length": "Module6257 TH resolves to32 because both production environment literals omit REACT_APP_TITLE_LIMIT. Both mounted editors forward this native input maxLength, measured in UTF16 units. Existing prop values are not truncated on mount or after trim; interactive insertions are bounded before submission.",
+            "submission": "Mount focuses and selects all. Enter blurs. Escape closes the editor. Blur trims; a nonempty profile title reaches the action, which rejects an exact existing title. Group names compare only other groups, while layer names compare the flattened layer inventory.",
+            "implementation": "Both Rust inputs use the shared source_input maxlength owner; submit-time whole-name truncation has been removed.",
+            "testing": "razer-widgets source_input::tests covers UTF16 insertion and selection preservation. razer-pages studio_layers::rename_tests exercises the production name decisions, including ECMAScript BOM/NEL, exact case, independent group/layer names and no submit-time truncation. Execution results are separate; mounted focus/Escape/submission routes, persistence, service and real-window outcomes remain unverified."},
+        "validation_contract": {
+            "source_length": {"resolved": 32, "owner": titles["binding"]["owner_id"], "unit": "UTF16 code units"},
+            "pure_test_filters": ["razer_device::source_string::tests", "razer_widgets::source_input::tests", "razer_pages::studio_layers::rename_tests"],
+            "fixed_expectations": ["U+FEFF trims while U+0085 stays", "empty and exact duplicate names close without rename", "case variants remain distinct", "group titles and flattened layer titles have independent duplicate scopes", "source prop values are not truncated on submit"],
+            "execution": "Not performed by this static query; use the independent coordinated validation receipt",
+            "unverified": ["mounted focus and select-all", "Enter/Blur/Escape action routing", "local profile persistence and error recovery", "real window and device/service acceptance"]},
+        "complete_owners": audit.owners, "originals": list(audit.sources.values()), "failures": [],
+        "target_execution": False, "runtime_acceptance": "unverified"}
+    destination = a.ROOT / ".analysis/results/frontend/ui-tree-audit.json"
+    report = json.loads(destination.read_bytes())
+    report.setdefault("queries", {})[query["query"]] = query
+    a.save(destination, report)
+    print(json.dumps({"receipt": a.rel(destination), "query": query["query"],
+                      "complete_owners": len(audit.owners), "target_execution": False}), flush=True)
+
+
+def audit_accessory_text_inputs(args):
+    """Retain current accessory name editors and their actual action consumers."""
+    from host import HostLocalAudit
+    supported = {778, 784, 3871, 3884, 3886}
+    selected = set(args.product or supported)
+    if args.family != "accessories" or args.function != "main" or not selected <= supported:
+        raise ValueError("accessory-text-inputs requires current 778/784/3871/3884/3886 UI")
+    audit, products = HostLocalAudit(), []
+    identities = {778: ("fA", "Ft"), 3871: ("QA", "yt"), 3884: ("GR", "yt"), 3886: ("S2", "Kr")}
+    for pid in sorted(selected):
+        name = f"accessories-{pid}-current"
+        metadata, files = audit.source_set(name)
+        capture = audit.frontend_capture(name, files)
+        source = next(item for item in files if Path(item["path"]).name.startswith("main.") and item["path"].endswith(".js"))
+        raw = audit.read(source)
+        row = {"product_id": pid, "source_set": metadata, "full_capture": capture, "failures": [],
+               "runtime_acceptance": "unverified", "roles": {}}
+        products.append(row)
+        if pid == 784:
+            position = raw.index(b"ON_NAME_IOT_DEVICE")
+            caller = audit.binding("aether_device_name_caller", source, "ol", position)
+            alias = audit.binding("aether_name_editor_alias", source, "YI", caller["start_byte"])
+            editor = audit.binding("aether_name_editor", source, "WI", alias["start_byte"])
+            carousel = audit.binding("aether_device_carousel", source, "Gl", position)
+            selection = audit.binding("aether_device_selection", source, "Sg", position)
+            if ('maxLength:32' not in caller["body"] or 'this.sendToParent(E)' not in editor["body"]
+                    or '27===e.keyCode&&this.props.sendToParent(this.props.value)' not in editor["body"]
+                    or 'payload:{name:e}' not in carousel["body"]):
+                raise ValueError("Current Aether device rename/keyboard/payload semantics differ")
+            row["roles"].update({"caller": caller, "editor_alias": alias, "editor": editor,
+                                 "carousel": carousel, "selection": selection})
+            row["semantics"] = {
+                "length": "The device caller supplies native HTML maxlength32 in UTF16 code units; this limit is an edit constraint, not a persisted-name truncation.",
+                "submission": "Enter blurs and Blur forwards the exact current string, including empty and whitespace. Escape forwards the previous prop string to the same onSetName callback. Mount focuses and selects all.",
+                "payload": "The selected device callback sends ON_NAME_IOT_DEVICE with exactly name. The input does not infer an observed rename from issuing that request.",
+            }
+            row["validation_contract"] = {
+                "pure_test_filters": ["razer_widgets::source_input::tests"],
+                "covered_decisions": ["shared UTF16 insertion and selected-range preservation only"],
+                "unverified": ["product Enter/Blur/Escape routing", "raw empty/whitespace payload forwarding", "device selection and observed rename confirmation", "real-window/device acceptance"],
+                "execution": "Not performed or inferred by this static source query"}
+            continue
+        editor_keys = audit.retain("argb_port_name_editor", source, 'className:"port-input"',
+                                   {"class_declaration", "variable_declarator"})
+        if len(editor_keys) != 1:
+            raise ValueError("Current ARGB name editor is ambiguous")
+        editor = audit.owners[editor_keys[0]]
+        action_name, symbol = identities[pid]
+        creator = audit.binding("argb_name_action_creator", source, action_name, raw.index(b"changePortName:"))
+        constant = audit.binding("argb_name_action_identity", source, symbol, creator["start_byte"])
+        consumers = []
+        for match in re.finditer(re.escape(("case " + symbol + ":").encode()), raw):
+            resolved = audit.binding("argb_name_case_identity", source, symbol, match.start())
+            if resolved.get("owner_id") != constant.get("owner_id"):
+                continue
+            node = audit.tree(source).root_node.descendant_for_byte_range(match.start(), match.end() - 1)
+            while node is not None and node.type != "switch_case":
+                node = node.parent
+            if node is None:
+                raise ValueError("Current ARGB rename reducer boundary is absent")
+            key = audit.retain_range("argb_name_reducer", source, node.start_byte, node.end_byte, node.type)
+            consumers.append(key)
+        if len(consumers) != 1 or 'name:' not in audit.owners[consumers[0]]["body"]:
+            raise ValueError("Current ARGB name action consumer is absent or ambiguous")
+        body = editor["body"]
+        if ('document.addEventListener("mousedown",this.handleClickOutside)' not in body
+                or 'document.removeEventListener("mousedown",this.handleClickOutside)' not in body
+                or 'current.select()' not in body):
+            raise ValueError("Current ARGB name outside-click/focus lifecycle differs")
+        if pid == 3886:
+            if 'maxLength:' in body or 'r.props.changePortName({id:e,name:n})' not in body:
+                raise ValueError("Current3886 unrestricted/empty Enter name branch differs")
+        elif 'maxLength:32' not in body or 'E&&E!==t&&_({id:e,name:E})' not in body:
+            raise ValueError("Current bounded ARGB name predicate differs")
+        row["roles"].update({"editor": editor_keys[0], "action_creator": creator,
+                            "action_identity": constant, "reducer": consumers[0]})
+        row["semantics"] = {
+            "length": "No maxlength or128-character truncation exists." if pid == 3886 else "Native HTML maxlength32 uses UTF16 code units; persisted values are not truncated by mounting the input.",
+            "submission": "Only Enter and document mousedown outside submit. The onBlur callback checks keyCode13 and performs no ordinary blur submission; Escape has no handler. Mounting the editor focuses and selects all.",
+            "empty_and_same": "Enter closes and dispatches even empty or unchanged text. Outside-click closes and dispatches only a nonempty string; an empty draft remains open." if pid == 3886 else "Enter/outside-click always close; only nonempty text unequal to the previous prop dispatches. Whitespace remains unchanged.",
+            "draft_sync": "The native editor uses defaultValue and has no prop-update setter, so an unrelated source update cannot overwrite its mounted text draft.",
+            "implementation_boundary": "These owners verify text/action semantics. Device/service transport and complete page/runtime acceptance remain separate and unverified.",
+        }
+        row["validation_contract"] = {
+            "pure_test_filters": ["razer_pages::features::argb_name::tests"] + ([] if pid == 3886 else ["razer_widgets::source_input::tests"]),
+            "covered_decisions": ["product-specific empty/unchanged/whitespace and Enter/outside-click submit decisions", "shared UTF16 insertion only where the current caller supplies maxlength32"],
+            "unverified": ["mounted document outside-click routing", "ordinary Blur must not submit", "focus and select-all", "live draft retention during source updates", "transport write and observed confirmation", "real-window/device acceptance"],
+            "execution": "Not performed or inferred by this static source query"}
+    if audit.final_snapshot():
+        raise ValueError("Current accessory text inputs changed during audit")
+    query = {"query": "accessory-text-inputs", "recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)),
+             "analyzers": audit.parser_versions, "offset_units": "UTF-8 bytes, end exclusive", "products": products,
+             "complete_owners": audit.owners, "originals": list(audit.sources.values()), "failures": [],
+             "target_execution": False, "runtime_acceptance": "unverified"}
+    destination = a.ROOT / ".analysis/results/frontend/accessories-main-audit.json"
+    report = json.loads(destination.read_bytes())
+    report.setdefault("queries", {})[query["query"]] = query
+    a.save(destination, report)
+    print(json.dumps({"receipt": a.rel(destination), "query": query["query"], "products": len(products),
+                      "complete_owners": len(audit.owners), "target_execution": False}), flush=True)
+
+
+def audit_audio_preset_inputs(args):
+    """Retain current preset callers, shared text editors and uniqueness checks."""
+    from host import HostLocalAudit
+    supported = {1342, 1422, 1446}
+    selected = set(args.product or supported)
+    if args.family != "audio" or args.function != "main" or not selected <= supported:
+        raise ValueError("audio-preset-inputs requires current1342/1422/1446 UI")
+    audit, products = HostLocalAudit(), []
+    for pid in sorted(selected):
+        name = f"audio-{pid}-current"
+        metadata, files = audit.source_set(name)
+        capture = audit.frontend_capture(name, files)
+        if pid == 1342:
+            source = next(item for item in files if Path(item["path"]).name.startswith("main.") and item["path"].endswith(".js"))
+            keys = audit.retain("mixer_preset_name_caller", source,
+                'children:r?(0,Qe.jsx)(_R,{name:"profile",maxLength:32', {"variable_declarator"})
+            caller = audit.owners[keys[0]]
+            alias = audit.binding("mixer_preset_name_editor_alias", source, "_R", caller["byte_start"])
+            editor = audit.binding("mixer_preset_name_editor", source, "ER", alias["start_byte"])
+            unique = audit.webpack_export("mixer_preset_name_unique", files, 31867, "$B")
+        else:
+            source = next(item for item in files if Path(item["path"]).name.startswith("684.") and item["path"].endswith(".js"))
+            raw = audit.read(source)
+            position = raw.index(b'children:ae?(0,P.jsx)(G.A,{name:"profile",maxLength:32')
+            keys = audit.retain("seiren_preset_name_caller", source,
+                'children:ae?(0,P.jsx)(G.A,{name:"profile",maxLength:32', {"variable_declarator"})
+            callback = audit.binding("seiren_preset_name_submit", source, "Se", position)
+            alias = audit.webpack_export("seiren_preset_name_editor_alias", files, 1821, "A")
+            editor = audit.binding("seiren_preset_name_editor", alias["original"], "o", alias["binding"]["start_byte"])
+            unique = audit.webpack_export("seiren_preset_name_unique", files, 1867, "$B")
+            caller = audit.owners[keys[0]]
+            if 'e=e.trim(),oe(!1)' not in callback["body"]:
+                raise ValueError("Current Seiren preset trim/close callback differs")
+        if ('27===e.keyCode&&this.props.sendToParent(this.props.value)' not in editor["body"]
+                or 'this.inputDom.current.select()' not in editor["body"]
+                or 'findIndex(e=>e.name===t)' not in unique["binding"]["body"]):
+            raise ValueError("Current audio preset Escape/focus/exact-name semantics differ")
+        products.append({"product_id": pid, "source_set": metadata, "full_capture": capture,
+            "caller": keys[0], "editor_alias": alias, "editor": editor, "unique_name": unique,
+            "semantics": {"editing": "Native HTML maxlength32 uses UTF16; mount focuses and selects all. Enter blurs, Blur forwards the current string, Escape forwards the current prop value through the same callback.",
+                          "submission": "The product callback trims, closes, rejects all-whitespace and an exact case-sensitive existing name, then issues its rename action. Escape therefore normally closes without a rename; it must not submit the edited draft.",
+                          "implementation_boundary": "Input behavior is source verified; pure/static validation does not establish window focus or device/service acceptance."},
+            "validation_contract": {
+                "pure_test_filters": ["razer_device::source_string::tests", "razer_widgets::source_input::tests", "razer_pages::audio_mixer_presets::preset_name_tests"],
+                "covered_decisions": ["ECMAScript BOM/NEL/empty normalization", "exact case-sensitive duplicate names", "Enter draft versus Escape previous prop through the same production callback", "no submit-time truncation of source prop values"],
+                "unverified": ["mounted Enter/Blur/Escape action routing", "focus and select-all", "device/service write and readback", "real-window/device acceptance"],
+                "execution": "Not performed or inferred by this static source query"},
+            "failures": [], "runtime_acceptance": "unverified"})
+    if audit.final_snapshot():
+        raise ValueError("Current audio preset inputs changed during audit")
+    query = {"query": "audio-preset-inputs", "recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)),
+             "analyzers": audit.parser_versions, "offset_units": "UTF-8 bytes, end exclusive", "products": products,
+             "complete_owners": audit.owners, "originals": list(audit.sources.values()), "failures": [],
+             "target_execution": False, "runtime_acceptance": "unverified"}
+    destination = a.ROOT / ".analysis/results/frontend/audio-mw-audit.json"
+    report = json.loads(destination.read_bytes())
+    report.setdefault("queries", {})[query["query"]] = query
+    a.save(destination, report)
+    print(json.dumps({"receipt": a.rel(destination), "query": query["query"], "products": len(products),
+                      "complete_owners": len(audit.owners), "target_execution": False}), flush=True)
 
 
 def audit_hue_profile_actions(args):
@@ -21137,7 +21462,7 @@ def add_commands(parsers):
     audit.add_argument("--family", required=True, choices=list(FAMILY_CANDIDATES))
     audit.add_argument("--function", required=True)
     audit.add_argument("--product", type=int, action="append")
-    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-local-profile-schema", "mouse-dpi-matcher", "mouse-dynamic-sensitivity", "mouse-rotation", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-gamepad-tester", "keyboard-local-controls", "keyboard-local-profile-adoption", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-local-profiles", "hue-profile-actions", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
+    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-local-profile-schema", "mouse-dpi-matcher", "mouse-dynamic-sensitivity", "mouse-rotation", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-gamepad-tester", "keyboard-local-controls", "keyboard-local-profile-adoption", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-local-profiles", "hue-profile-actions", "accessory-text-inputs", "audio-preset-inputs", "chroma-text-inputs", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
     audit.add_argument("--prepare", action="store_true", help="Prepare verified current artwork resources through the shared workflow")
     audit.add_argument("--receipt-only", action="store_true", help="Refresh supported mouse or mapping-engine evidence without rewriting runtime descriptors")
     parser = parsers.add_parser("acquire-family", help=__doc__)

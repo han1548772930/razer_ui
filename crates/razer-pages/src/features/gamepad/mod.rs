@@ -370,27 +370,22 @@ impl GamepadProductWorkspace {
     }
 
     pub fn restore(&mut self, saved: Option<&Value>, window: &mut Window, cx: &mut Context<Self>) {
-        self.trigger_runtime.invalidate();
-        self.lighting_runtime.invalidate();
-        self.chroma_runtime.invalidate();
+        if let Err(error) = profile::restore_local_profile(
+            &mut self.draft,
+            saved,
+            self.spec,
+            &mut self.trigger_runtime,
+            &mut self.lighting_runtime,
+            &mut self.chroma_runtime,
+        ) {
+            eprintln!("[controller-profile] Saved settings could not be restored: {error:#}");
+            return;
+        }
         self.lighting_ui.cancel(cx);
         self.dismiss_quick_lighting_controls(cx);
         self.cancel_range_edits(cx);
         self.cancel_thumbstick_edits(cx);
         self.leave_calibration(window, cx);
-        self.draft = json!({"profile": self.spec.profile, "controller": self.spec.controller});
-        if let Some(saved) =
-            saved.filter(|v| v["profile"].is_object() && v["controller"].is_object())
-        {
-            merge_known(&mut self.draft, saved);
-            if let Err(error) =
-                profile::restore_features(&mut self.draft["profile"], &saved["profile"], self.spec)
-            {
-                eprintln!(
-                    "[controller-profile] Saved feature records could not be restored: {error:#}"
-                );
-            }
-        }
         self.selected_button = None;
         self.customize_hover = None;
         self.dismiss_deadzone(false, window, cx);

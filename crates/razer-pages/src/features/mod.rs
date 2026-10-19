@@ -215,5 +215,7 @@ pub use dock_pairing::{DockPairingEvent, DockPairingObservation, DockPairingUtil
 pub mod hue;
 #[path = "accessories/wired_argb.rs"]
 pub mod wired_argb;
+#[path = "accessories/argb_name.rs"]
+mod argb_name;
 #[path = "accessories/wireless_argb.rs"]
 pub mod wireless_argb;

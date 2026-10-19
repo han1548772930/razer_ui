@@ -240,6 +240,104 @@ class TypedTableTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 typed_tables.render_current_onboard_inventory(changed)
 
+    def test_current_onboard_literal_rejects_dynamic_members_duplicates_and_sparse_arrays(self):
+        import sys
+        sys.path.insert(0, str(Path(typed_tables.__file__).resolve().parent / "analyzers/python-static"))
+        from tree_sitter import Language, Parser
+        import tree_sitter_javascript
+        parser = Parser(Language(tree_sitter_javascript.language()))
+
+        def decode(source):
+            tree = parser.parse(("const value=" + source).encode())
+            value = tree.root_node.named_children[0].named_children[0].child_by_field_name("value")
+            return typed_tables.current_onboard_literal(value)
+
+        self.assertEqual(decode('{NormalMode:{"A":[7,!0,false,/* source comment */"key",]},1:!1}'),
+                         {"NormalMode": {"A": [7, True, False, "key"]}, "1": False})
+        for invalid in ('{key:1,key:2}', '{key:1,"key":2}', '{...shared}', '{[name]:1}',
+                        '{key}', '{key(){return 1}}', '[...keys]', '[,1]', '[1,,2]', '[1,,]',
+                        '{key:lookup()}', '{key:state.value}', '{key:null}', '{key:undefined}',
+                        '{key:-1}', '{key:1.5}', '{key:0x10}', '{key:01}'):
+            with self.subTest(source=invalid), self.assertRaises(ValueError):
+                decode(invalid)
+
+    @staticmethod
+    def current_onboard_mapping_fixture():
+        modifiers = ["LeftCtrl", "LeftShift", "LeftAlt", "LeftGUI", "RightCtrl", "RightShift", "RightAlt", "RightGUI"]
+        names = ["Left_Ctrl", "Left_Shift", "Left_Alt", "Left_GUI", "Right_Ctrl", "Right_Shift", "Right_Alt", "Right_GUI"]
+        key = {"fwID": 31, "inputID": "A", "inputType": "KeyInput", "keyInput": {"HID": "4", "pageID": "7"},
+               "outputType": "keyboardGroup", "keyboardGroup": {"key": {"HID": "5", "flag": 1, "pageID": "7"},
+               "modifiers": ["Left_Ctrl", "Extended_Key"], "extendedKey": "Extended_00"}}
+        disabled = {"fwID": 64, "inputID": "DKM", "inputType": "DKMInput", "dkmInput": "DKM", "outputType": "disableGroup"}
+        click = {"fwID": 1, "inputID": "LeftClick", "inputType": "MouseInput", "mouseInput": "LeftClick",
+                 "outputType": "mouseGroup", "mouseGroup": {"mouseAssignment": "Click"}}
+        dpi = {"fwID": 15, "inputID": "CLUTCH", "inputType": "DKMInput", "dkmInput": "CLUTCH",
+               "outputType": "sensitivityGroup", "sensitivityGroup": {"sensitivityAssignment": "DPI_Clutch", "x": 800, "y": 900}}
+        return {"keyboard": {"NormalMode": {"A": key, "DKM": disabled},
+                             "HypershiftMode": {"A": {**copy.deepcopy(key), "isHyperShift": True}}},
+                "mouse": {mode: {"LeftClick": copy.deepcopy(click), "CLUTCH": copy.deepcopy(dpi)}
+                          for mode in ("NormalMode", "HypershiftMode")},
+                "encoding": {"function_ids": {"Off": 0, "KeyCode": 2, "MediaKeys": 10},
+                             "modifier_bits": {name: 1 << bit for bit, name in enumerate(modifiers)},
+                             "modifier_names": dict(zip(modifiers, names)),
+                             "media_codes": {"MediaPlayOrPause": 205}, "media_names": {"MediaPlayOrPause": "Play"},
+                             "power_codes": {"SystemSleep": 130}, "razer_codes": {"FnKey": 1},
+                             "shortcut_codes": {"Screenshot": 99}, "shortcut_names": {"Screenshot": "Screenshot"},
+                             "mouse_names": {"LeftClick": "Click"}, "profile_names": {"Specific": "Specific"}}}
+
+    def test_current_onboard_mapping_renderer_preserves_source_codes_modes_and_keyboard_fields(self):
+        projection = self.current_onboard_mapping_fixture()
+        output = typed_tables.render_current_onboard_mapping(projection)
+        typed_tables.receiver_table_tree(output)
+        self.assertIn(b'205 => Some(MediaAction::Play)', output)
+        self.assertIn(b'130 => Some(PowerAction::SystemSleep)', output)
+        self.assertIn(b'99 => Some(ShortcutAction::Screenshot)', output)
+        self.assertIn(b'(128, "Right_GUI")', output)
+        self.assertIn(b'input_hid: Some(4), output: Output::Keyboard(KeyboardOutput { key: HidKey { hid: 5, flag: 1, page_id: 7 }', output)
+        self.assertIn(b'modifiers: 1, extended_modifier: true, extended_key: Some(ExtendedKey::Extended00)', output)
+        self.assertIn(b'input_id: "A", mode: Mode::Hypershift', output)
+        self.assertIn(b'input_id: "DKM", mode: Mode::Normal, firmware_key_id: Some(64), input_hid: None, output: Output::Disabled', output)
+        self.assertIn(b'(Mode::Normal, 1, MouseAction::Click)', output)
+        self.assertIn(b'(Mode::Hypershift, 1, MouseAction::Click)', output)
+        self.assertLess(output.index(b'input_id: "A", mode: Mode::Normal'), output.index(b'input_id: "DKM"'))
+
+    def test_current_onboard_mapping_renderer_rejects_lost_fields_ambiguous_codes_and_identity(self):
+        mutations = [
+            lambda p: p.update(unknown=[]),
+            lambda p: p["encoding"].update(unknown={}),
+            lambda p: p["encoding"]["function_ids"].update(Other="2"),
+            lambda p: p["encoding"]["function_ids"].update(Other=True),
+            lambda p: p["encoding"]["function_ids"].update(Bad_Code=3, BadCode=4),
+            lambda p: p["encoding"]["media_codes"].update(Extra=206),
+            lambda p: p["encoding"]["media_names"].update(Extra="Next"),
+            lambda p: p["encoding"]["shortcut_names"].clear(),
+            lambda p: p["encoding"]["mouse_names"].update(RightClick="Click"),
+            lambda p: p["encoding"]["modifier_bits"].update(LeftCtrl=True),
+            lambda p: p["encoding"]["modifier_names"].update(RightGUI="Left_Ctrl"),
+            lambda p: p["keyboard"].update(OtherMode={}),
+            lambda p: p["keyboard"]["NormalMode"]["A"].update(inputID="other"),
+            lambda p: p["keyboard"]["NormalMode"]["A"].update(fwID=None),
+            lambda p: p["keyboard"]["NormalMode"]["A"].update(fwID=64),
+            lambda p: p["keyboard"]["NormalMode"]["A"].update(isHyperShift=1),
+            lambda p: p["keyboard"]["NormalMode"]["A"]["keyInput"].update(pageID="bad"),
+            lambda p: p["keyboard"]["NormalMode"]["A"].update(dkmInput="A"),
+            lambda p: p["keyboard"]["NormalMode"]["A"]["keyboardGroup"].update(unknown=1),
+            lambda p: p["keyboard"]["NormalMode"]["A"]["keyboardGroup"].update(modifiers=["Left_Ctrl", "Left_Ctrl"]),
+            lambda p: p["keyboard"]["NormalMode"]["A"]["keyboardGroup"].update(extendedKey="other"),
+            lambda p: p["keyboard"]["NormalMode"]["DKM"].update(disableGroup={}),
+            lambda p: p["mouse"]["NormalMode"]["LeftClick"].update(inputID="other"),
+            lambda p: p["mouse"]["NormalMode"]["LeftClick"].update(fwID=15),
+            lambda p: p["mouse"]["NormalMode"]["LeftClick"]["mouseGroup"].update(turboMode={"isTurbo": True, "keysPerSecond": 0}),
+            lambda p: p["mouse"]["NormalMode"]["LeftClick"]["mouseGroup"].update(mouseAssignment="missing"),
+            lambda p: p["mouse"]["NormalMode"]["CLUTCH"]["sensitivityGroup"].update(unknown=1),
+            lambda p: p["mouse"]["NormalMode"]["CLUTCH"]["sensitivityGroup"].update(y=65536),
+        ]
+        for index, mutate in enumerate(mutations):
+            projection = self.current_onboard_mapping_fixture()
+            mutate(projection)
+            with self.subTest(mutation=index), self.assertRaises(ValueError):
+                typed_tables.render_current_onboard_mapping(projection)
+
     def test_current_read_inventory_selection_rejects_swapped_layouts_and_override_precedence(self):
         selection = ('w=()=>{let e=[];return e=o.Yi0.includes(m.A.runtimeData.layoutId)&&n.BUTTON_LIST_UK?'
             '[...n.BUTTON_LIST_UK]:m.A.runtimeData.layoutId===_.Z7j.Japanese&&n.BUTTON_LIST_JP?'

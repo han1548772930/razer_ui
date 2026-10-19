@@ -11,6 +11,37 @@ pub fn prepare_document(
     fresh_guids: impl IntoIterator<Item = String>,
 ) -> anyhow::Result<Option<serde_json::Value>> {
     use anyhow::Context as _;
+    let Some(mut document) = prepare_profile_document(device, fresh_guids)? else {
+        return Ok(None);
+    };
+    let fields = document
+        .as_object_mut()
+        .context("Compiled mapping document is not an object")?;
+    match macros.publication_catalogs() {
+        Ok(catalogs) => {
+            fields.insert("macros".into(), catalogs.macros.into());
+            fields.insert("phasedMacros".into(), catalogs.phased_macros.into());
+            fields.remove("_macro_compilation_error");
+        }
+        Err(error) => {
+            // Source profile persistence and native publication are distinct:
+            // an incomplete macro draft may be saved but cannot be published.
+            fields.remove("macros");
+            fields.remove("phasedMacros");
+            fields.insert("_macro_compilation_error".into(), error.into());
+        }
+    }
+    Ok(Some(document))
+}
+
+/// Compile source profiles without publishing a macro library. Profile
+/// imports use their product's retained document; `prepare_document` adds
+/// publication catalogs from the shared library as a separate step.
+pub fn prepare_profile_document(
+    device: &crate::model::Device,
+    fresh_guids: impl IntoIterator<Item = String>,
+) -> anyhow::Result<Option<serde_json::Value>> {
+    use anyhow::{Context as _, ensure};
     use razer_device::mapping_document::MappingProduct;
     let Some(product) = MappingProduct::for_product_id(device.product_id) else {
         return Ok(None);
@@ -19,6 +50,14 @@ pub fn prepare_document(
         .profiles
         .iter()
         .map(|profile| {
+            ensure!(
+                !profile.guid.is_empty(),
+                "Mapping source profile GUID is absent"
+            );
+            ensure!(
+                !profile.name.is_empty(),
+                "Mapping source profile name is absent"
+            );
             let mut source = profile
                 .source_settings
                 .clone()
@@ -36,7 +75,7 @@ pub fn prepare_document(
         .context("Active mapping profile is missing")?;
     let settings = device.source_device_settings.as_ref();
     let previous = settings.and_then(|settings| settings.get(product.storage_field()));
-    let mut document = match device.product_id {
+    let document = match device.product_id {
         70 => razer_device::mouse_legacy_mapping::prepare_document(
             &profiles,
             &active.guid,
@@ -84,23 +123,6 @@ pub fn prepare_document(
             fresh_guids,
         )?,
     };
-    let fields = document
-        .as_object_mut()
-        .context("Compiled mapping document is not an object")?;
-    match macros.publication_catalogs() {
-        Ok(catalogs) => {
-            fields.insert("macros".into(), catalogs.macros.into());
-            fields.insert("phasedMacros".into(), catalogs.phased_macros.into());
-            fields.remove("_macro_compilation_error");
-        }
-        Err(error) => {
-            // Source profile persistence and native publication are distinct:
-            // an incomplete macro draft may be saved but cannot be published.
-            fields.remove("macros");
-            fields.remove("phasedMacros");
-            fields.insert("_macro_compilation_error".into(), error.into());
-        }
-    }
     Ok(Some(document))
 }
 
@@ -401,6 +423,46 @@ mod saved_revision_tests {
         source.profiles[0].source_settings = Some(serde_json::json!({"mappings":[]}));
         source.active_profile = "missing-profile".into();
         assert!(prepare_document(&source, &Default::default(), []).is_err());
+    }
+
+    #[test]
+    fn profile_document_compiler_retains_existing_catalogs_and_extensions() {
+        let mut source = initialized_source(756);
+        let mut previous = prepare_profile_document(
+            &source,
+            (0..256).map(|index| format!("00000000-0000-4000-8000-{index:012}")),
+        )
+        .unwrap()
+        .unwrap();
+        let macros = serde_json::json!([{
+            "guid":"3c8e6871-4158-420a-bb23-a6efa3c6dc51",
+            "name":"Saved macro", "macroEvents":[], "appEngine":{"events":[]}
+        }]);
+        let phased_macros = serde_json::json!([{
+            "guid":"8f461ac7-6e9b-4216-818f-f24c8f539f5a",
+            "name":"Saved phased macro", "macroEvents":[],
+            "appEngine":{"pressEvents":[],"holdEvents":[],"releaseEvents":[]}
+        }]);
+        previous["macros"] = macros.clone();
+        previous["phasedMacros"] = phased_macros.clone();
+        previous["retainedDocumentExtension"] = serde_json::json!({"sample":91});
+        source.source_device_settings.as_mut().unwrap()
+            [razer_device::keyboard_latest_restore::STORAGE_FIELD] = previous;
+        let before = source.clone();
+        let document = prepare_profile_document(
+            &source,
+            (0..256).map(|index| format!("00000000-0000-4000-8000-{index:012}")),
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(document["macros"], macros);
+        assert_eq!(document["phasedMacros"], phased_macros);
+        assert_eq!(
+            document["retainedDocumentExtension"],
+            serde_json::json!({"sample":91})
+        );
+        assert_eq!(source.profiles, before.profiles);
+        assert_eq!(source.source_device_settings, before.source_device_settings);
     }
 
     #[test]

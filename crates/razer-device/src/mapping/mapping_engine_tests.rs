@@ -11,7 +11,11 @@ fn interdevice_otfs_failed_projection_keeps_available_turbo_identities() {
             "keyboardGroup":{"key":"KEY_A","modifiers":[]}
         })];
         let invalid = [json!({"outputType":"sensitivityGroup"})];
-        assert!(engine.generate_mouse_otfs(&invalid, &defaults, &mut state).is_err());
+        assert!(
+            engine
+                .generate_mouse_otfs(&invalid, &defaults, &mut state)
+                .is_err()
+        );
         assert_eq!(state.fresh_guids, before.fresh_guids);
         assert_eq!(state.default_turbos, before.default_turbos);
         assert_eq!(state.synapse_turbos, before.synapse_turbos);
@@ -579,26 +583,56 @@ fn analog_actuation_only_and_rt_follow_generation_and_upstroke() {
         result.app_engine["actuations"],
         json!([{"keyId":31,"make":16.0,"break":16.0,"hypershift":true}])
     );
-    assert!(
-        (result.app_engine["rapidTriggers"]["31"]["makeSensitivity"]
-            .as_f64()
-            .unwrap()
-            - 2.4)
-            .abs()
-            < 1e-9
+    assert_eq!(
+        result.app_engine["rapidTriggers"]["31"],
+        json!({"makeSensitivity":2,"breakSensitivity":4})
     );
     c.is_analog_gen2 = true;
     c.analog_generation = Some("analogV2".into());
     let result = engine.generate_analog(&[r], &mut c).unwrap();
     assert_eq!(result.app_engine["actuations"][0]["make"], 8);
-    assert!(
-        (result.app_engine["rapidTriggers"]["31"]["breakSensitivity"]
-            .as_f64()
-            .unwrap()
-            - 488.4)
-            .abs()
-            < 1e-9
+    assert_eq!(
+        result.app_engine["rapidTriggers"]["31"],
+        json!({"makeSensitivity":326,"breakSensitivity":488})
     );
+}
+
+#[test]
+fn rapid_trigger_source_rounding_serializes_native_integer_fields() {
+    use crate::mapping_native_hid::NativeHidDeviceConfig;
+
+    let engine = MappingEngine::new(679).unwrap();
+    for (generation2, make, release, expected_make, expected_release) in [
+        (false, 0.125, 0.375, 2, 5),
+        (false, -0.125, -0.375, -1, -4),
+        (true, 0.2, 0.3, 326, 488),
+        (true, 0.4, 0.9, 651, 1465),
+    ] {
+        let mut c = context();
+        c.is_analog_gen2 = generation2;
+        let record = json!({"inputID":"KEY_A","mapping":[{"rapidTrigger":{
+            "makeSensitivity":make,"breakSensitivity":release,"isEnableUpStroke":true}}]});
+        let rapid = engine.rapid_trigger(&record, &c).unwrap();
+        assert_eq!(rapid["31"]["makeSensitivity"].as_i64(), Some(expected_make));
+        assert_eq!(
+            rapid["31"]["breakSensitivity"].as_i64(),
+            Some(expected_release)
+        );
+
+        let document = json!({"activeProfile":"actual-profile","profiles":[{
+            "guid":"actual-profile","appEngine":{"rapidTriggers":rapid}}]});
+        let wire = serde_json::to_vec(&document).unwrap();
+        let received = serde_json::from_slice(&wire).unwrap();
+        let config = NativeHidDeviceConfig::from_document(&received).unwrap();
+        assert_eq!(
+            config.profile.rapid_triggers[&31].make_sensitivity,
+            Some(expected_make as u16)
+        );
+        assert_eq!(
+            config.profile.rapid_triggers[&31].break_sensitivity,
+            Some(expected_release as u16)
+        );
+    }
 }
 
 #[test]
@@ -655,13 +689,9 @@ fn current_dual_key_default_keeps_numeric_key_points_and_rapid_trigger() {
         json!({"type":"keyboard","scancode":48,"flag":0})
     );
     assert_eq!(generated["mappings"][0][1]["output"]["flag"], 1);
-    assert!(
-        (generated["rapidTriggers"]["31"]["makeSensitivity"]
-            .as_f64()
-            .unwrap()
-            - 325.6)
-            .abs()
-            < 1e-9
+    assert_eq!(
+        generated["rapidTriggers"]["31"],
+        json!({"makeSensitivity":326,"breakSensitivity":326})
     );
 }
 

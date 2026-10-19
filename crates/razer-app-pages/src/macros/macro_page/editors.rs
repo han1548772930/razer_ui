@@ -9,6 +9,91 @@ use gpui_kit::base::{NumberInput, StepAction};
 
 pub use razer_model::macro_library::MOUSE_ACTION_KEYS;
 
+/// Number/isNaN acceptance is distinct from parseFloat submission.
+pub(super) fn source_number(raw: &str) -> Option<f64> {
+    let value = raw.trim();
+    if value.is_empty() {
+        return Some(0.);
+    }
+    let radix = if value.starts_with("0x") || value.starts_with("0X") {
+        Some(16)
+    } else if value.starts_with("0b") || value.starts_with("0B") {
+        Some(2)
+    } else if value.starts_with("0o") || value.starts_with("0O") {
+        Some(8)
+    } else {
+        None
+    };
+    let number = if let Some(radix) = radix {
+        if value.len() == 2 {
+            return None;
+        }
+        value[2..].chars().try_fold(0., |n, c| {
+            c.to_digit(radix).map(|d| n * radix as f64 + d as f64)
+        })?
+    } else {
+        value.parse::<f64>().ok()?
+    };
+    number.is_finite().then_some(number)
+}
+
+pub(super) fn source_float(raw: &str) -> Option<f64> {
+    let value = raw.trim_start();
+    let bytes = value.as_bytes();
+    let mut end = usize::from(bytes.first().is_some_and(|c| matches!(c, b'+' | b'-')));
+    if value[end..].starts_with("Infinity") {
+        return Some(if bytes.first() == Some(&b'-') {
+            f64::NEG_INFINITY
+        } else {
+            f64::INFINITY
+        });
+    }
+    let start = end;
+    while bytes.get(end).is_some_and(u8::is_ascii_digit) {
+        end += 1;
+    }
+    let mut digits = end - start;
+    if bytes.get(end) == Some(&b'.') {
+        end += 1;
+        let start = end;
+        while bytes.get(end).is_some_and(u8::is_ascii_digit) {
+            end += 1;
+        }
+        digits += end - start;
+    }
+    if digits == 0 {
+        return None;
+    }
+    if bytes.get(end).is_some_and(|c| matches!(c, b'e' | b'E')) {
+        let exponent = end;
+        end += 1;
+        if bytes.get(end).is_some_and(|c| matches!(c, b'+' | b'-')) {
+            end += 1;
+        }
+        let start = end;
+        while bytes.get(end).is_some_and(u8::is_ascii_digit) {
+            end += 1;
+        }
+        if end == start {
+            end = exponent;
+        }
+    }
+    value[..end].parse::<f64>().ok()
+}
+
+/// St.w and yt._ coerce numeric editors; Ot retains the complete command.
+pub(super) fn committed_value(kind: ActionKind, raw: &str) -> String {
+    match kind {
+        ActionKind::Delay => format_delay(source_float(raw).unwrap_or(0.)),
+        ActionKind::Loop => source_float(raw)
+            .unwrap_or(1.)
+            .clamp(1., 99_999.)
+            .to_string(),
+        ActionKind::Command => raw.to_string(),
+        _ => raw.trim().to_string(),
+    }
+}
+
 pub fn loop_state_key(state: &str) -> &'static str {
     if state == "end" {
         "TEXT_END_LOOP_TEXT"
@@ -18,19 +103,26 @@ pub fn loop_state_key(state: &str) -> &'static str {
 }
 
 pub fn valid_randomized_draft(value: &str) -> bool {
+    randomized_draft(value).is_some()
+}
+
+fn randomized_draft(value: &str) -> Option<String> {
     if value.is_empty() {
-        return true;
+        return Some(String::new());
     }
-    let mut parts = value.split('.');
-    let integer = parts.next().unwrap_or_default();
-    let fraction = parts.next();
-    integer.len() <= 3
-        && integer.chars().all(|character| character.is_ascii_digit())
-        && fraction.is_none_or(|fraction| {
-            fraction.len() <= 2 && fraction.chars().all(|character| character.is_ascii_digit())
-        })
-        && parts.next().is_none()
-        && value.parse::<f64>().is_ok_and(|value| value <= 5.0)
+    source_number(value)?;
+    let (integer, fraction) = value
+        .split_once('.')
+        .map_or((value, None), |(integer, fraction)| {
+            (integer, Some(fraction))
+        });
+    let integer: String = integer.chars().take(3).collect();
+    let normalized = if let Some(fraction) = fraction {
+        format!("{integer}.{}", fraction.chars().take(2).collect::<String>())
+    } else {
+        integer
+    };
+    (source_float(&normalized)? <= 5.).then_some(normalized)
 }
 
 pub fn normalize_randomized_range(
@@ -38,62 +130,78 @@ pub fn normalize_randomized_range(
     max: &str,
     changed: super::DelayBound,
 ) -> (String, String) {
-    fn normalize(value: &str) -> Option<f64> {
-        if !valid_randomized_draft(value) || value.is_empty() {
-            return None;
-        }
-        value.parse::<f64>().ok().filter(|value| value.is_finite())
-    }
-    let min_value = normalize(min).unwrap_or(0.0);
-    let max_value = normalize(max).unwrap_or(0.0);
     let changed_value = if changed == super::DelayBound::Min {
         min
     } else {
         max
     };
-    if changed_value.is_empty() {
+    let Some(value) = randomized_draft(changed_value).filter(|value| !value.is_empty()) else {
         return (min.to_string(), max.to_string());
-    }
-    let crossing = if changed == super::DelayBound::Min {
-        min_value >= max_value
-    } else {
-        max_value < min_value
     };
-    if crossing {
-        return (min.to_string(), (min_value + 1.0).min(5.0).to_string());
+    let number = source_float(&value).expect("Accepted randomized draft is numeric");
+    let min_value = source_number(min);
+    let max_value = source_number(max);
+    if changed == super::DelayBound::Min {
+        if max_value.is_some_and(|max| number >= max) {
+            let min = number.max(0.);
+            (min.to_string(), (min + 1.).min(5.).to_string())
+        } else {
+            (value, max.to_string())
+        }
+    } else if let Some(min_value) = min_value.filter(|min| number < *min) {
+        (min.to_string(), (min_value + 1.).min(5.).to_string())
+    } else {
+        (min.to_string(), value)
     }
-    (min.to_string(), max.to_string())
 }
 
 impl MacroPage {
-    /// St updates a numeric Delay after 150ms while the input remains open.
+    /// St, yt and Ot update their action after 150ms while the input is open.
     /// Invalidate on document/editor changes so a late callback cannot edit
     /// a different row after reorder, undo, save or navigation.
-    pub fn schedule_delay_edit(&mut self, cx: &mut Context<Self>) {
-        self.numeric_task = None;
-        self.numeric_generation = self.numeric_generation.wrapping_add(1);
+    pub fn action_input_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(index) = self.editing_action else {
             return;
         };
-        if !self
-            .actions
-            .get(index)
-            .is_some_and(|item| item.kind == ActionKind::Delay)
-        {
+        let Some(kind) = self.actions.get(index).map(|item| item.kind) else {
+            return;
+        };
+        if !matches!(
+            kind,
+            ActionKind::Delay | ActionKind::Loop | ActionKind::Command
+        ) {
             return;
         }
         let raw = self.action_editor.read(cx).value().to_string();
-        if raw.is_empty() {
+        if kind == ActionKind::Delay && raw.is_empty() {
+            // St returns before clearing its previous numeric timer.
             return;
-        } // St keeps the empty draft until blur.
-        let value = format_delay(parse_delay(&raw));
+        }
+        if kind == ActionKind::Delay {
+            self.action_edit_tasks.clear();
+            self.numeric_generation = self.numeric_generation.wrapping_add(1);
+        } else {
+            // yt captures each normalized count; Ot reads the current command
+            // when its timer fires. Only St retains and cancels its timer.
+            self.action_edit_tasks.retain(|task| !task.is_ready());
+        }
+        let value = committed_value(kind, &raw);
+        let draft = if kind == ActionKind::Delay && raw.ends_with('.') {
+            raw
+        } else {
+            value.clone()
+        };
+        if self.action_editor.read(cx).value().as_ref() != draft {
+            self.action_editor
+                .update(cx, |input, cx| input.set_value(draft, window, cx));
+        }
         let generation = self.numeric_generation;
         let document = self.current;
-        self.numeric_task = Some(cx.spawn(async move |this, cx| {
+        let task = cx.spawn_in(window, async move |this, cx| {
             cx.background_executor()
                 .timer(Duration::from_millis(150))
                 .await;
-            let _ = this.update(cx, |this, cx| {
+            let _ = this.update_in(cx, |this, window, cx| {
                 if this.numeric_generation != generation
                     || this.current != document
                     || this.actions_for != document
@@ -105,16 +213,34 @@ impl MacroPage {
                 let Some(item) = this.actions.get(index) else {
                     return;
                 };
-                if item.kind != ActionKind::Delay || item.value == value && item.state == "fixed" {
+                let value = if kind == ActionKind::Command {
+                    this.action_editor.read(cx).value().to_string()
+                } else {
+                    value
+                };
+                if item.kind != kind
+                    || item.value == value && (kind != ActionKind::Delay || item.state == "fixed")
+                {
                     return;
                 }
                 this.undo.push(this.actions.clone());
+                if kind == ActionKind::Loop && this.action_editor.read(cx).value().as_ref() != value
+                {
+                    // yt's item effect consumes each submitted numeric count.
+                    this.action_editor.update(cx, |input, cx| {
+                        input.set_value(value.clone(), window, cx);
+                    });
+                }
                 this.actions[index].value = value;
-                this.actions[index].state = "fixed".into();
+                if kind == ActionKind::Delay {
+                    this.actions[index].state = "fixed".into();
+                }
+                this.sync_loop_value(index);
                 this.redo.clear();
                 cx.notify();
             });
-        }));
+        });
+        self.action_edit_tasks.push(task);
     }
 
     pub fn numeric_value_editor(
@@ -174,9 +300,9 @@ impl MacroPage {
     ) {
         let step = if kind == ActionKind::Loop { 1.0 } else { 0.001 };
         let sign = if action == StepAction::Increment { 1.0 } else { -1.0 };
-        let value = parse_delay(&self.action_editor.read(cx).value());
+        let value = source_float(&self.action_editor.read(cx).value()).unwrap_or(0.);
         let next = if kind == ActionKind::Loop {
-            ((value + sign * step).clamp(1.0, 99_999.0) as u32).to_string()
+            (value + sign * step).clamp(1.0, 99_999.0).to_string()
         } else {
             format_delay(value + sign * step)
         };
@@ -184,6 +310,9 @@ impl MacroPage {
             input.set_value(next, window, cx);
             input.select_all(window, cx);
         });
+        if kind == ActionKind::Delay {
+            self.action_input_changed(window, cx);
+        }
         cx.notify();
     }
 }

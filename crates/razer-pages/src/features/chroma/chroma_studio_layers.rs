@@ -1,6 +1,29 @@
 //! Current 9286:Y/T/w/I layer semantics; see chroma-studio-layers-source.json.
 use super::*;
 
+/// Current Studio profile and layer callbacks trim before exact-name checks.
+pub(super) fn renamed_title<'a, 'b>(
+    value: &'a str,
+    titles: impl Iterator<Item = &'b str>,
+) -> Option<&'a str> {
+    let title = razer_device::source_string::trim(value);
+    (!title.is_empty() && !titles.into_iter().any(|existing| existing == title)).then_some(title)
+}
+
+pub(super) fn renamed_layer_title<'a>(
+    value: &'a str,
+    group: bool,
+    layers: &[Layer],
+) -> Option<&'a str> {
+    renamed_title(
+        value,
+        layers
+            .iter()
+            .filter(|layer| layer.group == group)
+            .map(|layer| layer.title.as_str()),
+    )
+}
+
 /// Source Y checks siblings of the same type and restarts at suffix 1.
 pub(super) fn unique_title(title: Option<&str>, group: bool, layers: &[Layer]) -> String {
     let available = |candidate: &str| {
@@ -99,5 +122,58 @@ impl ChromaStudio {
         layer.params = effect.params.clone();
         layer.paint_params = effect.paint_params.clone();
         cx.notify();
+    }
+}
+
+#[cfg(test)]
+mod rename_tests {
+    use super::*;
+
+    #[::core::prelude::v1::test]
+    fn studio_titles_use_source_trim_exact_names_and_no_submit_truncation() {
+        let titles = ["Exact", "Old"];
+        for (value, expected) in [
+            ("\u{feff} Fresh \u{feff}", Some("Fresh")),
+            ("\u{feff}\u{2028}\u{00a0}", None),
+            ("\u{feff}Exact\u{feff}", None),
+            (" exact ", Some("exact")),
+            ("\u{0085}", Some("\u{0085}")),
+        ] {
+            assert_eq!(renamed_title(value, titles.into_iter()), expected);
+        }
+        let existing = "😀".repeat(17);
+        assert_eq!(
+            renamed_title(&existing, [existing.as_str()].into_iter()),
+            None
+        );
+        assert_eq!(
+            renamed_title(&existing, titles.into_iter()),
+            Some(existing.as_str())
+        );
+    }
+
+    #[::core::prelude::v1::test]
+    fn studio_layer_rename_checks_layer_and_group_inventories_independently() {
+        let layer = |id, title: &str, group| Layer {
+            id,
+            name: String::new(),
+            title: title.into(),
+            value: 0,
+            params: Value::Null,
+            params2: Value::Null,
+            paint_params: Value::Null,
+            visible: true,
+            group,
+            extensions: Default::default(),
+        };
+        let layers = [layer(1, "Layer", false), layer(2, "Group", true)];
+        assert_eq!(renamed_layer_title(" Group ", true, &layers), None);
+        assert_eq!(renamed_layer_title(" Layer ", false, &layers), None);
+        assert_eq!(
+            renamed_layer_title(" Group ", false, &layers),
+            Some("Group")
+        );
+        assert_eq!(renamed_layer_title(" Layer ", true, &layers), Some("Layer"));
+        assert_eq!(renamed_layer_title(" group ", true, &layers), Some("group"));
     }
 }

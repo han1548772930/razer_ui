@@ -13,6 +13,7 @@ use gpui_kit::{
 };
 use razer_model::chroma_studio::{Document, Layer};
 use razer_widgets::scroll::SourceScrollable as _;
+use razer_widgets::source_input::{self, SourceInputExt as _};
 use razer_widgets::surface;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -483,8 +484,8 @@ impl ChromaStudio {
             return;
         };
         let input = cx.new(|cx| {
-            let mut input = InputState::new(window, cx);
-            input.set_value(title, window, cx);
+            let mut input = source_input::input_state(32, window, cx);
+            source_input::set_value(&mut input, title, 32, window, cx);
             input
         });
         self.rename_subscription = Some(cx.subscribe(&input, |this, _, event: &InputEvent, cx| {
@@ -505,35 +506,24 @@ impl ChromaStudio {
         };
         self.rename_subscription = None;
         let entered = input.read(cx).value();
-        // f.TH resolves to 32 in the production environment; HTML maxLength
-        // counts UTF-16 units, not UTF-8 bytes or Unicode scalar values.
-        let mut units = 0;
-        let title: String = entered
-            .trim()
-            .chars()
-            .take_while(|ch| {
-                units += ch.len_utf16();
-                units <= 32
-            })
-            .collect();
-        if !title.is_empty() {
-            if let Some(layer) = self.document.layers.iter().find(|layer| layer.id == id) {
-                let group = layer.group;
-                if !self
-                    .document
-                    .layers
-                    .iter()
-                    .any(|layer| layer.title == title && layer.group == group)
-                {
-                    self.checkpoint();
-                    if let Some(layer) =
-                        self.document.layers.iter_mut().find(|layer| layer.id == id)
-                    {
-                        layer.title = title;
-                    }
+        if let Some(layer) = self.document.layers.iter().find(|layer| layer.id == id) {
+            let title =
+                studio_layers::renamed_layer_title(&entered, layer.group, &self.document.layers);
+            if let Some(title) = title.map(str::to_owned) {
+                self.checkpoint();
+                if let Some(layer) = self.document.layers.iter_mut().find(|layer| layer.id == id) {
+                    layer.title = title;
                 }
             }
         }
+        cx.notify();
+    }
+    fn cancel_layer_rename(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.renaming.take().is_none() {
+            return;
+        }
+        self.rename_subscription = None;
+        self.focus.focus(window, cx);
         cx.notify();
     }
     fn history(&mut self, redo: bool, cx: &mut Context<Self>) {
@@ -587,20 +577,14 @@ impl ChromaStudio {
         let key = event.keystroke.key.as_str();
         if self.profile_rename.is_some() {
             if key == "escape" {
-                self.profile_rename = None;
-                self.profile_rename_subscription = None;
-                self.focus.focus(window, cx);
-                cx.notify();
+                self.cancel_profile_rename(window, cx);
                 cx.stop_propagation();
             }
             return;
         }
         if self.renaming.is_some() {
             if key == "escape" {
-                self.renaming = None;
-                self.rename_subscription = None;
-                self.focus.focus(window, cx);
-                cx.notify();
+                self.cancel_layer_rename(window, cx);
                 cx.stop_propagation();
             }
             return;
@@ -669,7 +653,18 @@ impl ChromaStudio {
                                 .flex_1()
                                 .min_w_0()
                                 .px(surface::css(10.))
-                                .child(Input::new(input).appearance(false))
+                                .capture_action(cx.listener(
+                                    |this, _: &gpui_kit::component::input::Escape, window, cx| {
+                                        this.cancel_layer_rename(window, cx);
+                                        cx.stop_propagation();
+                                    },
+                                ))
+                                .child(
+                                    Input::new(input)
+                                        .id(("studio-layer-rename-input", id))
+                                        .source_max_length(input, 32)
+                                        .appearance(false),
+                                )
                                 .into_any_element()
                         } else {
                             button(("studio-layer", id), "EFFECTS_LAYERS")

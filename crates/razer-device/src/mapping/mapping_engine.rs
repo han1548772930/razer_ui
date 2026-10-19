@@ -589,9 +589,10 @@ impl MappingEngine {
             .iter()
             .zip(bindings)
             .filter(|(_, binding)| {
-                binding.sensitivity_group.as_ref().is_none_or(|group| {
-                    group.sensitivity_assignment != "OTFS_Scroll"
-                })
+                binding
+                    .sensitivity_group
+                    .as_ref()
+                    .is_none_or(|group| group.sensitivity_assignment != "OTFS_Scroll")
             })
             .map(|(record, _)| record.clone())
             .collect::<Vec<_>>();
@@ -1672,21 +1673,23 @@ impl MappingEngine {
             .and_then(|v| v.get("rapidTrigger"))
             .context("Missing rapid trigger")?;
         let factor = if c.is_analog_gen2 { 1628.0 } else { 12.0 };
+        // Current20779 rounds before JSON serialization; DB873 consumes int32.
         let make = rt["makeSensitivity"]
             .as_f64()
             .context("Missing rapid trigger make")?
             * factor;
+        let make = (make + 0.5).floor();
         let release = if truthy(rt.get("isEnableUpStroke")) {
-            rt["breakSensitivity"]
+            let value = rt["breakSensitivity"]
                 .as_f64()
                 .context("Missing rapid trigger break")?
-                * factor
+                * factor;
+            (value + 0.5).floor()
         } else {
             make
         };
         let mut result = json!({});
-        result[key.as_u64().context("Invalid analog key id")?.to_string()] =
-            json!({"makeSensitivity":make,"breakSensitivity":release});
+        result[key.as_u64().context("Invalid analog key id")?.to_string()] = json!({"makeSensitivity":js_number_value(make),"breakSensitivity":js_number_value(release)});
         Ok(result)
     }
 

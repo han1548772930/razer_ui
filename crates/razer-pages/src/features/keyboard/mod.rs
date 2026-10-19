@@ -106,9 +106,9 @@ pub use brightness::KeyboardBrightnessReadRequested;
 pub use brightness::KeyboardBrightnessRequested;
 #[path = "actuation/keyboard_snap_tap.rs"]
 mod snap_tap;
-pub(super) use calibration::is_factory_profile;
 pub use calibration::open_preview as open_calibration_preview;
 pub use calibration::{KeyboardLegacyCalibrationHostRequested, LegacyCalibrationHostCommand};
+pub(super) use customize_gates::is_factory_profile;
 pub use snap_tap::SnapTapObservation;
 
 #[derive(Deserialize)]
@@ -200,8 +200,8 @@ pub struct KeyboardProductWorkspace {
     actuation: Option<actuation::State>,
     actuation_submission: actuation_submission::State,
     ui_preferences: Entity<UiPreferences>,
-    /// Source `profileReducer.isFactoryDefaultProfile`; the calibration page
-    /// renders a warning and disables its customize surface for this profile.
+    /// Source `profileReducer.isFactoryDefaultProfile`, shared by Customize,
+    /// Actuation, Lighting and Calibration according to their mounted branches.
     factory_default_profile: bool,
     /// Explicit development workspace only; live calibration never fabricates events.
     calibration_preview: bool,

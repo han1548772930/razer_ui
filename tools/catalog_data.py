@@ -374,7 +374,7 @@ class Codec(rust_data.RustData):
             data.extend(value.encode("utf-8"))
             return "r.string()?.into()"
         generic = re.fullmatch(r"([\w:]+)\s*<(.*)>", typ, re.S)
-        if generic and generic[1].rsplit("::", 1)[-1] in {"Vec", "BTreeSet", "HashSet", "BTreeMap", "HashMap"}:
+        if generic and generic[1].rsplit("::", 1)[-1] in {"Vec", "CatalogSequence", "BTreeSet", "HashSet", "BTreeMap", "HashMap"}:
             base, args = generic[1].rsplit("::", 1)[-1], rust_data.split_types(generic[2])
             if base in {"BTreeMap", "HashMap"}:
                 if type(value) is not dict:
@@ -397,6 +397,8 @@ class Codec(rust_data.RustData):
                 return "Default::default()"
             if len(set(names)) != 1:
                 raise ValueError("Inconsistent sequence type")
+            if base == "CatalogSequence":
+                return "r.lazy_sequence(" + names[0] + ")?"
             result = "r.sequence(" + names[0] + ")?"
             return result if base == "Vec" else result + ".into_iter().collect()"
         if typ != "()" and typ.startswith("[") and typ.endswith("]"):

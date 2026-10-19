@@ -15,10 +15,57 @@ use super::{
     surface::css,
     theme::{AlexaColors, DropdownColors},
 };
-use std::rc::Rc;
+use std::{collections::BTreeMap, rc::Rc};
 use std::time::Duration;
 #[path = "synapse_select_pointer.rs"]
 mod pointer;
+
+/// Original module 7734 option adornments, keyed by the committed domain value.
+/// Separators are presentation between options and never enter SelectState.
+#[derive(Clone, Default, PartialEq)]
+pub struct SelectOptionDecoration {
+    prefix_image: Option<OptionImage>,
+    tooltip_icon: Option<(SharedString, SharedString)>,
+    separator_before: bool,
+}
+
+#[derive(Clone, PartialEq)]
+struct OptionImage {
+    path: SharedString,
+    width: f32,
+    height: f32,
+}
+
+impl SelectOptionDecoration {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// The source calls its trailing slot image an option/label prefix.
+    pub fn prefix_image(mut self, path: impl Into<SharedString>, width: f32, height: f32) -> Self {
+        self.prefix_image = Some(OptionImage {
+            path: path.into(),
+            width,
+            height,
+        });
+        self
+    }
+
+    /// Only this icon owns the source preset tooltip; the option text does not.
+    pub fn tooltip_icon(
+        mut self,
+        path: impl Into<SharedString>,
+        text: impl Into<SharedString>,
+    ) -> Self {
+        self.tooltip_icon = Some((path.into(), text.into()));
+        self
+    }
+
+    pub fn separator_before(mut self, before: bool) -> Self {
+        self.separator_before = before;
+        self
+    }
+}
 
 #[derive(Clone, Copy, Default, PartialEq)]
 enum Presentation {
@@ -59,6 +106,8 @@ pub fn select<I: SelectItem<Value = String> + 'static>(
         presentation: Presentation::Synapse,
         on_trigger_click: None,
         pointer_only: false,
+        pointer_decorations: BTreeMap::new(),
+        allow_one_item: false,
     }
 }
 
@@ -96,6 +145,8 @@ pub struct SynapseSelect<I: SelectItem<Value = String> + 'static> {
     presentation: Presentation,
     on_trigger_click: Option<Rc<dyn Fn(&ClickEvent, &mut Window, &mut App)>>,
     pointer_only: bool,
+    pointer_decorations: BTreeMap<String, SelectOptionDecoration>,
+    allow_one_item: bool,
 }
 
 impl<I: SelectItem<Value = String> + 'static> SynapseSelect<I> {
@@ -107,6 +158,24 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelect<I> {
     /// Supply the same current options used by the owning feature's SelectState.
     pub fn items(mut self, items: Vec<I>) -> Self {
         self.items = items;
+        self
+    }
+
+    /// Use the source's pointer-only dropdown with decorated, grouped options.
+    /// Kit's ordinary List remains unchanged: it requires equal-height rows,
+    /// while this source renders a separate 9px, non-selectable divider.
+    pub fn pointer_option_decorations(
+        mut self,
+        decorations: BTreeMap<String, SelectOptionDecoration>,
+    ) -> Self {
+        self.pointer_only = true;
+        self.pointer_decorations = decorations;
+        self
+    }
+
+    /// Source `allowOneItem` keeps a pointer dropdown usable with one option.
+    pub fn allow_one_item(mut self, allow: bool) -> Self {
+        self.allow_one_item = allow;
         self
     }
 
@@ -170,6 +239,9 @@ struct SynapseSelectView<I: SelectItem<Value = String> + 'static> {
     presentation: Presentation,
     on_trigger_click: Option<Rc<dyn Fn(&ClickEvent, &mut Window, &mut App)>>,
     pointer_only: bool,
+    pointer_decorations: BTreeMap<String, SelectOptionDecoration>,
+    pointer_scroll: ScrollHandle,
+    allow_one_item: bool,
     pointer_bounds: Rc<std::cell::Cell<Bounds<Pixels>>>,
     open: bool,
     hovered: bool,
@@ -235,6 +307,9 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
             presentation: Presentation::Synapse,
             on_trigger_click: None,
             pointer_only: false,
+            pointer_decorations: BTreeMap::new(),
+            pointer_scroll: ScrollHandle::new(),
+            allow_one_item: false,
             pointer_bounds: Rc::new(std::cell::Cell::new(Bounds::default())),
             open: false,
             hovered: false,
@@ -360,6 +435,8 @@ impl<I: SelectItem<Value = String> + 'static> RenderOnce for SynapseSelect<I> {
             view.presentation = self.presentation;
             view.on_trigger_click = self.on_trigger_click.clone();
             view.pointer_only = self.pointer_only;
+            view.pointer_decorations = self.pointer_decorations;
+            view.allow_one_item = self.allow_one_item;
             if self.disabled {
                 view.set_open(false, window, cx);
             }

@@ -6,6 +6,7 @@ use gpui_kit::component::input::InputEvent;
 use gpui_kit::component::select::{SelectEvent, SelectItem};
 use razer_assets as resources;
 use razer_model::model::LocalizedText;
+use razer_widgets::source_input::{self, SourceInputExt as _};
 use razer_widgets::surface::css;
 
 fn device_text(value: &LocalizedText) -> String {
@@ -216,9 +217,7 @@ impl DeviceGamesDialog {
             .new(|cx| SelectState::new(choices(&FILTER_KEYS), Some(IndexPath::new(0)), window, cx));
         let sort =
             cx.new(|cx| SelectState::new(choices(&SORT_KEYS), Some(IndexPath::new(0)), window, cx));
-        let name = cx.new(|cx| {
-            InputState::new(window, cx).validate(|value, _| value.encode_utf16().count() <= 32)
-        });
+        let name = cx.new(|cx| source_input::input_state(32, window, cx));
         let mut games = Vec::<KnownGame>::new();
         for entity in devices {
             let owner = entity.read(cx);
@@ -410,7 +409,7 @@ impl DeviceGamesDialog {
         };
         self.rename_target = Some(id);
         self.name.update(cx, |input, cx| {
-            input.set_value(name, window, cx);
+            source_input::set_value(input, name, 32, window, cx);
             input.focus(window, cx);
             input.select_all(window, cx);
         });
@@ -804,16 +803,18 @@ impl DeviceGamesDialog {
         let options = profile_choices(self.workspace.read(cx).device(cx));
         let field = if self.rename_target.is_some() {
             div()
-                .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
-                    if event.keystroke.key == "escape" {
+                .capture_action(cx.listener(
+                    |this, _: &gpui_kit::component::input::Escape, window, cx| {
                         this.rename_target = None;
                         this.focus.focus(window, cx);
                         cx.stop_propagation();
                         cx.notify();
-                    }
-                }))
+                    },
+                ))
                 .child(
                     Input::new(&self.name)
+                        .id("profiles-device-rename-input")
+                        .source_max_length(&self.name, 32)
                         .appearance(false)
                         .w(css(230.))
                         .h(css(27.))
@@ -1217,5 +1218,84 @@ impl Render for DeviceGamesDialog {
                     .children(self.transfer.clone()),
             ))
             .into_any_element()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::DeviceGamesDialog;
+    use gpui_kit::component::Root;
+    use gpui_kit::test::TestWindowExt;
+    use gpui_kit::{AppContext, ClipboardItem, TestAppContext, px, size};
+    use razer_model::model::Profile;
+    use razer_pages::features::ProductWorkspace;
+
+    #[gpui_kit::test]
+    fn profile_name_paste_truncates_utf16_and_escape_keeps_the_dialog_open(
+        cx: &mut TestAppContext,
+    ) {
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            cx.set_reduce_motion(true);
+        });
+        let original = format!("{}😀", "源".repeat(31));
+        let mut workspace = None;
+        let mut dialog = None;
+        let handle = cx.open_window(size(px(1600.), px(1100.)), |window, cx| {
+            let mut device = razer_model::product_preview::registered_preview(70).unwrap();
+            device.active_profile = "profile-rename-test".into();
+            device.profiles = vec![Profile {
+                source_settings: None,
+                settings: None,
+                name: original.clone(),
+                guid: "974c7a36-d0e2-425a-a4be-a1b5c4ef6595".into(),
+                id: device.active_profile.clone(),
+                dpi_stages: None,
+            }];
+            let owner = cx.new(|cx| ProductWorkspace::new(device, false, window, cx));
+            let view = cx.new(|cx| {
+                DeviceGamesDialog::new(owner.clone(), std::slice::from_ref(&owner), window, cx)
+            });
+            workspace = Some(owner);
+            dialog = Some(view.clone());
+            Root::new(view, window, cx)
+        });
+        let workspace = workspace.unwrap();
+        let dialog = dialog.unwrap();
+        let expected = format!("{}😀", "甲".repeat(30));
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            window.click("profiles-device-more", cx);
+            window.click("RENAME", cx);
+            assert_eq!(
+                window.find("profiles-device-rename-input").focused(),
+                Some(true)
+            );
+            assert_eq!(
+                window.find("profiles-device-rename-input").value(),
+                Some(original.as_str())
+            );
+            cx.write_to_clipboard(ClipboardItem::new_string(format!("{expected}extra")));
+            window.press("secondary-v", cx);
+            assert_eq!(
+                window.find("profiles-device-rename-input").value(),
+                Some(expected.as_str())
+            );
+            window.press("escape", cx);
+            assert!(dialog.read(cx).open);
+            assert!(dialog.read(cx).rename_target.is_none());
+            assert_eq!(workspace.read(cx).snapshot(cx).profiles[0].name, original);
+            window.click("profiles-device-more", cx);
+            window.click("RENAME", cx);
+            assert_eq!(
+                window.find("profiles-device-rename-input").value(),
+                Some(original.as_str())
+            );
+            window.press("secondary-v", cx);
+            window.press("enter", cx);
+            assert_eq!(workspace.read(cx).snapshot(cx).profiles[0].name, expected);
+            assert!(dialog.read(cx).open);
+        })
+        .unwrap();
     }
 }

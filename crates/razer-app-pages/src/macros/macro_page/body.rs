@@ -478,13 +478,21 @@ impl MacroPage {
         item: ActionItem,
         cx: &mut Context<Self>,
     ) -> AnyElement {
+        let value = if self
+            .editing_action
+            .is_some_and(|edited| row_actions::counterpart(self.actions(), edited) == Some(index))
+        {
+            self.action_editor.read(cx).value().to_string()
+        } else {
+            item.value
+        };
         BaseButton::new(("macro-loop-count", index))
             .h(css(27.))
             .p_0()
             .text_size(css(14.))
             .justify_start()
             .hover(|s| s.text_color(rgb(0x44d62c)))
-            .child(item.value)
+            .child(value)
             .on_click(cx.listener(move |this, _, window, cx| {
                 cx.stop_propagation();
                 this.begin_action_edit(index, window, cx);

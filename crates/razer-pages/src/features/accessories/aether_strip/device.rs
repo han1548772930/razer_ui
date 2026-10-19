@@ -25,6 +25,29 @@ pub(super) enum DialogKind {
     TakeControl,
 }
 
+#[derive(Clone, Copy)]
+enum NameSubmit {
+    Value,
+    Escape,
+}
+
+/// WI forwards every Blur value verbatim and the current prop on Escape.
+/// Closing the editor first prevents its later Blur from sending a second name.
+fn submitted_name<'a>(
+    editing: &mut bool,
+    previous: Option<&'a str>,
+    value: &'a str,
+    submit: NameSubmit,
+) -> Option<&'a str> {
+    if !std::mem::take(editing) {
+        return None;
+    }
+    match submit {
+        NameSubmit::Value => Some(value),
+        NameSubmit::Escape => previous,
+    }
+}
+
 impl AetherStrip {
     pub(super) fn sync_identify_ready(&mut self, cx: &mut Context<Self>) {
         // `ol` in the current 784 bundle clears the previous timeout first.
@@ -80,19 +103,28 @@ impl AetherStrip {
         };
         let name = peer.name.clone();
         self.rename_input.update(cx, |input, cx| {
-            input.set_value(name, window, cx);
+            super::source_input::set_value(input, name, 32, window, cx);
             input.focus(window, cx);
+            input.select_all(window, cx);
         });
         self.renaming = true;
         cx.notify();
     }
     pub(super) fn commit_name(&mut self, _: &mut Window, cx: &mut Context<Self>) {
-        if !self.renaming {
-            return;
-        }
-        self.renaming = false;
-        let name = self.rename_input.read(cx).value().trim().to_string();
-        if !name.is_empty() {
+        self.submit_name(NameSubmit::Value, cx);
+    }
+    fn cancel_name(&mut self, cx: &mut Context<Self>) {
+        self.submit_name(NameSubmit::Escape, cx);
+    }
+    fn submit_name(&mut self, submit: NameSubmit, cx: &mut Context<Self>) {
+        let previous = self
+            .peers
+            .iter()
+            .find(|peer| peer.id == self.selected)
+            .map(|peer| peer.name.as_str());
+        let value = self.rename_input.read(cx).value();
+        let name = submitted_name(&mut self.renaming, previous, &value, submit).map(str::to_owned);
+        if let Some(name) = name {
             self.request("ON_NAME_IOT_DEVICE", json!({"name":name}), cx);
         }
         cx.notify();
@@ -182,10 +214,22 @@ impl AetherStrip {
             );
             if selected && self.renaming {
                 device = device.child(
-                    Input::new(&self.rename_input)
+                    div()
                         .w(surface::css(200.))
                         .h(surface::css(26.))
-                        .small(),
+                        .capture_action(cx.listener(
+                            |this, _: &gpui_kit::component::input::Escape, _, cx| {
+                                this.cancel_name(cx);
+                                cx.stop_propagation();
+                            },
+                        ))
+                        .child(
+                            Input::new(&self.rename_input)
+                                .source_max_length(&self.rename_input, 32)
+                                .w_full()
+                                .h_full()
+                                .small(),
+                        ),
                 );
             } else {
                 let name = if self.peers.len() == 1 && locked {
@@ -470,6 +514,69 @@ impl AetherStrip {
             );
         }
         carousel.into_any_element()
+    }
+}
+
+#[cfg(test)]
+mod name_tests {
+    use super::{NameSubmit, submitted_name};
+
+    #[test]
+    fn aether_name_blur_preserves_empty_whitespace_and_unchanged_values_once() {
+        for value in ["", "  \t", "\u{feff}\u{0085}", "Source device"] {
+            let mut editing = true;
+            assert_eq!(
+                submitted_name(
+                    &mut editing,
+                    Some("Source device"),
+                    value,
+                    NameSubmit::Value
+                ),
+                Some(value)
+            );
+            assert!(!editing);
+            assert_eq!(
+                submitted_name(
+                    &mut editing,
+                    Some("Source device"),
+                    "Late blur",
+                    NameSubmit::Value
+                ),
+                None
+            );
+        }
+    }
+
+    #[test]
+    fn aether_name_escape_forwards_source_prop_and_suppresses_the_later_blur() {
+        for previous in ["", "  ", "\u{feff}Actual device\u{0085}"] {
+            let mut editing = true;
+            assert_eq!(
+                submitted_name(
+                    &mut editing,
+                    Some(previous),
+                    "Edited draft",
+                    NameSubmit::Escape
+                ),
+                Some(previous)
+            );
+            assert!(!editing);
+            assert_eq!(
+                submitted_name(
+                    &mut editing,
+                    Some(previous),
+                    "Edited draft",
+                    NameSubmit::Value
+                ),
+                None
+            );
+        }
+        let mut editing = true;
+        assert_eq!(
+            submitted_name(&mut editing, None, "Edited draft", NameSubmit::Escape),
+            None
+        );
+        assert!(!editing);
     }
 }
 pub(super) struct DeviceDialog {

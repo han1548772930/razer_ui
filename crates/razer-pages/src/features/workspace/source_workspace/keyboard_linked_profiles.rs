@@ -62,22 +62,6 @@ impl SourceProductWorkspace {
         self.dismiss_profile_dialog(window, cx);
         self.device.active_profile = id.to_owned();
         self.sync_mouse_profile_selection();
-        let factory_default_profile = self
-            .device
-            .profiles
-            .iter()
-            .find(|profile| profile.id == id)
-            .is_some_and(|profile| {
-                super::super::keyboard_products::is_factory_profile(
-                    self.device.product_id,
-                    &profile.guid,
-                )
-            });
-        if let FamilyBody::Keyboard(body) = &self.body {
-            body.update(cx, |keyboard, cx| {
-                keyboard.set_factory_default_profile(factory_default_profile, window, cx)
-            });
-        }
         self.profile.update(cx, |state, cx| {
             state.set_selected_value(&id.to_owned(), window, cx)
         });

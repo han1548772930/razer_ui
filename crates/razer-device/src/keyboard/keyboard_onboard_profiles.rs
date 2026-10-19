@@ -18,6 +18,9 @@ use anyhow::{Context as _, Result, ensure};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
+#[path = "keyboard_onboard_mapping.rs"]
+pub mod mapping;
+
 pub const PRODUCT_ID: u32 = 679;
 const GET_MULTI_ASSIGNMENT: [u8; 3] = [80, 2, 158];
 

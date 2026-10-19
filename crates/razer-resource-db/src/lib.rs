@@ -7,7 +7,7 @@ mod document;
 mod installation;
 pub mod localization;
 mod publication;
-pub use document::{CatalogId, NodeReader, initialize, read_document};
+pub use document::{CatalogId, CatalogSequence, NodeReader, initialize, read_document};
 pub mod catalogs;
 pub use installation::InstallationPaths;
 pub use publication::StagedResource;

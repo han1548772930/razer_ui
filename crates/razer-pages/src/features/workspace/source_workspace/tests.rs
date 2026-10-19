@@ -6,6 +6,38 @@ use gpui_kit::{AppContext, TestAppContext, px, size};
 use serde_json::json;
 
 #[::core::prelude::v1::test]
+fn active_keyboard_factory_profile_follows_selected_identity_after_library_replacement() {
+    use super::keyboard_local_profiles::active_keyboard_factory_profile;
+    use razer_model::model::Profile;
+    let mut device = razer_model::product_preview::registered_preview(679).unwrap();
+    assert!(!active_keyboard_factory_profile(&device));
+    device.profiles = vec![
+        Profile {
+            id: "factory-local-id".into(),
+            guid: razer_device::keyboard_current_profile::FACTORY_GUID.into(),
+            name: "Renamed factory profile".into(),
+            source_settings: None,
+            settings: None,
+            dpi_stages: None,
+        },
+        Profile {
+            id: "user-local-id".into(),
+            guid: "a7e597b0-15e4-4db7-b2f6-71f7fcd262d8".into(),
+            name: "Factory Default".into(),
+            source_settings: None,
+            settings: None,
+            dpi_stages: None,
+        },
+    ];
+    device.active_profile = "factory-local-id".into();
+    assert!(active_keyboard_factory_profile(&device));
+    device.active_profile = "user-local-id".into();
+    assert!(!active_keyboard_factory_profile(&device));
+    device.active_profile = "removed-local-id".into();
+    assert!(!active_keyboard_factory_profile(&device));
+}
+
+#[::core::prelude::v1::test]
 fn mouse_current_power_migration_removes_ephemeral_power_values_from_disk() {
     let mut device = razer_model::product_preview::registered_preview(117).unwrap();
     device.source_device_settings = Some(json!({

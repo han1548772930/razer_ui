@@ -146,11 +146,9 @@ struct FamilyGeometry {
     keys: Vec<KeyboardKey>,
     buttons: Vec<serde_json::Value>,
 }
-#[derive(Deserialize)]
 struct FamilyAtlas {
     products: Vec<FamilyProduct>,
-    geometries: Vec<FamilyGeometry>,
-    #[serde(default)]
+    geometries: razer_resource_db::CatalogSequence<FamilyGeometry>,
     preview_products: Vec<PreviewProduct>,
 }
 #[derive(Deserialize)]

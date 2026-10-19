@@ -1,4 +1,5 @@
 use super::*;
+use razer_widgets::source_input::SourceInputExt as _;
 
 #[derive(Clone, Copy)]
 pub enum Menu {
@@ -286,6 +287,8 @@ impl MacroPage {
             ))
             .child(
                 Input::new(&self.name)
+                    .id("macro-rename-input")
+                    .source_max_length(&self.name, 32)
                     .appearance(false)
                     .w_full()
                     .h(css(27.))

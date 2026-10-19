@@ -1,12 +1,14 @@
 //! Current product 3884/3886 ARGB controller pages. Hardware status is session-only;
 //! editable layout preferences are local drafts, independently of discovery.
 use super::Choice;
+use super::argb_name::{self, NameEdit, NameSubmit};
 use gpui_kit::base::{Easing, NumberInput, StepAction, step_value};
 use razer_i18n as i18n;
 use razer_model::model::Device;
 use razer_widgets::hover_tip::SourceTipPlacement;
 use razer_widgets::hover_tip::source_hover_tip;
 use razer_widgets::hover_tip::source_hover_tip_element;
+use razer_widgets::source_input::{self, SourceInputExt as _};
 use razer_widgets::surface;
 // 提供 `Div` 的悬停监听（源 `Gu` 用 `onMouseEnter`/`onMouseLeave` 直接翻转 `isMounted`）。
 use gpui_kit::StatefulInteractiveElement as _;
@@ -649,8 +651,20 @@ impl WirelessArgb {
             .rounded(surface::css(5.))
             .bg(Colors::panel());
         let name = if self.editing_name == Some(id) {
-            Input::new(&self.names[&id])
+            div()
+                .id(("argb-name-editor", id))
                 .w(surface::css(200.))
+                .on_mouse_down_out(cx.listener(move |this, _, window, cx| {
+                    let value = this.names[&id].read(cx).value().to_string();
+                    this.rename(id, value, NameSubmit::OutsideClick, window, cx);
+                }))
+                .child(
+                    Input::new(&self.names[&id])
+                        .when(self.spec.product_id == 3884, |input| {
+                            input.source_max_length(&self.names[&id], 32)
+                        })
+                        .w_full(),
+                )
                 .into_any_element()
         } else {
             Button::new(("argb-rename", id))
@@ -664,7 +678,22 @@ impl WirelessArgb {
                 .on_click(cx.listener(move |this, _, window, cx| {
                     if this.editable() {
                         this.editing_name = Some(id);
-                        this.names[&id].update(cx, |s, cx| s.focus(window, cx));
+                        let name = this
+                            .ports
+                            .iter()
+                            .find(|port| port.id == id)
+                            .map(|port| port.name.clone());
+                        if let Some(name) = name {
+                            this.names[&id].update(cx, |s, cx| {
+                                if this.spec.product_id == 3884 {
+                                    source_input::set_value(s, name, 32, window, cx);
+                                } else {
+                                    s.set_value(name, window, cx);
+                                }
+                                s.focus(window, cx);
+                                s.select_all(window, cx);
+                            });
+                        }
                         cx.notify();
                     }
                 }))
@@ -1013,9 +1042,7 @@ impl WirelessArgb {
         {
             for port in &mut self.ports {
                 if let Some(candidate) = saved.iter().find(|p| p.id == port.id) {
-                    let valid = !candidate.name.trim().is_empty()
-                        && candidate.name.chars().count() <= 128
-                        && !candidate.strip.is_empty()
+                    let valid = !candidate.strip.is_empty()
                         && candidate.strip.len() <= 4
                         && !candidate.fan.is_empty()
                         && candidate.fan.len() <= 16
@@ -1030,9 +1057,7 @@ impl WirelessArgb {
                     if valid {
                         *port = candidate.clone();
                         port.dismissed = false;
-                        if self.spec.product_id == 3884 {
-                            port.name = port.name.chars().take(32).collect();
-                        } else {
+                        if self.spec.product_id != 3884 {
                             port.fan.truncate(1);
                         }
                     }
@@ -1080,16 +1105,22 @@ impl WirelessArgb {
         self.fans.clear();
         for port in self.ports.clone() {
             let id = port.id;
-            let name = cx.new(|cx| InputState::new(window, cx).default_value(port.name));
+            let name_limited = self.spec.product_id == 3884;
+            let name = cx.new(|cx| {
+                let input = if name_limited {
+                    source_input::input_state(32, window, cx)
+                } else {
+                    InputState::new(window, cx)
+                };
+                input.default_value(port.name)
+            });
             self.subscriptions.push(cx.subscribe_in(
                 &name,
                 window,
                 move |this, input, event, window, cx| {
-                    if !this.syncing
-                        && matches!(event, InputEvent::Blur | InputEvent::PressEnter { .. })
-                    {
+                    if !this.syncing && matches!(event, InputEvent::PressEnter { .. }) {
                         let value = input.read(cx).value().to_string();
-                        this.rename(id, value, window, cx);
+                        this.rename(id, value, NameSubmit::Enter, window, cx);
                     }
                 },
             ));
@@ -1159,7 +1190,15 @@ impl WirelessArgb {
     fn sync(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.syncing = true;
         for port in &self.ports {
-            self.names[&port.id].update(cx, |s, cx| s.set_value(port.name.clone(), window, cx));
+            if self.editing_name != Some(port.id) {
+                self.names[&port.id].update(cx, |s, cx| {
+                    if self.spec.product_id == 3884 {
+                        source_input::set_value(s, port.name.clone(), 32, window, cx);
+                    } else {
+                        s.set_value(port.name.clone(), window, cx);
+                    }
+                });
+            }
             self.modes[&port.id].update(cx, |s, cx| {
                 s.set_selected_value(
                     &if port.strip_mode { "strip" } else { "fan" }.to_string(),
@@ -1184,19 +1223,34 @@ impl WirelessArgb {
         }
         self.syncing = false;
     }
-    fn rename(&mut self, id: u32, value: String, window: &mut Window, cx: &mut Context<Self>) {
+    fn rename(
+        &mut self,
+        id: u32,
+        value: String,
+        submit: NameSubmit,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if !self.editable() || self.editing_name != Some(id) {
             return;
         }
-        if !value.trim().is_empty() {
-            let max = if self.spec.product_id == 3884 { 32 } else { 128 };
-            if let Some(port) = self.ports.iter_mut().find(|p| p.id == id) {
-                port.name = value.chars().take(max).collect();
-            }
+        let Some(port) = self.ports.iter_mut().find(|port| port.id == id) else {
+            return;
+        };
+        let edit = argb_name::name_edit(self.spec.product_id, &port.name, &value, submit);
+        if edit == NameEdit::KeepEditing {
+            return;
+        }
+        if edit == NameEdit::Commit {
+            port.name = value;
         }
         self.editing_name = None;
         self.sync(window, cx);
-        self.changed(cx);
+        if edit == NameEdit::Commit {
+            self.changed(cx);
+        } else {
+            cx.notify();
+        }
     }
     fn set_leds(
         &mut self,

@@ -415,9 +415,7 @@ impl DeviceWorkspace {
             .map(IndexPath::new);
         let profile = cx.new(|cx| SelectState::new(choices, selected, window, cx));
         let profile_name = cx.new(|cx| {
-            InputState::new(window, cx)
-                .placeholder("配置文件名称")
-                .validate(|value, _| value.encode_utf16().count() <= 32)
+            razer_widgets::source_input::input_state(32, window, cx).placeholder("配置文件名称")
         });
         let profile_menu =
             profile::command_list(device.product_id, cx.entity().downgrade(), window, cx);

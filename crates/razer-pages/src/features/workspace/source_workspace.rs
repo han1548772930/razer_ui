@@ -2573,22 +2573,6 @@ impl SourceProductWorkspace {
         if active != self.device.active_profile {
             self.keyboard_linked_base_selected(&self.device.active_profile.clone(), cx);
             self.dismiss_profile_dialog(window, cx);
-            let factory_default_profile = self
-                .device
-                .profiles
-                .iter()
-                .find(|profile| profile.id == self.device.active_profile)
-                .is_some_and(|profile| {
-                    super::keyboard_products::is_factory_profile(
-                        self.device.product_id,
-                        &profile.guid,
-                    )
-                });
-            if let FamilyBody::Keyboard(body) = &self.body {
-                body.update(cx, |keyboard, cx| {
-                    keyboard.set_factory_default_profile(factory_default_profile, window, cx)
-                });
-            }
             self.restore_active(window, cx);
             self.restore_seiren_selected_profile(cx);
         }
@@ -3131,13 +3115,8 @@ impl SourceProductWorkspace {
             ));
             FamilyBody::Mouse(body)
         } else if super::keyboard_products::source_product(device.product_id).is_some() {
-            let factory_default_profile = device
-                .profiles
-                .iter()
-                .find(|profile| profile.id == device.active_profile)
-                .is_some_and(|profile| {
-                    super::keyboard_products::is_factory_profile(device.product_id, &profile.guid)
-                });
+            let factory_default_profile =
+                keyboard_local_profiles::active_keyboard_factory_profile(&device);
             let body = cx.new(|cx| {
                 super::keyboard_products::KeyboardProductWorkspace::new(
                     device.product_id,
@@ -3783,10 +3762,10 @@ impl SourceProductWorkspace {
                 }
             },
         ));
-        let name_limit = profile_menu::spec(device.product_id).map_or(32, |spec| spec.name_limit());
-        let profile_name = cx.new(|cx| {
-            InputState::new(window, cx)
-                .validate(move |value, _| value.encode_utf16().count() <= name_limit)
+        let name_limit = profile_menu::spec(device.product_id).map(|spec| spec.name_limit());
+        let profile_name = cx.new(|cx| match name_limit {
+            Some(limit) => razer_widgets::source_input::input_state(limit, window, cx),
+            None => InputState::new(window, cx),
         });
         subscriptions.push(cx.subscribe_in(
             &profile_name,
@@ -4528,7 +4507,12 @@ impl SourceProductWorkspace {
                 });
             }
             FamilyBody::Keyboard(e) => {
-                e.update(cx, |v, cx| v.restore(value.as_ref(), window, cx));
+                let factory_default_profile =
+                    keyboard_local_profiles::active_keyboard_factory_profile(&self.device);
+                e.update(cx, |v, cx| {
+                    v.set_factory_default_profile(factory_default_profile, window, cx);
+                    v.restore(value.as_ref(), window, cx);
+                });
             }
             FamilyBody::Gamepad(e) => {
                 e.update(cx, |v, cx| v.restore(value.as_ref(), window, cx));

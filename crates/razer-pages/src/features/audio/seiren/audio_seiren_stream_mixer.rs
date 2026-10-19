@@ -1,6 +1,7 @@
 //! Current 1422/1446 UI5235 `xe` and main `ni` reducer. UI state follows
 //! source optimistic actions; middleware cache observations remain distinct
 //! from native device acknowledgements. See audio-MapAudio-audit.json.
+use super::audio_mixer_presets::{PresetNameSubmit, submitted_preset_name};
 use super::*;
 use crate::features::source_key::SourceKey;
 use gpui_kit::component::{
@@ -245,9 +246,7 @@ impl AudioProductWorkspace {
         let preset_select =
             cx.new(|cx| SelectState::new(Vec::<MixerChoice>::new(), None, window, cx));
         let playback = cx.new(|cx| SelectState::new(Vec::<MixerChoice>::new(), None, window, cx));
-        let rename = cx.new(|cx| {
-            InputState::new(window, cx).validate(|value, _| value.encode_utf16().count() <= 32)
-        });
+        let rename = cx.new(|cx| razer_widgets::source_input::input_state(32, window, cx));
         let capture = cx.focus_handle().tab_stop(true);
         self.subscriptions
             .push(cx.on_focus_out(&capture, window, |this, _, _, cx| {
@@ -288,16 +287,13 @@ impl AudioProductWorkspace {
                 }
             },
         ));
-        self.subscriptions.push(cx.subscribe_in(
-            &rename,
-            window,
-            |this, input, event, window, cx| {
+        self.subscriptions.push(
+            cx.subscribe_in(&rename, window, |this, _, event, window, cx| {
                 if matches!(event, InputEvent::Blur | InputEvent::PressEnter { .. }) {
-                    let value = input.read(cx).value().trim().to_owned();
-                    this.rename_seiren_stream_mixer(&value, window, cx);
+                    this.rename_seiren_stream_mixer(PresetNameSubmit::Submit, window, cx);
                 }
-            },
-        ));
+            }),
+        );
         self.seiren_stream = Some(State {
             stopped: false,
             owner: cx.entity_id(),
@@ -743,7 +739,7 @@ impl AudioProductWorkspace {
     }
     fn rename_seiren_stream_mixer(
         &mut self,
-        name: &str,
+        submit: PresetNameSubmit,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -754,12 +750,26 @@ impl AudioProductWorkspace {
             return;
         }
         state.renaming = false;
-        let valid = !name.is_empty()
-            && name.encode_utf16().count() <= 32
-            && !presets(&state.data)
+        let previous = presets(&state.data).iter().find_map(|preset| {
+            (preset.get("guid").and_then(Value::as_str) == Some(selected(&state.data)))
+                .then(|| preset.get("name").and_then(Value::as_str))
+                .flatten()
+        });
+        let Some(previous) = previous else {
+            cx.notify();
+            return;
+        };
+        let draft = state.rename.read(cx).value();
+        let name = submitted_preset_name(
+            submit,
+            previous,
+            &draft,
+            presets(&state.data)
                 .iter()
-                .any(|preset| preset["name"] == name);
-        if valid {
+                .filter_map(|preset| preset.get("name").and_then(Value::as_str)),
+        )
+        .map(str::to_owned);
+        if let Some(name) = name {
             let guid = selected(&state.data).to_owned();
             self.submit_seiren_stream_mixer(
                 "ON_RENAME_STREAM_MIXER_PRESET",
@@ -770,6 +780,9 @@ impl AudioProductWorkspace {
         } else {
             cx.notify();
         }
+    }
+    fn cancel_seiren_stream_mixer_rename(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.rename_seiren_stream_mixer(PresetNameSubmit::Escape, window, cx);
     }
     fn change_seiren_external_device(
         &mut self,
@@ -1116,16 +1129,19 @@ impl AudioProductWorkspace {
         let guid = selected(&state.data).to_owned();
         match command {
             "rename" => {
-                let name = presets(&state.data)
+                let Some(name) = presets(&state.data)
                     .iter()
                     .find(|preset| preset["guid"] == guid)
                     .and_then(|preset| preset["name"].as_str())
-                    .unwrap_or("")
-                    .to_owned();
+                    .map(str::to_owned)
+                else {
+                    return;
+                };
                 state.renaming = true;
                 state.rename.update(cx, |input, cx| {
-                    input.set_value(name, window, cx);
+                    razer_widgets::source_input::set_value(input, name, 32, window, cx);
                     input.focus(window, cx);
+                    input.select_all(window, cx);
                 });
                 cx.notify();
             }
