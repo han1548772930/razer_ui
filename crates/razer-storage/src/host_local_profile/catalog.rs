@@ -1,9 +1,9 @@
 //! Current182 MW77846 and current190 MW60763 complete local mouse catalogs.
 //! Serial initialization is a separate source operation, never a failed-read
 //! fallback or a statement about the hardware's configuration.
-use super::{SourceIdentity, leveldb, supported, text};
-pub use razer_device::mouse_current_profile::Profile;
+use super::{InitializationOrigin, SourceIdentity, leveldb, supported, text};
 use anyhow::{Context as _, Result, ensure};
+pub use razer_device::mouse_current_profile::Profile;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -17,7 +17,8 @@ where
     T::deserialize(deserializer).map(Some)
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum SerialInitialization {
     MissingMetadata,
     EmptyActiveGuid,
@@ -36,6 +37,7 @@ pub struct LocalProfiles {
     sequence: u64,
     sha256: String,
     selection: SourceSelection,
+    initialized: Option<InitializationOrigin>,
 }
 
 impl LocalProfiles {
@@ -64,7 +66,9 @@ impl LocalProfiles {
 
     pub fn active_profile(&self) -> Option<&Profile> {
         let guid = self.active_guid()?;
-        self.profiles().iter().find(|profile| profile.guid == guid)
+        self.profiles()
+            .iter()
+            .find(|profile| profile.guid() == guid)
     }
 
     pub fn source_document(&self) -> Result<serde_json::Value> {
@@ -82,15 +86,76 @@ impl LocalProfiles {
         Ok(value)
     }
 
-    pub(super) fn identity(&self, profile: &Profile) -> SourceIdentity {
-        SourceIdentity {
+    pub(super) fn identity(&self, profile: &Profile) -> Option<SourceIdentity> {
+        if self.initialized(profile).is_some() {
+            return None;
+        }
+        Some(SourceIdentity {
             product_id: self.product_id(),
             serial: self.serial.clone(),
-            guid: profile.guid.clone(),
+            guid: profile.guid().to_owned(),
             sequence: self.sequence,
             sha256: self.sha256.clone(),
             extensions: Extensions::new(),
-        }
+        })
+    }
+
+    pub(super) fn initialized(&self, profile: &Profile) -> Option<&InitializationOrigin> {
+        self.initialized
+            .as_ref()
+            .filter(|origin| origin.guid == profile.guid())
+    }
+
+    pub(super) fn revision(&self) -> (u64, &str) {
+        (self.sequence, &self.sha256)
+    }
+
+    pub(super) fn with_initialized(
+        &self,
+        profile: Profile,
+        origin: InitializationOrigin,
+        device_name: &str,
+    ) -> Result<Self> {
+        ensure!(
+            self.initialized.is_none(),
+            "serial profile was already initialized"
+        );
+        ensure!(
+            matches!(
+                self.selection,
+                SourceSelection::NeedsSerialInitialization { .. }
+            ),
+            "serial already has a selected source profile"
+        );
+        ensure!(
+            !self
+                .profiles()
+                .iter()
+                .any(|existing| existing.guid() == profile.guid()),
+            "new serial profile GUID already exists"
+        );
+        profile.validate_for(self.product_id())?;
+        let mut result = self.clone();
+        let records = result
+            .document
+            .device_metadatas
+            .get_or_insert_with(BTreeMap::new);
+        let metadata = records
+            .entry(self.serial.clone())
+            .or_insert_with(|| Metadata {
+                active_profile_guid: String::new(),
+                name: None,
+                extensions: Extensions::new(),
+            });
+        metadata.active_profile_guid = profile.guid().to_owned();
+        metadata.name.get_or_insert_with(|| device_name.to_owned());
+        result.document.active_profile = Some(profile.guid().to_owned());
+        result.selection = SourceSelection::SerialMetadata {
+            guid: profile.guid().to_owned(),
+        };
+        result.document.profiles.push(profile);
+        result.initialized = Some(origin);
+        Ok(result)
     }
 }
 
@@ -291,7 +356,7 @@ pub(super) fn decode(
     for profile in &document.profiles {
         profile.validate_for(product_id)?;
         ensure!(
-            guids.insert(profile.guid.as_str()),
+            guids.insert(profile.guid()),
             "host mouse profile GUID is duplicated"
         );
     }
@@ -337,5 +402,6 @@ pub(super) fn decode(
             .map(|byte| format!("{byte:02x}"))
             .collect(),
         selection,
+        initialized: None,
     })
 }

@@ -29,6 +29,9 @@ mod brightness;
 mod effects;
 #[path = "hue/onboarding.rs"]
 mod onboarding;
+#[path = "hue/profile_edit.rs"]
+mod profile_edit;
+pub use profile_edit::HueChanged;
 #[path = "hue/preview.rs"]
 mod preview;
 #[cfg(test)]
@@ -196,7 +199,6 @@ enum BridgeAlert {
     Remove,
 }
 
-pub struct HueChanged;
 /// Navigation request emitted by the advanced-effects Chroma entry.
 /// No installation result is carried or inferred.
 pub struct HueChromaRequested;
@@ -341,7 +343,7 @@ impl HueWorkspace {
                 if let SliderEvent::Change(value) = event {
                     if this.editable_brightness() && this.brightness.global() {
                         this.brightness.value = value.start().round().clamp(0., 100.) as u8;
-                        this.changed(cx);
+                        this.brightness_changed(cx);
                     }
                 }
             },
@@ -349,12 +351,6 @@ impl HueWorkspace {
         this.subscribe_effects(window, cx);
         this.sync_effects(window, cx);
         this
-    }
-    pub fn snapshot(&self) -> Value {
-        let mut draft = self.draft.clone();
-        draft["brightness"] = serde_json::to_value(&self.brightness).expect("brightness value");
-        draft["quickEffects"] = json!({"selectedEffectId":self.selected_effect,"selectedEffectSetting":self.effect_setting()});
-        draft
     }
     pub fn restore(&mut self, saved: Option<&Value>, window: &mut Window, cx: &mut Context<Self>) {
         self.draft = json!({});
@@ -381,9 +377,31 @@ impl HueWorkspace {
         self.alert = None;
         cx.notify();
     }
-    fn changed(&mut self, cx: &mut Context<Self>) {
+    fn brightness_changed(&mut self, cx: &mut Context<Self>) {
+        self.changed(
+            HueChanged::Brightness {
+                is_enabled: self.brightness.is_enabled,
+                value: self.brightness.value,
+                is_global_brightness: self.brightness.is_global_brightness,
+            },
+            cx,
+        );
+    }
+    fn effects_changed(&mut self, cx: &mut Context<Self>) {
+        self.changed(
+            HueChanged::QuickEffect {
+                selected_effect: self.selected_effect,
+                setting: self.effect_setting(),
+            },
+            cx,
+        );
+    }
+    fn changed(&mut self, action: HueChanged, cx: &mut Context<Self>) {
+        if let Err(error) = action.apply(&mut self.draft) {
+            eprintln!("[Hue source action] {error}");
+        }
         if !self.preview {
-            cx.emit(HueChanged);
+            cx.emit(action);
         }
         cx.notify();
     }

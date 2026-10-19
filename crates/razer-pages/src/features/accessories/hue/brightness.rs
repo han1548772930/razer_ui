@@ -19,7 +19,7 @@ impl HueWorkspace {
                             // true; only the next click selects per-light controls.
                             this.brightness.is_global_brightness =
                                 Some(!this.brightness.is_global_brightness.unwrap_or(false));
-                            this.changed(cx);
+                            this.brightness_changed(cx);
                         }
                     })),
             );
@@ -90,7 +90,7 @@ impl HueWorkspace {
                 .on_change(cx.listener(|this, value, _, cx| {
                     if this.bridge.controls_enabled() {
                         this.brightness.is_enabled = *value;
-                        this.changed(cx);
+                        this.brightness_changed(cx);
                     }
                 })),
             cx,
@@ -168,22 +168,13 @@ impl HueWorkspace {
                         return;
                     }
                     if let SliderEvent::Change(value) = event {
-                        if !this.draft.get("ports").is_some_and(Value::is_array) {
-                            this.draft["ports"] = json!([]);
-                        }
-                        let ports = this.draft["ports"].as_array_mut().unwrap();
-                        if !ports
-                            .iter()
-                            .any(|p| p.get("id").and_then(Value::as_u64) == Some(region as u64))
-                        {
-                            ports.push(json!({"id":region}));
-                        }
-                        let port = ports
-                            .iter_mut()
-                            .find(|p| p.get("id").and_then(Value::as_u64) == Some(region as u64))
-                            .unwrap();
-                        port["brightness"] = json!({"value":value.start().round().clamp(0.,100.)});
-                        this.changed(cx);
+                        this.changed(
+                            HueChanged::PortBrightness {
+                                region_id: region,
+                                value: value.start().round().clamp(0., 100.) as u8,
+                            },
+                            cx,
+                        );
                     }
                 },
             ));

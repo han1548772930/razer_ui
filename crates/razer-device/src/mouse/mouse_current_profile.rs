@@ -1,7 +1,7 @@
 //! Complete current182/current190 profile contract and source-owned defaults.
 //! Defaults describe a local profile; they never establish a device observation.
-use anyhow::{Context as _, Result, ensure};
 use crate::mouse_dpi_stages::{DpiStage, DpiStagesDraft};
+use anyhow::{Context as _, Result, ensure};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -38,34 +38,34 @@ struct Stage {
 impl Stages {
     pub fn draft(&self) -> Result<DpiStagesDraft> {
         let value = self.clone();
-    ensure!(
-        value.stages.len() == 5 && (1..=5).contains(&value.active),
-        "invalid current host DPI row selection"
-    );
-    ensure!(
-        (1..=5).contains(&value.count)
-            && value.stages.iter().filter(|s| s.visible).count() == value.count,
-        "invalid current host DPI visibility/count"
-    );
-    ensure!(
-        value.stages.iter().all(|s| s.x > 0 && s.y > 0),
-        "invalid current host DPI value"
-    );
-    Ok(DpiStagesDraft {
-        enabled: value.enable,
-        active_stage: value.active,
-        stages: value
-            .stages
-            .into_iter()
-            .map(|stage| DpiStage {
-                x: stage.x,
-                y: stage.y,
-                independent: stage.independent,
-                visible: stage.visible,
-            })
-            .collect(),
-    })
-}
+        ensure!(
+            value.stages.len() == 5 && (1..=5).contains(&value.active),
+            "invalid current host DPI row selection"
+        );
+        ensure!(
+            (1..=5).contains(&value.count)
+                && value.stages.iter().filter(|s| s.visible).count() == value.count,
+            "invalid current host DPI visibility/count"
+        );
+        ensure!(
+            value.stages.iter().all(|s| s.x > 0 && s.y > 0),
+            "invalid current host DPI value"
+        );
+        Ok(DpiStagesDraft {
+            enabled: value.enable,
+            active_stage: value.active,
+            stages: value
+                .stages
+                .into_iter()
+                .map(|stage| DpiStage {
+                    x: stage.x,
+                    y: stage.y,
+                    independent: stage.independent,
+                    visible: stage.visible,
+                })
+                .collect(),
+        })
+    }
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -148,7 +148,10 @@ impl Profile {
     }
 
     pub fn validate_for(&self, product_id: u32) -> Result<()> {
-        ensure!(matches!(product_id, 182 | 190), "current mouse profile product is not verified");
+        ensure!(
+            matches!(product_id, 182 | 190),
+            "current mouse profile product is not verified"
+        );
         ensure!(!self.guid.is_empty(), "host mouse profile GUID is empty");
         let stages = self.stages()?;
         crate::mouse_current_dpi::pack_for(product_id, &stages)?;
@@ -330,7 +333,6 @@ struct DynamicSensitivity {
     extensions: Extensions,
 }
 
-
 /// Source getDefaultProfile constructor after edition selection and identity
 /// assignment. The caller owns UUID generation and the observed computer name.
 pub fn new_profile(product_id: u32, edition_id: u32, guid: &str, name: &str) -> Result<Profile> {
@@ -339,6 +341,14 @@ pub fn new_profile(product_id: u32, edition_id: u32, guid: &str, name: &str) -> 
     profile.name = name.to_owned();
     profile.validate_for(product_id)?;
     Ok(profile)
+}
+
+pub fn source_device_name(product_id: u32) -> Result<&'static str> {
+    match product_id {
+        182 => Ok("Razer DeathAdder V3 Pro"),
+        190 => Ok("Razer DeathAdder V4 Pro"),
+        _ => anyhow::bail!("current mouse source device name is not verified"),
+    }
 }
 
 pub(crate) fn template_182() -> Profile {
@@ -358,43 +368,120 @@ fn template(product_id: u32, edition_id: u32) -> Result<Profile> {
     Ok(Profile {
         guid: String::new(),
         name: String::new(),
-        dpi: Dpi { x: 800, y: 800, extensions: Extensions::new() },
+        dpi: Dpi {
+            x: 800,
+            y: 800,
+            extensions: Extensions::new(),
+        },
         mappings: Vec::new(),
         stages: Stages {
             enable: true,
             active: 3,
             count: 5,
-            stages: [400, 800, 1600, 3200, 6400].map(|dpi| Stage {
-                x: dpi, y: dpi, independent: false, visible: true,
-                extensions: Extensions::new(),
-            }).into(),
+            stages: [400, 800, 1600, 3200, 6400]
+                .map(|dpi| Stage {
+                    x: dpi,
+                    y: dpi,
+                    independent: false,
+                    visible: true,
+                    extensions: Extensions::new(),
+                })
+                .into(),
             extensions: Extensions::new(),
         },
         low_power_mode: 30,
         polling_rate: 1000,
         polling_rate_wireless: Some(1000),
         led_power_settings: (!current190).then_some(LedPower {
-            idle_state: 1, idle_value: 60, extensions: Extensions::new(),
+            idle_state: 1,
+            idle_value: 60,
+            extensions: Extensions::new(),
         }),
         quick_effects: current190.then_some(QuickEffects {
-            selected_effect_id: 3, extensions: Extensions::new(),
+            selected_effect_id: 3,
+            extensions: Extensions::new(),
         }),
         in_game_polling_rate: current190.then_some(InGamePollingRate {
-            state: 0, wired: 1000, wireless: 1000, extensions: Extensions::new(),
+            state: 0,
+            wired: 1000,
+            wireless: 1000,
+            extensions: Extensions::new(),
         }),
         selected_sensitivity_matcher: current190.then(String::new),
         rotation: current190.then_some(Rotation {
-            is_enabled: false, value: 0, extensions: Extensions::new(),
+            is_enabled: false,
+            value: 0,
+            extensions: Extensions::new(),
         }),
-        indicator_led_configuration: current190.then(|| vec![
-            IndicatorLed { index: 0, led_status: crate::mouse_indicator_led::Mode::ConnectionQuality, extensions: Extensions::new() },
-            IndicatorLed { index: 1, led_status: crate::mouse_indicator_led::Mode::BatteryLevel, extensions: Extensions::new() },
-            IndicatorLed { index: 2, led_status: crate::mouse_indicator_led::Mode::PollingRate, extensions: Extensions::new() },
-        ]),
+        indicator_led_configuration: current190.then(|| {
+            vec![
+                IndicatorLed {
+                    index: 0,
+                    led_status: crate::mouse_indicator_led::Mode::ConnectionQuality,
+                    extensions: Extensions::new(),
+                },
+                IndicatorLed {
+                    index: 1,
+                    led_status: crate::mouse_indicator_led::Mode::BatteryLevel,
+                    extensions: Extensions::new(),
+                },
+                IndicatorLed {
+                    index: 2,
+                    led_status: crate::mouse_indicator_led::Mode::PollingRate,
+                    extensions: Extensions::new(),
+                },
+            ]
+        }),
         dynamic_sensitivity: current190.then_some(DynamicSensitivity {
-            mode: 0, state: 0, custom_sensor_accelerations: Vec::new(), template_id: 0,
+            mode: 0,
+            state: 0,
+            custom_sensor_accelerations: Vec::new(),
+            template_id: 0,
             extensions: Extensions::new(),
         }),
         extensions: Extensions::new(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn current190_default_matches_the_complete_source_profile_without_hardware_claims() {
+        let profile = new_profile(190, 0, "source-guid", "PC-Default").unwrap();
+        assert_eq!(
+            profile.source_settings().unwrap(),
+            serde_json::json!({
+                "guid":"source-guid","name":"PC-Default","dpi":{"x":800,"y":800},
+                "quickEffects":{"selectedEffectId":3},"mappings":[],
+                "dpiStages":{"stages":[
+                    {"x":400,"y":400,"independent":false,"visible":true},
+                    {"x":800,"y":800,"independent":false,"visible":true},
+                    {"x":1600,"y":1600,"independent":false,"visible":true},
+                    {"x":3200,"y":3200,"independent":false,"visible":true},
+                    {"x":6400,"y":6400,"independent":false,"visible":true}
+                ],"active":3,"enable":true,"count":5},
+                "inGamePollingRate":{"state":0,"wired":1000,"wireless":1000},
+                "pollingRate":1000,"pollingRateWireless":1000,"lowPowerMode":30,
+                "selectedSensitivityMatcher":"","rotation":{"isEnabled":false,"value":0},
+                "indicatorLedConfiguration":[{"ledStatus":2,"index":0},{"ledStatus":1,"index":1},{"ledStatus":3,"index":2}],
+                "dynamicSensitivity":{"mode":0,"state":0,"customSensorAccelerations":[],"templateId":0}
+            })
+        );
+        assert_eq!(profile.stages().unwrap().active_stage, 3);
+    }
+
+    #[test]
+    fn current_default_editions_follow_each_actual_source_table() {
+        for edition in [0, 128, 129, 130, 132] {
+            assert!(new_profile(182, edition, "guid", "name").is_ok());
+        }
+        assert!(new_profile(182, 131, "guid", "name").is_err());
+        for edition in [0, 128, 130, 131, 132, 133] {
+            assert!(new_profile(190, edition, "guid", "name").is_ok());
+        }
+        assert!(new_profile(190, 129, "guid", "name").is_err());
+        assert!(new_profile(170, 0, "guid", "name").is_err());
+    }
 }

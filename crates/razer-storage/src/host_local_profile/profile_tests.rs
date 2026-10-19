@@ -453,3 +453,185 @@ fn a_new_serial_and_actual_connection_observations_do_not_invalidate_the_local_r
     assert!(super::import(&mut device, &baseline, &source).is_err());
     assert_eq!(serde_json::to_value(&device).unwrap(), before);
 }
+
+const INITIAL_GUID: &str = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+
+fn initialization_context() -> SerialInitializationContext<'static> {
+    SerialInitializationContext {
+        edition_id: 0,
+        computer_name: "Desktop",
+        device_name: Some("Observed product name"),
+        new_guid: INITIAL_GUID,
+    }
+}
+
+#[test]
+fn serial_initialization_appends_a_real_local_profile_without_claiming_observed_settings() {
+    let mut raw = document("another-serial", "selected", false);
+    raw["profiles"][0]["name"] = "Desktop-Default".into();
+    raw["profiles"][0]["futureProfile"] = true.into();
+    raw["futureRoot"] = serde_json::json!({"kept":19});
+    let source = decode(190, "real", encoded(&raw)).unwrap();
+    let before = source.source_document().unwrap();
+    let plan = SerialInitializationPlan::prepare(&source, initialization_context()).unwrap();
+    assert_eq!(plan.reason(), SerialInitialization::MissingMetadata);
+    assert_eq!(plan.new_profile().guid(), INITIAL_GUID);
+    assert_eq!(plan.new_profile().name(), "Desktop-Default 1");
+    assert_eq!(source.source_document().unwrap(), before);
+    let projected = plan.catalog().source_document().unwrap();
+    assert_eq!(projected["profiles"][0], before["profiles"][0]);
+    assert_eq!(projected["version"], before["version"]);
+    assert_eq!(projected["futureRoot"], before["futureRoot"]);
+    assert_eq!(
+        projected["deviceMetadatas"]["real"]["name"],
+        "Observed product name"
+    );
+    assert_eq!(
+        projected["deviceMetadatas"]["another-serial"],
+        before["deviceMetadatas"]["another-serial"]
+    );
+    let mut device = razer_model::product_preview::registered_preview(190).unwrap();
+    device.serial_number = "real".into();
+    device.dashboard.connection_observation =
+        Some(razer_model::model::DeviceConnectionObservation::UsbPresent);
+    let baseline = device.clone();
+    assert!(plan.apply(&mut device, &baseline).unwrap());
+    assert_eq!(device.active_profile, INITIAL_GUID);
+    assert_eq!(device.profiles.len(), 2);
+    assert!(
+        device
+            .profiles
+            .iter()
+            .all(|profile| profile.settings.is_none() && profile.dpi_stages.is_none())
+    );
+    let state = ownership(&device).unwrap();
+    assert!(state.profiles[INITIAL_GUID].imported.is_none());
+    assert!(state.profiles[INITIAL_GUID].initialized.is_some());
+    assert!(!state.profiles[INITIAL_GUID].explicitly_edited);
+    assert!(state.profiles["selected"].imported.is_some());
+    assert_eq!(
+        device.dashboard.connection_observation,
+        baseline.dashboard.connection_observation
+    );
+    assert!(!import(&mut device, &source).unwrap());
+    assert_eq!(device.profiles.len(), 2);
+    assert_eq!(
+        device.source_device_settings.as_ref().unwrap()["deviceMetadatas"]["real"]["name"],
+        "Observed product name"
+    );
+}
+
+#[test]
+fn serial_initialization_retains_empty_guid_metadata_and_source_bounded_names() {
+    let mut raw = document("real", "", false);
+    raw["deviceMetadatas"]["real"]["name"] = "Existing custom name".into();
+    raw["deviceMetadatas"]["real"]["futureMetadata"] = serde_json::Value::Null;
+    let template = raw["profiles"][0].clone();
+    raw["profiles"] = serde_json::json!([]);
+    for suffix in 0..=100 {
+        let mut profile = template.clone();
+        profile["guid"] = format!("existing-{suffix}").into();
+        profile["name"] = if suffix == 0 {
+            "Desktop-Default".to_owned()
+        } else {
+            format!("Desktop-Default {suffix}")
+        }
+        .into();
+        raw["profiles"].as_array_mut().unwrap().push(profile);
+    }
+    let source = decode(190, "real", encoded(&raw)).unwrap();
+    let plan = SerialInitializationPlan::prepare(&source, initialization_context()).unwrap();
+    assert_eq!(plan.reason(), SerialInitialization::EmptyActiveGuid);
+    assert_eq!(plan.new_profile().name(), "Desktop-Default 100");
+    let result = plan.catalog().source_document().unwrap();
+    assert_eq!(
+        result["deviceMetadatas"]["real"]["name"],
+        "Existing custom name"
+    );
+    assert!(result["deviceMetadatas"]["real"]["futureMetadata"].is_null());
+}
+
+#[test]
+fn serial_initialization_rejects_existing_selection_uuid_collisions_and_unknown_editions() {
+    let selected = decode(190, "real", value("real", "selected", false)).unwrap();
+    assert!(SerialInitializationPlan::prepare(&selected, initialization_context()).is_err());
+    let mut raw = document("another-serial", "selected", false);
+    raw["profiles"][0]["guid"] = INITIAL_GUID.into();
+    raw["deviceMetadatas"]["another-serial"]["activeProfileGuid"] = INITIAL_GUID.into();
+    let source = decode(190, "real", encoded(&raw)).unwrap();
+    assert!(SerialInitializationPlan::prepare(&source, initialization_context()).is_err());
+    let source = decode(190, "real", value("another-serial", "selected", false)).unwrap();
+    for invalid in [
+        "",
+        "not-a-uuid",
+        "aaaaaaaa-bbbb-1ccc-8ddd-eeeeeeeeeeee",
+        "aaaaaaaa-bbbb-4ccc-0ddd-eeeeeeeeeeee",
+    ] {
+        let context = SerialInitializationContext {
+            new_guid: invalid,
+            ..initialization_context()
+        };
+        assert!(SerialInitializationPlan::prepare(&source, context).is_err());
+    }
+    let context = SerialInitializationContext {
+        edition_id: 129,
+        ..initialization_context()
+    };
+    assert!(SerialInitializationPlan::prepare(&source, context).is_err());
+}
+
+#[test]
+fn initialized_catalog_conflicts_and_stale_drafts_leave_the_entire_live_device_unchanged() {
+    let source = decode(190, "real", value("another-serial", "selected", false)).unwrap();
+    let plan = SerialInitializationPlan::prepare(&source, initialization_context()).unwrap();
+    let mut device = razer_model::product_preview::registered_preview(190).unwrap();
+    device.serial_number = "real".into();
+    let baseline = device.clone();
+    plan.apply(&mut device, &baseline).unwrap();
+    let before = serde_json::to_value(&device).unwrap();
+    assert!(plan.apply(&mut device, &baseline).is_err());
+    assert_eq!(serde_json::to_value(&device).unwrap(), before);
+    let changed = decode(190, "real", value("another-serial", "selected", true)).unwrap();
+    assert!(import(&mut device, &changed).is_err());
+    assert_eq!(serde_json::to_value(&device).unwrap(), before);
+    let competing = SerialInitializationPlan::prepare(
+        &source,
+        SerialInitializationContext {
+            new_guid: "bbbbbbbb-cccc-4ddd-9eee-ffffffffffff",
+            ..initialization_context()
+        },
+    )
+    .unwrap();
+    let current = device.clone();
+    assert!(competing.apply(&mut device, &current).is_err());
+    assert_eq!(serde_json::to_value(&device).unwrap(), before);
+}
+
+#[test]
+fn current182_serial_initialization_uses_its_source_defaults_and_literal_empty_host_name() {
+    let mut raw = razer_device::profile_transfer::default_device_182();
+    raw["schemaVersion"] = 13.into();
+    raw["profiles"] = serde_json::json!([]);
+    raw["isDefault"] = true.into();
+    let source = decode(182, "real", encoded(&raw)).unwrap();
+    let plan = SerialInitializationPlan::prepare(
+        &source,
+        SerialInitializationContext {
+            computer_name: "",
+            device_name: None,
+            ..initialization_context()
+        },
+    )
+    .unwrap();
+    let result = plan.catalog().source_document().unwrap();
+    let mut expected = razer_device::profile_transfer::default_profile_182();
+    expected["guid"] = INITIAL_GUID.into();
+    expected["name"] = "-Default".into();
+    assert_eq!(result["profiles"], serde_json::json!([expected]));
+    assert_eq!(result["isDefault"], true);
+    assert_eq!(result["version"], raw["version"]);
+    assert_eq!(
+        result["deviceMetadatas"]["real"]["name"],
+        "Razer DeathAdder V3 Pro"
+    );
+}

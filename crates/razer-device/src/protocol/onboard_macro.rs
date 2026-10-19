@@ -111,14 +111,22 @@ impl MacroCatalog {
         );
         let mut ids = std::collections::BTreeSet::new();
         for (summary, id) in self.macros.iter().zip(&self.inventory.ids) {
-            ensure!(ids.insert(*id) && summary.metadata.macro_id == *id,
-                "Macro catalog contains a repeated or foreign ID");
+            ensure!(
+                ids.insert(*id) && summary.metadata.macro_id == *id,
+                "Macro catalog contains a repeated or foreign ID"
+            );
             let mut decoded = decode_metadata(*id, summary.metadata.raw.clone())?;
             decoded.blocks = summary.metadata.blocks.clone();
-            ensure!(decoded == summary.metadata, "Macro metadata differs from its observed bytes");
-            ensure!(summary.data_size <= self.inventory.storage.max_memory
-                && summary.allocated_size_with_name == required_memory(summary.data_size as usize)?,
-                "Macro catalog size differs from its observed storage");
+            ensure!(
+                decoded == summary.metadata,
+                "Macro metadata differs from its observed bytes"
+            );
+            ensure!(
+                summary.data_size <= self.inventory.storage.max_memory
+                    && summary.allocated_size_with_name
+                        == required_memory(summary.data_size as usize)?,
+                "Macro catalog size differs from its observed storage"
+            );
         }
         Ok(())
     }

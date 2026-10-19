@@ -1,9 +1,11 @@
 //! Source-confirmed local profile selection. The Chromium store is only read;
 //! imported settings retain provenance and are never device observations.
 mod catalog;
+mod initialization;
 mod leveldb;
 use anyhow::{Context, Result, ensure};
 pub use catalog::{LocalProfiles, Profile, SerialInitialization, SourceSelection};
+pub use initialization::{SerialInitializationContext, SerialInitializationPlan};
 use razer_device::{mouse_current_profile::Stages, mouse_dpi_stages::DpiStagesDraft};
 use razer_model::model::Device;
 use serde::{Deserialize, Serialize};
@@ -38,8 +40,23 @@ struct SourceIdentity {
 struct ProfileOwnership {
     serial: String,
     imported: Option<SourceIdentity>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    initialized: Option<InitializationOrigin>,
     explicitly_edited: bool,
     stages: DpiStagesDraft,
+    #[serde(flatten)]
+    extensions: BTreeMap<String, serde_json::Value>,
+}
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+struct InitializationOrigin {
+    product_id: u32,
+    serial: String,
+    guid: String,
+    edition_id: u32,
+    device_name: String,
+    reason: SerialInitialization,
+    baseline_sequence: u64,
+    baseline_sha256: String,
     #[serde(flatten)]
     extensions: BTreeMap<String, serde_json::Value>,
 }
@@ -116,7 +133,7 @@ fn ownership(device: &Device) -> Result<Ownership> {
     );
     for entry in state.profiles.values() {
         ensure!(
-            entry.explicitly_edited || entry.imported.is_some(),
+            entry.explicitly_edited || entry.imported.is_some() || entry.initialized.is_some(),
             "DPI profile has no recorded source or explicit edit"
         );
         razer_device::mouse_current_dpi::pack_for(device.product_id, &entry.stages)?;
@@ -129,6 +146,21 @@ fn ownership(device: &Device) -> Result<Ownership> {
                     && imported.sha256.len() == 64
                     && imported.sha256.bytes().all(|b| b.is_ascii_hexdigit()),
                 "invalid imported DPI profile identity"
+            );
+        }
+        if let Some(initialized) = &entry.initialized {
+            ensure!(
+                initialized.product_id == device.product_id
+                    && initialized.serial == entry.serial
+                    && !initialized.serial.is_empty()
+                    && !initialized.guid.is_empty()
+                    && initialized.baseline_sha256.len() == 64
+                    && initialized
+                        .baseline_sha256
+                        .bytes()
+                        .all(|b| b.is_ascii_hexdigit())
+                    && entry.imported.is_none(),
+                "invalid initialized mouse profile origin"
             );
         }
     }
@@ -196,6 +228,8 @@ pub fn import(device: &mut Device, baseline: &Device, source: &LocalProfiles) ->
         "host profile belongs to another device"
     );
     let mut state = ownership(device)?;
+    let retained_source = initialization::retain_initialized(source, device, &state)?;
+    let source = retained_source.as_ref().unwrap_or(source);
     let mut guids = std::collections::BTreeSet::new();
     let mut ids = std::collections::BTreeSet::new();
     for profile in &device.profiles {
@@ -216,6 +250,7 @@ pub fn import(device: &mut Device, baseline: &Device, source: &LocalProfiles) ->
         let id = previous.map_or(profile.guid(), |existing| existing.id.as_str());
         let old = state.profiles.get(id);
         let mut identity = source.identity(profile);
+        let mut initialized = source.initialized(profile).cloned();
         let mut extensions = BTreeMap::new();
         if let Some(old) = old {
             ensure!(
@@ -223,7 +258,10 @@ pub fn import(device: &mut Device, baseline: &Device, source: &LocalProfiles) ->
                 "DPI profile belongs to another serial"
             );
             let same_source = old.imported.as_ref().is_some_and(|imported| {
-                imported.guid == profile.guid() && imported.sha256 == identity.sha256
+                imported.guid == profile.guid()
+                    && identity
+                        .as_ref()
+                        .is_some_and(|identity| imported.sha256 == identity.sha256)
             });
             ensure!(
                 !old.explicitly_edited || old.imported.is_none() || same_source,
@@ -239,7 +277,12 @@ pub fn import(device: &mut Device, baseline: &Device, source: &LocalProfiles) ->
             }
             extensions = old.extensions.clone();
             if let Some(imported) = &old.imported {
-                identity.extensions = imported.extensions.clone();
+                if let Some(identity) = &mut identity {
+                    identity.extensions = imported.extensions.clone();
+                }
+            }
+            if let (Some(initialized), Some(previous)) = (&mut initialized, &old.initialized) {
+                initialized.extensions = previous.extensions.clone();
             }
         }
         profiles.push(razer_model::model::Profile {
@@ -254,7 +297,8 @@ pub fn import(device: &mut Device, baseline: &Device, source: &LocalProfiles) ->
             id.to_owned(),
             ProfileOwnership {
                 serial: device.serial_number.clone(),
-                imported: Some(identity),
+                imported: identity,
+                initialized,
                 explicitly_edited: false,
                 stages: profile.stages()?,
                 extensions,
@@ -343,6 +387,10 @@ pub fn mark_edited(
         .profiles
         .get(profile_id)
         .and_then(|p| p.imported.clone());
+    let initialized = state
+        .profiles
+        .get(profile_id)
+        .and_then(|p| p.initialized.clone());
     let extensions = state
         .profiles
         .get(profile_id)
@@ -353,6 +401,7 @@ pub fn mark_edited(
         ProfileOwnership {
             serial: device.serial_number.clone(),
             imported,
+            initialized,
             explicitly_edited: true,
             stages,
             extensions,

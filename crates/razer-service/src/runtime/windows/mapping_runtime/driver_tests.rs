@@ -154,7 +154,7 @@ fn partial_hook_failure_is_owned_and_removed_before_handle_close() {
         },
         extra_information: 0,
     };
-    assert!(owner.replace_hooks(vec![hook]).is_err());
+    assert!(owner.route().replace_hooks(vec![hook]).is_err());
     owner.shutdown().unwrap();
     let s = observed.lock().unwrap();
     assert!(s.operations.iter().any(|op| *op == hook.remove()));

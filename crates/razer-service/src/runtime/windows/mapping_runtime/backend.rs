@@ -18,10 +18,10 @@ use std::{
 };
 use uuid::Uuid;
 
-#[path = "backend/gamepad_observation.rs"]
-mod gamepad_observation;
 #[path = "backend/analog_observation.rs"]
 mod analog_observation;
+#[path = "backend/gamepad_observation.rs"]
+mod gamepad_observation;
 #[path = "backend/observation.rs"]
 mod observation;
 #[path = "backend/rotation.rs"]
@@ -29,7 +29,6 @@ mod rotation;
 
 pub(super) struct ExecutionContext {
     pub caller: Uuid,
-    pub info: identity::DeviceInfo,
     pub route: driver::Route,
     pub cancellation: Arc<super::Cancellation>,
     pub macros: Arc<Mutex<State>>,
@@ -202,7 +201,6 @@ impl<E: device::Executor> Core<E> {
                 device::Owner::open(route, caller, worker_modes, move |route, cancellation| {
                     factory(ExecutionContext {
                         caller,
-                        info,
                         route,
                         cancellation,
                         macros,
@@ -285,12 +283,14 @@ impl<E: device::Executor> Core<E> {
         registration.ensure_active()?;
         registration.target.revalidate()?;
         let expected_product = if registration.target.logical_product.product_id() == 158
-            && document.get("dualLinked") == Some(&Value::Bool(true)) {
+            && document.get("dualLinked") == Some(&Value::Bool(true))
+        {
             registration.target.info.product_id
-        } else { registration.target.logical_product.product_id() };
+        } else {
+            registration.target.logical_product.product_id()
+        };
         ensure!(
-            document.get("productId").and_then(Value::as_u64)
-                == Some(u64::from(expected_product)),
+            document.get("productId").and_then(Value::as_u64) == Some(u64::from(expected_product)),
             "Mapping document belongs to another product"
         );
         ensure!(
@@ -1071,13 +1071,7 @@ impl<E: device::Executor> crate::mapping::owner::Backend for Backend<E> {
             .observed_completions();
         for (id, caller, result) in completions {
             let errors = match result {
-                Ok(finished) => finished
-                    .completion
-                    .execution_error
-                    .into_iter()
-                    .chain(finished.completion.operation_errors)
-                    .chain(finished.completion.cleanup_errors)
-                    .collect::<Vec<_>>(),
+                Ok(finished) => finished.into_errors(id),
                 Err(error) => vec![format!("{error:#}")],
             };
             if !errors.is_empty() {
@@ -1266,9 +1260,9 @@ impl<E: device::Executor> crate::mapping::owner::Backend for Backend<E> {
             }
         };
         errors.extend(result.cleanup_errors);
-        for (_, result) in result.executions {
+        for (id, result) in result.executions {
             match result {
-                Ok(finished) => errors.extend(finished.completion.cleanup_errors),
+                Ok(finished) => errors.extend(finished.into_errors(id)),
                 Err(error) => errors.push(format!("{error:#}")),
             }
         }

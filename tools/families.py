@@ -1547,6 +1547,8 @@ def audit_family_function(args):
         return audit_keyboard_gamepad_tester(args)
     if getattr(args, "query", None) == "keyboard-local-controls":
         return audit_keyboard_local_controls(args)
+    if getattr(args, "query", None) == "keyboard-local-profile-adoption":
+        return audit_keyboard_local_profile_adoption(args)
     if getattr(args, "query", None) == "keyboard-brightness":
         return audit_keyboard_brightness(args)
     if getattr(args, "query", None) == "keyboard-artwork":
@@ -1591,6 +1593,8 @@ def audit_family_function(args):
         return audit_audio_help_reset(args)
     if getattr(args, "query", None) == "audio-local-profiles":
         return audit_audio_local_profiles(args)
+    if getattr(args, "query", None) == "hue-profile-actions":
+        return audit_hue_profile_actions(args)
     if getattr(args, "query", None) == "audio-seiren-eq":
         return audit_audio_seiren_eq(args)
     if getattr(args, "query", None) == "audio-leviathan":
@@ -7944,6 +7948,113 @@ def audit_profile_import_processors(args):
                       "complete_owners": len(regions), "failures": failed}), flush=True)
     if failed:
         raise ValueError("Current profile import source chains remain unresolved")
+
+
+def audit_keyboard_local_profile_adoption(args):
+    """Retain the current 679 onboard identity adoption and local save closure."""
+    from host import HostLocalAudit
+    if args.family != "keyboard" or args.function != "mw" or set(args.product or [679]) != {679}:
+        raise ValueError("keyboard-local-profile-adoption requires current 679 middleware")
+    audit = HostLocalAudit()
+    metadata, files = audit.source_set("keyboard-mw-679-current")
+    capture = audit.frontend_capture("keyboard-mw-679-current", files)
+    exports = {}
+    for role, module, symbol in (("adopt_onboard_identities", 51765, "od"),
+            ("layout_default_mappings", 17204, "q$"), ("slot_inventory", 17204, "o8"),
+            ("publish_default_mappings", 10745, "qz"), ("persist_local_document", 89423, "Pf")):
+        exports[role] = audit.webpack_export(role, files, module, symbol)
+    adopter = exports["adopt_onboard_identities"]
+    merge = audit.binding("replace_source_slot_guids", adopter["original"], "Le", adopter["binding"]["start_byte"])
+    slot = exports["slot_inventory"]
+    slot_sync = audit.binding("sync_registered_slot_inventory", slot["original"], "T", slot["binding"]["start_byte"])
+    slot_constants = audit.binding("registered_slot_identities", slot["original"], "E", slot_sync["start_byte"])
+    save = exports["persist_local_document"]
+    storage = audit.binding("hashed_local_storage_boundary", save["original"], "C", save["binding"]["start_byte"])
+    if ('i=[3,4,5,6]' not in merge["body"] or 'e&&o.push({mappingIndex:e,obmProfileGUID:r.guid})' not in merge["body"]
+            or '(0,S.qz)(t,n)' not in adopter["binding"]["body"]
+            or 'yield(0,It.Pf)(o,!1)' not in exports["publish_default_mappings"]["binding"]["body"]):
+        raise ValueError("Current keyboard identity adoption order or source index predicate changed")
+    if ('if(g.A.runtimeData.serialNumber)' not in save["binding"]["body"]
+            or 'yield C(o.wI.DEVICE_LOCALSTORAGE_KEY,e)' not in save["binding"]["body"]):
+        raise ValueError("Current keyboard local persistence serial gate differs")
+    if audit.final_snapshot():
+        raise ValueError("Current keyboard adoption inputs changed")
+    query = {"query": "keyboard-local-profile-adoption", "recorded_at_utc": a.stamp(),
+        "tool": identity(Path(__file__)), "analyzers": audit.parser_versions,
+        "offset_units": "UTF-8 bytes, end exclusive", "source_set": metadata, "full_capture": capture,
+        "products": [{"product_id": 679, "exports": exports, "slot_guid_replacement": merge,
+            "slot_sync": slot_sync, "slot_constants": slot_constants, "storage_boundary": storage,
+            "semantics": {
+                "adoption": "od reads the observed layout, obtains its full default mapping list, replaces only source slots3..6 and invokes qz. Le preserves its source truthy index predicate; mapping index0 is not replaced.",
+                "mapping_publication": "qz reads the real local document and default turbo document, initializes only missing default turbo data through the existing source factory, supplies the adopted mapping list to the converter and writes its resulting defaultMappings through Pf(document,false).",
+                "persistence": "Pf requires the current runtime serial. Within that gate it creates the documented metadata/defaultMappings fields, and only registers the first existing profile GUID for a missing serial metadata entry. Its false flag preserves isDefault; the final hashed local setter owns the write.",
+                "product_scope": "The retained Pf body includes a system fan compatibility branch. That branch is not a generic keyboard initialization rule and is not projected into679.",
+            }, "failures": [], "runtime_acceptance": "unverified"}],
+        "complete_owners": audit.owners, "originals": list(audit.sources.values()),
+        "failures": [], "target_execution": False, "runtime_acceptance": "unverified"}
+    destination = a.ROOT / ".analysis/results/frontend/keyboard-mw-audit.json"
+    report = json.loads(destination.read_bytes())
+    report.setdefault("queries", {})[query["query"]] = query
+    a.save(destination, report)
+    print(json.dumps({"receipt": a.rel(destination), "query": query["query"],
+        "products": 1, "complete_owners": len(audit.owners), "target_execution": False}), flush=True)
+
+
+def audit_hue_profile_actions(args):
+    """Retain current769 profile field mutation owners and their UI payloads."""
+    from host import HostLocalAudit
+    if args.family != "accessories" or args.function != "mw" or set(args.product or [769]) != {769}:
+        raise ValueError("hue-profile-actions requires current769 accessory middleware")
+    audit = HostLocalAudit()
+    source_sets, files = {}, {}
+    for layer, name in (("ui", "accessories-769-current"), ("mw", "accessories-mw-769-current")):
+        metadata, originals = audit.source_set(name)
+        source_sets[layer] = {**metadata, "full_capture": audit.frontend_capture(name, originals)}
+        files[layer] = originals
+    ui = next(item for item in files["ui"] if Path(item["path"]).name.startswith("main."))
+    roles = {}
+    for role, anchor, syntax in (
+            ("brightness_controls", "function CA()", "function_declaration"),
+            ("brightness_action", "case X.tTR:{eR(E,e);", "switch_case"),
+            ("quick_effect_action", "case X.J1d:{var t;const _=E.payload", "switch_case"),
+            ("port_brightness_action", "function Ap(e,E){if(E.type===OI)", "function_declaration"),
+            ("port_values_payload", "Wp=(e,E)=>{let _=E.ports;", "variable_declarator"),
+            ("port_values_reducer", "function Vp(e,E)", "function_declaration")):
+        keys = audit.retain(role, ui, anchor, {syntax})
+        if len(keys) != 1:
+            raise ValueError("Current Hue action owner is ambiguous: " + role)
+        roles[role] = keys[0]
+    ports = audit.owners[roles["port_brightness_action"]]
+    port_mutation = audit.binding("mutate_selected_port", ui, "Op", ports["byte_start"])
+    port_projection = audit.binding("project_external_port_payload", ui, "fp", audit.owners[roles["port_values_reducer"]]["byte_start"])
+    per_light = audit.binding("single_light_control", ui, "NA", audit.owners[roles["brightness_controls"]]["byte_start"])
+    tasks = {role: audit.webpack_export(role, files["mw"], 30525, symbol)
+        for role, symbol in (("brightness_task", "pZ3"), ("port_values_task", "hCj"), ("quick_effect_task", "gEK"))}
+    if ('if(D.brightness&&(0,z.Jh)(D.brightness))' not in tasks["brightness_task"]["binding"]["body"]
+            or 'if(void 0===R.quickEffects&&(R.quickEffects={})' not in tasks["quick_effect_task"]["binding"]["body"]
+            or 'if(l.ports){if(l.ports=n,' not in tasks["port_values_task"]["binding"]["body"]):
+        raise ValueError("Current Hue source field creation rules differ")
+    if 'void 0===o?(o={},a.push(E))' not in port_mutation["body"]:
+        raise ValueError("Current Hue absent port mutation semantics differ")
+    if audit.final_snapshot():
+        raise ValueError("Current Hue action inputs changed")
+    query = {"query": "hue-profile-actions", "recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)),
+        "analyzers": audit.parser_versions, "offset_units": "UTF-8 bytes, end exclusive", "source_sets": source_sets,
+        "products": [{"product_id": 769, "roles": roles, "tasks": tasks, "port_mutation": port_mutation,
+            "port_projection": port_projection, "per_light_control": per_light, "semantics": {
+                "brightness": "CA shallow-merges the edited UI field into its brightness reducer payload. taskMakerSetBrightness changes only a real selected-profile brightness object and does not create it from presentation defaults.",
+                "quick_effect": "The explicit ON_SET_EFFECTS action creates an absent selected-profile quickEffects object, sets the selected identity and provided setting, and stores the UI's regionId0. Other profile fields remain untouched.",
+                "ports": "Ap passes only brightness.value to Op; existing matching ports keep identity and order. An absent UI port appends the supplied brightness field object without inventing its identity. taskMakerSetPortValues persists ports only when the selected profile already owns that field; it does not create ports from the UI's empty array.",
+                "implementation_boundary": "Rust sends typed edit actions to the exact existing source profile instead of persisting the presentation snapshot. Hue discovery/pairing/transport and runtime acceptance remain unverified.",
+            }, "failures": [], "runtime_acceptance": "unverified"}],
+        "complete_owners": audit.owners, "originals": list(audit.sources.values()),
+        "failures": [], "target_execution": False, "runtime_acceptance": "unverified"}
+    destination = a.ROOT / ".analysis/results/frontend/accessories-main-audit.json"
+    report = json.loads(destination.read_bytes())
+    report.setdefault("queries", {})[query["query"]] = query
+    a.save(destination, report)
+    print(json.dumps({"receipt": a.rel(destination), "query": query["query"],
+        "products": 1, "complete_owners": len(audit.owners), "target_execution": False}), flush=True)
 
 
 def audit_audio_local_profiles(args):
@@ -21026,7 +21137,7 @@ def add_commands(parsers):
     audit.add_argument("--family", required=True, choices=list(FAMILY_CANDIDATES))
     audit.add_argument("--function", required=True)
     audit.add_argument("--product", type=int, action="append")
-    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-local-profile-schema", "mouse-dpi-matcher", "mouse-dynamic-sensitivity", "mouse-rotation", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-gamepad-tester", "keyboard-local-controls", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-local-profiles", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
+    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-local-profile-schema", "mouse-dpi-matcher", "mouse-dynamic-sensitivity", "mouse-rotation", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-gamepad-tester", "keyboard-local-controls", "keyboard-local-profile-adoption", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-local-profiles", "hue-profile-actions", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
     audit.add_argument("--prepare", action="store_true", help="Prepare verified current artwork resources through the shared workflow")
     audit.add_argument("--receipt-only", action="store_true", help="Refresh supported mouse or mapping-engine evidence without rewriting runtime descriptors")
     parser = parsers.add_parser("acquire-family", help=__doc__)

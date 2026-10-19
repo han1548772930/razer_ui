@@ -2119,12 +2119,9 @@ impl SourceProductWorkspace {
         let mut changed = false;
         let result = result.and_then(|source| {
             if let Some(source) = source {
-                changed = razer_storage::host_local_profile::import(
-                    &mut self.device,
-                    baseline,
-                    &source,
-                )
-                .map_err(|e| format!("{e:#}"))?;
+                changed =
+                    razer_storage::host_local_profile::import(&mut self.device, baseline, &source)
+                        .map_err(|e| format!("{e:#}"))?;
             } else {
                 return razer_storage::host_local_profile::stages_without_host(&self.device)
                     .map_err(|e| format!("{e:#}"));
@@ -2856,8 +2853,24 @@ impl SourceProductWorkspace {
             let body = cx.new(|cx| super::hue::HueWorkspace::new(window, cx));
             subscriptions.push(cx.subscribe(
                 &body,
-                |this: &mut Self, body, _: &super::hue::HueChanged, cx| {
-                    this.capture(body.read(cx).snapshot(), cx);
+                |this: &mut Self, _, action: &super::hue::HueChanged, cx| {
+                    let Some(settings) = this
+                        .device
+                        .profiles
+                        .iter_mut()
+                        .find(|profile| profile.id == this.device.active_profile)
+                        .and_then(|profile| profile.source_settings.as_mut())
+                    else {
+                        return;
+                    };
+                    match action.apply(settings) {
+                        Ok(true) => {
+                            cx.emit(WorkspaceEvent::Changed);
+                            cx.notify();
+                        }
+                        Ok(false) => {}
+                        Err(error) => eprintln!("[Hue source action] {error}"),
+                    }
                 },
             ));
             subscriptions.push(cx.subscribe(

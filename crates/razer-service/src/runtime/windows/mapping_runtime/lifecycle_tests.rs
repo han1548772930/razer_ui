@@ -1,6 +1,73 @@
 use super::*;
 
 #[test]
+fn execution_failure_retains_actual_input_audio_and_cleanup_without_claiming_success() {
+    let id = Uuid::new_v4();
+    let errors = Finished {
+        id,
+        completion: Completion {
+            outcome: razer_device::macro_runtime::Outcome::Cancelled,
+            execution_error: Some("source operation failed".into()),
+            operation_errors: vec!["driver response failed".into()],
+            omitted_operation_errors: 2,
+            cleanup_errors: vec!["release failed".into()],
+        },
+        last_input: Some(InputReceipt::Movement {
+            x: 41,
+            y: -7,
+            driver: true,
+        }),
+        completed_inputs: 3,
+        audio_observations: vec![AudioObservation {
+            endpoint: "observed endpoint".into(),
+            scalar: 0.37,
+            muted: true,
+        }],
+    }
+    .into_errors(id);
+    for expected in [
+        "source operation failed",
+        "driver response failed",
+        "release failed",
+        "2 additional",
+        "completed_inputs=3",
+        "x=41 y=-7 driver=true",
+        "observed endpoint: scalar=0.37 muted=true",
+    ] {
+        assert!(
+            errors.iter().any(|error| error.contains(expected)),
+            "missing {expected}"
+        );
+    }
+}
+
+#[test]
+fn execution_receipt_from_another_worker_is_not_an_empty_success() {
+    let id = Uuid::new_v4();
+    let expected = Uuid::new_v4();
+    let errors = Finished {
+        id,
+        completion: Completion {
+            outcome: razer_device::macro_runtime::Outcome::Completed,
+            execution_error: None,
+            operation_errors: Vec::new(),
+            omitted_operation_errors: 0,
+            cleanup_errors: Vec::new(),
+        },
+        last_input: None,
+        completed_inputs: 0,
+        audio_observations: Vec::new(),
+    }
+    .into_errors(expected);
+    assert!(
+        errors
+            .iter()
+            .any(|error| error.contains(&expected.to_string()))
+    );
+    assert!(errors.iter().any(|error| error.contains(&id.to_string())));
+}
+
+#[test]
 fn caller_drain_cancels_and_joins_real_workers_despite_scheduler_mismatch() {
     let mut state = State::new();
     let caller = Uuid::new_v4();

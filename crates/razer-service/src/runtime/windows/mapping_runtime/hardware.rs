@@ -358,6 +358,7 @@ impl<T: Transport> Drop for Session<T> {
 }
 
 enum Command {
+    #[cfg(test)]
     Refresh(mpsc::SyncSender<Result<(), String>>),
     Fence(mpsc::SyncSender<BTreeMap<String, (String, u64)>>),
     Stop,
@@ -410,6 +411,7 @@ impl Owner {
                 let mut failure = None;
                 'worker: loop {
                     match commands.recv_timeout(wait) {
+                        #[cfg(test)]
                         Ok(Command::Refresh(reply)) => {
                             let _ =
                                 reply.send(session.refresh().map_err(|error| format!("{error:#}")));
@@ -479,7 +481,10 @@ impl Owner {
         }
     }
 
-    pub fn refresh_paths(&self) -> Result<()> {
+    /// A simulation fence for collection replacement; live probing belongs to
+    /// the worker's source observation schedule.
+    #[cfg(test)]
+    fn refresh_paths(&self) -> Result<()> {
         let (reply, receive) = mpsc::sync_channel(1);
         self.sender
             .send(Command::Refresh(reply))

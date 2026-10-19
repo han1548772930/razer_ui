@@ -5998,6 +5998,7 @@ dependencies = [
  "h2",
  "http",
  "image",
+ "log",
  "md5",
  "razer-catalog",
  "razer-device",

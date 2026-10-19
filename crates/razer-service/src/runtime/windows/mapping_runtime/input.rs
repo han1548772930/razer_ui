@@ -62,6 +62,18 @@ pub enum Receipt {
     Movement { x: i32, y: i32, driver: bool },
 }
 
+impl std::fmt::Display for Receipt {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Driver(execution) => write!(formatter, "driver {execution:?}"),
+            Self::OperatingSystem(execution) => write!(formatter, "OS {execution:?}"),
+            Self::Movement { x, y, driver } => {
+                write!(formatter, "movement x={x} y={y} driver={driver}")
+            }
+        }
+    }
+}
+
 pub(super) struct Input {
     driver: Option<super::driver::Output>,
     pub last_receipt: Option<Receipt>,

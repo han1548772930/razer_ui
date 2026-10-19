@@ -29,8 +29,12 @@ pub struct ReadOptions {
 
 impl ReadOptions {
     pub fn validate(&self) -> Result<()> {
-        ensure!(self.locally_known_macro_guids.iter().all(|guid| !guid.is_empty()),
-            "Locally known macro identity is empty");
+        ensure!(
+            self.locally_known_macro_guids
+                .iter()
+                .all(|guid| !guid.is_empty()),
+            "Locally known macro identity is empty"
+        );
         Ok(())
     }
 }
@@ -53,8 +57,10 @@ impl<T> Reading<T> {
     fn validate_attempt(&self) -> Result<()> {
         match self {
             Self::Unobserved => anyhow::bail!("An attempted OBM field is unobserved"),
-            Self::Failed { message } => ensure!(!message.is_empty(), "OBM failure has no diagnostic"),
-            Self::Observed(_) => {},
+            Self::Failed { message } => {
+                ensure!(!message.is_empty(), "OBM failure has no diagnostic")
+            }
+            Self::Observed(_) => {}
         }
         Ok(())
     }
@@ -189,50 +195,84 @@ pub struct Snapshot {
 
 impl Snapshot {
     pub fn validate(&self) -> Result<()> {
-        ensure!(self.product_id == PRODUCT_ID, "OBM snapshot belongs to another product");
-        ensure!(self.key_inventory == selected_keys(self.layout_id)?,
-            "OBM snapshot key inventory differs from its current layout");
+        ensure!(
+            self.product_id == PRODUCT_ID,
+            "OBM snapshot belongs to another product"
+        );
+        ensure!(
+            self.key_inventory == selected_keys(self.layout_id)?,
+            "OBM snapshot key inventory differs from its current layout"
+        );
         self.macros.validate()?;
         self.inventory.validate(self.product_id)?;
-        ensure!(self.profiles.len() == self.inventory.slots.len(), "OBM snapshot profile count differs");
+        ensure!(
+            self.profiles.len() == self.inventory.slots.len(),
+            "OBM snapshot profile count differs"
+        );
         for (profile, slot) in self.profiles.iter().zip(&self.inventory.slots) {
-            ensure!(profile.slot_id == slot.slot_id, "OBM profile reading belongs to a foreign slot");
+            ensure!(
+                profile.slot_id == slot.slot_id,
+                "OBM profile reading belongs to a foreign slot"
+            );
             profile.brightness.validate_attempt()?;
             if let Some(brightness) = profile.brightness.observed() {
-                ensure!(brightness.profile_id == slot.slot_id
-                    && brightness.percent == (u16::from(brightness.raw_value) * 100).div_ceil(255) as u8,
-                    "OBM brightness differs from the observed slot or raw value");
+                ensure!(
+                    brightness.profile_id == slot.slot_id
+                        && brightness.percent
+                            == (u16::from(brightness.raw_value) * 100).div_ceil(255) as u8,
+                    "OBM brightness differs from the observed slot or raw value"
+                );
             }
-            ensure!(profile.passes.len() == 2, "OBM snapshot is missing a source mode pass");
+            ensure!(
+                profile.passes.len() == 2,
+                "OBM snapshot is missing a source mode pass"
+            );
             for (pass, mode) in profile.passes.iter().zip([Mode::Normal, Mode::Hypershift]) {
                 ensure!(pass.mode == mode, "OBM snapshot mode passes are reordered");
-                let keys: Vec<_> = self.key_inventory.iter().filter(|key| match mode {
-                    Mode::Normal => !key.ignore_normal,
-                    Mode::Hypershift => !key.ignore_hypershift,
-                }).map(|key| key.firmware_key_id).collect();
-                ensure!(pass.assignments.len() == keys.chunks(8).len()
-                    && pass.rapid_trigger.len() == keys.chunks(13).len()
-                    && pass.actuation.len() == keys.chunks(15).len(),
-                    "OBM snapshot batches are missing or exceed source limits");
+                let keys: Vec<_> = self
+                    .key_inventory
+                    .iter()
+                    .filter(|key| match mode {
+                        Mode::Normal => !key.ignore_normal,
+                        Mode::Hypershift => !key.ignore_hypershift,
+                    })
+                    .map(|key| key.firmware_key_id)
+                    .collect();
+                ensure!(
+                    pass.assignments.len() == keys.chunks(8).len()
+                        && pass.rapid_trigger.len() == keys.chunks(13).len()
+                        && pass.actuation.len() == keys.chunks(15).len(),
+                    "OBM snapshot batches are missing or exceed source limits"
+                );
                 for (batch, expected) in pass.assignments.iter().zip(keys.chunks(8)) {
-                    ensure!(batch.key_ids == expected && (1..=2).contains(&batch.attempts.len()),
-                        "OBM assignment batch keys or attempts differ");
+                    ensure!(
+                        batch.key_ids == expected && (1..=2).contains(&batch.attempts.len()),
+                        "OBM assignment batch keys or attempts differ"
+                    );
                     for (index, attempt) in batch.attempts.iter().enumerate() {
                         attempt.validate_attempt()?;
                         if index == 1 {
-                            ensure!(matches!(&batch.attempts[0], Reading::Observed(rows)
+                            ensure!(
+                                matches!(&batch.attempts[0], Reading::Observed(rows)
                                 if rows.iter().all(|row| row.data.iter().all(|byte| *byte == 0))),
-                                "OBM assignment retry lacks the source zero-data condition");
+                                "OBM assignment retry lacks the source zero-data condition"
+                            );
                         }
                         if let Some(rows) = attempt.observed() {
                             validate_returned_keys(expected, rows.iter().map(|row| row.key_id))?;
-                            ensure!(rows.iter().all(|row| row.mode == mode.wire() && row.data_size <= 5),
-                                "OBM assignment mode or data size differs");
+                            ensure!(
+                                rows.iter()
+                                    .all(|row| row.mode == mode.wire() && row.data_size <= 5),
+                                "OBM assignment mode or data size differs"
+                            );
                         }
                     }
                 }
                 for (batch, expected) in pass.rapid_trigger.iter().zip(keys.chunks(13)) {
-                    ensure!(batch.key_ids == expected, "OBM rapid-trigger batch keys differ");
+                    ensure!(
+                        batch.key_ids == expected,
+                        "OBM rapid-trigger batch keys differ"
+                    );
                     batch.reading.validate_attempt()?;
                     if let Some(points) = batch.reading.observed() {
                         validate_returned_keys(expected, points.iter().map(|point| point.key_id))?;
@@ -255,8 +295,12 @@ impl Snapshot {
 fn validate_returned_keys(expected: &[u8], actual: impl Iterator<Item = u8>) -> Result<()> {
     let actual: Vec<_> = actual.collect();
     let unique: BTreeSet<_> = actual.iter().copied().collect();
-    ensure!(actual.len() == expected.len() && unique.len() == expected.len()
-        && expected.iter().all(|key| unique.contains(key)), "OBM returned keys differ from the requested batch");
+    ensure!(
+        actual.len() == expected.len()
+            && unique.len() == expected.len()
+            && expected.iter().all(|key| unique.contains(key)),
+        "OBM returned keys differ from the requested batch"
+    );
     Ok(())
 }
 
@@ -569,9 +613,13 @@ pub struct CompleteReading {
 impl CompleteReading {
     pub fn validate_for(&self, options: &ReadOptions) -> Result<()> {
         options.validate()?;
-        ensure!(self.snapshot.layout_id == options.layout_id, "OBM reading belongs to another layout request");
+        ensure!(
+            self.snapshot.layout_id == options.layout_id,
+            "OBM reading belongs to another layout request"
+        );
         self.snapshot.validate()?;
-        self.import_details.validate_for(&self.snapshot, &options.locally_known_macro_guids)
+        self.import_details
+            .validate_for(&self.snapshot, &options.locally_known_macro_guids)
     }
 }
 
@@ -579,40 +627,73 @@ impl CompleteReading {
 /// no device I/O. The caller consumes this full observation in that same local
 /// merge order, while all physical reads retain a single collection lease.
 pub fn read_complete(
-    device: &dyn FeatureTransport, cap: &DeviceReadCapability, options: &ReadOptions,
-    mut next: impl FnMut() -> Result<u8>, validate: &impl Fn() -> Result<()>,
+    device: &dyn FeatureTransport,
+    cap: &DeviceReadCapability,
+    options: &ReadOptions,
+    mut next: impl FnMut() -> Result<u8>,
+    validate: &impl Fn() -> Result<()>,
 ) -> Result<CompleteReading> {
     options.validate()?;
     let snapshot = read_hid(device, cap, options.layout_id, &mut next, validate)?;
-    let import_details = read_import_details(device, cap, &snapshot,
-        &options.locally_known_macro_guids, &mut next, validate)?;
-    let reading = CompleteReading { snapshot, import_details };
+    let import_details = read_import_details(
+        device,
+        cap,
+        &snapshot,
+        &options.locally_known_macro_guids,
+        &mut next,
+        validate,
+    )?;
+    let reading = CompleteReading {
+        snapshot,
+        import_details,
+    };
     reading.validate_for(options)?;
     validate()?;
     Ok(reading)
 }
 
 impl ImportDetails {
-    pub fn validate_for(&self, snapshot: &Snapshot, known_macro_guids: &BTreeSet<String>) -> Result<()> {
-        ensure!(self.macros.len() == snapshot.macros.macros.len()
-            && self.continuous_rapid_trigger.len() == snapshot.inventory.slots.len(),
-            "OBM import details are missing source macros or slots");
+    pub fn validate_for(
+        &self,
+        snapshot: &Snapshot,
+        known_macro_guids: &BTreeSet<String>,
+    ) -> Result<()> {
+        ensure!(
+            self.macros.len() == snapshot.macros.macros.len()
+                && self.continuous_rapid_trigger.len() == snapshot.inventory.slots.len(),
+            "OBM import details are missing source macros or slots"
+        );
         for (detail, summary) in self.macros.iter().zip(&snapshot.macros.macros) {
-            ensure!(detail.macro_id == summary.metadata.macro_id, "OBM macro details belong to another macro");
+            ensure!(
+                detail.macro_id == summary.metadata.macro_id,
+                "OBM macro details belong to another macro"
+            );
             if known_macro_guids.contains(&summary.metadata.guid) {
-                ensure!(matches!(detail.content, Reading::Unobserved), "Source skips already-local macro bytes");
+                ensure!(
+                    matches!(detail.content, Reading::Unobserved),
+                    "Source skips already-local macro bytes"
+                );
             } else {
                 detail.content.validate_attempt()?;
                 if let Some(reading) = detail.content.observed() {
-                    ensure!(reading.metadata == summary.metadata
-                        && reading.data_size <= snapshot.macros.inventory.storage.max_memory
-                        && reading.data.len() == usize::try_from(reading.data_size)?,
-                        "OBM macro detail bytes differ from their observed metadata or size");
+                    ensure!(
+                        reading.metadata == summary.metadata
+                            && reading.data_size <= snapshot.macros.inventory.storage.max_memory
+                            && reading.data.len() == usize::try_from(reading.data_size)?,
+                        "OBM macro detail bytes differ from their observed metadata or size"
+                    );
                 }
             }
         }
-        for (detail, slot) in self.continuous_rapid_trigger.iter().zip(&snapshot.inventory.slots) {
-            ensure!(detail.slot_id == slot.slot_id, "OBM continuous RT belongs to another slot");
+        for (detail, slot) in self
+            .continuous_rapid_trigger
+            .iter()
+            .zip(&snapshot.inventory.slots)
+        {
+            ensure!(
+                detail.slot_id == slot.slot_id,
+                "OBM continuous RT belongs to another slot"
+            );
             detail.raw_enabled.validate_attempt()?;
         }
         Ok(())

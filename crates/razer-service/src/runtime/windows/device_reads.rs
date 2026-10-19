@@ -599,7 +599,7 @@ fn keyboard_peer_online(
 
 pub(super) fn keyboard_metadata(
     target: &DeviceReadTarget,
-    query: super::super::KeyboardRead,
+    query: super::super::KeyboardRead<'_>,
 ) -> anyhow::Result<Value> {
     use super::super::KeyboardRead;
     use razer_device::keyboard_metadata;
@@ -608,6 +608,12 @@ pub(super) fn keyboard_metadata(
             razer_device::keyboard_profile_inventory::supports(target.product_id),
             "Keyboard does not mount the current HID OBM inventory"
         );
+    }
+    if let KeyboardRead::OnboardProfiles(options) = query {
+        razer_ipc::keyboard_onboard_profiles::validate_target(
+            &razer_ipc::keyboard_profile_inventory::Target::WindowsContainer { target: target.clone() },
+        )?;
+        options.validate()?;
     }
     let selected =
         match keyboard_metadata::hid_capability(target.product_id, target.physical_product_id) {
@@ -673,6 +679,16 @@ pub(super) fn keyboard_metadata(
         || (matches!(query, KeyboardRead::ProfileInventory) && target.peer_product_id.is_some());
     if observe_peer {
         keyboard_peer_online(&device, target, &validate)?;
+    }
+    if let KeyboardRead::OnboardProfiles(options) = query {
+        let reading = razer_device::keyboard_onboard_profiles::read_complete(
+            &device, cap, options, || transaction(target, cap), &validate,
+        )?;
+        validate()?;
+        return Ok(serde_json::to_value(razer_ipc::keyboard_onboard_profiles::Observation {
+            target: razer_ipc::keyboard_profile_inventory::Target::WindowsContainer { target: target.clone() },
+            options: options.clone(), reading,
+        })?);
     }
     if matches!(query, KeyboardRead::ProfileInventory) {
         let inventory = razer_device::keyboard_profile_inventory::read_hid(

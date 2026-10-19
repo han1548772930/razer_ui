@@ -108,10 +108,6 @@ impl<T: NativeSessionTransport> Driver<T> {
         Ok(driver)
     }
 
-    pub fn path(&self) -> &str {
-        self.session.route().path().as_str()
-    }
-
     fn collect_input(&mut self) -> Result<()> {
         if self.session.state() != NativeSessionState::Connected {
             return Ok(());
@@ -339,8 +335,6 @@ impl<T: NativeSessionTransport> Drop for Driver<T> {
 
 enum Control {
     Hooks(Vec<HookInput>),
-    Enable(bool),
-    Notifications(bool),
     Redirect(RedirectKind, bool),
 }
 enum Command {
@@ -434,7 +428,7 @@ impl Route {
         let (reply, receive) = mpsc::sync_channel(1);
         self.sender
             .send(Command::Control(control, reply))
-            .context("Mapping driver stopped")?;
+            .with_context(|| format!("Mapping driver {} stopped", self.path()))?;
         receive
             .recv()
             .context("Mapping driver control reply disconnected")?
@@ -442,9 +436,6 @@ impl Route {
     }
     pub fn replace_hooks(&self, hooks: Vec<HookInput>) -> Result<()> {
         self.control(Control::Hooks(hooks))
-    }
-    pub fn enable(&self, enabled: bool) -> Result<()> {
-        self.control(Control::Enable(enabled))
     }
     pub fn output(&self) -> Output {
         Output {
@@ -596,10 +587,6 @@ impl Owner {
                                 Ok(Command::Control(control, reply)) => {
                                     let result = match control {
                                         Control::Hooks(hooks) => driver.replace_hooks(hooks),
-                                        Control::Enable(enabled) => driver.set_enabled(enabled),
-                                        Control::Notifications(enabled) => {
-                                            driver.notifications(enabled)
-                                        }
                                         Control::Redirect(kind, enabled) => {
                                             driver.redirect(kind, enabled)
                                         }
@@ -706,15 +693,6 @@ impl Owner {
             .recv()
             .context("Mapping driver control reply disconnected")?
             .map_err(anyhow::Error::msg)
-    }
-    pub fn replace_hooks(&self, hooks: Vec<HookInput>) -> Result<()> {
-        self.control(Control::Hooks(hooks))
-    }
-    pub fn enable(&self, enabled: bool) -> Result<()> {
-        self.control(Control::Enable(enabled))
-    }
-    pub fn notifications(&self, enabled: bool) -> Result<()> {
-        self.control(Control::Notifications(enabled))
     }
     pub fn redirect(&self, kind: RedirectKind, enabled: bool) -> Result<()> {
         self.control(Control::Redirect(kind, enabled))

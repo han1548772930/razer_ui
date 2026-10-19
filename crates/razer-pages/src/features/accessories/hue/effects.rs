@@ -63,7 +63,7 @@ impl HueWorkspace {
         let mut setting = self.effect_setting();
         setting[field] = value;
         self.effect_settings.insert(self.selected_effect, setting);
-        self.changed(cx);
+        self.effects_changed(cx);
     }
     pub(super) fn subscribe_effects(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.subscriptions.push(cx.subscribe_in(
@@ -81,7 +81,7 @@ impl HueWorkspace {
                     {
                         this.selected_effect = id;
                         this.sync_effects(window, cx);
-                        this.changed(cx);
+                        this.effects_changed(cx);
                     }
                 }
             },

@@ -133,27 +133,6 @@ impl Target {
         ensure!(physical == self.physical, "Physical mapping device changed");
         Ok(())
     }
-    pub fn discovery_query(
-        &self,
-    ) -> anyhow::Result<razer_device::mapping_native_session::NativeDiscoveryQuery> {
-        use razer_device::mapping_native_session::*;
-        let guid = uuid::Uuid::parse_str(self.info.container_id.trim_matches(['{', '}']))?;
-        let (a, b, c, d) = guid.as_fields();
-        Ok(NativeDiscoveryQuery {
-            container: NativeGuid::new(a, b, c, *d),
-            product: NativeProductIdentity::razer(
-                self.info.product_id.try_into()?,
-                if self.logical_product.is_keyboard() {
-                    NativeDeviceKind::Keyboard
-                } else {
-                    NativeDeviceKind::Mouse
-                },
-            ),
-            // Routing uses only the observed container/PID pair. An empty
-            // bitmap adds no unobserved per-product capabilities.
-            verified_capabilities: NativeCapabilitySet::empty(),
-        })
-    }
 }
 
 pub(super) fn gaming_indicator(target: &Target, enabled: bool) -> anyhow::Result<Value> {

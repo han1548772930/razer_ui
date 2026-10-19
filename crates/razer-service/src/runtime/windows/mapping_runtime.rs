@@ -116,6 +116,48 @@ pub struct Finished {
     pub audio_observations: Vec<AudioObservation>,
 }
 
+impl Finished {
+    fn into_errors(self, expected_id: Uuid) -> Vec<String> {
+        let mut errors = self
+            .completion
+            .execution_error
+            .into_iter()
+            .chain(self.completion.operation_errors)
+            .chain(self.completion.cleanup_errors)
+            .collect::<Vec<_>>();
+        if self.id != expected_id {
+            errors.push(format!(
+                "Mapping execution receipt {} belongs to another execution; expected {expected_id}",
+                self.id,
+            ));
+        }
+        if self.completion.omitted_operation_errors != 0 {
+            errors.push(format!(
+                "{} additional mapping operation errors were omitted",
+                self.completion.omitted_operation_errors,
+            ));
+        }
+        if !errors.is_empty() {
+            let last_input = self.last_input.as_ref().map(ToString::to_string);
+            let audio = self
+                .audio_observations
+                .iter()
+                .map(|observation| {
+                    format!(
+                        "{}: scalar={} muted={}",
+                        observation.endpoint, observation.scalar, observation.muted
+                    )
+                })
+                .collect::<Vec<_>>();
+            errors.push(format!(
+                "Execution {}: completed_inputs={} last_input={last_input:?} audio={audio:?}",
+                self.id, self.completed_inputs,
+            ));
+        }
+        errors
+    }
+}
+
 #[derive(Debug)]
 pub struct Shutdown {
     pub executions: Vec<(Uuid, Result<Finished>)>,

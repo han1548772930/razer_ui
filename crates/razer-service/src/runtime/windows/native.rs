@@ -38,6 +38,12 @@ pub(super) fn keyboard_profile_inventory(
 ) -> anyhow::Result<Value> {
     device_reads::keyboard_metadata(target, super::KeyboardRead::ProfileInventory)
 }
+pub(super) fn keyboard_onboard_profiles(
+    target: &razer_device::device_reads::DeviceReadTarget,
+    options: &razer_device::keyboard_onboard_profiles::ReadOptions,
+) -> anyhow::Result<Value> {
+    device_reads::keyboard_metadata(target, super::KeyboardRead::OnboardProfiles(options))
+}
 pub(super) fn keyboard_legacy_calibration(
     target: &razer_device::device_reads::DeviceReadTarget,
     operation: &razer_device::keyboard_legacy_calibration::Operation,
@@ -399,6 +405,7 @@ impl NativeRuntime {
             | ServiceRequest::HidNodeKeyboardReceiverBrightness { .. }
             | ServiceRequest::HidNodeKeyboardMetadataRead { .. }
             | ServiceRequest::KeyboardProfileInventoryRead { .. }
+            | ServiceRequest::KeyboardOnboardProfilesRead { .. }
             | ServiceRequest::HidNodeKeyboardSerialRead { .. }
             | ServiceRequest::HidNodeKeyboardRelayMetadataRead { .. }
             | ServiceRequest::HidNodeKeyboardRelaySerialRead { .. }

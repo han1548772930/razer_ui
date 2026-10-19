@@ -26,6 +26,7 @@ tungstenite.workspace = true
 sha2 = "=0.10.9"
 
 [target.'cfg(windows)'.dependencies]
+log.workspace = true
 image = { version = "=0.25.10", default-features = false, features = ["png"] }
 zeromq = { version = "=0.6.0", default-features = false, features = ["tokio-runtime", "ipc-transport"] }
 windows-core = "=0.61.2"

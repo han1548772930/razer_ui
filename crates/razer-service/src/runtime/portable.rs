@@ -779,6 +779,25 @@ impl PortableRuntime {
                     }
                 }
             }
+            ServiceRequest::KeyboardOnboardProfilesRead { target, options } => {
+                use razer_ipc::keyboard_onboard_profiles::{Target, validate_target};
+                validate_target(&target)?;
+                options.validate()?;
+                match target {
+                    Target::Collection { node, product_id, peer_product_id } => self.keyboard_metadata(
+                        &node, product_id, KeyboardRead::OnboardProfiles(&options), peer_product_id,
+                    ),
+                    Target::WindowsContainer { target } => {
+                        #[cfg(windows)]
+                        { super::native::keyboard_onboard_profiles(&target, &options) }
+                        #[cfg(not(windows))]
+                        {
+                            let _ = target;
+                            bail!("Windows keyboard OBM requires its platform HID adapter")
+                        }
+                    }
+                }
+            }
             ServiceRequest::HidNodeMouseCurrentDpi { node, product_id, peer_product_id, change } => {
                 if let Some(peer) = peer_product_id {
                     self.receiver_setting(&node, product_id, peer,
@@ -1042,7 +1061,7 @@ impl PortableRuntime {
         &mut self,
         node: &HidNode,
         product_id: u32,
-        query: KeyboardRead,
+        query: KeyboardRead<'_>,
         peer_product_id: Option<u32>,
     ) -> anyhow::Result<Value> {
         use razer_device::keyboard_metadata;
@@ -1051,6 +1070,14 @@ impl PortableRuntime {
                 razer_device::keyboard_profile_inventory::supports(product_id),
                 "Keyboard does not mount the current HID OBM inventory"
             );
+        }
+        if let KeyboardRead::OnboardProfiles(options) = query {
+            razer_ipc::keyboard_onboard_profiles::validate_target(
+                &razer_ipc::keyboard_profile_inventory::Target::Collection {
+                    node: node.clone(), product_id, peer_product_id,
+                },
+            )?;
+            options.validate()?;
         }
         let selected =
             match keyboard_metadata::hid_capability(product_id, u32::from(node.product_id)) {
@@ -1104,6 +1131,17 @@ impl PortableRuntime {
                 cap.transaction_modulus,
             )
         };
+        if let KeyboardRead::OnboardProfiles(options) = query {
+            let reading = razer_device::keyboard_onboard_profiles::read_complete(
+                device.as_ref(), cap, options, next_transaction, &validate,
+            )?;
+            validate()?;
+            return Ok(serde_json::to_value(razer_ipc::keyboard_onboard_profiles::Observation {
+                target: razer_ipc::keyboard_profile_inventory::Target::Collection {
+                    node: node.clone(), product_id, peer_product_id,
+                }, options: options.clone(), reading,
+            })?);
+        }
         if matches!(query, KeyboardRead::ProfileInventory) {
             let inventory = razer_device::keyboard_profile_inventory::read_hid(
                 device.as_ref(),

@@ -71,7 +71,8 @@ impl Executor {
             4 => Mode::Queue,
             _ => anyhow::bail!("Invalid execution flag {flag}"),
         };
-        self.context
+        let submission = self
+            .context
             .macros
             .lock()
             .map_err(|_| anyhow::anyhow!("Mapping macro owner poisoned"))?
@@ -88,6 +89,21 @@ impl Executor {
                 },
                 mode,
             )?;
+        match submission {
+            super::Submission::Started(id) => {
+                log::debug!(
+                    "Mapping execution {id} started for caller {}",
+                    self.context.caller
+                );
+            }
+            super::Submission::CancellationRequested(id) => {
+                log::debug!(
+                    "Mapping execution {id} cancellation requested for caller {}",
+                    self.context.caller
+                );
+            }
+            super::Submission::Queued | super::Submission::Unchanged => {}
+        }
         Ok(())
     }
     fn sequence_poll(&mut self) -> Result<()> {

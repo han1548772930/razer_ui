@@ -47,7 +47,7 @@ fn live_scan_is_unavailable_and_saved_observations_cannot_pair_a_bridge(cx: &mut
         assert!(!workspace.advanced);
         assert!(workspace.integration == Integration::Init);
         assert!(workspace.last_command.is_none());
-        let saved = workspace.snapshot();
+        let saved = workspace.draft.clone();
         assert_eq!(saved["brightness"]["value"], 60);
         assert!(saved.get("devices").is_none());
         assert!(saved.get("isPaired").is_none());
