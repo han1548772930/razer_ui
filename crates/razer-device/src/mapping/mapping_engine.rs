@@ -37,6 +37,11 @@ pub struct GeneratedEngine {
     pub synapse_turbos: Vec<Value>,
 }
 
+pub(crate) struct MouseOtfsEngines {
+    pub profile: Value,
+    pub defaults: Value,
+}
+
 pub struct MappingEngine {
     data: &'static EngineData,
 }
@@ -536,6 +541,65 @@ impl MappingEngine {
         };
         *context = draft;
         Ok(result)
+    }
+
+    /// Current mouse middleware's inter-device OTFS projection. It keeps only
+    /// sensitivity assignments and installs ordinary-layer scroll controls.
+    /// Product owners supply their source defaults and actual DKM identities.
+    pub(crate) fn generate_mouse_otfs(
+        &self,
+        records: &[Value],
+        defaults: &[Value],
+        context: &mut EngineContext,
+    ) -> Result<MouseOtfsEngines> {
+        #[derive(serde::Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Binding {
+            output_type: String,
+            sensitivity_group: Option<Sensitivity>,
+        }
+        #[derive(serde::Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Sensitivity {
+            sensitivity_assignment: String,
+        }
+        let bindings = records
+            .iter()
+            .map(|record| serde_json::from_value::<Binding>(record.clone()))
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        let mut mappings = records
+            .iter()
+            .zip(bindings)
+            .filter(|(_, binding)| binding.output_type == "sensitivityGroup")
+            .map(|(record, _)| record.clone())
+            .collect::<Vec<_>>();
+        mappings.extend(
+            [("ScrollUp", "DPI_Value_Up"), ("ScrollDown", "DPI_Value_Down")]
+                .map(|(input, assignment)| json!({
+                    "inputType":"MouseInput", "inputID":input, "isHyperShift":false,
+                    "outputType":"sensitivityGroup",
+                    "sensitivityGroup":{"sensitivityAssignment":assignment,"value":50,"independent":false}
+                })),
+        );
+        let bindings = defaults
+            .iter()
+            .map(|record| serde_json::from_value::<Binding>(record.clone()))
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        let defaults = defaults
+            .iter()
+            .zip(bindings)
+            .filter(|(_, binding)| {
+                binding.sensitivity_group.as_ref().is_none_or(|group| {
+                    group.sensitivity_assignment != "OTFS_Scroll"
+                })
+            })
+            .map(|(record, _)| record.clone())
+            .collect::<Vec<_>>();
+        let mut draft = context.clone();
+        let defaults = self.generate(&defaults, &mut draft)?.app_engine;
+        let profile = self.generate(&mappings, &mut draft)?.app_engine;
+        *context = draft;
+        Ok(MouseOtfsEngines { profile, defaults })
     }
 
     pub fn record(&self, record: &Value, context: &mut EngineContext) -> Result<Vec<Value>> {

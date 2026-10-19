@@ -205,7 +205,8 @@ impl AppShell {
                 })
                 .await;
             let _ = shell.update(cx, |shell, cx| {
-                if let Some(error) = completion.cleanup_error() {
+                let cleanup_error = completion.cleanup_error();
+                if let Some(error) = &cleanup_error {
                     eprintln!("[polling cleanup] {error}");
                 }
                 let Some(operation) = shell.mouse_polling.operations.remove(&id) else {
@@ -238,8 +239,11 @@ impl AppShell {
                         )
                     });
                 }
-                if shell.close_requested && shell.save_task.is_none() {
-                    shell.continue_save_queue(true, cx);
+                if shell.close_requested {
+                    if !current && let Some(error) = &cleanup_error {
+                        shell.status = format!("轮询率通信清理失败：{error}");
+                    }
+                    shell.continue_save_queue(cleanup_error.is_none(), cx);
                 }
                 cx.notify();
             });

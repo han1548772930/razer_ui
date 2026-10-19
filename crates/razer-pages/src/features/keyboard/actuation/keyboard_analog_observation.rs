@@ -1,4 +1,5 @@
 //! PID679 middleware H/G and the mounted actuation slider's analog callback.
+use super::observation_tasks::{SubscriptionTasks, join_stream};
 use super::*;
 use razer_device::{
     macro_runtime::Event as OutputEvent,
@@ -7,7 +8,10 @@ use razer_device::{
     mapping_native_lookup::{Input, InputKind},
 };
 use razer_ipc::analog_observation::{AnalogEvent, Delivery, Registration, Target};
-use razer_service::mapping::analog_observation::{Reply, Session};
+use razer_service::mapping::{
+    analog_observation::{Reply, Session},
+    observation::Completion,
+};
 use std::time::{Duration, Instant};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -189,13 +193,23 @@ pub(super) struct Observer {
     target: Option<Target>,
     active: bool,
     epoch: u64,
-    stream: Option<Session>,
+    tasks: SubscriptionTasks<Session, Task<()>>,
     pump: Option<Task<()>>,
-    cleanup: Option<Task<()>>,
     error: Option<String>,
     feedback: Feedback,
     mode: Option<Mode>,
     level: Option<u16>,
+}
+impl Observer {
+    pub(super) fn release(&mut self, executor: &BackgroundExecutor) {
+        self.active = false;
+        self.epoch = self.epoch.wrapping_add(1);
+        self.pump = None;
+        self.tasks.release(|stream| {
+            stream.request_stop();
+            join_stream(executor, stream, Session::stop_with_receipt);
+        });
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -253,28 +267,43 @@ impl KeyboardProductWorkspace {
         self.analog_observer.pump = None;
         self.analog_observer.feedback = Feedback::default();
         self.analog_observer.level = None;
-        if let Some(stream) = self.analog_observer.stream.take() {
-            stream.request_stop();
-            let epoch = self.analog_observer.epoch;
-            let target = self.analog_observer.target.clone();
-            let cleanup = cx.background_executor().spawn(async move { stream.stop() });
-            self.analog_observer.cleanup = Some(cx.spawn(async move |view, cx| {
-                let result = cleanup.await;
-                if let Err(error) = &result {
-                    eprintln!("[Analog observation cleanup] {error}");
-                }
-                let _ = view.update(cx, |this, cx| {
-                    this.analog_observer.cleanup = None;
-                    if this.analog_observer.epoch == epoch && this.analog_observer.target == target
-                    {
-                        if let Err(error) = result {
-                            this.analog_observation_failed(error, cx);
-                        }
+        let epoch = self.analog_observer.epoch;
+        let target = self.analog_observer.target.clone();
+        self.analog_observer
+            .tasks
+            .begin_cleanup(|identity, stream| {
+                stream.request_stop();
+                let cleanup =
+                    join_stream(cx.background_executor(), stream, Session::stop_with_receipt);
+                cx.spawn(async move |view, cx| {
+                    let result = cleanup.recv().await.unwrap_or_else(|_| {
+                        Completion::cleanup_failed("Analog observation cleanup result disconnected")
+                    });
+                    if let Err(error) = result.result() {
+                        eprintln!("[Analog observation cleanup] {error}");
                     }
-                    this.sync_analog_observation(cx);
-                });
-            }));
-        }
+                    let _ = view.update(cx, |this, cx| {
+                        if !this
+                            .analog_observer
+                            .tasks
+                            .finish_cleanup(&identity, result.cleanup_result())
+                        {
+                            return;
+                        }
+                        let error = result.cleanup_error().or_else(|| {
+                            (this.analog_observer.epoch == epoch
+                                && this.analog_observer.target == target
+                                && identity.matches_target(target.as_ref()))
+                            .then(|| result.operation_error())
+                            .flatten()
+                        });
+                        if let Some(error) = error {
+                            this.analog_observation_failed(error.into(), cx);
+                        }
+                        this.sync_analog_observation(cx);
+                    });
+                })
+            });
         cx.notify();
     }
     pub fn leave_analog_observation(&mut self, cx: &mut Context<Self>) {
@@ -309,8 +338,7 @@ impl KeyboardProductWorkspace {
         let Some(mode) = self.analog_observer.mode.clone() else {
             return;
         };
-        if self.analog_observer.stream.is_some()
-            || self.analog_observer.cleanup.is_some()
+        if self.analog_observer.tasks.occupied()
             || self.analog_observer.error.is_some()
             || !self.snap_mapping_ready()
         {
@@ -320,13 +348,16 @@ impl KeyboardProductWorkspace {
         // The actuation page observes all keys; a mounted controller graph
         // observes its selected input only, after old registration cleanup.
         let target = self.analog_observer.target.clone().unwrap();
-        match Session::start(target, mode.registration()) {
-            Ok(stream) => self.analog_observer.stream = Some(stream),
+        let identity = match self.analog_observer.tasks.start(target.clone(), || {
+            Session::start(target, mode.registration())
+        }) {
+            Ok(Some(identity)) => identity,
+            Ok(None) => return,
             Err(error) => {
                 self.analog_observation_failed(format!("{error:#}"), cx);
                 return;
             }
-        }
+        };
         let epoch = self.analog_observer.epoch;
         let began = Instant::now();
         self.analog_observer.pump = Some(cx.spawn(async move |view, cx| {
@@ -336,10 +367,12 @@ impl KeyboardProductWorkspace {
                     .await;
                 if !view
                     .update(cx, |this, cx| {
-                        if this.analog_observer.epoch != epoch {
+                        if this.analog_observer.epoch != epoch
+                            || !this.analog_observer.tasks.accepts(&identity)
+                        {
                             return false;
                         }
-                        let Some(stream) = &this.analog_observer.stream else {
+                        let Some(stream) = this.analog_observer.tasks.stream() else {
                             return false;
                         };
                         let replies = stream.drain();

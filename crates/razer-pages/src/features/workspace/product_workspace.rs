@@ -953,12 +953,11 @@ impl ProductWorkspace {
         &mut self,
         request: &super::audio_products::SeirenStreamMixerRequested,
         error: Option<String>,
-        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| {
-                body.finish_seiren_stream_mixer(request, error, window, cx)
+                body.finish_seiren_stream_mixer(request, error, cx)
             });
         }
     }
@@ -972,6 +971,26 @@ impl ProductWorkspace {
             body.update(cx, |body, cx| {
                 body.observe_seiren_live(observed, window, cx)
             });
+        }
+    }
+    pub fn record_seiren_live(&mut self, observed: razer_device::seiren_mixer::LiveState, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.record_seiren_live(observed, cx));
+        }
+    }
+    pub fn record_seiren_native_event(&mut self, event: serde_json::Value, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.record_seiren_native_event(event, cx));
+        }
+    }
+    pub fn record_seiren_stream_mixer(&mut self, observation: super::audio_products::SeirenStreamMixerObservation, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.record_seiren_stream_mixer(observation, cx));
+        }
+    }
+    pub fn sync_seiren_audio_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.sync_seiren_audio_controls(window, cx));
         }
     }
     pub fn observe_seiren_native_event(
@@ -1226,6 +1245,27 @@ impl ProductWorkspace {
             body.update(cx, |body, cx| body.prepare_mouse_scroll_exit(cx));
         }
     }
+    pub fn resume_mouse_scroll_after_cancelled_exit(&mut self, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.resume_mouse_scroll_after_cancelled_exit(cx));
+        }
+    }
+    pub fn finish_mouse_scroll_report(
+        &mut self,
+        request: &super::mouse_products::MouseScrollRequested,
+        report: Option<&razer_device::mouse_scroll::SubmissionReport>,
+        cleanup_succeeded: bool,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.finish_mouse_scroll_report(request, report, cleanup_succeeded, cx));
+        }
+    }
+    pub fn sync_mouse_scroll_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.sync_mouse_scroll_controls(window, cx));
+        }
+    }
     pub fn restore_mouse_profile_after_serial(
         &mut self,
         window: &mut Window,
@@ -1312,21 +1352,37 @@ impl ProductWorkspace {
     pub fn prepare_current_dpi_exit(
         &mut self,
         cx: &mut Context<Self>,
-    ) -> Option<super::mouse_products::MouseCurrentDpiRequested> {
+    ) -> Result<Option<super::mouse_products::MouseCurrentDpiRequested>, String> {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| body.prepare_current_dpi_exit(cx))
         } else {
-            None
+            Ok(None)
         }
+    }
+    pub fn current_dpi_exit_pending(&self, cx: &App) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).current_dpi_exit_pending(cx))
     }
     pub fn prepare_legacy_dpi_exit(
         &mut self,
         cx: &mut Context<Self>,
-    ) -> Option<super::mouse_products::MouseLegacyDpiRequested> {
+    ) -> Result<Option<super::mouse_products::MouseLegacyDpiRequested>, String> {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| body.prepare_legacy_dpi_exit(cx))
         } else {
-            None
+            Ok(None)
+        }
+    }
+    pub fn legacy_dpi_exit_pending(&self, cx: &App) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).legacy_dpi_exit_pending(cx))
+    }
+    pub fn finish_legacy_dpi_result(
+        &mut self,
+        request: &super::mouse_products::MouseLegacyDpiRequested,
+        confirmed: bool,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.finish_legacy_dpi_result(request, confirmed, cx));
         }
     }
     pub fn finish_legacy_dpi(
@@ -1544,6 +1600,18 @@ impl ProductWorkspace {
             _ => false,
         }
     }
+    pub fn set_saved_mapping_macro_library(
+        &mut self,
+        file: &super::macro_library::MacroLibraryFile,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.set_saved_mapping_macro_library(file, cx)
+            });
+        }
+    }
+
     pub fn set_mapping_macro_library(
         &mut self,
         file: &super::macro_library::MacroLibraryFile,

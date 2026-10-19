@@ -214,24 +214,25 @@ mod windows {
         }
         guid_text(unsafe { &*pointer }, true)
     }
-    fn endpoint_type(device: &Com) -> &'static str {
+    fn endpoint_type(device: &Com) -> razer_device::simple_audio::EndpointType {
+        use razer_device::simple_audio::EndpointType;
         type Query = unsafe extern "system" fn(*mut c_void, *const GUID, *mut *mut c_void) -> i32;
         type Flow = unsafe extern "system" fn(*mut c_void, *mut i32) -> i32;
         let call: Query = unsafe { device.method(0) };
         let mut pointer = null_mut();
         let hr = unsafe { call(device.raw(), &DATA_FLOW_INTERFACE, &mut pointer) };
         let Ok(endpoint) = Com::from_hresult(hr, pointer, "QueryInterface(IMMEndpoint)") else {
-            return "all";
+            return EndpointType::All;
         };
         let call: Flow = unsafe { endpoint.method(3) };
         let mut flow = 2;
         if unsafe { call(endpoint.raw(), &mut flow) } < 0 {
-            return "all";
+            return EndpointType::All;
         }
         match flow {
-            0 => "speaker",
-            1 => "microphone",
-            _ => "all",
+            0 => EndpointType::Speaker,
+            1 => EndpointType::Microphone,
+            _ => EndpointType::All,
         }
     }
     fn volume_access(device: &Com) -> Result<Com> {

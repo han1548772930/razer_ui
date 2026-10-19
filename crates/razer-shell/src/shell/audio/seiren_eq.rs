@@ -1,5 +1,4 @@
 use super::*;
-use anyhow::Context as _;
 use razer_discovery::discovery::ObservedTransport;
 use razer_model::model::Profile;
 use razer_pages::features::SeirenEqRequested;
@@ -35,7 +34,7 @@ impl AppShell {
         workspace: Entity<ProductWorkspace>,
         request: razer_pages::features::SeirenStreamMixerRequested,
         reply: std::sync::mpsc::Sender<Result<u64, String>>,
-        window: &mut Window,
+        window: AnyWindowHandle,
         cx: &mut Context<Self>,
     ) {
         if self.close_requested
@@ -58,7 +57,7 @@ impl AppShell {
         );
         let identity = workspace.read(cx).identity(cx);
         self.pending_saves.push_back(self.prepare_save(
-            window.window_handle(),
+            window,
             file,
             Some(ProductSave::SeirenEq(SeirenEqSave::MixerVersion(
                 SeirenMixerVersionSave {
@@ -81,7 +80,7 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         if !request.persists_local_settings() {
-            self.submit_seiren_eq_device(workspace, request, window, cx);
+            self.submit_seiren_eq_device(workspace, request, window.window_handle(), cx);
             return;
         }
         if self.storage_error.is_some()
@@ -309,29 +308,13 @@ impl AppShell {
             });
             return;
         }
-        let owner = cx.entity().downgrade();
-        cx.defer(move |cx| {
-            let workspace = save.workspace.clone();
-            let request = save.request.clone();
-            if window
-                .update(cx, |_, window, cx| {
-                    let _ = owner.update(cx, |this, cx| {
-                        this.submit_seiren_eq_device(save.workspace, save.request, window, cx)
-                    });
-                })
-                .is_err()
-            {
-                workspace.update(cx, |workspace, cx| {
-                    workspace.finish_seiren_eq(&request, None, cx)
-                });
-            }
-        });
+        self.submit_seiren_eq_device(save.workspace, save.request, window, cx);
     }
     fn submit_seiren_eq_device(
         &mut self,
         workspace: Entity<ProductWorkspace>,
         request: SeirenEqRequested,
-        window: &mut Window,
+        window: AnyWindowHandle,
         cx: &mut Context<Self>,
     ) {
         if self.close_requested
@@ -370,51 +353,9 @@ impl AppShell {
             return;
         }
         let route = routes[0].clone();
-        let identity = workspace.read(cx).identity(cx);
-        self.sync_audio_notifications(window, cx);
-        let owner_request = self
-            .audio_notifications
-            .get(&identity)
-            .context("Mounted Audio_StreamMixer owner is unavailable")
-            .and_then(|owner| owner.request(request.clone()));
-        let revision = self.discovery_revision;
-        self.seiren_eq_workers += 1;
+        self.sync_audio_notification_owners(window, cx);
         self.status = "正在确认麦克风 EQ 设备设置…".into();
         cx.notify();
-        cx.spawn_in(window, async move |this,cx| {
-            let result=cx.background_spawn(async move {
-                let receiver=owner_request?;
-                receiver.recv().context("Audio_StreamMixer owner closed before operation receipt")?
-                    .map(|report|(report,None::<String>))
-            }).await;
-            let _=this.update_in(cx,|this,window,cx| {
-                this.seiren_eq_workers=this.seiren_eq_workers.saturating_sub(1);
-                let current=this.devices.contains(&workspace) && workspace.read(cx).identity(cx)==identity
-                    && workspace.read(cx).seiren_eq_request_matches(&request,cx) && this.discovery_revision==revision
-                    && this.device_observations.iter().any(|observed|observed.matches(workspace.read(cx).device(cx))
-                        && observed.container().eq_ignore_ascii_case(route.container()) && observed.hid_node()==route.hid_node()
-                        && observed.physical_product_id()==route.physical_product_id());
-                let observed=current.then(||result.as_ref().ok().map(|(report,_)|report.clone())).flatten();
-                if let Some(levels)=observed.as_ref().and_then(|report|report.native_levels()) {
-                    workspace.update(cx,|workspace,cx|workspace.observe_seiren_native_levels(levels,window,cx));
-                }
-                workspace.update(cx,|workspace,cx|workspace.finish_seiren_eq(&request,observed,cx));
-                if current {let local_note=if persisted {"；本地设置已保存"}else{""}; this.status=match result {
-                    Ok((report,None)) if report.confirmed()=>if report.native_levels().is_some() {
-                        "已读取麦克风／耳机的实际音量和静音状态。".into()
-                    } else if !report.setter_sent() {
-                        "设备当前旋钮模式与所选配置一致。".into()
-                    } else {format!("麦克风设置已获设备／服务回执{local_note}。")},
-                    Ok((report,error))=>{let failures=report.stages().iter().filter_map(|stage|stage.error())
-                        .chain(report.native_stages().iter().filter_map(|stage|stage.error())).collect::<Vec<_>>().join("；");
-                        let cleanup=error.map(|error|format!("；通信进程退出失败：{error}")).unwrap_or_default();
-                        if let Some(reason)=report.source_skipped(){format!("麦克风设置按原始调用条件跳过：{reason}{failures}{cleanup}{local_note}。")}
-                        else if report.confirmed(){format!("麦克风设置已获设备／服务回执{cleanup}{local_note}。")}
-                        else{format!("麦克风设置尚未全部确认：{failures}{cleanup}{local_note}。")}},
-                    Err(error)=>format!("麦克风写入尚未确认：{error:#}{local_note}。"),
-                };}
-                if this.close_requested && this.save_task.is_none() {this.continue_save_queue(true,cx);} cx.notify();
-            });
-        }).detach();
+        self.start_seiren_audio_operation(workspace, seiren_audio_operations::Request::Eq(request), Some(route), window, cx);
     }
 }

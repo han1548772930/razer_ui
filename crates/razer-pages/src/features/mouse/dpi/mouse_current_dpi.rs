@@ -9,6 +9,7 @@ use std::sync::{
 };
 #[path = "mouse_current_dpi_observation.rs"]
 mod observation;
+use super::mapping_callbacks_current::{Connection, TemporaryRestoration};
 use observation::{Observation, RowUpdate, Selection};
 
 #[derive(Clone)]
@@ -18,6 +19,8 @@ pub struct MouseCurrentDpiRequested {
     profile: Option<Value>,
     change: Option<DpiChange>,
     read: bool,
+    cleanup: bool,
+    restoration_ticket: u64,
     connection_key: Option<String>,
     edit_revision: u64,
     selection: Option<Selection>,
@@ -161,6 +164,8 @@ mod tests {
             profile: None,
             change: None,
             read: true,
+            cleanup: false,
+            restoration_ticket: 0,
             connection_key: None,
             edit_revision: 0,
             selection: None,
@@ -185,11 +190,153 @@ mod tests {
             profile: None,
             change: None,
             read: true,
+            cleanup: false,
+            restoration_ticket: 0,
             connection_key: Some(connection.into()),
             edit_revision: 0,
             selection: None,
             valid: Arc::new(AtomicBool::new(true)),
         }
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_exit_restores_held_clutch_without_an_existing_request() {
+        let mut owner = State::default();
+        let identity = read(1, "receiver/profile");
+        owner.install_connection(identity.connection_key.clone(), Some(identity.scope));
+        let stages = configured_stages();
+        let request = owner
+            .prepare_exit(Some(identity.scope), Some(stages.clone()), None)
+            .unwrap()
+            .expect("held clutch requires the complete profile stage task");
+        assert_eq!(owner.connection_key, identity.connection_key);
+        assert_eq!(owner.connection_scope, Some(identity.scope));
+        assert_eq!(request.connection_key, identity.connection_key);
+        assert!(request.is_cleanup());
+        assert!(request.is_valid());
+        assert!(request.profile().is_none());
+        let change = request.change().unwrap();
+        assert_eq!(change.stages.as_ref(), Some(&stages));
+        assert!(change.active.is_none());
+        assert!(!change.initialize);
+        assert!(owner.owns_completion(&request));
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_exit_keeps_worker_barrier_and_drains_latest_durable_profile() {
+        let mut owner = State::default();
+        let old = read(1, "receiver/profile");
+        owner.install_connection(old.connection_key.clone(), Some(old.scope));
+        owner.sequence = 3;
+        assert!(owner.enqueue(old.clone()).is_some());
+        let mut saved = read(2, "receiver/profile");
+        saved.profile = Some(serde_json::json!({"guid":"current", "dpi":1800}));
+        assert!(owner.enqueue(saved.clone()).is_none());
+        assert!(
+            owner
+                .prepare_exit(Some(old.scope), Some(configured_stages()), None)
+                .unwrap()
+                .is_none()
+        );
+        assert!(!old.is_valid());
+        assert!(!saved.is_valid());
+        assert!(owner.owns_completion(&old));
+        assert!(owner.take_queued(Some(old.scope)).is_none());
+        assert!(owner.release(&old));
+        let restore = owner
+            .take_queued(Some(old.scope))
+            .expect("worker cleanup permits restoration");
+        assert_eq!(restore.sequence, 4);
+        assert_eq!(restore.profile(), saved.profile());
+        assert_eq!(restore.connection_key, old.connection_key);
+        assert!(restore.is_cleanup());
+        assert!(restore.is_valid());
+        assert!(!owner.release(&old));
+        assert!(owner.owns_completion(&restore));
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_exit_cannot_restore_through_another_connection_scope() {
+        let mut owner = State::default();
+        let old = read(1, "receiver/profile");
+        owner.install_connection(old.connection_key.clone(), Some(old.scope));
+        assert!(owner.enqueue(old.clone()).is_some());
+        let replacement = MousePollingScope::new(EntityId::from(1), 2, 4);
+        assert!(
+            owner
+                .prepare_exit(Some(replacement), Some(configured_stages()), None)
+                .is_err()
+        );
+        assert!(owner.owns_completion(&old));
+        assert!(!old.is_valid());
+        assert!(owner.queued.is_none());
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_temporary_restore_requires_verified_current_profile_task() {
+        let mut owner = State::default();
+        let mut request = read(1, "receiver/profile");
+        owner.install_connection(request.connection_key.clone(), Some(request.scope));
+        owner.temporary_restoration.require();
+        request.restoration_ticket = owner.temporary_restoration.ticket();
+        request.change = Some(super::DpiChange {
+            stages: Some(configured_stages()),
+            active: None,
+            profile_guid: None,
+            initialize: false,
+        });
+        owner.enqueue(request.clone());
+        owner.confirm_temporary_restore(&request, false);
+        assert!(owner.temporary_restoration.required());
+        owner.cancel();
+        owner.confirm_temporary_restore(&request, true);
+        assert!(
+            owner.temporary_restoration.required(),
+            "canceled completion cannot confirm restoration"
+        );
+        owner.release(&request);
+        owner.install_connection(request.connection_key.clone(), Some(request.scope));
+        request.valid = Arc::new(AtomicBool::new(true));
+        request.sequence = 2;
+        owner.enqueue(request.clone());
+        owner.confirm_temporary_restore(&request, true);
+        assert!(!owner.temporary_restoration.required());
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_temporary_restore_old_profile_ack_cannot_clear_newer_queued_clutch() {
+        let mut owner = State::default();
+        let mut old = read(1, "receiver/profile");
+        owner.install_connection(old.connection_key.clone(), Some(old.scope));
+        old.change = Some(super::DpiChange {
+            stages: Some(configured_stages()),
+            active: None,
+            profile_guid: None,
+            initialize: false,
+        });
+        old.restoration_ticket = owner.temporary_restoration.ticket();
+        owner.enqueue(old.clone());
+        owner.temporary_restoration.require();
+        owner.confirm_temporary_restore(&old, true);
+        assert!(owner.temporary_restoration.required());
+        owner.release(&old);
+        let mut restore = old;
+        restore.sequence = 2;
+        restore.valid = Arc::new(AtomicBool::new(true));
+        restore.restoration_ticket = owner.temporary_restoration.ticket();
+        owner.enqueue(restore.clone());
+        owner.confirm_temporary_restore(&restore, true);
+        assert!(!owner.temporary_restoration.required());
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_temporary_clutch_requires_no_local_stage_cache_and_never_initializes_it() {
+        let dpi = super::DpiPair { x: 900, y: 1200 };
+        let change = super::receiver_callback_change(Some(dpi), None).unwrap();
+        assert_eq!(change.active, Some(dpi));
+        assert!(change.stages.is_none());
+        assert!(!change.initialize);
+        assert!(super::receiver_callback_change(None, None).is_none());
     }
 
     #[::core::prelude::v1::test]
@@ -419,6 +566,9 @@ impl MouseCurrentDpiRequested {
     pub fn is_read(&self) -> bool {
         self.read
     }
+    pub fn is_cleanup(&self) -> bool {
+        self.cleanup
+    }
     pub fn is_valid(&self) -> bool {
         self.valid.load(Ordering::Acquire)
     }
@@ -448,6 +598,7 @@ pub(super) struct State {
     macro_recording: bool,
     local_profile_known: bool,
     local_profile_error: Option<String>,
+    temporary_restoration: TemporaryRestoration,
 }
 
 #[derive(Clone, Copy)]
@@ -487,7 +638,44 @@ impl Edit {
         Tasks { stages, active }
     }
 }
+
+fn receiver_callback_change(
+    temporary: Option<DpiPair>,
+    stages: Option<DpiStagesDraft>,
+) -> Option<DpiChange> {
+    let (stages, active) = match temporary {
+        Some(dpi) => (None, Some(dpi)),
+        None => (Some(stages?), None),
+    };
+    Some(DpiChange {
+        stages,
+        active,
+        profile_guid: None,
+        initialize: false,
+    })
+}
+
 impl State {
+    pub(super) fn observe_mapping_connection(&mut self, connection: Option<Connection>) {
+        self.temporary_restoration.observe_connection(connection);
+    }
+
+    fn confirm_temporary_restore(&mut self, request: &MouseCurrentDpiRequested, verified: bool) {
+        if verified
+            && request.is_valid()
+            && self.owns_completion(request)
+            && request.connection_key == self.connection_key
+            && Some(request.scope) == self.connection_scope
+            && request
+                .change
+                .as_ref()
+                .is_some_and(|change| !change.initialize && change.stages.is_some())
+        {
+            self.temporary_restoration
+                .confirm(request.restoration_ticket);
+        }
+    }
+
     fn enqueue(&mut self, request: MouseCurrentDpiRequested) -> Option<MouseCurrentDpiRequested> {
         if self.pending.is_some() {
             if let Some(previous) = self.queued.replace(request) {
@@ -650,6 +838,8 @@ impl State {
                 initialize: true,
             }),
             read: false,
+            cleanup: false,
+            restoration_ticket: self.temporary_restoration.ticket(),
             connection_key: Some(key.clone()),
             edit_revision: self.edit_revision,
             selection,
@@ -707,6 +897,8 @@ impl State {
                 initialize: true,
             }),
             read: true,
+            cleanup: false,
+            restoration_ticket: self.temporary_restoration.ticket(),
             connection_key: self.connection_key.clone(),
             edit_revision: self.edit_revision,
             selection: None,
@@ -731,6 +923,9 @@ impl State {
         &mut self,
         scope: Option<MousePollingScope>,
     ) -> Option<MouseCurrentDpiRequested> {
+        if self.pending.is_some() {
+            return None;
+        }
         if let Some(initialization) = self.initialization_queued.take() {
             if initialization.is_valid()
                 && scope == Some(initialization.scope)
@@ -753,6 +948,62 @@ impl State {
             next.cancel();
         }
         None
+    }
+
+    fn prepare_exit(
+        &mut self,
+        scope: Option<MousePollingScope>,
+        restore: Option<DpiStagesDraft>,
+        selection: Option<Selection>,
+    ) -> Result<Option<MouseCurrentDpiRequested>, String> {
+        let key = self.connection_key.clone();
+        let connection_scope = self.connection_scope;
+        let profile = self
+            .queued
+            .iter()
+            .chain(self.pending.iter())
+            .find(|request| {
+                request.is_valid()
+                    && Some(request.scope) == scope
+                    && request.connection_key == key
+                    && request.profile.is_some()
+            })
+            .and_then(|request| request.profile.clone());
+        // Invalidation requests cancellation but the old pending request remains
+        // the serialization barrier until its worker has released the transport.
+        self.cancel();
+        self.connection_key = key;
+        self.connection_scope = connection_scope;
+        let current_scope = scope.filter(|scope| Some(*scope) == connection_scope);
+        let Some(scope) = current_scope.filter(|_| self.connection_key.is_some()) else {
+            return if restore.is_some() {
+                Err("DPI clutch restoration has no current connection identity".into())
+            } else {
+                Ok(None)
+            };
+        };
+        if profile.is_none() && restore.is_none() {
+            return Ok(None);
+        }
+        self.sequence = self.sequence.wrapping_add(1);
+        Ok(self.enqueue(MouseCurrentDpiRequested {
+            scope,
+            sequence: self.sequence,
+            profile,
+            cleanup: restore.is_some(),
+            restoration_ticket: self.temporary_restoration.ticket(),
+            change: restore.map(|stages| DpiChange {
+                stages: Some(stages),
+                active: None,
+                profile_guid: None,
+                initialize: false,
+            }),
+            read: false,
+            connection_key: self.connection_key.clone(),
+            edit_revision: self.edit_revision,
+            selection,
+            valid: Arc::new(AtomicBool::new(true)),
+        }))
     }
 
     fn take_ready_refresh(&mut self) -> bool {
@@ -895,27 +1146,50 @@ impl MouseProductWorkspace {
         &mut self,
         temporary: Option<DpiPair>,
         persist: bool,
+        transmit: bool,
         cx: &mut Context<Self>,
     ) {
-        if self.spec.product_id != 158 || self.current_dpi.macro_recording {
+        if self.spec.product_id != 158 {
             return;
         }
-        let Some(scope) = self.mouse_polling_scope(cx) else { return };
-        let Some(stages) = self.current_dpi_draft() else { return };
-        if persist { self.current_dpi.record_edit(); }
+        let Some(scope) = self.mouse_polling_scope(cx) else {
+            return;
+        };
+        let stages = self.current_dpi_draft();
+        if (temporary.is_none() || persist) && stages.is_none() {
+            return;
+        }
+        if persist {
+            self.current_dpi.record_edit();
+        }
+        if temporary.is_some() && transmit && !self.current_dpi.macro_recording {
+            self.current_dpi.temporary_restoration.require();
+        }
         self.current_dpi.sequence = self.current_dpi.sequence.wrapping_add(1);
         let request = MouseCurrentDpiRequested {
             scope,
             sequence: self.current_dpi.sequence,
             profile: persist.then(|| self.draft.clone()),
-            change: Some(DpiChange { stages: temporary.is_none().then_some(stages), active: temporary, profile_guid: None, initialize: false }),
+            change: (transmit && !self.current_dpi.macro_recording)
+                .then(|| receiver_callback_change(temporary, stages))
+                .flatten(),
             read: false,
+            cleanup: false,
+            restoration_ticket: self.current_dpi.temporary_restoration.ticket(),
             connection_key: self.current_dpi.connection_key.clone(),
             edit_revision: self.current_dpi.edit_revision,
-            selection: if temporary.is_some() { None } else { self.current_dpi_selection() },
+            selection: if temporary.is_some() {
+                None
+            } else {
+                self.current_dpi_selection()
+            },
             valid: Arc::new(AtomicBool::new(true)),
         };
         self.enqueue_current_dpi(request, cx);
+    }
+
+    pub(super) fn receiver_dpi_callbacks_blocked(&self) -> bool {
+        self.current_dpi.macro_recording
     }
     fn current_dpi_draft(&self) -> Option<DpiStagesDraft> {
         if !self.current_dpi_profile_known() {
@@ -1029,6 +1303,8 @@ impl MouseProductWorkspace {
             profile: Some(self.draft.clone()),
             change,
             read: false,
+            cleanup: false,
+            restoration_ticket: self.current_dpi.temporary_restoration.ticket(),
             connection_key: self.current_dpi.connection_key.clone(),
             edit_revision: self.current_dpi.edit_revision,
             selection: self.current_dpi_selection(),
@@ -1060,6 +1336,8 @@ impl MouseProductWorkspace {
                 profile: None,
                 change: None,
                 read: true,
+                cleanup: false,
+                restoration_ticket: self.current_dpi.temporary_restoration.ticket(),
                 connection_key: self.current_dpi.connection_key.clone(),
                 edit_revision: self.current_dpi.edit_revision,
                 selection: self.current_dpi_selection(),
@@ -1120,8 +1398,12 @@ impl MouseProductWorkspace {
             return;
         }
         let current = self.current_dpi_request_matches(request, cx);
-        let temporary_clutch = self.spec.product_id == 158 && request.profile.is_none()
-            && request.change.as_ref().is_some_and(|change| change.active.is_some());
+        let temporary_clutch = self.spec.product_id == 158
+            && request.profile.is_none()
+            && request
+                .change
+                .as_ref()
+                .is_some_and(|change| change.active.is_some());
         let initialized = current
             && result
                 .as_ref()
@@ -1129,13 +1411,24 @@ impl MouseProductWorkspace {
                 .and_then(Option::as_ref)
                 .is_some_and(|report| report.verified);
         self.current_dpi.finish_initialization(request, initialized);
+        self.current_dpi
+            .confirm_temporary_restore(request, initialized);
+        if request.cleanup
+            && initialized
+            && request.restoration_ticket == self.current_dpi.temporary_restoration.ticket()
+        {
+            self.receiver_mapping.finish_dpi_restore();
+        }
         if current {
             match result {
                 Ok(Some(report)) => {
                     let mut projection = request.clone();
-                    if !temporary_clutch && (projection.selection.is_none()
-                        || projection.is_read()
-                            && razer_storage::host_local_profile::supported(self.spec.product_id))
+                    if !temporary_clutch
+                        && (projection.selection.is_none()
+                            || projection.is_read()
+                                && razer_storage::host_local_profile::supported(
+                                    self.spec.product_id,
+                                ))
                         && self.current_dpi.projection_current(request)
                     {
                         projection.selection = self.current_dpi_selection();
@@ -1147,9 +1440,10 @@ impl MouseProductWorkspace {
                 Err(error) => {
                     self.current_dpi.read_error = Some(error);
                     self.current_dpi.observed = Observation::default();
-                    if !temporary_clutch && let Some(updates) = self
-                        .current_dpi
-                        .observe_rows(request, [RowUpdate::Unobserved; 5])
+                    if !temporary_clutch
+                        && let Some(updates) = self
+                            .current_dpi
+                            .observe_rows(request, [RowUpdate::Unobserved; 5])
                     {
                         self.apply_current_dpi_observation(updates, cx);
                     }
@@ -1340,6 +1634,7 @@ impl MouseProductWorkspace {
             .read_error
             .iter()
             .chain(self.current_dpi.local_profile_error.iter())
+            .chain(self.receiver_mapping.error.iter())
             .map(String::as_str)
             .chain(self.current_dpi.observed.errors())
             .collect::<Vec<_>>()
@@ -1386,27 +1681,33 @@ impl MouseProductWorkspace {
         )
     }
 
-    /// Closing drains the newest requested profile through the serialized local
-    /// writer while canceling all device work. No source rollback is invented.
-    pub fn prepare_current_dpi_exit(&mut self, cx: &App) -> Option<MouseCurrentDpiRequested> {
-        let latest = self
-            .current_dpi
-            .queued
-            .take()
-            .or_else(|| self.current_dpi.pending.clone());
-        self.current_dpi.cancel();
-        self.current_dpi.pending = None;
-        let mut latest = latest?;
-        latest.cancel();
-        if latest.profile.is_none() || self.mouse_polling_scope(cx) != Some(latest.scope) {
-            return None;
+    /// Closing drains the newest requested profile and the current connection's
+    /// held clutch restoration through their existing serialized owners.
+    pub fn prepare_current_dpi_exit(
+        &mut self,
+        cx: &App,
+    ) -> Result<Option<MouseCurrentDpiRequested>, String> {
+        if self.spec.product_id == 158 {
+            self.receiver_mapping.close_callback_admission();
         }
-        self.current_dpi.sequence = self.current_dpi.sequence.wrapping_add(1);
-        latest.sequence = self.current_dpi.sequence;
-        latest.change = None;
-        latest.connection_key = self.current_dpi.connection_key.clone();
-        latest.valid = Arc::new(AtomicBool::new(true));
-        self.current_dpi.pending = Some(latest.clone());
-        Some(latest)
+        let restore = if self.spec.product_id == 158
+            && (self.receiver_mapping.needs_dpi_restore()
+                || self.current_dpi.temporary_restoration.required())
+        {
+            Some(self.current_dpi_draft().ok_or_else(|| {
+                "DPI clutch restoration has no valid current profile stages".to_owned()
+            })?)
+        } else {
+            None
+        };
+        let scope = self.mouse_polling_scope(cx);
+        let selection = self.current_dpi_selection();
+        self.current_dpi.prepare_exit(scope, restore, selection)
+    }
+
+    pub fn current_dpi_exit_pending(&self) -> bool {
+        self.current_dpi.pending.is_some()
+            || self.current_dpi.queued.is_some()
+            || self.current_dpi.initialization_queued.is_some()
     }
 }

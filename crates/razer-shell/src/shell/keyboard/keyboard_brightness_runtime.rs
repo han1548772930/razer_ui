@@ -190,14 +190,16 @@ impl AppShell {
                 .await;
             let _ = shell.update(cx, |shell, cx| {
                 shell.keyboard_brightness.finish(id, &signal);
-                if let Some(error) = completion.error()
-                    && completion.cleanup_error().is_some()
-                {
+                let cleanup_error = completion.cleanup_error();
+                if let Some(error) = &cleanup_error {
                     eprintln!("[keyboard brightness cleanup] {error}");
                 }
                 complete(shell, completion, cx);
-                if shell.close_requested && shell.save_task.is_none() {
-                    shell.continue_save_queue(true, cx);
+                if shell.close_requested {
+                    if let Some(error) = &cleanup_error {
+                        shell.status = format!("键盘亮度通信清理失败：{error}");
+                    }
+                    shell.continue_save_queue(cleanup_error.is_none(), cx);
                 }
             });
         });

@@ -5,8 +5,34 @@ use crate::features::keyboard_products::{
     KeyboardLightingRequested,
 };
 use crate::features::mouse_products::MouseLightingRequested;
+use serde_json::json;
 
 impl SourceProductWorkspace {
+    pub fn observe_chroma_configuration(
+        &mut self,
+        configuration: &razer_storage::chroma_profiles::Configuration,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        match &self.body {
+            FamilyBody::Keyboard(body) => body.update(cx, |body, cx| {
+                body.observe_chroma_configuration(configuration, window, cx)
+            }),
+            FamilyBody::Mouse(body) => {
+                let snapshot = json!({
+                    "chromaProfiles": configuration.profiles().iter().map(|profile| {
+                        json!({"id":profile.id(),"name":profile.name()})
+                    }).collect::<Vec<_>>(),
+                    "selectedChromaProfileGuid": configuration.selected_profile(),
+                    "isChromaEnabled": configuration.enabled(),
+                });
+                body.update(cx, |body, cx| {
+                    body.observe_mouse_lighting(&snapshot, window, cx)
+                });
+            }
+            _ => {}
+        }
+    }
     pub fn abandon_keyboard_lighting(
         &mut self,
         request: &KeyboardLightingRequested,

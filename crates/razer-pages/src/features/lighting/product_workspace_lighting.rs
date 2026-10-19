@@ -8,6 +8,18 @@ use crate::features::mouse_products::MouseLightingRequested;
 use serde_json::Value;
 
 impl ProductWorkspace {
+    pub fn observe_chroma_configuration(
+        &mut self,
+        configuration: &razer_storage::chroma_profiles::Configuration,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_chroma_configuration(configuration, window, cx)
+            });
+        }
+    }
     pub fn abandon_keyboard_lighting(
         &mut self,
         request: &KeyboardLightingRequested,

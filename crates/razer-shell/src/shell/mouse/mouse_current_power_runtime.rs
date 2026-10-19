@@ -248,7 +248,8 @@ impl AppShell {
                 })
                 .await;
             let _ = shell.update(cx, |shell, cx| {
-                if let Some(error) = completion.cleanup_error() {
+                let cleanup_error = completion.cleanup_error();
+                if let Some(error) = &cleanup_error {
                     eprintln!("[mouse power cleanup] {error}");
                 }
                 let Some(operation) = shell.mouse_power.operations.remove(&id) else {
@@ -270,8 +271,11 @@ impl AppShell {
                             .finish(workspace, current.then_some(&completion), cx)
                     });
                 }
-                if shell.close_requested && shell.save_task.is_none() {
-                    shell.continue_save_queue(true, cx);
+                if shell.close_requested {
+                    if !current && let Some(error) = &cleanup_error {
+                        shell.status = format!("电源设置通信清理失败：{error}");
+                    }
+                    shell.continue_save_queue(cleanup_error.is_none(), cx);
                 }
                 cx.notify();
             });

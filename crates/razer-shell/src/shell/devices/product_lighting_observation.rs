@@ -425,10 +425,11 @@ impl AppShell {
         let signal = canceled.clone();
         let delivery_scope = scope.clone();
         let delivery_request = request.clone();
+        let chroma_revision = self.shared_chroma_revision();
         let delivery = cx.spawn(async move |shell, cx| {
             let background_canceled = signal.clone();
             let active = delivery_request.guard();
-            let result = cx
+            let mut result = cx
                 .background_spawn(async move {
                     let _accepted = accepted;
                     worker::run(work, active, background_canceled)
@@ -448,6 +449,9 @@ impl AppShell {
                     && delivery_scope.matches(shell, &shell.device_observations, cx);
                 if let Some(workspace) = delivery_scope.workspace.upgrade() {
                     if current && delivery_request.accepts(&workspace, cx) {
+                        if let Ok(worker::Reply::Observation(readback)) = &mut result {
+                            shell.reconcile_chroma_configuration(readback, chroma_revision);
+                        }
                         let products = (matches!(&delivery_request, Request::Keyboard(_))
                             && matches!(&result, Ok(worker::Reply::Observation(_))))
                         .then(|| {
@@ -498,6 +502,7 @@ impl AppShell {
                                 cx,
                             );
                         }
+                        shell.retain_newer_chroma_configuration(chroma_revision, cx);
                     } else {
                         delivery_request.abandon(&workspace, None, cx);
                     }

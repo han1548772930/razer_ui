@@ -448,65 +448,77 @@ impl AppShell {
             };
             worker.await;
             let _ = shell.update(cx, |shell, cx| {
-                let Some(operation) = shell.mouse_dynamic.operations.remove(&delivery_key) else {
-                    return;
+                let operation = match shell.mouse_dynamic.operations.remove(&delivery_key) {
+                    Some(operation) if operation.id == id => Some(operation),
+                    Some(successor) => {
+                        shell
+                            .mouse_dynamic
+                            .operations
+                            .insert(delivery_key.clone(), successor);
+                        None
+                    }
+                    None => None,
                 };
-                if operation.id != id {
-                    shell
-                        .mouse_dynamic
-                        .operations
-                        .insert(delivery_key, operation);
-                    return;
-                }
-                let current =
-                    operation.matches(shell, &delivery_key, &shell.device_observations, cx);
                 let clean = completion.cleanup_failure.is_none();
+                if let Some(operation) = operation {
+                    let current =
+                        operation.matches(shell, &delivery_key, &shell.device_observations, cx);
+                    if current {
+                        if let Some(workspace) = operation.workspace.upgrade() {
+                            let result = match completion.result {
+                                Ok(Outcome::Device(report)) => {
+                                    MouseDynamicCompletion::Device(report)
+                                }
+                                Ok(Outcome::MonitoringStopped) => {
+                                    MouseDynamicCompletion::Monitoring(false)
+                                }
+                                Err(error) => MouseDynamicCompletion::Failed(error),
+                            };
+                            shell.finish_mouse_dynamic(&workspace, &operation.request, result, cx);
+                        }
+                    }
+                    if let Some(next) = shell.mouse_dynamic.queued.remove(&delivery_key) {
+                        if !clean
+                            || matches!(
+                                next.request.action(),
+                                Ok(MouseDynamicAction::Monitor(false))
+                            )
+                        {
+                            shell.finish_mouse_dynamic(
+                                &next.workspace,
+                                &next.request,
+                                match &completion.cleanup_failure {
+                                    None => MouseDynamicCompletion::Monitoring(false),
+                                    Some(error) => MouseDynamicCompletion::Failed(error.clone()),
+                                },
+                                cx,
+                            );
+                        } else if !shell
+                            .mouse_dynamic
+                            .admits(shell.close_requested, Admission::queued(&next.request))
+                        {
+                            shell.finish_mouse_dynamic(
+                                &next.workspace,
+                                &next.request,
+                                MouseDynamicCompletion::Cancelled,
+                                cx,
+                            );
+                        } else {
+                            shell.start_mouse_dynamic(delivery_key, next, cx);
+                        }
+                    }
+                }
+                // Final shutdown takes the operation before awaiting delivery.
+                // Its cleanup receipt still belongs to the application owner.
                 if let Some(error) = &completion.cleanup_failure {
                     eprintln!("[dynamic cleanup] {error}");
-                }
-                if current {
-                    if let Some(workspace) = operation.workspace.upgrade() {
-                        let result = match completion.result {
-                            Ok(Outcome::Device(report)) => MouseDynamicCompletion::Device(report),
-                            Ok(Outcome::MonitoringStopped) => {
-                                MouseDynamicCompletion::Monitoring(false)
-                            }
-                            Err(error) => MouseDynamicCompletion::Failed(error),
-                        };
-                        shell.finish_mouse_dynamic(&workspace, &operation.request, result, cx);
-                    }
-                }
-                if let Some(next) = shell.mouse_dynamic.queued.remove(&delivery_key) {
-                    if matches!(
-                        next.request.action(),
-                        Ok(MouseDynamicAction::Monitor(false))
-                    ) {
-                        shell.finish_mouse_dynamic(
-                            &next.workspace,
-                            &next.request,
-                            if clean {
-                                MouseDynamicCompletion::Monitoring(false)
-                            } else {
-                                MouseDynamicCompletion::Failed(completion.cleanup_failure.unwrap())
-                            },
-                            cx,
-                        );
-                    } else if !shell
-                        .mouse_dynamic
-                        .admits(shell.close_requested, Admission::queued(&next.request))
-                    {
-                        shell.finish_mouse_dynamic(
-                            &next.workspace,
-                            &next.request,
-                            MouseDynamicCompletion::Cancelled,
-                            cx,
-                        );
-                    } else {
-                        shell.start_mouse_dynamic(delivery_key, next, cx);
-                    }
+                    shell
+                        .status
+                        .push_str(&format!(" Dynamic 通信清理失败：{error}"));
+                    shell.cancel_pending_exit(cx);
                 }
                 if shell.close_requested && shell.save_task.is_none() {
-                    shell.continue_save_queue(true, cx);
+                    shell.continue_save_queue(clean, cx);
                 }
                 cx.notify();
             });

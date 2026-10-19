@@ -352,9 +352,11 @@ impl<E: Executor> Worker<E> {
         Ok(())
     }
     fn stop(&mut self) -> Result<()> {
-        self.control_gamepad_observation(gamepad_observation::Control::Clear)?;
-        self.analog_observation = Default::default();
         let mut errors = Vec::new();
+        if let Err(error) = self.control_gamepad_observation(gamepad_observation::Control::Clear) {
+            errors.push(format!("Clear gamepad observation: {error:#}"));
+        }
+        self.analog_observation = Default::default();
         if let Err(error) = self.executor.prepare_redirect() {
             errors.push(format!("Stop keyboard timers: {error:#}"));
         }

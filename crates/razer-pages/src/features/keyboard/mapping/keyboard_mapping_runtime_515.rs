@@ -17,6 +17,7 @@ pub(super) struct State {
     stopping: bool,
     poll: Option<Task<()>>,
     epoch: u64,
+    callback_generation: u64,
     revision: u64,
     document: Option<Value>,
     error: Option<String>,
@@ -38,6 +39,9 @@ impl State {
     }
 }
 impl KeyboardProductWorkspace {
+    pub fn set_mapping_callback_generation(&mut self, generation: u64) {
+        self.legacy_mapping.callback_generation = generation;
+    }
     pub(super) fn snap_mapping_ready(&self) -> bool {
         self.legacy_mapping.ready && !self.legacy_mapping.stopping
     }
@@ -445,9 +449,12 @@ impl KeyboardProductWorkspace {
         };
         match output["type"].as_str() {
             Some("snapTap") => self.apply_device_snap_toggle(&output, cx),
-            Some("interdevice" | "lightpac") => cx.emit(
-                crate::features::MappingCallbackRequested::new(event.clone()),
-            ),
+            Some("interdevice" | "lightpac") => {
+                cx.emit(crate::features::MappingCallbackRequested::new_scoped(
+                    event.clone(),
+                    self.legacy_mapping.callback_generation,
+                ))
+            }
             Some("gameMode") => {
                 let mut settings = self.draft["gamingMode"].clone();
                 if settings["state"] == 2 || settings["enableInGame"] == true {
@@ -481,6 +488,15 @@ impl KeyboardProductWorkspace {
                 }
             }
             Some("switchProfile" | "navigateProfile") => {
+                if event["eventName"] != "interDevice"
+                    && output["type"] == "switchProfile"
+                    && output.get("lightpacId").is_some()
+                {
+                    cx.emit(crate::features::MappingCallbackRequested::new_scoped(
+                        event.clone(),
+                        self.legacy_mapping.callback_generation,
+                    ));
+                }
                 cx.emit(KeyboardLegacyProfileNavigation(output))
             }
             _ => {}

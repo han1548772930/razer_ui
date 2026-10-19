@@ -29,14 +29,121 @@ pub(super) struct State {
     basic_reads_ready: bool,
 }
 impl State {
-    fn observe_table(&mut self, scope: MousePollingScope, reading: DpiStagesReading) {
+    fn observe_table(&mut self, scope: MousePollingScope, reading: Option<DpiStagesReading>) {
         // Current PID182 middleware 6259.98d162c59be4fff20fa2.js, module
         // 85191/Xe: getDPIStages(1) verifies the stage table. Its active row
         // cannot replace getDpiLevel(0), which et reads independently for
         // temporary DPI/OTFS/clutch. Keep both that observation and its errors
         // untouched; profile publication belongs to ON_STAGES_INIT/eCI.
         // This narrow owner cannot mutate Device or the saved profile.
-        self.observed = Some((scope, reading));
+        self.observed = reading.map(|reading| (scope, reading));
+    }
+
+    fn advance_revision(&mut self) {
+        self.revision = self
+            .revision
+            .checked_add(1)
+            .expect("DPI stage request revision exhausted");
+    }
+
+    fn retain_scope(&mut self, scope: Option<MousePollingScope>) {
+        if self.last_scope == scope {
+            return;
+        }
+        if let Some(pending) = &self.pending {
+            pending.valid_scope.store(false, Ordering::Release);
+        }
+        if let Some(reading) = &self.reading_valid_scope {
+            reading.store(false, Ordering::Release);
+        }
+        self.last_scope = scope;
+        self.observed = None;
+        self.queued = None;
+        self.editing = false;
+        self.advance_revision();
+    }
+
+    fn input_changed(&mut self) {
+        self.advance_revision();
+        self.observed = None;
+        self.editing = true;
+    }
+
+    fn begin_read(&mut self, scope: MousePollingScope) -> Option<u64> {
+        if self.reading.is_some() {
+            return None;
+        }
+        self.reading = Some((scope, self.revision));
+        self.reading_valid_scope = Some(Arc::new(AtomicBool::new(true)));
+        Some(self.revision)
+    }
+
+    fn write_token_matches(
+        &self,
+        scope: MousePollingScope,
+        revision: u64,
+        draft: &DpiStagesDraft,
+    ) -> bool {
+        self.pending
+            .as_ref()
+            .is_some_and(|p| p.scope == scope && p.revision == revision && p.draft == *draft)
+    }
+
+    fn finish_write(
+        &mut self,
+        scope: MousePollingScope,
+        revision: u64,
+        draft: &DpiStagesDraft,
+        current_scope: Option<MousePollingScope>,
+        current_draft: Option<&DpiStagesDraft>,
+        observed: Option<DpiStagesReading>,
+    ) -> Option<bool> {
+        if !self.write_token_matches(scope, revision, draft) {
+            return None;
+        }
+        let accepted = current_scope == Some(scope)
+            && self.revision == revision
+            && !self.editing
+            && current_draft == Some(draft);
+        self.pending = None;
+        if accepted {
+            self.observe_table(scope, observed);
+        }
+        Some(accepted)
+    }
+
+    fn read_matches(
+        &self,
+        scope: MousePollingScope,
+        revision: u64,
+        current_scope: Option<MousePollingScope>,
+        settings_write_pending: bool,
+    ) -> bool {
+        current_scope == Some(scope)
+            && self.reading == Some((scope, revision))
+            && self.revision == revision
+            && !self.editing
+            && !settings_write_pending
+    }
+
+    fn finish_read(
+        &mut self,
+        scope: MousePollingScope,
+        revision: u64,
+        current_scope: Option<MousePollingScope>,
+        settings_write_pending: bool,
+        observed: Option<DpiStagesReading>,
+    ) -> Option<bool> {
+        if self.reading != Some((scope, revision)) {
+            return None;
+        }
+        let current = self.read_matches(scope, revision, current_scope, settings_write_pending);
+        self.reading = None;
+        self.reading_valid_scope = None;
+        if current {
+            self.observe_table(scope, observed);
+        }
+        Some(current)
     }
 }
 impl Drop for State {
@@ -81,19 +188,7 @@ impl DeviceWorkspace {
     /// an actual read/write worker. Request fresh data after it really finishes.
     pub(in crate::features) fn sync_dpi_scope(&mut self, cx: &mut Context<Self>) {
         let scope = self.mouse_polling_scope(cx);
-        if self.mouse_dpi.last_scope != scope {
-            if let Some(pending) = &self.mouse_dpi.pending {
-                pending.valid_scope.store(false, Ordering::Release);
-            }
-            if let Some(reading) = &self.mouse_dpi.reading_valid_scope {
-                reading.store(false, Ordering::Release);
-            }
-            self.mouse_dpi.last_scope = scope;
-            self.mouse_dpi.observed = None;
-            self.mouse_dpi.queued = None;
-            self.mouse_dpi.editing = false;
-            self.mouse_dpi.revision = self.mouse_dpi.revision.wrapping_add(1);
-        }
+        self.mouse_dpi.retain_scope(scope);
         if self.page == crate::nav::Tab::Performance && self.mouse_dpi.observed.is_none() {
             self.request_mouse_dpi_read(cx);
         }
@@ -129,9 +224,7 @@ impl DeviceWorkspace {
     /// Any local input invalidates an older device observation, even before a
     /// slider release or text commit becomes a real hardware request.
     pub(in crate::features) fn dpi_input_changed(&mut self) {
-        self.mouse_dpi.revision = self.mouse_dpi.revision.wrapping_add(1);
-        self.mouse_dpi.observed = None;
-        self.mouse_dpi.editing = true;
+        self.mouse_dpi.input_changed();
     }
 
     /// Original NORMAL_SKIPPABLE semantics: one retained writer and latest
@@ -196,10 +289,7 @@ impl DeviceWorkspace {
         revision: u64,
         draft: &DpiStagesDraft,
     ) -> bool {
-        self.mouse_dpi
-            .pending
-            .as_ref()
-            .is_some_and(|p| p.scope == scope && p.revision == revision && p.draft == *draft)
+        self.mouse_dpi.write_token_matches(scope, revision, draft)
     }
     pub fn mouse_dpi_write_guard(
         &self,
@@ -257,16 +347,20 @@ impl DeviceWorkspace {
         observed: Option<DpiStagesReading>,
         cx: &mut Context<Self>,
     ) -> bool {
-        if !self.mouse_dpi_in_flight_matches(scope, revision, draft) {
+        let current_scope = self
+            .mouse_polling_scope(cx)
+            .filter(|_| self.device.product_id == 182);
+        let current_draft = self.dpi_draft();
+        let Some(accepted) = self.mouse_dpi.finish_write(
+            scope,
+            revision,
+            draft,
+            current_scope,
+            current_draft.as_ref(),
+            observed,
+        ) else {
             return false;
-        }
-        let accepted = self.mouse_dpi_observation_matches(scope, revision, draft, cx);
-        self.mouse_dpi.pending = None;
-        if accepted {
-            if let Some(reading) = observed {
-                self.mouse_dpi.observe_table(scope, reading);
-            }
-        }
+        };
         self.dispatch_queued_mouse_dpi(cx);
         if !accepted && self.mouse_polling_scope(cx) != Some(scope) {
             self.request_mouse_dpi_read(cx);
@@ -286,16 +380,10 @@ impl DeviceWorkspace {
         let Some(scope) = self.mouse_polling_scope(cx) else {
             return;
         };
-        let token = (scope, self.mouse_dpi.revision);
-        if self.mouse_dpi.reading.is_some() {
+        let Some(revision) = self.mouse_dpi.begin_read(scope) else {
             return;
-        }
-        self.mouse_dpi.reading = Some(token);
-        self.mouse_dpi.reading_valid_scope = Some(Arc::new(AtomicBool::new(true)));
-        cx.emit(WorkspaceEvent::MouseDpiStagesReadRequested {
-            scope,
-            revision: token.1,
-        });
+        };
+        cx.emit(WorkspaceEvent::MouseDpiStagesReadRequested { scope, revision });
     }
 
     pub fn mouse_dpi_read_matches(
@@ -304,11 +392,12 @@ impl DeviceWorkspace {
         revision: u64,
         cx: &App,
     ) -> bool {
-        self.mouse_polling_scope(cx) == Some(scope)
-            && self.mouse_dpi.reading == Some((scope, revision))
-            && self.mouse_dpi.revision == revision
-            && !self.mouse_dpi.editing
-            && !self.mouse_settings_write_pending()
+        self.mouse_dpi.read_matches(
+            scope,
+            revision,
+            self.mouse_polling_scope(cx),
+            self.mouse_settings_write_pending(),
+        )
     }
 
     pub fn finish_mouse_dpi_read(
@@ -318,15 +407,15 @@ impl DeviceWorkspace {
         observed: Option<DpiStagesReading>,
         cx: &mut Context<Self>,
     ) {
-        if self.mouse_dpi_reading_token_matches(scope, revision) {
-            let current = self.mouse_dpi_read_matches(scope, revision, cx);
-            self.mouse_dpi.reading = None;
-            self.mouse_dpi.reading_valid_scope = None;
-            if current {
-                if let Some(reading) = observed {
-                    self.mouse_dpi.observe_table(scope, reading);
-                }
-            }
+        let current_scope = self.mouse_polling_scope(cx);
+        let settings_write_pending = self.mouse_settings_write_pending();
+        if let Some(current) = self.mouse_dpi.finish_read(
+            scope,
+            revision,
+            current_scope,
+            settings_write_pending,
+            observed,
+        ) {
             self.dispatch_queued_mouse_dpi(cx);
             if !current && self.mouse_polling_scope(cx) != Some(scope) {
                 self.request_mouse_dpi_read(cx);
@@ -339,3 +428,7 @@ impl DeviceWorkspace {
         self.mouse_dpi.reading == Some((scope, revision))
     }
 }
+
+#[cfg(test)]
+#[path = "mouse_dpi_profile_tests.rs"]
+mod tests;

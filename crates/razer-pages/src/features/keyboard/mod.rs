@@ -25,6 +25,8 @@ mod actuation_submission;
 mod analog_observation;
 #[path = "actuation/keyboard_gamepad_observation.rs"]
 mod gamepad_observation;
+#[path = "actuation/keyboard_observation_tasks.rs"]
+mod observation_tasks;
 pub use actuation_submission::KeyboardActuationRequested;
 #[path = "lighting/keyboard_brightness.rs"]
 mod brightness;
@@ -381,6 +383,12 @@ impl KeyboardProductWorkspace {
         this.restore_analog_controls();
         this.restore_gaming_combos();
         this.refresh_gaming_fn_sleep(cx);
+        cx.on_release(|this, cx| {
+            this.gamepad_observer.release(cx.background_executor());
+            this.analog_observer.release(cx.background_executor());
+            this.snap_observer.release(cx.background_executor());
+        })
+        .detach();
         this
     }
     pub fn set_page(&mut self, key: &str, window: &mut Window, cx: &mut Context<Self>) {

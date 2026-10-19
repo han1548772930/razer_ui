@@ -105,6 +105,43 @@ pub fn prepare_document_with_device_settings(
     Ok(serde_json::to_value(result)?)
 }
 
+/// Current30525 It/_t installs an ephemeral inter-device OTFS engine and
+/// restores the ordinary document on release. Saved bindings and version stay
+/// intact; receiver routing is applied separately from this logical document.
+pub fn interdevice_otfs_document(document: &Value) -> Result<Value> {
+    let mut document = Document::parse(document)?;
+    ensure!(
+        document.product_id == 158 && document.dual_linked.is_none(),
+        "OTFS requires the logical PID158 document"
+    );
+    let profile = document
+        .profiles
+        .iter_mut()
+        .find(|profile| profile.guid == document.active_profile)
+        .context("Active PID158 OTFS profile is absent")?;
+    let mut context = EngineContext {
+        default_turbos: Some(document.default_turbos.clone()),
+        synapse_turbos: Some(document.synapse_turbos.clone()),
+        ..Default::default()
+    };
+    for key in &DKM_KEYS {
+        context
+            .dkm_keys
+            .insert(key.input_id.into(), serde_json::to_value(key)?);
+    }
+    let projection = MappingEngine::new(158)?.generate_mouse_otfs(
+        &profile.mappings,
+        &default_bindings()?,
+        &mut context,
+    )?;
+    profile.app_engine = Some(serde_json::from_value(projection.profile)?);
+    profile
+        .extensions
+        .insert("defaultMappings".into(), projection.defaults.clone());
+    document.default_mappings.app_engine = serde_json::from_value(projection.defaults)?;
+    Ok(serde_json::to_value(document)?)
+}
+
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Profile {
@@ -372,6 +409,7 @@ pub fn select_profile_for_serial(document: &Value, serial: &str) -> Result<Value
 struct DefaultBinding {
     output_type: &'static str,
     input_type: &'static str,
+    #[serde(rename = "inputID")]
     input_id: &'static str,
     is_hyper_shift: bool,
     sensitivity_group: Sensitivity,
@@ -389,6 +427,7 @@ struct Sensitivity {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct DkmKey {
+    #[serde(rename = "inputID")]
     input_id: &'static str,
     button_key: &'static str,
     key: u8,

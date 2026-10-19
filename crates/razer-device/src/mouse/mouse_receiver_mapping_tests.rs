@@ -150,3 +150,57 @@ fn linker_projection_overrides_slave_report_identity_last() {
             .all(|mapping| mapping["input"]["reportId"] == 4)
     );
 }
+
+#[test]
+fn interdevice_otfs_uses_source_scroll_controls_without_changing_saved_profiles() {
+    let first = profile(json!([
+        {"inputType":"MouseInput","inputID":"Button4","outputType":"keyboardGroup",
+         "keyboardGroup":{"key":"KEY_A","modifiers":[]}},
+        {"inputType":"MouseInput","inputID":"Button5","outputType":"sensitivityGroup",
+         "sensitivityGroup":{"sensitivityAssignment":"DPI_OnTheFly"}}
+    ]));
+    let mut second = profile(json!([]));
+    second["guid"] = json!("profile-b");
+    let mut ordinary = prepare_document(&[first, second], "profile-a", None, guids()).unwrap();
+    ordinary["deviceMetadatas"] = json!({"observed-serial":{"activeProfileGuid":"profile-a"}});
+    ordinary["unknown-extension"] = json!({"nested":17});
+    let original = ordinary.clone();
+    let temporary = interdevice_otfs_document(&ordinary).unwrap();
+    assert_eq!(ordinary, original);
+    for field in ["version", "defaultTurbos", "synapseTurbos", "deviceMetadatas", "unknown-extension"] {
+        assert_eq!(temporary[field], ordinary[field]);
+    }
+    assert_eq!(temporary["profiles"][0]["mappings"], ordinary["profiles"][0]["mappings"]);
+    assert_eq!(temporary["profiles"][1], ordinary["profiles"][1]);
+    let mappings = temporary["profiles"][0]["appEngine"]["mappings"].as_array().unwrap();
+    assert!(mappings.iter().all(|mapping| mapping["input"]["otfs"] != true));
+    let up = mappings.iter().find(|mapping| mapping["input"]["id"] == 1024 && mapping["input"]["data"] == 120).unwrap();
+    let down = mappings.iter().find(|mapping| mapping["input"]["id"] == 1024 && mapping["input"]["data"] == 65416).unwrap();
+    assert_eq!(up["output"]["type"], "sensitivity");
+    assert_eq!(up["output"]["sensitivityGroup"],
+        json!({"sensitivityAssignment":"DPI_Value_Up","value":50,"independent":false}));
+    assert_eq!(down["output"]["sensitivityGroup"],
+        json!({"sensitivityAssignment":"DPI_Value_Down","value":50,"independent":false}));
+    assert!(!mappings.iter().any(|mapping| mapping["output"]["type"] == "keyboard"));
+    assert_eq!(temporary["profiles"][0]["defaultMappings"], temporary["defaultMappings"]["appEngine"]);
+    assert_eq!(temporary["profiles"][0]["appEngine"]["hash"],
+        source_hash(&temporary["profiles"][0]["appEngine"]).unwrap());
+}
+
+#[test]
+fn interdevice_otfs_rejects_wrong_product_projection_and_invalid_profile() {
+    let ordinary = prepare_document(&[profile(json!([]))], "profile-a", None, guids()).unwrap();
+    for (field, value) in [
+        ("productId", json!(70)),
+        ("dualLinked", json!(true)),
+        ("activeProfile", json!("absent")),
+        ("defaultTurbos", Value::Null),
+    ] {
+        let mut invalid = ordinary.clone();
+        invalid[field] = value;
+        assert!(interdevice_otfs_document(&invalid).is_err(), "{field}");
+    }
+    let mut invalid = ordinary;
+    invalid["profiles"][0]["mappings"] = json!([{"inputType":"MouseInput","inputID":"Button4"}]);
+    assert!(interdevice_otfs_document(&invalid).is_err());
+}

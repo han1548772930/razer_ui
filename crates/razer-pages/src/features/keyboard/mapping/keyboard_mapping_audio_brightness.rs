@@ -36,7 +36,7 @@ pub(super) struct Draft {
 pub(super) struct State {
     owner: Option<EntityId>,
     generation: u64,
-    devices: Option<Vec<Value>>,
+    devices: Option<bool>,
     selectors: [Option<Entity<SelectState<Vec<Choice>>>>; 2],
     subscriptions: [Option<Subscription>; 2],
 }
@@ -49,7 +49,7 @@ impl State {
         self.subscriptions = Default::default();
     }
     fn has_led(&self) -> bool {
-        self.devices.as_ref().is_some_and(|rows| !rows.is_empty())
+        self.devices == Some(true)
     }
 }
 #[derive(Clone)]
@@ -65,7 +65,7 @@ pub struct KeyboardMappingBrightnessObservation {
     pub owner: EntityId,
     pub generation: u64,
     /// Original getMemoryStorageItem first item's parsed value.payload.devices.
-    pub devices: Vec<Value>,
+    pub has_led_devices: bool,
 }
 impl EventEmitter<KeyboardMappingBrightnessReadRequested> for KeyboardProductWorkspace {}
 fn rows<'a>(
@@ -129,7 +129,7 @@ impl KeyboardProductWorkspace {
             return;
         }
         let previous = self.analog_gamepad.mapping.audio_brightness.has_led();
-        self.analog_gamepad.mapping.audio_brightness.devices = Some(observation.devices);
+        self.analog_gamepad.mapping.audio_brightness.devices = Some(observation.has_led_devices);
         let has_led = self.analog_gamepad.mapping.audio_brightness.has_led();
         // C first calls enableSave(!newLed,true,false); the [A] effect follows
         // with enableSave(newLed,true,false). Preserve the resulting state.

@@ -12,6 +12,9 @@ use razer_pages::features::{
 use razer_service::mapping::mode_capture::{self, Reply as CaptureReply};
 #[path = "audio_notifications_mixer.rs"]
 mod mixer;
+#[path = "audio_notifications_cleanup.rs"]
+mod cleanup;
+pub(in crate::shell) use cleanup::Completion;
 
 pub(super) enum Command {
     Stop,
@@ -27,7 +30,7 @@ pub(super) enum Command {
     HostEvents(Vec<Value>),
     GlobalShortcutsEnabled(bool),
 }
-pub(super) enum MixerReceipt {
+pub(in crate::shell) enum MixerReceipt {
     LocalSaved,
     DeviceSubmitted,
 }
@@ -171,9 +174,17 @@ fn native_events(client: &mut ServiceClient, route: &DirectRoute, status: &Sende
 fn close(client: &mut ServiceClient, route: &DirectRoute) -> anyhow::Result<()> {
     #[cfg(windows)]
     if let DirectRoute::Container(target) = route {
-        client.request(ServiceRequest::SeirenNativeClose {
+        let response = client.request(ServiceRequest::SeirenNativeClose {
             target: target.clone(),
         })?;
+        #[derive(serde::Deserialize)]
+        struct Receipt {
+            target: Value,
+            terminated: Option<NativeReply>,
+        }
+        let receipt: Receipt = serde_json::from_value(response)?;
+        ensure!(receipt.target == serde_json::to_value(target)?, "Marie cleanup route differs");
+        ensure!(matches!(receipt.terminated, Some(NativeReply::Boolean(true))), "Marie cleanup acknowledgement is absent or unsuccessful");
     }
     let _ = (client, route);
     Ok(())
@@ -264,26 +275,31 @@ pub(super) fn run(
     view_name: String,
     live: Arc<AtomicBool>,
     shortcuts_enabled: bool,
-) -> anyhow::Result<()> {
+) -> Completion {
     let Some(observed) = observed else {
-        return run_local(commands, status, product_id, live);
+        return cleanup::completed(cleanup::guarded(|| run_local(commands, status, product_id, live)), Vec::new());
     };
-    let mut client = ServiceClient::spawn()?;
+    let mut client = match cleanup::guarded(ServiceClient::spawn) {
+        Ok(client) => client,
+        Err(error) => return cleanup::completed(Err(error), Vec::new()),
+    };
     client.set_request_guard(live.clone());
     let mut native = None;
     let mut stream_enabled = false;
     let mut capturing = false;
     let mut capture: Option<mode_capture::Session> = None;
     let mut capture_request: Option<SeirenStreamMixerCaptureChanged> = None;
-    let mut mixer = mixer::MixerOwner::new(
+    let mut mixer = None;
+    let result = cleanup::guarded(|| {
+    mixer = Some(mixer::MixerOwner::new(
         observed.product_id(),
         observed.container().to_owned(),
         razer_device::seiren_stream_mixer::device_name(observed.product_id())?.to_owned(),
         view_id,
         view_name,
         status.clone(),
-    )?;
-    let result = (|| {
+    )?);
+        let mixer = mixer.as_mut().expect("created audio mixer owner");
         if !shortcuts_enabled {
             mixer.enable_shortcuts(false)?;
         }
@@ -530,31 +546,31 @@ pub(super) fn run(
             }
         }
         Ok::<_, anyhow::Error>(())
-    })();
+    });
     // Teardown must remain possible after the owner invalidates foreground
     // requests. No subsequent product mutation is submitted under this guard.
     client.set_request_guard(Arc::new(AtomicBool::new(true)));
+    let mut errors = Vec::new();
     if let Some(session) = capture {
-        if let Err(error) = session.stop() {
-            report(
-                &status,
-                format!("Mixer shortcut capture cleanup: {error:#}"),
-            );
-        }
+        cleanup::step(&mut errors, "Mixer shortcut capture cleanup", || session.stop().map_err(anyhow::Error::msg));
     }
-    mixer.cleanup_shortcuts();
-    if let Err(error) = enabled(&mut client, false) {
-        report(&status, format!("AudioEnumerator cleanup: {error:#}"));
+    if let Some(mixer) = &mut mixer {
+        cleanup::step(&mut errors, "Mixer shortcut cleanup", || mixer.cleanup_shortcuts());
     }
+    cleanup::step(&mut errors, "AudioEnumerator cleanup", || enabled(&mut client, false));
     if let Some(route) = native {
-        if let Err(error) = close(&mut client, &route) {
-            report(&status, format!("AudioMarie cleanup: {error:#}"));
-        }
+        cleanup::step(&mut errors, "AudioMarie cleanup", || close(&mut client, &route));
     }
-    if !client.is_stopped() {
-        if let Err(error) = client.request(ServiceRequest::Shutdown) {
-            report(&status, format!("Audio_StreamMixer shutdown: {error:#}"));
-        }
-    }
-    result
+    cleanup::step(&mut errors, "Audio_StreamMixer shutdown", || {
+        ensure!(!client.is_stopped(), "Audio service ended without a shutdown acknowledgement");
+        #[derive(serde::Deserialize)]
+        struct Receipt { stopped: bool }
+        let receipt: Receipt = serde_json::from_value(client.request(ServiceRequest::Shutdown)?)?;
+        ensure!(receipt.stopped, "Audio service did not acknowledge shutdown");
+        Ok(())
+    });
+    cleanup::terminate(&mut errors, || client.finish_termination(), || thread::sleep(Duration::from_millis(100)));
+    drop(mixer);
+    drop(client);
+    cleanup::completed(result, errors)
 }

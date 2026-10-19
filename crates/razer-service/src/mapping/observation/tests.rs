@@ -3,6 +3,42 @@ use crate::mapping::test_transport::{Mock, TIMEOUT};
 use serde_json::json;
 
 #[test]
+fn observation_completion_distinguishes_poll_failure_from_unconfirmed_cleanup() {
+    for fail_cleanup in [false, true] {
+        let (mock, _, cleanup) = Mock::new(move |request| match request {
+            ServiceRequest::MappingObservationStart { observer_guid, .. } => {
+                Ok(json!({"observer_guid":observer_guid,"registered":true}))
+            }
+            ServiceRequest::MappingObservationPoll { .. } => anyhow::bail!("poll failed"),
+            ServiceRequest::MappingObservationStop { observer_guid } => {
+                Ok(json!({"observer_guid":observer_guid,"registered":fail_cleanup}))
+            }
+            ServiceRequest::Shutdown => Ok(json!({"stopped":true})),
+            request => panic!("unexpected request: {request:?}"),
+        });
+        let session =
+            Session::start_with(Target::new(679, "observed-container".into()), || Ok(mock))
+                .unwrap();
+        cleanup.recv_timeout(TIMEOUT).unwrap();
+        let completion = session.stop_with_receipt();
+        assert_eq!(completion.operation_error(), Some("poll failed"));
+        assert!(completion.result().unwrap_err().contains("poll failed"));
+        if fail_cleanup {
+            assert!(
+                completion
+                    .cleanup_error()
+                    .unwrap()
+                    .contains("cleanup was not acknowledged")
+            );
+            assert!(completion.cleanup_result().is_err());
+        } else {
+            assert_eq!(completion.cleanup_error(), None);
+            assert_eq!(completion.cleanup_result(), Ok(()));
+        }
+    }
+}
+
+#[test]
 fn snaptap_subscription_delivers_typed_events_and_unregisters_before_scope_release() {
     let (entered, waiting) = mpsc::channel();
     let (resume, blocked) = mpsc::channel();

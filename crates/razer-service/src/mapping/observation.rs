@@ -19,10 +19,48 @@ pub enum Reply<E = SnapTapEvent> {
     Event(E),
     Failed(String),
 }
+
+/// The worker reports execution and cleanup independently after it has joined.
+#[derive(Clone, Debug, Default)]
+pub struct Completion {
+    operation_error: Option<String>,
+    cleanup_error: Option<String>,
+}
+impl Completion {
+    pub fn cleanup_failed(error: impl Into<String>) -> Self {
+        Self {
+            operation_error: None,
+            cleanup_error: Some(error.into()),
+        }
+    }
+    pub fn operation_error(&self) -> Option<&str> {
+        self.operation_error.as_deref()
+    }
+    pub fn cleanup_error(&self) -> Option<&str> {
+        self.cleanup_error.as_deref()
+    }
+    pub fn cleanup_result(&self) -> Result<(), String> {
+        self.cleanup_error.clone().map_or(Ok(()), Err)
+    }
+    pub fn result(&self) -> Result<(), String> {
+        let errors = self
+            .operation_error
+            .iter()
+            .chain(&self.cleanup_error)
+            .cloned()
+            .collect::<Vec<_>>();
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors.join("; "))
+        }
+    }
+}
+
 pub struct Session<E = SnapTapEvent> {
     canceled: Arc<AtomicBool>,
     replies: mpsc::Receiver<Reply<E>>,
-    worker: Option<JoinHandle<Result<(), String>>>,
+    worker: Option<JoinHandle<Completion>>,
 }
 impl Session {
     pub fn start(target: Target) -> anyhow::Result<Self> {
@@ -82,11 +120,19 @@ impl<E> Session<E> {
             .name(S::name().into())
             .spawn(move || {
                 let _guard = guard;
-                let result = guarded(|| -> anyhow::Result<()> {
+                let result = guarded(|| -> anyhow::Result<Completion> {
                     if signal.load(Ordering::Acquire) {
-                        return Ok(());
+                        return Ok(Completion::default());
                     }
-                    let mut client = factory()?;
+                    let mut client = match factory() {
+                        Ok(client) => client,
+                        Err(error) => {
+                            return Ok(Completion {
+                                operation_error: Some(format!("{error:#}")),
+                                cleanup_error: None,
+                            });
+                        }
+                    };
                     let observer_guid = uuid::Uuid::new_v4().to_string();
                     let mut registered = false;
                     let run = guarded(|| -> anyhow::Result<()> {
@@ -117,10 +163,8 @@ impl<E> Session<E> {
                         }
                         Ok(())
                     });
+                    let operation_error = run.err().map(|error| format!("{error:#}"));
                     let mut errors = Vec::new();
-                    if let Err(error) = run {
-                        errors.push(format!("{error:#}"));
-                    }
                     if registered {
                         let stopped = guarded(|| -> anyhow::Result<()> {
                             let receipt: Receipt = serde_json::from_value(
@@ -139,12 +183,14 @@ impl<E> Session<E> {
                     if let Err(error) = shutdown(&mut client) {
                         errors.push(error);
                     }
-                    anyhow::ensure!(errors.is_empty(), "{}", errors.join("; "));
-                    Ok(())
+                    Ok(Completion {
+                        operation_error,
+                        cleanup_error: (!errors.is_empty()).then(|| errors.join("; ")),
+                    })
                 })
-                .map_err(|error| format!("{error:#}"));
-                if let Err(error) = &result {
-                    let _ = sender.try_send(Reply::Failed(error.clone()));
+                .unwrap_or_else(|error| Completion::cleanup_failed(format!("{error:#}")));
+                if let Err(error) = result.result() {
+                    let _ = sender.try_send(Reply::Failed(error));
                 }
                 result
             })?;
@@ -157,6 +203,12 @@ impl<E> Session<E> {
     pub fn drain(&self) -> Vec<Reply<E>> {
         self.replies.try_iter().collect()
     }
+    #[cfg(test)]
+    pub(super) fn receive_for_test(&self) -> Reply<E> {
+        self.replies
+            .recv_timeout(super::test_transport::TIMEOUT)
+            .expect("Mapping observation did not deliver its next reply")
+    }
     pub fn is_finished(&self) -> bool {
         self.worker.as_ref().is_none_or(JoinHandle::is_finished)
     }
@@ -166,13 +218,18 @@ impl<E> Session<E> {
             worker.thread().unpark();
         }
     }
-    pub fn stop(mut self) -> Result<(), String> {
+    pub fn stop(self) -> Result<(), String> {
+        self.stop_with_receipt().result()
+    }
+    pub fn stop_with_receipt(mut self) -> Completion {
         self.request_stop();
-        self.worker.take().map_or(Ok(()), |worker| {
-            worker
-                .join()
-                .map_err(|_| "Mapping observation worker panicked".to_owned())?
-        })
+        self.worker
+            .take()
+            .map_or_else(Completion::default, |worker| {
+                worker.join().unwrap_or_else(|_| {
+                    Completion::cleanup_failed("Mapping observation worker panicked")
+                })
+            })
     }
 }
 impl<E> Drop for Session<E> {

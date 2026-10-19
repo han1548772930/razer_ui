@@ -6,11 +6,12 @@ pub(super) struct Observer<E = SnapTapEvent> {
     pub(super) scope: Uuid,
     pub(super) caller: Uuid,
     pub(super) epoch: Uuid,
+    stopping: bool,
     pub(super) pending: Inbox<E>,
 }
 impl<E> Observer<E> {
     pub(super) fn push(&mut self, caller: Uuid, epoch: Uuid, event: E) {
-        if self.caller == caller && self.epoch == epoch {
+        if self.caller == caller && self.epoch == epoch && !self.stopping {
             self.pending.push(epoch, event);
         }
     }
@@ -47,6 +48,13 @@ impl<E: device::Executor> Core<E> {
         row.ensure_active()?;
         row.target.revalidate()?;
         let caller = row.caller;
+        ensure!(
+            !self
+                .observers
+                .values()
+                .any(|observer| observer.caller == caller && observer.stopping),
+            "Mapping observation cleanup is still pending"
+        );
         let epoch = self
             .observers
             .values()
@@ -62,6 +70,7 @@ impl<E: device::Executor> Core<E> {
                 scope,
                 caller,
                 epoch,
+                stopping: false,
                 pending: Inbox::new(epoch),
             },
         );
@@ -74,6 +83,10 @@ impl<E: device::Executor> Core<E> {
             .get_mut(id)
             .context("Mapping observer is not registered")?;
         ensure!(observer.scope == scope, "Mapping observer scope changed");
+        ensure!(
+            !observer.stopping,
+            "Mapping observation cleanup is still pending"
+        );
         let row = self
             .devices
             .values()
@@ -90,10 +103,11 @@ impl<E: device::Executor> Core<E> {
     }
 
     pub(super) fn stop_observation(&mut self, scope: Uuid, id: &str) -> Result<Value> {
-        let Some(observer) = self.observers.get(id) else {
+        let Some(observer) = self.observers.get_mut(id) else {
             return Ok(serde_json::to_value(Receipt::new(id.into(), false))?);
         };
         ensure!(observer.scope == scope, "Mapping observer scope changed");
+        observer.stopping = true;
         let caller = observer.caller;
         if !self
             .observers
@@ -142,6 +156,13 @@ impl<E: device::Executor> Core<E> {
         row.ensure_active()?;
         row.target.revalidate()?;
         let caller = row.caller;
+        ensure!(
+            !self
+                .input_observers
+                .values()
+                .any(|observer| observer.caller == caller && observer.stopping),
+            "Input observation cleanup is still pending"
+        );
         let lease = Lease::Device {
             scope: row.scope,
             caller,
@@ -175,6 +196,7 @@ impl<E: device::Executor> Core<E> {
                 scope,
                 caller,
                 epoch,
+                stopping: false,
                 pending: Inbox::new(epoch),
             },
         );
@@ -187,6 +209,10 @@ impl<E: device::Executor> Core<E> {
             .get_mut(id)
             .context("Input observer is not registered")?;
         ensure!(observer.scope == scope, "Input observer scope changed");
+        ensure!(
+            !observer.stopping,
+            "Input observation cleanup is still pending"
+        );
         let row = self
             .devices
             .values()
@@ -202,10 +228,11 @@ impl<E: device::Executor> Core<E> {
     }
 
     pub(super) fn stop_input_observation(&mut self, scope: Uuid, id: &str) -> Result<Value> {
-        let Some(observer) = self.input_observers.get(id) else {
+        let Some(observer) = self.input_observers.get_mut(id) else {
             return Ok(serde_json::to_value(Receipt::new(id.into(), false))?);
         };
         ensure!(observer.scope == scope, "Input observer scope changed");
+        observer.stopping = true;
         let caller = observer.caller;
         if !self
             .input_observers
@@ -247,12 +274,14 @@ mod tests {
             scope: Uuid::from_u128(3),
             caller,
             epoch,
+            stopping: false,
             pending: Inbox::new(epoch),
         };
         let mut second = Observer {
             scope: Uuid::from_u128(4),
             caller,
             epoch,
+            stopping: false,
             pending: Inbox::new(epoch),
         };
         for observer in [&mut first, &mut second] {

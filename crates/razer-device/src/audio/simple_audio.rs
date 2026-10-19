@@ -1,17 +1,25 @@
 //! Current simple_service AudioServiceWin records and libc++ hash-table order.
 //! Recovered from PE RVAs 3a170/3b820/3be88/1f746; no OS or vendor DLL.
 use anyhow::ensure;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::num::Wrapping as W;
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum EndpointType {
+    Speaker,
+    Microphone,
+    All,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
 pub struct SimpleAudioEndpoint {
     pub id: String,
     pub name: String,
     #[serde(rename = "containerId")]
     pub container_id: String,
     #[serde(rename = "type")]
-    pub endpoint_type: &'static str,
+    pub endpoint_type: EndpointType,
 }
 
 const K0: W<u64> = W(0xc3a5c85c97cb3127);

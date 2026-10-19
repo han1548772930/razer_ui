@@ -2,9 +2,14 @@
 use super::*;
 use razer_device::mouse_dpi_stages::{DpiStagesDraft, DpiStagesReading};
 use razer_discovery::direct;
-use razer_ipc::{ServiceClient, ServiceRequest};
 use razer_model::model::Profile;
 use razer_pages::features::mouse_polling::MousePollingScope;
+
+#[path = "mouse_dpi_stages_runtime.rs"]
+mod runtime;
+#[path = "mouse_dpi_stages_worker.rs"]
+mod worker;
+pub(super) use runtime::State;
 
 pub(super) struct MouseDpiStagesSave {
     workspace: WeakEntity<ProductWorkspace>,
@@ -204,7 +209,7 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         if !persist_local {
-            self.mouse_dpi_request(workspace, scope, revision, Some(draft), window, cx);
+            self.mouse_dpi_request(workspace, scope, revision, Some(draft), cx);
             return;
         }
         let valid = self.storage_error.is_none()
@@ -288,7 +293,7 @@ impl AppShell {
         &mut self,
         save: MouseDpiStagesSave,
         succeeded: bool,
-        window: AnyWindowHandle,
+        _window: AnyWindowHandle,
         cx: &mut Context<Self>,
     ) {
         let Some(workspace) = save.workspace.upgrade() else {
@@ -300,29 +305,7 @@ impl AppShell {
             });
             return;
         }
-        let owner = cx.entity().downgrade();
-        cx.defer(move |cx| {
-            let Some(workspace) = save.workspace.upgrade() else {
-                return;
-            };
-            let launched = window.update(cx, |_, window, cx| {
-                owner.update(cx, |this, cx| {
-                    this.mouse_dpi_request(
-                        workspace.clone(),
-                        save.scope,
-                        save.revision,
-                        Some(save.draft.clone()),
-                        window,
-                        cx,
-                    )
-                })
-            });
-            if !matches!(launched, Ok(Ok(()))) {
-                workspace.update(cx, |owner, cx| {
-                    owner.finish_mouse_dpi(save.scope, save.revision, &save.draft, None, cx)
-                });
-            }
-        });
+        self.mouse_dpi_request(workspace, save.scope, save.revision, Some(save.draft), cx);
     }
 
     pub(super) fn read_mouse_dpi_stages(
@@ -330,10 +313,10 @@ impl AppShell {
         workspace: Entity<ProductWorkspace>,
         scope: MousePollingScope,
         revision: u64,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.mouse_dpi_request(workspace, scope, revision, None, window, cx);
+        self.mouse_dpi_request(workspace, scope, revision, None, cx);
     }
 
     fn mouse_dpi_request(
@@ -342,7 +325,6 @@ impl AppShell {
         scope: MousePollingScope,
         revision: u64,
         draft: Option<DpiStagesDraft>,
-        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         let matches = match &draft {
@@ -385,118 +367,16 @@ impl AppShell {
             return;
         }
         let route = routes[0].clone();
-        let identity = workspace.read(cx).identity(cx);
-        let discovery_revision = self.discovery_revision;
-        self.device_value_owners.remove(&identity);
-        self.device_read_scopes.remove(&identity);
-        self.status = if draft.is_some() {
-            "正在写入完整 DPI 阶段表并读取设备确认。"
-        } else {
-            "正在读取设备 DPI 阶段表。"
-        }
-        .into();
-        cx.notify();
-        let workspace = workspace.downgrade();
-        cx.spawn_in(window, async move |this, cx| {
-            let selected = route.clone();
-            let requested = draft.clone();
-            let result = cx
-                .background_spawn(async move {
-                    anyhow::ensure!(
-                        valid_scope.load(std::sync::atomic::Ordering::Acquire),
-                        "DPI scope changed before service creation"
-                    );
-                    let mut client = ServiceClient::spawn()?;
-                    client.set_request_guard(valid_scope.clone());
-                    let result = (|| {
-                        anyhow::ensure!(
-                            valid_scope.load(std::sync::atomic::Ordering::Acquire),
-                            "DPI scope changed before device resolution"
-                        );
-                        direct::request_mouse_dpi_stages(&mut client, &selected, requested)
-                    })();
-                    let shutdown_error = client
-                        .request(ServiceRequest::Shutdown)
-                        .err()
-                        .map(|e| format!("{e:#}"));
-                    result.map(|reading| (reading, shutdown_error))
-                })
-                .await;
-            let _ =
-                this.update_in(cx, |this, _, cx| {
-                    let Some(workspace) = workspace.upgrade() else {
-                        return;
-                    };
-                    let token = match &draft {
-                        Some(draft) => workspace
-                            .read(cx)
-                            .mouse_dpi_in_flight_matches(scope, revision, draft, cx),
-                        None => workspace
-                            .read(cx)
-                            .mouse_dpi_reading_token_matches(scope, revision, cx),
-                    };
-                    if !token {
-                        return;
-                    }
-                    let scope_current = match &draft {
-                        Some(draft) => workspace
-                            .read(cx)
-                            .mouse_dpi_observation_matches(scope, revision, draft, cx),
-                        None => workspace
-                            .read(cx)
-                            .mouse_dpi_read_matches(scope, revision, cx),
-                    };
-                    let current =
-                        this.devices.contains(&workspace)
-                            && workspace.read(cx).identity(cx) == identity
-                            && scope_current
-                            && this.discovery_revision == discovery_revision
-                            && this.device_observations.iter().any(|current| {
-                                current.matches(workspace.read(cx).device(cx))
-                                    && current.container().eq_ignore_ascii_case(route.container())
-                                    && current.physical_product_id() == route.physical_product_id()
-                                    && current.hid_node() == route.hid_node()
-                                    && current.peer_product_id() == route.peer_product_id()
-                                    && current.connection() == route.connection()
-                                    && matches!((current.transport(), route.transport()),
-                                (Some(razer_discovery::discovery::ObservedTransport::Wired),
-                                    Some(razer_discovery::discovery::ObservedTransport::Wired))
-                                | (Some(razer_discovery::discovery::ObservedTransport::Dongle),
-                                    Some(razer_discovery::discovery::ObservedTransport::Dongle)))
-                                    && direct::mouse_dpi_stages_available(current)
-                            });
-                    let observed: Option<DpiStagesReading> = if current {
-                        result.as_ref().ok().map(|(value, _)| value.clone())
-                    } else {
-                        None
-                    };
-                    this.device_value_owners.remove(&identity);
-                    this.device_read_scopes.remove(&identity);
-                    workspace.update(cx, |owner, cx| match &draft {
-                        Some(draft) => owner.finish_mouse_dpi(scope, revision, draft, observed, cx),
-                        None => owner.finish_mouse_dpi_read(scope, revision, observed, cx),
-                    });
-                    this.status = if !current {
-                        "DPI 操作期间设备或配置已变化，结果未应用到当前页面。".into()
-                    } else {
-                        match result {
-                            Ok((_, None)) => if draft.is_some() {
-                                "设备已回读确认当前 DPI 阶段表；此确认不代表板载配置槽已保存。"
-                            } else {
-                                "已读取设备 DPI 阶段表；隐藏阶段和独立 X/Y 设置保留本地配置。"
-                            }
-                            .into(),
-                            Ok((_, Some(error))) => {
-                                format!("DPI 阶段表已读取确认，但通信进程退出失败：{error}")
-                            }
-                            Err(error) => {
-                                format!("DPI 阶段表尚未确认：{error:#}。请重新读取设备状态。")
-                            }
-                        }
-                    };
-                    cx.notify();
-                });
-        })
-        .detach();
+        self.start_mouse_dpi_stages_operation(
+            workspace,
+            route,
+            runtime::Request {
+                scope,
+                revision,
+                draft,
+                valid: valid_scope,
+            },
+            cx,
+        );
     }
 }

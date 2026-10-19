@@ -30,6 +30,10 @@ impl MacroLibrary {
         self.live.clone()
     }
 
+    pub fn saved_snapshot(&self) -> MacroLibraryFile {
+        self.saved.clone()
+    }
+
     pub fn pending(&self) -> bool {
         !self.live.same_document(&self.saved)
     }

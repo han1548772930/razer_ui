@@ -152,6 +152,18 @@ pub struct KeyboardLightingObservation {
 }
 
 impl KeyboardLightingObservation {
+    fn replace_chroma_configuration(
+        &mut self,
+        configuration: &razer_storage::chroma_profiles::Configuration,
+    ) {
+        self.chroma_profiles = configuration
+            .profiles()
+            .iter()
+            .map(|profile| json!({"id": profile.id(), "name": profile.name()}))
+            .collect();
+        self.selected_chroma_profile_guid = configuration.selected_profile().map(str::to_owned);
+        self.is_chroma_enabled = Some(configuration.enabled());
+    }
     fn replace_host(&mut self, host: KeyboardLightingHostObservation) {
         self.check_is_fully_installed = host.fully_installed;
         self.chroma_installed_module = host.module_installed;
@@ -184,6 +196,43 @@ impl KeyboardLightingObservation {
 mod host_observation_tests {
     use super::{KeyboardLightingHostObservation, KeyboardLightingObservation};
     use serde_json::json;
+
+    #[test]
+    fn keyboard_shared_selection_preserves_installation_and_physical_device_observations() {
+        let configuration = serde_json::from_value(json!({
+            "profiles":[{"id":"local-b","name":"Local B"}],
+            "currentProfile":"local-b",
+            "enabled":true,
+        }))
+        .unwrap();
+        let mut observation = KeyboardLightingObservation {
+            selected_effect_id: Some(19),
+            check_is_fully_installed: Some(false),
+            chroma_installed_module: Some(true),
+            is_dynamic_lighting_enabled: Some(false),
+            custom_colors: vec![json!({"picked":true,"color":"#123456"})],
+            ..Default::default()
+        };
+        observation.replace_connected_products(Some(vec![756, 226]));
+        observation.replace_chroma_configuration(&configuration);
+        assert_eq!(
+            observation.selected_chroma_profile_guid.as_deref(),
+            Some("local-b")
+        );
+        assert_eq!(observation.is_chroma_enabled, Some(true));
+        assert_eq!(observation.selected_effect_id, Some(19));
+        assert_eq!(observation.check_is_fully_installed, Some(false));
+        assert_eq!(observation.chroma_installed_module, Some(true));
+        assert_eq!(observation.is_dynamic_lighting_enabled, Some(false));
+        assert_eq!(
+            observation.connected_chroma_devices.as_ref().unwrap()[1].product_id,
+            226
+        );
+        assert_eq!(
+            observation.custom_colors,
+            [json!({"picked":true,"color":"#123456"})]
+        );
+    }
 
     #[test]
     fn keyboard_host_read_clears_only_host_fields_without_replaying_device_values() {
@@ -278,6 +327,29 @@ pub enum KeyboardLightingCommand {
 impl EventEmitter<KeyboardLightingRequested> for KeyboardProductWorkspace {}
 
 impl KeyboardProductWorkspace {
+    /// This shared local configuration does not acknowledge a device effect.
+    pub fn observe_chroma_configuration(
+        &mut self,
+        configuration: &razer_storage::chroma_profiles::Configuration,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let mut observation = self.lighting_observation.clone().unwrap_or_default();
+        observation.replace_chroma_configuration(configuration);
+        self.lighting_observation = Some(observation);
+        if self.lighting_runtime.advanced_draft == Some(configuration.enabled()) {
+            self.lighting_runtime.advanced_draft = None;
+        }
+        if self.lighting_runtime.chroma_profile_draft.as_deref() == configuration.selected_profile()
+        {
+            self.lighting_runtime.chroma_profile_draft = None;
+        }
+        self.reconcile_mapping_chroma_targets();
+        self.init_mapping_targets(0, window, cx);
+        self.init_mapping_targets(1, window, cx);
+        self.sync_rgb_controls(window, cx);
+        cx.notify();
+    }
     pub fn accepts_lighting_request(&self, request: &KeyboardLightingRequested) -> bool {
         request.guard.load(Ordering::Acquire)
             && Arc::ptr_eq(&request.guard, &self.lighting_runtime.guard)

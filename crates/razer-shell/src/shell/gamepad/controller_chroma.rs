@@ -1,6 +1,7 @@
 //! Current Kitsune Chroma caller, local profile selection and host navigation.
 //! Local storage receipts and native lighting diagnostics remain distinct.
 use super::product_chroma::{Readback, readback};
+use super::product_mapping::MappingTargetOwner;
 use super::*;
 use anyhow::{Context as _, ensure};
 use razer_pages::features::gamepad_products::{
@@ -25,12 +26,55 @@ const HOST_VIEW: u64 = 0x4354_524C_4348_524F;
 const SOURCE_UI_URL: &str = "/synapse/products/4115/ui/";
 const SYNC_KEY: &str = "RzWinStorage_sync_quick_effect";
 
-struct Pending {
+struct ControllerPending {
     workspace: Entity<ProductWorkspace>,
     identity: String,
     request: ControllerChromaRequested,
     window: AnyWindowHandle,
     revision: u64,
+}
+struct MappingPending {
+    change: Change,
+    guard: Arc<AtomicBool>,
+}
+enum Pending {
+    Controller(ControllerPending),
+    Mapping(MappingPending),
+}
+struct MappingGuard {
+    owners: Vec<MappingTargetOwner>,
+    guard: Arc<AtomicBool>,
+}
+impl MappingGuard {
+    fn is_current(&self, workspaces: &[Entity<ProductWorkspace>], cx: &App) -> bool {
+        self.guard.load(Ordering::Acquire)
+            && !self.owners.is_empty()
+            && self.owners.iter().all(|owner| {
+                workspaces
+                    .iter()
+                    .any(|workspace| owner.matches(workspace, cx))
+            })
+    }
+}
+enum ConfigurationCommand {
+    Controller(ControllerChromaCommand),
+    Mapping(Change),
+}
+impl Pending {
+    fn guard(&self) -> Arc<AtomicBool> {
+        match self {
+            Self::Controller(pending) => pending.request.guard(),
+            Self::Mapping(pending) => pending.guard.clone(),
+        }
+    }
+    fn command(&self) -> ConfigurationCommand {
+        match self {
+            Self::Controller(pending) => {
+                ConfigurationCommand::Controller(pending.request.command().clone())
+            }
+            Self::Mapping(pending) => ConfigurationCommand::Mapping(pending.change.clone()),
+        }
+    }
 }
 struct Watcher {
     workspace: WeakEntity<ProductWorkspace>,
@@ -53,8 +97,38 @@ pub(super) struct State {
     dynamic_watch: Option<Task<()>>,
     dynamic_watchers: BTreeMap<String, DynamicLightingWatcher>,
     last_observation: Option<ControllerChromaObservation>,
+    last_snapshot: Option<chroma_profiles::Snapshot>,
+    configuration_revision: u64,
     revision: u64,
     watch_guard: Arc<AtomicBool>,
+    mapping_guards: Vec<MappingGuard>,
+}
+impl Drop for State {
+    fn drop(&mut self) {
+        for owner in &self.mapping_guards {
+            owner.guard.store(false, Ordering::Release);
+        }
+    }
+}
+impl State {
+    fn retain_configuration(
+        &mut self,
+        snapshot: &chroma_profiles::Snapshot,
+        started: Option<u64>,
+    ) -> chroma_profiles::Snapshot {
+        if let Some(current) = &self.last_snapshot
+            && (current.supersedes(snapshot)
+                || (started.is_some_and(|revision| revision != self.configuration_revision)
+                    && !snapshot.supersedes(current)))
+        {
+            return current.clone();
+        }
+        if self.last_snapshot.as_ref() != Some(snapshot) {
+            self.configuration_revision = self.configuration_revision.wrapping_add(1);
+            self.last_snapshot = Some(snapshot.clone());
+        }
+        snapshot.clone()
+    }
 }
 
 pub(super) struct ControllerChromaSave {
@@ -221,15 +295,65 @@ impl AppShell {
             );
             self.start_controller_chroma_watch(cx);
         }
-        self.controller_chroma.queue.push_back(Pending {
-            workspace,
-            identity,
-            request: request.clone(),
-            window: window.window_handle(),
-            revision: self.controller_chroma.revision,
-        });
+        self.controller_chroma
+            .queue
+            .push_back(Pending::Controller(ControllerPending {
+                workspace,
+                identity,
+                request: request.clone(),
+                window: window.window_handle(),
+                revision: self.controller_chroma.revision,
+            }));
         self.controller_lighting_workers += 1;
         self.start_controller_chroma_request(cx);
+    }
+
+    pub(super) fn request_mapping_chroma(
+        &mut self,
+        owners: Vec<MappingTargetOwner>,
+        changes: Vec<Change>,
+        cx: &mut Context<Self>,
+    ) {
+        if self.close_requested || changes.is_empty() {
+            return;
+        }
+        let guard = Arc::new(AtomicBool::new(true));
+        let owner = MappingGuard {
+            owners,
+            guard: guard.clone(),
+        };
+        if !owner.is_current(&self.devices, cx) {
+            return;
+        }
+        self.controller_chroma
+            .watch_guard
+            .store(false, Ordering::Release);
+        self.controller_chroma.mapping_guards.push(owner);
+        for change in changes {
+            self.controller_chroma.revision = self.controller_chroma.revision.wrapping_add(1);
+            self.controller_chroma
+                .queue
+                .push_back(Pending::Mapping(MappingPending {
+                    change,
+                    guard: guard.clone(),
+                }));
+            self.controller_lighting_workers += 1;
+        }
+        self.start_controller_chroma_request(cx);
+    }
+
+    pub(super) fn retain_mapping_chroma_connections(
+        &mut self,
+        retained: &[Entity<ProductWorkspace>],
+        cx: &App,
+    ) {
+        self.controller_chroma.mapping_guards.retain(|owner| {
+            let current = owner.is_current(retained, cx);
+            if !current {
+                owner.guard.store(false, Ordering::Release);
+            }
+            current
+        });
     }
 
     fn request_controller_dynamic_lighting(
@@ -393,8 +517,8 @@ impl AppShell {
         let Some(pending) = self.controller_chroma.queue.pop_front() else {
             return;
         };
-        let command = pending.request.command().clone();
-        let guard = pending.request.guard();
+        let command = pending.command();
+        let guard = pending.guard();
         let owners = self
             .controller_lighting_owners
             .values()
@@ -403,15 +527,21 @@ impl AppShell {
         self.controller_chroma.task = Some(cx.spawn(async move |this, cx| {
             let result = cx.background_spawn(async move {
                 ensure!(guard.load(Ordering::Acquire), "Chroma request belongs to a replaced profile");
+                let existing = matches!(&command, ConfigurationCommand::Mapping(_));
                 let (change, sync) = match command {
-                    ControllerChromaCommand::Observe => (None, None),
-                    ControllerChromaCommand::Toggle {enabled} => (Some(Change::Toggle(enabled)),None),
-                    ControllerChromaCommand::SelectProfile {id} => (Some(Change::SelectProfile(id)),None),
-                    ControllerChromaCommand::SyncQuick {source_effect} => (Some(Change::Toggle(false)),Some(QuickEnvelope::from_caller(&source_effect,tick()?)?)),
-                    _ => anyhow::bail!("Chroma command does not belong to the local configuration queue"),
+                    ConfigurationCommand::Mapping(change) => (Some(change), None),
+                    ConfigurationCommand::Controller(command) => match command {
+                        ControllerChromaCommand::Observe => (None, None),
+                        ControllerChromaCommand::Toggle {enabled} => (Some(Change::Toggle(enabled)),None),
+                        ControllerChromaCommand::SelectProfile {id} => (Some(Change::SelectProfile(id)),None),
+                        ControllerChromaCommand::SyncQuick {source_effect} => (Some(Change::Toggle(false)),Some(QuickEnvelope::from_caller(&source_effect,tick()?)?)),
+                        _ => anyhow::bail!("Chroma command does not belong to the local configuration queue"),
+                    },
                 };
+                let committed = change.is_some();
                 let readback = if let Some(change) = change {
-                    super::product_chroma::from_snapshot(chroma_profiles::update(&chroma_profiles::path(), &razer_storage::source_local::path(), change, &guard)?)
+                    let update = if existing { chroma_profiles::update_existing } else { chroma_profiles::update };
+                    super::product_chroma::from_snapshot(update(&chroma_profiles::path(), &razer_storage::source_local::path(), change, &guard)?)
                 } else { readback() };
                 let mut runtime_failures = Vec::new();
                 if let Ok(snapshot) = &readback.snapshot && let Some(configuration) = snapshot.configuration() {
@@ -419,20 +549,42 @@ impl AppShell {
                         if let Err(error) = owner.set_advanced(configuration.enabled(), &guard) { runtime_failures.push(format!("{error:#}")); }
                     }
                 }
-                ensure!(guard.load(Ordering::Acquire), "Chroma response belongs to a replaced profile");
-                Ok::<_,anyhow::Error>((readback,sync,runtime_failures))
+                if committed && !guard.load(Ordering::Acquire) {
+                    runtime_failures.push("Chroma request was canceled after its local configuration commit".into());
+                } else {
+                    ensure!(guard.load(Ordering::Acquire), "Chroma response belongs to a replaced profile");
+                }
+                Ok::<_,anyhow::Error>((readback,sync,runtime_failures,committed))
             }).await;
             let _ = this.update(cx, |this, cx| {
                 this.controller_chroma.task = None;
                 this.controller_lighting_workers = this.controller_lighting_workers.saturating_sub(1);
-                let current = this.devices.contains(&pending.workspace)
-                    && pending.workspace.read(cx).identity(cx) == pending.identity
-                    && pending.workspace.read(cx).accepts_controller_chroma(&pending.request,cx);
-                if current {
+                // The local commit belongs to the shared library even when
+                // its initiating page or connection has already been replaced.
+                let mut publication = match &result {
+                    Ok((readback, _, _, true)) => Some(this.apply_controller_chroma_readback(readback, cx)),
+                    _ => None,
+                };
+                if let Some(Err(error)) = &publication {
+                    this.status = format!("Chroma 本地配置已提交，页面状态未发布：{error:#}");
+                }
+                if let Ok((_, _, failures, true)) = &result && !failures.is_empty() {
+                    this.status = format!("Chroma selection was saved locally; native lighting transition failed: {}", failures.join("; "));
+                }
+                match pending {
+                    Pending::Controller(pending) => {
+                    let current = this.devices.contains(&pending.workspace)
+                        && pending.workspace.read(cx).identity(cx) == pending.identity
+                        && pending.workspace.read(cx).accepts_controller_chroma(&pending.request,cx);
+                    if current {
                     let completion = match result {
-                        Ok((readback,sync,failures)) => {
+                        Ok((readback,sync,failures,committed)) => {
                             let observation = if pending.revision == this.controller_chroma.revision {
-                                this.apply_controller_chroma_readback(&readback,cx).map(Some)
+                                if committed {
+                                    publication.take().expect("Committed Chroma mutation has a publication result").map(Some)
+                                } else {
+                                    this.apply_controller_chroma_readback(&readback,cx).map(Some)
+                                }
                             } else {
                                 Ok(None)
                             };
@@ -447,6 +599,33 @@ impl AppShell {
                     };
                     if let Err(error) = &completion { this.status = format!("Chroma：{error}"); }
                     this.finish_controller_chroma(&pending.workspace,&pending.request,completion,pending.window,cx);
+                    }
+                    }
+                    Pending::Mapping(pending) => {
+                        // A committed global local configuration survives the
+                        // initiating connection. Publishing it does not accept
+                        // an old device response or acknowledge its native I/O.
+                        let completion = match result {
+                                Ok((_, _, failures, _)) => {
+                                    let observation = publication.take().expect("Mapped Chroma mutation has a publication result");
+                                    match (observation, failures.is_empty()) {
+                                        (Ok(_), true) => Ok(()),
+                                        (Err(error), _) => Err(format!("{error:#}")),
+                                        (_, false) => Err(format!("Chroma selection was saved locally; native lighting transition failed: {}", failures.join("; "))),
+                                    }
+                                }
+                                Err(error) => Err(format!("{error:#}")),
+                        };
+                        if let Err(error) = completion {
+                            this.status = format!("Chroma：{error}");
+                        }
+                        let still_queued = this.controller_chroma.queue.iter().any(|queued| {
+                            matches!(queued, Pending::Mapping(queued) if Arc::ptr_eq(&queued.guard, &pending.guard))
+                        });
+                        if !still_queued {
+                            this.controller_chroma.mapping_guards.retain(|owner| !Arc::ptr_eq(&owner.guard, &pending.guard));
+                        }
+                    }
                 }
                 this.start_controller_chroma_request(cx);
                 if this.close_requested && this.save_task.is_none() { this.continue_save_queue(true,cx); }
@@ -477,6 +656,11 @@ impl AppShell {
         readback: &Readback,
         cx: &mut Context<Self>,
     ) -> anyhow::Result<ControllerChromaObservation> {
+        let mut readback = readback.clone();
+        if let Ok(snapshot) = &readback.snapshot {
+            readback.snapshot = Ok(self.controller_chroma.retain_configuration(snapshot, None));
+        }
+        let readback = &readback;
         let mut observation = controller_observation(readback)?;
         self.controller_chroma.enabled = readback
             .snapshot
@@ -513,7 +697,78 @@ impl AppShell {
             self.controller_chroma.last_observation = Some(observation.clone());
             self.publish_controller_chroma_observation(observation.clone(), cx);
         }
+        if let Ok(snapshot) = &readback.snapshot
+            && let Some(configuration) = snapshot.configuration()
+        {
+            self.publish_shared_chroma_configuration(configuration, cx)?;
+        }
         Ok(observation)
+    }
+
+    fn publish_shared_chroma_configuration(
+        &mut self,
+        configuration: &chroma_profiles::Configuration,
+        cx: &mut Context<Self>,
+    ) -> anyhow::Result<()> {
+        let workspaces = self.devices.clone();
+        self.main_window
+            .update(cx, |_, window, cx| {
+                for workspace in workspaces {
+                    workspace.update(cx, |workspace, cx| {
+                        workspace.observe_chroma_configuration(configuration, window, cx)
+                    });
+                }
+            })
+            .context("The product window closed during Chroma configuration publication")
+    }
+
+    pub(super) fn shared_chroma_revision(&self) -> u64 {
+        self.controller_chroma.configuration_revision
+    }
+
+    pub(super) fn reconcile_chroma_configuration(&mut self, readback: &mut Readback, started: u64) {
+        if let Ok(snapshot) = &readback.snapshot {
+            readback.snapshot = Ok(self
+                .controller_chroma
+                .retain_configuration(snapshot, Some(started)));
+        }
+    }
+
+    pub(super) fn publish_committed_chroma_configuration(
+        &mut self,
+        snapshot: &chroma_profiles::Snapshot,
+        cx: &mut Context<Self>,
+    ) -> anyhow::Result<()> {
+        self.apply_controller_chroma_readback(
+            &Readback {
+                snapshot: Ok(snapshot.clone()),
+                dynamic_lighting: Ok(None),
+                module_installed: Ok(None),
+                installation: Ok(None),
+            },
+            cx,
+        )?;
+        Ok(())
+    }
+
+    /// A delayed host query may still deliver installation and device fields;
+    /// it cannot replace a newer committed shared Chroma selection.
+    pub(super) fn retain_newer_chroma_configuration(
+        &mut self,
+        revision: u64,
+        cx: &mut Context<Self>,
+    ) {
+        if revision != self.controller_chroma.configuration_revision
+            && let Some(configuration) = self
+                .controller_chroma
+                .last_snapshot
+                .as_ref()
+                .and_then(|snapshot| snapshot.configuration())
+                .cloned()
+            && let Err(error) = self.publish_shared_chroma_configuration(&configuration, cx)
+        {
+            self.status = format!("Chroma 状态未发布：{error:#}");
+        }
     }
 
     fn publish_controller_chroma_observation(
@@ -662,6 +917,9 @@ impl AppShell {
             .store(false, Ordering::Release);
         self.controller_chroma.watchers.clear();
         self.controller_chroma.dynamic_watchers.clear();
+        for owner in self.controller_chroma.mapping_guards.drain(..) {
+            owner.guard.store(false, Ordering::Release);
+        }
     }
 
     fn broadcast_controller_sync_quick(
@@ -856,6 +1114,41 @@ fn rebase_profile_settings(
 mod tests {
     use super::*;
     use razer_pages::features::gamepad_products::ControllerSwitchOffLighting;
+    #[core::prelude::v1::test]
+    fn chroma_configuration_commits_reject_late_local_reads_and_ignore_request_admission() {
+        let directory =
+            std::env::temp_dir().join(format!("razer-shared-chroma-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&directory).unwrap();
+        let path = directory.join("configuration.json");
+        let source = directory.join("source.json");
+        let missing = chroma_profiles::load(&path, &source).unwrap();
+        let mut state = State::default();
+        let started = state.configuration_revision;
+        state.revision = 7;
+        assert_eq!(state.configuration_revision, started);
+        let first =
+            chroma_profiles::update(&path, &source, Change::Toggle(true), &AtomicBool::new(true))
+                .unwrap();
+        state.retain_configuration(&first, None);
+        assert_eq!(state.retain_configuration(&missing, Some(started)), first);
+        let admitted = state.configuration_revision;
+        state.revision = 8;
+        let second = chroma_profiles::update(
+            &path,
+            &source,
+            Change::Toggle(false),
+            &AtomicBool::new(true),
+        )
+        .unwrap();
+        state.retain_configuration(&second, None);
+        assert_eq!(state.retain_configuration(&first, Some(admitted)), second);
+        assert_eq!(state.retain_configuration(&first, None), second);
+        assert_eq!(state.last_snapshot.as_ref(), Some(&second));
+        for file in std::fs::read_dir(&directory).unwrap() {
+            std::fs::remove_file(file.unwrap().path()).unwrap();
+        }
+        std::fs::remove_dir(&directory).unwrap();
+    }
     #[core::prelude::v1::test]
     fn sync_direction_is_nested_and_source_freshness_is_signed() {
         let envelope=QuickEnvelope::from_caller(&json!({"selectedEffectId":4,"effectSettings":{"effectId":4,"direction":2},"indexDirection":1,"numberOfWaveDirection":2}),20).unwrap();

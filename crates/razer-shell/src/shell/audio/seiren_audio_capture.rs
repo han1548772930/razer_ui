@@ -180,13 +180,19 @@ impl AppShell {
                     if let Some(error) = &error {
                         eprintln!("Seiren audio capture: {error}");
                     }
+                    let succeeded = error.is_none();
+                    if shell.close_requested
+                        && let Some(error) = &error
+                    {
+                        shell.status = format!("麦克风录音清理未完成：{error}");
+                    }
                     if let Some(workspace) = owner.upgrade() {
                         workspace.update(cx, |workspace, cx| {
                             workspace.finish_seiren_audio_capture(&request, error, cx)
                         });
                     }
-                    if shell.close_requested && shell.save_task.is_none() {
-                        shell.continue_save_queue(true, cx);
+                    if shell.close_requested {
+                        shell.continue_save_queue(succeeded, cx);
                     }
                     false
                 });

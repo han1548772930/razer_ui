@@ -216,28 +216,14 @@ impl AppShell {
     ) {
         if !succeeded
             || save.request.change().is_none() && !save.request.is_read()
-            || self.close_requested
+            || self.close_requested && !save.request.is_cleanup()
         {
             save.workspace.update(cx, |workspace, cx| {
                 workspace.finish_current_dpi(&save.request, None, cx)
             });
             return;
         }
-        let owner = cx.entity().downgrade();
-        cx.defer(move |cx| {
-            let workspace = save.workspace.clone();
-            let request = save.request.clone();
-            let launched = window.update(cx, |_, window, cx| {
-                let _ = owner.update(cx, |this, cx| {
-                    this.submit_current_dpi_device(save.workspace, save.request, window, cx)
-                });
-            });
-            if launched.is_err() {
-                workspace.update(cx, |workspace, cx| {
-                    workspace.finish_current_dpi(&request, None, cx)
-                });
-            }
-        });
+        self.submit_current_dpi_at(save.workspace, save.request, window, cx);
     }
 
     pub(super) fn submit_current_dpi_device(
@@ -247,7 +233,17 @@ impl AppShell {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.close_requested
+        self.submit_current_dpi_at(workspace, request, window.window_handle(), cx);
+    }
+
+    fn submit_current_dpi_at(
+        &mut self,
+        workspace: Entity<ProductWorkspace>,
+        request: MouseCurrentDpiRequested,
+        window: AnyWindowHandle,
+        cx: &mut Context<Self>,
+    ) {
+        if self.close_requested && !request.is_cleanup()
             || !self.devices.contains(&workspace)
             || !workspace.read(cx).current_dpi_request_matches(&request, cx)
             || request.change().is_none() && !request.is_read()
@@ -255,6 +251,10 @@ impl AppShell {
             workspace.update(cx, |workspace, cx| {
                 workspace.finish_current_dpi(&request, None, cx)
             });
+            if request.is_cleanup() {
+                self.status = "DPI 退出恢复尚未确认：设备连接或请求范围已改变。".into();
+                self.cancel_pending_exit(cx);
+            }
             return;
         }
         let routes: Vec<_> = self
@@ -268,14 +268,17 @@ impl AppShell {
         if routes.len() != 1 {
             self.status = "DPI 设备状态未确认：尚无唯一的当前鼠标或接收器连接。".into();
             workspace.update(cx, |workspace, cx| {
-                workspace.finish_current_dpi(&request, None, cx)
+                workspace.finish_current_dpi_result(&request, Err(self.status.clone()), cx)
             });
+            if request.is_cleanup() {
+                self.cancel_pending_exit(cx);
+            }
             cx.notify();
             return;
         }
         let route = routes[0].clone();
         self.status = "正在核对 DPI 设备应答与读回结果。".into();
         cx.notify();
-        self.start_current_dpi_operation(workspace, route, request, window.window_handle(), cx);
+        self.start_current_dpi_operation(workspace, route, request, window, cx);
     }
 }

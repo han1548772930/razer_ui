@@ -152,3 +152,58 @@ fn transport_failure_or_unwind_still_performs_shutdown_and_process_cleanup() {
         assert_eq!(*calls.borrow(), ["stop", "shutdown", "terminate", "drop"]);
     }
 }
+
+#[test]
+fn mouse_scroll_partial_device_readbacks_survive_cleanup_failure_and_actual_termination() {
+    use razer_device::mouse_scroll::{ScrollChange, ScrollValue, Submission, SubmissionReport};
+    let requested = Submission::new(
+        vec![
+            ScrollChange::VirtualAcceleration(true),
+            ScrollChange::SmartReel(true),
+        ],
+        Default::default(),
+    );
+    let report: SubmissionReport = serde_json::from_value(serde_json::json!({
+        "requested":requested,"errors":["first task readback differs"],"reports":[
+            {"steps":[{"profile_id":1,"requested":ScrollValue::VirtualAcceleration(true),
+                "acknowledgment_received":true,"acknowledged":null,
+                "observed":ScrollValue::VirtualAcceleration(false)}]},
+            {"steps":[{"profile_id":1,"requested":ScrollValue::SmartReel(true),
+                "acknowledgment_received":true,"acknowledged":null,
+                "observed":ScrollValue::SmartReel(true)}]}
+        ]
+    }))
+    .unwrap();
+    let calls = Rc::new(RefCell::new(Vec::new()));
+    let completion = device_with(
+        &AtomicBool::new(true),
+        || {
+            Ok(Backend {
+                calls: calls.clone(),
+                fail_shutdown: true,
+                termination_failures: 1,
+            })
+        },
+        |_| Ok(report),
+        || assert!(!calls.borrow().contains(&"drop")),
+    );
+    let report = completion.result.unwrap();
+    assert_eq!(report.requested, requested);
+    assert!(report.validate_for(170).is_ok());
+    assert!(!report.verified_for(170));
+    assert_eq!(
+        report.reports[0].steps[0].observed,
+        Some(ScrollValue::VirtualAcceleration(false))
+    );
+    assert!(report.reports[1].verified());
+    assert!(
+        completion
+            .cleanup_failure
+            .unwrap()
+            .contains("shutdown acknowledgement lost")
+    );
+    assert_eq!(
+        *calls.borrow(),
+        ["stop", "shutdown", "terminate", "terminate", "drop"]
+    );
+}

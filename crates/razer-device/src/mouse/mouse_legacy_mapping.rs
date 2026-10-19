@@ -332,16 +332,6 @@ pub fn interdevice_otfs_document(document: &Value) -> Result<Value> {
     let source = profiles[active]["mappings"]
         .as_array()
         .context("Missing active mappings")?;
-    let mut mappings: Vec<_> = source
-        .iter()
-        .filter(|mapping| mapping["outputType"] == "sensitivityGroup")
-        .cloned()
-        .collect();
-    mappings.extend([("ScrollUp", "DPI_Value_Up"), ("ScrollDown", "DPI_Value_Down")].map(|(input, assignment)| json!({
-        "inputType":"MouseInput", "inputID":input, "isHyperShift":false,
-        "outputType":"sensitivityGroup",
-        "sensitivityGroup":{"sensitivityAssignment":assignment,"value":50,"independent":false}
-    })));
     let mut context = EngineContext {
         default_turbos: document["defaultTurbos"].as_array().cloned(),
         synapse_turbos: document["synapseTurbos"].as_array().cloned(),
@@ -356,19 +346,13 @@ pub fn interdevice_otfs_document(document: &Value) -> Result<Value> {
     let defaults = SOURCE
         .default_mappings
         .iter()
-        .filter(|mapping| {
-            mapping
-                .sensitivity_group
-                .as_ref()
-                .is_none_or(|group| group.sensitivity_assignment != "OTFS_Scroll")
-        })
         .map(serde_json::to_value)
         .collect::<Result<Vec<_>, _>>()?;
-    let default_engine = engine.generate(&defaults, &mut context)?.app_engine;
+    let projection = engine.generate_mouse_otfs(source, &defaults, &mut context)?;
     let mut result = document.clone();
-    result["profiles"][active]["appEngine"] = engine.generate(&mappings, &mut context)?.app_engine;
-    result["profiles"][active]["defaultMappings"] = default_engine.clone();
-    result["defaultMappings"]["appEngine"] = default_engine;
+    result["profiles"][active]["appEngine"] = projection.profile;
+    result["profiles"][active]["defaultMappings"] = projection.defaults.clone();
+    result["defaultMappings"]["appEngine"] = projection.defaults;
     Ok(result)
 }
 

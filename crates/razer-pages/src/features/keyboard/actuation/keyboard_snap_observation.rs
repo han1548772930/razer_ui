@@ -1,10 +1,11 @@
 //! Current analog Snap Tap middleware K/Q and reducers PFu/iwq.
+use super::super::observation_tasks::{SubscriptionTasks, join_stream};
 use super::*;
 use razer_device::mapping_native_lookup::InputKind;
 use razer_ipc::input_observation::InputEvent;
 use razer_ipc::mapping_observation::{SnapTapEvent, Target};
 use razer_service::mapping::input_observation;
-use razer_service::mapping::observation::{Reply, Session};
+use razer_service::mapping::observation::{Completion, Reply, Session};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Mode {
@@ -62,10 +63,10 @@ impl Stream {
             Self::RawInput(stream) => stream.request_stop(),
         }
     }
-    fn stop(self) -> Result<(), String> {
+    fn stop(self) -> Completion {
         match self {
-            Self::SnapTap(stream) => stream.stop(),
-            Self::RawInput(stream) => stream.stop(),
+            Self::SnapTap(stream) => stream.stop_with_receipt(),
+            Self::RawInput(stream) => stream.stop_with_receipt(),
         }
     }
 }
@@ -83,11 +84,24 @@ pub(in crate::features::keyboard_products) struct Observer {
     active: bool,
     epoch: u64,
     mode: Option<Mode>,
-    stream: Option<Stream>,
+    tasks: SubscriptionTasks<Stream, Task<()>>,
     pump: Option<Task<()>>,
-    cleanup: Option<Task<()>>,
     error: Option<String>,
     pressed: Vec<PressedKey>,
+}
+impl Observer {
+    pub(in crate::features::keyboard_products) fn release(
+        &mut self,
+        executor: &BackgroundExecutor,
+    ) {
+        self.active = false;
+        self.epoch = self.epoch.wrapping_add(1);
+        self.pump = None;
+        self.tasks.release(|stream| {
+            stream.request_stop();
+            join_stream(executor, stream, Stream::stop);
+        });
+    }
 }
 
 fn reduce(pressed: &mut Vec<PressedKey>, pair: &Pair, input_id: &str, flag: u16, replayed: bool) {
@@ -190,27 +204,40 @@ impl KeyboardProductWorkspace {
     fn stop_snap_stream(&mut self, cx: &mut Context<Self>) {
         self.snap_observer.epoch = self.snap_observer.epoch.wrapping_add(1);
         self.snap_observer.pump = None;
-        if let Some(stream) = self.snap_observer.stream.take() {
+        let epoch = self.snap_observer.epoch;
+        let target = self.snap_observer.target.clone();
+        self.snap_observer.tasks.begin_cleanup(|identity, stream| {
             stream.request_stop();
-            let epoch = self.snap_observer.epoch;
-            let target = self.snap_observer.target.clone();
-            let cleanup = cx.background_executor().spawn(async move { stream.stop() });
-            self.snap_observer.cleanup = Some(cx.spawn(async move |view, cx| {
-                let result = cleanup.await;
-                if let Err(error) = &result {
+            let cleanup = join_stream(cx.background_executor(), stream, Stream::stop);
+            cx.spawn(async move |view, cx| {
+                let result = cleanup.recv().await.unwrap_or_else(|_| {
+                    Completion::cleanup_failed("Snap Tap observation cleanup result disconnected")
+                });
+                if let Err(error) = result.result() {
                     eprintln!("[Snap Tap observation cleanup] {error}");
                 }
                 let _ = view.update(cx, |this, cx| {
-                    this.snap_observer.cleanup = None;
-                    if this.snap_observer.epoch == epoch && this.snap_observer.target == target {
-                        if let Err(error) = result {
-                            this.snap_observation_failed(error, cx);
-                        }
+                    if !this
+                        .snap_observer
+                        .tasks
+                        .finish_cleanup(&identity, result.cleanup_result())
+                    {
+                        return;
+                    }
+                    let error = result.cleanup_error().or_else(|| {
+                        (this.snap_observer.epoch == epoch
+                            && this.snap_observer.target == target
+                            && identity.matches_target(target.as_ref()))
+                        .then(|| result.operation_error())
+                        .flatten()
+                    });
+                    if let Some(error) = error {
+                        this.snap_observation_failed(error.into(), cx);
                     }
                     this.sync_snap_observation(cx);
                 });
-            }));
-        }
+            })
+        });
     }
 
     pub(super) fn leave_snap_observation(&mut self, cx: &mut Context<Self>) {
@@ -250,15 +277,12 @@ impl KeyboardProductWorkspace {
             return;
         };
         if self.snap_observer.target.is_none() {
-            if self.snap_observer.stream.is_some() {
+            if self.snap_observer.tasks.stream().is_some() {
                 self.stop_snap_observation(cx);
             }
             return;
         }
-        if self.snap_observer.stream.is_some()
-            || self.snap_observer.cleanup.is_some()
-            || self.snap_observer.error.is_some()
-        {
+        if self.snap_observer.tasks.occupied() || self.snap_observer.error.is_some() {
             return;
         }
         // PID679 owns its mapping registration asynchronously. The Ready
@@ -267,13 +291,18 @@ impl KeyboardProductWorkspace {
             return;
         }
         let target = self.snap_observer.target.clone().unwrap();
-        match Stream::start(target, mode) {
-            Ok(stream) => self.snap_observer.stream = Some(stream),
+        let identity = match self
+            .snap_observer
+            .tasks
+            .start(target.clone(), || Stream::start(target, mode))
+        {
+            Ok(Some(identity)) => identity,
+            Ok(None) => return,
             Err(error) => {
                 self.snap_observation_failed(format!("{error:#}"), cx);
                 return;
             }
-        }
+        };
         let epoch = self.snap_observer.epoch;
         self.snap_observer.pump = Some(cx.spawn(async move |view, cx| {
             loop {
@@ -282,10 +311,12 @@ impl KeyboardProductWorkspace {
                     .await;
                 if !view
                     .update(cx, |this, cx| {
-                        if this.snap_observer.epoch != epoch {
+                        if this.snap_observer.epoch != epoch
+                            || !this.snap_observer.tasks.accepts(&identity)
+                        {
                             return false;
                         }
-                        let Some(stream) = &this.snap_observer.stream else {
+                        let Some(stream) = this.snap_observer.tasks.stream() else {
                             return false;
                         };
                         let replies = stream.drain();

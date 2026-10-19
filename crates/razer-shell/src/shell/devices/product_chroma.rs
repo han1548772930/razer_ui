@@ -69,7 +69,13 @@ pub(super) fn readback_scope(installation: InstallationRead) -> Readback {
 
 pub(super) fn from_snapshot(snapshot: Snapshot) -> Readback {
     let mut observation = readback();
-    observation.snapshot = Ok(snapshot);
+    if !observation
+        .snapshot
+        .as_ref()
+        .is_ok_and(|current| current.supersedes(&snapshot))
+    {
+        observation.snapshot = Ok(snapshot);
+    }
     observation
 }
 
@@ -116,6 +122,20 @@ fn decode_connected_products(reply: HostStorageReply) -> anyhow::Result<Option<V
     struct Row {
         value: String,
     }
+    ensure!(reply.defined, "Chroma memory getter did not return a value");
+    let rows: Vec<Row> = serde_json::from_str(
+        reply
+            .value
+            .as_str()
+            .context("Chroma memory response is not a string")?,
+    )?;
+    let Some(row) = rows.first() else {
+        return Ok(None);
+    };
+    decode_connected_devices_value(&row.value).map(Some)
+}
+
+pub(super) fn decode_connected_devices_value(value: &str) -> anyhow::Result<Vec<u32>> {
     #[derive(Deserialize)]
     struct Envelope {
         payload: Devices,
@@ -129,23 +149,11 @@ fn decode_connected_products(reply: HostStorageReply) -> anyhow::Result<Option<V
     struct Product {
         product_id: u32,
     }
-    ensure!(reply.defined, "Chroma memory getter did not return a value");
-    let rows: Vec<Row> = serde_json::from_str(
-        reply
-            .value
-            .as_str()
-            .context("Chroma memory response is not a string")?,
-    )?;
-    let Some(row) = rows.first() else {
-        return Ok(None);
-    };
-    let devices: Envelope = serde_json::from_str(&row.value)?;
-    Ok(Some(
-        devices
-            .payload
-            .devices
-            .into_iter()
-            .map(|device| device.product_id)
-            .collect(),
-    ))
+    let devices: Envelope = serde_json::from_str(value)?;
+    Ok(devices
+        .payload
+        .devices
+        .into_iter()
+        .map(|device| device.product_id)
+        .collect())
 }

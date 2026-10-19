@@ -38,7 +38,9 @@ struct Mutation {
     change: StudioChange<ChromaStudioSnapshot>,
     saved: Option<ChromaStudioSnapshot>,
 }
-pub(super) struct StudioSaveFinished(pub(super) bool);
+pub(super) struct StudioSaveFinished {
+    committed: Option<chroma_profiles::Snapshot>,
+}
 impl EventEmitter<StudioSaveFinished> for StudioSession {}
 impl StudioSession {
     pub(super) fn deactivate(&mut self, cx: &mut App) {
@@ -183,7 +185,7 @@ impl StudioSession {
                     self.error = Some(format!("{error:#}"));
                     self.pending.clear();
                     self.publish_profiles(cx);
-                    cx.emit(StudioSaveFinished(false));
+                    cx.emit(StudioSaveFinished { committed: None });
                     cx.notify();
                     return;
                 }
@@ -216,9 +218,11 @@ impl StudioSession {
                 .await;
             let _ = this.update(cx, |this, cx| {
                 this.save_task = None;
-                let succeeded = result.is_ok();
+                let mut committed = None;
                 match result {
-                    Ok(library) => {
+                    Ok(receipt) => {
+                        let library = receipt.library;
+                        committed = Some(receipt.snapshot);
                         this.last_observed = library.clone();
                         this.library = library;
                         this.error = None;
@@ -233,7 +237,7 @@ impl StudioSession {
                     }
                 }
                 this.publish_profiles(cx);
-                cx.emit(StudioSaveFinished(succeeded));
+                cx.emit(StudioSaveFinished { committed });
                 cx.notify();
             });
         }));
@@ -390,13 +394,23 @@ impl AppShell {
             self.subscriptions.push(cx.subscribe(
                 &session,
                 |this, _, event: &StudioSaveFinished, cx| {
-                    if !event.0 {
+                    if let Some(snapshot) = &event.committed {
+                        if let Err(error) =
+                            this.publish_committed_chroma_configuration(snapshot, cx)
+                        {
+                            this.status =
+                                format!("Chroma 本地配置已提交，页面状态未发布：{error:#}");
+                            cx.notify();
+                        }
+                    } else {
                         let was_exiting = this.close_requested;
                         if was_exiting {
                             this.continue_save_queue(false, cx);
                             this.open_chroma_studio(cx);
                         }
-                    } else if this.close_requested
+                    }
+                    if event.committed.is_some()
+                        && this.close_requested
                         && this.save_task.is_none()
                         && !this.studio_save_pending(cx)
                     {

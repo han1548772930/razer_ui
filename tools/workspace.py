@@ -333,6 +333,7 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
     input_owner = "crates/razer-device/src/mapping/mapping_engine.rs"
     hash_owner = "crates/razer-device/src/mapping/mapping_engine_hash.rs"
     mapping_product_owner = "crates/razer-device/src/mapping/mapping_document.rs"
+    mapping_compiler_owner = "crates/razer-model/src/mapping.rs"
     mapping_workers = "crates/razer-service/src/mapping/"
     seiren_workers = "crates/razer-service/src/audio/seiren/"
     seiren_gui = owner.startswith("crates/razer-pages/src/features/audio/seiren/") or owner in {
@@ -837,6 +838,14 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                 fail(node, "gui_owns_seiren_audio_protocol", seiren_workers)
         if gui_source and node.type == "call_expression":
             function = node.child_by_field_name("function")
+            if function.type != "field_expression":
+                path = resolved_call(text(function).split("::"))
+                if path[:1] == ("razer_device",) and path[-1:] in {
+                        ("prepare_document",), ("prepare_document_with_device_settings",)} \
+                        and len(path) >= 3 and path[-2] in {
+                            "mouse_legacy_mapping", "mouse_receiver_mapping", "keyboard_legacy_mapping",
+                            "keyboard_current_mapping", "keyboard_magnetic_mapping", "keyboard_latest_mapping"}:
+                    fail(node, "gui_duplicates_mapping_document_compiler", mapping_compiler_owner)
             if function.type == "field_expression":
                 method = text(function.child_by_field_name("field"))
                 if method in {"metadata", "symlink_metadata", "canonicalize", "read_dir", "read_link", "try_exists", "exists", "is_file", "is_dir"} \
@@ -1017,7 +1026,7 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                         for ancestor in ancestors(call) if ancestor.type == "match_arm")]
                 if (len(joins) != 1 or len(publications) != 1
                         or publications[0].start_byte < joins[0].end_byte
-                        or ["".join(text(argument).split()) for argument in publications[0].child_by_field_name("arguments").named_children] != ["&exit.released"]):
+                        or ["".join(text(argument).split()) for argument in publications[0].child_by_field_name("arguments").named_children] != ["&exit.cleanup", "&exit.released"]):
                     fail(node, "matcher_completion_does_not_publish_joined_release", matcher_worker + "::Handle::finish")
             if owner == matcher_shell and name == "mouse_matcher_save_current":
                 body = node.child_by_field_name("body")
@@ -8937,6 +8946,8 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("restart-notification-storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "restart_notification::tests"]),
         ("mouse-dpi-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "dpi_70::tests"]),
         ("current-dpi-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mouse_current_dpi"]),
+        ("current-dpi-exit", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "current_dpi_exit_"]),
+        ("current-dpi-temporary-restore", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "current_dpi_temporary_restore"]),
         ("current-dpi-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_current_dpi::tests"]),
         ("current-dpi-routing", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "direct::mouse_current_dpi::tests"]),
         ("current-polling-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_current_polling::tests"]),
@@ -9031,9 +9042,20 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("mapping-analog-observation-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "analog_observation"]),
         ("mapping-gamepad-observation-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mapping_native_gamepad_observation"]),
         ("mouse-receiver-mapping", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_receiver_mapping::tests"]),
+        ("mouse-otfs-mapping", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "interdevice_otfs"]),
+        ("mapping-document-model", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "--lib", "mapping::"]),
+        ("mapping-reconnect-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mapping_reconnect::tests"]),
+        ("mouse-receiver-callbacks", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mapping_runtime_158::tests"]),
         ("mapping-gamepad-observation-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "gamepad_observation"]),
         ("mapping-gamepad-observation-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "gamepad_observation"]),
         ("keyboard-gamepad-observation", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "gamepad_output_"]),
+        ("mapping-subscription-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "observation_tasks::tests"]),
+        ("mapping-cleanup-failures", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "failed_gamepad_cleanup"]),
+        ("mapping-observation-completion", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "observation_completion_distinguishes"]),
+        ("mapping-chroma-actions", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mapping_chroma_"]),
+        ("mapping-chroma-storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib", "mapped_chroma_"]),
+        ("keyboard-shared-chroma-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "keyboard_shared_selection_"]),
+        ("legacy-dpi-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mouse_dpi_70::"]),
         ("keyboard-snaptap-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "snap_tap::observation::tests"]),
         ("keyboard-snaptap-editing", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "disabling_capture_keeps_the_source_opposite_preview_key"]),
         ("keyboard-analog-feedback", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "analog_feedback"]),
@@ -9099,7 +9121,9 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("mouse-scroll-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mouse_scroll_tests"]),
         ("mouse-scroll-routing", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "mouse_scroll_tests"]),
         ("mouse-scroll-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "scroll_task::tests"]),
-        ("mouse-scroll-persistence", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mouse_scroll::tests"]),
+        ("mouse-scroll-readback", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mouse_scroll_"]),
+        ("mouse-scroll-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mouse_worker::tests"]),
+        ("mouse-scroll-persistence", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mouse_scroll::"]),
         ("mouse-tracking-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_tracking::tests::"]),
         ("mouse-tracking-session", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "receiver_session::tests::"]),
         ("mouse-tracking-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mouse_tracking_tests::"]),

@@ -8,6 +8,7 @@ pub(super) struct Observer {
     pub(super) caller: Uuid,
     pub(super) epoch: Uuid,
     registration: Request,
+    stopping: bool,
     pending_failure: Option<String>,
     pub(super) pending: Inbox<Delivery>,
 }
@@ -37,6 +38,12 @@ fn register(
         !observers.contains_key(&id),
         "Gamepad observer is already registered"
     );
+    ensure!(
+        !observers
+            .values()
+            .any(|observer| observer.caller == caller && observer.stopping),
+        "Gamepad observation cleanup is still pending"
+    );
     let previous = observers
         .values()
         .find(|observer| observer.caller == caller);
@@ -57,6 +64,7 @@ fn register(
             caller,
             epoch,
             registration,
+            stopping: false,
             pending_failure: None,
             pending: Inbox::new(epoch),
         },
@@ -69,29 +77,34 @@ fn unregister(
     id: &str,
     deactivate: impl FnOnce(Uuid, Uuid) -> Result<()>,
 ) -> Result<()> {
-    let Some(observer) = observers.get(id) else {
+    let Some(observer) = observers.get_mut(id) else {
         return Ok(());
     };
     ensure!(observer.scope == scope, "Gamepad observer scope changed");
+    observer.stopping = true;
+    let (caller, epoch) = (observer.caller, observer.epoch);
     if !observers
         .iter()
-        .any(|(other_id, other)| other_id != id && other.caller == observer.caller)
+        .any(|(other_id, other)| other_id != id && other.caller == caller)
     {
-        deactivate(observer.caller, observer.epoch)?;
+        deactivate(caller, epoch)?;
     }
     observers.remove(id);
     Ok(())
 }
 pub(super) fn notify(observers: &mut Observers, caller: Uuid, epoch: Uuid, delivery: Delivery) {
-    for observer in observers
-        .values_mut()
-        .filter(|observer| observer.caller == caller && observer.epoch == epoch)
-    {
+    for observer in observers.values_mut().filter(|observer| {
+        observer.caller == caller && observer.epoch == epoch && !observer.stopping
+    }) {
         observer.pending.push(epoch, delivery.clone());
     }
 }
 fn drain(observer: &mut Observer, scope: Uuid, failure: Option<&str>) -> Result<Vec<Delivery>> {
     ensure!(observer.scope == scope, "Gamepad observer scope changed");
+    ensure!(
+        !observer.stopping,
+        "Gamepad observation cleanup is still pending"
+    );
     // Output callbacks precede transport completion. Preserve those samples,
     // then report the independently retained execution failure on the next poll.
     if let Some(error) = &observer.pending_failure {
@@ -333,6 +346,69 @@ mod tests {
             .contains("driver failed")
         );
     }
+    #[test]
+    fn failed_gamepad_cleanup_blocks_successor_until_same_observer_is_unregistered() {
+        let mut observers = Observers::new();
+        let scope = Uuid::new_v4();
+        let caller = Uuid::new_v4();
+        let old = Uuid::new_v4().to_string();
+        let next = Uuid::new_v4().to_string();
+        register(
+            &mut observers,
+            scope,
+            caller,
+            old.clone(),
+            Request::Events { skip: 50 },
+            |_, _| Ok(()),
+        )
+        .unwrap();
+        let retired = observers[&old].epoch;
+        assert!(
+            unregister(&mut observers, scope, &old, |_, _| anyhow::bail!(
+                "stop failed"
+            ))
+            .is_err()
+        );
+        assert!(
+            register(
+                &mut observers,
+                scope,
+                caller,
+                next.clone(),
+                Request::Events { skip: 50 },
+                |_, _| panic!("registered before old cleanup")
+            )
+            .is_err()
+        );
+        assert_eq!(observers.len(), 1);
+        assert_eq!(observers[&old].epoch, retired);
+        unregister(&mut observers, scope, &old, |c, e| {
+            assert_eq!((c, e), (caller, retired));
+            Ok(())
+        })
+        .unwrap();
+        register(
+            &mut observers,
+            scope,
+            caller,
+            next.clone(),
+            Request::Events { skip: 50 },
+            |_, _| Ok(()),
+        )
+        .unwrap();
+        assert_ne!(observers[&next].epoch, retired);
+        unregister(&mut observers, scope, &old, |_, _| {
+            panic!("retired stop touched successor")
+        })
+        .unwrap();
+        notify(&mut observers, caller, retired, delivery(3));
+        assert!(
+            drain(observers.get_mut(&next).unwrap(), scope, None)
+                .unwrap()
+                .is_empty()
+        );
+    }
+
     #[test]
     fn host_interval_zero_sentinel_and_nonzero_conflicts_follow_source() {
         assert!(compatible(

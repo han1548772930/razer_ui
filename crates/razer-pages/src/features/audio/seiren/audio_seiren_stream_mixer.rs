@@ -381,7 +381,6 @@ impl AudioProductWorkspace {
         &mut self,
         request: &SeirenStreamMixerRequested,
         error: Option<String>,
-        _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         if !self.seiren_stream_mixer_request_matches(request) {
@@ -420,6 +419,14 @@ impl AudioProductWorkspace {
         &mut self,
         observation: SeirenStreamMixerObservation,
         window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.record_seiren_stream_mixer(observation, cx);
+        self.sync_seiren_stream_mixer(window, cx);
+    }
+    pub fn record_seiren_stream_mixer(
+        &mut self,
+        observation: SeirenStreamMixerObservation,
         cx: &mut Context<Self>,
     ) {
         let Some(state) = &mut self.seiren_stream else {
@@ -467,7 +474,6 @@ impl AudioProductWorkspace {
                 return;
             }
         }
-        self.sync_seiren_stream_mixer(window, cx);
         cx.notify();
     }
     pub fn observe_seiren_stream_mixer_mode(&mut self, hypershift: bool, cx: &mut Context<Self>) {
@@ -527,7 +533,7 @@ impl AudioProductWorkspace {
         cx.notify();
     }
 
-    fn sync_seiren_stream_mixer(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn sync_seiren_stream_mixer(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.sync_seiren_stream_mixer_controls(true, window, cx);
     }
     fn sync_seiren_stream_mixer_controls(

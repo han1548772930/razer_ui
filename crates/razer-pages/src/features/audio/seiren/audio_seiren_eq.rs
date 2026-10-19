@@ -246,6 +246,14 @@ impl AudioProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.record_seiren_live(observed, cx);
+        self.sync_seiren_eq(window, cx);
+    }
+    pub(in crate::features) fn record_seiren_live(
+        &mut self,
+        observed: razer_device::seiren_mixer::LiveState,
+        cx: &mut Context<Self>,
+    ) {
         if !supported(self.spec.product_id) {
             return;
         }
@@ -267,7 +275,6 @@ impl AudioProductWorkspace {
             self.seiren_eq.peak_task = None;
             self.clear_seiren_stream_mixer_meters();
         }
-        self.sync_seiren_eq(window, cx);
         self.defer_seiren_microphone_volume_sync(cx);
         cx.notify();
     }
@@ -985,6 +992,14 @@ impl AudioProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.record_seiren_native_levels(levels, cx);
+        self.sync_seiren_eq(window, cx);
+    }
+    pub(super) fn record_seiren_native_levels(
+        &mut self,
+        levels: &razer_device::seiren_eq::NativeLevels,
+        cx: &mut Context<Self>,
+    ) {
         if !supported(self.spec.product_id) {
             return;
         }
@@ -1014,7 +1029,7 @@ impl AudioProductWorkspace {
                 );
             }
         }
-        self.sync_seiren_eq(window, cx);
+        self.defer_seiren_microphone_volume_sync(cx);
         cx.notify();
     }
     pub(super) fn observe_seiren_meter_event(&mut self, event: &Value, cx: &mut Context<Self>) {

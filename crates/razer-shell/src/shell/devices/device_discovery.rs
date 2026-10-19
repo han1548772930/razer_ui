@@ -510,6 +510,10 @@ impl AppShell {
         if let Ok(snapshot) = observation {
             self.retain_keyboard_brightness_connections(snapshot.devices(), cx);
             self.retain_current_dpi_connections(snapshot.devices(), cx);
+            self.retain_legacy_dpi_connections(snapshot.devices(), cx);
+            self.retain_mouse_dpi_stages_connections(snapshot.devices(), cx);
+            self.retain_seiren_audio_operation_connections(snapshot.devices(), cx);
+            self.retain_mouse_scroll_connections(snapshot.devices(), cx);
             self.retain_mouse_polling_connections(snapshot.devices(), cx);
             self.retain_current_power_connections(snapshot.devices(), cx);
             self.retain_product_lighting_connections(snapshot.devices(), cx);
@@ -744,6 +748,9 @@ impl AppShell {
             incoming,
         );
         self.retain_mouse_polling_connections(&self.device_observations, cx);
+        self.retain_mouse_dpi_stages_connections(&self.device_observations, cx);
+        self.retain_seiren_audio_operation_connections(&self.device_observations, cx);
+        self.retain_mouse_scroll_connections(&self.device_observations, cx);
         self.retain_current_power_connections(&self.device_observations, cx);
         self.retain_product_lighting_connections(&self.device_observations, cx);
         self.retain_mouse_dynamic_connections(&self.device_observations, cx);

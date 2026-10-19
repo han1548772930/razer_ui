@@ -167,14 +167,23 @@ impl AppShell {
     }
 
     pub(super) fn cancel_pending_exit(&mut self, cx: &mut Context<Self>) {
+        if self.defer_service_exit_cancellation() {
+            return;
+        }
         if !std::mem::take(&mut self.close_requested) {
             return;
         }
+        self.resume_service_exit(cx);
         razer_state::ui_preferences::cancel_exit(cx);
         razer_state::chroma_settings::cancel_exit(cx);
         self.help_system_info.resume_after_cancelled_exit();
         self.runtime
             .update(cx, |runtime, cx| runtime.cancel_exit(cx));
+        for workspace in &self.devices {
+            workspace.update(cx, |workspace, cx| {
+                workspace.resume_mouse_scroll_after_cancelled_exit(cx)
+            });
+        }
         self.background_exit_task = None;
         self.sync_hanbo_cooler_connections(cx);
         self.resume_global_shortcuts(cx);

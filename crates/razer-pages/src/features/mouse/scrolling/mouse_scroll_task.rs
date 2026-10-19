@@ -81,6 +81,34 @@ impl State {
         self.mode_debounce = None;
         self.initialized = None;
     }
+
+    fn complete(
+        &mut self,
+        request: &MouseScrollRequested,
+        scope: Option<MousePollingScope>,
+        cleanup_succeeded: bool,
+    ) -> Option<MouseScrollRequested> {
+        if !self.pending.as_ref().is_some_and(|pending| {
+            pending.sequence == request.sequence
+                && pending.scope == request.scope
+                && Arc::ptr_eq(&pending.valid, &request.valid)
+        }) {
+            return None;
+        }
+        if !cleanup_succeeded {
+            self.cancel();
+        }
+        if let Some(previous) = self.pending.take() {
+            previous.cancel();
+        }
+        let next = self.queued.take()?;
+        if !next.is_valid() || scope != Some(next.scope) {
+            next.cancel();
+            return None;
+        }
+        self.pending = Some(next.clone());
+        Some(next)
+    }
 }
 impl Drop for State {
     fn drop(&mut self) {
@@ -402,7 +430,9 @@ impl MouseProductWorkspace {
                 .into_iter()
                 .any(|slot| {
                     slot.as_ref().is_some_and(|slot| {
-                        slot.sequence == request.sequence && slot.scope == request.scope
+                        slot.sequence == request.sequence
+                            && slot.scope == request.scope
+                            && Arc::ptr_eq(&slot.valid, &request.valid)
                     })
                 })
     }
@@ -410,29 +440,55 @@ impl MouseProductWorkspace {
         request.is_valid()
             && self.mouse_polling_scope(cx) == Some(request.scope)
             && self.scroll_task.pending.as_ref().is_some_and(|pending| {
-                pending.sequence == request.sequence && pending.scope == request.scope
+                pending.sequence == request.sequence
+                    && pending.scope == request.scope
+                    && Arc::ptr_eq(&pending.valid, &request.valid)
             })
     }
     pub fn finish_mouse_scroll(&mut self, request: &MouseScrollRequested, cx: &mut Context<Self>) {
-        if !self.scroll_task.pending.as_ref().is_some_and(|pending| {
-            pending.sequence == request.sequence && pending.scope == request.scope
-        }) {
-            return;
+        self.finish_mouse_scroll_cleanup(request, true, cx);
+    }
+
+    pub fn finish_mouse_scroll_report(
+        &mut self,
+        request: &MouseScrollRequested,
+        report: Option<&razer_device::mouse_scroll::SubmissionReport>,
+        cleanup_succeeded: bool,
+        cx: &mut Context<Self>,
+    ) {
+        if self.mouse_scroll_request_matches(request, cx)
+            && let Some(report) = report.filter(|report| {
+                report.requested == request.submission
+                    && report.validate_for(self.spec.product_id).is_ok()
+            })
+            && let Some(editor) = &self.scroll_editor
+        {
+            editor.update(cx, |editor, cx| editor.record_submission(report, cx));
         }
-        if let Some(previous) = self.scroll_task.pending.take() {
-            previous.cancel();
-        }
-        if let Some(next) = self.scroll_task.queued.take() {
-            if next.is_valid() && self.mouse_polling_scope(cx) == Some(next.scope) {
-                self.scroll_task.pending = Some(next.clone());
-                // Its first event already queued a local save. If that save
-                // has not finished, its completion will start this task.
-                if next.is_saved() {
-                    cx.emit(next);
-                }
-            }
+        self.finish_mouse_scroll_cleanup(request, cleanup_succeeded, cx);
+    }
+
+    fn finish_mouse_scroll_cleanup(
+        &mut self,
+        request: &MouseScrollRequested,
+        cleanup_succeeded: bool,
+        cx: &mut Context<Self>,
+    ) {
+        let scope = self.mouse_polling_scope(cx);
+        if let Some(next) = self.scroll_task.complete(request, scope, cleanup_succeeded)
+            && next.is_saved()
+        {
+            // Its first event already queued a local save. If that save has
+            // not finished, its completion will start this task.
+            cx.emit(next);
         }
         cx.notify();
+    }
+
+    pub fn sync_mouse_scroll_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(editor) = &self.scroll_editor {
+            editor.update(cx, |editor, cx| editor.sync_observations(window, cx));
+        }
     }
     pub fn prepare_mouse_scroll_exit(&mut self) {
         // All accepted edits have already reached the shared save queue. Exit
@@ -440,6 +496,10 @@ impl MouseProductWorkspace {
         self.scroll_task.cancel();
         self.scroll_task.pending = None;
         self.scroll_task.closed = true;
+    }
+
+    pub fn resume_mouse_scroll_after_cancelled_exit(&mut self) {
+        self.scroll_task.closed = false;
     }
 }
 fn changes_for_mode(product: u32, previous: &Value, wheel: &Value) -> Option<Vec<ScrollChange>> {
@@ -590,5 +650,63 @@ mod tests {
         assert!(!callback.begin_device());
         callback.cancel();
         assert!(!request.is_valid());
+    }
+
+    #[::core::prelude::v1::test]
+    fn mouse_scroll_cleanup_failure_cancels_successor_without_undoing_its_durable_save() {
+        let pending = request(1);
+        let queued = request(2);
+        queued.mark_saved();
+        let mut state = State::default();
+        state.pending = Some(pending.clone());
+        state.queued = Some(queued.clone());
+        assert!(
+            state
+                .complete(&pending, Some(pending.scope), false)
+                .is_none()
+        );
+        assert!(!pending.is_valid());
+        assert!(!queued.is_valid());
+        assert!(queued.is_saved());
+        assert!(state.pending.is_none());
+        assert!(state.queued.is_none());
+    }
+
+    #[::core::prelude::v1::test]
+    fn mouse_scroll_late_completion_cannot_release_a_reused_sequence_from_another_owner() {
+        let stale = request(1);
+        let current = request(1);
+        let queued = request(2);
+        let mut state = State::default();
+        state.pending = Some(current.clone());
+        state.queued = Some(queued.clone());
+        assert!(state.complete(&stale, Some(stale.scope), false).is_none());
+        assert!(current.is_valid());
+        assert!(queued.is_valid());
+        assert!(Arc::ptr_eq(
+            &state.pending.as_ref().unwrap().valid,
+            &current.valid
+        ));
+        assert!(Arc::ptr_eq(
+            &state.queued.as_ref().unwrap().valid,
+            &queued.valid
+        ));
+    }
+
+    #[::core::prelude::v1::test]
+    fn mouse_scroll_cleanup_releases_successor_only_for_the_current_scope() {
+        for same_scope in [false, true] {
+            let pending = request(1);
+            let queued = request(2);
+            queued.mark_saved();
+            let mut state = State::default();
+            state.pending = Some(pending.clone());
+            state.queued = Some(queued.clone());
+            let next = state.complete(&pending, same_scope.then_some(pending.scope), true);
+            assert_eq!(next.is_some(), same_scope);
+            assert!(!pending.is_valid());
+            assert_eq!(queued.is_valid(), same_scope);
+            assert_eq!(state.pending.is_some(), same_scope);
+        }
     }
 }

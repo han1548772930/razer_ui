@@ -58,6 +58,9 @@ impl Session {
     pub fn stop(self) -> Result<(), String> {
         self.0.stop()
     }
+    pub fn stop_with_receipt(self) -> observation::Completion {
+        self.0.stop_with_receipt()
+    }
 }
 
 #[cfg(test)]
@@ -174,13 +177,12 @@ mod tests {
         )
         .unwrap();
         cleanup.recv_timeout(TIMEOUT).unwrap();
-        let events = session.drain();
-        assert!(matches!(events.first(), Some(Reply::Ready)));
+        assert!(matches!(session.receive_for_test(), Reply::Ready));
         assert!(
-            matches!(&events[1], Reply::Event(delivery) if delivery.time_tick() == 17 && delivery.events() == [razer_device::mapping_native_output::GamepadOutputState { buttons:4112,left_trigger:23,right_trigger:201,left_thumb:[-32768,32767],right_thumb:[-1234,4567] }])
+            matches!(session.receive_for_test(), Reply::Event(delivery) if delivery.time_tick() == 17 && delivery.events() == [razer_device::mapping_native_output::GamepadOutputState { buttons:4112,left_trigger:23,right_trigger:201,left_thumb:[-32768,32767],right_thumb:[-1234,4567] }])
         );
         assert!(
-            matches!(&events[2], Reply::Failed(message) if message.contains("identity changed"))
+            matches!(session.receive_for_test(), Reply::Failed(message) if message.contains("identity changed"))
         );
         assert!(session.stop().unwrap_err().contains("identity changed"));
         let trace = trace.lock().unwrap();

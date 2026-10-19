@@ -46,6 +46,8 @@ mod keyboard_profile_mutations;
 mod lifecycle;
 #[path = "source_workspace/lighting.rs"]
 mod lighting;
+#[path = "source_workspace/mapping_reconnect.rs"]
+mod mapping_reconnect;
 #[path = "source_workspace/mouse_profile_source.rs"]
 mod mouse_profile_source;
 #[path = "source_workspace/mouse_receiver_indicator.rs"]
@@ -124,6 +126,8 @@ pub struct SourceProductWorkspace {
     mouse_profile_observed_serial: Option<String>,
     mouse_profile_connection_key: Option<String>,
     mouse_scroll_connection_key: Option<String>,
+    mapping_connection_generation: u64,
+    mapping_reconnect: mapping_reconnect::State,
     keyboard_latest_ble: bool,
     page: Option<ProductPageId>,
     page_history: Vec<ProductPageId>,
@@ -964,9 +968,16 @@ impl SourceProductWorkspace {
         let connection_changed = self.device.dashboard.connection_observation != observation;
         let legacy_connection_changed = self.device.product_id == 70 && connection_changed;
         if connection_changed {
+            self.mapping_connection_generation = self.mapping_connection_generation.wrapping_add(1);
             self.receiver_profile_selection.borrow_mut().invalidate();
             self.cancel_profile_transfer_requests();
             self.cancel_keyboard_brightness_connection(cx);
+            if let FamilyBody::Keyboard(body) = &self.body {
+                body.update(cx, |body, _| {
+                    body.set_mapping_callback_generation(self.mapping_connection_generation);
+                    body.set_legacy_mapping_connection(None);
+                });
+            }
             if let FamilyBody::Gamepad(body) = &self.body {
                 body.update(cx, |body, cx| {
                     body.observe_controller_connection(observation.is_some(), cx)
@@ -1274,24 +1285,42 @@ impl SourceProductWorkspace {
         }
     }
     fn sync_mouse_mapping_activity(&self, cx: &mut Context<Self>) {
-        use razer_model::model::DeviceConnectionObservation;
-        if self.device.product_id != 158 || self.exiting {
+        if !matches!(self.device.product_id, 70 | 158) || self.exiting {
             return;
         }
         let FamilyBody::Mouse(body) = &self.body else {
             return;
         };
-        let connected = self.device.real_product_id == 158
-            && matches!(self.device.dashboard.connection_observation,
-                Some(DeviceConnectionObservation::UsbPresent | DeviceConnectionObservation::HidPresent));
-        let container = connected.then(|| self.device.device_container_id.clone());
-        let document = self.saved.source_device_settings.as_ref()
-            .and_then(|settings| settings.get(razer_device::mouse_receiver_mapping::STORAGE_FIELD))
-            .cloned();
+        let container = mapping_reconnect::ordinary_mouse_owner(&self.device);
+        let document = if container.is_some() {
+            match self.mapping_reconnect.document(&self.saved) {
+                Ok(document) => document,
+                Err(error) => {
+                    eprintln!("[saved mouse mapping compilation] {error:#}");
+                    None
+                }
+            }
+        } else {
+            None
+        };
         body.update(cx, |body, cx| {
-            body.set_receiver_mapping_connection(container.clone());
+            if self.device.product_id == 158 {
+                body.set_receiver_mapping_connection_generation(
+                    container.clone(),
+                    self.mapping_connection_generation,
+                );
+            } else {
+                body.set_legacy_mapping_connection_generation(
+                    container.clone(),
+                    self.mapping_connection_generation,
+                );
+            }
             if let (Some(container), Some(document)) = (container, document) {
-                body.publish_receiver_mapping(container, document, cx);
+                if self.device.product_id == 158 {
+                    body.publish_receiver_mapping(container, document, cx);
+                } else {
+                    body.publish_legacy_mapping(container, document, cx);
+                }
             }
         });
     }
@@ -1325,17 +1354,13 @@ impl SourceProductWorkspace {
                     )
                 );
                 let container = connected.then(|| self.device.device_container_id.clone());
-                let document = self
-                    .device
-                    .source_device_settings
-                    .as_ref()
-                    .and_then(|s| {
-                        razer_device::mapping_document::MappingProduct::for_product_id(
-                            self.device.product_id,
-                        )
-                        .and_then(|product| s.get(product.storage_field()))
-                    })
-                    .cloned();
+                let document = match self.mapping_reconnect.document(&self.saved) {
+                    Ok(document) => document,
+                    Err(error) => {
+                        eprintln!("[saved keyboard mapping compilation] {error:#}");
+                        None
+                    }
+                };
                 body.update(cx, |body, cx| {
                     body.set_legacy_mapping_connection(container.clone());
                     if let (Some(container), Some(document)) = (container, document) {
@@ -1648,12 +1673,11 @@ impl SourceProductWorkspace {
         &mut self,
         request: &super::audio_products::SeirenStreamMixerRequested,
         error: Option<String>,
-        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         if let FamilyBody::Audio(body) = &self.body {
             body.update(cx, |body, cx| {
-                body.finish_seiren_stream_mixer(request, error, window, cx)
+                body.finish_seiren_stream_mixer(request, error, cx)
             });
         }
     }
@@ -1667,6 +1691,26 @@ impl SourceProductWorkspace {
             body.update(cx, |body, cx| {
                 body.observe_seiren_live(observed, window, cx)
             });
+        }
+    }
+    pub fn record_seiren_live(&mut self, observed: razer_device::seiren_mixer::LiveState, cx: &mut Context<Self>) {
+        if let FamilyBody::Audio(body) = &self.body {
+            body.update(cx, |body, cx| body.record_seiren_live(observed, cx));
+        }
+    }
+    pub fn record_seiren_native_event(&mut self, event: serde_json::Value, cx: &mut Context<Self>) {
+        if let FamilyBody::Audio(body) = &self.body {
+            body.update(cx, |body, cx| body.record_seiren_native_event(event, cx));
+        }
+    }
+    pub fn record_seiren_stream_mixer(&mut self, observation: super::audio_products::SeirenStreamMixerObservation, cx: &mut Context<Self>) {
+        if let FamilyBody::Audio(body) = &self.body {
+            body.update(cx, |body, cx| body.record_seiren_stream_mixer(observation, cx));
+        }
+    }
+    pub fn sync_seiren_audio_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let FamilyBody::Audio(body) = &self.body {
+            body.update(cx, |body, cx| body.sync_seiren_audio_controls(window, cx));
         }
     }
     pub fn observe_seiren_native_event(
@@ -1934,6 +1978,27 @@ impl SourceProductWorkspace {
             body.update(cx, |body, _| body.prepare_mouse_scroll_exit());
         }
     }
+    pub fn resume_mouse_scroll_after_cancelled_exit(&mut self, cx: &mut Context<Self>) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, _| body.resume_mouse_scroll_after_cancelled_exit());
+        }
+    }
+    pub fn finish_mouse_scroll_report(
+        &mut self,
+        request: &super::mouse_products::MouseScrollRequested,
+        report: Option<&razer_device::mouse_scroll::SubmissionReport>,
+        cleanup_succeeded: bool,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| body.finish_mouse_scroll_report(request, report, cleanup_succeeded, cx));
+        }
+    }
+    pub fn sync_mouse_scroll_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| body.sync_mouse_scroll_controls(window, cx));
+        }
+    }
     pub fn finish_current_dpi(
         &mut self,
         request: &super::mouse_products::MouseCurrentDpiRequested,
@@ -2100,21 +2165,37 @@ impl SourceProductWorkspace {
     pub fn prepare_current_dpi_exit(
         &mut self,
         cx: &mut Context<Self>,
-    ) -> Option<super::mouse_products::MouseCurrentDpiRequested> {
+    ) -> Result<Option<super::mouse_products::MouseCurrentDpiRequested>, String> {
         if let FamilyBody::Mouse(body) = &self.body {
             body.update(cx, |body, cx| body.prepare_current_dpi_exit(cx))
         } else {
-            None
+            Ok(None)
         }
+    }
+    pub fn current_dpi_exit_pending(&self, cx: &App) -> bool {
+        matches!(&self.body, FamilyBody::Mouse(body) if body.read(cx).current_dpi_exit_pending())
     }
     pub fn prepare_legacy_dpi_exit(
         &mut self,
         cx: &mut Context<Self>,
-    ) -> Option<super::mouse_products::MouseLegacyDpiRequested> {
+    ) -> Result<Option<super::mouse_products::MouseLegacyDpiRequested>, String> {
         if let FamilyBody::Mouse(body) = &self.body {
             body.update(cx, |body, cx| body.prepare_legacy_dpi_exit(cx))
         } else {
-            None
+            Ok(None)
+        }
+    }
+    pub fn legacy_dpi_exit_pending(&self, cx: &App) -> bool {
+        matches!(&self.body, FamilyBody::Mouse(body) if body.read(cx).legacy_dpi_exit_pending())
+    }
+    pub fn finish_legacy_dpi_result(
+        &mut self,
+        request: &super::mouse_products::MouseLegacyDpiRequested,
+        confirmed: bool,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| body.finish_legacy_dpi_result(request, confirmed, cx));
         }
     }
     pub fn finish_legacy_dpi(
@@ -2526,9 +2607,7 @@ impl SourceProductWorkspace {
             )));
             return;
         }
-        if self.device.product_id == 182
-            || matches!(self.device.product_id, 158 | 190) && !apply
-        {
+        if self.device.product_id == 182 || matches!(self.device.product_id, 158 | 190) && !apply {
             if let Some(scope) = self.mouse_polling_scope(cx) {
                 cx.emit(WorkspaceEvent::MouseLegacyProfileRequested { scope, apply });
             }
@@ -3792,6 +3871,8 @@ impl SourceProductWorkspace {
             mouse_profile_observed_serial: None,
             mouse_profile_connection_key: None,
             mouse_scroll_connection_key: None,
+            mapping_connection_generation: 0,
+            mapping_reconnect: Default::default(),
             keyboard_latest_ble: false,
             device,
             page,
@@ -4096,10 +4177,18 @@ impl SourceProductWorkspace {
         if let FamilyBody::Mouse(body) = &self.body {
             body.update(cx, |body, cx| {
                 if self.device.product_id == 158 {
-                    if self.device.real_product_id == 158 {
+                    if mapping_reconnect::ordinary_mouse_owner(&self.device).is_some() {
+                        body.set_receiver_mapping_connection_generation(
+                            Some(container.clone()),
+                            self.mapping_connection_generation,
+                        );
                         body.publish_receiver_mapping(container, document, cx);
                     }
                 } else {
+                    body.set_legacy_mapping_connection_generation(
+                        Some(container.clone()),
+                        self.mapping_connection_generation,
+                    );
                     body.publish_legacy_mapping(container, document, cx);
                 }
             });

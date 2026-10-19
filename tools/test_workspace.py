@@ -853,21 +853,24 @@ class ArchitectureBoundaryTests(unittest.TestCase):
         self.assertFalse(self.inspect(source.replace('NativeBackend', 'Unrelated'),owner))
         self.assertFalse(self.inspect(source,'crates/razer-service/src/unrelated.rs'))
 
-    def test_matcher_completion_publishes_only_the_joined_worker_release_result(self):
+    def test_matcher_completion_publishes_joined_cleanup_and_release_results(self):
         owner = 'crates/razer-service/src/mouse/dpi_matcher_worker.rs'
         source = ('impl Handle { fn finish(mut self) { let joined = self.worker.take().unwrap().join(); '
-                  'match joined { Ok(exit) => { self.completion.publish(&exit.released); '
+                  'match joined { Ok(exit) => { self.completion.publish(&exit.cleanup, &exit.released); '
                   'merge_results([exit.operation,exit.cleanup,exit.released]) }, '
                   'Err(error) => { let result = Err(error); self.completion.publish(&result); result } } } }')
         self.assertFalse(self.inspect(source,owner))
-        for changed in (source.replace('&exit.released','&exit.operation'),
-                        source.replace('&exit.released','&exit.cleanup'),
+        for changed in (source.replace('&exit.cleanup, &exit.released','&exit.released'),
+                        source.replace('&exit.cleanup, &exit.released','&exit.cleanup'),
+                        source.replace('&exit.cleanup,','&exit.operation,'),
+                        source.replace('&exit.released','&exit.operation'),
                         source.replace('.join()',''),
-                        source.replace('let joined =','self.completion.publish(&exit.released); let joined =')
-                              .replace('Ok(exit) => { self.completion.publish(&exit.released);','Ok(exit) => {')):
+                        source.replace('let joined =','self.completion.publish(&exit.cleanup, &exit.released); let joined =')
+                              .replace('Ok(exit) => { self.completion.publish(&exit.cleanup, &exit.released);','Ok(exit) => {')):
             self.assertEqual(self.inspect(changed,owner)[0]['kind'],
                              'matcher_completion_does_not_publish_joined_release')
         self.assertFalse(self.inspect(source.replace('impl Handle','impl Unrelated'),owner))
+        self.assertFalse(self.inspect(source,'crates/razer-service/src/unrelated.rs'))
 
     def test_matcher_save_requires_complete_workspace_scope_session_and_connection(self):
         owner = 'crates/razer-shell/src/shell/mouse/mouse_matcher.rs'
@@ -982,6 +985,30 @@ class ArchitectureBoundaryTests(unittest.TestCase):
                 self.assertEqual([row['kind'] for row in self.inspect(source, consumer)], [kind])
                 self.assertFalse(self.inspect(source, owner))
             self.assertFalse(self.inspect('fn another(id:u32)->bool { match id {740|746=>true,_=>false} }', consumer))
+
+    def test_mapping_document_compilation_has_one_shared_owner(self):
+        owner = 'crates/razer-model/src/mapping.rs'
+        consumers = (
+            'crates/razer-pages/src/features/workspace/source_workspace/mapping_reconnect.rs',
+            'crates/razer-shell/src/shell/mouse/mouse_dpi_70.rs',
+            'crates/razer-shell/src/shell/keyboard/keyboard_mapping.rs',
+        )
+        for module, method in (
+                ('mouse_legacy_mapping', 'prepare_document'),
+                ('mouse_receiver_mapping', 'prepare_document_with_device_settings'),
+                ('keyboard_legacy_mapping', 'prepare_document'),
+                ('keyboard_current_mapping', 'prepare_document'),
+                ('keyboard_magnetic_mapping', 'prepare_document'),
+                ('keyboard_latest_mapping', 'prepare_document_with_device_settings')):
+            source = f'use razer_device::{module} as compiler; fn compile() {{ compiler::{method}(profiles); }}'
+            self.assertFalse(self.inspect(source, owner))
+            for consumer in consumers:
+                violations = self.inspect(source, consumer)
+                self.assertEqual([row['kind'] for row in violations], ['gui_duplicates_mapping_document_compiler'])
+                self.assertEqual(violations[0]['expected_owner'], owner)
+                self.assertFalse(self.inspect('fn compile() { razer_model::mapping::prepare_document(device,macros,ids); }', consumer))
+                self.assertFalse(self.inspect('fn unrelated() { another::prepare_document(profiles); }', consumer))
+                self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + source + ' }', consumer))
 
     def test_product_factory_is_rejected_through_a_type_alias_but_unrelated_constructors_pass(self):
         owner = "crates/razer-shell/src/shell/gamepad/controller_chroma.rs"
@@ -2966,9 +2993,15 @@ class RustValidationBoundaryTests(unittest.TestCase):
             'mapping-analog-observation-service': ('razer-service', 'analog_observation'),
             'mapping-gamepad-observation-state': ('razer-device', 'mapping_native_gamepad_observation'),
             'mouse-receiver-mapping': ('razer-device', 'mouse_receiver_mapping::tests'),
+            'mouse-otfs-mapping': ('razer-device', 'interdevice_otfs'),
+            'mapping-document-model': ('razer-model', 'mapping::'),
+            'mapping-reconnect-state': ('razer-pages', 'mapping_reconnect::tests'),
+            'mouse-receiver-callbacks': ('razer-pages', 'mapping_runtime_158::tests'),
             'mapping-gamepad-observation-ipc': ('razer-ipc', 'gamepad_observation'),
             'mapping-gamepad-observation-service': ('razer-service', 'gamepad_observation'),
             'keyboard-gamepad-observation': ('razer-pages', 'gamepad_output_'),
+            'mapping-subscription-lifecycle': ('razer-pages', 'observation_tasks::tests'),
+            'mapping-cleanup-failures': ('razer-service', 'failed_gamepad_cleanup'),
             'keyboard-snaptap-state': ('razer-pages', 'snap_tap::observation::tests'),
             'keyboard-snaptap-editing': ('razer-pages', 'disabling_capture_keeps_the_source_opposite_preview_key'),
             'keyboard-analog-feedback': ('razer-pages', 'analog_feedback'),

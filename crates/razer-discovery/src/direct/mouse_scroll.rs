@@ -66,9 +66,9 @@ pub(crate) fn request_with(
     );
     let report: SubmissionReport = serde_json::from_value(reply["report"].clone())?;
     ensure!(
-        report.requested == submission && report.verified_for(observed.product_id()),
-        "Scroll reply does not confirm the exact source tasks: {}",
-        report.errors.join("; ")
+        report.requested == submission,
+        "Scroll reply belongs to another source submission"
     );
+    report.validate_for(observed.product_id())?;
     Ok(report)
 }

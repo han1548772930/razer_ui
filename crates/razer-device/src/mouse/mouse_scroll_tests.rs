@@ -1436,6 +1436,12 @@ fn submission_confirmation_requires_the_exact_profiles_values_and_source_order()
         different_echo.verified_for(226),
         "independent source readback confirms the requested value even when setter echo differs"
     );
+    for count in 0..original.reports[0].steps.len() {
+        let mut partial = original.clone();
+        partial.reports[0].steps.truncate(count);
+        assert!(partial.validate_for(226).is_ok());
+        assert!(!partial.verified_for(226));
+    }
     for failure in 0..7 {
         let mut report = original.clone();
         let steps = &mut report.reports[0].steps;
@@ -1464,6 +1470,70 @@ fn submission_confirmation_requires_the_exact_profiles_values_and_source_order()
             !report.verified_for(226),
             "accepted unrelated confirmation {failure}"
         );
+        assert_eq!(
+            report.validate_for(226).is_ok(),
+            matches!(failure, 2 | 4),
+            "malformed association and legitimate partial progress differ: {failure}"
+        );
+    }
+}
+
+#[test]
+fn mouse_scroll_partial_validation_preserves_missing_and_mismatching_typed_observations() {
+    let original = SubmissionReport {
+        requested: Submission::new(
+            vec![
+                ScrollChange::VirtualAcceleration(true),
+                ScrollChange::SmartReel(true),
+            ],
+            Default::default(),
+        ),
+        onboard_profiles: None,
+        reports: vec![
+            ScrollWriteReport {
+                steps: vec![ScrollWriteStep {
+                    profile_id: 1,
+                    requested: ScrollValue::VirtualAcceleration(true),
+                    acknowledgment_received: false,
+                    acknowledged: None,
+                    observed: None,
+                }],
+            },
+            ScrollWriteReport {
+                steps: vec![ScrollWriteStep {
+                    profile_id: 1,
+                    requested: ScrollValue::SmartReel(true),
+                    acknowledgment_received: true,
+                    acknowledged: None,
+                    observed: Some(ScrollValue::SmartReel(true)),
+                }],
+            },
+        ],
+        errors: vec!["first task failed".into()],
+    };
+    assert!(original.validate_for(170).is_ok());
+    assert!(!original.verified_for(170));
+    assert!(original.reports[1].verified());
+    let mut mismatch = original.clone();
+    mismatch.reports[0].steps[0].acknowledgment_received = true;
+    mismatch.reports[0].steps[0].observed = Some(ScrollValue::VirtualAcceleration(false));
+    assert!(mismatch.validate_for(170).is_ok());
+    assert!(!mismatch.verified_for(170));
+    for failure in 0..3 {
+        let mut malformed = original.clone();
+        match failure {
+            0 => {
+                malformed.reports[0].steps[0].observed =
+                    Some(ScrollValue::VirtualAcceleration(true))
+            }
+            1 => {
+                malformed.reports[1].steps[0].observed =
+                    Some(ScrollValue::VirtualAcceleration(true))
+            }
+            2 => malformed.reports[1].steps[0].requested = ScrollValue::SmartReel(false),
+            _ => unreachable!(),
+        }
+        assert!(malformed.validate_for(170).is_err());
     }
 }
 
@@ -1517,6 +1587,7 @@ fn failed_source_task_preserves_progress_and_does_not_discard_an_independent_edi
     assert_eq!(report.reports.len(), 2);
     assert!(!report.reports[0].steps[0].acknowledgment_received);
     assert!(report.reports[1].verified());
+    assert!(report.validate_for(170).is_ok());
     device.finish();
 }
 
@@ -1669,6 +1740,7 @@ fn failed_obm_observation_does_not_fabricate_absence_or_block_independent_active
     assert!(report.errors[0].contains("OBM profile observation"));
     assert!(report.reports[0].steps.is_empty());
     assert!(report.reports[1].verified());
+    assert!(report.validate_for(170).is_ok());
     device.finish();
 }
 

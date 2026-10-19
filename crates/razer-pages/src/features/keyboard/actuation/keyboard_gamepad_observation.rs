@@ -1,8 +1,12 @@
 //! PID679 MW14486 output callbacks and the Customize gamepad tester.
+use super::observation_tasks::{SubscriptionTasks, join_stream};
 use super::*;
 use razer_device::mapping_native_output::GamepadOutputState;
 use razer_ipc::gamepad_observation::{Delivery, Registration, Target};
-use razer_service::mapping::gamepad_observation::{Reply, Session};
+use razer_service::mapping::{
+    gamepad_observation::{Reply, Session},
+    observation::Completion,
+};
 use std::{
     collections::VecDeque,
     time::{Duration, Instant},
@@ -126,7 +130,6 @@ struct Lifecycle {
     mapping_enabled: bool,
     epoch: u64,
     error: Option<String>,
-    cleanup_error: Option<String>,
     playback: Playback,
 }
 impl Lifecycle {
@@ -141,9 +144,6 @@ impl Lifecycle {
         self.invalidate();
         if self.target != target {
             self.mapping_enabled = false;
-            // An actual connection change can retry a completed failed stop.
-            // A still-pending stop records its own result before admission.
-            self.cleanup_error = None;
         }
         self.target = target;
         self.active = active;
@@ -162,12 +162,6 @@ impl Lifecycle {
         self.error = Some(error);
         self.playback = Playback::default();
     }
-    fn cleanup_finished(&mut self, result: Result<(), String>) {
-        if let Err(error) = result {
-            self.cleanup_error = Some(error.clone());
-            self.failed(error);
-        }
-    }
     fn can_start(&self, product_id: u32, page: &str, mapping_ready: bool) -> bool {
         product_id == 679
             && self.active
@@ -176,60 +170,31 @@ impl Lifecycle {
             && mapping_ready
             && self.target.is_some()
             && self.error.is_none()
-            && self.cleanup_error.is_none()
     }
     fn accepts(&self, epoch: u64) -> bool {
-        self.epoch == epoch
-            && self.active
-            && self.mapping_enabled
-            && self.error.is_none()
-            && self.cleanup_error.is_none()
+        self.epoch == epoch && self.active && self.mapping_enabled && self.error.is_none()
     }
     fn consume(&mut self, epoch: u64, events: &[GamepadOutputState], now: Duration) -> bool {
         self.accepts(epoch) && self.playback.replace(events, now)
     }
 }
 
-/// The cleanup wait is retained until completion, even across multiple stops.
-/// Admission never constructs a replacement stream while that wait exists.
-struct StreamTasks<S, C> {
-    stream: Option<S>,
-    cleanup: Option<C>,
-}
-impl<S, C> Default for StreamTasks<S, C> {
-    fn default() -> Self {
-        Self {
-            stream: None,
-            cleanup: None,
-        }
-    }
-}
-impl<S, C> StreamTasks<S, C> {
-    fn occupied(&self) -> bool {
-        self.stream.is_some() || self.cleanup.is_some()
-    }
-    fn begin_cleanup(&mut self, wait: impl FnOnce(S) -> C) {
-        if self.cleanup.is_none() {
-            self.cleanup = self.stream.take().map(wait);
-        }
-    }
-    fn start<E>(&mut self, start: impl FnOnce() -> Result<S, E>) -> Result<bool, E> {
-        if self.occupied() {
-            return Ok(false);
-        }
-        self.stream = Some(start()?);
-        Ok(true)
-    }
-    fn finish_cleanup(&mut self) {
-        self.cleanup = None;
-    }
-}
-
 #[derive(Default)]
 pub(super) struct Observer {
     lifecycle: Lifecycle,
-    tasks: StreamTasks<Session, Task<()>>,
+    tasks: SubscriptionTasks<Session, Task<()>>,
     pump: Option<Task<()>>,
+}
+impl Observer {
+    pub(super) fn release(&mut self, executor: &BackgroundExecutor) {
+        self.lifecycle.active = false;
+        self.lifecycle.invalidate();
+        self.pump = None;
+        self.tasks.release(|stream| {
+            stream.request_stop();
+            join_stream(executor, stream, Session::stop_with_receipt);
+        });
+    }
 }
 
 impl KeyboardProductWorkspace {
@@ -275,28 +240,45 @@ impl KeyboardProductWorkspace {
         self.gamepad_observer.lifecycle.invalidate();
         self.gamepad_observer.pump = None;
         self.analog_gamepad.gamepad = None;
-        self.gamepad_observer.tasks.begin_cleanup(|stream| {
-            stream.request_stop();
-            let cleanup = cx.background_executor().spawn(async move { stream.stop() });
-            cx.spawn(async move |view, cx| {
-                let result = cleanup.await;
-                if let Err(error) = &result {
-                    eprintln!("[gamepad-observation-cleanup] {error}");
-                }
-                let _ = view.update(cx, |this, cx| {
-                    this.gamepad_observer.tasks.finish_cleanup();
-                    // A stop acknowledgement is owned by the cleanup task,
-                    // independently of how many presentation epochs elapsed.
-                    this.gamepad_observer
-                        .lifecycle
-                        .cleanup_finished(result.clone());
-                    if let Err(error) = result {
-                        this.gamepad_observation_failed(error, cx);
+        let epoch = self.gamepad_observer.lifecycle.epoch;
+        let target = self.gamepad_observer.lifecycle.target.clone();
+        self.gamepad_observer
+            .tasks
+            .begin_cleanup(|identity, stream| {
+                stream.request_stop();
+                let cleanup =
+                    join_stream(cx.background_executor(), stream, Session::stop_with_receipt);
+                cx.spawn(async move |view, cx| {
+                    let result = cleanup.recv().await.unwrap_or_else(|_| {
+                        Completion::cleanup_failed(
+                            "Gamepad observation cleanup result disconnected",
+                        )
+                    });
+                    if let Err(error) = result.result() {
+                        eprintln!("[gamepad-observation-cleanup] {error}");
                     }
-                    this.sync_gamepad_observation(cx);
-                });
-            })
-        });
+                    let _ = view.update(cx, |this, cx| {
+                        if !this
+                            .gamepad_observer
+                            .tasks
+                            .finish_cleanup(&identity, result.cleanup_result())
+                        {
+                            return;
+                        }
+                        let error = result.cleanup_error().or_else(|| {
+                            (this.gamepad_observer.lifecycle.epoch == epoch
+                                && this.gamepad_observer.lifecycle.target == target
+                                && identity.matches_target(target.as_ref()))
+                            .then(|| result.operation_error())
+                            .flatten()
+                        });
+                        if let Some(error) = error {
+                            this.gamepad_observation_failed(error.into(), cx);
+                        }
+                        this.sync_gamepad_observation(cx);
+                    });
+                })
+            });
         cx.notify();
     }
 
@@ -313,18 +295,16 @@ impl KeyboardProductWorkspace {
         // 8 kHz skip map. MW14486.V passes numOfEventsToSkip=50; the
         // native observation owner applies the original counter semantics.
         let target = self.gamepad_observer.lifecycle.target.clone().unwrap();
-        match self
-            .gamepad_observer
-            .tasks
-            .start(|| Session::start(target, Registration::Events { skip: 50 }))
-        {
-            Ok(true) => {}
-            Ok(false) => return,
+        let identity = match self.gamepad_observer.tasks.start(target.clone(), || {
+            Session::start(target, Registration::Events { skip: 50 })
+        }) {
+            Ok(Some(identity)) => identity,
+            Ok(None) => return,
             Err(error) => {
                 self.gamepad_observation_failed(format!("{error:#}"), cx);
                 return;
             }
-        }
+        };
         let epoch = self.gamepad_observer.lifecycle.epoch;
         let began = Instant::now();
         self.gamepad_observer.pump = Some(cx.spawn(async move |view, cx| {
@@ -334,10 +314,12 @@ impl KeyboardProductWorkspace {
                     .await;
                 if !view
                     .update(cx, |this, cx| {
-                        if !this.gamepad_observer.lifecycle.accepts(epoch) {
+                        if !this.gamepad_observer.lifecycle.accepts(epoch)
+                            || !this.gamepad_observer.tasks.accepts(&identity)
+                        {
                             return false;
                         }
-                        let Some(stream) = &this.gamepad_observer.tasks.stream else {
+                        let Some(stream) = this.gamepad_observer.tasks.stream() else {
                             return false;
                         };
                         let replies = stream.drain();
@@ -516,7 +498,6 @@ mod tests {
         let old = lifecycle.epoch;
         lifecycle.consume(old, &[sample(900), sample(901)], Duration::ZERO);
         lifecycle.suspend_mapping();
-        lifecycle.cleanup_finished(Ok(()));
         // A failed publication has no Published-success transition, even
         // though the native mapping connection itself remains registered.
         assert!(!lifecycle.can_start(679, "TAB_CUSTOMIZE", true));
@@ -533,68 +514,36 @@ mod tests {
     #[::core::prelude::v1::test]
     fn gamepad_output_cleanup_failure_survives_new_scope_and_mapping_acknowledgement() {
         let mut lifecycle = observing("connection");
+        let mut tasks = SubscriptionTasks::default();
+        let identity = tasks
+            .start(lifecycle.target.clone().unwrap(), || Ok::<_, ()>(()))
+            .unwrap()
+            .unwrap();
+        tasks.begin_cleanup(|_, ()| ());
         lifecycle.invalidate();
         // The view can switch connection while the old stop is still pending.
         lifecycle.retarget(Some(Target::new(679, "replacement".into())), true);
         lifecycle.published(true);
-        lifecycle.cleanup_finished(Err("unregister acknowledgement failed".into()));
+        let error = "unregister acknowledgement failed".to_owned();
+        assert!(tasks.finish_cleanup(&identity, Err(error.clone())));
+        lifecycle.failed(error);
         assert!(!lifecycle.can_start(679, "TAB_CUSTOMIZE", true));
-        assert_eq!(
-            lifecycle.cleanup_error.as_deref(),
-            Some("unregister acknowledgement failed")
-        );
         lifecycle.published(true);
         lifecycle.retarget(Some(Target::new(679, "replacement".into())), false);
         lifecycle.retarget(Some(Target::new(679, "replacement".into())), true);
-        assert!(!lifecycle.can_start(679, "TAB_CUSTOMIZE", true));
-        assert!(!lifecycle.consume(lifecycle.epoch, &[sample(80)], Duration::ZERO));
-        // A subsequent actual disconnect/reconnect may retry, with no cached
-        // mapping eligibility or observed value promoted to the new owner.
+        assert!(tasks.occupied());
+        // A new presentation scope cannot confirm the old subscription cleanup.
         lifecycle.retarget(None, false);
         lifecycle.retarget(Some(Target::new(679, "replacement".into())), true);
         assert!(!lifecycle.can_start(679, "TAB_CUSTOMIZE", true));
         lifecycle.published(true);
         assert!(lifecycle.can_start(679, "TAB_CUSTOMIZE", true));
+        assert_eq!(
+            tasks
+                .start(lifecycle.target.clone().unwrap(), || Ok::<_, ()>(()))
+                .unwrap(),
+            None
+        );
         assert!(lifecycle.playback.observed.is_none());
-    }
-
-    #[::core::prelude::v1::test]
-    fn gamepad_output_repeated_stop_retains_cleanup_wait_and_defers_stream_construction() {
-        use std::{cell::Cell, rc::Rc};
-        struct Stream(Rc<Cell<usize>>);
-        impl Drop for Stream {
-            fn drop(&mut self) {
-                self.0.set(self.0.get() + 1);
-            }
-        }
-        struct StopWait {
-            _stream: Stream,
-        }
-        let dropped = Rc::new(Cell::new(0));
-        let starts = Cell::new(0);
-        let waits = Cell::new(0);
-        let mut tasks: StreamTasks<Stream, StopWait> = StreamTasks::default();
-        let create = || {
-            starts.set(starts.get() + 1);
-            Ok::<_, ()>(Stream(dropped.clone()))
-        };
-        assert_eq!(tasks.start(create), Ok(true));
-        tasks.begin_cleanup(|stream| {
-            waits.set(waits.get() + 1);
-            StopWait { _stream: stream }
-        });
-        // Repeated navigation/stop must keep the exact old join wait alive.
-        tasks.begin_cleanup(|stream| {
-            waits.set(waits.get() + 1);
-            StopWait { _stream: stream }
-        });
-        assert_eq!(waits.get(), 1);
-        assert_eq!(dropped.get(), 0);
-        assert_eq!(tasks.start(create), Ok(false));
-        assert_eq!(starts.get(), 1);
-        tasks.finish_cleanup();
-        assert_eq!(dropped.get(), 1);
-        assert_eq!(tasks.start(create), Ok(true));
-        assert_eq!(starts.get(), 2);
     }
 }

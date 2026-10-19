@@ -115,7 +115,7 @@ pub(super) fn source_spec(product_id: u32) -> Option<&'static ScrollWheelSpec> {
 
 /// Projections of the six current reducer observation actions, not UI write acknowledgements.
 /// The page consumes transport observations separately from its local editing state.
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ScrollWheelObservation {
     Mode(String),
     DisabledModes(Vec<String>),
@@ -123,6 +123,70 @@ pub enum ScrollWheelObservation {
     AccelerationLevel(u8),
     SmartReel(bool),
     SmartReelLevel(u8),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum SubmissionObservation {
+    Value(ScrollWheelObservation),
+    Unobserved(razer_device::mouse_scroll::ScrollReadKind),
+}
+
+fn submission_observations(
+    report: &razer_device::mouse_scroll::SubmissionReport,
+) -> Vec<SubmissionObservation> {
+    use razer_device::mouse_scroll::{ScrollMode, ScrollReadKind, ScrollValue};
+    let name = |mode| match mode {
+        ScrollMode::Tactile => "Tactile",
+        ScrollMode::FreeSpin => "FreeSpin",
+        ScrollMode::MicroTactile => "MicroTactile",
+    };
+    report
+        .reports
+        .iter()
+        .flat_map(|report| &report.steps)
+        .filter(|step| step.profile_id == 1)
+        .map(|step| {
+            let Some(value) = step.observed else {
+                return SubmissionObservation::Unobserved(match step.requested {
+                    ScrollValue::LegacyMode(_) => ScrollReadKind::LegacyMode,
+                    ScrollValue::ThreeMode(_) => ScrollReadKind::ThreeMode,
+                    ScrollValue::EnabledModes(_) => ScrollReadKind::EnabledModes,
+                    ScrollValue::VirtualAcceleration(_) => ScrollReadKind::VirtualAcceleration,
+                    ScrollValue::SmartReel(_) => ScrollReadKind::SmartReel,
+                    ScrollValue::VirtualAccelerationLevel(_) => {
+                        ScrollReadKind::VirtualAccelerationLevel
+                    }
+                    ScrollValue::SmartReelThreshold(_) => ScrollReadKind::SmartReelThreshold,
+                });
+            };
+            SubmissionObservation::Value(match value {
+                ScrollValue::LegacyMode(mode) | ScrollValue::ThreeMode(mode) => {
+                    ScrollWheelObservation::Mode(name(mode).to_owned())
+                }
+                ScrollValue::EnabledModes(enabled) => ScrollWheelObservation::DisabledModes(
+                    [
+                        ScrollMode::Tactile,
+                        ScrollMode::FreeSpin,
+                        ScrollMode::MicroTactile,
+                    ]
+                    .into_iter()
+                    .filter(|mode| !enabled.contains(*mode))
+                    .map(|mode| name(mode).to_owned())
+                    .collect(),
+                ),
+                ScrollValue::VirtualAcceleration(enabled) => {
+                    ScrollWheelObservation::Acceleration(enabled)
+                }
+                ScrollValue::SmartReel(enabled) => ScrollWheelObservation::SmartReel(enabled),
+                ScrollValue::VirtualAccelerationLevel(level) => {
+                    ScrollWheelObservation::AccelerationLevel(level)
+                }
+                ScrollValue::SmartReelThreshold(level) => {
+                    ScrollWheelObservation::SmartReelLevel(level)
+                }
+            })
+        })
+        .collect()
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -171,6 +235,7 @@ pub(super) struct ScrollWheelEditor {
     /// never copied into the parent profile snapshot.
     local_fields: BTreeSet<String>,
     observed: Value,
+    observation_sync: BTreeSet<Feature>,
     sliders: BTreeMap<Feature, Entity<SliderState>>,
     previewing: BTreeSet<Feature>,
     hovered_lock: Option<Feature>,
@@ -189,6 +254,7 @@ impl ScrollWheelEditor {
             draft: spec.defaults.clone(),
             local_fields: BTreeSet::new(),
             observed: json!({}),
+            observation_sync: BTreeSet::new(),
             sliders: BTreeMap::new(),
             previewing: BTreeSet::new(),
             hovered_lock: None,
@@ -302,9 +368,11 @@ impl ScrollWheelEditor {
         }
         // Runtime profile values must be observed again for the newly selected profile.
         self.observed = json!({});
+        self.observation_sync.clear();
         self.deactivate(window, cx);
     }
     pub(super) fn deactivate(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.observation_sync.clear();
         self.previewing.clear();
         self.hovered_lock = None;
         self.tooltip = None;
@@ -437,6 +505,40 @@ impl ScrollWheelEditor {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.record_observation(observation, cx);
+        self.sync_observations(window, cx);
+    }
+
+    pub(super) fn record_submission(
+        &mut self,
+        report: &razer_device::mouse_scroll::SubmissionReport,
+        cx: &mut Context<Self>,
+    ) {
+        for observation in submission_observations(report) {
+            match observation {
+                SubmissionObservation::Value(observation) => {
+                    self.record_observation(observation, cx)
+                }
+                SubmissionObservation::Unobserved(kind) => {
+                    use razer_device::mouse_scroll::ScrollReadKind;
+                    let field = match kind {
+                        ScrollReadKind::LegacyMode | ScrollReadKind::ThreeMode => "scrollMode",
+                        ScrollReadKind::EnabledModes => "disabledModes",
+                        ScrollReadKind::VirtualAcceleration => "accelerationEnabled",
+                        ScrollReadKind::SmartReel => "smartReelEnabled",
+                        ScrollReadKind::VirtualAccelerationLevel => "accelerationLevel",
+                        ScrollReadKind::SmartReelThreshold => "smartReelLevel",
+                    };
+                    // An attempted write without a readback invalidates this
+                    // field's earlier measurement, leaving local intent separate.
+                    self.observed.as_object_mut().unwrap().remove(field);
+                    cx.notify();
+                }
+            }
+        }
+    }
+
+    fn record_observation(&mut self, observation: ScrollWheelObservation, cx: &mut Context<Self>) {
         let (field, value) = match observation {
             ScrollWheelObservation::Mode(mode) => ("scrollMode", json!(mode)),
             ScrollWheelObservation::DisabledModes(modes) => ("disabledModes", json!(modes)),
@@ -455,12 +557,12 @@ impl ScrollWheelEditor {
             // A mode observation must not discard an unrelated level preview.
             for feature in [Feature::Acceleration, Feature::SmartReel] {
                 if field == feature.level() {
-                    self.sync_slider(feature, window, cx);
+                    self.observation_sync.insert(feature);
                 } else if (field == "disabledModes" || field == feature.enabled())
                     && !self.active(feature)
                 {
                     self.previewing.remove(&feature);
-                    self.sync_slider(feature, window, cx);
+                    self.observation_sync.insert(feature);
                 }
             }
             if !self.locked() {
@@ -469,6 +571,16 @@ impl ScrollWheelEditor {
             }
         }
         cx.notify();
+    }
+
+    pub(super) fn sync_observations(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        for feature in std::mem::take(&mut self.observation_sync) {
+            if self.previewing.contains(&feature) {
+                self.observation_sync.insert(feature);
+            } else {
+                self.sync_slider(feature, window, cx);
+            }
+        }
     }
     fn lock_hover(&mut self, feature: Feature, hovered: bool, cx: &mut Context<Self>) {
         if hovered && self.locked() {
@@ -814,13 +926,103 @@ impl Render for ScrollWheelEditor {
 mod tests {
     use super::{
         Feature, Presentation, ScrollWheelEditor, ScrollWheelObservation, ScrollWheelSpec,
-        source_spec, source_specs,
+        SubmissionObservation, source_spec, source_specs, submission_observations,
     };
     use gpui_kit::component::Root;
     use gpui_kit::test::TestWindowExt;
     use gpui_kit::{AppContext, ElementId, TestAppContext, px, size};
     use serde_json::json;
     use std::sync::OnceLock;
+
+    #[::core::prelude::v1::test]
+    fn mouse_scroll_readback_projection_uses_actual_current_profile_values() {
+        use razer_device::mouse_scroll::{
+            EnabledScrollModes, ScrollChange, ScrollMode, ScrollProfileObservation, ScrollValue,
+            Submission, SubmissionReport,
+        };
+        let enabled = EnabledScrollModes::new(7).unwrap();
+        let requested = Submission::new(
+            vec![
+                ScrollChange::ModeV2 {
+                    selected: ScrollMode::FreeSpin,
+                    enabled,
+                },
+                ScrollChange::VirtualAcceleration(true),
+                ScrollChange::SmartReelThreshold(4),
+                ScrollChange::VirtualAccelerationLevel(7),
+                ScrollChange::SmartReel(true),
+            ],
+            ScrollProfileObservation {
+                selected_obm_profile_id: Some(3),
+                ..Default::default()
+            },
+        );
+        let step = |profile_id, requested, observed| {
+            json!({"profile_id":profile_id,
+            "requested":requested,"acknowledgment_received":true,
+            "acknowledged":requested,"observed":observed})
+        };
+        let report: SubmissionReport = serde_json::from_value(json!({
+            "requested":requested,"errors":["readback differs"],"reports":[
+                {"steps":[
+                    step(1, ScrollValue::EnabledModes(enabled), Some(ScrollValue::EnabledModes(EnabledScrollModes::new(5).unwrap()))),
+                    step(1, ScrollValue::ThreeMode(ScrollMode::FreeSpin), Some(ScrollValue::ThreeMode(ScrollMode::MicroTactile))),
+                    step(3, ScrollValue::EnabledModes(enabled), Some(ScrollValue::EnabledModes(enabled))),
+                    step(3, ScrollValue::ThreeMode(ScrollMode::FreeSpin), Some(ScrollValue::ThreeMode(ScrollMode::FreeSpin)))
+                ]},
+                {"steps":[step(1, ScrollValue::VirtualAcceleration(true), Some(ScrollValue::VirtualAcceleration(false)))]},
+                {"steps":[step(1, ScrollValue::SmartReelThreshold(4), Some(ScrollValue::SmartReelThreshold(8)))]},
+                {"steps":[step(1, ScrollValue::VirtualAccelerationLevel(7), Some(ScrollValue::VirtualAccelerationLevel(3)))]},
+                {"steps":[step(1, ScrollValue::SmartReel(true), Some(ScrollValue::SmartReel(false)))]}
+            ]
+        })).unwrap();
+        assert!(report.validate_for(226).is_ok());
+        assert!(!report.verified_for(226));
+        assert_eq!(
+            submission_observations(&report),
+            vec![
+                SubmissionObservation::Value(ScrollWheelObservation::DisabledModes(vec![
+                    "FreeSpin".into()
+                ])),
+                SubmissionObservation::Value(ScrollWheelObservation::Mode("MicroTactile".into())),
+                SubmissionObservation::Value(ScrollWheelObservation::Acceleration(false)),
+                SubmissionObservation::Value(ScrollWheelObservation::SmartReelLevel(8)),
+                SubmissionObservation::Value(ScrollWheelObservation::AccelerationLevel(3)),
+                SubmissionObservation::Value(ScrollWheelObservation::SmartReel(false)),
+            ]
+        );
+    }
+
+    #[::core::prelude::v1::test]
+    fn mouse_scroll_missing_readback_invalidates_measurement_without_using_echo_or_obm_profile() {
+        use razer_device::mouse_scroll::{
+            ScrollChange, ScrollProfileObservation, ScrollReadKind, ScrollValue, Submission,
+            SubmissionReport,
+        };
+        let requested = Submission::new(
+            vec![ScrollChange::VirtualAcceleration(true)],
+            ScrollProfileObservation {
+                selected_obm_profile_id: Some(3),
+                ..Default::default()
+            },
+        );
+        let report: SubmissionReport = serde_json::from_value(json!({
+            "requested":requested,"reports":[{"steps":[
+                {"profile_id":1,"requested":ScrollValue::VirtualAcceleration(true),
+                    "acknowledgment_received":true,"acknowledged":ScrollValue::VirtualAcceleration(true),"observed":null},
+                {"profile_id":3,"requested":ScrollValue::VirtualAcceleration(true),
+                    "acknowledgment_received":true,"acknowledged":null,"observed":ScrollValue::VirtualAcceleration(true)}
+            ]}]
+        })).unwrap();
+        assert!(report.validate_for(226).is_ok());
+        assert!(!report.verified_for(226));
+        assert_eq!(
+            submission_observations(&report),
+            vec![SubmissionObservation::Unobserved(
+                ScrollReadKind::VirtualAcceleration
+            )]
+        );
+    }
 
     #[gpui_kit::test]
     fn two_mode_controls_toggle_selected_mode_and_keep_family_specific_smart_reel_lock(

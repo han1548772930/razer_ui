@@ -18,9 +18,17 @@ pub(super) struct State {
     cleanup: Vec<Cleanup>,
 }
 struct Cleanup {
+    id: uuid::Uuid,
     identity: String,
     completion: Completion,
+    reported: bool,
     task: Task<()>,
+}
+
+impl State {
+    pub(super) fn pending(&self) -> bool {
+        !self.sessions.is_empty() || self.cleanup.iter().any(|cleanup| !cleanup.reported)
+    }
 }
 struct Session {
     id: uuid::Uuid,
@@ -85,23 +93,70 @@ impl AppShell {
     fn retire_mouse_matcher(&mut self, identity: &str, cx: &mut Context<Self>) {
         self.mouse_matcher
             .cleanup
-            .retain(|cleanup| !cleanup.completion.is_released());
+            .retain(|cleanup| !cleanup.reported || !cleanup.completion.is_released());
         if let Some(mut session) = self.mouse_matcher.sessions.remove(identity) {
             if let Some(handle) = session.handle.take() {
                 handle.cancel();
                 let completion = handle.completion();
-                let task = cx.background_spawn(async move {
-                    if let Err(error) = handle.finish() {
-                        eprintln!("[dpi-matcher cleanup] {error:#}");
-                    }
+                let received = completion.clone();
+                let id = session.id;
+                let task = cx.spawn(async move |shell, cx| {
+                    let result = cx.background_spawn(async move { handle.finish() }).await;
+                    let _ = shell.update(cx, |shell, cx| {
+                        if let Some(cleanup) = shell
+                            .mouse_matcher
+                            .cleanup
+                            .iter_mut()
+                            .find(|cleanup| cleanup.id == id)
+                        {
+                            cleanup.reported = true;
+                        }
+                        if let Err(error) = result {
+                            eprintln!("[dpi-matcher completion] {error:#}");
+                        }
+                        if let Some(error) = received.cleanup_error() {
+                            shell.status = format!("DPI Matcher 清理尚未确认：{error}");
+                            shell.cancel_pending_exit(cx);
+                        }
+                        if shell.close_requested && shell.save_task.is_none() {
+                            shell.continue_save_queue(true, cx);
+                        }
+                        cx.notify();
+                    });
                 });
                 self.mouse_matcher.cleanup.push(Cleanup {
+                    id,
                     identity: identity.into(),
                     completion,
+                    reported: false,
                     task,
                 });
             }
         }
+    }
+
+    pub(super) fn prepare_mouse_matcher_exit(
+        &mut self,
+        cx: &mut Context<Self>,
+    ) -> Result<(), String> {
+        for cleanup in &self.mouse_matcher.cleanup {
+            if cleanup.completion.is_finished() && !cleanup.completion.is_released() {
+                return Err(cleanup
+                    .completion
+                    .cleanup_error()
+                    .unwrap_or_else(|| "DPI Matcher 传输资源尚未确认释放".into()));
+            }
+        }
+        let identities = self
+            .mouse_matcher
+            .sessions
+            .keys()
+            .cloned()
+            .collect::<Vec<_>>();
+        for identity in identities {
+            self.retire_mouse_matcher(&identity, cx);
+        }
+        Ok(())
     }
 
     pub(super) fn dispatch_mouse_matcher(

@@ -389,13 +389,79 @@ pub struct SubmissionReport {
 }
 
 impl SubmissionReport {
+    /// Validate task association and typed partial progress independently from
+    /// whether every requested write was acknowledged and read back.
+    pub fn validate_for(&self, product_id: u32) -> Result<()> {
+        self.requested.validate(product_id)?;
+        ensure!(
+            self.reports.len() == self.requested.changes.len(),
+            "Scroll report task count differs from its submission"
+        );
+        let cap = capability(product_id).context("Scroll report product capability is absent")?;
+        let resolved = self
+            .requested
+            .resolve_profiles(product_id, self.onboard_profiles.as_deref());
+        if self.onboard_profiles.is_some() {
+            resolved
+                .as_ref()
+                .map_err(|error| anyhow::anyhow!("{error:#}"))?;
+        }
+        for (change, report) in self.requested.changes.iter().zip(&self.reports) {
+            let profiles = match &resolved {
+                Ok(profiles) => profiles,
+                Err(_) if self.requested.needs_observation(product_id, *change) => {
+                    ensure!(
+                        report.steps.is_empty(),
+                        "Scroll task has no observed GUID associations"
+                    );
+                    continue;
+                }
+                Err(_) => &self.requested.profiles,
+            };
+            let values = change.values()?;
+            let expected: Vec<_> = targets(cap, *change, profiles)?
+                .into_iter()
+                .flat_map(|profile| values.iter().map(move |value| (profile, *value)))
+                .collect();
+            ensure!(
+                report.steps.len() <= expected.len(),
+                "Scroll report contains extra mutations"
+            );
+            for (step, (profile, requested)) in report.steps.iter().zip(expected) {
+                ensure!(
+                    step.profile_id == profile && step.requested == requested,
+                    "Scroll report mutation identity or order differs"
+                );
+                ensure!(
+                    step.acknowledgment_received
+                        || step.acknowledged.is_none() && step.observed.is_none(),
+                    "Scroll report contains values without a setter acknowledgement"
+                );
+                for value in step.acknowledged.iter().chain(step.observed.iter()) {
+                    ensure!(
+                        value.kind() == requested.kind(),
+                        "Scroll report value kind differs"
+                    );
+                    cap.command(value.kind(), false)?;
+                    match value {
+                        ScrollValue::LegacyMode(ScrollMode::MicroTactile) => {
+                            anyhow::bail!("Legacy scroll observation contains MicroTactile")
+                        }
+                        ScrollValue::EnabledModes(modes) => {
+                            EnabledScrollModes::new(modes.mask())?;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Confirm every value, hardware profile and source mutation order. A valid
     /// report for a different source task cannot confirm this submission.
     pub fn verified_for(&self, product_id: u32) -> bool {
-        if self.requested.validate(product_id).is_err()
-            || self.reports.len() != self.requested.changes.len()
-            || !self.errors.is_empty()
-        {
+        if self.validate_for(product_id).is_err() || !self.errors.is_empty() {
             return false;
         }
         let Some(cap) = capability(product_id) else {

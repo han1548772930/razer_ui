@@ -993,13 +993,13 @@ impl<E: device::Executor> crate::mapping::owner::Backend for Backend<E> {
                         gamepad_observation::notify(&mut self.core.gamepad_observers,row.caller,observer,delivery);
                     },
                     device::Event::Analog{observer,delivery}=>{
-                        for subscription in self.core.analog_observers.values_mut().filter(|subscription|subscription.caller==row.caller && subscription.epoch==observer) {
-                            subscription.pending.push(observer,delivery.clone());
+                        for subscription in self.core.analog_observers.values_mut() {
+                            subscription.push(row.caller,observer,delivery.clone());
                         }
                     },
                     device::Event::SnapTap{observer,observation}=>{
-                        for subscription in self.core.observers.values_mut().filter(|subscription|subscription.caller==row.caller && subscription.epoch==observer) {
-                            subscription.pending.push(observer,observation.clone());
+                        for subscription in self.core.observers.values_mut() {
+                            subscription.push(row.caller,observer,observation.clone());
                         }
                     },
                     device::Event::Input{input,tick,redirected:false,observer}=>{

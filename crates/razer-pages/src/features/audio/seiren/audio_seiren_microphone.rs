@@ -581,6 +581,14 @@ impl AudioProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.record_seiren_native_event(event, cx);
+        self.sync_seiren_eq(window, cx);
+    }
+    pub(in crate::features) fn record_seiren_native_event(
+        &mut self,
+        event: Value,
+        cx: &mut Context<Self>,
+    ) {
         if !supported(self.spec.product_id) {
             return;
         }
@@ -607,7 +615,6 @@ impl AudioProductWorkspace {
                     _ => return,
                 };
                 let _ = self.seiren_eq.live.observe_endpoint(id, razer_device::seiren_mixer::EndpointObservation { level: level as u32, muted: !is_enabled });
-                self.sync_seiren_eq(window, cx);
                 self.defer_seiren_microphone_volume_sync(cx);
                 cx.notify();
             }

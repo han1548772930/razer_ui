@@ -237,6 +237,7 @@ impl AudioProductWorkspace {
                     pending.owner == request.owner
                         && pending.sequence == request.sequence
                         && pending.epoch == request.epoch
+                        && Arc::ptr_eq(&pending.valid, &request.valid)
                 })
     }
     pub fn finish_seiren_eq(
@@ -253,11 +254,15 @@ impl AudioProductWorkspace {
                 pending.owner == request.owner
                     && pending.sequence == request.sequence
                     && pending.epoch == request.epoch
+                    && Arc::ptr_eq(&pending.valid, &request.valid)
             })
         {
             return;
         }
         if self.seiren_eq_request_matches(request, cx) {
+            if let Some(levels) = observed.as_ref().and_then(Report::native_levels) {
+                self.record_seiren_native_levels(levels, cx);
+            }
             self.seiren_eq_write.observed = observed;
         }
         self.seiren_eq_write
@@ -304,6 +309,11 @@ impl AudioProductWorkspace {
         latest.valid = Arc::new(AtomicBool::new(true));
         self.seiren_eq_write.pending = Some(latest.clone());
         Some(latest)
+    }
+
+    pub fn sync_seiren_audio_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.sync_seiren_eq(window, cx);
+        self.sync_seiren_stream_mixer(window, cx);
     }
 }
 

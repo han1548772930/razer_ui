@@ -119,14 +119,14 @@ mod mouse_dpi_70;
 mod mouse_dpi_stages;
 #[path = "shell/mouse/mouse_dynamic.rs"]
 mod mouse_dynamic;
-#[path = "shell/mouse/mouse_rotation.rs"]
-mod mouse_rotation;
 #[path = "shell/mouse/mouse_matcher.rs"]
 mod mouse_matcher;
 #[path = "shell/mouse/mouse_philips.rs"]
 mod mouse_philips;
 #[path = "shell/mouse/mouse_receiver_indicator.rs"]
 mod mouse_receiver_indicator;
+#[path = "shell/mouse/mouse_rotation.rs"]
+mod mouse_rotation;
 #[path = "shell/mouse/mouse_runtime_artwork.rs"]
 mod mouse_runtime_artwork;
 #[path = "shell/mouse/mouse_scroll.rs"]
@@ -169,6 +169,8 @@ mod seiren_audio_capture;
 mod seiren_audio_playback;
 #[path = "shell/audio/seiren_eq.rs"]
 mod seiren_eq;
+#[path = "shell/audio/seiren_audio_operations.rs"]
+mod seiren_audio_operations;
 #[path = "shell/audio/seiren_microphone_setup.rs"]
 mod seiren_microphone_setup;
 #[path = "shell/audio/thx_sound.rs"]
@@ -378,12 +380,14 @@ pub struct AppShell {
     save_task: Option<Task<()>>,
     pending_saves: VecDeque<PreparedSave>,
     close_requested: bool,
-    legacy_dpi_workers: usize,
+    legacy_dpi: mouse_dpi_70::State,
     mouse_dpi: mouse_current_dpi_runtime::State,
-    mouse_scroll_workers: usize,
+    mouse_scroll: mouse_scroll::State,
     mouse_polling: mouse_polling_runtime::State,
     mouse_tracking_tasks: BTreeMap<String, mouse_tracking::TrackingTask>,
     mouse_matcher: mouse_matcher::State,
+    mapping_observations: product_mapping::ObservationState,
+    mouse_dpi_stages: mouse_dpi_stages::State,
     mouse_dynamic: mouse_dynamic::State,
     mouse_rotation: mouse_rotation::State,
     mouse_power: mouse_current_power_runtime::State,
@@ -394,7 +398,7 @@ pub struct AppShell {
     controller_software_status: BTreeMap<String, razer_device::controller_lighting::SoftwareStatus>,
     controller_chroma: controller_chroma::State,
     controller_power: controller_power::State,
-    seiren_eq_workers: usize,
+    seiren_audio_operations: seiren_audio_operations::State,
     seiren_microphone_setup: seiren_microphone_setup::State,
     seiren_audio_captures: BTreeMap<u64, seiren_audio_capture::Worker>,
     seiren_audio_playbacks: BTreeMap<u64, seiren_audio_playback::Worker>,
@@ -650,12 +654,14 @@ impl AppShell {
             save_task: None,
             pending_saves: VecDeque::new(),
             close_requested: false,
-            legacy_dpi_workers: 0,
+            legacy_dpi: mouse_dpi_70::State::default(),
             mouse_dpi: mouse_current_dpi_runtime::State::default(),
-            mouse_scroll_workers: 0,
+            mouse_scroll: mouse_scroll::State::default(),
             mouse_polling: mouse_polling_runtime::State::default(),
             mouse_tracking_tasks: BTreeMap::new(),
             mouse_matcher: mouse_matcher::State::default(),
+            mapping_observations: product_mapping::ObservationState::default(),
+            mouse_dpi_stages: mouse_dpi_stages::State::default(),
             mouse_dynamic: mouse_dynamic::State::default(),
             mouse_rotation: mouse_rotation::State::default(),
             mouse_power: mouse_current_power_runtime::State::default(),
@@ -666,7 +672,7 @@ impl AppShell {
             controller_power: controller_power::State::default(),
             controller_lighting_cleanup: Vec::new(),
             controller_software_status: BTreeMap::new(),
-            seiren_eq_workers: 0,
+            seiren_audio_operations: seiren_audio_operations::State::default(),
             seiren_microphone_setup: seiren_microphone_setup::State::default(),
             seiren_audio_captures: BTreeMap::new(),
             seiren_audio_playbacks: BTreeMap::new(),
@@ -1274,12 +1280,16 @@ impl AppShell {
         this.install_keyboard_indicator_cleanup(cx);
         this.install_keyboard_brightness_cleanup(cx);
         this.install_current_dpi_cleanup(cx);
+        this.install_legacy_dpi_cleanup(cx);
+        this.install_mouse_scroll_cleanup(cx);
         this.install_mouse_polling_cleanup(cx);
         this.install_current_power_cleanup(cx);
         this.install_keyboard_latest_restore_cleanup(cx);
         this.install_keyboard_legacy_calibration_cleanup(cx);
         this.install_mouse_runtime_artwork_cleanup(cx);
         this.install_mouse_matcher_cleanup(cx);
+        this.install_mouse_dpi_stages_cleanup(cx);
+        this.install_seiren_audio_operation_cleanup(cx);
         this.install_mouse_dynamic_cleanup(cx);
         this.install_mouse_rotation_cleanup(cx);
         this.install_mouse_receiver_indicator_cleanup(cx);
@@ -1363,7 +1373,9 @@ impl AppShell {
             workspace.observe_keyboard_mapping_login_warning_hidden(login_warning_hidden, cx);
         });
         let macros = self.macro_library.read(cx).snapshot();
+        let saved_macros = self.macro_library.read(cx).saved_snapshot();
         entity.update(cx, |workspace, cx| {
+            workspace.set_saved_mapping_macro_library(&saved_macros, cx);
             workspace.set_mapping_macro_library(&macros, window, cx)
         });
         self.subscriptions.push(cx.subscribe_in(
@@ -2785,9 +2797,16 @@ impl AppShell {
             || self.keyboard_game_exit_pending()
             || self.keyboard_identity_cache_pending > 0
             || self.runtime.read(cx).shutdown_pending()
-            || self.legacy_dpi_workers > 0
+            || self.legacy_dpi.pending()
             || self.mouse_dpi.pending()
-            || self.mouse_scroll_workers > 0
+            || self.devices.iter().any(|workspace| {
+                workspace.read(cx).current_dpi_exit_pending(cx)
+                    || workspace.read(cx).legacy_dpi_exit_pending(cx)
+            })
+            || self.mouse_scroll.pending()
+            || self.mouse_matcher.pending()
+            || self.mapping_observation_pending()
+            || self.mouse_dpi_stages.pending()
             || self.mouse_polling.pending()
             || !self.mouse_tracking_tasks.is_empty()
             || self.mouse_power.pending()
@@ -2796,7 +2815,7 @@ impl AppShell {
             || self.controller_trigger_workers > 0
             || self.controller_lighting_workers > 0
             || self.product_lighting.pending()
-            || self.seiren_eq_workers > 0
+            || self.seiren_audio_operations.pending()
             || (!self.seiren_audio_captures.is_empty() || !self.seiren_audio_playbacks.is_empty())
                 && self.close_requested;
         if succeeded && !queued && !auxiliary_pending {
@@ -3021,7 +3040,13 @@ impl AppShell {
             }
         }
         self.close_requested = true;
+        if let Err(error) = self.prepare_mouse_matcher_exit(cx) {
+            self.status = error;
+            self.cancel_pending_exit(cx);
+            return;
+        }
         self.help_system_info.cancel_all();
+        self.prepare_mapping_observation_exit();
         self.prepare_controller_chroma_exit();
         razer_state::ui_preferences::begin_exit(cx);
         razer_state::chroma_settings::begin_exit(cx);
@@ -3064,13 +3089,30 @@ impl AppShell {
             }
             let current =
                 workspace.update(cx, |workspace, cx| workspace.prepare_current_dpi_exit(cx));
-            if let Some(request) = current {
-                self.persist_current_dpi(workspace.clone(), request, window, cx);
+            match current {
+                Ok(Some(request)) => self.persist_current_dpi(workspace.clone(), request, window, cx),
+                Ok(None) => {}
+                Err(error) => {
+                    self.status = error;
+                    self.cancel_pending_exit(cx);
+                    return;
+                }
             }
             let request =
                 workspace.update(cx, |workspace, cx| workspace.prepare_legacy_dpi_exit(cx));
-            if let Some(request) = request {
-                self.persist_legacy_dpi(workspace.clone(), request, window, cx);
+            match request {
+                Ok(Some(request)) if request.persist => {
+                    self.persist_legacy_dpi(workspace.clone(), request, window, cx);
+                }
+                Ok(Some(request)) => {
+                    self.submit_legacy_dpi_device(workspace.clone(), request, window, cx);
+                }
+                Ok(None) => {}
+                Err(error) => {
+                    self.status = error;
+                    self.cancel_pending_exit(cx);
+                    return;
+                }
             }
             workspace.update(cx, |workspace, cx| workspace.prepare_exit(window, cx));
         }

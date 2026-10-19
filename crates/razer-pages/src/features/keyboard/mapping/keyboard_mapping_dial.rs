@@ -5,6 +5,7 @@ use gpui_kit::component::{
     IndexPath,
     select::{Select, SelectEvent, SelectState},
 };
+use razer_device::simple_audio::{EndpointType, SimpleAudioEndpoint};
 #[derive(Deserialize)]
 struct Source {
     product_id: u32,
@@ -42,11 +43,28 @@ pub struct KeyboardMappingDialObservation {
     pub owner: EntityId,
     pub generation: u64,
     /// Parsed simpleEnumerateAudioDevices().deviceList; never synthetic devices.
-    pub playback_devices: Vec<Value>,
+    pub playback_devices: Option<Vec<SimpleAudioEndpoint>>,
     /// Current commonReducer.validDevices, unfiltered.
-    pub valid_devices: Vec<Value>,
+    pub valid_devices: Option<Vec<KeyboardMappingAudioProduct>>,
     /// Parsed MEMORY_STORAGE_LIGHTING_ENGINE_CHROMA_DEVICES_KEY payload.devices.
-    pub lighting_engine_devices: Option<Vec<Value>>,
+    pub lighting_engine_has_devices: Option<bool>,
+}
+#[derive(Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KeyboardMappingAudioProduct {
+    category: String,
+    sub_category: String,
+    device_container_id: String,
+    product_id: u32,
+}
+impl KeyboardMappingAudioProduct {
+    fn is_speaker(&self) -> bool {
+        self.category == "AUDIO"
+            && matches!(
+                self.sub_category.as_str(),
+                "SPEAKER" | "SPEAKER_HEAD_CUSHION"
+            )
+    }
 }
 #[derive(Clone)]
 pub struct KeyboardMappingDialReadRequested {
@@ -74,27 +92,26 @@ impl State {
         self.subscriptions = Default::default()
     }
 }
-fn speakers(workspace: &KeyboardProductWorkspace) -> Vec<&Value> {
+fn speakers(workspace: &KeyboardProductWorkspace) -> Vec<&SimpleAudioEndpoint> {
     let Some(observation) = &workspace.analog_gamepad.mapping.dial.observation else {
         return Vec::new();
     };
-    let containers = observation
-        .valid_devices
+    let Some(valid_devices) = &observation.valid_devices else {
+        return Vec::new();
+    };
+    let Some(playback_devices) = &observation.playback_devices else {
+        return Vec::new();
+    };
+    let containers = valid_devices
         .iter()
-        .filter(|device| {
-            device["category"] == "AUDIO"
-                && matches!(
-                    device["subCategory"].as_str(),
-                    Some("SPEAKER" | "SPEAKER_HEAD_CUSHION")
-                )
-        })
-        .map(|device| &device["deviceContainerId"])
+        .filter(|device| device.is_speaker())
+        .map(|device| &device.device_container_id)
         .collect::<Vec<_>>();
-    observation
-        .playback_devices
+    playback_devices
         .iter()
         .filter(|device| {
-            device["type"] == "speaker" && containers.contains(&&device["containerId"])
+            device.endpoint_type == EndpointType::Speaker
+                && containers.contains(&&device.container_id)
         })
         .collect()
 }
@@ -157,28 +174,24 @@ pub(super) fn merge(
                 let ids = observation
                     .map(|o| {
                         o.valid_devices
+                            .as_deref()
+                            .unwrap_or(&[])
                             .iter()
-                            .filter(|device| {
-                                device["category"] == "AUDIO"
-                                    && matches!(
-                                        device["subCategory"].as_str(),
-                                        Some("SPEAKER" | "SPEAKER_HEAD_CUSHION")
-                                    )
-                            })
-                            .map(|device| device["deviceContainerId"].clone())
+                            .filter(|device| device.is_speaker())
+                            .map(|device| device.device_container_id.clone())
                             .collect::<Vec<_>>()
                     })
                     .unwrap_or_default();
                 group["equalizerPayload"] = json!({"razerAudioSpeakerIds":ids});
                 if let Some(selected) = selected {
-                    group["equalizerPayload"]["selectedPlaybackId"] = selected["id"].clone();
+                    group["equalizerPayload"]["selectedPlaybackId"] = json!(selected.id);
                     if let Some(device) = observation.and_then(|o| {
                         o.valid_devices
+                            .as_deref()?
                             .iter()
-                            .find(|device| device["deviceContainerId"] == selected["containerId"])
+                            .find(|device| device.device_container_id == selected.container_id)
                     }) {
-                        group["equalizerPayload"]["selectedSpeakerPID"] =
-                            device["productId"].clone()
+                        group["equalizerPayload"]["selectedSpeakerPID"] = json!(device.product_id)
                     }
                 }
             }
@@ -239,13 +252,9 @@ impl KeyboardProductWorkspace {
             .dial
             .observation
             .as_ref()
-            .and_then(|o| o.lighting_engine_devices.as_ref())
-            .map(|rows| !rows.is_empty())
+            .and_then(|o| o.lighting_engine_has_devices)
             .unwrap_or(false);
-        let led = observation
-            .lighting_engine_devices
-            .as_ref()
-            .map(|rows| !rows.is_empty());
+        let led = observation.lighting_engine_has_devices;
         self.analog_gamepad.mapping.dial.observation = Some(observation);
         if led.is_some_and(|led| led != previous) {
             if let Some(edit) = &mut self.analog_gamepad.mapping.edit {
@@ -304,7 +313,7 @@ impl KeyboardProductWorkspace {
         let speaker_choices = speakers(self)
             .iter()
             .enumerate()
-            .map(|(index, device)| Choice::new(index.to_string(), text(&device["name"])))
+            .map(|(index, device)| Choice::new(index.to_string(), device.name.clone()))
             .collect::<Vec<_>>();
         if let (Some(selector), Some(speaker)) = (
             &self.analog_gamepad.mapping.dial.selectors[slot],
@@ -474,8 +483,8 @@ impl KeyboardProductWorkspace {
                     .dial
                     .observation
                     .as_ref()
-                    .and_then(|o| o.lighting_engine_devices.as_ref())
-                    .is_some_and(|rows| !rows.is_empty());
+                    .and_then(|o| o.lighting_engine_has_devices)
+                    == Some(true);
                 body = body.child(
                     div()
                         .my(surface::css(20.))

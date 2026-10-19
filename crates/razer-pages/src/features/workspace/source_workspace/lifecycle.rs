@@ -75,16 +75,16 @@ impl SourceProductWorkspace {
         }
         self.set_active(active, window, cx);
         self.sync_receiver_profile_initialization(cx);
-        if let Some(product) =
-            razer_device::mapping_document::MappingProduct::for_product_id(self.device.product_id)
-                .filter(|product| product.uses_retained_mapping_owner())
+        if razer_device::mapping_document::MappingProduct::for_product_id(self.device.product_id)
+            .is_some_and(|product| product.uses_retained_mapping_owner())
         {
-            let document = self
-                .device
-                .source_device_settings
-                .as_ref()
-                .and_then(|settings| settings.get(product.storage_field()))
-                .cloned();
+            let document = match self.mapping_reconnect.document(&self.saved) {
+                Ok(document) => document,
+                Err(error) => {
+                    eprintln!("[saved mapping restart] {error:#}");
+                    None
+                }
+            };
             if let Some(document) = document {
                 self.publish_legacy_mapping(document, cx);
             }

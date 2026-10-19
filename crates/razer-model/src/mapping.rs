@@ -2,6 +2,104 @@
 
 pub mod interdevice;
 
+/// Compile the application's saved source profiles for the software engine.
+/// This performs no storage, transport, or device initialization. The caller
+/// publishes only its admitted saved revision and owns the resulting receipt.
+pub fn prepare_document(
+    device: &crate::model::Device,
+    macros: &crate::macro_library::MacroLibraryFile,
+    fresh_guids: impl IntoIterator<Item = String>,
+) -> anyhow::Result<Option<serde_json::Value>> {
+    use anyhow::Context as _;
+    use razer_device::mapping_document::MappingProduct;
+    let Some(product) = MappingProduct::for_product_id(device.product_id) else {
+        return Ok(None);
+    };
+    let profiles = device
+        .profiles
+        .iter()
+        .map(|profile| {
+            let mut source = profile
+                .source_settings
+                .clone()
+                .context("Mapping source profile has not been initialized")?;
+            let fields = source
+                .as_object_mut()
+                .context("Mapping source profile is not an object")?;
+            fields.insert("guid".into(), profile.guid.clone().into());
+            fields.insert("name".into(), profile.name.clone().into());
+            Ok(source)
+        })
+        .collect::<anyhow::Result<Vec<_>>>()?;
+    let active = device
+        .active_profile_obj()
+        .context("Active mapping profile is missing")?;
+    let settings = device.source_device_settings.as_ref();
+    let previous = settings.and_then(|settings| settings.get(product.storage_field()));
+    let mut document = match device.product_id {
+        70 => razer_device::mouse_legacy_mapping::prepare_document(
+            &profiles,
+            &active.guid,
+            previous,
+            fresh_guids,
+        )?,
+        158 => razer_device::mouse_receiver_mapping::prepare_document_with_device_settings(
+            &profiles,
+            &active.guid,
+            previous,
+            settings,
+            fresh_guids,
+        )?,
+        679 => razer_device::keyboard_current_mapping::prepare_document(
+            &profiles,
+            &active.guid,
+            device.layout_id,
+            previous,
+            fresh_guids,
+        )?,
+        740 | 746 => razer_device::keyboard_magnetic_mapping::prepare_document(
+            device.product_id,
+            &profiles,
+            &active.guid,
+            device.layout_id,
+            previous,
+            fresh_guids,
+        )?,
+        756 => razer_device::keyboard_latest_mapping::prepare_document_with_device_settings(
+            &profiles,
+            &active.guid,
+            device.layout_id,
+            previous,
+            settings,
+            fresh_guids,
+        )?,
+        _ => razer_device::keyboard_legacy_mapping::prepare_document(
+            &profiles,
+            &active.guid,
+            previous,
+            fresh_guids,
+        )?,
+    };
+    let fields = document
+        .as_object_mut()
+        .context("Compiled mapping document is not an object")?;
+    match macros.publication_catalogs() {
+        Ok(catalogs) => {
+            fields.insert("macros".into(), catalogs.macros.into());
+            fields.insert("phasedMacros".into(), catalogs.phased_macros.into());
+            fields.remove("_macro_compilation_error");
+        }
+        Err(error) => {
+            // Source profile persistence and native publication are distinct:
+            // an incomplete macro draft may be saved but cannot be published.
+            fields.remove("macros");
+            fields.remove("phasedMacros");
+            fields.insert("_macro_compilation_error".into(), error.into());
+        }
+    }
+    Ok(Some(document))
+}
+
 /// A compiled save may update the live mapping only while its source profiles,
 /// device settings, selection and route still belong to the captured revision.
 pub fn matches_saved_revision(
@@ -228,6 +326,48 @@ pub fn normalized_website(target: &str) -> Option<String> {
 #[cfg(test)]
 mod saved_revision_tests {
     use super::*;
+
+    #[test]
+    fn software_mapping_compiler_routes_all_audited_products_without_mutating_source() {
+        for product in razer_device::mapping_document::MappingProduct::ALL {
+            let mut source =
+                crate::product_preview::registered_preview(product.product_id()).unwrap();
+            source.profiles[0].source_settings =
+                Some(serde_json::json!({"mappings":[],"retainedExtension":{"sample":73}}));
+            let before = source.clone();
+            let document = prepare_document(
+                &source,
+                &Default::default(),
+                (0..256).map(|index| format!("00000000-0000-4000-8000-{index:012}")),
+            )
+            .unwrap_or_else(|error| panic!("PID{}: {error:#}", product.product_id()))
+            .unwrap();
+            assert_eq!(document["productId"], product.product_id());
+            assert_eq!(document["activeProfile"], source.profiles[0].guid);
+            assert_eq!(document["profiles"][0]["name"], source.profiles[0].name);
+            assert_eq!(
+                document["profiles"][0]["retainedExtension"],
+                serde_json::json!({"sample":73})
+            );
+            assert_eq!(document["macros"], serde_json::json!([]));
+            assert_eq!(document["phasedMacros"], serde_json::json!([]));
+            assert_eq!(source.profiles, before.profiles);
+            assert_eq!(source.source_device_settings, before.source_device_settings);
+            assert_eq!(
+                source.dashboard.connection_observation,
+                before.dashboard.connection_observation
+            );
+        }
+    }
+
+    #[test]
+    fn software_mapping_compiler_rejects_missing_source_without_manufacturing_defaults() {
+        let mut source = crate::product_preview::registered_preview(158).unwrap();
+        assert!(prepare_document(&source, &Default::default(), []).is_err());
+        source.profiles[0].source_settings = Some(serde_json::json!({"mappings":[]}));
+        source.active_profile = "missing-profile".into();
+        assert!(prepare_document(&source, &Default::default(), []).is_err());
+    }
 
     fn device() -> crate::model::Device {
         let mut device = crate::product_preview::registered_preview(70).unwrap();

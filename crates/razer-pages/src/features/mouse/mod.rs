@@ -43,6 +43,8 @@ pub use dpi_70::{
 mod mapping_runtime_70;
 #[path = "mapping/mouse_mapping_runtime_158.rs"]
 mod mapping_runtime_158;
+#[path = "mapping/mouse_mapping_callbacks_current.rs"]
+mod mapping_callbacks_current;
 #[path = "scrolling/mouse_scroll_task.rs"]
 mod scroll_task;
 #[path = "scrolling/mouse_scroll_wheel.rs"]

@@ -442,6 +442,8 @@ impl AppShell {
                     .owner;
                 if let Some(error) = completion.cleanup_failure {
                     log::warn!("[rotation cleanup] {error}");
+                    shell.status = format!("鼠标旋转通信清理失败：{error}");
+                    shell.cancel_pending_exit(cx);
                 }
                 if owner.current(shell, &delivery_key, &shell.device_observations, cx) {
                     let result = match completion.result {
@@ -654,6 +656,8 @@ impl AppShell {
                 let owner = shell.mouse_rotation.native.remove(&delivery_key).unwrap();
                 if let Some(error) = &failure {
                     log::warn!("[rotation native cleanup] {error}");
+                    shell.status = format!("鼠标旋转映射会话尚未完成：{error}");
+                    shell.cancel_pending_exit(cx);
                 }
                 if let Some(active) = owner.active {
                     if active.current(shell, &delivery_key, &shell.device_observations, cx) {

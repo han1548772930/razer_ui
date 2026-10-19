@@ -148,4 +148,7 @@ impl Session {
     pub fn stop(self) -> Result<(), String> {
         self.0.stop()
     }
+    pub fn stop_with_receipt(self) -> observation::Completion {
+        self.0.stop_with_receipt()
+    }
 }

@@ -3,19 +3,20 @@
 use super::*;
 use razer_device::mouse_scroll::ScrollChange;
 use razer_discovery::direct;
-use razer_ipc::{ServiceClient, ServiceRequest};
 use razer_pages::features::mouse_products::MouseScrollRequested;
 use serde_json::Value;
+
+#[path = "mouse_scroll_runtime.rs"]
+mod runtime;
+pub(super) use runtime::State;
 
 fn unique_route<'a>(
     observations: &'a [razer_discovery::discovery::ObservedDevice],
     device: &Device,
 ) -> Option<&'a razer_discovery::discovery::ObservedDevice> {
-    let mut routes = observations
-        .iter()
-        .filter(|route| route.matches(device) && direct::mouse_scroll::available(route));
+    let mut routes = observations.iter().filter(|route| route.matches(device));
     let route = routes.next()?;
-    routes.next().is_none().then_some(route)
+    (routes.next().is_none() && direct::mouse_scroll::available(route)).then_some(route)
 }
 
 #[cfg(test)]
@@ -404,7 +405,7 @@ impl AppShell {
             return;
         }
         if request.is_saved() {
-            self.submit_mouse_scroll(workspace, request, window, cx);
+            self.submit_mouse_scroll(workspace, request, window.window_handle(), cx);
             return;
         }
         self.persist_legacy_profile(workspace, None, false, Some(request), window, cx);
@@ -432,30 +433,14 @@ impl AppShell {
             });
             return;
         }
-        let owner = cx.entity().downgrade();
-        cx.defer(move |cx| {
-            let workspace = save.workspace.clone();
-            let guard = request.clone();
-            if window
-                .update(cx, |_, window, cx| {
-                    let _ = owner.update(cx, |owner, cx| {
-                        owner.submit_mouse_scroll(save.workspace, request, window, cx)
-                    });
-                })
-                .is_err()
-            {
-                workspace.update(cx, |workspace, cx| {
-                    workspace.finish_mouse_scroll(&guard, cx)
-                });
-            }
-        });
+        self.submit_mouse_scroll(save.workspace, request, window, cx);
     }
 
     fn submit_mouse_scroll(
         &mut self,
         workspace: Entity<ProductWorkspace>,
         request: MouseScrollRequested,
-        window: &mut Window,
+        window: AnyWindowHandle,
         cx: &mut Context<Self>,
     ) {
         if self.close_requested
@@ -482,72 +467,6 @@ impl AppShell {
             cx.notify();
             return;
         };
-        let identity = workspace.read(cx).identity(cx);
-        let revision = self.discovery_revision;
-        self.mouse_scroll_workers += 1;
-        let workspace = workspace.downgrade();
-        cx.spawn_in(window, async move |owner, cx| {
-            let selected = route.clone();
-            let guard = request.clone();
-            let result = cx
-                .background_spawn(async move {
-                    anyhow::ensure!(
-                        guard.is_valid(),
-                        "Scroll scope canceled before service creation"
-                    );
-                    let mut client = ServiceClient::spawn()?;
-                    client.set_request_guard(guard.guard());
-                    let result = direct::mouse_scroll::request(
-                        &mut client,
-                        &selected,
-                        guard.submission().clone(),
-                    );
-                    let shutdown = if client.is_stopped() {
-                        None
-                    } else {
-                        client.request(ServiceRequest::Shutdown).err()
-                    };
-                    result.map(|report| (report, shutdown))
-                })
-                .await;
-            let _ = owner.update_in(cx, |owner, _, cx| {
-                owner.mouse_scroll_workers = owner.mouse_scroll_workers.saturating_sub(1);
-                if let Some(workspace) = workspace.upgrade() {
-                    let current = owner.devices.contains(&workspace)
-                        && workspace.read(cx).identity(cx) == identity
-                        && workspace
-                            .read(cx)
-                            .mouse_scroll_request_matches(&request, cx)
-                        && owner.discovery_revision == revision
-                        && owner.device_observations.iter().any(|current| {
-                            current.matches(workspace.read(cx).device(cx))
-                                && current.physical_product_id() == route.physical_product_id()
-                                && current.container().eq_ignore_ascii_case(route.container())
-                                && current.hid_node() == route.hid_node()
-                                && current.peer_product_id() == route.peer_product_id()
-                                && current.connection() == route.connection()
-                        });
-                    workspace.update(cx, |workspace, cx| {
-                        workspace.finish_mouse_scroll(&request, cx)
-                    });
-                    if current {
-                        owner.status = match result {
-                            Ok((_, None)) => "滚轮设置已保存，设备写入及读回已确认。".into(),
-                            Ok((_, Some(error))) => {
-                                format!("滚轮设备操作已确认；通信进程退出失败：{error:#}")
-                            }
-                            Err(error) => {
-                                format!("滚轮设备状态尚未确认：{error:#}；已保留当前设置。")
-                            }
-                        };
-                    }
-                }
-                if owner.close_requested && owner.save_task.is_none() {
-                    owner.continue_save_queue(true, cx);
-                }
-                cx.notify();
-            });
-        })
-        .detach();
+        self.start_mouse_scroll_operation(workspace, route, request, window, cx);
     }
 }

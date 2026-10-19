@@ -70,6 +70,12 @@ impl CommandQueue {
         self.deferred.push_back(command);
         Ok(())
     }
+
+    fn drain_next(&mut self) -> Option<Command> {
+        self.deferred
+            .pop_front()
+            .or_else(|| self.receiver.try_recv().ok())
+    }
 }
 
 pub enum Update {
@@ -209,6 +215,7 @@ impl Options {
 pub struct Handle {
     commands: SyncSender<Command>,
     canceled: Arc<AtomicBool>,
+    closing: Arc<AtomicBool>,
     worker: Option<JoinHandle<WorkerExit>>,
     completion: Completion,
 }
@@ -234,10 +241,15 @@ pub struct Completion(Arc<CompletedWorker>);
 
 #[derive(Default)]
 struct CompletedWorker {
-    result: Mutex<Option<Result<(), String>>>,
+    result: Mutex<Option<CleanupOutcome>>,
     finished: AtomicBool,
     released: AtomicBool,
     ready: Condvar,
+}
+
+struct CleanupOutcome {
+    cleanup: Result<(), String>,
+    released: Result<(), String>,
 }
 
 impl Completion {
@@ -249,19 +261,38 @@ impl Completion {
         self.0.released.load(Ordering::Acquire)
     }
 
-    fn publish(&self, result: &anyhow::Result<()>) {
+    pub fn cleanup_error(&self) -> Option<String> {
+        let outcome = self
+            .0
+            .result
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        let outcome = outcome.as_ref()?;
+        let errors = [&outcome.cleanup, &outcome.released]
+            .into_iter()
+            .filter_map(|result| result.as_ref().err())
+            .cloned()
+            .collect::<Vec<_>>();
+        (!errors.is_empty()).then(|| errors.join("; "))
+    }
+
+    fn publish(&self, cleanup: &anyhow::Result<()>, released: &anyhow::Result<()>) {
         let mut outcome = self
             .0
             .result
             .lock()
             .unwrap_or_else(|error| error.into_inner());
-        *outcome = Some(
+        let stringify = |result: &anyhow::Result<()>| {
             result
                 .as_ref()
                 .map(|_| ())
-                .map_err(|error| format!("{error:#}")),
-        );
-        self.0.released.store(result.is_ok(), Ordering::Release);
+                .map_err(|error| format!("{error:#}"))
+        };
+        *outcome = Some(CleanupOutcome {
+            cleanup: stringify(cleanup),
+            released: stringify(released),
+        });
+        self.0.released.store(released.is_ok(), Ordering::Release);
         self.0.finished.store(true, Ordering::Release);
         self.0.ready.notify_all();
     }
@@ -278,6 +309,7 @@ impl Completion {
             }
             if let Some(result) = outcome.as_ref() {
                 result
+                    .released
                     .as_ref()
                     .map_err(|error| anyhow::anyhow!("Prior Matcher cleanup failed: {error}"))?;
                 return Ok(true);
@@ -295,8 +327,8 @@ impl Handle {
     /// Prior workers must finish native stop, shutdown and thread joining before
     /// this replacement may request the same input/device leases.
     pub fn start(options: Options, predecessors: Vec<Completion>) -> (Self, Updates) {
-        Self::spawn(predecessors, move |commands, updates, canceled| {
-            run(options, commands, updates, canceled)
+        Self::spawn(predecessors, move |commands, updates, canceled, closing| {
+            run(options, commands, updates, canceled, closing)
         })
     }
 
@@ -306,6 +338,7 @@ impl Handle {
             Receiver<Command>,
             async_channel::Sender<Update>,
             Arc<AtomicBool>,
+            Arc<AtomicBool>,
         ) -> WorkerExit
         + Send
         + 'static,
@@ -314,6 +347,8 @@ impl Handle {
         let (updates, output) = async_channel::bounded(64);
         let canceled = Arc::new(AtomicBool::new(false));
         let signal = canceled.clone();
+        let closing = Arc::new(AtomicBool::new(false));
+        let drain = closing.clone();
         let worker = thread::spawn(move || {
             for predecessor in predecessors {
                 match predecessor.wait(|| signal.load(Ordering::Acquire)) {
@@ -335,12 +370,13 @@ impl Handle {
                     }
                 }
             }
-            run(receiver, updates, signal)
+            run(receiver, updates, signal, drain)
         });
         (
             Self {
                 commands,
                 canceled,
+                closing,
                 worker: Some(worker),
                 completion: Completion::default(),
             },
@@ -350,7 +386,7 @@ impl Handle {
 
     pub fn send(&self, command: Command) -> anyhow::Result<()> {
         ensure!(
-            !self.canceled.load(Ordering::Acquire),
+            !self.canceled.load(Ordering::Acquire) && !self.closing.load(Ordering::Acquire),
             "Matcher owner was canceled"
         );
         self.commands
@@ -360,6 +396,13 @@ impl Handle {
 
     pub fn cancel(&self) {
         self.canceled.store(true, Ordering::Release);
+    }
+
+    /// Stop admission while allowing accepted commands and save receipts to
+    /// finish. Capture stops at the next command boundary; no result is saved
+    /// unless an already accepted command requested it.
+    pub fn begin_exit(&mut self) {
+        self.closing.store(true, Ordering::Release);
     }
 
     pub fn completion(&self) -> Completion {
@@ -377,12 +420,12 @@ impl Handle {
             .map_err(|_| anyhow::anyhow!("Matcher worker panicked"));
         match joined {
             Ok(exit) => {
-                self.completion.publish(&exit.released);
+                self.completion.publish(&exit.cleanup, &exit.released);
                 merge_results([exit.operation, exit.cleanup, exit.released])
             }
             Err(error) => {
                 let result = Err(error);
-                self.completion.publish(&result);
+                self.completion.publish(&result, &result);
                 result
             }
         }
@@ -614,6 +657,7 @@ fn run(
     commands: Receiver<Command>,
     updates: async_channel::Sender<Update>,
     canceled: Arc<AtomicBool>,
+    closing: Arc<AtomicBool>,
 ) -> WorkerExit {
     let mut backend = NativeBackend {
         options: &options,
@@ -633,10 +677,23 @@ fn run(
     let started = Instant::now();
     let run = (|| -> anyhow::Result<()> {
         while !canceled.load(Ordering::Acquire) {
+            let draining = closing.load(Ordering::Acquire);
+            if draining {
+                controller.cleanup(&mut backend)?;
+                backend.stop_input_monitoring()?;
+            }
             // Source ordinary tasks wait for the exclusive calibration lock.
             // Keep them queued while continuing input polling and cancellation;
             // blocking this same owner on a shared lease would deadlock it.
-            let command = commands.next(controller.locked);
+            let command = if draining {
+                match commands.drain_next() {
+                    Some(Command::Start) => continue,
+                    Some(command) => Ok(command),
+                    None => break,
+                }
+            } else {
+                commands.next(controller.locked)
+            };
             let starting = matches!(&command, Ok(Command::Start));
             let result = match command {
                 Ok(command) if controller.locked && command.requires_unlocked_device() => {
@@ -684,7 +741,7 @@ fn run(
                     }
                 }
             }
-            if controller.state() == State::Calibrating {
+            if !draining && controller.state() == State::Calibrating {
                 for batch in backend.events()? {
                     let initial_is_main = options.is_initial_main(batch.product_id);
                     let response = controller.ingest(
@@ -803,7 +860,10 @@ mod tests {
         let pending = Completion::default();
         assert!(!pending.wait(|| true).unwrap());
         let failed = Completion::default();
-        failed.publish(&Err(anyhow::anyhow!("native stop not acknowledged")));
+        failed.publish(
+            &Ok(()),
+            &Err(anyhow::anyhow!("native stop not acknowledged")),
+        );
         let (handle, updates) = Handle::spawn(vec![failed], |_, _, _| {
             panic!("failed cleanup must reject replacement")
         });
@@ -829,6 +889,7 @@ mod tests {
         });
         let completion = handle.completion();
         assert!(handle.finish().is_err());
+        assert!(completion.cleanup_error().is_none());
         assert!(completion.wait(|| false).unwrap());
         let (accepted, observed) = mpsc::channel();
         let (replacement, _updates) = Handle::spawn(vec![completion], move |_, _, _| {
@@ -841,5 +902,45 @@ mod tests {
         });
         observed.recv().unwrap();
         replacement.finish().unwrap();
+    }
+
+    #[test]
+    fn dpi_matcher_cleanup_failure_survives_successful_transport_release() {
+        let (handle, _updates) = Handle::spawn(vec![], |_, _, _| WorkerExit {
+            operation: Ok(()),
+            cleanup: Err(anyhow::anyhow!("native stop was not acknowledged")),
+            released: Ok(()),
+        });
+        let completion = handle.completion();
+        assert!(!completion.is_finished());
+        assert!(completion.cleanup_error().is_none());
+        assert!(handle.finish().is_err());
+        assert!(completion.is_finished());
+        assert!(completion.is_released());
+        assert!(
+            completion
+                .cleanup_error()
+                .unwrap()
+                .contains("native stop was not acknowledged")
+        );
+        assert!(completion.wait(|| false).unwrap());
+    }
+
+    #[test]
+    fn dpi_matcher_join_preserves_both_cleanup_and_transport_failures() {
+        let (handle, _updates) = Handle::spawn(vec![], |_, _, _| WorkerExit {
+            operation: Err(anyhow::anyhow!("measurement failed")),
+            cleanup: Err(anyhow::anyhow!("monitor stop failed")),
+            released: Err(anyhow::anyhow!("transport join failed")),
+        });
+        let completion = handle.completion();
+        assert!(handle.finish().is_err());
+        assert!(completion.is_finished());
+        assert!(!completion.is_released());
+        let cleanup = completion.cleanup_error().unwrap();
+        assert!(cleanup.contains("monitor stop failed"));
+        assert!(cleanup.contains("transport join failed"));
+        assert!(!cleanup.contains("measurement failed"));
+        assert!(completion.wait(|| false).is_err());
     }
 }

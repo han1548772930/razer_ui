@@ -24,6 +24,8 @@ struct SimExecutor {
     completion_error: bool,
     interruption_error: bool,
     action_error: bool,
+    gamepad_cleanup_error: bool,
+    prepared_redirect: bool,
     execution_contexts: Vec<(u64, bool)>,
     closed: bool,
 }
@@ -36,6 +38,11 @@ impl Executor for SimExecutor {
         control: super::super::gamepad_observation::Control,
         sink: super::super::gamepad_observation::Sink,
     ) -> Result<()> {
+        ensure!(
+            !self.gamepad_cleanup_error
+                || !matches!(&control, super::super::gamepad_observation::Control::Clear),
+            "simulated gamepad cleanup failure"
+        );
         self.gamepad_observation.control(control, sink)
     }
     fn pause_mapping_replay(&mut self) -> Result<()> {
@@ -79,6 +86,7 @@ impl Executor for SimExecutor {
         Ok(())
     }
     fn prepare_redirect(&mut self) -> Result<()> {
+        self.prepared_redirect = true;
         Ok(())
     }
     fn redirect_activated(&mut self) -> Result<()> {
@@ -184,6 +192,24 @@ fn actions(worker: &Worker<SimExecutor>) -> Vec<ResolvedOutput<Output>> {
             _ => None,
         })
         .collect()
+}
+
+#[test]
+fn failed_gamepad_cleanup_still_releases_held_hardware_and_closes_executor() {
+    let (mut worker, _events) = worker(rows(40), document(100, 80));
+    worker.hardware_input(packet(&[11, 31, 120])).unwrap();
+    worker.executor.gamepad_cleanup_error = true;
+    let error = worker.stop().unwrap_err().to_string();
+    assert!(error.contains("simulated gamepad cleanup failure"));
+    assert!(worker.executor.prepared_redirect);
+    assert!(worker.executor.closed);
+    assert_eq!(
+        actions(&worker),
+        vec![
+            ResolvedOutput::Mapped(keyboard_output(40, 0)),
+            ResolvedOutput::Mapped(keyboard_output(40, 1)),
+        ]
+    );
 }
 
 #[test]

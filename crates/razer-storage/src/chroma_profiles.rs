@@ -106,6 +106,7 @@ pub enum Origin {
 pub struct Snapshot {
     configuration: Option<Configuration>,
     origin: Option<Origin>,
+    revision: Option<u64>,
 }
 impl Snapshot {
     pub fn configuration(&self) -> Option<&Configuration> {
@@ -113,6 +114,14 @@ impl Snapshot {
     }
     pub fn origin(&self) -> Option<Origin> {
         self.origin
+    }
+    /// The revision belongs to the atomic local document. Imported projections
+    /// have no local commit identity.
+    pub fn revision(&self) -> Option<u64> {
+        self.revision
+    }
+    pub fn supersedes(&self, previous: &Self) -> bool {
+        matches!((self.revision, previous.revision), (Some(current), Some(previous)) if current > previous)
     }
 }
 
@@ -231,6 +240,7 @@ fn load_configuration(path: &Path, entries: &SourceEntries) -> anyhow::Result<Sn
         return Ok(Snapshot {
             configuration: Some(document.configuration),
             origin: Some(Origin::LocalConfiguration),
+            revision: Some(document.revision),
         });
     }
     let configuration = match (entries.get(SOURCE_CURRENT_USER), entries.get(SOURCE_USERS)) {
@@ -255,6 +265,7 @@ fn load_configuration(path: &Path, entries: &SourceEntries) -> anyhow::Result<Sn
     Ok(Snapshot {
         configuration,
         origin,
+        revision: None,
     })
 }
 
@@ -291,9 +302,17 @@ fn lock(path: &Path, guard: &AtomicBool) -> anyhow::Result<File> {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Change {
     Toggle(bool),
     SelectProfile(String),
+    CycleProfile(ProfileDirection),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProfileDirection {
+    Previous,
+    Next,
 }
 
 /// Actual local Studio profile contents. T is the editor's typed document,
@@ -544,13 +563,18 @@ pub fn load_studio<T: serde::de::DeserializeOwned>(
     library.validate(&validate)?;
     Ok(library)
 }
+pub struct StudioCommit<T> {
+    pub library: StudioLibrary<T>,
+    pub snapshot: Snapshot,
+}
+
 pub fn update_studio<T: Clone + Serialize + serde::de::DeserializeOwned>(
     path: &Path,
     source_path: &Path,
     change: StudioChange<T>,
     guard: &AtomicBool,
     validate: impl Fn(&T) -> anyhow::Result<()>,
-) -> anyhow::Result<StudioLibrary<T>> {
+) -> anyhow::Result<StudioCommit<T>> {
     let _lock = lock(path, guard)?;
     let previous = crate::read_document(path, decode)?;
     let mut configuration = load(path, source_path)?
@@ -633,7 +657,14 @@ pub fn update_studio<T: Clone + Serialize + serde::de::DeserializeOwned>(
         );
         Ok(())
     })?;
-    Ok(library)
+    Ok(StudioCommit {
+        library,
+        snapshot: Snapshot {
+            configuration: Some(document.configuration),
+            origin: Some(Origin::LocalConfiguration),
+            revision: Some(document.revision),
+        },
+    })
 }
 
 pub fn update(
@@ -642,11 +673,34 @@ pub fn update(
     change: Change,
     guard: &AtomicBool,
 ) -> anyhow::Result<Snapshot> {
+    update_configuration(path, source_path, change, guard, false)
+}
+
+/// Device mappings select an existing local library; they do not initialize
+/// an absent library when the source users/profile observation is missing.
+pub fn update_existing(
+    path: &Path,
+    source_path: &Path,
+    change: Change,
+    guard: &AtomicBool,
+) -> anyhow::Result<Snapshot> {
+    update_configuration(path, source_path, change, guard, true)
+}
+
+fn update_configuration(
+    path: &Path,
+    source_path: &Path,
+    change: Change,
+    guard: &AtomicBool,
+    existing: bool,
+) -> anyhow::Result<Snapshot> {
     let _lock = lock(path, guard)?;
     let previous = crate::read_document(path, decode)?;
-    let mut configuration = load(path, source_path)?
-        .configuration
-        .unwrap_or_else(Configuration::empty_local);
+    let mut configuration = match load(path, source_path)?.configuration {
+        Some(configuration) => configuration,
+        None if !existing => Configuration::empty_local(),
+        None => anyhow::bail!("Chroma profile configuration has not been observed"),
+    };
     match change {
         Change::Toggle(enabled) => configuration.enabled = enabled,
         Change::SelectProfile(id) => {
@@ -658,6 +712,25 @@ pub fn update(
                 "Requested Chroma profile does not exist"
             );
             configuration.current_profile = Some(id);
+            configuration.enabled = true;
+        }
+        Change::CycleProfile(direction) => {
+            let length = configuration.profiles.len();
+            ensure!(length > 0, "Chroma profile list is empty");
+            let current = configuration.current_profile.as_deref().and_then(|id| {
+                configuration
+                    .profiles
+                    .iter()
+                    .position(|profile| profile.id() == id)
+            });
+            // Current30525.xt applies Fv to findIndex (including -1).
+            let index = match (direction, current) {
+                (ProfileDirection::Previous, Some(index)) => (index + length - 1) % length,
+                (ProfileDirection::Next, Some(index)) => (index + 1) % length,
+                (ProfileDirection::Previous, None) => (length + length - 2) % length,
+                (ProfileDirection::Next, None) => 0,
+            };
+            configuration.current_profile = Some(configuration.profiles[index].id.clone());
             configuration.enabled = true;
         }
     }
@@ -691,12 +764,17 @@ pub fn update(
         );
         Ok(())
     })?;
-    load(path, source_path)
+    Ok(Snapshot {
+        configuration: Some(document.configuration),
+        origin: Some(Origin::LocalConfiguration),
+        revision: Some(document.revision),
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
     #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
     struct Editor {
         layers: Vec<u32>,
@@ -725,6 +803,7 @@ mod tests {
             validate_editor,
         )
         .unwrap()
+        .library
     }
     struct Temp(PathBuf);
     impl Temp {
@@ -768,6 +847,150 @@ mod tests {
         .unwrap();
         assert_eq!(snapshot.origin(), Some(Origin::LocalConfiguration));
         assert!(snapshot.configuration().unwrap().enabled());
+        assert!(!temp.source().exists());
+    }
+    #[test]
+    fn mapped_chroma_requires_an_observed_library_and_preserves_empty_or_canceled_storage() {
+        let temp = Temp::new();
+        assert!(
+            update_existing(
+                &temp.local(),
+                &temp.source(),
+                Change::Toggle(true),
+                &AtomicBool::new(true)
+            )
+            .is_err()
+        );
+        assert!(!temp.local().exists());
+        update(
+            &temp.local(),
+            &temp.source(),
+            Change::Toggle(false),
+            &AtomicBool::new(true),
+        )
+        .unwrap();
+        let before = std::fs::read(temp.local()).unwrap();
+        for (change, active) in [
+            (Change::CycleProfile(ProfileDirection::Previous), true),
+            (Change::CycleProfile(ProfileDirection::Next), true),
+            (Change::Toggle(true), false),
+        ] {
+            assert!(
+                update_existing(
+                    &temp.local(),
+                    &temp.source(),
+                    change,
+                    &AtomicBool::new(active)
+                )
+                .is_err()
+            );
+            assert_eq!(std::fs::read(temp.local()).unwrap(), before);
+        }
+    }
+
+    #[test]
+    fn chroma_commit_revisions_order_studio_and_mapped_writers_without_another_read() {
+        let temp = Temp::new();
+        let absent = load(&temp.local(), &temp.source()).unwrap();
+        assert_eq!(absent.revision(), None);
+        let studio = update_studio(
+            &temp.local(),
+            &temp.source(),
+            StudioChange::Add {
+                id: "a".into(),
+                name: "First".into(),
+                editor: editor(3),
+            },
+            &AtomicBool::new(true),
+            validate_editor,
+        )
+        .unwrap();
+        assert_eq!(studio.snapshot.revision(), Some(1));
+        let mapped = update_existing(
+            &temp.local(),
+            &temp.source(),
+            Change::Toggle(false),
+            &AtomicBool::new(true),
+        )
+        .unwrap();
+        assert_eq!(mapped.revision(), Some(2));
+        assert!(mapped.supersedes(&studio.snapshot));
+        assert!(!studio.snapshot.supersedes(&mapped));
+        assert_eq!(load(&temp.local(), &temp.source()).unwrap(), mapped);
+        assert_eq!(studio.snapshot.configuration().unwrap().enabled(), true);
+        assert_eq!(mapped.configuration().unwrap().enabled(), false);
+        assert_eq!(
+            load_studio::<Editor>(&temp.local(), validate_editor)
+                .unwrap()
+                .profiles(),
+            studio.library.profiles()
+        );
+    }
+
+    #[test]
+    fn mapped_chroma_cycles_follow_source_order_wrap_and_missing_selection_without_changing_editors()
+     {
+        let temp = Temp::new();
+        for (id, layer) in [("a", 1), ("b", 2), ("c", 3)] {
+            studio(
+                &temp,
+                StudioChange::Add {
+                    id: id.into(),
+                    name: format!("Effect {id}"),
+                    editor: editor(layer),
+                },
+            );
+        }
+        let library = load_studio::<Editor>(&temp.local(), validate_editor).unwrap();
+        for (direction, selected) in [
+            (ProfileDirection::Previous, "b"),
+            (ProfileDirection::Next, "c"),
+            (ProfileDirection::Next, "a"),
+            (ProfileDirection::Previous, "c"),
+            (ProfileDirection::Next, "a"),
+            (ProfileDirection::Next, "b"),
+        ] {
+            let snapshot = update_existing(
+                &temp.local(),
+                &temp.source(),
+                Change::CycleProfile(direction),
+                &AtomicBool::new(true),
+            )
+            .unwrap();
+            let configuration = snapshot.configuration().unwrap();
+            assert_eq!(configuration.selected_profile(), Some(selected));
+            assert!(configuration.enabled());
+        }
+        let after = load_studio::<Editor>(&temp.local(), validate_editor).unwrap();
+        assert_eq!(after.profiles(), library.profiles());
+        assert_eq!(after.selected_id(), Some("b"));
+        let mut document = decode(&std::fs::read_to_string(temp.local()).unwrap()).unwrap();
+        document.configuration.current_profile = None;
+        document
+            .extensions
+            .insert("futureMappingExtension".into(), json!(47));
+        for (direction, selected) in [
+            (ProfileDirection::Previous, "b"),
+            (ProfileDirection::Next, "a"),
+        ] {
+            std::fs::write(temp.local(), serde_json::to_vec(&document).unwrap()).unwrap();
+            let snapshot = update_existing(
+                &temp.local(),
+                &temp.source(),
+                Change::CycleProfile(direction),
+                &AtomicBool::new(true),
+            )
+            .unwrap();
+            assert_eq!(
+                snapshot.configuration().unwrap().selected_profile(),
+                Some(selected)
+            );
+            let changed = decode(&std::fs::read_to_string(temp.local()).unwrap()).unwrap();
+            assert_eq!(
+                changed.extensions.get("futureMappingExtension"),
+                Some(&json!(47))
+            );
+        }
         assert!(!temp.source().exists());
     }
     #[test]

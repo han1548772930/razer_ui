@@ -15,6 +15,12 @@ fn source_guid(profile: &Profile) -> Option<&str> {
 }
 
 impl SourceProductWorkspace {
+    pub fn accepts_mapping_callback(
+        &self,
+        request: &crate::features::MappingCallbackRequested,
+    ) -> bool {
+        request.matches_generation(self.mapping_connection_generation)
+    }
     pub fn observe_running_games(&mut self, count: Option<usize>, cx: &mut Context<Self>) {
         match &self.body {
             FamilyBody::Keyboard(body) => {
@@ -35,9 +41,13 @@ impl SourceProductWorkspace {
 
     pub fn consume_interdevice_mapping(&mut self, raw: Value, cx: &mut Context<Self>) -> bool {
         match &self.body {
-            FamilyBody::Mouse(body) => {
-                body.update(cx, |body, cx| body.consume_interdevice_mapping(raw, cx))
-            }
+            FamilyBody::Mouse(body) => body.update(cx, |body, cx| {
+                if self.device.product_id == 158 {
+                    body.consume_receiver_interdevice_mapping(raw, cx)
+                } else {
+                    body.consume_interdevice_mapping(raw, cx)
+                }
+            }),
             FamilyBody::Keyboard(body) => {
                 body.update(cx, |body, cx| body.consume_interdevice_mapping(raw, cx))
             }
@@ -171,6 +181,16 @@ impl SourceProductWorkspace {
     ) {
         self.local_mapping_macros = file.mapping_catalog();
         self.sync_local_mapping_macros(window, cx);
+    }
+
+    pub fn set_saved_mapping_macro_library(
+        &mut self,
+        file: &crate::features::macro_library::MacroLibraryFile,
+        cx: &mut Context<Self>,
+    ) {
+        self.mapping_reconnect.initialize_macros(file);
+        self.sync_mouse_mapping_activity(cx);
+        self.sync_keyboard_read_activity(cx);
     }
 
     pub(super) fn sync_local_mapping_macros(&self, window: &mut Window, cx: &mut Context<Self>) {

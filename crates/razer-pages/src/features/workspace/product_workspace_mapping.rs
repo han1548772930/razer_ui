@@ -6,6 +6,13 @@ use crate::features::keyboard_products::{
 };
 
 impl ProductWorkspace {
+    pub fn accepts_mapping_callback(
+        &self,
+        request: &crate::features::MappingCallbackRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).accepts_mapping_callback(request))
+    }
     /// Advances when a connection is replaced, including a batched reconnect
     /// whose final setupStatus is unchanged. Never persisted as a device fact.
     pub fn connection_revision(&self) -> u64 {

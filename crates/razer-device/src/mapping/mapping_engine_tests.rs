@@ -1,5 +1,24 @@
 use super::*;
 
+#[test]
+fn interdevice_otfs_failed_projection_keeps_available_turbo_identities() {
+    for product_id in [70, 158] {
+        let engine = MappingEngine::new(product_id).unwrap();
+        let mut state = context();
+        let before = state.clone();
+        let defaults = [json!({
+            "inputType":"MouseInput", "inputID":"ScrollUp", "outputType":"keyboardGroup",
+            "keyboardGroup":{"key":"KEY_A","modifiers":[]}
+        })];
+        let invalid = [json!({"outputType":"sensitivityGroup"})];
+        assert!(engine.generate_mouse_otfs(&invalid, &defaults, &mut state).is_err());
+        assert_eq!(state.fresh_guids, before.fresh_guids);
+        assert_eq!(state.default_turbos, before.default_turbos);
+        assert_eq!(state.synapse_turbos, before.synapse_turbos);
+        assert_eq!(state.dkm_keys, before.dkm_keys);
+    }
+}
+
 fn context() -> EngineContext {
     EngineContext {
         default_turbos: Some(vec![

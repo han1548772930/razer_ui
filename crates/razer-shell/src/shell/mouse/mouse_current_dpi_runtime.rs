@@ -151,6 +151,12 @@ impl AppShell {
                     return;
                 };
                 let current = operation.matches(shell, &shell.device_observations, cx);
+                let restoration_failed = operation.request.is_cleanup()
+                    && (!current
+                        || !completion
+                            .result()
+                            .as_ref()
+                            .is_ok_and(|report| report.verified));
                 if let Some(workspace) = operation.workspace.upgrade() {
                     let result = if current {
                         completion.result()
@@ -181,6 +187,11 @@ impl AppShell {
                 }
                 if current {
                     shell.status = completion.message(&operation.request);
+                } else if restoration_failed {
+                    shell.status = "DPI 退出恢复尚未确认：设备连接或请求范围已改变。".into();
+                }
+                if restoration_failed || completion.cleanup_error().is_some() {
+                    shell.cancel_pending_exit(cx);
                 }
                 if shell.close_requested && shell.save_task.is_none() {
                     shell.continue_save_queue(true, cx);

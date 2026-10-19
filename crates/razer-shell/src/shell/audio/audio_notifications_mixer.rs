@@ -516,15 +516,18 @@ impl MixerOwner {
         }
         Ok(())
     }
-    pub(super) fn cleanup_shortcuts(&mut self) {
+    pub(super) fn cleanup_shortcuts(&mut self) -> anyhow::Result<()> {
+        let mut errors = Vec::new();
         for ((key, modifiers), _) in std::mem::take(&mut self.shortcuts) {
             if let Err(error) = self.hotkeys.unregister(key, modifiers) {
-                report(&self.status, format!("Mixer shortcut cleanup: {error:#}"));
+                errors.push(format!("Mixer shortcut cleanup: {error:#}"));
             }
         }
         if let Err(error) = self.hotkeys.close() {
-            report(&self.status, format!("Mixer shortcut scope cleanup: {error:#}"));
+            errors.push(format!("Mixer shortcut scope cleanup: {error:#}"));
         }
+        ensure!(errors.is_empty(), "{}", errors.join("; "));
+        Ok(())
     }
 }
 pub(super) fn set_mode(

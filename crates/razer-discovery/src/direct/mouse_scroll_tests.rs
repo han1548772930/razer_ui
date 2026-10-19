@@ -197,7 +197,14 @@ fn mouse_scroll_rejects_wrong_task_confirmation_stale_identity_peer_and_cancella
                     })
                 },
             );
-            assert!(result.is_err(), "accepted invalid scroll reply {failure}");
+            if failure == 6 {
+                let report = result.expect("a missing readback is valid partial progress");
+                assert!(!report.verified_for(observed.product_id()));
+                assert!(report.reports[0].steps[0].acknowledgment_received);
+                assert!(report.reports[0].steps[0].observed.is_none());
+            } else {
+                assert!(result.is_err(), "accepted invalid scroll reply {failure}");
+            }
         }
         for failure in 0..3 {
             assert!(
@@ -226,4 +233,58 @@ fn mouse_scroll_rejects_wrong_task_confirmation_stale_identity_peer_and_cancella
         ))
         .is_err()
     );
+}
+
+#[test]
+fn mouse_scroll_partial_and_mismatching_readbacks_survive_the_exact_route_boundary() {
+    for observed in [
+        observation(153, 153, None, 1),
+        observation(226, 241, Some(227), 1),
+    ] {
+        let node = observed.hid_node().unwrap();
+        for mismatch in [false, true] {
+            let expected = Submission::new(
+                vec![
+                    ScrollChange::VirtualAcceleration(true),
+                    ScrollChange::SmartReel(true),
+                ],
+                ScrollProfileObservation::default(),
+            );
+            let report =
+                crate::direct::mouse_scroll::request_with(&observed, expected.clone(), |request| {
+                    Ok(match request {
+                        ServiceRequest::HidNodes => json!({"nodes":[node]}),
+                        ServiceRequest::HidNodeReports { .. } => {
+                            json!({"node":node,"reports":{"feature":{"0":91}}})
+                        }
+                        ServiceRequest::HidNodeMouseScroll { submission, .. } => {
+                            assert_eq!(submission, expected);
+                            let mut value = reply(&observed, &submission);
+                            value["report"]["reports"][0]["steps"][0]["observed"] = if mismatch {
+                                json!(ScrollValue::VirtualAcceleration(false))
+                            } else {
+                                Value::Null
+                            };
+                            value["report"]["reports"].as_array_mut().unwrap().push(json!({
+                            "steps":[{"profile_id":1,"requested":ScrollValue::SmartReel(true),
+                            "acknowledgment_received":true,"acknowledged":null,
+                            "observed":ScrollValue::SmartReel(true)}]
+                        }));
+                            value["report"]["errors"] = json!(["first task was not confirmed"]);
+                            value
+                        }
+                        _ => panic!("partial scroll reply must retain its exact route"),
+                    })
+                })
+                .unwrap();
+            assert!(!report.verified_for(observed.product_id()));
+            assert_eq!(report.requested, expected);
+            assert_eq!(report.errors, ["first task was not confirmed"]);
+            assert_eq!(
+                report.reports[0].steps[0].observed,
+                mismatch.then_some(ScrollValue::VirtualAcceleration(false))
+            );
+            assert!(report.reports[1].verified());
+        }
+    }
 }

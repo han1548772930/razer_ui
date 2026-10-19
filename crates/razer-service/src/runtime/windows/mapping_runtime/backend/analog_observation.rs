@@ -8,7 +8,15 @@ pub(super) struct Observer {
     pub(super) caller: Uuid,
     pub(super) epoch: Uuid,
     registration: Request,
+    stopping: bool,
     pub(super) pending: Inbox<Delivery>,
+}
+impl Observer {
+    pub(super) fn push(&mut self, caller: Uuid, epoch: Uuid, delivery: Delivery) {
+        if self.caller == caller && self.epoch == epoch && !self.stopping {
+            self.pending.push(epoch, delivery);
+        }
+    }
 }
 impl<E: device::Executor> Core<E> {
     pub(super) fn start_analog_observation(
@@ -42,6 +50,13 @@ impl<E: device::Executor> Core<E> {
         row.ensure_active()?;
         row.target.revalidate()?;
         let caller = row.caller;
+        ensure!(
+            !self
+                .analog_observers
+                .values()
+                .any(|observer| observer.caller == caller && observer.stopping),
+            "Analog observation cleanup is still pending"
+        );
         let previous = self
             .analog_observers
             .values()
@@ -68,6 +83,7 @@ impl<E: device::Executor> Core<E> {
                 caller,
                 epoch,
                 registration,
+                stopping: false,
                 pending: Inbox::new(epoch),
             },
         );
@@ -79,6 +95,10 @@ impl<E: device::Executor> Core<E> {
             .get_mut(id)
             .context("Analog observer is not registered")?;
         ensure!(observer.scope == scope, "Analog observer scope changed");
+        ensure!(
+            !observer.stopping,
+            "Analog observation cleanup is still pending"
+        );
         let row = self
             .devices
             .values()
@@ -94,28 +114,32 @@ impl<E: device::Executor> Core<E> {
         ))?)
     }
     pub(super) fn stop_analog_observation(&mut self, scope: Uuid, id: &str) -> Result<Value> {
-        let Some(observer) = self.analog_observers.get(id) else {
+        let Some(observer) = self.analog_observers.get_mut(id) else {
             return Ok(serde_json::to_value(Receipt::new(id.into(), false))?);
         };
         ensure!(observer.scope == scope, "Analog observer scope changed");
+        observer.stopping = true;
+        let (caller, epoch, registration) = (
+            observer.caller,
+            observer.epoch,
+            observer.registration.clone(),
+        );
         let other = self
             .analog_observers
             .iter()
-            .filter(|(other_id, other)| other_id.as_str() != id && other.caller == observer.caller)
+            .filter(|(other_id, other)| other_id.as_str() != id && other.caller == caller)
             .map(|(_, other)| other)
             .collect::<Vec<_>>();
         if let Some(row) = self
             .devices
             .values()
-            .find(|row| row.caller == observer.caller && !row.physical_retired)
+            .find(|row| row.caller == caller && !row.physical_retired)
         {
             if other.is_empty() {
-                row.worker.analog_observation(Control::Stop {
-                    epoch: observer.epoch,
-                })?;
-            } else if let Request::Key { input, .. } = &observer.registration {
+                row.worker.analog_observation(Control::Stop { epoch })?;
+            } else if let Request::Key { input, .. } = &registration {
                 if !other.iter().any(|other| matches!(&other.registration, Request::Key { input: other_input, .. } if same_key(input, other_input))) {
-                    row.worker.analog_observation(Control::RemoveKey { epoch: observer.epoch, input: input.clone() })?;
+                    row.worker.analog_observation(Control::RemoveKey { epoch, input: input.clone() })?;
                 }
             }
         }

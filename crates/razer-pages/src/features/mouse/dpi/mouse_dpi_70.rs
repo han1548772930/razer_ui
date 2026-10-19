@@ -1,6 +1,7 @@
 //! Current PID70 sensitivity intents: MW vt persists the profile before Xe;
 //! _t persists independent-X/Y without a setter. UI cI dispatches a separate
 //! value change when unlinking requires Y to follow X. ACKs never change drafts.
+use super::mapping_callbacks_current::{Connection, TemporaryRestoration};
 use super::*;
 use std::sync::{
     Arc,
@@ -15,11 +16,17 @@ pub struct MouseLegacyDpiRequested {
     pub send: bool,
     pub persist: bool,
     pub dpi: Option<(u16, u16)>,
+    pub cleanup: bool,
+    restores_temporary: bool,
+    restoration_ticket: u64,
     valid: Arc<AtomicBool>,
 }
 impl MouseLegacyDpiRequested {
     pub fn is_valid(&self) -> bool {
         self.valid.load(Ordering::Acquire)
+    }
+    pub fn guard(&self) -> Arc<AtomicBool> {
+        self.valid.clone()
     }
     fn cancel(&self) {
         self.valid.store(false, Ordering::Release);
@@ -44,8 +51,96 @@ pub(super) struct State {
     pending: Option<MouseLegacyDpiRequested>,
     queued: Option<MouseLegacyDpiRequested>,
     pub(super) refresh_controls: bool,
+    temporary_restoration: TemporaryRestoration,
 }
 impl State {
+    pub(super) fn observe_mapping_connection(&mut self, connection: Option<Connection>) {
+        self.temporary_restoration.observe_connection(connection);
+    }
+
+    fn owns_completion(&self, request: &MouseLegacyDpiRequested) -> bool {
+        self.pending.as_ref().is_some_and(|pending| {
+            pending.sequence == request.sequence
+                && pending.scope == request.scope
+                && Arc::ptr_eq(&pending.valid, &request.valid)
+        })
+    }
+
+    fn enqueue(&mut self, request: MouseLegacyDpiRequested) -> Option<MouseLegacyDpiRequested> {
+        if self.pending.is_some() {
+            if let Some(old) = self.queued.replace(request) {
+                old.cancel();
+            }
+            None
+        } else {
+            self.pending = Some(request.clone());
+            Some(request)
+        }
+    }
+
+    fn prepare_exit(
+        &mut self,
+        scope: Option<MousePollingScope>,
+        sensitivity: Value,
+        restore: bool,
+    ) -> Result<Option<MouseLegacyDpiRequested>, String> {
+        let persist = self
+            .queued
+            .iter()
+            .chain(self.pending.iter())
+            .any(|request| request.is_valid() && Some(request.scope) == scope && request.persist);
+        self.cancel();
+        let dpi = restore.then(|| selected_dpi(&sensitivity)).flatten();
+        if restore && (scope.is_none() || dpi.is_none()) {
+            return Err(
+                "DPI clutch restoration has no valid current connection and selected stage".into(),
+            );
+        }
+        let Some(scope) = scope.filter(|_| persist || restore) else {
+            return Ok(None);
+        };
+        self.sequence = self.sequence.wrapping_add(1);
+        Ok(self.enqueue(MouseLegacyDpiRequested {
+            scope,
+            sequence: self.sequence,
+            sensitivity,
+            send: restore,
+            persist,
+            dpi,
+            cleanup: restore,
+            restores_temporary: restore,
+            restoration_ticket: self.temporary_restoration.ticket(),
+            valid: Arc::new(AtomicBool::new(true)),
+        }))
+    }
+
+    fn finish(
+        &mut self,
+        request: &MouseLegacyDpiRequested,
+        scope: Option<MousePollingScope>,
+        confirmed: bool,
+    ) -> Option<MouseLegacyDpiRequested> {
+        if !self.owns_completion(request) {
+            return None;
+        }
+        if confirmed
+            && request.is_valid()
+            && scope == Some(request.scope)
+            && request.restores_temporary
+        {
+            self.temporary_restoration
+                .confirm(request.restoration_ticket);
+        }
+        self.pending.take().inspect(|pending| pending.cancel());
+        if let Some(next) = self.queued.take() {
+            if next.is_valid() && scope == Some(next.scope) {
+                return self.enqueue(next);
+            }
+            next.cancel();
+        }
+        None
+    }
+
     pub(super) fn cancel(&mut self) {
         if let Some(request) = &self.pending {
             request.cancel();
@@ -122,30 +217,34 @@ impl MouseProductWorkspace {
             send: must_send,
             persist: true,
             dpi: must_send.then_some(dpi).flatten(),
+            cleanup: false,
+            restores_temporary: must_send && dpi.is_some(),
+            restoration_ticket: self.legacy_dpi.temporary_restoration.ticket(),
             valid: Arc::new(AtomicBool::new(true)),
         };
-        if self.legacy_dpi.pending.is_some() {
-            if let Some(old) = self.legacy_dpi.queued.replace(request) {
-                old.cancel();
-            }
-        } else {
-            self.legacy_dpi.pending = Some(request.clone());
+        if let Some(request) = self.legacy_dpi.enqueue(request) {
             cx.emit(request);
         }
     }
     pub fn legacy_dpi_request_matches(&self, request: &MouseLegacyDpiRequested, cx: &App) -> bool {
         request.is_valid()
             && self.mouse_polling_scope(cx) == Some(request.scope)
-            && self.legacy_dpi.pending.as_ref().is_some_and(|pending| {
-                pending.sequence == request.sequence && pending.scope == request.scope
-            })
+            && self.legacy_dpi.owns_completion(request)
     }
-    pub(super) fn submit_legacy_temporary_dpi(&mut self, dpi: (u16, u16), cx: &mut Context<Self>) {
+    pub(super) fn submit_legacy_temporary_dpi(
+        &mut self,
+        dpi: (u16, u16),
+        restores_temporary: bool,
+        cx: &mut Context<Self>,
+    ) {
         let Some(scope) = self.mouse_polling_scope(cx) else {
             return;
         };
         if !(100..=16000).contains(&dpi.0) || !(100..=16000).contains(&dpi.1) {
             return;
+        }
+        if !restores_temporary {
+            self.legacy_dpi.temporary_restoration.require();
         }
         self.legacy_dpi.sequence = self.legacy_dpi.sequence.wrapping_add(1);
         // Preserve a requested local edit waiting behind an earlier setter.
@@ -161,42 +260,36 @@ impl MouseProductWorkspace {
             send: true,
             persist,
             dpi: Some(dpi),
+            cleanup: false,
+            restores_temporary,
+            restoration_ticket: self.legacy_dpi.temporary_restoration.ticket(),
             valid: Arc::new(AtomicBool::new(true)),
         };
-        if self.legacy_dpi.pending.is_some() {
-            if let Some(old) = self.legacy_dpi.queued.replace(request) {
-                old.cancel();
-            }
-        } else {
-            self.legacy_dpi.pending = Some(request.clone());
+        if let Some(request) = self.legacy_dpi.enqueue(request) {
             cx.emit(request);
         }
     }
-    /// Exit cancels transport work while draining already requested automatic
-    /// persistence, including the last edit waiting behind an in-flight SET.
-    pub fn prepare_legacy_dpi_exit(&mut self, cx: &App) -> Option<MouseLegacyDpiRequested> {
-        let latest = self
-            .legacy_dpi
-            .queued
-            .take()
-            .or_else(|| self.legacy_dpi.pending.clone());
-        self.legacy_dpi.cancel();
-        self.legacy_dpi.pending = None;
-        let mut latest = latest?;
-        latest.cancel();
-        if !latest.persist {
-            return None;
+    /// The current connection's clutch restoration follows the canceled worker's
+    /// completed transport cleanup and any already requested profile persistence.
+    pub fn prepare_legacy_dpi_exit(
+        &mut self,
+        cx: &App,
+    ) -> Result<Option<MouseLegacyDpiRequested>, String> {
+        if self.spec.product_id == 70 {
+            self.legacy_mapping.close_callback_admission();
         }
-        if self.mouse_polling_scope(cx) != Some(latest.scope) {
-            return None;
-        }
-        self.legacy_dpi.sequence = self.legacy_dpi.sequence.wrapping_add(1);
-        latest.sequence = self.legacy_dpi.sequence;
-        latest.valid = Arc::new(AtomicBool::new(true));
-        latest.send = false;
-        latest.dpi = None;
-        self.legacy_dpi.pending = Some(latest.clone());
-        Some(latest)
+        let restore = self.spec.product_id == 70
+            && (self.legacy_mapping.needs_dpi_restore()
+                || self.legacy_dpi.temporary_restoration.required());
+        self.legacy_dpi.prepare_exit(
+            self.mouse_polling_scope(cx),
+            self.draft["DPIStages"].clone(),
+            restore,
+        )
+    }
+
+    pub fn legacy_dpi_exit_pending(&self) -> bool {
+        self.legacy_dpi.pending.is_some() || self.legacy_dpi.queued.is_some()
     }
     pub fn refresh_legacy_dpi_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.spec.product_id != 70 || !std::mem::take(&mut self.legacy_dpi.refresh_controls) {
@@ -224,47 +317,32 @@ impl MouseProductWorkspace {
         cx.notify();
     }
     pub fn finish_legacy_dpi(&mut self, request: &MouseLegacyDpiRequested, cx: &mut Context<Self>) {
-        if !self.legacy_dpi.pending.as_ref().is_some_and(|pending| {
-            pending.sequence == request.sequence && pending.scope == request.scope
-        }) {
-            return;
+        self.finish_legacy_dpi_result(request, false, cx);
+    }
+
+    pub fn finish_legacy_dpi_result(
+        &mut self,
+        request: &MouseLegacyDpiRequested,
+        confirmed: bool,
+        cx: &mut Context<Self>,
+    ) {
+        if confirmed
+            && request.cleanup
+            && self.legacy_dpi_request_matches(request, cx)
+            && request.restoration_ticket == self.legacy_dpi.temporary_restoration.ticket()
+        {
+            self.legacy_mapping.finish_dpi_restore();
         }
-        self.legacy_dpi
-            .pending
-            .take()
-            .inspect(|pending| pending.cancel());
-        if let Some(next) = self.legacy_dpi.queued.take() {
-            if next.is_valid() && self.mouse_polling_scope(cx) == Some(next.scope) {
-                self.legacy_dpi.pending = Some(next.clone());
-                cx.emit(next);
-            }
+        if let Some(next) = self
+            .legacy_dpi
+            .finish(request, self.mouse_polling_scope(cx), confirmed)
+        {
+            cx.emit(next);
         }
         cx.notify();
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::selected_dpi;
-    use serde_json::json;
-    // The glob imports above also carry GPUI's `test` macro; name the
-    // built-in attribute so this remains an ordinary Rust test.
-    use std::prelude::v1::test;
-    #[test]
-    fn active_xy_uses_source_selection_with_stages_on_or_off() {
-        let mut value = json!({"Active":2,"State":true,"Stages":{"DPIStage":[
-            {"Active":false,"X":800,"Y":800}, {"Active":true,"X":1600,"Y":3200}]}});
-        assert_eq!(selected_dpi(&value), Some((1600, 3200)));
-        value["State"] = false.into();
-        assert_eq!(selected_dpi(&value), Some((1600, 3200)));
-        value["Active"] = 1.into();
-        assert_eq!(selected_dpi(&value), None);
-        value["Active"] = 0.into();
-        assert_eq!(selected_dpi(&value), None);
-    }
-    #[test]
-    fn invalid_dpi_cannot_become_a_device_request() {
-        let value = json!({"Active":1,"Stages":{"DPIStage":[{"Active":true,"X":99,"Y":800}]}});
-        assert_eq!(selected_dpi(&value), None);
-    }
-}
+#[path = "mouse_dpi_70_tests.rs"]
+mod tests;

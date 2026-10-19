@@ -19,6 +19,8 @@ pub mod help_system_info;
 pub mod mouse_dynamic;
 #[path = "mouse/mouse_rotation.rs"]
 pub mod mouse_rotation;
+#[path = "mouse/mouse_scroll.rs"]
+pub mod mouse_scroll;
 #[path = "mouse/worker.rs"]
 mod mouse_worker;
 #[path = "runtime/mod.rs"]
