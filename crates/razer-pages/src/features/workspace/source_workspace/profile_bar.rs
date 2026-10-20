@@ -151,13 +151,7 @@ impl SourceProductWorkspace {
                                     });
                                 }
                             }))
-                            .items(
-                                self.device
-                                    .profiles
-                                    .iter()
-                                    .map(|p| Choice::new(&p.id, &p.name))
-                                    .collect(),
-                            )
+                            .items(self.profile_choices.clone())
                             .disabled(!self.profile_switch_enabled())
                             .opacity(1.)
                             .w_full()
