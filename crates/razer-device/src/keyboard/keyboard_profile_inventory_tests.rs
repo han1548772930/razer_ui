@@ -64,6 +64,57 @@ fn keyboard_profile_inventory_limits_reads_to_actual_hid_obm_mounts() {
 }
 
 #[test]
+fn keyboard_profile_inventory_756_partial_slots_decode_actual_bytes_without_capacity_inference() {
+    use crate::keyboard_latest_restore::Slot;
+    let first = metadata("Actual 756 first slot");
+    let mut unknown = [0xff; 250];
+    unknown[16..116].fill(0);
+    unknown[16..23].copy_from_slice(b"unknown");
+    let slots = [
+        Slot {
+            slot_id: 7,
+            guid: "af06d371-861f-4b98-8d78-bfaef5cfdebf".into(),
+        },
+        Slot {
+            slot_id: 2,
+            guid: "ffffffff-ffff-ffff-ffff-ffffffffffff".into(),
+        },
+    ];
+    let raw = [first.to_vec(), unknown.to_vec()];
+    let observed = decode_756_slots(&slots, &raw).unwrap();
+    assert_eq!(
+        observed.iter().map(|slot| slot.slot_id).collect::<Vec<_>>(),
+        [7, 2]
+    );
+    let ProfileMetadataObservation::Observed {
+        identity,
+        mapping_hash,
+    } = &observed[0].metadata
+    else {
+        panic!("first slot was discarded")
+    };
+    assert_eq!(identity.name, "Actual 756 first slot");
+    assert_eq!(
+        mapping_hash,
+        &MappingHashObservation::Observed([1, 2, 3, 4, 5, 6])
+    );
+    let ProfileMetadataObservation::Observed { identity, .. } = &observed[1].metadata else {
+        panic!("unknown GUID was discarded")
+    };
+    assert_eq!(identity.guid_status, GuidStatus::Unrecognized);
+    assert!(decode_756_slots(&slots, &raw[..1]).is_err());
+    let mut malformed = raw.clone();
+    malformed[0].truncate(249);
+    assert!(decode_756_slots(&slots, &malformed).is_err());
+    let mut foreign = slots.clone();
+    foreign[0].guid = foreign[1].guid.clone();
+    assert!(decode_756_slots(&foreign, &raw).is_err());
+    let mut repeated = slots.clone();
+    repeated[1].slot_id = repeated[0].slot_id;
+    assert!(decode_756_slots(&repeated, &raw).is_err());
+}
+
+#[test]
 fn keyboard_profile_inventory_reads_actual_679_first_slot_in_source_order() {
     let mut replies = inventory_replies(6, &[1]);
     replies.extend(metadata_replies(1, &metadata("设备 当前值")));

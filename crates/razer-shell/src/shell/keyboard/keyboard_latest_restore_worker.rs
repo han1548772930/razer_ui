@@ -619,6 +619,9 @@ pub(super) fn run(
                             .zip(&metadata)
                             .map(|(slot, bytes)| protocol::profile_metadata(slot.slot_id, bytes))
                             .collect::<anyhow::Result<Vec<_>>>()?;
+                        let inventory = inventory_observation(&target, &slots, &metadata)
+                            .map_err(|error| format!("{error:#}"));
+                        let _ = replies.send(Reply::Inventory(inventory));
                         source_local::set(
                             &source_local::path()?,
                             &slots_key,
@@ -628,6 +631,7 @@ pub(super) fn run(
                     }
                     Ok(_) => anyhow::bail!("756 inventory response differs"),
                     Err(error) => {
+                        let _ = replies.send(Reply::Inventory(Err(format!("{error:#}"))));
                         let _ = replies.send(Reply::Diagnostic(format!("板载配置清单：{error:#}")));
                         Vec::new()
                     }
@@ -1290,4 +1294,27 @@ pub(super) fn run(
         let _ = replies.send(Reply::Diagnostic(format!("{error:#}")));
     }
     let _ = replies.send(Reply::Stopped);
+}
+
+fn inventory_observation(
+    target: &Target,
+    slots: &[Slot],
+    metadata: &[Vec<u8>],
+) -> anyhow::Result<razer_ipc::keyboard_profile_inventory::SlotsObservation> {
+    use razer_ipc::keyboard_profile_inventory::{SlotsObservation, Target as InventoryTarget};
+    let target = match target {
+        Target::Collection(node) => InventoryTarget::Collection {
+            node: node.clone(),
+            product_id: 756,
+            peer_product_id: None,
+        },
+        Target::WindowsContainer(target) => InventoryTarget::WindowsContainer {
+            target: target.clone(),
+        },
+        Target::WindowsBle(_) => anyhow::bail!("BLE runtime does not observe HID profile slots"),
+    };
+    let slots = razer_device::keyboard_profile_inventory::decode_756_slots(slots, metadata)?;
+    let observation = SlotsObservation { target, slots };
+    observation.validate_for(&observation.target)?;
+    Ok(observation)
 }

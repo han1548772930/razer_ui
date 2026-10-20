@@ -11,6 +11,7 @@ impl SourceProductWorkspace {
             return;
         }
         self.exiting = true;
+        self.invalidate_keyboard_profile_inventory(false);
         self.receiver_profile_selection.borrow_mut().prepare_exit();
         if matches!(self.device.product_id, 164 | 241)
             && let FamilyBody::Controls(body) = &self.body

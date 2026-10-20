@@ -99,6 +99,8 @@ mod keyboard_legacy_calibration;
 mod keyboard_lifecycle;
 #[path = "shell/keyboard/keyboard_local_profiles.rs"]
 mod keyboard_local_profiles;
+#[path = "shell/keyboard/keyboard_profile_inventory.rs"]
+mod keyboard_profile_inventory;
 #[path = "shell/keyboard/keyboard_sensitivity_preference.rs"]
 mod keyboard_sensitivity_preference;
 #[path = "shell/keyboard/keyboard_wristrest.rs"]
@@ -335,6 +337,7 @@ pub struct AppShell {
     keyboard_identity_cache_task: Option<Task<()>>,
     keyboard_identity_cache_pending: usize,
     keyboard_local_profiles: keyboard_local_profiles::State,
+    keyboard_profile_inventory: keyboard_profile_inventory::State,
     runtime: Entity<runtime_page::RuntimePanel>,
     runtime_exit_wait: Option<Subscription>,
     device_read_scopes: BTreeMap<String, device_discovery::DeviceReadScope>,
@@ -611,6 +614,7 @@ impl AppShell {
             keyboard_identity_cache_task: None,
             keyboard_identity_cache_pending: 0,
             keyboard_local_profiles: keyboard_local_profiles::State::default(),
+            keyboard_profile_inventory: keyboard_profile_inventory::State::default(),
             runtime: runtime.clone(),
             runtime_exit_wait: None,
             receiver_devices: BTreeMap::new(),
@@ -1278,6 +1282,7 @@ impl AppShell {
         this.install_controller_calibration_cleanup(cx);
         this.install_keyboard_lifecycle(cx);
         this.install_keyboard_local_profiles_cleanup();
+        this.install_keyboard_profile_inventory_cleanup();
         this.install_mapping_observation_cleanup(cx);
         this.install_game_monitor(cx);
         this.install_global_shortcuts(cx);
@@ -2824,6 +2829,7 @@ impl AppShell {
         let operations_pending = self.studio_save_pending(cx)
             || receiver_pending
             || self.keyboard_brightness.pending()
+            || self.keyboard_profile_inventory.pending()
             || self.keyboard_game_exit_pending()
             || self.keyboard_identity_cache_pending > 0
             || self.keyboard_local_profiles.pending_batches > 0

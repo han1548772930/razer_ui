@@ -510,6 +510,12 @@ pub struct ArtworkState {
     pressed_special: Option<String>,
 }
 impl ArtworkState {
+    pub(super) fn prepare_surface(&self, customize: bool) {
+        if let Some(observation) = self.observation {
+            let _ = geometry_for_surface(observation, customize);
+        }
+    }
+
     pub(super) fn dismiss_special(&mut self) {
         self.special_shown = [false; 2];
         self.pressed_special = None;

@@ -394,6 +394,8 @@ class Codec(rust_data.RustData):
                 raise ValueError("Expected ordered list at " + path)
             names = [self._render(v, args[0], module, path + "[]", allow_value) for v in value]
             if not names:
+                if base == "CatalogSequence":
+                    raise ValueError("Lazy catalog sequence requires a nonempty typed schema at " + path)
                 return "Default::default()"
             if len(set(names)) != 1:
                 raise ValueError("Inconsistent sequence type")

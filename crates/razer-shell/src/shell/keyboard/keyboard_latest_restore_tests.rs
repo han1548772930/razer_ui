@@ -19,6 +19,7 @@ fn owner() -> (Owner, mpsc::Receiver<Command>) {
         Owner {
             identity: "device-owner".into(),
             route: "container:756".into(),
+            inventory_request: None,
             valid: Arc::new(AtomicBool::new(true)),
             automatic: Arc::new(AtomicBool::new(true)),
             recoveries: Arc::new(AtomicUsize::new(0)),

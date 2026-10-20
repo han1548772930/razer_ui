@@ -152,6 +152,21 @@ class RustDataTests(unittest.TestCase):
         self.assertEqual(after["code"], before["code"])
         self.assertEqual(after["codec"], before["codec"])
 
+    def test_catalog_lazy_sequence_preserves_values_and_order_with_a_lazy_reader(self):
+        row = {"crate": "razer-fixture", "macro": "layouts", "root_type": "Atlas",
+               "module": "crates/razer-fixture/src/lib.rs"}
+        value = {"layouts": [{"id": 679}, {"id": 756}, {"id": 679}]}
+        with patch.object(catalog_data, "ROOT", self.root):
+            self.module.write_text('struct Layout { id: u32 } struct Atlas { layouts: Vec<Layout> }', encoding="utf-8")
+            before = catalog_data.Codec(self.crate).document(row, value)
+            self.module.write_text('struct Layout { id: u32 } struct Atlas { layouts: razer_resource_db::CatalogSequence<Layout> }', encoding="utf-8")
+            after = catalog_data.Codec(self.crate).document(row, value)
+        self.assertEqual(after["raw"], before["raw"])
+        self.assertIn('r.lazy_sequence(', after["code"])
+        self.assertNotIn('r.sequence(', after["code"])
+        self.assertNotEqual(after["codec"], before["codec"])
+        self.assertEqual(after["roots"], before["roots"])
+
     def test_catalog_reader_scopes_reject_invalid_missing_and_unused_imports(self):
         other = self.root / "crates/razer-other/src/lib.rs"
         other.parent.mkdir(parents=True)

@@ -1,6 +1,10 @@
 //! Bounded typed snapshots. Constructors are generated in their domain owners.
 use anyhow::{Context as _, ensure};
-use std::{collections::BTreeMap, ops::Range, sync::{Arc, OnceLock}};
+use std::{
+    collections::BTreeMap,
+    ops::Range,
+    sync::{Arc, OnceLock},
+};
 
 const MAX_DOCUMENT: usize = 64 * 1024 * 1024;
 const MAX_DEPTH: usize = 128;
@@ -10,8 +14,9 @@ const MAX_DEPTH: usize = 128;
 pub struct CatalogId(pub(crate) &'static str);
 
 struct Node {
-    scalar: Range<usize>,
-    children: Range<usize>,
+    scalar_start: u32,
+    children_start: u32,
+    children_end: u32,
 }
 
 struct Document {
@@ -68,7 +73,11 @@ impl Document {
                 let child = u32::from_le_bytes(bytes[offset..offset + 4].try_into()?) as usize;
                 ensure!(child < id, "Catalog child is cyclic or out of bounds");
             }
-            nodes.push(Node { scalar, children });
+            nodes.push(Node {
+                scalar_start: scalar.start as u32,
+                children_start: children.start as u32,
+                children_end: children.end as u32,
+            });
         }
         ensure!(cursor == bytes.len(), "Typed catalog has trailing bytes");
         Ok(Self {
@@ -197,8 +206,8 @@ impl<'a> NodeReader<'a> {
             .context("Invalid typed catalog child")?;
         Ok(Self {
             document,
-            scalar: &document.bytes[node.scalar.clone()],
-            children: &document.bytes[node.children.clone()],
+            scalar: &document.bytes[node.scalar_start as usize..node.children_start as usize],
+            children: &document.bytes[node.children_start as usize..node.children_end as usize],
             depth,
         })
     }
@@ -271,12 +280,20 @@ impl<'a> NodeReader<'a> {
         &mut self,
         decode: fn(&mut NodeReader<'_>) -> anyhow::Result<T>,
     ) -> anyhow::Result<CatalogSequence<T>> {
-        ensure!(self.children.len().is_multiple_of(4), "Catalog sequence is truncated");
-        let nodes = self.children.chunks_exact(4)
-            .map(|bytes| u32::from_le_bytes(bytes.try_into().expect("Four byte child"))))
+        ensure!(
+            self.children.len().is_multiple_of(4),
+            "Catalog sequence is truncated"
+        );
+        let nodes = self
+            .children
+            .chunks_exact(4)
+            .map(|bytes| u32::from_le_bytes(bytes.try_into().expect("Four byte child")))
             .collect::<Vec<_>>();
         for &node in &nodes {
-            ensure!((node as usize) < self.document.nodes.len(), "Invalid lazy catalog child");
+            ensure!(
+                (node as usize) < self.document.nodes.len(),
+                "Invalid lazy catalog child"
+            );
         }
         self.children = &[];
         let values = (0..nodes.len()).map(|_| OnceLock::new()).collect();
@@ -385,19 +402,28 @@ impl<T> CatalogSequence<T> {
     }
 
     pub fn try_get(&self, index: usize) -> anyhow::Result<Option<&T>> {
-        let Some(value) = self.values.get(index) else { return Ok(None); };
-        value.get_or_init(|| {
-            (|| {
-                let mut reader = NodeReader::new(&self.document, self.nodes[index] as usize, self.depth)?;
-                let value = (self.decode)(&mut reader)?;
-                reader.finish()?;
-                Ok(value)
-            })().map_err(|error: anyhow::Error| format!("{error:#}"))
-        }).as_ref().map(Some).map_err(|error| anyhow::anyhow!("{error}"))
+        let Some(value) = self.values.get(index) else {
+            return Ok(None);
+        };
+        value
+            .get_or_init(|| {
+                (|| {
+                    let mut reader =
+                        NodeReader::new(&self.document, self.nodes[index] as usize, self.depth)?;
+                    let value = (self.decode)(&mut reader)?;
+                    reader.finish()?;
+                    Ok(value)
+                })()
+                .map_err(|error: anyhow::Error| format!("{error:#}"))
+            })
+            .as_ref()
+            .map(Some)
+            .map_err(|error| anyhow::anyhow!("{error}"))
     }
 
     pub fn get(&self, index: usize) -> Option<&T> {
-        self.try_get(index).expect("Packaged typed catalog must match its domain schema")
+        self.try_get(index)
+            .expect("Packaged typed catalog must match its domain schema")
     }
 }
 
@@ -405,7 +431,8 @@ impl<T> std::ops::Index<usize> for CatalogSequence<T> {
     type Output = T;
 
     fn index(&self, index: usize) -> &Self::Output {
-        self.get(index).expect("Catalog sequence index exceeds its length")
+        self.get(index)
+            .expect("Catalog sequence index exceeds its length")
     }
 }
 
@@ -456,5 +483,67 @@ mod tests {
         let mut trailing = original;
         trailing.push(0);
         assert!(Document::parse(String::new(), trailing).is_err());
+    }
+
+    #[test]
+    fn catalog_sequences_construct_only_requested_entries_and_reuse_results() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static DECODES: AtomicUsize = AtomicUsize::new(0);
+        fn boolean(reader: &mut NodeReader<'_>) -> anyhow::Result<bool> {
+            DECODES.fetch_add(1, Ordering::SeqCst);
+            ensure!(reader.tag()? == 0, "Unexpected boolean alternative");
+            reader.boolean()
+        }
+        let document = Arc::new(Document::parse(String::new(), fixture()).unwrap());
+        let mut reader = NodeReader::new(&document, document.roots[&70], 0).unwrap();
+        assert_eq!(reader.tag().unwrap(), 0);
+        let values = reader.lazy_sequence(boolean).unwrap();
+        reader.finish().unwrap();
+        assert_eq!(values.len(), 2);
+        assert!(!values.is_empty());
+        assert_eq!(DECODES.load(Ordering::SeqCst), 0);
+        assert_eq!(values.try_get(5).unwrap(), None);
+        assert_eq!(DECODES.load(Ordering::SeqCst), 0);
+        assert_eq!(values.try_get(1).unwrap(), Some(&true));
+        assert_eq!(values.try_get(1).unwrap(), Some(&true));
+        assert_eq!(DECODES.load(Ordering::SeqCst), 1);
+        assert_eq!(values[0], true);
+        assert_eq!(DECODES.load(Ordering::SeqCst), 2);
+        assert_eq!(std::mem::size_of::<Node>(), 12);
+    }
+
+    #[test]
+    fn catalog_sequence_keeps_decode_errors_and_document_ownership() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static DECODES: AtomicUsize = AtomicUsize::new(0);
+        fn boolean(reader: &mut NodeReader<'_>) -> anyhow::Result<bool> {
+            DECODES.fetch_add(1, Ordering::SeqCst);
+            ensure!(reader.tag()? == 0, "Unexpected boolean alternative");
+            reader.boolean()
+        }
+        let mut bytes = fixture();
+        bytes[34] = 2;
+        let document = Arc::new(Document::parse(String::new(), bytes).unwrap());
+        let weak = Arc::downgrade(&document);
+        let values = {
+            let mut reader = NodeReader::new(&document, document.roots[&70], 0).unwrap();
+            reader.tag().unwrap();
+            reader.lazy_sequence(boolean).unwrap()
+        };
+        drop(document);
+        assert!(weak.upgrade().is_some());
+        for _ in 0..2 {
+            assert!(
+                values
+                    .try_get(0)
+                    .unwrap_err()
+                    .to_string()
+                    .contains("Invalid catalog boolean")
+            );
+        }
+        assert_eq!(DECODES.load(Ordering::SeqCst), 1);
+        assert!(values.values[1].get().is_none());
+        drop(values);
+        assert!(weak.upgrade().is_none());
     }
 }

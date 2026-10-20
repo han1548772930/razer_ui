@@ -507,6 +507,7 @@ impl AppShell {
         // connection remains owned; absence is unknown, not an offline reply.
         self.discovery_revision = self.discovery_revision.wrapping_add(1);
         if let Ok(snapshot) = observation {
+            self.retain_keyboard_profile_inventory_connections(snapshot.devices(), window, cx);
             self.retain_keyboard_brightness_connections(snapshot.devices(), cx);
             self.retain_current_dpi_connections(snapshot.devices(), cx);
             self.retain_legacy_dpi_connections(snapshot.devices(), cx);
@@ -564,6 +565,7 @@ impl AppShell {
         let snapshot = match observation {
             Ok(snapshot) => snapshot,
             Err(error) => {
+                self.retain_keyboard_profile_inventory_connections(&[], window, cx);
                 self.status = format!("设备发现失败：{error}");
                 self.sync_thx_render_lifecycle(false, window, cx);
                 self.sync_audio_notifications(window, cx);
@@ -797,6 +799,8 @@ impl AppShell {
             .cloned()
             .collect::<Vec<_>>();
         let errors = self.apply_device_observations(&changed, &[], false, window, cx);
+        let inventory_routes = self.device_observations.clone();
+        self.retain_keyboard_profile_inventory_connections(&inventory_routes, window, cx);
         self.receiver_devices_complete &= errors.is_empty();
         self.rebuild_receiver_devices(cx);
         if !errors.is_empty() {
@@ -846,6 +850,7 @@ impl AppShell {
         };
         let mut identity_publications = Vec::new();
         let mut keyboard_local_profiles = Vec::new();
+        let mut keyboard_inventories = Vec::new();
         for observed in snapshot.devices() {
             let matches = self
                 .devices
@@ -917,8 +922,12 @@ impl AppShell {
             if observed.keyboard_serial().is_some() {
                 keyboard_local_profiles.push(((*workspace).clone(), observed.clone()));
             }
+            if observed.keyboard_metadata().is_some() {
+                keyboard_inventories.push(((*workspace).clone(), observed.clone()));
+            }
         }
         self.read_keyboard_local_profiles(keyboard_local_profiles, window, cx);
+        self.read_keyboard_profile_inventories(keyboard_inventories, window, cx);
         // A partial snapshot can omit a requested device completely. Complete
         // its GET as unobserved so the retained page can retry a later scan.
         for workspace in &self.devices {
@@ -942,7 +951,9 @@ impl AppShell {
                     let path = match razer_storage::source_local::path() {
                         Ok(path) => path,
                         Err(error) => {
-                            log::warn!("[keyboard identity cache] configuration path failed: {error:#}");
+                            log::warn!(
+                                "[keyboard identity cache] configuration path failed: {error:#}"
+                            );
                             return;
                         }
                     };

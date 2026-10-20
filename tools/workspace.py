@@ -9467,6 +9467,7 @@ def rust_validation_commands():
         ("audio-local-settings", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "audio_mixer_local_settings::tests"]),
         ("audio-preset-names", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "audio_mixer_presets::preset_name_tests"]),
         ("chroma-layer-names", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "studio_layers::rename_tests"]),
+        ("aether-device-names", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "aether_strip::device::name_tests"]),
         ("seiren-local-settings", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "seiren_local_settings::tests"]),
         ("audio-sound-mapping", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "sound_mapping::tests"]),
         ("keyboard-dynamic-metadata", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "all_current_dynamic_mapping_metadata_loads"]),

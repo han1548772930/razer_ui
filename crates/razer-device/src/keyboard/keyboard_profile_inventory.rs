@@ -92,47 +92,91 @@ impl ProfileInventory {
             self.slots.len() <= 79 && self.slots.len() == usize::from(self.declared_profile_count),
             "Keyboard profile inventory count differs"
         );
-        let mut ids = std::collections::BTreeSet::new();
-        for (index, slot) in self.slots.iter().enumerate() {
-            ensure!(
-                slot.slot_id > 0 && ids.insert(slot.slot_id),
-                "Keyboard profile inventory IDs are zero or repeated"
-            );
-            match &slot.metadata {
-                ProfileMetadataObservation::SourceSkippedFirstSlot => ensure!(
-                    index == 0 && !analog_v3(product_id),
-                    "Keyboard profile metadata was skipped outside its source branch"
-                ),
-                ProfileMetadataObservation::Observed {
-                    identity,
-                    mapping_hash,
-                } => {
-                    ensure!(
-                        index != 0 || analog_v3(product_id),
-                        "Keyboard first-slot metadata is not observed by this source"
-                    );
-                    ensure!(
-                        identity.guid.len() == 36
-                            && identity.guid.bytes().enumerate().all(|(index, byte)| {
-                                if matches!(index, 8 | 13 | 18 | 23) {
-                                    byte == b'-'
-                                } else {
-                                    byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)
-                                }
-                            })
-                            && identity.guid_status == guid_status(&identity.guid),
-                        "Keyboard metadata GUID/status differs from its decoded bytes"
-                    );
-                    ensure!(
-                        matches!(mapping_hash, MappingHashObservation::Observed(_))
-                            == matches!(product_id, 747 | 756),
-                        "Keyboard mapping hash observation differs from its metadata schema"
-                    );
-                }
+        validate_slots(product_id, &self.slots)
+    }
+}
+
+/// A list/metadata reader can observe slots without observing maximum capacity
+/// or the separate profile-count command. Those missing facts stay absent.
+pub fn validate_slots(product_id: u32, slots: &[ProfileSlot]) -> anyhow::Result<()> {
+    ensure!(supports(product_id), "Keyboard does not mount HID OBM");
+    ensure!(
+        slots.len() <= 79,
+        "Keyboard slot list exceeds its source response"
+    );
+    let mut ids = std::collections::BTreeSet::new();
+    for (index, slot) in slots.iter().enumerate() {
+        ensure!(
+            slot.slot_id > 0 && ids.insert(slot.slot_id),
+            "Keyboard profile inventory IDs are zero or repeated"
+        );
+        match &slot.metadata {
+            ProfileMetadataObservation::SourceSkippedFirstSlot => ensure!(
+                index == 0 && !analog_v3(product_id),
+                "Keyboard profile metadata was skipped outside its source branch"
+            ),
+            ProfileMetadataObservation::Observed {
+                identity,
+                mapping_hash,
+            } => {
+                ensure!(
+                    index != 0 || analog_v3(product_id),
+                    "Keyboard first-slot metadata is not observed by this source"
+                );
+                ensure!(
+                    identity.guid.len() == 36
+                        && identity.guid.bytes().enumerate().all(|(index, byte)| {
+                            if matches!(index, 8 | 13 | 18 | 23) {
+                                byte == b'-'
+                            } else {
+                                byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)
+                            }
+                        })
+                        && identity.guid_status == guid_status(&identity.guid),
+                    "Keyboard metadata GUID/status differs from its decoded bytes"
+                );
+                ensure!(
+                    matches!(mapping_hash, MappingHashObservation::Observed(_))
+                        == matches!(product_id, 747 | 756),
+                    "Keyboard mapping hash observation differs from its metadata schema"
+                );
             }
         }
-        Ok(())
     }
+    Ok(())
+}
+
+/// The current 756 restore loader already owns this list and its raw metadata.
+/// This conversion adds no transport commands and does not invent capacity.
+pub fn decode_756_slots(
+    slots: &[crate::keyboard_latest_restore::Slot],
+    metadata: &[Vec<u8>],
+) -> anyhow::Result<Vec<ProfileSlot>> {
+    ensure!(
+        slots.len() == metadata.len(),
+        "756 slot metadata count differs"
+    );
+    let decoded = slots
+        .iter()
+        .zip(metadata)
+        .map(|(slot, bytes)| {
+            let identity = decode_identity(bytes)?;
+            ensure!(
+                identity.guid == slot.guid,
+                "756 slot GUID differs from its raw metadata"
+            );
+            ensure!(bytes.len() == 250, "756 slot metadata size differs");
+            Ok(ProfileSlot {
+                slot_id: slot.slot_id,
+                metadata: ProfileMetadataObservation::Observed {
+                    identity,
+                    mapping_hash: MappingHashObservation::Observed(bytes[244..250].try_into()?),
+                },
+            })
+        })
+        .collect::<anyhow::Result<Vec<_>>>()?;
+    validate_slots(756, &decoded)?;
+    Ok(decoded)
 }
 
 /// A separate device observation. The source's inventory loader does not call

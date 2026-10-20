@@ -44,6 +44,8 @@ mod keyboard_linked_profiles;
 mod keyboard_local_profiles;
 #[path = "source_workspace/keyboard_mapping.rs"]
 mod keyboard_mapping;
+#[path = "source_workspace/keyboard_profile_inventory.rs"]
+mod keyboard_profile_inventory;
 #[path = "source_workspace/keyboard_profile_mutations.rs"]
 mod keyboard_profile_mutations;
 #[path = "source_workspace/lifecycle.rs"]
@@ -62,6 +64,8 @@ mod mouse_runtime_artwork;
 mod profile_actions;
 #[path = "source_workspace/profile_bar.rs"]
 mod profile_bar;
+#[path = "source_workspace/profile_dropdown.rs"]
+mod profile_dropdown;
 #[path = "source_workspace/profile_linked_games.rs"]
 mod profile_linked_games;
 #[path = "source_workspace/profile_menu.rs"]
@@ -133,6 +137,7 @@ pub struct SourceProductWorkspace {
     mapping_connection_generation: u64,
     mapping_reconnect: mapping_reconnect::State,
     keyboard_latest_ble: bool,
+    keyboard_profile_inventory: keyboard_profile_inventory::Owner,
     page: Option<ProductPageId>,
     page_history: Vec<ProductPageId>,
     page_history_index: usize,
@@ -153,6 +158,10 @@ pub struct SourceProductWorkspace {
     dual_link_widget: Option<Entity<super::dock_pairing::DualLinkWidget>>,
     accessory: Option<AccessoryPage>,
     profile: Entity<SelectState<Vec<Choice>>>,
+    profile_choices: Vec<Choice>,
+    profile_decorations:
+        std::collections::BTreeMap<String, razer_widgets::synapse_select::SelectOptionDecoration>,
+    profile_status: Option<String>,
     profile_name: Entity<InputState>,
     profile_rename: Option<String>,
     local_mapping_macros: Vec<Value>,
@@ -998,6 +1007,7 @@ impl SourceProductWorkspace {
         let legacy_connection_changed = self.device.product_id == 70 && connection_changed;
         if connection_changed {
             self.mapping_connection_generation = self.mapping_connection_generation.wrapping_add(1);
+            self.invalidate_keyboard_profile_inventory(observation.is_some());
             self.receiver_profile_selection.borrow_mut().invalidate();
             self.cancel_profile_transfer_requests();
             self.cancel_keyboard_brightness_connection(cx);
@@ -3738,18 +3748,12 @@ impl SourceProductWorkspace {
         } else {
             None
         };
-        let profile = cx.new(|cx| {
-            SelectState::new(
-                device
-                    .profiles
-                    .iter()
-                    .map(|p| Choice::new(&p.id, &p.name))
-                    .collect::<Vec<_>>(),
-                None,
-                window,
-                cx,
-            )
-        });
+        let (profile_choices, profile_status) = match profile_dropdown::choices(&device, None) {
+            Ok(choices) => (choices, None),
+            Err(error) => (Vec::new(), Some(format!("Profile list: {error:#}"))),
+        };
+        let profile_decorations = profile_dropdown::decorations(&device, None, &profile_choices);
+        let profile = cx.new(|cx| SelectState::new(profile_choices.clone(), None, window, cx));
         profile.update(cx, |state, cx| {
             state.set_selected_value(&device.active_profile, window, cx)
         });
@@ -3900,6 +3904,7 @@ impl SourceProductWorkspace {
             mapping_connection_generation: 0,
             mapping_reconnect: Default::default(),
             keyboard_latest_ble: false,
+            keyboard_profile_inventory: Default::default(),
             device,
             page,
             page_history: page.into_iter().collect(),
@@ -3921,6 +3926,9 @@ impl SourceProductWorkspace {
             dual_link_widget,
             accessory,
             profile,
+            profile_choices,
+            profile_decorations,
+            profile_status,
             profile_name,
             profile_rename: None,
             local_mapping_macros: Vec::new(),

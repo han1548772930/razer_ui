@@ -459,18 +459,25 @@ impl SourceProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        let choices = match profile_dropdown::choices(&self.device, self.keyboard_profile_slots()) {
+            Ok(choices) => choices,
+            Err(error) => {
+                let error = format!("Profile list: {error:#}");
+                self.profile_status = Some(error.clone());
+                cx.emit(WorkspaceEvent::KeyboardLegacyRuntimeStatus(error));
+                cx.notify();
+                return;
+            }
+        };
+        let decorations =
+            profile_dropdown::decorations(&self.device, self.keyboard_profile_slots(), &choices);
         self.profile.update(cx, |state, cx| {
-            state.set_items(
-                self.device
-                    .profiles
-                    .iter()
-                    .map(|profile| Choice::new(&profile.id, &profile.name))
-                    .collect(),
-                window,
-                cx,
-            );
+            state.set_items(choices.clone(), window, cx);
             state.set_selected_value(&self.device.active_profile, window, cx);
         });
+        self.profile_choices = choices;
+        self.profile_decorations = decorations;
+        self.profile_status = None;
         self.sync_keyboard_mapping_profiles(window, cx);
     }
 
@@ -682,7 +689,8 @@ impl SourceProductWorkspace {
                 };
                 let name = profile.name.clone();
                 self.profile_rename = Some(profile.id.clone());
-                let name_limit = profile_menu::spec(self.device.product_id).map(|spec| spec.name_limit());
+                let name_limit =
+                    profile_menu::spec(self.device.product_id).map(|spec| spec.name_limit());
                 self.profile_name.update(cx, |input, cx| {
                     if let Some(limit) = name_limit {
                         razer_widgets::source_input::set_value(input, name, limit, window, cx);

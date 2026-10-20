@@ -54,6 +54,7 @@ impl CollectionUpdate {
 }
 enum Reply {
     Ready,
+    Inventory(Result<razer_ipc::keyboard_profile_inventory::SlotsObservation, String>),
     Candidate {
         revision: u64,
         generation: Generation,
@@ -70,6 +71,7 @@ enum Reply {
 struct Owner {
     identity: String,
     route: String,
+    inventory_request: Option<uuid::Uuid>,
     valid: Arc<AtomicBool>,
     automatic: Arc<AtomicBool>,
     recoveries: Arc<AtomicUsize>,
@@ -687,6 +689,19 @@ impl AppShell {
             let worker_exclusive = macro_exclusive.clone();
             let revision_signal = Arc::new(AtomicU64::new(0));
             let worker_revision = revision_signal.clone();
+            let inventory_request = if ble {
+                None
+            } else {
+                match self
+                    .begin_shared_keyboard_profile_inventory(&workspace, &observed, window, cx)
+                {
+                    Ok(id) => Some(id),
+                    Err(error) => {
+                        diagnostics.push(error);
+                        None
+                    }
+                }
+            };
             match thread::Builder::new()
                 .name("keyboard756-restore".into())
                 .spawn(move || {
@@ -708,6 +723,7 @@ impl AppShell {
                         Owner {
                             identity,
                             route,
+                            inventory_request,
                             valid,
                             automatic,
                             recoveries,
@@ -731,6 +747,15 @@ impl AppShell {
                     );
                 }
                 Err(error) => {
+                    if let Some(request) = inventory_request {
+                        self.publish_shared_keyboard_profile_slots(
+                            &workspace,
+                            request,
+                            Err(error.to_string()),
+                            window,
+                            cx,
+                        );
+                    }
                     self.keyboard_latest_restore
                         .retry
                         .insert(id, Instant::now() + Duration::from_secs(1));
@@ -764,6 +789,19 @@ impl AppShell {
                 .find(|workspace| workspace.entity_id() == id)
                 .cloned();
             match reply {
+                Reply::Inventory(result) => {
+                    if let (Some(workspace), Some(request)) = (
+                        workspace,
+                        self.keyboard_latest_restore
+                            .owners
+                            .get(&id)
+                            .and_then(|owner| owner.inventory_request),
+                    ) {
+                        self.publish_shared_keyboard_profile_slots(
+                            &workspace, request, result, window, cx,
+                        );
+                    }
+                }
                 Reply::Ready => {
                     if let Some(owner) = self.keyboard_latest_restore.owners.get_mut(&id) {
                         owner.ready = true;
@@ -926,6 +964,10 @@ impl AppShell {
                 Reply::Diagnostic(error) => diagnostics.push(error),
                 Reply::Stopped => {
                     if let Some(mut owner) = self.keyboard_latest_restore.owners.remove(&id) {
+                        if let (Some(workspace), Some(request)) = (workspace.as_ref(), owner.inventory_request) {
+                            self.publish_shared_keyboard_profile_slots(workspace, request,
+                                Err("Keyboard runtime stopped before completing its slot observation".into()), window, cx);
+                        }
                         cancelled.extend(
                             std::mem::take(&mut owner.pending_intents)
                                 .into_iter()

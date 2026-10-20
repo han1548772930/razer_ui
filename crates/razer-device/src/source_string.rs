@@ -14,8 +14,9 @@ impl ProfileNameOrder {
         let locale: icu_locale_core::Locale = locale
             .parse()
             .map_err(|error| anyhow::anyhow!("Invalid host collation locale: {error}"))?;
-        let collator = icu_collator::CollatorBorrowed::try_new(locale.into(), Default::default())
-            .map_err(|error| anyhow::anyhow!("Cannot initialize host collation: {error}"))?;
+        let collator =
+            icu_collator::CollatorBorrowed::try_new(locale.into(), Default::default())
+                .map_err(|error| anyhow::anyhow!("Cannot initialize host collation: {error}"))?;
         Ok(Self { collator })
     }
 
@@ -32,12 +33,29 @@ impl ProfileNameOrder {
                     if left != right {
                         // Equal collation at the first different unit is a
                         // stable-sort tie; the source does not inspect suffixes.
-                        return self.collator.compare_utf16(&[left], &[right]);
+                        return self.compare_unit(left, right);
                     }
                 }
                 (None, None) => return Ordering::Equal,
                 (None, Some(_)) => return Ordering::Less,
                 (Some(_), None) => return Ordering::Greater,
+            }
+        }
+    }
+
+    fn compare_unit(&self, left: u16, right: u16) -> Ordering {
+        let surrogate = |unit| (0xd800..=0xdfff).contains(&unit);
+        match (surrogate(left), surrogate(right)) {
+            (true, true) => left.cmp(&right),
+            (true, false) | (false, true) if left == 0xd7ff || right == 0xd7ff => left.cmp(&right),
+            (left_surrogate, right_surrogate) => {
+                // ICU's UTF-16 collation assigns isolated surrogates implicit
+                // weights in code-point order. ICU4X replaces them with FFFD;
+                // D7FF is the adjacent unassigned weight in the same group.
+                // Other scalar weights remain on the same side of this group.
+                let left = if left_surrogate { 0xd7ff } else { left };
+                let right = if right_surrogate { 0xd7ff } else { right };
+                self.collator.compare_utf16(&[left], &[right])
             }
         }
     }
@@ -79,7 +97,30 @@ pub fn trim(value: &str) -> &str {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_whitespace, trim};
+    use super::{ProfileNameOrder, is_whitespace, trim};
+    use std::cmp::Ordering;
+
+    #[test]
+    fn profile_names_keep_source_character_groups_and_lexical_digits() {
+        let order = ProfileNameOrder::try_new("en-US").unwrap();
+        let mut names = ["z", "2", "10", "#", "1", "!", "A", "a", ""];
+        names.sort_by(|left, right| order.compare(left, right));
+        assert_eq!(names, ["", "!", "#", "1", "10", "2", "a", "A", "z"]);
+        assert_eq!(order.compare("9", " space"), Ordering::Less);
+        assert_eq!(order.compare("name", "name 1"), Ordering::Less);
+    }
+
+    #[test]
+    fn profile_collation_uses_the_host_locale_and_first_different_utf16_unit() {
+        let english = ProfileNameOrder::try_new("en-US").unwrap();
+        let swedish = ProfileNameOrder::try_new("sv-SE").unwrap();
+        assert_eq!(english.compare("ä", "z"), Ordering::Less);
+        assert_eq!(swedish.compare("ä", "z"), Ordering::Greater);
+        assert_eq!(english.compare("\u{0340}z", "\u{0300}a"), Ordering::Equal);
+        assert_eq!(english.compare("😀z", "😃a"), Ordering::Less);
+        assert_eq!(english.compare("🧑", "😀"), Ordering::Greater);
+        assert!(ProfileNameOrder::try_new("not a locale").is_err());
+    }
 
     // WhiteSpace and LineTerminator are listed independently of the predicate
     // ranges to retain their complete language-defined membership.

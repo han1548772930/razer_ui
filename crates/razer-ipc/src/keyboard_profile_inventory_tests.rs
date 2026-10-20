@@ -55,6 +55,45 @@ fn keyboard_profile_inventory_wire_keeps_full_collection_and_task_scope() {
 }
 
 #[test]
+fn keyboard_profile_inventory_partial_slots_keep_their_full_target_and_no_capacity_fields() {
+    let foreign_target = target();
+    let Target::Collection { mut node, .. } = foreign_target.clone() else {
+        panic!("wrong target")
+    };
+    let cap = razer_device::keyboard_metadata::hid_capability(756, 756).unwrap();
+    node.product_id = 756;
+    node.interface_number = i32::from(cap.claim_interface_for(756).unwrap());
+    let target = Target::Collection {
+        node,
+        product_id: 756,
+        peer_product_id: None,
+    };
+    let observed = SlotsObservation {
+        target: target.clone(),
+        slots: vec![],
+    };
+    observed.validate_for(&target).unwrap();
+    let value = serde_json::to_value(&observed).unwrap();
+    assert_eq!(value.as_object().unwrap().len(), 2);
+    assert_eq!(value.get("slots"), Some(&json!([])));
+    assert_eq!(value.get("target"), Some(&serde_json::to_value(&target).unwrap()));
+    let Target::Collection { mut node, .. } = target.clone() else {
+        panic!("wrong target")
+    };
+    node.path.push(1);
+    assert!(
+        observed
+            .validate_for(&Target::Collection {
+                node,
+                product_id: 756,
+                peer_product_id: None
+            })
+            .is_err()
+    );
+    assert!(observed.validate_for(&foreign_target).is_err());
+}
+
+#[test]
 fn keyboard_profile_inventory_container_wire_retains_raw_peer_identity() {
     let bytes = br#"{"operation":"keyboard_profile_inventory_read","target":{"transport":"windows_container","target":{"product_id":756,"physical_product_id":179,"peer_product_id":757,"device_container_id":"source-container","path":"source-hid"}}}"#;
     let request: ServiceRequest = serde_json::from_slice(bytes).unwrap();

@@ -24,6 +24,8 @@ mod hyperflux;
 mod hyperpolling;
 #[path = "product_workspace_keyboard_linked.rs"]
 mod keyboard_linked_profiles;
+#[path = "product_workspace_keyboard_inventory.rs"]
+mod keyboard_profile_inventory;
 #[path = "../lighting/product_workspace_lighting.rs"]
 mod lighting;
 #[path = "product_workspace_mapping.rs"]
@@ -1708,7 +1710,9 @@ impl ProductWorkspace {
             Body::Source(body) => body.update(cx, |body, cx| {
                 body.accept_keyboard_local_profiles(baseline, source, window, cx)
             }),
-            Body::Existing(_) => Err("Keyboard local document does not match this workspace".into()),
+            Body::Existing(_) => {
+                Err("Keyboard local document does not match this workspace".into())
+            }
         }
     }
 

@@ -2,7 +2,9 @@
 //! slots and local profile selection are separate observations.
 use anyhow::{Context as _, ensure};
 use razer_device::{
-    backend::HidNode, device_reads::DeviceReadTarget, keyboard_profile_inventory::ProfileInventory,
+    backend::HidNode,
+    device_reads::DeviceReadTarget,
+    keyboard_profile_inventory::{ProfileInventory, ProfileSlot},
 };
 use serde::{Deserialize, Serialize};
 
@@ -96,6 +98,25 @@ impl Observation {
             "Keyboard profile inventory belongs to another physical owner"
         );
         self.inventory.validate(target.product_id())
+    }
+}
+
+/// The current 756 runtime observes list and metadata without querying the
+/// maximum/count commands. Its page consumer must preserve that distinction.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SlotsObservation {
+    pub target: Target,
+    pub slots: Vec<ProfileSlot>,
+}
+
+impl SlotsObservation {
+    pub fn validate_for(&self, target: &Target) -> anyhow::Result<()> {
+        target.validate()?;
+        ensure!(
+            &self.target == target && target.product_id() == 756,
+            "Partial keyboard slots belong to another physical owner or source branch"
+        );
+        razer_device::keyboard_profile_inventory::validate_slots(target.product_id(), &self.slots)
     }
 }
 
