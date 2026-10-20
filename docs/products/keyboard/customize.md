@@ -23,6 +23,24 @@ Customize 的主任务是选择产品图上的实际输入，编辑普通层或 
 
 ## 页面由谁持有
 
+全部 73 个键盘当前顶层 Customize 已逐个核对，普通 keyboard 都显式传 `showMouseUse:false,hasKeyboardControls:true`。以下分支来自真实调用方；它们与共享编辑器内部的能力过滤共同决定 UI：
+
+| 产品 | 顶层参数和生命周期差异 |
+| --- | --- |
+| 555 | 另传 `isKeypad:true` |
+| 580 | `isKeypad:true`，activeButton 的 keyPadGroup.type 为 Keypad 时更新本地 isTwoTapMapping，再给编辑器 two-tap 参数 |
+| 747 | 同样按当前 keypad 输入切换 two-tap，并传 disableActuationPoint；不能把所有选择都当 AnalogInput |
+| 614 | two-tap、disableActuationPoint；本顶层不另按 Factory 选择静态页面 |
+| 631 | 额外传本产品 keyProperty |
+| 642、688 | 按 Factory 选择静态/可编辑页面；可编辑传 two-tap |
+| 678、679、719、720、721、740、741、742、746 | 同样的 Factory 分支，另传 disableActuationPoint |
+| 728 | 顶层不走上述 Factory 分支，传 two-tap/disableActuationPoint；内部仍有 Windows Mode 相关条件 |
+| 756 | Normal Mode 提示；Factory 静态/可编辑分支均按 BLE 增加 disabled，另传 two-tap/disableActuationPoint |
+| 550、691 | 真正 lazy owner 模块78697 后到共享17852，仍显式传普通 keyboard 参数；AsyncComponent 只拥有加载/错误，不拥有映射草稿 |
+| 708、739、752 | 分块页面挂普通 keyboard owner，行为不能以 chunk 名推断为另一套映射身份 |
+
+550 `8697.e3105e91.chunk.js [673,928)` 与 691 `Customize.d6e5b9b1.chunk.js [685,940)` 的包装继续渲染 `17852.A`。Factory、keypad 和 BLE 的选择须留在实际产品 owner；不能在共享组件里统一硬编码为“所有键盘都支持同一编辑器”。
+
 主窗口 `JU` 挂载 Customize 连接器 `Gh`。Factory Default 仍能打开标签页，但 `fh` 只挂产品图和工厂档说明；普通活动档才挂 `Ph/mh`。宏窗口也复用静态/可编辑选择，且设置 `displayMode:"macro"`。身份与启动顺序见 [profiles.md](profiles.md)。
 
 `mh` 持有当前被映射键的 DOM anchor、保存提示状态、下一动作回调、丢弃动作回调、按键映射视图，以及重新寻找 DOM anchor 的 timeout。真正的输出编辑值和保存回调属于懒加载编辑器；父页面通过 `setSaveRef` 取得它，不能把父组件自己的提示状态当成全部映射内容。

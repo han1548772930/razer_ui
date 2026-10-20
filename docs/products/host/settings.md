@@ -1,15 +1,15 @@
 # 全局设置：Synapse 与 Chroma
 
-设置页管理应用的启动、通知、教程、迁移入口、灯光控制权、语言和版本信息。这里的大部分选项属于本机应用状态；它们不等同于某个设备配置档，也不经过设备设置的统一 Apply 按钮。
+设置页管理应用的启动、通知、教程、迁移入口、灯光控制权、语言和版本信息。这里的大部分选项属于本机应用状态；它们不等同于某个设备配置档，也不经过设备设置的统一 Apply 按钮。本文只展开本机功能。
 
 ## 两套真实页面
 
 | 应用与导航 | 左列 | 右列 |
 | --- | --- | --- |
-| Synapse → SYNAPSE | 自动启动、通知、推荐 | 重置教程、配置迁移、Windows 动态灯光 |
-| Synapse → GENERAL | 语言、发行说明 | 关于 |
+| Synapse → SYNAPSE | 自动启动、通知 | 重置教程、配置迁移、Windows 动态灯光 |
+| Synapse → GENERAL | 语言 | 本机版本信息 |
 | Chroma → CHROMA_APP | 自动启动、通知 | 重置教程、配置迁移、Windows 动态灯光 |
-| Chroma → GENERAL | 语言、发行说明 | 关于 |
+| Chroma → GENERAL | 语言 | 本机版本信息 |
 
 Synapse 的入口异步加载模块 4914；Chroma 加载 1743。各自的 Provider 包裹对应设置树，外层窗口焦点组件决定 body 是否显示。Synapse 使用 `windowName="synapse"`、`tabName="settings-synapse"`，Chroma 使用 `chroma-app`、`settings-chroma`。隐藏 body 与卸载组件是两件事。
 
@@ -45,12 +45,6 @@ Synapse 的点击回调调用 debounce 返回函数；Chroma 当前分支只构�
 
 两套页面的读取表达式不同，但通知键缺失时都会先产生 true，再经 JSON.parse 得到 true。Synapse 判断是否为字符串；Chroma 判断是否为 null／undefined。这里仅描述这一个本机通知键，不能把它套到设备读取。
 
-## 推荐，仅 Synapse 挂载
-
-推荐块管理 `show`、`showNewRelease`、`showNewDeals`、`ignoredList`、`ignoredPid` 和 `ownedPid`。类别依次包含 Accessories、Audio、ChromaHDK、Keyboards、Keypads、Laptops、Mats、Mice、Monitors、Streaming。类别勾选通过 ignoredList 取反表示；总开关关闭时，内部区域通过 disabled 状态阻止交互。
-
-每个操作立即合并 patch 到同一个 localStorage 项。首次缺项创建的对象只有 `show:true`、`showNewRelease:true`、两个空忽略数组；不能凭页面初始 state 为它补出 `showNewDeals` 字段。重置按钮只清 `ignoredPid`／`ownedPid`，不重置类别或总开关。它服务于原版在线推荐，属于本项目范围排除项，但与本地设置的实际区别仍需记录。
-
 ## 重置教程
 
 这不是设备恢复。Synapse 重置一组产品／模块教程键，并扫描 `^synapse_\d+$` 的本地文档。仅当文档本来具有 `showAIPromptMasterTutorial` 或 `showAppProfileAITutorial` 字段时才把该字段改为 true；它不凭空给所有产品补字段。
@@ -73,17 +67,11 @@ Synapse 的点击回调调用 debounce 返回函数；Chroma 当前分支只构�
 
 当前 Synapse 下拉组件在打开时计算剩余空间与菜单高度，最多按 180 px 选择向上／向下展开；打开后将已选项滚入视野。点击外部或窗口失焦关闭，卸载移除原 click／blur 监听。没有选中项、下标为 -1 或越界时直接不渲染。该版本的值更新分支包含原拼写 `disabeld`；文档不把它改写成已更新 `disabled`。
 
-## 发行说明
-
-两套页面均要求 engineVersion 至少为 `4.0.633`，使用分段数字比较。点击先进入 loading，再向 `background-manager` 频道发 `releaseNotePatch`，携带 `open:true` 与对应 app 名；发送后关闭该临时频道。
-
-Synapse 等待 `settings` 频道的 `releaseNotePatch/turnOffLoading` 清除 loading，当前组件没有额外超时。Chroma 监听 `chroma-settings`，并持有一个 10 秒计时器：回执到达、发送异常或卸载时清理；到时仅清页面 loading。这个计时器不证明发行说明窗口已加载完成。
-
 ## 关于及工具栏附属功能
 
 Synapse 从 dashboard manifest 获取 version 和 buildVersion，失败分支读取本机应用项的 version；Chroma 请求自己的 manifest，并将显示版本第一段改为 4。Chroma 额外读取 `sensa-devices` 中的设备类别及 dualSenseControllerSupport 配置，二者同时成立才显示相关版权行。
 
-版权年份取当前年份，社交／许可证／隐私链接调用默认浏览器。语言改变后重算社交 tooltip 的偏移。工具栏还挂载通知、固件提示、迁移提示、账户、评分、离线提示等共享组件；账号、在线支持、推荐和发行说明网络内容与本地能力分别标识，不能把它们误当设备配置写入。
+版权年份取当前年份。本机工具栏附属功能包含通知、固件状态和迁移提示，其内部行为由对应功能文档说明。
 
 ## 原件位置与边界
 
@@ -93,13 +81,12 @@ Synapse 从 dashboard manifest 获取 version 和 buildVersion，失败分支读
 | --- | --- |
 | Synapse 设置树、导航与生命周期 | [720.1e5d1c8f.chunk.js](../../../.analysis/inputs/frontend/synapse-settings-current/raw/apps.razer.com/synapse/settings/static/js/720.1e5d1c8f.chunk.js)，导航 `[213847,213878)`、页面 `[215189,216046)`、根 `[255096,256325)` |
 | Synapse 自启、通知、教程 | 同上，`[80204,81361)`、`[48466,49912)`、`[50171,52516)` |
-| Synapse 推荐与存储 | 同上，`[87814,88057)`、`[88269,90987)` |
-| Synapse 语言和发行说明、关于 | 同上，`[25795,28714)`、`[77041,80062)` |
+| Synapse 语言、关于 | 同上，`[25795,28714)`、`[77041,80062)` |
 | 翻译完整模块 | 同上，模块 1778，`[256431,258548)` |
 | 自启聚合／低层 SDK | [714.d742db5c.chunk.js](../../../.analysis/inputs/frontend/synapse-settings-current/raw/apps.razer.com/synapse/settings/static/js/714.d742db5c.chunk.js)，模块 7071 `[84352,88321)`，底层方法 `[333519,334434)`；RazerApp 自启读取 `[219174,219737)`、自启设置 `[219964,220373)`、最小化读取 `[220374,220658)`、最小化设置 `[220659,221098)` |
 | Chroma 设置树与根 | [75.496bba91.chunk.js](../../../.analysis/inputs/frontend/chroma-app-settings-current/raw/apps.razer.com/chroma-app/settings/static/js/75.496bba91.chunk.js)，导航 `[196785,196845)`、页面 `[198155,198729)`、根组件 `[235505,236424)`、Provider `[236534,236732)` |
 | Chroma 通知、教程、自启、迁移 | 同上，`[29823,30889)`、`[47363,48422)`、`[76096,76984)`（含绑定）、`[76994,78037)` |
-| Chroma 语言／发行说明、关于、动态灯光 | 同上，`[26061,28296)`、`[72416,75943)`、`[14039,15662)` |
+| Chroma 语言、关于、动态灯光 | 同上，`[26061,28296)`、`[72416,75943)`、`[14039,15662)` |
 | Synapse 设置样式 | [720.dbc9cca5.chunk.css](../../../.analysis/inputs/frontend/synapse-settings-current/raw/apps.razer.com/synapse/settings/static/css/720.dbc9cca5.chunk.css)，设置主体 `[259805,266271)`、树状复选框 `[271270,271826)` |
 | Windows 自启原生函数 | [chain-audit.json](../../../.analysis/results/native/chain-audit.json) 的 startup-settings；SysUtilsNative，Image Base `0x180000000`，RVA `0x6e2d0/0x6e3c0/0x6e950/0x6b9d0`；路径 helper `0x87110/0x7a230` |
 

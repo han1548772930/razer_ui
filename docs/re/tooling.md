@@ -10,6 +10,16 @@ IDA 路径：`E:/IDA`（9.1）、`D:/ida/IDA Pro 8.3`（8.3）。GPUI 技能读�
 
 `validate-connected-devices` 使用生产 HID／领域协议所有者，在实际物理 PID、接口和 Feature descriptor 匹配的唯一 collection 上查询；默认忽略的集成测试不会随普通纯测试打开硬件。PID679 先读取实际布局，再对已核实布局 1 的 82 个 firmware key IDs 按源码的 15／13 键分批读取 Actuation／Rapid Trigger，不使用写入专用 ALL_KEYS。`--write-restore` 先核对原值可按字节恢复并写入日志，尝试变更后独立恢复及读回。`compare-connected-hid` 将同一路径、同一事务的 GET 报文交给已核实 x64 C ABI 的当前 `HID.node`，按当前选定工厂的十次、5 ms IN 节奏等待 busy 后的终态，保存每次原始返回，再逐字节比较终态；busy 耗尽、短报文或事务／命令不匹配均不能通过。比较绑定当前未变化的 Rust 输入和原始读取收据字节，分别记录句柄、`hid_exit`、DLL 及进程释放。具体功能结果见 [读取](../../.analysis/results/connected-device-verification.json)、[可恢复写入](../../.analysis/results/connected-device-write-verification.json)与[原库比较](../../.analysis/results/connected-native-comparison.json)；匹配离线应答只证明传输一致，实际设置与窗口验收分别判断。
 
+## 缺失 source map 的静态恢复
+
+`analyze-frontend --recover-missing` 核验完整获取收据、原始字节及已有分析产物后，恢复尚未单独拆出的 webpack 模块。`--all-acquired --workers 4` 对当前已获取前端集合并行处理，逐项结果见 [模块恢复收据](../../.analysis/results/frontend/module-recovery.json)。非当前部署集合与无 JavaScript 的集合明确区分，不据目录存在跳过核验。
+
+当前恢复器按 AST 识别被 Sentry 前导代码与顶层逗号表达式包住的 webpack 注册和 bootstrap。它从已核验的可读整包切出完整 factory，保留 module、exports、require 的实参绑定；没有可读整包时才对原件做一次静态格式化。原件、bootstrap、前导代码及其他非 factory 代码仍完整保留。恢复代码位于各集合的 `modules/factories/<原件摘要>/`，provenance 登记完整 factory 原始区间、参数和可读整包区间。
+
+每个 factory 的 map 从可读整包映射按区间切片并组合回官方原件，列坐标使用 UTF-16，文档引用使用 UTF-8 字节。为独立阅读添加的括号没有原始映射。每份分析保留实际恢复工具副本及其摘要；再次使用时核验原件、所有登记输出和工具副本，不能把后来改动的维护脚本冒充原配方。合成 map 是逆向产物，不能冒充官方发布的 map，也不能恢复发布包已经删除的源码注释和原始名称。
+
+模块结构恢复、原分析器的转换／validate 诊断、逐功能语义理解分别报告。已有失败不改成成功；完整词法 factory 可用于继续逆向，但不能凭模块数量宣称页面、原生协议或产品全部理解完成。
+
 ## 当前工具
 
 `compare-local-service-version` 使用当前 IDA／Hex-Rays 完整函数捕获核对 Simple Service 版本查询及 COM 生命周期。维护入口验证实际原件字节、已注册服务架构和签名，保存项目内副本，再显式运行默认忽略的只读对照测试。原件身份在 `.analysis/inputs/installed-current/service-acquisition.json`，实际结果在统一验证记录的 `local_runtime_checks.simple_version`；该项与普通纯／模拟验证独立，不推导其它服务能力通过。应用本身不再提供通用 DLL 版本、getter 或 lighting 探测 CLI。

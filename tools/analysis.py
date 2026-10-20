@@ -2737,6 +2737,9 @@ def acquire_host_apps(args):
 
 
 def analyze_frontend(args, *, refresh_ledger=True):
+    import frontend
+    if getattr(args, "recover_missing", False) or getattr(args, "all_acquired", False):
+        return frontend.recover_frontend(args)
     refresh_ledger = refresh_ledger and not getattr(args, "no_refresh_gaps", False)
     input_dir = resolve(args.input, ".analysis/inputs")
     acquisition = json.loads((input_dir / "acquisition.json").read_bytes())
@@ -2754,7 +2757,7 @@ def analyze_frontend(args, *, refresh_ledger=True):
     if getattr(args, "refresh", False):
         # Only replace generated recovery trees after verifying every original.
         # Keep acquisition/chunk-enumeration receipts and never remove inputs.
-        for name in ("modules", "original-sources"):
+        for name in ("modules", "original-sources", "registration-inputs", "lexical-inputs"):
             generated_tree = resolve(rel(output / name), ".analysis/results/frontend")
             if generated_tree.parent != output.resolve():
                 raise ValueError("Recovery output escaped product directory")
@@ -2814,6 +2817,9 @@ def analyze_frontend(args, *, refresh_ledger=True):
               "source_maps": maps, "commands": commands, "outputs": generated,
               "target_execution": False, "semantic_audit": "pending", "implementation_acceptance": "pending"}
     save(output / "analysis.json", result)
+    recovery = frontend.recover_frontend(SimpleNamespace(input=rel(input_dir), no_refresh_gaps=True))
+    if any(row["status"] == "failed" for row in recovery):
+        raise ValueError("Frontend recovery failed; analyzer receipts and exact derived inputs retained")
     print(json.dumps({"result": rel(output / "analysis.json"), "js_inputs": len(inputs),
                       "generated_files": len(generated), "failed_stages": sum(bool(c["exit_code"]) for c in commands),
                       "input_bytes_unchanged": unchanged,
@@ -5291,8 +5297,12 @@ def add_commands(parsers):
     extracted = parsers.add_parser("reconcile-native-extractions", help="Exclude failed static decompression artifacts and descendants from original-source analysis")
     extracted.add_argument("--no-refresh-gaps", action="store_true")
     frontend = parsers.add_parser("analyze-frontend", help="Restore all acquired JS and embedded original sources")
-    frontend.add_argument("--input", required=True)
+    frontend_scope = frontend.add_mutually_exclusive_group(required=True)
+    frontend_scope.add_argument("--input")
+    frontend_scope.add_argument("--all-acquired", action="store_true", help="Recover missing module structure across all retained frontend source sets")
     frontend.add_argument("--refresh", action="store_true", help="Replace generated recovery trees after verifying originals")
+    frontend.add_argument("--recover-missing", action="store_true", help="Extend a verified existing capture with modules hidden in top-level sequence expressions")
+    frontend.add_argument("--workers", type=int, default=2, help="Independent static recovery workers for --all-acquired (1 to 8)")
     frontend.add_argument("--no-refresh-gaps", action="store_true", help="Leave gap reconciliation to the caller after concurrent analyses finish")
 
 

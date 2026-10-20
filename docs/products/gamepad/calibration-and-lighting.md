@@ -2,7 +2,7 @@
 
 ## 校准状态机和采样
 
-当前 2636 完整所有者是 `.analysis/inputs/frontend/gamepad-mw-2636-current/raw/apps.razer.com/synapse/products/2636/mw/main.f0ca95429464cd09cbdb.js` 的模块 66118，UTF-8 bytes `[1289001,1313647)`。该模块同时保留两代处理器；当前八款双摇杆产品 descriptor 选择 `ControllerCalibrationParams.Version:2`，不能仅看到 V1 类就按固定时间放行下一步。
+当前 2636 完整所有者是 `.analysis/inputs/frontend/gamepad-mw-2636-current/raw/apps.razer.com/synapse/products/2636/mw/main.f0ca95429464cd09cbdb.js` 的模块 66118，UTF-8 bytes `[1289001,1313647)`。该版本保留 V1/V2；2676/2684 当前 descriptor 选择 Version 3，其余六款双摇杆产品选择 Version 2。处理器工厂按真实 Version 分派，不能仅看到共享 V1 类就按固定时间放行下一步。
 
 部件 ID 是 None=0、左摇杆=1、右摇杆=2、左扳机=3、右扳机=4。摇杆流程依次为右、下、左、上、旋转、完成；每一步将设备 ADC 读数与本步目标比较。V2 进入时先读取实际中心，超出 `CenterPointThreshold × Range.max` 的轴才以产品理想中心作为计算基准。采样只接受严格位于原件 Range.min/max 之间的值。
 
@@ -11,9 +11,10 @@ V1 的 `next` 直接处理当前步并前进；V2 的 `next` 要求 `isStepValid
 | 当前产品 | ADC 范围 / 理想中心 | 参数 |
 | --- | --- | --- |
 | 2629 | 0–1024 / (512,512) | Version 2；DeadzoneRatio 3；AllowedDeviationPercent 9；BoundaryTolerance 12；ValidityThreshold 0.3；CenterPointThreshold 0.1 |
-| 2636、2647、2650、2676、2684、4133、4144 | 0–4096 / (2048,2048) | Version 2；前述参数中 ValidityThreshold 为 0.35，其余同列 |
+| 2636、2647、2650、4133、4144 | 0–4096 / (2048,2048) | Version 2；前述参数中 ValidityThreshold 为 0.35，其余同列 |
+| 2676、2684 | 0–8192 / (4096,4096) | Version 3；ValidityThreshold 0.35；TriggerMax 2048；独立按压/释放流程 |
 
-这些是产品计算常量，不是设备当前校准值。2636 descriptor 中该对象在 main byte 2637735；2629 在其 MW `main.b468970129c30a905292.js` byte 2625198。每款完整原件由其 `gamepad-mw-<PID>-current/acquisition.json` 管理。
+这些是产品计算常量，不是设备当前校准值。2636 descriptor 中该对象在 main byte 2637735；2629 在其 MW `main.b468970129c30a905292.js` byte 2625198；2676 的 `main.1a6971221454393778e3.js` byte 2693370、2684 的 `main.35aed041f572227bf5d5.js` byte 2688018 保留各自 V3 全部参数。每款完整原件由其 `gamepad-mw-<PID>-current/acquisition.json` 管理。
 
 V2 将实际移动换算成 -100…100 的 window storage 坐标，限幅后发布，回到中心的值设为 0；该预览坐标不同于原始 ADC，也不同于校准数据。UI 的坐标投影和旋转方向不能反向写回 ADC。处理器有独立采样 timer 和预览节流 timer；reset/stop 清空部件、步骤、采样、边界与有效性，并移除校准预览 window storage。
 
@@ -24,6 +25,16 @@ V2 将实际移动换算成 -100…100 的 window storage 坐标，限幅后发�
 写入按部件映射到 `setAnalogInputCalibrationDataAll`，仅填写当前部件的 Lx/Ly/Rx/Ry midpoint/min/max 或 Lt/Rt min/max。设备命令失败异常由 save wrapper 捕获并返回 false，随后报告 `Command Failed`；complete 发布 Step_Error 或 Step_6_Complete，最后 stop 清理。源码这里没有另加一轮独立 GET 逐字段比较，因此不能把“显示完成”解释成进行了另一个已验证的读回流程。取消/关闭走 stop/reset，不把半截样本写为最终数据。
 
 V2 完整方法位置：start `[1305238,1306254)`，next `[1306254,1306549)`，prepareNextStep `[1307352,1307657)`，采样 `[1307862,1309146)`，有效性判定 `[1309322,1311799)`，预览换算 `[1312270,1312882)`，预览清理 `[1312882,1312993)`。Trigger 校准的动作、部件和模拟显示与摇杆流程分别处理，不能把二者的 UI 动画状态或 ADC 量纲合并。
+
+## 2676/2684：V3 扳机校准与真实读回
+
+2676 当前 V3 完整类位于上述 main bytes `[1324111,1338948)`，工厂 `getCalibrationHandler` `[1301124,1301511)` 明确选择第三代处理器。非扳机部分沿 V2；旋转步骤由 `rotateComplete()` 显式置有效并继续，普通 Next 在旋转步不推进。扳机流程为 Press → Release → Complete，不能套用摇杆右/下/左/上四个方向。
+
+start 先真实读取 restingTriggerValue，验证后形成当前行程基线。按压阈值为 `18% × TriggerMax`；释放阈值为 `restingValue - min(1% × travelHeadroom,11% × TriggerMax)`。值需达阈值且连续至少五个稳定采样；相邻变化不超过 travelHeadroom 的 1% 才累计稳定次数。满足后按压保持 2000 ms、释放保持 3000 ms，再各取五次真实采样、间隔 10 ms 求平均。无效时取消 hold timer，不能只等计时器结束便宣告有效。
+
+计算最终范围时，按压样本减去 `5% × TriggerMax`、释放样本加 `2% × TriggerMax`，源码随后 round/abs。范围要求有限数、min>Range.min、max<Range.max、min 小于本侧 PressThreshold、max 大于 ReleaseThreshold、宽度>300。2676 左侧 500/1490、右侧 600/1600；2684 左侧 400/1400、右侧 500/1500，不能合并成一套阈值。
+
+`writeAndVerifyTriggerCalibration` 先验证并真实 SET，再 GET 同部件的 `getAnalogInputCalibrationDataAll`，逐一比较 min/max，并重新验证范围。读回失败、差异和传输失败各返回明确错误；只有读回相符才发 Step_3_Trigger_Complete。该确认链区别于 2636 V2 的普通完成路径。失败和 stop/reset 清采样、hold/update/user-movement timer 及预览 window storage；33 ms 节流坐标仅服务动画，不充当 ADC 或写回确认。
 
 ## 2636：设备硬件效果
 

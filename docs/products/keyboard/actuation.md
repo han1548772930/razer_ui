@@ -4,10 +4,12 @@
 
 ## 产品分支与实际组件树
 
-当前实际挂载 Actuation 的 PID 为 614、642、678、679、688、719、720、721、728、740、741、742、746、756。每款的原件、获取收据、入口和实际组件字节位置见 [逐 PID 产品页](products/)。以下分组来自这些原件的完整顶层函数和连接器，未根据名称或通用库符号推断能力。
+当前实际挂载 Actuation 的 PID 为 580、614、642、678、679、688、719、720、721、728、740、741、742、746、747、756。580/747 的导航名称经过 `toUpperCase()`，实际仍在 nav 数组且由 active_view 渲染。每款的原件、获取收据、入口和实际组件字节位置见 [逐 PID 产品页](products/)。以下分组来自这些原件的完整顶层函数和连接器，未根据名称或通用库符号推断能力。
 
 | 产品 | 实际页面 |
 | --- | --- |
+| 580 | 专用 keypad 图；左 Snap Tap、Actuation，右 Rapid Trigger；图定位 `calc(50% - 165px)`，不另挂 Continuous 控件 |
+| 747 | 专用 keypad SVG，读取本产品 minWidth/minHeight；左 Snap Tap、Single Key Snap Tap、Actuation，右 Rapid Trigger、Continuous、Dual Keypress Priority；图定位 `calc(50% - 200px)` |
 | 614、642 | 产品图；左 Snap Tap、Actuation，右 Rapid Trigger；没有另挂 Continuous Rapid Trigger 控件 |
 | 678、679、688 | 产品图；左 Snap Tap、Actuation，右 Rapid Trigger、Continuous Rapid Trigger |
 | 719 | 产品图；左 Snap Tap、Single Key Snap Tap、Actuation，右 Rapid Trigger、Continuous Rapid Trigger、Dual Keypress Priority |
@@ -39,6 +41,8 @@ converter 将协议值除以产品 `unit`，四舍五入为 slider 单位，再�
 
 | 产品 | unit / min / max / defaultValue / minBreak | 额外分支 |
 | --- | --- | --- |
+| 580 | `12 / 0 / 255 / 4 / 12` | eventDataSize=255，源码 `useTwoBytesActuation=true`，offset=1.5；不能由数值小自行改判单字节 |
+| 747 | `1638 / 1638 / 65520 / 32760 / 256` | eventDataSize=65535，双字节 |
 | 614、642 | `12 / 0 / 255 / 0 / 12` | 单字节，offset=1.5 |
 | 678、719、728 | `1638 / 1638 / 65535 / 19656 / 256` | 双字节 |
 | 688 | `1638 / 1638 / 65520 / 19656 / 256` | 双字节 |
@@ -101,6 +105,18 @@ MW 有两种写法：set runner 使用 class/slot 1，再等待其余去重槽�
 Dual Keypress Priority 读取独立 reducer 的 `isEnabled/keys`，使用共享双键输入组件；声明 `dualKeypressAlphanumericOnly` 的产品加字母数字 validator，开关和修改键数组分别 dispatch。MW `31982` 读取活动档，分别合并有提供的字段，保存并发布 UI；将键去重后转 analogKeyID，先 slot 1 再同 GUID 槽调用设备 setter。源码对未知查键使用 `0`，且该方法 await 命令后未检查返回 status、没有 getter；不能把 generic task completed 当成逐槽严格核验。
 
 中断键由宏/DKS 设置及相关映射消费者使用。`56839` 只给宏或 DKS 映射添加/移除 `interrupts`；`KEY_ANY` 或 `interruptionKey:"any"` 转空具体列表，其协议 mode 为 0，指定键为 1。活动档保存后需要时重新排 `ON_SET_KEYMAPPING` 以重建 AppEngine；按产品分别支持 interruptibleMacro、interruptibleDynamicKeystroke，写 slot 1 和活动 GUID 槽。restore 有显式 current-context 检查，普通路径与 restore 的并行/串行方式不同。
+
+## 580 与 747 的 keypad 分支
+
+两款实际 nav 都是 Customize → ACTUATION → Lighting → Help；本页先前的数字键盘规格不能套用于它们。580 `main.1648cf28.js` 的图/触发/Rapid/Snap owner 分别为 `[7478586,7485975)`、`[7397981,7406020)`、`[7407028,7416469)`、`[7419775,7425426)`；747 `7727.e7997edf.chunk.js` 对应 `[251495,258546)`、`[195696,203322)`、`[204260,213038)`、`[217798,223553)`，另有单键录制 `[230062,236353)`。
+
+580/747 图组件在 KEYPAD 分支渲染专用键图，默认最低尺寸 350×450，并以当前 inputID/AnalogInput、焦点和 mapping 判断可选键；选择后才激活触发/Rapid 控件。触发改变经过各自 converter，再依次 setActuationToBtnList/setActuation；sync all 过滤禁止映射、sync selected 只处理选中键。Reset 只在用户明确点击原版 reset popup 后运行，Adjustment Mode 拦截编辑。580 使用 offset1.5，747 不使用该偏移。
+
+580 的 Snap Tap 是旧版单组 key1/key2 编辑：keyup/inputredirect 录制，blur 恢复打开时组，点外部按当前阶段提交；成功提示为 5 秒。录制停止重新 enableMapping、注销 no-browser handler、停输入重定向；挂载订阅 pressedKeys 以显示 active/snapped，切离 ACTUATION 清 pressedKeys。747 是新版最多四组、LAST_INPUT 默认和 3 秒反馈，另挂 Single Key Snap Tap、Continuous 和 Dual Keypress；single 的 DKS/双段/控制器冲突、beforeunload 最新 ref、临时关闭/恢复 single 及 duplicate 过滤与本页前述新版消费者一致。方向模式为 DIRECTIONAL 时，两种录制均按 keypad exclusion 拒绝保留的方向输入。
+
+747 Rapid slider 明确 0.1…1.0、step0.1，upstroke 可独立；580 取本产品 Rapid 最大灵敏度常量，并保留预设 GUID 分支，不能统一写成 747 数值。两者 set/sync 都生成 mapping 保存动作；有些通用类虽含 toggleContinuous 方法，580 当前顶层没有额外挂该控件。
+
+两款 MW 的当前原件已核对实际 Snap Tap/Continuous/板载消费者：[580 MW 收据](../../../.analysis/inputs/frontend/keyboard-mw-580-current/acquisition.json)、[747 MW 收据](../../../.analysis/inputs/frontend/keyboard-mw-747-current/acquisition.json)。Continuous runner 分别为 `ze [1155709,1156739)`、`Ye [1815994,1817024)`，先 slot1 再同活动 GUID 槽，末尾检查取消；未统一核验 setter status。Snap Tap 新能力分支先 get/比较再 setSnapTapCtrl；旧分支使用 Keyboard Kill Switch。747 板载 addProfile `[1841836,1847626)` 额外同步 thumbstickOutput/thumbstickOrientation，不能以普通键盘的板载参数替代。Single set/toggle 的活动槽与其他槽等待差异仍须保留；这些实际调用不因共享代码在其他产品中出现就自动成为别款能力。
 
 ## 已核对的线协议
 

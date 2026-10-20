@@ -21,7 +21,7 @@
 ## 功能与状态边界
 
 - [映射、配置档与灵敏度](mapping-and-sensitivity.md)：配置集合、真实 OBM 槽、触发器、死区、灵敏度、圆度、D-pad、polling 与输入事件消费者。
-- [校准与灯光](calibration-and-lighting.md)：两代校准处理器、采样/计算/写入、2636 硬件效果、4115 软件灯光和退出释放。
+- [校准与灯光](calibration-and-lighting.md)：V1/V2/V3 校准处理器、采样/计算/写入与扳机读回、2636 硬件效果、4115 软件灯光和退出释放。
 
 四个 OBM 槽是 UI descriptor 的能力声明；设备当前返回的 ID 列表、活动 ID、名称、数量是另一组读取结果。`guid` 是本地配置身份，`obmSlotId` 可以是一组设备槽 ID，不能拿列表下标或本地当前选中项代替真实槽。
 

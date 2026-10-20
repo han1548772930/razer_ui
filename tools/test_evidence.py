@@ -17,6 +17,136 @@ import analysis
 import evidence
 import host
 import families
+import frontend
+
+
+class FrontendModuleRecoveryTests(unittest.TestCase):
+    def parse(self, raw):
+        return host.HostLocalAudit().parser.parse(raw).root_node
+
+    def test_monitoring_sequence_recovers_complete_factories_and_bootstrap(self):
+        raw = (b'!function(){monitor()}(),(self.webpackChunkapp=self.webpackChunkapp||[])'
+               b'.push([[7],{101:(m,e,r)=>{r(102);e.value="device"},102:function(m){m.exports=3}}]);')
+        segments = frontend.recovery_segments(self.parse(raw))
+        self.assertEqual(len(segments), 1)
+        self.assertEqual(segments[0]["kind"], "webpack_chunk_registration")
+        self.assertTrue(raw[slice(*segments[0]["range"])].startswith(b"(self.webpackChunkapp"))
+        self.assertEqual([row["module_id"] for row in segments[0]["factories"]], [101, 102])
+        self.assertEqual(segments[0]["factories"][0]["parameters"], ["m", "e", "r"])
+        factory = segments[0]["factories"][0]
+        self.assertEqual(raw[slice(*factory["body_range"])], b'r(102);e.value="device"')
+        bootstrap = (b'!function(){monitor()}(),(()=>{var t={101:(m,e,r)=>{e.value=r(102)}};'
+                     b'var queue=self.webpackChunkapp=self.webpackChunkapp||[];queue.push=register})()')
+        found = frontend.recovery_segments(self.parse(bootstrap))
+        self.assertEqual([row["kind"] for row in found], ["webpack_bootstrap"])
+        self.assertEqual(found[0]["factories"][0]["module_id"], 101)
+
+    def test_ordinary_arrays_and_standalone_chunks_are_not_reextracted(self):
+        for raw in (b'!function(){}(),items.push([[1],{2:(x)=>{x()}}])',
+                    b'(self.webpackChunkapp=self.webpackChunkapp||[]).push([[1],{2:(x)=>{x()}}]);',
+                    b'!function(){}(),self.webpackChunkapp.push([[1],{2:"not a factory"}])'):
+            with self.subTest(raw=raw):
+                self.assertEqual(frontend.recovery_segments(self.parse(raw)), [])
+
+    def test_source_position_counts_unicode_as_utf16_and_normalizes_line_endings(self):
+        raw = '前😀缀\r\n二行\u2028三'.encode()
+        self.assertEqual(frontend.source_position(raw, len('前😀缀'.encode())), (0, 4))
+        self.assertEqual(frontend.source_position(raw, len('前😀缀\r\n二'.encode())), (1, 1))
+        self.assertEqual(frontend.source_position(raw, len(raw)), (2, 1))
+        with self.assertRaises(UnicodeDecodeError):
+            frontend.source_position(raw, 1)
+
+
+
+
+    def test_invalid_mapping_and_ambiguous_module_tables_fail(self):
+        for segment in ("!", "g", "gggggggggggggg"):
+            with self.subTest(segment=segment), self.assertRaises(ValueError):
+                frontend.decode_vlq(segment)
+        duplicate = b'!function(){}(),self.webpackChunkapp.push([[1],{2:(x)=>{x()},2:(x)=>{x()}}])'
+        with self.assertRaisesRegex(ValueError, "duplicate module"):
+            frontend.recovery_segments(self.parse(duplicate))
+
+    def test_factory_maps_preserve_cross_line_coordinates_names_and_unmapped_wrapper(self):
+        raw = b'prefix\n(m,e)=>{\n e.value=7;\n}\nnext'
+        factory = {"module_id": 7, "factory_range": [7, raw.index(b'}') + 1], "syntax": "arrow_function"}
+        document = {"version": 3, "sources": ["bundle.js"], "names": ["factory", "value"],
+                    "mappings": ";".join(frontend.encode_vlq(row) for row in
+                        ([0, 0, 9, 0], [0, 0, 1, 20, 0], [1, 0, 1, -18, 1], [0, 0, 1, -2]))}
+        result = frontend.factory_source_maps(document, raw, [factory], ["../official.js"])[7]
+        actual = [[frontend.decode_vlq(value) for value in line.split(",")] for line in result["mappings"].split(";")]
+        self.assertEqual(actual, [[[0], [1, 0, 10, 20, 0]], [[1, 0, 1, -18, 1]], [[0, 0, 1, -2]]])
+        self.assertEqual(result["sources"], ["../official.js"])
+        self.assertEqual(result["names"], ["factory", "value"])
+
+    def test_adjacent_factories_reset_original_and_name_deltas_and_use_utf16_columns(self):
+        raw = '😀 a=()=>{}, b=()=>{};'.encode()
+        first = raw.index(b'()=>{}'); second = raw.index(b'()=>{}', first + 1)
+        factories = [{"module_id": index, "factory_range": [start, start + 6], "syntax": "arrow_function"}
+                     for index, start in ((1, first), (2, second))]
+        document = {"version": 3, "sources": ["source"], "names": ["a", "outside", "first", "second"],
+                    "mappings": ",".join(frontend.encode_vlq(row) for row in
+                        ([0, 0, 3, 40, 1], [5, 0, 0, 10, 1], [5, 0, 0, 5, 0], [5, 0, 0, 45, 1]))}
+        result = frontend.factory_source_maps(document, raw, factories, ["official.js"])
+        self.assertEqual([frontend.decode_vlq(row) for row in result[1]["mappings"].split(",")],
+                         [[0], [1, 0, 3, 50, 2], [5, 0, 0, 5, 0]])
+        self.assertEqual([frontend.decode_vlq(row) for row in result[2]["mappings"].split(",")],
+                         [[0], [1, 0, 3, 100, 3]])
+
+    def test_factory_map_rejects_bad_segments_foreign_sources_names_and_overlap(self):
+        factory = {"module_id": 1, "factory_range": [0, 6], "syntax": "arrow_function"}
+        for mappings in ("AA", frontend.encode_vlq([0, 2, 0, 0]),
+                         frontend.encode_vlq([0, 0, -1, 0]), frontend.encode_vlq([0, 0, 0, 0, 0]), ""):
+            with self.subTest(mappings=mappings), self.assertRaises(ValueError):
+                frontend.factory_source_maps({"version": 3, "sources": ["a"], "mappings": mappings},
+                                             b'()=>{}', [factory], ["a"])
+        with self.assertRaisesRegex(ValueError, "overlap"):
+            frontend.factory_source_maps({"version": 3, "sources": ["a"], "mappings": "AAAA"},
+                                         b'()=>{}', [factory, {**factory, "module_id": 2}], ["a"])
+
+    def test_complete_capture_is_reused_and_changed_original_is_rejected(self):
+        audit = host.HostLocalAudit()
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            input_dir = root / '.analysis/inputs/frontend/fixture'
+            source = input_dir / 'raw/app/main.js'
+            source.parent.mkdir(parents=True)
+            raw = b'!function(){monitor()}(),self.webpackChunkui.push([[1],{2:(m,e)=>{e.value=7}}]);'
+            source.write_bytes(raw)
+            def identity(path):
+                body = path.read_bytes()
+                return {"path": path.relative_to(root).as_posix(), "bytes": len(body), "sha256": hashlib.sha256(body).hexdigest()}
+            original = identity(source)
+            (input_dir/'acquisition.json').write_text(json.dumps({"files": [original]}))
+            output = root/'.analysis/results/frontend/fixture'
+            readable = output/'modules/app/main.js'
+            readable.parent.mkdir(parents=True)
+            readable.write_bytes(raw)
+            start = raw.index(b'(m,e)=>')
+            map_path = readable.with_name(readable.name+'.map')
+            map_path.write_text(json.dumps({"version": 3, "sources": ['../../../../../inputs/frontend/fixture/raw/app/main.js'],
+                                           "names": [], "mappings": frontend.encode_vlq([start, 0, 0, start])}))
+            provenance = output/'modules/provenance.json'
+            provenance.write_text(json.dumps({"format": "webpack5", "strategy": "structural", "modules": {
+                "app/main.js": {"input": "app/main.js", "ranges": [[0, len(raw)]], "extraction": "structural"}}}))
+            tool = root/'tools/analyzer.exe'; tool.parent.mkdir(); tool.write_bytes(b'verified-static-analyzer')
+            capture = output/'analysis.json'
+            capture.write_text(json.dumps({"input": input_dir.relative_to(root).as_posix(),
+                "tool": {"sha256": identity(tool)["sha256"]}, "original_inputs": [original],
+                "original_js_inputs": [original["path"]], "commands": [],
+                "outputs": [identity(p) for p in (readable, map_path, provenance)]}))
+            with patch('frontend.subprocess.run', side_effect=AssertionError('Complete readable captures must be reused')):
+                result = frontend.recover_one(input_dir, tool, audit)
+            self.assertEqual((result['registered_factories'], result['recovered_modules'], result['missing_factories']), (1, 1, 0))
+            restored = json.loads(capture.read_bytes())
+            name = restored['module_recovery']['factories'][0]['output']
+            self.assertEqual((output/'modules'/name).read_bytes(), b'((m,e)=>{e.value=7});\n')
+            self.assertEqual(source.read_bytes(), raw)
+            current_audit = host.HostLocalAudit()
+            self.assertEqual(frontend.recover_one(input_dir, tool, current_audit)['status'], 'reused_verified_recovery')
+            source.write_bytes(raw.replace(b'value=7', b'value=8'))
+            with self.assertRaisesRegex(ValueError, 'identity differs'):
+                frontend.recover_one(input_dir, tool, host.HostLocalAudit())
 
 
 class SemanticQueryGapTests(unittest.TestCase):
@@ -4204,7 +4334,8 @@ class RustValidationTests(unittest.TestCase):
     def test_command_overrides_stay_with_cargo_and_receipt_requires_real_test_totals(self):
         import workspace
         with tempfile.TemporaryDirectory() as directory, patch.object(workspace, "ROOT", Path(directory)), \
-                patch.object(workspace, "rust_inputs", return_value=[]), redirect_stdout(io.StringIO()):
+                patch.object(workspace, "rust_inputs", return_value=[]), \
+                patch.object(workspace, "rust_test_scope", return_value=None), redirect_stdout(io.StringIO()):
             def completed(command, **kwargs):
                 kwargs["stdout"].write(b"test result: ok. 1 passed; 0 failed; 0 ignored\n")
                 return argparse.Namespace(returncode=0)
@@ -4237,7 +4368,7 @@ def run():
     report = {"schema_version": 1, "recorded_at_utc": analysis.stamp(), "tests_run": result.testsRun,
               "failures": len(result.failures), "errors": len(result.errors), "passed": result.wasSuccessful(),
               "inputs": [{"path": name, "sha256": analysis.sha(analysis.ROOT / name)}
-                         for name in ("tools/evidence.py", "tools/test_evidence.py", "tools/analysis.py",
+                         for name in ("tools/evidence.py", "tools/test_evidence.py", "tools/analysis.py", "tools/frontend.py",
                                       "tools/host.py", "tools/families.py", "tools/workspace.py",
                                       "tools/asset_release.py", "tools/asset-release.json",
                                       "tools/rust_data.py", "tools/catalog_data.py", "tools/resource_database.py",

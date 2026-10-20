@@ -153,7 +153,11 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 
 `prepare-dashboard-images --source-preview-only` 复用完整的当前 index／manifest 与资源上下文提取，仅重新准备 ProductImage 预览域，避免重复获取全部 Dashboard 图片。仍核对原始字节，保留缺失与提取失败；缺失的已声明依赖沿同一获取流程补取。`--no-refresh-gaps` 仅供拥有最终统一刷新步骤的批次使用。Webpack 数字模块 ID 按 JavaScript 整数字面量静态解码，支持压缩器的 `36e3`、十六／二／八进制形式，拒绝非整数；不执行厂商 JavaScript。
 
-`fetch-frontend` 保存 HTML、manifest、全部已声明资源、静态 chunk／import／CSS 引用、HTTP 失败和版本稳定性检查；原始文件不执行。`analyze-frontend` 显式提交所有获取的 JS，保存完整模块、provenance、输出 maps、诊断及图校验结果，并提取可用的 `sourcesContent`。
+`fetch-frontend` 保存 HTML、manifest、全部已声明资源、静态 chunk／import／CSS 引用、HTTP 失败和版本稳定性检查；原始文件不执行。`analyze-frontend` 显式提交所有获取的 JS，保存完整模块、provenance、输出 maps、诊断及图校验结果，并提取可用的 `sourcesContent`，随后恢复尚未拆出的完整 webpack factory。
+
+已有完整捕获用 `analyze-frontend --input DIR --recover-missing` 核验后补恢复；全量入口是 `analyze-frontend --all-acquired --recover-missing --workers 4`，并行数限 1–8。`frontend.py` 按 AST 定位被前导代码／逗号表达式包住的注册和 bootstrap，从已核验可读整包切出带完整参数绑定的 factory，按 UTF-16 坐标切片 source map 并回溯官方原件。合成包装无原始映射，原始局部名称不作推定。完整整包保留非 factory 代码，每份捕获保存实际恢复工具副本和所有新产物身份；缺少可读整包才静态格式化一次，不执行目标 JavaScript。
+
+批量结果为 `.analysis/results/frontend/module-recovery.json`，每个集合的 `analysis.json` 与 `modules/provenance.json` 保留原件区间、参数、恢复配方及诊断。复用必须核验实际原件和全部登记输出。恢复结构不抹去原分析器失败，也不等于逐功能语义已经闭合。`--refresh` 只重建派生模块、提取源码及旧恢复中间目录，不删除获取原件。
 
 相对引用按实际响应 final_url 与 HTML base 解析，边的 source 仍是请求原件，避免服务器补目录斜杠后产生假 404。收据保存当前 requested_urls，过期请求失败与当前缺失分别报告；原件仍全部核对 bytes／SHA。既有裸路径文件挡住子资源目录时，子资源写入 raw-by-url 命名空间，保留原响应不变。
 

@@ -36,11 +36,34 @@ Chroma 相关映射还有实际事件差异：PID70／158 的 CycleUpChromaEffec
 
 按钮来源的布局和侧板改变后会重新加载按钮信息、合并该层映射，再清 mappingUpdated。PID158 的完整 `loadFilteredMappings` 还区分 SYSTEM／KEYBOARD、手柄和 attachment 分支；这些分支只在对应配置条件成立时运行。
 
+## 侧板身份与型号分支
+
+当前 `getButtonSideName` 使用设备／页面提供的领域编号；编号 0 返回空字符串，不能把默认 `sidepadLayout=3` 当作已连接 12 键板。静态 `hasAttachement=true` 只决定 attachment 结构，固定侧面也沿用该结构。
+
+| PID | 编号 1 | 编号 2 | 编号 3 |
+| --- | --- | --- | --- |
+| 80 | `7ButtonSide` | 空 | 空 |
+| 83、141、150、180 | `12ButtonSide` | 空 | 空 |
+| 103、147 | `2ButtonSide` | `7ButtonSide` | `12ButtonSide` |
+| 143、167、231 | `2ButtonSide` | `6ButtonSide` | `12ButtonSide` |
+
+PID167 的设备 reducer 把真实 `SET_SIDEPAD_LAYOUT` 投影为 layout 及 `sidepadConnected=layout!=0`；Customize reducer 另保留当前浏览 `viewIndex`。保存普通按钮传 viewIndex=0，侧板保存按 `getButtonSideName(viewIndex)` 修改该名称的数组，其他侧板保留。重置按键才显式清空已知侧板集合。硬件当前侧板、用户正在浏览的侧板和配置保存的侧板映射是三个不同对象。
+
+主机 appEngine 生成时，把普通映射与当前实际侧板名称对应的映射合并，再转换输出和计算 hash；切换侧板还需重新选择这组映射，不能只更换鼠标图片。配置导出收集宏时遍历全部 `sidePanelMappings`，所以非当前浏览侧板引用的宏也必须保留。
+
+## PID199／208：折叠映射功能列表
+
+这两款的当前 DeviceInfo 显式启用 `isHidingKeyMapping`，默认前缀长度为 5。`getDisplayFunctionList` 先依据当前输入、Hypershift／secondary 和所选配置过滤功能；折叠时取过滤后列表的前 5 项再拼接最后一项，不能把它写成总共仅显示 5 项。`RazerAI` 输入直接返回完整列表；secondary 使用自己的允许集合。
+
+只有总功能数大于 6、产品启用折叠、`isShowHideMappingUI` 成立且当前输入不是 `RazerAI` 时，才显示 Show All／Show Less。点击只翻转局部 `hideMappingUI`，不删除 profile 的已有映射，也不产生设备命令。列表折叠、鼠标悬停的功能栏收缩和具体输出编辑器的 Save 是不同状态。
+
 ## 原件与复核位置
 
 - PID158 映射面板：`.analysis/inputs/frontend/mouse-158-current/raw/apps.razer.com/synapse/products/158/ui/static/js/567.9db2e44b.chunk.js`，windowClick `[34171,35400)`、clear `[36620,36990)`、saveMapping `[36991,37131)`、saveChanges `[42138,44558)`、主要退出 `[69469,69741)`；直接复读原始字节。
 - PID158 外层 Customize：`.analysis/inputs/frontend/mouse-158-current/raw/apps.razer.com/synapse/products/158/ui/static/js/main.d9d086de.js`，loadFilteredMappings `[5641383,5642860)`、各组投影及默认映射 `[5648100,5650020)`、Save／Don't Save／后续动作 `[5650020,5651700)`。
 - PID158 中间件：`.analysis/inputs/frontend/mouse-mw-158-current/raw/apps.razer.com/synapse/products/158/mw/6259.1944c2392b18ba3f8282.js`，wrapper 模块 32226 `[151883,152427)`，`30525.bt` `[1505570,1509301)`；直接复读完整函数。
 - 全键／turbo factory 与回调差异：`.analysis/results/frontend/mouse-mw-audit.json` 的 `queries["mapping-engine"].products[product_id=158]`、`queries.shared_mapping_chroma_callback.products`／`semantics`；PID190 的当前 `DeviceInfo` 位于 performance 文档所列模块 8193。
+- 侧板名称 getter：各 PID 当前 UI `main.*.js`，80 `[4862625,4862750)`、83 `[4710936,4711062)`、103 `[45237,45435)`、141 `[143843,143969)`、143 `[4770502,4770698)`、147 `[45206,45404)`、150 `[32747,32873)`、167 `[168925,169121)`、180 `[4783370,4783496)`、231 `[115527,115723)`；完整文件身份见 [鼠标原件表](README.md#可复核原件)。PID167 UI reducer `[5063858,5065821)`、Customize reducer `[5114494,5117644)`；同目录 `main.05d42904.js` 的全侧板宏收集 `[5824135,5824468)`。
+- PID199 UI `5107.34b4b1e1.chunk.js`：折叠长度 `[31013,31156)`、过滤 `[51917,54227)`、toggle `[65569,65631)`、render `[73330,76892)`；PID208 对应 `5107.c6818f1c.chunk.js` 为 `[32723,32866)`、`[53627,55937)`、`[67279,67341)`、`[75040,78602)`。
 
 本页是原版实际前端和中间件语义说明；主机映射服务、物理按键事件、板载写入和真实窗口行为未在本次执行验证。

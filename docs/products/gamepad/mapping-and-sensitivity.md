@@ -12,7 +12,7 @@
 
 源码的每个字段 getter 错误会被其循环捕获、记录并继续其他字段；整个 `oe` 返回不代表每个字段读取成功。源码还在缺本机 document 时构造默认 document，这个对象是读取工作的容器，不能把它的默认字段报告为设备实读。
 
-启动所有者是同一 main 的模块 43001：`dn` bytes `[1625087,1625700)`，先检查本机数据，仅在没有数据且注册 `loadProfileDataFromDevice` 时进入导入。连接事件处理 `hn` bytes `[1650465,1650673)` 先调用设备导入，再向 GenericFeatureManager 发布 DeviceConnected，最后执行后续连接处理。device reset 另外清除导入 guard，再重新读取；重连不是向设备写入旧配置的通用授权。
+启动所有者是同一 main 的模块 43001：`dn` bytes `[1625087,1625700)`，先检查本机数据，仅在没有数据且注册 `loadProfileDataFromDevice` 时进入导入。连接事件处理 `hn` bytes `[1650465,1650673)` 先调用设备导入，再向 GenericFeatureManager 发布 DeviceConnected，最后执行后续连接处理；该调用仍受 `oe` 的 guard 限制，guard 保持时直接返回，不代表每次重连均重新读取所有槽。device reset 另外清除导入 guard，再重新读取；重连不是向设备写入旧配置的通用授权。
 
 映射 getter 由模块 11365 的 `f.getDataFromDevice` → `obmEngine.getAllButtonAssignmentInfo(slot)` → `y` 处理。`y` 与产品 `DEFAULTMAPPINGS` 比较 input ID、输入/输出类型与 controller assignment，仅保留与默认不同的映射。默认映射表不是设备返回；保留本机 keyGroup 也不是设备读回。修改由具体 ON_SET/ON_CHANGE 任务进入 feature queue、存储和真实 setter，不应把普通本机 profile 编辑描述成设备 OBM 写入确认。
 
