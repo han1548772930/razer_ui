@@ -175,6 +175,34 @@ class SemanticQueryGapTests(unittest.TestCase):
         self.assertEqual(rows[0]["pointer"], "/products/0/child~1with~0name/failures")
         self.assertTrue(all(row["evidence"] == "receipt.json" for row in rows))
 
+    def test_host_queries_reach_the_shared_ledger_without_promoting_static_capture(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            receipt = root / ".analysis/results/host-current/local-audit.json"
+            receipt.parent.mkdir(parents=True)
+            (root / ".analysis/inputs.json").write_text(json.dumps({"inputs": [], "missing_current_roots": []}))
+            ledger_path = root / ".analysis/results/gaps.json"
+            ledger_path.write_text(json.dumps({"owners": {"manual": [{"kind": "unrelated_gap"}]}}))
+            report = {"window/lifecycle": {"failures": [], "snapshot_stable": True,
+                "source_chain_complete": False, "remaining_chains": ["native worker join"],
+                "runtime_acceptance": "unverified"},
+                "macro": {"native": {"failures": ["indirect ABI unresolved"]}}}
+            receipt.write_text(json.dumps(report))
+            name = ".analysis/results/host-current/local-audit.json"
+            ledger = analysis.refresh_gaps()
+            rows = ledger["owners"][name]
+            self.assertIn({"kind": "unrelated_gap"}, ledger["owners"]["manual"])
+            self.assertTrue(any(row.get("finding") == "native worker join"
+                                and row["pointer"] == "/window~1lifecycle/remaining_chains" for row in rows))
+            self.assertTrue(any(row.get("finding") == "indirect ABI unresolved" for row in rows))
+            self.assertTrue(any(row["kind"] == "host_local_source_chain_pending" for row in rows))
+            report["window/lifecycle"]["remaining_chains"] = []
+            report["macro"]["native"]["failures"] = []
+            receipt.write_text(json.dumps(report))
+            rows = analysis.refresh_gaps()["owners"][name]
+            self.assertFalse(any(row.get("finding") for row in rows))
+            self.assertTrue(any(row["kind"] == "host_implementation_acceptance_pending" for row in rows))
+
     def test_maintenance_gaps_use_actual_recipe_identity_and_keep_projection_limits(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
             source = Path(directory) / ".analysis/inputs/typed-tables/fixture/table.json"

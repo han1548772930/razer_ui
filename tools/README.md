@@ -33,6 +33,7 @@ python tools/workspace.py acquire-family --family all --layer both --stage probe
 python tools/workspace.py acquire-family --family keyboard --layer both --product 515 --stage all --workers 2
 python tools/workspace.py audit-family-function --family system --function main --query shared-page-layout
 python tools/workspace.py audit-host-local --query macro-recorder
+python tools/workspace.py audit-host-local --query window-lifecycle
 python tools/workspace.py inspect-corpus
 python tools/workspace.py acquire-native --include-host-app-resources --no-refresh-gaps
 python tools/workspace.py extract-native-packages --scope host-apps --no-refresh-gaps
@@ -96,6 +97,8 @@ schema 4 的 `ui_product`、`ui_product_category`、`ui_product_edition`、`ui_n
 四份表的维护输入由现有 Rust 构造数据恢复生产字段投影，`tools/typed-data.json` 的 `maintenance_recovery` 保留原文件字节摘要、缺失维护输入的旧摘要和未恢复的证据字段。该恢复不代表找回原始证据 JSON；搜索字符串另与实际原始 JS 全序列比较，其他字段通过迁移前后 Rust token 等价性核对。原件部署稳定性、完整来源闭包和运行验收仍分别判断。
 
 `audit-host-local --query macro-recorder` 复用并核对当前 PID192／756 middleware、Macro 和 background-manager 完整 Wakaru 捕获的全部输入、输出与工具字节，保留原 validate 失败；从原始 JS 的实际 UTF-8 AST 区间保存完整 An／q、软件录制和 OTFM set/remove、全局锁与订阅／清理、接收器布局与功能配置 owners，统一写入 `.analysis/results/host-current/local-audit.json`。PID756 的预触发对象没有 exclusive mode，和 background 随后写入的独占记录分开；初始扫描和实时事件的字段层级差异、JSON 记录没有硬件 getter、运行时缓存最后匹配语义也分别保留。实际原生 transport、产品接线、完整页面与真实验收仍须独立完成。
+
+`audit-host-local --query window-lifecycle` 静态核对 25 份当前宿主 JS 原件、packed ASAR 成员字节及官方包来源，保存 117 个去重的完整文件／AST 所有者，写入同一 `local-audit.json` 的 `window_lifecycle`。查询覆盖窗口动作、页签休眠与恢复、按 URL 的内存存储、SysUtils 电源事件消费者、退出准入与超时、FFI 退出命令登记、HID 恢复，以及 WebSocket／BLE／日志停止链；另核对官方包的 BLE endpoint 原件、全部 797 个捕获函数和 9 份产物，逐原件字节保留 16 个原生行为所有者，并验证 UTF 类型恢复 supplement。缺 URL 的清理、异步兼容发送、未确认应答及空 FreeFFI 行为保留实际源码语义；查询无失败不代表原生 worker 已退出或设备恢复成功。`refresh-gaps` 独立保留宿主查询失败、未闭合链及实际验收缺项。对应语义及测试边界见[窗口生命周期](../docs/products/host/window-lifecycle.md)，系统事件生产者见[系统集成](../docs/products/host/system-integration.md)。
 
 `audit-family-function --family keyboard --function main --query global-shortcuts` 核对当前 Dashboard 的完整编译键表、默认 Turbo 顺序、事件序列和常量，保留挂载页面／行警告／输入捕获、store／factory、规范 JSON／hash、Macro 发布和宿主适配器的完整所有者。输入捕获的固定协议解码使用 module 46114.Rk 的独立 144 行 typed Rust 表，由普通构造函数提供，逐字段与原顺序比较并核验生成字节，保留重复 Num Lock 和与编译键表不同的 outputFlag；不从编译表推导，不依赖运行时目录库。查询保存 708／707／706 共享的完整 DKMKEYS、DeviceInfo 与 middleware → connectedDevices → validDevices producer，核对三项 scan redirect。宿主 `NoBrowserInputHandler` 保留完整处理函数、sender 注册／注销、状态初始化及 IPC 分支；该门控只跳过宿主快捷键处理，不能据此禁用 DOM 键盘捕获。原生静态范围覆盖存储 singleton、异步 ACK、开关 vtable／初始值和 shutdown 恢复链；ACK 仅表示原生内存发布，不证明 parser 接受、OS 执行或设备写回。结果写入现有 `keyboard-mw-audit.json`，完整页面和真实运行验收另行记录。
 

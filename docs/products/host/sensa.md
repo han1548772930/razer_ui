@@ -4,7 +4,7 @@
 
 ## 页面与状态所有者
 
-独立页依次挂载 Dynamic Haptics、Audio to Haptics Profiles 和 Help。URL 的 `displayMode=chromaApp` 决定容器呈现；同时提供 containerId 和 pid 时，嵌入视图按这两个字段选择设备，不是总返回第一台设备。嵌入视图区分 AUDIO 与其他类别，强度显示值分别使用该分支的应用配置。
+独立页依次挂载 Dynamic Haptics、Audio to Haptics Profiles 和 Help。URL 的 `displayMode=chromaApp` 决定容器呈现；同时提供 containerId 和 pid 才进入嵌入视图。其实际查找为 `(deviceContainerId === containerId && productId === pid) || localStoragePId === pid`，取首个匹配项；后一个分支没有再核对 container，不能简写成始终按两字段精确寻址。嵌入视图区分 AUDIO 与其他类别，强度显示值分别使用该分支的应用配置；缺设备时的显示对象不是硬件观测。
 
 根组件读取本机触觉配置、关联游戏、已安装程序、`sensa-devices` 和 `connectedDevices`，订阅 storage、窗口状态和游戏运行事件。只有本机触觉应用配置不存在时才建立应用初始对象；这一条件不涉及 HID 读取失败，也不证明硬件没有配置。
 
@@ -105,6 +105,21 @@ Start 的底层返回取自 recorder start 状态，成功时设置实例 runnin
 原生 Terminate 另清理端点 map、回调管理器、队列与锁相关对象；ReleaseAV 移除指定端点及共享所有权。页面代码中日志虽写 retry once，但对应 catch 本身没有第二次调用；也存在 beforeUnload 与 beforeunload 不同拼写，均按实际代码理解。
 
 本页没有执行页面、原生库或真实设备。已读前端、后台 manager、音频 wrapper 及下表原生函数的静态语义；FFT／haptic 回调内部编码与全部产品的最终传输应答仍需沿其各自消费者继续核实，不能以当前页面保存成功替代硬件确认。
+
+## 当前 Rust 入口与能力核对
+
+当前 [ChromaPage::modules](../../../crates/razer-app-pages/src/chroma/chroma_page.rs) 固定列出 Sensa HD，但 Install 按钮禁用且没有 Sensa 打开事件；[app_picker_host.rs](../../../crates/razer-shell/src/shell/app_picker_host.rs) 的实际可启动模块也不含它，强制 Open 进入“窗口服务尚未连接”通用分支。本批未找到独立 Sensa 根、Dynamic Haptics、Audio to Haptics Profiles、嵌入视图或上述完整 mixer／profile／游戏会话链的 Rust 生产所有者，不能以模块图标、注册名称或其他设备自己的触觉 slider 判断本应用已接通。
+
+| 官方链 | 必须对应的独立实现与页面行为 |
+| --- | --- |
+| 独立根与设备嵌入 | 根拥有本地配置、device／memory／storage／游戏事件，完整挂载两页／Help／引导；嵌入根按实际 predicate、类别与强度字段选择对象。当前没有该页面树、选择／焦点、说明、禁用原因和释放消费者 |
+| 来源与设备强度 | 来源 1…6 和设备 0…6 的单位／身份／确认分别处理；Source gain、本地设备修改、真实设备写入、会话关闭弹层和 A2H 的 100 ms／500 ms 门禁不能合并为本地布尔保存 |
+| 预设、游戏与自定义 | 四项顺序、继承／Immersive 条件、两次 action、band 范围、150 ms 调度、关闭即时保存和前台／游戏恢复分别实现；未知字段及失败不能伪装成默认已生效 |
+| FFT、mixer 与输出 | 按实际端点和两套采样参数拥有捕获／DSP／profile setter／本机 IPC／设备输出与应答；旧会话释放后才能切换。底层官方 DLL 仅作分析和显式对照，产品仍需纯 Rust 实现 |
+
+当前嵌入 arrow `[953726,954755)` 和独立根 function `[954765,959571)` 均已按完整 JS 的 AST 边界重新核对，真实设备卡 arrow 为 `[814058,817579)`；获取收据、入口、manifest 和当前部署原件的实际字节匹配且前后未变。来源／设备交互的合并区间 `[832287,841235)` 只是多个所有者的定位上下文，不能将它当成单个完整函数或以其存在宣称所有页面状态已核完。
+
+后续自动化须覆盖实际设备寻址／同 PID 多实例、active／standby／off／restart-required、未知观测、来源与设备不同强度、会话 Keep On／Turn Off、预设与 band 边界、真实读取与草稿不同、异步取消和恢复／释放。通过显式对照入口再核官方实际 mixer／profile／FFT／设备函数的输入输出与副作用；模拟、共享控件测试和双方均无设备都不等于功能一致。本批只静态核对，没有执行 UI、官方 DLL、音频捕获或真实触觉写入。
 
 ## 原件与位置
 

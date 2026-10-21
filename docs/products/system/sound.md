@@ -12,7 +12,7 @@
 
 这八个页面均仍挂载旧 EQ chart，并传入 `style.display="none"`。被挂载的组件会执行自己的订阅和初始化，但不能将其描述为用户可见的第二套 EQ 页面。694／695／696／710／736 类中保留 profile 新建、复制、改名和删除方法；当前 Sound render 没有因此自动出现相应按钮。
 
-thxv4 的 `rc` hook 只有在支持值成为布尔值后才决定显示空间 UI。true 显示，false 隐藏；“由不支持变为支持且未关闭过提示”才打开新功能提示。它保存 `previousThxState`／`popupClosed`，关闭后执行调用方的选页回调；未获取支持值时处于其独立 loading 状态。
+thxv4 的 `rc` hook 只有在支持值成为布尔值后才决定显示空间 UI。true 显示，false 隐藏；“由不支持变为支持且未关闭过提示”才打开新功能提示。它保存 `previousThxState`／`popupClosed`，关闭后执行调用方的选页回调。hook 返回独立 `isLoading` 字段，但 PID737 外层 wrapper 未消费该字段，不能据此称页面已挂载读取遮罩。
 
 ## 打开、端点选择和读取
 
@@ -53,11 +53,29 @@ EQ maker `sd` 更新当前配置档的 selectedPreset 与 current 数组，并�
 
 736／737 的中间件为本地 THX 客户端调用 registerAppLaunched，成功后注册 `appLaunchedChanged`；页面取得运行状态时显示遮罩。destroy 明确移除事件处理器并调用 unregisterAppLaunched。音频处理器的 terminate 调用 RemoveDevice；端点切换前也先移除已添加的设备。普通页面卸载的 chart 监听清理不能代替这些中间件资源释放。
 
+## 实际页面与当前 Rust 对照
+
+PID737 的实际导航先取得 `Xn → Jn`。产品根 `renderView` 在选择 Sound 时用 `cloneElement` 注入 `showSpatialUI` 等字段；外层 hook wrapper 又拥有新功能弹层，所以只读导航中的 `Xn({})` 会漏掉真实能力来源。`Jn` 始终挂载页首 `go` 和 `display:none` 的 `rn` EQ；随后按 `showSpatialUI` 改变两列。开启空间 UI 时，左为应用输出和系统声音属性，右为音量、声音归一化、语音清晰度；关闭时，左只保留音量，右只保留系统声音属性。客户端运行遮罩是另一条件，与 hook 的未观测字段不同。
+
+| 页面或动作 | 当前官方行为 | 当前 Rust 对照 |
+| --- | --- | --- |
+| 可见树与隐藏 EQ | `rn` 虽挂载但隐藏；可见树随空间能力切换列和卡片，不能把 EQ 数据表当作可见页面 | [system/mod.rs](../../../crates/razer-pages/src/features/system/mod.rs) 的 `sound` 在左列依次画 volume／normalization／clarity 和 THX 卡，右列始终画 `equalizer`，包含扬声器／耳机、预设和逐段 slider。这将原版隐藏 EQ 变为可见编辑器，并改变实际卡片顺序和能力分支 |
+| 页首、能力与客户端状态 | 页首按真实输出类型选择图像和文案；空间支持成为布尔值后才显示相应控件；736／737 的真实客户端状态可禁用页面并挂独立遮罩 | Rust 此 owner 没有对应端点／空间支持／客户端状态观察、页首图像和新功能弹层；只要 profile 字段存在就显示卡片，THX toggle 固定可用。不能用本地默认值或是否有字段证明能力已观测 |
+| 音量与增强控件 | volume 自身含系统混音器入口；normalization 的 `defaultProps.hasSlider=true`，受开关和实际输出来源条件影响；voice clarity 另有两段说明 | Rust 用相同通用 toggle／range 结构呈现三项，未接实际端点、设备音量变化与完整说明／提示；另一个 `ms-settings:sound` 按钮是有效 OS 入口，但不能代替音量读取、混音器、空间处理器或增强 setter |
+| 本地应用输出 | 按真实目录排序、过滤 missing；新增、输出选择、删除确认、滚动关闭菜单，以及前台应用触发预设是不同动作；保留本地模式，移除范围外在线链接 | Rust `sound`／`equalizer` 没有应用列表、添加／删除／输出选择或前台覆盖消费者。项目其他地方能保存 linked games 或提供音频产品页面，不证明笔记本 Sound 已接通这条链 |
+| 草稿、持久化与设备结果 | 端点切换、profile EQ、空间开关和 DSP 属性分别有 producer、队列与完成语义；隐藏 chart 仍执行自己的订阅和释放 | `SystemProductChanged → source_workspace.capture → WorkspaceEvent::Changed` 只产生当前 profile 快照；本轮沿 [workspace 生产订阅](../../../crates/razer-pages/src/features/workspace/source_workspace.rs)、[Shell](../../../crates/razer-shell/src/shell.rs) 与 [保存后续操作](../../../crates/razer-shell/src/shell/persistence.rs) 未找到该系统声音页的端点／DSP 提交、读回、事件、取消与释放。Seiren 和其他音频产品的独立 Rust 服务属于另一条已接线能力，不能替代本页链 |
+
+客户端运行遮罩的后载 CSS 将 wrapper 置于 top 85px、z-index 1；内容宽 600px、上边距 85px、背景 `#111`、1px 绿色边框、5px 圆角和 20px padding，标题为 RazerF5 16px／15px，正文为 Roboto 14px／17px。它与新功能弹层拥有不同的布局和关闭消费者，不能合并为通用错误提示。当前这些尺寸只经完整规则核对，窗口、焦点、字体实际度量和像素仍未验收。
+
+后续自动化验证需覆盖支持值未知／true／false、不同真实端点与默认端点切换、客户端状态到达／释放、应用 missing／增删／前台恢复、隐藏 chart 挂载与卸载，以及真实读取与本地草稿不同的情况。协议对照分别核对 volume/mute、DSP 字段换算、逐段 EQ 失败停止、通知顺序、RemoveDevice 与退出释放，不能用已保存的增益、UI 已切换或 setter 返回 true 证明全部生效。官方实际 DLL／服务与设备对照未在本轮执行；本节也不将 PID737 的具体树扩展为其他七款页面全部一致。
+
 ## 原件与复核位置
 
 所有路径以 `.analysis/inputs/frontend/` 为前缀，读取核对各自 `acquisition.json` 的原始字节长度和 SHA-256；区间为 UTF-8 半开字节区间。
 
 - PID737 UI `system-737-current/raw/apps.razer.com/synapse/products/737/ui/static/js/8923.a0bbaf75.chunk.js`：音量 `[196806,198371)`；系统声音属性 `[198662,199848)`；归一化 `[201609,203062)`；清晰度 `[203368,204547)`；页首 `[204908,205842)`；EQ `[212143,228289)`；应用预设 `[281091,289304)`；Sound `[290640,292317)`；空间 UI hook `[395291,396995)`。
+- 同一原件：Sound connect 完整绑定 `[292323,292935)`；产品根 `renderView` 完整 arrow `[407940,408215)`；hook 外层完整 function `[412833,413240)`；新功能弹层完整绑定 `[396996,398302)`；客户端运行弹层完整绑定 `[290268,290630)`；归一化默认参数赋值 `[203062,203113)`。以上范围沿完整 JS 的 AST 和词法绑定复核，获取收据、入口、manifest 和相关 CSS 的实际字节均匹配，读取前后身份未变。
+- PID737 同 source set 的 `static/css/8923.779862c6.chunk.css`：客户端运行遮罩五条完整规则 `[69791,70918)`。它们提供当前布局依据，不代表本项目窗口运行结果已经比较。
 - 同产品中间件 `system-mw-737-current/raw/apps.razer.com/synapse/products/737/mw/6737.85397ce157d4cca228ee.js`：playback maker `[860908,861513)`；空间开关 maker `[861513,862810)`；EQ maker `[864533,866412)`；前台 EQ 消费者 `[866412,867845)`；通用 feature maker `[870019,871330)`；EQ runner `[1233957,1234777)`；前台 runner `[1234917,1235216)`；空间 runner `[1244365,1244887)`。
 - 同一中间件：端点读取和重选 `[1274381,1279684)`；归一化／清晰度／音量 helper 表 `[1280786,1284348)`；空间处理 helper `[1284697,1285828)`；EQ helper `[1285912,1287578)`；native 属性模块 `[1577326,1594856)`，其中 GetProperty `[1581865,1582116)`、SetProperty `[1582117,1582313)`、逐段 EQ setter `[1587019,1587289)`、terminate `[1583436,1583522)`；客户端监控注册 `[2029215,2029717)`、注销 `[2029718,2030232)`、init/destroy `[2030662,2030886)`。
 

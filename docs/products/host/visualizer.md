@@ -146,11 +146,25 @@ Chroma wrapper 的公开 Terminate 调 UnInit，不直接 FreeLibrary；其对�
 
 争用提示读取共享应用状态，提供切换 Chroma 应用／控制权入口。按钮可能启动本地 Chroma 服务、改变本机模式并在 2 秒后重读／刷新页面；这与效果写后读回不同。
 
+## 当前 Rust 页面与输出所有者
+
+本轮从模块入口核对到当前 Shell，尚未找到上述 Visualizer 实际页面的生产挂载。[ChromaPage::modules](../../../crates/razer-app-pages/src/chroma/chroma_page.rs) 将 Visualizer 列为禁用的 Install 按钮，仅为 Studio 发出打开事件；[app_picker_host.rs](../../../crates/razer-shell/src/shell/app_picker_host.rs) 的 launchable／bundled modules 没有 Visualizer，强制提交其 Open 也落入通用“窗口服务尚未连接”提示。入口存在、资源目录存在或共享控件可用均不能计为本页已实现。
+
+| 当前官方实际所有者 | 当前 Rust 对照与后续范围 |
+| --- | --- |
+| 根 `ac → nc → Jr`，Help 与五面板的选择、Chroma 争用提示和观察者 | 未找到对应页面 entity、五面板布局、全部开关／下拉／程序增删、Help 切换、输入／拖动／焦点和资源状态；不能以 Chroma Dashboard 或设备 Lighting 弹层代替 |
+| 所选音源、三态运行策略、画布／预览和多组 timer | 未找到本模块的端点列表／通知、录音 owner、频谱／合成引擎、独立预览与输出状态、应用运行观察及取消／释放。Seiren 的 WASAPI 与音频 meter 是具体产品的另一条已接线链，不能仅因也有采集就认定本模块完成 |
+| 原生音频算法及默认八类设备帧 | 本页记录的 DSP、颜色转换、矩阵与本地 SDK 发布边界仍须独立 Rust 实现并连接实际消费者。现有产品／手柄灯光任务不自动覆盖这些类别、帧尺寸、控制权与服务完成契约；禁止把本页官方 DLL 接入生产作为替代 |
+
+本批重新核对当前 UI 获取收据、主入口与实际 lazy 分块的字节身份及完整 AST，并读取五面板 owner。Provider 完整绑定 `ac [248025,248106)` 和其 `nc [247302,248018)` 是两个不同声明，不能把横跨它们的上下文称为一个完整根函数。主页面 `Jr [239449,242301)` 的确由 Help 条件替换设置区，但不会因此卸载根的 engine；这个生命周期也须对应到 Rust 所有者。
+
+后续自动化应分别验证音源列表更新／名称恢复、开关与程序运行、600 ms debounce、slider／文本提交、前景／背景 Off 与 Reactive、实际 DSP 公式、八类帧、空帧停止、迟到通知与完整清理。独立期望使用本页原件与对应原生函数；再经显式入口逐项比较官方实际 DLL／服务结果。没有端点或设备时先测纯算法和模拟传输，实际捕获、帧消费／硬件输出和窗口像素保持未验证。本批没有修改生产代码或运行这些对照。
+
 ## 原件位置
 
 | 所有者 | 当前原件／UTF-8 半开字节区间 |
 | --- | --- |
-| 入口、Provider、五面板 | [App.0e524954.chunk.js](../../../.analysis/inputs/frontend/synapse-audio-visualizer-current/raw/apps.razer.com/synapse/audio-visualizer/static/js/App.0e524954.chunk.js)，根 `[247305,248106)`、主页面 `[239449,242301)` |
+| 入口、Provider、五面板 | [App.0e524954.chunk.js](../../../.analysis/inputs/frontend/synapse-audio-visualizer-current/raw/apps.razer.com/synapse/audio-visualizer/static/js/App.0e524954.chunk.js)，Provider 完整绑定 `[248025,248106)`、根组合完整绑定 `[247302,248018)`、主页面 `[239449,242301)` |
 | 音源／运行条件、预览 | 同上，`[170862,176770)`、`[177150,181238)` |
 | 前景、背景、属性 | 同上，`[230238,233663)`、`[224547,228439)`、`[228449,230092)` |
 | 输入与 slider | 同上，`[184671,186531)`、`[181239,184659)` |

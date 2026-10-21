@@ -96,7 +96,7 @@ actions 模块 `10054` 把当前按键 ID 包装为单元素 payload 数组，�
 
 ## 失败、重试、超时和关闭
 
-窗口以 1 秒 interval 维护时间检查。经过 15 秒后，仅在当前 error ref 为真时才执行关闭；源码不是无条件 15 秒校准超时。输入回调和每次步骤推进重置这次计时。步骤超过 3、状态重置或清理时会清 interval。
+窗口以 1 秒 interval 维护时间检查。746 `U` 的完整回调在超过 15 秒时执行 `return s&&(clearInterval(...),w(null),f(!1)),void B()`：逗号表达式末尾的 `B()` 无条件调用关闭，只有前面的显式清 interval/loading 操作受当前 error ref 控制。不能把这里读成“error 为真才关闭”。关闭 `B` 又通过 `V` 清理 timer。输入回调和每次步骤推进重置这次计时；步骤超过 3、状态重置或清理时也会清 interval。
 
 失败界面的按钮调用重置，再 dispatch stop 和 UI init，以便重新开始。此处存在一个应保留的源码细节：746 `setCalibrationError(false)` action 确实携带 false，但当前 `keyboardSwitchCalibrationReducer` 的 `SET_CALIBRATION_ERROR` case 无条件写 `hasError:true`；真正复位发生在后续 `INIT_CALIBRATION`。不能把 action 的参数直接当作 reducer 已实现的状态变化。
 
@@ -183,3 +183,67 @@ set payload 为 `setMagneticKeySwitchType:[{inputId,switchIndex,keyTravel}]`。r
 校准中注册 beforeunload、visibilitychange、screenlocked、systemsuspend 和 native tab-message。切换到其他 tab、document 不可见，或 native focus 消息查询窗口得到最小化/不可见时，只调用一次 `stop(false)`。异步窗口查询有 active 标记，effect 清理后不继续使用结果。effect 结束逐一取消上述监听和 native disposer；1 秒 timer 单独清除；向父页面登记的导航提示函数在卸载时置空。
 
 本页完成的是三款当前源码的静态链路核对；没有运行厂商 JavaScript、应用程序或执行设备校准。
+
+## 实际页面树与 Rust 对照范围
+
+本轮重新计算所用当前 JS/CSS 原件的字节数及 SHA-256，与获取收据匹配。部署文件名、入口和获取时稳定性作为版本身份，不把共用库里的类存在当作产品挂载证明。除上文协议函数外，补充以下完整 AST 所有者；区间仍为 UTF-8 字节半开区间。
+
+| 产品/文件 | 完整所有者与页面边界 |
+| --- | --- |
+| 740 UI `9908.0c364f6c.chunk.js` | root `to [294348,305734)`，nav `[301748,302227)`：Customize → Actuation → Lighting → Calibration → Help |
+| 746 UI `9908.23d31a59.chunk.js` | root `to [294038,304968)`，nav `[301116,301595)`；实际校准页面 `Aa [281661,283010)`：提示条 → 产品 SVG → 左列校准 widget → 用户显式打开的 `Ea` |
+| 756 UI `3021.0f2a9d4a.chunk.js` | root `nr [330271,343239)`；非 BLE nav `[338420,339056)` 挂 Calibration，BLE nav `[339057,339575)` 不挂；页面连接器/组件 `Do [310998,319273)` |
+| 同一 756 chunk | 产品图与框选 `ro [290770,296153)`；行程窗口 `uo [296553,298566)`；首次开始 `vo [298658,299633)`；Generic 说明 `go [299634,300772)`；局部 reset `So [300773,301510)` |
+| 同一 756 chunk | Calibration 面板 `Co [301511,303634)`；轴体面板 `xo [303679,305874)`；双 tab widget `_o [307320,309235)`；离开提示 `yo [309236,310259)` |
+
+键盘 PID 752 的 [当前入口收据](../../../.analysis/inputs/frontend/keyboard-752-current/acquisition.json) 对应 `3717.9326e687.chunk.js` root `oa [179097,186758)`、nav `[184295,184519)`，只有 Customize、Lighting、Help。该型号不应因公共库含校准字段而获得本页；其他型号需要各自入口证据。
+
+### 740/746：已有页面、协议与释放链
+
+Rust 的 [页面和窗口](../../../crates/razer-pages/src/features/keyboard/calibration/keyboard_calibration.rs) 明确区分真实 `Live` 与仅供预览的 `Sample`，页面 Start 不由预览成功驱动。其产品图、intro 提示、Factory 灰态与说明、三段步骤、捕获键框、等待/成功/失败、Cancel/Next/Done 均有实际 renderer。窗口保存返回焦点与自身 FocusHandle，使用锁定 GPUI Kit 的 Dialog；原版 `.choose-a-mat` 的 800px 最小宽、宽屏 850px 上限、顶部 100px 与滚动内容在 Rust 有明确尺寸处理。这是静态组件对应，尚未作窗口渲染验收。
+
+[keyboard_calibration_live.rs](../../../crates/razer-pages/src/features/keyboard/calibration/keyboard_calibration_live.rs) 保留按键身份别名、Fn 输入、原始/备用捕获、initialized、步骤、loading、completed、top verify 一次性标记和 15 秒计时。按步骤发送 bottom-start → bottom-verify → top-start → top-verify，已校准列表与本次成功状态独立消费。`start_live_timer` 超过 15 秒关闭与上文逗号表达式的实际行为对应；不能沿用有误的条件解释修改它。
+
+真实请求经 [Shell 校准 owner](../../../crates/razer-shell/src/shell/keyboard/keyboard_legacy_calibration.rs) 和 [串行 worker](../../../crates/razer-shell/src/shell/keyboard/keyboard_legacy_calibration_worker.rs) 处理：绑定实际连接、读真实 serial/layout、恢复该 serial 的本机列表；modal epoch 拒绝旧窗口事件；foreground 观察核实本项目当前 executable；输入重定向确认实际目标设备后才向页面发布 initialized。worker 对已获资源保留清理责任，不能由页面关闭替代服务恢复。
+
+[独立协议实现](../../../crates/razer-device/src/keyboard/keyboard_legacy_calibration.rs) 的 capability 只接纳 740/746，bottom 前先 Testing=2，top/bottom getter 读取第二返回字节判断 `0`，停止写 Driver=3，保留失败时的 stop 结果。本机 [校准记录存储](../../../crates/razer-storage/src/keyboard_calibration.rs) 只有 top verified 后才保存并追加 UI 列表；存储失败会保留失败并执行 stop，不能把校准缓存当成硬件查询。
+
+关闭和卸载发 Unmount，由 worker 停 foreground、恢复 mapping/redirect、执行 stop、关闭服务并释放 suppression/lifecycle。该链在静态源码中可追踪，不代表当前本机驱动、服务、HID 或官方 DLL 已成功执行；输入注册、前台变化、部分初始化失败、存储失败、断开及清理失败仍需逐项测试和实际对照。
+
+### 756：Rust 命令与状态消费者的缺口
+
+[keyboard_calibration_v2.rs](../../../crates/razer-pages/src/features/keyboard/calibration/keyboard_calibration_v2.rs) 已包含 Calibration / Switch Type 两个 segment、选键/全选、start/save/cancel、60 秒会话计时与末 15 秒提示、首次说明、本机不再提示偏好、Generic 说明、Bottom-out 行程、两种 reset 确认和 Unsaved 导航提示。选中集合、当前目标、session 状态、本机/查询 calibrated 列表和 switch 表分别持有；[artwork owner](../../../crates/razer-pages/src/features/keyboard/calibration/keyboard_calibration_v2_artwork.rs) 有框选、按压/失败动画、保存反馈、toast 与卸载取消。以下接线缺口使它尚不能成为可用设备校准功能。
+
+| 边界 | 官方消费者 | 当前 Rust 的首个缺失/差异 |
+| --- | --- | --- |
+| 七项页面命令 | MW `4368` 对 start/stop/reset/get-list/get-switch/set-switch/reset-switch 各有 feature event；进入真实硬件/本机记录流程 | 页面确实经 `v2_message → request_actuation_message` 发出七种 `ON_*ANALOG_MAGNETIC*` 命令；[Shell 分发](../../../crates/razer-shell/src/shell.rs) 仅拦截 756 全局触发/Rapid 和旧校准命令，其余进入 [keyboard_submission](../../../crates/razer-device/src/keyboard/keyboard_submission.rs) 的解析器，那里没有 V2 intent 分支，返回未接该任务链的错误。七项命令尚无生产执行 owner |
+| 四类 MW 回应 | `Do` 消费校准列表、逐键状态、轴体表、轴体写入状态/token | `observe_keyboard_calibration_v2` 目前只在 ProductWorkspace / SourceProductWorkspace 转发到页面；未找到 Shell/设备事件分发对它的实际调用。因此有 reducer 和手工注入状态用例不等于收到真实设备事件 |
+| 连接/模式初始化 | root 按实际 BLE 选择 nav，Normal Mode 决定 Factory 灰态；mount get-switch，feature init 恢复本机列表，显式 get-list 才真实查询 | 页面提供 `observe_calibration_v2_connection`，但外层也只有转发接口，没有实际状态发布调用；normal_mode 在初始化设 true、is_ble 保持未观测。首次非 BLE 时额外发送 get-list 的 Rust 分支还需按官方读取顺序核对，不得代替 feature init |
+| 进入、保存、取消与 reset | Enter/Exit/Abort、真实通知 128、每批查询、reset 轮询、serial 记录及错误/释放均由 `4368` 和硬件消费者执行 | 当前页面只改变 phase、生成动作；后台缺口也使 stop(false)、reset 与窗口/会话取消无法完成硬件退出或恢复确认。不能把 UI phase=Idle/Saving 或动画完成视为设备成功 |
+| 轴体与行程 | 串行 queue、RzDevice/连接代次保护、26 条批写、serial 存储、8k event 重新注册和全部配置档/DKS/控制器/板载槽 reconcile | 页面已有乐观 switch 表和整数行程 UI，但缺少上述实际 owner 与回传；本页 [轴体联动](#756轴体行程与映射联动) 仍是官方语义证据，不能描述成 Rust 已执行 |
+| 自动转入校准 | 仅新 `switchTypeUpdateToken` 且 `Success` 执行 pending 自动开始 | Rust 用 `auto_start_after_switch`，在任意下一条 switch status 上消耗它；没有对应 token/请求身份字段。即使补上回传，也需拒绝较早请求/旧连接的 Success |
+
+Rust 已将隐藏/最小化后的窗口状态、锁屏、系统挂起、退出等入口接到 `cancel_keyboard_calibration_v2`，见 [窗口焦点](../../../crates/razer-shell/src/shell/gamepad/controller_calibration_focus.rs) 与 [会话生命周期](../../../crates/razer-shell/src/shell/keyboard/keyboard_lifecycle.rs)。普通 blur 保留校准、只有真实隐藏/最小化才取消，这一判断与源码对应；取消命令的实际硬件消费者仍必须补齐。
+
+### 756：视觉、弹层与状态细节
+
+756 `3021.b1237c23.chunk.css` 已按完整规则核对，以下固定坐标均来自当前官方页面，不是通用组件默认值。Rust 有部分显式尺寸对应，但弹层仍复用了统一 `div` 内容构造，不能据此宣称完整还原。
+
+| 页面部件 | 官方 CSS/状态 | Rust 核对 |
+| --- | --- | --- |
+| 双 segment widget | `[88805,89840)`：680px 宽、273px 最小高、20px 顶 margin；active tab 绿色渐变 border，校准中不能进入 Switch Type | 主面板尺寸、tab 图标/绿色渐变、busy/saving 禁用条件有对应 |
+| 轴体列表和提示 | `[91820,94497)`：列表 90..184px、单项最小高 46px、radio 20px、独立 manufacturer、selected-count 浮层 | Rust 有对应条目尺寸、混合轴体无选中态和 hover 提示；显示的缺项默认值是源码 UI 约定，不是硬件实测 |
+| 首次/Generic 弹层 | `[79269,81343)`：420px/446px，top 230px/280px；首次标题中的警告图 24×21，复选框与按钮各有独立 margin | Rust 保留宽度/位置和动作，但首次图标被放到说明之后；统一 gap/标题构造尚未对应全部 CSS 和结构 |
+| Bottom-out | `[76771,79269)`：850px、top 106px 至 bottom 0；36px 独立标题栏，内容 padding 20px 30px、gap 30px、可滚动；slider 204×70 旋转，264px 外框 | Rust 是统一 warning 边框/20px padding 的内容卡，标题/关闭未形成同一 36px 标题栏；使用普通竖向 Slider，尚未对应原版端点标签、视觉轨道和滚动内容结构 |
+| 局部 reset | `[81343,82442)`：限制在面板的 overlay，300px 宽、top 75%、错误色标题/边框/确认按钮；点外部关闭 | Rust 有面板范围和关闭动作，仍需对应错误色标题/按钮及准确 padding/margin；两个 reset 的设备和存储语义必须分别测试 |
+| Unsaved / 保存反馈 | `[87571,88952)`：400px 离开提示、保存时禁用 Don't Save；独立保存 spinner、100ms 切换、按键动画及 3 秒 toast | Rust 保留导航待提交项、Continue/Don't Save 动作、100ms 与 3 秒反馈，并以 artwork generation 取消旧动画；后台未接通时不得生成成功反馈。prompt 目前为 deferred div，没有对应源码的 dialog/aria-modal/标题关联语义或自身焦点所有者 |
+
+官方警告 SVG 与普通/磁轴/low-profile 动画、refresh 普通/hover 图使用现有 [统一资源映射](../../../tools/resource-mappings.json)；本轮核对相关原件身份，没有运行媒体或窗口验收。
+
+## 测试与实际对照要求
+
+[旧校准纯协议测试](../../../crates/razer-device/src/keyboard/keyboard_legacy_calibration_tests.rs) 覆盖 Testing/Driver 命令、getter 第二字节与别名；[旧页面测试](../../../crates/razer-pages/src/features/keyboard/calibration/keyboard_calibration_tests.rs) 区分预览样例和真实入口；V2 文件内已有 session/列表分离和失败 switch response 的状态测试。本轮读取其源码，未运行这些测试；它们也没有提供本轮当前官方 DLL 实际执行结果。
+
+所有产品/布局/传输分支均须补齐从页面输入到后台实际执行、回应消费者和清理的自动化用例。旧版必须核对输入重定向部分成功、15 秒关闭、top getter 一次性、serial 保存失败、前台切换、modal epoch、断开和 stop/释放失败；V2 必须核对 Enter 失败、无 inputId 的计时重置、未知通知、Exit 失败仍发布列表的源码 finally、reset 的全键查询/轮询、混合轴体、过期 token、26/40 条分批、全部 profile reconcile 与连接代次取消。
+
+预期报文、事件顺序和失败结果须来自当前官方原件或实际采集，不能由 Rust 被测编码器生成。实际 DLL/设备对照按 [verification.md](../../../.agents/rules/verification.md) 记录双方原始结果、差异和完整清理；校准数据 reset、轴体或校准写入只有在可记录并完整恢复原值时才能执行。当前没有这样的对照收据，相关设备校准、恢复与运行时验收保持未验证；静态页面对应和模拟状态测试不能替代它们。

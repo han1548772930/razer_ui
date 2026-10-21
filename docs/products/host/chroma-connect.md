@@ -49,7 +49,7 @@ Broadcast reducer 的初始值为 `isConnected:false,isEnabled:false,allAppsInfo
 
 Quick effectId 与 Studio 效果 ID 属于不同枚举，不能因名称相同而混用。换效果通过 effect identity 取得参数并调用 setSelectedEffect，不使用下拉下标持久化身份。颜色提交更新本机配置并交 runner，页面没有独立 Save／Apply 按钮。
 
-同步按钮查询当前 DEVICE_RUNTIME_DATA；当前代码过滤 setupStatus=ready 且 chargingStatus=off 的条目，再判断是否有 Chroma 设备。它不是只看产品能力表。按钮将 timerTick、selectedEffectId、effectSettings 写 window storage，由其他设备消费者处理；1200 ms 旋转仅为 UI 反馈。收到同一同步记录时再按 effectId 恢复本页选择。
+同步按钮查询当前 DEVICE_RUNTIME_DATA；当前代码排除同时满足 setupStatus=ready 且 chargingStatus=off 的条目，再判断余下是否有 Chroma 设备。它不是只看产品能力表，也不是仅保留 ready 设备的筛选。按钮将 timerTick、selectedEffectId、effectSettings 写 window storage，由其他设备消费者处理；1200 ms 旋转仅为 UI 反馈。收到同一同步记录时再按 effectId 恢复本页选择。
 
 当前 Quick runner 对实际四项分别转参：Static 转整数颜色；Breathing 将 no-color／空色转换为具体颜色，并按随机／第二颜色条件使用 7000 或 14000 ms；Audio Meter 构造固定色标及 AutoBoost=0、boost、Decay=1000；Spectrum 传空参数。runner 另有 Wave／Reactive 分支，但没有覆盖全部共享 render 分支，不应宣称其支持所有代码中出现的效果。
 
@@ -119,6 +119,21 @@ apps 服务合并同时发起的 GetAllAppsInfo；请求失败或重复 name 时
 disconnect 取消 pending sends、停止对应监听并发布真实断开／未初始化 memory；非强制断开按服务自己的表安排重连。系统恢复先关闭旧 socket、取消等待并 reset，再 connect。beforeunload 另负责解绑存储、系统恢复及前台事件、unInit／disconnect；不能将一个 connected 布尔值复用于每个生命周期阶段。
 
 页面层仍有不完整清理边界：Quick 的 windowstorageevent 未见配对卸载；观察组件 componentWillUnmount 只移除 storage，匿名 memory／宿主回调及 interval 没有证明全部解除。Advanced 和模式组件自身 storage 监听则有配对 off。Rust 页面 owner 应持有这些任务、订阅、虚拟设备与连接代次，离开／切换时停止在途工作，不能让旧结果覆盖新连接。
+
+## 当前 Rust 页面与服务的对应边界
+
+当前实现必须区分 Chroma Dashboard、产品 `displayMode=chromaApp` 弹层和本页 Broadcast 服务。它们虽然都带 Chroma 名称，但实际根、设备身份、Quick 列表和结果消费者不同；不能以其中一项已存在替代另外两项。
+
+| 边界 | 当前生产所有者与实际行为 | 尚未对应的页面／服务链 |
+| --- | --- | --- |
+| Connect 模块入口 | [ChromaPage::modules](../../../crates/razer-app-pages/src/chroma/chroma_page.rs) 固定列出 Connect，按钮显示 Install 且禁用，点击只为 Studio 分发事件；[app_picker_host.rs](../../../crates/razer-shell/src/shell/app_picker_host.rs) 的可启动模块未含 Connect，强制发送其 Open 也进入通用“窗口服务尚未连接”分支 | 未找到本页 `9073` 的生产挂载：总开／设备行、running 提示、两列 Lighting、Quick／Advanced、熄灯和真实空态均不能由这个禁用入口算作完成。本机功能须独立实现并真实接线，不能永久保留安装占位 |
+| Dashboard 与产品弹层 | [chroma_page.rs](../../../crates/razer-app-pages/src/chroma/chroma_page.rs) 挂 Dashboard／Modules／Apps；[chroma_product.rs](../../../crates/razer-pages/src/features/chroma/chroma_product.rs) 绑定实际产品 workspace，打开它自己的 Lighting 内容并保留 popup owner／释放 | 产品弹层和 Dashboard 的七个 preset 不是本页 Audio Meter／Breathing／Spectrum／Static 四项。不能借用产品设备列表代替 Broadcast `allAppsInfo`，也不能用另一个 Apps 页推断本页存在旧式 Apps／Devices 标签 |
+| 已有本地 WebSocket 能力 | [Session](../../../crates/razer-service/src/lighting/chroma_connect.rs) 独立 Rust 连接 `rzapichromasdk`，由 [receiver_lighting_owner.rs](../../../crates/razer-shell/src/shell/receiver/receiver_lighting_owner.rs) 的后台 owner 使用；真实实现 Init、SetSynapseStatus、SetAttribute、重连、token／参数核对和退出 UnInit／socket 清理 | 这是底座属性桥接，不是本页 Broadcast owner。当前该 Session 没有设备服务 `rzchromabroadcastmanager` 的列表／IsEnabled／Enable／帧调用，也没有供本页消费的 apps 列表／running／手动顺序与前台优先级发布者。已有局部真实服务链应保留，不能笼统写成整个 Chroma 服务均未实现 |
+| 退出与结果 | 底座 owner 退出先停止新请求，等待工作释放，随后调用共享 Session::finish，错误保留诊断；构造 Session 本身不联网 | 该清理只证明对应底座服务所有者存在，不能证明 Connect 页 debounce、memory／OS 事件、虚拟设备 registry、持续帧和 Quick／Advanced 任务已完整取消。连接、Init、属性返回和实际灯光输出分别验收 |
+
+本批直接复核了当前路由、`9073` 导出、四项实际数组、总开／设备行、Quick、Advanced、模式和空态，以及现行 Shell／Session 调用方。完整 `73.78b50033.chunk.js` 中 `et` 单行绑定为 `[69875,70896)`、`tt` 总开绑定为 `[70897,71658)`、`st` 两列根为 `[71659,71726)`，最终 default `it` 在 `[71727,71920)` 才按列表长度选两列或空态；合并的上下文区间不能冒充一个完整函数。当前输入、CSS 与获取收据按字节身份核对，未执行厂商 JS、socket、DLL 或窗口。
+
+后续自动化测试要从这个真实根验证服务非空／空、读取未完成／失败、enabled／running、300 ms debounce、争用禁用、四个效果参数、Advanced profile 身份和无隐式 Apply，再分别验证真实 Broadcast／Apps 请求及 memory 结果、帧消费者、旧连接拒绝、显示电源、取消与释放。纯模拟的请求／回应顺序不能替代官方实际服务／DLL 对照；没有服务或广播设备时仍应测试状态和传输错误分支，真实输出保持未验证。
 
 ## 原件与核对边界
 

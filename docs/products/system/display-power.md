@@ -62,11 +62,30 @@ PowerModeControl helper `Re` 先读取现有 cpuBoost、localDimming、maxFanSpe
 
 刷新率、GPU、ICC、充电限制和 native mode 各自具有任务队列、版本、maker 与 runner 错误通道。多数 runner 在实际调用后检查 abort 并拒绝旧任务；setter 抛异常、helper 吞掉异常、setter 返回 false 分别保留其实际区别。组件草稿的 Cancel 只撤销还未提交的选择；不等同于设备回滚。旧式页面的 focus 监听在卸载时显式移除；OS/native 显示监听属于设备／中间件生命周期。
 
+## 实际页面与当前 Rust 对照
+
+PID737 的完整 Display 根 `Wa` 使用 `.blade-performance` 的两列布局。左列依次为刷新率 `ua → pa`、面板模式 `va → _a`、GPU 路由 `Ha → Ba` 和外接显示 `Ia → Pa`；右列为校准报告 `Oa → Ra`、ICC 配置 `ba → Da`。当前挂载明确传入 `supportLocalDimming:false`，不能从共享刷新率组件具有 local dimming 分支推定该产品应出现这个开关。Battery 的完整连接组件另行挂载，读取 battery reducer、override 与产品能力。
+
+| 页面或动作 | 当前官方行为 | 当前 Rust 对照 |
+| --- | --- | --- |
+| Display 组件树与卡片顺序 | 左侧四块、右侧两块；GPU／面板模式各自持有重启确认，报告和 ICC 分别判断 HDR／文件能力 | [system/mod.rs](../../../crates/razer-pages/src/features/system/mod.rs) 的 `display` 只有一个刷新率 panel，内放 OS 设置链接、降刷新开关和面板模式按钮；没有完整两列、GPU、ICC、校准报告与对应状态树 |
+| 刷新率观测与门禁 | 消费真实列表、当前值、分辨率、显示模式、GPU、实际供电和电池策略；分辨率未知、外屏独占及电池降刷新分别影响显示或禁用 | Rust 从 `draft.display.refreshRateList` 生成按钮，仅按列表长度决定 enabled；没有该 owner 的真实显示／供电观察和对应门禁。种子列表为空不能证明无能力，列表非空也不能证明设备读回 |
+| 面板模式与 GPU 草稿 | 模式点击只打开确认；Cancel 恢复 props／previousMode；Restart 才提交，且面板模式和 GPU 使用不同实际动作 | Rust `choice` 立即修改 `/display/nativeDisplayMode` 并发普通 Changed，没有该确认、Cancel、Restart 或实际面板提交；GPU 分支尚未挂载。补本地弹窗仍不足以完成 OS／设备链 |
+| Battery 结构与文案 | 阈值有宽 62px 的下拉框、百分号和 50…80、步长 5 的 slider；支持的产品另有 override 说明、Fn+B 图形快捷键和警告 | Rust `battery` 只挂限制 toggle、slider、可选 override toggle 与一条 note，未挂阈值下拉和完整 Fn+B／说明结构；已有 `enabled && !override_enabled` 编辑门禁和关闭限制时禁用 override 与原件方向一致，不能因此认定整卡一致 |
+| 实际初值与失败 | 官方读取、缓存恢复和固件能力门控是不同来源；源码吞错或回退的结果不能提升为硬件已确认 | Rust `new` 使用 `spec.initial`，`restore` 合并本地配置；这里没有已确认、未观测、失败与草稿的完整分离，也未接到充电限制／override 的真实观测。不能因本机无配置就恢复默认到设备 |
+| ICC、报告与系统入口 | ICC 按实际文件匹配预置／Custom、loading 与 HDR；报告在 Custom／HDR 时禁用，点击走 `colorProfileViewReport`；颜色管理与外显设置是独立 OS 入口 | Rust 目前只找到 `ms-settings:display` 按钮；该按钮是实际 OS 入口，但不能代替 ICC 枚举／切换／恢复、报告、GPU 与显示事件链 |
+| 修改、保存与清理 | 各类 maker、runner、设备事件与结果消费者分别结算；原件没有为全部 setter 添加统一 GET | Rust `SystemProductChanged` 在 [source_workspace.rs](../../../crates/razer-pages/src/features/workspace/source_workspace.rs) 中只捕获 profile 快照并发 `WorkspaceEvent::Changed`；[shell.rs](../../../crates/razer-shell/src/shell.rs) 与 [persistence.rs](../../../crates/razer-shell/src/shell/persistence.rs) 未为该变化派发显示／GPU／充电限制设备动作，相关观察、取消和释放也不能由本地文件保存视为完成 |
+
+样式需跟随实际 CSS 级联逐项恢复。PID737 面板模式 tile 为 132×47px、margin 5px、padding 5px、1px 边框、3px 圆角，普通背景 `#111`，active 为 `#222` 和绿色边框；hover 也改变边框。Battery override 行允许换行，说明为 14px／17px，快捷键行高 27px，Fn／B 按键宽 47px、水平边距 10px。它们并非共享 GPUI Button 的默认尺寸；标题、禁用、下拉与 slider 的后载规则也需要一起核对。本批只静态读取，未执行窗口或像素比较。
+
+后续纯／模拟测试应分别验证：设备实读与种子／缓存不同时正确消费；未知分辨率、外屏独占、DDS、AC／DC 与降刷新禁用；两种重启确认的 Cancel 不产生设备提交；ICC 缺文件、Custom、loading／HDR；Battery 阈值和 override／Fn+B 的能力分支；更换设备拒绝旧结果，失败和取消完整释放。官方实际 DLL／服务对照仍须针对各自真实完成契约执行，严禁把本地保存、setter 已调用或系统重启任务排队当作硬件状态已确认。本节只核对 PID737 的这些实际页面和当前生产所有者，不能扩展为全部系统产品已通过。
+
 ## 原件与复核位置
 
 原件目录前缀均为 `.analysis/inputs/frontend/`，区间为原始 UTF-8 半开字节区间；各文件读取时核对获取收据的长度和 SHA-256。
 
-- PID737 UI `system-737-current/raw/apps.razer.com/synapse/products/737/ui/static/js/8923.a0bbaf75.chunk.js`：Battery 控件 `[166341,168988)`；刷新率 `[169458,175054)`；native mode `[176829,178465)`；ICC `[179457,184847)`；外接显示 `[186884,187516)`；GPU 路由 `[190057,192695)`；完整 Display `[192864,193424)`。
+- PID737 [获取收据](../../../.analysis/inputs/frontend/system-737-current/acquisition.json) 和 UI `system-737-current/raw/apps.razer.com/synapse/products/737/ui/static/js/8923.a0bbaf75.chunk.js`：Battery 控件 `[166341,168988)`；刷新率 `[169458,175054)`、连接 `[175060,175792)`；native mode `[176829,178465)`、连接 `[178471,178906)`；ICC `[179457,184847)`、连接 `[184853,185376)`；报告 `[185406,186633)`、连接 `[186639,186867)`；外接显示 `[186884,187516)`；GPU 路由 `[190057,192695)`、连接 `[192701,192863)`；完整 Display `[192864,193424)`。本批沿完整 JS 的词法绑定确认这些实际所有者，并核对获取收据、入口和 manifest 的字节身份，读取前后未变。
+- 同 source set 的 `static/css/7838.8c72bcaa.chunk.css`：标题与正文完整规则 `[6101,6513)`；面板模式行／tile／active／hover `[13562,13958)`；override／说明／快捷键 `[25533,25999)`。`1709.83010020.chunk.css` 的 Battery 下拉后载规则 `[63926,64052)`，`main.e381c1df.css` 的禁用 slider 规则 `[43222,43406)`。这些区间记录完整规则，不能从单条属性推断所有产品或所有状态一致。
 - PID737 中间件 `system-mw-737-current/raw/apps.razer.com/synapse/products/737/mw/6737.85397ce157d4cca228ee.js`：刷新率 maker `[876558,877904)`、电池策略 `[877904,879607)`；local dimming maker `[881748,882891)`；native mode maker `[882891,883735)`；ICC maker `[887437,888210)`、恢复 `[888948,889683)`；GPU mode maker `[889683,890509)`、重启 maker `[890509,891235)`。
 - 同一中间件：刷新率 runner `[1126626,1127845)`；local dimming runner `[1130380,1131734)`；native mode runner `[1132683,1133928)`；ICC runner `[1142277,1143729)`、恢复 `[1146626,1147673)`；GPU mode runner `[1148501,1149619)`、重启 runner `[1150528,1151624)`；Battery maker `[916474,917563)`、Fn+B `[917563,919059)`、override maker `[919059,920017)`；Battery runner `[1222575,1223973)`、override runner `[1225006,1225666)`；PowerModeControl helper `[1267994,1268238)`。初始化 getter 调用从字节 151871 开始，本地恢复分支从字节 191766 开始。
 - 同产品 `rzDevice25LedMatrixBlade2.f3d8428364673cd4283f.js`：构造器／回调与筛选 `[1301,4887)`；`SetScreenRefreshRate` wrapper `[11901,12257)`。`rzDevice25.1042baf62cda9ce0c1bc.js`：PowerModeControl `[141662,141833)`，VGA setter `[143915,144005)`，充电 getter/setter `[258365,258562)`。这些 JS wrapper 仍需与底层 native 服务／平台实现分层阅读。

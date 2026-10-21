@@ -44,11 +44,34 @@ PID190 中间件 `31468.fn` 经 `60763.w` 读取以实际序列号选择的本�
 
 任务队列拥有取消、锁、跳过和结算；`cancelAllTasks` 能取消当前任务并处置待执行任务，但 PID182 完整 `90012.hn` 中没有通用的该调用，不能把队列 API 的能力当成退出函数实际执行的动作。灵敏度匹配的采样和停止路径见 [高级灵敏度](advanced-sensitivity.md)。
 
+## PID190 的实际页面与 Rust 对照
+
+当前导航实际挂载 `uS`，而不是把所有 Performance 控件依名称全部加入页面。完整组件只有两列：左列 `MA → pA` 灵敏度、`gA → GA` Windows 鼠标属性；右列先按 `isBle` 隐藏或显示 `XA → xA` 轮询率，再挂载 `NS → dS` 灵敏度匹配器。轮询率调用明确传入 `supportInGamePollingRate:true` 和 `supportColor:true`；此根没有额外的电源卡片，也没有通用 Apply／Save 页脚。
+
+`MA` 从当前 `selectedProfileGuid` 查找真实选中的 profile，档位为空时 `pA` 整体返回 null。多档位编辑继续受 selectedProfile 条件约束。PID190 未传入 `useTwoWayTab`，因此这里显示 Sensitivity Stages 开关；不能把其他型号的 Basic／Advanced 双向页签移植到此页。`sA → oA` 另持有拖动预览与数值预览，释放才把相应数值提交给父组件；拖动时调整被选档位身份，不能只重排 DPI 数值。
+
+| 页面对象 | 当前官方行为 | 当前 Rust 所有者与核对结果 |
+| --- | --- | --- |
+| 根与列顺序 | 左为灵敏度／系统属性，右为条件轮询率／匹配器 | `mouse/mod.rs::performance`、`mouse_properties.rs`、`dpi/mouse_matcher_owner.rs` 有对应组合；PID190 的匹配器单独创建，其他 PID 不能据此计为已覆盖 |
+| 卡片与换行 | `.body-widgets` 为 wrap 行、最大宽 1240px；列宽 600px；卡片宽 600px、内边距 30px 40px、上下外边距 10px、圆角 5px；1279px 以下列增加左右 30px | `mouse_performance_layout.rs` 保留固定卡片宽度和行换行；最终像素、缩放、翻译换行、滚动和 tooltip 定位尚未运行核对 |
+| 档位与 XY | stages 开关、逐行可见性、独立 XY、当前档位、拖动与单档位分支；关闭 XY 必要时把 Y 合并到 X | `dpi/mouse_dpi_rows.rs`、`mouse_dpi_number.rs`、`mouse_current_dpi.rs` 有对应处理；页面草稿和 GET／读回行值分开，不能用草稿证明设备已确认 |
+| 轮询率与状态 | BLE 不挂载轮询率；有线／接收器选择对应字段，选中按钮不重复提交；彩色标记和游戏内轮询率为独立子界面 | `polling/mouse_polling.rs`、`mouse_polling_view.rs`、`mouse_polling_ingame.rs` 有连接分支、颜色按钮和独立游戏设置；真实服务／设备与交互验收仍未执行 |
+| 高轮询率提示 | 普通轮询率大于 1000 时显示对应警告；原件另带远端技术说明链接 | Rust 当前呈现警告文案；远端内容按本地优先范围排除，不能添加禁用的联网占位入口。警告文案、排版及条件仍须独立验收 |
+| 系统鼠标属性 | `GA` 点击调用 `OpenMouseProperties`；`UA` 初始 Windows 11 图标，随后通过版本查询／共享缓存切换图标 | `mouse_properties.rs` 用系统属性适配器，工作区创建时选择系统版本对应图标；图标初始化时序与原版不同，OS 动作成功／失败和资源呈现未运行核验 |
+| 匹配弹层 | mount 发 GET_STATE；READY／CALIBRATING／COMPLETED／ERROR 决定步骤、进度、结果表、重试和按钮；关闭与取消选择不同命令，unmount 移除 window click listener | `mouse_dpi_matcher.rs`、`mouse_dpi_matcher_state.rs`、`mouse_matcher_owner.rs` 有保留状态、菜单、弹层、mount／unmount 及代次；Shell 的 `dispatch_mouse_matcher` 和 retained service 消费实际请求。不能仅因控件存在就推断输入捕获和恢复已经验证 |
+| 读取中／失败／断开 | `pA` 的空数组、profile 门禁、disabled class 与 `xA` 的当前选择来自各自 producer；所读根及灵敏度组件没有通用读取重试条 | Rust `mouse_current_dpi.rs::current_dpi_status` 在灵敏度卡片内显示读取中／断开／错误与 Retry；这是额外的 Rust 状态表面，尚未证明与原版页面的出现位置、文案和恢复动作一致，不能算 1:1 已完成 |
+
+当前 Shell 实际订阅 `MouseCurrentDpiRequested`、`MousePollingRequested`、`MouseInGamePollingRequested` 和 `MouseMatcherRequested`，分别进入保存／设备任务或匹配服务；这一点优于只有本地草稿变化的页面。但官方 DLL 实际对照、真实设备写回及窗口视觉／焦点验收均未执行，因此上表中的“有对应处理”只表示静态调用链已找到。
+
+完整页面对照继续覆盖阶段行的 hover、隐藏、拖动取消、输入焦点、Enter／Escape、弹层外部点击、错误首次到达、切换 profile、切换连接和关闭中的迟到结果。原件本身 `cancel` 比较的是整个 `calibrationState` 对象，`closePopUp` 则比较其 `.state`；应按两个完整处理函数分别记录，不能为了使界面看起来一致而自行合并为一条取消语义。
+
 ## 原件与复核位置
 
 以下偏移均为原始 UTF-8 文件的半开字节区间。正文复核直接读取原始字节，并核对既有收据中的 SHA-256 和完整函数体；来源哈希只用于分析追溯。
 
 - PID190 UI：`.analysis/inputs/frontend/mouse-190-current/raw/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js`，模块 8193 `DEFAULTPROFILE` `[4824983,4825337)`、`DeviceInfo` `[4825338,4826176)`；`IE` `[4988325,4990268)`；`pA` `[5391072,5396030)`；游戏内轮询率 reducer 从字节 5031428 开始。
+- PID190 页面树与完整处理函数：同一 UI 原件的 `uS` `[5420789,5421093)`、导航 `[5595494,5595852)`、`mr` `[5278788,5278944)`、`BO` `[5373209,5373366)`、`oA` `[5383612,5388813)`、`MA` `[5396036,5396489)`、`UA` `[5396502,5397140)`、`GA` `[5397152,5397563)`、`vA` `[5397659,5398102)`、`BA` `[5398103,5399083)`、`xA` `[5399323,5402967)`、`XA` `[5402973,5403292)`、`dS` `[5413672,5420120)`、`NS` `[5420126,5420788)`。已按获取收据核实原件字节身份，并通过 AST 词法绑定解析别名及完整所有者。
+- PID190 CSS：同 source set 的 `static/css/main.7ce428ff.css`；行布局 `[70430,70530)`、列宽 `[70900,70965)`、卡片 `[71013,71242)`、窄窗列边距及 media 条件 `[79961,80013)`、轮询率按钮排列 `[425404,425463)`；匹配弹层高度规则 `[431195,431259)`／`[438126,438196)`，完整宽度 media 分支 `[439646,439749)`／`[439749,439834)`。这些区间与原始 CSS 一致，不将静态样式读取当作运行截图比较。
 - PID190 中间件：`.analysis/inputs/frontend/mouse-mw-190-current/raw/apps.razer.com/synapse/products/190/mw/6120.c8b93f8fc599c9fca67a.js`，`60763.w` `[2187170,2187906)`、`25947.ft` `[1497619,1499546)`、`96571.Xe` `[1693320,1694924)`、`96571.et` `[1694924,1696239)`。
 - PID190 挂载配置：`.analysis/inputs/frontend/mouse-mw-190-current/raw/apps.razer.com/synapse/products/190/mw/main.46378a7add1c518d1ac8.js`，模块 4638 默认配置 `[144667,145373)`。
 - 精确追溯索引：`.analysis/results/frontend/mouse-mw-audit.json` 的 `queries.current_dpi_profile.owners`、`exports`、`source_semantics`；PID182 为 `queries["mouse-receiver-polling"].products[product_id=182].semantics`，含原始 UI／中间件／主机／native 对照位置。

@@ -108,7 +108,7 @@ Dual Keypress Priority 读取独立 reducer 的 `isEnabled/keys`，使用共享�
 
 ## 580 与 747 的 keypad 分支
 
-两款实际 nav 都是 Customize → ACTUATION → Lighting → Help；本页先前的数字键盘规格不能套用于它们。580 `main.1648cf28.js` 的图/触发/Rapid/Snap owner 分别为 `[7478586,7485975)`、`[7397981,7406020)`、`[7407028,7416469)`、`[7419775,7425426)`；747 `7727.e7997edf.chunk.js` 对应 `[251495,258546)`、`[195696,203322)`、`[204260,213038)`、`[217798,223553)`，另有单键录制 `[230062,236353)`。
+两款实际 nav 都是 Customize → ACTUATION → Lighting → Help；产品规格分别取自各自的 `analogSpecs`，不能套用其他型号。580 `main.1648cf28.js` 的图/触发/Rapid/Snap owner 分别为 `[7478586,7485975)`、`[7397981,7406020)`、`[7407028,7416469)`、`[7419775,7425426)`；747 `7727.e7997edf.chunk.js` 对应 `[251495,258546)`、`[195696,203322)`、`[204260,213038)`、`[217798,223553)`，另有单键录制 `[230062,236353)`。
 
 580/747 图组件在 KEYPAD 分支渲染专用键图，默认最低尺寸 350×450，并以当前 inputID/AnalogInput、焦点和 mapping 判断可选键；选择后才激活触发/Rapid 控件。触发改变经过各自 converter，再依次 setActuationToBtnList/setActuation；sync all 过滤禁止映射、sync selected 只处理选中键。Reset 只在用户明确点击原版 reset popup 后运行，Adjustment Mode 拦截编辑。580 使用 offset1.5，747 不使用该偏移。
 
@@ -132,3 +132,43 @@ Dual Keypress Priority 读取独立 reducer 的 `isEnabled/keys`，使用共享�
 | Dual Keypress Priority set | `[7,2,49]` | profile、键数、enabled、最多 4 个键 ID，未使用位置填零 |
 
 setter 验证、传输成功、附加 parser 结果及上层 runner 是否消费返回 status 是不同边界。本文记录的是静态源码链；没有执行设备写入、校准或运行应用程序。
+
+## 当前 Rust 页面与实际挂载树的核对
+
+本节核对当前源码文件中的页面、动作消费者和释放链，不把已有协议方法或预览界面计作整页完成。部署身份取自上述获取收据；本轮重新计算所用 JS/CSS 和媒体原件的字节数与 SHA-256，均与收据匹配。679 的入口所有者为 `JU [8109259,8118712)`，nav 数组为 `[8114950,8115348)`；756 为 `nr [330271,343239)`，非 BLE 与 BLE nav 数组分别为 `[338420,339056)`、`[339057,339575)`，都实际挂载 Actuation。
+
+已核对的具体反例是键盘 PID 752：其 [UI 原件收据](../../../.analysis/inputs/frontend/keyboard-752-current/acquisition.json) 对应 `3717.9326e687.chunk.js` 的完整 root `oa [179097,186758)`，nav `[184295,184519)` 仅挂 Customize、Lighting、Help。main 中即使保留 `ACTUATION` 常量，也不能给该型号添加本页或磁轴校准。此结论仅适用于已经核对的 PID 752，其他型号需要各自入口证据。
+
+Rust 页面入口在 [keyboard/mod.rs](../../../crates/razer-pages/src/features/keyboard/mod.rs) 的 `ACTUATION → actuation_page`；实际控件和草稿状态由 [keyboard_actuation.rs](../../../crates/razer-pages/src/features/keyboard/actuation/keyboard_actuation.rs) 持有。逐项结果如下。
+
+| 功能/分支 | 官方当前行为 | 当前 Rust 对应与差异 |
+| --- | --- | --- |
+| 679 选键和代表值 | `OU/Wh/Jh` 维护逐键选中、最近加入键及批量选择频次；选择本身不写设置 | `select_actuation_key/refresh_actuation_selection` 有独立选中集合、选择历史和频次分组，保留 actuation 与 Rapid 各自代表值。这是可确认的状态实现对应；数据来自当前草稿，不是硬件实测证明 |
+| 679 模拟按压反馈 | 传感器 level、按键身份与 mapping 输出 flag 分别参与颜色和深度；不能用 slider 草稿代替 | [keyboard_analog_observation.rs](../../../crates/razer-pages/src/features/keyboard/actuation/keyboard_analog_observation.rs) 独立持有观察反馈，679 slider 使用观察深度和颜色；[keyboard_observation_tasks.rs](../../../crates/razer-pages/src/features/keyboard/actuation/keyboard_observation_tasks.rs) 保留订阅身份、取消与等待释放。该调用链存在，真实注册/事件/释放仍须实际对照 |
+| 触发/Rapid 修改时序 | `Wh/Jh` 与 756 `Zi/tn` 对触发 slider、Rapid 开关/slider 使用 500ms debounce；各编辑/同步/重置入口检查 Adjustment Mode 并显示原有提示 | Rust 在 retained slider 的 `SliderEvent::Change` 中立即调用 `apply_actuation/apply_rapid`，Rapid/Continuous 开关也直接提交；这些方法未接 Adjustment Mode 的拦截。Snap 自己的 500ms timer 和提示不覆盖其他控件 |
+| 756 触发释放阈值 | `Zi.onMakeActuationPointChange` 在未启用 custom release 时令 release 等于新 make，启用时取旧 release 与新 make 的较小值 | `apply_actuation_points` 的普通编辑统一生成 `{0:raw,1:default_release}`，只在 synchronize 时令两者相等；756 普通编辑的输入映射已经在此产生差异，不能用其他型号的 release 行为替代 |
+| 触发重置 | `Wh/Zi` 都有图标、hover 提示、点击外部关闭和确认；确认才计算保留的映射并提交 | Rust 仅在 `analog_gamepad_layout()` 或 PID 756 绘制图标；`reset_analog_actuation` 又要求 `analog_gamepad_layout()`，因此 756 点击确认直接返回。其他采用 `Zi` 布局的分支还须补齐实际挂载的 reset 控件 |
+| Snap Tap / Single Key / Dual Priority | 产品树见上表；756 `ha` 左列 `Yn/ra/Fi`、右列 `sn/Nn/ua`，明确包含两种 Snap Tap 与 Dual Priority | `actuation_page` 只调用 [analog_snap_panel](../../../crates/razer-pages/src/features/keyboard/actuation/keyboard_snap_analog.rs)，该 panel 限于 Analog Gamepad 布局；[snap_tap 初始化](../../../crates/razer-pages/src/features/keyboard/actuation/keyboard_snap_tap.rs) 也只允许已实现的普通型号或该布局。其余已挂载 Actuation 型号的 Snap 分支，以及本页 Single Key / Dual Priority 控件尚未形成对应挂载和录制链；底层有 setter 不能补足这些入口 |
+| 独立 Continuous | 679 `uU` 与 756 `yn [237558,238069)` 从独立 reducer 恢复开关值，并在 Adjustment Mode 拦截编辑 | Rust `continuous_supported()` 漏 PID 756；`continuous_enabled` 仅初始化为 false 并由本地 toggle 修改，没有接入来源状态恢复。显示 false 不能解释为真实设备关闭 |
+| 756 动态行程上限 | `Zi` 对选中键取有效 keyTravel 最小值，另保留 visualMax 并显示缩短行程说明 | Rust `maximum_actuation()` 有对应的取最小值逻辑，但依赖 `calibration_v2.switches`；轴体状态的生产消费者尚未接通，见 [校准接线边界](calibration.md#756rust-命令与状态消费者的缺口)。普通 `Slider` 也未对应原版独立 visualMax 与缩短行程说明 |
+| Factory / Normal / BLE | 679 Factory 锁定；756 提示与内容灰态采用不同的 normal/factory/ble 表达式 | Rust renderer 已分别计算 overlay 和 wrapper_disabled，不能据此认定状态来源完整。756 normal_mode 初始为 true，所提供连接/模式观察接口尚无 Shell 实际调用，仍需接真实来源 |
+
+`sync_actuation/start_sync_feedback` 已分别实现全选/选中集合、两秒反馈与两秒半禁用时刻，并在页面离开时取消 timer、递增生命周期。它们只证明 UI 时序有实现；反馈动画不消费设备成功结果。`reset_analog_actuation` 保留映射分支的实现也只对满足其实际 guard 的型号生效。
+
+## 页面动作到写入、观察和清理
+
+[keyboard_actuation_submission.rs](../../../crates/razer-pages/src/features/keyboard/actuation/keyboard_actuation_submission.rs) 为命令捕获当时的 profile/payload 和 generation，pending 请求逐个完成，较早失败不会被后续成功抹除。Shell 的 [事件分发](../../../crates/razer-shell/src/shell.rs) 先选择 756 retained restore intent、旧校准 intent，再进入 [keyboard_actuation_write.rs](../../../crates/razer-shell/src/shell/keyboard/keyboard_actuation_write.rs)；后者解析本地动作、保存对应配置，再把已准备 intent 交给设备/配置档身份限定的 FIFO。
+
+[keyboard_actuation_worker.rs](../../../crates/razer-shell/src/shell/keyboard/keyboard_actuation_worker.rs) 经独立服务/实际路由提交；[keyboard_submission.rs](../../../crates/razer-device/src/keyboard/keyboard_submission.rs) 保留已观测板载槽、命令尝试和 setter 应答，不能由磁盘保存推断 HID 已确认。`MappingDraftOnly/AppEngineOnly` 明确没有 Feature setter；普通 mapping 修改、全局 actuation/Rapid 与 Continuous 具有不同任务。756 的普通 mapping/部分控件先经过页面 `apply_latest_source_reduce`，再由 [retained restore owner](../../../crates/razer-shell/src/shell/keyboard/keyboard_latest_restore.rs) 及其 worker 处理；不能因这个页面 reducer 只改草稿而直接断言整个写入链都只保存文件。
+
+FIFO 的连接/配置档失效停止后续 setter，退出正常排空已接纳命令，核验服务 shutdown 并等待 worker/transport 销毁；观察订阅则由其各自 owner 解除。以上是实际存在的 Rust 清理结构，不代表所有上表缺失控件已使用它，也不代表普通测试执行了当前官方 DLL。错误保留在请求/诊断状态，前端两秒 spinner 与真实写入结果仍须分别验收。
+
+## 视觉、资源与测试边界
+
+679 `main.1c5a651a.css` 的完整规则规定：`.body-widgets [68750,68850)` 最大宽 1240px；`.widget-col [69220,69312)` 宽 600px；widget `[69360,69589)` 内边距 30px 40px；动画规则 `[449092,449311)` 保留 140px 盒子与 1.5 倍绘制；reset popup `[451669,452302)` 为最小宽 300px、2px `#ff4500` 边框和独立 hover/显示状态。Rust 已显式保存对应动画盒/绘制尺寸与 popup 部分尺寸，但仍须按完整根树和其他型号 CSS 检查控件间距，不能由几个尺寸吻合宣称页面 1:1。
+
+官方 `Actuation.28db05a7.gif`、`MagneticActuation.56318359.gif`、`LowProfileActuation.e86e6ea4.gif` 和 Rapid tooltip GIF 的当前原件已核对；其项目 alias 由 [资源映射](../../../tools/resource-mappings.json) 统一维护。普通、磁轴、low-profile 动画的选择在 Rust 有明确分支。本轮未启动窗口、加载动画或执行设备操作，渲染与媒体播放验收仍未验证。
+
+自动化用例必须逐产品覆盖选择排除、混合值、最近键/频次、普通编辑与 Sync 的阈值差异、500ms 时序、Adjustment/Factory/Normal/BLE 分支、reset、录制冲突、双键/单键保存、每个实际槽的传输失败、取消、旧连接结果和退出释放。已有 [sync feedback 纯测试](../../../crates/razer-pages/src/features/keyboard/actuation/keyboard_sync_feedback.rs)、[协议提交测试](../../../crates/razer-device/src/keyboard/keyboard_submission_tests.rs) 与 [FIFO/清理测试](../../../crates/razer-shell/src/shell/keyboard/keyboard_actuation_worker_tests.rs) 提供局部测试入口；本轮仅检查其源码，没有运行这些测试，也没有取得官方 DLL 实际功能对照收据。
+
+验收依 [verification.md](../../../.agents/rules/verification.md) 分开记录源码获取、语义逆向、Rust 实现、UI/后台接线、纯/模拟测试、实际 DLL/设备对照与运行时验收。模拟报文或两边均未连接不能把本页提升为完成；无法完整恢复原值的写入和校准数据变更不得开始实际对照。

@@ -613,6 +613,7 @@ def semantic_query_gaps(value, evidence, pointer="", product_id=None):
     """Preserve acquisition, analyzer and semantic findings as separate claims."""
     kinds = {"failures": "semantic_query_failure", "unresolved": "semantic_query_chain_unresolved",
              "unresolved_chains": "semantic_query_chain_unresolved",
+              "remaining_chains": "semantic_query_chain_unresolved",
              "remaining_local_chains": "semantic_query_chain_unresolved",
              "failed_acquisition": "acquisition_query_failure",
              "unresolved_acquisition": "acquisition_query_reference_unresolved",
@@ -1040,6 +1041,18 @@ def _refresh_gaps():
         rows.append({"kind": "semantic_audit_pending",
                      "scope": "host IPC, installed native dependencies, local storage, lifecycle and Rust adapters"})
         derived[rel(host_js)] = rows
+    host_local = ROOT / ".analysis/results/host-current/local-audit.json"
+    if host_local.is_file():
+        data = json.loads(host_local.read_bytes())
+        rows = semantic_query_gaps(data, rel(host_local))
+        for query, report in data.items():
+            if isinstance(report, dict) and report.get("source_chain_complete") is False:
+                rows.append({"kind": "host_local_source_chain_pending", "evidence": rel(host_local),
+                             "pointer": "/" + query.replace("~", "~0").replace("/", "~1"),
+                             "scope": "Retained complete owners do not establish every native target and consumer"})
+        rows.append({"kind": "host_implementation_acceptance_pending", "evidence": rel(host_local),
+                     "scope": "Static host queries do not establish complete Rust/UI wiring, actual DLL comparisons or runtime acceptance"})
+        derived[rel(host_local)] = rows
     for owner in ledger.get("derived_owners", []):
         ledger["owners"].pop(owner, None)
     ledger["owners"].update(derived)

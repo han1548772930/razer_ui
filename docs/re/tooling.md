@@ -83,6 +83,8 @@ Windows x64 的模糊目标构建还需匹配的 MSVC AddressSanitizer 运行库
 
 `audit-host-local --query macro-recorder` 从当前 PID192／756 middleware、Macro 和 background-manager 原件保留完整 AST owners 与真实 UTF-8 byte 区间，并复核四套既有 Wakaru 捕获的全部原件、产物和分析器字节。完整捕获中的 validate 非零结果与获取缺失不升级为成功；统一 [local host 查询](../../.analysis/results/host-current/local-audit.json) 保留软件录制与 OTFM 写入／移除、PID756 非独占预触发与全局广播、background OTFM 全局锁与完整状态机、An 初始扫描与 q 事件字段差异、接收器缓存最后匹配、serialNumber 筛选及当前功能注入配置。JSON 记录不会补造 getHWModule；原生 transport、完整页面与真实运行验收仍未闭合。
 
+`audit-host-local --query window-lifecycle` 在同一查询收据保留 25 份字节核实的完整宿主 JS 文件及 117 个去重 AST 所有者。输入逐一与 packed ASAR、官方包成员和获取清单核对；窗口／页签身份、120000 ms 默认休眠与显式休眠、URL 内存存储、Windows 原生事件的 JS 消费者、退出拒绝与超时、已登记 HID 恢复命令及 WebSocket／BLE／日志停止分别记录。BLE endpoint 原件的 797 个函数、9 份汇总产物和 16 个完整行为所有者另经实际字节校验，其 UTF 失败的 7 函数 supplement 保留原失败、类型依据和数据库不变性。该查询为静态操作，不执行 JS 或 DLL，不把异步发送、FreeFFI 返回 true、三秒超时或 app.exit 当作释放成功；`refresh-gaps` 保留其失败、剩余调用链及独立实现／实际对照的未验证状态。具体顺序、源码缺陷和对照边界见[窗口生命周期](../products/host/window-lifecycle.md)。
+
 `inspect-corpus --no-refresh-gaps` 对所有索引 DLL／NODE／EXE／SYS 及静态提取的实际 MZ 无扩展名载荷分类 native、CLR、混合 CLR／native 和其他格式，保存 aliases、imports、delay imports、exports、version resources、CLR／ReadyToRun 头及失败。扩展名不代替 CLR 判定，ReadyToRun 不冒充纯 native C++。
 
 corpus schema 3 另从当前官方原始 manifest／生产发现 JSON 建立版本来源链，逐项核对资源的实际长度、SHA／integrity 或源码声明的 MD5，再连接完整静态提取收据、内嵌字节区间、packed ASAR 区间及已验证的同字节 aliases。最新 host 元数据复核失败时不能退回旧稳定收据；installed 路径、PE 版本及继承的 verified 字段都不是来源根。ASAR unpacked sibling 必须另有官方包同字节证明。输入索引、原件及收据在审计结束时复核快照；来源链闭合与依赖、ABI、安装分支、实现及运行验收分别记录。
@@ -115,7 +117,9 @@ IDA 9.1 的批处理与补查明确传入 `-Opdb:off`，依据安装的官方 `c
 
 聚合 C／ASM 完整写入临时文件后才发布，失败保留先前完整输出；捕获收据在聚合文件和全部输出摘要写完前保持 `capture_complete=false`。队列复用完整捕获及新捕获返回成功后，均重新核对实际原件长度／SHA、manifest 输入身份、完整函数数量、唯一 RVA／地址、汇编捕获标记、七类 dataset 与 C／ASM 聚合文件清单及全部产物摘要；不单独信任成功标记。反编译失败不会伪装为完整伪代码。验证中清单或产物变化逐项失败，记录实际捕获清单身份及逐原件前后快照。队列结束时再次复核全部已验证原件快照及读取的语料收据实际 SHA，先完成的原件在后续分析期间改变也会阻止完整批次结论。
 
-本轮重新取得实际输入并完成全函数捕获的基础模块包括 HID.node、mapping_engine、simple_service、BLE binding、Razer.WMI、SysUtilsNative、两份 Seiren DLL 和 GenericCamera。数量与 Hex-Rays 失败以各自新收据为准。2026-10-16 以 IDA 8.3／Hex-Rays 8.3.0.230608、Python 3.11.6 和当前维护捕获工具完成 GenericCamera 1.0.35.0（2,860 个函数）及 1.0.36.1（2,868 个函数）的完整静态捕获；前者 RVA `0x870c0`、后者 RVA `0x87ad0` 的调用分析失败及完整汇编如实保留。两份原件、工具摘要、私有数据库检查点、全部函数／数据集／聚合产物摘要均记录在对应 [native 结果](../../.analysis/results/native/)；旧 1.0.36.1 收据缺少捕获工具摘要的问题已通过实际重捕获消除，未手填分析器元数据。
+已保留实际输入并完成全函数捕获的基础模块包括 HID.node、mapping_engine、simple_service、BLE binding、Razer.WMI、SysUtilsNative、两份 Seiren DLL 和 GenericCamera。数量与 Hex-Rays 失败以各自收据为准。当前 GenericCamera 1.0.35.0／1.0.36.1 基准收据实际使用 IDA 9.1、Hex-Rays 9.1.0.250226、Python 3.11.9，分别保留 2817／2825 个函数；每版各保留一个 UTF 辅助函数的原始反编译失败及完整汇编。两份原件、工具、私有数据库检查点及完整产物摘要均记录在对应 [native 结果](../../.analysis/results/native/)。
+
+GenericCamera 的两个 UTF 失败 owner 已在独立私有副本进行类型恢复，每版补查 7 个完整函数且失败为零，保留实际二／四参数调用证据；原始失败记录不改写。另分别提取两版 base／Pro／X 的六张完整虚表和所有目标，旧版 44 槽、新版 46 槽。新增 shutter-limit 槽使后续偏移变化，Pro RestoreDefaults 的实际命令也不同；这些差异不能由同名导出或函数数量推断。八份补查的精确收据、RVA、协议和版本边界见[摄像头](../products/accessories/camera.md)，不代表所有摄像头业务或真实 DLL／设备对照完成。
 
 两份 Seiren DLL 各 1,947 个函数中的唯一调用分析失败点 RVA `0x3318e`，已使用 IDA 9.1、Hex-Rays 9.1.0.250226、Python 3.11.9 对私有数据库副本定点补查。完整指令和交叉引用证明其为四寄存器参数的 vector reserve 路径，原分析器误推六参数；每份补查各保存八个完整函数，失败及数据库不一致均为零。原全库捕获及其失败记录保持原样，统一 native 收据连接补查的实际字节身份；不能由该点闭合推导其他间接 ABI、产品实现或运行验收已完成。
 

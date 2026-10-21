@@ -48,7 +48,7 @@ PID190 Matcher 的输入监控、设备任务协调、真实 DPI setter 与统�
 - 键盘 `local_controls_source_review` 已从当前原件重查 691／740／746：147 份完整模块、291 份完整 callable，查询失败与未解项均为零。获取缺失、依赖图未闭合及其余产品分支分别保留；查询成功不代表页面或设备链已完成。
 - razer-app-pages 11 项 GPUI 测试失败：5 项依赖当前 GPUI Kit Button 不暴露的 accessibility disabled 标记；应用选择器点击未打开、导览视口偏移、IoT 弹窗焦点恢复、配对确认框缺失、按钮 33.5／33.75px 高度、Gamer Room tutorial 状态待查。razer-pages 测试尚未全量运行。
 - 鼠标电源、其余键盘 calibration／lighting gates、系统灯光和音频 SURROUND 仍须逐项对照原件复核。PID740／746 映射及 Hanbo 本轮已接的具体链见上述架构边界和当前验证收据；这些结果不能替代其余产品分支或整页清单。缺失远程资源仍须按现有发布链核对，不据此重新全量上传。
-- 应用、安装包、厂商代码与真实设备均未运行验收。
+- 应用、安装包与厂商 JavaScript 未运行；整页真实设备和窗口验收未完成。已授权的本地 DLL／服务／设备专项对照及可恢复写入以各自当前收据为准。
 
 ## 2026-10-16 全产品并行实现
 
@@ -57,11 +57,43 @@ PID190 Matcher 的输入监控、设备任务协调、真实 DPI setter 与统�
 | 负责人／范围 | 已落地位置与行为 | 继续位置 |
 | --- | --- | --- |
 | `mouse_source_integration`：鼠标滚轮 153／170／203／204／214／226／45066 | [页面任务](../../crates/razer-pages/src/features/mouse/scrolling/mouse_scroll_task.rs)、[串行保存](../../crates/razer-shell/src/shell/mouse/mouse_scroll.rs)、[直连传输](../../crates/razer-discovery/src/direct/mouse_scroll.rs)：用户编辑、300ms 模式 debounce、53 位 profile 版本保存、typed IPC、接收器分支、226 mask→mode、取消与清理；启动和配置恢复共用提交入口，Smart Reel 从真实板载 metadata 匹配 GUID，45066 取首匹配 slot；按源事件次数推进版本，保存回执不重复恢复 | [当前完整查询](../../.analysis/results/frontend/mouse-mw-audit.json) 覆盖这 7 个产品的 100 个 owner，失败为零；其余页面组件、产品分支及真实设备验收继续逐项完成 |
-| `product_ui_parity`：八款游戏手柄及共用控件 | [配置恢复](../../crates/razer-pages/src/features/gamepad/gamepad_profile.rs) 恢复扳机、摇杆与 OBM slot 的已保存字段，校验 side、值域与产品分支，保留扩展字段；[Stepper](../../crates/razer-widgets/src/stepper.rs) 按当前完整组件仅在点击输入后注册窗口滚轮，失焦清理；[取屏色状态](../../crates/razer-pages/src/features/lighting/screen_color.rs) 保留请求与取消；2636／4115 快捷灯效子树、profile 颜色、Chroma 读回修订和校准帧所有者已继续接线 | [main 证据](../../.analysis/results/frontend/gamepad-main-audit.json)及[中间件证据](../../.analysis/results/frontend/gamepad-mw-audit.json)分别保留完整捕获、Wakaru validate 失败和语义核对；不能将组件图闭合当作分析器全部成功。继续其余 mounted 分支、整页呈现和后端清单；真实取屏色、窗口与设备未验收 |
+| `product_ui_parity`：九款游戏手柄源码与共用控件 | [配置恢复](../../crates/razer-pages/src/features/gamepad/gamepad_profile.rs) 恢复扳机、摇杆与 OBM slot 的已保存字段，校验 side、值域与产品分支，保留扩展字段；[Stepper](../../crates/razer-widgets/src/stepper.rs) 按当前完整组件仅在点击输入后注册窗口滚轮，失焦清理；[取屏色状态](../../crates/razer-pages/src/features/lighting/screen_color.rs) 保留请求与取消；2636／4115 快捷灯效子树、profile 颜色、Chroma 读回修订和校准帧所有者已继续接线 | [main 证据](../../.analysis/results/frontend/gamepad-main-audit.json)及[中间件证据](../../.analysis/results/frontend/gamepad-mw-audit.json)分别保留完整捕获、Wakaru validate 失败和语义核对；九款源码范围与已接入的具体 Rust 链分别核对，不能将组件图闭合当作分析器全部成功。继续其余 mounted 分支、整页呈现和后端清单；真实取屏色、窗口与设备未验收 |
 | `accessories_camera_system`：Kiyo V2 PID3595 MIC | [MIC 控件](../../crates/razer-pages/src/features/workspace/source_controls/camera_mic.rs)：`CAMERA_MIC_SETTINGS`→`setAudioFunction(1/0)`→10ms→flash save→10ms→reboot；保留 dirty／pending／reboot 状态及取消／清理；刷新当前 native 静态捕获并保留反编译失败 | 新增编译测试及统一测试仍待复跑，继续其余摄像头／附件／系统页面。当前 [摄像头报告](../../.analysis/results/frontend/accessories-camera-local-pages-audit.json) 对应 gaps 仍有未解语义／失败及整页待验收项 |
 | 主任务：音频／视频 | [页面播放器](../../crates/razer-pages/src/features/audio/audio_media.rs) 已挂载 1352／1392／1442／3942，连接按需媒体、原八通道 PCM、实际已消费音频时钟、后台帧解码、拖动 seek 及旧代次隔离、播放／暂停／全屏；后三款保留循环和跨页浮动播放／拖动／关闭，1352 保留专用尺寸与音频模式选择器 | 继续原版全部快捷键、点击／双击与焦点语义，真实音量／保音高变速、forceOpen 分支及 SURROUND 完整组件／后端；全屏事件顺序仍须逐完整库函数核对。没有真实窗口／播放验收；见 [音频 demo 证据](../../.analysis/results/frontend/audio-demo-audit.json) |
-| `local_backend_parity`：手柄／混音器及平台链 | 八款手柄 Feature collection 与三款 V3 校准接通 source-host 语义；Mixer PID1342 的 Feature64→18 与 Output66→Input16 接线、20 次重试及取消／身份门禁；HID GetInput 返回长度按当前原生完整函数修正；[取屏色平台所有者](../../crates/razer-platform/src/input/screen_color.rs) 持有 Windows 后台窗口、截图、流式事件、Done／取消与资源释放 | 继续所有产品的原生协议／服务链；真实取屏色、窗口和设备未验收，模拟传输通过不等于真实设备写回 |
+| `local_backend_parity`：手柄／混音器及平台链 | 已接入手柄的 Feature collection，2676／2684 的 V3 扳机校准已有 Start／Poll／Cancel 的 source-host 提交链；Mixer PID1342 的 Feature64→18 与 Output66→Input16 接线、20 次重试及取消／身份门禁；HID GetInput 返回长度按当前原生完整函数修正；[取屏色平台所有者](../../crates/razer-platform/src/input/screen_color.rs) 持有 Windows 后台窗口、截图、流式事件、Done／取消与资源释放 | V2 校准和 V3 摇杆弹层的 `CalibrationIntent` 尚未见生产提交消费者，不能与 V3 扳机链合并宣称完成；继续所有产品的原生协议／服务链，并逐 PID 核对九款源码范围。真实取屏色、窗口和这些手柄设备分支未验收，模拟传输通过不等于真实设备写回 |
 | `current_source_audit`：来源／依赖／资源 | 官方当前稳定通道及本机活动主程序 4.0.827 已复核，138 个宿主文件与官方提取字节一致；664 个 UI／MW 入口本批复核稳定，保留原件未发现字节损坏；补充精确原版 SVG、媒体分析器与资源发布验证 | 继续实际声明缺失文件、拆包失败、间接调用及完整依赖闭包；原生全语料由统一 IDA 队列继续补捕获；source map 缺失、未声明 manifest probe 与实际运行依赖缺失分别记录 |
+
+手柄源码范围按九个独立 PID 清点。已再次核对各 acquisition 中实际 JS 字节，并沿真实产品根读取页面数组；各产品的获取时间与部署身份仍由自己的收据维护。本轮静态阅读不改变其 Rust 实现、接线、官方 DLL 实际对照或设备验收状态。详细调用链见[手柄功能文档](../products/gamepad/README.md)。
+
+| PID | 实际挂载页与必须保留的分支 |
+| --- | --- |
+| 2629 | Customize、Triggers、Thumbsticks、Calibration、Help；有线 Sage，无 Lighting 页 |
+| 2636 | 2629 的页面加 Lighting、Power；无线 Sage，灯光能力来自本产品 MW 的 `supportsLighting:true` |
+| 2647 | Customize、Triggers、Thumbsticks、Power、Calibration、Help；Triggers 受设备实读固件 `1.4.0.0` 门槛控制，SagePC report ID 10、等待 30 ms |
+| 2650 | Customize、Thumbsticks、Calibration、Help；产品根直接没有 Triggers 项，不能套用 2647 的固件门槛 |
+| 2676 | Customize、Triggers、Thumbsticks、Power、Calibration、Help；MW `supportsLighting:false`；共享 extended-static 方法与实际继承链的不匹配仍待查清，不据共享引用推定灯光能力 |
+| 2684 | Customize、Triggers、Thumbsticks、Calibration、Help；main 中模块 4841 只挂载 lazy wrapper，实际根在 `8169.3cf63c70.chunk.js` |
+| 4115 | Customize、Lighting、Help；街机分支，软件灯光与退出恢复独立于双摇杆校准 |
+| 4133 | Customize、Triggers、Thumbsticks、Power、Calibration、Help；PlayStation 分支，包含 `useGetDockEditionAPI` |
+| 4144 | 页面组合与 4133 相同；PID、dongle 4146、BLE 4147 独立，当前 bootstrap 未注册 4133 的 `useGetDockEditionAPI` |
+
+九款手柄仍须按完整页面、弹层和当前生产 caller 验收。当前 [GamepadProductWorkspace](../../crates/razer-pages/src/features/gamepad/mod.rs) 真正 dispatch Customize／Triggers／Thumbsticks／Lighting／Power／Calibration 六类 body，Help 由共享 workspace 挂载；页面数组、通用 profile 字段或包含某个组件均不能证明下面链已经闭合。具体官方调用、单位、产品和固件差异见[映射与摇杆](../products/gamepad/mapping-and-sensitivity.md)及[校准与灯光](../products/gamepad/calibration-and-lighting.md)。
+
+| 实际页面／弹层 | 当前 Rust 表面、状态与生命周期 | 后端接线和独立验收边界 |
+| --- | --- | --- |
+| Customize：双摇杆产品 | `customize_artwork` 绘制产品／edition／layout 图像、按钮热区与 hover；当前选中按钮的 Default／Controller assignment／Disable 以普通 Button 列表写 draft，右列按产品 polling 档位绘制 | `set_mapping` 和 polling 的 `choice → write` 当前发 `GamepadProductChanged → source_workspace.capture → WorkspaceEvent::Changed`；这条路径没有独立具名 mapping／polling 请求。不能把本地 profile 快照视为真实 OBM 写入，也未完成原 key mapping drawer／全部输出类别与保存取消链核对 |
+| Customize：4115 街机 | [kitsune](../../crates/razer-pages/src/features/gamepad/kitsune.rs) 独立绘制模式、方向与 SOCD 表面，不能套用普通手柄按钮树 | SOCD、controller mode、reset 与 profile／通知的实际生产 caller 仍须分别追完；其他产品的扩展方法或 UI 控件不能代替该 PID 的真实结果 |
+| Triggers：左右 Analog／Digital | [triggers](../../crates/razer-pages/src/features/gamepad/gamepad_triggers.rs) 包含实时产品图、左右两列、模式 radio、range 双手柄、actuation、Rapid Trigger、reset 与两类帮助；range preview 与已提交值分开，digital 控件为 1%–100%。[navigation](../../crates/razer-pages/src/features/gamepad/gamepad_navigation.rs) 对 2647 的实读固件只移除、不在同一生命周期重新插入 Triggers；2650 无该页 | [trigger runtime](../../crates/razer-pages/src/features/gamepad/gamepad_trigger_runtime.rs) → workspace event → shell [controller_triggers](../../crates/razer-shell/src/shell/gamepad/controller_triggers.rs) → discovery → typed IPC → [设备命令](../../crates/razer-device/src/gamepad/controller_triggers.rs) 已有具体链，写前保存、当前连接唯一性、scope／应答／响应身份和关闭后的结果收尾独立处理；没有实际官方 DLL／设备对照，不能扩展为所有型号完成 |
+| Thumbsticks：六款 legacy 与 2676／2684 modern | [thumbsticks](../../crates/razer-pages/src/features/gamepad/gamepad_thumbsticks.rs) 持有 slider／focus／延迟提交、死区／灵敏度、双死区预防、圆度、分配说明、模拟图和教程；modern 两 PID 单独选择。切页取消编辑，重新进入按源码重新采集本次 rollback 基线 | deadzone／sensitivity／circularity 使用 trigger 请求链，真实输入由 controller input owner 发布；各产品曲线、clutch assignment、资源选择与读取消费者仍须逐项核验，不能由同一模拟报文覆盖全部档位／未知／失败／重连 |
+| 低／零死区警告 | [deadzone_dialog](../../crates/razer-pages/src/features/gamepad/gamepad_deadzone_dialog.rs) 独立持有 focus／return_focus 和展开状态，区分低值／零值标题、Continue 与回退；legacy 的 Recalibrate 请求导航，2676／2684 则打开摇杆 popup；说明的高度、opacity 和箭头分通道动画 | 打开校准入口不代表执行设备校准，摇杆 intent 仍缺后台消费者。官方关闭无条件派发 prev 值，Rust 同值 write 不派发的差异已定位；继续核 MW 去重，不能仅凭 UI 派发次数推定实际 HID 次数。关闭、取消、旧页面切换、重复触发、返回焦点及基线分别验收 |
+| Calibration：2629／2636／2647／2650／4133／4144 | [calibration](../../crates/razer-pages/src/features/gamepad/gamepad_calibration.rs) 的 V2 页面、步骤／实际有效性、产品图、模拟器及错误 Dialog 由独立 state 持有；离开页发 Stop，错误 Dialog 明确关闭 Escape 和外部取消，恢复触发前焦点 | 当前页面发 `CalibrationIntent`；workspace 只有取 intent／注入 observation 的方法，生产挂载订阅与 shell 未见该 V2 intent 的提交／读取消费者。不能由页面步骤、存在协议计算器或 V3 请求链宣称六款 V2 校准已接通 |
+| Calibration：2676／2684 选择页、摇杆 popup、扳机 popup | [selection](../../crates/razer-pages/src/features/gamepad/gamepad_calibration_selection.rs)、[calibration_popup](../../crates/razer-pages/src/features/gamepad/gamepad_calibration_popup.rs)、[trigger_calibration](../../crates/razer-pages/src/features/gamepad/gamepad_trigger_calibration.rs) 分开处理 hover、部件、generation、真实移动、帧动画、focus 和关闭；扳机 popup 的 Escape／外部取消按明确源码策略处理 | 扳机 `TriggerCalibrationIntent` 经 shell [controller_calibration](../../crates/razer-shell/src/shell/gamepad/controller_calibration.rs) 进入 Start／Poll／Cancel，设备 V3 采样／阈值／SET＋GET 验证已有具体链；同页摇杆 popup 发的是另一类 `CalibrationIntent`，仍受上一行缺口约束。关闭 stop、线程 join、旧代次拒绝、取消与读回须分开测试 |
+| Lighting：2636 硬件、4115 软件 | [lighting](../../crates/razer-pages/src/features/gamepad/gamepad_lighting.rs)、[quick_lighting](../../crates/razer-pages/src/features/gamepad/gamepad_quick_lighting.rs) 与各 runtime 保留效果、preset／custom、色板／取屏色、亮度及关闭灯光分支；离页取消控件观察和色彩编辑 | shell 的 controller_lighting／controller_chroma／controller_power owners 区分硬件效果请求、持续软件帧、显示／空闲策略及退出恢复。其余七 PID 没有 Lighting 页，尤其 2676 的 `supportsLighting:false` 不得被共享方法推翻；实际帧无 ACK 的完成契约、调色板、初始化和全部释放仍按原件分别验收 |
+| Power 与 Help | 2636／2676 的实际 Power 选项为 5／15／30／45／60 分钟；当前 Rust 的 `power_minutes` 同值，却被 `power_saving_label` 按秒格式化，显示为 5／15／30／45 秒和 1 分钟，与官方页面不同。Help 从共享 workspace 的当前产品目录挂载；切页保留 body entity，销毁／换设备另有 owner 生命周期 | 官方休眠已追到 NORMAL_SKIPPABLE 队列、SET 后 GET 比较及实际产品 override：5 分钟为 300 秒，2636 小端载荷 `2c01`，2676 大端 `012c`。当前 Rust idle choice 只有 draft/Changed，没有这条设备链；`controller_power.rs` 是灯光熄灭策略。单位测试不能证明页面或真实设备一致，Help 每项本机动作、tooltip 与资源仍单独验收 |
+
+尺寸、文案与资源要随具体 mounted 分支核验。例如 2636 的当前 [main.3d9eb3d1.css](../../.analysis/inputs/frontend/gamepad-2636-current/raw/apps.razer.com/synapse/products/2636/ui/static/css/main.3d9eb3d1.css) 保留低死区警告宽 402 px、padding 20 px、gap 20 px、标题 16 px；展开信息最大宽 360 px、最大高 200 px，height／opacity 分别 250／200 ms。V2 校准 area 最小宽 850 px、margin `11px 30px 30px 23px`，产品图最大宽 372 px，说明区宽 460 px、最小高 44 px，按钮高 27 px。不能把这些规则无依据扩展到另八个 PID，其他产品／edition／布局／系统分支必须读取各自 CSS 级联、图片与实际调用者。普通、选中、禁用、loading、空状态、错误、图像失败、tooltip、键盘、焦点、滚动、关闭和重挂载均为单独检查项。
+
+上表是静态源码及当前 Rust caller 核查，未运行 UI、厂商 JS、helper 或设备写入。现有 gamepad_products／calibration／trigger runtime、设备 controller_* 及 IPC 的纯／模拟用例只按自己的收据和实际用例数量判断；本次未重新运行它们，没有新增官方实际 DLL 对照或真实窗口验收。每页仍须将“原件组件 → Rust owner → UI 事件 → 本地保存 → 实际服务／协议 → 应答／真实读回 → 状态／失败 → 取消／恢复／释放”逐项连通，不得以这里列出部分已接链标记完整页面完成。
 
 私有 Dataset `han1548772930/razer-ui-assets` 的[资源锁](../../tools/asset-release.json)固定提交 `ce7ba4dd6cd039f9b1e955c9872ce83ac754867e`。332 个产品分组、7,772 个载荷文件、1,514,324,891 字节已逐项核对：5,276 个 LFS 对象核对 SHA-256 和长度；2,496 个普通 Git 对象以维护快照的 SHA-256、长度及 Git blob OID 交叉验证。主仓库保留独立 SQLite 目录库、9 个原生托盘／菜单 RGBA 图标与 4 个窗口控制 SVG。原生取屏色光标从已验证 PE 资源静态重建，保留八个尺寸、热点及图像数据，按实际界面请求进入同一资源缓存。不要重新启动批量下载、上传或推送 GitHub。
 
@@ -131,7 +163,7 @@ PID182 休眠的接收器链已连接页面、discovery、typed IPC 和 service�
 
 独立 pack 工具保留自己的容器格式、维护收据和测试。应用的 `SynapseAssets::list` 读取安装目录库，`load` 通过当前应用注入的 `ResourceClient` 获取已请求资源，并复用必需内嵌图标入口；应用启动、编译和安装不以整套 pack 为前提。资源加载须分别核验共享界面、产品页面、缓存命中、失败重试及取消，容器维护结果不能替代资源运行时或产品页面验收。
 
-当前源码与分析收据保留在 `.analysis/results/`，完整 Rust 检查和纯 Rust／模拟 transport 测试收据见 [validation.json](../../.analysis/validation.json)。源码图校验失败、缺失 source map 和资源仍明确保留；未运行应用、厂商代码或真实设备操作。
+当前源码与分析收据保留在 `.analysis/results/`，完整 Rust 检查和纯 Rust／模拟 transport 测试收据见 [validation.json](../../.analysis/validation.json)。源码图校验失败、缺失 source map 和资源仍明确保留；未运行应用或厂商 JavaScript。显式本地 DLL／服务／设备测试只按实际收据中的功能、产品和传输分支判断，不提升为整页或其余设备已验收。
 
 | 工作 | 必须保留的可复核结果 |
 | --- | --- |

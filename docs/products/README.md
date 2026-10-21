@@ -30,12 +30,14 @@
 | 配置迁移 | [本地文件、解析、应用与结果](host/profile-migration.md) |
 | 固件与安装生命周期 | [本地载荷、写入、结果与清理](host/firmware-and-installation.md) |
 | 窗口生命周期 | [窗口复用、休眠、焦点、托盘与退出](host/window-lifecycle.md) |
+| 系统集成 | [系统事件、进程观察、退出信号与原生清理](host/system-integration.md) |
 
 ## 共享交互
 
 | 主题 | 说明 |
 | --- | --- |
 | [源码阅读约定](shared/source-reading.md) | 产品／页面／功能关系、证据回查及完成边界 |
+| [设备发现与直接通信](shared/device-communication.md) | USB／HID 发现、队列、I/O、回调与停止释放 |
 | [设备配置档与游戏关联](shared/profiles-linked-games.md) | 配置身份、切换、导入导出与关联 |
 | [颜色选择器](shared/color-picker.md) | 色值、输入、拖动及保存消费者 |
 | [动态灯光](shared/dynamic-lighting.md) | 系统灯光控制权与设备分支 |
