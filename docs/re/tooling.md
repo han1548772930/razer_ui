@@ -10,6 +10,30 @@ IDA 路径：`E:/IDA`（9.1）、`D:/ida/IDA Pro 8.3`（8.3）。GPUI 技能读�
 
 `validate-connected-devices` 使用生产 HID／领域协议所有者，在实际物理 PID、接口和 Feature descriptor 匹配的唯一 collection 上查询；默认忽略的集成测试不会随普通纯测试打开硬件。PID679 先读取实际布局，再对已核实布局 1 的 82 个 firmware key IDs 按源码的 15／13 键分批读取 Actuation／Rapid Trigger，不使用写入专用 ALL_KEYS。`--write-restore` 先核对原值可按字节恢复并写入日志，尝试变更后独立恢复及读回。`compare-connected-hid` 将同一路径、同一事务的 GET 报文交给已核实 x64 C ABI 的当前 `HID.node`，按当前选定工厂的十次、5 ms IN 节奏等待 busy 后的终态，保存每次原始返回，再逐字节比较终态；busy 耗尽、短报文或事务／命令不匹配均不能通过。比较绑定当前未变化的 Rust 输入和原始读取收据字节，分别记录句柄、`hid_exit`、DLL 及进程释放。具体功能结果见 [读取](../../.analysis/results/connected-device-verification.json)、[可恢复写入](../../.analysis/results/connected-device-write-verification.json)与[原库比较](../../.analysis/results/connected-native-comparison.json)；匹配离线应答只证明传输一致，实际设置与窗口验收分别判断。
 
+## 无设备测试与官方 DLL 对照工具
+
+全功能测试与实际 DLL 对照的强制要求由 [验证规则](../../.agents/rules/verification.md) 定义。没有设备时，先在 `FeatureTransport`／服务边界使用脚本式模拟、故障注入和有独立来源的应答回放；模拟通过、官方 DLL 对照及真实设备验收分别记录。
+
+工作区统一锁定 Mockall 0.15.0 和 Proptest 1.12.0，协议 crate `razer-device` 通过 `dev-dependencies` 使用。Mockall 用于接口参数、调用次数和顺序约束；已有手写模拟传输继续复用。Proptest 用于参数、畸形报文及操作序列的属性测试；失败样本应保留以便复现。其他 crate 按所属测试需求引用工作区版本，测试库不进入生产依赖。
+
+从工作区根目录运行已有纯／模拟协议测试：
+
+```powershell
+python tools/workspace.py validate-rust --suite current-dpi-protocol --suite current-polling-protocol --suite current-power-protocol
+```
+
+官方 DLL 对照维护器使用 Windows x64 Python 标准库 `ctypes`、`unittest` 和项目内 PE 检查模块；不执行 JavaScript／N-API 初始化。其纯测试使用 `python -m unittest discover -s tools -p test_native_runtime.py`，不加载真实官方 DLL 或打开设备。实际功能对照继续使用 `compare-local-service-version`、`compare-local-app-files`、`validate-connected-devices` 与 `compare-connected-hid` 的已核实分支；新增功能须补齐对应入口和收据，不能由现有 HID 重放替代业务比较。
+
+cargo-fuzz 0.13.2 已安装，配套独立 nightly 工具链为 `rustc 1.101.0-nightly (19833af72 2026-10-20)`，包含 `rust-src`；工作区默认工具链仍为 1.99.0。安装与版本核验命令如下，不设置默认工具链或工作区 override：
+
+```powershell
+rustup toolchain install nightly --profile minimal --component rust-src
+cargo install cargo-fuzz --version 0.13.2 --locked
+cargo +nightly fuzz --version
+```
+
+Windows x64 的模糊目标构建还需匹配的 MSVC AddressSanitizer 运行库。当前仅完成 CLI／nightly 安装与版本核验，尚未建立、构建或执行 fuzz 目标，完整模糊测试环境与覆盖保持未验证。目标需按协议所有者建立，实际执行继续遵守根目录边界，不能加载官方业务 DLL、访问真实硬件或冒充设备验收。
+
 ## 缺失 source map 的静态恢复
 
 `analyze-frontend --recover-missing` 核验完整获取收据、原始字节及已有分析产物后，恢复尚未单独拆出的 webpack 模块。`--all-acquired --workers 4` 对当前已获取前端集合并行处理，逐项结果见 [模块恢复收据](../../.analysis/results/frontend/module-recovery.json)。非当前部署集合与无 JavaScript 的集合明确区分，不据目录存在跳过核验。

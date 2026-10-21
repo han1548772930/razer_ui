@@ -70,6 +70,8 @@ sys-locale = "=0.3.2"
 uuid = { version = "1", features = ["v4"] }
 md5 = "0.8"
 libloading = "0.9"
+mockall = "=0.15.0"
+proptest = "=1.12.0"
 # Portable Feature Report backend. Protocol and logical device routing stay in Rust.
 # Linux uses hidraw without a libudev development-library requirement; Windows
 # and macOS use hidapi's statically linked system backends, not Razer DLLs.
