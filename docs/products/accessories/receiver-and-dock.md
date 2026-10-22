@@ -170,7 +170,7 @@ UI 的六类规则 ID 为 0/chroma、1/outputDevice、2/inputDevice、3/globalSh
 | --- | --- |
 | chroma | 高级效果为 lightpac 的 `{ID,Name}`；关闭效果为 `offLightingGroup:{offLightingAssignment:"BrightnessToggle"}`；其余为完整 `specificQuickEffect` 配置 |
 | outputDevice / inputDevice | 保留所选端点对象，分别生成 `outputDeviceGroup` / `inputDeviceGroup` |
-| macro | 保留宏引用，设置 `macroPlaybackOption:"Once"`、`repeatCount:2`；这两个字段须由宏执行器解释，不能仅凭 2 推断执行两遍 |
+| macro | 保留宏引用，设置 `macroPlaybackOption:"Once"`、`repeatCount:2`；MW 编译时 Once 覆盖为 `repeat:1`，生成 down 的普通宏与 disabled 的 up，实际只排一轮 |
 | globalShortcut | 按 SWITCH_LIGHTING、SWITCH_DEVICE_PROFILE、SWITCH_DEVICE_SENSITIVITY、MACRO、TEXT_FUNCTION、LAUNCH_PROGRAM、MULTIMEDIA、WINDOWS_SHORTCUT 转换各自 assignmentGroup，不是另建一组全局热键注册 |
 | launchGame | 拾起依次选择 launch_url、首个未被排除的 launch_helper（没有则取第一个）、launch_exe 或 location，并保留参数和引号；放下仅在 lane 启用且 `isMappingAgain` 时生成 Escape |
 
@@ -195,6 +195,24 @@ MW `ON_SET_KEYMAPPING` 分发调用 `25947.sti=Lt` `[1556697,1560448)`，经 `je
 | 返回 MW 的动作 | `f2f76` 解析 multi；已识别宏、键盘、启动程序等走对应原生类型。四类 `specificQuickEffect/offLightingGroup/outputDeviceGroup/inputDeviceGroup` 保留完整 JSON 进入 `f49f8` 的 Unsupported，实际 type=40，经 `858fe` 返回宿主，再由 MW 执行灯效或音频动作。Unsupported 在此是分层分发方式，不表示产品能力缺失 |
 
 例如从空集合依次输入 `[4,93,0]`、重复同一报告、`[4,94,0]`、`[4,0]`，可从上述代码推导出 press93、无新事件、press94 后 release93、release94。这是独立测试期望的静态依据，**不是实机采集报告或官方 DLL 已执行的收据**。还须单测首个 0 后非零字节、仅报告 ID、空数据、全局 enabled gate、dualLinked 和不同报告 ID 的集合隔离，不能仅用这个正常序列宣布报告解码全覆盖。
+
+### 普通宏的实际执行、错误与取消
+
+MW 宏输出编译 owner `[2061108,2061636)` 将 Once 编成 `repeat:1`，NTimes 才使用 repeatCount；3946 因而生成 down `{type:"macro",guid,flag:0,repeat:1,toggle:0}`、up `{type:"disabled"}`。这条链不能解释成执行两遍或释放即停止。其它模式仍须分别验证：原件中 `PhasedMacro` 的 flag=5 与 `"Phased"` 的 `type:"phasedMacro"` 是不同字符串／分支，不能自行合并。原生 `ed8d2→101ff0` 检查非空 GUID 及 flag 范围 0…4，嵌套事件解析 `ecee3` 又禁止 flag≥2；这些限制不能按 UI 枚举名推断相容。
+
+宏内容来自独立的 `synapseMacros` 数据链：`562c8→f68c0` 建存储观察与专用线程，`f6a70→f6bd0→f7106` 解析候选宏 map，检查数组、GUID 唯一性、appEngine/hash/events。相同 GUID/hash 可复用旧对象；新 hash 经 `f86ae` 去掉 hash 字段后重新序列化计算比较，候选全部成功后才由 `f6bd0` 在锁内替换活动 map。执行查找沿 `5d020→5cf60→f7066` 按 GUID 取活动对象。映射存储 ACK、宏数据解析成功、宏排队和事件执行完成为四个不同结果。
+
+实际 USB delegate 已沿构造实参及 PE 虚表闭合：`57380` 将 manager+24 传给 `a89f0→64e8c→546e8`；`55de4` 在该接口安装 `0x2e4cd8`，其 virtual+48 是 `5d600`。宏输出 type=24 的虚表 `0x2ee948` 首槽为 `101cf0`，执行分支 `893dc` 通过上述接口进入 `5d600→61aa0→a9500`，不能取 manager 主虚表相同槽号代替。`a9500→5ed88` 按 GUID 与 caller 找活动执行，flag=0 遇已有活动项时忽略新启动；当前 Once 经 `5ec3c→126f1c` 取得或创建 executor，由 `127892` 投递 executor thread，再经 `127aa0→128692` 建 frame。只有成功排队才登记活动项，但这仍不是设备输入已生效。
+
+`128692` 拒绝找不到 GUID、空 events 和栈深度达到 100（`max macro recursion`），frame 独立保存 repeat、事件迭代器、valid 和 completion。`12b5b0` 每步再投递，repeat=0 表无限，非零每轮递减，当前 repeat=1 只跑一轮。`ecee3` 可解析 audio/clipboard/delay/keyboard/launch/loop/macro/mouse/mouseMove/randomDelay；`12be6e` 对 keyboard、launch、mouse、nested macro、mouseMove 使用各自 bool／回调，随后 `12c8f0` 合并 valid 并推进；audio、clipboard、delay、randomDelay 的底层 bool **没有在该分发中合入 frame.valid**。因此 frame 成功不代表全部 OS 副作用各自成功。`12bde4` 弹出 frame 并完成回调，`12dcf0` 再进入 context 收尾 `12a8ca`。
+
+默认 Windows 键盘有独立执行线程，初始化为 `130b68→126388→1264d0`，按键为 `130c1a→126902→126a80→12ee96→12f3ce→12fd66`。`126902` 的 bool 表排队，`12ee96` 的 bool 表键盘输入合法性；下层 endpoint 发送失败没有自动并入该合法性。按下／释放、系统重复 delay/rate、repeat 与自动 release 分别在 `12f312/12f3ce/12fe22/12ff70/12fb30`。实际 endpoint 虚表 `0x2f2e70` 的 Start/Stop/isValid/SendInput 为 `134800/134af0/1107f0/134c80`；`134a02` 打开真实 endpoint，`134c80→13579a` 将 type=21/27 转成 32 字节结构，通过 `0x88883020` 写入驱动。同步成功或 ERROR_IO_PENDING=997 只表示接受；`135c20` 才按实际完成 status=0 回 bool。但当前宏／专用键盘调用传空 completion，**没有逐项等待物理输入确认**。未走专用键盘的 `130cf8` 在 endpoint valid 时调用 `1345aa` 后直接 true，否则才由 `11c510` 调系统 `SendInput(1,…,40)` 并检查返回是否为 1；不能把该 fallback 扩大到所有专用键盘发送失败。
+
+`12a8ca` 克隆仍按住的输入，逐项调用 virtual+96 生成 release，经 keyboard `130c1a`／mouse `130cf8` 发送，不检查每项 release 的结果；然后清 pressed map、停止 endpoint、清 owner 并排键盘 Stop。最终 status 必须以完整汇编为准，反编译伪代码遗漏了一个参数：valid 且未 cancel 为 0、invalid 为 1、valid 且 cancel 为 2。manager+32 的实际虚表 `0x2e4d38+8→5dc90→5de50` 删除活动项、推进队列／完成 stop 等待，**仅 status=1** 向设备错误接口 virtual+496 发事件；status=2 独立表示取消，不能标为成功。
+
+错误接口是 USB base+136 的 `0x2e7e68`（RTTI offset=136），virtual+496 的实际目标 `77740` 生成 `{type:"error",error,output}`，`77c40` 在保留的 base+208 callback 存在时投递，`9e490→18db0` 调该 callback，导出适配 `25600` 再检查 initialize gate 并发送 type=5。addDevice/addUsbDeviceWithoutFilterDriver/addUsbDevice 的 `25bf0/26e60/277d0` 均安装这个适配。宿主 `createCbDeviceEvent` 完整 owner `[113371,114222)` 将 type=5 转成按设备键及有效 webContents 路由的 `deviceEvent`；MW `K/$/F` 分别位于 `[1286752,1286843)`、`[1286846,1286891)`、`[1286894,1287128)`，只按 productId 过滤，仅对 `file not found`／`fail to launch` 显示启动错误，其余宏错误没有由这条消费者统一弹窗，也没有连接 generation 校验。它与 unsupported 的 base+736 回调是不同路径。
+
+主动取消 `12772a→11a922` signal 事件，`12b5b0` 在后续步骤观察，delay 的 `12ab1e/12af54→11aa78` 也等待该事件，再走相同收尾。`57cd4` 停 caller，`5d770→5d890` 停匹配 mapping，`57090` 全局停 active／queue／exclusive 并等待活动 map 清空；`56f10→127574→127760` 清 executor。endpoint `134af0` 执行 CancelIo/close，`135c20→134b64` 只在 pending=0 时完成 shutdown，键盘清理另经 `130bba→12667e→1267d0→12edae`。当前取放宏的 up 为 disabled，不能把该输出当成已经调用上述取消、release 或排空链。本节定位的是普通 Once 及其共享调度／清理边界，尚不代表其它模式和各类宏事件的全部 OS 参数分支均已验收。
 
 ### unsupported 回调、事件消费者与退出
 
@@ -232,9 +250,27 @@ MW 初始化 `[1390349,1392577)` 先枚举端点，再注册 simpleService 的�
 
 关闭灯效 `pi` `[1683522,1684278)` 查当前启用 chroma，调用亮度关闭；所选 lane 的 isOff 且 applyToAll 时再发布全局亮度关闭。快捷灯效 `fi` `[1684278,1688745)` 先开亮度、发布全局亮度开启，再转换对应 lane 效果；Wave UpDown 的 direction=3 转 index=0，否则 index=1，方向数为 2。applyToOthers 发布同步存储，并通过 `h.td=lt` `[2259111,2260482)` 对当前其它实际容器排 `ON_SET_EFFECTS/ON_SET_MULTI_REGION_EFFECTS`，排除自身。高级 lightpac 由原生相应输出链处理，不走 fi。fi 的 catch 为空，局部 3 秒延迟也不能证明通用取放去抖或取消完成。
 
-亮度 `rt` `[1523350,1526324)` 先改 profile/UI 并完成 maker，再保存本地配置；只有 deviceAccess 允许才给真实亮度 runner `d.Vb7=xe` 传旧值、新值、version、container。不能将 runtime/UI 发布或 maker completed 当硬件 ACK。完整灯效协议和软件帧生命周期继续以[灯光与冷却](lighting-and-cooling.md)及对应共享灯效链为准；本节尚未把这些下游每个 runner 都验收为完成。
+完整灯效协议和软件帧生命周期继续以[灯光与冷却](lighting-and-cooling.md)及对应共享灯效链为准；下述亮度链不能扩展证明所有效果、软件帧或高级 lightpac 的下游 runner 已完成。
 
 宏规则实际编译宏引用，宏输入/输出及 map ACK 边界见[宏与按键映射](../shared/macros.md)。全局快捷方式更新 `yi` `[1690281,1691365)` 刷新关联引用并触发映射重建；删除 `gi` `[1691365,1692341)` 在首个 guid 命中时清对应取放 lane 并重建。游戏运行变化 `mi` `[1692341,1693347)` 暂存并移除拾起启动动作，游戏停止再恢复、保存和重建；pause 配置 `di` `[1682973,1683522)` 控制放下 lane 的 `isMappingAgain`，决定 Escape 映射。编辑器持久化、引用更新、游戏观察、原生映射和具体执行器须共同闭合，不能只迁六个静态规则名称。
+
+### 亮度调度、真实 HID 与结果消费者
+
+亮度 maker `rt` `[1523350,1526324)` 先更新 profile/UI，按标志持久化；仅在 deviceAccess 允许时排 `NORMAL_SKIPPABLE` 的 `setting` 任务，把旧／新有效亮度、version、region=null、OBM profiles 和 container 传给 `d.Vb7=xe`，关闭状态的有效亮度为 0。OBM helper `Ye` `[1514076,1514238)` 只从 active GUID 对应的 OBM profiles 提取 slotId，否则为空数组，不能据此推断 3946 一定有板载配置档。
+
+runner `xe` `[1720133,1722817)` 只在入口检查 AbortSignal。3946 走普通 rzDevice25，而非包内 PhilipsHue、IoT、monitor、eGPU 分支。明确 region 时先 GET、值不同才 SET；默认路径取 feature.brightness.region 或 AllRegion=0，先 GET，返回 region 不同则 SET 请求的 region，否则在亮度不同且非 setByLightingEngine 时 SET（另有 NoaT3 分支）。这条链**没有 SET 后独立 GET，也没有额外比较 SET 的 jsonData**。主亮度成功后 `Ct` `[1765879,1766392)` 逐一 GET／必要时 SET 传入的 OBM slots，任一失败整体 false；随后更新 currentbrightness/version/memoryStorage，缓存失败也可使最终 false。硬件已改后 OBM 或缓存失败没有自动回滚，不能把整体 false 等同于硬件毫无变化。
+
+rzDevice25 的 getBrightness `[899848,900121)` 解析 region；region=0 时先取 region list 并取非空首项，只有该读取异常时选择 region=1，这不是回退到本地亮度配置。setBrightness `[900121,900244)` 原样转发所传 region。协议模块 13953 `[702819,713603)` 与常量模块 78196 `[713604,716322)` 按 `[dataSize,class,command]` 定义 region list `[80,15,128]`、GET `[3,15,132]`、SET `[3,15,4]`；GET payload 为 profile/region/0，SET 为 profile/region/brightness byte。编码为 `floor(percent/100*255)`，拒绝 undefined／NaN，≥100 钳到 100，**没有下限钳制，负数进入 Uint8 可回绕**；解码为 `ceil(byte/255*100)` 并解析 profile/region，没有额外检查 payload 至少 3 字节。这些是原件边界行为，须独立测试，不能用更宽松的比对消除差异。
+
+rzDevice25 构造 `[808462,812281)` 的当前参数为 claimInterface=2、reportId=0、reportLength=91、useSendCommandEx=false，当前宿主版本允许 HID mutex，锁身份取 actual PID/container。`_calculateChecksum` `[812329,812398)` 对逻辑 90 字节的 byte[2…87] XOR；`_getTransactionId` `[812398,812494)` 在 counter=31 时先清零再返回并递增，实际循环为 **0…30**。`_createDataSend` `[812494,812788)` 写 byte0=status0、byte1=transaction、byte2…4=0、byte5=length、byte6=class、byte7=command、byte8 起 payload、byte88=checksum、byte89=0。
+
+sendCommand `[817066,821285)` 在 Electron 分支以 navigator lock 串行，要求 OUT 实际结果为 91，等待后取 IN，并在 finally release HID mutex。`_getUSBTransferInResult` `[814023,817066)` 检 transaction/class/command；status=0/new、3/failed、4/timeout 允许重发 OUT，1/busy 继续 IN 并允许后续 OUT，2/success 停止，5/unsupported 及未知状态失败且不重发；它**不核对响应 checksum**，falsy 的宿主结果会转成 90 字节零缓冲。非 Electron USB 分支另用 request=9/1、value=768、index=实际 interface，不能混作同一调用契约。
+
+当前宿主 [UsbRzDeviceAction.js](../../../.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/UsbRzDeviceAction.js) 的 send 双 case 标签及完整处理为 `[10659,10687)`、`[10687,13211)`，get case 为 `[13211,14442)`：90 字节 OUT 的前缀取 `reportId ?? claimInterface`，GET 参数却取 `reportId ? reportId : claimInterface`，并默认移除响应首字节。故当前 **reportId=0、interface=2 时，OUT 前缀为 0，GET 参数为 2**，不能归一成两边 0。实际 HID.node 的[完整原生捕获](../../../.analysis/results/native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f/capture.json)中，worker `5280→50e0→4800` 将 kind=0/1 分到 SET `17a10`／GET `17ac0`；SET 调 `HidD_SetFeature`，成功返回长度、失败 -1；GET 则用 **DeviceIoControl `0xB0192` 加 GetOverlappedResult(wait=true)**，返回 BytesReturned+1，没有调用导入表里的 HidD_GetFeature。Promise `15fe0/160e0→161e0→15d40` 另负责结果与请求释放，互斥到期或 MW cancel 不等于已取消 native I/O。共享传输边界见[设备通信](../shared/device-communication.md)。
+
+结果 owner `$e` `[1723903,1724859)` 先发送 `MW_UPDATE_BRIGHTNESS_UI_ACTION_DEVICE`／`MW_UPDATE_BRIGHTNESS_LOCALSTORAGE_ACTION_DEVICE`，再发各自 POST_PROCESS_COMPLETED。MW 字段为 `newVersion`，UI 常量模块 13254 `[351438,370832)` 的实际消费者 `de/ce/Se/ue` 分别位于 `[6770647,6771077)`、`[6771077,6771418)`、`[6771721,6771919)`、`[6771919,6772305)`：按 timertick 找 pending action，保存 devicestatus／移除 action／推入 errorActions，但解构的是 **`version`，不是 `newVersion`**，这条消息链未把新版本传入 device.version。消费者没有核对连接 generation；maker completed、缓存持久化、协议成功和 UI 确认必须分别记录。
+
+任务类 `y` `[5774,6681)` 拥有 AbortController、navigator lock、task/result closure，队列完整 owner `[6686,9145)` 的取消将 current 移入 cancellingTask、abort 并清 current；未开始任务直接以 canceled/false 完成，被后续同类任务替换的 skippable 任务以 skipped/false 完成。已开始的闭包仍在 finally 发布结果，而 xe 仅入口查 signal，GET／SET 进行中取消不会停止 HID，也不会阻止后续结果。当前 6120 中 cancelAllTasks 的业务调用在 resetOBM `[1600078,1601715)`；退出 `Tn` `[1402915,1404990)` 所调 `Xt.cleanUp` 来自模块 64013 `[2209469,2209898)`，只清 do_not_disturb task marker，**不是这条任务队列的 cancel／排空**。不能把关窗口或 marker 清理称为亮度 I/O 已结束。
 
 ## 布局、资源、弹层与生命周期
 
@@ -277,6 +313,8 @@ MW 初始化 `[1390349,1392577)` 先枚举端点，再注册 simpleService 的�
 | report4 与输入 | 重复报告、press 先于 release、首个 0 及其后字节、短报告、report5 不触发 DKM、修饰键、dualLinked 可选 reportId、不同报告集合、全局 enabled gate、断开时活动映射释放 |
 | 回调与取消 | 重复 register/unregister、setcallback 失败、URL 计数变化、已排队事件越过 unregister、同身份重连、关闭 gate、I/O pending 排空、driver IOCTL 失败与最终 completion、两个读取缓冲区和线程 join |
 | 音频 | 枚举重置 current/previous、首项与默认端点不同、RESTORE 的空/失效 previous、端点拔出、role0/role1 差异、服务返回 false、未等回调即 shutdown、乐观 UI 与实际写入结果分离、全部事件订阅释放 |
+| 普通宏 | Once 覆盖 repeatCount 为 1、up disabled、GUID/hash 更新原子性、重复启动与空 events、递归上限、逐事件 bool 是否进入 valid、排队／驱动接受／实际完成分离、最终 0/1/2、取消中的 delay、release 失败及 pending 排空、type5 错误消费者 |
+| 亮度 | region0 的列表与异常分支、负值 Uint8 回绕、百分比取整、transaction 0…30、OUT=91、OUT 前缀0／GET 参数2、全部响应 status、缺 checksum／短 payload 行为、SET 无独立 GET、OBM／缓存失败后的硬件状态、newVersion/version 差异、skipped／cancel／迟到结果 |
 | 灯效与关联动作 | 仅本机/全部/其它容器、Quick/Off/lightpac、亮度真实 runner 和 ACK、游戏运行/停止与 Escape 条件、宏释放、失败/取消后的已核实恢复和资源释放 |
 
 源码获取、逆向语义、Rust 独立实现、UI/后端接线、静态/模拟验证和实际 DLL/设备验收分别记录。本节只进行了静态核对，没有运行应用、厂商 JS、安装器、DLL 或设备操作，也没有将现存单元测试标成这次已执行。真实配对、音频、灯效和清理对照仍为未验证。

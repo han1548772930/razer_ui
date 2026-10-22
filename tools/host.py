@@ -2187,6 +2187,23 @@ def analyze_host_javascript():
                       "failed_stages": sum(c["exit_code"] != 0 for c in capture["commands"])}), flush=True)
 
 
+def native_pseudocode_failures(retained, failures):
+    """Report missing selected bodies using the capture's actual stage identity."""
+    result = []
+    for row in retained:
+        function = row["capture"]
+        if function.get("pseudocode") is not None:
+            continue
+        address, rva = function["address"], function["rva"]
+        stage = format(int(rva, 16), "x") + ":hexrays"
+        matching = [failure for failure in failures
+                    if failure.get("stage") == stage or failure.get("address") == address
+                    or failure.get("stage") == "hexrays" and failure.get("rva") == rva]
+        result.append({"address": address, "rva": rva, "artifact": row["artifact"],
+                       "pseudocode_captured": False, "capture_failures": matching})
+    return result
+
+
 class HostLocalAudit:
     """Reusable byte-verified source/function store for local host chain audits."""
     def __init__(self):
@@ -2271,6 +2288,72 @@ class HostLocalAudit:
                 "capture_failures": [row for row in capture.get("commands", []) if row.get("exit_code")] if capture else ["complete_capture_unavailable"],
                 "unresolved_acquisition": acquired.get("unresolved", []),
                 "failed_acquisition": [row for row in acquired["files"] if not row.get("path")]}, originals
+
+    def observed_sources(self, name, entry_url):
+        """Verify bounded HTTP observations without claiming a full deployment closure."""
+        receipt = self.a.ROOT / ".analysis/inputs/frontend" / name / "acquisition.json"
+        acquired = json.loads(self.artifact(receipt))
+        if acquired.get("entry_url") != entry_url or acquired.get("target_execution") is not False \
+                or acquired.get("source_current_during_acquisition") is not True:
+            raise ValueError("Bounded source observation has an unverified identity: " + name)
+        indexed = json.loads(self.artifact(self.a.ROOT / ".analysis/inputs.json"))["inputs"]
+        receipt_rows = [row for row in indexed if row["path"] == self.a.rel(receipt)]
+        if len(receipt_rows) != 1:
+            raise ValueError("Bounded source observation receipt is absent from the input index")
+        self.artifact(receipt, receipt_rows[0])
+        originals, verified, urls, paths, request_count = [], [], set(), set(), 0
+        observations = acquired["http_observations"]
+        stability = acquired["stability"]
+        for row in acquired["files"]:
+            url, path = row["url"], row["path"]
+            if url in urls or path in paths:
+                raise ValueError("Bounded source observation repeats an identity: " + url)
+            urls.add(url)
+            paths.add(path)
+            matches = [item for item in indexed if item["path"] == path]
+            if len(matches) != 1 or any(matches[0][key] != row[key] for key in ("bytes", "sha256")):
+                raise ValueError("Observed original differs from the input index: " + path)
+            self.read(row)
+            requests = [item for item in observations if item["url"] == url]
+            pair = [item for item in requests if item["phase"] != "entry_midcheck"]
+            stable = [item for item in stability if item["url"] == url]
+            if len(pair) != 2 or pair[0]["phase"] not in {"before", "sources"} \
+                    or pair[1]["phase"] != "after" or len(stable) != 1:
+                raise ValueError("Bounded source observation lacks both HTTP rounds: " + url)
+            for item in [row, *requests]:
+                if item["http_status"] != 200 or item["final_url"] != url or item["redirects"] \
+                        or any(item[key] != row[key] for key in ("path", "bytes", "sha256")):
+                    raise ValueError("Observed HTTP identity changed or failed: " + url)
+            if stable[0].get("unchanged") is not True or any(stable[0][key] != row["sha256"]
+                    for key in ("before_sha256", "after_sha256")):
+                raise ValueError("Observed HTTP stability claim differs from its rounds: " + url)
+            originals.append(row)
+            request_count += len(requests)
+            times = [item.get("acquired_at_utc", item.get("finished_at_utc")) for item in pair]
+            if not all(isinstance(value, str) and value for value in times):
+                raise ValueError("Observed HTTP rounds have no recorded completion time")
+            verified.append({"url": url, "original": self.sources[path],
+                "first_acquired_at_utc": times[0], "second_acquired_at_utc": times[1],
+                "additional_entry_observations": len(requests) - 2, "same_bytes": True})
+        if not originals or entry_url not in urls or len(observations) != request_count \
+                or len(stability) != len(urls):
+            raise ValueError("Bounded source observation has incomplete or unrelated HTTP rows")
+        differences = []
+        for row in acquired.get("retained_mismatches", []):
+            current = next((item for item in originals if item["url"] == row["url"]), None)
+            if current is None or row["live_path"] != current["path"] \
+                    or row["live_sha256"] != current["sha256"]:
+                raise ValueError("Observed changed-source identity is not retained")
+            old = row["retained"]
+            self.read(old)
+            if old["sha256"] == current["sha256"]:
+                raise ValueError("Observed changed-source claim contains identical bytes")
+            differences.append({"url": row["url"], "current": self.sources[current["path"]],
+                                "previous": self.sources[old["path"]], "same_bytes": False})
+        return {"name": name, "acquisition": self.artifacts[self.a.rel(receipt)],
+                "scope": acquired["scope"], "observations": verified,
+                "http_observations_verified": len(observations), "retained_differences": differences,
+                "full_dependency_closure": False, "target_execution": False}, originals
 
     def frontend_capture(self, name, deployment_files):
         """Verify the reusable full capture, without promoting failed stages."""
@@ -2700,16 +2783,22 @@ class HostLocalAudit:
         functions = {int(row["address"], 16): row for row in capture["functions"]}
         function_directories = {address: directory for address in functions}
         supplements = []
+        decompiler_records = list(capture.get("failures", []))
         for path in sorted(directory.glob("supplements/*/capture.json")):
             supplement = json.loads(self.artifact(path))
+            decompiler_records.extend(supplement.get("failures", []))
             if supplement.get("input_sha256") != original["sha256"] or int(supplement["image_base"], 16) != image_base:
                 raise ValueError("Native supplemental capture input or image base differs")
-            if not supplement.get("capture_complete") or supplement.get("failures"):
+            blocking_failures = [failure for failure in supplement.get("failures", [])
+                if failure.get("stage") != "hexrays" or not re.fullmatch(r"0x[0-9a-fA-F]+", str(failure.get("rva", "")))]
+            if not supplement.get("capture_complete") or blocking_failures:
                 raise ValueError("Native supplemental capture is incomplete: " + self.a.rel(path))
             supplements.append({"artifact": self.families.identity(path),
                 "base_capture": supplement.get("base_capture"),
                 "ida_version": supplement.get("ida_version"),
                 "hexrays_version": supplement.get("hexrays_version"),
+                "capture_failures": supplement.get("failures", []),
+                "all_pseudocode_captured": supplement.get("all_pseudocode_captured"),
                 "chains": supplement.get("chains", []),
                 "pointer_table": supplement.get("pointer_table")})
             for row in supplement.get("functions", []):
@@ -2836,16 +2925,20 @@ class HostLocalAudit:
                                   "function": hex(target) if target is not None else None, "depth": level + 1})
                     if target is not None and level < depth:
                         pending.append((target, level + 1))
+        selected_functions = [retained[address] for address in sorted(selected)]
+        decompiler_failures = native_pseudocode_failures(selected_functions, decompiler_records)
         return {"original": self.sources[original["path"]], "capture": self.families.identity(capture_path),
             "ida_version": capture["ida_version"], "hexrays_version": capture["hexrays_version"],
             "supplemental_captures": supplements,
+            "capture_failures": capture.get("failures", []),
             "image_base": capture["image_base"], "exports": [entries[name] for name in exports if name in entries],
             "explicit_seed_rvas": [hex(rva) for rva in rvas], "verified_data_regions": retained_regions,
-            "string_references": string_refs, "complete_functions": [retained[address] for address in sorted(selected)],
+            "string_references": string_refs, "complete_functions": selected_functions,
             "direct_edges": edges, "indirect_or_import_calls": indirect,
             "unexpanded_direct_edges": [row for row in edges if row["function"] and int(row["function"], 16) not in selected],
             "direct_expansion_depth": depth, "failures": missing,
-            "decompiler_failures": [row for row in capture.get("failures", []) if row.get("address") in {hex(x) for x in selected}],
+            "decompiler_failures": decompiler_failures,
+            "all_selected_pseudocode_captured": not decompiler_failures,
             "native_semantics_complete": False, "target_execution": False}
 
 
@@ -3136,7 +3229,7 @@ def retain_global_shortcut_storage_lifetime(audit):
             "1fed0 mappingEngineShutdown resolves the same module-static singleton; 1060 installs vtable2df010",
             "vtable+16 2090 marks that singleton uninitialized, posts 2510 and waits before invoking void completion 1fdd0",
             "2510 composes cleanup of that engine's owned service threads and device manager",
-            "1a620 -> 56b40 -> 56e70 clears local parser/storage owners -> 56f10 stops owned executors -> 57090 clears pending outputs -> 571e0 cleans owned devices",
+            "1a620 -> 56b40 sequences CleanupDevices571e0, Stop57090, ShutdownExecutors56f10, then CleanupLocalStorage56e70; storage owners are released after the stop/executor stages",
             "571e0 uses per-device cleanup completions and 57e60 removes the corresponding owned entry"],
         "capture_suspension_chain": [
             "28c20 disableMapping -> main vtable+216 6b90 -> engine-thread 6d50 -> instance+152 device manager vtable+24 580b0",
@@ -3216,13 +3309,58 @@ def retain_mapping_execution_dependencies(audit):
         0x12f292, 0x12f312, 0x12f3ce, 0x12fb30, 0x12fd66, 0x12fe22, 0x12ff70,
         0x130b68, 0x130bba, 0x130c08, 0x130c1a, 0x130cf8, 0x130dc6, 0x1314d0,
         0x126902, 0x126a80, 0x126b3e, 0x126c80, 0x1345aa, 0x134640, 0x134674,
-        0x11a950, 0x11a922, 0x11aa78, 0x11c510, 0x11cbd3)
+        0x11a950, 0x11a922, 0x11aa78, 0x11c510, 0x11cbd3,
+        0x1000, 0x1060, 0x2fa0, 0x3160, 0x17ee0, 0x18010, 0x18130, 0x182a0,
+        0x19a40, 0x1a4c0, 0x1a8e0, 0x1d190, 0x1d1a4, 0x1d38e, 0x1e454, 0x1fb30,
+        0x1fdd0, 0x20680, 0x20920, 0x519fc, 0x56850, 0x56b40, 0x56e70, 0x56f10,
+        0x57090, 0x571e0, 0x57c64, 0x57cd4, 0x5cb50, 0x5cc20, 0x5ccb0, 0x5ce40,
+        0x5d020, 0x5d600, 0x5d770, 0x5d890, 0x5dc90, 0x5de50, 0x5e4e0, 0x5e600,
+        0x5e710, 0x5eb10, 0x5eeec, 0x5f086, 0x61aa0, 0x6237c, 0x62510, 0x89968,
+        0x8d1b8, 0x8dc00, 0x8edfc, 0x8f0e4, 0x8f5e0, 0xa3910, 0xa9500, 0xb0ab0,
+        0xb0c20, 0xb0cd0, 0xb0ef0, 0xb10d0, 0xb1150, 0xb11d0, 0xb1286, 0xb1480,
+        0xb1640, 0xb215c, 0xb2164, 0xb24b8, 0xb2640, 0xb2732, 0xb28c0, 0xb2986,
+        0xb2994, 0xb29f8, 0xb2ca0, 0xb3030, 0xb3180, 0xb33d0, 0xb351a, 0xb3760,
+        0xb3af0, 0xb3e80, 0xb3fd2, 0xb4220, 0xb436c, 0xb45b0, 0xb4a42, 0xb4b2c,
+        0xb4bfc, 0xb4c70, 0xb4cf0, 0xb4d40, 0xb4e80, 0xb4fd0, 0xb5110, 0xb5250,
+        0xb5390, 0xb54e0, 0xb5620, 0xb5788, 0xb598e, 0xb59c0, 0xb5cd2, 0xb5e9a,
+        0xb6100, 0xb61d0, 0xb6210, 0xb6220, 0xb6230, 0xb6280, 0xb62c0, 0xb62f0,
+        0xb6320, 0xb63f0, 0xb74fc, 0xb7850, 0xb79e0, 0xb82e0, 0xb8490, 0xb8c00,
+        0xb9050, 0xb90e0, 0xb91a0, 0xb9560, 0xb9800, 0xb9f3c, 0xba1b8, 0xba770,
+        0xba910, 0xbb6b6, 0xbbc50, 0xbc2e0, 0xbc390, 0xbc400, 0xbc5e0, 0xbc6de,
+        0xbc970, 0xbcdd0, 0xbd090, 0xbd190, 0xbd2f0, 0xbd980, 0xbd9d0, 0xbda00,
+        0xbda90, 0xbdb50, 0xbe4b0, 0xbe646, 0xcf650, 0xd3c70, 0xd3d1e, 0xd46ec,
+        0xd4900, 0xd52d2, 0xd539c, 0xd570c, 0xdb873, 0xdb930, 0xedada, 0xedce6,
+        0xfcab2, 0xfd33a, 0xfd72c, 0x101ff0, 0x102eb0, 0x107a24, 0x107b2a, 0x107bd0,
+        0x107d30, 0x1080b2, 0x10be63, 0x10e270, 0x10e2f0, 0x10f582, 0x110b5a, 0x112c60,
+        0x114850, 0x115da0, 0x1186c0, 0x118840, 0x11ae38, 0x11b849, 0x11bc70, 0x11be52,
+        0x11c460, 0x1219dc, 0x125da8, 0x128e76, 0x1295ca, 0x1297d8, 0x129998, 0x134af0,
+        0x134b64, 0x134c80, 0x13579a, 0x135880, 0x135c20, 0x1a7cf0, 0x1a9710, 0x1aba20,
+        0x1abf10, 0x1b1430, 0x1b1720, 0x1b2dd0, 0x1b3a30, 0x1b4940, 0x1b8590, 0x1b8d40,
+        0x1b9fa0, 0x1dc35e, 0x1dc768, 0x1ddbae, 0x1ef7e0, 0x1ef8e0, 0x1ef9c0, 0x1efa60,
+        0x1efc70, 0x1f3600, 0x22beaa, 0x22c704, 0x22c85a, 0x22e640, 0x22e730, 0x22e7ad,
+        0x22e830)
     regions = ({"role": "mapping_type_pointers", "rva": 0x2ed830, "bytes": 43 * 8},
         {"role": "mapping_type_strings", "rva": 0x2e2b54, "bytes": 0xa90},
         {"role": "macro_movement_pointers", "rva": 0x2ecd20, "bytes": 4 * 8},
         {"role": "macro_movement_strings", "rva": 0x2e2b03, "bytes": 0x820},
         {"role": "macro_movement_driver_flags", "rva": 0x2f28e0, "bytes": 12},
-        {"role": "macro_movement_coordinate_scale", "rva": 0x2f2840, "bytes": 4})
+        {"role": "macro_movement_coordinate_scale", "rva": 0x2f2840, "bytes": 4},
+        {"role": "macro_storage_observer_vtable", "rva": 0x2e4c88, "bytes": 40},
+        {"role": "macro_changed_observer_vtable", "rva": 0x2e4da8, "bytes": 16},
+        {"role": "phased_macro_changed_observer_vtable", "rva": 0x2e4dc8, "bytes": 16},
+        {"role": "phased_macro_data_observer_vtable", "rva": 0x2ef688, "bytes": 16},
+        {"role": "audio_engine_observer_vtable", "rva": 0x2df430, "bytes": 40},
+        {"role": "audio_service_vtable", "rva": 0x2e8aa0, "bytes": 152},
+        {"role": "audio_monitor_vtable", "rva": 0x2e8b40, "bytes": 152},
+        {"role": "audio_volume_callback_vtable", "rva": 0x2e8bf0, "bytes": 32},
+        {"role": "audio_device_callback_vtable", "rva": 0x2e8c10, "bytes": 64},
+        {"role": "audio_endpoint_volume_iid", "rva": 0x2e8d00, "bytes": 16},
+        {"role": "audio_volume_percent_divisor", "rva": 0x2e8a98, "bytes": 4},
+        {"role": "audio_action_id_pointers", "rva": 0x2edb50, "bytes": 56},
+        {"role": "clipboard_action_id_pointers", "rva": 0x2edcf0, "bytes": 16},
+        {"role": "clipboard_endpoint_paste_slot", "rva": 0x2e8e50 + 32, "bytes": 8},
+        {"role": "clipboard_windows_write_slots", "rva": 0x33ce70 + 256, "bytes": 16},
+        {"role": "launch_shell_open_verb_utf16", "rva": 0x2f112a, "bytes": 10})
     retained = audit.native_slice(original, (), depth=0,
         rvas=tuple(sorted(set(functions) | {target for _, _, targets in identities for target in targets})),
         regions=regions + tuple({"role": name, "rva": rva, "bytes": 8 * len(targets)}
@@ -3282,6 +3420,11 @@ def retain_mapping_execution_dependencies(audit):
             "ee0f1 adds hypershift/gamemode/otfs, DKP or SnapTap metadata and validates interrupt input objects; break-form and duplicate interrupt identities are rejected",
             "e8888 parses required input/output objects, rejects duplicate canonical input serialization, checks phasedMacro make/break compatibility and can remove source-equal input/output mappings",
             "f8e3e chooses the lookup bucket in gamemode, otfs, dkp, snaptap, ordinary priority, always including hypershift. Bucket identity is vtable+56, not raw input JSON",
+            "Ordinary macro storage observers5cb50/5cc20/5ccb0 publish raw data independently of f6bd0 candidate parsing. Same GUID/hash reuses old events; successful batches swap maps atomically, deletion omits changed-GUID cancellation and clear does not cancel pending parses.56b40 cleanup orders devices, executions, executors, then storage owners",
+            "Clipboard text requests queue an independent paste sequence; wait completion precedes the500ms prioritized single-format restoration. Failures of clipboard writes or paste keys do not become ordinary macro frame errors. Macro cancellation does not cancel the queued paste/recovery timer",
+            "Launch checks optional pathToCheck, uses CreateProcessW then ShellExecuteExW(open), and closes owned handles without waiting for or terminating the new process. Macro status reflects launch request acceptance, not command completion",
+            "Audio seven-ID parser validates volume0..100 and mute0..2. COM setters run asynchronously on the shared service; ordinary macro does not await their bool/reason. Initial monitor HRESULT and reinitialization HRESULT may be discarded; role is ignored in default-device notification. Initialized cache/default-change event does not establish an observed endpoint value",
+            "Audio observer identity/serial rejects undelivered stale tasks, but17ee0/18010 capture hooks into a second queue with no repeated engine-initialized check. Global1a4c0 cleanup removes hooks/subscriptions and stops monitors, which is distinct from stopping one macro",
             "Keyboard vtable+40 emits type/scancode/flag/extraInformation/modifiers plus present delayInMs/releaseAfterMs/unitId; mouse emits type/id/data/extraInformation/modifiers and present unitId",
             "Keyboard vtable+56 preserves the complete flag while vtable+64 clears break bit0; mouse vtable+64 combines each button make/break pair into one mask, while wheel identities use vtable+56 unchanged",
             "Source equality vtable+32 compares keyboard timing presence and values, modifiers and optional unit; mouse compares packed id/data, modifiers and optional unit. It is distinct from full serialized identity",
@@ -3370,6 +3513,83 @@ def retain_mapping_global_mode(audit):
         "source_chain_complete": False, "target_execution": False, "runtime_acceptance": "unverified"}
 
 
+def retain_mapping_suppression(audit):
+    """Retain distinct mapping and hotkey suppression owners and their consumers."""
+    original, provenance = verified_host_native(audit, "CommonDLL/mapping_engine.dll")
+    tables = (
+        ("engine_control_dispatch", 0x2df010, 896,
+         ((208, 0x68f0), (216, 0x6b90), (224, 0x6900),
+          (880, 0x14fb0), (888, 0x15280))),
+        ("device_manager_controls", 0x2e4a88, 32,
+         ((16, 0x57f70), (24, 0x580b0))),
+        ("input_device_mode_notifications", 0x2e5af8, 24,
+         ((8, 0x6a490), (16, 0x6ab90))),
+        ("ble_device_mode_notifications", 0x2e4008, 24,
+         ((8, 0x6a490), (16, 0x6ab90))),
+        ("external_device_mode_notifications", 0x2e5698, 24,
+         ((8, 0x6a490), (16, 0x6ab90))),
+        ("os_hook_device_mode_notifications", 0x2e7988, 24,
+         ((8, 0x6a490), (16, 0x6ab90))),
+        ("usb_device_mode_notifications", 0x2e7e68, 24,
+         ((8, 0x6a490), (16, 0x6ab90))),
+        ("hotkey_service_dispatch", 0x2e97c0, 48,
+         ((8, 0xc6ff0), (16, 0xc9790), (24, 0xc97b0),
+          (32, 0xc97c0), (40, 0xc9aa0))),
+    )
+    retained = audit.native_slice(original, (
+        "isMappingEnabled", "enableMapping", "disableMapping",
+        "enableGlobalShortcut", "disableGlobalShortcut",
+        "mappingEngineInitialize", "mappingEngineShutdown"), depth=0,
+        rvas=(0x1000, 0x1e454, 0x68f0, 0x6900, 0x6ac0, 0x6b90, 0x6d50,
+              0x14fb0, 0x15170, 0x15280, 0x15440, 0x1ae04,
+              0x19180, 0x19590, 0x1a9d0, 0x1ad48, 0x1fb30, 0x1fdd0,
+              0x28740, 0x28a50, 0x4d3e0, 0x4d6f0,
+              0x55de4, 0x56128, 0x57f70, 0x5804c, 0x580b0, 0x58192, 0x57090,
+              0x52158, 0x6319c, 0x64e8c, 0xa6b74, 0xa89f0,
+              0x6a490, 0x6ab90, 0x6a5e0, 0x66870, 0x66d10, 0x909da,
+              0xc6690, 0xc671c, 0xc6782, 0xc6fb8, 0xc6ff0, 0xc741a,
+              0xc7b80, 0xb0ed0, 0xb0fb0,
+              0xc7bac, 0xc7c4c, 0xc7e00, 0xc7f90, 0xc8cd2,
+              0xc91f0, 0xc9246, 0xc9282, 0xc92e0, 0xc9338, 0xc9364,
+              0xc94c0, 0xc9688, 0xc9790, 0xc97b0, 0xc97c0, 0xc9aa0),
+        regions=tuple({"role": role, "rva": rva, "bytes": length}
+                      for role, rva, length, _ in tables))
+    if retained["failures"] or retained["decompiler_failures"]:
+        raise ValueError("Current mapping suppression owner capture is unavailable")
+    base = int(retained["image_base"], 16)
+    dispatch = []
+    for region, (role, _, _, slots) in zip(retained["verified_data_regions"], tables, strict=True):
+        raw = bytes.fromhex(region["raw_hex"])
+        for offset, expected in slots:
+            pointer, = struct.unpack_from("<Q", raw, offset)
+            if pointer - base != expected:
+                raise ValueError("Current mapping suppression dispatch differs: " + role)
+            dispatch.append({"table": role, "offset": offset,
+                             "target_rva": hex(expected), "actual_file_pointer": hex(pointer)})
+    return {**provenance, "native": retained, "verified_dispatch": dispatch,
+        "mapping": {
+            "owner": "One process-global atomic flag at RVA3811d8, queried by286a0 -> engine+208 ->68f0; not a per-request suspension counter",
+            "disable": "28c20 -> engine+216 ->6b90 ->6d50 -> device-manager+24 ->580b0 changes true to false, visits input-device notification slots and posts57090 to cancel active/exclusive/pending execution. It invokes completion after posting, without waiting for every device notification or macro cleanup to finish",
+            "enable": "28910 -> engine+224 ->6900 ->6ac0 -> device-manager+16 ->57f70 changes false to true and posts each input-device enabled notification before successful completion",
+            "repeat": "Already disabled/enabled completes false with exact reason already disabled/already enabled. Exports have no owner identity or matching-release token, and a successful enable can release a prior disable from another caller",
+            "consumers": "InputDevice, BLE, USB, external and OS-hook constructors install mode-notification tables whose +8/+16 slots share6a490/6ab90; both queue6a5e0 on the device thread.66870/66d10/909da read the same atomic flag during endpoint/action selection. Queued notifications and physical/OS effects are separate from the export bool"},
+        "hotkeys": {
+            "owner": "Engine+232 holds at most one lease on HotkeyService.15440 disables by borrowing via c8cd2/c6fb8; duplicate disable returns true with Warning: Already disabled without another lease.15170 enables by clearing/releasing this lease through1ae04/c9282; absent lease returns false with hotkey was not disabled",
+            "count": "HotkeyService constructor c6690/c91f0 starts lease count+24 at0 and acquires its base hold to1. A borrow crossing1->2 invokes SuspendHotkeyHandling(true); the release crossing2->1 invokes it(false). Additional internal borrowers retain suspension. The exported disable itself is not a balanced per-caller counter",
+            "actual_backend": "c7f90/c9338/c9364 constructs the RegisterHotKey/WM_HOTKEY service with vtable2e97c0. c6ff0 removes each real registration through+40 while suspended, and on release attempts each +32 registration then calls+16. c9790 leaves an already enabled flag unchanged; when disabled it enables only if the actual registration tree+64 has nonzero size+80. c97c0 inserts only after RegisterHotKey succeeds, so an initially disabled service stays disabled with an empty set or all failed re-registrations. Suspension itself unregisters entries without unconditionally clearing that flag. c9aa0 removes registrations through UnregisterHotKey. This export path does not disable the separate GlobalShortcutWin low-level hooks",
+            "confirmation": "15170/15440 return their lease-operation success without awaiting the posted service-thread work or collecting all OS registration results. c6ff0 logs individual registration failures and continues. c94c0 accepts WM_HOTKEY786 only while service enabled. c741a publishes observer notifications separately"},
+        "callback": "Exports are void APIs with completion callback(bool,const char* reason). 28740/28a50/4d3e0/4d6f0 forward only when callback is nonnull and DLL callback gate394748 is set.1fb30 sets the gate before initialize callback;1fdd0 clears it after shutdown callback. Missing completion is not operation cancellation",
+        "independent_implementation": [audit.families.identity(audit.a.ROOT / name) for name in (
+            "crates/razer-ipc/src/mapping_control.rs",
+            "crates/razer-service/src/runtime/windows/mapping_runtime/backend.rs",
+            "crates/razer-service/src/runtime/windows/mapping_runtime/backend/tests.rs",
+            "crates/razer-service/src/runtime/windows/mapping_runtime/device.rs",
+            "crates/razer-service/src/runtime/windows/mapping_runtime/capture/recorder.rs")],
+        "comparison_boundary": "Current Rust scope sets coordinate its own actors; do not equate their aggregate ActionReply with the raw official DLL result. Preserve repeat-call result data, service-thread notifications, macro cancellation completion and OS registration outcomes separately",
+        "source_chain_complete": False, "target_execution": False,
+        "runtime_acceptance": "unverified"}
+
+
 def retain_mapping_macro_input(audit):
     """Current recorder hook bodies, dispatch tables, clocks and joined teardown."""
     original, provenance = verified_host_native(audit, "CommonDLL/mapping_engine.dll")
@@ -3425,7 +3645,8 @@ def retain_mapping_macro_input(audit):
             "crates/razer-platform/src/input/macro_recorder.rs",
             "crates/razer-platform/src/platform/windows/macro_recorder.rs",
             "crates/razer-platform/src/platform/windows/input_clock.rs",
-            "crates/razer-service/src/runtime/windows/macro_recording.rs",
+            "crates/razer-service/src/runtime/windows/mapping_runtime/capture.rs",
+            "crates/razer-service/src/runtime/windows/mapping_runtime/capture/recorder.rs",
             "crates/razer-service/src/mapping/recorder.rs",
             "crates/razer-service/src/mapping/recorder_owner.rs",
             "crates/razer-shell/src/shell/keyboard/keyboard_latest_restore_publisher.rs")],
@@ -3597,6 +3818,170 @@ def audit_stream_mixer_profile_notification(prepare=False):
     return result
 
 
+def retain_otfm_product_triggers(audit):
+    """Verify current entry relationships and full AST owners for every retained trigger."""
+    import evidence
+    path = audit.a.ROOT / ".analysis/results/frontend/background-manager-current/otfm-trigger-owners.json"
+    retained = json.loads(audit.artifact(path))
+    if retained["target_execution"] is not False or retained["current_conditions_unchanged"] is not True:
+        raise ValueError("OTFM trigger analysis has an invalid evidence boundary")
+    indexed = {row["path"]: row for row in json.loads(
+        audit.artifact(audit.a.ROOT / ".analysis/inputs.json"))["inputs"]}
+    deployments, referenced = {}, {}
+    for name, row in retained["deployments"].items():
+        acquired = json.loads(audit.artifact(audit.a.ROOT / row["acquisition"]))
+        if row["accepted"]:
+            if acquired.get("source_current_during_acquisition") is not True:
+                raise ValueError("OTFM trigger source is not a verified current deployment")
+            deployment = evidence.frontend_deployment_sources(acquired)
+            if deployment != row["deployment"]:
+                raise ValueError("OTFM trigger entry references differ from retained analysis")
+            deployments[name] = deployment
+            referenced[name] = {item["original"]["path"] for item in deployment["sources"]
+                                if item["identity_verified"]}
+            for identity in [deployment["entry_original"], *[item["original"] for item in deployment["manifests"]
+                                                          if item.get("original") is not None]]:
+                audit.read(identity)
+    grouped, verified = {}, {}
+    for owner in retained["retained_owners"]:
+        grouped.setdefault(owner["original"]["path"], []).append(owner)
+    existing_trees, existing_raw = set(audit.parsed), set(audit.raw)
+    for name, owners in grouped.items():
+        original = owners[0]["original"]
+        identity = indexed.get(name)
+        deployment = "/".join(name.split("/")[:4])
+        if identity is None or any(identity[key] != original[key] for key in ("bytes", "sha256")) \
+                or name not in referenced.get(deployment, set()):
+            raise ValueError("OTFM owner is outside the verified current entry closure: " + name)
+        raw, tree = audit.read(original), audit.tree(original)
+        for owner in owners:
+            start, end = owner["byte_start"], owner["byte_end"]
+            body = raw[start:end]
+            node = tree.root_node.descendant_for_byte_range(start, end - 1)
+            if owner["original"] != original or (node.start_byte, node.end_byte, node.type) != (
+                    start, end, owner["syntax"]) or body.decode("utf-8") != owner["body"] \
+                    or hashlib.sha256(body).hexdigest() != owner["body_sha256"]:
+                raise ValueError("OTFM trigger owner differs from its complete source AST")
+            identifier = audit.retain_range("otfm_trigger_current_owner", original, start, end, node.type)
+            if identifier != owner["id"]:
+                raise ValueError("OTFM trigger owner identity differs")
+            verified[identifier] = audit.owners[identifier]
+        if name not in existing_trees:
+            audit.parsed.pop(name)
+        if name not in existing_raw:
+            audit.raw.pop(name)
+    products, fields, imports = set(), {"eventType", "containerId", "productId", "layoutId", "deviceId",
+                                       "macro_recorder_mode"}, 0
+    for row in retained["semantic"]:
+        if row["unresolved"] or type(row["product_key"]) is not int or row["product_key"] in products \
+                or set(row["payload"]) != fields or row["owner"] not in verified \
+                or row["postmessage_owner"] not in verified or not row["entry_imports"]:
+            raise ValueError("OTFM producer has missing or ambiguous argument/entry bindings")
+        products.add(row["product_key"])
+        for item in row["entry_imports"]:
+            if item["owner"] not in verified or verified[item["owner"]]["original"] != item["main"] \
+                    or verified[item["owner"]]["body"] != item["body"]:
+                raise ValueError("OTFM producer main entry import is not a retained owner")
+            imports += 1
+    if len(products) != len(retained["owners"]):
+        raise ValueError("OTFM producer and semantic lists do not cover the same products")
+    return {"analysis": audit.artifacts[audit.a.rel(path)], "products": sorted(products),
+            "producer_count": len(retained["owners"]), "owner_ids": sorted(verified),
+            "semantic": retained["semantic"], "excluded": retained["excluded"],
+            "entry_imports_verified": imports, "source_sets_verified": len(deployments),
+            "scope": "Current retained entry-to-broadcast producers; device eligibility and all downstream product mappings require separate verification",
+            "target_execution": False, "actual_dll_comparison": "unverified"}
+
+
+def retain_otfm_eligibility(audit, triggers):
+    """Verify each reviewed participant identity, product guard and save owner."""
+    path = audit.a.ROOT / ".analysis/results/frontend/background-manager-current/otfm-eligibility.json"
+    retained = json.loads(audit.artifact(path))
+    if retained["target_execution"] is not False or retained["current_conditions_unchanged"] is not True:
+        raise ValueError("OTFM eligibility review has an invalid evidence boundary")
+    previous = retained["previous_producer_analysis"]
+    if any(previous[key] != triggers["analysis"][key] for key in ("path", "bytes", "sha256")):
+        raise ValueError("OTFM eligibility review refers to a different trigger analysis")
+    indexed = {row["path"]: row for row in json.loads(
+        audit.artifact(audit.a.ROOT / ".analysis/inputs.json"))["inputs"]}
+    existing_trees, existing_raw = set(audit.parsed), set(audit.raw)
+    for row in retained["source_identities"]:
+        original = indexed[row["path"]]
+        if any(row[key] != original[key] for key in ("bytes", "sha256")):
+            raise ValueError("OTFM eligibility source differs from current indexed bytes")
+        audit.read(original)
+        if row["path"] not in existing_raw:
+            audit.raw.pop(row["path"])
+    for row in retained["acquisition_receipts"]:
+        receipt = json.loads(audit.artifact(audit.a.ROOT / row["path"], row))
+        if receipt.get("source_current_during_acquisition") is not True:
+            raise ValueError("OTFM eligibility source has no current deployment receipt")
+    grouped, verified, reviewed = {}, {}, {}
+    for owner in retained["retained_owners"]:
+        grouped.setdefault(owner["original"]["path"], []).append(owner)
+    for name, owners in grouped.items():
+        original = indexed[name]
+        raw = audit.read(original)
+        for owner in owners:
+            start, end = owner["byte_start"], owner["byte_end"]
+            body = raw[start:end]
+            if any(owner["original"][key] != original[key] for key in ("bytes", "sha256")) \
+                    or body.decode("utf-8") != owner["body"] \
+                    or hashlib.sha256(body).hexdigest() != owner["body_sha256"]:
+                raise ValueError("OTFM eligibility owner differs from original bytes")
+            existing = audit.owners.get(owner["id"])
+            if existing is not None:
+                if any(existing[key] != owner[key] for key in (
+                        "byte_start", "byte_end", "syntax", "body", "body_sha256")):
+                    raise ValueError("OTFM shared owner differs between the two reviewed chains")
+                identifier = owner["id"]
+            else:
+                node = audit.tree(original).root_node.descendant_for_byte_range(start, end - 1)
+                if (node.start_byte, node.end_byte, node.type) != (start, end, owner["syntax"]):
+                    raise ValueError("OTFM eligibility owner is not its complete original AST")
+                identifier = audit.retain_range("otfm_eligibility_owner", original, start, end, node.type)
+            if identifier != owner["id"] or identifier in reviewed:
+                raise ValueError("OTFM eligibility owner has an invalid or duplicate identity")
+            reviewed[identifier], verified[identifier] = owner, audit.owners[identifier]
+        if name not in existing_trees:
+            audit.parsed.pop(name, None)
+        if name not in existing_raw:
+            audit.raw.pop(name, None)
+    keys = {row["product_id"] for row in retained["private_lookup"]}
+    products = set(triggers["products"])
+    summary = retained["summary"]
+    if (len(keys), len(products), sorted(keys - products), sorted(products - keys)) != (
+            summary["private_lookup_keys"], summary["current_producer_keys"],
+            summary["lookup_only_keys"], summary["producer_only_keys"]):
+        raise ValueError("OTFM participant and producer differences are inconsistent")
+    catalog = retained["current_catalog"]["original"]
+    rows = json.loads(audit.read(indexed[catalog["path"]]))
+    if len(rows) != len(retained["catalog_rows"]) or any(
+            row["value"] != rows[row["row_index"]] or row["owner"] not in verified
+            for row in retained["catalog_rows"]):
+        raise ValueError("OTFM catalog relationships differ from the complete original row order")
+    for row in retained["private_lookup"]:
+        owner = reviewed[row["owner"]]
+        if not re.match(r"Wt\.set\(" + str(row["product_id"]) + r",", owner["body"]):
+            raise ValueError("OTFM participant key differs from its retained lookup call")
+    categories = {}
+    for row in retained["producer_only"]:
+        guard = row["input_guard"]
+        if guard["unresolved"] or row["current_producer_sends_primary_product_id"] != row["product_id"]:
+            raise ValueError("OTFM product guard or primary PID binding remains unresolved")
+        for name in ("input_case_owner", "state_owner", "state_guard_owner", "allow_action_owner",
+                     "task_init_call_owner", "task_static_init_owner"):
+            if guard[name] not in verified:
+                raise ValueError("OTFM product input/guard/task has no complete retained owner")
+        categories.setdefault(row["device_info_category"], []).append(row["product_id"])
+    if {key: sorted(value) for key, value in categories.items()} != summary["producer_only_categories"]:
+        raise ValueError("OTFM product categories differ from their reviewed identity fields")
+    return {"analysis": audit.artifacts[audit.a.rel(path)], "summary": summary,
+            "background_semantics": retained["background_semantics"],
+            "owner_ids": sorted(verified), "remaining": retained["unresolved"],
+            "target_execution": False, "actual_dll_comparison": "unverified"}
+
+
 def audit_host_macro_recorder(args):
     audit = HostLocalAudit()
     a, families = audit.a, audit.families
@@ -3739,7 +4124,7 @@ def audit_host_macro_recorder(args):
                 "unregisterMacroRecorderEvent", "setMacroRecorderEventCallback", "createCbMacroRecorderStarted",
                 "createCbMacroRecorderStopped", "createCbMacroItem", "createCbInputNotification",
                 "createCbDeviceModeChanged", "createCbGlobalShortcutEnableEvent", "disableGlobalShortcut",
-                "enableGlobalShortcut", "registerInputNotification", "unregisterInputNotification",
+                "enableGlobalShortcut", "disableMapping", "enableMapping", "registerInputNotification", "unregisterInputNotification",
                 "setInputNotificationCallback", "getGlobalMode"):
             report["otfm_native_callback_owners"][name] = audit.retain_class_field(
                 "otfm_native_" + name, mapping_source, name)
@@ -3850,6 +4235,7 @@ def audit_host_macro_recorder(args):
                 regions=({"role": "route_device_handler_vtable", "rva": 0x995c0, "bytes": 48},))}
         report["native_global_shortcut_clock"] = retain_global_shortcut_clock(audit)
         report["native_mapping_global_mode"] = retain_mapping_global_mode(audit)
+        report["native_mapping_suppression"] = retain_mapping_suppression(audit)
         report["native_mapping_execution_dependencies"] = retain_mapping_execution_dependencies(audit)
         report["native_macro_input"] = retain_mapping_macro_input(audit)
         shortcut_host = verified_host_owners(audit, ("electron/modules/mapping_engine/win/index.js",))
@@ -3857,6 +4243,8 @@ def audit_host_macro_recorder(args):
         shortcut_original = shortcut_host["electron/modules/mapping_engine/win/index.js"]["original"]
         audit.retain("host_complete_globalshortcut_callback_and_lifetime", shortcut_original,
                      'createCbGlobalShortcutEvent', {"class", "class_declaration"}, unique=False)
+        report["otfm_product_triggers"] = retain_otfm_product_triggers(audit)
+        report["otfm_eligibility"] = retain_otfm_eligibility(audit, report["otfm_product_triggers"])
         report["semantics"] = {
             "storage_key": "RzWinStorage_macro_recorder",
             "software_set": {"state": "disablingMapping", "value": {"mode": "exclusive", "payload": {"macro_recorder_mode": "kSoftware"}},
@@ -3874,7 +4262,7 @@ def audit_host_macro_recorder(args):
             "otfm_set_and_global_lock": "co calls lo before awaiting po. lo invokes setWindowStorageItem(RzWinStorage_macro_recorder, JSON.stringify({payload:{macro_recorder_mode:kOTFM},mode:exclusive})) without awaiting, then records containerId/productId/layoutId and resets Qt. It catches only synchronous exceptions. po requests RzGlobalLock_macro_recorder with steal:true, retaining the pending lock Promise's resolve as Jt. No failure rollback is added to co.",
             "otfm_start_order": "After acquiring the lock, co starts recorder listeners, awaits local device enumeration, selects the default mouse-move type, registers the input device, starts system listeners, reads brightness and sends ON_OTFM_PRESS. go defines other local-storage choices but actually calls only otfmDefault; those unused getters are not fabricated reads. The machine queries an already-running recorder, disables mapping/global shortcuts, obtains monitor info and only then starts kOTFM. Native result.result determines whether to proceed with LEDs or error lighting.",
             "otfm_remove": "ko invokes Jt if present before removeWindowStorageItem(gt); remove is not awaited and this owner does not reset Jt. The completed handler sets Zt=false and eo=true, calls ko when its local pending array is empty, then stops system/recorder listeners. The aborted handler calls ko only when eo is already true. The complete Ro owner retains the pending work and local persistence transitions.",
-            "otfm_abort_and_finish": "The complete machine preserves escape/system/unplug/timeout branches, stops recording after accepted-key save or abort, restores lighting, re-enables mapping/global shortcuts and emits completed. Some error branches continue after failure; no invented UI rollback or immediate lock removal is inferred.",
+            "otfm_abort_and_finish": "The complete machine preserves escape/system/unplug/timeout branches. Mouse-mode-selection Escape only skips that selection. Ro checks geometry after numpad normalization and before key-release cleanup; a geometry rejection restores lighting/error/enables/completes without stopMacroRecording. Accepted save stops only after ON_MACRO_SAVED. Completed cleanup is not fully awaited.",
             "initial_consumer": "An clears read-held counts, scans every returned owner value for mode===exclusive, sets macroRecorderExclusiveHeld and dispatches held_lock_updated. It reads macro_recorder_mode from the parsed value TOP LEVEL, then enqueues ON_OTFM_STARTED_BY_OTHER or ON_MACRO_RECORDER_STARTED only for its matching value. A parse/query failure clears the held flag.",
             "event_consumer": "q is gated by Z. It parses newValue/oldValue separately with empty-object fallback. Any new exclusive value sets macroRecorderExclusiveHeld. It reads payload.macro_recorder_mode, queues OTFM brightness/start or software start, and dispatches held_lock_updated.",
             "event_removal": "Only removed/cleared plus an old exclusive value triggers an asynchronous re-read of all owners. A remaining exclusive owner keeps the held flag. Re-read/parse rejection clears it. finally queues the old payload mode's stop events only when no exclusive owner remains, and always dispatches held_lock_updated.",
@@ -3894,7 +4282,7 @@ def audit_host_macro_recorder(args):
             "audio_route_consumers": "changePlaybackMixDevice applies setPlaybackExternal only if routing returns true, then returns the routing boolean even if the later native setter returns false; its exception path returns false. updateMixInput combines routing and native results according to each add/remove/external branch, preserving the source ordering and existing writes rather than treating service request completion as route success.",
         }
         report["remaining_chains"] = [
-            "Finish every product's OTFM event and device-branch adapters, local macro/profile persistence writes and asynchronous failure/cleanup chains against native transport; the complete PID756 trigger and background state/service owners do not mean all product branches are implemented.",
+            "The 114 current entry producers, complete background participant table and 25/37 identity/guard/save differences are retained separately. Continue remaining product mapping writers, native transport/parser branches, local profile persistence and failure/cleanup semantics; these static subsets do not mean all products are independently implemented.",
             "Finish native recorder callback ownership, ABI and device write-back chains through the full current captures; complete frontend/host WindowStorage owners and the bounded AudioRouter status slice do not establish native semantic closure or runtime acceptance.",
             "Complete the mounted macro UI, dialogs, local macro persistence/mappings, cancellation and cleanup against its entire current source-to-Rust/backend checklist; selected complete owners do not mean a complete page."]
     except (OSError, ValueError, KeyError, TypeError, StopIteration) as error:
@@ -4652,6 +5040,217 @@ def audit_host_window_lifecycle(args):
         raise ValueError("Host window lifecycle source query remains unresolved")
 
 
+def lighting_catalog_projection(rows):
+    """Project the ordered strict-equality helper over the catalog's full ID domain."""
+    if not isinstance(rows, list) or not rows:
+        raise ValueError("Device catalog is not a nonempty row array")
+    shapes = {"productId": {int}, "dongleId": {int, list}, "bleId": {int},
+              "wiredId": {list}, "psModeIds": {list}, "monitorPortIds": {list}, "xBoxId": {int, list}}
+    declared, scalar = set(), set()
+    for row in rows:
+        if not isinstance(row, dict) or "productId" not in row:
+            raise ValueError("Device catalog row has no product identity")
+        for key, value in row.items():
+            if key == "isNotChromaDevice" and type(value) is bool:
+                continue
+            if key not in shapes or type(value) not in shapes[key]:
+                raise ValueError("Device catalog has an unverified field shape: " + key)
+            values = value if type(value) is list else [value]
+            if not values or any(type(item) is not int or not 0 < item <= 65535 for item in values):
+                raise ValueError("Device catalog has an invalid numeric identity: " + key)
+            declared.update(values)
+            if key in {"productId", "dongleId", "bleId"} and type(value) is int:
+                scalar.add(value)
+    resolutions = []
+    for pid in sorted(declared):
+        match = {"input_pid": pid, "primary": pid, "index": None, "matched": "unchanged"}
+        for index, row in enumerate(rows):
+            field = next((key for key in ("productId", "dongleId", "bleId")
+                          if type(row.get(key)) is int and row[key] == pid), None)
+            if field is not None:
+                match.update(primary=row["productId"], index=index, matched=field)
+                break
+        resolutions.append(match)
+    return {"rows": len(rows), "distinct_primary_pids": len({row["productId"] for row in rows}),
+            "all_declared_numeric_id_count": len(declared), "engine_scalar_input_count": len(scalar),
+            "engine_changed_input_count": sum(row["input_pid"] in scalar and row["input_pid"] != row["primary"]
+                                               for row in resolutions),
+            "ordered_resolutions": resolutions}
+
+
+def audit_lighting_catalog(audit, engine_main):
+    observation, files = audit.observed_sources("synapse-device-catalog-current",
+        "https://apps.razer.com/synapse/dashboard/AvailableDevices.json")
+    main = next(row for row in files if Path(row["path"]).name == Path(engine_main["path"]).name)
+    if audit.read(main) != audit.read(engine_main):
+        raise ValueError("Observed lighting engine differs from the selected deployment")
+    owner_path = audit.a.ROOT / ".analysis/results/frontend/synapse-device-catalog-current/source-owners.json"
+    owners, owner_ids = json.loads(audit.artifact(owner_path)), []
+    for owner in owners["owners"]:
+        matches = [row for row in files if row["path"] == owner["source"]]
+        if len(matches) != 1:
+            raise ValueError("Catalog source owner is outside the bounded observations")
+        original = matches[0]
+        start, end = owner["start"], owner["end"]
+        node = audit.tree(original).root_node.descendant_for_byte_range(start, end - 1)
+        raw = audit.read(original)[start:end]
+        if (node.start_byte, node.end_byte, node.type) != (start, end, owner["type"]) \
+                or hashlib.sha256(raw).hexdigest() != owner["body_sha256"] \
+                or raw.decode("utf-8") != owner["body"]:
+            raise ValueError("Catalog owner does not match its complete source AST")
+        owner_ids.append(audit.retain_range("lighting_catalog_" + str(len(owner_ids)),
+            original, start, end, node.type))
+    original = next(row for row in files if row["url"] ==
+        "https://apps.razer.com/synapse/dashboard/AvailableDevices.json")
+    projection = lighting_catalog_projection(json.loads(audit.read(original)))
+    analysis = json.loads(audit.artifact(audit.a.ROOT /
+        ".analysis/results/frontend/synapse-device-catalog-current/catalog-analysis.json"))
+    if analysis["input"] != original["path"] or analysis["input_bytes"] != original["bytes"] \
+            or analysis["input_sha256"] != original["sha256"]:
+        raise ValueError("Catalog projection belongs to different original bytes")
+    for key, value in projection.items():
+        if key == "ordered_resolutions":
+            recorded = [{name: row[name] for name in ("input_pid", "primary", "index", "matched")}
+                        for row in analysis["engine_all_declared_id_resolutions"]]
+        else:
+            recorded = analysis[key]
+        if value != recorded:
+            raise ValueError("Catalog projection differs from retained analysis: " + key)
+    return {"observation": observation, "owner_ids": owner_ids, "catalog": audit.sources[original["path"]],
+            **projection, "ordered_equality": "First row with strict scalar productId/dongleId/bleId equality; arrays and other ID fields do not match; no match preserves the input PID",
+            "consumer": "DeviceInfo.configure uses vendor5426/1678 and feeds both manifests and middleware lighting SVG paths",
+            "cache": "Getter may receive Service Worker DeviceDataJson stale cache and falls back to CacheAPI DeviceDataJson on failure/empty. This observation does not read a live browser cache",
+            "runtime_browser_cache_observed": False, "target_execution": False,
+            "actual_dll_comparison": "unverified"}
+
+
+def audit_iot_reconnect(audit):
+    import evidence
+    observation, _ = audit.observed_sources("synapse-iot-reconnect-current",
+        "https://apps.razer.com/synapse/products/780/mw/index.html")
+    path = audit.a.ROOT / ".analysis/results/frontend/synapse-iot-reconnect-current/source-owners.json"
+    retained = json.loads(audit.artifact(path))
+    indexed = {row["path"]: row for row in json.loads(
+        audit.artifact(audit.a.ROOT / ".analysis/inputs.json"))["inputs"]}
+    sources, deployments, owner_ids = {}, {}, []
+    for source in retained["sources"]:
+        row = indexed.get(source["path"])
+        if row is None or any(row[key] != source[key] for key in ("bytes", "sha256")):
+            raise ValueError("IoT reconnect source differs from its indexed original")
+        audit.read(row)
+        sources[row["path"]] = row
+        if row["path"].startswith(".analysis/inputs/frontend/"):
+            receipt = source["acquisition"]
+            if receipt not in deployments:
+                acquired = json.loads(audit.artifact(audit.a.ROOT / receipt))
+                if acquired.get("source_current_during_acquisition") is not True:
+                    raise ValueError("IoT reconnect deployment has an unverified entry")
+                deployments[receipt] = evidence.frontend_deployment_sources(acquired)
+            if not any(item["identity_verified"] and item["original"]["path"] == row["path"]
+                       for item in deployments[receipt]["sources"]):
+                raise ValueError("IoT reconnect owner is not referenced by the current entry")
+    host = verified_host_owners(audit, ("electron/modules/ffi/FFIPreloadMain.js", "electron/preload.js"))
+    for owner in retained["owners"]:
+        original = sources[owner["source"]]
+        start, end = owner["start_byte"], owner["end_byte"]
+        node = audit.tree(original).root_node.descendant_for_byte_range(start, end - 1)
+        body = audit.read(original)[start:end]
+        if (node.start_byte, node.end_byte, node.type) != (start, end, owner["type"]) \
+                or body.decode("utf-8") != owner["body"] \
+                or hashlib.sha256(body).hexdigest() != owner["body_sha256"]:
+            raise ValueError("IoT reconnect source owner differs from its complete AST")
+        owner_ids.append(audit.retain_range("iot_reconnect_" + owner["label"], original, start, end, node.type))
+    native = []
+    for owner in retained["native_owners"]:
+        raw = audit.artifact(audit.a.ROOT / owner["source"], {"sha256": owner["capture_sha256"]})
+        function = json.loads(raw)
+        if function["rva"] != owner["rva"]:
+            raise ValueError("IoT reconnect native owner has a different RVA")
+        native.append({"artifact": audit.artifacts[owner["source"]], "rva": owner["rva"]})
+    return {"observation": observation, "owner_ids": owner_ids, "host_sources": list(host.values()),
+            "native_owners": native, "products": retained["products"],
+            "static_projections": retained["static_projections"], "findings": retained["findings"],
+            "unverified": retained["unverified"], "target_execution": False,
+            "actual_dll_comparison": "unverified"}
+
+
+def audit_deviceinfo_value_sources(audit, main, manifests):
+    """Recheck reviewed value sources against complete ASTs and retained manifests."""
+    path = audit.a.ROOT / ".analysis/results/frontend/synapse-lighting-engine-current/deviceinfo-value-sources.json"
+    retained = json.loads(audit.artifact(path))
+    if retained["target_execution"] is not False or retained["real_device_operations"] is not False:
+        raise ValueError("DeviceInfo value review has an invalid execution boundary")
+    indexed = {row["path"]: row for row in json.loads(
+        audit.artifact(audit.a.ROOT / ".analysis/inputs.json"))["inputs"]}
+    sources = {}
+    for row in retained["sources"]:
+        original = indexed[row["path"]]
+        if any(row[key] != original[key] for key in ("bytes", "sha256")):
+            raise ValueError("DeviceInfo value source differs from current indexed bytes")
+        sources[row["path"]] = original
+    for row in retained["acquisitions"]:
+        audit.artifact(audit.a.ROOT / row["path"], row)
+    owners = {}
+    for row in retained["owners"]:
+        original = sources[row["source"]]
+        start, end = row["start_byte"], row["end_byte"]
+        body = audit.read(original)[start:end]
+        node = audit.tree(original).root_node.descendant_for_byte_range(start, end - 1)
+        if row["source_sha256"] != original["sha256"] or (node.start_byte, node.end_byte, node.type) != (
+                start, end, row["type"]) or body.decode("utf-8") != row["body"] \
+                or hashlib.sha256(body).hexdigest() != row["body_sha256"]:
+            raise ValueError("DeviceInfo value owner differs from its complete original AST")
+        if row["id"] in owners:
+            raise ValueError("DeviceInfo value owner has a duplicate identity")
+        owners[row["id"]] = audit.retain_range(
+            "lighting_deviceinfo_value_source", original, start, end, node.type)
+    expected_manifests = {row["original"]["path"]: row for row in manifests}
+    if {row["source"] for row in retained["manifest_branches"]} != set(expected_manifests):
+        raise ValueError("DeviceInfo value review does not cover the retained manifest set")
+    for row in retained["manifest_branches"]:
+        expected = expected_manifests[row["source"]]
+        original = expected["original"]
+        body = json.loads(audit.read(original))
+        if any(row[key] != original[key] for key in ("bytes", "sha256")) \
+                or (row["filename_product_id"], row["edition_id"]) != (
+                    expected["product_id"], expected["edition_id"]) \
+                or {key: body[key] for key in row["fields"] if key in body} != row["fields"]:
+            raise ValueError("DeviceInfo manifest value projection differs from original fields")
+    gate_owner = [row for row in audit.owners.values()
+                  if "lighting_default_restore_device_names" in row["roles"]]
+    if len(gate_owner) != 1:
+        raise ValueError("DeviceInfo restore name gate is absent or ambiguous")
+    row = gate_owner[0]
+    node = audit.tree(main).root_node.descendant_for_byte_range(row["byte_start"], row["byte_end"] - 1)
+    value = node.child_by_field_name("right")
+    if value is None or value.type != "array" or any(part.type != "string" for part in value.named_children):
+        raise ValueError("DeviceInfo restore name gate requires dynamic expression analysis")
+    gate = {json.loads(part.text.decode("utf-8")) for part in value.named_children}
+    gated = [row for row in retained["manifest_branches"]
+             if row["fields"].get("rzDeviceConfig", {}).get("rzDeviceName") in gate]
+    counts = {}
+    for row in gated:
+        name = row["fields"]["rzDeviceConfig"]["rzDeviceName"]
+        counts[name] = counts.get(name, 0) + 1
+    projection = retained["manifest_projection"]
+    if counts != projection["gated_by_protocol"] or len(gated) != projection["gated_originals"] \
+            or len(manifests) != projection["retained_originals"]:
+        raise ValueError("DeviceInfo per-protocol manifest projection differs")
+    for row in retained["retained_engine_keyword_scope"]:
+        original = indexed[row["source"]]
+        if any(row[key] != original[key] for key in ("bytes", "sha256")):
+            raise ValueError("DeviceInfo keyword scan original differs")
+        raw = audit.read(original)
+        counts = {key: raw.count(key.encode("utf-8")) for key in (
+            "quickEffectOnExit", "userQuickEffectOnExit", "getQuickEffect") if key.encode("utf-8") in raw}
+        if counts != row["occurrences"]:
+            raise ValueError("DeviceInfo keyword scan does not match retained source bytes")
+    return {"analysis": audit.artifacts[audit.a.rel(path)], "owner_ids": owners,
+            "classes": retained["classes"], "manifest_projection": projection,
+            "findings": retained["findings"], "remaining": retained["unresolved"],
+            "target_execution": False, "actual_dll_comparison": "unverified"}
+
+
 def audit_host_local(args):
     if args.query == "window-lifecycle":
         return audit_host_window_lifecycle(args)
@@ -4685,7 +5284,10 @@ def audit_host_local(args):
         page = source(ui, 'e[2]>=22631')
         main = source(mw, 'async updateRazerWDLDevices()')
         page_ids = audit.retain("dynamic_lighting_settings_widget", page, 'e[2]>=22631', {"variable_declarator"})
-        audit.retain("settings_general_mounted_columns", page, 'jsx)(ia,{})', {"variable_declarator"})
+        columns_ids = audit.retain("settings_general_mounted_columns", page, 'jsx)(ia,{})', {"variable_declarator"})
+        columns = audit.owners[columns_ids[0]]
+        report["settings_mounted_parents"] = [audit.binding("settings_parent_" + name, page, name,
+            columns["byte_start"]) for name in ("$", "Q", "te", "ee", "mo", "kr", "Vr", "Br", "Hr")]
         page_main = source(ui, '.e(720)')
         audit.retain("settings_current_lazy_loader_and_react_root", page_main, '.e(720)', {"call_expression"})
         audit.retain("settings_current_lazy_loader_complete_callback", page_main, '.e(720)', {"arrow_function"})
@@ -4703,6 +5305,86 @@ def audit_host_local(args):
             ("lighting_native_startup_lifecycle", 'Promise.resolve((async()=>{const e="LightingEngineModule.initRzLightingEngine()', {"variable_declarator"}),
         ]:
             audit.retain(role, main, anchor, kinds)
+        for role, anchor in (("lighting_protocol_initialization", 'this.initLightingDriver=async function(){let t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:"";e.lightingEngine'),
+                             ("lighting_device_registration", "this.createLightingDeviceEx=async e=>{let{rzDevice"),
+                             ("lighting_normal_device_metadata", "this.addDevice=async function(t){let n=arguments.l"),
+                             ("lighting_multilink_device_metadata", "this.addMultiLinkSeqDevice=async function(t,n,i,o)")):
+            audit.retain(role, main, anchor, {"assignment_expression"})
+        for name in ("configureDevicesDefaultData", "setDeviceToDefaultOnExit"):
+            audit.callable_member("lighting_default_restore_producer_" + name, main,
+                                  audit.tree(main).root_node, name, receiver="this")
+        for role, anchor in (
+                ("lighting_default_restore_device_names", "this.resetDefaultDeviceNameList="),
+                ("lighting_default_restore_mode_builder", "this.createSetDeviceModeData="),
+                ("lighting_default_restore_effect_builder", "this.createSetChromaEffectCommonData="),
+                ("lighting_default_restore_effect_parameters", "this.generateSetChromaEffectCommonData=")):
+            audit.retain(role, main, anchor, {"assignment_expression"})
+        report["lighting_default_restore_headers"] = [
+            audit.webpack_export("lighting_default_restore_header_" + key, mw, module_id, key)
+            for module_id, key in ((2968, "COMMAND_SET_DEVICE_MODE_HEADER"),
+                                   (5668, "COMMAND_SET_CHROMA_EFFECT_HEADER"))]
+        for name, start, end in (("checksum", 516122, 516191), ("transaction", 516191, 516287),
+                                 ("frame", 516287, 516581)):
+            node = audit.tree(main).root_node.descendant_for_byte_range(start, end - 1)
+            if node.type != "method_definition" or (node.start_byte, node.end_byte) != (start, end):
+                raise ValueError("Current lighting default frame AST boundary differs: " + name)
+            audit.retain_range("lighting_default_restore_" + name, main, start, end, node.type)
+        report["lighting_default_restore_classes"] = []
+        for name, filename, start, end, base_name in (
+                ("rzDevice25", "main.a383ea9e.js", 511609, 564815, "i"),
+                ("rzDevice25LedMatrix", "3061.825e8b6b.chunk.js", 689, 8065, "a"),
+                ("rzDevice25Oled", "7826.cb5be441.chunk.js", 3362, 23590, "n"),
+                ("rzDevice25Linker", "4026.605cf6b7.chunk.js", 690, 7437, "r"),
+                ("rzDevice25Linker", "3961.b993efcb.chunk.js", 2130, 8877, "r"),
+                ("rzDevice25Linker", "2314.1b86b87a.chunk.js", 695, 7442, "n"),
+                ("rzDevice25Linker", "8086.08213062.chunk.js", 193746, 200493, "n"),
+                ("rzDevice25Glitter", "8648.80c7d0df.chunk.js", 689, 6856, "n"),
+                ("rzDevice25Glitter", "1452.f8a38141.chunk.js", 6084, 12251, "r"),
+                ("rzDevice25GlitterWireless", "1452.f8a38141.chunk.js", 635, 5935, "r"),
+                ("rzDevice25DualLinkMouse", "8508.0c16c096.chunk.js", 700, 9258, "r"),
+                ("rzDevice25DualLinkKeyboard", "986.87fa2f57.chunk.js", 698, 8732, "r"),
+                ("rzDevice25LedMatrixBatchSender", "8086.08213062.chunk.js", 297537, 300692, "a"),
+                ("rzDevice25LedMatrixSkipSetEffect", "269.63b2c328.chunk.js", 618, 1269, "a")):
+            matches = [row for row in mw if Path(row["path"]).name == filename]
+            if len(matches) != 1:
+                raise ValueError("Current default-restore class original is absent or ambiguous: " + filename)
+            original = matches[0]
+            node = audit.tree(original).root_node.descendant_for_byte_range(start, end - 1)
+            if node.type not in {"class", "class_declaration"} or (node.start_byte, node.end_byte) != (start, end):
+                raise ValueError("Current default-restore class AST boundary differs: " + name)
+            if node.text.count(('this.name="' + name + '"').encode()) != 1:
+                raise ValueError("Current default-restore class identity differs: " + name)
+            owner = audit.retain_range("lighting_default_restore_class_" + name, original, start, end, node.type)
+            report["lighting_default_restore_classes"].append({"name": name, "owner_id": owner,
+                "base_binding": audit.binding("lighting_default_restore_base_" + name, original, base_name, start)})
+        report["lighting_default_restore_matrix_contract"] = [
+            audit.webpack_export("lighting_default_restore_matrix_" + key, mw, module_id, key)
+            for module_id, key in ((1306, "NEW_CHROMA_EFFECT_ID"), (7017, "LED_MATRIX_RGB_EFFECT_ID"),
+                                   (7909, "COMMAND_SET_LED_MATRIX_RGB_EFFECT_HEADER"))]
+        report["lighting_protocol_constructors"] = []
+        for role, filename, start, end in (
+            ("base", "main.a383ea9e.js", 1475660, 1478620),
+            ("rzDevice25", "main.a383ea9e.js", 511629, 516074),
+            ("rzDevice25Chroma65", "334.68120187.chunk.js", 644, 1250),
+            ("rzDevice25LedMatrix", "3061.825e8b6b.chunk.js", 715, 5064),
+            ("rzDevice25LedMatrixSkipSetEffect", "269.63b2c328.chunk.js", 644, 1268),
+            ("rzDevice25Glitter", "8648.80c7d0df.chunk.js", 715, 2649),
+            ("rzDevice25GlitterWireless", "1452.f8a38141.chunk.js", 661, 5365),
+            ("rzDevice25Glitter_in_wireless_chunk", "1452.f8a38141.chunk.js", 6110, 8044),
+            ("rzDevice25MarciT1", "330.d43d2948.chunk.js", 878, 5093),
+            ("rzDevice25AudioCamy", "2237.e8b29886.chunk.js", 746, 5727),
+            ("rzDeviceIoT", "1794.13beaac0.chunk.js", 690, 3254),
+            ("rzDevice25LedMatrixBatchSender", "8086.08213062.chunk.js", 297563, 298327),
+            ("rzDeviceLampArray", "main.a383ea9e.js", 1118109, 1126709)):
+            found = [row for row in mw if Path(row["path"]).name == filename]
+            if len(found) != 1:
+                raise ValueError("Current lighting constructor source is absent or ambiguous: " + filename)
+            original = found[0]
+            constructor = audit.tree(original).root_node.descendant_for_byte_range(start, end - 1)
+            if constructor.type != "method_definition" or (constructor.start_byte, constructor.end_byte) != (start, end):
+                raise ValueError("Current lighting constructor AST boundary differs: " + role)
+            owner = audit.retain_range("lighting_protocol_constructor_" + role, original, start, end, constructor.type)
+            report["lighting_protocol_constructors"].append({"protocol": role, "owner_id": owner})
         # Resolve actual local lexical bindings, retaining their complete values
         # instead of substituting another same-named minified module constant.
         widget = audit.owners[page_ids[0]]
@@ -4714,23 +5396,157 @@ def audit_host_local(args):
                 ("settings_localized_text", 264, "A"))]
         keys = ("AXr", "j4s", "jiX", "He3", "a5R", "k6W", "LRm", "doU", "SRS")
         report["settings_copy_exports"] = [audit.webpack_export("settings_copy_" + key, ui, 4693, key) for key in keys]
+        report["settings_translation_lifecycle"] = [audit.webpack_export("settings_translation_" + key, ui, 1778, key)
+            for key in ("getTextItem", "getLanguageItem", "swapLang", "updateLanguage")]
+        report["settings_translation_importer"] = audit.webpack_export("settings_translation_importer", ui, 7248, "default")
+        copy_keys = ("DEVICE_LIGHTING", "DEVICE_LIGHTING_TIPS", "CHROMA_RGB", "DYNAMIC_LIGHTING",
+                     "DYNAMIC_LIGHTING_TITLE", "CHROMA_RGB_TITLE", "DYNAMIC_LIGHTING_MSG", "CHROMA_RGB_MSG",
+                     "OPEN_WINDOWS_DYNAMIC_LIGHTING")
+        report["settings_locale_exports"] = [{"locale": locale, "module_id": module_id,
+            "entries": [audit.webpack_export("settings_locale_" + locale + "_" + key, ui, module_id, key)
+                        for key in copy_keys]}
+            for locale, module_id in (("en", 2221), ("de", 7493), ("es", 1418), ("fr", 4741),
+                                      ("ja", 3227), ("kr", 3415), ("pt-BR", 9351), ("ru", 391),
+                                      ("zh-CN", 6368), ("zh-TW", 2408))]
         report["lighting_ffi_exports"] = [audit.webpack_export("lighting_ffi_" + key, mw, 4407, key)
                                           for key in ("Qq", "oE", "yL", "Vj")]
         report["current_css"] = [{"original": row, "body": audit.read(row).decode("utf-8")}
             for row in ui if Path(row["path"]).suffix == ".css"]
         indexed = json.loads((a.ROOT / ".analysis/inputs.json").read_bytes())
+        report["lighting_restore_device_info_owners"] = []
+        for role, start, end in (
+                ("complete_module", 1281275, 1358467), ("complete_class", 1307479, 1358421),
+                ("constructor", 1307487, 1328958), ("configure", 1307512, 1319984),
+                ("prepare_device", 798037, 800387), ("create_device_info", 820622, 821045),
+                ("manifest_selection", 1330761, 1333740), ("partner_manifest", 1328958, 1330761),
+                ("manifest_fetch", 1333740, 1334329), ("manifest_idb_read", 1355596, 1356168),
+                ("manifest_idb_write", 1356168, 1356677), ("available_devices", 796031, 796548),
+                ("primary_product", 1072572, 1072716), ("exit_target_assignment", 1310886, 1310925),
+                ("local_profile_read", 1337557, 1340073), ("ui_effect", 1334912, 1335556),
+                ("software_effect_sync", 825229, 826331), ("region_effect_init", 821866, 823011),
+                ("device_ready", 800388, 820621), ("snapshot_gate", 814211, 814505),
+                ("snapshot_helper", 731819, 732880), ("snapshot_getter", 548800, 548901),
+                ("hardware_effect_setter_exception_consumer", 730954, 731819),
+                ("snapshot_encoder", 1091719, 1092237), ("snapshot_parser", 1091425, 1091718),
+                ("snapshot_header", 760197, 760226), ("initial_snapshot", 1327965, 1327998),
+                ("dynamic_context", 1186068, 1186476), ("unused_info_message", 913087, 913381)):
+            node = audit.tree(main).root_node.descendant_for_byte_range(start, end - 1)
+            if (node.start_byte, node.end_byte) != (start, end):
+                raise ValueError("Current restore DeviceInfo AST boundary differs: " + role)
+            report["lighting_restore_device_info_owners"].append(audit.retain_range(
+                "lighting_restore_device_info_" + role, main, start, end, node.type))
+        default_rows = [row for row in mw if Path(row["path"]).name == "4238.286b7bbe.chunk.js"]
+        if len(default_rows) != 1:
+            raise ValueError("Current PID zero manifest module is absent or ambiguous")
+        audit.retain("lighting_pid_zero_manifest_only", default_rows[0], "quickEffectOnExit:",
+                     {"variable_declarator"})
+        manifest_rows = [row for row in indexed["inputs"] if row["path"].startswith(
+            ".analysis/inputs/frontend/") and "-current/" in row["path"]
+            and re.search(r"/DeviceManifest_\d+_\d+\.json$", row["path"])]
+        if not manifest_rows:
+            raise ValueError("Current retained product restore manifests are absent")
+        manifest_receipts, restore_manifests = {}, []
+        fields = ("version", "productId", "quickEffectOnExit", "rzDeviceConfig", "useUserQuickEffectOnExit",
+                  "syncHWEffectWithSWEffectWhenExit", "skipQuickEffectOnExit", "keepSynapseQuickEffectOnExit",
+                  "isHardwareEffectsOnly", "hasPowerButton", "supportBatteryLevelEffectOnExit")
+        for original in manifest_rows:
+            receipt_name = str(Path(*Path(original["path"]).parts[:4]) / "acquisition.json").replace("\\", "/")
+            if receipt_name not in manifest_receipts:
+                manifest_receipts[receipt_name] = json.loads(audit.artifact(a.ROOT / receipt_name))
+            acquired = [row for row in manifest_receipts[receipt_name]["files"]
+                        if row.get("path") == original["path"]]
+            if len(acquired) != 1 or any(acquired[0].get(key) != original[key] for key in ("bytes", "sha256")):
+                raise ValueError("Retained restore manifest differs from its acquisition: " + original["path"])
+            body = json.loads(audit.read(original))
+            pid, edition = map(int, re.search(r"/DeviceManifest_(\d+)_(\d+)\.json$", original["path"]).groups())
+            if not isinstance(body, dict) or type(body.get("productId")) is not int:
+                raise ValueError("Restore manifest has no integer product identity: " + original["path"])
+            for field in fields[4:]:
+                if field in body and type(body[field]) is not bool:
+                    raise ValueError("Restore manifest branch has a non-boolean flag: " + field)
+            restore_manifests.append({"original": original, "acquisition": receipt_name,
+                "product_id": pid, "declared_product_id": body["productId"], "edition_id": edition,
+                "filename_matches_declared_product": pid == body["productId"],
+                "fields": {key: body[key] for key in fields if key in body}})
+        report["lighting_restore_manifest_scope"] = {
+            "retained_originals": restore_manifests,
+            "physical_inputs": len(restore_manifests), "acquisition_sets": len(manifest_receipts),
+            "product_editions": len({(row["product_id"], row["edition_id"]) for row in restore_manifests}),
+            "products": len({row["product_id"] for row in restore_manifests}),
+            "filename_declared_pid_differences": [{"original": row["original"],
+                "filename_product_id": row["product_id"], "declared_product_id": row["declared_product_id"],
+                "edition_id": row["edition_id"]} for row in restore_manifests
+                if not row["filename_matches_declared_product"]],
+            "device_identity_consumer": "DeviceInfo.configure retains the productId from discovered arguments and does not assign C.productId. A filename/declaration difference is retained explicitly; this query does not invent a filename-equality rule absent from that source owner",
+            "all_official_products_covered": False, "latest_deployment_rechecked_this_query": False,
+            "runtime_manifest_cache_read": False, "actual_dll_comparison": "unverified"}
+        report["lighting_catalog"] = audit_lighting_catalog(audit, main)
+        report["iot_reconnect"] = audit_iot_reconnect(audit)
+        report["deviceinfo_value_sources"] = audit_deviceinfo_value_sources(audit, main, restore_manifests)
+        report["settings_media"] = []
+        for media in ("exclamation_icon.53d6d40b.svg", "wdl_large_icon.e610fd8c.svg",
+                      "tooltip_questionmark.96138d2f.svg", "spinner.ef2d0235.svg"):
+            found = [row for row in indexed["inputs"] if row["path"].startswith(
+                ".analysis/inputs/frontend/synapse-settings-current/") and row["path"].endswith("/" + media)]
+            if len(found) != 1:
+                raise ValueError("Current settings media identity is absent or ambiguous: " + media)
+            report["settings_media"].append({"original": found[0], "body": audit.read(found[0]).decode("utf-8")})
         host_rows = [row for row in indexed["inputs"] if row["path"].startswith(".analysis/inputs/host-current/asar/")]
         host_sources = []
         for suffix in ("electron/modules/LampArray/LampArrayAction.js", "electron/modules/ffi/FFIPreloadMain.js",
                        "electron/modules/ffi_subprocess/FFIPreloadSubProcess.js", "electron/modules/ffi/ffiMain.js",
                        "electron/modules/lighting/ffiLightingDriver.js",
-                       "electron/modules/sysutil/win/index.js"):
+                        "electron/modules/sysutil/win/index.js", "electron/main.js", "electron/UsbRzDeviceAction.js",
+                        "electron/Protocol/protocol25.js", "electron/Protocol/protocol25Const.js",
+                        "electron/modules/IoT/IoTNativeAction.js", "node_modules/node-rz-hid/nodehid.js",
+                        "node_modules/node-rz-hid/package.json"):
             found = [row for row in host_rows if row["path"].endswith("/" + suffix)]
             if len(found) != 1:
                 raise ValueError("Current host JS original is absent or ambiguous: " + suffix)
             row = found[0]
             host_sources.append({"original": row, "body": audit.read(row).decode("utf-8")})
+            if suffix == "electron/main.js":
+                audit.retain("lighting_host_final_writer_dispatch", row, "to.onWriteCallback=", {"assignment_expression"})
+            elif suffix == "electron/UsbRzDeviceAction.js":
+                for action in ("hid.removeDevice", "hid.sendFeatureReportInBatch", "hid.setDevicesToDefault",
+                               "hid.configureDevicesDefaultData", "hid.setDevicesToDefaultNoAsync",
+                               "hid.startLightingFramesInElectronMain", "hid.stopLightingFramesInElectronMain",
+                               "hid.writeAsync"):
+                    audit.retain("lighting_host_" + action, row, 'case"' + action + '":', {"switch_case"})
+                audit.callable_member("lighting_host_writeAsync", row, audit.tree(row).root_node, "writeAsync")
+                audit.retain_class_field("lighting_host_default_restore_on_exit", row,
+                                         "handle_hid_setDevicesToDefaultNoAsync")
+                audit.retain_class_field("lighting_host_default_restore_sender", row,
+                                         "setDevicesToDefaultNoAsyncExec")
+            elif suffix in ("electron/Protocol/protocol25.js", "electron/Protocol/protocol25Const.js"):
+                audit.retain("lighting_default_restore_" + Path(suffix).stem, row,
+                             "module.exports=", {"assignment_expression"})
         report["complete_host_sources"] = host_sources
+        hid_rows = [row for row in host_rows if row["path"].endswith("/node-rz-hid/build/Release/HID.node")]
+        if len(hid_rows) != 1:
+            raise ValueError("Current lighting HID native input is absent or ambiguous")
+        encoding_path = a.ROOT / ".analysis/results/native" / hid_rows[0]["sha256"] / "utf16-semantic-audit.json"
+        encoding = json.loads(audit.artifact(encoding_path))
+        if any(encoding["original"][key] != hid_rows[0][key] for key in ("bytes", "sha256")) \
+                or encoding["byte_validation"]["errors"]:
+            raise ValueError("HID encoding analysis is not bound to current original bytes")
+        encoding_functions = [row for group in ("successful_supplement_functions", "supporting_base_callers")
+                              for row in encoding["artifacts"][group]]
+        for row in encoding_functions:
+            audit.artifact(a.ROOT / row["artifact"]["path"], row["artifact"])
+        encoding_rvas = tuple(int(row["rva"], 16) for row in encoding_functions)
+        report["lighting_hid_encoding_review"] = {
+            "analysis": audit.artifacts[a.rel(encoding_path)], "capture_states": encoding["capture_states"],
+            "semantics": encoding["semantics"], "caller_proof": encoding["caller_proof"],
+            "instruction_derived_cases": encoding["instruction_derived_cases"],
+            "target_execution": False, "actual_dll_comparison": "unverified"}
+        report["lighting_hid_native"] = audit.native_slice(hid_rows[0], (), depth=0,
+            rvas=(0xc8d0, 0x5280, 0x45d0, 0x50e0, 0x4800, 0x16370, 0x13700, 0x165f0,
+                  0x6170, 0x53a0, 0x94e0, 0x4710, 0xeaf0, 0x15ad0, 0x15fe0, 0x160e0,
+                  0x17a10, 0x175e0, 0x17de0, 0x161e0, 0xcc90, 0x9750, 0x15d40, 0xc600) + encoding_rvas,
+            regions=({"role": "hid_batch_feature_writer_vtable", "rva": 0x51c60, "bytes": 24},
+                     {"role": "utf16_encoding_runtime_function", "rva": 0x6170c, "bytes": 12},
+                     {"role": "utf16_encoding_unwind_info", "rva": 0x539a0, "bytes": 8}))
         acquisition = a.ROOT / ".analysis/inputs/host-current/acquisition.json"
         host_acquired = json.loads(audit.artifact(acquisition))
         report["host_acquisition"] = families.identity(acquisition)
@@ -4783,9 +5599,88 @@ def audit_host_local(args):
             "target_execution": False}
         rpc_originals = {}
         for resource, export_names, string_keys, extra in [
+            ("IoTNative", [], [], {"depth": 0, "rvas": (
+                0x346e0, 0x34170, 0x34c60, 0x37590, 0x36da0, 0x1250, 0x2dc0, 0x1900,
+                0x1050, 0x2720, 0x3c400, 0x48fe0, 0x490e0, 0x48f90, 0x37140, 0x14550,
+                0x35b40, 0x39870, 0x39bb0, 0x15b0, 0x1cc0, 0x6e1b0, 0x38690, 0x359c0,
+                0x34e60, 0x37710, 0x59370, 0x3a350, 0x426e0,
+                0x34f40, 0x35400, 0x35460, 0x35590, 0x35710, 0x35940, 0x3c900, 0x49190, 0x49220),
+                "regions": ({"role": "sdk_load_filename_utf16", "rva": 0x74580, "bytes": 66},
+                            {"role": "queued_connect_function_vtable", "rva": 0x767f0, "bytes": 40})}),
+            ("Razer_IoT_SDK", [], [], {"depth": 0, "rvas": (
+                0xad17, 0x26dd20, 0x6e97, 0x25cc60, 0x5812, 0x250de0, 0xc284, 0x36d5b0,
+                0xb460, 0x247ef0, 0x3e45, 0x247920, 0xbf28, 0x227050, 0x5006, 0x264870,
+                0xa46b, 0x2637d0, 0x1244d0, 0x2158, 0x6938, 0x476b0, 0x379c, 0x1f4dc0,
+                0x74c8, 0x166620, 0x1d1110, 0x16c260, 0x29cb0, 0x1ef90, 0x263670, 0x242470,
+                0x252420, 0x2532b0, 0x248c40, 0x259010, 0xb66d, 0xa6c3, 0x835a, 0x243e50,
+                0x7f90, 0xaefc, 0x2676f0, 0x82e2, 0x247510, 0x8b89, 0x243060, 0x89c7,
+                0x2438c0, 0x18e8, 0x24bac0, 0x5a1a, 0x24a9d0, 0x6d75, 0x26d720, 0x19ce,
+                0x249b20, 0xbf73, 0x250fd0, 0x5551, 0x262fb0, 0x6bdb, 0x244830, 0xc1d0,
+                0x244620, 0xa420, 0x251300, 0x5ac9, 0x2420c0, 0x2517c0, 0x24acf0, 0xb302,
+                0x259190, 0x4ce1, 0x24bd30, 0x2923, 0x2410c0, 0x24ef70, 0x11ae, 0x13b830,
+                0xb62c, 0x26d7a0,
+                0x6181, 0xa678, 0x251490, 0xa010, 0x23f950, 0x5556, 0x2964ec, 0x76b7,
+                0x242db0, 0xb7fd, 0x2414e0, 0xb753, 0x2968fc, 0xbdcf, 0x296840, 0x146a,
+                0x251620, 0x19ec, 0x26d030, 0xbaaf, 0x26d830, 0x246ca0, 0x3d65d0,
+                0x3ff30, 0x3ffe0, 0x2b8f, 0x25a100, 0x2374, 0x23f860, 0x6ab9,
+                0x23e390, 0x6721, 0x4fc5, 0x255630, 0x3a03, 0x2541d0, 0x6230,
+                0x22bcb0, 0xaeac, 0x2600d0, 0x956b, 0x261480, 0xae93, 0x2626a0,
+                0xb29e, 0x13ba30, 0x7fd1, 0x23b950, 0x8076, 0x2442a0, 0x695b,
+                0x244270, 0x419c, 0x244290, 0x1050, 0x244250, 0x58e4, 0x243e00,
+                0xa0b5, 0x2430e0, 0x8909, 0x243ce0, 0x9f20, 0x243ca0, 0x13bfc0,
+                0x13c210, 0x710d, 0xb3c5, 0x13bd70, 0x13bea0, 0x9a7a, 0x2d0b,
+                0x1a96c0, 0x1eb380, 0x1742a0, 0x7f13, 0x1ff8e0, 0xb3d9,
+                0x295ab0, 0xbe79, 0x32a208, 0x734c, 0x324df0,
+                0x1573, 0x2315, 0x2a09, 0x2b4e, 0x2bcb, 0x317f, 0x398b, 0x3aad,
+                0x3b57, 0x3bed, 0x4b06, 0x4ec6, 0x623f, 0x6244, 0x6f73, 0x8148,
+                0x8666, 0x86f2, 0x87e2, 0x88c3, 0x8c5b, 0x8e0e, 0x8f3a, 0x93a9,
+                0x98db, 0x9c5f, 0x9ddb, 0x9e44, 0xb3f2, 0xb497, 0xbccb, 0x47a70,
+                0x48c00, 0xb4350, 0x239880, 0x23c0c0, 0x23d270, 0x23d390, 0x23e320,
+                0x23ef40, 0x23f7e0, 0x23fa00, 0x240ea0, 0x242630, 0x242790, 0x2481c0,
+                0x24b710, 0x24f1b0, 0x24fdf0, 0x250100, 0x2503e0, 0x2507a0, 0x2508b0,
+                0x250ae0, 0x250cc0, 0x251260, 0x2536b0, 0x258610, 0x264b60, 0x2672f0,
+                0x267700, 0x267910, 0x26d430, 0x26d7b0, 0x26df20, 0x26df40, 0x296294,
+                0x296440, 0x2d3c40),
+                "regions": ({"role": "socket_primary_vtable", "rva": 0x3ebb28, "bytes": 24},
+                            {"role": "socket_secondary_vtable", "rva": 0x3ebb50, "bytes": 40},
+                            {"role": "v25_frame_vtable", "rva": 0x3df6a0, "bytes": 24},
+                            {"role": "frame_command_class_first", "rva": 0x45824c, "bytes": 4},
+                            {"role": "frame_command_class_second", "rva": 0x4582d8, "bytes": 4},
+                            {"role": "legacy_frame_command_name", "rva": 0x3e1450, "bytes": 16},
+                            {"role": "v2_frame_command_name", "rva": 0x3e1530, "bytes": 17},
+                            {"role": "sdk_version_literal", "rva": 0x3ed520, "bytes": 14},
+                            {"role": "global_callback_object_vptr", "rva": 0x45e2a8, "bytes": 8},
+                            {"role": "global_callback_vtable", "rva": 0x3eb8f8, "bytes": 8},
+                            {"role": "socket_shared_control_vtable", "rva": 0x3ed5a8, "bytes": 24},
+                            {"role": "socket_callback_shared_control_vtable", "rva": 0x3ed5d8, "bytes": 24},
+                            {"role": "socket_callback_vtable", "rva": 0x3ec010, "bytes": 8},
+                            {"role": "v25_keepalive_class", "rva": 0x4581e8, "bytes": 4},
+                            {"role": "wled_keepalive_class", "rva": 0x4581f0, "bytes": 4},
+                            {"role": "mdns_callback_object_vptr", "rva": 0x45da70, "bytes": 8},
+                            {"role": "mdns_callback_vtable", "rva": 0x3eb8d8, "bytes": 8},
+                            {"role": "mdns_record_callback_jump", "rva": 0x13c0, "bytes": 5},
+                            {"role": "mdns_identity_markers", "rva": 0x3eb5d8, "bytes": 64},
+                            {"role": "mdns_service_name", "rva": 0x3ec4f0, "bytes": 16},
+                            {"role": "mdns_empty_substring", "rva": 0x3dcbf6, "bytes": 1})}),
             ("LightingDriverDLL", ["Configure", "ConfigureInMem", "Startup", "Shutdown", "FreeString"], ["skip_wdl_devices", "mode.set"],
-                {"rvas": (0x5f40, 0x6b90, 0x5a00, 0xb790, 0xf4d0, 0x2e0d0, 0x30610), "regions": ({"role": "configure_type_dispatch", "rva": 0xafc30,
-                    "bytes": 96, "decode": "pointer_pairs"},)}),
+                {"rvas": (0x5f40, 0x6b90, 0x5a00, 0xb790, 0xf4d0, 0x2e0d0, 0x30610,
+                          0x2e500, 0x9240, 0x2edd0, 0x2ee70, 0x2ef10, 0x2efb0, 0x2f050, 0x2f0f0,
+                          0x2f190, 0x2f230, 0x2f360, 0xa770, 0xdbd0, 0xdc80, 0x9920, 0xdc90, 0xdd40,
+                          0x8b10, 0xc7b0, 0x2ce40, 0xdd90, 0x9730, 0xb310, 0xfed0, 0xefb0, 0xe250,
+                          0xea90, 0x7feb0, 0x80460, 0x7fc30, 0x7fd70, 0x80a00, 0x80f90, 0x811b0,
+                          0x81070, 0x85340, 0x85610, 0x85930, 0x85d20, 0x85fa0, 0xa100, 0x7ec90,
+                          0x7ebf0, 0x7ec10, 0x7e220, 0x7e120, 0x7e2e0, 0x7e4e0, 0x7e430, 0x7e710,
+                          0x2e0e0, 0x2ed70, 0x2f520, 0x2f570, 0x2f6c0, 0x83910, 0x2e4f0, 0x2550),
+                 "regions": ({"role": "configure_type_dispatch", "rva": 0xafc30,
+                    "bytes": 96, "decode": "pointer_pairs"},) + tuple(
+                     {"role": role + "_translator_vtable", "rva": rva, "bytes": 16}
+                     for role, rva in (("rzDevice25", 0xb3968), ("rzDevice25Chroma65", 0xb3b58),
+                         ("rzDevice25LedMatrix", 0xb3c68), ("rzDevice25LedMatrixBatchSender", 0xb3d78),
+                         ("rzDevice25Glitter", 0xb3e88), ("rzDevice25MarciT1", 0xb3f98),
+                         ("rzDevice25AudioCamy", 0xb40a8), ("rzDeviceIoT", 0xb41b8),
+                         ("rzDeviceLampArray", 0xb42c8))) + tuple(
+                     {"role": role + "_report_length_u64_le", "rva": rva, "bytes": 8}
+                     for role, rva in (("Glitter", 0xb3778), ("GlitterWireless", 0xb3798), ("MarciT1", 0xb37c0)))}),
             ("RzLampArrayDLL", ["SetupRPC", "Startup", "Shutdown", "JsonApi", "JsonApiNoReturn", "FreeMalloc", "GetDLLVersion",
                 "StartWatcher", "StopWatcher", "SetNodeFFIEvent", "GetLightingSettings", "GetControllerFilePath", "SetDeviceInfoToFile"],
                 ["device_get_all", "rpc::LampRpcClient::JsonApi", "rpc::LampRpcClient::InitRpc",
@@ -4826,7 +5721,9 @@ def audit_host_local(args):
                           0xf4730, 0xf2c20, 0xad140, 0xf31e0, 0xf7140, 0x35c70, 0x37a60,
                           0x14fe20, 0x150f10, 0x2329, 0xa0d3,
                           0x13b3f0, 0x13b430, 0x13b0c0, 0x13b0f0, 0x147860, 0x147910,
-                          0x153ac0, 0x154ca0, 0x154740, 0x156380, 0x155c30, 0x1557a0),
+                          0x153ac0, 0x154ca0, 0x154740, 0x156380, 0x155c30, 0x1557a0,
+                          0x1544c0, 0x154500, 0x13b840, 0x13b8c0, 0x14cb20,
+                          0x153b50, 0x15f4b0, 0x15f5e0, 0x10023, 0x10a0a),
                  "regions": ({"role": "json_key_virtual_key", "rva": 0x24467c, "bytes": 4},
                              {"role": "json_key_brightness", "rva": 0x2446b4, "bytes": 7},
                              {"role": "brightness_unit_limit_f64_le", "rva": 0x246ca0, "bytes": 8},
@@ -4844,7 +5741,13 @@ def audit_host_local(args):
                              {"role": "package_manager_runtime_class_utf16", "rva": 0x24b810, "bytes": 90},
                              {"role": "session_mutex_prefix_ascii", "rva": 0x248d58, "bytes": 14},
                              {"role": "session_rpc_endpoint_format_ascii", "rva": 0x240328, "bytes": 15},
-                             {"role": "hidden_window_identity_utf16", "rva": 0x246f80, "bytes": 18})}),
+                             {"role": "hidden_window_identity_utf16", "rva": 0x246f80, "bytes": 18},
+                             {"role": "watcher_added_delegate_vtable", "rva": 0x305190, "bytes": 32},
+                             {"role": "watcher_removed_delegate_vtable", "rva": 0x3051f0, "bytes": 32},
+                             {"role": "discovered_instance_id_property_utf16", "rva": 0x304bb0, "bytes": 62},
+                             {"role": "discovered_vendor_marker_utf16", "rva": 0x304c30, "bytes": 10},
+                             {"role": "discovered_product_marker_utf16", "rva": 0x304c40, "bytes": 10},
+                             {"role": "discovered_container_property_utf16", "rva": 0x304cc0, "bytes": 54})}),
         ]:
             matches = [row for row in host_acquired["files"] if row.get("resourceName") == resource]
             if not matches:
@@ -4857,6 +5760,12 @@ def audit_host_local(args):
             if declaration.get("sha256", "").lower() != matches[0]["sha256"] or declaration.get("size") != matches[0]["bytes"]:
                 raise ValueError("Current native resource manifest identity differs: " + resource)
             native = audit.native_slice(matches[0], export_names, string_keys, **extra)
+            if resource in {"IoTNative", "Razer_IoT_SDK"}:
+                aliases = [row for row in indexed["inputs"] if row["path"].startswith(
+                    ".analysis/inputs/installed-current/") and row["sha256"] == matches[0]["sha256"]]
+                if len(aliases) != 1 or audit.read(aliases[0]) != audit.read(matches[0]):
+                    raise ValueError("Current IoT installed alias differs from official original: " + resource)
+                native["verified_installed_alias"] = aliases[0]
             report["native"].append({"resource": resource, **native})
             rpc_originals[resource] = matches[0]
         rpc_server = audit.rpc_contract(rpc_originals["RazerWDLExe"], stub_rva=0x24bc70,
@@ -4917,6 +5826,14 @@ def audit_host_local(args):
                     {"type": "DeviceRemoved", "owner_rva": "0x87eb0", "device_id": "string"},
                     {"type": "DeviceAvailabilityChanged", "owner_rva": "0x87900", "device_id": "string", "available": "bool"}],
                 "availability_followup": "After emitting, erases only the per-device first-frame log marker at owner +224 through RVA 0x88280"},
+            "watcher_device_changes": {
+                "registration_rva": "0x159be0",
+                "callback_targets": "Added binds Impl and thunk 0x2329 -> 0x14fe20; Removed binds Impl and thunk 0xa0d3 -> 0x150f10. The latter has an unrelated decompiler-assigned CMFCRibbonPanel::Reposition name, which is not its semantic identity. Constructors 0x147860/0x147910 retain both bound words; raw delegate tables 0x305190/0x3051f0 resolve Invoke at +0x18 to 0x4d2c -> 0x1544c0 and 0x3de1 -> 0x154500. Complete Invoke assembly passes this+0x10 to 0x13b840/0x13b8c0, which AddRef both arguments and invokes the retained Impl callback. The two Invoke owners retain original Hex-Rays failures, not fabricated pseudocode",
+                "added": "0x14fe20 reads DeviceInformation Id, Name, IsEnabled and Properties through wrappers 0x153ac0/0x154ca0/0x154740/0x156380. It derives VID/PID from System.Devices.DeviceInstanceId by finding VID_/PID_, taking up to four following characters and stoul(base16); missing property/markers gives zeros. ContainerId comes separately from System.Devices.ContainerId, formatted as a brace-delimited GUID and uppercased; missing/invalid property leaves an empty string. Under mutex+240 it inserts or replaces the exact-ID record with these base fields, clears optional metadata, releases an existing LampArray COM pointer and stores null. It unlocks before invoking the retained Added consumer",
+                "removed": "0x150f10 reads DeviceInformationUpdate.Id through 0x153b50, removes the exact-ID map entry under mutex+240 and invokes record destruction 0x14cb20 to release its COM pointer, optional metadata and strings. It unlocks, marks changed and invokes the retained Removed consumer even when no matching map entry was found. Device close alone does not perform this removal",
+                "api_consumers": "Startup 0x88410 binds Added/Removed to API thunks 0x10023/0x10a0a -> 0x874c0/0x87eb0; these serialize DeviceAdded{device} or DeviceRemoved{device_id} into the existing reverse RPC queue. Queueing and borrowed callback invocation do not establish that JS consumed the event",
+                "source_consumers": "Complete RzWDL and LampArrayEventHandler classes handle additions/removals independently. An existing id in RzWDL emits its retained record without replacing it. Higher-level additions serialize by device-id mutex, skip Razer vendor devices while useWDL is false, remove matching native Chroma entries, prepare the LampArray device and save WindowStorage. Removal serializes by id, removes matching LampArray Chroma entries, conditionally removes the retained device and lamp-info, removes file cache and saves WindowStorage. Their caught errors only log; neither full owner has a connection-generation rejection rule",
+                "unresolved_runtime": "Repeated Added replacing an open native record, removal before queued Added delivery, same-id readdition, callbacks after Stop and concurrent asynchronous JS listeners require pure/simulated tests and actual DLL/service comparison; static ownership facts are not runtime acceptance"},
             "colors_for_indices": {"handler_rva": "0x84860", "manager_rva": "0x1585d0",
                 "validation": "indices and colors arrays; indices nonempty; colors.length == 3 * indices.length",
                 "conversion": "indices to i32; RGB components to u8; source packs 0xFFBBGGRR, manager rotates the u32 left by eight bits to 0xBBGGRRFF, whose little-endian bytes are Windows Color{A,R,G,B}",
@@ -5037,6 +5954,96 @@ def audit_host_local(args):
                 "cleanup": "0xf71d0 nulls and destroys/frees the global RPC server before joining its worker, then joins an existing parent-monitor worker. Main closes the session mutex and cleans log/arguments. Destructor 0x35c70 -> 0x37a60 calls RpcMgmtStopServerListening, only on success calls RpcServerUnregisterIf(nullptr,nullptr,false), and discards the cleanup bool"},
             "target_execution": False, "installation_execution": False,
             "actual_deployment_comparison": "unverified"}
+        report["lighting_iot_contract"] = {
+            "originals": {name: rpc_originals[name] for name in ("IoTNative", "Razer_IoT_SDK")},
+            "native_queue": "IOT_RunCmdFw25 0x37590 bypasses its connection check for UDP, copies host/command/JSON via 0x36da0 into a per-host CommandQueue, then returns 1. Worker 0x2720 pops via 0x1050 and calls 0x48fe0 without consuming its result. UDP frames closer than 15000000ns to that host queue's last admitted frame are dropped before SDK execution; constructor 0x2dc0 initializes that timestamp, including the initial 15ms boundary",
+            "payload": "0x35b40 parses the retained JSON array into u8 bytes, but passes the caller's length onward without comparing it to vector length. SDK ad17 -> 26dd20 -> 6e97 -> 25cc60 rejects non-UDP SetChromaFrame/V2; registered class is 0x0f, legacy id3, V2 id7",
+            "selector": "SocketCallBack+540 starts at zero and is reset on open. Receive callback 0x2517c0 identifies header 02 00 as selector1 and AA 02 as selector2 after at least five buffered bytes. 0x24acf0 sends up to three identification probes using the callback's timeout/condition state. Selector is a received protocol identity, not a firmware-version or general capability declaration",
+            "scan_native": "IOT_StartMdnsDeviceScan0x34f40 calls SDK Start(-1) only when SDK is loaded and Native scan flag903d8 is false, then schedules detached timer0x3c900. Native -1 becomes8 seconds; positive values are seconds, nonpositive values other than-1 expire at the initial deadline. Repeated Start while flag is true returns1 without starting another scan; unloaded SDK returns false. Timer invokes asynchronous SDK Stop then clears the flag. IOT_StopMdnsDeviceScan0x35400 only logs and returns1; it neither stops SDK nor clears that flag",
+            "mdns_query": "SDK0x26df20 ->0x2672f0 ->0x267700 starts detached0x24f1b0 with _wled._tcp.local and2000ms per-select timeout. Duration is unsigned32 milliseconds at comparison, so-1 means4294967295ms; duration is checked only after a complete query.0x2536b0 enumerates up adapters with bounded reallocations, creates at most32 IPv4/IPv6 multicast UDP sockets bound to local10003, and0x2503e0 sends PTR/type12 to5353 with QCLASS0x8001.0x264b60 resets select's2000ms wait after received traffic, has no internal stop check, and closes sockets/frees buffers/WSACleanup per round. It has no whole-round hard deadline",
+            "mdns_record": "Jump bytes atRVA13c0 resolve to0x258610, not the default printer. A single global168-byte record aggregates SRV/PTR/A/TXT mac/TXT exdata/port without a host-keyed map. A count>=4 in the additional section commits a record without proving one of each record type; AAAA is not projected.0x251260 publishes only nonempty PTR/SRV/IPv4/exdata, positive port and matching service prefix; connection still uses fixed10003/10005 rather than the SRV port",
+            "mdns_identity": "0x251260 ->object45da70 ->vtable3eb8d8[0] ->0x8e0e ->0x239880 requires all six case-sensitive ProductType_/&VID_/&PID_/&EID_/&NAME_/backslash-MAC_ markers. It projects string identities/hostname/IPv4 and prefers separate TXT mac over the suffix; invalid ranges may be empty, bad hostname serialization becomes InvalidHostName.0x23d390 emits event2/cmdType0 through the global adapter and detached raw callback. Internal status8/13/10 empty records fail the marker gate. No GetMdnsDeviceList export exists in the selected current native interface",
+            "scan_sdk_stop": "0x26df40 ->0x267910 creates detached0x23d270(wait=true) and returns immediately. The task sets stop and waits indefinitely for done only when holder exists and stop was previously false; already-stopped skips that wait. It frees the detached holder, not a joined worker. Worker signals done before final callbacks/capture destruction, so done does not establish thread/callback drain",
+            "connection": "IOT_ConnectNetDevice0x35940 ->0x35710 queues a host-copied AddConnectTask and returns0;35710 uses strlen, so this does not establish a null-safe entry.0x49220 ->0x35590 returns-2 for unloaded SDK or NULL host pointer, otherwise executes SDK Connect; worker0x2720 discards its result. SDK0x26d430 ->0x2481c0 returns actual open status; already-connected emits16 and returns-1.0x24bac0 only tests stored TCP/UDP ready flags. Open0x252420 orders TCP10003, reader, selector probe, callback/TCP maps, keepalive, then UDP10005. TCP inet_addr/AF_INET uses one nonblocking connect plus select/SO_ERROR, then restores blocking. UDP failure does not replace the nonnegative selector return, so Status0 and IsConnected=false can coexist. Status0/1/16 carry Host/Status only",
+            "probe_acceptance": "0x24acf0 encodes a KeepAlive time probe, mutates byte0=AA/byte4=02/checksum XOR02, sends before clearing+704, and waits on condition+552 up to10s for at most3 sends. Predicate is notification+704, not selector. Garbage wakes can exhaust all three iterations while selector remains0 and still return0. Failed identification closes TCP before map registration; map-based Disconnect is not evidence it can cancel this in-flight identification",
+            "frame": "0x247ef0 -> 0x247920 -> vtable 0x3df6a0+0 -> 0x227050 encodes V25. Offsets0/1 are zero/transaction, 2..3 are total big-endian, 4 is zero, 5 is payload length low eight bits, 6/7 are class/id, payload begins8, XOR includes total length, reserved, payload length, class/id and encoded payload; final byte is zero. Selector1 uses payload+10 bytes; selector2 caps payload at80 in the serializer, emits a zero-filled fixed90-byte inner frame, then 0x264870 -> 0x1f4dc0 adds AA 00 totalBE16 00. Intermediate JSON/hex is decoded back to bytes before sending",
+            "transport": "0x2637d0 selects that host's TCP/UDP vector element, requires ready byte+57, and invokes primary vtable+8 -> thunk0xa6c3 -> 0x263670. Open0x252420 uses TCP10003 and UDP10005; 0x2532b0 creates AF_INET/SOCK_DGRAM/IPPROTO_UDP for UDP. Actual sendto/send returns OS byte count or -1 and stores ready=(count>0). No per-frame ACK is read for UDP; a failed send causes later frames to return zero before send until another chain restores transport readiness. UDP open does not start a receive worker",
+            "consumers": "SDK 0x25cc60 returns the actual send count/error to IoTNative 0x35b40, which also returns it and can log it. UDP skips the command-result event notification; it does not suppress the numeric return. Native queue worker 0x2720 ignores the execution result; 0x37590 returns1 for queue acceptance and JS ignores that immediate value. Queue acceptance, throttled drop, OS send count and device effect must be compared as distinct observations",
+            "disconnect": "0x6d75 -> 0x26d720 -> 0x19ce -> 0x249b20 returns -1 immediately for a host absent from the transport map. Otherwise it sets callback stop+705, closes nonnull transports via secondary vtable+24 -> 0x82e2 -> 0x247510 (closesocket and WSACleanup), erases the transport map via0x244830, notifies conditions via0x250fd0, erases the callback map via0x244620, then passes Status14 to generic publisher0x262fb0. Return is the last nonnull transport close result. Native0x38690 invokes Node before queue removal0x15b0, requiring Node and payload pointers nonnull, original id/cmdType zero, exact Status14 text, parsed nonempty Host and existing Block; event parameter is not a removal gate. Empty C string is allowed; null pointer or the CommandName/KeepAlive string filter returns early. Stop does not interrupt an in-flight synchronous task; join waits. Detached reader/keepalive workers are not joined here",
+            "reader": "TCP10003 open0x252420 starts reader0xb302 -> 0x259190 and keepalive0x4ce1 -> 0x24bd30; UDP10005 starts neither worker. Primary receive slot0 -> 0xb66d -> 0x259010 ignores the caller's10000 timeout; the audited chain restores blocking after connect and sets no SO_RCVTIMEO. It sets ready=(count>0), writes outcount only for positive receive, and uses recv/recvfrom. The TCP reader reports nonnegative count as status2, including EOF status2/len0 before exiting with ready=false; negative count logs WSA error, reports status3/zero length and closes via0x247510 without reconnecting. The lower0xa678 -> 0x251490 notification only dispatches when socket callback+424 exists",
+            "receive_identification": "0x2517c0 ignores status4/5 except metadata cleanup. Status2 appends to identification buffer+712 until at least five bytes, then examines only the first two bytes for0200/aa02. It sets identified-notification byte+704 and signals even with selector0; garbage prefixes need not recover. Selector1/2 then dispatches the entire buffered input through V25/Wled and clears identification storage",
+            "v25_parser": "0x2541d0 -> 0x6230 -> 0x22bcb0 appends to buffer+760. Extended selector1 checks XOR and uses totalBE16-10 payload, upper total4096+10; fixed selector2 uses90 bytes and size-byte payload with XOR check disabled. Eight equal header bytes skip8; status must be<=13; payload must be<4096. Fixed XOR covers all80 payload slots and status1/2 bypass checking even when requested. The terminal byte is read but not constrained to zero. Acceptance additionally requires skip+frameLength==whole input length; concatenated frames are not delivered as a conventional first-frame parser. A -21082 return may retain consumed from an earlier candidate;0x2541d0 removes consumed bytes before testing the return. Successful parse does not imply runV25 handler success or a device state confirmation",
+            "wled_parser": "0x255630 scans AA framing in buffer+736, using5-byte header and BE16 total. Payload<0x400 limits accepted payload to1023 bytes/total1028 despite the outer total<=0x405 gate. There is no outer checksum. It can accept the first complete frame; cmd0 enters inner V25 and nonzero cmd enters0x261480. Its finite residual-buffer loop is not a proof of arbitrary-garbage recovery",
+            "keepalive": "Every frame entering runV25/runWled signals callback+248/+88 before command dispatch. KeepAlive is not the only feed.0x24bd30 starts retry4/interval8s; timeout checks retry<1 before decrement, chooses interval0 while retry>=1 and4s after decrement to0, then closes on another timeout. Parse notification changes a local wait state but never replenishes retry. SetWifiConfiguration0x2626a0 sets30s by a20-byte command-prefix comparison; V25 class0x12/cmd5 or Wled class0x4e4554/cmd5 returns30s to8s. Callback stop+705 suppresses duplicate Status14",
+            "decoded_events": "V25/Wled handlers0x2600d0/0x261480 each set and signal both+248 and+88 in that order, independently of business confirmation. V25 class16 updates firmware wait slots without this audit executing firmware operations. KeepAlive command2 decoders0x13bfc0/0x13c210 use package.status only on a match, otherwise5. Found V25 handlers publish event1 with cmdType1 for class0x12 or2 otherwise; Wled uses cmdType1. Missing handlers publish Status15/cmdType0 and return-20994, which the parser caller only logs",
+            "callback_abi": "global47e120 -> object45e2a8 -> vtable3eb8f8[0] ->0x6ab9 ->0x23e390 ->0x6721 ->0x246ca0 copies each registered callback into a72-byte detached-thread capture.0x2374 ->0x23f860 ->0x2b8f ->0x25a100 invokes four arguments confirmed in RCX/RDX/R8/R9: rawFn(registrationId,event,cmdType,const char* JSON). Add/Remove0x26d030/0x26d830 lock mutex45e140 and modify map47e220; erase does not wait for captures already copied. Notification completion order need not match publication order",
+            "node_projection": "Native0x38690 receives id0/event1/cmdType0 for Status14.0x59370 converts id and cmdType to decimal JSON strings; event0/1/2 names BLEEvent/NETEvent/MDNSEvent, others UnknowEvent. Parseable payload is deep-copied through0x3a350; unparseable payload remains a string through0x426e0. Typical envelope is eventId:string0,event:NETEvent,cmdType:string0,data:{Host,Status:14}. No VID/PID/Mac is supplied by that disconnect payload",
+            "detached_lifecycle": "Each reader/keepalive worker retains40 bytes containing strong callback and socket references plus workerFn.0xa010 ->0x23f950 also passes weak references, but deleting host maps does not invalidate retained strong captures. Worker return0x5556 ->0x2964ec ->0x76b7 ->0x242db0 releases captures. SocketTransfer strong-zero0x8076 ->0x2442a0 ->0x835a ->0x243e50 ->0x8b89 ->0x243060 frees strings without a fallback closesocket; explicit0x247510 owns closing. SocketCallBack destruction0x419c ->0x244290 ->0x58e4 ->0x243e00 ->0xa0b5 ->0x2430e0 releases receive buffers/maps. Weak-zero releases control blocks separately. No worker join is present",
+            "uninit": "IoTNative Init0x346e0 -> 0x34170 verifies and loads its fixed current SDK file and eleven required exports. UnInit0x34c60 calls FreeLibrary, ignores BOOL, clears hLibModule and returns true when a handle existed, false otherwise. It does not unregister callback, disconnect, stop discovery, clear export pointers or join queues. The separate CRT-owned manager cleanup0x6e1b0 -> 0x1cc0 joins queues and frees shared state; UnInit does not invoke it",
+            "static_vectors": [
+                {"command": "SetChromaFrameV2", "payload_hex": "008400000000112233",
+                 "selector1_hex": "0000001300090f070084000000001122339600",
+                 "selector2_parts": ["aa00005f00", "0000005a00090f07", "008400000000112233", "00 * 71", "df00"]},
+                {"command": "SetChromaFrame", "payload_hex": "00000000001122337d",
+                 "selector1_hex": "0000001300090f0300000000001122337d6b00",
+                 "selector2_parts": ["aa00005f00", "0000005a00090f03", "00000000001122337d", "00 * 71", "2200"]}],
+            "receive_static_vectors": {
+                "source": "instruction-derived boundary calculations, not DLL execution samples",
+                "tuple_fields": ["status", "skip", "consumed"],
+                "extended_frame_hex": "0200000a000012021a00",
+                "cases": [
+                    {"input": "F", "check_xor": True, "result": [2, 0, 10]},
+                    {"input": "F[:9]", "check_xor": True, "result": [-21082, 0, 0]},
+                    {"input": "F+F", "check_xor": True, "result": [-21082, 0, 10]},
+                    {"input": "F with XOR1a replaced by1b", "check_xor": True, "result": [-21082, 0, 10]},
+                    {"input": "F with terminal00 replaced byff", "check_xor": True, "result": [2, 0, 10]},
+                    {"input": "ff+F, directly at parser", "check_xor": True, "result": [2, 1, 11]},
+                    {"input": "0200005a00001202 + 00*80 + 4b00", "check_xor": False, "result": [2, 0, 90]},
+                    {"input": "same fixed frame/status2", "check_xor": True, "result": [2, 0, 90]}]},
+            "target_execution": False, "actual_dll_comparison": "unverified"}
+        report["lighting_default_restore_contract"] = {
+            "producer": "configureDevicesDefaultData retains only ten explicit rzDevice names, a device-info entry outside Chroma Studio regions and a callable mode builder. It builds normal-mode first, then optional user/synchronized/default/special quick-effect data, and emits a device only when its mode frame exists. These are registered exit commands, not a factory-reset or read-failure initialization policy",
+            "names": ["rzDevice25", "rzDevice25LedMatrix", "rzDevice25Oled", "rzDevice25Linker",
+                      "rzDevice25Glitter", "rzDevice25GlitterWireless", "rzDevice25DualLinkMouse",
+                      "rzDevice25DualLinkKeyboard", "rzDevice25LedMatrixBatchSender",
+                      "rzDevice25LedMatrixSkipSetEffect"],
+            "frame": "Base mode header is [2,0,4] with payload [0,0]; effect header is [80,15,2] with actual size 6+colorArray.length. _createDataSend returns 90 bytes, transaction at 1, size/class/id at 5/6/7, payload at 8 and XOR of bytes [2,88) at 88. The base transaction increments 0..30 then wraps; this is distinct from native frame translator counters",
+            "class_overrides": "All fourteen current physical definitions of the ten gated names retain complete classes and actual base bindings. Linker's four copies OR transaction with 0xe0, DualLinkKeyboard with 0x80; DualLinkMouse retains untagged 0..30. Matrix, MatrixBatch and Skip inherit the matrix effect builder, mapping common effects to class03/id0a and matrix-specific lengths; Fire instead uses class0f/id02 with nine bytes. Other gated classes inherit the base effect builder. These findings do not prove every product's DeviceInfo default/restore policy",
+            "registration": "hid.configureDevicesDefaultData clones the array and stores the PID list, sets useDefaultCmdNoAsync=true, and may immediately rerun restore when both quit flags are already set. Its retained producer has no USB instance/usage fields",
+            "async": "hid.setDevicesToDefault sets frames=false, then returns without sending when useDefaultCmdNoAsync=true. Otherwise it acquires the selected device mutex and sends only protocol 25, with no ACK. Its 90-byte branch prefixes d.payload?.reportId ?? t.claimInterface, unlike the per-device reportId used by the sync branch. Errors are logged; the result is undefined",
+            "sync": "Clear sentSetDeviceModeCommands and frames, clone only for maximum command count, busy-wait 10ms, then 3ms per command index and pass the original stored array. No device mutex is acquired; a repeated full key in one index waits 2ms. Protocol 25 or omitted protocol with a 90/91-byte frame enters send. Missing sync support invokes async then/catch without waiting",
+            "retry": "At most three sync sends. Accepted send lengths 91/65 are not ACKs. Only [size2,class00,id04], [class03,id0a] and [class0f,id02] trigger GET: respectively five, three and three attempts. Delay is min(device.delay ?? 5,30), then delay+3. Default producer delay is 3. A set-mode identity/category is recorded before any GET succeeds",
+            "ack": "getCommandSendStatus accepts only arrays of 90/91/65 bytes, reads status at 0 or 1 and class/id at 6/7 or 7/8. It checks class/id only, not transaction, checksum, payload or requested target value. Status 0/1/2/3/4/5 means new/busy/success/failed/timeout/notSupported; command mismatch is notSupported. GET busy/timeout keep reading, other non-success statuses request resend. Exhausted busy/timeout or read exceptions can leave resend=false and break without confirmation",
+            "acceptance": "Log completion, undefined return, accepted send length and the pre-ACK sentSetDeviceModeCommands set must remain separate from observed device state. Full product DeviceInfo defaults, actual errors and device recovery still require per-product implementation and actual DLL/device comparison",
+            "target_execution": False, "actual_dll_comparison": "unverified"}
+        report["lighting_protocol_contract"] = {
+            "original": rpc_originals["LightingDriverDLL"],
+            "registry_owner_rvas": ["0x2e4f0", "0x2e500", "0x9240"],
+            "metadata": {"category_u8": 0, "report_id_u8": 1, "device_handle_u32": 4,
+                         "write_function_string": 8, "protocol_string": 40, "row_delay_u8": 72,
+                         "max_rows_u8": 73, "batch_bool": 74, "wdl_bool": 75},
+            "translators": [{"protocol": name, "constructor_rva": hex(ctor), "vtable_rva": hex(table),
+                "translate_rva": hex(translate), "report_length": length}
+                for name, ctor, table, translate, length in (
+                    ("rzDevice25", 0x2edd0, 0xb3968, 0x7feb0, 91),
+                    ("rzDevice25Chroma65", 0x2ee70, 0xb3b58, 0x80460, 65),
+                    ("rzDevice25LedMatrix", 0x2ef10, 0xb3c68, 0x80a00, 91),
+                    ("rzDevice25LedMatrixSkipSetEffect", 0x2ef10, 0xb3c68, 0x80a00, 91),
+                    ("rzDevice25LedMatrixBatchSender", 0x2efb0, 0xb3d78, 0x811b0, 375),
+                    ("rzDevice25Glitter", 0x2f050, 0xb3e88, 0x85340, 321),
+                    ("rzDevice25GlitterWireless", 0x2f050, 0xb3e88, 0x85340, 381),
+                    ("rzDevice25MarciT1", 0x2f0f0, 0xb3f98, 0x85610, 781),
+                    ("rzDevice25AudioCamy", 0x2f190, 0xb40a8, 0x85930, 65),
+                    ("rzDeviceIoT", 0x2f230, 0xb41b8, 0x85d20, "6 + RGB, maximum 726"),
+                    ("rzDeviceLampArray", 0x2f360, 0xb42c8, 0x85fa0, "unframed RGB length"))],
+            "shared_counters": "One translator instance is retained per protocol key, not per device. 25/65/Matrix/MatrixBatch start at u8=1, Camy at zero. Ordinary transaction is (q&31)|(category<<5); Camy uses its full u8 counter and includes it in its checksum",
+            "return_boundaries": "25/65/Matrix/MatrixBatch consume writer bool, but their payload-too-large/insufficient-source branches can return true without writing. Glitter/Marci/Camy/IoT/LampArray ignore writer results. Batch flush 0x7e710 has its bool discarded by 0xf4d0. FFI writer 0x7ec90 invokes a void JSON callback and returns true; host callbacks do not await or return the final HID/IoT/LampArray Promise",
+            "original_anomalies": "Glitter 0x8543b compares row RGB length <= sendLength+6, not minus six. Glitter and Marci fallback reuse the logging stack buffer without whole-report initialization; report byte zero retains 0x5b and trailing bytes are not deterministic. Matrix extra SetEffect leaves report byte zero at zero; MatrixBatch row byte is fixed zero. Preserve these facts without inventing zero padding or silently normalizing actual comparisons",
+            "batch_parser": "Current HID 0x16370 scans from offset zero without checking 37 13 fe ca. f0 reads u8 report length, f2 u32LE, f1 u8 delay; unknown bytes are skipped. Truncated length fields or zero length fail, but report-body remaining length is not checked before writer. 0x13700 performs actual HidD_SetFeature, returns requested length or -1, with no ACK/readback. 0x4800 rejects -1, otherwise resolves the accumulated result",
+            "marci_io": "HID 0x9750 queues request type4 to hid_write 0x175e0: pad short reports to OutputReportByteLength, overlapped WriteFile, and on ERROR_IO_PENDING wait1000ms then GetOverlappedResult. It is an OutputReport path, not HidD_SetFeature; its complete owner only assigns transferred count in the pending completion branch",
+            "shutdown": "Export 0x2550 only clears the global callback pointer then calls TimerResWatcher stop 0x30610: set stop, notify, join timer thread. It does not invoke LightingDriver destructor 0x2e0e0 or drain host HID Promises. The separate destructor releases writer/protocol/metadata maps, FFI writer and retained function objects. Host shutdown only calls Shutdown and clears libFFI; device/callback maps are retained",
+            "hid_cleanup": "StopLightingFrames only clears a source flag. Remove closes handles/cancels device mutexes without an explicit batch-Promise barrier. Native close 0x6170 cancels I/O and frees the HID allocation before shared worker release. Worker destructor 0x4710 sets stop, notifies, joins and destroys queue; its inner queue drain does not recheck stop for each request. TSFN finalizer 0x161e0 -> 0x15d40 releases request ownership after result consumption",
+            "target_execution": False, "official_dll_comparison": "unverified"}
     except (OSError, ValueError, KeyError, TypeError, StopIteration) as error:
         report["failures"].append(str(error))
     report["complete_originals"] = list(audit.sources.values())
@@ -5057,8 +6064,8 @@ def audit_host_local(args):
         "driver_response": "Configure 0x1460 -> 0x6b90 parses JSON, invokes type dispatch and returns malloc-owned UTF-8 JSON with succeeded boolean. The source ffiLightingDriver reads/parses this then uses FreeString. Startup and Shutdown are declared void in this actual source, despite inferred native residual return values.",
     }
     report["remaining_chains"] = [
-        "Finish settings root/parent state, exact image resolution, locale dictionaries and complete style/focus/disabled behavior; resolved direct exports do not establish the remaining mounted component tree.",
-        "Continue each device protocol translator and validate the complete Added/Removed consumer chain. Device-open metadata, availability callbacks, RPC dispatch, callback ABI, registry/file formats, EXE installation/start/exit and normal client/manager destruction now have explicit retained results; bounded direct expansion still does not close all indirect targets.",
+        "Compare the retained settings root/parents, ten locale dictionaries, four SVG originals, tooltip positioning and actual hover/disabled/keyboard behavior against both Rust settings entries. Static source closure is not window or pixel acceptance.",
+        "All eleven registered LightingDriver translators now have explicit vtable targets, report layouts and return consumers through host/HID/IoT SDK. IoT queue/drop, selector, V25/wrapper bytes, actual UDP writer, discarded results and disconnect/UnInit cleanup have selected retained owners. Default-restore producer, ten-name gate, all fourteen physical class definitions, matrix/base builders, both senders, ACK classifier and retry/cleanup are retained; separately finish each product's DeviceInfo defaults, other IoT command/product branches and actual DLL/device comparison. Selected static results do not establish full native or product coverage.",
         "Compare and implement the actual local storage/WindowStorage, LampArray and lighting-driver service consumers after source review; the existing Rust SettingsEvent handler only saves a draft and displays a status.",
         "Verify device removal races, callbacks already queued at unregister, exceptional native destruction and incomplete source cleanup through independent Rust tests and actual DLL comparison. Static Start/Stop, Shutdown and destructor owners have been traced; their existence does not establish runtime completion."]
     report["verified_artifacts"] = list(audit.artifacts.values())

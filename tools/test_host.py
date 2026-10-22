@@ -17,7 +17,153 @@ from host import (HostLocalAudit, add_commands, audit_host_local,
                   help_system_mount_layout, help_system_native_declaration, help_system_report_constants,
                   inspect_host, inspect_pe, pe_cursor_groups, pe_resource_entries,
                   setup_factory_static_extraction, native_ascii_pointer_table,
-                  receiver_hardware_dispatch_proof)
+                  receiver_hardware_dispatch_proof, native_pseudocode_failures, lighting_catalog_projection)
+
+
+class NativePseudocodeStatusTests(unittest.TestCase):
+    @staticmethod
+    def owner(rva, pseudocode):
+        return {"artifact": {"path": "functions/" + format(rva, "x") + ".json"},
+                "capture": {"address": hex(0x140000000 + rva), "rva": hex(rva),
+                            "pseudocode": pseudocode}}
+
+    def test_stage_bound_failure_is_retained_without_a_top_level_address(self):
+        failure = {"stage": "1544c0:hexrays", "error": "call analysis failed at another address"}
+        selected = [self.owner(0x1544c0, None), self.owner(0x14fe20, {"lines": []})]
+        result = native_pseudocode_failures(selected, [failure,
+            {"stage": "154500:hexrays", "error": "unselected owner"}])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["address"], "0x1401544c0")
+        self.assertEqual(result[0]["capture_failures"], [failure])
+        self.assertFalse(result[0]["pseudocode_captured"])
+        self.assertEqual(result[0]["artifact"], selected[0]["artifact"])
+
+    def test_missing_failure_metadata_cannot_turn_an_absent_body_into_success(self):
+        result = native_pseudocode_failures([self.owner(0x154500, None)], [])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["capture_failures"], [])
+        self.assertFalse(result[0]["pseudocode_captured"])
+
+    def test_supplemental_rva_bound_failure_keeps_the_original_error(self):
+        failure = {"stage": "hexrays", "rva": "0x30888", "error": "call analysis failed"}
+        result = native_pseudocode_failures([self.owner(0x30888, None)], [failure])
+        self.assertEqual(result[0]["capture_failures"], [failure])
+        self.assertEqual(result[0]["rva"], "0x30888")
+
+    def test_recovered_body_does_not_inherit_its_original_failure(self):
+        recovered = self.owner(0x1544c0, {"lines": [{"text": "complete recovered body"}]})
+        self.assertEqual(native_pseudocode_failures([recovered],
+            [{"stage": "1544c0:hexrays", "error": "original failure"}]), [])
+
+
+class BoundedSourceObservationTests(unittest.TestCase):
+    def fixture(self, mutate=None):
+        import analysis
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name).resolve()
+        patched = patch.object(analysis, "ROOT", root)
+        patched.start()
+        self.addCleanup(patched.stop)
+        directory = ".analysis/inputs/frontend/observation-current/"
+        path = directory + "raw/apps.razer.com/catalog.json"
+        original = {"path": path, "bytes": 2, "sha256": hashlib.sha256(b"[]").hexdigest()}
+        target = root / path
+        target.parent.mkdir(parents=True)
+        target.write_bytes(b"[]")
+        url = "https://apps.razer.com/catalog.json"
+        http = {**original, "url": url, "final_url": url, "redirects": [], "http_status": 200,
+                "acquired_at_utc": "2026-10-22T11:00:00Z"}
+        receipt = {"entry_url": url, "scope": "bounded catalog observation", "target_execution": False,
+            "source_current_during_acquisition": True, "files": [http],
+            "http_observations": [{**http, "phase": "before"}, {**http, "phase": "after"}],
+            "stability": [{"url": url, "before_sha256": original["sha256"],
+                           "after_sha256": original["sha256"], "unchanged": True}]}
+        if mutate:
+            mutate(receipt)
+        receipt_path = directory + "acquisition.json"
+        raw = json.dumps(receipt).encode()
+        (root / receipt_path).write_bytes(raw)
+        (root / ".analysis/inputs.json").write_text(json.dumps({"inputs": [original,
+            {"path": receipt_path, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}]}))
+        audit = HostLocalAudit.__new__(HostLocalAudit)
+        audit.a, audit.artifacts, audit.sources, audit.raw = analysis, {}, {}, {}
+        return audit, url, target
+
+    def test_verified_rounds_remain_bounded_without_a_dependency_closure(self):
+        audit, url, _ = self.fixture()
+        result, originals = audit.observed_sources("observation-current", url)
+        self.assertEqual(result["http_observations_verified"], 2)
+        self.assertEqual(len(originals), 1)
+        self.assertFalse(result["full_dependency_closure"])
+        self.assertFalse(result["target_execution"])
+        self.assertEqual(audit.final_snapshot(), [])
+
+    def test_claimed_stability_cannot_hide_a_changed_http_round(self):
+        audit, url, _ = self.fixture(lambda d: d["http_observations"][1].update(sha256="0" * 64))
+        with self.assertRaisesRegex(ValueError, "HTTP identity changed"):
+            audit.observed_sources("observation-current", url)
+
+    def test_intermediate_entry_check_is_verified_without_replacing_either_round(self):
+        def change(d):
+            item = {**d["http_observations"][0], "phase": "entry_midcheck"}
+            item["finished_at_utc"] = item.pop("acquired_at_utc")
+            d["http_observations"].insert(1, item)
+            for request in d["http_observations"]:
+                request["finished_at_utc"] = request.pop("acquired_at_utc", item["finished_at_utc"])
+        audit, url, _ = self.fixture(change)
+        result, _ = audit.observed_sources("observation-current", url)
+        self.assertEqual(result["http_observations_verified"], 3)
+        self.assertEqual(result["observations"][0]["additional_entry_observations"], 1)
+        audit, url, _ = self.fixture(lambda d: d["http_observations"].insert(1,
+            {**d["http_observations"][0], "phase": "entry_midcheck", "bytes": 3}))
+        with self.assertRaisesRegex(ValueError, "HTTP identity changed"):
+            audit.observed_sources("observation-current", url)
+
+    def test_duplicate_missing_or_unrelated_observations_are_rejected(self):
+        for change in (lambda d: d["files"].append(copy.deepcopy(d["files"][0])),
+                       lambda d: d["http_observations"].pop(),
+                       lambda d: d["http_observations"].append({"url": "https://apps.razer.com/other"}),
+                       lambda d: d["http_observations"][1].update(final_url="https://apps.razer.com/other")):
+            with self.subTest(change=change):
+                audit, url, _ = self.fixture(change)
+                with self.assertRaises(ValueError):
+                    audit.observed_sources("observation-current", url)
+
+    def test_current_flag_and_retained_bytes_are_verified_independently(self):
+        audit, url, _ = self.fixture(lambda d: d.update(source_current_during_acquisition=False))
+        with self.assertRaisesRegex(ValueError, "unverified identity"):
+            audit.observed_sources("observation-current", url)
+        audit, url, target = self.fixture()
+        target.write_bytes(b"{}")
+        with self.assertRaisesRegex(ValueError, "artifact identity differs"):
+            audit.observed_sources("observation-current", url)
+
+
+class LightingCatalogProjectionTests(unittest.TestCase):
+    def test_row_order_precedes_later_primary_and_preserves_duplicate_rows(self):
+        result = lighting_catalog_projection([
+            {"productId": 20, "dongleId": 10}, {"productId": 10}, {"productId": 20}])
+        self.assertEqual(result["rows"], 3)
+        self.assertEqual(result["distinct_primary_pids"], 2)
+        self.assertEqual(result["ordered_resolutions"], [
+            {"input_pid": 10, "primary": 20, "index": 0, "matched": "dongleId"},
+            {"input_pid": 20, "primary": 20, "index": 0, "matched": "productId"}])
+
+    def test_array_and_other_aliases_extend_the_domain_without_becoming_matches(self):
+        result = lighting_catalog_projection([
+            {"productId": 20, "dongleId": [10, 11], "wiredId": [12], "xBoxId": 13, "bleId": 14}])
+        self.assertEqual(result["all_declared_numeric_id_count"], 6)
+        self.assertEqual(result["engine_scalar_input_count"], 2)
+        self.assertEqual(result["engine_changed_input_count"], 1)
+        self.assertEqual([row["primary"] for row in result["ordered_resolutions"]], [10, 11, 12, 13, 20, 20])
+
+    def test_invalid_or_new_field_shapes_require_an_explicit_audit(self):
+        for rows in ([], [{"productId": True}], [{"productId": 0}], [{"productId": 65536}],
+                     [{"productId": 20, "bleId": [10]}], [{"productId": 20, "dongleId": [False]}],
+                     [{"productId": 20, "isNotChromaDevice": 1}], [{"productId": 20, "newAlias": 10}]):
+            with self.subTest(rows=rows), self.assertRaises(ValueError):
+                lighting_catalog_projection(rows)
 
 
 class ReceiverHardwareDispatchTests(unittest.TestCase):

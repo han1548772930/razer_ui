@@ -4,7 +4,7 @@ IDA 路径：`E:/IDA`（9.1）、`D:/ida/IDA Pro 8.3`（8.3）。GPUI 技能读�
 
 当前 `HID.node`（SHA-256 `f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f`、405,704 字节）的 [实际捕获收据](../../.analysis/results/native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f/capture.json) 使用 IDA 9.1、Hex-Rays 9.1.0.250226、Python 3.11.9，完整捕获 1,641 个函数；RVA `0x30888` 的反编译失败及完整汇编保留。其他 IDA 8.3 捕获的函数数与产物摘要不能套用到这份收据。[HID 查询](../../.analysis/results/native/chain-audit.json) 中的工厂、回调、动态导出与共享 worker 链须分别对照其引用的完整函数及实际产物身份；指定查询没有未解边不代表全部 N-API／Promise、产品协议或生命周期已经闭合。当前 GetFeature／GetInput 的完整函数分别位于 RVA `0x17ac0..0x17c43`、`0x17c50..0x17dd3`，Windows 返回长度均为原生已读长度加一；Rust 的 source-host collection 适配与产品重试／取消仍须逐调用方校验。
 
-`capture-corpus --source retained --ida-root E:/IDA --include-path '\.(dll|node|sys|customactionkey)$' --no-refresh-gaps` 本批选择 884 个不同字节的非 EXE 模块。工具核验完整旧捕获的所有产物后复用，对缺项使用当前 IDA／Hex-Rays；未选 EXE 保留在同一队列，不能把本批结果记为全语料闭合。保留原件的当前版本来源仍另行审计。进度、失败、输入快照及实际工具版本见 [统一原生队列](../../.analysis/results/native-corpus-capture.json)，不使用未结束旧队列的累计数作为本轮完成结论。
+`capture-corpus --source retained --ida-root E:/IDA --include-path '\.(dll|node|sys)$' --no-refresh-gaps` 本批选择 884 个不同字节的非 EXE 模块。工具核验完整旧捕获的所有产物后复用，对缺项使用当前 IDA／Hex-Rays；未选 EXE 保留在同一队列，不能把本批结果记为全语料闭合。保留原件的当前版本来源仍另行审计。进度、失败、输入快照及实际工具版本见 [统一原生队列](../../.analysis/results/native-corpus-capture.json)，不使用未结束旧队列的累计数作为本轮完成结论。
 
 维护入口统一为 `python tools/workspace.py`。原件位于 `.analysis/inputs/`，获取收据及索引保存实际字节 SHA-256；结果位于 `.analysis/results/`，临时数据库位于 `.work/`。静态分析不执行输入；已授权的本地 DLL／设备测试由显式维护命令记录实际调用、结果与清理，执行边界以根目录规则为准。厂商应用、JavaScript、无关 helper、installer 和调试器仍不运行。
 

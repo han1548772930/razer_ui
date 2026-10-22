@@ -1,4 +1,4 @@
-# 键盘配置档、板载身份与本地导入
+# 键盘配置档、板载身份与本地文件
 
 本文记录当前已核对的官方前端与中间件行为。配置档目录、本机保存的配置档、当前活动 GUID、设备板载槽和界面选择是不同的数据来源；下述“发布到 UI”仅表示官方发送了该消息，不表示已经完成物理设备写入。
 
@@ -14,7 +14,9 @@
 | 679 MW | `.analysis/inputs/frontend/keyboard-mw-679-current/raw/apps.razer.com/synapse/products/679/mw/6737.d9169f212a8242741503.js`；[获取收据](../../../.analysis/inputs/frontend/keyboard-mw-679-current/acquisition.json) | 模块 `51765`、`17204`、`10745`、`89423`，详见下文 |
 | 679 产品与板载引擎 | 同一收据内的 `main.2e96b673a06ae6ca25a1.js`、`obmEngineKeyboardCalMaxMem.781facfafb8f31b96e18.js`、`obmEngineKeyboard.fdf63782d77cc1c9a909.js` | 产品 `OBMSpecs` `[25300,25693)`、`isObm` 挂载 `[230799,234785)`；派生类构造 `[655,792)`、`[821,972)`；实际读取与保存继承自基础引擎 |
 | 679 HID | 同一收据内的 `rzDevice25.fc7bd21101285d902a76.js` | 配置档 getter/setter `[168057,171528)`；`sendCommand` `[120868,125087)`；崩溃恢复登记 `[235655,236864)` |
+| 679 导出摘要 | 同一收据内的 `2291.6b75539a8c608f561c1a.js`、`7338.c7df8c989af4ef496c8e.js` | `11936` `[27960,29881)`；稳定 JSON `39158` `[19740,21312)`；MD5 `1152` `[640,4003)` |
 | 全局 Profiles | `.analysis/inputs/frontend/synapse-profiles-current/raw/apps.razer.com/synapse/profiles/static/js/9449.8f17b519.chunk.js`；[获取收据](../../../.analysis/inputs/frontend/synapse-profiles-current/acquisition.json) | 对话框 `Ua` `[187966,197223)`；命令发送 `ja` `[187466,187965)`；导入导出选择器 `Ia` `[182427,187277)` |
+| 当前主机文件保存 | `.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/preload.js`、同目录 `main.js`；提取身份见[输入索引](../../../.analysis/inputs.json)，主机获取边界见[获取收据](../../../.analysis/inputs/host-current/acquisition.json) | preload `doElectronAction` `[4469,4523)`；`electronAction` 注册 `[39326,58313)`；保存 case `[51081,51562)` |
 | 756 MW | 见[完整导入捕获](../../../.analysis/results/frontend/keyboard-mw-audit.json)的 `queries["profile-import-processors"].complete_owners`；[获取收据](../../../.analysis/inputs/frontend/keyboard-mw-756-current/acquisition.json) | `middleware_import_processor`、`local_device_storage_hooks`、`other_window_device_storage_observer` 等具名角色 |
 
 679 的结构证据保存在 [keyboard-main-audit.json](../../../.analysis/results/frontend/keyboard-main-audit.json) 的 `keyboard_page_layout.products[product_id=679].factory_customize_chain`；679 板载身份与本地存储捕获保存在 [keyboard-mw-audit.json](../../../.analysis/results/frontend/keyboard-mw-audit.json) 的 `queries["keyboard-local-profile-adoption"]`。本文核对了上述引用的原件字节及捕获函数体。
@@ -224,7 +226,97 @@ HID `sendCommand` 的正常应答路径会等待传输 IN、检查协议状态�
 
 选择器 `Ia` 将配置档与它引用的宏分成可勾选项；选中配置档时重新选中该配置档所有宏。没有选中任何配置档时提交按钮采用 disabled 样式。导出时过滤 Factory Default 的精确 GUID；导入展示也过滤该 GUID。点击取消/关闭只结束对话框；点击提交先调用消费者，再关闭对话框。本地文件解析失败会清空选择并保留 fileType/错误状态，源码区分 Synapse 3 和不支持文件的提示。原件含云路径；本文仅追踪本地文件与本机命令链。
 
-以上菜单的后端新增、复制、删除、导出文件生成仍需逐产品消费者继续核对。不能以菜单已经发送命令为由认定这些动作的设备与文件副作用已闭合。
+以下继续追到 679 的实际消费者。其他 PID 必须分别核对，不能以共享菜单已经发送命令认定设备与文件副作用一致。
+
+## 679 菜单分发、存储锁与完成信号
+
+679 的 `10745.mi` `[92984,134675)` 在 `feature:"profile"` 中取得 TaskMaker 当前事件，再把输入交给 `42124`。完整 handler 边界为：
+
+| 动作 | 实际消费者 | 关键传参 |
+| --- | --- | --- |
+| 新增 | `hi` / `Yj` `[843850,845536)` | `newProfile`、`updateLocalStorage`、`deviceAccess`、可选 version |
+| 复制 | `Ti` / `km` `[851959,853105)` | `newProfile`、`sourceProfileGuid`、`updateLocalStorage`、`deviceAccess` |
+| 重命名 | `Si` / `xl` `[850271,851959)` | `newName`、`renameProfileGUID`、`updateLocalStorage`、实际 `updateObm` action |
+| 删除 | `Ei` / `q0` `[845536,848449)` | `deletedGUID`、`newSelectedProfileGUID`、`updateLocalStorage`、`deviceAccess` |
+| 导出 | `Ci` / `zQ` `[855476,857062)` | `selectedProfiles` |
+
+状态机对新增、复制、删除配置 `stateGuard` 和 `updateLocalStorage:{mode:"exclusive"}`，不附加 `deviceAccess` action；handler 仍可另排设备任务。`stateGuard` `[751662,751818)` 依据该事件的 configuration 与当前状态逐项检查，不是统一的“设备在线”判定。导出直接允许，不请求本机存储锁。
+
+重命名另走 `k` `[754569,755125)`：录制器未持有 exclusive 标记时，UI/runtime/device 来源可同时请求本机存储与设备访问；storage 来源只请求设备访问。录制器持有标记时，普通来源仅更新本机存储，storage 来源被忽略并反馈 `ONSTORAGE_FAIL_MACRO_RECORDER_RUNNING`。OBM 状态不为 `init` 时，允许的重命名 action 还会加入 `updateObm`。实际是否有板载重命名必须读取这组 action，不能由“当前在录制”或“本机名称改了”推断。
+
+锁的实际执行仍由前述 TaskMaker 拥有；action 上标出的 mode 不改变其函数内部使用的 storage exclusive lock。新增/复制/删除的 `lockHeld:false` 与存在 `updateLocalStorage` 会选择 `runTaskMakerWithDoorLock`，实际先取得设备 shared lock，再取得存储 exclusive lock；缺少 `deviceAccess` action 不代表没有设备门锁。各 handler 依据 `from` 分别选产品 UI 或全局 Profiles 的反馈通道。handler 自身的 `catch` 发送 error 后不重新抛出，所以 TaskMaker 外层的 `*_SUCCESS` 甚至可能跟在业务 error 后。正常 completed 之后若 memory cache 写入失败，也可能再次发送 error；源码没有通用回滚。这些信号必须按实际相位保存。
+
+## 679 新增与复制：本机活动档及设备副作用
+
+新增在 `updateLocalStorage` 成立时读取本机文档，保留旧列表和旧 active，深拷贝默认配置，再以菜单传入的 `{guid,name}` 覆盖默认身份；追加到 profiles 并立即选择新 GUID，增加 version，更新当前 serial 的 metadata 和已有 profile stack，依次保存文档、发布 runtime，再恢复活动档。
+
+679 的产品定义没有启用 `singleProfileDevice`，实际工厂是 `main.H` `[32239,32367)`。edition `0/128/130` 均深拷贝 `O` `[31490,31871)`，其内容包括：actuation `1.2/1.2`、亮度开启且值为 `100`、Quick Effects ID `3`、熄灯显示/空闲开关关闭且 idleMinutes `1`、Gaming Mode state `0` 及三个禁用键标记为 false、Snap Tap 关闭并保留 A/D 键对、continuous RT false、空宏对象和空 mappings。工厂自身先生成 GUID 与计算机名默认名称，但新增 handler 随后使用菜单输入覆盖这两项；不能把工厂生成的临时 GUID 当最终配置身份。
+
+设备副作用不是一次完成：存在 OBM 引擎时，新增安排旧 active 映射清理；Analog V3 随后分别排默认 actuation、默认 RT、slot 1 空名称/空 owner 的新 GUID 身份任务，再调用 `loadActiveProfile`。本机保存、runtime 发布和 handler completed 都不能证明这些后继任务已成功。
+
+复制则从 `sourceProfileGuid` 找到源档，深拷贝整个对象，只覆盖输入的新身份，追加并选择新档，同样增加 version、更新 serial metadata/profile stack、保存、发布 runtime、调用 `loadActiveProfile`。它没有新增 handler 中显式的旧映射清理、默认 actuation/RT 与 slot 1 身份排队语句，不能把两种动作合并实现。独立 linkedGames store 不在复制操作中；源 GUID 缺失会在深拷贝时抛错，不能造出一个默认副本。
+
+旧映射清理共用 `ft` `[789434,789725)`，有 `50 ms` debounce：先经 `51765.W` `[1028428,1030297)` 按真实能力筛选并转换，再由 `pt` `[789232,789428)` 以相同 inputID/Hypershift 的默认映射替换。目标集合始终含 slot 1，额外槽由调用方提供。每项进入 `85225.ft` / `H6` `[1425807,1426568)`，逐槽执行 `setSingleButtonMapping`；单槽异常仅记录，任务仍可能 completed。debounce 排程与立即排入的默认值/身份任务必须分别测试，不能凭源语句位置认定物理传输的清理必定最先完成。
+
+## 679 重命名与删除：身份、引用及宏的边界
+
+重命名在允许本机更新时保存旧 profiles，查找目标并修改 name，增加 version、保存及发布 profiles/当前 active；目标不存在时仍会经过 version/保存发布。linkedGames 中所有同 profileID 的记录也改 profileName，这段源码没有再按 PID 过滤。handler 先发 completed 和 post action，才依据 `updateObm` 为同 GUID 且未锁的每个板载槽排身份 setter，保留各槽原 owner。`85225.Gt` `[1458637,1458887)` 等待引擎 `setProfileName`，若有 `.error` 则返回，否则更新内存名并发布 OBM；沿用前述身份 setter 的应答/警告边界，没有新增身份 GET，也不修改本机 active GUID。
+
+删除始终先读本机文档；真正移除 profiles 必须同时满足 `updateLocalStorage` 和原列表长度大于 1。其后续顺序与字段判断为：
+
+1. 移除目标 GUID 并增加 version。新 active 默认取剩余第一项；仅当输入的 `newSelectedProfileGUID` 确实存在时采用输入值。即使删除的不是原 active，也不能自行保留旧 active 来替代此规则。
+2. 遍历剩余档的映射，删除指向该 GUID 的 `Specific` profileNavigationGroup；679 Analog V3 检查每项 `mapping[0]`。其他导航种类和目标保留。
+3. OBM 设备且未使用 BLE 时，为同 GUID、slotId 不为 1、未锁的每个槽排板载删除任务。循环只保存最后匹配槽 ID，后续旧映射清理的额外目标是该 ID；不能改写成所有被删槽同时参与清理。
+4. 更新当前 serial metadata。其他 serial 的 activeProfileGuid 若等于此次删除前的旧 active，也改为新 GUID；比较对象是旧 active，并非无条件比较 deletedGUID。随后更新 profile stack、保存、发布 runtime。
+5. 安排旧 active 映射清理；Analog V3 先排 slot 1 新身份，再排默认 actuation/RT，最后调用 `loadActiveProfile`。这与新增的默认值/身份排队顺序有差别。
+6. 清 linkedGames 位于上述可删除 guard 外：仅删除当前 PID 且匹配 deletedGUID 的设备记录。源码在 `forEach` 中 `splice`，相邻匹配项的遍历结果也须按原行为测试，不能声称它已经完整过滤所有重复项。随后反馈 completed、post action 并保存 task memory cache。
+
+这组 CRUD handler 不直接删除本机 MacroStorage 宏；复制也不生成新宏 GUID。活动档恢复及板载任务的宏引用处理仍沿前述各自调用链，不能把“删除配置档”等同于删除所有引用宏。
+
+板载删除的 runner 是 `85225.ct` / `Tg` `[1421616,1423061)`，入口/末尾检查 abort，调用基础引擎 `deleteProfile` `[7384,8998)`。底层 `rzDevice25.deleteProfile` `[170642,170960)` 只拒绝 undefined/NaN，命令 tuple 为 `[1,5,3]`，一字节数据为 slot ID；实际应答经现有 `sendCommand`。引擎仅在删除 SUCCESS 后减少计数、过滤槽及身份；679 开启宏能力，所以还查询宏内存，并把最终返回对象改成该查询结果附带 `obmJson`。该函数没有逐个删除宏，也没有重新读取完整槽列表；固件是否回收关联宏不能从内存计数变化推出。
+
+runner 只有最终 status 为 SUCCESS 才转换并发布 OBM：owner 决定 locked，内存可用量取 available 加 recyclable。一个没有抛错的非 SUCCESS 返回仍会继续发槽结束消息、写 cache 并将 task 标为 completed；异常和观察到 abort 才写 error 并抛出。结果回调 `Dt` `[1432768,1433359)` 又将 completed 或 skipped 解释为 completed。因此应分别记录原始删除应答、宏内存查询、槽结束事件、runner 和 handler 状态，不能用其中一项替代其余。已经执行的删除没有通用自动恢复；关闭对话框不等于取消已排队的 CRUD 或已发生的写入。
+
+## 679 导出编码与最终文件保存
+
+`Ci` 先读 MacroStorage 和本机文档，按选择列表顺序以每行 `id` 找到 GUID 对应的本机配置档。每档深拷贝后只删除顶层 `appEngine`，以紧凑 `JSON.stringify` 的 UTF-8 字节转 base64，得到 `{name,payload,hash}`。不是把 runtime/板载观察对象直接导出。
+
+每个选中档的 `listItems` 中，只有 `isMacroSelected` 的项才查本机同 GUID 宏；缺失宏直接跳过。宏 payload 仅含 `guid`、`macroEvents`、`macroPlaybackOption`，名称留在外层 envelope。源码试图用 `A.findIndex(e=>e.guid===macro.guid)` 去重，但 `A` 实际保存的 envelope 不含 guid，所以不同选择项可重复输出同一个正常 GUID 宏；不能写成已按 GUID 去重。
+
+摘要调用 `11936.getHash`：structuredClone 后仅删除顶层 `hash` 和小写 `gamemode`；稳定 JSON 对对象键按 JavaScript UTF-16 顺序排序、数组保序，再把所有 `<` 换成字面 `\u003C`，对 UTF-8 字节计算 MD5，输出小写十六进制。payload 自身仍保留除 `appEngine` 外的原有字段与普通 stringify 顺序，摘要的排除/排序不能反过来改变 payload。这条导出摘要不能与其他文件读取器的不同 hash 路径混为一谈。
+
+文件顶层依次构造 `{productId,deviceName,category,profiles,macros}`，用两空格缩进 JSON；默认文件名 `profiles - ${Date.now()}.synapse4`，标题 `Save as`、按钮 `Save file`、filter `Synapse 4` / `synapse4`。找不到所选 profile、编码失败或前序读取失败会进入 handler error；没有整体回滚。
+
+最终保存链已经追到当前主机原件：
+
+1. `Ci` 调用 `88558.showFileSaveDialog` `[178505,178824)`，**没有 await**，立即发送 export completed/post action，再更新 memory cache。
+2. 该包装仅在 Electron 分支把 title、fileName、buttonLabel、filters、data 交给 `callElectronAction`；`this.callElectronAction` `[161673,161721)` 调 `window.top.apiElectron.doElectronAction`。当前 preload 的 `[4469,4523)` 使用 `ipcRenderer.invoke("electronAction",arg)`。
+3. 主机 `main.js` 的完整保存 case `[51081,51562)` 取发送者窗口，调用 Electron `showSaveDialog`。defaultPath 使用上次成功选择的目录，尚无目录时使用系统 downloads；取消不更新该目录。
+4. 对话框 Promise 返回后，若 filePath 存在就调用 Node `fs.writeFile(filePath,data,callback)`；没有路径则记录 `File name is undefined`。写失败和对话框 rejection 仅写控制台。外层 `electronAction` handler 不返回或 await 保存 Promise，文件回调也没有向原菜单发送落盘确认。取消标记本身不另加“禁止写入”判断，是否写入继续由 filePath 决定。
+
+完整这条文件链使用前端计算、Electron 对话框和 Node 文件 I/O，没有调用官方业务 DLL；应以固定输入的编码字节、选择/取消、目标文件及文件失败边界验证，不能虚构一个 DLL 导出作为文件保存证据。配置档动作引出的 HID/本地服务副作用仍必须逐项对照对应实际 DLL 功能。导出 completed 只证明 handler 到达该消息位置，既不证明用户选择了路径，也不证明文件写入成功；其 `catch` 无法捕获未 await 的异步保存错误。
+
+## 679 菜单的 Rust 差异与逐功能测试要求
+
+| 范围 | 当前 Rust 所有者 | 本次静态核对结果 |
+| --- | --- | --- |
+| 新增/复制 | [profile_actions.rs](../../../crates/razer-pages/src/features/workspace/source_workspace/profile_actions.rs) 的 `create_profile`；全局集合入口见 [profile_collection.rs](../../../crates/razer-pages/src/features/profiles/profile_collection.rs) | 679 仍生成 `local-profile-N`；新增走通用空 source 设置，而不是上述完整 679 工厂；复制对 source_settings 新身份的同步只覆盖 182/756。不能认定已复刻 679 的文档/version/serial/OBM 后继链 |
+| 重命名 | [source_workspace.rs](../../../crates/razer-pages/src/features/workspace/source_workspace.rs) 的 `change_profile_metadata`，及 [product_workspace.rs](../../../crates/razer-pages/src/features/workspace/product_workspace.rs) 的 `edit_profile_metadata` | 已有本地名称校验、选择器刷新和持久化入口；这些入口没有实现上述 679 同 GUID 多槽身份写入与反馈相位 |
+| 删除 | 同一 source workspace 的 `change_profile_collection`、共享 `profile_collection::edit` | 679 仍走普通删除分支；删除导航映射和“无指定后继取第一档”目前仅有 756 专用分支。679 默认后继取最后一项，还可能保留原 active，并存在先保存/取消本地草稿的额外拦截；与官方 handler 规则不同，不能当作等价实现 |
+| 导出选择/编码 | [profile_transfer.rs](../../../crates/razer-model/src/profile_transfer.rs) 的 `source_export_payloads`；[编码器](../../../crates/razer-device/src/profile_transfer.rs)；[摘要](../../../crates/razer-device/src/mapping/mapping_engine_hash.rs) | 已有 679 产品目标、去 appEngine、三字段宏 payload、UTF-8/base64 和稳定 MD5 路径；选择器用 BTreeSet 真正去重并对缺失所选宏报错，与 679 的重复输出/缺失跳过不同。不能仅凭普通单档导出往返认为一致 |
+| 路径/文件生命周期 | `profile_actions::export_source_profiles`；[profile_transfer.rs](../../../crates/razer-storage/src/profile_transfer.rs)、[file_transfer.rs](../../../crates/razer-storage/src/file_transfer.rs) | Rust 等待路径选择，再后台编码和写入；持有请求/设备身份，拒收旧任务并报告写失败。官方 completed 的相位、记忆目录及错误传播不同，须作为明确差异记录，不能称当前反馈已 1:1 |
+
+这组功能必须逐项具备独立期望的自动化行为测试；已有通用 [编码测试](../../../crates/razer-device/src/profile_transfer.rs)、[选择测试](../../../crates/razer-model/src/profile_transfer/tests.rs) 和文件取消测试只能证明其实际断言，不能覆盖尚未迁移的 679 handler。对应源行为的最小测试矩阵为：
+
+| 功能 | 独立期望与适用失败分支 |
+| --- | --- |
+| 新增/复制 | 三个 edition 的默认对象；输入身份覆盖；源不存在；名称冲突；version、serial metadata、stack；新增/复制不同的设备任务集合；存储/runtime/cache 各阶段失败及已发生副作用 |
+| 重命名 | 无目标、同 GUID 多槽、锁槽、slot 1、空 owner；录制器和 OBM init 分支；跨 PID 同 profileID 记录；先 completed 后 setter；真实身份 ACK、setter false/异常与可用独立 GET |
+| 删除 | 只剩一档、无目标、指定有效/无效后继、删除非 active；Specific 与其他导航；各 serial metadata；多个同 GUID 槽/锁槽/BLE；最后槽清理参数；相邻 linkedGames 项；宏保持、删除失败与后继宏查询失败 |
+| 导出 | 多档/多宏顺序、同宏重复、缺失宏、缺失 profile；中文及 `<`、嵌套 hash/gamemode、UTF-16 非 BMP 键、数值边界；payload 与 MD5 输入分别核固定字节，不能从本地编码器反生期望 |
+| 保存/取消/释放 | 系统下载目录和记忆目录、取消/无路径、选择器 rejection、文件写失败；官方提前 completed 与最终文件结果分开；等待锁/排队/在途取消、旧连接结果、debounce 后继任务、部分传输完成后的恢复及锁/句柄清理 |
+
+无设备先执行纯状态/文件测试、模拟传输和有依据的应答回放；后续设备/服务对照必须让当前官方 DLL 实际执行对应功能，比较输入、输出、状态、应答/读回、事件相位、错误、取消、恢复和释放。所有可恢复写入先保存完整原值，两套实现顺序独占执行、交叉读回并恢复确认；缺少恢复依据时不能开始写入。本次只补静态分析与文档，未重跑 Cargo，未实际调用 DLL/设备，也未执行应用或厂商 JavaScript；本页未提供上述矩阵在当前工作树上的自动化运行收据，实际 DLL 对照和运行时验收仍为未验证。
 
 ## 756 本地导入消费者和成功语义
 
@@ -255,7 +347,7 @@ TaskMaker `[1398959,1401553)` 串行维护当前事件与队列，按当前条�
 ## 已定位的具体缺边
 
 - 679 当前连接、板载读取、slot 1/本机活动身份、合并/冲突、保存任务、应答与清理入口已按上文逐函数核对；完整板载观察进入 Rust 后的合并/冲突及必要初始化写入消费者仍未闭合，原生主机移除、设备恢复与实际 DLL/设备对照未验证。
-- 全局菜单新增、复制、重命名、删除和导出已核对输入，但各产品消费者、文件格式转换和最终反馈仍需按 PID 继续追踪。
+- 679 菜单新增、复制、重命名、删除、导出编码和当前主机文件保存已按上文核对完整消费者；Rust 的身份/默认对象、后继设备任务、删除和导出差异尚需迁移与逐项验证，不能外推其他 PID。
 - 756 导入的本地事务、跨窗口观察和宏广播已核对；该产品其他恢复分支不能由此概括为已完成。
 - 679、756 之外的预设身份、板载槽数、菜单分组与可编辑条件必须引用各自当前产品描述及实际挂载组件，本文不宣称全族一致。
 - 本文为静态源码理解；未执行厂商 JavaScript、应用程序或真实设备验收。

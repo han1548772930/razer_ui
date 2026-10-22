@@ -92,17 +92,88 @@ MessageMgr 按 CommandName 路由；携带序列号时必须与当前设备匹�
 | 提升进程 | `0x13140 → 0x3a00/0x3c00 → 0x236cc/0x238d0 → 0x1d74a/0x29570` |
 | ASCII 路径进程 | `0x14000 → 0x3ce0/0x3ec0 → 0x233a6/0x23580 → 0x1d8ac/0x2a040` |
 
-主队列缺失返回 `Invalid thread`；Apps 线程或实例缺失分别有独立失败，进程回调可带 exitCode=-1。Apps 实际工作先确认目录、文件及文件校验，再进入本机启动或已识别的 elevation COM 分支。普通进程的等待标志为真，ASCII 路径另包含是否已为 ASCII、复制目录及完成后清理的分支；提升入口进入 COM，不能据这个名字假定每次都由当前进程直接 CreateProcess。COM 的完整接口、服务端任务与退出确认仍需继续连读，本段不把连接 COM 成功提升为安装成功。
+主队列缺失返回 `Invalid thread`；Apps 线程或实例缺失分别有独立失败，进程回调可带 exitCode=-1。Apps 实际工作先确认目录、文件及文件校验，再进入本机启动或 elevation COM 分支。普通进程的等待标志为真，ASCII 路径另包含是否已为 ASCII、复制目录及完成后清理的分支；提升入口进入 COM，不能据这个名字假定每次都由当前进程直接 CreateProcess。下节记录当前客户端及独立保留服务副本的接口、启动、事件与释放；服务副本的最新部署身份和真实运行结果分别保持未验证。
 
 直接进程路径的 `0x79da0` 实际以 `WaitForMultipleObjects` 同时等待进程句柄和 AppsService 的停止 event，无固定超时；只有进程对象先满足时调用 GetExitCodeProcess。停止 event 先满足返回 1，等待／读取失败返回 2。调用方在处理这些返回之前已经排队 bool=true 和当前 exitCode，因此 true 不保证取得了真实退出码；初始 exitCode=-1 也不能自动视为安装器失败码或成功码。必须区分启动、进程实际退出、等待被释放和安装器业务结果。
 
 Electron 的[Windows 适配器](../../../.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/modules/simple_service/win/index.js)对普通／提升启动保留 `void(bool,string,int)` 和 `{result,reason,exitCode}`，但 ASCII 启动只声明 `void(bool,string)` 并返回 `{result,reason}`。原生 ASCII 完成包装器 `0x13de0` 实际调用三参数回调，第三项为 exitCode；这条桥接丢失退出码，`$l` 因而不能从该结果识别 3010，除非 manifest 另声明 restartRequired。这里是静态已证实的结果字段丢失，未据此猜测或执行 ABI。适配器用 cbMap 保留回调，收到回调才删除，所读方法没有超时和取消。
+
+### 提升 COM 的客户端、类型库与事件释放
+
+[客户端与安装提权证据](../../../.analysis/results/host-current/installation-elevation-client.json)保留 16 个完整 AST 所有者、99 个客户端原生函数、11 个客户端 PE 数据区域、14 个客户端虚表槽位及逐项字节身份。客户端 DLL 已核对当前官方 `4.0.827` 宿主包；服务端则是另一条来源：[本机保留的 razer_elevation_service.exe](../../../.analysis/inputs/installed-current/files/elevation-service/razer_elevation_service.exe) 由[独立获取收据](../../../.analysis/inputs/installed-current/service-acquisition.json)记录版本 `1.1.0.8`、x64、注册的 `LocalServer32` 来源及签名观察。该 EXE 尚未与最新官方 `4.0.827` 部署物逐字节核对，当前性及部署依赖闭包保持未验证。其 `REGISTRY`、`TYPELIB` 及下述选中代码分别核对了实际 PE 字节；服务副本补充保留 75 个完整 `.pdata` 范围、10 个显式 leaf／thunk 区域、7,409 条指令、10 个数据区域及 4 个真实业务槽位。分析使用 LLVM 静态反汇编，没有服务端的完整 IDA／Hex-Rays 捕获；线性解码和选中范围不代表整个服务或当前官方服务语义已闭合。
+
+客户端 `0x2dc9a/0x2e152/0x2e89a/0x2ed1c` 使用 `CoCreateInstance`、`CLSCTX_LOCAL_SERVER=4`。PE 内实际 CLSID 为 `0edeaf3c-d36e-4e7e-9467-900b977dc4ff`，IID 为 `bfe24d59-6568-4179-8ae5-d9d53869a3e3`；二者与保留服务端副本的类型库及注册收据一致。该类型库 `RzUtilityLib` 的 LIBID 为 `f24a9e29-fc07-4277-9bbe-8315a7735bf0`，其 `IElevator` 方法为：
+
+| 虚表字节偏移／DISPID | 方法 | 类型库参数与客户端使用 |
+| --- | --- | --- |
+| `+0x38`／1 | `LaunchProcess` | 输入 `BSTR filePath`、`BSTR params`、`UI4 cbId`；输出 `INT* exit_code`。等待版 `0x2e152` 及 ASCII 专用 `0x2ed1c` 的真实反汇编均调用此槽位 |
+| `+0x40`／2 | `GetVersionInfo` | 输出 `BSTR* versionInfo`；客户端 `0x2dc9a` 读取后 `SysFreeString` |
+| `+0x48`／3 | `CopyRazerFile` | 输入两个 `BSTR` 路径，输出 `BSTR* error`；保留服务副本的真实槽位 `0x3180` 直接返回 `E_NOTIMPL`，不复制、不写输出，不能从声明推定具备文件复制实现 |
+| `+0x50`／4 | `LaunchProcessNoWait` | 输入 `BSTR filePath`、`BSTR params`、`UI4 cbId`；`0x2e89a` 实际调用，没有退出码输出参数 |
+
+这些方法的结果类型为 `HRESULT`。等待版导出 `0x13140` 传入 wait=true，沿主队列和 Apps 队列到 `0x29570`，后者分配 job ID、将退出码初始化为 `-1`，再把该变量地址交给 COM。只要 COM 方法返回非负 HRESULT，外层便排队 `result=true` 及该整数；客户端没有另行确认服务端确实写了输出参数、进程已退出或安装器业务成功。不等待版 `0x138a0` 选择 `+0x50`，内部完成结果仍可带初始 `-1`，不能当成真实进程退出码。前端 `simpleLaunchUserAppElevatedJson` 还有 engine `4.0.531` 版本边界；较早宿主走普通进程入口，不能假定所有版本都调用提升接口。
+
+连接器由 AppsService 的 I/O 线程持有；`0x280a0` 复用有效实例或经 `0x2db6c` 构造。`0x760c0` 使用 `CoInitializeEx(NULL,6)`，析构 `0x761e0` 仅在记录的 HRESULT 非负时配对 `CoUninitialize`。连接器销毁先使 weak pointer 失效；线程、COM apartment、服务对象及其事件订阅分别有所有者，不能把一个导出调用当作整个服务的租约。
+
+每次启动方法都在栈上构造 `0x2e5e4` 的 176 字节临时 sink。`0x2e66e/0x2f326 → 0x30956/0x309a1` 读取 COM 类型信息，优先用 `IProvideClassInfo2::GetGUID(1)` 得到默认事件 IID；备用分支经 `IPersist::GetClassID`、coclass 类型信息和 implemented-interface flags=3 找默认 source。`0x30e5c` 再查询 `IConnectionPointContainer`，调用 `FindConnectionPoint`、`Advise`，将 cookie 保存在 sink `+44`。保留副本类型库中的默认 source 确为 `_IElevatorEvents`，IID `c6237515-dd5f-4acc-b6f0-f45569adf965`，与当前客户端 QueryInterface 条件一致。
+
+该事件接口只有 DISPID=1 的 `ElevatorEvent(UI4 eventId,BSTR eventData,UI4 cbId)`；客户端的 `0x30410`、真实 `FUNC_INFO` 和 `DispCallFunc` 对应同一参数顺序。这里 `cbId` 是 job ID，BSTR 是事件文本。`0x30450` 将 eventId=0／1／2 分别交给连接器 `+8/+16/+24`，实际落到 `0x2f3d0/0x2f710/0x2f9f0`，再排队 AppsService 的错误／已启动／已退出事件。未知 eventId 不触发这些事件。退出事件将文本转为整数；`0x79870` 即使解析失败也写出解析器的当前／截断／饱和值，其 bool 被调用方忽略，不能把该消费者描述成严格有效整数校验。
+
+AppsService 随后经 `0x1cc60/0x1ce80/0x1d090` 通知观察者；当前主机虚表的实际目标 `0x9650/0x99d0/0x9cf0` 仅在注册标记及外部 callback 均有效时序列化 `jobID` 和对应字段，再发布原生事件 4／5／6。JS 将其映射为 `onsimplelaunchprocesserror`、`onsimpleprocesslaunched`、`onsimpleprocessexited`，通过 `appsserviceevent` 广播给有效 webContents。这条状态事件链与单次启动的 `{result,reason,exitCode}` 完成回调是不同通道。
+
+COM 方法返回时，无论同步等待还是 NoWait，客户端都调用 `0x2e804`：若 cookie 有效，经 `0x30fcc` 尝试 `Unadvise`，再清 cookie、释放保留的接口和 BSTR。该析构不汇总 Unadvise 的 HRESULT，也没有显式等待任意在途的外部回调；sink 的 AddRef／Release 是恒定计数返回，并未将栈对象转成独立生命周期。**NoWait 的临时订阅并不保留到未来的真实进程退出**；只能记录调用期间实际到达的事件，不能由方法提交成功推断之后仍能收到退出通知。
+
+ASCII 专用 `0x2ed1c` 使用同一等待接口，并让 sink 保存实际选择的 ASCII／复制路径；eventId=0 或 2 时尝试删除该路径，eventId=1 不删除，删除结果未参与成功判断。原有直接启动回退及其清理是另外的分支。当前客户端的等待 COM 方法没有 stop-event 参数、取消 token 或本机超时；`0x79da0` 的直接进程／停止 event 等待机制不能套到 COM RPC 上。设置 AppsService 的停止 event、停止线程或关闭窗口，都没有证明服务端等待被打断、外部进程被终止或其副作用已恢复。
+
+### 保留服务副本的实际启动、事件与停止
+
+以下结论仅适用于上述 `1.1.0.8` 保留副本。构造函数 `0x7ace` 将 `IElevator` 放在对象 `+40`，安装真实虚表 `0x143af0`；业务槽位 `+56/+64/+72/+80` 分别为 `0x6490/0x7510/0x3180/0x7320`。`GetVersionInfo 0x7510` 分配 BSTR 文本 `1.1.0.8` 并交给调用方，分配失败进入已有异常路径；`CopyRazerFile` 的未实现返回与类型库声明必须分别记录。
+
+`LaunchProcess 0x6490` 和 `LaunchProcessNoWait 0x7320` 先做路径／stat 核对；非零结果统一发布 eventId=0 的 `File not found` 并返回 `E_FAIL`，不能把该文本当成所有失败均已准确分类。之后才做签名允许检查，失败发布检查器的错误文本并返回 `E_ACCESSDENIED`，两者均不会启动进程。
+
+签名入口 `0x15464` 按扩展名选择 `.ico` 与普通 PE 两条链，允许名字表的两个字符串为 `Razer USA Ltd.`、`THX LTD.`。普通路径 `0x130cd → 0x12bf8` 使用 `WinVerifyTrust`、通用 Authenticode action、无 UI、VERIFY 状态和 provider flags `0x1000`，取得证书链、复制编码证书后检查解析出的名字；有 provider 数据时先 CLOSE 再比较，provider 为空的错误分支没有这次显式 CLOSE。它遍历返回链中的证书，不能描述成仅比较可执行文件末端签名证书。`.ico` 路径另检查六字节头、条目数、签名数据、重建内容与签名，缺签名、读取失败、重建失败、名字不允许和签名无效有不同结果。选中所有者均保留完整指令；下层证书 principal 解析、ASN.1、摘要与密码算法的全部库分支仍未闭合，不能将字符串命中当作完整签名策略证明。
+
+签名通过后，`0x61e0` 选择枚举到的第一个 `WTSActive` 会话并释放枚举内存。返回 session ID=0 与“没有活动会话／枚举失败”在调用方都会跳过 WTS 启动，这个零值分支不能省略。
+
+| 启动路径 | 实际参数、状态与失败行为 |
+| --- | --- |
+| `0x6a40` WTS | 查询用户 token，建立继承环境，获取 linked token 并复制为 primary token；desktop 为 `winsta0\default`，当前目录传文件父目录，`CreateProcessAsUserW` 的 applicationName 为空、flags 为 `0x420`。命令行直接从 filePath 复制，只有参数 BSTR 长度至少 2 才拼接空格和参数，单字符参数被省略；任一准备／创建失败返回 `E_FAIL` 后继续 fallback |
+| `0x6f8a` fallback | 为 filePath 加双引号并拼非空参数。先调用 `0x41800 → SetCurrentDirectoryW` 改服务进程的当前目录，忽略结果，所读 owner 没有恢复旧目录。`LaunchOptions +0x21=true` 先经 `0x3f2e0 → 0x3efe0` 调 `ShellExecuteExW`，verb 为 `runas`、保留进程句柄；失败后再清该 flag 走普通 `CreateProcessW`。两条分支均未传独立的非空目录参数，不能把服务当前目录修改当成已确认的每任务目录 |
+
+成功创建先发布 eventId=1。等待版 WTS 分支直接 `WaitForSingleObject(INFINITE)`，不检查 wait 返回；退出码先置 0，随后也不检查 `GetExitCodeProcess` 的 BOOL，仍发布 eventId=2、写 out 并返回 `S_OK`。fallback 的 `0x3ee70 → 0x3ee90` 本来只有 wait 返回 `WAIT_OBJECT_0` 且退出码读取成功才写 out，但 `0x6f8a` 忽略这个 helper 的 bool，也可能把初始 0 发布为退出码。因此 **`S_OK + exitCode=0` 不足以证明真实进程已退出并取得退出码**，必须连同 wait／read 原始结果比较。
+
+NoWait 传 `wait=false`，两条服务端路径都跳过等待、退出码写入和 eventId=2，然后关闭所持进程／线程句柄；没有后台退出观察者。该副本自身不会在未来补发 NoWait 的退出事件，加上客户端方法返回时释放临时 sink，不能承诺后续退出通知。关闭句柄也没有终止进程。
+
+事件生产者 `0x667e` 对非空 sink AddRef，按 DISPPARAMS 倒序构造 `UI4 cbId`、`BSTR eventData`、`UI4 eventId`，通过 `IDispatch::Invoke(DISPID=1, LCID=0x400, DISPATCH_METHOD)` 发送，再清 VARIANT、Release。空槽跳过；启动调用方忽略其 Invoke HRESULT，所以 `S_OK` 不证明消费者收到了 started／exited／error。
+
+订阅 `Advise 0x8200` 验证指针、查询 source IID、对 sink QueryInterface，保存取得的接口至首个空槽，将一基槽号交作 cookie；接口不匹配和容量分配失败分别返回对应连接错误，失败时释放取得的接口。`Unadvise 0x83a0` 对有效非空槽先清空再 Release，空槽／无效 cookie 返回 `CONNECT_E_NOCONNECTION`；cookie 可随空槽复用，只在当前订阅生命周期内有意义。对象零引用经 `0x7cc0 → 0x8040 → 0x8dbe` 释放剩余 sink 和向量。这些选中方法没有显式在途回调屏障或向量锁，不能虚构等待全部外部 callback 后才释放的保证。
+
+服务注册与启动也有不同路径：`0x17b2` 依据经过类型与终止 NUL 校验的 AppID `LocalService` 值，选择 SCM dispatch 或本地 COM server；`0x53ea` 的创建参数是 own-process、demand-start、RPCSS 依赖、带引号的模块路径、空 account/password，并配对关闭 SCM／service 句柄。命令解析保留 RegServer／UnregServer／per-user／Service 分支；这些只是静态参数证据，没有执行注册或安装。
+
+`ServiceMain 0x5a90` 建立 COM 后关闭本地 idle-monitor flag；`0x5d32` 在 service 模式初始化 COM security、注册 `CLSCTX_LOCAL_SERVER=4`／`REGCLS=5` 并 resume class objects，临时 class factory 引用由 `0x60a2` 释放。控制处理器 `0x5cc2` 收到 STOP 时设 `STOP_PENDING` 并给服务线程投递 `WM_QUIT`，没有子进程句柄、取消参数或 `TerminateProcess`。消息循环退出后 `0x5f38 → 0x6048` 撤销 class cookies；第一次非 `S_OK` 撤销结果会使循环停止，不能记成无条件全部注销成功。本地 server 的 idle event／monitor 另有独立关闭链。SCM stop、消息退出、RPC 返回、子进程退出和恢复原系统状态必须分别验收。
 
 服务停止由 installer `Ce.stopService` → 主进程 `StopService` → [serviceFunction.js](../../../.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/serviceFunction.js) → simpleLaunchRazerApp → 当前宿主目录的 [RzPowerTool.exe](../../../.analysis/inputs/installed-current/files/app-engine/CommonDLL/RzPowerTool.exe) 完成。文件缺失返回 undefined。helper 的[静态捕获](../../../.analysis/results/native/5d04be921ae8f9f2338fc4b69afbfdb5ac3435dd1d95511bc0c9f82c3f305c72/capture.json)使用 Image Base `0x140000000`；`WinMain 0x36430` 对 `--stop-service` 返回停止 bool 本身作为退出码，即成功为 1、失败为 0，不能套用常规退出码 0 成功规则。前端确实用 `!!exitCode` 转换，但 `Ka` 等待后丢弃这个 bool，仍继续执行安装器。
 
 PowerTool 的 `0x356e0` 只接受固定服务名；`0x36360` 打开 SCM，`0x36290` 打开服务并先停止活动依赖，随后 `0x35eb0` 查询／请求停止并核对 SERVICE_STOPPED。已有 stopped 返回 true；pending 等待按 waitHint 取 1–10 秒间隔，停止请求后的等待直接采用 waitHint，30 秒边界只在等待后检查，不是严格的单次调用时限。递归依赖停止没有逐项合并 bool，父函数也不检查依赖停止结果；部分成功日志先于／独立于真实返回，故日志不能代替状态核对。正常失败返回关闭服务／SCM 句柄，依赖枚举缓冲区也释放；这不恢复停止前的服务状态。
 
 完整 `Ka`、`$l`、取消回调、正常结束及异常关闭消费者均没有对应 `StartService` 或初始服务状态保存，因此不能声称安装失败／取消会恢复被停止的服务及其依赖。产品的可恢复写入对照仍必须先记录真实原值并恢复，当前静态链没有为执行官方安装器提供授权。
+
+### 当前官方升级工具的不同实现
+
+同一[证据报告](../../../.analysis/results/host-current/installation-elevation-client.json)另保留两套 PowerTool 的 21 个完整 IDA 函数及逐指令／chunk 字节校验。当前宿主包选中的无版本 helper 与后台资源清单声明的 `1.0.18.0` helper 是不同输入，升级动作不能按同名工具合并。
+
+当前宿主 `WinMain 0x36430` 的 `--upgrade-elevation-service <filename>` 进入 `0x36dd0`，但忽略其结果，正常继续返回初始退出码 0。升级 owner 在固定 elevation-service 目录组合源文件与 `razer_elevation_service.exe` 目标；源存在时请求停服务，却不检查 stop bool，再进入最多 5 次、失败 false 之间间隔 500 ms 的复制。复制错误异常与 false 重试是不同分支，不能一概声称异常也会重试。无论是否复制 EXE，随后都会调用 `0x37570` 检查客户端 DLL；EXE 复制成功才删源文件，复制成功或目标不存在时再尝试删除升级计划任务。
+
+`0x37570` 读取并校验实际服务与当前 `simple_service.dll` 的四段文件版本，读取失败或当前 DLL 不存在便停止；编译数据和构造函数 `0x1010/0x1040` 证明以下选择：
+
+| 服务版本 | 客户端版本条件与文件来源 |
+| --- | --- |
+| 恰好 `1.1.0.7` | 必须精确为 `1.2.2.9`；来源 `simple_service_v1.2.2.9.dll`。降级前先将 outgoing DLL 备份为 `simple_service_new.dll` |
+| 其他版本 | 四段版本至少为 `1.2.2.10` 时不动；否则从 `simple_service_new.dll` 恢复。复制成功才删除已消费 backup |
+
+这些文件位于 helper 自己的目录。DLL 复制重试仍失败后，原件会枚举 `RazerAppEngine.exe`、打开并终止匹配进程、逐个等待至多 5 秒并关闭句柄，随后再复制；没有完整原始进程／服务状态恢复。任务删除 `0x36b00` 使用固定系统 schtasks 路径，等 30 秒，超时请求终止这个任务删除进程，其他 wait 结果仍尝试读退出码且忽略 BOOL；结果只写日志，不能汇总成可靠升级成功。
+
+版本化 `1.0.18.0` 的 `WinMain 0x36200 → 0x368d0` 则直接做存在检查、复制、删源、system 任务删除；该 owner 没有停服务、复制重试、上述客户端版本选择、备份／恢复或杀宿主进程分支，正常返回 1 也被 WinMain 丢弃。两套 helper 均未执行；外层退出码、日志和文件版本分支都不能证明实际安装、替换或恢复成功，更不能由此证明本机服务副本已匹配当前官方部署。
 
 ## 共享依赖、卸载和取消
 
@@ -143,8 +214,15 @@ PowerTool 的 `0x356e0` 只接受固定服务名；`0x36360` 打开 SCM，`0x362
 | 普通／提升／ASCII 返回 0、3010、其他值或无回调 | 原生返回、桥接字段丢失、restartRequired、超时／取消及 callback 生命周期；3010 的缺失字段保持未观测 |
 | 服务不存在、拒绝停止、依赖失败、pending 超时 | helper 实际退出码 0／1、真实服务状态、Ka 是否继续、原值与依赖是否恢复；日志不作为独立期望 |
 | 关窗与 shutdown 竞争 | 原生初始化标记、迟到回调、等待 event、句柄关闭和仍存活外部进程各自记录，不把静默回调当成功 |
+| 等待／NoWait 的 COM 边界 | 实际槽位、BSTR 所有权、job ID、HRESULT 与 out 退出码分别核对；没有写输出、仍为 `-1`、0、3010 及业务失败分别覆盖 |
+| 事件订阅及注册失败 | 类型信息／source IID／FindConnectionPoint／Advise 失败时不得继续启动；cookie、接口释放、Unadvise 失败、晚到回调和 NoWait 提前释放分别比较 |
+| COM 事件与 ASCII 清理 | DISPID、eventId、cbId、错误及退出码文本、未知／非法／溢出输入、weak pointer 失效及 eventId=0／2 的复制文件删除副作用分别核对 |
+| 保留服务副本的方法结果 | CopyRazerFile 的 `E_NOTIMPL` 与未改 out sentinel、版本 BSTR 所有权、路径核对／签名拒绝与未启动副作用分别验证；当前官方服务尚未绑定时不提升为当前官方实测 |
+| 服务的 WTS／fallback／等待 | session 0／非零、token／环境失败、含空格路径、参数长度 0／1／2、服务当前目录修改与未恢复、runas 失败后的普通启动、wait／exit-code 失败仍发 0 各自比较 |
+| 服务订阅与停止 | cookie 复用、QI／分配／Invoke／Unadvise 失败、空槽、析构 Release、STOP 期间阻塞 RPC 和继续存活的子进程分别记录；NoWait 的未来退出事件应保持未产生 |
+| 两套升级工具 | 版本 1.1.0.7／其他、DLL 精确／最低版本、缺源／缺目标、stop false、复制 false／异常／五次边界、备份／删除、杀进程和任务删除分别用纯／模拟接口验证，不执行 helper 充作可恢复 DLL 对照 |
 | 正常收尾、全局异常、cache.delete 延迟／失败 | INSTALL_RESOURCES、五类瞬态键、pending 清理、缓存、锁、service worker 等待及关窗顺序分别验证 |
 
 无设备时可先用纯逻辑和模拟文件／传输／进程／服务接口验证上述状态机与失败注入；回放的期望须来自已核实的原件。纯逻辑、模拟验证、当前官方实际 DLL 对照与真实设备／系统验收各有独立状态，不能以两端都未连接判为一致。安装器执行、主程序运行和固件刷写不在本轮授权边界内，不能为了对照擅自执行。
 
-已静态核对本机安装文件链、固件准备／调度／事件消费者及上述原生捕获，进一步闭合取消、进程等待、服务停止和释放的主要消费者。完整 COM 服务端、下层固件协议、其他平台和全部产品分支仍需分别核对；完整捕获、包装器初始化和文件写入都不能证明独立 Rust 固件协议或安装生命周期完成。本文没有运行应用、厂商 JavaScript、安装器、DLL、服务或设备；固件刷写与安装运行验收保持未验证。
+已静态核对本机安装文件链、固件准备／调度／事件消费者、当前客户端 COM／直接进程／停止链、保留服务副本的选中启动／事件／订阅／释放代码及两套升级工具差异。服务 EXE 的最新官方部署字节与依赖闭包仍未核实；当前产品清单和宿主包 ZIP 已留目录核对，该 ZIP 没有服务 EXE，不能据此认定外层安装或另行下载依赖不存在。完整服务捕获、下层签名／密码库、固件协议、其他平台和全部产品分支仍需继续。报告保留原始分析快照，并另外核对并行获取结束后的当前输入索引及全部不可变来源。完整捕获、包装器初始化和文件写入都不能证明独立 Rust 实现完成。本文没有运行应用、厂商 JavaScript、安装器、helper、DLL、服务或设备，也没有执行本节纯／模拟测试或实际 DLL 功能对照；这些验证及固件刷写、安装运行验收保持未验证。
