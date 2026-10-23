@@ -34,6 +34,8 @@
 
 窗口打开处理先解析 URL、`frameName` 和 feature。已存在且仍存活的同名目标复用其焦点链；policy 3 的 `attachToWindow`、policy 5／7／8 的独立窗口路径不能合成一个窗口分支。设备窗口身份和 Dashboard 的 PID／container 导航需要共同核对，见[Dashboard](dashboard.md)。
 
+[固件共享窗口专项](../../../.analysis/results/frontend/synapse-update-fw-current/page-interactions.json)进一步连接真实调用方：SDK 的 activation 经通用 `doElectronAction` 保留 subTab／willShow，main 进入 focus／页签激活／可选 focusSubTab。新页 policy=3 沿 Tab 的 window-open handler、common.createNewTab、TabUI、preload 的 tabEvent 到 TabManager 创建实际 Tab 并 init；已有页切换则发布 activeTabChanged。所选页签关闭路径核对允许关闭／force-focus，按可用分支等待 beforeunload 并发布带 frameName 的 tabClosed；固件迁移指示器消费该事件，但该通知不确认文件迁移、设备恢复或 DLL 释放。设置／迁移的具体焦点订阅和未配对资源分别见[设置](settings.md)与[配置迁移](profile-migration.md)。
+
 ## 关闭、隐藏与真正销毁
 
 普通 close 处理先隐藏窗口；`willClose=false` 时阻止默认关闭。policy 5 也有独立的 hide／preventDefault 分支；policy 7 在最小化时隐藏；policy 8 在允许关闭时先关闭 childViews。页面工具栏的 `handleCloseBtn` 还受 `closeWindowAction` 控制，可能关闭，也可能只隐藏并安排休眠。

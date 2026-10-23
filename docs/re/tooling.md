@@ -141,13 +141,23 @@ Wakaru 1.14.0 固定源码提交 `8219bf5016a063d7fb215101a8c45d5959ec733f`，�
 
 manifest、HTML、JS、CSS、资源及部署前后摘要共同确定当前入口。source map 404、动态 publicPath、未知 chunk、枚举 null、未解 import 独立记录。语法可解析不能证明 mounted tree、版本分支、状态、Promise、设备写回、持久化或清理完成。
 
+固件专项证据将完整 JS AST 所有者与原生嵌套 CSS 块分别保留。独立复核按实际 UTF-8 字节校验源码身份、完整树节点边界、原文与摘要；CSS 使用处理注释、转义、字符串、圆括号及属性括号的全文平衡块扫描，核对原始 selector 和完整块边界，不把它称为 CSS AST、声明合法性或计算样式验证。原生函数的全部 chunks／指令和真实分发表另与 PE 原字节逐项核对，PE 装载器零填充区由 section header 确认，不伪造磁盘 raw hash。上述静态核对不能替代 Rust 行为测试、实际 DLL／设备结果或窗口视觉与键盘／焦点验收。
+
+[691 固件包](../../.analysis/results/host-current/firmware-package-691.json)沿官方 manifest／完整包／静态提取／托管与原生消费者核验；原生 SDK、MCU 和 RY 分别保持自身架构、版本、ABI 与返回语义，同名模块不转移身份。完整 IL 方法与反编译文件保留，方法 header／code 长度及实际 PE 字节另行核对；这不冒充独立 IL 指令反汇编，异常表留在完整 IL 中。包内选中原件还直接从 ZIP 再读取、逐字节比较，不执行自解压程序。
+
+该专项现保留 61 个完整原生函数及 71 个完整 IL 方法。HEX 的异常、补洞、callback 顺序及输出失败，WinUSB 的重试 buffer 改写与布尔返回，均核到完整函数和所选指令；bad-SP 反编译参数不作为 ABI 依据。Nordic CRC 的六个静态算例使用独立标准库公式及固定校验锚点复核，仅证明选定算术，不计为 Rust 测试、真实 DLL 功能对照或设备应答样本。
+
+[安装信任链](../../.analysis/results/host-current/installation-trust.json)分别保留当前客户端／helper 的完整 IDA 函数与保留服务的 LLVM 完整 .pdata／leaf 范围；函数 chunk、逐条指令、表槽和数据区重新核原 PE，保留服务的来源与分析器限制不随客户端闭合。CN 解析、PE 与 ICO 的不同策略、EVP 间接方法表、文件路径与发布清理由完整调用链支撑，静态密码算法调用核对不等于真实签名功能对照或全部 CPU 实现已验收。共享页面补充报告独立核对真实挂载树、参数、原 CSS 与媒体字节；另开窗口和宿主消费者须继续沿当前 SDK／preload／host 路由追踪，不能按同名便捷 API 猜测传参。
+
+[固件共享交互补充](../../.analysis/results/frontend/synapse-update-fw-current/page-interactions.json)已将所选 SDK 激活、preload 通用派发、policy=3 创建、页签激活／关闭与目标设置／迁移／App Explorer 消费者连接，分别保留完整词法所有者和 ASAR／官方部署来源。动态 SVG 通过既有官方共享索引边、获取收据及实际字节复用；无新增网络观察。DFU 的 payload 解析、事件路由、进度拒绝与异常结算各自保留，避免把所有无效事件统称为立即失败。生成后回读之外，独立校验完整 AST／JSX 边界、平衡 CSS、复用主报告引用、目标获取绑定及宿主 ASAR 切片；仍不执行厂商代码，也不将输入获取、静态语义与实际窗口／DLL／设备验收合并。
+
 前端获取在单个依赖批次内并行静态枚举独立 JS，遍历及收据发布仍由单一所有者处理。每份 `chunk-references/*.capture.json` 保存确切输入路径／字节、Wakaru 字节身份、参数、完整 stdout／stderr 摘要、退出码和输入前后校验；只有这些身份全部吻合才复用，不以旧输出文件存在代替验证。复用非零退出或 null 枚举仍保留原失败／未解状态。产品族获取合并发布原件索引，避免每产品反复重写完整索引；获取收据与完整分析、语义和实现验收继续分开。
 
 宿主应用 native 资源经 `acquire-native --include-host-app-resources` 与设备资源统一获取。来源必须是实际稳定 HTML 的 manifest link、索引吻合原件及稳定摘要，不能仅凭缓存名或手填 URL；新 native manifest 与页面部署字节漂移时保留失败并要求沿原流程补取页面。设备 manifest 按真实 PID 路径核对，`host_app` scope 按稳定宿主 HTML 声明核对，二者都要求官方 HTTPS。`extract-native-packages --scope host-apps --workers 2` 复用完整静态容器提取，本轮 139 份 PE／容器候选中 16 个容器提取 676 个文件、错误 0；普通 PE 的无归档结果不算安装分支闭合。
 
 `inspect-corpus` 静态解析当前 installer HTML 实际声明的 JS，保留完整下载 owner、数值常量声明、AST 范围、工具版本及实际 SHA。源码以 `Math.floor(.1*(1024*1024))` 得到 104,857 字节分片，`pindex`、循环偏移、请求 start／end 和 Range 绑定均须吻合；再将每份缓存与完整官方资源的精确字节区间比较。本轮 15 份通过的分片在 [corpus](../../.analysis/results/corpus.json) 独立记录并从完整模块分类排除，原缓存保留，不拼装或转移整文件身份；完整资源的当前来源另行核对。策略、区间、快照或父资源来源失败均进入统一 gaps。
 
-本轮 corpus 当前记录 native 1,940、CLR 683、混合 9、其他 39，分类失败 0；500 个官方来源根连接 39,995 条容器边。29 份 native 原件的当前来源仍未证明，包括 8 个 manifest mismatch 资源及其独有后代、两份旧 quarantine、两份已安装 DLL 和一份安装时生成的 GMS uninstaller；重复获取不能提升这些原件的身份。此来源盘点独立于尚在推进的全函数捕获、语义及产品实现。
+本轮 corpus 当前记录 native 1,941、CLR 683、混合 9、其他 39，分类失败 0；500 个官方来源根连接 39,995 条容器边。30 份 native 原件的当前来源仍未证明，包括 8 个 manifest mismatch 资源及其独有后代、两份旧 quarantine、两份已安装 DLL、一份安装时生成的 GMS uninstaller 及本机保留的提升服务 EXE；重复获取不能提升这些原件的身份。此来源盘点独立于尚在推进的全函数捕获、语义及产品实现。
 
 host 子应用的 [当前部署审计](../../.analysis/results/frontend/host-applications.json) 逐文件核对原件，保存各自 manifest 版本、build、gitMetadata、dependencies／resourceManifest；native host 元数据只作上下文。窗口 URL 保留完整 factory／ESM 所有者及表达式，常量拼接沿实际 webpack require／export 解析，拒绝重赋值及运行时 location；运行资源与 source map 缺失分别计数，资源闭包不冒充页面与功能完成。
 

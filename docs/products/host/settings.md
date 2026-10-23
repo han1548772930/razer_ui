@@ -13,6 +13,8 @@
 
 Synapse 的入口异步加载模块 4914；Chroma 加载 1743。各自的 Provider 包裹对应设置树，外层窗口焦点组件决定 body 是否显示。Synapse 使用 `windowName="synapse"`、`tabName="settings-synapse"`，Chroma 使用 `chroma-app`、`settings-chroma`。隐藏 body 与卸载组件是两件事。
 
+[共享窗口交互专项](../../../.analysis/results/frontend/synapse-update-fw-current/page-interactions.json)另将固件工具栏到 Synapse 设置的实际 SDK／preload／main、policy=3 页签创建与目标 BodyWrapper 连接起来。当前 SDK 激活保留 subTab／willShow；同名 preload 便捷函数不是这个调用方。目标 focus hook 查询宿主可见性／焦点，消费 focus／changeActiveTab／activeTabChanged，卸载调用对应 response disposer；已发起的查询没有取消或旧代次拒绝。该目标页的 accessibility MutationObserver 未保留 disconnect，不能与下面独立 `/settings/` 根自己可断开的头像 observer 混用。请求发出、窗口激活、控件加载和设备读取分别确认；本专项没有运行窗口或证明所有设置动作已经接线。
+
 设置根组件挂载时初始化共享频道与存储，读取语言，调用 `RazerApp.setBrowserTabVisible(true)`，监听 `beforeunload` 和 `languageChange`。关闭处理先设置 `showSettings=false`；窗口关闭回调随后 `window.close()`。当前组件卸载只直接移除 `beforeunload`，不能据此声称它注销了所有外部监听。
 
 导航将历史列表和当前位置写入 sessionStorage。点击另一项会把新项追加到历史；工具栏前进／后退按当前位置派发 `updateActiveView` 和 `updateTabNavigation`；刷新调用 `window.location.reload()`。文档中的页面表来自真实渲染调用，而非 CSS 中保留的旧设置类名。
@@ -41,7 +43,70 @@ Synapse 的入口异步加载模块 4914；Chroma 加载 1743。各自的 Provid
 
 页签选择进入 Redux 的 `selectedTab`，异步 Router 根据当前名字选择组件；导航同时处理 Enter、窗口宽度变化及溢出菜单。Products 不在这份挂载描述中。根传给工具栏的 `currentTabNavigation` 固定为 0、`tabNavigations` 固定为空数组，也没有传入 back／forward 回调，因此两项始终禁用具有当前源码依据。Refresh 则沿工具栏调用 `window.location.reload()`。
 
-General 沿 `BodyWrapper → body-widgets → 两个 widget-col` 挂载：左列 GENERAL 包含语言，右列 ABOUT 包含独立 About；此树没有 Release Notes 子项。语言顺序为 `en/de/es/fr/ja/kr/pt-br/ru/zh-cn/zh-tw`，点击先关闭菜单，派发 `updateLanguage`，再调用 `RazerApp.setLanguage`。组件另注册匿名 `languageChange` 监听，没有对应 `off` 返回。Systray 的双击行为读取 `systrayDblClickAction`，无值时默认 `{type:"showMenu"}`，可选菜单或本机非 website 应用；点击立即保存，没有页面级 Apply。安装、launcher、widget 的最终服务消费者仍需各自完整审计。
+General 沿 `BodyWrapper → body-widgets → 两个 widget-col` 挂载：左列 GENERAL 包含语言，右列 ABOUT 包含独立 About；此树没有 Release Notes 子项。语言顺序为 `en/de/es/fr/ja/kr/pt-br/ru/zh-cn/zh-tw`，点击先关闭菜单，派发 `updateLanguage`，再调用 `RazerApp.setLanguage`。组件另注册匿名 `languageChange` 监听，没有对应 `off` 返回。Software、Systray 的实际本机写入、托盘消费者和原生安装名单查询另保留在 [local-controls.json](../../../.analysis/results/frontend/host-settings-current/local-controls.json)，边界如下；这些静态证据不代表功能已由 Rust 实现或实际 DLL 对照通过。
+
+### Software 的安装名单、Open 与更新状态
+
+实际列表取三个来源的精确名称交集：模块 5596 的固定 catalog、Redux `app.items`、等待原生查询返回的安装名称。它不是遍历 catalog 后直接宣称软件已经安装，当前 join 也没有消费 catalog 的 `canShow`。挂载、窗口 focus、原生 uninstall 事件会刷新；应用列表改变时还受缓存 `apps` 与 Redux 列表非空条件限制。focus／uninstall 回调有同身份移除，已经开始的查询没有取消或旧代次拒绝。
+
+`installedModules` 只补版本／日期等本机元数据：初读取 `installedDate`，storage 事件分支却把 `installedVersion` 赋给 date；`uninstallingModules` 事件则直接替换这份 observer 列表。更新日期解析失败后的日期显示不能当成真实安装时间，更不能用本地元数据替代安装查询或设备读回。
+
+| 操作／状态 | 当前完整调用链与结果边界 |
+| --- | --- |
+| Open，已有窗口 | 等待模块 4518 的 `getWindowServiceClients`，解析实际 Host 的 tab／window／webview 清单，按 `windowName===item.name` 查找；命中调用 `activateWindowServiceClient`。Host 再区分存活、休眠窗口／tab，恢复、显示或聚焦，并广播 appFocus |
+| Open，没有窗口 | 执行 catalog 的实际 `path` 函数。Synapse、Chroma、Virtual Ring Light、Streamer Companion 分别打开各自本机页面路径及稳定窗口名，policy 为 5；Host 的真实 window-open handler 消费该请求。它没有把任意安装名单文字作为可执行文件路径 |
+| Open 失败／确认 | 查询 Promise 被等待，activation 与 `path` 结果未被等待；该点击没有局部 JSON／IPC catch 或“启动完成”确认。请求返回不等于窗口已经完成加载；完整窗口创建／休眠仍由其生命周期所有者验收 |
+| 卸载、修复及补丁说明动作区 | 三项 `className:(item.canUninstall,"disabled")` 均恒为 disabled；共享 CSS 的 `.disabled` 明确 `pointer-events:none`。前两项没有 onClick，第三项虽保留补丁说明 callback，也不能当作可点击的功能 |
+| Auto Update | 固定 disabled，没有可执行点击链。子项把 update callback 登记到父组件 Map；完整词法扫描只找到 Map 声明与 `.current.set` 两处引用，没有读取、遍历或调用这些 callback 的入口 |
+| 更新进度 | 先观察 window-storage，再读 `<app>_installer-status`，按 downloading／installing 分支分别查询下载／文件进度；事件与初读使用字段标记避免旧初读覆盖已经到达的事件。Background Manager 单独读取，不能并作应用本身的进度 |
+
+进度事件把变更后的 restart-required／skipped／completed 归为 completed，canceled 和 error 保留各自状态；下载 `-1` 转为 100。observer 卸载会 off，但在途 Promise 未取消，这些字段标记也不是页面实例代次。百分比、completed 或本机 `installedModules` 存在都不能证明真实安装成功。
+
+不能因为 Map 没有调用就断言更新类完全不运行：`setDefaultData` 仍注册 online listener，online 事件可以取远端 manifest、写缓存和启动 timer。子项清理仅登记 noop 并清空 React ref，没有移除更新类的 online／hasUpdate 监听，也没有证明 timer、锁与请求已释放。该联网编排不进入本产品；原件补丁说明弹层中的 2019 年日期、1.0.0 和 50 MB 是固定样例，不能当作当前 Release Notes 或本地安装生命周期的实现。
+
+### 安装名单的实际 Windows 原生函数
+
+请求沿 `5507 → 4518.getInstalledRazerAppEngineProduct → preload.doElectronAction → Host GetInstalledRazerAppEngineProduct → sysutil/win.callDLL → ffiMain.callDLLMain` 进入当前原件。Windows ABI 为无参、返回 pointer，释放为 `FreeMalloc(void(pointer))`；这条调用走同步 ffiMain，不走异步 DLL 子进程。官方 DLL 仍仅是静态分析及独立对照对象，产品应以 Rust 独立实现该本机 OS 查询。
+
+实际导出 RVA `0x73ff0` 跳到 `0x69590`，打开 `HKLM\SOFTWARE\WOW6432Node\Razer\RazerAppEngine\Dependencies`：首次 access 为 `0x20119`，失败返回 null；成功后关闭该句柄，再以 `0x20019` 获取枚举句柄。`0x5c980` 使用 `RegQueryInfoKeyW／RegEnumValueW` 只枚举值名，不读值数据，也不验证可执行文件、版本或安装健康。名称按枚举顺序用逗号拼接，没有转义。
+
+枚举 helper 的 false 被调用方忽略，中途失败可能保留部分名单；第二次打开失败也可能返回分配后的空字符串。因此 null、空字符串、部分列表与确实无值须分别测试。原件转换用 UTF‑8 codepage 65001，分配字节长度加 1 并补零。Host 在 `readCString` 成功后才设 free 标记，再由 finally 调用 `0x6b9d0 → 0x97ce0 → 0xa98e0 → HeapFree`；读取字符串先抛错时不会进入这次释放分支。9 个选定函数的完整汇编、伪代码和实际 PE chunk 已逐项校验；未展开直接调用、import／间接边界仍保留，不能升级为整个 DLL 语义闭合。
+
+前端仅把四个精确值名映射为内部身份：`Razer Synapse Beta／Razer Synapse → synapse`，`Razer Chroma Beta／Razer Chroma → chroma-app`。其他名称原样保留，没有 trim、大小写归一或去重；异常、false、空返回均折叠为 `[]`。这个来源能证明注册表中观察到的名称，不能单独证明安装完整，也不能把空 UI 当作成功验证“未安装”。已保留的平台选择器另有 Mac adapter，本导出没有在该分支建立等价链，不得据 Windows 结果推断跨平台支持。
+
+### Systray 的五槽快捷启动与双击
+
+Quick Launcher 固定呈现 5 槽，存储为 `launchers` JSON。无有效数组时，取非 website 应用按 title 排序、截前 5；数组内 null 变为空对象。初始化等待原生安装名单，删除已经不在 Redux catalog 的项及原生名单中缺失的 `type=app` 项，再立即写回。应用列表变化和 uninstall 重新执行，observer 有 off，在途初始化没有取消或代次核对。
+
+选择 None 把本槽替换为 `{}`；选择已有应用会先清空它的旧槽，再赋给新槽，避免重复。None 的 disabled 条件取候选 `k` 列表长度，不是当前已填槽位数；下拉 CSS 禁止 disabled 项点击。state 与 JSON 立即更新，没有页面级 Apply／Save，也没有设备写入。
+
+预览和候选 `k` 在同步 filter 中调用 `RazerApp.isAppInstalled`，但当前 Electron SDK 对已知应用返回 Promise。Promise 的 truthy 不能当作等待后的安装结果；另一个实际等待的原生名称过滤独立存在。真正托盘模块 9001 的 `Sr` 读取同一键，也有这一同步 Promise 边界；storage 的 `launchers` 事件调用 `Sr` 刷新，实际 launcher 组件还用 native `installedApps` 单独过滤 Synapse／Chroma。
+
+真正点击进入 `9001.I0`：隐藏托盘，走应用 launch、focus／restore 或 policy 5 的 URL 打开。其原件包含账户判断、延迟闭包和 website 分支，不能照搬回本产品的去账户范围；本机 launch 参数、窗口结果、失败和释放需独立接通并测试。显示一个快捷图标或写入 `launchers` 不构成启动成功。
+
+双击选择使用 `systrayDblClickAction`，缺值默认 `{type:"showMenu"}`；其他选项为非 website 应用的 `{type:"launch",payload:name}`。选择立即关闭并保存。实际托盘 `Je` 消费 `electron-action`：showMenu 显示托盘，launch 读取窗口后经原件登录条件进入 `I0`；其备用 catalog 的字段也不能当作已核实的通用 launcher。`Je` 返回真实 response disposer，应用列表改变时重绑。托盘 root 另有匿名 storage／languageChange／appExit 与 interval，卸载只移除 focus listener，不能据局部 disposer 宣称全托盘清理完成。
+
+### Widgets 的显示偏好与真正设备动作
+
+根按 `hasWidget` 和 widgetIndex 呈现，存在 Spatial Audio 时排除 sophie-lite。总开关写 `widgetsHidden`，拖动写 `widgetsSort`，再调用真实 `4672.bN` 重建应用项。该重建等待 SDK 安装观察并查询 Host 窗口，其 manifest 版本元数据与设备状态分别存在。真正托盘 `Oe` 消费 `showWidget&&hasWidget`、同样的排除规则与顺序，再用原生安装名单过滤 Synapse／Chroma，按应用 lazy 挂各自 widget。
+
+| 设置键／分组 | 设置页写入与实际托盘消费者 |
+| --- | --- |
+| `synapseWidgetsSort／synapseWidgetsHidden／synapseWidgetsBatteryHidden` | 控制稳定产品身份的顺序、设备卡及电量显示。设置页读取 Host `connectedDevices`，实际托盘 5492 另行读取并 remap；这些键不改变设备电源／电量，也不证明设备能力 |
+| `chromaAppWidgetsHidden` | 设置页只消费 `connectedDevices` 并写 studio／visualizer／设备 name 的隐藏名单。托盘 2215 选择 studio／visualizer／connect 组件，1899 再过滤 Connect 设备；隐藏选项不调用设备 enable |
+| `spatialAudioWidgetsHidden` | `spatial-audio-on／profiles` 控制本机音频 toggle／profile selector 的显示；真正动作仍由对应音频消费者完成 |
+| `cortexWidgetsHidden` | `game-launcher／button` 控制游戏列表／Boost 按钮的显示；真正点击才发送游戏／Boost／Restore 广播，不能以隐藏名单代替本机执行结果 |
+| `goldAndSilverWidgetsHidden` | `gold／silver` 属于原件账户显示，仅记录来源，不进入本产品账户功能 |
+
+各子组在“全部隐藏且根仍显示”时可触发真实根 toggle。设置页 Synapse 观察要求应用运行，再合并 productId／primaryPid、serial／primaryDevice，保留 ready 并排除明确 chargingStatus=off；只有数组长度变化才发布新列表。同数量替换、元数据或语言改变时可能留旧值。真正托盘另要求 serialNumber，且有 off 重复项处理，与设置页筛选不同；隐藏事件重新读取，排序／电量事件映射现有列表，不能合并成同一个观测算法。
+
+Synapse 设置项的 appLaunched 有配对 off，但匿名 `T.on("windowstorageevent",…)` 没有；拖动的 mousemove／mouseup 有移除。真正托盘 window-storage 回调有 unregister 与 response disposer，已经开始的异步读取仍无最终代次核对。共享 observer 另在 beforeunload 注销，但没有保留 Electron response disposer；不能把关闭窗口或清空引用当完整取消。
+
+Chroma 的真正设备 enable 是另一个动作：托盘 1899 的开关才调用 hook 的 `onChange(device)`，投递 `{action:"setAppEnabled",payload:{name,enable:!旧值}}` 到 `lighting-engine-chromaConnectDevices-action`。Host 将值保存在按来源 URL 分组的内存 Map，再向其他符合条件的 webContents 发 memory 事件；setter 返回旧值，不是服务确认。GET 汇集各来源的 truthy value，UI hook 只读第一项，没有来源／代次选择，不能把这份缓存直接当实测。
+
+当前 LE 的真实 `MemoryStorageHandler` 持 mutex，按模块 1876 的 `HR` 常量进入 5976，调用 `setAppEnabled → send({func:"Enable",param:{name,enable}})`，服务地址为本机 `ws://127.0.0.1:1337/razer/rzchromabroadcastmanager`。列表事件与 memory 发布再供 UI 观察；投递完成和服务等待结束都不能当实际设备输出确认。完整服务状态、请求 token、超时与释放边界见 [chroma-connect.md](chroma-connect.md)。
+
+还须保留一个精确差异：设置／托盘 hook 的 `MEMORY_STORAGE_CHROMA_CONNECT_APPS_ACTION_KEY` 实际为 `lighting-engine-chromaConnectApps`，LE 真正 Apps action 的 `Op` 却为带 `-action` 的键。当前设置只改显示，实际托盘只挂 device toggle，均未调用这个 apps 分支；不能因 helper 定义存在就宣称 Apps enable 已接通。hook 的 listener 有 off／unregister，singleton 另有注册及未保留 disposer，在途读无取消；本轮未完成原生服务／DLL 的实际结果对照。
 
 ### 独立 About 的真实版本 producer
 
@@ -243,7 +308,8 @@ Synapse 从 dashboard manifest 获取 version 和 buildVersion，失败分支读
 | 页面／动作 | 当前 Rust、UI 与后端所有者 | 已确认边界与剩余工作 |
 | --- | --- | --- |
 | Synapse 设置 root | [SettingsPage](../../../crates/razer-settings/src/preferences/settings_page.rs) 持有 Synapse／General／用户要求的本地 Products 三个页签、SelectState、订阅、草稿和保存快照；[product_settings_navigation](../../../crates/razer-shell/src/shell/devices/product_settings_navigation.rs) 将 Synapse 产品设置路由到同一 entity | Products 是本项目的本地浏览入口，不属于厂商的两个原始设置页签；当前 root 的页签切换与关闭／重开不能据共享 host navigation 自动算作原 sessionStorage 历史、刷新和 `showSettings` 链全部完成 |
-| 独立主机设置窗口 | [SettingsWindow](../../../crates/razer-settings/src/window/settings_window.rs) 为另一个 `/settings/` 表面，包含 Software、Systray、General 和本地 Products；shell [settings_window](../../../crates/razer-shell/src/shell/windows/settings_window.rs) open-or-focus，普通最小 600×500、托盘齿轮覆写 1000×768，默认 1280×720 | 这个窗口不是 Synapse／Chroma 产品设置的替代物；固定禁用 back／forward 与当前独立原件一致，但 Rust refresh 只切回首项并卸载 tray selector，不等同原页面 reload；安装列表与快捷 launcher 没有真实 host catalog，仍未完整实现 |
+| 独立主机设置窗口 | [SettingsWindow](../../../crates/razer-settings/src/window/settings_window.rs) 为另一个 `/settings/` 表面，包含 Software、Systray、General 和本地 Products；shell [settings_window](../../../crates/razer-shell/src/shell/windows/settings_window.rs) open-or-focus，普通最小 600×500、托盘齿轮覆写 1000×768，默认 1280×720 | 这个窗口不是 Synapse／Chroma 产品设置的替代物；固定禁用 back／forward 与当前独立原件一致，但 Rust refresh 只切回首项并卸载 tray selector，不等同原页面 reload。当前 Software 仅呈现 Installed 标题，launcher／Widgets 没有真实 host catalog；这些空内容是未完成接线，不能以源码的空态分支当成功能验收 |
+| 独立 Systray 显示与动作 | [SystrayActionSelector](../../../crates/razer-settings/src/preferences/settings_systray_action.rs) 保留开闭动画任务与卸载；[tray.rs](../../../crates/razer-shell/src/shell/tray.rs) 消费 `TrayDoubleClickAction::ShowMenu` 显示实际托盘 | 当前 selector 与消费者只有 ShowMenu；原件非 website 应用 launch 选择、5 槽编辑／真实启动、卡片及子项显示／排序尚未逐项对应。该 ShowMenu 本机链存在，不能扩大为所有托盘动作已还原；没有实际窗口结果的本轮验收收据 |
 | Synapse 自启 | `StartupRequested` 经 shell [startup owner](../../../crates/razer-shell/src/shell/host/startup.rs) 串行提交到 [razer-platform::startup](../../../crates/razer-platform/src/startup.rs)，由 Windows Run key 适配器真实读写本程序注册项；初次读取不产生保存，旧 revision 不能覆盖新编辑，退出排空已接受的写入 | 这是独立 Rust 的本机 OS 链，非调用官方业务 DLL；仅自动启动有 OS 初读，最小化来自本地草稿。setter 成功不增加原件没有的 GET／回滚；当前未有与官方实际函数和真实启动行为的对照收据 |
 | Synapse 通知开关 | checkbox 修改 `AppPreferences.notifications`，`SettingsEvent::Changed` 经 shell `save_auxiliary_preferences` 写 workspace 文件 | 当前普通 profile 通知的 [实际消费者](../../../crates/razer-shell/src/shell/windows/profile_switch_notification.rs) 从 `razer_storage::source_local` 读 `displayNotifications`；本次未见设置点击将该 workspace 字段同步至此键的桥接。两个持久化成功不能相互替代，原生 Toast 的独立链也未由该 checkbox 接通 |
 | Synapse 教程重置 | `ResetTutorials` 经 shell 更新设备 intro、Gamer Room、Dashboard 教程并保存；按钮本地 state 控制 disabled | 与上文官方固定键集合、产品文档扫描／删除字段及所有产品消费者尚未逐项对应；只重置这几个 entity 不代表完整教程恢复链 |
@@ -261,6 +327,13 @@ Synapse 从 dashboard manifest 获取 version 和 buildVersion，失败分支读
 | 所有者 | 原件／位置 |
 | --- | --- |
 | 独立设置的部署与完整静态收据 | [host-settings acquisition](../../../.analysis/inputs/frontend/host-settings-current/acquisition.json)、[analysis.json](../../../.analysis/results/frontend/host-settings-current/analysis.json)、[semantic-audit.json](../../../.analysis/results/frontend/host-settings-current/semantic-audit.json)；45 个完整词法所有者，12 条选定语义链 |
+| 独立 Software、Systray 与实际托盘消费者收据 | [local-controls.json](../../../.analysis/results/frontend/host-settings-current/local-controls.json)；690 个原件身份、245 份 JS 的 AST、184 个完整所有者（177 个 JS 所有者及 7 条 CSS rule）与 9 个选定原生函数；10 组语义记录分别覆盖结果、失败、取消／释放及未验证边界 |
+| Software 挂载、列表与动作所有者 | [921.dfdde98f.chunk.js](../../../.analysis/inputs/frontend/host-settings-current/raw/apps.razer.com/settings/static/js/921.dfdde98f.chunk.js)：完整模块 9302 `[1867,25619)`；列表 `[24300,25618)`、安装元数据 `[23037,24253)`、子项 `[17541,22207)`、父 Map `[22208,23036)`；精确函数以 local-controls 中 AST 区间为准 |
+| Software 固定 catalog 与更新／进度 | [main.eda30dd1.js](../../../.analysis/inputs/frontend/host-settings-current/raw/apps.razer.com/settings/static/js/main.eda30dd1.js) 模块 5596 `[14718,24569)`；上述 921 的更新类 `[7384,14691)`、进度 observer `[4251,6526)`；[921 CSS](../../../.analysis/inputs/frontend/host-settings-current/raw/apps.razer.com/settings/static/css/921.08e5c8d7.chunk.css) 及共享 `.disabled` rule 单独保留 |
+| Systray 设置的完整树与本机键 | [762.98d21f1a.chunk.js](../../../.analysis/inputs/frontend/host-settings-current/raw/apps.razer.com/settings/static/js/762.98d21f1a.chunk.js) 模块 9762 `[12255,35331)`；[97.d87e27ff.chunk.js](../../../.analysis/inputs/frontend/host-settings-current/raw/apps.razer.com/settings/static/js/97.d87e27ff.chunk.js) 的 4672、8531、7217、4518 工厂及真实导出／method，详见 local-controls；[762 CSS](../../../.analysis/inputs/frontend/host-settings-current/raw/apps.razer.com/settings/static/css/762.226a09dd.chunk.css) 的 disabled、卡片与子项规则分别保留 |
+| 实际托盘 launcher、卡片及事件消费者 | [main.9579c403.js](../../../.analysis/inputs/frontend/systray-left-current/raw/apps.razer.com/systray/systrayv2/static/js/main.9579c403.js) 的模块 9001 `[84320,88733)`；[554.2573b048.chunk.js](../../../.analysis/inputs/frontend/systray-left-current/raw/apps.razer.com/systray/systrayv2/static/js/554.2573b048.chunk.js) 的 launcher `[31861,32837)`、卡片根 `[37707,39239)`、双击 `[42576,43815)`、root 事件 `[45473,46858)`；子项 492／215／17／182／899／190／414／482 的完整工厂也保留于 local-controls |
+| 安装名单的真实 Host／原生调用 | [sysutil/win/index.js](../../../.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/modules/sysutil/win/index.js) 的 ABI 与 callDLL；[ffiMain.js](../../../.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/modules/ffi/ffiMain.js) `[231,2766)`；[SysUtilsNative 捕获](../../../.analysis/results/native/01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318/capture.json)，Image Base `0x180000000`，RVA `0x73ff0/0x69590/0x5c980/0x9a1d0/0xa9940/0x9d2e0/0x6b9d0/0x97ce0/0xa98e0` |
+| Chroma 隐藏与实际 enable 的分界 | 上述 762 的 `le` `[29466,30394)`；上述托盘 899 的完整 1899；[LE main.a383ea9e.js](../../../.analysis/inputs/frontend/synapse-lighting-engine-current/raw/apps.razer.com/synapse/lighting-engine/static/js/main.a383ea9e.js) 的模块 1876 `[217525,218272)`、5976 `[959155,974836)`、7815 `[1213492,1232498)`、实际 memory handler `[1624329,1625173)`；[Host memory_storage](../../../.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/modules/memory_storage/index.js) 与 window_storage 完整原件同时核对 |
 | 独立设置的原生窗口 producer | [宿主 main.js](../../../.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/main.js) 的 `launchRazerApps` `[13415,19476)`、托盘回调 `[25734,25816)`；[getAppHost.js](../../../.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/lib/getAppHost.js) `[0,447)`；[constants.js](../../../.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/constants.js) 的路径 `[0,313)`、最小尺寸 `[2227,2337)` |
 | 前端托盘的独立设置消费者 | [554.2573b048.chunk.js](../../../.analysis/inputs/frontend/systray-left-current/raw/apps.razer.com/systray/systrayv2/static/js/554.2573b048.chunk.js) 的 gear `[31606,31705)`、通知 `[35397,35567)`、Widgets `[38672,38836)`；其实际 SDK 714 的 launch、origin、settingsPath 及五项常量逐项保留于审计 |
 | 独立设置 bootstrap、根与 Router | [main.eda30dd1.js](../../../.analysis/inputs/frontend/host-settings-current/raw/apps.razer.com/settings/static/js/main.eda30dd1.js) 的 bootstrap `[74785,75697)`；[97.d87e27ff.chunk.js](../../../.analysis/inputs/frontend/host-settings-current/raw/apps.razer.com/settings/static/js/97.d87e27ff.chunk.js) 的根类 `[190482,193232)`、初始化 `[9706,11878)`、工具栏 `[186275,190034)`、Router `[132884,133128)` |
@@ -299,7 +372,9 @@ Synapse 从 dashboard manifest 获取 version 和 buildVersion，失败分支读
 
 上述内容为完整源函数和实际调用方的静态阅读，新增的状态／timer 所有者用项目管理的 JavaScript AST 解析器核对，未执行厂商 JavaScript。Synapse 设置 acquisition 分别保留 20 个 map 获取失败和 26 个 chunk 枚举不可用项；Chroma 设置分别为 19 和 25，这两类缺项不是同一计数，也不能由已恢复工厂数量判定动态依赖已闭合。各设置页面以自己的部署收据为准，不用宿主版本替代页面版本。
 
-独立设置本次 444 个 URL 中 406 项保留了字节，共 15,194,348 字节；入口、两个设置 manifest 及 About 真正读取的托盘 manifest 四项稳定性核对均通过，38 个 source map 返回 404。40 份 JS 的自动 chunk 枚举未提供结果；维护入口另外完整恢复 32 个注册中的 301 个词法工厂，缺失工厂和扫描错误均为零，40 份原 JS 的 AST 解析通过。原 Wakaru validate 仍以 41 项 `unresolved_reference` 返回 1，该失败保留在收据，不能以词法恢复取代验证通过。选定语义审计核对了输入索引中的 413 个原件身份，并未声称 Software、全部 Systray 消费者或任意运行时动态依赖已经审计完毕。
+独立设置本次 444 个 URL 中 406 项保留了字节，共 15,194,348 字节；入口、两个设置 manifest 及 About 真正读取的托盘 manifest 四项稳定性核对均通过，38 个 source map 返回 404。40 份 JS 的自动 chunk 枚举未提供结果；维护入口另外完整恢复 32 个注册中的 301 个词法工厂，缺失工厂和扫描错误均为零，40 份原 JS 的 AST 解析通过。原 Wakaru validate 仍以 41 项 `unresolved_reference` 返回 1，该失败保留在收据，不能以词法恢复取代验证通过。General／About 的语义审计核对 413 个原件身份；local-controls 另核 Software、选定 Systray 实际消费者、Host 和 LE 原件，共 690 个身份及 2506 个原件／分析／工具 artifact。两份页面完整捕获的 validate 失败、托盘的 38 项 source map 获取失败及 34 项枚举未决都按各收据保留；245 份 JS 的 AST 通过不能取代这些失败或任意动态依赖闭合。
+
+Software／Systray 后续测试必须覆盖名称／产品分支、枚举部分失败、UTF‑8／分配／释放、空态与读取失败分离、安装元数据变化、Open 的实际窗口结果、五槽去重与 None、应用卸载、同数量设备替换、排序／电量／隐藏键、Chroma 隐藏不产生 enable、真正 enable 的服务返回、双击及关闭重开后的 listener／任务释放。没有设备时先测纯逻辑及模拟传输；真实原生查询须通过已授权的独立入口与当前 DLL 逐项比较，真实服务与设备输出未取得时保持未验证。本轮只逆向和更新文档，没有新增 Rust 实现、执行 DLL 或将测试要求冒充已执行测试。
 
 background-manager 的 117 个 URL 中 64 条记录保留了字节，获取收据的部署稳定性通过；53 条 source map 获取失败和 8 项 chunk 枚举不可用仍未解决。通知审计的字面依赖目标全部存在，58 项 precache 输入也均保留；这只证明该搜索域能够完整读取，不能取代 source map、动态值流分析、最终业务消费者或实际 DLL／OS 对照。
 

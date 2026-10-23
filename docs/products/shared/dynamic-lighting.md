@@ -307,7 +307,7 @@ NEW／UPDATE按已配对productId＋Mac对应container匹配离线mgr；Host／n
 | OLED，7826 `[3362,23590)`；Glitter，8648 `[689,6856)` 和1452 `[6084,12251)`；Wireless，1452 `[635,5935)` | OLED／两份Glitter继承4001；Wireless实际继承8648。没有覆盖上述 mode／effect builder／构帧方法，普通命令不等于各自灯帧格式 |
 | Matrix，3061 `[689,8065)`；BatchSender，8086 `[297537,300692)`；Skip，269 `[618,1269)` | 后两者实际继承3061；共同使用 Matrix 覆盖的 effect builder `[1937,4921)`，不能使用基类 `[15,2]` 的统一 payload |
 
-表中编号均为前节同一固定版本 JS chunk 的文件名前缀；完整实体、继承绑定与三份枚举／header 导出保留在动态灯光审计收据。Matrix 将通用 Off／Static／Breathing／Spectrum／Wave／Reactive／BasicRipple／Starlite／CustomFrame 映射成 `00/06/03/04/01/02/13/19/05`。默认 header=`[80,3,10]`，payload[0] 是该 Matrix effect；Off／Spectrum 长1，Wave／CustomFrame 长2，Static 长4，Afterglow 长5，Breathing 按 flags1／2／3 长5／8／2，Ripple／Starlight 长9。Fire 另改 `[80,15,2]`、长9并写 profile1／region0／effect9／flags／rate。由同一恢复列表生成的 Matrix spectrum 为 class03／id0a、size1、payload04、checksum=`0c`，因此 ACK 要读03／0a，不能沿用基类0f／02。下文已按当前137个不同PID／edition的gate分支补核DeviceInfo值源；证据范围之外的产品／版本及实际quick-effect应答仍须另核。
+表中编号均为前节同一固定版本 JS chunk 的文件名前缀；完整实体、继承绑定与三份枚举／header 导出保留在动态灯光审计收据。Matrix 将通用 Off／Static／Breathing／Spectrum／Wave／Reactive／BasicRipple／Starlite／CustomFrame 映射成 `00/06/03/04/01/02/13/19/05`。默认 header=`[80,3,10]`，payload[0] 是该 Matrix effect；Off／Spectrum 长1，Wave／CustomFrame 长2，Static 长4，Afterglow 长5，Breathing 按 flags1／2／3 长5／8／2，Ripple／Starlight 长9。Fire 另改 `[80,15,2]`、长9并写 profile1／region0／effect9／flags／rate。由同一恢复列表生成的 Matrix spectrum 为 class03／id0a、size1、payload04、checksum=`0c`，因此 ACK 要读03／0a，不能沿用基类0f／02。下文已按当前141个不同PID／edition的gate分支补核DeviceInfo值源；证据范围之外的产品／版本及实际quick-effect应答仍须另核。
 
 effect 参数生成器 `[723897,726536)` 的当前分支如下；生成后是 `{...原输入去掉effectParams,...计算值}`，未赋值字段不会自动补齐：
 
@@ -453,7 +453,7 @@ Skip的实际module269仍由引擎名称表加载，其constructor调用Matrix�
 | 复用dongle2308 | 先命中第46行primary574，后面的117不胜出 |
 | dongleId数组 | 241仍由productId自身命中；2676的数组内2680／2681不会自动归2676 |
 | 其他alias字段 | 全部481个数值ID中，22个只存在于其余alias域的ID不被该helper改写；不能由Xbox／PS／显示器／wired能力补映射 |
-| 已保留manifest | 86个PID均落在表的primary或标量alias域；47文件／22PID是alias，但1378出现在1406／1407获取目录不能反推1378归该primary，helper仍返回1378 |
+| 已保留manifest | 原86个PID均落在表的primary或标量alias域；新增3871／515／521／545均有精确productId条目，当前共90个PID。原47文件／22PID是alias的范围未增加；1378出现在1406／1407获取目录不能反推1378归该primary，helper仍返回1378 |
 
 真实producer是 main `init [794461,796030)` → `getAvailableDevices [796031,796548)` → singleton别名 `de=ce [959148,959153)` → DeviceInfo.configure默认第二参 `[1307968,1308049)` → 上述helper。configure对 `RAZER_BLE_VENDOR_IDS=[5426,1678]` 的vendor分支计算mwPrimaryPid，**不是仅按BLE传输类型**；USB vendor5426也在其中。其结果既用于manifest路径，也用于 `loadSvgContent [1321469,1322239)` → SVG fetch `R [1305716,1306612)` 的 `/synapse/products/<primaryPid>/mw/lighting-svgs/`。因此映射差异会同时影响设备协议配置和页面图片／几何资源，不能只验证功能getter。
 
@@ -685,7 +685,7 @@ parent 检查 `0xf4730` 以 PROCESS_QUERY_LIMITED_INFORMATION（`0x1000`）打�
 
 ## 验证范围
 
-统一查询入口为`python -X utf8 tools/workspace.py audit-host-local --query dynamic-lighting`，覆盖完整source owner、所用CSS／SVG、10份语言模块、14份恢复实体、目录／七产品重连／原生函数／数据区和稀疏包，完整数量、failures及snapshot_stable由[查询结果](../../../.analysis/results/host-current/local-audit.json)逐项记录。当前manifest范围为229份主输入加2份同字节观察，共231份物理输入／211个唯一PID-edition、67个manifest获取目录；值源结果另含引擎收据，共68份。原144个DeviceInfo语义owner未改，两份补充的完整字节／字段及当前231份范围已通过维护工具原有精确检验函数，未放宽集合、SHA或投影比较；整合后的统一查询仍须按当前索引重跑，各子集有重叠，不能相加作为独立owner总数。manifest文件名／内部PID的真实差异独立保留。SKU专项另核40个AST所有者和11个原生函数，覆盖范围不能直接与统一查询数量相加。`python -X utf8 -m unittest discover -s tools -p test_host.py` 的39项维护工具测试通过；IoT帧长度／独立XOR及parser静态向量仍按静态期望记录，不是实际DLL输出。以上不将未决原生间接目标、所有产品协议或实际DLL对照升级为已闭合。
+统一查询入口为`python -X utf8 tools/workspace.py audit-host-local --query dynamic-lighting`，覆盖完整source owner、所用CSS／SVG、10份语言模块、14份恢复实体、目录／七产品重连／原生函数／数据区和稀疏包。[查询结果](../../../.analysis/results/host-current/local-audit.json)已按最新输入索引严格重跑：动态照明保留722个完整source owner，宏查询保留3778个；两者均failures=[]、snapshot_stable=true、changed=[]。当前manifest范围为229份主输入、2份同字节观察及4份引擎备用件，共235份物理输入／215个唯一PID-edition、68个manifest获取目录；值源结果另含引擎收据，共69份。原144个DeviceInfo语义owner未改，两份副本和四份新分支的完整字节／字段及当前235份范围均通过维护工具原有精确检验函数，未放宽集合、SHA或投影比较。manifest文件名／内部PID的真实差异独立保留。SKU专项另核40个AST所有者和11个原生函数，协议选择专项另核134个完整AST owner及27份原件；专项与统一查询有重叠，均独立记录，不能相加作为总覆盖。`python -X utf8 -m unittest discover -s tools -p test_host.py` 的39项维护工具测试通过；IoT帧长度／独立XOR及parser静态向量仍按静态期望记录，不是实际DLL输出。以上不将未决原生间接目标、所有产品协议或实际DLL对照升级为已闭合。
 
 收据分别保留完整汇编与伪代码状态。WDL当前选定函数有五处原始Hex-Rays失败：`0x1544c0/0x154500`是上述Added／Removed delegate；`0x156f30/0x157530`各将RDX指向的16字节闭包描述复制到栈、将RCX解引用为Impl，再经`0x4467/0x31c5`尾跳`0x156a90/0x156f60`；`0x158c60`将RDX／R8／R9三个16字节描述复制到栈，再经`0x1f50`尾跳`0x1585d0`。后三者均按完整汇编核实，返回寄存器沿原调用直接传回，没有额外确认。五处仍列入decompiler_failures，不能写成伪代码已恢复。HID的`0x30888`基础及早期566补捕获失败保持原样；当前查询另引用独立c98d成功补捕获和上述编码语义结果，不能据此改写旧失败。各捕获结果与产品语义完成度分别记录。
 

@@ -8,6 +8,10 @@
 
 收据在 2026-10-21 重新获取核对入口、asset-manifest 和 manifest，三个端点在获取前后均保持同字节，主脚本仍为 `main.512f18b6.js`。recorded 时间属于此次核对，文件 acquired 时间仍是首次取得日期；`declared_references_fetched=false` 和动态分块／map 未决项仍存在，不能把稳定性核对当作全部输入闭包已完成。
 
+[共享窗口交互专项](../../../.analysis/results/frontend/synapse-update-fw-current/page-interactions.json)补齐另一条实际入口：固件工具栏以空 props 挂载迁移组件，生成 `/profile-migration/?app=undefined`。目标保留这个非空字符串，仅 BodyWrapper 的窗口名映射回到 synapse，迁移主体仍把字符串传给 toolbar；这与设置按钮明确传应用身份的路径分别记录。policy=3 已追到宿主实际 Tab.init，tabClosed 也已找到返回固件迁移指示器的消费者；它们不确认迁移提交、原生工作取消或资源释放。
+
+目标 BodyWrapper 的 focus／changeActiveTab／activeTabChanged listener 有配对 disposer，但异步焦点查询无取消／代次保护，accessibility MutationObserver 未保留 disconnect。主体 init／scan 的 effect 未返回原生取消／释放链；语言与设备监听的配对移除不能替代它。本文后续迁移队列与文件／设备消费者仍分别核对，不从窗口生命周期推定数据迁移完成。
+
 根组件先更新真实 `validDevices`，注册状态、进度、历史及警告回调，再依次执行 `init → scanData → getBareScannedData`。页面标题为 `PROFILE MIGRATION`，外层窗口焦点组件负责 body 的显示。语言变化会重新触发初始化 effect，不能假定初始化只发生一次。
 
 | 所有者 | 字节区间 | 责任 |
