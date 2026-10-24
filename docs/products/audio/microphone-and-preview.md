@@ -158,7 +158,7 @@ CSS 加载顺序见 [EQ 页面](playback-and-eq.md#seiren-实际-eq-页面与当
 
 ## RzNative_0542_v1.0.25.0：Camy 麦克风 HID/TUSBAUDIO 链（2026-10-24 四线程静态捕获）
 
-[RzNative_0542 capture](../../../.analysis/results/native/b06973af45bcc6c6c10dd74e2fc0f1b9caa8124b0416e8f869b5640fc795a8c/capture.json) 的原件 SHA-256 为 b06973af45bcc6c6c10dd74e2fc0f1b9caa8124b0416e8f869b5640fc795a8c，原件 639624 字节；capture SHA-256 为 65b7d807757bfd1188d7886046c5c0b83a0cb47a04cd0f114ba2e5e7541eacab，包含 2472 个函数、0 个 Hex-Rays 失败和 44 个导出入口。四线程批次收据在 [camera-audio-native-batch analysis.json](../../../.work/camera-audio-native-batch-20261024/analysis.json)。独立 PE 映射确认 2478 个唯一 chunk、112768 个唯一指令和 458516 个唯一 chunk 字节均与原件一致；该计数只描述本版本，不与其他 Camy 或 Seiren 版本相加。
+[RzNative_0542 capture](../../../.analysis/results/native/b06973af45bcc6cc6c10dd74e2fc0f1b9caa8124b0416e8f869b5640fc795a8c/capture.json) 的原件 SHA-256 为 b06973af45bcc6cc6c10dd74e2fc0f1b9caa8124b0416e8f869b5640fc795a8c，原件 639624 字节；capture SHA-256 为 65b7d807757bfd1188d7886046c5c0b83a0cb47a04cd0f114ba2e5e7541eacab，包含 2472 个函数、0 个 Hex-Rays 失败和 44 个导出入口。四线程批次收据在 [camera-audio-native-batch analysis.json](../../../.work/camera-audio-native-batch-20261024/analysis.json)。独立 PE 映射确认 2478 个唯一 chunk、112768 个唯一指令和 458516 个唯一 chunk 字节均与原件一致；该计数只描述本版本，不与其他 Camy 或 Seiren 版本相加。
 
 ### 设备登记、退出与分配器
 
@@ -177,3 +177,23 @@ SetMicMonitorEnable（0x40100）查找设备和 TUSBAUDIO 接口，把 payload b
 GetLevelMeter（0x3d180）和 GetRouterStatus（0x3dd40）返回分配的 JSON；Windows 播放、录音和音频设备列表分别由 0x3d760、0x3da50、0x3d470 提供。StartBackGroundRecording（0x40620）要求设备及对象偏移 56 的录音状态并转发 0x56ec0；StopBackGroundRecording（0x40780）对未知设备返回失败、对没有录音对象的已知设备返回成功，否则转发 0x575c0。SetMicMonitorEnable 的成功条件、音量/静音 setter 的只写语义和 getter 的轮询缺陷必须在错误、取消、重连和释放测试中分别记录，不能用本地缓存或模拟报告伪造读回。
 
 本轮没有加载 DLL、打开 TUSBAUDIO、发送 HID 报文或执行官方读回。Rust 独立实现与官方实际调用结果、设备应答、初始值恢复、取消和完整句柄释放均保持 Unverified；没有设备时只能用独立模拟传输和有依据的回放覆盖报文编码，不能把回放一致当成硬件验收。
+
+## Simple Service 的麦克风异步边界
+
+依据 [simple_service 1.2.2.9 完整捕获](../../../.analysis/results/native/2c24c80c8d3ea19d84f223ec58ae2b9b02c882f578e06b2c8272c545c1dbfd5d/capture.json)，Image Base 为 `0x180000000`。单例构造 `0x1000` 安装的主虚表在原始 PE 的 `0x1f2040`；`+8/+16/+200/+208` 分别指向初始化 `0x12f0`、关闭 `0x19c0`、读取麦克风音量 `0x5550`、设置麦克风音量 `0x57f0`，不是根据方法名推测的虚调用。
+
+导出 `simpleGetMicrophoneVolume`（`0x179f0`）将 NULL ID 转为空字符串，创建一次性完成回调，交给主线程队列。`0x5550 → 0x5710 → 0x32ac6` 继续转到音频服务对象；主线程或音频服务对象缺失时构造失败结果，错误分别是 `Error : Invalid thread.` 和 `Error: Invalid audio service thread`，失败携带的 mute／volume 0 不能标成设备确认值。getter 完成函数 `0x17700` 仅在用户回调存在且初始化标志仍开启时调用，参数包含 success、error_reason、device_id、muted、uint8 volume；字符串只在本次回调期间借用。
+
+setter 导出 `0x17dc0` 经 `0x57f0 → 0x59e0 → 0x32dfa`，保留 mute bool 和 volume byte。完成函数 `0x17bf0` 只回传 success／error_reason；当前链中没有自动串联 getter，不能伪造写后读回。关闭导出 `0xf090` 先清除初始化标志，再排关闭任务；普通麦克风完成回调会被标志抑制，而关闭完成回调 `0xef90` 仍执行。因此必须区分请求已排队、完成已产生、用户回调被抑制和真实设备状态。
+
+`0x12f0` 创建 `SimpleServiceMainThread`；`0x19c0` 排关闭工作后等待内部事件，再销毁线程持有者与对象。初始化回调不携带设备状态，不能据此判定设备已连接。本文记录静态调用语义，Rust 迁移、实际 DLL 行为与设备结果尚未验收。
+
+### 音频线程、Core Audio 与缓存来源
+
+该麦克风分支继续追到了 DLL 内的 `AudioServiceWin`，不能把名称中的 Service 直接解释为进程间协议。`0x31db0 → 0x38f60` 创建对象并安装原始虚表 `0x1f54d0`，`+72/+80` 分别指向 `0x3a850 → 0x3a856` 和 `0x3a8f0 → 0x3a8f6`。读取从精确 ID 对应的设备对象取缓存 byte `+101` 的 mute 与 `+100` 的 volume；未知 ID 返回 `Error : Cannot find audio device.`。因此该 getter 返回的是监听器维护的设备缓存，不是每次重新调用 Windows getter。
+
+初始化 `0x37144` 获取实际 endpoint，`0x3fb86` 激活音量接口；`0x37a56` 从接口 `+72` 读取 scalar，按 `int(scalar*100+0.5)` 保存 volume；接口 `+120` 成功时更新 mute。失败没有证明字段已观测，不能把对象构造初值当成实测。设备监听注册由 `0x38690` 执行，音量通知消费者 `0x37ad0` 在值变化时更新缓存，并仅在事件启用且 flow 分支匹配时通知对应消费者。
+
+实际写入 `0x37b34` 先比较 volume，变更时经接口 `+56` 写 scalar，成功后才更新 byte `+100`；再比较 mute，变更时经 `+112` 写 mute，成功才更新 byte `+101`。浮点实参由完整汇编的 `cvtsi2ss/divss XMM1` 传入，Hex-Rays 的整数函数签名遗漏了该实参，不能直接拿伪代码生成 ABI。前一步成功、后一步失败会保留已完成的音量变化，未见整组回滚或自动读回；两字段不变时本层可直接返回成功而不发写入。
+
+关闭沿 `0x38fde` 清设备表、释放监听器并失效弱引用；设备析构 `0x36fea` 再清两种监听持有者、线程引用、字符串和音量接口。间接的 CFG 跳转仍须与实际虚表消费者共同核对，不能把释放语句存在等同于已确认所有在途通知静止。此链的 OS 音量行为与厂商设备固件写回分别验收，不应将系统 endpoint 成功当作另一条 HID／DSP 链通过。

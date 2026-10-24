@@ -391,7 +391,7 @@ The existing `RzChromaConnectServer.dll` capture was independently checked with 
 | 原件 SHA-256 / 文件 | 原件字节 / 架构 | capture SHA-256 | 函数 / 失败 | 导出 |
 | --- | ---: | --- | ---: | ---: |
 | 1ea145fe182505cd8ae19a6bc1ea5362c70d18681b51195d026ec57c86ad06d8 RzNative_0E08_v1.0.16.0.dll | 600264 / x64 | 54f729c256fd559ec8c5c286a869f9fcf587e4546d49ab23c112f19114989275 | 2060 / 0 | 91 |
-| b06973af45bcc6c6c10dd74e2fc0f1b9caa8124b0416e8f869b5640fc795a8c RzNative_0542_v1.0.25.0.dll | 639624 / x64 | 65b7d807757bfd1188d7886046c5c0b83a0cb47a04cd0f114ba2e5e7541eacab | 2472 / 0 | 44 |
+| b06973af45bcc6cc6c10dd74e2fc0f1b9caa8124b0416e8f869b5640fc795a8c RzNative_0542_v1.0.25.0.dll | 639624 / x64 | 65b7d807757bfd1188d7886046c5c0b83a0cb47a04cd0f114ba2e5e7541eacab | 2472 / 0 | 44 |
 | 8678a5eadd881ea7a569131369b3964d9519f1d584beddd315fb897e6f4af5ca ThxVADCarolNative_v1.0.13.0.dll | 954504 / x64 | 77a1cb3de9321ba4b1cc027d440d7f575aa0e84b82d8d67203b5aa8b074b612f | 2920 / 0 | 71 |
 | d4fd77a92c860bb190d7aab604124e9d4343901fcea83069aa99d29db5a9586b RzNative_0E03_v1.0.16.1.dll | 796296 / x64 | 23ce499d0c8fae7c60e75c97072dc080a0876f1c07376aad8d748af523d9a377 | 2634 / 1 | 40 |
 
@@ -405,6 +405,18 @@ The existing `RzChromaConnectServer.dll` capture was independently checked with 
 Four-thread static byte checks (`ThreadPoolExecutor(max_workers=4)`) reused the IDA 9.1 captures for RzChromaSDK.dll / RzChromaSDK64.dll. The x86 input SHA-256 is `8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038`, capture SHA-256 `7d2de3c1ceb4b9860b3eec84bd045a29b4a7d5886cd1d0adc155b675e66c2e32`: 15 selected functions, 15 unique chunks, 2,273 instructions, 6,883 raw/instruction bytes, 0 unlisted bytes. The x64 input SHA-256 is `7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7`, capture SHA-256 `35aabd2f3285e856d762889213e7ec73630b69b116a5ff8b33d76250766540d1`: 15 selected functions, 15 unique chunks, 1,666 instructions, 6,822 raw chunk bytes, 6,484 instruction bytes, 338 unlisted chunk bytes. Every selected function/chunk/instruction and every aggregate output hash matched the retained original. The x86 complete capture retains two Hex-Rays failures outside this selected set (`0x6500`, `0x6510`); x64 retains none. Export validation, null GUID rejection, effect-type/parameter boundaries and window/stop lifecycle are recorded in [dynamic-lighting.md](../products/shared/dynamic-lighting.md). DLL execution, actual device results and Rust differential acceptance remain unverified.
 ## 2026-10-24 统一产品语义批处理
 
-在全量索引之后，.work/native-semantic-product-batch-20261024/summarize.py 以 ThreadPoolExecutor(max_workers=4) 一次读取全部 881 个 DLL/NODE/SYS 模块，按导出、关键原生导入、失败记录和 docs SHA 覆盖做产品信号排序；没有再为单个 DLL 启动独立任务。批次收据为 [product-semantic-summary.json](../../.work/native-semantic-product-batch-20261024/product-semantic-summary.json)，统一结果报告为 [native-bulk-reverse.md](native-bulk-reverse.md)。最新排序结果为 881 个模块、590 个未被 docs SHA 覆盖的产品候选；报告使用更严格的系统库过滤后列出 576 个候选。两者都保持 target_execution=false 且 real_device_operations=false，候选分数只用于安排后续语义阅读，不能当作功能完成度。
+全量索引保留 881 个按 input 扩展名选出的 DLL/NODE/SYS 模块。[完整索引](../../.analysis/results/native-bulk/semantic-index.json)和[基础捕获统计](../../.analysis/results/native-bulk/capture-index.json)已保存到正式分析目录；[统一报告](native-bulk-reverse.md)不再使用 docs 中 SHA 出现次数筛选或判断语义覆盖。原有 590／576 一类“未覆盖候选”会被报告自己的引用影响，不能作为剩余功能数量。当前报告的检索候选只表示信号匹配，不能证明某项调用链已经解释完成。
 
-publish_report.py 再以四个 worker 校验并发布 881 行的全量报告，汇总每个模块的原件/capture 身份、函数和失败数、伪代码覆盖、导出函数体、关键导入和产品候选。报告不包含 EXE/安装器后续任务；已有历史 EXE 静态收据不进入本批队列。所有真实 DLL、服务、设备、错误、取消、恢复、释放和 Rust/页面对照仍按授权边界保持 Unverified，不能以批量索引替代运行验收。
+报告使用 16 个发布线程读取固定分析索引，保留每个模块的原件/capture 身份、函数和基础失败数、伪代码记录、导出函数体、关键导入和检索候选。基础捕获的 869 条失败与补查恢复结果分开记账，不改写原始失败收据。报告不包含 EXE/安装器后续任务；已有历史 EXE 静态收据不进入本批队列。真实 DLL、服务、设备、错误、取消、恢复、释放和 Rust/页面对照仍按授权边界分别记录，不能以批量索引替代运行验收。
+
+统一续查使用一个协调队列，按本机 16 个逻辑核启用最多 16 个 Python 调度线程和独立静态分析进程，不启动产品代理。原始 capture-corpus 的现存队列收据声明 module_count=884，但 modules 只保存 836 项，日志也止于 836；这 836 项为 reused_complete_capture，不能据进程退出宣称剩余 48 项已完成或已排除。881 项索引另按捕获 input 的 DLL/NODE/SYS 扩展名筛选，与队列的候选来源和别名筛选不是同一集合。当前逐条复用完整捕获并补查有汇编依据的类型、间接调用、传输和释放；Rust 迁移保持后置。
+
+全库失败函数在同一并行批次中按完整指令／操作数分组，基础捕获共 241 个模块、869 条失败、329 组汇编结构。分组仅用于定位共享问题；实际修复前必须核对调用方和全部相关 callee，不能按同名函数或单一关键字套用签名。UTF-16／UTF-8 转换组逐份核对调用方和三个 callee 的寄存器参数、完整原字节，明确排除反编译器错误推导的第五／第六参数，再由 `supplement-native` 在私有 IDB 副本中应用类型并重新执行 IDA／Hex-Rays。队列与每次实际分析结果见[统一补查收据](../../.analysis/results/native-reanalysis-batch.json)；原 capture 和 IDB 保持不变，恢复伪代码不计作产品功能或实际设备验收完成。
+
+### 统一队列结束与独立复核
+
+实际命令为 `python -X utf8 .work/native-bulk-analysis-20261024/reanalyze_failures.py --workers 16` 和同一脚本的 `--phase demangle --workers 16`；前者完成 56/56，后者完成 59/59，均保留正式 `supplement-native` 计划、IDA 9.1／Hex-Rays 9.1.0.250226 会话和完整函数结果。第二批根据完整的九指令调用方及实际 callee 核实 RCX 输出缓冲区、RDX／R8 输入和 R9D 的 0／1 分支，再修正错误的聚合返回推断；它恢复的 118 条基础失败均经现有严格复核器独立通过。[第二批收据](../../.analysis/results/native-bulk/demangle-reanalysis.json)不以队列退出代替此复核。
+
+同一脚本的 `--phase audit --workers 16` 对全部 241 个基础失败模块调用 `native_reanalysis_resolution`，结果为历史基础失败 869、已恢复 176、仍保留 693，141 个模块仍有失败，审计读取异常 0。[正式复核](../../.analysis/results/native-bulk/reanalysis-verification.json)另保留 6 个模块的 8 条补查错误：6 条完整结果冲突和 2 条旧不完整补查。字符转换批次的无错误模块为 50/56；不能将队列的 passed=56 写成全部独立复核无误。完整冲突对的实际汇编等非类型字段一致，正文在明确参数重命名后也一致，但声明和摘要不同，仍按严格规则保留冲突；[诊断结果](../../.analysis/results/native-bulk/reanalysis-conflicts.json)只解释差异，不放宽对照或静态验证标准。
+
+同一脚本的 `--phase wpp --workers 16` 使用固定的两份完整指令模板和现有原件函数验证器，46 个键盘驱动包装函数的输入、完整 chunk 与指令逐字节匹配，合计 2,254 条指令、9,344 字节，错误 0；实际导入另核为 WppRecorder 的 WppAutoLogTrace。完整参数转发和条件分支见[设备通信](../products/shared/device-communication.md#键盘驱动中的-wpp-日志包装边界)，[收据](../../.analysis/results/native-bulk/wpp-wrapper-verification.json)保留每个版本与函数身份。这是完整汇编语义核对，不是重新运行驱动、设备测试或 Rust 功能验收。

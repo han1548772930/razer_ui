@@ -129,3 +129,19 @@ identify 先保存真实亮度，按 300 ms 交替 40/80，再恢复初值；cat
 Hanbo、PWM、散热垫与 eGPU 共用本地系统监测入口，但由各产品的服务与消费者决定启停。RzSystemCommon 维护隐藏窗口、计时器和命名管道接收，计时请求 GetAllHardwareInfo；服务端返回 JSON 指针由对应释放方法归还，接收端组装 CPU/GPU 并回调。缺少传感器保持 null/未观测，不补 0。
 
 完整选定 native 释放证据保存在 [Hanbo 分析](../../../.analysis/results/frontend/accessories-main-audit.json)：产品 stop 注销 container 并结束 JS 服务，native DeviceTerminate 自身只日志；最后一个 container 注销才杀对应计时器。CommonTerminate 发 WM_DESTROY，关闭窗口线程 handle 而不 join 该线程，join 的是 pipe receiver，然后释放 buffer；WM_DESTROY 杀计时器并退出消息循环。DLL 服务卸载先 Terminate 再 FreeLibrary；CloseAPPServer 是整个 server 的动作，不能拿作单产品停止。本文不运行这些链，也不将原版释放缺口写成已解决。
+
+### RzSystemCommon 1.0.29.0 的订阅、缓存与管道边界
+
+依据 [RzSystemCommon 完整捕获](../../../.analysis/results/native/cc8c6aee3515f96f5bed7a11c4a4b3653b525ec2a09a87c2d062ec183af4a76d/capture.json)，`RegisterFFIEvent`（`0x6d900`）拒绝空事件名和 interval 0，但没有拒绝负 interval；按事件名去重，重复注册返回失败而不替换。每项保存 dataType、interval 与 tick。记录先进入列表并启动计时器，随后才初始化管道，后续失败没有回滚已加入订阅或计时器。
+
+管道初始化 `0x61610` 只校验名称、保存名称、设置初始化标志并尝试连接，其返回 1 不证明连接成功。同步计时函数 `0x6c9e0` 根据连接与重连结果构造 `dllName=RzSystemService`、`dllFunc=GetAllHardwareInfo`、`handleOnOneThread=1`，可选附带 dllPath、relateDllPath、touchpadToolPath，再序列化交给 `0x619c0`。断连且回调存在时发送 `RzDLLServiceNeedCheckAndRestart` 事件；必须追实际管道应答更新缓存，不能把请求排队或 Init 成功当作已取得传感器值。
+
+实际连接 `0x616e0` 使用同步 `CreateFileA` 打开读写命名管道，再设置 mode 3；状态探针 `0x60e10` 只判断 handle 非 0 且非 INVALID_HANDLE_VALUE，不询问对端存活。发送 `0x619c0` 在短写时重新发送同一完整 buffer，而非推进剩余偏移；只有 BOOL 成功、写入 0 且 LastError 0 的分支受十次／100 ms 限制，ERROR_PIPE_NOT_CONNECTED 的等待和短写重发没有同样的统一次数上限。ERROR_BROKEN_PIPE／ERROR_NO_DATA 关闭并清空 handle 后失败，其他错误保持各自返回；不能将该循环改述为所有失败统一重试十次，亦不能推定写完请求即收到硬件应答。
+
+接收线程 `0x6cf00` 调用 `0x61de0`，只在单次读取恰好得到五字节独立消息 `<EOF>` 时发布完整标志，移除该 marker 后交给 `0x6bc20` 更新缓存。它不是任意字节流内搜索 EOF 的协议。读取 helper 每次先清空 buffer，内部至多执行 500 次读取，容量不足时倍增并复制已有字节；ERROR_MORE_DATA／ERROR_NO_DATA 与其他错误分别处理，其他错误关闭 handle。接收线程忽略 helper 的 BOOL，只检查完整标志，未完整时保留自己的 offset 并等待 100 ms；跨调用清 buffer 与保留 offset 的组合必须作为截断／部分消息测试输入，不能假设所有分片都会自动拼接正确。
+
+`0x6bc20` 在解析 JSON **之前**设置已收数据标志 `0xC56D9` 并清除请求时间戳，再替换整份硬件缓存、分别更新 CPU／GPU／其他字段。解析异常返回失败，但未见恢复该标志或整组旧缓存的事务回滚。因此该标志只能证明尝试处理过数据，不能作为有效传感器结果的充分条件。CPUInfo 存在时选择首项；GPUInfo 多项时优先第一个 enable 的 NVIDIA，否则后遇到的 enable AMD 可覆盖既选项，没有前者时保留首个 enable Intel，仍无候选则取索引 0。缺项写入的 null、支持状态 0 和 notfound 是本地解析分支，不是硬件实际返回的测量值，Rust 必须保留其来源与未观测语义。
+
+回调计时函数 `0x67df0` 按订阅间隔取缓存字段，组装事件名、`dllName=RzSystemCommon`、`dllFunc=HardwareMonitorCallback` 后同步调用用户回调；随后更新 lastTick，临时 JSON 字符串随后销毁。`GetHardwareDataByType`（`0x6e120`）同样读取缓存，dataType 0 选择常规字段而不自动包括高位 Info 字段；数值判断是 `<= 0x10000000`，不是 known-bit 集合校验。缺少缓存字段不能补造设备状态，静态 JSON 的 SUCCESS 不证明当前服务或设备读取成功。
+
+`UnRegisterFFIEvent`（`0x6dd50`）对不存在的非空名字也返回成功，只有列表为空才关闭两个计时器，删除最短间隔项后未重算最小值。`SetFFIEventTimerIntervalTime`（`0x6d380`）先保存新值，末尾用同步计时器的 interval 0 判断是否关闭 FFI 计时器；没有核对 SetTimer／KillTimer 的 BOOL。`Terminate`（`0x67260`）关闭计时器和窗口、关闭窗口线程 handle、清对象和管道；这不证明窗口线程已 join 或用户回调已静止。相关正常、负间隔、断连、重入、取消与释放结果，以及官方实际 DLL 对照，均需独立验证。

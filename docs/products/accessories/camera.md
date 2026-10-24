@@ -343,3 +343,29 @@ SaveUVCExtCmdToFlash（0x51ba0）和 RestoreDefaults（0x571a0）分别转发设
 0E03 的 Brightness/Contrast/Saturation/WhiteBalance/Focus/Zoom getter/setter 分别转发属性编号 0、1、3、7、6、3；执行器只对超过约 500 ms 的调用记录日志，没有 0E08 的三次超时恢复重试。Initialize/Terminate 导出返回 1 不能替代 DeviceTerminate 的真实移除。该版本的 FreeMalloc（0x4e370）经内部分配器 0x69060 释放；在 Rust 侧必须按版本分别配对，不能假设与 0E08 的 CRT free ABI 相同。
 
 两个版本的 UVC 扩展、设备身份字符串、属性窗口和相机应用入口仍只完成静态语义核对。没有运行 DLL、Media Foundation、设备或窗口，也没有执行写入、读回和恢复；官方结果与 Rust 结果的对照、失败/取消/重连和完整释放均保持 Unverified。
+
+## 0E05／0E06 的 ISP 传输与确认差异
+
+本节分别依据 [0E05 1.0.15.1 完整捕获](../../../.analysis/results/native/5d2bcb82f6e288394a58199e72dde4c13e1fd03174cd55ff39d7a3d9fdfbffb0/capture.json)和 [0E06 1.0.13.1 完整捕获](../../../.analysis/results/native/48b542a7034eca9b4128d86693ffbe2e1748ffd6a58c15091ea5a53e2ae55bdd/capture.json)。两者 Image Base 均为 `0x180000000`。原件、完整函数块、逐条汇编和捕获产物已经独立核对；本节追到实际 COM／KS 调用，不能由同名导出推定产品行为相同。
+
+0E05 的 `IspCommand` 在 `0x4b2f0` 创建任务，原始 PE 的任务虚表 `0xa0a40+16` 指向 `0x4c140`，再调用 `0x4aef0`。0E06 对应任务表 `0xa1ae0+16` 指向 `0x4c190`，再调用 `0x4af50`。两者均从设备对象 `+40` 查询拓扑接口，调用接口 `+64` 取节点数、`+80` 建立节点接口，再经节点接口 `+24` 发送 32 字节属性头和 8 字节 payload。每次操作前重新按设备 ID 查询 manager，设备移除时返回失败；这不构成对象引用或并发移除已安全的证明。
+
+| 边界 | 0E05 | 0E06 |
+| --- | --- | --- |
+| 写属性 ID／flags | `1 / 0x10000002` | `5 / 0x10000002` |
+| 写返回判断 | 未检查写入 HRESULT，随后继续读 | 仅 HRESULT 非负才继续读 |
+| 写读间隔 | 10 ms | 5 ms |
+| 读属性 ID／flags | `2 / 0x10000001` | `5 / 0x10000001` |
+| 传输 helper 成功 | 读 HRESULT **等于 0** 且 response byte 0 等于 0 | 读 HRESULT 非负；由命令调用方继续检查 response byte 0 |
+
+原 PE 的 GUID 常量也分别核实：两者拓扑接口为 `720d4ac0-7533-11d0-a5d6-28db04c10000`，节点接口为 `28f54685-06fd-11d2-b27a-00a0c9223196`；0E05 属性集合是 `23e49ed0-1178-4f31-ae52-d2fb8a8d3b48`，0E06 是 `0fb885c3-68c2-4547-90f7-8f47579d95fc`。不能只替换属性 ID 而保留另一产品的集合 GUID。
+
+0E06 写失败路径未见与成功分支相同的节点 `Release`；两版在设备移除分支也未见先释放本轮已取得节点。必须保留失败路径与接口所有权的实际差异，不能把正常路径存在 `Release` 写成所有分支都完整清理。
+
+0E05 的 `SetHDR`（`0x4f0f0`）发送 `ff 02 enable 00 00 00 00 00`，`SetHDRMode`（`0x4f240`）发送 `ff 07 mode_low8 00 00 00 00 00`，`SetLDC`（`0x4f390`）发送 `ff 01 arg2_low8 03 arg3_low8 00 00 00`。`SaveUVCExtCmdToFlash`（`0x50820`）的第二参数未在函数主体消费。0E06 不能直接从导出套用此结论：设备构造和实际虚表 `0xa19a8` 另证 `+40 → 0x4aba0` 为 HDR、`+80 → 0x4ae30` 为 flash；两者使用各自 ISP helper，并由调用方检查响应首字节。
+
+flash 的实际 8 字节为 `c0 03 a8 00 00 00 00 00`，不能把伪代码十进制常量当成十六进制报文。0E06 的虚表 `+48/+56/+64/+72` 分别指向 `0x4ac20/0x4acb0/0x4ad30/0x4adb0`，报文分别为 LDC `ff 01 arg2 03 arg3 00 00 00`、`ff 06 value 00 00 00 00 00`、`ff 07 value 00 00 00 00 00`、`ff 04 value 00 00 00 00 00`。导出 `SetMicNoiseSuppression`（`0x504e0`）明确消费 `+72`；`+56/+64` 尚不能凭内部命令存在推定成当前 UI 能力，0E06 的导出表也没有同版本 0E05 的 `SetHDRMode`。`0x4aa50` 的请求首字节 3，成功后分别取 response byte 1、2、3..7；`0x4aaf0` 的请求首字节 4，返回 byte 2..5 和 byte 6，其中最后一项写入 WORD 的值仅来自一个字节，不能擅自合并 byte 6/7。
+
+两版的标准属性导出另按实际调用核对：Brightness／Contrast／Saturation／WhiteBalance 的 VideoProcAmp 编号为 `0/1/3/7`，Focus／Zoom 的 CameraControl 编号为 `6/3`。0E05 的 VideoProcAmp getter `0x4a0d0` 先检查设备接口和两个 out pointer，0E06 的 `0x49bb0` 仅先检查两个 out pointer，设备接口检查位于后续执行链；这一区别须保留为失败与断连测试分支。JSON 属性 getter、ISP 状态 getter 和序列号／身份转换各有独立消费者，不能以属性编号表覆盖整个 DLL。
+
+两版 `Initialize` 只记录日志并返回低字节 1，不能当作设备初始化。0E05／0E06 的任务等待入口分别为 `0x48d70`／`0x48890`，使用 4,000 ms 等待；超时分支关闭 active 标志，打开线程、detach、调用 `TerminateThread` 并关闭 handle。这是原件的强制终止路径，不证明硬件状态恢复、在途 COM 调用完成或安全取消。应答、超时、重连、恢复、引用释放以及官方 DLL／设备实际对照分别保持 Unverified。
