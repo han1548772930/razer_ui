@@ -71,10 +71,16 @@ def capture():
         actual = analysis.native_pointer_targets(raw, int(table["rva"], 16), len(table["targets"]))
     else:
         recoveries = selection["type_recoveries"]
+        notes = (recoveries or selection.get("import_type_recoveries", [])
+                 or selection.get("function_merges", []) or selection.get("function_outlines", []))
         actual = analysis.native_function_selection(raw, json.loads(base_capture.read_bytes()),
             [int(row["rva"], 16) for row in selection["targets"]],
             [row["rva"] + "=" + row["declaration"] for row in recoveries],
-            recoveries[0]["assembly_evidence"] if recoveries else None)
+            notes[0]["assembly_evidence"] if notes else None,
+            selection.get("decompiler_limits", {}).get("max_function_kib"),
+            [row["rva"] + "=" + row["declaration"] for row in selection.get("import_type_recoveries", [])],
+            [row["owner_rva"] + "=" + ",".join(row["member_rvas"]) for row in selection.get("function_merges", [])],
+            [row["rva"] for row in selection.get("function_outlines", [])])
     if actual != selection:
         raise ValueError("Native selection no longer matches its bounded original-byte plan")
     pe = inspect_pe(raw)
@@ -93,6 +99,10 @@ def capture():
                                  "sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()},
                 "started_at_utc": datetime.now(timezone.utc).isoformat(),
                 "functions": [], "references": [], "chains": [], "failures": [], "type_recoveries": [],
+                "import_type_recoveries": [],
+                "import_thunk_type_recoveries": [],
+                "function_merge_recoveries": [],
+                "function_outline_recoveries": [],
                 "decoded_thunks": [],
                 "capture_complete": False, "all_pseudocode_captured": False,
                 "boundary_policy": "Only exact direct-jump, x64 embedded-object destructor forwarding or x64 bound-member tail-call thunks receive new function boundaries; existing functions keep IDA boundaries",
@@ -110,6 +120,14 @@ def capture():
             return item
         analysis.save(path, portable(value))
 
+    limits = selection.get("decompiler_limits")
+    if limits is not None:
+        if not manifest["hexrays_available"]:
+            raise ValueError("Decompiler limits require an available Hex-Rays plugin")
+        directive = "MAX_FUNCSIZE = {}".format(limits["max_function_kib"])
+        if not ida_hexrays.change_hexrays_config(directive):
+            raise ValueError("Hex-Rays rejected the explicit function size limit")
+        manifest["applied_decompiler_limits"] = limits
     save(output / "capture.json", manifest)
 
     def ref(x):
@@ -312,6 +330,119 @@ def capture():
         captured.add(rva)
         ida_hexrays.clear_cached_cfuncs()
         return row
+
+    for outline in selection.get("function_outlines", []):
+        retained = root / outline["source_function"]["path"]
+        value = retained.read_bytes()
+        if (len(value) != outline["source_function"]["bytes"]
+                or hashlib.sha256(value).hexdigest() != outline["source_function"]["sha256"]):
+            raise ValueError("Reviewed outlined helper evidence changed")
+        ea = base + int(outline["rva"], 16)
+        function = ida_funcs.get_func(ea)
+        if (function is None or function.start_ea != ea or hex(function.end_ea) != outline["expected_end"]
+                or function.flags != outline["expected_flags"]):
+            raise ValueError("Private outlined helper boundary or flags differ from its retained evidence")
+        chunks = []
+        for start, stop in idautils.Chunks(ea):
+            code = ida_bytes.get_bytes(start, stop - start)
+            if code != file_bytes(start - base, stop - start):
+                raise ValueError("Outlined helper database bytes differ from the original PE")
+            chunks.append({"start": hex(start), "end": hex(stop), "raw_hex": code.hex(),
+                           "sha256": hashlib.sha256(code).hexdigest()})
+        if chunks != outline["expected_chunks"]:
+            raise ValueError("Outlined helper database chunks differ from complete original evidence")
+        before, flag = function.flags, int(ida_funcs.FUNC_OUTLINE)
+        function.flags = before | flag
+        if not ida_funcs.update_func(function) or ida_funcs.get_func(ea).flags != before | flag:
+            raise ValueError("IDA rejected the explicit outlined helper flag")
+        manifest["function_outline_recoveries"].append({**outline, "previous_flags": before,
+            "applied_flags": before | flag, "outline_flag": flag, "applied_chunks": chunks,
+            "base_database_modified": False})
+    ida_hexrays.clear_cached_cfuncs()
+
+    for merge in selection.get("function_merges", []):
+        for member in merge["members"]:
+            retained = root / member["path"]
+            data = retained.read_bytes()
+            if len(data) != member["bytes"] or hashlib.sha256(data).hexdigest() != member["sha256"]:
+                raise ValueError("Original function merge evidence changed")
+            body = json.loads(data)
+            ea = base + int(member["rva"], 16)
+            function = ida_funcs.get_func(ea)
+            if (function is None or function.start_ea != ea
+                    or list(idautils.Chunks(ea)) != [(int(chunk["start"], 16), int(chunk["end"], 16)) for chunk in body["chunks"]]):
+                raise ValueError("Private database function merge members differ from retained boundaries")
+        for member in reversed(merge["members"]):
+            if not ida_funcs.del_func(base + int(member["rva"], 16)):
+                raise ValueError("IDA could not remove an explicitly reviewed private function fragment")
+        first, end = int(merge["expected_start"], 16), int(merge["expected_end"], 16)
+        if not ida_funcs.add_func(first, end):
+            raise ValueError("IDA could not define the exact reviewed combined function")
+        applied = []
+        for start, stop in idautils.Chunks(first):
+            chunk = ida_bytes.get_bytes(start, stop - start)
+            if chunk != file_bytes(start - base, stop - start):
+                raise ValueError("Combined function bytes differ from the original PE")
+            applied.append({"start": hex(start), "end": hex(stop), "raw_hex": chunk.hex(),
+                            "sha256": hashlib.sha256(chunk).hexdigest()})
+        if applied != merge["expected_chunks"]:
+            raise ValueError("IDA combined boundary does not exactly cover the reviewed original fragments")
+        manifest["function_merge_recoveries"].append({**merge, "base_database_modified": False,
+                                                     "applied_chunks": applied})
+    ida_hexrays.clear_cached_cfuncs()
+
+    imported_function_types = {}
+    for recovery in selection.get("import_type_recoveries", []):
+        ea = base + int(recovery["rva"], 16)
+        bindings = []
+        for module_index in range(ida_nalt.get_import_module_qty()):
+            module = ida_nalt.get_import_module_name(module_index)
+
+            def imported(address, name, ordinal):
+                if address == ea:
+                    bindings.append({"rva": hex(address - base), "name": name, "ordinal": int(ordinal),
+                        "module": module, "loaded_slot_raw_hex":
+                            (ida_bytes.get_bytes(address, recovery["bytes"]) or b"").hex()})
+                return True
+
+            if ida_nalt.enum_import_names(module_index, imported) == -1:
+                raise ValueError("IDA import enumeration failed")
+        if len(bindings) != 1 or not analysis.native_import_binding_matches(recovery, bindings[0]):
+            raise ValueError("Reviewed PE import does not match IDA's unique named import registration")
+        previous = idc.get_type(ea)
+        typ = ida_typeinf.tinfo_t()
+        if (not ida_typeinf.parse_decl(typ, None, recovery["declaration"], ida_typeinf.PT_SIL)
+                or not typ.is_funcptr() or typ.get_size() != recovery["bytes"]):
+            raise ValueError("Reviewed import declaration must be a function pointer")
+        if not ida_typeinf.apply_tinfo(ea, typ, ida_typeinf.TINFO_DEFINITE):
+            raise ValueError("IDA rejected the reviewed import pointer type")
+        applied = ida_typeinf.tinfo_t()
+        if not ida_nalt.get_tinfo(applied, ea) or applied != typ:
+            raise ValueError("Applied import type differs from reviewed declaration")
+        manifest["import_type_recoveries"].append({**recovery, "address": hex(ea),
+            "previous_type": previous, "applied_type": str(applied), "base_database_modified": False,
+            "database_import_binding": bindings[0]})
+        imported_function_types[recovery["rva"]] = typ.get_pointed_object()
+
+    for thunk in selection.get("import_thunks", []):
+        ea = base + int(thunk["rva"], 16)
+        function = ida_funcs.get_func(ea)
+        if (function is None or function.start_ea != ea
+                or (ida_bytes.get_bytes(ea, thunk["bytes"]) or b"").hex() != thunk["raw_hex"]):
+            raise ValueError("Exact reviewed import thunk differs from the private database")
+        retained = root / thunk["source_function"]["path"]
+        if hashlib.sha256(retained.read_bytes()).hexdigest() != thunk["source_function"]["sha256"]:
+            raise ValueError("Exact import thunk assembly evidence changed")
+        typ = imported_function_types[thunk["slot_rva"]]
+        previous = idc.get_type(ea)
+        if not typ.is_func() or not ida_typeinf.apply_tinfo(ea, typ, ida_typeinf.TINFO_DEFINITE):
+            raise ValueError("IDA rejected the exact import thunk's verified pointed function type")
+        applied = ida_typeinf.tinfo_t()
+        if not ida_nalt.get_tinfo(applied, ea) or applied != typ:
+            raise ValueError("Applied import thunk type differs from the verified import function type")
+        manifest["import_thunk_type_recoveries"].append({**thunk, "address": hex(ea),
+            "previous_type": previous, "applied_type": str(applied), "base_database_modified": False})
+    ida_hexrays.clear_cached_cfuncs()
 
     for recovery in selection.get("type_recoveries", []):
         ea = base + int(recovery["rva"], 16)

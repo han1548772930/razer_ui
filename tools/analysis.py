@@ -1505,7 +1505,308 @@ def native_member_dispatch_thunk_size(raw, architecture):
     return len(expected) if architecture == "x64" and raw == expected else None
 
 
-def native_function_selection(raw, capture, function_rvas, type_specs=(), type_note=None):
+def native_import_type_recoveries(raw, specifications, evidence):
+    """Bind reviewed pointer declarations only to byte-backed named PE IAT slots."""
+    from host import inspect_pe
+    pe = inspect_pe(raw)
+    if pe["architecture"] not in {"x86", "x64"}:
+        raise ValueError("Import type recovery supports only retained x86/x64 PE imports")
+    if any(row.get("stage") == "imports" for row in pe["unresolved"]):
+        raise ValueError("Import type recovery requires a complete PE import directory")
+    width = 8 if pe["architecture"] == "x64" else 4
+
+    def offset(rva, count):
+        matches = [section for section in pe["sections"]
+                   if 0 <= rva - section["rva"] and rva - section["rva"] + count <= section["bytes"]]
+        if len(matches) != 1:
+            raise ValueError("Import type recovery RVA is not uniquely file-backed")
+        return matches[0]["file_offset"] + rva - matches[0]["rva"]
+
+    header = int.from_bytes(raw[0x3c:0x40], "little") + 24
+    directory = header + (112 if width == 8 else 96) + 8
+    rva = int.from_bytes(raw[directory:directory + 4], "little")
+    size = int.from_bytes(raw[directory + 4:directory + 8], "little")
+    slots = {}
+    if rva and size:
+        for index, module in enumerate(pe["imports"]):
+            at = offset(rva + index * 20, 20)
+            table = int.from_bytes(raw[at + 16:at + 20], "little")
+            for symbol_index, symbol in enumerate(module["symbols"]):
+                slot = table + width * symbol_index
+                start = offset(slot, width)
+                slots[slot] = {"library": module["library"], **symbol,
+                               "rva": hex(slot), "raw_hex": raw[start:start + width].hex(), "bytes": width}
+    recovered = []
+    for specification in specifications:
+        rva_text, separator, declaration = specification.partition("=")
+        if not separator or not declaration.strip() or not evidence or not evidence.strip():
+            raise ValueError("Import type recovery requires RVA=DECLARATION and assembly evidence")
+        slot = int(rva_text, 0)
+        if slot not in slots or "name" not in slots[slot] or any(row["rva"] == hex(slot) for row in recovered):
+            raise ValueError("Import type recovery must select a unique named normal PE IAT slot")
+        recovered.append({**slots[slot], "declaration": declaration.strip(), "assembly_evidence": evidence.strip()})
+    return recovered
+
+
+def native_import_binding_matches(requested, binding):
+    """Keep original PE bytes separate from IDA's enumerated import view."""
+    try:
+        return (binding["rva"] == requested["rva"] and binding["name"] == requested["name"]
+            and Path(binding["module"]).stem.casefold() == Path(requested["library"]).stem.casefold()
+            and len(bytes.fromhex(binding["loaded_slot_raw_hex"])) == requested["bytes"])
+    except (ValueError, KeyError, TypeError):
+        return False
+
+
+def native_import_thunks(raw, capture, imports, pe):
+    """Bind reviewed IAT types to exact retained six-byte import jumps."""
+    slots = {int(row["rva"], 16): row for row in imports}
+    base = int(pe["image_base"], 16)
+    selected, seen = [], set()
+    pe_offset = int.from_bytes(raw[0x3c:0x40], "little")
+    section_table = pe_offset + 24 + int.from_bytes(raw[pe_offset + 20:pe_offset + 22], "little")
+    for row in capture["functions"]:
+        rva = int(row["rva"], 16)
+        sections = [(index, section) for index, section in enumerate(pe["sections"])
+                    if 0 <= rva - section["rva"] and rva - section["rva"] + 6 <= section["bytes"]]
+        if len(sections) != 1:
+            continue
+        index, section = sections[0]
+        start = section["file_offset"] + rva - section["rva"]
+        code = raw[start:start + 6]
+        if code[:2] != b"\xff\x25":
+            continue
+        operand = int.from_bytes(code[2:], "little", signed=pe["architecture"] == "x64")
+        slot = rva + 6 + operand if pe["architecture"] == "x64" else operand - base
+        imported = slots.get(slot)
+        if imported is None:
+            continue
+        flags_at = section_table + index * 40 + 36
+        if (rva in seen or int(row["address"], 16) != base + rva
+                or not int.from_bytes(raw[flags_at:flags_at + 4], "little") & 0x20000000):
+            raise ValueError("Import thunk must use a unique retained executable function boundary")
+        seen.add(rva)
+        if capture.get("input_sha256") != hashlib.sha256(raw).hexdigest():
+            raise ValueError("Import thunk original identity differs from its base capture")
+        result = ROOT / ".analysis/results/native" / capture["input_sha256"]
+        path = resolve(rel(result / row["path"]), rel(result))
+        retained = path.read_bytes()
+        digest = hashlib.sha256(retained).hexdigest()
+        if digest != row["sha256"] or ("bytes" in row and len(retained) != row["bytes"]):
+            raise ValueError("Retained import thunk function identity changed: " + rel(path))
+        body = json.loads(retained)
+        chunks, assembly = body.get("chunks"), body.get("assembly")
+        address = base + rva
+        if (int(body["address"], 16) != address or int(body["rva"], 16) != rva
+                or int(body["end"], 16) != address + 6
+                or not isinstance(chunks, list) or len(chunks) != 1
+                or not isinstance(assembly, list) or len(assembly) != 1):
+            raise ValueError("Retained import thunk must contain one exact six-byte chunk and JMP")
+        chunk, instruction = chunks[0], assembly[0]
+        if (int(chunk["start"], 16) != address or int(chunk["end"], 16) != address + 6
+                or chunk.get("raw_hex") != code.hex()
+                or ("sha256" in chunk and chunk["sha256"] != hashlib.sha256(code).hexdigest())
+                or int(instruction["address"], 16) != address
+                or ("rva" in instruction and int(instruction["rva"], 16) != rva)
+                or instruction.get("bytes") != code.hex()
+                or not re.match(r"^jmp\s+", instruction.get("text", "").strip(), re.IGNORECASE)):
+            raise ValueError("Retained import thunk differs from the original six-byte FF25 jump")
+        selected.append({"rva": hex(rva), "raw_hex": code.hex(), "bytes": 6,
+                         "slot_rva": hex(slot), "library": imported["library"], "name": imported["name"],
+                         "source_function": {"path": rel(path), "bytes": len(retained), "sha256": digest}})
+    return selected
+
+
+def native_function_merges(raw, capture, function_rvas, specifications, evidence, pe):
+    """Bind explicitly reviewed adjacent functions to their complete original bytes.
+
+    Contiguity and incoming call checks constrain a requested static merge; they
+    do not prove that adjacent instructions share one semantic function.
+    """
+    digest = hashlib.sha256(raw).hexdigest()
+    if (capture.get("input_sha256") != digest or capture.get("input_bytes") != len(raw)
+            or capture.get("capture_complete") is not True):
+        raise ValueError("Function merge requires a complete capture of the exact original input")
+    if not evidence or not evidence.strip():
+        raise ValueError("Function merge requires explicit assembly evidence")
+    base = int(pe["image_base"], 16)
+    if int(capture.get("image_base", "-1"), 16) != base:
+        raise ValueError("Function merge capture image base differs from the original PE")
+    result = ROOT / ".analysis/results/native" / digest
+    existing = {}
+    for row in capture["functions"]:
+        rva = int(row["rva"], 16)
+        if rva in existing:
+            raise ValueError("Function merge requires unique retained function boundaries")
+        existing[rva] = row
+
+    def original_bytes(rva, size):
+        matches = [section for section in pe["sections"]
+                   if 0 <= rva - section["rva"] and rva - section["rva"] + size <= section["bytes"]]
+        if size <= 0 or len(matches) != 1:
+            raise ValueError("Function merge bytes are not uniquely file-backed")
+        section = matches[0]
+        at = section["file_offset"] + rva - section["rva"]
+        code = raw[at:at + size]
+        if len(code) != size:
+            raise ValueError("Function merge original bytes are truncated")
+        return code
+
+    merges, used = [], set()
+    for specification in specifications:
+        owner_text, separator, member_text = specification.partition("=")
+        try:
+            owner = int(owner_text, 0)
+            members = [int(value.strip(), 0) for value in member_text.split(",")]
+        except ValueError as error:
+            raise ValueError("Function merge requires OWNER=RVA,RVA,...") from error
+        if (not separator or not 2 <= len(members) <= 4096 or members[0] != owner
+                or owner not in function_rvas or len(set(members)) != len(members)
+                or any(rva in used for rva in members)
+                or any(rva in function_rvas for rva in members[1:])):
+            raise ValueError("Function merge requires a selected first owner and unique unselected members")
+        retained, bodies, previous_end = [], [], None
+        for rva in members:
+            row = existing.get(rva)
+            if row is None or row.get("assembly_captured") is not True:
+                raise ValueError("Function merge member lacks a complete retained assembly")
+            path = resolve(rel(result / row["path"]), rel(result))
+            data = path.read_bytes()
+            identity = {"rva": hex(rva), "path": rel(path), "bytes": len(data),
+                        "sha256": hashlib.sha256(data).hexdigest()}
+            if identity["sha256"] != row["sha256"] or ("bytes" in row and len(data) != row["bytes"]):
+                raise ValueError("Function merge retained member identity changed")
+            body = json.loads(data)
+            start, end = int(body["address"], 16), int(body["end"], 16)
+            chunks, assembly = body.get("chunks"), body.get("assembly")
+            if (int(row["address"], 16) != base + rva or start != base + rva
+                    or int(body["rva"], 16) != rva or end <= start
+                    or not isinstance(chunks, list) or len(chunks) != 1
+                    or not isinstance(assembly, list) or not assembly
+                    or not isinstance(body.get("xrefs_to_entry"), list)):
+                raise ValueError("Function merge member must have one complete exact chunk")
+            if previous_end is not None and start != previous_end:
+                raise ValueError("Function merge members have an overlap, hole or unordered boundary")
+            chunk = chunks[0]
+            code = original_bytes(rva, end - start)
+            if (int(chunk["start"], 16) != start or int(chunk["end"], 16) != end
+                    or chunk.get("raw_hex") != code.hex()
+                    or chunk.get("sha256") != hashlib.sha256(code).hexdigest()):
+                raise ValueError("Function merge member chunk differs from original PE bytes")
+            instruction_end = start
+            for instruction in assembly:
+                at = int(instruction["address"], 16)
+                value = bytes.fromhex(instruction["bytes"])
+                if (not value or at < instruction_end or at < start or at + len(value) > end
+                        or ("rva" in instruction and int(instruction["rva"], 16) != at - base)
+                        or original_bytes(at - base, len(value)) != value):
+                    raise ValueError("Function merge member assembly differs from original PE bytes")
+                instruction_end = at + len(value)
+            retained.append(identity)
+            bodies.append(body)
+            previous_end = end
+        start, end = base + owner, previous_end
+        for body in bodies[1:]:
+            for xref in body["xrefs_to_entry"]:
+                if (xref.get("code") is True and xref.get("type") in {16, 17}
+                        and not start <= int(xref["from"], 16) < end):
+                    raise ValueError("Function merge member is an external call target")
+        code = original_bytes(owner, end - start)
+        merges.append({"owner_rva": hex(owner), "member_rvas": [hex(rva) for rva in members],
+                       "assembly_evidence": evidence.strip(), "members": retained,
+                       "expected_start": hex(start), "expected_end": hex(end),
+                       "expected_chunks": [{"start": hex(start), "end": hex(end),
+                                            "sha256": hashlib.sha256(code).hexdigest(), "raw_hex": code.hex()}]})
+        used.update(members)
+    return merges
+
+
+def native_function_merge_body(merge):
+    """Compose a baseline from the exact previously PE-checked member identities."""
+    bodies = []
+    for member in merge["members"]:
+        path = resolve(member["path"], ".analysis/results/native")
+        data = path.read_bytes()
+        if len(data) != member["bytes"] or hashlib.sha256(data).hexdigest() != member["sha256"]:
+            raise ValueError("Function merge member identity changed while composing its baseline")
+        bodies.append(json.loads(data))
+    baseline = dict(bodies[0])
+    baseline["end"] = merge["expected_end"]
+    baseline["chunks"] = merge["expected_chunks"]
+    baseline["assembly"] = [instruction for body in bodies for instruction in body["assembly"]]
+    return baseline
+
+
+def native_function_outlines(raw, capture, function_rvas, outline_rvas, evidence, pe):
+    """Bind reviewed outlined helpers to unchanged complete retained code."""
+    digest = hashlib.sha256(raw).hexdigest()
+    if (capture.get("input_sha256") != digest or capture.get("input_bytes") != len(raw)
+            or capture.get("capture_complete") is not True or not evidence or not evidence.strip()):
+        raise ValueError("Outlined helpers require exact complete input and explicit assembly evidence")
+    values = [int(value, 0) if isinstance(value, str) else value for value in outline_rvas]
+    if (not values or len(values) > 4096 or len(set(values)) != len(values)
+            or any(type(value) is not int or value in function_rvas for value in values)):
+        raise ValueError("Outlined helpers must be unique retained boundaries separate from output functions")
+    base = int(pe["image_base"], 16)
+    result = ROOT / ".analysis/results/native" / digest
+    existing = {int(row["rva"], 16): row for row in capture["functions"]}
+    if len(existing) != len(capture["functions"]) or int(capture["image_base"], 16) != base:
+        raise ValueError("Outlined helper capture boundaries or image base differ")
+
+    def original_bytes(start, end):
+        matches = [section for section in pe["sections"]
+                   if 0 <= start - base - section["rva"]
+                   and end - base - section["rva"] <= section["bytes"]]
+        if end <= start or len(matches) != 1:
+            raise ValueError("Outlined helper code is not uniquely file-backed")
+        section = matches[0]
+        offset = section["file_offset"] + start - base - section["rva"]
+        value = raw[offset:offset + end - start]
+        if len(value) != end - start:
+            raise ValueError("Outlined helper original code is truncated")
+        return value
+
+    outlines = []
+    for rva in values:
+        row = existing.get(rva)
+        if row is None or row.get("assembly_captured") is not True:
+            raise ValueError("Outlined helper lacks complete retained assembly")
+        path = resolve(rel(result / row["path"]), rel(result))
+        data = path.read_bytes()
+        identity = {"path": rel(path), "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+        if identity["sha256"] != row["sha256"] or ("bytes" in row and row["bytes"] != len(data)):
+            raise ValueError("Outlined helper retained identity changed")
+        body = json.loads(data)
+        chunks, assembly = body.get("chunks"), body.get("assembly")
+        if (body["address"] != hex(base + rva) or body["rva"] != hex(rva)
+                or row["address"] != body["address"] or type(body.get("flags")) is not int
+                or not isinstance(chunks, list) or not chunks or not isinstance(assembly, list) or not assembly):
+            raise ValueError("Outlined helper lacks its exact complete boundary")
+        previous_end = -1
+        for chunk in chunks:
+            start, end = int(chunk["start"], 16), int(chunk["end"], 16)
+            code = original_bytes(start, end)
+            if (start < previous_end or chunk.get("raw_hex") != code.hex()
+                    or chunk.get("sha256") != hashlib.sha256(code).hexdigest()):
+                raise ValueError("Outlined helper chunk differs from original code")
+            previous_end = end
+        if not any(int(chunk["start"], 16) == base + rva for chunk in chunks):
+            raise ValueError("Outlined helper chunks omit the entry")
+        previous_end = -1
+        for instruction in assembly:
+            at = int(instruction["address"], 16)
+            code = bytes.fromhex(instruction["bytes"])
+            if (not code or at < previous_end or original_bytes(at, at + len(code)) != code
+                    or not any(int(chunk["start"], 16) <= at < at + len(code) <= int(chunk["end"], 16) for chunk in chunks)):
+                raise ValueError("Outlined helper instruction differs from complete original chunks")
+            previous_end = at + len(code)
+        outlines.append({"rva": hex(rva), "source_function": identity, "expected_end": body["end"],
+                         "expected_chunks": chunks, "expected_flags": body["flags"],
+                         "set_flag": "FUNC_OUTLINE", "assembly_evidence": evidence.strip()})
+    return outlines
+
+
+def native_function_selection(raw, capture, function_rvas, type_specs=(), type_note=None, max_function_kib=None, import_specs=(), merge_specs=(), outline_rvas=()):
     """Select retained boundaries and explicit, assembly-reviewed type repairs."""
     from host import inspect_pe
 
@@ -1542,15 +1843,30 @@ def native_function_selection(raw, capture, function_rvas, type_specs=(), type_n
             raise ValueError("Function selection is not in executable PE code: " + hex(rva))
         targets.append({"index": index, "address": hex(base + rva), "rva": hex(rva),
                         "file_offset": section["file_offset"] + rva - section["rva"]})
-    return {"mode": "retained_function_reanalysis", "image_base": hex(base), "architecture": pe["architecture"],
-            "targets": targets, "type_recoveries": types}
+    selection = {"mode": "retained_function_reanalysis", "image_base": hex(base), "architecture": pe["architecture"],
+                 "targets": targets, "type_recoveries": types}
+    if max_function_kib is not None:
+        if type(max_function_kib) is not int or not 64 <= max_function_kib <= 1024:
+            raise ValueError("Decompiler function size limit must be an integer from 64 to 1024 KiB")
+        selection["decompiler_limits"] = {"max_function_kib": max_function_kib}
+    if import_specs:
+        selection["import_type_recoveries"] = native_import_type_recoveries(raw, import_specs, type_note)
+        selection["import_thunks"] = native_import_thunks(raw, capture, selection["import_type_recoveries"], pe)
+    if merge_specs:
+        selection["function_merges"] = native_function_merges(raw, capture, function_rvas, merge_specs, type_note, pe)
+    if outline_rvas:
+        if merge_specs:
+            raise ValueError("Outlined helpers and boundary merges require separate reviewed supplements")
+        selection["function_outlines"] = native_function_outlines(raw, capture, function_rvas, outline_rvas, type_note, pe)
+    return selection
 
 
 def supplement_native(args):
     """Supplement evidenced native entries in a private retained-IDB copy."""
     source = resolve(args.input, ".analysis/inputs")
     index = json.loads((ROOT / ".analysis/inputs.json").read_bytes())
-    row = next((item for item in index["inputs"] if item["path"] == rel(source)), None)
+    source_name = rel(source)
+    row = next((item for item in index["inputs"] if item["path"] == source_name), None)
     if row is None or sha(source) != row["sha256"] or source.stat().st_size != row["bytes"]:
         raise ValueError("Supplement input differs from its original input receipt")
     if row.get("container_extraction_complete") is False or row.get("source_bytes_verified") is False:
@@ -1565,10 +1881,15 @@ def supplement_native(args):
         if args.pointer_table_rva is not None or args.pointer_count is not None:
             raise ValueError("Function reanalysis and pointer-table selection are separate modes")
         selection = native_function_selection(source.read_bytes(), capture, function_rvas,
-            getattr(args, "function_type", None) or (), getattr(args, "type_evidence", None))
+            getattr(args, "function_type", None) or (), getattr(args, "type_evidence", None),
+            getattr(args, "max_function_kib", None), getattr(args, "import_type", None) or (),
+            getattr(args, "merge_functions", None) or (), getattr(args, "outline_function_rva", None) or ())
         selection_key = "function_selection"
     else:
-        if getattr(args, "function_type", None) or getattr(args, "type_evidence", None):
+        if getattr(args, "max_function_kib", None) is not None:
+            raise ValueError("Decompiler size limit requires retained function reanalysis")
+        if (getattr(args, "function_type", None) or getattr(args, "import_type", None) or getattr(args, "type_evidence", None)
+                or getattr(args, "merge_functions", None) or getattr(args, "outline_function_rva", None)):
             raise ValueError("Function type recovery requires explicit function reanalysis")
         if args.pointer_table_rva is None or args.pointer_count is None:
             raise ValueError("Pointer-table selection requires its RVA and count")
@@ -1593,8 +1914,18 @@ def supplement_native(args):
     session_path = output / "session.json"
     if session_path.is_file():
         prior = json.loads(session_path.read_bytes())
-        if "finished_at_utc" not in prior:
-            raise ValueError("Previous supplemental session has not finished; inspect it before rerunning")
+        if not prior.get("finished_at_utc"):
+            if not getattr(args, "recover_interrupted", False):
+                raise ValueError("Previous supplemental session has not finished; inspect it before rerunning")
+            from reverse_pending import process_alive
+            if process_alive(prior.get("pid")) is not False:
+                raise ValueError("Interrupted supplement process is still running or cannot be verified absent")
+            original_session = session_path.read_bytes()
+            prior["interruption_recovery"] = {
+                "observed_inactive_at_utc": stamp(), "process_confirmed_absent": True,
+                "original_session_sha256": hashlib.sha256(original_session).hexdigest(),
+                "original_session_raw_base64": base64.b64encode(original_session).decode(),
+                "finished_at_utc": None, "exit_code": None}
         previous_attempts = prior.pop("previous_attempts", [])
         prior["retained_outputs"] = []
         for path in (output / "plan.json", output / "capture.json", scratch / "ida.log", scratch / "process.log"):
@@ -1705,11 +2036,20 @@ def native_reanalysis_resolution(result, capture=None):
                 if hashlib.sha256(raw).hexdigest() != capture["input_sha256"] or len(raw) != capture["input_bytes"]:
                     raise ValueError("Native supplement original bytes changed")
             recoveries = selection["type_recoveries"]
+            imports = selection.get("import_type_recoveries", [])
+            merges = selection.get("function_merges", [])
+            outlines = selection.get("function_outlines", [])
             actual = native_function_selection(raw, capture, [int(row["rva"], 16) for row in selection["targets"]],
                 [row["rva"] + "=" + row["declaration"] for row in recoveries],
-                recoveries[0]["assembly_evidence"] if recoveries else None)
+                (recoveries or imports or merges or outlines)[0]["assembly_evidence"] if recoveries or imports or merges or outlines else None,
+                selection.get("decompiler_limits", {}).get("max_function_kib"),
+                [row["rva"] + "=" + row["declaration"] for row in imports],
+                [row["owner_rva"] + "=" + ",".join(row["member_rvas"]) for row in merges],
+                [row["rva"] for row in outlines])
             if actual != selection:
                 raise ValueError("Native supplement selection no longer matches the original bytes")
+            if "decompiler_limits" in selection and supplement.get("applied_decompiler_limits") != selection["decompiler_limits"]:
+                raise ValueError("Native supplement did not apply its exact decompiler size limit")
             if {row["rva"] for row in supplement["functions"]} != {row["rva"] for row in selection["targets"]}:
                 raise ValueError("Native supplement omitted selected function boundaries")
             if (len(supplement["type_recoveries"]) != len(recoveries)
@@ -1717,6 +2057,39 @@ def native_reanalysis_resolution(result, capture=None):
                            or not applied.get("applied_type") or applied.get("base_database_modified") is not False
                            for applied, requested in zip(supplement["type_recoveries"], recoveries))):
                 raise ValueError("Native supplement did not retain the exact reviewed type recoveries")
+            if (len(supplement.get("import_type_recoveries", [])) != len(imports)
+                    or any(any(applied.get(key) != requested[key] for key in requested)
+                           or not applied.get("applied_type") or applied.get("base_database_modified") is not False
+                           or not native_import_binding_matches(requested, applied.get("database_import_binding", {}))
+                           for applied, requested in zip(supplement.get("import_type_recoveries", []), imports))):
+                raise ValueError("Native supplement did not retain the exact reviewed import types")
+            thunks = selection.get("import_thunks", [])
+            applied_thunks = supplement.get("import_thunk_type_recoveries", [])
+            if (len(applied_thunks) != len(thunks)
+                    or any(any(applied.get(key) != requested[key] for key in requested)
+                           or not isinstance(applied.get("applied_type"), str) or not applied["applied_type"].strip()
+                           or applied.get("base_database_modified") is not False
+                           for applied, requested in zip(applied_thunks, thunks))):
+                raise ValueError("Native supplement did not retain the exact reviewed import thunk types")
+            applied_merges = supplement.get("function_merge_recoveries", [])
+            if (len(applied_merges) != len(merges)
+                    or any(any(applied.get(key) != requested[key] for key in requested)
+                           or applied.get("base_database_modified") is not False
+                           or applied.get("applied_chunks") != requested["expected_chunks"]
+                           for applied, requested in zip(applied_merges, merges))):
+                raise ValueError("Native supplement did not retain the exact reviewed function merges")
+            merged_baselines = {merge["owner_rva"]: native_function_merge_body(merge) for merge in merges}
+            applied_outlines = supplement.get("function_outline_recoveries", [])
+            if (len(applied_outlines) != len(outlines)
+                    or any(any(applied.get(key) != value for key, value in requested.items())
+                           or applied.get("base_database_modified") is not False
+                           or applied.get("applied_chunks") != requested["expected_chunks"]
+                           or type(applied.get("outline_flag")) is not int or applied["outline_flag"] <= 0
+                           or applied["outline_flag"] & (applied["outline_flag"] - 1)
+                           or applied.get("previous_flags") != requested["expected_flags"]
+                           or applied.get("applied_flags") != (requested["expected_flags"] | applied["outline_flag"])
+                           for applied, requested in zip(applied_outlines, outlines))):
+                raise ValueError("Native supplement did not retain the exact reviewed outlined helpers")
             recovered = {}
             for row in supplement["functions"]:
                 record = {**row, "path": rel(path.parent / row["path"])}
@@ -1724,7 +2097,8 @@ def native_reanalysis_resolution(result, capture=None):
                 base_record = base_functions.get(row["rva"])
                 if base_record is None:
                     raise ValueError("Native reanalysis introduced a boundary absent from its base capture")
-                baseline = checked(result / base_record["path"], base_record)
+                baseline = (merged_baselines[row["rva"]] if row["rva"] in merged_baselines
+                            else checked(result / base_record["path"], base_record))
                 if (not row.get("assembly_captured") or not row.get("pseudocode_captured")
                         or not isinstance(body.get("pseudocode"), dict) or not body["pseudocode"].get("lines")
                         or not isinstance(body["pseudocode"].get("locals"), list)
@@ -1740,7 +2114,9 @@ def native_reanalysis_resolution(result, capture=None):
             resolution["supplements"].append({"receipt": receipt,
                 "session": {"path": rel(session_path), "bytes": session_path.stat().st_size, "sha256": sha(session_path)},
                 "ida_version": supplement["ida_version"], "hexrays_version": supplement["hexrays_version"],
-                "type_recoveries": supplement["type_recoveries"], "functions": list(recovered)})
+                "type_recoveries": supplement["type_recoveries"], "functions": list(recovered),
+                **({"function_merge_recoveries": applied_merges} if merges else {}),
+                **({"function_outline_recoveries": applied_outlines} if outlines else {})})
             resolution["complete_functions"].update(recovered)
             pending = []
             for failure in resolution["remaining_failures"]:
@@ -5311,6 +5687,13 @@ def reconcile_source_index(args):
 def add_commands(parsers):
     import host
     host.add_commands(parsers)
+    pending = parsers.add_parser("reverse-pending", help="Run retained pending native and frontend static work in one bounded resumable queue")
+    pending.add_argument("--workers", type=int, default=min(16, os.cpu_count() or 2))
+    pending.add_argument("--ida-root", default=os.environ.get("RAZER_IDA_ROOT", "E:/IDA"))
+    pending.add_argument("--resume", action="store_true", help="Continue the exact unfinished queue, preserving completed tasks and all interrupted evidence")
+    pending.add_argument("--verify-only", action="store_true", help="Strictly recheck a finished static queue without starting IDA or network repair")
+    pending.add_argument("--native-only", action="store_true", help="Review remaining native failures without repeating unchanged analyzer attempts or frontend work")
+    pending.add_argument("--native-review", action="append", help="Explicit assembly-reviewed plan in a retained receipt: project-relative.json#JSON-pointer; repeat for independent modules")
     reference = parsers.add_parser("audit-reference", help="Verify every tracked byte and workspace dependency in a pinned architecture reference")
     reference.add_argument("--directory", required=True)
     reference.add_argument("--commit", required=True)
@@ -5358,7 +5741,16 @@ def add_commands(parsers):
     supplement.add_argument("--function-rva", type=lambda value: int(value, 0), action="append",
                             help="Reanalyze this exact retained function boundary; repeat for callers and callees")
     supplement.add_argument("--function-type", action="append", help="Explicit RVA=C function declaration backed by the complete retained assembly")
+    supplement.add_argument("--import-type", action="append", help="Explicit normal-IAT RVA=C function-pointer declaration backed by import bytes and reviewed ABI evidence")
+    supplement.add_argument("--merge-functions", action="append",
+                            help="Explicit reviewed OWNER=RVA,RVA,... merge of adjacent complete retained functions")
+    supplement.add_argument("--outline-function-rva", action="append", type=lambda v: int(v, 0),
+                            help="Explicit reviewed complete helper boundary to mark FUNC_OUTLINE in the private IDB")
     supplement.add_argument("--type-evidence", help="Explain the argument/register/return evidence for explicit type recovery")
+    supplement.add_argument("--max-function-kib", type=int,
+                            help="Record and apply a per-process Hex-Rays function size limit, 64 to 1024 KiB")
+    supplement.add_argument("--recover-interrupted", action="store_true",
+                            help="Preserve and resume an unfinished supplement only after its process is confirmed absent")
     supplement.add_argument("--ida-root", default=os.environ.get("RAZER_IDA_ROOT", "E:/IDA"))
     supplement.add_argument("--no-refresh-gaps", action="store_true")
     chain = parsers.add_parser("audit-native-chain", help="Join complete original host callables, literal FFI signatures and verified native bodies/xrefs")
@@ -5390,6 +5782,9 @@ def add_commands(parsers):
 
 
 def run(args):
+    if args.command == "reverse-pending":
+        import reverse_pending
+        return reverse_pending.run(args)
     if args.command in {"acquire-installed", "acquire-host", "inspect-host", "analyze-host"}:
         import host
         return host.run(args)

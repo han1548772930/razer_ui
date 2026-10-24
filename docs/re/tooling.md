@@ -395,7 +395,7 @@ The existing `RzChromaConnectServer.dll` capture was independently checked with 
 | 8678a5eadd881ea7a569131369b3964d9519f1d584beddd315fb897e6f4af5ca ThxVADCarolNative_v1.0.13.0.dll | 954504 / x64 | 77a1cb3de9321ba4b1cc027d440d7f575aa0e84b82d8d67203b5aa8b074b612f | 2920 / 0 | 71 |
 | d4fd77a92c860bb190d7aab604124e9d4343901fcea83069aa99d29db5a9586b RzNative_0E03_v1.0.16.1.dll | 796296 / x64 | 23ce499d0c8fae7c60e75c97072dc080a0876f1c07376aad8d748af523d9a377 | 2634 / 1 | 40 |
 
-四个模块均为 capture_complete；独立字节映射均报告 all_chunks_match_original=true 和 all_assembly_matches_original=true。去重后的 chunk/指令/字节计数依次为 0E08 2066/103613/419265，0542 2478/112768/458516，Carol 2958/173596/673579，0E03 2684/143877/555742。0E03 唯一失败是 RVA 0x72223（绝对地址 0x180072223）的 Hex-Rays call-analysis failed，错误码 -12；原始 assembly 仍保留，不能把失败项当作已解释的函数。
+四个模块均为 capture_complete；独立字节映射均报告 all_chunks_match_original=true 和 all_assembly_matches_original=true。去重后的 chunk/指令/字节计数依次为 0E08 2066/103613/419265，0542 2478/112768/458516，Carol 2958/173596/673579，0E03 2684/143877/555742。0E03 基础捕获中唯一失败函数的入口为 RVA `0x721f0`；Hex-Rays 在该函数内部绝对地址 `0x180072223`（RVA `0x72223`）报告 call-analysis failed，错误码 -12，不能把错误指令位置写成函数入口。该函数及其字符转换 callee 已通过私有 IDB 类型补查恢复，当前严格复核为恢复 1、保留失败 0、补查错误 0，见[正式复核](../../.analysis/results/native-bulk/reanalysis-verification.json)中对应模块；原始失败、汇编及基础捕获仍保留。伪代码恢复不代表设备功能链或实际 DLL 对照完成。
 
 静态语义已分别记录到 [camera](../products/accessories/camera.md)、[microphone-and-preview](../products/audio/microphone-and-preview.md) 和 [playback-and-eq](../products/audio/playback-and-eq.md)。导出数、函数捕获数或字节一致性不代表 Rust 已实现，也不代表官方 DLL、音频端点、相机属性、HID 报文、读回、失败、取消、恢复和释放已经运行验收；没有设备时的回放和模拟只能作为独立期望，官方实际对照继续保持 Unverified。
 
@@ -409,7 +409,7 @@ Four-thread static byte checks (`ThreadPoolExecutor(max_workers=4)`) reused the 
 
 报告使用 16 个发布线程读取固定分析索引，保留每个模块的原件/capture 身份、函数和基础失败数、伪代码记录、导出函数体、关键导入和检索候选。基础捕获的 869 条失败与补查恢复结果分开记账，不改写原始失败收据。报告不包含 EXE/安装器后续任务；已有历史 EXE 静态收据不进入本批队列。真实 DLL、服务、设备、错误、取消、恢复、释放和 Rust/页面对照仍按授权边界分别记录，不能以批量索引替代运行验收。
 
-统一续查使用一个协调队列，按本机 16 个逻辑核启用最多 16 个 Python 调度线程和独立静态分析进程，不启动产品代理。原始 capture-corpus 的现存队列收据声明 module_count=884，但 modules 只保存 836 项，日志也止于 836；这 836 项为 reused_complete_capture，不能据进程退出宣称剩余 48 项已完成或已排除。881 项索引另按捕获 input 的 DLL/NODE/SYS 扩展名筛选，与队列的候选来源和别名筛选不是同一集合。当前逐条复用完整捕获并补查有汇编依据的类型、间接调用、传输和释放；Rust 迁移保持后置。
+统一续查使用一个协调队列，按本机 16 个逻辑核启用最多 16 个 Python 调度线程和独立静态分析进程；经用户要求并行分配的语义核验任务复用完整捕获，各自负责明确的文档与收据，不重复启动该队列，也不以等待子任务阻塞其他分析。原始 capture-corpus 的现存队列收据声明 module_count=884，但 modules 只保存 836 项，日志也止于 836；这 836 项为 reused_complete_capture，不能据进程退出宣称剩余 48 项已完成或已排除。881 项索引另按捕获 input 的 DLL/NODE/SYS 扩展名筛选，与队列的候选来源和别名筛选不是同一集合。当前逐条复用完整捕获并补查有汇编依据的类型、间接调用、传输和释放；Rust 迁移保持后置。
 
 全库失败函数在同一并行批次中按完整指令／操作数分组，基础捕获共 241 个模块、869 条失败、329 组汇编结构。分组仅用于定位共享问题；实际修复前必须核对调用方和全部相关 callee，不能按同名函数或单一关键字套用签名。UTF-16／UTF-8 转换组逐份核对调用方和三个 callee 的寄存器参数、完整原字节，明确排除反编译器错误推导的第五／第六参数，再由 `supplement-native` 在私有 IDB 副本中应用类型并重新执行 IDA／Hex-Rays。队列与每次实际分析结果见[统一补查收据](../../.analysis/results/native-reanalysis-batch.json)；原 capture 和 IDB 保持不变，恢复伪代码不计作产品功能或实际设备验收完成。
 
@@ -417,6 +417,42 @@ Four-thread static byte checks (`ThreadPoolExecutor(max_workers=4)`) reused the 
 
 实际命令为 `python -X utf8 .work/native-bulk-analysis-20261024/reanalyze_failures.py --workers 16` 和同一脚本的 `--phase demangle --workers 16`；前者完成 56/56，后者完成 59/59，均保留正式 `supplement-native` 计划、IDA 9.1／Hex-Rays 9.1.0.250226 会话和完整函数结果。第二批根据完整的九指令调用方及实际 callee 核实 RCX 输出缓冲区、RDX／R8 输入和 R9D 的 0／1 分支，再修正错误的聚合返回推断；它恢复的 118 条基础失败均经现有严格复核器独立通过。[第二批收据](../../.analysis/results/native-bulk/demangle-reanalysis.json)不以队列退出代替此复核。
 
-同一脚本的 `--phase audit --workers 16` 对全部 241 个基础失败模块调用 `native_reanalysis_resolution`，结果为历史基础失败 869、已恢复 176、仍保留 693，141 个模块仍有失败，审计读取异常 0。[正式复核](../../.analysis/results/native-bulk/reanalysis-verification.json)另保留 6 个模块的 8 条补查错误：6 条完整结果冲突和 2 条旧不完整补查。字符转换批次的无错误模块为 50/56；不能将队列的 passed=56 写成全部独立复核无误。完整冲突对的实际汇编等非类型字段一致，正文在明确参数重命名后也一致，但声明和摘要不同，仍按严格规则保留冲突；[诊断结果](../../.analysis/results/native-bulk/reanalysis-conflicts.json)只解释差异，不放宽对照或静态验证标准。
+同一脚本的 `--phase audit --workers 16` 对全部 241 个基础失败模块调用 `native_reanalysis_resolution`。大函数与 SDK x86 补查后的[正式复核](../../.analysis/results/native-bulk/reanalysis-verification.json)记录：历史基础失败 869、已恢复 212、仍保留 657，审计读取异常 0；其中 212 为此前 176、大函数 34 和 SDK x86 2 条恢复之和。该完整快照另保留 6 个模块的 8 条补查错误：6 条完整结果冲突和 2 条旧不完整补查。字符转换批次的无错误模块为 50/56；不能将队列的 passed=56 写成全部独立复核无误。完整冲突对的实际汇编等非类型字段一致，正文在明确参数重命名后也一致，但声明和摘要不同，仍按严格规则保留冲突；[诊断结果](../../.analysis/results/native-bulk/reanalysis-conflicts.json)只解释差异，不放宽对照或静态验证标准。新的统一剩余队列启动后，进展另记于其独立收据，不覆盖此历史基础失败。
 
 同一脚本的 `--phase wpp --workers 16` 使用固定的两份完整指令模板和现有原件函数验证器，46 个键盘驱动包装函数的输入、完整 chunk 与指令逐字节匹配，合计 2,254 条指令、9,344 字节，错误 0；实际导入另核为 WppRecorder 的 WppAutoLogTrace。完整参数转发和条件分支见[设备通信](../products/shared/device-communication.md#键盘驱动中的-wpp-日志包装边界)，[收据](../../.analysis/results/native-bulk/wpp-wrapper-verification.json)保留每个版本与函数身份。这是完整汇编语义核对，不是重新运行驱动、设备测试或 Rust 功能验收。
+
+### 大函数补查的进程内上限与收据
+
+Hex-Rays 的默认 `MAX_FUNCSIZE = 64` 会拒绝超过 64 KiB 的函数，即使完整汇编和原始 chunk 已捕获。统一入口 `tools/workspace.py supplement-native` 的 `--max-function-kib` 只接受 64–1024 的整数，且仅用于显式选择的已保留函数边界；不能与指针表捕获混用。该设置通过 IDA 9.1 本机 Python API `ida_hexrays.change_hexrays_config` 应用于本次私有 IDB 分析进程，不修改安装目录配置、原件、基础 capture 或原始数据库，也不自动增加或猜测 ABI 声明。
+
+计划的 `function_selection.decompiler_limits` 参与精确 selection 身份，capture 的 `applied_decompiler_limits` 必须与计划完全一致；插件不可用或拒绝设置时立即失败。严格复核继续逐字节核对原件、原始函数边界和实际输出，未应用上限、应用不同上限或篡改原件／汇编均不能被接纳。分析进程成功退出仍不等于恢复成功，必须在补查完整、伪代码存在和独立复核均满足后分别记账。
+
+本批以同一协调脚本的 `--phase large --workers 16` 选择仍报 `too big function` 的 17 个范围内模块、34 个函数，显式设置 1024 KiB，排除安装器插件。[大函数补查收据](../../.analysis/results/native-bulk/large-reanalysis.json)现记录 17/17 模块结束，34 条恢复经随后的 `--phase audit --workers 16` 全库严格复核确认。相关收据正向、篡改反例及原始字节保护通过 `NativeSupplementTests` 定向验证，当前 9 个测试通过；该测试证明维护工具的接受边界，不是 DLL 功能运行测试。
+
+### 统一剩余静态任务与严格复核
+
+统一维护入口为 `python -X utf8 tools/workspace.py reverse-pending --workers 16`，协调者以同一个有界线程池处理本机逻辑核数量内的原生与前端任务。原生任务复用完整基础捕获和私有 IDB，仅为有准确边界的剩余失败执行正式补查；前端任务复用现有获取、模块恢复和词法 AST 工具。完整任务状态、实际命令、逐项输出与未决原因保存在[统一收据](../../.analysis/results/reverse-pending.json)，摘要同步到[批量报告](native-bulk-reverse.md)。脚本数量和 worker 数量不代表同时运行相同数量的 IDA；原生阶段结束后，前端阶段可只运行 Python 静态工具。
+
+完整基础捕获必须通过 `verify_native_capture`，逐项核验函数清单、完整输出、汇编标记和实际产物字节；`capture_complete` 本身不能作为验收。原件身份在开始、每次原生命令返回、基础捕获核验后和发布前重新核对，基础清单在发布前也必须保持一致。活跃或无法查询的会话不会被重复启动；恢复中断补查仅允许在确认 PID 已消失后执行，并保留旧 session、计划、capture 和日志的原始字节，不能补造退出码。
+
+`--verify-only` 只对已结束队列执行严格复核，不启动 IDA 或网络修复；完整原队列收据以原始字节及 SHA-256 记入当前收据的 `previous_static_run`。分析器源码按实际字节固定在同一结果树的 `tool-sources/`，严格结果分别写入 `verified-native/` 和 `verified-frontend/`，保留原输出。存在失败或严格冲突时，CLI 返回 1；队列已结束、静态通过、语义完整、Rust 实现、页面接线和实际 DLL／设备验收仍分别记录。`python -X utf8 -m unittest discover -s tools -p test_reverse_pending.py -v` 的 19 项测试覆盖并发、PID 边界、运行中原件变化、伪完整清单、聚合缺失、同长度产物篡改、复核的执行边界和非零返回码；这些是维护工具测试。
+
+源集登记与依赖闭包也分别核对：12 份家族矩阵的 664 个源集及 25 个宿主来源入口均已具备 acquisition，当前共保留 711 个前端源集；这不代表所有声明依赖或动态 chunk 已获取。家族矩阵的静态 JS／CSS／HTML 清单未发现缺文件或长度不符，但仍有声明的 TypeScript／图像 404、动态 chunk 枚举不可用及恢复图问题。枚举不可用的记录数不能换算为缺失文件数。当前普通修复会重试瞬态／损坏输入并保留历史，已记录的 source-declared 404 仍须通过正式的显式 `--retry-declared-missing` 路径核对；不能声称普通修复已把这类缺项补全。
+
+### 剩余失败的有依据批量重分析
+
+`reverse-pending --native-only` 仅处理原生失败与补查验证冲突，不重新扫描前端，不原样重复已经失败的 IDA 参数。可重复提供 `--native-review "项目相对收据.json#/计划指针"`，在同一有界队列批量执行经完整汇编审阅的修复。计划包含原件、基础捕获、完整函数证据的实际字节身份，目标 RVA、明确类型及其依据；执行前再次核对计划与全部证据。已恢复且无冲突的匹配结果才可从队列排除，失败、补查冲突和未决调用继续保留。
+
+`supplement-native --import-type "IAT_RVA=函数指针声明"` 仅接受原 PE 普通导入表中具名且唯一、实际字节可映射的 IAT 槽；延迟导入、序号导入、普通数据或未知间接指针不得套用。IDA 仅在私有 IDB 副本固化完整函数指针类型，记录旧类型、实际应用类型和槽字节；严格复核要求该记录与原件及计划一致。磁盘 IAT 字节与 IDA 加载视图分别保留；IDA 导入注册必须唯一匹配名称、模块及槽宽，不要求加载后槽内容等于原 PE。完整捕获中已经存在的六字节 `FF 25` 导入尾跳 thunk，经原件指令、边界及目标 IAT 核实后，应用同一指针的完整被指向函数类型并单独记账。变参日志函数须保留所有固定参数和省略号，不能以删参数或改成无参函数来消除报错。现有根函数类型修复仍须保留所有实际参数、寄存器与栈清理语义。
+
+`supplement-native --merge-functions "OWNER_RVA=RVA,RVA,..."` 只处理已有完整捕获中经明确审阅的连续单 chunk 函数片段。所有成员须顺序连续、无洞、无重叠，owner 必须是首成员及显式选择的目标；原件字节、完整指令、成员文件身份及非 owner 外部真实 CALL 入口分别核验。该规则不自动证明全部语义，也不据相邻地址自动合并。IDA 仅删除私有 IDB 内对应片段定义并按确切并集重建 owner，原始 PE、基础 IDB 与历史失败不变。manifest 保留全部成员身份及实际应用 chunks；严格复核重新计算并集，仅以完整 owner 输出核对合并基线，不借此删除成员的旧失败或放宽普通函数边界检查。
+
+当前审阅计划分别保留在 [Chroma 事件线程收据](../../.analysis/results/native-bulk/chroma-lifecycle-verification.json)、[设备驱动日志收据](../../.analysis/results/native-bulk/camera-0e06-identity-verification.json)和[音频共用字符查找尾收据](../../.analysis/results/native-bulk/audio-semantic-verification.json)。计划获准执行不等于失败已恢复；只有正式 IDA 输出及完整字节、边界和伪代码独立复核通过后，才减少基础失败计数。共享栈帧、多寄存器输出和内嵌子程序边界无法用普通 ABI 无损表达时继续静态核查，不提交猜测类型。
+
+维护工具的定向纯测试为 `python -X utf8 -m unittest discover -s tools -p test_reverse_pending.py -v`（36 项）及 `python -X utf8 -m unittest discover -s tools -p test_evidence.py -k NativeSupplementTests -v`（20 项），当前均通过；`test_evidence` 全部 217 项也通过。反例覆盖过期／冲突收据不得隐去失败、审阅计划与原件执行前再次核验、完整命名 IAT 与序号／非 IAT 拒绝、精确导入 thunk、片段合并的字节与边界篡改，以及函数、IAT、仅复核模式的实际命令边界。这些测试不运行 IDA 或厂商 DLL。
+
+### 历史临时文件的保守清理
+
+`python -X utf8 tools/workspace.py clean --stale` 只处理当前批次开始前的 `.work` 根层 `.log/.txt/.out` 与根层 `__pycache__/*.pyc`。引用核对使用已安装的 `rg` 固定字符串多模式搜索与 16 个扫描线程，覆盖维护源码、文档、输入索引及正式 JSON 收据；已索引的函数／AST／原始反编译正文不重复扫描。不明类型、仍有引用、活进程路径、链接／junction、新文件及占用文件保持原样，删除前以 Windows 独占句柄重新核对文件身份。该模式不进入原生 IDB、分析工具与当前运行目录，也不删除 `.analysis` 原件或正式结果。
+
+首批共核对 529 个候选，删除 526 个文件、26,397,115 字节（约 25.17 MiB），3 个候选因现有引用保留，保护检查无错误；删除后逐项确认均不存在，8,933 个原有受保护文件及输入／corpus 索引均仍在。清单在当前队列最终发布后合并至统一收据的 `scratch_cleanup`，合并前暂存于受保护的当前运行目录。`test_scratch_cleanup.py` 的 13 项测试中，11 项通过；2 项真实 symlink 创建因本机权限跳过，另有无需该权限的链接拒绝、目录逃逸及真实独占占用反例。默认全量 `clean` 与显式 `--stale` 是不同范围，运行中的分析仅使用后者。

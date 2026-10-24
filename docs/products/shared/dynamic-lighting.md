@@ -777,6 +777,20 @@ parent 检查 `0xf4730` 以 PROCESS_QUERY_LIMITED_INFORMATION（`0x1000`）打�
 ### Rust 接线和验证边界
 
 本 DLL 的静态结果只定义了 SDK 进程间注册/事件/元数据边界，不能替代设备灯效协议、服务端共享区或 Rust 的真实写入。实现时必须分别建模回调注册代次、重复注册/未注册、身份不符、共享事件为空、UnInit 释放、注册表缺失和跨进程句柄关闭；纯模拟可先覆盖这些状态，但实际官方 DLL 与 Rust 的事件顺序、共享内存内容、设备结果和释放仍保持 **未验证**。
+
+### 三个事件线程、共享环与停止结果
+
+同一[灯光生命周期收据](../../../.analysis/results/native-bulk/chroma-lifecycle-verification.json)的 `api_event_threads` 继续核对了本 DLL 的 10 个完整函数、2,125 条指令和 6,785 字节。16 个静态核验 worker 逐项比对原件、全部 chunk、指令字节和捕获身份，未列出指令的块字节为 0。`0x12c0/0x12d0/0x12e0` 的原始 Hex-Rays 失败仍保留；它们均为六指令线程入口：从唯一栈参数取对象到 ECX，分别调用 `0x62a0/0x6720/0x6ae0`，保留 EAX 后 `ret 4`。这组汇编足以追踪实际线程目标，不等于三个伪代码已恢复，也不新增猜测的导出签名。
+
+`0x62a0` 等待对象 `+44` 的状态事件及 `+24` 的停止事件。状态事件到来时，按 `+64` 的状态及 `+52` 的角色，创建／打开或释放 `+20/+68` 的命名 mutex；随后对 `Global\\{89811F96-91C2-4C19-8E0A-54469F491550}` 创建事件、调用 `PulseEvent` 并关闭本次句柄。状态传播发生在进程间事件层，没有在此读取设备应答，`PulseEvent` 返回也没有形成确认契约。停止索引为 1 时返回 0；其他等待结果走实际日志错误链，仍需与初始化、消费者和停止结果分别判断。
+
+`0x6720` 创建 `Global\\{190E28CB-BB73-46B1-8FFD-62FF0EE273A0}` 计数事件，从 `+56` 所持映射读取应用数量；初值大于 0 且 `+60` 有回调时直接调用 kind `1`。随后等待计数／停止事件：数量改变与数量不变分别进入 `0xada0/0xae40` 的 PPL 调度，不能将“不变”分支当作未发生工作，也不能由释放 task 引用推定异步回调已经完成。PPL action 到页面的完整消费者仍须继续跟踪。
+
+共享环的实际分配者 `0x10e0` 使用 `Global\\D8B2B77C-040B-4941-A944-769CB6924E1F`，映射长度为 `0x7c`（124）字节：4 字节 header 与 10 项、每项 12 字节记录。Open 成功时直接映射；进入 Create 路径且映射成功后清零 124 字节，没有单独检查 Create 是否返回已存在映射。`0x6ae0` 使用 `Global\\E099001D-500E-457D-97CD-380568F5DCBB` 事件，先取共享 header 作为起始 index，再按 `header + 4 + index*12` 复制 8＋4 字节；处理后以有符号 `cmp index,9 / cmovge` 决定下一 index 是否归零。入口没有先把 header 校验或规范化为 `0…9`，不能擅自改写成无条件 `%10` 后声称同等行为。
+
+该环消费者的伪代码保留 **bad sp value** 警告，字段解释以完整汇编为准：记录第一个 u32 与入口保存的 this 指针低 32 位比较，不相等才打包到 `0xaef0` 的 PPL action。不能将这些不透明字段直接命名成 PID、设备 ID 或设备确认。映射失败的空指针分支与事件／停止处理分别存在，不能由对象分配成功推定共享区已可用。
+
+初始化 `0x1530` 在后续句柄与线程创建前发布全局身份，线程创建链失败会短路并返回 `GetLastError`，没有把前面所有资源完整回滚；停止 event 的创建结果也没有单独进入最终成功判断。`UnInit → 0x1990` 发出停止信号后，对四个线程句柄各等待 **1,000 ms**，没有消费四次等待结果，再关闭线程、event、mutex 并清全局身份；不能套用另一份 SDK 的 10,000 ms，不能把返回 0 当成所有线程、PPL action、事件消费者与设备链已经排空。此节没有加载 DLL 或执行共享事件，实际并发、回调顺序及 Rust／官方行为差分仍保持 Unverified。
 ## Chroma 原生连接与效果引擎的下一批静态捕获
 
 本节记录 2026-10-24 以四个 worker 并行提取的三个 Chroma 原生模块。分析只读取已校验的 PE、IDA capture、导入、字符串和 xref；没有加载 DLL、启动 Chroma 服务或访问设备。
@@ -848,7 +862,7 @@ parent 检查 `0xf4730` 以 PROCESS_QUERY_LIMITED_INFORMATION（`0x1000`）打�
 | RzChromaSDK.dll（x86） | `8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038` | 253,128 B／`0x10000000` | `7d2de3c1ceb4b9860b3eec84bd045a29b4a7d5886cd1d0adc155b675e66c2e32` | 15／15／2,273／6,883 B，全部字节均有列出的指令 |
 | RzChromaSDK64.dll（x64） | `7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7` | 273,096 B／`0x180000000` | `35aabd2f3285e856d762889213e7ec73630b69b116a5ff8b33d76250766540d1` | 15／15／1,666／6,822 B，其中指令 6,484 B，chunk 内未列出 338 B |
 
-原件路径与版本归属见下方两份 capture 的 `input`；这些 SHA 用于证据身份，不是产品运行时兼容门禁。x86 完整捕获为 733 函数，仍保留 `0x6500`、`0x6510` 两项 Hex-Rays 失败；本批所选 15 函数均有完整汇编及伪代码。x64 完整捕获为 943 函数、0 项 Hex-Rays 失败；本批不是整个 SDK 的语义完成声明，也不与其他文档复用的函数重复累加。
+原件路径与版本归属见下方两份 capture 的 `input`；这些 SHA 用于证据身份，不是产品运行时兼容门禁。x86 完整基础捕获为 733 函数，原样保留 `0x6500`、`0x6510` 两项 Hex-Rays 历史失败；下节的私有补查已独立恢复这两项，本批所选 15 函数本来均有完整汇编及伪代码。x64 完整捕获为 943 函数、0 项 Hex-Rays 失败；本批不是整个 SDK 的语义完成声明，也不与其他文档复用的函数重复累加。
 
 | Export | x86 RVA / function record | x64 RVA / function record |
 | --- | --- | --- |
@@ -877,7 +891,7 @@ parent 检查 `0xf4730` 以 PROCESS_QUERY_LIMITED_INFORMATION（`0x1000`）打�
 
 `InitSDK` 在检查全局对象之前先验证输入：指针非空，偏移 `0`、`512`、`2560`、`3072` 的四个 UTF-16 字符串非空，偏移 `3584` 的 DWORD 为 `1..63`，偏移 `3588` 的 WORD 为 `1..2`；失败返回 87。字符串检查沿 NUL 扫描，本层没有独立长度参数，不能把固定偏移误写成安全边界校验。通过验证后，已有对象仍返回 0，没有重新提交新描述。
 
-x86 `UnInit` 先调用内部注销，将运行标志清零，触发并关闭停止事件，然后对三个线程各等待 10,000 ms，再关闭线程句柄和另外两个句柄、销毁对象并清空全局指针；本层丢弃每次等待结果，最终返回 0。x64 公开 `UnInit` 只有在内部停止返回 0 后才销毁及清空对象，否则保留对象并返回内部错误；内部停止是否真正等待退出仍须沿下一层核对。不得用公开返回 0 证明线程已经退出或全部回调已经结束。
+x86 `UnInit` 先调用应用 `DevicesSupported` 写回链，将访问标志清零，触发并关闭停止事件，然后对三个线程各等待 10,000 ms，再关闭线程句柄和另外两个句柄、销毁对象并清空全局指针；本层丢弃每次等待结果，最终返回 0。x64 公开 `UnInit` 只有在内部停止返回 0 后才销毁及清空对象，否则保留对象并返回内部错误；下节核实其实际内部函数固定返回 0，不能把这个外层条件理解成已检查线程退出。不得用公开返回 0 证明线程已经退出或全部回调已经结束。
 
 ### 效果参数与错误边界
 
@@ -901,3 +915,98 @@ x86 `UnInit` 先调用内部注销，将运行标志清零，触发并关闭停�
 `RegisterEventNotification` 的输入是 HWND：未初始化返回 5023，第一次 `IsWindow` 失败返回 6，已有有效通知窗口返回 1247，否则第二次验证成功后保存 HWND 并返回 0；第二次验证失败返回 87。x86 通知槽位在对象 `+5484`，x64 为 `+6000`。`UnregisterEventNotification` 只在当前槽位仍是有效窗口时清零并返回 0，否则返回 5023；本层没有等待消息接收方、回调或硬件完成。
 
 这些导出已经给出独立 Rust 纯／模拟测试的输入边界：未初始化、重复 Init、无效描述、空 GUID、类型 7 的键盘拒绝、鼠标 LED 17 的有效边界、类型 9 的转换、窗口失效和注销，以及停止等待超时。实际效果缓冲区编码、内部集合、共享帧／服务通信、设备写入及读回仍继续追踪；本次没有执行 Rust 行为测试或官方 DLL 实际对照，实际设备、事件顺序、取消、恢复和释放验收均保持未验证。
+
+### SDK 内部线程、通知消息与停止结果
+
+[生命周期逐字节复核](../../../.analysis/results/native-bulk/chroma-lifecycle-verification.json)继续核实同一 x64 原件的 22 个函数与 x86 原件的 7 个函数。x64 为 2,732 条指令、11,661 B chunk，其中指令字节 11,641 B、未列为指令的 chunk 字节 20 B；x86 为 1,430 条指令、4,714 B，所有字节均有列出的指令。完整 chunk、函数记录身份和每条指令均重新与对应原件比较；选择集合与上一节有交集，不能把两节函数数直接相加。本节没有执行 DLL 或其原生工作线程，也未创建应用窗口。
+
+x64 导出 `Init 0x28c50`／`InitSDK 0x28c90` 均先发布新对象到全局指针，再调用内部 `0x81f0`／`0x86f0`。内部的提前返回 `1647` 分支没有清除该全局对象；随后再次调用 `Init` 会命中已有对象并返回 0，而不会重试内部初始化。正常分支创建手动复位停止事件 `+1080`，再启动下列三个线程；没有检查 `CreateEventW`／`CreateThread` 的失败结果就走最终返回 0。对象存在、公开初始化返回与后台观察是否工作必须分别建模。
+
+| 线程及对象句柄槽 | 完整入口／消费者 | 等待与失败的实际分支 |
+| --- | --- | --- |
+| 应用通知，`+2368` | `0x7060 → 0x140b0 → 0x134f0` | 打开或创建应用事件 `Global\{89811F96-91C2-4C19-8E0A-54469F491550}`；等待顺序为停止事件、应用事件。索引 0 退出，1 刷新应用状态，其余记录错误并退出；停止句柄为空时仅日志后仍进入等待 |
+| 本机在线状态，`+2376` | `0x7070 → 0x14310 → 0x134f0` | 创建在线／离线两个事件 `Global\{A84AF9C8-EFE0-430D-871C-10DA760C2CCD}`／`Global\{0F9297E6-E80C-47E4-9A8B-1237E50484B7}`，停止事件位于第三项。索引 0／1 设对象 `+0` 为 1／0 并刷新，2 退出，其余记录错误；退出关闭本线程持有的前两个事件 |
+| 会话状态，`+2384` | `0x7080 → 0x6e70 → 0x14600` | 入口持有 `Global\{821AA2A2-8215-4A16-BE9D-7CD8CEBDC398}` 的 `0x54` B 共享区，再等待会话事件 `Global\{B8B918C0-9790-47F2-AC7A-F36B8414140C}`、停止事件。共享区为空直接返回当时 `GetLastError`；缺停止事件返回 6；正常 stop 索引 1 退出，包装入口再 unmap／close 自己的共享区资源 |
+
+`0x134f0` 的通知消费者是已登记的 `HWND`，通过 `PostMessageW(hwnd,0xa000,wParam,lParam)` 发布：全局注册表 `Apps\Enable` 变化使用 `wParam=1`，当前应用 `Apps\<exe>\Enable` 变化使用 3，访问权变化使用 2，`lParam` 为对应状态值。注册表查询失败时不把该字段改为 0；不是每次唤醒都发送这三种消息。访问权还比较本进程、共享区发布的 active PID、在线与会话状态；在线但 active PID 尚未发布时保留既有访问权。`PostMessageW` 没有同步设备应答、接收者确认或队列排空契约，注销槽位也不能撤回已排队的消息。
+
+会话读取 `0x13300` 有原版特有的失败策略：`ProcessIdToSessionId` 或连接状态查询失败会按 unlocked 返回 1；已知连接非 active 返回 0；后续扩展会话查询失败则采用已取得的 active 结果。该布尔是软件访问策略，不能当作会话实测成功。会话事件 `0x14600` 处理 lock／unlock、console disconnect／connect 时还存在 500／1,000 ms 等待及恢复调用；其具体效果编码不在本节的已闭合边界内，不把等待结束当作灯光恢复确认。
+
+x64 `UnInit` 的实际停止链为 `0x28d90 → 0x8c20 → 0x7e10 → free → 全局指针清零`：
+
+1. `0x8c20` 先调用 `0x13140` 合并写回本应用 `DevicesSupported`；该函数的注册表错误没有被停止链采用。
+2. 将访问字段 `+12` 清零，调用 `SetEvent(+1080)`，随即关闭停止事件；只有 `CloseHandle` 成功才清零槽位。`SetEvent` 结果不检查，关闭发生在等待线程之前。
+3. 对 `+2368/+2376/+2384` 中非空线程句柄分别 `WaitForSingleObject(...,10000)`；三次调用后都直接重新读取句柄，没有检查等待返回。随后关闭句柄，关闭 `+1064/+1072` 的同步句柄。
+4. 调用 `0x13000(pid,0)` 把进程状态写入另一共享环并 pulse 通知事件；返回值同样不进入停止结果。尾部汇编 `0x8d8c xor eax,eax`，本函数固定返回 0。
+5. 外层因此继续析构。`0x7e10` unmap／close 应用共享区、八个拥有对象和各设备映射；对象清理 `0x5f00` 还关闭事件／映射／私有命名空间并删除边界描述。失败后的条件、线程实际退出和消息处理并没有另一次确认。
+
+因此该静态链证明“尝试停止、等待并释放”，不能证明 timeout／wait failure 后线程已退出，或消息接收端已停止使用相关状态；这里只记录未检查结果与释放顺序，没有执行并证实并发故障。独立实现与官方行为对照须分别验证停止信号失败、等待超时、句柄关闭失败、初始化部分失败、重复初始化、注销后的已排队消息与在途观察，不能照外层返回 0 统一宣告清理成功。
+
+x86 的两项 Hex-Rays 历史失败也不意味着机器码和线程语义丢失：`0x6500`／`0x6510` 各有完整六条指令，均从 `[ebp+8]` 取唯一线程实参到 ECX，调用 `0x14260`／`0x14460` 后 `ret 4`。两个实际调用者 `0x7530`／`0x7a20` 均将它们传给 `CreateThread` 并传入同一对象；完整 callee 分别等待应用事件与在线／离线事件，再调用 x86 自己的状态刷新 `0x13490`。这条 ABI 依据来自该 x86 原件，没有套用 x64 伪代码。
+
+#### x86 精确补查与没有被外层消费的错误
+
+现有 `supplement-native --no-refresh-gaps` 已对 `0x6500/0x6510/0x14260/0x14460` 使用单个私有 IDB 补查。完整汇编中，两个 callee 在 `0x14288/0x1448b` 将 ECX 保存到 ESI／EDI，正常路径没有调用者栈参数，结果经 EAX 返回，正常退出为裸 `ret`；额外 chunk 的栈读取属于 SEH／安全清理 funclet。因此只对两个 callee 固化 `unsigned int __thiscall(void *context)`，保留 wrapper 的单参数 `__stdcall`、原始函数边界与全部代码字节。
+
+[补查 capture](../../../.analysis/results/native/8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038/supplements/e40c25b84e7ca202/capture.json)与[分析器 session](../../../.analysis/results/native/8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038/supplements/e40c25b84e7ca202/session.json)保留实际声明、应用前后类型、私有／基础 IDB 身份和完整四函数。独立 `native_reanalysis_resolution` 核对源码身份、原始与补查函数、chunks、逐指令、xref、计划及 session 后接纳两项恢复：该模块剩余 Hex-Rays 失败为 0，补查核验错误为 0。基础 capture 的两条错误与原函数 JSON 均未覆盖；复核结果在本页既有生命周期收据的 `x86_type_reanalysis` 中。
+
+根因仍保持准确边界：基础函数 JSON 的 callee `type` 字段为 null，但本次私有 IDB 记录的 `previous_type` 已是 `DWORD __thiscall(int *this)`，其调用约定与此次声明一致。固化已核实类型并清除反编译缓存后成功恢复，不能据此宣称原来的 ABI 一定错误，原始类型推断／缓存失败的具体内部原因尚未定位。成功生成伪代码和严格字节核验，也不等于已运行观察线程或验证 DLL 功能。
+
+额外四个完整函数 `0x1a70/0x1950/0x1df0/0x13490` 的 680 条指令已并行与原件复核，结果在 `failure_consumer_extension`，不与前文函数数量相加。实际错误消费继续区分：
+
+| 分支 | 线程实际返回／状态变化 | 初始化、注销及后续消费者 |
+| --- | --- | --- |
+| App 事件无法打开／创建 | `0x14260` 在清理安全资源后取当时 `GetLastError`，保存到 ESI，调用 `0x1950` 日志后将保存值作为 EAX 返回；并未保存每一个较早操作的原始错误 | `CreateThread` 创建成功不表示线程进入等待；初始化不读取这个退出码 |
+| Synapse 安全属性准备失败 | `0x1df0` 返回非零时跳过两个事件的创建；`0x14460` 的结果寄存器 EBX 初始为 0，此路径清理后仍返回 0 | 与“两个事件已创建并正常 stop”会出现相同线程退出码，不能据 0 声称已观察在线状态 |
+| Synapse 创建某个事件失败 | 每次显式创建失败均捕获当时 `GetLastError`；后一次失败可替换前一次保存值，再清理已取得的事件与安全资源 | `0x1a70` 记录后返回输入 DWORD，没有额外归一化；外层 Init／UnInit 均没有取线程退出码 |
+| 两个 monitor 的等待异常 | 非已登记索引转 `GetLastError → 0x1a70`，并将该 DWORD 返回为线程结果；正常 stop 返回 0 | 外层 `UnInit 0x26dd0` 只等待并关闭线程句柄，丢弃等待结果，不调用 `GetExitCodeThread`，最后仍返回 0 |
+| 刷新字段后窗口无效／`PostMessageW` 失败 | `0x13490` 已先更新相应状态，再尝试通知；没有因为通知失败恢复旧值。同一字段之后仍相等时不重发该项变化消息 | `0x14260/0x14460` 均丢弃刷新函数返回值并继续等待；发送失败不会成为其线程错误结果 |
+
+两个 monitor 内部没有 `ResetEvent`；本节未核实命名事件所有生产者何时复位，不能把一次事件置位解释成一次且仅一次刷新。静态／模拟验证还须专门覆盖安全属性失败但退出 0、后次创建错误覆盖前次、等待错误被外层丢弃、通知前字段已更新以及相同值不重发。真正事件生产者、窗口接收端、线程退出和消息排空仍须独立确认；本次恢复了缺失伪代码，没有把这些运行时项改记为通过。
+
+前端边界仍按真实路径区分：前述两设置页的控制权链走 LightingDriver／LampArray，不因本页存在 SDK HWND 通知就视为已接到它们。此次对三个已有前端目录的 209 份 JS 重新计算字节身份并进行有界字面扫描，未命中 `RzChromaSDK64`、`RegisterEventNotification` 或 `UnregisterEventNotification`；这只说明该范围内没有这些字面量，不能排除动态绑定，也不能证明窗口消息已经到达任何页面。实际消息接收 owner、全设备效果写回、Rust 独立实现、行为测试和官方实际 DLL／设备对照继续保持未验证。
+
+#### 两份 COM 库的异常复制与线程 ABI 补查
+
+既有[生命周期收据](../../../.analysis/results/native-bulk/chroma-lifecycle-verification.json)的 `native_failure_review.com_library_review` 保留两库完整静态审阅，`formal_reanalysis` 记录统一队列实际执行的 IDA 9.1／Hex-Rays 9.1 补查及独立复核。静态审阅使用四线程核验 48 份完整函数记录（两库 46 份及两份当前 x86 CRT provider 导出），共 6,317 条指令、23,157 B 完整 chunk；其中 23,114 B 列为指令，另外 43 B 是五处原件多字节 NOP，完整字节和位置均保留，没有因未列为指令而丢弃。这个集合不是两个 DLL 的完整功能语义审计。
+
+| 原件 SHA-256 | 正式补查 | 已恢复的原始 Hex-Rays 失败／仍缺伪代码 | 保留的其他限制 |
+| --- | --- | --- | --- |
+| `94dbc59390605e36ecea1fbc36ccf41b19d1ef078f85f9b5274c3f2cc5d3cf4f` | [29 函数 capture](../../../.analysis/results/native/94dbc59390605e36ecea1fbc36ccf41b19d1ef078f85f9b5274c3f2cc5d3cf4f/supplements/8ee8425080e5784b/capture.json)、[session](../../../.analysis/results/native/94dbc59390605e36ecea1fbc36ccf41b19d1ef078f85f9b5274c3f2cc5d3cf4f/supplements/8ee8425080e5784b/session.json) | 19／0（异常构造 11、线程入口 8） | 原先被拒补查的核验错误 1 条；新伪代码 `0x1a4d0` 仍有 bad-sp 警告 |
+| `d7781beebf438339b82085e9140609fbdd549d573617c8d71134754afeb58f8b` | [17 函数 capture](../../../.analysis/results/native/d7781beebf438339b82085e9140609fbdd549d573617c8d71134754afeb58f8b/supplements/c793d3795fb0092e/capture.json)、[session](../../../.analysis/results/native/d7781beebf438339b82085e9140609fbdd549d573617c8d71134754afeb58f8b/supplements/c793d3795fb0092e/session.json) | 13／0（异常构造 10、线程入口 3） | 原先被拒补查的核验错误 1 条；新伪代码 `0x168c0/0x17750` 仍有 bad-sp 警告 |
+
+两库的 21 个异常构造失败都调用真实 named IAT `VCRUNTIME140.dll!__std_exception_copy`，槽位分别为 `0x2f2dc`、`0x2528c`。调用者先压目标异常数据指针、再压来源指针；一次复制清理 8 B，两次复制统一清理 16 B。当前保留的两份 x86 provider 导出 `0x4320/0x4720` 完整 102 B 机器码与[保留的 CRT 头文件](../../../.analysis/inputs/platform-abi-current/msvc-14.44.35207/include/vcruntime_exception.h)共同核实 `void __cdecl(source,destination)`；外层构造函数自己的 thiscall／`retn 4` 保持不变。正式补查记录两条精确 named IAT 的导入类型应用；这两库没有额外的 import-thunk 类型恢复记录，没有按相似函数名替换其他入口。静态 provider 一致不证明运行时 loader 会选中哪份 DLL。
+
+两份 `Init`（`0x14850/0x129a0`）先发布全局对象，再以空 `lpParameter` 创建 11 个线程入口。外层入口不向内部 worker 压入参数，也不建立 ECX，仍保留 `DWORD __stdcall(LPVOID)` 和 `retn 4`。12 个内部 worker 从真实全局 `Block` 读取对象，唯一普通出口为裸 `retn`；补查仅固化无参数 cdecl 和 32 位 EAX 返回载体，不声称恢复了原始 C++ 返回类型或有符号性。四个对齐栈序言先 `push EBX`，故其后的 EBX 等于原始入口 ESP 减 4；`[EBX+4]` 是原始返回地址，不是普通业务入参。原始推断、SEH 共享 chunk 和 bad-sp 警告全部保留。
+
+独立双线程重新执行现有 `native_reanalysis_resolution`，逐项核对实际原件、基础捕获、补查、完整函数、逐指令与 xref、计划、导入及分析器 session，接纳 19＋13＝32 条原始失败恢复；46 个选定函数均有补查伪代码。基础失败、两条历史补查核验错误和三处新伪代码 bad-sp 警告没有删除，因此这里不能写成“整个 DLL 无错误”或“完整功能已验证”。实际调用结果、间接业务消费者、页面接线、独立 Rust 行为和官方 DLL／设备对照继续分别保持其未验证边界；本次复核未启动新 IDA 队列、运行 DLL 或运行应用。
+
+#### CRT 寄存器参数与无参异常抛出
+
+既有生命周期收据的 `native_failure_review.remaining_call_abi_review` 保留两份 x86 CRT 和一份 Chroma 库的完整调用点、原件字节、精确类型及正式补查复核；这里区分补查产生了伪代码与严格证据核验实际接纳。
+
+| 原件 SHA-256／新失败目标 | 正式补查结果 | 该模块仍缺伪代码 |
+| --- | --- | --- |
+| `5695560a50ed9746696c0d647e55d77459f5981907c177d086df36656a978b19`／`0x4b5b` | 新 capture 中存在伪代码，但与已接纳 `0x4bb7` 记录冲突，整份新补查被严格拒绝，目标不计恢复 | `0x4b5b/0xb7b5` |
+| `56e6c202747c00c99b812c236b47d065c475baa8bded1dec1d55c338eeaf85e8`／`0x46e2` | [正式 capture](../../../.analysis/results/native/56e6c202747c00c99b812c236b47d065c475baa8bded1dec1d55c338eeaf85e8/supplements/22cb9745b0db3abf/capture.json)经独立复核接纳 | `0xafc5` |
+| `9fa56120e438276d9e212f09738b9c60848ac0876229c6dccd835aeb40891f97`／`0xecf0` | [正式 capture](../../../.analysis/results/native/9fa56120e438276d9e212f09738b9c60848ac0876229c6dccd835aeb40891f97/supplements/8707965a49b9ce53/capture.json)经独立复核接纳 | `0x21e60` |
+
+两份 CRT 的内部 `FlsSetValue` worker 分别为 `0x4e28/0x49a8`，均有完整 32 条指令。入口 EDX 先保存到 ESI，FLS index 只从原件全局槽位 `0x10028/0x10024` 读取；入站 ECX 仅通过 `push ECX` 保留局部栈空间，不作为输入。动态解析 `FlsSetValue` 与 named `TlsSetValue` IAT（`0x1106c/0x11064`）两支均先压 value 再压 global index，并原样返回完整 EAX，worker 自己以裸 `retn` 返回。每份原件的五个真实调用点均显式建立 EDX，传入 startup PTD、`-1`、新分配指针或零，没有为 worker 压普通栈参数。因此精确内部声明为 `int __usercall ___vcrt_FlsSetValue@<eax>(void *fls_data@<edx>);`，不能保留虚构的 `fls_index` 栈参数或补造 ECX 入参，也不能把这一优化内部 ABI 当成 Windows 公开 API。
+
+`569556…` 重叠冲突的两份 `0x4bb7` 记录，其完整 chunks、汇编、类型及伪代码文本相同，差异位于伪代码局部变量 `location`：捕获器保留了带进程地址的 IDA SWIG `vdloc_t` 对象表示。当前核验按完整记录身份拒绝冲突，没有忽略字段、删除旧捕获或放宽比较；同类历史 `0x473e` 冲突也保留。生命周期收据的 `followup_plans[0]` 因而单独选择仍未接纳的 `0x4b5b` 与 worker `0x4e28`，保留原完整计划与历史记录，新的正式核验结果尚待取得。
+
+`9fa561…` 的调用链为 `0xecf0 → 0xf420 → 0xf2f0 → _CxxThrowException`。完整九指令 `0xf420` 不读取入站业务参数；它构造本地 12 B 异常对象，压入真实 ThrowInfo 与对象指针后调用 `0x25a1f` 的六字节跳板，跳板指向 named `VCRUNTIME140.dll!_CxxThrowException` IAT `0x281f0`。六指令构造函数写入 `bad array new length` 与相应 vtable。精确 helper 声明为 `void __cdecl __noreturn sub_1000F420(void);`；不返回语义同时有[保留头文件](../../../.analysis/inputs/platform-abi-current/msvc-14.44.35207/include/ehdata_forceinclude.h)第 190–191 行异常契约佐证。当前 provider 导出机器码仍有物理 `retn 8`，完整原件保留，不能把 C++ 异常契约描述成机器码没有返回指令。
+
+上述三个新增目标严格接纳两个，所有旧失败、冲突及核验错误继续保留；这是反编译恢复与 ABI 证据，不是实际执行了 CRT 或 Chroma 功能，也没有完成 DLL 行为对照。
+
+#### Stream 格式化操作符的精确导入边界
+
+`RzChromaStreamPlugin.dll` 原件 SHA-256 为 `4fc03c7540c4917529b2f416c88cb8f3703b98b225d8f2f02eeddceb4b364393`。其失败选择器 [`0x1b350`](../../../.analysis/results/native/4fc03c7540c4917529b2f416c88cb8f3703b98b225d8f2f02eeddceb4b364393/functions/1b350.json)保留完整 40 条指令；调用失败地址为 `0x1b3e2`，真实 named IAT 是 `0x71138`，名字对应 `MSVCP140.dll` 的 `basic_ostream<char>::operator<<(ios_base& (__cdecl *)(ios_base&))`。这里按原 PE 导入表的精确修饰名绑定，不以相似函数名替换。
+
+单回调分支压入一个函数指针；双回调分支在 `0x1b3d0/0x1b3d5` 预压两个指针，在 `0x1b3da/0x1b3e2` 调用同一导入两次，两次之间将 EAX 送入 ECX，调用后没有 caller 栈清理。当前保留的两份 x86 `MSVCP140.dll` provider（SHA-256 `463930767aaeb5603ebca7a068a17ca9482e64662a806942c4f48cbc6e1a8507`、`f656f0f98cf2510f4e0fe5d5666643028a6b8bac50bf553c0a464456c0e82934`）中，精确同名导出分别落在 `0x31d00/0x32640`，各有完整 20 条指令：ECX 保存为 this，唯一栈参来自 `[EBP+8]`，依 vbtable `+4` 调整到 ios_base 子对象，以 cdecl 调用 callback 并清理 4 B，EAX 返回原 this，最后 `retn 4`。合并函数地址还承载其他导出别名，不能用反编译器显示的 wide istream 名称覆盖实际 char ostream 导入。
+
+因此只对这一精确 IAT 使用 `void *(__thiscall *stream_insert_ios_base_manipulator)(void *stream, void *(__cdecl *manipulator)(void *ios_base));`；每次调用消费一个栈回调指针，ECX 接收者不是额外栈参数。[保留的当前编译器头文件](../../../.analysis/inputs/platform-abi-current/msvc-14.44.35207/include/__msvc_ostream.hpp)第 200–203 行给出相同的 ios_base cdecl callback 重载；该头文件只是 ABI 佐证，静态 provider 一致仍不证明运行时 loader 选中了哪份库。
+
+四个已有完整 callback 记录 `0x1a7d0/0x1a7f0/0x1b080/0x1b470` 均从普通栈输入取得指针、EAX 返回该指针并裸 `ret`。另两个实际目标 `0x1b060/0x1b450` 在原 capture 中没有独立函数入口，故仅保存原件支持的两个 23 B inline 代码跨度及其六指令解码，没有捏造新函数边界。新收据 `native_failure_review.followup_call_abi_review` 使用四线程独立核对 9 份完整函数、165 条指令与 493 B chunk，全部 chunk 字节均有列出的指令；两个 inline 跨度另列，不充当新增完整函数。
+
+`followup_plans[1]` 只选择 `0x1b350` 并恢复上述一处 named IAT 类型，正式 IDA 补查和严格接纳仍待结果，不能计作已恢复。新的 CRT／Stream 计划没有运行目标 DLL、服务、设备或应用；输入输出、状态变化、真实应答、错误、取消、恢复、释放及 Rust 独立实现对照仍保持未验证。

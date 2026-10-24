@@ -2399,6 +2399,459 @@ class NativeSupplementTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, message):
                     analysis.native_function_selection(bytes(self.fixture()), capture, selected, specifications, note)
 
+    def test_function_size_limit_is_bounded_and_part_of_exact_selection(self):
+        capture = {"functions": [{"rva": "0x1000", "address": "0x140001000"}]}
+        base = analysis.native_function_selection(bytes(self.fixture()), capture, [0x1000])
+        self.assertNotIn("decompiler_limits", base)
+        for limit in (64, 512, 1024):
+            with self.subTest(limit=limit):
+                selected = analysis.native_function_selection(bytes(self.fixture()), capture, [0x1000],
+                                                             max_function_kib=limit)
+                self.assertEqual(selected["targets"], base["targets"])
+                self.assertEqual(selected["decompiler_limits"], {"max_function_kib": limit})
+                self.assertNotEqual(selected, base)
+        for limit in (True, 0, 63, 1025, 512.0, "512"):
+            with self.subTest(limit=limit), self.assertRaisesRegex(ValueError, "size limit"):
+                analysis.native_function_selection(bytes(self.fixture()), capture, [0x1000],
+                                                   max_function_kib=limit)
+
+    def import_fixture(self):
+        raw = self.fixture()
+        raw[0x300:0x400] = bytes(0x100)
+        struct.pack_into("<I", raw, 0x98 + 108, 16)
+        struct.pack_into("<II", raw, 0x98 + 120, 0x2000, 40)
+        struct.pack_into("<IIIII", raw, 0x300, 0x2030, 0, 0, 0x2050, 0x2040)
+        struct.pack_into("<QQ", raw, 0x330, 0x2070, 0)
+        struct.pack_into("<QQ", raw, 0x340, 0x2070, 0)
+        raw[0x350:0x360] = b"WppRecorder.sys\0"
+        raw[0x370:0x382] = b"\0\0WppAutoLogTrace\0"
+        return bytes(raw)
+
+    def test_import_recovery_binds_name_slot_bytes_and_reviewed_variadic_declaration(self):
+        raw = self.import_fixture()
+        declaration = "long (__cdecl *WppAutoLogTrace)(void *, unsigned char, unsigned long, void *, unsigned short, ...);"
+        result = analysis.native_import_type_recoveries(raw, ["0x2040=" + declaration], "Exact caller registers and imported official variadic ABI")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["library"], "WppRecorder.sys")
+        self.assertEqual(result[0]["name"], "WppAutoLogTrace")
+        self.assertEqual(result[0]["raw_hex"], raw[0x340:0x348].hex())
+        self.assertEqual(result[0]["bytes"], 8)
+        capture = {"functions": [{"rva": "0x1000", "address": "0x140001000"}]}
+        selected = analysis.native_function_selection(raw, capture, [0x1000], type_note="Reviewed ABI",
+            import_specs=["0x2040=" + declaration])
+        self.assertEqual(selected["import_type_recoveries"][0]["declaration"], declaration)
+
+    def test_import_recovery_rejects_non_iat_duplicate_ordinal_and_unreviewed_declarations(self):
+        raw = self.import_fixture()
+        specification = "0x2040=long (__cdecl *WppAutoLogTrace)(void *, ...);"
+        for specifications, note in [([specification], None), ([specification] * 2, "reviewed"),
+                ([specification.replace("0x2040", "0x2030")], "reviewed"),
+                ([specification.replace("0x2040", "0x2048")], "reviewed"),
+                (["0x2040="], "reviewed")]:
+            with self.subTest(specifications=specifications), self.assertRaises(ValueError):
+                analysis.native_import_type_recoveries(raw, specifications, note)
+        ordinal = bytearray(raw)
+        struct.pack_into("<Q", ordinal, 0x330, (1 << 63) | 7)
+        with self.assertRaises(ValueError):
+            analysis.native_import_type_recoveries(bytes(ordinal), [specification], "reviewed")
+
+    def test_import_binding_keeps_loaded_bytes_distinct_but_requires_exact_symbol_slot_and_width(self):
+        raw = self.import_fixture()
+        request = analysis.native_import_type_recoveries(raw,
+            ["0x2040=long (__cdecl *WppAutoLogTrace)(void *, ...);"], "reviewed ABI")[0]
+        binding = {"rva": "0x2040", "name": "WppAutoLogTrace", "module": "WppRecorder",
+                   "ordinal": 0, "loaded_slot_raw_hex": "ffffffffffffffff"}
+        self.assertNotEqual(binding["loaded_slot_raw_hex"], request["raw_hex"])
+        self.assertTrue(analysis.native_import_binding_matches(request, binding))
+        for field, wrong in [("rva", "0x2048"), ("name", "WrongFunction"), ("name", None),
+                ("module", "WrongRecorder.sys"), ("module", None),
+                ("loaded_slot_raw_hex", "ffffffff"), ("loaded_slot_raw_hex", "not-hex")]:
+            with self.subTest(field=field, wrong=wrong):
+                self.assertFalse(analysis.native_import_binding_matches(request, {**binding, field: wrong}))
+
+    def import_thunk_fixture(self, root, architecture="x64"):
+        raw = bytearray(self.import_fixture())
+        base = 0x140000000
+        if architecture == "x86":
+            sections = raw[0x188:0x1d8]
+            struct.pack_into("<H", raw, 0x84, 0x14c)
+            struct.pack_into("<H", raw, 0x94, 0xe0)
+            struct.pack_into("<H", raw, 0x98, 0x10b)
+            struct.pack_into("<II", raw, 0x98 + 24, 0x2000, 0x400000)
+            struct.pack_into("<I", raw, 0x98 + 92, 16)
+            struct.pack_into("<II", raw, 0x98 + 104, 0x2000, 40)
+            raw[0x98 + 120:0x98 + 128] = bytes(8)
+            raw[0x178:0x1c8] = sections
+            struct.pack_into("<II", raw, 0x330, 0x2070, 0)
+            struct.pack_into("<II", raw, 0x340, 0x2070, 0)
+            base = 0x400000
+        for rva in (0x1000, 0x1010):
+            operand = 0x2040 - rva - 6 if architecture == "x64" else base + 0x2040
+            raw[0x200 + rva - 0x1000:0x206 + rva - 0x1000] = b"\xff\x25" + struct.pack("<I", operand)
+        raw = bytes(raw)
+        digest = hashlib.sha256(raw).hexdigest()
+        result = root / ".analysis/results/native" / digest
+
+        def write(path, value):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            data = json.dumps(value).encode()
+            path.write_bytes(data)
+            return {"path": path.relative_to(root).as_posix(), "bytes": len(data),
+                    "sha256": hashlib.sha256(data).hexdigest()}
+
+        functions, bodies = [], []
+        for rva in (0x1000, 0x1010):
+            at = 0x200 + rva - 0x1000
+            code = raw[at:at + 6].hex()
+            body = {"address": hex(base + rva), "rva": hex(rva), "end": hex(base + rva + 6),
+                    "chunks": [{"start": hex(base + rva), "end": hex(base + rva + 6), "raw_hex": code,
+                                "sha256": hashlib.sha256(raw[at:at + 6]).hexdigest()}],
+                    "assembly": [{"address": hex(base + rva), "rva": hex(rva), "bytes": code,
+                                  "text": "jmp cs:__imp_WppAutoLogTrace"}],
+                    "xrefs_to_entry": [], "pseudocode": None}
+            reference = write(result / "functions" / (format(rva, "x") + ".json"), body)
+            reference.update(path="functions/" + format(rva, "x") + ".json", rva=hex(rva), address=hex(base + rva))
+            functions.append(reference)
+            bodies.append(body)
+        original = root / ".analysis/inputs/native/fixture.dll"
+        original.parent.mkdir(parents=True)
+        original.write_bytes(raw)
+        capture = {"input": original.relative_to(root).as_posix(), "input_bytes": len(raw),
+                   "input_sha256": digest, "functions": functions,
+                   "failures": [{"stage": "1000:hexrays", "error": "call analysis -12"}]}
+        return raw, result, capture, bodies, write
+
+    def test_import_thunks_bind_both_pe_architectures_and_every_exact_same_slot_entry(self):
+        for architecture, expected in [("x64", ["ff253a100000", "ff252a100000"]),
+                                       ("x86", ["ff2540204000", "ff2540204000"])]:
+            with self.subTest(architecture=architecture), tempfile.TemporaryDirectory() as directory:
+                with patch.object(analysis, "ROOT", Path(directory)):
+                    raw, result, capture, _, _ = self.import_thunk_fixture(Path(directory), architecture)
+                    selected = analysis.native_function_selection(raw, capture, [0x1000], type_note="reviewed ABI",
+                        import_specs=["0x2040=long (__cdecl *WppAutoLogTrace)(void *, ...);"])
+                    self.assertEqual([row["raw_hex"] for row in selected["import_thunks"]], expected)
+                    self.assertEqual([row["rva"] for row in selected["import_thunks"]], ["0x1000", "0x1010"])
+                    for row in selected["import_thunks"]:
+                        self.assertEqual((row["slot_rva"], row["library"], row["name"], row["bytes"]),
+                                         ("0x2040", "WppRecorder.sys", "WppAutoLogTrace", 6))
+                        data = (Path(directory) / row["source_function"]["path"]).read_bytes()
+                        self.assertEqual(row["source_function"]["bytes"], len(data))
+                        self.assertEqual(row["source_function"]["sha256"], hashlib.sha256(data).hexdigest())
+                    (result / capture["functions"][0]["path"]).write_bytes(b"changed evidence")
+                    plain = analysis.native_function_selection(raw, capture, [0x1000])
+                    self.assertNotIn("import_thunks", plain)
+                    self.assertNotIn("import_type_recoveries", plain)
+
+    def test_import_thunks_reject_changed_slot_boundary_chunks_instruction_and_source_identity(self):
+        for architecture in ("x64", "x86"):
+            for issue in ("slot", "end", "chunks", "instructions", "chunk_hash", "source_hash", "entry"):
+                with self.subTest(architecture=architecture, issue=issue), tempfile.TemporaryDirectory() as directory:
+                    with patch.object(analysis, "ROOT", Path(directory)):
+                        raw, result, capture, bodies, write = self.import_thunk_fixture(Path(directory), architecture)
+                        body = bodies[0]
+                        if issue == "slot":
+                            body["chunks"][0]["raw_hex"] = "ff2548204000"
+                            body["assembly"][0]["bytes"] = "ff2548204000"
+                        elif issue == "end":
+                            body["end"] = hex(int(body["end"], 16) + 1)
+                        elif issue == "chunks":
+                            body["chunks"].append(dict(body["chunks"][0]))
+                        elif issue == "instructions":
+                            body["assembly"].append(dict(body["assembly"][0]))
+                        elif issue == "chunk_hash":
+                            body["chunks"][0]["sha256"] = "0" * 64
+                        elif issue == "entry":
+                            body["rva"] = "0x1001"
+                        reference = write(result / capture["functions"][0]["path"], body)
+                        if issue != "source_hash":
+                            capture["functions"][0]["sha256"] = reference["sha256"]
+                            capture["functions"][0]["bytes"] = reference["bytes"]
+                        else:
+                            capture["functions"][0]["sha256"] = "0" * 64
+                        with self.assertRaises(ValueError):
+                            analysis.native_function_selection(raw, capture, [0x1000], type_note="reviewed ABI",
+                                import_specs=["0x2040=long (__cdecl *WppAutoLogTrace)(void *, ...);"])
+
+    def merge_fixture(self, root):
+        raw = self.fixture()
+        raw[0x200:0x206] = bytes.fromhex("55908bec5dc3")
+        raw = bytes(raw)
+        digest = hashlib.sha256(raw).hexdigest()
+        result = root / ".analysis/results/native" / digest
+
+        def write(path, data):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            payload = json.dumps(data).encode()
+            path.write_bytes(payload)
+            return {"path": path.relative_to(root).as_posix(), "bytes": len(payload),
+                    "sha256": hashlib.sha256(payload).hexdigest()}
+
+        source = root / ".analysis/inputs/native/merge.dll"
+        source.parent.mkdir(parents=True)
+        source.write_bytes(raw)
+        capture = {"input": source.relative_to(root).as_posix(), "input_sha256": digest,
+                   "input_bytes": len(raw), "image_base": "0x140000000", "capture_complete": True,
+                   "functions": [], "failures": [{"stage": "1000:hexrays", "error": "synthetic owner"},
+                                                    {"stage": "1002:hexrays", "error": "synthetic member"}]}
+        for rva, code, instructions in [(0x1000, "5590", [(0, "55")]),
+                                        (0x1002, "8bec", [(0, "8bec")]),
+                                        (0x1004, "5dc3", [(0, "5d"), (1, "c3")])]:
+            start = 0x140000000 + rva
+            body = {"address": hex(start), "rva": hex(rva), "end": hex(start + 2),
+                    "chunks": [{"start": hex(start), "end": hex(start + 2), "raw_hex": code,
+                                "sha256": hashlib.sha256(bytes.fromhex(code)).hexdigest()}],
+                    "assembly": [{"address": hex(start + offset), "rva": hex(rva + offset), "bytes": value}
+                                 for offset, value in instructions],
+                    "xrefs_to_entry": [{"from": "0x140001080", "to": hex(start), "code": True, "type": 17}]
+                    if rva == 0x1000 else [], "pseudocode": None}
+            record = write(result / "functions" / (hex(rva)[2:] + ".json"), body)
+            record.update(path="functions/" + hex(rva)[2:] + ".json", rva=hex(rva), address=hex(start),
+                          assembly_captured=True, pseudocode_captured=False)
+            capture["functions"].append(record)
+        write(result / "capture.json", capture)
+        return raw, result, capture, write
+
+    def outline_fixture(self, root):
+        raw, result, capture, write = self.merge_fixture(root)
+        for row in capture["functions"]:
+            path = result / row["path"]
+            body = json.loads(path.read_bytes())
+            body["flags"] = 0
+            record = write(path, body)
+            row.update(sha256=record["sha256"], bytes=record["bytes"])
+        write(result / "capture.json", capture)
+        return raw, result, capture, write
+
+    def test_outline_selection_keeps_complete_helper_code_and_rejects_unreviewed_boundaries(self):
+        for issue in (None, "selected", "duplicate", "missing", "note", "code", "chunk", "identity"):
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                with patch.object(analysis, "ROOT", root):
+                    raw, result, capture, write = self.outline_fixture(root)
+                    outlines, note = [0x1002], "reviewed shared frame and multiple live outputs"
+                    if issue == "selected": outlines = [0x1000]
+                    elif issue == "duplicate": outlines *= 2
+                    elif issue == "missing": outlines = [0x1090]
+                    elif issue == "note": note = None
+                    elif issue in {"code", "chunk", "identity"}:
+                        row = capture["functions"][1]
+                        path = result / row["path"]
+                        body = json.loads(path.read_bytes())
+                        if issue == "code": body["assembly"][0]["bytes"] = "9090"
+                        elif issue == "chunk": body["chunks"][0]["raw_hex"] = "9090"
+                        else: body["flags"] = 1
+                        record = write(path, body)
+                        if issue != "identity": row.update(sha256=record["sha256"], bytes=record["bytes"])
+                    if issue:
+                        with self.assertRaises(ValueError):
+                            analysis.native_function_selection(raw, capture, [0x1000], type_note=note, outline_rvas=outlines)
+                    else:
+                        before = (result / "capture.json").read_bytes()
+                        selected = analysis.native_function_selection(raw, capture, [0x1000], type_note=note, outline_rvas=outlines)
+                        helper = selected["function_outlines"][0]
+                        self.assertEqual(helper["rva"], "0x1002")
+                        self.assertEqual(helper["set_flag"], "FUNC_OUTLINE")
+                        self.assertEqual(helper["expected_chunks"][0]["raw_hex"], "8bec")
+                        self.assertEqual((result / "capture.json").read_bytes(), before)
+
+    def test_outline_resolution_rejects_missing_changed_flags_chunks_and_helper_identities(self):
+        for issue in (None, "missing", "flags", "base", "chunks", "helper", "flag_value"):
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                with patch.object(analysis, "ROOT", root):
+                    raw, result, capture, write = self.outline_fixture(root)
+                    selection = analysis.native_function_selection(raw, capture, [0x1000],
+                        type_note="reviewed outlined helper", outline_rvas=[0x1002])
+                    baseline = write(result / "capture.json", capture)
+                    capture_ref = {key: baseline[key] for key in ("path", "sha256")}
+                    output = result / "supplements/outline"
+                    body = json.loads((result / capture["functions"][0]["path"]).read_bytes())
+                    body["pseudocode"] = {"lines": [{"line": 0, "text": "void caller() {}"}], "locals": []}
+                    record = write(output / "functions/1000.json", body)
+                    record.update(path="functions/1000.json", rva="0x1000", address=body["address"],
+                                  assembly_captured=True, pseudocode_captured=True)
+                    helper = selection["function_outlines"][0]
+                    applied = {**helper, "previous_flags": 0, "applied_flags": 0x40000, "outline_flag": 0x40000,
+                               "applied_chunks": helper["expected_chunks"], "base_database_modified": False}
+                    supplement = {"input_sha256": capture["input_sha256"], "base_capture": capture_ref,
+                        "capture_complete": True, "all_pseudocode_captured": True, "failures": [],
+                        "database_integrity": {"verified": True}, "base_capture_unchanged": True,
+                        "base_database_unchanged": True, "target_execution": False, "capture_tool": {},
+                        "function_selection": selection, "functions": [record], "type_recoveries": [],
+                        "ida_version": "synthetic", "hexrays_version": "synthetic",
+                        "function_outline_recoveries": [applied]}
+                    if issue == "missing": supplement["function_outline_recoveries"] = []
+                    elif issue == "flags": applied["applied_flags"] = 0
+                    elif issue == "base": applied["base_database_modified"] = True
+                    elif issue == "chunks": applied["applied_chunks"] = []
+                    elif issue == "helper":
+                        applied["source_function"] = {**helper["source_function"], "sha256": "0" * 64}
+                    elif issue == "flag_value": applied["outline_flag"] = 3
+                    write(output / "capture.json", supplement)
+                    write(output / "plan.json", {"function_selection": selection, "base_capture": capture_ref})
+                    write(output / "session.json", {"passed": True, "exit_code": 0, "capture_tool": {}})
+                    checked = analysis.native_reanalysis_resolution(result)
+                    self.assertEqual(len(checked["resolved_failures"]), 0 if issue else 1)
+                    self.assertEqual(bool(checked["verification_failures"]), bool(issue))
+                    self.assertEqual(json.loads((result / "capture.json").read_bytes()), capture)
+
+    def test_function_merge_binds_complete_pe_union_and_preserves_unassembled_nop(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            raw, result, capture, _ = self.merge_fixture(Path(directory))
+            before = (result / "capture.json").read_bytes()
+            selected = analysis.native_function_selection(raw, capture, [0x1000],
+                type_note="Explicit shared frame proven in retained callers", merge_specs=["0x1000=0x1000,0x1002,0x1004"])
+            merge = selected["function_merges"][0]
+            self.assertEqual(merge["owner_rva"], "0x1000")
+            self.assertEqual(merge["member_rvas"], ["0x1000", "0x1002", "0x1004"])
+            self.assertEqual(merge["expected_start"], "0x140001000")
+            self.assertEqual(merge["expected_end"], "0x140001006")
+            self.assertEqual(merge["expected_chunks"], [{"start": "0x140001000", "end": "0x140001006",
+                "raw_hex": "55908bec5dc3", "sha256": hashlib.sha256(bytes.fromhex("55908bec5dc3")).hexdigest()}])
+            body = analysis.native_function_merge_body(merge)
+            self.assertEqual([row["bytes"] for row in body["assembly"]], ["55", "8bec", "5d", "c3"])
+            self.assertEqual(body["xrefs_to_entry"][0]["from"], "0x140001080")
+            self.assertEqual(body["end"], merge["expected_end"])
+            self.assertEqual(body["chunks"], merge["expected_chunks"])
+            self.assertEqual((result / "capture.json").read_bytes(), before)
+            self.assertEqual((Path(directory) / capture["input"]).read_bytes(), raw)
+
+    def test_function_merge_rejects_unreviewed_unselected_duplicate_and_foreign_members(self):
+        cases = [(None, [0x1000], ["0x1000=0x1000,0x1002"]),
+                 ("reviewed", [0x1000], ["0x1002=0x1000,0x1002"]),
+                 ("reviewed", [0x1000], ["0x1002=0x1002,0x1004"]),
+                 ("reviewed", [0x1000, 0x1002], ["0x1000=0x1000,0x1002"]),
+                 ("reviewed", [0x1000], ["0x1000=0x1000,0x1000"]),
+                 ("reviewed", [0x1000], ["0x1000=0x1000,0x1080"]),
+                 ("reviewed", [0x1000], ["0x1000=0x1000,0x1002"] * 2),
+                 ("reviewed", [0x1000], ["0x1000=0x1000"]),
+                 ("reviewed", [0x1000], ["0x1000=invalid"])]
+        for note, targets, specifications in cases:
+            with self.subTest(specifications=specifications, note=note), tempfile.TemporaryDirectory() as directory:
+                with patch.object(analysis, "ROOT", Path(directory)):
+                    raw, _, capture, _ = self.merge_fixture(Path(directory))
+                    with self.assertRaises(ValueError):
+                        analysis.native_function_selection(raw, capture, targets,
+                            type_note=note, merge_specs=specifications)
+
+    def test_function_merge_rejects_changed_input_member_chunks_paths_and_assembly(self):
+        issues = ("input_hash", "input_size", "incomplete_capture", "image_base", "member_hash", "member_size",
+                  "path", "overlap", "hole", "chunk_hash", "chunk_bytes", "multiple_chunks", "assembly",
+                  "assembly_order", "assembly_outside", "entry_call", "incomplete_assembly")
+        for issue in issues:
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory:
+                with patch.object(analysis, "ROOT", Path(directory)):
+                    raw, result, capture, write = self.merge_fixture(Path(directory))
+                    record = capture["functions"][0 if issue in {"overlap", "hole"} else 1]
+                    path = result / record["path"]
+                    body = json.loads(path.read_bytes())
+                    if issue == "input_hash": capture["input_sha256"] = "0" * 64
+                    elif issue == "input_size": capture["input_bytes"] += 1
+                    elif issue == "incomplete_capture": capture["capture_complete"] = False
+                    elif issue == "image_base": capture["image_base"] = "0x140000001"
+                    elif issue == "member_hash": record["sha256"] = "0" * 64
+                    elif issue == "member_size": record["bytes"] += 1
+                    elif issue == "path": record["path"] = "../outside.json"
+                    elif issue == "incomplete_assembly": record["assembly_captured"] = False
+                    else:
+                        if issue in {"overlap", "hole"}:
+                            size = 3 if issue == "overlap" else 1
+                            code = raw[0x200:0x200 + size]
+                            body["end"] = hex(int(body["address"], 16) + size)
+                            body["chunks"][0].update(end=body["end"], raw_hex=code.hex(),
+                                                      sha256=hashlib.sha256(code).hexdigest())
+                        elif issue == "chunk_hash": body["chunks"][0]["sha256"] = "0" * 64
+                        elif issue == "chunk_bytes": body["chunks"][0]["raw_hex"] = "9090"
+                        elif issue == "multiple_chunks": body["chunks"] *= 2
+                        elif issue == "assembly": body["assembly"][0]["bytes"] = "9090"
+                        elif issue == "assembly_order": body["assembly"] *= 2
+                        elif issue == "assembly_outside": body["assembly"][0]["address"] = "0x140001080"
+                        elif issue == "entry_call":
+                            body["xrefs_to_entry"] = [{"from": "0x140001080", "to": body["address"], "code": True, "type": 17}]
+                        identity = write(path, body)
+                        record.update(bytes=identity["bytes"], sha256=identity["sha256"])
+                    with self.assertRaises(ValueError):
+                        analysis.native_function_selection(raw, capture, [0x1000], type_note="Explicit review",
+                            merge_specs=["0x1000=0x1000,0x1002,0x1004"])
+
+    def merge_reanalysis_fixture(self, root):
+        raw, result, capture, write = self.merge_fixture(root)
+        selected = analysis.native_function_selection(raw, capture, [0x1000], type_note="Explicit shared-frame evidence",
+                                                      merge_specs=["0x1000=0x1000,0x1002,0x1004"])
+        merge = selected["function_merges"][0]
+        body = analysis.native_function_merge_body(merge)
+        body["pseudocode"] = {"lines": [{"text": "void recovered() {}"}], "locals": []}
+        supplemental = result / "supplements/merged"
+        recovered = write(supplemental / "functions/1000.json", body)
+        recovered.update(path="functions/1000.json", rva="0x1000", address="0x140001000",
+                         assembly_captured=True, pseudocode_captured=True)
+        capture_ref = {"path": analysis.rel(result / "capture.json"), "sha256": analysis.sha(result / "capture.json")}
+        source_database = {"path": ".work/private.i64", "sha256": "a" * 64}
+        tool = {"path": "tools/ida/supplement.py", "sha256": "b" * 64}
+        supplement = {"input_sha256": capture["input_sha256"], "base_capture": capture_ref,
+                      "capture_complete": True, "all_pseudocode_captured": True, "failures": [],
+                      "database_integrity": {"verified": True}, "base_capture_unchanged": True,
+                      "base_database_unchanged": True, "target_execution": False, "capture_tool": tool,
+                      "function_selection": selected, "functions": [recovered], "type_recoveries": [],
+                      "function_merge_recoveries": [{**merge, "base_database_modified": False,
+                                                       "applied_chunks": merge["expected_chunks"]}],
+                      "source_database": source_database, "ida_version": "synthetic", "hexrays_version": "synthetic"}
+        write(supplemental / "capture.json", supplement)
+        write(supplemental / "session.json", {"passed": True, "exit_code": 0, "capture_tool": tool})
+        write(supplemental / "plan.json", {"function_selection": selected, "base_capture": capture_ref,
+                                          "source_database": source_database})
+        return result, supplemental, capture, supplement, body, write
+
+    def test_reanalysis_merge_accepts_only_exact_union_and_keeps_member_failure(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            result, _, capture, _, body, _ = self.merge_reanalysis_fixture(Path(directory))
+            before = (result / "capture.json").read_bytes()
+            resolved = analysis.native_reanalysis_resolution(result)
+            self.assertFalse(resolved["verification_failures"])
+            self.assertEqual(resolved["remaining_failures"], [capture["failures"][1]])
+            self.assertEqual([row["original_failure"] for row in resolved["resolved_failures"]], [capture["failures"][0]])
+            self.assertEqual(set(resolved["complete_functions"]), {"0x1000"})
+            self.assertEqual(resolved["complete_functions"]["0x1000"]["assembly"], body["assembly"])
+            self.assertEqual((result / "capture.json").read_bytes(), before)
+
+    def test_reanalysis_merge_rejects_manifest_selection_and_complete_union_differences(self):
+        issues = ("missing_merge", "modified_base", "applied_chunks", "member_identity", "selection_identity",
+                  "end", "chunks", "assembly_missing", "assembly_order", "assembly_bytes", "xrefs", "changed_member")
+        for issue in issues:
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory:
+                with patch.object(analysis, "ROOT", Path(directory)):
+                    result, supplemental, capture, supplement, body, write = self.merge_reanalysis_fixture(Path(directory))
+                    before = (result / "capture.json").read_bytes()
+                    if issue == "missing_merge": supplement["function_merge_recoveries"] = []
+                    elif issue == "modified_base": supplement["function_merge_recoveries"][0]["base_database_modified"] = True
+                    elif issue == "applied_chunks": supplement["function_merge_recoveries"][0]["applied_chunks"] = []
+                    elif issue == "member_identity":
+                        supplement["function_merge_recoveries"] = json.loads(json.dumps(supplement["function_merge_recoveries"]))
+                        supplement["function_merge_recoveries"][0]["members"][1]["sha256"] = "0" * 64
+                    elif issue == "selection_identity":
+                        supplement["function_selection"]["function_merges"][0]["members"][1]["sha256"] = "0" * 64
+                        plan = json.loads((supplemental / "plan.json").read_bytes())
+                        plan["function_selection"] = supplement["function_selection"]
+                        write(supplemental / "plan.json", plan)
+                    elif issue == "changed_member":
+                        (result / "functions/1002.json").write_bytes(b"changed original member")
+                    else:
+                        if issue == "end": body["end"] = "0x140001005"
+                        elif issue == "chunks": body["chunks"][0]["raw_hex"] = "55908bec5d90"
+                        elif issue == "assembly_missing": body["assembly"].pop()
+                        elif issue == "assembly_order": body["assembly"].reverse()
+                        elif issue == "assembly_bytes": body["assembly"][0]["bytes"] = "90"
+                        elif issue == "xrefs": body["xrefs_to_entry"] = []
+                        identity = write(supplemental / "functions/1000.json", body)
+                        supplement["functions"][0].update(bytes=identity["bytes"], sha256=identity["sha256"])
+                    write(supplemental / "capture.json", supplement)
+                    rejected = analysis.native_reanalysis_resolution(result)
+                    self.assertTrue(rejected["verification_failures"])
+                    self.assertEqual(rejected["remaining_failures"], capture["failures"])
+                    self.assertFalse(rejected["resolved_failures"])
+                    self.assertFalse(rejected["complete_functions"])
+                    self.assertEqual((result / "capture.json").read_bytes(), before)
+
     def reanalysis_fixture(self, root):
         raw = bytes(self.fixture())
         digest = hashlib.sha256(raw).hexdigest()
@@ -2451,9 +2904,128 @@ class NativeSupplementTests(unittest.TestCase):
             self.assertEqual(set(resolved["complete_functions"]), {"0x1000"})
             self.assertEqual(json.loads((result / "capture.json").read_bytes()), capture)
 
+    def test_reanalysis_requires_exact_applied_import_thunk_manifest_and_original_selection(self):
+        issues = (None, "missing", "slot", "source_hash", "empty_type", "non_string_type",
+                  "modified_base", "duplicate", "selection_slot", "selection_missing")
+        for architecture in ("x64", "x86"):
+            for issue in issues:
+                with self.subTest(architecture=architecture, issue=issue), tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    with patch.object(analysis, "ROOT", root):
+                        raw, result, capture, bodies, write = self.import_thunk_fixture(root, architecture)
+                        baseline = write(result / "capture.json", capture)
+                        capture_ref = {key: baseline[key] for key in ("path", "sha256")}
+                        selection = analysis.native_function_selection(raw, capture, [0x1000], type_note="reviewed ABI",
+                            import_specs=["0x2040=long (__cdecl *WppAutoLogTrace)(void *, ...);"])
+                        supplemental = result / "supplements/selected"
+                        body = bodies[0]
+                        body["pseudocode"] = {"lines": [{"line": 0, "text": "return imported();"}], "locals": []}
+                        recovered = write(supplemental / "functions/1000.json", body)
+                        recovered.update(path="functions/1000.json", rva="0x1000", address=body["address"],
+                                         assembly_captured=True, pseudocode_captured=True)
+                        source_database = {"path": ".work/private.i64", "sha256": "a" * 64}
+                        tool = {"path": "tools/ida/supplement.py", "sha256": "b" * 64}
+                        applied_imports = [{**requested, "applied_type": requested["declaration"],
+                            "base_database_modified": False, "database_import_binding": {
+                                "rva": requested["rva"], "name": requested["name"], "module": "WppRecorder",
+                                "ordinal": 0, "loaded_slot_raw_hex": "ff" * requested["bytes"]}}
+                            for requested in selection["import_type_recoveries"]]
+                        applied_thunks = json.loads(json.dumps([{**requested,
+                            "applied_type": "long __cdecl imported(void *, ...)", "base_database_modified": False}
+                            for requested in selection["import_thunks"]]))
+                        if issue == "missing":
+                            applied_thunks = []
+                        elif issue == "slot":
+                            applied_thunks[0]["slot_rva"] = "0x2048"
+                        elif issue == "source_hash":
+                            applied_thunks[0]["source_function"]["sha256"] = "0" * 64
+                        elif issue == "empty_type":
+                            applied_thunks[0]["applied_type"] = "  "
+                        elif issue == "non_string_type":
+                            applied_thunks[0]["applied_type"] = True
+                        elif issue == "modified_base":
+                            applied_thunks[0]["base_database_modified"] = True
+                        elif issue == "duplicate":
+                            applied_thunks.append(dict(applied_thunks[0]))
+                        elif issue == "selection_slot":
+                            selection["import_thunks"][0]["slot_rva"] = "0x2048"
+                        elif issue == "selection_missing":
+                            selection["import_thunks"] = []
+                            applied_thunks = []
+                        supplement = {"input_sha256": capture["input_sha256"], "base_capture": capture_ref,
+                            "capture_complete": True, "all_pseudocode_captured": True, "failures": [],
+                            "database_integrity": {"verified": True}, "base_capture_unchanged": True,
+                            "base_database_unchanged": True, "target_execution": False,
+                            "capture_tool": tool, "function_selection": selection, "functions": [recovered],
+                            "type_recoveries": [], "import_type_recoveries": applied_imports,
+                            "import_thunk_type_recoveries": applied_thunks, "source_database": source_database,
+                            "ida_version": "synthetic", "hexrays_version": "synthetic"}
+                        write(supplemental / "capture.json", supplement)
+                        write(supplemental / "session.json", {"passed": True, "exit_code": 0, "capture_tool": tool})
+                        write(supplemental / "plan.json", {"function_selection": selection,
+                            "base_capture": capture_ref, "source_database": source_database})
+                        resolved = analysis.native_reanalysis_resolution(result)
+                        self.assertEqual(bool(resolved["verification_failures"]), issue is not None)
+                        if issue is None:
+                            self.assertFalse(resolved["remaining_failures"])
+                            self.assertEqual(len(resolved["resolved_failures"]), 1)
+                        else:
+                            self.assertEqual(resolved["remaining_failures"], capture["failures"])
+                            self.assertFalse(resolved["resolved_failures"])
+                        self.assertEqual(json.loads((result / "capture.json").read_bytes()), capture)
+
+    def test_exact_applied_size_limit_resolves_without_bypassing_original_byte_integrity(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            result, supplemental, capture, supplement, body, write = self.reanalysis_fixture(root)
+            original = root / capture["input"]
+            original_bytes = original.read_bytes()
+            baseline_bytes = (result / "capture.json").read_bytes()
+            selection = analysis.native_function_selection(original_bytes, capture, [0x1000],
+                                                            max_function_kib=1024)
+            supplement["function_selection"] = selection
+            supplement["applied_decompiler_limits"] = {"max_function_kib": 1024}
+            plan = json.loads((supplemental / "plan.json").read_bytes())
+            plan["function_selection"] = selection
+            write(supplemental / "plan.json", plan)
+            write(supplemental / "capture.json", supplement)
+
+            resolved = analysis.native_reanalysis_resolution(result)
+            self.assertFalse(resolved["verification_failures"])
+            self.assertFalse(resolved["remaining_failures"])
+            self.assertEqual(len(resolved["resolved_failures"]), 1)
+            self.assertEqual(resolved["resolved_failures"][0]["original_failure"], capture["failures"][0])
+            self.assertEqual(set(resolved["complete_functions"]), {"0x1000"})
+            self.assertEqual(resolved["complete_functions"]["0x1000"]["assembly"], body["assembly"])
+            self.assertEqual(original.read_bytes(), original_bytes)
+            self.assertEqual((result / "capture.json").read_bytes(), baseline_bytes)
+
+            for issue in ("changed_original", "changed_instruction"):
+                with self.subTest(issue=issue):
+                    if issue == "changed_original":
+                        changed = bytearray(original_bytes)
+                        changed[0x200] ^= 1
+                        original.write_bytes(changed)
+                    else:
+                        original.write_bytes(original_bytes)
+                        body["assembly"][0]["bytes"] = "90"
+                        ref = write(supplemental / "functions/1000.json", body)
+                        supplement["functions"][0]["sha256"] = ref["sha256"]
+                        write(supplemental / "capture.json", supplement)
+                    rejected = analysis.native_reanalysis_resolution(result)
+                    self.assertTrue(rejected["verification_failures"])
+                    expected_error = ("original bytes changed" if issue == "changed_original"
+                                      else "differs from original complete assembly")
+                    self.assertIn(expected_error, rejected["verification_failures"][0]["error"])
+                    self.assertEqual(rejected["remaining_failures"], capture["failures"])
+                    self.assertFalse(rejected["resolved_failures"])
+                    self.assertFalse(rejected["complete_functions"])
+                    self.assertEqual((result / "capture.json").read_bytes(), baseline_bytes)
+
     def test_reanalysis_changed_or_incomplete_evidence_does_not_hide_original_failure(self):
         for issue in ["changed_original", "changed_base", "changed_body", "incomplete_locals", "changed_instruction",
-                      "failed_session", "unverified_database", "unselected_boundary", "unapplied_type"]:
+                      "failed_session", "unverified_database", "unselected_boundary", "unapplied_type",
+                      "unapplied_size_limit", "different_size_limit"]:
             with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 with patch.object(analysis, "ROOT", root):
@@ -2480,6 +3052,14 @@ class NativeSupplementTests(unittest.TestCase):
                         write(supplemental / "capture.json", supplement)
                     elif issue == "unselected_boundary":
                         supplement["functions"] = []
+                        write(supplemental / "capture.json", supplement)
+                    elif issue in {"unapplied_size_limit", "different_size_limit"}:
+                        supplement["function_selection"]["decompiler_limits"] = {"max_function_kib": 1024}
+                        plan = json.loads((supplemental / "plan.json").read_bytes())
+                        plan["function_selection"] = supplement["function_selection"]
+                        write(supplemental / "plan.json", plan)
+                        if issue == "different_size_limit":
+                            supplement["applied_decompiler_limits"] = {"max_function_kib": 64}
                         write(supplemental / "capture.json", supplement)
                     else:
                         supplement["type_recoveries"] = [{"rva": "0x1000", "applied_type": "invented"}]

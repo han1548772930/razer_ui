@@ -4655,8 +4655,204 @@ def verify_resources():
     return report
 
 
-def clean():
+def _scratch_link(path):
+    if path.is_symlink():
+        return True
+    return os.name == "nt" and (path.is_junction() or bool(path.lstat().st_file_attributes & 0x400))
+
+
+def _scratch_processes():
+    """Read process metadata; file deletion separately requires exclusive access."""
+    if os.name != "nt":
+        return [], ["Process path inspection is implemented only for Windows"]
+    command = ("[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); "
+               "Get-CimInstance Win32_Process -ErrorAction Stop | "
+               "Select-Object ProcessId,CommandLine | ConvertTo-Json -Compress")
+    try:
+        result = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command],
+                                capture_output=True, check=True, timeout=30,
+                                creationflags=subprocess.CREATE_NO_WINDOW)
+        rows = json.loads(result.stdout.decode("utf-8-sig"))
+        if not isinstance(rows, list) or not rows:
+            raise ValueError("Process inventory is empty")
+        return [{"pid": row["ProcessId"], "command_line": row.get("CommandLine") or ""}
+                for row in rows], []
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        return [], ["Process inventory unavailable: " + type(error).__name__]
+
+
+def _scratch_references(names):
+    """Search maintained owners and receipts; never descend into original raw trees."""
+    names = {name.lower(): name for name in names}
+    if not names:
+        return {}, []
+    executable = shutil.which("rg")
+    if executable is None:
+        return {}, ["Fixed-string reference scanner rg is unavailable"]
+    paths = [name for name in ("docs", "tools", ".agents", "crates", ".analysis/results", ".analysis/inputs", ".work")
+             if (ROOT / name).exists()]
+    paths.extend(path.name for path in ROOT.iterdir() if path.is_file()
+                 and path.suffix.lower() in {".md", ".json", ".toml", ".py"})
+    if (ROOT / ".analysis/inputs.json").is_file():
+        paths.append(".analysis/inputs.json")
+    if any(_scratch_link(ROOT / name) for name in paths):
+        return {}, ["Reference root is linked"]
+    arguments = [executable, "--no-config", "--hidden", "--no-ignore", "--threads", "16", "--fixed-strings", "--ignore-case",
+                 "--only-matching", "--no-line-number", "--with-filename", "--no-heading", "--color", "never",
+                 "--path-separator", "/"]
+    for extension in ("json", "md", "py", "rs", "toml", "yml", "yaml", "ps1", "cmd"):
+        arguments.extend(["--glob", "*." + extension])
+    for directory in (".ref", "raw", "raw-by-url", "functions", "modules", "factories", "ui-trees",
+                      "__pycache__", ".git", "node_modules", "target"):
+        arguments.extend(["--glob", "!**/" + directory + "/**"])
+    for directory in ("source", "sources", "decompiled"):
+        arguments.extend(["--glob", "!.analysis/**/" + directory + "/**"])
+    arguments.extend(["--glob", "!.work/*/**"])
+    references = {}
+    try:
+        with tempfile.TemporaryDirectory(prefix="razer-scratch-reference-") as temporary:
+            patterns = Path(temporary) / "names.txt"
+            patterns.write_text("\n".join(names) + "\n", encoding="utf-8")
+            arguments.extend(["--file", str(patterns), "--", *paths])
+            options = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
+            result = subprocess.run(arguments, cwd=ROOT, capture_output=True, check=False, timeout=180, **options)
+        if result.returncode not in (0, 1):
+            return {}, ["Reference scanner failed: " + result.stderr.decode("utf-8", errors="replace")[:2000]]
+        if result.returncode == 1 and result.stdout.strip():
+            return {}, ["Reference scanner returned inconsistent no-match output"]
+        if result.returncode == 0 and not result.stdout.strip():
+            return {}, ["Reference scanner returned no matches with success status"]
+        for line in result.stdout.decode("utf-8").splitlines():
+            filename, match = line.rsplit(":", 1)
+            name = names[match.lower()]
+            references.setdefault(name, set()).add(relative(ROOT / filename))
+        return {name: sorted(owners) for name, owners in references.items()}, []
+    except (OSError, ValueError, KeyError, UnicodeError, subprocess.SubprocessError) as error:
+        return {}, ["Reference scan unavailable: " + type(error).__name__]
+
+
+def _scratch_unlink(path, snapshot):
+    """Delete the selected regular file only while holding exclusive Windows access."""
+    scratch = ROOT / ".work"
+    if (_scratch_link(scratch) or _scratch_link(path) or path.parent not in {scratch, scratch / "__pycache__"}
+            or (path.parent.name == "__pycache__" and _scratch_link(path.parent))
+            or not safe(path).is_relative_to(scratch.resolve())):
+        raise ValueError("Scratch deletion target is linked or escaped")
+    def unchanged():
+        current = path.stat()
+        if (current.st_size, current.st_mtime_ns, current.st_ino) != snapshot:
+            raise ValueError("candidate_changed")
+    unchanged()
+    if os.name != "nt":
+        raise ValueError("Exclusive deletion is implemented only for Windows")
+    import ctypes
+    from ctypes import wintypes
+    api = ctypes.WinDLL("kernel32", use_last_error=True)
+    api.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID,
+                               wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    api.CreateFileW.restype = wintypes.HANDLE
+    api.ReadFile.argtypes = [wintypes.HANDLE, wintypes.LPVOID, wintypes.DWORD,
+                            ctypes.POINTER(wintypes.DWORD), wintypes.LPVOID]
+    api.ReadFile.restype = wintypes.BOOL
+    api.SetFileInformationByHandle.argtypes = [wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD]
+    api.SetFileInformationByHandle.restype = wintypes.BOOL
+    api.CloseHandle.argtypes = [wintypes.HANDLE]
+    handle = api.CreateFileW(str(path), 0x80010000, 0, None, 3, 0x00200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise OSError(ctypes.get_last_error(), "exclusive_access_unavailable")
+    try:
+        unchanged()
+        if _scratch_link(path):
+            raise ValueError("candidate_changed_to_link")
+        checksum, length = hashlib.sha256(), 0
+        buffer, count = ctypes.create_string_buffer(1024 * 1024), wintypes.DWORD()
+        while True:
+            if not api.ReadFile(handle, buffer, len(buffer), ctypes.byref(count), None):
+                raise ctypes.WinError(ctypes.get_last_error())
+            if not count.value:
+                break
+            checksum.update(buffer.raw[:count.value])
+            length += count.value
+        unchanged()
+        if length != snapshot[0]:
+            raise ValueError("candidate_changed")
+        disposition = ctypes.c_ubyte(1)
+        if not api.SetFileInformationByHandle(handle, 4, ctypes.byref(disposition), ctypes.sizeof(disposition)):
+            raise ctypes.WinError(ctypes.get_last_error())
+    finally:
+        api.CloseHandle(handle)
+    if path.exists():
+        raise ValueError("deleted_path_reappeared")
+    return {"bytes": length, "sha256": checksum.hexdigest()}
+
+
+def _clean_stale(before=None):
+    scratch = ROOT / ".work"
+    if scratch.is_symlink() or (scratch.exists() and (_scratch_link(scratch) or not scratch.resolve().is_relative_to(ROOT.resolve()))):
+        raise ValueError("Scratch root is a link or escaped")
+    cutoff = min(datetime.now(timezone.utc).timestamp(), before) if before is not None else datetime.now(timezone.utc).timestamp()
+    queue_path = ROOT / ".analysis/results/reverse-pending.json"
+    if queue_path.is_file():
+        queue = json.loads(queue_path.read_bytes())
+        if queue.get("started_at_utc"):
+            cutoff = min(cutoff, datetime.fromisoformat(queue["started_at_utc"]).timestamp())
+    report = {"schema_version": 1, "mode": "stale", "recorded_at_utc": datetime.now(timezone.utc).isoformat(),
+              "before_utc": datetime.fromtimestamp(cutoff, timezone.utc).isoformat(),
+              "scope": "old root log/txt/out and root __pycache__ bytecode only",
+              "reference_scope": "maintenance sources, documents, input index and retained JSON receipts; indexed functions/modules/AST bodies excluded",
+              "removed": [], "retained": [], "failures": [], "target_execution": False,
+              "receipt_merge": "owning coordinator merges scratch_cleanup after publishing its queue receipt"}
+    candidates = []
+    for path in sorted(scratch.iterdir()) if scratch.exists() else []:
+        name = ".work/" + path.name
+        if _scratch_link(path):
+            report["retained"].append({"path": name, "reason": "link"})
+        elif path.is_file() and path.suffix.lower() in {".log", ".txt", ".out"}:
+            candidates.append(path)
+        elif path.is_dir() and path.name == "__pycache__":
+            for cache in sorted(path.iterdir()):
+                if not _scratch_link(cache) and cache.is_file() and cache.suffix == ".pyc":
+                    candidates.append(cache)
+                else:
+                    report["retained"].append({"path": name + "/" + cache.name, "reason": "unknown_cache_or_link"})
+        else:
+            report["retained"].append({"path": name, "reason": "protected_or_outside_stale_scope"})
+    snapshots = {path: (path.stat().st_size, path.stat().st_mtime_ns, path.stat().st_ino) for path in candidates}
+    references, reference_errors = _scratch_references([path.name for path in candidates])
+    processes, process_errors = _scratch_processes()
+    report["failures"].extend(reference_errors + process_errors)
+    report["processes_inspected"] = len(processes)
+    for path in candidates:
+        row = {"path": relative(path), "bytes": snapshots[path][0]}
+        commands = [p["pid"] for p in processes if path.name.casefold() in p["command_line"].casefold()]
+        if report["failures"]:
+            row["reason"] = "guard_inventory_incomplete"
+        elif path.name in references:
+            row.update(reason="referenced", referenced_by=references[path.name])
+        elif commands:
+            row.update(reason="active_process_path", pids=commands)
+        elif snapshots[path][1] >= int(cutoff * 1_000_000_000):
+            row["reason"] = "newer_than_run"
+        else:
+            try:
+                row.update(_scratch_unlink(path, snapshots[path]))
+                report["removed"].append(row)
+                continue
+            except (OSError, ValueError) as error:
+                row["reason"] = str(error)
+        report["retained"].append(row)
+    report["summary"] = {"candidate_files": len(candidates), "candidate_bytes": sum(r[0] for r in snapshots.values()),
+                         "removed_files": len(report["removed"]), "removed_bytes": sum(r["bytes"] for r in report["removed"]),
+                         "retained_entries": len(report["retained"]), "guard_failures": len(report["failures"]),
+                         "retained_by_reason": dict(Counter(r["reason"] for r in report["retained"]))}
+    print(json.dumps(report, ensure_ascii=False), flush=True)
+    return report
+
+
+def clean(stale=False, *, before=None):
     """Remove disposable scratch after project analyzer sessions have exited."""
+    if stale:
+        return _clean_stale(before)
     import ctypes
     from ctypes import wintypes
     for session in (ROOT / ".analysis/results/native").glob("*/*session.json"):
@@ -9741,8 +9937,10 @@ def main():
     import resource_database
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("inventory", "clean", "verify", "audit-inputs", "recover-inputs", "prepare-analysis", "prepare-static-python", "verify-resources", "prepare-product-names", "prepare-keyboard-identity"):
+    for name in ("inventory", "verify", "audit-inputs", "recover-inputs", "prepare-analysis", "prepare-static-python", "verify-resources", "prepare-product-names", "prepare-keyboard-identity"):
         commands.add_parser(name)
+    scratch_clean = commands.add_parser("clean", help="Clean disposable scratch after checking analyzer ownership")
+    scratch_clean.add_argument("--stale", action="store_true", help="Remove only old unreferenced root logs/text/output and bytecode; retain all analyzer databases and active files")
     runtime_audit = commands.add_parser("audit-runtime-resources", help="Trace Rust/catalog resource references against the fixed installed directory")
     runtime_audit.add_argument("--repair", action="store_true", help="Verify current inline ARGB layers and attach missing aliases; do not restore source media")
     pack_audit = commands.add_parser("audit-asset-pack")
@@ -9816,7 +10014,7 @@ def main():
         rows = inventory()
         print(json.dumps({name: {"files": len(files), "bytes": sum(r["bytes"] for r in files)} for name, files in rows.items()}))
     elif args.command == "clean":
-        clean()
+        clean(stale=args.stale)
     elif args.command == "verify":
         verify()
     elif args.command == "audit-inputs":

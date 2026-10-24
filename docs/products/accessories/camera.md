@@ -369,3 +369,185 @@ flash 的实际 8 字节为 `c0 03 a8 00 00 00 00 00`，不能把伪代码十进
 两版的标准属性导出另按实际调用核对：Brightness／Contrast／Saturation／WhiteBalance 的 VideoProcAmp 编号为 `0/1/3/7`，Focus／Zoom 的 CameraControl 编号为 `6/3`。0E05 的 VideoProcAmp getter `0x4a0d0` 先检查设备接口和两个 out pointer，0E06 的 `0x49bb0` 仅先检查两个 out pointer，设备接口检查位于后续执行链；这一区别须保留为失败与断连测试分支。JSON 属性 getter、ISP 状态 getter 和序列号／身份转换各有独立消费者，不能以属性编号表覆盖整个 DLL。
 
 两版 `Initialize` 只记录日志并返回低字节 1，不能当作设备初始化。0E05／0E06 的任务等待入口分别为 `0x48d70`／`0x48890`，使用 4,000 ms 等待；超时分支关闭 active 标志，打开线程、detach、调用 `TerminateThread` 并关闭 handle。这是原件的强制终止路径，不证明硬件状态恢复、在途 COM 调用完成或安全取消。应答、超时、重连、恢复、引用释放以及官方 DLL／设备实际对照分别保持 Unverified。
+
+## 0E06 的媒体身份转换、结果消费者与失败释放
+
+本节仅覆盖 `0E06 1.0.13.1` 的身份转换分支，依据[逐函数与原件字节核验收据](../../../.analysis/results/native-bulk/camera-0e06-identity-verification.json)。18 个完整函数的 3,876 条指令、17,336 字节及 7 处常量均与保留 PE 原件一致；前端从当前保留的 `3590/mw/6120` 原件重新解析 4 个完整 AST 节点。收据包含输入身份、获取收据、原件清单、RVA、函数边界、逐函数产物身份和消费者正文，不能据此推广其他产品／版本或宣称全部相机功能已完成。
+
+`GetChromiumDeviceId(0x50a30) → 0x43340` 先用 `0x416a0` 按完整 container 字节精确查找已初始化实例；无匹配返回文本 **`{}`**（原件 `0x9c604`），不是实测媒体 ID。匹配后取实例 `+144` 的宽 DevicePath，经 `0x7120` 截取第一处 `#{` 之前的内容，再与 `0x7230` 当前 MF 枚举项的规范化路径按完整长度和宽字节比较。找不到 `#{` 时规范化结果保留空串，不能回退原路径。**已有实例但没有匹配的 MF 项时，原始媒体路径保留空串，随后仍调用 HMAC**；只要 salt 与计算有效，可能返回非空 hash，故非空 ID 本身不能证明媒体路径已匹配。
+
+`GetContainerIdFromDeviceId(0x50ba0) → 0x43dc0` 先建立空输出，host 或 deviceId 为空时直接返回该空值。其他分支对各 MF 项的完整原始路径生成 HMAC，精确比较 hash 长度与字节，再与已初始化实例的规范化路径比较，命中后才返回该实例 `+48` 的 container。无 hash 命中、没有已初始化实例或其路径不匹配，均保留空结果；显示名不参与身份匹配，也不能代替 container 确认。
+
+`0x7230` 顺序是 `MFStartup(0x20070,0) → MFCreateAttributes → SetGUID → MFEnumDeviceSources`。实际属性 GUID 字节另行核实：source type 为 `c60ac5fe-252a-478f-a0ef-bc8fa5f7cad3`，video source type 为 `8ac3587a-4ae7-42d8-99e0-0a6013eef90f`；两次 `GetAllocatedString` 先取 friendly name `60d0e559-52f8-4fa2-bbce-acdb34a8ec01`，再取 symbolic link `58f0aad8-22bf-4f8a-bb3d-d2c4978c6e2f`。输出项跨度 128 字节，`+0/+32/+64/+96` 依次为宽 symbolic link、规范化宽路径、宽 friendly name 和空窄字符串。身份计算使用完整 symbolic link 的 UTF-8，规范化路径只用于设备关联；不能交换两者作为 HMAC 输入。
+
+HMAC helper `0x6ca0` 接收 raw ID、host 和显式 salt；显式 salt 为空时调用 `0x69c0 → 0x60a0`，从 `CSIDL_LOCAL_APPDATA/Razer/RazerAppEngine/User Data/Default/Preferences` 读取 `electron.media.device_id_salt`。`electron/media` 必须为对象，salt 必须为字符串；不存在、错误类型、空值或读文件失败均不能生成替代盐。缓存仅在非空时保留，采用锁内再次检查；空结果后续会重读，已缓存非空值则不在本链重新读盘。这些函数没有写 Preferences 或产生随机 salt 的操作。
+
+`BCryptOpenAlgorithmProvider` 使用 `SHA256`、`Microsoft Primitive Provider` 和 flags `8`，`BCryptCreateHash` 的 key 为 host 字节；`0x5f50` 先更新 raw UTF-8 ID，再更新 salt。有效 hash 对象的零长度更新不调用 `BCryptHashData` 且返回成功；缺少 hash 对象或更新失败返回假。Open／Create 失败先记录日志后仍到更新检查，不是直接从错误记录处返回；更新或 Finish 失败最终为空结果。成功 Finish 固定输出 32 字节，`0xabd0` 用原件 `0xa2180` 的 `0123456789abcdef` 表转为 64 个小写十六进制字符。
+
+释放差异必须保留：`0x6ca0` 的 `0x7005…0x7021` 汇编在 hash 非零时调用 `BCryptDestroyHash`；provider 非零却跳过 `BCryptCloseAlgorithmProvider`，零分支传给后者的是栈内 handle 槽地址。此处是已核实的静态控制流与传参差异，**没有执行测量泄漏，也不能描述为已完成配对释放**。MF 枚举的正常尾部释放两项字符串、各 activate、列表及 attributes，再调用 `MFShutdown`；但 CreateAttributes 失败直接返回，SetGUID／Enum 失败释放 attributes 后返回，三者均没有走到 `MFShutdown`。单项 `GetAllocatedString` 失败直接转到该 activate 的 Release，跳过该项的 `CoTaskMemFree`，因此第二次调用失败时也跳过对第一项已分配字符串的释放。
+
+两个导出按返回内容的 `strlen+1` 通过 `0xbc248` 的自定义 allocator 或默认分配入口申请缓冲区，再复制含 NUL 的内容并释放临时 `std::string`。虽然 caller 伪代码省略复制 helper 的源参数，`0x50b51…0x50b5a`、`0x50cc1…0x50cca` 汇编均明确设置 `R8=source / RDX=capacity / RCX=destination`。空串和 `{}` 也可以对应非空返回指针，分配成功不能当成设备匹配成功。`FreeMalloc(0x4e0a0)` 调用本地释放入口；当前 host 的实际静态释放消费者及自定义 allocator 的限制见下节。
+
+前端 `rzCamKiyoX` 的两个方法将 `protocol + "//" + host` 原样作为 origin，`isInit` 为假时返回空串、不调用 DLL。`GET_CAMERA_HARDWARE_ID` 消费者完整分支位于 `6120` 字节 `[1194075,1194742)`：先枚举一次媒体列表，筛选 label 含 `1532` 的 `videoinput`，每轮并行调用反向转换；只在 Promise fulfilled 且返回 container 严格等于当前 container 时向 UI 发布对应 deviceId。最多 9 轮，未匹配轮等待 1,000 ms；该分支循环内没有重新枚举，不能把等待描述为已发现新设备。正向 wrapper 位于 `[747478,747734)`，反向 wrapper 位于 `[747217,747477)`，不对原生返回值额外解析为 JSON。
+
+该分支后续测试应分别覆盖缺少初始化实例、无 MF 匹配仍计算空 raw ID、路径缺少 `#{`、空／错误类型 salt、非空 salt 缓存重用、UTF-8、零长度更新、各 BCrypt／MF 失败、空串与 `{}` 的结果消费者和全部释放分支。此处仅完成所列静态证据和语义核验，未新增 Rust 行为测试，未执行官方 DLL／真实设备对照，也未执行 UI 窗口验收；这些验收均保持 Unverified。
+
+### 当前宿主的分配器、解码与释放消费者
+
+相机基类实际是 `6120` 的 module `7846`，`callDLLApi` 调用 module `99494.uu`；后者直接等待 `apiElectron.doDLLMainActionAsync`。当前宿主 `preload.js` 将其转成 `ipcRenderer.invoke("ffiPreloadAsync",channel,arg)`，`main.js` 的对应 handler 调用 `FFIPreloadMain.callDLLAsync`，不是旧 `ffiMain.js` 或子进程路径。该链及以下依赖的原件身份、ASAR 内实际字节／签名后 unpacked 依赖关系、完整 AST 所有者和 native 函数均记录在同一[身份转换收据](../../../.analysis/results/native-bulk/camera-0e06-identity-verification.json)的 `allocator_host_followup` 字段。
+
+当前 `3590` wrapper 的 ConfigureFFI 声明含 `FreeMalloc` 及两个返回 `pointer` 的身份导出，**不声明或调用 `SetAllocator`**。宿主 ConfigureFFI 只调用 `ffi-napi-rz.Library(dllPath,apiObj)` 并登记 channel；registry 的 `registerMainDLL` 仅维护 Map。实际 `library.js` 按 `apiObj` 的键解析导出并建立函数，不调用这些业务函数；`dynamic_library.js` 的加载入口在当前 native addon `0xb010` 做 UTF-8 路径转换、加载前检查后调用 `LoadLibraryW`，符号解析 `0xb1b0` 调用 `GetProcAddress`。这些已核实的当前调用方没有暗中为相机设置自定义分配器。
+
+相机 `SetAllocator(0x4e0c0)` 只把 `RCX` 存入全局 `0xbc248` 并返回低字节 1，无签名／来源检查、不释放原分配器，也不追踪尚未归还的缓冲区；传零仅改回默认分支。该槽位在 PE `.data` 的零填充虚拟尾部，不能把它当成原件文件内有 8 字节零。`Terminate(0x4e260)` 仅日志并返回 1，没有清空此槽。当前已核实的 wrapper 没有为该 setter 安装或注销 callback 的生命周期；这与导出保留了一个可供其他调用者使用的能力不同，不能凭导出存在要求 Rust 常规路径安装 callback。
+
+默认分配为 `0x6a0e0 → 0x71570 → HeapAlloc(hHeap,0,size)`，释放为 `FreeMalloc → 0x69830 → 0x71510 → HeapFree(hHeap,0,pointer)`；两者读取同一全局 `0xbbf60`，CRT heap 初始化 `0x7bbf0` 将其设置为 `GetProcessHeap()`，结束入口 `0x7bc20` 将其清零。默认分配失败返回 null，HeapFree 失败写入 CRT 错误状态；`FreeMalloc` 仍固定返回低字节 1，且 JS 的签名为 `void`，因此不能把该返回或 finally 已进入当作真实释放成功确认。自定义分支只替换分配函数、**没有配对 deallocator**；任意自定义内存不能因此认定可被同一 process heap 释放，也不能把本源码当作安全通用 allocator 接口。
+
+`FFIPreloadMain.callDLLAsync` 先取得同 channel 的 Mutex，ConfigureFFI 成功后把普通动作交给 `_callDLLFunctionAsync`。后者等待真实 `.async` callback，callback 只 resolve 第二个参数，未把第一个 `err` 变成 rejection；返回对象若有 `readCString`，先执行字符串读取，**读取成功后**才设置释放标志，finally 再直接调用同库的 `FreeMalloc(rawPointer)`。正常空字符串与 `{}` 也走该释放；readCString 抛错时标志仍假，不能描述为已释放非空指针。FreeMalloc 自身抛错由外层 catch 记录，已解出的字符串仍可能返回调用方；原件没有独立清理成功状态或自动重试。
+
+编码依赖已追到当前实际 `ref-napi` 原生 addon：`ref.js` 的 `Buffer.prototype.readCString` 和 `PointerBuffer.prototype.readCString` 均将指针与 offset 交给 native `readCString`。该 addon 注册函数 `0x6c10` 把回调 `0x67c0` 绑定到属性 `readCString`；回调经 `0x3900` 取得实际指针和 offset，拒绝 nullptr，扫描到 NUL 后明确调用 **`napi_create_string_utf8`**。因此这一版身份字符串的宿主解码实际为 UTF-8，不再只凭 JS 方法名或注释推断；扫描并未使用身份导出的分配容量作为上限。native addon 的函数 Image Base 同为 `0x180000000`，其 RVA 与相机 DLL 的 RVA 属于不同原件，不能混用。
+
+宿主 `FreeFFI` 的 async dispatch 直接返回 true，`_handleAction_FreeFFI` 为空；并未调用依赖库已提供的 `dllObj.close()`。因此单次结果指针的释放与卸载 DLL、清理 callback Map／library Map 是不同操作。相机普通 terminate 也没有清空 allocator；此处补清了当前正常读取的静态释放消费者及其异常分支，尚未以执行证明每次 HeapFree、库卸载或 callback 排空成功。后续差分用例需覆盖 decode 抛错、FreeMalloc 失败、callback err／返回值组合、同 channel 并发、配置复用及退出时在途调用；本轮仍未执行 DLL 或 UI。
+
+## 3590／0E06 自动与手动对焦的实际写回链
+
+本节只核当前保留的 `3590` UI／MW 与 `0E06 1.0.13.1`，完整来源、AST 所有者、原件字节与逐函数核验保存在同一[相机收据](../../../.analysis/results/native-bulk/camera-0e06-identity-verification.json)的 `focus_writeback_followup`。25 个完整 AST owner 及 29 个完整 native 函数的 2,513 条指令、10,670 个指令字节均已核对；完整块共 10,699 字节，其中没有独立指令项的 29 字节 `90/cc` 单列保留。以下严格区分页面配置、任务完成、COM 返回与真实设备读回，不以相同名称推广其他摄像头版本。
+
+### 页面输入与提交时机
+
+当前 Customize 描述符 `[5239677,5239739)` 给 `$S` 传 `supportsFocus:true`；`$S` `[5074262,5074564)` 先挂载 `wS`，后挂载图像组件。`wS` 将 Redux 的 `camera`、预览／占用／loading／Windows 属性页状态交给实际 `YS` `[5053541,5063321)`。自动开关复制完整 camera，仅在 `auto/manual` 间翻转 `cameraMode`；手动滑块仅在数值不同于 `cameraValue` 时复制并提交完整 camera，范围 `0…255`、step `1`。自动模式隐藏手动滑块；没有本行的 Apply、Save、Cancel 或失败回滚动作。
+
+对焦容器在第三方占用、视频尚未播放或 Windows 属性页打开时带 `disabled`；开关另以预览关闭／loading 设置 `disable`，手动滑块的 `active` 为预览开启且非 loading。`NS` `[5049495,5049602)` 先 dispatch `SET_CAMERA_INFO`，再取一份 default profile、替换其 camera 并 dispatch `UPDATE_PROFILE`。`webcamReducer` `[4794512,4798868)` 立即替换页面 camera、广播 `ON_SET_CAMERA_INFO` 并登记任务状态，**此处没有等待设备确认再更新开关／数值**。Reset 是显式提交 `DEFAULT_SETTINGS.camera` 与图像动作；不能把普通打开、读取失败或断开等同于用户 Reset。
+
+共用滑块 `RS` `[5043152,5049444)` 的 change、滚轮、按键及 keyup 都可能调用父回调，父层的相同数值检查才抑制重复数值；不能擅自改成仅松手提交。点击滑块注册 window 的 wheel／keydown／keyup，`onBlur` 删除这三项，而 `componentWillUnmount` 只删除 mouseup。该释放差异是当前源码事实，尚未执行测量监听残留。预览的代次只拦截迟到的媒体流，不能据此声称对焦 DLL 请求也被取消。
+
+### 初始读取、配置重放与结果消费者
+
+当前 MW `main.48235a32a00742140113.js` 的 runtime 标记 `isCamera:true`，派生 feature 是 `isCamera:{config:{}}`，末尾产品覆盖没有启用 `isAdvancedCamera`。`6120` 的缓存读取 `Qe` `[2315989,2317390)` 先并行等待 brightness／contrast／saturation／whiteBalance；**只有高级相机 gate 才继续读取 zoom／pan／tilt／focus／exposure／low-light／anti-flicker**。本产品旧款分支只发布图像读取结果。包装器 ConfigureFFI、GetDLLVersion 和 DeviceInitialize 重试链也没有调用 GetCameraFocus，不能把当前页面显示的 `cameraMode/cameraValue` 说成启动时已读得的对焦状态。
+
+另一方面，profile 重放 owner `[1401821,1432893)` 会把保存的 camera 发布给 UI，并排入 `ON_SET_CAMERA_INFO`；这是配置意图引起的真实写请求，不是设备观察结果或首次初始化判定。当前默认 camera 为 `cameraMode:"auto" / cameraValue:128 / cameraEnabled:false`，没有 `zoom` 字段。该原版重放行为需要与本项目的实测状态／配置／草稿规则分别建模，不能仅因配置存在就标记设备已确认或补出无依据的默认设备状态。
+
+相机事件 dispatcher `[1291673,1347617)` 将决策中的 `updateLocalStorage` 与 `deviceAccess` 交给 task maker `Nn` `[1610646,1611468)`。有 `deviceAccess` 时，后者读取本地 cache、递增版本并替换活动 profile 的完整 camera；有 `updateLocalStorage` 时先等待存储 helper，再把动作排入 `NORMAL_SKIPPABLE / imageSetting`。这些存储步骤发生在原生写结果之前，不能当成写回成功确认。
+
+实际 runner `on` `[1780473,1781159)` 先检查一次 abort，再等待 `setCameraFocus(cameraValue,cameraMode==="auto")`。它**不检查 setter 返回的 false**；对当前 `28836` 的 Kiyo X 实例还会等待 `setCameraZoom(camera.zoom)`，包装器原样转发 zoom、固定第三参数 false。默认 camera 没有 zoom，不能在逆向结果里擅自将缺字段补成 0。随后 runner 直接置 `completed`、更新 memory camera cache 并写 memory storage；本链没有调用 GetCameraFocus 读回。result consumer `rn` `[1781159,1781681)` 将 `completed`，甚至 `error==="skipped"`，发布为完成；因此任务完成与 COM 成功、设备状态确认均非同义。
+
+共享任务 owner `[5768,10741)` 对 skippable 类别取最新 pending 项，其他 pending 项调用 skipped consumer 后释放。取消尚未取得 Web Lock 的任务可得到 AbortError；锁内任务开始后，`cancel` 只 abort controller，本 runner 不在原生 await 后再次核信号，任务 finally 仍调用 result consumer。pending cancel 传入 `{value:null,error:"canceled"}`，而 `rn` 的错误分支直接读取 `a.value.params`，存在静态对象形状不匹配；此处没有执行断言其实际异常时机。取消、跳过、旧连接结果和 native 强制停止必须分别测试，不能统一记作没有写设备的成功取消。
+
+### 原生 COM、确认边界与断连释放
+
+包装器明确声明 `GetCameraFocus:[pointer,[string]]` 和 `SetCameraFocus:[bool,[string,long,bool]]`。getter 在 `isInit` 时 JSON.parse 返回字符串，null／空串或未初始化时返回空对象；该 guard 不是设备读取成功。`GetCameraFocus(0x4ea30)` 精确查已初始化 container，再把 CameraControl 属性 **6** 交给 `0x49860`；缺实例或读取失败返回已分配的 `{}`。成功编码 `0x49f00` 将 signed long 经 `%d` 写入 **JSON 字符串** `value`，`isAuto` 也为字符串，且仅 flags **恰好等于 1** 时为 `"true"`。不能将 getter 的未知 flags 当成已证明合法的手动状态，也不能把 `{}` 补成本地默认值。
+
+getter task 原 PE 虚表 `0xa1970+16 → 0x4c300 → 0x49620`，setter 为 `0xa1b50+16 → 0x4c2b0 → 0x49560`。两者从设备 `+40` 的 base filter QueryInterface；IID 原字节 `0x8e730` 为 `c6e13370-30ac-11d0-a18c-00a0c9118956`。getter 调接口 `+40` 的 Get，setter 调 `+32` 的 Set；属性均为 6。setter 将 int32 value 原样传递，flags 按 `(bool_byte ^ 1)+1` 计算，正确 bool 的自动 `1→1`、手动 `0→2`；没有范围查询、clamp、HID 应答或后续 getter。QueryInterface 与 Get／Set 以 HRESULT 非负为成功，已取得的属性接口随后 Release；**该 bool 只承载这一 COM 完成判断，不证明镜头位置或固件状态已经读回确认**。
+
+属性任务经过 `0x48890` 排入专用线程；`0x48340` 在该线程 CoInitialize(0)，正常退出配对 CoUninitialize，初始化失败记录后退出。任务等待上限 4,000 ms；超时分支清 active、detach、TerminateThread 并关闭所打开 handle；超过 500 ms 的属性调用只记录耗时，没有自动重试。强制终止可能绕过正常 COM／任务清理，不能描述为协议取消或恢复原值。上述行为均由完整函数和原 PE 的 task 虚表槽核对，未执行原生线程。
+
+`DeviceTerminate(0x4e470) → manager 0x41b00` 按精确 container 停属性窗口，先 Release／清零 base filter，**再**调用 executor Stop `0x48cf0` 等待线程，随后删除实例与列表项。join helper `0x5697c` 为无限 WaitForSingleObjectEx 后 CloseHandle；自 join 和 join 失败进入异常，不能以出口常量真概括所有路径。析构 `0x49080` 仍有停止和队列释放链；本节所选 getter／setter 从 manager 找到裸实例到 COM 使用间未见会话代次或共享所有权保留，且 filter 释放先于 executor join，因此不能据静态正常释放路径宣称并发断连已安全。
+
+本节补齐所列对焦输入、配置、消费者、COM 及取消／释放的静态证据；没有修改 Rust，没有执行厂商 JS、DLL、主应用、窗口或摄像头。后续需逐项覆盖独立设备值与配置不同、自动／手动及边界、字符串／未知 flags、getter 失败、setter false 仍 completed、缺 zoom、跳过与两阶段取消、断连、HRESULT 失败、4 秒超时、恢复和监听清理。官方 DLL 与独立 Rust 的实际功能对照、真实写入／读回／原值恢复及窗口验收全部保持 **Unverified**；捕获数量和本节闭合不代表整个产品或 DLL 语义已完成。
+
+## 3590／0E06 与 3589／0E05 的白平衡读写和页面门禁
+
+本节沿当前保留的两款 UI／MW 与各自原生库逐项核对白平衡，限定为 `3590／0E06 1.0.13.1`、`3589／0E05 1.0.15.1`。完整 AST、原 PE 字节、函数与实际虚表槽记录在同一[相机收据](../../../.analysis/results/native-bulk/camera-0e06-identity-verification.json)的 `white_balance_writeback_followup`；45 个新增完整 AST owner、11 个复核的既有 owner，以及两库合计 24 个完整函数的 1,843 条指令、8,277 个指令字节通过 8 线程有界核验。完整函数块 8,289 字节，其中无独立指令项的 12 字节另列保留。静态语义、页面执行、官方 DLL 实际对照与真实设备验收分别记录，不由同族名称推定其余分支已验证。
+
+### 白平衡开关、范围与配置冲突选择
+
+两版完整图像 owner 分别位于 UI UTF-8 字节 `[5067069,5074261)` 与 `[5064528,5071720)`，正文相同。其中 `id:"autoFocus"` 的 checkbox 和 `V(...,"setFocus",...)` **实际修改 `whiteBalance.isAuto`，不是 CameraControl Focus**；它保留白平衡数值，手动改数值则保留 `isAuto`。3590 的产品参数为 `2800…6500 / step 1`，3589 为 `2000…7500 / step 10`；各自默认 image 的白平衡为自动、数值 `5000`／`4000`，不能用共享组件的 fallback 覆盖产品参数或把配置默认值标为设备观测。
+
+手动 stepper 需 `!isAuto && !isSettingChanged`；手动 slider 另需预览开启、非 loading、非第三方占用。图像行在预览关闭、loading 或第三方占用时带 `disabled`，Windows 属性页打开则禁用整个图像面板。编辑先更新组件状态，必要时切到 custom，再提交完整 image；当前绑定的 action 集合没有单字段 `setWhiteBalance/setBrightness/setContrast/setSaturation`，所以不能凭 `V` 中留有这些可选调用就描述成当前挂载的独立 setter 路径。
+
+冲突弹层仅提供 CAMERA／SYNAPSE 两项。CAMERA 把 `currentImageSetting` 转为 custom，SYNAPSE 取所选配置 dataSet；**两项均可继续走 `setImageSetting` 的写动作**，不是 CAMERA 选择纯采纳读值而绝不写设备。差异 effect 遍历 object 字段时，双方 auto 都真或双方 manual 且 value 相同会直接 return 整个 effect，不能说所有剩余字段因此都一致。该 owner 没有通用 Cancel 或失败自动回滚。
+
+### 初始读取与配置重放顺序
+
+3590 的完整 setup `gn` `[1373141,1390492)` 在本地 profile 准备 `vn` 后等待 `L.rf/Qe`；该读取依次发起 brightness、contrast、saturation、whiteBalance 并等待同一 `Promise.all`，并非串行等待前一属性。后续才经 `Dn → An → Mn` 应用 profile；Mn 的 `imageMode/image` 分支又会排入 `ON_SET_IMAGE_SETTING`，因此启动读得的状态与随后重放的配置意图必须分开。此顺序只证明该已核实 setup 路径，不推定所有 resume 路径均重新读取。
+
+两款 Qe owner 的正文与哈希相同；读取结果通过 `MW_SET_CURRENT_IMAGE_SETTINGS` 到 UI 的 `currentImageSetting`，不是替换配置 image。原版转换使用 `Number(value||0)` 和 `JSON.parse(isAuto||"false")`，wrapper 又在未 init、null 或空串时给空对象；这些均不能在本项目冒充已观测的设备 0／手动状态。Qe 捕获异常仅记录日志，外层 setup 仍可继续，不能把流程继续当成初始化读取成功。所选产品的相机 feature config 均为空、没有启用高级读取 gate，不可从共享高级组件存在推定调用了曝光等额外 getter。
+
+### 整组写任务的结果边界
+
+当前 `setImageSetting` action 先 dispatch 图像配置并更新 profile；reducer 立即替换配置、广播 `ON_SET_IMAGE_SETTING`，不是等待设备确认。MW task maker 先读取 cache、递增版本并修改活动 profile，在 `updateLocalStorage` 为真时先持久化，随后才排入 `NORMAL_SKIPPABLE / imageSetting`。实际 runner 按 **brightness → contrast → saturation → whiteBalance** 顺序 await；白平衡仅在对象存在时调用，参数为原样的 `value,isAuto`。
+
+两版 task maker、runner 与 result consumer 的完整正文分别相同；task maker 的绑定标识实际为 `I6_.volumeSetting / DEk.version`，传入的是原输入版本 `l`，不是刚写进 cache 的新版本 `c`。这些标识和版本不能因任务名为 imageSetting 就自行改写成另一种源码语义。
+
+该 runner 忽略四个 setter 的 bool；即便其中抛异常，catch 只记日志，**仍将任务置为 completed**，而前面的异常可使后面的白平衡根本没有执行。result consumer 只输出日志，没有 getter 读回、设备确认或先前属性恢复。故单个 false、部分成功、白平衡未调用、任务 completed 和配置已持久化必须分别建模。共享任务的 pending 替换、执行前取消和执行后 abort 继续受上节已核实的队列语义约束，不能把 abort 或 skipped 当成已恢复设备。
+
+### 原生属性与产品差异
+
+两库白平衡均为 VideoProcAmp 属性 **7**：0E06 的 `GetWhiteBalance 0x4f540 → 0x49bb0`、`SetWhiteBalance 0x4eff0 → 0x49d60`，0E05 的 getter 为 `0x4fa70 → 0x4a0d0`、setter 为 `0x4f500 → 0x4a290`。0E05 两个排任务入口均先检查 base filter；0E06 排任务前只在 getter 检查两个 out pointer，filter 检查留在 COM 执行 helper。两者断连与失败发生时机不同，不能只共用属性编号就认为行为完全一致。
+
+原 PE 的 VideoProcAmp IID 两版均为 `c6e13360-30ac-11d0-a18c-00a0c9118956`，不能误用对焦的 CameraControl IID。0E06 getter 虚表为 `0xa1a58+16 → 0x4c260 → 0x497a0`、setter 为 `0xa1b18+16 → 0x4c210 → 0x496e0`；0E05 对应为 `0xa09b8+16 → 0x4c210 → 0x49ca0` 与 `0xa0ab0+16 → 0x4c1c0 → 0x49be0`。每张表的 `+0` clone 也按各自原件核实，不能因两库出现相同 RVA 而交叉套用函数。
+
+setter 原样传递 int32 数值，自动／手动 bool 分别映射 flags `1/2`；COM Get／Set 以 HRESULT 非负判断成功，随后释放取得的属性接口。成功 getter 把 signed 数值和 `isAuto` 编成 JSON **字符串**，仅 flags 恰为 1 时为 true；无实例或读取失败返回 `{}`。本链没有 Set 后自动 Get、硬件 ACK、范围查询或数值 clamp；这些返回与页面 completed 均不能替代真实设备读回和恢复确认。
+
+两库任务等待仍为 4,000 ms，强制终止不构成属性恢复。当前 0E06 实际导出表没有 Exposure 命名导出；共享高级曝光组件与 Windows 属性窗口是不同入口，不能凭前者推造 `3590 → Get/SetCameraExposure` 调用链，也不能据此宣称 Windows 属性窗口中的系统控件已完成核对。
+
+本节为静态证据收束，不执行厂商 JS、官方 DLL、主应用或设备；独立 Rust 行为测试、官方实际功能对照、真实写入／读回／原值恢复及窗口验收仍为 **Unverified**。
+
+## 3590 旧款预览的迟到结果与卸载边界
+
+本节补的是已读完整 owner 中的具体异步缺口，不将前述预览概要重复当成完整释放证明。6 个完整 AST 节点和来源身份保存在同一相机收据的 `legacy_preview_late_result_followup`；只覆盖当前 `3590` 原件，没有把结果推广到其他产品或宣称宿主／原生断连链已闭合。
+
+`YS` `[5053541,5063321)` 的启动 `Z` 在初次枚举后及 `getUserMedia` 返回后比较代次，后者迟到时停止刚取得的 tracks。但**`await video.play()` 后没有再次检查代次**：等待期间若 `Q` 已停流并清空 `srcObject`，旧成功仍可能随后设置 playing=true；旧 play 失败则停止其捕获的流、直接清视频元素的 `srcObject`，没有判断该元素是否已挂上更新的流。这是完整源码可构造的控制流分支，尚未运行重现。`Z(true)` 还可绕过“已有 srcObject”检查重新获取流；Z 内替换前没有独立停止旧流，不能只凭调用了 reload 就认定原流已释放。
+
+初次 `await X()` 媒体枚举位于后续 try/catch 之外，发生在 in-flight 标志置真之后；其 rejection 不经过该 catch 的清标志分支。停止 `Q` 会先递增代次、清 in-flight，再处理视频元素及 tracks；找不到元素时仅清 playing 后返回，单个 `track.stop()` 异常被吞掉，均没有逐 track 的 ended 确认。应分别测试枚举失败、捕获迟到、play 迟到、缺元素和停止异常，不能把这些统一标成正常关闭。
+
+挂载 effect 的卸载回调只调用折叠窗口 owner `Ae`，**没有调用 Q 或递增媒体代次**。焦点定时器 cleanup 只清尚未触发的 timer；已经进入 `getWindowStatus` await 的回调没有卸载后的复核。焦点 hook `fS` `[5050887,5051749)` 尝试调用 response 返回的取消函数，但其 `HS/getFocusTab` 异步结果也没有卸载／代次 guard；本节没有继续推定宿主 response 的实现或监听排空。媒体的 `getUserMedia/play/track.stop` 与 DLL 的 DeviceTerminate／卸载是不同边界，本 owner 不会因关预览就自动证明后者已执行。实际设备、窗口与对应恢复／释放验收仍为 **Unverified**。
+
+## 收据附录：共享原生捕获失败的静态证据
+
+本附录记录同一维护收据中的原生失败审阅，不将音频驱动函数归为相机能力。完整原件身份、原字节、边界与交叉引用在[相机收据](../../../.analysis/results/native-bulk/camera-0e06-identity-verification.json)的 `native_failure_review`。原 47 项导入 ABI 计划保持原样，另有 2 项共享帧合并计划。证据核验使用 8 个线程；两份 x64 原件已由统一 IDA 队列在私有数据库副本完成合并与反编译，下面分别记录已恢复部分与仍待边界处理的部分。未执行目标、DLL 或设备。
+
+### 24 个 positive-SP 失败的字节分区
+
+两份 x64 原件各有 12 个 outer、27 个内部 CALL／RET 子程序，共 24／54 个。每个实际 outer 均逐项核对原 PE、指令字节和完整 chunks；内部区间与外层余区间无重叠，字节并集严格等于原 chunks，保留全部对齐字节。两原件相同 RVA 的这些 outer 原字节一致，形成下列 4 个模板；内部区间相对 outer 入口，右端不含。
+
+| 模板 | 每原件 outer 入口 RVA | 字节数 | 内部相对区间 |
+| --- | --- | ---: | --- |
+| A | `0x284a0 / 0x2df40 / 0x338c0` | 367 | `[0x60,0x118)` |
+| B | `0x28610 / 0x2e0b0 / 0x33a30` | 676 | `[0xa0,0x234)` |
+| C | `0x2a370 / 0x2fe10 / 0x35790` | 2,602 | `[0x184,0x207)`、`[0x497,0x552)`、`[0x7bf,0x88a)` |
+| D | `0x2ada0 / 0x30840 / 0x361c0` | 4,248 | `[0x189,0x2d7)`、`[0x554,0x792)`、`[0x9f1,0xb49)`、`[0xd8f,0xf13)` |
+
+完整分区、每段原字节及真正 CALL／跳过正文的跳转保存在 `mixer_boundary_partition_review`。代表模板的 38 条边现已扩展逐项核对为全部 **228 条真实 E8 CALL**，均进入对应内部入口；原 PE 的 CALL 位移、返回位置及全部指令字节已核实。内部 CFG 同时追踪条件分支两后继，**不能在首个 RET 截断**：`0x2af29` 的 RET 位于 `0x2b02f`，后面仍有跳回主体的负值处理块，完整区间必须到 `0x2b077`。以上尚未应用为 IDA 新边界。
+
+### 9 种内部模板的真实寄存器结果
+
+`mixer_internal_abi_review` 保存全部输入、写集、相同字节实例和 caller 消费者。内部子程序不是普通 C ABI，不能仅选单个显眼结果而丢弃附加状态。
+
+| 代表入口 RVA | 读取的输入寄存器 | caller 实际消费结果 |
+| --- | --- | --- |
+| `0x28500` | `XMM0,6,7` | `XMM4` |
+| `0x286b0` | `XMM0,6,7,8,9,10` | `XMM2`；重建 `XMM6/7` 供下一轮调用 |
+| `0x2a4f4` | `XMM0,1,8,9,10,13` | `XMM2` 与累计 `XMM13` |
+| `0x2a807` | `XMM0,1,8,9,10,11,12,13` | `XMM2` 与累计 `XMM13` |
+| `0x2ab2f` | 同上一项加 `XMM14` | `XMM2` 与累计 `XMM13` |
+| `0x2af29` | `RCX,R8…R15,XMM8/9`；保留或条件改写 `RAX` | `XMM2` 与累计 `RAX` |
+| `0x2b2f4` | `EAX,XMM0…3,8…11` 及两段共享栈 | `XMM2` 与累计 `EAX` |
+| `0x2b791` | 同 `0x2af29` 加 `XMM10` | `XMM2` 与累计 `RAX` |
+| `0x2bb2f` | 同 `0x2b791` 加 `XMM11/12` | `XMM2` 与累计 `RAX` |
+
+C 类三个模板逐次将输入 OR 入 `XMM13`，outer 最终在 `0x2ad47` 执行 `pmovmskb EAX,XMM13` 并保留 `0x8888` 位。D 类整数输入模板遇负值写 `RAX=1`，其余路径保留此前值；outer 先将 RAX 清零，结束仍消费该状态。D 类 SIMD 输入模板以 `OR EAX,EBX` 累积状态，outer 最后保留 `0x8080` 位。
+
+`0x2b2f4` 三次栈读原字节为 `660f6f742408`、`660f6f7c2418`、`660f6f742408`，对应 helper 入口 `RSP+8` 的 16 字节、`RSP+0x18` 的 16 字节及重读前者。caller 先在自身 `RSP`／`RSP+0x10` 写常量，CALL 压入 8 字节返回地址后精确对应。全部 54 个 helper 均无显式栈调整、栈写、PUSH／POP 或嵌套 CALL，各有唯一 `C3`，只弹出 8 字节返回地址，没有额外参数清栈；仅上述模板的 6 个实例有合计 18 次数据栈读取。A／B／C／D 的 caller 帧相对 outer 入口分别为 `-0x38/-0x68/-0xa8/-0x108`，helper 入口再减 8 字节。完整逐体核验在 `mixer_internal_outline_preflight`。
+
+这些是保留 caller 寄存器及共享帧的真实局部 CALL／RET 体。当前字节全部嵌在 outer 的完整 chunk 中，普通合并不能解决其局部调用语义。后续可在私有 IDB 中精确分区并标记 `FUNC_OUTLINE`，由反编译器在 caller 内处理原有寄存器、共享栈和多结果，而不是编造普通 ABI 或丢弃累计状态；该方案尚未运行、尚未移除 24 条 positive-SP 失败。SIMD 浮点仍依赖 MXCSR，也未执行计算对照。
+
+### x64 共享帧与 x86 错误路径
+
+两份 x64 原件的 `0x7fa70 / 0x92960 / 0xaff50 / 0xcd650` 均在调用 `0x7f620` 时失败。捕获将连续控制流拆成 `[0x7f620,0x7f653)`、`[0x7f653,0x7fa5c)`、`[0x7fa5c,0x7fa64)` 三片：首片 `SUB RSP,0xd8`，条件跳到末片或落入正文；正文使用已有帧保存／恢复非易失寄存器，再落入 `ADD RSP,0xd8;RET`。两个内部片入口没有真实 CALL，不能沿用其伪代码推得的 25 参数。
+
+原 PE 的 `.pdata` 确实登记三段，三个 unwind flags 均为 **0**，**不含 `UNW_FLAG_CHAININFO`**；三者均描述同一 `0xd8` 栈分配。三片全部捕获字节／指令匹配原件，无缝并集 1,092 字节，两库相同，SHA-256 为 `795315791cc651960400406c59fdd6c2c139192c2b34977d1049284d75b2494a`。完整证明在 `mixer_x64_shared_frame_merge_review`。统一队列已在两份私有数据库中完成精确合并：每库 `0x7f620` 及 4 个 caller 均保存完整汇编和非空伪代码，合计恢复原 8 条 caller 失败；`mixer_shared_frame_merge_result` 逐项保留两个 manifest、10 个完整函数及 expected/applied chunks 一致证据，原 capture 和原数据库当前字节哈希均未改变。
+
+完整 ABI 由每库 10 处真实 CALL 核实：RCX 为原地读写 float buffer、EDX/R8D 为 signed int32、R9 为只读 float 表。第 5 参数槽在 caller 的 `RSP+0x20` 写 DWORD 0，callee 不读；第 6 槽在 caller 的 `RSP+0x28` 写 signed int32，callee 的入口 `RSP+0x30` 读取，值为 `0x100/0x400`。返回前 EAX 是零扩展到 RAX 的原始整数运算载体，部分 caller 经 epilogue 继续透传，**不是 HRESULT、成功状态，也不能概括为 void**。`0x7f579` 的 CALL 位于 base 捕获未覆盖的 `[0x7f4c8,0x7f5b2)`，补充的 LLVM 静态反汇编与原 PE 字节单独保存在 `mixer_merge_abi_followup`，不冒充已恢复的 IDA 函数。
+
+x86 的 4 条失败共同指向 `0x92e27`：真实输入为 `EAX` 错误种类、`EDX` 操作、`ECX` 名称指针和 `ST0` 结果，返回 `ST0`。helper 入口 `ESP+4` 保存 16 位 x87 控制字并将其地址继续传给错误处理；`ESP+0xc/+0x10` 是原始 double 两半，`ESP+8` 是外层返回地址，不能当数值实参。返回前按真实分支恢复控制字。`0x92f45` 本身是入口栈顶已有控制字的退出尾块，不能假设普通独立函数序言。`mixer_call_analysis_static_review` 保留 12 个失败 caller 与 3 个 x86 handler 的原件字节核验及指令。
+
+### 65 个多精度 caller 的完整 outline 候选闭包
+
+同一收据的 `shared_multiprecision_outline_preflight` 保存 13 份原件的完整审阅与 13 项新计划，位于 `plans[49…61]`（从 0 计数）。每份均核对全部 5 个失败 caller 及 **6 个**真实直调 helper，合计 65 个 caller、78 个已有独立边界的 helper、338 条 E8 调用；不是只处理第一处报错或原来列出的 4 个 callee。78 个 helper 的完整 chunks、指令、入口 flags 与源 PE 字节由维护选择器逐项核实，13 项选择 smoke 均通过；尚未启动该批 IDA 或据此恢复失败。
+
+常见布局的 6 个 helper 为 `0x22a20 / 0x23380 / 0x23c40 / 0x23de0 / 0x24740 / 0x250a0`，另一布局按其实际重定位入口逐项记录。`0x23380` 和 `0x24740` 有自身返回，另外两条真实 E9 为 `0x22a20 → 0x23c80` 与 `0x23de0 → 0x250e0`；目标分别位于 `0x23c40`、`0x250a0` 正文中部，13 库共 26 条共享 continuation 边。两段 continuation 的所有者也纳入每项 6-helper 计划，没有伪造新的 `0x23c80/0x250e0` 独立边界、删除跳转或用普通 ABI 掩盖寄存器和共享工作栈。
+
+候选处理仅在私有 IDB 的既有 helper 上标记 `FUNC_OUTLINE`，输出目标仍是 5 个 caller；不与边界合并混跑，不改任何机器指令。真实的中部外跳可能仍限制反编译恢复，必须以实际 manifest、完整函数、原字节及原捕获／数据库未改证据验收；smoke 或 outline 标记成功均不等于 65 个原失败已消除，也不等于算术行为已与官方执行一致。
+
+本附录中只有明确记录的两份 x64 共享帧合并与 8 条原失败恢复已完成；24 条 positive-SP 分区、x86 错误路径、多精度 outline 候选及其余失败仍分别保留。独立 Rust、UI／后端接线、官方 DLL 实际功能对照、真实设备和运行验收均未由本轮静态恢复证明，继续保持未完成／未验证。
+
