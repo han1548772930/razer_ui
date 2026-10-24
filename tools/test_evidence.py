@@ -9,6 +9,7 @@ from pathlib import Path
 import struct
 import sys
 import tempfile
+import threading
 import unittest
 import zipfile
 from unittest.mock import MagicMock, patch
@@ -1058,6 +1059,96 @@ class CaptureStreamingTests(unittest.TestCase):
         self.assertTrue(queue["capture_complete"])
         self.assertFalse(queue["snapshot_unchanged"])
         self.assertFalse(queue["full_corpus_captured"])
+
+    def test_parallel_native_corpus_isolates_modules_and_keeps_failures_in_one_receipt(self):
+        rows = []
+        for index in range(4):
+            raw = ("inert original " + str(index)).encode()
+            alias = ".analysis/inputs/test/device" + str(index) + ".dll"
+            self.source(alias, raw)
+            rows.append({"sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw), "aliases": [alias]})
+        self.source(".analysis/results/corpus.json", json.dumps({"native_inputs": rows}).encode())
+        by_path = {row["aliases"][0]: row for row in rows}
+        barrier = threading.Barrier(2, timeout=10)
+        lock = threading.Lock()
+        active, peak, configured = set(), 0, []
+        publisher = threading.get_ident()
+        publications = []
+        original_save = analysis.save
+
+        def save(path, value):
+            if path.name == "native-corpus-capture.json":
+                publications.append(threading.get_ident())
+            return original_save(path, value)
+
+        def configure():
+            configured.append(threading.get_ident())
+
+        def capture(args):
+            nonlocal peak
+            row = by_path[args.input]
+            self.assertTrue(args.ida_configuration_prepared)
+            self.assertTrue(args.no_refresh_gaps)
+            with lock:
+                self.assertEqual(len(configured), 1)
+                self.assertNotIn(row["sha256"], active)
+                active.add(row["sha256"])
+                peak = max(peak, len(active))
+            try:
+                barrier.wait()
+                if args.input.endswith("device1.dll"):
+                    raise RuntimeError("synthetic isolated analyzer failure")
+                self.native_capture(row["sha256"], row["bytes"])
+                return {"passed": True, "exit_code": 0}
+            finally:
+                with lock:
+                    active.remove(row["sha256"])
+
+        with patch.object(analysis, "capture_native", side_effect=capture), \
+             patch.object(analysis, "configure_ida", side_effect=configure), \
+             patch.object(analysis, "save", side_effect=save), redirect_stdout(io.StringIO()):
+            analysis.capture_corpus(argparse.Namespace(source="retained", include_path=[], workers=2,
+                                                       ida_root="unused", no_refresh_gaps=True))
+        queue = json.loads((self.root / ".analysis/results/native-corpus-capture.json").read_bytes())
+        self.assertEqual(peak, 2)
+        self.assertFalse(active)
+        self.assertEqual(len(configured), 1)
+        self.assertEqual(set(publications), {publisher})
+        self.assertEqual(len(queue["modules"]), 4)
+        self.assertEqual([row["sha256"] for row in queue["modules"]], sorted(by_path[path]["sha256"] for path in by_path))
+        failed = [row for row in queue["modules"] if row["status"] == "failed"]
+        self.assertEqual([row["input"] for row in failed], [rows[1]["aliases"][0]])
+        self.assertIn("synthetic isolated analyzer failure", failed[0]["error"])
+        self.assertTrue(all(row["original_snapshot_unchanged"] for row in queue["modules"] if row["status"] == "captured"))
+        self.assertTrue(queue["snapshot_unchanged"] and queue["original_inputs_snapshot_unchanged"])
+        self.assertFalse(queue["capture_complete"] or queue["full_corpus_captured"])
+
+    def test_parallel_native_corpus_reuse_skips_configuration_and_analyzer(self):
+        rows = []
+        for index in range(3):
+            raw = ("inert retained capture " + str(index)).encode()
+            alias = ".analysis/inputs/test/reused" + str(index) + ".dll"
+            self.source(alias, raw)
+            row = {"sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw), "aliases": [alias]}
+            rows.append(row)
+            self.native_capture(row["sha256"], len(raw))
+        self.source(".analysis/results/corpus.json", json.dumps({"native_inputs": rows}).encode())
+        with patch.object(analysis, "capture_native") as capture, \
+             patch.object(analysis, "configure_ida") as configure, redirect_stdout(io.StringIO()):
+            analysis.capture_corpus(argparse.Namespace(source="retained", include_path=[], workers=3,
+                                                       ida_root="unused", no_refresh_gaps=True))
+        capture.assert_not_called()
+        configure.assert_not_called()
+        queue = json.loads((self.root / ".analysis/results/native-corpus-capture.json").read_bytes())
+        self.assertTrue(queue["full_corpus_captured"])
+        self.assertEqual(len(queue["modules"]), 3)
+        self.assertTrue(all(row["status"] == "reused_complete_capture" for row in queue["modules"]))
+
+    def test_native_corpus_rejects_invalid_parallelism_before_publishing(self):
+        for workers in (0, -1, 5, True, 2.5):
+            with self.subTest(workers=workers), self.assertRaisesRegex(ValueError, "between one and four"):
+                analysis.capture_corpus(argparse.Namespace(workers=workers))
+        self.assertFalse((self.root / ".analysis/results/native-corpus-capture.json").exists())
 
     def test_reused_native_capture_requires_actual_original_identity_and_unchanged_snapshot(self):
         for issue in (None, "changed_original", "changed_during_verification", "capture_input_size", "changed_output", "output_escape"):
@@ -2134,6 +2225,23 @@ class CorpusLineageTests(unittest.TestCase):
 
 
 class NativeSupplementTests(unittest.TestCase):
+    def test_member_dispatch_thunk_requires_all_three_exact_x64_instructions(self):
+        # mov rax,[rcx+8]; mov rcx,[rcx+24]; jmp rax.
+        raw = bytes.fromhex("488b4108488b491848ffe0")
+        self.assertEqual(analysis.native_member_dispatch_thunk_size(raw, "x64"), 11)
+        for arch in ("x86", "arm64", "unknown"):
+            with self.subTest(architecture=arch):
+                self.assertIsNone(analysis.native_member_dispatch_thunk_size(raw, arch))
+        for length in range(11):
+            with self.subTest(truncated=length):
+                self.assertIsNone(analysis.native_member_dispatch_thunk_size(raw[:length], "x64"))
+        self.assertIsNone(analysis.native_member_dispatch_thunk_size(raw + b"\xcc", "x64"))
+        for index in range(len(raw)):
+            changed = bytearray(raw)
+            changed[index] ^= 1
+            with self.subTest(changed_byte=index):
+                self.assertIsNone(analysis.native_member_dispatch_thunk_size(bytes(changed), "x64"))
+
     def fixture(self):
         raw = bytearray(0x400)
         raw[:2] = b"MZ"

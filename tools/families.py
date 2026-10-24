@@ -1503,6 +1503,8 @@ def audit_middleware_capture(family, pid):
 
 def audit_family_function(args):
     """Reuse full Wakaru captures while checking original/capture byte identities."""
+    if getattr(args, "native_client_branches", None) and getattr(args, "query", None) != "audio-surround":
+        raise ValueError("Native client branch capture/check requires the audio-surround query")
     if getattr(args, "receipt_only", False) and getattr(args, "query", None) not in ("mouse-customize", "mouse-dpi-backend", "mapping-engine", "audio-seiren-eq"):
         raise ValueError("Receipt-only refresh is supported for mouse-customize, mouse-dpi-backend, mapping-engine and audio-seiren-eq")
     if getattr(args, "query", None) == "mouse-dpi":
@@ -7326,6 +7328,943 @@ def audit_audio_demo(args):
         "media_preparation_verified": preparation_ready}), flush=True)
 
 
+def audio_carol_ffi_binding(raw, parser):
+    """Read the complete current Carol ABI table and its lexical initializer."""
+    tree = parser.parse(raw)
+    if tree.root_node.has_error:
+        raise ValueError("Carol FFI source has JavaScript grammar errors")
+    pending, tables = [tree.root_node], []
+    while pending:
+        node = pending.pop()
+        if (node.type == "array" and node.named_children
+                and all(child.type == "object" for child in node.named_children)):
+            keys = [pair.child_by_field_name("key") for child in node.named_children
+                    for pair in child.named_children if pair.type == "pair"]
+            if any(key.text == b"GetDLLVersion" for key in keys):
+                tables.append(node)
+        pending.extend(reversed(node.named_children))
+    if len(tables) != 1:
+        raise ValueError("Carol FFI configuration is absent or ambiguous")
+    table = tables[0]
+    owner = table
+    while owner is not None:
+        if owner.type == "assignment_expression":
+            left = owner.child_by_field_name("left")
+            if left is not None and left.text == b"this.initElectron":
+                break
+        owner = owner.parent
+    if owner is None:
+        raise ValueError("Carol ABI table is outside its complete initializer")
+    groups = []
+    for obj in table.named_children:
+        group = []
+        for pair in obj.named_children:
+            if pair.type != "pair":
+                raise ValueError("Carol ABI table has a dynamic property")
+            key, value = pair.child_by_field_name("key"), pair.child_by_field_name("value")
+            if key.type != "property_identifier" or value.type != "array":
+                raise ValueError("Carol ABI name/signature is dynamic")
+            group.append({"name": key.text.decode(), "signature": json.loads(value.text)})
+        groups.append(group)
+    def retained(node):
+        return {"byte_start": node.start_byte, "byte_end": node.end_byte, "syntax": node.type,
+                "body": node.text.decode(), "body_sha256": hashlib.sha256(node.text).hexdigest()}
+    return {"configuration": retained(table), "initializer": retained(owner), "groups": groups,
+            "focus_apis": [item["name"] for group in groups for item in group
+                           if re.search(r"Ctc|Virtualizer|Spatial|BassManagement", item["name"], re.I)]}
+
+
+def audio_native_client_specs():
+    """Analysis selections; input hashes never enter the product runtime."""
+    return (
+        (1392, "8678a5eadd881ea7a569131369b3964d9519f1d584beddd315fb897e6f4af5ca",
+         "aaf21e02a34db9ac603bd7a97721226486af8bf383707e70eef43b95159b140e", 0x18990, 0x18670,
+         "thx_carol_routing_client_v1.0.80.0.dll", "absent_from_client_eat"),
+        (1442, "8ae90d8fea237c1ca062906383f878cf191a0c5d367e92233c2892ea3a2278f2",
+         "b84535e588da1582ef1938b41d58d272baf88f37d9b76db1a89d970aa6c66802", 0x19240, 0x18f10,
+         "razer_clio_x_routing_client_v1.2.0.51.dll", "non_disabled_export_bodies"),
+        (3942, "08d79db95def4026a78ebfaee3ecfa736295462efb33e8f27864d1004fd8903c",
+         "9779234a43451b4500d4a4fe51a6b9e5750924ffb7facf499ce7a071cf7cc336", 0x19240, 0x18f10,
+         "razer_soma_pro_routing_client_1.2.1.59_2.dll", "fixed_host_spatial_disabled_11"),
+    )
+
+
+def collect_audio_native_client_boundaries():
+    """Capture product-specific wrapper/client boundaries without target execution."""
+    import host
+    import sys
+    import importlib.metadata
+    sys.path.insert(0, str(a.ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    parser = Parser(Language(tree_sitter_javascript.language()))
+    acquisition_path = a.ROOT / ".analysis/inputs/official-native-current/acquisition.json"
+    acquisition = json.loads(acquisition_path.read_bytes())
+    if not acquisition.get("source_current_during_acquisition"):
+        raise ValueError("Native acquisition has no stable current-source receipt")
+    rows = []
+    for pid, wrapper_sha, client_sha, load_rva, init_rva, filename, classification in audio_native_client_specs():
+        row = {"product_id": pid, "classification": classification, "native": {},
+               "client_filename": filename, "loader_rva": hex(load_rva), "init_lookup_rva": hex(init_rva)}
+        manifest_url = f"https://apps.razer.com/synapse/products/{pid}/mw/manifest.json"
+        manifest = next(item for item in acquisition["manifests"] if item["url"] == manifest_url)
+        if not valid(manifest):
+            raise ValueError("Current product manifest bytes differ")
+        row["manifest"] = {key: manifest[key] for key in
+                           ("path", "bytes", "sha256", "url", "version", "build_version", "git_metadata")}
+        declaration = json.loads((a.ROOT / manifest["path"]).read_bytes())
+        for role, digest in (("wrapper", wrapper_sha), ("client", client_sha)):
+            resources = [item for item in acquisition["resources"] if item.get("sha256") == digest]
+            if len(resources) != 1 or not valid(resources[0]):
+                raise ValueError("Current native resource is absent, ambiguous or altered")
+            resource = resources[0]
+            declared = [item for item in declaration["resourceManifest"]["resources"]
+                        if item.get("sha256", "").lower() == digest]
+            if len(declared) != 1:
+                raise ValueError("Native resource is not declared by its product manifest")
+            original = {key: resource[key] for key in ("path", "bytes", "sha256")}
+            pe = host.inspect_pe((a.ROOT / original["path"]).read_bytes())
+            exports = sorted(({"name": name, "rva": entry["rva"], "ordinal": entry["ordinal"],
+                               "forwarder": entry.get("forwarder")}
+                              for entry in pe["exports"] for name in entry["names"]), key=lambda item: item["name"])
+            roles, functions = {}, {}
+            directory = a.ROOT / ".analysis/results/native" / digest
+            capture = json.loads((directory / "capture.json").read_bytes())
+            if role == "wrapper":
+                roles = {load_rva: "exact client filename and LoadLibraryW", init_rva: "thxCarolInit lookup"}
+                aggregate = (directory / "all-functions.c").read_text(encoding="utf-8")
+                for block in re.split(r"(?=/\* [^\n]* RVA 0x)", aggregate):
+                    if "GetProcAddress" in block:
+                        rva = int(re.search(r"RVA (0x[0-9a-f]+)", block)[1], 16)
+                        roles[rva] = "complete retained dynamic symbol resolver"
+            focus = [entry for entry in exports
+                     if re.search(r"Ctc|Virtualizer|Spatial|BassManagement", entry["name"], re.I)]
+            chains = []
+            if role == "client":
+                for entry in focus:
+                    rva, chain = int(entry["rva"], 0), []
+                    for _ in range(8):
+                        if rva in chain:
+                            raise ValueError("Client export thunk contains a cycle")
+                        chain.append(rva)
+                        roles[rva] = "focus export body or byte-exact direct-jump target"
+                        body = json.loads((directory / "functions" / (hex(rva)[2:] + ".json")).read_bytes())
+                        instructions = body["assembly"]
+                        if len(instructions) != 1 or not instructions[0]["bytes"].startswith("e9"):
+                            break
+                        encoded = bytes.fromhex(instructions[0]["bytes"])
+                        if len(encoded) != 5:
+                            raise ValueError("Unexpected direct-jump encoding")
+                        rva += 5 + int.from_bytes(encoded[1:], "little", signed=True)
+                    else:
+                        raise ValueError("Client export thunk exceeds bounded analysis")
+                    chains.append({"name": entry["name"], "rvas": [hex(value) for value in chain]})
+                if pid == 3942:
+                    roles.update({value: "disabled export logging boundary" for value in (0x17ac0, 0x2ef30, 0x2f260, 0x176148)})
+                if pid == 1442:
+                    roles.update({value: "sampled FIR or config read/write boundary" for value in
+                                  (0x3c0e0, 0x4cf20, 0x4d120, 0x4d320, 0x4d520, 0x4d720, 0x4d920)})
+            selected = verify_native_functions(original, roles,
+                exports={entry["name"]: entry["rva"] for entry in exports})
+            for item in selected["complete_selected_functions"]:
+                functions[item["capture"]["rva"]] = item["capture"]
+            dynamic_names = sorted({name for body in functions.values()
+                for name in re.findall(r'GetProcAddress\([^;]*?"([^"]+)"\)',
+                    "\n".join(line["text"] for line in (body.get("pseudocode") or {}).get("lines", [])), re.S)})
+            row["native"][role] = {"resource": {key: resource[key] for key in
+                ("path", "bytes", "sha256", "url", "declared_sha256", "declared_bytes", "manifests", "status")},
+                "manifest_declaration": declared[0], "eat": exports, "focus_exports": focus,
+                "export_chains": chains, "dynamic_names": dynamic_names, "evidence": selected,
+                "imports_artifact": identity(directory / "imports.json"),
+                "entrypoints_artifact": identity(directory / "entrypoints.json")}
+        receipt_path = a.ROOT / f".analysis/inputs/frontend/audio-mw-{pid}-current/acquisition.json"
+        receipt = json.loads(receipt_path.read_bytes())
+        if not receipt.get("source_current_during_acquisition"):
+            raise ValueError("Carol MW is not a stable current-source acquisition")
+        sources = [item for item in receipt["files"] if Path(item.get("path", "")).name.startswith("AudioEffectsTHXCarol.")
+                   and item.get("path", "").endswith(".js")]
+        if len(sources) != 1 or not valid(sources[0]):
+            raise ValueError("Current Carol MW source differs")
+        row["frontend"] = {"acquisition": identity(receipt_path), "original": sources[0],
+                           **audio_carol_ffi_binding((a.ROOT / sources[0]["path"]).read_bytes(), parser)}
+        rows.append(row)
+    return {"schema_version": 1, "tool": identity(Path(__file__)),
+            "acquisition": identity(acquisition_path), "products": rows,
+            "parser": {name: importlib.metadata.version(name) for name in ("tree-sitter", "tree-sitter-javascript")},
+            "scope": "Three exact current wrapper/client builds and Carol FFI initializers; export classification is not complete feature semantics",
+            "target_execution": False, "rust_implementation": "unverified", "ui_backend_wiring": "unverified",
+            "actual_dll_comparison": "unverified", "device_dsp_acceptance": "unverified"}
+
+
+def audio_native_evidence_check(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+
+def audio_native_evidence_original(identity):
+    path = a.ROOT / identity["path"]
+    audio_native_evidence_check(path.resolve().is_relative_to((a.ROOT / ".analysis").resolve()),
+                                "Evidence path escapes analysis")
+    value = path.read_bytes()
+    audio_native_evidence_check(len(value) == identity["bytes"] and
+                                hashlib.sha256(value).hexdigest() == identity["sha256"],
+                                "Evidence identity changed: " + identity["path"])
+    return value
+
+
+def audio_native_evidence_pe(raw):
+    """Read x64 file-backed ranges and EAT independently of capture collection."""
+    import struct
+    check = audio_native_evidence_check
+    check(len(raw) >= 0x40 and raw[:2] == b"MZ", "PE DOS header is absent or truncated")
+    coff = struct.unpack_from("<I", raw, 0x3c)[0]
+    check(coff+24 <= len(raw) and raw[coff:coff+4] == b"PE\0\0", "PE signature or COFF header differs")
+    machine, count = struct.unpack_from("<HH", raw, coff+4)
+    optional = coff+24
+    optional_size = struct.unpack_from("<H", raw, coff+20)[0]
+    check(optional_size >= 120 and optional+optional_size+count*40 <= len(raw), "PE headers are truncated")
+    check(machine == 0x8664 and struct.unpack_from("<H", raw, optional)[0] == 0x20b, "Expected exact x64 PE")
+    base = struct.unpack_from("<Q", raw, optional+24)[0]
+    table = optional+optional_size
+    sections = [struct.unpack_from("<IIII", raw, table+40*i+8) for i in range(count)]
+    def offset(rva, size):
+        spans = [offset+rva-va for vs, va, length, offset in sections if va <= rva and rva+size <= va+length]
+        check(len(spans) == 1 and size > 0, "PE range has no unique file backing")
+        check(0 <= spans[0] and spans[0]+size <= len(raw), "PE range is truncated")
+        return spans[0]
+    def read(rva, size):
+        start = offset(rva, size)
+        value = raw[start:start+size]
+        check(len(value) == size, "PE range is truncated")
+        return value
+    read.file_offset = offset
+    def string(rva):
+        result = bytearray()
+        while read(rva, 1) != b"\0":
+            result.extend(read(rva, 1)); rva += 1
+            check(len(result) < 4096, "PE string is unbounded")
+        return result.decode("ascii")
+    export_rva, export_size = struct.unpack_from("<II", raw, optional+112)
+    result = []
+    if export_rva:
+        export = read(export_rva, 40)
+        ordinal, funcs, names, ftable, ntable, otable = struct.unpack_from("<IIIIII", export, 16)
+        for i in range(names):
+            name = string(struct.unpack("<I", read(ntable+4*i, 4))[0])
+            index = struct.unpack("<H", read(otable+2*i, 2))[0]
+            check(index < funcs, "PE ordinal is outside EAT")
+            rva = struct.unpack("<I", read(ftable+4*index, 4))[0]
+            result.append({"name": name, "rva": hex(rva), "ordinal": ordinal+index,
+                           "forwarder": string(rva) if export_rva <= rva < export_rva+export_size else None})
+    return base, read, sorted(result, key=lambda item: item["name"])
+
+
+def verify_audio_native_client_boundaries(document):
+    """Independently re-read originals and records; never call the collector."""
+    import sys
+    sys.path.insert(0, str(a.ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    parser = Parser(Language(tree_sitter_javascript.language()))
+    check = audio_native_evidence_check
+    original = audio_native_evidence_original
+    pe = audio_native_evidence_pe
+    check(document["schema_version"] == 1 and document["target_execution"] is False, "Static analysis boundary changed")
+    for field in ("rust_implementation", "ui_backend_wiring", "actual_dll_comparison", "device_dsp_acceptance"):
+        check(document[field] == "unverified", "Static classification was promoted to runtime acceptance")
+    acquisition = json.loads(original(document["acquisition"]))
+    check(acquisition["source_current_during_acquisition"] is True, "Current native-source receipt differs")
+    check([row["product_id"] for row in document["products"]] == [1392,1442,3942], "Product branch selection differs")
+    counters = Counter()
+    for row, spec in zip(document["products"], audio_native_client_specs()):
+        pid, wrapper_sha, client_sha, load_rva, init_rva, filename, classification = spec
+        check(row["classification"] == classification and row["client_filename"] == filename
+              and row["loader_rva"] == hex(load_rva) and row["init_lookup_rva"] == hex(init_rva), "Version branch identity differs")
+        manifest_raw = original(row["manifest"])
+        matches = [value for value in acquisition["manifests"] if value["url"] == row["manifest"]["url"]]
+        check(len(matches) == 1 and all(row["manifest"][k] == matches[0][k] for k in row["manifest"]), "Manifest lineage differs")
+        manifest = json.loads(manifest_raw)
+        native_functions = {}
+        for role, digest in (("wrapper",wrapper_sha),("client",client_sha)):
+            part = row["native"][role]
+            resource = part["resource"]
+            check(resource["sha256"] == digest and resource["declared_sha256"].lower() == digest
+                  and resource["declared_bytes"] == resource["bytes"] and resource["status"] == "verified", "Native product original differs")
+            observed = [value for value in acquisition["resources"] if value.get("sha256") == digest]
+            check(len(observed) == 1 and all(observed[0][k] == v for k,v in resource.items()), "Resource acquisition lineage differs")
+            declaration = [value for value in manifest["resourceManifest"]["resources"] if value.get("sha256", "").lower() == digest]
+            check(declaration == [part["manifest_declaration"]] and declaration[0]["url"] == resource["url"]
+                  and declaration[0]["size"] == resource["bytes"], "Manifest resource declaration differs")
+            base, read, exports = pe(original(resource))
+            check(part["eat"] == exports, "Complete PE export inventory differs")
+            focus = [value for value in exports if re.search(r"Ctc|Virtualizer|Spatial|BassManagement",value["name"],re.I)]
+            check(part["focus_exports"] == focus, "Focus EAT classification is incomplete")
+            evidence = part["evidence"]
+            capture = json.loads(original(evidence["capture_receipt"]))
+            check(capture["input_sha256"] == digest and capture["input_bytes"] == resource["bytes"]
+                  and int(capture["image_base"],0) == base and capture["capture_complete"], "Native capture lineage differs")
+            check(evidence["input"] == {key:resource[key] for key in ("path","bytes","sha256")}, "Native evidence original binding differs")
+            for key in ("image_base","ida_version","hexrays_version","capture_tool","functions_total",
+                        "functions_captured","capture_complete","failures"):
+                check(evidence[key] == capture[key], "Native capture status was altered: " + key)
+            index = {item["rva"]:item for item in capture["functions"]}
+            outputs = {item["path"]: item for item in capture["outputs"]}
+            imports = json.loads(original(part["imports_artifact"]))
+            entries = json.loads(original(part["entrypoints_artifact"]))
+            for name, artifact in (("imports.json", part["imports_artifact"]),
+                                   ("entrypoints.json", part["entrypoints_artifact"])):
+                check(artifact["sha256"] == outputs[name]["sha256"], "Native inventory artifact differs from capture")
+            check(all(any(value["name"] == entry["name"] and value["rva"] == entry["rva"] for value in entries)
+                      for entry in exports), "Actual PE exports differ from IDA entry records")
+            functions = {}
+            for item in evidence["complete_selected_functions"]:
+                body = json.loads(original(item["artifact"]))
+                check(body == item["capture"] and index[body["rva"]]["sha256"] == item["artifact"]["sha256"], "Complete native record differs")
+                check(body["rva"] not in functions and int(body["address"],0) == base+int(body["rva"],0), "Native boundary is duplicated or altered")
+                functions[body["rva"]] = body
+                for chunk in body["chunks"]:
+                    first,end = int(chunk["start"],0),int(chunk["end"],0)
+                    value = read(first-base,end-first)
+                    check(value.hex() == chunk["raw_hex"] and hashlib.sha256(value).hexdigest() == chunk["sha256"], "Native raw chunk differs from original PE")
+                    counters["raw_chunk_bytes"] += len(value)
+                for insn in body["assembly"]:
+                    value = bytes.fromhex(insn["bytes"])
+                    check(value == read(int(insn["rva"],0),len(value)), "Native instruction bytes differ from original PE")
+                    counters["instructions"] += 1
+                    counters["enumerated_instruction_bytes"] += len(value)
+                counters["complete_functions"] += 1
+            native_functions[role] = functions
+            if role == "wrapper":
+                check(not focus and hex(load_rva) in functions and hex(init_rva) in functions, "Wrapper boundary is incomplete")
+                loader = "\n".join(line["text"] for line in functions[hex(load_rva)]["pseudocode"]["lines"])
+                init = "\n".join(line["text"] for line in functions[hex(init_rva)]["pseudocode"]["lines"])
+                check(filename in loader and "LoadLibraryW" in loader and '"thxCarolInit"' in init, "Actual wrapper client binding differs")
+                names = sorted({name for body in functions.values() for name in re.findall(r'GetProcAddress\([^;]*?"([^"]+)"\)',
+                    "\n".join(line["text"] for line in (body.get("pseudocode") or {}).get("lines",[])),re.S)})
+                check(names == part["dynamic_names"] and not any(re.search(r"Ctc|Virtualizer|Spatial|BassManagement",name,re.I) for name in names), "Wrapper dynamic symbol classification differs")
+                imported = [item for item in imports if item.get("name") == "GetProcAddress"]
+                check(len(imported) == 1, "Wrapper GetProcAddress import is ambiguous")
+                sites = {reference["from"] for reference in imported[0]["xrefs"] if reference["code"]}
+                captured_sites = {insn["address"]: insn for body in functions.values() for insn in body["assembly"]}
+                check(sites <= captured_sites.keys(), "Wrapper dynamic resolver reference closure is incomplete")
+                for site in sites:
+                    insn = captured_sites[site]; encoded = bytes.fromhex(insn["bytes"])
+                    check(encoded[:2] == b"\xff\x15" and len(encoded) == 6 and
+                          int(site,0)+6+int.from_bytes(encoded[2:],"little",signed=True) == int(imported[0]["address"],0),
+                          "Wrapper dynamic resolver call bytes differ")
+                counters["getprocaddress_call_sites"] += len(sites)
+            elif pid == 1392:
+                check(not focus and not functions and not part["export_chains"], "Old Carol client incorrectly inherits newer exports")
+            else:
+                check(len(focus) == 102 and {value["name"] for value in focus} == {value["name"] for value in part["export_chains"]}, "Client focus export coverage differs")
+                required = ({"0x17ac0","0x2ef30","0x2f260","0x176148"} if pid == 3942 else
+                            {"0x3c0e0","0x4cf20","0x4d120","0x4d320","0x4d520","0x4d720","0x4d920"})
+                check(required <= functions.keys(), "Sampled client helper boundary is incomplete")
+                for entry,chain in zip(focus,part["export_chains"]):
+                    check(chain["name"] == entry["name"] and chain["rvas"][0] == entry["rva"], "Client export chain binding differs")
+                    for offset,rva in enumerate(chain["rvas"]):
+                        check(rva in functions, "Client export target body is absent")
+                        body = functions[rva]
+                        insns = body["assembly"]
+                        thunk = len(insns) == 1 and len(bytes.fromhex(insns[0]["bytes"])) == 5 and insns[0]["bytes"].startswith("e9")
+                        if thunk:
+                            target = int(rva,0)+5+int.from_bytes(read(int(rva,0)+1,4),"little",signed=True)
+                            check(offset+1 < len(chain["rvas"]) and hex(target) == chain["rvas"][offset+1], "Direct-jump chain differs from original bytes")
+                        else:
+                            check(offset == len(chain["rvas"])-1, "Client export chain continues past its body")
+                    text = "\n".join(line["text"] for line in functions[chain["rvas"][-1]]["pseudocode"]["lines"])
+                    if pid == 3942:
+                        check("Not available: SPATIAL_ON_HOST is disabled" in text and re.findall(r"return ([^;]+);",text) == ["11"], "Soma disabled return contract differs")
+                        check(any(insn["bytes"] == "b80b000000" for insn in insns), "Soma fixed return-11 instruction is absent")
+                        calls = {int(insn["rva"],0)+5+int.from_bytes(bytes.fromhex(insn["bytes"])[1:],"little",signed=True)
+                                 for insn in insns if len(insn["bytes"]) == 10 and insn["bytes"].startswith("e8")}
+                        check(calls <= {0x176148,0x17ac0,0x2ef30,0x2f260}, "Disabled export has a new non-logging direct call")
+                    else:
+                        check("SPATIAL_ON_HOST is disabled" not in text and re.findall(r"return ([^;]+);",text) != ["11"], "Clio active implementation was collapsed to Soma stub")
+        frontend = row["frontend"]
+        check(frontend["acquisition"]["path"] ==
+              f".analysis/inputs/frontend/audio-mw-{pid}-current/acquisition.json", "MW product acquisition branch differs")
+        receipt = json.loads(original(frontend["acquisition"]))
+        check(receipt["source_current_during_acquisition"] is True and frontend["original"] in receipt["files"]
+              and f"/synapse/products/{pid}/mw/" in frontend["original"]["url"], "MW acquisition lineage differs")
+        raw = original(frontend["original"])
+        tree = parser.parse(raw)
+        check(not tree.root_node.has_error, "MW source cannot be parsed")
+        for key in ("configuration","initializer"):
+            owner = frontend[key]; body = raw[owner["byte_start"]:owner["byte_end"]]
+            node = tree.root_node.descendant_for_byte_range(owner["byte_start"],owner["byte_end"])
+            while node is not None and node.start_byte == owner["byte_start"] and node.end_byte == owner["byte_end"] and node.type != owner["syntax"]:
+                node = node.parent
+            check(node is not None and node.start_byte == owner["byte_start"] and node.end_byte == owner["byte_end"]
+                  and node.type == owner["syntax"] and body.decode() == owner["body"]
+                  and hashlib.sha256(body).hexdigest() == owner["body_sha256"], "Complete FFI AST owner differs")
+        init = frontend["initializer"]
+        config = frontend["configuration"]
+        check(init["byte_start"] < config["byte_start"] < config["byte_end"] < init["byte_end"]
+              and init["body"].startswith("this.initElectron="), "FFI table is not bound to the actual initializer")
+        array = tree.root_node.descendant_for_byte_range(frontend["configuration"]["byte_start"],frontend["configuration"]["byte_end"])
+        groups = [[{"name": pair.child_by_field_name("key").text.decode(),
+                    "signature": json.loads(pair.child_by_field_name("value").text)} for pair in obj.named_children]
+                  for obj in array.named_children]
+        check(groups == frontend["groups"] and [len(group) for group in groups] == [67,4]
+              and frontend["focus_apis"] == [] and not any(re.search(r"Ctc|Virtualizer|Spatial|BassManagement",item["name"],re.I) for group in groups for item in group), "Carol complete ABI table differs")
+        declared_names = {item["name"] for group in groups for item in group}
+        eat_names = {item["name"] for item in row["native"]["wrapper"]["eat"]}
+        check(eat_names-declared_names == {"SetDebug"} and declared_names-eat_names ==
+              ({"StartMonitor","StopMonitor","SetMonitorInterval","GetMonitorInterval"} if pid == 1392 else set()), "Carol optional monitor ABI branch differs")
+    verification = {"passed": True, "products": 3, "focus_export_names": {"1392":0,"1442":102,"3942":102},
+            **dict(counters), "unenumerated_bytes": counters["raw_chunk_bytes"]-counters["enumerated_instruction_bytes"],
+            "target_execution": False, "actual_dll_comparison": "unverified"}
+    if "verification" in document:
+        check(document["verification"] == verification, "Stored native branch verification differs from independent result")
+    return verification
+
+
+def negative_audio_native_client_boundaries(document):
+    """Reject altered static claims while both collection paths are disabled."""
+    from unittest.mock import patch
+    soma_functions = document["products"][2]["native"]["client"]["evidence"]["complete_selected_functions"]
+    fir_index = next(index for index,item in enumerate(soma_functions)
+                     if item["capture"]["name"] == "thxCarolSetVirtualizerFirs")
+    fir_body = soma_functions[fir_index]["capture"]
+    return_index = next(index for index,item in enumerate(fir_body["assembly"]) if item["bytes"] == "b80b000000")
+    changes = [
+        ("product_order", ("products",0,"product_id"), 1442),
+        ("cross_version_classification", ("products",1,"classification"), "fixed_host_spatial_disabled_11"),
+        ("wrong_client_filename", ("products",1,"client_filename"), "razer_soma_pro_routing_client_1.2.1.59_2.dll"),
+        ("loader_rva", ("products",2,"loader_rva"), "0x18990"),
+        ("manifest_identity", ("products",0,"manifest","sha256"), "0"*64),
+        ("manifest_declaration", ("products",1,"native","client","manifest_declaration","resourceVersion"), "1.2.1.59"),
+        ("native_resource_url", ("products",2,"native","client","resource","url"), "https://example.invalid/client.dll"),
+        ("cross_product_original", ("products",1,"native","client","resource","sha256"), document["products"][2]["native"]["client"]["resource"]["sha256"]),
+        ("missing_wrapper_exports", ("products",0,"native","wrapper","eat"), []),
+        ("invented_old_client_export", ("products",0,"native","client","focus_exports"), [{"name":"thxCarolSetVirtualizerFirs"}]),
+        ("missing_clio_exports", ("products",1,"native","client","focus_exports"), []),
+        ("missing_soma_chain", ("products",2,"native","client","export_chains"), []),
+        ("wrong_clio_jump", ("products",1,"native","client","export_chains",0,"rvas"), ["0x1"]),
+        ("missing_native_body", ("products",2,"native","client","evidence","complete_selected_functions"), []),
+        ("changed_return_11", ("products",2,"native","client","evidence","complete_selected_functions",fir_index,"capture","assembly",return_index,"bytes"), "b800000000"),
+        ("altered_pseudocode", ("products",2,"native","client","evidence","complete_selected_functions",fir_index,"capture","pseudocode","lines"), [{"line":0,"text":"return 0;"}]),
+        ("altered_chunk", ("products",2,"native","client","evidence","complete_selected_functions",fir_index,"capture","chunks",0,"raw_hex"), "c3"),
+        ("dropped_clio_sample_helper", ("products",1,"native","client","evidence","complete_selected_functions"),
+         [item for item in document["products"][1]["native"]["client"]["evidence"]["complete_selected_functions"] if item["capture"]["rva"] != "0x3c0e0"]),
+        ("resolver_inventory", ("products",0,"native","wrapper","dynamic_names"), []),
+        ("resolver_reference_closure", ("products",0,"native","wrapper","evidence","complete_selected_functions"),
+         [item for item in document["products"][0]["native"]["wrapper"]["evidence"]["complete_selected_functions"]
+          if item["capture"]["rva"] in {"0x18990","0x18670"}]),
+        ("imports_inventory_identity", ("products",1,"native","wrapper","imports_artifact","sha256"), "0"*64),
+        ("ffi_signature", ("products",0,"frontend","groups",0,0,"signature"), ["int",[]]),
+        ("cross_product_frontend", ("products",1,"frontend"), document["products"][2]["frontend"]),
+        ("ffi_missing_optional_group", ("products",1,"frontend","groups"), document["products"][1]["frontend"]["groups"][:1]),
+        ("ffi_body", ("products",2,"frontend","initializer","body"), "this.initElectron=()=>true"),
+        ("ffi_boundary", ("products",2,"frontend","configuration","byte_start"), 0),
+        ("ffi_focus_invention", ("products",0,"frontend","focus_apis"), ["thxCarolSetVirtualizerFirs"]),
+        ("target_execution_claim", ("target_execution",), True),
+        ("dll_acceptance_promotion", ("actual_dll_comparison",), "passed"),
+        ("device_acceptance_promotion", ("device_dsp_acceptance",), "passed"),
+        ("stored_static_count", ("verification","complete_functions"), 102),
+    ]
+    result = []
+    with patch(__name__ + ".collect_audio_native_client_boundaries", side_effect=AssertionError("collector disabled")), \
+         patch(__name__ + ".verify_native_functions", side_effect=AssertionError("collector helper disabled")):
+        verify_audio_native_client_boundaries(document)
+        for name, path, replacement in changes:
+            altered = deepcopy(document)
+            owner = altered
+            for key in path[:-1]:
+                owner = owner[key]
+            owner[path[-1]] = replacement
+            try:
+                verify_audio_native_client_boundaries(altered)
+            except (ValueError, KeyError, IndexError, TypeError) as error:
+                result.append({"case": name, "rejected": True, "reason": str(error)})
+            else:
+                raise ValueError("Altered native branch evidence was accepted: " + name)
+    return {"passed": True, "count": len(result), "collector_disabled": True,
+            "native_collector_helper_disabled": True, "cases": result, "target_execution": False}
+
+
+def audit_audio_native_client_boundaries(args):
+    """Update only the existing Surround receipt's independent native field."""
+    path = a.ROOT / ".analysis/results/frontend/audio-surround-audit.json"
+    if args.family != "audio" or getattr(args,"product",None):
+        raise ValueError("Native client boundaries require all three exact audio product branches")
+    document = json.loads(path.read_bytes())
+    mode = args.native_client_branches
+    if mode == "capture":
+        selected = collect_audio_native_client_boundaries()
+        selected["verification"] = verify_audio_native_client_boundaries(selected)
+        selected["negative_cases"] = negative_audio_native_client_boundaries(selected)
+        document["native_client_branch_boundaries"] = selected
+        a.save(path,document)
+        print(json.dumps({"receipt":a.rel(path),"field":"native_client_branch_boundaries",**selected["verification"]}),flush=True)
+    elif mode == "check":
+        selected = document["native_client_branch_boundaries"]
+        print(json.dumps(verify_audio_native_client_boundaries(selected)),flush=True)
+    else:
+        print(json.dumps(negative_audio_native_client_boundaries(document["native_client_branch_boundaries"])),flush=True)
+
+
+def audio_virtualizer_fir_selections():
+    """Exact analysis slices; these addresses are never product compatibility gates."""
+    client = {
+        "fir_copy_and_selector": (0x1fa50, 0x3c0e0, 0x67b60, 0x67fa0, 0x68240, 0x67e00),
+        "json_read_write": (0x1faf0, 0x3c390, 0x684e0, 0x687f0, 0x68b00, 0x1f5f0,
+                            0x4d520, 0x4d720, 0x4d920, 0x622f0),
+        "typed_state_access_and_queue": (0x6dee0, 0x6e090, 0x6e240, 0x6e3f0, 0x6e4d0, 0x6e650,
+                            0x6e800, 0x6e9c0, 0x6eaa0, 0x6ec20, 0x6edd0, 0x6ef90, 0x6f070,
+                            0x6f1f0, 0x6f3a0, 0x73a50, 0x73a00),
+        "ipc_observer_and_commit": (0x74fd0, 0x44e50, 0x45030, 0x45210, 0x864b0, 0x86470, 0x86430,
+                            0x7f820, 0x7ffc0, 0x80760, 0x7fac0, 0x80260, 0x80a00, 0x77a70,
+                            0x30280, 0x307e0, 0x872c0, 0x87430, 0x875a0),
+        "incoming_state_and_callback": (0x77470, 0x7a670, 0x7aa40, 0x7ae10, 0x84560,
+                            0x1f3b0, 0x3a9d0, 0x61c90, 0x61eb0, 0x620d0, 0x1fb00,
+                            0x1fd30, 0x3c7b0, 0x51500, 0x51490, 0x51420),
+        "normal_release_and_repeated_fields": (0x2f170, 0x93620, 0x947b0, 0x219060, 0x77c20,
+                            0x143e0, 0xbd6d0, 0xb8f40, 0xb9210, 0xb8c50, 0xba1e0),
+    }
+    service = {
+        "typed_request_and_reply": (0x2853c0, 0x295f80, 0x296270, 0x296460, 0x296750, 0x296940, 0x296c30),
+        "fir_parser_and_dsp_configuration": (0x2cbb20, 0x283070, 0x287710, 0x2d7bd0, 0x3340d0,
+                            0x2d8d90, 0x2daef0, 0x2d85d0, 0x2dac70, 0x2e0d10),
+        "front_side_rear_consumers": (0x2e70b0, 0x2e7300, 0x2e7550, 0x2e9710, 0x2e9960, 0x2e9bb0,
+                            0x2ed0e0, 0x2ecf80, 0x2ece20),
+    }
+    return {name: {rva: role for role, values in groups.items() for rva in values}
+            for name, groups in (("client", client), ("service", service))}
+
+
+def audio_proto_descriptor_fields(raw):
+    """Decode bounded descriptor wire fields without executing protobuf or vendor code."""
+    offset = 0
+    def varint():
+        nonlocal offset
+        value = 0
+        for shift in range(0, 70, 7):
+            if offset >= len(raw):
+                raise ValueError("Truncated descriptor varint")
+            byte = raw[offset]; offset += 1
+            if shift == 63 and byte > 1:
+                raise ValueError("Descriptor varint exceeds uint64")
+            value |= (byte & 127) << shift
+            if not byte & 128:
+                return value
+        raise ValueError("Unbounded descriptor varint")
+    fields = []
+    while offset < len(raw):
+        tag = varint(); number, wire = tag >> 3, tag & 7
+        if not number or number > 0x1fffffff:
+            raise ValueError("Invalid descriptor field number")
+        if wire == 0:
+            value = varint()
+        elif wire in (1, 2, 5):
+            length = varint() if wire == 2 else (8 if wire == 1 else 4)
+            if length > len(raw)-offset:
+                raise ValueError("Truncated descriptor field")
+            value = raw[offset:offset+length]; offset += length
+        else:
+            raise ValueError("Unsupported descriptor wire type")
+        fields.append((number, wire, value))
+    return fields
+
+
+def collect_audio_virtualizer_fir_1442():
+    """Retain active FIR/state/IPC boundaries from existing complete captures."""
+    source = a.ROOT / ".analysis/inputs/official-native-current/acquisition.json"
+    acquisition = json.loads(source.read_bytes())
+    manifest = next(row for row in acquisition["manifests"]
+                    if row["url"] == "https://apps.razer.com/synapse/products/1442/mw/manifest.json")
+    resource_keys = ("path", "bytes", "sha256", "url", "status", "declared_sha256", "declared_bytes", "manifests")
+    client_sha = "b84535e588da1582ef1938b41d58d272baf88f37d9b76db1a89d970aa6c66802"
+    package_sha = "7194d447ad240abbf3f83a32499c62cf14294d5ee24843717ac9076935d64835"
+    resources = {name: next(row for row in acquisition["resources"] if row.get("sha256") == digest)
+                 for name, digest in (("client", client_sha), ("service_package", package_sha))}
+    rows = {row["path"]: row for row in json.loads((a.ROOT / ".analysis/inputs.json").read_bytes())["inputs"]}
+    service_path = (".analysis/inputs/official-native-current/extracted/"
+        "6fb0db93b540b4ea30597a768521d347bc08a128e47c433e6b3e41962e3d1a57/"
+        "output/Release/clio_x/usb_driver/razer_clio_x_routing_service.exe")
+    lineage, current = [], rows[service_path]
+    while current["sha256"] != package_sha:
+        parent = rows[current["container"]]
+        edge = {"child": {key: current[key] for key in ("path", "bytes", "sha256")},
+                "parent": {key: parent[key] for key in ("path", "bytes", "sha256")}, "kind": current["kind"]}
+        if current["kind"] == "static_embedded_native_input":
+            edge["container_offset"] = current["container_offset"]
+        else:
+            edge["inspection"] = identity(a.ROOT / ".analysis/results/native-packages" / parent["sha256"] / "inspection.json")
+        lineage.append(edge); current = parent
+        if len(lineage) > 12:
+            raise ValueError("Service acquisition lineage is cyclic or unbounded")
+    slots = [
+        {"role": name, "vtable_rva": table, "slot_byte_offset": 16, "target_rva": target}
+        for name, table, target in (("front_ipc_observer", 0x247f68, 0x864b0),
+            ("side_ipc_observer", 0x247e18, 0x86470), ("rear_ipc_observer", 0x247cb8, 0x86430),
+            ("front_queue_consumer", 0x2459c8, 0x73a50), ("side_queue_consumer", 0x245988, 0x73a50),
+            ("rear_queue_consumer", 0x245b00, 0x73a50), ("front_notification", 0x246170, 0x51500),
+            ("side_notification", 0x245d48, 0x51490), ("rear_notification", 0x245eb0, 0x51420))]
+    native = {}
+    for name, roles in audio_virtualizer_fir_selections().items():
+        original = identity(a.ROOT / (resources["client"]["path"] if name == "client" else service_path))
+        native[name] = verify_native_functions(original, roles, slots if name == "client" else ())
+    raw = (a.ROOT / resources["client"]["path"]).read_bytes()
+    _, read, _ = audio_native_evidence_pe(raw)
+    descriptor = read(0x241176, 155)
+    return {"schema_version": 1, "tool": identity(Path(__file__)), "product_id": 1442,
+        "acquisition": identity(source), "manifest": {key: manifest[key] for key in
+            ("path", "bytes", "sha256", "url", "version", "build_version", "git_metadata")},
+        "resources": {name: {key: row[key] for key in resource_keys} for name, row in resources.items()},
+        "service_lineage": lineage, "native": native,
+        "virtualizer_config_descriptor": {"rva": "0x241176", "bytes": len(descriptor),
+            "raw_hex": descriptor.hex(), "sha256": hashlib.sha256(descriptor).hexdigest()},
+        "contract": {
+            "selector_states": ["FrontVirtualizerState", "SideVirtualizerState", "RearVirtualizerState"],
+            "state_id": "GLOBAL", "fir_name": "copied NUL-terminated metadata string; no file load in selected chain",
+            "fir_arrays": "copied repeated float32 fir_l and fir_r; lengths are element counts",
+            "client_fir_validation": "non-null name/L/R, positive equal L/R lengths; no even-length check",
+            "client_fir_unknown_selector": 1, "fir_callback_count": "signed input length divided by 2",
+            "callback_meaning": "local state notification; immediate callback does not wait for service acknowledgement",
+            "callback_registration": "replace function/context under mutex; non-null synchronously reads selectors 0/1/2 into shared 1024-byte label storage; null unregisters",
+            "fir_label_getter": "copies at most capacity-1 name bytes and reports fir_l element count divided by 2; owner present returns 0 even for missing state or unknown selector",
+            "notification_fir_buffer_bytes": 256,
+            "json_set_unknown_selector_after_parse": 0,
+            "json_set_success": "parse accepted and selected local copy attempted; no service/DSP result returned",
+            "json_get_source": "client typed memory state, not a synchronous service/device read",
+            "json_get_capacity": "positive int32 capacity strictly greater than int32-truncated string length; full size_t copy",
+            "ipc_commit": "Any pack, synchronous request/reply in observer, parse/unpack committed state, revision/diff comparison then local copy",
+            "ipc_failure": "empty reply/parse/unpack failure logs; earlier public setter result is unchanged",
+            "service_fir_validation": "both nonzero, equal and even; each array splits into two halves for a 2-row FIR matrix",
+            "service_dsp_configuration": "four FIR processors and six correction biquads; selected consumers ignore configuration setter bool",
+            "normal_cleanup": "copied strings and arrays owned by state; queued lambda frees its copied id; stop signals and joins state queue before destruction",
+            "cancellation": "no per-operation cancellation token or acknowledgement channel in these public setters"},
+        "unresolved": [
+            "Complete service observer registration-to-audio-worker locking and PCM processing closure",
+            "All exception/unwind funclets, callback throw/reentrancy, shutdown races and cancellation during IPC",
+            "Service persistence/default restoration and every firmware/transport/platform branch for this exact build",
+            "Extreme-width JSON strings and undersized/negative internal FIR-label capacities",
+            "Runtime scheduling may deliver further callback notifications before or after the immediate setter callback",
+            "Pure Rust independent implementation, page/backend integration, actual DLL comparison and device/DSP acceptance"],
+        "scope": "Exact 1442 client and manifest-bound service subset; local copies, IPC state acknowledgement and DSP configuration are separate results",
+        "target_execution": False, "rust_implementation": "unverified", "ui_backend_wiring": "unverified",
+        "actual_dll_comparison": "unverified", "device_dsp_acceptance": "unverified"}
+
+
+def audio_native_evidence_functions(evidence, roles):
+    """Re-read complete captures and PE bytes without any native collector helper."""
+    check, original = audio_native_evidence_check, audio_native_evidence_original
+    base, read, exports = audio_native_evidence_pe(original(evidence["input"]))
+    capture = json.loads(original(evidence["capture_receipt"]))
+    check(capture["input_sha256"] == evidence["input"]["sha256"] and
+          capture["input_bytes"] == evidence["input"]["bytes"] and
+          int(capture["image_base"], 0) == base and capture["capture_complete"] is True and
+          capture["functions_captured"] == len(capture["functions"]), "Complete native capture lineage differs")
+    for key in ("image_base", "ida_version", "hexrays_version", "capture_tool", "functions_total",
+                "functions_captured", "capture_complete", "failures"):
+        check(evidence[key] == capture[key], "Native capture metadata differs: " + key)
+    check(evidence["target_execution"] is False and evidence["runtime_acceptance"] == "unverified",
+          "Native static evidence was promoted to execution")
+    index = {row["rva"]: row for row in capture["functions"]}
+    bodies, counters = {}, Counter()
+    for item in evidence["complete_selected_functions"]:
+        body = json.loads(original(item["artifact"]))
+        rva = int(body["rva"], 0)
+        check(rva in roles and rva not in bodies and item["role"] == roles[rva], "Native function selection differs")
+        check(body == item["capture"] and item["artifact"]["sha256"] == index[body["rva"]]["sha256"] and
+              int(body["address"], 0) == base+rva and body["address"] == index[body["rva"]]["address"] and
+              body["name"] == index[body["rva"]]["name"], "Complete native function identity differs")
+        for key in ("assembly_captured", "pseudocode_captured"):
+            check(item[key] == index[body["rva"]][key] and item[key] is True, "Complete native body is absent")
+        check(item["failures"] == index[body["rva"]]["new_failures"] and item["input_chunks_verified"] is True,
+              "Native function failure or byte-verification status differs")
+        check(bool(body["chunks"]), "Native function has no raw chunks")
+        chunks = []
+        for chunk in body["chunks"]:
+            start, end = int(chunk["start"], 0), int(chunk["end"], 0)
+            actual = read(start-base, end-start)
+            check(actual.hex() == chunk["raw_hex"] and hashlib.sha256(actual).hexdigest() == chunk["sha256"],
+                  "Native raw chunk differs from original PE")
+            chunks.append({"start": chunk["start"], "end": chunk["end"],
+                "file_offset": read.file_offset(start-base, end-start), "sha256": chunk["sha256"]})
+            counters["raw_chunk_bytes"] += len(actual)
+        check(len(item["verified_original_chunks"]) == len(chunks) and
+              all(all(saved[key] == actual[key] for key in ("start", "end", "file_offset", "sha256"))
+                  for saved, actual in zip(item["verified_original_chunks"], chunks)), "Retained raw chunk verification differs")
+        for insn in body["assembly"]:
+            value = bytes.fromhex(insn["bytes"])
+            check(value == read(int(insn["rva"], 0), len(value)), "Native instruction differs from actual PE")
+            counters["instructions"] += 1
+            counters["enumerated_instruction_bytes"] += len(value)
+        bodies[rva] = body
+        counters["complete_functions"] += 1
+    check(set(bodies) == set(roles), "Native selected function closure is incomplete")
+    for slot in evidence["verified_indirect_slots"]:
+        rva = int(slot["vtable_rva"], 0)+slot["slot_byte_offset"]
+        value = read(rva, 8)
+        check(slot["pointer_rva"] == hex(rva) and slot["raw_hex"] == value.hex() and
+              slot["target_address"] == hex(int.from_bytes(value, "little")) and
+              int(slot["target_rva"], 0) == int.from_bytes(value, "little")-base and
+              slot["file_offset"] == read.file_offset(rva, 8) and
+              slot["actual_pe_bytes_verified"] is True, "Actual observer vtable binding differs")
+        counters["indirect_slots"] += 1
+    for export in evidence["verified_exports"]:
+        check(any(row["name"] == export["name"] and row["rva"] == export["rva"] and
+                  row["ordinal"] == export["ordinal"] and row["forwarder"] is None for row in exports),
+              "Actual native export binding differs")
+    return bodies, read, counters
+
+
+def verify_audio_virtualizer_fir_1442(document):
+    """Independently inspect original bytes, full records, lineage and reviewed claims."""
+    check, original = audio_native_evidence_check, audio_native_evidence_original
+    check(document["schema_version"] == 1 and document["product_id"] == 1442 and
+          document["target_execution"] is False, "Wrong product or execution boundary")
+    for key in ("rust_implementation", "ui_backend_wiring", "actual_dll_comparison", "device_dsp_acceptance"):
+        check(document[key] == "unverified", "Static FIR analysis was promoted to runtime acceptance")
+    acquisition = json.loads(original(document["acquisition"]))
+    check(acquisition["source_current_during_acquisition"] is True, "Current acquisition is unstable")
+    manifest = document["manifest"]
+    check(manifest["url"] == "https://apps.razer.com/synapse/products/1442/mw/manifest.json" and
+          any(all(row[key] == value for key, value in manifest.items()) for row in acquisition["manifests"]),
+          "1442 manifest lineage differs")
+    declaration = json.loads(original(manifest))["resourceManifest"]["resources"]
+    expected_digests = {"client": "b84535e588da1582ef1938b41d58d272baf88f37d9b76db1a89d970aa6c66802",
+                        "service_package": "7194d447ad240abbf3f83a32499c62cf14294d5ee24843717ac9076935d64835"}
+    for name, digest in expected_digests.items():
+        row = document["resources"][name]
+        check(row["sha256"] == digest and row["declared_sha256"].lower() == digest and
+              row["status"] == "verified" and row["declared_bytes"] == row["bytes"] and
+              any(all(saved[key] == value for key, value in row.items()) for saved in acquisition["resources"]),
+              "Current product resource differs")
+        check(any(item.get("sha256", "").lower() == digest and item["url"] == row["url"] and
+                  item["size"] == row["bytes"] for item in declaration), "Resource is not declared by this manifest")
+        original(row)
+    expected_child = document["native"]["service"]["input"]
+    check(expected_child["sha256"] == "169bef9718b1b9c32ad4bc1072baec51b6dd85b293ea834e292b939b28f3d82b",
+          "Service build differs from 1442 retained package")
+    check(len(document["service_lineage"]) == 7, "Service acquisition edge closure differs")
+    for edge in document["service_lineage"]:
+        check(edge["child"] == expected_child, "Service acquisition edge is disconnected")
+        child, parent = original(edge["child"]), original(edge["parent"])
+        if edge["kind"] == "static_embedded_native_input":
+            offset = edge["container_offset"]
+            check(type(offset) is int and offset >= 0 and parent[offset:offset+len(child)] == child,
+                  "Embedded service ancestor differs from actual parent range")
+        else:
+            check(edge["kind"] == "static_extracted_native_input", "Unknown service extraction edge")
+            inspection = json.loads(original(edge["inspection"]))
+            check(inspection["container"] == edge["parent"] and inspection["extracted"] is True and
+                  inspection["listing_exit_code"] == 0 and inspection["extraction_exit_code"] == 0 and
+                  inspection["input_bytes_unchanged"] is True and
+                  any(all(row[key] == value for key, value in edge["child"].items()) for row in inspection["files"]),
+                  "Static service extraction receipt does not bind parent and child")
+        expected_child = edge["parent"]
+    check(expected_child == {key: document["resources"]["service_package"][key] for key in ("path", "bytes", "sha256")},
+          "Service lineage does not terminate in the declared official package")
+    check(document["native"]["client"]["input"] == {key: document["resources"]["client"][key]
+          for key in ("path", "bytes", "sha256")}, "Client original binding differs")
+    check(set(document["native"]) == {"client", "service"} and
+          all(not row["verified_exports"] for row in document["native"].values()),
+          "FIR continuation includes an unreviewed native build or export")
+    bodies, readers, counts = {}, {}, Counter()
+    for name, roles in audio_virtualizer_fir_selections().items():
+        bodies[name], readers[name], observed = audio_native_evidence_functions(document["native"][name], roles)
+        counts.update(observed)
+    def text(name, rva):
+        return "\n".join(line["text"] for line in bodies[name][rva]["pseudocode"]["lines"])
+    def calls(name, source, target):
+        return any(len(value := bytes.fromhex(insn["bytes"])) == 5 and value[0] in (0xe8, 0xe9) and
+                   int(insn["rva"], 0)+5+int.from_bytes(value[1:], "little", signed=True) == target
+                   for insn in bodies[name][source]["assembly"])
+    direct_edges = {"client": [(0x1fa50, 0x3c0e0), (0x1faf0, 0x3c390), (0x67b60, 0x67e00),
+        (0x67fa0, 0x67e00), (0x68240, 0x67e00), (0x864b0, 0x7f820), (0x86470, 0x7ffc0),
+        (0x86430, 0x80760), (0x7f820, 0x7fac0), (0x7ffc0, 0x80260), (0x80760, 0x80a00),
+        (0x7fac0, 0x77a70), (0x80260, 0x77a70), (0x80a00, 0x77a70), (0x77a70, 0x30280),
+        (0x7fac0, 0x872c0), (0x80260, 0x87430), (0x80a00, 0x875a0), (0x1f3b0, 0x3a9d0),
+        (0x1fb00, 0x3a9d0), (0x1fd30, 0x3c7b0), (0x4d520, 0x622f0), (0x4d720, 0x622f0),
+        (0x4d920, 0x622f0)], "service": [(0x2853c0, 0x295f80), (0x2853c0, 0x296270),
+        (0x2853c0, 0x296460), (0x2853c0, 0x296750), (0x2853c0, 0x296940), (0x2853c0, 0x296c30),
+        (0x2d8d90, 0x2d85d0), (0x2d8d90, 0x2dac70)]}
+    for source in (0x2e70b0, 0x2e7300, 0x2e7550, 0x2e9710, 0x2e9960, 0x2e9bb0):
+        direct_edges["service"] += [(source, 0x2cbb20), (source, 0x2d8d90)]
+    for name, edges in direct_edges.items():
+        check(all(calls(name, source, target) for source, target in edges), "Actual direct call/jump chain differs")
+        counts["direct_bindings"] += len(edges)
+    expected_slots = {"front_ipc_observer": (0x247f68, 0x864b0), "side_ipc_observer": (0x247e18, 0x86470),
+        "rear_ipc_observer": (0x247cb8, 0x86430), "front_queue_consumer": (0x2459c8, 0x73a50),
+        "side_queue_consumer": (0x245988, 0x73a50), "rear_queue_consumer": (0x245b00, 0x73a50),
+        "front_notification": (0x246170, 0x51500), "side_notification": (0x245d48, 0x51490),
+        "rear_notification": (0x245eb0, 0x51420)}
+    observed_slots = {slot["role"]: (int(slot["vtable_rva"], 0), int(slot["target_rva"], 0))
+                      for slot in document["native"]["client"]["verified_indirect_slots"]}
+    check(observed_slots == expected_slots and len(document["native"]["client"]["verified_indirect_slots"]) == 9
+          and all(slot["slot_byte_offset"] == 16
+          for slot in document["native"]["client"]["verified_indirect_slots"]) and
+          not document["native"]["service"]["verified_indirect_slots"], "Observer selection differs")
+    descriptor = document["virtualizer_config_descriptor"]
+    check(descriptor["rva"] == "0x241176" and descriptor["bytes"] == 155, "Config descriptor bounds differ")
+    wire = readers["client"](0x241176, 155)
+    check(descriptor["raw_hex"] == wire.hex() and descriptor["sha256"] == hashlib.sha256(wire).hexdigest(),
+          "Config descriptor differs from original PE")
+    fields = audio_proto_descriptor_fields(wire)
+    check(fields[0] == (1, 2, b"VirtualizerConfig"), "Wrong configuration descriptor")
+    actual_fields = []
+    for number, kind, value in fields[1:]:
+        check((number, kind) == (2, 2), "Unexpected config descriptor member")
+        member = {(n, k): v for n, k, v in audio_proto_descriptor_fields(value)}
+        actual_fields.append((member[(1, 2)].decode(), member[(3, 0)], member[(4, 0)], member[(5, 0)]))
+    check(actual_fields == [("active", 1, 1, 8), ("fir_name", 2, 1, 9), ("correction_biquads", 3, 3, 11),
+                            ("fir_l", 4, 3, 2), ("fir_r", 5, 3, 2)], "Actual config field names/types differ")
+    semantic_anchors = {("client", 0x3c0e0): ("a4 <= 0", "a6 <= 0", "a4 != a6", "v26 = 1;"),
+        ("client", 0x67e00): ("v12 += 4;", "v15 += 4;", "*a3 = 1;", "**(_DWORD **)(a1 + 40) = 0;"),
+        ("client", 0x1fa50): ("qword_180299AC8(a1, a2, (unsigned int)(a4 / 2)", "if ( !v9 )"),
+        ("client", 0x3c390): ("v7 = 0;", "if ( v17 != 1 )", "goto LABEL_31;"),
+        ("client", 0x1f3b0): ("qword_180299AC8 = a1;", "qword_180299A48 = a2;", "v16[2] = 2;"),
+        ("client", 0x1fb00): ("_BYTE v10[256]", "sub_18003A9D0(a1, v10, 256, &v9)"),
+        ("client", 0x61c90): ("v4[9]", "sub_1800BA1E0(v4 + 5) / 2"),
+        ("client", 0x7fac0): ("Failed to send state", "Failed to parse commited state", "Service returned an older state"),
+        ("client", 0x77c20): ("*(_BYTE *)(a1 + 296) = 1;", "Thrd_join", "Cnd_signal"),
+        ("service", 0x2cbb20): ("v19 == v20 && !(v19 % 2)", "v19 / 2", "Bad Virtualizer FIR size", "using default filters"),
+        ("service", 0x2d8d90): ("a2 + 408) != 2", "v4 <= 0", "a1 + 528", "a1 + 808", "a1 + 1088", "a1 + 1368")}
+    for (name, rva), anchors in semantic_anchors.items():
+        check(all(anchor in text(name, rva) for anchor in anchors), "Reviewed semantic anchor differs")
+    expected_contract = {
+        "selector_states": ["FrontVirtualizerState", "SideVirtualizerState", "RearVirtualizerState"],
+        "state_id": "GLOBAL", "fir_name": "copied NUL-terminated metadata string; no file load in selected chain",
+        "fir_arrays": "copied repeated float32 fir_l and fir_r; lengths are element counts",
+        "client_fir_validation": "non-null name/L/R, positive equal L/R lengths; no even-length check",
+        "client_fir_unknown_selector": 1, "fir_callback_count": "signed input length divided by 2",
+        "callback_meaning": "local state notification; immediate callback does not wait for service acknowledgement",
+        "callback_registration": "replace function/context under mutex; non-null synchronously reads selectors 0/1/2 into shared 1024-byte label storage; null unregisters",
+        "fir_label_getter": "copies at most capacity-1 name bytes and reports fir_l element count divided by 2; owner present returns 0 even for missing state or unknown selector",
+        "notification_fir_buffer_bytes": 256, "json_set_unknown_selector_after_parse": 0,
+        "json_set_success": "parse accepted and selected local copy attempted; no service/DSP result returned",
+        "json_get_source": "client typed memory state, not a synchronous service/device read",
+        "json_get_capacity": "positive int32 capacity strictly greater than int32-truncated string length; full size_t copy",
+        "ipc_commit": "Any pack, synchronous request/reply in observer, parse/unpack committed state, revision/diff comparison then local copy",
+        "ipc_failure": "empty reply/parse/unpack failure logs; earlier public setter result is unchanged",
+        "service_fir_validation": "both nonzero, equal and even; each array splits into two halves for a 2-row FIR matrix",
+        "service_dsp_configuration": "four FIR processors and six correction biquads; selected consumers ignore configuration setter bool",
+        "normal_cleanup": "copied strings and arrays owned by state; queued lambda frees its copied id; stop signals and joins state queue before destruction",
+        "cancellation": "no per-operation cancellation token or acknowledgement channel in these public setters"}
+    check(document["contract"] == expected_contract, "Reviewed FIR/JSON/callback/IPC contract differs")
+    check(document["scope"] == "Exact 1442 client and manifest-bound service subset; local copies, IPC state acknowledgement and DSP configuration are separate results"
+          and document["unresolved"] == [
+              "Complete service observer registration-to-audio-worker locking and PCM processing closure",
+              "All exception/unwind funclets, callback throw/reentrancy, shutdown races and cancellation during IPC",
+              "Service persistence/default restoration and every firmware/transport/platform branch for this exact build",
+              "Extreme-width JSON strings and undersized/negative internal FIR-label capacities",
+              "Runtime scheduling may deliver further callback notifications before or after the immediate setter callback",
+              "Pure Rust independent implementation, page/backend integration, actual DLL comparison and device/DSP acceptance"],
+          "Partial semantic closure boundary differs")
+    verified = {"passed": True, "product_id": 1442, "native_builds": 2, **dict(counts),
+        "unenumerated_bytes": counts["raw_chunk_bytes"]-counts["enumerated_instruction_bytes"],
+        "descriptor_fields": len(actual_fields), "acquisition_edges": len(document["service_lineage"]),
+        "target_execution": False, "actual_dll_comparison": "unverified"}
+    if "verification" in document:
+        check(document["verification"] == verified, "Stored FIR verification counters differ")
+    return verified
+
+
+def negative_audio_virtualizer_fir_1442(document):
+    """Reject changed lineage, bytes and semantic claims with collection disabled."""
+    from unittest.mock import patch
+    path = ("native", "client", "complete_selected_functions")
+    functions = document["native"]["client"]["complete_selected_functions"]
+    setter = next(i for i, row in enumerate(functions) if row["capture"]["rva"] == "0x1fa50")
+    changes = [
+        ("cross_product", ("product_id",), 3942),
+        ("manifest_product", ("manifest", "url"), "https://apps.razer.com/synapse/products/3942/mw/manifest.json"),
+        ("client_version", ("resources", "client", "sha256"), "0"*64),
+        ("service_package", ("resources", "service_package", "declared_bytes"), 1),
+        ("service_input", ("native", "service", "input", "sha256"), "0"*64),
+        ("missing_acquisition_edge", ("service_lineage",), document["service_lineage"][:-1]),
+        ("disconnected_acquisition_edge", ("service_lineage", 0, "parent", "sha256"), "0"*64),
+        ("embedded_parent_offset", ("service_lineage", 4, "container_offset"), 0),
+        ("extraction_receipt", ("service_lineage", 0, "inspection", "sha256"), "0"*64),
+        ("missing_function", path, functions[1:]),
+        ("function_owner", (*path, setter, "role"), "service DSP execution"),
+        ("changed_pseudocode", (*path, setter, "capture", "pseudocode", "lines"), [{"line": 0, "text": "return 11;"}]),
+        ("changed_raw_chunk", (*path, setter, "capture", "chunks", 0, "raw_hex"), "c3"),
+        ("changed_instruction", (*path, setter, "capture", "assembly", 0, "bytes"), "c3"),
+        ("changed_capture", ("native", "client", "capture_receipt", "sha256"), "0"*64),
+        ("invented_slot_target", ("native", "client", "verified_indirect_slots", 0, "target_rva"), "0x1fa50"),
+        ("missing_observer_slot", ("native", "client", "verified_indirect_slots"), []),
+        ("duplicate_observer_slot", ("native", "client", "verified_indirect_slots"),
+            document["native"]["client"]["verified_indirect_slots"]*2),
+        ("changed_descriptor_type", ("virtualizer_config_descriptor", "raw_hex"), "0a00"),
+        ("descriptor_bounds", ("virtualizer_config_descriptor", "rva"), "0x241177"),
+        ("selector_order", ("contract", "selector_states"), ["RearVirtualizerState", "SideVirtualizerState", "FrontVirtualizerState"]),
+        ("fir_filename_invention", ("contract", "fir_name"), "load FIR samples from disk"),
+        ("fir_byte_lengths", ("contract", "fir_arrays"), "input lengths are bytes"),
+        ("client_even_validation_invention", ("contract", "client_fir_validation"), "positive equal even sizes"),
+        ("callback_ack_promotion", ("contract", "callback_meaning"), "DSP application acknowledged"),
+        ("callback_count", ("contract", "fir_callback_count"), "full input element count"),
+        ("callback_unregister", ("contract", "callback_registration"), "null callback is rejected"),
+        ("label_status_promotion", ("contract", "fir_label_getter"), "zero guarantees observed state"),
+        ("callback_buffer", ("contract", "notification_fir_buffer_bytes"), 1024),
+        ("json_invalid_selector_status", ("contract", "json_set_unknown_selector_after_parse"), 4),
+        ("json_device_get_invention", ("contract", "json_get_source"), "synchronous device query"),
+        ("json_capacity_equality", ("contract", "json_get_capacity"), "capacity equal to payload length passes"),
+        ("ipc_failure_promotion", ("contract", "ipc_failure"), "public setter propagates service failure"),
+        ("service_odd_acceptance", ("contract", "service_fir_validation"), "equal positive sizes including odd sizes"),
+        ("dsp_bool_propagation", ("contract", "service_dsp_configuration"), "service ACK requires DSP setter true"),
+        ("cancellation_invention", ("contract", "cancellation"), "operation cancellation is acknowledged"),
+        ("cleanup_invention", ("contract", "normal_cleanup"), "state keeps borrowed input pointers"),
+        ("drop_open_boundaries", ("unresolved",), []),
+        ("replace_open_boundary", ("unresolved", 0), "PCM worker closure complete"),
+        ("execute_claim", ("target_execution",), True),
+        ("dll_comparison_claim", ("actual_dll_comparison",), "passed"),
+        ("device_claim", ("device_dsp_acceptance",), "passed"),
+        ("static_counter", ("verification", "complete_functions"), 102),
+    ]
+    results = []
+    with patch(__name__ + ".collect_audio_virtualizer_fir_1442", side_effect=AssertionError("collector disabled")), \
+         patch(__name__ + ".verify_native_functions", side_effect=AssertionError("native collector helper disabled")):
+        verify_audio_virtualizer_fir_1442(document)
+        for name, keys, replacement in changes:
+            changed = deepcopy(document)
+            owner = changed
+            for key in keys[:-1]:
+                owner = owner[key]
+            owner[keys[-1]] = replacement
+            try:
+                verify_audio_virtualizer_fir_1442(changed)
+            except (ValueError, KeyError, TypeError, IndexError) as error:
+                results.append({"case": name, "rejected": True, "reason": str(error)})
+            else:
+                raise ValueError("Altered FIR evidence was accepted: " + name)
+    return {"passed": True, "count": len(results), "collector_disabled": True,
+        "native_collector_helper_disabled": True, "cases": results, "target_execution": False}
+
+
+def audit_audio_virtualizer_fir_1442(args):
+    """Update only the active 1442 continuation field in the shared Surround report."""
+    if args.family != "audio" or getattr(args, "product", None):
+        raise ValueError("FIR continuation requires the exact retained 1442 branch")
+    path = a.ROOT / ".analysis/results/frontend/audio-surround-audit.json"
+    document = json.loads(path.read_bytes())
+    name, mode = "native_virtualizer_fir_1442", args.native_virtualizer_fir
+    canonical = lambda value: hashlib.sha256(json.dumps(value, ensure_ascii=False,
+        sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    before = canonical({key: value for key, value in document.items() if key != name})
+    if mode == "capture":
+        selected = collect_audio_virtualizer_fir_1442()
+        selected["verification"] = verify_audio_virtualizer_fir_1442(selected)
+        selected["negative_cases"] = negative_audio_virtualizer_fir_1442(selected)
+        document[name] = selected
+        if canonical({key: value for key, value in document.items() if key != name}) != before:
+            raise ValueError("FIR continuation modified another report field")
+        a.save(path, document)
+        saved = json.loads(path.read_bytes())
+        if canonical({key: value for key, value in saved.items() if key != name}) != before:
+            raise ValueError("Saving FIR continuation altered another report field")
+        print(json.dumps({"receipt": a.rel(path), "field": name, "preserved_other_fields_sha256": before,
+                          **selected["verification"]}), flush=True)
+    elif mode == "check":
+        print(json.dumps(verify_audio_virtualizer_fir_1442(document[name])), flush=True)
+    else:
+        print(json.dumps(negative_audio_virtualizer_fir_1442(document[name])), flush=True)
+
+
 def audit_audio_surround(args):
     """Retain mounted Clio Surround pages and complete local MW task owners."""
     import importlib.metadata
@@ -7336,6 +8275,10 @@ def audit_audio_surround(args):
     import tree_sitter_javascript
     if args.family != "audio":
         raise ValueError("audio-surround requires the audio family")
+    if getattr(args, "native_client_branches", None):
+        return audit_audio_native_client_boundaries(args)
+    if getattr(args, "native_virtualizer_fir", None):
+        return audit_audio_virtualizer_fir_1442(args)
     parser = Parser(Language(tree_sitter_javascript.language()))
     products = args.product or [1392, 1442, 3942]
     rows = []
@@ -7513,6 +8456,11 @@ def audit_audio_surround(args):
               "static_parser": {name: importlib.metadata.version(name) for name in ("tree-sitter", "tree-sitter-javascript")},
               "products": rows, "target_execution": False, "runtime_acceptance": "unverified"}
     destination = a.ROOT / ".analysis/results/frontend/audio-surround-audit.json"
+    if destination.is_file():
+        previous = json.loads(destination.read_bytes())
+        for name in ("native_client_branch_boundaries", "native_virtualizer_fir_1442"):
+            if name in previous:
+                result[name] = previous[name]
     a.save(destination, result)
     print(json.dumps({"receipt": a.rel(destination), "products": products,
         "complete_owners": sum(len(row["complete_owners"]) for row in rows),
@@ -21465,6 +22413,11 @@ def add_commands(parsers):
     audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-local-profile-schema", "mouse-dpi-matcher", "mouse-dynamic-sensitivity", "mouse-rotation", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-gamepad-tester", "keyboard-local-controls", "keyboard-local-profile-adoption", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-local-profiles", "hue-profile-actions", "accessory-text-inputs", "audio-preset-inputs", "chroma-text-inputs", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
     audit.add_argument("--prepare", action="store_true", help="Prepare verified current artwork resources through the shared workflow")
     audit.add_argument("--receipt-only", action="store_true", help="Refresh supported mouse or mapping-engine evidence without rewriting runtime descriptors")
+    audio_native = audit.add_mutually_exclusive_group()
+    audio_native.add_argument("--native-client-branches", choices=["capture", "check", "negative"],
+                              help="Update or independently verify only the audio-surround native client branch field")
+    audio_native.add_argument("--native-virtualizer-fir", choices=["capture", "check", "negative"],
+                              help="Update or independently verify only the active 1442 audio-surround FIR continuation field")
     parser = parsers.add_parser("acquire-family", help=__doc__)
     parser.add_argument("--family", required=True, choices=[*FAMILY_CANDIDATES, "all"])
     parser.add_argument("--layer", choices=["ui", "mw", "both"], default="ui")

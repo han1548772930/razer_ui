@@ -14,10 +14,181 @@ from pathlib import Path
 from unittest.mock import patch
 
 from host import (HostLocalAudit, add_commands, audit_host_local,
+                  collect_profiles_static, publish_profiles_static,
+                  verify_profiles_owner, verify_profiles_static_receipt,
                   help_system_mount_layout, help_system_native_declaration, help_system_report_constants,
                   inspect_host, inspect_pe, pe_cursor_groups, pe_resource_entries,
                   setup_factory_static_extraction, native_ascii_pointer_table,
                   receiver_hardware_dispatch_proof, native_pseudocode_failures, lighting_catalog_projection)
+
+
+class ProfilesOwnerReceiptTests(unittest.TestCase):
+    def fixture(self):
+        import analysis
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name).resolve()
+        audit = HostLocalAudit()
+        replacement = patch.object(analysis, "ROOT", root)
+        replacement.start()
+        self.addCleanup(replacement.stop)
+        path = ".analysis/inputs/frontend/profiles-fixture-current/main.js"
+        raw = b"const commit=()=>{return 7};\n"
+        target = root / path
+        target.parent.mkdir(parents=True)
+        target.write_bytes(raw)
+        original = {"path": path, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+        node = audit.tree(original).root_node.named_children[0].named_children[0]
+        body = raw[node.start_byte:node.end_byte]
+        owner = {"original": original, "roles": ["fixture_commit"], "syntax": node.type,
+            "byte_start": node.start_byte, "byte_end": node.end_byte,
+            "body": body.decode(), "body_sha256": hashlib.sha256(body).hexdigest(),
+            "id": original["sha256"] + ":" + str(node.start_byte) + ":" + str(node.end_byte)}
+        return audit, owner, target
+
+    def test_complete_owner_is_checked_against_original_bytes(self):
+        audit, owner, _ = self.fixture()
+        self.assertEqual(verify_profiles_owner(audit, owner).type, "variable_declarator")
+
+    def test_changed_body_is_rejected_even_after_attacker_rehashes_it(self):
+        audit, owner, _ = self.fixture()
+        owner["body"] = owner["body"].replace("return 7", "return 8")
+        owner["body_sha256"] = hashlib.sha256(owner["body"].encode()).hexdigest()
+        with self.assertRaisesRegex(ValueError, "content differs"):
+            verify_profiles_owner(audit, owner)
+
+    def test_byte_correct_excerpt_cannot_claim_a_complete_owner(self):
+        audit, owner, _ = self.fixture()
+        owner["byte_end"] -= 1
+        owner["body"] = owner["body"][:-1]
+        owner["body_sha256"] = hashlib.sha256(owner["body"].encode()).hexdigest()
+        owner["id"] = owner["original"]["sha256"] + ":" + str(owner["byte_start"]) + ":" + str(owner["byte_end"])
+        with self.assertRaisesRegex(ValueError, "complete original AST"):
+            verify_profiles_owner(audit, owner)
+
+    def test_modified_actual_source_is_rejected_by_a_fresh_verifier(self):
+        _, owner, target = self.fixture()
+        target.write_bytes(target.read_bytes().replace(b"return 7", b"return 8"))
+        with self.assertRaisesRegex(ValueError, "artifact identity differs"):
+            verify_profiles_owner(HostLocalAudit(), owner)
+
+
+class ProfilesPublicationTests(unittest.TestCase):
+    def test_query_and_independent_verify_are_explicit_cli_options(self):
+        parser = argparse.ArgumentParser()
+        add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-host-local", "--query", "profiles", "--verify-only"])
+        self.assertEqual(args.query, "profiles")
+        self.assertTrue(args.verify_only)
+
+    def test_unrelated_report_fields_keep_canonical_identity(self):
+        import analysis
+        with tempfile.TemporaryDirectory() as directory:
+            destination = Path(directory) / "local-audit.json"
+            old = {"schema_version": 1, "lighting_frame_lifecycle": {"branches": [2, 1], "state": "observed"},
+                "window_lifecycle": {"target_execution": False}}
+            destination.write_text(json.dumps(old), encoding="utf-8")
+            result = {"query": "profiles"}
+            preserved = publish_profiles_static(result, destination, analysis)
+            after = json.loads(destination.read_bytes())
+            self.assertEqual({key: after[key] for key in old}, old)
+            self.assertEqual(set(preserved), set(old))
+            expected = hashlib.sha256(b'{"branches":[2,1],"state":"observed"}').hexdigest()
+            self.assertEqual(preserved["lighting_frame_lifecycle"], expected)
+            self.assertEqual(after["profiles"]["preserved_top_level_canonical_sha256"], preserved)
+
+    def test_publication_reads_back_the_saved_unrelated_fields(self):
+        import analysis
+        with tempfile.TemporaryDirectory() as directory:
+            destination = Path(directory) / "local-audit.json"
+            destination.write_text('{"schema_version":1,"lighting_frame_lifecycle":{"x":1}}')
+            def corrupt(path, value):
+                value["lighting_frame_lifecycle"]["x"] = 2
+                path.write_text(json.dumps(value), encoding="utf-8")
+            with patch.object(analysis, "save", side_effect=corrupt):
+                with self.assertRaisesRegex(ValueError, "unrelated top-level"):
+                    publish_profiles_static({"query": "profiles"}, destination, analysis)
+
+
+class ProfilesCurrentStaticReceiptTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import analysis
+        if not (analysis.ROOT / ".analysis/inputs/frontend/synapse-profiles-current/acquisition.json").is_file():
+            raise unittest.SkipTest("Current official static inputs are unavailable")
+        cls.receipt = collect_profiles_static(HostLocalAudit())
+
+    def test_independent_verifier_does_not_call_the_collector(self):
+        with patch("host.collect_profiles_static", side_effect=AssertionError("collector must not run")):
+            result = verify_profiles_static_receipt(self.receipt)
+        self.assertEqual(result["selected_owners"], 32)
+        self.assertFalse(result["target_execution"])
+        self.assertEqual(result["runtime_acceptance"], "unverified")
+
+    def test_failure_and_cancellation_cannot_be_relabelled_as_success(self):
+        for group, key, value in (("installed_apps", "empty_or_failure_clears_refresh", True),
+                ("installed_apps", "inflight_cancel_on_unmount", True),
+                ("browse", "dispatch", "joined_successful_batch"),
+                ("add", "publication_error_rethrown", True),
+                ("add", "close_proves_service_success", True),
+                ("drop", "overlay_drop_cleanup", "removes_listener"),
+                ("scan", "stop_action_in_page", True),
+                ("scan", "finished_requires_success_flag", True),
+                ("relocate", "selection_dispatches_add", True),
+                ("relocate", "clear_and_select_requires_link", False),
+                ("host", "async_error_is_reliable_rejection", True)):
+            with self.subTest(group=group, key=key):
+                changed = copy.deepcopy(self.receipt)
+                changed["boundaries"][group][key] = value
+                with self.assertRaisesRegex(ValueError, "boundary was changed"):
+                    verify_profiles_static_receipt(changed)
+
+    def test_static_source_cannot_be_promoted_to_runtime_or_implementation_acceptance(self):
+        for key, value in (("source_chain_complete", True), ("target_execution", True),
+                ("real_device_operations", True), ("actual_dll_comparison", "passed"),
+                ("rust_independent_implementation", "complete"), ("ui_backend_wiring", "complete"),
+                ("runtime_acceptance", "passed"), ("snapshot_stable", False)):
+            with self.subTest(key=key):
+                changed = copy.deepcopy(self.receipt)
+                changed[key] = value
+                with self.assertRaisesRegex(ValueError, "promotes static evidence"):
+                    verify_profiles_static_receipt(changed)
+
+    def test_forged_complete_function_is_rejected_even_with_a_matching_recorded_hash(self):
+        changed = copy.deepcopy(self.receipt)
+        owner = next(row for row in changed["complete_source_owners"]
+            if row["id"] == changed["selected"]["add_action"])
+        owner["body"] = owner["body"].replace("catch(o){console.log", "catch(o){throw o;console.log")
+        owner["body_sha256"] = hashlib.sha256(owner["body"].encode()).hexdigest()
+        with self.assertRaisesRegex(ValueError, "content differs"):
+            verify_profiles_static_receipt(changed)
+
+    def test_missing_source_export_graph_is_rejected(self):
+        changed = copy.deepcopy(self.receipt)
+        del changed["cross_chunk_exports"]["scan_action"]
+        with self.assertRaisesRegex(ValueError, "export set differs"):
+            verify_profiles_static_receipt(changed)
+
+    def test_import_cannot_be_rebound_to_a_similarly_named_module(self):
+        changed = copy.deepcopy(self.receipt)
+        changed["bindings"]["games_drag_import"]["body"] = "H=s(399)"
+        with self.assertRaisesRegex(ValueError, "producer import binding differs"):
+            verify_profiles_static_receipt(changed)
+
+    def test_capture_failure_cannot_disappear_from_current_receipt(self):
+        changed = copy.deepcopy(self.receipt)
+        self.assertTrue(changed["source_sets"][0]["capture_failures"])
+        changed["source_sets"][0]["capture_failures"] = []
+        with self.assertRaisesRegex(ValueError, "deployment receipt differs: capture_failures"):
+            verify_profiles_static_receipt(changed)
+
+    def test_changed_acquisition_cannot_be_silently_transferred_to_old_capture(self):
+        changed = copy.deepcopy(self.receipt)
+        relation = changed["source_sets"][0]["capture_acquisition_relation"]
+        self.assertNotEqual(relation["capture_recorded_acquisition_sha256"], relation["current_acquisition_sha256"])
+        relation["capture_recorded_acquisition_sha256"] = relation["current_acquisition_sha256"]
+        with self.assertRaisesRegex(ValueError, "acquisition change was hidden"):
+            verify_profiles_static_receipt(changed)
 
 
 class NativePseudocodeStatusTests(unittest.TestCase):

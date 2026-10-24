@@ -32,8 +32,13 @@ python tools/workspace.py audit-family-function --family system --function main 
 python tools/workspace.py acquire-family --family all --layer both --stage probe --workers 12
 python tools/workspace.py acquire-family --family keyboard --layer both --product 515 --stage all --workers 2
 python tools/workspace.py audit-family-function --family system --function main --query shared-page-layout
+python tools/workspace.py audit-family-function --family audio --function mw --query audio-surround --native-client-branches check
+python tools/workspace.py audit-family-function --family audio --function mw --query audio-surround --native-client-branches negative
+python tools/workspace.py audit-family-function --family audio --function mw --query audio-surround --native-virtualizer-fir check
+python tools/workspace.py audit-family-function --family audio --function mw --query audio-surround --native-virtualizer-fir negative
 python tools/workspace.py audit-host-local --query macro-recorder
 python tools/workspace.py audit-host-local --query window-lifecycle
+python tools/workspace.py audit-host-local --query profiles --verify-only
 python tools/workspace.py inspect-corpus
 python tools/workspace.py acquire-native --include-host-app-resources --no-refresh-gaps
 python tools/workspace.py extract-native-packages --scope host-apps --no-refresh-gaps
@@ -47,6 +52,7 @@ python tools/workspace.py acquire-host --revalidate-bootstrap
 python tools/workspace.py acquire-host --repair-metadata-index
 python tools/workspace.py configure-ida
 python tools/workspace.py capture-native --input PROJECTREL
+python tools/workspace.py capture-corpus --source retained --workers 4 --no-refresh-gaps
 python tools/workspace.py supplement-native --input PROJECTREL --pointer-table-rva 0x1000 --pointer-count 7 --no-refresh-gaps
 python tools/workspace.py verify-resources
 python tools/workspace.py verify-runtime-assets
@@ -127,6 +133,8 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 `inspect-corpus --no-refresh-gaps` 的 schema 3 从实际当前 manifest、生产发现与资源字节追踪来源，连接完整静态提取、内嵌区间、packed ASAR 及已验证同字节 aliases；本机路径、版本字符串、继承 verified 字段和单独 ASAR unpacked header 不提供当前版本证明。最新 host 元数据失败不回退旧稳定收据，结束时复核输入索引与全部使用的原件／收据快照。来源字节、依赖／ABI、安装生命周期及产品验收分别记录。
 
 `capture-corpus` 复用已完成捕获及新捕获返回成功后，均重新核对原件实际长度／SHA、capture 输入身份、完整函数数量、唯一 RVA／地址、汇编捕获标记、七类 dataset 与 C／ASM 聚合文件清单和全部产物摘要；输出路径不得越过所属 capture 目录。函数反编译失败与完整汇编捕获分别保留。验证中清单或产物变化同样失败，每项失败保留并继续其余输入；批次结束重新核对所有已验证原件快照及最初实际读取的 corpus 收据 SHA，原件或清单漂移阻止全库捕获结论。
+
+`--workers` 允许 1–4 个并发任务，默认 1；需新捕获时分别启动隔离的 IDA 进程和所属原件 SHA 目录，同一原件不会重复排队。并行批次的共享分析器配置只准备一次，统一队列收据由协调线程发布，单模块失败保留并继续其余任务。完整捕获优先复用，不因提高并发重新分析；捕获完成、逆向语义闭合和实际功能对照分别验收。
 
 重复 host 提取保留真实 extraction exit／argv。旧重复收据丢失退出码时，静态调用 innounp `-t` 或 7-Zip `t`，保存实际退出码、分析器及输出字节摘要；复用前重新核验输入、检查输出、提取文件和完整 Inno 条目，不编造提取成功。官方 native manifest／资源复查均禁缓存并验证官方 HTTPS 最终地址，previous_observations 保留真实历次差异；quarantine 不因重复观测相同字节而提升为 verified。
 

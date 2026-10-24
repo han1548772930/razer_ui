@@ -1,6 +1,7 @@
 """Pure source-owner and semantic-boundary tests for family audits."""
 import hashlib
 from pathlib import Path
+import struct
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -8,6 +9,132 @@ from unittest.mock import patch
 import analysis
 import families
 import host
+from test_host import pe_fixture
+
+
+class NativeDescriptorWireTests(unittest.TestCase):
+    def test_complete_nested_descriptor_preserves_field_numbers_and_wire_types(self):
+        wire = bytes.fromhex("0a015812090a0178180120012808")
+        outer = families.audio_proto_descriptor_fields(wire)
+        self.assertEqual(outer, [(1, 2, b"X"), (2, 2, bytes.fromhex("0a0178180120012808"))])
+        self.assertEqual(families.audio_proto_descriptor_fields(outer[1][2]),
+                         [(1, 2, b"x"), (3, 0, 1), (4, 0, 1), (5, 0, 8)])
+
+    def test_mixed_varint_fixed_and_utf8_wire_values_are_bounded_bytes(self):
+        wire = bytes.fromhex("08ac021101020304050607081a02c3a925aabbccdd")
+        self.assertEqual(families.audio_proto_descriptor_fields(wire),
+            [(1, 0, 300), (2, 1, bytes(range(1, 9))), (3, 2, "é".encode()),
+             (4, 5, bytes.fromhex("aabbccdd"))])
+        self.assertEqual(families.audio_proto_descriptor_fields(b""), [])
+
+    def test_uint64_max_value_is_accepted_without_truncation(self):
+        self.assertEqual(families.audio_proto_descriptor_fields(b"\x08" + b"\xff"*9 + b"\x01"),
+                         [(1, 0, (1 << 64)-1)])
+
+    def test_truncated_tags_values_lengths_and_fixed_fields_are_rejected(self):
+        for wire in (b"\x80", b"\x08\x80", b"\x0a\x80", b"\x0a\x03ab",
+                     b"\x09" + b"\x00"*7, b"\x0d" + b"\x00"*3):
+            with self.subTest(wire=wire.hex()), self.assertRaisesRegex(ValueError, "Truncated"):
+                families.audio_proto_descriptor_fields(wire)
+
+    def test_varint_overflow_and_unbounded_continuation_are_rejected(self):
+        for value in (b"\xff"*9 + b"\x02", b"\x80"*10, b"\xff"*11):
+            with self.subTest(value=value.hex()), self.assertRaisesRegex(ValueError, "uint64"):
+                families.audio_proto_descriptor_fields(b"\x08" + value)
+
+    def test_zero_or_overwide_field_numbers_and_group_wire_types_are_rejected(self):
+        for wire in (b"\x00\x01", bytes.fromhex("808080801000"), b"\x0b", b"\x0c", b"\x0e", b"\x0f"):
+            with self.subTest(wire=wire.hex()), self.assertRaises(ValueError):
+                families.audio_proto_descriptor_fields(wire)
+
+
+class AudioNativePeEvidenceTests(unittest.TestCase):
+    def test_no_export_service_exe_still_provides_exact_file_backed_ranges(self):
+        raw, _ = pe_fixture()
+        struct.pack_into("<H", raw, 0x96, 0x22)
+        raw[0x210:0x214] = b"FIR!"
+        base, read, exports = families.audio_native_evidence_pe(raw)
+        self.assertEqual(base, 0x180000000)
+        self.assertEqual(exports, [])
+        self.assertEqual(read(0x1010, 4), b"FIR!")
+        self.assertEqual(read.file_offset(0x1010, 4), 0x210)
+
+    def test_virtual_padding_and_empty_or_cross_section_ranges_are_rejected(self):
+        raw, _ = pe_fixture()
+        struct.pack_into("<I", raw, 0x188+8, 0x1000)
+        _, read, _ = families.audio_native_evidence_pe(raw)
+        for rva, size in ((0x1e00, 1), (0x1000, 0), (0x1dff, 2), (0xfff, 1)):
+            with self.subTest(rva=rva, size=size), self.assertRaisesRegex(ValueError, "unique file backing"):
+                read(rva, size)
+
+    def test_overlapping_rva_sections_are_rejected_instead_of_selecting_first(self):
+        raw, _ = pe_fixture()
+        struct.pack_into("<H", raw, 0x86, 2)
+        raw[0x1b0:0x1d8] = raw[0x188:0x1b0]
+        _, read, _ = families.audio_native_evidence_pe(raw)
+        with self.assertRaisesRegex(ValueError, "unique file backing"):
+            read(0x1000, 1)
+
+    def test_section_file_offset_beyond_actual_original_is_rejected(self):
+        raw, _ = pe_fixture()
+        struct.pack_into("<I", raw, 0x188+20, 0x2000)
+        _, read, _ = families.audio_native_evidence_pe(raw)
+        with self.assertRaisesRegex(ValueError, "truncated"):
+            read.file_offset(0x1000, 1)
+
+    def test_x86_and_truncated_headers_are_not_accepted_as_x64_evidence(self):
+        raw, _ = pe_fixture(32)
+        with self.assertRaisesRegex(ValueError, "x64"):
+            families.audio_native_evidence_pe(raw)
+        raw, _ = pe_fixture()
+        for value in (b"", b"MZ", bytes(raw[:0x90]), bytes(raw[:0x1a0])):
+            with self.subTest(length=len(value)), self.assertRaises(ValueError):
+                families.audio_native_evidence_pe(value)
+
+
+class CarolFfiBindingTests(unittest.TestCase):
+    def setUp(self):
+        self.parser = host.HostLocalAudit().parser
+
+    def inspect(self, table, prefix="", suffix=""):
+        return families.audio_carol_ffi_binding((prefix +
+            'class Carol{constructor(){this.initElectron=()=>{const api=' + table +
+            ';for(let n=api.length;n>0;n--){configure(Object.assign({},...api.slice(0,n)))}}}}' + suffix).encode(), self.parser)
+
+    def test_complete_initializer_and_ordered_optional_group_are_retained(self):
+        table = '[{GetDLLVersion:["pointer",[]],DeviceInitialize:["bool",["string"]]},'
+        table += '{StartMonitor:["bool",["string","int"]]}]'
+        row = self.inspect(table, 'const label="设备";')
+        self.assertEqual(row["configuration"]["body"], table)
+        self.assertEqual([[item["name"] for item in group] for group in row["groups"]],
+                         [["GetDLLVersion","DeviceInitialize"],["StartMonitor"]])
+        self.assertTrue(row["initializer"]["body"].startswith("this.initElectron="))
+        self.assertIn("api.slice(0,n)", row["initializer"]["body"])
+        self.assertEqual(row["focus_apis"], [])
+
+    def test_comments_strings_and_other_abi_tables_do_not_create_false_binding(self):
+        row = self.inspect('[{GetDLLVersion:["pointer",[]]}]',
+            '// const fake=[{GetDLLVersion:["int",[]]}];\nconst label="Virtualizer";')
+        self.assertEqual(row["groups"][0][0]["signature"], ["pointer",[]])
+        self.assertEqual(row["focus_apis"], [])
+
+    def test_real_focus_api_is_not_hidden_by_unrelated_text(self):
+        row = self.inspect('[{GetDLLVersion:["pointer",[]],SetVirtualizerFirs:["int",["pointer"]]}]')
+        self.assertEqual(row["focus_apis"], ["SetVirtualizerFirs"])
+
+    def test_ambiguous_tables_and_wrong_lexical_owner_are_rejected(self):
+        with self.assertRaisesRegex(ValueError,"ambiguous"):
+            self.inspect('[{GetDLLVersion:["pointer",[]]}]', suffix='const fake=[{GetDLLVersion:["int",[]]}];')
+        with self.assertRaisesRegex(ValueError,"complete initializer"):
+            families.audio_carol_ffi_binding(b'const table=[{GetDLLVersion:["int",[]]}]', self.parser)
+
+    def test_dynamic_properties_signatures_and_grammar_errors_are_rejected(self):
+        for table in ('[{GetDLLVersion:signature}]', '[{GetDLLVersion:["int",[]],...extra}]',
+                      '[{GetDLLVersion:["int",[]],[name]:["int",[]]}]'):
+            with self.subTest(table=table), self.assertRaises(ValueError):
+                self.inspect(table)
+        with self.assertRaisesRegex(ValueError,"grammar"):
+            families.audio_carol_ffi_binding(b'const a=[{GetDLLVersion:', self.parser)
 
 
 class NativeInitializerTests(unittest.TestCase):

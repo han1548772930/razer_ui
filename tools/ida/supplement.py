@@ -2,8 +2,9 @@
 
 This supplements gaps in IDA's function enumeration without changing the
 original full capture. Missing boundaries may be created only for byte-exact
-x86/x64 direct-jump thunks or the exact x64 embedded-object destructor forwarding
-thunk; other unknown code remains an explicit failure.
+x86/x64 direct-jump thunks, the exact x64 embedded-object destructor forwarding
+thunk or the exact x64 bound-member tail-call thunk; other unknown code remains
+an explicit failure.
 Retained functions can also be reanalyzed with explicit types derived from
 their complete original-byte assembly. Type repairs never modify the base IDB.
 """
@@ -21,6 +22,7 @@ import ida_funcs
 import ida_gdl
 import ida_hexrays
 import ida_ida
+import ida_idp
 import ida_kernwin
 import ida_lines
 import ida_nalt
@@ -91,8 +93,9 @@ def capture():
                                  "sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()},
                 "started_at_utc": datetime.now(timezone.utc).isoformat(),
                 "functions": [], "references": [], "chains": [], "failures": [], "type_recoveries": [],
+                "decoded_thunks": [],
                 "capture_complete": False, "all_pseudocode_captured": False,
-                "boundary_policy": "Only exact direct-jump or x64 embedded-object destructor forwarding thunks receive new function boundaries; existing functions keep IDA boundaries",
+                "boundary_policy": "Only exact direct-jump, x64 embedded-object destructor forwarding or x64 bound-member tail-call thunks receive new function boundaries; existing functions keep IDA boundaries",
                 "target_execution": False, "real_device_operations": False,
                 "semantic_audit": "pending", "implementation_acceptance": "pending"}
 
@@ -166,6 +169,13 @@ def capture():
             raise ValueError("Database forwarding-thunk bytes differ from original input")
         return len(chunk)
 
+    def member_dispatch_thunk(ea):
+        chunk = file_bytes(ea - base, 11)
+        length = analysis.native_member_dispatch_thunk_size(chunk, selection["architecture"])
+        if length is not None and ida_bytes.get_bytes(ea, length) != chunk:
+            raise ValueError("Database bound-member thunk bytes differ from original input")
+        return length
+
     def export(ea):
         rva = hex(ea - base)
         existing = plan["existing_functions"].get(rva) if table else None
@@ -192,15 +202,59 @@ def capture():
         if func is None:
             branch = jump_target(ea)
             length = branch[1] if branch else forwarding_thunk(ea)
+            member_length = member_dispatch_thunk(ea) if length is None else None
+            if member_length is not None:
+                length = member_length
             if length is None:
                 raise ValueError("No existing function boundary and target is not an evidenced supported thunk: " + rva)
             boundary_source = ("byte-exact direct-jump thunk" if branch
+                               else "byte-exact x64 bound-member tail-call thunk" if member_length
                                else "byte-exact x64 embedded-object destructor forwarding thunk")
+            if member_length:
+                decoded_rows = []
+                position = ea
+                while position < ea + length:
+                    insn = ida_ua.insn_t()
+                    count = ida_ua.decode_insn(insn, position)
+                    if count <= 0 or position + count > ea + length:
+                        raise ValueError("IDA could not independently decode the exact member thunk")
+                    operands = []
+                    for operand in insn.ops:
+                        if operand.type == ida_ua.o_void:
+                            break
+                        operands.append({"type": int(operand.type), "dtype": int(operand.dtype),
+                            "reg": int(operand.reg), "phrase": int(operand.phrase),
+                            "address": int(operand.addr), "value": int(operand.value)})
+                    decoded_rows.append({"address": hex(position), "rva": hex(position - base),
+                        "bytes": file_bytes(position - base, count).hex(),
+                        "mnemonic": insn.get_canon_mnem(), "operands": operands})
+                    position += count
+                manifest["decoded_thunks"].append({"rva": rva, "start": hex(ea), "end": hex(ea + length),
+                    "raw_hex": file_bytes(ea - base, length).hex(), "assembly": decoded_rows,
+                    "boundary_source": "actual PE pointer-table target and exact supported instruction sequence",
+                    "database_function_created": False, "pseudocode_captured": False})
             cursor = ea
             while cursor < ea + length:
-                decoded = ida_ua.create_insn(cursor)
+                instruction = ida_ua.insn_t()
+                decoded = ida_ua.decode_insn(instruction, cursor)
                 if decoded <= 0 or cursor + decoded > ea + length:
                     raise ValueError("IDA could not decode the exact thunk boundary: " + rva)
+                flags = ida_bytes.get_flags(cursor)
+                if ida_bytes.is_code(flags):
+                    if ida_bytes.get_item_head(cursor) != cursor or ida_bytes.get_item_size(cursor) != decoded:
+                        raise ValueError("Existing instruction differs from exact thunk decoding: " + hex(cursor - base))
+                else:
+                    created_length = ida_ua.create_insn(cursor)
+                    if created_length != decoded:
+                        sane = int(ida_idp._processor_t.is_sane_insn(instruction, 0))
+                        manifest["failures"].append({"rva": hex(cursor - base),
+                            "stage": "instruction_creation", "decoded_bytes": decoded,
+                            "created_bytes": created_length, "processor_sanity": sane,
+                            "decoded_mnemonic": instruction.get_canon_mnem(),
+                            "original_raw_hex": file_bytes(cursor - base, decoded).hex()})
+                        raise ValueError("IDA could not create the exact thunk instruction: " + hex(cursor - base)
+                                         + " item=" + hex(ida_bytes.get_item_head(cursor) - base)
+                                         + ".." + hex(ida_bytes.get_item_end(cursor) - base))
                 cursor += decoded
             if not ida_funcs.add_func(ea, ea + length):
                 raise ValueError("IDA could not define the exact supported thunk: " + rva)
@@ -246,6 +300,10 @@ def capture():
                 for value in cfunc.get_lvars()]}
         except Exception:
             manifest["failures"].append({"rva": rva, "stage": "hexrays", "error": traceback.format_exc()})
+        for decoded_thunk in manifest["decoded_thunks"]:
+            if decoded_thunk["rva"] == rva:
+                decoded_thunk["database_function_created"] = True
+                decoded_thunk["pseudocode_captured"] = row["pseudocode"] is not None
         path = functions / (rva[2:] + ".json")
         save(path, row)
         manifest["functions"].append({"address": hex(ea), "rva": rva, "name": row["name"],

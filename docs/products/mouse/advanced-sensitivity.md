@@ -32,7 +32,7 @@ PID226 的 `loadDynamicSensitivitySettings`／`loadRotationSettings` 另把该�
 
 页面开关对应 `state`，0 为关闭，1 为开启；模式 0、1、2、3 分别是 `CLASSIC`、`NATURAL`、`JUMP`、`CUSTOM`。前三种使用原件中的固定控制点；Custom 另存 `points`、`templateId` 和用于设备传输的 `customSensorAccelerations`，不能只保存绘图点而省略采样曲线。
 
-图横轴的词条为 `DYNAMIC_SENSITIVITY_INPUT_SPEED`，纵轴为 `DYNAMIC_SENSITIVITY_RATIO`。纵轴表示倍率。横轴的实时值由输入监控回调计算：同批鼠标移动的绝对 X/Y 量累计后取向量长度，再除以 `timeTick` 差值／10000。该计算式本身不证明它是米／秒或厘米／秒，正文不为原件没有标出的物理单位作换算。
+图横轴的词条为 `DYNAMIC_SENSITIVITY_INPUT_SPEED`，纵轴为 `DYNAMIC_SENSITIVITY_RATIO`。纵轴表示倍率。横轴实时值由输入监控回调按产品分支计算：六款累计相对 X/Y 的绝对值，226 累计当前与上次相对 X/Y 之差的绝对值，再将累计向量长度除以 `timeTick` 差值／10000；具体门禁与类型边界见下文。该计算式本身不证明它是米／秒或厘米／秒，正文不为原件没有标出的物理单位作换算。
 
 Custom 拖动的真实约束是：首点 X 固定为 0，后续点至少相隔 2；倍率下限 0.1，上限为当前纵轴网格末值。横轴缩放间隔在 5～40 之间、每次 5，显示七个间隔；纵轴缩放间隔在 0.25～1 之间、每次 0.25，显示六个间隔。缩放改变可见坐标范围，不是另一个设备速度设置。鼠标按下选点、文档级 mousemove 更新点、mouseup 提交；相关监听在 effect 清理中移除。Ctrl＋滚轮同步调整两个缩放轴。
 
@@ -46,7 +46,7 @@ Custom 拖动的真实约束是：首点 X 固定为 0，后续点至少相隔 2
 
 该 writer 的完成依据是各 setter 应答，没有在结束时执行 state/mode/curve GET 比较。入口检查 AbortSignal；异常进入失败结果并 reject。不能将其完成描述为已读回全部 250 点。
 
-实时速度监控是另一条链。`DYNAMIC_SENSITIVITY_UI_COMMAND START` 先替换同名 input listener，再启动监控；STOP 移除 listener、停止监控并清理累计状态。速度向 UI 的发布限频为约 60 Hz，图中的活动面积在 150 ms 无更新后复位。图表 effect 会在开关变化时发 START／STOP；本次复核的 effect 没有额外的卸载 STOP 返回函数，不能据此宣称它具有该清理动作。
+实时速度监控是另一条链。190／192／196／222／229／239 的 `DYNAMIC_SENSITIVITY_UI_COMMAND START` 先 off 再 on 同名 input listener，226 仅 on；之后均等待启动监控。STOP 先移除 listener，再等待停止监控并重置采样状态。速度向 UI 的发布限频为约 60 Hz，发布后也执行该重置；226 的重置清除 lastX／lastY，却没有重置 lastTimeTick。图中的活动面积在 150 ms 无更新后复位。图表 effect 会在开关变化时发 START／STOP；本次复核的 effect 没有额外的卸载 STOP 返回函数，不能据此宣称它具有该清理动作。
 
 ## 旋转补偿
 
@@ -58,7 +58,7 @@ Protocol25 GET/SET 命令分别为 `[3,11,148]`／`[3,11,20]`；PID226 BLE 分�
 
 ## 灵敏度匹配
 
-当前实际挂载匹配器的产品已分别追到 UI、MW 命令入口、完整采样模块、输入事件适配、锁、保存、DPI 任务和协议方法。192／222／226 的卡片位于性能页右栏，229／239 位于左栏；226 的 BLE 条件只控制轮询率控件，未移除匹配器。PID196 留有相关 reducer，仍不能据此判定页面挂载。
+当前实际挂载匹配器的产品已分别追到 UI、MW 命令入口、完整采样模块、输入事件适配、锁、保存、DPI 任务和协议方法。190／192／222／226 的卡片位于性能页右栏，229／239 位于左栏；226 的 BLE 条件只控制轮询率控件，未移除匹配器。六款均由导航第 2 项引用性能页，再挂载 connect 包装的 Matcher class；包装从 sensitivityMatcherReducer 传入 calibrationState，页面的 renderView 实际选择并呈现导航组件。PID196 留有相关 reducer，仍不能据此判定页面挂载。
 
 | PID | 输入归属与匹配记录 | DPI 与传输分支 |
 | --- | --- | --- |
@@ -77,11 +77,11 @@ UI 发 `DPI_MATCHER_UI_COMMAND`，payload 的 type 为 START／CONFIRM／CANCEL�
 
 START 的源码顺序是：从本地所选配置的 `dpiStages.stages[active-1].x` 取得 currentDpi → 设 `maxTravelDistance=5×currentDpi` → 从主机 window storage 取 `connectedDevices` → 注册 `inputMonitoringEvent` → 等待 `startMouseInputMonitoring()` 返回 → 向状态机发 `ON_DPI_CALIBRATION_START`。因此监控启动发生在该状态机申请采集锁之前，不能把流程重述成先取得锁才启动监控。原件对缺少／假值 X 使用 `||100`，这不是设备 GET，也不是允许 Rust 在读取失败后以 100 覆盖设备的依据。
 
-输入来自主机推送的 `inputMonitoringEvent`，每批先解析 `jsonEvent`，再解析逐项 `data`，只将 `type=mouseMove` 的记录纳入移动量；`timeTick` 转为数值。这里没有名为 POLL 的厂商匹配命令。约 60 Hz 的节流只发送 GET_STATE，令状态机将已有进度投影到 UI；Rust 的内部 POLL／队列接收是自己的传输组织，不能作为厂商输入采集已验证的证据。
+输入来自主机推送的 `inputMonitoringEvent`，每批先解析 `jsonEvent`，再解析逐项 `data`，只将 `type=mouseMove` 的记录纳入移动量。六款 Matcher 的采样 callback 均明确创建 `{timeTick:+e.timeTick}`，随后才把同一个事件对象 push 到主流／参考流和主流 buffer；原生十进制字符串在这个边界转为 Number。这与下文保留字符串的动态速度 callback 不同。这里没有名为 POLL 的厂商匹配命令。约 60 Hz 的节流只发送 GET_STATE，令状态机将已有进度投影到 UI；Rust 的内部 POLL／队列接收是自己的传输组织，不能作为厂商输入采集已验证的证据。
 
 190／192／222／229／239 在有 containerId 时优先认当前主鼠标；只知道参考 containerId 时按“非参考”判断主鼠标。尚无这些身份时匹配 DeviceInfo 的 productId／dongleId／bleId；另允许当前双连接记录中、containerId 相符的 `master.dongleId`，后者还要求已启用 inputMonitoring。226 仅执行这一产品／双连接判断，不检查传入 containerId；两个同 PID 实例的区分不能擅自按 190 补上。
 
-进度按主鼠标累计正向 X 距离除以目标距离计算，完成前最多 99%。每轮从主事件 buffer 取最多 100 项，仅累计不早于两条输入流起点最大值且 `x>0` 的项；主距离严格超过目标时记录该批最后时间为 stoptime。后续达到目标、且参考流末尾已到 stoptime 时，先清两个定时器、移除 listener、等待 STOP，再计算结果。结果在共同时间窗口 `[max(firstMain,firstSource), min(lastMain,lastSource)]` 内分别累计 `x>0`，取 `Math.round(sourceDistance/mainDistance×currentDpi)`。不累计 Y、不取负 X 绝对值，也没有 DPI step 对齐、上下限裁剪或零分母检查；这些不能被模拟器悄悄补齐后宣称完全等价。
+进度按主鼠标累计正向 X 距离除以目标距离计算，完成前最多 99%。每轮从主事件 buffer 取最多 100 项，仅累计不早于两条输入流首项 tick 的较大值且 `x>0` 的项；主距离严格超过目标时记录该批最后时间为 stoptime。后续达到目标、且 `stoptime <= source.events[last].timeTick` 时，先清两个定时器、移除 listener、等待 STOP，再计算结果。这些 stoptime、buffer tick 和比较均为 Number。结果在 `[Math.max(firstMain,firstSource), Math.min(lastMain,lastSource)]` 内分别累计 `x>0`，取 `Math.round(sourceDistance/mainDistance×currentDpi)`。数组通过 forEach／push／splice 保留到达顺序，完整 factory 没有排序；first／last 是首末到达项，不能改写为整条流的最小／最大时间。计算不累计 Y、不取负 X 绝对值，也没有 DPI step 对齐、上下限裁剪或零分母检查；这些不能被模拟器悄悄补齐后宣称完全等价。
 
 两条输入各收到至少一批后才设 500 ms 无事件定时器；每次对应批次重置自己的定时器，空 mouseMove 批次与完全没有回调不是同一条件。同模块另有动态速度监控分支，不参与 Matcher 的距离比计算；不能把动态速度算法移植为 Matcher 计算。
 
@@ -109,7 +109,11 @@ USB／普通接收器路径的 DPI 表 GET／SET 为 `[80,4,134]`／`[80,4,6]`�
 
 UI 的 closePopUp 检查 `.calibrationState.state`，采样中发 CANCEL，其他状态发 RESET；cancel 则比较整个 calibrationState 对象与 CALIBRATING 常量，不能合并成相同判断。unmount 仅移除 window click listener，没有从该方法发送 CANCEL。226 的记录菜单／删除全部弹层使用 portal、其 Matcher 浮层没有其他五款的 popupBodyRef／mount overflow 设置；239 的匹配记录还保留自己的菜单样式。关闭、外部点击、错误首次到达、重试和菜单定位都须按当前完整 class 验证。
 
-官方主机将 start／stop 请求交给映射引擎，输入回调、启动 ACK、停止 ACK 和引擎关闭各有独立边界；当前本批 JS 不提供“每次 RESET 已终止 native thread”的证据。Rust 以独立 RawInput 服务实现，并等待自身采集线程结束；这项实际清理可以验证，但不能冒充官方同名命令已有的清理结果。
+官方主机将 start／stop 请求交给映射引擎。原生 START 从 `0x4f7b0` 经 engine queue、monitor queue 到 `0xcb100`；service 的 void 启动调用创建 owner 并排入另一 UI 线程的 `0xd0f40` 后，monitor queue 即排入 `{result:true,reason:""}`。逻辑 started 位为 InputMonitorImpl＋41，实际 Raw Input 注册位为 handler＋96，两者不是同一个状态。窗口创建和注册失败另发 error 事件，不会改写已经发出的启动 ACK。重复 START 返回 false／`already started`，未启动 STOP 返回 false／`has not started`；缺 engine thread、monitor thread 或 service 各有独立 reason。
+
+实际输入使用 message-only HWND 和 Raw Input，注册鼠标 usagePage=1／usage=2、flags=`0x2100`。相对移动量取 RAWINPUT＋36／＋40 的有符号 i32；事件 JSON 中 timeTick 为微秒十进制字符串，时钟为 QPC 换算或毫秒 fallback×1000。普通批次仅在距上次发布严格大于 100000 微秒时 flush，首次只建立基线；button 类型另有立即 flush。两次 GetRawInputData 读取失败只日志并丢弃该次输入，没有在这些分支追加监控 error 事件。原生事件回调在 Win64 消费 `(deviceInfoJson,int32 eventType,jsonEvent)` 三个参数，类型为 keyboard=0／mouse=1／error=2；主机 FFI 多声明的第四个 ulonglong 未被 JS consumer 使用，不能解释为逐项 timeTick。
+
+普通 STOP 的 `0xce4d0` 先排入已知设备的 pending 最后批次，清除 device＋32／pending＋72，保留 last-publication-tick＋112，然后释放输入 owner 并排入 UI 注销／窗口销毁。普通 START 复用 service，没有清除该时间历史；device removal 的 `0xcc8c0` 则先清整个＋112，再处理移除设备。UI 注销 flags=1／target=null，即使注销 API 返回失败也清 handler 注册位，STOP ACK 不据此变为失败。ACK 只说明这些任务已排入队列，未证明 UI 清理完成、所有回调送达或线程 join；完整 engine shutdown 才另走等待线程退出与 CloseHandle 链。当前 JS 不提供“每次 RESET 已终止 native thread”的证据。Rust 等待自身 RawInput 线程结束的清理结果须独立对照，不能与官方普通 STOP 的完成边界混为一项。
 
 ### 可独立复核的测试边界
 
@@ -118,6 +122,7 @@ UI 的 closePopUp 检查 `.calibrationState.state`，采样中发 CANCEL，其�
 | 用例 | 必须保留的原版结果与比较边界 |
 | --- | --- |
 | 正／负 X、非零 Y、两流起点不齐、窗口端点相等 | 只累计共同闭区间内正 X；负 X 与 Y 不增加距离；独立计算距离、round 前比值和最终 DPI |
+| 原生字符串 `"9" → "10"`、`"10" → "9"`、`"0"` 与乱序到达 | Matcher 先 unary+ 再保留到达顺序；动态速度保留字符串。分别比较类型、门禁、首末项和区间，不能统一数值排序 |
 | 主距离恰好等于／严格超过目标，参考流仍落后 | 分别记录 stoptime、进度和完成时刻；不得把“进度到 99%”当成采样结束 |
 | 空移动数组批次、仅单边事件、500 ms 中断 | 比较 timer 建立／续期、错误事件、listener 与 STOP 顺序，区分空批次和没有回调 |
 | 两只同 PID、containerId 缺失、接收器、双连接参考与 241 | 分别验证 226 的身份分支及其他五款的 containerId 优先规则，不能统一使用 PID190 规则 |
@@ -125,6 +130,7 @@ UI 的 closePopUp 检查 `.calibrationState.state`，采样中发 CANCEL，其�
 | 确认、删除选中项／非选中项／最后一项、清空、RESET | 分别核对两次保存、版本推进、selection、stages 通知和真实 DPI 写入；清空／RESET 不虚构恢复 DPI |
 | USB／226 BLE、SET 成功但 GET 不符、读回短表、取消发生于 SET 后 | 比较实际字节序、长度、逐行比较范围、应答／GET 和终止顺序；普通表和 OBM 槽位分别断言 |
 | 启动／停止返回 false、锁失败、timeout、CANCEL、窗口关闭和卸载 | 保留原版缺少 STOP／timer 清理的分支与 Rust 自身清理结果；不得把两者的 idle 状态作为清理一致的证据 |
+| START ACK 后窗口／注册失败、普通 STOP 后再 START、移除设备 | 分别比较逻辑 started、实际注册位、error 事件、保留／清除的 tick 历史、最终批排队和实际清理；不能把 ACK 当作 OS 完成或 join |
 
 官方没有对 DPI 比值计算额外做正有限数校验；Rust `dpi_matcher::Session` 有相应校验。零主距离、非有限结果与越界 DPI 必须记录两边各自的输出和拒绝边界，不能靠预先过滤输入消除这一差异。
 
@@ -140,6 +146,14 @@ UI 的 closePopUp 检查 `.calibrationState.state`，采样中发 CANCEL，其�
 
 动态与匹配器的输入监控共用 `mouse_input_monitoring::Session` 的 START／POLL／STOP 收据。Windows 消费者为 `runtime/windows/mouse/input_monitoring.rs`，继续到 `razer-platform` 的独立 RawInput 线程；设备身份通过当前 HID／SetupAPI 结果核对。部分 START 后丢失应答仍保留需要 STOP 的所有权；停止采集、停止服务和等待线程退出分别处理，不能用页面 guard 失效代替实际清理。
 
+实时速度必须保留产品分支。190／192／196／222／229／239 累计当前 Raw Input 的 `abs(x)`／`abs(y)`，门禁原式为 `lastTimeTick !== 0 && timeTick > lastTimeTick`；226 则要求上次 X、Y、tick 都严格不等于数值 0，累计 `abs(x-lastX)`／`abs(y-lastY)`，没有新 tick 比较门禁。两者均以 `sqrt(sumX²+sumY²)/(sumTicks/10000)` 计算，但 226 每次都计算，并只把 NaN 转为 0，Infinity 不会被这个判断清除。这里的 X／Y 本身已经是原生相对移动量，不能把 226 的再次作差解释为另一种绝对坐标输入。
+
+tick 类型同样属于协议语义：原生批次把 `timeTick` 序列化为十进制字符串。190／192／196／222／229／239 的 factory 绑定 `3569.Sl`，226 绑定 `53981.uK`；七份 helper 均是没有 reviver 的 `JSON.parse(e)`。动态 callback 直接保存 `l=e.timeTick`，首次保存后，两侧为字符串的 `>` 执行字典序比较，减法才转数值；`"9" → "10"` 不能按数值递增推定会通过门禁，`"0" !== 0` 也为 true。Matcher 的另一 callback 则在入 buffer 前使用 `+e.timeTick`，其后比较为数值，不能套用动态速度的字典序结论。当前 Rust 速度实现把字符串解析为 f64 再比较，因此边界测试必须保留原始类型和位数，不能仅用数值时钟模型宣称全等。
+
+当前 `razer-device/src/mouse/mouse_dynamic_input.rs::Speed` 和 Service 的 `mouse_dynamic.rs::monitor_with` 使用统一的绝对移动量算法，没有按 226 选择另一计算器。从空状态开始，同批包含 `(tick="10000",x=3,y=4)` 和 `(tick="20000",x=3,y=4)` 时，独立期望为上述六款 5、226 为 0；第二条改为相同 tick、`x=6,y=8` 时，226 的表达式产生 Infinity，统一 Rust 计算器保持 0。同批改为 `(tick="9",x=3,y=4)` 和 `(tick="10",x=6,y=8)` 时，六款为 0、226 为 50000；数值门禁会产生另一结果。收据用 `positive_infinity` 字符串保留非有限语义，不写非标准 JSON Infinity token。这些均为完整源码推导的独立用例，尚非实际 DLL 或设备测量结果。
+
+停止时最后一批事件的传递也需要单独比较。当前 Rust 的 `stop_mouse_input_monitoring` 等待线程停止，接收 final events 并将各设备的剩余条目 flush 到 `pending`，随后用 `State::default()` 替换整个状态；STOP 的 `Receipt` 不带事件，最后这批 `pending` 没有返回给请求方。官方 `0xce4d0 → 0xce5d8 → 0xce9ec` 则先向 observer 所属 runner 排入最后批次，再排停止完成；这里只证明 post 的顺序，不证明所有 observer 的实际送达都早于 ACK。Matcher 正常完成、CANCEL 和动态 STOP 又会先移除自己的 JS listener，再等待 STOP，故不能仅从传输差异断言匹配结果已受影响。现有 Rust 运行时纯测试覆盖阈值、移除与身份失败，尚没有覆盖 STOP 最后批次的交付契约。
+
 当前动态页面会在进入 Advanced／连接后请求独立 GET，写入完成后再发单独的 GET；`Requests` 将未观测、读取中、断开、失败、真实读取与显式编辑分开，并拒绝旧连接／旧编辑结果覆盖新状态。可编辑条件使用当前编辑或真实读取的 enabled／mode，未从本地配置回退。官方本页的编辑器恢复来源是配置档，writer 以 setter ACK 结束；因此必须分别对照官方作者状态、Rust 草稿和独立实测结果，并继续核对额外读取对加载、失败及监控启动的影响。额外 GET 不能写成官方原有的初始化或确认步骤。
 
 布局尚有确定差异：`MouseProductWorkspace::advanced` 统一先放动态面板，再创建旋转左栏，没有实现 196、222、229、239 在上表中的挂载分支。现有动态纯测试涵盖完整 Custom 参数、未知观测值、重连、过期结果和监控独立 guard；设备模拟测试涵盖 250 点字节序、setter ACK 与独立 GET、部分失败和取消。旋转另有 BLE 事务／分片应答和映射 driver 取消／释放测试。它们不能替代缺失产品接线、窗口交互验证或官方实际 DLL 对照。
@@ -151,6 +165,8 @@ UI 的 closePopUp 检查 `.calibrationState.state`，采样中发 CANCEL，其�
 - 匹配器性能页完整 class：192 `[5593696,5593984)`、222 `[5538642,5538930)`、226 `[84364,84702)`、229 `[5413950,5414282)`、239 `[5408964,5409296)`，文件同上一项。此处通过 class → connect 包装 → JSX 调用核对挂载，不以导出名或 reducer 存在代替挂载证据。
 - 中间件：`.analysis/inputs/frontend/mouse-mw-190-current/raw/apps.razer.com/synapse/products/190/mw/6120.c8b93f8fc599c9fca67a.js`，完整模块 32807 `[1137407,1146378)` 含匹配计算与监控；动态 writer `yi` `[1819790,1821159)`、本地保存 `Vo` `[1632451,1632868)`；旋转 writer `vi` 与完成消费者 `[1818402,1819790)`、保存 `Fo` `[1632086,1632451)`。本页直接复读了这些原始字节。
 - 分支追溯：`.analysis/results/frontend/mouse-mw-audit.json` 的 `queries.dynamic_sensitivity.products`／`ui_products`、`queries.rotation.products`、`queries.dpi_matcher.complete_owners`／`source_semantics`，含其余 PID、BLE、固件、锁与主机 ABI 原件定位。
+- 实时速度 callback 的完整 AST 区间由 `queries.dynamic_sensitivity.products[*].monitor_callback` 关联当前原件：190 `[1145946,1146377)`、192／196 各自原件的 `[1146149,1146580)`、222 `[1145936,1146367)`、226 `[1139320,1139784)`、229 `[1105123,1105554)`、239 `[1148419,1148850)`。七份原始字节、完整 AST 边界及 body 摘要分别重核；同偏移不能合并为同一来源。
+- 共享输入监控专项位于同一报告的 `queries.shared_input_monitoring`：保留 151 个完整原生函数、153 个 raw chunk／39740 字节、11 张实际 PE 指针表、122 条 unwind 记录、165 个完整前端 AST owner、14 份源码集和 4 份 Rust 源码的 37 个完整函数。原 PE、捕获指令与边、源码哈希及 AST 边界独立重读核验；禁用 collector 后的 verifier 通过，91 项篡改负例全部拒绝。12 组速度模型区分 Number 合成输入与原生兼容字符串输入，另保留 Matcher unary+／到达顺序反例；这些不构成已执行的 Rust 或官方 DLL 功能对照。1156 条未展开直接边和 18 条间接／导入调用仍明确保留。
 
 Matcher 追加复核使用各自 `mouse-mw-<PID>-current/raw/apps.razer.com/synapse/products/<PID>/mw/` 下的原件。下表为完整 owner 的 UTF-8 半开字节范围，不能将不同产品的相同模块号当作同一原件：
 

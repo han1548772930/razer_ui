@@ -357,7 +357,94 @@ normal=false 从转换所得本地文件按每 512 地址发 OUT40／82 擦除�
 
 已将汇编中的 CRC 紧凑公式与独立标准库算法及固定 `123456789→29b1` 校验值核对，并保留六个仅含 LF 的静态算例。例如 `abc` 和 `abc\n` 的 CRC 都为 BD12，最后一条行进度却分别是 95 与 47；可读空输入没有行进度、结束前 CRC 为 FFFF。这些只是静态算术复核，没有执行 DLL、文件流、传输或 Rust 功能测试，不能充当真实设备应答夹具。
 
-专项保留 61 个完整原生函数、13,022 条逐字节核验的指令、71 个完整 IL 方法（含 reset 的闭包）及 12 份完整反编译文件，核对 209 个输入／产物身份且前后快照无变化。IL 的方法 header／code 长度和原 PE 字节另行保留，不冒充独立 IL 指令反汇编；异常表保留于完整 IL。bad-SP 告警与未展开的底层库、CRT／locale／异常及间接分支继续保留，没有新增 Rust 实现、运行纯／模拟功能测试或实际 DLL 对照，不能将此静态覆盖推广为整个升级包或设备功能已完成。
+#### 接收器 SDK 的另一条 HEX 与读回链
+
+同包 SDK 的 `0x1a00` 与 MCU `0x2190` 的 ABI 和结果不同：调用者 `0x3f20` 的汇编确定 ECX=输入 HEX、EDX=start 指针、栈=end 指针，输出路径由转换器内部构造；正常返回 2，输入打开或前缀错误返回 4。转换开始 callback=1，每条 00 数据记录 callback=2，05 先 callback=4 再计算排他 end，读行结束 callback=5，均无 null guard。00／04／05 的字段、signed32 补洞、奇数 nibble、短行异常和 EOF 后继续读取的限制分别核自该原件，不能直接复用 MCU 的返回码或回调。
+
+转换器通过主 EXE 路径与 CP_ACP 构造全局固定 new_fw.bin；路径获取、字符转换、反斜杠与长度没有完整错误检查。remove 不核结果，输出打开失败仅设 failbit，随后却再次检查 input FILE；写入、关闭或读流错误仍可能走 callback=5／返回 2。空输入也可返回 2，不能据此确认镜像有效。裸路径和每条数据分配未见配对释放，gap buffer 有 free；异常保留部分文件。全局 locale 被改变，没有恢复原值。converter／writer 的 EH3 分别为 maxState=18／4，均无本地 try/catch；有 stream／string／locale unwind 不表示异常会变成返回码。
+
+writer `0x3040` 的汇编确定 ECX=HANDLE、EDX=start、栈=delay；打开失败返回 4，stat 的 signed32 size、实际 gcount 与 seekg 结果不核。第一遍 command02 将 BE32 地址写 offset 10…13、数据从 14 开始；第二遍 command83 读取设备 offset 14 起数据并始终比较 64 B，尾块包含双方预清零部分。累计已处理字节数是 DWORD，只有尾长取低 8 位，坏-SP 伪码中的 char 累计量不可信。比较不符返回 3；exchange 失败保留其返回值。整 64 B 文件两遍均有零长尾轮，两处进度 idiv 无零保护；成功先关闭输入流，再尝试 remove，结果仍为 2。这与 MCU 在析构前删除的顺序不同，也没有最终版本、取消或原固件恢复确认。
+
+#### 文件流、异常与 CRT 依赖边界
+
+[691 包专项证据](../../../.analysis/results/host-current/firmware-package-691.json)中的 `package_native_file_streams` 分别保留本包 SDK／MCU 的完整文件流函数、逐指针虚表、异常表和汇编断言。MCU 转换器 `0x2190` 的 FuncInfo `0x8e20` 有 21 个 unwind state；SDK 转换器 `0x1a00` 的 FuncInfo `0x8db8` 有 18 个，两者均无本地 catch。这只能说明转换器本体的字段切片、裸缓冲分配或回调异常没有在该层统一转换成返回码，不能扩展为整条读行链没有 catch。
+
+MCU `getline 0x6090` 的 EH `0x9060` 和 SDK `getline 0x5bd0` 的 EH `0x9020` 各为完整 112 B，由 36 B FuncInfo、40 B unwind map、20 B try map 和 16 B handler 组成。两者均有 `tryLow=2/tryHigh=2/catchHigh=3` 的 catch-all；实际 handler 分别位于 `0x61c3`／`0x5d03`，调用 `setstate(badbit=4,Reraise=true)` 后回到正常状态处理和解锁路径。伪代码没有显示这段 catch body，判断依据为原始 EH 和完整汇编。是否重抛取决于实际 CRT 的异常掩码；若异常被转换为流失败，转换器循环可能结束并继续结束回调和正常返回。此保护范围只覆盖 `getline` 内的取行／追加循环，不能保护其后的 HEX 字段解析和分配。
+
+两份 filebuf 虚表各有 15 槽：MCU 位于 `0x8388`，SDK 位于 `0x8338`，共 60 B。文件锁／解锁、读写、定位及 codecvt 的目标均已逐项对应本包函数；相邻第 16 DWORD 属于下一份 RTTI，流 sentry 清理的 `vtable+8` 也是解锁，不能当作设备回调。FILE 保存于对象 `+76`，codecvt facet 于 `+56`，mbstate 于 `+64/+68`。open 经 `_Fiopen(path,mode,64)` 后按流 locale 选择 codecvt：`always_noconv` 为真时清空 facet；无 facet 的读写走 `fgetc/fwrite`，有 facet 时走标准转换分支，均不构成额外的设备命令。
+
+MCU close `0x5960` 先调用 `0x5890`，SDK close `0x5490` 先调用 `0x53c0`，分别处理 overflow／unshift／尾部写入；helper 失败仍会调用 fclose，随后清空 FILE、facet 与 mbstate。输入流先打开，再以空 locale 名和 category mask=63 构造 locale、调用 `std::locale::global`，最后打开输出流；未见恢复旧 global locale。临时 locale 对象的析构不能代替全局恢复。字符串辅助函数的 15 B SSO／堆路径、析构与裸 data buffer 分开核对；分配失败可抛异常，字符串析构不能证明裸缓冲已有释放。
+
+另一官方部署保留的 x86 MSVCP140 仅作为独立依赖候选：其 `_Fiopen` 表将 mode=1／0x21／0x22 分别映射为 `r/rb/wb`；`codecvt<char,char>` 的 `always_noconv` 槽返回真，`ios_base::_Init` 将异常掩码置零。候选的导出和汇编已独立核对，IDA 的 COMDAT 别名不作为类型依据。但目前存在不同字节的 x86 候选，尚未证明 PID 691 实际加载哪份 CRT；实际 UCRT、加载器选择、进程 locale、窄字符路径和文本模式 CRLF／0x1a 行为仍未执行验证。不得将候选样本的默认状态直接套为本包实际行为，也不得把 HEX 解析器不 trim 等同于文件层不会转换输入。
+
+同份报告的 `package_dependency_binding` 进一步核对完整 ZIP 的 18 个成员，均与提取原件逐字节相同；包中没有 CRT DLL 或外部 `.config/.manifest`，当前 manifest 的 5 个资源声明也没有单列 CRT。SDK／MCU 各普通导入 MSVCP140 的 47 个符号、VCRUNTIME140 的 12 个符号和 7 个 UCRT API-set 契约的 36 个符号；MCU 另有 WINUSB／SHELL32。RY 没有这些普通／延迟动态 CRT 导入，不能将 SDK 的依赖结论直接套给它，也不能据此称其内嵌 CRT 已完整逆向。
+
+SDK、MCU、RY、FWUpdaterDLL 与托管主 EXE 的 64 个普通导入描述符中，TimeDateStamp／ForwarderChain 均为零，磁盘 ILT 与 IAT 相同，Bound Import／Delay Import 目录为空；包内其他 PE 和外壳也单独核对，共 16 个 PE／75 个描述符。内嵌 RT_MANIFEST 经 XML 解析没有有效的 `dependentAssembly/file` 绑定，注释里的样例不算声明。这些实际字段仍不能选定 691 的 CRT 字节。两个 x86 官方部署候选版本分别为 14.0.23918.0／14.0.24212.0，均覆盖全部 47＋12 个所需导出；两者 MSVCP140 又各延迟导入 CONCRT140 的 12 个符号，而各自保留包未附该文件。另三个包中的同名 CRT 为 x64，不能直接满足 x86 导入。实际加载器、API-set 与已执行的延迟依赖须继续在显式对照中核实，符号匹配不构成功能一致。
+
+#### 同包 MCU 的其余导出与 48 B 协议
+
+PE 导出目录现逐项对应 SDK 的 7 个、MCU 的 24 个和 RY 的 3 个完整导出函数体。MCU 新增的 driver、Dock MAC 与 PS5 导出在本份完整托管 IL 中没有同名引用，原生完整捕获也只有导出 data 引用；这仅界定当前包调用方，不表示整个项目没有其他消费者，也不将它们当作 PID 691 已挂载功能。
+
+`InstallBootLoaderDriver 0x1ca0`／`UninstallBootLoaderDriver 0x1cc0` 仅以调用者 ANSI 路径调用 ShellExecuteA，verb=open，参数分别为 ` /s`／` /U isousb.inf /s`，显示参数分别为 0／5。它们原样返回 HINSTANCE，没有检查大于 32、等待退出、确认驱动状态或恢复；函数名不能证明安装完成，本次也未运行安装动作。
+
+另一 helper `0x4490` 使用 48 B Feature Report，保存 command=offset3，再写前缀 `03 5a a5`；最多三次 SET。command09 只要 SET 成功就返回 true，reset_ps5 因而没有 GET 或重连确认。其他命令先等待，再最多二十次 GET，只匹配响应 offset0=command 与 offset1=2；**恰好第三次 GET 为 true 且不匹配时提前失败，第三次为 false 则继续**，不能概括为三次读取上限。没有响应 checksum 或有效载荷长度核对。
+
+`GetDockMACAddress 0x49c0` 用 command1d、offset9=6／11=95，成功后将响应 `[9,15)` 原样复制为六字节；失败保留调用者旧输出，不做文本或端序转换，未核输出指针／容量。成功只设置 AL，不能自行补成完整 EAX 布尔契约。
+
+`upgrade_ps5_process 0x4880` 先以 command1a 查询和准备，再调用 `0x45a0`：ECX=HANDLE、EDX=delay、栈为首次响应 offset13 起的 DWORD／文件路径／零扩展的低 8 位 flag；writer 只消费 token 低字节，flag 保留 0…255，不是布尔归一化。flag=0 时读弃前 32768 B，再以 28 B 读取原文件；command1a 的 offset10…11=`0a 02`，12=query 字节、13…16=BE32 地址、18=低 8 位尾长、19 起为数据。没有镜像格式、CRC、签名或设备镜像读回。小文件在跳过后可出现负尾长取低 8 位，例如 32767 B 文件可产生长度 255 并直接 memcpy，超过 28 B 源区域与 48 B 报文；stat、gcount 和 EOF 边界没有预先验证。
+
+这条 writer 在传输成功后才用 32 位乘法和 signed idiv 更新进度，没有零分母保护；空文件可在第一次除法失败，flag=0、大小 32768 B 时可在进度重映射的分母 `100−trunc(3276800/S)` 遇到零。正大小 32444…32768 的商均为 100，但较小值可能先进入越界复制，不能假定都稳定到达同一异常。剩余长度 `S−skip` 为 28 的倍数时可能多发零长尾轮；skip 为 0 或 32768。每块 callback 有 null guard，EOF 的 callback100 却直接调用。正常读流结束返回 0 后还发结束命令，结束应答 true／false 分别映射完整 EAX 的 0／1；打开和传输失败为 2／3。输入流构造后的正常／异常路径有析构，但没有取消、callback 注销、调用者 HANDLE 关闭或重连／最终版本确认。以上均为静态协议事实，未执行该导出或刷写。
+
+#### 同包 RY 的配置、镜像与实际报文
+
+包内 x86 RY 的配置、编码与镜像链已补到内部 owner。`0x2af0` 将两个全局 CString 的目录和 INI 文件名直接拼接，`GetPrivateProfileStringA` 使用空默认值和 100 字节缓冲，第三个名义 CString 参数只参与释放，既不是 API 默认值也不是实际文件来源；截断、缺键和读取错误没有分别建模。`0x36f0` 对 bootdev_info 转小写、删除所有 ASCII 空格并截去首个分号之后的内容，再交给现有 HID substring 匹配。文件与 INI 全链使用 ANSI API，不能声称支持一个已经验证的 UTF-8 路径契约。
+
+文件名先严格核对末四字符 `.enc`／`.bin`。随后 `Right(19) → Left(6)` 取版本，要求首字符 v 或 V，改成 A 并删除所有点，经过十六进制检验再按 `%04x` 解析；这使 v1.2.2 得到 A122，并非通用语义版本解析。再次读取文件名，以 `Right(12) → Left(8)` 取 `%08x` 校验值。`0x3210` 被 IDA 错标为时区函数且反编译有 bad-SP 警告，逐指令核实其真实行为是完整匹配 `[0-9a-fA-F]+`，再将每两个字符写成 ECX 指向的字节；奇数末尾半字节被忽略。encryption_en 的 `%x` 转换只有返回恰好 0 才强制 1，EOF 不走该分支；它选择扩展名，本机这条写入链没有解密镜像，报文第 6 字节始终为 1。
+
+`0x36f0` 向 HID 发送 12 字节 `30 00 00 00 04 00 00 00 67 65 74 76`，只核回复命令 30h 和 offset4 的 16 位长度 16，以 offset20／16 的大端 16 位分别取 app／boot 版本。目标版本小于等于设备 app 版本时，它将 F000 标记加在返回值高 16 位；但导出 `0x6c40` 判断的是低 16 位 boot 的 bits12…15，不能描述成“已最新自动跳过”或防降级保证。传输失败至多三次，只有写失败额外 Sleep100；语义错回复直接返回 2。查询成功及语义错回复没有关闭已开的设备句柄，进入 `0x5580` 后会被新句柄覆盖，因此当前官方原件并不具备完整的旧查询句柄释放链。
+
+`0x5580` 先按 512 字节读取整个文件（含 32 字节头），按小端 DWORD 异或并核对文件名校验；打开失败返回 7，校验不一致关闭文件后返回 8。它不检查 fseek／ftell／ferror、最小 32 字节长度或四字节对齐；不齐尾块的 DWORD 读取会包含缓冲中的旧字节，不能伪造一个稳定的官方期望值。之后将 ftell 减 32 作为 body 长度，重定位并发送原始头与 body。APP_START_ADDR/app_start 支持精确小写 0x 前缀或十进制，解析失败、零或大小判断失败均发送 FF 哨兵并继续；包内默认 INI 没有该键，不能据此推断实际 flash 地址。
+
+31h 开始报文的 8 字节头依次为 command、低 8 位 sequence、低 16 位 bodylen/4、payload 长度、固定 1、start page；payload 为 bodylen／目标版本两个小端 DWORD、文件头及可选设备代码。boot 低 12 位小于 105h 不附代码；105h…121h 附 1aec00 的 440 字节，122h 及以上附 1aea60 的 412 字节，各增加 4 字节代码长度和 4 字节代码 XOR，实际附加量分别 448／420 字节。这些内置设备代码的原始字节已保留，设备侧的执行与解密语义仍单独未验证。32h 按 512 字节发送剩余 body，33h 发送 body XOR 与本地年月日时分秒；终态只核现有 5410 逻辑应答，没有刷后版本或 flash 字节读回。
+
+RY 的状态 5 同时表示成功与错误，进度计算还给开始报文预记一块工作量，最后 33h 未确认前即可达到 100；33h 失败可返回 9 而保留已到 100 的进度。普通终态路径关闭当前 FILE 与当前设备句柄，但查询旧句柄已可能丢失；C++ EH 表的 34／35 个状态均只释放 CString，没有 FILE／HANDLE unwind owner，也没有 catch 将分配、字符串或 regex 异常转换成普通错误码。不能将回调状态 5、进度 100 或最后返回 0 单独当成全部写入与恢复已经完成。
+
+实际 RY 镜像来自同包 SelenaUpdater.resources 的内置资源，`Info` 构造器按 RY Core FW Size 顺序取 RY Core FW Sector 并写成本地文件，再更新 INI；本次按 .resources v2 原字节静态核对全部名称哈希和数据边界，不实例化 user type。37 个扇区合计 37,408 字节，其小端 XOR32 为 EBB79E76，与资源文件名一致；32 字节头之后的 body 恰为 73 个 512 字节块，body XOR32 为 C9A9E961。该一致仅闭合包内静态输入与校验链；Rust 独立实现、模拟测试、官方 DLL 实际功能和真实设备写入／恢复验收分别保持未验证。
+
+资源写出本身还有独立失败语义：`ParseFWFile` 先以 FileMode.Create 截断目标，再建立 BinaryWriter／ResourceSet；循环只要求累计扇区字节达到或超过声明 Size，没有 exact-size、扇区长度或写后 hash 核对。原包此次恰好相等是独立静态核验结果，不能替该函数补出不存在的校验。异常路径只日志并返回 false，没有 finally 保证关闭已建立的流／writer／ResourceSet 或删除部分文件；Info 构造器自身的 ResourceSet 也未显式 Close，前一 NOR 文件生成失败会直接 return，不继续生成 RY 或更新 INI。
+
+已为该包的 37,408 B 镜像保留静态报文向量：31h 无附加代码／旧代码／新代码的命令长分别为 48／496／468 B，按 64 B HID payload 分为 1／8／8 片；首个 32h 头为 `32018024000201ff`，命令长 520 B，分九片且末片 8 B。73 个 body 块后，33h 头与 body XOR 为 `334a80240c0001ff61e9a9c9`；时间尾部由实际本地时钟决定，没有伪造固定样本。传完第 72 块已可达到 100％，最后一块未夹制的商为 101；这些是结构构造与独立字节字面量的静态核对，没有执行 DLL／传输或 Rust 功能测试。
+
+#### 691 独立窗口的挂载、交互与完成消费者
+
+包内独立窗口仍有自己的完整 UI 调用链，不能由外层固件页或刷写函数结果代替。`Program.Main` 建立 `appContextDevice`，后者预建 Guide、ModeSel、Main、Success 并先显示 Guide。页面关闭先 Dispose 当前实例，再按 `NextPage` 选择或重建下一窗体，并传递原窗口位置；最终 Close 分支调用当前进程 Kill。Guide 的 Next 启动五项本地 StopSvc 调用及退出已有本地宿主进程的 worker，未消费这些 bool 或完成器 Error／Cancelled 就进入模式选择；这只能证明调度，不能证明服务已停或已恢复。模式页 Load 清空有线／无线选择并禁用 Next，点击对应图片后才建立互斥选择、保留高亮并允许进入更新页。
+
+Main 设计基准为 720×600、无系统边框、居中、禁最小化与最大化，按 Font／6×13 自动缩放；主体使用 Microsoft Sans Serif 12，左上标题为 RazerF5 14、位置 `(18,5)`、AutoSize。Load 设置当前语言和大写产品标题，再依次初始化控件、注册设备监听／改写必要 INI、按无线且阶段 1 选择接收器预检，否则预检键盘。无线阶段 1 使用 `PlugHyperPollingWirelessDongle` 并隐藏第二条说明；有线／阶段 2 使用 Wired_1 背景和两条键盘说明。两张当前背景均为原件内 720×600 PNG。主题绿为 `#44d62c`，按钮文字为 `#222222`；按钮源图为 90×27，控件设计尺寸为 90×30 且 AutoSize。Shown 会按实际窗口、实际按钮尺寸重新定位：主按钮右／下各留 40，Back 在左侧再隔 20；标题超过窗口宽减 48 时逐次缩小字号。不能直接把设计器 `(604,540)` 当成所有语言与 DPI 的最终按钮位置。
+
+| Main 控件 | 设计器矩形 `(x,y,w,h)` |
+| --- | --- |
+| 两条连接说明 | `(300,88,348,88)`／`(300,269,348,46)` |
+| 主提示／第二提示 | `(2,381,716,23)`／`(78,423,568,23)` |
+| Updating／百分比 | `(34,429,101,20)`／`(616,429,69,18)` |
+| 进度条 | `(35,452,651,15)` |
+| 当前／目标版本 | `(37,501,299,30)`／`(37,536,299,30)` |
+| 右上关闭 | `(671,1,48,32)` |
+
+`InitializeControlDatas` 清空／隐藏状态、进度和版本字段，重设 Back／Update 文案并禁用 Update，却不恢复 Back 的 Visible／Enabled。接收器已经最新会隐藏 Back、把主按钮变为 Next；此时断开设备再初始化仍会保留隐藏的 Back，只有进入阶段 2 的 Next 分支显式设回可见。键盘已经最新或高于目标时只显示无需更新并允许 Back，不显式启用 Update；从初始化进入该分支时主按钮仍禁用。Update／Next 与 Back／Close 的分派比较当前本地化按钮 Text。`MyButton.Enabled` 本身只修改自有布尔值、TabStop、光标和文字颜色，点击／双击／鼠标事件 override 才按该布尔值拦截；真正的 `base.Enabled` 属于另一个 EnabledSet 属性。不能把两者当成同一 Windows 控件状态。Update click 先禁用两个按钮，OnStartUpdate 再设 wait cursor／isUpdating、检查 worker IsBusy；选中 worker 已 busy 时没有另一路启动或恢复。
+
+进度也分两层：窗口回调算术与百分比文本没有钳制，第一接收器芯片用 `percent/2`、其他 MCU 段用 `50+percent/2`，RY 取首个 ushort 后除以 2；但实际依赖 `CustomProgressBar.dll` 的 Value setter **会把内部数值钳到 0…100**，绘图按这个内部值计算宽度，使用 `#333333` 背景和 `#44d62c` 前景。因此超界回调可能使文本与条形宽度不同，不能笼统称整个进度控件没有 clamp。Label 和回调通过同步 Invoke 更新；reset worker 更把 reset、延时、OLED 修复和版本读回的整段闭包同步 Invoke 到窗口线程。
+
+预检接收器的 current 显示返回字节 `[4:7]` 的 NOR 三元组，target 却是 dongle_nxp_version；更新后版本页改显示 `[0:3]` 的 NXP 三元组，两个 current 消费者并不相同。reset 优先取非零键盘句柄且键盘需更新的分支，忽略 ResetUserSetting／OLED 修复 bool，查询版本后仍固定 Result=0；否则对非零接收器句柄且需更新设 transaction=e0、reset、查版本并 Result=1。两个条件均不满足时 Result 保持 null，完成器 ToInt32(null)=0 仍进入成功页；内部 catch 设 5 后完成器没有 else 处理。未捕获 Error／Cancelled 时访问 Result 的框架异常另算，不能与 null 混淆。版本 getter 失败或两芯片未精确匹配目标，也不阻止 CheckUpdatingVersion 显示“已更新最新”、允许 Next、隐藏 Back。键盘 Result=0 直接关闭到 Success，接收器 Result=1 留在 Main 等 Next。最终 Success_Load 不再读取设备，仅按选择显示 Common.Info 的接收器 NXP／键盘 NOR **固定目标**，无线选择还会列出预检已最新而未实际刷写的接收器。必须分别验证写入结果、重连、真实版本、恢复、完成导航和目标文案。
+
+关闭按钮在更新中没有被禁用，FormClosing 的完整 IL 仅 ret；Back／Close 没有建立原生刷写取消。Main Dispose 没有显式取消／等待 worker、退订设备事件、停止监听或关闭设备句柄。监听器 Start 分配过滤器并注册通知后只把注册句柄存局部，用 IntPtr.Equals(null) 判运行标志，既未保存到 hCtrl，也没有在该 owner 释放过滤器；Stop 使用仍为构造零值的 hCtrl。该包 EXE 的完整 IL 中，没有到 DeviceListener.Stop／BackgroundWorker.CancelAsync 的直接 call／callvirt 或 delegate ldftn／ldvirtftn 引用，不外推其他程序集或动态调用。Process 按 WM_DEVICECHANGE 的到达／移除、前 40 个路径字符及 VID／PID 子串发事件，Main 在 isUpdating=true 时全部忽略；boot 到达分支新开局部 boot 句柄，却检查旧 mDevHandle 后才决定是否向局部句柄 ExitBootloader。上述是当前原件的具体边界，不能将关闭窗口、Dispose 或进程退出记成已验证的取消、恢复或释放链。
+
+Guide 是唯一显式设 TopMost=true 的页面，两按钮设计器 TabStop=false，Load 只设文字和颜色，没有调用自有 Enabled=true 恢复 TabStop。ModeSel 的 Cancel.Enabled=true、Next=false 分别令 TabStop 为 true／false，选择图片后 Next 才为 true；Success 的 Close.Enabled=true 令其 TabStop=true，Main 则随预检与阶段变化。MyButton 统一隐藏 ShowFocusCues，不能据此声称按钮没有默认键盘行为。ApplicationContext 自持 currForm、订阅 Closed 并调用无参数 Show；重建时不写回原 deviceForms 列表，只显式传递窗口位置。在本份 EXE 的直接 IL 引用中，未见设置 Form.Owner／ApplicationContext.MainForm、Focus／Activate／ActiveControl、AcceptButton／CancelButton、KeyPreview 或自定义键盘事件绑定；框架默认行为与真实焦点／激活结果仍须另行验收。
+
+失败提示另走 WinForms MessageBox：OnUpdatingException 清 isUpdating，再用不带显式 owner 的五参数 Show，按钮为 RetryCancel、图标 Exclamation、默认第一按钮，并丢弃 DialogResult。它没有自定义焦点保存／恢复，默认模态和键盘行为不能从 MyButton 的实现推断。
+
+语言选择来自 GetSystemDefaultLangID 的低字节匹配；中文再按高字节 04／0c 选择 zh-CHT，其余中文匹配选择 zh-CN，未知语言走空 culture 的 neutral 英文。表中的 Font 字段没有进入这些页面的字体设置。包内九份语言卫星各有 36 个 ResourceStr 词条，原始 PE 中的字符串均与反编译 resx 逐项相同，但都缺 neutral 中的 dayoneprompt；Guide 的该长文走 neutral 回退。资源证据还逐项绑定了 23 个图片序列化 payload 和四个窗体 Icon 的原始 PE 范围；全程只读字节，未反序列化对象，22 个 PNG 的 IHDR、完整 chunk 边界和 CRC 已静态核对。布局、各语言文案、worker 与设备事件竞争、关闭及清理的实际 DLL／设备结果仍未执行对照，保持未验证。
+
+专项完整保留所选原生函数、逐字节核验指令、完整 IL 方法及反编译文件，输入／产物身份与数量见当前收据。IL 的方法 header／code 长度和原 PE 字节另行核对，不冒充独立 IL 指令反汇编；异常表保留于完整 IL。bad-SP 告警与未展开的底层库、CRT／locale／异常及间接分支继续保留，没有新增 Rust 实现、运行纯／模拟功能测试或实际 DLL 对照，不能将导出覆盖推广为整个升级包或设备功能完成。
 
 ## 固件页面、状态机与样式
 
@@ -474,6 +561,35 @@ callDLL／callDLLAsync 的 FreeFFI 分支直接 return true，未调用空的 `_
 
 最终发布产品版本前检查 installErrors；源码的 ignoreErrors 分支可以在仍有错误时完成原版流程，这个状态不能在本项目中被解释为所有本地能力成功。completedResources、expectedResources、upgradedResources、真实进程结果、资源记录与产品记录分别维护。
 
+### InterHaptics 安装与卸载的旧进程退出链
+
+当前资源清单绑定的 `1.0.0.49` [安装包与完整提取收据](../../../.analysis/results/native-packages/33954697ea3c99d8a7e1ffd99255834c29a01e4d0712b9e8fbc83f5db346d83f/inspection.json)、[安装解释器捕获](../../../.analysis/results/native/33954697ea3c99d8a7e1ffd99255834c29a01e4d0712b9e8fbc83f5db346d83f/capture.json)及[同包卸载解释器捕获](../../../.analysis/results/native/2889e68bb939c46eb568ed1ac386f435b1672af6ecbf04c0e212a451c23824ec/capture.json)共同约束这条本地生命周期。安装包为 2,157,704 B，提取的 `Uninstall.exe` 为 366,544 B，均为 x86、Image Base `0x400000`。两套捕获各 105 个函数、8,320 条指令、25,589 B raw chunks，逐函数文件摘要、chunk 摘要及全部指令字节已与各自 PE 核对；这只是静态证据核验，不是执行安装、卸载或 helper 的收据。
+
+两份文件的 NSIS firstheader 均位于文件 `0x9200`；`+20` 为解压长度，`+28` 的高位表示压缩、低 31 位为含 5 B 属性的压缩块长度。安装包的长度分别为 `44,222/0x127e`，卸载包为 `32,100/0xe0c`；文件 `0x9220` 的属性均为 `5d 00 00 80 00`，据此以 LZMA1、`lc=3/lp=0/pb=2/dict=0x800000` 静态解压后，长度精确匹配且解码器到达流末尾。下文以解压 header 为 `h`、entry 使用从 0 开始的索引：安装 entries 为 `h+0x11dc` 的 1,008 条 28 B 记录，strings 从 `h+0x801c` 开始；卸载对应 `h+0x9c4` 的 751 条记录与 `h+0x5be8`。每条记录按 7 个 little-endian i32 读取，首项为 opcode、后六项为操作数。`0x30a9` 将 header 的块相对偏移转换为基址指针，`0x1389` 以 `28*index` 分发到 `0x1434`；非零的正跳转目标先减 1，再作为下一 entry 索引，零表示顺序继续，不能把原始目标直接当从 0 开始的索引。
+
+字符串由 `0x65b9` 按 UTF-16 code unit 展开：`3` 加后继编码表示 NSIS 变量，变量号为后继两个字节各取低 7 位后组合；`2` 表示 shell／注册表目录，`1` 为语言表引用，`4` 转义下一个 code unit。安装 string `1502` 位于 `h+0x8bd8`，完整内容为变量 21（`$INSTDIR`）加 `\Synesthesia\SynesthesiaStop.exe`；string `1537` 为变量 15（`$R5`）。卸载对应 string `984/1019`，路径位于 `h+0x6398`。目录前缀不能从可打印字符串片段中丢弃。安装 entry `501` 先设置 `$INSTDIR=$PROGRAMFILES\Interhaptics\`，entry `506/518` 将 `Synesthesia.exe` 放入进程查询参数；helper 路径不是本包中待解压的文件声明。
+
+| 分支与 entry | 实际指令、结果消费者及后续路径 |
+| --- | --- |
+| 安装 section `499..982`，`523..525` | `nsProcess::_FindProcess` 查询 `Synesthesia.exe`，结果 Pop 到变量 10（`$R0`），只将数值 `0` 当作找到；非零跳到 entry `582`，直接进入后续服务检查。此前没有产品版本比较将这条进程处理限定为某个旧版本。 |
+| 安装 `528..539` | `528=(25,15,1502,0,0,0,0)` 设置 `$R5`；`529` 分别记录文件存在／缺失。`535=(12,1537,0,539,0,0,0)` 的缺失目标 `539` 实际落到 entry `538`，只跳过 calling 日志，仍尝试 `538=(41,1537,-1,1,0,0,0)`。该指令等待 helper 退出，随后 `539` Sleep `300` ms。不能把文件缺失解释为已经跳过实际启动。 |
+| 安装 `544..581` | 再次 `_FindProcess`；仍返回 `0` 时调用 `555` 的 `_KillProcess`，Sleep `500` ms 后在 `561` 再查。`563` 仍为 `0` 时，`568` 跳到 entry `964` 的重启安装；非零则沿 `570/576` 的日志路径进入 entry `587` 的 `Check_HapticService_Installed`。`_KillProcess` 的直接返回值未在此用作成功条件，实际分支读取后一次 `_FindProcess`。 |
+| 安装 `964..977` | 创建 `$PROGRAMFILES\Razer\Temp`、复制当前安装包，将 HKLM `Software\Microsoft\Windows\CurrentVersion\RunOnce\RazerAppEngine-InterHaptics-installer` 写为带引号的安装包路径加 `/S /runOnce`，`976` 设置进程退出码 `3010`。这是延后安装登记，没有执行系统重启的指令，也没有证明该登记／复制在真实系统上成功。 |
+| 卸载 `.onInit` `337..444`，`388..403` | 独立的卸载 header 在初始化中查询 `Synesthesia.exe`；找到后设置 `$R5`。`399=(12,1019,0,403,0,0,0)` 的缺失目标同样实际落到 `402=(41,1019,-1,1,0,0,0)`，仍尝试 ExecWait；`403` 的等待间隔为 `500` ms。此链属于卸载初始化，并非安装 MainSection 的共享 entry。 |
+| 卸载 `410..444` | `_FindProcess → 必要时 419 _KillProcess → 420 Sleep 500 ms → 425 _FindProcess`；`427` 检测仍找到时仅记录失败，随后继续结束初始化，`441` 还会 Sleep `300` ms。这里没有安装 entry `568` 的立即转重启分支，不能将安装控制流套用到卸载。 |
+| 卸载 section `445..731`，`657..676` | 后续另行执行旧 Synesthesia 目录删除：`660` 清除错误，`661=(23,2771,3,0,0,0,0)` 对 `$PROGRAMFILES\InterHaptics\Synesthesia` 做递归 RMDir；`662` 检查该操作的错误。失败计数达到 `80` 转 entry `712`，未达到时等待 `500` ms 再试。该目录删除发生在 helper 调用之后，不能说 helper 自身承担删除或迁移。 |
+| 卸载 `712..728` | 失败路径登记 `RazerAppEngine-InterHaptics-uninstaller` RunOnce，命令为带引号的 `$PROGRAMFILES\InterHaptics\Uninstall.exe` 加 `/S /runOnce`，设置重试结果；最终依该结果设置退出码 `3010` 及 reboot-required 标志。正常路径清理相应注册表与目录。登记或退出码都不等于真实删除完成。 |
+
+`0x1434` 的 opcode `0x29` 在 `0x1fd0` 展开命令后，经 `0x1fe1 → 0x5b5f` 调用 `CreateProcessW`：`lpApplicationName=NULL`、直接使用展开的命令字符串、创建标志 `0x4000000`，没有由这条指令补入引号。`0x5b5f` 成功后先关闭线程 handle，再返回进程 handle；`0x1ff6 → 0x6a1b` 以 `WaitForSingleObject(handle,100)` 循环等待，超时期间处理消息，没有总等待期限或已核实的取消分支。离开超时循环后调用 `GetExitCodeProcess`，其 bool 未参与校验；因此静态代码中的返回值读取不能冒充真实退出成功。这里操作数为 `exit-variable=-1/wait=1`，启动失败或 helper 返回非零只增加 NSIS 错误计数（`0x2c59`），随后继续执行后续 entry；进程 handle 在 `0x2017` 关闭。helper 的退出结果与后来对 Synesthesia 的进程观察是两个结果，不代表 HapticService 或设备停止。
+
+同包 `nsProcess.dll` 已按实际字节与[完整捕获](../../../.analysis/results/native/30c6c3dd3cc7fcea6e6081ce821adc7b2888542dae30bf00e881c0a105eb4d11/capture.json)核对：x86、Image Base `0x10000000`、11 个函数、425 条指令、1,280 B。`_FindProcess` 导出 `0x1377` 通过 `0x10d0` 查询进程名；找到返回 `0`，未找到为 `603`，OS／加载／查询失败另有 `604..608` 等结果。上述脚本把所有非零结果走到同一个“未运行”分支，因此这些分支不能提升成已确认进程不存在。`_KillProcess` 导出 `0x13b8` 使用 `0x103f` 的 `OpenProcess/TerminateProcess` 路径，关闭成功打开的进程 handle；本脚本未调用带窗口关闭等待的 `_CloseProcess`。NT 查询缓冲在正常枚举完成后 LocalFree，模块查询 handle 与 Toolhelp snapshot 按各自路径释放；输入／输出 NSIS 栈节点由 `0x143a/0x1489` 消费和产生，opcode `0x1f` Pop 实际 GlobalFree 节点。不能只据导出名字推定返回 ABI 或强制停止成功。
+
+HapticService 的停止等待与 helper 是独立阶段。安装 entry `688` 调用 `SimpleSC::StopService` 后等 `1,000` ms，重新取得服务状态；仅状态 `3/4` 进入 entry `757..783` 的进程轮询。该循环每次仍找到 `HapticService.exe` 才等 `1,000` ms 并增加计数，达到 `50` 退出；entry `788/790` 再次查询／判断，仍找到时拒绝继续移除服务并转重启安装，非零查询结果才继续 `RemoveService`。卸载另有 entry `519` 的 StopService、`523` 的 `1,000` ms 延迟、`524..550` 的 50 次轮询，却没有安装的最后一轮 `_FindProcess` 屏障；它继续查询服务状态并在 `612` 请求 RemoveService，后续由目录操作决定是否登记重启卸载。这里的 `SimpleSC` 调用名、参数、返回栈及脚本消费者均为静态事实，完整 SCM 内部路径及实际服务结果仍需独立核对，不能由日志补成成功。
+
+解释器 `0x1434` 的 opcode `0x2c` 在调用前核实模块和实际导出地址，并传递窗口、字符串容量 `1024`、变量表、栈地址及额外参数表；并非通过猜测的普通 C getter 签名调用。`0x68d9` 的文件存在检查会 FindClose；普通 Synesthesia 查询／终止的调用在没有保持加载或注册回调条件时 FreeLibrary。HapticService 轮询的 nsProcess 调用带保持加载操作数，不能称每轮都卸载。进程退出前 `0x3557 → 0x3b74 → 0x3bb9` 处理输入 handle、已登记插件回调／模块与临时插件目录，`0x5c88` 处理目录枚举、删除及失败后的延后删除；这不是删除 `$R5` 指向的 helper。尚未取得 `SynesthesiaStop.exe` 的当前官方文件，也未取得 `Interhaptics.HidProvider.dll`，本包完整提取的 11 个文件没有它们。因此这里只确认安装／卸载调用方对 helper 的执行意图和结果消费，helper 内部的通信、退出、等待及释放仍未确认。
+
+后续测试须独立覆盖进程查询 `0/603/查询错误`、helper 缺失／创建失败／非零退出／等待、两条不同的延迟、终止后仍存活、50 次服务等待、80 次目录重试以及 RunOnce／`3010` 消费；独立 Rust 实现与当前官方 DLL 的实际执行结果仍须按全功能对照规则留收据。当前仅完成上述静态核验，没有执行 installer、uninstaller、helper 或厂商脚本；这些程序的运行验收、实际服务变化和设备停止全部保持未验证。
+
 ## 安装原生队列、退出码与服务状态
 
 当前主机 `main.js` 的实际 Windows 发布路径选择宿主版本目录中的无版本 `simple_service.dll`；调试 CommonDLL 分支另行选择本机副本。这里只分析该选择规则，不将厂商路径迁入产品。用于下列主链核对的是[当前主机原件](../../../.analysis/inputs/installed-current/files/app-engine/CommonDLL/simple_service.dll)及其[静态捕获](../../../.analysis/results/native/f8e3886c1d83e37accebd40d4b72d5f26c1d3b5d09a6b72707a27f089c196f2b/capture.json)，Image Base 为 `0x180000000`；另保留版本化原件的独立身份，不能因名字相近便当作同一个二进制。
@@ -495,7 +611,7 @@ Electron 的[Windows 适配器](../../../.analysis/inputs/host-current/asar/b2ce
 
 ### 提升 COM 的客户端、类型库与事件释放
 
-[客户端与安装提权证据](../../../.analysis/results/host-current/installation-elevation-client.json)保留 16 个完整 AST 所有者、99 个客户端原生函数、11 个客户端 PE 数据区域、14 个客户端虚表槽位及逐项字节身份。客户端 DLL 已核对当前官方 `4.0.827` 宿主包；服务端则是另一条来源：[本机保留的 razer_elevation_service.exe](../../../.analysis/inputs/installed-current/files/elevation-service/razer_elevation_service.exe) 由[独立获取收据](../../../.analysis/inputs/installed-current/service-acquisition.json)记录版本 `1.1.0.8`、x64、注册的 `LocalServer32` 来源及签名观察。该 EXE 尚未与最新官方 `4.0.827` 部署物逐字节核对，当前性及部署依赖闭包保持未验证。其 `REGISTRY`、`TYPELIB` 及下述选中代码分别核对了实际 PE 字节；服务副本补充保留 75 个完整 `.pdata` 范围、10 个显式 leaf／thunk 区域、7,409 条指令、10 个数据区域及 4 个真实业务槽位。分析使用 LLVM 静态反汇编，没有服务端的完整 IDA／Hex-Rays 捕获；线性解码和选中范围不代表整个服务或当前官方服务语义已闭合。
+[客户端与安装提权证据](../../../.analysis/results/host-current/installation-elevation-client.json)保留 16 个完整 AST 所有者、99 个客户端原生函数、11 个客户端 PE 数据区域、14 个客户端虚表槽位及逐项字节身份。客户端 DLL 已核对当前官方 `4.0.827` 宿主包；服务端则是另一条来源：[本机保留的 razer_elevation_service.exe](../../../.analysis/inputs/installed-current/files/elevation-service/razer_elevation_service.exe) 由[独立获取收据](../../../.analysis/inputs/installed-current/service-acquisition.json)记录版本 `1.1.0.8`、x64、注册的 `LocalServer32` 来源及签名观察。该 EXE 尚未与最新官方 `4.0.827` 部署物逐字节核对，当前性及部署依赖闭包保持未验证。其 `REGISTRY`、`TYPELIB` 及下述选中代码分别核对了实际 PE 字节；服务副本补充保留 75 个完整 `.pdata` 范围、10 个显式 leaf／thunk 区域、7,409 条指令、10 个数据区域及 4 个真实业务槽位。该报告的服务端切片使用 LLVM 静态反汇编；另已完成同一原件的[完整 IDA／Hex-Rays 捕获](../../../.analysis/results/native/fd7dc9d5de93cfb027eda972967f7b0e6871eeb4f6e1cd337dfd6d186572176c/capture.json)，4,182 个函数文件及 9 份输出的实际摘要均已核对。5 个函数的伪代码失败保留，完整汇编和 raw chunks 另核原 PE；捕获完成不代表原报告的所选语义已扩展为整个服务，也不证明最新官方服务身份或实际对照完成。
 
 客户端 `0x2dc9a/0x2e152/0x2e89a/0x2ed1c` 使用 `CoCreateInstance`、`CLSCTX_LOCAL_SERVER=4`。PE 内实际 CLSID 为 `0edeaf3c-d36e-4e7e-9467-900b977dc4ff`，IID 为 `bfe24d59-6568-4179-8ae5-d9d53869a3e3`；二者与保留服务端副本的类型库及注册收据一致。该类型库 `RzUtilityLib` 的 LIBID 为 `f24a9e29-fc07-4277-9bbe-8315a7735bf0`，其 `IElevator` 方法为：
 
@@ -592,17 +708,25 @@ Apps 根通过 PathService key112／`0xe5870` 取得 LocalAppData，再 append �
 
 ## 共享依赖、卸载和取消
 
-共享资源有 usedBy 所有者。更新或卸载时仍被其他产品引用的文件只移除当前 owner，不能直接删除；不再共享的资源先查实际本机文件，再以 app/name/sha 删除。删除失败进入 pending-remove，后续仅在删除成功或确认文件已不存在时清除；其他错误继续保留。
+共享资源有 usedBy 所有者。更新或卸载时仍被其他产品引用的文件只移除当前 owner；所选 installer 的共享判断按 resourceName 查找，记录修改按 pathName 查找，不能擅自归一两个条件。不再共享的文件移除使用本轮 simpleGetUserApps 取得的目录和精确 SHA 观察，不是每次删除前重新读磁盘。失败加入 pending-remove 的调用没有 await。
 
-产品卸载要求当前安装版本与请求版本一致。驱动分支先用真实 `getDriverInfo` 确认 isInstalled 和版本，再运行对应本地卸载路径；仅修改 installedResources 不能代替驱动卸载。部分原版调用方只记录驱动失败警告，必须保留真实返回，不能把最终记录删除当作系统组件已移除。
+当前 background 经 `jA` 打开 installer 时不传 version，installer 缺省版本为空，先按 latest 选择 manifest；`Bl` 再要求 resourceFetchedVersion 与 installedVersion 精确相等，不等即报 UNINSTALL_PRODUCT_NOT_EXIST。本地独立实现须保留版本判定和真实本机结果；在线 manifest 获取属于排除的编排，不进入离线产品流程。原版入口在此之前仍等待存储／服务注册尝试、查询安装记录和用户目录，并验证 manifests；服务重试耗尽回调只构造错误而没有调用 handleError，不能将该处描述为已阻止后续卸载。
+
+`Bl` 将具有 runOnInstall 字段的 saveToDisk 资源分到驱动组，普通文件串行移除，驱动用 Promise.all。驱动分支先查询 getDriverInfo 的 isInstalled 与版本，再调用 simpleLaunchRazerApp。宿主返回整个 `{result,reason,exitCode}`，installer wrapper 原样传递，`kl` 既不检查 result／exitCode，又在调用后删除资源记录；非空的失败对象仍为 truthy。普通资源返回 false／undefined 时也可能只计数和警告，随后删除当前 installedModules／installedDevices 记录，再执行 pending 清理，最后才发 COMPLETED。实际删除目标来自 storage handler 的 installId，removeInstalledProduct 的实参未被使用。记录变化、警告后继续与 COMPLETED 都不能作为文件、驱动或进程成功证据。
+
+pending 清理还有独立的结果类型差异：simpleRemoveUserAppFile 在 host 将 bool／string 回调包装为对象，installer wrapper 却只返回 result 布尔值。`Dr` 按 bool 使用，`En` 对 truthy 值执行 `"result" in t`，因此在当前 Electron 链的 true 返回上存在静态 TypeError 路径；false 留下 pending。removePendingRemove 的过滤条件由 app、name、sha256 三项不等用 AND 连接，任一项相等即可去除条目，不能描述为只清完全匹配项。该结论来自完整源码和返回形状核对，未执行厂商 JS。
 
 取消频道名为 `installation_<type>_<id>`。`install-cancel` 回调立即写 CANCELED、设置 isCancelling，再调用 `$r`；后者只收集当前 We 中的 fetch AbortController，等待 abort signal 回调计数达到控制器数后删除注册项。这个 Promise 没有等待响应流消费、文件写入、资源记录、进程退出或服务恢复。已经 abort 的控制器计入完成，没有活动控制器时直接 resolve；日志中的 All downloaders cancelled 只对应此信号阶段。
 
 `Xl` 下载完成后检查取消；进入 `yl` 后直到全部 priority 处理结束，`Xl` 才再检查。取消在安装期间到达时，原件可能继续启动后续桶、写 installedResources／completedResources、更新单项记录和删除安装文件，最后抛 USER_CANCELLED；最终产品版本发布可以因此没有执行，但之前的副作用没有回滚。不能描述成“取消会阻止所有尚未开始的安装动作”。`yl` 在入口检查 flag 之前先写 INSTALLING，也会出现 CANCELED 被后续状态覆盖的时间窗口。
 
-正常结束 `gn` 依次清 INSTALL_RESOURCES／瞬态状态、清该 manifest 的浏览器缓存、释放锁、等待 service worker offlineReady，最后延时关闭。缓存的 forEach 调用 cache.delete 没有 await 每个删除，锁释放前也没有加入外部进程确认；offlineReady 等待最多 60 轮各 1 秒，未读取取消标记。正常流程先执行 En 的 pending-remove 和 Tl 的未使用记录清理；En 对缺响应／其他错误保留 pending，仅成功或明确文件不存在才移除，Tl catch 返回错误对象却没有调用 handleError，调用方也未检查该返回值。
+正常结束 `gn` 依次清 INSTALL_RESOURCES／瞬态状态、清该 manifest 的浏览器缓存、释放锁、等待 service worker offlineReady，最后延时关闭。缓存的 forEach 调用 cache.delete 没有 await 每个删除，锁释放前也没有加入外部进程确认；offlineReady 等待最多 60 轮各 1 秒，未读取取消标记。正常流程先执行 En 的 pending-remove 和 Tl 的未使用记录清理；En 的对象成功／文件不存在分支受上述 bool／对象差异限制，不能当作实际清理保证。Tl catch 返回错误对象却没有调用 handleError，调用方也未检查该返回值。卸载取消同样先发 CANCELED，但 Bl／Dr／kl 不读取取消标记，未见驱动进程终止或已删记录／文件恢复；UNINSTALL_PROGRESS 也不在 gn 清理的进度名单中。
 
 `unhandledrejection` 的生产关闭分支只在延时后移除五类进度／错误状态、释放锁并关窗，没有调用完整 `gn`、En 或 Tl，未清 INSTALL_RESOURCES，也没有启动服务、恢复文件或结束外部进程。`beforeunload` 仅发起 `$r().then(...)`；既没有阻止卸载，也没有证据证明宿主等待其异步完成。`navigator.locks` 的辅助函数保留 resolver 维持租约，但成功回调调用工作函数时不 await／返回它；请求与实际工作异常不构成同一个 Promise 完成链。
+
+卸载后续的完整 AST 和宿主绑定记录在[自启／卸载收据](../../../.analysis/results/frontend/synapse-settings-current/local-startup.json)的 `application_uninstall`。后台只根据 installedModules storage 事件和闭包当前目标启动子模块清理，不等待 En／COMPLETED，也不核对实际文件；启动时核对入口没有设置该闭包目标，不能合并两条路径。旧 SDK 的 uninstallAppItem 是独立的排队、依赖文件、apps 删除和事件链，尚未证明由后台 installer handoff 调用。宿主保存的 appLaunchedList.log 不是 Run 重建，WssAction.stop 返回 true 也早于 websocket close 回调。
+
+同一收据的 `native_uninstall_producers` 另将当前保留 Synapse／Chroma 4.0.827 包内 Lua 与真实卸载事件连接：342 个完整词法函数、94 个记录、20 个生命周期挂载和 44 条调用边，经独立双层解包及 CRC／原字节复核。单应用 producer 构造 `--uninstall-app`，整引擎停止组合 `--exit-application`；`OnPostUninstall` 包含从 HKCU Run 两份参数名单移除当前应用并请求写回的脚本路径，空 apps 则请求删值。写入原参为尚未闭合解析的 `REG_SW`，无写后读回；唯一卸载 relaunch 调用处于长注释内。完整分支和日志结果边界见[原生卸载脚本](settings.md#原生卸载脚本的-clirun-与退出)。宿主最终退出消费者 Mn 的完整 JS 所有者、3 秒超时、Je/Qe/Ze 分派及尚未核全的原生完成边界见[宿主设置文档](settings.md#宿主最终退出清理消费者-mn)。已生成的卸载器、服务端／OS 真实效果、取消恢复和原值恢复继续保持未验证，不能把当前包的脚本证据扩展成整个安装生命周期已通过。
 
 原生 SimpleService shutdown 与此窗口取消也是两条链。`0xf090` 在停队列之前清全局初始化标记；完成包装器 `0x12060/0x12f20/0x13de0` 只有标记仍真才调用外部回调，因此停机中的迟到结果可能不再回到 JS。shutdown `0x19c0 → 0x1cf0 → 0xb270 → 0x218ac/0x21a40` 释放 AppsService；析构 `0x26a9c` 设置上述停止 event、清 COM 引用、停止 I/O 线程并关闭 event。该释放 event 可使等待退出码提前结束，但所读析构没有 TerminateProcess。不能把线程释放／cbMap 删除或窗口已关当作外部安装器已经退出，更不能由此推断服务状态恢复。
 
@@ -635,6 +759,10 @@ Apps 根通过 PathService key112／`0xe5870` 取得 LocalAppData，再 append �
 | 691 HEX 转换与文件失败 | 05 的 callback／end 顺序、含冒号整行长度 1…9、空输入／坏前缀／EOF 后数据、signed32 地址及正负 gap、奇数 nibble、输出打开／写入失败与部分文件保留分别比较 |
 | 691 可选 WinUSB | normal=false 的调用者 HANDLE、selector=0、OUT81／87 的本地数据、初始化／传输失败、首字节突变后的重发、非 FF ACK／五次耗尽返回及全部释放分别比较；不执行固件刷写作为测试 |
 | 691 Nordic 文本与 CRC | 零行／空行／末尾 LF、92 B 补零 CRC、74 B 与长行截断／越界边界、进度分母、最终 CRC ACK、流错误与退出应答忽略分别核对；静态算术结果不冒充实际 DLL／设备结果 |
+| 691 文件流与异常 | 转换器无本地 catch、getline catch-all／badbit 与重抛、15 槽锁与 codecvt、输入／全局 locale／输出顺序、flush 失败仍 fclose、文本模式转换和裸缓冲释放分别核对；实际依赖未绑定前，不用候选 CRT 默认值断言本包的实际结果 |
+| 691 其余 MCU 导出及 48 B | 03／5a／a5 前缀、最多三次 SET／二十次 GET、第三次 true 错 ACK 与 false 的差别、command09 无 GET、MAC 失败保旧输出、flag 低 8 位／32768 跳读／尾块与零分母分别核对；driver 的 ShellExecute 结果不能当安装完成 |
+| 691 RY 资源与报文 | 固定位置版本／校验、global 与 local encryption 差异、query 高位标记与 boot 掩码、37 扇区与 header／body XOR、三种设备代码分支、31h／32h／33h、进度 100 但最终 ACK 失败、CString 与 FILE／HANDLE 清理分别核对 |
+| 691 独立窗口与语言 | 四窗导航／重建、Guide TopMost 与各页 TabStop、MyButton 自有 Enabled、current 两种消费者、文本与条形 clamp 差异、null reset 进入成功、固定目标成功页、九种语言 neutral 回退、更新中关闭／监听句柄释放分别核对 |
 | PE／ICO 文件准入 | subject CN 的字段／大小写／链证书顺序、ICO 内容与 signedAttrs 摘要、三种签名组合和各自根信任边界分别核对，不把双方拒绝当成功能一致 |
 | ZIP／普通文件／MSI／MSIX 发布 | 短写、验签失败、重命名／move／建目录失败、候选遗留、delete-on-close、最终实际内容和完整恢复分别比较 |
 | 普通／提升／ASCII 返回 0、3010、其他值或无回调 | 原生返回、桥接字段丢失、restartRequired、超时／取消及 callback 生命周期；3010 的缺失字段保持未观测 |

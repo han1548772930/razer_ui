@@ -16,6 +16,7 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from types import SimpleNamespace
 import uuid
@@ -1374,7 +1375,8 @@ def capture_native(args):
             "database_resume": database_resume, "database_rebuild": rebuild,
             "acquisition_binding": row, "symbol_policy": "PDB plugin disabled; only retained original image bytes are analyzed"}
     save(output / "plan.json", plan)
-    configure_ida()
+    if not getattr(args, "ida_configuration_prepared", False):
+        configure_ida()
     names = ("ida64.exe", "ida.exe") if args.mcp_only else ("idat64.exe", "idat.exe")
     executable = next((Path(args.ida_root) / name for name in names
                        if (Path(args.ida_root) / name).is_file()), None)
@@ -1490,6 +1492,17 @@ def native_pointer_targets(raw, table_rva, count):
     return {"image_base": hex(base), "architecture": pe["architecture"], "pointer_bytes": width,
             "rva": hex(table_rva), "file_offset": start, "bytes": len(table),
             "raw_hex": table.hex(), "sha256": hashlib.sha256(table).hexdigest(), "targets": targets}
+
+
+def native_member_dispatch_thunk_size(raw, architecture):
+    """Recognize only the complete x64 bound-member tail call.
+
+    The instructions load the target from this+8 and the bound object from
+    this+24, then tail-call RAX. Constructors must prove both stored values;
+    recognizing this boundary does not resolve or execute the target.
+    """
+    expected = bytes.fromhex("48 8b 41 08 48 8b 49 18 48 ff e0")
+    return len(expected) if architecture == "x64" and raw == expected else None
 
 
 def native_function_selection(raw, capture, function_rvas, type_specs=(), type_note=None):
@@ -1807,6 +1820,9 @@ def verify_native_capture(result, resource):
 
 
 def capture_corpus(args):
+    workers = getattr(args, "workers", 1)
+    if type(workers) is not int or not 1 <= workers <= 4:
+        raise ValueError("Native capture workers must be between one and four")
     receipt_path = ROOT / (".analysis/results/corpus.json" if args.source == "retained"
                            else ".analysis/inputs/official-native-current/acquisition.json")
     acquisition_bytes = receipt_path.read_bytes()
@@ -1833,13 +1849,18 @@ def capture_corpus(args):
              "include_path_patterns": getattr(args, "include_path", None) or [], "pending_inputs": pending,
              "scope": ("all retained unique native bytes; current-version lineage remains a separate audit" if args.source == "retained" else
                        "all unique DLL/NODE/SYS bytes declared by acquired production device manifests; packaged EXE and host inputs remain separate gaps"),
-             "target_execution": False, "real_device_operations": False}
+             "workers": workers, "target_execution": False, "real_device_operations": False}
     save(output, queue)
     original_snapshots = {}
-    for identity, resource in sorted(modules.items(), key=lambda item: (item[1]["bytes"], item[0])):
+    configuration_lock = threading.Lock()
+    configuration_prepared = False
+
+    def capture_module(identity, resource):
+        nonlocal configuration_prepared
         result = ROOT / ".analysis/results/native" / identity
         manifest_path = result / "capture.json"
         row = {"sha256": identity, "input": resource["path"], "result": rel(result)}
+        snapshot = None
         try:
             source = resolve(resource["path"], ".analysis/inputs")
             before = source.stat()
@@ -1848,7 +1869,7 @@ def capture_corpus(args):
             if (source.stat().st_size, source.stat().st_mtime_ns) != (before.st_size, before.st_mtime_ns):
                 raise ValueError("Current corpus original changed during identity verification")
             row["original_identity_verified"] = True
-            original_snapshots[resource["path"]] = (before.st_size, before.st_mtime_ns)
+            snapshot = (before.st_size, before.st_mtime_ns)
             if manifest_path.is_file():
                 manifest = json.loads(manifest_path.read_bytes())
                 if manifest["input_sha256"] != identity or manifest.get("input_bytes") != resource["bytes"]:
@@ -1858,8 +1879,14 @@ def capture_corpus(args):
                     row.update({"status": "reused_complete_capture", "functions": manifest["functions_captured"],
                                 "failures": len(manifest["failures"]), "capture": capture_identity})
             if "status" not in row:
+                if workers > 1:
+                    with configuration_lock:
+                        if not configuration_prepared:
+                            configure_ida()
+                            configuration_prepared = True
                 session = capture_native(SimpleNamespace(input=resource["path"], resume=(result / "plan.json").is_file(),
-                                                        mcp_only=False, ida_root=args.ida_root, no_refresh_gaps=True))
+                                                        mcp_only=False, ida_root=args.ida_root, no_refresh_gaps=True,
+                                                        ida_configuration_prepared=workers > 1))
                 row.update({"status": "captured" if session["passed"] else "failed", "exit_code": session["exit_code"]})
                 if manifest_path.is_file():
                     manifest = json.loads(manifest_path.read_bytes())
@@ -1872,9 +1899,28 @@ def capture_corpus(args):
                 raise ValueError("Current corpus original changed during capture verification")
         except Exception as exc:
             row.update({"status": "failed", "error": str(exc).replace(str(ROOT), "<project>")})
+        return row, snapshot
+
+    ordered_modules = sorted(modules.items(), key=lambda item: (item[1]["bytes"], item[0]))
+    order = {identity: index for index, (identity, _) in enumerate(ordered_modules)}
+
+    def publish(completed):
+        row, snapshot = completed
+        if snapshot is not None:
+            original_snapshots[row["input"]] = snapshot
         queue["modules"].append(row)
+        queue["modules"].sort(key=lambda item: order[item["sha256"]])
         save(output, queue)
         print(json.dumps({"module_done": len(queue["modules"]), "module_total": len(modules), **row}), flush=True)
+
+    if workers == 1:
+        for identity, resource in ordered_modules:
+            publish(capture_module(identity, resource))
+    else:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = [executor.submit(capture_module, identity, resource) for identity, resource in ordered_modules]
+            for future in concurrent.futures.as_completed(futures):
+                publish(future.result())
     queue["finished_at_utc"] = stamp()
     changed_originals = []
     for name, expected in original_snapshots.items():
@@ -5274,6 +5320,8 @@ def add_commands(parsers):
     corpus.add_argument("--source", choices=["production", "retained"], default="production",
                         help="Capture verified production modules or all retained unique bytes while version acquisition proceeds")
     corpus.add_argument("--include-path", action="append", help="Prioritize matching alias regexes in this batch; every other module remains explicitly pending")
+    corpus.add_argument("--workers", type=int, choices=range(1, 5), default=1,
+                        help="Concurrent independent IDA processes; reuse verified captures and publish receipts from one coordinator")
     corpus.add_argument("--no-refresh-gaps", action="store_true")
     native = parsers.add_parser("capture-native", help="Launch static IDA/Hex-Rays full-function capture")
     native.add_argument("--input", required=True)

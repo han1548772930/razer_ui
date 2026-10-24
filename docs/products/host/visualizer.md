@@ -95,6 +95,68 @@ camy 的 GUID 分支转入专用设备帧，等待当前并行复制／登记任
 
 esther 还有具体版本边界：wrapper 在该 GUID 下构造 CustomV2；这份已核验的下层 SDK 没有该 GUID 的专用分支，通用消费者对类型 8 返回 4319。wrapper 收到 4319 后清除 CustomV2 可用位，此后同分支直接返回 0，跳过下层调用。后续 0 不表示设备接受帧，也不能据此声称所有已安装 SDK 版本行为一致。
 
+## 帧接收、实例路由与设备写入
+
+本节限定于获取收据中的 Core `4.0.2.08241000` 与 Devices `4.0.3.09211418`。SDK、设备管理器与四个设备插件的原件、所选完整函数捕获及 PE 节映射已按实际字节核对；导出／导入、GUID、管道前缀和 XOR 表按各自引用位置核查。通用 GUID 管道、camy、键盘与鼠标共享区有不同接收链，不能按帧大小或 GUID 外观合并。
+
+### 通用 GUID 管道的实际接收端
+
+设备管理器 `0x2280 → 0x2400` 从 SDK 安装路径下的 `Devices.xml` 读取 `deviceid`，把每个 `devicepid.pid` 映射到其父节点 `device.id` 的 GUID。当前文件有 14 个该映射组；这是当前原件的目录内容，不是全部设备能力数。插件成功初始化后，`0x31c00 → 0x2640` 提取设备 PID 及大写 instanceId：先查 `PID | (GetEID() << 16)`，不存在再查 PID；没有可用导出时该扩展值取 0。
+
+`0x2a00` 为同一 GUID 复用或创建服务器，`0x18f0 → 0x1a30` 用 `StringFromCLSID` 组成 `\\.\pipe\{GUID}`，启动 `0x2bf0 → 0x1af0`。这与 SDK `0x2a770` 的名称完全对应。`0x1c90` 创建 duplex、overlapped、message-mode 的管道，输入／输出缓冲均为 `0x27f78`；这个大小已由汇编 `0x1cb9/0x1cdd/0x1ce1` 复核，不能使用反编译中未赋值的局部变量解释参数。
+
+下游由 `0x2000` 按 instanceId 登记客户端：它从大写设备路径中取 PID 后第一个 `#` 与最后一个 `#` 之间的内容；`0x1b9a0 → 0x1ba60` 打开 `\\.\pipe\<instanceId>`。服务器 `0x1e50` 每次请求读取 `0x27f78` 字节，`0x1f20 → 0x1bc70` 把同一缓冲依次转发给当前 GUID 下的实例。因此，面向 GUID 的 SDK 入口与面向 instanceId 的插件入口之间确有管理器转发，不是同一个管道名称。
+
+接收函数没有比较 `NumberOfBytesRead`，缓冲只在 worker 启动时清零；转发同样不比较 `NumberOfBytesWritten`，也不向 SDK 发送逐实例结果。客户端 `WriteFile` 返回真后仍读取 `GetLastError`，遇到 232／233／109 会关闭句柄；返回假也关闭。外层丢弃其 BOOL。短读、短写、遗留错误值与下游缺席都必须单独测试，不能用最外层返回值判定整批成功。
+
+当前 XML 的 PID `1364 → {09A2DE6C-101D-4432-BC33-8A8E3337E5E4}`、`3942 → {A3151A1B-9CC6-4189-BD56-369512E2BF7D}`、`3940 → {71FBE710-F299-40D7-B15D-3A87C0A3F385}` 同时指向 `E78202AB-415E-4680-AD16-D4484286B61F.dll`。该插件 `0x11680 → 0x1580` 构造完全相同的实例管道；它虽然读取 `.dat` 中 GUID 并调用 `StringFromCLSID` 校验，却没有把该 GUID 拼到实际管道名。只找到相同 `0x27f78` 读写大小不足以证明路由相同。
+
+该插件 `0x11520` 成功读取后进入 `0x11d30`，也不比较实际读入长度。类型 7 经 `0x120c0` 使用 `.dat` 中逐灯珠映射：每个 16 位项的高字节为行、低字节为列，从帧偏移 `32 + 4×(30×row+column)` 取低三个颜色字节，按产品映射输出连续 RGB；第二映射只在对应产品位启用时处理。类型 6 取帧第 913 个 32 位项作单色；0／9／10 清黑；11 进入 `0x15810` 释放 SDK access 并销毁设备访问对象；没有类型 8 的处理分支。
+
+输出 `0x15a80` 先尝试该插件自己的 JS 管道消费者，否则走设备访问 IPC。后者 `0x15950 → 0x6c80` 建立 `RzDeviceAccess_%04X_%04X` 对应的全局 Mem／Exec／Done／Free 对象；客户端本身也调用 CreateEvent／CreateMutex／CreateFileMapping，故对象存在不证明服务端在线。`0x15690` 先发 `0x10001` 初始化，帧经 `0x7030` 发 `0x10003`，`0x15810` 发 `0x10002` 释放。共享区大小为 `0x20014`，请求命令／长度位于 `+4/+8`，输入始于 `+12`；应答长度／数据／状态位于 `+0x1000c/+0x10010/+0x20010`。取得 Free mutex 和等待 Done 各最多 1 秒，取出真实服务状态再释放 mutex；这比单向 pipe 多了服务完成边界，但本节尚未闭合该服务处理器到硬件的写入／读回。`0x11d30` 仍丢弃帧输出结果，`0x15690` 部分失败分支也返回 0；页面不能据此显示已应用。
+
+设备管理器的发现／加载还包括 `0x31000` 读取 XML 的 HID／USB／COM 产品分支，`0x31c00` 复制实例 `.mod`、调用签名检查、加载并执行 `Init(devicePath)`，只有 Init 返回 0 才登记；`0x32330` 调 GetEID、UnInit、FreeLibrary 后删除实例文件与登记。这里仅核对签名检查的调用及失败分支，没有据此扩写其内部验证能力。这些是官方宿主关系，不是本项目通过插件代理官方 DLL 的方案。
+
+移除实例沿 `0x28a0 → 0x2b30 → 0x2100` 删除客户端；最后一个实例移除时删除相应 GUID 服务器的登记。服务器停止 `0x1990` 先清下游 map，再发 stop event、设置停止位，最多等待 worker 5 秒，但不核对等待结果就继续关句柄。`0x1d30` 的连接事件只在部分 overlapped 分支关闭；插件 `UnInit 0x14e20` 对三个 worker 各等 5 秒也不核对结果。不能把这些有限等待称为所有在途 I/O 与线程已完成释放。
+
+### Camy 专用共享区及直接 HID 分支
+
+当前 XML 将 PID `3867/3868` 映射到 `1B375B0D-1538-4B73-B592-2A73D7D4D8CB.dll`。插件 `0xdb00` 明确区分两者：`3867/0x0f1b` 使用 camy GUID `d678d34a-336c-45e1-af84-e2319a47755c`，`3868/0x0f1c` 使用 `c8ec9711-1b50-41c8-9be2-d9ede0a37a5e`。它们共用插件不代表共用 GUID。
+
+插件 `0xd530` 创建 `Global\{GUID}`、映射并清零 `0x18f798` 字节，再创建 manual-reset 的 `Global\event_{GUID}`；SDK `0x5fb0` 打开的正是这些同名对象。SDK `0x11d90 → 0x62d0` 把类型 7 的 `0xe10` 字节颜色矩阵复制到 `0x27f28` 字节帧的 `+8`，随后发布到 `mapping + 8 + 0x27f28×index`，写末尾时间戳、推进 0–9 下标并 PulseEvent。插件 `0xdb00` 等数据／停止事件，从同槽复制完整帧，只在首项为 `PID | 0x800000` 时解码。这条专用链不经过前述 `0x27f78` GUID 管道。
+
+对类型 7，Camy 把 8×8 矩阵重排为 4 个 segment，每段 16 色，顺序分别为第 7 行→第 6 行、第 5 行→第 4 行、第 3 行→第 2 行、第 1 行→第 0 行；每行取 8 色，输入行跨度仍为 30 个 32 位颜色。每色按低字节、次字节、第三字节复制，不再次交换红蓝。每段形成 88 字节内部命令，命令号 `0x0f03`、body 长度 `0x47`、段号 0–3、起止列 `0/15`，RGB 从 body `+5` 起，命令 `+84` 保存 4 ms 延迟。类型 6 取帧第 903 个 32 位项作单色，0／9／10／11／13 清黑，类型 2 另发 `0x0f02`。这里类型 11 的清黑与通用插件的释放 access 是不同语义。
+
+`0x4a90` 有两个实际输出分支。CJSDevice `0x6d40` 先探测设备 mutex 是否存在，成功后立即 ReleaseMutex／CloseHandle，没有等待取得所有权；随后 `0x7730` 打开按设备路径构造的 JS 管道，`0x7b20 → 0x7840` 写 NUL 结尾 JSON，字段包含 eventId、rowIndex、start、numCol、numRow、regionId、payload、linkDeviceSeqId 和 frame。关键失败边界是：mutex 存在但管道打开失败时，`0x6d40` 仍返回 1，使 `0x4a90` 跳过直接 HID；实际 WriteFile 的 BOOL 也没有传回帧 worker，没有逐帧应答。
+
+直接 HID 分支从系统 Hid.dll 取得 `HidD_SetFeature`，按当前设备路径打开句柄；存在设备 mutex 时最多等 1 秒，获得后先等 2 ms，不存在且错误为 2 时另走无 mutex 分支。每个灯光命令组成 91 字节 report：`[0..1]=0`、`[2]=0x0c`、`[3..4]=0`、`[5..6]=00 47`、`[7..8]=0f 03`、`[9..79]=71 字节 body`、`[89]=XOR(report[3..88])`，其余为零。两条 mutex 分支均调用 SetFeature 后直接按内部命令延迟 Sleep，未检查 BOOL；常规尾部设置 5 秒 idle timer 并返回 1。存在实际 HID 写入不代表该帧已被设备确认。
+
+插件初始化 `0xe920` 限定 VID `0x1532`，创建 CDevice 后还执行 `0x4f80` 的 `0x86` 查询；该查询使用 SetFeature／GetFeature 和独立重试，属于启动读取，不能充当后续灯光帧的读回确认。初始化先 CreateThread 启动帧 worker，随后才创建其 stop event；公开返回 0 没有核对两者是否成功。帧循环按约 30 fps 节流，既不验证 SDK 时间戳，也不生成逐帧序号或设备 ACK。
+
+UnInit `0xeba0` 发停止事件、设停止位，无限等待并关闭两个 worker，随后关闭 stop event、析构 CDevice、关闭共享状态句柄。帧 worker 退出经 `0xe870` 关闭数据事件、Unmap、关闭 mapping 及 namespace／boundary。CDevice 析构 `0x5790 → 0x60b0 → 0x3640` 移除共享设备条目、释放状态 view／mapping，再停止 idle worker、关闭 HID／timer 并析构 CJSDevice；其中 idle worker 只等待 1 秒，不核对结果且未关闭其 thread handle 就清零，不能宣称所有异步资源均已安全释放。
+
+上述三份接收端原件共核对 78 个完整函数、172 个不同 chunk、12,932 条不同地址指令及 44,598 字节原始块，所选 chunk 全部有对应指令字节；SDK 的 5 个发布函数另行复核，不按新增成果重复累计。静态链已从 GUID 发布接到实例插件，并从 Camy 专用帧接到真实 HID 调用位置。没有执行 DLL、服务或设备，不把帧送达、服务完成、设备确认及释放验收合并。
+
+### 键盘／鼠标共享区的实际消费者
+
+当前 XML 将键盘 PID `542/0x021e` 指向 `704A4B8F-0CD6-4D79-BFE7-8B1190E4A85C.dll`，鼠标 PID `105/0x0069`、`114/0x0072`、`115/0x0073` 指向 `2980B2EA-827E-49A6-A545-4C1DA85A6CCB.dll`。两份原件均为 x86、Image Base `0x10000000`。本段仅闭合这些 PID 的 Visualizer 帧路径；键盘 Init 明确按 PID 选择不同 worker，鼠标 PID `104` 还有独立的 mouse／mousepad 双 worker，不能将本段结果扩到共用 DLL 的其他分支。
+
+键盘 `0x1010 → 0xdd20` 打开或创建与 SDK 相同的 `Global\{74164FAD-E73C-4FA1-A9AA-70813315ED9C}`、映射 `0x9c98` 字节；Init `0x17840` 创建数据事件、启用／禁用事件和停止事件，将消费下标设为当前写下标，再为 PID 542 启动 `0x15930`。它在数据事件后从 `mapping + 8 + 2968×readIndex` 复制 `0xb98` 字节并解码，按 0–9 推进直到追上写下标。只有 lighting-enabled 位为 1，且 header 为 `PID | 0x10000`、`0x1ffff` 或 PID 本身时，才进入 `0xecd0`；`0xeb60` 独立监听启用／禁用／停止事件更新该位。读取和共享区存在并不证明当前具有灯光控制权。
+
+双方的 XOR 已核到实际表和分派体。SDK 表位于 `0x31b80`，键盘表位于 `0x23108`，鼠标表位于 `0x132b0`，512 字节逐字节相同；索引取键盘 `frame+2960` 或鼠标 `frame+440` 时间戳的低 7 位，若索引 125–127 则减 3。每个选中的 DWORD 四个字节分别 XOR `table[index]`、`table[index+129]`、`table[index+258]`、`table[index+387]`。键盘实际变换半开区间为 `[72,2956)`，鼠标为 `[36,408)` 及 `[424,428)`；帧头和时间戳不参与。本段核对了 SDK 与两个插件的全部对应 lambda／转调体，不能把整个结构不分字段地 XOR，或只按共享区同名推断编解码一致。鼠标 `0xce20` 的反编译带 bad-SP 提示，表复制、时间戳偏移、参数与分派入口另按完整汇编核实。
+
+键盘 `0xecd0` 对类型 7／17 使用同一分支，Visualizer 的类型 17 因此有实际消费者。它从 `frame + 76 + 88×row` 取六行、每行 22 个颜色，只复制各 DWORD 的低三个字节，形成六个 88 字节内部命令：命令号 `0x0f03`、body 长度 `0x47`、body 前两字节 0、行号 0–5、起止列 0／21、其后 66 字节 RGB。第七个命令为 `0x0f02`、12 字节 body，起始 `00 00 08 00`、其余为零；七条命令各保存 2 ms 延迟，再一次交给 `0x4b60`。类型 11／2 的 `00 00 03 00` 命令走另一分支，不能统一解释为清黑或逐帧释放。
+
+鼠标 `0x1010` 打开或创建 `0x3a28` 字节的同名鼠标共享区；Init `0xef30` 创建数据／停止事件，所选三个 PID 共用 `0xd7d0`。该 worker 从 `mapping + 8 + 448×readIndex` 复制 `0x1c0` 字节，经过 `0xce20` 解码，仅接收 `PID | 0x20000`、`0x2ffff` 或 PID header。类型 8 实际只取帧 DWORD `[56]` 与 `[91]`：分别对应 9×7 颜色矩阵中的 `(row=2,col=3)`、`(row=7,col=3)`。它构造 71 字节 body，前四字节为 0、`body[4]=1`，两色低三个字节依次位于 `body[5..7]` 与 `[8..10]`，其余为零；以 `0x0f03` 提交，再等待 2 ms。这些两区设备没有将 63 色原样逐灯珠输出。
+
+两个插件都先尝试 CJSDevice：键盘 `0x70a0 → 0x7aa0 → 0x7bb0`，鼠标 `0x6490 → 0x7790 → 0x78b0`。两者仅探测 mutex 存在，随即 ReleaseMutex／CloseHandle，没有等待；mutex 存在而 pipe 打开失败时仍返回 1，使上层跳过直接 HID。打开成功后写 NUL 结尾的 JSON，WriteFile 的实际长度未比较，BOOL 未传回帧消费者，没有读取逐帧 ACK。键盘将多行颜色组入一次 JSON，鼠标按当前命令 body 转换；本段只闭合发送者，不把 JSON 写出等同于 CJS 接收服务已经写入硬件。
+
+直接 HID 分支分别为 `0x4b60` 与 `0x48a0`，使用系统 Hid.dll 的 SetFeature、按当前设备路径打开 access 0／share 3 的句柄，并使用与 Camy 相同的 91 字节 report 外壳及 `[3,89)` 字节 XOR。键盘逐条发送六行和提交命令，鼠标发送两色命令；两条 mutex 分支均不检查 SetFeature 的 BOOL，也没有逐帧 GetFeature。键盘汇编 `0x4e1f/0x5027` 调用后直接进入 Sleep。设备 mutex 等待超时、句柄打开失败等分支仍可返回 1；尾部设置 5 秒 idle timer。启动读取 `0x50b0/0x51b0` 则独立执行 SetFeature／GetFeature、核对响应状态及长度；该 getter 的存在不能充当后续帧的确认。
+
+键盘 UnInit `0x17de0`、鼠标 `0xf2a0` 发停止事件并置停止位，对各自 worker 最多等待 2 秒，均不核等待结果就关闭句柄及析构设备。设备析构沿 `0x5930 → 0x6220 → 0x38c0`、`0x5890 → 0x61b0 → 0x3870` 移除共享登记、Unmap／Close 状态区，停止 idle worker并关闭 HID／timer；idle worker 仅等待 1 秒、不核结果且未关闭 thread handle就清零。帧共享区另由全局退出清理 `0x20cb0/0x11d90` 释放，不能描述为 UnInit 本身已经释放全部 mapping，或所有在途工作均已结束。
+
+这两份接收端新增核对 47 个完整函数边界（其中键盘全局初始化仅有汇编）、93 个不同 chunk、9,762 条不同地址指令及 34,310 字节原始块，无未枚举字节；SDK 编解码对应的 16 个函数另作复核，不与此前覆盖重复相加。所选 PID 已从 SDK 共享帧追到真实 HID 调用位置；其他键盘 worker、PID 104 的双输出、CJS JSON 实际消费者、通用设备访问服务的硬件处理器、确认及真实释放结果仍未验证。
+
 ## 音频原生消费者
 
 当前 Audvis 原件和完整捕获的字节身份已重新核对。Image Base 为 `0x180000000`。Initialize 创建 CAudioVisualizer 和 MMDeviceEnumerator、注册设备通知；其公开成功标志没有完整传递每一个 COM 失败。StartCapture／StopCapture 的公开返回也会在异常记录后返回 1，不能以此确认实际捕获成功。
@@ -130,7 +192,7 @@ DSP 使用 `N=256`、512 个 float 工作空间及两个 256 项系数表。处�
 | onAudioData 临时字符串 | push 函数拥有，callback 只借用到返回；SetNodeFFIEvent 的回调指针另有注册生命周期，不能保存临时字符串地址 |
 | Chroma JsonApi 返回字符串 | SDK wrapper 另行 malloc 一份 NUL 结尾结果，由该 DLL 的 FreeMalloc 释放；JsonApiNoReturn 销毁内部结果，不转移字符串所有权 |
 | Chroma 颜色参数 | 类别消费者本地缓冲由同步 Create 调用复制；当前未请求效果 ID，不建立延后 SetEffect 的页面所有权 |
-| Chroma 共享区、管道 | SDK 对象持有 mapping handle／view；析构逐项 UnmapViewOfFile／CloseHandle。事件通知句柄在单次 PulseEvent 后关闭。通用管道按 GUID 缓存，错误分支可关闭／置空；成功缓存的值释放仍需沿各表节点销毁核对，不能以清空表等同句柄已关闭 |
+| Chroma 共享区、管道 | SDK 对象持有 mapping handle／view；析构逐项 UnmapViewOfFile／CloseHandle。事件通知句柄在单次 PulseEvent 后关闭。GUID 管道缓存值另持 HANDLE／名称；写失败及失去控制权的具体分支可关闭句柄，但缓存析构仅回收节点／分配块，不析构这些值，详见下述链路 |
 
 ## 停止、错误与释放
 
@@ -141,6 +203,22 @@ native StopCapture 的顺序是先停止录音器，再取消 push timer。录�
 Terminate 停止并注销 MMDevice 通知，取消 push timer，但没有销毁全局 Visualizer、recorder 或 timer 对象；音频缓冲及格式实际在录音器析构链释放，重新 Initialize 会先 Term、析构旧全局对象再创建新对象。UseAudioDataPushTimer 替换／删除旧 timer 时执行取消、CloseThreadpoolTimer、CloseThreadpool、销毁函数对象并释放 context；该链未调用 WaitForThreadpoolTimerCallbacks。StopCapture／Terminate 的单纯取消同样没有等待在途 callback，不能把它们写成已经完成所有异步资源释放。
 
 Chroma wrapper 的公开 Terminate 调 UnInit，不直接 FreeLibrary；其对象析构才调用下层 UnInit、FreeLibrary 并清函数指针。这份下层 SDK 的 UnInit 发停止事件，对三个线程分别最多等待 10 秒，但没有核对等待结果就继续关句柄、析构对象。共享区发布、取消计时器、函数返回与线程完全退出是不同事实；纯 Rust 所有者仍须按本项目生命周期规则处理取消、在途工作与释放，不能照搬这些未确认边界。
+
+### GUID 管道缓存、控制权与 SDK 退出
+
+本段限定于当前获取收据所列 Core `4.0.2.08241000` 中的 x64 SDK，已复核清单、下载包及两份同字节提取原件。SDK 对象 `+1888` 的 map 保存 40 字节节点：GUID 位于 `+0..15`、管道对象裸指针位于 `+16`、next 位于 `+24`、hash 位于 `+32`。管道对象另外分配 56 字节，保存 GUID、`+16` 的 HANDLE 及 `+24` 的名称字符串；不能把 map 节点与管道值当作同一分配。
+
+即时 GUID 发布 `0x11f50` 先检查控制权／启用位，查不到缓存时分配管道对象，经 `0x2a770` 打开成功才由 `0x17cd0 → 0x21710` 插入。打开失败的分支显式关闭有效 HANDLE、经 `0x28670` 销毁名称，再释放对象；成功插入后的值没有这条局部释放链。`0x17cd0` 覆盖已存在节点时也只是改写 `+16`，不是旧值析构。初始化／rehash 的 `0x1f930/0x27420` 只管理桶和节点链接。
+
+`0x2a770` 用 `StringFromCLSID` 构造 `\\\\.\\pipe\\{GUID}`，已有有效 HANDLE 时返回 0，否则单次 `CreateFileW(GENERIC_WRITE, share=0, OPEN_EXISTING, flags=0)`；本函数没有 `WaitNamedPipe` 或重试循环。失败返回实际 OS 错误。231 分支只判断句柄非空后尝试关闭，不能据此推导它已成功关闭无效句柄。
+
+`0x2a950` 同步请求写入 `0x27f78` 字节，初始化写入计数但不比较它，没有读应答。汇编 `0x2a9e7..0x2aa20` 显示：先保存 `WriteFile` 的 BOOL；即使为 1，仍读取 `GetLastError`，在 232／233／109 时关闭句柄，关闭成功才清零，最后仍返回原 BOOL。因此，遗留错误值可能使“返回 1”和“该 HANDLE 已关闭”同时成立；外层 `0x11f50` 又丢弃该 BOOL。这里既没有逐帧服务消费确认，也没有设备灯光读回。
+
+控制权更新 `0x134f0` 与最终析构是两条不同路径。它在 access 从 0 变 1 时遍历缓存重开，在旧 access 为 1、进入失权分支后才遍历关闭有效 HANDLE，关闭成功才置零；Synapse 在线但 active PID 为 0 时还可能保持旧 access。初始化入口 `0x81f0/0x86f0` 启动三条 worker，分别沿 `0x7060 → 0x140b0`、`0x7070 → 0x14310`、`0x7080 → 0x14600` 监听应用、在线状态和会话。前两条在停止事件分支直接退出，不再调用控制权更新；第三条直接修改 access、按会话事件调用效果恢复，退出只清理自己的监听事件，外层再释放其会话 mapping／view，没有进入 GUID 缓存关闭循环。
+
+`UnInit 0x28d90 → 0x8c20` 先把 access 清零，发送停止事件，并在等待线程前关闭该停止句柄；随后三个 `WaitForSingleObject(10000)` 的结果均未核对，就继续关闭线程句柄。不能把这里的 access 清零视为已经执行 `0x134f0` 的旧值为 1 分支。正常对象析构 `0x7e10 → 0x18e80 → 0x27630` 仅把节点链回 free list、减少 count、释放桶／分配块；没有解引用节点 `+16`，也没有调用管道值的 `CloseHandle`、名称析构或对象释放。构造异常清理 `0x2c3a1 → 0x17da0 → 0x18e80` 使用同一个 map 清理。其他共享区和 private namespace 的 `0x5f00` 释放真实存在，但不是这些 GUID 管道值的释放。
+
+本段独立按 PE 节映射复核 30 个完整函数、30 个 chunk、4,079 条指令及 18,072 字节原始块，另有 27 字节未枚举为指令；EAT／IAT 和上述关键分支也已核对。这证明所选退出链没有释放缓存值，不能扩写为整个进程已经实测泄漏，或所有 SDK 版本均相同。服务端管道路由已由上节的设备管理器／实例插件补充；全部并发／异常、关闭期间仍在途的调用与真实设备输出仍未验证，本批未执行 SDK。
 
 当前前端 terminate 返回 true 并清 nativeDLL 引用，不代表每条底层释放都有独立成功应答。部分 event.on 在 effect／class 挂载时注册但没有对应组件卸载 off；共享观察者也有独立的 beforeunload 清理。本文逐条记录真实清理，不补出统一恢复或回滚。
 
@@ -159,6 +237,8 @@ Chroma wrapper 的公开 Terminate 调 UnInit，不直接 FreeLibrary；其对�
 本批重新核对当前 UI 获取收据、主入口与实际 lazy 分块的字节身份及完整 AST，并读取五面板 owner。Provider 完整绑定 `ac [248025,248106)` 和其 `nc [247302,248018)` 是两个不同声明，不能把横跨它们的上下文称为一个完整根函数。主页面 `Jr [239449,242301)` 的确由 Help 条件替换设置区，但不会因此卸载根的 engine；这个生命周期也须对应到 Rust 所有者。
 
 后续自动化应分别验证音源列表更新／名称恢复、开关与程序运行、600 ms debounce、slider／文本提交、前景／背景 Off 与 Reactive、实际 DSP 公式、八类帧、空帧停止、迟到通知与完整清理。独立期望使用本页原件与对应原生函数；再经显式入口逐项比较官方实际 DLL／服务结果。没有端点或设备时先测纯算法和模拟传输，实际捕获、帧消费／硬件输出和窗口像素保持未验证。本批没有修改生产代码或运行这些对照。
+
+接收链还须逐项验证 GUID→PID／EID→实例路由、短读／短写、成功返回伴随遗留错误值、下游断开、10 槽环推进、两种 Camy PID、30 列跨度与四段反向行序、固定 91 字节报文及 XOR、CJS mutex 存在但 pipe 失败的分支、服务 1 秒超时、类型 11 的不同消费者，以及停止时仍有阻塞 I/O／idle worker 的释放。期望报文与映射直接取已核实原件；不能用 Rust 编码器生成自身期望，也不能以官方逐帧不返回硬件确认的事实伪造一个确认结果。
 
 ## 原件位置
 
@@ -183,5 +263,11 @@ Chroma wrapper 的公开 Terminate 调 UnInit，不直接 FreeLibrary；其对�
 | 下层 SDK 原生身份、完整伪代码／汇编索引 | [capture.json](../../../.analysis/results/native/7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7/capture.json) |
 | 下层 SDK 类别、即时应用与 IPC | 同捕获，RVA `0x29c30/0x29de0/0x2a100/0x2a1b0/0x2a2f0/0x2a450/0xab20/0xb6d0/0xbd80/0xbfc0/0xc380/0xc710/0xf310/0xfcf0/0x20f0/0x2300/0x2490/0x2ba0/0x2da0` |
 | 下层 GUID、专用帧、管道与释放 | 同捕获，RVA `0x28e00/0x8da0/0xd1d0/0xd410/0xd560/0x11d90/0x11f50/0x62d0/0x2a770/0x2a950/0x28c90/0x28d90/0x8c20/0x7e10`；键盘 vtable `0x31740` 的首项已按原件字节核对为 `0x2300` |
+| GUID 缓存、控制权及三条 worker 的本批核对集 | 同捕获，RVA `0x70d0/0x7e10/0x81f0/0x86f0/0x8c20/0x11f50/0x134f0/0x13300/0x13aa0/0x140b0/0x14310/0x14600/0x7060/0x7070/0x7080/0x6e70/0x17cd0/0x21710/0x1f930/0x27420/0x18e80/0x27630/0x17da0/0x2c3a1/0x28670/0x2a770/0x2a950/0x28c90/0x28d90/0x5f00`；与此前集合存在交集，不按批次相加 |
+| SDK 包来源、版本与原始下载身份 | [acquisition.json](../../../.analysis/inputs/official-native-current/acquisition.json) 及 [manifest.json](../../../.analysis/inputs/official-native-current/manifests/27f1518bf49220045840c8688b1ca83f47eb38bb8591868bed085a33782bdb68/manifest.json)；Core `4.0.2.08241000`、Devices `4.0.3.09211418` |
+| 当前插件及 PID→GUID 映射 | [Devices.xml](../../../.analysis/inputs/official-native-current/extracted/ec6976f2cde35363d9bdd44e802e5b59b3e11cee628119a14402f3637cd6af9c/$PROGRAMFILES/Razer%20Chroma%20SDK/Devices.xml)，实际字节已与获取输入核对 |
+| GUID 服务器、实例转发及发现／移除 | [capture.json](../../../.analysis/results/native/e032ca4b3366f84be73803de94373887590f56a1660c5a50262424f243c74060/capture.json)，Image Base `0x10000000`；RVA `0x17f0/0x1890/0x18f0/0x1990/0x1a30/0x1af0/0x1c90/0x1d30/0x1e50/0x1f20/0x1f90/0x2000/0x2100/0x2280/0x2400/0x2640/0x28a0/0x2a00/0x2b30/0x2bf0/0x1b850/0x1b930/0x1b9a0/0x1ba60/0x1bc20/0x1bc70/0x1ec40/0x1e610/0x31000/0x31750/0x318d0/0x31a50/0x31c00/0x32330/0x3c60/0x14110/0x3c40/0x14100/0x5cc0/0x5d80` |
+| 通用实例帧解码及设备访问 IPC | [capture.json](../../../.analysis/results/native/58e96aa12a0476a03820add862b3b31e3d6f24b6e63c01855e51fbe80cc3da51/capture.json)，Image Base `0x10000000`；RVA `0x1580/0x10c60/0x10e50/0x112e0/0x11520/0x11680/0x11d30/0x120c0/0x15a80/0x7030/0x15690/0x15950/0x15810/0x6c80/0x14bb0/0x14e20` |
+| Camy 共享区、四段重排、HID／JS 输出与清理 | [capture.json](../../../.analysis/results/native/d34b09f03dc71d691f5261c4acf90ac2258d2329786fec3dd77b5926c56cb8ea/capture.json)，Image Base `0x10000000`；RVA `0xe920/0xeba0/0xdb00/0xd530/0xe870/0x4a90/0x4f80/0x5580/0x2c30/0x5790/0x60b0/0x3640/0x2ba0/0x6d40/0x7730/0x7840/0x7b20/0x2400/0x25b0/0x2760/0x2950/0x8900`；GUID 原字节位于 `0x130bc/0x130ac`，pipe 前缀位于 `0x125ec` |
 
-本文已核对三个原件的实际字节、完整捕获及以上所述调用路径；格式、缓冲复制、DSP、当前默认八类帧与 SDK 本地发布边界分别记录。颜色拾取器、宿主 FFI 字符串／回调桥接、共享区／管道的服务端消费和设备写入确认、SDK 全部版本分支仍需独立闭合。本文没有修改 Rust 或 UI，也未执行音频捕获、灯光输出、厂商 JS 或主应用；静态语义、独立实现、接线、模拟验证及真实验收保持分别记录。
+本文已核对六份原生原件的实际字节、完整捕获及以上所述调用路径；格式、缓冲复制、DSP、当前默认八类帧、SDK 发布、GUID 实例转发和 Camy 直接 HID 写入分别记录。颜色拾取器、宿主 FFI 字符串／回调桥接、键盘／鼠标共享区消费、设备访问 IPC／CJS 服务的硬件链、设备写入确认及 SDK 全部版本分支仍需独立闭合。本文没有修改 Rust 或 UI，也未执行音频捕获、灯光输出、厂商 JS 或主应用；静态语义、独立实现、接线、模拟验证及真实验收保持分别记录。

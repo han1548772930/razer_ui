@@ -1881,7 +1881,8 @@ def extract_asar():
 
 def add_commands(parsers):
     local = parsers.add_parser("audit-host-local", help="Trace current local host UI, storage, service and native source chains without executing targets")
-    local.add_argument("--query", required=True, choices=["dynamic-lighting", "macro-recorder", "screen-color", "help-system-info", "product-chroma-observation", "window-lifecycle"])
+    local.add_argument("--query", required=True, choices=["dynamic-lighting", "macro-recorder", "screen-color", "help-system-info", "product-chroma-observation", "window-lifecycle", "profiles"])
+    local.add_argument("--verify-only", action="store_true", help="Independently verify the retained profiles source receipt without collecting or publishing it")
     installed = parsers.add_parser("acquire-installed", help="Read-only snapshot of installed Razer files and public official Service Worker resources")
     installed.add_argument("--app-engine-root", required=True)
     installed.add_argument("--user-data-root", required=True)
@@ -5040,6 +5041,387 @@ def audit_host_window_lifecycle(args):
         raise ValueError("Host window lifecycle source query remains unresolved")
 
 
+def profiles_static_boundaries():
+    """Reviewed page semantics; none of these fields is a runtime result."""
+    return {
+        "installed_apps": {"icon_size": [80, 80], "join": "path_then_name_path_dedup",
+            "refresh_end": "300ms_timer_after_nonempty_list_and_icon_join",
+            "empty_or_failure_clears_refresh": False, "inflight_cancel_on_unmount": False},
+        "browse": {"multi_selection": True, "windows_types": ["exe", "url"],
+            "mac_types": ["app", "url"], "dispatch": "foreach_without_join",
+            "electron_cancel": "JSON_string_of_empty_filePaths",
+            "missing_host_reply": "array_not_JSON_string"},
+        "add": {"waits_for": "memory_storage_action_promise",
+            "publication_error_rethrown": False, "close_proves_service_success": False,
+            "request_id_supplied": False, "remote_result_consumed": False},
+        "drop": {"requires_file_and_target_class": True, "extension_filter": False,
+            "dispatch": "each_file_path_without_join", "container_listener_cleanup": True,
+            "overlay_drop_cleanup": "adds_listener_again"},
+        "scan": {"request_result_correlated": False, "stop_action_in_page": False,
+            "list_commit_clears_syncing": True, "start_failure_clears_isScanning": False,
+            "finished_requires_success_flag": False},
+        "relocate": {"selection": "first_path_case_sensitive_unanchored_exe_regex",
+            "conflict": "exact_location", "selection_dispatches_add": False,
+            "selected_action": "reducer_id_path_only", "replacement_input": "new_ids_in_later_list",
+            "old_entry_removed_without_link": True, "clear_and_select_requires_link": True},
+        "host": {"installed_apps_and_icons": "async_sysutil_FFI",
+            "pointer_string_release": "readCString_then_FreeMalloc_in_finally",
+            "file_dialog": "Electron_dialog_not_business_DLL",
+            "async_error_is_reliable_rejection": False},
+    }
+
+
+def verify_profiles_owner(audit, owner):
+    """Recheck a retained complete AST node against the actual original bytes."""
+    original = owner["original"]
+    raw = audit.read(original)
+    start, end = owner["byte_start"], owner["byte_end"]
+    if type(start) is not int or type(end) is not int or not 0 <= start < end <= len(raw):
+        raise ValueError("Profiles owner byte boundary is invalid")
+    node = audit.tree(original).root_node.descendant_for_byte_range(start, end - 1)
+    if (node.start_byte, node.end_byte, node.type) != (start, end, owner["syntax"]):
+        raise ValueError("Profiles owner is not a complete original AST node")
+    body = raw[start:end]
+    if (owner["id"] != original["sha256"] + ":" + str(start) + ":" + str(end)
+            or body.decode("utf-8") != owner["body"]
+            or hashlib.sha256(body).hexdigest() != owner["body_sha256"]):
+        raise ValueError("Profiles owner content differs from the actual original")
+    if not isinstance(owner["roles"], list) or not owner["roles"] or len(set(owner["roles"])) != len(owner["roles"]):
+        raise ValueError("Profiles owner roles are missing or repeated")
+    return node
+
+
+def verify_profiles_static_claims(report, bodies):
+    """Check the reviewed failure/cancellation claims without collecting a report."""
+    if report.get("boundaries") != profiles_static_boundaries():
+        raise ValueError("Profiles failure, cancellation or result boundary was changed")
+    if (report.get("schema_version") != 1 or report.get("query") != "profiles"
+            or report.get("source_chain_complete") is not False
+            or report.get("selected_static_semantics_reviewed") is not True
+            or report.get("product_code_modified") is not False
+            or report.get("target_execution") is not False
+            or report.get("real_device_operations") is not False
+            or report.get("actual_dll_comparison") != "unverified"
+            or report.get("rust_independent_implementation") != "unverified"
+            or report.get("ui_backend_wiring") != "unverified"
+            or report.get("runtime_acceptance") != "unverified"
+            or report.get("snapshot_stable") is not True
+            or report.get("changed_during_query") != [] or report.get("failures") != []):
+        raise ValueError("Profiles receipt promotes static evidence or hides a failed snapshot")
+    required = {
+        "get_installed_apps": ('if(!t)return;', 'if(!s.length)return;',
+            'I.A.getApplicationIcons(JSON.stringify(s),80,80)', 'this.state.refresh&&', ',300)'),
+        "browse_game": ('showFileOpenDialog("Open",!0,[v.U0?"app":"exe","url"])',
+            'a.forEach(e=>{this.addApp(e)})'),
+        "add_app_call": ('this.props.addGame(e).then(', 't.props.close()', '.catch('),
+        "add_action": ('filePath:t', 'await r.A.setMemoryStorageItem(', 'catch(o){console.log('),
+        "file_dialog_adapter": ('return a?JSON.stringify(a.filePaths):[]',
+            'window.showFileOpenDialog(t,e?1:0,o)'),
+        "unmount_add_app": ('window.removeEventListener("click",this.handleClick,!1)',
+            'this.timeout&&clearTimeout(this.timeout)'),
+        "drag_drop": ('e.dataTransfer.files.length>0', 't(e.dataTransfer.files)',
+            'e.dataTransfer.clearData()', 'e.removeEventListener("drop",A)',
+            'e.addEventListener("drop",A),e.removeEventListener("dragover",f)'),
+        "games_add_drop": ('for(const t of e)this.props.addGame(t.path)',),
+        "games_refresh": ('this.props.initiateGameScan(),this.props.setSyncing(!0)',),
+        "proxy_api": ('case"scanGame":', 'await this.startScan()', 'this.hasPendingScan=!0'),
+        "proxy_start_scan": ('this.isScanning=!0', 'n=await this.gmsClient.startScan()',
+            'catch(o){', 'return void 0!==t&&t()'),
+        "proxy_finished": ('this.isScanning=!1', 'await this.getLocalGameList()',
+            'await this.getUserGameList()', 'updateGMSData_MemoryStorage("GMS_Custom_onScanCompleted")',
+            'await this.addGameToUserGameList(e.args)'),
+        "list_commit": ('isSyncing:!1',),
+        "relocate_selection": ('/.*\\.exe/.test(s[0])', 'e.location===s[0]',
+            'await this.props.updateRelocateGamePath(e),this.props.close()'),
+        "relocate_action": ('e({type:o.BuN,payload:t})',),
+        "relocate_reducer": ('relocatedPath:e.payload.path,relocateGameID:e.payload.id',),
+        "replace_game": ('e.find(t=>t.location===this.props.path)', '-1!==o&&(',
+            'this.props.selectedGameData(a)', 'updateRelocateGamePath({id:"",path:""})',
+            't=t.filter(t=>t.id!==n.id)'),
+        "bridge_events": ('case C.FB:', 'case C.Rp:', 'this.props.setSyncing(!0)'),
+        "host_dialog_dispatch": ('u.showOpenDialog(', '"openFile"', '"multiSelections"'),
+        "host_async_dispatch": ('return io.callDLLAsync(n,i)',),
+        "host_async_ffi": ('n.readCString()', 'i.FreeMalloc(n)', 'finally{',
+            'i[l.action].async(...l.payload.actionArgs,(e,a)=>{n(a)})'),
+    }
+    for role, fragments in required.items():
+        body = bodies[role]
+        if any(fragment not in body for fragment in fragments):
+            raise ValueError("Profiles reviewed branch differs from its complete owner: " + role)
+    forbidden = {
+        "add_action": ("throw", "requestId"),
+        "browse_game": ("Promise.all", "await this.addApp"),
+        "unmount_add_app": ("abort", "cancel", "generation"),
+        "drag_drop": (".exe", ".app", ".url"),
+        "proxy_api": ('case"stopScan":',),
+        "proxy_start_scan": ('isScanning=!1',),
+        "relocate_selection": ('addGame', 'setMemoryStorageItem'),
+        "relocate_action": ('await', 'addGame', 'setMemoryStorageItem'),
+        "bridge_events": ('gms-remote-action-result',),
+    }
+    for role, fragments in forbidden.items():
+        if any(fragment in bodies[role] for fragment in fragments):
+            raise ValueError("Profiles recorded absence no longer matches its complete owner: " + role)
+
+
+def collect_profiles_static(audit):
+    """Capture current mounted Games branches and their actual host consumers."""
+    report = {"schema_version": 1, "query": "profiles", "recorded_at_utc": audit.a.stamp(),
+        "parser": audit.parser_versions, "source_sets": [], "host_sources": [],
+        "selected": {}, "cross_chunk_exports": {}, "bindings": {}, "failures": [],
+        "source_chain_complete": False, "selected_static_semantics_reviewed": True,
+        "product_code_modified": False, "target_execution": False, "real_device_operations": False,
+        "actual_dll_comparison": "unverified", "rust_independent_implementation": "unverified",
+        "ui_backend_wiring": "unverified", "runtime_acceptance": "unverified",
+        "boundaries": profiles_static_boundaries(),
+        "remaining_chains": ["SysUtilsNative installed-app enumeration and icon extraction native bodies",
+            "All game scanner strategies and every product automatic-profile writer",
+            "Independent Rust implementation, mounted UI wiring and automated feature tests",
+            "Actual corresponding DLL/service/device comparison and window acceptance"]}
+    for name in ("tools/host.py", "tools/workspace.py", "tools/evidence.py", "tools/families.py"):
+        audit.artifact(audit.a.ROOT / name)
+    deployments = {}
+    for name in ("synapse-profiles-current", "gms-proxy-current"):
+        source_set, files = audit.source_set(name)
+        capture = audit.frontend_capture(name, files)
+        manifest = json.loads(audit.artifact(audit.a.ROOT / source_set["capture"]["path"]))
+        source_set["complete_capture"] = capture
+        source_set["capture_acquisition_relation"] = {
+            "capture_recorded_acquisition_sha256": manifest.get("module_recovery", {}).get("original_acquisition_sha256"),
+            "current_acquisition_sha256": source_set["acquisition"]["sha256"],
+            "current_deployment_original_bytes_reverified": True,
+            "capture_metadata_rewritten": False}
+        report["source_sets"].append(source_set)
+        deployments[name] = files
+
+    def source(files, filename):
+        matches = [row for row in files if Path(row["path"]).name == filename]
+        if len(matches) != 1:
+            raise ValueError("Profiles current source is absent or ambiguous: " + filename)
+        return matches[0]
+
+    ui, proxy = deployments["synapse-profiles-current"], deployments["gms-proxy-current"]
+    main, page, common = (source(ui, name) for name in (
+        "main.776df2b1.js", "9449.8f17b519.chunk.js", "9473.f9ed3133.chunk.js"))
+    gms = source(proxy, "main.fd0c50a8.js")
+    selected = report["selected"]
+    for role, original, needle, kinds in (
+        ("api_adapter", main, 'this.getInstalledApplicationList=', {"class_declaration", "class"}),
+        ("add_app", common, 'this.handleGetInstalledApp=', {"class_declaration", "class"}),
+        ("detail", page, 'this.relocateGame=async', {"class_declaration", "class"}),
+        ("games", page, 'this.onRefresh=', {"class_declaration", "class"}),
+        ("gms_bridge", main, 'this.gmsEventsListener=', {"class_declaration", "class"}),
+        ("list_commit", main, 'pt=(t,e)=>', {"variable_declarator"}),
+        ("relocate_reducer", main, 'case u.BuN:', {"switch_case"}),
+        ("proxy_api", gms, 'this.handleAPIRequest=async', {"assignment_expression"}),
+        ("proxy_start_scan", gms, 'this.startScan=async', {"assignment_expression"}),
+        ("proxy_finished", gms, 'this._onGameScanFinishedEvent=async', {"assignment_expression"}),
+    ):
+        selected[role] = audit.retain("profiles_" + role, original, needle, kinds)[0]
+    for role, parent, name in (
+        ("get_installed_apps", "add_app", "getInstalledApps"),
+        ("browse_game", "add_app", "browseGame"), ("add_app_call", "add_app", "addApp"),
+        ("unmount_add_app", "add_app", "componentWillUnmount"),
+        ("games_add_drop", "games", "addNewApp"), ("games_refresh", "games", "onRefresh"),
+        ("relocate_selection", "detail", "relocateGame"),
+        ("replace_game", "gms_bridge", "_replacingGame"),
+        ("bridge_events", "gms_bridge", "handleMemoryStorageEvent"),
+        ("file_dialog_adapter", "api_adapter", "showFileOpenDialog"),
+        ("get_installed_adapter", "api_adapter", "getInstalledApplicationList"),
+        ("icons_adapter", "api_adapter", "getApplicationIcons"),
+    ):
+        owner = audit.owners[selected[parent]]
+        original = owner["original"]
+        node = audit.tree(original).root_node.descendant_for_byte_range(owner["byte_start"], owner["byte_end"] - 1)
+        kwargs = {} if name in {"componentWillUnmount", "showFileOpenDialog"} else {"receiver": "this"}
+        _, selected[role] = audit.callable_member("profiles_" + role, original, node, name, **kwargs)
+    for role, module, exported in (("add_action", 399, "addGame"),
+            ("relocate_action", 399, "updateRelocateGamePath"),
+            ("scan_action", 8301, "initiateGameScan"), ("drag_drop", 9902, "A")):
+        item = audit.webpack_export("profiles_" + role, ui, module, exported)
+        report["cross_chunk_exports"][role] = item
+        selected[role] = item["binding"]["owner_id"]
+    for role, original, name, parent in (
+        ("add_app_api_import", common, "I", "add_app"),
+        ("add_app_actions_import", common, "r", "add_app"),
+        ("detail_api_import", page, "L", "detail"),
+        ("games_drag_import", page, "H", "games"),
+        ("bridge_api_import", main, "N", "gms_bridge")):
+        reference = audit.owners[selected[parent]]["byte_start"]
+        report["bindings"][role] = {"original": audit.sources[original["path"]],
+            "reference_byte": reference, **audit.binding("profiles_" + role, original, name, reference)}
+
+    host = verified_host_owners(audit, ("electron/main.js", "electron/modules/sysutil/index.js",
+        "electron/modules/sysutil/win/index.js", "electron/modules/sysutil/mac/index.js",
+        "electron/modules/ffi/ffiMain.js"))
+    for suffix, item in host.items():
+        report["host_sources"].append({key: value for key, value in item.items() if key != "body"})
+        original = item["original"]
+        if suffix == "electron/main.js":
+            for role, anchor in (("host_dialog_dispatch", 'case"showFileOpenDialog":'),
+                                 ("host_async_dispatch", 'case"getApplicationIconsAlt":')):
+                selected[role] = audit.retain("profiles_" + role, original, anchor, {"switch_case"})[0]
+        elif suffix.endswith("/ffiMain.js"):
+            selected["host_async_ffi"] = audit.retain("profiles_host_async_ffi", original,
+                "exports.callDLLMainAsync=", {"assignment_expression"})[0]
+        else:
+            selected["host_" + suffix] = audit.retain_range("profiles_host_" + suffix, original,
+                0, len(audit.read(original)), audit.tree(original).root_node.type)
+    report["complete_originals"] = list(audit.sources.values())
+    report["complete_source_owners"] = list(audit.owners.values())
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    report["changed_during_query"] = audit.final_snapshot()
+    report["snapshot_stable"] = not report["changed_during_query"]
+    report["failures"].extend("Profiles artifact changed during query: " + name
+                              for name in report["changed_during_query"])
+    return report
+
+
+def verify_profiles_static_receipt(report, audit=None):
+    """Independent read-only receipt check; never invokes the collector."""
+    audit = audit or HostLocalAudit()
+    if not isinstance(report, dict):
+        raise ValueError("Profiles source receipt is absent")
+    owners = {}
+    for owner in report["complete_source_owners"]:
+        verify_profiles_owner(audit, owner)
+        if owner["id"] in owners:
+            raise ValueError("Profiles source owner is repeated")
+        owners[owner["id"]] = owner
+    selected = report["selected"]
+    bodies = {role: owners[key]["body"] for role, key in selected.items()}
+    verify_profiles_static_claims(report, bodies)
+    expected_selected = {"api_adapter", "add_app", "detail", "games", "gms_bridge", "list_commit",
+        "relocate_reducer", "proxy_api", "proxy_start_scan", "proxy_finished", "get_installed_apps",
+        "browse_game", "add_app_call", "unmount_add_app", "games_add_drop", "games_refresh",
+        "relocate_selection", "replace_game", "bridge_events", "file_dialog_adapter", "get_installed_adapter",
+        "icons_adapter", "add_action", "relocate_action", "scan_action", "drag_drop",
+        "host_dialog_dispatch", "host_async_dispatch", "host_async_ffi", "host_electron/modules/sysutil/index.js",
+        "host_electron/modules/sysutil/win/index.js", "host_electron/modules/sysutil/mac/index.js"}
+    if set(selected) != expected_selected:
+        raise ValueError("Profiles selected source owner set differs")
+    reviewed = {role: {field: owners[key][field] for field in (
+        "original", "syntax", "byte_start", "byte_end", "body_sha256")}
+        for role, key in selected.items()}
+    # This binds the manual static review to its complete source owners. It is
+    # an analysis receipt constraint, never a product/runtime compatibility gate.
+    reviewed_sha = hashlib.sha256(json.dumps(reviewed, ensure_ascii=False,
+        sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    if reviewed_sha != "f4f74a263aec084f7a80a73b3dd1ac546872ab695b63a50543cc5ebccb7c0e91":
+        raise ValueError("Profiles selected bytes require a new complete semantic review")
+    for role, parent in {"get_installed_apps": "add_app", "browse_game": "add_app",
+            "add_app_call": "add_app", "unmount_add_app": "add_app", "games_add_drop": "games",
+            "games_refresh": "games", "relocate_selection": "detail", "replace_game": "gms_bridge",
+            "bridge_events": "gms_bridge", "file_dialog_adapter": "api_adapter",
+            "get_installed_adapter": "api_adapter", "icons_adapter": "api_adapter"}.items():
+        child, root = owners[selected[role]], owners[selected[parent]]
+        if (child["original"] != root["original"] or not root["byte_start"] <= child["byte_start"]
+                < child["byte_end"] <= root["byte_end"]):
+            raise ValueError("Profiles callable does not belong to its recorded complete owner")
+    expected_sources = {}
+    if [row["name"] for row in report["source_sets"]] != ["synapse-profiles-current", "gms-proxy-current"]:
+        raise ValueError("Profiles current deployment source sets differ")
+    for stored in report["source_sets"]:
+        current, files = audit.source_set(stored["name"])
+        for field in ("acquisition", "deployment", "capture", "capture_failures", "unresolved_acquisition", "failed_acquisition"):
+            if stored[field] != current[field]:
+                raise ValueError("Profiles current deployment receipt differs: " + field)
+        if stored["complete_capture"] != audit.frontend_capture(stored["name"], files):
+            raise ValueError("Profiles reusable full capture identity or failures differ")
+        capture = json.loads(audit.artifact(audit.a.ROOT / current["capture"]["path"]))
+        relation = stored["capture_acquisition_relation"]
+        if relation != {"capture_recorded_acquisition_sha256": capture.get("module_recovery", {}).get("original_acquisition_sha256"),
+                "current_acquisition_sha256": current["acquisition"]["sha256"],
+                "current_deployment_original_bytes_reverified": True, "capture_metadata_rewritten": False}:
+            raise ValueError("Profiles acquisition change was hidden or transferred to the old capture")
+        expected_sources.update({row["path"]: row for row in files})
+    host = verified_host_owners(audit, ("electron/main.js", "electron/modules/sysutil/index.js",
+        "electron/modules/sysutil/win/index.js", "electron/modules/sysutil/mac/index.js",
+        "electron/modules/ffi/ffiMain.js"))
+    if report["host_sources"] != [{k: v for k, v in item.items() if k != "body"} for item in host.values()]:
+        raise ValueError("Profiles host original or official package provenance differs")
+    expected_sources.update({row["original"]["path"]: row["original"] for row in host.values()})
+    for owner in owners.values():
+        source = expected_sources.get(owner["original"]["path"])
+        if source is None or any(source[k] != owner["original"][k] for k in ("bytes", "sha256")):
+            raise ValueError("Profiles owner is outside its current deployment or official host")
+    expected_exports = {"add_action": (399, "addGame"), "relocate_action": (399, "updateRelocateGamePath"),
+        "scan_action": (8301, "initiateGameScan"), "drag_drop": (9902, "A")}
+    if set(report["cross_chunk_exports"]) != set(expected_exports):
+        raise ValueError("Profiles cross-chunk export set differs")
+    for role, item in report["cross_chunk_exports"].items():
+        original, binding = item["original"], item["binding"]
+        factory, exported, target = (owners[item["complete_factory_owner"]],
+            owners[item["export_definition_owner"]], owners[binding["owner_id"]])
+        if (selected[role] != target["id"] or original != target["original"]
+                or factory["original"] != original or exported["original"] != original
+                or not factory["byte_start"] <= exported["byte_start"] < exported["byte_end"] <= factory["byte_end"]
+                or not factory["byte_start"] <= target["byte_start"] < target["byte_end"] <= factory["byte_end"]):
+            raise ValueError("Profiles cross-chunk export owner graph differs")
+        resolved = audit.binding("profiles_verify_export_" + role, original, binding["name"], binding["reference_byte"])
+        if resolved != binding:
+            raise ValueError("Profiles cross-chunk export no longer has its recorded lexical binding")
+        factory_node = verify_profiles_owner(audit, factory)
+        module_key = factory_node.child_by_field_name("key")
+        if ((item["module_id"], item["export"]) != expected_exports[role]
+                or module_key is None or module_key.text.decode() != str(item["module_id"])
+                or (item["export"] + ":()=>" + binding["name"]) not in exported["body"]):
+            raise ValueError("Profiles source module or actual export getter differs")
+    expected_imports = {"add_app_api_import": "I=a(7226)", "add_app_actions_import": "r=a(399)",
+        "detail_api_import": "L=s(7226)", "games_drag_import": "H=s(9902)",
+        "bridge_api_import": "N=n(7226)"}
+    if set(report["bindings"]) != set(expected_imports):
+        raise ValueError("Profiles producer import set differs")
+    for role, binding in report["bindings"].items():
+        original = binding["original"]
+        expected = {"original": original, "reference_byte": binding["reference_byte"],
+            **audit.binding("profiles_verify_" + role, original, binding["name"], binding["reference_byte"])}
+        if binding != expected or binding["body"] != expected_imports[role]:
+            raise ValueError("Profiles producer import binding differs")
+    for artifact in report["verified_artifacts"]:
+        audit.artifact(audit.a.ROOT / artifact["path"], artifact)
+    recorded = {row["path"]: row for row in report["complete_originals"]}
+    if len(recorded) != len(report["complete_originals"]) or recorded != audit.sources:
+        raise ValueError("Profiles complete original inventory differs from verified current sources")
+    if audit.final_snapshot():
+        raise ValueError("Profiles input changed during independent verification")
+    return {"complete_source_owners": len(owners), "selected_owners": len(selected),
+        "source_sets": 2, "target_execution": False, "runtime_acceptance": "unverified"}
+
+
+def publish_profiles_static(report, destination, a):
+    """Update only this query while recording canonical identities of older fields."""
+    def identity(value):
+        return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":")).encode("utf-8")).hexdigest()
+    with a.index_lock(destination.with_suffix(".lock")):
+        previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
+        preserved = {key: identity(value) for key, value in previous.items() if key != "profiles"}
+        report["preserved_top_level_canonical_sha256"] = preserved
+        previous["profiles"] = report
+        a.save(destination, previous)
+        del previous
+        persisted = json.loads(destination.read_bytes())
+        if ({key: identity(value) for key, value in persisted.items() if key != "profiles"} != preserved
+                or persisted["profiles"] != report):
+            raise ValueError("Profiles publication changed an unrelated top-level field")
+    return preserved
+
+
+def audit_host_profiles(args):
+    audit = HostLocalAudit()
+    destination = audit.a.ROOT / ".analysis/results/host-current/local-audit.json"
+    if getattr(args, "verify_only", False):
+        report = json.loads(destination.read_bytes())["profiles"]
+    else:
+        report = collect_profiles_static(audit)
+    verification = verify_profiles_static_receipt(report)
+    if not getattr(args, "verify_only", False):
+        publish_profiles_static(report, destination, audit.a)
+    print(json.dumps({"receipt": audit.a.rel(destination), "query": "profiles",
+        "verify_only": bool(getattr(args, "verify_only", False)), **verification}), flush=True)
+
+
 def lighting_catalog_projection(rows):
     """Project the ordered strict-equality helper over the catalog's full ID domain."""
     if not isinstance(rows, list) or not rows:
@@ -5252,6 +5634,10 @@ def audit_deviceinfo_value_sources(audit, main, manifests):
 
 
 def audit_host_local(args):
+    if getattr(args, "verify_only", False) and args.query != "profiles":
+        raise ValueError("Host-local --verify-only currently applies only to the profiles query")
+    if args.query == "profiles":
+        return audit_host_profiles(args)
     if args.query == "window-lifecycle":
         return audit_host_window_lifecycle(args)
     if args.query == "product-chroma-observation":

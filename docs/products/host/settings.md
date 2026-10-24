@@ -11,7 +11,7 @@
 | Chroma → CHROMA_APP | 自动启动、通知 | 重置教程、配置迁移、Windows 动态灯光 |
 | Chroma → GENERAL | 语言、本地 Release Notes 入口 | 本机版本信息 |
 
-Synapse 的入口异步加载模块 4914；Chroma 加载 1743。各自的 Provider 包裹对应设置树，外层窗口焦点组件决定 body 是否显示。Synapse 使用 `windowName="synapse"`、`tabName="settings-synapse"`，Chroma 使用 `chroma-app`、`settings-chroma`。隐藏 body 与卸载组件是两件事。
+Synapse 的入口先调用异步 SDK init，再开始懒加载模块 4914；外层 Promise 没有等待 SDK 内部初始化完成。该入口及其基础／staging 配置均未提供 appName，而 SDK 只在 appName 非空时注册本机 App 条目，因此不能用注册函数内的默认值证明此入口初始化过 synapse 自启。Chroma 的 async 入口等待 SDK init 完成后才挂载模块 1743，其基础／staging 参数同样未传 appName。各自的 Provider 包裹对应设置树，外层窗口焦点组件决定 body 是否显示。Synapse 使用 `windowName="synapse"`、`tabName="settings-synapse"`，Chroma 使用 `chroma-app`、`settings-chroma`。隐藏 body 与卸载组件是两件事。
 
 [共享窗口交互专项](../../../.analysis/results/frontend/synapse-update-fw-current/page-interactions.json)另将固件工具栏到 Synapse 设置的实际 SDK／preload／main、policy=3 页签创建与目标 BodyWrapper 连接起来。当前 SDK 激活保留 subTab／willShow；同名 preload 便捷函数不是这个调用方。目标 focus hook 查询宿主可见性／焦点，消费 focus／changeActiveTab／activeTabChanged，卸载调用对应 response disposer；已发起的查询没有取消或旧代次拒绝。该目标页的 accessibility MutationObserver 未保留 disconnect，不能与下面独立 `/settings/` 根自己可断开的头像 observer 混用。请求发出、窗口激活、控件加载和设备读取分别确认；本专项没有运行窗口或证明所有设置动作已经接线。
 
@@ -120,7 +120,7 @@ About 的显示数字初值为空。挂载后先 `caches.match(new URL("/systray
 
 ## 自启和启动时最小化
 
-两个复选框的组件初值均为 true。挂载后，自启值由 `RazerApp.getAppAutoStart(appName)` 异步返回；最小化值由 `getMinimizedOnStartUp(appName)` 从应用记录读取，只有非 undefined 值才覆盖组件初值。主自启关掉时，子复选框禁用。
+两个复选框的组件初值均为 true。挂载 effect 先发起 `RazerApp.getAppAutoStart(appName)` 异步读取，再同步调用 `getMinimizedOnStartUp(appName)` 从应用记录读取，只有非 undefined 值才覆盖最小化的组件初值。主自启关掉时，子复选框使用 CSS 禁用外观与鼠标事件；其实际 DOM 边界见下文。
 
 点击自启先调用 `setAppAutoStart(appName,value)`，再更新页面；最小化同样先调用 `setMinimizedOnStartUp` 再更新页面。这两个 setter 更新应用项的 `isAutoStart`／`isMinimizedOnStartUp` 和 `lastUpdated`，然后重算整机启动参数。页面没有等待注册表写入确认，也没有通用失败回滚或写后 GET。
 
@@ -134,13 +134,107 @@ About 的显示数字初值为空。挂载后先 `caches.match(new URL("/systray
 4. 另收集所有 `isMinimizedOnStartUp===true` 的应用，追加 ` --launch-force-hidden=<名称列表>`。这份列表由最小化字段筛选，并未再与自启列表取交集。
 5. Electron 分支去掉 `&autoStart=1` 再调用 `setApplicationAutoStart`；非正式 host 分支还附加 `--application-host`。
 
-当前 Windows 原生实现打开 HKCU 的 `SOFTWARE\Microsoft\Windows\CurrentVersion\Run`，值名是 `RazerAppEngine`。开启时写入 REG_SZ：`"<启动程序>" --url-params=<参数> --autoStart=1`；关闭时删除该值。导出返回 void，写入失败只记录日志，随后关闭注册表句柄。
+当前 Windows 原生实现打开 HKCU 的 `SOFTWARE\Microsoft\Windows\CurrentVersion\Run`，值名是 `RazerAppEngine`。`applicationAutoStart`（RVA `0x6e2d0`）以 lpData=NULL 查询该值，类型和长度输出指针非 NULL，但这两个输出不参与布尔结果；查询成功即 true，不检查类型、命令内容、目标文件或启动健康。普通返回路径的打开／查询失败为 false。
 
-启动程序路径从 `GetModuleFileNameW` 得到。函数分离父目录与文件名，查找父目录中的 `app-`；找到时保留其前缀并拼接原文件名，从版本目录改指根启动程序。未命中才保留原路径。这一分支由父目录裁剪函数 RVA `0x87110` 和字符串拼接函数 `0x7a230` 的完整伪代码核实。
+`setApplicationAutoStart`（`0x6e3c0`）只打开既有 Run key，不创建。开启时将传入的 NUL 结尾 UTF-8 转为宽字符，向 512 wchar 缓冲格式化 REG_SZ：`"<启动程序>" --url-params=<参数> --autoStart=1`，写入长度包含 NUL；关闭时删除该值。导出返回 void，打开失败静默返回，set／delete 失败仅日志，正常持有句柄的路径会关闭。不能从 IPC 完成或格式化失败后仍无布尔错误推断写入成功。
 
-读取 `getApplicationAutoStartApps` 则从 Run 值提取 `--url-params=` 后、首个空格前的 token，转换为 UTF-8 返回。上层用 `String.includes(appName)` 判断指定应用是否自启；它不是对注册表参数做一套新的结构化解析。原生返回的分配内存由宿主字符串转换／`FreeMalloc` 链释放。宿主启动时另外把 `launch-force-hidden` 按逗号解析，因此自启与隐藏是独立条件。
+启动程序路径从 `GetModuleFileNameW(NULL,260)` 得到，即当前进程的主 EXE。函数分离父目录与文件名，区分大小写地查找父目录中首次出现的 `app-` 子串；找到时保留其前缀，直接拼接原文件名。它没有验证该子串恰为版本目录；未命中才保留原路径。该分支的父目录裁剪 `0x87110`、拼接 `0x7a230` 和查找 `0x893b0 → 0x89050` 均已保留完整函数和原始指令。
+
+`getApplicationAutoStartApps`（`0x6e950`）先查询 cbData，再把该长度直接传给固定 2048 字节宽字符缓冲，没有核对上限、类型、实际长度或 NUL 终止。第二次查询后，先对 Data 做 NUL 扫描并构造宽字符串，到 `0x6eabf` 才检查查询状态，不能描述成失败时不消费缓冲。正常成功路径区分大小写地查找任意位置的 `--url-params=`，将命令转为 UTF-8，经 checked-copy 写入 1024 字节临时缓冲，再取 marker 后到首个 ASCII 空格或 NUL 的 token。marker 后立即结束或空格时，分配成功会返回一字节空串；普通缺失／查询失败可返回 NULL，异常、越界扫描、invalid-parameter 和 allocator/new-handler 路径不保证正常 NULL 返回。
+
+上层只对 string 执行 `String.includes(appName)`，非 string 为 false；它没有精确解析 App 列表，原生也不解析 App JSON 或验证启动目标。原生分配沿 `0x9a1d0 → 0xa9940 → HeapAlloc`；释放沿 `FreeMalloc → 0x97ce0 → 0xa98e0 → HeapFree`。实际宿主 sysutil 使用同步 `ffiMain`：先 readCString，成功设置标志后才在 finally 中 FreeMalloc；readCString 抛错会跳过该 free 分支，不能称所有转换路径必然释放。宿主启动时另外把 `launch-force-hidden` 按逗号解析，因此自启与隐藏是独立条件。
 
 Synapse 的两个点击回调每次都重新构造 `debounce(Xs,2000)` 并立即调用其返回函数。模块 6079 的默认值为 leading=false、trailing=true，因此每次点击各自启动一个尾沿 timer；回调没有保留同一个 debouncer，连续点击不会在这里合并成一个 2 秒后的 storeData。`Xs` 发送 `{action:"storeData",windowName:"settings-synapse"}`，返回函数和 timer 未被页面保留，卸载未取消。Chroma 当前分支只构造 `debounce(ks,2000)`，没有调用返回值，因此这两个表达式本身不启动 timer，也不触发 `settings-chroma` 的 storeData。两套页面不能归并为相同的延迟保存语义，底层自启 setter 也不依赖该后续表达式才能执行。
+
+Synapse 的复选框类用 crypto 生成实际 ID，没有采用调用方的 `autoStart/minimizedOnStartup` ID。input 只有 type／id／checked／onChange，未设置 disabled 或 ARIA-disabled；onChange 只停止传播后调用父回调，没有再次检查禁用。CSS 隐藏 input，以 20×20 px label 和伪元素画勾，子项缩进 30 px、竖线高 37 px；`.check-item.disabled` 使用 opacity .3 和 pointer-events:none。四个可见词条已逐项解析实际 importer 的十种语言，字体依赖为四份 Roboto／RazerF5 normal 400 原件。这些静态规则不证明键盘、焦点或像素验收通过。
+
+### Chroma 自启的独立挂载与保存
+
+[Chroma 自启静态收据](../../../.analysis/results/frontend/chroma-app-settings-current/local-startup.json)另核对 209 个完整 AST 所有者、281 个角色、71 个绑定、49 个 exports、54 个词法 CSS 块、十语言四词条与四份字体，共 100 条静态断言和 926 个 artifact。复用的完整捕获为 367 个原件、510 个输出，其 validate 失败仍保留。独立复核重新校验当前部署、每个原始 AST／CSS 边界、共享宿主 ASAR 来源及所引用的原生边界。
+
+实际挂载为 main 的 `E().then` → 714／602／75 懒加载 → 1743.default → `Go` Redux Provider → `Bo/Zo` → `hi` 页面状态 Provider → `Ei` → CHROMA_APP／默认 `mi` → 左列 `Hs`。GENERAL 不挂载该自启组件；带 `_settings_chroma-app` 后缀的 sessionStorage 导航历史与 SDK apps 数据分别维护。init 未提供 appName，不足以触发 SDK 的 App 注册 gate，不能将组件 true 初值解释成注册或系统写入结果。
+
+两个点击仍立即执行 SDK setter、更新已有本地 apps 记录并发出宿主自启命令。与 Synapse 的差异只在后续 `Us()(ks,2e3)` 没有调用返回函数：完整 debounce 工厂的四处 setTimeout 均位于延后调用的函数中，这两个表达式未调度 2 秒后的 flush。`ks` 在所核页面工厂只有声明及这两处传参引用；该事实不排除整应用的其他保存路径。若其他已核路径执行 `ks`，其目标为 `storeData/settings-chroma`，宿主 session flush 没有返回保存确认。
+
+两套控件的所选 SDK 数据、getter／setter、平台和 Electron 所有者分别按完整 AST、非 identifier 词法及一一变量映射比较；复选框的 constructor／update／render 独立核对，不能用整类变量名替换证明绑定。Chroma 同样没有 HTML disabled 或回调内 disabled 检查，禁用来自外层 CSS；语言 importer 的每个 locale 已连接实际 chunk／module。背景、字体、widget、树线与 note 同时保留 media 和末尾覆盖顺序，计算样式、GPUI 像素和键盘行为仍未运行验收。
+
+当前 [Chroma 页面](../../../crates/razer-app-pages/src/chroma/chroma_settings.rs)以本地 preferences 初始化草稿，点击经 [state owner](../../../crates/razer-state/src/chroma_settings.rs)立即排队写 `chroma-settings.json`；没有两秒计时器，也没有原件对应的 OS 初读、per-app 聚合或真实自启写入。Shell 的 `PersistenceFinished` 只结算本地保存，另一实体的 `StartupRequested` 才进入 OS 适配器。全工作区 1,690 个 Rust 源文件的 AST 与消费者检索未找到 Chroma 到该适配器的生产链，不能凭共享模块存在认作已复用。
+
+当前 Rust 另有最小化回调 guard、语义 disabled、未保存阻止关标签、retry／discard；所核官方 `Zo.unload` 没有这套 dirty 门禁。Rust retry 仅重排本地写入，discard 从 committed 本地副本重建草稿，均不代表 OS 恢复。独立 Chroma 标签关闭、主窗口 host tab 关闭、直接 OS 窗口关闭及全应用退出各有不同所有者，必须分别测试，不能把其中一个关闭检查泛化为全部窗口。
+
+### 启动记录的实际注册入口
+
+[同一自启收据](../../../.analysis/results/frontend/synapse-settings-current/local-startup.json)的 `application_registration` 另保留 356 个完整 AST 所有者、432 个角色、86 个绑定、48 个导出和 191 条静态断言，并比较 84 组完整函数。三个实际 dashboard 和两设置 SDK 的所选 init、注册、读写、正规化、聚合及平台函数分别按完整 AST、非 identifier 字节与一一 identifier 映射核对；这不代表整个 SDK 等同。四套完整捕获、六套部署来源和既有失败均独立保留。
+
+设置入口不传 appName 只说明该入口不注册。真正的 Synapse dashboard 在两个保留部署中均经普通 dashboard 分支加载 SDK、以 `appName=synapse` 调用并等待 init；`#version` 与 `iotPopup` 旁支没有据此验收。Chroma dashboard 用 `appName=chroma-app`。三者均未传 appAutoStart，由 SDK 缺省为 true，appMinimizedOnStartUp 显式为 true；页面几何恢复的 absent→false 是另一处逻辑。各部署版本、原件和完整参数保留在收据，不能用某个入口版本代表全部页面。
+
+SDK 仅在非空 appName 及 appData／manifest／engine gate 满足时注册；这三个 dashboard 未传 manifestURL，满足相应条件。`initAppDataItem` 按精确 name 查找：新条目追加，已有条目先删除本次参数中的两个启动字段，再合并旧条目和新元数据，因此保留旧启动布尔值，同时更新 url／urlPath、createdAt／lastOpened／lastUpdated 和 lastState。缺失或非 boolean 的旧 isAutoStart 使用 `getAppAutoStart2` 原样结果，最小化字段没有对应正规化；Electron getter 未等待原生命令结果，不能称已读回并修正为确定 bool。后续平台初始化失败也没有已证实的记录回滚。
+
+注册随即写 `apps` 并重建整机启动命令。自启和最小化名单分别使用严格 `===true` 筛选、`name2||name` 编码；自启名单为空时关闭自启，否则形成 apps 参数，隐藏名单独立追加。设置 setter 对不存在的条目不创建，但仍会重建全列表。修改记录和发送宿主命令均没有 OS 写入确认。
+
+Chroma 还有顺序 gate：先查询窗口，发现 Synapse 窗口时等待 `apps` 中出现精确 synapse 条目；不存在时保留 storage listener，等 apps 事件后再查。没有 Synapse 窗口则直接调用初始化包装函数。该包装函数既非 async，也不返回内部 init Promise；bootstrap 的 await 只等待窗口查询，不能作为注册完成屏障。此处没有已证实的 catch、取消或卸载退订。
+
+dashboard 的几何更新会写窗口扩展字段并显式请求 `storeData/实际appName`，与设置点击的两个 timer 分支不同。其 resize debouncer 返回函数确实被调用，但未保存 cancel／flush；移除 listener 不能保证在途 timer 已取消。SDK beforeunload 也未提供 apps 落盘确认，宿主 session.flushStorageData 的结果没有返回或被等待。跨页面 storage 事件、重启落盘及真实启动仍未运行验证。
+
+background 的卸载入口会查询应用并打开 installer；选定清理所有者按精确 name 从 apps 删除条目，另写卸载标志并请求 flush。该所有者内没有启动参数重建，不能由局部缺调用推断整个卸载链均未重建。下述原生脚本另有实际 Run 修改路径；installer／native 的真实结果、失败中断后的清理及辅助 dashboard 分支仍须分别核对。
+
+### 卸载结果消费与启动项清理
+
+[同一自启收据](../../../.analysis/results/frontend/synapse-settings-current/local-startup.json)的 `application_uninstall` 追加核对当前 background、installer、宿主和旧 SDK 的 147 个完整 owner、159 个角色、89 个绑定、59 条静态断言和 36 条调用边。后台 `KA` 启动核对会直接走 `WA/jA`，而后续 storage 清理由 `xA` 闭包中的 `t` 控制；两条路径不能合并成同一清理保证。Chroma 有 `shouldManualRemove` 的精确 apps 名称过滤，Synapse 的选定 owner 没有同样开关。
+
+驱动卸载 wrapper 的宿主回调形状是 `{result, reason, exitCode}`，installer 只按整个对象是否 truthy 继续删除 `installedResources`，不检查 `result` 或 `exitCode`。普通文件 wrapper 则返回 `result` 布尔值；pending 清理把 truthy 返回当对象执行 `"result" in t`，当前静态链在返回 `true` 时会进入类型错误路径，`false` 才保留 pending。这些是源码类型与控制流事实，未执行厂商 JavaScript，不能改写成实际现场异常。
+
+卸载记录删除、`COMPLETED`、进度清理和窗口关闭不等于文件、驱动、进程或注册表 Run 项已成功处理。宿主在卸载 CLI 分支把应用名加入 `Fe`，托盘据此抑制应用项重建，收到匹配的 create 事件才移除；它不是窗口创建 gate。原生 `--uninstall-app` producer 和两产品的 Run 修改已沿下述脚本补齐，最终 `Mn` 的 JS 分发顺序也已保留；原生释放完成、服务端真实删除结果、注册表效果、取消恢复和重启落盘仍未验证。纯逻辑／模拟测试须覆盖这些结果形状和失败顺序，再由显式对照入口记录实际 DLL／服务结果及可恢复写入的原值、读回和清理。
+
+### 原生卸载脚本的 CLI、Run 与退出
+
+同一收据的 `native_uninstall_producers` 将已保留的官方 Synapse／Chroma `4.0.827` 发布声明、NSIS 外层及内层 Setup Factory 原件逐层绑定。两个 `auxiliary/irsetup.dat` 合计保留 342 个完整词法 Lua 函数、94 个记录、20 个生命周期挂载、78 个有界引用、44 条调用边和 34 条静态断言。独立复核重新解压两层容器、核 CRC 和完整原始字节，再核词法函数及事件边界；该分析不是 Lua AST，也没有执行脚本或安装器。当前性限于获取收据的观察窗口。
+
+`On Pre Uninstall → OnPreUninstall` 先移除本产品的 AppEngine 依赖。无剩余依赖时，`StopRazerAppEngine(gAutoStartName)` 构造 `--exit-application --uninstall-app=<app>`，随后进入整引擎及用户数据卸载；引擎需保留且进程存在时，单应用函数只构造 `--uninstall-app=<app>`。两者均通过 `File.Run` 指向 ProgramFilesFolder64 下的 `Razer\RazerAppEngine\RazerAppEngine.exe`，使用引擎工作目录、`SW_MINIMIZE` 和 wait=true。Synapse 名称为 `synapse`，Chroma 为 `chroma-app`；组合退出参数进入宿主的退出优先分支，不能与单应用卸载消息分支混同。
+
+单应用函数只记录 `File.Run` 返回值，没有检查它证明卸载完成。等待 10 秒后，日志存在时最多读取五次，以应用名子串查找 `appLaunchedList.log`；日志缺失或读取错误才设置停止引擎标记，五次仍含名称不会设置该标记。仅停止标记为真时删除用户数据中的产品文件夹，备份 Apps 文件夹另行进入删除函数；`Folder.DeleteTree` 结果未在此函数确认。停止函数还有等待、进程重枚举和仍存活时的终止调用，这些调用与设备／服务已释放分别判断。
+
+`On Post Uninstall → OnPostUninstall` 确实调用 `UpdateAutoStartRegistryRemove`。它读取当前用户 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` 的 `RazerAppEngine`，按空格分割命令，再处理 `--url-params=apps=` 与 `--launch-force-hidden=` 的逗号名单，忽略大小写移除当前应用。apps 清空时删除整个值，否则重组写回；遍历使用 `pairs`，不能额外承诺列表顺序、完整引号语法或其他用户覆盖。写入类型的原文为 `REG_SW`，所核 Constant Definitions／Global Functions 未定义该名字，原生解析仍未闭合，不能自行改称 `REG_SZ` 或推断写入成功。此处没有写后读回；整引擎删除另有显式 HKCU Run 删除。
+
+`RestartRazerAppEngine` 虽有定义，但 `OnPostUninstall` 中唯一同名调用在长注释内，不能按函数存在或 relaunch 标记认作真实重启。实际 `On Shutdown` 卸载事件只走 `OnShutdownUninstall → My_HandleSystemReboot`；需要系统重启时，静默模式返回 3010，交互模式按询问结果处理。安装完成的 `OnShutdown` 则另按 `gLaunchApp` 调用启动 helper，不能套到卸载结束。
+
+当前包内脚本和挂载已经确认；安装时生成的 `Uninstall.exe／uninstall.xml`、原生 API 传递实现、真实进程／注册表／文件效果、错误与取消恢复、Rust 独立实现及实际 DLL 对照仍未验证。脚本中的调用存在不能替代成功应答、恢复或清理验收。
+
+### 宿主最终退出清理消费者 Mn
+
+当前宿主 `electron/main.js` 的 Mn owner 位于 UTF-8 半开区间 `[23367,24455)`。同文件的 Un owner `[37592,38836)` 在指定应用时只关该窗口；全应用分支先倒序请求关窗，10 秒后重试，再过 5 秒调用 Mn，随即另排 5 秒后的 `app.exit()`，不等待 Mn 完成。`window-all-closed` 的 async handler 也调用并等待 Mn，带独立 then／catch 消费者。强制退出计时不能证明清理已完成；本次未执行窗口或宿主。
+
+收据的 `final_uninstall_cleanup` 保留 41 个角色、39 份按内容与范围去重的完整 AST owner、36 项断言、16 条调用边和 28 个证据文件。三个平台选择器虽共享同字节内容，仍各自保留来源路径；相对导入按所属模块解析，不能合并模块身份。Mn 自身没有在途重入门禁；两条调用路径可能各自进入清理，`isQuit` 赋值不能作为单次释放屏障。
+
+Mn 先设置 `b.isQuit=true`，移除 `winMapChanged` 的托盘重建 listener，调用 `Fn()`。Fn 是 `ln(zn,250)` 返回的 cancel 解构绑定，所用 factory 为 `createDebouncedSystrayRebuild`，用于清除尚未触发的托盘重建 timer。随后等待 `Je.callDLLAsync` 的 `APIToCallWhenExit` 批次；存在 preload owner 时先同步调用 `callApiWhenExitDevice`、`callApiWhenShutdown`，仅 `callApiWhenExit` 带 await，再调用 `ae()` 所绑定的 `setExitEvent`，不等待其底层结果。
+
+其后是 SysUtils `Terminate`、USB `An.stop()`、BLE `Qo()`、mapping engine `mappingEngineShutdown`、Simple Service `simpleServiceShutdown`、await logger `N()`，最后 `app.quit()` 再销毁 tray。三个原生关闭调用各包在独立的 3 秒 timeout／try-catch 中，捕获只日志后继续；timeout 的 Promise.race 不取消底层操作、不清除其 timer，也不能截断参数表达式先发生的同步阻塞。Mn 没有包住整链的 catch／finally，未被内部处理的异常可能中断后续。preload 的三套循环各自逐项 catch 日志，Device／Shutdown 的结果被丢弃，Exit 逐项 await；局部 catch 不能当作成功确认。该顺序和 JS 包装器不能证明原生回调、线程／句柄、外部服务或设备均已释放。Rust 独立实现、纯模拟、官方实际功能对照及恢复仍未验证。
+
+### USB 与 BLE 的原生停止边界
+
+同一收据的 `native_monitor_cleanup` 将八个 JS owner 接到两份当前 Windows `detection.node`：USB 九个、BLE 七个完整原生函数，共 15 项断言、八条调用边和 35 个证据文件。源码路径、实际导出注册、完整函数字节及依赖集合分别核对；本专项没有加载节点模块或执行官方 DLL。
+
+USB 沿 `An.stop → rz-usb-detect.stopMonitoring → 0x48f0 → 0x8c20`。JS 先清 started 再同步转发；原生在 active 和线程句柄等条件满足时清 active、停止两个 uv signal、SetEvent、投递 WM_CLOSE，并调用 `WaitForSingleObject(INFINITE)`，随后请求 CloseHandle 与卸载 setupapi。等待返回和 close／unload 的返回值没有成为业务确认。窗口线程正常出口另请求注销设备通知、销毁窗口与窗口类，早期失败不能直接套用这段清理。JS 无 await 仍可能同步阻塞 Mn，外层定时器也不能截断该同步调用。
+
+BLE 经 `Qo → endpoint-detect.stop → node-rz-ble-endpoint-detection.stopMonitoring → 0x3aa0`，所选 stop 只清 active、停止两个 uv signal 并 SetEvent，没有对应的窗口线程 join、WM_CLOSE 或线程句柄关闭；缓存 peripheral 的 disconnect 同样未被等待。JS 丢弃原生返回值，不能推定稳定 bool 或全部停止成功。after-work 的 active 检查仅限制所选回调入口，不能证明在途回调已静止。两条链的 event／uv handle、失败恢复和真实释放结果仍未验证。
+
+### 自启专项的验证边界
+
+[自启完整静态审计](../../../.analysis/results/frontend/synapse-settings-current/local-startup.json)的基础切片保留 167 个完整前端／宿主 AST 所有者、53 个词法 CSS 块、十语言四词条、四份字体及 16 个原生函数，共 1,224 条指令、13 条汇编断言。合并上述注册、卸载、原生脚本、最终 JS 清理、USB／BLE 原生及双入口动态灯光切片后，共复核 12,874 个去重 artifact，未发现核对期间字节变化。最终 JS 清理的 21 个篡改反例、USB／BLE 切片的十个反例与动态灯光的 31 个反例全部被拒绝；这些是静态核对器的测试。原完整捕获的 validate 失败仍保留，这些专项通过不表示整个页面依赖闭包已完成。Windows ABI 为 `applicationAutoStart:int()`、`getApplicationAutoStartApps:pointer()`、`setApplicationAutoStart:void(bool,string)` 和 `FreeMalloc:void(pointer)`；当前宿主仅 win32 选择此模块，保留的 mac 模块没有声明前三项入口，不能将 Windows 行为泛化到所有平台。
+
+| 必测分支 | 核对目标 |
+| --- | --- |
+| 初读、缺 App 条目、undefined、非 string | 区分局部初值、已保存字段、原生结果，核对迟到 GET 不覆盖本项目的新编辑 |
+| 自启聚合与最小化 | 严格 true、`name2||name`、列表顺序、独立隐藏名单、无自启项及非生产 host 参数 |
+| 注册、已有条目与卸载 | 真实 dashboard gate、新条目默认、旧启动字段保留但元数据更新、非 boolean 旧值、Chroma 等待、重建与卸载失败分别测试 |
+| 原生卸载事件与 Run | 单应用／组合退出参数、依赖清空分支、五次日志观察、Run 两名单修改、`REG_SW` 解析、禁用 relaunch 与静默 3010；实际 API 失败、原值恢复和生成卸载器另验 |
+| 宿主退出与监控停止 | 分别核两条 Mn 调用、三个 race、USB 条件性无限等待及其返回、BLE 无 join、在途回调、event／uv 资源、重复停止和失败恢复；timer 与发停止信号均不作为释放确认 |
+| 连续点击、卸载与 flush | Synapse 每次点击独立 2 秒 timer；Chroma 两点击仅构造 debouncer，不调度 timer；两者 setter 均已立即执行；分别核对读取／timer 清理、目标窗口和 flush 无确认 |
+| 注册表查询与参数提取 | 值存在但类型／内容不同、缺 marker、空 token、大小写、ASCII 空格、长度／NUL 与第二次查询失败 |
+| 路径、写入、删除和释放 | 当前进程路径、首个 `app-` 子串、UTF-8／容量失败、API 失败、CString 转换失败及对应资源归属 |
+| 原版控件与本机效果 | CSS 禁用和 input 行为、十语言词条、关闭重开；OS 启动项和实际启动分别验收 |
+
+纯／模拟测试应先覆盖上述有依据的正常与失败分支，实际 DLL 对照须比较相同输入和受控原值，写入／删除后恢复并确认。本专项没有执行 DLL、注册表读写、厂商 JavaScript、实际启动或窗口验收，也没有新增 Rust 实现；收据中的静态断言不等于这些功能测试已通过。
 
 ## 通知
 
@@ -279,7 +373,9 @@ Chroma 的 mount 只以 `isShowTutorialChromaApp`、`isShowChromaStudioTutorial`
 
 迁移按钮先查询窗口服务客户列表。Synapse 查找 `syn3-profile-migration`，Chroma 查找 `chroma-app-syn3-profile-migration`；已存在则 activate，不存在则打开 `/profile-migration/`，Chroma 附带 `?app=chroma-app`，窗口参数含 `policy=3,tab_visible=1,shouldFocus=1`。按钮本身不读取和转换配置文件。
 
-动态灯光块只在 Windows build ≥22631，或 build 22621 且 UBR ≥2506 时显示。它在本机设置中切换 Chroma／Windows 控制权，并观察 `wdl-devices.isSwitching` 显示加载与禁用状态；系统设置链接调用 `msSettings("personalization-lighting")`。控制权的生产者、设备列表及恢复链见[动态灯光](../shared/dynamic-lighting.md)。
+动态灯光块只在 Windows build ≥22631，或 build 22621 且 UBR ≥2506 时显示。两页都立即更新本地 `isDynamicLighting` 意图，观察 `wdl-devices.isSwitching` 显示加载与禁用，系统设置链接调用 `msSettings("personalization-lighting")`。Synapse 在 await OS 版本后初读意图，Chroma 的本地初读与 OS async 并行；均没有预读 switching，也没有将 OS getter 当作当前模式。
+
+[双入口静态切片](../../../.analysis/results/frontend/synapse-settings-current/local-startup.json)的 `dynamic_lighting_control` 追到 LE 的真实 storage 消费者、Configure／JsonApi 宿主 IPC 和 WindowStorage 事件。意图走 localStorage/storage；进度走 WindowStorage/IPC 原始对象，set 返回旧值。Configure 结果不回到控制权切换调用者，枚举失败可被 wrapper 变为空数组，update 的 finally 清 switching 也不证明成功。已发现的两条本机 WebSocket 不承载这些边。订阅按 URL 去重／移除；wrapper 丢弃 disposer，但 preload 的 pagehide 会清理 windowStorageEvent，不能概括为页面销毁后必然泄漏。初始化失败不清 isInit、onExit 拒绝会阻止后续 reset／移除的边界，以及两个现有 Rust 仅保存本地选择的差异，见[动态灯光的实际通道](../shared/dynamic-lighting.md#两个设置入口到后台的真实通道)。控制权、设备集合、恢复与清理仍须独立实现和实际对照。
 
 ## 语言下拉框与翻译
 
@@ -314,9 +410,11 @@ Synapse 从 dashboard manifest 获取 version 和 buildVersion，失败分支读
 | Synapse 通知开关 | checkbox 修改 `AppPreferences.notifications`，`SettingsEvent::Changed` 经 shell `save_auxiliary_preferences` 写 workspace 文件 | 当前普通 profile 通知的 [实际消费者](../../../crates/razer-shell/src/shell/windows/profile_switch_notification.rs) 从 `razer_storage::source_local` 读 `displayNotifications`；本次未见设置点击将该 workspace 字段同步至此键的桥接。两个持久化成功不能相互替代，原生 Toast 的独立链也未由该 checkbox 接通 |
 | Synapse 教程重置 | `ResetTutorials` 经 shell 更新设备 intro、Gamer Room、Dashboard 教程并保存；按钮本地 state 控制 disabled | 与上文官方固定键集合、产品文档扫描／删除字段及所有产品消费者尚未逐项对应；只重置这几个 entity 不代表完整教程恢复链 |
 | Synapse 动态照明 | [settings_lighting](../../../crates/razer-settings/src/preferences/settings_lighting.rs) 呈现二选一、帮助、switching 和系统设置入口；点击发出 `DynamicLightingRequested` | 当前 shell 仅记录“本地选择”，没有提交控制权服务；初值来自 `dynamic_lighting_draft.unwrap_or(false)`，render 固定传 `Some`，尚未使用控件已有的未知状态禁用路径。不得将它显示为已经观测或确认的设备控制权 |
-| Chroma 设置 | [ChromaSettings](../../../crates/razer-app-pages/src/chroma/chroma_settings.rs) 保留独立 page/history/focus、语言、说明、迁移、关于和弹窗；[state owner](../../../crates/razer-state/src/chroma_settings.rs) 串行读写，拒绝旧 generation／revision，页面观察该 owner | AutoStart、StartMinimized、Notifications、DynamicLighting 当前通过 `Change` 写 [Chroma 本地存储](../../../crates/razer-storage/src/chroma_settings.rs)；此链没有 Chroma OS 自启 setter 或灯光控制权服务写入。现有 retry／discard／未保存阻止关闭是 Rust 附加行为，尚无上文官方设置页通用确认／失败语义依据；不能将本地持久化等同功能闭合 |
+| Chroma 设置 | [ChromaSettings](../../../crates/razer-app-pages/src/chroma/chroma_settings.rs) 保留独立 page/history/focus、语言、说明、迁移、关于和弹窗；[state owner](../../../crates/razer-state/src/chroma_settings.rs) 串行读写，拒绝旧 generation／revision，页面观察该 owner | AutoStart、StartMinimized、Notifications、DynamicLighting 当前通过 `Change` 立即写 [Chroma 本地存储](../../../crates/razer-storage/src/chroma_settings.rs)；没有 Chroma OS 初读／自启 setter 或灯光控制权服务写入。现有 retry／discard／未保存阻止关标签与官方 `Zo.unload` 不同，retry／discard 只作用本地配置；不同窗口关闭链分别核验，不能将本地持久化等同功能闭合 |
 | 语言、关于与 Release Notes | Synapse／Chroma Select 的确认进入共享语言 owner；SelectState 与订阅由各页面保留；版本／词表由本地目录读取，Release Notes 使用本地存储入口 | 独立 About 的托盘 manifest producer、两个产品的 Dashboard producer 与本地目录版本须分别对应；共享 locale 传播、原 dropdown 的失焦／外部关闭／无效选择以及 Chroma DualSense 条件仍需核对；本地文件／弹窗打开不覆盖原频道 loading 和关闭链 |
 | 迁移、原生通知与清理 | 迁移进入独立 owning 页面；原生通知的实际 source→worker→addon→OS→URI 广播链见前文 | 迁移全流程、通知最终业务消费者、线程／事件 token 与窗口取消清理分别验收。没有实际 DLL 或真实设备对照时继续标未验证，不因入口存在、两边无设备或文档补全而升级 |
+
+Rust 自启适配使用本程序的 `razer_ui` Run 值，不能覆盖官方 `RazerAppEngine`。当前 getter 对本程序命令提取 token 后匹配 synapse，接近官方 Apps getter 与 JS 消费者组合，并非 `applicationAutoStart` 的值存在判断。Windows 读取使用动态缓冲并校验 REG_SZ／UTF-16，写入使用 `RegCreateKeyExW` 并返回 OS 错误；当前 EXE 路径不做官方 `app-` 子串裁剪。这些是实际可定位的本程序适配边界，需在对照收据逐项解释，不能直接宣称与官方原生导出逐输入等价。退出排空已接受写入也须与真实关闭／重启结果分别验证。
 
 现有 `preferences/settings_tests.rs` 含自启观察与命令、控件尺寸、语言及持久化相关 UI 测试，Chroma 的状态／存储模块另有纯测试。本轮只读取用例与代码，没有执行窗口测试。后续必须独立覆盖读取值与本地值不同、未观测／失败、点击期间延迟读取、文件失败、取消、关闭后重开、语言与焦点、单个控件实际消费者和 OS／服务结果；相关设备／原生功能仍须与当前官方实际 DLL 结果逐项对照。
 

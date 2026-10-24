@@ -8,6 +8,8 @@
 
 用户切换后，控件立即改变自身状态并写 `isDynamicLighting`。这个完整控件没有 Apply，也没有等设备 ACK 后才更新或失败后回滚的分支。旁边的系统设置入口调用本机 `msSettings("personalization-lighting")`。
 
+两个设置入口的初读顺序不同：Synapse 在 await OS 版本之后才读取 `isDynamicLighting`；Chroma 的本地读取在 OS 查询的异步函数之外，二者并行发生。两个控件均不预读 `wdl-devices`，只消费后续进度事件。这里读取的是本地控制意图，没有调用 OS 的动态照明启用 getter；初始 false、已保存意图、switching 和真实设备控制权须分别解释。
+
 原生 LampArray 初始化有另一条 OS 门槛：Windows major 大于 10，或 major 为 10 且 minor 大于 0，或 major/minor 为 10/0 且 build 大于 22621，或 build 为 22621 且 revision 至少 2506。它和设置控件的显示条件不完全一致。
 
 ## 开关如何影响后台
@@ -17,6 +19,41 @@
 切向 Windows 时，先从 Chroma 集合移除匹配的设备，再经每设备 mutex、窗口共享存储和本机缓存加入枚举到的 Razer LampArray 设备。
 
 切回 Chroma 时，先移除 Razer LampArray 的 Chroma 项、关闭并移除 LampArray 设备，再枚举本机 USB 并准备匹配 container。原版对设备准备有一秒间隔；存在 readiness 任务时，还会等待 readiness 和两秒稳定间隔。这些延迟是该完整函数的实际顺序。
+
+### 两个设置入口到后台的真实通道
+
+[双设置页静态切片](../../../.analysis/results/frontend/synapse-settings-current/local-startup.json)的 `dynamic_lighting_control` 分别连接两个实际挂载根、词法绑定、完整 AST 所有者、宿主来源与当前 Rust 消费者。它补充下述传输与释放边界；已有原生协议、RPC 和设备语义继续引用本页原有专项，不将前端接线扩称为整个 DLL 已逆向完成。
+
+该切片保留 166 个角色对应的 160 个不同完整 JS AST 所有者、38 处词法绑定、16 项导出、49 条静态断言、36 条调用／清理边及 234 个证据文件。Rust 对照另核六份原件、九个完整 AST 所有者，并扫描 1,689 份 Rust 文件的完整字节及可解析 AST；三个文件存在解析器语法限制，仍用完整字节词法匹配复核引用集合。独立复核拒绝 31 个篡改反例；这些计数只描述所选证据与核对器，不代表功能行为测试通过。
+
+| 数据／动作 | 当前实际调用链与消费结果 |
+| --- | --- |
+| 控制意图 | 两页的 module2478 写 localStorage `isDynamicLighting`；其他同源文档的 browser storage 事件进入 LE 的 `window.onstorage`，再由 mutex 保护的分发器调用 `onStorageChange_dynamicLighting`。浏览器原生 storage 事件不通知原发送文档 |
+| driver skip | LE → module2578 → module2198 → module4407.Vj → preload `doLightingDriverAction` → `lightingDriver` IPC → 宿主 Configure；payload 为 `mode.set/skip_wdl_devices`。driver setter 内部 await，但不返回 Configure 结果；LE 不 await 这个 setter，不能从后续进度推断 Configure 完成 |
+| LampArray 查询／关闭 | module8905 → module2578 → module2198 → module4407.oE → preload `doDLLMainActionAsync` → `ffiPreloadAsync` → 宿主 JsonApi。JSON 参数在原生边界序列化；枚举 wrapper 对失败／缺失／异常结果返回空数组，关闭 wrapper 丢弃返回结果；空列表与 await 完成均不能单独证明设备不存在或已关闭 |
+| 切换进度 | LampArray handler → module2010 → `electronAction` → 宿主 WindowStorage，以原始对象保存 `wdl-devices` 的 isSwitching／devices，并发送 `windowStorageEvent`，由两页 wrapper 转为 `windowstorageevent`。set 返回旧值，事件里的 newValue 已是对象；它不是 JSON 文本或设备 ACK |
+
+已找到的本机 WebSocket 是 `rzchromabroadcastmanager` 与 `rzapichromasdk` 的独立链。上述意图／进度及 Configure／JsonApi 的实际边均没有走它们，不能把“存在本机 socket”当作这些动作已接通。存储分发先 parse 意图、await update，再 emit mode；update 内部 catch 日志并在 finally 清 switching，因此 mode 事件与 switching=false 仍可能发生于失败之后，不能作为控制权已转移的确认。
+
+宿主 WindowStorage 按 sender URL 登记并去重订阅，注销时移除该 URL，没有同 URL 引用计数；同 URL 的一个页面注销会影响其他同 URL 页面。广播另排除发送者、remote、disposed 和未订阅的接收者。clear 只删所属 URL 的值，不广播也不移除订阅列表；get 返回 JSON 文本并省略 falsy 值，不能与 set 的原始对象事件混为一个契约。
+
+两个 WindowStorage wrapper 都丢弃 `apiElectron.response` 返回的实际 disposer；组件卸载移除自己的 storage／emitter 回调，wrapper 的 beforeunload 注销宿主 URL 与 DOM fallback。另一方面，宿主 preload 的 pagehide 确实会 removeAllListeners("windowStorageEvent")，不能据 disposer 丢失断言页面销毁后必然泄漏；同 URL 生命周期、迟到任务和在途事件仍需分别测试。
+
+LampArray handler 同样没有保留 response disposer。所选引擎没有显式调用独立 `RzWDL.registerEvent/unregisterEvent`；后者引用的 preload removeListener 并未暴露，catch 后仍返回 true，因而不能将这个返回值当作回调已注销。Configure 的宿主包装先 JSON.parse 再 FreeString，没有 finally，解析异常进入 null 结果路径；该 owner 也不能证明异常时已释放原指针。
+
+3942 Quick 灯光的 Profile 配置由另一条 `synapse_` storage 消费链进入 LE：`onStorageChange_device → applyRegionQuickEffect/applyCustomQuickEffect`。它与 connectedDevices 的 driver／power／ports 更新分别核对；页面 completed、runtime 和 cache 都不能作为帧提交确认。当前十项 Quick／八编辑器、颜色草稿、Wave 挂载及 manifest 的即时／退出同步语义见[3942 灯光效果](../audio/playback-and-eq.md#3942-quick-灯光颜色草稿与实际消费者)；该片未执行 native 引擎、帧传输或设备读回。
+
+LE 初始化在工作前设置 isInit，catch 失败后没有复位；terminate 只清 isInit，不恢复 window.onstorage。beforeunload 先 await onExit，再 reset 和移除监听，没有包住后续的 finally；exit 拒绝可阻止后续清理。本切片不证明浏览器真的等待 unload 的异步工作、所有回调排空或重连拒绝旧代次。
+
+| 后续行为测试 | 必须区分的观察与失败 |
+| --- | --- |
+| 初读与同键外部变化 | 两页各自的 OS／本地读取顺序、损坏／非布尔／删除值、组件新编辑和迟到结果；意图不冒充设备读回 |
+| Configure 与控制权 | 未 await 的提交、null／坏 JSON、driver 失败、进度清除与 mode 事件继续；分别比较参数、实际结果和设备集合 |
+| LampArray 枚举与关闭 | 真实空列表、错误映为空、关闭返回被丢弃、prepare／readiness 失败；按设备确认真实状态 |
+| 订阅身份 | 同 URL 双页面与不同 URL、发送者排除、一个页面注销、clear、pagehide、beforeunload 及迟到异步事件 |
+| 初始化、取消与退出 | isInit 已置后失败、onExit 拒绝、重复初始化、回调 disposer、Stop／Shutdown 及真实资源释放；不以 true、finally 或窗口关闭当成功 |
+
+以上是当前原件的静态接线与失败语义。两页的 Rust 目前仍只保存本地选择；真实控制权提交、设备读回、纯／模拟行为测试、官方实际 DLL／设备对照及窗口验收分别保持未验证。
 
 ## 驱动、服务与应答分别表示什么
 
@@ -129,6 +166,34 @@ IoT V2 的当前宿主直接执行 `IOT_RunCmdFw25(host,"SetChromaFrameV2",JSON.
 LightingDriver 导出 `Shutdown 0x2550` 仅清全局 callback 指针，再跳 `TimerResWatcher::Stop 0x30610`：加锁、置 stop byte+80、解锁、notify，线程 ID 非零时拒绝 self-join，正常 join 后清 handle／ID。它**没有调用 LightingDriver 析构**。独立析构 `0x2e0e0` 才释放 FFIWriter、函数对象、回调数组、writer map、base-class set、protocol／metadata map、vector 和 shared state；不能把这条独立链写成 Shutdown 已执行。宿主 shutdown `[1194,1261)` 同样只调用 Shutdown 并清 libFFI，没有清 callback／deviceMap，更没有等待宿主 HID Promise。timer worker 已 join 与整套发送系统已释放是两项结果。
 
 本次逐字节核验 LightingDriver 60 个函数／60 chunks，以及 HID 24 个函数／24 chunks，并逐条核验 6,952／3,152 条指令；均与对应 PE 相符。选定函数完整并不证明所有间接目标或所有产品恢复已闭合。对照必须覆盖共享计数、rowDelay、flush false、缺 map／队满丢帧、传输部分完成、停止后排队工作、在途关闭、Promise finalizer 与 worker join；本次未实际执行 DLL 或设备，不能将这些静态契约登记为运行通过。
+
+### 3942 Marci 的引擎帧、返回值与退出恢复
+
+[帧与退出附片](../../../.analysis/results/host-current/local-audit.json#lighting_frame_lifecycle)将当前 3942 manifest、引擎回调、LightingDriver、宿主 HID 和退出消费者连接，保留 48 个完整源码 owner、76 个原生函数及 350 个证据文件。它逐项核对保留的 2026-10-15 获取原件，本片没有再次访问部署服务器；禁用 collector 后的独立复核通过，43 个证据篡改反例全部拒绝。该结果验证所选静态证据，不代表 Rust、官方 DLL 或设备行为测试已经执行。
+
+引擎的 `0x4980 → 0x32cb0 → 0x405b0 → 0x41ad0 → 0x410b0 → 0x40060 → 0x407a0 → 0x3f4c0 → 0x323d0 → 0x32330` 产生 eventId=2 的逐行 RGB 帧。mode=2 下首次到期为 10ms、周期为 40ms；待推送 map 按 device_handle 替换为最新帧，timer 取出并清空该 map。这不是每一渲染帧都送达的 FIFO。driver hook 经 `0x14f0 → 0x90f0 → 0x7e220` 解析已加载模块的 SetNodeFFIEvent，保留原 Node callback；pause、driver enable 和前端过滤／锁分别控制转发。前端以版本字符串 truthy 选择 driver，忽略 HookLightingCallback 的结果；这些条件均不证明设备已接收。
+
+| 边界 | 当前实际行为与对照要求 |
+| --- | --- |
+| Marci 灯帧与控制报告 | 实际矩阵为 1×176。灯帧走 interface 2、usagePage `0xff14`／usage 1 的 781 字节 OutputReport，头为 `17 00 84 00 01 00 57`；普通控制走 reportID 16、usagePage 12／usage 1 的 91 字节 FeatureReport。两条传输不能互换 |
+| native 与 JS 字节 | native 整帧分支只确定头与 RGB，1×176 时确定前 535 字节，后 246 字节未整体初始化；JS `Uint8Array(781)` 则将尾部清零。fallback 另保留日志栈区首字节 `0x5b`。实际差分必须保留原始报告，不得按固定 padding 清零或忽略差异 |
+| driver／宿主返回 | `0x7ec90` 组 JSON 后调用 void callback 并返回 true；宿主 onWriteCallback 不 return／await USB Promise。`writeAsync` 对缺 handle／输入及捕获异常可返回 undefined，而前端只要 await 未抛异常就设 STATUS_SUCCESS；该状态不等于传输成功 |
+| OutputReport 完成 | `hid_write 0x175e0` 的 result 初始为 -1，只有 ERROR_IO_PENDING 后等待及 GetOverlappedResult 成功才赋完成字节数；即时 WriteFile 成功仍留下 -1。须将该原件分支与 pending 成功分别对照，不能擅自归一化。完成字节数也不是设备 ACK／读回 |
+| 控制确认 | 91 字节发送结果、transaction／class／id、status 与 busy／timeout 重试另由控制链检查；上层 common-effect wrapper 捕获日志并丢弃结果。Marci CustomFrame 的 set-effect 分支还会在不发送控制命令时构造源码级成功，不能据此认作硬件确认 |
+
+退出链先置 exiting、关闭 SDK 状态、停止宿主帧、terminate 引擎，随后 await 外部停止 helper、清引擎全局，再进行 direct／registered 恢复并清设备表、发布退出标志。Marci 不在十项 host-default 注册名单内，实际进入 direct restore，写 normal mode 0 及适用的退出效果；当前 manifest 的 syncExit=true、useUser=false、effect4／direction=`"up"` 是退出目标，不能解释为原值快照。停止宿主帧只是 gate，LightingDriver Shutdown 只停止其 timer；两者都没有建立跨引擎、回调、HID worker 与在途写入的完成屏障。
+
+外部停止 helper 的 JS owner 已确定：`6191.$g → 2449.simpleLaunchRazerAppNoWait`，没有检查或返回宿主结果。宿主回调声明为 `(void,[bool,string,int])`，实际 JS 只消费前两个参数；失败对象不会阻止后续恢复，bridge Promise 拒绝则可中止恢复，回调始终不到达可使等待一直 pending。helper 原件、其内部退出和 native simple-service 的全部分支不由本片证明，不能将函数名中的 NoWait 或一次回调当作子进程退出／恢复屏障。
+
+另沿当前宿主 4.0.827 包核对实际 unversioned `simple_service.dll` 1.2.2.10；[官方获取收据](../../../.analysis/inputs/host-current/acquisition.json)的静态提取原件与 installed alias 字节相同，[完整捕获](../../../.analysis/results/native/f8e3886c1d83e37accebd40d4b72d5f26c1d3b5d09a6b72707a27f089c196f2b/capture.json)中的 53 个续追函数、53 chunks、22,266 原始字节及 5,115 条指令均重新与 PE 比较。该续追独立于冻结的帧附片，不改写其未验证范围。[NoWait 导出](../../../.analysis/results/native/f8e3886c1d83e37accebd40d4b72d5f26c1d3b5d09a6b72707a27f089c196f2b/functions/14d30.json)把等待参数置 0，经实际表槽 `+0x80 → 0x3f90` 排入启动任务；[完成回调](../../../.analysis/results/native/f8e3886c1d83e37accebd40d4b72d5f26c1d3b5d09a6b72707a27f089c196f2b/functions/14b10.json)仅向 FFI 传 `(bool,reason)`，exitCode 只用于日志，并受全局初始化 bit0 gate 控制。声明的第三参数不是已经观测到的进程退出码，gate 关闭时也不能推定回调必达。
+
+工作目录须区分真实分支：[普通创建路径的目录 owner](../../../.analysis/results/native/f8e3886c1d83e37accebd40d4b72d5f26c1d3b5d09a6b72707a27f089c196f2b/functions/7c440.json)来自 GetTempPathW，获取失败时创建参数为 NULL；[ShellExecuteExW 提升回退](../../../.analysis/results/native/f8e3886c1d83e37accebd40d4b72d5f26c1d3b5d09a6b72707a27f089c196f2b/functions/79e60.json)的 lpDirectory 为 NULL；优先的 [COM 本地提升服务](../../../.analysis/results/native/f8e3886c1d83e37accebd40d4b72d5f26c1d3b5d09a6b72707a27f089c196f2b/functions/2e89a.json)调用表内偏移 80 字节（`0x50`）的槽，当前官方服务端的内部创建和工作目录仍未闭。关闭同样有可替换的 HandleVerifier；默认链 `0xe1d60 → 0xe1ab0 → CloseHandle` 沿正常返回给 1，没有把原 BOOL 交回调用方。默认关闭器、启动结果或 COM HRESULT 均不能代替 helper 已退出及灯光已恢复的确认。
+
+该 COM 槽已由[客户端与类型库证据](../../../.analysis/results/host-current/installation-elevation-client.json)明确为 `IElevator::LaunchProcessNoWait(BSTR filePath,BSTR params,UI4 cbId)`，没有退出码输出参数。当前客户端的方法返回即尝试 Unadvise、释放 176 字节栈上临时 sink；其释放没有在途回调屏障，不能承诺未来的退出通知。完整 ABI、事件消费者及保留服务副本的目录／等待分支见[安装提升链](../host/firmware-and-installation.md#提升-com-的客户端类型库与事件释放)。该服务副本是本机保留的 1.1.0.8，尚无当前官方部署字节绑定；不能将其内部行为升级为当前 helper 的退出证明。
+
+helper 的获取缺项也已与相关包分开：[当前 Chroma manifest](../../../.analysis/inputs/official-native-current/manifests/27f1518bf49220045840c8688b1ca83f47eb38bb8591868bed085a33782bdb68/manifest.json)确实声明 InterHaptics v1.0.0.49，但其[完整静态提取收据](../../../.analysis/results/native-packages/33954697ea3c99d8a7e1ffd99255834c29a01e4d0712b9e8fbc83f5db346d83f/inspection.json)及[完整文件列表](../../../.analysis/results/native-packages/33954697ea3c99d8a7e1ffd99255834c29a01e4d0712b9e8fbc83f5db346d83f/listing.stdout.txt)没有 SynesthesiaStop.exe。原包、11 个提取文件与四份输出共 16 个身份重核一致；这只能证明该包未提供所找成员，不能证明所有官方载荷都没有 helper。所缺的是包含该文件的当前官方载荷、版本、获取映射和依赖，不能按 InterHaptics 名称或 HapticService 的停止代码替代它的内部证据。
+
+当前 Rust 的 [NewChroma writer](../../../crates/razer-device/src/lighting/lighting_driver.rs)只接收 91 字节报告，[controller owner](../../../crates/razer-service/src/runtime/controller_lighting_owner.rs)验证 PID4115，独立 [renderer](../../../crates/razer-device/src/lighting/renderer/engine.rs)输出软件帧；本次未找到把 3942 Marci 781 字节 OutputReport 接入生产的消费者。这些现有能力不能作为该链已替代的依据。后续须分别测试 map 最新帧替换、hook／pause gate、字节分支、undefined／同步与异步写入、退出拒绝／悬挂、在途 close 和 worker 释放，并将真实 DLL／设备结果单独记录；本片的 Rust 行为测试、实际 DLL 对照、设备写回与窗口验收均未执行。
 
 ### HID 中先前失败函数的真实职责
 
