@@ -1820,9 +1820,9 @@ def verify_native_capture(result, resource):
 
 
 def capture_corpus(args):
-    workers = getattr(args, "workers", 1)
-    if type(workers) is not int or not 1 <= workers <= 4:
-        raise ValueError("Native capture workers must be between one and four")
+    workers = getattr(args, "workers", 4)
+    if type(workers) is not int or not 2 <= workers <= 4:
+        raise ValueError("Native capture workers must be between two and four")
     receipt_path = ROOT / (".analysis/results/corpus.json" if args.source == "retained"
                            else ".analysis/inputs/official-native-current/acquisition.json")
     acquisition_bytes = receipt_path.read_bytes()
@@ -1913,14 +1913,13 @@ def capture_corpus(args):
         save(output, queue)
         print(json.dumps({"module_done": len(queue["modules"]), "module_total": len(modules), **row}), flush=True)
 
-    if workers == 1:
-        for identity, resource in ordered_modules:
-            publish(capture_module(identity, resource))
-    else:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
-            futures = [executor.submit(capture_module, identity, resource) for identity, resource in ordered_modules]
-            for future in concurrent.futures.as_completed(futures):
-                publish(future.result())
+    # Native analysis is always a bounded multi-threaded batch.  A single
+    # worker would silently turn the corpus command into a serial reverse
+    # engineering run and violate the batch scheduling contract.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = [executor.submit(capture_module, identity, resource) for identity, resource in ordered_modules]
+        for future in concurrent.futures.as_completed(futures):
+            publish(future.result())
     queue["finished_at_utc"] = stamp()
     changed_originals = []
     for name, expected in original_snapshots.items():
@@ -2797,6 +2796,9 @@ def acquire_host_apps(args):
 
 def analyze_frontend(args, *, refresh_ledger=True):
     import frontend
+    workers = getattr(args, "workers", 2)
+    if type(workers) is not int or not 2 <= workers <= 8:
+        raise ValueError("Frontend analysis workers must be between two and eight")
     if getattr(args, "recover_missing", False) or getattr(args, "all_acquired", False):
         return frontend.recover_frontend(args)
     refresh_ledger = refresh_ledger and not getattr(args, "no_refresh_gaps", False)
@@ -2853,19 +2855,39 @@ def analyze_frontend(args, *, refresh_ledger=True):
     command("unpack", unpack_args, cwd=unpack_cwd)
     if unpacked.exists():
         command("validate", [str(tool), "debug", "validate", str(unpacked), "--input", str(input_dir / "raw"), "--json"])
+    map_inputs = [r for r in records if r["url"].endswith(".map")]
     maps = []
-    for r in records:
-        if not r["url"].endswith(".map"):
-            continue
+
+    def extract_map(r):
         p = ROOT / r["path"]
         data = json.loads(p.read_bytes())
         contents = data.get("sourcesContent", []) or []
-        row = {"input": r["path"], "source_count": len(data.get("sources",[])),
-               "embedded_sources": sum(s is not None for s in contents), "indexed_sections": len(data.get("sections",[]))}
-        maps.append(row)
-        if any(s is not None for s in contents):
-            identifier = hashlib.sha256(r["url"].encode()).hexdigest()[:24]
-            command("map-"+identifier, [str(tool), "extract", str(p), "-o", str(output / "original-sources" / identifier)])
+        map_row = {"input": r["path"], "source_count": len(data.get("sources", [])),
+                   "embedded_sources": sum(s is not None for s in contents),
+                   "indexed_sections": len(data.get("sections", []))}
+        if not any(s is not None for s in contents):
+            return map_row, None
+        identifier = hashlib.sha256(r["url"].encode()).hexdigest()[:24]
+        label = "map-" + identifier
+        stdout = output / (label + ".stdout.txt")
+        stderr = output / (label + ".stderr.txt")
+        argv = [str(tool), "extract", str(p), "-o", str(output / "original-sources" / identifier)]
+        with stdout.open("wb") as out, stderr.open("wb") as err:
+            completed = subprocess.run(argv, cwd=ROOT, stdout=out, stderr=err, check=False)
+        command_row = {"stage": label,
+                       "argv": [rel(Path(value)) if Path(value).is_absolute() and Path(value).is_relative_to(ROOT) else value
+                                for value in argv],
+                       "cwd": rel(ROOT), "exit_code": completed.returncode,
+                       "stdout": rel(stdout), "stderr": rel(stderr)}
+        return map_row, command_row
+
+    if map_inputs:
+        map_workers = max(2, min(workers, len(map_inputs)))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=map_workers) as pool:
+            for map_row, command_row in pool.map(extract_map, map_inputs):
+                maps.append(map_row)
+                if command_row is not None:
+                    commands.append(command_row)
     generated = [{"path": rel(p), "bytes": p.stat().st_size, "sha256": sha(p)}
                  for p in sorted(output.rglob("*")) if p.is_file() and p.name != "analysis.json"]
     unchanged = all(sha(ROOT / r["path"]) == r["sha256"] for r in records)
@@ -5320,7 +5342,7 @@ def add_commands(parsers):
     corpus.add_argument("--source", choices=["production", "retained"], default="production",
                         help="Capture verified production modules or all retained unique bytes while version acquisition proceeds")
     corpus.add_argument("--include-path", action="append", help="Prioritize matching alias regexes in this batch; every other module remains explicitly pending")
-    corpus.add_argument("--workers", type=int, choices=range(1, 5), default=1,
+    corpus.add_argument("--workers", type=int, choices=range(2, 5), default=4,
                         help="Concurrent independent IDA processes; reuse verified captures and publish receipts from one coordinator")
     corpus.add_argument("--no-refresh-gaps", action="store_true")
     native = parsers.add_parser("capture-native", help="Launch static IDA/Hex-Rays full-function capture")
@@ -5363,7 +5385,7 @@ def add_commands(parsers):
     frontend_scope.add_argument("--all-acquired", action="store_true", help="Recover missing module structure across all retained frontend source sets")
     frontend.add_argument("--refresh", action="store_true", help="Replace generated recovery trees after verifying originals")
     frontend.add_argument("--recover-missing", action="store_true", help="Extend a verified existing capture with modules hidden in top-level sequence expressions")
-    frontend.add_argument("--workers", type=int, default=2, help="Independent static recovery workers for --all-acquired (1 to 8)")
+    frontend.add_argument("--workers", type=int, default=2, help="Independent static recovery workers for --all-acquired (2 to 8)")
     frontend.add_argument("--no-refresh-gaps", action="store_true", help="Leave gap reconciliation to the caller after concurrent analyses finish")
 
 

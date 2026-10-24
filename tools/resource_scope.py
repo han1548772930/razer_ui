@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import concurrent.futures
 from pathlib import Path
 import sys
 
@@ -383,9 +384,10 @@ def inspect_source(raw, *, owner, rust_parser):
             "test_edges": tests}
 
 
-def audit_sources(root, sources=None):
+def audit_sources(root, sources=None, *, workers=4):
     root = Path(root).resolve()
-    rust_parser = parser(root)
+    if type(workers) is not int or not 2 <= workers <= 16:
+        raise ValueError("Resource scope workers must be between two and sixteen")
     if sources is None:
         sources = sorted({*root.glob("app/**/*.rs"), *root.glob("crates/**/*.rs")})
     report = {"owner": OWNER, "inputs": [], "edges": [], "asset_edges": [], "violations": [],
@@ -396,14 +398,19 @@ def audit_sources(root, sources=None):
                               "SVG constructors, import aliases and preceding local bindings are checked; field/function-return indirection requires an explicit audit",
                               "Dynamic path arguments are checked by their SVG receiver; macro SVG constructors are reported as unresolved"],
               "target_execution": False}
-    for path in sources:
+    def inspect_path(path):
         path = Path(path).resolve()
         if not path.is_relative_to(root):
             raise ValueError("Resource scope source is outside the workspace")
         raw = path.read_bytes()
         name = path.relative_to(root).as_posix()
-        report["inputs"].append({"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
-        checked = inspect_source(raw, owner=name, rust_parser=rust_parser)
+        checked = inspect_source(raw, owner=name, rust_parser=parser(root))
+        return ({"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}, checked)
+    ordered = sorted((Path(path) for path in sources), key=lambda path: path.resolve().as_posix())
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        results = list(pool.map(inspect_path, ordered))
+    for identity, checked in results:
+        report["inputs"].append(identity)
         report["edges"].extend(checked["edges"])
         report["asset_edges"].extend(checked["asset_edges"])
         report["violations"].extend(checked["violations"])
@@ -425,8 +432,10 @@ if __name__ == "__main__":
     command.add_argument("root", nargs="?", default=Path(__file__).resolve().parent.parent,
                          type=Path, help="workspace root (defaults to the repository containing tools/)")
     command.add_argument("--json", action="store_true", help="emit the complete machine-readable report")
+    command.add_argument("--workers", type=int, choices=range(2, 17), default=4,
+                         help="bounded worker threads for independent Rust source audits")
     args = command.parse_args()
-    result = audit_sources(args.root)
+    result = audit_sources(args.root, workers=args.workers)
     payload = result if args.json else {"passed": result["passed"], "summary": result["summary"],
                                         "violations": result["violations"]}
     print(json.dumps(payload, ensure_ascii=False, indent=2))

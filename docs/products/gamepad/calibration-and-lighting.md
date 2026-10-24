@@ -73,6 +73,10 @@ start 先查询 restingTriggerValue；有效时使用实读值，缺失或越界
 
 因此六款 V2 页及 2676/2684 摇杆 popup 的 Start/Next/RotateComplete/Stop 仍缺真实采样、计算、写入、失败与释放消费者。已有状态机、错误 Dialog、纯计算器及 V3 扳机链均不能补足该边界。页面离开发 Stop 是正确的调用方结构，但没有后台接收者时不能描述成已停止真实设备会话；低死区进入摇杆校准也受同一缺口约束。
 
+#### 当前 Rust 事件边界的逐点核对
+
+当前调用方的差异可以从实际源文件逐点复核：`source_workspace.rs:3401` 只订阅 `TriggerCalibrationIntent` 并发出 `WorkspaceEvent::TriggerCalibrationRequested`；`workspace.rs:139` 也只有对应的扳机事件枚举，`razer-shell/src/shell.rs:1545` 只处理该事件。`source_workspace.rs:1566` 和 `product_workspace.rs:1981` 暴露的 `calibration_intent` 只是读取页面状态，`observe_calibration`（`source_workspace.rs:1576`、`product_workspace.rs:1991`）只是写入观察结果，均没有把 V2 `CalibrationIntent` 转成后台任务的生产者。全仓检索只找到这些 accessor、观察入口和测试注入，未找到 V2 采样/SET/GET 的生产发布者；因此不能把已有接口名称或页面事件当作设备校准已经接线。
+
 ### V3 扳机：已有请求、采样与 SET/GET 链
 
 `TriggerCalibrationIntent` 经 SourceProductWorkspace → `WorkspaceEvent::TriggerCalibrationRequested` → [Shell controller_calibration](../../../crates/razer-shell/src/shell/gamepad/controller_calibration.rs)，实际执行 Start/Poll/Cancel IPC。[服务 owner](../../../crates/razer-service/src/runtime/controller_calibration.rs) 持有 HID、采样/hold 时间、观察队列与 join，使用 [纯 Rust session](../../../crates/razer-device/src/gamepad/controller_calibration.rs) 和 [协议适配](../../../crates/razer-device/src/gamepad/controller_calibration_protocol.rs)。完成要求匹配 operation/part/node/product，SET 后 GET 同部件并逐项比对 min/max，才能发布 `device_write_verified`；stop 等待旧 worker 清理，连接身份和 generation 拒绝旧结果。这是实际存在的实现，不能将两种 intent 混为全部未接线。

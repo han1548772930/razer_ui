@@ -6,6 +6,7 @@ separate compile command invokes an existing Inno Setup compiler, never Setup.
 from __future__ import annotations
 
 import hashlib
+import concurrent.futures
 import json
 import mmap
 import os
@@ -372,7 +373,9 @@ def hardware_driver_image(path):
     return info
 
 
-def prepare(executable=None, runtime_dlls=(), architecture="x64", version=None, output=None):
+def prepare(executable=None, runtime_dlls=(), architecture="x64", version=None, output=None, *, workers=4):
+    if type(workers) is not int or not 2 <= workers <= 16:
+        raise ValueError("Windows installer workers must be between two and sixteen")
     version = numeric_version(version)
     executable = plain_path(ROOT / (executable or "target/release/razer_ui.exe"))
     if not executable.is_file():
@@ -386,7 +389,10 @@ def prepare(executable=None, runtime_dlls=(), architecture="x64", version=None, 
         if source.name.casefold() in SYSTEM_DLLS or source.name.lower().startswith(("api-ms-win-", "ext-ms-win-")):
             raise ValueError("Do not redistribute Windows system DLLs: " + source.name)
         sources[source.name] = source
-    images = {name: pe_info(source) for name, source in sources.items()}
+    ordered_sources = sorted(sources.items(), key=lambda item: item[0].casefold())
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        inspected = list(pool.map(lambda item: (item[0], pe_info(item[1])), ordered_sources))
+    images = dict(inspected)
     check_closure(images, architecture)
     icon, icon_sources = icon_bytes()
     policy = resource_database.installation_policy(ROOT)
@@ -565,6 +571,8 @@ def add_commands(commands):
     p.add_argument("--architecture", choices=tuple(MACHINES), default="x64")
     p.add_argument("--version", help="Numeric x.y.z; defaults to Cargo package version")
     p.add_argument("--output", help="Fresh staging child of target/installer/windows/")
+    p.add_argument("--workers", type=int, choices=range(2, 17), default=4,
+                   help="bounded worker threads for independent PE inspections")
     p = commands.add_parser("verify-windows-installer", help="Statically verify staged installer inputs and PE imports")
     p.add_argument("--stage", required=True)
     p = commands.add_parser("compile-windows-installer", help="Compile with existing ISCC; never launch Setup")
@@ -576,7 +584,8 @@ def run(args):
     if args.command == "prepare-hardware-driver":
         return prepare_hardware_driver(args.sdk)
     if args.command == "prepare-windows-installer":
-        return prepare(args.exe, args.runtime_dll, args.architecture, args.version, args.output)
+        return prepare(args.exe, args.runtime_dll, args.architecture, args.version, args.output,
+                       workers=args.workers)
     if args.command == "verify-windows-installer":
         return verify(args.stage)
     if args.command == "compile-windows-installer":

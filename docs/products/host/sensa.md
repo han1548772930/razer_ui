@@ -12,6 +12,26 @@
 
 左侧来源卡和右侧设备卡分别持有状态。设备卡按产品身份去重呈现；后台设备管理器则使用 productId-instanceId 区分实际实例。这两种身份用途不能混成一份仅按 PID 寻址的设备连接表。
 
+### 页面挂载、恢复与交互生命周期
+
+当前页面原件为 `1766.f84665e2.chunk.js`，SHA-256 为 `75adfeaa440930f1c1a55bff4afbcd4330236e72da212c4ca5b39d2fe1918da8`，大小 2,194,123 字节。根函数 `Rp`（约 `[965722,966000)`）先从本机存储读取语言，缺失时使用 `en`，再异步加载语言 chunk；它把 `up` 放在 Redux Provider 内，只有运行时窗口未打开时才挂载游戏列表，非 chroma-app 模式才挂载宿主外壳。`up`（约 `[954762,959571)`）默认显示 Dynamic Haptics；只有 `displayMode=chromaApp`、`containerId` 和 `pid` 同时存在时才渲染 `Ep` 嵌入视图，否则渲染 `vu` 导航、`sp` 三步引导、Help、Dynamic Haptics 和 Audio-to-Haptics Profiles。
+
+`up` 的首次 effect 同时启动 `kh()(dispatch)`、已安装游戏的 memory-storage 读取、IndexedDB `currentUserId` 读取、持久 Sensa 配置读取和事件注册；这些异步调用没有互相等待，完成顺序不能当作初始化顺序。`kh` 从 `sensa-devices` 的首个 memory-storage 项解析设备，先用 `Lh` 归一化并按 Razer／第三方分支登记，再同步固件和 power state。持久配置存在时，根组件先写入 `activeTab`、调用 `S` 恢复 profile，再提交 `applicationPresets`；不存在时派发 `bD({saveToLocalStorage:true,isFistLoad:true})` 建立初始 band。`S` 对自定义 band 逐类别派发自定义 action，并为缺失颜色补 green／cyan；预设分支按名称映射 profileID。
+
+事件回调的实际边界是：`sensa-devices` 的 ADD／UPDATE／REMOVE 分别进入设备 reducer，UPDATE 先按 `Ot` 匹配并在 `isPowerOn` 改变时触发状态通知，REMOVE 还会清理该产品的 firmware update 状态；`connectedDevices` 的窗口存储事件只更新 power／standby／setup 字段。`SENSA_AUDIO_HAPTIC_PROFILES` 的 `storage` 回调直接 `JSON.parse`，没有外围 `try/catch`；损坏的事件值会在回调中抛出。`sensa-devices` memory-storage 回调同样直接解析，不能把跨窗口事件视为可靠的成功确认。
+
+`lp` 在挂载时先写入 `{id:0, amplitudeFFT:[0], frequenciesFFT:[0], peakFFT:0}`，再注册 `UPDATE_AUDIO_FFT_DATA_TO_UI`；每个 KeyStorage 值经 JSON 解析后派发 `UPDATE_FREQUENCY_DATA`。卸载时先移除 listener，再异步 unregister，根 effect 的 `d` 也会异步 unregister 同一个 key 并移除 window／memory／storage listener，但 cleanup 不等待这些 Promise。`vu` 的设置标记 listener 使用匿名回调且没有 cleanup，页面反复挂载会留下旧 listener；返回／前进只改变本地历史数组，刷新按钮直接调用 `window.location.reload()`。
+
+Audio-to-Haptics reducer 的 `SET_ACTIVE_TAB` 立即返回新 tab，同时在未捕获异常的异步函数中读取并写回 `audioHapticProfile.activeTab`。`ADD_DEVICE` 和 `REMOVE_DEVICE` 在 `categoryGroup` 中按 `productId + instanceId` 去重或删除。`SET_AUDIO_TO_HAPTICS` 先深复制两类 band，再按 `profileID`、`customizedFrom`、`isReset` 和 `category/index` 改写；拖图使用 `saveToLocalStorage:false`，由 150 ms 的 leading/trailing 调度在拖动停止时 flush，文本输入、删除和预设选择使用 `saveToLocalStorage:true`。保存 action 启动异步 `pe.fu()`／`pe.jK()`，没有把写入失败回送 UI。自定义分支中读取已有 custom band 的调用未 `await pe.fu()`，与根组件的 `await pe.fu()` 形成不同的同步边界；空、损坏或读失败时的实际行为必须单独测试，不能把 reducer 返回的新 band 当作持久化成功。
+
+Profiles 页 `nC` 只在存在至少一个 `isEnabled` 且通过 `yt` 活跃检查的设备时允许编辑；没有可写设备时 `zD`、弹窗和编辑器均走禁用样式。设备同时含 AUDIO 与非 AUDIO 时保留当前 tab，只有单一类别时自动选该类别，空列表默认 AUDIO。预设选择会立即派发 action 并发送埋点；弹窗下拉会连续派发“基预设”与“自定义”两次保存，Customize／Reset 也直接更新 reducer 和本机配置，关闭弹窗不撤销先前写入。`kT` 拖动只改本地草稿并由调度器提交，`AT` 的 lower／upper／gain 输入会先验证边界再派发保存 action；这些动作没有设备读回。
+
+Dynamic Haptics 的 `cS` 从 `SENSA_SOURCE` 用 `vt` 合并默认值，source 开关与 gain 先派发 reducer 再写 storage；A2H 在游戏会话中关闭时先弹 Keep On／Turn Off，确认 Turn Off 才写 `inGameSession`、全局开关和各设备强度，并设置 500 ms 抑制。窗口／memory／storage 事件分别驱动游戏命令、Chroma app 状态和 source 配置，effect cleanup 会移除这些 listener。右侧 `sI` 在 `inGameSession` 从 true 回到 false 时读取 `priorGameLaunchA2HState`，恢复全局 gain／enabled 与每个产品的设备强度；解析或恢复失败只记录错误，不产生设备确认。无设备时渲染空设备页；两种来源都关闭时设备列表只呈禁用样式。
+
+嵌入 `Ep` 的默认强度是 `isEnabled:false`、AUDIO 值 2、其他类别值 4，匹配仍沿用前文的 container／PID 回退；用户修改先合并到内存设备对象，再调用 `Vh`。`Vh` 先检查设备是否 active 并更新 reducer，随后普通设备才尝试 BroadcastChannel，DualSense 才进入本机存储三次重试；这两个分支都没有设备 ACK 或读回。设备卡 `Wh` 对 standby、off、restart-required、固件待更新分别显示图标并禁用控件；行点击、slider 和 A2H checkbox 都经过同一个 active 门禁，checkbox 还有 100 ms 去重。页面显示成功、reducer 更新和广播函数返回 true 均只代表本地阶段，不能替代 `ProviderRenderHaptics`、mixer 或真实硬件应答。
+
+引导组件 `sp` 以 `hasOnboardingTutorialClosed` 控制可见性，focus／visibilitychange 时播放当前视频并暂停其余步骤，关闭时写入本机标记；它会清理这两个 listener，但关闭路径没有额外的设备或 mixer 回滚。以上静态范围覆盖 `[900139,901257)` 输入、`[913253,924340)` 画布、`[935267,937838)` 编辑器、`[954762,959571)` 根生命周期及 `[965722,966000)` 根挂载；本次未执行厂商 JS、页面、DLL、服务或设备，storage 损坏、异步取消、真实写回、ACK／读回和卸载竞态仍保持未验证。
+
 ## Dynamic Haptics 的两个来源
 
 Sensa HD 和 Audio to Haptics 各有启用开关与 1–6 的来源增益。修改先派发 reducer，再保存本机 `sensaSource`。Audio to Haptics 的全局开关还同步设备列表。这里的 slider 不含 0；设备卡的总强度 slider 才是 0–6。
@@ -105,6 +125,22 @@ Start 的底层返回取自 recorder start 状态，成功时设置实例 runnin
 原生 Terminate 另清理端点 map、回调管理器、队列与锁相关对象；ReleaseAV 移除指定端点及共享所有权。页面代码中日志虽写 retry once，但对应 catch 本身没有第二次调用；也存在 beforeUnload 与 beforeunload 不同拼写，均按实际代码理解。
 
 本页没有执行页面、原生库或真实设备。已读前端、后台 manager、音频 wrapper 及下表原生函数的静态语义；FFT／haptic 回调内部编码与全部产品的最终传输应答仍需沿其各自消费者继续核实，不能以当前页面保存成功替代硬件确认。
+
+### ProviderRenderHaptics 的帧构造、V1 IPC 与直接设备分支
+
+`Interhaptics.RazerProvider.dll` 的导出 `ProviderRenderHaptics 0x2ecf0` 以 provider 初始化标记 `byte_18006f2f8` 为门禁；未初始化时直接返回。它遍历 `DeviceManager` 的红黑树记录，使用记录偏移 `+0x68` 的帧大小先分配并清零临时缓冲，再把设备类型 `+0x70`、body-part 数量 `(+0x58-+0x50)/4`、缓冲地址传给 HAR 导入 `GetInterhapticsHapticFrame 0x57048`。返回长度小于等于 0 时不发送该设备，正长度才复制出帧字节并继续路由；长度计算、分配溢出和临时 vector 释放均在该调用链内完成。
+
+若共享映射尚未 ready，函数先调用 `0x2dfb0` 建立 V1 通道。该函数打开固定的 `Global\\SharedMemory_InterhapticsMixerCommand-{fc3bf7a7-5224-48d6-8c5d-d5173ca09737}` 与 `Global\\Event_InterhapticsMixerCommand-{ee4d3efa-297b-40f1-81c9-ecaff6295f02}`；任一打开失败都返回 0。它在发送 `StartProgramCommand` 及其 159 字节映射之前就把 `byte_18006f2f9` 置为 1，因此启动命令序列化失败、映射失败或 `SetEvent` 失败都可能留下 ready 标记，不能将该标记当作 mixer 已接受程序的确认。
+
+ready 分支把每个正长度帧包装成 56 字节记录并追加到批次向量，然后调用 `0x2e530`。该函数构造 `PlayMultipleBufferCommand`，按每条记录的设备名和帧长度计算映射大小，最少包含 151 字节命令头。序列化函数 `0x2b920` 将程序名截断到 127 字节，写入 `byte[128]=12`，在 `u64[136]` 写入后续载荷长度、`byte[144]` 写入记录数；每条记录依次写入名称长度、名称、分隔字节 `1`、四字节帧长度及帧数据。映射成功且序列化返回真时才调用 `SetEvent`，随后解除映射；事件发送结果没有被读取，也没有 provider 侧 ACK、设备读回或逐条确认。批次为空、映射失败或序列化失败时返回假，调用方随即走 `0x2e180` 的 StopProgram 清理路径。
+
+非 ready 分支不走 V1 映射，而是调用每个设备记录 `v0[8]` 对象 vtable 的 `+32` 槽，将完整帧 vector 交给直接设备实现。`ProviderRenderHaptics` 使用的是无返回值调用形式，因而不会把底层 HRESULT、短写或硬件应答转成 provider 结果；这条分支不能与 IPC `SetEvent` 成功混为同一个完成状态。
+
+`0x2e180` 仅在 ready 标记仍为真时构造 `StopProgramCommand`（命令值 `2`），映射 151 字节、序列化成功后调用 `SetEvent`，然后关闭事件与映射句柄并清零 ready。停止命令同样没有 ACK。`ProviderRenderHaptics` 在批次发送失败后调用它，但 ready 已被初始化函数提前置位时，失败清理才会真正关闭句柄；未 ready 时该调用为空操作。
+
+导出 `RenderHapticsDebug 0x2f3c0` 使用同一套 HAR 帧构造，但把指定索引的帧复制到调用方缓冲。在 ready 分支它逐帧调用 `0x2e310` 的单帧 `PlayBufferCommand`，发送失败会调用 `0x2e180` 并返回 `-11`；非 ready 分支直接检查设备 vtable `+32` 的有符号结果，负值同样返回 `-11`。初始化缺失返回 `-10`；初始化存在但没有任何正长度帧时，函数保留其初始 `-12` 结果。这里只是 debug 导出的错误传播，不代表普通 `ProviderRenderHaptics` 已获得设备确认。
+
+本节按原件 `62465547a378d65b03e5ba2b68b1d17ed0bcfd16bdf84c9f4e179ab545b1c06b` 的完整捕获复核：`ProviderRenderHaptics 0x2ecf0`（1 chunk，190 条已列指令，815 raw bytes）、`RenderHapticsDebug 0x2f3c0`（1/194/770）、V1 初始化／停止／批量发送 `0x2dfb0/0x2e180/0x2e530`（各 1 chunk，103/89/112 条，456/400/435 bytes）、序列化与记录复制 `0x2b920/0x2b580`（105/40 条，398/135 bytes）。其中 `0x2dfb0` 与 `0x2e180` 已在原件表的停止链中出现；本节不把重复身份或 raw bytes 与旧集合相加。这些是静态证据计数，不代表 Rust 实现、官方 DLL 运行、IPC 消费或真实设备效果已验证。
 
 ## 本机 Synesthesia 停止链与结果消费者
 

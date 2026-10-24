@@ -46,6 +46,26 @@ Custom 拖动的真实约束是：首点 X 固定为 0，后续点至少相隔 2
 
 该 writer 的完成依据是各 setter 应答，没有在结束时执行 state/mode/curve GET 比较。入口检查 AbortSignal；异常进入失败结果并 reject。不能将其完成描述为已读回全部 250 点。
 
+### 动态灵敏度命令帧、响应和中止边界
+
+`queries.dynamic_sensitivity` 对七份当前 MW 原件的完整 protocol factory、方法体和 writer 做了逐字节复核。190、192、196、222、229、239 使用各自 `6120.*.js`，226 使用独立的 `7846.8d3e3465fc6ae4ee8a38.js`；这组通用 proximity-sensor wrapper 的命令三元组相同，226 的差异在输入监控和 BLE 设备路由。这个结论只覆盖动态灵敏度 writer 调用的 wrapper，不替代下方旋转补偿另有的 BLE 命令分支。实际 `sendCommand` 的参数和成功解码如下：
+
+| 操作 | 命令三元组 | 请求数据 | 原件解码 |
+| --- | --- | --- | --- |
+| 加速度开关 GET／SET | `[2,11,144]`／`[2,11,16]` | GET `[profileId]`；SET `[profileId,state]` | `data[0]` 为 profile，`data[1]` 为 state |
+| 加速度模式 GET／SET | `[2,11,145]`／`[2,11,17]` | GET `[profileId]`；SET `[profileId,mode]` | `data[0]`、`data[1]` 为 profile／mode，并映射 mode 枚举 |
+| 曲线设置 GET | `[3,11,146]` | `[profileId,mode]` | `profileId`、`mode`、`inputOffset`；审计中没有对应的曲线设置 SET 调用 |
+| 曲线数据 GET／SET | `[37,11,147]`／`[37,11,19]` | `[profileId,mode,totalPointSize,pointOffset,pointSize]` 加数据字节 | GET 仅在 status 成功且有返回包时取前五个字段和 `data[5..]`；SET 不建立 `jsonData` |
+| 角度补偿 GET／SET | `[3,11,148]`／`[3,11,20]` | GET `[profileId]`；SET `[profileId,enabled,angle]` | `profileId`、`state`、`angleTune` |
+
+曲线数据方法只对 `mode=Custom` 和数值参数作硬校验；`totalPointSize != 250` 或 `pointSize > 8` 是日志警告而非该方法自身的拒绝条件。SET 还要求末尾参数为 `Uint8Array`，短于 37 字节时用零补齐，包装器没有显式截断更长数组。writer 将 250 个 Float32 值的原始 `Float32Array.buffer` 按 1000 字节拆成 32 字节一批，偏移依次为 0、8、…、248 点，每批 `pointSize=8`，完整批次之间等待 15 ms；这不是把 250 个数直接作为 250 个 HID 字节。`get` 的 `Ar`、`Or`、`Cr`、`Mr` 解码器不检查 status 或返回长度，只有曲线数据 GET 检查；因此 Rust 不能把 `jsonData` 存在解释成设备确认，必须保留状态和长度诊断。
+
+`yi`／`ni` 在开始时只检查一次 `AbortSignal`：已取消时直接记录 `canceled` 并返回，不设置成功或失败结果；随后先 SET state，关闭状态立即以 setter 应答成功并跳过 mode／curve，开启才 SET mode 和可选的 32 字节曲线批次。中间批次没有再次检查取消，也没有补发 state/mode/curve GET；任一命令抛错会把结果置为失败、保存异常并 reject。`Vo`／226 对应 maker 先修改 active profile 的 `dynamicSensitivity`、推进 53 位版本并保存，再把 writer 放入 `NORMAL_SKIPPABLE` 的 `setting` 队列，所以本地持久化和设备应答必须分别记录。
+
+证据锚点：PID190 原件 SHA-256 为 `583205c646ef639bc529824df5e0364c944b66c15c0f6a2742d2630ba58bb0db`，完整 protocol factory 为 `[736583,925561)`，writer 为 `[1819790,1821159)`；PID226 原件 SHA-256 为 `9d1c0e708337caa9208d1f6696bc023b9eed59f2382d19f349e932638086bf9a`，protocol factory 为 `[732754,918181)`，writer 为 `[1761855,1763213)`。其余五个 PID 的完整 source、SHA、方法范围及监控回调均保留在 `.analysis/results/frontend/mouse-mw-audit.json` 的 `queries.dynamic_sensitivity.products` 和 `complete_owners`；这七份是独立原件，不能用 190 的字节收据替代其他产品。
+
+迁移时必须分别对照：九种命令的输入字节、无效参数异常、短／长曲线包、setter ACK 与独立 GET、AbortSignal 发生在首包和中途的结果、队列跳过、失败后的释放，以及 226 的 BLE 输入监控分支。当前仍只有静态源码和模拟边界分析，未执行官方 DLL、厂商 JS 或真实设备，实际应答、写回恢复和释放均保持未验证。
+
 实时速度监控是另一条链。190／192／196／222／229／239 的 `DYNAMIC_SENSITIVITY_UI_COMMAND START` 先 off 再 on 同名 input listener，226 仅 on；之后均等待启动监控。STOP 先移除 listener，再等待停止监控并重置采样状态。速度向 UI 的发布限频为约 60 Hz，发布后也执行该重置；226 的重置清除 lastX／lastY，却没有重置 lastTimeTick。图中的活动面积在 150 ms 无更新后复位。图表 effect 会在开关变化时发 START／STOP；本次复核的 effect 没有额外的卸载 STOP 返回函数，不能据此宣称它具有该清理动作。
 
 ## 旋转补偿

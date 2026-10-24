@@ -115,6 +115,45 @@ esther 还有具体版本边界：wrapper 在该 GUID 下构造 CustomV2；这�
 
 输出 `0x15a80` 先尝试该插件自己的 JS 管道消费者，否则走设备访问 IPC。后者 `0x15950 → 0x6c80` 建立 `RzDeviceAccess_%04X_%04X` 对应的全局 Mem／Exec／Done／Free 对象；客户端本身也调用 CreateEvent／CreateMutex／CreateFileMapping，故对象存在不证明服务端在线。`0x15690` 先发 `0x10001` 初始化，帧经 `0x7030` 发 `0x10003`，`0x15810` 发 `0x10002` 释放。共享区大小为 `0x20014`，请求命令／长度位于 `+4/+8`，输入始于 `+12`；应答长度／数据／状态位于 `+0x1000c/+0x10010/+0x20010`。取得 Free mutex 和等待 Done 各最多 1 秒，取出真实服务状态再释放 mutex；这比单向 pipe 多了服务完成边界，但本节尚未闭合该服务处理器到硬件的写入／读回。`0x11d30` 仍丢弃帧输出结果，`0x15690` 部分失败分支也返回 0；页面不能据此显示已应用。
 
+### Chroma SDK 服务候选与 E782 未闭合边界
+
+为查找 `RzDeviceAccess_%04X_%04X` 的服务端，继续核对了当前官方安装包中的服务、服务宿主和动态服务模块。以下结论全部来自原始 PE、导入表、字符串、完整捕获和交叉引用；没有启动服务或 DLL。它们只能缩小候选范围，不能把候选模块当作 E782 服务端。
+
+`RzSDKService.exe` 的原件位于 `.analysis/inputs/official-native-current/extracted/eed8c757c319c7749f6f8c821727a0e97bff8d9a1f48d33f0542de99c60ae32c/$PROGRAMFILES/Razer Chroma SDK/bin/RzSDKService.exe`，SHA-256 为 `cac7b656e716abcf73b81fa9d4398fc770fa124f91bac38d09a32470eef570e3`，249,544 字节，Image Base `0x400000`；捕获含 354 个函数，完整捕获／函数边界完整，Hex-Rays 有 2 个失败项。服务入口 `0x40c010`，初始化 `0x40c270`，服务名为 `Razer Chroma SDK Service`。初始化创建 `Global\\{577CC1AF-3B37-403E-B167-1207D8B6A6DE}`，暂停／恢复事件分别为 `Global\\{F5380D65-469F-43BC-8751-7A080237645A}` 与 `Global\\{3DE00F6A-9F60-4253-83EF-7DF822A5AD70}`；导入表含 CreateFileMappingW、OpenFileMappingW、MapViewOfFile、CreateEventW、SetEvent、WaitForSingleObject、WaitForMultipleObjects、RegisterDeviceNotificationW。字符串和映射管理代码包含键盘共享区 `Global\\{74164FAD-E73C-4FA1-A9AA-70813315ED9C}`、键盘事件 `Global\\{45C97C2C-2D50-4F30-B50E-AFBB1CE22E93}`、鼠标共享区 `Global\\{0DBE78AC-AC93-408F-A27E-8F61EA067B05}` 及其他设备对象。析构 `0x40d360` 负责服务对象清理、UnmapViewOfFile 和 CloseHandle；停止 `0x40d460` 发送 `.event.stop`，枚举服务宿主，等待 5 秒，超时记录日志并 TerminateProcess。模块管理 `0x40f850` 读取注册表中的 `Pid`、`Retries`、`MaxRetries`、`Delay`，默认最多重启 10 次、延迟 3 秒；停止模块等待 8 秒，超时终止进程。
+
+在该 PE 的原始字节、字符串、导入和完整 `all-functions.c` 中均未找到 `RzDeviceAccess_`、`0x10001`、`0x10002`、`0x10003`、`0x20014` 或 `DeviceAccess`。因此它是 Chroma SDK 共享区／设备管理服务候选，不是已经确认的 E782 `RzDeviceAccess` 服务端。`RzSvcHost.exe` 也只是动态服务模块宿主：SHA-256 `de0e0c6361f29b622c230c2f9698cc6581470abfb4497fe92a2fc3052aae5c6f`，186,568 字节，Image Base `0x400000`，捕获含 268 个函数，完整捕获／函数边界完整，Hex-Rays 有 2 个失败项。`0x408c40` 按 `-svc <module>` 读取 `Software\\Razer Chroma SDK\\Services\\RzSDKService.exe\\RzSvcHost\\<module>`，加载 DLL 并要求 `InitServiceModule`、`UnInitServiceModule`、`OnServiceEvent` 三个导出，默认 `MaxRetries=10`、`Delay=3000`，写入当前 PID 后调用 `InitServiceModule(0)`；`0x408e90` 通过 `OnServiceEvent(event_id, 0)` 发送同步事件，`0x404af0` 构造 `Global\\<module>.event.stop`、等待停止并调用 `UnInitServiceModule(0)`。该宿主没有 CreateFileMappingW、OpenFileMappingW、MapViewOfFile，也没有上述 E782 命令特征。
+
+当前带有这三个服务导出的模块及其捕获身份如下；共同导出只说明它们可被 `RzSvcHost` 管理，不说明其实现了 E782 IPC：
+
+| 动态模块 | SHA-256 | 捕获函数数 | E782 特征结论 |
+| --- | --- | ---: | --- |
+| `RzAppManager.dll` | `cab2b43c3cd12af53057ac3df3b6879230d135ac46c47e0caee028aac6374827` | 451 | 未见 `RzDeviceAccess_`／`0x10002`／`0x10003`／`0x20014` |
+| `RzBTLEManager.dll` | `2b4f2d2a65fe079f73e32ae84ba5a31e374aa9914e74224e09e0f546b8e9d914` | 1203 | 同上 |
+| `RzChromaConnectManager.dll` | `a5195ba067560744a6fe83a2c731b576fe557e6fa28c67f6644a4eb16ea677f3` | 343 | 同上 |
+| `RzChromaConnectServer.dll` | `a49d11fc5f078c4e0019dd0d4972c683755456dcf83ddb1f883cd4a6b26fdbc5` | 1427 | 同上 |
+| `RzDeviceManager.dll` | `e032ca4b3366f84be73803de94373887590f56a1660c5a50262424f243c74060` | 2583 | 已核为 GUID／实例管理链，不是 E782 服务端 |
+| `RzDeviceManagerEx.dll` | `5af875212737e9923b708df383412c9c26cf9021e59c7496765132f98eb1a038` | 385 | 生命周期导出，未见 E782 IPC |
+| `RzIoTDeviceManager.dll` | `553a391b77c9b077bbfb4a70dc27934a374b9cf7f8da6300f6b36f67c87ff400` | 421 | 未见 E782 特征 |
+| `RzSmartlightingDeviceManager.dll` | `e088738fc519ad8de6b6ad07d462a89c90894e8edbc0de733edcb2997e682111` | 448 | 未见 E782 特征 |
+| `RzWDLDeviceManager.dll` | `b4ef7d97078e251ec67295c7fc53c48f2c773102d33b97762b687dc94f863c7d` | 200 | 未见 E782 特征 |
+
+另外四个设备插件明确复用了同一类客户端 IPC。它们都从设备 DLL 内创建／打开 `0x20014` 字节映射，并把初始化、帧和清理请求交给 `RzDeviceAccess_*` 对象；这些是服务端候选之外的客户端证据：
+
+| 设备插件 | SHA-256 | 捕获函数数／失败项 | 静态客户端语义 |
+| --- | --- | ---: | --- |
+| `160ABD6E-38B2-4FFC-B58B-BF76FFC84A84.dll`（Generic Chroma IoT） | `94dbc59390605e36ecea1fbc36ccf41b19d1ef078f85f9b5274c3f2cc5d3cf4f` | 573／19 | `CIoTIPCDevice`；使用 `RzDeviceAccess_%04X_%08llX`，日志明确标出 `SDKDEVICEACCESS_INIT`、`SDKDEVICEACCESS_CUSTOMFRAME`、`SDKDEVICEACCESS_CLEANUP`；初始化和完成等待均为 1 秒边界 |
+| `9FA77D1C-28C0-4322-B658-B37E2DE25071.dll`（ASRock） | `e81c8cae38d57617ff9170f6ed3631d80acfbdf4525fedef7b10679e2056e863` | 255／0 | `CASRockIPCDevice`；映射 `0x20014`，`RzDeviceAccess_%04X_%04X`，初始化请求写入 `65537`（`0x10001`），完成等待 1 秒；失败路径有返回 0 与 `0x80004005` |
+| `D7DB125D-DFAA-4CCF-BB17-80A467153001.dll`（Philips Hue） | `d7781beebf438339b82085e9140609fbdd549d573617c8d71134754afeb58f8b` | 510／13 | `CPhilipsHueIPCDevice`；同样写入 `0x10001` 并使用 `SDKDEVICEACCESS_INIT`／`CUSTOMFRAME`／`CLEANUP`，帧提交仍由客户端等待 Done 后读取状态 |
+| `D9BCAB19-28D0-43DF-B8C8-E6F2D46BBBA0.dll`（KittyBT） | `e7da548309dec9614e0450f14379a01c2420db066e7ec2d589377faba9dae806` | 357／2 | `CKittyIPCDevice`；`0x20014` 映射和 `RzDeviceAccess_%04X_%04X` 字符串，UnInit 明确写入 `65538`（`0x10002`）；其余帧命令需按该插件函数单独核对 |
+
+这些插件的 IPC 客户端都在自身 DLL 内创建共享对象、锁、完成事件并读取状态；没有在这些 PE 中找到把 `RzDeviceAccess_*` 请求转成设备 HID／USB 写入的服务处理器。Generic IoT 的名称格式还使用 64 位后缀，不能只按 E782 的两个 `%04X` 参数拼接。各插件的旧源码路径字符串（3.38／3.39／4.0.1）只是二进制调试信息，不能当作当前源码或版本兼容性证明。
+
+对当前官方原始输入做字节级 `RzDeviceAccess_` 搜索，仅命中 E782、上述三个外设插件、Generic Chroma IoT，以及两个 GenericCamera 版本；服务 EXE、服务宿主和动态服务模块均未命中。GenericCamera 的命中属于 `CRzDeviceAccess` 摄像头控制／ISP 类名，不含本节的共享 IPC 对象，不能把这项字符串命中计为 Chroma 灯光服务。
+
+`RzSDKServer.exe`（SHA-256 `24a2f6d2c20f43b93d03e32e17f772967550329697a44cf07b8373d3e7f43fbd`）是另一个 5,351 函数的 REST／WebSocket Chroma SDK Server，字符串包含 `\\.\\pipe\\sessionid=%ld` 和 `RzAPIChromaSDK.dll`；`RzSDKClient.exe`、`RzSDKClientS.exe` 是其客户端管道组件。其原始字节同样没有 `RzDeviceAccess_`、`0x10001/0x10002/0x10003` 或 `0x20014`，不能与 E782 IPC 混淆。
+
+因此，`0x10001` 初始化、`0x10003` 帧提交和 `0x10002` 释放目前只有 E782 客户端侧证据。尚未找到可把共享区请求转成硬件写入、设备 ACK／读回、恢复原值和释放结果的服务处理器；实际运行时服务状态也未验证。后续 Rust 对照测试必须把这条边界保持为 Unverified，不能以服务导出存在、共享对象创建成功或客户端等待超时前返回来替代硬件确认。
+
 设备管理器的发现／加载还包括 `0x31000` 读取 XML 的 HID／USB／COM 产品分支，`0x31c00` 复制实例 `.mod`、调用签名检查、加载并执行 `Init(devicePath)`，只有 Init 返回 0 才登记；`0x32330` 调 GetEID、UnInit、FreeLibrary 后删除实例文件与登记。这里仅核对签名检查的调用及失败分支，没有据此扩写其内部验证能力。这些是官方宿主关系，不是本项目通过插件代理官方 DLL 的方案。
 
 移除实例沿 `0x28a0 → 0x2b30 → 0x2100` 删除客户端；最后一个实例移除时删除相应 GUID 服务器的登记。服务器停止 `0x1990` 先清下游 map，再发 stop event、设置停止位，最多等待 worker 5 秒，但不核对等待结果就继续关句柄。`0x1d30` 的连接事件只在部分 overlapped 分支关闭；插件 `UnInit 0x14e20` 对三个 worker 各等 5 秒也不核对结果。不能把这些有限等待称为所有在途 I/O 与线程已完成释放。
@@ -156,6 +195,46 @@ UnInit `0xeba0` 发停止事件、设停止位，无限等待并关闭两个 wor
 键盘 UnInit `0x17de0`、鼠标 `0xf2a0` 发停止事件并置停止位，对各自 worker 最多等待 2 秒，均不核等待结果就关闭句柄及析构设备。设备析构沿 `0x5930 → 0x6220 → 0x38c0`、`0x5890 → 0x61b0 → 0x3870` 移除共享登记、Unmap／Close 状态区，停止 idle worker并关闭 HID／timer；idle worker 仅等待 1 秒、不核结果且未关闭 thread handle就清零。帧共享区另由全局退出清理 `0x20cb0/0x11d90` 释放，不能描述为 UnInit 本身已经释放全部 mapping，或所有在途工作均已结束。
 
 这两份接收端新增核对 47 个完整函数边界（其中键盘全局初始化仅有汇编）、93 个不同 chunk、9,762 条不同地址指令及 34,310 字节原始块，无未枚举字节；SDK 编解码对应的 16 个函数另作复核，不与此前覆盖重复相加。所选 PID 已从 SDK 共享帧追到真实 HID 调用位置；其他键盘 worker、PID 104 的双输出、CJS JSON 实际消费者、通用设备访问服务的硬件处理器、确认及真实释放结果仍未验证。
+
+### 键鼠 CJS JSON 的 LightingDriver 桥接与产品分支
+
+前一节的键盘 `0x70a0 → 0x7bb0` 和鼠标 `0x6490 → 0x78b0` 已闭合到 CJS JSON 的发送端，但在这两个 x86 插件原件内没有找到对应的 `CreateNamedPipeW`／`ConnectNamedPipe` JSON 读取端。下面的 LightingDriver FFI 是同一套主机灯光调用链中的已核实 JSON 桥接，不能据此把它认作键鼠 CJS 管道的接收服务。主机脚本原件见 [`ffiLightingDriver.js`](../../../.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/modules/lighting/ffiLightingDriver.js)，当前捕获的 1.9.14 原生库见 [`capture.json`](../../../.analysis/results/native/9b701a56c5ed0c1c30d26452fb5752ee328304a197f9a36cd3c51e0cd6a4de6b/capture.json)；1.9.11 的独立捕获见 [`capture.json`](../../../.analysis/results/native/0005eb6c8fdf8eabdae0062d64091b3dbc556bd0a2f89c045042000c96e6114e/capture.json)。
+
+`ffiLightingDriver.js` 字节范围 `[262,1108)` 声明 `Startup`、`Shutdown`、`Configure`、`FreeString`、`HookLightingCallback`、`SetWriteFFICallback` 和 `GetDllVersion`。`SetWriteFFICallback` 注册的回调签名是 `void(pointer)`；回调先 `JSON.parse`，再按 `device_handle` 查 `deviceMap`，最后调用 `onWriteCallback`，没有等待或返回异步结果。主机 `onWriteCallback` 再按设备类别生成 ArrayBuffer、HID `Uint8Array` 或 IoT／LampArray 数组；原生回调与这个消费者都不返回设备应答。
+
+1.9.14 原件 SHA-256 为 `9b701a56c5ed0c1c30d26452fb5752ee328304a197f9a36cd3c51e0cd6a4de6b`，Image Base `0x180000000`，完整捕获 3,629 个函数，`target_execution=false`、`real_device_operations=false`。关键导出和处理器身份为：`Configure` `0x1460 → 0x6b90`（返回只表示 JSON `succeeded` 字段）、`HookLightingCallback` `0x14f0 → 0x90f0`、`HandleLightingCallback` `0x1510 → 0x7100`、`ParseJsonToDeviceMatrix` `0xc7b0`、`HandleCustomRgbEvent` `0xe250`、重排 `0xea90`、`ProcessRgbFrame` `0xefb0`、`ProcessDeviceFrame` `0xf4d0`。同一组 RVA 已在 1.9.11 捕获中复核。`HandleCustomRgbEvent` 对 `eventId=2` 要求 `numRow`、`numCol` 非零且 `frame` 数组长度严格等于 `3×numRow×numCol`，再按 `device_handle` 查设备；缺设备、暂停或格式错误会记录失败并退出。`ProcessDeviceFrame` 在非 batch 时直接调用协议 translator，batch 时经 writer flush；这个布尔结果只代表翻译／flush 路径，不是硬件 ACK 或读回。
+
+已核到的产品 translator 分支（完整字段和构造函数见 [`dynamic-lighting.md`](../shared/dynamic-lighting.md)）如下：
+
+| 产品分支 | translator RVA | 原件帧／缓冲边界 |
+| --- | ---: | --- |
+| `rzDevice25`／NewChroma 25 | `0x7feb0` | 91 字节 report |
+| `rzDevice25Chroma65` | `0x80460` | 65 字节 report |
+| LedMatrix 与 Skip | `0x80a00` | 91 字节 report |
+| LedMatrix BatchSender | `0x811b0` | 375 字节批量帧 |
+| Glitter／Wireless | `0x85340` | 321／381 字节分支 |
+| MarciT1 | `0x85610` | 781 字节帧 |
+| AudioCamy | `0x85930` | 65 字节 report |
+| IoT | `0x85d20` | 自有缓冲，静态上限 726 字节 |
+| LampArray | `0x85fa0` | 原始颜色数组 |
+
+因此当前静态证据只闭合了 LightingDriver 的 JSON 解析、产品分派、写回回调和 translator 边界。仍未找到键鼠 CJS JSON 的精确管道名、服务端 JSON parser、它与 LightingDriver 的一一对应关系，也未核到 0x10001／0x10002／0x10003 的硬件写入、应答／读回、恢复原值或释放确认；这些项目继续保持 Unverified。未执行 DLL、服务、主程序或真实设备。
+
+### 其他键盘与鼠标 PID 的实际消费者（516、68、69）
+
+`Devices.xml` 还把键盘 PID `516/0x0204` 指向 `0B8959B5-5594-4761-9432-78ED542BAF42.dll`，把鼠标 PID `68/0x0044`、`69/0x0045` 指向 `D3ED2CE4-AF6D-48C3-A912-13D29FC1C575.dll`。这两个插件不是前一节所述的 704A4B8F／2980B2EA 文件；仅因共享相同的 SDK 帧语义，不能复用前一节的 PID 表或 worker 名称。
+
+键盘 PID516 原件 SHA-256 为 `e5729e356ea849305be0168c58c102af481ed6a8681dd152ef5c27959364891f`，其 [capture.json](../../../.analysis/results/native/e5729e356ea849305be0168c58c102af481ed6a8681dd152ef5c27959364891f/capture.json) 记录 Image Base `0x10000000`、92,296 字节原件；导出 `Init` RVA `0xc920`、`UnInit` RVA `0xcbb0`。Init 只接受 VID `5426 (0x1532)` 和 PID `516`，否则返回 `1167`；成功时创建 manual-reset 数据事件 `Global\\{4D006319-9569-4E38-B0DF-811AA2DF115F}`，按设备名构造共享映射（本分支固定大小 `0x3208`，每槽 `0xf0`，10 槽，数据从 `+8+0xf0×index` 开始），并启动 `0xc3b0` worker。映射首 16 字节写入 PID、设备实例值及类型标志 `1`，供 SDK 的控制区读取。
+
+该 worker 只接受帧头 `0x80ffff` 或 PID `516`，复制完整 `0xf0` 字节后执行本插件的 XOR，再按 `frame[1]` 分派：类型 9/10 发送 `0x30a`（778）长度 1、值 0；类型 11 发送同命令值 4；类型 3 把 `frame[3..5]` 规整为 8 字节亮度/协议体；类型 0 发送值 0 后等待 2 ms；类型 2 发送值 4。类型 6 取 `frame[57]` 的颜色复制 12 次组成命令 780、长度 `0x32`，再以命令 778、长度 2、体值 5 收尾；类型 7 和 17 把 `frame[7]`、`[8]`、`[9]` 各复制三个灯位，把 `frame[10]` 复制到最后三个灯位，同样发送 780 后再发送 778/5。未列举类型只推进读下标，不写设备。所有命令均调用该插件自己的 HID/CJS 输出函数，函数本身不提供逐帧设备读回。
+
+鼠标 PID68/69 原件 SHA-256 为 `18fed89e6eef3b8d89a3edb7454aeac47b92163419b1b46aa6c75627420c5daa`，其 [capture.json](../../../.analysis/results/native/18fed89e6eef3b8d89a3edb7454aeac47b92163419b1b46aa6c75627420c5daa/capture.json) 记录 95,368 字节 x86 原件；导出 `Init` RVA `0xd0b0`、`UnInit` RVA `0xd3a0`。Init 仅接受 VID `5426` 与 PID 68 或 69；创建数据事件 `Global\\{0DB0CEFA-C51E-4255-87FB-2D36A0159896}`、鼠标共享映射 `0x3a28`（每槽 `0x1c0`，10 槽），并将 PID69 的附加状态事件设为 `Global\\{DE424995-323B-47DB-BB5D-E17CBF7629EE}`。worker `0xc560` 复制 `mapping+8+0x1c0×index`，执行 XOR，并只接受头 `PID|0x20000`（PID68/69 分别为 `131140/131141`）、`0x2ffff` 或 PID 本身。PID69 在注册表 `HKLM\Software\Razer Chroma SDK\Devices\<device>` 的 `PollingRate` 等于 1 时使用 15 ms 节流，否则 PID69 使用 15 ms、PID68 使用 2 ms；这个节流选择不是设备 ACK。
+
+鼠标 worker 的类型 9/10 发送 778/0，11 发送 778/4，3 发送 8 字节亮度体，0 发送全黑 780/`0x32` 后再发送 778/5，2 发送 778/4。类型 6 将 `frame[106]` 复制到 12 个颜色后发 780，再发 778/5；类型 7 从帧偏移 52、每色 4 字节取 12 色，最后三个位置补 `frame[10]`，发 780 后再发 778/5；类型 8 从偏移 184、每色跨度 28 取前七色，后五色从该帧较早区域补齐，另取 `frame[56]` 作为尾值，再发 780 与 778/5；类型 5 组装 5 字节亮度体，类型 1 组装 3 字节模式体。该分支还启动第二个状态 worker，通过命令 133 更新共享状态；它与灯光 worker 分开等待停止事件。
+
+两个插件的 UnInit 都先置停止位并通知 stop event，再对 worker 调用 `WaitForSingleObject(..., 0x7d0)`，不检查等待结果就关闭线程句柄、事件、映射和设备对象；PID69 的第二个状态 worker 也只有同样的有限等待。输出函数对 `HidD_SetFeature` 的 BOOL 和实际写入长度不向帧 worker 传播，CJS 管道失败也可能保留“已处理”返回值；因此本节已闭合静态命令转换与释放调用链，但没有把共享区消费、服务完成、设备读回或恢复原值标为已验证。
+
+本节新增核对为 PID516 的 3 个导出／worker 相关完整函数和 PID68/69 的 4 个导出／worker 相关完整函数；它们与 SDK XOR、HID 外壳及前一节的复用函数不重复累计。原件捕获均记录 `target_execution=false`，没有运行 DLL、服务或真实设备。
 
 ## 音频原生消费者
 
@@ -265,9 +344,14 @@ Chroma wrapper 的公开 Terminate 调 UnInit，不直接 FreeLibrary；其对�
 | 下层 GUID、专用帧、管道与释放 | 同捕获，RVA `0x28e00/0x8da0/0xd1d0/0xd410/0xd560/0x11d90/0x11f50/0x62d0/0x2a770/0x2a950/0x28c90/0x28d90/0x8c20/0x7e10`；键盘 vtable `0x31740` 的首项已按原件字节核对为 `0x2300` |
 | GUID 缓存、控制权及三条 worker 的本批核对集 | 同捕获，RVA `0x70d0/0x7e10/0x81f0/0x86f0/0x8c20/0x11f50/0x134f0/0x13300/0x13aa0/0x140b0/0x14310/0x14600/0x7060/0x7070/0x7080/0x6e70/0x17cd0/0x21710/0x1f930/0x27420/0x18e80/0x27630/0x17da0/0x2c3a1/0x28670/0x2a770/0x2a950/0x28c90/0x28d90/0x5f00`；与此前集合存在交集，不按批次相加 |
 | SDK 包来源、版本与原始下载身份 | [acquisition.json](../../../.analysis/inputs/official-native-current/acquisition.json) 及 [manifest.json](../../../.analysis/inputs/official-native-current/manifests/27f1518bf49220045840c8688b1ca83f47eb38bb8591868bed085a33782bdb68/manifest.json)；Core `4.0.2.08241000`、Devices `4.0.3.09211418` |
-| 当前插件及 PID→GUID 映射 | [Devices.xml](../../../.analysis/inputs/official-native-current/extracted/ec6976f2cde35363d9bdd44e802e5b59b3e11cee628119a14402f3637cd6af9c/$PROGRAMFILES/Razer%20Chroma%20SDK/Devices.xml)，实际字节已与获取输入核对 |
+| 当前插件及 PID→GUID 映射 | [Devices.xml](<../../../.analysis/inputs/official-native-current/extracted/ec6976f2cde35363d9bdd44e802e5b59b3e11cee628119a14402f3637cd6af9c/$PROGRAMFILES/Razer Chroma SDK/Devices.xml>)，实际字节已与获取输入核对 |
 | GUID 服务器、实例转发及发现／移除 | [capture.json](../../../.analysis/results/native/e032ca4b3366f84be73803de94373887590f56a1660c5a50262424f243c74060/capture.json)，Image Base `0x10000000`；RVA `0x17f0/0x1890/0x18f0/0x1990/0x1a30/0x1af0/0x1c90/0x1d30/0x1e50/0x1f20/0x1f90/0x2000/0x2100/0x2280/0x2400/0x2640/0x28a0/0x2a00/0x2b30/0x2bf0/0x1b850/0x1b930/0x1b9a0/0x1ba60/0x1bc20/0x1bc70/0x1ec40/0x1e610/0x31000/0x31750/0x318d0/0x31a50/0x31c00/0x32330/0x3c60/0x14110/0x3c40/0x14100/0x5cc0/0x5d80` |
 | 通用实例帧解码及设备访问 IPC | [capture.json](../../../.analysis/results/native/58e96aa12a0476a03820add862b3b31e3d6f24b6e63c01855e51fbe80cc3da51/capture.json)，Image Base `0x10000000`；RVA `0x1580/0x10c60/0x10e50/0x112e0/0x11520/0x11680/0x11d30/0x120c0/0x15a80/0x7030/0x15690/0x15950/0x15810/0x6c80/0x14bb0/0x14e20` |
+| 其他 `RzDeviceAccess` 客户端插件 | [Generic Chroma IoT](../../../.analysis/results/native/94dbc59390605e36ecea1fbc36ccf41b19d1ef078f85f9b5274c3f2cc5d3cf4f/capture.json)、[ASRock](../../../.analysis/results/native/e81c8cae38d57617ff9170f6ed3631d80acfbdf4525fedef7b10679e2056e863/capture.json)、[Philips Hue](../../../.analysis/results/native/d7781beebf438339b82085e9140609fbdd549d573617c8d71134754afeb58f8b/capture.json)、[KittyBT](../../../.analysis/results/native/e7da548309dec9614e0450f14379a01c2420db066e7ec2d589377faba9dae806/capture.json)；均为客户端共享区／事件证据，不是服务处理器 |
 | Camy 共享区、四段重排、HID／JS 输出与清理 | [capture.json](../../../.analysis/results/native/d34b09f03dc71d691f5261c4acf90ac2258d2329786fec3dd77b5926c56cb8ea/capture.json)，Image Base `0x10000000`；RVA `0xe920/0xeba0/0xdb00/0xd530/0xe870/0x4a90/0x4f80/0x5580/0x2c30/0x5790/0x60b0/0x3640/0x2ba0/0x6d40/0x7730/0x7840/0x7b20/0x2400/0x25b0/0x2760/0x2950/0x8900`；GUID 原字节位于 `0x130bc/0x130ac`，pipe 前缀位于 `0x125ec` |
+| Chroma SDK 服务 | [RzSDKService capture.json](../../../.analysis/results/native/cac7b656e716abcf73b81fa9d4398fc770fa124f91bac38d09a32470eef570e3/capture.json)，原件为 `$PROGRAMFILES/Razer Chroma SDK/bin/RzSDKService.exe`，Image Base `0x400000`；入口／初始化／析构／停止／模块管理 RVA `0x40c010/0x40c270/0x40d360/0x40d460/0x40f850` |
+| 动态服务模块宿主 | [RzSvcHost capture.json](../../../.analysis/results/native/de0e0c6361f29b622c230c2f9698cc6581470abfb4497fe92a2fc3052aae5c6f/capture.json)，原件为 `$PROGRAMFILES/Razer Chroma SDK/bin/RzSvcHost.exe`，Image Base `0x400000`；动态加载／事件／停止 RVA `0x408c40/0x408e90/0x404af0` |
+| 动态服务模块候选 | [RzAppManager](../../../.analysis/results/native/cab2b43c3cd12af53057ac3df3b6879230d135ac46c47e0caee028aac6374827/capture.json)、[RzBTLEManager](../../../.analysis/results/native/2b4f2d2a65fe079f73e32ae84ba5a31e374aa9914e74224e09e0f546b8e9d914/capture.json)、[RzChromaConnectManager](../../../.analysis/results/native/a5195ba067560744a6fe83a2c731b576fe557e6fa28c67f6644a4eb16ea677f3/capture.json)、[RzChromaConnectServer](../../../.analysis/results/native/a49d11fc5f078c4e0019dd0d4972c683755456dcf83ddb1f883cd4a6b26fdbc5/capture.json)、[RzDeviceManagerEx](../../../.analysis/results/native/5af875212737e9923b708df383412c9c26cf9021e59c7496765132f98eb1a038/capture.json)、[RzIoTDeviceManager](../../../.analysis/results/native/553a391b77c9b077bbfb4a70dc27934a374b9cf7f8da6300f6b36f67c87ff400/capture.json)、[RzSmartlightingDeviceManager](../../../.analysis/results/native/e088738fc519ad8de6b6ad07d462a89c90894e8edbc0de733edcb2997e682111/capture.json)、[RzWDLDeviceManager](../../../.analysis/results/native/b4ef7d97078e251ec67295c7fc53c48f2c773102d33b97762b687dc94f863c7d/capture.json)；`RzDeviceManager.dll` 沿用上一行捕获 |
+| REST／WebSocket Chroma SDK 服务 | [RzSDKServer capture.json](../../../.analysis/results/native/24a2f6d2c20f43b93d03e32e17f772967550329697a44cf07b8373d3e7f43fbd/capture.json)；另有 RzSDKClient／RzSDKClientS 管道组件，均未找到 E782 命令特征 |
 
-本文已核对六份原生原件的实际字节、完整捕获及以上所述调用路径；格式、缓冲复制、DSP、当前默认八类帧、SDK 发布、GUID 实例转发和 Camy 直接 HID 写入分别记录。颜色拾取器、宿主 FFI 字符串／回调桥接、键盘／鼠标共享区消费、设备访问 IPC／CJS 服务的硬件链、设备写入确认及 SDK 全部版本分支仍需独立闭合。本文没有修改 Rust 或 UI，也未执行音频捕获、灯光输出、厂商 JS 或主应用；静态语义、独立实现、接线、模拟验证及真实验收保持分别记录。
+本文已核对当前列出的原生原件的实际字节、完整捕获及以上所述调用路径；格式、缓冲复制、DSP、当前默认八类帧、SDK 发布、GUID 实例转发、Camy 直接 HID 写入及 Chroma SDK 服务候选分别记录。颜色拾取器、宿主 FFI 字符串／回调桥接、键盘／鼠标共享区消费、设备访问 IPC／CJS 服务的硬件链、设备写入确认及 SDK 全部版本分支仍需独立闭合。本文没有修改 Rust 或 UI，也未执行音频捕获、灯光输出、厂商 JS、服务或主应用；静态语义、独立实现、接线、模拟验证及真实验收保持分别记录。

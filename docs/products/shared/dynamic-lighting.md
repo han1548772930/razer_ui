@@ -755,3 +755,149 @@ parent 检查 `0xf4730` 以 PROCESS_QUERY_LIMITED_INFORMATION（`0x1000`）打�
 收据分别保留完整汇编与伪代码状态。WDL当前选定函数有五处原始Hex-Rays失败：`0x1544c0/0x154500`是上述Added／Removed delegate；`0x156f30/0x157530`各将RDX指向的16字节闭包描述复制到栈、将RCX解引用为Impl，再经`0x4467/0x31c5`尾跳`0x156a90/0x156f60`；`0x158c60`将RDX／R8／R9三个16字节描述复制到栈，再经`0x1f50`尾跳`0x1585d0`。后三者均按完整汇编核实，返回寄存器沿原调用直接传回，没有额外确认。五处仍列入decompiler_failures，不能写成伪代码已恢复。HID的`0x30888`基础及早期566补捕获失败保持原样；当前查询另引用独立c98d成功补捕获和上述编码语义结果，不能据此改写旧失败。各捕获结果与产品语义完成度分别记录。
 
 后续纯／模拟验证须覆盖 OS 边界、已选项点击、切换禁用、缺失／错误存储、两个窗口并发、设备加入／移除顺序、readiness、失败后 finally 清除 switching、旧连接拒绝及完整注销释放；独立实际对照继续比较官方 DLL 的本机调用结果和 Rust 的控制权／设备集合／事件顺序。像素、图标、文案、键盘／焦点和真实窗口须另行验收。本次未运行相关 Rust 行为测试、应用、官方 DLL 或设备，遵守[验证规则](../../../.agents/rules/verification.md)。
+
+## RzAPIChromaSDK.dll：共享事件、注册状态与元数据边界（静态捕获）
+
+本批同时核对 RzAPIChromaSDK.dll 的既有 IDA 捕获、导出、调用、字符串和导入 xref。分析使用四线程静态汇总；没有加载 DLL、打开 Chroma 事件、访问设备或运行服务。
+
+| 原件（SHA-256） | 架构／大小 | 捕获收据 | 导出／函数／失败 |
+| --- | --- | --- | --- |
+| RzAPIChromaSDK.dll 78a7454edc13006e5c80d5d05d76c8262b1473cb4da6066e6422b1e32d48cef0 | x86，228,552 B，ImageBase 0x10000000 | [capture.json](../../../.analysis/results/native/78a7454edc13006e5c80d5d05d76c8262b1473cb4da6066e6422b1e32d48cef0/capture.json)，SHA-256 0e269a459a87e2d0af6c8e8008adfb9deba9829d27decde84c9aad32eb821432 | 29／544／3 |
+
+29 项导出覆盖 Init (0x22820)、UnInit (0x22840)、应用目录、属性、设备支持、Invoke、Smart Lighting/Philips Hue、EnableDeviceLighting 以及事件通知。三个 Hex-Rays 失败位于 RVA 0x12c0、0x12d0、0x12e0；对应原汇编仍保留，不能写成伪代码已闭合。
+
+### 已由静态调用和 xref 确认的边界
+
+- 这是 Chroma SDK 的进程间状态/事件包装层。导入及 xref 包含 OpenFileMappingW/CreateFileMappingW、OpenEventW/CreateEventW、PulseEvent、WriteFile、CloseHandle、LocalFree 和任务调度运行库；没有在该 DLL 内找到直接 HID 传输或设备读回。共享内存/事件的名字、所有者和对端协议仍需继续从服务端与消费者闭合。
+- Init 是到 sub_10001530 的 thunk，UnInit 到 UnInit_0。字符串与注册表访问指向 Software\Razer Chroma SDK\Apps、...\Devices\SmartLighting 和 ...\Devices\IoT；应用列表与元数据由这些本机状态驱动，不能把注册表存在当成设备已连接。
+- IsDeviceSupported (0x22c20) 对 16 字节 GUID-like 值逐 32 位比较，身份不符返回 0。RegisterEventNotification (0x22c50) 身份不符返回 5，空回调返回 87，已有回调返回 1242，成功保存回调并返回 0；UnregisterEventNotification (0x22d50) 身份不符返回 5、未注册返回 85、清除回调成功返回 0。
+- SetSynapseStatus (0x22f50) 先做同一身份检查，保存状态后若共享事件句柄存在则 SetEvent；句柄为空只记录 g_hEventSynapseStatusChanged NULL，仍静态返回 0。这个返回值不等同于消费者收到事件或设备状态已确认。
+- GetSDKVersion (0x22da0) 读取 HKLM\Software\Razer Chroma SDK 的 MajorVersion、MinorVersion、RevisionNumber，格式化成 major.minor.revision，通过 CoTaskMemAlloc 写出并关闭注册表句柄；注册表失败沿 LSTATUS 返回。GetAttribute (0x22be0) 在身份不符时返回 5，仅对属性 69 静态返回 120，其余返回 50。
+
+### Rust 接线和验证边界
+
+本 DLL 的静态结果只定义了 SDK 进程间注册/事件/元数据边界，不能替代设备灯效协议、服务端共享区或 Rust 的真实写入。实现时必须分别建模回调注册代次、重复注册/未注册、身份不符、共享事件为空、UnInit 释放、注册表缺失和跨进程句柄关闭；纯模拟可先覆盖这些状态，但实际官方 DLL 与 Rust 的事件顺序、共享内存内容、设备结果和释放仍保持 **未验证**。
+## Chroma 原生连接与效果引擎的下一批静态捕获
+
+本节记录 2026-10-24 以四个 worker 并行提取的三个 Chroma 原生模块。分析只读取已校验的 PE、IDA capture、导入、字符串和 xref；没有加载 DLL、启动 Chroma 服务或访问设备。
+
+### RzChromatic64.dll：效果句柄和 CoreStream 边界
+
+| 原件 SHA-256 | 原件大小/架构 | capture SHA-256 | 函数/Hex-Rays 失败 | 导出 |
+| --- | --- | --- | --- | --- |
+| `30e64d0f10401a2c847476dfaf024d06550028b34d8775f84695d9713b0d9521` | 2,835,656 B, x64 | `b1b40b40b9ab379fc01fdd6158da45f25712266c1f475ffa9e85dc206446c6c4`（[`capture.json`](../../../.analysis/results/native/30e64d0f10401a2c847476dfaf024d06550028b34d8775f84695d9713b0d9521/capture.json)） | 10,120 / 0 | 588 |
+
+- `Init`（RVA `0x134fc0`）、`InitSDK`（`0x134fd0`）和 `UnInit`（`0x134fe0`）是转发桩。`CreateEffect`（`0x134ff0`）先检查 `byte_1802A34CE`，再检查 `PluginGetLibraryLoadedState_0`，通过后把 16 字节效果描述复制到内部函数；`QueryDevice`（`0x1351f0`）走同一加载状态门禁。门禁失败统一可见 `0x80004005`，不能据此推导设备不存在。
+- `SetEffect`（`0x135120`）在效果核心为空或停止标志存在时返回 `0x80004005`；否则在对象中写入当前 tick 加 1000 的截止值，再调用内部发送函数。`DeleteEffect`（`0x1351c0`）将描述复制到删除函数。`IsConnected`（`0x135260`）只在库加载状态允许时调用内部查询；`SetEventName`（`0x135290`）没有名称时使用内部默认窗口名。
+- `PluginCoreStreamBroadcastEnd`（`0x135670`）需要互斥锁，检查 `byte_180277280` 后构造 `CoreStreamBroadcastEnd` 消息，再释放锁；未初始化或未启用时返回 0。`PluginCoreStreamReleaseShortcode`（`0x135960`）复制调用方字符串、构造消息并释放临时字符串。`PluginClose*`/`PluginUnload*` 包装器在停止标志时返回 `-1`，否则转发关闭或卸载动作。
+- 379 个导入中包含映射文件、事件、线程、等待、文件 I/O 和 `CloseHandle`，但这份模块的导入摘要没有直接 HID 传输。`RzChromaSDK64.dll`、`_Keyboard.chroma`、`_Headset.chroma`、`_Mouse.chroma` 等字符串只证明插件/效果命名，不证明效果已写入硬件。`RegisterEventNotification`（`0x272c2a`）和 `UnregisterEventNotification`（`0x272ccb`）保留为导出，但 capture 没有可反编译函数体，调用参数、回调时序和释放仍未闭合。
+
+### RzChromaConnectAPI64.dll：进程间映射和回调生命周期
+
+| 原件 SHA-256 | 原件大小/架构 | capture SHA-256 | 函数/失败 | 导出 |
+| --- | --- | --- | --- | --- |
+| `babd928b9dbf81ce3a7f203ecfbc01a51fd8f9059b811cde858cabbf04fe257f` | 223,432 B, x64 | `bae39fcffaf59a8af8299a5ecad4c0f69f14d9c7382c69b70c77a70ec1571a73`（[`capture.json`](../../../.analysis/results/native/babd928b9dbf81ce3a7f203ecfbc01a51fd8f9059b811cde858cabbf04fe257f/capture.json)） | 840 / 0 | 6 |
+
+- `Init`（`0x20940`）只允许一个全局对象；重复初始化返回 `1247`。首次调用分配并清零约 `0x4570` 字节对象，建立 `CChromaBroadcastAPI` 虚表并进入内部初始化。`UnInit`（`0x20b40`）未初始化返回 `5023`；成功时先执行内部停止，再删除 boundary descriptor、关闭 private namespace、清理两个内部子对象并释放全局对象。
+- `RegisterEventNotification`（`0x20c20`）和 `RegisterKeyboardEventNotification`（`0x20c40`）只有在全局对象存在时才转发；否则返回 `5023`。`UnRegisterEventNotification`（`0x20c60`）在锁保护下清空两个回调槽，未初始化同样返回 `5023`，成功返回 0。回调槽清零不等于已经收到设备或服务确认。
+- 导入和字符串显示它通过 `CreatePrivateNamespaceW`/`CreateFileMappingW`、`MapViewOfFile`、事件、互斥量、线程和注册表组织跨进程通道；可见 `broadcast.dat`、`cbevent%d`、`ns-cbevent%d`、`SYNAPSE_NOT_ONLINE`、`BROADCAST_SUCCESS`、`BROADCAST_DISABLED` 和 `BROADCAST_APP_DISABLED`。这些是静态协议线索，映射区布局、消息校验和服务端应答仍需继续闭合。
+
+### RzChromaBroadcastAPI64.dll：兼容加载器
+
+| 原件 SHA-256 | 原件大小/架构 | capture SHA-256 | 函数/失败 | 导出 |
+| --- | --- | --- | --- | --- |
+| `21ab57c4db9f773b055a89e1e07a13dfe5bd516005d60bdcc250bfe7838fea55` | 53,448 B, x64 | `88ca1fc8a4cb43695974ef2488c551dda22bf6e9e75eb83d667c9403bdb1adde`（[`capture.json`](../../../.analysis/results/native/21ab57c4db9f773b055a89e1e07a13dfe5bd516005d60bdcc250bfe7838fea55/capture.json)） | 171 / 0 | 6 |
+
+- `Init`（`0x4b00`）按已加载的 32/64 位模块选择 `RzChromaConnectAPI.dll` 或 `RzChromaConnectAPI64.dll`，调用 `LoadLibraryW` 和五个 `GetProcAddress`；加载失败保留 `GetLastError`，未解析到 `Init` 时返回 `5023`。因此这个 DLL 是兼容转发层，不是设备传输实现。
+- `UnInit`（`0x4d20`）先调用已解析的 `UnInit`，再 `FreeLibrary` 并清空句柄。四个事件导出（`0x4d60`、`0x4d80`、`0x4da0`）在对应函数指针为空时都返回 `5023`。字符串和导入还显示 `Global\\RzChromaConnectManager.event.start`、`Global\\RzChromaConnectServer.event.start`、`RzChromaConnectManager` 和 `RzChromaConnectServer`，但未捕获服务端处理。
+
+### Rust 迁移边界
+
+上述三份捕获只闭合了转发门禁、进程间资源、效果消息包装和释放顺序；没有证明 `SetEffect`、CoreStream、广播事件或回调已获得硬件应答。Rust 实现必须分别建模加载失败、未初始化、重复注册、停止/释放、映射/事件异常和服务端应答，并用静态回放后再做显式官方 DLL 对照；当前所有 DLL、服务和设备结果仍为**未验证**。
+## RzChromaSDKProxy_v1.2.3.2.dll：设备代理、JSON Invoke 与轮询事件（静态捕获）
+
+原件 [RzChromaSDKProxy_v1.2.3.2.dll](../../../.analysis/inputs/official-native-current/blobs/e268ea62bdfc0a65194f580b66f6d907b1e2bdcf9cb474d737364adcdcabe88e/RzChromaSDKProxy_v1.2.3.2.dll) 为 x64 PE，359,112 字节，SHA-256 e268ea62bdfc0a65194f580b66f6d907b1e2bdcf9cb474d737364adcdcabe88e，Image Base 0x180000000。IDA 捕获 [capture.json](../../../.analysis/results/native/e268ea62bdfc0a65194f580b66f6d907b1e2bdcf9cb474d737364adcdcabe88e/capture.json) SHA-256 00b5bf90b995f1381e55be65150eb67433600fcbbef00e9009d45f0d44bfcbe9，1,479/1,479 函数、0 个 Hex-Rays 失败，14 个导出入口。
+
+- [Init 0x358b0](../../../.analysis/results/native/e268ea62bdfc0a65194f580b66f6d907b1e2bdcf9cb474d737364adcdcabe88e/functions/358b0.json) 先清理旧的全局对象，等待约 100 ms，再创建约 0xA0 字节 native 状态；底层设备数量结果作为返回值。若已有对象，Init 会先调用内部释放。 [UnInit 0x359f0](../../../.analysis/results/native/e268ea62bdfc0a65194f580b66f6d907b1e2bdcf9cb474d737364adcdcabe88e/functions/359f0.json) 调用内部销毁并把全局指针置零，返回同一错误/数量语义。
+- [Invoke 0x35ac0](../../../.analysis/results/native/e268ea62bdfc0a65194f580b66f6d907b1e2bdcf9cb474d737364adcdcabe88e/functions/35ac0.json) 解析 JSON 的 func、message、result/return 字段，已静态确认分派 AddDevice、SetDeviceState、MoveDevices；未知函数返回 ERROR_FUNCTION_FAILED，未知特性返回 ERROR_UNKNOWN_FEATURE，对象不存在返回 ERROR_OBJECT_NOT_FOUND 或 ERROR_NOT_FOUND，JSON 异常返回 ERROR_BAD_FORMAT。成功或错误都会序列化 response，不能把字符串生成成功当设备写入成功。
+- [AddDevice 0x35ab0](../../../.analysis/results/native/e268ea62bdfc0a65194f580b66f6d907b1e2bdcf9cb474d737364adcdcabe88e/functions/35ab0.json) 的导出桩本身恒定返回 -1；真正添加分支由 Invoke 调到底层状态对象。 [RemoveDevice 0x36ac0](../../../.analysis/results/native/e268ea62bdfc0a65194f580b66f6d907b1e2bdcf9cb474d737364adcdcabe88e/functions/36ac0.json) 以设备 id 调用内部移除并返回其错误码。
+- [PollEvents 0x372f0](../../../.analysis/results/native/e268ea62bdfc0a65194f580b66f6d907b1e2bdcf9cb474d737364adcdcabe88e/functions/372f0.json) 在轮询模式下锁住事件树，把队列节点搬入临时 JSON 数组，序列化为新分配的 C 字符串并销毁临时节点；调用者必须使用同一分配器释放。 [SetOperatingMode 0x371d0](../../../.analysis/results/native/e268ea62bdfc0a65194f580b66f6d907b1e2bdcf9cb474d737364adcdcabe88e/functions/371d0.json) 以原子值切换模式：值为 2 时启动约 40 ms 周期的 threadpool timer，否则停止 timer；UsePollingMode 直接转发该入口。
+- [SetAllocator 0x36c50](../../../.analysis/results/native/e268ea62bdfc0a65194f580b66f6d907b1e2bdcf9cb474d737364adcdcabe88e/functions/36c50.json)、[FreeMalloc 0x37930](../../../.analysis/results/native/e268ea62bdfc0a65194f580b66f6d907b1e2bdcf9cb474d737364adcdcabe88e/functions/37930.json) 定义跨边界内存所有权；RzChromaSDKProxy/RzChromaSDKProxyNoReturn 分别返回需释放字符串和直接释放输入/临时 JSON。SetNodeFFIEvent 只保存回调指针，捕获未证明回调线程停止与 join。
+
+该批只从完整捕获读取导出、伪代码、字符串和 xref，没有加载 DLL、启动 Chroma 服务或连接设备。底层 Add/Set/Move 的实际 HID/pipe 应答、事件顺序、取消和恢复仍需独立 Rust 回放与显式官方对照，当前为 Unverified。
+## RzChromaBroadcastManager.dll：广播效果、应用注册表与事件回调（静态捕获）
+
+原件 [RzChromaBroadcastManager.dll](../../../.analysis/inputs/official-native-current/extracted/d884ffbdf2dd0fdab2a7dd6b09a6c68b425996c0ded3d67e504e52871ef6d100/$PROGRAMFILES/Razer/ChromaBroadcast/bin/RzChromaBroadcastManager.dll) 为 x86 PE，226,504 字节，SHA-256 13fc8d59ca268687f490cfaf132f875da1dce2a6d81c434723f614b4385821b6，Image Base 0x10000000。IDA 捕获 [capture.json](../../../.analysis/results/native/13fc8d59ca268687f490cfaf132f875da1dce2a6d81c434723f614b4385821b6/capture.json) SHA-256 bfb1e7f7e6dcd1662abd46128264418a138f6b5298dc8c2cedd2f4c001104338，561/561 函数、0 个 Hex-Rays 失败，23 个导出入口。
+
+- [Init 0x21940](../../../.analysis/results/native/13fc8d59ca268687f490cfaf132f875da1dce2a6d81c434723f614b4385821b6/functions/21940.json) 和 [InitGlobalBroadcastData 0x22930](../../../.analysis/results/native/13fc8d59ca268687f490cfaf132f875da1dce2a6d81c434723f614b4385821b6/functions/22930.json) 都以全局对象为空作为初始化门禁；重复初始化返回 1247，未初始化调用返回 5023。UnInit 路径销毁内部对象并把全局指针置零，失败时保留原对象。
+- SetBroadcastEffect/SetKeyboardEffect 及其 OnApp 变体先检查全局对象，再按产品 ID 选择内部并行设备集合；无效 ID 记录并返回 5，未初始化返回 5023。入口的 PPL RunAndWait 只等待内部任务集合，不代表硬件 writer 已确认读回。
+- [Enable 0x21e90](../../../.analysis/results/native/13fc8d59ca268687f490cfaf132f875da1dce2a6d81c434723f614b4385821b6/functions/21e90.json)、IsEnabled、IsRunning、GetNumApps、GetApp、GetAppTitle、GetAppPath 和 GetAppIcon 均把查询转发给全局对象；未初始化查询分别返回 0、-1 或 5023，这些值不能被页面当作设备关闭或空列表的实测结果。
+- GetAppIndex/GetDeviceSupported 读取 HKLM 下 Software\Razer\ChromaBroadcast\Apps\<name> 的 Index 或 DeviceSupported DWORD；空名称返回 -2，注册表打开/查询失败返回 -1，并在所有分支关闭 HKEY。该路径只证明本机注册表元数据，不证明应用当前运行或设备已支持。
+- RegisterEventNotification 仅允许一个非空回调；未初始化返回 5023，无效产品 ID 返回 5，空回调返回 87，重复注册返回 1242，成功返回 0。UnRegisterEventNotification 使用相同产品 ID 门禁，空回调状态返回 85；UnInit/GlobalUnInit 负责释放内部回调资源。
+- 字符串和 xref 还确认 cbevent%d/ns-cbevent%d 事件命名、应用刷新及 MonitorAppEnableEvent/MonitorNumAppEvent/MonitorApiEnableEvent 线程；捕获未闭合这些事件到页面的实际消费者和回调 join 顺序，Rust 端必须分别建模注册失败、重复注册、停止和释放。
+
+本节与既有 Chroma Connect/动态照明捕获可能共享调用集合；SHA、函数和字节覆盖不重复累加。当前只完成静态读取，没有加载 DLL、修改注册表、启动广播服务或访问真实设备，效果写入、事件读回、取消与恢复保持 Unverified。
+
+
+## RzChromaSDK.dll / RzChromaSDK64.dll 的导出参数与生命周期边界
+
+本节从两份既有 IDA 9.1／Hex-Rays 9.1 捕获继续核对 SDK 公开调用链。Python 使用 `ThreadPoolExecutor(max_workers=4)` 并行核实原件 SHA-256、Image Base、函数记录 SHA-256、全部 chunk 与逐指令原始字节；没有加载或执行 DLL、启动服务或访问设备。
+
+| 原件 | SHA-256 | 大小／Image Base | capture SHA-256 | 本批选定函数／唯一 chunk／指令／原字节 |
+| --- | --- | --- | --- | --- |
+| RzChromaSDK.dll（x86） | `8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038` | 253,128 B／`0x10000000` | `7d2de3c1ceb4b9860b3eec84bd045a29b4a7d5886cd1d0adc155b675e66c2e32` | 15／15／2,273／6,883 B，全部字节均有列出的指令 |
+| RzChromaSDK64.dll（x64） | `7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7` | 273,096 B／`0x180000000` | `35aabd2f3285e856d762889213e7ec73630b69b116a5ff8b33d76250766540d1` | 15／15／1,666／6,822 B，其中指令 6,484 B，chunk 内未列出 338 B |
+
+原件路径与版本归属见下方两份 capture 的 `input`；这些 SHA 用于证据身份，不是产品运行时兼容门禁。x86 完整捕获为 733 函数，仍保留 `0x6500`、`0x6510` 两项 Hex-Rays 失败；本批所选 15 函数均有完整汇编及伪代码。x64 完整捕获为 943 函数、0 项 Hex-Rays 失败；本批不是整个 SDK 的语义完成声明，也不与其他文档复用的函数重复累加。
+
+| Export | x86 RVA / function record | x64 RVA / function record |
+| --- | --- | --- |
+| Init | [`0x26cc0`](../../../.analysis/results/native/8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038/functions/26cc0.json) | [`0x28c50`](../../../.analysis/results/native/7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7/functions/28c50.json) |
+| InitSDK | [`0x26cf0`](../../../.analysis/results/native/8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038/functions/26cf0.json) | [`0x28c90`](../../../.analysis/results/native/7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7/functions/28c90.json) |
+| UnInit | [`0x26dd0`](../../../.analysis/results/native/8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038/functions/26dd0.json) | [`0x28d90`](../../../.analysis/results/native/7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7/functions/28d90.json) |
+| CreateEffect | [`0x26f60`](../../../.analysis/results/native/8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038/functions/26f60.json) | [`0x28e00`](../../../.analysis/results/native/7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7/functions/28e00.json) |
+| SetEffect | [`0x287d0`](../../../.analysis/results/native/8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038/functions/287d0.json) | [`0x2a530`](../../../.analysis/results/native/7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7/functions/2a530.json) |
+| DeleteEffect | [`0x28780`](../../../.analysis/results/native/8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038/functions/28780.json) | [`0x2a4d0`](../../../.analysis/results/native/7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7/functions/2a4d0.json) |
+| RegisterEventNotification | [`0x28830`](../../../.analysis/results/native/8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038/functions/28830.json) | [`0x2a590`](../../../.analysis/results/native/7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7/functions/2a590.json) |
+| UnregisterEventNotification | [`0x288e0`](../../../.analysis/results/native/8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038/functions/288e0.json) | [`0x2a660`](../../../.analysis/results/native/7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7/functions/2a660.json) |
+| CreateKeyboardEffect | [`0x27ea0`](../../../.analysis/results/native/8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038/functions/27ea0.json) | [`0x29c30`](../../../.analysis/results/native/7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7/functions/29c30.json) |
+| CreateMouseEffect | [`0x28080`](../../../.analysis/results/native/8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038/functions/28080.json) | [`0x29de0`](../../../.analysis/results/native/7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7/functions/29de0.json) |
+| CreateHeadsetEffect | [`0x283c0`](../../../.analysis/results/native/8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038/functions/283c0.json) | [`0x2a100`](../../../.analysis/results/native/7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7/functions/2a100.json) |
+| CreateMousepadEffect | [`0x28490`](../../../.analysis/results/native/8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038/functions/28490.json) | [`0x2a1b0`](../../../.analysis/results/native/7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7/functions/2a1b0.json) |
+| CreateKeypadEffect | [`0x285b0`](../../../.analysis/results/native/8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038/functions/285b0.json) | [`0x2a2f0`](../../../.analysis/results/native/7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7/functions/2a2f0.json) |
+| CreateChromaLinkEffect | [`0x286f0`](../../../.analysis/results/native/8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038/functions/286f0.json) | [`0x2a450`](../../../.analysis/results/native/7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7/functions/2a450.json) |
+| QueryDevice | [`0x28960`](../../../.analysis/results/native/8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038/functions/28960.json) | [`0x2a6f0`](../../../.analysis/results/native/7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7/functions/2a6f0.json) |
+
+[x86 capture](../../../.analysis/results/native/8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038/capture.json)
+[x64 capture](../../../.analysis/results/native/7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7/capture.json)
+
+### 初始化与释放
+
+`Init` 在全局对象已经存在时直接返回 0；首次调用分别分配 x86 `0x1574`、x64 `0x1780` 字节对象，再进入内部初始化。公开入口的成功不能证明底层共享区、服务或设备已经可用。
+
+`InitSDK` 在检查全局对象之前先验证输入：指针非空，偏移 `0`、`512`、`2560`、`3072` 的四个 UTF-16 字符串非空，偏移 `3584` 的 DWORD 为 `1..63`，偏移 `3588` 的 WORD 为 `1..2`；失败返回 87。字符串检查沿 NUL 扫描，本层没有独立长度参数，不能把固定偏移误写成安全边界校验。通过验证后，已有对象仍返回 0，没有重新提交新描述。
+
+x86 `UnInit` 先调用内部注销，将运行标志清零，触发并关闭停止事件，然后对三个线程各等待 10,000 ms，再关闭线程句柄和另外两个句柄、销毁对象并清空全局指针；本层丢弃每次等待结果，最终返回 0。x64 公开 `UnInit` 只有在内部停止返回 0 后才销毁及清空对象，否则保留对象并返回内部错误；内部停止是否真正等待退出仍须沿下一层核对。不得用公开返回 0 证明线程已经退出或全部回调已经结束。
+
+### 效果参数与错误边界
+
+所有已选效果／设备入口在全局对象不存在时返回 5023。`SetEffect`、`DeleteEffect`、`QueryDevice` 都把输入 GUID 与全零 GUID 比较，**相等时返回 87**，其他 GUID 继续进入内部函数；x86 常量 RVA `0x2c2a0` 与 x64 常量 RVA `0x2e590` 的原件 16 字节均为零。这是拒绝空 GUID 的门禁，不能反向理解为只接受某个固定 GUID。
+
+通用 `CreateEffect` 先拒绝大于 9 的类型（87），再把 `1/2/3/4/5/9` 返回 50；余下 `0/6/7/8` 继续按静态产品 GUID 分支验证。多个分支要求类型 6／7 的参数非空，还有产品分支检查首 DWORD 的 LED 值或首 QWORD 的结构大小（可见 `16` 与 `3616`）；不能合并为所有产品都接受同一种结构。完整分支仍保留在两份函数记录，产品 GUID 到内部编码的实际转换继续沿内部消费者核对。
+
+六类专用入口先做各自参数验证，再传入下面的类别／产品选择值。表中的数字是当前原件的效果类型和选择值，未用推测的枚举名覆盖实际语义。
+
+| 入口 | 本层接受的类型 | 参数规则 | 传入内部的选择值 |
+| --- | --- | --- | --- |
+| Keyboard | `0,1,2,3,4,5,6,8,9,50` | 0／5 强制传空参数；1／6 首 DWORD 为 1 或 2；3 为 1..3；2／4／8／9／50 非空；其他返回 50，参数错误 87 | `0x1ffff` |
+| Mouse | `0..9` | 0／5 参数可空，其余非空；0／1／2／4／5／6 的首值为 `1..17` 或 `0xffff`，2／4 第二值为 1..3；7 首值为 0 或 1；9 转为类型 6，并构造首值 `0xffff`、第二值为输入首 DWORD | `0x2ffff` |
+| Headset | `0..4` | 1／2／4 非空；0／3 保留输入参数；其他返回 50，缺失参数 87 | `0x4ffff` |
+| Mousepad | `0..6` | 1／5 非空且首值为 1 或 2；2／4／6 非空；0／3 保留输入参数 | `0x8ffff` |
+| Keypad | `0..6` | 1／6 非空且首值为 1 或 2；3 为 1..3；2／5 非空；0／4 保留输入参数 | `0x10ffff` |
+| ChromaLink | `0..2` | 0 强制传空参数；1／2 非空；其他返回 50，缺失参数 87 | `0x80ffff` |
+
+### 通知窗口与未验证边界
+
+`RegisterEventNotification` 的输入是 HWND：未初始化返回 5023，第一次 `IsWindow` 失败返回 6，已有有效通知窗口返回 1247，否则第二次验证成功后保存 HWND 并返回 0；第二次验证失败返回 87。x86 通知槽位在对象 `+5484`，x64 为 `+6000`。`UnregisterEventNotification` 只在当前槽位仍是有效窗口时清零并返回 0，否则返回 5023；本层没有等待消息接收方、回调或硬件完成。
+
+这些导出已经给出独立 Rust 纯／模拟测试的输入边界：未初始化、重复 Init、无效描述、空 GUID、类型 7 的键盘拒绝、鼠标 LED 17 的有效边界、类型 9 的转换、窗口失效和注销，以及停止等待超时。实际效果缓冲区编码、内部集合、共享帧／服务通信、设备写入及读回仍继续追踪；本次没有执行 Rust 行为测试或官方 DLL 实际对照，实际设备、事件顺序、取消、恢复和释放验收均保持未验证。

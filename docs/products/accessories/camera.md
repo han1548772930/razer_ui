@@ -276,6 +276,12 @@ MIC 已用 `observation: Option<[u8;2]>` 区分读取收据，但当前 scope �
 
 属性页还有独立失败状态边界：`request_camera_properties` 在异步打开前把 `windows_properties_open` 置真；`finish_properties` 仅在返回 `PropertiesClosed` 时允许清除。若查询页接口、创建宿主窗或 OleCreatePropertyFrame 失败，当前消费路径只打印错误而不结算这个打开状态。3596 的禁用条件依赖该布尔量，必须测试失败后的实际窗口/释放状态和后续可操作性；既不能伪造 `PropertiesClosed` 成功，也不能让已释放的失败请求永久冒充仍打开的窗口。当前业务还广泛使用 `Value` 作为 profile/字段路径边界，完整强类型状态清理亦未完成。
 
+### 当前 camera-local-pages 与 camera-source-review 收据
+
+当前联合审计收据 [`accessories-camera-local-pages-audit.json`](../../../.analysis/results/frontend/accessories-camera-local-pages-audit.json) 的 SHA-256 为 `05bc74fc0b7a4e5aa49dfe370c612a7edf57968050f144ebde3626861a5e525e`，覆盖 3594、3595、3596 三个当前入口、219 个完整 owner；三份页面层 `failures` 与 `unresolved_chains` 为空，但这只表示已选静态 owner 查询收束，不表示整页验收。3594 记录 51 个 owner、27 个控件比较和 20 条本地链；3595/3596 共享 1.0.35.0 原生捕获，各记录 2,817 个完整函数并保留 `0x870c0` 的 Hex-Rays 失败。3594 使用 1.0.36.1 捕获的 2,825 个完整函数并保留 `0x87ad0` 失败；两处均有独立补查收据，原始失败不能从基准收据中删除。
+
+3595 与 3596 收据仍各保留同一条剩余边界：完整的 Image/Camera/Processing 展示、产品/固件分支和快捷键行为需要产品级整页核对，已核的 footer、processing、native vtable 和 source cache 不能提升为整页完成。当前静态结果明确了输入、页面 owner、协议分支、Rust 接线和失败/取消/释放观察；官方 DLL 的逐功能结果、真实设备应答/读回、写入恢复以及窗口与媒体验收仍为 `Unverified`，不可由捕获成功或模拟传输一致替代。
+
 ### 分层验证
 
 | 层次 | 本次可支持的结论 |
@@ -288,3 +294,52 @@ MIC 已用 `observation: Option<[u8;2]>` 区分读取收据，但当前 scope �
 | 官方实际 DLL / 设备对照 | 本轮未执行，保持未验证；无设备时先做独立期望的纯逻辑、模拟传输和有据回放，不能用双方未连接或模拟一致替代 |
 
 后续自动化覆盖应包含每个已挂载/未挂载分支、固件 gate、数字编辑边界、已选项再次点击、折叠/焦点/键盘、预览加载/关闭/占用/错误、真实 cache 与差异选择、source/resolution/设备切换、Help 往返、取消后迟到结果、部分写入、读回和完整释放。官方对照必须执行对应 DLL 功能并记录本地结果、实际应答、差异及恢复；加载成功、固定真返回、middleware `completed` 与仅停止线程都不足以判定功能通过。本文没有执行摄像头、媒体捕获、DLL、JavaScript 或主程序。
+
+## GenericCamera 原生检查与相机应用边界（2026-10-24）
+
+当前两份 GenericCamera 原件的静态捕获收据分别是 [`84a540e5…/capture.json`](../../../.analysis/results/native/84a540e5d1747a8c1912e2f4710850b9397ccaf4ea812be03f20da8f27aa9ae7/capture.json) 与 [`daee9fe0…/capture.json`](../../../.analysis/results/native/daee9fe0f5e9f9fa2a5fe83d9da56081464cc540eeb4452a81e81788c71bf3c2/capture.json)。前者保留 2,817 个完整函数，后者保留 2,825 个完整函数；两份均有一个 Hex-Rays call-analysis 失败（分别为 RVA `0x870c0` 与 `0x87ad0`）。完整汇编、失败记录和补查收据保持在各自结果目录，不能把补查伪装成基准伪代码成功。
+
+### 外部相机应用检查
+
+- `CheckCameraAppsInstalled` 要求输入 JSON 为数组；传入 `{}` 会产生 `camera apps should be an array!`，而不是静默当成空列表。宿主经 `CRazerDevicesManager::CheckCameraAppsInstalled` 保存到应用状态；两个版本的 owner 分别位于 RVA `0x5f1e0` 与 `0x5f5a0`（对应函数链接见上方 capture 目录）。
+- 默认检查项包含 `Camo Studio`、`NVIDIA Broadcast` 和 `XSplit VCam`。未命中时各自结果保持 false／未安装边界，不能把名为 `Pending implement` 的 UI 文案当成已安装或成功。
+- Camo 分支使用 helper RVA `0x3f7f0`，读取 `CamoStudioVersion`、`CamoDriverInstalledState`、`CamoDriverEnableStatus`，再由 `CheckSpecificCameraAppInstalled`（RVA `0x40be0`）组合专用结果。NVIDIA 分支使用 `0x3fb90`，写入 `BroadcasterResult` 与 `BroadcasterVersion`；XSplit 分支使用 `0x3fe00`，写入 `XSplitVCamResult` 与版本字段。第二版的专用 helper 位于 `0x40c50` 与 `0x411d0`。这些结果是应用存在性探测，不是摄像头设备 ACK。
+
+### 摄像头生命周期、列表与属性窗口
+
+- `StartCamera`／`StopCamera` 的两个版本 owner 分别覆盖 RVA `0x58870/0x58940` 与 `0x58a10/0x58ae0`；它们围绕容器、采集 track 和停止路径管理本地资源，返回值不能替代帧读回或设备确认。
+- `EnumerateCameraList` 先枚举 DevicePath 与属性，再经过过滤 helper `0x5eb70`／`0x5ef30`；列表返回 1 只说明该枚举分支的状态，不能推断摄像头已打开。对应函数的原始捕获位于两个 capture 目录的 `functions/5eb70.json`、`functions/5ef30.json`。
+- `DisplayCameraPropertiesDialog` 通过 base filter owner RVA `0x4cf70` 检查 `m_baseFilter == nullptr`，属性页关闭使用 `WM_CLOSE`；COM 属性框架、窗口句柄和失败清理必须与 `CloseCameraPropertiesDialog` 分开测试。其余属性入口覆盖 `0x5ec10/0x5ecf0`、`0x5efd0/0x5f0b0`，不能只记录打开入口而省略关闭路径。
+
+本段只确认原件字节、函数身份、输入校验和静态调用边界；没有执行 DLL、应用、摄像头或媒体采集，也没有确认真实设备帧、属性写回、读回、取消、恢复或完整释放。独立 Rust 实现仍需按已核 ABI 和每个产品分支实现，并以显式对照入口记录官方 DLL 与 Rust 的输入、输出、错误、读回和清理差异。
+
+## Kiyo 0E08/0E03 原生相机链（2026-10-24 四线程静态捕获）
+
+本节记录两个 Kiyo 原生版本的独立调用链。两份原件的函数集合和初始化边界不同，不能把一个版本的行为泛化到另一个版本；下表的函数数是各自 capture 的完整集合，重复版本不相加。
+
+| 原件 | 原件字节 / SHA-256 | capture.json SHA-256 | 函数 / Hex-Rays 失败 | 导出入口 |
+| --- | ---: | --- | ---: | ---: |
+| RzNative_0E08_v1.0.16.0.dll | 600264 / 1ea145fe182505cd8ae19a6bc1ea5362c70d18681b51195d026ec57c86ad06d8 | 54f729c256fd559ec8c5c286a869f9fcf587e4546d49ab23c112f19114989275 | 2060 / 0 | 91 |
+| RzNative_0E03_v1.0.16.1.dll | 796296 / d4fd77a92c860bb190d7aab604124e9d4343901fcea83069aa99d29db5a9586b | 23ce499d0c8fae7c60e75c97072dc080a0876f1c07376aad8d748af523d9a377 | 2634 / 1 | 40 |
+
+完整批次摘要和原始字节核验在 [camera-audio-native-batch analysis.json](../../../.work/camera-audio-native-batch-20261024/analysis.json)。对应的 [0E08 capture](../../../.analysis/results/native/1ea145fe182505cd8ae19a6bc1ea5362c70d18681b51195d026ec57c86ad06d8/capture.json) 和 [0E03 capture](../../../.analysis/results/native/d4fd77a92c860bb190d7aab604124e9d4343901fcea83069aa99d29db5a9586b/capture.json) 均为完整捕获。独立 PE 映射检查确认两个模块所有已列 chunk 和 assembly 指令均与原件字节一致；0E08 为 2066 个唯一 chunk、103613 个唯一指令、419265 个唯一 chunk 字节，0E03 为 2684、143877、555742。0E03 的 0x180072223 仍保留 call-analysis failed（code -12），所以不能把该模块写成全函数语义闭合。
+
+### 0E08 的 COM、设备登记和窗口停止
+
+0E08 的 DeviceInitialize（RVA 0x50bb0）先调用 CoInitializeEx(0, 2)。S_OK/S_FALSE 和 RPC_E_CHANGED_MODE 都进入设备管理器；只有前两种结果调用 CoUninitialize。管理器 0x401a0 先复用已登记 ID，否则刷新视频设备枚举，按 168 字节记录中的字符串精确比较，创建共享 RzDeviceAccess 并打开；只有打开成功才加入活动列表。DeviceTerminate（0x50d50）同样处理 COM 模式，找到精确 ID 后先停止相机窗口，再清理命令执行器、在 SRW 锁下释放接口并删除列表记录。窗口停止路径关闭窗口、清理句柄并对非当前线程执行 join；自 join 或 join 失败会抛出异常，不能用返回成功代替线程已退出。
+
+StartCamera/StopCamera（0x51ca0/0x51d70）在导出层只做管理器查找，当前捕获没有帧接收或读回证据。SetNodeFFIEvent（0x50a70）只保存回调指针并返回 1；没有看到等待在途回调完成的链。FreeMalloc（0x50a80）对非空指针调用 free 并返回 1，Rust 侧必须保持与该导出分配器的边界，不能把任意 Rust 分配指针交给它。
+
+### 0E08 属性命令和异常恢复
+
+Brightness 的 getter/setter（0x51e40/0x53450）使用 VideoProcAmp 属性 0，WhiteBalance 使用属性 7，Focus 使用 CameraControl 属性 6；通用 getter 0x4a130 和 setter 0x4a5d0 通过命令执行器在共享锁下访问实时接口。getter/setter 的超时计数达到三次会调用软件恢复 0x4c930，再各重试一次；重试失败只记录日志并返回失败，不能回退到旧缓存。无接口或异常分支会保留序列化的空对象或失败布尔值，不能解释为设备返回了默认值。
+
+SaveUVCExtCmdToFlash（0x51ba0）和 RestoreDefaults（0x571a0）分别转发设备虚表命令；本层没有证明 flash 写入后的读回，也没有闭合默认表内容。0E08 还导出了对比度、色相、饱和度、锐度、伽马、增益、背光、曝光、HDR、自动对焦、MJPEG、镜像和曝光测光等更宽属性集合；导出数量只说明 ABI 表面，若分支主体返回 0 或空对象，不能据此声称该属性已经接通。
+
+### 0E03 的版本差异
+
+0E03 的 Initialize（0x4e4a0）和 Terminate（0x4e530）只是日志包装并返回 1，不负责设备生命周期；实际入口是 DeviceInitialize（0x4e660）和 DeviceTerminate（0x4e730）。后者按精确 ID 查找设备，停止线程、释放接口、移除枚举记录并释放引用。DeviceInitialize 不重复 0E08 的 COM 模式门禁。SetEventInterface（0x4e3a0）只检查三个参数非空，当前函数体没有保存或注册接口的动作。
+
+0E03 的 Brightness/Contrast/Saturation/WhiteBalance/Focus/Zoom getter/setter 分别转发属性编号 0、1、3、7、6、3；执行器只对超过约 500 ms 的调用记录日志，没有 0E08 的三次超时恢复重试。Initialize/Terminate 导出返回 1 不能替代 DeviceTerminate 的真实移除。该版本的 FreeMalloc（0x4e370）经内部分配器 0x69060 释放；在 Rust 侧必须按版本分别配对，不能假设与 0E08 的 CRT free ABI 相同。
+
+两个版本的 UVC 扩展、设备身份字符串、属性窗口和相机应用入口仍只完成静态语义核对。没有运行 DLL、Media Foundation、设备或窗口，也没有执行写入、读回和恢复；官方结果与 Rust 结果的对照、失败/取消/重连和完整释放均保持 Unverified。

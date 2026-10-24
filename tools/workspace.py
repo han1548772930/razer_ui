@@ -8098,6 +8098,8 @@ def prepare_dashboard_images(workers=8, *, refresh_ledger=True, products=None, s
     supplies artwork, behavior or a successful deployment claim. Missing images
     remain failed acquisition rows and never become fabricated placeholders.
     """
+    if type(workers) is not int or not 2 <= workers <= 12:
+        raise ValueError("Dashboard resource workers must be between two and twelve")
     import analysis
     import families
     acquisition_path = ROOT / ".analysis/inputs/frontend/synapse-dashboard-current/acquisition.json"
@@ -9935,8 +9937,8 @@ def main():
     elif args.command == "prepare-keyboard-identity":
         print(json.dumps(prepare_keyboard_identity(), ensure_ascii=False))
     elif args.command == "prepare-dashboard-images":
-        if not 1 <= args.workers <= 12:
-            raise ValueError("Dashboard resource workers must be between one and twelve")
+        if type(args.workers) is not int or not 2 <= args.workers <= 12:
+            raise ValueError("Dashboard resource workers must be between two and twelve")
         prepare_dashboard_images(args.workers, refresh_ledger=not args.no_refresh_gaps,
                                  products=args.product, source_preview_only=args.source_preview_only)
     elif args.command == "audit-family-function":

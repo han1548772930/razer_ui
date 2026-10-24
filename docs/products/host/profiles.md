@@ -269,6 +269,134 @@ Epic 与独立平台策略调用的 `GetMihoyoGamedata2` 是另一条本地文�
 
 本段对 Lib 的 18 个、Common 的 9 个及服务 EXE 的 1 个所选 MethodDef 身份／方法头独立核验，包含与前述集合重叠的方法；完整 IL 与相关 C# 产物分别核对当前捕获摘要，关键构造／调用另核原 PE 字节，未声称逐指令独立解码全部 IL。测试须分别覆盖 4096 B 边界、数字字符串、解析 null 的消费者、文件共享与读失败、分帧的引号／转义／截断、GameId 大小写、路径比较器区域设置、重复发现、广播挂起／失败、缓存缺分区及保存失败；这些是待实现的行为验证边界，本段没有执行程序集、DLL、服务或设备，也不提升实际对照状态。
 
+### Arc、Bethesda、EA、GOG、Mihoyo、Riot 与 Uplay 的实际本机扫描
+
+本段继续核对当前服务包中已注册的七个策略，不重复公共 AddFoundGame、GUID、事件消费者及 LGL 落盘链，也不重复 GetMihoyoGamedata2 的记录解析。当前三份程序集输入、本批 22 份直接相关 C# 和三份完整 IL 的实际长度与 SHA-256 均已对上现有 [托管捕获清单](../../../.analysis/results/host-current/managed/capture.json)。七个 ScanAsync 包装器与 MoveNext、Reader／Parser 和公共文件／注册表适配器结合源码及 IL 审阅；选定方法的 tiny／fat header、方法大小、call／callvirt／newobj opcode、可直接解析的 MethodDef／MemberRef operand、分支目标及异常区间另从原 PE 字节核验。泛型 MethodSpec 调用没有在这次原始元数据核验中独立解析其类型参数，不能将 opcode 一致扩大为完整泛型元数据已独立验证。没有执行厂商程序集、扫描本机注册表或游戏目录。
+
+实际 [ServiceRegister](../../../.analysis/results/host-current/managed/3aa42301ef78/source/Razer/GameManagerService/Service/ServiceRegister.cs) 将 IRegistryWrapper→RegistryWrapper、IPathWrapper→PathWrapper、IGameSignatureHelper→GameSignatureHelper，以及 BethesdaGamesReader、UplayConfigurationParser 和 UplayConfigurationDataReader 注册为 Singleton；七个策略均为 Scoped。它们通过 [GameScannerStrategyDependencies](../../../.analysis/results/host-current/managed/955d4bbd372f/source/Razer/GameManagerServiceLib/GameScannerStrategyDependencies.cs) 获得这些实际实现，不是仅根据接口名称猜测行为。Arc／GOG／Uplay 优先级为 High=4，Bethesda／EA／Mihoyo／Riot 为 Normal=3；完整 IL 的 Priority attribute blob 分别是 `01 00 04 00 00 00 00 00` 和 `01 00 03 00 00 00 00 00`。实际执行顺序仍由前述 Scanner 调度层决定，不能把 DI 注册顺序当作最终顺序。
+
+| 策略 | 实际本机来源及发布内容 | 停止、异常与清理边界 |
+| --- | --- | --- |
+| [ArcRegistrySearch](../../../.analysis/results/host-current/managed/955d4bbd372f/source/Razer/GameManagerServiceLib/GameScannerStrategyArcRegistrySearch.cs) | HKLM Registry32 的 `SOFTWARE\Perfect World Entertainment\Core\`；读取 CLIENT_PATH、INSTALL_PATH、LAUNCHER_PATH、PATCHER_PATH。签名 LaunchExe=ClientPath、LaunchHelper=LauncherPath、SourceEx=ARC；经 CanSkipGame 后进入 AddFoundGame，检测方式 ARC_REGISTRY | 整组注册表读取和主表索引先于逐记录停止；GetArcData 有逐项及外层 catch，返回已收集结果。ScanAsync 的逐签名主体没有 catch；正常末尾 Clear，不在 finally |
+| [BethesdaRegistry](../../../.analysis/results/host-current/managed/955d4bbd372f/source/Razer/GameManagerServiceLib/GameScannerStrategyBethesdaRegistry.cs) | 先经实际 BethesdaGamesReader 确认 launcher 和读取本机 Uninstall 记录，再按主表 LaunchUrl 或 exe 候选发现；检测方式 BETHESDA_REGISTRY | Reader 完整预读取先于停止，策略每个游戏开头才检查。exe 枚举／路径／映射没有逐游戏大 catch；只有图标复制有局部 catch。正常末尾 Clear，不在 finally |
+| [EARegistrySearch](../../../.analysis/results/host-current/managed/955d4bbd372f/source/Razer/GameManagerServiceLib/GameScannerStrategyEARegistrySearch.cs) | 13 个 HKLM Registry32 产品树的 Product GUID 与同视图 Uninstall 子项名 join；使用 DisplayIcon 作为实际 LaunchExe，SourceEx=ORIGIN、GameGUID=解析值；检测方式 EA_REGISTRY | 两批注册表及主表索引先读完，GetEAData 每个产品项才检查停止，有逐项及外层 catch。ScanAsync 再逐项检查停止，但没有逐项 catch；正常末尾 Clear |
+| [GogRegistrySearch](../../../.analysis/results/host-current/managed/955d4bbd372f/source/Razer/GameManagerServiceLib/GameScannerStrategyGogRegistrySearch.cs) | HKLM Registry32 的 `SOFTWARE\GOG.com\Games\`；exe／launchParam／gameName，签名 SourceEx=GOGGALAXY、SourceExId=注册表末组件，并保留 LaunchParams；检测方式 GOG_REGISTRY | GetGogData 先读整组、再逐项停止及 catch，外层 catch 返回前缀。ScanAsync 无逐项 catch；正常末尾 Clear |
+| [MihoyoPlatformSearch](../../../.analysis/results/host-current/managed/955d4bbd372f/source/Razer/GameManagerServiceLib/GameScannerStrategyMihoyoPlatformSearch.cs) | 先 GLOBAL、CN launch helper，再完整读取 GLOBAL、CN 的所有本机 gamedata 文件；只对主表存在的 MIHOYO GameId 继续，实际 exe 使用 InstallPath+主表 RunningExe；检测方式 MIHOYO_PLATFORM | 读取和第一轮全部预处理没有停止检查，第二轮逐游戏才检查。无逐项 catch、无末尾 Clear；两轮路径处理或主表字段异常可 fault 策略 |
+| [RiotPlatformSearch](../../../.analysis/results/host-current/managed/955d4bbd372f/source/Razer/GameManagerServiceLib/GameScannerStrategyRiotPlatformSearch.cs) | helper 取 CommonApplicationData 下 RiotClientInstalls.json 的 rc_live，metadata 则固定为 `C:\ProgramData\Riot Games\Metadata`；每个 *.live 目录只取首个 *.yaml。按主表 RIOT RunningExe 找本机 exe，检测方式 RIOT_PLATFORM | 所有文件读取和文件夹集合构造先于停止。每文件夹只在开头检查；局部 catch 仅包主表路径匹配，之后仍构造候选并调用 CanSkipGame。无匹配成功的独立门槛，最终是否发布须结合公共消费者；没有末尾 Clear |
+| [UplayConfigurationSearch](../../../.analysis/results/host-current/managed/955d4bbd372f/source/Razer/GameManagerServiceLib/GameScannerStrategyUplayConfigurationSearch.cs) | launcher 安装目录的本地 `cache/configuration/configurations` 文本，辅以本机 Uninstall 的 Uplay Install 目录；只尝试第一条 OfflineExecutable、第一条 OnlineExecutable 及二者的目录补全。SourceEx=UPLAY、LaunchUrl 来自 GameId，检测方式 UPLAY_DB | 配置解析、目录和主表索引均先于逐项停止。路径提取及身份／发布各有独立逐项 catch；正常末尾 Clear，不在 finally。OnlineExecutable 只是本地配置字段名，此调用链没有发起在线请求 |
+
+这七个完整 MoveNext 都没有 await 挂起点。方法名和 Task 返回类型不表示它们自动建立后台线程，也没有把 GetStopScanFlag 传入注册表枚举、文件读取或 Parser。Arc／EA／GOG 的 GetData 开头都先进行预读取，每项检查分别位于 `IL_00e9`、`IL_018f`、`IL_00de`；对应 ScanAsync 又在每个候选开头检查。Bethesda、Mihoyo、Riot、Uplay 的逐项检查分别在 `IL_012f`、`IL_0403`、`IL_01d1`、`IL_016f`。IEnumerator 的 finally 只释放枚举器；不能据此声称列表清理、注册表句柄释放或整个同步读取已取消。抛出未由更内层处理的异常会到 MoveNext 的 AsyncTaskMethodBuilder.SetException，先前已发生的映射修改和发布不因此自动撤销。
+
+### 实际注册表与路径适配器
+
+[RegistryWrapper.GetRegistryGroup](../../../.analysis/results/host-current/managed/e07813af888b/source/Razer/GameScannerCommon/RegistryWrapper.cs) 直接按传入 Hive／View 打开根和子树，仅枚举下一层子项。每个请求字段调用 GetValue(name, string.Empty).ToString() 并写入 RegistryData，缺值通常成为空字符串；当前子项全部字段完成才 Add。它只有覆盖整次读取的 catch，异常后返回已添加的前缀，既不逐子项继续，也不因一次异常主动清空前缀。不存在的子项跳过；没有排序和停止参数。返回的 RegistryKey 字符串来自子键 ToString()。
+
+GetRegistryGroupForKey 不枚举子项，而是读取指定 key 的 value names，按 CurrentCultureIgnoreCase 建集合，只为实际存在的请求字段写字典；不存在的字段保持缺项，不是统一补空。此方法先创建带传入 key 的 RegistryGroupData，再进入 try，catch 后返回该对象及已写字段。两方法都没有独立 Dispose OpenBaseKey／OpenSubKey 返回的 RegistryKey；原 IL 的 finally 对象是 `List<string>.Enumerator`，不是注册表句柄。Rust 所有者仍须按工作区要求保证资源释放，实际 DLL 对照应记录此官方边界，不得以枚举器清理推断句柄链完整。
+
+ReadRegistryString 将空 key 直接变成 defaultValue，空 value name 或字面量 `string.Empty` 变成默认值名。第一次 Registry.GetValue 及显式 string cast 在内部 catch 外：读取异常、权限错误或非字符串类型可能向上层传播，并非全部静默返回 defaultValue。只有第一次结果为空且 key 以 HKLM 全名开头时，才进入异视图备选；比较采用 CurrentCultureIgnoreCase。32 位进程／64 位 OS 读 Registry64，64 位进程读 Registry32；这个备选内部吞异常，没有独立关闭新打开的 key。该分支也可能返回 null，不能把所有缺失路径归成同一个空字符串结果。
+
+[PathWrapper](../../../.analysis/results/host-current/managed/e07813af888b/source/Razer/GameScannerCommon/PathWrapper.cs) 的 DirectoryExists 对 null／empty 返回 false，否则直接 Directory.Exists；FileExists 同样先判空，但会删除路径中的全部双引号再 File.Exists。这个删除只用于存在性判断，不会把调用方保存的路径原地改成无引号形式。GetFiles(path, pattern) 直接 Directory.GetFiles；带 SearchOption 的重载先判断 Directory.Exists，不存在则返回 null。GetDirectories(path) 直接枚举，带 pattern 的重载则先判断目录，不存在返回 null。它们没有独立 catch 或停止 token，调用方的异常层级和 null 消费必须逐条保留。FindFileInDirectory 则按 CreationTimeUtc 降序取 FirstOrDefault，不等同按修改时间或文件名找首项。
+
+[PathExtensions.CanonizePath](../../../.analysis/results/host-current/managed/e07813af888b/source/Razer/GameScannerCommon/PathExtensions.cs) 对非空值尝试 `Path.GetFullPath(new Uri(path).LocalPath)`，转换异常返回原字符串，不是拒绝该值或返回 null。[GameSignatureHelper.GetComponents](../../../.analysis/results/host-current/managed/e07813af888b/source/Razer/GameScannerCommon/GameSignatureHelper.cs) 对空值返回空数组，其余按 `|` Split，保留空组件，不负责路径分隔符／架构／存在性解析；Bethesda 的两个默认候选列表都继续依赖这一具体行为。
+
+### Arc、EA 与 GOG 的候选和身份
+
+Arc 先接受“LauncherPath 非空且存在”或“ClientPath 非空且存在”；只有两者均不合格时才要求 PATCHER_PATH 存在并把它赋给 ClientPath。这不会保证最后的 ClientPath 本身存在：仅 launcher 存在而 client 为空或为不存在的路径时，仍可进入后续。`IL_01f7/01fc` 只有 ClientPath 与 LauncherPath 相等才清空 LauncherPath；清空后 ClientPath 为空时，才将原 launcher 注册表值赋回 ClientPath。不能把这个嵌套分支改写为无条件的“缺 client 就采用 launcher”。
+
+Arc 的标题先尝试 InstallPath 末目录里最后一个 `_` 之前的部分，且要求该分隔符索引大于零；没有下划线时不会直接采用该末目录名，而是依次试 client 文件名、launcher 文件名、Unknown，再去掉 ™／®。主表 ARC 用 RegistryKey 建 CurrentCultureIgnoreCase 字典，候选精确替换 `\WOW6432Node\` 后查找，否则 CreateEntryGuid(ARC, Title)；发现既有 GUID 属于其他来源时，以该来源和 Title 重建。client 存在时 RegistryValue 固定写 CLIENT_PATH，即使实际 client 来自 patcher。launcher 存在且尚无 RegistryValue 才写 LAUNCHER_PATH。
+
+Arc 的映射必须保留字面行为：client 参与 LaunchExe.GetOrAdd；launcher 先查 LaunchHelperExe，却在命中冲突时对 LaunchExe 字典以 LauncherPath 调 TryUpdate，随后不论这个 bool 结果都采纳映射 GUID（`IL_0434` 取枚举 3，`IL_0456` 取枚举 0，`IL_0467/046c` TryUpdate 后 pop）。同样的“helper 查找→LaunchExe 尝试更新→采纳身份”出现在 EA、GOG 和 Uplay。这些映射修改发生在最终 CanSkipGame／AddFoundGame 之前，停止或后续失败不自动回滚。Arc、EA、GOG 传入的 egidNameGuids 参数在各自 GetData 中没有使用。
+
+EA 固定按 EA Games、EA Sports、BioWare、Crytek、Origin、Sims、PopCap、PopCap Games、Respawn、Maxis、CCCP、Bullfrog Productions、Origin Systems 顺序取 Product GUID，再读取 Registry32 Uninstall 的 DisplayIcon／DisplayName。13 路中 null 接口结果被当作空列表，若调用本身抛出则由外层 GetEAData catch 结束收集；实际 RegistryWrapper 通常已在自身 catch 内吞异常并返回空或前缀，因此不能把普通坏子项一概说成剩余 12 路全部不读。Uninstall 索引按 key 末组件、CurrentCultureIgnoreCase 比较，随后用产品树的 Product GUID 字符串 join，不是扫描任何含 EA 名称的 exe。
+
+EA 对 DisplayIcon 只删除双引号，不剥除常见的 `,0` 图标索引；要求所得路径 FileExists 且 DisplayName 非空。Guid.TryParse 的成功 bool 在 `IL_0241/0246` 被 pop，失败时 GameGUID 是 Guid.Empty；EntryGUID 则独立按主表或标题生成，不能把二者混为一个身份门槛。主表先按 Uninstall key、再按产品树 key 匹配，二者只做源码中的 WOW6432Node 精确替换；未匹配时 ORIGIN+去 ™／® 后的 Title，异来源冲突再按该来源重建。LaunchExe／helper 映射后才得到候选，策略最终把 DisplayIcon 对应路径放入 LaunchExe。
+
+GOG 的 exe 必须非空且经 PathWrapper.FileExists 通过；标题缺失时取 exe 文件名，随后去 ™／®。PlatformID 来自 RegistryKey 按反斜线 Split 后的 Last，末尾分隔符可得到空组件；没有自行解析成数字。主表用 GOGGALAXY RegistryKey 匹配，普通未知项创建 GUID 时用 PlatformID（`IL_0285/028a`）；异来源冲突却用对应来源加 Title（`IL_02b1/02b6`）。不能把两分支统一为“始终用标题”或“始终用商店 ID”。签名继续保存原 launchParam，SourceExId=PlatformID；该层不验证参数是否能实际启动游戏。
+
+### Bethesda 的 Reader、路径和图标
+
+[BethesdaGamesReader](../../../.analysis/results/host-current/managed/955d4bbd372f/source/Razer/GameManagerServiceLib/BethesdaGamesReader.cs) 先读 HKLM 的 `SOFTWARE\Bethesda Softworks\Bethesda.net` installLocation，读取 catch 置 null；非空后组合 BethesdaNetLauncher.exe 并 FileExists，路径组合及该存在性判断在这个读取 catch 外。GetInstalledGames 对 IsBethesdaInstalled 的调用也位于其主 try 之前，因此此处异常可以直接传播。安装门槛通过后，从 HKLM Registry32 Uninstall 读取 DisplayIcon／DisplayName／Path／UninstallString／ProductID；先对整批执行不锚定、IgnoreCase 的 `bethesdanet://uninstall/\d+` 正则过滤并 ToList，再进入逐记录 try。过滤谓词异常落到整批 catch；单记录字段／路径异常才日志后继续。
+
+每条记录的 Path 去引号并 CanonizePath，要求目录存在、ProductID 与 DisplayName 非空；ProductID 并没有再校验为数字。[BethesdaGameData.GetLaunchUrl](../../../.analysis/results/host-current/managed/955d4bbd372f/source/Razer/GameManagerServiceLib/BethesdaGameData.cs) 直接拼 `bethesdanet://run/`+ProductId。Reader 无停止参数；正常结果与“已成功完成整批注册表读取”分别判断。
+
+策略按主表 BETHESDA LaunchUrl 建 CurrentCultureIgnoreCase 索引。有主表时，安装末目录与 DefaultFolderExe 的首目录组件进行区分大小写的相等判断，匹配才尝试“父目录+DefaultFolderExe 各个 `|` 组件”，再追加 DefaultFolderExe32 的组件；首个存在路径胜出。没有选到路径时先取顶层、再递归的非黑名单 exe：恰一个取它，多项则取原枚举首项并保留整组候选，没有按名字排序。最终仍要求实际 exe 存在。
+
+命中主表时，CanSkipGame 检查的是该主表对象，再将设置 CopyGameSignatureSettings 到新对象。未命中时先以安装 Path 的末目录名创建 BETHESDA GUID，不用 DisplayName 或 ProductId；异来源冲突后先映射选中 exe，再逐一 GetOrAdd 所有 exe 候选，后面候选可再次改变最终 GUID。逐候选映射时会将保存的候选路径中的安装根替换成 `\`+末目录名，按 `|` 组成 RunningExe，再用 LaunchUrl 映射确定最终身份。不能从多个 exe 中选过第一项就停止核查其余身份副作用。
+
+只有未命中主表的分支在这里赋本机 DisplayName／LaunchUrl／registry／icon／overlay／MachineID。图标先保存 Reader 提供的 IconPath；源文件存在且目标 `<EntryGUID>.ico` 不存在才 File.Copy，复制完成后才把 DisplayIconPath 切到目标。目标已存在时跳过复制，也不在本分支切到目标；复制异常被吞后仍保留原 IconPath。没有在这个复制分支创建目录。原 IL 的图标 catch 只覆盖 `IL_058e–05a7`，不存在覆盖整个游戏的 catch；目标路径组合及此前递归枚举的异常仍可 fault 策略。发布用单独选定的实际 exe 参数，不应把缺省签名字段或 icon 路径当作可执行文件已成功写回的证据。
+
+### Mihoyo 与 Riot 的主表匹配
+
+Mihoyo caller 按 GLOBAL、CN 顺序取得两组 helper，并按 GLOBAL 全部 gamedata 路径、CN 全部路径逐文件调用已核实的 GetMihoyoGamedata2 后 AddRange。之后先完整预处理一次全部游戏，按 `SourceExId.Trim()==GameId.Trim()` 精确匹配主表 MIHOYO 项，并设置 InstallPath+DefaultExe 到 FullGamePath、写日志；第二轮才开始逐游戏停止检查，第二轮又赋同样 FullGamePath。真正 File.Exists 的路径却在 `IL_04b2/04b7` 使用主表 RunningExe+InstallPath，不使用之前 FullGamePath，也不是 gamedata 记录的 GameExe。若 RunningExe 本身包含 `|`，此调用方不会先用 GetComponents 拆分它。
+
+Mihoyo 命中主表后 CopyAllGameSignatureSettings，保留该项 EntryGUID／DisplayName；GameId.Contains("global") 时用 GLOBAL helper，否则 GameId.EndsWith("cn") 时用 CN helper，两个字符串判断都区分大小写。选中的 helper 同时赋 LaunchHelper 与 LaunchHelperExcludables，调用方没有再验证 helper File.Exists。没有主表匹配时仅日志，不按任意本地 gamedata 自主生成新签名。两轮均无逐游戏 catch；Trim 所需字段、路径组合、Reader 直接抛出的异常不能概称跳过一项。blackListedExes 在这里赋值，但没有被实际筛选使用。
+
+Riot 的 GetLaunchHelper 忽略传入 launchHelperPath 参数；它读取 CommonApplicationData/Riot Games/RiotClientInstalls.json，取 JsonNode rc_live 的 ToString，解析／读取异常吞掉并返回空，不在该函数核实 helper 文件存在。主策略 helper 为空就返回。metadata 根目录却硬编码为 C:\ProgramData，不能把这两种路径来源合并描述为都遵循 OS 重定向。*.live 只查顶层，每目录 *.yaml 只取未排序的 FirstOrDefault；全部 settings 先转换为路径后再建默认 HashSet，区分大小写。主表 RIOT RunningExe 索引则使用 CurrentCultureIgnoreCase，二者去重规则不同。
+
+GetFullGameFolderFromSettings 对现存文件 ReadAllLines；行包含 `product_install_full_path:` 且按 `:` Split 长度大于一时，实际却使用 `Split(": ")[1]`，再删全部引号和 Trim。最后匹配行覆盖之前值；格式错或读取异常返回已积累的 text，并在 catch 路径绕过 NormalizePathUnicodeEscapes。正常路径仅在包含 `\\u`+四位十六进制的匹配时替换，lambda `0x06000b87@0x3e788` 用 Convert.ToUInt16(base16) 后 Char.ToString，处理单位为 UTF-16 code unit。它没有提供完整 YAML 解码、一般反斜线转义或 Unicode scalar 校验。
+
+Riot 每个 folder 先建立默认 GameSignature 和空路径，再遍历主表 RunningExe，Path.Join／GetFullPath 后取第一个 File.Exists 命中。若没有命中，默认签名仍保留，路径可能是最后一次失败候选；匹配循环的 catch 结束后无独立 continue，而在 `IL_0285` 新建签名并 CopyAll、赋 EntryGUID／DisplayName／LaunchExe、GetFullPath(helper)、SourceEx=RIOT 和 registry，继续 CanSkipGame→AddFoundGame。这里只证明候选能继续进入公共判断，不证明默认 GUID／不存在路径最终一定成为有效列表项；须沿已核实的公共发布及消费者逐项对照。GetFullPath(helper) 和后续消费者异常在局部匹配 catch 外，不能称逐文件夹失败均被吞。Riot 的 blacklist 同样只赋值、未在此使用。
+
+### Uplay 的本地文本解析与四级路径选择
+
+[UplayConfigurationDataReader](../../../.analysis/results/host-current/managed/955d4bbd372f/source/Razer/GameManagerServiceLib/UplayConfigurationDataReader.cs) 从本机 launcher Uninstall 的 InstallLocation 定位 configurations 文件；存在时调用实际 Parser，读取／定位异常重置为空列表。getThirdParty=false 的过滤位于这个 catch 之外，只保留 ThirdPartyPlatform==null，空字符串不等于 null，不能写成“空第三方字段均保留”。实际策略固定传 false。
+
+GetUplayGameDirectories 先枚举 HKLM Uninstall 的 Default view，64 位进程再加 Registry32，32 位进程／64 位 OS 再加 Registry64。key 必须精确 Contains("Uplay Install")，取 InstallLocation／DisplayName；末组件删除 Uplay Install 并 Trim 得 GameId。路径先经 Uri.LocalPath→GetFullPath→TrimEnd，再进入只包按 DisplayName 去重及 Add 的单项 try；坏 Uri／路径会到外层 catch，结束本轮而保留已有结果。DisplayName 字典使用默认比较器，首个完全同名项保留；此 Reader 不核实 InstallDirectory 存在，也没有停止参数。
+
+[UplayConfigurationParser](../../../.analysis/results/host-current/managed/955d4bbd372f/source/Razer/GameManagerServiceLib/UplayConfigurationParser.cs) 以 Open／Read／FileShare.ReadWrite 打开本地文本、ReadToEnd，按 `\nroot:` Split；是逐行自有算法，没有网络请求／解压或完整 YAML 语法分析。流、TextReader 和每块 StringReader 各有 finally Dispose；整个提取只有一个外层 catch，任意未被内部处理的异常都会把返回列表重置为空，而不是跳过坏块或返回此前前缀。CultureInfo.CurrentCulture 及 separator 的初始化在该主 try 前。
+
+Parser 每行 Trim，首次 name 设置原始名字与名字 key；online／offline 切换正在积累的列表。`- path:`，或尚未建立首 path 时的 `path:`，会创建 Executable 并立即消耗下一行，仅识别 relative／register 填 RelativePath；不会直接从 path 同一行取文件路径。append 只填当前 Executable 缺失的 DirectoryAppend。working_directory 同样消耗下一行 register 填 DirectoryRegistry；third_party_platform 消耗下一行并 ExtractValue。localizations 用“两空格且非四空格”的行作文化键，四空格的属性行按冒号拆分且恰两项才收；内外两层字典 CurrentCultureIgnoreCase。内循环还会消耗第一条不再以两空格开头的行，外层不重新处理该行。
+
+原始名字可再通过“名字 key: 值”替换；最终本地化优先当前 Culture 的该名字 key，其次 default，否则保留原名，GameNameIdentifier 单独记录。GameId 只先从所有 offline 的 DirectoryRegistry 中找 `Ubisoft\Launcher\Installs\[0-9]+\`，无结果才读 online 的 DirectoryRegistry；不是从 RelativePath 推导。ExtractGameId 直接 Regex.Match(registry)，null 会抛并触发整个列表清空。ExtractValue 只进行冒号分割、首冒号后截取和引号段选择，不是一般引号／转义解析。[GetLaunchUrl](../../../.analysis/results/host-current/managed/955d4bbd372f/source/Razer/GameManagerServiceLib/UplayConfigurationData.cs) 对空 GameId 返回空字符串，其余拼 `uplay://launch/<id>/0`；这一层不发起 URL launch。
+
+策略的候选顺序是第一条 offline 的 GetFullPath → 不存在才第一条 online → CanonizePath → 不存在且 Name 精确命中目录字典才以该目录组合第一条 offline → 仍不存在再组合第一条 online。不会遍历第二条 executable；失败时不能擅自扩大候选范围。策略选择要拆的 registry 字符串时采用 RelativePath.Contains("HKEY")，而 [UplayConfigurationExecutable.GetFullPath](../../../.analysis/results/host-current/managed/955d4bbd372f/source/Razer/GameManagerServiceLib/UplayConfigurationExecutable.cs) 的分支采用 StartsWith("HKEY")，都区分大小写，这两种判断不等价。
+
+Executable 按最后反斜线拆 registry key／value，拆分异常给双 null。先 ReadRegistryString，空结果才去根名前缀后按 HKLM Default、进程对应的另一个 view 调 GetRegistryGroupForKey；即使原 registry 字符串使用其他根名，该备选仍明确选 HKLM。RelativePath 注册表读到相对路径时再结合 DirectoryRegistry。目录组合时 DirectoryAppend 与 relativeFilePath 都先 TrimStart('\\','/')，因此这里不会让前导分隔符直接把根覆盖；异常返回 null，未进行 FileExists／停止检查。与它不同，[UplayRegistryAndDirectory.GetFullPath](../../../.analysis/results/host-current/managed/955d4bbd372f/source/Razer/GameManagerServiceLib/UplayRegistryAndDirectory.cs) 组合 DirectoryAppend 不先 TrimStart，relativePath 含 HKEY 时读注册表，所得路径 rooted 就直接采用，否则 Combine；catch 置 null，之后再 CanonizePath。它的 ExtractFileName 没有自己的 catch，由调用者路径 try 处理。
+
+策略在路径 catch 中置 text=null，之后独立要求 FileExists，才进入身份／发布 try。主表 UPLAY 按 RegistryKey、CurrentCultureIgnoreCase 建索引；候选 key 是去 WOW6432Node 的 registryKey，key2 却是同样替换后的 registryValue，不是拼回完整键名。`IL_051f` 首次 Dictionary.ContainsKey(key) 之前没有 null 检查，key 为 null 时会进入身份 catch，不会自动退到标题 GUID；首次未命中且 key2 为 null 时同理。否则优先 key→key2→UPLAY+去 ™／® 后的 Name，再依源码处理异来源冲突。
+
+之后先 LaunchExe.GetOrAdd，再查 LaunchHelperExe 并 TryUpdate LaunchExe，最后 LaunchUrl.GetOrAdd 决定最终 GUID。GetLaunchUrl 可以返回空字符串，调用方没有单独拒绝它，空键可能参与共享映射；不能为了让结果看起来正常而在对照期望中自行补一个 GameId。该层只赋 LaunchExe／LaunchUrl／Source／registry 及 overlay／machine，没有从 Executable 增加未出现的启动参数。路径 try 与身份 try 外还有集合和读取阶段，正常末尾 Clear 不是全策略异常清理保证。
+
+### 本批的独立测试边界与方法定位
+
+后续最小用例须覆盖相同本机输入、主表与共享映射初始状态，分别保留官方 DLL 的原始候选、映射变化、事件及其顺序、Reader 返回值、失败和释放，再与独立 Rust 结果比较：
+
+- Registry32／64／Default 分支、空字段／缺字段／非字符串值、根或子项读取失败时的前缀，以及 ReadRegistryString 第一次读取与备选读取的不同异常边界；PathWrapper 的全引号删除、返回 null 与真实 File.Exists 的区别。
+- Arc 只有 launcher 存在、client 不存在、仅 patcher 存在、client==launcher、标题含／不含下划线、CLIENT_PATH 归因，以及 helper 映射命中但 LaunchExe.TryUpdate 返回 false 的身份副作用。
+- EA 的 13 树顺序、Product GUID 字符串 join、DisplayIcon 引号与 `,0`、Guid.TryParse 失败但独立 EntryGUID 继续，以及两个主表 key 的先后；GOG 的空／尾分隔符 PlatformID、标题清理、常规 ID 与异来源 Title 创建差异、LaunchParams 保存。
+- Bethesda launcher 未安装／路径异常、正则未锚定和过滤整批异常、主表目录大小写、默认 `|` 中空组件、顶层与递归多 exe 的枚举顺序和后续 GUID 重写、图标目标已存在／复制失败及实际发布参数。
+- Mihoyo GLOBAL／CN 全量预读先后、第一轮预处理发生停止、主表 Trim 大小写、DefaultExe 与 RunningExe 不同或 RunningExe 带 `|`、helper 后缀大小写、主表未命中及日志路径与真正 File.Exists 路径不同。
+- Riot OS ProgramData 重定向与固定 C 盘根不同、多个 yaml／重复路径大小写、缺 `: `／重复属性／读取半途异常、UTF-16 单元替换、没有主表项／所有 exe 不存在／路径抛错仍进入公共消费者的完整结果。
+- Uplay 当前 Culture 与 default 本地化、缩进及被消耗行、空 ThirdPartyPlatform、null DirectoryRegistry 清整批、GameId 只在第二条 executable 存在、只第一条候选被使用、四级路径选择、Contains 与 StartsWith 不同、rooted／TrimStart 差异、null registry key／value 和空 LaunchUrl 共享映射。
+- 各策略预读前／逐项间／CanSkipGame 前后／发布后停止及异常；验证已发布前缀、共享映射副作用、枚举器释放、文件 reader／stream 释放与列表清理分别发生，不得仅比较最终记录数。
+
+以上是由静态语义驱动的用例要求，尚未执行这些行为测试，也没有新增 Rust 独立扫描实现、UI／后端接线、官方 DLL 实际对照或运行时验收。当前原件已获取与这些方法已核语义分别记录；不能据此提升为整个 GMS、所有本机扫描或整个配置档功能完成。实际 DLL 只在显式对照入口中执行，产品仍由独立 Rust 实现承担。
+
+| 当前程序集 | 完整方法 | MethodDef / RVA / code bytes | 原完整 IL 起始行 |
+| --- | --- | --- | --- |
+| ServiceLib 955d4bbd372f | Arc ScanAsync 包装器／MoveNext／GetArcData | 06000399 / 193d8 / 81；06000b09 / 39bb8 / 416；0600039a / 19438 / 1252 | 76924；76688；76978 |
+| 同上 | Bethesda ScanAsync 包装器／MoveNext | 060003bb / 1b4b0 / 81；06000b1a / 3a9c0 / 1639 | 82865；82146 |
+| 同上 | Bethesda Reader GetInstalledGames／IsBethesdaInstalled／过滤谓词／GetLaunchUrl | 0600047b / 1fe20 / 516；0600047c / 2007c / 69；0600047e / 20140 / 35；06000479 / 1fde0 / 17 | 108293；108543；108619；108195 |
+| 同上 | EA ScanAsync 包装器／MoveNext／GetEAData／GetEaRegistryGroupDatas | 060003d8 / 1b7bc / 81；06000b34 / 3bbb4 / 477；060003d9 / 1b81c / 1108；060003da / 1bcf8 / 841 | 85495；85227；85549；86049 |
+| 同上 | GOG ScanAsync 包装器／MoveNext／GetGogData | 060003ef / 1d1bc / 81；06000b75 / 3d574 / 491；060003f0 / 1d21c / 955 | 91841；91582；91895 |
+| 同上 | Mihoyo ScanAsync 包装器／MoveNext | 060003f5 / 1d710 / 81；06000b80 / 3da88 / 1759 | 93526；92834 |
+| 同上 | Riot ScanAsync 包装器／MoveNext | 060003f9 / 1d808 / 81；06000b88 / 3e7b8 / 1002 | 94850；94347 |
+| 同上 | Riot GetLaunchHelper／GetFullGameFolderFromSettings | 060003fe / 1d96c / 97；060003fd / 1d8d0 / 125 | 95086；94990 |
+| 同上 | Riot Normalize／ContainsUnicodeEscape／DecodeUnicodeEscapes／lambda | 060003fa / 1d865 / 27；060003fb / 1d881 / 22；060003fc / 1d898 / 53；06000b87 / 3e788 / 33 | 94904；94933；94956；94300 |
+| 同上 | Uplay ScanAsync 包装器／MoveNext | 0600042a / 1f174 / 81；06000bbf / 40f9c / 2007 | 103418；102501 |
+| 同上 | Uplay DataReader GetUplayData／GetUplayGameDirectories／过滤谓词 | 060005d5 / 22204 / 149；060005d6 / 222b8 / 512；06000bdf / 4293f / 10 | 118452；118533；118397 |
+| 同上 | Uplay Parser ExtractUplayData／ExtractGameId／ExtractValue | 060005e7 / 22adc / 1508；060005e8 / 23130 / 53；060005e9 / 23174 / 151 | 119696；120412；120449 |
+| 同上 | Uplay Executable GetFullPath／GetRegistryKeyAndValue | 060005e2 / 22581 / 51；060005e3 / 225b8 / 55 | 118949；118979 |
+| 同上 | Uplay Executable ExtractFromRelativePathRegistry／ExtractPathRegistry | 060005e4 / 2260c / 355；060005e5 / 22798 / 780 | 119036；119233 |
+| 同上 | Uplay Directory GetFullPath／GetRegistryKeyAndValue／ExtractFileName | 060005f4 / 23368 / 89；060005f5 / 233e0 / 55；060005f6 / 23434 / 317 | 120813；120892；120949 |
+| 同上 | Uplay ConfigurationData.GetLaunchUrl | 060005d2 / 221b3 / 41 | 118279 |
+| Common e07813af888b | RegistryWrapper GetRegistryGroup／GetRegistryGroupForKey／ReadRegistryString | 06000357 / 84a0 / 180；06000358 / 857c / 175；06000359 / 8654 / 225 | 24194；24319；24441 |
+| 同上 | PathWrapper DirectoryExists／FileExists／FindFileInDirectory | 0600033e / 7dd8 / 17；0600033f / 7dea / 32；06000340 / 7e0b / 46 | 23008；23030；23055 |
+| 同上 | PathWrapper GetDirectories 两重载／GetFiles 两重载 | 06000341 / 7e3a / 7；06000342 / 7e42 / 18；06000344 / 7e5d / 8；06000345 / 7e66 / 19 | 23087；23102；23141；23158 |
+| 同上 | PathExtensions.CanonizePath／GameSignatureHelper.GetComponents | 0600033c / 7d44 / 37；06000104 / 6104 / 25 | 22821；12967 |
+| Service3 3aa42301ef78 | ServiceRegister.RegisterService 的实际 DI 绑定 | 06000033 / 2f88 / 1406 | 3379 |
+
+
 ## 配置档关联和存储
 
 关联动作保存 pid、serialNumber、profileID、category、subCategory、profileName 和 isVisible。新增／替换关联先按 PID＋序列号移除旧项，再追加；取消关联却只查同 PID 的第一项删除，这是原件的不同匹配粒度。切换卡片配置档后更新该关联，不直接调用设备的配置档切换。

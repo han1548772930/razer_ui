@@ -440,13 +440,19 @@ def recover_source_set(path, tool):
 
 def recover_frontend(args):
     import analysis as a
+    # Validate the scheduler before resolving inputs or loading external tools;
+    # callers receive the concurrency contract error deterministically.
+    workers = getattr(args, "workers", 2)
+    if type(workers) is not int or not 2 <= workers <= 8:
+        raise ValueError("Frontend recovery workers must be between two and eight")
     inputs = sorted((a.ROOT / ".analysis/inputs/frontend").glob("*/acquisition.json")) if getattr(args, "all_acquired", False) else [a.resolve(args.input, ".analysis/inputs") / "acquisition.json"]
     tool, rows = a.wakaru(), []
-    workers = getattr(args, "workers", 2) if getattr(args, "all_acquired", False) else 1
-    if not 1 <= workers <= 8:
-        raise ValueError("Frontend recovery workers must be between 1 and 8")
-    executor = concurrent.futures.ProcessPoolExecutor if workers > 1 else concurrent.futures.ThreadPoolExecutor
-    with executor(max_workers=workers) as pool:
+    # Keep the single-source entry parallel too.  Recovery spends most of its
+    # time waiting on external static analyzers and filesystem I/O, so a
+    # bounded thread pool gives the same scheduling and failure isolation as
+    # the multi-source batch.  One-worker runs are rejected so this entry
+    # cannot silently become a serial reverse-engineering pass.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {pool.submit(recover_source_set, path, tool): path for path in inputs}
         for future in concurrent.futures.as_completed(futures):
             row = future.result()

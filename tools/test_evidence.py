@@ -3,6 +3,7 @@ import argparse
 from contextlib import closing, redirect_stdout
 import hashlib
 import io
+import inspect
 import json
 import os
 from pathlib import Path
@@ -22,6 +23,21 @@ import frontend
 
 
 class FrontendModuleRecoveryTests(unittest.TestCase):
+    def test_frontend_recovery_always_uses_bounded_thread_pool(self):
+        source = inspect.getsource(frontend.recover_frontend)
+        self.assertIn("getattr(args, \"workers\", 2)", source)
+        self.assertIn("ThreadPoolExecutor(max_workers=workers)", source)
+        self.assertNotIn("ProcessPoolExecutor", source)
+
+    def test_frontend_recovery_rejects_serial_or_non_integer_workers(self):
+        for workers in (0, 1, -1, 9, True, 2.5, "2"):
+            with self.subTest(workers=workers), self.assertRaisesRegex(
+                    ValueError, "between two and eight"):
+                frontend.recover_frontend(argparse.Namespace(
+                    all_acquired=False, input="missing", workers=workers,
+                    no_refresh_gaps=True))
+
+
     def parse(self, raw):
         return host.HostLocalAudit().parser.parse(raw).root_node
 
@@ -149,6 +165,81 @@ class FrontendModuleRecoveryTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'identity differs'):
                 frontend.recover_one(input_dir, tool, host.HostLocalAudit())
 
+
+class BatchPythonConcurrencyTests(unittest.TestCase):
+    def test_typed_profile_generation_always_uses_thread_pool(self):
+        source = (Path(__file__).with_name("typed_tables.py")).read_text(encoding="utf-8")
+        self.assertIn("ThreadPoolExecutor(max_workers=pool_workers)", source)
+        self.assertIn("workers=4", source)
+        self.assertNotIn("ProcessPoolExecutor", source)
+        self.assertNotIn("for item in items:\n            product, source_inputs = _capture_profile_transfer_product(item)", source)
+
+    def test_dashboard_and_family_acquisition_require_multiple_workers(self):
+        workspace = (Path(__file__).with_name("workspace.py")).read_text(encoding="utf-8")
+        families_source = (Path(__file__).with_name("families.py")).read_text(encoding="utf-8")
+        resource_scope_source = (Path(__file__).with_name("resource_scope.py")).read_text(encoding="utf-8")
+        installer_source = (Path(__file__).with_name("windows_installer.py")).read_text(encoding="utf-8")
+        self.assertIn("not 2 <= args.workers <= 12", workspace)
+        self.assertIn('choices=range(2, 17)', families_source)
+        self.assertIn("Native package workers must be between two and sixteen", families_source)
+        self.assertIn("ThreadPoolExecutor(max_workers=workers)", resource_scope_source)
+        self.assertIn("choices=range(2, 17)", installer_source)
+        self.assertIn("ThreadPoolExecutor(max_workers=workers)", installer_source)
+
+    def test_host_and_typed_batch_entries_require_bounded_parallelism(self):
+        host_source = (Path(__file__).with_name("host.py")).read_text(encoding="utf-8")
+        analysis_source = (Path(__file__).with_name("analysis.py")).read_text(encoding="utf-8")
+        typed_source = (Path(__file__).with_name("typed_tables.py")).read_text(encoding="utf-8")
+        producer_source = (Path(__file__).with_name("mapping_producers.py")).read_text(encoding="utf-8")
+        for source in (host_source, analysis_source, typed_source, producer_source):
+            self.assertIn("ThreadPoolExecutor", source)
+            self.assertNotIn("ProcessPoolExecutor", source)
+        self.assertIn("Host inspection workers must be between two and sixteen", host_source)
+        self.assertIn("Managed host analysis workers must be between two and sixteen", host_source)
+        self.assertIn("Frontend analysis workers must be between two and eight", analysis_source)
+        self.assertIn("Local protocol table workers must be between two and sixteen", typed_source)
+        self.assertIn("Mapping capability workers must be between two and sixteen", typed_source)
+        self.assertIn("Mapping producer workers must be between two and sixteen", producer_source)
+
+    def test_family_product_audits_use_stable_threaded_batches(self):
+        source = (Path(__file__).with_name("families.py")).read_text(encoding="utf-8")
+        self.assertGreaterEqual(source.count("ThreadPoolExecutor(max_workers=max(2, min(workers, len(jobs))))"), 3)
+        self.assertIn("def audit_one(spec):", source)
+        self.assertIn("def audit_one(surface):", source)
+        self.assertIn("local_geometry_index", source)
+        self.assertIn("parser_bodies.update(local_parser_bodies)", source)
+
+    def test_family_product_audits_reject_serial_workers_before_io(self):
+        for entry, function in (("mouse-dpi", families.audit_mouse_dpi),
+                                ("mouse-customize", families.audit_mouse_customize),
+                                ("keyboard-artwork", families.audit_keyboard_artwork)):
+            for workers in (0, 1, True, 2.5, "2", 17):
+                with self.subTest(entry=entry, workers=workers), self.assertRaisesRegex(
+                        ValueError, "Family audit workers"):
+                    function(argparse.Namespace(workers=workers, product=[]))
+
+    def test_host_and_typed_batch_entries_reject_serial_workers_before_io(self):
+        typed_tables = __import__("typed_tables")
+        mapping_producers = __import__("mapping_producers")
+        for workers in (0, 1, True, 2.5, "2", 17):
+            with self.subTest(entry="inspect-host", workers=workers), self.assertRaisesRegex(
+                    ValueError, "Host inspection workers"):
+                host.inspect_host(argparse.Namespace(workers=workers))
+            with self.subTest(entry="analyze-host", workers=workers), self.assertRaisesRegex(
+                    ValueError, "Managed host analysis workers"):
+                host.analyze_host(argparse.Namespace(workers=workers, managed_scope="all"))
+            with self.subTest(entry="resolve-managed-dependencies", workers=workers), self.assertRaisesRegex(
+                    ValueError, "Managed dependency workers"):
+                host.resolve_managed_dependencies(workers=workers)
+            with self.subTest(entry="protocol-tables", workers=workers), self.assertRaisesRegex(
+                    ValueError, "Local protocol table workers"):
+                typed_tables.prepare_local_protocol_tables(workers=workers)
+            with self.subTest(entry="mapping-capabilities", workers=workers), self.assertRaisesRegex(
+                    ValueError, "Mapping capability workers"):
+                typed_tables.prepare_mapping_capabilities(workers=workers)
+            with self.subTest(entry="mapping-producers", workers=workers), self.assertRaisesRegex(
+                    ValueError, "Mapping producer workers"):
+                mapping_producers.prepare(workers=workers)
 
 class SemanticQueryGapTests(unittest.TestCase):
     def test_acquisition_and_analyzer_findings_do_not_become_semantic_failures(self):
@@ -1052,9 +1143,10 @@ class CaptureStreamingTests(unittest.TestCase):
             self.native_capture(digest, len(raw))
             return {"passed": True, "exit_code": 0}
 
-        with patch.object(analysis, "capture_native", side_effect=capture), redirect_stdout(io.StringIO()):
+        with patch.object(analysis, "capture_native", side_effect=capture), \
+             patch.object(analysis, "configure_ida"), redirect_stdout(io.StringIO()):
             analysis.capture_corpus(argparse.Namespace(source="retained", include_path=[],
-                                                       ida_root="unused", no_refresh_gaps=True))
+                                                       ida_root="unused", workers=2, no_refresh_gaps=True))
         queue = json.loads((self.root / ".analysis/results/native-corpus-capture.json").read_bytes())
         self.assertTrue(queue["capture_complete"])
         self.assertFalse(queue["snapshot_unchanged"])
@@ -1145,8 +1237,8 @@ class CaptureStreamingTests(unittest.TestCase):
         self.assertTrue(all(row["status"] == "reused_complete_capture" for row in queue["modules"]))
 
     def test_native_corpus_rejects_invalid_parallelism_before_publishing(self):
-        for workers in (0, -1, 5, True, 2.5):
-            with self.subTest(workers=workers), self.assertRaisesRegex(ValueError, "between one and four"):
+        for workers in (0, 1, -1, 5, True, 2.5):
+            with self.subTest(workers=workers), self.assertRaisesRegex(ValueError, "between two and four"):
                 analysis.capture_corpus(argparse.Namespace(workers=workers))
         self.assertFalse((self.root / ".analysis/results/native-corpus-capture.json").exists())
 
@@ -1201,9 +1293,10 @@ class CaptureStreamingTests(unittest.TestCase):
                 (self.root / rows[0]["aliases"][0]).write_bytes(b"changed after first module finished")
             return {"passed": True, "exit_code": 0}
 
-        with patch.object(analysis, "capture_native", side_effect=capture), redirect_stdout(io.StringIO()):
+        with patch.object(analysis, "capture_native", side_effect=capture), \
+             patch.object(analysis, "configure_ida"), redirect_stdout(io.StringIO()):
             analysis.capture_corpus(argparse.Namespace(source="retained", include_path=[],
-                                                       ida_root="unused", no_refresh_gaps=True))
+                                                       ida_root="unused", workers=2, no_refresh_gaps=True))
         queue = json.loads((self.root / ".analysis/results/native-corpus-capture.json").read_bytes())
         self.assertFalse(queue["original_inputs_snapshot_unchanged"])
         self.assertFalse(queue["capture_complete"])

@@ -11,6 +11,7 @@ import re
 import subprocess
 import struct
 import sys
+import threading
 import types
 import urllib.parse
 import urllib.request
@@ -1520,6 +1521,9 @@ def setup_factory_static_extraction(raw):
 def inspect_host(args):
     if getattr(args, "repair_extraction", False):
         return repair_host_extraction(args)
+    workers = getattr(args, "workers", 4)
+    if type(workers) is not int or not 2 <= workers <= 16:
+        raise ValueError("Host inspection workers must be between two and sixteen")
     import analysis as a
     receipt_path = a.ROOT / ".analysis/inputs/host-current/acquisition.json"
     receipt = json.loads(receipt_path.read_bytes())
@@ -1557,12 +1561,23 @@ def inspect_host(args):
               "acquisition": a.rel(receipt_path), "containers": []}
     if selected:
         report["selected_input"] = rows[0]
-    containers = dict(previous_containers)
-    extracted_rows = []
-    for row in rows:
+    # Container rows are independent: workers only write their content-addressed
+    # output directories and return immutable records.  The coordinator below
+    # performs the ordered receipt/index publication.
+    inno_lock = threading.Lock()
+    inno_artifact = None
+
+    def inno_analyzer():
+        nonlocal inno_artifact
+        if inno_artifact is None:
+            with inno_lock:
+                if inno_artifact is None:
+                    inno_artifact = prepare_inno_analyzer()
+        return inno_artifact
+
+    def inspect_row(row):
+        row_extracted_rows = []
         path = a.ROOT / row["path"]
-        if path.suffix.lower() not in {".exe", ".msix", ".zip", ".7z", ".msi"}:
-            continue
         if path.stat().st_size != row["bytes"] or a.sha(path) != row["sha256"]:
             raise ValueError("Changed host input: " + row["path"])
         out = results / row["sha256"]
@@ -1587,7 +1602,7 @@ def inspect_host(args):
                     for component in setup["files"]]
             marker = re.search(rb"Inno Setup Setup Data \(([^)\0]+)\)", path.read_bytes())
             if marker:
-                inno, inno_receipt = prepare_inno_analyzer()
+                inno, inno_receipt = inno_analyzer()
                 argv = [str(inno), "-s", "-h", "-o", "-u", "-b", "-m", "-a", str(path)]
                 inno_listing = subprocess.run(argv, capture_output=True, check=False)
                 (out / "inno-listing.stdout.txt").write_bytes(inno_listing.stdout)
@@ -1704,7 +1719,7 @@ def inspect_host(args):
                 if verified_aliases:
                     artifact["verified_installed_aliases"] = sorted(verified_aliases)
                 record["files"].append(artifact)
-                extracted_rows.append(artifact)
+                row_extracted_rows.append(artifact)
             record["verified_installed_input_matches"] = sorted({alias for artifact in record["files"]
                                                                  for alias in artifact.get("verified_installed_aliases", [])})
             if inno:
@@ -1737,7 +1752,17 @@ def inspect_host(args):
         elif getattr(args, "extract", False):
             record["extraction_status"] = "no supported embedded archive detected; PE sections alone do not prove payload extraction"
         record["input_record"] = row
-        containers[row["sha256"]] = record
+        return row["sha256"], record, row_extracted_rows
+
+    containers = dict(previous_containers)
+    extracted_rows = []
+    unique_rows = sorted({row["sha256"]: row for row in rows
+                          if Path(row["path"]).suffix.lower() in {".exe", ".msix", ".zip", ".7z", ".msi"}}.values(),
+                         key=lambda item: item["sha256"])
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        for key, record, extracted in pool.map(inspect_row, unique_rows):
+            containers[key] = record
+            extracted_rows.extend(extracted)
     report["containers"] = [containers[key] for key in sorted(containers)]
     report["outputs"] = [{"path": a.rel(p), "bytes": p.stat().st_size, "sha256": a.sha(p)}
                          for p in sorted(results.rglob("*.txt"))]
@@ -1896,11 +1921,15 @@ def add_commands(parsers):
     fetch.add_argument("--metadata-only", action="store_true", help="Recheck retained official deployment JSON and current manifest references without package downloads")
     fetch.add_argument("--revalidate-bootstrap", action="store_true", help="Double-fetch the current official download page and bootstrap as inert evidence without executing it")
     fetch.add_argument("--repair-metadata-index", action="store_true", help="Preserve and relocate a wrongly indexed metadata receipt into inputs without network access")
+    fetch.add_argument("--workers", type=int, choices=range(2, 17), default=4,
+                       help="bounded worker threads for independent host container inspections")
     inspect = parsers.add_parser("inspect-host", help="Statically list verified host evidence containers")
     inspect.add_argument("--input", help="Inspect one verified nested host archive while retaining prior container receipts")
     inspect.add_argument("--seven-zip", default="C:/Program Files/7-Zip/7z.exe")
     inspect.add_argument("--extract", action="store_true", help="Statically extract supported payloads")
     inspect.add_argument("--repair-extraction", action="store_true", help="Fresh static extraction with exact retained-byte checks before restoring missing originals")
+    inspect.add_argument("--workers", type=int, choices=range(2, 17), default=4,
+                         help="bounded worker threads for independent host container inspections")
     analyze = parsers.add_parser("analyze-host", help="Statically restore verified host managed assemblies or host JavaScript")
     mode = analyze.add_mutually_exclusive_group()
     mode.add_argument("--javascript-only", action="store_true", help="Restore current Electron host JS/CJS and packaged Electron integration dependencies with Wakaru")
@@ -1908,6 +1937,8 @@ def add_commands(parsers):
     mode.add_argument("--resolve-managed-dependencies", action="store_true", help="Supplement unresolved C# using byte-verified same-directory assemblies under their captured AssemblyName")
     analyze.add_argument("--managed-scope", choices=["vendor", "all"], default="vendor",
                          help="Capture all Razer version-resource assemblies first, or include every retained CLR dependency")
+    analyze.add_argument("--workers", type=int, choices=range(2, 17), default=4,
+                         help="bounded worker threads for independent managed assembly captures")
 
 
 def analyze_host(args):
@@ -1924,11 +1955,14 @@ def analyze_host(args):
         return path
 
     if getattr(args, "resolve_managed_dependencies", False):
-        return resolve_managed_dependencies()
+        return resolve_managed_dependencies(workers=getattr(args, "workers", 4))
     if getattr(args, "extract_asar_only", False):
         return extract_asar()
     if getattr(args, "javascript_only", False):
         return analyze_host_javascript()
+    workers = getattr(args, "workers", 4)
+    if type(workers) is not int or not 2 <= workers <= 16:
+        raise ValueError("Managed host analysis workers must be between two and sixteen")
     tool_dir, tool_receipt, restored = prepare_managed_analyzer()
     indexed = json.loads((a.ROOT / ".analysis/inputs.json").read_bytes())
     capture = {"schema_version": 2, "started_at_utc": a.stamp(), "target_execution": False,
@@ -1975,14 +2009,22 @@ def analyze_host(args):
     def version_values(tree):
         return ([tree["value"]] if "value" in tree else []) + [v for child in tree.get("children", []) for v in version_values(child)]
 
-    for row in sorted(candidates.values(), key=lambda r: (r["bytes"], r["sha256"])):
-        path = a.ROOT / row["path"]
+    ordered_candidates = sorted(candidates.values(), key=lambda r: (r["bytes"], r["sha256"]))
+    work_rows = []
+    for row in ordered_candidates:
         versions = [v for resource in row["pe"]["version_resources"] for v in version_values(resource["tree"])]
         vendor = any("razer" in value.lower() for value in versions)
         if args.managed_scope == "vendor" and not vendor:
             capture["pending_dependencies"].append({"input": row["path"], "sha256": row["sha256"], "aliases": row["aliases"],
                                                     "reason": "CLR dependency available for --managed-scope all; no Razer version-resource ownership declaration"})
             continue
+        work_rows.append(row)
+
+    # ILSpy invocations are independent per content-addressed assembly.  Each
+    # worker owns its output directory; the coordinator publishes the receipt
+    # in stable input order after every result has completed.
+    def analyze_row(row):
+        path = a.ROOT / row["path"]
         dest = output / row["sha256"][:12]
         previous_dest = output / row["sha256"]
         if previous_dest.is_dir() and not dest.exists():
@@ -1999,10 +2041,7 @@ def analyze_host(args):
                     raise ValueError("Retained managed output changed: " + item["path"])
             record = {**retained, "aliases": row["aliases"], "acquisition_bindings": row["acquisition_bindings"],
                       "verified_reuse_at_utc": a.stamp()}
-            capture["assemblies"].append(record)
-            a.save(output / "capture.json", capture)
-            print(json.dumps({"managed_input": row["path"], "reused": True}), flush=True)
-            continue
+            return record
         for name, options in [("csharp", ["-p", "--nested-directories", "-o", str(dest / "source")]), ("il", ["--ilcode"])]:
             stdout, stderr = dest / (name + ".stdout.txt"), dest / (name + ".stderr.txt")
             command = ["dotnet", str(tool_dir / "ilspycmd.dll"), "--disable-updatecheck", *options, "-r", str(path.parent), str(path)]
@@ -2022,9 +2061,14 @@ def analyze_host(args):
                              for p in sorted(dest.rglob("*")) if filesystem_path(p).is_file()]
         record["capture_complete"] = record["input_bytes_unchanged"] and all(c["exit_code"] == 0 for c in record["commands"])
         record["all_csharp_resolved"] = record["capture_complete"] and not record["diagnostics"]
-        capture["assemblies"].append(record)
-        a.save(output / "capture.json", capture)
-        print(json.dumps({"managed_input": row["path"], "outputs": len(record["outputs"]), "failed_stages": sum(c["exit_code"] != 0 for c in record["commands"])}), flush=True)
+        return record
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        for row, record in zip(work_rows, pool.map(analyze_row, work_rows)):
+            capture["assemblies"].append(record)
+            a.save(output / "capture.json", capture)
+            print(json.dumps({"managed_input": row["path"], "reused": bool(record.get("verified_reuse_at_utc")),
+                              "outputs": len(record.get("outputs", [])),
+                              "failed_stages": sum(c["exit_code"] != 0 for c in record.get("commands", []))}), flush=True)
     capture["finished_at_utc"] = a.stamp()
     capture["scope"] = "Verified official and installed CLR assemblies deduplicated by actual bytes; " + ("all retained CLR dependencies included" if args.managed_scope == "all" else "Razer version-resource ownership declarations selected; remaining CLR dependencies explicitly queued")
     capture["selected_capture_complete"] = bool(capture["assemblies"]) and all(r["capture_complete"] for r in capture["assemblies"]) and not capture["classification_failures"]
@@ -2035,12 +2079,14 @@ def analyze_host(args):
                       "pending_dependencies": len(capture["pending_dependencies"]), "selected_capture_complete": capture["selected_capture_complete"]}), flush=True)
 
 
-def resolve_managed_dependencies():
-    """Give ILSpy exact same-package dependencies whose MSI payload names carry GUID suffixes."""
+def resolve_managed_dependencies(*, workers=4):
+    """Supplement unresolved assemblies with verified same-directory references."""
     import analysis as a
     import shutil
     import xml.etree.ElementTree as ET
 
+    if type(workers) is not int or not 2 <= workers <= 16:
+        raise ValueError("Managed dependency workers must be between two and sixteen")
     capture_path = a.ROOT / ".analysis/results/host-current/managed/capture.json"
     capture = json.loads(capture_path.read_bytes())
     if not capture.get("finished_at_utc"):
@@ -2050,13 +2096,18 @@ def resolve_managed_dependencies():
         raise ValueError("Managed dependency supplement requires the original pinned analyzer")
     index = {r["path"]: r for r in json.loads((a.ROOT / ".analysis/inputs.json").read_bytes())["inputs"]}
     assemblies_by_directory, assembly_name_sources = {}, {}
+
     def identity(path):
         return {"path": a.rel(path), "bytes": path.stat().st_size, "sha256": a.sha(path)}
+
     def verified(row):
         path = a.resolve(row["path"], ".analysis")
         if path.stat().st_size != row["bytes"] or a.sha(path) != row["sha256"]:
             raise ValueError("Managed dependency evidence identity differs: " + row["path"])
         return path
+
+    # Build the reference views on the coordinator.  Workers only consume
+    # these immutable, byte-verified files and write to their own SHA output.
     for assembly in capture["assemblies"]:
         projects = [r for r in assembly.get("outputs", []) if r["path"].endswith(".csproj")]
         if not assembly.get("capture_complete") or len(projects) != 1:
@@ -2070,7 +2121,9 @@ def resolve_managed_dependencies():
             if original["sha256"] != assembly["input_sha256"]:
                 raise ValueError("Captured managed assembly alias changed")
             assemblies_by_directory.setdefault(str(Path(alias).parent), {}).setdefault(name, {})[original["sha256"]] = original
-    for assembly in capture["assemblies"]:
+
+    jobs = []
+    for assembly_index, assembly in enumerate(capture["assemblies"]):
         if not assembly.get("capture_complete") or not assembly.get("diagnostics"):
             continue
         directory = assemblies_by_directory.get(str(Path(assembly["input"]).parent), {})
@@ -2084,6 +2137,10 @@ def resolve_managed_dependencies():
         if previous and previous.get("reference_binding_sha256") == binding and previous.get("capture_complete"):
             for output in previous["outputs"]:
                 verified(output)
+            jobs.append({"assembly_index": assembly_index, "input": assembly["input"],
+                         "initial_diagnostics": len(assembly["diagnostics"]), "binding": binding,
+                         "references": references, "conflicts": conflicts, "reuse": True,
+                         "record": previous})
             continue
         if previous:
             raise ValueError("Changed managed dependency supplement requires explicit evidence review")
@@ -2099,34 +2156,75 @@ def resolve_managed_dependencies():
         source = verified(index[assembly["input"]])
         output = a.ROOT / ".analysis/results/host-current/managed" / assembly["input_sha256"][:12] / "dependency-resolution"
         output.mkdir(parents=True, exist_ok=True)
-        stdout, stderr = output / "csharp.stdout.txt", output / "csharp.stderr.txt"
         command = ["dotnet", str(tool_dir / "ilspycmd.dll"), "--disable-updatecheck", "-p", "--nested-directories",
                    "-o", str(output / "source"), "-r", str(view), str(source)]
-        with stdout.open("wb") as out, stderr.open("wb") as err:
-            process = subprocess.run(command, stdout=out, stderr=err, check=False, cwd=a.ROOT)
+        jobs.append({"assembly_index": assembly_index, "input": assembly["input"],
+                     "input_sha256": assembly["input_sha256"], "source": source, "output": output,
+                     "initial_diagnostics": len(assembly["diagnostics"]), "binding": binding,
+                     "references": references, "conflicts": conflicts, "view": view,
+                     "command": command, "reuse": False})
+
+    def supplement_job(job):
+        if job["reuse"]:
+            return job["record"], True, None
+        output = job["output"]
+        command = job["command"]
+        process_returncode, failure = None, None
+        stdout, stderr = output / "csharp.stdout.txt", output / "csharp.stderr.txt"
+        try:
+            with stdout.open("wb") as out, stderr.open("wb") as err:
+                process = subprocess.run(command, stdout=out, stderr=err, check=False, cwd=a.ROOT)
+            process_returncode = process.returncode
+        except Exception as error:  # Preserve a worker failure in the receipt.
+            failure = str(error)
         diagnostics = []
-        for generated in sorted((output / "source").rglob("*.cs")):
-            for number, line in enumerate(generated.read_text(encoding="utf-8-sig").splitlines(), 1):
-                if re.match(r"\s*//.*(?:Unknown result type|Expected .*got|Error decompiling|Invalid IL|Could not resolve)", line):
-                    diagnostics.append({"path": a.rel(generated), "line": number,
-                                        "kind": "managed_decompiler_unresolved", "text": line.strip()})
-        record = {"recorded_at_utc": a.stamp(), "reference_binding_sha256": binding,
-                  "references": references, "conflicting_names": conflicts,
-                  "workflow": identity(Path(__file__)),
-                  "analyzer": capture["tool"], "target_execution": False, "reference_scope": "same original input directory only",
-                  "command": {"argv": [a.rel(Path(v)) if Path(v).is_absolute() and Path(v).is_relative_to(a.ROOT) else v for v in command],
-                              "exit_code": process.returncode}, "diagnostics": diagnostics,
-                  "original_diagnostics_retained": len(assembly["diagnostics"]),
-                  "input_bytes_unchanged": a.sha(source) == assembly["input_sha256"],
-                  "outputs": [identity(p) for p in sorted(output.rglob("*")) if p.is_file()]}
-        record["capture_complete"] = process.returncode == 0 and record["input_bytes_unchanged"]
-        record["all_csharp_resolved"] = record["capture_complete"] and not diagnostics and not conflicts
+        try:
+            for generated in sorted((output / "source").rglob("*.cs")):
+                for number, line in enumerate(generated.read_text(encoding="utf-8-sig").splitlines(), 1):
+                    if re.match(r"\s*//.*(?:Unknown result type|Expected .*got|Error decompiling|Invalid IL|Could not resolve)", line):
+                        diagnostics.append({"path": a.rel(generated), "line": number,
+                                            "kind": "managed_decompiler_unresolved", "text": line.strip()})
+        except Exception as error:
+            failure = failure or str(error)
+        outputs = []
+        for path in sorted(output.rglob("*")):
+            if path.is_file():
+                try:
+                    outputs.append(identity(path))
+                except Exception as error:
+                    failure = failure or str(error)
+        input_unchanged = False
+        try:
+            input_unchanged = a.sha(job["source"]) == job["input_sha256"]
+        except Exception as error:
+            failure = failure or str(error)
+        record = {"recorded_at_utc": a.stamp(), "reference_binding_sha256": job["binding"],
+                  "references": job["references"], "conflicting_names": job["conflicts"],
+                  "workflow": identity(Path(__file__)), "analyzer": capture["tool"],
+                  "target_execution": False, "reference_scope": "same original input directory only",
+                  "command": {"argv": [a.rel(Path(value)) if Path(value).is_absolute() and Path(value).is_relative_to(a.ROOT) else value
+                                      for value in command], "exit_code": process_returncode},
+                  "diagnostics": diagnostics, "original_diagnostics_retained": job["initial_diagnostics"],
+                  "input_bytes_unchanged": input_unchanged, "outputs": outputs}
+        if failure:
+            record["error"] = failure
+        record["capture_complete"] = process_returncode == 0 and input_unchanged and not failure
+        record["all_csharp_resolved"] = record["capture_complete"] and not diagnostics and not job["conflicts"]
+        return record, False, failure
+
+    results = []
+    if jobs:
+        pool_workers = max(2, min(workers, len(jobs)))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=pool_workers) as pool:
+            results = list(pool.map(supplement_job, jobs))
+    for job, (record, reused, failure) in zip(jobs, results):
+        assembly = capture["assemblies"][job["assembly_index"]]
         assembly["dependency_resolution"] = record
-        if record["capture_complete"] and len(diagnostics) <= len(assembly["diagnostics"]):
-            assembly["preferred_csharp_source"] = a.rel(output / "source")
-        a.save(capture_path, capture)
-        print(json.dumps({"managed_input": assembly["input"], "initial_diagnostics": len(assembly["diagnostics"]),
-                          "supplement_diagnostics": len(diagnostics), "exit_code": process.returncode}), flush=True)
+        if not reused and record["capture_complete"] and len(record["diagnostics"]) <= len(assembly["diagnostics"]):
+            assembly["preferred_csharp_source"] = a.rel(job["output"] / "source")
+        print(json.dumps({"managed_input": job["input"], "initial_diagnostics": job["initial_diagnostics"],
+                          "supplement_diagnostics": len(record.get("diagnostics", [])),
+                          "exit_code": record["command"].get("exit_code"), "error": failure}, ensure_ascii=False), flush=True)
     capture["dependency_supplement_finished_at_utc"] = a.stamp()
     a.save(capture_path, capture)
 
@@ -2188,14 +2286,17 @@ def analyze_host_javascript():
                       "failed_stages": sum(c["exit_code"] != 0 for c in capture["commands"])}), flush=True)
 
 
-def native_pseudocode_failures(retained, failures):
+def native_pseudocode_failures(retained, failures, image_base=0):
     """Report missing selected bodies using the capture's actual stage identity."""
     result = []
     for row in retained:
         function = row["capture"]
         if function.get("pseudocode") is not None:
             continue
-        address, rva = function["address"], function["rva"]
+        address = function["address"]
+        rva = function.get("rva")
+        if rva is None:
+            rva = hex(int(address, 16) - image_base)
         stage = format(int(rva, 16), "x") + ":hexrays"
         matching = [failure for failure in failures
                     if failure.get("stage") == stage or failure.get("address") == address
@@ -2927,7 +3028,8 @@ class HostLocalAudit:
                     if target is not None and level < depth:
                         pending.append((target, level + 1))
         selected_functions = [retained[address] for address in sorted(selected)]
-        decompiler_failures = native_pseudocode_failures(selected_functions, decompiler_records)
+        decompiler_failures = native_pseudocode_failures(
+            selected_functions, decompiler_records, image_base=int(capture["image_base"], 16))
         return {"original": self.sources[original["path"]], "capture": self.families.identity(capture_path),
             "ida_version": capture["ida_version"], "hexrays_version": capture["hexrays_version"],
             "supplemental_captures": supplements,

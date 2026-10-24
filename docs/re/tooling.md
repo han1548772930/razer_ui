@@ -2,15 +2,21 @@
 
 IDA 路径：`E:/IDA`（9.1）、`D:/ida/IDA Pro 8.3`（8.3）。GPUI 技能读取 `.agents/skills/`。各份捕获记录实际工具版本，不能跨版本沿用验证结论。
 
-批量原生捕获的 `--workers` 支持 1–4，默认 1。线程池负责调度，每个新模块运行独立 IDA 进程，私有数据库与输出按原件 SHA 隔离；相同字节只排一次。并行批次的共享配置在首次需要新捕获时加锁准备一次，由协调线程按稳定模块顺序发布统一收据，单项失败保留且不阻止其余项。已核验的完整捕获直接复用；全为复用时不启动 IDA 或准备配置。`test_evidence.CaptureStreamingTests` 的 17 项测试使用事件屏障核对实际重叠、上限、失败隔离和稳定发布，并覆盖全复用及非法并发参数，未以睡眠或放宽断言替代顺序检查。
+批量原生捕获的 `--workers` 支持 2–4，默认 4。线程池负责调度，每个新模块运行独立 IDA 进程，私有数据库与输出按原件 SHA 隔离；相同字节只排一次。并行批次的共享配置在首次需要新捕获时加锁准备一次，由协调线程按稳定模块顺序发布统一收据，单项失败保留且不阻止其余项。已核验的完整捕获直接复用；全为复用时不启动 IDA 或准备配置。`test_evidence.CaptureStreamingTests` 的 17 项测试使用事件屏障核对实际重叠、上限、失败隔离和稳定发布，并覆盖全复用及非法并发参数，未以睡眠或放宽断言替代顺序检查。
+
+所有批量 Python 入口都必须启用至少两个 worker；类型表生成也使用线程池；当前捕获、前端恢复、宿主资源获取、产品族收集、资源提取、仪表板资源准备、资源所有权审计、Windows PE 静态检查和本页 gaps 校验均使用有界线程池。前端恢复即使只指定一个来源也使用至少两个线程，捕获、恢复、资源审计和安装包准备入口拒绝 `--workers 1`，避免逆向批次悄悄退回串行。并行任务只返回不可变结果，由单一协调者按输入身份排序、校验原始快照后原子发布；任何一个任务失败都保留失败收据，不能以其他线程成功替代它。
 
 当前 `HID.node`（SHA-256 `f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f`、405,704 字节）的 [实际捕获收据](../../.analysis/results/native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f/capture.json) 使用 IDA 9.1、Hex-Rays 9.1.0.250226、Python 3.11.9，完整捕获 1,641 个函数；RVA `0x30888` 的反编译失败及完整汇编保留。其他 IDA 8.3 捕获的函数数与产物摘要不能套用到这份收据。[HID 查询](../../.analysis/results/native/chain-audit.json) 中的工厂、回调、动态导出与共享 worker 链须分别对照其引用的完整函数及实际产物身份；指定查询没有未解边不代表全部 N-API／Promise、产品协议或生命周期已经闭合。当前 GetFeature／GetInput 的完整函数分别位于 RVA `0x17ac0..0x17c43`、`0x17c50..0x17dd3`，Windows 返回长度均为原生已读长度加一；Rust 的 source-host collection 适配与产品重试／取消仍须逐调用方校验。
 
 `capture-corpus --source retained --ida-root E:/IDA --include-path '\.(dll|node|sys)$' --workers 4 --no-refresh-gaps` 本批 884 个不同字节的非 EXE 模块已终态：869 份经校验复用、15 份新捕获，共 2,610,555 个函数，模块级失败为零。[统一原生队列](../../.analysis/results/native-corpus-capture.json)与[独立质量核验](../../.analysis/results/native-corpus-quality.json)分别保留输入、版本、捕获和复核身份；发布前另重读全部 884 份原件及捕获清单摘要。181 份旧 schema 缺少可选完成字段，按完整且稳定的函数清单核验，不补造该字段。
 
-241 个模块合计 869 个函数没有成功生成伪代码；全部失败函数的原始块和 1,622,453 条已枚举汇编项已核对原 PE，共 10,014,652 字节 raw chunks。152 个失败函数的汇编项没有覆盖其中 7,185 字节，这些原始字节仍完整保留。队列另外排除 1,066 份输入，其中 995 份 EXE；它们不计入本批完成数，已有独立捕获的输入须按各自收据另核，不能全部当作尚未捕获。额外服务 EXE 也由单独捕获收据记录。因此 `capture_complete=true` 与 `full_corpus_captured=false` 同时成立，不能将本批终态记为全语料、功能语义或实际 DLL 对照完成。
+241 个模块合计 869 个函数没有成功生成伪代码；全部失败函数的原始块和 1,622,453 条已枚举汇编项已核对原 PE，共 10,014,652 字节 raw chunks。152 个失败函数的汇编项没有覆盖其中 7,185 字节，这些原始字节仍完整保留。队列另外排除 1,066 份输入，其中 995 份 EXE；它们不计入本批完成数，已有独立捕获的输入须按各自收据另核，不能全部当作尚未捕获。根据当前任务范围，EXE 与安装器分支不再排入后续逆向队列；后续并行批次只针对 DLL、NODE、SYS、原生服务协议和页面调用链。额外服务 EXE 的既有静态收据保留为上下文，不作为当前目标。`capture_complete=true` 与 `full_corpus_captured=false` 同时成立，不能将本批终态记为全语料、功能语义或实际 DLL 对照完成。
 
 另有十份服务 EXE 已逐项完成完整产物复核：1442／3942 路由服务，1427／709–711／1398 属性服务，以及 1443／1411／1339／694–696／1330 的 companion 服务。十份共核对 182,605 个函数文件及 90 个输出的实际摘要，原件与 capture 前后不变；其中 1427、709–711、1398 各有七个 Hex-Rays 未决，其余七份为零。各自的 [native 捕获目录](../../.analysis/results/native/)保留终态、版本、函数和失败身份；这些额外收据不改写上述 884 模块队列，也不提升为整个服务的语义或运行验收。
+
+2026-10-24 另开了一个只针对安装包装层的真实双 IDA 批次：`capture-corpus --source retained --ida-root E:/IDA --include-path 'RzComDriver_v23\\.0\\.6\\.0\\.exe$' --include-path 'RazerChroma-Web-v4\\.0\\.827\\.exe$' --workers 2 --no-refresh-gaps`。协调器先校验原件 SHA，再同时启动两个独立 IDA 进程（批次日志记录 PID `16356` 与 `6380`）；两个模块均为新捕获而非复用，各 105 个函数、0 个捕获失败。独立批次收据另存为 [native-corpus-capture-chroma-20261024.json](../../.analysis/results/native-corpus-capture-chroma-20261024.json)，原件和完整捕获分别为 [RzComDriver](../../.analysis/results/native/d17bbc15e025bcee12948655ed5956bfe855019e626e497dd10ed40cb9a5e0dc/capture.json) 与 [RazerChroma-Web](../../.analysis/results/native/1a7eecf362e5de07c9bfd799bcccbdf3327740ffb3d713bc4c3649110bb94586/capture.json)；对应的 [RzComDriver IDA 日志](../../.work/native/d17bbc15e025bcee12948655ed5956bfe855019e626e497dd10ed40cb9a5e0dc/batch/ida.log) 和 [RazerChroma-Web IDA 日志](../../.work/native/1a7eecf362e5de07c9bfd799bcccbdf3327740ffb3d713bc4c3649110bb94586/batch/ida.log)均保留 `STATIC-CAPTURE 105/105`。
+
+这两个 PE 的版本资源分别是 Razer ComDriver Installer `23.0.6.0` 和 Razer Chroma Setup `4.0.827.0`。完整反汇编显示它们是 NSIS 自解压／完整性校验／临时文件／子进程包装层：`start`、`DialogFunc`、`StartAddress`、`CreateProcessW`、100 ms `WaitForSingleObject` 轮询、`GetExitCodeProcess`、注册表与文件操作均已捕获；没有从这两个包装器得到 Chroma 帧、HID 报文或设备 ACK。`LoadLibraryExW`／`GetProcAddress` 只证明通用动态解析通道存在，不能推断某个厂商 DLL 已加载。解压载荷和安装器消费者按当前范围不再继续逆向；既有静态捕获仅作为来源上下文，不能把安装包装层当作设备后端，也不提升 Rust 实现或运行时 DLL／设备对照状态。
 
 随后十三份服务／本机工具又完成 158,625 个函数文件及 117 个输出的实际摘要复核，来源清单、资源声明与原件重新核字节。当前追加重点共 23 份已核验终态；合计 341,230 个函数文件、207 个输出，Hex-Rays 未决函数 1,408 个（仅表示反编译失败，原始汇编与 chunks 仍按收据保留），这组数量独立于 884 模块队列。
 
@@ -111,6 +117,14 @@ Windows x64 的模糊目标构建还需匹配的 MSVC AddressSanitizer 运行库
 
 `audit-host-local --query profiles` 在同一收据新增 [profiles 字段](../../.analysis/results/host-current/local-audit.json#/profiles)，`--verify-only` 只独立复核而不收集或发布。当前两套部署和五份宿主原件保存 43 个完整 AST 所有者、32 个选中调用者、439 个原件及 2,157 个校验工件；完整捕获中的两个失败阶段继续保留。54 项 `test_host` 通过，其中 15 项覆盖本查询的字节、完整边界、绑定、获取变更、19 类失败／取消／完成度篡改与发布保护。正式报告原有十个顶层字段逐项保留 canonical 身份。Add 的 action 吞发布异常、Browse／drop 不等待所有添加、刷新早退、扫描结果未关联、重定位仅写 id/path、拖放监听的清理行为分别见 [Profiles](../products/host/profiles.md)。这些维护工具测试不等于 Rust 功能或真实 DLL 对照；全部 scanner、设备自动配置档写入和窗口仍须逐链验证。
 
+`inspect-host` 对多个独立归档使用 `--workers`（2–16，默认 4）并行运行只读列表／提取，按输入 SHA 排序由协调线程合并 `inspection.json` 和索引；`analyze-host --managed-scope ... --workers N` 对独立 CLR 程序并行调用 ILSpy，每个 worker 只写自己的 SHA 输出目录，协调线程按稳定输入顺序发布 managed capture。`analyze-host --resolve-managed-dependencies --workers N` 同样按程序集并行补充依赖，失败、退出码和诊断逐项保留。
+
+`analyze-frontend --input ... --workers N` 在完成统一 unpack／validate 后并行提取各 source map；命令记录按原始输入顺序发布，恢复器仍由单一协调者校验完整原件。`prepare-local-protocol-tables` 的五个固定输入、`prepare-mapping-capabilities` 的各鼠标挂载输入和 `prepare-mapping-producers` 的各产品输入均使用 2–16 线程（默认 4），只在所有结果收齐后写 Rust 输出和 typed-data 收据；参数为 1、非整数或超出范围时立即失败，不能退回串行生成。
+
+`audit-family-function` 的 `mouse-dpi`、`mouse-customize` 和 `keyboard-artwork` 查询也按产品输入使用 2–16 个 worker（默认 4）；每个 worker 只返回局部 AST、布局、解析和失败结果，由协调线程按产品身份合并并重映射共享几何索引，统一的 Wakaru normalize 仍在合并后执行。其他单一输入的静态查询保持单 analyzer 阶段，不把一个输入伪拆成无独立边界的任务。
+
+[Dashboard 重试安装与无存活恢复](../products/host/dashboard.md#重试安装无存活恢复与服务端状态)另核 `BoxItemDevice` 与 background-manager 的当前字节、`BroadcastChannel` 消息、`noAliveSignMW` 身份键、40,000 ms 存活检查和 `resuscitate`／`_openMW` 门禁。`retryInstall`、窗口重开、中间件握手、重新枚举及设备读回分别记录；消息发送、窗口关闭或后台 Map 清理没有 Dashboard ACK，也不能当作 HID 写入或安装成功。此段静态 AST／字节证据未运行厂商 JavaScript、后台服务、DLL 或设备，Rust UI 与真实对照仍未验证。
+
 Profiles 的 Windows 原生枚举／图标另复用 [SysUtilsNative 完整捕获](../../.analysis/results/native/01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318/capture.json)，独立核 38 个函数、38 个 chunks、7,525 条指令及 36,131 原始字节，1,078 字节未枚举范围保留；九份汇总输出也按摘要核对。同字节的官方主机包成员、实际版本、导出／导入及注册表根表分别确认。枚举仅查询 HKLM／HKCU 下两种 Uninstall 路径，不补成 UWP／快捷方式扫描；图标缓存键、GDI+／PNG／base64、临时文件、短读和失败释放分别记录。这是所选 Windows 静态链，不能扩写为扫描服务、macOS、Rust 或实际 DLL 已验证。
 
 [GMS 续追](../products/host/profiles.md#gms-服务发现排队添加与任务退出)再核同 DLL 的 7 个函数、966 条指令及 4,061 原始字节，5 字节未枚举；服务发现读取注册表，扫描实际经 JS／SignalR 进入托管服务。当前包的三个程序集及同字节 aliases、22 个注册策略源码均核对捕获摘要；另独立解析 CLR MethodDef 与 tiny／fat 方法头，核 46 个方法的 token、RVA、头长与 code size，以及七处原始 IL opcode，未将其宣称为全部托管 IL 逐指令验证。OnStartScan 的 async void 正常主体没有 await 挂起点，异常仍经 builder 脱离外层 Action；WaitAll 的超时 bool 被 pop，finished 通知早于 stopped 和落盘。两把 Promise 锁的反向顺序／重入可形成条件等待环，实际触发与服务时序未执行。分段收集、请求关联丢失、策略停止粒度、取消与资源收束须按文档分别测试，不能由服务发现或静态正常返回证明成功。
@@ -120,6 +134,8 @@ Profiles 的 Windows 原生枚举／图标另复用 [SysUtilsNative 完整捕获
 同链[解析与发现通知](../products/host/profiles.md#解析依赖与发现通知的完成边界)另核 Lib 18 个、Common 9 个、服务 EXE 1 个所选 MethodDef 身份／方法头、完整 IL 及相关输出摘要；集合与此前有重叠，不相加为覆盖总数。路径字典实际由 Controller 注入 CurrentCultureIgnoreCase tuple comparer；服务注入名为 NewtonsoftJsonSerializer 的类实际使用 System.Text.Json，字符串／文件／固定 4096 B 字节入口的参数和错误边界不同。Mihoyo 字符分帧、逐条 JSON catch 与外层 I/O 失败、发现广播先于缓存更新、async void 发送挂起、缓存缺分区仍可回 GS_SUCCESS 及 void 保存失败分别保留。所选构造／调用另核原 PE 字节，完整 JSON／加密存储依赖、所有并发交错、Rust 行为测试与官方实际功能对照仍未由此完成。
 
 [Steam、BattleNet 与 Epic 的本机输入](../products/host/profiles.md#steambattlenet-与-epic-的实际本机输入)另核 Lib 的 39 个、Common 的 4 个所选 MethodDef 身份、原 PE 方法头及关键调用字节，并重新核对两套程序集的全部 246／107 个捕获输出摘要；方法集合有交集，不累加为全策略覆盖。Steam 的两个 bool 结果被 pop、停止库循环后仍可能进入联网补全、数据库适配器丢弃序列化返回值、BattleNet 日志单次读取及 64 位门禁后调用 32 位 getter、Epic 先读两列表却以不同列表作门槛与遍历均分别记录。联网目录与匿名登录属于本项目删除范围，不能因此省略本机文件／数据库／图标和结果发布链。底层 KV／SQLite provider、完整取消与发布并发、独立 Rust 行为测试及实际 DLL／服务对照仍未由此完成。
+
+[Arc、Bethesda、EA、GOG、Mihoyo、Riot 与 Uplay 的本机扫描](../products/host/profiles.md#arc-bethesda-ea-gog-mihoyo-riot-与-uplay-的实际本机扫描)继续核对剩余七个注册策略及其公共 Registry／Path 适配器。选定 ServiceLib 44 个、Common 12 个、服务 EXE 1 个共 57 个方法的身份／方法头、调用与分支摘要已独立复核，并保留 68 个异常区间、55 行定位表和 1901 个调用／操作计数；这些集合与前段重叠，不相加为全策略覆盖。实际输入包括 HKLM Registry32 两视图、Bethesda reader、Arc／EA／GOG 注册表字段、Mihoyo gamedata、Riot rc_live／metadata YAML、Uplay 本地 configuration 文本及路径适配器；逐项停止只位于候选边界，预读取、枚举器和 AsyncTaskMethodBuilder 异常不会自动回滚。完整策略取消／并发、Rust 行为测试及实际 DLL／服务对照仍未验证。
 
 [GSL 加密文件与重试](../products/host/profiles.md#加密设置文件的读取重试与释放)另核 Lib 5 个、Common 10 个所选 MethodDef／方法头、原 EH sections、TypeRef catch 类型及静态 #US 字段；方法集合含复用。FileMode.Create 会直接重写目标，独占打开探测不读内容且耗尽后仍置完成，外层十次 IOException 也可正常 void 返回；Dispose 顺序和非 IO rethrow 分开。加密字符串 Serialize 返回 Base64，而 DeserializeString 直接取输入的 UTF-8 字节后解密，未执行反向 Base64 解码。Aes 工厂显式参数与框架默认参数分开记录；加载失败后重建本地缓存不证明设备无配置。框架密码／XML 内部、完整数据契约及 Rust／实际 DLL／文件恢复对照仍未验证。
 
@@ -269,7 +285,7 @@ manifest、HTML、JS、CSS、资源及部署前后摘要共同确定当前入口
 
 [Visualizer 的 GUID 缓存与退出](../products/host/visualizer.md)另核 [同版 SDK](../../.analysis/results/native/7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7/capture.json)的 30 个函数、30 个 chunks、4,079 条指令及 18,072 原始字节，27 字节未枚举范围保留；实际 Core 包成员、EAT／IAT 和对象布局均另核。40 字节 map 节点仅保存独立 56 字节管道对象的裸指针；最终节点／桶清理没有释放这些值，失权关闭与 UnInit 也不是同一条分支。同步 WriteFile 不核实际计数或 ACK，返回 1 后仍可能因遗留错误值关闭 HANDLE；三次线程等待不核结果。此处界定所选链的静态行为，服务端消费、关闭期间在途调用和真实设备输出仍未证明，不声称整个进程已实测泄漏。
 
-[Visualizer 帧接收与设备写入](../products/host/visualizer.md#帧接收实例路由与设备写入)继续核 DeviceManager、Camy 和 E782 三份原件的 78 个完整函数；按每模块的实际地址区间去重为 172 个 chunks、12,932 条指令及 44,598 原始字节，所选 chunk 无未枚举字节。跨函数共享尾块不重复计数，SDK 的五个发布函数只作复核。GUID→instanceId 管道转发、设备访问共享区的 0x10001／2／3、Camy 专用环缓冲与 91 B HID report 已接到实际消费者；各层丢弃 BOOL／字节数／帧结果、启动查询与帧读回的区别，以及超时后释放继续分别保留。当前所选插件没有逐帧硬件确认，设备访问服务处理器、键鼠共享区与 CJS JSON 接收尚须续追；静态接到 HID 调用不等于真实写回或释放验收。
+[Visualizer 帧接收与设备写入](../products/host/visualizer.md#帧接收实例路由与设备写入)继续核 DeviceManager、Camy 和 E782 三份原件的 78 个完整函数；按每模块的实际地址区间去重为 172 个 chunks、12,932 条指令及 44,598 原始字节，所选 chunk 无未枚举字节。跨函数共享尾块不重复计数，SDK 的五个发布函数只作复核。GUID→instanceId 管道转发、设备访问共享区的 0x10001／2／3、Camy 专用环缓冲与 91 B HID report 已接到实际消费者；键盘 PID542、鼠标 PID105/114/115 的共享区 worker、XOR、CJS 与直接 HID 分支也已静态闭合到 UnInit。帧发送不等待逐帧 ACK，启动 getter 读回不能替代后续写入确认，停止等待不核结果且 idle thread handle 仍有释放边界。各层丢弃 BOOL／字节数／帧结果、启动查询与帧读回的区别，以及超时后释放继续分别保留。当前所选插件没有逐帧硬件确认，设备访问服务处理器、CJS JSON 接收及其他产品／固件分支仍未闭合；静态接到 HID 调用不等于真实写回或释放验收。
 
 同一报告的 `endpoint_volume_consumer` 再核 44 个完整函数、5,696 条指令、六表、37 条固定断言及实际 RTTI／variant／COM 调用与释放，173 项证据和六个篡改反例独立复核通过。与基础切片合并后共 502 个去重 artifact，分片交集保留且不重复计算覆盖。通知注册类型与实际 reader 的交叉、两次 OS setter 丢弃 HRESULT、self GUID 过滤前的 GLOBAL 刷新、普通注销与析构注销的不同结果消费者均有原字节依据；不得按名字简化成同名请求直接写 OS，也不能将所选释放函数升级为回调静止或恢复已验收。
 
@@ -306,3 +322,89 @@ GPUI 修改前读取用户指定目录的两个 SKILL.md 及适用机制／组�
 输入获取、静态恢复、语义、Rust 实现、UI／服务连接、纯／模拟验证、运行验收分别记录。证据 SHA 不作为产品兼容门禁。共享协议逻辑独立于 OS，HID、COM、驱动、服务和系统适配保持明确边界。
 
 缺失原件、间接调用、ABI／协议分支、未实现本地链进入统一 `.analysis/results/gaps.json` 并驱动后续实现。账号、云同步、远程下载／更新、在线目录等联网产品功能移除；loopback、本地 socket、固件文件传输、DLL 替换、服务生命周期、本地预设仍须实现。纯／模拟测试不冒充设备写回；本地 DLL／导出、服务及设备功能测试按根目录已授权的来源、架构、ABI、清理链核实和只读优先边界执行，可恢复写入保留原值、恢复与回读结果。应用窗口、厂商 JS、无关 helper 和安装器仍不运行；测试实际调用、返回、比较及未验证范围单独记录，不能由加载成功或单次 getter 推导整页验收。
+
+## 2026-10-24 四 DLL 并行静态语义批次
+
+本批针对三个 Seiren TUSBAUDIO API 版本和一个 Chroma SDK API DLL，使用 .work/seiren-dll-batch-20261024/analyze_batch.py 的 ThreadPoolExecutor(max_workers=4) 并行读取既有捕获目录，汇总导出、调用/被调用、字符串、导入 xref、错误返回和释放边界。批次收据与摘要保存在 [.work 分析摘要](../../.work/seiren-dll-batch-20261024/analysis.json)；脚本只读，不执行 DLL、服务、设备、应用、安装器或调试器。
+
+| 原件 SHA-256 | 架构／原件字节 | capture.json SHA-256 | 函数／Hex-Rays 失败 | 导出 |
+| --- | --- | --- | --- | --- |
+| 966162446b255d393c1d272cc1fda3a1eac34c9b649854a61a6d2d77fb65c549 | x64／304,944 | 81ed8145c887c8d4ca642e7a0a3c5071f2c66e9a213829846e356cc831a82095 | 1,170／0 | 84 |
+| 0789707daaa4020a1bf80b5ff7d6e6aedd1f2b645afc2cd925ce06ae5d3a36c9 | x64／321,336 | 3c4237581777be020b5bf8e25d64ec4fdcc18ce43fd2dc3bf1a5e1e30265f036 | 1,129／0 | 84 |
+| 1c34a749e3cc7deed34e5d0f1fc8fd13dbac659d4991b1e31ba7d4f958a0e475 | x86／281,904 | c921d1282414d52f02f261297aaa276a4eb5970500711386c034641ee6fb8b89 | 1,101／5 | 84 |
+| 78a7454edc13006e5c80d5d05d76c8262b1473cb4da6066e6422b1e32d48cef0 | x86／228,552 | 0e269a459a87e2d0af6c8e8008adfb9deba9829d27decde84c9aad32eb821432 | 544／3 | 29 |
+
+三份 Seiren 原件的 API minor 门禁分别为 0xC、0x10、0xC；已在音频文档追到 Enumerate/Open/Close、音量 IOCTL、通知、DSP wrapper、DFU/firmware image 和释放路径。RzAPIChromaSDK 已追到 GUID 身份检查、事件注册返回码、Synapse 状态事件、注册表元数据与共享 mapping/event 导入。以上是静态调用链结果，未将导出存在或捕获完成解释为运行成功；三份 Seiren x86/x64 ABI、五处/三处 Hex-Rays 失败和具体间接服务端仍按各自收据保留。
+
+四个模块原件 SHA、capture SHA、函数/失败数和产物字节已在批次中独立复核；同族版本的函数数不相加为项目覆盖率。实际 DLL/设备对照、读回、错误、取消、恢复和释放验收仍须后续显式测试。
+## 2026-10-24 四 DLL 并行 Chroma/Mixer 静态语义批次
+
+本批使用 `.work/chroma-native-batch-20261024/analyze_batch.py` 的 `ThreadPoolExecutor(max_workers=4)`，四个 worker 并行读取已有 IDA capture、导出、imports、字符串和 xref，并在每个任务中独立核对原件 SHA-256、capture SHA-256、函数清单和失败清单。汇总收据为 [`analysis.json`](../../.work/chroma-native-batch-20261024/analysis.json)。脚本没有加载 DLL、启动服务、访问 HID/设备、运行应用或执行安装器。
+
+| 原件（SHA-256） | 字节/架构 | capture SHA-256 | 函数/失败 | 导出 |
+| --- | --- | --- | --- | --- |
+| `30e64d0f10401a2c847476dfaf024d06550028b34d8775f84695d9713b0d9521` RzChromatic64.dll | 2,835,656 / x64 | `b1b40b40b9ab379fc01fdd6158da45f25712266c1f475ffa9e85dc206446c6c4` | 10,120 / 0 | 588 |
+| `babd928b9dbf81ce3a7f203ecfbc01a51fd8f9059b811cde858cabbf04fe257f` RzChromaConnectAPI64.dll | 223,432 / x64 | `bae39fcffaf59a8af8299a5ecad4c0f69f14d9c7382c69b70c77a70ec1571a73` | 840 / 0 | 6 |
+| `21ab57c4db9f773b055a89e1e07a13dfe5bd516005d60bdcc250bfe7838fea55` RzChromaBroadcastAPI64.dll | 53,448 / x64 | `88ca1fc8a4cb43695974ef2488c551dda22bf6e9e75eb83d667c9403bdb1adde` | 171 / 0 | 6 |
+| `d3cf6173a2e8bb7af0a1066da3bd9d6038270884b6fcdc5afdaefd349755da5d` RzNative_053E_v1.0.16.0.dll | 2,922,184 / x64 | `f4329cca2430a2cd01fee72e6832999fd12d6623c078fd539548cbc62a08e3ef` | 10,432 / 1 | 49 |
+
+RzChromatic 的导出/插件链、Connect/Broadcast 的映射和事件生命周期已追加到 [dynamic-lighting](../products/shared/dynamic-lighting.md)；RzNative_053E 的 MixerSDK/HID/PropertyControl/UnInit 语义已追加到 [microphone-and-preview](../products/audio/microphone-and-preview.md)。四个输入均为不同 SHA；版本函数数不相加为项目覆盖率。静态结果只能作为 Rust 协议实现和回放测试的证据，官方 DLL 对照、服务端应答、设备读回、错误/取消/恢复的真实执行仍保持未验证。
+## 2026-10-24 四 DLL 并行设备/音频静态语义批次
+
+本批使用 [.work/native-device-batch-20261024/analyze_batch.py](../../.work/native-device-batch-20261024/analyze_batch.py) 的 ThreadPoolExecutor(max_workers=4)，对四个已有 IDA capture 并行读取原件、capture.json、函数伪代码、导出、imports、字符串和 xref。每个 worker 独立重算原件 SHA-256、capture.json SHA-256 并调用 verify_native_capture；汇总见 [analysis.json](../../.work/native-device-batch-20261024/analysis.json)。脚本没有加载 DLL、启动服务、修改注册表、打开 HID/WinUSB、执行安装器或访问真实设备。
+
+| 原件 SHA-256 / 模块 | 架构/字节 | capture.json SHA-256 | 函数/Hex-Rays 失败 | 导出 |
+| --- | --- | --- | --- | --- |
+| 05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28 RazerMCUUpdaterInterface.dll | x86 / 42,496 | bc5e006873c56cab498f56fd8b88ba60520755c4ca186a3dd2e830d653864cd0 | 160 / 0 | 24 |
+| e268ea62bdfc0a65194f580b66f6d907b1e2bdcf9cb474d737364adcdcabe88e RzChromaSDKProxy_v1.2.3.2.dll | x64 / 359,112 | 00b5bf90b995f1381e55be65150eb67433600fcbbef00e9009d45f0d44bfcbe9 | 1,479 / 0 | 14 |
+| 13fc8d59ca268687f490cfaf132f875da1dce2a6d81c434723f614b4385821b6 RzChromaBroadcastManager.dll | x86 / 226,504 | bfb1e7f7e6dcd1662abd46128264418a138f6b5298dc8c2cedd2f4c001104338 | 561 / 0 | 23 |
+| 012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11 RzAudioUtil_v1.0.1.1.dll | x64 / 706,248 | 92ed9a6f9651fb6c67ece87ed97667b4c885f23d8fd173eca97d720500608b2d | 2,339 / 1 (0x1800673a3, call analysis -12) | 9 |
+
+RazerMCUUpdaterInterface 的 OpenDevice/OpenWinUsbBootloader、HID Feature 状态轮询、WinUSB 控制传输、new_fw.bin 分块和 DFU 退出边界已追加到 firmware-and-installation；RzChromaSDKProxy 的 JSON Invoke、PollEvents、allocator 与 UnInit 已追加到 dynamic-lighting；BroadcastManager 的效果入口、注册表元数据和单回调错误码已追加到同一文档；RzAudioUtil 的 THX JSON dispatch、媒体命令、错误字符串和 FreeMalloc 已追加到 microphone-and-preview。静态证据不能代替真实设备应答、读回、取消/恢复或释放验收；这些仍保持 Unverified。
+
+## 2026-10-24 全量 DLL/NODE/SYS 四线程静态批处理
+
+为避免逐模块手工启动，`.work/native-bulk-analysis-20261024/analyze_all.py` 使用 `ThreadPoolExecutor(max_workers=4)` 一次枚举全部 1,623 份现有捕获收据，并过滤为 881 个 DLL/NODE/SYS；该批次只读取既有 IDA/Hex-Rays 结果、导出、导入、命名符号和输入字节，不读取或执行 EXE、安装器、DLL、服务或设备。完整汇总收据见 [`analysis.json`](../../.work/native-bulk-analysis-20261024/analysis.json)。
+
+| 项目 | 结果 |
+| --- | ---: |
+| 并行 worker | 4 |
+| DLL/NODE/SYS 模块 | 881 |
+| capture 完整 | 881/881 |
+| 函数总数/已捕获 | 2,603,678 / 2,603,678 |
+| Hex-Rays 失败条目 | 869 |
+| 输入字节 SHA 与收据一致 | 881/881 |
+| 扫描耗时 | 约 16.5 秒 |
+
+这份收据证明批量静态捕获和字节身份检查已完成，不等于每个模块的语义、Rust 独立实现、页面接线或官方 DLL/设备运行对照已完成；失败函数、间接调用、服务端应答和未覆盖产品分支继续按产品文档与 `.analysis/results/gaps.json` 追踪。EXE/安装器不纳入当前后续逆向范围。
+
+同一批次随后运行 `.work/native-bulk-analysis-20261024/semantic_index.py`，仍以四个 worker 并行读取 1,623 份收据，实际索引 881 个 DLL/NODE/SYS。它为每个模块记录导出入口及对应函数体、失败 RVA、关键导入族（HID/WinUSB/SetupAPI/Kernel32/Advapi/COM 等）、命名符号和导出函数的关键伪代码/返回行；函数体和原始字节仍以各模块 `.analysis/results/native/<sha>/` 收据为准。汇总索引见 [`semantic-index.json`](../../.work/native-bulk-analysis-20261024/semantic-index.json)，本次共覆盖 64,092 个导出，其中 60,843 个有捕获函数体、3,249 个只有导出入口记录；869 个 Hex-Rays 失败条目分布在 241 个模块。批处理耗时约 45.4 秒。该索引是批量静态语义入口，不能把关键字命中或导出存在解释成协议、页面、设备 ACK、读回、取消、恢复或释放已经闭合；后续产品文档继续引用具体函数和原始字节。
+
+## 2026-10-24 Chroma Connect Server frame follow-up
+
+The existing `RzChromaConnectServer.dll` capture was independently checked with `ThreadPoolExecutor(max_workers=4)` for the WebSocket frame and Ping helpers: 6 selected functions, 20 unique chunks, 2,112 instructions, 7,673 raw instruction bytes, 0 unlisted bytes. Original SHA-256 `a49d11fc5f078c4e0019dd0d4972c683755456dcf83ddb1f883cd4a6b26fdbc5`; `capture.json` SHA-256 `2ce03476a1e68777e86009029defa301a17d57723116a21d2ec6f6f3de7eaed9`. The selected set is RVA `4e040,4ec80,5f6a0,5fee0,60000,60470`; all function JSON, chunk and instruction bytes matched the original PE.
+
+## 2026-10-24 四 DLL 并行 Camera/Audio/THX 语义批次
+
+本批使用 [.work/camera-audio-native-batch-20261024/analyze_batch.py](../../.work/camera-audio-native-batch-20261024/analyze_batch.py) 的 ThreadPoolExecutor(max_workers=4) 并行读取已有 IDA/Hex-Rays capture。每个 worker 独立重算原件 SHA、capture SHA，调用完整捕获校验，并把每个函数 chunk 和 assembly instruction 的原始字节映射回 PE section；脚本只做静态读取，没有加载 DLL、启动服务、访问 HID、执行设备写入或运行应用/安装器。汇总收据见 [analysis.json](../../.work/camera-audio-native-batch-20261024/analysis.json)。
+
+| 原件 SHA-256 / 文件 | 原件字节 / 架构 | capture SHA-256 | 函数 / 失败 | 导出 |
+| --- | ---: | --- | ---: | ---: |
+| 1ea145fe182505cd8ae19a6bc1ea5362c70d18681b51195d026ec57c86ad06d8 RzNative_0E08_v1.0.16.0.dll | 600264 / x64 | 54f729c256fd559ec8c5c286a869f9fcf587e4546d49ab23c112f19114989275 | 2060 / 0 | 91 |
+| b06973af45bcc6c6c10dd74e2fc0f1b9caa8124b0416e8f869b5640fc795a8c RzNative_0542_v1.0.25.0.dll | 639624 / x64 | 65b7d807757bfd1188d7886046c5c0b83a0cb47a04cd0f114ba2e5e7541eacab | 2472 / 0 | 44 |
+| 8678a5eadd881ea7a569131369b3964d9519f1d584beddd315fb897e6f4af5ca ThxVADCarolNative_v1.0.13.0.dll | 954504 / x64 | 77a1cb3de9321ba4b1cc027d440d7f575aa0e84b82d8d67203b5aa8b074b612f | 2920 / 0 | 71 |
+| d4fd77a92c860bb190d7aab604124e9d4343901fcea83069aa99d29db5a9586b RzNative_0E03_v1.0.16.1.dll | 796296 / x64 | 23ce499d0c8fae7c60e75c97072dc080a0876f1c07376aad8d748af523d9a377 | 2634 / 1 | 40 |
+
+四个模块均为 capture_complete；独立字节映射均报告 all_chunks_match_original=true 和 all_assembly_matches_original=true。去重后的 chunk/指令/字节计数依次为 0E08 2066/103613/419265，0542 2478/112768/458516，Carol 2958/173596/673579，0E03 2684/143877/555742。0E03 唯一失败是 RVA 0x72223（绝对地址 0x180072223）的 Hex-Rays call-analysis failed，错误码 -12；原始 assembly 仍保留，不能把失败项当作已解释的函数。
+
+静态语义已分别记录到 [camera](../products/accessories/camera.md)、[microphone-and-preview](../products/audio/microphone-and-preview.md) 和 [playback-and-eq](../products/audio/playback-and-eq.md)。导出数、函数捕获数或字节一致性不代表 Rust 已实现，也不代表官方 DLL、音频端点、相机属性、HID 报文、读回、失败、取消、恢复和释放已经运行验收；没有设备时的回放和模拟只能作为独立期望，官方实际对照继续保持 Unverified。
+
+
+## 2026-10-24 Chroma SDK public-method follow-up
+
+Four-thread static byte checks (`ThreadPoolExecutor(max_workers=4)`) reused the IDA 9.1 captures for RzChromaSDK.dll / RzChromaSDK64.dll. The x86 input SHA-256 is `8e1466d0dfd653f0bba61f57117bda85e91ee779e2b6e71ac76f411cfeb0d038`, capture SHA-256 `7d2de3c1ceb4b9860b3eec84bd045a29b4a7d5886cd1d0adc155b675e66c2e32`: 15 selected functions, 15 unique chunks, 2,273 instructions, 6,883 raw/instruction bytes, 0 unlisted bytes. The x64 input SHA-256 is `7ab56ea40c67450f81772cd35c3dae8e36fc2ca43110a2d8294dcac4b2e364e7`, capture SHA-256 `35aabd2f3285e856d762889213e7ec73630b69b116a5ff8b33d76250766540d1`: 15 selected functions, 15 unique chunks, 1,666 instructions, 6,822 raw chunk bytes, 6,484 instruction bytes, 338 unlisted chunk bytes. Every selected function/chunk/instruction and every aggregate output hash matched the retained original. The x86 complete capture retains two Hex-Rays failures outside this selected set (`0x6500`, `0x6510`); x64 retains none. Export validation, null GUID rejection, effect-type/parameter boundaries and window/stop lifecycle are recorded in [dynamic-lighting.md](../products/shared/dynamic-lighting.md). DLL execution, actual device results and Rust differential acceptance remain unverified.
+## 2026-10-24 统一产品语义批处理
+
+在全量索引之后，.work/native-semantic-product-batch-20261024/summarize.py 以 ThreadPoolExecutor(max_workers=4) 一次读取全部 881 个 DLL/NODE/SYS 模块，按导出、关键原生导入、失败记录和 docs SHA 覆盖做产品信号排序；没有再为单个 DLL 启动独立任务。批次收据为 [product-semantic-summary.json](../../.work/native-semantic-product-batch-20261024/product-semantic-summary.json)，统一结果报告为 [native-bulk-reverse.md](native-bulk-reverse.md)。最新排序结果为 881 个模块、590 个未被 docs SHA 覆盖的产品候选；报告使用更严格的系统库过滤后列出 576 个候选。两者都保持 target_execution=false 且 real_device_operations=false，候选分数只用于安排后续语义阅读，不能当作功能完成度。
+
+publish_report.py 再以四个 worker 校验并发布 881 行的全量报告，汇总每个模块的原件/capture 身份、函数和失败数、伪代码覆盖、导出函数体、关键导入和产品候选。报告不包含 EXE/安装器后续任务；已有历史 EXE 静态收据不进入本批队列。所有真实 DLL、服务、设备、错误、取消、恢复、释放和 Rust/页面对照仍按授权边界保持 Unverified，不能以批量索引替代运行验收。

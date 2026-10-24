@@ -133,6 +133,16 @@ Dual Keypress Priority 读取独立 reducer 的 `isEnabled/keys`，使用共享�
 
 setter 验证、传输成功、附加 parser 结果及上层 runner 是否消费返回 status 是不同边界。本文记录的是静态源码链；没有执行设备写入、校准或运行应用程序。
 
+### Actuation 命令到 Node/HID 的真实传输边界
+
+756 的 Actuation、Rapid Trigger、Continuous 和 Snap Tap 方法在 [rzDevice25.40fe6f559bba152076d4.js](../../../.analysis/inputs/frontend/keyboard-mw-756-current/raw/apps.razer.com/synapse/products/756/mw/rzDevice25.40fe6f559bba152076d4.js)（SHA-256 `9788a6b975de1b2eb771d167318b74f0d45359a6b0039ff7582af011e9632de3`）中都调用同一个 `sendCommand`；方法 owner 的原始字节范围为：多键 Actuation/Rapid `[185112,187633)`，Adjustment Mode/Continuous `[190089,191464)`，双键与单键 Snap Tap `[258947,261379)`。这些方法会先做输入数组、数量和 `isNaN` 检查，再将双字节阈值/灵敏度按高字节在前写入 payload；Actuation 每批最多 15 键，Rapid 每批最多 13 键，Snap Tap 分别限制 4 组或 4 个键。校验通过只表示 payload 已构造，不能表示已读到设备状态。
+
+`sendCommand` 的实际 90 字节 body、91 字节 report、transaction/class/id 匹配、状态 0..5、重试与 `STATUS_SUCCESS` 边界见 [756 Power 的通用命令层](lighting-power.md#756-power-命令到真实-hid-的输入应答与释放)。Actuation 的 setter 自身没有统一写后 GET；部分 runner 只检查返回 status，部分 getter/parser 还会在成功且有足够字节时填 `jsonData`，所以 setter ACK、解析成功和页面 completed 必须分别记录。旧 Snap Tap/Continuous 分支还存在未 await 的同槽写入，任务完成不等待全部槽结果。
+
+Node/HID 原件仍是当前 host 使用的 [HID.node](../../../.analysis/inputs/installed-current/files/app-engine/resources/app.asar.unpacked/node_modules/node-rz-hid/build/Release/HID.node)，SHA-256 `f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f`，capture SHA-256 `d9e52173142940c7d022bccddcdbb47afe1596e8c2d92190e39929f56d7e95f1`。本轮用有界 `ThreadPoolExecutor(max_workers=4)` 并行复用并验证 12 个通用特征函数（`0x7340/0x7f40/0x4800/0x5280/0x17ac0/0x17a10/0x6170/0x94e0/0x15d40/0x4710/0x50e0/0x165f0`），JSON SHA、PE chunk 和逐指令 bytes 全通过，合计 1,989 instructions、8,674 raw bytes；这只是当前 capture 的选定子集，不能宣称整个 HID.node 已闭合。对 Actuation 来说，节点层成功仍只是 HID 写入字节数或对应 response 的状态，不是模拟键触发点、Rapid 阈值或 Snap Tap 规则已经由设备确认。
+
+取消和释放沿同一边界：页面 abort/任务取消只在 runner 检查点生效，Node feature GET/SET 没有 Actuation 专用 abort signal；host mutex 按 sender URL 释放，close 会 `CancelIo`、关闭句柄并由 worker 析构 join。当前静态证据没有 setter 后完整 Actuation/Rapid/Snap Tap getter 读回，也没有证明取消会回滚已写入配置。没有设备的情况下只能先用独立期望报文、模拟应答和故障注入测试；官方 DLL/真实 HID 对照、写入恢复和 UI/传感器运行验收仍保持未验证。
+
 ## 当前 Rust 页面与实际挂载树的核对
 
 本节核对当前源码文件中的页面、动作消费者和释放链，不把已有协议方法或预览界面计作整页完成。部署身份取自上述获取收据；本轮重新计算所用 JS/CSS 和媒体原件的字节数与 SHA-256，均与收据匹配。679 的入口所有者为 `JU [8109259,8118712)`，nav 数组为 `[8114950,8115348)`；756 为 `nr [330271,343239)`，非 BLE 与 BLE nav 数组分别为 `[338420,339056)`、`[339057,339575)`，都实际挂载 Actuation。

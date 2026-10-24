@@ -12,6 +12,24 @@
 
 外部供电、设备 power mode 与亮度为独立状态。Glitter `getPowerOnStatusCommon` 捕获供电读取失败后仍封装一个成功结果并给 false，是当前原版的失败遮蔽；本项目不能把它作为已观测“断电”。硬件事件只有满足该解析器的报文长度、recordId 与 eventId 才能改变电源观测，普通灯光写入不能制造连接或供电成功。
 
+### 3940 Soma Chroma 的无线 Glitter 分支
+
+3940 不能只按普通 `rzDevice25` 亮度页处理。当前 MW 入口 [main.d6b7ec7497c64ac394a8.js](../../../.analysis/inputs/frontend/accessories-mw-3940-current/raw/apps.razer.com/synapse/products/3940/mw/main.d6b7ec7497c64ac394a8.js)（163273 B，SHA-256 `f1cec7313ef45fe06825f33560d4303a991655a5350b39d309cdd000c2c69cd3`，bootstrap `[162674,163273)`）注册 `rzDevice25GlitterWireless`、`PROTOCOL25_GLITTER` 硬件事件解析、`usesExternalPowerSupply=yes`、`handleKeepAliveEvents=yes` 和 `genericFeature.devicePowerMode`。MW 运行时身份是 PID 3940、VID 5426、`claimInterface=0`、`dongleId=3940`，只声明 edition 0；UI manifest 仍列出 0/128，不能把 UI 的版本声明当作 MW 已支持的两个分支。UI 的实际页面数组是 `TAB_LIGHTING`、`TAB_POWER`、`HELP`，页面参数和重置入口见 [3940 产品页](products/3940.md)。
+
+适配器原件 [rzDevice25GlitterWireless.d22d6239d5c6390e35ec.js](../../../.analysis/inputs/frontend/accessories-mw-3940-current/raw/apps.razer.com/synapse/products/3940/mw/rzDevice25GlitterWireless.d22d6239d5c6390e35ec.js)（11761 B，SHA-256 `705d27242073f2d9975cb5b3abde87bcd1721af71a02d3259c21a417ff0b78be`）的连接顺序固定为：先以 `claimInterface=1` 打开 Chroma-frame 接口，成功后再打开 protocol-25 接口；两个连接函数各自最多循环三次，protocol-25 的查询报告前缀在 Windows 取 `claimInterface`，非 Windows 取 `reportId`。因此“第二接口打开成功”不能代替第一接口已经成功，也不能把一次 HID 打开异常折算为设备离线。
+
+帧写入使用 `reportMaxDataSize=380`、`chromaFrameInterface=1`。每一行分配 381 字节：`[0]=regionId`，`[1]` 为普通行 `4`、最后一行 `132`，`[2]=[3]=row`，`[4]=start`，`[5]=end`，颜色从 `[6]` 开始；超过报告剩余空间的颜色被截断。`setChromaFrameLightingEngine` 首次用 `eventData.numRow` 固定 `deviceMaxPortNumber`，逐行切出 `3*numCol` 的 RGB；自定义帧通过 `BatchLighting.sendRaw` 排队并在行间加入批处理 sleep，非批处理每行等待 5 ms，最后 `flush`。批处理分支直接返回本地 SUCCESS，普通分支只在 `hid.sendFeatureReport` 未抛异常时置 SUCCESS，两个结果都没有帧读回或灯珠确认；某一行异常会记录并继续，不能把整体 task 状态当成所有行已写入。
+
+电源读取和无线恢复是另一条链。`getPowerOnStatusCommon`（原件 `[1139,2607)`）先调用 `getExternalPowerSupplyStatus`，仅 `status=SUCCESS` 且 `jsonData.status===1` 才把 `isPowerOn` 置真；异常或失败被记录后仍返回 `STATUS_SUCCESS`、`data=[1]`、`packetSizeReturned=1` 和 `jsonData={isPowerOn:false}`。当结果为真时，它还尝试读取无线连接状态并强制 `setActiveWirelessConnectionState("2.4G",1)`，这两步的失败只记日志，不改变外层成功结果。`getPowerOnStatusFromHardwareEvent`（`[2608,4867)`）只接受通知记录中的 `WIRELESS_CHANGE_EVENT`（state=3）或 `DEVICE_EXTERNAL_POWER_SOURCE_CHANGE_EVENT`（value=1）；真值时再读活动无线类型，不是 `2.4G` 就尝试切回，非目标事件返回 `undefined`。
+
+keep-alive/退出暗亮分别转发到基类 `keepDeviceAwake`/`exitDimStatus`；`isPowerEvent` 只认上述两个事件。当前事件解析器 [rzHardwareEventsProtocol25GlitterParser.05e88da474662f10607c.js](../../../.analysis/inputs/frontend/accessories-mw-3940-current/raw/apps.razer.com/synapse/products/3940/mw/rzHardwareEventsProtocol25GlitterParser.05e88da474662f10607c.js)（5117 B，SHA-256 `a78cded3ccc81131a4dcc5c2b3f411746cc25237b521576bbf0ae96021df0bd3`）遇到 17 字节且首字节为 0 时先去掉首字节；通知事件再按 byte[1] 选择解析器。外部供电事件使用 byte[2]，无线事件使用 state=byte[2]/type=byte[3]，活动连接变化使用 type/connected=byte[2]/byte[3]，电源安全事件把 byte[4] 拆成端口位和 global 位；未知事件只告警。不能把普通亮度事件、未知事件或解析成功当作电源读回。
+
+通用 `devicePowerMode` 的实际生命周期由特性模块执行：唤醒在 5 秒窗口内每 150 ms 重试 `NORMAL_MODE`，成功后再以同样窗口重试 `DRIVER_MODE`，两步都成功才发布 `active` 并排队本地 quick effect；待机重试 `STANDBY_MODE`，成功后发布 `standby` 并抑制 4 秒外部电源事件。外部电源打开时若没有近期 keep-alive 唤醒则走完整唤醒，否则只更新状态；关闭只发布 `off`。这些事件的 `execute` 以 mode setter 返回的 `STATUS_SUCCESS` 结算，没有额外 GET/设备状态确认。清理路径先停止系统监测、注销 keep-alive、移除 USB 和 GenericFeature，再调用 `terminate()`/`handleBeforeUnload()`；后两者未 await，不能写成 native 线程已 join。
+
+本节核对的是当前 UI/MW 原件与静态调用链，未执行厂商 JS、业务 DLL、HID、设备写入或电源事件回放；帧 ACK、外部供电真实状态、无线切换、mode 重试和退出线程释放仍为未验证。Rust 必须分别建模帧传输结果、电源实测值、待提交配置、事件驱动状态及失败/取消/恢复，不能复用通用 3871 的帧大小或把外层 SUCCESS 当作设备确认。
+
+电源页的“省电”是独立于 `devicePowerMode` 的设置。UI 产品模块给 3940 的选项是 20、30、40、50、60（分钟），而通用 reducer 初值仍是 enabled=true、value=15；只有收到 MW 的 `MW_SET_POWER_SAVING_TO_UI` 后才替换这个初值，因此 15 不能被当作设备读回。点击开关或选项先更新本地 reducer，并广播/排队 `ON_SET_POWER_SAVING`；maker 可以先保存 profile，再排 `NORMAL_SKIPPABLE` 任务。MW getter 通过 `powerSavingOverrides.getPowerSaving`，没有 override 时走默认实现；runner 在 setter 前后检查 AbortSignal，随后调用 `rzDevice.getTimeToSleep()`，除单 profile 特例外要求返回值等于所选分钟乘 60，不匹配就报错。任务 completed 只在该读回比较通过后发布，不能用 UI 乐观状态、profile 保存或 setter 未抛异常替代设备读回。
+
 ## 端口布局、识别和名称
 
 778 的 edition 0/128 与 129 选择不同的固定端口/LED 表；3871 为 6 stripe 多端口，3884 为 3 stripe 多端口，3886 注册的是 3 stripe 多灯光。3849 的 HDK 端口、784 的可弯折灯带 layout 各有自己的编辑结构。固定 stripe 数表示布局声明，不能当成设备已连接多少条灯带的实读结果。

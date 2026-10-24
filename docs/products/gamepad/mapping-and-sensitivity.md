@@ -72,6 +72,29 @@
 
 4115 `customize` 明确转 [kitsune](../../../crates/razer-pages/src/features/gamepad/kitsune.rs)，独立绘制模式、方向、SOCD 与 polling。其 mode/SOCD 控件仍使用 `choice → write`；应继续逐项核对本 PID 的设置、reset、profile和通知消费者，不得套普通手柄选择表或另一型号已存在的扩展 setter。
 
+### 2636 的 OBM 映射读写原件边界
+
+2636 的 MW 并不是把 Customize 的 `choice → write` 直接当成设备映射写入。当前 [main.f0ca95429464cd09cbdb.js](../../../.analysis/inputs/frontend/gamepad-mw-2636-current/raw/apps.razer.com/synapse/products/2636/mw/main.f0ca95429464cd09cbdb.js) 的 controller OBM owner 位于模块 11365 `[1271752,1282718)`；初始化后由 `obmEngineController` 维护真实 `rzDevice`、`buttonIdList`、`profileIdList` 与 `activeProfileId`。`getDataFromDevice` 先取得本机 document，再按真实活动槽调用 `getAllButtonAssignmentInfo(profileId)`；后者逐个调用 `getSingleButtonAssignment(profileId, buttonId, NormalMode, 10)`。每一项只在 `STATUS_SUCCESS && packetSizeReturned>0` 时解析 `classId, buttonId, mode, functionId, dataSize, dataArray[5]`，单项异常记录并继续，不是整张映射表原子读取。`functionId` 为 Controller 且其返回的第一个数据字节等于当前 button ID 或为零时，该项会被跳过；其余项再按 `fwIDToMapping/HIDToMapping` 转换为 UI 映射，并与 `DEFAULTMAPPINGS` 比较。默认映射和本机 document 是比较基线，不是设备读回结果。
+
+写入入口是同一 owner 的 `setSingleButtonMapping(profileId, mapping)`（原件约 `[2512007,2512600)`）。`buttonMappingToFnDataByte` 先用 `inputIDToMapping.controller.NormalMode[inputID].fwID` 取得固件按钮 ID，再只为原件已有的 `DisableGroup`、`MouseGroup`、`KeyboardGroup`、`RazerKeyGroup`、`MultimediaGroup`、`ControllerGroup` 转出 `fnId`、`fnDataByte` 和 `fnDataByteSize`；未知 output type 只记录 warning，不会凭 UI 文案生成新的协议类别。该转换器把 `buttonMode` 固定为 `NormalMode`，所以它不能证明 Hypershift 层已写入；Hypershift 必须沿另一条有明确 mode 的 producer 单独核对。`DisableGroup` 的 payload 长度为零，其余 payload 会补零到命令缓冲区的 80 字节。
+
+2636 `rzDevice25` 的实际命令头及其解析器如下（均为 class `0x02`）：
+
+| 原生 owner | 命令头 | 请求／应答字段 |
+| --- | --- | --- |
+| `setSingleButtonAssignment` `[1089569,1091400)` | `[80,2,0x0c]` | `profileId, buttonId, mode, functionId, dataSize, dataBytes…`，不足 80 字节补零；仅传输结果由 `hn` 解析为 `STATUS_SUCCESS`／`packetSizeReturned` 与五字节 `dataArray` |
+| `getSingleButtonAssignment` 同一 owner 后半段 | `[80,2,0x8c]` | 请求前三字节 `profileId, buttonId, mode`；成功且有 payload 才产生 `functionId/dataSize/dataArray`，缺 payload 保持未观测 |
+| `setSingleKeyAssignment` `[1091400,1093500)` | `[80,2,0x0d]` | 与普通按钮相同的五字节函数数据，解析器 `An` 以 `keyId` 命名输入身份 |
+| `getSingleKeyAssignment` 同一 owner 后半段 | `[80,2,0x8d]` | 请求 `profileId, keyId, mode`；成功且有 payload 才产生 `functionId/dataSize/dataArray` |
+| `getButtonAssignmentList` | `[80,2,0x8e]` | 返回 `classId, mode, idOffset, byteData`；它不是 `getAllButtonAssignmentInfo` 的逐按钮结果 |
+| `getKeyAssignmentList` | `[80,2,0x8f]` | 返回 `classId, mode, keyIdList`；与按钮列表使用不同命令和身份字段 |
+| `setSingleAnalogKeyAssignment` `[1099000,1101200)` | `[80,2,0x12]` | 额外带 `thresholdL/thresholdH` 后再带函数数据；`Nn` 只有成功且有 payload 才填充阈值、函数和数据 |
+| `getSingleAnalogKeyAssignment` | `[80,2,0x92]` | 请求 `profileId, keyId, mode`，回读包含 `thresholdL/thresholdH` 与函数数据 |
+
+上表中的 GET 头 `0x8c/0x8d/0x8e/0x8f/0x92` 来自同一当前 MW 原件的常量表（约 `[993769,994300)`），不能用普通 setter 的 `0x0c/0x0d/0x12` 代替。每个 setter 先校验数值、`Uint8Array` 和 NaN；校验失败在发送前抛 `ERROR_INVALID_INPUT_VALUE`，因此本地实现不能把类型错误折叠成设备失败。`sendCommand` 返回成功也只代表当前报告的协议状态；官方 owner 没有在 `setSingleButtonMapping` 后追加逐项 GET，`getDataFromDevice` 的下一次读取属于另一个生命周期。
+
+板载任务 `Et`（原件约 `[1982411,1983500)`）先检查 abort，再按 `obmSlotIds` 顺序逐槽调用 `obmEngine.setSingleButtonMapping`；单槽异常只记录并继续。循环结束后再次检查 abort，随后才写 task-runner memory storage 并标记 `completed`。因此 runner 的 `completed` 不能解释为所有槽都收到成功应答；取消可能发生在部分槽已经写入之后，也没有原件提供的自动回滚。Rust 侧当前 `set_mapping` 只更新 `/profile/mappings` 并发 `GamepadProductChanged`，没有调用上述 profile/slot/mode/函数数据命令；这正是“页面草稿存在”与“设备映射已写回”之间尚未闭合的边界。
+
 ### Triggers 与 Thumbsticks：已有独立传输链
 
 [triggers](../../../crates/razer-pages/src/features/gamepad/gamepad_triggers.rs) 实际挂左右产品图、Analog/Digital radio、range 双柄、1%–100% actuation、Rapid Trigger、reset及帮助；range预览不进入已提交 profile。2647 [navigation](../../../crates/razer-pages/src/features/gamepad/gamepad_navigation.rs) 使用官方四段固件比较语义，一次组件生命周期内只移除不重新插回，缺读数不构成设备支持证据。

@@ -6,6 +6,7 @@ source data. Vendor JavaScript is never loaded or executed.
 from __future__ import annotations
 
 import hashlib
+import concurrent.futures
 import json
 import sys
 from pathlib import Path
@@ -407,17 +408,27 @@ def extract(product):
         "retained": [retained for module in bundle.modules.values() for retained in module.retained.values()]}
 
 
-def prepare(*, check=False):
+def prepare(*, check=False, workers=4):
     sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
+    if type(workers) is not int or not 2 <= workers <= 16:
+        raise ValueError("Mapping producer workers must be between two and sixteen")
     capabilities = json.loads((ROOT / ".analysis/results/typed-data.json").read_bytes())["current_mouse_mapping_capabilities"]
-    products, failures, evidence = [], [], []
-    for product in capabilities["products"]:
+    def extract_product(product):
         try:
             projection, receipt = extract(product)
-            products.append(projection)
-            evidence.append(receipt)
+            return projection, receipt, None
         except Exception as error:
-            failures.append({"product_id": product["product_id"], "error": str(error)})
+            return None, None, {"product_id": product["product_id"], "error": str(error)}
+
+    products, failures, evidence = [], [], []
+    selected = capabilities["products"]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(2, min(workers, len(selected)))) as pool:
+        for projection, receipt, failure in pool.map(extract_product, selected):
+            if failure is not None:
+                failures.append(failure)
+            else:
+                products.append(projection)
+                evidence.append(receipt)
     report = {"tool": families.identity(Path(__file__)), "products":products, "evidence":evidence,
         "failures":failures, "vendor_execution":False, "application_execution":False,
         "passed":not failures, "check_only":check}

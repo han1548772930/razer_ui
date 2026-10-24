@@ -499,6 +499,9 @@ def frontend_reference_gaps(data):
 
 
 def extract_native_packages(args, ids):
+    workers = getattr(args, "workers", 2)
+    if type(workers) is not int or not 2 <= workers <= 16:
+        raise ValueError("Native package workers must be between two and sixteen")
     acquisition_path = a.ROOT / ".analysis/inputs/official-native-current/acquisition.json"
     acquisition = json.loads(acquisition_path.read_bytes())
     endpoints = set(getattr(args, "manifest_url", None) or
@@ -791,7 +794,7 @@ def extract_native_packages(args, ids):
         current = [item for sha, item in by_sha.items() if sha not in processed]
         processed.update(item["sha256"] for item in current)
         index_updates = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=min(args.workers, 2)) as pool:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(workers, 2)) as pool:
             pending = {pool.submit(extract, item): item for item in current}
             for future in concurrent.futures.as_completed(pending):
                 item = pending[future]
@@ -2110,6 +2113,9 @@ def audit_mouse_scroll(args):
 
 def audit_mouse_dpi(args):
     """Reuse verified complete captures for the whole mounted DPI component tree."""
+    workers = getattr(args, "workers", 4)
+    if type(workers) is not int or not 2 <= workers <= 16:
+        raise ValueError("Family audit workers must be between two and sixteen")
     specs_path = a.builtin_data_path("razer-pages", "MOUSE_PRODUCTS_DATA")
     specs = json.loads(specs_path.read_bytes())
     selected = set(args.product or [row["product_id"] for row in specs])
@@ -2119,182 +2125,197 @@ def audit_mouse_dpi(args):
     report = json.loads(receipt_path.read_bytes())
     originals_by_pid = {row["product_id"]: row for row in report["products"]}
     rows, row_specs, grid_specs = [], [], []
-    for spec in specs:
-        pid = spec["product_id"]
-        if pid not in selected:
-            continue
-        row = {"product_id": pid, "failures": [], "complete_functions": [], "css": []}
-        rows.append(row)
-        source_receipt = a.ROOT / f".analysis/inputs/frontend/mouse-{pid}-current/acquisition.json"
-        capture_receipt = a.ROOT / f".analysis/results/frontend/mouse-{pid}-current/analysis.json"
-        acquired, captured = json.loads(source_receipt.read_bytes()), json.loads(capture_receipt.read_bytes())
-        row.update({"acquisition": identity(source_receipt), "capture": identity(capture_receipt),
-                    "analyzer": captured["tool"], "deployment_stable": acquired.get("source_current_during_acquisition"),
-                    "closure_unresolved": acquired.get("unresolved", []),
-                    "capture_failures": [item for item in captured.get("commands", []) if item.get("exit_code")]})
-        roots = [item for item in acquired["files"] if item.get("url") in {
-            acquired["entry_url"], urllib.parse.urljoin(acquired["entry_url"], "asset-manifest.json")}]
-        if len(roots) != 2 or any(not valid(item) for item in roots):
-            row["failures"].append("Current HTML and UI manifest identities are unresolved")
-            continue
-        reachable = {item["url"] for item in roots}
-        while True:
-            following = reachable | {edge["to"] for edge in acquired["edges"] if edge["from"] in reachable}
-            if following == reachable:
-                break
-            reachable = following
-        mounted = [item for item in acquired["files"] if item.get("path") and item["url"] in reachable]
-        files = [item for item in mounted if item["path"].endswith(".js")]
-        mains = [item for item in files if Path(item["path"]).name.startswith("main.")]
-        row.update({"roots": roots, "mounted_inputs": mounted})
-        if (len(mains) != 1 or any(not valid(item) for item in mounted)
-                or not row["deployment_stable"] or not captured.get("input_bytes_unchanged")
-                or pid not in originals_by_pid):
-            row["failures"].append("Current main input identity/provenance is unverified")
-            continue
-        main = mains[0]
-        main_text = (a.ROOT / main["path"]).read_text(encoding="utf-8")
-        components = []
-        for item in files:
-            text = main_text if item == main else (a.ROOT / item["path"]).read_text(encoding="utf-8")
-            if "dpiStagesOn" in text and "setDotsPerInchStageValueX" in text:
-                if not valid(item):
-                    raise ValueError(f"PID{pid} DPI dependency identity differs")
-                components.append((item, text))
-        if len(components) != 1:
-            raise ValueError(f"PID{pid} mounted DPI component chunk is ambiguous: {len(components)}")
-        source, text = components[0]
-        modules = source_capture_modules(captured, source)
-        row.update({"original": identity(a.ROOT / source["path"]), "complete_capture_modules": modules,
-                    "main_original": identity(a.ROOT / main["path"])})
-        anchors = {"row": ["handleMouseDown=e=>{e.target.classList.contains(\"icon-draggable\")", "handleMouseDown=function(e){e.target.classList.contains(\"icon-draggable\")"],
-                   "list": ["this.props.dpiStages.length})}componentDidUpdate", "onDragStart=function"],
-                   "parent": ["this.props.dpiStages.map(e=>e.x)", "this.props.dpiStages.map((function(e,t){return e.x}))"]}
-        if "this.rangeValues=" in text:
-            anchors["grid"] = ["this.rangeValues="]
-        row["complete_functions"], unresolved = source_component_regions(text, anchors)
-        if unresolved:
-            raise ValueError(f"PID{pid} complete DPI component boundaries are unresolved: {unresolved}")
-        parser_input = "\n".join("{\n" + item["body"] + "\n}" for item in row["complete_functions"])
-        parser = subprocess.run([str(a.wakaru()), "debug", "normalize", "-"], input=parser_input,
-                                text=True, encoding="utf-8", stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, check=False, timeout=60)
-        row["component_parser_validation"] = {"exit_code": parser.returncode,
-                                               "stdout_sha256": hashlib.sha256(parser.stdout.encode()).hexdigest(),
-                                               "stderr": parser.stderr, "target_execution": False}
-        if parser.returncode:
-            raise ValueError(f"PID{pid} complete DPI components failed parser validation")
-        values = {}
-        for key, fallback in (("minDPI", None), ("maxDPI", None), ("dpiStep", 50)):
-            match = re.search(r"\b" + key + r":([0-9.eE+-]+)", main_text)
-            if match:
-                values[key] = source_numeric(match[1], {})
-            elif fallback is not None:
-                values[key] = fallback
-            else:
-                raise ValueError(f"PID{pid} {key} source literal is unresolved")
-        xy = re.search(r"\bsupportXYDPI:(![01]|true|false)", main_text)
-        if xy is None:
-            raise ValueError(f"PID{pid} XY branch is unresolved")
-        support_xy = xy[1] in ("!0", "true")
-        if (values["minDPI"], values["maxDPI"], values["dpiStep"], support_xy) != (
-                spec["min_dpi"], spec["max_dpi"], spec["dpi_step"], spec["support_xy"]):
-            raise ValueError(f"PID{pid} current DPI limits differ from product schema")
-        grid_match = re.search(r"\bisSensitivitySliderWithGrid:(![01]|true|false)", main_text)
-        grid = bool(grid_match and grid_match[1] in ("!0", "true"))
-        two_way = bool(re.search(r"useTwoWayTab:(!0|true),noHeader:(!0|true)", text))
-        single_limits = {}
-        if two_way:
-            for key in ("minDPIConfig", "maxDPIConfig"):
+    def audit_one(spec):
+            pid = spec["product_id"]
+            row = {"product_id": pid, "failures": [], "complete_functions": [], "css": []}
+            row_spec, grid_spec = None, None
+            source_receipt = a.ROOT / f".analysis/inputs/frontend/mouse-{pid}-current/acquisition.json"
+            capture_receipt = a.ROOT / f".analysis/results/frontend/mouse-{pid}-current/analysis.json"
+            acquired, captured = json.loads(source_receipt.read_bytes()), json.loads(capture_receipt.read_bytes())
+            row.update({"acquisition": identity(source_receipt), "capture": identity(capture_receipt),
+                        "analyzer": captured["tool"], "deployment_stable": acquired.get("source_current_during_acquisition"),
+                        "closure_unresolved": acquired.get("unresolved", []),
+                        "capture_failures": [item for item in captured.get("commands", []) if item.get("exit_code")]})
+            roots = [item for item in acquired["files"] if item.get("url") in {
+                acquired["entry_url"], urllib.parse.urljoin(acquired["entry_url"], "asset-manifest.json")}]
+            if len(roots) != 2 or any(not valid(item) for item in roots):
+                row["failures"].append("Current HTML and UI manifest identities are unresolved")
+                return row, row_spec, grid_spec
+            reachable = {item["url"] for item in roots}
+            while True:
+                following = reachable | {edge["to"] for edge in acquired["edges"] if edge["from"] in reachable}
+                if following == reachable:
+                    break
+                reachable = following
+            mounted = [item for item in acquired["files"] if item.get("path") and item["url"] in reachable]
+            files = [item for item in mounted if item["path"].endswith(".js")]
+            mains = [item for item in files if Path(item["path"]).name.startswith("main.")]
+            row.update({"roots": roots, "mounted_inputs": mounted})
+            if (len(mains) != 1 or any(not valid(item) for item in mounted)
+                    or not row["deployment_stable"] or not captured.get("input_bytes_unchanged")
+                    or pid not in originals_by_pid):
+                row["failures"].append("Current main input identity/provenance is unverified")
+                return row, row_spec, grid_spec
+            main = mains[0]
+            main_text = (a.ROOT / main["path"]).read_text(encoding="utf-8")
+            components = []
+            for item in files:
+                text = main_text if item == main else (a.ROOT / item["path"]).read_text(encoding="utf-8")
+                if "dpiStagesOn" in text and "setDotsPerInchStageValueX" in text:
+                    if not valid(item):
+                        raise ValueError(f"PID{pid} DPI dependency identity differs")
+                    components.append((item, text))
+            if len(components) != 1:
+                raise ValueError(f"PID{pid} mounted DPI component chunk is ambiguous: {len(components)}")
+            source, text = components[0]
+            modules = source_capture_modules(captured, source)
+            row.update({"original": identity(a.ROOT / source["path"]), "complete_capture_modules": modules,
+                        "main_original": identity(a.ROOT / main["path"])})
+            anchors = {"row": ["handleMouseDown=e=>{e.target.classList.contains(\"icon-draggable\")", "handleMouseDown=function(e){e.target.classList.contains(\"icon-draggable\")"],
+                       "list": ["this.props.dpiStages.length})}componentDidUpdate", "onDragStart=function"],
+                       "parent": ["this.props.dpiStages.map(e=>e.x)", "this.props.dpiStages.map((function(e,t){return e.x}))"]}
+            if "this.rangeValues=" in text:
+                anchors["grid"] = ["this.rangeValues="]
+            row["complete_functions"], unresolved = source_component_regions(text, anchors)
+            if unresolved:
+                raise ValueError(f"PID{pid} complete DPI component boundaries are unresolved: {unresolved}")
+            parser_input = "\n".join("{\n" + item["body"] + "\n}" for item in row["complete_functions"])
+            parser = subprocess.run([str(a.wakaru()), "debug", "normalize", "-"], input=parser_input,
+                                    text=True, encoding="utf-8", stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE, check=False, timeout=60)
+            row["component_parser_validation"] = {"exit_code": parser.returncode,
+                                                   "stdout_sha256": hashlib.sha256(parser.stdout.encode()).hexdigest(),
+                                                   "stderr": parser.stderr, "target_execution": False}
+            if parser.returncode:
+                raise ValueError(f"PID{pid} complete DPI components failed parser validation")
+            values = {}
+            for key, fallback in (("minDPI", None), ("maxDPI", None), ("dpiStep", 50)):
                 match = re.search(r"\b" + key + r":([0-9.eE+-]+)", main_text)
-                if not match:
-                    raise ValueError(f"PID{pid} single sensitivity limits are unresolved")
-                single_limits[key] = source_numeric(match[1], {})
-        css_geometry = {}
-        for original in mounted:
-            if "path" not in original or not original["path"].endswith(".css"):
-                continue
-            css = (a.ROOT / original["path"]).read_text(encoding="utf-8")
-            rules = [match.group(0) for match in re.finditer(r"([^{}]+)\{([^{}]*)\}", css)
-                     if any(token in match[1] for token in (".stages .stage", ".stage .slider", ".stage-header",
-                            ".stage-control", ".stage.y-enabled", ".stage-ordinal")) and len(match[1]) < 170]
-            if rules:
-                if not valid(original):
-                    raise ValueError(f"PID{pid} DPI CSS original identity differs")
-                row["css"].append({**identity(a.ROOT / original["path"]), "rules": rules})
-                for selector, key in ((".stages .stage", "row_height"), (".stage.y-enabled", "xy_row_height"),
-                                      (".stage .slider-box", "control_margin_bottom")):
-                    match = re.search(re.escape(selector) + r"\{([^{}]*)\}", css)
-                    field = "margin-bottom" if key == "control_margin_bottom" else "height"
-                    number = re.search(r"(?:^|;)" + field + r":([0-9.]+)px", match[1]) if match else None
-                    if number:
-                        css_geometry[key] = float(number[1])
-                headers = []
-                for selector in (".stage-header :first-child", ".stage-header :nth-child(2)", ".stage-header :nth-child(3)"):
-                    match = re.search(re.escape(selector) + r"\{([^{}]*)\}", css)
-                    number = re.search(r"(?:^|;)left:([0-9.]+)px", match[1]) if match else None
-                    if number:
-                        headers.append(float(number[1]))
-                if len(headers) == 3:
-                    css_geometry["header_left"] = headers
-        if len(css_geometry) != 4:
-            raise ValueError(f"PID{pid} DPI CSS geometry is incomplete")
-        if pid == 182:
-            if "profile" in spec or "device_profile" in spec:
-                raise ValueError("PID182 defaults must come from their typed device owner")
-            legacy = False
-        else:
-            legacy = "DPIStages" in spec["profile"]
-        profile_marker = "DPIStage" if legacy else "dpiStages"
-        if profile_marker not in main_text:
-            raise ValueError(f"PID{pid} profile schema lacks its source selector")
-        row_spec = {"product_id": pid, "stages_path": "/DPIStages/Stages/DPIStage" if legacy else "/dpiStages/stages",
-                    "active_path": "/DPIStages/Active" if legacy else "/dpiStages/active",
-                    "enabled_path": "/DPIStages/State" if legacy else "/dpiStages/enable",
-                    "x_key": "X" if legacy else "x", "y_key": "Y" if legacy else "y",
-                    "independent_key": "Independent" if legacy else "independent",
-                    "visible_key": "Active" if legacy else "visible", "minimum_visible_stages": 2,
-                    "rows_margin_x": -20 if grid else 0, "description_key": "SENSITIVITY_DESC",
-                    "drag_ordinal_key": None if legacy else "Active", "two_way_tab": two_way,
-                    "no_header": two_way, "single_min": single_limits.get("minDPIConfig"),
-                    "single_max": single_limits.get("maxDPIConfig"),
-                    "slider_requires_visible": bool(re.search(r"active:![\w$]+&&", next(
-                        item["body"] for item in row["complete_functions"] if item["role"] == "row"))),
-                    **css_geometry}
-        # Exact source row class requires two visible stages; every supported
-        # Babel variant uses the same literal. Keep unresolved branches explicit.
-        if not re.search(r"\.length<=2", text):
-            raise ValueError(f"PID{pid} row visibility minimum is unresolved")
-        row_specs.append(row_spec)
-        if grid:
-            override = re.search(r"\b[\w$]+=\[\{from:", main_text)
-            if override:
-                begin = main_text.index("[", override.start())
-                finish = javascript_delimited(main_text, begin)
-                ranges = main_text[begin:finish]
-                constants = values
-                range_source = {"original": main["path"], "character_start": begin,
-                                "character_end": finish, "body": ranges}
+                if match:
+                    values[key] = source_numeric(match[1], {})
+                elif fallback is not None:
+                    values[key] = fallback
+                else:
+                    raise ValueError(f"PID{pid} {key} source literal is unresolved")
+            xy = re.search(r"\bsupportXYDPI:(![01]|true|false)", main_text)
+            if xy is None:
+                raise ValueError(f"PID{pid} XY branch is unresolved")
+            support_xy = xy[1] in ("!0", "true")
+            if (values["minDPI"], values["maxDPI"], values["dpiStep"], support_xy) != (
+                    spec["min_dpi"], spec["max_dpi"], spec["dpi_step"], spec["support_xy"]):
+                raise ValueError(f"PID{pid} current DPI limits differ from product schema")
+            grid_match = re.search(r"\bisSensitivitySliderWithGrid:(![01]|true|false)", main_text)
+            grid = bool(grid_match and grid_match[1] in ("!0", "true"))
+            two_way = bool(re.search(r"useTwoWayTab:(!0|true),noHeader:(!0|true)", text))
+            single_limits = {}
+            if two_way:
+                for key in ("minDPIConfig", "maxDPIConfig"):
+                    match = re.search(r"\b" + key + r":([0-9.eE+-]+)", main_text)
+                    if not match:
+                        raise ValueError(f"PID{pid} single sensitivity limits are unresolved")
+                    single_limits[key] = source_numeric(match[1], {})
+            css_geometry = {}
+            for original in mounted:
+                if "path" not in original or not original["path"].endswith(".css"):
+                    continue
+                css = (a.ROOT / original["path"]).read_text(encoding="utf-8")
+                rules = [match.group(0) for match in re.finditer(r"([^{}]+)\{([^{}]*)\}", css)
+                         if any(token in match[1] for token in (".stages .stage", ".stage .slider", ".stage-header",
+                                ".stage-control", ".stage.y-enabled", ".stage-ordinal")) and len(match[1]) < 170]
+                if rules:
+                    if not valid(original):
+                        raise ValueError(f"PID{pid} DPI CSS original identity differs")
+                    row["css"].append({**identity(a.ROOT / original["path"]), "rules": rules})
+                    for selector, key in ((".stages .stage", "row_height"), (".stage.y-enabled", "xy_row_height"),
+                                          (".stage .slider-box", "control_margin_bottom")):
+                        match = re.search(re.escape(selector) + r"\{([^{}]*)\}", css)
+                        field = "margin-bottom" if key == "control_margin_bottom" else "height"
+                        number = re.search(r"(?:^|;)" + field + r":([0-9.]+)px", match[1]) if match else None
+                        if number:
+                            css_geometry[key] = float(number[1])
+                    headers = []
+                    for selector in (".stage-header :first-child", ".stage-header :nth-child(2)", ".stage-header :nth-child(3)"):
+                        match = re.search(re.escape(selector) + r"\{([^{}]*)\}", css)
+                        number = re.search(r"(?:^|;)left:([0-9.]+)px", match[1]) if match else None
+                        if number:
+                            headers.append(float(number[1]))
+                    if len(headers) == 3:
+                        css_geometry["header_left"] = headers
+            if len(css_geometry) != 4:
+                raise ValueError(f"PID{pid} DPI CSS geometry is incomplete")
+            if pid == 182:
+                if "profile" in spec or "device_profile" in spec:
+                    raise ValueError("PID182 defaults must come from their typed device owner")
+                legacy = False
             else:
-                begin = text.index("[{from:", text.index("this.rangeValues="))
-                finish = javascript_delimited(text, begin)
-                ranges = text[begin:finish]
-                binding = re.findall(r"\b([\w$]+)=([\w$]+)\.(minDPI|maxDPI|dpiStep)\|\|[\d.e+]+", text[:begin])
-                if len(binding) < 3:
-                    raise ValueError(f"PID{pid} grid range numeric bindings are unresolved")
-                for symbol, _, field in binding[-3:]:
-                    ranges = re.sub(r"\b" + re.escape(symbol) + r"\b", str(values[field]), ranges)
-                constants = values
-                range_source = {"original": source["path"], "character_start": begin,
-                                "character_end": finish, "body": text[begin:finish]}
-            segments = source_dpi_segments(ranges, constants)
-            grid_specs.append({"product_id": pid, "min": values["minDPI"], "max": values["maxDPI"],
-                               "step": values["dpiStep"], "editing_enabled_default": True, "segments": segments})
-            row["grid_range_source"] = range_source
-        row["ui_spec"] = row_spec
-        row["source_semantics_verified"] = True
-        row["device_write_back"] = "tracked separately by the current middleware/protocol and typed UI/backend audits; this UI query is not device acceptance"
-        row["runtime_acceptance"] = "unverified"
+                legacy = "DPIStages" in spec["profile"]
+            profile_marker = "DPIStage" if legacy else "dpiStages"
+            if profile_marker not in main_text:
+                raise ValueError(f"PID{pid} profile schema lacks its source selector")
+            row_spec = {"product_id": pid, "stages_path": "/DPIStages/Stages/DPIStage" if legacy else "/dpiStages/stages",
+                        "active_path": "/DPIStages/Active" if legacy else "/dpiStages/active",
+                        "enabled_path": "/DPIStages/State" if legacy else "/dpiStages/enable",
+                        "x_key": "X" if legacy else "x", "y_key": "Y" if legacy else "y",
+                        "independent_key": "Independent" if legacy else "independent",
+                        "visible_key": "Active" if legacy else "visible", "minimum_visible_stages": 2,
+                        "rows_margin_x": -20 if grid else 0, "description_key": "SENSITIVITY_DESC",
+                        "drag_ordinal_key": None if legacy else "Active", "two_way_tab": two_way,
+                        "no_header": two_way, "single_min": single_limits.get("minDPIConfig"),
+                        "single_max": single_limits.get("maxDPIConfig"),
+                        "slider_requires_visible": bool(re.search(r"active:![\w$]+&&", next(
+                            item["body"] for item in row["complete_functions"] if item["role"] == "row"))),
+                        **css_geometry}
+            # Exact source row class requires two visible stages; every supported
+            # Babel variant uses the same literal. Keep unresolved branches explicit.
+            if not re.search(r"\.length<=2", text):
+                raise ValueError(f"PID{pid} row visibility minimum is unresolved")
+            if grid:
+                override = re.search(r"\b[\w$]+=\[\{from:", main_text)
+                if override:
+                    begin = main_text.index("[", override.start())
+                    finish = javascript_delimited(main_text, begin)
+                    ranges = main_text[begin:finish]
+                    constants = values
+                    range_source = {"original": main["path"], "character_start": begin,
+                                    "character_end": finish, "body": ranges}
+                else:
+                    begin = text.index("[{from:", text.index("this.rangeValues="))
+                    finish = javascript_delimited(text, begin)
+                    ranges = text[begin:finish]
+                    binding = re.findall(r"\b([\w$]+)=([\w$]+)\.(minDPI|maxDPI|dpiStep)\|\|[\d.e+]+", text[:begin])
+                    if len(binding) < 3:
+                        raise ValueError(f"PID{pid} grid range numeric bindings are unresolved")
+                    for symbol, _, field in binding[-3:]:
+                        ranges = re.sub(r"\b" + re.escape(symbol) + r"\b", str(values[field]), ranges)
+                    constants = values
+                    range_source = {"original": source["path"], "character_start": begin,
+                                    "character_end": finish, "body": text[begin:finish]}
+                segments = source_dpi_segments(ranges, constants)
+                grid_spec = {"product_id": pid, "min": values["minDPI"], "max": values["maxDPI"],
+                                   "step": values["dpiStep"], "editing_enabled_default": True, "segments": segments}
+                row["grid_range_source"] = range_source
+            row["ui_spec"] = row_spec
+            row["source_semantics_verified"] = True
+            row["device_write_back"] = "tracked separately by the current middleware/protocol and typed UI/backend audits; this UI query is not device acceptance"
+            row["runtime_acceptance"] = "unverified"
+            return row, row_spec, grid_spec
+
+    def run_one(spec):
+        try:
+            return audit_one(spec)
+        except Exception as error:
+            return ({"product_id": spec["product_id"], "failures": [str(error)],
+                     "complete_functions": [], "css": [], "runtime_acceptance": "unverified"},
+                    None, None)
+
+    jobs = [spec for spec in specs if spec["product_id"] in selected]
+    results = []
+    if jobs:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max(2, min(workers, len(jobs)))) as pool:
+            results = list(pool.map(run_one, jobs))
+    rows = [result[0] for result in results]
+    row_specs = [result[1] for result in results if result[1] is not None]
+    grid_specs = [result[2] for result in results if result[2] is not None]
     report["mouse_dpi_tree"] = {"tool": identity(Path(__file__)), "method": "verified current originals and complete Wakaru captures; numeric literals decoded without JavaScript evaluation",
                                  "products": rows, "target_execution": False, "runtime_acceptance": "unverified"}
     # Updating a selected subset cannot silently remove previously audited rows.
@@ -3065,6 +3086,9 @@ def audit_mouse_power(args):
 
 def audit_mouse_customize(args):
     """Audit current mounted image producers and statically prepared artwork."""
+    workers = getattr(args, "workers", 4)
+    if type(workers) is not int or not 2 <= workers <= 16:
+        raise ValueError("Family audit workers must be between two and sixteen")
     import base64
     import xml.etree.ElementTree as ET
     data_path = a.builtin_data_path("razer-pages", "MOUSE_CUSTOMIZE_CURRENT_DATA")
@@ -3122,7 +3146,8 @@ def audit_mouse_customize(args):
         originals = [item for item in acquired["files"] if item.get("path") and item["url"] in reachable]
         return roots, originals
 
-    def locate_current(surface, acquired, originals):
+    def locate_current(surface, acquired, originals, cache=None):
+        cache = current_inputs if cache is None else cache
         source = next((item for item in originals if item["sha256"] == surface["source_file_sha256"]), None)
         if source is not None:
             if not valid(source):
@@ -3142,8 +3167,8 @@ def audit_mouse_customize(args):
         if not controls and not coordinates:
             raise ValueError("Current replacement lacks a unique static Customize locator")
         pid = surface["product_id"]
-        if pid not in current_inputs:
-            current_inputs[pid] = []
+        if pid not in cache:
+            cache[pid] = []
             for item in originals:
                 if not item["path"].endswith(".js"):
                     continue
@@ -3152,9 +3177,9 @@ def audit_mouse_customize(args):
                 for anchor in re.finditer(r'className:"config-wrapper dot-bg"', text):
                     begin, end, body = component_at(text, anchor.start())
                     if begin not in seen:
-                        current_inputs[pid].append((item, text, begin, end, body))
+                        cache[pid].append((item, text, begin, end, body))
                         seen.add(begin)
-        choices = [entry for entry in current_inputs[pid]
+        choices = [entry for entry in cache[pid]
                    if (not controls or controls_signature(entry[4]) == controls)
                    and (not coordinates or coordinates_signature(entry[4]) == coordinates)]
         if len(choices) != 1 or not valid(choices[0][0]):
@@ -3238,478 +3263,501 @@ def audit_mouse_customize(args):
         return blocks
 
     products, corrected = [], []
-    for surface in surfaces:
-        pid = surface["product_id"]
-        if pid not in selected:
-            continue
-        row = {"product_id": pid, "group_index": surface.get("group_index", 0), "failures": [],
-               "complete_functions": [], "artwork": [], "runtime_acceptance": "unverified"}
-        products.append(row)
-        acquisition_path = a.ROOT / f".analysis/inputs/frontend/mouse-{pid}-current/acquisition.json"
-        capture_path = a.ROOT / f".analysis/results/frontend/mouse-{pid}-current/analysis.json"
-        acquired, captured = json.loads(acquisition_path.read_bytes()), json.loads(capture_path.read_bytes())
-        row.update({"acquisition": identity(acquisition_path), "capture": identity(capture_path),
-                    "analyzer": captured["tool"], "deployment_stable": acquired.get("source_current_during_acquisition"),
-                    "closure_unresolved": acquired.get("unresolved", [])})
-        if not row["deployment_stable"]:
-            row["failures"].append("Current deployment provenance is unverified")
-            continue
-        try:
-            roots, originals = current_scope(acquired)
-            source, text, begin, finish, body, relocated = locate_current(surface, acquired, originals)
-        except ValueError as error:
-            row["failures"].append(str(error))
-            continue
-        row["original"] = identity(a.ROOT / source["path"])
-        row["dependency_scope"] = {"roots": roots, "relocated_to_current_component": relocated,
-                                   "current_js_inputs": [item for item in originals if item["path"].endswith(".js")],
-                                   "excluded_unmounted_js_inputs": [item for item in acquired["files"]
-                                       if item.get("path", "").endswith(".js") and item not in originals]}
-        try:
-            row["complete_capture_modules"] = source_capture_modules(captured, source)
-        except ValueError as error:
-            row["complete_capture_modules"] = []
-            row["capture_reuse_failure"] = str(error)
-            row["failures"].append("Whole frontend capture requires refresh for the current input: " + str(error))
-        row["complete_functions"].append({"role": "mounted_customize_surface", "original": row["original"],
-                                           "character_start": begin, "character_end": finish, "body": body})
-        normalized_input = parser_body(body)
-        try:
-            owner, owner_text, owner_begin, owner_end, owner_body = caller_owner(
-                surface, source, text, begin, finish, originals)
-            footer = re.search(r'className:(?:"[^\"]*config-row[^\"]*"|`[^`]*config-row[^`]*`)', owner_body)
-            if footer is None:
-                raise ValueError("Current Customize footer class declaration is unresolved")
-            class_end = owner_body.find(",children:", footer.end())
-            declaration = owner_body[footer.start():class_end]
-            if class_end < 0 or len(declaration) > 350:
-                raise ValueError("Current Customize footer class expression is unresolved")
-            surface["footer_margin_top"] = 20 if "mt20" in declaration else 0
-            surface["footer_margin_bottom"] = 20 if "mb20" in declaration else 10 if "mb10" in declaration else 0
-            surface["footer_armory_height"] = "custom-armory" in declaration or "customizeArmory" in declaration
-            row["footer"] = {"original": identity(a.ROOT / owner["path"]), "class_expression": declaration,
-                              "margin_top": surface["footer_margin_top"], "margin_bottom": surface["footer_margin_bottom"],
-                              "armory_height": surface["footer_armory_height"]}
-            if owner_begin != begin or owner["path"] != source["path"]:
-                row["complete_functions"].append({"role": "mounted_customize_footer_owner", "original": row["footer"]["original"],
-                                                   "character_start": owner_begin, "character_end": owner_end, "body": owner_body})
-                normalized_input += "\n" + parser_body(owner_body)
-            surface["mounted_file"] = owner["path"]
-            surface["mounted_file_sha256"] = owner["sha256"]
-            surface["mounted_offset"] = owner_begin
-            surface["mounted_source"] = declaration
-        except ValueError as error:
-            row["failures"].append(str(error))
-        if source["sha256"] not in inline_by_source:
-            literals = {}
-            for literal in re.finditer(r'"data:image/png;base64,([A-Za-z0-9+/=]+)"', text):
-                decoded = base64.b64decode(literal[1], validate=True)
-                decoded_hash = hashlib.sha256(decoded).hexdigest()
-                region = {
-                    "character_start": literal.start(), "character_end": literal.end(),
-                    "literal_bytes": len(decoded), "literal_sha256": decoded_hash,
-                    "body": literal[0], "body_sha256": hashlib.sha256(literal[0].encode("utf-8")).hexdigest()}
-                try:
-                    region["complete_module"] = complete_raw_module(text, literal[0])
-                except ValueError as error:
-                    # A CRA entry literal may sit outside numbered webpack
-                    # modules; keep its exact full bytes and verified complete
-                    # parser capture, together with the failed module lookup.
-                    region["module_resolution_failure"] = str(error)
-                    region["complete_capture_modules"] = row["complete_capture_modules"]
-                literals.setdefault(decoded_hash, []).append(region)
-            inline_by_source[source["sha256"]] = literals
-        shared_image = bool(re.search(r"pid:[\w$.]+\.DeviceInfo.productId,editionId:this.props.editionId", body))
-        fallback = False
-        if shared_image:
-            producers = []
-            for match in re.finditer(r"\.memo\(", text):
-                end = javascript_delimited(text, match.end() - 1)
-                candidate = text[match.end():end - 1]
-                if all(token in candidate for token in ("srcSet_1x", "editionId", "img_prods", "config-img")):
-                    producers.append((match, end, candidate))
-            if len(producers) != 1:
-                row["failures"].append("Mounted ProductImage producer is ambiguous")
-                continue
-            match, end, candidate = producers[0]
-            row["complete_functions"].append({"role": "mounted_product_image", "original": row["original"], "character_start": match.end(),
-                                               "character_end": end - 1, "body": candidate})
-            if surface.get("prefer_svg"):
-                category_use = re.search(r'([\w$]+)\.includes\([\w$]+\)', candidate)
-                if category_use is None:
-                    raise ValueError("Current inline SVG ProductImage category branch is unresolved")
-                category_name = category_use[1]
-                assignments = list(re.finditer(r'(?<![\w$])' + re.escape(category_name) + r'=', text[:match.start()]))
-                if not assignments:
-                    raise ValueError("Current inline SVG ProductImage category owner is absent")
-                category_assignment = assignments[-1]
-                category_end = javascript_delimited(text, category_assignment.end())
-                category_body = text[category_assignment.start():category_end]
-                category_value = text[category_assignment.end():category_end]
-                # 224's category initializer is a complete comma expression:
-                # a connected receiver component followed by the MOUSE array.
-                # Its final operand owns this branch; never execute the prefix.
-                if not (re.fullmatch(r'\[[\w$]+\.Su\.MOUSE\]', category_value)
-                        or re.search(r',\[[\w$]+\.Su\.MOUSE\]\)$', category_value)):
-                    raise ValueError("Current inline SVG ProductImage MOUSE category value differs")
-                row["complete_functions"].append({"role": "mounted_inline_svg_category_initializer", "original": row["original"],
-                    "character_start": category_assignment.start(), "character_end": category_end, "body": category_body})
-                normalized_input += "\n(" + category_body + ");"
-            fallback = bool(re.search(r'\.concat\([\w$]+,"_",0,', candidate)
-                            or re.search(r'\$\{[\w$]+\}_0/', candidate))
-            normalized_input += "\n(" + candidate + ");"
-        main_css_urls = {edge["to"] for edge in acquired["edges"]
-                         if edge["from"] == acquired["entry_url"] and edge["kind"] == "html:link"
-                         and edge["to"].endswith(".css")}
-        chunk = re.match(r'(\d+)\.', Path(source["path"]).name)
-        css_inputs = [item for item in originals if item["path"].endswith(".css")
-                      and (item["url"] in main_css_urls or chunk and Path(item["path"]).name.startswith(chunk[1] + "."))]
-        row["layout_css"] = []
-        for css in css_inputs:
-            if not valid(css):
-                raise ValueError("Current Customize CSS byte identity differs")
-            css_text = (a.ROOT / css["path"]).read_text(encoding="utf-8")
-            rules = [{"character_start": match.start(), "character_end": match.end(),
-                      "selector": match[1], "body": match[0],
-                      "body_sha256": hashlib.sha256(match[0].encode("utf-8")).hexdigest()}
-                     for match in re.finditer(r'([^{}]+)\{([^{}]*)\}', css_text)
-                     if any(token in match[1] for token in ("config-wrapper", "config-block", "config-img", "config-row", "svg", ".img-nodrag",
-                                                            "hyper-wrapper", "side-view-svg", "sidepad-view-config",
-                                                             ".mt20", ".mb10", ".mb20"))
-                        or re.search(r'(^|,)\s*(?:\*|html|body|img)\s*(,|$)', match[1])]
-            containers = [block for block in css_at_rules(css_text)
-                          if any(block["character_start"] <= rule["character_start"]
-                                 and rule["character_end"] <= block["character_end"] for rule in rules)]
-            for rule in rules:
-                rule["enclosing_at_rules"] = [
-                    {key: block[key] for key in ("character_start", "character_end", "at_rule", "body_sha256")}
-                    for block in containers if block["character_start"] <= rule["character_start"]
-                    and rule["character_end"] <= block["character_end"]]
-            row["layout_css"].append({"original": identity(a.ROOT / css["path"]), "complete_rules": rules,
-                                      "complete_enclosing_at_rules": containers,
-                                      "analysis": "Static complete rules and enclosing at-rule bodies; strings/comments skipped, no CSS cascade evaluation or browser/vendor JavaScript execution"})
-        if pid == 226:
-            ancestor = re.search(r'className:"dolores-customize"', text)
-            if ancestor is None:
-                row["failures"].append("Current Dolores Customize ancestor is unresolved")
-            else:
-                abegin, aend, abody = component_at(text, ancestor.start())
-                row["complete_functions"].append({"role": "mounted_customize_ancestor", "original": row["original"],
-                                                   "character_start": abegin, "character_end": aend, "body": abody})
-                normalized_input += "\n" + parser_body(abody)
-        if pid == 231:
-            marker = re.search(r'this\.syncHighlightClasses=\(\)=>\{', text)
-            helpers = re.search(r'const [\w$]+=\{2:1,6:2,12:3\},', text)
-            if marker is None or helpers is None:
-                row["failures"].append("Current side-view SVG button producer/helper caller is unresolved")
-            else:
-                sbegin, send, sbody = component_at(text, marker.start())
-                if helpers.start() >= sbegin:
-                    row["failures"].append("Current side-view SVG helper declaration order is unresolved")
+    def audit_one(surface):
+            pid = surface["product_id"]
+            row = {"product_id": pid, "group_index": surface.get("group_index", 0), "failures": [],
+                   "complete_functions": [], "artwork": [], "runtime_acceptance": "unverified"}
+            inline_by_source = {}
+            supplementary_acquisitions = {}
+            resource_parser_results = {}
+            current_inputs = {}
+            acquisition_path = a.ROOT / f".analysis/inputs/frontend/mouse-{pid}-current/acquisition.json"
+            capture_path = a.ROOT / f".analysis/results/frontend/mouse-{pid}-current/analysis.json"
+            acquired, captured = json.loads(acquisition_path.read_bytes()), json.loads(capture_path.read_bytes())
+            row.update({"acquisition": identity(acquisition_path), "capture": identity(capture_path),
+                        "analyzer": captured["tool"], "deployment_stable": acquired.get("source_current_during_acquisition"),
+                        "closure_unresolved": acquired.get("unresolved", [])})
+            if not row["deployment_stable"]:
+                row["failures"].append("Current deployment provenance is unverified")
+                return row, surface, False
+            try:
+                roots, originals = current_scope(acquired)
+                source, text, begin, finish, body, relocated = locate_current(surface, acquired, originals, cache=current_inputs)
+            except ValueError as error:
+                row["failures"].append(str(error))
+                return row, surface, False
+            row["original"] = identity(a.ROOT / source["path"])
+            row["dependency_scope"] = {"roots": roots, "relocated_to_current_component": relocated,
+                                       "current_js_inputs": [item for item in originals if item["path"].endswith(".js")],
+                                       "excluded_unmounted_js_inputs": [item for item in acquired["files"]
+                                           if item.get("path", "").endswith(".js") and item not in originals]}
+            try:
+                row["complete_capture_modules"] = source_capture_modules(captured, source)
+            except ValueError as error:
+                row["complete_capture_modules"] = []
+                row["capture_reuse_failure"] = str(error)
+                row["failures"].append("Whole frontend capture requires refresh for the current input: " + str(error))
+            row["complete_functions"].append({"role": "mounted_customize_surface", "original": row["original"],
+                                               "character_start": begin, "character_end": finish, "body": body})
+            normalized_input = parser_body(body)
+            try:
+                owner, owner_text, owner_begin, owner_end, owner_body = caller_owner(
+                    surface, source, text, begin, finish, originals)
+                footer = re.search(r'className:(?:"[^\"]*config-row[^\"]*"|`[^`]*config-row[^`]*`)', owner_body)
+                if footer is None:
+                    raise ValueError("Current Customize footer class declaration is unresolved")
+                class_end = owner_body.find(",children:", footer.end())
+                declaration = owner_body[footer.start():class_end]
+                if class_end < 0 or len(declaration) > 350:
+                    raise ValueError("Current Customize footer class expression is unresolved")
+                surface["footer_margin_top"] = 20 if "mt20" in declaration else 0
+                surface["footer_margin_bottom"] = 20 if "mb20" in declaration else 10 if "mb10" in declaration else 0
+                surface["footer_armory_height"] = "custom-armory" in declaration or "customizeArmory" in declaration
+                row["footer"] = {"original": identity(a.ROOT / owner["path"]), "class_expression": declaration,
+                                  "margin_top": surface["footer_margin_top"], "margin_bottom": surface["footer_margin_bottom"],
+                                  "armory_height": surface["footer_armory_height"]}
+                if owner_begin != begin or owner["path"] != source["path"]:
+                    row["complete_functions"].append({"role": "mounted_customize_footer_owner", "original": row["footer"]["original"],
+                                                       "character_start": owner_begin, "character_end": owner_end, "body": owner_body})
+                    normalized_input += "\n" + parser_body(owner_body)
+                surface["mounted_file"] = owner["path"]
+                surface["mounted_file_sha256"] = owner["sha256"]
+                surface["mounted_offset"] = owner_begin
+                surface["mounted_source"] = declaration
+            except ValueError as error:
+                row["failures"].append(str(error))
+            if source["sha256"] not in inline_by_source:
+                literals = {}
+                for literal in re.finditer(r'"data:image/png;base64,([A-Za-z0-9+/=]+)"', text):
+                    decoded = base64.b64decode(literal[1], validate=True)
+                    decoded_hash = hashlib.sha256(decoded).hexdigest()
+                    region = {
+                        "character_start": literal.start(), "character_end": literal.end(),
+                        "literal_bytes": len(decoded), "literal_sha256": decoded_hash,
+                        "body": literal[0], "body_sha256": hashlib.sha256(literal[0].encode("utf-8")).hexdigest()}
+                    try:
+                        region["complete_module"] = complete_raw_module(text, literal[0])
+                    except ValueError as error:
+                        # A CRA entry literal may sit outside numbered webpack
+                        # modules; keep its exact full bytes and verified complete
+                        # parser capture, together with the failed module lookup.
+                        region["module_resolution_failure"] = str(error)
+                        region["complete_capture_modules"] = row["complete_capture_modules"]
+                    literals.setdefault(decoded_hash, []).append(region)
+                inline_by_source[source["sha256"]] = literals
+            shared_image = bool(re.search(r"pid:[\w$.]+\.DeviceInfo.productId,editionId:this.props.editionId", body))
+            fallback = False
+            if shared_image:
+                producers = []
+                for match in re.finditer(r"\.memo\(", text):
+                    end = javascript_delimited(text, match.end() - 1)
+                    candidate = text[match.end():end - 1]
+                    if all(token in candidate for token in ("srcSet_1x", "editionId", "img_prods", "config-img")):
+                        producers.append((match, end, candidate))
+                if len(producers) != 1:
+                    row["failures"].append("Mounted ProductImage producer is ambiguous")
+                    return row, surface, False
+                match, end, candidate = producers[0]
+                row["complete_functions"].append({"role": "mounted_product_image", "original": row["original"], "character_start": match.end(),
+                                                   "character_end": end - 1, "body": candidate})
+                if surface.get("prefer_svg"):
+                    category_use = re.search(r'([\w$]+)\.includes\([\w$]+\)', candidate)
+                    if category_use is None:
+                        raise ValueError("Current inline SVG ProductImage category branch is unresolved")
+                    category_name = category_use[1]
+                    assignments = list(re.finditer(r'(?<![\w$])' + re.escape(category_name) + r'=', text[:match.start()]))
+                    if not assignments:
+                        raise ValueError("Current inline SVG ProductImage category owner is absent")
+                    category_assignment = assignments[-1]
+                    category_end = javascript_delimited(text, category_assignment.end())
+                    category_body = text[category_assignment.start():category_end]
+                    category_value = text[category_assignment.end():category_end]
+                    # 224's category initializer is a complete comma expression:
+                    # a connected receiver component followed by the MOUSE array.
+                    # Its final operand owns this branch; never execute the prefix.
+                    if not (re.fullmatch(r'\[[\w$]+\.Su\.MOUSE\]', category_value)
+                            or re.search(r',\[[\w$]+\.Su\.MOUSE\]\)$', category_value)):
+                        raise ValueError("Current inline SVG ProductImage MOUSE category value differs")
+                    row["complete_functions"].append({"role": "mounted_inline_svg_category_initializer", "original": row["original"],
+                        "character_start": category_assignment.start(), "character_end": category_end, "body": category_body})
+                    normalized_input += "\n(" + category_body + ");"
+                fallback = bool(re.search(r'\.concat\([\w$]+,"_",0,', candidate)
+                                or re.search(r'\$\{[\w$]+\}_0/', candidate))
+                normalized_input += "\n(" + candidate + ");"
+            main_css_urls = {edge["to"] for edge in acquired["edges"]
+                             if edge["from"] == acquired["entry_url"] and edge["kind"] == "html:link"
+                             and edge["to"].endswith(".css")}
+            chunk = re.match(r'(\d+)\.', Path(source["path"]).name)
+            css_inputs = [item for item in originals if item["path"].endswith(".css")
+                          and (item["url"] in main_css_urls or chunk and Path(item["path"]).name.startswith(chunk[1] + "."))]
+            row["layout_css"] = []
+            for css in css_inputs:
+                if not valid(css):
+                    raise ValueError("Current Customize CSS byte identity differs")
+                css_text = (a.ROOT / css["path"]).read_text(encoding="utf-8")
+                rules = [{"character_start": match.start(), "character_end": match.end(),
+                          "selector": match[1], "body": match[0],
+                          "body_sha256": hashlib.sha256(match[0].encode("utf-8")).hexdigest()}
+                         for match in re.finditer(r'([^{}]+)\{([^{}]*)\}', css_text)
+                         if any(token in match[1] for token in ("config-wrapper", "config-block", "config-img", "config-row", "svg", ".img-nodrag",
+                                                                "hyper-wrapper", "side-view-svg", "sidepad-view-config",
+                                                                 ".mt20", ".mb10", ".mb20"))
+                            or re.search(r'(^|,)\s*(?:\*|html|body|img)\s*(,|$)', match[1])]
+                containers = [block for block in css_at_rules(css_text)
+                              if any(block["character_start"] <= rule["character_start"]
+                                     and rule["character_end"] <= block["character_end"] for rule in rules)]
+                for rule in rules:
+                    rule["enclosing_at_rules"] = [
+                        {key: block[key] for key in ("character_start", "character_end", "at_rule", "body_sha256")}
+                        for block in containers if block["character_start"] <= rule["character_start"]
+                        and rule["character_end"] <= block["character_end"]]
+                row["layout_css"].append({"original": identity(a.ROOT / css["path"]), "complete_rules": rules,
+                                          "complete_enclosing_at_rules": containers,
+                                          "analysis": "Static complete rules and enclosing at-rule bodies; strings/comments skipped, no CSS cascade evaluation or browser/vendor JavaScript execution"})
+            if pid == 226:
+                ancestor = re.search(r'className:"dolores-customize"', text)
+                if ancestor is None:
+                    row["failures"].append("Current Dolores Customize ancestor is unresolved")
                 else:
-                    helper_body = text[helpers.start():sbegin]
-                    row["complete_functions"].extend([
-                        {"role": "svg_button_helper_declarations", "original": row["original"],
-                         "character_start": helpers.start(), "character_end": sbegin, "body": helper_body},
-                        {"role": "mounted_svg_button_component", "original": row["original"],
-                         "character_start": sbegin, "character_end": send, "body": sbody},
-                    ])
-                    normalized_input += "\n" + helper_body + "\n" + parser_body(sbody)
-        for function in row["complete_functions"]:
-            function["body_sha256"] = hashlib.sha256(function["body"].encode("utf-8")).hexdigest()
-        parser = subprocess.run([str(a.wakaru()), "debug", "normalize", "-"], input=normalized_input,
-                                text=True, encoding="utf-8", stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, check=False, timeout=60)
-        row["component_parser_validation"] = {"exit_code": parser.returncode,
-                                               "stdout_sha256": hashlib.sha256(parser.stdout.encode()).hexdigest(),
-                                               "complete_normalized_body": parser.stdout,
-                                               "stderr": parser.stderr, "target_execution": False}
-        if parser.returncode:
-            row["failures"].append("Complete Customize producer failed parser validation")
-            continue
-        inline_top = re.search(r'className:"config-img",style:\{top:"([0-9.]+)px"\}', body) if not shared_image else None
-        prepared = []
-        def artwork(value):
-            if isinstance(value, dict):
-                if "asset" in value:
-                    asset = value["asset"]
-                    resource = aliases.get(asset)
-                    prefix = Path(asset).stem
-                    matches = [item for item in originals if item["sha256"].startswith(prefix)]
-                    entry = prepared_aliases.get(asset)
-                    manifest_original = next((item for item in originals if entry
-                        and item["path"] == entry.get("source")
-                        and item["sha256"] == entry.get("source_sha256")
-                        and item["bytes"] == entry.get("source_bytes")), None)
-                    supplemental_receipt = None
-                    if manifest_original is None and entry and entry.get("acquisition"):
-                        acquisition_name = entry["acquisition"]
-                        if acquisition_name not in supplementary_acquisitions:
-                            supplemental_path = a.ROOT / acquisition_name
-                            supplemental = json.loads(supplemental_path.read_bytes())
-                            supplementary_acquisitions[acquisition_name] = (supplemental, identity(supplemental_path))
-                        supplemental, supplemental_identity = supplementary_acquisitions[acquisition_name]
-                        if supplemental.get("source_current_during_acquisition"):
-                            manifest_original = next((item for item in supplemental["files"]
-                                if item.get("path") == entry.get("source")
-                                and item.get("sha256") == entry.get("source_sha256")
-                                and item.get("bytes") == entry.get("source_bytes")), None)
-                            supplemental_receipt = supplemental_identity
-                    inline_regions = next((regions for decoded_hash, regions in inline_by_source[source["sha256"]].items()
-                        if decoded_hash.startswith(prefix) and resource is not None
-                        and resource.is_file() and a.sha(resource) == decoded_hash), None)
-                    if inline_regions is not None:
-                        prepared.append({"request": value.get("request"), "display_alias": asset,
-                                         "original": identity(a.ROOT / source["path"]),
-                                         "prepared": identity(resource),
-                                         "preparation": "Decode the current complete literal PNG data URL without JavaScript evaluation",
-                                         "transformation": {"tool": "Python base64", "source_regions": inline_regions},
-                                         "complete_capture_modules": row["complete_capture_modules"]})
-                    elif (resource is not None and resource.is_file() and manifest_original is not None
-                            and valid(manifest_original) and a.rel(resource) == entry.get("output")
-                            and a.sha(resource) == entry.get("sha256")):
-                        derivation = entry.get("transformation")
-                        # Reverify complete retained literal/module regions instead
-                        # of treating a recorded source hash as a resource verdict.
-                        if derivation and derivation.get("source_regions"):
-                            original_text = (a.ROOT / manifest_original["path"]).read_text(encoding="utf-8")
-                            for region in derivation["source_regions"]:
-                                if not 0 <= region["character_start"] < region["character_end"] <= len(original_text):
-                                    raise ValueError("Prepared inline resource literal boundaries are invalid")
-                                module = region.get("complete_module")
-                                if module and original_text[module["character_start"]:module["character_end"]] != module["body"]:
-                                    raise ValueError("Prepared inline resource producer differs from its acquired original")
-                                if "body" in region:
-                                    producer = original_text[region["character_start"]:region["character_end"]]
-                                    if producer != region["body"] or hashlib.sha256(producer.encode("utf-8")).hexdigest() != region["body_sha256"]:
-                                        raise ValueError("Prepared inline resource complete function differs from its acquired original")
-                            if derivation.get("operation", "").startswith("Statically convert literal React SVG nodes"):
-                                from workspace import static_react_svg
-                                producer = derivation["source_regions"][0]["body"]
-                                anchor = re.match(r'(?:const|let|var) [\w$]+=\([\w$,]*\)=>\{', producer)
-                                if anchor is None:
-                                    raise ValueError("Prepared inline React SVG producer boundary is unresolved")
-                                converted, current_derivation = static_react_svg(original_text, anchor[0])
-                                if converted != resource.read_bytes() or current_derivation["source_regions"] != derivation["source_regions"]:
-                                    raise ValueError("Prepared inline React SVG bytes differ from its acquired literal producer")
-                        if derivation and derivation.get("operation", "").startswith("Split only current source data-btn paths"):
-                            from workspace import static_svg_button_layer
-                            css_input = derivation["source_css"]
-                            producer_input = derivation["producer"]["input"]
-                            if css_input not in originals or producer_input not in originals or not valid(css_input) or not valid(producer_input):
-                                raise ValueError("Prepared SVG button state source closure differs from the current mounted originals")
-                            producer_text = (a.ROOT / producer_input["path"]).read_text(encoding="utf-8")
-                            for region in derivation["producer"]["complete_regions"]:
-                                source_body = producer_text[region["character_start"]:region["character_end"]]
-                                if source_body != region["body"] or hashlib.sha256(source_body.encode("utf-8")).hexdigest() != region["body_sha256"]:
-                                    raise ValueError("Prepared SVG button complete producer differs from its current input")
-                            css_text = (a.ROOT / css_input["path"]).read_text(encoding="utf-8")
-                            converted, current_derivation = static_svg_button_layer(
-                                (a.ROOT / manifest_original["path"]).read_bytes(),
-                                derivation["button_index"], derivation["state"], css_text)
-                            if converted != resource.read_bytes() or any(derivation[key] != value for key, value in current_derivation.items()):
-                                raise ValueError("Prepared SVG button state bytes differ from its current path/CSS producer")
-                        capture_modules, capture_failure, parser_validation = [], None, None
-                        if manifest_original["path"].endswith(".js"):
-                            try:
-                                capture_modules = source_capture_modules(captured, manifest_original)
-                            except ValueError as error:
-                                capture_failure = str(error)
-                                row["failures"].append("Whole resource producer capture requires refresh: " + asset + ": " + capture_failure)
-                                regions = derivation.get("source_regions", []) if derivation else []
-                                producer_bodies = []
-                                for region in regions:
-                                    module = region.get("complete_module")
-                                    if module:
-                                        producer_bodies.append("({" + module["body"] + "});")
-                                    elif region.get("body"):
-                                        producer_bodies.append(parser_body(region["body"]))
-                                if producer_bodies and manifest_original in originals:
-                                    parser_input = "\n".join(dict.fromkeys(producer_bodies))
-                                    parser_key = hashlib.sha256(parser_input.encode("utf-8")).hexdigest()
-                                    if parser_key not in resource_parser_results:
-                                        normalized = subprocess.run([str(a.wakaru()), "debug", "normalize", "-"],
-                                            input=parser_input, text=True, encoding="utf-8", stdout=subprocess.PIPE,
-                                            stderr=subprocess.PIPE, check=False, timeout=60)
-                                        resource_parser_results[parser_key] = {
-                                            "exit_code": normalized.returncode, "input_sha256": parser_key,
-                                            "stdout_sha256": hashlib.sha256(normalized.stdout.encode("utf-8")).hexdigest(),
-                                            "complete_normalized_body": normalized.stdout, "stderr": normalized.stderr,
-                                            "target_execution": False}
-                                    parser_validation = resource_parser_results[parser_key]
-                                    if parser_validation["exit_code"]:
-                                        row["failures"].append("Complete current resource producer failed parser validation: " + asset)
-                                else:
-                                    row["failures"].append("Current complete resource producer cannot be normalized: " + asset)
-                        prepared.append({"request": value.get("request"), "display_alias": asset,
-                                         "original": identity(a.ROOT / manifest_original["path"]),
-                                         "prepared": identity(resource), "manifest": manifest_identity,
-                                         "supplementary_acquisition": supplemental_receipt,
-                                         "preparation": entry["preparation"],
-                                         "transformation": derivation, "conversion": entry.get("conversion"),
-                                         "complete_capture_modules": capture_modules,
-                                         "capture_reuse_failure": capture_failure,
-                                         "producer_parser_validation": parser_validation})
-                    elif resource is None or not resource.is_file() or not matches or len({item["sha256"] for item in matches}) != 1 or not all(valid(item) for item in matches):
-                        row["failures"].append("Current artwork/alias provenance is unresolved: " + asset)
+                    abegin, aend, abody = component_at(text, ancestor.start())
+                    row["complete_functions"].append({"role": "mounted_customize_ancestor", "original": row["original"],
+                                                       "character_start": abegin, "character_end": aend, "body": abody})
+                    normalized_input += "\n" + parser_body(abody)
+            if pid == 231:
+                marker = re.search(r'this\.syncHighlightClasses=\(\)=>\{', text)
+                helpers = re.search(r'const [\w$]+=\{2:1,6:2,12:3\},', text)
+                if marker is None or helpers is None:
+                    row["failures"].append("Current side-view SVG button producer/helper caller is unresolved")
+                else:
+                    sbegin, send, sbody = component_at(text, marker.start())
+                    if helpers.start() >= sbegin:
+                        row["failures"].append("Current side-view SVG helper declaration order is unresolved")
                     else:
-                        prepared.append({"request": value.get("request"), "display_alias": asset,
-                                         "original": identity(a.ROOT / matches[0]["path"]),
-                                         "prepared": identity(resource),
-                                         "preparation": "image codec conversion retained by resource manifest; original/display hashes are separate"})
-                for key, child in value.items():
-                    if key != "asset":
+                        helper_body = text[helpers.start():sbegin]
+                        row["complete_functions"].extend([
+                            {"role": "svg_button_helper_declarations", "original": row["original"],
+                             "character_start": helpers.start(), "character_end": sbegin, "body": helper_body},
+                            {"role": "mounted_svg_button_component", "original": row["original"],
+                             "character_start": sbegin, "character_end": send, "body": sbody},
+                        ])
+                        normalized_input += "\n" + helper_body + "\n" + parser_body(sbody)
+            for function in row["complete_functions"]:
+                function["body_sha256"] = hashlib.sha256(function["body"].encode("utf-8")).hexdigest()
+            parser = subprocess.run([str(a.wakaru()), "debug", "normalize", "-"], input=normalized_input,
+                                    text=True, encoding="utf-8", stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE, check=False, timeout=60)
+            row["component_parser_validation"] = {"exit_code": parser.returncode,
+                                                   "stdout_sha256": hashlib.sha256(parser.stdout.encode()).hexdigest(),
+                                                   "complete_normalized_body": parser.stdout,
+                                                   "stderr": parser.stderr, "target_execution": False}
+            if parser.returncode:
+                row["failures"].append("Complete Customize producer failed parser validation")
+                return row, surface, False
+            inline_top = re.search(r'className:"config-img",style:\{top:"([0-9.]+)px"\}', body) if not shared_image else None
+            prepared = []
+            def artwork(value):
+                if isinstance(value, dict):
+                    if "asset" in value:
+                        asset = value["asset"]
+                        resource = aliases.get(asset)
+                        prefix = Path(asset).stem
+                        matches = [item for item in originals if item["sha256"].startswith(prefix)]
+                        entry = prepared_aliases.get(asset)
+                        manifest_original = next((item for item in originals if entry
+                            and item["path"] == entry.get("source")
+                            and item["sha256"] == entry.get("source_sha256")
+                            and item["bytes"] == entry.get("source_bytes")), None)
+                        supplemental_receipt = None
+                        if manifest_original is None and entry and entry.get("acquisition"):
+                            acquisition_name = entry["acquisition"]
+                            if acquisition_name not in supplementary_acquisitions:
+                                supplemental_path = a.ROOT / acquisition_name
+                                supplemental = json.loads(supplemental_path.read_bytes())
+                                supplementary_acquisitions[acquisition_name] = (supplemental, identity(supplemental_path))
+                            supplemental, supplemental_identity = supplementary_acquisitions[acquisition_name]
+                            if supplemental.get("source_current_during_acquisition"):
+                                manifest_original = next((item for item in supplemental["files"]
+                                    if item.get("path") == entry.get("source")
+                                    and item.get("sha256") == entry.get("source_sha256")
+                                    and item.get("bytes") == entry.get("source_bytes")), None)
+                                supplemental_receipt = supplemental_identity
+                        inline_regions = next((regions for decoded_hash, regions in inline_by_source[source["sha256"]].items()
+                            if decoded_hash.startswith(prefix) and resource is not None
+                            and resource.is_file() and a.sha(resource) == decoded_hash), None)
+                        if inline_regions is not None:
+                            prepared.append({"request": value.get("request"), "display_alias": asset,
+                                             "original": identity(a.ROOT / source["path"]),
+                                             "prepared": identity(resource),
+                                             "preparation": "Decode the current complete literal PNG data URL without JavaScript evaluation",
+                                             "transformation": {"tool": "Python base64", "source_regions": inline_regions},
+                                             "complete_capture_modules": row["complete_capture_modules"]})
+                        elif (resource is not None and resource.is_file() and manifest_original is not None
+                                and valid(manifest_original) and a.rel(resource) == entry.get("output")
+                                and a.sha(resource) == entry.get("sha256")):
+                            derivation = entry.get("transformation")
+                            # Reverify complete retained literal/module regions instead
+                            # of treating a recorded source hash as a resource verdict.
+                            if derivation and derivation.get("source_regions"):
+                                original_text = (a.ROOT / manifest_original["path"]).read_text(encoding="utf-8")
+                                for region in derivation["source_regions"]:
+                                    if not 0 <= region["character_start"] < region["character_end"] <= len(original_text):
+                                        raise ValueError("Prepared inline resource literal boundaries are invalid")
+                                    module = region.get("complete_module")
+                                    if module and original_text[module["character_start"]:module["character_end"]] != module["body"]:
+                                        raise ValueError("Prepared inline resource producer differs from its acquired original")
+                                    if "body" in region:
+                                        producer = original_text[region["character_start"]:region["character_end"]]
+                                        if producer != region["body"] or hashlib.sha256(producer.encode("utf-8")).hexdigest() != region["body_sha256"]:
+                                            raise ValueError("Prepared inline resource complete function differs from its acquired original")
+                                if derivation.get("operation", "").startswith("Statically convert literal React SVG nodes"):
+                                    from workspace import static_react_svg
+                                    producer = derivation["source_regions"][0]["body"]
+                                    anchor = re.match(r'(?:const|let|var) [\w$]+=\([\w$,]*\)=>\{', producer)
+                                    if anchor is None:
+                                        raise ValueError("Prepared inline React SVG producer boundary is unresolved")
+                                    converted, current_derivation = static_react_svg(original_text, anchor[0])
+                                    if converted != resource.read_bytes() or current_derivation["source_regions"] != derivation["source_regions"]:
+                                        raise ValueError("Prepared inline React SVG bytes differ from its acquired literal producer")
+                            if derivation and derivation.get("operation", "").startswith("Split only current source data-btn paths"):
+                                from workspace import static_svg_button_layer
+                                css_input = derivation["source_css"]
+                                producer_input = derivation["producer"]["input"]
+                                if css_input not in originals or producer_input not in originals or not valid(css_input) or not valid(producer_input):
+                                    raise ValueError("Prepared SVG button state source closure differs from the current mounted originals")
+                                producer_text = (a.ROOT / producer_input["path"]).read_text(encoding="utf-8")
+                                for region in derivation["producer"]["complete_regions"]:
+                                    source_body = producer_text[region["character_start"]:region["character_end"]]
+                                    if source_body != region["body"] or hashlib.sha256(source_body.encode("utf-8")).hexdigest() != region["body_sha256"]:
+                                        raise ValueError("Prepared SVG button complete producer differs from its current input")
+                                css_text = (a.ROOT / css_input["path"]).read_text(encoding="utf-8")
+                                converted, current_derivation = static_svg_button_layer(
+                                    (a.ROOT / manifest_original["path"]).read_bytes(),
+                                    derivation["button_index"], derivation["state"], css_text)
+                                if converted != resource.read_bytes() or any(derivation[key] != value for key, value in current_derivation.items()):
+                                    raise ValueError("Prepared SVG button state bytes differ from its current path/CSS producer")
+                            capture_modules, capture_failure, parser_validation = [], None, None
+                            if manifest_original["path"].endswith(".js"):
+                                try:
+                                    capture_modules = source_capture_modules(captured, manifest_original)
+                                except ValueError as error:
+                                    capture_failure = str(error)
+                                    row["failures"].append("Whole resource producer capture requires refresh: " + asset + ": " + capture_failure)
+                                    regions = derivation.get("source_regions", []) if derivation else []
+                                    producer_bodies = []
+                                    for region in regions:
+                                        module = region.get("complete_module")
+                                        if module:
+                                            producer_bodies.append("({" + module["body"] + "});")
+                                        elif region.get("body"):
+                                            producer_bodies.append(parser_body(region["body"]))
+                                    if producer_bodies and manifest_original in originals:
+                                        parser_input = "\n".join(dict.fromkeys(producer_bodies))
+                                        parser_key = hashlib.sha256(parser_input.encode("utf-8")).hexdigest()
+                                        if parser_key not in resource_parser_results:
+                                            normalized = subprocess.run([str(a.wakaru()), "debug", "normalize", "-"],
+                                                input=parser_input, text=True, encoding="utf-8", stdout=subprocess.PIPE,
+                                                stderr=subprocess.PIPE, check=False, timeout=60)
+                                            resource_parser_results[parser_key] = {
+                                                "exit_code": normalized.returncode, "input_sha256": parser_key,
+                                                "stdout_sha256": hashlib.sha256(normalized.stdout.encode("utf-8")).hexdigest(),
+                                                "complete_normalized_body": normalized.stdout, "stderr": normalized.stderr,
+                                                "target_execution": False}
+                                        parser_validation = resource_parser_results[parser_key]
+                                        if parser_validation["exit_code"]:
+                                            row["failures"].append("Complete current resource producer failed parser validation: " + asset)
+                                    else:
+                                        row["failures"].append("Current complete resource producer cannot be normalized: " + asset)
+                            prepared.append({"request": value.get("request"), "display_alias": asset,
+                                             "original": identity(a.ROOT / manifest_original["path"]),
+                                             "prepared": identity(resource), "manifest": manifest_identity,
+                                             "supplementary_acquisition": supplemental_receipt,
+                                             "preparation": entry["preparation"],
+                                             "transformation": derivation, "conversion": entry.get("conversion"),
+                                             "complete_capture_modules": capture_modules,
+                                             "capture_reuse_failure": capture_failure,
+                                             "producer_parser_validation": parser_validation})
+                        elif resource is None or not resource.is_file() or not matches or len({item["sha256"] for item in matches}) != 1 or not all(valid(item) for item in matches):
+                            row["failures"].append("Current artwork/alias provenance is unresolved: " + asset)
+                        else:
+                            prepared.append({"request": value.get("request"), "display_alias": asset,
+                                             "original": identity(a.ROOT / matches[0]["path"]),
+                                             "prepared": identity(resource),
+                                             "preparation": "image codec conversion retained by resource manifest; original/display hashes are separate"})
+                    for key, child in value.items():
+                        if key != "asset":
+                            artwork(child)
+                elif isinstance(value, list):
+                    for child in value:
                         artwork(child)
-            elif isinstance(value, list):
-                for child in value:
-                    artwork(child)
-            elif isinstance(value, str) and value.startswith("synapse/mouse-customize/"):
-                artwork({"asset": value})
-        artwork(surface)
-        row["artwork"] = prepared
-        svg_images = []
-        for svg_artwork in surface["images"]:
-            resource = aliases.get(svg_artwork["asset"])
-            if resource is not None and resource.suffix == ".svg" and resource.is_file():
-                svg = ET.fromstring(resource.read_bytes())
-                svg_images.append({"edition": svg_artwork["edition"], "request": svg_artwork["request"],
-                                   "prepared": identity(resource), "root_attributes": svg.attrib})
-        row["svg_intrinsic_dimensions"] = svg_images
-        all_rules = [rule["body"] for stylesheet in row["layout_css"] for rule in stylesheet["complete_rules"]]
-        if pid == 231 and row["group_index"] in {2, 3}:
-            visual_rules = [
-                '.side-view-svg{height:340px;left:calc(50% - 150px);pointer-events:none;position:absolute;top:0;width:300px;z-index:0!important}',
-                '.side-view-svg>svg{display:block;height:100%;overflow:visible;width:100%}',
-                '.side-view-svg [data-btn]{stroke:#666;fill:#0000;fill-opacity:0;cursor:pointer;opacity:1;pointer-events:auto;transition:fill .15s ease,fill-opacity .15s ease,stroke .15s ease,opacity .15s ease}',
-                '.side-view-svg [data-btn].is-hover{fill:#0000;fill-opacity:0;stroke:#44d62c;stroke-width:2px}',
-                '.side-view-svg [data-btn].is-active{fill:#44d62c;fill-opacity:.55;stroke:#44d62c;stroke-width:2px}',
-                '.side-view-svg [data-btn].is-disabled{opacity:.25;pointer-events:none}',
-                '.side-view-svg.is-hyper [data-btn].is-hover{stroke:#fd8611!important}',
-                '.side-view-svg.is-hyper [data-btn].is-active{fill:#fd8611;stroke:#fd8611!important}',
-            ]
-            if any(rule not in all_rules for rule in visual_rules):
-                raise ValueError("Current side-button CSS lifecycle or native presentation differs")
-            variant = 6 if row["group_index"] == 2 else 12
-            source_name = next(image["request"].rsplit("/", 1)[-1] for image in surface["images"]
-                               if f"side-view-buttons-{variant}." in image["request"])
-            original_svg = next(item for item in originals if Path(item["path"]).name == source_name)
-            if not valid(original_svg):
-                raise ValueError("Current source side-button SVG byte identity differs")
-            svg_root = ET.fromstring((a.ROOT / original_svg["path"]).read_bytes())
-            if svg_root.get("viewBox") != "0 0 200 320":
-                raise ValueError("Current side-button SVG viewBox differs")
-            parents = {child: parent for parent in svg_root.iter() for child in parent}
-            embedded_styles = [(node.text or "") for node in svg_root.iter() if node.tag.split("}")[-1] == "style"]
-            buttons = [node for node in svg_root.iter() if node.get("data-btn") is not None]
-            scale, origin_x = 340 / 320, 235 + (300 - 200 * (340 / 320)) / 2
-            existing_hits = {hit["index"]: hit for hit in surface["svg_path_hits"]}
-            if set(existing_hits) != {int(node.get("data-btn")) for node in buttons}:
-                raise ValueError("Current side-button source identifiers differ from the mounted button model")
-            geometry_inputs = []
-            for node in buttons:
-                index = int(node.get("data-btn"))
-                ancestors, parent = [], parents[node]
-                while parent is not svg_root:
-                    ancestors.append(dict(parent.attrib))
-                    if parent.get("transform"):
-                        raise ValueError("Current side-button ancestor transform requires geometry projection")
-                    parent = parents[parent]
-                geometry, bounds = keyboard_path_geometry(dict(node.attrib))
-                style = {}
-                classes = set(node.get("class", "").split())
-                for stylesheet in embedded_styles:
-                    for match in re.finditer(r'([^{}]+)\{([^{}]*)\}', stylesheet):
-                        selectors = [selector.strip() for selector in match[1].split(",")]
-                        if any(selector == "." + name for selector in selectors for name in classes):
-                            for declaration in match[2].split(";"):
-                                if declaration.strip():
-                                    name, value = declaration.split(":", 1)
-                                    style[name.strip()] = value.strip()
-                if node.get("style") or any(node.get(key) for key in ("stroke-width", "stroke-miterlimit", "stroke-linejoin", "stroke-linecap", "fill-rule")):
-                    raise ValueError("Current side-button path has additional presentation attributes")
-                if style.get("stroke-linejoin", "miter") != "miter" or style.get("stroke-linecap", "butt") != "butt" or style.get("fill-rule", "nonzero") != "nonzero":
-                    raise ValueError("Current side-button native path style differs")
-                hit = existing_hits[index]
-                hit.update({"left": origin_x + bounds[0] * scale, "top": bounds[1] * scale,
-                            "width": bounds[2] * scale, "height": bounds[3] * scale,
-                            "svg_state": {"stroke_width": float(re.sub(r'px$', '', style.get("stroke-width", "1"))),
-                                          "miter_limit": float(style.get("stroke-miterlimit", "4"))}})
-                hit["key"].update({"bounds": bounds, "geometry": geometry})
-                geometry_inputs.append({"index": index, "source_path_attributes": dict(node.attrib), "ancestor_attributes": ancestors,
-                                        "effective_internal_style": style, "derived_hit": hit})
-            row["svg_button_native_geometry"] = {"original": identity(a.ROOT / original_svg["path"]),
-                "static_parser": "fontTools 4.60.2 / SVG path to complete cubic command geometry",
-                "complete_embedded_styles": embedded_styles, "root_attributes": dict(svg_root.attrib),
-                "complete_visual_rules": visual_rules, "scale": scale, "origin_x": origin_x, "paths": geometry_inputs, "target_execution": False}
-        if shared_image and surface.get("prefer_svg") and svg_images:
-            block_rule = '.config-wrapper .config-block{height:340px;margin:0 auto;max-height:100%;position:relative;width:770px;z-index:1}'
-            wrapper_rule = '.config-block .config-img{left:calc(50% - 150px);max-height:100%;position:absolute;width:300px;z-index:0}'
-            svg_rule = '.config-block .config-img.svg-image{left:calc(50% - 160px)}'
-            if any(rule not in all_rules for rule in (block_rule, wrapper_rule, svg_rule)):
-                raise ValueError("Current inline SVG block/wrapper geometry differs")
-            dimensions = {tuple(float(re.sub(r'px$', '', image["root_attributes"][axis]))
-                                for axis in ("width", "height")) for image in svg_images}
-            if len(dimensions) != 1:
-                raise ValueError("Current inline SVG editions have different intrinsic geometry")
-            width, height = next(iter(dimensions))
-            rules, left, top, left_derivation = [], 225, 0, "Source block width 770 / 2 - 160"
-            # These are verified mounted CSS branches, not a general cascade
-            # interpreter. The inline SVG keeps its root dimensions unless a
-            # current branch explicitly styles the SVG child itself.
-            if pid == 163:
-                rules = ['.config-block .config-img.svg-image{left:235px!important;margin-left:71px;margin-top:24px;width:160px}']
-                left, top, left_derivation = 306, 24, "235 + margin-left 71"
-            elif pid == 214:
-                rules = ['.config-img{margin-top:5px}']
-                top = 5
-            elif pid == 222:
-                rules = ['.config-block .config-img.svg-image{left:256px;position:absolute;top:-10px}',
-                         '.config-block .config-img.svg-image svg{width:260px}']
-                left, top, width, left_derivation = 256, -10, 260, "Source inline SVG wrapper left 256"
-            elif pid == 226:
-                rules = ['.dolores-customize .config-block .config-img.svg-image{left:calc(50% - 100px);margin-top:10px}']
-                left, top, left_derivation = 285, 10, "Source block width 770 / 2 - 100"
-            elif pid == 229:
-                rules = ['.topview-winona .config-img.svg-image{left:calc(50% - 125px);top:14px}']
-                left, top, left_derivation = 260, 14, "Source block width 770 / 2 - 125"
-            elif pid == 235:
-                rules = ['.topview-dolores .config-img.svg-image{left:calc(50% - 111px);top:14px}']
-                left, top, left_derivation = 274, 14, "Source block width 770 / 2 - 111"
-            elif pid == 239:
-                rules = ['.topview-litat1r_cf .config-img.svg-image{left:calc(50% - 87px);top:14px}']
-                left, top, left_derivation = 298, 14, "Source block width 770 / 2 - 87"
-            elif pid == 45066:
-                rules = ['.config-img{margin-top:5px}',
-                         '.config-block .config-img.svg-image{left:calc(50% - 159px)}',
-                         '.config-block .config-img.svg-image>svg{display:block;margin:0 auto}']
-                left, top = 226 + (300 - width) / 2, 5
-                left_derivation = "Source block width 770 / 2 - 159 + centered child (300 - SVG width) / 2"
-            elif pid not in {152, 221, 224}:
-                raise ValueError("Current inline SVG product layout branch needs explicit source resolution")
-            if any(rule not in all_rules for rule in rules):
-                raise ValueError("Current inline SVG product layout selector differs: " + str(pid))
-            original_geometry = {key: surface.get(key) for key in ("image_left", "image_top", "image_width", "image_height")}
-            surface.update({"image_left": left, "image_top": top, "image_width": width, "image_height": height})
-            row["geometry_derivation"] = {"rules": [block_rule, wrapper_rule, svg_rule, *rules],
-                "left": left_derivation, "top": top, "width": width, "height": height,
-                "previous_runtime_geometry": original_geometry,
-                "derived_runtime_geometry": {key: surface[key] for key in original_geometry},
-                "interpretation": "Inline SVG intrinsic dimensions and explicit mounted selectors; no vendor JavaScript or browser execution"}
-        row["source_semantics"] = {"shared_product_image": shared_image, "edition_zero_fallback": fallback,
-                                    "image_top": float(inline_top[1]) if inline_top else surface.get("image_top", 0)}
-        # Resource closure failures remain explicit while source-proven image
-        # fallback/placement corrections can still be applied independently.
-        surface["edition_zero_fallback"] = fallback
-        surface["image_top"] = row["source_semantics"]["image_top"]
-        surface["source"] = source["path"]
-        surface["source_file_sha256"] = source["sha256"]
-        surface["component_range"] = [row["complete_functions"][0]["character_start"],
-                                      row["complete_functions"][0]["character_end"]]
-        mounted = next((item for item in originals if item["sha256"] == surface.get("mounted_file_sha256")), None)
-        if mounted is not None and valid(mounted):
-            surface["mounted_file"] = mounted["path"]
-        row["source_semantics_verified"] = True
-        corrected.append((pid, row["group_index"]))
+                elif isinstance(value, str) and value.startswith("synapse/mouse-customize/"):
+                    artwork({"asset": value})
+            artwork(surface)
+            row["artwork"] = prepared
+            svg_images = []
+            for svg_artwork in surface["images"]:
+                resource = aliases.get(svg_artwork["asset"])
+                if resource is not None and resource.suffix == ".svg" and resource.is_file():
+                    svg = ET.fromstring(resource.read_bytes())
+                    svg_images.append({"edition": svg_artwork["edition"], "request": svg_artwork["request"],
+                                       "prepared": identity(resource), "root_attributes": svg.attrib})
+            row["svg_intrinsic_dimensions"] = svg_images
+            all_rules = [rule["body"] for stylesheet in row["layout_css"] for rule in stylesheet["complete_rules"]]
+            if pid == 231 and row["group_index"] in {2, 3}:
+                visual_rules = [
+                    '.side-view-svg{height:340px;left:calc(50% - 150px);pointer-events:none;position:absolute;top:0;width:300px;z-index:0!important}',
+                    '.side-view-svg>svg{display:block;height:100%;overflow:visible;width:100%}',
+                    '.side-view-svg [data-btn]{stroke:#666;fill:#0000;fill-opacity:0;cursor:pointer;opacity:1;pointer-events:auto;transition:fill .15s ease,fill-opacity .15s ease,stroke .15s ease,opacity .15s ease}',
+                    '.side-view-svg [data-btn].is-hover{fill:#0000;fill-opacity:0;stroke:#44d62c;stroke-width:2px}',
+                    '.side-view-svg [data-btn].is-active{fill:#44d62c;fill-opacity:.55;stroke:#44d62c;stroke-width:2px}',
+                    '.side-view-svg [data-btn].is-disabled{opacity:.25;pointer-events:none}',
+                    '.side-view-svg.is-hyper [data-btn].is-hover{stroke:#fd8611!important}',
+                    '.side-view-svg.is-hyper [data-btn].is-active{fill:#fd8611;stroke:#fd8611!important}',
+                ]
+                if any(rule not in all_rules for rule in visual_rules):
+                    raise ValueError("Current side-button CSS lifecycle or native presentation differs")
+                variant = 6 if row["group_index"] == 2 else 12
+                source_name = next(image["request"].rsplit("/", 1)[-1] for image in surface["images"]
+                                   if f"side-view-buttons-{variant}." in image["request"])
+                original_svg = next(item for item in originals if Path(item["path"]).name == source_name)
+                if not valid(original_svg):
+                    raise ValueError("Current source side-button SVG byte identity differs")
+                svg_root = ET.fromstring((a.ROOT / original_svg["path"]).read_bytes())
+                if svg_root.get("viewBox") != "0 0 200 320":
+                    raise ValueError("Current side-button SVG viewBox differs")
+                parents = {child: parent for parent in svg_root.iter() for child in parent}
+                embedded_styles = [(node.text or "") for node in svg_root.iter() if node.tag.split("}")[-1] == "style"]
+                buttons = [node for node in svg_root.iter() if node.get("data-btn") is not None]
+                scale, origin_x = 340 / 320, 235 + (300 - 200 * (340 / 320)) / 2
+                existing_hits = {hit["index"]: hit for hit in surface["svg_path_hits"]}
+                if set(existing_hits) != {int(node.get("data-btn")) for node in buttons}:
+                    raise ValueError("Current side-button source identifiers differ from the mounted button model")
+                geometry_inputs = []
+                for node in buttons:
+                    index = int(node.get("data-btn"))
+                    ancestors, parent = [], parents[node]
+                    while parent is not svg_root:
+                        ancestors.append(dict(parent.attrib))
+                        if parent.get("transform"):
+                            raise ValueError("Current side-button ancestor transform requires geometry projection")
+                        parent = parents[parent]
+                    geometry, bounds = keyboard_path_geometry(dict(node.attrib))
+                    style = {}
+                    classes = set(node.get("class", "").split())
+                    for stylesheet in embedded_styles:
+                        for match in re.finditer(r'([^{}]+)\{([^{}]*)\}', stylesheet):
+                            selectors = [selector.strip() for selector in match[1].split(",")]
+                            if any(selector == "." + name for selector in selectors for name in classes):
+                                for declaration in match[2].split(";"):
+                                    if declaration.strip():
+                                        name, value = declaration.split(":", 1)
+                                        style[name.strip()] = value.strip()
+                    if node.get("style") or any(node.get(key) for key in ("stroke-width", "stroke-miterlimit", "stroke-linejoin", "stroke-linecap", "fill-rule")):
+                        raise ValueError("Current side-button path has additional presentation attributes")
+                    if style.get("stroke-linejoin", "miter") != "miter" or style.get("stroke-linecap", "butt") != "butt" or style.get("fill-rule", "nonzero") != "nonzero":
+                        raise ValueError("Current side-button native path style differs")
+                    hit = existing_hits[index]
+                    hit.update({"left": origin_x + bounds[0] * scale, "top": bounds[1] * scale,
+                                "width": bounds[2] * scale, "height": bounds[3] * scale,
+                                "svg_state": {"stroke_width": float(re.sub(r'px$', '', style.get("stroke-width", "1"))),
+                                              "miter_limit": float(style.get("stroke-miterlimit", "4"))}})
+                    hit["key"].update({"bounds": bounds, "geometry": geometry})
+                    geometry_inputs.append({"index": index, "source_path_attributes": dict(node.attrib), "ancestor_attributes": ancestors,
+                                            "effective_internal_style": style, "derived_hit": hit})
+                row["svg_button_native_geometry"] = {"original": identity(a.ROOT / original_svg["path"]),
+                    "static_parser": "fontTools 4.60.2 / SVG path to complete cubic command geometry",
+                    "complete_embedded_styles": embedded_styles, "root_attributes": dict(svg_root.attrib),
+                    "complete_visual_rules": visual_rules, "scale": scale, "origin_x": origin_x, "paths": geometry_inputs, "target_execution": False}
+            if shared_image and surface.get("prefer_svg") and svg_images:
+                block_rule = '.config-wrapper .config-block{height:340px;margin:0 auto;max-height:100%;position:relative;width:770px;z-index:1}'
+                wrapper_rule = '.config-block .config-img{left:calc(50% - 150px);max-height:100%;position:absolute;width:300px;z-index:0}'
+                svg_rule = '.config-block .config-img.svg-image{left:calc(50% - 160px)}'
+                if any(rule not in all_rules for rule in (block_rule, wrapper_rule, svg_rule)):
+                    raise ValueError("Current inline SVG block/wrapper geometry differs")
+                dimensions = {tuple(float(re.sub(r'px$', '', image["root_attributes"][axis]))
+                                    for axis in ("width", "height")) for image in svg_images}
+                if len(dimensions) != 1:
+                    raise ValueError("Current inline SVG editions have different intrinsic geometry")
+                width, height = next(iter(dimensions))
+                rules, left, top, left_derivation = [], 225, 0, "Source block width 770 / 2 - 160"
+                # These are verified mounted CSS branches, not a general cascade
+                # interpreter. The inline SVG keeps its root dimensions unless a
+                # current branch explicitly styles the SVG child itself.
+                if pid == 163:
+                    rules = ['.config-block .config-img.svg-image{left:235px!important;margin-left:71px;margin-top:24px;width:160px}']
+                    left, top, left_derivation = 306, 24, "235 + margin-left 71"
+                elif pid == 214:
+                    rules = ['.config-img{margin-top:5px}']
+                    top = 5
+                elif pid == 222:
+                    rules = ['.config-block .config-img.svg-image{left:256px;position:absolute;top:-10px}',
+                             '.config-block .config-img.svg-image svg{width:260px}']
+                    left, top, width, left_derivation = 256, -10, 260, "Source inline SVG wrapper left 256"
+                elif pid == 226:
+                    rules = ['.dolores-customize .config-block .config-img.svg-image{left:calc(50% - 100px);margin-top:10px}']
+                    left, top, left_derivation = 285, 10, "Source block width 770 / 2 - 100"
+                elif pid == 229:
+                    rules = ['.topview-winona .config-img.svg-image{left:calc(50% - 125px);top:14px}']
+                    left, top, left_derivation = 260, 14, "Source block width 770 / 2 - 125"
+                elif pid == 235:
+                    rules = ['.topview-dolores .config-img.svg-image{left:calc(50% - 111px);top:14px}']
+                    left, top, left_derivation = 274, 14, "Source block width 770 / 2 - 111"
+                elif pid == 239:
+                    rules = ['.topview-litat1r_cf .config-img.svg-image{left:calc(50% - 87px);top:14px}']
+                    left, top, left_derivation = 298, 14, "Source block width 770 / 2 - 87"
+                elif pid == 45066:
+                    rules = ['.config-img{margin-top:5px}',
+                             '.config-block .config-img.svg-image{left:calc(50% - 159px)}',
+                             '.config-block .config-img.svg-image>svg{display:block;margin:0 auto}']
+                    left, top = 226 + (300 - width) / 2, 5
+                    left_derivation = "Source block width 770 / 2 - 159 + centered child (300 - SVG width) / 2"
+                elif pid not in {152, 221, 224}:
+                    raise ValueError("Current inline SVG product layout branch needs explicit source resolution")
+                if any(rule not in all_rules for rule in rules):
+                    raise ValueError("Current inline SVG product layout selector differs: " + str(pid))
+                original_geometry = {key: surface.get(key) for key in ("image_left", "image_top", "image_width", "image_height")}
+                surface.update({"image_left": left, "image_top": top, "image_width": width, "image_height": height})
+                row["geometry_derivation"] = {"rules": [block_rule, wrapper_rule, svg_rule, *rules],
+                    "left": left_derivation, "top": top, "width": width, "height": height,
+                    "previous_runtime_geometry": original_geometry,
+                    "derived_runtime_geometry": {key: surface[key] for key in original_geometry},
+                    "interpretation": "Inline SVG intrinsic dimensions and explicit mounted selectors; no vendor JavaScript or browser execution"}
+            row["source_semantics"] = {"shared_product_image": shared_image, "edition_zero_fallback": fallback,
+                                        "image_top": float(inline_top[1]) if inline_top else surface.get("image_top", 0)}
+            # Resource closure failures remain explicit while source-proven image
+            # fallback/placement corrections can still be applied independently.
+            surface["edition_zero_fallback"] = fallback
+            surface["image_top"] = row["source_semantics"]["image_top"]
+            surface["source"] = source["path"]
+            surface["source_file_sha256"] = source["sha256"]
+            surface["component_range"] = [row["complete_functions"][0]["character_start"],
+                                          row["complete_functions"][0]["character_end"]]
+            mounted = next((item for item in originals if item["sha256"] == surface.get("mounted_file_sha256")), None)
+            if mounted is not None and valid(mounted):
+                surface["mounted_file"] = mounted["path"]
+            row["source_semantics_verified"] = True
+            return row, surface, True
+    def run_one(item):
+        index, surface = item
+        try:
+            row, updated, corrected_flag = audit_one(surface)
+            return index, row, updated, corrected_flag
+        except Exception as error:
+            return index, {"product_id": surface["product_id"], "group_index": surface.get("group_index", 0),
+                           "failures": [str(error)], "complete_functions": [], "artwork": [],
+                           "runtime_acceptance": "unverified"}, surface, False
+
+    jobs = [(index, dict(surface)) for index, surface in enumerate(surfaces)
+            if surface["product_id"] in selected]
+    results = []
+    if jobs:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max(2, min(workers, len(jobs)))) as pool:
+            results = list(pool.map(run_one, jobs))
+    products = [result[1] for result in results]
+    corrected = []
+    for index, row, updated, corrected_flag in results:
+        surfaces[index].update(updated)
+        if corrected_flag:
+            corrected.append((row["product_id"], row["group_index"]))
     # A selected refresh preserves other products and concurrently refreshed
     # independent audit sections. Runtime/evidence mutations remain sequential.
     report = json.loads(receipt_path.read_bytes())
@@ -5155,6 +5203,9 @@ def webpack_factory_snapshot(module):
 
 def audit_keyboard_artwork(args):
     """Current entry/manifest reachable artwork and physical layout projection."""
+    workers = getattr(args, "workers", 4)
+    if type(workers) is not int or not 2 <= workers <= 16:
+        raise ValueError("Family audit workers must be between two and sixteen")
     import sys
     import xml.etree.ElementTree as ET
     from collections import defaultdict, deque
@@ -5167,517 +5218,553 @@ def audit_keyboard_artwork(args):
     report, products, geometries, geometry_index, preparations = [], [], [], {}, []
     parser_bodies = {}
 
-    def retain_geometry(keys, viewbox, buttons):
+    def retain_geometry(keys, viewbox, buttons, index_map=None, geometry_list=None):
+        index_map = geometry_index if index_map is None else index_map
+        geometry_list = geometries if geometry_list is None else geometry_list
         geometry = {"keys": keys, "viewbox": viewbox, "buttons": buttons}
         digest = hashlib.sha256(json.dumps(geometry, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
-        if digest not in geometry_index:
-            geometry_index[digest] = len(geometries)
-            geometries.append(geometry)
-        return geometry_index[digest]
+        if digest not in index_map:
+            index_map[digest] = len(geometry_list)
+            geometry_list.append(geometry)
+        return index_map[digest]
 
-    for spec in specs:
-        pid = spec["product_id"]
-        if pid not in selected:
-            continue
-        row = {"product_id": pid, "failures": [], "complete_modules": [], "resources": [], "layouts": []}
-        report.append(row)
-        try:
-            receipt_path = a.ROOT / f".analysis/inputs/frontend/keyboard-{pid}-current/acquisition.json"
-            acquired = json.loads(receipt_path.read_bytes())
-            if not acquired.get("source_current_during_acquisition"):
-                raise ValueError("Current deployment receipt is unstable")
-            row.update({"acquisition": identity(receipt_path), "closure_unresolved": acquired.get("unresolved", []),
-                        "declared_references_fetched": acquired.get("declared_references_fetched")})
-            files = {item["url"]: item for item in acquired["files"] if "path" in item}
-            root_urls = [acquired["entry_url"], urllib.parse.urljoin(acquired["entry_url"], "asset-manifest.json")]
-            for url in root_urls:
-                if url not in files or not valid(files[url]):
-                    raise ValueError("Current entry/manifest original identity is unverified: " + url)
-            row["roots"] = [files[url] for url in root_urls]
-            entry_html = (a.ROOT / files[root_urls[0]]["path"]).read_text(encoding="utf-8")
-            entry_parser = a.References(); entry_parser.feed(entry_html)
-            manifest = json.loads((a.ROOT / files[root_urls[1]]["path"]).read_bytes())
-            graph = defaultdict(set)
-            for edge in acquired.get("edges", []):
-                if edge["from"] not in root_urls: graph[edge["from"]].add(edge["to"])
-            graph[root_urls[0]].update(urllib.parse.urljoin(root_urls[0], literal)
-                                       for literal, _ in entry_parser.refs)
-            graph[root_urls[1]].update(urllib.parse.urljoin(root_urls[1], literal)
-                                       for literal in manifest["files"].values())
-            reachable, pending = set(root_urls), deque(root_urls)
-            while pending:
-                for url in graph[pending.popleft()]:
-                    if url not in reachable: reachable.add(url); pending.append(url)
-            for index, source in enumerate(acquired["files"]):
-                if source["url"] not in reachable or not urllib.parse.urlsplit(source["url"]).path.endswith(".js"):
-                    continue
-                if source.get("path") and valid(source):
-                    continue
-                repaired = a.download(source["url"], receipt_path.parent)
-                row.setdefault("supplemental_acquisition", []).append(repaired)
-                if repaired.get("http_status") != 200 or not valid(repaired):
-                    row["failures"].append({"url": source["url"], "reason": "Current reachable JavaScript acquisition failed", "acquisition": repaired})
-                    continue
-                repaired["previous_attempts"] = source.get("previous_attempts", []) + [
-                    {key: value for key, value in source.items() if key != "previous_attempts"}]
-                acquired["files"][index] = repaired
-                files[source["url"]] = repaired
-                publish_frontend_acquisition(receipt_path, acquired)
-            sources = [(item, (a.ROOT / item["path"]).read_text(encoding="utf-8")) for url, item in files.items()
-                       if url in reachable and item["path"].endswith(".js")]
-            mounted_scripts = {urllib.parse.urljoin(root_urls[0], literal) for literal, kind in entry_parser.refs
-                               if kind == "html:script:src" and ".js" in literal}
-            main_sources = [(item, text) for item, text in sources if item["url"] in mounted_scripts and Path(item["path"]).name.startswith("main.")]
-            if len(main_sources) != 1 or not valid(main_sources[0][0]):
-                raise ValueError("Actual mounted main script is missing/ambiguous")
-            row["mounted_main"] = main_sources[0][0]
-            request_paths = re.compile(r'"\./' + str(pid) + r'_\d+/(?:img_prods|svg_prods)/\d+(?:-[13]x\.png|\.svg)"')
-            requests = re.compile(r'"(\./' + str(pid) + r'_(\d+)/(img_prods|svg_prods)/(\d+)(?:-([13])x\.png|\.svg))"\s*:\s*(?:\[('
-                                  + JAVASCRIPT_INTEGER_LITERAL + r')(?:,[^\]]*)?\]|(' + JAVASCRIPT_INTEGER_LITERAL + r')(?=\s*[,}]))')
-            contexts = [(item, text) for item, text in sources if request_paths.search(text)]
-            if any(not valid(item) for item, _ in contexts):
-                raise ValueError("Current resource context byte identity differs")
-            row["resource_contexts"] = [item for item, _ in contexts]
-            module_cache, original_module_cache = {}, {}
-            def original_modules(original, text):
-                if original["path"] not in original_module_cache:
-                    if not valid(original): raise ValueError("Module original byte identity differs")
-                    original_module_cache[original["path"]] = [dict(module, original=original)
-                                                               for module in keyboard_source_modules(text)]
-                return original_module_cache[original["path"]]
-
-            def module_at(original, text, offset):
-                owners = [module for module in original_modules(original, text)
-                          if module["character_start"] <= offset < module["character_end"]]
-                if not owners: raise ValueError("Anchor is outside a complete webpack module/concatenated entry")
-                return min(owners, key=lambda owner: owner["character_end"]-owner["character_start"])
-
-            def retain_module(item, role):
-                if not any(record["module_id"] == item["module_id"] and record["original"] == item["original"] for record in row["complete_modules"]):
-                    row["complete_modules"].append({**item, "role": role})
-                    wrapper = "({" + item["body"] + "});" if isinstance(item["module_id"], int) else "(" + item["body"] + ");"
-                    parser_bodies[hashlib.sha256(item["body"].encode()).hexdigest()] = wrapper
-                return item["body"]
-
-            def module_by_id(module_id, role):
-                if module_id not in module_cache:
-                    found = []
-                    for original, text in sources:
-                        if re.search(r"\b" + str(module_id) + r"[:(]", text):
-                            found.extend(module for module in original_modules(original, text) if module["module_id"] == module_id)
-                    unique = {item["body"] for item in found}
-                    if len(unique) != 1: raise ValueError(f"Current module {module_id} is missing/ambiguous")
-                    module_cache[module_id] = found[0]
-                item = module_cache[module_id]
-                return retain_module(item, role)
-
-            assets = {}
-            asset_pattern = re.compile(r'\b(' + JAVASCRIPT_INTEGER_LITERAL + r'):(?:\([\w$,]*\)=>|[\w$]+=>|function\([\w$,]*\))\{([^{}]{0,1000})\}')
-            for original, text in sources:
-                for match in asset_pattern.finditer(text):
-                    exported = re.search(r'\.p\s*\+\s*["\'](static/media/[^"\']+)["\']', match[2])
-                    if exported:
-                        assets[javascript_integer_literal(match[1])] = (original, match, exported[1])
-            runtime_images, resource_map = [], {}
-            seen_resources = {}
-            declared_requests = [(context, request) for context, text in contexts for request in requests.finditer(text)]
-            parsed_requests = {(context["path"], request.start()) for context, request in declared_requests}
-            declared_paths = [(context, request) for context, text in contexts for request in request_paths.finditer(text)]
-            for context, request in declared_paths:
-                if (context["path"], request.start()) not in parsed_requests:
-                    row["failures"].append({"request": request[0], "original": context,
-                                            "character_start": request.start(),
-                                            "reason": "Current resource context numeric binding remains unresolved"})
-            row["resource_context_binding_scan"] = {
-                "declared_paths": len(declared_paths), "parsed_bindings": len(parsed_requests),
-                "integer_literal_parser": "exact Decimal or explicit JS base integer; no JavaScript execution"}
-            for original, text in contexts:
-                retain_module(module_at(original, text, request_paths.search(text).start()), "resource_context")
-            supported_layouts = sorted({int(request[4]) for _, request in declared_requests})
-            row["source_supported_layout_ids"] = supported_layouts
-            for context, request in declared_requests:
-                name, edition, kind, layout, density, module_id = request[1], int(request[2]), request[3], int(request[4]), int(request[5] or 1), javascript_integer_literal(request[6] or request[7])
-                try:
-                    original, match, filename = assets[module_id]
-                    if not valid(original): raise ValueError("Resource export input byte identity differs")
-                    url = urllib.parse.urljoin(acquired["entry_url"], filename)
-                    source = files.get(url)
-                    if source is None or source.get("http_status") != 200:
-                        previous_source = source
-                        source = a.download(url, receipt_path.parent)
-                        if source.get("http_status") != 200 or not valid(source):
-                            row.setdefault("supplemental_acquisition", []).append(source)
-                            raise ValueError("Official resource acquisition failed: " + url + ": " + str(source.get("error", source.get("http_status"))))
-                        if previous_source is not None:
-                            if (source["sha256"], source["bytes"]) != (previous_source.get("sha256"), previous_source.get("bytes")):
-                                raise ValueError("Official resource differs from retained mounted bytes: " + url)
-                            source["previous_attempts"] = previous_source.get("previous_attempts", []) + [
-                                {key: value for key, value in previous_source.items() if key != "previous_attempts"}]
-                            acquired["files"][acquired["files"].index(previous_source)] = source
-                        else:
-                            acquired["files"].append(source)
-                        files[url] = source
-                        supplemental_edge = {"from": original["url"], "to": url,
-                                             "kind": "keyboard-artwork-current-export-literal"}
-                        if supplemental_edge not in acquired.setdefault("edges", []): acquired["edges"].append(supplemental_edge)
-                        row.setdefault("supplemental_acquisition", []).append(source)
-                        publish_frontend_acquisition(receipt_path, acquired)
-                        reachable.add(url)
-                    if source is None or url not in reachable or not valid(source):
-                        raise ValueError("Original resource bytes are missing/unverified/unreachable: " + url)
-                    extension = ".svg" if kind == "svg_prods" else ".png"
-                    alias = seen_resources.setdefault(source["path"], f"synapse/keyboard-current/{pid}/{Path(filename).stem}{extension}")
-                    resource_map[source["path"]] = alias
-                    image = {"edition_id": edition, "layout_id": layout, "resolution": density,
-                             "svg": kind == "svg_prods", "asset": alias}
-                    if image not in runtime_images: runtime_images.append(image)
-                    row["resources"].append({"request": name, "request_character_start": request.start(), "request_character_end": request.end(),
-                                             "context": {key: context[key] for key in ("path", "bytes", "sha256")},
-                                             "export": {"original": original, "body": match[0], "character_start": match.start(), "character_end": match.end()},
-                                             "resource": source, "runtime": image})
-                except (KeyError, ValueError, OSError) as error:
-                    row["failures"].append({"request": name, "reason": str(error)})
-            row["acquisition"] = identity(receipt_path)
-            row["image_mode_svg"] = bool(re.search(r'UseSVGForProductImage:(!0|true)', main_sources[0][1]))
-            png_densities = defaultdict(set)
-            for _, request in declared_requests:
-                if request[3] == "img_prods":
-                    png_densities[(int(request[2]), int(request[4]))].add(int(request[5]))
-            one_x_only_variants = [{"edition_id": edition, "layout_id": layout}
-                                   for (edition, layout), densities in sorted(png_densities.items())
-                                   if densities == {1}] if not row["image_mode_svg"] else []
-            if one_x_only_variants:
-                density_producers = []
-                for original, text in sources:
-                    if '"[ProductImage] loadImg"' not in text:
+    def audit_one(spec):
+            pid = spec["product_id"]
+            row = {"product_id": pid, "failures": [], "complete_modules": [], "resources": [], "layouts": []}
+            local_geometries, local_geometry_index, parser_bodies = [], {}, {}
+            product_result, preparation_results = None, []
+            try:
+                receipt_path = a.ROOT / f".analysis/inputs/frontend/keyboard-{pid}-current/acquisition.json"
+                acquired = json.loads(receipt_path.read_bytes())
+                if not acquired.get("source_current_during_acquisition"):
+                    raise ValueError("Current deployment receipt is unstable")
+                row.update({"acquisition": identity(receipt_path), "closure_unresolved": acquired.get("unresolved", []),
+                            "declared_references_fetched": acquired.get("declared_references_fetched")})
+                files = {item["url"]: item for item in acquired["files"] if "path" in item}
+                root_urls = [acquired["entry_url"], urllib.parse.urljoin(acquired["entry_url"], "asset-manifest.json")]
+                for url in root_urls:
+                    if url not in files or not valid(files[url]):
+                        raise ValueError("Current entry/manifest original identity is unverified: " + url)
+                row["roots"] = [files[url] for url in root_urls]
+                entry_html = (a.ROOT / files[root_urls[0]]["path"]).read_text(encoding="utf-8")
+                entry_parser = a.References(); entry_parser.feed(entry_html)
+                manifest = json.loads((a.ROOT / files[root_urls[1]]["path"]).read_bytes())
+                graph = defaultdict(set)
+                for edge in acquired.get("edges", []):
+                    if edge["from"] not in root_urls: graph[edge["from"]].add(edge["to"])
+                graph[root_urls[0]].update(urllib.parse.urljoin(root_urls[0], literal)
+                                           for literal, _ in entry_parser.refs)
+                graph[root_urls[1]].update(urllib.parse.urljoin(root_urls[1], literal)
+                                           for literal in manifest["files"].values())
+                reachable, pending = set(root_urls), deque(root_urls)
+                while pending:
+                    for url in graph[pending.popleft()]:
+                        if url not in reachable: reachable.add(url); pending.append(url)
+                for index, source in enumerate(acquired["files"]):
+                    if source["url"] not in reachable or not urllib.parse.urlsplit(source["url"]).path.endswith(".js"):
                         continue
-                    for match in re.finditer(r'(?<![\w$])([\w$]+)=[\w$().]+\.memo\(function\([\w$,]*\)\{', text):
-                        end = javascript_delimited(text, match.end() - 1)
-                        if text[end:end+1] != ")":
-                            continue
-                        end += 1
-                        body = text[match.start():end]
-                        if ('"[ProductImage] loadImg"' not in body
-                                or not re.search(r'src:[\w$]+\.srcSet_1x,srcSet:""\.concat\([\w$]+\.srcSet_1x," 1x, "\)\.concat\([\w$]+\.srcSet_3x," 3x"\)', body)
-                                or 'T={default:""}' not in body):
-                            continue
-                        digest = hashlib.sha256(body.encode()).hexdigest()
-                        parser_bodies[digest] = "const " + body + ";"
-                        density_producers.append({"original": original, "symbol": match[1],
-                            "character_start": match.start(), "character_end": end,
-                            "byte_start": len(text[:match.start()].encode()),
-                            "byte_end": len(text[:end].encode()), "body": body, "body_sha256": digest})
-                if len(density_producers) != 1:
-                    raise ValueError("Single-density image caller is missing/ambiguous")
-                row["single_density_image_selection"] = {
-                    "complete_producer": density_producers[0],
-                    "one_x_only_variants": one_x_only_variants,
-                    "actual_candidate_attributes": "src=one_x_url; srcset=one_x_url + ' 1x, ' + empty_three_x_url + ' 3x'",
-                    "selection_semantics": "Absent 3x context leaves an empty URL. The final token 3x has no descriptor and normalizes to 1x; duplicate density removal retains the earlier real 1x URL.",
-                    "standard": ".analysis/inputs/standards/html-images-current/acquisition.json",
-                    "sections": ["4.8.4.3.7", "4.8.4.3.10", "4.8.4.3.12"],
-                    "runtime_acceptance": "unverified; derived statically from complete current caller and HTML image algorithms"}
-            source_variants = sorted({(int(request[2]), int(request[4])) for _, request in declared_requests
-                                      if (request[3] == "svg_prods") == row["image_mode_svg"]})
-            row["source_variants"] = [{"edition_id": edition, "layout_id": layout}
-                                      for edition, layout in source_variants]
-            if spec.get("preview_only"):
-                row["preview_only"] = True
-                continue
-            if not runtime_images and pid not in {555, 580, 747}:
-                row["failures"].append("No current parameterized base images; source special caller must be resolved")
-            if pid in {555, 580, 747}:
-                row["independent_adapter"] = {"implementation": "crates/razer-pages/src/features/keyboard/mapping/keyboard_mapping_keypad_artwork.rs",
-                                              "images": "crates/razer-pages/src/data/keyboard_keypad_device_image_data.rs",
-                                              "ownership": "Current Keypad producer owns view/edition/density and retained decode lifecycle separately"}
-                continue
+                    if source.get("path") and valid(source):
+                        continue
+                    repaired = a.download(source["url"], receipt_path.parent)
+                    row.setdefault("supplemental_acquisition", []).append(repaired)
+                    if repaired.get("http_status") != 200 or not valid(repaired):
+                        row["failures"].append({"url": source["url"], "reason": "Current reachable JavaScript acquisition failed", "acquisition": repaired})
+                        continue
+                    repaired["previous_attempts"] = source.get("previous_attempts", []) + [
+                        {key: value for key, value in source.items() if key != "previous_attempts"}]
+                    acquired["files"][index] = repaired
+                    files[source["url"]] = repaired
+                    publish_frontend_acquisition(receipt_path, acquired)
+                sources = [(item, (a.ROOT / item["path"]).read_text(encoding="utf-8")) for url, item in files.items()
+                           if url in reachable and item["path"].endswith(".js")]
+                mounted_scripts = {urllib.parse.urljoin(root_urls[0], literal) for literal, kind in entry_parser.refs
+                                   if kind == "html:script:src" and ".js" in literal}
+                main_sources = [(item, text) for item, text in sources if item["url"] in mounted_scripts and Path(item["path"]).name.startswith("main.")]
+                if len(main_sources) != 1 or not valid(main_sources[0][0]):
+                    raise ValueError("Actual mounted main script is missing/ambiguous")
+                row["mounted_main"] = main_sources[0][0]
+                request_paths = re.compile(r'"\./' + str(pid) + r'_\d+/(?:img_prods|svg_prods)/\d+(?:-[13]x\.png|\.svg)"')
+                requests = re.compile(r'"(\./' + str(pid) + r'_(\d+)/(img_prods|svg_prods)/(\d+)(?:-([13])x\.png|\.svg))"\s*:\s*(?:\[('
+                                      + JAVASCRIPT_INTEGER_LITERAL + r')(?:,[^\]]*)?\]|(' + JAVASCRIPT_INTEGER_LITERAL + r')(?=\s*[,}]))')
+                contexts = [(item, text) for item, text in sources if request_paths.search(text)]
+                if any(not valid(item) for item, _ in contexts):
+                    raise ValueError("Current resource context byte identity differs")
+                row["resource_contexts"] = [item for item, _ in contexts]
+                module_cache, original_module_cache = {}, {}
+                def original_modules(original, text):
+                    if original["path"] not in original_module_cache:
+                        if not valid(original): raise ValueError("Module original byte identity differs")
+                        original_module_cache[original["path"]] = [dict(module, original=original)
+                                                                   for module in keyboard_source_modules(text)]
+                    return original_module_cache[original["path"]]
 
-            # The full selector owns keyboard geometry independently of edition.
-            selector_pattern = re.compile(r'updatedProductWithLayoutAndEdition:(?:\(\)=>|function\(\))')
-            selector_source = next(((item, text) for item, text in sources if selector_pattern.search(text)), None)
-            if selector_source is None: raise ValueError("Mounted layout-selector export is missing")
-            raw_selector = module_at(selector_source[0], selector_source[1], selector_pattern.search(selector_source[1]).start())
-            selector_module = module_by_id(raw_selector["module_id"], "layout_selector")
-            export = re.search(r'updatedProductWithLayoutAndEdition:(?:\(\)=>|function\(\)\{return )([\w$]+)', selector_module)
-            symbol = export[1]
-            selector_start = re.search(r'(?<![\w$])' + re.escape(symbol) + r'=(?:async )?(?:[\w$]+|\([^)]*\))=>\{', selector_module)
-            if selector_start is None: raise ValueError("Layout selector function syntax remains unresolved")
-            selector_end = javascript_delimited(selector_module, selector_start.end()-1)
-            selector = selector_module[selector_start.start():selector_end]
-            row["layout_selector"] = selector
-            enum_alias = re.search(r'([\w$]+)\.([\w$]+)\.(?:UnitedStates|Japanese|UnitedKingdom)', selector)
-            if enum_alias is None: raise ValueError("Actual layout enum namespace is unresolved")
-            enum_import = re.search(r'(?<![\w$])' + re.escape(enum_alias[1]) + r'=[\w$]+\((\d+)\)', selector_module)
-            enum_body = module_by_id(int(enum_import[1]), "layout_enum")
-            enum_symbol = re.search(re.escape(enum_alias[2]) + r':(?:\(\)=>|function\(\)\{return )([\w$]+)', enum_body)[1]
-            enum_start = re.search(r'(?<![\w$])' + re.escape(enum_symbol) + r'=\{', enum_body).end()-1
-            enums = keyboard_static_literal(enum_body[enum_start:javascript_delimited(enum_body, enum_start)])
+                def module_at(original, text, offset):
+                    owners = [module for module in original_modules(original, text)
+                              if module["character_start"] <= offset < module["character_end"]]
+                    if not owners: raise ValueError("Anchor is outside a complete webpack module/concatenated entry")
+                    return min(owners, key=lambda owner: owner["character_end"]-owner["character_start"])
 
-            group_cache = {}
-            def groups(target):
-                requested = target
-                if requested in group_cache: return group_cache[requested]
-                body = selector_module
-                namespace = re.search(re.escape(target) + r',\{groupList:(?:\(\)=>|function\(\)\{return )([\w$]+)', body)
-                if namespace: target = namespace[1]
-                imported = re.search(r'(?<![\w$])' + re.escape(target) + r'=[\w$]+\((\d+)\)', body)
-                lazy = re.search(r'(?<![\w$])' + re.escape(target) + r'=\(\)=>[^;]{0,200}?[\w$]+\.bind\([\w$]+,(\d+)\)', body)
-                if imported or lazy:
-                    body = module_by_id(int((imported or lazy)[1]), "physical_button_list")
-                    target = re.search(r'groupList:(?:\(\)=>|function\(\)\{return )([\w$]+)', body)[1]
-                array = re.search(r'(?<![\w$])' + re.escape(target) + r'=\[', body)
-                constants = {}
-                for binding in re.finditer(r'(?<![\w$])([\w$]+)=("(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')', body):
-                    constants[binding[1]] = keyboard_static_literal(binding[2])
-                if array is not None:
-                    start = array.end()-1; end = javascript_delimited(body, start)
-                    buttons = keyboard_static_literal(body[start:end], constants)[0]["group"]["buttonList"]
-                else:
-                    derived = re.search(r'(?<![\w$])' + re.escape(target) + r'=JSON\.parse\(JSON\.stringify\(([\w$]+)\)\)\.map\(', body)
-                    if derived is None: raise ValueError("Physical button list binding remains unresolved: " + target)
-                    end = javascript_delimited(body, derived.end()-1)
-                    producer = body[derived.start():end]
-                    dictionary = re.search(r'const [\w$]+=([\w$]+)\[[\w$]+\.inputID\]', producer)
-                    if dictionary is None: raise ValueError("Derived layout relabel dictionary is unresolved")
-                    dictionary_start = re.search(r'(?<![\w$])' + re.escape(dictionary[1]) + r'=\{', body)
-                    if dictionary_start is None: raise ValueError("Derived layout relabel binding is unresolved")
-                    start = dictionary_start.end()-1
-                    labels = keyboard_static_literal(body[start:javascript_delimited(body, start)], constants)
-                    buttons = deepcopy(groups(derived[1]))
-                    insertion = re.search(r'buttonList:([\w$]+)\([\w$]+\.group\.buttonList\)\.map\(', producer)
-                    if insertion is not None:
-                        function = re.search(r'(?<![\w$])' + re.escape(insertion[1]) + r'=[\w$]+=>\{', body)
-                        if function is None: raise ValueError("Derived layout button insertion is unresolved")
-                        function_end = javascript_delimited(body, function.end()-1)
-                        function_body = body[function.start():function_end]
-                        clone = re.search(r'JSON\.parse\(JSON\.stringify\(([\w$]+)\.groupList\[0\]\.group\.buttonList\.find\([\w$]+=>"DIAL_CLICK"===[\w$]+\.buttonKey\)\)\)', function_body)
-                        required = ('"DIAL_CLICK"===', '"mediaVolume"===', 'return t<0?e:[...e.slice(0,t),', '...e.slice(t)]')
-                        if clone is None or not all(literal in function_body for literal in required):
-                            raise ValueError("Derived layout insertion branch differs from the observed producer")
-                        if not any(button.get("buttonKey") == "DIAL_CLICK" for button in buttons):
-                            index = next((index for index, button in enumerate(buttons) if button.get("buttonKey") == "mediaVolume"), None)
-                            if index is not None:
-                                dial = next((button for button in groups(clone[1]) if button.get("buttonKey") == "DIAL_CLICK"), None)
-                                if dial is None: raise ValueError("Derived layout dial source is absent")
-                                buttons.insert(index, deepcopy(dial))
-                    for button in buttons:
-                        label = labels.get(button.get("inputID"))
-                        if label:
-                            counter = label if isinstance(label, str) else label["counter"]
-                            default = label if isinstance(label, str) else label["defaultValue"]
-                            button.update({"counter": counter, "defaultValue": default})
-                            if button.get("assignment") == "KEYBOARD": button["assignmentValue"] = default
-                    row.setdefault("derived_layouts", []).append({"target": target, "template": derived[1],
-                                                                  "complete_producer": producer, "labels": labels,
-                                                                  "button_insertion": function_body if insertion else None})
-                group_cache[requested] = buttons
-                return buttons
+                def retain_module(item, role):
+                    if not any(record["module_id"] == item["module_id"] and record["original"] == item["original"] for record in row["complete_modules"]):
+                        row["complete_modules"].append({**item, "role": role})
+                        wrapper = "({" + item["body"] + "});" if isinstance(item["module_id"], int) else "(" + item["body"] + ");"
+                        parser_bodies[hashlib.sha256(item["body"].encode()).hexdigest()] = wrapper
+                    return item["body"]
 
-            grouped, case_targets = {}, {}
-            for branch in re.finditer(r'((?:case [\w$]+\.[\w$]+\.[\w$]+:)+)[\w$]+=([\w$]+)(?:,console\.log\([^;]*\))?(?:;break;|\})', selector):
-                for name in re.findall(r'case [\w$]+\.[\w$]+\.([\w$]+):', branch[1]):
-                    if name in enums: case_targets.setdefault(enums[name], branch[2])
-            default_binding = re.search(r'default:[\w$]+=([\w$]+)', selector)
-            if default_binding:
-                default_target = default_binding[1]
-            elif "switch(" in selector:
-                default_target = case_targets.get(enums["UnitedStates"])
-                row["unknown_layout_selector_returns_undefined"] = True
-            else:
-                japanese = re.search(r'if\([\w$]+===[\w$]+\.[\w$]+\.Japanese\)[\w$]+=([\w$]+);else [\w$]+=([\w$]+)', selector)
-                if japanese:
-                    case_targets[enums["Japanese"]] = japanese[1]
-                    default_target = japanese[2]
-                else:
-                    constant = re.search(r'\.UnitedStates,[\w$]+=([\w$]+),', selector)
-                    if constant is None: raise ValueError("Constant layout selector branch is unresolved")
-                    default_target = constant[1]
-            if default_target is None: raise ValueError("Source selector has no declared default/US branch")
-            svg_producer = None
-            svg_mapping = {}
-            svg_resources = {}
-            svg_originals = {}
-            customize_resources = {}
-            customize_images = []
-            normalize_customize = False
-            normalize_layouts = {"ansi": [], "iso": [], "japanese": enums["Japanese"],
-                                 "united_states": enums["UnitedStates"], "united_kingdom": enums["UnitedKingdom"]}
-            if row["image_mode_svg"]:
-                producer_source = next(((item, text) for item, text in sources if '"Error fetching/parsing SVG:"' in text), None)
-                if producer_source is None: raise ValueError("Current SVG geometry producer is missing")
-                raw = module_at(producer_source[0], producer_source[1], producer_source[1].index('"Error fetching/parsing SVG:"'))
-                producer_body = retain_module(raw, "svg_geometry_producer")
-                svg_producer = {"path": producer_source[0]["path"], "sha256": producer_source[0]["sha256"],
-                                "anchor": '"Error fetching/parsing SVG:"', "module_id": raw["module_id"],
-                                "boundary_parser": "tree-sitter-javascript"}
-                svg_mapping = dict(re.findall(r'\b([\w$]+):"(sel[^"\\]+)"', producer_body))
-                custom_namespace = re.search(r'CUSTOM_MAPPING_SVG:[\w$]+=\[\]\}=\{\.\.\.([\w$]+)\}', producer_body)
-                custom_namespace = custom_namespace or re.search(r'\(\{\},([\w$]+)\)\.CUSTOM_MAPPING_SVG', producer_body)
-                if custom_namespace is None: raise ValueError("SVG producer configuration namespace is unresolved")
-                custom_import = re.search(r'(?<![\w$])' + re.escape(custom_namespace[1]) + r'=[\w$]+\((\d+)\)', producer_body)
-                if custom_import is None and isinstance(raw["module_id"], int): raise ValueError("SVG producer configuration module is unresolved")
-                custom_body = module_by_id(int(custom_import[1]), "product_configuration") if custom_import else producer_body
-                custom_symbol = re.search(r'CUSTOM_MAPPING_SVG:(?:\(\)=>|function\(\)\{return )([\w$]+)', custom_body)
-                if custom_symbol:
-                    custom_start = re.search(r'(?<![\w$])' + re.escape(custom_symbol[1]) + r'=\{', custom_body)
-                    if custom_start:
-                        start = custom_start.end()-1
-                        svg_mapping.update(keyboard_static_literal(custom_body[start:javascript_delimited(custom_body, start)]))
-                callers = []
-                direct_symbol = re.search(r'([\w$]+)=async function\([\w$,]*\)\{let [\w$]+=!\(arguments.length>4', producer_body)
+                def module_by_id(module_id, role):
+                    if module_id not in module_cache:
+                        found = []
+                        for original, text in sources:
+                            if re.search(r"\b" + str(module_id) + r"[:(]", text):
+                                found.extend(module for module in original_modules(original, text) if module["module_id"] == module_id)
+                        unique = {item["body"] for item in found}
+                        if len(unique) != 1: raise ValueError(f"Current module {module_id} is missing/ambiguous")
+                        module_cache[module_id] = found[0]
+                    item = module_cache[module_id]
+                    return retain_module(item, role)
+
+                assets = {}
+                asset_pattern = re.compile(r'\b(' + JAVASCRIPT_INTEGER_LITERAL + r'):(?:\([\w$,]*\)=>|[\w$]+=>|function\([\w$,]*\))\{([^{}]{0,1000})\}')
                 for original, text in sources:
-                    call_pattern = r'\.Wp(?:\))?\('
-                    if not isinstance(raw["module_id"], int):
-                        if direct_symbol is None: raise ValueError("Concatenated SVG producer export binding is unresolved")
-                        call_pattern = r'(?<![\w$])' + re.escape(direct_symbol[1]) + r'\('
-                    for call in re.finditer(call_pattern, text):
-                        opening = call.end()-1; end = javascript_delimited(text, opening)
-                        arguments = text[opening:end]
-                        if ".DeviceInfo.productId," in arguments:
-                            if not arguments.endswith((",!0)", ",!1)")):
-                                raise ValueError("SVG caller normalization/lettering parameter is unresolved: " + arguments)
-                            owner = module_at(original, text, call.start())
-                            retain_module(owner, "svg_geometry_caller")
-                            normalized = arguments.endswith(",!0)")
-                            normalize_customize = normalize_customize or normalized
-                            following = text[end:end+550]
-                            callers.append({"original": original, "character_start": opening, "character_end": end,
-                                            "arguments": arguments, "normalize_layout_and_filter_lettering": normalized,
-                                            "publishes_actuation_button_list": "updateActuationButtonList" in following,
-                                            "producer_binding": direct_symbol[1] if not isinstance(raw["module_id"], int) else ".Wp"})
-                if not callers: raise ValueError("Current SVG caller parameter chain is unresolved")
-                row["svg_callers"] = callers
-                row["normalize_customize"] = normalize_customize
-                if normalize_customize:
-                    normal_namespace = re.search(r'([\w$]+)\.B8W\.includes', producer_body)
-                    if normal_namespace is None: raise ValueError("SVG normalization namespace is unresolved")
-                    normal_import = re.search(r'(?<![\w$])' + re.escape(normal_namespace[1]) + r'=[\w$]+\((\d+)\)', producer_body)
-                    if normal_import is None: raise ValueError("SVG normalization module is unresolved")
-                    normalization_body = module_by_id(int(normal_import[1]), "svg_layout_normalization")
-                    for export_name, field in (("B8W", "ansi"), ("Yi0", "iso")):
-                        array_name = re.search(export_name + r':(?:\(\)=>|function\(\)\{return )([\w$]+)', normalization_body)[1]
-                        start = re.search(r'(?<![\w$])' + re.escape(array_name) + r'=\[', normalization_body).end()-1
-                        literal = normalization_body[start:javascript_delimited(normalization_body, start)]
-                        literal = re.sub(r'[\w$]+\.[\w$]+\.([\w$]+)', lambda match: str(enums[match[1]]), literal)
-                        normalize_layouts[field] = keyboard_static_literal(literal)
-                    row["layout_normalization"] = normalize_layouts
-                lettering = {enums[name]: label for name, label in re.findall(r'\[[\w$]+\.[\w$]+\.([\w$]+)\]:"([A-Z]+)"', producer_body)
-                             if name in enums}
-                for resource in row["resources"]:
-                    image = resource["runtime"]
-                    if not image["svg"]: continue
-                    svg = ET.fromstring((a.ROOT / resource["resource"]["path"]).read_bytes())
-                    elements = [dict(element.attrib) | {"type": element.tag.split("}")[-1]}
-                                for tag in ("path", "circle", "rect") for element in svg.iter()
-                                if element.tag.split("}")[-1] == tag and element.get("id")]
-                    svg_resources[(image["edition_id"], image["layout_id"])] = elements
-                    svg_originals[(image["edition_id"], image["layout_id"])] = (resource, svg)
-                    removed = [child.get("id") for child in svg
-                               if child.get("id") and ("_LED" in child.get("id") or "_Selection" in child.get("id"))]
-                    if removed:
-                        customize_alias = image["asset"].replace(".svg", "-customize.svg")
-                        customize_resources[resource["resource"]["path"]] = {
-                            "display": customize_alias, "svg_remove_root_ids": removed, "producer": svg_producer}
-                        image["customize_asset"] = customize_alias
-                    else:
-                        image["customize_asset"] = image["asset"]
-                    for entry in runtime_images:
-                        if entry["asset"] == image["asset"]:
-                            entry["customize_asset"] = image["customize_asset"]
-
-                def normalized_layout(layout):
-                    if layout in normalize_layouts["ansi"]: return normalize_layouts["united_states"]
-                    if layout in normalize_layouts["iso"]: return normalize_layouts["united_kingdom"]
-                    return layout if layout == normalize_layouts["japanese"] else normalize_layouts["united_states"]
-
-                requested_layouts = sorted(set(enums.values()) | {image["layout_id"] for image in runtime_images})
-                for layout in requested_layouts:
-                    resource_layout = normalized_layout(layout) if normalize_customize else layout
-                    editions = {edition for edition, source_layout in svg_originals if source_layout == resource_layout}
-                    for edition in sorted(editions):
-                        resource, svg = svg_originals[(edition, resource_layout)]
-                        image = resource["runtime"]
-                        removed = [child.get("id") for child in svg if child.get("id") and
-                                   ("_LED" in child.get("id") or "_Selection" in child.get("id") or
-                                    normalize_customize and ("_Lettering" in child.get("id") or "_Characters" in child.get("id"))
-                                    and child.get("id") not in {lettering.get(layout, "US") + "_Lettering", lettering.get(layout, "US") + "_Characters"})]
-                        alias = image.get("customize_asset", image["asset"])
-                        if removed and normalize_customize:
-                            alias = alias.replace(".svg", f"-customize-layout-{layout}.svg")
-                            customize_resources[(resource["resource"]["path"], alias)] = {
-                                "display": alias, "svg_remove_root_ids": removed, "producer": svg_producer}
-                        customize_images.append({**image, "layout_id": layout, "asset": alias,
-                                                 "source_layout_id": resource_layout})
-
-            def physical(target, layout=1, edition=0, normalize=False):
-                group_key = (target, layout, edition, normalize) if row["image_mode_svg"] else target
-                if group_key not in grouped:
-                    keys, projected_buttons = [], []
-                    for original_button in groups(target):
-                        button = deepcopy(original_button)
-                        if row["image_mode_svg"]:
-                            resource_layout = normalized_layout(layout) if normalize else layout
-                            elements = svg_resources.get((edition, resource_layout), svg_resources.get((0, resource_layout)))
-                            if elements is None: raise ValueError("Current SVG geometry resource unavailable for requested layout/edition")
-                            name = svg_mapping.get(button.get("inputID"))
-                            matches = [element for element in elements if name and name in element["id"]]
-                            if len(matches) > 1:
-                                match = next((element for element in matches if element["id"] == name), None)
-                                match = match or next((element for element in elements if name + "_" in element["id"]), None)
+                    for match in asset_pattern.finditer(text):
+                        exported = re.search(r'\.p\s*\+\s*["\'](static/media/[^"\']+)["\']', match[2])
+                        if exported:
+                            assets[javascript_integer_literal(match[1])] = (original, match, exported[1])
+                runtime_images, resource_map = [], {}
+                seen_resources = {}
+                declared_requests = [(context, request) for context, text in contexts for request in requests.finditer(text)]
+                parsed_requests = {(context["path"], request.start()) for context, request in declared_requests}
+                declared_paths = [(context, request) for context, text in contexts for request in request_paths.finditer(text)]
+                for context, request in declared_paths:
+                    if (context["path"], request.start()) not in parsed_requests:
+                        row["failures"].append({"request": request[0], "original": context,
+                                                "character_start": request.start(),
+                                                "reason": "Current resource context numeric binding remains unresolved"})
+                row["resource_context_binding_scan"] = {
+                    "declared_paths": len(declared_paths), "parsed_bindings": len(parsed_requests),
+                    "integer_literal_parser": "exact Decimal or explicit JS base integer; no JavaScript execution"}
+                for original, text in contexts:
+                    retain_module(module_at(original, text, request_paths.search(text).start()), "resource_context")
+                supported_layouts = sorted({int(request[4]) for _, request in declared_requests})
+                row["source_supported_layout_ids"] = supported_layouts
+                for context, request in declared_requests:
+                    name, edition, kind, layout, density, module_id = request[1], int(request[2]), request[3], int(request[4]), int(request[5] or 1), javascript_integer_literal(request[6] or request[7])
+                    try:
+                        original, match, filename = assets[module_id]
+                        if not valid(original): raise ValueError("Resource export input byte identity differs")
+                        url = urllib.parse.urljoin(acquired["entry_url"], filename)
+                        source = files.get(url)
+                        if source is None or source.get("http_status") != 200:
+                            previous_source = source
+                            source = a.download(url, receipt_path.parent)
+                            if source.get("http_status") != 200 or not valid(source):
+                                row.setdefault("supplemental_acquisition", []).append(source)
+                                raise ValueError("Official resource acquisition failed: " + url + ": " + str(source.get("error", source.get("http_status"))))
+                            if previous_source is not None:
+                                if (source["sha256"], source["bytes"]) != (previous_source.get("sha256"), previous_source.get("bytes")):
+                                    raise ValueError("Official resource differs from retained mounted bytes: " + url)
+                                source["previous_attempts"] = previous_source.get("previous_attempts", []) + [
+                                    {key: value for key, value in previous_source.items() if key != "previous_attempts"}]
+                                acquired["files"][acquired["files"].index(previous_source)] = source
                             else:
-                                match = matches[0] if matches else None
-                            # New producers clear template geometry; older
-                            # bodies preserve fields when the SVG has no match.
-                            if re.search(r'[\w$]+\.d="",[\w$]+\.cx=0', producer_body):
-                                for field in ("d", "cx", "cy", "r", "x", "y", "width", "height", "rx", "ry", "transform"):
-                                    button[field] = "" if field in {"d", "transform"} else 0
-                            if match:
-                                fields = {"path": ("d",), "circle": ("cx", "cy", "r"),
-                                          "rect": ("x", "y", "width", "height", "rx", "ry", "transform")}[match["type"]]
-                                for field in fields:
-                                    if field in match: button[field] = match[field]
-                        projected = keyboard_path_geometry(button, row.setdefault("svg_path_parse_adjustments", []))
-                        projected_buttons.append(button)
-                        if projected:
-                            geometry, bounds = projected
-                            keys.append({"id": button["inputID"], "label": keyboard_text_label(button.get("counter", button.get("buttonKey", ""))),
-                                         "enabled": button.get("isEnabled", True), "functions": button.get("functionList", []),
-                                         "bounds": bounds, "geometry": geometry})
-                    if not keys: raise ValueError("No source physical geometry in selected button list")
-                    grouped[group_key] = retain_geometry(keys, spec["viewbox"], projected_buttons)
-                return grouped[group_key]
-            default_geometry = physical(default_target)
-            runtime_layouts = []
-            variants = sorted({(image["layout_id"], image["edition_id"], False) for image in runtime_images if image["svg"]}
-                              | {(image["layout_id"], image["edition_id"], True) for image in customize_images}) if row["image_mode_svg"] else [(layout, 0, False) for layout in sorted(case_targets)]
-            for layout, edition, customize in variants:
-                target = case_targets.get(layout, default_target)
-                try:
-                    index = physical(target, layout, edition, customize and normalize_customize)
-                    runtime_layouts.append({"layout_id": layout, "edition_id": edition, "customize": customize, "geometry": index})
-                    row["layouts"].append({"layout_id": layout, "edition_id": edition, "customize": customize, "target": target, "geometry_index": index})
-                except (ValueError, KeyError, TypeError) as error:
-                    import traceback
-                    row["failures"].append({"layout_id": layout, "target": target, "reason": str(error), "traceback": traceback.format_exc()})
-            products.append({"product_id": pid, "viewbox": spec["viewbox"], "image_css_size": spec["image_size"],
-                             "images": runtime_images, "image_mode_svg": row["image_mode_svg"],
-                             "customize_images": customize_images,
-                             "source_supported_layout_ids": supported_layouts,
-                             "source_variants": row["source_variants"],
-                             "source_one_x_only_variants": one_x_only_variants,
-                             "customize_layout_normalization": normalize_layouts if normalize_customize else None,
-                             "default_geometry": default_geometry, "layouts": runtime_layouts})
-            preparations.append({"product_id": pid, "acquisition": a.rel(receipt_path), "resources": resource_map})
-            if customize_resources:
-                combined_resources = defaultdict(list)
-                for key, request in customize_resources.items():
-                    combined_resources[key[0] if isinstance(key, tuple) else key].append(request)
-                preparations.append({"product_id": pid, "acquisition": a.rel(receipt_path), "resources": dict(combined_resources)})
-        except (ValueError, OSError, KeyError, AttributeError, TypeError, StopIteration) as error:
-            import traceback
-            row["failures"].append({"reason": type(error).__name__ + ": " + str(error), "traceback": traceback.format_exc()})
-        print(f"keyboard-artwork {pid}: resources={len(row['resources'])} layouts={len(row['layouts'])} failures={len(row['failures'])}", flush=True)
+                                acquired["files"].append(source)
+                            files[url] = source
+                            supplemental_edge = {"from": original["url"], "to": url,
+                                                 "kind": "keyboard-artwork-current-export-literal"}
+                            if supplemental_edge not in acquired.setdefault("edges", []): acquired["edges"].append(supplemental_edge)
+                            row.setdefault("supplemental_acquisition", []).append(source)
+                            publish_frontend_acquisition(receipt_path, acquired)
+                            reachable.add(url)
+                        if source is None or url not in reachable or not valid(source):
+                            raise ValueError("Original resource bytes are missing/unverified/unreachable: " + url)
+                        extension = ".svg" if kind == "svg_prods" else ".png"
+                        alias = seen_resources.setdefault(source["path"], f"synapse/keyboard-current/{pid}/{Path(filename).stem}{extension}")
+                        resource_map[source["path"]] = alias
+                        image = {"edition_id": edition, "layout_id": layout, "resolution": density,
+                                 "svg": kind == "svg_prods", "asset": alias}
+                        if image not in runtime_images: runtime_images.append(image)
+                        row["resources"].append({"request": name, "request_character_start": request.start(), "request_character_end": request.end(),
+                                                 "context": {key: context[key] for key in ("path", "bytes", "sha256")},
+                                                 "export": {"original": original, "body": match[0], "character_start": match.start(), "character_end": match.end()},
+                                                 "resource": source, "runtime": image})
+                    except (KeyError, ValueError, OSError) as error:
+                        row["failures"].append({"request": name, "reason": str(error)})
+                row["acquisition"] = identity(receipt_path)
+                row["image_mode_svg"] = bool(re.search(r'UseSVGForProductImage:(!0|true)', main_sources[0][1]))
+                png_densities = defaultdict(set)
+                for _, request in declared_requests:
+                    if request[3] == "img_prods":
+                        png_densities[(int(request[2]), int(request[4]))].add(int(request[5]))
+                one_x_only_variants = [{"edition_id": edition, "layout_id": layout}
+                                       for (edition, layout), densities in sorted(png_densities.items())
+                                       if densities == {1}] if not row["image_mode_svg"] else []
+                if one_x_only_variants:
+                    density_producers = []
+                    for original, text in sources:
+                        if '"[ProductImage] loadImg"' not in text:
+                            continue
+                        for match in re.finditer(r'(?<![\w$])([\w$]+)=[\w$().]+\.memo\(function\([\w$,]*\)\{', text):
+                            end = javascript_delimited(text, match.end() - 1)
+                            if text[end:end+1] != ")":
+                                continue
+                            end += 1
+                            body = text[match.start():end]
+                            if ('"[ProductImage] loadImg"' not in body
+                                    or not re.search(r'src:[\w$]+\.srcSet_1x,srcSet:""\.concat\([\w$]+\.srcSet_1x," 1x, "\)\.concat\([\w$]+\.srcSet_3x," 3x"\)', body)
+                                    or 'T={default:""}' not in body):
+                                continue
+                            digest = hashlib.sha256(body.encode()).hexdigest()
+                            parser_bodies[digest] = "const " + body + ";"
+                            density_producers.append({"original": original, "symbol": match[1],
+                                "character_start": match.start(), "character_end": end,
+                                "byte_start": len(text[:match.start()].encode()),
+                                "byte_end": len(text[:end].encode()), "body": body, "body_sha256": digest})
+                    if len(density_producers) != 1:
+                        raise ValueError("Single-density image caller is missing/ambiguous")
+                    row["single_density_image_selection"] = {
+                        "complete_producer": density_producers[0],
+                        "one_x_only_variants": one_x_only_variants,
+                        "actual_candidate_attributes": "src=one_x_url; srcset=one_x_url + ' 1x, ' + empty_three_x_url + ' 3x'",
+                        "selection_semantics": "Absent 3x context leaves an empty URL. The final token 3x has no descriptor and normalizes to 1x; duplicate density removal retains the earlier real 1x URL.",
+                        "standard": ".analysis/inputs/standards/html-images-current/acquisition.json",
+                        "sections": ["4.8.4.3.7", "4.8.4.3.10", "4.8.4.3.12"],
+                        "runtime_acceptance": "unverified; derived statically from complete current caller and HTML image algorithms"}
+                source_variants = sorted({(int(request[2]), int(request[4])) for _, request in declared_requests
+                                          if (request[3] == "svg_prods") == row["image_mode_svg"]})
+                row["source_variants"] = [{"edition_id": edition, "layout_id": layout}
+                                          for edition, layout in source_variants]
+                if spec.get("preview_only"):
+                    row["preview_only"] = True
+                    return row, product_result, preparation_results, local_geometries, parser_bodies
+                if not runtime_images and pid not in {555, 580, 747}:
+                    row["failures"].append("No current parameterized base images; source special caller must be resolved")
+                if pid in {555, 580, 747}:
+                    row["independent_adapter"] = {"implementation": "crates/razer-pages/src/features/keyboard/mapping/keyboard_mapping_keypad_artwork.rs",
+                                                  "images": "crates/razer-pages/src/data/keyboard_keypad_device_image_data.rs",
+                                                  "ownership": "Current Keypad producer owns view/edition/density and retained decode lifecycle separately"}
+                    return row, product_result, preparation_results, local_geometries, parser_bodies
 
+                # The full selector owns keyboard geometry independently of edition.
+                selector_pattern = re.compile(r'updatedProductWithLayoutAndEdition:(?:\(\)=>|function\(\))')
+                selector_source = next(((item, text) for item, text in sources if selector_pattern.search(text)), None)
+                if selector_source is None: raise ValueError("Mounted layout-selector export is missing")
+                raw_selector = module_at(selector_source[0], selector_source[1], selector_pattern.search(selector_source[1]).start())
+                selector_module = module_by_id(raw_selector["module_id"], "layout_selector")
+                export = re.search(r'updatedProductWithLayoutAndEdition:(?:\(\)=>|function\(\)\{return )([\w$]+)', selector_module)
+                symbol = export[1]
+                selector_start = re.search(r'(?<![\w$])' + re.escape(symbol) + r'=(?:async )?(?:[\w$]+|\([^)]*\))=>\{', selector_module)
+                if selector_start is None: raise ValueError("Layout selector function syntax remains unresolved")
+                selector_end = javascript_delimited(selector_module, selector_start.end()-1)
+                selector = selector_module[selector_start.start():selector_end]
+                row["layout_selector"] = selector
+                enum_alias = re.search(r'([\w$]+)\.([\w$]+)\.(?:UnitedStates|Japanese|UnitedKingdom)', selector)
+                if enum_alias is None: raise ValueError("Actual layout enum namespace is unresolved")
+                enum_import = re.search(r'(?<![\w$])' + re.escape(enum_alias[1]) + r'=[\w$]+\((\d+)\)', selector_module)
+                enum_body = module_by_id(int(enum_import[1]), "layout_enum")
+                enum_symbol = re.search(re.escape(enum_alias[2]) + r':(?:\(\)=>|function\(\)\{return )([\w$]+)', enum_body)[1]
+                enum_start = re.search(r'(?<![\w$])' + re.escape(enum_symbol) + r'=\{', enum_body).end()-1
+                enums = keyboard_static_literal(enum_body[enum_start:javascript_delimited(enum_body, enum_start)])
+
+                group_cache = {}
+                def groups(target):
+                    requested = target
+                    if requested in group_cache: return group_cache[requested]
+                    body = selector_module
+                    namespace = re.search(re.escape(target) + r',\{groupList:(?:\(\)=>|function\(\)\{return )([\w$]+)', body)
+                    if namespace: target = namespace[1]
+                    imported = re.search(r'(?<![\w$])' + re.escape(target) + r'=[\w$]+\((\d+)\)', body)
+                    lazy = re.search(r'(?<![\w$])' + re.escape(target) + r'=\(\)=>[^;]{0,200}?[\w$]+\.bind\([\w$]+,(\d+)\)', body)
+                    if imported or lazy:
+                        body = module_by_id(int((imported or lazy)[1]), "physical_button_list")
+                        target = re.search(r'groupList:(?:\(\)=>|function\(\)\{return )([\w$]+)', body)[1]
+                    array = re.search(r'(?<![\w$])' + re.escape(target) + r'=\[', body)
+                    constants = {}
+                    for binding in re.finditer(r'(?<![\w$])([\w$]+)=("(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')', body):
+                        constants[binding[1]] = keyboard_static_literal(binding[2])
+                    if array is not None:
+                        start = array.end()-1; end = javascript_delimited(body, start)
+                        buttons = keyboard_static_literal(body[start:end], constants)[0]["group"]["buttonList"]
+                    else:
+                        derived = re.search(r'(?<![\w$])' + re.escape(target) + r'=JSON\.parse\(JSON\.stringify\(([\w$]+)\)\)\.map\(', body)
+                        if derived is None: raise ValueError("Physical button list binding remains unresolved: " + target)
+                        end = javascript_delimited(body, derived.end()-1)
+                        producer = body[derived.start():end]
+                        dictionary = re.search(r'const [\w$]+=([\w$]+)\[[\w$]+\.inputID\]', producer)
+                        if dictionary is None: raise ValueError("Derived layout relabel dictionary is unresolved")
+                        dictionary_start = re.search(r'(?<![\w$])' + re.escape(dictionary[1]) + r'=\{', body)
+                        if dictionary_start is None: raise ValueError("Derived layout relabel binding is unresolved")
+                        start = dictionary_start.end()-1
+                        labels = keyboard_static_literal(body[start:javascript_delimited(body, start)], constants)
+                        buttons = deepcopy(groups(derived[1]))
+                        insertion = re.search(r'buttonList:([\w$]+)\([\w$]+\.group\.buttonList\)\.map\(', producer)
+                        if insertion is not None:
+                            function = re.search(r'(?<![\w$])' + re.escape(insertion[1]) + r'=[\w$]+=>\{', body)
+                            if function is None: raise ValueError("Derived layout button insertion is unresolved")
+                            function_end = javascript_delimited(body, function.end()-1)
+                            function_body = body[function.start():function_end]
+                            clone = re.search(r'JSON\.parse\(JSON\.stringify\(([\w$]+)\.groupList\[0\]\.group\.buttonList\.find\([\w$]+=>"DIAL_CLICK"===[\w$]+\.buttonKey\)\)\)', function_body)
+                            required = ('"DIAL_CLICK"===', '"mediaVolume"===', 'return t<0?e:[...e.slice(0,t),', '...e.slice(t)]')
+                            if clone is None or not all(literal in function_body for literal in required):
+                                raise ValueError("Derived layout insertion branch differs from the observed producer")
+                            if not any(button.get("buttonKey") == "DIAL_CLICK" for button in buttons):
+                                index = next((index for index, button in enumerate(buttons) if button.get("buttonKey") == "mediaVolume"), None)
+                                if index is not None:
+                                    dial = next((button for button in groups(clone[1]) if button.get("buttonKey") == "DIAL_CLICK"), None)
+                                    if dial is None: raise ValueError("Derived layout dial source is absent")
+                                    buttons.insert(index, deepcopy(dial))
+                        for button in buttons:
+                            label = labels.get(button.get("inputID"))
+                            if label:
+                                counter = label if isinstance(label, str) else label["counter"]
+                                default = label if isinstance(label, str) else label["defaultValue"]
+                                button.update({"counter": counter, "defaultValue": default})
+                                if button.get("assignment") == "KEYBOARD": button["assignmentValue"] = default
+                        row.setdefault("derived_layouts", []).append({"target": target, "template": derived[1],
+                                                                      "complete_producer": producer, "labels": labels,
+                                                                      "button_insertion": function_body if insertion else None})
+                    group_cache[requested] = buttons
+                    return buttons
+
+                grouped, case_targets = {}, {}
+                for branch in re.finditer(r'((?:case [\w$]+\.[\w$]+\.[\w$]+:)+)[\w$]+=([\w$]+)(?:,console\.log\([^;]*\))?(?:;break;|\})', selector):
+                    for name in re.findall(r'case [\w$]+\.[\w$]+\.([\w$]+):', branch[1]):
+                        if name in enums: case_targets.setdefault(enums[name], branch[2])
+                default_binding = re.search(r'default:[\w$]+=([\w$]+)', selector)
+                if default_binding:
+                    default_target = default_binding[1]
+                elif "switch(" in selector:
+                    default_target = case_targets.get(enums["UnitedStates"])
+                    row["unknown_layout_selector_returns_undefined"] = True
+                else:
+                    japanese = re.search(r'if\([\w$]+===[\w$]+\.[\w$]+\.Japanese\)[\w$]+=([\w$]+);else [\w$]+=([\w$]+)', selector)
+                    if japanese:
+                        case_targets[enums["Japanese"]] = japanese[1]
+                        default_target = japanese[2]
+                    else:
+                        constant = re.search(r'\.UnitedStates,[\w$]+=([\w$]+),', selector)
+                        if constant is None: raise ValueError("Constant layout selector branch is unresolved")
+                        default_target = constant[1]
+                if default_target is None: raise ValueError("Source selector has no declared default/US branch")
+                svg_producer = None
+                svg_mapping = {}
+                svg_resources = {}
+                svg_originals = {}
+                customize_resources = {}
+                customize_images = []
+                normalize_customize = False
+                normalize_layouts = {"ansi": [], "iso": [], "japanese": enums["Japanese"],
+                                     "united_states": enums["UnitedStates"], "united_kingdom": enums["UnitedKingdom"]}
+                if row["image_mode_svg"]:
+                    producer_source = next(((item, text) for item, text in sources if '"Error fetching/parsing SVG:"' in text), None)
+                    if producer_source is None: raise ValueError("Current SVG geometry producer is missing")
+                    raw = module_at(producer_source[0], producer_source[1], producer_source[1].index('"Error fetching/parsing SVG:"'))
+                    producer_body = retain_module(raw, "svg_geometry_producer")
+                    svg_producer = {"path": producer_source[0]["path"], "sha256": producer_source[0]["sha256"],
+                                    "anchor": '"Error fetching/parsing SVG:"', "module_id": raw["module_id"],
+                                    "boundary_parser": "tree-sitter-javascript"}
+                    svg_mapping = dict(re.findall(r'\b([\w$]+):"(sel[^"\\]+)"', producer_body))
+                    custom_namespace = re.search(r'CUSTOM_MAPPING_SVG:[\w$]+=\[\]\}=\{\.\.\.([\w$]+)\}', producer_body)
+                    custom_namespace = custom_namespace or re.search(r'\(\{\},([\w$]+)\)\.CUSTOM_MAPPING_SVG', producer_body)
+                    if custom_namespace is None: raise ValueError("SVG producer configuration namespace is unresolved")
+                    custom_import = re.search(r'(?<![\w$])' + re.escape(custom_namespace[1]) + r'=[\w$]+\((\d+)\)', producer_body)
+                    if custom_import is None and isinstance(raw["module_id"], int): raise ValueError("SVG producer configuration module is unresolved")
+                    custom_body = module_by_id(int(custom_import[1]), "product_configuration") if custom_import else producer_body
+                    custom_symbol = re.search(r'CUSTOM_MAPPING_SVG:(?:\(\)=>|function\(\)\{return )([\w$]+)', custom_body)
+                    if custom_symbol:
+                        custom_start = re.search(r'(?<![\w$])' + re.escape(custom_symbol[1]) + r'=\{', custom_body)
+                        if custom_start:
+                            start = custom_start.end()-1
+                            svg_mapping.update(keyboard_static_literal(custom_body[start:javascript_delimited(custom_body, start)]))
+                    callers = []
+                    direct_symbol = re.search(r'([\w$]+)=async function\([\w$,]*\)\{let [\w$]+=!\(arguments.length>4', producer_body)
+                    for original, text in sources:
+                        call_pattern = r'\.Wp(?:\))?\('
+                        if not isinstance(raw["module_id"], int):
+                            if direct_symbol is None: raise ValueError("Concatenated SVG producer export binding is unresolved")
+                            call_pattern = r'(?<![\w$])' + re.escape(direct_symbol[1]) + r'\('
+                        for call in re.finditer(call_pattern, text):
+                            opening = call.end()-1; end = javascript_delimited(text, opening)
+                            arguments = text[opening:end]
+                            if ".DeviceInfo.productId," in arguments:
+                                if not arguments.endswith((",!0)", ",!1)")):
+                                    raise ValueError("SVG caller normalization/lettering parameter is unresolved: " + arguments)
+                                owner = module_at(original, text, call.start())
+                                retain_module(owner, "svg_geometry_caller")
+                                normalized = arguments.endswith(",!0)")
+                                normalize_customize = normalize_customize or normalized
+                                following = text[end:end+550]
+                                callers.append({"original": original, "character_start": opening, "character_end": end,
+                                                "arguments": arguments, "normalize_layout_and_filter_lettering": normalized,
+                                                "publishes_actuation_button_list": "updateActuationButtonList" in following,
+                                                "producer_binding": direct_symbol[1] if not isinstance(raw["module_id"], int) else ".Wp"})
+                    if not callers: raise ValueError("Current SVG caller parameter chain is unresolved")
+                    row["svg_callers"] = callers
+                    row["normalize_customize"] = normalize_customize
+                    if normalize_customize:
+                        normal_namespace = re.search(r'([\w$]+)\.B8W\.includes', producer_body)
+                        if normal_namespace is None: raise ValueError("SVG normalization namespace is unresolved")
+                        normal_import = re.search(r'(?<![\w$])' + re.escape(normal_namespace[1]) + r'=[\w$]+\((\d+)\)', producer_body)
+                        if normal_import is None: raise ValueError("SVG normalization module is unresolved")
+                        normalization_body = module_by_id(int(normal_import[1]), "svg_layout_normalization")
+                        for export_name, field in (("B8W", "ansi"), ("Yi0", "iso")):
+                            array_name = re.search(export_name + r':(?:\(\)=>|function\(\)\{return )([\w$]+)', normalization_body)[1]
+                            start = re.search(r'(?<![\w$])' + re.escape(array_name) + r'=\[', normalization_body).end()-1
+                            literal = normalization_body[start:javascript_delimited(normalization_body, start)]
+                            literal = re.sub(r'[\w$]+\.[\w$]+\.([\w$]+)', lambda match: str(enums[match[1]]), literal)
+                            normalize_layouts[field] = keyboard_static_literal(literal)
+                        row["layout_normalization"] = normalize_layouts
+                    lettering = {enums[name]: label for name, label in re.findall(r'\[[\w$]+\.[\w$]+\.([\w$]+)\]:"([A-Z]+)"', producer_body)
+                                 if name in enums}
+                    for resource in row["resources"]:
+                        image = resource["runtime"]
+                        if not image["svg"]: continue
+                        svg = ET.fromstring((a.ROOT / resource["resource"]["path"]).read_bytes())
+                        elements = [dict(element.attrib) | {"type": element.tag.split("}")[-1]}
+                                    for tag in ("path", "circle", "rect") for element in svg.iter()
+                                    if element.tag.split("}")[-1] == tag and element.get("id")]
+                        svg_resources[(image["edition_id"], image["layout_id"])] = elements
+                        svg_originals[(image["edition_id"], image["layout_id"])] = (resource, svg)
+                        removed = [child.get("id") for child in svg
+                                   if child.get("id") and ("_LED" in child.get("id") or "_Selection" in child.get("id"))]
+                        if removed:
+                            customize_alias = image["asset"].replace(".svg", "-customize.svg")
+                            customize_resources[resource["resource"]["path"]] = {
+                                "display": customize_alias, "svg_remove_root_ids": removed, "producer": svg_producer}
+                            image["customize_asset"] = customize_alias
+                        else:
+                            image["customize_asset"] = image["asset"]
+                        for entry in runtime_images:
+                            if entry["asset"] == image["asset"]:
+                                entry["customize_asset"] = image["customize_asset"]
+
+                    def normalized_layout(layout):
+                        if layout in normalize_layouts["ansi"]: return normalize_layouts["united_states"]
+                        if layout in normalize_layouts["iso"]: return normalize_layouts["united_kingdom"]
+                        return layout if layout == normalize_layouts["japanese"] else normalize_layouts["united_states"]
+
+                    requested_layouts = sorted(set(enums.values()) | {image["layout_id"] for image in runtime_images})
+                    for layout in requested_layouts:
+                        resource_layout = normalized_layout(layout) if normalize_customize else layout
+                        editions = {edition for edition, source_layout in svg_originals if source_layout == resource_layout}
+                        for edition in sorted(editions):
+                            resource, svg = svg_originals[(edition, resource_layout)]
+                            image = resource["runtime"]
+                            removed = [child.get("id") for child in svg if child.get("id") and
+                                       ("_LED" in child.get("id") or "_Selection" in child.get("id") or
+                                        normalize_customize and ("_Lettering" in child.get("id") or "_Characters" in child.get("id"))
+                                        and child.get("id") not in {lettering.get(layout, "US") + "_Lettering", lettering.get(layout, "US") + "_Characters"})]
+                            alias = image.get("customize_asset", image["asset"])
+                            if removed and normalize_customize:
+                                alias = alias.replace(".svg", f"-customize-layout-{layout}.svg")
+                                customize_resources[(resource["resource"]["path"], alias)] = {
+                                    "display": alias, "svg_remove_root_ids": removed, "producer": svg_producer}
+                            customize_images.append({**image, "layout_id": layout, "asset": alias,
+                                                     "source_layout_id": resource_layout})
+
+                def physical(target, layout=1, edition=0, normalize=False):
+                    group_key = (target, layout, edition, normalize) if row["image_mode_svg"] else target
+                    if group_key not in grouped:
+                        keys, projected_buttons = [], []
+                        for original_button in groups(target):
+                            button = deepcopy(original_button)
+                            if row["image_mode_svg"]:
+                                resource_layout = normalized_layout(layout) if normalize else layout
+                                elements = svg_resources.get((edition, resource_layout), svg_resources.get((0, resource_layout)))
+                                if elements is None: raise ValueError("Current SVG geometry resource unavailable for requested layout/edition")
+                                name = svg_mapping.get(button.get("inputID"))
+                                matches = [element for element in elements if name and name in element["id"]]
+                                if len(matches) > 1:
+                                    match = next((element for element in matches if element["id"] == name), None)
+                                    match = match or next((element for element in elements if name + "_" in element["id"]), None)
+                                else:
+                                    match = matches[0] if matches else None
+                                # New producers clear template geometry; older
+                                # bodies preserve fields when the SVG has no match.
+                                if re.search(r'[\w$]+\.d="",[\w$]+\.cx=0', producer_body):
+                                    for field in ("d", "cx", "cy", "r", "x", "y", "width", "height", "rx", "ry", "transform"):
+                                        button[field] = "" if field in {"d", "transform"} else 0
+                                if match:
+                                    fields = {"path": ("d",), "circle": ("cx", "cy", "r"),
+                                              "rect": ("x", "y", "width", "height", "rx", "ry", "transform")}[match["type"]]
+                                    for field in fields:
+                                        if field in match: button[field] = match[field]
+                            projected = keyboard_path_geometry(button, row.setdefault("svg_path_parse_adjustments", []))
+                            projected_buttons.append(button)
+                            if projected:
+                                geometry, bounds = projected
+                                keys.append({"id": button["inputID"], "label": keyboard_text_label(button.get("counter", button.get("buttonKey", ""))),
+                                             "enabled": button.get("isEnabled", True), "functions": button.get("functionList", []),
+                                             "bounds": bounds, "geometry": geometry})
+                        if not keys: raise ValueError("No source physical geometry in selected button list")
+                        grouped[group_key] = retain_geometry(keys, spec["viewbox"], projected_buttons, local_geometry_index, local_geometries)
+                    return grouped[group_key]
+                default_geometry = physical(default_target)
+                runtime_layouts = []
+                variants = sorted({(image["layout_id"], image["edition_id"], False) for image in runtime_images if image["svg"]}
+                                  | {(image["layout_id"], image["edition_id"], True) for image in customize_images}) if row["image_mode_svg"] else [(layout, 0, False) for layout in sorted(case_targets)]
+                for layout, edition, customize in variants:
+                    target = case_targets.get(layout, default_target)
+                    try:
+                        index = physical(target, layout, edition, customize and normalize_customize)
+                        runtime_layouts.append({"layout_id": layout, "edition_id": edition, "customize": customize, "geometry": index})
+                        row["layouts"].append({"layout_id": layout, "edition_id": edition, "customize": customize, "target": target, "geometry_index": index})
+                    except (ValueError, KeyError, TypeError) as error:
+                        import traceback
+                        row["failures"].append({"layout_id": layout, "target": target, "reason": str(error), "traceback": traceback.format_exc()})
+                product_result = {"product_id": pid, "viewbox": spec["viewbox"], "image_css_size": spec["image_size"],
+                                 "images": runtime_images, "image_mode_svg": row["image_mode_svg"],
+                                 "customize_images": customize_images,
+                                 "source_supported_layout_ids": supported_layouts,
+                                 "source_variants": row["source_variants"],
+                                 "source_one_x_only_variants": one_x_only_variants,
+                                 "customize_layout_normalization": normalize_layouts if normalize_customize else None,
+                                 "default_geometry": default_geometry, "layouts": runtime_layouts}
+                preparation_results.append({"product_id": pid, "acquisition": a.rel(receipt_path), "resources": resource_map})
+                if customize_resources:
+                    combined_resources = defaultdict(list)
+                    for key, request in customize_resources.items():
+                        combined_resources[key[0] if isinstance(key, tuple) else key].append(request)
+                    preparation_results.append({"product_id": pid, "acquisition": a.rel(receipt_path), "resources": dict(combined_resources)})
+            except (ValueError, OSError, KeyError, AttributeError, TypeError, StopIteration) as error:
+                import traceback
+                row["failures"].append({"reason": type(error).__name__ + ": " + str(error), "traceback": traceback.format_exc()})
+            return row, product_result, preparation_results, local_geometries, parser_bodies
+
+
+    def run_one(item):
+        index, spec = item
+        try:
+            row, product, prep, local_geometries, local_parser_bodies = audit_one(spec)
+            return index, row, product, prep, local_geometries, local_parser_bodies
+        except Exception as error:
+            return index, {"product_id": spec["product_id"], "failures": [str(error)],
+                           "complete_modules": [], "resources": [], "layouts": []}, None, [], [], {}
+
+    jobs = [(index, dict(spec)) for index, spec in enumerate(specs)
+            if spec["product_id"] in selected]
+    results = []
+    if jobs:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max(2, min(workers, len(jobs)))) as pool:
+            results = list(pool.map(run_one, jobs))
+    for index, row, product, prep, local_geometries, local_parser_bodies in results:
+        report.append(row)
+        parser_bodies.update(local_parser_bodies)
+        preparations.extend(prep)
+        if product is not None:
+            remap = {}
+            for local_index, geometry in enumerate(local_geometries):
+                digest = hashlib.sha256(json.dumps(geometry, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+                if digest not in geometry_index:
+                    geometry_index[digest] = len(geometries)
+                    geometries.append(geometry)
+                remap[local_index] = geometry_index[digest]
+            product["default_geometry"] = remap[product["default_geometry"]]
+            for layout in product["layouts"]:
+                layout["geometry"] = remap[layout["geometry"]]
+            for layout in row["layouts"]:
+                layout["geometry_index"] = remap[layout["geometry_index"]]
+            products.append(product)
+        print(f"keyboard-artwork {row['product_id']}: resources={len(row['resources'])} layouts={len(row['layouts'])} failures={len(row['failures'])}", flush=True)
     parser_input = "\n".join(parser_bodies.values())
     parsed = subprocess.run([str(a.wakaru()), "debug", "normalize", "-"], input=parser_input,
                             text=True, encoding="utf-8", stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -22410,6 +22497,8 @@ def add_commands(parsers):
     audit.add_argument("--family", required=True, choices=list(FAMILY_CANDIDATES))
     audit.add_argument("--function", required=True)
     audit.add_argument("--product", type=int, action="append")
+    audit.add_argument("--workers", type=int, choices=range(2, 17), default=4,
+                       help="bounded worker threads for independent product audits")
     audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-local-profile-schema", "mouse-dpi-matcher", "mouse-dynamic-sensitivity", "mouse-rotation", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-gamepad-tester", "keyboard-local-controls", "keyboard-local-profile-adoption", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-local-profiles", "hue-profile-actions", "accessory-text-inputs", "audio-preset-inputs", "chroma-text-inputs", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
     audit.add_argument("--prepare", action="store_true", help="Prepare verified current artwork resources through the shared workflow")
     audit.add_argument("--receipt-only", action="store_true", help="Refresh supported mouse or mapping-engine evidence without rewriting runtime descriptors")
@@ -22424,7 +22513,7 @@ def add_commands(parsers):
     parser.add_argument("--candidates", help="Override this family's product-ID locator")
     parser.add_argument("--product", type=int, action="append", help="Work on selected family IDs; repeat for multiple products")
     parser.add_argument("--stage", choices=["probe", "acquire", "repair", "analyze", "native", "extract-native", "report", "all"], default="all")
-    parser.add_argument("--workers", type=int, choices=range(1, 17), default=12)
+    parser.add_argument("--workers", type=int, choices=range(2, 17), default=12)
     parser.add_argument("--no-refresh-gaps", action="store_true", help="Leave final global ledger refresh to an owning workflow")
     parser.add_argument("--retry-declared-missing", action="store_true",
                         help="Repair also retries source-declared non-map 404s; speculative probes and source maps remain separate")

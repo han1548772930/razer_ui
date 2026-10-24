@@ -105,7 +105,58 @@ dim maker `Sy` 保存全局 dimLighting/version 后排 runner；powerSaving make
 
 dim/power 新 runner 在 adapter 后检查取消并写 memory cache，但上述 adapter 吞异常，outer completed 不能升级为严格硬件确认。选中的 rzDevice25 `setTimeToDim` wrapper 仅接收 profile/enabled/seconds/brightness 四个参数；adapter 额外传 batteryId 不证明该 wrapper 把它编码进协议。
 
+## 756 Rust 恢复 worker 的读写与结算边界
+
+当前独立实现的 756 电源动作位于 [keyboard_latest_restore_worker.rs](../../../crates/razer-shell/src/shell/keyboard/keyboard_latest_restore_worker.rs)。`Action::Dim` 先执行 `ReadTimeToDim {slot:0}`，只有分钟值为有限的 1…15 且 enabled 或秒数发生变化时，才发送 `TimeToDim {slot:0, enabled, seconds:60*minutes, brightness:20}`。`Action::Sleep` 先分别读取 `AutoSleepMode {slot:0}` 和 `TimeToSleep`，再按差异写入 `AutoSleepMode` 及 0…60 分钟的 `TimeToSleep`。两条路径都在每个 `execute` 前后检查 generation；写入经 `require_acknowledged` 要求非空且无错误的传输应答。
+
+上述 ACK 仍只是本次 SET 的传输回执：这两个 action 在写入后都没有再次执行对应 GET，因此不能把 `Ok(())` 当成设备已读回目标值。官方 756 新 dim/power adapter 同样没有统一写后 GET；旧数值型 `oi` runner 才在 `setTimeToSleep` 后执行取消检查和 `getTimeToSleep` 的严格秒数比较（见上一节）。本项目的对照测试必须把 SET ACK、写后 GET、页面/本机缓存和真实设备状态分别记录。
+
+恢复循环对单个 action 的错误会发送 `Diagnostic("配置恢复：…")` 后继续处理后续 action，最终仍发送 `Finished`；只有外层恢复闭包本身返回错误时，`Finished` 的 `Result` 才为 `Err`。所以 `Finished(Ok)` 不能证明本批所有灯光/电源动作都已 ACK，更不能替代写后读回。取消或旧 generation 会在下一次检查拒绝继续传输，但已收到的 SET ACK 不会因此自动产生回滚。该差异需要在模拟传输测试以及未来的官方 DLL/真实设备对照收据中单独覆盖。
+
 691 OLED 低电量卡保存 `{enabled,value}`，源默认阈值按钮为 `[10,20,30,40,50]`，产品表可覆盖。接收器指示灯在 isDongle=false 时灰态，分别提供 connection status、battery status、battery warning 三种实际 enum。它们与 OLED home screen、键盘 RGB、主机低功耗说明分别拥有状态和命令。
+
+## 756 Power 命令到真实 HID 的输入、应答与释放
+
+上一节的 `ce/Ae/ue/de` 是页面级读改写入口；本节把当前 756 `rzDevice25` 适配器继续追到主机 HID 节点。它只证明 756 这条键盘 Power 分支的静态协议和资源生命周期，不把同一命令头泛化到没有该页面的键盘，也不把 Lighting 的共享帧协议重复记在这里。共享灯光翻译、逐行写入、失败吞收和引擎退出见[系统灯光链](../shared/dynamic-lighting.md)。
+
+### 命令头、负载与响应字段
+
+当前 MW 原件 [rzDevice25.40fe6f559bba152076d4.js](../../../.analysis/inputs/frontend/keyboard-mw-756-current/raw/apps.razer.com/synapse/products/756/mw/rzDevice25.40fe6f559bba152076d4.js) 的 SHA-256 为 `9788a6b975de1b2eb771d167318b74f0d45359a6b0039ff7582af011e9632de3`。Power 包装器位于 `[140022,140615)`；协议函数模块 `34836` 位于 `[42178,50940)`，常量模块 `31509` 位于 `[50940,53652)`。时间字段由同一 MW 依赖的 [main.4ac4b05541bb1859fa0e.js](../../../.analysis/inputs/frontend/keyboard-mw-756-current/raw/apps.razer.com/synapse/products/756/mw/main.4ac4b05541bb1859fa0e.js)（SHA-256 `5e7adbd276b0da6a4a4f06c6dbc7d7b07400b3fd7fd17eb8eea54a7948b4923d`，module `28277` `[139850,142406)`）按大端组合：`E4(seconds)` 是高字节，`l7(seconds)` 是低字节，`Jz(hi,lo)` 是 `(hi << 8) | lo`。因此不能把 Power 的秒数按小端或 UI 分钟值直接写入。
+
+| 页面动作 | 请求头 `[payloadLen,class,id]` | 请求 payload | 成功响应 `data` 的页面解码 |
+| --- | --- | --- | --- |
+| `getTimeToSleep` | `[2,0x07,0x83]` | 两字节零缓冲 | `data[0]`、`data[1]` 直接用 `Jz` 得到秒数；该 decoder 没有状态或长度保护 |
+| `setTimeToSleep(seconds)` | `[2,0x07,0x03]` | `[E4(seconds),l7(seconds)]` | 同上；包装器只拒绝 `undefined/isNaN`，不在自身检查整数、有限性或页面范围 |
+| `getAutoSleepMode(profile)` | `[2,0x07,0x88]` | `[profile]` | 仅在 `STATUS_SUCCESS && packetSizeReturned>0` 时取 `{profileId:data[0],enabled:data[1]}`，没有 `>=2` 检查 |
+| `setAutoSleepMode(profile,enabled)` | `[2,0x07,0x08]` | `[profile,enabled]` | 同上；`undefined/isNaN` 是包装器唯一参数门禁 |
+| `getTimeToDim(profile)` | `[5,0x07,0x8b]` | `[profile]` | 成功且 `packetSizeReturned>0` 时取 `profileId:data[0]`、`enabled:data[1]`、`timeToDim:Jz(data[2],data[3])`、`percentage:data[4]`，没有精确五字节检查 |
+| `setTimeToDim(profile,enabled,seconds,brightness)` | `[5,0x07,0x0b]` | `[profile,enabled,E4(seconds),l7(seconds),brightness]` | 同上；包装器要求四个参数不是 `undefined/isNaN`，但值域由页面 adapter 负责 |
+
+上述六个命令都走 `sendCommand` 的默认 `checkTransferIn=true`。适配器 `_createDataSend`（`[112401,112840)`）先构造不含 report ID 的 90 字节 body：`body[0]=0`、`body[1]=transaction`、`body[5..7]=payloadLen/class/id`、payload 从 `body[8]` 开始复制，`body[88]` 是 `body[2..87]` 的 XOR，`body[89]=0`；Electron 主机再补 report ID，实际发送长度是 91。transaction 从 0 到 31 循环，初始值未由这组原件单独证明。该 XOR 是发送帧编码，不等于设备业务确认。
+
+`_getUSBTransferInResult`（`[113928,116968)`）取回帧后保存头八字节和按 `packetSizeReturned=body[5]` 截出的 data，逐项比较 transaction (`body[1]`)、class (`body[6]`) 和 id (`body[7]`)；不匹配会标记重新发送。状态处理是：`0 NEW_COMMAND` 失败并要求重发，`1 BUSY` 失败但继续本次 GET 重试，`2 SUCCESS` 成功，`3 FAILED` 失败并重发，`4 TIMEOUT` 失败并重发，`5 NOT_SUPPORTED` 失败且不重发，其他值为未知失败且不重发。只有另一个 `SetDeviceMode` 命令在显式忽略超时选项时可把 `TIMEOUT` 当成功，Power 六命令不在该例外内。选中的函数没有全帧长度或 checksum 校验；`maxRetryIn/maxRetryOut` 的具体数值也未在本节证据中硬编码。事务／类／命令头匹配和 `STATUS_SUCCESS` 只能表示该传输应答被接受，不能代替设备状态读回。
+
+### HID.node 的实际读写边界
+
+主机 Electron transport 的 [UsbRzDeviceAction.js](../../../.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/UsbRzDeviceAction.js) SHA-256 为 `bdd1b91f94898e7d89e13584d132155526b7ca477275c9b0037876f42f617816`。`hid.sendFeatureReport` 把 90 字节 body 按 report ID 补成 91 字节后调用 node binding；返回的数值只是写入字节数。`hid.getFeatureReport` 取回结果后通常剥去首字节 report ID；如果 binding 返回空值，适配器会填充 90 个零字节再进入上述头和状态解码，不会回退本机配置。发送端与读取端的 `reportId` 选择还不完全相同：读取使用 truthy 检查，report ID 为 0 时会改用 `claimInterface`。
+
+对应原生文件 [HID.node](../../../.analysis/inputs/installed-current/files/app-engine/resources/app.asar.unpacked/node_modules/node-rz-hid/build/Release/HID.node) SHA-256 为 `f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f`，`capture.json` SHA-256 为 `d9e52173142940c7d022bccddcdbb47afe1596e8c2d92190e39929f56d7e95f1`。本批用 `ThreadPoolExecutor(max_workers=4)` 并行核对了 12 个完整函数：每个函数 JSON SHA 与 capture 一致，每条 assembly bytes 与 PE 原字节一致；合计 12 functions、12 chunks、1,989 instructions、8,674 raw bytes。capture 本身 `capture_complete=true`，但全模块 `all_pseudocode_captured=false`，另有一个无关地址失败，不能把这批核对扩大为整个 HID.node 已闭合。
+
+| 节点 | 静态行为 | 函数证据 |
+| --- | --- | --- |
+| JS `getFeatureReport` binding | 精确接收两个数值参数，分配零缓冲和 Promise 请求，类型为 GET(1)，不先检查 HID 指针是否已打开，排入 worker 队列 | [0x7340](../../../.analysis/results/native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f/functions/7340.json)、[0x5280](../../../.analysis/results/native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f/functions/5280.json) |
+| JS `sendFeatureReport` binding | 数组元素按 `uint32→u8` 转换（或复制 Buffer），关闭设备时先报 `Cannot write to closed device`，类型为 SEND(0)，同样入队 | [0x7f40](../../../.analysis/results/native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f/functions/7f40.json)、[0x5280](../../../.analysis/results/native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f/functions/5280.json) |
+| worker 分发 | 类型 0 调 `hid_send_feature_report`，返回 -1 时以保存的 HID 错误拒绝，否则 resolve 返回字节数；类型 1 调 GET，返回 -1 时拒绝，否则按请求长度转换 Buffer | [0x4800](../../../.analysis/results/native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f/functions/4800.json) |
+| 实际 SET | 空 HID 指针返回 -1；调用 `HidD_SetFeature`，失败读取 `GetLastError/FormatMessageW` 并返回 -1，成功只返回请求长度，没有任何响应读取 | [0x17a10](../../../.analysis/results/native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f/functions/17a10.json) |
+| 实际 GET | 空指针返回 -1；以 OVERLAPPED 调 `DeviceIoControl(...,0xB0192,...)`，对 pending 结果调用 `GetOverlappedResult(...,TRUE)`；成功返回 `BytesReturned+1`。此函数没有超时、用户取消或 `CancelIoEx`，也没有走 `HidD_GetFeature` | [0x17ac0](../../../.analysis/results/native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f/functions/17ac0.json)、[0x165f0](../../../.analysis/results/native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f/functions/165f0.json) |
+| Promise 清理与关闭 | Promise 完成／拒绝后释放 buffer、request、错误字符串、function/context；JS close 进入内部 close，取消 I/O、关闭句柄、释放对象并清空指针 | [0x15d40](../../../.analysis/results/native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f/functions/15d40.json)、[0x94e0](../../../.analysis/results/native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f/functions/94e0.json)、[0x6170](../../../.analysis/results/native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f/functions/6170.json) |
+| worker 停止 | 析构设置 stop、通知并 join，然后清队列；worker 外层检查 stop/wait，但停止检查不是每个已取请求的取消点 | [0x4710](../../../.analysis/results/native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f/functions/4710.json)、[0x50e0](../../../.analysis/results/native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f/functions/50e0.json) |
+
+页面 runner 的 abort 检查发生在 adapter 前后；`sendCommand` 到 node GET/SET 的这条链没有传入 abort signal，GET 的同步等待也没有时间上限。`hid.releaseMutex` 只允许持有相同 `senderURL` 的页面释放 mutex；关闭内部会 `CancelIo`，但所选 close owner 没有在释放前等待全部排队请求的证据，worker 析构的 join 才是明确等待点。因而“页面任务已取消”“mutex 已释放”“Promise 已完成”和“设备已恢复原值”是四个独立状态，当前原件没有证明取消会自动回滚 Power 设置。
+
+### 对照边界
+
+本节只完成原件、函数边界、报文编码和错误/释放语义的静态核对；没有运行厂商 JavaScript、主程序、HID.node、官方 DLL 或真实设备。Rust 实现仍需用独立期望测试覆盖六个命令的大小端字节、transaction/class/id 匹配、六种状态、busy/重发、unsupported/unknown、空读取、取消与关闭清理，并在允许的显式对照入口中先只读比较官方实际 GET；可恢复写入还要记录原值、官方写入及独立读回、Rust 写入及独立读回、恢复和清理。当前没有设备或实际运行收据时，Power 写回、固件行为和 UI 视觉结果必须保持未验证。
 
 ## 原件与核对边界
 
@@ -128,3 +179,5 @@ dim/power 新 runner 在 adapter 后检查取消并写 memory cache，但上述 
 | 同引擎文件 | frame event `[435194,437352)`；frame writer `[550280,551544)`；exit `[874724,876284)` |
 
 本页是静态追踪的官方行为说明，不表示 Rust/UI 独立实现、真实设备写回或运行时验收已经完成。原件中吞异常、乐观显示和缺少读回的边界均按实际链保留；未运行主应用、厂商 JavaScript、安装器或动态调试。
+
+PID0542/PID0543、PID0521/PID0524 的 NSIS 驱动安装器属于音频设备资源，已移至[安装生命周期文档](../host/firmware-and-installation.md)；它们的包装层不作为键盘 Lighting/Power 协议证据。RzDev 虚拟 HID 只能作为通用驱动边界，真实键盘协议、灯光帧、Power 读回和设备确认仍需由键盘专用原生链核对。

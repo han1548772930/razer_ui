@@ -84,6 +84,10 @@ class WindowsInstallerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "vcruntime140.dll"):
             installer.check_closure({installer.APP_NAME: info}, "x64")
 
+    def test_prepare_rejects_serial_pe_inspection(self):
+        with self.assertRaisesRegex(ValueError, "between two and sixteen"):
+            installer.prepare(workers=1)
+
     def test_explicit_runtime_dependency_is_verified_and_only_payload_is_staged(self):
         self.write("runtime/vcruntime140.dll", pe_bytes(dll=True, imports=("kernel32.dll",)))
         result = self.stage(imports=("kernel32.dll", "vcruntime140.dll"), runtime_dlls=("runtime/vcruntime140.dll",))

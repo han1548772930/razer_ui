@@ -453,6 +453,19 @@ OS 音量观察是另一条链：`0xb6320` 的 OnNotify 从通知结构读取 mu
 
 后续测试须分别覆盖三页与窄窗口导航、首次引导／能力教程、文件夹与宏菜单、当前和非当前草稿、全动作编辑／配对／循环／嵌套、三类宏和阶段拖放、录制每个开始／停止来源、恢复失败、文本／表情／文件选择取消、共享库外部导入、绑定每个产品／布局／附件／Hypershift／播放方式，以及设备切换后的旧结果与真实写入确认。本轮仅静态核对，没有新增“已通过”的运行或 DLL 收据。
 
+
+## Host audit supplement: storage, stop, and cleanup boundaries
+
+The current [host local audit](../../../.analysis/results/host-current/local-audit.json) retains several boundaries that must not be collapsed in the Rust migration. Software startup creates the recorder state machine, reads local macros, and stops an existing recorder. Its initial WindowStorage scan reads top-level `macro_recorder_mode`, while the software producer and live event consumer read `value.payload.macro_recorder_mode`; these are distinct source fields in the current deployment and cannot be normalized at the parser boundary.
+
+A native `RECORDING` stop event does not necessarily pass through explicit `stoppingRecorder`. The current state machine can enter monitor/post-recording directly, process events in `Nr`, and publish `ON_MACRO_SAVED` without sending `ON_STOP_RECORDING` or proving removal of `RzWinStorage_macro_recorder`. The explicit button and unload path use `dr`, so they do not cover native-stop, abort, or renderer destruction. `abortingRecorder` has no outgoing transition in the current deployment, and `stoppingRecorderAfterAborted` has no inbound edge. Stop, cancellation, failure, and local snapshot persistence therefore need separate results.
+
+Tab `destroyed` and `render-process-gone` owners call `clearWindowStorage` with a new sender whose `getURL` cannot read the original Tab URL. Cleanup only removes the map entry selected by that URL and emits no removed/cleared event. OTFM completion calls the pending lock resolver before an unawaited storage removal and does not reset that resolver; the abort handler calls it only after the completion flag is set. This does not prove release of the lock, storage, device listeners, or queued input.
+
+Brightness start descriptors only register or unregister display-power/system-idle callbacks. Although the stop descriptors list `setBrightnessOn/Off`, the current event switch has no matching STOP or connection-error cases, so no device brightness, mapping, or restore write follows from those descriptors. External profile import is also only read once by `MacroPage.new`; the open page does not subscribe to `MacroLibraryProfileImported` and can publish stale entries over a later import.
+
+These results come from current original JS, complete host owners, and the static call graph. Vendor JavaScript, business DLLs, system input, and real devices were not executed. Rust macro UI, mapping scope, OTFM, native transport, device write-back, cancellation/recovery, and release remain separate migration and comparison work.
+
 ## 证据定位
 
 本页的维护查询 [本地完整捕获](../../../.analysis/results/host-current/local-audit.json)分别保存宏页／后台／宿主、114个当前producer、25／37差异资格与保存消费者的完整所有者和原件身份；精确数量以本页下方当前查询结果为准。语义说明按完整AST、原生函数和实际原件字节而写。

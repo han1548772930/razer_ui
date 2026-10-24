@@ -932,21 +932,28 @@ def render_pairing_source_catalog(raw):
 
 def prepare_local_protocol_tables(reads=READ_INPUT, identity=IDENTITY_INPUT, queries=QUERY_INPUT,
                                   pairing=PAIR_CAP_INPUT, catalog=PAIR_CATALOG_INPUT, check=False,
-                                  current_reads=False):
+                                  current_reads=False, workers=4):
     import subprocess
+    import concurrent.futures
+    if type(workers) is not int or not 2 <= workers <= 16:
+        raise ValueError("Local protocol table workers must be between two and sixteen")
     if current_reads:
         return prepare_current_read_table(check=check)
     definitions = [(reads, READ_OUTPUT, render_read_catalog), (identity, IDENTITY_OUTPUT, render_identity_catalog),
                    (queries, QUERY_OUTPUT, render_receiver_query_catalog), (pairing, PAIR_CAP_OUTPUT, render_pairing_capabilities),
                    (catalog, PAIR_CATALOG_OUTPUT, render_pairing_source_catalog)]
-    outputs = []
-    for source, name, renderer in definitions:
+
+    def render_one(item):
+        source, name, renderer = item
         rendered = renderer(local_path(source).read_bytes())
         if name == READ_OUTPUT:
             rendered, _ = current_read_table_projection(rendered, current_read_sources()[0], update=True)
         formatted = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"],
                                    input=rendered, capture_output=True, check=True)
-        outputs.append((name, formatted.stdout))
+        return name, formatted.stdout
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(2, min(workers, len(definitions)))) as pool:
+        outputs = list(pool.map(render_one, definitions))
     for name, raw in outputs:
         output = local_path(name)
         if check:
@@ -2268,25 +2275,31 @@ def verify_mapping_constructor(content, products):
         "constructor_sha256": hashlib.sha256(content).hexdigest()}
 
 
-def prepare_mapping_capabilities(*, check=False):
+def prepare_mapping_capabilities(*, check=False, workers=4):
     import subprocess
+    import concurrent.futures
     import sys
     import urllib.parse
     from importlib.metadata import version
     import families
     import analysis
+    if type(workers) is not int or not 2 <= workers <= 16:
+        raise ValueError("Mapping capability workers must be between two and sixteen")
     registry = ROOT / ".analysis/inputs/typed-tables/razer-catalog/product_registry.json"
     registered = json.loads(registry.read_bytes())["products"]
     tool = families.identity(Path(__file__))
     products, inputs = [], [families.identity(registry), tool,
         families.identity(ROOT / "tools/families.py"), families.identity(ROOT / "tools/workspace.py")]
-    for product in registered:
-        if not any(category in ("MOUSE", "MOUSEPLUSMAT") for category in product["categories"]):
-            continue
+    selected_products = [product for product in registered
+                         if any(category in ("MOUSE", "MOUSEPLUSMAT") for category in product["categories"])]
+
+    # Each mounted mouse input is independent.  Workers return product records
+    # and input identities; the coordinator extends both lists in registry order.
+    def mapping_product(product):
         pid = product["id"]
         receipt = ROOT / f".analysis/inputs/frontend/mouse-{pid}-current/acquisition.json"
         acquired = json.loads(receipt.read_bytes())
-        inputs.append(families.identity(receipt))
+        product_inputs = [families.identity(receipt)]
         files = {row["url"]: row for row in acquired["files"]}
         entry = files[acquired["entry_url"]]
         manifest = files[urllib.parse.urljoin(entry["url"], "manifest.json")]
@@ -2296,7 +2309,7 @@ def prepare_mapping_capabilities(*, check=False):
                     or not stable.get("unchanged") or stable.get("before_sha256") != original["sha256"]
                     or stable.get("after_sha256") != original["sha256"]):
                 raise ValueError(f"Current mounted mouse {pid} entry/manifest does not verify")
-            inputs.append({key: original[key] for key in ("path", "bytes", "sha256")})
+            product_inputs.append({key: original[key] for key in ("path", "bytes", "sha256")})
         scripts = re.findall(r'<script\b[^>]*\bsrc=["\']([^"\']*\bmain\.[\w]+\.js)["\']', (ROOT / entry["path"]).read_text(encoding="utf-8"))
         if len(scripts) != 1:
             raise ValueError(f"Current mouse {pid} must mount one main bundle")
@@ -2308,7 +2321,7 @@ def prepare_mapping_capabilities(*, check=False):
             if len(attempts) != 2 or not all(row.get("status") == 200 and row.get("matches_retained")
                     and row.get("bytes") == main["bytes"] and row.get("sha256") == main["sha256"] for row in attempts):
                 raise ValueError(f"Current cached mouse {pid} main needs exact official HTTP revalidation")
-        inputs.append({key: main[key] for key in ("path", "bytes", "sha256")})
+        product_inputs.append({key: main[key] for key in ("path", "bytes", "sha256")})
         raw = (ROOT / main["path"]).read_bytes()
         owners = [owner for owner in families.keyboard_source_modules(raw.decode("utf-8"))
                   if isinstance(owner["module_id"], int) and "DeviceInfo:()=>" in owner["body"]]
@@ -2321,9 +2334,13 @@ def prepare_mapping_capabilities(*, check=False):
         declared = projection["productId"]
         if type(declared) is not int or (declared != pid and (pid, declared) != (105, 104)):
             raise ValueError(f"Current mouse mounted identity differs: {pid}/{declared}")
-        products.append({"product_id": pid, "declared_product_id": declared,
+        return {"product_id": pid, "declared_product_id": declared,
             "identity_branch": "current endpoint 105 shares declared physical DeviceInfo104" if declared != pid else "exact",
-            "main": main, "complete_owner": owner, "projection": projection, "projection_evidence": evidence})
+            "main": main, "complete_owner": owner, "projection": projection, "projection_evidence": evidence}, product_inputs
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(2, min(workers, len(selected_products)))) as pool:
+        for product, product_inputs in pool.map(mapping_product, selected_products):
+            products.append(product)
+            inputs.extend(product_inputs)
     content = render_mapping_capabilities(products)
     formatted = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"], input=content, capture_output=True, check=True).stdout
     equivalence = verify_mapping_constructor(formatted, products)
@@ -3188,7 +3205,7 @@ def _capture_profile_transfer_product(item):
     return product, inputs
 
 
-def prepare_profile_transfer_table(*, check=False):
+def prepare_profile_transfer_table(*, check=False, workers=4):
     import subprocess
     import urllib.parse
     from importlib.metadata import version
@@ -3212,36 +3229,42 @@ def prepare_profile_transfer_table(*, check=False):
     inputs = [families.identity(registry_path), families.identity(Path(__file__)),
               families.identity(ROOT / "tools/families.py"), families.identity(ROOT / "tools/workspace.py")]
     import concurrent.futures
+    if type(workers) is not int or not 2 <= workers <= 16:
+        raise ValueError("Profile transfer workers must be between two and sixteen")
     items = [(pid, {key: acquisitions[key] for key in ((pid, "ui"), (pid, "mw"))}) for pid in sorted(mounted)]
     products, failures = [], []
-    if len(items) > 4:
-        import sys
-        with concurrent.futures.ProcessPoolExecutor(max_workers=4) as pool:
-            futures = {pool.submit(_capture_profile_transfer_product, item): item[0] for item in items}
-            for completed, future in enumerate(concurrent.futures.as_completed(futures), 1):
-                try:
-                    product, source_inputs = future.result()
-                    products.append(product)
-                    inputs.extend(source_inputs)
-                except Exception as error:
-                    failures.append({"mounted_product_id": futures[future], "error": str(error)})
-                if completed % 32 == 0 or completed == len(items):
-                    print(f"Profile transfer sources: {completed}/{len(items)} products; unresolved: {len(failures)}", file=sys.stderr, flush=True)
-        analysis.save(ROOT / ".work/profile-transfer-source-captures.json", {
-            "tool": families.identity(Path(__file__)), "products": products, "inputs": inputs,
-            "failures": failures, "application_execution": False, "vendor_execution": False})
-        if failures:
-            failures.sort(key=lambda row: row["mounted_product_id"])
-            scratch = ROOT / ".work/profile-transfer-extraction-errors.json"
-            scratch.parent.mkdir(parents=True, exist_ok=True)
-            analysis.save(scratch, {"tool": families.identity(Path(__file__)), "failures": failures,
-                                    "application_execution": False, "vendor_execution": False})
-            raise ValueError("Current profile transfer source chains are unresolved: " + json.dumps(failures))
-    else:
-        for item in items:
-            product, source_inputs = _capture_profile_transfer_product(item)
-            products.append(product)
-            inputs.extend(source_inputs)
+    completed_results = {}
+    failed_results = {}
+    import sys
+    # Keep even a one-product batch on the same bounded thread-pool path.  The
+    # worker count is a policy boundary, while the coordinator owns ordered
+    # publication and failure aggregation.
+    pool_workers = max(2, min(workers, max(2, len(items))))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=pool_workers) as pool:
+        futures = {pool.submit(_capture_profile_transfer_product, item): item[0] for item in items}
+        for completed, future in enumerate(concurrent.futures.as_completed(futures), 1):
+            try:
+                product, source_inputs = future.result()
+                completed_results[futures[future]] = (product, source_inputs)
+            except Exception as error:
+                failed_results[futures[future]] = {"mounted_product_id": futures[future], "error": str(error)}
+            if completed % 32 == 0 or completed == len(items):
+                print(f"Profile transfer sources: {completed}/{len(items)} products; unresolved: {len(failed_results)}", file=sys.stderr, flush=True)
+    for product_id in sorted(completed_results):
+        product, source_inputs = completed_results[product_id]
+        products.append(product)
+        inputs.extend(source_inputs)
+    failures.extend(failed_results[product_id] for product_id in sorted(failed_results))
+    analysis.save(ROOT / ".work/profile-transfer-source-captures.json", {
+        "tool": families.identity(Path(__file__)), "products": products, "inputs": inputs,
+        "failures": failures, "application_execution": False, "vendor_execution": False})
+    if failures:
+        failures.sort(key=lambda row: row["mounted_product_id"])
+        scratch = ROOT / ".work/profile-transfer-extraction-errors.json"
+        scratch.parent.mkdir(parents=True, exist_ok=True)
+        analysis.save(scratch, {"tool": families.identity(Path(__file__)), "failures": failures,
+                                "application_execution": False, "vendor_execution": False})
+        raise ValueError("Current profile transfer source chains are unresolved: " + json.dumps(failures))
     products.sort(key=lambda row: row["mounted_product_id"])
     content = render_profile_transfer_products(products)
     formatted = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"],
@@ -4149,10 +4172,16 @@ def add_commands(commands):
     p.add_argument("--check", action="store_true")
     p = commands.add_parser("prepare-profile-transfer-table", help="Generate UI reader and MW writer transfer capabilities from current mounted originals")
     p.add_argument("--check", action="store_true")
+    p.add_argument("--workers", type=int, choices=range(2, 17), default=4,
+                   help="Bounded worker threads for independent mounted product readers")
     p = commands.add_parser("prepare-mapping-producers", help="Generate current mouse assignment producer metadata from complete mounted factories")
     p.add_argument("--check", action="store_true")
+    p.add_argument("--workers", type=int, choices=range(2, 17), default=4,
+                   help="bounded worker threads for independent mounted producer factories")
     p = commands.add_parser("prepare-mapping-capabilities", help="Generate typed mouse mapping capabilities from current mounted original factories")
     p.add_argument("--check", action="store_true")
+    p.add_argument("--workers", type=int, choices=range(2, 17), default=4,
+                   help="bounded worker threads for independent mounted mouse factories")
     p = commands.add_parser("prepare-local-protocol-tables", help="Generate typed local read, identity and receiver tables")
     p.add_argument("--reads-json", default=READ_INPUT)
     p.add_argument("--identity-json", default=IDENTITY_INPUT)
@@ -4160,6 +4189,8 @@ def add_commands(commands):
     p.add_argument("--pairing-json", default=PAIR_CAP_INPUT)
     p.add_argument("--catalog-json", default=PAIR_CATALOG_INPUT)
     p.add_argument("--check", action="store_true")
+    p.add_argument("--workers", type=int, choices=range(2, 17), default=4,
+                   help="bounded worker threads for independent protocol table renderers")
     p.add_argument("--current-reads", action="store_true",
                    help="Prepare source-verified current observation constructors without retired maintenance JSON")
     p = commands.add_parser("prepare-device-write-table", help="Generate typed Rust capabilities from explicit maintenance JSON")
@@ -4177,16 +4208,16 @@ def run(args):
     if args.command == "prepare-receiver-battery-peers":
         return prepare_receiver_battery_peers(check=args.check)
     if args.command == "prepare-profile-transfer-table":
-        return prepare_profile_transfer_table(check=args.check)
+        return prepare_profile_transfer_table(check=args.check, workers=args.workers)
     if args.command == "prepare-mapping-producers":
         import mapping_producers
-        return mapping_producers.prepare(check=args.check)
+        return mapping_producers.prepare(check=args.check, workers=args.workers)
     if args.command == "prepare-mapping-capabilities":
-        return prepare_mapping_capabilities(check=args.check)
+        return prepare_mapping_capabilities(check=args.check, workers=args.workers)
     if args.command == "prepare-local-protocol-tables":
         return prepare_local_protocol_tables(args.reads_json, args.identity_json, args.queries_json,
                                               args.pairing_json, args.catalog_json, args.check,
-                                              current_reads=args.current_reads)
+                                              current_reads=args.current_reads, workers=args.workers)
     if args.command == "prepare-device-write-table":
         return prepare_write_table(args.from_json, args.check)
     if args.command == "prepare-storage-tables":

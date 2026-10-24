@@ -11,6 +11,7 @@
 | Lighting | [lighting-power.md](lighting-power.md) | 全部产品；Quick/Advanced、Windows 动态灯光、Factory 和 BLE 条件 |
 | Power | [lighting-power.md](lighting-power.md#无线-dim休眠和低功耗说明) | 574、585、600、602、631、658、664、691、697、708、716、717、724、727、756、2595 |
 | OLED | [oled.md](oled.md) | 691 当前导航实际挂载；本机图像、文字、媒体/系统监测、语言、HID 分包和取消 |
+| 固件、驱动和本机更新 | [firmware.md](firmware.md) | 691/02B4 的 MCU HID/WinUSB 更新器、第二遍读回、RzDev 过滤器与虚拟 HID 边界 |
 | Help、设备身份和 reset | [跨产品 Help](../shared/help-reset.md) | 结合每款传入的 resetObm、BLE、OLED、固件说明和 edition |
 | 底层灯光引擎 | [共享灯光消费者](../system/customize-lighting.md#quickadvanced-到真实灯光帧) | 设备文档变化 → 引擎 → 真实帧传输 → 产品恢复与退出 |
 

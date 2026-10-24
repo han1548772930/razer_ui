@@ -172,6 +172,16 @@ LE 的 Advanced 与 Preview 各有 mutex，销毁旧引擎和应用新引擎放�
 
 真实 Advanced 帧继续进入设备逐行或批量 writer。部分逐行异常被记录后仍最终构造 SUCCESS，一般灯光帧不等待逐灯读回；Studio memory helper 也会 catch 后仅 warn。因此 Preview 显示、memory 投递和 writer SUCCESS 都不能单独证明全部 LED 已呈现。共享硬件帧、锁及产品退出恢复见 [系统灯光链](../system/customize-lighting.md#quickadvanced-到真实灯光帧)。
 
+### LE 引擎动作的实际边界
+
+当前 Lighting Engine 原件 [main.a383ea9e.js](../../../.analysis/inputs/frontend/synapse-lighting-engine-current/raw/apps.razer.com/synapse/lighting-engine/static/js/main.a383ea9e.js) 的 `applyChromaStudioEngine` 起始于 UTF-8 byte `883730`：它会先原地遍历 profile 的 layer/group/region，把没有 `rzDevice`、设备掉电或 `perPortInfo.isActive === false` 的 region device 过滤掉，并只记录被过滤的 region；随后用 `fps:25` 和 `type: Preview/Advanced` 创建引擎。引擎创建成功但 `rzDevicesMap` 为空或 profile 缺失时直接返回，已有 handle 的回收不在这个早退分支内；正常路径才按设备位置、region 与 `Reactive` 能力建立设备并逆序应用 layer，最后 `enableEngine(1)`，Advanced 还触发 frame worker。
+
+`onChromaStudioAction` 只接受 window storage 中可解析的 action；JSON 解析失败改成空对象，`cleared` 事件直接忽略，未知 action 只记 warning。`createPreviewEngine`、`destroyPreviewEngine`、`refreshPreviewEngine`、`applyPreviewAndHardwareEngine`、`getCurrentPreviewFrame`、`refreshDevices` 与 `identifyDevice` 都是独立分支，不能把一次 storage 投递当作整条链成功。`enablePreviewEngine` 和 `enableAdvancedEngine` 各自持有 mutex，先销毁旧 engine，再复制／读取 profile，失败只进入 catch 日志并在 finally 解锁；Chroma Connect 占用时启用请求直接返回。
+
+`handleGetCurrentPreviewFrame`（原件 byte `886427` 附近）逐设备解析 `productId/instanceId/deviceId/instanceIdChromaStudio`，找不到 handle 就跳过；`intervalSpeed === -1` 会清 timer 并清空 `previewFrameDevices`。有 batch feature 时按 interval 启动 `getCurrentFrameMultipleDevicesNoReturn`，否则调用带返回值的批量接口；只有收到了非空 frame 才发布并写 memory storage，空帧不会构造目标颜色。`destroyDeviceLightingEngine` 则先禁用 engine，再销毁 engine/device handle、删 `devicesRegion` 并更新 handle；这些清理调用的异常不会变成硬件读回确认。
+
+退出链 `onExit`（原件 byte `874722`）设置 `isExiting` 后停止 frame、终止 Lighting API、清空 preview/advanced/device map，按产品登记执行 `setDeviceToDefaultOnExit`，再清 linked devices、状态与 host callback。默认恢复包含 driver mode、quick effect、BLE FPS 等分支；它是退出恢复动作，不是 Studio Save 的设备确认。Rust 当前仅有图层存储与独立 renderer，尚未接通这些 action、真实 frame reader、Advanced writer 或逐设备恢复结果；因此本节的静态路径不能提升为 Rust 功能或官方 DLL／设备对照通过。
+
 ## 争用、失效结果和释放
 
 Chroma App 控制权提示要求设备数据已加载且有设备，并排除 Help／Onboarding；它读取共享应用状态，清预览灯珠并提供本机控制窗口入口。LE 处于 Chroma App 控制时也拒绝 enable Advanced／Preview，UI 遮罩不能替代消费者检查。

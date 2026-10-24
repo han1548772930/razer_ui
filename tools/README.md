@@ -45,7 +45,7 @@ python tools/workspace.py extract-native-packages --scope host-apps --no-refresh
 python tools/workspace.py extract-embedded-inputs --source-prefix .analysis/inputs/ --no-refresh-gaps
 python tools/workspace.py acquire-family --family all --layer mw --stage extract-native --include-manifest-mismatches --no-refresh-gaps
 python tools/workspace.py reconcile-native-extractions --no-refresh-gaps
-python tools/workspace.py analyze-host --managed-scope all
+python tools/workspace.py analyze-host --managed-scope all --workers 4
 python tools/workspace.py acquire-host-apps --stage report --no-refresh-gaps
 python tools/workspace.py acquire-host --metadata-only
 python tools/workspace.py acquire-host --revalidate-bootstrap
@@ -68,7 +68,8 @@ python tools/workspace.py prepare-typed-data --check
 python tools/workspace.py prepare-typed-data --check --record-verification
 python tools/workspace.py prepare-typed-data --symbol TEXT_DATA --symbol KEYBOARD_MAPPING_TEXT_EMOJI_DATA --symbol MOUSE_MAPPING_TEXT_CURRENT_DATA --symbol SHORTCUTS_CURRENT --check
 python tools/workspace.py prepare-device-write-table --check
-python tools/workspace.py prepare-local-protocol-tables --check
+python tools/workspace.py prepare-local-protocol-tables --check --workers 4
+python tools/workspace.py prepare-mapping-capabilities --check --workers 4
 python tools/workspace.py prepare-storage-tables --check
 python tools/workspace.py organize-sources
 python tools/workspace.py reconcile-source-index --frontend RECEIPT --publication MANIFEST
@@ -86,7 +87,7 @@ python tools/workspace.py validate-rust --suite macro-recording-ipc --suite macr
 
 `prepare-static-python` 按当前 Python ABI 恢复项目内固定版本的 JavaScript／Rust 解析器，校验发行元数据、wheel 字节及两种语法的静态解析。`prepare-typed-data` 支持重复的 `--crate`／`--symbol` 定向选择；选项不匹配时失败，不能把零张表记为验证通过。
 
-`audit-runtime-resources` 用 Rust AST 遍历根程序与全部 crate 的生产资源 literal、宏 token、完整函数所有者及生产目录维护输入，核对固定资源目录；动态站点单独列出 caller 有限域与尚未证明的分支，通配命中不能证明覆盖。`--repair` 先依据当前 3884／3886 完整 JS／CSS 原件及固定载荷验证无线 ARGB 交互图层并补 alias，不恢复媒体到源码目录。统一结果保存在 `.analysis/results/resource-audit.json`；文件缺项、资源作用域违规或输入快照变化使命令失败。`resource_scope.py` 检查 overlay 回调、early return、导入别名与显式宏诊断，`organize-sources` 调用同一所有者；它不做 Rust 类型推导或宏展开，间接回调保持显式诊断。生产 overlay 使用共享 `deferred_resource`；`resource_scope` 保留原布局节点与边界，自定义 element 的 `ResourceLayer` 在布局前创建并保留到 prepaint／paint，以同一窗口图片缓存处理弹层内的真实资源请求。静态所有权检查不替代真实窗口显示验收。
+`audit-runtime-resources` 用 Rust AST 遍历根程序与全部 crate 的生产资源 literal、宏 token、完整函数所有者及生产目录维护输入，核对固定资源目录；动态站点单独列出 caller 有限域与尚未证明的分支，通配命中不能证明覆盖。`--repair` 先依据当前 3884／3886 完整 JS／CSS 原件及固定载荷验证无线 ARGB 交互图层并补 alias，不恢复媒体到源码目录。统一结果保存在 `.analysis/results/resource-audit.json`；文件缺项、资源作用域违规或输入快照变化使命令失败。`resource_scope.py` 检查 overlay 回调、early return、导入别名与显式宏诊断，`organize-sources` 调用同一所有者；它不做 Rust 类型推导或宏展开，间接回调保持显式诊断。生产 overlay 使用共享 `deferred_resource`；`resource_scope` 保留原布局节点与边界，自定义 element 的 `ResourceLayer` 在布局前创建并保留到 prepaint／paint，以同一窗口图片缓存处理弹层内的真实资源请求。该入口使用 `--workers`（2–16，默认 4）并行检查源文件，协调线程按路径合并；静态所有权检查不替代真实窗口显示验收。
 
 `prepare-app-picker --check` 从当前 RzAppMenu 原件核验 34 个分类向量与 331 个产品的首个 favicon fallback，检查固定 alias 字节及原始选择顺序，不依赖已删除的开发媒体目录。目录元数据、两张所属小型 SVG 夹具的纯 CPU 解码、资源作用域结构与真实窗口绘制分别验证，静态通过不代表窗口验收。
 
@@ -134,7 +135,7 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 
 `capture-corpus` 复用已完成捕获及新捕获返回成功后，均重新核对原件实际长度／SHA、capture 输入身份、完整函数数量、唯一 RVA／地址、汇编捕获标记、七类 dataset 与 C／ASM 聚合文件清单和全部产物摘要；输出路径不得越过所属 capture 目录。函数反编译失败与完整汇编捕获分别保留。验证中清单或产物变化同样失败，每项失败保留并继续其余输入；批次结束重新核对所有已验证原件快照及最初实际读取的 corpus 收据 SHA，原件或清单漂移阻止全库捕获结论。
 
-`--workers` 允许 1–4 个并发任务，默认 1；需新捕获时分别启动隔离的 IDA 进程和所属原件 SHA 目录，同一原件不会重复排队。并行批次的共享分析器配置只准备一次，统一队列收据由协调线程发布，单模块失败保留并继续其余任务。完整捕获优先复用，不因提高并发重新分析；捕获完成、逆向语义闭合和实际功能对照分别验收。
+`--workers` 允许 2–4 个并发任务，默认 4；需新捕获时分别启动隔离的 IDA 进程和所属原件 SHA 目录，同一原件不会重复排队。并行批次的共享分析器配置只准备一次，统一队列收据由协调线程发布，单模块失败保留并继续其余任务。完整捕获优先复用，不因提高并发重新分析；捕获完成、逆向语义闭合和实际功能对照分别验收。
 
 重复 host 提取保留真实 extraction exit／argv。旧重复收据丢失退出码时，静态调用 innounp `-t` 或 7-Zip `t`，保存实际退出码、分析器及输出字节摘要；复用前重新核验输入、检查输出、提取文件和完整 Inno 条目，不编造提取成功。官方 native manifest／资源复查均禁缓存并验证官方 HTTPS 最终地址，previous_observations 保留真实历次差异；quarantine 不因重复观测相同字节而提升为 verified。
 
@@ -166,7 +167,7 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 
 `fetch-frontend` 保存 HTML、manifest、全部已声明资源、静态 chunk／import／CSS 引用、HTTP 失败和版本稳定性检查；原始文件不执行。`analyze-frontend` 显式提交所有获取的 JS，保存完整模块、provenance、输出 maps、诊断及图校验结果，并提取可用的 `sourcesContent`，随后恢复尚未拆出的完整 webpack factory。
 
-已有完整捕获用 `analyze-frontend --input DIR --recover-missing` 核验后补恢复；全量入口是 `analyze-frontend --all-acquired --recover-missing --workers 4`，并行数限 1–8。`frontend.py` 按 AST 定位被前导代码／逗号表达式包住的注册和 bootstrap，从已核验可读整包切出带完整参数绑定的 factory，按 UTF-16 坐标切片 source map 并回溯官方原件。合成包装无原始映射，原始局部名称不作推定。完整整包保留非 factory 代码，每份捕获保存实际恢复工具副本和所有新产物身份；缺少可读整包才静态格式化一次，不执行目标 JavaScript。
+已有完整捕获用 `analyze-frontend --input DIR --recover-missing` 核验后补恢复；全量入口是 `analyze-frontend --all-acquired --recover-missing --workers 4`，并行数限 2–8；单来源入口也使用至少两个线程，拒绝 `--workers 1` 以免逆向批次悄悄退回串行。`frontend.py` 按 AST 定位被前导代码／逗号表达式包住的注册和 bootstrap，从已核验可读整包切出带完整参数绑定的 factory，按 UTF-16 坐标切片 source map 并回溯官方原件。合成包装无原始映射，原始局部名称不作推定。完整整包保留非 factory 代码，每份捕获保存实际恢复工具副本和所有新产物身份；缺少可读整包才静态格式化一次，不执行目标 JavaScript。
 
 批量结果为 `.analysis/results/frontend/module-recovery.json`，每个集合的 `analysis.json` 与 `modules/provenance.json` 保留原件区间、参数、恢复配方及诊断。复用必须核验实际原件和全部登记输出。恢复结构不抹去原分析器失败，也不等于逐功能语义已经闭合。`--refresh` 只重建派生模块、提取源码及旧恢复中间目录，不删除获取原件。
 
@@ -177,6 +178,14 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 `acquire-host --metadata-only` 先核对现存宿主收据中的原始 JSON 身份，再复取官方部署 manifests、生产发现及产品发布元数据；跟随更新的 manifest／prod endpoint，双取核对稳定性。新字节按实际 SHA 存放，独立获取收据为 `.analysis/inputs/host-current/metadata-recheck.json`，比较报告为 `.analysis/results/host-current/metadata-recheck.json`；只索引 inputs 下收据，不覆盖旧 acquisition.json、不下载安装包。版本相同或元数据稳定不能证明完整宿主／设备依赖闭包。`--repair-metadata-index` 仅本地校验误登记 results 收据的现存字节，将其原样复制到 inputs 并修正唯一索引项；保留旧 results 文件，在 inputs.json 的 migrations 中记录原索引行、实际字节身份、工具身份及迁移证明。冲突或字节身份不符时拒绝修复，不重新下载或放宽证据边界。
 
 `acquire-host --revalidate-bootstrap` 独立双取当前官方 Synapse 下载页及其明确声明的稳定安装入口，使用 no-cache、官方 HTTPS 重定向与响应身份校验；只保存惰性归档证据，不执行安装器。结果为 inputs／results 下的 `host-current/bootstrap-recheck.json`，保留全部 HTTP 记录、稳定性、实际旧字节比较及扁平前次观测，不覆盖主获取收据。corpus 仅在两份实际页面及安装器样本均匹配后建立 bootstrap 来源根；此证明不代替静态提取及安装生命周期审计。
+
+`inspect-host` 对多个独立归档使用 `--workers`（2–16，默认 4）并行运行只读列表／提取，按输入 SHA 排序由协调线程合并 `inspection.json` 和索引；同一 SHA 只处理一次，单个归档失败不会被其他线程的成功记录覆盖。`analyze-host --managed-scope ... --workers N` 对独立 CLR 程序并行调用 ILSpy，每个 worker 只写自己的 SHA 输出目录，协调线程按稳定输入顺序发布 managed capture；复用输出、失败阶段和未决依赖仍逐项保留。
+
+`analyze-frontend --input ... --workers N` 在完成统一 unpack／validate 后并行提取各 source map；命令记录按原始输入顺序发布，恢复器仍由单一协调者校验完整原件。`prepare-local-protocol-tables` 的五个固定输入和 `prepare-mapping-capabilities` 的各鼠标挂载输入均使用 2–16 线程（默认 4），只在所有结果收齐后写 Rust 输出和 typed-data 收据；参数为 1、非整数或超出范围时立即失败，不能退回串行生成。
+
+`analyze-host --javascript-only` intentionally keeps one Wakaru unpack/validate analyzer stage for the complete current Electron JS/CJS set; that single analyzer input is not split into fake per-file jobs. The host capture receipt and all source-map command rows remain coordinator-owned. Managed dependency supplementation uses `--workers` 2–16 and records each per-assembly ILSpy failure instead of dropping it.
+
+`audit-family-function --query mouse-dpi`, `--query mouse-customize`, and `--query keyboard-artwork` accept the same bounded `--workers` 2–16 option (default 4). Product workers use isolated rows, parser inputs, and geometry tables; the coordinator merges products, parser bodies, preparation receipts, and geometry indices in source registry order. The final combined Wakaru normalization remains one analyzer stage after product extraction.
 
 `refresh-gaps` 对 bootstrap／metadata 复核分别建立 owner，核对收据索引字节、官方 HTTP 200、两份实际样本及稳定摘要，保留未完成、失败及与原 acquisition 的部署差异；旧主收据不能覆盖新的复核失败。
 
@@ -232,7 +241,9 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 
 `prepare-mapping-capabilities [--check]` 校验当前挂载的鼠标入口、manifest 和完整 DeviceInfo factory，从 AST 导出静态固件映射能力，生成 `razer-model` 的普通有类型构造函数。缺失字段保持缺失，稀疏数组与重复属性保留原始语义证据；源投影与生成 Rust AST 全字段回读逐项比对。`prepare-mapping-producers [--check]` 维护当前鼠标按键状态生产函数及依赖元数据；两类命令均不执行厂商 JavaScript，生成或静态等价校验不代表真实设备写入通过。
 
-`prepare-windows-installer` 从已存在的 GUI EXE 和显式 DLL 准备严格载荷，`verify-windows-installer --stage DIRECTORY` 复核实际 SHA、PE 架构、普通／延迟导入闭包和图标；`compile-windows-installer` 仅调用已有 ISCC 生成安装包。当前缺 release EXE 与 ISCC，没有生成或运行安装包。输入、缓存、升级与卸载语义见 [Windows 安装交付](../docs/windows-installation.md)。
+`prepare-mapping-producers` also accepts `--workers` 2–16 (default 4). Each product extraction returns an isolated result and the coordinator publishes products, evidence, and failures in registry order.
+
+`prepare-windows-installer` 从已存在的 GUI EXE 和显式 DLL 准备严格载荷，使用 `--workers`（2–16，默认 4）并行检查各 PE 后再合并依赖闭包；`verify-windows-installer --stage DIRECTORY` 复核实际 SHA、PE 架构、普通／延迟导入闭包和图标；`compile-windows-installer` 仅调用已有 ISCC 生成安装包。当前缺 release EXE 与 ISCC，没有生成或运行安装包。输入、缓存、升级与卸载语义见 [Windows 安装交付](../docs/windows-installation.md)。
 
 独立 `asset-pack-core` suite 只验证容器 wire fixture 与错误处理。保留的 `audit-asset-pack`／`prepare-asset-pack`／`verify-asset-pack` 属于显式本地容器维护，需要完整原文件与相符清单；生成的 `target/asset-pack/synapse.pack` 不属于当前应用运行或安装依赖。旧全量 `SynapseAssets.list/load` pack 回环已移除；当前资源纯测试验证索引闭包、产品选择、缓存和模拟请求，只用必要的内联合成 codec 样本，不下载全套图片。格式和边界见 [资源交付与容器格式](../docs/asset-pack-format.md)。
 

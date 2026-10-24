@@ -49,6 +49,43 @@ Windows Dynamic Lighting 图标同时要求全局功能开启、设备支持、r
 
 双连接卡片的接收器图有有序候选链，不能套普通设备图或跨产品借图。仅 `canPairTwoDevices`、`isOnlyWirelessMode` 或 ACCESSORY 项可以先使用自带 `src`。PID 或 dongle PID 为 226／227 时选专用资源，edition 128 使用独立图，其他值使用 edition 0；该分支不再构造通用型号 URL。其余型号先请求本 PID／edition 的接收器图，非零 edition 才追加同 PID 的 edition 0。最后依据 productivity／newHyperspeed 标志选择对应通用图，按原顺序去重；出错只推进候选索引，最终失败不会创建成功状态。PID、edition、src 或 container 改变会重置索引。
 
+### 产品页 MultiDevicePairing 分支的实际挂载链
+
+Dashboard 卡片本身只负责把 `deviceInfo`、`deviceName` 与 `allMasters` 交给产品页；真正的多设备配对状态机在产品 UI 的 `main` bundle（164、207）或 241 的动态 chunk 中。三个分支都把配对视图放进 iframe，而不是把设备写入逻辑放在 Dashboard 卡片中。
+
+- **164 分支。** `accessories-164-current` 的 [`main.849ff923.js`](../../../.analysis/inputs/frontend/accessories-164-current/raw/apps.razer.com/synapse/products/164/ui/static/js/main.849ff923.js)（5,441,088 B，SHA-256 `b6c261acaad1278c48efc9e7385594357c2e34d3c487066a6e38f5b1c779d54a`）在 `[4588842,4595715)` 定义 `MultiDevicePairingFrame`。父组件以当前 origin 的 `/synapse/multipairing/` 为目标，固定写入 `displayMode=multiDevicePairing`，并按存在性写入 `containerId`、`productId`/`pid`、`category`、`canPairTwoDevices`、`isProductivity`、`deviceName`、原 URL 的 `serialNumber`/`lang` 和序列化后的 `allMasters`。iframe `load` 与 `multiDevicePairingReady` 都会发送 `multiDevicePairingInit`，消息必须同时满足 `event.source === iframe.contentWindow` 和 origin 相等；卸载时移除 message listener。父窗口还用 `getWindowServiceClients`、`registerWindowListChange` 和 `window-list-change` 观察同一产品窗口，代次变化会丢弃过期查询，外部窗口关闭后调用 `closeWindow`/`window.close`（约 `[4590688,4618419)`）。
+- **207 分支。** `accessories-207-current` 的 [`main.ca032f7b.js`](../../../.analysis/inputs/frontend/accessories-207-current/raw/apps.razer.com/synapse/products/207/ui/static/js/main.ca032f7b.js)（5,524,676 B，SHA-256 `a2b14b88d54d1a23610d31b957525e2b87a40e22b8436d253465938dfb1b5c45`）在 `[4584600,4587384)` 复用同一 URL、iframe 握手和窗口观察契约，`allMasters` 通过该分支的 `WU`/`hU` 规范化后再序列化；产品页读取 URL 的 `allMasters` 失败时记录错误并使用空列表。其配对逻辑还包含外部解绑的 BroadcastChannel 追踪：先按 `productId`/`dongleId` 从 `duallink-devices` 过滤并写回本地关系，必要时在约 2 秒后补发主设备解绑，最长约 10 秒关闭频道并释放追踪状态（`[4617262,4624118)`）。
+- **241 分支。** `accessories-241-current` 的 [`main.899712fe.js`](../../../.analysis/inputs/frontend/accessories-241-current/raw/apps.razer.com/synapse/products/241/ui/static/js/main.899712fe.js)（526,053 B，SHA-256 `65fe2c4069ece8270903895ce32c6c610d5eb8fec94bd944f5791c2376509a02`）本身不含 `MultiDevicePairingFrame` 字符串；实际配对 widget 在 [`914.4c13bdac.chunk.js`](../../../.analysis/inputs/frontend/accessories-241-current/raw/apps.razer.com/synapse/products/241/ui/static/js/914.4c13bdac.chunk.js)（55,044 B，SHA-256 `1320d5e2c7ee42497e590f2dbd979b9d10614573746003b3b87b6695dfc6a9d2`）的 `[39708,44500)`。该 chunk 使用同一 `DUALLINK_*` 协议和双状态（keyboard/mouse）流程，并通过 `M.A.onBCEvent` 接收 `MW_RESPONSE_UI`；主 bundle 只提供动态加载与普通设备页面，不能把 241 的 widget 语义归到 241 主 bundle 的静态代码。
+- **179 分支。** `accessories-179-current` 的 [`main.55a48063.js`](../../../.analysis/inputs/frontend/accessories-179-current/raw/apps.razer.com/synapse/products/179/ui/static/js/main.55a48063.js)（5,511,141 B，SHA-256 `842643ff075f51e886404e1e6c7f4f968a19246469edca9ff3915ec8ddbaa9ca`）没有 `displayMode=multiDevicePairing`、`allMasters` 或 iframe bridge；HyperPolling/Uma 配对状态机直接位于 main bundle 的 `[3980805,3991597)` 与另一个同契约分支 `[4005584,4011093)`。它只有单一 `status`，挂载时发送 `DUALLINK_BIND_INFO`，绑定信息按本地 `K(...,{requireLocalEntry})` 过滤；单候选扫描自动 `DUALLINK_BIND_DEVICE`，绑定成功写 `pairedInfo` 后关闭对话框，解绑成功清空绑定并关闭。`MW_RESPONSE_UI` 错误分别回到 `LOADED`、`SCANNED`、`PAIR_FAILED`（4 秒后 `LOADED`）和 `UNPAIR_FAILED`（4 秒后 `PAIRED`）。另有 `SLAVE_CONNECT_EVENT` 的 20 秒等待指示与 storage 事件重新拉取绑定信息。打开设备页时先查询窗口服务客户，将已登记的 `mw` URL 替换为 `ui` 后以 `shouldFocus=1,policy=3` 打开，并在延迟后通过设备 BroadcastChannel 发送 `TAB_PERFORMANCE`；该分支没有 Dashboard 的 `allMasters` 传参，也不能用 164/207 的双键盘鼠标状态机替代。
+
+三个分支的 widget 都在挂载时先把两个状态设为 `LOADING`（单设备只设一个），随后发送 `DUALLINK_BIND_INFO`。应答按 `category` 将绑定信息拆成 keyboard/mouse：有绑定项进入 `PAIRED`，没有绑定项为 `LOADED`；扫描发送 `DUALLINK_SCAN_DEVICE`，单设备收到一个候选时进入 `PAIRING` 并自动发送 `DUALLINK_BIND_DEVICE`，双设备则分别维护 keyboard 和 mouse 的状态。成功绑定按 category 替换旧项、更新 `pairedInfo`/本地绑定状态；成功解绑按返回的 `productId` 或 `dongleId` 过滤绑定项并进入 `UNPAIRED`。取消会发送 `DUALLINK_CANCEL`，再重新请求 `DUALLINK_BIND_INFO`。
+
+失败路径不是简单清空错误：绑定信息失败回到 `LOADED` 并清空绑定／扫描列表；扫描失败回到 `SCANDED` 并保留另一类别的扫描结果（164 还会在双设备键盘扫描失败时触发后续状态判断）；绑定失败进入 `PAIR_FAILED`，约 4 秒后重置为 `LOADED`；解绑失败进入 `UNPAIR_FAILED`，约 4 秒后恢复 `PAIRED`。164 还在 `SLAVE_CONNECT_EVENT`（非扫描期间）重新请求绑定信息，并在配对期间使用本地条目过滤避免旧绑定覆盖；207/241 的状态 reducer 更直接，扫描结果按类别合并，且 207/241 对特定 dongle `713`（164 对应内部常量）保留自动绑定门禁。产品页的窗口、iframe、BroadcastChannel 和 reducer 卸载清理均属于该产品页生命周期，不能由 Dashboard 的卡片点击或本地 `pairedInfo` 快照替代。
+
+上述结论只来自三份当前产品原件的字节区间、SHA 和静态字符串/控制流；未执行厂商 JavaScript、产品窗口、中间件、官方 DLL 或真实设备，故 Rust 对照、设备写入读回、取消恢复和视觉验收仍保持未验证。
+
+### 配对页面 CSS 的视觉状态与布局证据
+
+配对页面的视觉契约由产品自己的 CSS bundle 提供；不能用 Dashboard 的通用卡片样式替代。以下文件均从当前 acquisition 原件读取，表中 `raw bytes` 是文件实际字节数，`CSS body` 是去掉末尾 `sourceMappingURL` 注释后的 UTF-8 字节数。所有偏移均为 UTF-8 字节偏移；本段使用多线程脚本同时读取五个原件后，再逐块核对选择器和声明。
+
+| 分支 | 原件 | raw bytes | CSS body | SHA-256 | 主要选择器区间 |
+| --- | --- | ---: | ---: | --- | --- |
+| 164 | [`main.f583d0c3.css`](../../../.analysis/inputs/frontend/accessories-164-current/raw/apps.razer.com/synapse/products/164/ui/static/css/main.f583d0c3.css) | 479,067 | 478,928 | `7a5fc7f29b50fca4f0e98b1110c916dd3635f6f7fc3744f647ae601acc4421ae` | HyperPolling/MultiPairing `[398664,420688)`；MultiDevicePairing `[448272,467899)`；DualLink 内容 `[451944,463898)` |
+| 207 | [`main.f0c4ac39.css`](../../../.analysis/inputs/frontend/accessories-207-current/raw/apps.razer.com/synapse/products/207/ui/static/css/main.f0c4ac39.css) | 464,646 | 464,507 | `cc2a7291b818b8ab9dd650b12e3af1efaf8722c94b9077ac41ed4e28d334c5c3` | `MultiDevicePairing` `[421780,441407)`；`duallink-device-content` `[425452,437406)`；名称哈希不同但失败/确认块完整存在 |
+| 179 | [`main.c778525e.css`](../../../.analysis/inputs/frontend/accessories-179-current/raw/apps.razer.com/synapse/products/179/ui/static/css/main.c778525e.css) | 460,447 | 460,310 | `1c6a9cc7c5216a838275d9acf663b3446eb54fb43cfb9391ef805e7deec54c77` | HyperPollingWireless 单设备 `[406439,442013)`；没有 164/207 的 `MultiDevicePairing` 页面类 |
+| 241 | [`914.530f0373.chunk.css`](../../../.analysis/inputs/frontend/accessories-241-current/raw/apps.razer.com/synapse/products/241/ui/static/css/914.530f0373.chunk.css) | 45,622 | 45,540 | `9f47b7e63b5009f40cd9ad73d1aee28cef28ac844823680985f846dbb081e0be` | `HyperPollingWirelessUma_*` `[0,16751)`；`HyperPollingWirelessMouseDock_*` `[16751,18809)`；`Duallink_*` `[23878,45539)` |
+| 241 | [`main.1525b0e6.css`](../../../.analysis/inputs/frontend/accessories-241-current/raw/apps.razer.com/synapse/products/241/ui/static/css/main.1525b0e6.css) | 372,679 | 372,542 | `f4e4b1bcbe811fcb4347c01f942b29d626f5c789691d78048f895970d9d19229` | 仅保留 Dashboard/通用 `.multipairing` 图标与共享 `duallink-device-content` 覆盖；实际 Uma widget 样式在动态 chunk |
+
+CSS 规则确认了以下可见状态和尺寸：
+
+1. `.img-text .multipairing` 使用 44×44 图标；`.productivity`、`.hyperpolling` 分支分别选择独立的多设备/HyperPolling 资源（164/207/179/241 主 CSS 均在约 `[9685,10090)`）。因此三类入口不能复用同一图标或仅按 PID 改文案。
+2. 164 的 `MultiDevicePairing_*` 为双设备页面：加载态居中（`loading`），页面容器全高可滚动（`pageContainer`），禁用态为 `opacity:.45;pointer-events:none`，设备图区域高 120px；取消/解绑按钮的正常、hover 和 disabled 规则分别是灰色 `#707070`、hover `#9b9b9b`、disabled 透明度 `.5`。键盘和鼠标类别图标固定 44×44；主/从设备连接示意使用 marching-ants SVG，connected/connecting/free-state 三态由不同背景或 `visibility:hidden` 表示。
+3. 164/207 的双设备盒子是两个 250×210 的深色面板，扫描列表可滚动（104px），`box-bindingdevice-tag`、`box-scanningdevice-tag`、`box-unbindingdevice-tag` 使用绿色 `#44d62c`，`box-bindfail-tag`、`box-selectnodevice-tag` 与 `error-box` 使用橙色 `#fd8611`；确认解绑框为约 210px 宽、橙色边框并带 1.2s 过渡。`.showborderline` 以 `0 0 0 2px #44d62c` 表示已选/已绑定视觉边界。
+4. 179 的 HyperPolling 单设备 CSS 使用同一 120px 设备图和 90px 最小操作按钮，但页面内容最小宽高为 850×685；其 `MultiPairingHyperPollingWireless_*` 只描述产品内的单独入口，不能据此推断 179 具备 164/207 的双状态 reducer。
+5. 241 动态 chunk 将实际 widget 拆为 `HyperPollingWirelessUma_*`、`HyperPollingWirelessMouseDock_*` 与 `Duallink_*`。Uma 的加载、已配对、禁用和设备按钮状态与 164 的语义一致；MouseDock 额外显示设备列表、轮询速率和两个设备受限/警告提示。`Duallink_*` 额外定义 modal header/body、双方已连接 warning、键盘/鼠标类别图标、确认解绑按钮和连接动画；241 主 CSS 没有这些 widget 状态，不能只加载主 bundle 还原页面。
+
+这些规则是 CSS 静态证据，不是已完成的视觉验收：没有执行厂商 JavaScript、挂载产品窗口或截图对照，也没有把样式存在当作 Rust 页面已实现。加载、禁用、扫描、绑定、解绑、失败和取消的真实状态仍须按上面的 reducer/中间件链逐项进行模拟与官方 DLL 对照；当前均保持 `Unverified`。
+
 ### 打包代码与实际挂载的边界
 
 同一 56 bundle 内还保留 `kt` 配对窗口类、`_t` iframe bridge 和配对状态机。`kt.renderView` 能组合 `Ot(_t)`，但模块 502 的默认导出和 Dashboard 卡片路径没有挂载 `kt`；其 `connect(...)(kt)` 表达式的结果未成为这里的导出或卡片子节点。因此不能把其中的 window-list watcher、iframe 握手或 `DUALLINK_*` 状态机直接计作 Dashboard 已执行的生命周期。实际导航目标是产品 UI 的 `displayMode=multiDevicePairing` 分支，须沿该入口及 multipairing 页面另行核对。
@@ -84,6 +121,27 @@ Chroma 的 Studio、Connect、Sensa 和 Visualizer 行为分别见 [Chroma Studi
 | 引导和介绍横幅 | [DashboardTutorial](../../../crates/razer-dashboard/src/dashboard_tutorial.rs) 保留教程已读状态、100 ms 定位等待、popover 与独立文案／媒体；介绍横幅的关闭和 Tour 进入 shell 导航／保存 | 须继续对照实际挂载位置、重开、焦点恢复、滚动与全部资源状态，不能以教程 flag 已保存覆盖这些行为 |
 
 已存在的 `dashboard_grid_tests.rs`、`dashboard_group_tests.rs`、`dashboard_tutorial_tests.rs` 与卡片／电量测试是具体测试入口；本轮只静态读取其实现和用例，没有运行这些窗口测试，也没有新增设备或官方 DLL 功能对照。后续用例必须覆盖当前官方候选数据、源值与本地草稿不同、错误／断开／重连、图像失败、拖动取消及卸载，分别记录页面、本地存储、真实服务和设备结果。
+
+### 重试安装、无存活恢复与服务端状态
+
+`BoxItemDevice` 的“重试”不是设备写入或固件恢复按钮，而是把一个已经由中间件判定为失败／无存活的窗口重新交给后台窗口控制器。组件从 `devicesAndModules.noAliveSignPage` 接收恢复名单，并按 `productId` 与 `deviceContainerId` 同时相等匹配当前 `box`；构造函数的 `noAliveSign` 初值为 `false`，只有 `componentDidUpdate` 才把这次匹配结果写入状态。`setupStatus` 为 `INSTALL_CANCELED` 或 `ERROR`，或者该状态为真时，渲染 retry 区；按钮的 `onMouseDown` 先登记拖动容器的 `overrideAction`，真正的 `reInstall` 在父级 mouse-up 判定为点击后执行。`isOnline` 只影响 `disabled` CSS 和离线提示，组件没有等待后台应答的 promise，也没有根据重试结果自行改写 `setupStatus`、电量或连接状态。
+
+`reInstall` 有两个互斥分支：
+
+- `noAliveSign` 为真时创建 `BroadcastChannel("background-manager")`，发送 `{msgName: "resuscitate", msgData: this.props.box}`。消息包含完整 `box`，UI 没有先删名单、重置状态或确认目标窗口存在。
+- 否则用 `usb_5426_${productId}_${deviceContainerId}_mw` 作为频道名，调用页面公共 `postBCMsg(CROSS_PAGE_REQUEST, {action: "retryInstall"}, channel)`。代码本身没有发送完成／失败回执，也没有关闭刚创建的 BroadcastChannel；`retryInstall` 的服务端消费者不在 Dashboard bundle 中。
+
+安装器列表的 `Item` 组件是另一条动作路径，不能与设备卡片的 `noAliveSign` 合并。它从 `installerStatus[item.id]` 读取 `phase`、`downloadedPercent`、`installedFiles` 和 `totalFiles`：`downloading` 显示下载进度且按钮发送 `install-cancel` 到 `installation_${item.type}_${item.id}` 后立即关闭频道，`installing` 只显示禁用按钮，`error` 与 `canceled` 分别显示重试动作。设备项的重试创建 `usb_5426_${item.id}_${item.deviceContainerId}_mw`，发送 `{msgName:"crossPageRequest",msgData:{action:"retryInstall"}}` 后立即关闭频道；`macro`、`alexa` 和 `feedback` 则打开各自 installer URL 并记录 `userOpen`。`isOnline` 只加禁用 CSS，维护中状态直接显示维护提示；该组件仍没有成功／失败回执或真实设备读回。
+
+后台 bundle 将 `background-manager` 映射到控制器实例。其 `xD` 身份键是 `${deviceContainerId}_${productId}`，`noAliveSignMW` 是内存 `Map`，持久化键为 `noAliveSignPages`。设备窗口打开后由 `checkAliveSign` 设定计时器（默认 40,000 ms）；超时处理会删除该键的计时器，把原始设备对象放入 `noAliveSignMW`，调用 `closeWindow("usb_5426_${productId}_${deviceContainerId}_mw")`，再把当前 Map 的值数组写回窗口存储。这里的“无存活”是窗口／中间件握手超时，不是 HID 读值为零、设备离线 getter 或电量状态；Dashboard 在 `setupStatus` 为空时只用同一名单显示失败文案。
+
+后台收到 `resuscitate` 后，`QD.resuscitate` 先用同一身份键查 Map；只有命中才删除 Map 项并再次写 `noAliveSignPages`，随后调用 `_openMW`。`_openMW` 依次受卸载中的设备（放入 `pendingByUninstall`）、`canOpenMW` 尚未开启或正在关闭（放入 `pendingOpen`）、已经打开（直接返回）和实际打开窗口四类门禁约束；实际打开仍由 `TabHelper.openDeviceMWTab` 发起，并把 `onOpenFailByNetwork` 与 `checkAliveSign` 作为后续回调。`canOpenMW` 由设备事件监听注册，若初始化尚未完成则等 `check_latest_list_done`；Xbox／PlayStation 在 `processDeviceConnection` 中跳过自动打开，屏幕锁定也只排队连接事件。
+
+后台 bundle 初始化完成后只创建一个 `new BroadcastChannel("background-manager")` 并把 `onmessage` 绑定到 `DC`。`DC` 按 `data.msgName` 查表，`EC.resuscitate` 再转发到 `QD.resuscitate`；这条接收链没有 Dashboard 级别的成功通知。窗口关闭时，`windowCloseListener` 清理该设备的 alive timeout、从 `noAliveSignMW` 删除对应项并处理待打开／待关闭集合；若仍有无存活项且网络检查 `be()` 为真，才再次调用 `resuscitate`。`closeMW` 的发送和重试由每秒轮询的关闭间隔器继续处理，停止、取消、服务 ACK、实际设备恢复和资源释放均不由 Dashboard 组件确认。
+
+因此 Rust 端需要把“页面动作已发出”“后台窗口重开已接受”“中间件握手完成”“设备重新枚举并读回”建模为不同状态，并保留超时、取消、网络等待、卸载等待和窗口释放的证据。仅实现一个 retry 按钮、删除本地 `noAliveSign` 或返回固定“已恢复”都不能替代这条链；当前 Rust 卡片仍只提示服务未接线，故本段是静态逆向结果，不是服务、DLL 或真实设备运行验证。
+
+证据：当前 Dashboard 原件 [56.d9a580a0.chunk.js](../../../.analysis/inputs/frontend/synapse-dashboard-current/raw/apps.razer.com/synapse/dashboard/static/js/56.d9a580a0.chunk.js)（155,169 B，SHA-256 `a1c429b4bd88bcd28e46a3958d8fca610b7fa65cd6873c9a907fde916e5e16a8`；`BoxItemDevice` 相关字节区间约 `[6400,17450)`，`reInstall` 位于 `[7579,7930)`，渲染 retry 位于 `[14600,17450)`）。当前清单使用的安装器原件 [6505.98da235d.chunk.js](../../../.analysis/inputs/frontend/synapse-dashboard-current/raw/apps.razer.com/synapse/dashboard/static/js/6505.98da235d.chunk.js) 为 43,600 B，SHA-256 `7a5ae9b5b69e433ba754ec2aec8c11814bae7f25805eb7342cf961eaf48c0a4e`，设备重试／取消区间约 `[13053,17400)`。后台原件 [index-b4c3eb99.js](../../../.analysis/inputs/frontend/background-manager-current/raw/apps.razer.com/background-manager/assets/index-b4c3eb99.js)（521,794 B，SHA-256 `28475643f2acf1f5e070ad25f9622b1aa1349bae7a57eb6bd8d4ae2d96adba4e`；`QD` 控制器约 `[416000,427200)`，广播初始化约 `[467400,467950)`，`EC` 转发约 `[446983,447130)`）。上述范围只做字节／静态语义核对，未执行厂商 JavaScript、后台服务、DLL、主程序或设备。
 
 ## 当前原件
 

@@ -295,6 +295,12 @@ FIR setter 的 [内部实现 `0x3c0e0`](../../../.analysis/results/native/b84535
 
 队列的实际 lambda 虚表槽进入 `0x73a50`，遍历注册 observer；构造器 `0x74fd0` 已将 Front／Side／Rear 的实际 IPC observer 绑定到 `0x864b0`／`0x86470`／`0x86430`，再分别进入 typed Any 打包、`0x77a70 → 0x30280` 请求／响应、committed state 解包及 revision／payload 比较。服务回复更旧 revision 时会记录可能重启并接受回复；发布状态的接收链另按更高 revision 更新。空回复、Any 解析失败或 typed Unpack 失败只记录日志，不能修改早已返回的 public setter 结果。请求／响应具有串行 mutex 和 socket 异常重建路径；完整连接参数、所有错误分支及在途取消仍需继续闭合。
 
+##### 1442 PPL 任务调度与在途取消边界
+
+同一服务捕获的 [`0x2c47b0`](../../../.analysis/results/native/169bef9718b1b9c32ad4bc1072baec51b6dd85b293ea834e292b939b28f3d82b/functions/2c47b0.json)、[`0x2c4500`](../../../.analysis/results/native/169bef9718b1b9c32ad4bc1072baec51b6dd85b293ea834e292b939b28f3d82b/functions/2c4500.json) 与 [`0x2f8d90`](../../../.analysis/results/native/169bef9718b1b9c32ad4bc1072baec51b6dd85b293ea834e292b939b28f3d82b/functions/2f8d90.json) 补齐了前述“在途取消”静态边界。`0x2c47b0` 在第三参为 `-1` 时直接调用 task handle 的虚表；其他值经 owner `+304` 的 scheduler 或 `DefaultPPLTaskScheduler` 投递 `0x2c3d20`。`Concurrency::task_canceled` 与 `_Interruption_exception` 只返回已有 result，不发布新的失败；一般异常仅在 owner `+16` 尚为空时保存 `exception_ptr`，再经 `0x2c4650 → 0x4637bc` 传播。`0x2f81e0`、`0x2f7f40`、`0x2f8480` 分别构造三个 `PPLTaskHandle<unsigned char>` 并走该桥，不能把任务排队成功当作服务或设备执行。
+
+`0x2c4500` 是等待／settle helper：在 `+208` mutex／condition 上等待状态计数达到 2；`+12`／`+13` gate 会改变等待路径，随后释放 `+16` 引用，返回 `1 + (state+8 == 4)`。它没有把等待结果转成设备读回，也没有看到取消令牌撤销已经提交的请求。`0x2f8d90` 在 owner `+8` 的 `+32` mutex 下，状态为 2 时立即以 `bool=1` 回调；否则先置状态 1，运行 lambda 后将结果交给 `0x2d9270`。`task_canceled`／`_Interruption_exception` 都以 `bool=1`、零 payload 回调并直接返回；一般异常写入 `exception_ptr` 后传播。这里的 bool 是任务层结算，不是 IPC ACK、DSP 应用或设备确认；取消发生在请求已发出前后、回调迟到和释放顺序仍需纯模拟及实际对照分别测试。
+
 直接 setter 回调仅在内部返回 0 后、回调 mutex 内调用，传入 selector、调用者原始名称指针、输入长度除以 2 和注册上下文，**不等待服务确认**。注册函数 `0x1f3b0` 在同一 mutex 内替换函数与上下文，非空时同步读取 0／1／2 并使用共享 1,024 字节名称空间，空函数可注销。通知注册 `0x3c7b0` 先移除旧订阅再挂入三支 observer，并立即触发三次通知；通知函数 `0x1fb00` 使用先清零的 256 字节名称空间，逐项读取 active、六组 biquad 与 FIR 标签。标签 getter 只复制至容量减 1，报告左数组元素数除以 2；owner 存在时，缺状态或未知 selector 仍可能返回 0，不能据此伪造已观测值。队列产生的其他通知可能早于或晚于直接回调，实际线程顺序仍待比较。
 
 服务 dispatcher `0x2853c0` 的三支 Virtualizer 请求进入各自 typed state 修改与回复函数。六个正常／初始化消费者分别读取 Front／Side／Rear 配置，调用 [解析器 `0x2cbb20`](../../../.analysis/results/native/169bef9718b1b9c32ad4bc1072baec51b6dd85b293ea834e292b939b28f3d82b/functions/2cbb20.json)，再调用 [DSP 配置器 `0x2d8d90`](../../../.analysis/results/native/169bef9718b1b9c32ad4bc1072baec51b6dd85b293ea834e292b939b28f3d82b/functions/2d8d90.json)。解析器最多转换六组 correction biquad，采样率为 48 kHz，仅对非零、等长且偶数的左右 FIR 拆半；缺数组时日志写 `using default filters`，这里只证明保留构造结果。配置器要求两行和正长度，按变化配置四个 FIR processor 与六组 biquad，可能返回 false；所选六个消费者均不使用该 bool。因此 client 本地复制、服务 committed state、DSP 配置接受与最终 PCM／设备效果必须分别保存，服务状态回复不能冒充 DSP 成功。
@@ -846,8 +852,77 @@ PCM helper `0x965f0/0x96620/0x96650/0x96680` 先按有序比较限幅，再以 b
 | 3942 灯光效果 | 十项 ID／列表位置与八编辑器逐项核，区分 UI／MW 默认和设备观测；覆盖 Wave 挂载提交、Meter blur／Enter／Escape、自定义色 Save／Cancel／删除、Profile／串行 storage／退出。分别比较 region 参数、LE 软件状态、实际 native 帧与 ACK／读回；本机 cache、completed 或退出目标不能替代设备结果 |
 | 页面分支与 cleanup | 覆盖 display 根选择、nav 卸载、Surround cleanup、Profile 恢复、mode 拒绝、Stop 排队与 reload；分别记录 UI 本地 bool、服务状态、wrapper/client 返回和实际设备读回 |
 
+## THXInstallViewCLI 的音频安装、设备枚举与清理边界
+
+这条链来自当前官方 `THXInstallViewCLI.exe`（1,599,696 bytes，输入 SHA-256 `dc9aaa38e26da08101eb85feaa8bb60893c91ab417712523986b58011c10984e`）。它是 THX 安装查看和维护工具，不是播放 DSP 或硬件协议后端。托管程序集的 C# 与 IL 均已静态捕获；C# 仅有 `THXInstallViewCore/Utils.cs` 的两行 ILSpy 未解析诊断，不能把该捕获当作运行时完成：[`managed capture`](../../../.analysis/results/host-current/managed/capture.json)、[`Program.cs`](../../../.analysis/results/host-current/managed/dc9aaa38e26d/source/THXInstallViewCLI/Program.cs)、[`EngineCore.cs`](../../../.analysis/results/host-current/managed/dc9aaa38e26d/source/THXInstallViewCore/EngineCore.cs)。
+
+### CLI 选项、搜索顺序和结果来源
+
+- `Main` 在 [`Program.cs:45`](../../../.analysis/results/host-current/managed/dc9aaa38e26d/source/THXInstallViewCLI/Program.cs#L45) 解析 `-system`、`-vad`、`-ht`、`-appx`、`-usb <vidpid|all>`、`-drivers [version]`、`-devices [version]`、`-data`、`-json`、`-remove`、`-rescan` 和 `-all`；`-all` 会同时打开系统、VAD、Headtracker、APPX、USB、驱动、设备和数据分支。它先 `Search`，再按筛选结果顺序执行卸载，最后才可导出 JSON 或重扫设备。
+- [`EngineCore.Search:91`](../../../.analysis/results/host-current/managed/dc9aaa38e26d/source/THXInstallViewCore/EngineCore.cs#L91) 的固定顺序是系统安装器/预设、VAD、Headtracker、USB、APPX、驱动、设备、数据。系统安装器从 `HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall` 遍历，只接受 `Publisher.ToLower() == "thx"`；存在 `InstallerMetadata` 时按 `system`、`vad`、`usb`、`headtracker`、`appx`、`presets` 映射，否则按显示名回退。元数据路径会读取服务状态，不能把注册表元数据当作服务已启动或设备已在线。
+- USB `all` 会同时查普通 USB、V1 和 V2 legacy；指定 VID/PID 时会尝试无分隔符、带连字符和带 `!` 的名称，并继续查 V1/V2。APPX 分支还调用 `Get-AppxPackage | Select-Object ... | ConvertTo-Json`，这只是本机安装包枚举。
+- `Data` 只扫描本机文件：`%ProgramData%\\THX\\*\\thx_properties.tcp`、`%ProgramData%\\boost_interprocess\\thx_tracker_lib_*`、`%ProgramFiles%\\THX\\THXTrackerService` 和 VAD 数据目录。文件存在只表示可枚举，不表示 APO、VAD 或 Headtracker 正在消费它。
+
+### 卸载、驱动和设备操作
+
+- [`RemoveSelected:128`](../../../.analysis/results/host-current/managed/dc9aaa38e26d/source/THXInstallViewCLI/Program.cs#L128) 逐项 `await Task.Run`，顺序是 bundle uninstaller、驱动、PnP 设备、APPX、数据；每一项完成后才处理下一类。`3010` 只设置 `RebootNeeded` 并在最终返回时报告需要重启，不等于设备或服务已经停止。
+- [`ExecuteUninstall:1374`](../../../.analysis/results/host-current/managed/dc9aaa38e26d/source/THXInstallViewCore/EngineCore.cs#L1374) 对 `THXSA` 和 DysonAPO v2 运行 bundle 的 `/uninstall` 参数并附加 `/log`，压缩产生的 `.log/.html`；DysonAPO v1 则从嵌入资源解出对应 PID、`Service` 或 `VAD` 卸载器到 `%TEMP%\\THXUSBAPOV1Uninstallers`，执行 `/S` 后删除临时文件和目录。两条路径都只依据进程退出码，不读取 DSP 或设备 ACK。
+- [`DeleteDriver:1589`](../../../.analysis/results/host-current/managed/dc9aaa38e26d/source/THXInstallViewCore/EngineCore.cs#L1589) 调用系统 `pnputil.exe /delete-driver <published-inf> /uninstall /force`，记录 stdout/stderr，`3010` 置重启标记并固定睡眠 1 秒。 [`RemoveDevice:1951`](../../../.analysis/results/host-current/managed/dc9aaa38e26d/source/THXInstallViewCore/EngineCore.cs#L1951) 调用 `pnputil.exe /remove-device /instanceId <id>`；[`RescanDevices:1973`](../../../.analysis/results/host-current/managed/dc9aaa38e26d/source/THXInstallViewCore/EngineCore.cs#L1973) 调用 `/scan-devices`。它们的命令退出码和日志必须与真实 PnP 状态分开建模。
+- [`DeleteData:1866`](../../../.analysis/results/host-current/managed/dc9aaa38e26d/source/THXInstallViewCore/EngineCore.cs#L1866) 先删除单文件，再在 `DeleteEmptyParent` 为真时逐级删除空父目录；随后若 `Path` 存在则递归删除。文件不存在、目录不存在和异常都改成 `ExitCode=1`，成功路径固定等待 1 秒。APPX 删除通过 PowerShell `Remove-AppxPackage -Package \"...\" -AllUsers`，同样只返回 PowerShell 退出码。
+
+### 元数据封装和 PowerShell 边界
+
+[`AppendMetadataToFile:2124`](../../../.analysis/results/host-current/managed/dc9aaa38e26d/source/THXInstallViewCore/EngineCore.cs#L2124) 以 UTF-8 追加 `text`、8 个大写十六进制字符和 `signature`；长度字段使用 `text.Length`（UTF-16 字符数），不是 UTF-8 字节数。 [`ExtractMetadataFromFile:2136`](../../../.analysis/results/host-current/managed/dc9aaa38e26d/source/THXInstallViewCore/EngineCore.cs#L2136) 从文件尾向前最多扫描 2,000 次匹配签名，读取其前 8 字节作为十六进制长度，再读取对应数量的字节并按 UTF-8 解码；签名或长度非法会返回 `null` 或抛出 `InvalidOperationException`。Rust 迁移不能把它替换成任意 JSON 尾部扫描。
+
+[`ExecutePS:2095`](../../../.analysis/results/host-current/managed/dc9aaa38e26d/source/THXInstallViewCore/EngineCore.cs#L2095) 把命令拼接到 `cmd.exe /c powershell.exe -ExecutionPolicy Bypass -NoProfile -Command \"...\"`，重定向 stdout/stderr 后同步等待进程并返回退出码。该调用是安装维护层的 OS 适配边界，未执行；生产 Rust 版本必须单独建模命令参数、输出、取消和清理，不能把它当作音频设置成功。
+
+本节是静态 C#／IL 证据（程序集输入、源文件和命令输出均保持字节校验），没有运行 CLI、PowerShell、pnputil、安装器、服务或设备。THX APO/VAD 的 PCM、RPC、真实服务应答、失败/取消/恢复和释放仍须沿前述原生捕获链另行验证；当前 Rust 实现、UI 接线、模拟对照和官方 DLL 实际执行均保持未验证。
+
+## THX spatial-config-util 的配置枚举、验证与本地 JSON 写回
+
+本批对两个官方 `spatial-config-util.exe` 版本分别建立了独立的 IDA 9.1 私有数据库并用并行捕获器保存原始字节、函数边界和反汇编。4.26.1.0 原件 SHA-256 为 `3ed2fa129b5eb5969ef3be4e81bb4c4d028828c8f6741faac9479bc1b5db4ad1`（11,704,136 字节），4.20.1.0 原件 SHA-256 为 `8f947236ddcc7a47287587b17f53880017598360e97e96daf3363fe45b315960`（11,347,784 字节）。两者均为 Go PE32+，入口为 `_rt0_amd64_windows`，导入只来自 `kernel32`；4.26.1.0 捕获 10,603 个函数、失败 639 个，4.20.1.0 捕获 10,134 个函数、失败 16 个。函数总量已完整枚举，但伪代码并非全部可生成，不能把该批次当作完整语义闭环。
+
+- [4.26.1.0 捕获收据](../../../.analysis/results/native/3ed2fa129b5eb5969ef3be4e81bb4c4d028828c8f6741faac9479bc1b5db4ad1/capture.json)及关键函数：[getSpatialDevices 0x427780](../../../.analysis/results/native/3ed2fa129b5eb5969ef3be4e81bb4c4d028828c8f6741faac9479bc1b5db4ad1/functions/427780.json)、[WriteJSONFile 0x4278c0](../../../.analysis/results/native/3ed2fa129b5eb5969ef3be4e81bb4c4d028828c8f6741faac9479bc1b5db4ad1/functions/4278c0.json)、[main 0x428680](../../../.analysis/results/native/3ed2fa129b5eb5969ef3be4e81bb4c4d028828c8f6741faac9479bc1b5db4ad1/functions/428680.json)、[spatial.GetDevices 0x3ecbe0](../../../.analysis/results/native/3ed2fa129b5eb5969ef3be4e81bb4c4d028828c8f6741faac9479bc1b5db4ad1/functions/3ecbe0.json)、[spatial.GetV2DeviceConfig 0x3ee180](../../../.analysis/results/native/3ed2fa129b5eb5969ef3be4e81bb4c4d028828c8f6741faac9479bc1b5db4ad1/functions/3ee180.json)。
+- [4.20.1.0 捕获收据](../../../.analysis/results/native/8f947236ddcc7a47287587b17f53880017598360e97e96daf3363fe45b315960/capture.json)及同名函数链：[getSpatialDevices 0x3f25a0](../../../.analysis/results/native/8f947236ddcc7a47287587b17f53880017598360e97e96daf3363fe45b315960/functions/3f25a0.json)、[main 0x3f34c0](../../../.analysis/results/native/8f947236ddcc7a47287587b17f53880017598360e97e96daf3363fe45b315960/functions/3f34c0.json)、[spatial.GetDevices 0x3b8040](../../../.analysis/results/native/8f947236ddcc7a47287587b17f53880017598360e97e96daf3363fe45b315960/functions/3b8040.json)、[spatial.GetV2DeviceConfig 0x3b9680](../../../.analysis/results/native/8f947236ddcc7a47287587b17f53880017598360e97e96daf3363fe45b315960/functions/3b9680.json)。
+
+### 配置来源与机型分支
+
+`main.getSpatialDevices` 在进程内建立三个 `net/http/httptest.NewServer` 处理器，处理器由嵌入的设备清单提供内容，再调用 `spatial.GetDevices`。新版本读取 `devices-V2.yaml`，旧版本保留 `devices.yaml` 路径；这里是本地嵌入清单的解析与验证，不是 HID 枚举，也没有设备句柄、控制传输或硬件应答。`spatial.getConfigObject` 为配置对象建立对象 URL、schema loader 和 reference loader，调用 `gojsonschema.Validate`，然后 JSON marshal/unmarshal 回有类型的 `spatial.Config`；schema 错误会沿 error 返回，不能在 Rust 侧用任意 JSON 或缺字段默认值替代。
+
+V1/V2 配置函数从嵌入资源读取对应 schema 和配置。V2 额外引用 `WidthExpansion-config.json`、`presetCollection-config.json` 以及设备 EQ、SpeakerPath、Crosstalk、LoudSpeakersDRC 对象，并据此构造 preset collection。`main` 还调用 USB、HDAudio、OEM product 和 HDAudio driver 消费者，用机器信息选择配置树，随后写出清理后的 V2 配置和每个 preset 的 JSON。`gepetto.(*PresetCollection).GetPresetCount` 遍历 preset，仅统计 `PresetName` 非空项；`gepetto.(*THXSpatialPreset).SetPresetEQ` 向 `EQCurve` 写入 31 个 `float64` 值。这些方法只证明内存配置和本地序列化行为，不证明声卡、DSP 或设备已经接受 EQ。
+
+### 文件写回与失败边界
+
+`main.WriteJSONFile` 使用 `encoding/json.MarshalIndent`，先以 `0755` 创建父目录，再以 `O_RDWR|O_CREATE|O_TRUNC` 和 `0666` 打开文件，执行 `Write`、`Sync`，最后通过延迟关闭释放句柄；任一步骤失败都返回 error。`spatial.(*Device).JSONFile` 以设备名拼接 `thx_spatial.conf.json`，转换配置后调用 `WriteObjectToJSONFile`；`WriteSpatialConfigToJSONPath` 只是转发该错误。这里的确认边界是本地文件写入和同步，不包含设备读回、服务确认、失败回滚、取消恢复或硬件释放。
+
+本节是两个 Go 原件的静态 IDA/反汇编证据；没有运行工具、Go 进程、厂商 DLL、服务、安装器或设备。Rust 配置解析、DSP/HID/驱动写回、UI 接线、失败/取消/恢复/释放以及与官方实际 DLL 结果的对照仍保持未验证。
+
 ## 演示与来源
 
 1352 的本地演示不循环、不带自定义 controls、不浮动；1392/1442/3942 循环、有 controls 且可浮动。四款都使用系统默认 render endpoint、不静音、不归 profile 所有。关闭播放、全屏和浮动状态属于媒体生命周期，不能顺便改设备 EQ。完整原件、CSS 与媒体收据见 `audio-demo-audit.json`。
 
 本页深层证据分别见 `audio-mw-audit.json` 的 `audio-local-profiles`、`audio-MapAudio-audit.json` 的 `seiren_eq/leviathan`、`audio-help-reset-audit.json` 的完整 EQ/reset 所有者，以及 `audio-surround-audit.json`。本文描述当前原件的静态语义；官方包装器 ABI、设备应答和本项目独立实现状态分别核验。
+
+## ThxVADCarolNative_v1.0.13.0：Carol EQ、端点与退出清理（2026-10-24 四线程静态捕获）
+
+[ThxVADCarolNative capture](../../../.analysis/results/native/8678a5eadd881ea7a569131369b3964d9519f1d584beddd315fb897e6f4af5ca/capture.json) 的原件 SHA-256 为 8678a5eadd881ea7a569131369b3964d9519f1d584beddd315fb897e6f4af5ca，原件 954504 字节；capture SHA-256 为 77a1cb3de9321ba4b1cc027d440d7f575aa0e84b82d8d67203b5aa8b074b612f，包含 2920 个函数、0 个 Hex-Rays 失败和 71 个导出入口。四线程批次摘要在 [camera-audio-native-batch analysis.json](../../../.work/camera-audio-native-batch-20261024/analysis.json)。独立 PE 映射确认 2958 个唯一 chunk、173596 个唯一指令和 673579 个唯一 chunk 字节与原件一致；集合与其他 THX 版本重叠时不重复累计。
+
+### 初始化、EQ 读写与默认结果
+
+DeviceInitialize（RVA 0x68920）拒绝空 ID，要求管理器中存在容器；已有容器时复用，否则注册设备回调并通过每设备 executor 0x65100 初始化。Front/Global/Rear EQ getter（0x6c6b0、0x6d430、0x6e6f0）先把 JSON 结果设为 result=false，再在设备 executor 中填充浮点向量；成功时返回 result、数量和 EQ 数组，浮点会提升为 double。无效设备仍是 result=false，不能用空数组当成设备已经确认的零值。
+
+对应 setter（Front 0x72a60、Global 0x73020、Rear 0x736a0）解析容器 ID 后绑定 thx::CarolWrapper 的成员函数，交由同一 executor 执行并返回布尔值。导出层没有证明 EQ 数量或范围校验，清理函数 ClearAllFrontEqBands（0x680b0）、ClearAllGlobalEqBands（0x68380）和 ClearAllRearEqBands（0x68650）同样只把成员调用结果包装为布尔值；Rust 侧必须在类型边界明确长度、值域和未观测状态，不能因为调用返回成功就推断 DSP 已经读回。
+
+### 端点、音量和捕获状态
+
+GetDefaultAudioEndpoint（0x6bc50）构造 defaultAudioEndpoint JSON，包含名称、ID、路径和 deviceContainerId；GetFrontEndpointId（0x6c170）与 GetRearEndpointId（0x6e1b0）分别返回端点标识。SetDefaultRenderDevice（0x723d0）先以 role 0 设置默认渲染端点，成功后再以 eCommunications role 2 设置；第二步失败时本层没有回滚，因此可能产生部分写入。Front/Global/Rear 及系统 capture/render 的音量、静音和 sidetone getter/setter 继续通过 CAudioVolume 或端点对象执行，导出层未提供设备读回收据。
+
+SetStartCaptureStatus（0x74c10）解析 capture 对象，在 true/false 间选择 0x3f590/0x3fc00 回调并通过 executor 执行；无设备直接失败。SetNodeFFIEvent（0x735e0）只在互斥锁下替换回调指针并返回 1；没有等待回调完成或撤销在途通知的证明。OpenAudioMixer（0x71000）只写日志并恒定返回 1，不能作为系统混音器已打开的证据。PlayDelayTestSignal 和 StopDelayTestSignal 仍转发内部布尔结果，服务端应答未在本次静态切片中闭合。
+
+### DeviceTerminate 的恢复与危险退出分支
+
+DeviceTerminate（0x68d30）在删除容器前主动调用 SetComboMode_0(id, 0)，并把 Global、Rear、Front 三组 EQ 写成全零 JSON；这些调用的返回值在包装层被忽略。随后通过 executor 执行删除，成功时由管理器 0x60ae0 收尾；失败时走 0x60d80，调用 0x5f090 打开目标线程并 TerminateThread，再注销 0x60f20，包装层仍记录移除成功。0x5f090 的强制线程终止没有证明队列排空、回调撤销或硬件恢复，不能在 Rust 中当作正常取消路径复用。
+
+批量 Terminate（0x75170）遍历管理器容器逐项调用 DeviceTerminate，最后由 0x521e0 清理管理器、共享引用和包装对象。FreeMalloc（0x69280）是独立导出分配器；所有 JSON 返回的所有权必须由相同版本的释放入口配对。客户端/服务版本查询和导出存在不等于服务已经连接。
+
+本轮只做原件、capture 和逐指令字节复核，没有运行 DLL、Windows 音频端点、服务或设备，也没有执行 EQ 写入、读回、恢复、取消和线程释放。Rust 与官方实际结果的逐输入对照仍保持 Unverified；尤其默认端点的第二角色失败、EQ 清零和 TerminateThread 分支必须在有设备的只读优先测试及可恢复写入测试中单独收据化。

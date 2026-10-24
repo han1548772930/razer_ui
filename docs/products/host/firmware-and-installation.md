@@ -59,6 +59,16 @@ SDK `initSDK` RVA `0x1c0d0` 解析本地 `localResourceRootPath` 与 log 配置�
 
 原版配置键实际拼写包含 `supportProrocol`，在外部格式边界按原件解析；内部仍应使用具名类型。配置中固件包 hash 属于实际文件完整性约束，与逆向原件的证据 SHA 各有用途。产品不得拿工作站路径或证据文件 hash 判断设备兼容性。
 
+### 固件 ZIP 哈希的实际 SHA-256 生命周期
+
+SDK 的 `0x1a850` 是 `CalculateZipFileHash` 的完整 owner（[原始函数捕获](../../../.analysis/results/native/e204e2e1099d5948050c3aab23589b70bf8872928ba452bb2d9be36b00fdd572/functions/1a850.json)，函数文件 SHA-256=`297019f20a835ea5c52b2be88905a770d4d22af0933c0a41067f3dffcb7031e8`）。它以 `ifstream` 的 binary 输入模式打开传入路径，逐字节 `sgetc/sbumpc` 读到动态缓冲；open 失败直接把输出 string 清空并记录日志，读取错误没有独立的 `ferror` 结果。正常结束后把完整字节范围交给 `0x39790`，而不是按 ZIP entry 或解压后内容计算。
+
+`0x39790` 先调用 `0x4e090`，后者的完整函数（[哈希边界捕获](../../../.analysis/results/native/e204e2e1099d5948050c3aab23589b70bf8872928ba452bb2d9be36b00fdd572/functions/4e090.json)，函数文件 SHA-256=`377d80a0129de539abbc031a2d906204131dc1716755c2311d65735abbe5d083`）按 32-bit word 累积长度，处理 64 B 分块并使用标准 SHA-256 八个初始 word；压缩轮在 `0x4d6d0`（[原始轮函数](../../../.analysis/results/native/e204e2e1099d5948050c3aab23589b70bf8872928ba452bb2d9be36b00fdd572/functions/4d6d0.json)）使用 64 个常量、`ROTR`/`Ch`/`Maj`，末尾 `0x1a6c0` 加 `0x80`、零填充到 56 B 并写入大端 bit length。PE 数据区 `0x7adc0` 的 288 B 初始状态／轮常量原字节 SHA-256=`d736d450a7808c38481216f2dbe3d6caaa0bc79d620d9f4033d7ea0be0e6dd42`；输出按大端 word 拆成最多 32 B。这闭合了当前 SDK 文件 hash 的算法身份，但不等同于固件镜像的设备认证或加密校验。
+
+`0x39790` 将 32 B digest 逐字节用宽度 2、填充字符 `'0'` 的十六进制流格式化，再由 `0x1a850` 对整个结果调用 `toupper`，所以该 owner 的实际比较串是 64 个大写 ASCII 十六进制字符。读失败的空串仍会进入同一比较；expected `resourceSha256` 没有在此路径独立规范化，因而两边均为空的静态边界不能当作文件完整性通过。哈希上下文在 `0xd72d4` 分配、`0xd7350` 清零并释放，异常路径由 `ifstream`／动态缓冲析构处理；未执行 DLL 或文件行为对照。
+
+比较发生在 SDK `prepareUpdate` `0x1c8d0`（[完整函数捕获](../../../.analysis/results/native/e204e2e1099d5948050c3aab23589b70bf8872928ba452bb2d9be36b00fdd572/functions/1c8d0.json)，函数文件 SHA-256=`65ec8e4039db25266cdc128e4b77602759339c8d7069cdb3875cc286febf6768`）：先把两边 string 的 data 指针按 small-string／堆存储布局取出，再比较 `size`；长度相等且为非零时才调用 `memcmp`，任一字节差异返回 `{"code":2001,"message":"File hash value mismatch."}`，零长度不会调用 `memcmp` 而直接继续。这个 owner 只证明文件 hash 字符串的字节相等，不证明 ZIP 可提取、配置可解析、设备身份或下层写入成功；未执行 DLL 或文件行为对照。
+
 ### 资源版本、哈希与 ZIP 提取
 
 `0xf7c0` 按存在字段依次写顶层 `pid/vid/SN/targetVersion/deviceConfig`，缺失保留旧全局，后续异常不撤回。deviceConfig 接受 string 或 object→JSON string，其他类型先转空串再解析而失败。其 `productName/vid/mainPid/minSdkVersion/deviceType/configModifyTime` 同样没有必填检查；minSdkVersion 是严格 string，但所读准备链没有据它执行 SDK 版本约束。deviceType、configModifyTime 分别使用下文的 u16／u64 转换。
@@ -144,6 +154,10 @@ type 0／2 的完整链 `0x7f20 → 0x8300` 按下列 91 B 帧工作，未列字
 | 结束／reset | offset 6…8=`00 10 05` |
 
 type 0 在初始 HID 打开成功后发送切 boot，但丢弃其返回；最多五十次、每次先 Sleep(1000) 查找 `1532:110E`，关闭探针后再打开 boot。初始打开失败会直接尝试 boot，type 2 则跳过切换、使用初始句柄。`0x8300` 先写完全部块，再第二遍完整读取与原镜像比较，任一 helper 不是 `2` 或任一字节不同均失败。这条真实读回链不能扩展到下述其他 updateType。
+
+V25 的实际读回与失败释放由独立 owner 进一步限定：[调用方 `0x7f20`](../../../.analysis/results/native/5899b2c58435460f98cba697e3600f00bef3f08cea12b436dd65d24a7ddc170e/functions/7f20.json，函数文件 SHA-256=`c4463ce029eca78967539c0c1f254656eca1a2be589cc09c876d8843fd0ecfd9`) 在写入前用 `0x5660` helper 发开始帧，helper 返回值不是 `2` 就直接以该值结束；[读回 owner `0x8300`](../../../.analysis/results/native/5899b2c58435460f98cba697e3600f00bef3f08cea12b436dd65d24a7ddc170e/functions/8300.json，函数文件 SHA-256=`5ba76d10123d539cdb472f1fb94669e9f487148232f8de4d34e38650ac7f9dab`) 只有全部写块成功才进入第二遍。第二遍每块发送 `05 10 83`，只接受 `0x5660` 返回 `2`，从响应 offset 14 复制本块长度并逐字节比较；首个差异返回 `3`，I/O／状态失败保留 helper 的 `3` 或 `5`，空镜像则不传输直接返回 `2`。成功后的 `00 10 05` reset 结果被调用方丢弃。
+
+`0x5660`（[helper 捕获](../../../.analysis/results/native/5899b2c58435460f98cba697e3600f00bef3f08cea12b436dd65d24a7ddc170e/functions/5660.json)，函数文件 SHA-256=`843e3d936111ad38c5220e55b7ed35f9bfbf99404107dfabe88d3729250820b7`）每次将请求 offset 3…88 的 XOR 写到 offset 89，最多三次 SetFeature；每次成功后等待，再最多一百次 GetFeature，仅比对响应 offset 2、7、8 和 status，status=2 才复制完整 91 B 响应并返回 `2`，非 busy 的其他状态返回 `3`，API／等待耗尽返回 `5`。它不核响应 checksum、长度或完整回显，也不关闭传入 HANDLE；`0x7f20` 仅在重连循环中关闭最终成功的句柄，失败、读回不匹配和 `0x8300` 返回异常时只释放镜像 `Block`，旧 boot／初始 HID 句柄仍有未配对路径。等待 helper `0x55a0`（[捕获](../../../.analysis/results/native/5899b2c58435460f98cba697e3600f00bef3f08cea12b436dd65d24a7ddc170e/functions/55a0.json)，函数文件 SHA-256=`fbf5688173ddd499448e878a1fe2c28f9a6f4c13009216744083527751538888`）也没有取消或句柄释放；因此返回 `2` 只代表这条 helper／本地读回条件，不能当作设备持久化确认或完整资源清理。
 
 type 1 的 `0x8640` 请求 offset 6…7=`08 00`，mode 2 时 offset 8=`93`，其他为 `87`；ACK 成功且响应 offset 13=`B1` 才认 boot，mode 3 还接受 offset 9=`B1`。`0x8f20` 未认 boot 时发送 `00 0A 00`，要求成功后至多十次等待一秒再查询；随后 `00 0A 80` 要求响应 offset 9 非零、11 为 2／3，并取 offset 10 为 selector。
 
@@ -282,6 +296,28 @@ selector 4 的 `0x1020` 用 `GetModuleFileNameW(NULL)` 获取**宿主 EXE 目录
 `0x7730` 的 RVA `0x7926` 原字节 `80 7c 24 30 00` 比较 `[rsp+30h]`，完整函数未写入或传出此字节；LengthTransferred／Overlapped 参数只占 +20／+28，不能解释为已经初始化该 flag。因此擦除后是否进入 `0x7ee0` 取决于未初始化栈值，不能写成稳定的两遍升级流程。
 
 即使进入 `0x7ee0`，文件大小为 64 的整倍数时两遍都会额外发零长度块；空文件或小于 64 B 在首个 OUT 成功后可于 `0x8090/0x81ce` 整数除零。进度分母 `D=floor(size/64)`，第一遍为 `min(100,50*k/D)`，第二遍为 `min(100,50+50*k/D)`；第一遍并不严格限于 0…50，例如 64 B 会出现 50→100。仅两遍成功才删除临时文件，失败 unwind 关闭流但留下文件；局部 WinUSB interface 释放不包含主 HANDLE，也没有取消、原固件恢复或失败 reboot 闭环。
+
+#### WinUSB 探测、ACK 与消费者释放边界（补核）
+
+本轮以 [UMA SDK 原件](../../../.analysis/inputs/official-native-current/blobs/6150d86066e0e2a127a234ddc9d300ce9ac2b0cfa4c9d778fd026ea87cc1574b/Razer_Upgrade_SDK.dll)（SHA-256 `6150d86066e0e2a127a234ddc9d300ce9ac2b0cfa4c9d778fd026ea87cc1574b`）及其 [完整捕获](../../../.analysis/results/native/6150d86066e0e2a127a234ddc9d300ce9ac2b0cfa4c9d778fd026ea87cc1574b/capture.json)（SHA-256 `c3e6bfa3b4b74f704b706c7cc7658daa82a7ed28f9cfcc5fa3bfd3bdcf9dba85`）为边界，使用 `ThreadPoolExecutor(max_workers=4)` 并行核对 SDK 的两组函数；另以 [UMA wrapper 原件](../../../.analysis/inputs/official-native-current/blobs/54b8d53c215c7992ab949aa75db1cd92706bdd1fb4a488a1efcdb695141f68c5/RzUMASDKWrapper_v1.0.3.0.dll)（SHA-256 `54b8d53c215c7992ab949aa75db1cd92706bdd1fb4a488a1efcdb695141f68c5`）和其 [完整捕获](../../../.analysis/results/native/54b8d53c215c7992ab949aa75db1cd92706bdd1fb4a488a1efcdb695141f68c5/capture.json)（SHA-256 `e74f7b407b2787d01e150669dbf766f7836b192deea4cc23502d85bf4fbf2fd5`）交叉核对消费者。每个函数的 JSON、完整 chunk 原字节、指令字节和入口 xref 均由原 PE 独立重算；下表只列本次补核的函数，不能把这些局部集合扩展为整个 DLL 已验证。
+
+| 函数（原件内 RVA） | 函数 JSON SHA-256 | 完整 chunk 字节／chunk SHA-256 | 入口代码 xref |
+| --- | --- | --- | --- |
+| [`0x6b70`](../../../.analysis/results/native/6150d86066e0e2a127a234ddc9d300ce9ac2b0cfa4c9d778fd026ea87cc1574b/functions/6b70.json) | `b0ab94cb12da33e0b4de134872c8363f7f16334eefc0f4633f65902f77cdb767` | 759 B／`5aa2be288b6f9b46cbc51abcbc3281aafa17b1c342133a1c36f90b70dd2e1d77` | `0x6b1d, 0x7268, 0x77ad` |
+| [`0x6ad0`](../../../.analysis/results/native/6150d86066e0e2a127a234ddc9d300ce9ac2b0cfa4c9d778fd026ea87cc1574b/functions/6ad0.json) | `11860b5bc6dfc30c00bba6b007e94f8aefb77a1c8a987d14a9ac7909638f56ca` | 151 B／`bd517f42a723ccd75fc4e74b819d29e9e340f9c8499ffb3edf6f04f663fe3590` | `0x724c, 0x7690, 0x7791, 0x797c, 0x8ead, 0x911d, 0xa083` |
+| [`0x7730`](../../../.analysis/results/native/6150d86066e0e2a127a234ddc9d300ce9ac2b0cfa4c9d778fd026ea87cc1574b/functions/7730.json) | `dbda1a370282e2fc6b406cc6685d8c709e0636b386767e2ebb7944b2fed589e6` | 710 B／`03d87f5402c92ef65b150d5976ca2f3db4e220824b802af3c4b367d8d4f45a6e` | `0x719d` |
+| [`0x7ab0`](../../../.analysis/results/native/6150d86066e0e2a127a234ddc9d300ce9ac2b0cfa4c9d778fd026ea87cc1574b/functions/7ab0.json) | `55d2ae1d02b69e7f06cca50a4604c6898b40f0154c8bbbaa944cbe739c491573` | 451 B／`94127d97337dd0f8f051ca7fe25fc846438e50146411991430294c63ef071cb2` | `0x8058` |
+| [`0x7c80`](../../../.analysis/results/native/6150d86066e0e2a127a234ddc9d300ce9ac2b0cfa4c9d778fd026ea87cc1574b/functions/7c80.json) | `3c3cdb93557378e45bf26af0d35bf02470d24a55a90e439e9775aff67a113e9e` | 451 B／`a13aff143e381240bc90ad7ca7cdc91d5d5a99d95808e854661ad32b87fef933` | `0x8197` |
+| [`0x7ee0`](../../../.analysis/results/native/6150d86066e0e2a127a234ddc9d300ce9ac2b0cfa4c9d778fd026ea87cc1574b/functions/7ee0.json) | `ca563bff11050242e0277e936f4d6546f397a65ad81fb550374babbd0d33039d` | 933 B／`86134f97e3612fcade242848f7c56809e078f338bc86bcbf20588f16e1dd7310` | `0x7950` |
+| [`0x8290`](../../../.analysis/results/native/6150d86066e0e2a127a234ddc9d300ce9ac2b0cfa4c9d778fd026ea87cc1574b/functions/8290.json) | `82b12dfcf3c294a22304957bb3127515c735c877e6c5c3ac754899dc9fc4ad0b` | 2715 B／`4c026841b9e16a24997c9efa46b9cb8777bb2a7a0cbbc0be6e135aa460b2fcbe` | `0x755f, 0x765d` |
+
+`0x6b70` 的失败顺序有两个不能省略的边界：第二次 `SetupDiGetDeviceInterfaceDetailW` 失败时先释放分配的 detail buffer，却仍沿 `v9+4` 继续组成路径；这是原二进制的潜在空指针路径，不能在 Rust 中静默改成“跳过该设备”而不留下差异。路径匹配后以 `CreateFileW(GENERIC_READ|GENERIC_WRITE, share=3, OPEN_EXISTING, FILE_FLAG_OVERLAPPED)` 打开，再 `WinUsb_Initialize` 和 `WinUsb_GetDescriptor(type=1,index=0,lang=0x409,length=0x12)` 读取 bcdDevice。Descriptor 初始化为零，初始化或读取失败只留下零；因此 `effective_pid==0` 时即使没有成功读到 descriptor 也可能被接受，其他值才会关闭该主句柄并继续枚举。找到后 `SetupDiDestroyDeviceInfoList` 与 detail buffer 都释放，但返回的主句柄由调用者拥有；`0x6ad0` 的 50 次等待只关闭它自己用来探测的成功句柄。
+
+`0x7ab0`／`0x7c80` 对 OUT `40/81`／`40/87` 各自最多尝试十次，每次成功都立即 `WinUsb_Free` interface；随后状态查询使用 `C0/8F`、长度 1，并在成功传输且字节等于 1 时返回 2，否则继续，十次耗尽返回 3。状态缓冲在进入查询循环时才置为 `FF`，失败的 `Initialize`／`ControlTransfer` 不会重置它，但失败传输不会进入成功分支，不能把旧字节当成确认；`LengthTransferred` 只作为 out 参数接收，返回值不比较实际长度。`0x7e50` 的空 OUT `40/84` 同样只返回 WinUSB BOOL，调用者丢弃该值。
+
+`0x8290` 的两遍写入在解析每行后把数据长度截为 `unsigned short` 传入 OUT；每次 OUT 成功才进行一次 `C0/8F` 状态轮询，状态查询前置 `FF`，成功且仍为 `FF` 时最多重复三次，随后失败返回 0；普通失败路径会释放临时字符串／数据 block，但没有关闭传入的 WinUSB 主句柄。`strtoul/strtol` 对缺失、非法或越界字段走 C++ 异常路径，不能泛化为“坏行跳过”。`0x7ee0` 的 `remove(FileName)` 返回值被丢弃，文件删除失败仍返回 2；因此“成功”只代表两遍传输和本地流 EOF 条件，不代表临时文件已经清理。
+
+wrapper 的实际消费者是 [异步 worker `0x336b0`](../../../.analysis/results/native/54b8d53c215c7992ab949aa75db1cd92706bdd1fb4a488a1efcdb695141f68c5/functions/336b0.json)（函数 JSON SHA-256 `47359a18a0ad084eaa77433ff8c1a31b5fadd5a8fe5a179231fb31ea32e47661`，入口代码 xref `0x3abb4`）。它通过 `0x2e520` 动态保存的 `mUpgradeFirmwareProcessApi` 指针两次调用下层 ABI，第一芯片返回非 2 即记录 `0001` 并释放两条本地路径；第二芯片返回非 2 即记录 `0002` 并释放路径；两次返回 2 后才调用 `GetDeviceFWVersion` 等待并发布 `0000`，十秒超时发布 `6789`。该 worker 没有 selector 3／4 的分支、取消屏障或失败恢复调用；路径 block 的释放不等于 SDK 内部主 HID／WinUSB 句柄释放，队列销毁也不等待在途动态调用。上述 wrapper 函数和 SDK 入口的 xref／字节已独立核对，尚未执行任何 DLL、服务、设备或固件写入。
 
 当前已证的 UMA wrapper 仅选择 0／1；标准 SDK 的 `0x16560` 显式加载的是 V25，不能接成此 SDK 的消费者。直接名称／导出扫描只界定字面候选，配置化、计算生成名称或外部间接消费者仍需追踪，不能由未找到 literal 宣称不存在。上述全部为原字节、完整函数及常量区静态核对，没有实际设备应答、DLL 功能差分或恢复验收。
 
@@ -751,10 +787,12 @@ pending 清理还有独立的结果类型差异：simpleRemoveUserAppFile 在 ho
 | 下载前、两桶之间、进程等待中取消 | flag／状态次序、fetch abort、实际启动动作序列、已写资源项、最终产品记录和清理完成分别比较 |
 | 文件发布成功后进程失败／记录失败 | 文件实际字节、真实 result/reason/exitCode、记录部分提交、keep 分支及 pending-remove；不以最终窗口状态代替 |
 | 标准固件预检与 3003 | 引导复位为写入，不能放进只读入口；分别比较原 CommandName 的忽略、FirmwareUpdate 消费、SN 截断／空值与实际清理，不能仅比错误码 |
+| V25 type 0/2 写后读回与失败释放 | `0x7f20` 的启动／重连、`0x8300` 的逐块读回和 byte mismatch=3、helper=3/5、reset 丢弃、失败句柄与 Block 释放分别比较；不能把返回 2 当作设备持久化或句柄清理 |
 | DFU 事件解析与等待 | 缺 payload／错误 code／falsy 进度的错误结算，与 truthy 非数值／越界进度继续等待、JSON 解析异常只日志分别核对； incoming SN 为空与非空、数值 0 与 100 单独覆盖 |
 | 共享工具栏与跨窗口动作 | CSS 禁用与原生 disabled、SDK 保参、policy=3 实际 Tab 创建、focus／tabClosed 事件、iframe 消费、异步迟到与卸载分别比较；窗口消息不能代替保存、恢复或设备确认 |
 | App Explorer 导航和关闭顺序 | 三个同步 callback 丢弃 Promise、查询错误转 null、独立 J 的 finally、查询未结算与同步抛错分别覆盖；模块／设备／其他应用的实际 policy 及 features 编码条件分别核对 |
 | Ry 短头／尾字节／文件变化 | h=0…32 的实际发送范围、loader gap／截尾、u32 回绕、XOR 未观测尾、EOF／错误和长度快照分别核对；静态推演不作为实际应答样本 |
+| 固件 ZIP SHA-256 生命周期 | binary 原始字节与 ZIP entry／解压内容的区别、open／read／EOF 失败、空串 expected、64 B 分块与 bit length、32 B digest 的大写 hex、`prepareUpdate 0x1c8d0` 的精确长度／`memcmp` 比较、上下文析构分别比较；不能把文件 hash 通过当作设备认证 |
 | 691 键盘及接收器 | 三份原生业务 DLL 各自 ABI／0或2成功、RY版本掩码及回调宽度、MCU写入与真实第二遍读回、null结果、重连／版本／恢复各自确认 |
 | 691 HEX 转换与文件失败 | 05 的 callback／end 顺序、含冒号整行长度 1…9、空输入／坏前缀／EOF 后数据、signed32 地址及正负 gap、奇数 nibble、输出打开／写入失败与部分文件保留分别比较 |
 | 691 可选 WinUSB | normal=false 的调用者 HANDLE、selector=0、OUT81／87 的本地数据、初始化／传输失败、首字节突变后的重发、非 FF ACK／五次耗尽返回及全部释放分别比较；不执行固件刷写作为测试 |
@@ -779,4 +817,56 @@ pending 清理还有独立的结果类型差异：simpleRemoveUserAppFile 在 ho
 
 无设备时可先用纯逻辑和模拟文件／传输／进程／服务接口验证上述状态机与失败注入；回放的期望须来自已核实的原件。纯逻辑、模拟验证、当前官方实际 DLL 对照与真实设备／系统验收各有独立状态，不能以两端都未连接判为一致。安装器执行、主程序运行和固件刷写不在本轮授权边界内，不能为了对照擅自执行。
 
-已静态核对本机安装文件链、标准固件预检／调度／事件消费者、当前 179 与 691 的选中升级链、固件共享交互、当前客户端 COM／直接进程／停止链、PE／ICO 信任与发布清理，以及保留服务副本的选中启动／事件／订阅／释放代码和两套升级工具差异。服务 EXE 的最新官方部署字节与依赖闭包仍未核实；当前产品清单和宿主包 ZIP 已留目录核对，该 ZIP 没有服务 EXE，不能据此认定外层安装或另行下载依赖不存在。完整服务捕获、底层密码与文件算法全部分支、其余固件协议、其他平台及全部产品分支仍需继续。报告保留原始分析快照，并另外核对并行获取结束后的当前输入索引及全部不可变来源。完整捕获、包装器初始化和文件写入都不能证明独立 Rust 实现完成。本文没有运行应用、厂商 JavaScript、安装器、helper、DLL、服务或设备，也没有执行本节纯／模拟测试或实际 DLL 功能对照；这些验证及固件刷写、安装运行验收保持未验证。
+已静态核对本机安装文件链、标准固件预检／调度／事件消费者、当前 179 与 691 的选中升级链、固件共享交互、当前客户端 COM／直接进程／停止链、PE／ICO 信任与发布清理，以及保留服务副本的选中启动／事件／订阅／释放代码和两套升级工具差异。服务 EXE 的最新官方部署字节与依赖闭包仍未核实；当前产品清单和宿主包 ZIP 已留目录核对，该 ZIP 没有服务 EXE，不能据此认定外层安装或另行下载依赖不存在。完整服务捕获、其余底层密码／文件算法分支、其余固件协议、其他平台及全部产品分支仍需继续。报告保留原始分析快照，并另外核对并行获取结束后的当前输入索引及全部不可变来源。完整捕获、包装器初始化和文件写入都不能证明独立 Rust 实现完成。本文没有运行应用、厂商 JavaScript、安装器、helper、DLL、服务或设备，也没有执行本节纯／模拟测试或实际 DLL 功能对照；这些验证及固件刷写、安装运行验收保持未验证。
+
+## PID0542/PID0543 音频设备驱动安装器的原生包装链（静态捕获）
+
+这两个文件是当前官方设备资源中的音频设备驱动安装器，而不是 Lighting/Power 协议 DLL；PID0542/PID0543 属于 Seiren V2 Pro/X 资源。版本资源分别标为 `Razer PID0542 Driver Installer` 和 `Razer PID0543 Driver Installer`，文件版本均为 `5.30.1.0`。原件收据位于 [corpus.json](../../../.analysis/results/corpus.json)；对应输入是 [PID0542Drv_v5.30.1.0.exe](../../../.analysis/inputs/official-native-current/blobs/6c747ca0871f35dcd6092860890d94387b18b9a2aab0c4efca559222c20462f8/PID0542Drv_v5.30.1.0.exe)（2,096,928 字节，SHA-256 `6c747ca0871f35dcd6092860890d94387b18b9a2aab0c4efca559222c20462f8`，官方资源 URL `https://app-assets.razer.com/files/synapse/devices/1346/1.0.0.0/PID0542Drv_v5.30.1.0.exe`）和 [PID0543Drv_v5.30.1.0.exe](../../../.analysis/inputs/official-native-current/blobs/f12164552213b106fc5b10745637dfe92ed83f139679b27d2ca7e2554c8f241f/PID0543Drv_v5.30.1.0.exe)（2,097,192 字节，SHA-256 `f12164552213b106fc5b10745637dfe92ed83f139679b27d2ca7e2554c8f241f`，官方资源 URL `https://app-assets.razer.com/files/synapse/devices/1347/1.0.0.0/PID0543Drv_v5.30.1.0.exe`）。两份文件的 `.text`、`.rdata` 和 `.data` 原始区 SHA-256 分别为 `b7bd0795251a2cdc950dc4cc1e0789678829a2531e5f5c449cd1adee82f02fe0`、`e57e06f0a1440e2bc802fdb52f8f75ca76a1ac6925d92603ffaac204917446e9`、`eefc550e3dcbf08f3a45d7bf56cd1f2d97a3c85a8f219c8ce9a398f0c78b2dfe`；差异落在资源和附加数据，不能据此把两个产品的资源收据合并为一个输入。
+
+两份输入分别使用 IDA Pro `9.1`、Hex-Rays `9.1.0.250226`、Python `3.11.9`、Image Base `0x400000` 做独立 `capture-native`。每份都完成 `105/105` 函数、`105` 份伪代码、`0` 个失败、`160` 个导入、`6,515` 个字符串、`5` 个段；[PID0542 捕获收据](../../../.analysis/results/native/6c747ca0871f35dcd6092860890d94387b18b9a2aab0c4efca559222c20462f8/capture.json) 和 [PID0543 捕获收据](../../../.analysis/results/native/f12164552213b106fc5b10745637dfe92ed83f139679b27d2ca7e2554c8f241f/capture.json) 均报告 `capture_complete=true`、`functions_complete=true`、`all_pseudocode_captured=true`。两份捕获的 `all-functions.asm` SHA-256 都是 `a4407a63493163d6a125a529ad592e6a825b1836d7815b9431ca3465c190f8f9`，`all-functions.c` 都是 `354666918ae24547cf314426e003426fe20948f542bb396b71726153bf60b661`；这只说明包装层代码相同，不代表附加的设备载荷相同。
+
+静态调用链如下（RVA 以 `0x400000` 为基址）：
+
+1. 入口 [start `0x3312`](../../../.analysis/results/native/6c747ca0871f35dcd6092860890d94387b18b9a2aab0c4efca559222c20462f8/functions/3312.json) 设置 `SetErrorMode(0x8001)`，解析命令行 `/S`，依次尝试 `%TEMP%`、Windows `Temp` 和低权限临时目录并创建目录。临时目录无法创建时不会假定设备可用，而是转入错误／退出路径。
+2. 自校验和载荷提取由 [0x2EA1](../../../.analysis/results/native/6c747ca0871f35dcd6092860890d94387b18b9a2aab0c4efca559222c20462f8/functions/2ea1.json) 完成：以 `CreateFileA` 只读打开自身，按 512 字节（已有载荷时为 `0x8000`）读取附加区域，校验包含 `0xDEADBEEF` 等标记的头和长度，使用 [CRC32 `0x6581`](../../../.analysis/results/native/6c747ca0871f35dcd6092860890d94387b18b9a2aab0c4efca559222c20462f8/functions/6581.json) 核对块，再由 [0x30D8](../../../.analysis/results/native/6c747ca0871f35dcd6092860890d94387b18b9a2aab0c4efca559222c20462f8/functions/30d8.json) 解压到 `GlobalAlloc`。头、长度、CRC 或解压长度不符时返回 `Installer integrity check has failed`；进度窗口由 [DialogFunc `0x2DBA`](../../../.analysis/results/native/6c747ca0871f35dcd6092860890d94387b18b9a2aab0c4efca559222c20462f8/functions/2dba.json) 更新 `verifying installer: %d%%`。
+3. NSIS 指令分发在 [0x1434](../../../.analysis/results/native/6c747ca0871f35dcd6092860890d94387b18b9a2aab0c4efca559222c20462f8/functions/1434.json)；其中包含文件打开/读写/逐行读取、`ShellExecuteExA`、子进程执行、动态 `LoadLibraryExA`/`GetProcAddress`、窗口和注册表操作。注册表包装函数 [0x5F47](../../../.analysis/results/native/6c747ca0871f35dcd6092860890d94387b18b9a2aab0c4efca559222c20462f8/functions/5f47.json)、[0x5F75](../../../.analysis/results/native/6c747ca0871f35dcd6092860890d94387b18b9a2aab0c4efca559222c20462f8/functions/5f75.json)、[0x5FA8](../../../.analysis/results/native/6c747ca0871f35dcd6092860890d94387b18b9a2aab0c4efca559222c20462f8/functions/5fa8.json) 分别执行打开、创建和查询；这些是安装器通用动作，不能解释为键盘灯光寄存器或 HID 报文。
+4. 子进程包装 [0x5760](../../../.analysis/results/native/6c747ca0871f35dcd6092860890d94387b18b9a2aab0c4efca559222c20462f8/functions/5760.json) 调用 `CreateProcessA`，创建标志为 `0x04000000`（`CREATE_NO_WINDOW`），关闭线程句柄并返回进程句柄；[0x653F](../../../.analysis/results/native/6c747ca0871f35dcd6092860890d94387b18b9a2aab0c4efca559222c20462f8/functions/653f.json) 每 100 ms 等待，直到 `WaitForSingleObject` 不再返回 `258`，随后读取 `GetExitCodeProcess`。该循环没有取消令牌、截止时间或退出码重试语义，调用方仅在返回后关闭进程句柄。
+5. 收尾在 `start` 的 `sub_4037FA`、`OleUninitialize` 和 `ExitProcess` 路径；完整性／临时文件／子进程失败会显示 `NSIS Error` 或 `Error launching installer`。`0x82B0` 的 `SETUPAPI` 只是字符串，捕获的导入表没有 `SetupAPI.dll`、`DeviceIoControl`、HID 或设备专用 DLL 导入，因此本次捕获不能把包装器当作已分析的设备通信实现。
+
+这条证据把“页面触发驱动安装”与“设备灯光/省电协议”分开：当前页面源码及 Rust worker 仍须通过实际设备适配器完成读取、写入、ACK/读回、取消和释放，安装器只证明本地资源可被自校验、解包并启动子进程。内嵌载荷在捕获中是压缩数据，未从其中得到 `.sys`/`.inf` 或 HID 命令的可核对函数；因此驱动服务安装、设备枚举、灯光帧、Power 读回、失败恢复和释放仍标记为 **Unverified**。本批没有运行安装器、主程序、官方 DLL、服务或真实设备，也没有改变生产 Rust 路径；官方 DLL 与 Rust 的运行结果对照必须在后续获准的只读/可恢复测试中单独记录。
+## PID0521/PID0524 音频设备安装器的文件、注册表与取消分支（静态捕获）
+
+为覆盖另一组音频设备驱动资源，又并行捕获了 [PID0521Drv_v0.1.2.0.exe](../../../.analysis/inputs/official-native-current/blobs/05b076d2b6e184ec0d9ae3c05ce5c489444374d742e8411c6b9a6f63c5aab0ec/PID0521Drv_v0.1.2.0.exe)（2,778,392 字节，SHA-256 `05b076d2b6e184ec0d9ae3c05ce5c489444374d742e8411c6b9a6f63c5aab0ec`，资源 URL `https://app-assets.razer.com/files/synapse/devices/1313/1.0.1.0/PID0521Drv_v0.1.2.0.exe`）和 [PID0524Drv_v0.1.2.0.exe](../../../.analysis/inputs/official-native-current/blobs/8e1e75faadcd7916cc26e7b5deca915f4e9dad1f31e2b1fe5723fe4290d15633/PID0524Drv_v0.1.2.0.exe)（2,778,392 字节，SHA-256 `8e1e75faadcd7916cc26e7b5deca915f4e9dad1f31e2b1fe5723fe4290d15633`，资源 URL `https://app-assets.razer.com/files/synapse/devices/3867/1.0.0.3/PID0524Drv_v0.1.2.0.exe`）。两者使用相同的 `0.1.2.0` NSIS 包装层：`.text`/`.rdata`/`.data` SHA-256 分别为 `23a323d8fc04afc0c453270dcec39c0d705892fe39c33e2bbd81e0b7d3b65b8d`、`c9e3fd2da79cde7a47d4932f469001f7e5f67eacf69ed520523eb2dcd01ab735`、`b5ed404759b38b231232a0fea8e8d06071dbc3ece12c69518f0f2e4cc908bf35`；资源区因产品版本信息不同而不同，压缩附加数据也分别保留。
+
+[PID0521 捕获收据](../../../.analysis/results/native/05b076d2b6e184ec0d9ae3c05ce5c489444374d742e8411c6b9a6f63c5aab0ec/capture.json) 与 [PID0524 捕获收据](../../../.analysis/results/native/8e1e75faadcd7916cc26e7b5deca915f4e9dad1f31e2b1fe5723fe4290d15633/capture.json) 均由 IDA Pro `9.1`/Hex-Rays `9.1.0.250226`/Python `3.11.9` 完成 `110/110` 函数和伪代码、`0` 失败、`163` 导入、`7,129` 字符串。两份 `all-functions.asm` 的 SHA-256 都是 `0ba7e4f76fcf822d36f67b1527c6999eabd0e599644145e1cf5740828b1fa4f1`，`all-functions.c` 都是 `f0d3e07ca11e2949921bc91587698da2226791577c171acf2aef495d991b40cd`。
+
+与前一组包装器相同的解包入口现在是 [start `0x37AD`](../../../.analysis/results/native/05b076d2b6e184ec0d9ae3c05ce5c489444374d742e8411c6b9a6f63c5aab0ec/functions/37ad.json) 和 [自校验/解包 `0x333C`](../../../.analysis/results/native/05b076d2b6e184ec0d9ae3c05ce5c489444374d742e8411c6b9a6f63c5aab0ec/functions/333c.json)。本组的 NSIS 分发 [0x1434](../../../.analysis/results/native/05b076d2b6e184ec0d9ae3c05ce5c489444374d742e8411c6b9a6f63c5aab0ec/functions/1434.json) 额外保留了下列可核对语义：
+
+- 文件写入分支调用 `WriteFile` 封装；创建或写入失败后进入实际的 Retry/Abort/Cancel 分支，字符串分别为 `File: error, user retry`、`File: error, user abort` 和 `File: error, user cancel`。Retry 回到写入循环，Abort 返回 `0x7FFFFFFF`，Cancel 增加错误计数并返回，不伪造完成。
+- Delete/RMDir 分支调用 [递归清理 `0x5DFC`](../../../.analysis/results/native/05b076d2b6e184ec0d9ae3c05ce5c489444374d742e8411c6b9a6f63c5aab0ec/functions/5dfc.json)：遍历目录后逐项 `DeleteFileA`，再 `RemoveDirectoryA`；失败、重启后删除和非法输入分别写入对应日志，不能当作已清理。安装日志路径由 [0x3D76](../../../.analysis/results/native/05b076d2b6e184ec0d9ae3c05ce5c489444374d742e8411c6b9a6f63c5aab0ec/functions/3d76.json) 组合为临时目录下的 `install.log`。
+- `ExecShell` 分支调用 `ShellExecuteExA`，成功或失败都写入日志；请求等待时使用返回的进程句柄并在等待后关闭。`Exec` 分支调用 `CreateProcessA`，按脚本参数决定是否等待并读取退出码；创建失败设置错误标志，退出句柄始终走关闭路径。
+- 注册表分支包含 `RegCreateKeyExA`、`RegSetValueExA`、`RegQueryValueExA`、删除和值枚举；DLL 注册分支通过 `LoadLibraryExA`/`GetProcAddress` 查找入口，缺少 OLE、DLL 或入口时分别记录错误。`SETUPAPI`、`PROPSYS` 在字符串表中出现，但不是导入表中的 DLL，不能据此推断设备协议调用。
+
+这批仍然只覆盖安装器的本地文件/注册表/子进程包装。压缩载荷中的 `.sys`/`.inf`、服务安装、音频设备 HID 命令、灯光帧、Power 读回、设备确认、取消后的恢复和句柄释放尚未从静态包装层闭合，均保持 **Unverified**。没有运行安装器、官方 DLL、主程序、服务或真实设备；后续若要对照，必须把安装器成功/失败、取消、重启删除和实际设备读回分别记录，不能把 NSIS 包装器返回值当成设备写入成功。
+## RazerMCUUpdaterInterface.dll：HID/WinUSB 固件更新与 OLED 命令链（静态捕获）
+
+原件 [RazerMCUUpdaterInterface.dll](../../../.analysis/inputs/official-native-current/extracted/840128a4f3b8d5c9d04fc60967136a635dbf7fe9f1134b2be0e8d140f348b542/RazerMCUUpdaterInterface.dll) 为 32 位 PE，42,496 字节，SHA-256 05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28，Image Base 0x10000000。IDA 捕获 [capture.json](../../../.analysis/results/native/05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28/capture.json) SHA-256 bc5e006873c56cab498f56fd8b88ba60520755c4ca186a3dd2e830d653864cd0，160/160 函数、0 个 Hex-Rays 失败；导出表保留 24 个入口。
+
+### 设备枚举、句柄和控制传输
+
+- [OpenDevice 0x1ce0](../../../.analysis/results/native/05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28/functions/1ce0.json) 通过 HID 类 GUID 枚举接口，把 VID/PID 以四位大写十六进制匹配设备路径；以共享读写、零访问打开句柄后要求 HidP_GetCaps 成功且 FeatureReportByteLength == 91，不满足就关闭句柄继续枚举。它会释放 preparsed data、设备信息列表和临时路径缓冲。
+- [OpenWinUsbBootloader 0x19d0](../../../.analysis/results/native/05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28/functions/19d0.json) 枚举另一 GUID，以 GENERIC_READ|GENERIC_WRITE 打开 WinUSB 句柄，初始化接口并读取 USB descriptor；descriptor 的值或路径中的 REV_ 十六进制值命中请求版本时返回句柄，否则 WinUsb_Free、关闭句柄并继续。两个枚举入口失败都返回空句柄。
+- [usbControlIn 0x1770](../../../.analysis/results/native/05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28/functions/1770.json) 和 [usbControlOut 0x16c0](../../../.analysis/results/native/05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28/functions/16c0.json) 每次临时 WinUsb_Initialize，执行一次 control transfer 后 WinUsb_Free；它们只返回 WinUSB BOOL，不等于设备业务应答。
+- [WinUSB_SendCommand 0x1820](../../../.analysis/results/native/05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28/functions/1820.json) 用 request type 0x40 发送控制包，成功后等待约 20 ms、再以固定读回包 0x8FC0/1 byte 检查首字节不是 0xFF；初始化或传输失败分别等待约 100 ms，最多重试五轮。成功条件是第二次读回控制传输成功且值不为 0xFF，不是只看第一次写入 BOOL。
+
+### HID report、状态码和设置
+
+- [sub_10001520 0x1520](../../../.analysis/results/native/05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28/functions/1520.json) 对 91 字节 Feature report 计算 XOR 校验写入第 90 字节，以 HidD_SetFeature 最多尝试三次，再 HidD_GetFeature 轮询状态；返回值区分写失败、轮询超时和 report 状态 1/2/3/4，调用者将 2 作为成功门禁。
+- [GetDeviceFWVersion 0x1f40](../../../.analysis/results/native/05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28/functions/1f40.json) 使用命令 0x87（或 dongle 选项打开时 0x93），把返回 report 的第 9 字节起复制到调用者缓冲；[SetDeviceMode 0x1ff0](../../../.analysis/results/native/05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28/functions/1ff0.json)、[SetOledScreenLowPowerMode 0x4210](../../../.analysis/results/native/05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28/functions/4210.json) 和 [SetOledBrightnessScaling 0x43a0](../../../.analysis/results/native/05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28/functions/43a0.json) 组装固定 report，均以 sub_10001520(...) == 2 才报告成功。
+- [BackToDefault 0x2130](../../../.analysis/results/native/05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28/functions/2130.json) 和 [reset_ps5 0x4a50](../../../.analysis/results/native/05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28/functions/4a50.json) 是独立的固定 report 路径；[DFUExitEx 0x2080](../../../.analysis/results/native/05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28/functions/2080.json) 以 WinUSB vendor transfer 退出 DFU 后等待约 100 ms。
+
+### 固件文件、分块和释放边界
+
+- [upgrade_firmware_process 0x3e80](../../../.analysis/results/native/05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28/functions/3e80.json) 从当前进程目录固定打开 new_fw.bin；非 PS5 分支按最多 512 字节块发送 request 0x82，PS5 分支先写启动 report，再把镜像交给内部分块函数。非 PS5 完成后调用 DFUExitEx，另一分支发送结束 report；进度回调由 [upgrade_progress_percent 0x41d0](../../../.analysis/results/native/05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28/functions/41d0.json) 设置，结果 0 才代表内部流程完成，文件缺失、句柄无效、分块传输失败和校验不符仍返回非零（2 表示版本门禁不符）。
+- 所有 WinUSB helper 在本次捕获中都显式释放 interface；枚举失败路径关闭文件句柄和设备信息列表。导出 [InstallBootLoaderDriver 0x1ca0](../../../.analysis/results/native/05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28/functions/1ca0.json) 与 [UninstallBootLoaderDriver 0x1cc0](../../../.analysis/results/native/05c454f02c2d7c8f5cfd33519d2770fe70180005f35ed8e7ae9992b728289f28/functions/1cc0.json) 只是 ShellExecuteA 调用，不能把其返回句柄当作驱动安装成功。
+- 该 DLL 的静态链没有闭合固件镜像校验、真实设备确认、取消/恢复和进度消费者；本项目 Rust 实现必须保留读回状态、失败和释放三态。没有运行 DLL、WinUSB/HID、安装动作或真实设备，以上结果仍为 Unverified。

@@ -212,6 +212,20 @@ class ResourceScopeTests(unittest.TestCase):
             self.assertEqual([v["owner"] for v in result["violations"]],
                              ["crates/consumer/src/view.rs"])
 
+    def test_batch_audit_requires_multiple_workers_and_keeps_stable_order(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name, source in (("z.rs", "fn z() { resource_scope(child); }"),
+                                 ("a.rs", "fn a() { resource_scope(child); }")):
+                path = root / "crates/consumer/src" / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(source, encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "between two and sixteen"):
+                resource_scope.audit_sources(root, workers=1)
+            report = resource_scope.audit_sources(root, workers=2)
+            self.assertEqual([row["path"] for row in report["inputs"]],
+                             ["crates/consumer/src/a.rs", "crates/consumer/src/z.rs"])
+
 
 if __name__ == "__main__":
     unittest.main()
