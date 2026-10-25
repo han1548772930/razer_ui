@@ -29,6 +29,7 @@ import idc
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import capture_io
+import capture_values
 from capture_io import file_sha256, write_function_aggregates, write_json_array
 
 
@@ -270,6 +271,7 @@ def capture(round_number=0):
                          "sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()},
         "capture_support": {"path": "tools/ida/capture_io.py",
                             "sha256": file_sha256(Path(__file__).with_name("capture_io.py"))},
+        "typed_value_serializer": capture_values.source_identity(root),
         "dataset_serialization": "streamed JSON array; one record retained at a time",
         "started_at_utc": datetime.now(timezone.utc).isoformat(),
         "functions_total": len(addresses), "functions": [], "failures": [],
@@ -283,7 +285,7 @@ def capture(round_number=0):
     reuse = bool(previous) and type(previous.get("hexrays_available")) is bool and all(
         previous.get(key) == manifest[key] for key in (
         "architecture", "processor", "ida_version", "hexrays_available", "hexrays_version",
-        "capture_tool", "capture_support"))
+        "capture_tool", "capture_support", "typed_value_serializer"))
     retained = {item["path"]: item for item in previous.get("functions", [])}
     manifest["retained_functions_reused"] = 0
     if previous:
@@ -468,6 +470,7 @@ def capture(round_number=0):
             return result
         if row.get("assembly") is None:
             row["assembly"] = guarded(prefix + ":assembly", assembly)
+            row["capture_stages"] = {"type": "before_decompile", "assembly": "before_decompile"}
         if row.get("basic_blocks") is None:
             row["basic_blocks"] = guarded(prefix + ":cfg", lambda: [
             {"id": block.id, "start": hex(block.start_ea), "end": hex(block.end_ea),
@@ -482,15 +485,7 @@ def capture(round_number=0):
             result = {"entry": hex(cfunc.entry_ea), "lines": [
                 {"line": i, "text": ida_lines.tag_remove(s.line)}
                 for i, s in enumerate(cfunc.get_pseudocode())]}
-            def locals_list():
-                result = []
-                for v in cfunc.get_lvars():
-                    argument = v.is_arg_var
-                    result.append({"name": v.name, "type": str(v.type()),
-                                   "argument": bool(argument() if callable(argument) else argument),
-                                   "location": str(v.location)})
-                return result
-            result["locals"] = guarded(prefix + ":locals", locals_list)
+            result.update(capture_values.local_variables(cfunc, ida_hexrays))
             return result
         before = len(manifest["failures"])
         if not hexrays_available:
@@ -503,7 +498,13 @@ def capture(round_number=0):
                     manifest["architecture"], manifest["processor"]),
             })
         elif row.get("pseudocode") is None:
+            row["type_before_decompile"] = idc.get_type(ea)
             row["pseudocode"] = guarded(prefix + ":hexrays", pseudocode)
+            row["type_after_decompile"] = idc.get_type(ea)
+            row["assembly_after_decompile"] = guarded(prefix + ":assembly_after_decompile", assembly)
+            row["capture_stages"].update(type_before_decompile="before_decompile",
+                type_after_decompile="after_pseudocode_and_typed_locals",
+                assembly_after_decompile="after_pseudocode_and_typed_locals")
             row["pseudocode_status"] = "captured" if row["pseudocode"] is not None else "failed"
         else:
             row["pseudocode_status"] = "captured"
@@ -524,6 +525,8 @@ def capture(round_number=0):
     for path in (private, original):
         if file_sha256(path) != plan["sha256"]:
             raise ValueError("Input changed during capture")
+    if capture_values.source_identity(root) != manifest["typed_value_serializer"]:
+        raise ValueError("Typed capture serializer identity changed during capture")
     manifest["function_pass_finished_at_utc"] = datetime.now(timezone.utc).isoformat()
     manifest["functions_captured"] = len(addresses)
     ida_auto.auto_wait()

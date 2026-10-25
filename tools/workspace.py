@@ -5482,43 +5482,530 @@ def _clean_stale(before=None):
     return report
 
 
-def clean(stale=False, *, before=None):
-    """Remove disposable scratch after project analyzer sessions have exited."""
-    if stale:
-        return _clean_stale(before)
+def _clean_path(name):
+    """Validate lexical and resolved containment before following any scratch path."""
+    if not isinstance(name, str) or "\\" in name:
+        raise ValueError("Cleanup path must be a project-relative POSIX path")
+    path = Path(name)
+    if path.is_absolute() or ".." in path.parts or not path.parts or path.parts[0] != ".work":
+        raise ValueError("Cleanup path is outside scratch")
+    target = ROOT / path
+    for ancestor in [ROOT, *reversed(list(target.parents)[:len(path.parts)]) , target]:
+        if ancestor.exists() and _scratch_link(ancestor):
+            raise ValueError("Cleanup path contains a link or reparse point")
+    if not target.resolve().is_relative_to((ROOT / ".work").resolve()) or target == ROOT / ".work":
+        raise ValueError("Cleanup target escaped scratch")
+    return target
+
+
+def _clean_file_identity(path):
+    stat = path.stat()
+    return {"path": relative(path), "bytes": stat.st_size, "mtime_ns": stat.st_mtime_ns,
+            "inode": stat.st_ino, "device": stat.st_dev, "sha256": digest(path)}
+
+
+def _clean_tree(name):
+    root = _clean_path(name)
+    files, directories = [], []
+    for folder, children, leaves in os.walk(root, followlinks=False):
+        parent = Path(folder)
+        for item in [parent, *(parent / child for child in children + leaves)]:
+            _clean_path(relative(item))
+            if _scratch_link(item):
+                raise ValueError("Cleanup tree contains a link or reparse point")
+        directories.append(relative(parent))
+        files.extend(_clean_file_identity(parent / leaf) for leaf in sorted(leaves))
+    return {"files": sorted(files, key=lambda row: row["path"]),
+            "directories": sorted(directories), "bytes": sum(row["bytes"] for row in files)}
+
+
+def _clean_candidates(before=None):
+    cutoff = datetime.now(timezone.utc).timestamp() if before is None else before
+    queue = ROOT / ".analysis/results/reverse-pending.json"
+    if queue.is_file():
+        # The coordinator owns this receipt; current-run scratch is always retained.
+        with queue.open("rb") as stream:
+            prefix = stream.read(65536).decode("utf-8")
+        started = re.search(r'"started_at_utc"\s*:\s*"([^"\\]+)"', prefix)
+        if not started:
+            raise ValueError("Current queue start is unavailable; scratch cleanup cannot establish an age boundary")
+        cutoff = min(cutoff, datetime.fromisoformat(started[1]).timestamp())
+    candidates, retained = [], []
+    reserved = {}
+    reservations = ROOT / ".work/reverse-pending"
+    for manifest in sorted(reservations.glob("*-capture-batch.json")) if reservations.is_dir() else []:
+        if _scratch_link(manifest):
+            raise ValueError("Analyzer reservation is a reparse point")
+        record = json.loads(manifest.read_bytes())
+        if record.get("cleanup_released") is True:
+            continue
+        for job in record.get("jobs", []):
+            identity = job.get("sha256")
+            if isinstance(identity, str) and re.fullmatch(r"[a-f0-9]{64}", identity):
+                reserved.setdefault(identity, []).append(relative(manifest))
+    native = ROOT / ".work/native"
+    if native.exists():
+        _clean_path(".work/native")
+    for sha_root in sorted(native.iterdir()) if native.is_dir() else []:
+        if not re.fullmatch(r"[a-f0-9]{64}", sha_root.name) or _scratch_link(sha_root):
+            continue
+        supplements = sha_root / "supplements"
+        if supplements.exists() and _scratch_link(supplements):
+            raise ValueError("Supplement scratch root is a reparse point")
+        for target in sorted(supplements.iterdir()) if supplements.is_dir() else []:
+            name = relative(target)
+            if sha_root.name in reserved:
+                retained.append({"path": name, "reason": "reserved_analysis_family", "owners": reserved[sha_root.name]})
+                continue
+            if not re.fullmatch(r"[a-f0-9]{16}", target.name) or not target.is_dir() or _scratch_link(target):
+                retained.append({"path": name, "reason": "unknown_or_linked_supplement"})
+                continue
+            result = ROOT / ".analysis/results/native" / sha_root.name / "supplements" / target.name
+            basis = [result / item for item in ("session.json", "capture.json", "plan.json")]
+            if not all(path.is_file() and not _scratch_link(path) for path in basis):
+                retained.append({"path": name, "reason": "missing_retained_completion_evidence"})
+                continue
+            session, capture = [json.loads(path.read_bytes()) for path in basis[:2]]
+            if (not session.get("finished_at_utc") or session.get("passed") is not True
+                    or session.get("exit_code") != 0 or capture.get("capture_complete") is not True
+                    or capture.get("target_execution") is not False):
+                retained.append({"path": name, "reason": "unfinished_failed_or_unreviewed_supplement"})
+                continue
+            if datetime.fromisoformat(session["finished_at_utc"]).timestamp() >= cutoff:
+                retained.append({"path": name, "reason": "current_run_supplement"})
+                continue
+            candidates.append({"path": name, "kind": "ended_supplement_private_copy",
+                               "owner_receipts": [relative(path) for path in basis],
+                               "basis": [_clean_file_identity(path) for path in basis]})
+    uploads = ROOT / ".work/asset-releases/uploads"
+    if uploads.exists():
+        _clean_path(".work/asset-releases/uploads")
+    if uploads.exists() and _scratch_link(uploads):
+        raise ValueError("Asset uploads scratch root is a reparse point")
+    for target in sorted(uploads.iterdir()) if uploads.is_dir() else []:
+        name = relative(target)
+        if (not target.is_dir() or _scratch_link(target)
+                or not re.fullmatch(r"assets-[a-f0-9]{20}-[A-Za-z0-9_-]+", target.name)):
+            retained.append({"path": name, "reason": "unknown_or_linked_upload"})
+            continue
+        config = target / ".git/config"
+        if (not config.is_file() or _scratch_link(config) or not re.search(
+                r"(?m)^\s*url\s*=\s*https://huggingface\.co/datasets/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\s*$",
+                config.read_text(encoding="utf-8"))):
+            retained.append({"path": name, "reason": "not_a_verified_private_upload_clone"})
+            continue
+        if target.stat().st_mtime >= cutoff:
+            retained.append({"path": name, "reason": "current_run_upload"})
+            continue
+        candidates.append({"path": name, "kind": "old_asset_upload_clone", "owner_receipts": [],
+                           "basis": [_clean_file_identity(config)]})
+    return candidates, retained
+
+
+def _clean_json_dependencies(value, *, own_receipt=False, field=None):
+    """Keep dependency fields while excluding explicitly historical inventory facts."""
+    if isinstance(value, dict):
+        if value.get("mode") in {"scratch_cleanup_plan", "scratch_cleanup_apply"}:
+            return
+        for key, child in value.items():
+            if key == "scratch_cleanup" or own_receipt and key in {"database", "argv"}:
+                continue
+            yield from _clean_json_dependencies(child, own_receipt=False, field=key)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _clean_json_dependencies(child, field=field)
+    elif isinstance(value, str):
+        yield value
+
+
+def _clean_stream_json_dependencies(path):
+    """Read large pretty or compact receipts without retaining their object graphs."""
+    stack, root_done = [], False
+    scalar = re.compile(r'(?:-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?|true|false|null)')
+    whitespace = re.compile(r'\s*')
+    with path.open("r", encoding="utf-8") as stream:
+        for line in stream:
+            offset = 0
+            while offset < len(line):
+                offset = whitespace.match(line, offset).end()
+                if offset == len(line):
+                    break
+                char = line[offset]
+                if char == '"':
+                    token, following = json.decoder.scanstring(line, offset + 1)
+                    kind = "string"
+                elif char in "{}[]:,":
+                    token, following, kind = char, offset + 1, char
+                else:
+                    match = scalar.match(line, offset)
+                    if match is None:
+                        raise ValueError("Malformed retained JSON token")
+                    token, following, kind = None, match.end(), "scalar"
+                offset = following
+                if stack:
+                    frame = stack[-1]
+                    state = frame["state"]
+                    if state in {"key", "key_or_end"}:
+                        if kind == "}" and state == "key_or_end":
+                            stack.pop()
+                            continue
+                        if kind != "string":
+                            raise ValueError("Malformed retained JSON key")
+                        frame.update(key=token, state="colon")
+                        continue
+                    if state == "colon":
+                        if kind != ":":
+                            raise ValueError("Malformed retained JSON colon")
+                        frame["state"] = "value"
+                        continue
+                    if state == "comma":
+                        closing = "}" if frame["object"] else "]"
+                        if kind == closing:
+                            stack.pop()
+                        elif kind == ",":
+                            frame["state"] = "key" if frame["object"] else "value"
+                        else:
+                            raise ValueError("Malformed retained JSON separator")
+                        continue
+                    if state == "value_or_end" and kind == "]":
+                        stack.pop()
+                        continue
+                    ignored = frame["ignored"] or frame.get("key") == "scratch_cleanup"
+                    frame["state"] = "comma"
+                else:
+                    if root_done:
+                        raise ValueError("Multiple retained JSON roots")
+                    root_done, ignored = True, False
+                if kind in {"{", "["}:
+                    stack.append({"object": kind == "{", "state": "key_or_end" if kind == "{" else "value_or_end",
+                                  "ignored": ignored, "key": None})
+                elif kind == "string":
+                    if not ignored and re.search(r"\.work", token, re.IGNORECASE):
+                        yield token
+                elif kind != "scalar":
+                    raise ValueError("Malformed retained JSON value")
+    if stack or not root_done:
+        raise ValueError("Truncated retained JSON receipt")
+
+
+def _clean_dependency_mentions(name, value):
+    normalized = value.replace("\\", "/").casefold()
+    name = name.casefold()
+    if name in normalized:
+        return True
+    if name.startswith(".work/native/"):
+        for match in re.finditer(r'\.work/[^\s"\'<>?*#;,:()\[\]{}]+', normalized):
+            parent = match[0].rstrip("/.")
+            if len(parent.split("/")) >= 3 and name.startswith(parent + "/"):
+                return True
+    return False
+
+
+def _clean_references(candidates, *, exclude=()):
+    """Search every maintained text owner and receipt, including frozen reviews."""
+    if not candidates:
+        return {}, []
+    executable = shutil.which("rg")
+    if executable is None:
+        return {}, ["Fixed-string reference scanner rg is unavailable"]
+    names = {row["path"]: row for row in candidates}
+    arguments = [executable, "--no-config", "--hidden", "--no-ignore", "--threads", "16",
+                 "--fixed-strings", "--ignore-case", "--only-matching", "--with-filename",
+                 "--no-line-number", "--no-heading", "--color", "never",
+                 "--path-separator", "/"]
+    for extension in ("json", "md", "py", "rs", "toml", "yml", "yaml", "ps1", "cmd", "c", "h", "asm"):
+        arguments.extend(["--glob", "*." + extension])
+    for directory in (".ref", ".git", "target", "node_modules", "__pycache__"):
+        arguments.extend(["--glob", "!**/" + directory + "/**"])
+    for name in (".work/native/*/supplements/**", ".work/asset-releases/uploads/**", *exclude):
+        arguments.extend(["--glob", "!" + name])
+    # Raw official bytes cannot depend on our scratch. Acquisition receipts remain in scope.
+    for directory in ("raw", "raw-by-url", "source", "sources", "decompiled"):
+        arguments.extend(["--glob", "!.analysis/inputs/**/" + directory + "/**"])
+    paths = [name for name in ("docs", "tools", ".agents", "crates", ".analysis", ".work") if (ROOT / name).exists()]
+    paths.extend(path.name for path in ROOT.iterdir() if path.is_file()
+                 and path.suffix.lower() in {".md", ".json", ".toml", ".py"})
+    references, errors = {}, []
+    pattern_owners = {}
+    for name in names:
+        prefixes = [name]
+        if name.startswith(".work/native/"):
+            prefixes.append("/".join(name.split("/")[:3]))
+        for prefix in prefixes:
+            for pattern in (prefix, prefix.replace("/", "\\"), prefix.replace("/", "\\\\")):
+                pattern_owners.setdefault(pattern.casefold(), set()).add(name)
+    with tempfile.TemporaryDirectory(prefix="razer-clean-references-") as temporary:
+        pattern = Path(temporary) / "paths.txt"
+        pattern.write_text("\n".join(pattern_owners) + "\n", encoding="utf-8")
+        arguments.extend(["--file", str(pattern), "--", *paths])
+        options = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
+        result = subprocess.run(arguments, cwd=ROOT, capture_output=True, timeout=1800, **options)
+    if result.returncode not in (0, 1):
+        return {}, ["Complete cleanup reference scan failed: " + result.stderr.decode("utf-8", errors="replace")[:1000]]
+    matched = {}
+    for line in result.stdout.decode("utf-8").splitlines():
+        filename, match = line.rsplit(":", 1)
+        owners = pattern_owners.get(match.casefold())
+        if not owners:
+            return {}, ["Reference scanner returned an unknown cleanup path"]
+        matched.setdefault(filename, set()).update(owners)
+    for filename, matched_names in matched.items():
+        path = safe(ROOT / filename)
+        before = path.stat()
+        if _scratch_link(path):
+            errors.append("Linked reference owner: " + filename)
+            continue
+        if before.st_size > 64 * 1024 * 1024 and path.suffix == ".json":
+            try:
+                remaining = set(matched_names)
+                for value in _clean_stream_json_dependencies(path):
+                    found = {name for name in remaining if _clean_dependency_mentions(name, value)}
+                    for name in found:
+                        references.setdefault(name, []).append(filename)
+                    remaining.difference_update(found)
+                after = path.stat()
+                if (before.st_size, before.st_mtime_ns, before.st_ino) != (after.st_size, after.st_mtime_ns, after.st_ino):
+                    errors.append("Reference owner changed during scan: " + filename)
+            except (ValueError, UnicodeError) as error:
+                errors.append("Invalid retained large JSON owner: " + filename + ": " + str(error))
+            continue
+        raw = path.read_bytes()
+        try:
+            document = json.loads(raw) if path.suffix == ".json" else None
+        except (ValueError, UnicodeError):
+            errors.append("Malformed retained JSON reference owner: " + filename)
+            continue
+        for name in matched_names:
+            row = names[name]
+            strings = (_clean_json_dependencies(document, own_receipt=filename in row["owner_receipts"])
+                       if document is not None else [raw.decode("utf-8")])
+            if any(_clean_dependency_mentions(name, value) for value in strings):
+                references.setdefault(name, []).append(filename)
+        after = path.stat()
+        if (before.st_size, before.st_mtime_ns, before.st_ino) != (after.st_size, after.st_mtime_ns, after.st_ino):
+            errors.append("Reference owner changed during scan: " + filename)
+    return references, errors
+
+
+def _clean_process_guard(candidates):
+    processes, errors = _scratch_processes()
+    references = {}
+    for row in candidates:
+        name = row["path"].casefold()
+        for process in processes:
+            if name in process["command_line"].replace("\\", "/").casefold():
+                references.setdefault(row["path"], []).append(process["pid"])
+    return references, errors
+
+
+@contextmanager
+def _clean_locks():
+    """Refuse an active analysis coordinator or resource writer without waiting."""
+    import msvcrt
+    streams = []
+    try:
+        for name in (".analysis/reverse-pending.lock", ".work/resource-writer.lock"):
+            path = safe(ROOT / name)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            stream = path.open("a+b")
+            streams.append(stream)
+            if not stream.seek(0, os.SEEK_END):
+                stream.write(b"\0")
+                stream.flush()
+            stream.seek(0)
+            msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+        yield
+    finally:
+        for stream in reversed(streams):
+            stream.close()
+
+
+def _clean_delete_group(row):
+    """Hold each exact file exclusively until the complete group is validated."""
     import ctypes
     from ctypes import wintypes
-    for session in (ROOT / ".analysis/results/native").glob("*/*session.json"):
-        row = json.loads(session.read_bytes())
-        if os.name == "nt":
-            api = ctypes.WinDLL("kernel32", use_last_error=True)
-            api.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
-            api.OpenProcess.restype = wintypes.HANDLE
-            api.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
-            api.CloseHandle.argtypes = [wintypes.HANDLE]
-            handle = api.OpenProcess(0x00100000, False, row["pid"])
-            if handle:
-                running = api.WaitForSingleObject(handle, 0) == 258
-                api.CloseHandle(handle)
-                if running:
-                    raise ValueError(f"Analyzer session {row['pid']} is active; scratch is in use")
-    scratch = ROOT / ".work"
-    if scratch.is_symlink() or scratch.is_junction():
-        raise ValueError("Scratch root is a link")
-    safe(scratch)
-    for path in scratch.rglob("*"):
-        if path.is_symlink() or path.is_junction():
-            raise ValueError(f"Scratch contains a link: {path}")
-        if not safe(path).is_relative_to(scratch.resolve()):
-            raise ValueError("Scratch target escaped")
-    entries = list(scratch.iterdir()) if scratch.exists() else []
-    for path in entries:
-        if path.is_dir():
-            shutil.rmtree(path)
-        else:
-            path.unlink()
-    scratch.mkdir(exist_ok=True)
-    print(json.dumps({"scratch_removed_entries": len(entries)}), flush=True)
+    api = ctypes.WinDLL("kernel32", use_last_error=True)
+    api.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID,
+                               wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    api.CreateFileW.restype = wintypes.HANDLE
+    api.ReadFile.argtypes = [wintypes.HANDLE, wintypes.LPVOID, wintypes.DWORD,
+                            ctypes.POINTER(wintypes.DWORD), wintypes.LPVOID]
+    api.SetFileInformationByHandle.argtypes = [wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD]
+    api.CloseHandle.argtypes = [wintypes.HANDLE]
+    handles, directory_handles, marked, failure = [], [], [], None
+    try:
+        ancestors = set()
+        for name in row["tree"]["directories"]:
+            path = _clean_path(name)
+            ancestors.add(path)
+            ancestors.update(parent for parent in path.parents if parent.is_relative_to(ROOT / ".work"))
+        for path in sorted(ancestors, key=lambda value: len(value.parts)):
+            handle = api.CreateFileW(str(path), 0x80, 1, None, 3, 0x02200000, None)
+            if handle == ctypes.c_void_p(-1).value:
+                raise OSError(ctypes.get_last_error(), "exclusive_directory_guard_unavailable")
+            directory_handles.append(handle)
+            if _scratch_link(path):
+                raise ValueError("Cleanup directory changed to a reparse point")
+        for expected in row["tree"]["files"]:
+            path = _clean_path(expected["path"])
+            handle = api.CreateFileW(str(path), 0x80010000, 0, None, 3, 0x00200000, None)
+            if handle == ctypes.c_void_p(-1).value:
+                raise OSError(ctypes.get_last_error(), "exclusive_file_guard_unavailable")
+            handles.append(handle)
+            stat = path.stat()
+            if (stat.st_size, stat.st_mtime_ns, stat.st_ino, stat.st_dev) != tuple(
+                    expected[key] for key in ("bytes", "mtime_ns", "inode", "device")):
+                raise ValueError("Cleanup file changed before exclusive deletion")
+            checksum, length = hashlib.sha256(), 0
+            buffer, count = ctypes.create_string_buffer(1024 * 1024), wintypes.DWORD()
+            while True:
+                if not api.ReadFile(handle, buffer, len(buffer), ctypes.byref(count), None):
+                    raise ctypes.WinError(ctypes.get_last_error())
+                if not count.value:
+                    break
+                checksum.update(buffer.raw[:count.value])
+                length += count.value
+            if length != expected["bytes"] or checksum.hexdigest() != expected["sha256"]:
+                raise ValueError("Cleanup bytes changed before exclusive deletion")
+        active, errors = _clean_process_guard([row])
+        if active or errors:
+            raise ValueError("Cleanup activity guard changed before deletion")
+        for handle, expected in zip(handles, row["tree"]["files"]):
+            disposition = wintypes.DWORD(0x11)  # DELETE | IGNORE_READONLY_ATTRIBUTE, including Git pack files.
+            if not api.SetFileInformationByHandle(handle, 21, ctypes.byref(disposition), ctypes.sizeof(disposition)):
+                raise ctypes.WinError(ctypes.get_last_error())
+            marked.append(expected)
+    except (OSError, ValueError) as error:
+        failure = error
+    finally:
+        for handle in reversed(handles + directory_handles):
+            api.CloseHandle(handle)
+    if failure is None:
+        try:
+            for name in sorted(row["tree"]["directories"], key=len, reverse=True):
+                path = _clean_path(name)
+                path.rmdir()  # Empty directories only; a concurrent new file prevents removal.
+        except (OSError, ValueError) as error:
+            failure = error
+    if failure is not None:
+        failure.cleanup_removed = [item for item in marked if not (ROOT / item["path"]).exists()]
+        raise failure
+
+
+def _clean_receipt_path(name, *, applied=False):
+    path = ROOT / name
+    suffix = r"-plan-applied\.json" if applied else r"-plan\.json"
+    if (not isinstance(name, str) or "\\" in name or Path(name).is_absolute()
+            or path.parent != ROOT / ".analysis/results"
+            or not re.fullmatch(r"scratch-cleanup(?:-[A-Za-z0-9_-]+)?" + suffix, path.name)):
+        raise ValueError("Cleanup receipt must use a reserved top-level scratch-cleanup plan name")
+    for ancestor in (ROOT / ".analysis", path.parent, path):
+        if ancestor.exists() and _scratch_link(ancestor):
+            raise ValueError("Cleanup receipt contains a link or reparse point")
+    return safe(path)
+
+
+def _clean_create_receipt(path, report):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("x", encoding="utf-8", newline="\n") as stream:
+        json.dump(report, stream, ensure_ascii=False, indent=2)
+        stream.write("\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
+def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, plan_sha256=None):
+    """Plan conservative scratch cleanup; deletion requires an unchanged explicit plan."""
+    if stale:
+        if dry_run or plan or apply or plan_sha256:
+            raise ValueError("--stale cannot be combined with planned cleanup")
+        return _clean_stale(before)
+    if apply:
+        if dry_run or plan or not re.fullmatch(r"[a-f0-9]{64}", plan_sha256 or ""):
+            raise ValueError("Cleanup apply requires only --apply and --plan-sha256")
+        source = _clean_receipt_path(apply)
+        raw = source.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != plan_sha256:
+            raise ValueError("Cleanup plan bytes changed after review")
+        report = json.loads(raw)
+        if (report.get("schema_version") != 1 or report.get("mode") != "scratch_cleanup_plan"
+                or report.get("workspace") != str(ROOT.resolve()) or report.get("guard_failures")):
+            raise ValueError("Cleanup plan has invalid ownership or failed guards")
+        with _clean_locks():
+            rows = report["candidates"]
+            current, _ = _clean_candidates()
+            current_names = {row["path"] for row in current}
+            for row in rows:
+                if row.get("kind") not in {"ended_supplement_private_copy", "old_asset_upload_clone"}:
+                    raise ValueError("Cleanup plan contains an unowned target")
+                name = row["path"]
+                allowed = (re.fullmatch(r"\.work/native/[a-f0-9]{64}/supplements/[a-f0-9]{16}", name)
+                           if row["kind"] == "ended_supplement_private_copy" else re.fullmatch(
+                               r"\.work/asset-releases/uploads/assets-[a-f0-9]{20}-[A-Za-z0-9_-]+", name))
+                if not allowed or _clean_tree(name) != row["tree"]:
+                    raise ValueError("Cleanup target changed or escaped its owned scope")
+                if name not in current_names:
+                    raise ValueError("Cleanup target acquired a current analysis reservation or lost completion ownership")
+                for basis in row["basis"]:
+                    if _clean_file_identity(safe(ROOT / basis["path"])) != basis:
+                        raise ValueError("Cleanup completion evidence changed after review")
+            references, errors = _clean_references(rows, exclude=(relative(source),))
+            active, process_errors = _clean_process_guard(rows)
+            if references or errors or active or process_errors:
+                raise ValueError("Cleanup dependency or activity guards changed after review")
+            receipt = {"schema_version": 1, "mode": "scratch_cleanup_apply", "plan": relative(source),
+                       "plan_sha256": plan_sha256, "scope": report["candidates"], "removed": [],
+                       "failures": [], "target_execution": False, "status": "started"}
+            receipt_path = _clean_receipt_path(relative(source.with_name(source.stem + "-applied.json")), applied=True)
+            _clean_create_receipt(receipt_path, receipt)
+            for row in rows:
+                try:
+                    _clean_delete_group(row)
+                    receipt["removed"].append({"path": row["path"], "bytes": row["tree"]["bytes"],
+                                               "files": len(row["tree"]["files"])})
+                except (OSError, ValueError) as error:
+                    partial = getattr(error, "cleanup_removed", [])
+                    receipt["failures"].append({"path": row["path"], "reason": str(error),
+                        "partial_removed_files": partial, "partial_removed_bytes": sum(item["bytes"] for item in partial)})
+                    write_json(receipt_path, receipt)
+                    raise
+                write_json(receipt_path, receipt)
+            receipt["status"] = "completed"
+            write_json(receipt_path, receipt)
+            print(json.dumps({"receipt": relative(receipt_path), "removed": len(receipt["removed"]),
+                              "bytes": sum(row["bytes"] for row in receipt["removed"])}), flush=True)
+            return receipt
+    if plan_sha256:
+        raise ValueError("--plan-sha256 requires --apply")
+    default_name = ".analysis/results/scratch-cleanup-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ") + "-plan.json"
+    destination = _clean_receipt_path(plan or default_name)
+    if destination.exists():
+        raise FileExistsError("Cleanup plan already exists; choose a new reserved receipt name")
+    rows, retained = _clean_candidates(before)
+    references, errors = _clean_references(rows)
+    active, process_errors = _clean_process_guard(rows)
+    eligible = []
+    for row in rows:
+        name = row["path"]
+        if name in references or name in active:
+            retained.append({"path": name, "reason": "referenced_or_active", "references": references.get(name, []),
+                             "pids": active.get(name, [])})
+        elif not errors and not process_errors:
+            row["tree"] = _clean_tree(name)
+            eligible.append(row)
+    report = {"schema_version": 1, "mode": "scratch_cleanup_plan", "workspace": str(ROOT.resolve()),
+              "recorded_at_utc": datetime.now(timezone.utc).isoformat(), "target_execution": False,
+              "protected": [".analysis/inputs", ".analysis/results", ".work/native/*/batch",
+                            ".work/native/*/batch/invalid-database", ".work/reverse-pending"],
+              "reference_scope": "all maintained text owners and JSON receipts, including frozen reviews; raw original bodies excluded",
+              "historical_fields": ["scratch_cleanup", "ended supplement owner's database and argv"],
+              "guard_failures": errors + process_errors, "candidates": eligible, "retained": retained,
+              "candidate_bytes": sum(row["tree"]["bytes"] for row in eligible)}
+    _clean_create_receipt(destination, report)
+    print(json.dumps({"mode": "dry_run", "plan": relative(destination), "sha256": digest(destination),
+                      "candidate_directories": len(eligible), "candidate_bytes": report["candidate_bytes"],
+                      "retained": len(retained), "guard_failures": report["guard_failures"]}), flush=True)
+    return report
 
 
 def inventory():
@@ -10695,8 +11182,12 @@ def main():
     resource_verify = commands.add_parser("verify-resources", help="Decode embedded images or the complete typed keyboard artwork atlas without network access")
     resource_verify.add_argument("--scope", choices=("embedded", "keyboard-artwork"), default="embedded")
     resource_verify.add_argument("--product", type=int, action="append", help="Limit keyboard artwork to these typed products; repeat to select several")
-    scratch_clean = commands.add_parser("clean", help="Clean disposable scratch after checking analyzer ownership")
+    scratch_clean = commands.add_parser("clean", help="Plan referenced and active-session-safe scratch cleanup; default never deletes")
     scratch_clean.add_argument("--stale", action="store_true", help="Remove only old unreferenced root logs/text/output and bytecode; retain all analyzer databases and active files")
+    scratch_clean.add_argument("--dry-run", action="store_true", help="Write an exact reviewable cleanup plan without deleting files (default)")
+    scratch_clean.add_argument("--plan", help="Project-relative .analysis/results JSON destination for the dry-run plan")
+    scratch_clean.add_argument("--apply", help="Apply an unchanged retained cleanup plan after repeating dependency and activity checks")
+    scratch_clean.add_argument("--plan-sha256", help="Actual SHA-256 of the reviewed cleanup plan; required with --apply")
     runtime_audit = commands.add_parser("audit-runtime-resources", help="Trace Rust/catalog resource references against the fixed installed directory")
     runtime_audit.add_argument("--repair", action="store_true", help="Verify current inline ARGB layers and attach missing aliases; do not restore source media")
     pack_audit = commands.add_parser("audit-asset-pack")
@@ -10771,7 +11262,7 @@ def main():
         rows = inventory()
         print(json.dumps({name: {"files": len(files), "bytes": sum(r["bytes"] for r in files)} for name, files in rows.items()}))
     elif args.command == "clean":
-        clean(stale=args.stale)
+        clean(stale=args.stale, dry_run=args.dry_run, plan=args.plan, apply=args.apply, plan_sha256=args.plan_sha256)
     elif args.command == "verify":
         verify()
     elif args.command == "audit-inputs":

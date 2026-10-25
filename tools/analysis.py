@@ -2786,6 +2786,29 @@ def supplement_native(args):
     return session
 
 
+def verify_native_typed_serializer(manifest):
+    """Bind typed SDK observations to the exact retained serializer source."""
+    record = manifest.get("typed_value_serializer")
+    if record is None:
+        return None
+    if (not isinstance(record, dict) or set(record) != {"path", "bytes", "sha256"}
+            or record.get("path") != "tools/ida/capture_values.py"
+            or type(record.get("bytes")) is not int or record["bytes"] <= 0
+            or not isinstance(record.get("sha256"), str)
+            or not re.fullmatch(r"[0-9a-f]{64}", record["sha256"])):
+        raise ValueError("Native typed serializer source identity is incomplete")
+    retained = ROOT / ".analysis/results/reverse-pending/tool-sources" / (record["sha256"] + ".py")
+    with index_lock(ROOT / ".analysis/native-serializer-source.lock"):
+        source = retained if retained.is_file() else resolve(record["path"], "tools/ida")
+        raw = source.read_bytes()
+        if len(raw) != record["bytes"] or hashlib.sha256(raw).hexdigest() != record["sha256"]:
+            raise ValueError("Native typed serializer source bytes changed")
+        if not retained.is_file():
+            retained.parent.mkdir(parents=True, exist_ok=True)
+            retained.write_bytes(raw)
+    return {"path": rel(retained), "bytes": len(raw), "sha256": record["sha256"]}
+
+
 def native_reanalysis_resolution(result, capture=None):
     """Verify retained-function supplements and separate recovered decompilations."""
     capture_path = result / "capture.json"
@@ -2829,6 +2852,7 @@ def native_reanalysis_resolution(result, capture=None):
             session = json.loads(session_path.read_bytes())
             if session.get("passed") is not True or session.get("exit_code") != 0 or session.get("capture_tool") != supplement.get("capture_tool"):
                 raise ValueError("Native supplement does not have a matching successful analyzer session")
+            verify_native_typed_serializer(supplement)
             plan = json.loads((path.parent / "plan.json").read_bytes())
             if (plan.get("function_selection") != selection or plan.get("base_capture") != supplement["base_capture"]
                     or plan.get("source_database") != supplement.get("source_database")):
@@ -3153,6 +3177,7 @@ def verify_native_capture(result, resource):
         raise ValueError("Existing native capture has a different original identity")
     if manifest.get("capture_complete") is not True or manifest.get("functions_complete") is False:
         raise ValueError("Native capture is not complete")
+    verify_native_typed_serializer(manifest)
     functions = manifest.get("functions")
     outputs = manifest.get("outputs")
     if not isinstance(functions, list) or not isinstance(outputs, list):
@@ -6873,11 +6898,18 @@ def add_commands(parsers):
     host.add_commands(parsers)
     pending = parsers.add_parser("reverse-pending", help="Run retained pending native and frontend static work in one bounded resumable queue")
     pending.add_argument("--workers", type=int, default=min(16, os.cpu_count() or 2))
+    pending.add_argument("--process-workers", action="store_true", help="Run independent static tasks in bounded spawned processes to use multiple CPU cores")
     pending.add_argument("--ida-root", default=os.environ.get("RAZER_IDA_ROOT", "E:/IDA"))
     pending.add_argument("--resume", action="store_true", help="Continue the exact unfinished queue, preserving completed tasks and all interrupted evidence")
     pending.add_argument("--verify-only", action="store_true", help="Strictly recheck a finished static queue without starting IDA or network repair")
     pending.add_argument("--native-only", action="store_true", help="Review remaining native failures without repeating unchanged analyzer attempts or frontend work")
     pending.add_argument("--native-review", action="append", help="Explicit assembly-reviewed plan in a retained receipt: project-relative.json#JSON-pointer; repeat for independent modules")
+    compaction = parsers.add_parser("compact-analysis", help="Plan or apply transparent NTFS compression while retaining native evidence logical bytes and hashes")
+    compaction.add_argument("--plan", default=".analysis/results/storage-compaction.json")
+    compaction.add_argument("--minimum-mib", type=int, default=100)
+    compaction.add_argument("--workers", type=int, default=8)
+    compaction.add_argument("--apply", action="store_true")
+    compaction.add_argument("--plan-sha256", help="Exact SHA-256 of the independently reviewed dry-run plan")
     reference = parsers.add_parser("audit-reference", help="Verify every tracked byte and workspace dependency in a pinned architecture reference")
     reference.add_argument("--directory", required=True)
     reference.add_argument("--commit", required=True)
@@ -6977,6 +7009,9 @@ def add_commands(parsers):
 
 
 def run(args):
+    if args.command == "compact-analysis":
+        import analysis_storage
+        return analysis_storage.run(args)
     if args.command == "reverse-pending":
         import reverse_pending
         return reverse_pending.run(args)

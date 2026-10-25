@@ -251,7 +251,7 @@ EXE、安装器和主程序分支按当前范围排除；已有历史静态收�
 <!-- reverse-pending:begin -->
 ## 统一剩余静态任务队列
 
-运行入口：`python -X utf8 tools/workspace.py reverse-pending --workers 4 --verify-only`。本次只复核原件身份、完整捕获及产物、补查冲突和前端解析；不启动 IDA 或网络修复。不执行厂商代码，不修改 Rust，不重新启动仍存活的 IDA 会话。
+运行入口：`python -X utf8 tools/workspace.py reverse-pending --workers 16 --process-workers --resume`。本次以有界进程池复核原件身份、完整捕获及产物、补查冲突和前端解析；不启动 IDA 或网络修复。不执行厂商代码，不修改 Rust，不重新启动仍存活的 IDA 会话。
 
-本次队列登记 950 项；状态：`{"unresolved": 38, "passed": 210, "pending": 702}`。完整任务身份、实际命令、输出和未决原因见[统一收据](../../.analysis/results/reverse-pending.json)。passed 只表示该任务的静态检查通过；队列结束、伪代码恢复、完整语义、Rust 实现和实际设备验收分别记账，不由脚本自动提升为全功能完成。
+本次队列登记 950 项；状态：`{"unresolved": 130, "passed": 779, "pending": 41}`。完整任务身份、实际命令、输出和未决原因见[统一收据](../../.analysis/results/reverse-pending.json)。passed 只表示该任务的静态检查通过；队列结束、伪代码恢复、完整语义、Rust 实现和实际设备验收分别记账，不由脚本自动提升为全功能完成。
 <!-- reverse-pending:end -->

@@ -2916,8 +2916,13 @@ class StaticMicrocodeObservationTests(unittest.TestCase):
                 ea = 0x140001000
                 func = SimpleNamespace(start_ea=ea, end_ea=ea + 2, flags=0)
                 fixture.api.decompile = lambda ea, failed: (SimpleNamespace(entry_ea=ea,
-                    get_pseudocode=lambda: [SimpleNamespace(line="return;")], get_lvars=lambda: []) if success else None)
+                    get_pseudocode=lambda: [SimpleNamespace(line="return;")], get_lvars=lambda: [],
+                    mba=SimpleNamespace(entry_ea=ea), get_stkoff_delta=lambda: 0) if success else None)
+                typed_values = {"__file__": str(fixture.source.with_name("capture_values.py"))}
+                exec(compile(fixture.source.with_name("capture_values.py").read_text(encoding="utf-8"),
+                             str(fixture.source.with_name("capture_values.py")), "exec"), typed_values)
                 namespace = {**fixture.namespace, "base": 0x140000000, "root": root, "output": output,
+                    "capture_values": SimpleNamespace(local_variables=typed_values["local_variables"]),
                     "functions": output / "functions", "manifest": manifest, "captured": {}, "table": None,
                     "shared_owner_rvas": set(), "selection": {}, "hashlib": hashlib, "json": json, "traceback": traceback,
                     "file_bytes": lambda rva, size: b"\x90\xc3"[:size], "save": lambda path, row: path.write_text(json.dumps(row)),
@@ -3119,6 +3124,57 @@ class FreshInlineControllerTests(unittest.TestCase):
                 before = list(fixture.sdk_calls)
                 fixture.instances[0].begin_inlining(fixture.cdg, 0x80)
                 self.assertEqual(fixture.sdk_calls, before)
+
+
+class ProcessWorkerTests(unittest.TestCase):
+    def test_spawned_static_workers_preserve_unresolved_capture_and_input_failures(self):
+        batch = queue.Batch(2, "IDA", verify_only=True, process_workers=True)
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            source = root / ".analysis/inputs/static-only/native.dll"
+            source.parent.mkdir(parents=True)
+            source.write_bytes(b"inert native input without a capture")
+            jobs = [
+                {"id": "missing-capture", "kind": "native", "input": analysis.rel(source),
+                 "sha256": analysis.sha(source)},
+                {"id": "changed-input", "kind": "native", "input": analysis.rel(source),
+                 "sha256": "0" * 64},
+            ]
+            with batch.process_pool() as pool:
+                results = [future.result(timeout=30) for future in
+                           [pool.submit(queue.execute_process_task, job) for job in jobs]]
+            self.assertEqual([row["status"] for row in results], ["unresolved", "failed"])
+            self.assertEqual(results[0]["commands"], [])
+            self.assertIn("No complete native capture", results[0]["error"])
+            self.assertIn("Native original identity changed", results[1]["error"])
+            self.assertTrue(all(row["worker_pid"] != queue.os.getpid() for row in results))
+            self.assertFalse((root / queue.REPORT).exists())
+            self.assertFalse((root / ".analysis/results/gaps.json").exists())
+
+    def test_spawned_resume_verification_rejects_a_changed_nested_artifact(self):
+        batch = queue.Batch(2, "IDA", verify_only=True, process_workers=True)
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            artifact = root / ".analysis/results/static/artifact.json"
+            analysis.save(artifact, {"original": True})
+            receipt = root / ".analysis/results/static/receipt.json"
+            analysis.save(receipt, {"nested": {"evidence": queue.identity(artifact)}})
+            task = {"id": "nested", "receipt": queue.identity(receipt)}
+            with batch.process_pool() as pool:
+                self.assertEqual(pool.submit(queue.check_retained_task, task).result(timeout=30), "nested")
+                artifact.write_bytes(b"changed original")
+                with self.assertRaisesRegex(ValueError, "Retained queue artifact changed"):
+                    pool.submit(queue.check_retained_task, task).result(timeout=30)
+            self.assertFalse((root / queue.REPORT).exists())
+
+    def test_command_forwards_process_isolation_without_changing_retained_scope(self):
+        args = argparse.Namespace(workers=2, ida_root="IDA", verify_only=False, resume=True,
+                                  process_workers=True)
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)), \
+             patch.object(queue, "Batch") as batch:
+            batch.return_value.run.return_value = {"tasks": []}
+            queue.run(args)
+        batch.assert_called_once_with(2, "IDA", False, resume=True, process_workers=True)
 
 
 if __name__ == "__main__":

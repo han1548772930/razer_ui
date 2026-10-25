@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 from collections import Counter
-from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, wait, FIRST_COMPLETED
 import base64
 import ctypes
 import hashlib
 import importlib.metadata
 import json
+import multiprocessing
 import os
 from pathlib import Path
 import re
@@ -26,6 +27,51 @@ BEGIN = "<!-- reverse-pending:begin -->"
 END = "<!-- reverse-pending:end -->"
 INPUT_PREFIXES = (".analysis/inputs/official-native-current/",
                   ".analysis/inputs/host-current/", ".analysis/inputs/installed-current/")
+
+_process_batch = None
+
+
+def initialize_process_worker(root, ida_root, verify_only, native_only, resume, tool_sha256):
+    """Give static workers their own parser state and no publishing authority."""
+    global _process_batch
+    a.ROOT = Path(root)
+    batch = Batch.__new__(Batch)
+    batch.ida_root, batch.verify_only = ida_root, verify_only
+    batch.native_only, batch.resume = native_only, resume
+    batch.frontend_locks, batch.lock = {}, threading.Lock()
+    batch.previous_native = {}
+    batch.worker_tool_sha256 = tool_sha256
+    _process_batch = batch
+
+
+def execute_process_task(task, previous=None):
+    if _process_batch is None:
+        raise RuntimeError("Static worker was not initialized")
+    if a.sha(Path(__file__)) != _process_batch.worker_tool_sha256:
+        raise ValueError("Static queue worker source changed after initialization")
+    _process_batch.previous_native = {task["sha256"]: previous} if previous else {}
+    return {**_process_batch.execute(task), "worker_pid": os.getpid()}
+
+
+def check_retained_task(task):
+    """Recheck every retained nested byte identity before resuming a task list."""
+    def check_records(value):
+        if isinstance(value, dict):
+            if {"path", "bytes", "sha256"}.issubset(value) and not valid(value):
+                raise ValueError("Retained queue artifact changed: " + value["path"])
+            for child in value.values():
+                check_records(child)
+        elif isinstance(value, list):
+            for child in value:
+                check_records(child)
+
+    for key in ("resolution", "receipt"):
+        if key in task:
+            record = task[key]
+            if not valid(record):
+                raise ValueError("Retained completed task result changed")
+            check_records(json.loads(a.resolve(record["path"], ".analysis/results").read_bytes()))
+    return task["id"]
 
 
 def identity(path):
@@ -229,12 +275,16 @@ def load_native_reviews(specs):
 
 
 class Batch:
-    def __init__(self, workers, ida_root, verify_only=False, native_only=False, review_paths=(), resume=False):
+    def __init__(self, workers, ida_root, verify_only=False, native_only=False, review_paths=(), resume=False,
+                 process_workers=False):
         if type(workers) is not int or not 2 <= workers <= min(32, os.cpu_count() or 2):
             raise ValueError("Workers must be an integer from two to the available CPU limit (maximum 32)")
         if resume and (verify_only or native_only or review_paths):
             raise ValueError("Resume inherits the retained scope and reviews; do not combine it with scope options")
         self.workers, self.ida_root = workers, ida_root
+        if type(process_workers) is not bool:
+            raise ValueError("Process-worker mode must be a boolean")
+        self.process_workers = process_workers
         self.resume = resume
         self.verify_only = verify_only
         self.native_only, self.review_paths = native_only, tuple(review_paths)
@@ -250,6 +300,12 @@ class Batch:
         self.report["native_only"] = native_only
         self.report["native_reviews"] = [row["review_reference"] for row in self.reviews.values()]
         self.last_document = 0
+
+    def process_pool(self):
+        return ProcessPoolExecutor(max_workers=self.workers, mp_context=multiprocessing.get_context("spawn"),
+            initializer=initialize_process_worker,
+            initargs=(str(a.ROOT), self.ida_root, self.verify_only, self.native_only, self.resume, self.tool["sha256"]),
+            max_tasks_per_child=8)
 
     def resume_tasks(self):
         """Continue the frozen queue under the caller's exclusive queue lock."""
@@ -271,17 +327,7 @@ class Batch:
         specs = [row["path"] + "#" + row.get("pointer", "") for row in references]
         reviews = load_native_reviews(specs)
 
-        def check_records(value):
-            if isinstance(value, dict):
-                if {"path", "bytes", "sha256"}.issubset(value) and not valid(value):
-                    raise ValueError("Retained queue artifact changed: " + value["path"])
-                for child in value.values():
-                    check_records(child)
-            elif isinstance(value, list):
-                for child in value:
-                    check_records(child)
-
-        tasks, identifiers, scheduled = previous["tasks"], set(), []
+        tasks, identifiers, scheduled, completed = previous["tasks"], set(), [], []
         for task in tasks:
             keys = ("kind", "input", "sha256", "base_capture", "review") if task["kind"] == "native" else ("kind", "input", "acquisition")
             inputs = {key: task[key] for key in keys if key in task}
@@ -306,14 +352,16 @@ class Batch:
                     raise ValueError("Retained pending task has a contradictory completion timestamp")
                 scheduled.append(task)
             elif task["status"] in {"passed", "unresolved", "failed"} and task.get("finished_at_utc"):
-                for key in ("resolution", "receipt"):
-                    if key in task:
-                        record = task[key]
-                        if not valid(record):
-                            raise ValueError("Retained completed task result changed")
-                        check_records(json.loads(a.resolve(record["path"], ".analysis/results").read_bytes()))
+                completed.append(task)
             else:
                 raise ValueError("Retained queue task has an unsupported status or missing completion timestamp")
+        if self.process_workers and completed:
+            with self.process_pool() as pool:
+                for _ in pool.map(check_retained_task, completed):
+                    pass
+        else:
+            for task in completed:
+                check_retained_task(task)
         retained_source = self.report["tool_source"]
         self.report = previous
         self.report["interrupted_static_run"] = {
@@ -593,7 +641,7 @@ class Batch:
             digest = original["sha256"]
             with self.lock:
                 lock = self.frontend_locks.setdefault(digest, threading.Lock())
-            with lock:
+            with lock, a.index_lock(a.ROOT / ".work/reverse-pending/locks" / ("frontend-" + digest + ".lock")):
                 destination = a.ROOT / ".analysis/results/frontend/ui-trees" / (digest + ".json")
                 parsed = json.loads(destination.read_bytes()) if destination.is_file() else None
                 if (parsed is None or parsed.get("tool") != tool or parsed.get("parser") != parsers
@@ -626,6 +674,8 @@ class Batch:
         current = path.read_text(encoding="utf-8")
         summary = self.report["summary"]
         command = f"python -X utf8 tools/workspace.py reverse-pending --workers {self.workers}"
+        if self.process_workers:
+            command += " --process-workers"
         if self.resume:
             command += " --resume"
         elif self.verify_only:
@@ -634,11 +684,12 @@ class Batch:
             command += " --native-only"
         for spec in (() if self.resume else self.review_paths):
             command += ' --native-review "' + spec + '"'
-        workflow = ("本次只复核原件身份、完整捕获及产物、补查冲突和前端解析；不启动 IDA 或网络修复。"
+        pool_kind = "进程池" if self.process_workers else "线程池"
+        workflow = (f"本次以有界{pool_kind}复核原件身份、完整捕获及产物、补查冲突和前端解析；不启动 IDA 或网络修复。"
                     if self.verify_only else
-                    "本次以同一个有界线程池批量执行原生审阅计划，复用身份未变的未决结果，不处理前端。"
+                    f"本次以同一个有界{pool_kind}批量执行原生审阅计划，复用身份未变的未决结果，不处理前端。"
                     if self.native_only else
-                    "一个协调者使用同一个有界线程池处理原生缺失／失败函数、前端原件修复、模块恢复和页面 AST；")
+                    f"一个协调者使用同一个有界{pool_kind}处理原生缺失／失败函数、前端原件修复、模块恢复和页面 AST；")
         text = (BEGIN + "\n## 统一剩余静态任务队列\n\n"
                 f"运行入口：`{command}`。"
                 + workflow +
@@ -696,7 +747,8 @@ class Batch:
                 self.report["baseline_native"] = {
                     "resolved": sum(row["resolved"] for row in self.report["native_scope"].values()),
                     "remaining": sum(row["remaining"] for row in self.report["native_scope"].values())}
-        self.report["configuration"] = {"ida_root": self.ida_root, "max_function_kib": 1024}
+        self.report["configuration"] = {"ida_root": self.ida_root, "max_function_kib": 1024,
+            "worker_isolation": "spawned_process" if self.process_workers else "thread"}
         self.report["queue_session"] = {"pid": os.getpid(), "started_at_utc": a.stamp()}
         if self.resume:
             self.publish()
@@ -706,14 +758,19 @@ class Batch:
                           "scheduled_tasks": len(tasks),
                           "by_kind": self.report["summary"]["by_kind"]}), flush=True)
         deferred = []
-        with ThreadPoolExecutor(max_workers=self.workers, thread_name_prefix="reverse-pending") as pool:
-            futures = {pool.submit(self.execute, task): task for task in tasks}
+        with (self.process_pool() if self.process_workers else
+              ThreadPoolExecutor(max_workers=self.workers, thread_name_prefix="reverse-pending")) as pool:
+            def submit(task):
+                if self.process_workers:
+                    return pool.submit(execute_process_task, task, self.previous_native.get(task.get("sha256")))
+                return pool.submit(self.execute, task)
+            futures = {submit(task): task for task in tasks}
             while futures or deferred:
                 if not futures:
                     time.sleep(5)
                     pending, deferred = deferred, []
                     for task in pending:
-                        futures[pool.submit(self.execute, task)] = task
+                        futures[submit(task)] = task
                 done, _ = wait(futures, timeout=5, return_when=FIRST_COMPLETED)
                 for future in done:
                     task = futures.pop(future)
@@ -755,6 +812,8 @@ def run(args):
                        "review_paths": getattr(args, "native_review", None) or ()}
         if getattr(args, "resume", False):
             options["resume"] = True
+        if getattr(args, "process_workers", False):
+            options["process_workers"] = True
         report = Batch(args.workers, args.ida_root, getattr(args, "verify_only", False), **options).run()
         if any(task["status"] != "passed" for task in report["tasks"]):
             raise SystemExit(1)

@@ -4293,5 +4293,224 @@ fn verify() { let _ = "synapse/check.svg"; }
                 workspace.rust_named_item_strings(workspace.relative(path), "NAMES")
 
 
+class PlannedScratchCleanupTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.root = Path(self.directory.name).resolve()
+        self.root_patch = mock.patch.object(workspace, "ROOT", self.root)
+        self.root_patch.start()
+        self.process_patch = mock.patch.object(workspace, "_scratch_processes", return_value=([], []))
+        self.process_patch.start()
+        self.name = ".work/native/" + "a" * 64 + "/supplements/" + "b" * 16
+        self.target = self.root / self.name
+        self.target.mkdir(parents=True)
+        (self.target / "library.dll.i64").write_bytes(b"private supplemental database")
+        (self.target / "ida.log").write_text("retained execution log", encoding="utf-8")
+        self.batch = self.root / ".work/native" / ("a" * 64) / "batch/library.dll.i64"
+        self.batch.parent.mkdir()
+        self.batch.write_bytes(b"essential original full-capture database")
+        self.result = self.root / ".analysis/results/native" / ("a" * 64) / "supplements" / ("b" * 16)
+        self.result.mkdir(parents=True)
+        database = {"path": self.name + "/library.dll.i64", "sha256": "c" * 64}
+        self.write(self.result / "session.json", {"pid": 123, "passed": True, "exit_code": 0,
+                   "finished_at_utc": "2000-01-01T00:00:00+00:00", "database": database,
+                   "argv": [self.name + "/ida.log"]})
+        self.write(self.result / "capture.json", {"capture_complete": True, "target_execution": False,
+                   "database": database})
+        self.write(self.result / "plan.json", {"database": database,
+                   "source_database": {"path": self.batch.relative_to(self.root).as_posix()}})
+
+    def tearDown(self):
+        self.process_patch.stop()
+        self.root_patch.stop()
+        self.directory.cleanup()
+
+    def write(self, path, document):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(document), encoding="utf-8")
+        return path
+
+    def plan(self):
+        with mock.patch("builtins.print"):
+            report = workspace.clean()
+        self.plan_path = max((self.root / ".analysis/results").glob("scratch-cleanup-*-plan.json"), key=lambda path: path.stat().st_mtime_ns)
+        return report
+
+    def apply(self):
+        path = self.plan_path
+        with mock.patch("builtins.print"):
+            return workspace.clean(apply=path.relative_to(self.root).as_posix(), plan_sha256=workspace.digest(path))
+
+    def test_default_is_a_reviewable_plan_and_never_erases_scratch(self):
+        protected = self.root / ".work/reverse-pending/frozen-review.json"
+        self.write(protected, {"proof": "retained"})
+        report = self.plan()
+        self.assertEqual(len(report["candidates"]), 1)
+        self.assertEqual(report["candidates"][0]["path"], self.name)
+        self.assertTrue(self.target.is_dir() and self.batch.is_file() and protected.is_file())
+        self.assertTrue((self.result / "capture.json").is_file())
+
+    def test_frozen_review_dependency_is_preserved_even_alongside_historical_inventory(self):
+        self.write(self.root / ".analysis/results/reverse-pending/review-sources/frozen.json",
+                   {"scratch_cleanup": {"retained": [{"path": self.name}]},
+                    "protocol_evidence": {"database": {"path": self.name + "/library.dll.i64"}}})
+        report = self.plan()
+        self.assertFalse(report["candidates"])
+        self.assertEqual(report["retained"][0]["reason"], "referenced_or_active")
+
+    def test_history_only_cleanup_inventory_does_not_become_an_active_dependency(self):
+        self.write(self.root / ".analysis/results/reverse-pending/review-sources/frozen.json",
+                   {"scratch_cleanup": {"retained": [{"path": self.name}]}, "protocol": "independent"})
+        self.assertEqual(len(self.plan()["candidates"]), 1)
+
+    def test_retained_native_family_directory_protects_its_descendant_private_copy(self):
+        parent = "/".join(self.name.split("/")[:3])
+        self.write(self.root / ".analysis/results/family-review.json", {"required_database_root": parent})
+        self.assertFalse(self.plan()["candidates"])
+
+    def test_sibling_batch_database_reference_does_not_retain_the_disposable_copy(self):
+        self.write(self.root / ".analysis/results/family-review.json",
+                   {"source_database": {"path": self.batch.relative_to(self.root).as_posix()}})
+        self.assertEqual(len(self.plan()["candidates"]), 1)
+
+    def test_streamed_large_receipt_preserves_real_fields_and_ignores_only_history(self):
+        path = self.root / ".analysis/results/large.json"
+        self.write(path, {"scratch_cleanup": {"retained": [{"path": self.name}]},
+                          "live": {"path": self.name + "/library.dll.i64"}, "list": [True, None, 1, {}]})
+        values = list(workspace._clean_stream_json_dependencies(path))
+        self.assertEqual(values, [self.name + "/library.dll.i64"])
+        for invalid in ('{"a":', '{"a":1,}', '[1,]', '{"a" 1}', '{"a":1} {}'):
+            path.write_text(invalid, encoding="utf-8")
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                list(workspace._clean_stream_json_dependencies(path))
+        self.assertEqual(len(self.plan()["candidates"]), 1)
+
+    def test_current_or_failed_analyzer_session_is_never_a_candidate(self):
+        path = self.result / "session.json"
+        original = json.loads(path.read_bytes())
+        for change in ({"passed": False}, {"finished_at_utc": None},
+                       {"finished_at_utc": "2100-01-01T00:00:00+00:00"}):
+            self.write(path, dict(original, **change))
+            self.assertFalse(self.plan()["candidates"])
+
+    def test_process_inspection_failure_fails_closed(self):
+        with mock.patch.object(workspace, "_scratch_processes", return_value=([], ["unavailable"])):
+            report = self.plan()
+        self.assertFalse(report["candidates"])
+        self.assertEqual(report["guard_failures"], ["unavailable"])
+
+    def test_active_private_path_is_retained(self):
+        with mock.patch.object(workspace, "_scratch_processes", return_value=(
+                [{"pid": 456, "command_line": str(self.target / "library.dll.i64")}], [])):
+            report = self.plan()
+        self.assertFalse(report["candidates"])
+        self.assertEqual(report["retained"][0]["pids"], [456])
+
+    def test_changed_candidate_or_completion_evidence_rejects_apply_before_deletion(self):
+        for path in (self.target / "library.dll.i64", self.result / "session.json"):
+            with self.subTest(path=path):
+                self.plan()
+                previous = path.read_bytes()
+                path.write_bytes(previous + b" ")
+                with self.assertRaisesRegex(ValueError, "changed"):
+                    self.apply()
+                self.assertTrue(self.target.is_dir() and self.batch.is_file())
+                path.write_bytes(previous)
+
+    def test_new_reference_since_review_rejects_apply(self):
+        self.plan()
+        self.write(self.root / ".analysis/results/new-review.json", {"evidence": self.name + "/library.dll.i64"})
+        with self.assertRaisesRegex(ValueError, "guards changed"):
+            self.apply()
+        self.assertTrue((self.target / "library.dll.i64").is_file())
+
+    def test_plan_requires_exact_reviewed_bytes(self):
+        self.plan()
+        path = self.plan_path
+        expected = workspace.digest(path)
+        path.write_bytes(path.read_bytes() + b"\n")
+        with self.assertRaisesRegex(ValueError, "plan bytes changed"):
+            workspace.clean(apply=path.relative_to(self.root).as_posix(), plan_sha256=expected)
+
+    def test_batch_database_cannot_be_injected_into_an_approved_supplement_plan(self):
+        report = self.plan()
+        report["candidates"][0]["path"] = self.batch.parent.relative_to(self.root).as_posix()
+        path = self.plan_path
+        self.write(path, report)
+        with self.assertRaisesRegex(ValueError, "escaped"):
+            self.apply()
+        self.assertTrue(self.batch.is_file())
+
+    def test_reparse_or_escaped_targets_are_rejected(self):
+        for name in ("../outside", ".analysis/inputs/original.dll", ".work/../outside", ".work"):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                workspace._clean_path(name)
+        original = workspace._scratch_link
+        with mock.patch.object(workspace, "_scratch_link", side_effect=lambda path: path == self.target or original(path)):
+            with self.assertRaisesRegex(ValueError, "reparse"):
+                workspace._clean_tree(self.name)
+
+    def test_unchanged_plan_removes_only_the_owned_private_tree(self):
+        self.plan()
+        receipt = self.apply()
+        self.assertFalse(self.target.exists())
+        self.assertEqual(receipt["removed"][0]["files"], 2)
+        self.assertTrue(self.batch.is_file() and (self.result / "capture.json").is_file())
+
+    def test_actual_exclusive_file_occupation_prevents_group_deletion(self):
+        self.plan()
+        with (self.target / "library.dll.i64").open("ab"):
+            with self.assertRaisesRegex(OSError, "exclusive_file_guard"):
+                self.apply()
+        self.assertTrue((self.target / "ida.log").is_file())
+        self.assertTrue((self.target / "library.dll.i64").is_file())
+
+    def test_readonly_private_file_is_removed_through_its_exclusive_handle(self):
+        import stat
+        (self.target / "library.dll.i64").chmod(stat.S_IREAD)
+        self.plan()
+        self.apply()
+        self.assertFalse(self.target.exists())
+        self.assertTrue(self.batch.exists())
+
+    def test_new_family_reservation_after_review_prevents_apply(self):
+        self.plan()
+        self.write(self.root / ".work/reverse-pending/encoding-capture-batch.json",
+                   {"jobs": [{"sha256": "a" * 64}]})
+        with self.assertRaisesRegex(ValueError, "reservation"):
+            self.apply()
+        self.assertTrue(self.target.is_dir())
+
+    def test_plan_never_overwrites_a_retained_receipt_or_an_unrelated_result(self):
+        path = self.root / ".analysis/results/scratch-cleanup-plan.json"
+        path.write_bytes(b"existing reviewed plan")
+        with self.assertRaises(FileExistsError):
+            workspace.clean(plan=path.relative_to(self.root).as_posix())
+        self.assertEqual(path.read_bytes(), b"existing reviewed plan")
+        for name in ("gaps.json", "native/anything.json", "scratch-cleanup-plan-applied.json"):
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, "reserved"):
+                workspace.clean(plan=".analysis/results/" + name)
+
+    def test_durable_apply_scope_precedes_the_first_deletion(self):
+        self.plan()
+        def verify_before_delete(row):
+            path = self.plan_path.with_name(self.plan_path.stem + "-applied.json")
+            receipt = json.loads(path.read_bytes())
+            self.assertEqual(receipt["status"], "started")
+            self.assertEqual(receipt["scope"][0]["path"], row["path"])
+            self.assertEqual(receipt["plan_sha256"], workspace.digest(self.plan_path))
+        with mock.patch.object(workspace, "_clean_delete_group", side_effect=verify_before_delete):
+            self.apply()
+
+    def test_existing_apply_receipt_prevents_any_deletion(self):
+        self.plan()
+        path = self.plan_path.with_name(self.plan_path.stem + "-applied.json")
+        path.write_bytes(b"previous partial cleanup fact")
+        with mock.patch.object(workspace, "_clean_delete_group") as delete, self.assertRaises(FileExistsError):
+            self.apply()
+        delete.assert_not_called()
+        self.assertEqual(path.read_bytes(), b"previous partial cleanup fact")
+
+
 if __name__ == "__main__":
     unittest.main()

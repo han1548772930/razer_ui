@@ -378,7 +378,7 @@ RazerMCUUpdaterInterface 的 OpenDevice/OpenWinUsbBootloader、HID Feature 状�
 
 ## 2026-10-24 全量 DLL/NODE/SYS 四线程静态批处理
 
-为避免逐模块手工启动，`.work/native-bulk-analysis-20261024/analyze_all.py` 使用 `ThreadPoolExecutor(max_workers=4)` 一次枚举全部 1,623 份现有捕获收据，并过滤为 881 个 DLL/NODE/SYS；该批次只读取既有 IDA/Hex-Rays 结果、导出、导入、命名符号和输入字节，不读取或执行 EXE、安装器、DLL、服务或设备。完整汇总收据见 [`analysis.json`](../../.work/native-bulk-analysis-20261024/analysis.json)。
+为避免逐模块手工启动，`.work/native-bulk-analysis-20261024/analyze_all.py` 使用 `ThreadPoolExecutor(max_workers=4)` 一次枚举全部 1,623 份现有捕获收据，并过滤为 881 个 DLL/NODE/SYS；该批次只读取既有 IDA/Hex-Rays 结果、导出、导入、命名符号和输入字节，不读取或执行 EXE、安装器、DLL、服务或设备。完整汇总收据见 [`capture-index.json`](../../.analysis/results/native-bulk/capture-index.json)。
 
 | 项目 | 结果 |
 | --- | ---: |
@@ -392,7 +392,7 @@ RazerMCUUpdaterInterface 的 OpenDevice/OpenWinUsbBootloader、HID Feature 状�
 
 这份收据证明批量静态捕获和字节身份检查已完成，不等于每个模块的语义、Rust 独立实现、页面接线或官方 DLL/设备运行对照已完成；失败函数、间接调用、服务端应答和未覆盖产品分支继续按产品文档与 `.analysis/results/gaps.json` 追踪。EXE/安装器不纳入当前后续逆向范围。
 
-同一批次随后运行 `.work/native-bulk-analysis-20261024/semantic_index.py`，仍以四个 worker 并行读取 1,623 份收据，实际索引 881 个 DLL/NODE/SYS。它为每个模块记录导出入口及对应函数体、失败 RVA、关键导入族（HID/WinUSB/SetupAPI/Kernel32/Advapi/COM 等）、命名符号和导出函数的关键伪代码/返回行；函数体和原始字节仍以各模块 `.analysis/results/native/<sha>/` 收据为准。汇总索引见 [`semantic-index.json`](../../.work/native-bulk-analysis-20261024/semantic-index.json)，本次共覆盖 64,092 个导出，其中 60,843 个有捕获函数体、3,249 个只有导出入口记录；869 个 Hex-Rays 失败条目分布在 241 个模块。批处理耗时约 45.4 秒。该索引是批量静态语义入口，不能把关键字命中或导出存在解释成协议、页面、设备 ACK、读回、取消、恢复或释放已经闭合；后续产品文档继续引用具体函数和原始字节。
+同一批次随后运行 `.work/native-bulk-analysis-20261024/semantic_index.py`，仍以四个 worker 并行读取 1,623 份收据，实际索引 881 个 DLL/NODE/SYS。它为每个模块记录导出入口及对应函数体、失败 RVA、关键导入族（HID/WinUSB/SetupAPI/Kernel32/Advapi/COM 等）、命名符号和导出函数的关键伪代码/返回行；函数体和原始字节仍以各模块 `.analysis/results/native/<sha>/` 收据为准。汇总索引见 [`semantic-index.json`](../../.analysis/results/native-bulk/semantic-index.json)，本次共覆盖 64,092 个导出，其中 60,843 个有捕获函数体、3,249 个只有导出入口记录；869 个 Hex-Rays 失败条目分布在 241 个模块。批处理耗时约 45.4 秒。该索引是批量静态语义入口，不能把关键字命中或导出存在解释成协议、页面、设备 ACK、读回、取消、恢复或释放已经闭合；后续产品文档继续引用具体函数和原始字节。
 
 ## 2026-10-24 Chroma Connect Server frame follow-up
 
@@ -445,7 +445,7 @@ Hex-Rays 的默认 `MAX_FUNCSIZE = 64` 会拒绝超过 64 KiB 的函数，即使
 
 ### 统一剩余静态任务与严格复核
 
-统一维护入口为 `python -X utf8 tools/workspace.py reverse-pending --workers 16`，协调者以同一个有界线程池处理本机逻辑核数量内的原生与前端任务。原生任务复用完整基础捕获和私有 IDB，仅为有准确边界的剩余失败执行正式补查；前端任务复用现有获取、模块恢复和词法 AST 工具。完整任务状态、实际命令、逐项输出与未决原因保存在[统一收据](../../.analysis/results/reverse-pending.json)，摘要同步到[批量报告](native-bulk-reverse.md)。脚本数量和 worker 数量不代表同时运行相同数量的 IDA；原生阶段结束后，前端阶段可只运行 Python 静态工具。
+统一维护入口为 `python -X utf8 tools/workspace.py reverse-pending --workers 16 --process-workers`，协调者使用有界独立进程处理原生与前端静态任务，绕开 Python GIL 对 CPU 并行的限制。每个 worker 只返回局部结果，记录实际 PID，统一收据由协调者发布；共享前端 AST 输出按来源 SHA 加锁。省略 `--process-workers` 时使用线程池。原生任务复用完整基础捕获和私有 IDB，仅为有准确边界的剩余失败执行正式补查；前端任务复用现有获取、模块恢复和词法 AST 工具。完整任务状态、实际命令、逐项输出与未决原因保存在[统一收据](../../.analysis/results/reverse-pending.json)，摘要同步到[批量报告](native-bulk-reverse.md)。脚本数量和 worker 数量不代表同时运行相同数量的 IDA；原生阶段结束后，前端阶段可只运行 Python 静态工具。
 
 完整基础捕获必须通过 `verify_native_capture`，逐项核验函数清单、完整输出、汇编标记和实际产物字节；`capture_complete` 本身不能作为验收。原件身份在开始、每次原生命令返回、基础捕获核验后和发布前重新核对，基础清单在发布前也必须保持一致。活跃或无法查询的会话不会被重复启动；恢复中断补查仅允许在确认 PID 已消失后执行，并保留旧 session、计划、capture 和日志的原始字节，不能补造退出码。
 
@@ -489,4 +489,10 @@ Supplement 接收先验证整份计划、会话、完整输出、原件字节、
 
 `python -X utf8 tools/workspace.py clean --stale` 只处理当前批次开始前的 `.work` 根层 `.log/.txt/.out` 与根层 `__pycache__/*.pyc`。引用核对使用已安装的 `rg` 固定字符串多模式搜索与 16 个扫描线程，覆盖维护源码、文档、输入索引及正式 JSON 收据；已索引的函数／AST／原始反编译正文不重复扫描。不明类型、仍有引用、活进程路径、链接／junction、新文件及占用文件保持原样，删除前以 Windows 独占句柄重新核对文件身份。该模式不进入原生 IDB、分析工具与当前运行目录，也不删除 `.analysis` 原件或正式结果。
 
-首批共核对 529 个候选，删除 526 个文件、26,397,115 字节（约 25.17 MiB），3 个候选因现有引用保留，保护检查无错误；删除后逐项确认均不存在，8,933 个原有受保护文件及输入／corpus 索引均仍在。清单在当前队列最终发布后合并至统一收据的 `scratch_cleanup`，合并前暂存于受保护的当前运行目录。`test_scratch_cleanup.py` 的 13 项测试中，11 项通过；2 项真实 symlink 创建因本机权限跳过，另有无需该权限的链接拒绝、目录逃逸及真实独占占用反例。默认全量 `clean` 与显式 `--stale` 是不同范围，运行中的分析仅使用后者。
+首批共核对 529 个候选，删除 526 个文件、26,397,115 字节（约 25.17 MiB），3 个候选因现有引用保留，保护检查无错误；删除后逐项确认均不存在，8,933 个原有受保护文件及输入／corpus 索引均仍在。清单在当前队列最终发布后合并至统一收据的 `scratch_cleanup`，合并前暂存于受保护的当前运行目录。`test_scratch_cleanup.py` 的 13 项测试中，11 项通过；2 项真实 symlink 创建因本机权限跳过，另有无需该权限的链接拒绝、目录逃逸及真实独占占用反例。`--stale` 保持上述有限范围。
+
+每轮逆向必须按 [AGENTS.md 第 7.1 节](../../AGENTS.md#71-每轮逆向的清理与体积控制必做) 收尾。默认 `python -X utf8 tools/workspace.py clean` 或显式 `--dry-run` 仅生成 `.analysis/results/scratch-cleanup-<UTC时间>-plan.json`，不再清空 `.work`。计划使用保留名称并独占创建，已有计划和 apply 收据不得覆盖。完成证据充分、无后续依赖的 supplement 私有副本和旧资源克隆由计划逐项列出；原始 batch 数据库、活跃／预留任务、当前 verification checkout 及正式引用保留。执行使用 `clean --apply <计划相对路径> --plan-sha256 <实际计划SHA>`，先获取队列与资源写入锁，再重新核对完整引用、预留、完成收据、实际文件身份、路径和占用；首次删除前持久化完整计划范围和身份。实际删除与失败记入统一收据；清理计划不代表已释放空间。
+
+`python -X utf8 tools/workspace.py compact-analysis --workers 8` 仅为原生根层大型数据集生成 `.analysis/results/storage-compaction.json`，逐项核对当前内容 SHA、文件身份与 capture 身份。`compact-analysis --workers 8 --apply --plan-sha256 <实际计划SHA>` 使用 Windows 文件系统压缩，保持文件路径、逻辑字节与完成状态；压缩前后在同一独占写入句柄核对 SHA、文件身份和写入时间，并以 `FileCompressionInfo` 记录实际占用。已有计划和 apply 收据不得覆盖；完整 apply 日志在压缩首项前持久化，结果位于计划同目录的 `*-apply.json`。旧 schema 或未完成 capture 的状态照原样保留，压缩不补造完成证明。该工具只更改文件存储属性，不执行分析输入、厂商 DLL 或应用。
+
+本轮[实际删除收据](../../.analysis/results/scratch-cleanup-plan-applied.json)确认 475 份已结束 supplement 私有副本和 9 份旧资源克隆全部移除，共 484 组目录、77,069 个文件、29,478,199,202 逻辑字节，失败为零；删除后逐项目录不存在，1,425 份正式完成收据 SHA 及输入索引保持一致，223 份源数据库仍在。[大型文件压缩](../../.analysis/results/storage-compaction-apply.json)与[中型文件压缩](../../.analysis/results/storage-compaction-medium-apply.json)分别处理 152／574 个文件，实际减少磁盘占用 40,930,720,539／11,801,813,522 字节，全部内容 SHA 保持不变。后续计划跳过已压缩文件；`test_analysis_storage.py` 的 16 项测试通过，包含真实 NTFS 压缩、计划与文件变化、占用、链接、收据防覆盖和提前持久化日志。1 MiB 阈值的[小型文件计划](../../.analysis/results/storage-compaction-small.json)仅完成校验，尚未执行，节省量不计入本轮结果。其他仍有依赖或尚缺释放依据的工作副本保持保留。

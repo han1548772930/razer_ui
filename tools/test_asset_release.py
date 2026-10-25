@@ -9,6 +9,65 @@ from unittest.mock import patch
 import asset_release as assets
 
 
+class OwnedUploadCloneTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.root = Path(self.directory.name).resolve()
+        self.root_patch = patch.object(assets, "ROOT", self.root)
+        self.root_patch.start()
+
+    def tearDown(self):
+        self.root_patch.stop()
+        self.directory.cleanup()
+
+    def test_owned_clone_is_released_on_success_and_on_failure(self):
+        with assets._owned_upload_clone("assets-" + "a" * 20) as normal:
+            (normal / "payload").write_bytes(b"private copy")
+        self.assertFalse(normal.exists())
+        with self.assertRaisesRegex(RuntimeError, "clone failed"):
+            with assets._owned_upload_clone("assets-" + "a" * 20) as failed:
+                (failed / "payload").write_bytes(b"partial clone")
+                raise RuntimeError("clone failed")
+        self.assertFalse(failed.exists())
+
+    def test_current_verification_checkout_is_retained(self):
+        with assets._owned_upload_clone("assets-" + "b" * 20) as current:
+            report = self.root / ".analysis/results/asset-release-update.json"
+            report.parent.mkdir(parents=True)
+            report.write_text(json.dumps({"verification_checkout": current.relative_to(self.root).as_posix()}), encoding="utf-8")
+        self.assertTrue(current.is_dir())
+
+    def test_readonly_git_pack_is_cleaned_with_its_owned_clone(self):
+        import stat
+        with assets._owned_upload_clone("assets-" + "e" * 20) as target:
+            pack = target / ".git/objects/pack/private.pack"
+            pack.parent.mkdir(parents=True)
+            pack.write_bytes(b"immutable private Git pack")
+            pack.chmod(stat.S_IREAD)
+        self.assertFalse(target.exists())
+
+    def test_cleanup_cannot_target_the_user_workspace_or_an_outside_directory(self):
+        for path in (self.root, self.root / ".work", self.root.parent / "outside"):
+            with self.subTest(path=path), self.assertRaisesRegex(ValueError, "outside"):
+                assets._checked_upload_tree(path)
+        self.assertTrue(self.root.is_dir())
+
+    def test_replaced_owned_directory_is_retained_instead_of_recursively_deleted(self):
+        with self.assertRaisesRegex(ValueError, "changed"):
+            with assets._owned_upload_clone("assets-" + "c" * 20) as target:
+                target.rename(target.with_name(target.name + "-original"))
+                target.mkdir()
+                (target / "keep").write_bytes(b"another owner")
+        self.assertEqual((target / "keep").read_bytes(), b"another owner")
+
+    def test_reparse_guard_rejects_the_owned_tree_before_cleanup(self):
+        with self.assertRaisesRegex(ValueError, "reparse"):
+            with assets._owned_upload_clone("assets-" + "d" * 20) as target:
+                original = Path.is_junction
+                with patch.object(Path, "is_junction", lambda path: path == target or original(path)):
+                    assets._checked_upload_tree(target)
+
+
 class AssetAdditionTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()

@@ -1092,6 +1092,9 @@ class NativeCaptureCapabilityTests(unittest.TestCase):
         support_source = source.with_name("capture_io.py")
         runtime_tool = self.source("tools/ida/capture.py", source.read_bytes())
         self.source("tools/ida/capture_io.py", support_source.read_bytes())
+        values_source = self.source("tools/ida/capture_values.py", source.with_name("capture_values.py").read_bytes())
+        typed_values = {"__file__": str(values_source)}
+        exec(compile(values_source.read_text(encoding="utf-8"), str(values_source), "exec"), typed_values)
         raw = b"inert fake-IDA input: " + name.encode()
         digest = hashlib.sha256(raw).hexdigest()
         original = self.source(".analysis/inputs/official-native-current/test/" + name + ".sys", raw)
@@ -1114,6 +1117,7 @@ class NativeCaptureCapabilityTests(unittest.TestCase):
 
         def decompile(ea, failure):
             return SimpleNamespace(entry_ea=ea, get_lvars=lambda: [],
+                                   mba=SimpleNamespace(entry_ea=ea), get_stkoff_delta=lambda: 0,
                                    get_pseudocode=lambda: [SimpleNamespace(line="return;")])
 
         sdk = SimpleNamespace(
@@ -1130,6 +1134,7 @@ class NativeCaptureCapabilityTests(unittest.TestCase):
         namespace = {
             "__file__": str(runtime_tool), "Path": Path, "hashlib": hashlib, "json": json,
             "datetime": datetime, "timezone": timezone, "traceback": traceback, "sys": sys,
+            "capture_values": SimpleNamespace(**{key: typed_values[key] for key in ("source_identity", "local_variables")}),
             "os": SimpleNamespace(environ={"RAZER_IDA_CAPTURE_PLAN": str(plan_path)}, sep=os.sep),
             **{name: support[name] for name in ("file_sha256", "write_json_array", "write_function_aggregates")},
             "idaapi": SimpleNamespace(get_input_file_path=lambda: str(private), get_imagebase=lambda: base),
@@ -4047,6 +4052,47 @@ class NativeSupplementTests(unittest.TestCase):
             self.assertEqual(set(resolved["complete_functions"]), {"0x1000"})
             self.assertEqual(json.loads((result / "capture.json").read_bytes()), capture)
 
+    def test_typed_serializer_uses_retained_source_after_the_live_tool_changes(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            result, output, _, manifest, _, write = self.reanalysis_fixture(root)
+            source = root / "tools/ida/capture_values.py"
+            source.parent.mkdir(parents=True)
+            raw = b"# inert typed-location serializer fixture\n"
+            source.write_bytes(raw)
+            manifest["typed_value_serializer"] = {"path": source.relative_to(root).as_posix(),
+                "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+            write(output / "capture.json", manifest)
+            resolved = analysis.native_reanalysis_resolution(result)
+            self.assertFalse(resolved["verification_failures"])
+            source.write_bytes(b"# next independent source version\n")
+            resolved = analysis.native_reanalysis_resolution(result)
+            self.assertFalse(resolved["verification_failures"])
+            snapshot = root / ".analysis/results/reverse-pending/tool-sources" / (hashlib.sha256(raw).hexdigest() + ".py")
+            self.assertEqual(snapshot.read_bytes(), raw)
+            snapshot.write_bytes(b"changed retained serializer")
+            resolved = analysis.native_reanalysis_resolution(result)
+            self.assertTrue(resolved["remaining_failures"])
+            self.assertIn("serializer source bytes changed", resolved["verification_failures"][0]["error"])
+
+    def test_typed_serializer_rejects_missing_identity_or_a_different_source(self):
+        for mutation in ({"bytes": True}, {"bytes": 0}, {"path": "tools/ida/other.py"},
+                         {"sha256": "0" * 64}, {"extra": "unreviewed"}):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory, \
+                    patch.object(analysis, "ROOT", Path(directory)):
+                root = Path(directory)
+                result, output, _, manifest, _, write = self.reanalysis_fixture(root)
+                source = root / "tools/ida/capture_values.py"
+                source.parent.mkdir(parents=True)
+                raw = b"# inert source fixture\n"
+                source.write_bytes(raw)
+                manifest["typed_value_serializer"] = {"path": source.relative_to(root).as_posix(),
+                    "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest(), **mutation}
+                write(output / "capture.json", manifest)
+                resolved = analysis.native_reanalysis_resolution(result)
+                self.assertTrue(resolved["verification_failures"])
+                self.assertTrue(resolved["remaining_failures"])
+
     def conflicting_reanalysis_fixture(self, root, conflict_first=True, location_only=False):
         result, first, capture, first_manifest, first_body, write = self.reanalysis_fixture(root)
         second_base = {"address": "0x140001010", "rva": "0x1010", "end": "0x140001012",
@@ -6771,7 +6817,8 @@ class RustValidationTests(unittest.TestCase):
 def run():
     suite = unittest.defaultTestLoader.loadTestsFromModule(__import__(__name__))
     for module in ("test_rust_data", "test_typed_tables", "test_windows_installer", "test_workspace",
-                   "test_resource_scope", "test_asset_release", "test_host", "test_native_runtime", "test_families"):
+                   "test_resource_scope", "test_asset_release", "test_host", "test_native_runtime", "test_families",
+                   "test_reverse_pending", "test_ida_capture_values", "test_analysis_storage"):
         suite.addTests(unittest.defaultTestLoader.loadTestsFromName(module))
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     path = analysis.ROOT / ".analysis/results/tool-verification.json"
@@ -6789,7 +6836,10 @@ def run():
                                       "tools/test_families.py",
                                       "tools/windows_installer.py", "tools/test_rust_data.py",
                                       "tools/test_typed_tables.py", "tools/test_windows_installer.py",
-                                      "tools/ida/capture.py", "tools/ida/capture_io.py")],
+                                      "tools/ida/capture.py", "tools/ida/capture_io.py", "tools/ida/capture_values.py",
+                                      "tools/reverse_pending.py", "tools/test_reverse_pending.py",
+                                      "tools/test_ida_capture_values.py", "tools/analysis_storage.py",
+                                      "tools/test_analysis_storage.py")],
               "target_execution": False, "real_device_operations": False}
     analysis.save(path, report)
     return 0 if result.wasSuccessful() else 1

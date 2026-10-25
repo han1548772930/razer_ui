@@ -34,6 +34,9 @@ import idaapi
 import idautils
 import idc
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import capture_values
+
 
 def _static_diagnostic_error(record, stage, error):
     """Keep diagnostic exceptions as bounded text, never traceback/proxy objects."""
@@ -113,9 +116,9 @@ class StaticMicrocodeTrace(ida_hexrays.Hexrays_Hooks):
     DEFAULT_LIMITS = {"events": 128, "instructions_per_event": 4096,
                       "instructions_total": 32768, "text_characters": 2048,
                       "text_characters_total": 1048576, "inline_ranges": 256, "owner_chunks": 256,
-                      "calls_per_event": 64, "calls_total": 256, "types_total": 768,
-                      "arguments_per_type": 32, "arguments_total": 2048,
-                      "argloc_parts": 16, "argloc_depth": 2, "argloc_records_total": 4096,
+                      "calls_per_event": 64, "calls_total": 1024, "types_total": 3072,
+                      "arguments_per_type": 32, "arguments_total": 8192,
+                      "argloc_parts": 16, "argloc_depth": 2, "argloc_records_total": 16384,
                       "function_owners": 32, "operand_depth": 4, "operand_records_total": 65536,
                       "stack_points_per_event": 1024, "stack_points_total": 32768,
                       "blocks_per_event": 512, "blocks_total": 8192, "cfg_edges": 256,
@@ -1283,6 +1286,7 @@ def capture():
                 "boundary_policy": "Only exact direct-jump, x64 embedded-object destructor forwarding or x64 bound-member tail-call thunks receive new function boundaries; existing functions keep IDA boundaries",
                 "target_execution": False, "real_device_operations": False,
                 "semantic_audit": "pending", "implementation_acceptance": "pending"}
+    manifest["typed_value_serializer"] = capture_values.source_identity(root)
 
     def save(path, value):
         def portable(item):
@@ -1469,7 +1473,8 @@ def capture():
                "chunks": [], "xrefs_to_entry": [ref(x) for x in idautils.XrefsTo(ea, 0)],
                "comments": {"regular": ida_funcs.get_func_cmt(func, False),
                             "repeatable": ida_funcs.get_func_cmt(func, True)},
-               "assembly": [], "basic_blocks": [], "pseudocode": None}
+               "assembly": [], "basic_blocks": [], "pseudocode": None,
+               "capture_stages": {"type": "before_decompile", "assembly": "before_decompile"}}
         chunk_ranges = idautils.Chunks(ea)
         if rva in shared_owner_rvas:
             chunk_ranges = sorted(chunk_ranges)
@@ -1482,14 +1487,18 @@ def capture():
         items = idautils.FuncItems(ea)
         if rva in shared_owner_rvas:
             items = sorted(items)
-        for item in items:
-            length = ida_bytes.get_item_size(item)
-            row["assembly"].append({"address": hex(item), "rva": hex(item - base),
-                "bytes": (ida_bytes.get_bytes(item, length) or b"").hex(),
-                "text": ida_lines.tag_remove(idc.generate_disasm_line(item, 0) or ""),
-                "xrefs_from": [ref(x) for x in idautils.XrefsFrom(item, 0)],
-                "xrefs_to": [ref(x) for x in idautils.XrefsTo(item, 0)],
-                "comment": idc.get_cmt(item, False), "repeatable_comment": idc.get_cmt(item, True)})
+        def assembly(addresses):
+            result = []
+            for item in addresses:
+                length = ida_bytes.get_item_size(item)
+                result.append({"address": hex(item), "rva": hex(item - base),
+                    "bytes": (ida_bytes.get_bytes(item, length) or b"").hex(),
+                    "text": ida_lines.tag_remove(idc.generate_disasm_line(item, 0) or ""),
+                    "xrefs_from": [ref(x) for x in idautils.XrefsFrom(item, 0)],
+                    "xrefs_to": [ref(x) for x in idautils.XrefsTo(item, 0)],
+                    "comment": idc.get_cmt(item, False), "repeatable_comment": idc.get_cmt(item, True)})
+            return result
+        row["assembly"] = assembly(items)
         row["basic_blocks"] = [{"id": block.id, "start": hex(block.start_ea), "end": hex(block.end_ea),
                                 "predecessors": [x.id for x in block.preds()],
                                 "successors": [x.id for x in block.succs()]} for block in ida_gdl.FlowChart(func)]
@@ -1497,6 +1506,7 @@ def capture():
             failure = None
             try:
                 failure = ida_hexrays.hexrays_failure_t()
+                row["type_before_decompile"] = idc.get_type(ea)
                 row["hexrays_diagnostics"] = {}
                 fresh = selection.get("function_fresh_inlines", [])
                 if any(call["parent_rva"] == rva for helper in fresh for call in helper["callsites"]):
@@ -1509,10 +1519,8 @@ def capture():
                     raise ValueError("Hex-Rays: " + failure.desc())
                 row["pseudocode"] = {"entry": hex(cfunc.entry_ea), "lines": [
                     {"line": index, "text": ida_lines.tag_remove(line.line)}
-                    for index, line in enumerate(cfunc.get_pseudocode())], "locals": [
-                    {"name": value.name, "type": str(value.type()), "location": str(value.location),
-                     "argument": bool(value.is_arg_var() if callable(value.is_arg_var) else value.is_arg_var)}
-                    for value in cfunc.get_lvars()]}
+                    for index, line in enumerate(cfunc.get_pseudocode())]}
+                row["pseudocode"].update(capture_values.local_variables(cfunc, ida_hexrays))
             except Exception:
                 error = {"rva": rva, "stage": "hexrays", "error": traceback.format_exc()}
                 if failure is not None:
@@ -1522,6 +1530,14 @@ def capture():
                         "rva": hex(address - base) if address != idaapi.BADADDR and address >= base else None,
                         "description": failure.desc(), "detail": str(failure.str)}
                 manifest["failures"].append(error)
+            row["type_after_decompile"] = idc.get_type(ea)
+            after_items = idautils.FuncItems(ea)
+            if rva in shared_owner_rvas:
+                after_items = sorted(after_items)
+            row["assembly_after_decompile"] = assembly(after_items)
+            row["capture_stages"].update(type_before_decompile="before_decompile",
+                type_after_decompile="after_pseudocode_and_typed_locals",
+                assembly_after_decompile="after_pseudocode_and_typed_locals")
         for decoded_thunk in manifest["decoded_thunks"]:
             if decoded_thunk["rva"] == rva:
                 decoded_thunk["database_function_created"] = True
@@ -1790,6 +1806,8 @@ def capture():
             raise ValueError("Base database changed during supplemental analysis")
     manifest["base_capture_unchanged"] = True
     manifest["base_database_unchanged"] = bool(plan.get("source_database"))
+    if capture_values.source_identity(root) != manifest["typed_value_serializer"]:
+        raise ValueError("Typed capture serializer identity changed during supplemental analysis")
     save(output / "capture.json", manifest)
     return manifest
 
