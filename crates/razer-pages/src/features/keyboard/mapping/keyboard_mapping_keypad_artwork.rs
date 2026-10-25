@@ -2,14 +2,66 @@
 //! Evidence: keyboard-keypad-artwork-current.json.gz; no vendor code executes.
 use super::*;
 use gpui_kit::base::motion::{Easing, Transition, transition};
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct ProductImageKey {
+    product_id: u32,
+    edition_id: u32,
+    layout_id: u32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(in super::super::super) enum KeypadSurface {
+    Product,
+    Armory(EntityId),
+}
+
+#[derive(Default)]
+pub(super) struct KeypadRuntime {
+    observers_ready: bool,
+    active: bool,
+    armory_owners: BTreeSet<EntityId>,
+    images: BTreeMap<KeypadSurface, ProductImageRuntime>,
+}
+
+impl KeypadRuntime {
+    fn observers_installed(&mut self) {
+        self.observers_ready = true;
+    }
+
+    fn set_active(&mut self, active: bool) -> bool {
+        let changed = self.active != active;
+        self.active = active;
+        changed
+    }
+
+    fn customize_mounted(&self, surface: KeypadSurface, page: &str) -> bool {
+        self.observers_ready
+            && match surface {
+                KeypadSurface::Product => self.active && page == "TAB_CUSTOMIZE",
+                KeypadSurface::Armory(owner) => self.armory_owners.contains(&owner),
+            }
+    }
+
+    fn set_armory_open(&mut self, owner: EntityId, open: bool) -> bool {
+        if open {
+            self.armory_owners.insert(owner)
+        } else {
+            self.images.remove(&KeypadSurface::Armory(owner));
+            self.armory_owners.remove(&owner)
+        }
+    }
+}
+
 #[derive(Default)]
 pub(super) struct ProductImageRuntime {
-    key: Option<(u32, u32, u32)>,
+    key: Option<ProductImageKey>,
+    view: Option<EntityId>,
     /// Source sessionStorage is distinct from device/profile persistence.
-    sessions: BTreeMap<(u32, u32, u32), u64>,
+    sessions: BTreeMap<ProductImageKey, u64>,
     sequence: u64,
     // Keep the selected aliases after publication so an image-cache retry can
     // re-probe the same source without changing the mounted effect.
@@ -25,6 +77,41 @@ pub(super) struct ProductImageRuntime {
 }
 
 impl ProductImageRuntime {
+    fn begin_effect(&mut self, key: ProductImageKey, pending: [Option<String>; 2]) {
+        if self.key.is_none() {
+            self.sequence = self.sessions.get(&key).copied().unwrap_or(0);
+        }
+        self.key = Some(key);
+        // A prop update keeps the previous srcSet and sequence until both new
+        // probes finish. Its old remount timeout belongs to that published srcSet.
+        self.completed = [false; 2];
+        self.effect_published = false;
+        self.decoded = Default::default();
+        self.errors = Default::default();
+        self.loading = key.product_id != 747;
+        self.pending = pending;
+    }
+
+    fn unmount(&mut self) {
+        self.key = None;
+        self.view = None;
+        self.pending = Default::default();
+        self.completed = [false; 2];
+        self.decoded = Default::default();
+        self.published = Default::default();
+        self.errors = Default::default();
+        self.effect_published = false;
+        self.loading = false;
+        self.clear_loading_on_frame = false;
+        self.remount = None;
+    }
+
+    fn probe_pending(&mut self, index: usize) {
+        self.completed[index] = false;
+        self.decoded[index] = None;
+        self.effect_published = false;
+    }
+
     fn record_probe(&mut self, index: usize, result: Result<Arc<RenderImage>, String>) {
         self.completed[index] = true;
         match result {
@@ -37,6 +124,16 @@ impl ProductImageRuntime {
                 self.errors[index] = Some(error);
             }
         }
+    }
+
+    fn publish_effect(&mut self) -> bool {
+        if self.effect_published || !self.completed.iter().all(|completed| *completed) {
+            return false;
+        }
+        self.effect_published = true;
+        self.remount = None;
+        self.published = self.decoded.clone();
+        true
     }
 }
 
@@ -69,15 +166,6 @@ impl RenderOnce for FlickerFrame {
                 }
             })
     }
-}
-
-/// Raw current MW_UPDATE_GAMEPAD_TESTER_VALUES callback fields. The current
-/// 747 reducer multiplies these normalized values by 1000 before rendering.
-#[derive(Clone, Copy)]
-pub struct KeyboardKeypadThumbstickObservation {
-    pub product_id: u32,
-    pub right_thumbstick_x: f64,
-    pub right_thumbstick_y: f64,
 }
 
 #[derive(Deserialize)]
@@ -115,13 +203,16 @@ pub fn source_keypad_product_image(pid: u32, edition: u32, density: u32) -> Opti
 }
 #[derive(IntoElement)]
 struct ProductImageElement {
-    pid: u32,
+    key: ProductImageKey,
+    surface: KeypadSurface,
+    owner: WeakEntity<KeyboardProductWorkspace>,
     images: [Option<Arc<RenderImage>>; 2],
     sequence: u64,
 }
 impl RenderOnce for ProductImageElement {
     fn render(self, window: &mut Window, _: &mut App) -> impl IntoElement {
-        let index = if self.pid == 747 || window.scale_factor() <= 1. {
+        let pid = self.key.product_id;
+        let index = if pid == 747 || window.scale_factor() <= 1. {
             0
         } else {
             1
@@ -130,8 +221,8 @@ impl RenderOnce for ProductImageElement {
             .absolute()
             .left_0()
             .top_0()
-            .w(surface::css(if self.pid == 747 { 400. } else { 350. }))
-            .h(surface::css(if self.pid == 747 { 502. } else { 450. }))
+            .w(surface::css(if pid == 747 { 400. } else { 350. }))
+            .h(surface::css(if pid == 747 { 502. } else { 450. }))
             .children(self.images[index].clone().map(|image| {
                 img(image)
                     .id(SharedString::from(format!(
@@ -140,6 +231,27 @@ impl RenderOnce for ProductImageElement {
                     )))
                     .size_full()
             }))
+            .on_prepaint(move |_, window, cx| {
+                let view = window.current_view();
+                let _ = self.owner.update(cx, |this, cx| {
+                    // A retained element from the previous page or metadata
+                    // must not remount an effect after its owner has left.
+                    if !this
+                        .analog_gamepad
+                        .mapping
+                        .keypad_runtime
+                        .customize_mounted(self.surface, &this.page)
+                        || this.keypad_product_image_key() != self.key
+                    {
+                        return;
+                    }
+                    // Prepaint retains the actual current view, including
+                    // inline Customize, for the shared image-cache lease.
+                    if this.sync_keypad_product_image(self.surface, view, window, cx) {
+                        window.request_animation_frame();
+                    }
+                });
+            })
     }
 }
 #[derive(Deserialize)]
@@ -566,63 +678,64 @@ impl KeyboardProductWorkspace {
         cx.notify();
         true
     }
-    pub(in super::super::super) fn keypad_product_image(&self) -> AnyElement {
+    fn keypad_product_image_key(&self) -> ProductImageKey {
+        ProductImageKey {
+            product_id: self.spec.product_id,
+            edition_id: self.keypad_edition(),
+            layout_id: self.analog_gamepad.layout.unwrap_or(0),
+        }
+    }
+
+    pub(in super::super::super) fn keypad_product_image(
+        &self,
+        surface: KeypadSurface,
+        cx: &Context<Self>,
+    ) -> AnyElement {
+        let state = self
+            .analog_gamepad
+            .mapping
+            .keypad_runtime
+            .images
+            .get(&surface);
         ProductImageElement {
-            pid: self.spec.product_id,
-            images: self
-                .analog_gamepad
-                .mapping
-                .keypad_product_image
-                .published
-                .clone(),
-            sequence: self.analog_gamepad.mapping.keypad_product_image.sequence,
+            key: self.keypad_product_image_key(),
+            surface,
+            owner: cx.weak_entity(),
+            images: state
+                .map(|state| state.published.clone())
+                .unwrap_or_default(),
+            sequence: state.map(|state| state.sequence).unwrap_or(0),
         }
         .into_any_element()
     }
-    pub(in super::super::super) fn sync_keypad_product_image(
+    fn sync_keypad_product_image(
         &mut self,
+        surface: KeypadSurface,
+        view: EntityId,
         window: &mut Window,
         cx: &mut Context<Self>,
-    ) {
-        if !matches!(self.spec.product_id, 555 | 580 | 747) {
-            return;
-        }
+    ) -> bool {
         let pid = self.spec.product_id;
-        let key = (
-            pid,
-            self.keypad_edition(),
-            self.analog_gamepad.layout.unwrap_or(0),
-        );
-        let state = &mut self.analog_gamepad.mapping.keypad_product_image;
-        if self.page != "TAB_CUSTOMIZE" {
-            // Cancel the effect's future publication and the 100ms timeout;
-            // local session sequence remains for a later actual mount.
-            state.key = None;
-            state.loading = false;
-            state.clear_loading_on_frame = false;
-            state.remount = None;
-            state.published = Default::default();
-            return;
-        }
+        let key = self.keypad_product_image_key();
+        let state = self
+            .analog_gamepad
+            .mapping
+            .keypad_runtime
+            .images
+            .entry(surface)
+            .or_default();
+        state.view = Some(view);
+        let mut changed = false;
         if state.clear_loading_on_frame {
             state.clear_loading_on_frame = false;
             state.loading = false;
+            changed = true;
         }
         if state.key != Some(key) {
-            let mounting = state.key.is_none();
-            state.key = Some(key);
-            if mounting {
-                state.sequence = state.sessions.get(&key).copied().unwrap_or(0);
-            }
-            // A prop update preserves the previous srcSet and useState sequence
-            // until both new image probes complete, exactly as the memo helper.
-            state.completed = [false; 2];
-            state.effect_published = false;
-            state.decoded = Default::default();
-            state.errors = Default::default();
-            state.loading = pid != 747;
-            state.pending = [1, if pid == 747 { 1 } else { 3 }]
-                .map(|density| source_keypad_product_image(pid, key.1, density).map(str::to_owned));
+            let pending = [1, if pid == 747 { 1 } else { 3 }].map(|density| {
+                source_keypad_product_image(pid, key.edition_id, density).map(str::to_owned)
+            });
+            state.begin_effect(key, pending);
         }
         // Current for-loop probes 1x then 3x; onerror is caught independently,
         // so decode failure never requests a different edition or reports a save.
@@ -640,28 +753,19 @@ impl KeyboardProductWorkspace {
                 // explicit retry. Keep the probe pending so the next frame
                 // republishes the newly decoded image instead of retaining
                 // the previous error publication.
-                state.completed[index] = false;
-                state.decoded[index] = None;
-                state.effect_published = false;
-                return;
+                state.probe_pending(index);
+                return changed;
             };
             state.record_probe(index, result.map_err(|error| error.to_string()));
         }
-        if !state.completed.iter().all(|completed| *completed) {
-            return;
-        }
         // Publish once per effect, including caught image errors.
-        if state.effect_published {
-            return;
+        if !state.publish_effect() {
+            return changed;
         }
-        state.effect_published = true;
         // The remount effect depends on published srcSet, not the request key:
         // a prop change alone leaves its previous timeout alive until this point.
-        state.remount = None;
-        state.published = state.decoded.clone();
         if pid != 747 && state.loading {
             state.clear_loading_on_frame = true;
-            window.request_animation_frame();
         }
         if state.sequence == 0 && state.remount.is_none() {
             state.remount = Some(cx.spawn(async move |this, cx| {
@@ -669,15 +773,22 @@ impl KeyboardProductWorkspace {
                     .timer(Duration::from_millis(100))
                     .await;
                 let _ = this.update(cx, |this, cx| {
-                    let state = &mut this.analog_gamepad.mapping.keypad_product_image;
-                    if state.key.is_some() && this.page == "TAB_CUSTOMIZE" {
+                    let runtime = &mut this.analog_gamepad.mapping.keypad_runtime;
+                    if !runtime.customize_mounted(surface, &this.page) {
+                        return;
+                    }
+                    if let Some(state) = runtime.images.get_mut(&surface)
+                        && state.key.is_some()
+                    {
                         state.sequence += 1;
                         state.sessions.insert(key, state.sequence);
                         cx.notify();
+                        App::notify(cx, view);
                     }
                 });
             }));
         }
+        true
     }
     fn keypad_connection_canvas(&self) -> AnyElement {
         let metadata = source(self.spec.product_id).expect("current mounted Keypad");
@@ -788,9 +899,14 @@ impl KeyboardProductWorkspace {
     }
     fn keypad_thumbstick(&self) -> AnyElement {
         let (x, y) = self
-            .analog_gamepad
-            .mapping
-            .keypad_thumbstick
+            .keypad_observer
+            .sample()
+            .map(|sample| {
+                (
+                    f64::from(sample.right_thumb_x()),
+                    f64::from(sample.right_thumb_y()),
+                )
+            })
             .unwrap_or((0., 0.));
         let mut plotted_x = (x + 1000.) / 2000. * 153. + 4.5;
         let mut plotted_y = (y + 1000.) / 2000. * 153. + 4.5;
@@ -882,62 +998,81 @@ impl KeyboardProductWorkspace {
             )
             .into_any_element()
     }
-    pub fn observe_keypad_thumbstick(
-        &mut self,
-        observation: Option<KeyboardKeypadThumbstickObservation>,
-        cx: &mut Context<Self>,
-    ) {
-        if self.spec.product_id != 747 {
-            return;
-        }
-        if let Some(value) = observation {
-            if value.product_id != 747
-                || !value.right_thumbstick_x.is_finite()
-                || !value.right_thumbstick_y.is_finite()
+    pub(in super::super::super) fn mount_keypad_runtime(&mut self, cx: &mut Context<Self>) {
+        self.analog_gamepad
+            .mapping
+            .keypad_runtime
+            .observers_installed();
+        self.sync_keypad_artwork_runtime(cx);
+        cx.notify();
+    }
+
+    pub(in super::super::super) fn notify_keypad_views(&self, cx: &mut Context<Self>) {
+        let runtime = &self.analog_gamepad.mapping.keypad_runtime;
+        for (surface, image) in &runtime.images {
+            if runtime.customize_mounted(*surface, &self.page)
+                && let Some(view) = image.view
             {
-                return;
+                App::notify(cx, view);
             }
-            self.analog_gamepad.mapping.keypad_thumbstick = Some((
-                1000. * value.right_thumbstick_x,
-                1000. * value.right_thumbstick_y,
-            ));
-        } else {
-            self.analog_gamepad.mapping.keypad_thumbstick = None;
         }
         cx.notify();
     }
-    pub(in super::super::super) fn sync_keypad_artwork_runtime(&mut self, cx: &mut Context<Self>) {
-        if self.spec.product_id != 747 {
+
+    pub(in crate::features) fn set_keypad_active(&mut self, active: bool, cx: &mut Context<Self>) {
+        if !matches!(self.spec.product_id, 555 | 580 | 747) {
             return;
         }
-        let customize = self.page == "TAB_CUSTOMIZE";
+        let runtime = &mut self.analog_gamepad.mapping.keypad_runtime;
+        let changed = runtime.set_active(active);
+        self.sync_keypad_artwork_runtime(cx);
+        if changed {
+            cx.notify();
+        }
+    }
+
+    pub(in crate::features) fn set_armory_mapping_open(
+        &mut self,
+        owner: EntityId,
+        open: bool,
+        cx: &mut Context<Self>,
+    ) {
+        if !matches!(self.spec.product_id, 555 | 580 | 747) {
+            return;
+        }
+        if self
+            .analog_gamepad
+            .mapping
+            .keypad_runtime
+            .set_armory_open(owner, open)
+        {
+            self.sync_keypad_artwork_runtime(cx);
+            cx.notify();
+        }
+    }
+
+    pub(in super::super::super) fn sync_keypad_artwork_runtime(&mut self, cx: &mut Context<Self>) {
+        let runtime = &mut self.analog_gamepad.mapping.keypad_runtime;
+        if !runtime.observers_ready {
+            return;
+        }
+        let product = runtime.customize_mounted(KeypadSurface::Product, &self.page);
+        if !product && let Some(state) = runtime.images.get_mut(&KeypadSurface::Product) {
+            state.unmount();
+        }
+        let customize = product || !runtime.armory_owners.is_empty();
         if !customize {
             self.analog_gamepad.mapping.keypad_help_shown = false;
         }
         let analog = customize && self.keypad_direction_mode() == 3;
-        let first = !self.analog_gamepad.mapping.keypad_artwork_mounted;
-        self.analog_gamepad.mapping.keypad_artwork_mounted = true;
-        if first || self.draft["isAnalogJoystick"].as_bool().unwrap_or(true) != analog {
-            let current = self.draft["isAnalogJoystick"].as_bool().unwrap_or(true);
-            if current != analog {
-                self.draft["isAnalogJoystick"] = json!(analog);
-                self.request_lighting_command(KeyboardLightingCommand::Middleware(json!({
-                    "type":"ON_SET_ANALOG_JOYSTICK_MODE", "timerTick":chrono::Utc::now().timestamp_millis(),
-                    "payload":{"register":analog}
-                })), cx);
-            }
+        if self.spec.product_id != 747 {
+            return;
         }
-        if self.analog_gamepad.mapping.keypad_animation_registered != analog {
-            self.analog_gamepad.mapping.keypad_animation_registered = analog;
-            // ThumbStick's independent mount effect dispatches this action;
-            // its focus-derived effect is tracked separately in the gap ledger.
-            self.request_lighting_command(
-                KeyboardLightingCommand::Middleware(json!({
-                    "type":"ON_SET_REGISTER_UI_ANIMATION_EVENTS", "payload":{"enable":analog}
-                })),
-                cx,
-            );
-        }
+        self.request_keypad_analog_mode(analog, cx);
+    }
+
+    fn request_keypad_analog_mode(&mut self, analog: bool, cx: &mut Context<Self>) {
+        self.set_keypad_sample_forwarding(analog, cx);
     }
     fn keypad_config_button(
         &self,
@@ -1046,6 +1181,7 @@ impl KeyboardProductWorkspace {
     }
     pub(in super::super::super) fn keypad_customize_artwork(
         &self,
+        surface: KeypadSurface,
         cx: &Context<Self>,
     ) -> AnyElement {
         let modern = self.spec.product_id == 747;
@@ -1341,7 +1477,7 @@ impl KeyboardProductWorkspace {
                                     .left(surface::css(5.))
                                     .top(surface::css(-25.))
                             })
-                            .child(self.keyboard_image(true, cx)),
+                            .child(self.keyboard_image_for_surface(true, surface, cx)),
                     ),
             )
             .child(right);
@@ -1366,19 +1502,7 @@ impl KeyboardProductWorkspace {
         }
         if self.spec.product_id == 747 {
             // Actual setDpadMode changes analog registration before mode.
-            let analog = self.draft["isAnalogJoystick"].as_bool().unwrap_or(true);
-            let next_analog = mode == 3;
-            if analog != next_analog {
-                self.draft["isAnalogJoystick"] = json!(next_analog);
-                self.request_lighting_command(
-                    KeyboardLightingCommand::Middleware(json!({
-                        "type":"ON_SET_ANALOG_JOYSTICK_MODE",
-                        "timerTick":chrono::Utc::now().timestamp_millis(),
-                        "payload":{"register":next_analog}
-                    })),
-                    cx,
-                );
-            }
+            self.request_keypad_analog_mode(mode == 3, cx);
         }
         self.draft["directionMode"] = json!(mode);
         self.analog_gamepad
@@ -1394,6 +1518,7 @@ impl KeyboardProductWorkspace {
             })),
             cx,
         );
+        self.sync_keypad_artwork_runtime(cx);
         // This publishes the local draft. The transport completion/error owner
         // remains separate; no device acknowledgement is manufactured.
         cx.emit(KeyboardProductChanged);
@@ -1577,6 +1702,83 @@ fn paint_circle(
 mod product_image_runtime_tests {
     use super::*;
 
+    fn key(product_id: u32, edition_id: u32, layout_id: u32) -> ProductImageKey {
+        ProductImageKey {
+            product_id,
+            edition_id,
+            layout_id,
+        }
+    }
+
+    fn image() -> Arc<RenderImage> {
+        Arc::new(RenderImage::new(Vec::<image::Frame>::new()))
+    }
+
+    fn requests(name: &str) -> [Option<String>; 2] {
+        [Some(format!("{name}-1x")), Some(format!("{name}-3x"))]
+    }
+
+    #[::core::prelude::v1::test]
+    fn keypad_product_mount_waits_for_observers_and_resumes_only_for_the_active_page() {
+        let mut runtime = KeypadRuntime::default();
+        let surface = KeypadSurface::Product;
+        assert!(runtime.set_active(true));
+        assert!(!runtime.customize_mounted(surface, "TAB_CUSTOMIZE"));
+        // Deactivation can precede the deferred construction callback.
+        assert!(runtime.set_active(false));
+        runtime.observers_installed();
+        assert!(!runtime.customize_mounted(surface, "TAB_CUSTOMIZE"));
+
+        assert!(runtime.set_active(true));
+        assert!(runtime.customize_mounted(surface, "TAB_CUSTOMIZE"));
+        assert!(!runtime.customize_mounted(surface, "TAB_LIGHTING"));
+
+        assert!(runtime.set_active(false));
+        assert!(!runtime.customize_mounted(surface, "TAB_CUSTOMIZE"));
+        assert!(runtime.set_active(true));
+        assert!(runtime.customize_mounted(surface, "TAB_CUSTOMIZE"));
+    }
+
+    #[::core::prelude::v1::test]
+    fn armory_mount_is_independent_of_the_product_page_and_closing_another_root() {
+        let mut runtime = KeypadRuntime::default();
+        let first = EntityId::from(1);
+        let second = EntityId::from(2);
+        let first_surface = KeypadSurface::Armory(first);
+        let second_surface = KeypadSurface::Armory(second);
+        assert!(runtime.set_armory_open(first, true));
+        assert!(!runtime.customize_mounted(first_surface, "TAB_LIGHTING"));
+        runtime.observers_installed();
+        assert!(runtime.customize_mounted(first_surface, "TAB_LIGHTING"));
+        assert!(!runtime.customize_mounted(KeypadSurface::Product, "TAB_CUSTOMIZE"));
+        assert!(runtime.set_armory_open(second, true));
+        assert!(!runtime.set_armory_open(second, true));
+
+        let mut first_image = ProductImageRuntime::default();
+        first_image.begin_effect(key(747, 0, 0), requests("first"));
+        runtime.images.insert(first_surface, first_image);
+        let mut second_image = ProductImageRuntime::default();
+        second_image.begin_effect(key(747, 0, 0), requests("second"));
+        let decoded = image();
+        let retained = Arc::downgrade(&decoded);
+        second_image.record_probe(0, Ok(decoded));
+        runtime.images.insert(second_surface, second_image);
+
+        assert!(runtime.set_armory_open(second, false));
+        assert!(retained.upgrade().is_none());
+        assert!(!runtime.customize_mounted(second_surface, "TAB_CUSTOMIZE"));
+        assert!(runtime.customize_mounted(first_surface, "TAB_LIGHTING"));
+        assert!(runtime.images.contains_key(&first_surface));
+        assert!(!runtime.images.contains_key(&second_surface));
+        assert!(!runtime.set_armory_open(second, false));
+        assert!(runtime.set_active(true));
+        assert!(runtime.customize_mounted(KeypadSurface::Product, "TAB_CUSTOMIZE"));
+        assert!(runtime.set_active(false));
+        assert!(runtime.customize_mounted(first_surface, "TAB_LIGHTING"));
+        assert!(runtime.set_armory_open(first, false));
+        assert!(runtime.images.is_empty());
+    }
+
     #[::core::prelude::v1::test]
     fn probe_result_replaces_stale_decode_and_error_state() {
         let mut state = ProductImageRuntime::default();
@@ -1596,6 +1798,93 @@ mod product_image_runtime_tests {
         assert!(state.completed[0]);
         assert!(state.decoded[0].is_none());
         assert_eq!(state.errors[0].as_deref(), Some("current decode error"));
+    }
+
+    #[::core::prelude::v1::test]
+    fn product_image_unmount_releases_both_density_decodes_and_keeps_session_sequence() {
+        let mut state = ProductImageRuntime::default();
+        let key = key(555, 0, 1);
+        state.begin_effect(key, requests("old"));
+        let first = image();
+        let last = Arc::downgrade(&first);
+        state.record_probe(0, Ok(first));
+        state.record_probe(1, Ok(image()));
+        assert!(state.publish_effect());
+        state.sequence = 1;
+        state.sessions.insert(key, state.sequence);
+
+        state.unmount();
+        assert!(
+            last.upgrade().is_none(),
+            "unmounted ProductImage cannot retain decoded pixels"
+        );
+        assert!(state.key.is_none());
+        assert!(state.pending.iter().all(Option::is_none));
+        assert!(state.decoded.iter().all(Option::is_none));
+        assert!(state.published.iter().all(Option::is_none));
+        assert!(state.errors.iter().all(Option::is_none));
+        assert!(!state.loading);
+        assert!(!state.clear_loading_on_frame);
+        assert!(!state.publish_effect());
+        state.unmount();
+
+        state.begin_effect(key, requests("returning"));
+        assert_eq!(state.sequence, 1);
+        assert_eq!(state.key, Some(key));
+        assert!(state.loading);
+    }
+
+    #[::core::prelude::v1::test]
+    fn product_image_new_props_preserve_old_publication_until_both_current_probes_finish() {
+        let mut state = ProductImageRuntime::default();
+        state.begin_effect(key(580, 0, 1), requests("old"));
+        let old = image();
+        state.record_probe(0, Ok(old.clone()));
+        state.record_probe(1, Ok(image()));
+        assert!(state.publish_effect());
+
+        state.begin_effect(key(580, 128, 4), requests("current"));
+        assert!(Arc::ptr_eq(state.published[0].as_ref().unwrap(), &old));
+        let current = image();
+        state.record_probe(0, Ok(current.clone()));
+        assert!(!state.publish_effect());
+        assert!(Arc::ptr_eq(state.published[0].as_ref().unwrap(), &old));
+        state.record_probe(1, Err("3x decoder failed".into()));
+        assert!(state.publish_effect());
+        assert!(Arc::ptr_eq(state.published[0].as_ref().unwrap(), &current));
+        assert!(state.published[1].is_none());
+        assert_eq!(state.errors[1].as_deref(), Some("3x decoder failed"));
+        assert!(!state.publish_effect());
+    }
+
+    #[::core::prelude::v1::test]
+    fn product_image_retry_republishes_the_current_effect_without_resetting_its_session() {
+        let mut state = ProductImageRuntime::default();
+        let key = key(747, 0, 0);
+        state.begin_effect(key, requests("current"));
+        state.record_probe(0, Err("SVG decoder failed".into()));
+        state.record_probe(1, Err("SVG decoder failed".into()));
+        assert!(state.publish_effect());
+        assert!(
+            !state.loading,
+            "747 ProductImage has no body loading effect"
+        );
+        state.sequence = 1;
+        state.sessions.insert(key, 1);
+
+        state.probe_pending(0);
+        assert!(!state.publish_effect());
+        let retried = image();
+        state.record_probe(0, Ok(retried.clone()));
+        state.record_probe(1, Ok(retried.clone()));
+        assert!(state.publish_effect());
+        assert!(state.errors.iter().all(Option::is_none));
+        assert!(Arc::ptr_eq(state.published[0].as_ref().unwrap(), &retried));
+        assert!(Arc::ptr_eq(state.published[1].as_ref().unwrap(), &retried));
+        assert_eq!(state.sequence, 1);
+        assert_eq!(state.sessions.get(&key), Some(&1));
+        assert_eq!(state.key, Some(key));
+        assert_eq!(state.pending, requests("current"));
     }
 
     #[::core::prelude::v1::test]

@@ -100,6 +100,8 @@ pub mod keyboard_gaming_mapping;
 pub mod keyboard_gaming_mode;
 #[path = "keyboard/keyboard_indicator.rs"]
 pub mod keyboard_indicator;
+#[path = "keyboard/keyboard_keypad_observation.rs"]
+pub mod keyboard_keypad_observation;
 #[path = "keyboard/keyboard_knob.rs"]
 pub mod keyboard_knob;
 #[path = "keyboard/keyboard_latest_gaming.rs"]

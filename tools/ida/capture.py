@@ -159,16 +159,26 @@ def capture_exception_regions(plan):
         if loaded is None or bytes(loaded) != original or hashlib.sha256(original).hexdigest() != region["sha256"]:
             raise ValueError("Exception-region database bytes differ from original PE bytes")
         row = {**region, "address": hex(begin), "end": hex(end), "raw_hex": original.hex(),
-            "assembly": [], "decoded_bytes": 0, "decode_complete": False}
+            "assembly": [], "undecoded_ranges": [], "decoded_bytes": 0,
+            "undecoded_bytes": 0, "decode_complete": False}
         cursor = begin
         while cursor < end:
             insn = ida_ua.insn_t()
             size = int(ida_ua.decode_insn(insn, cursor))
             if size <= 0 or cursor + size > end:
+                # A failed slot cannot establish an instruction length. Resume
+                # only at the next original bundle, retaining the entire gap.
+                resume = min(end, ((cursor // 16) + 1) * 16)
+                missing = {"start_rva": hex(cursor - base), "end_rva": hex(resume - base),
+                    "bytes": resume - cursor, "raw_hex": original[cursor - begin:resume - begin].hex()}
+                row["undecoded_ranges"].append(missing)
+                row["undecoded_bytes"] += resume - cursor
                 manifest["failures"].append({"region": region["begin_rva"], "rva": hex(cursor - base),
                     "stage": "instruction_decode", "decoded_size": size,
-                    "reason": "instruction_missing_or_exceeds_original_region"})
-                break
+                    "reason": "instruction_missing_or_exceeds_original_region",
+                    "undecoded_range": missing, "resumed_at_rva": hex(resume - base)})
+                cursor = resume
+                continue
             operands = []
             for index, operand in enumerate(insn.ops):
                 if operand.type == ida_ua.o_void:
@@ -188,13 +198,15 @@ def capture_exception_regions(plan):
                     "code": bool(x.iscode), "user": bool(x.user)} for x in idautils.XrefsFrom(cursor, 0)],
                 "xrefs_to": [{"from": hex(x.frm), "to": hex(x.to), "type": int(x.type),
                     "code": bool(x.iscode), "user": bool(x.user)} for x in idautils.XrefsTo(cursor, 0)]})
+            row["decoded_bytes"] += size
             cursor += size
-        row["decoded_bytes"], row["decode_complete"] = cursor - begin, cursor == end
+        row["decode_complete"] = row["decoded_bytes"] == end - begin and not row["undecoded_ranges"]
         path = bodies / (region["begin_rva"][2:] + ".json")
         write_json(path, row)
         manifest["regions"].append({"begin_rva": region["begin_rva"], "end_rva": region["end_rva"],
             "path": path.relative_to(output).as_posix(), "sha256": file_sha256(path),
-            "decoded_bytes": row["decoded_bytes"], "decode_complete": row["decode_complete"]})
+            "decoded_bytes": row["decoded_bytes"], "undecoded_bytes": row["undecoded_bytes"],
+            "decode_complete": row["decode_complete"]})
     for identity in identities:
         try:
             verify_identity(identity)

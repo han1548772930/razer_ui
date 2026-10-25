@@ -9,6 +9,7 @@ pub mod gamepad_observation;
 pub mod hotkeys;
 pub mod input_observation;
 pub mod key_capture;
+pub mod keypad_observation;
 pub mod mode_capture;
 pub mod mouse_rotation;
 pub mod observation;

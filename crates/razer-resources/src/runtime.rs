@@ -51,6 +51,19 @@ struct Service {
 #[derive(Clone)]
 pub struct ResourceClient(Arc<Service>);
 
+/// One verified font file, retaining its catalog identity for presentation errors and retries.
+#[non_exhaustive]
+pub struct ResourceFont {
+    pub path: String,
+    pub bytes: Arc<[u8]>,
+}
+
+impl ResourceFont {
+    pub fn new(path: String, bytes: Arc<[u8]>) -> Self {
+        Self { path, bytes }
+    }
+}
+
 /// Completion of one requested file, including a real failure. No device state is implied.
 #[derive(Clone, Debug)]
 pub struct ResourceChanged {
@@ -378,11 +391,14 @@ impl ResourceClient {
         ))
     }
 
-    pub fn fonts(&self) -> anyhow::Result<Vec<Vec<u8>>> {
+    pub fn fonts(&self) -> anyhow::Result<Vec<ResourceFont>> {
         let mut ready = Vec::new();
         for font in &manifest()?.fonts {
             if let Some(bytes) = self.0.read_or_request(font)? {
-                ready.push(bytes.to_vec());
+                ready.push(ResourceFont {
+                    path: font.path.clone(),
+                    bytes,
+                });
             }
         }
         Ok(ready)

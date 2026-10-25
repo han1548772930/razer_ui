@@ -2499,9 +2499,90 @@ def native_observation_evidence(specification):
             "reason": value["reason"], "observer_source": dict(source)}
 
 
+def native_function_fresh_inlines(raw, capture, selection, specifications, evidence, pe):
+    """Bind fresh SDK inlining to complete helpers and original direct CALLs."""
+    values = [int(value, 0) if isinstance(value, str) else value for value in specifications]
+    if (pe["architecture"] not in {"x86", "x64"} or not evidence or not evidence.strip()
+            or not values or len(values) > 256 or len(set(values)) != len(values)
+            or any(type(value) is not int or value < 0 for value in values)):
+        raise ValueError("Fresh inlining requires unique reviewed x86/x64 helper boundaries")
+    helpers = {row["rva"]: row for row in selection.get("function_outlines", [])}
+    for shared in selection.get("function_shared_tails", []):
+        if shared["inline_owners"]:
+            helpers.update({owner["rva"]: owner for owner in shared["owners"]})
+    if any(hex(value) not in helpers for value in values):
+        raise ValueError("Fresh inlining requires an explicitly reviewed outlined helper")
+    base = int(selection["image_base"], 16)
+    result = ROOT / ".analysis/results/native" / hashlib.sha256(raw).hexdigest()
+    existing = {row["rva"]: row for row in capture["functions"]}
+
+    def retained_body(record):
+        path = resolve(rel(result / record["path"]), rel(result))
+        data = path.read_bytes()
+        if hashlib.sha256(data).hexdigest() != record["sha256"] or ("bytes" in record and len(data) != record["bytes"]):
+            raise ValueError("Fresh inline original function evidence changed")
+        return json.loads(data), {"path": rel(path), "bytes": len(data), "sha256": record["sha256"]}
+
+    def original_code(first, stop):
+        sections = [s for s in pe["sections"] if 0 <= first - base - s["rva"]
+                    and stop - base - s["rva"] <= s["bytes"]]
+        if stop <= first or len(sections) != 1:
+            raise ValueError("Fresh inline code is not uniquely file-backed")
+        at = sections[0]["file_offset"] + first - base - sections[0]["rva"]
+        return raw[at:at + stop - first]
+
+    calls = {hex(value): [] for value in values}
+    parent_bodies = []
+    for target in selection["targets"]:
+        record = existing[target["rva"]]
+        body, identity = retained_body(record)
+        if (record.get("assembly_captured") is not True or body.get("rva") != target["rva"]
+                or body.get("address") != target["address"] or not body.get("chunks") or not body.get("assembly")):
+            raise ValueError("Fresh inline parent lacks complete retained assembly")
+        for chunk in body["chunks"]:
+            code = original_code(int(chunk["start"], 16), int(chunk["end"], 16))
+            if code.hex() != chunk["raw_hex"] or hashlib.sha256(code).hexdigest() != chunk["sha256"]:
+                raise ValueError("Fresh inline parent chunks differ from original PE bytes")
+        parent_bodies.append(body)
+        for instruction in body["assembly"]:
+            at, code = int(instruction["address"], 16), bytes.fromhex(instruction["bytes"])
+            if (not code or original_code(at, at + len(code)) != code
+                    or not any(int(c["start"], 16) <= at < at + len(code) <= int(c["end"], 16) for c in body["chunks"])):
+                raise ValueError("Fresh inline parent instruction differs from complete original chunks")
+            if len(code) != 5 or code[0] != 0xe8:
+                continue
+            destination = at + 5 + int.from_bytes(code[1:], "little", signed=True)
+            rva = hex(destination - base)
+            if rva not in calls:
+                continue
+            edges = [x for x in instruction.get("xrefs_from", []) if x.get("code") and x.get("type") in {16, 17}]
+            if len(edges) != 1 or edges[0].get("to") != hex(destination) or edges[0].get("from") != hex(at):
+                raise ValueError("Fresh inline direct CALL lacks its exact retained code edge")
+            calls[rva].append({"parent_rva": target["rva"], "parent_function": identity,
+                              "callsite_rva": hex(at - base), "target_rva": rva, "raw_hex": code.hex()})
+    plans = []
+    for value in values:
+        rva = hex(value)
+        if not calls[rva] or len(calls[rva]) > 256:
+            raise ValueError("Fresh inline helper requires a bounded original direct CALL in selected parents")
+        helper = helpers[rva]
+        body, identity = retained_body(existing[rva])
+        expected_edges = {int(c["callsite_rva"], 16) + base for c in calls[rva]}
+        retained_edges = {int(x["from"], 16) for x in body.get("xrefs_to_entry", [])
+                          if x.get("code") and x.get("type") in {16, 17}
+                          and any(any(int(c["start"], 16) <= int(x["from"], 16) < int(c["end"], 16)
+                                      for c in parent["chunks"]) for parent in parent_bodies)}
+        if retained_edges != expected_edges:
+            raise ValueError("Fresh inline helper and parent CALL edges disagree")
+        plans.append({"rva": rva, "source_function": identity, "expected_chunks": helper["expected_chunks"],
+                      "callsites": calls[rva], "flag_names": ["INLINE_EXTFRAME", "INLINE_DONTCOPY"],
+                      "assembly_evidence": evidence.strip()})
+    return plans
+
+
 def native_function_selection(raw, capture, function_rvas, type_specs=(), type_note=None, max_function_kib=None,
                               import_specs=(), merge_specs=(), outline_rvas=(), partition_specs=(), shared_tail_specs=(),
-                              observation_evidence=None):
+                              observation_evidence=None, fresh_inline_rvas=()):
     """Select retained boundaries and explicit, assembly-reviewed type repairs."""
     from host import inspect_pe
 
@@ -2567,6 +2648,9 @@ def native_function_selection(raw, capture, function_rvas, type_specs=(), type_n
         if merge_specs or outline_rvas or type_specs or import_specs:
             raise ValueError("Function partitions require a separate reviewed supplement without ABI or boundary repairs")
         selection["function_partitions"] = native_function_partitions(raw, capture, function_rvas, partition_specs, type_note, pe)
+    if fresh_inline_rvas:
+        selection["function_fresh_inlines"] = native_function_fresh_inlines(
+            raw, capture, selection, fresh_inline_rvas, type_note, pe)
     return selection
 
 
@@ -2594,7 +2678,7 @@ def supplement_native(args):
             getattr(args, "max_function_kib", None), getattr(args, "import_type", None) or (),
             getattr(args, "merge_functions", None) or (), getattr(args, "outline_function_rva", None) or (),
             getattr(args, "partition_functions", None) or (), getattr(args, "share_function_tail", None) or (),
-            getattr(args, "observation_evidence", None))
+            getattr(args, "observation_evidence", None), getattr(args, "fresh_inline_function_rva", None) or ())
         observation = selection.get("static_observation")
         if observation and sha(ROOT / "tools/ida/supplement.py") != observation["observer_source"]["sha256"]:
             raise ValueError("Static observation tool differs from its reviewed source")
@@ -2605,7 +2689,7 @@ def supplement_native(args):
         if (getattr(args, "function_type", None) or getattr(args, "import_type", None) or getattr(args, "type_evidence", None)
                 or getattr(args, "merge_functions", None) or getattr(args, "outline_function_rva", None)
                 or getattr(args, "partition_functions", None) or getattr(args, "share_function_tail", None)
-                or getattr(args, "observation_evidence", None)):
+                or getattr(args, "observation_evidence", None) or getattr(args, "fresh_inline_function_rva", None)):
             raise ValueError("Function type recovery requires explicit function reanalysis")
         if args.pointer_table_rva is None or args.pointer_count is None:
             raise ValueError("Pointer-table selection requires its RVA and count")
@@ -2709,13 +2793,15 @@ def native_reanalysis_resolution(result, capture=None):
     resolution = {"base_capture": {"path": rel(capture_path), "bytes": capture_path.stat().st_size,
                                    "sha256": sha(capture_path)},
                   "supplements": [], "resolved_failures": [], "remaining_failures": list(capture["failures"]),
-                  "verification_failures": [], "complete_functions": {}, "target_execution": False}
+                  "verification_failures": [], "complete_functions": {}, "conflicting_function_rvas": [],
+                  "conflicting_functions": {}, "target_execution": False}
     candidates = sorted((result / "supplements").glob("*/capture.json"))
     if not candidates:
         return resolution
     original = resolve(capture["input"], ".analysis/inputs")
     raw = None
     base_functions = {row["rva"]: row for row in capture["functions"]}
+    function_sources = {}
 
     def checked(path, record):
         path = resolve(rel(path), rel(result))
@@ -2757,6 +2843,7 @@ def native_reanalysis_resolution(result, capture=None):
             outlines = selection.get("function_outlines", [])
             partitions = selection.get("function_partitions", [])
             shared_tails = selection.get("function_shared_tails", [])
+            fresh_inlines = selection.get("function_fresh_inlines", [])
             shared_notes = recoveries or imports or merges or outlines or partitions or shared_tails
             actual = native_function_selection(raw, capture, [int(row["rva"], 16) for row in selection["targets"]],
                 [row["rva"] + "=" + row["declaration"] for row in recoveries],
@@ -2771,7 +2858,8 @@ def native_reanalysis_resolution(result, capture=None):
                 [dict(row) for row in shared_tails],
                 (selection["static_observation"]["review_source"]["path"] + "#"
                  + selection["static_observation"]["review_source"]["pointer"])
-                if "static_observation" in selection else None)
+                if "static_observation" in selection else None,
+                fresh_inline_rvas=[row["rva"] for row in fresh_inlines])
             if actual != selection:
                 raise ValueError("Native supplement selection no longer matches the original bytes")
             observation = selection.get("static_observation")
@@ -2966,7 +3054,7 @@ def native_reanalysis_resolution(result, capture=None):
                         != [(ins["address"], ins["bytes"]) for ins in baseline["assembly"]]):
                     raise ValueError("Native partition helper omitted code or differs from its complete original assembly")
                 verified_helpers.append(record)
-            recovered = {}
+            verified = {}
             for row in supplement["functions"]:
                 record = {**row, "path": rel(path.parent / row["path"])}
                 body = checked(ROOT / record["path"], record)
@@ -2988,35 +3076,70 @@ def native_reanalysis_resolution(result, capture=None):
                         or [(item["address"], item.get("xrefs_from"), item.get("xrefs_to")) for item in body["assembly"]]
                         != [(item["address"], item.get("xrefs_from"), item.get("xrefs_to")) for item in baseline["assembly"]]):
                     raise ValueError("Native supplemental shared owner flags or references differ from original assembly")
-                previous = resolution["complete_functions"].get(row["rva"])
-                if previous and previous["capture"]["sha256"] != record["sha256"]:
-                    raise ValueError("Native supplemental functions conflict for " + row["rva"])
-                recovered[row["rva"]] = {"capture": record, **body}
+                expected_calls = [call for helper in fresh_inlines for call in helper["callsites"]
+                                  if call["parent_rva"] == row["rva"]]
+                if expected_calls:
+                    audit = body.get("fresh_inline_audit", {})
+                    dontcopy, external = audit.get("dontcopy_flag"), audit.get("external_frame_flag")
+                    if (audit.get("complete") is not True or audit.get("hook_registered") is not True
+                            or audit.get("hook_unregistered") is not True or audit.get("errors")
+                            or audit.get("target_execution") is not False
+                            or audit.get("base_database_modified") is not False
+                            or type(dontcopy) is not int or dontcopy <= 0 or dontcopy & (dontcopy - 1)
+                            or type(external) is not int or external <= 0 or external & (external - 1)
+                            or dontcopy == external or len(audit.get("calls", [])) != len(expected_calls)):
+                        raise ValueError("Native fresh inlining lacks its complete SDK operation and cleanup audit")
+                    actual_calls = audit["calls"]
+                    if any(any(actual.get(key) != value for key, value in expected.items())
+                           or actual.get("result_code") != 0 or actual.get("status") != "inlined"
+                           or actual.get("inline_flags") != dontcopy | external
+                           or actual.get("flag_names") != ["INLINE_EXTFRAME", "INLINE_DONTCOPY"]
+                           for actual, expected in zip(actual_calls, expected_calls)):
+                        raise ValueError("Native fresh inline SDK calls differ from the exact reviewed callsites")
+                verified[row["rva"]] = {"capture": record, **body}
             receipt = {"path": rel(path), "bytes": path.stat().st_size, "sha256": sha(path)}
-            resolution["supplements"].append({"receipt": receipt,
+            summary = {"receipt": receipt,
                 "session": {"path": rel(session_path), "bytes": session_path.stat().st_size, "sha256": sha(session_path)},
                 "ida_version": supplement["ida_version"], "hexrays_version": supplement["hexrays_version"],
-                "type_recoveries": supplement["type_recoveries"], "functions": list(recovered),
+                "type_recoveries": supplement["type_recoveries"], "functions": list(verified),
                 **({"function_merge_recoveries": applied_merges} if merges else {}),
                 **({"function_outline_recoveries": applied_outlines} if outlines else {}),
                 **({"function_shared_tail_recoveries": applied_shared,
                     "shared_tail_helpers": verified_shared_helpers} if shared_tails else {}),
                 **({"function_partition_recoveries": applied_partitions,
-                    "partition_helpers": verified_helpers} if partitions else {})})
-            resolution["complete_functions"].update(recovered)
-            pending = []
-            for failure in resolution["remaining_failures"]:
-                match = re.fullmatch(r"([0-9a-fA-F]+):hexrays", failure.get("stage", ""))
-                rva = hex(int(match[1], 16)) if match else None
-                if rva in recovered:
-                    resolution["resolved_failures"].append({"original_failure": failure, "function_rva": rva,
-                        "supplement": receipt, "complete_function": recovered[rva]["capture"]})
-                else:
-                    pending.append(failure)
-            resolution["remaining_failures"] = pending
+                    "partition_helpers": verified_helpers} if partitions else {})}
         except (OSError, ValueError, KeyError, TypeError) as error:
             resolution["verification_failures"].append({"supplement": rel(path),
                 "error": str(error).replace(str(ROOT), "<project>")})
+            continue
+        resolution["supplements"].append(summary)
+        for rva, body in verified.items():
+            record = body["capture"]
+            conflict = resolution["conflicting_functions"].get(rva)
+            previous = resolution["complete_functions"].get(rva)
+            retained = conflict["retained_function"] if conflict else previous["capture"] if previous else None
+            if retained is not None and retained["sha256"] != record["sha256"]:
+                if conflict is None:
+                    conflict = {"retained_function": retained, "retained_supplement": function_sources[rva],
+                                "alternatives": [], "semantic_equivalence": "unverified"}
+                    resolution["conflicting_functions"][rva] = conflict
+                    del resolution["complete_functions"][rva]
+                conflict["alternatives"].append({"complete_function": record, "supplement": receipt})
+                resolution["verification_failures"].append({"supplement": rel(path), "function_rva": rva,
+                    "error": "Native supplemental functions conflict for " + rva})
+            elif retained is None:
+                resolution["complete_functions"][rva] = body
+                function_sources[rva] = receipt
+    resolution["conflicting_function_rvas"] = sorted(resolution["conflicting_functions"], key=lambda rva: int(rva, 16))
+    resolution["remaining_failures"] = []
+    for failure in capture["failures"]:
+        match = re.fullmatch(r"([0-9a-fA-F]+):hexrays", failure.get("stage", ""))
+        rva = hex(int(match[1], 16)) if match else None
+        if rva in resolution["complete_functions"]:
+            resolution["resolved_failures"].append({"original_failure": failure, "function_rva": rva,
+                "supplement": function_sources[rva], "complete_function": resolution["complete_functions"][rva]["capture"]})
+        else:
+            resolution["remaining_failures"].append(failure)
     return resolution
 
 
@@ -6682,19 +6805,66 @@ def audit_reference(args):
     return result
 
 
+def publish_instruction_manual(receipt_path):
+    """Verify retained architecture PDF identities without executing a target."""
+    receipt_path = resolve(rel(receipt_path), ".analysis/inputs/platform-abi-current")
+    raw = receipt_path.read_bytes()
+    receipt = json.loads(raw)
+    if (receipt.get("schema_version") != 1 or receipt.get("target_execution") is not False
+            or not isinstance(receipt.get("files"), list) or not receipt["files"]):
+        raise ValueError("Instruction manual requires a complete static acquisition receipt")
+    rows, identities = [], set()
+    for member in receipt["files"]:
+        source = resolve(member["path"], ".analysis/inputs/platform-abi-current")
+        if source.parent != receipt_path.parent or source.suffix.lower() != ".pdf":
+            raise ValueError("Instruction manual is outside its acquisition directory")
+        for key in ("url", "final_url"):
+            url = urllib.parse.urlparse(member.get(key, ""))
+            if (url.scheme != "https" or url.hostname != "www.intel.com" or url.port not in (None, 443)
+                    or url.username is not None or url.password is not None or url.query or url.fragment
+                    or not url.path.startswith("/content/dam/www/public/us/en/documents/manuals/")
+                    or not url.path.endswith(".pdf")):
+                raise ValueError("Instruction manual has no supported official HTTPS origin")
+        if (member.get("http_status") != 200 or member.get("content_type") != "application/pdf"
+                or any(not isinstance(member.get(key), str) or not member[key].strip()
+                       for key in ("document_number", "revision", "publication_date"))
+                or any(type(member.get(key)) is not int or member[key] <= 0 for key in ("volume", "pdf_pages"))
+                or member["path"] in identities):
+            raise ValueError("Instruction manual has incomplete or repeated document metadata")
+        identities.add(member["path"])
+        with source.open("rb") as stream:
+            if stream.read(5) != b"%PDF-":
+                raise ValueError("Instruction manual bytes are not a PDF")
+        rows.append({key: member[key] for key in ("path", "bytes", "sha256", "url", "final_url",
+                                                 "document_number", "revision", "publication_date", "volume")}
+                    | {"kind": "official_platform_instruction_manual"})
+    receipt_row = {"path": rel(receipt_path), "bytes": len(raw),
+                   "sha256": hashlib.sha256(raw).hexdigest(), "kind": "acquisition_receipt"}
+    index_files([*rows, receipt_row], publication={"owner": "tools/analysis.py", "receipt": receipt_row["path"],
+        "reason": "Reconcile retained official instruction manual acquisition with its complete PDF byte identities",
+        "verification": {"method": "official_https_receipt_pdf_header_complete_bytes_sha256_and_document_revision",
+                         "documents": len(rows), "network_requests": False,
+                         "scope": "Architecture instruction encoding only; no product protocol or target execution claim"}})
+    return {"receipt": receipt_row["path"], "documents": len(rows)}
+
+
 def reconcile_source_index(args):
     """Reconcile only inputs validated by their actual acquisition/publication owners."""
     import families
     import asset_release
-    if not args.frontend and not args.publication:
-        raise ValueError("Source reconciliation requires explicit frontend receipts or resource publication manifests")
+    instruction_manuals = getattr(args, "instruction_manual", None) or []
+    if not args.frontend and not args.publication and not instruction_manuals:
+        raise ValueError("Source reconciliation requires explicit frontend, resource publication or instruction manual receipts")
     for name in args.frontend or []:
         families.publish_frontend_acquisition(resolve(name, ".analysis/inputs/frontend"),
             reason="Reconcile retained supplemental frontend acquisition after complete byte, deployment-root, manifest and stability verification")
     for name in args.publication or []:
         asset_release.index_addition_sources(name,
             reason="Reconcile targeted resource publication after source-receipt, pinned resource and alias verification")
+    for name in instruction_manuals:
+        publish_instruction_manual(resolve(name, ".analysis/inputs/platform-abi-current"))
     print(json.dumps({"frontend_receipts": args.frontend or [], "publication_manifests": args.publication or [],
+                      "instruction_manuals": instruction_manuals,
                       "network_requests": False, "target_execution": False, "passed": True}), flush=True)
 
 
@@ -6717,6 +6887,7 @@ def add_commands(parsers):
     reconcile = parsers.add_parser("reconcile-source-index", help="Verify retained source receipts through their owners before publishing complete input identities")
     reconcile.add_argument("--frontend", action="append", help="Explicit frontend acquisition receipt; repeat for multiple source sets")
     reconcile.add_argument("--publication", action="append", help="Explicit targeted resource publication manifest; validates pinned source and alias identities without network")
+    reconcile.add_argument("--instruction-manual", action="append", help="Explicit retained official architecture PDF acquisition receipt; verifies its origin, revision and complete bytes without network")
     parsers.add_parser("configure-ida", help="Regenerate direct IDA MCP configuration and plugin")
     probe = parsers.add_parser("probe-ida", help="Verify static MCP metadata, function lookup, complete pseudocode and assembly")
     probe.add_argument("--input", required=True)
@@ -6765,6 +6936,8 @@ def add_commands(parsers):
                             help="Explicit reviewed OWNER=START:END,... partition of embedded local CALL/RET helpers")
     supplement.add_argument("--share-function-tail", action="append",
                             help="Reviewed PRIMARY=START:END:OWNER,OWNER[:inline|:retain] exact shared function tail")
+    supplement.add_argument("--fresh-inline-function-rva", action="append", type=lambda value: int(value, 0),
+                            help="Fresh SDK inline of an already reviewed outlined helper with its own frame; bypass reused inline copies")
     supplement.add_argument("--type-evidence", help="Explain the argument/register/return evidence for explicit type recovery")
     supplement.add_argument("--observation-evidence",
                             help="Retained JSON review#pointer with a new static observation reason and exact observer source identity")

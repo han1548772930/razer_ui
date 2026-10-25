@@ -25,6 +25,8 @@ mod actuation_submission;
 mod analog_observation;
 #[path = "actuation/keyboard_gamepad_observation.rs"]
 mod gamepad_observation;
+#[path = "actuation/keyboard_keypad_observation.rs"]
+mod keypad_observation;
 #[path = "actuation/keyboard_observation_tasks.rs"]
 mod observation_tasks;
 pub use actuation_submission::KeyboardActuationRequested;
@@ -80,6 +82,7 @@ mod analog_controls;
 #[path = "actuation/keyboard_analog_gamepad.rs"]
 mod analog_gamepad;
 pub use analog_controls::KeyboardAnalogControlsObservation;
+use analog_gamepad::KeypadSurface;
 #[path = "controller/keyboard_floating_controller.rs"]
 mod floating_controller;
 #[path = "artwork/keyboard_source_artwork.rs"]
@@ -92,7 +95,6 @@ pub use source_artwork::{
 #[path = "keyboard_properties.rs"]
 mod properties;
 pub use analog_gamepad::KeyboardGamepadTesterObservation;
-pub use analog_gamepad::KeyboardKeypadThumbstickObservation;
 pub use analog_gamepad::KeyboardMappingAiObservation;
 pub use analog_gamepad::KeyboardMappingInterDeviceConfigureRequested;
 pub use analog_gamepad::KeyboardMappingInterDeviceObservation;
@@ -212,6 +214,7 @@ pub struct KeyboardProductWorkspace {
     snap_observer: snap_tap::observation::Observer,
     analog_observer: analog_observation::Observer,
     gamepad_observer: gamepad_observation::Observer,
+    keypad_observer: keypad_observation::Observer,
     /// Retained OS icon choice; failed queries fall back to the legacy icon.
     properties_icon: Option<&'static str>,
     brightness: brightness::State,
@@ -309,6 +312,7 @@ impl KeyboardProductWorkspace {
             snap_observer: Default::default(),
             analog_observer: Default::default(),
             gamepad_observer: Default::default(),
+            keypad_observer: Default::default(),
             power_indicator: power::IndicatorState::default(),
             button_drawer_open: false,
             analog_gamepad: analog_gamepad::State::default(),
@@ -383,8 +387,14 @@ impl KeyboardProductWorkspace {
         this.restore_analog_controls();
         this.restore_gaming_combos();
         this.refresh_gaming_fn_sleep(cx);
+        // Outer workspace subscriptions become active at the end of the
+        // construction effect cycle, before these first middleware requests.
+        if matches!(pid, 555 | 580 | 747) {
+            cx.defer_in(window, |this, _, cx| this.mount_keypad_runtime(cx));
+        }
         cx.on_release(|this, cx| {
             this.gamepad_observer.release(cx.background_executor());
+            this.keypad_observer.release(cx.background_executor());
             this.analog_observer.release(cx.background_executor());
             this.snap_observer.release(cx.background_executor());
         })
@@ -403,6 +413,7 @@ impl KeyboardProductWorkspace {
     }
 
     pub fn dismiss_editors(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.set_keypad_active(false, cx);
         self.finish_gaming_recording(false, window, cx);
         self.leave_analog_controls(window, cx);
         self.mapping_login_warning.unmount();
@@ -460,6 +471,7 @@ impl KeyboardProductWorkspace {
                 self.restart_indicator_animation();
             }
             self.sync_gamepad_observation(cx);
+            self.sync_keypad_artwork_runtime(cx);
             cx.notify();
         }
     }
@@ -570,6 +582,7 @@ impl KeyboardProductWorkspace {
         if self.page == "TAB_LIGHTING" {
             self.refresh_lighting(cx);
         }
+        self.sync_keypad_artwork_runtime(cx);
         cx.notify();
     }
     fn add_slider(
@@ -1019,13 +1032,22 @@ impl KeyboardProductWorkspace {
         .into_any_element()
     }
     fn keyboard_image(&self, interactive: bool, cx: &Context<Self>) -> AnyElement {
+        self.keyboard_image_for_surface(interactive, KeypadSurface::Product, cx)
+    }
+
+    fn keyboard_image_for_surface(
+        &self,
+        interactive: bool,
+        surface: KeypadSurface,
+        cx: &Context<Self>,
+    ) -> AnyElement {
         let keypad = matches!(self.spec.product_id, 555 | 580 | 747);
         let observation = self.source_artwork.observation();
         let factory = self.customize_factory_root();
         let frame = layout::KeyboardImageFrame::new(
             self.spec,
             observation,
-            self.page == "TAB_CUSTOMIZE",
+            self.page == "TAB_CUSTOMIZE" || matches!(surface, KeypadSurface::Armory(_)),
             factory,
         );
         let [width, height] = frame.size;
@@ -1051,7 +1073,7 @@ impl KeyboardProductWorkspace {
             .on_prepaint(move |bounds, _, _| keyboard_bounds.set(bounds))
             .flex_shrink_0();
         if matches!(self.spec.product_id, 555 | 580 | 747) {
-            keyboard = keyboard.child(self.keypad_product_image());
+            keyboard = keyboard.child(self.keypad_product_image(surface, cx));
         } else if let Some(observation) =
             observation.filter(|_| source_artwork::has_source(self.spec.product_id))
         {
@@ -1227,7 +1249,7 @@ impl KeyboardProductWorkspace {
         // .config-block column. The shared 770px .config-wrapper belongs to
         // the entire keypad and its two right-hand panels, not this 390px
         // column; retaining another wrapper here shifts the SVG by 190px.
-        if keypad && self.page == "TAB_CUSTOMIZE" {
+        if keypad && (self.page == "TAB_CUSTOMIZE" || matches!(surface, KeypadSurface::Armory(_))) {
             return keyboard.into_any_element();
         }
         surface::config_wrapper()
@@ -1275,8 +1297,13 @@ impl KeyboardProductWorkspace {
     }
     /// The `displayMode=armory` root mounts this page without the product
     /// chrome; the renderer itself is shared, so no separate layout is faked.
-    pub fn customize_element(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
-        self.customize(window, cx)
+    pub fn customize_element(
+        &self,
+        owner: EntityId,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        self.customize_for_surface(KeypadSurface::Armory(owner), window, cx)
     }
 
     pub fn attach_dual_link_widget(
@@ -1426,10 +1453,15 @@ impl KeyboardProductWorkspace {
             .child(layout::hypershift_help(self.spec.product_id))
             .into_any_element()
     }
-    fn customize_contents(&self, window: &Window, cx: &Context<Self>) -> AnyElement {
+    fn customize_contents(
+        &self,
+        surface: KeypadSurface,
+        window: &Window,
+        cx: &Context<Self>,
+    ) -> AnyElement {
         let mut panel = v_flex();
         panel = panel.child(if matches!(self.spec.product_id, 555 | 580 | 747) {
-            self.keypad_customize_artwork(cx)
+            self.keypad_customize_artwork(surface, cx)
         } else {
             self.keyboard_image(true, cx)
         });
@@ -1595,8 +1627,6 @@ impl KeyboardProductWorkspace {
 }
 impl Render for KeyboardProductWorkspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        self.sync_keypad_artwork_runtime(cx);
-        self.sync_keypad_product_image(window, cx);
         let content = match self.page.as_str() {
             // Every current mounted Lighting root uses the settings columns;
             // none mounts Customize's product image above them. Exact roots,

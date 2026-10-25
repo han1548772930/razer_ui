@@ -38,10 +38,19 @@ impl KeyboardProductWorkspace {
     }
 
     pub(super) fn customize(&self, window: &Window, cx: &Context<Self>) -> AnyElement {
+        self.customize_for_surface(KeypadSurface::Product, window, cx)
+    }
+
+    pub(super) fn customize_for_surface(
+        &self,
+        surface: KeypadSurface,
+        window: &Window,
+        cx: &Context<Self>,
+    ) -> AnyElement {
         let contents = if self.customize_factory_root() {
             self.keyboard_image(false, cx)
         } else {
-            self.customize_contents(window, cx)
+            self.customize_contents(surface, window, cx)
         };
         div()
             .relative()

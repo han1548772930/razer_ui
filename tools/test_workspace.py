@@ -3825,6 +3825,30 @@ class KeyboardArtworkVerificationTests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             workspace.keyboard_artwork_inline_png([original], lambda row: css, "0" * 64, css_selector=selector)
 
+    def test_inline_png_http_proof_is_required_for_its_actual_literal_owner(self):
+        content = self.png()
+        digest = hashlib.sha256(content).hexdigest()
+        literal = b"data:image/png;base64," + base64.b64encode(content)
+        selector = ".action-wrapper.SWITCH_LIGHTING .head:before"
+        payloads = {"unrelated.js": b"const unrelated=true;",
+                    "other.css": b".other{background:url(" + literal + b")}",
+                    "owner.css": selector.encode() + b"{background:url(" + literal + b")}"}
+        sources = [{"path": name} for name in payloads]
+        verified = []
+        def verify(row):
+            verified.append(row["path"])
+            return payloads[row["path"]]
+        found = workspace.keyboard_artwork_inline_png(sources, lambda row: payloads[row["path"]], digest,
+                    css_selector=selector, verify_producer=verify)
+        self.assertEqual(verified, ["owner.css"])
+        self.assertEqual(found[0][1], content)
+        with self.assertRaisesRegex(ValueError, "missing HTTP proof"):
+            workspace.keyboard_artwork_inline_png(sources, lambda row: payloads[row["path"]], digest,
+                css_selector=selector, verify_producer=mock.Mock(side_effect=ValueError("missing HTTP proof")))
+        with self.assertRaisesRegex(ValueError, "producer changed"):
+            workspace.keyboard_artwork_inline_png(sources, lambda row: payloads[row["path"]], digest,
+                css_selector=selector, verify_producer=lambda row: payloads[row["path"]] + b" ")
+
     def test_customize_keeps_original_alias_protocol_and_removes_only_source_root_children(self):
         original = (b'<svg xmlns="http://www.w3.org/2000/svg" width="3" height="1">'
                     b'<g id="Body"><g id="Nested_LED"/><path d="M0 0H3V1H0Z"/></g>'
@@ -3940,6 +3964,34 @@ class KeyboardArtworkVerificationTests(unittest.TestCase):
         self.assertFalse((fixture[0] / "assets").exists())
         self.assertFalse((fixture[0] / "target").exists())
         self.assertFalse(report["network_access"])
+
+    def test_keypad_file_image_uses_its_acquired_original_instead_of_an_inline_literal(self):
+        fixture = self.fixture()
+        root, media, receipt, acquisition, catalog, mappings = fixture
+        alias = "synapse/keyboard-keypad-artwork/720-" + media["sha256"][:16] + ".png"
+        source_path = root / media["path"]
+        new_path = source_path.with_name("prd.fixture.png")
+        source_path.rename(new_path)
+        media["path"] = new_path.relative_to(root).as_posix()
+        media["url"] = media["url"].replace(source_path.name, new_path.name)
+        (root / acquisition["files"][1]["path"]).write_text(
+            json.dumps({"files": {"product.png": new_path.name}}), encoding="utf-8")
+        manifest = acquisition["files"][1]
+        raw = (root / manifest["path"]).read_bytes()
+        manifest.update(bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest())
+        receipt.write_text(json.dumps(acquisition), encoding="utf-8")
+        product = {**self.product(), "images": [], "customize_images": []}
+        catalog.write_text(json.dumps({"products": [product]}), encoding="utf-8")
+        (catalog.parent / "KEYBOARD_KEYPAD_ARTWORK_DATA.json").write_text(json.dumps([
+            {"product_id": 720, "images": [{"edition_id": 0, "role": "prd-1x.png", "asset": alias}], "icons": []}
+        ]), encoding="utf-8")
+        mappings["tables"][0]["entries"][0]["key"] = alias
+        (root / "tools/resource-mappings.json").write_text(json.dumps(mappings), encoding="utf-8")
+        with mock.patch.object(workspace, "keyboard_artwork_inline_png", side_effect=AssertionError("file image treated as inline")):
+            report = self.verify_fixture(fixture)
+        self.assertTrue(report["passed"], report)
+        self.assertEqual(report["summary"]["verified"], 1)
+        self.assertEqual(report["entries"][0]["source"]["path"], media["path"])
 
     def test_mismatching_delivery_retains_actual_reconstruction_without_marking_success(self):
         fixture = self.fixture()

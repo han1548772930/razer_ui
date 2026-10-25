@@ -2276,10 +2276,18 @@ impl ProductWorkspace {
             Body::Source(workspace) => workspace.read(cx).supports_mapping_page(),
         }
     }
+    /// Keep mapping effects attached to the independent Armory root owner.
+    pub fn set_armory_mapping_open(&mut self, owner: EntityId, open: bool, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.set_armory_mapping_open(owner, open, cx));
+        }
+    }
+
     /// The mapping content the Armory application mounts for one device, without
     /// the product navigation and profile chrome.
     pub fn armory_device_page(
         &mut self,
+        owner: EntityId,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Option<AnyElement> {
@@ -2291,7 +2299,7 @@ impl ProductWorkspace {
                 workspace.armory_mapping_page(window, cx)
             })),
             Body::Source(workspace) => workspace.update(cx, |workspace, cx| {
-                workspace.mapping_page_element(window, cx)
+                workspace.mapping_page_element(owner, window, cx)
             }),
         }
     }

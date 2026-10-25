@@ -1,8 +1,8 @@
 //! Full-resolution animation with one displayed frame and one frame of lookahead.
 //! The codec owns its disposal canvas; decoded frame count never grows with time.
 use gpui_kit::{
-    App, AppContext as _, AssetSource, Context, Entity, ImageCacheError, RenderImage, Resource,
-    SharedString, Task, WeakEntity, Window,
+    App, AssetSource, Context, ImageCacheError, RenderImage, Resource, SharedString, Task,
+    WeakEntity, Window,
 };
 use image::{AnimationDecoder as _, ImageDecoder as _};
 use razer_storage::file_transfer::{Operation, Transfer};

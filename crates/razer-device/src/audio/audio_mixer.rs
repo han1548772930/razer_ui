@@ -376,12 +376,43 @@ pub fn write_driver_route(
     })
 }
 
+/// The reset IOCTL completes without returning the audio engine's state.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum StreamResetConfirmation {
+    IoctlCompletion,
+}
+
+const STREAM_RESET_CONFIRMATION: &str = "ioctl_completion_only_no_audio_state_readback";
+
+impl Serialize for StreamResetConfirmation {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::IoctlCompletion => serializer.serialize_str(STREAM_RESET_CONFIRMATION),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for StreamResetConfirmation {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let confirmation = String::deserialize(deserializer)?;
+        if confirmation == STREAM_RESET_CONFIRMATION {
+            Ok(Self::IoctlCompletion)
+        } else {
+            Err(serde::de::Error::unknown_variant(
+                &confirmation,
+                &[STREAM_RESET_CONFIRMATION],
+            ))
+        }
+    }
+}
+
 #[derive(Deserialize, Serialize)]
+#[non_exhaustive]
 pub struct StreamsResetResult {
     pub completed_indices: Vec<u32>,
     pub return_codes: Vec<(u32, u32)>,
     pub source_sequence_completed: bool,
-    pub confirmation: String,
+    pub confirmation: StreamResetConfirmation,
 }
 
 pub const STREAM_RESET_PROPERTY: &str = "RazerT2ResetStream";
@@ -409,7 +440,7 @@ pub fn restart_streams(
         completed_indices: completed,
         return_codes,
         source_sequence_completed: true,
-        confirmation: "ioctl_completion_only_no_audio_state_readback".into(),
+        confirmation: StreamResetConfirmation::IoctlCompletion,
     })
 }
 
@@ -1201,6 +1232,10 @@ mod tests {
         assert_eq!(*device.resets.lock().unwrap(), (0..=8).collect::<Vec<_>>());
         assert_eq!(
             result.confirmation,
+            StreamResetConfirmation::IoctlCompletion
+        );
+        assert_eq!(
+            serde_json::to_value(result).unwrap()["confirmation"],
             "ioctl_completion_only_no_audio_state_readback"
         );
     }

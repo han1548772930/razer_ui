@@ -250,8 +250,8 @@ mod database_tests {
     #[test]
     fn database_index_retains_duplicate_priority_list_order_and_svg_viewports() {
         let manifest = manifest().unwrap();
-        assert_eq!(manifest.entries.len(), 12014);
-        assert_eq!(manifest.files.len(), 7784);
+        assert_eq!(manifest.entries.len(), 12023);
+        assert_eq!(manifest.files.len(), 7793);
         assert_eq!(manifest.fonts.len(), 14);
         let duplicate = "synapse/mouse-customize/f4f5f13b5ea47e5816fbf38f.png";
         let positions = manifest
@@ -260,7 +260,7 @@ mod database_tests {
             .enumerate()
             .filter_map(|(index, entry)| (entry.key == duplicate).then_some(index))
             .collect::<Vec<_>>();
-        assert_eq!(positions, [1257, 11902]);
+        assert_eq!(positions, [1257, 11911]);
         assert_eq!(manifest.keys[duplicate], positions[0]);
         assert_eq!(
             list("synapse/mouse-customize/")

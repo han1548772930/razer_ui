@@ -25,6 +25,7 @@ pub mod global_shortcut_capture;
 pub mod input_observation;
 pub mod keyboard_onboard_profiles;
 pub mod keyboard_profile_inventory;
+pub mod keypad_observation;
 pub mod macro_recording;
 pub mod mapping_control;
 pub mod mapping_observation;
@@ -837,6 +838,16 @@ pub enum ServiceRequest {
         observer_guid: String,
     },
     MappingGamepadObservationStop {
+        observer_guid: String,
+    },
+    MappingKeypadObservationStart {
+        target: keypad_observation::Target,
+        observer_guid: String,
+    },
+    MappingKeypadObservationPoll {
+        observer_guid: String,
+    },
+    MappingKeypadObservationStop {
         observer_guid: String,
     },
     MappingAnalogObservationStart {

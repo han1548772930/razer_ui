@@ -169,6 +169,8 @@ CAB 候选另静态解析完整 CFHEADER／reserve、CFFOLDER、CFFILE 和 CFDAT
 
 该模式要求实际 `ia64l`、`ia` processor、64 位与小端状态一致，并核对运行中的入口、capture／support／parser、processor DLL、IDA 内核、IDAPython 及所用 SDK 模块文件。原始工具字节按摘要保留于同一原件的 `tool-sources/`，计划、会话和结果绑定这些快照并在导出前后复核；基础 IDB 的实际身份参与 selection，变化后生成独立尝试，已有输出不可覆盖。此路径不修补 SP／ABI、不调用反编译器；只有函数／chunks 快照未变且自动分析保持关闭，才记录未创建函数和导出完成。基础 IDB、capture 和历史失败保持原字节。当前 71 个异常区域与既有 chunks 的独立覆盖核对保留 9 个区域、1,872 字节缺口；异常表可能描述拆分片段，完整解码不证明独立函数边界、unwind 语义或函数发现闭合，缺失区间和后续语义工作统一进入 gaps。
 
+解码器返回 0 时保留确切未解码范围，再从下一个 16 字节 bundle 继续；游标推进不计为成功解码。当前补充尝试覆盖 71 个区域、34,736 个原字节，实际解码 34,676 字节，6 处各 10 字节仍失败。经已索引的官方指令手册逐位核对，这六个原 bundle 均为 template 0C，三个 41 位 slot 均为 0x8000000，分别表示 nop.m／nop.f／nop.i 0；该独立语义证明不改写 IDA 失败收据、不创建函数，也不提升 66 个原函数的伪代码或发现闭包状态。`reconcile-source-index --instruction-manual` 校验官方 HTTPS 来源、版本元数据、PDF 头、长度及完整字节摘要后登记手册，产品不依赖此分析输入。
+
 `assembly_captured=true` 只表示记录了分析器枚举的指令项，不能直接证明它们覆盖原始函数块每个字节。须将所有指令区间与 chunks 核对，分别保留指令覆盖、原始字节覆盖和 Hex-Rays 失败；块内未被枚举的范围不能凭空解释为指令或补成伪代码。现有完整 raw chunks 可用于继续定点逆向，原捕获失败不改写为成功。模块级批处理成功、全函数枚举和业务语义闭合也分别记录。
 
 IDA 9.1 的批处理与补查明确传入 `-Opdb:off`，依据安装的官方 `cfg/pdb.cfg` 禁止隐式联网下载 PDB；选项与策略保留在 plan／session。它解决分析器下载阻塞，不提供缺失符号或 ABI 证明。
@@ -323,6 +325,8 @@ host 子应用的 [当前部署审计](../../.analysis/results/frontend/host-app
 
 `verify-resources --scope keyboard-artwork` 离线枚举类型化键盘主图、Customize、专用图层、Keypad 和映射状态资源，逐项核对当前原件、完整处理模块、固定交付身份以及实际像素解码。AVIF 使用经 wheel／RECORD 校验的 Pillow；SVG 使用同一分析工具目录中的 resvg-py，禁用系统字体和外部资源。校验仅在内存重建输出，不恢复源码媒体或填充安装缓存；缺失原件、未经当前部署核实的缓存、缺失资源锁或解码失败均保留错误。结果统一归属 `.analysis/results/resource-audit.json` 的 `keyboard_artwork`。
 
+实际文件资源优先匹配其完整原件；只有没有实际文件候选时才检查 Keypad inline 分支。CSS inline PNG 只为匹配完整 PNG 内容与精确 selector 的 producer 核验 HTTP 来源，全部扫描输入仍校验实际字节。当前 72 个产品、4,802 条 atlas 使用共得到 1,846 个资源身份；1,845 个通过原件、交付和像素核验，唯一未决项是 747 独立 img SVG 的字体选择。该 SVG 的 RazerF5SemiBold／RazerF5 引用没有内嵌字体声明，页面 font-face 不能自动证明独立图像所用字体；不能以移除文字或开放任意系统字体使静态检查通过。
+
 `prepare-resources --publication-manifest` 将发布输入限定于 `.analysis/inputs/prepared-resources/`。SVG 根节点过滤必须与其当前 acquisition 中的处理模块成对提供，核对实际字节与完整模块，再复用普通准备路径的同一过滤所有者；不能混用其他转换。原图和处理变体分别记录原件、模块、转换与内容哈希，通过现有定向发布入口准备、预演、上传及远端复核后才更新资源锁与映射。不同 edition 的同名布局按完整身份分别保留，不能用 manifest 可读 key 合并；每个资源 context 和已获取媒体的导出依赖边都进入当前来源收据。
 
 GPUI 修改前读取用户指定目录的两个 SKILL.md 及适用机制／组件参考，核对 Cargo.lock 版本；页面布局、控件、状态及交互由当前原件证明。
@@ -468,6 +472,12 @@ Hex-Rays 失败另保留实际 `code`、`errea`、相对 RVA、描述和附加�
 调用观察另逐项冻结 MBA 栈帧、共享尾全部所有者的 frame／SP、真实调用操作数已存类型、分别请求的参数位置及 `callinfo_built` 的调用栈位置。SDK 未返回的字段保持未观测；`GTD_NO_ARGLOCS` 结果不证明位置原本已序列化。无 ABI 或边界修补的新观察通过 `--observation-evidence` 绑定冻结审阅中的明确原因与观察器原字节身份，并进入补查选择摘要；复核时验证审阅、工具与实际捕获身份。由此保留每次不同观察的独立收据，不为区分输出而添加类型、栈修补或放宽恢复条件。
 
 `--share-function-tail "PRIMARY=START:END:OWNER,OWNER[:inline|:retain]"` 表达经审阅的多入口共享尾块。选择器重新核对全部 owner 的原件身份、完整 chunks、指令、双向引用和相对控制流，尾块须为 primary 原入口 chunk 的完整后缀；数据引用和未枚举的 padding 原字节均保留。私有 IDB 只收缩 primary 的入口 chunk 并向所有 owner 附加同一尾块，保留原入口，核对实际 primary、完整 parent 集合、frame、类型及既有栈变化点。`inline` 标记这些 helper 为 `FUNC_OUTLINE`，`retain` 保留 owner 原 flags；两者均不猜测 ABI。非目标 owner 的完整汇编单独记入 `shared_tail_helpers`，不得用汇编记录冒充伪代码。严格复核重新读取基础 IDB 的实际 SHA，并验证所有 owner、目标函数和 helper 的完整原字节及引用；恢复计数仍以完整伪代码和严格验收为准。
+
+`--fresh-inline-function-rva` 仅接受已完整审阅的 outlined helper，或明确标记 `inline` 的共享尾 owner。原 PE 中每个选定 parent 的完整 chunks、helper 原字节与真实五字节直接 CALL 入边均绑定进选择摘要；有独立栈帧的依据必须明确保留。控制器只在 SDK 的 `begin_inlining` 阶段调用 `mba.inline_func`，以 `INLINE_EXTFRAME | INLINE_DONTCOPY` 为每个原 CALL 独立生成 helper；不手写 SP、栈操作数或伪造调用结果。每次生成后重新查找剩余原 CALL 块，记录实际 SDK 返回值，并在 `finally` 停用和注销控制器。普通只读诊断观察器仍独立拥有自己的生命周期。任何原 CALL 缺失、重复、SDK 失败或清理失败都保持未完成；原 CFG 已证明对特定入口不可达的共享尾 CALL，只能通过另一个有完整原件依据的显式选择缩小强制生成范围，不能静默忽略。完整伪代码、未截断诊断、Rust 语义和实际功能对照分别验收。
+
+保留函数重分析仅导出显式选择的完整函数及其全部 chunks。入口直接 JMP 可以指向同一函数的内部块，不因此增造一个函数入口。指针表补查继续沿有界直接 JMP 链追踪真实 callable，保留循环和边界错误；两个模式分别验证。
+
+Supplement 接收先验证整份计划、会话、完整输出、原件字节、边界及 SDK 生命周期，任一结构或身份失败均拒绝整份；全部通过后才逐个完整函数归并。重复 RVA 的完整原件 SHA 不等时保留双方冲突引用，并从有效 complete_functions 和恢复计数中排除该 RVA，基础失败重新列为未决。独立的新父函数可以接收；不会通过去掉 SWIG 地址、忽略诊断或伪代码差异来消除原件冲突。
 
 当前审阅计划分别保留在 [Chroma 事件线程收据](../../.analysis/results/native-bulk/chroma-lifecycle-verification.json)、[设备驱动日志收据](../../.analysis/results/native-bulk/camera-0e06-identity-verification.json)和[音频共用字符查找尾收据](../../.analysis/results/native-bulk/audio-semantic-verification.json)。计划获准执行不等于失败已恢复；只有正式 IDA 输出及完整字节、边界和伪代码独立复核通过后，才减少基础失败计数。共享栈帧、多寄存器输出和内嵌子程序边界无法用普通 ABI 无损表达时继续静态核查，不提交猜测类型。
 

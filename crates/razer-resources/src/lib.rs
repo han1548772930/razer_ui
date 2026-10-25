@@ -7,7 +7,7 @@ mod runtime;
 mod transport;
 
 pub use catalog::{identity, list};
-pub use runtime::{ResourceChanged, ResourceClient, ResourceRuntime};
+pub use runtime::{ResourceChanged, ResourceClient, ResourceFont, ResourceRuntime};
 
 #[derive(Debug)]
 pub struct ResourcePending;

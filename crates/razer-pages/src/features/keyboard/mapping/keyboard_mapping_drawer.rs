@@ -16,7 +16,7 @@ use std::{cell::Cell, rc::Rc};
 mod header;
 #[path = "keyboard_mapping_keypad_artwork.rs"]
 mod keypad_artwork;
-pub use keypad_artwork::KeyboardKeypadThumbstickObservation;
+pub(in super::super) use keypad_artwork::KeypadSurface;
 pub use keypad_artwork::source_keypad_product_image;
 #[path = "keyboard_mapping_keypad_panel.rs"]
 mod keypad_panel;
@@ -260,15 +260,12 @@ pub(super) struct State {
     button_regions: Rc<std::cell::RefCell<BTreeMap<String, Bounds<Pixels>>>>,
     keypad_mode_hover: Option<u64>,
     keypad_mode_bounds: [Rc<Cell<Bounds<Pixels>>>; 3],
-    keypad_thumbstick: Option<(f64, f64)>,
-    keypad_artwork_mounted: bool,
-    keypad_animation_registered: bool,
+    keypad_runtime: keypad_artwork::KeypadRuntime,
     keypad_flicker: [Option<std::time::Instant>; 2],
     keypad_flicker_last_timer: Option<Rc<Cell<bool>>>,
     keypad_help_shown: bool,
     keypad_help_bounds: Rc<Cell<Bounds<Pixels>>>,
     keypad_widget_bounds: Rc<Cell<Bounds<Pixels>>>,
-    keypad_product_image: keypad_artwork::ProductImageRuntime,
     popup_region: Option<String>,
     header: header::State,
     panel_index: panel_index::State,

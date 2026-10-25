@@ -664,11 +664,17 @@ class StaticMicrocodeTrace(ida_hexrays.Hexrays_Hooks):
                 value["reason"] = "decoded_instruction_disagrees_with_idb_item"
                 return value
             value.update(status="observed", size=size, itype=int(instruction.itype),
-                         is_call=bool(ida_idp.is_call_insn(instruction)))
+                         is_call=bool(ida_idp.is_call_insn(instruction)),
+                         is_indirect_jump=bool(ida_idp.is_indirect_jump_insn(instruction)))
             value["function_context"] = self._owners_and_sp(row, address)
             if not value["is_call"]:
                 value["call_operands"] = {"status": "unobserved", "reason": "mapped_instruction_is_not_call"}
-                return value
+                if not value["is_indirect_jump"]:
+                    return value
+                value["transfer_kind"] = "indirect_jump"
+                value["instruction_stored_tinfo"] = self._stored_type(row, address)
+            else:
+                value["transfer_kind"] = "call"
             value["operands"] = []
             for index in range(8):
                 op = instruction.ops[index]
@@ -949,6 +955,104 @@ class StaticMicrocodeTrace(ida_hexrays.Hexrays_Hooks):
                 "original_pe_instruction_validation": "required separately; no address guessed"}
 
 
+class FreshInlineController(ida_hexrays.Hexrays_Hooks):
+    """Ask the SDK to regenerate reviewed helper copies, without editing microcode."""
+    def __init__(self, target_ea, base, helpers, audit):
+        super().__init__()
+        self.target_ea, self.base, self.helpers, self.audit = int(target_ea), int(base), helpers, audit
+        self.active = False
+        self.entered = False
+
+    def begin_inlining(self, cdg, decomp_flags):
+        if not self.active or int(cdg.mba.entry_ea) != self.target_ea:
+            return 0
+        try:
+            if self.entered:
+                raise ValueError("Fresh inline phase repeated for the selected parent")
+            self.entered = True
+            for helper in self.helpers:
+                for expected in helper["callsites"]:
+                    if self.base + int(expected["parent_rva"], 16) != self.target_ea:
+                        continue
+                    call_ea = self.base + int(expected["callsite_rva"], 16)
+                    helper_ea = self.base + int(helper["rva"], 16)
+                    if (ida_bytes.get_bytes(call_ea, 5) or b"").hex() != expected["raw_hex"]:
+                        raise ValueError("Fresh inline original direct CALL bytes changed")
+                    function = ida_funcs.get_func(helper_ea)
+                    if (function is None or int(function.start_ea) != helper_ea
+                            or not function.flags & ida_funcs.FUNC_OUTLINE):
+                        raise ValueError("Fresh inline helper lost its exact outlined boundary")
+                    chunks = []
+                    for first, stop in sorted(idautils.Chunks(helper_ea)):
+                        code = ida_bytes.get_bytes(first, stop - first)
+                        if code is None:
+                            raise ValueError("Fresh inline helper bytes are unavailable")
+                        chunks.append({"start": hex(first), "end": hex(stop), "raw_hex": code.hex(),
+                                       "sha256": hashlib.sha256(code).hexdigest()})
+                    if chunks != helper["expected_chunks"]:
+                        raise ValueError("Fresh inline helper chunks differ from the complete reviewed function")
+                    mba = cdg.mba
+                    matches = []
+                    for index in range(int(mba.qty)):
+                        block = mba.get_mblock(index)
+                        tail = block.tail
+                        if tail is not None and int(tail.ea) == call_ea:
+                            if (int(tail.opcode) != ida_hexrays.m_call or int(tail.l.t) != ida_hexrays.mop_v
+                                    or int(tail.l.g) != helper_ea):
+                                raise ValueError("Fresh inline block is not the reviewed original direct CALL")
+                            matches.append(int(block.serial))
+                    if len(matches) != 1:
+                        raise ValueError("Fresh inline direct CALL block is absent or ambiguous")
+                    row = {**expected, "block_serial_before": matches[0],
+                           "flag_names": list(helper["flag_names"]), "status": "requested"}
+                    self.audit["calls"].append(row)
+                    flags = int(ida_hexrays.INLINE_EXTFRAME) | int(ida_hexrays.INLINE_DONTCOPY)
+                    row["inline_flags"] = flags
+                    ranges = ida_hexrays.mba_ranges_t()
+                    ranges.pfn = function
+                    result = int(mba.inline_func(cdg, matches[0], ranges, int(decomp_flags), flags))
+                    row["result_code"] = result
+                    if result != ida_hexrays.MERR_OK:
+                        row["status"] = "sdk_error"
+                        self.audit["errors"].append("SDK fresh inlining returned " + str(result))
+                        return result
+                    row["status"] = "inlined"
+            return 0
+        except Exception as error:
+            self.audit["errors"].append((type(error).__name__ + ": " + str(error))[:2048])
+            return ida_hexrays.MERR_CANCELED
+
+
+def decompile_with_fresh_inlines(ea, failure, diagnostics, helpers, base, audit):
+    """Keep SDK inlining, diagnostics and both hook lifetimes separately auditable."""
+    audit.update(hook_registered=False, hook_unregistered=False, complete=False, calls=[], errors=[],
+                 target_execution=False, base_database_modified=False,
+                 dontcopy_flag=int(ida_hexrays.INLINE_DONTCOPY),
+                 external_frame_flag=int(ida_hexrays.INLINE_EXTFRAME))
+    controller = FreshInlineController(ea, base, helpers, audit)
+    try:
+        audit["hook_registered"] = bool(controller.hook())
+        controller.active = audit["hook_registered"]
+        if not controller.active:
+            raise ValueError("Hex-Rays rejected fresh inline hooks")
+        result = decompile_with_diagnostics(ea, failure, diagnostics)
+    finally:
+        # Leave an unsuccessfully removed hook inert for all later exports.
+        controller.active = False
+        try:
+            audit["hook_unregistered"] = bool(controller.unhook())
+        except Exception as error:
+            audit["errors"].append((type(error).__name__ + ": " + str(error))[:2048])
+    expected = [call for helper in helpers for call in helper["callsites"]
+                if base + int(call["parent_rva"], 16) == ea]
+    audit["complete"] = bool(audit["hook_registered"] and audit["hook_unregistered"] and controller.entered
+                             and not audit["errors"] and len(audit["calls"]) == len(expected)
+                             and all(row["status"] == "inlined" for row in audit["calls"]))
+    if not audit["complete"]:
+        raise ValueError("Fresh inline SDK operation or hook cleanup is incomplete")
+    return result
+
+
 def decompile_with_diagnostics(ea, failure, diagnostics):
     """Observe one existing static decompile without changing its result/errors."""
     trace = None
@@ -1133,6 +1237,8 @@ def capture():
         ]} if selection.get("function_partitions") else {}
         if selection.get("function_shared_tails"):
             partition_options["shared_tail_specs"] = selection["function_shared_tails"]
+        if selection.get("function_fresh_inlines"):
+            partition_options["fresh_inline_rvas"] = [row["rva"] for row in selection["function_fresh_inlines"]]
         if "static_observation" in selection:
             review_source = selection["static_observation"]["review_source"]
             partition_options["observation_evidence"] = review_source["path"] + "#" + review_source["pointer"]
@@ -1392,7 +1498,13 @@ def capture():
             try:
                 failure = ida_hexrays.hexrays_failure_t()
                 row["hexrays_diagnostics"] = {}
-                cfunc = decompile_with_diagnostics(ea, failure, row["hexrays_diagnostics"])
+                fresh = selection.get("function_fresh_inlines", [])
+                if any(call["parent_rva"] == rva for helper in fresh for call in helper["callsites"]):
+                    row["fresh_inline_audit"] = {}
+                    cfunc = decompile_with_fresh_inlines(ea, failure, row["hexrays_diagnostics"],
+                                                        fresh, base, row["fresh_inline_audit"])
+                else:
+                    cfunc = decompile_with_diagnostics(ea, failure, row["hexrays_diagnostics"])
                 if cfunc is None:
                     raise ValueError("Hex-Rays: " + failure.desc())
                 row["pseudocode"] = {"entry": hex(cfunc.entry_ea), "lines": [
@@ -1649,7 +1761,9 @@ def capture():
                     raise ValueError("Direct-jump chain contains a cycle")
                 visited.add(ea)
                 export(ea)
-                branch = jump_target(ea)
+                # Retained selections already own complete function chunks;
+                # an entry JMP can target another block of that same function.
+                branch = jump_target(ea) if table else None
                 chain["entries"].append({"address": hex(ea), "rva": hex(ea - base),
                     "direct_jump_target_rva": hex(branch[0] - base) if branch else None})
                 if branch is None:

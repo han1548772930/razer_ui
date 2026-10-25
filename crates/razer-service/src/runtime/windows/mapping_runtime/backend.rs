@@ -22,6 +22,8 @@ use uuid::Uuid;
 mod analog_observation;
 #[path = "backend/gamepad_observation.rs"]
 mod gamepad_observation;
+#[path = "backend/keypad_observation.rs"]
+mod keypad_observation;
 #[path = "backend/observation.rs"]
 mod observation;
 #[path = "backend/rotation.rs"]
@@ -121,6 +123,7 @@ pub(super) struct Core<E: device::Executor> {
         BTreeMap<String, observation::Observer<razer_ipc::input_observation::InputEvent>>,
     analog_observers: BTreeMap<String, analog_observation::Observer>,
     gamepad_observers: BTreeMap<String, gamepad_observation::Observer>,
+    keypad_observation: keypad_observation::State,
 }
 pub(super) struct Backend<E: device::Executor> {
     core: Core<E>,
@@ -153,6 +156,7 @@ impl<E: device::Executor> Backend<E> {
                 input_observers: BTreeMap::new(),
                 analog_observers: BTreeMap::new(),
                 gamepad_observers: BTreeMap::new(),
+                keypad_observation: Default::default(),
             },
             capture: Default::default(),
             philips: Default::default(),
@@ -734,6 +738,12 @@ impl<E: device::Executor> crate::mapping::owner::Backend for Backend<E> {
                 self.core.poll_gamepad_observation(scope,&observer_guid)
             },
             MappingGamepadObservationStop{observer_guid}=>self.core.stop_gamepad_observation(scope,&observer_guid),
+            MappingKeypadObservationStart{target,observer_guid}=>self.core.keypad_observation.start(scope,target,observer_guid),
+            MappingKeypadObservationPoll{observer_guid}=>{
+                self.poll()?;
+                self.core.keypad_observation.deliveries(scope,&observer_guid)
+            },
+            MappingKeypadObservationStop{observer_guid}=>self.core.keypad_observation.stop(scope,&observer_guid),
             MappingAnalogObservationStart{target,observer_guid,registration}=>self.core.start_analog_observation(scope,target,observer_guid,registration),
             MappingAnalogObservationPoll{observer_guid}=>{
                 self.poll()?;
@@ -839,6 +849,9 @@ impl<E: device::Executor> crate::mapping::owner::Backend for Backend<E> {
         }
     }
     fn poll(&mut self) -> Result<()> {
+        self.core
+            .keypad_observation
+            .poll(razer_platform::event_clock::tick()?);
         self.core.poll_hotkeys()?;
         for row in self.core.devices.values_mut() {
             if row.physical_retired {
@@ -1114,6 +1127,9 @@ impl<E: device::Executor> crate::mapping::owner::Backend for Backend<E> {
                 errors.push(format!("Input observation cleanup: {error:#}"));
             }
         }
+        if let Err(error) = self.core.keypad_observation.release(scope) {
+            errors.push(format!("Keypad observation cleanup: {error:#}"));
+        }
         let gamepad_observers = self
             .core
             .gamepad_observers
@@ -1231,6 +1247,9 @@ impl<E: device::Executor> crate::mapping::owner::Backend for Backend<E> {
     }
     fn shutdown(&mut self) -> Result<()> {
         let mut errors = Vec::new();
+        if let Err(error) = self.core.keypad_observation.shutdown() {
+            errors.push(format!("Keypad hardware shutdown: {error:#}"));
+        }
         for (owner, scope) in self
             .core
             .rotations

@@ -250,6 +250,9 @@ impl NativeRuntime {
             | ServiceRequest::MappingGamepadObservationStart { .. }
             | ServiceRequest::MappingGamepadObservationPoll { .. }
             | ServiceRequest::MappingGamepadObservationStop { .. }
+            | ServiceRequest::MappingKeypadObservationStart { .. }
+            | ServiceRequest::MappingKeypadObservationPoll { .. }
+            | ServiceRequest::MappingKeypadObservationStop { .. }
             | ServiceRequest::MappingAnalogObservationStart { .. }
             | ServiceRequest::MappingAnalogObservationPoll { .. }
             | ServiceRequest::MappingAnalogObservationStop { .. }

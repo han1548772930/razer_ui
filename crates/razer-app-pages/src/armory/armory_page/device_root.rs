@@ -34,6 +34,7 @@ pub fn device_frame_height(category: DeviceCategory) -> f32 {
 /// Product root for one device, as the Armory application mounts it.
 pub struct ArmoryDeviceRoot {
     workspace: Entity<ProductWorkspace>,
+    owner: EntityId,
     _subscription: Subscription,
 }
 
@@ -45,14 +46,29 @@ impl ArmoryDeviceRoot {
             return None;
         }
         let subscription = cx.observe(&workspace, |_, _, cx| cx.notify());
+        let owner = cx.entity_id();
+        workspace.update(cx, |workspace, cx| workspace.set_armory_mapping_open(owner, true, cx));
+        cx.on_release(|this, cx| {
+            this.workspace.update(cx, |workspace, cx| {
+                workspace.set_armory_mapping_open(this.owner, false, cx);
+            });
+        })
+        .detach();
         Some(Self {
             workspace,
+            owner,
             _subscription: subscription,
         })
     }
 
     pub fn device_name(&self, cx: &App) -> String {
         self.workspace.read(cx).device(cx).display_name()
+    }
+
+    pub(super) fn close(&mut self, cx: &mut Context<Self>) {
+        self.workspace.update(cx, |workspace, cx| {
+            workspace.set_armory_mapping_open(self.owner, false, cx);
+        });
     }
 }
 
@@ -62,7 +78,7 @@ impl Render for ArmoryDeviceRoot {
         let height = device_frame_height(category);
         let page = self
             .workspace
-            .update(cx, |workspace, cx| workspace.armory_device_page(window, cx));
+            .update(cx, |workspace, cx| workspace.armory_device_page(self.owner, window, cx));
         div()
             .id("armory-device-frame")
             .test_support()

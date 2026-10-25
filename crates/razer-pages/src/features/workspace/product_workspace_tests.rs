@@ -156,7 +156,9 @@ fn display_mode_pages_require_both_current_root_and_local_content(cx: &mut TestA
                     "{pid} Chroma content"
                 );
                 assert_eq!(
-                    workspace.armory_device_page(window, cx).is_some(),
+                    workspace
+                        .armory_device_page(cx.entity_id(), window, cx)
+                        .is_some(),
                     expected_armory,
                     "{pid} Armory content"
                 );

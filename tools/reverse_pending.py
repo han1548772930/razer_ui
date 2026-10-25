@@ -185,6 +185,12 @@ def load_native_reviews(specs):
             partition_specs = native_partition_specifications(partitions)
             shared_tails = plan.get("function_shared_tails", [])
             shared_specs = native_shared_tail_specifications(shared_tails)
+            fresh_inlines = plan.get("function_fresh_inlines", [])
+            if (not isinstance(fresh_inlines, list) or len(fresh_inlines) > 256
+                    or any(not isinstance(row, dict) or not isinstance(row.get("rva"), str)
+                           or not row.get("assembly_evidence", "").strip() for row in fresh_inlines)
+                    or len({int(row["rva"], 0) for row in fresh_inlines}) != len(fresh_inlines)):
+                raise ValueError("Native fresh inline review requires unique helpers and explicit evidence")
             for recoveries in (types, imports):
                 if len({int(row["rva"], 0) for row in recoveries}) != len(recoveries):
                     raise ValueError("Native review repeats a recovered type")
@@ -192,7 +198,7 @@ def load_native_reviews(specs):
                     raise ValueError("Native review types require declarations and assembly evidence")
             if any(not row.get("assembly_evidence", "").strip() for row in [*merges, *outlines, *partitions, *shared_tails]):
                 raise ValueError("Native function boundary repairs require complete assembly evidence")
-            note = "\n\n".join(dict.fromkeys(row["assembly_evidence"] for row in [*types, *imports, *merges, *outlines, *partitions, *shared_tails]))
+            note = "\n\n".join(dict.fromkeys(row["assembly_evidence"] for row in [*types, *imports, *merges, *outlines, *partitions, *shared_tails, *fresh_inlines]))
             merge_options = {"merge_specs": [row["owner_rva"] + "=" + ",".join(row["member_rvas"]) for row in merges]} if merges else {}
             if outlines:
                 merge_options["outline_rvas"] = [row["rva"] for row in outlines]
@@ -200,6 +206,8 @@ def load_native_reviews(specs):
                 merge_options["partition_specs"] = partition_specs
             if shared_tails:
                 merge_options["shared_tail_specs"] = shared_specs
+            if fresh_inlines:
+                merge_options["fresh_inline_rvas"] = [row["rva"] for row in fresh_inlines]
             observation_options = {}
             if "static_observation" in plan:
                 plan_pointer = pointer + ("/" + str(plan_index) if isinstance(value, list) else "")
@@ -337,6 +345,8 @@ class Batch:
                if review.get("function_partitions") else {}),
             **({"shared_tail_specs": native_shared_tail_specifications(review["function_shared_tails"])}
                if review.get("function_shared_tails") else {}),
+            **({"fresh_inline_rvas": [row["rva"] for row in review["function_fresh_inlines"]]}
+               if review.get("function_fresh_inlines") else {}),
             observation_evidence=review.get("observation_evidence_spec"))
         selection_id = hashlib.sha256(json.dumps(selection, sort_keys=True).encode()).hexdigest()[:16]
         output = a.ROOT / ".analysis/results/native" / capture["input_sha256"] / "supplements" / selection_id
@@ -521,6 +531,8 @@ class Batch:
                         arguments.extend(["--partition-functions", specification])
                     for specification in native_shared_tail_specifications(review.get("function_shared_tails", [])):
                         arguments.extend(["--share-function-tail", specification])
+                    for row in review.get("function_fresh_inlines", []):
+                        arguments.extend(["--fresh-inline-function-rva", row["rva"]])
                     if review["type_evidence"]:
                         arguments.extend(["--type-evidence", review["type_evidence"]])
                     if review.get("observation_evidence_spec"):

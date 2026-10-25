@@ -1166,6 +1166,9 @@ impl SourceProductWorkspace {
         self.sync_audio_volume_activity(cx);
         self.sync_audio_mixer_activity(cx);
         self.sync_seiren_audio_activity(cx);
+        if let FamilyBody::Keyboard(body) = &self.body {
+            body.update(cx, |body, cx| body.set_keypad_active(active, cx));
+        }
         if active
             && let Some(page) = self.current_page()
             && page.role() == ProductPageRole::Help
@@ -1410,6 +1413,7 @@ impl SourceProductWorkspace {
             body.update(cx, |body, cx| {
                 body.set_snap_observation_target(observation_target.clone(), observing, cx);
                 body.set_gamepad_observation_target(observation_target.clone(), self.active, cx);
+                body.set_keypad_observation_target(observation_target.clone(), cx);
                 body.set_analog_observation_target(observation_target, self.active, cx);
             });
             let active = self.active
@@ -2797,9 +2801,17 @@ impl SourceProductWorkspace {
                     .any(|page| page.kind().key() == "TAB_CUSTOMIZE")
             })
     }
+    /// Keep the independent Armory root active until its actual owner closes.
+    pub fn set_armory_mapping_open(&mut self, owner: EntityId, open: bool, cx: &mut Context<Self>) {
+        if let FamilyBody::Keyboard(body) = &self.body {
+            body.update(cx, |body, cx| body.set_armory_mapping_open(owner, open, cx));
+        }
+    }
+
     /// Select the audited independent Armory component before mapping roots.
     pub fn mapping_page_element(
         &self,
+        owner: EntityId,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Option<AnyElement> {
@@ -2823,7 +2835,7 @@ impl SourceProductWorkspace {
                 Some(view.update(cx, |view, cx| view.customize_element(window, cx)))
             }
             FamilyBody::Keyboard(view) => {
-                Some(view.update(cx, |view, cx| view.customize_element(window, cx)))
+                Some(view.update(cx, |view, cx| view.customize_element(owner, window, cx)))
             }
             FamilyBody::Gamepad(view) => {
                 Some(view.update(cx, |view, cx| view.customize_element(cx)))

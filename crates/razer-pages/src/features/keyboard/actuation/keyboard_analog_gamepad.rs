@@ -6,12 +6,12 @@ use razer_widgets::theme::KeyboardAnalogControlColors as Colors;
 
 #[path = "../mapping/keyboard_mapping_drawer.rs"]
 mod mapping_drawer;
-pub use mapping_drawer::KeyboardKeypadThumbstickObservation;
 pub use mapping_drawer::KeyboardMappingAiObservation;
 pub use mapping_drawer::KeyboardMappingInterDeviceConfigureRequested;
 pub use mapping_drawer::KeyboardMappingInterDeviceObservation;
 pub use mapping_drawer::KeyboardMappingMacroObservation;
 pub use mapping_drawer::KeyboardMappingProfilesObservation;
+pub(super) use mapping_drawer::KeypadSurface;
 pub(super) use mapping_drawer::Next as MappingNext;
 pub use mapping_drawer::source_keypad_product_image;
 pub use mapping_drawer::{KeyboardMappingDialObservation, KeyboardMappingDialReadRequested};

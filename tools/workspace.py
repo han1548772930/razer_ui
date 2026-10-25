@@ -4991,7 +4991,7 @@ def keyboard_svg_import_module(producer_body, alias):
     return imported[-1]
 
 
-def keyboard_artwork_inline_png(sources, read_original, expected_hash, *, css_selector=None):
+def keyboard_artwork_inline_png(sources, read_input, expected_hash, *, css_selector=None, verify_producer=None):
     """Resolve exact delivered PNG bytes to every current JS/CSS literal owner."""
     if not re.fullmatch(r"[a-f0-9]{64}", expected_hash):
         raise ValueError("Inline keyboard PNG requires its complete pinned SHA-256")
@@ -5000,7 +5000,7 @@ def keyboard_artwork_inline_png(sources, read_original, expected_hash, *, css_se
         suffix = Path(original["path"]).suffix.lower()
         if suffix not in {".js", ".css"} or suffix == ".css" and css_selector is None:
             continue
-        raw = read_original(original)
+        raw = read_input(original)
         matches = [match for match in re.finditer(rb"data:image/png;base64,([A-Za-z0-9+/=]+)", raw)
                    if hashlib.sha256(base64.b64decode(match[1], validate=True)).hexdigest() == expected_hash]
         if not matches:
@@ -5012,8 +5012,12 @@ def keyboard_artwork_inline_png(sources, read_original, expected_hash, *, css_se
                          rule.start() <= len(raw[:match.start()].decode("utf-8")) < rule.end() for match in matches)]
             if not rules:
                 continue
+            if verify_producer is not None and verify_producer(original) != raw:
+                raise ValueError("Inline keyboard PNG producer changed during verification")
             pixels, extraction = extract_inline_css_png(raw, {"selector": css_selector, "sha256": expected_hash})
         else:
+            if verify_producer is not None and verify_producer(original) != raw:
+                raise ValueError("Inline keyboard PNG producer changed during verification")
             pixels, extraction = extract_inline_resource_png(raw, expected_hash)
         found.append((original, pixels, extraction))
     if not found or any(pixels != found[0][1] for _, pixels, _ in found):
@@ -5178,7 +5182,7 @@ def verify_keyboard_artwork_resources(*, product_ids=None):
                               (row["sha256"].startswith(prefix[1]) if prefix else Path(row["path"]).stem == Path(filename).stem)
                               and Path(row["path"]).suffix.lower() in ({".svg"} if base["svg"] else {".avif", ".png"})]
                 embedded = use["collection"] == "mapping_blade" and filename.startswith("embedded-")
-                keypad_inline = use["collection"] == "keypad_images" and prefix and not base["svg"]
+                keypad_inline = use["collection"] == "keypad_images" and prefix and not base["svg"] and not candidates
                 if embedded or keypad_inline:
                     prefix_hash = re.fullmatch(r"embedded-([a-f0-9]{16})\.png", filename) if embedded else prefix
                     if prefix_hash is None or locked is None or not locked["sha256"].startswith(prefix_hash[1]):
@@ -5187,8 +5191,9 @@ def verify_keyboard_artwork_resources(*, product_ids=None):
                                     + (".open" if use["state"] == "active" else "") + " .head:before") if embedded else None
                     inline_key = (pid, locked["sha256"], css_selector)
                     if inline_key not in inline_sources:
-                        inline_sources[inline_key] = keyboard_artwork_inline_png(sources_for(pid), read_original,
-                            locked["sha256"], css_selector=css_selector)
+                        inline_sources[inline_key] = keyboard_artwork_inline_png(sources_for(pid),
+                            lambda original: read_input(safe(ROOT / original["path"]), original),
+                            locked["sha256"], css_selector=css_selector, verify_producer=read_original)
                     for source, raw, extraction in inline_sources[inline_key]:
                         proof = {"input": {key: source[key] for key in ("path", "bytes", "sha256")}, "extraction": extraction}
                         if proof not in entry.setdefault("inline_png_producers", []):
@@ -10473,6 +10478,12 @@ def rust_validation_commands():
         ("asset-pack-core", ["cargo", "test", "--locked", "--offline", "-p", "razer-asset-pack", "--lib"]),
         ("assets-resource-identity", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "asset_decode_tests"]),
         ("assets-image-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "image_cache::lifecycle_tests"]),
+        ("assets-font-registration", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "resource_runtime::tests::"]),
+        ("keyboard-product-image-runtime", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "product_image_runtime_tests"]),
+        ("keyboard-keypad-observation", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "keypad_observation::tests::"]),
+        ("keypad-observation-domain", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "keyboard_keypad_observation::tests::"]),
+        ("keypad-observation-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "keypad_observation::tests::"]),
+        ("keypad-observation-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "keypad_"]),
         ("assets-resource-runtime", ["cargo", "test", "--locked", "--offline", "-p", "razer-resources", "--lib"]),
         ("assets-resource-diagnostics", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "resource_availability_errors"]),
         ("assets-fixed-icons", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "icons::tests"]),

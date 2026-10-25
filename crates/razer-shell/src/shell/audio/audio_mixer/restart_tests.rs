@@ -43,8 +43,27 @@ fn mixer_restart_receipt_preserves_the_complete_source_sequence() {
     assert!(accepted.source_sequence_completed);
     assert_eq!(
         accepted.confirmation,
-        "ioctl_completion_only_no_audio_state_readback"
+        razer_device::audio_mixer::StreamResetConfirmation::IoctlCompletion
     );
+}
+
+#[::core::prelude::v1::test]
+fn mixer_restart_receipt_rejects_unverified_confirmation() {
+    for confirmation in [
+        json!("audio_state_readback"),
+        json!("ioctl_completion"),
+        json!(""),
+        Value::Null,
+        json!(true),
+        json!({"ioctl_completion_only_no_audio_state_readback": null}),
+    ] {
+        let mut response = reply();
+        response["result"]["reset"]["confirmation"] = confirmation.clone();
+        assert!(
+            accept_reply(response, &node(), CONTAINER).is_err(),
+            "{confirmation}"
+        );
+    }
 }
 
 #[::core::prelude::v1::test]

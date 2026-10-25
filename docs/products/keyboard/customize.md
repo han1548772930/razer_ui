@@ -41,6 +41,12 @@ Customize 的主任务是选择产品图上的实际输入，编辑普通层或 
 
 550 `8697.e3105e91.chunk.js [673,928)` 与 691 `Customize.d6e5b9b1.chunk.js [685,940)` 的包装继续渲染 `17852.A`。Factory、keypad 和 BLE 的选择须留在实际产品 owner；不能在共享组件里统一硬编码为“所有键盘都支持同一编辑器”。
 
+555、580、747 的 ProductImage 由实际 Customize 挂载持有。普通产品页和每个 Armory 内嵌根分别保留图片探测、已发布的两档密度、100 ms 重新挂载任务及错误；Armory 根以稳定实体身份显式打开、关闭和释放，主窗口切到 Lighting 不会关闭仍存在的 Armory 根。图片探测在 prepaint 借用实际绘制视图的共享资源缓存，异步完成通知该视图；render 只组合已发布状态。属性变化保留旧 srcSet，直至当前两个探测均完成；离页取消任务、释放像素，并拒绝旧元素重新挂载。
+
+747 的三个动作须分别追踪。`ON_SET_REGISTER_UI_ANIMATION_EVENTS` 的 thunk 只向 UI store dispatch；当前完整 store 的 thunk middleware 和全部 root reducers 没有后端转发消费者，因此 Rust 不发送虚构设备请求。`ON_SET_ANALOG_JOYSTICK_MODE` 修改 UI 状态并控制 MW41243 的 `isSendDataToUI` 门闩，不写设备，不清除最后一份 gamepadTester。真正的 `ON_SET_DIRECTION_MODE` 则进入 `keypadJoystickAnalogConfig` 设备队列，完整写入及后续映射恢复链继续单独核验。
+
+747 原始 controller report 是恰好 15 字节、首字节为 0 的数据。module47561 按五组无符号小端数减 32768 解码，按 `Math.round(axis / 32767 * 1000)` 归一化，MW41243 经 15 ms leading/trailing throttle 发送 `MW_UPDATE_GAMEPAD_TESTER_VALUES`；当前 UI reducer 直接保留六字段 payload。页面直接使用千分单位坐标，不能复用 679 的计算后 gamepad output 观察器或另一个 controller action 的乘 1000 消费者。静态消费链、Rust 模拟传输和真实设备／原版 DLL 对照分别验收。
+
 主窗口 `JU` 挂载 Customize 连接器 `Gh`。Factory Default 仍能打开标签页，但 `fh` 只挂产品图和工厂档说明；普通活动档才挂 `Ph/mh`。宏窗口也复用静态/可编辑选择，且设置 `displayMode:"macro"`。身份与启动顺序见 [profiles.md](profiles.md)。
 
 `mh` 持有当前被映射键的 DOM anchor、保存提示状态、下一动作回调、丢弃动作回调、按键映射视图，以及重新寻找 DOM anchor 的 timeout。真正的输出编辑值和保存回调属于懒加载编辑器；父页面通过 `setSaveRef` 取得它，不能把父组件自己的提示状态当成全部映射内容。

@@ -1,8 +1,52 @@
 //! GPUI bridge for the application-owned resource runtime.
-use gpui_kit::{App, AppContext as _, Context, Entity, EventEmitter, Global, Subscription, Task};
+use gpui_kit::{
+    App, AppContext as _, BorrowAppContext as _, Context, Entity, EventEmitter, Global,
+    Subscription, Task,
+};
 pub use razer_resources::ResourceChanged;
-use razer_resources::{ResourceClient, ResourceRuntime};
-use std::{borrow::Cow, collections::BTreeMap};
+use razer_resources::{ResourceClient, ResourceFont, ResourceRuntime};
+use std::{borrow::Cow, collections::BTreeMap, sync::Arc};
+
+struct FontRegistration {
+    bytes: Arc<[u8]>,
+    result: Result<(), String>,
+}
+
+#[derive(Default)]
+struct FontRegistrations(BTreeMap<String, FontRegistration>);
+
+impl FontRegistrations {
+    fn register(
+        &mut self,
+        font: ResourceFont,
+        retry: bool,
+        install: impl FnOnce(&[u8]) -> Result<(), String>,
+    ) -> Result<(), String> {
+        if let Some(previous) = self.0.get(&font.path) {
+            if previous.bytes == font.bytes && (previous.result.is_ok() || !retry) {
+                return previous.result.clone();
+            }
+        }
+        let result = install(&font.bytes);
+        self.0.insert(
+            font.path,
+            FontRegistration {
+                bytes: font.bytes,
+                result: result.clone(),
+            },
+        );
+        result
+    }
+
+    fn errors(&self) -> impl Iterator<Item = String> + '_ {
+        self.0.iter().filter_map(|(path, font)| {
+            font.result
+                .as_ref()
+                .err()
+                .map(|error| format!("{path}：{error}"))
+        })
+    }
+}
 
 /// Presentation diagnostics also cover failures before a worker can emit an event.
 #[derive(Default)]
@@ -50,6 +94,7 @@ pub fn observe_resources<T: 'static>(
 struct Runtime {
     owner: Option<ResourceRuntime>,
     client: ResourceClient,
+    fonts: FontRegistrations,
     results: Option<Task<()>>,
     _quit: Subscription,
 }
@@ -74,8 +119,9 @@ pub fn start_resources(owner: ResourceRuntime, cx: &mut App) -> anyhow::Result<(
                 }
                 if changed.error().is_none() && result_client.is_font(changed.path()) {
                     if let Ok(Some(bytes)) = result_client.load(changed.path()) {
-                        if let Err(error) = cx.text_system().add_fonts(vec![Cow::Owned(bytes)]) {
-                            eprintln!("字体加载失败：{error}");
+                        let font = ResourceFont::new(changed.path().to_owned(), bytes.into());
+                        if let Err(error) = register_font(font, false, cx) {
+                            log::warn!("{}：字体加载失败：{error}", changed.path());
                         }
                     }
                 }
@@ -100,6 +146,7 @@ pub fn start_resources(owner: ResourceRuntime, cx: &mut App) -> anyhow::Result<(
     cx.set_global(Runtime {
         owner: Some(owner),
         client,
+        fonts: FontRegistrations::default(),
         results: Some(results),
         _quit: quit,
     });
@@ -122,16 +169,34 @@ pub fn take_resource_runtime_for_shutdown(cx: &mut App) -> Option<ResourceRuntim
     Some(owner)
 }
 
-pub fn register_fonts(cx: &App) -> anyhow::Result<()> {
+pub fn register_fonts(cx: &mut App) -> anyhow::Result<()> {
+    register_available_fonts(false, cx)
+}
+
+fn register_font(font: ResourceFont, retry: bool, cx: &mut App) -> Result<(), String> {
+    cx.update_global::<Runtime, _>(|runtime, cx| {
+        runtime.fonts.register(font, retry, |bytes| {
+            cx.text_system()
+                .add_fonts(vec![Cow::Owned(bytes.to_vec())])
+                .map_err(|error| format!("{error:#}"))
+        })
+    })
+}
+
+fn register_available_fonts(retry: bool, cx: &mut App) -> anyhow::Result<()> {
     let fonts = cx
         .try_global::<Runtime>()
         .ok_or_else(|| anyhow::anyhow!("Resource runtime is not installed"))?
         .client
         .fonts()?;
-    if !fonts.is_empty() {
-        cx.text_system()
-            .add_fonts(fonts.into_iter().map(Cow::Owned).collect())?;
+    let mut errors = Vec::new();
+    for font in fonts {
+        let path = font.path.clone();
+        if let Err(error) = register_font(font, retry, cx) {
+            errors.push(format!("{path}：{error}"));
+        }
     }
+    anyhow::ensure!(errors.is_empty(), "{}", errors.join("\n"));
     Ok(())
 }
 
@@ -147,6 +212,7 @@ pub fn resource_errors(cx: &App) -> Vec<String> {
     }
     if let Some(runtime) = cx.try_global::<Runtime>() {
         errors.extend(runtime.client.errors());
+        errors.extend(runtime.fonts.errors());
     } else {
         errors.insert("Resource runtime is not installed".into());
     }
@@ -161,8 +227,11 @@ pub fn retry_resources(cx: &mut App) -> anyhow::Result<()> {
     if cx.has_global::<AvailabilityErrors>() {
         cx.global_mut::<AvailabilityErrors>().0.clear();
     }
+    // A verified file can be ready even though the platform rejected its font.
+    // Reuse those bytes and retry only failed registrations; no download is needed.
+    let fonts = register_available_fonts(true, cx);
     cx.refresh_windows();
-    Ok(())
+    fonts
 }
 
 pub(crate) fn available(path: &str, cx: &mut App) -> anyhow::Result<bool> {
@@ -199,7 +268,115 @@ fn query_availability(path: &str, cx: &App) -> anyhow::Result<bool> {
 
 #[cfg(test)]
 mod tests {
-    use super::AvailabilityErrors;
+    use super::{AvailabilityErrors, FontRegistrations};
+    use razer_resources::ResourceFont;
+    use std::{cell::Cell, sync::Arc};
+
+    fn font(path: &str, bytes: &[u8]) -> ResourceFont {
+        ResourceFont::new(path.to_owned(), Arc::from(bytes))
+    }
+
+    #[test]
+    fn font_registration_failure_remains_visible_until_explicit_retry_succeeds() {
+        let mut fonts = FontRegistrations::default();
+        let calls = Cell::new(0);
+        let path = "assets/fonts/source-regular.ttf";
+        assert_eq!(
+            fonts.register(font(path, b"verified font"), false, |bytes| {
+                assert_eq!(bytes, b"verified font");
+                calls.set(calls.get() + 1);
+                Err("platform font collection failed".into())
+            }),
+            Err("platform font collection failed".into())
+        );
+        assert_eq!(
+            fonts.errors().collect::<Vec<_>>(),
+            [format!("{path}：platform font collection failed")]
+        );
+        // Repeated resource notifications cannot turn a failed registration into success.
+        assert!(
+            fonts
+                .register(font(path, b"verified font"), false, |_| {
+                    panic!("failed fonts require an explicit retry")
+                })
+                .is_err()
+        );
+        fonts
+            .register(font(path, b"verified font"), true, |bytes| {
+                assert_eq!(bytes, b"verified font");
+                calls.set(calls.get() + 1);
+                Ok(())
+            })
+            .unwrap();
+        assert_eq!(calls.get(), 2);
+        assert!(fonts.errors().next().is_none());
+        fonts
+            .register(font(path, b"verified font"), true, |_| {
+                panic!("a retry must not reinstall a successful font")
+            })
+            .unwrap();
+    }
+
+    #[test]
+    fn retrying_a_failed_font_preserves_other_fonts_and_actual_failure_details() {
+        let mut fonts = FontRegistrations::default();
+        let regular = "assets/fonts/source-regular.ttf";
+        let bold = "assets/fonts/source-bold.ttf";
+        fonts
+            .register(font(regular, b"regular"), false, |_| Ok(()))
+            .unwrap();
+        assert!(
+            fonts
+                .register(font(bold, b"bold"), false, |_| Err("first failure".into()))
+                .is_err()
+        );
+        assert!(
+            fonts
+                .register(font(bold, b"bold"), true, |_| Err("retry failure".into()))
+                .is_err()
+        );
+        assert_eq!(
+            fonts.errors().collect::<Vec<_>>(),
+            [format!("{bold}：retry failure")]
+        );
+        fonts
+            .register(font(regular, b"regular"), true, |_| {
+                panic!("another font's retry must keep a successful registration")
+            })
+            .unwrap();
+    }
+
+    #[test]
+    fn font_registration_identity_compares_actual_bytes_with_the_source_path() {
+        let mut fonts = FontRegistrations::default();
+        let path = "assets/fonts/source.ttf";
+        fonts
+            .register(font(path, b"first font"), false, |_| Ok(()))
+            .unwrap();
+        let installed = Cell::new(false);
+        assert!(
+            fonts
+                .register(font(path, b"replacement font"), false, |bytes| {
+                    assert_eq!(bytes, b"replacement font");
+                    installed.set(true);
+                    Err("replacement rejected".into())
+                })
+                .is_err()
+        );
+        assert!(installed.get());
+        assert_eq!(
+            fonts.errors().collect::<Vec<_>>(),
+            [format!("{path}：replacement rejected")]
+        );
+        fonts
+            .register(
+                font("assets/fonts/other.ttf", b"replacement font"),
+                false,
+                |_| Ok(()),
+            )
+            .unwrap();
+        assert_eq!(fonts.errors().count(), 1);
+    }
 
     #[test]
     fn resource_availability_errors_report_transitions_and_remain_queryable() {

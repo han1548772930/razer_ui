@@ -12,6 +12,7 @@ import json
 import struct
 import tempfile
 import threading
+import traceback
 from types import SimpleNamespace
 import unittest
 from unittest.mock import MagicMock, patch
@@ -1813,8 +1814,8 @@ class StaticMicrocodeObservationTests(unittest.TestCase):
         def operand(kind, **fields):
             return Borrowed(type=kind, n=fields.pop("n", 0), dtype=2, **fields)
 
-        def original(address, *, operands=None, size=5, is_call=True, **fields):
-            values = dict(ea=address, size=size, itype=88, is_call=is_call,
+        def original(address, *, operands=None, size=5, is_call=True, is_indirect_jump=False, **fields):
+            values = dict(ea=address, size=size, itype=88, is_call=is_call, is_indirect_jump=is_indirect_jump,
                           ops=list(operands or [operand(7, addr=0x140002000)]) + [operand(0)])
             values.update(fields)
             result = Borrowed(**values)
@@ -1875,7 +1876,8 @@ class StaticMicrocodeObservationTests(unittest.TestCase):
                      "ida_bytes": bytes_api, "ida_ua": ua_api, "ida_typeinf": type_api,
                      "ida_nalt": SimpleNamespace(get_tinfo=read_type, get_op_tinfo=read_type),
                      "ida_funcs": funcs_api, "ida_frame": frame_api,
-                     "ida_idp": SimpleNamespace(is_call_insn=lambda instruction: instruction.is_call),
+                     "ida_idp": SimpleNamespace(is_call_insn=lambda instruction: instruction.is_call,
+                         is_indirect_jump_insn=lambda instruction: instruction.is_indirect_jump),
                      "idautils": SimpleNamespace(Chunks=lambda ea: iter(chunks[ea]),
                          Heads=lambda start, stop: (ea for ea in sorted(original_instructions) if start <= ea < stop))}
         names = {"_static_diagnostic_error", "_FrozenInsnVisitor", "StaticMicrocodeTrace", "decompile_with_diagnostics"}
@@ -2294,6 +2296,87 @@ class StaticMicrocodeObservationTests(unittest.TestCase):
                     self.assertNotIn("address_stored_tinfo", op)
                 self.assertTrue(diagnostics["diagnostics_complete"])
 
+    def test_indirect_jump_preserves_jump_identity_and_three_independent_stored_types(self):
+        fixture = self.fixture()
+        address, slot = 0x1400010a0, 0x140003000
+        details = fixture.details([fixture.argument()], cc=67)
+        function = fixture.type(text="int __cdecl thunk(const char *format, ...)", details=details)
+        pointer = fixture.type(text="int (__cdecl *)(const char *, ...)", pointed=function)
+        fixture.stored_types[(address, None)] = function
+        fixture.stored_types[(address, 0)] = pointer
+        fixture.stored_types[(slot, None)] = pointer
+        original = fixture.original(address, size=6, is_call=False, is_indirect_jump=True,
+                                    operands=[fixture.operand(2, addr=slot)])
+        original_fields = dict(original.values)
+        fixture.owner(address, start=address)
+        mba, block, _ = fixture.mba()
+
+        def run(ea, failed):
+            self.assertEqual(fixture.emit("build_callinfo", block, None), [None])
+            fixture.expire()
+
+        fixture.implementation.run = run
+        diagnostics = {}
+        self.assertIsNone(fixture.observe(0x140001000, fixture.failure, diagnostics))
+        callsite = diagnostics["events"][0]["instructions"][0]["callsite"]
+        transfer = callsite["original_instruction"]
+        self.assertFalse(transfer["is_call"])
+        self.assertTrue(transfer["is_indirect_jump"])
+        self.assertEqual(transfer["transfer_kind"], "indirect_jump")
+        self.assertEqual(transfer["call_operands"]["reason"], "mapped_instruction_is_not_call")
+        self.assertFalse(transfer["original_pe_validated"])
+        self.assertEqual(transfer["instruction_stored_tinfo"]["kind"], "function")
+        self.assertEqual(transfer["instruction_stored_tinfo"]["without_argloc_calculation"]["cc"], 67)
+        operand = transfer["operands"][0]
+        self.assertEqual(operand["stored_tinfo"]["kind"], "function_pointer")
+        self.assertEqual(operand["address_stored_tinfo"]["kind"], "function_pointer")
+        self.assertEqual((operand["address"], operand["address_role"]), (hex(slot), "memory_slot"))
+        self.assertEqual(operand["runtime_target"], {"status": "unobserved", "reason": "memory_slot_not_dereferenced"})
+        self.assertEqual(fixture.type_reads, [(address, None), (address, 0), (slot, None)])
+        self.assertEqual(callsite["microcode_callinfo"]["reason"], "callinfo_operand_not_present")
+        self.assertEqual(original.values, original_fields)
+        self.assertEqual(fixture.failure.code, -12)
+        self.assertTrue(diagnostics["diagnostics_complete"])
+        self.assertTrue(all(not value.expired_reads for value in fixture.borrowed))
+        json.dumps(diagnostics)
+
+    def test_indirect_jump_absent_or_failed_type_stays_separate_from_other_sources(self):
+        for issue in ("missing_slot_type", "failed_thunk_type", "failed_operand_type"):
+            with self.subTest(issue=issue):
+                fixture = self.fixture()
+                address, slot = 0x1400010a0, 0x140003000
+                function = fixture.type(details=fixture.details(cc=67))
+                pointer = fixture.type(pointed=function)
+                fixture.stored_types[(address, None)] = function
+                fixture.stored_types[(address, 0)] = pointer
+                fixture.stored_types[(slot, None)] = pointer
+                if issue == "missing_slot_type": del fixture.stored_types[(slot, None)]
+                if issue == "failed_thunk_type": fixture.stored_types[(address, None)] = RuntimeError("thunk type unavailable")
+                if issue == "failed_operand_type": fixture.stored_types[(address, 0)] = RuntimeError("operand type unavailable")
+                fixture.original(address, size=6, is_call=False, is_indirect_jump=True,
+                                 operands=[fixture.operand(2, addr=slot)])
+                fixture.owner(address, start=address)
+                mba, block, _ = fixture.mba()
+                fixture.implementation.run = lambda ea, failed: fixture.emit("build_callinfo", block, None) and None
+                diagnostics = {}
+                fixture.observe(0x140001000, fixture.failure, diagnostics)
+                transfer = diagnostics["events"][0]["instructions"][0]["callsite"]["original_instruction"]
+                operand = transfer["operands"][0]
+                self.assertEqual(transfer["status"], "observed")
+                self.assertFalse(transfer["is_call"])
+                self.assertTrue(transfer["is_indirect_jump"])
+                self.assertEqual(operand["runtime_target"]["reason"], "memory_slot_not_dereferenced")
+                self.assertEqual(fixture.type_reads, [(address, None), (address, 0), (slot, None)])
+                if issue == "missing_slot_type":
+                    self.assertEqual(operand["address_stored_tinfo"]["reason"], "no_stored_tinfo")
+                    self.assertTrue(diagnostics["diagnostics_complete"])
+                else:
+                    failed_type = transfer["instruction_stored_tinfo"] if issue == "failed_thunk_type" else operand["stored_tinfo"]
+                    self.assertEqual(failed_type["status"], "diagnostic_error")
+                    self.assertEqual(operand["address_stored_tinfo"]["status"], "observed_stored_tinfo")
+                    self.assertFalse(diagnostics["diagnostics_complete"])
+                self.assertEqual(fixture.failure.code, -12)
+
     def test_original_decode_missing_mismatch_or_exception_never_uses_a_guessed_call_target(self):
         for issue, expected in (("missing", "mapped_address_is_not_loaded_code"),
                 ("noncode", "mapped_address_is_not_loaded_code"), ("middle", "mapped_address_is_not_instruction_head"),
@@ -2483,7 +2566,7 @@ class StaticMicrocodeObservationTests(unittest.TestCase):
             "ida_funcs": {"get_func", "get_fchunk", "is_func_tail", "func_parent_iterator_t", "get_func_chunknum"},
             "ida_ua": {"insn_t", "decode_insn"},
             "ida_bytes": {"is_loaded", "is_code", "get_full_flags", "get_item_head", "get_item_size"},
-            "ida_idp": {"is_call_insn"}, "idautils": {"Chunks", "Heads"}}
+            "ida_idp": {"is_call_insn", "is_indirect_jump_insn"}, "idautils": {"Chunks", "Heads"}}
         for node in (value for owner in classes for value in ast.walk(owner)):
             if isinstance(node, ast.Name):
                 self.assertNotEqual(node.id, "out_type")
@@ -2836,7 +2919,7 @@ class StaticMicrocodeObservationTests(unittest.TestCase):
                     get_pseudocode=lambda: [SimpleNamespace(line="return;")], get_lvars=lambda: []) if success else None)
                 namespace = {**fixture.namespace, "base": 0x140000000, "root": root, "output": output,
                     "functions": output / "functions", "manifest": manifest, "captured": {}, "table": None,
-                    "shared_owner_rvas": set(), "hashlib": hashlib, "json": json, "traceback": traceback,
+                    "shared_owner_rvas": set(), "selection": {}, "hashlib": hashlib, "json": json, "traceback": traceback,
                     "file_bytes": lambda rva, size: b"\x90\xc3"[:size], "save": lambda path, row: path.write_text(json.dumps(row)),
                     "ida_funcs": SimpleNamespace(get_func=lambda address: func, get_func_name=lambda address: "fixture",
                                                  get_func_cmt=lambda function, repeatable: None),
@@ -2863,6 +2946,179 @@ class StaticMicrocodeObservationTests(unittest.TestCase):
                         "description": "call analysis failed", "detail": "original failure detail"})
                     self.assertIn("Hex-Rays: call analysis failed", error["error"])
                     self.assertNotIn("rejected diagnostic hooks", error["error"])
+
+
+class RetainedFunctionChainTests(unittest.TestCase):
+    def capture_chain(self, *, table, branches):
+        source = Path(queue.__file__).with_name("ida") / "supplement.py"
+        capture = next(node for node in ast.parse(source.read_text(encoding="utf-8")).body
+                       if isinstance(node, ast.FunctionDef) and node.name == "capture")
+        loop = next(node for node in capture.body if isinstance(node, ast.For)
+                    and ast.unparse(node.iter) == "selection['targets']")
+        base, entry = 0x400000, 0x492ac0
+        target = {"address": hex(entry), "rva": hex(entry - base), "index": 0}
+        if table:
+            target["slot_rva"] = "0x3000"
+        manifest, exported, queried = {"failures": [], "chains": []}, [], []
+
+        def export(ea):
+            exported.append(ea)
+            if not table and ea != entry:
+                raise ValueError("Entry is an interior block of the retained complete function")
+
+        def jump(ea):
+            queried.append(ea)
+            return (branches[ea],) if ea in branches else None
+
+        namespace = {"selection": {"targets": [target]}, "base": base, "table": table,
+                     "manifest": manifest, "export": export, "jump_target": jump,
+                     "traceback": traceback, "save": lambda *args: None, "output": Path("fixture")}
+        exec(compile(ast.Module(body=[loop], type_ignores=[]), str(source), "exec"), namespace)
+        return manifest, exported, queried
+
+    def test_retained_function_entry_jump_keeps_all_chunks_without_interior_export(self):
+        manifest, exported, queried = self.capture_chain(table=None, branches={0x492ac0: 0x492ae6})
+        self.assertEqual(exported, [0x492ac0])
+        self.assertEqual(queried, [])
+        self.assertEqual(manifest["failures"], [])
+        self.assertTrue(manifest["chains"][0]["complete"])
+
+    def test_pointer_table_still_follows_complete_static_jump_chain_and_rejects_cycles(self):
+        for cycle in (False, True):
+            with self.subTest(cycle=cycle):
+                branches = {0x492ac0: 0x493000}
+                if cycle:
+                    branches[0x493000] = 0x492ac0
+                manifest, exported, queried = self.capture_chain(table=True, branches=branches)
+                self.assertEqual(exported, [0x492ac0, 0x493000])
+                self.assertEqual(queried, exported)
+                self.assertEqual(manifest["chains"][0]["complete"], not cycle)
+                self.assertEqual(bool(manifest["failures"]), cycle)
+
+
+class FreshInlineControllerTests(unittest.TestCase):
+    def fixture(self, *, issue=None):
+        source = Path(queue.__file__).with_name("ida") / "supplement.py"
+        registered, instances, sdk_calls, lifecycle = [], [], [], []
+        base, parent, helper = 0x140000000, 0x140001040, 0x140001000
+        code = bytes.fromhex("554889e5c9c3")
+        chunks = [{"start": hex(helper), "end": hex(helper + len(code)), "raw_hex": code.hex(),
+                   "sha256": hashlib.sha256(code).hexdigest()}]
+        reviewed = [{"rva": "0x1000", "expected_chunks": chunks,
+                     "flag_names": ["INLINE_EXTFRAME", "INLINE_DONTCOPY"],
+                     "callsites": [{"parent_rva": "0x1040", "callsite_rva": hex(rva), "target_rva": "0x1000",
+                                    "raw_hex": raw, "parent_function": {"path": "fixture", "bytes": 1, "sha256": "a" * 64}}
+                                   for rva, raw in [(0x1040, "e8bbffffff"), (0x1046, "e8b5ffffff")]]}]
+        call_bytes = {parent: bytes.fromhex("e8bbffffff"), parent + 6: bytes.fromhex("e8b5ffffff")}
+        function = SimpleNamespace(start_ea=helper, flags=0x40000)
+        blocks = [SimpleNamespace(serial=index, tail=SimpleNamespace(ea=at, opcode=17, l=SimpleNamespace(t=6, g=helper)))
+                  for index, at in enumerate(call_bytes)]
+        mba = SimpleNamespace(entry_ea=parent, qty=len(blocks), get_mblock=lambda index: blocks[index])
+        cdg = SimpleNamespace(mba=mba)
+
+        class Hooks:
+            def __init__(self): instances.append(self)
+
+            def hook(self):
+                lifecycle.append("hook")
+                if issue == "register_rejected": return False
+                registered.append(self)
+                if issue == "register_raised": raise ValueError("partial registration")
+                return True
+
+            def unhook(self):
+                lifecycle.append("unhook")
+                if issue == "unhook_raised": raise ValueError("cleanup raised")
+                if issue == "unhook_rejected": return False
+                if self in registered: registered.remove(self)
+                return True
+
+        def inline(cdg_arg, serial, ranges, decomp_flags, flags):
+            self.assertIs(cdg_arg, cdg)
+            self.assertIs(ranges.pfn, function)
+            self.assertEqual((decomp_flags, flags), (0x80, 3))
+            tail = blocks[serial].tail
+            sdk_calls.append(tail.ea)
+            if issue == "sdk_error": return -12
+            if issue == "sdk_raised": raise ValueError("SDK exception")
+            tail.opcode = 0
+            blocks.reverse()
+            for index, block in enumerate(blocks): block.serial = index
+            return 0
+
+        mba.inline_func = inline
+        api = SimpleNamespace(Hexrays_Hooks=Hooks, INLINE_EXTFRAME=1, INLINE_DONTCOPY=2, MERR_OK=0,
+                              MERR_CANCELED=-99, m_call=17, mop_v=6, mba_ranges_t=SimpleNamespace)
+        namespace = {"ida_hexrays": api, "hashlib": hashlib,
+                     "ida_funcs": SimpleNamespace(FUNC_OUTLINE=0x40000, get_func=lambda ea: function),
+                     "ida_bytes": SimpleNamespace(get_bytes=lambda ea, size: code if ea == helper else call_bytes[ea]),
+                     "idautils": SimpleNamespace(Chunks=lambda ea: [(helper, helper + len(code))])}
+        names = {"FreshInlineController", "decompile_with_fresh_inlines"}
+        nodes = [node for node in ast.parse(source.read_text(encoding="utf-8")).body
+                 if isinstance(node, (ast.ClassDef, ast.FunctionDef)) and node.name in names]
+        exec(compile(ast.Module(body=nodes, type_ignores=[]), str(source), "exec"), namespace)
+        token = object()
+
+        def decompile(ea, failure, diagnostics):
+            self.assertEqual(ea, parent)
+            if issue == "missing_callback": return token
+            for hook in list(registered):
+                self.assertEqual(hook.begin_inlining(SimpleNamespace(mba=SimpleNamespace(entry_ea=helper)), 0), 0)
+                result = hook.begin_inlining(cdg, 0x80)
+                if result: return None
+            return token
+
+        namespace["decompile_with_diagnostics"] = decompile
+        return SimpleNamespace(observe=namespace["decompile_with_fresh_inlines"], api=api, token=token,
+            base=base, parent=parent, helper=helper, reviewed=reviewed, blocks=blocks, mba=mba, cdg=cdg,
+            instances=instances, registered=registered, sdk_calls=sdk_calls, lifecycle=lifecycle, function=function,
+            namespace=namespace)
+
+    def test_fresh_sdk_rebuild_rescans_blocks_and_preserves_distinct_original_calls(self):
+        fixture = self.fixture()
+        audit = {}
+        result = fixture.observe(fixture.parent, object(), {}, fixture.reviewed, fixture.base, audit)
+        self.assertIs(result, fixture.token)
+        self.assertEqual(fixture.sdk_calls, [fixture.parent, fixture.parent + 6])
+        self.assertEqual([row["block_serial_before"] for row in audit["calls"]], [0, 0])
+        self.assertTrue(audit["complete"])
+        self.assertEqual(fixture.lifecycle, ["hook", "unhook"])
+        self.assertFalse(fixture.registered)
+        self.assertFalse(fixture.instances[0].active)
+        self.assertEqual(set(fixture.instances[0].__dict__), {"target_ea", "base", "helpers", "audit", "active", "entered"})
+        json.dumps(audit)
+
+    def test_missing_wrong_or_changed_original_call_never_invokes_sdk(self):
+        for issue in ("missing", "opcode", "callee", "bytes", "outline", "chunks"):
+            with self.subTest(issue=issue):
+                fixture = self.fixture()
+                if issue == "missing": fixture.blocks[0].tail.ea += 1
+                elif issue == "opcode": fixture.blocks[0].tail.opcode = 18
+                elif issue == "callee": fixture.blocks[0].tail.l.g += 1
+                elif issue == "bytes": fixture.reviewed[0]["callsites"][0]["raw_hex"] = "e8baffffff"
+                elif issue == "outline": fixture.function.flags = 0
+                elif issue == "chunks": fixture.reviewed[0]["expected_chunks"][0]["raw_hex"] = "90"
+                audit = {}
+                with self.assertRaisesRegex(ValueError, "incomplete"):
+                    fixture.observe(fixture.parent, object(), {}, fixture.reviewed, fixture.base, audit)
+                self.assertFalse(fixture.sdk_calls)
+                self.assertFalse(audit["complete"])
+                self.assertTrue(audit["hook_unregistered"])
+
+    def test_sdk_failures_and_hook_cleanup_cannot_report_completion(self):
+        for issue in ("sdk_error", "sdk_raised", "unhook_rejected", "unhook_raised", "missing_callback",
+                      "register_rejected", "register_raised"):
+            with self.subTest(issue=issue):
+                fixture = self.fixture(issue=issue)
+                audit = {}
+                with self.assertRaises(ValueError):
+                    fixture.observe(fixture.parent, object(), {}, fixture.reviewed, fixture.base, audit)
+                self.assertFalse(audit["complete"])
+                self.assertFalse(fixture.instances[0].active)
+                self.assertEqual(fixture.lifecycle[-1], "unhook")
+                before = list(fixture.sdk_calls)
+                fixture.instances[0].begin_inlining(fixture.cdg, 0x80)
+                self.assertEqual(fixture.sdk_calls, before)
 
 
 if __name__ == "__main__":

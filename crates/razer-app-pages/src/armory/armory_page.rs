@@ -265,7 +265,9 @@ impl ArmoryPage {
         true
     }
     pub fn close_device_root(&mut self, cx: &mut Context<Self>) {
-        self.device_root = None;
+        if let Some(root) = self.device_root.take() {
+            root.update(cx, |root, cx| root.close(cx));
+        }
         cx.notify();
     }
     fn visible(&self, tab: ArmoryTab) -> bool {
