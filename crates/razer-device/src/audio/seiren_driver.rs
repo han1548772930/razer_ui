@@ -51,16 +51,25 @@ impl Product {
     fn driver_protocol(self) -> (u32, u32) {
         // Each current API's device-open handshake validates its own driver
         // protocol: Pro 9fc0, Chroma 9f90. They are not interchangeable.
-        match self { Self::Pro => (6, 10), Self::Chroma => (6, 14) }
+        match self {
+            Self::Pro => (6, 10),
+            Self::Chroma => (6, 14),
+        }
     }
 }
 
 fn word(bytes: &[u8], offset: usize) -> Result<u32> {
-    let data = bytes.get(offset..offset + 4).context("Truncated Marie driver word")?;
+    let data = bytes
+        .get(offset..offset + 4)
+        .context("Truncated Marie driver word")?;
     Ok(u32::from_le_bytes(data.try_into()?))
 }
 fn exact(bytes: &[u8], expected: usize) -> Result<()> {
-    ensure!(bytes.len() == expected, "Marie driver returned {} bytes; expected {expected}", bytes.len());
+    ensure!(
+        bytes.len() == expected,
+        "Marie driver returned {} bytes; expected {expected}",
+        bytes.len()
+    );
     Ok(())
 }
 
@@ -68,8 +77,12 @@ pub fn verify_driver(transport: &impl Transport, product: Product) -> Result<()>
     let bytes = transport.exchange(DRIVER_INFO, &[], 24)?;
     exact(&bytes, 24)?;
     let expected = product.driver_protocol();
-    ensure!((word(&bytes, 0)?, word(&bytes, 4)?) == expected,
-        "Marie USB driver protocol differs from verified {}.{} for {product:?}", expected.0, expected.1);
+    ensure!(
+        (word(&bytes, 0)?, word(&bytes, 4)?) == expected,
+        "Marie USB driver protocol differs from verified {}.{} for {product:?}",
+        expected.0,
+        expected.1
+    );
     Ok(())
 }
 
@@ -82,39 +95,73 @@ pub fn sample_rate(transport: &impl Transport) -> Result<u32> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Flow { Playback, Capture }
+pub enum Flow {
+    Playback,
+    Capture,
+}
 
 pub fn current_stream_id(transport: &impl Transport, flow: Flow) -> Result<u32> {
-    let code = match flow { Flow::Playback => GET_PLAYBACK_FORMATS, Flow::Capture => GET_CAPTURE_FORMATS };
+    let code = match flow {
+        Flow::Playback => GET_PLAYBACK_FORMATS,
+        Flow::Capture => GET_CAPTURE_FORMATS,
+    };
     let bytes = transport.exchange(code, &[], STREAM_FORMAT_LIST_BYTES)?;
-    ensure!(bytes.len() >= 8 && bytes.len() <= STREAM_FORMAT_LIST_BYTES, "Invalid Marie stream format list length");
+    ensure!(
+        bytes.len() >= 8 && bytes.len() <= STREAM_FORMAT_LIST_BYTES,
+        "Invalid Marie stream format list length"
+    );
     let count = word(&bytes, 0)? as usize;
     let selected = word(&bytes, 4)? as i32;
-    ensure!(count <= 32 && selected >= 0 && (selected as usize) < count,
-        "Marie stream format selection is absent or outside returned list");
-    ensure!(bytes.len() >= 8 + count * STREAM_FORMAT_BYTES, "Marie stream format list is truncated");
+    ensure!(
+        count <= 32 && selected >= 0 && (selected as usize) < count,
+        "Marie stream format selection is absent or outside returned list"
+    );
+    ensure!(
+        bytes.len() >= 8 + count * STREAM_FORMAT_BYTES,
+        "Marie stream format list is truncated"
+    );
     word(&bytes, 8 + selected as usize * STREAM_FORMAT_BYTES)
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Mode { Basic, Advanced, Unknown(String) }
+pub enum Mode {
+    Basic,
+    Advanced,
+    Unknown(String),
+}
 pub fn mode(transport: &impl Transport) -> Result<Mode> {
     let id = current_stream_id(transport, Flow::Playback)?;
     // Native 4c980 uses ExtendedInfo(10), current stream ID, and a 384-byte
     // UTF-16 buffer. Unknown profiles remain observations, never Basic.
     let bytes = transport.exchange(GET_PROFILE_NAME, &id.to_le_bytes(), 384)?;
-    ensure!(!bytes.is_empty() && bytes.len() <= 384 && bytes.len() % 2 == 0,
-        "Invalid Marie profile name length");
-    let units = bytes.chunks_exact(2).map(|b| u16::from_le_bytes([b[0], b[1]])).collect::<Vec<_>>();
-    let end = units.iter().position(|v| *v == 0).context("Marie profile name lacks terminator")?;
+    ensure!(
+        !bytes.is_empty() && bytes.len() <= 384 && bytes.len() % 2 == 0,
+        "Invalid Marie profile name length"
+    );
+    let units = bytes
+        .chunks_exact(2)
+        .map(|b| u16::from_le_bytes([b[0], b[1]]))
+        .collect::<Vec<_>>();
+    let end = units
+        .iter()
+        .position(|v| *v == 0)
+        .context("Marie profile name lacks terminator")?;
     let name = String::from_utf16(&units[..end]).context("Marie profile name is invalid UTF-16")?;
     ensure!(!name.is_empty(), "Marie profile name is empty");
-    Ok(match name.as_str() { "plb_base" => Mode::Basic, "plb_advanced" => Mode::Advanced, _ => Mode::Unknown(name) })
+    Ok(match name.as_str() {
+        "plb_base" => Mode::Basic,
+        "plb_advanced" => Mode::Advanced,
+        _ => Mode::Unknown(name),
+    })
 }
 
 pub fn profiles(playback: u32, capture: u32, advanced: bool) -> [u8; 264] {
     let mut bytes = [0; 264];
-    let names = if advanced { ["plb_advanced", "rec_advanced"] } else { ["plb_base", "rec_base"] };
+    let names = if advanced {
+        ["plb_advanced", "rec_advanced"]
+    } else {
+        ["plb_base", "rec_base"]
+    };
     for (index, (id, name)) in [playback, capture].into_iter().zip(names).enumerate() {
         let offset = index * 132;
         bytes[offset..offset + 4].copy_from_slice(&id.to_le_bytes());
@@ -126,18 +173,33 @@ pub fn profiles(playback: u32, capture: u32, advanced: bool) -> [u8; 264] {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Channel { pub kind: ChannelKind, pub index: u8 }
+pub struct Channel {
+    pub kind: ChannelKind,
+    pub index: u8,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum ChannelKind {
-    AppPlayback = 0, DeviceInput = 1, AppPlaybackVirtual = 2,
-    AppRecording = 4, DeviceOutput = 5, AppRecordingVirtual = 6,
+    AppPlayback = 0,
+    DeviceInput = 1,
+    AppPlaybackVirtual = 2,
+    AppRecording = 4,
+    DeviceOutput = 5,
+    AppRecordingVirtual = 6,
 }
 impl ChannelKind {
-    pub fn output(self) -> bool { matches!(self, Self::AppRecording | Self::DeviceOutput | Self::AppRecordingVirtual) }
+    pub fn output(self) -> bool {
+        matches!(
+            self,
+            Self::AppRecording | Self::DeviceOutput | Self::AppRecordingVirtual
+        )
+    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Route { pub input: Channel, pub output: Channel }
+pub struct Route {
+    pub input: Channel,
+    pub output: Channel,
+}
 
 fn dsp_header(command: u32) -> Vec<u8> {
     [77u32.to_le_bytes(), command.to_le_bytes()].concat()
@@ -152,8 +214,16 @@ pub fn route_gain(routes: &[Route], level: u32, enabled: bool) -> Result<Vec<u8>
     let gain = gain(level, enabled)?;
     let mut bytes = dsp_header(200);
     for route in routes {
-        ensure!(!route.input.kind.output() && route.output.kind.output(), "Marie route direction is invalid");
-        bytes.extend_from_slice(&[route.input.kind as u8, route.input.index, route.output.kind as u8 & 3, route.output.index]);
+        ensure!(
+            !route.input.kind.output() && route.output.kind.output(),
+            "Marie route direction is invalid"
+        );
+        bytes.extend_from_slice(&[
+            route.input.kind as u8,
+            route.input.index,
+            route.output.kind as u8 & 3,
+            route.output.index,
+        ]);
         bytes.extend_from_slice(&gain.to_le_bytes());
     }
     Ok(bytes)
@@ -162,7 +232,10 @@ pub fn output_gain(channels: &[Channel], level: u32, enabled: bool) -> Result<Ve
     let gain = gain(level, enabled)?;
     let mut bytes = dsp_header(201);
     for channel in channels {
-        ensure!(channel.kind.output(), "Marie output gain requires an output channel");
+        ensure!(
+            channel.kind.output(),
+            "Marie output gain requires an output channel"
+        );
         bytes.extend_from_slice(&[channel.kind as u8 & 3, channel.index]);
         bytes.extend_from_slice(&gain.to_le_bytes());
     }
@@ -209,31 +282,46 @@ impl AudioControlWrite {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ChannelCounts {
-    pub device_output: u32, pub device_input: u32,
-    pub app_playback: u32, pub app_recording: u32,
-    pub app_playback_virtual: u32, pub app_recording_virtual: u32,
+    pub device_output: u32,
+    pub device_input: u32,
+    pub app_playback: u32,
+    pub app_recording: u32,
+    pub app_playback_virtual: u32,
+    pub app_recording_virtual: u32,
 }
 pub fn channel_counts(transport: &impl Transport) -> Result<ChannelCounts> {
     let mut request = dsp_header(42);
     request.resize(16, 0);
     let version = transport.exchange(GET_DSP, &request, request.len())?;
     exact(&version, 16)?;
-    ensure!(word(&version, 0)? == 77 && word(&version, 4)? == 42 && word(&version, 8)? == 2,
-        "Marie mixer DSP version/header differs from current contract");
+    ensure!(
+        word(&version, 0)? == 77 && word(&version, 4)? == 42 && word(&version, 8)? == 2,
+        "Marie mixer DSP version/header differs from current contract"
+    );
     let mut counts = [0; 6];
     for (index, count) in counts.iter_mut().enumerate() {
         let mut request = dsp_header(100 + index as u32);
         request.resize(12, 0);
         let response = transport.exchange(GET_DSP, &request, 12)?;
         exact(&response, 12)?;
-        ensure!(response[..8] == request[..8], "Marie DSP count response header differs");
+        ensure!(
+            response[..8] == request[..8],
+            "Marie DSP count response header differs"
+        );
         *count = word(&response, 8)?;
         // Channel IDs in the source payload have one-byte indices.
-        ensure!(*count <= 256, "Marie DSP channel count exceeds wire index range");
+        ensure!(
+            *count <= 256,
+            "Marie DSP channel count exceeds wire index range"
+        );
     }
     Ok(ChannelCounts {
-        device_output: counts[0], device_input: counts[1], app_playback: counts[2],
-        app_recording: counts[3], app_playback_virtual: counts[4], app_recording_virtual: counts[5],
+        device_output: counts[0],
+        device_input: counts[1],
+        app_playback: counts[2],
+        app_recording: counts[3],
+        app_playback_virtual: counts[4],
+        app_recording_virtual: counts[5],
     })
 }
 
@@ -246,10 +334,19 @@ pub fn meter_channels(counts: ChannelCounts) -> Result<Vec<Channel>> {
         (ChannelKind::AppPlaybackVirtual, counts.app_playback_virtual),
         (ChannelKind::DeviceOutput, counts.device_output),
         (ChannelKind::AppRecording, counts.app_recording),
-        (ChannelKind::AppRecordingVirtual, counts.app_recording_virtual),
+        (
+            ChannelKind::AppRecordingVirtual,
+            counts.app_recording_virtual,
+        ),
     ] {
-        ensure!(count <= 256, "Marie meter channel count exceeds wire index range");
-        channels.extend((0..count).map(|index| Channel { kind, index: index as u8 }));
+        ensure!(
+            count <= 256,
+            "Marie meter channel count exceeds wire index range"
+        );
+        channels.extend((0..count).map(|index| Channel {
+            kind,
+            index: index as u8,
+        }));
     }
     Ok(channels)
 }
@@ -273,12 +370,25 @@ pub fn meters(transport: &impl Transport, channels: &[Channel]) -> Result<Vec<Me
     }
     let response = transport.exchange(GET_DSP, &request, request.len())?;
     exact(&response, request.len())?;
-    ensure!(response[..8] == request[..8], "Marie meter response header differs");
-    channels.iter().enumerate().map(|(index, channel)| {
-        let offset = 8 + index * 8;
-        ensure!(response[offset..offset + 6] == request[offset..offset + 6], "Marie meter response channel differs");
-        Ok(MeterReading { channel: *channel, hundredths_db: i16::from_le_bytes(response[offset + 6..offset + 8].try_into()?) })
-    }).collect()
+    ensure!(
+        response[..8] == request[..8],
+        "Marie meter response header differs"
+    );
+    channels
+        .iter()
+        .enumerate()
+        .map(|(index, channel)| {
+            let offset = 8 + index * 8;
+            ensure!(
+                response[offset..offset + 6] == request[offset..offset + 6],
+                "Marie meter response channel differs"
+            );
+            Ok(MeterReading {
+                channel: *channel,
+                hundredths_db: i16::from_le_bytes(response[offset + 6..offset + 8].try_into()?),
+            })
+        })
+        .collect()
 }
 
 #[cfg(test)]

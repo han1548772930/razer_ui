@@ -161,7 +161,13 @@ CAB 候选另静态解析完整 CFHEADER／reserve、CFFOLDER、CFFILE 和 CFDAT
 
 ## 原生捕获与源码连接
 
-每份 `.analysis/results/native/<sha>/capture.json` 保存输入身份、image base、函数边界／RVA、函数块原始 bytes、IDA 枚举的汇编项、成功取得的伪代码、局部类型、结构、xref。每个输出独立 SHA 校验。`--resume` 仅在输入、IDA／Hex-Rays 版本及捕获工具摘要一致时复用函数，并核对函数文件摘要、边界。
+每份 `.analysis/results/native/<sha>/capture.json` 保存输入身份、架构、实际 IDA processor、image base、函数边界／RVA、函数块原始 bytes、IDA 枚举的汇编项、成功取得的伪代码、局部类型、结构、xref。每个输出独立 SHA 校验。`--resume` 仅在输入、架构、processor、明确的反编译器可用状态、IDA／Hex-Rays 版本及捕获工具摘要一致时复用函数，并核对函数文件摘要、边界。
+
+没有适用的 Hex-Rays 插件时，只继续静态汇编与数据导出，不调用反编译、失败对象或伪代码缓存 API；每个函数仍以 `RVA:hexrays`、`decompiler_unavailable` 和未验证伪代码状态保留。`capture_complete` 只描述静态导出完整，不能据此减少反编译未决。当前 IA64 原件可由已安装的 `ia.dll`／`ia64l` 处理器加载；实际捕获发现 66 个函数且没有适用反编译器，日志还明确报告该 processor 不支持 `.pdata` 解析，因此也未证明函数发现闭包。旧捕获中的 66 条 SWIG 异常和原始日志保留，不以新能力诊断追写历史或重复执行同一捕获。
+
+`capture-native --exception-regions-only` 从已核验的 IA64 原件解析异常目录的 12 字节 RVA 记录，核对顺序、区间、bundle 对齐、可执行文件字节及 unwind 头的唯一文件映射，并与基础捕获的全部 chunks 比较。入口将基础 IDB 复制到独立私有目录，以安装版帮助定义的 `-a` 关闭自动分析；bootstrap 在任何 `auto_wait` 前分流，导出器再关闭自动分析并比较前后函数和 chunks 的完整快照。普通捕获和 MCP 模式保留原有自动分析顺序。只读 `decode_insn` 按实际返回长度推进，支持当前捕获中的 6／6／4 和长指令 12／4 步长，导出每个区域的完整原字节、指令、数字操作数和已有 xref，结果保存于同一原件的 `exception-regions/<selection>/`。
+
+该模式要求实际 `ia64l`、`ia` processor、64 位与小端状态一致，并核对运行中的入口、capture／support／parser、processor DLL、IDA 内核、IDAPython 及所用 SDK 模块文件。原始工具字节按摘要保留于同一原件的 `tool-sources/`，计划、会话和结果绑定这些快照并在导出前后复核；基础 IDB 的实际身份参与 selection，变化后生成独立尝试，已有输出不可覆盖。此路径不修补 SP／ABI、不调用反编译器；只有函数／chunks 快照未变且自动分析保持关闭，才记录未创建函数和导出完成。基础 IDB、capture 和历史失败保持原字节。当前 71 个异常区域与既有 chunks 的独立覆盖核对保留 9 个区域、1,872 字节缺口；异常表可能描述拆分片段，完整解码不证明独立函数边界、unwind 语义或函数发现闭合，缺失区间和后续语义工作统一进入 gaps。
 
 `assembly_captured=true` 只表示记录了分析器枚举的指令项，不能直接证明它们覆盖原始函数块每个字节。须将所有指令区间与 chunks 核对，分别保留指令覆盖、原始字节覆盖和 Hex-Rays 失败；块内未被枚举的范围不能凭空解释为指令或补成伪代码。现有完整 raw chunks 可用于继续定点逆向，原捕获失败不改写为成功。模块级批处理成功、全函数枚举和业务语义闭合也分别记录。
 
@@ -315,6 +321,10 @@ host 子应用的 [当前部署审计](../../.analysis/results/frontend/host-app
 
 资源准备使用现有统一 `prepare-resources`、`verify-resources`、`prepare-dashboard-images` 和 asset pack 命令。图片结构／像素、GPUI 实际 CPU codec、资源包读取和窗口显示是不同验证层级。转换工具不执行 React，仅处理已支持字面量 SVG／CSS，保存原始及派生 SHA。旧文档的资源与测试数量不能当本轮通过结论。
 
+`verify-resources --scope keyboard-artwork` 离线枚举类型化键盘主图、Customize、专用图层、Keypad 和映射状态资源，逐项核对当前原件、完整处理模块、固定交付身份以及实际像素解码。AVIF 使用经 wheel／RECORD 校验的 Pillow；SVG 使用同一分析工具目录中的 resvg-py，禁用系统字体和外部资源。校验仅在内存重建输出，不恢复源码媒体或填充安装缓存；缺失原件、未经当前部署核实的缓存、缺失资源锁或解码失败均保留错误。结果统一归属 `.analysis/results/resource-audit.json` 的 `keyboard_artwork`。
+
+`prepare-resources --publication-manifest` 将发布输入限定于 `.analysis/inputs/prepared-resources/`。SVG 根节点过滤必须与其当前 acquisition 中的处理模块成对提供，核对实际字节与完整模块，再复用普通准备路径的同一过滤所有者；不能混用其他转换。原图和处理变体分别记录原件、模块、转换与内容哈希，通过现有定向发布入口准备、预演、上传及远端复核后才更新资源锁与映射。不同 edition 的同名布局按完整身份分别保留，不能用 manifest 可读 key 合并；每个资源 context 和已获取媒体的导出依赖边都进入当前来源收据。
+
 GPUI 修改前读取用户指定目录的两个 SKILL.md 及适用机制／组件参考，核对 Cargo.lock 版本；页面布局、控件、状态及交互由当前原件证明。
 
 主程序在 GUI 初始化前安装标准库 panic hook，日志由 `razer_storage::store_path()` 定位到同目录的 `panic.log`，Windows 通常为 `%APPDATA%\razer_ui\panic.log`。记录进程、线程、时间、Rust panic 位置／内容及调用栈，并保留原 hook；日志不可写或锁不可用时尽力输出到 stderr，不阻止启动或吞掉 panic。它只补充 Rust panic 诊断，不能保证捕获原生 failfast、abort 或系统直接终止，隔离服务 worker 也不使用这份主程序日志。写入及真实崩溃记录受窗口运行限制，静态核对与编译不算运行验收。
@@ -435,7 +445,9 @@ Hex-Rays 的默认 `MAX_FUNCSIZE = 64` 会拒绝超过 64 KiB 的函数，即使
 
 完整基础捕获必须通过 `verify_native_capture`，逐项核验函数清单、完整输出、汇编标记和实际产物字节；`capture_complete` 本身不能作为验收。原件身份在开始、每次原生命令返回、基础捕获核验后和发布前重新核对，基础清单在发布前也必须保持一致。活跃或无法查询的会话不会被重复启动；恢复中断补查仅允许在确认 PID 已消失后执行，并保留旧 session、计划、capture 和日志的原始字节，不能补造退出码。
 
-`--verify-only` 只对已结束队列执行严格复核，不启动 IDA 或网络修复；完整原队列收据以原始字节及 SHA-256 记入当前收据的 `previous_static_run`。分析器源码按实际字节固定在同一结果树的 `tool-sources/`，严格结果分别写入 `verified-native/` 和 `verified-frontend/`，保留原输出。存在失败或严格冲突时，CLI 返回 1；队列已结束、静态通过、语义完整、Rust 实现、页面接线和实际 DLL／设备验收仍分别记录。`python -X utf8 -m unittest discover -s tools -p test_reverse_pending.py -v` 的 19 项测试覆盖并发、PID 边界、运行中原件变化、伪完整清单、聚合缺失、同长度产物篡改、复核的执行边界和非零返回码；这些是维护工具测试。
+`--verify-only` 只对已结束队列执行严格复核，不启动 IDA 或网络修复；完整原队列收据以原始字节及 SHA-256 记入当前收据的 `previous_static_run`。分析器源码按实际字节固定在同一结果树的 `tool-sources/`，严格结果分别写入 `verified-native/` 和 `verified-frontend/`，保留原输出。存在失败或严格冲突时，CLI 返回 1；队列已结束、静态通过、语义完整、Rust 实现、页面接线和实际 DLL／设备验收仍分别记录。
+
+`reverse-pending --workers 16 --resume` 只续接同一未结束队列，继承原生／前端范围和已冻结审阅计划，不能同时另传范围或计划参数。原任务 ID、已完成结果及清理记录保留；原收据的完整字节与 SHA-256 记入 `interrupted_static_run`，不补造退出码或完成时间。续接前重新核对原件、基础捕获、计划及结果身份，协调者持有全局独占锁；有 PID 的协调会话还须确认原进程已消失。旧格式没有协调者 PID 时明确记录该限制。已结束但尚未由协调者登记的精确匹配补查直接复核接收，不重复执行；仍存活或无法查询的分析进程继续等待。启动输出分别报告总任务数和实际续接任务数。
 
 源集登记与依赖闭包也分别核对：12 份家族矩阵的 664 个源集及 25 个宿主来源入口均已具备 acquisition，当前共保留 711 个前端源集；这不代表所有声明依赖或动态 chunk 已获取。家族矩阵的静态 JS／CSS／HTML 清单未发现缺文件或长度不符，但仍有声明的 TypeScript／图像 404、动态 chunk 枚举不可用及恢复图问题。枚举不可用的记录数不能换算为缺失文件数。当前普通修复会重试瞬态／损坏输入并保留历史，已记录的 source-declared 404 仍须通过正式的显式 `--retry-declared-missing` 路径核对；不能声称普通修复已把这类缺项补全。
 
@@ -447,9 +459,21 @@ Hex-Rays 的默认 `MAX_FUNCSIZE = 64` 会拒绝超过 64 KiB 的函数，即使
 
 `supplement-native --merge-functions "OWNER_RVA=RVA,RVA,..."` 只处理已有完整捕获中经明确审阅的连续单 chunk 函数片段。所有成员须顺序连续、无洞、无重叠，owner 必须是首成员及显式选择的目标；原件字节、完整指令、成员文件身份及非 owner 外部真实 CALL 入口分别核验。该规则不自动证明全部语义，也不据相邻地址自动合并。IDA 仅删除私有 IDB 内对应片段定义并按确切并集重建 owner，原始 PE、基础 IDB 与历史失败不变。manifest 保留全部成员身份及实际应用 chunks；严格复核重新计算并集，仅以完整 owner 输出核对合并基线，不借此删除成员的旧失败或放宽普通函数边界检查。
 
+`--outline-function-rva` 只标记已有完整捕获且经原件逐字节核实的独立 helper，使用 IDA 的 `FUNC_OUTLINE` 表达共享寄存器与调用者工作区，保留全部原指令及边界，不猜普通函数 ABI。`--partition-functions "OWNER_RVA=START_RVA:END_RVA,..."` 另处理完整 owner 内经审阅的嵌入 helper；半开区间必须与完整指令边界、真实 CALL 入边及封闭控制流匹配。owner 残留 chunks 与所有 helper chunks 必须无重叠地精确覆盖原 chunks，包含 padding 字节；只在私有 IDB 重建分区并标记 helper 为 outlined。独立的 `partition_helpers` 保留 helper 完整汇编，严格复核重新核对所有字节、入口引用、应用标志及 owner 伪代码，不把仅捕获汇编的 helper 记为反编译成功。共享 tail 的多入口函数不能由此删除入口或自动套用普通 ABI。
+
+Hex-Rays 失败另保留实际 `code`、`errea`、相对 RVA、描述和附加字符串，原始异常文本继续保留。该信息用于定位真实失败调用或栈位置，不改变原失败及成功判定。
+
+补查同时注册有界、只读的 Hex-Rays 静态观察器。在 microcode、优化、栈地址解析、内联和 callinfo 回调期间立即复制指令及 `map_fict_ea` 返回的标量，回调结束后不保存借用的 MBA、指令或 SWIG 对象。成功函数仅保留小型诊断摘要；失败函数另保留各阶段事件与原始错误地址的映射候选。缺失、BADADDR、冲突、截断、注册或注销失败均明确记账，不改变反编译结果，不将候选自动认定为原件中的真实指令。映射仍须与原 PE 的指令、完整函数、共享尾和实际调用目标独立核对；观察器不修改 microcode、类型、SP、函数标志或输出 callinfo，也不调用需调试器的 dump 接口。
+
+调用观察另逐项冻结 MBA 栈帧、共享尾全部所有者的 frame／SP、真实调用操作数已存类型、分别请求的参数位置及 `callinfo_built` 的调用栈位置。SDK 未返回的字段保持未观测；`GTD_NO_ARGLOCS` 结果不证明位置原本已序列化。无 ABI 或边界修补的新观察通过 `--observation-evidence` 绑定冻结审阅中的明确原因与观察器原字节身份，并进入补查选择摘要；复核时验证审阅、工具与实际捕获身份。由此保留每次不同观察的独立收据，不为区分输出而添加类型、栈修补或放宽恢复条件。
+
+`--share-function-tail "PRIMARY=START:END:OWNER,OWNER[:inline|:retain]"` 表达经审阅的多入口共享尾块。选择器重新核对全部 owner 的原件身份、完整 chunks、指令、双向引用和相对控制流，尾块须为 primary 原入口 chunk 的完整后缀；数据引用和未枚举的 padding 原字节均保留。私有 IDB 只收缩 primary 的入口 chunk 并向所有 owner 附加同一尾块，保留原入口，核对实际 primary、完整 parent 集合、frame、类型及既有栈变化点。`inline` 标记这些 helper 为 `FUNC_OUTLINE`，`retain` 保留 owner 原 flags；两者均不猜测 ABI。非目标 owner 的完整汇编单独记入 `shared_tail_helpers`，不得用汇编记录冒充伪代码。严格复核重新读取基础 IDB 的实际 SHA，并验证所有 owner、目标函数和 helper 的完整原字节及引用；恢复计数仍以完整伪代码和严格验收为准。
+
 当前审阅计划分别保留在 [Chroma 事件线程收据](../../.analysis/results/native-bulk/chroma-lifecycle-verification.json)、[设备驱动日志收据](../../.analysis/results/native-bulk/camera-0e06-identity-verification.json)和[音频共用字符查找尾收据](../../.analysis/results/native-bulk/audio-semantic-verification.json)。计划获准执行不等于失败已恢复；只有正式 IDA 输出及完整字节、边界和伪代码独立复核通过后，才减少基础失败计数。共享栈帧、多寄存器输出和内嵌子程序边界无法用普通 ABI 无损表达时继续静态核查，不提交猜测类型。
 
-维护工具的定向纯测试为 `python -X utf8 -m unittest discover -s tools -p test_reverse_pending.py -v`（36 项）及 `python -X utf8 -m unittest discover -s tools -p test_evidence.py -k NativeSupplementTests -v`（20 项），当前均通过；`test_evidence` 全部 217 项也通过。反例覆盖过期／冲突收据不得隐去失败、审阅计划与原件执行前再次核验、完整命名 IAT 与序号／非 IAT 拒绝、精确导入 thunk、片段合并的字节与边界篡改，以及函数、IAT、仅复核模式的实际命令边界。这些测试不运行 IDA 或厂商 DLL。
+维护工具的纯测试为 `python -X utf8 -m unittest discover -s tools -p test_reverse_pending.py`、`python -X utf8 -m unittest discover -s tools -p test_evidence.py` 和 `python -X utf8 -m unittest discover -s tools -p test_host.py`；实际数量和结果以当前执行收据为准。反例覆盖过期／冲突收据不得隐去失败、审阅计划与原件执行前再次核验、完整命名 IAT 与序号／非 IAT 拒绝、精确导入 thunk、片段合并和 helper 分区的字节／边界／控制流篡改、共享尾块的 parent／frame／类型／栈点和引用完整性、总队列中断恢复，以及只读诊断的生命周期、失败、截断和映射冲突。这些测试不运行 IDA 或厂商 DLL。
+
+`extract-embedded-inputs --pe-review "项目相对收据.json#/指针"` 只提取显式审阅的完整 PE 文件范围，不扫描 MZ 命中来猜文件边界。指针选择单组或多组 `schema_version: 1`、`source_input` 和 `ranges`；每个范围提供安全文件名、精确 offset/bytes/SHA-256、machine、边界依据和证据文件身份。入口先核全部组的当前父输入索引、实际原件／证据字节和目标冲突，再核 DOS/PE 头、段、目录、证书及完整文件长度，全部通过后才登记子原件。IA64 函数描述符与零长度 GlobalPtr 具有单独的解析语义。原审阅字节和被更新的提取报告均按内容哈希保留引用，原失败不会因改用正确子架构而删除。独立子捕获继续使用 `capture-native`；分析器不具备相应处理器／反编译器时保留未验证，不加载驱动或执行安装链。
 
 ### 历史临时文件的保守清理
 

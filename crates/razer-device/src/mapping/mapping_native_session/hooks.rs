@@ -12,12 +12,22 @@ pub const ENUMERATE_HOOK_IOCTL: u32 = 0x8888_3030;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HookInput {
-    Keyboard { input: KeyboardInput, extra_information: u32 },
-    Mouse { input: MouseInput, extra_information: u32 },
+    Keyboard {
+        input: KeyboardInput,
+        extra_information: u32,
+    },
+    Mouse {
+        input: MouseInput,
+        extra_information: u32,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum RedirectKind { Keyboard, Mouse, MouseMove }
+pub enum RedirectKind {
+    Keyboard,
+    Mouse,
+    MouseMove,
+}
 
 pub fn enable_hooks(enabled: bool) -> NativeOperation {
     NativeOperation::ioctl(ENABLE_HOOKS_IOCTL, u32::from(enabled).to_le_bytes(), 0)
@@ -28,7 +38,11 @@ pub fn enable_notifications(enabled: bool) -> NativeOperation {
 }
 
 pub fn redirect(kind: RedirectKind, enabled: bool) -> NativeOperation {
-    let kind: u32 = match kind { RedirectKind::Keyboard => 1, RedirectKind::Mouse => 2, RedirectKind::MouseMove => 4 };
+    let kind: u32 = match kind {
+        RedirectKind::Keyboard => 1,
+        RedirectKind::Mouse => 2,
+        RedirectKind::MouseMove => 4,
+    };
     let mut bytes = kind.to_le_bytes().to_vec();
     bytes.push(u8::from(enabled));
     NativeOperation::ioctl(ENABLE_REDIRECT_IOCTL, bytes, 0)
@@ -70,10 +84,14 @@ impl HookInput {
             Self::Mouse { input, .. } => encode_mouse(input).bytes().to_vec(),
         };
         let (at, extra) = match self {
-            Self::Keyboard { extra_information, .. } => (16, extra_information),
-            Self::Mouse { extra_information, .. } => (28, extra_information),
+            Self::Keyboard {
+                extra_information, ..
+            } => (16, extra_information),
+            Self::Mouse {
+                extra_information, ..
+            } => (28, extra_information),
         };
-        bytes[at..at+4].copy_from_slice(&extra.to_le_bytes());
+        bytes[at..at + 4].copy_from_slice(&extra.to_le_bytes());
         NativeOperation::ioctl(CLEAR_HOOK_IOCTL, bytes, 0)
     }
 }
@@ -84,7 +102,11 @@ mod tests {
 
     fn bytes(operation: NativeOperation, expected_ioctl: u32) -> Vec<u8> {
         match operation {
-            NativeOperation::Ioctl { ioctl, input, output_bytes } => {
+            NativeOperation::Ioctl {
+                ioctl,
+                input,
+                output_bytes,
+            } => {
                 assert_eq!(ioctl, expected_ioctl);
                 assert_eq!(output_bytes, 0);
                 input
@@ -95,24 +117,46 @@ mod tests {
 
     #[test]
     fn hook_install_pairs_break_and_removal_keeps_original_native_identity() {
-        let key = HookInput::Keyboard { input: KeyboardInput { unit_id: 3, scancode: 29, flag: 3, modifiers: 0x10, ..Default::default() }, extra_information: 0x12345678 };
+        let key = HookInput::Keyboard {
+            input: KeyboardInput {
+                unit_id: 3,
+                scancode: 29,
+                flag: 3,
+                modifiers: 0x10,
+                ..Default::default()
+            },
+            extra_information: 0x12345678,
+        };
         let installed = bytes(key.install(), 0x88883024);
         assert_eq!(installed.len(), 292);
-        assert_eq!(&installed[..20], &[0,0,0,0,1,0,0,0,3,0,29,0,2,0,0,0,0,1,0,0]);
+        assert_eq!(
+            &installed[..20],
+            &[0, 0, 0, 0, 1, 0, 0, 0, 3, 0, 29, 0, 2, 0, 0, 0, 0, 1, 0, 0]
+        );
         assert!(installed[20..].iter().all(|byte| *byte == 0));
         let removed = bytes(key.remove(), 0x8888302c);
         assert_eq!(removed.len(), 32);
-        assert_eq!(&removed[12..20], &[3,0,0,0,0x78,0x56,0x34,0x12]);
+        assert_eq!(&removed[12..20], &[3, 0, 0, 0, 0x78, 0x56, 0x34, 0x12]);
     }
 
     #[test]
     fn hook_mouse_extended_button_pair_and_redirect_width_follow_driver_record() {
-        let mouse = HookInput::Mouse { input: MouseInput { id: 0, data: 8, ..Default::default() }, extra_information: 42 };
+        let mouse = HookInput::Mouse {
+            input: MouseInput {
+                id: 0,
+                data: 8,
+                ..Default::default()
+            },
+            extra_information: 42,
+        };
         let installed = bytes(mouse.install(), 0x88883024);
-        assert_eq!(&installed[12..16], &[0,0,12,0]);
-        assert_eq!(&bytes(mouse.remove(), 0x8888302c)[28..], &[42,0,0,0]);
-        assert_eq!(bytes(redirect(RedirectKind::MouseMove, true), 0x8888301c), [4,0,0,0,1]);
-        assert_eq!(bytes(enable_hooks(false), 0x88883034), [0,0,0,0]);
-        assert_eq!(bytes(enable_notifications(true), 0x88883038), [1,0,0,0]);
+        assert_eq!(&installed[12..16], &[0, 0, 12, 0]);
+        assert_eq!(&bytes(mouse.remove(), 0x8888302c)[28..], &[42, 0, 0, 0]);
+        assert_eq!(
+            bytes(redirect(RedirectKind::MouseMove, true), 0x8888301c),
+            [4, 0, 0, 0, 1]
+        );
+        assert_eq!(bytes(enable_hooks(false), 0x88883034), [0, 0, 0, 0]);
+        assert_eq!(bytes(enable_notifications(true), 0x88883038), [1, 0, 0, 0]);
     }
 }

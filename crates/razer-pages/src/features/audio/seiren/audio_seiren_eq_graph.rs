@@ -445,7 +445,11 @@ impl AudioProductWorkspace {
                 .p_0()
                 .text_color(C::text())
                 .hover(|style| style.text_color(C::selected()))
-                .child(razer_assets::resource_svg().path("synapse/seiren-eq-flat.svg").size_full())
+                .child(
+                    razer_assets::resource_svg()
+                        .path("synapse/seiren-eq-flat.svg")
+                        .size_full(),
+                )
                 .on_click(cx.listener(|this, _, window, cx| this.seiren_reset(true, window, cx))),
         );
         let mut frequency_axis = div()
@@ -535,60 +539,60 @@ pub(super) fn fader(
     let muted = volume["isEnabled"] != true;
     let progress = volume["value"].as_f64().unwrap_or(0.).clamp(0., 100.) as f32 / 100.;
     let agc = index == 0 && workspace.draft["device"]["micAgc"]["isEnabled"] == true;
-    let disabled = unavailable || index == 2
-        && workspace.draft["profile"]["streamMixerSettings"]["isStreamMixerEnabled"] == true;
+    let disabled = unavailable
+        || index == 2
+            && workspace.draft["profile"]["streamMixerSettings"]["isStreamMixerEnabled"] == true;
     let thumb_height = if index == 2 { 10. } else { 7.33 };
-    let slider =
-        BaseSlider::new(state)
-            .vertical()
-            .disabled(muted || agc || disabled)
-            .w(css(24.))
-            .h(css(220.))
-            .relative()
-            .opacity(if muted { 0.3 } else { 1. })
-            .when(index == 2, |slider| {
-                slider.child(
-                    div()
-                        .absolute()
-                        .left(css(11.))
-                        .w(css(2.))
-                        .h_full()
-                        .bg(C::track())
-                        .child(
-                            div()
+    let slider = BaseSlider::new(state)
+        .vertical()
+        .disabled(muted || agc || disabled)
+        .w(css(24.))
+        .h(css(220.))
+        .relative()
+        .opacity(if muted { 0.3 } else { 1. })
+        .when(index == 2, |slider| {
+            slider.child(
+                div()
+                    .absolute()
+                    .left(css(11.))
+                    .w(css(2.))
+                    .h_full()
+                    .bg(C::track())
+                    .child(
+                        div()
+                            .absolute()
+                            .bottom_0()
+                            .h(relative(progress))
+                            .w_full()
+                            .bg(C::text()),
+                    ),
+            )
+        })
+        .child(
+            SliderTrack::new(state)
+                .axis(Axis::Vertical)
+                .disabled(muted || agc || disabled)
+                .size_full()
+                .child(SliderIndicator::new(state).size_full().relative().when(
+                    !agc && !unavailable,
+                    |track| {
+                        track.child(
+                            SliderThumb::new(state)
+                                .axis(Axis::Vertical)
+                                .disabled(muted || disabled)
                                 .absolute()
-                                .bottom_0()
-                                .h(relative(progress))
-                                .w_full()
-                                .bg(C::text()),
-                        ),
-                )
-            })
-            .child(
-                SliderTrack::new(state)
-                    .axis(Axis::Vertical)
-                    .disabled(muted || agc || disabled)
-                    .size_full()
-                    .child(SliderIndicator::new(state).size_full().relative().when(
-                        !agc && !unavailable,
-                        |track| {
-                            track.child(
-                                SliderThumb::new(state)
-                                    .axis(Axis::Vertical)
-                                    .disabled(muted || disabled)
-                                    .absolute()
-                                    .left(css(2.))
-                                    .bottom(relative(progress))
-                                    .mb(css(-thumb_height / 2.))
-                                    .w(css(20.))
-                                    .h(css(thumb_height))
-                                    .border_1()
-                                    .border_color(C::thumb_border())
-                                    .bg(C::thumb()),
-                            )
-                        },
-                    )),
-            );
+                                .left(css(2.))
+                                .bottom(relative(progress))
+                                .mb(css(-thumb_height / 2.))
+                                .w(css(20.))
+                                .h(css(thumb_height))
+                                .border_1()
+                                .border_color(C::thumb_border())
+                                .bg(C::thumb()),
+                        )
+                    },
+                )),
+        );
     let mut visual = div().relative().w(css(24.)).h(css(220.));
     if index < 2 {
         let [left, right] = workspace.seiren_eq.levels[index];

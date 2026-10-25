@@ -59,9 +59,13 @@ impl AudioProductWorkspace {
             return;
         }
         let mut snapshot = self.draft.clone();
-        snapshot["profile"]["micVolume"] = self.seiren_eq.live.endpoint(razer_device::seiren_mixer::MICROPHONE)
+        snapshot["profile"]["micVolume"] = self
+            .seiren_eq
+            .live
+            .endpoint(razer_device::seiren_mixer::MICROPHONE)
             .and_then(|reading| reading.value())
-            .map(|value| json!({"value":value.level,"isEnabled":!value.muted})).unwrap_or(Value::Null);
+            .map(|value| json!({"value":value.level,"isEnabled":!value.muted}))
+            .unwrap_or(Value::Null);
         self.seiren_mic.wizard = Some(State {
             snapshot,
             intro: true,
@@ -298,7 +302,14 @@ impl AudioProductWorkspace {
                 if let Some(result) = result
                     .filter(|result| result.metric_db.is_finite() && result.metric_db >= -100.)
                 {
-                    let Some(volume) = self.seiren_eq.live.endpoint(razer_device::seiren_mixer::MICROPHONE).and_then(|reading| reading.value()) else { return; };
+                    let Some(volume) = self
+                        .seiren_eq
+                        .live
+                        .endpoint(razer_device::seiren_mixer::MICROPHONE)
+                        .and_then(|reading| reading.value())
+                    else {
+                        return;
+                    };
                     let current = f64::from(volume.level);
                     let gain = mic::percent_to_db(current) + result.recommended_db;
                     let percent = (mic::db_to_percent(gain).clamp(0., 100.) * 100.).round() / 100.;
@@ -463,7 +474,10 @@ impl AudioProductWorkspace {
             self.seiren_mic.wizard = None;
         } else {
             let before = wizard.snapshot;
-            if let Some(value) = before.pointer("/profile/micVolume").filter(|value| !value.is_null()) {
+            if let Some(value) = before
+                .pointer("/profile/micVolume")
+                .filter(|value| !value.is_null())
+            {
                 self.seiren_microphone_set_volume(value.clone(), cx);
             }
             for (field, module) in [

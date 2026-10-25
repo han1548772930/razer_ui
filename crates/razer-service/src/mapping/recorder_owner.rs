@@ -1,9 +1,9 @@
 //! A recorder process has one mutable transport owner. Other mapping workers
 //! borrow its query path without retaining the process or copying its mode.
+use super::Client;
 use super::Transport;
 use anyhow::Context as _;
 use razer_ipc::ServiceRequest;
-use super::Client;
 use razer_platform::macro_recorder::Mode;
 use serde::Deserialize;
 use serde_json::Value;

@@ -21,9 +21,19 @@ pub(crate) trait Backend: 'static {
 
 type Response = mpsc::SyncSender<Result<Value, String>>;
 enum Command {
-    Acquire { scope: Uuid, response: Response },
-    Request { scope: Uuid, request: ServiceRequest, response: Response },
-    Release { scope: Uuid, response: Option<Response> },
+    Acquire {
+        scope: Uuid,
+        response: Response,
+    },
+    Request {
+        scope: Uuid,
+        request: ServiceRequest,
+        response: Response,
+    },
+    Release {
+        scope: Uuid,
+        response: Option<Response>,
+    },
 }
 
 struct Actor {
@@ -38,7 +48,12 @@ impl Drop for Actor {
         let (replacement, receiver) = mpsc::channel();
         drop(receiver);
         drop(std::mem::replace(&mut self.sender, replacement));
-        if let Some(worker) = self.thread.get_mut().unwrap_or_else(|e| e.into_inner()).take() {
+        if let Some(worker) = self
+            .thread
+            .get_mut()
+            .unwrap_or_else(|e| e.into_inner())
+            .take()
+        {
             if worker.join().is_err() {
                 eprintln!("Mapping actor panicked during final cleanup");
             }
@@ -57,40 +72,60 @@ impl Registry {
         &self,
         create: impl FnOnce() -> Result<B> + Send + 'static,
     ) -> Result<Client> {
-        let mut registry = self.actor.lock().map_err(|_| anyhow::anyhow!("Mapping actor registry poisoned"))?;
+        let mut registry = self
+            .actor
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Mapping actor registry poisoned"))?;
         let actor = if let Some(actor) = registry.upgrade() {
             actor
         } else {
             let (sender, receiver) = mpsc::channel();
             let (ready, initialized) = mpsc::sync_channel(1);
             let lifecycle = self.lifecycle.clone();
-            let worker = thread::Builder::new().name("razer-mapping-owner".into()).spawn(move || {
-                let _lifecycle = lifecycle.lock().unwrap_or_else(|error| error.into_inner());
-                let backend = super::guarded(create);
-                match backend {
-                    Ok(backend) => {
-                        let _ = ready.send(Ok(()));
-                        run(backend, receiver);
+            let worker = thread::Builder::new()
+                .name("razer-mapping-owner".into())
+                .spawn(move || {
+                    let _lifecycle = lifecycle.lock().unwrap_or_else(|error| error.into_inner());
+                    let backend = super::guarded(create);
+                    match backend {
+                        Ok(backend) => {
+                            let _ = ready.send(Ok(()));
+                            run(backend, receiver);
+                        }
+                        Err(error) => {
+                            let _ = ready.send(Err(format!("{error:#}")));
+                        }
                     }
-                    Err(error) => { let _ = ready.send(Err(format!("{error:#}"))); }
-                }
-            })?;
-            match initialized.recv().context("Mapping actor initialization disconnected")? {
+                })?;
+            match initialized
+                .recv()
+                .context("Mapping actor initialization disconnected")?
+            {
                 Ok(()) => {}
                 Err(error) => {
                     let _ = worker.join();
                     anyhow::bail!(error);
                 }
             }
-            let actor = Arc::new(Actor { sender, thread: Mutex::new(Some(worker)) });
+            let actor = Arc::new(Actor {
+                sender,
+                thread: Mutex::new(Some(worker)),
+            });
             *registry = Arc::downgrade(&actor);
             actor
         };
         let scope = Uuid::new_v4();
         let (response, reply) = mpsc::sync_channel(1);
-        actor.sender.send(Command::Acquire { scope, response }).context("Mapping actor stopped")?;
+        actor
+            .sender
+            .send(Command::Acquire { scope, response })
+            .context("Mapping actor stopped")?;
         receive(reply)?;
-        Ok(Client { actor, scope, stopped: false })
+        Ok(Client {
+            actor,
+            scope,
+            stopped: false,
+        })
     }
 }
 
@@ -103,37 +138,59 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn spawn() -> Result<Self> { crate::runtime::mapping_client() }
+    pub fn spawn() -> Result<Self> {
+        crate::runtime::mapping_client()
+    }
 
     pub fn request(&mut self, request: ServiceRequest) -> Result<Value> {
         ensure!(!self.stopped, "Mapping scope has been released");
         let (response, reply) = mpsc::sync_channel(1);
         let shutdown = matches!(request, ServiceRequest::Shutdown);
         let command = if shutdown {
-            Command::Release { scope: self.scope, response: Some(response) }
+            Command::Release {
+                scope: self.scope,
+                response: Some(response),
+            }
         } else {
-            Command::Request { scope: self.scope, request, response }
+            Command::Request {
+                scope: self.scope,
+                request,
+                response,
+            }
         };
-        self.actor.sender.send(command).context("Mapping actor disconnected")?;
+        self.actor
+            .sender
+            .send(command)
+            .context("Mapping actor disconnected")?;
         let result = receive(reply);
-        if shutdown && result.is_ok() { self.stopped = true; }
+        if shutdown && result.is_ok() {
+            self.stopped = true;
+        }
         result
     }
 
-    pub fn is_stopped(&self) -> bool { self.stopped }
+    pub fn is_stopped(&self) -> bool {
+        self.stopped
+    }
 }
 
 impl Drop for Client {
     fn drop(&mut self) {
         if !self.stopped {
             self.stopped = true;
-            let _ = self.actor.sender.send(Command::Release { scope: self.scope, response: None });
+            let _ = self.actor.sender.send(Command::Release {
+                scope: self.scope,
+                response: None,
+            });
         }
     }
 }
 
 fn receive(reply: mpsc::Receiver<Result<Value, String>>) -> Result<Value> {
-    reply.recv().context("Mapping reply disconnected")?.map_err(anyhow::Error::msg)
+    reply
+        .recv()
+        .context("Mapping reply disconnected")?
+        .map_err(anyhow::Error::msg)
 }
 
 fn respond(response: Response, result: Result<Value>) {
@@ -145,10 +202,18 @@ fn run(mut backend: impl Backend, receiver: mpsc::Receiver<Command>) {
     loop {
         match receiver.recv_timeout(Duration::from_millis(4)) {
             Ok(Command::Acquire { scope, response }) => {
-                let result = super::guarded(|| { backend.acquire(scope)?; scopes.insert(scope); Ok(json!({"acquired":true})) });
+                let result = super::guarded(|| {
+                    backend.acquire(scope)?;
+                    scopes.insert(scope);
+                    Ok(json!({"acquired":true}))
+                });
                 respond(response, result);
             }
-            Ok(Command::Request { scope, request, response }) => {
+            Ok(Command::Request {
+                scope,
+                request,
+                response,
+            }) => {
                 let result = super::guarded(|| {
                     ensure!(scopes.contains(&scope), "Mapping client scope changed");
                     backend.request(scope, request)
@@ -187,8 +252,12 @@ fn run(mut backend: impl Backend, receiver: mpsc::Receiver<Command>) {
 }
 
 impl super::Transport for Client {
-    fn request(&mut self, request: ServiceRequest) -> Result<Value> { Client::request(self, request) }
-    fn is_stopped(&self) -> bool { Client::is_stopped(self) }
+    fn request(&mut self, request: ServiceRequest) -> Result<Value> {
+        Client::request(self, request)
+    }
+    fn is_stopped(&self) -> bool {
+        Client::is_stopped(self)
+    }
 }
 
 #[cfg(test)]
@@ -205,7 +274,9 @@ mod tests {
     }
     struct TestBackend(Arc<Mutex<Observations>>);
     impl Backend for TestBackend {
-        fn acquire(&mut self, _scope: Uuid) -> Result<()> { Ok(()) }
+        fn acquire(&mut self, _scope: Uuid) -> Result<()> {
+            Ok(())
+        }
         fn request(&mut self, _scope: Uuid, request: ServiceRequest) -> Result<Value> {
             let mut state = self.0.lock().unwrap();
             match request {
@@ -217,10 +288,14 @@ mod tests {
                 _ => anyhow::bail!("Unexpected test request"),
             }
         }
-        fn poll(&mut self) -> Result<()> { Ok(()) }
+        fn poll(&mut self) -> Result<()> {
+            Ok(())
+        }
         fn release(&mut self, scope: Uuid) -> Result<()> {
             let mut state = self.0.lock().unwrap();
-            if std::mem::take(&mut state.fail_release) { anyhow::bail!("held output release failed"); }
+            if std::mem::take(&mut state.fail_release) {
+                anyhow::bail!("held output release failed");
+            }
             state.released.push(scope);
             Ok(())
         }
@@ -231,10 +306,12 @@ mod tests {
     }
     fn acquire(registry: &Registry, state: &Arc<Mutex<Observations>>) -> Client {
         let state = state.clone();
-        registry.acquire(move || {
-            state.lock().unwrap().starts += 1;
-            Ok(TestBackend(state))
-        }).unwrap()
+        registry
+            .acquire(move || {
+                state.lock().unwrap().starts += 1;
+                Ok(TestBackend(state))
+            })
+            .unwrap()
     }
 
     #[test]
@@ -243,13 +320,24 @@ mod tests {
         let state = Arc::new(Mutex::new(Observations::default()));
         let mut device = acquire(&registry, &state);
         let mut recorder = acquire(&registry, &state);
-        recorder.request(ServiceRequest::MacroRecorderStorageWrite { key: "macro-library".into(), value: json!([]) }).unwrap();
-        assert_eq!(device.request(ServiceRequest::GlobalMode).unwrap()["documents"], json!(["macro-library"]));
+        recorder
+            .request(ServiceRequest::MacroRecorderStorageWrite {
+                key: "macro-library".into(),
+                value: json!([]),
+            })
+            .unwrap();
+        assert_eq!(
+            device.request(ServiceRequest::GlobalMode).unwrap()["documents"],
+            json!(["macro-library"])
+        );
         recorder.request(ServiceRequest::Shutdown).unwrap();
         assert!(recorder.is_stopped());
         drop(recorder);
         assert_eq!(state.lock().unwrap().shutdowns, 0);
-        assert_eq!(device.request(ServiceRequest::GlobalMode).unwrap()["documents"], json!(["macro-library"]));
+        assert_eq!(
+            device.request(ServiceRequest::GlobalMode).unwrap()["documents"],
+            json!(["macro-library"])
+        );
         device.request(ServiceRequest::Shutdown).unwrap();
         drop(device);
         let state = state.lock().unwrap();
@@ -262,9 +350,18 @@ mod tests {
     #[test]
     fn failed_scope_release_is_not_acknowledged_or_forgotten() {
         let registry = Registry::default();
-        let state = Arc::new(Mutex::new(Observations { fail_release: true, ..Default::default() }));
+        let state = Arc::new(Mutex::new(Observations {
+            fail_release: true,
+            ..Default::default()
+        }));
         let mut client = acquire(&registry, &state);
-        assert!(client.request(ServiceRequest::Shutdown).unwrap_err().to_string().contains("held output"));
+        assert!(
+            client
+                .request(ServiceRequest::Shutdown)
+                .unwrap_err()
+                .to_string()
+                .contains("held output")
+        );
         assert!(!client.is_stopped());
         assert!(state.lock().unwrap().released.is_empty());
         client.request(ServiceRequest::Shutdown).unwrap();

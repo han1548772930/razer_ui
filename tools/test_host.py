@@ -17,9 +17,10 @@ from host import (HostLocalAudit, add_commands, audit_host_local,
                   collect_profiles_static, publish_profiles_static,
                   verify_profiles_owner, verify_profiles_static_receipt,
                   help_system_mount_layout, help_system_native_declaration, help_system_report_constants,
-                  inspect_host, inspect_pe, pe_cursor_groups, pe_resource_entries,
+                  inspect_host, inspect_pe, inspect_embedded_pe_ranges, pe_cursor_groups, pe_resource_entries,
                   setup_factory_static_extraction, native_ascii_pointer_table,
-                  receiver_hardware_dispatch_proof, native_pseudocode_failures, lighting_catalog_projection)
+                  receiver_hardware_dispatch_proof, native_pseudocode_failures, lighting_catalog_projection,
+                  native_exception_region_coverage)
 
 
 class ProfilesOwnerReceiptTests(unittest.TestCase):
@@ -465,6 +466,12 @@ class StaticPeTests(unittest.TestCase):
                 self.assertEqual(result["architecture"], machine)
                 self.assertEqual(result["unresolved"], [])
 
+    def test_ia64_machine_is_distinct_from_x64(self):
+        raw, _ = pe_fixture()
+        struct.pack_into("<H", raw, 0x84, 0x200)
+        result = inspect_pe(raw)
+        self.assertEqual((result["machine"], result["architecture"]), ("0x200", "ia64"))
+
     def test_import_name_and_ordinal_are_decoded_with_pointer_width(self):
         for bits in (32, 64):
             with self.subTest(bits=bits):
@@ -522,6 +529,340 @@ class StaticPeTests(unittest.TestCase):
         self.assertEqual(inspect_pe(b"\x7fELF"), {"format": "elf", "kind": "other"})
         with self.assertRaisesRegex(ValueError, "exceeds input"):
             inspect_pe(b"MZ")
+
+
+class Ia64ExceptionRegionTests(unittest.TestCase):
+    @staticmethod
+    def fixture():
+        raw, directory = pe_fixture()
+        struct.pack_into("<H", raw, 0x84, 0x200)
+        struct.pack_into("<I", raw, 0x98 + 240 + 36, 0x60000020)
+        struct.pack_into("<II", raw, directory + 3 * 8, 0x1400, 24)
+        struct.pack_into("<IIIIII", raw, 0x600, 0x1100, 0x1180, 0x1500, 0x1200, 0x1240, 0x1508)
+        raw[0x300:0x380] = bytes(range(128))
+        raw[0x400:0x440] = bytes(range(64))
+        raw[0x700:0x710] = bytes.fromhex("03000000010000000300000002000000")
+        return raw, directory
+
+    def test_ia64_records_use_three_dword_rvas_and_preserve_original_bytes(self):
+        raw, _ = self.fixture()
+        result = inspect_pe(raw)
+        self.assertEqual(result["unresolved"], [])
+        table = result["exception_directory"]
+        self.assertTrue(table["validated"])
+        self.assertEqual((table["rva"], table["bytes"], table["record_bytes"]), ("0x1400", 24, 12))
+        self.assertEqual(table["sha256"], hashlib.sha256(raw[0x600:0x618]).hexdigest())
+        self.assertEqual([(x["begin_rva"], x["end_rva"], x["file_offset"], x["unwind_rva"])
+                          for x in table["regions"]],
+                         [("0x1100", "0x1180", 0x300, "0x1500"), ("0x1200", "0x1240", 0x400, "0x1508")])
+        first = table["regions"][0]
+        self.assertEqual(first["entry_hex"], "001100008011000000150000")
+        self.assertEqual(first["sha256"], hashlib.sha256(bytes(range(128))).hexdigest())
+        self.assertEqual(first["unwind_header_hex"], "0300000001000000")
+        self.assertFalse(first["unwind_semantics_verified"])
+
+    def test_other_architectures_do_not_use_the_ia64_parser(self):
+        raw, _ = self.fixture()
+        struct.pack_into("<H", raw, 0x84, 0x8664)
+        self.assertNotIn("exception_directory", inspect_pe(raw))
+
+    def test_absent_directory_is_distinct_from_incomplete_or_partial_records(self):
+        for address, size, valid in ((0, 0, True), (0x1400, 0, False), (0, 24, False), (0x1400, 23, False),
+                                     (0x1df8, 24, False)):
+            with self.subTest(address=address, size=size):
+                raw, directory = self.fixture()
+                struct.pack_into("<II", raw, directory + 3 * 8, address, size)
+                result = inspect_pe(raw)
+                self.assertEqual(result["exception_directory"]["validated"], valid)
+                self.assertEqual(result["exception_directory"]["regions"], [])
+                self.assertEqual(bool(result["unresolved"]), not valid)
+
+    def test_bad_later_record_cannot_publish_partial_region_coverage(self):
+        for begin, end, unwind in ((0x1201, 0x1240, 0x1508), (0x1200, 0x1241, 0x1508),
+                (0x1200, 0x1200, 0x1508), (0x1100, 0x1140, 0x1508), (0x1170, 0x1240, 0x1508),
+                (0x2000, 0x2040, 0x1508), (0x1200, 0x1240, 0), (0x1200, 0x1240, 0x1509),
+                (0x1200, 0x1240, 0x1e00)):
+            with self.subTest(begin=begin, end=end, unwind=unwind):
+                raw, _ = self.fixture()
+                struct.pack_into("<III", raw, 0x60c, begin, end, unwind)
+                result = inspect_pe(raw)
+                self.assertFalse(result["exception_directory"]["validated"])
+                self.assertEqual(result["exception_directory"]["regions"], [])
+                self.assertEqual(result["unresolved"][0]["stage"], "ia64_exception_directory")
+
+    def test_non_executable_or_unbacked_code_is_rejected(self):
+        raw, _ = self.fixture()
+        struct.pack_into("<I", raw, 0x98 + 240 + 36, 0x40000040)
+        result = inspect_pe(raw)
+        self.assertFalse(result["exception_directory"]["validated"])
+        self.assertIn("executable", result["unresolved"][0]["error"])
+
+    def test_exception_code_table_and_unwind_must_have_unique_file_backing(self):
+        for rva, size in ((0x1100, 0x80), (0x1170, 0x30), (0x1400, 24), (0x1500, 8)):
+            with self.subTest(rva=hex(rva), size=size):
+                raw, _ = self.fixture()
+                struct.pack_into("<H", raw, 0x86, 2)
+                second = 0x98 + 240 + 40
+                struct.pack_into("<8sIIII", raw, second, b".overlap", size, rva, size, 0x900)
+                struct.pack_into("<I", raw, second + 36, 0x40000040)
+                result = inspect_pe(raw)
+                self.assertFalse(result["exception_directory"]["validated"])
+                self.assertEqual(result["exception_directory"]["regions"], [])
+                self.assertIn("uniquely", result["unresolved"][0]["error"])
+
+    def test_chunk_coverage_keeps_fragment_identity_separate_and_merges_shared_bytes(self):
+        raw, _ = self.fixture()
+        table = inspect_pe(raw)["exception_directory"]
+        base = 0x180000000
+        def function(rva, chunks):
+            return {"rva": hex(rva), "address": hex(base + rva),
+                    "chunks": [{"start": hex(base + a), "end": hex(base + b)} for a, b in chunks]}
+        functions = [function(0x1000, [(0x1000, 0x1010), (0x1100, 0x1120), (0x1140, 0x1180)]),
+                     function(0x1050, [(0x1050, 0x1060), (0x1140, 0x1180)]),
+                     function(0x1200, [(0x1200, 0x1240)])]
+        result = native_exception_region_coverage(table, functions, hex(base))
+        self.assertEqual((result["region_count"], result["uncovered_region_count"], result["uncovered_bytes"]), (2, 1, 32))
+        self.assertEqual(result["regions"][0]["captured_chunk_owners"], ["0x1000", "0x1050"])
+        self.assertFalse(result["regions"][0]["matches_captured_entry"])
+        self.assertEqual(result["regions"][0]["uncovered"], [{"begin_rva": "0x1120", "end_rva": "0x1140", "bytes": 32}])
+        self.assertEqual(result["regions"][0]["covered_bytes"], 96)
+        self.assertTrue(result["regions"][1]["matches_captured_entry"])
+        self.assertTrue(result["regions"][1]["all_bytes_in_captured_chunks"])
+        self.assertFalse(result["function_discovery_complete"])
+        functions[0]["chunks"].append({"start": hex(base + 0x1120), "end": hex(base + 0x1140)})
+        complete = native_exception_region_coverage(table, functions, base)
+        self.assertTrue(complete["all_regions_in_captured_chunks"])
+        self.assertFalse(complete["function_discovery_complete"])
+
+    def test_unvalidated_directory_and_wrong_chunk_coordinates_are_rejected(self):
+        raw, _ = self.fixture()
+        table = inspect_pe(raw)["exception_directory"]
+        for changed in (dict(table, validated=False), dict(table, validated=1)):
+            with self.assertRaisesRegex(ValueError, "validated"):
+                native_exception_region_coverage(changed, [], "0x180000000")
+        for function in ({"address": "0x180001000", "rva": "0x1001", "chunks": []},
+                         {"address": "0x180001000", "rva": "0x1000", "chunks": [{"start": "0x180001020", "end": "0x180001000"}]}):
+            with self.assertRaises(ValueError):
+                native_exception_region_coverage(table, [function], "0x180000000")
+
+
+class EmbeddedPeRangeTests(unittest.TestCase):
+    def fixture(self, bits=64, machine=None, signed=False):
+        raw, directory = pe_fixture(bits)
+        optional = 0x98
+        table = optional + (240 if bits == 64 else 224)
+        if machine is not None:
+            struct.pack_into("<H", raw, 0x84, machine)
+        struct.pack_into("<I", raw, optional + 16, 0x1000)
+        struct.pack_into("<II", raw, optional + 32, 0x1000, 0x200)
+        struct.pack_into("<I", raw, optional + 56, 0x2000)
+        struct.pack_into("<I", raw, table + 36, 0x60000020)
+        struct.pack_into("<H", raw, optional + 68, 1)
+        if signed:
+            certificates = (struct.pack("<IHH", 13, 0x200, 2) + b"abcde" + b"\0" * 3
+                            + struct.pack("<IHH", 12, 0x200, 2) + b"wxyz" + b"\0" * 4)
+            struct.pack_into("<II", raw, directory + 4 * 8, 0x1000, 32)
+            raw.extend(certificates)
+        return raw, directory, table
+
+    def spec(self, raw, **changes):
+        evidence = {"path": ".analysis/results/native/fixture/functions/1000.json", "bytes": 3,
+                    "sha256": hashlib.sha256(b"abc").hexdigest()}
+        return {"name": "driver.sys", "offset": 0x80, "bytes": len(raw),
+            "sha256": hashlib.sha256(raw).hexdigest(), "machine": hex(struct.unpack_from("<H", raw, 0x84)[0]),
+            "evidence": [evidence], "basis": "Complete fixture owner declares this exact pointer and length", **changes}
+
+    def inspect(self, raw, **changes):
+        return inspect_embedded_pe_ranges(b"p" * 0x80 + raw + b"s" * 0x80, [self.spec(raw, **changes)])[0]
+
+    def test_explicit_length_retains_both_certificates_instead_of_size_of_image(self):
+        for bits, machine, architecture in ((32, 0x14c, "x86"), (64, 0x8664, "x64"), (64, 0x200, "ia64")):
+            with self.subTest(machine=machine):
+                raw, _, _ = self.fixture(bits, machine, signed=True)
+                result = self.inspect(raw)
+                self.assertEqual((result["offset"], result["bytes"]), (0x80, 0x1020))
+                self.assertEqual(result["sha256"], hashlib.sha256(raw).hexdigest())
+                self.assertEqual(result["pe"]["architecture"], architecture)
+                layout = result["layout"]
+                self.assertEqual((layout["image_bytes"], layout["complete_file_bytes"]), (0x2000, 0x1020))
+                self.assertEqual((layout["sections"][0]["rva"], layout["sections"][0]["file_offset"]), (0x1000, 0x200))
+                certificates = layout["security_directory"]
+                self.assertEqual((certificates["offset"], certificates["bytes"]), (0x1000, 32))
+                self.assertEqual(certificates["sha256"], hashlib.sha256(raw[0x1000:]).hexdigest())
+                self.assertEqual([(c["offset"], c["bytes"], c["aligned_bytes"]) for c in certificates["certificates"]],
+                                 [(0x1000, 13, 16), (0x1010, 12, 16)])
+                self.assertFalse(certificates["cryptographic_signature_verified"])
+
+    def test_ia64_descriptor_and_global_pointer_do_not_use_x64_entry_rules(self):
+        raw, directory, table = self.fixture(machine=0x200)
+        struct.pack_into("<I", raw, table + 36, 0x40000040)
+        struct.pack_into("<II", raw, directory + 8 * 8, 0x20c000, 0)
+        result = self.inspect(raw)
+        self.assertEqual(result["layout"]["entrypoint_kind"], "ia64_function_descriptor")
+        self.assertEqual(result["layout"]["directories"][8],
+                         {"index": 8, "address": 0x20c000, "bytes": 0, "address_kind": "global_pointer"})
+        struct.pack_into("<I", raw, directory + 8 * 8 + 4, 4)
+        with self.assertRaisesRegex(ValueError, "global-pointer"):
+            self.inspect(raw)
+
+    def test_no_review_does_not_discover_mz_or_execute_or_write_anything(self):
+        raw, _, _ = self.fixture()
+        with patch("subprocess.run", side_effect=AssertionError("No analyzer or target process")), \
+                patch.object(Path, "write_bytes", side_effect=AssertionError("Pure parser must not publish")):
+            self.assertEqual(inspect_embedded_pe_ranges(b"p" * 0x80 + raw, []), [])
+            self.assertEqual(self.inspect(raw)["bytes"], 0x1000)
+
+    def test_hash_machine_and_header_width_must_all_agree(self):
+        raw, _, _ = self.fixture()
+        for changes in ({"sha256": "0" * 64}, {"machine": "0x14c"}):
+            with self.subTest(changes=changes), self.assertRaises(ValueError):
+                self.inspect(raw, **changes)
+        struct.pack_into("<H", raw, 0x84, 0x14c)
+        with self.assertRaisesRegex(ValueError, "header width"):
+            self.inspect(raw)
+
+    def test_review_schema_and_provenance_cannot_be_omitted_or_escape_workspace(self):
+        raw, _, _ = self.fixture()
+        cases = [{"basis": " "}, {"evidence": []}, {"offset": True}, {"offset": 0},
+                 {"offset": -1}, {"bytes": len(raw) + 0x81}, {"machine": "0X8664"}]
+        for path in ("C:/private/review.json", ".work/review.json", ".analysis/../private.json", ".analysis\\review.json"):
+            original = dict(self.spec(raw)["evidence"][0], path=path)
+            cases.append({"evidence": [original]})
+        for changes in cases:
+            with self.subTest(changes=changes), self.assertRaises(ValueError):
+                self.inspect(raw, **changes)
+        parent = b"p" * 0x80 + raw
+        missing = self.spec(raw)
+        missing.pop("basis")
+        with self.assertRaisesRegex(ValueError, "schema"):
+            inspect_embedded_pe_ranges(parent, [missing])
+
+    def test_duplicate_names_and_overlapping_reviewed_slices_are_rejected_before_parsing(self):
+        raw, _, _ = self.fixture()
+        first = self.spec(raw)
+        parent = b"p" * 0x80 + raw + b"s" * 0x80
+        for other in (dict(first, name="DRIVER.SYS"), dict(first, name="other.sys", offset=0x88)):
+            with self.subTest(other=other), self.assertRaisesRegex(ValueError, "collide|overlap"):
+                inspect_embedded_pe_ranges(parent, [first, other])
+        for name in ("../driver.sys", "C:driver.sys", "dir\\driver.sys", "driver.sys.", "CON.sys", "x\n.sys"):
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, "basename"):
+                self.inspect(raw, name=name)
+
+    def test_adjacent_disjoint_reviews_preserve_declared_order_and_copy_provenance(self):
+        first, _, _ = self.fixture(32)
+        second, _, _ = self.fixture()
+        parent = b"p" * 0x80 + first + second
+        review = [self.spec(second, name="second.sys", offset=0x1080), self.spec(first, name="first.sys")]
+        result = inspect_embedded_pe_ranges(parent, review)
+        self.assertEqual([r["name"] for r in result], ["second.sys", "first.sys"])
+        review[0]["evidence"][0]["path"] = "changed"
+        self.assertEqual(result[0]["review"]["evidence"][0]["path"], ".analysis/results/native/fixture/functions/1000.json")
+
+    def test_dos_pe_header_and_alignment_bounds_are_checked(self):
+        original, _, _ = self.fixture()
+        cases = []
+        for offset, fmt, value in ((0x3c, "<I", len(original) - 4), (0x98 + 60, "<I", 0x100),
+                (0x98 + 32, "<I", 0x1800), (0x98 + 36, "<I", 0),
+                (0x98 + 56, "<I", 0x1000), (0x98 + 108, "<I", 17)):
+            raw = bytearray(original)
+            struct.pack_into(fmt, raw, offset, value)
+            cases.append(raw)
+        raw = bytearray(original)
+        raw[0x80:0x84] = b"LE\0\0"
+        cases.append(raw)
+        for raw in cases:
+            with self.subTest(header=raw[0x80:0x100]), self.assertRaises(ValueError):
+                self.inspect(raw)
+
+    def test_section_file_and_virtual_ranges_cannot_overlap_or_exceed_boundaries(self):
+        original, _, table = self.fixture()
+        cases = []
+        for offset in (0, 0x1000):
+            raw = bytearray(original)
+            struct.pack_into("<I", raw, table + 20, offset)
+            cases.append(raw)
+        for virtual_overlap in (False, True):
+            raw = bytearray(original)
+            raw.extend(b"\0" * 0x200)
+            struct.pack_into("<H", raw, 0x86, 2)
+            struct.pack_into("<I", raw, 0x98 + 56, 0x3000)
+            struct.pack_into("<8sIIII", raw, table + 40, b".extra\0\0", 0x200,
+                             0x1000 if virtual_overlap else 0x2000, 0x200, 0x1000 if virtual_overlap else 0x200)
+            cases.append(raw)
+        for raw in cases:
+            with self.subTest(section=raw[table:table + 80]), self.assertRaisesRegex(ValueError, "overlap|bounds"):
+                self.inspect(raw)
+
+    def test_entrypoint_and_directories_cannot_claim_unbacked_or_non_executable_bytes(self):
+        raw, directory, table = self.fixture()
+        struct.pack_into("<I", raw, table + 36, 0x40000040)
+        with self.assertRaisesRegex(ValueError, "entrypoint"):
+            self.inspect(raw)
+        raw, directory, table = self.fixture()
+        struct.pack_into("<I", raw, table + 8, 0x1100)
+        struct.pack_into("<I", raw, 0x98 + 56, 0x3000)
+        struct.pack_into("<I", raw, 0x98 + 16, 0x1f00)
+        with self.assertRaisesRegex(ValueError, "byte backing"):
+            self.inspect(raw)
+        for address, size in ((0x3000, 40), (0x1100, 0), (0, 40)):
+            raw, directory, _ = self.fixture()
+            struct.pack_into("<II", raw, directory + 8, address, size)
+            with self.subTest(address=address, size=size), self.assertRaises(ValueError):
+                self.inspect(raw)
+
+    def test_import_semantic_errors_are_not_promoted_to_empty_valid_metadata(self):
+        raw, directory, _ = self.fixture()
+        struct.pack_into("<II", raw, directory + 8, 0x1100, 40)
+        struct.pack_into("<IIIII", raw, 0x300, 0xffff0000, 0, 0, 0x1160, 0x1180)
+        raw[0x360:0x36d] = b"KERNEL32.dll\0"
+        with self.assertRaisesRegex(ValueError, "unresolved"):
+            self.inspect(raw)
+
+    def test_certificate_overlay_is_mandatory_and_unaccounted_tail_is_not_trimmed(self):
+        raw, directory, _ = self.fixture(signed=True)
+        for changed in (raw[:0x1000], raw + b"extra"):
+            with self.subTest(length=len(changed)), self.assertRaisesRegex(ValueError, "security directory|complete declared"):
+                self.inspect(changed)
+        for address, size in ((0x1100, 32), (0x1001, 31), (0, 32), (0x1000, 0)):
+            changed = bytearray(raw)
+            struct.pack_into("<II", changed, directory + 4 * 8, address, size)
+            with self.subTest(address=address, size=size), self.assertRaisesRegex(ValueError, "security directory"):
+                self.inspect(changed)
+
+    def test_invalid_or_overlapping_certificate_records_are_rejected(self):
+        original, directory, _ = self.fixture(signed=True)
+        for field, fmt, value in ((0, "<I", 7), (0, "<I", 33), (4, "<H", 0), (6, "<H", 0)):
+            raw = bytearray(original)
+            struct.pack_into(fmt, raw, 0x1000 + field, value)
+            with self.subTest(field=field, value=value), self.assertRaisesRegex(ValueError, "WIN_CERTIFICATE"):
+                self.inspect(raw)
+        raw, directory, _ = self.fixture()
+        struct.pack_into("<II", raw, directory + 4 * 8, 0x200, 16)
+        raw[0x200:0x210] = struct.pack("<IHH", 16, 0x200, 2) + b"abcdefgh"
+        with self.assertRaisesRegex(ValueError, "security/image.*overlap"):
+            self.inspect(raw)
+
+    def test_debug_raw_overlay_is_bounded_and_included_in_complete_extent(self):
+        raw, directory, _ = self.fixture()
+        raw.extend(b"debug-record")
+        struct.pack_into("<II", raw, directory + 6 * 8, 0x1200, 28)
+        struct.pack_into("<IIHHIIII", raw, 0x400, 0, 0, 0, 0, 2, 12, 0, 0x1000)
+        result = self.inspect(raw)
+        self.assertEqual(result["layout"]["complete_file_bytes"], 0x100c)
+        self.assertIn({"kind": "debug_data", "type": 2, "offset": 0x1000, "bytes": 12}, result["layout"]["raw_ranges"])
+        struct.pack_into("<I", raw, 0x400 + 20, 0x1400)
+        with self.assertRaisesRegex(ValueError, "debug RVA"):
+            self.inspect(raw)
+
+    def test_coff_symbol_overlay_has_a_bounded_string_table(self):
+        raw, _, _ = self.fixture()
+        struct.pack_into("<II", raw, 0x80 + 12, 0x1000, 1)
+        raw.extend(b"\0" * 18 + struct.pack("<I", 6) + b"x\0")
+        result = self.inspect(raw)
+        self.assertEqual(result["layout"]["complete_file_bytes"], 0x1018)
+        struct.pack_into("<I", raw, 0x1012, 0xffffffff)
+        with self.assertRaisesRegex(ValueError, "COFF symbols/string table"):
+            self.inspect(raw)
 
 
 class StaticCursorTests(unittest.TestCase):

@@ -1,5 +1,6 @@
 """Pure tests for source provenance and the connected analysis index."""
 import argparse
+import ast
 from contextlib import closing, redirect_stdout
 import hashlib
 import io
@@ -11,6 +12,7 @@ import struct
 import sys
 import tempfile
 import threading
+from types import SimpleNamespace
 import unittest
 import zipfile
 from unittest.mock import MagicMock, patch
@@ -1023,6 +1025,560 @@ class EvidenceTests(unittest.TestCase):
                 self.assertIsNone(graph.document(allowed))
         self.assertEqual([row["kind"] for row in graph.failures],
                          ["receipt_path_rejected", "receipt_read_prevented"])
+
+
+class NativeCaptureCapabilityTests(unittest.TestCase):
+    setUp = EvidenceTests.setUp
+    tearDown = EvidenceTests.tearDown
+    source = EvidenceTests.source
+
+    def capture_fixture(self, name, *, available=False, architecture="ia64", processor="ia64l", functions=3):
+        from datetime import datetime, timezone
+        import traceback
+
+        source = Path(__file__).with_name("ida") / "capture.py"
+        support_source = source.with_name("capture_io.py")
+        runtime_tool = self.source("tools/ida/capture.py", source.read_bytes())
+        self.source("tools/ida/capture_io.py", support_source.read_bytes())
+        raw = b"inert fake-IDA input: " + name.encode()
+        digest = hashlib.sha256(raw).hexdigest()
+        original = self.source(".analysis/inputs/official-native-current/test/" + name + ".sys", raw)
+        private = self.source(".work/native/" + digest + "/batch/driver.sys", raw)
+        database = self.source(".work/native/" + digest + "/batch/driver.sys.i64", b"inert database fixture")
+        output = self.root / ".analysis/results/native" / digest
+        plan = {"input": original.relative_to(self.root).as_posix(), "sha256": digest,
+                "output": output.relative_to(self.root).as_posix(), "loader": {"architecture": architecture},
+                "database_resume": {"input": database.relative_to(self.root).as_posix()}}
+        plan_path = self.source(".work/native/" + digest + "/plan.json", json.dumps(plan).encode())
+        base = 0x10000
+        addresses = [base + 0x1000 + index * 0x10 for index in range(functions)]
+
+        class Strings:
+            def setup(self, **options):
+                pass
+
+            def __iter__(self):
+                return iter(())
+
+        def decompile(ea, failure):
+            return SimpleNamespace(entry_ea=ea, get_lvars=lambda: [],
+                                   get_pseudocode=lambda: [SimpleNamespace(line="return;")])
+
+        sdk = SimpleNamespace(
+            init_hexrays_plugin=MagicMock(return_value=available),
+            get_hexrays_version=MagicMock(return_value="synthetic-decompiler"),
+            hexrays_failure_t=MagicMock(return_value=SimpleNamespace(
+                desc=lambda: "synthetic call analysis failed", code=-12, errea=base + 0x1000)),
+            decompile=MagicMock(side_effect=decompile), clear_cached_cfuncs=MagicMock())
+        if not available:
+            for api in (sdk.get_hexrays_version, sdk.hexrays_failure_t, sdk.decompile, sdk.clear_cached_cfuncs):
+                api.side_effect = AssertionError("Unavailable decompiler API must not be called")
+        support = {}
+        exec(compile(support_source.read_text(encoding="utf-8"), str(support_source), "exec"), support)
+        namespace = {
+            "__file__": str(runtime_tool), "Path": Path, "hashlib": hashlib, "json": json,
+            "datetime": datetime, "timezone": timezone, "traceback": traceback, "sys": sys,
+            "os": SimpleNamespace(environ={"RAZER_IDA_CAPTURE_PLAN": str(plan_path)}, sep=os.sep),
+            **{name: support[name] for name in ("file_sha256", "write_json_array", "write_function_aggregates")},
+            "idaapi": SimpleNamespace(get_input_file_path=lambda: str(private), get_imagebase=lambda: base),
+            "ida_auto": SimpleNamespace(auto_wait=MagicMock()),
+            "ida_ida": SimpleNamespace(validate_idb=MagicMock(return_value=0), VLD_SILENT=0,
+                                       inf_get_procname=MagicMock(return_value=processor)),
+            "ida_kernwin": SimpleNamespace(get_kernel_version=lambda: "synthetic-ida"), "ida_hexrays": sdk,
+            "ida_loader": SimpleNamespace(get_path=lambda kind: str(database), PATH_TYPE_IDB=0, DBFL_COMP=0,
+                                          save_database=MagicMock(return_value=True)),
+            "ida_nalt": SimpleNamespace(retrieve_input_file_sha256=lambda: bytes.fromhex(digest),
+                                        get_import_module_qty=lambda: 0),
+            "ida_typeinf": SimpleNamespace(get_idati=lambda: None, get_ordinal_limit=lambda til: 1),
+            "ida_funcs": SimpleNamespace(get_func=lambda ea: SimpleNamespace(end_ea=ea + 1, flags=0),
+                                         get_func_name=lambda ea: "function_" + hex(ea),
+                                         get_func_cmt=lambda func, repeatable: None),
+            "ida_bytes": SimpleNamespace(get_bytes=lambda ea, size: b"\xc3" * size, get_item_size=lambda ea: 1),
+            "ida_lines": SimpleNamespace(tag_remove=lambda text: text),
+            "ida_gdl": SimpleNamespace(FlowChart=lambda func: []),
+            "idc": SimpleNamespace(get_type=lambda ea: None, generate_disasm_line=lambda ea, flags: "retn",
+                                   get_cmt=lambda ea, repeatable: None, STRTYPE_C=0, STRTYPE_C_16=1),
+            "idautils": SimpleNamespace(Functions=lambda: addresses, Segments=lambda: [], Strings=Strings,
+                                        Entries=lambda: [], Names=lambda: [], Structs=lambda: [],
+                                        Chunks=lambda ea: [(ea, ea + 1)], FuncItems=lambda ea: [ea],
+                                        XrefsTo=lambda ea, flags: [], XrefsFrom=lambda ea, flags: []),
+        }
+        definitions = [node for node in ast.parse(source.read_text(encoding="utf-8")).body
+                       if isinstance(node, ast.FunctionDef) and node.name in {"write_json", "capture"}]
+        exec(compile(ast.Module(body=definitions, type_ignores=[]), str(source), "exec"), namespace)
+
+        def run_capture():
+            with redirect_stdout(io.StringIO()):
+                return namespace["capture"]()
+
+        return {"run": run_capture, "sdk": sdk, "decompile": decompile, "output": output,
+                "original": original, "private": private, "raw": raw, "digest": digest}
+
+    def assert_unavailable(self, fixture, manifest, count=3):
+        self.assertTrue(manifest["capture_complete"] and manifest["functions_complete"])
+        self.assertFalse(manifest["all_pseudocode_captured"])
+        self.assertIsNone(manifest["hexrays_version"])
+        self.assertEqual(len(manifest["functions"]), count)
+        self.assertEqual(len(manifest["failures"]), count)
+        self.assertEqual({row["stage"] for row in manifest["failures"]},
+                         {row["rva"][2:] + ":hexrays" for row in manifest["functions"]})
+        for failure in manifest["failures"]:
+            self.assertEqual(failure["reason"], "decompiler_unavailable")
+            self.assertFalse(failure["decompilation_attempted"])
+            self.assertIn("remains unverified", failure["error"])
+            self.assertNotIn("traceback", failure)
+        for row in manifest["functions"]:
+            self.assertTrue(row["assembly_captured"])
+            self.assertFalse(row["pseudocode_captured"])
+            self.assertEqual(row["pseudocode_status"], "unverified")
+            body = json.loads((fixture["output"] / row["path"]).read_bytes())
+            self.assertIsNone(body["pseudocode"])
+            self.assertEqual(body["assembly"][0]["bytes"], "c3")
+        for api in (fixture["sdk"].get_hexrays_version, fixture["sdk"].hexrays_failure_t,
+                    fixture["sdk"].decompile, fixture["sdk"].clear_cached_cfuncs):
+            api.assert_not_called()
+        self.assertEqual(fixture["original"].read_bytes(), fixture["raw"])
+        self.assertEqual(fixture["private"].read_bytes(), fixture["raw"])
+
+    def test_unavailable_decompiler_keeps_every_function_unverified_and_static_outputs_complete(self):
+        fixture = self.capture_fixture("unavailable")
+        manifest = fixture["run"]()
+        self.assertEqual((manifest["architecture"], manifest["processor"]), ("ia64", "ia64l"))
+        self.assert_unavailable(fixture, manifest)
+        verified, _ = analysis.verify_native_capture(fixture["output"],
+            {"sha256": fixture["digest"], "bytes": len(fixture["raw"])})
+        self.assertEqual(verified["failures"], manifest["failures"])
+
+    def test_matching_unavailable_capture_reuses_assembly_without_dropping_unverified_functions(self):
+        fixture = self.capture_fixture("reuse-unavailable")
+        first = fixture["run"]()
+        second = fixture["run"]()
+        self.assertTrue(second["previous_capture"]["reuse_allowed"])
+        self.assertEqual(second["retained_functions_reused"], 3)
+        self.assertEqual(first["functions"], second["functions"])
+        self.assert_unavailable(fixture, second)
+
+    def test_resume_rejects_changed_or_missing_architecture_processor_and_availability(self):
+        changes = [("architecture", "x86"), ("processor", "metapc"), ("hexrays_available", True),
+                   ("hexrays_available", 0),
+                   ("architecture", None), ("processor", None), ("hexrays_available", None)]
+        for index, (field, value) in enumerate(changes):
+            with self.subTest(field=field, value=value):
+                fixture = self.capture_fixture("identity-" + str(index))
+                first = fixture["run"]()
+                path = fixture["output"] / "capture.json"
+                previous = json.loads(path.read_bytes())
+                if value is None:
+                    previous.pop(field)
+                else:
+                    previous[field] = value
+                path.write_text(json.dumps(previous), encoding="utf-8")
+                current = fixture["run"]()
+                self.assertFalse(current["previous_capture"]["reuse_allowed"])
+                self.assertEqual(current["retained_functions_reused"], 0)
+                self.assertEqual(current["functions_total"], first["functions_total"])
+                self.assert_unavailable(fixture, current)
+
+    def test_gaining_and_losing_decompiler_capability_never_reuses_stale_pseudocode(self):
+        fixture = self.capture_fixture("capability-transition", architecture="x64", processor="metapc")
+        self.assert_unavailable(fixture, fixture["run"]())
+        sdk = fixture["sdk"]
+        sdk.init_hexrays_plugin.return_value = True
+        sdk.get_hexrays_version.side_effect = None
+        sdk.hexrays_failure_t.side_effect = None
+        sdk.decompile.side_effect = fixture["decompile"]
+        sdk.clear_cached_cfuncs.side_effect = None
+        captured = fixture["run"]()
+        self.assertFalse(captured["previous_capture"]["reuse_allowed"])
+        self.assertEqual(captured["retained_functions_reused"], 0)
+        self.assertTrue(captured["all_pseudocode_captured"])
+        self.assertFalse(captured["failures"])
+        self.assertEqual(sdk.decompile.call_count, 3)
+        self.assertEqual(sdk.clear_cached_cfuncs.call_count, 3)
+        sdk.init_hexrays_plugin.return_value = False
+        for api in (sdk.get_hexrays_version, sdk.hexrays_failure_t, sdk.decompile, sdk.clear_cached_cfuncs):
+            api.reset_mock()
+            api.side_effect = AssertionError("Unavailable decompiler API must not be called")
+        unavailable = fixture["run"]()
+        self.assertFalse(unavailable["previous_capture"]["reuse_allowed"])
+        self.assertEqual(unavailable["retained_functions_reused"], 0)
+        self.assert_unavailable(fixture, unavailable)
+
+    def test_available_decompiler_preserves_actual_decompilation_failure_details(self):
+        fixture = self.capture_fixture("decompilation-failure", available=True,
+                                       architecture="x86", processor="metapc", functions=1)
+        fixture["sdk"].decompile.side_effect = None
+        fixture["sdk"].decompile.return_value = None
+        manifest = fixture["run"]()
+        self.assertTrue(manifest["hexrays_available"] and manifest["capture_complete"])
+        self.assertFalse(manifest["all_pseudocode_captured"])
+        self.assertEqual(manifest["functions"][0]["pseudocode_status"], "failed")
+        self.assertEqual(manifest["functions"][0]["new_failures"], 1)
+        self.assertEqual(len(manifest["failures"]), 1)
+        failure = manifest["failures"][0]
+        self.assertIn("synthetic call analysis failed (code -12, address 0x11000)", failure["error"])
+        self.assertIn("traceback", failure)
+        self.assertNotIn("reason", failure)
+        fixture["sdk"].get_hexrays_version.assert_called_once()
+        fixture["sdk"].clear_cached_cfuncs.assert_called_once()
+
+
+class NativeExceptionRegionCaptureTests(unittest.TestCase):
+    setUp = EvidenceTests.setUp
+    tearDown = EvidenceTests.tearDown
+    source = EvidenceTests.source
+
+    def fixture(self):
+        from datetime import datetime, timezone
+        from test_host import Ia64ExceptionRegionTests
+
+        raw, _ = Ia64ExceptionRegionTests.fixture()
+        raw = bytes(raw)
+        digest = hashlib.sha256(raw).hexdigest()
+        native = ".analysis/results/native/" + digest
+        original = self.source(".analysis/inputs/official-native-current/test/ia64.sys", raw)
+        tool_source = Path(__file__).with_name("ida") / "capture.py"
+        tool = self.source("tools/ida/capture.py", tool_source.read_bytes())
+        parser = self.source("tools/host.py", Path(host.__file__).read_bytes())
+        entry = self.source("tools/ida/ida-start-mcp.py", tool_source.with_name("ida-start-mcp.py").read_bytes())
+        support = self.source("tools/ida/capture_io.py", tool_source.with_name("capture_io.py").read_bytes())
+        source_database = self.source(".work/native/" + digest + "/batch/ia64.sys.i64", b"inert immutable base IDB")
+        database = self.source(".work/native/" + digest + "/exception-regions/private.i64", source_database.read_bytes())
+        base_capture = self.source(native + "/capture.json", json.dumps(
+            {"capture_complete": True, "input_sha256": digest, "functions": []}).encode())
+        def identity(path):
+            return {"path": path.relative_to(self.root).as_posix(), "bytes": path.stat().st_size,
+                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+        installation = self.root / ".work/ida-fixture"
+        def retained(path, *, installed=False):
+            row = identity(path)
+            if installed:
+                row.pop("path")
+                row["installation_path"] = path.relative_to(installation).as_posix()
+            snapshot = self.source(native + "/tool-sources/" + row["sha256"] + path.suffix, path.read_bytes())
+            return {**row, "snapshot": identity(snapshot)}
+        tool_sources = {name: retained(path) for name, path in {
+            "capture": tool, "parser": parser, "entry": entry, "support": support}.items()}
+        tool_sources["analyzer"] = retained(self.source(".work/ida-fixture/idat.exe", b"inert analyzer"), installed=True)
+        for name, relative in host.IA64_EXCEPTION_ANALYZER_FILES.items():
+            tool_sources[name] = retained(self.source(".work/ida-fixture/" + relative, ("inert " + name).encode()), installed=True)
+        sdk = {}
+        tool_sources["sdk"] = {}
+        for name in host.IA64_EXCEPTION_SDK_MODULES:
+            path = self.source(".work/ida-fixture/python/" + name + ".py", ("inert " + name).encode())
+            tool_sources["sdk"][name] = retained(path, installed=True)
+            sdk[name] = SimpleNamespace(__file__=str(path))
+        pe = host.inspect_pe(raw)
+        output = self.root / native / "exception-regions/fixture"
+        plan = {"input": identity(original)["path"], "sha256": digest,
+            "output": output.relative_to(self.root).as_posix(), "database": identity(database),
+            "source_database": identity(source_database), "base_capture": identity(base_capture),
+            "capture_tool": tool_sources["capture"], "parser_tool": tool_sources["parser"], "tool_sources": tool_sources,
+            "exception_regions": {"directory": pe["exception_directory"], "tool_sources": tool_sources,
+                "source_database": identity(source_database),
+                "processor": {"name": "ia64l", "module": "ia", "bits": 64, "big_endian": False}}}
+        base = int(pe["image_base"], 0)
+        void = SimpleNamespace(type=0)
+        operand = SimpleNamespace(type=7, dtype=2, reg=4, value=0x21, addr=0x80,
+                                  specval=1, specflag1=2, specflag2=3, specflag3=4, specflag4=5)
+        def instruction():
+            return SimpleNamespace(ops=[operand, void], itype=77, auxpref=9,
+                                   get_canon_mnem=lambda: "synthetic_ia64")
+        def decode(insn, ea):
+            return {0: 6, 6: 6, 12: 4}.get((ea - base) % 16, 0)
+        def get_bytes(ea, count):
+            section = pe["sections"][0]
+            offset = section["file_offset"] + ea - base - section["rva"]
+            return raw[offset:offset + count]
+        enabled = [True]
+        def enable_auto(value):
+            previous, enabled[0] = enabled[0], value
+            return previous
+        sdk["ida_auto"].enable_auto = MagicMock(side_effect=enable_auto)
+        sdk["ida_auto"].is_auto_enabled = lambda: enabled[0]
+        sdk["ida_loader"].get_path = lambda kind: str(database)
+        sdk["ida_loader"].PATH_TYPE_IDB = 0
+        sdk["ida_nalt"].retrieve_input_file_sha256 = lambda: bytes.fromhex(plan["sha256"])
+        sdk["ida_ida"].validate_idb = lambda flags: 0
+        sdk["ida_ida"].VLD_SILENT = 0
+        sdk["ida_ida"].inf_get_procname = lambda: "ia64l"
+        sdk["ida_ida"].inf_is_64bit = lambda: True
+        sdk["ida_ida"].inf_is_be = lambda: False
+        sdk["ida_idp"].get_idp_name = lambda: "IA"
+        sdk["ida_diskio"].idadir = lambda relative: str(installation / relative)
+        sdk["ida_diskio"].getsysfile = lambda name, relative: str(installation / relative / name)
+        sdk["idaapi"].get_imagebase = lambda: base
+        sdk["ida_kernwin"].get_kernel_version = lambda: "fake-static-ida"
+        sdk["ida_bytes"].get_bytes = MagicMock(side_effect=get_bytes)
+        sdk["ida_bytes"].is_code = lambda flags: flags == 1
+        sdk["ida_bytes"].get_full_flags = lambda ea: 1
+        sdk["ida_ua"].insn_t = instruction
+        sdk["ida_ua"].decode_insn = MagicMock(side_effect=decode)
+        sdk["ida_ua"].o_void = 0
+        sdk["ida_ua"].print_operand = lambda ea, index: "r4"
+        sdk["ida_lines"].tag_remove = lambda text: text
+        sdk["idc"].generate_disasm_line = lambda ea, flags: "synthetic_ia64 r4"
+        sdk["idautils"].XrefsFrom = lambda ea, flags: []
+        sdk["idautils"].XrefsTo = lambda ea, flags: []
+        owners = {base + 0x1100: [(base + 0x1100, base + 0x1180)]}
+        sdk["idautils"].Functions = lambda: list(owners)
+        sdk["idautils"].Chunks = lambda ea: list(owners[ea])
+        namespace = {"__file__": str(tool), "Path": Path, "hashlib": hashlib, "json": json, "sys": sys,
+            "datetime": datetime, "timezone": timezone, "file_sha256": analysis.sha,
+            "capture_io": SimpleNamespace(__file__=str(support)), **sdk,
+        }
+        definitions = [node for node in ast.parse(tool_source.read_text(encoding="utf-8")).body
+                       if isinstance(node, ast.FunctionDef) and node.name in {"write_json", "capture_exception_regions"}]
+        exec(compile(ast.Module(body=definitions, type_ignores=[]), str(tool_source), "exec"), namespace)
+        parser_module = SimpleNamespace(__file__=str(parser), inspect_pe=host.inspect_pe,
+            IA64_EXCEPTION_ANALYZER_FILES=host.IA64_EXCEPTION_ANALYZER_FILES,
+            IA64_EXCEPTION_SDK_MODULES=host.IA64_EXCEPTION_SDK_MODULES)
+        def run(plan):
+            with patch.dict(sys.modules, {"host": parser_module}), patch.object(sys, "path", list(sys.path)):
+                return namespace["capture_exception_regions"](plan)
+        return {"plan": plan, "run": run, "namespace": namespace,
+                "output": output, "raw": raw, "get_bytes": get_bytes, "original": original,
+                "source_database": source_database, "base_capture": base_capture, "decode": decode,
+                "installation": installation, "parser_module": parser_module, "owners": owners,
+                "enabled": enabled, "identity": identity}
+
+    def test_explicit_cli_mode_and_private_capture_dispatch(self):
+        parser = argparse.ArgumentParser()
+        analysis.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["capture-native", "--input", "fixture.sys", "--exception-regions-only"])
+        self.assertTrue(args.exception_regions_only)
+        source = Path(__file__).with_name("ida") / "capture.py"
+        tree = ast.parse(source.read_text(encoding="utf-8"))
+        capture = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "capture")
+        branch = capture.body[1]
+        self.assertIsInstance(branch, ast.If)
+        self.assertEqual(ast.unparse(branch.test), "'exception_regions' in plan")
+        self.assertEqual(ast.unparse(branch.body[0].value), "capture_exception_regions(plan)")
+
+    def test_full_read_only_decode_preserves_operands_and_never_promotes_regions_to_functions(self):
+        fixture = self.fixture()
+        manifest = fixture["run"](fixture["plan"])
+        self.assertTrue(manifest["capture_complete"])
+        self.assertEqual(len(manifest["regions"]), 2)
+        self.assertEqual(sum(r["decoded_bytes"] for r in manifest["regions"]), 192)
+        for key in ("function_discovery_complete", "pseudocode_captured", "decompilation_attempted",
+                    "functions_created", "target_execution", "real_device_operations"):
+            self.assertFalse(manifest[key])
+        row = json.loads((fixture["output"] / manifest["regions"][0]["path"]).read_bytes())
+        self.assertEqual(row["raw_hex"], bytes(range(128)).hex())
+        self.assertEqual(row["assembly"][0]["operands"][0],
+            {"index": 0, "type": 7, "dtype": 2, "register": 4, "value": 0x21, "address": 0x80,
+             "specval": 1, "specflags": [2, 3, 4, 5], "text": "r4"})
+        self.assertEqual(row["assembly"][0]["auxpref"], 9)
+        self.assertEqual(fixture["source_database"].read_bytes(), b"inert immutable base IDB")
+        self.assertEqual(fixture["original"].read_bytes(), fixture["raw"])
+
+    def test_decode_failure_and_boundary_overrun_remain_failed_with_original_bytes_retained(self):
+        for returned in (0, 129):
+            with self.subTest(returned=returned):
+                fixture = self.fixture()
+                fixture["namespace"]["ida_ua"].decode_insn.side_effect = lambda insn, ea: returned
+                manifest = fixture["run"](fixture["plan"])
+                self.assertFalse(manifest["capture_complete"])
+                self.assertEqual(len(manifest["failures"]), 2)
+                self.assertTrue(all(r["decoded_bytes"] == 0 and not r["decode_complete"] for r in manifest["regions"]))
+                row = json.loads((fixture["output"] / manifest["regions"][0]["path"]).read_bytes())
+                self.assertEqual(row["raw_hex"], bytes(range(128)).hex())
+
+    def test_changed_original_loaded_bytes_tool_and_base_evidence_are_rejected(self):
+        for changed in ("original", "loaded", "capture_tool", "parser_tool", "base_capture", "source_database", "selection"):
+            with self.subTest(changed=changed):
+                fixture = self.fixture()
+                if changed == "loaded":
+                    fixture["namespace"]["ida_bytes"].get_bytes.side_effect = lambda ea, count: b"\xff" * count
+                elif changed == "selection":
+                    fixture["plan"]["exception_regions"]["directory"]["regions"][0]["end_rva"] = "0x1190"
+                elif changed == "original":
+                    fixture["original"].write_bytes(b"changed source")
+                else:
+                    path = self.root / fixture["plan"][changed]["path"]
+                    path.write_bytes(b"changed evidence")
+                with self.assertRaises(ValueError):
+                    fixture["run"](fixture["plan"])
+
+    def test_mid_capture_evidence_mutation_cannot_publish_a_complete_manifest(self):
+        fixture = self.fixture()
+        def mutate(insn, ea):
+            fixture["base_capture"].write_bytes(b"changed during capture")
+            return 16
+        fixture["namespace"]["ida_ua"].decode_insn.side_effect = mutate
+        with self.assertRaisesRegex(ValueError, "changed during capture"):
+            fixture["run"](fixture["plan"])
+        self.assertFalse((fixture["output"] / "capture.json").exists())
+
+    def test_real_ia64_short_and_long_instruction_steps_cover_exact_region_boundaries(self):
+        for steps in ({0: 6, 6: 6, 12: 4}, {0: 12, 12: 4}):
+            with self.subTest(steps=steps):
+                fixture = self.fixture()
+                fixture["namespace"]["ida_ua"].decode_insn.side_effect = lambda insn, ea: steps.get(ea % 16, 0)
+                manifest = fixture["run"](fixture["plan"])
+                self.assertTrue(manifest["capture_complete"])
+                for record in manifest["regions"]:
+                    row = json.loads((fixture["output"] / record["path"]).read_bytes())
+                    self.assertEqual(sum(x["size"] for x in row["assembly"]), row["bytes"])
+                    self.assertEqual(bytes.fromhex("".join(x["bytes"] for x in row["assembly"])), bytes.fromhex(row["raw_hex"]))
+                    self.assertTrue(all(steps[int(x["address"], 0) % 16] == x["size"] for x in row["assembly"]))
+                self.assertTrue(manifest["function_chunks_unchanged"])
+                snapshot = manifest["function_chunks_snapshot"]
+                self.assertEqual((snapshot["functions"], snapshot["chunks"]), (1, 1))
+                self.assertEqual(snapshot["sha256_before"], snapshot["sha256_after"])
+                self.assertFalse(manifest["automatic_analysis_enabled"])
+
+    def test_last_slot_overrun_does_not_count_bytes_past_either_region(self):
+        fixture = self.fixture()
+        endings = {int(row["end_rva"], 0) - 4 for row in fixture["plan"]["exception_regions"]["directory"]["regions"]}
+        base = 0x180000000
+        fixture["namespace"]["ida_ua"].decode_insn.side_effect = lambda insn, ea: (
+            5 if ea - base in endings else fixture["decode"](insn, ea))
+        manifest = fixture["run"](fixture["plan"])
+        self.assertFalse(manifest["capture_complete"])
+        self.assertEqual([row["decoded_bytes"] for row in manifest["regions"]], [124, 60])
+        self.assertEqual([row["decoded_size"] for row in manifest["failures"]], [5, 5])
+
+    def test_wrong_actual_processor_module_bitness_or_byte_order_cannot_claim_decode_completion(self):
+        for module, method, result in (("ida_ida", "inf_get_procname", "metapc"),
+                ("ida_idp", "get_idp_name", "pc"), ("ida_ida", "inf_is_64bit", False),
+                ("ida_ida", "inf_is_be", True)):
+            with self.subTest(method=method):
+                fixture = self.fixture()
+                setattr(fixture["namespace"][module], method, lambda: result)
+                with self.assertRaisesRegex(ValueError, "processor"):
+                    fixture["run"](fixture["plan"])
+                fixture["namespace"]["ida_ua"].decode_insn.assert_not_called()
+                self.assertFalse((fixture["output"] / "capture.json").exists())
+
+    def test_changed_entry_support_processor_sdk_or_retained_snapshot_is_rejected(self):
+        for name in ("entry", "support", "processor", "sdk", "snapshot"):
+            with self.subTest(name=name):
+                fixture = self.fixture()
+                tools = fixture["plan"]["tool_sources"]
+                row = tools["sdk"]["ida_ua"] if name == "sdk" else tools["capture" if name == "snapshot" else name]
+                if name == "snapshot":
+                    path = self.root / row["snapshot"]["path"]
+                elif "installation_path" in row:
+                    path = fixture["installation"] / row["installation_path"]
+                else:
+                    path = self.root / row["path"]
+                path.write_bytes(b"changed tool identity")
+                with self.assertRaises(ValueError):
+                    fixture["run"](fixture["plan"])
+                fixture["namespace"]["ida_ua"].decode_insn.assert_not_called()
+
+    def test_loaded_parser_support_and_sdk_paths_must_match_bound_files(self):
+        for name in ("parser", "capture_io", "ida_ua", "processor_search"):
+            with self.subTest(name=name):
+                fixture = self.fixture()
+                if name == "parser":
+                    fixture["parser_module"].__file__ = str(self.root / "other-host.py")
+                elif name == "processor_search":
+                    fixture["namespace"]["ida_diskio"].getsysfile = lambda name, relative: str(self.root / "other-ia.dll")
+                else:
+                    fixture["namespace"][name].__file__ = str(self.root / "other.py")
+                with self.assertRaises(ValueError):
+                    fixture["run"](fixture["plan"])
+                fixture["namespace"]["ida_ua"].decode_insn.assert_not_called()
+
+    def test_tool_or_snapshot_changes_during_decode_cannot_publish_completion(self):
+        for name in ("support", "processor", "sdk", "snapshot"):
+            with self.subTest(name=name):
+                fixture = self.fixture()
+                tools = fixture["plan"]["tool_sources"]
+                row = tools["sdk"]["ida_ua"] if name == "sdk" else tools["support" if name == "snapshot" else name]
+                path = (self.root / row["snapshot"]["path"] if name == "snapshot" else
+                        fixture["installation"] / row["installation_path"] if "installation_path" in row else
+                        self.root / row["path"])
+                changed = [False]
+                def mutate(insn, ea):
+                    if not changed[0]:
+                        changed[0] = True
+                        path.write_bytes(b"changed while decoding")
+                    return fixture["decode"](insn, ea)
+                fixture["namespace"]["ida_ua"].decode_insn.side_effect = mutate
+                with self.assertRaises(ValueError):
+                    fixture["run"](fixture["plan"])
+                self.assertFalse((fixture["output"] / "capture.json").exists())
+
+    def test_function_chunk_changes_or_reenabled_analysis_prevent_publication(self):
+        for change in ("function", "chunk", "automatic_analysis"):
+            with self.subTest(change=change):
+                fixture = self.fixture()
+                changed = [False]
+                def mutate(insn, ea):
+                    if not changed[0]:
+                        changed[0] = True
+                        if change == "function":
+                            fixture["owners"][0x180001200] = [(0x180001200, 0x180001240)]
+                        elif change == "chunk":
+                            fixture["owners"][0x180001100].append((0x180001200, 0x180001240))
+                        else:
+                            fixture["enabled"][0] = True
+                    return fixture["decode"](insn, ea)
+                fixture["namespace"]["ida_ua"].decode_insn.side_effect = mutate
+                with self.assertRaisesRegex(ValueError, "ownership|automatic analysis"):
+                    fixture["run"](fixture["plan"])
+                self.assertFalse((fixture["output"] / "capture.json").exists())
+
+    def test_bootstrap_disables_only_exception_analysis_before_any_wait(self):
+        import runpy
+
+        for mode in ("exception", "normal", "mcp"):
+            with self.subTest(mode=mode):
+                fixture = self.fixture()
+                entry = self.root / fixture["plan"]["tool_sources"]["entry"]["path"]
+                plan_path = self.source(".work/bootstrap-plan.json", json.dumps(
+                    fixture["plan"] if mode == "exception" else {}).encode())
+                calls = []
+                auto = SimpleNamespace(auto_wait=lambda: calls.append("wait"),
+                    enable_auto=lambda enabled: calls.append(("auto", enabled)))
+                api = SimpleNamespace(load_and_run_plugin=lambda name, arg: calls.append("plugin"))
+                idc = SimpleNamespace(qexit=lambda code: calls.append(("exit", code)))
+                environment = {"RAZER_IDA_CAPTURE_PLAN": str(plan_path)} if mode != "mcp" else {}
+                with patch.dict(os.environ, environment, clear=True), patch.dict(sys.modules,
+                        {"ida_auto": auto, "idaapi": api, "idc": idc}), patch.object(runpy, "run_path",
+                        return_value={"capture": lambda: calls.append("capture")}), redirect_stdout(io.StringIO()):
+                    exec(compile(entry.read_text(encoding="utf-8"), str(entry), "exec"), {"__file__": str(entry)})
+                self.assertEqual(calls, {"exception": [("auto", False), "capture", ("exit", 0)],
+                    "normal": ["wait", "capture", ("exit", 0)], "mcp": ["wait", "plugin"]}[mode])
+
+    def test_export_binds_snapshots_and_source_database_in_immutable_attempt_key(self):
+        fixture = self.fixture()
+        plans, commands = [], []
+        def launch(command, *, cwd, env, **kwargs):
+            commands.append(command)
+            plan = json.loads(Path(env["RAZER_IDA_CAPTURE_PLAN"]).read_bytes())
+            plans.append(plan)
+            def wait():
+                analysis.save(self.root / plan["output"] / "capture.json", {"capture_complete": True,
+                    "input_sha256": plan["sha256"], "exception_regions": plan["exception_regions"],
+                    "tool_sources": plan["tool_sources"], "function_chunks_unchanged": True})
+                return 0
+            return SimpleNamespace(pid=1234, wait=wait)
+        args = argparse.Namespace(ida_root=str(fixture["installation"]), no_refresh_gaps=True)
+        original = {"sha256": fixture["plan"]["sha256"], "bytes": len(fixture["raw"])}
+        with patch.object(analysis, "configure_ida"), patch.object(analysis.subprocess, "Popen", side_effect=launch), redirect_stdout(io.StringIO()):
+            first = analysis.capture_native_exception_regions(args, fixture["original"], original, host.inspect_pe(fixture["raw"]))
+            fixture["source_database"].write_bytes(b"different retained base database")
+            second = analysis.capture_native_exception_regions(args, fixture["original"], original, host.inspect_pe(fixture["raw"]))
+            with self.assertRaisesRegex(ValueError, "immutable"):
+                analysis.capture_native_exception_regions(args, fixture["original"], original, host.inspect_pe(fixture["raw"]))
+        self.assertTrue(first["passed"] and second["passed"])
+        self.assertNotEqual(plans[0]["output"], plans[1]["output"])
+        self.assertNotEqual(plans[0]["source_database"]["sha256"], plans[1]["source_database"]["sha256"])
+        self.assertTrue(all(command[1:3] == ["-a", "-A"] for command in commands))
+        for plan in plans:
+            self.assertEqual(plan["exception_regions"]["source_database"], plan["source_database"])
+            tools = plan["tool_sources"]
+            rows = [row for name, row in tools.items() if name != "sdk"] + list(tools["sdk"].values())
+            self.assertEqual(set(tools["sdk"]), set(host.IA64_EXCEPTION_SDK_MODULES))
+            for row in rows:
+                retained = self.root / row["snapshot"]["path"]
+                self.assertEqual(analysis.sha(retained), row["sha256"])
+                self.assertEqual(retained.stat().st_size, row["bytes"])
 
 
 class CaptureStreamingTests(unittest.TestCase):
@@ -2415,6 +2971,243 @@ class NativeSupplementTests(unittest.TestCase):
                 analysis.native_function_selection(bytes(self.fixture()), capture, [0x1000],
                                                    max_function_kib=limit)
 
+    def shared_tail_fixture(self, root):
+        raw = bytearray(self.fixture())
+        base = 0x140000000
+        raw[0x200:0x207] = bytes.fromhex("558bec9031c0c3")
+        raw[0x240:0x245] = bytes.fromhex("e9bfffffff")
+        raw = bytes(raw)
+        digest = hashlib.sha256(raw).hexdigest()
+        result = root / ".analysis/results/native" / digest
+        source = root / ".analysis/inputs/native/shared.dll"
+
+        def write(path, value):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            data = json.dumps(value).encode()
+            path.write_bytes(data)
+            return {"path": path.relative_to(root).as_posix(), "bytes": len(data),
+                    "sha256": hashlib.sha256(data).hexdigest()}
+
+        source.parent.mkdir(parents=True)
+        source.write_bytes(raw)
+
+        def edge(frm, to, kind):
+            return {"from": hex(base + frm), "to": hex(base + to), "type": kind,
+                    "code": True, "user": False}
+
+        primary_rows = [(0x1000, "55", "push ebp", [edge(0x1000, 0x1001, 21)], []),
+                        (0x1001, "8bec", "mov ebp, esp", [edge(0x1001, 0x1003, 21)], [edge(0x1000, 0x1001, 21)]),
+                        (0x1003, "90", "nop", [edge(0x1003, 0x1004, 21)], [edge(0x1001, 0x1003, 21)]),
+                        (0x1004, "31c0", "xor eax, eax", [edge(0x1004, 0x1006, 21)],
+                         [edge(0x1003, 0x1004, 21), edge(0x1040, 0x1004, 19)]),
+                        (0x1006, "c3", "retn", [], [edge(0x1004, 0x1006, 21)])]
+        secondary_rows = [(0x1040, "e9bfffffff", "jmp loc_140001004", [edge(0x1040, 0x1004, 19)], [])]
+        bodies = []
+        for rva, rows in ((0x1000, primary_rows), (0x1040, secondary_rows)):
+            start = base + rva
+            end = base + (0x1007 if rva == 0x1000 else 0x1045)
+            file_start = 0x200 + rva - 0x1000
+            code = raw[file_start:file_start + end - start]
+            assembly = [{"address": hex(base + at), "rva": hex(at), "bytes": value, "text": text,
+                         "xrefs_from": outgoing, "xrefs_to": incoming}
+                        for at, value, text, outgoing, incoming in rows]
+            body = {"address": hex(start), "rva": hex(rva), "end": hex(end), "flags": 0,
+                    "chunks": [{"start": hex(start), "end": hex(end), "raw_hex": code.hex(),
+                                "sha256": hashlib.sha256(code).hexdigest()}],
+                    "assembly": assembly, "xrefs_to_entry": assembly[0]["xrefs_to"], "pseudocode": None}
+            reference = write(result / "functions" / (hex(rva)[2:] + ".json"), body)
+            reference.update(path="functions/" + hex(rva)[2:] + ".json", rva=hex(rva), address=hex(start),
+                            assembly_captured=True, pseudocode_captured=False)
+            bodies.append((reference, body))
+        capture = {"input": source.relative_to(root).as_posix(), "input_sha256": digest,
+                   "input_bytes": len(raw), "image_base": hex(base), "capture_complete": True,
+                   "functions": [reference for reference, _ in bodies],
+                   "failures": [{"stage": "1000:hexrays", "error": "synthetic shared tail"}]}
+        write(result / "capture.json", capture)
+        return raw, result, capture, bodies, write
+
+    def test_shared_tail_selection_keeps_both_entries_and_exact_tail_ownership(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            raw, result, capture, _, _ = self.shared_tail_fixture(Path(directory))
+            before = (result / "capture.json").read_bytes()
+            selected = analysis.native_function_selection(bytes(raw), capture, [0x1000],
+                type_note="Complete shared-entry control-flow review",
+                shared_tail_specs=["0x1000=0x1004:0x1007:0x1000,0x1040:inline"])
+            shared = selected["function_shared_tails"][0]
+            self.assertEqual(shared["owner_rvas"], ["0x1000", "0x1040"])
+            self.assertEqual(shared["primary_owner_rva"], "0x1000")
+            self.assertEqual(shared["expected_tail"]["start"], "0x140001004")
+            self.assertEqual(shared["expected_tail"]["end"], "0x140001007")
+            self.assertEqual([owner["expected_end"] for owner in shared["owners"]],
+                             ["0x140001004", "0x140001045"])
+            self.assertEqual([len(owner["expected_chunks"]) for owner in shared["owners"]], [2, 2])
+            self.assertEqual([edge["from"] for edge in shared["incoming_edges"]],
+                             ["0x140001003", "0x140001040"])
+            self.assertEqual(analysis.native_shared_tail_specifications([shared]),
+                             ["0x1000=0x1004:0x1007:0x1000,0x1040:inline"])
+            recomputed = analysis.native_function_selection(raw, capture, [0x1000], shared_tail_specs=[shared])
+            self.assertEqual(recomputed, selected)
+            self.assertEqual((result / "capture.json").read_bytes(), before)
+
+    def test_shared_tail_selection_rejects_interior_start_foreign_edge_wrong_owner_and_changed_bytes(self):
+        issues = ("interior", "end", "foreign", "owner", "bytes", "duplicate", "source_hash",
+                  "missing_instruction", "missing_incoming", "missing_outgoing", "call_entry", "outline_overlap")
+        for issue in issues:
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                with patch.object(analysis, "ROOT", root):
+                    raw, result, capture, bodies, write = self.shared_tail_fixture(root)
+                    specs = ["0x1000=0x1004:0x1007:0x1000,0x1040:inline"]
+                    if issue == "interior":
+                        specs = ["0x1000=0x1005:0x1007:0x1000,0x1040:inline"]
+                    elif issue == "end":
+                        specs = ["0x1000=0x1004:0x1006:0x1000,0x1040:inline"]
+                    elif issue == "owner":
+                        specs = ["0x1000=0x1004:0x1007:0x1000:inline"]
+                    elif issue == "duplicate":
+                        specs *= 2
+                    else:
+                        body = bodies[0][1]
+                        if issue == "foreign":
+                            body["assembly"][3]["xrefs_to"].append({"from": "0x140001080", "to": "0x140001004",
+                                                                       "type": 19, "code": True, "user": False})
+                        elif issue == "bytes":
+                            body["chunks"][0]["raw_hex"] = "90" * 7
+                        elif issue == "missing_instruction":
+                            body["assembly"].pop(3)
+                        elif issue == "missing_incoming":
+                            body["assembly"][3]["xrefs_to"].pop()
+                        elif issue == "missing_outgoing":
+                            body["assembly"][3]["xrefs_from"] = []
+                        elif issue == "call_entry":
+                            body["assembly"][3]["xrefs_to"][1]["type"] = 17
+                        identity = write(result / "functions/1000.json", body)
+                        if issue != "source_hash":
+                            capture["functions"][0].update(bytes=identity["bytes"], sha256=identity["sha256"])
+                        else:
+                            capture["functions"][0]["sha256"] = "0" * 64
+                    with self.assertRaises(ValueError):
+                        analysis.native_function_selection(bytes(raw), capture, [0x1000],
+                            type_note="Complete shared-entry control-flow review", shared_tail_specs=specs,
+                            outline_rvas=[0x1040] if issue == "outline_overlap" else ())
+
+    def shared_tail_reanalysis_fixture(self, root, inline=False):
+        raw, result, capture, bodies, write = self.shared_tail_fixture(root)
+        capture["failures"].append({"stage": "1040:hexrays", "error": "unselected helper has no pseudocode"})
+        write(result / "capture.json", capture)
+        mode = "inline" if inline else "retain"
+        selection = analysis.native_function_selection(raw, capture, [0x1000],
+            type_note="Complete shared-entry control-flow review",
+            shared_tail_specs=["0x1000=0x1004:0x1007:0x1000,0x1040:" + mode])
+        shared = selection["function_shared_tails"][0]
+        output = result / "supplements/shared"
+        primary, secondary = [json.loads(json.dumps(body)) for _, body in bodies]
+        primary["end"] = shared["owners"][0]["expected_end"]
+        primary["chunks"] = shared["owners"][0]["expected_chunks"]
+        secondary["chunks"] = shared["owners"][1]["expected_chunks"]
+        secondary["assembly"] = sorted(secondary["assembly"] + primary["assembly"][3:],
+                                       key=lambda item: int(item["address"], 16))
+        for body in (primary, secondary):
+            body["flags"] = 0x40000 if inline else 0
+        primary["pseudocode"] = {"lines": [{"line": 0, "text": "int recovered(void) { return 0; }"}], "locals": []}
+        function = write(output / "functions/1000.json", primary)
+        function.update(path="functions/1000.json", rva="0x1000", address=primary["address"],
+                        assembly_captured=True, pseudocode_captured=True)
+        helper = write(output / "shared-tail-helpers/1040.json", secondary)
+        helper.update(path="shared-tail-helpers/1040.json", rva="0x1040", address=secondary["address"],
+                      assembly_captured=True, pseudocode_captured=False)
+        database = root / ".work/native" / capture["input_sha256"] / "batch/shared.dll.i64"
+        database.parent.mkdir(parents=True)
+        database.write_bytes(b"immutable synthetic retained IDB")
+        database_ref = {"path": analysis.rel(database), "sha256": analysis.sha(database)}
+        capture_ref = {"path": analysis.rel(result / "capture.json"), "sha256": analysis.sha(result / "capture.json")}
+        applied = {**shared, "base_database_modified": False, "applied_tail": shared["expected_tail"],
+                   "applied_primary_owner_rva": shared["primary_owner_rva"], "applied_owner_rvas": shared["owner_rvas"],
+                   "applied_owners": [{"rva": owner["rva"], "chunks": owner["expected_chunks"],
+                        "end": owner["expected_end"], "previous_flags": owner["expected_flags"],
+                        "applied_flags": 0x40000 if inline else 0, "outline_flag": 0x40000,
+                        "previous_frame": {"frame_id": 0, "local_bytes": 0, "saved_register_bytes": 0,
+                                           "argument_bytes": 0, "frame_pointer_delta": 0},
+                        "applied_frame": {"frame_id": 0, "local_bytes": 0, "saved_register_bytes": 0,
+                                          "argument_bytes": 0, "frame_pointer_delta": 0},
+                        "previous_stack_points": [{"address": hex(0x140000000 + int(owner["rva"], 16)), "delta": 0}],
+                        "applied_stack_points": [{"address": hex(0x140000000 + int(owner["rva"], 16)), "delta": 0},
+                                                 {"address": shared["expected_tail"]["start"], "delta": -4}],
+                        "previous_type": None, "applied_type": None,
+                        "base_database_modified": False} for owner in shared["owners"]]}
+        supplement = {"input_sha256": capture["input_sha256"], "base_capture": capture_ref,
+            "capture_complete": True, "all_pseudocode_captured": True, "failures": [], "database_integrity": {"verified": True},
+            "base_capture_unchanged": True, "base_database_unchanged": True, "target_execution": False, "capture_tool": {},
+            "source_database": database_ref, "function_selection": selection, "functions": [function],
+            "type_recoveries": [], "function_shared_tail_recoveries": [applied], "shared_tail_helpers": [helper],
+            "ida_version": "synthetic", "hexrays_version": "synthetic"}
+        write(output / "capture.json", supplement)
+        write(output / "session.json", {"passed": True, "exit_code": 0, "capture_tool": {}})
+        write(output / "plan.json", {"function_selection": selection, "base_capture": capture_ref,
+                                      "source_database": database_ref})
+        return result, output, capture, supplement, primary, secondary, database, write
+
+    def test_shared_tail_resolution_keeps_unselected_failure_and_requires_every_owner_and_assembly_snapshot(self):
+        issues = (None, "missing_tail", "wrong_primary", "missing_owner", "duplicate_owner", "tail_bytes",
+                  "primary_end", "owner_chunks", "original_flags", "applied_flags", "missing_helper", "duplicate_helper",
+                  "helper_bytes", "helper_xrefs", "helper_flags", "helper_pseudocode", "parent_failed",
+                  "parent_instruction", "parent_xrefs", "parent_flags", "modified_base", "database", "retained_source",
+                  "frame_changed", "frame_invalid", "type_changed", "type_invalid", "stack_changed",
+                  "stack_missing", "stack_foreign", "stack_duplicate")
+        for inline in (False, True):
+            for issue in issues:
+                with self.subTest(inline=inline, issue=issue), tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    with patch.object(analysis, "ROOT", root):
+                        result, output, capture, supplement, parent, helper, database, write = self.shared_tail_reanalysis_fixture(root, inline)
+                        before = (result / "capture.json").read_bytes()
+                        applied = supplement["function_shared_tail_recoveries"][0]
+                        if issue == "missing_tail": supplement["function_shared_tail_recoveries"] = []
+                        elif issue == "wrong_primary": applied["applied_primary_owner_rva"] = "0x1040"
+                        elif issue == "missing_owner": applied["applied_owner_rvas"] = ["0x1000"]
+                        elif issue == "duplicate_owner": applied["applied_owners"].append(dict(applied["applied_owners"][0]))
+                        elif issue == "tail_bytes": applied["applied_tail"] = {**applied["applied_tail"], "raw_hex": "9090c3"}
+                        elif issue == "primary_end": applied["applied_owners"][0]["end"] = "0x140001007"
+                        elif issue == "owner_chunks": applied["applied_owners"][0]["chunks"] = []
+                        elif issue == "original_flags": applied["applied_owners"][0]["previous_flags"] = 1
+                        elif issue == "applied_flags": applied["applied_owners"][0]["applied_flags"] ^= 0x40000
+                        elif issue == "frame_changed": applied["applied_owners"][0]["applied_frame"]["local_bytes"] = 8
+                        elif issue == "frame_invalid": applied["applied_owners"][0]["previous_frame"]["local_bytes"] = -1
+                        elif issue == "type_changed": applied["applied_owners"][0]["applied_type"] = "int invented(void);"
+                        elif issue == "type_invalid": applied["applied_owners"][0]["previous_type"] = False
+                        elif issue == "stack_changed": applied["applied_owners"][0]["applied_stack_points"][0]["delta"] = -8
+                        elif issue == "stack_missing": applied["applied_owners"][0]["applied_stack_points"].pop(0)
+                        elif issue == "stack_foreign": applied["applied_owners"][0]["applied_stack_points"].append(
+                            {"address": "0x140001080", "delta": -8})
+                        elif issue == "stack_duplicate": applied["applied_owners"][0]["applied_stack_points"].append(
+                            dict(applied["applied_owners"][0]["applied_stack_points"][0]))
+                        elif issue == "missing_helper": supplement["shared_tail_helpers"] = []
+                        elif issue == "duplicate_helper": supplement["shared_tail_helpers"] *= 2
+                        elif issue == "modified_base": applied["base_database_modified"] = True
+                        elif issue == "database": database.write_bytes(b"changed retained IDB")
+                        elif issue == "retained_source": (result / "functions/1040.json").write_bytes(b"changed source evidence")
+                        elif issue in {"helper_bytes", "helper_xrefs", "helper_flags", "helper_pseudocode"}:
+                            if issue == "helper_bytes": helper["assembly"].pop()
+                            elif issue == "helper_xrefs": helper["assembly"][0]["xrefs_to"] = []
+                            elif issue == "helper_flags": helper["flags"] ^= 0x40000
+                            else: helper["pseudocode"] = {"lines": [{"text": "invented"}], "locals": []}
+                            identity = write(output / "shared-tail-helpers/1040.json", helper)
+                            supplement["shared_tail_helpers"][0].update(bytes=identity["bytes"], sha256=identity["sha256"])
+                        elif issue in {"parent_failed", "parent_instruction", "parent_xrefs", "parent_flags"}:
+                            if issue == "parent_failed": parent["pseudocode"] = None
+                            elif issue == "parent_instruction": parent["assembly"].pop()
+                            elif issue == "parent_xrefs": parent["assembly"][3]["xrefs_to"] = []
+                            else: parent["flags"] ^= 0x40000
+                            identity = write(output / "functions/1000.json", parent)
+                            supplement["functions"][0].update(bytes=identity["bytes"], sha256=identity["sha256"])
+                        write(output / "capture.json", supplement)
+                        resolved = analysis.native_reanalysis_resolution(result)
+                        self.assertEqual(bool(resolved["verification_failures"]), issue is not None)
+                        self.assertEqual(len(resolved["resolved_failures"]), 0 if issue else 1)
+                        self.assertEqual(set(resolved["complete_functions"]), set() if issue else {"0x1000"})
+                        self.assertEqual(resolved["remaining_failures"], capture["failures"] if issue else [capture["failures"][1]])
+                        self.assertEqual((result / "capture.json").read_bytes(), before)
+
     def import_fixture(self):
         raw = self.fixture()
         raw[0x300:0x400] = bytes(0x100)
@@ -2610,6 +3403,160 @@ class NativeSupplementTests(unittest.TestCase):
             capture["functions"].append(record)
         write(result / "capture.json", capture)
         return raw, result, capture, write
+
+    def partition_fixture(self, root):
+        raw = self.fixture()
+        # The outer jump skips a real local XOR/RET helper. Its one padding byte
+        # is retained in the outer chunk although no instruction enumerates it.
+        raw[0x200:0x20c] = bytes.fromhex("eb0431c0c390e8f7ffffffc3")
+        raw = bytes(raw)
+        digest = hashlib.sha256(raw).hexdigest()
+        result = root / ".analysis/results/native" / digest
+
+        def write(path, data):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            payload = json.dumps(data).encode()
+            path.write_bytes(payload)
+            return {"path": path.relative_to(root).as_posix(), "bytes": len(payload),
+                    "sha256": hashlib.sha256(payload).hexdigest()}
+
+        source = root / ".analysis/inputs/native/partition.dll"
+        source.parent.mkdir(parents=True)
+        source.write_bytes(raw)
+        base = 0x140000000
+
+        def xref(first, target, kind):
+            return {"from": hex(base + first), "to": hex(base + target), "type": kind,
+                    "code": True, "user": False}
+
+        rows = [(0x1000, "eb04", "jmp     loc_140001006", [xref(0x1000, 0x1006, 19)], []),
+                (0x1002, "31c0", "xor     eax, eax", [xref(0x1002, 0x1004, 21)], [xref(0x1006, 0x1002, 17)]),
+                (0x1004, "c3", "retn", [], [xref(0x1002, 0x1004, 21)]),
+                (0x1006, "e8f7ffffff", "call    loc_140001002", [xref(0x1006, 0x1002, 17), xref(0x1006, 0x100b, 21)], [xref(0x1000, 0x1006, 19)]),
+                (0x100b, "c3", "retn", [], [xref(0x1006, 0x100b, 21)])]
+        body = {"address": hex(base + 0x1000), "rva": "0x1000", "end": hex(base + 0x100c), "flags": 0,
+            "chunks": [{"start": hex(base + 0x1000), "end": hex(base + 0x100c),
+                        "raw_hex": raw[0x200:0x20c].hex(), "sha256": hashlib.sha256(raw[0x200:0x20c]).hexdigest()}],
+            "assembly": [{"address": hex(base + at), "rva": hex(at), "bytes": code, "text": text,
+                          "xrefs_from": outgoing, "xrefs_to": incoming} for at, code, text, outgoing, incoming in rows],
+            "xrefs_to_entry": [], "pseudocode": None}
+        record = write(result / "functions/1000.json", body)
+        record.update(path="functions/1000.json", rva="0x1000", address=body["address"],
+                      assembly_captured=True, pseudocode_captured=False)
+        capture = {"input": source.relative_to(root).as_posix(), "input_sha256": digest, "input_bytes": len(raw),
+                   "capture_complete": True, "image_base": hex(base), "functions": [record],
+                   "failures": [{"stage": "1000:hexrays", "error": "synthetic positive-SP"}]}
+        write(result / "capture.json", capture)
+        return raw, result, capture, body, write
+
+    def test_partition_selection_preserves_padding_call_edges_and_exact_complete_byte_union(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            raw, result, capture, body, _ = self.partition_fixture(Path(directory))
+            before = (result / "capture.json").read_bytes()
+            selection = analysis.native_function_selection(raw, capture, [0x1000], type_note="Complete local CALL/RET review",
+                partition_specs=["0x1000=0x1002:0x1005"])
+            partition = selection["function_partitions"][0]
+            pieces = sorted(partition["owner_chunks"] + partition["helpers"][0]["expected_chunks"], key=lambda c: c["start"])
+            self.assertEqual("".join(c["raw_hex"] for c in pieces), body["chunks"][0]["raw_hex"])
+            self.assertEqual(partition["owner_chunks"][1]["raw_hex"], "90e8f7ffffffc3")
+            self.assertEqual(partition["helpers"][0]["call_edges"], [{"rva": "0x1006", "target_rva": "0x1002", "bytes": "e8f7ffffff"}])
+            baselines = analysis.native_function_partition_bodies(partition)
+            self.assertEqual(baselines["owner"]["end"], "0x140001002")
+            self.assertEqual([row["rva"] for row in baselines["owner"]["assembly"]], ["0x1000", "0x1006", "0x100b"])
+            self.assertEqual([row["rva"] for row in baselines["helpers"]["0x1002"]["assembly"]], ["0x1002", "0x1004"])
+            self.assertEqual((result / "capture.json").read_bytes(), before)
+
+    def test_partition_selection_rejects_changed_code_bad_boundaries_and_unclosed_control_flow(self):
+        issues = ("source_hash", "chunk", "instruction", "interior", "overlap", "duplicate_owner", "unselected",
+                  "no_note", "missing_refs", "nonlocal", "interior_entry", "call_bytes", "terminal")
+        for issue in issues:
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                with patch.object(analysis, "ROOT", root):
+                    raw, result, capture, body, write = self.partition_fixture(root)
+                    specs, selected, note = ["0x1000=0x1002:0x1005"], [0x1000], "Explicit complete-byte review"
+                    if issue == "interior": specs = ["0x1000=0x1003:0x1005"]
+                    elif issue == "overlap": specs = ["0x1000=0x1002:0x1005,0x1002:0x1005"]
+                    elif issue == "duplicate_owner": specs *= 2
+                    elif issue == "unselected": selected = [0x1001]
+                    elif issue == "no_note": note = None
+                    else:
+                        if issue == "chunk": body["chunks"][0]["raw_hex"] = "90" * 12
+                        elif issue == "instruction": body["assembly"][1]["bytes"] = "9090"
+                        elif issue == "missing_refs": del body["assembly"][1]["xrefs_to"]
+                        elif issue == "nonlocal": body["assembly"][1]["xrefs_from"][0]["to"] = "0x140001100"
+                        elif issue == "interior_entry": body["assembly"][2]["xrefs_to"].append(body["assembly"][1]["xrefs_to"][0])
+                        elif issue == "call_bytes": body["assembly"][1]["xrefs_to"][0]["from"] = "0x140001000"
+                        elif issue == "terminal": body["assembly"][1]["xrefs_from"] = []
+                        identity = write(result / "functions/1000.json", body)
+                        if issue != "source_hash": capture["functions"][0].update(bytes=identity["bytes"], sha256=identity["sha256"])
+                        else: capture["functions"][0]["sha256"] = "0" * 64
+                    with self.assertRaises(ValueError):
+                        analysis.native_function_selection(raw, capture, selected, type_note=note, partition_specs=specs)
+
+    def partition_reanalysis_fixture(self, root):
+        raw, result, capture, _, write = self.partition_fixture(root)
+        selection = analysis.native_function_selection(raw, capture, [0x1000], type_note="Complete reviewed local CALL/RET partition",
+            partition_specs=["0x1000=0x1002:0x1005"])
+        partition = selection["function_partitions"][0]
+        baselines = analysis.native_function_partition_bodies(partition)
+        body = baselines["owner"]
+        body["pseudocode"] = {"lines": [{"text": "void owner() { /* recovered original operations */ }"}], "locals": []}
+        supplemental = result / "supplements/partitioned"
+        record = write(supplemental / "functions/1000.json", body)
+        record.update(path="functions/1000.json", rva="0x1000", address=body["address"], assembly_captured=True, pseudocode_captured=True)
+        helper = baselines["helpers"]["0x1002"]
+        helper["flags"] = 0x40000
+        helper_record = write(supplemental / "partition-helpers/1002.json", helper)
+        helper_record.update(path="partition-helpers/1002.json", rva="0x1002", address=helper["address"],
+                             assembly_captured=True, pseudocode_captured=False)
+        capture_ref = {"path": analysis.rel(result / "capture.json"), "sha256": analysis.sha(result / "capture.json")}
+        supplement = {"input_sha256": capture["input_sha256"], "base_capture": capture_ref,
+            "capture_complete": True, "all_pseudocode_captured": True, "failures": [], "database_integrity": {"verified": True},
+            "base_capture_unchanged": True, "base_database_unchanged": True, "target_execution": False, "capture_tool": {},
+            "function_selection": selection, "functions": [record], "type_recoveries": [],
+            "partition_helpers": [helper_record], "function_partition_recoveries": [{**partition,
+                "base_database_modified": False, "applied_owner_chunks": partition["owner_chunks"], "applied_helpers": [{
+                    "rva": "0x1002", "chunks": partition["helpers"][0]["expected_chunks"], "previous_flags": 0,
+                    "applied_flags": 0x40000, "outline_flag": 0x40000, "base_database_modified": False}]}],
+            "ida_version": "synthetic", "hexrays_version": "synthetic"}
+        write(supplemental / "capture.json", supplement)
+        write(supplemental / "session.json", {"passed": True, "exit_code": 0, "capture_tool": {}})
+        write(supplemental / "plan.json", {"function_selection": selection, "base_capture": capture_ref})
+        return result, supplemental, capture, supplement, body, helper, write
+
+    def test_partition_resolution_rejects_omitted_helpers_union_changes_flags_and_pseudocode_claims(self):
+        issues = (None, "missing_partition", "base", "owner_chunks", "helper_chunks", "flags", "missing_helper",
+                  "duplicate_helper", "helper_bytes", "helper_xrefs", "helper_pseudocode", "owner_bytes", "source")
+        for issue in issues:
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                with patch.object(analysis, "ROOT", root):
+                    result, output, capture, supplement, owner, helper, write = self.partition_reanalysis_fixture(root)
+                    applied = supplement["function_partition_recoveries"][0]
+                    if issue == "missing_partition": supplement["function_partition_recoveries"] = []
+                    elif issue == "base": applied["base_database_modified"] = True
+                    elif issue == "owner_chunks": applied["applied_owner_chunks"] = []
+                    elif issue == "helper_chunks": applied["applied_helpers"][0]["chunks"] = []
+                    elif issue == "flags": applied["applied_helpers"][0]["applied_flags"] = 0
+                    elif issue == "missing_helper": supplement["partition_helpers"] = []
+                    elif issue == "duplicate_helper": supplement["partition_helpers"] *= 2
+                    elif issue == "source": (result / "functions/1000.json").write_bytes(b"changed retained original")
+                    elif issue in {"helper_bytes", "helper_xrefs", "helper_pseudocode"}:
+                        if issue == "helper_bytes": helper["assembly"][0]["bytes"] = "9090"
+                        elif issue == "helper_xrefs": helper["xrefs_to_entry"] = []
+                        else: helper["pseudocode"] = {"lines": [{"text": "invented"}], "locals": []}
+                        identity = write(output / "partition-helpers/1002.json", helper)
+                        supplement["partition_helpers"][0].update(bytes=identity["bytes"], sha256=identity["sha256"])
+                    elif issue == "owner_bytes":
+                        owner["assembly"].pop()
+                        identity = write(output / "functions/1000.json", owner)
+                        supplement["functions"][0].update(bytes=identity["bytes"], sha256=identity["sha256"])
+                    write(output / "capture.json", supplement)
+                    resolved = analysis.native_reanalysis_resolution(result)
+                    self.assertEqual(bool(resolved["verification_failures"]), bool(issue))
+                    self.assertEqual(len(resolved["resolved_failures"]), 0 if issue else 1)
+                    self.assertEqual(set(resolved["complete_functions"]), set() if issue else {"0x1000"})
 
     def outline_fixture(self, root):
         raw, result, capture, write = self.merge_fixture(root)
@@ -2903,6 +3850,40 @@ class NativeSupplementTests(unittest.TestCase):
             self.assertEqual(resolved["resolved_failures"][0]["original_failure"], capture["failures"][0])
             self.assertEqual(set(resolved["complete_functions"]), {"0x1000"})
             self.assertEqual(json.loads((result / "capture.json").read_bytes()), capture)
+
+    def test_observation_resolution_requires_exact_review_source_and_executed_observer(self):
+        for issue in (None, "observer", "review"):
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory, \
+                    patch.object(analysis, "ROOT", Path(directory)):
+                root = Path(directory)
+                result, output, capture, supplement, _, write = self.reanalysis_fixture(root)
+                observer = root / ".analysis/results/tool-sources/observer.py"
+                observer.parent.mkdir(parents=True)
+                observer.write_bytes(b"inert observer source\n")
+                source = {"path": observer.relative_to(root).as_posix(), "bytes": observer.stat().st_size,
+                          "sha256": hashlib.sha256(observer.read_bytes()).hexdigest()}
+                review = root / ".analysis/results/frozen-review.json"
+                write(review, {"observation": {"reason": "New static callsite observations.", "observer_source": source}})
+                specification = ".analysis/results/frozen-review.json#/observation"
+                selection = analysis.native_function_selection(bytes(self.fixture()), capture, [0x1000],
+                                                               observation_evidence=specification)
+                supplement["function_selection"] = selection
+                supplement["capture_tool"] = {"path": "tools/ida/supplement.py", "sha256": source["sha256"]}
+                if issue == "observer": supplement["capture_tool"]["sha256"] = "0" * 64
+                if issue == "review":
+                    write(review, {"observation": {"reason": "Changed review.", "observer_source": source}})
+                write(output / "capture.json", supplement)
+                write(output / "session.json", {"passed": True, "exit_code": 0,
+                                                "capture_tool": supplement["capture_tool"]})
+                write(output / "plan.json", {"function_selection": selection, "base_capture": supplement["base_capture"],
+                                             "source_database": supplement["source_database"]})
+                resolution = analysis.native_reanalysis_resolution(result)
+                if issue is None:
+                    self.assertFalse(resolution["verification_failures"])
+                    self.assertFalse(resolution["remaining_failures"])
+                else:
+                    self.assertTrue(resolution["verification_failures"])
+                    self.assertEqual(resolution["remaining_failures"], capture["failures"])
 
     def test_reanalysis_requires_exact_applied_import_thunk_manifest_and_original_selection(self):
         issues = (None, "missing", "slot", "source_hash", "empty_type", "non_string_type",
@@ -3590,6 +4571,289 @@ class NativePackageTests(unittest.TestCase):
         self.assertFalse(rows[0]["independent_cabinet_established"])
         self.assertTrue(rows[0]["outer_extraction_verified_at_capture"])
         self.assertEqual(rows[1]["input"], "pending.cab")
+
+    def reviewed_pe_fixture(self, root, *, count=1, aliases=False):
+        def put(name, raw):
+            path = root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(raw)
+            return {"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+
+        def pe(machine, data, *, signed=False, entry=True):
+            raw_size = (len(data) + 0x1ff) & ~0x1ff
+            body = bytearray(0x200 + raw_size)
+            body[:2] = b"MZ"
+            struct.pack_into("<I", body, 0x3c, 0x80)
+            body[0x80:0x84] = b"PE\0\0"
+            wide = machine != 0x14c
+            optional_size = 240 if wide else 224
+            struct.pack_into("<HHIIIHH", body, 0x84, machine, 1, 0, 0, 0, optional_size, 0x2102)
+            optional = 0x98
+            struct.pack_into("<H", body, optional, 0x20b if wide else 0x10b)
+            struct.pack_into("<I", body, optional + 16, 0x1000 if entry else 0)
+            struct.pack_into("<Q" if wide else "<I", body, optional + (24 if wide else 28), 0x10000)
+            struct.pack_into("<II", body, optional + 32, 0x1000, 0x200)
+            struct.pack_into("<II", body, optional + 56, (0x1000 + raw_size + 0xfff) & ~0xfff, 0x200)
+            struct.pack_into("<H", body, optional + 68, 1)
+            directories = optional + (112 if wide else 96)
+            struct.pack_into("<I", body, directories - 4, 16)
+            table = optional + optional_size
+            struct.pack_into("<8sIIII", body, table, b".text\0\0\0" if entry else b".data\0\0\0",
+                             len(data), 0x1000, raw_size, 0x200)
+            struct.pack_into("<I", body, table + 36, 0x60000020 if entry else 0xc0000040)
+            body[0x200:0x200 + len(data)] = data
+            if signed:
+                struct.pack_into("<II", body, directories + 4 * 8, len(body), 16)
+                body.extend(struct.pack("<IHH", 16, 0x200, 2) + b"fixture!")
+            return bytes(body)
+
+        children = [pe(0x14c if i == 0 else 0x8664, bytes([0xb8, i, 0, 0, 0, 0xc3]), signed=True)
+                    for i in range(count)]
+        offsets, end = [], 0x300
+        for body in children:
+            offsets.append(end)
+            end = (end + len(body) + 0x1ff) & ~0x1ff
+        data = bytearray(end - 0x200)
+        data[:0x100] = b"p" * 0x100
+        for offset, body in zip(offsets, children):
+            data[offset - 0x200:offset - 0x200 + len(body)] = body
+        parent_raw = pe(0x8664, data, entry=False)
+        parent = {**put(".analysis/inputs/official-native-current/blobs/parent.dll", parent_raw),
+                  "kind": "official_device_resource", "url": "https://app-assets.razer.com/files/fixture/parent.dll",
+                  "verified_against_manifest": True, "container_extraction_complete": True}
+        parents = [parent]
+        if aliases:
+            alias = {**put(".analysis/inputs/official-native-current/resources/alias.dll", parent_raw),
+                     "verified_against_manifest": True, "container_extraction_complete": True}
+            partial = {**put(".analysis/inputs/official-native-current/resources/partial.dll", parent_raw),
+                       "source_bytes_verified": False}
+            parents.extend([alias, partial])
+        put("tools/analysis.py", b"synthetic static analyzer identity")
+        evidence_row = put(".analysis/results/native/fixture/functions/1000.json",
+                           b'{"rva":"0x1000","review":"complete pointer and byte-length owner"}')
+        base_capture = put(".analysis/results/native/fixture/capture.json",
+                           b'{"capture_complete":true,"failures":[{"stage":"2000:hexrays","error":"outer context"}]}')
+        ranges = [{"name": "driver-" + str(i) + ".sys", "offset": offset, "bytes": len(body),
+                   "sha256": hashlib.sha256(body).hexdigest(), "machine": "0x14c" if i == 0 else "0x8664",
+                   "evidence": [dict(evidence_row)], "basis": "Complete fixture owner provides pointer and length"}
+                  for i, (offset, body) in enumerate(zip(offsets, children))]
+        group = {"schema_version": 1, "source_input": {key: parent[key] for key in ("path", "bytes", "sha256")},
+                 "ranges": ranges}
+        review_value = {"pe/groups~": [group]}
+        review_name = ".analysis/results/native-packages/review.json"
+        put(review_name, json.dumps(review_value, ensure_ascii=False).encode())
+        index_path = root / ".analysis/inputs.json"
+        index_path.write_text(json.dumps({"inputs": parents}), encoding="utf-8")
+        report_name = ".analysis/results/native-packages/embedded-inputs.json"
+        old_report = b'{"schema_version":2,"inputs":[],"failures":[{"stage":"old","error":"retain history"}]}'
+        put(report_name, old_report)
+        args = argparse.Namespace(source_prefix=".analysis/inputs/official-native-current/", no_refresh_gaps=True,
+                                  pe_review=[review_name + "#/pe~1groups~0/0"])
+        return {"root": root, "put": put, "parent": parent, "parent_raw": parent_raw,
+                "parents": parents, "children": children, "group": group, "review_value": review_value,
+                "review_name": review_name, "evidence": evidence_row, "base_capture": base_capture,
+                "index_path": index_path, "report_name": report_name, "old_report": old_report, "args": args}
+
+    def write_pe_review(self, fixture, value=None):
+        value = fixture["review_value"] if value is None else value
+        return fixture["put"](fixture["review_name"], json.dumps(value, ensure_ascii=False).encode())
+
+    def run_pe_review(self, fixture):
+        root = fixture["root"]
+        with patch.object(analysis, "ROOT", root), patch.object(analysis, "__file__", str(root / "tools/analysis.py")), \
+                patch.object(analysis.subprocess, "run", side_effect=AssertionError("Static PE extraction must not execute")), \
+                patch.object(analysis, "refresh_gaps") as refresh, redirect_stdout(io.StringIO()):
+            result = analysis.extract_embedded_inputs(fixture["args"])
+        refresh.assert_not_called()
+        return result
+
+    def assert_pe_review_rejected(self, fixture):
+        root = fixture["root"]
+        index_before = fixture["index_path"].read_bytes()
+        report_path = root / fixture["report_name"]
+        report_before = report_path.read_bytes()
+        embedded = root / ".analysis/inputs/official-native-current/embedded"
+        children_before = {path.relative_to(embedded).as_posix(): path.read_bytes()
+                           for path in embedded.rglob("*") if path.is_file()} if embedded.exists() else {}
+        with self.assertRaises(ValueError):
+            self.run_pe_review(fixture)
+        self.assertEqual(fixture["index_path"].read_bytes(), index_before)
+        self.assertEqual(report_path.read_bytes(), report_before)
+        children_after = {path.relative_to(embedded).as_posix(): path.read_bytes()
+                          for path in embedded.rglob("*") if path.is_file()} if embedded.exists() else {}
+        self.assertEqual(children_after, children_before)
+
+    def test_reviewed_pe_extraction_preserves_originals_index_and_frozen_complete_provenance(self):
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = self.reviewed_pe_fixture(Path(directory).resolve(), count=2, aliases=True)
+            root = fixture["root"]
+            review_raw = (root / fixture["review_name"]).read_bytes()
+            unchanged = {row["path"]: (root / row["path"]).read_bytes()
+                         for row in [*fixture["parents"], fixture["evidence"], fixture["base_capture"]]}
+            result = self.run_pe_review(fixture)
+            self.assertEqual(result["schema_version"], 3)
+            self.assertEqual(result["summary"]["reviewed_portable_executables"], 2)
+            self.assertEqual(result["summary"]["newly_indexed_inputs"], 2)
+            self.assertFalse(result["target_execution"])
+            self.assertFalse(result["failures"])
+            frozen_review = {"path": ".analysis/results/native-packages/review-sources/"
+                             + hashlib.sha256(review_raw).hexdigest() + ".json", "bytes": len(review_raw),
+                             "sha256": hashlib.sha256(review_raw).hexdigest()}
+            self.assertEqual((root / frozen_review["path"]).read_bytes(), review_raw)
+            self.assertEqual(result["pe_reviews"][0]["review_source"], frozen_review)
+            self.assertEqual(result["pe_reviews"][0]["source_input"], fixture["group"]["source_input"])
+            expected_aliases = {row["path"] for row in fixture["parents"][:2]}
+            indexed = {row["path"]: row for row in json.loads(fixture["index_path"].read_bytes())["inputs"]}
+            for i, artifact in enumerate(result["inputs"]):
+                spec = fixture["group"]["ranges"][i]
+                self.assertEqual((root / artifact["path"]).read_bytes(), fixture["children"][i])
+                self.assertEqual(artifact["sha256"], spec["sha256"])
+                self.assertEqual(artifact["container_offset"], spec["offset"])
+                self.assertTrue(artifact["byte_range_verified"])
+                self.assertTrue(artifact["verified_against_manifest"])
+                self.assertEqual(artifact["container_sha256"], fixture["parent"]["sha256"])
+                self.assertEqual({row["path"] for row in artifact["container_aliases"]}, expected_aliases)
+                self.assertTrue(all(row["byte_identity_verified"] for row in artifact["container_aliases"]))
+                extraction = artifact["extraction"]
+                self.assertEqual(extraction["kind"], "reviewed_embedded_pe_range")
+                self.assertEqual(extraction["pe"]["machine"], spec["machine"])
+                self.assertEqual(extraction["layout"]["security_directory"]["bytes"], 16)
+                self.assertEqual(extraction["layout"]["complete_file_bytes"], 0x410)
+                self.assertEqual(extraction["review"], spec)
+                self.assertEqual(extraction["review_source"], frozen_review)
+                self.assertEqual(extraction["review_pointer"], "/pe~1groups~0/0")
+                self.assertEqual(indexed[artifact["path"]], artifact)
+            for name, original in unchanged.items():
+                self.assertEqual((root / name).read_bytes(), original)
+            previous = result["previous_report"]
+            self.assertEqual((root / previous["path"]).read_bytes(), fixture["old_report"])
+            self.assertEqual(previous["sha256"], hashlib.sha256(fixture["old_report"]).hexdigest())
+            self.assertEqual((root / fixture["review_name"]).read_bytes(), review_raw)
+            self.assertEqual(json.loads((root / fixture["report_name"]).read_bytes()), result)
+
+    def test_reviewed_pe_pointer_accepts_group_array_or_root_group(self):
+        for mode in ("array", "root"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+                fixture = self.reviewed_pe_fixture(Path(directory).resolve())
+                if mode == "array":
+                    fixture["args"].pe_review = [fixture["review_name"] + "#/pe~1groups~0"]
+                else:
+                    self.write_pe_review(fixture, fixture["group"])
+                    fixture["args"].pe_review = [fixture["review_name"] + "#"]
+                self.assertEqual(self.run_pe_review(fixture)["summary"]["reviewed_portable_executables"], 1)
+
+    def test_reviewed_pe_cli_preserves_repeated_review_references(self):
+        parser = argparse.ArgumentParser()
+        analysis.add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["extract-embedded-inputs", "--pe-review", ".analysis/results/a.json#/one",
+                                  "--pe-review", ".analysis/results/b.json#/two", "--no-refresh-gaps"])
+        self.assertEqual(args.pe_review, [".analysis/results/a.json#/one", ".analysis/results/b.json#/two"])
+
+    def test_reviewed_pe_changed_or_missing_parent_and_evidence_do_not_publish(self):
+        for issue in ("parent", "evidence", "missing_parent", "missing_evidence", "missing_review"):
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory:
+                fixture = self.reviewed_pe_fixture(Path(directory).resolve())
+                name = (fixture["parent"]["path"] if "parent" in issue else fixture["evidence"]["path"])
+                if issue == "missing_review":
+                    name = fixture["review_name"]
+                path = fixture["root"] / name
+                if issue.startswith("missing"):
+                    path.unlink()
+                else:
+                    path.write_bytes(path.read_bytes() + b"changed")
+                self.assert_pe_review_rejected(fixture)
+
+    def test_reviewed_pe_changes_during_preflight_are_detected_before_publication(self):
+        inspect_ranges = host.inspect_embedded_pe_ranges
+        for issue in ("parent", "evidence", "review"):
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory:
+                fixture = self.reviewed_pe_fixture(Path(directory).resolve())
+                name = {"parent": fixture["parent"]["path"], "evidence": fixture["evidence"]["path"],
+                        "review": fixture["review_name"]}[issue]
+
+                def inspect_then_change(raw, ranges):
+                    result = inspect_ranges(raw, ranges)
+                    path = fixture["root"] / name
+                    path.write_bytes(path.read_bytes() + b" ")
+                    return result
+
+                with patch.object(host, "inspect_embedded_pe_ranges", side_effect=inspect_then_change):
+                    self.assert_pe_review_rejected(fixture)
+
+    def test_reviewed_pe_group_schema_current_index_and_scope_are_strict(self):
+        issues = ("extra_group", "missing_ranges", "bool_version", "wrong_version", "empty_ranges",
+                  "extra_source", "unindexed", "index_hash", "scope", "partial_parent", "invalid_json")
+        for issue in issues:
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory:
+                fixture = self.reviewed_pe_fixture(Path(directory).resolve())
+                group = fixture["group"]
+                if issue == "extra_group": group["extra"] = True
+                elif issue == "missing_ranges": group.pop("ranges")
+                elif issue == "bool_version": group["schema_version"] = True
+                elif issue == "wrong_version": group["schema_version"] = 2
+                elif issue == "empty_ranges": group["ranges"] = []
+                elif issue == "extra_source": group["source_input"]["kind"] = "invented"
+                elif issue == "unindexed": fixture["index_path"].write_text('{"inputs":[]}', encoding="utf-8")
+                elif issue == "index_hash":
+                    fixture["parent"]["sha256"] = "0" * 64
+                    fixture["index_path"].write_text(json.dumps({"inputs": fixture["parents"]}), encoding="utf-8")
+                elif issue == "scope": fixture["args"].source_prefix = ".analysis/inputs/official-native-current/other/"
+                elif issue == "partial_parent":
+                    fixture["parent"]["source_bytes_verified"] = False
+                    fixture["index_path"].write_text(json.dumps({"inputs": fixture["parents"]}), encoding="utf-8")
+                self.write_pe_review(fixture)
+                if issue == "invalid_json":
+                    (fixture["root"] / fixture["review_name"]).write_bytes(b"{invalid")
+                self.assert_pe_review_rejected(fixture)
+
+    def test_reviewed_pe_invalid_rfc6901_pointer_is_not_silently_reinterpreted(self):
+        for pointer in ("missing/slash", "/pe~2groups~0", "/pe~1groups~0/00", "/pe~1groups~0/-1",
+                        "/pe~1groups~0/2", "/absent"):
+            with self.subTest(pointer=pointer), tempfile.TemporaryDirectory() as directory:
+                fixture = self.reviewed_pe_fixture(Path(directory).resolve())
+                fixture["args"].pe_review = [fixture["review_name"] + "#" + pointer]
+                self.assert_pe_review_rejected(fixture)
+
+    def test_reviewed_pe_second_range_failure_cannot_publish_the_valid_first_range(self):
+        for issue in ("hash", "bounds", "overlap", "truncated_certificate"):
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory:
+                fixture = self.reviewed_pe_fixture(Path(directory).resolve(), count=2)
+                spec = fixture["group"]["ranges"][1]
+                if issue == "hash": spec["sha256"] = "0" * 64
+                elif issue == "bounds": spec["offset"] = len(fixture["parent_raw"]) - 8
+                elif issue == "overlap": spec["offset"] = fixture["group"]["ranges"][0]["offset"] + 8
+                else:
+                    spec["bytes"] -= 8
+                    spec["sha256"] = hashlib.sha256(fixture["parent_raw"][spec["offset"]:
+                                                                          spec["offset"] + spec["bytes"]]).hexdigest()
+                self.write_pe_review(fixture)
+                self.assert_pe_review_rejected(fixture)
+
+    def test_reviewed_pe_all_groups_and_destinations_are_preflighted_together(self):
+        for issue in ("second_group_hash", "duplicate_destination", "conflicting_child"):
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory:
+                fixture = self.reviewed_pe_fixture(Path(directory).resolve(), count=2)
+                group = fixture["group"]
+                first = {**group, "ranges": [group["ranges"][0]]}
+                second = {**group, "ranges": [dict(group["ranges"][1])]}
+                if issue == "second_group_hash": second["ranges"][0]["sha256"] = "0" * 64
+                elif issue == "duplicate_destination": second["ranges"] = first["ranges"]
+                else:
+                    destination = ".analysis/inputs/official-native-current/embedded/" + fixture["parent"]["sha256"] + "/driver-1.sys"
+                    fixture["put"](destination, b"conflicting immutable child")
+                self.write_pe_review(fixture, [first, second])
+                fixture["args"].pe_review = [fixture["review_name"]]
+                self.assert_pe_review_rejected(fixture)
+
+    def test_reviewed_pe_frozen_review_or_previous_report_conflict_cannot_publish_children(self):
+        for source in ("review", "previous_report"):
+            with self.subTest(source=source), tempfile.TemporaryDirectory() as directory:
+                fixture = self.reviewed_pe_fixture(Path(directory).resolve())
+                raw = ((fixture["root"] / fixture["review_name"]).read_bytes()
+                       if source == "review" else fixture["old_report"])
+                frozen = ".analysis/results/native-packages/review-sources/" + hashlib.sha256(raw).hexdigest() + ".json"
+                fixture["put"](frozen, b"conflicting immutable review source")
+                self.assert_pe_review_rejected(fixture)
 
     def prepare(self, root, *, verified_alias=False):
         import families

@@ -119,4 +119,3 @@ static MOUSE_MATS: [MouseMat; 7] = [
 pub fn audited_mouse_mat(pid: u32) -> Option<&'static MouseMat> {
     MOUSE_MATS.iter().find(|product| product.id == pid)
 }
-

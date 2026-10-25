@@ -15,8 +15,8 @@ use super::{
     surface::css,
     theme::{AlexaColors, DropdownColors},
 };
-use std::{collections::BTreeMap, rc::Rc};
 use std::time::Duration;
+use std::{collections::BTreeMap, rc::Rc};
 #[path = "synapse_select_pointer.rs"]
 mod pointer;
 
@@ -546,18 +546,21 @@ impl<I: SelectItem<Value = String> + 'static> Render for SynapseSelectView<I> {
                             .size(css(10.))
                             .when(alexa, |this| this.text_color(AlexaColors::dropdown_arrow()))
                             .flex_shrink_0()
-                            .with_transformation(Transformation::rotate(radians(motion::transition(
-                                (self.id.clone(), "arrow-angle"),
-                                if open { std::f32::consts::PI } else { 0. },
-                                if alexa {
-                                    Transition::new(Duration::from_millis(100))
-                                        .easing(Easing::EaseInOut)
-                                } else {
-                                    Transition::new(Duration::from_millis(300)).easing(Easing::Ease)
-                                },
-                                window,
-                                cx,
-                            )))),
+                            .with_transformation(Transformation::rotate(radians(
+                                motion::transition(
+                                    (self.id.clone(), "arrow-angle"),
+                                    if open { std::f32::consts::PI } else { 0. },
+                                    if alexa {
+                                        Transition::new(Duration::from_millis(100))
+                                            .easing(Easing::EaseInOut)
+                                    } else {
+                                        Transition::new(Duration::from_millis(300))
+                                            .easing(Easing::Ease)
+                                    },
+                                    window,
+                                    cx,
+                                ),
+                            ))),
                     ),
             );
 

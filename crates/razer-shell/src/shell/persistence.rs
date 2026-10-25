@@ -225,9 +225,16 @@ impl AppShell {
     ) -> PreparedSave {
         let device_draft = match &product {
             Some(ProductSave::KeyboardLocalProfiles(local)) => {
-                let baseline = self.devices.iter().map(|owner| owner.read(cx).saved_snapshot(cx)).collect::<Vec<_>>();
+                let baseline = self
+                    .devices
+                    .iter()
+                    .map(|owner| owner.read(cx).saved_snapshot(cx))
+                    .collect::<Vec<_>>();
                 let mut proposed = baseline.clone();
-                if let Some(target) = proposed.iter_mut().find(|device| device.workspace_identity() == local.owner().0) {
+                if let Some(target) = proposed
+                    .iter_mut()
+                    .find(|device| device.workspace_identity() == local.owner().0)
+                {
                     *target = local.snapshot().clone();
                 }
                 Some(store::DeviceSaveDraft::new(baseline, proposed))

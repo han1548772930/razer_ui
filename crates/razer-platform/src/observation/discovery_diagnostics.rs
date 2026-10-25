@@ -1,10 +1,7 @@
 //! Read-only host observations for discovery diagnostics. Never loads libraries.
 use razer_storage::{discovery_diagnostics::Query, file_transfer::Operation};
 use serde::Serialize;
-use std::{
-    path::PathBuf,
-    time::UNIX_EPOCH,
-};
+use std::{path::PathBuf, time::UNIX_EPOCH};
 
 #[derive(Serialize)]
 pub struct Snapshot {

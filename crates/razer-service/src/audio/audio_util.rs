@@ -160,7 +160,11 @@ pub(crate) mod windows {
         let get: Get = unsafe { store.method(5) };
         let mut value = Property(PROPVARIANT::default());
         let hr = unsafe { get(store.raw(), &key, &mut value.0) };
-        ensure!(hr >= 0, "Audio endpoint container: HRESULT {:#010x}", hr as u32);
+        ensure!(
+            hr >= 0,
+            "Audio endpoint container: HRESULT {:#010x}",
+            hr as u32
+        );
         let raw = unsafe { value.0.Anonymous.Anonymous };
         ensure!(raw.vt == 72, "Audio endpoint ContainerId is not VT_CLSID");
         let pointer = unsafe { raw.Anonymous.puuid };

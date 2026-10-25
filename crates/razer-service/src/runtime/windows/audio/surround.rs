@@ -28,7 +28,11 @@ struct Owned {
 impl Owned {
     fn synchronize(&mut self) -> Result<client::Snapshot> {
         let snapshot = self.session.snapshot()?;
-        self.runtime.observe_front_endpoint(surround::presentation::Controls::from_service(&snapshot).front().cloned());
+        self.runtime.observe_front_endpoint(
+            surround::presentation::Controls::from_service(&snapshot)
+                .front()
+                .cloned(),
+        );
         let volume = |channel| -> Option<Volume> {
             if !snapshot.connected {
                 return None;

@@ -1,7 +1,13 @@
 //! Select a present driver interface by its class and observed physical container.
 use anyhow::{Context as _, ensure};
 use std::{mem::size_of, ptr};
-use windows_sys::{Win32::{Devices::DeviceAndDriverInstallation::*, Foundation::{ERROR_INSUFFICIENT_BUFFER, ERROR_NO_MORE_ITEMS, GetLastError}}, core::GUID};
+use windows_sys::{
+    Win32::{
+        Devices::DeviceAndDriverInstallation::*,
+        Foundation::{ERROR_INSUFFICIENT_BUFFER, ERROR_NO_MORE_ITEMS, GetLastError},
+    },
+    core::GUID,
+};
 
 #[derive(Clone, PartialEq, Eq)]
 pub(crate) struct DriverInterface {
@@ -113,4 +119,3 @@ pub(crate) fn select(container: &str, guid: &GUID) -> anyhow::Result<DriverInter
     );
     Ok(found.remove(0))
 }
-

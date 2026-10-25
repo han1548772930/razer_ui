@@ -158,7 +158,9 @@ impl State {
     pub(crate) fn events(&self, target: &DeviceReadTarget) -> anyhow::Result<Value> {
         let batch = self.current(target)?.session.drain()?;
         self.current(target)?;
-        Ok(json!({"target":target,"events":batch.events,"diagnostics":batch.diagnostics,"observed":batch.observed}))
+        Ok(
+            json!({"target":target,"events":batch.events,"diagnostics":batch.diagnostics,"observed":batch.observed}),
+        )
     }
     pub(crate) fn close(&mut self, target: &DeviceReadTarget) -> anyhow::Result<Value> {
         let key = Self::key(target);

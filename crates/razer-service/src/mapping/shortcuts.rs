@@ -1,12 +1,12 @@
 //! One retained app-engine owner publishes shortcut dependencies and mappings.
 //! Page navigation does not own this actor. Cancellation drains native cleanup.
+use super::Client;
 use super::{Transport, WorkerGuard, guarded, shutdown};
+use razer_ipc::ServiceRequest;
 use razer_ipc::mapping_control::Registry;
 use razer_ipc::shortcuts::{
     EventBatch, PublicationReceipt, RegistrationReceipt, StopReceipt, UnsupportedMapping,
 };
-use razer_ipc::ServiceRequest;
-use super::Client;
 use razer_model::{
     macro_library::MacroLibraryFile,
     shortcuts::{Compiler, Shortcut},

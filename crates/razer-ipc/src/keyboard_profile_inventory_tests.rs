@@ -76,7 +76,10 @@ fn keyboard_profile_inventory_partial_slots_keep_their_full_target_and_no_capaci
     let value = serde_json::to_value(&observed).unwrap();
     assert_eq!(value.as_object().unwrap().len(), 2);
     assert_eq!(value.get("slots"), Some(&json!([])));
-    assert_eq!(value.get("target"), Some(&serde_json::to_value(&target).unwrap()));
+    assert_eq!(
+        value.get("target"),
+        Some(&serde_json::to_value(&target).unwrap())
+    );
     let Target::Collection { mut node, .. } = target.clone() else {
         panic!("wrong target")
     };

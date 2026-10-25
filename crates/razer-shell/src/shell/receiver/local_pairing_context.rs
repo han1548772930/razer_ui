@@ -31,8 +31,8 @@ impl AppShell {
                     let features = razer_storage::app_features::installed_path()
                         .and_then(|path| razer_storage::app_features::read(&path));
                     let records = razer_storage::receiver_pairing::local_path()
-                    .and_then(|path| razer_storage::receiver_pairing::PairingCache::load(&path))
-                    .map(|cache| Value::Array(cache.ordered_records()));
+                        .and_then(|path| razer_storage::receiver_pairing::PairingCache::load(&path))
+                        .map(|cache| Value::Array(cache.ordered_records()));
                     (features, records)
                 })
                 .await;

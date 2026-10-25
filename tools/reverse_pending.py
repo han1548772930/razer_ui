@@ -91,6 +91,45 @@ def active_native_sessions(directory):
     return rows
 
 
+def native_partition_specifications(partitions):
+    """Serialize the reviewed local helper ranges through one CLI owner."""
+    try:
+        if not isinstance(partitions, list):
+            raise ValueError("Native function partitions must be a list")
+        specifications = []
+        for row in partitions:
+            owner, ranges = row["owner_rva"], row["helper_ranges"]
+            if not isinstance(owner, str) or not isinstance(ranges, list) or not ranges:
+                raise ValueError("Native function partitions require an owner and explicit helper ranges")
+            values = []
+            for helper in ranges:
+                start, stop = helper["start_rva"], helper["end_rva_exclusive"]
+                if not isinstance(start, str) or not isinstance(stop, str):
+                    raise ValueError("Native partition helper boundaries must be explicit RVA strings")
+                values.append(start + ":" + stop)
+            specifications.append(owner + "=" + ",".join(values))
+        return specifications
+    except (KeyError, TypeError) as error:
+        raise ValueError("Native function partition schema is incomplete") from error
+
+
+def native_shared_tail_specifications(rows):
+    """Validate raw reviewed shared-tail fields before serializing the CLI."""
+    if not isinstance(rows, list):
+        raise ValueError("Native shared function tails must be a list")
+    required = {"primary_owner_rva", "tail_start_rva", "tail_end_rva", "owner_rvas",
+                "inline_owners", "assembly_evidence"}
+    for row in rows:
+        if (not isinstance(row, dict) or set(row) != required
+                or any(not isinstance(row[key], str) or not row[key].strip()
+                       for key in ("primary_owner_rva", "tail_start_rva", "tail_end_rva", "assembly_evidence"))
+                or type(row["inline_owners"]) is not bool
+                or not isinstance(row["owner_rvas"], list) or len(row["owner_rvas"]) < 2
+                or any(not isinstance(value, str) or not value.strip() for value in row["owner_rvas"])):
+            raise ValueError("Native shared function tail schema is incomplete")
+    return a.native_shared_tail_specifications(rows)
+
+
 def load_native_reviews(specs):
     """Load explicit reviewed plans, rechecking every retained evidence identity."""
     plans = {}
@@ -99,8 +138,17 @@ def load_native_reviews(specs):
         if Path(name).is_absolute():
             raise ValueError("Native review paths must be project-relative")
         path = a.resolve(name, ".analysis/results")
-        reference = identity(path)
-        value = json.loads(path.read_bytes())
+        raw = path.read_bytes()
+        reference = {"path": a.rel(path), "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+        retained = a.ROOT / ".analysis/results/reverse-pending/review-sources" / (reference["sha256"] + ".json")
+        with a.index_lock(a.ROOT / ".work/reverse-pending/locks" / ("review-source-" + reference["sha256"] + ".lock")):
+            if retained.is_file():
+                if retained.read_bytes() != raw:
+                    raise ValueError("Retained native review source bytes changed")
+            else:
+                retained.parent.mkdir(parents=True, exist_ok=True)
+                retained.write_bytes(raw)
+        value = json.loads(raw)
         if marker and pointer:
             if not pointer.startswith("/"):
                 raise ValueError("Native review requires an RFC 6901 JSON pointer")
@@ -110,7 +158,7 @@ def load_native_reviews(specs):
                     value = value[int(token)] if isinstance(value, list) else value[token]
                 except (KeyError, IndexError, TypeError, ValueError) as error:
                     raise ValueError("Native review JSON pointer does not resolve") from error
-        for plan in value if isinstance(value, list) else [value]:
+        for plan_index, plan in enumerate(value if isinstance(value, list) else [value]):
             if plan.get("schema_version") != 1:
                 raise ValueError("Unsupported native review plan schema")
             for record in [plan["source_input"], plan["source_capture"], *plan["evidence"]]:
@@ -133,25 +181,42 @@ def load_native_reviews(specs):
             imports = plan.get("import_type_recoveries", [])
             merges = plan.get("function_merges", [])
             outlines = plan.get("function_outlines", [])
+            partitions = plan.get("function_partitions", [])
+            partition_specs = native_partition_specifications(partitions)
+            shared_tails = plan.get("function_shared_tails", [])
+            shared_specs = native_shared_tail_specifications(shared_tails)
             for recoveries in (types, imports):
                 if len({int(row["rva"], 0) for row in recoveries}) != len(recoveries):
                     raise ValueError("Native review repeats a recovered type")
                 if any(not row.get("declaration", "").strip() or not row.get("assembly_evidence", "").strip() for row in recoveries):
                     raise ValueError("Native review types require declarations and assembly evidence")
-            if any(not row.get("assembly_evidence", "").strip() for row in [*merges, *outlines]):
+            if any(not row.get("assembly_evidence", "").strip() for row in [*merges, *outlines, *partitions, *shared_tails]):
                 raise ValueError("Native function boundary repairs require complete assembly evidence")
-            note = "\n\n".join(dict.fromkeys(row["assembly_evidence"] for row in [*types, *imports, *merges, *outlines]))
+            note = "\n\n".join(dict.fromkeys(row["assembly_evidence"] for row in [*types, *imports, *merges, *outlines, *partitions, *shared_tails]))
             merge_options = {"merge_specs": [row["owner_rva"] + "=" + ",".join(row["member_rvas"]) for row in merges]} if merges else {}
             if outlines:
                 merge_options["outline_rvas"] = [row["rva"] for row in outlines]
+            if partitions:
+                merge_options["partition_specs"] = partition_specs
+            if shared_tails:
+                merge_options["shared_tail_specs"] = shared_specs
+            observation_options = {}
+            if "static_observation" in plan:
+                plan_pointer = pointer + ("/" + str(plan_index) if isinstance(value, list) else "")
+                observation_spec = a.rel(retained) + "#" + plan_pointer + "/static_observation"
+                observation = a.native_observation_evidence(observation_spec)
+                if observation["observer_source"] not in plan["evidence"]:
+                    raise ValueError("Static observation source must also be retained as plan evidence")
+                observation_options["observation_evidence"] = observation_spec
             a.native_function_selection(a.resolve(original["path"], ".analysis/inputs").read_bytes(), capture,
                 selected, [row["rva"] + "=" + row["declaration"] for row in types], note or None, 1024,
-                [row["rva"] + "=" + row["declaration"] for row in imports], **merge_options)
+                [row["rva"] + "=" + row["declaration"] for row in imports], **merge_options, **observation_options)
             digest = original["sha256"]
             if digest in plans:
                 raise ValueError("Native review repeats an input SHA; merge its reviewed plan explicitly")
             plans[digest] = {**plan, "review_reference": {**reference, "pointer": pointer},
-                "type_evidence": note + "\n\nReviewed plan receipt: " + name + "#" + pointer + "; SHA-256 " + reference["sha256"]}
+                "type_evidence": note + "\n\nReviewed plan receipt: " + name + "#" + pointer + "; SHA-256 " + reference["sha256"],
+                **({"observation_evidence_spec": observation_options["observation_evidence"]} if observation_options else {})}
     return plans
 
 
@@ -267,7 +332,12 @@ class Batch:
             review["type_evidence"] or None, 1024,
             [row["rva"] + "=" + row["declaration"] for row in review.get("import_type_recoveries", [])],
             [row["owner_rva"] + "=" + ",".join(row["member_rvas"]) for row in review.get("function_merges", [])],
-            [row["rva"] for row in review.get("function_outlines", [])])
+            [row["rva"] for row in review.get("function_outlines", [])],
+            **({"partition_specs": native_partition_specifications(review["function_partitions"])}
+               if review.get("function_partitions") else {}),
+            **({"shared_tail_specs": native_shared_tail_specifications(review["function_shared_tails"])}
+               if review.get("function_shared_tails") else {}),
+            observation_evidence=review.get("observation_evidence_spec"))
         selection_id = hashlib.sha256(json.dumps(selection, sort_keys=True).encode()).hexdigest()[:16]
         output = a.ROOT / ".analysis/results/native" / capture["input_sha256"] / "supplements" / selection_id
         session_path, plan_path = output / "session.json", output / "plan.json"
@@ -447,8 +517,14 @@ class Batch:
                         arguments.extend(["--merge-functions", row["owner_rva"] + "=" + ",".join(row["member_rvas"])])
                     for row in review.get("function_outlines", []):
                         arguments.extend(["--outline-function-rva", row["rva"]])
+                    for specification in native_partition_specifications(review.get("function_partitions", [])):
+                        arguments.extend(["--partition-functions", specification])
+                    for specification in native_shared_tail_specifications(review.get("function_shared_tails", [])):
+                        arguments.extend(["--share-function-tail", specification])
                     if review["type_evidence"]:
                         arguments.extend(["--type-evidence", review["type_evidence"]])
+                    if review.get("observation_evidence_spec"):
+                        arguments.extend(["--observation-evidence", review["observation_evidence_spec"]])
                 commands.append(self.command(task, arguments))
                 unchanged()
                 resolution = a.native_reanalysis_resolution(directory)
@@ -614,7 +690,8 @@ class Batch:
             self.publish()
         else:
             tasks = self.discover()
-        print(json.dumps({"queue": REPORT, "workers": self.workers, "tasks": len(tasks),
+        print(json.dumps({"queue": REPORT, "workers": self.workers, "tasks": len(self.report["tasks"]),
+                          "scheduled_tasks": len(tasks),
                           "by_kind": self.report["summary"]["by_kind"]}), flush=True)
         deferred = []
         with ThreadPoolExecutor(max_workers=self.workers, thread_name_prefix="reverse-pending") as pool:

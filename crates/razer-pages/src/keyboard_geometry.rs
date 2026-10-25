@@ -56,6 +56,9 @@ impl KeyboardKeyExt for KeyboardKey {
                     px((p[1] - self.bounds[1]) * scale_y),
                 )
         };
+        if stroke && let KeyboardGeometry::Path { commands } = &self.geometry {
+            return stroke_source_path(commands, scale_x.max(scale_y), project);
+        }
         let mut path = if stroke {
             // .svg-key:hover/.active use a 2px stroke in the source viewBox.
             PathBuilder::stroke(px(2. * scale_x))
@@ -98,6 +101,55 @@ impl KeyboardKeyExt for KeyboardKey {
     }
 }
 
+fn stroke_source_path(
+    commands: &[KeyboardPathCommand],
+    scale: f32,
+    project: impl Fn([f32; 2]) -> Point<Pixels>,
+) -> PathBuilder {
+    let mut source = tiny_skia_path::PathBuilder::new();
+    for command in commands {
+        match *command {
+            KeyboardPathCommand::Move([x, y]) => source.move_to(x, y),
+            KeyboardPathCommand::Line([x, y]) => source.line_to(x, y),
+            KeyboardPathCommand::Curve([[ax, ay], [bx, by], [x, y]]) => {
+                source.cubic_to(ax, ay, bx, by, x, y);
+            }
+            KeyboardPathCommand::Close => source.close(),
+        }
+    }
+    // Stroke in the SVG frame before projecting to the window. The SVG stroker
+    // resolves tight cubic turns into an outline; Lyon's curve stroke fast path
+    // can emit unbounded inner miters at those turns.
+    let outline = source
+        .finish()
+        .expect("Verified keyboard path must contain finite segments")
+        .stroke(
+            &tiny_skia_path::Stroke {
+                width: 2.,
+                miter_limit: 4.,
+                ..Default::default()
+            },
+            scale,
+        )
+        .expect("Verified keyboard SVG stroke must have an outline");
+    let mut path = PathBuilder::fill().with_style(PathStyle::Fill(
+        FillOptions::default().with_fill_rule(FillRule::NonZero),
+    ));
+    let project = |p: tiny_skia_path::Point| project([p.x, p.y]);
+    for segment in outline.segments() {
+        match segment {
+            tiny_skia_path::PathSegment::MoveTo(to) => path.move_to(project(to)),
+            tiny_skia_path::PathSegment::LineTo(to) => path.line_to(project(to)),
+            tiny_skia_path::PathSegment::QuadTo(a, to) => path.curve_to(project(to), project(a)),
+            tiny_skia_path::PathSegment::CubicTo(a, b, to) => {
+                path.cubic_bezier_to(project(to), project(a), project(b));
+            }
+            tiny_skia_path::PathSegment::Close => path.close(),
+        }
+    }
+    path
+}
+
 pub trait KeyboardGeometryExt {
     fn contains_source(&self, position: [f32; 2]) -> bool;
 }
@@ -118,25 +170,40 @@ impl KeyboardGeometryExt for KeyboardGeometry {
                 let mut crossings = Crossings::new(position);
                 let mut previous = [0., 0.];
                 let mut start = previous;
+                let mut has_segments = false;
                 for command in commands {
                     match *command {
                         KeyboardPathCommand::Move(to) => {
+                            if has_segments {
+                                crossings.line(previous, start);
+                            }
                             previous = to;
                             start = to;
+                            has_segments = false;
                         }
                         KeyboardPathCommand::Line(to) => {
                             crossings.line(previous, to);
                             previous = to;
+                            has_segments = true;
                         }
                         KeyboardPathCommand::Curve([a, b, to]) => {
                             crossings.cubic([previous, a, b, to]);
                             previous = to;
+                            has_segments = true;
                         }
                         KeyboardPathCommand::Close => {
-                            crossings.line(previous, start);
+                            if has_segments {
+                                crossings.line(previous, start);
+                            }
                             previous = start;
+                            has_segments = false;
                         }
                     }
+                }
+                // SVG fill closes every drawn contour, including one ended by
+                // another Move. Stroke rendering keeps the original commands.
+                if has_segments {
+                    crossings.line(previous, start);
                 }
                 crossings.on_edge || crossings.winding != 0
             }
@@ -524,6 +591,32 @@ mod tests {
     }
 
     #[::core::prelude::v1::test]
+    fn open_contours_keep_svg_fill_winding_and_implicit_edges() {
+        let geometry = KeyboardGeometry::Path {
+            commands: vec![
+                KeyboardPathCommand::Move([0., 0.]),
+                KeyboardPathCommand::Line([100., 0.]),
+                KeyboardPathCommand::Line([100., 100.]),
+                KeyboardPathCommand::Line([0., 100.]),
+                KeyboardPathCommand::Move([25., 75.]),
+                KeyboardPathCommand::Line([75., 75.]),
+                KeyboardPathCommand::Line([75., 25.]),
+                KeyboardPathCommand::Line([25., 25.]),
+            ],
+        };
+        for point in [[10., 50.], [90., 50.], [0., 50.], [25., 50.]] {
+            assert!(geometry.contains_source(point), "{point:?}");
+        }
+        for point in [[-1., 50.], [101., 50.], [50., 50.]] {
+            assert!(!geometry.contains_source(point), "{point:?}");
+        }
+        let move_only = KeyboardGeometry::Path {
+            commands: vec![KeyboardPathCommand::Move([10., 10.])],
+        };
+        assert!(!move_only.contains_source([10., 10.]));
+    }
+
+    #[::core::prelude::v1::test]
     fn source_paths_paint_and_hit_the_same_points_at_different_scales() {
         for scale in [0.75, 1., 1.25, 2.] {
             for key in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18]
@@ -551,6 +644,71 @@ mod tests {
                         key.geometry.contains_source(source)
                     );
                 }
+            }
+        }
+    }
+
+    #[::core::prelude::v1::test]
+    fn source_cubic_turn_keeps_its_svg_stroke_without_a_miter_spike() {
+        // KEY_BACKSLASH's complete d in keyboard-678-current's verified
+        // main.f78f0dcf.js, character 622730. Its final cubic reverses direction.
+        let key = KeyboardKey {
+            id: "KEY_BACKSLASH".into(),
+            label: "\\".into(),
+            enabled: true,
+            functions: Vec::new(),
+            bounds: [421., 148., 28., 19.926271],
+            geometry: KeyboardGeometry::Path {
+                commands: vec![
+                    KeyboardPathCommand::Move([449., 164.2]),
+                    KeyboardPathCommand::Line([449., 149.4]),
+                    KeyboardPathCommand::Curve([[449., 148.6], [448.5, 148.], [447.8, 148.]]),
+                    KeyboardPathCommand::Line([422.2, 148.]),
+                    KeyboardPathCommand::Curve([[421.5, 148.], [421., 148.6], [421., 149.4]]),
+                    KeyboardPathCommand::Line([421., 165.2]),
+                    KeyboardPathCommand::Curve([[421., 166.], [421.5, 166.6], [422.2, 166.6]]),
+                    KeyboardPathCommand::Line([447.8, 166.6]),
+                    KeyboardPathCommand::Curve([[447., 170.], [448., 166.], [449., 164.2]]),
+                    KeyboardPathCommand::Close,
+                ],
+            },
+        };
+        for scale in [0.75, 1., 1.25, 2., 3.] {
+            let bounds = Bounds::new(
+                point(px(300. + 421. * scale), px(180. + 148. * scale)),
+                size(px(28. * scale), px(19.926271 * scale)),
+            );
+            let stroke = key.path(bounds, true).build().unwrap();
+            let paints = |source: [f32; 2]| {
+                let p = [300. + source[0] * scale, 180. + source[1] * scale];
+                stroke.vertices.chunks_exact(3).any(|triangle| {
+                    let vertices = [0, 1, 2].map(|ix| {
+                        let vertex = &triangle[ix];
+                        [
+                            f32::from(vertex.xy_position.x),
+                            f32::from(vertex.xy_position.y),
+                        ]
+                    });
+                    let crosses = [0, 1, 2].map(|ix| {
+                        let [a, b] = [vertices[ix], vertices[(ix + 1) % 3]];
+                        (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0])
+                    });
+                    crosses.iter().all(|cross| *cross > 0.)
+                        || crosses.iter().all(|cross| *cross < 0.)
+                })
+            };
+            assert!(paints([435., 147.5]), "scale {scale}: missing outer stroke");
+            assert!(paints([435., 148.5]), "scale {scale}: missing inner stroke");
+            assert!(
+                !paints([435., 155.]),
+                "scale {scale}: stroke filled the key"
+            );
+            for vertex in &stroke.vertices {
+                let y = f32::from(vertex.xy_position.y);
+                assert!(
+                    y <= 180. + (167.926271 + 4.) * scale,
+                    "scale {scale}: SVG stroke has a miter spike at {y}"
+                );
             }
         }
     }

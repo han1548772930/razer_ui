@@ -4587,8 +4587,12 @@ def audit_runtime_resources():
     return report
 
 
-def verify_resources():
+def verify_resources(*, scope="embedded", product_ids=None):
     """Decode the actual product image include closure without opening a window."""
+    if scope == "keyboard-artwork":
+        return verify_keyboard_artwork_resources(product_ids=product_ids)
+    if scope != "embedded" or product_ids:
+        raise ValueError("Product filters require the keyboard-artwork resource scope")
     import io
     sys.path.insert(0, str(ROOT / "tools/analyzers/pillow"))
     import PIL
@@ -4649,9 +4653,633 @@ def verify_resources():
     report["passed"] = report["inputs_unchanged"] and not report["summary"]["failed"]
     if RESOURCE_AUDIT.is_file():
         previous = json.loads(RESOURCE_AUDIT.read_bytes())
-        if "runtime_reference_closure" in previous:
-            report["runtime_reference_closure"] = previous["runtime_reference_closure"]
+        for section in ("runtime_reference_closure", "keyboard_artwork"):
+            if section in previous:
+                report[section] = previous[section]
     write_json(RESOURCE_AUDIT, report)
+    return report
+
+
+def keyboard_artwork_atlas(document, *, product_ids=None, additional_catalogs=None):
+    """Enumerate every retained base and Customize image, without selecting a fallback."""
+    products = document["products"]
+    if not isinstance(products, list) or not products:
+        raise ValueError("Keyboard artwork products are absent")
+    known = [row["product_id"] for row in products]
+    if any(type(pid) is not int or pid <= 0 for pid in known) or len(set(known)) != len(known):
+        raise ValueError("Keyboard artwork products have invalid or repeated identities")
+    additional = []
+    additional_catalogs = additional_catalogs or {}
+    def retain(image, pid, collection, **identity):
+        asset = image["asset"]
+        if (type(pid) is not int or pid <= 0 or type(asset) is not str or not asset.startswith("synapse/")
+                or "\\" in asset or any(part in {"", ".", ".."} for part in asset.split("/"))
+                or Path(asset).suffix not in {".svg", ".png"}):
+            raise ValueError("Keyboard auxiliary artwork has an invalid typed identity")
+        additional.append({"product_id": pid, "collection": collection, **identity,
+                           "asset": asset, "svg": asset.endswith(".svg")})
+    special = additional_catalogs.get("KEYBOARD_SOURCE_ARTWORK_DATA")
+    if special is not None:
+        for image in special["images"]:
+            if image["role"] not in {"base", "wrist", "media", "dial"}:
+                raise ValueError("Keyboard source artwork role is unknown")
+            retain(image, special["product_id"], "source_artwork", **{key: value for key, value in image.items() if key != "asset"})
+        retain(special["wrist"], special["product_id"], "source_artwork_wrist")
+    for product in additional_catalogs.get("KEYBOARD_KEYPAD_ARTWORK_DATA", []):
+        for collection in ("images", "icons"):
+            for image in product[collection]:
+                retain(image, product["product_id"], "keypad_" + collection,
+                       **{key: value for key, value in image.items() if key != "asset"})
+    for image in additional_catalogs.get("KEYBOARD_KEYPAD_DEVICE_IMAGE_DATA", []):
+        retain(image, image["product_id"], "keypad_device_image", edition_id=image["edition_id"], density=image["density"])
+    for product in additional_catalogs.get("KEYBOARD_MAPPING_BLADE_ARTWORK_DATA", []):
+        for command, states in product["assets"].items():
+            if "normal" not in states or not set(states) <= {"normal", "active"}:
+                raise ValueError("Keyboard mapping artwork states are incomplete")
+            for state, asset in states.items():
+                retain({"asset": asset}, product["product_id"], "mapping_blade", command=command, state=state)
+    all_known = set(known) | {row["product_id"] for row in additional}
+    selected = set(all_known if product_ids is None else product_ids)
+    if not selected or not selected <= all_known:
+        raise ValueError("Keyboard artwork filter contains no typed product or an unknown product")
+    aliases = {}
+    for product in products:
+        pid = product["product_id"]
+        if pid not in selected:
+            continue
+        for kind in ("images", "customize_images"):
+            images, identities = product[kind], set()
+            if not isinstance(images, list):
+                raise ValueError("Keyboard image collection is not a list")
+            for image in images:
+                required = {"edition_id", "layout_id", "resolution", "svg", "asset"}
+                if (not required <= set(image) or not set(image) <= required | {"customize_asset", "source_layout_id"}
+                        or type(image["edition_id"]) is not int or image["edition_id"] < 0
+                        or type(image["layout_id"]) is not int or image["layout_id"] < 0
+                        or type(image["resolution"]) is not int or image["resolution"] not in {1, 3}
+                        or type(image["svg"]) is not bool or type(image["asset"]) is not str
+                        or not image["asset"].startswith(f"synapse/keyboard-current/{pid}/")
+                        or Path(image["asset"]).name != image["asset"].rsplit("/", 1)[-1]
+                        or ".." in Path(image["asset"]).parts
+                        or not image["asset"].endswith(".svg" if image["svg"] else ".png")
+                        or "customize_asset" in image and (type(image["customize_asset"]) is not str
+                            or not image["customize_asset"].startswith(f"synapse/keyboard-current/{pid}/"))
+                        or "source_layout_id" in image and (type(image["source_layout_id"]) is not int
+                            or image["source_layout_id"] < 0)):
+                    raise ValueError("Keyboard image has an invalid typed identity")
+                identity = tuple(image[key] for key in ("edition_id", "layout_id", "resolution", "svg"))
+                if identity in identities:
+                    raise ValueError("Keyboard image identity is repeated")
+                identities.add(identity)
+                aliases.setdefault(image["asset"], []).append({"product_id": pid, "collection": kind, **image})
+    for use in additional:
+        if use["product_id"] in selected:
+            aliases.setdefault(use["asset"], []).append(use)
+    if not aliases:
+        raise ValueError("Selected keyboard products have no artwork images")
+    return aliases
+
+
+def keyboard_artwork_alias_identity(alias, mappings, locked_files):
+    """Resolve one atlas alias to its unique delivered byte identity."""
+    found = [row["path"] for table in mappings["tables"] for row in table["entries"] if row["key"] == alias]
+    if not found:
+        raise FileNotFoundError("Keyboard artwork alias has no delivery mapping: " + alias)
+    if len(set(found)) != 1:
+        raise ValueError("Keyboard artwork alias has conflicting delivery mappings: " + alias)
+    found = [row for row in locked_files if row["path"] == found[0]]
+    if not found:
+        raise FileNotFoundError("Keyboard artwork alias has no pinned delivery identity: " + alias)
+    if len(found) != 1:
+        raise ValueError("Keyboard artwork delivery identity is repeated: " + alias)
+    return found[0]
+
+
+def image_analyzer_verification_inputs(*, svg=False):
+    """Verify the isolated decoder dependency closure before importing native codecs."""
+    destination = safe(ROOT / "tools/analyzers/pillow")
+    receipt_path = destination / "acquisition.json"
+    receipt_raw = receipt_path.read_bytes()
+    receipt = json.loads(receipt_raw)
+    needed = {"pillow": "12.3.0", **({"resvg-py": "0.5.0"} if svg else {})}
+    wheels = {row["name"]: row for row in receipt["wheels"]}
+    if len(wheels) != len(receipt["wheels"]):
+        raise ValueError("Image analyzer acquisition repeats a package identity")
+    if any(name not in wheels or wheels[name]["version"] != version for name, version in needed.items()):
+        raise FileNotFoundError("Pinned image decoder is absent; run prepare-image-analyzer --svg")
+    identities = [{"path": relative(receipt_path), "bytes": len(receipt_raw),
+                   "sha256": hashlib.sha256(receipt_raw).hexdigest()}]
+    for name in needed:
+        wheel = wheels[name]
+        for path, expected_size, expected_hash in (
+                (wheel["path"], wheel["bytes"], wheel["sha256"]),
+                (wheel["metadata_path"], None, wheel["metadata_sha256"])):
+            current = safe(ROOT / path)
+            raw = current.read_bytes()
+            if hashlib.sha256(raw).hexdigest() != expected_hash or expected_size is not None and len(raw) != expected_size:
+                raise ValueError("Pinned image analyzer acquisition changed: " + path)
+            identities.append({"path": path, "bytes": len(raw), "sha256": expected_hash})
+        metadata = json.loads(raw)
+        if (metadata["info"]["name"].lower().replace("_", "-") != name
+                or metadata["info"]["version"] != needed[name]):
+            raise ValueError("Image analyzer metadata differs from the pinned package")
+        artifacts = [row for row in metadata["urls"] if row["filename"] == Path(wheel["path"]).name
+                     and row["packagetype"] == "bdist_wheel"]
+        if (len(artifacts) != 1 or artifacts[0]["size"] != wheel["bytes"]
+                or artifacts[0]["digests"]["sha256"] != wheel["sha256"] or artifacts[0]["url"] != wheel["url"]):
+            raise ValueError("Image analyzer wheel differs from its published metadata")
+        members = [row for row in receipt["files"] if row["wheel"] == wheel["path"]]
+        if not members or len({row["path"] for row in members}) != len(members):
+            raise ValueError("Image analyzer installation receipt is absent or repeated")
+        import zipfile
+        with zipfile.ZipFile(safe(ROOT / wheel["path"])) as archive:
+            record = name.replace("-", "_") + "-" + wheel["version"] + ".dist-info/RECORD"
+            expected_members = verified_wheel_members(archive, record)
+            if {row["member"] for row in members} != set(expected_members):
+                raise ValueError("Image analyzer receipt omits a wheel dependency")
+            for member in members:
+                path = safe(ROOT / member["path"])
+                if (not path.is_relative_to(destination) or path.is_symlink()
+                        or path != safe(destination / member["member"])):
+                    raise ValueError("Image analyzer member escaped its isolated directory")
+                raw = path.read_bytes()
+                if (len(raw) != member["bytes"] or hashlib.sha256(raw).hexdigest() != member["sha256"]
+                        or raw != archive.read(member["member"])):
+                    raise ValueError("Image analyzer installed member differs from its verified wheel")
+                identities.append({key: member[key] for key in ("path", "bytes", "sha256")})
+    sys.path.insert(0, str(destination))
+    import PIL
+    if not Path(PIL.__file__).resolve().is_relative_to(destination) or PIL.__version__ != needed["pillow"]:
+        raise ValueError("Raster decoder did not load from the pinned image analyzer")
+    if svg:
+        import resvg_py
+        if not Path(resvg_py.__file__).resolve().is_relative_to(destination) or resvg_py.__version__ != needed["resvg-py"]:
+            raise ValueError("SVG decoder did not load from the pinned image analyzer")
+    return identities
+
+
+def decoded_svg_rgba(content):
+    """Rasterize SVG bytes with no external media, file fonts or system fonts."""
+    root = ET.fromstring(content)
+    if root.tag.split("}")[-1] != "svg":
+        raise ValueError("Image root is not SVG")
+    text = content.decode("utf-8")
+    if re.search(r"<!DOCTYPE|<!ENTITY|<\?xml-stylesheet|@import|@font-face", text, re.IGNORECASE):
+        raise ValueError("SVG external document/style/font dependencies are unverified")
+    ids = {node.get("id") for node in root.iter() if node.get("id")}
+    for node in root.iter():
+        kind = node.tag.split("}")[-1]
+        if kind in {"text", "tspan", "textPath", "foreignObject", "script"}:
+            raise ValueError("SVG text, foreign content or executable dependencies are unverified")
+        for name, value in node.attrib.items():
+            if name.split("}")[-1] in {"href", "src"}:
+                if value.startswith("#"):
+                    if value[1:] not in ids:
+                        raise ValueError("SVG fragment target is missing")
+                elif not (kind == "image" and re.match(r"data:image/(?:png|jpeg|webp|gif|avif);base64,", value)):
+                    raise ValueError("SVG external image/reference dependency is unverified")
+    for reference in re.findall(r"url\(\s*['\"]?([^)'\"\s]+)", text, re.IGNORECASE):
+        if not reference.startswith("#"):
+            raise ValueError("SVG external CSS image/reference dependency is unverified")
+        if reference[1:] not in ids:
+            raise ValueError("SVG CSS fragment target is missing")
+    sys.path.insert(0, str(ROOT / "tools/analyzers/pillow"))
+    import resvg_py
+    encoded = resvg_py.svg_to_bytes(svg_string=text, skip_system_fonts=True, resources_dir=None,
+                                   font_files=[], font_dirs=[], dpi=96.0)
+    decoded, pixels = decoded_resource_rgba(encoded, "PNG")
+    if decoded["width"] <= 0 or decoded["height"] <= 0:
+        raise ValueError("Rasterized SVG has empty dimensions")
+    visible = sum(alpha != 0 for alpha in pixels[3::4])
+    if not visible:
+        raise ValueError("Rasterized keyboard SVG has no visible pixels")
+    return {**decoded, "source_format": "SVG", "renderer": "resvg-py", "version": resvg_py.__version__,
+            "resvg_version": resvg_py.__resvg_version__, "visible_pixels": visible,
+            "system_fonts": False, "external_resources": False}, pixels
+
+
+def keyboard_artwork_acquisition(product_id, read_input):
+    """Read the stable official acquisition graph without fetching missing inputs."""
+    import urllib.parse
+    path = safe(ROOT / f".analysis/inputs/frontend/keyboard-{product_id}-current/acquisition.json")
+    document = json.loads(read_input(path))
+    if document.get("source_current_during_acquisition") is not True or not document.get("stability") or any(
+            row.get("unchanged") is not True for row in document["stability"]):
+        raise ValueError("Keyboard current-source acquisition is unstable")
+    expected_prefix = f"https://apps.razer.com/synapse/products/{product_id}/ui/"
+    if document.get("entry_url") != expected_prefix + "index.html":
+        raise ValueError("Keyboard acquisition does not have the current official product origin")
+    files = {}
+    for row in document["files"]:
+        if row.get("path") and (row.get("http_status") == 200 or row.get("kind") == "installed_cached_official_resource"):
+            if row["url"] in files and files[row["url"]] != row:
+                raise ValueError("Keyboard acquisition has conflicting URL identities")
+            files[row["url"]] = row
+    roots = [document["entry_url"], expected_prefix + "asset-manifest.json"]
+    if any(url not in files for url in roots):
+        raise FileNotFoundError("Keyboard current entry or asset manifest was not acquired")
+    entry = read_input(safe(ROOT / files[roots[0]]["path"]), files[roots[0]])
+    manifest = json.loads(read_input(safe(ROOT / files[roots[1]]["path"]), files[roots[1]]))
+    import analysis
+    parser = analysis.References()
+    parser.feed(entry.decode("utf-8"))
+    graph = {}
+    for edge in document.get("edges", []):
+        if edge["from"] not in roots:
+            graph.setdefault(edge["from"], set()).add(edge["to"])
+    graph[roots[0]] = {urllib.parse.urljoin(roots[0], literal) for literal, _ in parser.refs}
+    graph[roots[1]] = {urllib.parse.urljoin(roots[1], literal) for literal in manifest["files"].values()}
+    pending, reachable = list(roots), set(roots)
+    while pending:
+        for url in graph.get(pending.pop(), ()):
+            if url not in reachable:
+                reachable.add(url)
+                pending.append(url)
+    return [row for url, row in files.items() if url in reachable]
+
+
+def verified_official_http_revalidation(original, raw, read_input):
+    """Verify both retained HTTP responses without changing the cache identity."""
+    expected = {"bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+    attempts = original.get("current_http_revalidation", {}).get("attempts", [])
+    if (len(attempts) < 2 or not official_resource_url(original.get("url")) or any(
+            row.get("http_status") != 200 or row.get("status") != 200
+            or row.get("url") != original.get("url")
+            or row.get("final_url") != original.get("final_url", original.get("url"))
+            or not official_resource_url(row.get("final_url"))
+            or row.get("matches_retained") is not True
+            or any(row.get(key) != value for key, value in expected.items()) for row in attempts)):
+        raise ValueError("Cached original lacks matching official HTTP revalidation")
+    identities = []
+    for row in attempts:
+        path = safe(ROOT / row["path"])
+        if (not path.is_relative_to((ROOT / ".analysis/inputs").resolve()) or path.is_symlink()
+                or relative(path) != row["path"] or read_input(path, row) != raw):
+            raise ValueError("Official HTTP revalidation bytes differ from retained original")
+        identities.append({key: row[key] for key in ("path", "bytes", "sha256")})
+    return identities
+
+
+def official_resource_url(value):
+    """Recognize the official HTTPS source boundary shared by resource workflows."""
+    parsed = urllib.parse.urlsplit(value or "")
+    host = parsed.hostname or ""
+    return (parsed.scheme == "https" and not parsed.username and not parsed.password
+            and (host == "razer.com" or host.endswith(".razer.com")
+                 or host == "razerzone.com" or host.endswith(".razerzone.com")))
+
+
+def keyboard_svg_import_module(producer_body, alias):
+    """Resolve the factory's import without collecting nested lexical bindings."""
+    import families
+    sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    raw = ("const source = ({" + producer_body + "});").encode("utf-8")
+    tree = Parser(Language(tree_sitter_javascript.language())).parse(raw)
+    if tree.root_node.has_error:
+        raise ValueError("Current SVG import owner does not form a complete grammar module")
+    declaration = tree.root_node.named_children[0].named_children[0]
+    expression = declaration.child_by_field_name("value")
+    if expression is None or expression.type != "parenthesized_expression":
+        raise ValueError("Current SVG import factory wrapper is unresolved")
+    members = expression.named_children[0].named_children
+    if len(members) != 1 or members[0].type not in {"pair", "method_definition"}:
+        raise ValueError("Current SVG import requires one complete factory")
+    factory = members[0].child_by_field_name("value") if members[0].type == "pair" else members[0]
+    parameters, body = factory.child_by_field_name("parameters"), factory.child_by_field_name("body")
+    if (parameters is None or len(parameters.named_children) != 3
+            or parameters.named_children[2].type != "identifier" or body is None):
+        raise ValueError("Current SVG import factory require parameter is unresolved")
+    require = parameters.named_children[2].text.decode("utf-8")
+    pending, bindings = list(reversed(body.named_children)), []
+    while pending:
+        node = pending.pop()
+        if node.type in {"arrow_function", "function_expression", "function_declaration",
+                         "method_definition", "class_declaration", "class"}:
+            if node.type in {"function_declaration", "class_declaration"}:
+                name = node.child_by_field_name("name")
+                if name is not None and name.text.decode("utf-8") == alias and node.parent == body:
+                    bindings.append(None)
+            continue
+        if node.type == "variable_declarator":
+            name = node.child_by_field_name("name")
+            if name is not None and name.type == "identifier" and name.text.decode("utf-8") == alias:
+                scope = node.parent.parent
+                while scope != body and scope.type != "statement_block":
+                    scope = scope.parent
+                if node.parent.type == "variable_declaration" or scope == body:
+                    bindings.append(node.child_by_field_name("value"))
+        pending.extend(reversed(node.named_children))
+    if len(bindings) != 1 or bindings[0] is None:
+        raise ValueError("Current SVG lettering enum import is absent or ambiguous")
+    value = bindings[0]
+    while value.type == "parenthesized_expression" and len(value.named_children) == 1:
+        value = value.named_children[0]
+    calls = list(value.named_children) if value.type == "sequence_expression" else [value]
+    imported = []
+    for call in calls:
+        function, arguments = call.child_by_field_name("function"), call.child_by_field_name("arguments")
+        if (call.type != "call_expression" or function is None or function.type != "identifier"
+                or function.text.decode("utf-8") != require
+                or arguments is None or len(arguments.named_children) != 1
+                or arguments.named_children[0].type != "number"):
+            raise ValueError("Current SVG lettering enum import expression is unresolved")
+        imported.append(families.javascript_integer_literal(arguments.named_children[0].text.decode("ascii")))
+    if not imported:
+        raise ValueError("Current SVG lettering enum import expression is empty")
+    return imported[-1]
+
+
+def keyboard_artwork_inline_png(sources, read_original, expected_hash, *, css_selector=None):
+    """Resolve exact delivered PNG bytes to every current JS/CSS literal owner."""
+    if not re.fullmatch(r"[a-f0-9]{64}", expected_hash):
+        raise ValueError("Inline keyboard PNG requires its complete pinned SHA-256")
+    found = []
+    for original in sources:
+        suffix = Path(original["path"]).suffix.lower()
+        if suffix not in {".js", ".css"} or suffix == ".css" and css_selector is None:
+            continue
+        raw = read_original(original)
+        matches = [match for match in re.finditer(rb"data:image/png;base64,([A-Za-z0-9+/=]+)", raw)
+                   if hashlib.sha256(base64.b64decode(match[1], validate=True)).hexdigest() == expected_hash]
+        if not matches:
+            continue
+        if suffix == ".css":
+            text = raw.decode("utf-8")
+            rules = [rule for rule in re.finditer(r"([^{}]+)\{[^{}]*\}", text)
+                     if rule[1].strip() == css_selector and any(
+                         rule.start() <= len(raw[:match.start()].decode("utf-8")) < rule.end() for match in matches)]
+            if not rules:
+                continue
+            pixels, extraction = extract_inline_css_png(raw, {"selector": css_selector, "sha256": expected_hash})
+        else:
+            pixels, extraction = extract_inline_resource_png(raw, expected_hash)
+        found.append((original, pixels, extraction))
+    if not found or any(pixels != found[0][1] for _, pixels, _ in found):
+        raise FileNotFoundError("Current keyboard PNG literal owner is absent or ambiguous")
+    return found
+
+
+def keyboard_artwork_svg_producer(sources, read_input, *, lettering=False):
+    """Retain the complete current SVG producer and its literal lettering enum."""
+    import families
+    modules, producer_candidates = {}, []
+    for row in sources:
+        if not row["path"].endswith(".js"):
+            continue
+        text = read_input(safe(ROOT / row["path"]), row).decode("utf-8")
+        anchor = '"Error fetching/parsing SVG:"'
+        if anchor in text:
+            offset = text.index(anchor)
+            found = families.keyboard_source_modules(text)
+            modules[row["path"]] = found
+            owners = [module for module in found if module["character_start"] <= offset < module["character_end"]]
+            if not owners:
+                raise ValueError("Current SVG producer is outside a complete grammar function")
+            body = min(owners, key=lambda module: module["character_end"] - module["character_start"])
+            producer_candidates.append((row, body))
+    if len(producer_candidates) != 1:
+        raise ValueError("Current SVG root-filter producer is absent or ambiguous")
+    original, module = producer_candidates[0]
+    body = module["body"]
+    if not all('"' + token + '"' in body for token in ("_LED", "_Selection")):
+        raise ValueError("Current SVG producer root-filter semantics are unresolved")
+    producer = {"path": original["path"], "sha256": original["sha256"],
+                "anchor": '"Error fetching/parsing SVG:"', "module_id": module["module_id"],
+                "boundary_parser": "tree-sitter-javascript"}
+    proof = {"input": {key: original[key] for key in ("path", "bytes", "sha256")}, "complete_module": module}
+    if not lettering:
+        return producer, {}, proof
+    namespaces = {(alias, export) for alias, export in
+                  re.findall(r'\[([\w$]+)\.([\w$]+)\.[\w$]+\]:"[A-Z]+"', body)}
+    if len(namespaces) != 1 or not all('"' + token + '"' in body for token in ("_Lettering", "_Characters")):
+        raise ValueError("Current SVG lettering namespace/filter semantics are unresolved")
+    alias, export = namespaces.pop()
+    module_id = keyboard_svg_import_module(body, alias)
+    enum_modules = []
+    for row in sources:
+        if not row["path"].endswith(".js"):
+            continue
+        if row["path"] not in modules:
+            modules[row["path"]] = families.keyboard_source_modules(read_input(safe(ROOT / row["path"]), row).decode("utf-8"))
+        enum_modules.extend((row, module) for module in modules[row["path"]] if module["module_id"] == module_id)
+    if len(enum_modules) != 1:
+        raise ValueError("Current SVG lettering enum module is absent or ambiguous")
+    enum_original, enum_module = enum_modules[0]
+    enum_body = enum_module["body"]
+    symbol = re.search(re.escape(export) + r':(?:\(\)=>|function\(\)\{return )([\w$]+)', enum_body)
+    if symbol is None:
+        raise ValueError("Current SVG lettering enum export is unresolved")
+    binding = re.search(r'(?<![\w$])' + re.escape(symbol[1]) + r'=\{', enum_body)
+    if binding is None:
+        raise ValueError("Current SVG lettering enum literal is unresolved")
+    start = binding.end() - 1
+    enums = families.keyboard_static_literal(enum_body[start:families.javascript_delimited(enum_body, start)])
+    proof["lettering_enum"] = {"input": {key: enum_original[key] for key in ("path", "bytes", "sha256")},
+                               "complete_module": enum_module}
+    return producer, keyboard_svg_lettering(body, enums), proof
+
+
+def verify_keyboard_artwork_resources(*, product_ids=None):
+    """Verify the complete typed atlas against actual originals and pinned display bytes offline."""
+    snapshots = {}
+    def read_input(path, expected=None):
+        path = safe(path)
+        if path.is_symlink():
+            raise ValueError("Keyboard artwork verification input is a symbolic link")
+        raw = path.read_bytes()
+        actual = {"path": relative(path), "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+        if expected is not None and any(actual[key] != expected[key] for key in ("path", "bytes", "sha256")):
+            raise ValueError("Keyboard artwork original differs from its acquisition: " + relative(path))
+        previous = snapshots.setdefault(actual["path"], actual)
+        if previous != actual:
+            raise ValueError("Keyboard artwork input changed during verification: " + actual["path"])
+        return raw
+
+    catalog = resource_sources.builtin_data_path("razer-pages", "KEYBOARD_ARTWORK_CURRENT_DATA", root=ROOT)
+    document = json.loads(read_input(catalog))
+    additional_catalogs = {}
+    for symbol in ("KEYBOARD_SOURCE_ARTWORK_DATA", "KEYBOARD_KEYPAD_ARTWORK_DATA",
+                   "KEYBOARD_KEYPAD_DEVICE_IMAGE_DATA", "KEYBOARD_MAPPING_BLADE_ARTWORK_DATA"):
+        path = resource_sources.builtin_data_path("razer-pages", symbol, root=ROOT)
+        additional_catalogs[symbol] = json.loads(read_input(path))
+    aliases = keyboard_artwork_atlas(document, product_ids=product_ids, additional_catalogs=additional_catalogs)
+    mapping_inputs = []
+    mappings = resource_sources.load_resource_mappings(root=ROOT, input_rows=mapping_inputs)
+    if len(mapping_inputs) != 1:
+        raise ValueError("Resource mapping owner did not retain its actual input identity")
+    read_input(ROOT / resource_sources.MAPPINGS, mapping_inputs[0])
+    lock = resource_sources.validate_lock(json.loads(read_input(ROOT / resource_sources.LOCK)))
+    locked_files = lock["git_files"] + [row for group in lock["groups"] for row in group["files"]]
+    products = {row["product_id"]: row for row in document["products"]}
+    report = {"schema_version": 1, "recorded_at_utc": datetime.now(timezone.utc).isoformat(),
+              "scope": "keyboard-artwork", "selected_products": sorted({use["product_id"] for rows in aliases.values() for use in rows}),
+              "resource_revision": lock["storage"]["revision"], "network_access": False,
+              "target_execution": False, "real_device_operations": False,
+              "application_runtime_acceptance": "not performed", "installation_cache_acceptance": "unverified",
+              "output_verification": "Reconstruct pinned display bytes in memory; no source media or installation cache is populated",
+              "entries": [], "errors": []}
+    tool_path = Path(__file__).resolve()
+    if tool_path.is_relative_to(ROOT):
+        read_input(tool_path)
+        report["tool"] = snapshots[relative(tool_path)]
+        for name in ("families.py", "asset_release.py", "analysis.py", "typed-data.json"):
+            read_input(ROOT / "tools" / name)
+    try:
+        for row in image_analyzer_verification_inputs(svg=True):
+            snapshots[row["path"]] = row
+        decoder_error = None
+    except (OSError, ValueError, ImportError) as error:
+        decoder_error = {"kind": type(error).__name__, "message": str(error)}
+        report["errors"].append(decoder_error)
+    acquired, producer_cache, decode_cache, conversion_cache, inline_sources = {}, {}, {}, {}, {}
+    revalidated_originals = {}
+    def sources_for(pid):
+        if pid not in acquired:
+            acquired[pid] = keyboard_artwork_acquisition(pid, read_input)
+        return acquired[pid]
+    def read_original(source):
+        raw = read_input(safe(ROOT / source["path"]), source)
+        if source.get("http_status") != 200 and source.get("deployment_current_verified") is not True:
+            revalidated_originals[source["path"]] = verified_official_http_revalidation(source, raw, read_input)
+        return raw
+    for alias, uses in sorted(aliases.items()):
+        entry = {"alias": alias, "uses": uses, "errors": [], "source_verified": False,
+                 "delivery_identity_verified": False, "pixel_decode_performed": False, "conversion_verified": False}
+        report["entries"].append(entry)
+        try:
+            locked = keyboard_artwork_alias_identity(alias, mappings, locked_files)
+            entry.update(output=locked, delivery_identity_verified=True)
+        except (OSError, ValueError) as error:
+            locked = None
+            entry["errors"].append({"kind": type(error).__name__, "message": str(error), "stage": "delivery_identity"})
+        try:
+            plans = []
+            for use in uses:
+                pid = use["product_id"]
+                product = products.get(pid)
+                base = use
+                request = {"display": alias}
+                if use["collection"] == "customize_images":
+                    if product is None:
+                        raise ValueError("Customize image has no typed product owner")
+                    normalization = product.get("customize_layout_normalization")
+                    source_layout = (keyboard_normalized_svg_layout(use["layout_id"], normalization)
+                                     if normalization else use["layout_id"])
+                    bases = [image for image in product["images"] if image["svg"]
+                             and image["edition_id"] == use["edition_id"] and image["layout_id"] == source_layout]
+                    if len(bases) != 1:
+                        raise ValueError("Customize image has no unique typed source variant")
+                    base = bases[0]
+                filename = Path(base["asset"]).name
+                prefix = re.fullmatch(r"synapse/keyboard-keypad-(?:artwork|device-image)/\d+-([a-f0-9]{16})\.(?:png|svg)", base["asset"])
+                candidates = [row for row in sources_for(pid) if
+                              (row["sha256"].startswith(prefix[1]) if prefix else Path(row["path"]).stem == Path(filename).stem)
+                              and Path(row["path"]).suffix.lower() in ({".svg"} if base["svg"] else {".avif", ".png"})]
+                embedded = use["collection"] == "mapping_blade" and filename.startswith("embedded-")
+                keypad_inline = use["collection"] == "keypad_images" and prefix and not base["svg"]
+                if embedded or keypad_inline:
+                    prefix_hash = re.fullmatch(r"embedded-([a-f0-9]{16})\.png", filename) if embedded else prefix
+                    if prefix_hash is None or locked is None or not locked["sha256"].startswith(prefix_hash[1]):
+                        raise ValueError("Keyboard mapping embedded PNG identity is malformed")
+                    css_selector = (".action-wrapper." + use["command"]
+                                    + (".open" if use["state"] == "active" else "") + " .head:before") if embedded else None
+                    inline_key = (pid, locked["sha256"], css_selector)
+                    if inline_key not in inline_sources:
+                        inline_sources[inline_key] = keyboard_artwork_inline_png(sources_for(pid), read_original,
+                            locked["sha256"], css_selector=css_selector)
+                    for source, raw, extraction in inline_sources[inline_key]:
+                        proof = {"input": {key: source[key] for key in ("path", "bytes", "sha256")}, "extraction": extraction}
+                        if proof not in entry.setdefault("inline_png_producers", []):
+                            entry["inline_png_producers"].append(proof)
+                    source, raw, _ = inline_sources[inline_key][0]
+                    plans.append((source, raw, request))
+                    continue
+                if len(candidates) != 1:
+                    raise FileNotFoundError("Current reachable artwork original is absent or ambiguous: " + base["asset"])
+                source = candidates[0]
+                entry.setdefault("original_candidates", []).append({key: source[key] for key in ("path", "bytes", "sha256")})
+                raw = read_original(source)
+                if use["collection"] == "customize_images":
+                    if pid not in producer_cache:
+                        producer_cache[pid] = keyboard_artwork_svg_producer(sources_for(pid), read_input,
+                            lettering=bool(product.get("customize_layout_normalization")))
+                    producer, lettering, proof = producer_cache[pid]
+                    request = keyboard_customize_svg_request(raw, base["asset"], producer,
+                        normalized=bool(product.get("customize_layout_normalization")),
+                        lettering=lettering.get(use["layout_id"], "US"), layout_id=use["layout_id"])
+                    if request["display"] != alias:
+                        raise ValueError("Customize alias differs from the current source producer")
+                if use["collection"] in {"source_artwork", "source_artwork_wrist"}:
+                    request["png_optimize"] = True
+                plans.append((source, raw, request))
+            if len({(hashlib.sha256(raw).hexdigest(), tuple(request.get("svg_remove_root_ids", [])),
+                     request.get("png_optimize", False)) for _, raw, request in plans}) != 1:
+                raise ValueError("Shared keyboard alias resolves to conflicting original/transformation identities")
+            source, raw, request = plans[0]
+            entry.update(source={key: source[key] for key in ("path", "bytes", "sha256")}, source_verified=True)
+            suffix = Path(source["path"]).suffix.lower()
+            entry["format"] = "SVG" if suffix == ".svg" else "PNG"
+            if decoder_error:
+                raise ImportError("Pinned static pixel decoder was not verified")
+            if "svg_remove_root_ids" in request:
+                output, transformation = filter_svg_root_children(raw, request["svg_remove_root_ids"])
+                entry["transformation"] = transformation
+            elif suffix == ".avif":
+                conversion_key = (source["sha256"], request.get("png_optimize", False))
+                if conversion_key not in conversion_cache:
+                    output, conversion = avif_display_png(safe(ROOT / source["path"]),
+                        png_optimize=request.get("png_optimize", False))
+                    comparison = compare_resource_pixels(raw, output, "AVIF")
+                    conversion_cache[conversion_key] = (output, conversion, comparison)
+                output, conversion, comparison = conversion_cache[conversion_key]
+                entry.update(conversion=conversion, pixel_comparison=comparison)
+            else:
+                output = raw
+            entry["actual_output"] = {"bytes": len(output), "sha256": hashlib.sha256(output).hexdigest()}
+            if locked is not None and (len(output) != locked["bytes"] or hashlib.sha256(output).hexdigest() != locked["sha256"]):
+                if suffix == ".svg" and b"\r" not in output:
+                    reuse = resource_sources.verified_alias_reuse(output, alias, normalize_source_lf=True, root=ROOT, mappings=mappings)
+                    output = output.replace(b"\n", b"\r\n")
+                    entry["delivery_projection"] = reuse
+                    entry["actual_output"] = {"bytes": len(output), "sha256": hashlib.sha256(output).hexdigest()}
+                else:
+                    raise ValueError("Reconstructed display bytes differ from their pinned delivery identity")
+            output_hash = hashlib.sha256(output).hexdigest()
+            decode_key = (output_hash, entry["format"])
+            if decode_key not in decode_cache:
+                decoded, _ = (decoded_svg_rgba(output) if suffix == ".svg" else decoded_resource_rgba(output, "PNG"))
+                decode_cache[decode_key] = decoded
+            entry.update(actual_output={"bytes": len(output), "sha256": output_hash},
+                         decode=decode_cache[decode_key], pixel_decode_performed=True,
+                         conversion_verified=locked is not None)
+        except (OSError, ValueError, KeyError, TypeError, ImportError, RuntimeError, ET.ParseError) as error:
+            entry["errors"].append({"kind": type(error).__name__, "message": str(error), "stage": "source_conversion_decode"})
+        entry["passed"] = not entry["errors"] and entry["pixel_decode_performed"] and entry["conversion_verified"]
+    report["svg_producers"] = {str(pid): proof for pid, (_, _, proof) in sorted(producer_cache.items())}
+    report["official_http_revalidations"] = revalidated_originals
+    changed = []
+    for row in snapshots.values():
+        try:
+            path = safe(ROOT / row["path"])
+            if path.stat().st_size != row["bytes"] or digest(path) != row["sha256"]:
+                changed.append(row["path"])
+        except OSError:
+            changed.append(row["path"])
+    report.update(inputs=sorted(snapshots.values(), key=lambda row: row["path"]),
+                  inputs_unchanged=not changed, changed_inputs=changed)
+    counts = Counter(row.get("format", "unrecognized") for row in report["entries"])
+    report["summary"] = {"products": len(report["selected_products"]), "atlas_rows": sum(len(uses) for uses in aliases.values()),
+                         "total": len(aliases), "verified": sum(row["passed"] for row in report["entries"]),
+                         "failed": sum(not row["passed"] for row in report["entries"]),
+                         "pixel_decoded": sum(row["pixel_decode_performed"] for row in report["entries"]),
+                         "missing_delivery_identities": sum(not row["delivery_identity_verified"] for row in report["entries"]),
+                         "formats": dict(counts)}
+    report["passed"] = not report["errors"] and report["inputs_unchanged"] and not report["summary"]["failed"]
+    previous = json.loads(RESOURCE_AUDIT.read_bytes()) if RESOURCE_AUDIT.is_file() else {"schema_version": 1}
+    previous["keyboard_artwork"] = report
+    write_json(RESOURCE_AUDIT, previous)
     return report
 
 
@@ -6530,26 +7158,17 @@ def locale_preparation_source(acquisition, source_name):
             or originals[0].get("bytes") != len(raw)):
         raise ValueError("Locale original identity does not verify: " + source_name)
     original = originals[0]
-    def official_url(value):
-        parsed = urllib.parse.urlsplit(value or "")
-        host = parsed.hostname or ""
-        return (parsed.scheme == "https" and (host == "razer.com" or host.endswith(".razer.com")
-                or host == "razerzone.com" or host.endswith(".razerzone.com")))
-    if (not official_url(original.get("url")) or not official_url(receipt.get("entry_url"))
-            or not official_url(original.get("final_url", original.get("url")))):
+    if (not official_resource_url(original.get("url")) or not official_resource_url(receipt.get("entry_url"))
+            or not official_resource_url(original.get("final_url", original.get("url")))):
         raise ValueError("Locale source must use current official HTTPS endpoints")
     revalidation = original.get("current_http_revalidation", {}).get("attempts", [])
     if original.get("http_status") != 200:
-        if len(revalidation) < 2 or any(
-                row.get("http_status") != 200 or row.get("url") != original.get("url")
-                or not official_url(row.get("final_url", row.get("url")))
-                or row.get("bytes") != len(raw) or row.get("sha256") != original["sha256"]
-                or row.get("matches_retained") is not True for row in revalidation):
-            raise ValueError("Cached locale original lacks matching official HTTP revalidation")
-        for row in revalidation:
-            path = safe(ROOT / row["path"])
-            if not path.is_relative_to(ROOT / ".analysis/inputs") or path.read_bytes() != raw:
+        def read_revalidation(path, expected):
+            response = path.read_bytes()
+            if (len(response) != expected["bytes"] or hashlib.sha256(response).hexdigest() != expected["sha256"]):
                 raise ValueError("Locale revalidation bytes differ from retained original")
+            return response
+        verified_official_http_revalidation(original, raw, read_revalidation)
     deployment = evidence.frontend_deployment_sources(receipt)
     mounted = [row for row in deployment["sources"] if row.get("original", {}).get("path") == relative(source)
                and row.get("identity_verified")]
@@ -6732,66 +7351,86 @@ def prepare_locale_keys(acquisition, namespace, bindings, keys):
         return {**publish_locale_preparation(document, snapshots, baseline, prepared), "namespace": namespace, "keys": keys}
 
 
-def prepare_image_analyzer():
-    """Acquire a hash-verified Pillow wheel matching the current Python ABI."""
-    import csv
-    import io
+def prepare_image_analyzer(*, svg=False):
+    """Acquire verified raster/SVG codecs in the existing image analyzer."""
     import sysconfig
     import zipfile
     import analysis
-    version = "12.3.0"
     abi = f"cp{sys.version_info.major}{sys.version_info.minor}"
     platform_tag = sysconfig.get_platform().replace("-", "_").replace(".", "_")
-    filename = f"pillow-{version}-{abi}-{abi}-{platform_tag}.whl"
-    metadata_url = f"https://pypi.org/pypi/pillow/{version}/json"
-    reference = ROOT / ".analysis/references/python-static-wheels"
+    packages = [("pillow", "12.3.0", f"pillow-12.3.0-{abi}-{abi}-{platform_tag}.whl")]
+    if svg:
+        packages.append(("resvg-py", "0.5.0", f"resvg_py-0.5.0-cp310-abi3-{platform_tag}.whl"))
+    reference = safe(ROOT / ".analysis/references/python-static-wheels")
+    destination = safe(ROOT / "tools/analyzers/pillow")
     reference.mkdir(parents=True, exist_ok=True)
-    with urllib.request.urlopen(metadata_url, timeout=40) as response:
-        metadata_bytes = response.read()
-    metadata = json.loads(metadata_bytes)
-    artifact = next((item for item in metadata["urls"] if item["filename"] == filename), None)
-    if artifact is None:
-        raise ValueError("Pillow has no verified wheel matching the current analyzer Python: " + filename)
-    metadata_path = reference / f"pillow-{version}.{abi}.pypi.json"
-    metadata_path.write_bytes(metadata_bytes)
-    wheel_path = reference / filename
-    if not wheel_path.is_file() or digest(wheel_path) != artifact["digests"]["sha256"]:
-        with urllib.request.urlopen(artifact["url"], timeout=40) as response:
-            wheel_bytes = response.read()
-        if hashlib.sha256(wheel_bytes).hexdigest() != artifact["digests"]["sha256"]:
-            raise ValueError("Pillow wheel differs from its published SHA-256")
-        wheel_path.write_bytes(wheel_bytes)
-    destination = ROOT / "tools/analyzers/pillow"
-    records = []
-    with zipfile.ZipFile(wheel_path) as archive:
-        record_name = f"pillow-{version}.dist-info/RECORD"
-        members = list(csv.reader(io.StringIO(archive.read(record_name).decode("utf-8"))))
-        for name, encoded_digest, length in members:
-            output = safe(destination / name)
-            if not output.is_relative_to(destination.resolve()):
-                raise ValueError("Pillow wheel member escaped its analyzer directory")
-            content = archive.read(name)
-            if encoded_digest:
-                algorithm, expected = encoded_digest.split("=", 1)
-                actual = base64.urlsafe_b64encode(hashlib.sha256(content).digest()).rstrip(b"=").decode("ascii")
-                if algorithm != "sha256" or actual != expected or len(content) != int(length):
-                    raise ValueError("Pillow wheel RECORD does not verify: " + name)
-            output.parent.mkdir(parents=True, exist_ok=True)
-            output.write_bytes(content)
-            records.append({"path": relative(output), "bytes": len(content),
-                            "sha256": digest(output), "member": name, "wheel": relative(wheel_path)})
+    receipt_path = destination / "acquisition.json"
+    previous = json.loads(receipt_path.read_bytes()) if receipt_path.is_file() else {}
+    replaced = {filename for _, _, filename in packages}
+    wheels = [row for row in previous.get("wheels", []) if Path(row["path"]).name not in replaced]
+    retained_wheels = {row["path"] for row in wheels}
+    records = [row for row in previous.get("files", []) if row["wheel"] in retained_wheels]
+    for row in records:
+        output = safe(ROOT / row["path"])
+        if (not output.is_relative_to(destination) or not output.is_file()
+                or output.stat().st_size != row["bytes"] or digest(output) != row["sha256"]):
+            raise ValueError("Retained image analyzer member no longer verifies: " + row["path"])
+    indexed = []
+    for package, version, filename in packages:
+        metadata_url = f"https://pypi.org/pypi/{package}/{version}/json"
+        with urllib.request.urlopen(metadata_url, timeout=40) as response:
+            metadata_bytes = response.read()
+        metadata = json.loads(metadata_bytes)
+        normalize = lambda value: value.lower().replace("_", "-")
+        if metadata["info"]["version"] != version or normalize(metadata["info"]["name"]) != package:
+            raise ValueError("Image analyzer metadata differs from its pinned package")
+        artifact = next((item for item in metadata["urls"] if item["filename"] == filename
+                         and item["packagetype"] == "bdist_wheel"), None)
+        if artifact is None:
+            raise ValueError("Pinned image analyzer has no wheel for the current Python: " + filename)
+        if not artifact["url"].startswith("https://files.pythonhosted.org/"):
+            raise ValueError("Image analyzer wheel does not have the published PyPI origin")
+        metadata_path = reference / f"{package}-{version}.{hashlib.sha256(metadata_bytes).hexdigest()}.pypi.json"
+        metadata_path.write_bytes(metadata_bytes)
+        wheel_path = reference / filename
+        if not wheel_path.is_file() or digest(wheel_path) != artifact["digests"]["sha256"]:
+            with urllib.request.urlopen(artifact["url"], timeout=60) as response:
+                wheel_bytes = response.read(artifact["size"] + 1)
+            if len(wheel_bytes) != artifact["size"] or hashlib.sha256(wheel_bytes).hexdigest() != artifact["digests"]["sha256"]:
+                raise ValueError("Image analyzer wheel differs from its published byte identity")
+            wheel_path.write_bytes(wheel_bytes)
+        if wheel_path.stat().st_size != artifact["size"]:
+            raise ValueError("Image analyzer wheel length differs from its publisher metadata")
+        with zipfile.ZipFile(wheel_path) as archive:
+            distribution = package.replace("-", "_")
+            members = verified_wheel_members(archive, f"{distribution}-{version}.dist-info/RECORD")
+            for name in members:
+                output = safe(destination / name)
+                if not output.is_relative_to(destination):
+                    raise ValueError("Image analyzer wheel member escaped its installation directory")
+                content = archive.read(name)
+                output.parent.mkdir(parents=True, exist_ok=True)
+                output.write_bytes(content)
+                records.append({"path": relative(output), "bytes": len(content),
+                                "sha256": digest(output), "member": name, "wheel": relative(wheel_path)})
+        wheels.append({"name": package, "version": version, "path": relative(wheel_path), "url": artifact["url"],
+                       "bytes": wheel_path.stat().st_size, "sha256": digest(wheel_path),
+                       "metadata_path": relative(metadata_path), "metadata_url": metadata_url,
+                       "metadata_sha256": digest(metadata_path)})
+        indexed.extend([{"path": relative(wheel_path), "bytes": wheel_path.stat().st_size, "sha256": digest(wheel_path),
+                         "url": artifact["url"], "kind": "static_analyzer_wheel"},
+                        {"path": relative(metadata_path), "bytes": len(metadata_bytes), "sha256": digest(metadata_path),
+                         "url": metadata_url, "kind": "static_analyzer_metadata"}])
     receipt = {"schema_version": 1, "acquired_at_utc": analysis.stamp(), "python_abi": abi + "-" + platform_tag,
         "python_version": sys.version.split()[0], "target_execution": False,
         "scope": "Project-local static image decoder only; no product runtime dependency",
-        "wheels": [{"name": "pillow", "version": version, "path": relative(wheel_path), "url": artifact["url"],
-                    "bytes": wheel_path.stat().st_size, "sha256": digest(wheel_path),
-                    "metadata_path": relative(metadata_path), "metadata_url": metadata_url,
-                    "metadata_sha256": digest(metadata_path)}], "files": records,
+        "wheels": wheels, "files": records,
         "record_verification": {"members": len(records), "all_record_members_verified": True,
                                 "all_extracted_bytes_match": True}}
-    write_json(destination / "acquisition.json", receipt)
-    print(json.dumps({"receipt": relative(destination / "acquisition.json"), "python_abi": receipt["python_abi"],
-                      "files": len(records)}), flush=True)
+    write_json(receipt_path, receipt)
+    analysis.index_files(indexed)
+    return {"receipt": relative(receipt_path), "python_abi": receipt["python_abi"],
+            "files": len(records), "packages": [row["name"] for row in wheels]}
 
 
 def verified_wheel_members(archive, record_name):
@@ -6976,16 +7615,126 @@ def prepare_resources(acquisition, resources=None, *, publication_manifest=None)
         return prepare_resources_locked(acquisition, resources)
 
 
-def avif_display_png(source):
+def keyboard_svg_lettering(producer_body, enums):
+    """Read the current producer's literal layout-to-lettering map."""
+    return {enums[name]: label for name, label in
+            re.findall(r'\[[\w$]+\.[\w$]+\.([\w$]+)\]:"([A-Z]+)"', producer_body) if name in enums}
+
+
+def keyboard_normalized_svg_layout(layout_id, normalization):
+    """Apply the source producer's ANSI/ISO/Japanese resource selection."""
+    if layout_id in normalization["ansi"]:
+        return normalization["united_states"]
+    if layout_id in normalization["iso"]:
+        return normalization["united_kingdom"]
+    return layout_id if layout_id == normalization["japanese"] else normalization["united_states"]
+
+
+def keyboard_customize_svg_request(content, asset, producer, *, normalized=False, lettering="US", layout_id=None):
+    """Project the current keyboard producer's root-child filter and alias."""
+    if not isinstance(asset, str) or not asset.endswith(".svg") or type(normalized) is not bool:
+        raise ValueError("Keyboard Customize requires an SVG alias and explicit normalization")
+    if normalized and (type(layout_id) is not int or type(lettering) is not str or not lettering):
+        raise ValueError("Normalized keyboard Customize requires a layout and lettering")
+    root = ET.fromstring(content)
+    if root.tag.split("}")[-1] != "svg":
+        raise ValueError("Keyboard Customize original is not SVG")
+    base_removed = [child.get("id") for child in root if child.get("id")
+                    and ("_LED" in child.get("id") or "_Selection" in child.get("id"))]
+    alias = asset.replace(".svg", "-customize.svg") if base_removed else asset
+    removed = [child.get("id") for child in root if child.get("id") and
+               ("_LED" in child.get("id") or "_Selection" in child.get("id") or
+                normalized and ("_Lettering" in child.get("id") or "_Characters" in child.get("id"))
+                and child.get("id") not in {lettering + "_Lettering", lettering + "_Characters"})]
+    if removed and normalized:
+        alias = alias.replace(".svg", f"-customize-layout-{layout_id}.svg")
+    return ({"display": alias, "svg_remove_root_ids": removed, "producer": producer}
+            if removed else {"display": alias})
+
+
+def filter_svg_root_children(content, root_ids):
+    """Remove exactly the acquired producer's named root children."""
+    if (not isinstance(root_ids, list) or not root_ids
+            or any(type(root_id) is not str or not root_id for root_id in root_ids)
+            or len(set(root_ids)) != len(root_ids)):
+        raise ValueError("Source SVG root identifiers must be distinct nonempty strings")
+    root = ET.fromstring(content)
+    if root.tag.split("}")[-1] != "svg":
+        raise ValueError("Source SVG root filtering requires an SVG original")
+    removed = []
+    for child in list(root):
+        if child.get("id") in root_ids:
+            removed.append(child.get("id"))
+            root.remove(child)
+    if set(removed) != set(root_ids) or len(removed) != len(root_ids):
+        raise ValueError("Source SVG producer filter contains absent or repeated root nodes")
+    ET.register_namespace("", "http://www.w3.org/2000/svg")
+    ET.register_namespace("xlink", "http://www.w3.org/1999/xlink")
+    return ET.tostring(root, encoding="utf-8"), {
+        "tool": "Python xml.etree.ElementTree", "version": sys.version.split()[0],
+        "operation": "Remove only named source SVG root children; serialize preserved tree",
+        "removed_root_ids": removed, "root_attributes": dict(root.attrib)}
+
+
+def verified_svg_root_filter_producer(producer, originals, *, snapshots, cache):
+    """Verify the acquired bytes and complete module that owns a root filter."""
+    import families
+    if (not isinstance(producer, dict)
+            or not {"path", "sha256", "anchor", "module_id"} <= set(producer)
+            or type(producer["path"]) is not str or type(producer["anchor"]) is not str
+            or not producer["anchor"] or type(producer["module_id"]) not in (int, str)
+            or not re.fullmatch(r"[0-9a-f]{64}", str(producer["sha256"]))):
+        raise ValueError("Source SVG producer requires an acquired module identity")
+    producer_path = safe(ROOT / producer["path"])
+    if (not producer_path.is_relative_to((ROOT / ".analysis/inputs").resolve())
+            or (ROOT / producer["path"]).is_symlink() or producer_path.suffix.lower() != ".js"):
+        raise ValueError("Source SVG producer must be a retained acquired JS original")
+    original = originals.get(relative(producer_path))
+    if not original or original.get("http_status") != 200 or not producer_path.is_file():
+        raise ValueError("Source SVG producer acquisition does not verify")
+    raw = producer_path.read_bytes()
+    if (original.get("sha256") != producer["sha256"]
+            or hashlib.sha256(raw).hexdigest() != producer["sha256"]
+            or original.get("bytes") != len(raw)):
+        raise ValueError("Source SVG producer acquisition does not verify")
+    key = (relative(producer_path), producer["sha256"], producer["anchor"],
+           producer["module_id"], producer.get("boundary_parser"))
+    body = cache.get(key)
+    if body is None:
+        text = raw.decode("utf-8")
+        if producer.get("boundary_parser") == "tree-sitter-javascript" or not isinstance(producer["module_id"], int):
+            offsets = [match.start() for match in re.finditer(re.escape(producer["anchor"]), text)]
+            owners = [module for module in families.keyboard_source_modules(text)
+                      if any(module["character_start"] <= offset < module["character_end"] for offset in offsets)]
+            if not owners:
+                raise ValueError("Current source SVG producer is outside a complete grammar function")
+            owners = [module for module in owners if module["module_id"] == producer["module_id"]]
+            if len(owners) != 1:
+                raise ValueError("Source SVG producer module does not match or is ambiguous")
+            body = owners[0]
+        else:
+            body = families.complete_raw_module(text, producer["anchor"])
+        if body["module_id"] != producer["module_id"]:
+            raise ValueError("Source SVG producer module does not match")
+        cache[key] = body
+    snapshots.append((producer_path, raw))
+    families_tool = Path(families.__file__)
+    snapshots.append((families_tool, families_tool.read_bytes()))
+    return {"input": original, "complete_module": body}
+
+
+def avif_display_png(source, *, png_optimize=False):
     """Decode an acquired AVIF without executing its originating application."""
     import io
     sys.path.insert(0, str(ROOT / "tools/analyzers/pillow"))
     import PIL
     from PIL import Image, features
+    if type(png_optimize) is not bool:
+        raise ValueError("PNG optimization must be an explicit boolean")
     with Image.open(source) as image:
         rgba = image.convert("RGBA")
         buffer = io.BytesIO()
-        rgba.save(buffer, format="PNG")
+        rgba.save(buffer, format="PNG", optimize=png_optimize)
         content = buffer.getvalue()
         with Image.open(io.BytesIO(content)) as decoded:
             if decoded.mode != "RGBA" or decoded.size != rgba.size or decoded.tobytes() != rgba.tobytes():
@@ -6994,7 +7743,40 @@ def avif_display_png(source):
                          "codec": "libavif", "codec_version": features.version("avif"),
                          "mode": "RGBA", "width": rgba.width, "height": rgba.height,
                          "decoded_rgba_sha256": hashlib.sha256(rgba.tobytes()).hexdigest(),
+                          "png_encoding": {"optimize": png_optimize},
                          "png_pixel_roundtrip": True, "target_execution": False}
+
+
+def extract_inline_resource_png(content, expected_hash):
+    """Read one literal PNG and retain its complete static module owners."""
+    original_text = content.decode("utf-8")
+    literals, selected = [], None
+    for match in re.finditer(r"(['\"])data:image/png;base64,([A-Za-z0-9+/=]+)\1", original_text):
+        decoded = base64.b64decode(match[2], validate=True)
+        if hashlib.sha256(decoded).hexdigest() != expected_hash:
+            continue
+        literals.append(match)
+        selected = decoded
+    if not literals or not selected.startswith(b"\x89PNG\r\n\x1a\n"):
+        raise ValueError("Verified inline PNG literal is absent from the acquired source")
+    modules = None
+    if len(literals) > 1:
+        import families
+        modules = families.keyboard_source_modules(original_text)
+    matches = []
+    for match in literals:
+        if modules is None:
+            owner = complete_resource_module(original_text, match[0])
+        else:
+            owners = [module for module in modules
+                      if module["character_start"] <= match.start() and match.end() <= module["character_end"]]
+            if not owners:
+                raise ValueError("Inline PNG literal is outside every complete static module")
+            owner = min(owners, key=lambda module: module["character_end"] - module["character_start"])
+        matches.append({"character_start": match.start(), "character_end": match.end(), "complete_module": owner})
+    return selected, {"tool": "Python base64", "version": sys.version.split()[0],
+                      "operation": "Decode a complete literal source PNG data URL; no JavaScript evaluation",
+                      "source_regions": matches}
 
 
 def extract_inline_css_png(content, bitmap):
@@ -7185,16 +7967,22 @@ def prepare_resource_publication(acquisition, resources, publication_manifest):
     snapshots = [(receipt_path, receipt_raw), (Path(__file__), Path(__file__).read_bytes())]
     analyzer_receipt = ROOT / "tools/analyzers/pillow/acquisition.json"
     prepared, derivations = [], []
+    verified_svg_producers = {}
     requests = [(name, request) for name, values in resources.items()
                 for request in (values if isinstance(values, list) else [values])]
     for source_name, request in requests:
         required = {"display", "table"}
-        optional = {"inline_react_svg", "svg_group_visibility", "muted_video_animation"}
+        optional = {"inline_react_svg", "svg_group_visibility", "muted_video_animation",
+                    "svg_remove_root_ids", "producer"}
         if not isinstance(request, dict) or not required <= set(request) or set(request) - required - optional:
             raise ValueError("Publication mapping requires display/table and supported static transformations")
         if "muted_video_animation" in request and (request["muted_video_animation"] is not True
-                or "inline_react_svg" in request or "svg_group_visibility" in request):
+                or any(key in request for key in ("inline_react_svg", "svg_group_visibility", "svg_remove_root_ids", "producer"))):
             raise ValueError("Muted video publication requires one explicit, exclusive transformation")
+        if "svg_remove_root_ids" in request or "producer" in request:
+            if (not {"svg_remove_root_ids", "producer"} <= set(request)
+                    or any(key in request for key in ("inline_react_svg", "svg_group_visibility", "muted_video_animation"))):
+                raise ValueError("Source SVG root publication requires one exclusive transformation and its producer")
         source = safe(ROOT / source_name)
         if not source.is_relative_to(input_root) or (ROOT / source_name).is_symlink():
             raise ValueError("Resource publication must use retained original inputs")
@@ -7221,6 +8009,13 @@ def prepare_resource_publication(acquisition, resources, publication_manifest):
                 transformation["group_visibility"] = selection
         elif "svg_group_visibility" in request:
             raise ValueError("Group visibility requires its complete inline SVG producer")
+        elif "svg_remove_root_ids" in request:
+            if source.suffix.lower() != ".svg" or Path(alias).suffix.lower() != ".svg":
+                raise ValueError("Source SVG root publication requires an SVG original and alias")
+            producer = verified_svg_root_filter_producer(request["producer"], originals,
+                snapshots=snapshots, cache=verified_svg_producers)
+            content, transformation = filter_svg_root_children(content, request["svg_remove_root_ids"])
+            transformation["producer"] = producer
         elif request.get("muted_video_animation"):
             if source.suffix.lower() != ".mp4" or Path(alias).suffix.lower() != ".webp":
                 raise ValueError("Muted source video publication requires MP4 and a WebP alias")
@@ -7338,6 +8133,7 @@ def prepare_resources_locked(acquisition, resources=None):
     expanded = []
     muted_animation_cache = {}
     verified_svg_producers = {}
+    svg_producer_snapshots = []
     for source_name, request in requests:
         if isinstance(request, dict) and "svg_button_states" in request:
             expanded.append((source_name, {**request, "svg_button_state": "base", "svg_button_index": None}))
@@ -7480,79 +8276,20 @@ def prepare_resources_locked(acquisition, resources=None):
                 raise ValueError("App menu category SVG preparation requires stable acquired JS originals")
             content, transformation = static_app_picker_category_svg(content.decode("utf-8"), request["app_picker_category"])
         if "inline_data_sha256" in request:
-            import families
             if source.suffix.lower() != ".js":
                 raise ValueError("Inline resource extraction requires an acquired JS original")
-            original_text = content.decode("utf-8")
-            matches = []
-            for match in re.finditer(r'"data:image/png;base64,([A-Za-z0-9+/=]+)"', original_text):
-                decoded = base64.b64decode(match[1], validate=True)
-                if hashlib.sha256(decoded).hexdigest() != request["inline_data_sha256"]:
-                    continue
-                body = complete_resource_module(original_text, match[0])
-                matches.append({"character_start": match.start(), "character_end": match.end(),
-                                "complete_module": body})
-                content = decoded
-            if not matches:
-                raise ValueError("Verified inline PNG literal is absent from the acquired source")
-            if not content.startswith(b"\x89PNG\r\n\x1a\n"):
-                raise ValueError("Inline image does not contain actual PNG bytes")
-            transformation = {"tool": "Python base64", "version": sys.version.split()[0],
-                              "operation": "Decode a complete literal source PNG data URL; no JavaScript evaluation",
-                              "source_regions": matches}
+            content, transformation = extract_inline_resource_png(content, request["inline_data_sha256"])
         if "inline_css_png" in request:
             if source.suffix.lower() != ".css":
                 raise ValueError("CSS bitmap extraction requires an acquired CSS original")
             content, transformation = extract_inline_css_png(content, request["inline_css_png"])
         if "svg_remove_root_ids" in request:
-            import families
             if source.suffix.lower() != ".svg":
                 raise ValueError("Source SVG root filtering requires an SVG original")
-            producer = request["producer"]
-            producer_path = safe(ROOT / producer["path"])
-            producer_row = original_rows.get(relative(producer_path))
-            if (not producer_row or producer_row.get("http_status") != 200
-                    or producer_row.get("sha256") != producer["sha256"]
-                    or digest(producer_path) != producer["sha256"]
-                    or producer_row.get("bytes") != producer_path.stat().st_size):
-                raise ValueError("Source SVG producer acquisition does not verify")
-            producer_text = producer_path.read_text(encoding="utf-8")
-            producer_key = (relative(producer_path), producer["sha256"], producer["anchor"])
-            body = verified_svg_producers.get(producer_key)
-            if body is None:
-                if producer.get("boundary_parser") == "tree-sitter-javascript" or not isinstance(producer["module_id"], int):
-                    anchor_offset = producer_text.index(producer["anchor"])
-                    owners = [module for module in families.keyboard_source_modules(producer_text)
-                              if module["character_start"] <= anchor_offset < module["character_end"]]
-                    if not owners:
-                        raise ValueError("Current source SVG producer is outside a complete grammar function")
-                    body = min(owners, key=lambda owner: owner["character_end"]-owner["character_start"])
-                else:
-                    body = families.complete_raw_module(producer_text, producer["anchor"])
-                verified_svg_producers[producer_key] = body
-            if body["module_id"] != producer["module_id"]:
-                raise ValueError("Source SVG producer module does not match")
-            root_ids = request["svg_remove_root_ids"]
-            if (not root_ids or len(set(root_ids)) != len(root_ids)
-                    or any(not isinstance(root_id, str) for root_id in root_ids)):
-                raise ValueError("Source SVG root identifiers must be distinct strings")
-            root = ET.fromstring(content)
-            removed = []
-            for child in list(root):
-                if child.get("id") in root_ids:
-                    removed.append(child.get("id"))
-                    root.remove(child)
-            if set(removed) != set(root_ids):
-                raise ValueError("Source SVG producer filter contains absent root nodes")
-            ET.register_namespace("", "http://www.w3.org/2000/svg")
-            ET.register_namespace("xlink", "http://www.w3.org/1999/xlink")
-            content = ET.tostring(root, encoding="utf-8")
-            transformation = {
-                "tool": "Python xml.etree.ElementTree", "version": sys.version.split()[0],
-                "operation": "Remove only named source SVG root children; serialize preserved tree",
-                "removed_root_ids": removed, "root_attributes": dict(root.attrib),
-                "producer": {"input": producer_row, "complete_module": body},
-            }
+            producer = verified_svg_root_filter_producer(request["producer"], original_rows,
+                snapshots=svg_producer_snapshots, cache=verified_svg_producers)
+            content, transformation = filter_svg_root_children(content, request["svg_remove_root_ids"])
+            transformation["producer"] = producer
         if source.suffix.lower() == ".avif":
             content, conversion = avif_display_png(source)
         if request.get("muted_video_animation") and source_hash in muted_animation_cache:
@@ -7562,6 +8299,8 @@ def prepare_resources_locked(acquisition, resources=None):
                 raise ValueError("Muted source video preparation requires MP4 and animated WebP")
             content, conversion = muted_video_display(source)
             muted_animation_cache[source_hash] = content, conversion
+        if any(path.read_bytes() != raw for path, raw in svg_producer_snapshots):
+            raise ValueError("Source SVG producer or parser changed during preparation")
         output_hash = hashlib.sha256(content).hexdigest()
         product_match = re.fullmatch(r"https://apps\.razer\.com/synapse/products/(\d+)/.*", row["url"])
         product_id = int(product_match[1]) if product_match else None
@@ -7592,6 +8331,8 @@ def prepare_resources_locked(acquisition, resources=None):
                           "transformation": {key: value for key, value in transformation.items()
                                              if key not in {"producer", "source_regions", "source_buttons", "complete_css_rules", "source_css"}}
                             if transformation else None})
+    if any(path.read_bytes() != raw for path, raw in svg_producer_snapshots):
+        raise ValueError("Source SVG producer or parser changed during preparation")
     if reuse_only:
         result_path = ROOT / ".analysis/results/typed-data.json"
         result = json.loads(result_path.read_bytes()) if result_path.is_file() else {"schema_version": 1}
@@ -9670,6 +10411,7 @@ def rust_validation_commands():
         ("audio-sound-mapping", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "sound_mapping::tests"]),
         ("keyboard-dynamic-metadata", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "all_current_dynamic_mapping_metadata_loads"]),
         ("keyboard-source-artwork", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "source_artwork::tests"]),
+        ("keyboard-geometry", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "keyboard_geometry::tests::", "--", "--skip", "rejected_corners_and_holes_bubble_to_real_overlapping_buttons", "--skip", "real_keyboard_uses_source_geometry_at_scaled_default_and_all_known_layouts"]),
         ("gamepad-source-artwork", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "gamepad_products::customize_artwork::tests"]),
         ("gamepad-trigger-assets", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "asset_decode_tests::current_gamepad_trigger_resources_have_source_identities"]),
         ("gamepad-trigger-tooltip", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "source_tooltip::tests::gamepad_rapid_trigger_help_uses_source_measured_vertical_fallback"]),
@@ -9937,8 +10679,11 @@ def main():
     import resource_database
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("inventory", "verify", "audit-inputs", "recover-inputs", "prepare-analysis", "prepare-static-python", "verify-resources", "prepare-product-names", "prepare-keyboard-identity"):
+    for name in ("inventory", "verify", "audit-inputs", "recover-inputs", "prepare-analysis", "prepare-static-python", "prepare-product-names", "prepare-keyboard-identity"):
         commands.add_parser(name)
+    resource_verify = commands.add_parser("verify-resources", help="Decode embedded images or the complete typed keyboard artwork atlas without network access")
+    resource_verify.add_argument("--scope", choices=("embedded", "keyboard-artwork"), default="embedded")
+    resource_verify.add_argument("--product", type=int, action="append", help="Limit keyboard artwork to these typed products; repeat to select several")
     scratch_clean = commands.add_parser("clean", help="Clean disposable scratch after checking analyzer ownership")
     scratch_clean.add_argument("--stale", action="store_true", help="Remove only old unreferenced root logs/text/output and bytecode; retain all analyzer databases and active files")
     runtime_audit = commands.add_parser("audit-runtime-resources", help="Trace Rust/catalog resource references against the fixed installed directory")
@@ -9961,7 +10706,8 @@ def main():
     pack_verify = commands.add_parser("verify-asset-pack")
     pack_verify.add_argument("--manifest", default=".analysis/results/asset-pack-manifest.json")
     pack_verify.add_argument("--pack", default=GENERATED_ASSET_PACK)
-    commands.add_parser("prepare-image-analyzer", help="Verify a project-local Pillow wheel for the active Python ABI")
+    image_analyzer = commands.add_parser("prepare-image-analyzer", help="Verify project-local image decoder wheels for the active Python ABI")
+    image_analyzer.add_argument("--svg", action="store_true", help="Also prepare the pinned resvg CPU renderer in the existing image analyzer directory")
     commands.add_parser("prepare-media-analyzer", help="Verify a project-local PyAV wheel for the active Python ABI")
     native_cursors = commands.add_parser("prepare-native-cursors", help="Extract verified PE cursor groups without loading DLLs")
     native_cursors.add_argument("--sources", required=True, help="JSON list of path/acquisition records; '-' reads stdin")
@@ -10054,7 +10800,7 @@ def main():
                           "inputs_unchanged": report["inputs_unchanged"], "passed": report["passed"]}), flush=True)
         return 0 if report["passed"] else 1
     elif args.command == "verify-resources":
-        report = verify_resources()
+        report = verify_resources(scope=args.scope, product_ids=args.product)
         print(json.dumps({"resource_audit": relative(RESOURCE_AUDIT), "passed": report["passed"],
                           "inputs_unchanged": report["inputs_unchanged"], **report["summary"]}), flush=True)
         return 0 if report["passed"] else 1
@@ -10093,7 +10839,7 @@ def main():
     elif args.command in {"prepare-hardware-driver", "prepare-windows-installer", "verify-windows-installer", "compile-windows-installer"}:
         print(json.dumps(windows_installer.run(args), ensure_ascii=False), flush=True)
     elif args.command == "prepare-image-analyzer":
-        prepare_image_analyzer()
+        print(json.dumps(prepare_image_analyzer(svg=args.svg), ensure_ascii=False), flush=True)
     elif args.command == "prepare-media-analyzer":
         print(json.dumps(prepare_media_analyzer(), ensure_ascii=False), flush=True)
     elif args.command == "prepare-native-cursors":

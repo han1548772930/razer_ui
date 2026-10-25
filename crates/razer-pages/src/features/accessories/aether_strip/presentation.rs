@@ -87,7 +87,12 @@ impl RenderOnce for ActionIcon {
                 *hovered = *next;
                 cx.notify();
             }))
-            .child(razer_assets::resource_svg().path(asset(self.name)).size_full().text_color(fill))
+            .child(
+                razer_assets::resource_svg()
+                    .path(asset(self.name))
+                    .size_full()
+                    .text_color(fill),
+            )
     }
 }
 

@@ -9,6 +9,8 @@ pub mod chroma_installation;
 pub mod device_changes;
 #[path = "observation/discovery_diagnostics.rs"]
 pub mod discovery_diagnostics;
+#[path = "input/event_clock.rs"]
+pub mod event_clock;
 #[path = "observation/executable.rs"]
 pub mod executable;
 #[path = "file_dialog.rs"]
@@ -19,8 +21,6 @@ pub mod foreground_monitor;
 pub mod game_monitor;
 #[path = "input/global_shortcuts.rs"]
 pub mod global_shortcuts;
-#[path = "input/event_clock.rs"]
-pub mod event_clock;
 #[path = "observation/hardware_driver.rs"]
 pub mod hardware_driver;
 #[path = "observation/hardware_monitor.rs"]
@@ -35,9 +35,9 @@ pub mod keyboard_layout_monitor;
 pub mod macro_geometry;
 #[path = "input/macro_recorder.rs"]
 pub mod macro_recorder;
+pub mod media;
 #[path = "input/mouse_monitor.rs"]
 pub mod mouse_monitor;
-pub mod media;
 #[path = "native_paths.rs"]
 pub mod native_paths;
 #[path = "observation/power_idle.rs"]

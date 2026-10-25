@@ -1,10 +1,10 @@
 //! Retained mapping service worker shared by audited ordinary USB products.
 //! Owners retain this handle independently of page/tab visibility. Dropping it
 //! requests cancellation; the worker removes its device before service shutdown.
-use super::{Transport, WorkerGuard, guarded, shutdown};
-use razer_ipc::mapping_control::Registry;
-use razer_ipc::ServiceRequest;
 use super::Client;
+use super::{Transport, WorkerGuard, guarded, shutdown};
+use razer_ipc::ServiceRequest;
+use razer_ipc::mapping_control::Registry;
 use serde::Deserialize;
 use serde_json::Value;
 use std::{
@@ -174,12 +174,7 @@ impl Session {
         product_id: u32,
         container: String,
     ) -> anyhow::Result<(Self, mpsc::Receiver<Reply>)> {
-        Self::start_with_registry(
-            product_id,
-            container,
-            Client::spawn,
-            Registry::global(),
-        )
+        Self::start_with_registry(product_id, container, Client::spawn, Registry::global())
     }
 
     #[cfg(test)]

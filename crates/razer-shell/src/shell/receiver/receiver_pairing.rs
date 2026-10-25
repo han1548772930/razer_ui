@@ -949,9 +949,9 @@ impl AppShell {
                     let _ = worker.join();
                 }
                 razer_storage::receiver_pairing::local_path()
-                .and_then(|path| razer_storage::receiver_pairing::PairingCache::load(&path))
-                .map(|cache| Value::Array(cache.ordered_records()))
-                .map_err(|error| format!("{error:#}"))
+                    .and_then(|path| razer_storage::receiver_pairing::PairingCache::load(&path))
+                    .map(|cache| Value::Array(cache.ordered_records()))
+                    .map_err(|error| format!("{error:#}"))
             });
             cx.spawn(async move |shell, cx| {
                 let mut cache = Some(cleanup.await);

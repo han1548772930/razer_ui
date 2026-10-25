@@ -866,13 +866,9 @@ mod tests {
     use super::{ArtworkState, SourceArtworkObservation, base_image_for_scale, geometry};
 
     #[::core::prelude::v1::test]
-    fn formal_legacy_keyboard_pages_decode_the_mounted_artwork_in_its_source_frame() {
+    fn formal_legacy_keyboard_pages_select_registered_artwork_in_its_source_frame() {
         use super::super::{SourceBaseArtwork, layout::KeyboardImageFrame, source_product};
-        use gpui_kit::{Bounds, Image, ImageFormat, ObjectFit, SvgRenderer, point, px, size};
         use razer_model::{model::Device, product_preview::registered_preview};
-        use std::{collections::BTreeMap, sync::Arc};
-        let renderer = SvgRenderer::new(Arc::new(gpui_kit::assets::AllAssets));
-        let mut decoded_assets = BTreeMap::new();
         for pid in [579, 689, 720] {
             let legacy = registered_preview(pid).unwrap();
             let mut restored: Device =
@@ -910,58 +906,10 @@ mod tests {
                     let artwork = mounted
                         .artwork_for_scale(scale)
                         .unwrap_or_else(|| panic!("PID {pid} formal page lost artwork"));
-                    let (dimensions, visible) =
-                        decoded_assets.entry(artwork.asset).or_insert_with(|| {
-                            let bytes = razer_resources::inspect_cached(artwork.asset)
-                                .unwrap()
-                                .unwrap();
-                            let format = if artwork.asset.ends_with(".svg") {
-                                ImageFormat::Svg
-                            } else {
-                                ImageFormat::Png
-                            };
-                            let decoded = Image::from_bytes(format, bytes)
-                                .to_image_data(renderer.clone())
-                                .unwrap();
-                            let dimensions = decoded.size(0);
-                            let mut visible = [dimensions.width.0, dimensions.height.0, 0, 0];
-                            for (index, pixel) in
-                                decoded.as_bytes(0).unwrap().chunks_exact(4).enumerate()
-                            {
-                                if pixel[3] == 0 {
-                                    continue;
-                                }
-                                let x = (index % dimensions.width.0 as usize) as i32;
-                                let y = (index / dimensions.width.0 as usize) as i32;
-                                visible[0] = visible[0].min(x);
-                                visible[1] = visible[1].min(y);
-                                visible[2] = visible[2].max(x + 1);
-                                visible[3] = visible[3].max(y + 1);
-                            }
-                            assert!(
-                                visible[2] > visible[0] && visible[3] > visible[1],
-                                "{}",
-                                artwork.asset
-                            );
-                            (dimensions, visible)
-                        });
-                    let slot = Bounds::new(
-                        point(px(frame.image_origin[0]), px(frame.image_origin[1])),
-                        size(px(frame.image_size[0]), px(frame.image_size[1])),
-                    );
-                    let fitted = ObjectFit::Contain.get_bounds(slot, *dimensions);
-                    let visible_width = fitted.size.width
-                        * ((visible[2] - visible[0]) as f32 / dimensions.width.0 as f32);
-                    let visible_height = fitted.size.height
-                        * ((visible[3] - visible[1]) as f32 / dimensions.height.0 as f32);
-                    assert!(
-                        visible_width > px(500.) && visible_height > px(100.),
-                        "PID {pid}: {visible_width:?} x {visible_height:?}"
-                    );
-                    assert!(
-                        fitted.size.width <= slot.size.width
-                            && fitted.size.height <= slot.size.height
-                    );
+                    let (path, bytes, hash) = razer_resources::identity(artwork.asset)
+                        .unwrap_or_else(|| panic!("Unregistered artwork: {}", artwork.asset));
+                    assert!(path.starts_with("assets/") && bytes > 0 && hash.len() == 64);
+                    assert!(frame.image_size[0] > 500. && frame.image_size[1] > 100.);
                     assert!(geometry.keys.iter().all(|key| {
                         let [x, y, width, height] = key.bounds;
                         x.is_finite()
@@ -974,6 +922,187 @@ mod tests {
                 }
             }
             assert_eq!(serde_json::to_value(&restored).unwrap(), persisted);
+        }
+    }
+
+    #[::core::prelude::v1::test]
+    fn source_artwork_decodes_minimal_png_and_svg_in_their_source_frames() {
+        use super::super::{SourceBaseArtwork, layout::KeyboardImageFrame, source_product};
+        use gpui_kit::{Bounds, Image, ImageFormat, ObjectFit, SvgRenderer, point, px, size};
+        use std::sync::Arc;
+
+        // The 515 PNG is workspace::avif_display_png's pixel-exact projection
+        // of keyboard-515-current/.../static/media/1-1x.d9802935.avif
+        // (source SHA-256 3b00cd75673a378d2563797a971f4d0c57440d20fd64877f3cfc4a16f74f51e5).
+        // The 720 SVG is keyboard-720-current/.../static/media/1.43262ecc.svg.
+        // Both originals are indexed under .analysis/inputs/frontend/ with
+        // their acquisition receipts; tests use only these two local fixtures.
+        let fixtures = [
+            (
+                515,
+                ImageFormat::Png,
+                "515-layout-1-1x.png",
+                [730, 340],
+                "301bd6f0ddc881ff189e90dbd19801c9bc287137e70a33684cb3918d7905c878",
+            ),
+            (
+                720,
+                ImageFormat::Svg,
+                "720-layout-1.svg",
+                // The locked GPUI SVG decoder rasterizes at scale factor 2.
+                [1600, 720],
+                "ec77679fa3a209e49e80327164a92c6d6ca52a9d868c29dbcd1da404bfd363c8",
+            ),
+        ];
+        let renderer = SvgRenderer::new(Arc::new(gpui_kit::assets::AllAssets));
+        for (pid, format, fixture, expected_size, expected_hash) in fixtures {
+            let bytes = std::fs::read(
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("testdata/keyboard-artwork")
+                    .join(fixture),
+            )
+            .unwrap();
+            let observation = SourceArtworkObservation {
+                product_id: pid,
+                edition_id: 0,
+                layout_id: 1,
+                wristrest_connected: None,
+            };
+            let frame = KeyboardImageFrame::new(
+                source_product(pid).unwrap(),
+                Some(observation),
+                false,
+                false,
+            );
+            let artwork = SourceBaseArtwork::new(observation, &frame)
+                .artwork_for_scale(1.)
+                .unwrap();
+            let (_, registered_bytes, registered_hash) =
+                razer_resources::identity(artwork.asset).unwrap();
+            assert_eq!(registered_bytes, bytes.len() as u64);
+            assert_eq!(registered_hash, expected_hash);
+            let decoded = Image::from_bytes(format, bytes)
+                .to_image_data(renderer.clone())
+                .unwrap();
+            let dimensions = decoded.size(0);
+            assert_eq!([dimensions.width.0, dimensions.height.0], expected_size);
+            let mut visible = [dimensions.width.0, dimensions.height.0, 0, 0];
+            for (index, pixel) in decoded.as_bytes(0).unwrap().chunks_exact(4).enumerate() {
+                if pixel[3] > 0 {
+                    let x = (index % dimensions.width.0 as usize) as i32;
+                    let y = (index / dimensions.width.0 as usize) as i32;
+                    visible[0] = visible[0].min(x);
+                    visible[1] = visible[1].min(y);
+                    visible[2] = visible[2].max(x + 1);
+                    visible[3] = visible[3].max(y + 1);
+                }
+            }
+            assert!(visible[2] > visible[0] && visible[3] > visible[1]);
+            let slot = Bounds::new(
+                point(px(frame.image_origin[0]), px(frame.image_origin[1])),
+                size(px(frame.image_size[0]), px(frame.image_size[1])),
+            );
+            let fitted = ObjectFit::Contain.get_bounds(slot, dimensions);
+            let visible_width =
+                fitted.size.width * ((visible[2] - visible[0]) as f32 / dimensions.width.0 as f32);
+            let visible_height = fitted.size.height
+                * ((visible[3] - visible[1]) as f32 / dimensions.height.0 as f32);
+            assert!(
+                visible_width > px(500.) && visible_height > px(100.),
+                "PID {pid}: {visible_width:?} x {visible_height:?}"
+            );
+            assert!(fitted.size.width <= slot.size.width && fitted.size.height <= slot.size.height);
+        }
+        assert!(
+            Image::from_bytes(ImageFormat::Png, b"truncated PNG".to_vec())
+                .to_image_data(renderer)
+                .is_err()
+        );
+    }
+
+    #[::core::prelude::v1::test]
+    fn source_artwork_open_708_key_uses_the_svg_fill_boundary() {
+        use crate::keyboard_geometry::{KeyboardGeometryExt as _, KeyboardKeyExt as _};
+        use gpui_kit::{Bounds, Image, ImageFormat, SvgRenderer, point, px, size};
+        use std::sync::Arc;
+
+        // The fixture retains sel8's complete, open d from current 708
+        // static/media/1.0479298b.svg. Layouts 3/4 contain the same contour.
+        // Only its viewBox and fill are narrowed for this decoding test.
+        let fixture = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("testdata/keyboard-artwork/708-open-key-8.svg"),
+        )
+        .unwrap();
+        let decoded = Image::from_bytes(ImageFormat::Svg, fixture)
+            .to_image_data(SvgRenderer::new(Arc::new(gpui_kit::assets::AllAssets)))
+            .unwrap();
+        let dimensions = decoded.size(0);
+        assert_eq!([dimensions.width.0, dimensions.height.0], [120, 116]);
+        let pixels = decoded.as_bytes(0).unwrap();
+        let samples = [
+            ([635.5, 190.5], false),
+            ([637.5, 190.5], false),
+            ([640.5, 190.5], true),
+            ([645.5, 180.5], true),
+        ];
+        for (position, expected) in samples {
+            let x = ((position[0] - 630.) * 2.) as usize;
+            let y = ((position[1] - 150.) * 2.) as usize;
+            assert_eq!(
+                pixels[(y * 120 + x) * 4 + 3],
+                if expected { 255 } else { 0 }
+            );
+        }
+        for layout_id in [1, 3, 4] {
+            let observation = SourceArtworkObservation {
+                product_id: 708,
+                edition_id: 0,
+                layout_id,
+                wristrest_connected: None,
+            };
+            for customize in [false, true] {
+                let geometry = super::geometry_for_surface(observation, customize).unwrap();
+                let key = geometry.keys.iter().find(|key| key.id == "KEY_8").unwrap();
+                assert!(key.geometry.contains_source([637.365, 183.105]));
+                for scale in [0.5, 0.75, 1., 1.5, 2.] {
+                    let bounds = Bounds::new(
+                        point(px(47.), px(29.)),
+                        size(px(key.bounds[2] * scale), px(key.bounds[3] * scale)),
+                    );
+                    let fill = key.path(bounds, false).build().unwrap();
+                    for (position, expected) in samples {
+                        let screen = bounds.origin
+                            + point(
+                                px((position[0] - key.bounds[0]) * scale),
+                                px((position[1] - key.bounds[1]) * scale),
+                            );
+                        let painted = fill.vertices.chunks_exact(3).any(|triangle| {
+                            let vertices = [0, 1, 2].map(|ix| {
+                                let vertex = &triangle[ix];
+                                [
+                                    f32::from(vertex.xy_position.x),
+                                    f32::from(vertex.xy_position.y),
+                                ]
+                            });
+                            let crosses = [0, 1, 2].map(|ix| {
+                                let [a, b] = [vertices[ix], vertices[(ix + 1) % 3]];
+                                (b[0] - a[0]) * (f32::from(screen.y) - a[1])
+                                    - (b[1] - a[1]) * (f32::from(screen.x) - a[0])
+                            });
+                            crosses.iter().sum::<f32>().abs() > f32::EPSILON
+                                && (crosses.iter().all(|cross| *cross >= 0.)
+                                    || crosses.iter().all(|cross| *cross <= 0.))
+                        });
+                        assert_eq!(painted, expected, "708:{layout_id} fill at {position:?}");
+                        assert_eq!(
+                            key.contains_window_point(screen, bounds),
+                            expected,
+                            "708:{layout_id}, customize={customize}, scale={scale}, {position:?}"
+                        );
+                    }
+                }
+            }
         }
     }
 
@@ -1027,7 +1156,7 @@ mod tests {
                 variants += 1;
             }
         }
-        assert_eq!(variants, 1164);
+        assert_eq!(variants, 1178);
     }
 
     #[::core::prelude::v1::test]
@@ -1357,34 +1486,56 @@ mod tests {
     }
 
     #[::core::prelude::v1::test]
-    fn current_family_loads_every_registered_base_and_customize_image_without_a_window() {
+    fn current_family_keeps_the_svg_layout_from_an_exponent_module_binding() {
+        // Current 742 resource contexts bind SVG layout 4 to [68e3, 5619].
+        // Chunk 5619.93c7d842 exports module 68000's 4.ff521ba4.svg.
+        let observation = SourceArtworkObservation {
+            product_id: 742,
+            edition_id: 0,
+            layout_id: 4,
+            wristrest_connected: None,
+        };
+        assert_eq!(
+            super::source_preview_layouts_for_edition(742, 0),
+            Some(vec![1, 3, 4])
+        );
+        for scale in [1., 3.] {
+            assert_eq!(
+                base_image_for_scale(observation, scale).unwrap().asset,
+                "synapse/keyboard-current/742/4.ff521ba4.svg"
+            );
+            assert_eq!(
+                super::customize_image_for_scale(observation, scale)
+                    .unwrap()
+                    .asset,
+                "synapse/keyboard-current/742/4.ff521ba4-customize.svg"
+            );
+        }
+        for customize in [false, true] {
+            assert!(
+                super::geometry_for_surface(observation, customize)
+                    .unwrap()
+                    .keys
+                    .iter()
+                    .any(|key| key.id == "KEY_A" && key.label == "Q")
+            );
+        }
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_family_registers_every_base_and_customize_image_without_a_cache() {
         let mut checked = std::collections::BTreeSet::new();
         for product in &super::atlas().products {
             for image in product.images.iter().chain(&product.customize_images) {
                 if !checked.insert(image.asset.as_str()) {
                     continue;
                 }
-                let bytes = razer_resources::inspect_cached(&image.asset)
-                    .unwrap()
-                    .unwrap_or_else(|| panic!("Missing current keyboard artwork: {}", image.asset));
-                assert!(!bytes.is_empty(), "{}", image.asset);
-                if image.svg {
-                    let xml = std::str::from_utf8(&bytes).unwrap();
-                    assert!(
-                        xml.contains("<svg") && xml.contains("</svg>"),
-                        "{}",
-                        image.asset
-                    );
-                } else {
-                    assert!(bytes.starts_with(b"\x89PNG\r\n\x1a\n"), "{}", image.asset);
-                    assert!(
-                        bytes.len() >= 33 && &bytes[12..16] == b"IHDR",
-                        "{}",
-                        image.asset
-                    );
-                    assert!(u32::from_be_bytes(bytes[16..20].try_into().unwrap()) > 0);
-                    assert!(u32::from_be_bytes(bytes[20..24].try_into().unwrap()) > 0);
-                }
+                let (path, bytes, hash) = razer_resources::identity(&image.asset)
+                    .unwrap_or_else(|| panic!("Unregistered keyboard artwork: {}", image.asset));
+                assert!(path.starts_with("assets/") && bytes > 0, "{}", image.asset);
+                assert!(hash.len() == 64 && hash.bytes().all(|byte| byte.is_ascii_hexdigit()));
+                let extension = if image.svg { ".svg" } else { ".png" };
+                assert!(image.asset.ends_with(extension) && path.ends_with(extension));
             }
         }
         assert!(checked.len() > 1000);
@@ -1466,7 +1617,7 @@ mod tests {
     }
 
     #[::core::prelude::v1::test]
-    fn source_preview_layouts_preserve_declared_variants_and_prepared_density_identity() {
+    fn source_preview_layouts_preserve_declared_variants_and_registered_density_identity() {
         for product in &super::atlas().products {
             let layouts = super::source_preview_layouts(product.product_id);
             assert!(!layouts.is_empty(), "{}", product.product_id);
@@ -1501,9 +1652,7 @@ mod tests {
                             )
                         });
                         assert!(
-                            razer_resources::inspect_cached(image.asset)
-                                .unwrap()
-                                .is_some(),
+                            razer_resources::identity(image.asset).is_some(),
                             "{}",
                             image.asset
                         );
@@ -1691,38 +1840,12 @@ fn read_keyboard_artwork_current_catalog() -> FamilyAtlas {
                 image_mode_svg: r.child(decode_6)?,
                 images: r.child(decode_7)?,
                 customize_images: r.child(decode_7)?,
-                customize_layout_normalization: None,
-                source_supported_layout_ids: r.child(decode_10)?,
-                source_variants: r.child(decode_11)?,
-                source_one_x_only_variants: Default::default(),
-                default_geometry: r.child(decode_13)?,
-                layouts: r.child(decode_14)?,
-            },
-            1 => FamilyProduct {
-                product_id: r.child(decode_3)?,
-                image_css_size: r.child(decode_4)?,
-                image_mode_svg: r.child(decode_6)?,
-                images: r.child(decode_7)?,
-                customize_images: r.child(decode_7)?,
-                customize_layout_normalization: None,
-                source_supported_layout_ids: r.child(decode_10)?,
-                source_variants: r.child(decode_11)?,
-                source_one_x_only_variants: r.child(decode_11)?,
-                default_geometry: r.child(decode_13)?,
-                layouts: r.child(decode_14)?,
-            },
-            2 => FamilyProduct {
-                product_id: r.child(decode_3)?,
-                image_css_size: r.child(decode_4)?,
-                image_mode_svg: r.child(decode_6)?,
-                images: r.child(decode_7)?,
-                customize_images: r.child(decode_7)?,
-                customize_layout_normalization: r.child(decode_16)?,
-                source_supported_layout_ids: r.child(decode_10)?,
-                source_variants: r.child(decode_11)?,
-                source_one_x_only_variants: Default::default(),
-                default_geometry: r.child(decode_13)?,
-                layouts: r.child(decode_14)?,
+                customize_layout_normalization: r.child(decode_10)?,
+                source_supported_layout_ids: r.child(decode_11)?,
+                source_variants: r.child(decode_12)?,
+                source_one_x_only_variants: r.child(decode_12)?,
+                default_geometry: r.child(decode_14)?,
+                layouts: r.child(decode_15)?,
             },
             _ => anyhow::bail!("Invalid typed catalog alternative"),
         };
@@ -1794,7 +1917,18 @@ fn read_keyboard_artwork_current_catalog() -> FamilyAtlas {
         r.finish()?;
         Ok(value)
     }
-    fn decode_10(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<u32>> {
+    fn decode_10(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<CustomizeLayoutNormalization>> {
+        let value = match r.tag()? {
+            0 => None,
+            1 => Some(r.child(decode_17)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<u32>> {
         let value = match r.tag()? {
             0 => r.sequence(decode_3)?,
             _ => anyhow::bail!("Invalid typed catalog alternative"),
@@ -1802,17 +1936,18 @@ fn read_keyboard_artwork_current_catalog() -> FamilyAtlas {
         r.finish()?;
         Ok(value)
     }
-    fn decode_11(
+    fn decode_12(
         r: &mut razer_resource_db::NodeReader<'_>,
     ) -> anyhow::Result<std::vec::Vec<SourceVariant>> {
         let value = match r.tag()? {
-            0 => r.sequence(decode_12)?,
+            0 => r.sequence(decode_13)?,
+            1 => Default::default(),
             _ => anyhow::bail!("Invalid typed catalog alternative"),
         };
         r.finish()?;
         Ok(value)
     }
-    fn decode_12(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SourceVariant> {
+    fn decode_13(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SourceVariant> {
         let value = match r.tag()? {
             0 => SourceVariant {
                 edition_id: r.child(decode_3)?,
@@ -1823,7 +1958,7 @@ fn read_keyboard_artwork_current_catalog() -> FamilyAtlas {
         r.finish()?;
         Ok(value)
     }
-    fn decode_13(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<usize> {
+    fn decode_14(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<usize> {
         let value = match r.tag()? {
             0 => r.usize()?,
             _ => anyhow::bail!("Invalid typed catalog alternative"),
@@ -1831,35 +1966,25 @@ fn read_keyboard_artwork_current_catalog() -> FamilyAtlas {
         r.finish()?;
         Ok(value)
     }
-    fn decode_14(
+    fn decode_15(
         r: &mut razer_resource_db::NodeReader<'_>,
     ) -> anyhow::Result<std::vec::Vec<FamilyLayout>> {
         let value = match r.tag()? {
-            0 => r.sequence(decode_15)?,
+            0 => r.sequence(decode_16)?,
             1 => Default::default(),
             _ => anyhow::bail!("Invalid typed catalog alternative"),
         };
         r.finish()?;
         Ok(value)
     }
-    fn decode_15(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<FamilyLayout> {
+    fn decode_16(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<FamilyLayout> {
         let value = match r.tag()? {
             0 => FamilyLayout {
                 layout_id: r.child(decode_3)?,
                 edition_id: r.child(decode_3)?,
                 customize: r.child(decode_6)?,
-                geometry: r.child(decode_13)?,
+                geometry: r.child(decode_14)?,
             },
-            _ => anyhow::bail!("Invalid typed catalog alternative"),
-        };
-        r.finish()?;
-        Ok(value)
-    }
-    fn decode_16(
-        r: &mut razer_resource_db::NodeReader<'_>,
-    ) -> anyhow::Result<std::option::Option<CustomizeLayoutNormalization>> {
-        let value = match r.tag()? {
-            0 => Some(r.child(decode_17)?),
             _ => anyhow::bail!("Invalid typed catalog alternative"),
         };
         r.finish()?;
@@ -1870,8 +1995,8 @@ fn read_keyboard_artwork_current_catalog() -> FamilyAtlas {
     ) -> anyhow::Result<CustomizeLayoutNormalization> {
         let value = match r.tag()? {
             0 => CustomizeLayoutNormalization {
-                ansi: r.child(decode_10)?,
-                iso: r.child(decode_10)?,
+                ansi: r.child(decode_11)?,
+                iso: r.child(decode_11)?,
                 japanese: r.child(decode_3)?,
                 united_states: r.child(decode_3)?,
                 united_kingdom: r.child(decode_3)?,
@@ -1883,9 +2008,9 @@ fn read_keyboard_artwork_current_catalog() -> FamilyAtlas {
     }
     fn decode_18(
         r: &mut razer_resource_db::NodeReader<'_>,
-    ) -> anyhow::Result<std::vec::Vec<FamilyGeometry>> {
+    ) -> anyhow::Result<razer_resource_db::CatalogSequence<FamilyGeometry>> {
         let value = match r.tag()? {
-            0 => r.sequence(decode_19)?,
+            0 => r.lazy_sequence(decode_19)?,
             _ => anyhow::bail!("Invalid typed catalog alternative"),
         };
         r.finish()?;
@@ -2060,7 +2185,7 @@ fn read_keyboard_artwork_current_catalog() -> FamilyAtlas {
         let value = match r.tag()? {
             0 => PreviewProduct {
                 product_id: r.child(decode_3)?,
-                source_variants: r.child(decode_11)?,
+                source_variants: r.child(decode_12)?,
                 images: Default::default(),
                 edition_zero_retry: Default::default(),
             },
@@ -2072,7 +2197,7 @@ fn read_keyboard_artwork_current_catalog() -> FamilyAtlas {
     razer_resource_db::read_document(
         razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_ARTWORK_CURRENT_DATA,
         0,
-        "57ea1313da1cec978327281951ea59a454cb8db722e9488e0bacb14ba40a1b67",
+        "69003e3002f6c8bda9f9234af09b7679215f0573468564830f1e9af17d0b4fc3",
         decode_0,
     )
     .expect("Packaged typed catalog must match its domain schema")

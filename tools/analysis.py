@@ -844,6 +844,19 @@ def _refresh_gaps():
         if data.get("implementation_acceptance") != "complete":
             rows.append({"kind": "implementation_acceptance_pending", "scope": "Rust protocol/service/UI chains"})
         derived[rel(receipt)] = rows
+    for receipt in sorted((ROOT / ".analysis/results/native").glob("*/exception-regions/*/capture.json")):
+        data = json.loads(receipt.read_bytes())
+        rows = [{"kind": "native_exception_region_decode_failure", "evidence": rel(receipt), **row}
+                for row in data.get("failures", [])]
+        if data.get("capture_complete") is not True:
+            rows.append({"kind": "native_exception_region_export_incomplete", "evidence": rel(receipt)})
+        coverage = data.get("exception_regions", {}).get("captured_chunk_coverage", {})
+        rows.extend({"kind": "native_exception_region_missing_from_base_chunks", "evidence": rel(receipt),
+                     "region": row["begin_rva"], "uncovered": row["uncovered"]}
+                    for row in coverage.get("regions", []) if row["uncovered"])
+        rows.append({"kind": "native_exception_region_semantics_pending", "evidence": rel(receipt),
+                     "scope": "Exception fragments require control-flow ownership, unwind and ABI review; static byte decoding does not complete function discovery or Rust behavior"})
+        derived[rel(receipt)] = rows
     embedded = ROOT / ".analysis/results/native-packages/embedded-inputs.json"
     chain = ROOT / ".analysis/results/native/chain-audit.json"
     if chain.is_file():
@@ -1296,6 +1309,10 @@ def capture_native(args):
     pe = inspect_pe(source.read_bytes())
     if pe["kind"] not in {"native", "mixed_managed_native"}:
         raise ValueError("Indexed input is not a native or mixed native PE image")
+    if getattr(args, "exception_regions_only", False):
+        if args.resume or args.mcp_only:
+            raise ValueError("Read-only exception-region export uses a new private database copy; do not combine it with resume or MCP")
+        return capture_native_exception_regions(args, source, row, pe)
     loader_options = []
     loader_selection = {"pe_kind": pe["kind"], "architecture": pe.get("architecture"),
                         "image_base": pe.get("image_base"), "selection": "automatic"}
@@ -1445,6 +1462,144 @@ def capture_native(args):
     if not getattr(args, "no_refresh_gaps", False):
         refresh_gaps()
     print(json.dumps({"session": rel(session_path), "passed": session["passed"], "exit_code": session["exit_code"]}), flush=True)
+    return session
+
+
+def capture_native_exception_regions(args, source, original, pe):
+    """Export audited IA64 exception regions from a new private base-IDB copy."""
+    from host import IA64_EXCEPTION_ANALYZER_FILES, IA64_EXCEPTION_SDK_MODULES, native_exception_region_coverage
+
+    directory = pe.get("exception_directory", {})
+    if pe.get("architecture") != "ia64" or directory.get("validated") is not True or not directory.get("regions"):
+        raise ValueError("Exception-region export requires a complete validated nonempty IA64 PE exception directory")
+    digest = original["sha256"]
+    result = ROOT / ".analysis/results/native" / digest
+    base_capture = result / "capture.json"
+    capture = json.loads(base_capture.read_bytes())
+    if capture.get("capture_complete") is not True or capture.get("input_sha256") != digest:
+        raise ValueError("Exception-region export requires a complete matching base capture")
+    functions, function_sources = [], []
+    for record in capture["functions"]:
+        path = resolve(rel(result / record["path"]), ".analysis/results/native")
+        if sha(path) != record["sha256"]:
+            raise ValueError("Exception coverage function differs from its base capture")
+        functions.append(json.loads(path.read_bytes()))
+        function_sources.append({"path": rel(path), "sha256": record["sha256"]})
+    source_database = ROOT / ".work/native" / digest / "batch" / (source.name + ".i64")
+    if not source_database.is_file():
+        raise ValueError("Exception-region export has no retained base IDB")
+    def identity(path):
+        return {"path": rel(path), "bytes": path.stat().st_size, "sha256": sha(path)}
+    ida_root = Path(args.ida_root).resolve()
+    executable = next((ida_root / name for name in ("idat64.exe", "idat.exe")
+                       if (ida_root / name).is_file()), None)
+    if executable is None:
+        raise ValueError("Static IDA executable is unavailable")
+
+    def retain_tool(path, *, installed=False):
+        path = path.resolve()
+        if installed and not path.is_relative_to(ida_root):
+            raise ValueError("Exception-region analyzer tool escaped its installation")
+        raw = path.read_bytes()
+        digest = hashlib.sha256(raw).hexdigest()
+        snapshot = result / "tool-sources" / (digest + path.suffix)
+        snapshot.parent.mkdir(parents=True, exist_ok=True)
+        if snapshot.exists():
+            if snapshot.read_bytes() != raw:
+                raise ValueError("Retained exception-region tool snapshot changed")
+        else:
+            with snapshot.open("xb") as stream:
+                stream.write(raw)
+        location = {"installation_path": path.relative_to(ida_root).as_posix()} if installed else {"path": rel(path)}
+        return {**location, "bytes": len(raw), "sha256": digest, "snapshot": identity(snapshot)}
+
+    tool_sources = {name: retain_tool(ROOT / path) for name, path in {
+        "capture": "tools/ida/capture.py", "parser": "tools/host.py",
+        "entry": "tools/ida/ida-start-mcp.py", "support": "tools/ida/capture_io.py",
+    }.items()}
+    tool_sources["analyzer"] = retain_tool(executable, installed=True)
+    tool_sources.update({name: retain_tool(ida_root / path, installed=True)
+                         for name, path in IA64_EXCEPTION_ANALYZER_FILES.items()})
+    tool_sources["sdk"] = {name: retain_tool(ida_root / "python" / (name + ".py"), installed=True)
+                           for name in IA64_EXCEPTION_SDK_MODULES}
+    tool_rows = [row for name, row in tool_sources.items() if name != "sdk"] + list(tool_sources["sdk"].values())
+
+    def verify_tools():
+        for row in tool_rows:
+            path = ida_root / row["installation_path"] if "installation_path" in row else ROOT / row["path"]
+            retained = ROOT / row["snapshot"]["path"]
+            if (path.stat().st_size != row["bytes"] or sha(path) != row["sha256"]
+                    or retained.stat().st_size != row["bytes"] or sha(retained) != row["sha256"]):
+                raise ValueError("Exception-region analyzer tool or snapshot changed")
+
+    tool, parser = tool_sources["capture"], tool_sources["parser"]
+    base_identity, database_identity = identity(base_capture), identity(source_database)
+    selection = {"mode": "read_only_ia64_exception_regions", "directory": directory,
+        "captured_chunk_coverage": native_exception_region_coverage(directory, functions, pe["image_base"]),
+        "capture_tool": tool, "parser_tool": parser, "base_capture": base_identity,
+        "source_database": database_identity, "tool_sources": tool_sources,
+        "processor": {"name": "ia64l", "module": "ia", "bits": 64, "big_endian": False},
+        "reason": "The installed IA64 processor explicitly does not parse .pdata. Export every original exception region, including bytes outside captured chunks, using decode_insn without defining functions, changing ownership, ABI/SP or invoking a decompiler."}
+    selection_id = hashlib.sha256(json.dumps(selection, sort_keys=True).encode()).hexdigest()[:16]
+    output = result / "exception-regions" / selection_id
+    scratch = ROOT / ".work/native" / digest / "exception-regions" / selection_id
+    if output.exists() and any(output.iterdir()):
+        raise ValueError("Identical exception-region export already has an attempt; inspect its immutable result")
+    configure_ida()
+    output.mkdir(parents=True, exist_ok=True)
+    scratch.mkdir(parents=True, exist_ok=True)
+    database = scratch / source_database.name
+    shutil.copyfile(source_database, database)
+    if sha(database) != database_identity["sha256"] or sha(source_database) != database_identity["sha256"]:
+        raise ValueError("Exception-region private IDB copy differs")
+    plan = {"schema_version": 1, "input": rel(source), "sha256": digest, "input_bytes": original["bytes"],
+        "output": rel(output), "acquisition_binding": original,
+        "database": identity(database), "source_database": database_identity,
+        "base_capture": base_identity, "capture_tool": tool, "parser_tool": parser,
+        "tool_sources": tool_sources,
+        "exception_regions": selection, "target_execution": False, "real_device_operations": False}
+    save(output / "plan.json", plan)
+    env = os.environ.copy()
+    env["IDAUSR"] = str(ROOT / "tools/ida/idausr")
+    env.pop("RAZER_IDA_SUPPLEMENT_PLAN", None)
+    env["RAZER_IDA_CAPTURE_PLAN"] = str(output / "plan.json")
+    # The installed command-line reference defines -a as disabling autoanalysis.
+    command = [str(executable), "-a", "-A", "-Opdb:off", "-L" + str(scratch / "ida.log"),
+               "-S" + str(ROOT / "tools/ida/ida-start-mcp.py"), str(database)]
+    options = {}
+    if os.name == "nt":
+        startup = subprocess.STARTUPINFO()
+        startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startup.wShowWindow = 0
+        options = {"startupinfo": startup, "creationflags": subprocess.CREATE_NO_WINDOW}
+    verify_tools()
+    with (scratch / "process.log").open("wb") as log:
+        proc = subprocess.Popen(command, cwd=scratch, env=env, stdout=log, stderr=subprocess.STDOUT, **options)
+    session_path = output / "session.json"
+    session = {"pid": proc.pid, "started_at_utc": stamp(), "analyzer": executable.name,
+        "analyzer_sha256": tool_sources["analyzer"]["sha256"], "capture_tool": tool, "parser_tool": parser,
+        "tool_sources": tool_sources,
+        "base_capture": base_identity, "source_database": database_identity,
+        "argv": [executable.name, "-a", "-A", "-Opdb:off", "-L" + rel(scratch / "ida.log"),
+                 "-Stools/ida/ida-start-mcp.py", rel(database)],
+        "target_execution": False, "real_device_operations": False}
+    save(session_path, session)
+    print(json.dumps({"pid": proc.pid, "result": rel(output), "log": rel(scratch / "ida.log")}), flush=True)
+    session["exit_code"] = proc.wait()
+    session["finished_at_utc"] = stamp()
+    verify_tools()
+    for row in [base_identity, database_identity, tool, parser, *function_sources]:
+        if sha(ROOT / row["path"]) != row["sha256"]:
+            raise ValueError("Exception-region original evidence changed during export")
+    manifest_path = output / "capture.json"
+    manifest = json.loads(manifest_path.read_bytes()) if manifest_path.is_file() else {}
+    session["passed"] = (session["exit_code"] == 0 and manifest.get("capture_complete") is True
+        and manifest.get("input_sha256") == digest and manifest.get("exception_regions") == selection
+        and manifest.get("tool_sources") == tool_sources and manifest.get("function_chunks_unchanged") is True)
+    save(session_path, session)
+    if not getattr(args, "no_refresh_gaps", False):
+        refresh_gaps()
+    print(json.dumps({"session": rel(session_path), "passed": session["passed"]}), flush=True)
     return session
 
 
@@ -1806,7 +1961,547 @@ def native_function_outlines(raw, capture, function_rvas, outline_rvas, evidence
     return outlines
 
 
-def native_function_selection(raw, capture, function_rvas, type_specs=(), type_note=None, max_function_kib=None, import_specs=(), merge_specs=(), outline_rvas=()):
+def native_function_shared_tails(raw, capture, function_rvas, specifications, evidence, pe):
+    """Bind exact shared code tails to their original retained function owners.
+
+    A shared tail is a byte-identical interval that already belongs to the
+    primary retained function and is reached by one or more other retained
+    entries.  The input describes only the reviewed ownership claim; every
+    boundary, byte, instruction and incoming edge is recomputed from the
+    original PE and retained capture before it is placed in a supplement plan.
+    """
+    digest = hashlib.sha256(raw).hexdigest()
+    if (capture.get("input_sha256") != digest or capture.get("input_bytes") != len(raw)
+            or capture.get("capture_complete") is not True or pe["architecture"] not in {"x86", "x64"}
+            or not specifications or len(specifications) > 4096):
+        raise ValueError("Shared function tails require an exact complete original capture")
+    base = int(pe["image_base"], 16)
+    if int(capture.get("image_base", "-1"), 16) != base:
+        raise ValueError("Shared function tail capture image base differs from the original PE")
+    result = ROOT / ".analysis/results/native" / digest
+    existing = {}
+    for row in capture.get("functions", []):
+        rva = int(row["rva"], 16)
+        if rva in existing:
+            raise ValueError("Shared function tails require unique retained function boundaries")
+        existing[rva] = row
+
+    def integer(value, label):
+        try:
+            parsed = int(value, 0) if isinstance(value, str) else value
+            if type(parsed) is not int or parsed < 0:
+                raise ValueError(label)
+            return parsed
+        except (TypeError, ValueError) as error:
+            raise ValueError("Shared function tail has an invalid " + label) from error
+
+    def parse(specification):
+        if isinstance(specification, dict):
+            required = {"tail_start_rva", "tail_end_rva", "owner_rvas", "primary_owner_rva", "inline_owners"}
+            if not required.issubset(specification):
+                raise ValueError("Shared function tail plan omits a required field")
+            start = integer(specification["tail_start_rva"], "tail start")
+            end = integer(specification["tail_end_rva"], "tail end")
+            if not isinstance(specification["owner_rvas"], list):
+                raise ValueError("Shared function tail owner RVAs must be a list")
+            owners = [integer(value, "owner RVA") for value in specification["owner_rvas"]]
+            primary = integer(specification["primary_owner_rva"], "primary owner RVA")
+            inline = specification["inline_owners"]
+            note = specification.get("assembly_evidence") or evidence
+        else:
+            text = str(specification).strip()
+            owner_text, separator, remainder = text.partition("=")
+            if not separator:
+                raise ValueError("Shared function tail requires PRIMARY=START:END:OWNER,OWNER")
+            pieces = remainder.split(":")
+            if len(pieces) < 3:
+                raise ValueError("Shared function tail requires PRIMARY=START:END:OWNER,OWNER")
+            primary = integer(owner_text, "primary owner RVA")
+            start = integer(pieces[0], "tail start")
+            end = integer(pieces[1], "tail end")
+            owner_text = ":".join(pieces[2:])
+            inline = True
+            if ":" in owner_text:
+                owner_text, mode = owner_text.rsplit(":", 1)
+                if mode.strip().casefold() == "retain":
+                    inline = False
+                elif mode.strip().casefold() != "inline":
+                    raise ValueError("Shared function tail mode must be inline or retain")
+            owners = [integer(value.strip(), "owner RVA") for value in owner_text.split(",")]
+            note = evidence
+        if (type(inline) is not bool or end <= start or not 2 <= len(owners) <= 4096
+                or len(set(owners)) != len(owners) or primary not in owners
+                or not isinstance(note, str) or not note.strip()):
+            raise ValueError("Shared function tail requires unique owners, a primary and assembly evidence")
+        return {"tail_start_rva": hex(start), "tail_end_rva": hex(end),
+                "owner_rvas": [hex(value) for value in owners],
+                "primary_owner_rva": hex(primary), "inline_owners": inline,
+                "assembly_evidence": note.strip()}
+
+    def file_bytes(start, end):
+        matches = [section for section in pe["sections"]
+                   if 0 <= start - base - section["rva"]
+                   and end - base - section["rva"] <= section["bytes"]]
+        if end <= start or len(matches) != 1:
+            raise ValueError("Shared function tail range is not uniquely file-backed")
+        section = matches[0]
+        offset = section["file_offset"] + start - base - section["rva"]
+        value = raw[offset:offset + end - start]
+        if len(value) != end - start:
+            raise ValueError("Shared function tail original bytes are truncated")
+        return value
+
+    def edge_key(edge):
+        if (not isinstance(edge, dict) or not isinstance(edge.get("from"), str)
+                or not isinstance(edge.get("to"), str) or type(edge.get("type")) is not int
+                or type(edge.get("code")) is not bool
+                or ("user" in edge and type(edge["user"]) is not bool)):
+            raise ValueError("Shared function tail contains an incomplete xref")
+        return (int(edge["from"], 16), int(edge["to"], 16), edge["type"], edge["code"], edge.get("user", False))
+
+    def canonical_edges(edges):
+        result_edges = {}
+        for edge in edges:
+            key = edge_key(edge)
+            if key in result_edges:
+                raise ValueError("Shared function tail contains a duplicated xref")
+            result_edges[key] = dict(edge)
+        return [result_edges[key] for key in sorted(result_edges)]
+
+    def read_owner(rva):
+        row = existing.get(rva)
+        if row is None or row.get("assembly_captured") is not True:
+            raise ValueError("Shared function tail owner lacks complete retained assembly: " + hex(rva))
+        path = resolve(rel(result / row["path"]), rel(result))
+        data = path.read_bytes()
+        identity = {"path": rel(path), "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+        if identity["sha256"] != row["sha256"] or ("bytes" in row and row["bytes"] != len(data)):
+            raise ValueError("Shared function tail owner retained identity changed")
+        body = json.loads(data)
+        start, end = int(body["address"], 16), int(body["end"], 16)
+        if (body.get("rva") != hex(rva) or start != base + rva or end <= start
+                or row.get("address") != hex(start) or type(body.get("flags")) is not int
+                or not isinstance(body.get("chunks"), list) or not body["chunks"]
+                or not isinstance(body.get("assembly"), list) or not body["assembly"]
+                or not isinstance(body.get("xrefs_to_entry"), list)):
+            raise ValueError("Shared function tail owner lacks one exact complete retained body")
+        chunks, previous = [], -1
+        for chunk in body["chunks"]:
+            cstart, cend = int(chunk["start"], 16), int(chunk["end"], 16)
+            code = file_bytes(cstart, cend)
+            if (cend <= cstart or cstart < previous
+                    or chunk.get("raw_hex") != code.hex()
+                    or chunk.get("sha256") != hashlib.sha256(code).hexdigest()):
+                raise ValueError("Shared function tail owner chunk differs from original PE")
+            chunks.append({"start": hex(cstart), "end": hex(cend), "raw_hex": code.hex(),
+                           "sha256": hashlib.sha256(code).hexdigest()})
+            previous = cend
+        if not any(chunk["start"] == hex(start) and chunk["end"] == hex(end) for chunk in chunks):
+            raise ValueError("Shared function tail owner omits its exact original entry chunk")
+        assembly, previous, addresses = [], -1, set()
+        for instruction in body["assembly"]:
+            at = int(instruction["address"], 16)
+            code = bytes.fromhex(instruction["bytes"])
+            if (not code or at in addresses or at < previous
+                    or ("rva" in instruction and int(instruction["rva"], 16) != at - base)
+                    or file_bytes(at, at + len(code)) != code
+                    or not any(int(c["start"], 16) <= at < at + len(code) <= int(c["end"], 16) for c in chunks)
+                    or not isinstance(instruction.get("xrefs_from"), list)
+                    or not isinstance(instruction.get("xrefs_to"), list)):
+                raise ValueError("Shared function tail owner assembly differs from original PE")
+            for direction, field in (("from", "xrefs_from"), ("to", "xrefs_to")):
+                canonical_edges(instruction[field])
+                if any(int(edge[direction], 16) != at for edge in instruction[field]):
+                    raise ValueError("Shared function tail instruction xref uses a different instruction boundary")
+            assembly.append(instruction)
+            addresses.add(at)
+            previous = at + len(code)
+        entry = next((instruction for instruction in assembly if int(instruction["address"], 16) == start), None)
+        if entry is None or body["xrefs_to_entry"] != entry["xrefs_to"]:
+            raise ValueError("Shared function tail owner omits its original entry or entry references")
+        return {"rva": hex(rva), "body": body, "source": identity, "start": start, "end": end,
+                "chunks": chunks, "assembly": assembly}
+
+    def control_flow(instruction):
+        """Check the relative x86/x64 transfers used by the retained tails."""
+        at, code = int(instruction["address"], 16), bytes.fromhex(instruction["bytes"])
+        stop = at + len(code)
+        if code in {b"\xc3", b"\xf3\xc3", b"\xf2\xc3"} or len(code) == 3 and code[0] == 0xc2:
+            return set()
+        if len(code) == 5 and code[0] in {0xe8, 0xe9}:
+            target = stop + int.from_bytes(code[1:], "little", signed=True)
+            return {(17, target), (21, stop)} if code[0] == 0xe8 else {(19, target)}
+        if len(code) == 2 and code[0] == 0xeb:
+            return {(19, stop + int.from_bytes(code[1:], "little", signed=True))}
+        if len(code) == 2 and (0x70 <= code[0] <= 0x7f or 0xe0 <= code[0] <= 0xe3):
+            return {(19, stop + int.from_bytes(code[1:], "little", signed=True)), (21, stop)}
+        if len(code) == 6 and code[0] == 0x0f and 0x80 <= code[1] <= 0x8f:
+            return {(19, stop + int.from_bytes(code[2:], "little", signed=True)), (21, stop)}
+        mnemonic = instruction.get("text", "").strip().split(" ", 1)[0].lower()
+        if (not mnemonic or mnemonic.startswith(("j", "ret", "call", "iret", "loop"))
+                or mnemonic in {"rep", "repe", "repz", "repne", "repnz", "int", "int3", "ud2", "hlt"}):
+            raise ValueError("Shared function tail has an unproved control transfer")
+        return {(21, stop)}
+
+    def verify_flow(instruction):
+        edges = [edge for edge in instruction["xrefs_from"] if edge["code"]]
+        if {(edge["type"], int(edge["to"], 16)) for edge in edges} != control_flow(instruction):
+            raise ValueError("Shared function tail xrefs differ from actual relative control flow")
+        return edges
+
+    plans, seen_owners, seen_ranges = [], set(), []
+    for specification in specifications:
+        requested = parse(specification)
+        start_rva, end_rva = int(requested["tail_start_rva"], 16), int(requested["tail_end_rva"], 16)
+        start, end = base + start_rva, base + end_rva
+        owners = [int(value, 16) for value in requested["owner_rvas"]]
+        primary = int(requested["primary_owner_rva"], 16)
+        if any(owner in seen_owners for owner in owners):
+            raise ValueError("Shared function tail owner is already assigned to another shared tail")
+        if any(start < old_end and old_start < end for old_start, old_end in seen_ranges):
+            raise ValueError("Shared function tails overlap")
+        owner_data = {rva: read_owner(rva) for rva in owners}
+        donor = owner_data[primary]
+        if not donor["start"] < start < end == donor["end"]:
+            raise ValueError("Shared tail must be an exact suffix of its primary retained function")
+        if any(start_rva <= rva < end_rva for rva in existing):
+            raise ValueError("Shared tail would absorb another original function entry")
+        donor_instruction_starts = {int(ins["address"], 16) for ins in donor["assembly"]}
+        if start not in donor_instruction_starts:
+            raise ValueError("Shared tail starts inside an original instruction")
+        tail_assembly = [ins for ins in donor["assembly"] if start <= int(ins["address"], 16) < end]
+        cursor = start
+        for instruction in tail_assembly:
+            at = int(instruction["address"], 16)
+            code = bytes.fromhex(instruction["bytes"])
+            if at < cursor or at + len(code) > end:
+                raise ValueError("Shared tail omits an original instruction or byte")
+            cursor = at + len(code)
+        if cursor != end:
+            raise ValueError("Shared tail does not contain complete original instructions")
+        for instruction in tail_assembly:
+            verify_flow(instruction)
+        tail_code = file_bytes(start, end)
+        tail = {"start": hex(start), "end": hex(end), "raw_hex": tail_code.hex(),
+                "sha256": hashlib.sha256(tail_code).hexdigest()}
+
+        # Build exact post-application chunks.  The primary retains every
+        # original byte before the suffix and receives the common tail chunk;
+        # every other owner retains its original chunks and receives that same
+        # exact file-backed tail.
+        def split_primary_chunks():
+            values = []
+            for chunk in donor["chunks"]:
+                cstart, cend = int(chunk["start"], 16), int(chunk["end"], 16)
+                if cstart < start:
+                    stop = min(cend, start)
+                    if stop > cstart:
+                        code = file_bytes(cstart, stop)
+                        values.append({"start": hex(cstart), "end": hex(stop), "raw_hex": code.hex(),
+                                       "sha256": hashlib.sha256(code).hexdigest()})
+                if cend > end:
+                    code = file_bytes(max(cstart, end), cend)
+                    values.append({"start": hex(max(cstart, end)), "end": hex(cend), "raw_hex": code.hex(),
+                                   "sha256": hashlib.sha256(code).hexdigest()})
+            values.append(dict(tail))
+            return sorted(values, key=lambda value: int(value["start"], 16))
+
+        original_ranges, instructions, instruction_owners = [], {}, {}
+        for rva, owner in owner_data.items():
+            for chunk in owner["chunks"]:
+                lo, hi = int(chunk["start"], 16), int(chunk["end"], 16)
+                if any(lo < old_hi and old_lo < hi for old_lo, old_hi in original_ranges):
+                    raise ValueError("Shared tail original owners overlap outside declared ownership")
+                original_ranges.append((lo, hi))
+            for instruction in owner["assembly"]:
+                at = int(instruction["address"], 16)
+                if at in instructions:
+                    raise ValueError("Shared tail original owner instructions overlap")
+                instructions[at], instruction_owners[at] = instruction, rva
+        incoming, outgoing, incoming_owners = [], [], set()
+        for instruction in tail_assembly:
+            for edge in instruction["xrefs_to"]:
+                source = int(edge["from"], 16)
+                if not edge["code"]:
+                    if not start <= source < end:
+                        incoming.append(edge)
+                    continue
+                site = instructions.get(source)
+                if site is None:
+                    raise ValueError("Shared tail has a foreign incoming code edge")
+                if edge not in verify_flow(site):
+                    raise ValueError("Shared tail incoming edge differs from its original source instruction")
+                if not start <= source < end:
+                    if edge["type"] not in {19, 21}:
+                        raise ValueError("Shared tail has an incoming CALL or unproved entry")
+                    incoming.append(edge)
+                    incoming_owners.add(instruction_owners[source])
+            for edge in instruction["xrefs_from"]:
+                target = int(edge["to"], 16)
+                if edge["code"]:
+                    if start <= target < end:
+                        if target not in instructions or edge not in instructions[target]["xrefs_to"]:
+                            raise ValueError("Shared tail internal control-flow references are incomplete")
+                    elif edge["type"] not in {16, 17}:
+                        raise ValueError("Shared tail has a nonlocal non-CALL control-flow exit")
+                if not start <= target < end:
+                    outgoing.append(edge)
+        # Cross-check both directions so removing a retained incoming xref
+        # cannot hide a real owner jump or fallthrough into the tail.
+        for at, instruction in instructions.items():
+            for edge in instruction["xrefs_from"]:
+                target = int(edge["to"], 16)
+                if edge["code"] and start <= target < end:
+                    if target not in instructions or edge not in instructions[target]["xrefs_to"]:
+                        raise ValueError("Shared tail omits a real incoming code edge")
+        incoming = canonical_edges(incoming)
+        outgoing = canonical_edges(outgoing)
+        if incoming_owners != set(owners):
+            raise ValueError("Shared tail incoming edges do not identify exactly all declared owners")
+        expected_owners = []
+        for rva in owners:
+            owner = owner_data[rva]
+            chunks = split_primary_chunks() if rva == primary else sorted(owner["chunks"] + [dict(tail)],
+                                                                          key=lambda value: int(value["start"], 16))
+            expected_owners.append({"rva": hex(rva), "source_function": owner["source"],
+                "original_end": hex(owner["end"]), "original_chunks": owner["chunks"],
+                "expected_end": hex(start) if rva == primary else hex(owner["end"]), "expected_chunks": chunks,
+                "expected_flags": owner["body"]["flags"]})
+        plans.append({**requested, "expected_tail": tail, "incoming_edges": incoming,
+                      "outgoing_edges": outgoing, "owners": expected_owners})
+        seen_owners.update(owners)
+        seen_ranges.append((start, end))
+    return plans
+
+
+def native_function_partitions(raw, capture, function_rvas, specifications, evidence, pe):
+    """Bind explicit local CALL/RET helpers to an exact partition of retained code."""
+    digest = hashlib.sha256(raw).hexdigest()
+    if (capture.get("input_sha256") != digest or capture.get("input_bytes") != len(raw)
+            or capture.get("capture_complete") is not True or pe["architecture"] != "x64"
+            or not evidence or not evidence.strip()):
+        raise ValueError("Function partitions require exact complete x64 input and explicit assembly evidence")
+    base = int(pe["image_base"], 16)
+    existing = {int(row["rva"], 16): row for row in capture["functions"]}
+    if len(existing) != len(capture["functions"]) or int(capture["image_base"], 16) != base:
+        raise ValueError("Function partition capture boundaries or image base differ")
+    result = ROOT / ".analysis/results/native" / digest
+
+    def chunk(start, end):
+        matches = [section for section in pe["sections"]
+                   if 0 <= start - base - section["rva"]
+                   and end - base - section["rva"] <= section["bytes"]]
+        if end <= start or len(matches) != 1:
+            raise ValueError("Function partition range is not uniquely file-backed")
+        section = matches[0]
+        at = section["file_offset"] + start - base - section["rva"]
+        code = raw[at:at + end - start]
+        if len(code) != end - start:
+            raise ValueError("Function partition original bytes are truncated")
+        return {"start": hex(start), "end": hex(end), "raw_hex": code.hex(),
+                "sha256": hashlib.sha256(code).hexdigest()}
+
+    partitions, owners = [], set()
+    for specification in specifications:
+        try:
+            owner_text, separator, ranges_text = specification.partition("=")
+            owner = int(owner_text, 0)
+            ranges = [tuple(int(value, 0) + base for value in span.split(":"))
+                      for span in ranges_text.split(",")]
+        except (ValueError, TypeError) as error:
+            raise ValueError("Function partition requires OWNER=START:END,START:END") from error
+        if (not separator or owner not in function_rvas or owner in owners
+                or not 1 <= len(ranges) <= 4096 or any(len(span) != 2 for span in ranges)):
+            raise ValueError("Function partition requires unique selected owners and explicit helper ranges")
+        owners.add(owner)
+        row = existing.get(owner)
+        if row is None or row.get("assembly_captured") is not True:
+            raise ValueError("Function partition owner lacks complete retained assembly")
+        path = resolve(rel(result / row["path"]), rel(result))
+        retained = path.read_bytes()
+        source = {"path": rel(path), "bytes": len(retained), "sha256": hashlib.sha256(retained).hexdigest()}
+        if source["sha256"] != row["sha256"] or ("bytes" in row and row["bytes"] != len(retained)):
+            raise ValueError("Function partition owner identity changed")
+        body = json.loads(retained)
+        start, end = base + owner, int(body["end"], 16)
+        original = chunk(start, end)
+        assembly = body.get("assembly")
+        if (body.get("address") != hex(start) or body.get("rva") != hex(owner)
+                or row.get("address") != hex(start) or body.get("chunks") != [original]
+                or type(body.get("flags")) is not int or not isinstance(assembly, list) or not assembly
+                or not isinstance(body.get("xrefs_to_entry"), list)):
+            raise ValueError("Function partition owner requires one exact complete retained chunk")
+        previous_end, by_address = start, {}
+        for instruction in assembly:
+            at, code = int(instruction["address"], 16), bytes.fromhex(instruction["bytes"])
+            if (not code or at < previous_end or at < start or at + len(code) > end
+                    or ("rva" in instruction and int(instruction["rva"], 16) != at - base)
+                    or code.hex() != chunk(at, at + len(code))["raw_hex"]
+                    or not isinstance(instruction.get("xrefs_from"), list)
+                    or not isinstance(instruction.get("xrefs_to"), list)):
+                raise ValueError("Function partition assembly or complete references differ from original code")
+            by_address[at] = instruction
+            previous_end = at + len(code)
+        helpers, owner_chunks, previous = [], [], start
+        for first, stop in ranges:
+            if (not start < first < stop < end or first < previous
+                    or first not in by_address or first - base in existing
+                    or any(at < first < at + len(bytes.fromhex(ins["bytes"]))
+                           or at < stop < at + len(bytes.fromhex(ins["bytes"]))
+                           for at, ins in by_address.items())):
+                raise ValueError("Function partition helper overlaps code, an existing boundary or another helper")
+            instructions = [ins for at, ins in by_address.items() if first <= at < stop]
+            if not instructions or int(instructions[-1]["address"], 16) + len(bytes.fromhex(instructions[-1]["bytes"])) != stop:
+                raise ValueError("Function partition helper ends outside complete instruction boundaries")
+            calls, returns = [], []
+            for instruction in instructions:
+                at, code = int(instruction["address"], 16), bytes.fromhex(instruction["bytes"])
+                outgoing = [xref for xref in instruction["xrefs_from"] if xref.get("code") is True]
+                if code == b"\xc3":
+                    expected_targets = set()
+                elif len(code) == 5 and code[0] == 0xe9:
+                    expected_targets = {at + 5 + int.from_bytes(code[1:], "little", signed=True)}
+                elif len(code) == 2 and code[0] == 0xeb:
+                    expected_targets = {at + 2 + int.from_bytes(code[1:], "little", signed=True)}
+                elif len(code) == 2 and (0x70 <= code[0] <= 0x7f or 0xe0 <= code[0] <= 0xe3):
+                    expected_targets = {at + 2, at + 2 + int.from_bytes(code[1:], "little", signed=True)}
+                elif len(code) == 6 and code[0] == 0x0f and 0x80 <= code[1] <= 0x8f:
+                    expected_targets = {at + 6, at + 6 + int.from_bytes(code[2:], "little", signed=True)}
+                else:
+                    expected_targets = {at + len(code)}
+                if {int(xref["to"], 16) for xref in outgoing} != expected_targets:
+                    raise ValueError("Function partition helper references differ from its actual relative control flow")
+                if any(xref.get("type") in {16, 17} or not first <= int(xref["to"], 16) < stop for xref in outgoing):
+                    raise ValueError("Function partition helper has nested calls or a nonlocal control-flow edge")
+                mnemonic = instruction.get("text", "").strip().split(" ", 1)[0].lower()
+                if code == b"\xc3":
+                    if outgoing:
+                        raise ValueError("Function partition RET has an unexpected control-flow edge")
+                    returns.append(hex(at - base))
+                elif not outgoing or mnemonic.startswith(("ret", "call")):
+                    raise ValueError("Function partition helper has an unproved terminal or call instruction")
+                for xref in instruction["xrefs_to"]:
+                    if xref.get("code") is not True:
+                        if xref.get("type") != 0:
+                            raise ValueError("Function partition helper has a data reference requiring separate review")
+                        continue
+                    caller = int(xref["from"], 16)
+                    if first <= caller < stop:
+                        continue
+                    site = by_address.get(caller)
+                    value = bytes.fromhex(site["bytes"]) if site else b""
+                    if (at != first or xref.get("type") != 17 or len(value) != 5 or value[0] != 0xe8
+                            or caller + 5 + int.from_bytes(value[1:], "little", signed=True) != first
+                            or any(a <= caller < b for a, b in ranges)):
+                        raise ValueError("Function partition helper has a nonlocal, non-CALL or interior entry")
+                    calls.append({"rva": hex(caller - base), "target_rva": hex(first - base), "bytes": value.hex()})
+            if not calls or not returns:
+                raise ValueError("Function partition helper requires actual owner CALL edges and plain RET exits")
+            owner_chunks.append(chunk(previous, first))
+            helpers.append({"rva": hex(first - base), "expected_end": hex(stop),
+                "expected_chunks": [chunk(first, stop)], "expected_xrefs_to_entry": by_address[first]["xrefs_to"],
+                "call_edges": sorted(calls, key=lambda item: int(item["rva"], 16)), "return_rvas": returns})
+            previous = stop
+        owner_chunks.append(chunk(previous, end))
+        # Every original byte, including padding omitted from the instruction list,
+        # belongs to exactly one output owner chunk or a complete local helper.
+        pieces = sorted(owner_chunks + [helper["expected_chunks"][0] for helper in helpers],
+                        key=lambda item: int(item["start"], 16))
+        if (pieces[0]["start"] != original["start"] or pieces[-1]["end"] != original["end"]
+                or any(left["end"] != right["start"] for left, right in zip(pieces, pieces[1:]))
+                or "".join(piece["raw_hex"] for piece in pieces) != original["raw_hex"]):
+            raise ValueError("Function partition does not preserve the exact complete original byte union")
+        partitions.append({"owner_rva": hex(owner), "source_function": source, "expected_flags": body["flags"],
+            "original_chunks": [original], "owner_chunks": owner_chunks, "helpers": helpers,
+            "assembly_evidence": evidence.strip()})
+    return partitions
+
+
+def native_function_partition_bodies(partition):
+    """Derive exact owner/helper baselines without synthesizing instructions or ABI."""
+    source = partition["source_function"]
+    raw = resolve(source["path"], ".analysis/results/native").read_bytes()
+    if len(raw) != source["bytes"] or hashlib.sha256(raw).hexdigest() != source["sha256"]:
+        raise ValueError("Function partition source identity changed while composing baselines")
+    original = json.loads(raw)
+
+    def compose(chunks):
+        body = dict(original)
+        body["chunks"] = chunks
+        body["end"] = chunks[0]["end"]
+        body["assembly"] = [ins for ins in original["assembly"]
+                            if any(int(c["start"], 16) <= int(ins["address"], 16) < int(c["end"], 16) for c in chunks)]
+        return body
+
+    owner, helpers = compose(partition["owner_chunks"]), {}
+    base = int(original["address"], 16) - int(original["rva"], 16)
+    for helper in partition["helpers"]:
+        body = compose(helper["expected_chunks"])
+        body.update(address=hex(base + int(helper["rva"], 16)), rva=helper["rva"],
+                    xrefs_to_entry=helper["expected_xrefs_to_entry"], pseudocode=None)
+        helpers[helper["rva"]] = body
+    return {"owner": owner, "helpers": helpers}
+
+
+def native_shared_tail_specifications(rows):
+    """Return stable CLI forms for normalized shared-tail rows."""
+    values = []
+    for row in rows or ():
+        if not isinstance(row, dict):
+            raise ValueError("Shared function tail row must be an object")
+        mode = "inline" if row.get("inline_owners") is True else "retain"
+        owners = ",".join(str(value) for value in row.get("owner_rvas", ()))
+        values.append("{}={}:{}:{}:{}".format(row.get("primary_owner_rva"), row.get("tail_start_rva"),
+                                               row.get("tail_end_rva"), owners, mode))
+    return values
+
+
+def native_observation_evidence(specification):
+    """Bind a static observation to retained review and observer source bytes."""
+    if not isinstance(specification, str):
+        raise ValueError("Static observation requires a retained review reference")
+    name, marker, pointer = specification.partition("#")
+    if Path(name).is_absolute() or not marker or not pointer.startswith("/"):
+        raise ValueError("Static observation requires a project-relative review and JSON pointer")
+    path = resolve(name, ".analysis/results")
+    raw = path.read_bytes()
+    value = json.loads(raw)
+    try:
+        for token in pointer[1:].split("/"):
+            if re.search(r"~(?![01])", token):
+                raise ValueError("Invalid JSON pointer escape")
+            token = token.replace("~1", "/").replace("~0", "~")
+            if isinstance(value, list):
+                if not re.fullmatch(r"0|[1-9][0-9]*", token):
+                    raise ValueError("Invalid JSON pointer array index")
+                value = value[int(token)]
+            else:
+                value = value[token]
+    except (KeyError, IndexError, TypeError, ValueError) as error:
+        raise ValueError("Static observation review pointer does not resolve") from error
+    if (not isinstance(value, dict) or set(value) != {"reason", "observer_source"}
+            or not isinstance(value["reason"], str) or not value["reason"].strip()
+            or len(value["reason"]) > 16384):
+        raise ValueError("Static observation requires an explicit bounded reason and observer source")
+    source = value["observer_source"]
+    if (not isinstance(source, dict) or set(source) != {"path", "bytes", "sha256"}
+            or not isinstance(source["path"], str) or Path(source["path"]).is_absolute()
+            or Path(source["path"]).suffix != ".py"
+            or type(source["bytes"]) is not int or source["bytes"] <= 0
+            or not isinstance(source["sha256"], str)
+            or not re.fullmatch(r"[0-9a-f]{64}", source["sha256"])):
+        raise ValueError("Static observation observer source identity is incomplete")
+    observer = resolve(source["path"], ".analysis/results")
+    if observer.stat().st_size != source["bytes"] or sha(observer) != source["sha256"]:
+        raise ValueError("Static observation observer source bytes changed")
+    return {"review_source": {"path": rel(path), "bytes": len(raw),
+                             "sha256": hashlib.sha256(raw).hexdigest(), "pointer": pointer},
+            "reason": value["reason"], "observer_source": dict(source)}
+
+
+def native_function_selection(raw, capture, function_rvas, type_specs=(), type_note=None, max_function_kib=None,
+                              import_specs=(), merge_specs=(), outline_rvas=(), partition_specs=(), shared_tail_specs=(),
+                              observation_evidence=None):
     """Select retained boundaries and explicit, assembly-reviewed type repairs."""
     from host import inspect_pe
 
@@ -1845,6 +2540,8 @@ def native_function_selection(raw, capture, function_rvas, type_specs=(), type_n
                         "file_offset": section["file_offset"] + rva - section["rva"]})
     selection = {"mode": "retained_function_reanalysis", "image_base": hex(base), "architecture": pe["architecture"],
                  "targets": targets, "type_recoveries": types}
+    if observation_evidence is not None:
+        selection["static_observation"] = native_observation_evidence(observation_evidence)
     if max_function_kib is not None:
         if type(max_function_kib) is not int or not 64 <= max_function_kib <= 1024:
             raise ValueError("Decompiler function size limit must be an integer from 64 to 1024 KiB")
@@ -1854,10 +2551,22 @@ def native_function_selection(raw, capture, function_rvas, type_specs=(), type_n
         selection["import_thunks"] = native_import_thunks(raw, capture, selection["import_type_recoveries"], pe)
     if merge_specs:
         selection["function_merges"] = native_function_merges(raw, capture, function_rvas, merge_specs, type_note, pe)
+    if shared_tail_specs:
+        if merge_specs or partition_specs:
+            raise ValueError("Shared function tails cannot be combined with boundary merges or partitions")
+        shared = native_function_shared_tails(raw, capture, function_rvas, shared_tail_specs, type_note, pe)
+        shared_owners = {row["rva"] for plan in shared for row in plan["owners"]}
+        if any(hex(int(value, 0) if isinstance(value, str) else value) in shared_owners for value in outline_rvas):
+            raise ValueError("Shared function tail owners cannot also be ordinary outlined helpers")
+        selection["function_shared_tails"] = shared
     if outline_rvas:
         if merge_specs:
             raise ValueError("Outlined helpers and boundary merges require separate reviewed supplements")
         selection["function_outlines"] = native_function_outlines(raw, capture, function_rvas, outline_rvas, type_note, pe)
+    if partition_specs:
+        if merge_specs or outline_rvas or type_specs or import_specs:
+            raise ValueError("Function partitions require a separate reviewed supplement without ABI or boundary repairs")
+        selection["function_partitions"] = native_function_partitions(raw, capture, function_rvas, partition_specs, type_note, pe)
     return selection
 
 
@@ -1883,13 +2592,20 @@ def supplement_native(args):
         selection = native_function_selection(source.read_bytes(), capture, function_rvas,
             getattr(args, "function_type", None) or (), getattr(args, "type_evidence", None),
             getattr(args, "max_function_kib", None), getattr(args, "import_type", None) or (),
-            getattr(args, "merge_functions", None) or (), getattr(args, "outline_function_rva", None) or ())
+            getattr(args, "merge_functions", None) or (), getattr(args, "outline_function_rva", None) or (),
+            getattr(args, "partition_functions", None) or (), getattr(args, "share_function_tail", None) or (),
+            getattr(args, "observation_evidence", None))
+        observation = selection.get("static_observation")
+        if observation and sha(ROOT / "tools/ida/supplement.py") != observation["observer_source"]["sha256"]:
+            raise ValueError("Static observation tool differs from its reviewed source")
         selection_key = "function_selection"
     else:
         if getattr(args, "max_function_kib", None) is not None:
             raise ValueError("Decompiler size limit requires retained function reanalysis")
         if (getattr(args, "function_type", None) or getattr(args, "import_type", None) or getattr(args, "type_evidence", None)
-                or getattr(args, "merge_functions", None) or getattr(args, "outline_function_rva", None)):
+                or getattr(args, "merge_functions", None) or getattr(args, "outline_function_rva", None)
+                or getattr(args, "partition_functions", None) or getattr(args, "share_function_tail", None)
+                or getattr(args, "observation_evidence", None)):
             raise ValueError("Function type recovery requires explicit function reanalysis")
         if args.pointer_table_rva is None or args.pointer_count is None:
             raise ValueError("Pointer-table selection requires its RVA and count")
@@ -2039,18 +2755,39 @@ def native_reanalysis_resolution(result, capture=None):
             imports = selection.get("import_type_recoveries", [])
             merges = selection.get("function_merges", [])
             outlines = selection.get("function_outlines", [])
+            partitions = selection.get("function_partitions", [])
+            shared_tails = selection.get("function_shared_tails", [])
+            shared_notes = recoveries or imports or merges or outlines or partitions or shared_tails
             actual = native_function_selection(raw, capture, [int(row["rva"], 16) for row in selection["targets"]],
                 [row["rva"] + "=" + row["declaration"] for row in recoveries],
-                (recoveries or imports or merges or outlines)[0]["assembly_evidence"] if recoveries or imports or merges or outlines else None,
+                shared_notes[0]["assembly_evidence"] if shared_notes else None,
                 selection.get("decompiler_limits", {}).get("max_function_kib"),
                 [row["rva"] + "=" + row["declaration"] for row in imports],
                 [row["owner_rva"] + "=" + ",".join(row["member_rvas"]) for row in merges],
-                [row["rva"] for row in outlines])
+                [row["rva"] for row in outlines],
+                [row["owner_rva"] + "=" + ",".join(helper["rva"] + ":" +
+                    hex(int(helper["expected_end"], 16) - int(selection["image_base"], 16))
+                    for helper in row["helpers"]) for row in partitions],
+                [dict(row) for row in shared_tails],
+                (selection["static_observation"]["review_source"]["path"] + "#"
+                 + selection["static_observation"]["review_source"]["pointer"])
+                if "static_observation" in selection else None)
             if actual != selection:
                 raise ValueError("Native supplement selection no longer matches the original bytes")
+            observation = selection.get("static_observation")
+            if observation and supplement.get("capture_tool", {}).get("sha256") != observation["observer_source"]["sha256"]:
+                raise ValueError("Native supplement did not use its reviewed static observer")
+            if shared_tails:
+                retained_database = plan.get("source_database")
+                if (not isinstance(retained_database, dict)
+                        or not isinstance(retained_database.get("path"), str)
+                        or not isinstance(retained_database.get("sha256"), str)
+                        or sha(resolve(retained_database["path"], ".work/native")) != retained_database["sha256"]):
+                    raise ValueError("Native shared-tail source database changed or is unavailable")
             if "decompiler_limits" in selection and supplement.get("applied_decompiler_limits") != selection["decompiler_limits"]:
                 raise ValueError("Native supplement did not apply its exact decompiler size limit")
-            if {row["rva"] for row in supplement["functions"]} != {row["rva"] for row in selection["targets"]}:
+            if (len(supplement["functions"]) != len(selection["targets"])
+                    or {row["rva"] for row in supplement["functions"]} != {row["rva"] for row in selection["targets"]}):
                 raise ValueError("Native supplement omitted selected function boundaries")
             if (len(supplement["type_recoveries"]) != len(recoveries)
                     or any(any(applied.get(key) != requested[key] for key in requested)
@@ -2079,6 +2816,107 @@ def native_reanalysis_resolution(result, capture=None):
                            for applied, requested in zip(applied_merges, merges))):
                 raise ValueError("Native supplement did not retain the exact reviewed function merges")
             merged_baselines = {merge["owner_rva"]: native_function_merge_body(merge) for merge in merges}
+            shared_baselines, shared_helpers = {}, {}
+            for shared in shared_tails:
+                tail = shared["expected_tail"]
+                tail_start, tail_end = int(tail["start"], 16), int(tail["end"], 16)
+                tail_assembly = []
+                primary = shared["primary_owner_rva"]
+                owners = {row["rva"]: row for row in shared["owners"]}
+                primary_source = checked(ROOT / owners[primary]["source_function"]["path"],
+                                         owners[primary]["source_function"])
+                tail_assembly = [instruction for instruction in primary_source["assembly"]
+                                 if tail_start <= int(instruction["address"], 16) < tail_end]
+                for owner in shared["owners"]:
+                    source = checked(ROOT / owner["source_function"]["path"], owner["source_function"])
+                    body = dict(source)
+                    body["chunks"] = owner["expected_chunks"]
+                    body["end"] = owner["expected_end"]
+                    if owner["rva"] != primary:
+                        existing_addresses = {int(item["address"], 16) for item in source["assembly"]}
+                        body["assembly"] = sorted(source["assembly"] + [item for item in tail_assembly
+                            if int(item["address"], 16) not in existing_addresses], key=lambda item: int(item["address"], 16))
+                    shared_baselines[owner["rva"]] = body
+                    if owner["rva"] not in {target["rva"] for target in selection["targets"]}:
+                        shared_helpers[owner["rva"]] = body
+            applied_shared = supplement.get("function_shared_tail_recoveries", [])
+            if len(applied_shared) != len(shared_tails):
+                raise ValueError("Native supplement omitted exact reviewed shared function tails")
+            for applied, requested in zip(applied_shared, shared_tails):
+                if (any(applied.get(key) != value for key, value in requested.items())
+                        or applied.get("base_database_modified") is not False
+                        or applied.get("applied_tail") != requested["expected_tail"]
+                        or applied.get("applied_primary_owner_rva") != requested["primary_owner_rva"]
+                        or applied.get("applied_owner_rvas") != requested["owner_rvas"]
+                        or len(applied.get("applied_owners", [])) != len(requested["owners"])):
+                    raise ValueError("Native supplement shared-tail ownership differs from exact original evidence")
+                for actual_owner, owner in zip(applied["applied_owners"], requested["owners"]):
+                    expected_flags = owner["expected_flags"]
+                    outline_flag = actual_owner.get("outline_flag")
+                    if (type(outline_flag) is not int or outline_flag <= 0
+                            or outline_flag & (outline_flag - 1)):
+                        raise ValueError("Native supplement shared-tail outline flag differs")
+                    expected_applied = expected_flags | outline_flag if requested["inline_owners"] else expected_flags
+                    frame_keys = {"frame_id", "local_bytes", "saved_register_bytes", "argument_bytes", "frame_pointer_delta"}
+                    frame = actual_owner.get("previous_frame")
+                    if (not isinstance(frame, dict) or set(frame) != frame_keys
+                            or any(type(value) is not int or value < 0 for value in frame.values())
+                            or actual_owner.get("applied_frame") != frame
+                            or (actual_owner.get("previous_type") is not None
+                                and not isinstance(actual_owner["previous_type"], str))
+                            or "previous_type" not in actual_owner or "applied_type" not in actual_owner
+                            or actual_owner["applied_type"] != actual_owner["previous_type"]):
+                        raise ValueError("Native supplement shared-tail operation changed its original frame or type")
+                    def stack_points(field):
+                        rows, points = actual_owner.get(field), {}
+                        if not isinstance(rows, list):
+                            raise ValueError("Native supplement shared-tail stack points are missing")
+                        for point in rows:
+                            if (not isinstance(point, dict) or set(point) != {"address", "delta"}
+                                    or not isinstance(point["address"], str) or type(point["delta"]) is not int):
+                                raise ValueError("Native supplement shared-tail stack point is invalid")
+                            address = int(point["address"], 16)
+                            if (point["address"] != hex(address) or address < int(selection["image_base"], 16)
+                                    or address in points):
+                                raise ValueError("Native supplement shared-tail stack point address is invalid or duplicated")
+                            points[address] = point["delta"]
+                        return points
+                    previous_points = stack_points("previous_stack_points")
+                    applied_points = stack_points("applied_stack_points")
+                    if (any(applied_points.get(address) != delta for address, delta in previous_points.items())
+                            or any(not int(requested["expected_tail"]["start"], 16) <= address
+                                       <= int(requested["expected_tail"]["end"], 16)
+                                   for address in applied_points if address not in previous_points)):
+                        raise ValueError("Native supplement shared-tail operation changed original stack points or unrelated code")
+                    if (actual_owner.get("rva") != owner["rva"]
+                            or actual_owner.get("chunks") != owner["expected_chunks"]
+                            or actual_owner.get("end") != owner["expected_end"]
+                            or actual_owner.get("base_database_modified") is not False
+                            or type(actual_owner.get("previous_flags")) is not int
+                            or actual_owner.get("previous_flags") != expected_flags
+                            or type(outline_flag) is not int or outline_flag <= 0
+                            or outline_flag & (outline_flag - 1)
+                            or actual_owner.get("applied_flags") != expected_applied):
+                        raise ValueError("Native supplement shared-tail owner chunks or flags differ")
+                    shared_baselines[owner["rva"]]["flags"] = expected_applied
+            shared_helper_records = supplement.get("shared_tail_helpers", [])
+            if (len(shared_helper_records) != len(shared_helpers)
+                    or {row.get("rva") for row in shared_helper_records} != set(shared_helpers)):
+                raise ValueError("Native supplement omitted complete shared-tail helper assembly")
+            verified_shared_helpers = []
+            for row in shared_helper_records:
+                record = {**row, "path": rel(path.parent / row["path"])}
+                body = checked(ROOT / record["path"], record)
+                baseline = shared_helpers[row["rva"]]
+                if (row.get("assembly_captured") is not True or row.get("pseudocode_captured") is not False
+                        or body.get("pseudocode") is not None
+                        or any(body.get(key) != baseline.get(key) for key in ("address", "rva", "end", "chunks", "xrefs_to_entry", "flags"))
+                        or [(ins["address"], ins["bytes"], ins.get("xrefs_from"), ins.get("xrefs_to"))
+                            for ins in body.get("assembly", [])]
+                        != [(ins["address"], ins["bytes"], ins.get("xrefs_from"), ins.get("xrefs_to"))
+                            for ins in baseline.get("assembly", [])]):
+                    raise ValueError("Native shared-tail helper omitted code or differs from original assembly")
+                verified_shared_helpers.append(record)
             applied_outlines = supplement.get("function_outline_recoveries", [])
             if (len(applied_outlines) != len(outlines)
                     or any(any(applied.get(key) != value for key, value in requested.items())
@@ -2090,6 +2928,44 @@ def native_reanalysis_resolution(result, capture=None):
                            or applied.get("applied_flags") != (requested["expected_flags"] | applied["outline_flag"])
                            for applied, requested in zip(applied_outlines, outlines))):
                 raise ValueError("Native supplement did not retain the exact reviewed outlined helpers")
+            applied_partitions = supplement.get("function_partition_recoveries", [])
+            if len(applied_partitions) != len(partitions):
+                raise ValueError("Native supplement omitted exact reviewed function partitions")
+            partitioned_baselines, helper_baselines, helper_flags = {}, {}, {}
+            for applied, requested in zip(applied_partitions, partitions):
+                if (any(applied.get(key) != value for key, value in requested.items())
+                        or applied.get("base_database_modified") is not False
+                        or applied.get("applied_owner_chunks") != requested["owner_chunks"]
+                        or len(applied.get("applied_helpers", [])) != len(requested["helpers"])):
+                    raise ValueError("Native supplement function partition differs from its complete original byte union")
+                bodies = native_function_partition_bodies(requested)
+                partitioned_baselines[requested["owner_rva"]] = bodies["owner"]
+                helper_baselines.update(bodies["helpers"])
+                for actual_helper, helper in zip(applied["applied_helpers"], requested["helpers"]):
+                    previous, flag = actual_helper.get("previous_flags"), actual_helper.get("outline_flag")
+                    if (actual_helper.get("rva") != helper["rva"]
+                            or actual_helper.get("chunks") != helper["expected_chunks"]
+                            or actual_helper.get("base_database_modified") is not False
+                            or type(previous) is not int or previous < 0 or type(flag) is not int or flag <= 0
+                            or flag & (flag - 1) or actual_helper.get("applied_flags") != previous | flag):
+                        raise ValueError("Native supplement did not retain exact partition helper chunks and outline flags")
+                    helper_flags[helper["rva"]] = actual_helper["applied_flags"]
+            helper_records = supplement.get("partition_helpers", [])
+            if (len(helper_records) != len(helper_baselines)
+                    or {row["rva"] for row in helper_records} != set(helper_baselines)):
+                raise ValueError("Native supplement omitted complete partition helper assembly")
+            verified_helpers = []
+            for row in helper_records:
+                record = {**row, "path": rel(path.parent / row["path"])}
+                body = checked(ROOT / record["path"], record)
+                baseline = helper_baselines[row["rva"]]
+                if (row.get("assembly_captured") is not True or row.get("pseudocode_captured") is not False
+                        or body.get("pseudocode") is not None or body.get("flags") != helper_flags[row["rva"]]
+                        or any(body[key] != baseline[key] for key in ("address", "rva", "end", "chunks", "xrefs_to_entry"))
+                        or [(ins["address"], ins["bytes"]) for ins in body["assembly"]]
+                        != [(ins["address"], ins["bytes"]) for ins in baseline["assembly"]]):
+                    raise ValueError("Native partition helper omitted code or differs from its complete original assembly")
+                verified_helpers.append(record)
             recovered = {}
             for row in supplement["functions"]:
                 record = {**row, "path": rel(path.parent / row["path"])}
@@ -2097,7 +2973,9 @@ def native_reanalysis_resolution(result, capture=None):
                 base_record = base_functions.get(row["rva"])
                 if base_record is None:
                     raise ValueError("Native reanalysis introduced a boundary absent from its base capture")
-                baseline = (merged_baselines[row["rva"]] if row["rva"] in merged_baselines
+                baseline = (shared_baselines[row["rva"]] if row["rva"] in shared_baselines
+                            else partitioned_baselines[row["rva"]] if row["rva"] in partitioned_baselines
+                            else merged_baselines[row["rva"]] if row["rva"] in merged_baselines
                             else checked(result / base_record["path"], base_record))
                 if (not row.get("assembly_captured") or not row.get("pseudocode_captured")
                         or not isinstance(body.get("pseudocode"), dict) or not body["pseudocode"].get("lines")
@@ -2106,6 +2984,10 @@ def native_reanalysis_resolution(result, capture=None):
                         or [(item["address"], item["bytes"]) for item in body["assembly"]]
                         != [(item["address"], item["bytes"]) for item in baseline["assembly"]]):
                     raise ValueError("Native supplemental function omitted code or differs from original complete assembly")
+                if shared_tails and (body.get("flags") != baseline.get("flags")
+                        or [(item["address"], item.get("xrefs_from"), item.get("xrefs_to")) for item in body["assembly"]]
+                        != [(item["address"], item.get("xrefs_from"), item.get("xrefs_to")) for item in baseline["assembly"]]):
+                    raise ValueError("Native supplemental shared owner flags or references differ from original assembly")
                 previous = resolution["complete_functions"].get(row["rva"])
                 if previous and previous["capture"]["sha256"] != record["sha256"]:
                     raise ValueError("Native supplemental functions conflict for " + row["rva"])
@@ -2116,7 +2998,11 @@ def native_reanalysis_resolution(result, capture=None):
                 "ida_version": supplement["ida_version"], "hexrays_version": supplement["hexrays_version"],
                 "type_recoveries": supplement["type_recoveries"], "functions": list(recovered),
                 **({"function_merge_recoveries": applied_merges} if merges else {}),
-                **({"function_outline_recoveries": applied_outlines} if outlines else {})})
+                **({"function_outline_recoveries": applied_outlines} if outlines else {}),
+                **({"function_shared_tail_recoveries": applied_shared,
+                    "shared_tail_helpers": verified_shared_helpers} if shared_tails else {}),
+                **({"function_partition_recoveries": applied_partitions,
+                    "partition_helpers": verified_helpers} if partitions else {})})
             resolution["complete_functions"].update(recovered)
             pending = []
             for failure in resolution["remaining_failures"]:
@@ -3417,8 +4303,117 @@ def embedded_cabinets(raw):
     return rows
 
 
+def prepare_reviewed_embedded_pe_inputs(specs, originals, prefix):
+    """Check every explicit PE review before publishing any extracted originals."""
+    import host
+    prepared, destinations, verified = [], set(), {}
+
+    def check_identity(row, boundary):
+        if not isinstance(row, dict) or set(row) != {"path", "bytes", "sha256"}:
+            raise ValueError("Embedded PE source identity fields are invalid")
+        name = row["path"]
+        if (not isinstance(name, str) or not name.startswith(boundary + "/")
+                or "\\" in name or ":" in name or any(p in {"", ".", ".."} for p in name.split("/"))
+                or type(row["bytes"]) is not int or row["bytes"] <= 0
+                or not isinstance(row["sha256"], str) or re.fullmatch(r"[0-9a-f]{64}", row["sha256"]) is None):
+            raise ValueError("Embedded PE source requires a complete project-relative identity")
+        path = resolve(name, boundary)
+        try:
+            raw = path.read_bytes()
+        except OSError as error:
+            raise ValueError("Embedded PE source is unavailable: " + name) from error
+        if len(raw) != row["bytes"] or hashlib.sha256(raw).hexdigest() != row["sha256"]:
+            raise ValueError("Embedded PE source byte identity differs: " + name)
+        verified[name] = dict(row)
+        return raw
+
+    if not isinstance(specs, list):
+        raise ValueError("Embedded PE reviews must be a list of explicit references")
+    for spec in specs:
+        if not isinstance(spec, str):
+            raise ValueError("Embedded PE review reference must be a string")
+        name, marker, pointer = spec.partition("#")
+        if (not name.startswith(".analysis/results/") or "\\" in name or ":" in name
+                or any(p in {"", ".", ".."} for p in name.split("/"))):
+            raise ValueError("Embedded PE review must be a retained project-relative result")
+        review_path = resolve(name, ".analysis/results")
+        try:
+            review_raw = review_path.read_bytes()
+        except OSError as error:
+            raise ValueError("Embedded PE review is unavailable: " + name) from error
+        reference = {"path": rel(review_path), "bytes": len(review_raw),
+                     "sha256": hashlib.sha256(review_raw).hexdigest()}
+        verified[reference["path"]] = reference
+        value = json.loads(review_raw)
+        if marker and pointer:
+            if not pointer.startswith("/") or re.search(r"~(?![01])", pointer):
+                raise ValueError("Embedded PE review requires an RFC 6901 JSON pointer")
+            for token in pointer[1:].split("/"):
+                token = token.replace("~1", "/").replace("~0", "~")
+                try:
+                    if isinstance(value, list):
+                        if re.fullmatch(r"0|[1-9][0-9]*", token) is None:
+                            raise ValueError("Invalid JSON array index")
+                        value = value[int(token)]
+                    else:
+                        value = value[token]
+                except (KeyError, IndexError, TypeError, ValueError) as error:
+                    raise ValueError("Embedded PE review JSON pointer does not resolve") from error
+        groups = value if isinstance(value, list) else [value]
+        if not groups:
+            raise ValueError("Embedded PE review contains no range groups")
+        for group in groups:
+            if (not isinstance(group, dict) or set(group) != {"schema_version", "source_input", "ranges"}
+                    or type(group["schema_version"]) is not int or group["schema_version"] != 1
+                    or not isinstance(group["ranges"], list) or not group["ranges"]):
+                raise ValueError("Embedded PE review group schema is invalid")
+            claim = group["source_input"]
+            raw = check_identity(claim, ".analysis/inputs")
+            parent = originals.get(claim["path"])
+            if (parent is None or not claim["path"].startswith(prefix)
+                    or any(parent.get(key) != claim[key] for key in ("bytes", "sha256"))
+                    or parent.get("container_extraction_complete") is False
+                    or parent.get("source_bytes_verified") is False):
+                raise ValueError("Embedded PE parent is outside the verified indexed scope")
+            ranges = host.inspect_embedded_pe_ranges(raw, group["ranges"])
+            for item in ranges:
+                for evidence in item["review"]["evidence"]:
+                    check_identity(evidence, ".analysis")
+                destination = (ROOT / ".analysis/inputs/official-native-current/embedded"
+                               / claim["sha256"] / item["name"])
+                key = (claim["sha256"], item["name"].casefold())
+                if key in destinations:
+                    raise ValueError("Embedded PE reviews publish the same child more than once")
+                destinations.add(key)
+                body = raw[item["offset"]:item["offset"] + item["bytes"]]
+                if destination.exists() and destination.read_bytes() != body:
+                    raise ValueError("Existing embedded original differs from reviewed PE bytes")
+            frozen = ROOT / ".analysis/results/native-packages/review-sources" / (reference["sha256"] + ".json")
+            prepared.append({"parent": parent, "raw": raw, "ranges": ranges, "review_raw": review_raw,
+                "review_origin": reference, "review_pointer": pointer if marker else "",
+                "review_source": {**reference, "path": rel(frozen)}})
+    # Detect a changing parent or evidence source before creating any child.
+    for row in verified.values():
+        check_identity(row, ".analysis")
+    return prepared
+
+
+def retain_embedded_review_source(raw):
+    """Keep exact reviewed/report bytes when their mutable owner is updated."""
+    digest = hashlib.sha256(raw).hexdigest()
+    path = ROOT / ".analysis/results/native-packages/review-sources" / (digest + ".json")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with path.open("xb") as stream:
+            stream.write(raw)
+    except FileExistsError:
+        if path.read_bytes() != raw:
+            raise ValueError("Retained embedded review source bytes changed")
+    return {"path": rel(path), "bytes": len(raw), "sha256": digest}
+
+
 def extract_embedded_inputs(args):
-    """Retain exact embedded resource/CAB byte ranges without loading targets."""
+    """Retain exact resource, CAB and reviewed PE ranges without loading targets."""
     import families
     import struct
     index_path = ROOT / ".analysis/inputs.json"
@@ -3431,13 +4426,15 @@ def extract_embedded_inputs(args):
     prefix = getattr(args, "source_prefix", ".analysis/inputs/official-native-current/")
     if not prefix.startswith(".analysis/inputs/") or ".." in Path(prefix).parts:
         raise ValueError("Embedded input scope must remain within current originals")
+    pe_reviews = prepare_reviewed_embedded_pe_inputs(getattr(args, "pe_review", None) or [], originals, prefix)
     output_path = ROOT / ".analysis/results/native-packages/embedded-inputs.json"
-    report = {"schema_version": 2, "recorded_at_utc": stamp(), "tool": families.identity(Path(__file__)),
+    previous_raw = output_path.read_bytes() if output_path.is_file() else None
+    report = {"schema_version": 3, "recorded_at_utc": stamp(), "tool": families.identity(Path(__file__)),
               "input_index": {"path": rel(index_path), "sha256_at_start": hashlib.sha256(index_raw).hexdigest()},
               "source_prefix": prefix, "managed_capture": families.identity(managed_path) if managed_path.is_file() else None,
-              "inputs": [], "failures": [], "scanned_portable_executables": [], "excluded_inputs": [],
+              "inputs": [], "failures": [], "scanned_portable_executables": [], "excluded_inputs": [], "pe_reviews": [],
               "target_execution": False,
-              "scope": "Exact unique CLR resource byte ranges with matching length prefix, and structurally bounded CAB candidates in actual MZ inputs regardless of suffix; not an installer branch or complete CLR manifest-table audit"}
+              "scope": "Exact unique CLR resources with matching length prefix, structurally bounded CAB candidates, and explicit evidence-reviewed complete PE file ranges; original failures and earlier extraction scopes remain in the retained previous report, and installation/native semantics remain unverified"}
     new_rows, source_cache, extraction_cache, alias_cache = [], {}, {}, {}
     parents_by_sha = {}
     for row in originals.values():
@@ -3519,6 +4516,22 @@ def extract_embedded_inputs(args):
         report["inputs"].append(artifact)
         return artifact
 
+    for reviewed in pe_reviews:
+        retain_embedded_review_source(reviewed["review_raw"])
+    if previous_raw is not None:
+        report["previous_report"] = retain_embedded_review_source(previous_raw)
+    for reviewed in pe_reviews:
+        reference = reviewed["review_source"]
+        report["pe_reviews"].append({"review_source": reference, "review_origin": reviewed["review_origin"],
+            "review_pointer": reviewed["review_pointer"],
+            "source_input": {key: reviewed["parent"][key] for key in ("path", "bytes", "sha256")}})
+        for item in reviewed["ranges"]:
+            offset, size = item["offset"], item["bytes"]
+            retain(reviewed["parent"], reviewed["raw"][offset:offset + size], offset, item["name"],
+                {"kind": "reviewed_embedded_pe_range", "pe": item["pe"], "layout": item["layout"],
+                 "review": item["review"], "review_source": reference,
+                 "review_origin": reviewed["review_origin"], "review_pointer": reviewed["review_pointer"]})
+
     resource_extensions = {".exe", ".dll", ".sys", ".zip", ".cab", ".msi", ".7z", ".bin", ".json", ".config", ".xml"}
     for assembly in managed.get("assemblies", []):
         parent = originals.get(assembly["input"])
@@ -3579,6 +4592,7 @@ def extract_embedded_inputs(args):
                          "portable_executables_scanned": len(report["scanned_portable_executables"]),
                          "excluded_partial_inputs": len(report["excluded_inputs"]),
                          "managed_resources": sum(row["extraction"]["kind"] == "exact_length_prefixed_managed_resource" for row in report["inputs"]),
+                          "reviewed_portable_executables": sum(row["extraction"]["kind"] == "reviewed_embedded_pe_range" for row in report["inputs"]),
                          "cabinet_candidates": sum(row["extraction"]["kind"] == "bounded_cabinet_candidate" for row in report["inputs"]),
                          "cabinet_invalid_layouts": sum(row["extraction"]["kind"] == "bounded_cabinet_candidate"
                              and not row["extraction"]["cabinet"]["layout"]["complete"] for row in report["inputs"]),
@@ -5732,6 +6746,7 @@ def add_commands(parsers):
     native.add_argument("--input", required=True)
     native.add_argument("--resume", action="store_true", help="Reuse captured bodies and fill missing data for the same input")
     native.add_argument("--mcp-only", action="store_true", help="Open verified private input for static MCP queries without recapturing")
+    native.add_argument("--exception-regions-only", action="store_true", help="Decode all validated original IA64 exception regions in a new private base-IDB copy without defining functions or invoking Hex-Rays")
     native.add_argument("--ida-root", default=os.environ.get("RAZER_IDA_ROOT", "E:/IDA"))
     native.add_argument("--no-refresh-gaps", action="store_true", help="Leave gap reconciliation to the caller after concurrent analyses finish")
     supplement = parsers.add_parser("supplement-native", help="Follow original PE pointer tables or reanalyze retained functions with assembly-reviewed types in a copied static IDB")
@@ -5746,7 +6761,13 @@ def add_commands(parsers):
                             help="Explicit reviewed OWNER=RVA,RVA,... merge of adjacent complete retained functions")
     supplement.add_argument("--outline-function-rva", action="append", type=lambda v: int(v, 0),
                             help="Explicit reviewed complete helper boundary to mark FUNC_OUTLINE in the private IDB")
+    supplement.add_argument("--partition-functions", action="append",
+                            help="Explicit reviewed OWNER=START:END,... partition of embedded local CALL/RET helpers")
+    supplement.add_argument("--share-function-tail", action="append",
+                            help="Reviewed PRIMARY=START:END:OWNER,OWNER[:inline|:retain] exact shared function tail")
     supplement.add_argument("--type-evidence", help="Explain the argument/register/return evidence for explicit type recovery")
+    supplement.add_argument("--observation-evidence",
+                            help="Retained JSON review#pointer with a new static observation reason and exact observer source identity")
     supplement.add_argument("--max-function-kib", type=int,
                             help="Record and apply a per-process Hex-Rays function size limit, 64 to 1024 KiB")
     supplement.add_argument("--recover-interrupted", action="store_true",
@@ -5766,8 +6787,9 @@ def add_commands(parsers):
     apps.add_argument("--source-set", action="append", help="Start from a selected retained stable host app namespace; repeat for several")
     apps.add_argument("--stage", choices=["report", "acquire", "analyze", "all"], default="all")
     apps.add_argument("--no-refresh-gaps", action="store_true")
-    embedded = parsers.add_parser("extract-embedded-inputs", help="Retain verified original managed resources and bounded embedded CAB slices for static analysis")
+    embedded = parsers.add_parser("extract-embedded-inputs", help="Retain verified managed resources, bounded CABs and explicitly reviewed PE files for static analysis")
     embedded.add_argument("--source-prefix", default=".analysis/inputs/official-native-current/")
+    embedded.add_argument("--pe-review", action="append", help="Explicit reviewed PE groups in a retained result: project-relative.json#JSON-pointer; repeat for independent sources")
     embedded.add_argument("--no-refresh-gaps", action="store_true")
     extracted = parsers.add_parser("reconcile-native-extractions", help="Exclude failed static decompression artifacts and descendants from original-source analysis")
     extracted.add_argument("--no-refresh-gaps", action="store_true")

@@ -67,7 +67,8 @@ pub(super) fn retain(
     cx: &mut App,
 ) {
     let state = window.use_keyed_state(ElementId::Name(key), cx, |_, cx| {
-        cx.on_release(|state: &mut DisplayedImage, cx| state.release(cx)).detach();
+        cx.on_release(|state: &mut DisplayedImage, cx| state.release(cx))
+            .detach();
         DisplayedImage {
             cache: cache.clone(),
             identity: identity.clone(),
@@ -75,7 +76,11 @@ pub(super) fn retain(
         }
     });
     state.update(cx, |state, cx: &mut Context<DisplayedImage>| {
-        if state.lease.as_ref().is_some_and(|lease| lease.0.is_same(&ownership)) {
+        if state
+            .lease
+            .as_ref()
+            .is_some_and(|lease| lease.0.is_same(&ownership))
+        {
             return;
         }
         state.release(cx);
@@ -100,7 +105,10 @@ mod tests {
         drop(overlay);
         assert!(owner.unused());
         let reentered = owner.acquire();
-        assert!(!owner.unused(), "queued cleanup must recheck a returning consumer");
+        assert!(
+            !owner.unused(),
+            "queued cleanup must recheck a returning consumer"
+        );
         drop(reentered);
         assert!(owner.unused());
     }

@@ -38,7 +38,6 @@ pub mod thx_direct;
 #[path = "audio/thx_rpc.rs"]
 pub mod thx_rpc;
 
-
 #[path = "accessory/hanbo_cooler.rs"]
 pub mod hanbo_cooler;
 pub mod mapping;

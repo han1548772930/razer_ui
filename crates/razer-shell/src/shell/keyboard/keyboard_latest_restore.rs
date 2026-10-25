@@ -964,7 +964,9 @@ impl AppShell {
                 Reply::Diagnostic(error) => diagnostics.push(error),
                 Reply::Stopped => {
                     if let Some(mut owner) = self.keyboard_latest_restore.owners.remove(&id) {
-                        if let (Some(workspace), Some(request)) = (workspace.as_ref(), owner.inventory_request) {
+                        if let (Some(workspace), Some(request)) =
+                            (workspace.as_ref(), owner.inventory_request)
+                        {
                             self.publish_shared_keyboard_profile_slots(workspace, request,
                                 Err("Keyboard runtime stopped before completing its slot observation".into()), window, cx);
                         }

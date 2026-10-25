@@ -56,18 +56,16 @@ pub(super) fn readback() -> Readback {
 
 pub(super) fn readback_scope(installation: InstallationRead) -> Readback {
     readback_with(
-        || {
-            match chroma_profiles::path().and_then(|path| {
-                Ok((path, razer_storage::source_local::path()?))
-            }) {
-                Ok((path, source_path)) => chroma_profiles::observe(&path, &source_path),
-                Err(error) => {
-                    let error = format!("{error:#}");
-                    chroma_profiles::Observation {
-                        snapshot: Err(error.clone()),
-                        dynamic_lighting: Err(error.clone()),
-                        module_installed: Err(error),
-                    }
+        || match chroma_profiles::path()
+            .and_then(|path| Ok((path, razer_storage::source_local::path()?)))
+        {
+            Ok((path, source_path)) => chroma_profiles::observe(&path, &source_path),
+            Err(error) => {
+                let error = format!("{error:#}");
+                chroma_profiles::Observation {
+                    snapshot: Err(error.clone()),
+                    dynamic_lighting: Err(error.clone()),
+                    module_installed: Err(error),
                 }
             }
         },

@@ -67,7 +67,8 @@ pub(super) fn request(target: &Target, operation: &Operation) -> anyhow::Result<
                 Ok(())
             };
             let report = {
-                let _lock = receiver::ReceiverLock::acquire(&hid_target.device_container_id, &validate)?;
+                let _lock =
+                    receiver::ReceiverLock::acquire(&hid_target.device_container_id, &validate)?;
                 validate()?;
                 ensure!(
                     before["feature_report_bytes"] == cap.report_bytes,
@@ -110,7 +111,8 @@ pub(super) fn request(target: &Target, operation: &Operation) -> anyhow::Result<
                 gatt::current_target(ble_target)
             };
             validate()?;
-            let _lock = receiver::ReceiverLock::acquire(&ble_target.device_container_id, &validate)?;
+            let _lock =
+                receiver::ReceiverLock::acquire(&ble_target.device_container_id, &validate)?;
             let mut opened = None;
             let mut last_error = None;
             for attempt in 0..2 {

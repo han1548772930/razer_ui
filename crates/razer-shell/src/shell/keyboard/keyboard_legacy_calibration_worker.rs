@@ -376,7 +376,7 @@ pub(super) fn run(
             }
             if let Err(error) = cleanup(
                 &mut client,
-                            &mut mapping,
+                &mut mapping,
                 &target,
                 &mut initialized,
                 &mut lifecycle,

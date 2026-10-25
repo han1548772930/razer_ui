@@ -801,9 +801,9 @@ impl AppShell {
                 profile_id: device.active_profile.clone(),
                 generation: request.audio_revision(),
             };
-            match razer_storage::source_local::path().and_then(|path| {
-                razer_storage::source_local::get(&path, &roller_local_key(&scope))
-            }) {
+            match razer_storage::source_local::path()
+                .and_then(|path| razer_storage::source_local::get(&path, &roller_local_key(&scope)))
+            {
                 Ok(Some(mappings)) if mappings.is_array() => {
                     workspace.update(cx, |workspace, cx| {
                         workspace.observe_help_audio_sound(

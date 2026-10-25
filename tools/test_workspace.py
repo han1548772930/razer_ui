@@ -98,7 +98,7 @@ class LocalizationCatalogTests(unittest.TestCase):
                 path = folder / f"revalidation-{index}.js"
                 path.write_bytes(raw)
                 attempts.append({**identity, "path": path.relative_to(root).as_posix(), "url": url,
-                                 "http_status": 200, "matches_retained": True})
+                                 "final_url": url, "http_status": 200, "status": 200, "matches_retained": True})
             original = {**identity, "url": url, "kind": "installed_cached_official_resource",
                         "current_http_revalidation": {"attempts": attempts}}
             receipt = {"entry_url": "https://apps.razer.com/synapse/products/190/ui/index.html",
@@ -3679,6 +3679,360 @@ class ModuleServiceArtworkTests(unittest.TestCase):
                 workspace.module_service_artwork_projection(self.source().replace(old, new))
 
 
+class KeyboardArtworkVerificationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parent / "analyzers/pillow"))
+        from PIL import Image
+        cls.Image = Image
+
+    def png(self, size=(2, 1), changed=None):
+        image = self.Image.new("RGBA", size, (17, 29, 43, 255))
+        if changed is not None:
+            image.putpixel((0, 0), changed)
+        stream = io.BytesIO()
+        image.save(stream, format="PNG")
+        return stream.getvalue()
+
+    def image(self, pid=720, layout=1, alias=None, svg=False):
+        return {"edition_id": 0, "layout_id": layout, "resolution": 1, "svg": svg,
+                "asset": alias or f"synapse/keyboard-current/{pid}/{layout}.fixture." + ("svg" if svg else "png")}
+
+    def product(self, pid=720, images=None, customize=None):
+        return {"product_id": pid, "image_mode_svg": False,
+                "images": images if images is not None else [self.image(pid)],
+                "customize_images": customize or []}
+
+    def test_atlas_enumerates_every_density_layout_and_customize_use_with_exact_product_filter(self):
+        base = self.image(svg=True)
+        customize = {**base, "asset": base["asset"].replace(".svg", "-customize.svg")}
+        three_x = {**self.image(), "resolution": 3, "asset": "synapse/keyboard-current/720/1-3x.fixture.png"}
+        document = {"products": [self.product(images=[base, self.image(), three_x], customize=[customize]), self.product(728)]}
+        atlas = workspace.keyboard_artwork_atlas(document)
+        self.assertEqual(len(atlas), 5)
+        self.assertEqual({use["product_id"] for uses in atlas.values() for use in uses}, {720, 728})
+        self.assertEqual(len(workspace.keyboard_artwork_atlas(document, product_ids=[728])), 1)
+        for selected in ([], [999]):
+            with self.subTest(selected=selected), self.assertRaises(ValueError):
+                workspace.keyboard_artwork_atlas(document, product_ids=selected)
+        for products in ([self.product(), self.product()], [self.product(images=[base, base])],
+                         [self.product(images=[{**base, "resolution": True}])],
+                         [self.product(images=[{**base, "asset": "synapse/keyboard-current/720/../escape.svg"}])]):
+            with self.subTest(products=products), self.assertRaises(ValueError):
+                workspace.keyboard_artwork_atlas({"products": products})
+
+    def test_alias_requires_unique_mapping_and_pinned_bytes_without_materializing_media(self):
+        alias = self.image()["asset"]
+        row = {"path": "assets/synapse/products/720/pinned.png", "bytes": 3, "sha256": "a" * 64}
+        mappings = {"tables": [{"entries": [{"key": alias, "path": row["path"]}]}]}
+        self.assertEqual(workspace.keyboard_artwork_alias_identity(alias, mappings, [row]), row)
+        with self.assertRaises(FileNotFoundError):
+            workspace.keyboard_artwork_alias_identity(alias, {"tables": []}, [row])
+        with self.assertRaises(FileNotFoundError):
+            workspace.keyboard_artwork_alias_identity(alias, mappings, [])
+        conflict = copy.deepcopy(mappings)
+        conflict["tables"][0]["entries"].append({"key": alias, "path": "assets/synapse/products/720/other.png"})
+        with self.assertRaisesRegex(ValueError, "conflicting"):
+            workspace.keyboard_artwork_alias_identity(alias, conflict, [row])
+        with self.assertRaisesRegex(ValueError, "repeated"):
+            workspace.keyboard_artwork_alias_identity(alias, mappings, [row, row])
+
+    def test_auxiliary_catalogs_enumerate_source_wrist_dial_keypad_and_every_mapping_state(self):
+        source = {"product_id": 679, "images": [
+            {"role": "base", "edition_id": 0, "layout_id": 1, "resolution": 1, "asset": "synapse/keyboard679-current/base.png"},
+            {"role": "dial", "edition_id": 0, "asset": "synapse/keyboard679-current/dial.png"}],
+            "wrist": {"asset": "synapse/keyboard679-current/wrist.png"}}
+        extra = {"KEYBOARD_SOURCE_ARTWORK_DATA": source,
+                 "KEYBOARD_KEYPAD_ARTWORK_DATA": [{"product_id": 555, "images": [
+                     {"edition_id": 0, "role": "scroll-1x.png", "asset": "synapse/keyboard-keypad-artwork/555-0123456789abcdef.png"}],
+                     "icons": [{"role": "four", "asset": "synapse/keyboard-keypad-artwork/555-fedcba9876543210.svg"}]}],
+                 "KEYBOARD_KEYPAD_DEVICE_IMAGE_DATA": [{"product_id": 555, "edition_id": 0, "density": 1,
+                                                        "asset": "synapse/keyboard-keypad-device-image/555-1111111111111111.png"}],
+                 "KEYBOARD_MAPPING_BLADE_ARTWORK_DATA": [{"product_id": 555, "assets": {"DEFAULT": {
+                     "normal": "synapse/keyboard-mapping-blade/default.svg", "active": "synapse/keyboard-mapping-blade/default-active.svg"}}}]}
+        atlas = workspace.keyboard_artwork_atlas({"products": [self.product()]}, additional_catalogs=extra)
+        self.assertEqual(len(atlas), 9)
+        self.assertEqual(sum(len(uses) for uses in atlas.values()), 9)
+        self.assertEqual(len(workspace.keyboard_artwork_atlas({"products": [self.product()]}, additional_catalogs=extra, product_ids=[555])), 5)
+        extra["KEYBOARD_MAPPING_BLADE_ARTWORK_DATA"][0]["assets"]["DEFAULT"].pop("normal")
+        with self.assertRaisesRegex(ValueError, "incomplete"):
+            workspace.keyboard_artwork_atlas({"products": [self.product()]}, additional_catalogs=extra)
+
+    def test_enum_import_ast_uses_last_static_comma_import_and_rejects_dynamic_expressions(self):
+        for literal, expected in (("n(13254)", 13254), ("(n(61350),n(13254))", 13254),
+                                  ("(n(1),n(2),n(68e3))", 68000)):
+            body = "78766:(e,t,n)=>{const r=" + literal + ";}"
+            self.assertEqual(workspace.keyboard_svg_import_module(body, "r"), expected)
+        for literal in ("(n(61350),chosen())", "n(moduleId)", "object.require(13254)", "n(13254,extra)"):
+            with self.subTest(literal=literal), self.assertRaises(ValueError):
+                workspace.keyboard_svg_import_module("78766:(e,t,n)=>{const r=" + literal + ";}", "r")
+        for body in ("const r=n(1);function scoped(){const r=n(2);}",
+                     "const r=n(1);{const r=n(2);}",
+                     "const r=n(1);class Scoped{method(){const r=n(2);}}"):
+            with self.subTest(body=body):
+                self.assertEqual(workspace.keyboard_svg_import_module("78766:(e,t,n)=>{" + body + "}", "r"), 1)
+        for body in ("var r=n(1);{var r=n(2);}", "var r=n(1);var r=n(2);", "const r=another(1);"):
+            with self.subTest(body=body), self.assertRaises(ValueError):
+                workspace.keyboard_svg_import_module("78766:(e,t,n)=>{" + body + "}", "r")
+
+    def test_normalized_svg_layout_and_lettering_consume_exact_current_enum_branches(self):
+        normalization = {"ansi": [1, 5, 8], "iso": [3, 6], "japanese": 12,
+                         "united_states": 1, "united_kingdom": 6}
+        self.assertEqual([workspace.keyboard_normalized_svg_layout(layout, normalization) for layout in (1, 5, 3, 6, 12, 999)],
+                         [1, 1, 6, 6, 12, 1])
+        body = 'const c={[r.Z7j.UnitedStates]:"US",[r.Z7j.German]:"GER",[r.Z7j.NotInCurrentEnum]:"XXX"};'
+        self.assertEqual(workspace.keyboard_svg_lettering(body, {"UnitedStates": 1, "German": 3}), {1: "US", 3: "GER"})
+
+    def test_inline_png_extraction_retains_complete_module_without_executing_javascript(self):
+        content = self.png()
+        encoded = base64.b64encode(content)
+        source = b'(self.webpackChunk=self.webpackChunk||[]).push([[7],{42:(e,t,n)=>{const bitmap="data:image/png;base64,' + encoded + b'";n.d(t,{bitmap:()=>bitmap});}}]);'
+        decoded, proof = workspace.extract_inline_resource_png(source, hashlib.sha256(content).hexdigest())
+        self.assertEqual(decoded, content)
+        self.assertEqual(proof["source_regions"][0]["complete_module"]["module_id"], 42)
+        self.assertIn(encoded.decode(), proof["source_regions"][0]["complete_module"]["body"])
+        with self.assertRaises(ValueError):
+            workspace.extract_inline_resource_png(source, "0" * 64)
+
+    def test_repeated_inline_png_literals_retain_each_actual_factory_and_quote_form(self):
+        content = self.png()
+        literal = b"data:image/png;base64," + base64.b64encode(content)
+        source = (b'(self.webpackChunk=self.webpackChunk||[]).push([[7],{'
+                  b'42:e=>{e.exports="' + literal + b'"},43:e=>{e.exports=\'' + literal + b"'}}]);")
+        decoded, proof = workspace.extract_inline_resource_png(source, hashlib.sha256(content).hexdigest())
+        self.assertEqual(decoded, content)
+        self.assertEqual([region["complete_module"]["module_id"] for region in proof["source_regions"]], [42, 43])
+        for region in proof["source_regions"]:
+            owner = region["complete_module"]
+            self.assertLessEqual(owner["character_start"], region["character_start"])
+            self.assertLessEqual(region["character_end"], owner["character_end"])
+
+    def test_inline_keyboard_png_uses_the_exact_css_consumer_and_pinned_hash(self):
+        content = self.png()
+        digest = hashlib.sha256(content).hexdigest()
+        literal = b"data:image/png;base64," + base64.b64encode(content)
+        selector = ".action-wrapper.SWITCH_LIGHTING.open .head:before"
+        css = selector.encode() + b"{background-image:url(" + literal + b")}.other{background:url(" + literal + b")}"
+        original = {"path": "current.css", "bytes": len(css), "sha256": hashlib.sha256(css).hexdigest()}
+        found = workspace.keyboard_artwork_inline_png([original], lambda row: css, digest, css_selector=selector)
+        self.assertEqual(found[0][1], content)
+        self.assertEqual(found[0][2]["complete_css_rules"][0]["body"],
+                         selector + "{background-image:url(" + literal.decode() + ")}")
+        for kwargs in ({}, {"css_selector": ".absent"}):
+            with self.subTest(kwargs=kwargs), self.assertRaises(FileNotFoundError):
+                workspace.keyboard_artwork_inline_png([original], lambda row: css, digest, **kwargs)
+        with self.assertRaises(FileNotFoundError):
+            workspace.keyboard_artwork_inline_png([original], lambda row: css, "0" * 64, css_selector=selector)
+
+    def test_customize_keeps_original_alias_protocol_and_removes_only_source_root_children(self):
+        original = (b'<svg xmlns="http://www.w3.org/2000/svg" width="3" height="1">'
+                    b'<g id="Body"><g id="Nested_LED"/><path d="M0 0H3V1H0Z"/></g>'
+                    b'<g id="Key_LED"/><g id="Key_Selection"/><g id="US_Lettering"/>'
+                    b'<g id="GER_Lettering"/><g id="US_Characters"/><g id="GER_Characters"/></svg>')
+        producer = {"module_id": 42}
+        asset = "synapse/keyboard-current/720/1.fixture.svg"
+        base = workspace.keyboard_customize_svg_request(original, asset, producer)
+        self.assertEqual(base["display"], "synapse/keyboard-current/720/1.fixture-customize.svg")
+        self.assertEqual(base["svg_remove_root_ids"], ["Key_LED", "Key_Selection"])
+        request = workspace.keyboard_customize_svg_request(original, asset, producer, normalized=True,
+                                                         lettering="GER", layout_id=3)
+        self.assertEqual(request["display"], "synapse/keyboard-current/720/1.fixture-customize-customize-layout-3.svg")
+        self.assertEqual(request["svg_remove_root_ids"], ["Key_LED", "Key_Selection", "US_Lettering", "US_Characters"])
+        content, receipt = workspace.filter_svg_root_children(original, request["svg_remove_root_ids"])
+        import xml.etree.ElementTree as ET
+        tree = ET.fromstring(content)
+        self.assertEqual([child.get("id") for child in tree], ["Body", "GER_Lettering", "GER_Characters"])
+        self.assertTrue(any(child.get("id") == "Nested_LED" for child in tree.iter()))
+        self.assertEqual(receipt["removed_root_ids"], request["svg_remove_root_ids"])
+        for invalid in ([], ["absent"], ["Nested_LED"], ["Key_LED", "Key_LED"]):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                workspace.filter_svg_root_children(original, invalid)
+
+    def test_svg_is_actually_rasterized_with_independent_exact_color_and_alpha_pixels(self):
+        original = (b'<svg xmlns="http://www.w3.org/2000/svg" width="2" height="1">'
+                    b'<rect width="1" height="1" fill="#112233"/></svg>')
+        metadata, pixels = workspace.decoded_svg_rgba(original)
+        self.assertEqual((metadata["width"], metadata["height"], metadata["visible_pixels"]), (2, 1, 1))
+        self.assertEqual(pixels, bytes([17, 34, 51, 255, 0, 0, 0, 0]))
+        self.assertFalse(metadata["system_fonts"])
+        with self.assertRaises(ValueError):
+            workspace.decoded_svg_rgba(b'<svg xmlns="http://www.w3.org/2000/svg" width="2" height="1"/>')
+        for dependency in (b'<image href="file:///private.png"/>', b'<image href="https://example.invalid/a.png"/>',
+                           b'<use href="#absent"/>', b'<text>font dependent</text>',
+                           b'<style>@import "https://example.invalid/a.css";</style>',
+                           b'<rect style="fill:url(https://example.invalid/fill.svg)"/>'):
+            with self.subTest(dependency=dependency), self.assertRaises(ValueError):
+                workspace.decoded_svg_rgba(b'<svg xmlns="http://www.w3.org/2000/svg" width="2" height="1">' + dependency + b'</svg>')
+
+    def test_pixel_comparison_rejects_wrong_color_alpha_dimensions_and_truncation(self):
+        original = self.png()
+        self.assertTrue(workspace.compare_resource_pixels(original, original, "PNG")["all_rgba_pixels_equal"])
+        for invalid in (self.png(changed=(18, 29, 43, 255)), self.png(changed=(17, 29, 43, 254)),
+                        self.png(size=(1, 1)), original[:40]):
+            with self.subTest(bytes=len(invalid)), self.assertRaises((OSError, ValueError, SyntaxError)):
+                workspace.compare_resource_pixels(original, invalid, "PNG")
+
+    def fixture(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        root = Path(directory.name).resolve()
+        inputs = root / ".analysis/inputs/frontend/keyboard-720-current"
+        inputs.mkdir(parents=True)
+        def store(name, raw):
+            path = inputs / name
+            path.write_bytes(raw)
+            return {"path": path.relative_to(root).as_posix(), "bytes": len(raw),
+                    "sha256": hashlib.sha256(raw).hexdigest(), "http_status": 200,
+                    "url": "https://apps.razer.com/synapse/products/720/ui/" + name}
+        media = store("1.fixture.png", self.png())
+        entry = store("index.html", b'<html><body></body></html>')
+        manifest = store("asset-manifest.json", json.dumps({"files": {"product.png": "1.fixture.png"}}).encode())
+        receipt = inputs / "acquisition.json"
+        acquisition = {"entry_url": entry["url"], "source_current_during_acquisition": True,
+                       "stability": [{"unchanged": True}], "files": [entry, manifest, media], "edges": []}
+        receipt.write_text(json.dumps(acquisition), encoding="utf-8")
+        catalog = root / ".analysis/inputs/typed-tables/keyboard.json"
+        catalog.parent.mkdir(parents=True)
+        catalog.write_text(json.dumps({"products": [self.product()]}), encoding="utf-8")
+        for symbol in ("KEYBOARD_SOURCE_ARTWORK_DATA", "KEYBOARD_KEYPAD_ARTWORK_DATA",
+                       "KEYBOARD_KEYPAD_DEVICE_IMAGE_DATA", "KEYBOARD_MAPPING_BLADE_ARTWORK_DATA"):
+            (catalog.parent / (symbol + ".json")).write_text("null" if symbol == "KEYBOARD_SOURCE_ARTWORK_DATA" else "[]", encoding="utf-8")
+        physical = "assets/synapse/products/720/pinned.png"
+        locked = {"path": physical, "bytes": media["bytes"], "sha256": media["sha256"]}
+        mappings = {"tables": [{"name": "ASSETS", "entries": [{"key": self.image()["asset"], "path": physical}]}]}
+        tools = root / "tools"
+        tools.mkdir()
+        (tools / "resource-mappings.json").write_text(json.dumps(mappings), encoding="utf-8")
+        lock = {"schema_version": 2, "format": "files", "git_files": [],
+                "groups": [{"name": "shared", "requires": [], "files": []},
+                           {"name": "product-720", "requires": ["shared"], "files": [locked]}],
+                "storage": {"provider": "huggingface", "repository": "owner/assets", "revision": "a" * 40}}
+        lock["source_sha256"] = workspace.resource_sources.content_hash({"groups": lock["groups"], "git_files": []})
+        lock["tag"] = "assets-" + lock["source_sha256"][:20]
+        (tools / "asset-release.json").write_text(json.dumps(lock), encoding="utf-8")
+        return root, media, receipt, acquisition, catalog, mappings
+
+    def verify_fixture(self, fixture, decoder=None):
+        root, _, _, _, catalog, mappings = fixture
+        def catalog_path(crate, symbol, **kwargs):
+            return catalog if symbol == "KEYBOARD_ARTWORK_CURRENT_DATA" else catalog.parent / (symbol + ".json")
+        def load_mappings(*, input_rows, **kwargs):
+            path = root / "tools/resource-mappings.json"
+            raw = path.read_bytes()
+            input_rows.append({"path": "tools/resource-mappings.json", "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
+            return mappings
+        with (mock.patch.object(workspace, "ROOT", root),
+              mock.patch.object(workspace, "RESOURCE_AUDIT", root / ".analysis/results/resource-audit.json"),
+              mock.patch.object(workspace.resource_sources, "builtin_data_path", side_effect=catalog_path),
+              mock.patch.object(workspace.resource_sources, "load_resource_mappings", side_effect=load_mappings),
+              mock.patch.object(workspace, "image_analyzer_verification_inputs", return_value=[]),
+              mock.patch.object(workspace.urllib.request, "urlopen", side_effect=AssertionError("offline verification attempted network")),
+              mock.patch.object(workspace, "decoded_resource_rgba", side_effect=decoder) if decoder else nullcontext()):
+            return workspace.verify_resources(scope="keyboard-artwork", product_ids=[720])
+
+    def test_offline_full_verification_reconstructs_pinned_bytes_without_assets_pack_or_cargo_cache(self):
+        fixture = self.fixture()
+        report = self.verify_fixture(fixture)
+        self.assertTrue(report["passed"], report)
+        self.assertEqual(report["summary"]["verified"], 1)
+        self.assertTrue(report["entries"][0]["pixel_decode_performed"])
+        self.assertFalse((fixture[0] / "assets").exists())
+        self.assertFalse((fixture[0] / "target").exists())
+        self.assertFalse(report["network_access"])
+
+    def test_mismatching_delivery_retains_actual_reconstruction_without_marking_success(self):
+        fixture = self.fixture()
+        root, media, _, _, _, _ = fixture
+        path = root / "tools/asset-release.json"
+        lock = json.loads(path.read_bytes())
+        lock["groups"][1]["files"][0]["sha256"] = "b" * 64
+        lock["source_sha256"] = workspace.resource_sources.content_hash({"groups": lock["groups"], "git_files": []})
+        lock["tag"] = "assets-" + lock["source_sha256"][:20]
+        path.write_text(json.dumps(lock), encoding="utf-8")
+        report = self.verify_fixture(fixture)
+        entry = report["entries"][0]
+        self.assertEqual(entry["actual_output"], {"bytes": media["bytes"], "sha256": media["sha256"]})
+        self.assertEqual(entry["output"]["sha256"], "b" * 64)
+        self.assertTrue(entry["source_verified"])
+        self.assertFalse(entry["conversion_verified"])
+        self.assertFalse(entry["passed"])
+        self.assertFalse(report["passed"])
+
+    def test_cached_original_requires_two_complete_http_responses_and_actual_matching_bytes(self):
+        fixture = self.fixture()
+        root, media, receipt_path, acquisition, _, _ = fixture
+        media.pop("http_status")
+        media["kind"] = "installed_cached_official_resource"
+        media["deployment_current_verified"] = False
+        attempts = []
+        for index in range(2):
+            response = root / media["path"]
+            path = response.with_name(f"sample-{index}.png")
+            path.write_bytes(response.read_bytes())
+            attempts.append({**media, "path": path.relative_to(root).as_posix(), "final_url": media["url"],
+                             "http_status": 200, "status": 200, "matches_retained": True})
+        media["current_http_revalidation"] = {"attempts": attempts}
+        receipt_path.write_text(json.dumps(acquisition), encoding="utf-8")
+        report = self.verify_fixture(fixture)
+        self.assertTrue(report["passed"], report)
+        proof = report["official_http_revalidations"][media["path"]]
+        self.assertEqual([row["path"] for row in proof], [row["path"] for row in attempts])
+        self.assertTrue(all(row in report["inputs"] for row in proof))
+        for field, value in (("status", 500), ("http_status", 500), ("matches_retained", False),
+                             ("url", "https://example.invalid/wrong.png"), ("final_url", None),
+                             ("sha256", "0" * 64), ("bytes", 0)):
+            with self.subTest(field=field):
+                previous = attempts[1][field]
+                attempts[1][field] = value
+                receipt_path.write_text(json.dumps(acquisition), encoding="utf-8")
+                self.assertFalse(self.verify_fixture(fixture)["passed"])
+                attempts[1][field] = previous
+        receipt_path.write_text(json.dumps(acquisition), encoding="utf-8")
+        (root / attempts[1]["path"]).write_bytes(self.png(changed=(18, 29, 43, 255)))
+        self.assertFalse(self.verify_fixture(fixture)["passed"])
+
+    def test_changed_missing_and_unstable_originals_are_failures_and_do_not_fetch(self):
+        for failure in ("changed", "missing", "unstable", "missing_delivery", "unverified_installed_cache"):
+            with self.subTest(failure=failure):
+                fixture = self.fixture()
+                root, media, receipt, acquisition, _, mappings = fixture
+                if failure == "changed":
+                    (root / media["path"]).write_bytes(self.png(changed=(17, 29, 43, 254)))
+                elif failure == "missing":
+                    (root / media["path"]).unlink()
+                elif failure == "unstable":
+                    acquisition["stability"][0]["unchanged"] = False
+                    receipt.write_text(json.dumps(acquisition), encoding="utf-8")
+                elif failure == "unverified_installed_cache":
+                    acquired_media = acquisition["files"][2]
+                    acquired_media.pop("http_status")
+                    acquired_media.update(kind="installed_cached_official_resource", deployment_current_verified=False)
+                    receipt.write_text(json.dumps(acquisition), encoding="utf-8")
+                else:
+                    mappings["tables"][0]["entries"].clear()
+                report = self.verify_fixture(fixture)
+                self.assertFalse(report["passed"])
+                self.assertEqual(report["summary"]["failed"], 1)
+                if failure == "missing_delivery":
+                    self.assertEqual(report["summary"]["missing_delivery_identities"], 1)
+                    self.assertTrue(report["entries"][0]["pixel_decode_performed"])
+                else:
+                    self.assertFalse(report["entries"][0]["source_verified"])
+
+    def test_input_mutation_during_real_decode_invalidates_the_receipt(self):
+        fixture = self.fixture()
+        original_decoder = workspace.decoded_resource_rgba
+        def mutate(content, expected_format):
+            result = original_decoder(content, expected_format)
+            fixture[2].write_bytes(fixture[2].read_bytes() + b" ")
+            return result
+        report = self.verify_fixture(fixture, decoder=mutate)
+        self.assertFalse(report["passed"])
+        self.assertFalse(report["inputs_unchanged"])
+        self.assertIn(fixture[2].relative_to(fixture[0]).as_posix(), report["changed_inputs"])
+
+
 class ResourcePublicationTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
@@ -3750,13 +4104,81 @@ class ResourcePublicationTests(unittest.TestCase):
     def test_incompatible_static_transformations_fail_before_staging(self):
         for values in ({"muted_video_animation": False},
                        {"muted_video_animation": True, "inline_react_svg": "Diagram="},
-                       {"muted_video_animation": True, "svg_group_visibility": {"primary": "visible"}}):
+                       {"muted_video_animation": True, "svg_group_visibility": {"primary": "visible"}},
+                       {"muted_video_animation": True, "svg_remove_root_ids": ["Key_LED"], "producer": {}},
+                       {"svg_remove_root_ids": ["Key_LED"]},
+                       {"producer": {}},
+                       {"svg_remove_root_ids": ["Key_LED"], "producer": {}, "inline_react_svg": "Diagram="}):
             with self.subTest(values=values):
                 self.mapping[self.source_row["path"]] = {
                     "display": "synapse/invalid.png", "table": "MODULE_SERVICE_ASSETS", **values}
                 with self.assertRaisesRegex(ValueError, "exclusive transformation"):
                     self.prepare()
                 self.assertFalse((self.root / self.manifest).exists())
+
+    def svg_filter_fixture(self):
+        self.source = self.source.with_suffix(".svg")
+        self.source.write_bytes(b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 10"><g id="Device"><path d="M1 2H3"/></g><g id="EU_Selection"><path d="M4 5H6"/></g></svg>')
+        self.source_row = {"path": self.source.relative_to(self.root).as_posix(),
+            "bytes": self.source.stat().st_size, "sha256": hashlib.sha256(self.source.read_bytes()).hexdigest(), "http_status": 200}
+        self.producer = self.source.with_name("producer.js")
+        self.producer.write_text('self.webpackChunkexample.push([[1],{42:(e,t,n)=>{const label="设备";function filter(svg){return svg.children.filter(e=>e.id.includes("_Selection"))}console.error("Error fetching/parsing SVG:")}}]);', encoding="utf-8")
+        self.producer_row = {"path": self.producer.relative_to(self.root).as_posix(),
+            "bytes": self.producer.stat().st_size, "sha256": hashlib.sha256(self.producer.read_bytes()).hexdigest(), "http_status": 200}
+        self.receipt.write_text(json.dumps({"source_current_during_acquisition": True,
+            "stability": [{"unchanged": True}], "files": [self.source_row, self.producer_row]}), encoding="utf-8")
+        producer = {"path": self.producer_row["path"], "sha256": self.producer_row["sha256"],
+            "anchor": '"Error fetching/parsing SVG:"', "module_id": 42, "boundary_parser": "tree-sitter-javascript"}
+        self.mapping = {self.source_row["path"]: [
+            {"display": "synapse/base.svg", "table": "MODULE_SERVICE_ASSETS"},
+            {"display": "synapse/customize.svg", "table": "MODULE_SERVICE_ASSETS",
+             "svg_remove_root_ids": ["EU_Selection"], "producer": producer}]}
+        return self.mapping[self.source_row["path"]][1]
+
+    def test_svg_root_filter_retains_current_producer_and_base_original(self):
+        import xml.etree.ElementTree as ET
+        self.svg_filter_fixture()
+        report = self.prepare()
+        self.assertEqual(len(report["files"]), 2)
+        base, customize = [(self.root / item["source"]["path"]).read_bytes() for item in report["files"]]
+        self.assertEqual(base, self.source.read_bytes())
+        svg = ET.fromstring(customize)
+        self.assertEqual(svg.attrib, {"viewBox": "0 0 20 10"})
+        self.assertEqual([node.get("id") for node in svg], ["Device"])
+        self.assertEqual(next(svg.iter("{http://www.w3.org/2000/svg}path")).get("d"), "M1 2H3")
+        proof = json.loads((self.root / report["acquisition"]["path"]).read_bytes())
+        producer = proof["derivations"][1]["transformation"]["producer"]
+        self.assertEqual(producer["input"], self.producer_row)
+        module = producer["complete_module"]
+        self.assertEqual(module["module_id"], 42)
+        self.assertEqual(self.producer.read_bytes()[module["byte_start"]:module["byte_end"]].decode(), module["body"])
+        self.assertIn('function filter(svg)', module["body"])
+        self.assertFalse((self.root / "assets").exists())
+
+    def test_svg_root_filter_rejects_unacquired_mutated_and_wrong_module_producers(self):
+        for kind in ("unacquired", "mutated", "wrong_module", "wrong_anchor"):
+            with self.subTest(kind=kind):
+                request = self.svg_filter_fixture()
+                if kind == "unacquired":
+                    receipt = json.loads(self.receipt.read_bytes())
+                    receipt["files"] = [self.source_row]
+                    self.receipt.write_text(json.dumps(receipt), encoding="utf-8")
+                elif kind == "mutated":
+                    self.producer.write_bytes(self.producer.read_bytes() + b"\n// mutation")
+                elif kind == "wrong_module":
+                    request["producer"]["module_id"] = 43
+                else:
+                    request["producer"]["anchor"] = '"absent owner"'
+                with self.assertRaises(ValueError):
+                    self.prepare()
+                self.assertFalse((self.root / ".analysis/inputs/prepared-resources").exists())
+
+    def test_svg_root_filter_rejects_nested_or_absent_nodes_before_staging(self):
+        request = self.svg_filter_fixture()
+        request["svg_remove_root_ids"] = ["missing-root"]
+        with self.assertRaisesRegex(ValueError, "absent or repeated root nodes"):
+            self.prepare()
+        self.assertFalse((self.root / ".analysis/inputs/prepared-resources").exists())
 
     def test_mutated_original_and_retained_payload_cannot_be_published(self):
         item = self.prepare()["files"][0]

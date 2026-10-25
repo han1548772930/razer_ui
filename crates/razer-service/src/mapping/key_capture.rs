@@ -1,12 +1,12 @@
 //! Focused keyboard mapping capture owns an isolated native service worker.
 //! Dropping the handle cancels polling and restores mapping/redirect state.
+use super::Client;
 use super::{Transport, WorkerGuard, guarded, shutdown};
 #[cfg(test)]
 use razer_ipc::KEY_CAPTURE_LIFECYCLE as LIFECYCLE;
+use razer_ipc::ServiceRequest;
 use razer_ipc::global_shortcut_capture::{Batch as GlobalBatch, Event as GlobalEvent};
 use razer_ipc::mapping_control::{Registry, Suppression};
-use razer_ipc::ServiceRequest;
-use super::Client;
 use serde::Deserialize;
 use serde_json::Value;
 use std::{
@@ -73,11 +73,7 @@ impl Session {
         Self::start_with_registry(Client::spawn, Registry::global(), Kind::Mapping)
     }
     pub fn start_global_shortcut() -> anyhow::Result<Self> {
-        Self::start_with_registry(
-            Client::spawn,
-            Registry::global(),
-            Kind::GlobalShortcut,
-        )
+        Self::start_with_registry(Client::spawn, Registry::global(), Kind::GlobalShortcut)
     }
 
     #[cfg(test)]

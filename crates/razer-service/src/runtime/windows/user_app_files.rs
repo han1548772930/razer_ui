@@ -192,10 +192,13 @@ mod tests {
     #[test]
     #[ignore = "requires audited local user-app files; use tools/workspace.py"]
     fn direct_user_apps_read_only() {
-        let root=razer_platform::native_paths::user_apps_directory().unwrap();
+        let root = razer_platform::native_paths::user_apps_directory().unwrap();
         let rows=["","ChromaApp","chromaapp","__razer_inventory_missing__"].into_iter().map(|name| {
             serde_json::json!({"name":name,"rust":razer_storage::user_app_files::read(&root,name).unwrap()})
         }).collect::<Vec<_>>();
-        println!("RAZER_APPS_RESULT {}",serde_json::to_string(&rows).unwrap());
+        println!(
+            "RAZER_APPS_RESULT {}",
+            serde_json::to_string(&rows).unwrap()
+        );
     }
 }

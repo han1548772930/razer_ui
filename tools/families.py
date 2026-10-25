@@ -5344,9 +5344,11 @@ def audit_keyboard_artwork(args):
                     "declared_paths": len(declared_paths), "parsed_bindings": len(parsed_requests),
                     "integer_literal_parser": "exact Decimal or explicit JS base integer; no JavaScript execution"}
                 for original, text in contexts:
-                    retain_module(module_at(original, text, request_paths.search(text).start()), "resource_context")
+                    for request in request_paths.finditer(text):
+                        retain_module(module_at(original, text, request.start()), "resource_context")
                 supported_layouts = sorted({int(request[4]) for _, request in declared_requests})
                 row["source_supported_layout_ids"] = supported_layouts
+                acquisition_edges_changed = False
                 for context, request in declared_requests:
                     name, edition, kind, layout, density, module_id = request[1], int(request[2]), request[3], int(request[4]), int(request[5] or 1), javascript_integer_literal(request[6] or request[7])
                     try:
@@ -5369,14 +5371,16 @@ def audit_keyboard_artwork(args):
                             else:
                                 acquired["files"].append(source)
                             files[url] = source
-                            supplemental_edge = {"from": original["url"], "to": url,
-                                                 "kind": "keyboard-artwork-current-export-literal"}
-                            if supplemental_edge not in acquired.setdefault("edges", []): acquired["edges"].append(supplemental_edge)
                             row.setdefault("supplemental_acquisition", []).append(source)
                             publish_frontend_acquisition(receipt_path, acquired)
                             reachable.add(url)
                         if source is None or url not in reachable or not valid(source):
                             raise ValueError("Original resource bytes are missing/unverified/unreachable: " + url)
+                        export_edge = {"from": original["url"], "to": url,
+                                       "kind": "keyboard-artwork-current-export-literal"}
+                        if export_edge not in acquired.setdefault("edges", []):
+                            acquired["edges"].append(export_edge)
+                            acquisition_edges_changed = True
                         extension = ".svg" if kind == "svg_prods" else ".png"
                         alias = seen_resources.setdefault(source["path"], f"synapse/keyboard-current/{pid}/{Path(filename).stem}{extension}")
                         resource_map[source["path"]] = alias
@@ -5389,6 +5393,8 @@ def audit_keyboard_artwork(args):
                                                  "resource": source, "runtime": image})
                     except (KeyError, ValueError, OSError) as error:
                         row["failures"].append({"request": name, "reason": str(error)})
+                if acquisition_edges_changed:
+                    publish_frontend_acquisition(receipt_path, acquired)
                 row["acquisition"] = identity(receipt_path)
                 row["image_mode_svg"] = bool(re.search(r'UseSVGForProductImage:(!0|true)', main_sources[0][1]))
                 png_densities = defaultdict(set)
@@ -5555,6 +5561,7 @@ def audit_keyboard_artwork(args):
                 normalize_layouts = {"ansi": [], "iso": [], "japanese": enums["Japanese"],
                                      "united_states": enums["UnitedStates"], "united_kingdom": enums["UnitedKingdom"]}
                 if row["image_mode_svg"]:
+                    import workspace
                     producer_source = next(((item, text) for item, text in sources if '"Error fetching/parsing SVG:"' in text), None)
                     if producer_source is None: raise ValueError("Current SVG geometry producer is missing")
                     raw = module_at(producer_source[0], producer_source[1], producer_source[1].index('"Error fetching/parsing SVG:"'))
@@ -5613,51 +5620,43 @@ def audit_keyboard_artwork(args):
                             literal = re.sub(r'[\w$]+\.[\w$]+\.([\w$]+)', lambda match: str(enums[match[1]]), literal)
                             normalize_layouts[field] = keyboard_static_literal(literal)
                         row["layout_normalization"] = normalize_layouts
-                    lettering = {enums[name]: label for name, label in re.findall(r'\[[\w$]+\.[\w$]+\.([\w$]+)\]:"([A-Z]+)"', producer_body)
-                                 if name in enums}
+                    lettering = workspace.keyboard_svg_lettering(producer_body, enums)
                     for resource in row["resources"]:
                         image = resource["runtime"]
                         if not image["svg"]: continue
-                        svg = ET.fromstring((a.ROOT / resource["resource"]["path"]).read_bytes())
+                        content = (a.ROOT / resource["resource"]["path"]).read_bytes()
+                        svg = ET.fromstring(content)
                         elements = [dict(element.attrib) | {"type": element.tag.split("}")[-1]}
                                     for tag in ("path", "circle", "rect") for element in svg.iter()
                                     if element.tag.split("}")[-1] == tag and element.get("id")]
                         svg_resources[(image["edition_id"], image["layout_id"])] = elements
-                        svg_originals[(image["edition_id"], image["layout_id"])] = (resource, svg)
-                        removed = [child.get("id") for child in svg
-                                   if child.get("id") and ("_LED" in child.get("id") or "_Selection" in child.get("id"))]
-                        if removed:
-                            customize_alias = image["asset"].replace(".svg", "-customize.svg")
-                            customize_resources[resource["resource"]["path"]] = {
-                                "display": customize_alias, "svg_remove_root_ids": removed, "producer": svg_producer}
-                            image["customize_asset"] = customize_alias
-                        else:
-                            image["customize_asset"] = image["asset"]
+                        svg_originals[(image["edition_id"], image["layout_id"])] = (resource, content)
+                        customize_request = workspace.keyboard_customize_svg_request(
+                            content, image["asset"], svg_producer)
+                        image["customize_asset"] = customize_request["display"]
+                        if "svg_remove_root_ids" in customize_request:
+                            customize_resources[resource["resource"]["path"]] = customize_request
                         for entry in runtime_images:
                             if entry["asset"] == image["asset"]:
                                 entry["customize_asset"] = image["customize_asset"]
 
                     def normalized_layout(layout):
-                        if layout in normalize_layouts["ansi"]: return normalize_layouts["united_states"]
-                        if layout in normalize_layouts["iso"]: return normalize_layouts["united_kingdom"]
-                        return layout if layout == normalize_layouts["japanese"] else normalize_layouts["united_states"]
+                        return workspace.keyboard_normalized_svg_layout(layout, normalize_layouts)
 
                     requested_layouts = sorted(set(enums.values()) | {image["layout_id"] for image in runtime_images})
                     for layout in requested_layouts:
                         resource_layout = normalized_layout(layout) if normalize_customize else layout
                         editions = {edition for edition, source_layout in svg_originals if source_layout == resource_layout}
                         for edition in sorted(editions):
-                            resource, svg = svg_originals[(edition, resource_layout)]
+                            resource, content = svg_originals[(edition, resource_layout)]
                             image = resource["runtime"]
-                            removed = [child.get("id") for child in svg if child.get("id") and
-                                       ("_LED" in child.get("id") or "_Selection" in child.get("id") or
-                                        normalize_customize and ("_Lettering" in child.get("id") or "_Characters" in child.get("id"))
-                                        and child.get("id") not in {lettering.get(layout, "US") + "_Lettering", lettering.get(layout, "US") + "_Characters"})]
-                            alias = image.get("customize_asset", image["asset"])
-                            if removed and normalize_customize:
-                                alias = alias.replace(".svg", f"-customize-layout-{layout}.svg")
-                                customize_resources[(resource["resource"]["path"], alias)] = {
-                                    "display": alias, "svg_remove_root_ids": removed, "producer": svg_producer}
+                            customize_request = workspace.keyboard_customize_svg_request(
+                                content, image["asset"], svg_producer,
+                                normalized=normalize_customize, lettering=lettering.get(layout, "US"),
+                                layout_id=layout)
+                            alias = customize_request["display"]
+                            if normalize_customize and "svg_remove_root_ids" in customize_request:
+                                customize_resources[(resource["resource"]["path"], alias)] = customize_request
                             customize_images.append({**image, "layout_id": layout, "asset": alias,
                                                      "source_layout_id": resource_layout})
 

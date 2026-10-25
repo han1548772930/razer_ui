@@ -611,7 +611,9 @@ pub(super) fn keyboard_metadata(
     }
     if let KeyboardRead::OnboardProfiles(options) = query {
         razer_ipc::keyboard_onboard_profiles::validate_target(
-            &razer_ipc::keyboard_profile_inventory::Target::WindowsContainer { target: target.clone() },
+            &razer_ipc::keyboard_profile_inventory::Target::WindowsContainer {
+                target: target.clone(),
+            },
         )?;
         options.validate()?;
     }
@@ -682,13 +684,22 @@ pub(super) fn keyboard_metadata(
     }
     if let KeyboardRead::OnboardProfiles(options) = query {
         let reading = razer_device::keyboard_onboard_profiles::read_complete(
-            &device, cap, options, || transaction(target, cap), &validate,
+            &device,
+            cap,
+            options,
+            || transaction(target, cap),
+            &validate,
         )?;
         validate()?;
-        return Ok(serde_json::to_value(razer_ipc::keyboard_onboard_profiles::Observation {
-            target: razer_ipc::keyboard_profile_inventory::Target::WindowsContainer { target: target.clone() },
-            options: options.clone(), reading,
-        })?);
+        return Ok(serde_json::to_value(
+            razer_ipc::keyboard_onboard_profiles::Observation {
+                target: razer_ipc::keyboard_profile_inventory::Target::WindowsContainer {
+                    target: target.clone(),
+                },
+                options: options.clone(),
+                reading,
+            },
+        )?);
     }
     if matches!(query, KeyboardRead::ProfileInventory) {
         let inventory = razer_device::keyboard_profile_inventory::read_hid(

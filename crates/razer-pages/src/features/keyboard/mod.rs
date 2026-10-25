@@ -481,7 +481,8 @@ impl KeyboardProductWorkspace {
         }
         self.analog_gamepad.layout = Some(observation.layout_id);
         self.source_artwork.observe(observation);
-        self.source_artwork.prepare_surface(self.page == "TAB_CUSTOMIZE");
+        self.source_artwork
+            .prepare_surface(self.page == "TAB_CUSTOMIZE");
         cx.notify();
     }
     fn keyboard_shapes(&self) -> &'static [razer_assets::KeyboardKey] {

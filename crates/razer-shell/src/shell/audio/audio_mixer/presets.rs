@@ -1,7 +1,7 @@
 //! Retained 1342 hotkey scope; registration, callbacks and cleanup share mapping ownership.
 use super::super::*;
-use razer_service::mapping::hotkeys::{Session as Hotkeys, Shortcut};
 use razer_pages::features::{PresetShortcutBinding, PresetShortcutRequest};
+use razer_service::mapping::hotkeys::{Session as Hotkeys, Shortcut};
 use razer_service::mapping::mode_capture::{self, Reply as CaptureReply};
 use std::{
     sync::mpsc::{self, Receiver, Sender},

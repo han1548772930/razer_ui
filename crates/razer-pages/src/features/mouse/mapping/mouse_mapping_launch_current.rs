@@ -210,7 +210,11 @@ impl MouseProductWorkspace {
                                 .mt(surface::css(5.))
                                 .size(surface::css(20.))
                                 .p_0()
-                                .child(razer_assets::resource_svg().path(policy.folder_key.clone()).size_full())
+                                .child(
+                                    razer_assets::resource_svg()
+                                        .path(policy.folder_key.clone())
+                                        .size_full(),
+                                )
                                 .on_click(cx.listener(|this, _, window, cx| {
                                     this.browse_current_mouse_launch(window, cx)
                                 })),

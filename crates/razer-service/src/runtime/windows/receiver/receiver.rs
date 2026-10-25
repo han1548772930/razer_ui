@@ -350,8 +350,7 @@ pub(super) fn query(
         check_deadline(started)?;
         Ok(current)
     };
-    let _receiver_lock =
-        ReceiverLock::acquire(device_container_id, &|| revalidate().map(|_| ()))?;
+    let _receiver_lock = ReceiverLock::acquire(device_container_id, &|| revalidate().map(|_| ()))?;
     let feature_bytes = before["feature_report_bytes"]
         .as_u64()
         .and_then(|count| usize::try_from(count).ok())

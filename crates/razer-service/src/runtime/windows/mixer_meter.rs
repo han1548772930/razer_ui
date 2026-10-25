@@ -15,9 +15,7 @@ use std::{
     time::{Duration, Instant},
 };
 use windows_sys::{
-    Win32::System::Com::{
-        CoCreateInstance, CoInitializeEx, CoTaskMemFree, CoUninitialize,
-    },
+    Win32::System::Com::{CoCreateInstance, CoInitializeEx, CoTaskMemFree, CoUninitialize},
     core::GUID,
 };
 
@@ -44,7 +42,6 @@ impl Drop for Apartment {
         unsafe { CoUninitialize() };
     }
 }
-
 
 fn select(container: &str, name_filter: &str) -> anyhow::Result<Com> {
     let mut raw = null_mut();

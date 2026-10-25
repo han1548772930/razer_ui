@@ -185,8 +185,8 @@ pub use audio_products::{
 };
 pub use audio_products::{
     AudioVolumeCompletion, AudioVolumeOperation, AudioVolumeReply, AudioVolumeRequest,
-    LeviathanObservation, LeviathanOperation, LeviathanRequest,
-    SurroundObservation, SurroundOperation, SurroundRequest,
+    LeviathanObservation, LeviathanOperation, LeviathanRequest, SurroundObservation,
+    SurroundOperation, SurroundRequest,
 };
 pub use audio_products::{OledRuntimeObservation, OledRuntimeRequested, StreamMixerObservation};
 pub use keyboard_products::SnapTapObservation;
@@ -211,11 +211,11 @@ pub mod display_mode_roots;
 #[path = "accessories/dock_pairing.rs"]
 pub mod dock_pairing;
 pub use dock_pairing::{DockPairingEvent, DockPairingObservation, DockPairingUtilityRequested};
+#[path = "accessories/argb_name.rs"]
+mod argb_name;
 #[path = "accessories/hue.rs"]
 pub mod hue;
 #[path = "accessories/wired_argb.rs"]
 pub mod wired_argb;
-#[path = "accessories/argb_name.rs"]
-mod argb_name;
 #[path = "accessories/wireless_argb.rs"]
 pub mod wireless_argb;

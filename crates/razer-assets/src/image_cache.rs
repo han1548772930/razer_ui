@@ -145,21 +145,48 @@ impl ResourceImageCache {
         self.animations.retry_failed(cx);
     }
 
-    fn retain_displayed(&mut self, identity: CacheIdentity, key: SharedString, window: &mut Window, cx: &mut App) {
+    fn retain_displayed(
+        &mut self,
+        identity: CacheIdentity,
+        key: SharedString,
+        window: &mut Window,
+        cx: &mut App,
+    ) {
         let ownership = self.displayed.entry(identity.clone()).or_default().clone();
         leases::retain(self.owner.clone(), identity, ownership, key, window, cx);
     }
 
-    fn release_displayed(&mut self, identity: &CacheIdentity, ownership: &DisplayOwnership, cx: &mut App) {
-        if !ownership.unused() || !self.displayed.get(identity).is_some_and(|current| current.is_same(ownership)) {
+    fn release_displayed(
+        &mut self,
+        identity: &CacheIdentity,
+        ownership: &DisplayOwnership,
+        cx: &mut App,
+    ) {
+        if !ownership.unused()
+            || !self
+                .displayed
+                .get(identity)
+                .is_some_and(|current| current.is_same(ownership))
+        {
             return;
         }
         self.displayed.remove(identity);
         let image = match identity {
-            CacheIdentity::Image(source) => self.images.remove(source).and_then(|entry| entry.get().and_then(Result::ok)),
-            CacheIdentity::Filtered(identity) => self.filtered.remove(identity).and_then(|entry| entry.result.as_ref().and_then(|result| result.as_ref().ok()).cloned()),
+            CacheIdentity::Image(source) => self
+                .images
+                .remove(source)
+                .and_then(|entry| entry.get().and_then(Result::ok)),
+            CacheIdentity::Filtered(identity) => self.filtered.remove(identity).and_then(|entry| {
+                entry
+                    .result
+                    .as_ref()
+                    .and_then(|result| result.as_ref().ok())
+                    .cloned()
+            }),
         };
-        if let Some(image) = image { cx.drop_image(image, None); }
+        if let Some(image) = image {
+            cx.drop_image(image, None);
+        }
     }
 
     fn clear_filtered(&mut self, cx: &mut App) {
@@ -214,7 +241,11 @@ impl ResourceImageCache {
             let oldest = self
                 .filtered
                 .iter()
-                .filter(|(identity, _)| self.displayed.get(&CacheIdentity::Filtered((*identity).clone())).is_none_or(DisplayOwnership::unused))
+                .filter(|(identity, _)| {
+                    self.displayed
+                        .get(&CacheIdentity::Filtered((*identity).clone()))
+                        .is_none_or(DisplayOwnership::unused)
+                })
                 .min_by_key(|(_, entry)| entry.last_used)
                 .map(|(identity, _)| identity.clone());
             if let Some(oldest) = oldest {
@@ -336,17 +367,17 @@ impl ImageCache for ResourceImageCache {
         }
         if !self.images.contains_key(source) {
             if let Resource::Embedded(path) = source {
-            match available(path, cx) {
-                Ok(false) => {
-                    razer_resources::trace("image", path, "pending bytes");
-                    return None;
+                match available(path, cx) {
+                    Ok(false) => {
+                        razer_resources::trace("image", path, "pending bytes");
+                        return None;
+                    }
+                    Err(error) => {
+                        razer_resources::trace("image", path, format!("unavailable {error:#}"));
+                        return Some(Err(ImageCacheError::Asset(error.to_string().into())));
+                    }
+                    Ok(true) => razer_resources::trace("image", path, "decode started"),
                 }
-                Err(error) => {
-                    razer_resources::trace("image", path, format!("unavailable {error:#}"));
-                    return Some(Err(ImageCacheError::Asset(error.to_string().into())));
-                }
-                Ok(true) => razer_resources::trace("image", path, "decode started"),
-            }
             }
         }
         if animation::candidate(source) {

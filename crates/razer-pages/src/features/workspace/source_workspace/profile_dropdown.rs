@@ -65,7 +65,11 @@ pub(super) fn decorations(
     let mut saw_local = false;
     let mut result = BTreeMap::new();
     for choice in choices {
-        let Some(profile) = device.profiles.iter().find(|profile| profile.id == choice.id()) else {
+        let Some(profile) = device
+            .profiles
+            .iter()
+            .find(|profile| profile.id == choice.id())
+        else {
             continue;
         };
         let mut decoration = SelectOptionDecoration::new();
@@ -95,7 +99,8 @@ pub(super) fn decorations(
             _ => None,
         };
         if let Some(tip) = tip {
-            decoration = decoration.tooltip_icon("synapse/profile-preset-info.svg", razer_i18n::t(tip));
+            decoration =
+                decoration.tooltip_icon("synapse/profile-preset-info.svg", razer_i18n::t(tip));
         }
         result.insert(profile.id.clone(), decoration);
     }

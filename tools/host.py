@@ -26,6 +26,15 @@ OFFICIAL = {"www.razer.com", "rzr.to", "dl.razerzone.com", "apps.razer.com", "ap
 STABLE_DOWNLOAD_PAGE = "https://www.razer.com/synapse-4"
 STABLE_BOOTSTRAP = "https://rzr.to/synapse-4-pc-download"
 
+IA64_EXCEPTION_SDK_MODULES = (
+    "ida_auto", "ida_bytes", "ida_diskio", "ida_funcs", "ida_ida", "ida_idp",
+    "ida_kernwin", "ida_lines", "ida_loader", "ida_nalt", "ida_ua",
+    "idaapi", "idautils", "idc",
+)
+IA64_EXCEPTION_ANALYZER_FILES = {
+    "kernel": "ida.dll", "processor": "procs/ia.dll", "python_plugin": "plugins/idapython3.dll",
+}
+
 
 def inspect_pe(raw):
     """Read PE metadata as bytes; never load the image or resolve imports in the OS."""
@@ -95,9 +104,61 @@ def inspect_pe(raw):
         raise ValueError("Unterminated PE import thunk table")
 
     result = {"format": "pe32+" if pointer_size == 8 else "pe32", "kind": "native",
-              "machine": hex(machine), "architecture": {0x14c: "x86", 0x8664: "x64", 0xaa64: "arm64"}.get(machine, "other"),
+              "machine": hex(machine), "architecture": {0x14c: "x86", 0x200: "ia64", 0x8664: "x64", 0xaa64: "arm64"}.get(machine, "other"),
               "image_base": hex(image_base), "coff_timestamp": timestamp, "characteristics": hex(characteristics),
               "sections": sections, "imports": [], "delay_imports": [], "exports": [], "version_resources": [], "unresolved": []}
+    if machine == 0x200:
+        exception_rva, exception_size = directory(3)
+        exception = {"rva": hex(exception_rva), "bytes": exception_size,
+            "record_bytes": 12, "format": "IMAGE_IA64_RUNTIME_FUNCTION_ENTRY",
+            "regions": [], "validated": False,
+            "boundary": "Exception regions may describe function fragments; entries do not establish independent callable functions or a complete function inventory"}
+        result["exception_directory"] = exception
+        try:
+            if bool(exception_rva) != bool(exception_size):
+                raise ValueError("IA64 exception directory has an incomplete address/size pair")
+            if exception_size:
+                if pointer_size != 8 or exception_size % 12:
+                    raise ValueError("IA64 exception directory has a partial 12-byte record or invalid optional header")
+                mappings = [(0, min(header_size, len(raw)), 0, False)]
+                for index, section in enumerate(sections):
+                    flags, = read("<I", optional + optional_size + index * 40 + 36)
+                    if section["bytes"]:
+                        mappings.append((section["rva"], section["rva"] + section["bytes"],
+                                         section["file_offset"], bool(flags & 0x20000000)))
+
+                def exception_at_rva(rva, length, *, executable=False):
+                    overlaps = [row for row in mappings if row[0] < rva + length and rva < row[1]]
+                    if (len(overlaps) != 1 or overlaps[0][0] > rva or rva + length > overlaps[0][1]
+                            or executable and not overlaps[0][3]):
+                        raise ValueError("IA64 exception RVA is not uniquely backed by "
+                                         + ("executable " if executable else "") + "input bytes: " + hex(rva))
+                    return overlaps[0][2] + rva - overlaps[0][0]
+
+                table = exception_at_rva(exception_rva, exception_size)
+                regions, previous_end = [], 0
+                for index in range(exception_size // 12):
+                    offset = table + index * 12
+                    begin, end, unwind = read("<III", offset)
+                    if not begin or end <= begin or begin % 16 or end % 16 or begin < previous_end:
+                        raise ValueError("IA64 exception regions are unaligned, unordered, overlapping or empty")
+                    code = exception_at_rva(begin, end - begin, executable=True)
+                    if not unwind or unwind % 8:
+                        raise ValueError("IA64 unwind information RVA is absent or unaligned")
+                    unwind_offset = exception_at_rva(unwind, 8)
+                    regions.append({"index": index, "table_file_offset": offset,
+                        "entry_hex": raw[offset:offset + 12].hex(),
+                        "begin_rva": hex(begin), "end_rva": hex(end), "bytes": end - begin,
+                        "file_offset": code, "sha256": hashlib.sha256(raw[code:code + end - begin]).hexdigest(),
+                        "unwind_rva": hex(unwind), "unwind_file_offset": unwind_offset,
+                        "unwind_header_hex": raw[unwind_offset:unwind_offset + 8].hex(),
+                        "unwind_semantics_verified": False})
+                    previous_end = end
+                exception["sha256"] = hashlib.sha256(raw[table:table + exception_size]).hexdigest()
+                exception["regions"] = regions
+            exception["validated"] = True
+        except (ValueError, struct.error) as exc:
+            result["unresolved"].append({"stage": "ia64_exception_directory", "error": str(exc)})
     for key, index, stride in (("imports", 1, 20), ("delay_imports", 13, 32)):
         rva, size = directory(index)
         if not rva or not size:
@@ -225,6 +286,274 @@ def inspect_pe(raw):
         except (ValueError, struct.error, UnicodeDecodeError) as exc:
             result["unresolved"].append({"stage": "version_resources", "error": str(exc)})
     return result
+
+
+def native_exception_region_coverage(exception, functions, image_base):
+    """Compare audited exception regions with captured chunks without inventing owners."""
+    if exception.get("validated") is not True:
+        raise ValueError("Exception coverage requires a validated original directory")
+    base = int(image_base, 0) if isinstance(image_base, str) else image_base
+    if type(base) is not int or base < 0:
+        raise ValueError("Exception coverage image base is invalid")
+    chunks, entries = [], set()
+    for function in functions:
+        address = int(function["address"], 0)
+        if address < base or int(function["rva"], 0) != address - base:
+            raise ValueError("Captured function address differs from its RVA/image base")
+        entries.add(address - base)
+        for chunk in function["chunks"]:
+            begin, end = int(chunk["start"], 0) - base, int(chunk["end"], 0) - base
+            if begin < 0 or end <= begin:
+                raise ValueError("Captured function chunk has an invalid interval")
+            chunks.append((begin, end, function["rva"]))
+    result = []
+    for region in exception["regions"]:
+        begin, end = int(region["begin_rva"], 0), int(region["end_rva"], 0)
+        overlaps = sorted((max(begin, a), min(end, b), owner)
+                          for a, b, owner in chunks if a < end and begin < b)
+        cursor, missing = begin, []
+        for a, b, _ in overlaps:
+            if a > cursor:
+                missing.append({"begin_rva": hex(cursor), "end_rva": hex(a), "bytes": a - cursor})
+            cursor = max(cursor, b)
+        if cursor < end:
+            missing.append({"begin_rva": hex(cursor), "end_rva": hex(end), "bytes": end - cursor})
+        result.append({"index": region["index"], "begin_rva": region["begin_rva"],
+            "end_rva": region["end_rva"], "bytes": end - begin,
+            "matches_captured_entry": begin in entries,
+            "captured_chunk_owners": sorted({owner for _, _, owner in overlaps}, key=lambda x: int(x, 0)),
+            "uncovered": missing, "covered_bytes": end - begin - sum(x["bytes"] for x in missing),
+            "all_bytes_in_captured_chunks": not missing})
+    return {"regions": result, "region_count": len(result),
+        "uncovered_region_count": sum(bool(row["uncovered"]) for row in result),
+        "uncovered_bytes": sum(x["bytes"] for row in result for x in row["uncovered"]),
+        "all_regions_in_captured_chunks": all(row["all_bytes_in_captured_chunks"] for row in result),
+        "function_discovery_complete": False,
+        "boundary": "Chunk membership proves only byte coverage; exception fragments, leaf functions, indirect entries and unwind semantics require separate review"}
+
+
+def inspect_embedded_pe_ranges(raw, reviewed_ranges):
+    """Validate explicit, evidence-bound PE slices without discovering or executing them.
+
+    The publisher verifies the parent and evidence file identities before calling
+    this pure parser. Offsets, complete lengths, machine and hashes must come from
+    the reviewed owning chain; an MZ hit or SizeOfImage is not a file boundary.
+    """
+    if not isinstance(raw, (bytes, bytearray, memoryview)) or not isinstance(reviewed_ranges, list):
+        raise ValueError("Embedded PE review requires bytes and a list of explicit ranges")
+    raw = bytes(raw)
+    fields = {"name", "offset", "bytes", "sha256", "machine", "evidence", "basis"}
+    names, spans = set(), []
+
+    def digest(value):
+        return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+
+    for row in reviewed_ranges:
+        if not isinstance(row, dict) or set(row) != fields:
+            raise ValueError("Embedded PE review fields differ from the explicit range schema")
+        name, offset, size = row["name"], row["offset"], row["bytes"]
+        if (not isinstance(name, str) or not name or name in {".", ".."}
+                or any(ord(c) < 32 or c in '<>:"/\\|?*' for c in name) or name[-1] in ". "
+                or re.fullmatch(r"(?i:con|prn|aux|nul|com[1-9]|lpt[1-9])", name.split(".")[0])):
+            raise ValueError("Embedded PE output name must be a safe basename")
+        if name.casefold() in names:
+            raise ValueError("Embedded PE output names collide")
+        names.add(name.casefold())
+        if (type(offset) is not int or type(size) is not int or offset <= 0 or size < 64
+                or offset + size > len(raw)):
+            raise ValueError("Embedded PE reviewed range is outside parent bytes")
+        if (not digest(row["sha256"]) or not isinstance(row["machine"], str)
+                or re.fullmatch(r"0x[0-9a-f]{1,4}", row["machine"]) is None
+                or hex(int(row["machine"], 16)) != row["machine"]
+                or not isinstance(row["basis"], str) or not row["basis"].strip()):
+            raise ValueError("Embedded PE review needs an exact hash, machine and boundary basis")
+        evidence, seen = row["evidence"], set()
+        if not isinstance(evidence, list) or not evidence:
+            raise ValueError("Embedded PE review has no evidence identities")
+        for original in evidence:
+            if not isinstance(original, dict) or set(original) != {"path", "bytes", "sha256"}:
+                raise ValueError("Embedded PE evidence identity fields are invalid")
+            path = original["path"]
+            if (not isinstance(path, str) or not path.startswith(".analysis/") or "\\" in path
+                    or ":" in path or any(part in {"", ".", ".."} for part in path.split("/"))
+                    or path in seen or type(original["bytes"]) is not int or original["bytes"] <= 0
+                    or not digest(original["sha256"])):
+                raise ValueError("Embedded PE evidence needs unique project-relative identities")
+            seen.add(path)
+        spans.append((offset, offset + size))
+    ordered = sorted(spans)
+    if any(left[1] > right[0] for left, right in zip(ordered, ordered[1:])):
+        raise ValueError("Embedded PE reviewed ranges overlap")
+
+    results = []
+    for row in reviewed_ranges:
+        body = raw[row["offset"]:row["offset"] + row["bytes"]]
+        actual = hashlib.sha256(body).hexdigest()
+        if actual != row["sha256"]:
+            raise ValueError("Embedded PE reviewed hash differs from actual parent bytes")
+
+        def read(fmt, offset):
+            if offset < 0 or offset + struct.calcsize(fmt) > len(body):
+                raise ValueError("Embedded PE structure exceeds reviewed bytes")
+            return struct.unpack_from(fmt, body, offset)
+
+        if body[:2] != b"MZ":
+            raise ValueError("Embedded PE reviewed range has no DOS header")
+        pe, = read("<I", 0x3c)
+        if pe < 64 or body[pe:pe + 4] != b"PE\0\0":
+            raise ValueError("Embedded PE reviewed range has no valid PE signature")
+        machine, count, _, symbol_offset, symbol_count, optional_size, flags = read("<HHIIIHH", pe + 4)
+        optional = pe + 24
+        magic, = read("<H", optional)
+        directory_start = {0x10b: 96, 0x20b: 112}.get(magic)
+        if (not machine or hex(machine) != row["machine"] or not flags & 2 or not count
+                or directory_start is None or optional_size < directory_start):
+            raise ValueError("Embedded PE machine or executable headers disagree with review")
+        expected_magic = {0x14c: 0x10b, 0x1c0: 0x10b, 0x1c4: 0x10b,
+                          0x200: 0x20b, 0x8664: 0x20b, 0xaa64: 0x20b}.get(machine)
+        if expected_magic is not None and expected_magic != magic:
+            raise ValueError("Embedded PE machine and optional header width disagree")
+        section_table = optional + optional_size
+        table_end = section_table + count * 40
+        entry, = read("<I", optional + 16)
+        section_alignment, file_alignment = read("<II", optional + 32)
+        image_size, header_size = read("<II", optional + 56)
+        directory_count, = read("<I", optional + directory_start - 4)
+        if (not section_alignment or section_alignment & (section_alignment - 1)
+                or not file_alignment or file_alignment & (file_alignment - 1)
+                or section_alignment < file_alignment or header_size % file_alignment
+                or not table_end <= header_size <= len(body)
+                or image_size < header_size or image_size % section_alignment
+                or directory_count * 8 > optional_size - directory_start):
+            raise ValueError("Embedded PE header, alignment or directory bounds are invalid")
+
+        raw_spans = [{"kind": "headers", "offset": 0, "bytes": header_size}]
+        virtual_spans, sections = [(0, header_size)], []
+        for index in range(count):
+            section = section_table + index * 40
+            name, virtual_size, rva, size, offset = read("<8sIIII", section)
+            characteristics, = read("<I", section + 36)
+            mapped_size = max(virtual_size, size)
+            if (rva % section_alignment or rva + mapped_size > image_size
+                    or size and (offset % file_alignment or size % file_alignment
+                                 or offset + size > len(body))):
+                raise ValueError("Embedded PE section exceeds file/image bounds or alignment")
+            if mapped_size:
+                virtual_spans.append((rva, rva + mapped_size))
+            if size:
+                raw_spans.append({"kind": "section", "index": index, "offset": offset, "bytes": size})
+            sections.append({"index": index, "name": name.rstrip(b"\0").decode("ascii", errors="replace"),
+                "rva": rva, "virtual_bytes": virtual_size, "file_offset": offset, "bytes": size,
+                "characteristics": hex(characteristics),
+                "sha256": hashlib.sha256(body[offset:offset + size]).hexdigest()})
+
+        def reject_overlaps(spans, label):
+            values = sorted(spans)
+            if any(a[1] > b[0] for a, b in zip(values, values[1:])):
+                raise ValueError("Embedded PE " + label + " ranges overlap")
+
+        reject_overlaps([(s["offset"], s["offset"] + s["bytes"]) for s in raw_spans], "raw section/header")
+        reject_overlaps(virtual_spans, "virtual section/header")
+
+        def at_rva(rva, size):
+            if 0 <= rva < header_size and rva + size <= header_size:
+                return rva
+            for section in sections:
+                delta = rva - section["rva"]
+                if 0 <= delta < section["bytes"] and delta + size <= section["bytes"]:
+                    return section["file_offset"] + delta
+            raise ValueError("Embedded PE RVA range has no complete original byte backing")
+
+        if entry:
+            at_rva(entry, 16 if machine == 0x200 else 1)
+            if machine in {0x14c, 0x8664, 0xaa64} and not any(
+                    s["rva"] <= entry < s["rva"] + s["bytes"]
+                    and int(s["characteristics"], 16) & 0x20000000 for s in sections):
+                raise ValueError("Embedded PE entrypoint is not in executable bytes")
+
+        directories, security, debug = [], None, []
+        for index in range(directory_count):
+            address, size = read("<II", optional + directory_start + index * 8)
+            record = {"index": index, "address": address, "bytes": size, "address_kind": "rva"}
+            if index == 4:
+                record["address_kind"] = "file_offset"
+                if address or size:
+                    if not address or size < 8 or address % 8 or address + size > len(body):
+                        raise ValueError("Embedded PE security directory exceeds reviewed file bytes")
+                    security = {"offset": address, "bytes": size,
+                        "sha256": hashlib.sha256(body[address:address + size]).hexdigest(),
+                        "certificates": [], "cryptographic_signature_verified": False}
+                    position = address
+                    while position < address + size:
+                        length, revision, kind = read("<IHH", position)
+                        aligned = (length + 7) & ~7
+                        if (length < 8 or revision not in {0x100, 0x200} or kind not in {1, 2, 3, 4}
+                                or position + aligned > address + size):
+                            raise ValueError("Embedded PE WIN_CERTIFICATE range is invalid or truncated")
+                        security["certificates"].append({"offset": position, "bytes": length,
+                            "aligned_bytes": aligned, "revision": hex(revision), "type": kind,
+                            "sha256": hashlib.sha256(body[position:position + length]).hexdigest()})
+                        position += aligned
+            elif index == 8:
+                # IA64 uses this zero-sized entry as GP metadata, not a raw span.
+                record["address_kind"] = "global_pointer"
+                if size:
+                    raise ValueError("Embedded PE global-pointer directory must have zero size")
+            elif address or size:
+                if not address or not size:
+                    raise ValueError("Embedded PE data directory has an incomplete address/size pair")
+                record["file_offset"] = at_rva(address, size)
+                if index == 6:
+                    if size % 28:
+                        raise ValueError("Embedded PE debug directory has a partial record")
+                    for position in range(record["file_offset"], record["file_offset"] + size, 28):
+                        _, _, _, _, kind, data_size, data_rva, data_offset = read("<IIHHIIII", position)
+                        if data_size:
+                            if not data_offset or data_offset + data_size > len(body):
+                                raise ValueError("Embedded PE debug data exceeds reviewed file bytes")
+                            if data_rva and at_rva(data_rva, data_size) != data_offset:
+                                raise ValueError("Embedded PE debug RVA and file offset disagree")
+                            debug.append({"kind": "debug_data", "type": kind,
+                                "offset": data_offset, "bytes": data_size})
+            directories.append(record)
+
+        if symbol_offset or symbol_count:
+            if not symbol_offset:
+                raise ValueError("Embedded PE COFF symbols have no file offset")
+            strings = symbol_offset + symbol_count * 18
+            string_bytes, = read("<I", strings)
+            if string_bytes < 4 or strings + string_bytes > len(body):
+                raise ValueError("Embedded PE COFF symbols/string table exceed reviewed file bytes")
+            symbol_span = {"kind": "coff_symbols", "offset": symbol_offset,
+                "bytes": symbol_count * 18 + string_bytes}
+            reject_overlaps([(s["offset"], s["offset"] + s["bytes"])
+                             for s in [*raw_spans, symbol_span]], "COFF symbol/image")
+            raw_spans.append(symbol_span)
+        for span in debug:
+            if not any(s["offset"] <= span["offset"] and span["offset"] + span["bytes"]
+                       <= s["offset"] + s["bytes"] for s in raw_spans):
+                reject_overlaps([(s["offset"], s["offset"] + s["bytes"])
+                                 for s in [*raw_spans, span]], "debug/image")
+                raw_spans.append(span)
+        if security:
+            reject_overlaps([(s["offset"], s["offset"] + s["bytes"])
+                             for s in [*raw_spans, security]], "security/image")
+            raw_spans.append({"kind": "security", "offset": security["offset"], "bytes": security["bytes"]})
+        complete_size = max(s["offset"] + s["bytes"] for s in raw_spans)
+        if complete_size != len(body):
+            raise ValueError("Embedded PE reviewed length differs from complete declared file extent")
+        metadata = inspect_pe(body)
+        if metadata.get("format") not in {"pe32", "pe32+"} or metadata["unresolved"]:
+            raise ValueError("Embedded PE has unresolved or invalid metadata")
+        results.append({"name": row["name"], "offset": row["offset"], "bytes": len(body), "sha256": actual,
+            "pe": metadata, "layout": {"header_bytes": header_size, "image_bytes": image_size,
+                "entrypoint_rva": hex(entry),
+                "entrypoint_kind": "ia64_function_descriptor" if machine == 0x200 else "code_rva",
+                "subsystem": read("<H", optional + 68)[0], "sections": sections,
+                "directories": directories, "raw_ranges": raw_spans, "security_directory": security,
+                "complete_file_bytes": complete_size},
+            "review": {**row, "evidence": [dict(original) for original in row["evidence"]]}})
+    return results
 
 
 def pe_resource_entries(raw):

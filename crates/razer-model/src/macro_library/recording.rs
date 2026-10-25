@@ -143,58 +143,64 @@ fn word(value: &Value, field: &str) -> Result<u16, String> {
     }
     Ok(n as u16)
 }
-fn key(value: &Value, preview: bool) -> Result<(&'static Key, u16), String> {
-    let mut vk = word(value, "vkCode")?;
-    let flags = word(value, "flags")?;
-    let mut scan = word(value, "scanCode")?;
-    if scan == 92 {
-        scan = 91;
+struct RecordedKeyInput {
+    virtual_key: u16,
+    scan_code: u16,
+    flags: u16,
+}
+impl RecordedKeyInput {
+    fn parse(value: &Value) -> Result<Self, String> {
+        let mut virtual_key = word(value, "vkCode")?;
+        let flags = word(value, "flags")?;
+        let mut scan_code = word(value, "scanCode")?;
+        if scan_code == 92 {
+            scan_code = 91;
+        }
+        // Current 62141.C/M normalizes numpad navigation before Rr consumes it.
+        if matches!(flags, 0 | 128) {
+            virtual_key = match virtual_key {
+                45 => 96,
+                36 => 103,
+                38 => 104,
+                33 => 105,
+                37 => 100,
+                12 => 101,
+                39 => 102,
+                35 => 97,
+                40 => 98,
+                34 => 99,
+                46 => 110,
+                _ => virtual_key,
+            };
+        }
+        Ok(Self {
+            virtual_key,
+            scan_code,
+            flags,
+        })
     }
-    if matches!(flags, 0 | 128) {
-        vk = match vk {
-            45 => 96,
-            36 => 103,
-            38 => 104,
-            33 => 105,
-            37 => 100,
-            12 => 101,
-            39 => 102,
-            35 => 97,
-            40 => 98,
-            34 => 99,
-            46 => 110,
-            _ => vk,
-        };
-    }
-    let flag = match flags {
+}
+fn key(input: &RecordedKeyInput, preview: bool) -> Option<&'static Key> {
+    let flag = match input.flags {
         32 | 0 | 128 => 0,
         33 | 1 | 129 => 2,
         _ => 0,
     };
-    let matches_vk =
-        |k: &&Key| k.virtual_key.as_deref().and_then(|v| v.parse::<u16>().ok()) == Some(vk);
-    let k = keys()
+    let matches_vk = |k: &&Key| {
+        k.virtual_key.as_deref().and_then(|v| v.parse::<u16>().ok()) == Some(input.virtual_key)
+    };
+    keys()
         .iter()
         .find(|k| {
-            if matches!(flags, 0 | 128) && scan == 69 && vk == 19 {
+            if matches!(input.flags, 0 | 128) && input.scan_code == 69 && input.virtual_key == 19 {
                 matches_vk(k)
             } else {
                 (preview || matches_vk(k))
-                    && k.scancode == Some(scan)
+                    && k.scancode == Some(input.scan_code)
                     && k.output_flag.filter(|v| *v != 0).unwrap_or(k.flag) == flag
             }
         })
         .or_else(|| keys().iter().find(matches_vk))
-        .ok_or_else(|| format!("当前源键表无法识别录制按键：VK {vk}，Scan {scan}"))?;
-    Ok((
-        k,
-        makecode(
-            k.virtual_key
-                .as_deref()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(vk),
-        ),
-    ))
 }
 
 pub struct Decoder {
@@ -422,48 +428,70 @@ impl Decoder {
             if sequence && down {
                 return Ok(());
             }
-            let (key, makecode) = key(raw, self.preview)?;
-            let flag = key.output_flag.filter(|v| *v != 0).unwrap_or(key.flag);
-            if self.preview && !sequence {
-                if down {
-                    // le only folds consecutive state-0 keydowns in its live
-                    // view. Post-processing H folds every still-held key.
-                    if flag == 0 && self.previous_key == Some((makecode, 0)) {
-                        self.pending_key_delay += number(raw, "time")? / 1_000_000.;
-                        return Ok(());
-                    }
-                    self.previous_key = Some((makecode, flag));
-                    self.pending_key_delay = 0.;
-                } else {
-                    self.previous_key = None;
-                }
-            }
+            let input = RecordedKeyInput::parse(raw)?;
+            // Rr's Sequence branch retains the observed VK without a key-table
+            // lookup. le resolves a live label when possible and otherwise
+            // keeps that same VK; an unknown name must not reject the recording.
+            let key = if sequence && !self.preview {
+                None
+            } else {
+                key(&input, self.preview)
+            };
+            let makecode = makecode(
+                key.and_then(|key| key.virtual_key.as_deref()?.parse().ok())
+                    .unwrap_or(input.virtual_key),
+            );
             let (pair, state) = if sequence {
                 (allocate()?, None)
-            } else if down {
-                if let Some(&(id, state)) = held_keys.get(&makecode).filter(|_| !self.preview) {
-                    repeat = true;
-                    (id, Some(state))
-                } else {
-                    let id = allocate()?;
-                    held_keys.insert(makecode, (id, flag));
-                    (id, Some(flag))
-                }
             } else {
-                let (id, flag) = held_keys
-                    .remove(&makecode)
-                    .map(Ok)
-                    .unwrap_or_else(|| allocate().map(|id| (id, flag)))?;
-                (id, Some(flag + 1))
+                let key = key.ok_or_else(|| {
+                    format!(
+                        "当前源键表无法识别录制按键：VK {}，Scan {}",
+                        input.virtual_key, input.scan_code
+                    )
+                })?;
+                let flag = key.output_flag.filter(|v| *v != 0).unwrap_or(key.flag);
+                if self.preview {
+                    if down {
+                        // le only folds consecutive state-0 keydowns in its live
+                        // view. Post-processing H folds every still-held key.
+                        if flag == 0 && self.previous_key == Some((makecode, 0)) {
+                            self.pending_key_delay += number(raw, "time")? / 1_000_000.;
+                            return Ok(());
+                        }
+                        self.previous_key = Some((makecode, flag));
+                        self.pending_key_delay = 0.;
+                    } else {
+                        self.previous_key = None;
+                    }
+                }
+                if down {
+                    if let Some(&(id, state)) = held_keys.get(&makecode).filter(|_| !self.preview) {
+                        repeat = true;
+                        (id, Some(state))
+                    } else {
+                        let id = allocate()?;
+                        held_keys.insert(makecode, (id, flag));
+                        (id, Some(flag))
+                    }
+                } else {
+                    let (id, flag) = held_keys
+                        .remove(&makecode)
+                        .map(Ok)
+                        .unwrap_or_else(|| allocate().map(|id| (id, flag)))?;
+                    (id, Some(flag + 1))
+                }
             };
             item = ActionItem::new(ActionKind::Keyboard);
-            item.value = key.name.clone();
+            if let Some(key) = key {
+                item.value = key.name.clone();
+            }
             item.keyboard = Some(KeyboardEvent {
                 pair_id: Some(pair),
                 makecode: Some(makecode),
                 state,
                 flag: state,
-                key_type: Some(key.key_type.clone()),
+                key_type: key.map(|key| key.key_type.clone()),
             });
         } else {
             let data = raw["data"].as_i64().unwrap_or(0);
@@ -765,6 +793,161 @@ mod shortcut_tests {
         let rows = decoder.finish(Some(StopCause::Shortcut)).unwrap();
         assert_eq!(rows.len(), 2);
         assert!(rows[1].mouse.is_some());
+    }
+}
+
+#[cfg(test)]
+mod sequence_tests {
+    use super::*;
+    use serde_json::json;
+
+    fn options() -> Options {
+        Options {
+            macro_type: MacroType::Sequence,
+            phase: None,
+            delay_mode: 3,
+            fixed: 0.,
+            random: [0., 0.],
+            next_pair: 1,
+            movement_mode: 0,
+            shortcut: Vec::new(),
+        }
+    }
+
+    fn release(tick: u64, virtual_key: u16, scan_code: u16, flags: u16) -> Value {
+        json!({"kind":"item","time_tick":tick,"received_at_ms":100+tick,
+            "event":[{"action":"keyup","vkCode":virtual_key,"scanCode":scan_code,"flags":flags,"time":1000}]})
+    }
+
+    #[test]
+    fn sequence_retains_unlisted_virtual_keys_in_the_draft_and_preview() {
+        // Current Rr converts the native VK directly; le keeps it when its
+        // scan/VK name lookup misses. These VKs are absent from that key table.
+        for preview in [false, true] {
+            let options = options();
+            let mut decoder = if preview {
+                Decoder::for_preview(&options)
+            } else {
+                Decoder::new(&options)
+            };
+            for (index, virtual_key) in [21, 25, 231, 250].into_iter().enumerate() {
+                decoder
+                    .push(&release(index as u64 + 1, virtual_key, 0, 128))
+                    .unwrap();
+            }
+            let rows = decoder.finish(None).unwrap();
+            let keys: Vec<_> = rows
+                .iter()
+                .map(|row| row.keyboard.as_ref().unwrap())
+                .collect();
+            assert_eq!(
+                keys.iter().map(|key| key.makecode).collect::<Vec<_>>(),
+                [Some(21), Some(25), Some(231), Some(250)]
+            );
+            assert!(
+                keys.iter()
+                    .all(|key| key.state.is_none() && key.flag.is_none() && key.key_type.is_none())
+            );
+            assert!(
+                keys.windows(2)
+                    .all(|pair| pair[0].pair_id != pair[1].pair_id)
+            );
+            assert!(
+                rows.iter()
+                    .all(|row| row.recorded_input.is_some() != preview)
+            );
+        }
+    }
+
+    #[test]
+    fn sequence_applies_native_modifier_and_numpad_conversion_without_a_key_type() {
+        // 13139.y and 62141.C/M define these conversions before Rr stores the
+        // Sequence Makecode. The Sequence template leaves State and Type unset.
+        let mut decoder = Decoder::new(&options());
+        for (tick, virtual_key, scan_code, flags) in [
+            (1, 162, 29, 128),
+            (2, 163, 29, 129),
+            (3, 160, 42, 128),
+            (4, 161, 54, 128),
+            (5, 164, 56, 128),
+            (6, 165, 56, 129),
+            (7, 45, 82, 128),
+            (8, 45, 82, 129),
+        ] {
+            decoder
+                .push(&release(tick, virtual_key, scan_code, flags))
+                .unwrap();
+        }
+        let rows = decoder.finish(None).unwrap();
+        let keys: Vec<_> = rows
+            .iter()
+            .map(|row| row.keyboard.as_ref().unwrap())
+            .collect();
+        assert_eq!(
+            keys.iter().map(|key| key.makecode).collect::<Vec<_>>(),
+            [
+                Some(17),
+                Some(285),
+                Some(16),
+                Some(310),
+                Some(18),
+                Some(312),
+                Some(96),
+                Some(45)
+            ]
+        );
+        assert!(
+            keys.iter()
+                .all(|key| key.state.is_none() && key.flag.is_none() && key.key_type.is_none())
+        );
+    }
+
+    #[test]
+    fn sequence_still_rejects_malformed_native_key_fields() {
+        for preview in [false, true] {
+            for field in ["vkCode", "scanCode", "flags"] {
+                for value in [None, Some(json!(-1)), Some(json!(1.5))] {
+                    let mut event = release(1, 231, 0, 128);
+                    let raw = event["event"][0].as_object_mut().unwrap();
+                    if let Some(value) = value {
+                        raw.insert(field.into(), value);
+                    } else {
+                        raw.remove(field);
+                    }
+                    let options = options();
+                    let mut decoder = if preview {
+                        Decoder::for_preview(&options)
+                    } else {
+                        Decoder::new(&options)
+                    };
+                    assert!(decoder.push(&event).is_err(), "{field}: {event}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn standard_recording_still_requires_a_resolved_key_and_pairs_known_keys() {
+        let mut options = options();
+        options.macro_type = MacroType::Standard;
+        let mut decoder = Decoder::new(&options);
+        assert!(decoder.push(&release(1, 231, 0, 128)).is_err());
+
+        let mut decoder = Decoder::new(&options);
+        decoder
+            .push(&json!({"kind":"item","time_tick":1,"received_at_ms":101,
+                "event":[{"action":"keydown","vkCode":65,"scanCode":30,"flags":0,"time":1000}]}))
+            .unwrap();
+        decoder.push(&release(2, 65, 30, 128)).unwrap();
+        let rows = decoder.finish(None).unwrap();
+        let down = rows[0].keyboard.as_ref().unwrap();
+        let up = rows[1].keyboard.as_ref().unwrap();
+        assert_eq!(down.makecode, Some(65));
+        assert_eq!(up.makecode, Some(65));
+        assert_eq!(down.state, Some(0));
+        assert_eq!(up.state, Some(1));
+        assert_eq!(down.pair_id, up.pair_id);
+        assert!(down.key_type.is_some());
     }
 }
 

@@ -159,7 +159,13 @@ fn failed_live_service_keeps_source_build_metadata_and_explicit_failure() {
 #[test]
 #[ignore = "requires an audited installed local COM service; use tools/workspace.py"]
 fn direct_service_version_read_only() {
-    let report=query().unwrap();
-    println!("RAZER_VERSION_RESULT {}",serde_json::to_string(&report).unwrap());
-    assert!(matches!(report.elevation,ElevationVersion::Observed{..}));
+    let report = query().unwrap();
+    println!(
+        "RAZER_VERSION_RESULT {}",
+        serde_json::to_string(&report).unwrap()
+    );
+    assert!(matches!(
+        report.elevation,
+        ElevationVersion::Observed { .. }
+    ));
 }

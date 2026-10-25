@@ -143,7 +143,8 @@ impl ServiceRequest {
     /// operations acquire one lease around their entire start/poll/cleanup path.
     pub(crate) fn synchronous_device_task(&self) -> anyhow::Result<Option<Scope>> {
         if let Self::KeyboardProfileInventoryRead { target }
-            | Self::KeyboardOnboardProfilesRead { target, .. } = self {
+        | Self::KeyboardOnboardProfilesRead { target, .. } = self
+        {
             use crate::keyboard_profile_inventory::Target;
             target.validate()?;
             if let Self::KeyboardOnboardProfilesRead { options, .. } = self {

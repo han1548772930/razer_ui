@@ -319,7 +319,10 @@ fn execute_native_inner(
                 let observed = call(&mut report, transport, NativeOperation::GetMode, &validate);
                 if !observed.succeeded {
                     Vec::new()
-                } else if matches!(report.native_stages.last().and_then(|stage| stage.reply()), Some(NativeReply::Long(1))) {
+                } else if matches!(
+                    report.native_stages.last().and_then(|stage| stage.reply()),
+                    Some(NativeReply::Long(1))
+                ) {
                     report.source_skipped = Some(
                         "Source skips mic-monitor settings while stream mixer is enabled".into(),
                     );
@@ -625,11 +628,24 @@ mod tests {
     fn failed_mode_read_never_defaults_to_monitor_write_and_still_terminates() {
         let mut device = Simulated::new();
         device.throw = Some(NativeOperation::GetMode);
-        let report = execute_native(1422, &device, &Change::MonitorVolume(Level::new(true, 70.)), || Ok(())).unwrap();
+        let report = execute_native(
+            1422,
+            &device,
+            &Change::MonitorVolume(Level::new(true, 70.)),
+            || Ok(()),
+        )
+        .unwrap();
         assert!(!report.source_result());
         assert!(!report.confirmed());
         assert!(!report.setter_sent());
-        assert_eq!(*device.calls.lock().unwrap(), vec![NativeOperation::DeviceInitialize, NativeOperation::GetMode, NativeOperation::DeviceTerminate]);
+        assert_eq!(
+            *device.calls.lock().unwrap(),
+            vec![
+                NativeOperation::DeviceInitialize,
+                NativeOperation::GetMode,
+                NativeOperation::DeviceTerminate
+            ]
+        );
     }
     #[test]
     fn cancellation_before_next_native_mutation_still_terminates_original_owner() {

@@ -53,9 +53,9 @@ impl AppShell {
                     }
                 }
                 if let Some(key) = request.tutorial_storage_key() {
-                    match razer_storage::source_local::path().and_then(|path| {
-                        razer_storage::source_local::get(&path, &key)
-                    }) {
+                    match razer_storage::source_local::path()
+                        .and_then(|path| razer_storage::source_local::get(&path, &key))
+                    {
                         Ok(value) => {
                             workspace.update(cx, |workspace, cx| {
                                 workspace.observe_help_tutorial_dismissal(request, value, cx)
@@ -70,9 +70,9 @@ impl AppShell {
                     }
                 }
                 if let Some(key) = request.whats_new_storage_key() {
-                    match razer_storage::source_local::path().and_then(|path| {
-                        razer_storage::source_local::get(&path, key)
-                    }) {
+                    match razer_storage::source_local::path()
+                        .and_then(|path| razer_storage::source_local::get(&path, key))
+                    {
                         Ok(value) => {
                             workspace.update(cx, |workspace, cx| {
                                 workspace.observe_help_whats_new_dismissal(request, value, cx)
@@ -90,9 +90,9 @@ impl AppShell {
             HelpOwnerCommand::DismissTutorial => {
                 let mut persisted = true;
                 for (key, value) in request.tutorial_storage_writes() {
-                    if let Err(error) = razer_storage::source_local::path().and_then(|path| {
-                        razer_storage::source_local::set(&path, &key, &value)
-                    }) {
+                    if let Err(error) = razer_storage::source_local::path()
+                        .and_then(|path| razer_storage::source_local::set(&path, &key, &value))
+                    {
                         eprintln!(
                             "[help-tutorial] source local preference write failed: {error:#}"
                         );
@@ -101,9 +101,8 @@ impl AppShell {
                     }
                 }
                 if let Some((key, _)) = request.tutorial_storage_write().filter(|_| persisted) {
-                    let result = razer_storage::source_local::path().and_then(|path| {
-                        razer_storage::source_local::get(&path, &key)
-                    });
+                    let result = razer_storage::source_local::path()
+                        .and_then(|path| razer_storage::source_local::get(&path, &key));
                     match result {
                         Ok(value) => {
                             workspace.update(cx, |workspace, cx| {

@@ -268,4 +268,3 @@ impl AppShell {
         Ok(())
     }
 }
-

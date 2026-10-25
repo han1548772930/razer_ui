@@ -1,9 +1,6 @@
 //! CmMixerLib current CBD0/D290 endpoint branch. Select exact native jack type
 //! through 6F90/9050/6EE0 topology; never choose an OS default audio device.
-use super::{
-    mixer_driver,
-    mixer_meter::Apartment,
-};
+use super::{mixer_driver, mixer_meter::Apartment};
 use crate::audio_util::windows::{Com, endpoint_container};
 use anyhow::{Context as _, ensure};
 use razer_device::{audio_mixer::MixerValue, backend::HidNode};

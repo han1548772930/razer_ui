@@ -201,10 +201,9 @@ impl AppShell {
                     .profiles
                     .iter()
                     .map(|source| -> anyhow::Result<_> {
-                        let mut settings = source
-                            .source_settings
-                            .clone()
-                            .context("Keyboard macro synchronization source profile has not been read")?;
+                        let mut settings = source.source_settings.clone().context(
+                            "Keyboard macro synchronization source profile has not been read",
+                        )?;
                         settings["guid"] = serde_json::json!(source.guid);
                         Ok(settings)
                     })

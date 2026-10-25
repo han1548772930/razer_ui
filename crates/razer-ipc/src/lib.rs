@@ -23,8 +23,8 @@ pub mod device_tasks;
 pub mod gamepad_observation;
 pub mod global_shortcut_capture;
 pub mod input_observation;
-pub mod keyboard_profile_inventory;
 pub mod keyboard_onboard_profiles;
+pub mod keyboard_profile_inventory;
 pub mod macro_recording;
 pub mod mapping_control;
 pub mod mapping_observation;
@@ -1429,9 +1429,11 @@ impl ServiceClient {
             &request,
             ServiceRequest::HidNodeLeviathan { command, .. } | ServiceRequest::DeviceLeviathan { command, .. } if !command.is_read()
         );
-        let reading_keyboard_inventory =
-            matches!(request, ServiceRequest::KeyboardProfileInventoryRead { .. }
-                | ServiceRequest::KeyboardOnboardProfilesRead { .. });
+        let reading_keyboard_inventory = matches!(
+            request,
+            ServiceRequest::KeyboardProfileInventoryRead { .. }
+                | ServiceRequest::KeyboardOnboardProfilesRead { .. }
+        );
         let reading_device = matches!(
             request,
             ServiceRequest::DeviceRead { .. }

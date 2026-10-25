@@ -167,24 +167,58 @@ fn interdevice_otfs_uses_source_scroll_controls_without_changing_saved_profiles(
     let original = ordinary.clone();
     let temporary = interdevice_otfs_document(&ordinary).unwrap();
     assert_eq!(ordinary, original);
-    for field in ["version", "defaultTurbos", "synapseTurbos", "deviceMetadatas", "unknown-extension"] {
+    for field in [
+        "version",
+        "defaultTurbos",
+        "synapseTurbos",
+        "deviceMetadatas",
+        "unknown-extension",
+    ] {
         assert_eq!(temporary[field], ordinary[field]);
     }
-    assert_eq!(temporary["profiles"][0]["mappings"], ordinary["profiles"][0]["mappings"]);
+    assert_eq!(
+        temporary["profiles"][0]["mappings"],
+        ordinary["profiles"][0]["mappings"]
+    );
     assert_eq!(temporary["profiles"][1], ordinary["profiles"][1]);
-    let mappings = temporary["profiles"][0]["appEngine"]["mappings"].as_array().unwrap();
-    assert!(mappings.iter().all(|mapping| mapping["input"]["otfs"] != true));
-    let up = mappings.iter().find(|mapping| mapping["input"]["id"] == 1024 && mapping["input"]["data"] == 120).unwrap();
-    let down = mappings.iter().find(|mapping| mapping["input"]["id"] == 1024 && mapping["input"]["data"] == 65416).unwrap();
+    let mappings = temporary["profiles"][0]["appEngine"]["mappings"]
+        .as_array()
+        .unwrap();
+    assert!(
+        mappings
+            .iter()
+            .all(|mapping| mapping["input"]["otfs"] != true)
+    );
+    let up = mappings
+        .iter()
+        .find(|mapping| mapping["input"]["id"] == 1024 && mapping["input"]["data"] == 120)
+        .unwrap();
+    let down = mappings
+        .iter()
+        .find(|mapping| mapping["input"]["id"] == 1024 && mapping["input"]["data"] == 65416)
+        .unwrap();
     assert_eq!(up["output"]["type"], "sensitivity");
-    assert_eq!(up["output"]["sensitivityGroup"],
-        json!({"sensitivityAssignment":"DPI_Value_Up","value":50,"independent":false}));
-    assert_eq!(down["output"]["sensitivityGroup"],
-        json!({"sensitivityAssignment":"DPI_Value_Down","value":50,"independent":false}));
-    assert!(!mappings.iter().any(|mapping| mapping["output"]["type"] == "keyboard"));
-    assert_eq!(temporary["profiles"][0]["defaultMappings"], temporary["defaultMappings"]["appEngine"]);
-    assert_eq!(temporary["profiles"][0]["appEngine"]["hash"],
-        source_hash(&temporary["profiles"][0]["appEngine"]).unwrap());
+    assert_eq!(
+        up["output"]["sensitivityGroup"],
+        json!({"sensitivityAssignment":"DPI_Value_Up","value":50,"independent":false})
+    );
+    assert_eq!(
+        down["output"]["sensitivityGroup"],
+        json!({"sensitivityAssignment":"DPI_Value_Down","value":50,"independent":false})
+    );
+    assert!(
+        !mappings
+            .iter()
+            .any(|mapping| mapping["output"]["type"] == "keyboard")
+    );
+    assert_eq!(
+        temporary["profiles"][0]["defaultMappings"],
+        temporary["defaultMappings"]["appEngine"]
+    );
+    assert_eq!(
+        temporary["profiles"][0]["appEngine"]["hash"],
+        source_hash(&temporary["profiles"][0]["appEngine"]).unwrap()
+    );
 }
 
 #[test]

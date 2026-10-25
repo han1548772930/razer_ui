@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 
 import ida_auto
 import ida_bytes
+import ida_frame
 import ida_funcs
 import ida_gdl
 import ida_hexrays
@@ -32,6 +33,1058 @@ import ida_ua
 import idaapi
 import idautils
 import idc
+
+
+def _static_diagnostic_error(record, stage, error):
+    """Keep diagnostic exceptions as bounded text, never traceback/proxy objects."""
+    try:
+        message = type(error).__name__ + ": " + str(error)
+    except Exception:
+        message = type(error).__name__
+    errors = record.setdefault("diagnostic_errors", [])
+    if len(errors) < 4:
+        errors.append({"stage": stage, "error": message[:2048]})
+    else:
+        record["diagnostic_errors_truncated"] = True
+    if len(message) > 2048:
+        record["diagnostic_errors_truncated"] = True
+
+
+class _FrozenInsnVisitor(ida_hexrays.minsn_visitor_t):
+    def __init__(self, mba, block, trace, row):
+        super().__init__(mba, block)
+        self.trace, self.row = trace, row
+
+    def visit_minsn(self):
+        trace, row = self.trace, self.row
+        if (len(row["instructions"]) >= trace.limits["instructions_per_event"]
+                or trace.instruction_records >= trace.limits["instructions_total"]):
+            trace._truncate(row, "instruction_records")
+            # Stop only this read-only visitor, never the Hex-Rays callback.
+            return 1
+        item = {"mapping_status": "unobserved"}
+        row["instructions"].append(item)
+        trace.instruction_records += 1
+        try:
+            insn = self.curins
+            address = int(insn.ea)
+            item.update(ea=hex(address), opcode=int(insn.opcode))
+        except Exception as error:
+            trace._error(row, item, "instruction_identity", error)
+            return 0
+        try:
+            mapped = int(self.mba.map_fict_ea(address))
+            item.update(api_mapped_ea=hex(mapped),
+                        mapping_status="badaddr" if mapped == idaapi.BADADDR else "api_returned")
+        except Exception as error:
+            item["mapping_status"] = "diagnostic_error"
+            trace._error(row, item, "map_fict_ea", error)
+        try:
+            trace._text(row, item, "text", str(insn.dstr()), "instruction_text")
+        except Exception as error:
+            trace._error(row, item, "instruction_text", error)
+        try:
+            block = self.blk
+            if block is not None:
+                flags = int(block.flags)
+                item.update(block=int(block.serial), block_flags=flags,
+                            inlined=bool(flags & ida_hexrays.MBL_INLINED),
+                            external_frame=bool(flags & ida_hexrays.MBL_EXTFRAME))
+        except Exception as error:
+            trace._error(row, item, "instruction_block", error)
+        try:
+            item["operands"] = trace._instruction_operands(row, insn, self.mba)
+            item["stack_point_queries"] = trace._instruction_stack_points(row, item, self.mba)
+            if self.blk is not None:
+                trace._capture_block(row, self.blk)
+        except Exception as error:
+            trace._error(row, item, "instruction_coordinates", error)
+        try:
+            if (item["opcode"] in (ida_hexrays.m_call, ida_hexrays.m_icall)
+                    or row.get("block_tail_ea") == item["ea"]):
+                trace._capture_call(row, item, insn, self.mba)
+        except Exception as error:
+            trace._error(row, item, "call_observation", error)
+        return 0
+
+
+class StaticMicrocodeTrace(ida_hexrays.Hexrays_Hooks):
+    """Copy bounded static observations while each callback's MBA is alive."""
+    DEFAULT_LIMITS = {"events": 128, "instructions_per_event": 4096,
+                      "instructions_total": 32768, "text_characters": 2048,
+                      "text_characters_total": 1048576, "inline_ranges": 256, "owner_chunks": 256,
+                      "calls_per_event": 64, "calls_total": 256, "types_total": 768,
+                      "arguments_per_type": 32, "arguments_total": 2048,
+                      "argloc_parts": 16, "argloc_depth": 2, "argloc_records_total": 4096,
+                      "function_owners": 32, "operand_depth": 4, "operand_records_total": 65536,
+                      "stack_points_per_event": 1024, "stack_points_total": 32768,
+                      "blocks_per_event": 512, "blocks_total": 8192, "cfg_edges": 256,
+                      "inline_context_depth": 16, "probe_heads": 512, "mba_objects_per_event": 64}
+    FRAME_FIELDS = ("frsize", "frregs", "fpd", "fullsize", "stacksize", "inargoff", "minstkref",
+                    "tmpstk_size", "retsize", "spd_adjust")
+
+    def __init__(self, target_ea):
+        super().__init__()
+        self.target_ea = int(target_ea)
+        self.limits = dict(self.DEFAULT_LIMITS)
+        self.active = False
+        self.events = []
+        self.callbacks_seen = self.instruction_records = self.diagnostic_error_count = 0
+        self.dropped_events = 0
+        self.call_records = self.type_records = self.argument_records = self.argloc_records = self.text_characters = 0
+        self.operand_records = self.stack_point_records = self.block_records = 0
+        self.inline_contexts = []
+        self.inline_context_overflow = 0
+        self._mba_indexes, self._point_indexes, self._block_indexes = {}, {}, {}
+        self.truncation = {key: False for key in (
+            "event_records", "instruction_records", "instruction_text", "inline_ranges", "owner_chunks",
+            "call_records", "type_records", "argument_records", "argloc_parts", "argloc_depth",
+            "argloc_records", "function_owners", "detail_text", "operand_records", "operand_depth",
+            "stack_point_records", "block_records", "cfg_edges", "inline_context_depth", "probe_heads", "mba_objects")}
+
+    def _event(self, phase):
+        if not self.active:
+            return None
+        sequence = self.callbacks_seen
+        self.callbacks_seen += 1
+        if len(self.events) >= self.limits["events"]:
+            self.dropped_events += 1
+            self.truncation["event_records"] = True
+            return None
+        row = {"phase": phase, "target_ea": hex(self.target_ea), "sequence": sequence,
+               "instructions": [], "complete": True, "truncated": []}
+        if self.inline_contexts and not self.inline_context_overflow:
+            # Contexts contain frozen scalars/lists only and are never mutated.
+            row["inline_context"] = dict(self.inline_contexts[-1])
+        elif self.inline_context_overflow:
+            row["inline_context_status"] = "depth_limit"
+            self._truncate(row, "inline_context_depth")
+        self.events.append(row)
+        return row
+
+    def _truncate(self, row, kind):
+        self.truncation[kind] = True
+        row["complete"] = False
+        if kind not in row["truncated"]:
+            row["truncated"].append(kind)
+
+    def _error(self, row, record, stage, error):
+        row["complete"] = False
+        self.diagnostic_error_count += 1
+        _static_diagnostic_error(record, stage, error)
+
+    def _text(self, row, record, key, value, kind="detail_text"):
+        if not isinstance(value, str):
+            raise TypeError("SDK formatter did not return text")
+        available = max(0, self.limits["text_characters_total"] - self.text_characters)
+        text = value[:min(self.limits["text_characters"], available)]
+        record[key] = text
+        self.text_characters += len(text)
+        if len(text) < len(value):
+            record[key + "_truncated"] = True
+            self._truncate(row, kind)
+
+    def _type_text(self, row, record, key, tif):
+        try:
+            self._text(row, record, key, ida_typeinf.print_tinfo(
+                "", 0, 0, ida_typeinf.PRTYPE_1LINE, tif, "", ""))
+        except Exception as error:
+            self._error(row, record, key, error)
+
+    def _scalar_fields(self, row, source, names, stage):
+        values = {}
+        for name in names:
+            value = {"status": "unobserved"}
+            values[name] = value
+            try:
+                value.update(status="api_returned", value=int(getattr(source, name)))
+            except AttributeError as error:
+                value["reason"] = "sdk_attribute_unavailable"
+                self._error(row, value, stage + "." + name, error)
+            except Exception as error:
+                value["status"] = "diagnostic_error"
+                self._error(row, value, stage + "." + name, error)
+        return values
+
+    def _mba_reference(self, row, mba, observed_mba):
+        """Copy MBA identity/frame metadata without retaining a SWIG proxy."""
+        values = row.setdefault("mba_objects", [])
+        indexes = self._mba_indexes.setdefault(row["sequence"], {})
+        token = None
+        same = {"status": "unobserved"}
+        try:
+            # SWIG's scalar address conversion is used only for equality/dedup.
+            token = int(mba.this)
+            same.update(status="api_returned", value=token == int(observed_mba.this))
+        except Exception as error:
+            self._error(row, same, "mba_identity", error)
+        if token is not None and token in indexes:
+            return indexes[token]
+        if len(values) >= self.limits["mba_objects_per_event"]:
+            self._truncate(row, "mba_objects")
+            return None
+        index = len(values)
+        value = {"reference": index, "same_as_observed_mba": same}
+        values.append(value)
+        if token is not None:
+            indexes[token] = index
+        try:
+            value["entry_ea"] = hex(int(mba.entry_ea))
+            owner = mba.mbr.pfn
+            value["function_owner_ea"] = None if owner is None else hex(int(owner.start_ea))
+        except Exception as error:
+            self._error(row, value, "mba_owner", error)
+        value["frame"] = (row["mba_frame"] if same.get("value") is True and "mba_frame" in row
+                          else self._scalar_fields(row, mba, self.FRAME_FIELDS, "operand_mba_frame"))
+        return index
+
+    def _operand(self, row, operand, mba, depth=0):
+        value = {"status": "unobserved"}
+        if self.operand_records >= self.limits["operand_records_total"]:
+            value["reason"] = "operand_record_limit"
+            self._truncate(row, "operand_records")
+            return value
+        self.operand_records += 1
+        try:
+            kind = int(operand.t)
+            value.update(status="observed", kind=kind, size=int(operand.size))
+            if kind == ida_hexrays.mop_S:
+                reference = operand.s
+                if reference is None or reference.mba is None:
+                    raise ValueError("stack operand has no owning MBA")
+                owner = reference.mba
+                offset = int(reference.off)
+                value["stack"] = {"decompiler_offset": offset,
+                                  "mba_reference": self._mba_reference(row, owner, mba)}
+                conversion = {"status": "unobserved"}
+                value["stack"]["coordinate_conversion"] = conversion
+                try:
+                    ida_offset = int(owner.stkoff_vd2ida(offset))
+                    conversion.update(ida_offset=ida_offset)
+                    returned = int(owner.stkoff_ida2vd(ida_offset))
+                    conversion.update(status="api_returned", roundtrip_decompiler_offset=returned,
+                                      roundtrip_matches=returned == offset)
+                except Exception as error:
+                    conversion["status"] = "diagnostic_error"
+                    self._error(row, conversion, "stack_coordinate_conversion", error)
+            elif kind == ida_hexrays.mop_r:
+                register = int(operand.r)
+                value["register"] = register
+                self._text(row, value, "register_name", ida_hexrays.get_mreg_name(register, int(operand.size)))
+            elif kind == ida_hexrays.mop_n:
+                value.update(unsigned_value=int(operand.unsigned_value()), signed_value=int(operand.signed_value()))
+            elif kind in (ida_hexrays.mop_a, ida_hexrays.mop_d):
+                if depth >= self.limits["operand_depth"]:
+                    value.update(status="truncated", reason="operand_depth_limit")
+                    self._truncate(row, "operand_depth")
+                elif kind == ida_hexrays.mop_a:
+                    # mop_addr_t derives from mop_t; its own tag selects data.
+                    address = operand.a
+                    if address is None:
+                        raise ValueError("address operand has no tagged operand")
+                    value["address_operand"] = self._operand(row, address, mba, depth + 1)
+                else:
+                    nested = operand.d
+                    if nested is None:
+                        raise ValueError("nested operand has no instruction")
+                    value["instruction"] = {"ea": hex(int(nested.ea)), "opcode": int(nested.opcode),
+                        "operands": self._instruction_operands(row, nested, mba, depth + 1)}
+        except Exception as error:
+            value["status"] = "diagnostic_error"
+            self._error(row, value, "microcode_operand", error)
+        return value
+
+    def _instruction_operands(self, row, instruction, mba, depth=0):
+        values = {}
+        for name in ("l", "r", "d"):
+            try:
+                values[name] = self._operand(row, getattr(instruction, name), mba, depth)
+            except Exception as error:
+                values[name] = {"status": "diagnostic_error"}
+                self._error(row, values[name], "instruction_operand." + name, error)
+        return values
+
+    def _stack_point(self, row, mba, address):
+        values = row.setdefault("stack_points", [])
+        reference = self._mba_reference(row, mba, mba)
+        if reference is None:
+            return {"status": "unobserved", "reason": "mba_object_record_limit"}
+        key = (reference, address)
+        indexes = self._point_indexes.setdefault(row["sequence"], {})
+        if key in indexes:
+            return {"status": "recorded", "record": indexes[key]}
+        if (len(values) >= self.limits["stack_points_per_event"]
+                or self.stack_point_records >= self.limits["stack_points_total"]):
+            self._truncate(row, "stack_point_records")
+            return {"status": "unobserved", "reason": "stack_point_record_limit"}
+        index = len(values)
+        indexes[key] = index
+        value = {"query_ea": hex(address), "mba_reference": reference, "status": "unobserved",
+                 "source": "live_mba.locate_stkpnt"}
+        values.append(value)
+        self.stack_point_records += 1
+        try:
+            point = mba.locate_stkpnt(address)
+            if point is None:
+                value["reason"] = "locate_stkpnt_returned_null"
+            else:
+                point_ea = int(point.ea)
+                value.update(status="api_returned", point_ea=hex(point_ea), spd=int(point.spd),
+                             point_ea_matches_query=point_ea == address)
+        except Exception as error:
+            value["status"] = "diagnostic_error"
+            self._error(row, value, "live_mba_stack_point", error)
+        return {"status": "recorded", "record": index}
+
+    def _instruction_stack_points(self, row, item, mba):
+        value = {"instruction_ea": self._stack_point(row, mba, int(item["ea"], 16))}
+        if item.get("mapping_status") == "api_returned":
+            value["mapped_original_ea"] = self._stack_point(row, mba, int(item["api_mapped_ea"], 16))
+        else:
+            value["mapped_original_ea"] = {"status": "unobserved", "reason": "no_api_mapped_address"}
+        return value
+
+    def _mapped_address(self, row, mba, address):
+        value = {"ea": hex(address), "mapping_status": "unobserved"}
+        try:
+            mapped = int(mba.map_fict_ea(address))
+            value.update(api_mapped_ea=hex(mapped),
+                         mapping_status="badaddr" if mapped == idaapi.BADADDR else "api_returned")
+        except Exception as error:
+            value["mapping_status"] = "diagnostic_error"
+            self._error(row, value, "map_block_address", error)
+        return value
+
+    def _capture_block(self, row, block):
+        values = row.setdefault("blocks", [])
+        indexes = self._block_indexes.setdefault(row["sequence"], set())
+        serial = int(block.serial)
+        if serial in indexes:
+            return
+        if len(values) >= self.limits["blocks_per_event"] or self.block_records >= self.limits["blocks_total"]:
+            self._truncate(row, "block_records")
+            return
+        indexes.add(serial)
+        self.block_records += 1
+        value = {"serial": serial, "flags": int(block.flags), "maxbsp": int(block.maxbsp)}
+        values.append(value)
+        for field in ("head", "tail"):
+            instruction = getattr(block, field)
+            value[field] = None if instruction is None else self._mapped_address(row, block.mba, int(instruction.ea))
+        for field, count_api, item_api in (("predecessors", block.npred, block.pred),
+                                            ("successors", block.nsucc, block.succ)):
+            count = int(count_api())
+            value[field + "_count"] = count
+            value[field] = [int(item_api(index)) for index in range(min(count, self.limits["cfg_edges"]))]
+            if count > self.limits["cfg_edges"]:
+                self._truncate(row, "cfg_edges")
+
+    def _range_probe_heads(self, row, ranges):
+        addresses, seen = [], set()
+        visited = 0
+        for interval in ranges:
+            start, stop = int(interval["start"], 16), int(interval["end"], 16)
+            for address in idautils.Heads(start, stop):
+                if visited >= self.limits["probe_heads"]:
+                    self._truncate(row, "probe_heads")
+                    return addresses
+                visited += 1
+                address = int(address)
+                if address in seen:
+                    continue
+                seen.add(address)
+                addresses.append(address)
+        return addresses
+
+    def _capture_early_stack_points(self, row, mba):
+        probes = []
+        row["range_stack_point_queries"] = probes
+        try:
+            mbr = mba.mbr
+            if mbr.pfn is not None:
+                ranges = []
+                for index, (start, stop) in enumerate(idautils.Chunks(int(mbr.pfn.start_ea))):
+                    if index >= self.limits["owner_chunks"]:
+                        self._truncate(row, "owner_chunks")
+                        break
+                    ranges.append({"start": hex(int(start)), "end": hex(int(stop))})
+            else:
+                ranges = []
+                for index, interval in enumerate(mbr.ranges):
+                    if index >= self.limits["inline_ranges"]:
+                        self._truncate(row, "inline_ranges")
+                        break
+                    ranges.append({"start": hex(int(interval.start_ea)), "end": hex(int(interval.end_ea))})
+            row["mba_probe_ranges"] = ranges
+            for address in self._range_probe_heads(row, ranges):
+                probes.append({"role": "current_mba_range_head", "ea": hex(address),
+                               "query": self._stack_point(row, mba, address)})
+            context = row.get("inline_context", {})
+            for address in context.get("probe_eas", []):
+                probes.append({"role": "active_inline_original_head", "ea": address,
+                               "query": self._stack_point(row, mba, int(address, 16))})
+            source = context.get("source_call", {})
+            for field in ("ea", "api_mapped_ea"):
+                if source.get(field) is not None and source[field] != hex(idaapi.BADADDR):
+                    probes.append({"role": "active_inline_source_" + field, "ea": source[field],
+                                   "query": self._stack_point(row, mba, int(source[field], 16))})
+        except Exception as error:
+            self._error(row, row, "early_stack_points", error)
+
+    def _argloc(self, row, location, depth=0):
+        value = {"status": "unobserved"}
+        if self.argloc_records >= self.limits["argloc_records_total"]:
+            value["reason"] = "argloc_record_limit"
+            self._truncate(row, "argloc_records")
+            return value
+        self.argloc_records += 1
+        try:
+            value["atype"] = int(location.atype())
+            if location.is_badloc():
+                value["reason"] = "no_location"
+            elif location.is_reg1():
+                value.update(status="observed", kind="register", register=int(location.reg1()),
+                             register_offset=int(location.regoff()))
+            elif location.is_reg2():
+                value.update(status="observed", kind="register_pair", register=int(location.reg1()),
+                             second_register=int(location.reg2()))
+            elif location.is_stkoff():
+                value.update(status="observed", kind="stack", stack_offset=int(location.stkoff()))
+            elif location.is_ea():
+                value.update(status="observed", kind="static_address", address=hex(int(location.get_ea())))
+            elif location.is_rrel():
+                relative = location.get_rrel()
+                value.update(status="observed", kind="register_relative", register=int(relative.reg),
+                             offset=int(relative.off))
+            elif location.is_scattered():
+                value.update(status="observed", kind="scattered", parts=[])
+                if depth >= self.limits["argloc_depth"]:
+                    value["status"] = "truncated"
+                    self._truncate(row, "argloc_depth")
+                else:
+                    parts = location.scattered()
+                    count = int(parts.size())
+                    value["part_count"] = count
+                    for index in range(min(count, self.limits["argloc_parts"])):
+                        if self.argloc_records >= self.limits["argloc_records_total"]:
+                            value["status"] = "truncated"
+                            self._truncate(row, "argloc_records")
+                            break
+                        part = parts.at(index)
+                        item = self._argloc(row, part, depth + 1)
+                        item.update(argument_offset=int(part.off), size=int(part.size))
+                        value["parts"].append(item)
+                    if count > self.limits["argloc_parts"]:
+                        value["status"] = "truncated"
+                        self._truncate(row, "argloc_parts")
+            elif location.is_custom():
+                value["reason"] = "custom_location_payload_not_observed"
+            else:
+                value["reason"] = "unknown_location_kind"
+        except Exception as error:
+            value["status"] = "diagnostic_error"
+            self._error(row, value, "argument_location", error)
+        return value
+
+    def _arguments(self, row, vector, *, microcode=False, mba=None):
+        result = {"status": "unobserved", "arguments": []}
+        try:
+            count = int(vector.size())
+            result.update(status="observed", count=count)
+            available = max(0, self.limits["arguments_total"] - self.argument_records)
+            limit = min(count, self.limits["arguments_per_type"], available)
+            for index in range(limit):
+                value = {"index": index}
+                result["arguments"].append(value)
+                self.argument_records += 1
+                try:
+                    arg = vector.at(index)
+                    value["flags"] = int(arg.flags)
+                    self._text(row, value, "name", str(arg.name))
+                    self._type_text(row, value, "type", arg.type)
+                    value["location"] = self._argloc(row, arg.argloc)
+                    if microcode:
+                        address = int(arg.ea)
+                        value.update(initialized_ea=hex(address),
+                                     initialized_ea_status="unobserved" if address == idaapi.BADADDR else "api_returned",
+                                     mop_kind=int(arg.t), size=int(arg.size))
+                        self._text(row, value, "value_text", str(arg.dstr()))
+                        value["operand"] = self._operand(row, arg, mba)
+                except Exception as error:
+                    self._error(row, value, "argument", error)
+            if limit < count:
+                result["status"] = "truncated"
+                self._truncate(row, "argument_records")
+        except Exception as error:
+            result["status"] = "diagnostic_error"
+            self._error(row, result, "arguments", error)
+        return result
+
+    def _function_type(self, row, tif, mode):
+        value = {"status": "unobserved", "argloc_request": mode}
+        try:
+            details = ida_typeinf.func_type_data_t()
+            flags = ida_typeinf.GTD_NO_ARGLOCS if mode == "no_calculation" else ida_typeinf.GTD_CALC_ARGLOCS
+            if not tif.get_func_details(details, flags):
+                value["reason"] = "get_func_details_returned_false"
+                return value
+            value.update(status="observed", cc=int(details.cc), flags=int(details.flags),
+                         stack_arguments_size=int(details.stkargs))
+            self._type_text(row, value, "return_type", details.rettype)
+            value["return_location"] = self._argloc(row, details.retloc)
+            value["parameters"] = self._arguments(row, details)
+        except Exception as error:
+            value["status"] = "diagnostic_error"
+            self._error(row, value, "function_type_details", error)
+        return value
+
+    def _stored_type(self, row, address, operand=None):
+        value = {"status": "unobserved", "address": hex(address),
+                 "api": "ida_nalt.get_tinfo" if operand is None else "ida_nalt.get_op_tinfo"}
+        if operand is not None:
+            value["operand"] = operand
+        if self.type_records >= self.limits["types_total"]:
+            value["reason"] = "type_record_limit"
+            self._truncate(row, "type_records")
+            return value
+        self.type_records += 1
+        try:
+            tif = ida_typeinf.tinfo_t()
+            observed = (ida_nalt.get_tinfo(tif, address) if operand is None
+                        else ida_nalt.get_op_tinfo(tif, address, operand))
+            if not observed:
+                value["reason"] = "no_stored_tinfo"
+                return value
+            value["status"] = "observed_stored_tinfo"
+            self._type_text(row, value, "declaration", tif)
+            if tif.is_func():
+                value["kind"] = "function"
+                function = tif
+            elif tif.is_funcptr():
+                value["kind"] = "function_pointer"
+                function = tif.get_pointed_object()
+            else:
+                value["kind"] = "not_function"
+                return value
+            # NO_ARGLOCS can expose previously calculated locations. Keep both
+            # API requests separate; neither proves serialized argloc storage.
+            value["serialized_locations_verified"] = False
+            value["without_argloc_calculation"] = self._function_type(row, function, "no_calculation")
+            value["with_argloc_calculation"] = self._function_type(row, function, "calculate")
+        except Exception as error:
+            value["status"] = "diagnostic_error"
+            self._error(row, value, "stored_tinfo", error)
+        return value
+
+    def _owners_and_sp(self, row, address):
+        result = {"status": "unobserved", "owners": [], "owners_complete": False,
+                  "sp_source": "static_idb_analysis", "sp_delta_zero_means": "no_change_point_at_address"}
+        try:
+            primary = ida_funcs.get_func(address)
+            result["primary_owner_ea"] = None if primary is None else hex(int(primary.start_ea))
+            chunk = ida_funcs.get_fchunk(address)
+            if chunk is None:
+                result["reason"] = "no_function_chunk"
+                return result
+            result["chunk"] = {"start": hex(int(chunk.start_ea)), "end": hex(int(chunk.end_ea)),
+                               "flags": int(chunk.flags), "is_tail": bool(ida_funcs.is_func_tail(chunk))}
+            if result["chunk"]["is_tail"]:
+                parents = ida_funcs.func_parent_iterator_t()
+                if not parents.set(chunk):
+                    result["reason"] = "parent_iterator_rejected_chunk"
+                    return result
+                addresses = iter(parents)
+            else:
+                addresses = iter((int(chunk.start_ea),))
+            seen = set()
+            result["status"] = "observed"
+            for index, owner_ea in enumerate(addresses):
+                if index >= self.limits["function_owners"]:
+                    result["status"] = "truncated"
+                    self._truncate(row, "function_owners")
+                    break
+                owner_ea = int(owner_ea)
+                owner = {"owner_ea": hex(owner_ea), "status": "unobserved"}
+                result["owners"].append(owner)
+                try:
+                    if owner_ea in seen:
+                        raise ValueError("parent iterator repeated an owner")
+                    seen.add(owner_ea)
+                    function = ida_funcs.get_func(owner_ea)
+                    if function is None or int(function.start_ea) != owner_ea:
+                        raise ValueError("parent does not resolve to its function entry")
+                    number = int(ida_funcs.get_func_chunknum(function, address))
+                    owner.update(flags=int(function.flags), containing_chunk_number=number)
+                    if number < 0:
+                        raise ValueError("parent function does not contain the instruction")
+                    owner["status"] = "observed"
+                    owner["frame"] = self._scalar_fields(row, function,
+                        ("frame", "frsize", "frregs", "argsize", "fpd"), "owner_frame")
+                    for name, getter in (("spd_before", ida_frame.get_spd),
+                                         ("effective_spd", ida_frame.get_effective_spd),
+                                         ("sp_change_point_delta", ida_frame.get_sp_delta)):
+                        try:
+                            owner[name] = {"status": "api_returned", "value": int(getter(function, address))}
+                        except Exception as error:
+                            owner[name] = {"status": "diagnostic_error"}
+                            self._error(row, owner[name], name, error)
+                except Exception as error:
+                    owner["status"] = "diagnostic_error"
+                    self._error(row, owner, "function_owner", error)
+            else:
+                result["owners_complete"] = bool(result["owners"]) and all(
+                    owner["status"] == "observed" for owner in result["owners"])
+                if not result["owners"]:
+                    result.update(status="unobserved", reason="parent_iterator_returned_no_owners")
+        except Exception as error:
+            result["status"] = "diagnostic_error"
+            self._error(row, result, "owners_and_sp", error)
+        return result
+
+    def _original_call(self, row, item):
+        value = {"status": "unobserved", "source": "current_static_idb", "original_pe_validated": False}
+        if item.get("mapping_status") != "api_returned":
+            value["reason"] = "no_api_mapped_address"
+            return value
+        try:
+            address = int(item["api_mapped_ea"], 16)
+            value["address"] = hex(address)
+            if not ida_bytes.is_loaded(address) or not ida_bytes.is_code(ida_bytes.get_full_flags(address)):
+                value["reason"] = "mapped_address_is_not_loaded_code"
+                return value
+            if int(ida_bytes.get_item_head(address)) != address:
+                value["reason"] = "mapped_address_is_not_instruction_head"
+                return value
+            instruction = ida_ua.insn_t()
+            size = int(ida_ua.decode_insn(instruction, address))
+            if size <= 0:
+                value["reason"] = "decode_returned_zero"
+                return value
+            if int(instruction.ea) != address or int(instruction.size) != size or int(ida_bytes.get_item_size(address)) != size:
+                value["reason"] = "decoded_instruction_disagrees_with_idb_item"
+                return value
+            value.update(status="observed", size=size, itype=int(instruction.itype),
+                         is_call=bool(ida_idp.is_call_insn(instruction)))
+            value["function_context"] = self._owners_and_sp(row, address)
+            if not value["is_call"]:
+                value["call_operands"] = {"status": "unobserved", "reason": "mapped_instruction_is_not_call"}
+                return value
+            value["operands"] = []
+            for index in range(8):
+                op = instruction.ops[index]
+                kind = int(op.type)
+                if kind == ida_ua.o_void:
+                    break
+                operand = {"index": index, "n": int(op.n), "kind": kind, "dtype": int(op.dtype)}
+                value["operands"].append(operand)
+                operand["stored_tinfo"] = self._stored_type(row, address, int(op.n))
+                if kind in (ida_ua.o_near, ida_ua.o_far, ida_ua.o_mem):
+                    target = int(op.addr)
+                    role = "memory_slot" if kind == ida_ua.o_mem else "direct_callee"
+                    operand.update(address=hex(target), address_role=role)
+                    operand["address_stored_tinfo"] = self._stored_type(row, target)
+                    if kind == ida_ua.o_mem:
+                        operand["runtime_target"] = {"status": "unobserved", "reason": "memory_slot_not_dereferenced"}
+                elif kind == ida_ua.o_reg:
+                    operand["register"] = int(op.reg)
+                elif kind in (ida_ua.o_phrase, ida_ua.o_displ):
+                    operand["phrase"] = int(op.phrase)
+                    if kind == ida_ua.o_displ:
+                        operand["displacement"] = int(op.addr)
+        except Exception as error:
+            value["status"] = "diagnostic_error"
+            self._error(row, value, "original_instruction", error)
+        return value
+
+    def _microcode_callinfo(self, row, instruction, mba):
+        value = {"status": "unobserved"}
+        try:
+            destination = instruction.d
+            if int(destination.t) != ida_hexrays.mop_f:
+                value["reason"] = "callinfo_operand_not_present"
+                return value
+            info = destination.f
+            if info is None:
+                value["reason"] = "null_callinfo"
+                return value
+            value["status"] = "observed"
+            for name in ("call_spd", "stkargs_top", "cc", "solid_args"):
+                try:
+                    value[name] = int(getattr(info, name))
+                except Exception as error:
+                    self._error(row, value, name, error)
+            callee = int(info.callee)
+            value.update(callee=hex(callee), callee_status="unobserved" if callee == idaapi.BADADDR else "api_returned")
+            self._type_text(row, value, "return_type", info.return_type)
+            value["return_location"] = self._argloc(row, info.return_argloc)
+            value["parameters"] = self._arguments(row, info.args, microcode=True, mba=mba)
+        except Exception as error:
+            value["status"] = "diagnostic_error"
+            self._error(row, value, "microcode_callinfo", error)
+        return value
+
+    def _capture_call(self, row, item, instruction, mba):
+        count = row.get("call_records", 0)
+        if count >= self.limits["calls_per_event"] or self.call_records >= self.limits["calls_total"]:
+            item["callsite"] = {"status": "unobserved", "reason": "call_record_limit"}
+            self._truncate(row, "call_records")
+            return
+        row["call_records"] = count + 1
+        self.call_records += 1
+        item["callsite"] = {"original_instruction": self._original_call(row, item),
+                            "microcode_callinfo": self._microcode_callinfo(row, instruction, mba)}
+
+    def _capture_mba(self, row, mba, block=None, *, instructions=True):
+        visitor = None
+        try:
+            row["mba_entry_ea"] = hex(int(mba.entry_ea))
+            row["mba_maturity"] = int(mba.maturity)
+            row["mba_flags"] = int(mba.get_mba_flags())
+            row["mba_flags2"] = int(mba.get_mba_flags2())
+            row["has_outlines"] = bool(mba.has_outlines())
+        except Exception as error:
+            self._error(row, row, "mba_metadata", error)
+        row["mba_frame"] = self._scalar_fields(row, mba, self.FRAME_FIELDS, "mba_frame")
+        row["mba_boundaries"] = self._scalar_fields(row, mba,
+            ("last_prolog_ea", "first_epilog_ea"), "mba_boundaries")
+        row["observed_mba_reference"] = self._mba_reference(row, mba, mba)
+        if not instructions or row.get("inline_context"):
+            self._capture_early_stack_points(row, mba)
+        if not instructions:
+            return
+        try:
+            if block is not None:
+                row.update(observed_block=int(block.serial), block_tail_ea=hex(int(block.tail.ea)))
+            visitor = _FrozenInsnVisitor(mba, block, self, row)
+            result = block.for_all_insns(visitor) if block is not None else mba.for_all_insns(visitor)
+            if result != 0 and "instruction_records" not in row["truncated"]:
+                self._error(row, row, "instruction_visitor", ValueError("visitor returned a nonzero code"))
+        except Exception as error:
+            self._error(row, row, "instruction_visitor", error)
+        finally:
+            # Inherited mba/blk/curins/topins are borrowed; keep the visitor local
+            # and release it before returning control to the decompiler.
+            if visitor is not None:
+                del visitor
+
+    def _observe(self, phase, mba):
+        row = self._event(phase)
+        if row is not None:
+            self._capture_mba(row, mba)
+        return 0
+
+    def _inline_event(self, phase, cdg, block, mbr, first=None, stop=None):
+        row = self._event(phase)
+        if row is None:
+            return 0
+        value = {}
+        try:
+            value = {"source_block": int(block), "owner_ea": None, "owner_flags": None,
+                     "owner_chunks": [], "listed_ranges": []}
+            row["inline_event"] = value
+            for index, interval in enumerate(mbr.ranges):
+                if index >= self.limits["inline_ranges"]:
+                    self._truncate(row, "inline_ranges")
+                    break
+                value["listed_ranges"].append({"start": hex(int(interval.start_ea)), "end": hex(int(interval.end_ea))})
+            owner = mbr.pfn
+            if owner is not None:
+                address = int(owner.start_ea)
+                value.update(owner_ea=hex(address), owner_flags=int(owner.flags))
+                for index, (start, end) in enumerate(idautils.Chunks(address)):
+                    if index >= self.limits["owner_chunks"]:
+                        self._truncate(row, "owner_chunks")
+                        break
+                    value["owner_chunks"].append({"start": hex(int(start)), "end": hex(int(end))})
+            if first is not None:
+                value["inserted_block_interval"] = [int(first), int(stop)]
+            value["probe_eas"] = [hex(address) for address in self._range_probe_heads(
+                row, value["owner_chunks"] if owner is not None else value["listed_ranges"])]
+            source = cdg.mba.get_mblock(int(block))
+            if source is not None and source.tail is not None:
+                value["source_call"] = self._mapped_address(row, cdg.mba, int(source.tail.ea))
+        except Exception as error:
+            self._error(row, row, "inline_metadata", error)
+        closing = False
+        if phase == "inlining_func":
+            if self.inline_context_overflow or len(self.inline_contexts) >= self.limits["inline_context_depth"]:
+                self.inline_context_overflow += 1
+                row.pop("inline_context", None)
+                row["inline_context_status"] = "depth_limit"
+                self._truncate(row, "inline_context_depth")
+            else:
+                context = {"opening_sequence": row["sequence"], "source_block": int(block),
+                    "owner_ea": value.get("owner_ea"), "probe_eas": list(value.get("probe_eas", [])),
+                    "source_call": dict(value.get("source_call", {})), "depth": len(self.inline_contexts) + 1}
+                self.inline_contexts.append(context)
+                row["inline_context"] = dict(context)
+        elif self.inline_context_overflow:
+            self.inline_context_overflow -= 1
+        elif (self.inline_contexts and self.inline_contexts[-1]["source_block"] == int(block)
+                and self.inline_contexts[-1]["owner_ea"] == value.get("owner_ea")):
+            closing = True
+        else:
+            row.pop("inline_context", None)
+            row["inline_context_status"] = "unmatched_completion"
+        try:
+            self._capture_mba(row, cdg.mba)
+        except Exception as error:
+            self._error(row, row, "inline_mba", error)
+        finally:
+            if closing:
+                self.inline_contexts.pop()
+        return 0
+
+    def stkpnts(self, mba, _sps):
+        row = self._event("stkpnts")
+        if row is not None:
+            # stkpnts_t is opaque in the installed Python API. Never cast it.
+            row["stack_points_payload"] = {"status": "unobserved", "reason": "opaque_sdk_stkpnts"}
+            try:
+                self._capture_mba(row, mba, instructions=False)
+            except Exception as error:
+                self._error(row, row, "stkpnts_mba", error)
+        return 0
+
+    def prolog(self, mba, fc, reachable_blocks, decomp_flags):
+        row = self._event("prolog")
+        if row is not None:
+            try:
+                row["decompilation_flags"] = int(decomp_flags)
+                # Microcode/CFG is not yet generated; observe only public scalars.
+                self._capture_mba(row, mba, instructions=False)
+            except Exception as error:
+                self._error(row, row, "prolog_mba", error)
+        return 0
+
+    def microcode(self, mba):
+        return self._observe("microcode", mba)
+
+    def preoptimized(self, mba):
+        return self._observe("preoptimized", mba)
+
+    def locopt(self, mba):
+        return self._observe("locopt", mba)
+
+    def resolve_stkaddrs(self, mba):
+        return self._observe("resolve_stkaddrs", mba)
+
+    def calls_done(self, mba):
+        return self._observe("calls_done", mba)
+
+    def build_callinfo(self, blk, out_type):
+        row = self._event("build_callinfo")
+        if row is not None:
+            try:
+                self._capture_mba(row, blk.mba, block=blk)
+            except Exception as error:
+                self._error(row, row, "callinfo_mba", error)
+        # The output type stays untouched and no custom callinfo is supplied.
+        return None
+
+    def callinfo_built(self, blk):
+        row = self._event("callinfo_built")
+        if row is not None:
+            try:
+                self._capture_mba(row, blk.mba, block=blk)
+            except Exception as error:
+                self._error(row, row, "callinfo_mba", error)
+        return 0
+
+    def inlining_func(self, cdg, blk, mbr):
+        return self._inline_event("inlining_func", cdg, blk, mbr)
+
+    def inlined_func(self, cdg, blk, mbr, i1, i2):
+        return self._inline_event("inlined_func", cdg, blk, mbr, i1, i2)
+
+    def maturity(self, cfunc, new_maturity):
+        row = self._event("ctree_maturity")
+        if row is not None:
+            try:
+                row["ctree_maturity"] = int(new_maturity)
+                self._capture_mba(row, cfunc.mba)
+            except Exception as error:
+                self._error(row, row, "ctree_mba", error)
+        return 0
+
+    def summary(self):
+        # This and lookup_failure use only frozen Python values after decompile.
+        return {"target_ea": hex(self.target_ea), "limits": dict(self.limits),
+                "callbacks_seen": self.callbacks_seen, "events_recorded": len(self.events),
+                "instruction_records": self.instruction_records, "dropped_events": self.dropped_events,
+                "call_records": self.call_records, "type_records": self.type_records,
+                "argument_records": self.argument_records, "argloc_records": self.argloc_records,
+                "operand_records": self.operand_records, "stack_point_records": self.stack_point_records,
+                "block_records": self.block_records, "open_inline_contexts": len(self.inline_contexts),
+                "inline_context_overflow": self.inline_context_overflow,
+                "text_characters": self.text_characters,
+                "diagnostic_error_count": self.diagnostic_error_count, "truncation": dict(self.truncation),
+                "diagnostics_complete": bool(self.events) and not any(self.truncation.values())
+                    and all(row["complete"] for row in self.events)}
+
+    def lookup_failure(self, failure_ea):
+        wanted = hex(int(failure_ea))
+        matches = [{"sequence": row["sequence"], "phase": row["phase"],
+                    "mba_entry_ea": row.get("mba_entry_ea"), "mba_maturity": row.get("mba_maturity"),
+                    "instruction": dict(insn)} for row in self.events for insn in row["instructions"]
+                   if insn.get("ea") == wanted]
+        target_matches = [item for item in matches if item["mba_entry_ea"] == hex(self.target_ea)]
+        candidates = sorted({item["instruction"]["api_mapped_ea"] for item in target_matches
+                             if item["instruction"].get("mapping_status") == "api_returned"})
+        statuses = {item["instruction"].get("mapping_status") for item in target_matches}
+        if not target_matches:
+            status = "unobserved_in_target_context"
+        elif len(candidates) > 1:
+            status = "conflicting"
+        elif statuses == {"badaddr"}:
+            status = "badaddr"
+        elif statuses != {"api_returned"} or not self.summary()["diagnostics_complete"]:
+            status = "incomplete"
+        else:
+            status = "unique_api_candidate_requires_original_pe_validation"
+        return {"raw_failure_ea": wanted, "matches": matches, "mapping_status": status,
+                "target_context_mapping_candidates": candidates,
+                "mapping_unique_in_target_context": len(candidates) == 1,
+                "original_pe_instruction_validated": False,
+                "original_pe_instruction_validation": "required separately; no address guessed"}
+
+
+def decompile_with_diagnostics(ea, failure, diagnostics):
+    """Observe one existing static decompile without changing its result/errors."""
+    trace = None
+    outcome = "raised"
+    diagnostics["hook_registered"] = False
+    try:
+        trace = StaticMicrocodeTrace(ea)
+        diagnostics["hook_registered"] = bool(trace.hook())
+        trace.active = diagnostics["hook_registered"]
+        if not trace.active:
+            _static_diagnostic_error(diagnostics, "hook_registration", ValueError("Hex-Rays rejected diagnostic hooks"))
+    except Exception as error:
+        _static_diagnostic_error(diagnostics, "hook_registration", error)
+    try:
+        result = ida_hexrays.decompile(ea, failure)
+        outcome = "returned_none" if result is None else "returned_cfunc"
+        return result
+    finally:
+        if trace is not None:
+            # A failed unhook must leave this observer inert for later exports.
+            trace.active = False
+            try:
+                diagnostics["hook_unregistered"] = bool(trace.unhook())
+                if not diagnostics["hook_unregistered"]:
+                    _static_diagnostic_error(diagnostics, "hook_cleanup", ValueError("Hex-Rays rejected hook removal"))
+            except Exception as error:
+                _static_diagnostic_error(diagnostics, "hook_cleanup", error)
+        try:
+            diagnostics["decompile_outcome"] = outcome
+            if trace is not None:
+                diagnostics.update(trace.summary())
+                diagnostics["diagnostics_complete"] = bool(diagnostics["diagnostics_complete"]
+                    and diagnostics["hook_registered"] and diagnostics.get("hook_unregistered")
+                    and not diagnostics.get("diagnostic_errors"))
+                if outcome != "returned_cfunc" or diagnostics["hook_registered"]:
+                    diagnostics["events"] = trace.events
+                if outcome != "returned_cfunc":
+                    diagnostics["failure_mapping"] = trace.lookup_failure(int(failure.errea))
+                    mapping = diagnostics["failure_mapping"]
+                    if (not diagnostics["diagnostics_complete"]
+                            and mapping["mapping_status"] == "unique_api_candidate_requires_original_pe_validation"):
+                        mapping["mapping_status"] = "incomplete"
+        except Exception as error:
+            _static_diagnostic_error(diagnostics, "frozen_observations", error)
+
+
+def apply_shared_function_tail(shared, base, file_bytes):
+    """Share an evidenced suffix without replacing either retained entry/frame."""
+    def frame(function):
+        return {"frame_id": int(function.frame), "local_bytes": int(function.frsize),
+                "saved_register_bytes": int(function.frregs), "argument_bytes": int(function.argsize),
+                "frame_pointer_delta": int(function.fpd)}
+
+    def chunks(ea):
+        values = []
+        for start, stop in sorted(idautils.Chunks(ea)):
+            code = ida_bytes.get_bytes(start, stop - start)
+            if code != file_bytes(start - base, stop - start):
+                raise ValueError("Shared-tail database bytes differ from the original PE")
+            values.append({"start": hex(start), "end": hex(stop), "raw_hex": code.hex(),
+                           "sha256": hashlib.sha256(code).hexdigest()})
+        return values
+
+    primary = base + int(shared["primary_owner_rva"], 16)
+    start, stop = int(shared["expected_tail"]["start"], 16), int(shared["expected_tail"]["end"], 16)
+    original_frames, original_types, original_tinfos, original_points = {}, {}, {}, {}
+    for owner in shared["owners"]:
+        ea = base + int(owner["rva"], 16)
+        function = ida_funcs.get_func(ea)
+        if (function is None or function.start_ea != ea or hex(function.end_ea) != owner["original_end"]
+                or function.flags != owner["expected_flags"] or chunks(ea) != owner["original_chunks"]):
+            raise ValueError("Private shared-tail owner differs from its original boundary, bytes or flags")
+        original_frames[owner["rva"]] = frame(function)
+        original_types[owner["rva"]] = idc.get_type(ea)
+        typ = ida_typeinf.tinfo_t()
+        original_tinfos[owner["rva"]] = (bool(ida_nalt.get_tinfo(typ, ea)), typ)
+        original_points[owner["rva"]] = [{"address": hex(point.ea), "delta": int(point.spd)} for point in function.points]
+
+    # Shrinking the main chunk retains the compiler's existing frame and type.
+    # The same bytes are immediately reattached as a tail before autoanalysis.
+    if not ida_funcs.set_func_end(primary, start):
+        raise ValueError("IDA rejected the exact reviewed shared-tail head boundary")
+    for owner in shared["owners"]:
+        ea = base + int(owner["rva"], 16)
+        if not ida_funcs.append_func_tail(ida_funcs.get_func(ea), start, stop):
+            raise ValueError("IDA rejected a complete reviewed shared-tail attachment")
+    tail = ida_funcs.get_fchunk(start)
+    if tail is None or not ida_funcs.set_tail_owner(tail, primary):
+        raise ValueError("IDA rejected the reviewed shared-tail primary owner")
+    ida_auto.auto_wait()
+    tail = ida_funcs.get_fchunk(start)
+    expected_owners = {base + int(value, 16) for value in shared["owner_rvas"]}
+    if (tail is None or tail.start_ea != start or tail.end_ea != stop
+            or not tail.flags & ida_funcs.FUNC_TAIL or tail.owner != primary
+            or tail.refqty != len(expected_owners)
+            or set(ida_funcs.func_parent_iterator_t(tail)) != expected_owners):
+        raise ValueError("Applied shared-tail parent set, primary owner or range differs from review")
+    tail_code = ida_bytes.get_bytes(start, stop - start)
+    actual_tail = {"start": hex(start), "end": hex(stop), "raw_hex": tail_code.hex(),
+                   "sha256": hashlib.sha256(tail_code).hexdigest()}
+    if actual_tail != shared["expected_tail"]:
+        raise ValueError("Applied shared-tail bytes differ from the complete original suffix")
+    applied = []
+    for owner in shared["owners"]:
+        ea = base + int(owner["rva"], 16)
+        function = ida_funcs.get_func(ea)
+        if (function is None or function.start_ea != ea or hex(function.end_ea) != owner["expected_end"]
+                or chunks(ea) != owner["expected_chunks"]):
+            raise ValueError("Applied shared-tail owner omitted its original entry or complete chunks")
+        typ = ida_typeinf.tinfo_t()
+        present = bool(ida_nalt.get_tinfo(typ, ea))
+        prior_present, prior_type = original_tinfos[owner["rva"]]
+        if (frame(function) != original_frames[owner["rva"]] or idc.get_type(ea) != original_types[owner["rva"]]
+                or present != prior_present or present and typ != prior_type):
+            raise ValueError("Shared-tail attachment changed the retained function frame or type")
+        current_points = [{"address": hex(point.ea), "delta": int(point.spd)} for point in function.points]
+        old_points = original_points[owner["rva"]]
+        if (any(point not in current_points for point in old_points)
+                or any(point not in old_points and not start <= int(point["address"], 16) <= stop for point in current_points)):
+            raise ValueError("Shared-tail attachment changed an original stack delta outside its reviewed suffix")
+        before, flag = owner["expected_flags"], int(ida_funcs.FUNC_OUTLINE)
+        flags = before | flag if shared["inline_owners"] else before
+        function.flags = flags
+        if not ida_funcs.update_func(function) or ida_funcs.get_func(ea).flags != flags:
+            raise ValueError("IDA rejected the reviewed shared-tail owner flags")
+        function = ida_funcs.get_func(ea)
+        applied.append({"rva": owner["rva"], "end": hex(function.end_ea), "chunks": chunks(ea),
+                        "previous_flags": before, "applied_flags": flags, "outline_flag": flag,
+                        "previous_frame": original_frames[owner["rva"]], "applied_frame": frame(function),
+                        "previous_type": original_types[owner["rva"]], "applied_type": idc.get_type(ea),
+                        "previous_stack_points": old_points, "applied_stack_points": current_points,
+                        "base_database_modified": False})
+    tail = ida_funcs.get_fchunk(start)
+    return {**shared, "applied_primary_owner_rva": hex(tail.owner - base),
+            "applied_owner_rvas": list(shared["owner_rvas"]), "applied_tail": actual_tail,
+            "applied_owners": applied, "base_database_modified": False}
 
 
 def capture():
@@ -72,7 +1125,17 @@ def capture():
     else:
         recoveries = selection["type_recoveries"]
         notes = (recoveries or selection.get("import_type_recoveries", [])
-                 or selection.get("function_merges", []) or selection.get("function_outlines", []))
+                 or selection.get("function_merges", []) or selection.get("function_outlines", [])
+                 or selection.get("function_partitions", []) or selection.get("function_shared_tails", []))
+        partition_options = {"partition_specs": [row["owner_rva"] + "=" + ",".join(
+            helper["rva"] + ":" + hex(int(helper["expected_end"], 16) - base)
+            for helper in row["helpers"]) for row in selection["function_partitions"]
+        ]} if selection.get("function_partitions") else {}
+        if selection.get("function_shared_tails"):
+            partition_options["shared_tail_specs"] = selection["function_shared_tails"]
+        if "static_observation" in selection:
+            review_source = selection["static_observation"]["review_source"]
+            partition_options["observation_evidence"] = review_source["path"] + "#" + review_source["pointer"]
         actual = analysis.native_function_selection(raw, json.loads(base_capture.read_bytes()),
             [int(row["rva"], 16) for row in selection["targets"]],
             [row["rva"] + "=" + row["declaration"] for row in recoveries],
@@ -80,9 +1143,14 @@ def capture():
             selection.get("decompiler_limits", {}).get("max_function_kib"),
             [row["rva"] + "=" + row["declaration"] for row in selection.get("import_type_recoveries", [])],
             [row["owner_rva"] + "=" + ",".join(row["member_rvas"]) for row in selection.get("function_merges", [])],
-            [row["rva"] for row in selection.get("function_outlines", [])])
+            [row["rva"] for row in selection.get("function_outlines", [])], **partition_options)
     if actual != selection:
         raise ValueError("Native selection no longer matches its bounded original-byte plan")
+    capture_tool = {"path": "tools/ida/supplement.py",
+                    "sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
+    observation = selection.get("static_observation")
+    if observation and capture_tool["sha256"] != observation["observer_source"]["sha256"]:
+        raise ValueError("Supplement did not use its reviewed static observer")
     pe = inspect_pe(raw)
     output.mkdir(parents=True, exist_ok=True)
     functions = output / "functions"
@@ -95,14 +1163,15 @@ def capture():
                 "ida_version": ida_kernwin.get_kernel_version(),
                 "hexrays_available": bool(ida_hexrays.init_hexrays_plugin()),
                 "hexrays_version": str(ida_hexrays.get_hexrays_version()), "python_version": sys.version,
-                "capture_tool": {"path": "tools/ida/supplement.py",
-                                 "sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()},
+                "capture_tool": capture_tool,
                 "started_at_utc": datetime.now(timezone.utc).isoformat(),
                 "functions": [], "references": [], "chains": [], "failures": [], "type_recoveries": [],
                 "import_type_recoveries": [],
                 "import_thunk_type_recoveries": [],
                 "function_merge_recoveries": [],
                 "function_outline_recoveries": [],
+                "function_partition_recoveries": [], "partition_helpers": [],
+                "function_shared_tail_recoveries": [], "shared_tail_helpers": [],
                 "decoded_thunks": [],
                 "capture_complete": False, "all_pseudocode_captured": False,
                 "boundary_policy": "Only exact direct-jump, x64 embedded-object destructor forwarding or x64 bound-member tail-call thunks receive new function boundaries; existing functions keep IDA boundaries",
@@ -169,7 +1238,7 @@ def capture():
             raise ValueError("Direct-jump target differs from original file bytes")
         return target, length
 
-    captured = set()
+    captured = {}
 
     def forwarding_thunk(ea):
         # This compiler thunk appears as an actual vtable slot. It forwards the
@@ -194,8 +1263,12 @@ def capture():
             raise ValueError("Database bound-member thunk bytes differ from original input")
         return length
 
-    def export(ea):
+    shared_owner_rvas = {owner["rva"] for row in selection.get("function_shared_tails", []) for owner in row["owners"]}
+
+    def export(ea, assembly_only=False, helper_kind="partition_helpers"):
         rva = hex(ea - base)
+        destination = output / helper_kind.replace("_", "-") if assembly_only else functions
+        destination.mkdir(exist_ok=True)
         existing = plan["existing_functions"].get(rva) if table else None
         if existing:
             path = (root / existing["path"]).resolve()
@@ -210,10 +1283,13 @@ def capture():
                     raise ValueError("Original captured function bytes differ")
             if rva not in captured:
                 manifest["references"].append(existing)
-                captured.add(rva)
+                captured[rva] = (path, False)
             return body
         if rva in captured:
-            return json.loads((functions / (rva[2:] + ".json")).read_bytes())
+            path, was_assembly_only = captured[rva]
+            if was_assembly_only and not assembly_only:
+                raise ValueError("An assembly-only helper cannot satisfy a requested pseudocode output: " + rva)
+            return json.loads(path.read_bytes())
         func = ida_funcs.get_func(ea)
         created = False
         boundary_source = "retained IDA function boundary"
@@ -288,13 +1364,19 @@ def capture():
                "comments": {"regular": ida_funcs.get_func_cmt(func, False),
                             "repeatable": ida_funcs.get_func_cmt(func, True)},
                "assembly": [], "basic_blocks": [], "pseudocode": None}
-        for first, end in idautils.Chunks(ea):
+        chunk_ranges = idautils.Chunks(ea)
+        if rva in shared_owner_rvas:
+            chunk_ranges = sorted(chunk_ranges)
+        for first, end in chunk_ranges:
             chunk = ida_bytes.get_bytes(first, end - first)
             if chunk != file_bytes(first - base, end - first):
                 raise ValueError("Supplement function bytes differ from the original input")
             row["chunks"].append({"start": hex(first), "end": hex(end), "raw_hex": chunk.hex(),
                                   "sha256": hashlib.sha256(chunk).hexdigest()})
-        for item in idautils.FuncItems(ea):
+        items = idautils.FuncItems(ea)
+        if rva in shared_owner_rvas:
+            items = sorted(items)
+        for item in items:
             length = ida_bytes.get_item_size(item)
             row["assembly"].append({"address": hex(item), "rva": hex(item - base),
                 "bytes": (ida_bytes.get_bytes(item, length) or b"").hex(),
@@ -305,31 +1387,113 @@ def capture():
         row["basic_blocks"] = [{"id": block.id, "start": hex(block.start_ea), "end": hex(block.end_ea),
                                 "predecessors": [x.id for x in block.preds()],
                                 "successors": [x.id for x in block.succs()]} for block in ida_gdl.FlowChart(func)]
-        try:
-            failure = ida_hexrays.hexrays_failure_t()
-            cfunc = ida_hexrays.decompile(ea, failure)
-            if cfunc is None:
-                raise ValueError("Hex-Rays: " + failure.desc())
-            row["pseudocode"] = {"entry": hex(cfunc.entry_ea), "lines": [
-                {"line": index, "text": ida_lines.tag_remove(line.line)}
-                for index, line in enumerate(cfunc.get_pseudocode())], "locals": [
-                {"name": value.name, "type": str(value.type()), "location": str(value.location),
-                 "argument": bool(value.is_arg_var() if callable(value.is_arg_var) else value.is_arg_var)}
-                for value in cfunc.get_lvars()]}
-        except Exception:
-            manifest["failures"].append({"rva": rva, "stage": "hexrays", "error": traceback.format_exc()})
+        if not assembly_only:
+            failure = None
+            try:
+                failure = ida_hexrays.hexrays_failure_t()
+                row["hexrays_diagnostics"] = {}
+                cfunc = decompile_with_diagnostics(ea, failure, row["hexrays_diagnostics"])
+                if cfunc is None:
+                    raise ValueError("Hex-Rays: " + failure.desc())
+                row["pseudocode"] = {"entry": hex(cfunc.entry_ea), "lines": [
+                    {"line": index, "text": ida_lines.tag_remove(line.line)}
+                    for index, line in enumerate(cfunc.get_pseudocode())], "locals": [
+                    {"name": value.name, "type": str(value.type()), "location": str(value.location),
+                     "argument": bool(value.is_arg_var() if callable(value.is_arg_var) else value.is_arg_var)}
+                    for value in cfunc.get_lvars()]}
+            except Exception:
+                error = {"rva": rva, "stage": "hexrays", "error": traceback.format_exc()}
+                if failure is not None:
+                    address = int(failure.errea)
+                    error["hexrays_failure"] = {
+                        "code": int(failure.code), "address": hex(address),
+                        "rva": hex(address - base) if address != idaapi.BADADDR and address >= base else None,
+                        "description": failure.desc(), "detail": str(failure.str)}
+                manifest["failures"].append(error)
         for decoded_thunk in manifest["decoded_thunks"]:
             if decoded_thunk["rva"] == rva:
                 decoded_thunk["database_function_created"] = True
                 decoded_thunk["pseudocode_captured"] = row["pseudocode"] is not None
-        path = functions / (rva[2:] + ".json")
+        path = destination / (rva[2:] + ".json")
         save(path, row)
-        manifest["functions"].append({"address": hex(ea), "rva": rva, "name": row["name"],
+        manifest[helper_kind if assembly_only else "functions"].append({"address": hex(ea), "rva": rva, "name": row["name"],
             "path": path.relative_to(output).as_posix(), "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
             "assembly_captured": True, "pseudocode_captured": row["pseudocode"] is not None})
-        captured.add(rva)
+        captured[rva] = (path, assembly_only)
         ida_hexrays.clear_cached_cfuncs()
         return row
+
+    for shared in selection.get("function_shared_tails", []):
+        for owner in shared["owners"]:
+            source = owner["source_function"]
+            data = (root / source["path"]).read_bytes()
+            if len(data) != source["bytes"] or hashlib.sha256(data).hexdigest() != source["sha256"]:
+                raise ValueError("Reviewed shared-tail function evidence changed")
+        manifest["function_shared_tail_recoveries"].append(apply_shared_function_tail(shared, base, file_bytes))
+        save(output / "capture.json", manifest)
+    ida_hexrays.clear_cached_cfuncs()
+
+    for partition in selection.get("function_partitions", []):
+        retained = root / partition["source_function"]["path"]
+        source_bytes = retained.read_bytes()
+        if (len(source_bytes) != partition["source_function"]["bytes"]
+                or hashlib.sha256(source_bytes).hexdigest() != partition["source_function"]["sha256"]):
+            raise ValueError("Reviewed function partition evidence changed")
+        owner_ea = base + int(partition["owner_rva"], 16)
+        function = ida_funcs.get_func(owner_ea)
+        if (function is None or function.start_ea != owner_ea
+                or function.flags != partition["expected_flags"]):
+            raise ValueError("Private partition owner differs from its retained boundary or flags")
+
+        def partition_chunks(ea):
+            values = []
+            for start, stop in idautils.Chunks(ea):
+                code = ida_bytes.get_bytes(start, stop - start)
+                if code != file_bytes(start - base, stop - start):
+                    raise ValueError("Partition database bytes differ from the original PE")
+                values.append({"start": hex(start), "end": hex(stop), "raw_hex": code.hex(),
+                               "sha256": hashlib.sha256(code).hexdigest()})
+            return values
+
+        if partition_chunks(owner_ea) != partition["original_chunks"]:
+            raise ValueError("Private partition owner chunks differ from the complete retained function")
+        if not ida_funcs.del_func(owner_ea):
+            raise ValueError("IDA could not remove the explicitly reviewed private partition owner")
+        main, *tails = partition["owner_chunks"]
+        if not ida_funcs.add_func(int(main["start"], 16), int(main["end"], 16)):
+            raise ValueError("IDA could not create the exact partition owner entry chunk")
+        for chunk in tails:
+            function = ida_funcs.get_func(owner_ea)
+            if not ida_funcs.append_func_tail(function, int(chunk["start"], 16), int(chunk["end"], 16)):
+                raise ValueError("IDA could not retain a complete partition owner tail chunk")
+        for helper in partition["helpers"]:
+            start, stop = base + int(helper["rva"], 16), int(helper["expected_end"], 16)
+            if not ida_funcs.add_func(start, stop):
+                raise ValueError("IDA could not create an exact reviewed embedded helper boundary")
+        ida_auto.auto_wait()
+        if partition_chunks(owner_ea) != partition["owner_chunks"]:
+            raise ValueError("Applied partition owner chunks differ from the exact original-byte residual")
+        applied_helpers = []
+        for helper in partition["helpers"]:
+            ea = base + int(helper["rva"], 16)
+            function = ida_funcs.get_func(ea)
+            if (function is None or function.start_ea != ea or hex(function.end_ea) != helper["expected_end"]
+                    or partition_chunks(ea) != helper["expected_chunks"]):
+                raise ValueError("Created embedded helper differs from its exact reviewed boundary")
+            before, flag = function.flags, int(ida_funcs.FUNC_OUTLINE)
+            function.flags = before | flag
+            if not ida_funcs.update_func(function) or ida_funcs.get_func(ea).flags != before | flag:
+                raise ValueError("IDA rejected the embedded helper's explicit outline flag")
+            applied_helpers.append({"rva": helper["rva"], "chunks": helper["expected_chunks"],
+                "previous_flags": before, "applied_flags": before | flag, "outline_flag": flag,
+                "base_database_modified": False})
+        manifest["function_partition_recoveries"].append({**partition,
+            "applied_owner_chunks": partition_chunks(owner_ea), "applied_helpers": applied_helpers,
+            "base_database_modified": False})
+        ida_hexrays.clear_cached_cfuncs()
+        for helper in partition["helpers"]:
+            export(base + int(helper["rva"], 16), assembly_only=True)
+        save(output / "capture.json", manifest)
 
     for outline in selection.get("function_outlines", []):
         retained = root / outline["source_function"]["path"]
@@ -469,6 +1633,10 @@ def capture():
         manifest["type_recoveries"].append({**recovery, "address": hex(ea), "previous_type": previous,
             "applied_type": str(applied), "assembly_evidence_reference": retained,
             "base_database_modified": False})
+
+    selected_rvas = {row["rva"] for row in selection["targets"]}
+    for rva in sorted(shared_owner_rvas - selected_rvas, key=lambda value: int(value, 16)):
+        export(base + int(rva, 16), assembly_only=True, helper_kind="shared_tail_helpers")
 
     for target in selection["targets"]:
         identity = {"slot_rva": target["slot_rva"]} if "slot_rva" in target else {"requested_rva": target["rva"]}

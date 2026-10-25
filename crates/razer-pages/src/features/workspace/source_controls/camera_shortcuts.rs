@@ -114,7 +114,10 @@ impl Session {
             let mut os = match Hotkeys::start() {
                 Ok(owner) => owner,
                 Err(error) => {
-                    let _ = outgoing.send(Event::Failed { generation: 0, error: format!("{error:#}") });
+                    let _ = outgoing.send(Event::Failed {
+                        generation: 0,
+                        error: format!("{error:#}"),
+                    });
                     return;
                 }
             };
@@ -216,7 +219,10 @@ impl Session {
                 }
             }
             if let Err(error) = os.close() {
-                let _ = outgoing.send(Event::Failed { generation, error: format!("Shortcut cleanup: {error:#}") });
+                let _ = outgoing.send(Event::Failed {
+                    generation,
+                    error: format!("Shortcut cleanup: {error:#}"),
+                });
             }
         })?;
         Ok(Self {
