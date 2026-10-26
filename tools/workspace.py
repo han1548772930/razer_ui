@@ -5546,6 +5546,32 @@ def _clean_capture_batch_ended(record, cutoff):
         return False
 
 
+def _clean_supplement_attempt(directory):
+    """Require source-bound ownership before admitting a version-1 attempt name."""
+    import analysis
+
+    if not analysis.native_supplement_attempt_name(directory.name):
+        return False
+    plan_path = directory / "plan.json"
+    if not plan_path.is_file():
+        return "-" not in directory.name
+    plan = json.loads(plan_path.read_bytes())
+    session_path = directory / "session.json"
+    if not session_path.is_file() or _scratch_link(plan_path) or _scratch_link(session_path):
+        return "-" not in directory.name and "analysis_request" not in plan
+    session = json.loads(session_path.read_bytes())
+    if "analysis_request" not in plan:
+        return "-" not in directory.name and not any(key in plan or key in session for key in
+            ("request_sha256", "attempt_id", "attempt_nonce", "tool_sources"))
+    if plan.get("output") != relative(directory):
+        return False
+    try:
+        analysis.verify_native_supplement_request(plan, session, root=ROOT)
+    except (OSError, KeyError, TypeError, ValueError):
+        return False
+    return True
+
+
 def _clean_candidates(before=None):
     cutoff = datetime.now(timezone.utc).timestamp() if before is None else before
     queue = ROOT / ".analysis/results/reverse-pending.json"
@@ -5592,10 +5618,10 @@ def _clean_candidates(before=None):
             if sha_root.name in reserved:
                 retained.append({"path": name, "reason": "reserved_analysis_family", "owners": reserved[sha_root.name]})
                 continue
-            if not re.fullmatch(r"[a-f0-9]{16}", target.name) or not target.is_dir() or _scratch_link(target):
+            result = ROOT / ".analysis/results/native" / sha_root.name / "supplements" / target.name
+            if not target.is_dir() or _scratch_link(target) or not _clean_supplement_attempt(result):
                 retained.append({"path": name, "reason": "unknown_or_linked_supplement"})
                 continue
-            result = ROOT / ".analysis/results/native" / sha_root.name / "supplements" / target.name
             basis = [result / item for item in ("session.json", "capture.json", "plan.json")]
             if not all(path.is_file() and not _scratch_link(path) for path in basis):
                 retained.append({"path": name, "reason": "missing_retained_completion_evidence"})
@@ -5650,7 +5676,9 @@ def _clean_historical_native_stdout(value):
         launch, completion = lines
         result = launch["result"]
         if not isinstance(result, str) or not re.fullmatch(
-                r"\.analysis/results/native/[a-f0-9]{64}/supplements/[a-f0-9]{16}", result):
+                r"\.analysis/results/native/[a-f0-9]{64}/supplements/[a-f0-9]{16}(?:-[a-f0-9]{16})?", result):
+            return False
+        if not _clean_supplement_attempt(safe(ROOT / result)):
             return False
         scratch = result.replace(".analysis/results/native/", ".work/native/", 1)
         if launch["log"] != scratch + "/ida.log" or completion["session"] != result + "/session.json":
@@ -5673,24 +5701,166 @@ def _clean_historical_native_stdout(value):
         return False
 
 
-def _clean_json_dependencies(value, *, own_receipt=False, field=None, ended_batch=False, historical_job=False):
+def _clean_history_file(reference, *, contents=False):
+    """Bind historical-field evidence to exact retained, non-linked file bytes."""
+    name = reference["path"]
+    if (not isinstance(name, str) or "\\" in name or Path(name).is_absolute()
+            or ".." in Path(name).parts or not re.fullmatch(r"[a-f0-9]{64}", reference["sha256"])):
+        raise ValueError("Historical capture evidence has an invalid identity")
+    path = safe(ROOT / name)
+    for part in (path, *path.parents):
+        if _scratch_link(part):
+            raise ValueError("Historical capture evidence contains a link")
+        if part == ROOT:
+            break
+    actual = _clean_file_identity(path)
+    if actual["sha256"] != reference["sha256"] or (
+            "bytes" in reference and actual["bytes"] != reference["bytes"]):
+        raise ValueError("Historical capture evidence bytes changed")
+    raw = path.read_bytes() if contents else None
+    after = path.stat()
+    if ((after.st_size, after.st_mtime_ns, after.st_ino, after.st_dev) != tuple(
+            actual[key] for key in ("bytes", "mtime_ns", "inode", "device"))
+            or contents and (len(raw) != actual["bytes"] or hashlib.sha256(raw).hexdigest() != actual["sha256"])):
+        raise ValueError("Historical capture evidence changed during verification")
+    return actual, raw
+
+
+def _clean_formal_capture_history(document, owner, raw, candidates, *, bind_history):
+    """Release only exact exited CLI log inventories in frozen capture receipts."""
+    from reverse_pending import coordinator_instance_absence
+
+    result = {}
+    if (not isinstance(document, dict) or document.get("schema_version") != 1
+            or document.get("review_kind") != "frozen_unresolved_formal_static_capture_execution"
+            or document.get("target_execution") is not False
+            or document.get("source_guard_unchanged") is not True
+            or document.get("all_capture_clis_succeeded") is not True
+            or not isinstance(document.get("jobs"), list) or not document["jobs"]
+            or owner.parent != ROOT / ".analysis/results/reverse-pending/review-sources"
+            or owner.name != hashlib.sha256(raw).hexdigest() + ".json"):
+        return result
+    try:
+        common = [_clean_history_file({"path": relative(owner), "bytes": len(raw),
+                                      "sha256": hashlib.sha256(raw).hexdigest()})[0]]
+        for field in ("preflight_batch", "coordinator_source"):
+            reference = document[field]
+            if not reference["path"].startswith(".analysis/results/reverse-pending/review-sources/"):
+                return result
+            common.append(_clean_history_file(reference)[0])
+    except (KeyError, TypeError, ValueError, OSError):
+        return result
+    for job in document["jobs"]:
+        try:
+            lines = job["stdout_json_lines"]
+            if (type(job["exit_code"]) is not int or job["exit_code"] != 0
+                    or job.get("capture_cli_succeeded") is not True or job.get("stderr") is not None
+                    or not isinstance(lines, list) or len(lines) != 2
+                    or set(lines[0]) != {"pid", "result", "log"}
+                    or set(lines[1]) != {"session", "passed"} or lines[1]["passed"] is not True
+                    or type(lines[0]["pid"]) is not int or lines[0]["pid"] <= 0):
+                continue
+            output = lines[0]["result"]
+            match = re.fullmatch(r"\.analysis/results/native/([a-f0-9]{64})/supplements/"
+                                 r"([a-f0-9]{16}(?:-[a-f0-9]{16})?)", output)
+            if match is None or job["input_sha256"] != match[1]:
+                continue
+            name = output.replace(".analysis/results/native/", ".work/native/", 1)
+            row = candidates.get(name)
+            if (row is None or lines[0]["log"] != name + "/ida.log"
+                    or lines[1]["session"] != output + "/session.json"):
+                continue
+            stdout = job["stdout"]
+            if (not isinstance(stdout, dict) or not stdout["path"].startswith(
+                    ".analysis/results/reverse-pending/review-sources/")):
+                continue
+            stdout_identity, stdout_raw = _clean_history_file(stdout, contents=True)
+            if [json.loads(line) for line in stdout_raw.decode("utf-8").splitlines() if line.strip()] != lines:
+                continue
+            basis = common + [stdout_identity]
+            owned = {item["path"]: item for item in row["basis"]}
+            evidence = {}
+            for filename in ("plan.json", "session.json", "capture.json"):
+                expected = owned[output + "/" + filename]
+                actual, body = _clean_history_file(expected, contents=True)
+                if actual != expected:
+                    raise ValueError("Completion basis changed during reference scan")
+                evidence[filename] = json.loads(body)
+            plan, session, capture = (evidence[key] for key in ("plan.json", "session.json", "capture.json"))
+            argv = job["argv"]
+            if (not isinstance(argv, list) or not all(isinstance(item, str) for item in argv)
+                    or argv.count("tools/workspace.py") != 1 or argv.count("supplement-native") != 1
+                    or argv.index("supplement-native") != argv.index("tools/workspace.py") + 1
+                    or argv.count("--input") != 1 or argv[argv.index("--input") + 1] != plan["input"]
+                    or plan["output"] != output or plan["sha256"] != match[1]
+                    or capture["input_sha256"] != match[1] or capture["input"] != plan["input"]
+                    or session.get("state") != "finished" or session.get("passed") is not True
+                    or type(session.get("exit_code")) is not int or session["exit_code"] != 0
+                    or session.get("target_execution") is not False or plan.get("target_execution") is not False
+                    or session.get("process_released") is not True or session.get("source_identity_rechecked") is not True
+                    or capture.get("capture_complete") is not True or capture.get("all_pseudocode_captured") is not True
+                    or capture.get("target_execution") is not False or capture.get("base_capture_unchanged") is not True
+                    or capture.get("base_database_unchanged") is not True or session["pid"] != lines[0]["pid"]
+                    or type(session.get("coordinator_pid")) is not int or session["coordinator_pid"] <= 0):
+                continue
+            times = [datetime.fromisoformat(value) for value in (session["started_at_utc"],
+                     capture["started_at_utc"], capture["finished_at_utc"], session["finished_at_utc"])]
+            if (any(value.tzinfo is None for value in times) or times != sorted(times)
+                    or times[-1] >= datetime.now(timezone.utc)):
+                continue
+            processes = [session, {"pid": session["coordinator_pid"], "started_at_utc": session["started_at_utc"]}]
+            if any(coordinator_instance_absence(process).get("confirmed_absent") is not True for process in processes):
+                continue
+            if not plan["input"].startswith(".analysis/inputs/"):
+                continue
+            basis.append(_clean_history_file({"path": plan["input"], "bytes": plan["input_bytes"],
+                                              "sha256": plan["sha256"]})[0])
+            for field in ("base_capture", "source_database"):
+                reference = plan[field]
+                prefix = ".analysis/results/native/" + match[1] + "/" if field == "base_capture" else (
+                         ".work/native/" + match[1] + "/batch/")
+                if capture[field] != reference or not reference["path"].startswith(prefix):
+                    raise ValueError("Historical capture source dependency is not independently retained")
+                basis.append(_clean_history_file(reference)[0])
+            if not _clean_supplement_attempt(ROOT / output):
+                continue
+            # Only this job's structured stdout is historical; source/recovery fields remain visible.
+            previous = {item["path"]: item for item in row["basis"]}
+            if any(item["path"] in previous and previous[item["path"]] != item for item in basis):
+                continue
+            if bind_history:
+                previous.update((item["path"], item) for item in basis)
+                row["basis"] = sorted(previous.values(), key=lambda item: item["path"])
+            elif any(previous.get(item["path"]) != item for item in basis):
+                continue
+            result[id(job)] = name
+        except (KeyError, IndexError, TypeError, ValueError, OSError):
+            continue
+    return result
+
+
+def _clean_json_dependencies(value, *, own_receipt=False, field=None, ended_batch=False, historical_job=False,
+                             formal_stdout_jobs=()):
     """Keep dependency fields while excluding explicitly historical inventory facts."""
     if isinstance(value, dict):
         if value.get("mode") in {"scratch_cleanup_plan", "scratch_cleanup_apply"}:
             return
         for key, child in value.items():
-            if key == "scratch_cleanup" or own_receipt and key in {"database", "argv"}:
+            if key == "scratch_cleanup" or own_receipt and key in {"database", "argv", "retained_private_database"}:
                 continue
             if historical_job and key in {"scratch", "argv", "command", "log"}:
                 continue
             if key == "stdout" and _clean_historical_native_stdout(child):
                 continue
+            if key == "stdout_json_lines" and id(value) in formal_stdout_jobs:
+                continue
             yield from _clean_json_dependencies(child, own_receipt=own_receipt and key == "previous_attempts",
-                                                field=key, historical_job=ended_batch and key == "jobs")
+                                                field=key, historical_job=ended_batch and key == "jobs",
+                                                formal_stdout_jobs=formal_stdout_jobs)
     elif isinstance(value, list):
         for child in value:
             yield from _clean_json_dependencies(child, field=field, own_receipt=own_receipt,
-                                                historical_job=historical_job)
+                                                historical_job=historical_job, formal_stdout_jobs=formal_stdout_jobs)
     elif isinstance(value, str):
         yield value
 
@@ -5778,7 +5948,7 @@ def _clean_dependency_mentions(name, value):
     return False
 
 
-def _clean_references(candidates, *, exclude=()):
+def _clean_references(candidates, *, exclude=(), bind_history=False):
     """Search every maintained text owner and receipt, including frozen reviews."""
     if not candidates:
         return {}, []
@@ -5852,13 +6022,15 @@ def _clean_references(candidates, *, exclude=()):
         except (ValueError, UnicodeError):
             errors.append("Malformed retained JSON reference owner: " + filename)
             continue
+        formal_history = _clean_formal_capture_history(document, path, raw, names, bind_history=bind_history)
         for name in matched_names:
             row = names[name]
             ended_batch = (isinstance(document, dict)
                            and re.fullmatch(r"\.work/reverse-pending/[^/]+-capture-batch\.json", filename)
                            and _clean_capture_batch_ended(document, datetime.now(timezone.utc).timestamp()))
             strings = (_clean_json_dependencies(document, own_receipt=filename in row["owner_receipts"],
-                                                 ended_batch=ended_batch)
+                                                 ended_batch=ended_batch, formal_stdout_jobs={
+                                                     job for job, target in formal_history.items() if target == name})
                        if document is not None else [raw.decode("utf-8")])
             if any(_clean_dependency_mentions(name, value) for value in strings):
                 references.setdefault(name, []).append(filename)
@@ -6033,7 +6205,7 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
                 if row.get("kind") not in {"ended_supplement_private_copy", "old_asset_upload_clone"}:
                     raise ValueError("Cleanup plan contains an unowned target")
                 name = row["path"]
-                allowed = (re.fullmatch(r"\.work/native/[a-f0-9]{64}/supplements/[a-f0-9]{16}", name)
+                allowed = (re.fullmatch(r"\.work/native/[a-f0-9]{64}/supplements/[a-f0-9]{16}(?:-[a-f0-9]{16})?", name)
                            if row["kind"] == "ended_supplement_private_copy" else re.fullmatch(
                                r"\.work/asset-releases/uploads/assets-[a-f0-9]{20}-[A-Za-z0-9_-]+", name))
                 if not allowed or _clean_tree(name) != row["tree"]:
@@ -6078,7 +6250,7 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
     if destination.exists():
         raise FileExistsError("Cleanup plan already exists; choose a new reserved receipt name")
     rows, retained = _clean_candidates(before)
-    references, errors = _clean_references(rows)
+    references, errors = _clean_references(rows, bind_history=True)
     active, process_errors = _clean_process_guard(rows)
     eligible = []
     for row in rows:
@@ -6096,7 +6268,8 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
               "reference_scope": "all maintained text owners and JSON receipts, including frozen reviews; raw original bodies excluded",
               "historical_fields": ["scratch_cleanup", "ended supplement owner's database and argv",
                                     "exited capture-batch job scratch/argv/command/log",
-                                    "verified exited native launch/completion stdout"],
+                                    "verified exited native launch/completion stdout",
+                                    "source-bound frozen capture job structured stdout log inventory"],
               "guard_failures": errors + process_errors, "candidates": eligible, "retained": retained,
               "candidate_bytes": sum(row["tree"]["bytes"] for row in eligible)}
     _clean_create_receipt(destination, report)
@@ -6213,9 +6386,13 @@ def verify_results(data):
             rust_validation_current = validation["passed"] and not validation_errors
         except (OSError, ValueError, KeyError, TypeError) as error:
             validation_errors.append(f"Rust validation receipt failed ({type(error).__name__}): {error}")
+    reverse_pending_current = {}
+    if (ROOT / ".analysis/results/reverse-pending/unresolved-current.json").is_file():
+        import reverse_pending
+        reverse_pending_current["reverse_pending_current"] = reverse_pending.verify_current_unresolved()
     return {"analysis_artifacts_verified": len(verified), "native_function_bodies_verified": native_functions,
             "frontend_manifests_verified": frontend_manifests, "rust_validation_current": rust_validation_current,
-            "analysis_verification_errors": validation_errors}
+            "analysis_verification_errors": validation_errors, **reverse_pending_current}
 
 
 def verify():
@@ -6349,6 +6526,10 @@ def rust_inputs(*, include_asset_pack=True):
     import resource_database
     import windows_installer
     files = {ROOT / "Cargo.toml", ROOT / "Cargo.lock"}
+    for relative_path in (".cargo/config", ".cargo/config.toml", "rust-toolchain", "rust-toolchain.toml"):
+        configuration = safe(ROOT / relative_path)
+        if configuration.is_file():
+            files.add(configuration)
     if (ROOT / "crates/razer-resource-db/Cargo.toml").is_file():
         files.update({ROOT / resource_database.INSTALLATION, ROOT / resource_database.OUTPUT})
     driver_owner = ROOT / "crates/razer-platform/src/observation/hardware_driver.rs"
@@ -10290,6 +10471,30 @@ def compare_local_service_version():
     return 0 if receipt["passed"] else 1
 
 
+def compare_local_lighting():
+    import analysis
+    import native_runtime
+    path = ROOT / ".analysis/results/lighting-runtime-comparison.json"
+    with analysis.index_lock(path.with_suffix(".lock")):
+        previous = json.loads(path.read_bytes()) if path.exists() else None
+        native_runtime.lighting_attempt_history(previous)
+    retained = None
+
+    def publish(receipt):
+        nonlocal retained
+        with analysis.index_lock(path.with_suffix(".lock")):
+            previous = json.loads(path.read_bytes()) if path.exists() else None
+            retained = native_runtime.retain_lighting_attempt(previous, receipt)
+            write_json(path, retained)
+
+    receipt = native_runtime.compare_local_lighting(ROOT, rust_inputs, publish=publish)
+    print(json.dumps({"receipt": relative(path), "passed": receipt["passed"],
+                      "attempt": retained["latest_attempt"], "attempt_count": len(retained["attempts"]),
+                      "comparisons": receipt.get("comparisons", []), "error": receipt.get("error"),
+                      "scope": receipt["scope"], "unverified": receipt["unverified"]}, ensure_ascii=False), flush=True)
+    return 0 if receipt["passed"] else 1
+
+
 def compare_local_app_files():
     import analysis
     import native_runtime
@@ -10683,6 +10888,7 @@ def rust_validation_commands():
     """Current pure/mock suites, shared by execution and owner validation."""
     return [
         ("ipc-client", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "client_tests"]),
+        ("ipc-shutdown-receipts", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "worker_shutdown::tests"]),
         ("mouse-input-monitoring-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mouse_input_monitoring"]),
         ("device-task-locks", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "device_tasks"]),
         ("mouse-matcher-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "dpi_matcher"]),
@@ -10698,6 +10904,16 @@ def rust_validation_commands():
         ("controller-trigger-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "gamepad_products::trigger_runtime::tests"]),
         ("controller-profile", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "gamepad_products::profile::tests"]),
         ("controller-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "controller_"]),
+        ("controller-initialization-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "controller_initialization"]),
+        ("controller-initialization-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "controller_initialization"]),
+        ("controller-socd-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "controller_socd"]),
+        ("controller-socd-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "controller_socd"]),
+        ("controller-socd-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "controller_socd"]),
+        ("controller-calibration-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "controller_calibration::tests"]),
+        ("controller-sleep-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "controller_sleep"]),
+        ("controller-sleep-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "sleep_runtime::tests"]),
+        ("controller-sleep-storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib", "controller_sleep"]),
+        ("controller-sleep-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "controller_sleep::tests"]),
         ("controller-feature-discovery", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "controller_feature"]),
         ("controller-lighting-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "gamepad_products::lighting_"]),
         ("controller-quick-lighting-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "quick_lighting_state::tests"]),
@@ -10715,6 +10931,9 @@ def rust_validation_commands():
         ("keyboard-brightness-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "brightness::lifecycle_tests"]),
         ("receiver-lighting-owner", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "receiver_lighting_"]),
         ("lighting-engine-session", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "lighting_engine_session::tests"]),
+        ("lighting-screen-capture", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "runtime::lighting_engine::screen::tests"]),
+        ("marci-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "marci_"]),
+        ("marci-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "marci_lighting"]),
         ("controller-lighting-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "controller_lighting::"]),
         ("chroma-connect", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "chroma_connect::tests"]),
         ("receiver-lighting-attribute-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "receiver_lighting_attribute_receipt_wire_requires_the_exact_worker_identity"]),
@@ -10828,6 +11047,7 @@ def rust_validation_commands():
         ("existing-workspace-reducers", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "workspace::reducer_state::tests::"]),
         ("mapping-engine", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mapping_engine"]),
         ("mapping-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mapping_native"]),
+        ("mapping-native-input", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mapping_native_input"]),
         ("mouse-rotation-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mouse_rotation"]),
         ("mouse-rotation-domain", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_rotation"]),
         ("mouse-rotation-discovery", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "mouse_rotation"]),
@@ -11300,6 +11520,7 @@ def main():
     native_compare.add_argument("--library", required=True, help="Installed HID.node; its complete current input bytes and exports are verified before loading")
     commands.add_parser("compare-local-service-version", help="Compare the verified Simple Service DLL with the direct Rust local COM reader")
     commands.add_parser("compare-local-app-files", help="Compare the verified Simple Service DLL with the direct Rust local Apps inventory")
+    commands.add_parser("compare-local-lighting", help="Compare isolated software Static and stationary Wheel frames through the verified current lighting DLL JSON exports")
     pack_prepare = commands.add_parser("prepare-asset-pack")
     pack_prepare.add_argument("--manifest", default=".analysis/results/asset-pack-manifest.json")
     pack_prepare.add_argument("--output", default=GENERATED_ASSET_PACK)
@@ -11418,6 +11639,8 @@ def main():
         return compare_local_service_version()
     elif args.command == "compare-local-app-files":
         return compare_local_app_files()
+    elif args.command == "compare-local-lighting":
+        return compare_local_lighting()
     elif args.command == "prepare-asset-pack":
         print(json.dumps(prepare_asset_pack(args.manifest, args.output), ensure_ascii=False))
     elif args.command == "verify-asset-pack":

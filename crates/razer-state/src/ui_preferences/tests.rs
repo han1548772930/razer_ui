@@ -6,6 +6,324 @@ fn observed(value: Option<bool>) -> Observation {
         .unwrap_or_else(Observation::missing)
 }
 
+fn finish_poll(core: &mut Core, work: &Work, result: Result<Option<&str>, &str>) {
+    let Operation::PollNotifications { generation } = work.operation else {
+        panic!("expected a mounted notification-key poll")
+    };
+    assert!(
+        core.complete(Completed::PollNotifications {
+            generation,
+            result: result
+                .map(|value| value.map(str::to_owned))
+                .map_err(str::to_owned),
+        })
+        .is_none()
+    );
+}
+
+fn mount_notifications(core: &mut Core, raw: &str, value: bool) {
+    core.observe_notifications();
+    let poll = core.queue.pop_front().unwrap();
+    finish_poll(core, &poll, Ok(Some(raw)));
+    let read = core.queue.pop_front().unwrap();
+    finish_read(core, &read, Ok(observed(Some(value))));
+    let write = core.queue.pop_front().unwrap();
+    finish_write(core, &write, Ok(()));
+}
+
+#[test]
+fn mounted_notification_listener_rereads_only_changed_key_and_runs_the_source_writer() {
+    let mut core = Core::default();
+    let flag = Flag::DisplayNotifications;
+    mount_notifications(&mut core, "true", true);
+
+    // Replacing the outer file, including another key's app metadata, does
+    // not change this raw localStorage value or publish another writer.
+    core.poll_notifications();
+    core.poll_notifications();
+    assert_eq!(
+        core.queue.len(),
+        1,
+        "only one poll can be queued or executing"
+    );
+    let unchanged = core.queue.pop_front().unwrap();
+    finish_poll(&mut core, &unchanged, Ok(Some("true")));
+    assert!(core.queue.is_empty());
+
+    core.poll_notifications();
+    let external = core.queue.pop_front().unwrap();
+    finish_poll(&mut core, &external, Ok(Some("false")));
+    let read = core.queue.pop_front().unwrap();
+    assert!(
+        core.flags[&flag].value,
+        "an event itself is not a completed read"
+    );
+    finish_read(&mut core, &read, Ok(observed(Some(false))));
+    assert!(!core.flags[&flag].value);
+    let write = core.queue.pop_front().unwrap();
+    assert!(matches!(
+        write.operation,
+        Operation::Write { value: false, .. }
+    ));
+    finish_write(&mut core, &write, Ok(()));
+    core.poll_notifications();
+    let own_publication = core.queue.pop_front().unwrap();
+    finish_poll(&mut core, &own_publication, Ok(Some("false")));
+    assert!(
+        core.queue.is_empty(),
+        "the observing document must not loop on its own write"
+    );
+}
+
+#[test]
+fn notification_listener_preserves_exact_strings_and_never_defaults_after_invalid_data() {
+    let mut core = Core::default();
+    let flag = Flag::DisplayNotifications;
+    mount_notifications(&mut core, "true", true);
+    for raw in [" true ", "invalid"] {
+        core.poll_notifications();
+        let poll = core.queue.pop_front().unwrap();
+        finish_poll(&mut core, &poll, Ok(Some(raw)));
+        let read = core.queue.pop_front().unwrap();
+        if raw == "invalid" {
+            finish_read(&mut core, &read, Err("invalid local boolean".into()));
+            assert!(core.flags[&flag].value);
+            assert!(core.queue.is_empty());
+        } else {
+            finish_read(&mut core, &read, Ok(observed(Some(true))));
+            let write = core.queue.pop_front().unwrap();
+            finish_write(&mut core, &write, Ok(()));
+        }
+    }
+    core.poll_notifications();
+    let still_invalid = core.queue.pop_front().unwrap();
+    finish_poll(&mut core, &still_invalid, Ok(Some("invalid")));
+    assert!(
+        core.queue.is_empty(),
+        "unchanged invalid values are not a new storage event"
+    );
+}
+
+#[test]
+fn notification_file_read_failure_recovers_without_publishing_a_default() {
+    let mut core = Core::default();
+    let flag = Flag::DisplayNotifications;
+    mount_notifications(&mut core, "false", false);
+    core.poll_notifications();
+    let failed = core.queue.pop_front().unwrap();
+    finish_poll(&mut core, &failed, Err("malformed outer file"));
+    assert!(matches!(core.flags[&flag].load, LoadStatus::Failed(_)));
+    assert_eq!(core.flags[&flag].persisted_value, Some(false));
+    assert!(!core.flags[&flag].value);
+    assert!(core.queue.is_empty());
+    core.poll_notifications();
+    let recovered = core.queue.pop_front().unwrap();
+    finish_poll(&mut core, &recovered, Ok(Some("false")));
+    let read = core.queue.pop_front().unwrap();
+    finish_read(&mut core, &read, Ok(observed(Some(false))));
+    let write = core.queue.pop_front().unwrap();
+    finish_write(&mut core, &write, Ok(()));
+    assert_eq!(
+        core.flags[&flag].load,
+        LoadStatus::Observed(observed(Some(false)))
+    );
+}
+
+#[test]
+fn notification_unmount_and_remount_reject_an_old_poll_but_drain_accepted_writes() {
+    let mut core = Core::default();
+    let flag = Flag::DisplayNotifications;
+    mount_notifications(&mut core, "true", true);
+    core.poll_notifications();
+    let old_poll = core.queue.pop_front().unwrap();
+    core.set(flag, false);
+    core.cancel_observation(flag);
+    core.poll_notifications();
+    assert_eq!(core.queue.len(), 1, "unmounted listeners admit no polls");
+    core.observe_notifications();
+    finish_poll(&mut core, &old_poll, Ok(Some("null")));
+    assert!(
+        core.notification_watch.pending,
+        "old work cannot clear the successor's poll"
+    );
+    let accepted = core.queue.pop_front().unwrap();
+    finish_write(&mut core, &accepted, Ok(()));
+    let current_poll = core.queue.pop_front().unwrap();
+    finish_poll(&mut core, &current_poll, Ok(Some("false")));
+    let read = core.queue.pop_front().unwrap();
+    finish_read(&mut core, &read, Ok(observed(Some(false))));
+    assert!(!core.flags[&flag].value);
+    let source_writer = core.queue.pop_front().unwrap();
+    finish_write(&mut core, &source_writer, Ok(()));
+    assert!(core.queue.is_empty());
+}
+
+#[test]
+fn notification_exit_stops_polling_and_resume_uses_a_fresh_generation() {
+    let mut core = Core::default();
+    mount_notifications(&mut core, "true", true);
+    core.poll_notifications();
+    let old_poll = core.queue.pop_front().unwrap();
+    core.begin_exit();
+    core.poll_notifications();
+    assert!(core.queue.is_empty());
+    core.cancel_exit();
+    finish_poll(&mut core, &old_poll, Ok(Some("false")));
+    assert!(core.notification_watch.pending);
+    let poll = core.queue.pop_front().unwrap();
+    finish_poll(&mut core, &poll, Ok(Some("false")));
+    let read = core.queue.pop_front().unwrap();
+    finish_read(&mut core, &read, Ok(observed(Some(false))));
+    assert!(!core.flags[&Flag::DisplayNotifications].value);
+}
+
+#[test]
+fn external_notification_change_waits_for_accepted_click_and_invalidates_an_older_read() {
+    let mut core = Core::default();
+    let flag = Flag::DisplayNotifications;
+    mount_notifications(&mut core, "true", true);
+    core.flags.get_mut(&flag).unwrap().load = LoadStatus::NotRequested;
+    core.load(flag);
+    let older = core.queue.pop_front().unwrap();
+    core.poll_notifications();
+    let poll = core.queue.pop_front().unwrap();
+    core.set(flag, false);
+    finish_poll(&mut core, &poll, Ok(Some("false")));
+    finish_read(&mut core, &older, Ok(observed(Some(true))));
+    assert!(!core.flags[&flag].value);
+    assert_eq!(core.flags[&flag].load, LoadStatus::Loading);
+    let accepted = core.queue.pop_front().unwrap();
+    assert!(matches!(
+        accepted.operation,
+        Operation::Write { value: false, .. }
+    ));
+    finish_write(&mut core, &accepted, Ok(()));
+    let reread = core.queue.pop_front().unwrap();
+    finish_read(&mut core, &reread, Ok(observed(Some(false))));
+    assert!(!core.flags[&flag].value);
+    let source_writer = core.queue.pop_front().unwrap();
+    finish_write(&mut core, &source_writer, Ok(()));
+    assert!(core.queue.is_empty());
+}
+
+#[test]
+fn duplicate_notification_mounts_share_one_observer_and_remount_requires_a_new_read() {
+    let mut core = Core::default();
+    let flag = Flag::DisplayNotifications;
+    mount_notifications(&mut core, "false", false);
+    let generation = core.notification_watch.generation;
+    core.observe_notifications();
+    assert_eq!(core.notification_watch.generation, generation);
+    assert!(core.queue.is_empty());
+    core.cancel_observation(flag);
+    core.observe_notifications();
+    assert_ne!(core.notification_watch.generation, generation);
+    assert_eq!(core.flags[&flag].load, LoadStatus::NotRequested);
+    assert_eq!(core.flags[&flag].persisted_value, Some(false));
+    let poll = core.queue.pop_front().unwrap();
+    finish_poll(&mut core, &poll, Ok(Some("true")));
+    let read = core.queue.pop_front().unwrap();
+    finish_read(&mut core, &read, Ok(observed(Some(true))));
+    assert!(core.flags[&flag].value);
+}
+
+#[test]
+fn unmount_during_exit_does_not_resubscribe_after_canceling_exit() {
+    let mut core = Core::default();
+    let flag = Flag::DisplayNotifications;
+    core.observe_notifications();
+    let poll = core.queue.pop_front().unwrap();
+    finish_poll(&mut core, &poll, Ok(Some("true")));
+    let read = core.queue.pop_front().unwrap();
+    core.begin_exit();
+    core.cancel_observation(flag);
+    core.cancel_exit();
+    finish_read(&mut core, &read, Ok(observed(Some(true))));
+    assert!(!core.notification_watch.active);
+    assert_eq!(core.flags[&flag].load, LoadStatus::NotRequested);
+    assert!(core.queue.is_empty());
+}
+
+#[test]
+fn notification_mount_runs_source_writer_only_after_successful_observation() {
+    let mut core = Core::default();
+    let flag = Flag::DisplayNotifications;
+    assert!(!core.flags[&flag].value);
+    core.load(flag);
+    let read = core.queue.pop_front().unwrap();
+    finish_read(&mut core, &read, Ok(observed(None)));
+    assert!(core.flags[&flag].value);
+    assert_eq!(core.flags[&flag].persisted_value, None);
+    let write = core.queue.pop_front().unwrap();
+    assert!(matches!(
+        write.operation,
+        Operation::Write { value: true, .. }
+    ));
+    finish_write(
+        &mut core,
+        &write,
+        Err("app metadata publication failed".into()),
+    );
+    assert!(
+        core.flags[&flag].value,
+        "source optimistic editor is not rolled back"
+    );
+    assert_eq!(core.flags[&flag].persisted_value, None);
+    assert!(core.save_error().is_some());
+}
+
+#[test]
+fn failed_notification_read_has_no_default_write() {
+    let mut core = Core::default();
+    let flag = Flag::DisplayNotifications;
+    core.load(flag);
+    let read = core.queue.pop_front().unwrap();
+    finish_read(&mut core, &read, Err("non-boolean local value".into()));
+    assert!(core.queue.is_empty());
+    assert!(!core.flags[&flag].value);
+    assert_eq!(core.flags[&flag].persisted_value, None);
+}
+
+#[test]
+fn closed_notification_mount_cannot_start_an_initialization_write() {
+    let mut core = Core::default();
+    let flag = Flag::DisplayNotifications;
+    core.load(flag);
+    let read = core.queue.pop_front().unwrap();
+    core.begin_exit();
+    finish_read(&mut core, &read, Ok(observed(None)));
+    assert!(core.queue.is_empty());
+    assert_eq!(core.flags[&flag].load, LoadStatus::Cancelled);
+}
+
+#[test]
+fn notification_unmount_rejects_late_reads_without_cancelling_accepted_writes_or_other_flags() {
+    let mut core = Core::default();
+    let flag = Flag::DisplayNotifications;
+    core.load(flag);
+    let old_read = core.queue.pop_front().unwrap();
+    core.set(flag, false);
+    core.load(Flag::HueTutorial);
+    core.cancel_observation(flag);
+    core.load(flag);
+    finish_read(&mut core, &old_read, Ok(observed(Some(true))));
+    assert!(!core.flags[&flag].value);
+    assert_eq!(core.flags[&flag].load, LoadStatus::Loading);
+    let write = core.queue.pop_front().unwrap();
+    finish_write(&mut core, &write, Ok(()));
+    let other_read = core.queue.pop_front().unwrap();
+    finish_read(&mut core, &other_read, Ok(observed(Some(false))));
+    assert!(!core.flags[&Flag::HueTutorial].value);
+    let remount = core.queue.pop_front().unwrap();
+    finish_read(&mut core, &remount, Ok(observed(Some(false))));
+    assert_eq!(core.flags[&flag].persisted_value, Some(false));
+    assert_eq!(
+        core.queue.len(),
+        1,
+        "only the current mount may publish its writer"
+    );
+}
+
 fn finish_read(core: &mut Core, work: &Work, result: Result<Observation, String>) {
     let Operation::Read {
         flag,

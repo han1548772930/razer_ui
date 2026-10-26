@@ -428,30 +428,23 @@ impl AppShell {
                 task.await;
             }
             let result = cx
-                .background_spawn(async move {
-                    use razer_storage::source_local;
-                    let path = source_local::path()?;
-                    let raw = source_local::get_raw(&path, "displayNotifications")?;
-                    let (enabled, initialize) = display_preference(raw.as_deref());
-                    if initialize {
-                        source_local::set(&path, "displayNotifications", &json!(true))?;
-                    }
-                    Ok::<_, anyhow::Error>(enabled)
-                })
+                .background_spawn(
+                    async move { razer_storage::notification_preferences::visibility() },
+                )
                 .await;
             let _ = this.update(cx, |this, cx| {
                 if this.profile_notifications.display_revision != revision {
                     return;
                 }
                 this.profile_notifications.display_preference = None;
-                this.profile_notifications.display_enabled = Some(match result {
-                    Ok(enabled) => enabled,
+                match result {
+                    Ok(Some(enabled)) => this.profile_notifications.display_enabled = Some(enabled),
+                    Ok(None) => {}
                     Err(error) => {
                         this.status = format!("Profile notification local storage: {error:#}");
                         cx.notify();
-                        false
                     }
-                });
+                }
                 if let Err(error) = this.refresh_profile_notification_window(cx) {
                     this.status = format!("Profile notification: {error:#}");
                     cx.notify();
@@ -506,28 +499,6 @@ impl AppShell {
                 eprintln!("[profile notification measured storage] {error:#}");
             }
         }));
-    }
-}
-
-fn display_preference(raw: Option<&str>) -> (bool, bool) {
-    match raw.map(serde_json::from_str::<Value>) {
-        None | Some(Ok(Value::Null)) => (true, true),
-        Some(Ok(value)) => (source_truthy(&value), false),
-        Some(Err(error)) => {
-            // 8531.get catches parse failure and returns its original string.
-            eprintln!("[profile notification display preference] {error}");
-            (!raw.unwrap_or_default().is_empty(), false)
-        }
-    }
-}
-
-fn source_truthy(value: &Value) -> bool {
-    match value {
-        Value::Null => false,
-        Value::Bool(value) => *value,
-        Value::Number(value) => value.as_f64() != Some(0.),
-        Value::String(value) => !value.is_empty(),
-        _ => true,
     }
 }
 
@@ -959,9 +930,35 @@ fn position_and_show(
 #[cfg(test)]
 mod tests {
     use super::{
-        HostStorage, HostStorageView, NOTIFICATION_VIEW, STORAGE_KEY, call, display_preference,
-        ease_in_out, json, register_notification_host,
+        HostStorage, HostStorageView, NOTIFICATION_VIEW, STORAGE_KEY, call, ease_in_out, json,
+        register_notification_host,
     };
+    use crate::shell::Location;
+    use razer_pages::nav::Tab;
+    #[test]
+    fn profile_notification_preference_mount_follows_the_shared_settings_page() {
+        let product = Location::ProductSettings(false);
+        let main = Location::Main(Tab::Setting);
+        let home = Location::Main(Tab::Home);
+        for settings in [&product, &main] {
+            assert_eq!(home.synapse_settings_mount_change(settings), Some(true));
+            assert_eq!(settings.synapse_settings_mount_change(&home), Some(false));
+            for same_owner in [&product, &main] {
+                assert_eq!(settings.synapse_settings_mount_change(same_owner), None);
+            }
+            for other in [
+                Location::ProductSettings(true),
+                Location::ProductSettingsMigration,
+                Location::ProfileMigration,
+                Location::Device("source-device".into()),
+            ] {
+                assert_eq!(home.synapse_settings_mount_change(&other), None);
+                assert_eq!(other.synapse_settings_mount_change(settings), Some(true));
+                assert_eq!(settings.synapse_settings_mount_change(&other), Some(false));
+            }
+        }
+    }
+
     #[test]
     fn profile_notification_exit_resume_restores_actual_host_subscription_once() {
         let mut storage = HostStorage::default();
@@ -1021,18 +1018,6 @@ mod tests {
         let events = storage.drain_events(NOTIFICATION_VIEW).unwrap();
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].payload["newValue"], "resumed");
-    }
-    #[test]
-    fn source_display_preference_preserves_null_default_and_parse_catch_string() {
-        assert_eq!(display_preference(None), (true, true));
-        assert_eq!(display_preference(Some("null")), (true, true));
-        assert_eq!(display_preference(Some("false")), (false, false));
-        assert_eq!(display_preference(Some("0")), (false, false));
-        assert_eq!(display_preference(Some("\"\"")), (false, false));
-        assert_eq!(display_preference(Some("[]")), (true, false));
-        assert_eq!(display_preference(Some("{}")), (true, false));
-        assert_eq!(display_preference(Some("undefined")), (true, false));
-        assert_eq!(display_preference(Some("")), (false, false));
     }
     #[test]
     fn source_css_ease_has_exact_endpoints_and_midpoint() {

@@ -34,6 +34,24 @@ PID226 `85191` 的任务分别调用：
 
 真实板载清单由 retained device session 读取最大容量、数量、顺序 ID 和完整身份，再按当前配置 GUID 选槽。Smart Reel 保留全部匹配槽位；PID45066 模式路径只取第一个匹配。当前配置的 GUID、本地数组序号和真实槽位 ID 是不同对象。
 
+## 当前 Rust 读取与控件接线
+
+PID153、170、203、204、214、226、45066 通过现有滚轮提交入口读取设备 profile 1 的当前设置。下表是本项目独立观察链的 GET 顺序；原版恢复没有对全部滚轮字段普遍追加 GET，不能把这条扩展描述为原版初始化行为。
+
+| PID | 当前状态 GET 顺序 |
+| --- | --- |
+| 153、170 | 普通模式 → Smart Reel 开关 → 加速开关 |
+| 203、204、214、45066 | 普通模式 → Smart Reel 开关 → threshold → 加速开关 → level |
+| 226 | enabled-modes mask → 三模式 → Smart Reel 开关 → threshold → 加速开关 → level |
+
+纯读取使用 `Submission::read_current()`，直接经过 typed IPC 和已有物理路由校验，不保存配置、不递增 profile 版本、不获取无关板载清单，也不调用 setter。已有配置恢复和用户编辑在其有依据的写入序列之后取得同样的当前状态快照；这组 GET 是本项目的独立观察与确认扩展。逐字段保留已确认值、未知原始字节及具体读取失败，一项失败仍继续后续独立 GET；作用域取消则停止后续传输，不提交部分旧快照。最终快照与请求值不一致时，不能凭较早的单步读回宣称整次写入已确认。
+
+配置恢复以实际保存的 `scrollWheel` key 为前提，沿原版遍历当前配置自身字段的分支执行。页面合并出的默认值不能充当恢复输入；缺少整个 key 时只读设备，必需字段缺损或类型／模式非法时记录原因后同样只读，不以默认值写入。合法可选 level 缺失时跳过该 level 的恢复，其他有依据的恢复仍保留原顺序；PID226 的 mask／mode 最后处理。
+
+实际控件分别消费观测值和仍在编辑的用户草稿：模式按钮根据真实 mode 选择，开关根据对应实测开关值呈现，滑块将已观测 level 同步到保留的 `SliderState`。本地持久化字段只供保存和源码规定的恢复，不作为读取失败的显示回退；新编辑不会被较早请求完成覆盖。未观测、读取中、失败、断开与未知值单独保留；未知协议值保留原始字节，协议合法但超出当前源码滑块范围的 level 也显示未知，不夹取到边界。没有可显示的 level 时只呈现轨道，不显示伪造的滑块位置。附加状态文案用于解释读取状态，设备值同时接入模式、开关、模式禁用集合和滑块本身。
+
+协议与快照所有者为 [mouse_scroll.rs](../../../crates/razer-device/src/mouse/mouse_scroll.rs)；恢复门槛、作用域和结果匹配在 [mouse_scroll_task.rs](../../../crates/razer-pages/src/features/mouse/scrolling/mouse_scroll_task.rs)；控件投影在 [mouse_scroll_wheel.rs](../../../crates/razer-pages/src/features/mouse/scrolling/mouse_scroll_wheel.rs)；[mouse_scroll_runtime.rs](../../../crates/razer-shell/src/shell/mouse/mouse_scroll_runtime.rs) 在核对当前物理连接后交付结果，并同步实际滑块。
+
 ## Mode V2 的恢复与失败
 
 PID226 `restoreScrollDisabledModes` 先从所选配置规范化 disabledModes，再从当前 scrollMode 与可用模式中得到 active mode，提交禁用集合，最后发布两个字段的 UI 投影。只有这条实际 restore 链能说明恢复顺序，不能把 reducer 初值当成设备读回。
@@ -83,11 +101,11 @@ PID231 的 Customize 左侧挂载 Mode V2，右侧按 multiPairing 条件选择�
 ## 原件与复核位置
 
 - PID226 UI：`.analysis/inputs/frontend/mouse-226-current/raw/apps.razer.com/synapse/products/226/ui/static/js/6424.1f24d872.chunk.js`，卡片、0～4 滑块、模式顺序、禁用规则与 300 ms debounce 位于 `[214200,218600)`；直接复读原始字节。
-- PID226 中间件：`.analysis/inputs/frontend/mouse-mw-226-current/raw/apps.razer.com/synapse/products/226/mw/7846.8d3e3465fc6ae4ee8a38.js`，`restoreScrollDisabledModes` `[1066824,1067253)`；加速 writer `Wn` `[1713707,1714580)`、level `$n` `[1714580,1715368)`、Smart Reel `Yn` `[1715368,1716190)`、threshold `Jn` `[1716190,1716937)`、模式 `qn` `[1716937,1718065)`；直接复读完整函数。
+- PID226 中间件：`.analysis/inputs/frontend/mouse-mw-226-current/raw/apps.razer.com/synapse/products/226/mw/7846.8d3e3465fc6ae4ee8a38.js`，当前配置自身字段的恢复 `[1529678,1560045)`、`restoreScrollDisabledModes` `[1066824,1067253)`；加速 writer `Wn` `[1713707,1714580)`、level `$n` `[1714580,1715368)`、Smart Reel `Yn` `[1715368,1716190)`、threshold `Jn` `[1716190,1716937)`、模式 `qn` `[1716937,1718065)`；直接复读完整函数。
 - PID167 UI：`.analysis/inputs/frontend/mouse-167-current/raw/apps.razer.com/synapse/products/167/ui/static/js/main.05d42904.js`；预设 `[5562088,5564231)`、选项 `[5564833,5568674)`、曲线 `[5568783,5576241)`、Custom 卡 `[5576745,5582089)`、Scrolling 挂载 `[5582217,5582393)`。
 - PID167 middleware：`.analysis/inputs/frontend/mouse-mw-167-current/raw/apps.razer.com/synapse/products/167/mw/763.1879673c551b57767a72.js`；保存与排队 `[1632019,1635152)`、前台 maker `[1635155,1635507)`、画布坐标转换 `[1686126,1686258)`、Bézier／离散／单位转换 `[1686266,1687956)`；active writer `[1824306,1825029)`、集合 writer `[1825209,1826010)`、Custom writer `[1826251,1829525)`、浏览 writer `[1829714,1831026)`、前台通知 `[1436235,1436630)`、硬件事件消费者 `[1247296,1248294)`；restore 所在完整 owner `[1402088,1433099)`。
 - PID167 硬件事件 parser：同一 middleware 目录 `rzHardwareEventsProtocol25Parser.f69e9a24f72f76e05e2c.js`，`[1493,7422)`。产品入口 `main.121b0f27bcf228da20db.js` `[277259,277952)` 显式选 rzDevice25／Orca5；不能因 manifest 可加载 rzDevice30 就把它写成本设备实际 adapter。
 - PID231 UI：`.analysis/inputs/frontend/mouse-231-current/raw/apps.razer.com/synapse/products/231/ui/static/js/main.eacf1afc.js`，Customize `[5522752,5524405)`、Performance `[5605725,5606092)`；Mode V2 feature 位于其 middleware `9697.9310c015f990fbf9b4aa.js`。
 - 全产品分支索引：`.analysis/results/frontend/mouse-mw-audit.json` 的 `queries["mouse-scroll"].products[product_id].semantics`／`lifecycle_association_chains`／`complete_owners`，完整模块由该 query 的 `complete_owners[key]` 定位回当前原件。
 
-本文完成上述静态语义记录，未执行真实滚轮切换、板载写入或窗口验收。
+本文记录当前原件的静态语义及上述 7 产品的 Rust 读取和控件接线边界；PID167、231 的行为记录不表示其完整 Rust 链已完成。真实滚轮切换、板载写入、官方 DLL 功能对照与窗口验收仍未验证。

@@ -53,12 +53,18 @@ mod controller_calibration;
 mod controller_calibration_focus;
 #[path = "shell/gamepad/controller_chroma.rs"]
 mod controller_chroma;
+#[path = "shell/gamepad/controller_initialization.rs"]
+mod controller_initialization;
 #[path = "shell/gamepad/controller_input.rs"]
 mod controller_input;
 #[path = "shell/gamepad/controller_lighting.rs"]
 mod controller_lighting;
 #[path = "shell/gamepad/controller_power.rs"]
 mod controller_power;
+#[path = "shell/gamepad/controller_sleep.rs"]
+mod controller_sleep;
+#[path = "shell/gamepad/controller_socd.rs"]
+mod controller_socd;
 #[path = "shell/gamepad/controller_triggers.rs"]
 mod controller_triggers;
 #[path = "shell/devices/device_discovery.rs"]
@@ -109,6 +115,8 @@ mod keyboard_wristrest;
 mod leviathan;
 #[path = "shell/host/macro_recorder.rs"]
 mod macro_recorder;
+#[path = "shell/audio/marci_lighting.rs"]
+mod marci_lighting;
 #[path = "shell/mouse/mouse_current_dpi.rs"]
 mod mouse_current_dpi;
 #[path = "shell/mouse/mouse_current_dpi_runtime.rs"]
@@ -359,9 +367,8 @@ pub struct AppShell {
     >,
     thx_cleanup: Vec<std::thread::JoinHandle<()>>,
     controller_calibrations: BTreeMap<String, controller_calibration::Session>,
-    controller_calibration_cleanup: Vec<std::thread::JoinHandle<()>>,
-    controller_calibration_stop_cleanup:
-        Vec<(Task<()>, std::sync::Arc<std::sync::atomic::AtomicBool>)>,
+    controller_calibration_cleanup: Vec<controller_calibration::Worker>,
+    controller_calibration_stop_cleanup: Vec<controller_calibration::StopCleanup>,
     audio_preset_shortcuts: BTreeMap<String, audio_mixer::presets::Session>,
     audio_preset_shortcut_cleanup: Vec<std::thread::JoinHandle<()>>,
     audio_notification_cleanup: Vec<audio_notifications::Retired>,
@@ -398,7 +405,11 @@ pub struct AppShell {
     mouse_rotation: mouse_rotation::State,
     mouse_power: mouse_current_power_runtime::State,
     controller_trigger_workers: usize,
+    controller_sleep_workers: usize,
+    controller_sleep_cleanup: controller_sleep::CleanupState,
+    controller_socd_waiters: BTreeMap<u64, Task<()>>,
     controller_lighting_workers: usize,
+    marci_lighting: marci_lighting::Runtime,
     controller_lighting_owners: BTreeMap<String, controller_lighting::Session>,
     controller_lighting_cleanup: Vec<std::sync::Arc<controller_lighting::RetainedOwner>>,
     controller_software_status: BTreeMap<String, razer_device::controller_lighting::SoftwareStatus>,
@@ -674,7 +685,11 @@ impl AppShell {
             mouse_rotation: mouse_rotation::State::default(),
             mouse_power: mouse_current_power_runtime::State::default(),
             controller_trigger_workers: 0,
+            controller_sleep_workers: 0,
+            controller_sleep_cleanup: controller_sleep::CleanupState::default(),
+            controller_socd_waiters: BTreeMap::new(),
             controller_lighting_workers: 0,
+            marci_lighting: marci_lighting::Runtime::default(),
             controller_lighting_owners: BTreeMap::new(),
             controller_chroma: controller_chroma::State::default(),
             controller_power: controller_power::State::default(),
@@ -1306,6 +1321,7 @@ impl AppShell {
         this.install_mouse_receiver_indicator_cleanup(cx);
         this.install_controller_input_cleanup(cx);
         this.install_controller_lighting_cleanup(cx);
+        this.install_marci_lighting_cleanup();
         this.install_product_lighting_cleanup(cx);
         this.install_seiren_audio_capture_cleanup(window, cx);
         this.install_seiren_audio_playback_cleanup(cx);
@@ -1664,6 +1680,15 @@ impl AppShell {
                 }
                 WorkspaceEvent::ControllerLightingRequested(request) => {
                     this.persist_controller_lighting(entity.clone(),request.clone(),window,cx);
+                }
+                WorkspaceEvent::MarciLightingRequested(effect) => {
+                    this.persist_marci_lighting(entity.clone(),effect.clone(),window,cx);
+                }
+                WorkspaceEvent::ControllerSleepRequested(request) => {
+                    this.persist_controller_sleep(entity.clone(),request.clone(),window,cx);
+                }
+                WorkspaceEvent::ControllerSocdRequested(request) => {
+                    this.persist_controller_socd(entity.clone(), request.clone(), window, cx);
                 }
                 WorkspaceEvent::Changed => {
                     this.sync_local_mapping_targets(window,cx);
@@ -2030,6 +2055,15 @@ impl AppShell {
         self.app_picker
             .update(cx, |picker, cx| picker.dismiss(window, cx));
         self.host_tabs.visit(&next, cx);
+        if let Some(mounted) = self.location.synapse_settings_mount_change(&next) {
+            self.settings.update(cx, |settings, cx| {
+                if mounted {
+                    settings.activate_notifications(cx);
+                } else {
+                    settings.deactivate_notifications(cx);
+                }
+            });
+        }
         if next != self.location {
             // TabManager broadcasts activeTabChanged with the selected frame;
             // this predicate differs from BrowserWindow focus/blur.
@@ -2550,6 +2584,18 @@ impl AppShell {
             return false;
         }
         self.rebase_controller_trigger_save(&mut request, cx);
+        if let Err(error) = self.rebase_controller_sleep_save(&mut request, cx) {
+            self.status = format!("手柄休眠设置本地保存失败：{error:#}");
+            self.cancel_prepared_save(request, cx);
+            self.continue_save_queue(false, cx);
+            return false;
+        }
+        if let Err(error) = self.rebase_controller_socd_save(&mut request, cx) {
+            self.status = format!("SOCD 本地保存失败：{error:#}");
+            self.cancel_prepared_save(request, cx);
+            self.continue_save_queue(false, cx);
+            return false;
+        }
         if let Err(error) = self.rebase_controller_lighting_save(&mut request, cx) {
             self.status = format!("手柄灯效本地保存失败：{error:#}");
             if let Some(ProductSave::ControllerLighting(lighting)) = request
@@ -2676,7 +2722,7 @@ impl AppShell {
             window,
             file,
             owners: save_owners,
-            product,
+            mut product,
             ..
         } = request;
         let snapshot = file.clone();
@@ -2696,6 +2742,9 @@ impl AppShell {
                 this.sync_persistence_state(cx);
                 match result {
                     Ok(()) => {
+                        if let Some(ProductSave::ControllerSocd(save)) = &mut product {
+                            save.storage_committed();
+                        }
                         let product_owner_current = product.as_ref().is_none_or(|product| {
                             this.product_save_owner_current(&save_owners, product, cx)
                         });
@@ -2765,7 +2814,7 @@ impl AppShell {
                             this.status = "已保存到本机 · 尚未发送到设备".into();
                         }
                         if product.is_none()
-                            && this.settings.read(cx).snapshot().notifications
+                            && this.settings.read(cx).notifications_enabled(cx)
                             && !this.close_requested
                         {
                             // Persistence completes without needing the original
@@ -2851,7 +2900,10 @@ impl AppShell {
             || self.mouse_dynamic.pending()
             || self.mouse_rotation.pending()
             || self.controller_trigger_workers > 0
+            || self.controller_sleep_workers > 0
+            || self.controller_sleep_cleanup.pending()
             || self.controller_lighting_workers > 0
+            || self.marci_lighting.pending()
             || self.product_lighting.pending()
             || self.seiren_audio_operations.pending()
             || (!self.seiren_audio_captures.is_empty() || !self.seiren_audio_playbacks.is_empty())
@@ -3082,6 +3134,7 @@ impl AppShell {
             }
         }
         self.close_requested = true;
+        self.retry_controller_sleep_cleanup(cx);
         if let Err(error) = self.prepare_mouse_matcher_exit(cx) {
             self.status = error;
             self.cancel_pending_exit(cx);
@@ -3092,6 +3145,7 @@ impl AppShell {
         self.prepare_controller_chroma_exit();
         razer_state::ui_preferences::begin_exit(cx);
         razer_state::chroma_settings::begin_exit(cx);
+        razer_pages::features::screen_color::begin_exit(cx);
         self.release_interdevice_holds(cx);
         self.prepare_keyboard_game_exit(cx);
         if !self.close_requested {
@@ -3115,6 +3169,7 @@ impl AppShell {
         self.cancel_seiren_audio_captures(cx);
         self.cancel_seiren_audio_playbacks();
         self.retire_controller_lighting_owners(cx);
+        self.retire_marci_lighting_owners(cx);
         for workspace in self.devices.clone() {
             let calibration = workspace.update(cx, |workspace, cx| {
                 workspace.prepare_mouse_calibration_exit(cx)
@@ -3202,6 +3257,7 @@ impl AppShell {
             || audio_mixer::active_local_workers() > 0
             || help_system_info::active_workers() > 0
             || razer_platform::file_dialog::active_dialogs() > 0
+            || razer_pages::features::screen_color::exit_pending()
             || razer_storage::file_transfer::active_io() > 0
             || razer_state::ui_preferences::active_io() > 0
             || razer_state::chroma_settings::active_io() > 0

@@ -133,6 +133,8 @@ impl AppShell {
         }
         self.sync_receiver_macro_access(cx);
         self.initialize_current_mouse_profiles(cx);
+        self.sync_controller_sleep_recording(cx);
+        self.initialize_controller_roots(cx);
         self.sync_keyboard_latest_restore(window, cx);
     }
 

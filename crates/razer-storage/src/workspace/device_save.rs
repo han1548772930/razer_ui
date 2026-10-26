@@ -85,6 +85,11 @@ impl DeviceSaveDraft {
                 &proposed.source_device_settings,
                 &mut device.source_device_settings,
             )?;
+            apply_changed(
+                &previous.controller_power_saving,
+                &proposed.controller_power_saving,
+                &mut device.controller_power_saving,
+            );
         }
         Ok(rebased)
     }
@@ -96,11 +101,13 @@ fn fields(
     &[razer_model::model::Profile],
     &str,
     &Option<serde_json::Value>,
+    &Option<razer_device::controller_sleep::PowerSaving>,
 ) {
     (
         &device.profiles,
         &device.active_profile,
         &device.source_device_settings,
+        &device.controller_power_saving,
     )
 }
 
@@ -434,6 +441,31 @@ mod tests {
 
     fn device() -> Device {
         device_for_product(756)
+    }
+
+    #[test]
+    fn queued_controller_sleep_save_changes_only_its_device_global_field() {
+        use razer_device::controller_sleep::PowerSaving;
+        let previous = device_for_product(2636);
+        let mut proposed = previous.clone();
+        proposed.controller_power_saving = Some(PowerSaving::new(15, true).unwrap());
+        let draft = DeviceSaveDraft::new(vec![previous.clone()], vec![proposed]);
+        assert!(draft.has_changes(&previous.workspace_identity()));
+        let mut latest = previous.clone();
+        latest.profiles[0].name = "Saved intervening edit".into();
+        latest.source_device_settings = Some(serde_json::json!({"extension": 42}));
+        let actual = draft.rebase(&[latest.clone()]).unwrap().remove(0);
+        assert_eq!(
+            actual.controller_power_saving,
+            Some(PowerSaving::new(15, true).unwrap())
+        );
+        assert_eq!(actual.profiles, latest.profiles);
+        assert_eq!(actual.source_device_settings, latest.source_device_settings);
+        let unchanged = DeviceSaveDraft::new(vec![previous.clone()], vec![previous]);
+        assert_eq!(
+            unchanged.rebase(&[actual.clone()]).unwrap()[0].controller_power_saving,
+            actual.controller_power_saving
+        );
     }
 
     #[test]

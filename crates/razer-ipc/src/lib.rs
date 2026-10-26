@@ -15,10 +15,14 @@ use std::{
 mod job;
 mod worker_diagnostics;
 mod worker_shutdown;
+pub use worker_shutdown::ShutdownConfirmation;
 
 pub const FRAME_PREFIX: &str = "RAZER_UI_SERVICE ";
 pub const MAX_FRAME_BYTES: usize = 4 * 1024 * 1024;
 pub mod analog_observation;
+pub mod controller_sleep;
+pub mod controller_initialization;
+pub mod controller_socd;
 pub mod device_tasks;
 pub mod gamepad_observation;
 pub mod global_shortcut_capture;
@@ -465,6 +469,26 @@ pub enum ServiceRequest {
         node: razer_device::backend::HidNode,
         product_id: u32,
         lighting_operation: razer_device::controller_lighting::LightingOperation,
+    },
+    MarciLighting {
+        device_container_id: String,
+        owner_id: String,
+        lighting_operation: razer_device::marci_lighting::Operation,
+    },
+    ControllerSleep {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        sleep_operation: controller_sleep::SleepOperation,
+    },
+    ControllerInitialization {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        plan: razer_device::controller_initialization::InitializationPlan,
+    },
+    ControllerSocd {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        socd_operation: controller_socd::SocdOperation,
     },
     ControllerInputStart {
         product_id: u32,
@@ -1068,6 +1092,7 @@ pub struct ServiceClient {
     timeout: Duration,
     next_id: u64,
     stopped: bool,
+    shutdown_confirmation: Option<ShutdownConfirmation>,
     philips_measurement_started: bool,
     request_guard: Option<RequestGuard>,
 }
@@ -1143,6 +1168,7 @@ impl ServiceClient {
             timeout: Duration::from_secs(15),
             next_id: 1,
             stopped: false,
+            shutdown_confirmation: None,
             philips_measurement_started: false,
             request_guard: None,
         };
@@ -1215,6 +1241,13 @@ impl ServiceClient {
         self.stopped
     }
 
+    /// The service's matching successful teardown reply remains available even
+    /// when subsequent process reaping or pipe joins fail. Admission closure
+    /// and OS termination alone cannot establish this confirmation.
+    pub fn shutdown_confirmation(&self) -> Option<ShutdownConfirmation> {
+        self.shutdown_confirmation
+    }
+
     /// Confirm that the owned process has exited and all pipe workers joined.
     /// This closes admission without acknowledging native service shutdown or
     /// any in-flight device write. Unreaped handles remain owned on failure so
@@ -1277,10 +1310,15 @@ impl ServiceClient {
                 | ServiceRequest::PrepareOtfmRecorder
                 | ServiceRequest::StartOtfmRecording
         );
+        let controller_initialization = matches!(&request, ServiceRequest::ControllerInitialization { .. });
         let controller_triggers = matches!(
             &request,
             ServiceRequest::ControllerTriggers { .. }
                 | ServiceRequest::ControllerLighting { .. }
+                | ServiceRequest::MarciLighting { .. }
+                | ServiceRequest::ControllerSleep { .. }
+                | ServiceRequest::ControllerSocd { .. }
+                | ServiceRequest::ControllerInitialization { .. }
                 | ServiceRequest::ReceiverLightingApply { .. }
                 | ServiceRequest::ReceiverLightingStop { .. }
         );
@@ -1603,6 +1641,8 @@ impl ServiceClient {
             // mode/sample-rate chain. Do not kill the session before its own
             // bounded operation and cleanup can report their actual result.
             budget + Duration::from_secs(5)
+        } else if controller_initialization {
+            Duration::from_secs(305)
         } else if controller_triggers {
             // Eight current getters or four ordered setters retain their source
             // retry budgets. Retained receiver lighting can wait for its first
@@ -1693,6 +1733,10 @@ impl ServiceClient {
         if response.data.is_some() == response.error.is_some() {
             return Err(self.stop_after_error(anyhow::anyhow!("设备服务响应状态无效，连接已关闭")));
         }
+        let confirmation = shutting_down.then(|| worker_shutdown::confirm(&response, id));
+        if let Some(Ok(confirmation)) = &confirmation {
+            self.shutdown_confirmation = Some(*confirmation);
+        }
         let stop = if response.fatal || shutting_down {
             self.finish_process()
         } else {
@@ -1703,19 +1747,11 @@ impl ServiceClient {
                 .diagnostics
                 .attach(with_cleanup_error(anyhow::Error::msg(error), stop)));
         }
+        if let Some(Err(error)) = confirmation {
+            return Err(self.diagnostics.attach(with_cleanup_error(error, stop)));
+        }
         stop.map_err(|error| self.diagnostics.attach(error))?;
         let data = response.data.context("设备服务返回了空响应")?;
-        if shutting_down {
-            #[derive(Deserialize)]
-            struct ShutdownReceipt {
-                stopped: bool,
-            }
-            let receipt: ShutdownReceipt =
-                serde_json::from_value(data.clone()).context("设备服务关闭回执格式无效")?;
-            if !receipt.stopped {
-                bail!("设备服务未确认完成关闭");
-            }
-        }
         Ok(data)
     }
 
@@ -1760,7 +1796,9 @@ impl ServiceClient {
                     }
                 }
             }
-            result
+            result.map(|confirmation| {
+                self.shutdown_confirmation = Some(confirmation);
+            })
         } else {
             Ok(())
         };

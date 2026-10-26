@@ -4,6 +4,8 @@
 
 ## 补查后的当前边界
 
+冻结基线中的 61 项静态未决已全部完成补查和清理后复核：49 项原生、12 项前端，当前未决为 0，失败为 0。当前状态以[增量收据](../../.analysis/results/reverse-pending/unresolved-current.json)为准，逐类依据和清理结果见本页[未决项当前复核](#未决项当前复核)。下文的 61 项、134 项及反编译失败数量均保留其对应历史快照范围；完整产品语义、Rust／UI 接线和实际 DLL／设备验收分别记录。
+
 统一剩余提取批次已完成 948/948 项：237 个原生模块与 711 个前端源集，初次队列暂记 814 项静态通过、134 项未决（原生 114、前端 20）。这一队列的原始收据由随后启动的严格复核保存于当前[统一收据](../../.analysis/results/reverse-pending.json)的 `previous_static_run`，实际运行的[提取器源码快照](../../.analysis/results/reverse-pending/tool-sources/ddb6a6774c4bba575dcc5b1f691ffbdf001ce37733446b87918eee352b7b866c.py)亦已保留。初次任务未统一核验所有基础捕获产物，且存在命令期间原件变化的接受漏洞，故其 passed 仅是待复核记录；修复后的严格复核已于 2026-10-26 11:55:56 UTC 结束，950 项中 889 项通过、61 项未决，详见本页末尾。此后补查和单项复核使用增量收据，不改写该快照或与提取进度混算。初次原生任务记录 416 条仍未恢复的反编译失败，适用范围限这 237 个模块，不能与下述 241 模块历史快照直接相减，也不能换算成产品功能数量。
 
 2026-10-24 的两个统一 IDA／Hex-Rays 队列均已结束：[字符转换补查](../../.analysis/results/native-reanalysis-batch.json)完成 56/56 个模块，[返回缓冲区包装补查](../../.analysis/results/native-bulk/demangle-reanalysis.json)完成 59/59 个模块，后者覆盖 118 条原始失败记录。它们使用 16 个 Python 调度线程启动独立 IDA 9.1 静态进程，未执行被分析 DLL、驱动、服务或设备，也没有修改 Rust。
@@ -64,7 +66,7 @@ THX V4 的 `0x23200/0x245cd` 算术链已沿完整调用者 `0x63f1a0` 核清七
 
 执行顺序如下，各批完成后直接进入下一批，无须逐型号等待确认：
 
-1. **接续已经结束的严格复核基线。** 950 项严格复核已结束；保留原队列的任务 ID、完成事实和完整证据，将 61 项未决按当前单项收据归因后继续处理。历史收据保存为核验逻辑字节数及 SHA 的无损引用，活动收据不递归嵌入整份旧报告。只重验变化或真实失效的任务及其反向依赖，不能为重新计算总数反复运行全部 950 项；静态通过项仍按全量分支表继续语义核验。
+1. **接续已经结束的严格复核基线。** 950 项严格复核已结束；原队列的任务 ID、完成事实和完整证据保持不变，其中 61 项静态未决已由当前增量收据全部闭合，后续按全量分支表继续产品语义核验。历史收据保存为核验逻辑字节数及 SHA 的无损引用，活动收据不递归嵌入整份旧报告。只重验变化或真实失效的任务及其反向依赖，不能为重新计算总数反复运行全部 950 项。
 2. **按共享能力横向扫全产品。** 发现／身份与传输 → 配置档／按键／宏 → 灯光 → 音频／摄像头／系统与配件 → 主机服务和安装生命周期。它是依赖优先顺序，各主线可以同步处理已经具备依赖的能力；每轮每个仍有可执行未决项的产品族至少领取一个批次，受阻族记录具体依赖，不能等待整个键盘族结束后才开始其他族。同批覆盖该链全部实际调用方。已闭合链保留依赖指纹及消费者集合，已有证据充分的 747 仅因新官方分支、依赖变化或失败回归重验，并记录触发证据。
 3. **对硬缺口单独补查。** 网络／部署、边界／类型、间接调用、SDK／反编译器、产品语义分别归因。相同输入和相同方法重复失败而无新证据时，必须换取证路径或交叉审阅，并保留下一步行动；不能无期限原样重跑。其余槽位继续无依赖批次。冻结复核结束后，补查结果按依赖有序发布，只重验变化输入和真实反向依赖。
 4. **逐分支交叉验收并清理。** 对照产品目录、实际挂载／初始化入口、主机模块和原生依赖核查无人负责、未审阅和漏接分支；再从全部官方本地 UI 动作和原生 dispatcher 分支反向核对完整调用链，不能只勾选已有文档或 Rust 入口。没有来源到消费者的完整链便继续补查，未解析间接调用阻断相应分支完成。每批发布后执行统一清理，验证已删除、保留及失败项和真实占用变化，再领取下一批。
@@ -327,3 +329,42 @@ capture 完整只表示静态函数和原始字节收据可复核；伪代码失
 
 本次队列登记 950 项；状态：`{"passed": 889, "unresolved": 61}`。完整任务身份、实际命令、输出和未决原因见[统一收据](../../.analysis/results/reverse-pending.json)。passed 只表示该任务的静态检查通过；队列结束、伪代码恢复、完整语义、Rust 实现和实际设备验收分别记账，不由脚本自动提升为全功能完成。
 <!-- reverse-pending:end -->
+
+<!-- reverse-pending-current:begin -->
+## 未决项当前复核
+
+冻结基线的 61 项未决已复核 61 项；当前状态：`{"passed": 61}`，尚未复核 0 项。以[当前统一收据](../../.analysis/results/reverse-pending/unresolved-current.json)及其不可变 `source_review` 为准；上面的 950 项收据保留原完成事实。
+
+静态通过可来自完整反编译、原始函数上下文、精确导入跳转或独立核验的来源汇编／架构契约，每项保留具体依据和原始分析器失败。静态语义、Rust 独立实现、UI／后端接线、模拟验证和实际 DLL／设备验收分别记录；本轮复核不提升后几项的完成状态。
+<!-- reverse-pending-current:end -->
+
+当前 61 项分为 49 项原生与 12 项前端静态复核。原生的 373 条原始失败分别由 296 份完整函数、3 份完整上下文、2 项精确导入转发、69 项静态汇编／架构契约及 3 项嵌入 PE 归属核对闭合。前端 4 项直接通过，8 项以已核验的当前官方来源替换闭合，保留历史缺失与失败；这不表示取得了缺失 source map。全部任务的 `semantics_complete` 及前端 `mount_tree_complete` 仍为 false，完整产品语义和挂载树不能由本批队列状态推定。
+
+8 项前端替换的原捕获仍记录 `successful_full_capture: false` 和原校验失败；本批通过依据为当前完整原件、AST、无缺失的模块恢复及已核对的字面量 webpack 文件名依赖闭包，不提升为原捕获校验全部通过。
+
+这 12 项的 `semantic_review: required` 是静态队列保留的独立语义边界，不代表下面已有专项从未读取过。继续逆向时按当前来源复用对应所有者，只补未覆盖的调用链；不重做整套捕获，也不将某个专题的结论外推到整个应用或产品。
+
+| 原任务源集 | 当前语义来源 | 已有语义所有者与剩余边界 |
+| --- | --- | --- |
+| `synapse-device-catalog-current` | 同名源集 | [动态照明目录选择](../products/shared/dynamic-lighting.md#实际设备目录primarypid-顺序与页面资源)及 `local-audit.dynamic_lighting.lighting_catalog` 已核 335 行／334 个 primary PID、按原序 first-match 的标量身份选择、manifest／SVG／Cache API 消费者。收据中的 1 项 `dependency_closure_outside_observation` 限定 15 URL 的观察范围，并非缺少一个原件；完整应用与动态缓存仍不能据此算闭合。 |
+| `installed-chroma-dashboard` | `chroma-app-dashboard-current` | [Dashboard](../products/host/dashboard.md)与[窗口生命周期](../products/host/window-lifecycle.md)的本机入口连读；当前来源替换证明字节／AST 与文件名依赖，不证明全部 Chroma Dashboard 卡片、安装状态、窗口动作及结果消费者均已闭合。 |
+| `mouse-162-identity-current` | 同名源集及逐项引用的 162／163 原件 | [162 身份专项](../products/mouse/products/162.md)及 `identity-audit.json` 已核目录、DeviceInfo、后台准入和 UI／MW 路由，162 不能当 163 硬件别名。该身份结论不覆盖两个部署的全部功能、真实 USB、Rust 迁移或设备对照。 |
+| `installed-product-190-mw` | `mouse-mw-190-current` | [Performance](../products/mouse/performance.md)、[高级灵敏度](../products/mouse/advanced-sensitivity.md)、[映射](../products/mouse/customize.md)及 `mouse-mw-audit.json` 保存本机 profile、DPI 预读／写回／比较、Matcher、动态采样和取消所有者；其余页面／版本／固件分支、生产消费者与实际 DLL／设备结果分别核对。 |
+| `installed-product-190-ui` | `mouse-190-current` | [190 当前页面树](../products/mouse/products/190.md)按六项实际导航分别接功能文档；[Performance 实际挂载与状态](../products/mouse/performance.md#pid190-的实际页面与-rust-对照)已区分草稿与读回。结构页的直接组件定位不等于全部嵌套弹层、焦点、状态及像素验收。 |
+| `synapse-root-current` | `synapse-dashboard-current`，依据真实宿主入口 | [Dashboard](../products/host/dashboard.md)和[窗口生命周期](../products/host/window-lifecycle.md)记录实际懒加载根、路由、设备集合及重开链。`/synapse/` 的 404 不是实际宿主页缺失；不得据替代来源删除原失败或宣称整个宿主完成。 |
+| `installed-product-679-ui` | `keyboard-679-current` | [Customize](../products/keyboard/customize.md)、[Profiles](../products/keyboard/profiles.md)及 `keyboard-main-audit.json` 的 `factory_customize_chain` 已核工厂档／普通编辑器／two-tap 挂载、Save／Discard、乐观状态与监听释放。实际窗口状态和未覆盖的产品／布局分支仍须独立核验。 |
+| `lighting-sku-736-737-current` | 同名源集与当前 Lighting Engine | [736／737 选择链](../products/shared/dynamic-lighting.md#736737-的-sku-129manifest-可用性与原生来源)已核 systemSKU 字符条件、edition 129、显式 edition 0 回落与网络／IDB／CacheStorage 顺序。六个 404 候选没有虚构内容；实际设备 edition／layout、SKU 与运行时缓存未查询。 |
+| `installed-synapse-dashboard` | `synapse-dashboard-current` | [Dashboard](../products/host/dashboard.md)已核卡片、分组、双连接、窗口路由及 retry→后台 resuscitate。旧缓存额外原件覆盖另在替代收据核验；旧部署完整恢复量不等于当前 manifest 可达量，安装／握手／设备恢复不共用成功状态。 |
+| `synapse-chroma-studio-entry-2252a16187ab-current` | `synapse-chroma-studio-build-2609080829-current` | [Studio](../products/host/chroma-studio.md)已有画布／草稿／历史、媒体、Save／Discard、区域选择、Preview／Advanced／LE 及释放专项。旧部署正文及函数范围须先与所选构建逐项对齐，不能仅凭当前依赖闭包就将旧语义自动继承给全部新代码。 |
+| `installed-product-679-mw` | `keyboard-mw-679-current` | [679 板载与本机 Profiles](../products/keyboard/profiles.md)及 `keyboard-mw-audit.json` 的 `keyboard-local-profile-adoption` 已核完整读取、宏、槽身份、合并／冲突／差异写入与菜单动作。`keyboard-679-onboard-reconcile-and-menu-consumers` 记录的是 Rust 消费者与语义差异，不能误当该官方主链未逆向。 |
+| `lighting-protocol-selection-current` | 同名观察源集，provider 为 `synapse-lighting-engine-current` | [协议选择与真实 writer](../products/shared/dynamic-lighting.md#从协议选择到真实-writer-的-js-消费者)及完整原生专题已核协议类、帧构造、应答分类和退出恢复。单一选择器或 provider 捕获不证明全部 manifest、设备／固件组合、Rust writer 及实际设备结果均完成。 |
+
+表中链接是现有证据的语义入口，当前任务收据和具体专题仍各自保留原范围。源码获取、静态语义、Rust 独立实现、UI／后台接线与纯／模拟测试／实际对照不能通过修改这个队列表互相提升。
+
+[原生补查清理收据](../../.analysis/results/scratch-cleanup-native-bulk-closure-verified-plan-applied.json)记录实际删除 17 个临时目录、51 个文件，释放 2,767,838,051 字节；[静态复核后清理收据](../../.analysis/results/scratch-cleanup-unresolved61-post-audit-plan-applied.json)另记录实际删除 117 个目录、351 个文件，释放 7,376,279,993 字节，两批失败均为零。计划 SHA、执行范围和已删除路径均已重新核对，合计实际释放 10,144,118,044 字节。119 份原生补查保留依据在删除后重新核验，包含 16 份源数据库及 16 份原始输入。未完成、未审或仍有实际引用的内容继续保留；清理后的全部 61 项已用 16 个进程重新计算并通过，嵌套证据引用的逻辑字节和 SHA 也独立重验通过。
+
+统一 `verify-analysis-tools` 入口已覆盖新增的归属审计、架构契约、来源汇编、历史尝试、导入转发及前端闭包检查；当前[验证收据](../../.analysis/results/tool-verification.json)记录 1,352 项通过、失败和错误均为零，并保留工具与测试的输入身份。736／737 的完整配置消费者已单独核实 edition 129 到 0 的显式选择及缓存顺序；6 个候选路径的 404 原始观察继续保留，不冒充取得了 edition 129 内容、查询了设备或验证了动态缓存与完整产品语义。
+
+当前[统一 Rust 验证收据](../../.analysis/validation.json)记录 40 组检查通过、2,489 次纯／模拟测试执行通过，验证期间输入未变化；其中包括工作区全目标编译、手柄连接探测与根导入、3942 帧与退出效果、宏输入消费者、通知偏好和屏幕取色释放链。另有 2 项需显式读取安装配置的既有测试保持忽略。具体实现与仍未闭合的语义分别见[手柄](../products/gamepad/mapping-and-sensitivity.md)、[灯光](../products/shared/dynamic-lighting.md)、[宏](../products/shared/macros.md)、[通知](../products/host/settings.md)及[取色](../products/shared/color-picker.md)，对应原有 gap 已更新；这份收据没有执行本轮官方 DLL 功能对照、真实设备操作或应用窗口验收。
+
+[本轮清理收据](../../.analysis/results/scratch-cleanup-current-implementation-plan-applied.json)已核对计划 SHA 并执行：新增可删候选为 0，实际删除和释放字节均为 0。188 个有引用、未完成或缺少完成依据的分析目录继续按各自原因保护；测试临时目录已由统一验证入口释放，不将此前两批已释放空间重复计入本轮。

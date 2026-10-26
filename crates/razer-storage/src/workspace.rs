@@ -8,6 +8,7 @@ use std::path::PathBuf;
 const VERSION: u32 = 2;
 mod retired_shortcuts;
 pub use retired_shortcuts::RetiredShortcuts;
+mod controller_sleep;
 mod device_save;
 pub use device_save::DeviceSaveDraft;
 mod profile_state;
@@ -101,7 +102,19 @@ impl WorkspaceFile {
     }
 }
 pub fn read_workspace(path: &Path) -> anyhow::Result<Option<WorkspaceFile>> {
-    crate::read_document(path, decode_workspace)
+    let mut file: Option<WorkspaceFile> = crate::read_document(path, decode_workspace)?;
+    if let Some(file) = &mut file {
+        migrate_notification_preference(path, file)?;
+    }
+    Ok(file)
+}
+
+fn migrate_notification_preference(path: &Path, file: &mut WorkspaceFile) -> anyhow::Result<()> {
+    if let Some(value) = file.preferences.legacy_notifications {
+        crate::notification_preferences::migrate_legacy(path, value)?;
+        file.preferences.legacy_notifications = None;
+    }
+    Ok(())
 }
 
 fn decode_known<T: serde::de::DeserializeOwned>(text: &str) -> anyhow::Result<T> {
@@ -136,6 +149,9 @@ fn decode_workspace(text: &str) -> anyhow::Result<WorkspaceFile> {
         .map_err(anyhow::Error::msg)?;
     file.preferences.validate().map_err(anyhow::Error::msg)?;
     file.macros.validate().map_err(anyhow::Error::msg)?;
+    for device in &mut file.devices {
+        controller_sleep::migrate(device)?;
+    }
     file.devices.retain(|device| {
         !(device.product_id == 9001
             && device.serial_number == "DEMO-KEYBOARD-0001"
@@ -149,7 +165,12 @@ pub fn write_workspace(path: &Path, file: &WorkspaceFile) -> anyhow::Result<()> 
     razer_model::shortcuts::validate_stored_shortcuts(&file.shortcuts)
         .map_err(anyhow::Error::msg)?;
     file.retired_shortcuts.validate(&file.shortcuts)?;
-    crate::write_document(path, file, |text| decode_workspace(text).map(|_| ()))
+    let mut file = file.clone();
+    migrate_notification_preference(path, &mut file)?;
+    for device in &mut file.devices {
+        controller_sleep::migrate(device)?;
+    }
+    crate::write_document(path, &file, |text| decode_workspace(text).map(|_| ()))
 }
 
 #[cfg(test)]

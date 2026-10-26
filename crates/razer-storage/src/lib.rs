@@ -26,6 +26,7 @@ pub mod linked_profiles;
 #[path = "macro_recorder.rs"]
 pub mod macro_recorder;
 pub mod macro_transfer;
+pub mod notification_preferences;
 mod paths;
 pub use paths::{configuration_directory, panic_log_path, runtime_log_path, store_path};
 #[path = "profile_notification.rs"]

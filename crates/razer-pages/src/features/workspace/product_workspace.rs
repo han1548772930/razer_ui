@@ -1129,6 +1129,66 @@ impl ProductWorkspace {
     ) -> bool {
         matches!(&self.body, Body::Source(body) if body.read(cx).controller_trigger_request_matches(request,cx))
     }
+    pub fn controller_sleep_request_matches(
+        &self,
+        request: &super::gamepad_products::ControllerSleepRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).controller_sleep_request_matches(request,cx))
+    }
+    pub fn controller_socd_request_matches(&self, request: &super::ControllerSocdRequested, cx: &App) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).controller_socd_request_matches(request))
+    }
+    pub fn complete_controller_socd_storage(&mut self, request: &super::ControllerSocdRequested, succeeded: bool, permit_device: bool, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.complete_controller_socd_storage(request, succeeded, permit_device, cx));
+        }
+    }
+    pub fn finish_controller_socd(&mut self, request: &super::ControllerSocdRequested, result: Result<razer_device::controller_socd::SocdResult, String>, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.finish_controller_socd(request, result, cx));
+        }
+    }
+    pub fn begin_controller_initialization(&mut self, key: String, recording: bool, cx: &mut Context<Self>) -> Option<super::ControllerInitializationRequested> {
+        match &self.body {
+            Body::Source(body) => body.update(cx, |body, cx| body.begin_controller_initialization(key, recording, cx)),
+            _ => None,
+        }
+    }
+    pub fn controller_initialization_matches(&self, request: &super::ControllerInitializationRequested, cx: &App) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).controller_initialization_matches(request))
+    }
+    pub fn finish_controller_initialization(&mut self, request: &super::ControllerInitializationRequested, result: Result<razer_device::controller_initialization::InitializationResult, String>, window: &mut Window, cx: &mut Context<Self>) -> bool {
+        match &self.body {
+            Body::Source(body) => body.update(cx, |body, cx| body.finish_controller_initialization(request, result, window, cx)),
+            _ => false,
+        }
+    }
+    pub fn complete_controller_initialization_storage(&mut self, request: &super::ControllerInitializationRequested, succeeded: bool, recording: bool, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.complete_controller_initialization_storage(request, succeeded, recording, cx));
+        }
+    }
+    pub fn finish_controller_sleep(
+        &mut self,
+        request: &super::gamepad_products::ControllerSleepRequested,
+        observed: Option<razer_device::controller_sleep::SleepResult>,
+        error: Option<String>,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_controller_sleep(request, observed, error, cx)
+            });
+        }
+    }
+    pub fn observe_controller_sleep_recording(&mut self, recording: bool, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_controller_sleep_recording(recording, cx)
+            });
+        }
+    }
     pub fn controller_lighting_request_matches(
         &self,
         request: &super::gamepad_products::ControllerLightingRequested,

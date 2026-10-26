@@ -186,72 +186,231 @@ fn invalid_samples_never_write_or_claim_calibration_success() {
     assert!(io.writes.is_empty());
 }
 
-#[test]
-fn initialization_requires_both_actual_reads_without_default_measurements() {
-    for samples in [vec![], vec![2000.], vec![f64::NAN], vec![2000., 8193.]] {
-        let mut io = Transport {
-            samples: samples.into(),
-            writes: vec![],
-            readback: None,
-        };
-        let mut session = TriggerCalibrationSession::new(2676, TriggerPart::Left).unwrap();
-        assert_eq!(session.movement_percentage(), None);
-        assert!(session.start(&mut io).is_err());
-        assert_eq!(session.step(), TriggerStep::Error);
-        assert!(!session.valid());
-        assert_eq!(session.movement_percentage(), None);
-        assert!(session.hold_complete(&mut io, |_| Ok(())).is_err());
-        assert!(io.writes.is_empty());
+struct ScriptedReads {
+    readings: VecDeque<anyhow::Result<RawAnalogInput>>,
+    calibration: Transport,
+}
+impl TriggerCalibrationTransport for ScriptedReads {
+    fn raw_analog_input(&mut self) -> anyhow::Result<RawAnalogInput> {
+        self.readings.pop_front().context("Fixture exhausted")?
+    }
+
+    fn set_trigger_calibration(
+        &mut self,
+        part: TriggerPart,
+        range: TriggerCalibrationRange,
+    ) -> anyhow::Result<()> {
+        self.calibration.set_trigger_calibration(part, range)
+    }
+
+    fn trigger_calibration(
+        &mut self,
+        part: TriggerPart,
+    ) -> anyhow::Result<TriggerCalibrationRange> {
+        self.calibration.trigger_calibration(part)
     }
 }
 
 #[test]
-fn read_failure_during_valid_hold_clears_observation_and_prevents_sampling_or_write() {
-    for read in [
-        Err(anyhow::anyhow!("endpoint disconnected")),
-        Ok(raw(f64::NAN)),
-        Ok(raw(-1.)),
-    ] {
+fn start_uses_only_its_source_range_baseline_and_prepare_retains_reset_movement() {
+    // Current module 36840 start/prepareNextStep: missing/invalid first reads
+    // choose Range.max; missing/invalid second reads keep resetTriggerMovement.
+    for pid in [2676, 2684] {
+        for part in [TriggerPart::Left, TriggerPart::Right] {
+            for resting in [None, Some(f64::NAN), Some(-1.), Some(8193.), Some(2000.)] {
+                for initial in [None, Some(f64::NAN), Some(-1.), Some(8193.)] {
+                    let mut io = ScriptedReads {
+                        readings: [resting, initial]
+                            .into_iter()
+                            .map(|value| value.map(raw).context("Raw query unavailable"))
+                            .collect(),
+                        calibration: Transport {
+                            samples: VecDeque::new(),
+                            writes: vec![],
+                            readback: None,
+                        },
+                    };
+                    let mut session = TriggerCalibrationSession::new(pid, part).unwrap();
+                    assert_eq!(session.movement_percentage(), None);
+                    session.start(&mut io).unwrap();
+                    assert_eq!(session.step(), TriggerStep::Press);
+                    assert!(!session.valid());
+                    assert_eq!(session.movement_percentage(), Some(100.));
+                    let movement = session.movement.as_ref().unwrap();
+                    assert!(matches!(movement.value, TriggerMovementValue::ResetResting));
+                    assert_eq!(
+                        movement.resting(8192.),
+                        if resting == Some(2000.) { 2000. } else { 8192. }
+                    );
+                    assert!(
+                        matches!(movement.resting, RestingTriggerValue::Observed(_))
+                            == (resting == Some(2000.))
+                    );
+                    assert!(session.hold_complete(&mut io, |_| Ok(())).is_err());
+                    assert!(io.calibration.writes.is_empty());
+                    assert!(io.readings.is_empty());
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn unavailable_resting_query_does_not_replace_a_distinct_valid_initial_movement() {
+    let mut io = ScriptedReads {
+        readings: [Err(anyhow::anyhow!("Raw query failed")), Ok(raw(1700.))].into(),
+        calibration: Transport {
+            samples: VecDeque::new(),
+            writes: vec![],
+            readback: None,
+        },
+    };
+    let mut session = TriggerCalibrationSession::new(2676, TriggerPart::Right).unwrap();
+    session.start(&mut io).unwrap();
+    assert_eq!(session.movement_percentage(), Some(17.));
+    assert!(!session.valid());
+    assert!(matches!(
+        session.movement.as_ref().unwrap().resting,
+        RestingTriggerValue::SourceRangeMaximum
+    ));
+    assert!(matches!(
+        session.movement.as_ref().unwrap().value,
+        TriggerMovementValue::Observed(1700.)
+    ));
+}
+
+#[test]
+fn unavailable_poll_keeps_source_movement_and_stability_without_starting_a_new_hold() {
+    for pid in [2676, 2684] {
         let mut io = Transport {
             samples: [2000., 2000.].into(),
             writes: vec![],
             readback: None,
         };
-        let mut session = TriggerCalibrationSession::new(2676, TriggerPart::Left).unwrap();
+        let mut session = TriggerCalibrationSession::new(pid, TriggerPart::Left).unwrap();
         session.start(&mut io).unwrap();
+        for _ in 0..6 {
+            assert_eq!(
+                session
+                    .poll(Err(anyhow::anyhow!("Raw query failed")))
+                    .unwrap(),
+                HoldChange::Unchanged
+            );
+        }
+        assert!(!session.valid());
+        assert!(session.previous.is_none());
+        assert_eq!(session.stable_polls, 0);
         for _ in 0..6 {
             session.poll(Ok(raw(300.))).unwrap();
         }
         assert!(session.valid());
         assert_eq!(session.movement_percentage(), Some(0.));
-        let error = session.poll(read).unwrap_err();
-        assert!(format!("{error:#}").contains("Trigger ADC"));
-        assert_eq!(session.step(), TriggerStep::Error);
+        for read in [
+            Err(anyhow::anyhow!("Raw query failed")),
+            Ok(raw(f64::NAN)),
+            Ok(raw(-1.)),
+            Ok(raw(8193.)),
+        ] {
+            assert_eq!(session.poll(read).unwrap(), HoldChange::Unchanged);
+            assert_eq!(session.step(), TriggerStep::Press);
+            assert!(session.valid());
+            assert_eq!(session.previous, Some(300.));
+            assert_eq!(session.stable_polls, 5);
+            assert_eq!(session.movement_percentage(), Some(0.));
+        }
+        assert_eq!(session.poll(Ok(raw(500.))).unwrap(), HoldChange::Cancel);
         assert!(!session.valid());
-        assert_eq!(session.movement_percentage(), None);
-        assert!(session.hold_complete(&mut io, |_| Ok(())).is_err());
         assert!(io.writes.is_empty());
     }
 }
 
 #[test]
-fn missing_release_step_read_cannot_reuse_the_resting_value() {
+fn missing_release_prepare_read_retains_reset_baseline_but_requires_fresh_stability_and_samples() {
     let mut io = Transport {
         samples: [2000., 2000., 300., 300., 300., 300., 300.].into(),
         writes: vec![],
-        readback: None,
+        readback: Some(TriggerCalibrationRange {
+            min: 198,
+            max: 2041,
+        }),
     };
     let mut session = TriggerCalibrationSession::new(2676, TriggerPart::Left).unwrap();
     session.start(&mut io).unwrap();
     for _ in 0..6 {
         session.poll(Ok(raw(300.))).unwrap();
     }
+    session.hold_complete(&mut io, |_| Ok(())).unwrap();
+    assert_eq!(session.step(), TriggerStep::Release);
+    assert_eq!(session.movement_percentage(), Some(100.));
+    assert!(matches!(
+        session.movement.as_ref().unwrap().value,
+        TriggerMovementValue::ResetResting
+    ));
+    for _ in 0..6 {
+        assert_eq!(
+            session
+                .poll(Err(anyhow::anyhow!("Raw query failed")))
+                .unwrap(),
+            HoldChange::Unchanged
+        );
+    }
+    assert!(!session.valid());
+    assert_eq!(session.stable_polls, 0);
     assert!(session.hold_complete(&mut io, |_| Ok(())).is_err());
+    assert!(io.writes.is_empty());
+    for _ in 0..5 {
+        assert_eq!(session.poll(Ok(raw(2000.))).unwrap(), HoldChange::Unchanged);
+    }
+    assert_eq!(
+        session.poll(Ok(raw(2000.))).unwrap(),
+        HoldChange::Start(Duration::from_secs(3))
+    );
+    io.samples.extend([2000.; 5]);
+    session.hold_complete(&mut io, |_| Ok(())).unwrap();
+    assert_eq!(session.step(), TriggerStep::Complete);
+    assert_eq!(
+        io.writes,
+        vec![(
+            TriggerPart::Left,
+            TriggerCalibrationRange {
+                min: 198,
+                max: 2041
+            }
+        )]
+    );
+}
+
+#[test]
+fn cancellation_during_sampling_clears_partial_samples_and_restart_uses_only_new_reads() {
+    let mut io = Transport {
+        samples: [2000., 2000., 300.].into(),
+        writes: vec![],
+        readback: None,
+    };
+    let mut session = TriggerCalibrationSession::new(2684, TriggerPart::Right).unwrap();
+    session.start(&mut io).unwrap();
+    for _ in 0..6 {
+        session.poll(Ok(raw(300.))).unwrap();
+    }
+    let error = session
+        .hold_complete(&mut io, |_| {
+            Err(anyhow::anyhow!("Canceled by current owner"))
+        })
+        .unwrap_err();
+    assert!(error.to_string().contains("Canceled by current owner"));
     assert_eq!(session.step(), TriggerStep::Error);
     assert_eq!(session.movement_percentage(), None);
+    assert!(session.sample_min.is_none() && session.sample_max.is_none());
     assert!(io.writes.is_empty());
     io.samples.extend([1800., 1700.]);
     session.start(&mut io).unwrap();
     assert_eq!(session.step(), TriggerStep::Press);
     assert_eq!(session.movement_percentage(), Some(94.));
+    assert!(!session.valid());
+    assert_eq!(session.stable_polls, 0);
+    session.stop();
+    assert_eq!(session.poll(Ok(raw(300.))).unwrap(), HoldChange::Unchanged);
+    assert_eq!(session.movement_percentage(), None);
+    assert!(session.hold_complete(&mut io, |_| Ok(())).is_err());
+    assert!(io.writes.is_empty());
 }

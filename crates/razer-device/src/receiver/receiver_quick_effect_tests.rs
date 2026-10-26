@@ -10,6 +10,69 @@ fn convert(id: u16, settings: Option<Value>) -> anyhow::Result<EngineEffect> {
 }
 
 #[test]
+fn wheel_expands_source_palette_direction_and_manifest_matrix_center() {
+    let effect = QuickEffect::parse(&json!({
+        "selectedEffectId":13,"selectedEffectSetting":{"direction":2}
+    }))
+    .unwrap()
+    .engine_effect_for_geometry(&crate::marci_lighting::led_configuration())
+    .unwrap();
+    assert_eq!(effect.effect, 13);
+    let p = effect.parameters;
+    assert_eq!(p.mode, Some(2048));
+    assert_eq!(p.speed, Some(360.));
+    assert_eq!(p.cycles, Some(-1));
+    assert_eq!((p.center_row, p.center_col), (Some(15), Some(16)));
+    assert_eq!(
+        p.color_stops.unwrap(),
+        vec![
+            ColorStop {
+                stop: 0,
+                color: 0xff18ff
+            },
+            ColorStop {
+                stop: 18,
+                color: 0x1010ff
+            },
+            ColorStop {
+                stop: 28,
+                color: 0x0080ff
+            },
+            ColorStop {
+                stop: 35,
+                color: 0x00ffef
+            },
+            ColorStop {
+                stop: 42,
+                color: 0x00ffdf
+            },
+            ColorStop {
+                stop: 49,
+                color: 0x00ff00
+            },
+            ColorStop {
+                stop: 52,
+                color: 0xffff00
+            },
+            ColorStop {
+                stop: 64,
+                color: 0xff5818
+            },
+            ColorStop {
+                stop: 77,
+                color: 0xff5818
+            },
+            ColorStop {
+                stop: 100,
+                color: 0xff18ff
+            },
+        ]
+    );
+    assert_eq!(convert(13, None).unwrap().parameters.mode, Some(1024));
+    assert!(convert(13, Some(json!({"direction":3}))).is_err());
+}
+
+#[test]
 fn static_keeps_unobserved_color_distinct_from_the_ui_default() {
     assert_eq!(convert(1, None).unwrap().parameters.color, Some(NO_COLOR));
     let effect = convert(1, Some(json!({"color1":"#112233"}))).unwrap();
@@ -175,8 +238,88 @@ fn battery_uses_its_monitor_and_external_source_fields_round_trip() {
     assert_eq!(effect.source_id(), 14);
     assert!(effect.engine_effect().is_err());
     assert_eq!(serde_json::to_value(effect).unwrap(), source);
-    for id in [0, 6, 11, 13, 17, 194] {
+    for id in [0, 6, 17, 194] {
         assert!(convert(id, None).is_err());
+    }
+}
+
+#[test]
+fn ambient_uses_current_screen_choices_and_native_truncated_crop_units() {
+    use crate::lighting_engine::ScreenRect;
+    assert_eq!(
+        convert(11, None).unwrap().parameters.screen_rect,
+        Some(ScreenRect::FULL)
+    );
+    for (screen, rect) in [
+        ("full", ScreenRect::FULL),
+        (
+            "left",
+            ScreenRect {
+                right: 6553,
+                ..ScreenRect::FULL
+            },
+        ),
+        (
+            "top",
+            ScreenRect {
+                bottom: 6553,
+                ..ScreenRect::FULL
+            },
+        ),
+        (
+            "right",
+            ScreenRect {
+                left: 58981,
+                ..ScreenRect::FULL
+            },
+        ),
+        (
+            "bottom",
+            ScreenRect {
+                top: 58981,
+                ..ScreenRect::FULL
+            },
+        ),
+    ] {
+        let effect = convert(11, Some(json!({"screen":screen}))).unwrap();
+        assert_eq!(effect.effect, 11);
+        assert_eq!(effect.parameters.screen_rect, Some(rect));
+        assert_eq!(effect.parameters.blur, Some(1.));
+    }
+    assert!(convert(11, Some(json!({"screen":"custom"}))).is_err());
+}
+
+#[test]
+fn wheel_shared_defaults_do_not_expand_mounted_dock_capabilities() {
+    let effect = QuickEffect::parse(&json!({"selectedEffectId":13})).unwrap();
+    let native = effect.engine_effect().unwrap();
+    assert_eq!(native.effect, 13);
+    assert_eq!(native.parameters.mode, Some(1024));
+    assert_eq!(native.parameters.speed, Some(360.));
+    assert_eq!(native.parameters.cycles, Some(-1));
+    assert_eq!(
+        (native.parameters.center_col, native.parameters.center_row),
+        (Some(1), Some(2))
+    );
+    assert_eq!(native, convert(13, Some(json!({"direction":1}))).unwrap());
+    for product_id in [164, 241] {
+        let geometry = crate::receiver_lighting::led_configuration(product_id, 0).unwrap();
+        assert_eq!(
+            effect.engine_effect_for_geometry(&geometry).unwrap(),
+            native
+        );
+        let configuration = crate::receiver_lighting::Configuration {
+            product_id,
+            edition_id: 0,
+            effect: effect.clone(),
+            selected_docking_mouse: None,
+        };
+        let error = configuration.validate().unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("absent from the mounted dock page")
+        );
     }
 }
 

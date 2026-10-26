@@ -426,6 +426,9 @@ impl GamepadProductWorkspace {
         command: ControllerChromaCommand,
         cx: &mut Context<Self>,
     ) {
+        if !self.controller_initialization_ready {
+            return;
+        }
         cx.emit(self.chroma_runtime.request(command));
     }
     pub fn complete_controller_chroma(

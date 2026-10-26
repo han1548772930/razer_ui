@@ -40,7 +40,17 @@ pub use chroma_runtime::{
 mod navigation;
 #[path = "gamepad_profile.rs"]
 mod profile;
+#[path = "gamepad_initialization.rs"]
+mod initialization;
+pub use initialization::{import_controller_profile, project_controller_socd};
 pub use lighting_runtime::ControllerLightingRequested;
+#[path = "gamepad_sleep_runtime.rs"]
+mod sleep_runtime;
+pub use sleep_runtime::{ControllerSleepObservation, ControllerSleepRequested};
+#[path = "gamepad_socd.rs"]
+mod socd;
+pub use socd::ControllerSocdEdited;
+pub(crate) use socd::SocdPresentation;
 #[path = "gamepad_trigger_calibration.rs"]
 mod trigger_calibration;
 #[path = "gamepad_trigger_calibration_state.rs"]
@@ -112,16 +122,10 @@ impl GamepadNavigationRequested {
     }
 }
 
-/// 源码 `GR` 的功耗取值标签：`item.value >= 60 ? ra.pHP : ra.yvH`，同时
-/// `data.value` 在 `>= 60` 时除以 60。两个别名经导出表解析为 `MIN`
-/// （"{{value}} min."）与 `SEC`（"{{value}} sec."），说明该组件按**秒**判断：
-/// 不足 60 显示秒、满 60 起按分钟显示。
+/// Current mounted Am/wm show the minute number directly; the adjacent
+/// CONTROLLER_POWER_SAVING_DESC supplies its unit.
 pub fn power_saving_label(value: i64) -> String {
-    if value >= 60 {
-        razer_i18n::t_value("MIN", value / 60)
-    } else {
-        razer_i18n::t_value("SEC", value)
-    }
+    value.to_string()
 }
 
 /// `JP` 按扳机侧选的三对键：`we.LST`/`we.gzX`（标题）、`we.Vwf`/`we.ukk`
@@ -201,6 +205,11 @@ pub struct GamepadProductWorkspace {
     trigger_calibration_state: trigger_calibration_state::TriggerCalibrationState,
     trigger_calibration_popup: Option<trigger_calibration::TriggerDialog>,
     trigger_runtime: trigger_runtime::TriggerRuntime,
+    sleep_runtime: sleep_runtime::SleepRuntime,
+    controller_initialization_ready: bool,
+    controller_initialization_lighting_observed: bool,
+    controller_socd_observation: razer_device::controller_initialization::Read<razer_device::controller_initialization::SocdObservation>,
+    socd: SocdPresentation,
     lighting_runtime: lighting_runtime::LightingRuntime,
     lighting_ui: lighting::LightingUi,
     quick_lighting_ui: Option<quick_lighting::QuickLightingUi>,
@@ -221,6 +230,7 @@ impl EventEmitter<GamepadNavigationRequested> for GamepadProductWorkspace {}
 impl EventEmitter<CalibrationIntent> for GamepadProductWorkspace {}
 impl EventEmitter<TriggerCalibrationIntent> for GamepadProductWorkspace {}
 impl EventEmitter<ControllerTriggerRequested> for GamepadProductWorkspace {}
+impl EventEmitter<ControllerSleepRequested> for GamepadProductWorkspace {}
 
 impl GamepadProductWorkspace {
     pub fn new(pid: u32, layout_id: u32, window: &mut Window, cx: &mut Context<Self>) -> Self {
@@ -247,6 +257,11 @@ impl GamepadProductWorkspace {
             trigger_calibration_state: Default::default(),
             trigger_calibration_popup: None,
             trigger_runtime: Default::default(),
+            sleep_runtime: Default::default(),
+            controller_initialization_ready: !matches!(pid, 2636 | 2676),
+            controller_initialization_lighting_observed: false,
+            controller_socd_observation: razer_device::controller_initialization::Read::Unobserved,
+            socd: SocdPresentation::default(),
             lighting_runtime: lighting_runtime::LightingRuntime::new(pid),
             lighting_ui: lighting::LightingUi::new(window, cx),
             quick_lighting_ui: None,
@@ -349,6 +364,9 @@ impl GamepadProductWorkspace {
                 }
             }
             self.page = key.into();
+            if key == "TAB_POWER" {
+                self.sleep_runtime.enter_power();
+            }
             if key == "TAB_CALIBRATION" {
                 self.request_calibration_resources(cx);
             }
@@ -357,6 +375,7 @@ impl GamepadProductWorkspace {
             self.dismiss_deadzone(false, window, cx);
             self.low_deadzone = None;
             self.request_trigger_read(cx);
+            self.request_controller_sleep(cx);
             if key == "TAB_LIGHTING" {
                 self.chroma_runtime.set_product_page_observing(true);
                 self.refresh_controller_chroma(cx);
@@ -366,7 +385,14 @@ impl GamepadProductWorkspace {
     }
 
     pub fn snapshot(&self) -> Value {
-        self.draft.clone()
+        let mut snapshot = self.draft.clone();
+        if let Some(controller) = snapshot
+            .get_mut("controller")
+            .and_then(Value::as_object_mut)
+        {
+            controller.remove("power");
+        }
+        snapshot
     }
 
     pub fn restore(&mut self, saved: Option<&Value>, window: &mut Window, cx: &mut Context<Self>) {
@@ -1041,6 +1067,9 @@ impl GamepadProductWorkspace {
                 }),
             )),
         );
+        if self.spec.product_id == 2676 {
+            right = right.child(self.socd_panel(cx));
+        }
         if self.spec.arcade {
             right = right.child(
                 surface::panel(t("MODE_SWITCHER"), cx)
@@ -1252,18 +1281,14 @@ impl GamepadProductWorkspace {
         )
         .child(surface::note(t("CONTROLLER_POWER_SAVING_DESC"), cx))
         .child(
-            h_flex()
-                .gap_2()
-                .children(self.spec.power_minutes.iter().map(|value| {
-                    self.choice(
-                        "/controller/power/powerSaving/value",
-                        json!(value),
-                        power_saving_label(*value),
-                        self.checked("/controller/power/powerSaving/isEnabled"),
-                        cx,
-                    )
-                })),
+            h_flex().gap_2().children(
+                self.spec
+                    .power_minutes
+                    .iter()
+                    .map(|value| self.sleep_choice(*value, cx)),
+            ),
         )
+        .children(self.sleep_status())
         .into_any_element()
     }
 

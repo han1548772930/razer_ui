@@ -6,6 +6,9 @@ use gpui_kit::component::{
     v_flex,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
+use razer_device::mouse_scroll::{
+    ScrollMode, ScrollReadKind, ScrollReadOutcome, ScrollSnapshot, ScrollValue,
+};
 use razer_i18n::t;
 use razer_widgets::source_slider::SourceSlider;
 use razer_widgets::surface;
@@ -194,6 +197,110 @@ enum Feature {
     Acceleration,
     SmartReel,
 }
+
+pub(super) fn observation_value(value: ScrollValue) -> (&'static str, Value) {
+    match value {
+        ScrollValue::LegacyMode(mode) | ScrollValue::ThreeMode(mode) => ("scrollMode", json!(mode)),
+        ScrollValue::EnabledModes(enabled) => (
+            "disabledModes",
+            json!(
+                [
+                    ScrollMode::Tactile,
+                    ScrollMode::FreeSpin,
+                    ScrollMode::MicroTactile
+                ]
+                .into_iter()
+                .filter(|mode| !enabled.contains(*mode))
+                .collect::<Vec<_>>()
+            ),
+        ),
+        ScrollValue::VirtualAcceleration(value) => ("accelerationEnabled", json!(value)),
+        ScrollValue::SmartReel(value) => ("smartReelEnabled", json!(value)),
+        ScrollValue::VirtualAccelerationLevel(value) => ("accelerationLevel", json!(value)),
+        ScrollValue::SmartReelThreshold(value) => ("smartReelLevel", json!(value)),
+    }
+}
+
+fn field_for(kind: ScrollReadKind) -> &'static str {
+    match kind {
+        ScrollReadKind::LegacyMode | ScrollReadKind::ThreeMode => "scrollMode",
+        ScrollReadKind::EnabledModes => "disabledModes",
+        ScrollReadKind::VirtualAcceleration => "accelerationEnabled",
+        ScrollReadKind::SmartReel => "smartReelEnabled",
+        ScrollReadKind::VirtualAccelerationLevel => "accelerationLevel",
+        ScrollReadKind::SmartReelThreshold => "smartReelLevel",
+    }
+}
+
+fn control_value(
+    draft: &Value,
+    editing: &BTreeSet<String>,
+    readings: &[(ScrollReadKind, ScrollReadOutcome)],
+    min: f32,
+    max: f32,
+    field: &str,
+) -> Option<Value> {
+    if editing.contains(field) {
+        return draft.get(field).cloned();
+    }
+    let value = readings.iter().find_map(|(_, outcome)| match outcome {
+        ScrollReadOutcome::Observed(value) => {
+            let (name, displayed) = observation_value(*value);
+            (name == field && value_in_source_range(*value, min, max)).then_some(displayed)
+        }
+        _ => None,
+    })?;
+    Some(value)
+}
+
+fn value_in_source_range(value: ScrollValue, min: f32, max: f32) -> bool {
+    match value {
+        ScrollValue::VirtualAccelerationLevel(level) | ScrollValue::SmartReelThreshold(level) => {
+            (min..=max).contains(&f32::from(level))
+        }
+        _ => true,
+    }
+}
+
+fn measured_read_state(
+    readings: &[(ScrollReadKind, ScrollReadOutcome)],
+    min: f32,
+    max: f32,
+) -> ReadState {
+    if readings.iter().any(|(_, outcome)| match outcome {
+        ScrollReadOutcome::Unknown { .. } => true,
+        ScrollReadOutcome::Observed(value) => !value_in_source_range(*value, min, max),
+        ScrollReadOutcome::Failed { .. } => false,
+    }) {
+        ReadState::Unknown
+    } else if !readings.is_empty()
+        && readings
+            .iter()
+            .all(|(_, outcome)| matches!(outcome, ScrollReadOutcome::Observed(_)))
+    {
+        ReadState::Observed
+    } else {
+        ReadState::Failed
+    }
+}
+
+fn settle_edits(
+    draft: &Value,
+    editing: &mut BTreeSet<String>,
+    requested: &razer_device::mouse_scroll::Submission,
+) {
+    for change in &requested.changes {
+        let Ok(values) = change.values() else {
+            return;
+        };
+        for value in values {
+            let (field, submitted) = observation_value(value);
+            if draft.get(field) == Some(&submitted) {
+                editing.remove(field);
+            }
+        }
+    }
+}
 impl Feature {
     fn id(self) -> &'static str {
         match self {
@@ -227,14 +334,31 @@ impl Feature {
     }
 }
 
-pub(super) struct Changed;
+pub(super) struct Changed {
+    pub(super) fields: BTreeSet<&'static str>,
+    pub(super) wheel: Value,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+enum ReadState {
+    #[default]
+    Unobserved,
+    Reading,
+    Observed,
+    Unknown,
+    Failed,
+    Disconnected,
+}
+
 pub(super) struct ScrollWheelEditor {
     spec: &'static ScrollWheelSpec,
     draft: Value,
-    /// Explicit local fields win over observation. Unedited observed values are
-    /// never copied into the parent profile snapshot.
+    /// Durable local ownership remains separate from this connection's readings.
     local_fields: BTreeSet<String>,
-    observed: Value,
+    editing_fields: BTreeSet<String>,
+    changed_fields: BTreeSet<&'static str>,
+    readings: Vec<(ScrollReadKind, ScrollReadOutcome)>,
+    read_state: ReadState,
+    restored: Option<Value>,
     observation_sync: BTreeSet<Feature>,
     sliders: BTreeMap<Feature, Entity<SliderState>>,
     previewing: BTreeSet<Feature>,
@@ -253,7 +377,11 @@ impl ScrollWheelEditor {
             spec,
             draft: spec.defaults.clone(),
             local_fields: BTreeSet::new(),
-            observed: json!({}),
+            editing_fields: BTreeSet::new(),
+            changed_fields: BTreeSet::new(),
+            readings: Vec::new(),
+            read_state: ReadState::Unobserved,
+            restored: None,
             observation_sync: BTreeSet::new(),
             sliders: BTreeMap::new(),
             previewing: BTreeSet::new(),
@@ -330,7 +458,6 @@ impl ScrollWheelEditor {
         // ScrollModeV2Feature.restoreScrollDisabledModes publishes the
         // resolved profile mode before any independent Rust readback.
         self.draft["scrollMode"] = json!(mode);
-        self.observed.as_object_mut().unwrap().remove("scrollMode");
         cx.notify();
     }
     pub(super) fn local_fields(&self) -> Value {
@@ -345,6 +472,9 @@ impl ScrollWheelEditor {
     ) {
         self.draft = self.spec.defaults.clone();
         self.local_fields.clear();
+        self.editing_fields.clear();
+        self.changed_fields.clear();
+        self.restored = saved.cloned();
         // Existing local scrollWheel data remains local; it is not a device read.
         if let Some(saved) = saved.and_then(Value::as_object) {
             self.draft
@@ -367,7 +497,8 @@ impl ScrollWheelEditor {
                 .collect();
         }
         // Runtime profile values must be observed again for the newly selected profile.
-        self.observed = json!({});
+        self.readings.clear();
+        self.read_state = ReadState::Unobserved;
         self.observation_sync.clear();
         self.deactivate(window, cx);
     }
@@ -379,13 +510,20 @@ impl ScrollWheelEditor {
         self.sync_sliders(window, cx);
         cx.notify();
     }
-    fn value(&self, field: &str) -> &Value {
-        if !self.local_fields.contains(field) {
-            if let Some(value) = self.observed.get(field) {
-                return value;
-            }
-        }
-        &self.draft[field]
+    pub(super) fn restored(&self) -> Option<&Value> {
+        self.restored.as_ref()
+    }
+
+    fn value(&self, field: &str) -> Value {
+        control_value(
+            &self.draft,
+            &self.editing_fields,
+            &self.readings,
+            self.spec.level_min,
+            self.spec.level_max,
+            field,
+        )
+        .unwrap_or(Value::Null)
     }
     fn disabled_modes(&self) -> Vec<String> {
         if self.spec.max_disabled_modes == 0 {
@@ -408,17 +546,32 @@ impl ScrollWheelEditor {
         !self.feature_locked(feature) && self.value(feature.enabled()) == true
     }
     fn feature_locked(&self, feature: Feature) -> bool {
-        self.locked()
+        self.value(feature.enabled()).is_null()
+            || self.value("scrollMode").is_null()
+            || (self.spec.max_disabled_modes > 0 && self.value("disabledModes").is_null())
+            || self.locked()
             || (self.spec.presentation == Presentation::TwoModeSwitches
                 && feature == Feature::SmartReel
                 && self.value("scrollMode") == "FreeSpin")
     }
-    fn edit(&mut self, field: &str, value: Value) {
+    fn edit(&mut self, field: &'static str, value: Value) {
         self.draft[field] = value;
         self.local_fields.insert(field.to_owned());
+        self.editing_fields.insert(field.to_owned());
+        self.changed_fields.insert(field);
     }
     fn changed(&mut self, cx: &mut Context<Self>) {
-        cx.emit(Changed);
+        let wheel = FIELDS
+            .into_iter()
+            .filter_map(|field| {
+                let value = self.value(field);
+                (!value.is_null()).then(|| (field.to_owned(), value))
+            })
+            .collect::<serde_json::Map<_, _>>();
+        cx.emit(Changed {
+            fields: std::mem::take(&mut self.changed_fields),
+            wheel: Value::Object(wheel),
+        });
         cx.notify();
     }
     fn sync_slider(&self, feature: Feature, window: &mut Window, cx: &mut Context<Self>) {
@@ -441,7 +594,9 @@ impl ScrollWheelEditor {
         }
     }
     fn select_mode(&mut self, id: &str, cx: &mut Context<Self>) {
-        if !self.spec.modes.iter().any(|mode| mode.id == id)
+        if self.value("scrollMode").is_null()
+            || (self.spec.max_disabled_modes > 0 && self.value("disabledModes").is_null())
+            || !self.spec.modes.iter().any(|mode| mode.id == id)
             || self.disabled_modes().iter().any(|mode| mode == id)
         {
             return;
@@ -463,7 +618,11 @@ impl ScrollWheelEditor {
         self.changed(cx);
     }
     fn toggle_disabled(&mut self, id: &str, window: &mut Window, cx: &mut Context<Self>) {
-        if self.spec.max_disabled_modes == 0 || !self.spec.modes.iter().any(|mode| mode.id == id) {
+        if self.value("disabledModes").is_null()
+            || self.value("scrollMode").is_null()
+            || self.spec.max_disabled_modes == 0
+            || !self.spec.modes.iter().any(|mode| mode.id == id)
+        {
             return;
         }
         let mut modes = self.disabled_modes();
@@ -514,28 +673,71 @@ impl ScrollWheelEditor {
         report: &razer_device::mouse_scroll::SubmissionReport,
         cx: &mut Context<Self>,
     ) {
+        settle_edits(&self.draft, &mut self.editing_fields, &report.requested);
+        if let Some(snapshot) = &report.current {
+            self.record_snapshot(snapshot, cx);
+            return;
+        }
         for observation in submission_observations(report) {
             match observation {
                 SubmissionObservation::Value(observation) => {
                     self.record_observation(observation, cx)
                 }
                 SubmissionObservation::Unobserved(kind) => {
-                    use razer_device::mouse_scroll::ScrollReadKind;
-                    let field = match kind {
-                        ScrollReadKind::LegacyMode | ScrollReadKind::ThreeMode => "scrollMode",
-                        ScrollReadKind::EnabledModes => "disabledModes",
-                        ScrollReadKind::VirtualAcceleration => "accelerationEnabled",
-                        ScrollReadKind::SmartReel => "smartReelEnabled",
-                        ScrollReadKind::VirtualAccelerationLevel => "accelerationLevel",
-                        ScrollReadKind::SmartReelThreshold => "smartReelLevel",
-                    };
                     // An attempted write without a readback invalidates this
                     // field's earlier measurement, leaving local intent separate.
-                    self.observed.as_object_mut().unwrap().remove(field);
+                    self.readings
+                        .retain(|(previous, _)| field_for(*previous) != field_for(kind));
+                    self.read_state = ReadState::Failed;
                     cx.notify();
                 }
             }
         }
+    }
+
+    pub(super) fn start_read(&mut self, cx: &mut Context<Self>) {
+        self.readings.clear();
+        self.read_state = ReadState::Reading;
+        self.observation_sync
+            .extend([Feature::Acceleration, Feature::SmartReel]);
+        self.previewing.clear();
+        cx.notify();
+    }
+
+    pub(super) fn disconnect(&mut self, cx: &mut Context<Self>) {
+        self.readings.clear();
+        self.editing_fields.clear();
+        self.previewing.clear();
+        self.read_state = ReadState::Disconnected;
+        self.observation_sync
+            .extend([Feature::Acceleration, Feature::SmartReel]);
+        cx.notify();
+    }
+
+    pub(super) fn read_failed(&mut self, cx: &mut Context<Self>) {
+        self.readings.clear();
+        self.read_state = ReadState::Failed;
+        self.observation_sync
+            .extend([Feature::Acceleration, Feature::SmartReel]);
+        cx.notify();
+    }
+
+    fn record_snapshot(&mut self, snapshot: &ScrollSnapshot, cx: &mut Context<Self>) {
+        self.readings = snapshot
+            .readings
+            .iter()
+            .map(|reading| (reading.kind, reading.outcome.clone()))
+            .collect();
+        self.read_state =
+            measured_read_state(&self.readings, self.spec.level_min, self.spec.level_max);
+        self.observation_sync
+            .extend([Feature::Acceleration, Feature::SmartReel]);
+        for feature in [Feature::Acceleration, Feature::SmartReel] {
+            if !self.active(feature) {
+                self.previewing.remove(&feature);
+            }
+        }
+        cx.notify();
     }
 
     fn record_observation(&mut self, observation: ScrollWheelObservation, cx: &mut Context<Self>) {
@@ -552,8 +754,52 @@ impl ScrollWheelEditor {
         if self.spec.defaults.get(field).is_none() {
             return;
         }
-        self.observed[field] = value;
-        if !self.local_fields.contains(field) {
+        let kind = match field {
+            "scrollMode" if self.spec.max_disabled_modes > 0 => ScrollReadKind::ThreeMode,
+            "scrollMode" => ScrollReadKind::LegacyMode,
+            "disabledModes" => ScrollReadKind::EnabledModes,
+            "accelerationEnabled" => ScrollReadKind::VirtualAcceleration,
+            "smartReelEnabled" => ScrollReadKind::SmartReel,
+            "accelerationLevel" => ScrollReadKind::VirtualAccelerationLevel,
+            "smartReelLevel" => ScrollReadKind::SmartReelThreshold,
+            _ => return,
+        };
+        let measured = match kind {
+            ScrollReadKind::LegacyMode | ScrollReadKind::ThreeMode => {
+                let Ok(mode) = serde_json::from_value::<ScrollMode>(value) else {
+                    return;
+                };
+                if kind == ScrollReadKind::ThreeMode {
+                    ScrollValue::ThreeMode(mode)
+                } else {
+                    ScrollValue::LegacyMode(mode)
+                }
+            }
+            ScrollReadKind::EnabledModes => {
+                let Ok(disabled) = serde_json::from_value::<Vec<ScrollMode>>(value) else {
+                    return;
+                };
+                let Ok(enabled) =
+                    razer_device::mouse_scroll::EnabledScrollModes::from_disabled(&disabled)
+                else {
+                    return;
+                };
+                ScrollValue::EnabledModes(enabled)
+            }
+            ScrollReadKind::VirtualAcceleration => ScrollValue::VirtualAcceleration(value == true),
+            ScrollReadKind::SmartReel => ScrollValue::SmartReel(value == true),
+            ScrollReadKind::VirtualAccelerationLevel => {
+                ScrollValue::VirtualAccelerationLevel(value.as_u64().unwrap() as u8)
+            }
+            ScrollReadKind::SmartReelThreshold => {
+                ScrollValue::SmartReelThreshold(value.as_u64().unwrap() as u8)
+            }
+        };
+        self.readings.retain(|(previous, _)| *previous != kind);
+        self.readings
+            .push((kind, ScrollReadOutcome::Observed(measured)));
+        self.read_state = ReadState::Observed;
+        if !self.editing_fields.contains(field) {
             // A mode observation must not discard an unrelated level preview.
             for feature in [Feature::Acceleration, Feature::SmartReel] {
                 if field == feature.level() {
@@ -711,14 +957,32 @@ impl ScrollWheelEditor {
                                 .mt(surface::css(10.))
                                 .mb(surface::css(20.))
                                 .h(surface::css(36.))
-                                .child(
+                                .child(if self.value(feature.level()).is_null() {
+                                    div()
+                                        .id((ElementId::from(feature.id()), "unobserved-level"))
+                                        .relative()
+                                        .w_full()
+                                        .h_full()
+                                        .aria_label("Device scroll level has not been observed")
+                                        .child(
+                                            div()
+                                                .absolute()
+                                                .bottom(surface::css(11.))
+                                                .w_full()
+                                                .h(surface::css(6.))
+                                                .rounded(surface::css(3.))
+                                                .bg(razer_widgets::theme::SliderColors::track()),
+                                        )
+                                        .into_any_element()
+                                } else {
                                     SourceSlider::new(
                                         slider,
                                         (slider.read(cx).value().start() - self.spec.level_min)
                                             / (self.spec.level_max - self.spec.level_min),
                                     )
-                                    .enabled(active),
-                                )
+                                    .enabled(active)
+                                    .into_any_element()
+                                })
                                 .child(
                                     div()
                                         .absolute()
@@ -760,7 +1024,9 @@ impl Render for ScrollWheelEditor {
             .children(self.spec.modes.iter().map(|mode| {
                 let active = selected == mode.id;
                 let id = mode.id.clone();
-                let is_disabled = disabled.contains(&mode.id);
+                let is_disabled = self.value("scrollMode").is_null()
+                    || (self.spec.max_disabled_modes > 0 && self.value("disabledModes").is_null())
+                    || disabled.contains(&mode.id);
                 let color = surface::fade_color(
                     SharedString::from(format!("scroll-wheel-pill-color-{id}")),
                     if active {
@@ -808,7 +1074,9 @@ impl Render for ScrollWheelEditor {
             .gap(surface::css(8.))
             .children(self.spec.modes.iter().map(|mode| {
                 let checked = disabled.contains(&mode.id);
-                let locked = disabled.len() >= self.spec.max_disabled_modes && !checked;
+                let locked = self.value("disabledModes").is_null()
+                    || self.value("scrollMode").is_null()
+                    || (disabled.len() >= self.spec.max_disabled_modes && !checked);
                 let id = mode.id.clone();
                 surface::check_item(
                     SharedString::from(format!("scroll-wheel-disable-{id}")),
@@ -859,6 +1127,29 @@ impl Render for ScrollWheelEditor {
         .role(Role::Group)
         .aria_label(t("SCROLL_WHEEL"))
         .font_family("Roboto")
+        .children((self.read_state != ReadState::Observed).then(|| {
+            div()
+                .id("scroll-wheel-read-state")
+                .test_support()
+                .role(Role::Status)
+                .text_color(Colors::muted())
+                .text_size(surface::css(13.))
+                .aria_label(match self.read_state {
+                    ReadState::Unobserved => "Device scroll settings have not been read",
+                    ReadState::Reading => "Reading device scroll settings",
+                    ReadState::Failed => "Device scroll settings could not be fully read",
+                    ReadState::Unknown => "Device returned an unknown scroll setting",
+                    ReadState::Disconnected => "Device is disconnected",
+                    ReadState::Observed => "Device scroll settings have been read",
+                })
+                .child(match self.read_state {
+                    ReadState::Reading => t("LOADING"),
+                    ReadState::Disconnected => t("DISCONNECTED"),
+                    ReadState::Failed => t("ERROR"),
+                    ReadState::Unknown => "?".into(),
+                    _ => "—".into(),
+                })
+        }))
         .when(legacy, |panel| {
             panel.child(self.section(Feature::Acceleration, window, cx))
         })
@@ -925,14 +1216,205 @@ impl Render for ScrollWheelEditor {
 #[cfg(test)]
 mod tests {
     use super::{
-        Feature, Presentation, ScrollWheelEditor, ScrollWheelObservation, ScrollWheelSpec,
-        SubmissionObservation, source_spec, source_specs, submission_observations,
+        FIELDS, Feature, Presentation, ReadState, ScrollWheelEditor, ScrollWheelObservation,
+        ScrollWheelSpec, SubmissionObservation, control_value, measured_read_state, settle_edits,
+        source_spec, source_specs, submission_observations,
     };
     use gpui_kit::component::Root;
     use gpui_kit::test::TestWindowExt;
     use gpui_kit::{AppContext, ElementId, TestAppContext, px, size};
+    use razer_device::mouse_scroll::{ScrollMode, ScrollReadKind, ScrollReadOutcome, ScrollValue};
     use serde_json::json;
-    use std::sync::OnceLock;
+    use std::{collections::BTreeSet, sync::OnceLock};
+
+    fn source_fixture_observations(
+        editor: &mut ScrollWheelEditor,
+        cx: &mut gpui_kit::Context<ScrollWheelEditor>,
+    ) {
+        let defaults = editor.spec.defaults.clone();
+        for field in FIELDS {
+            let Some(value) = defaults.get(field) else {
+                continue;
+            };
+            let observation = match field {
+                "scrollMode" => ScrollWheelObservation::Mode(value.as_str().unwrap().to_owned()),
+                "disabledModes" => ScrollWheelObservation::DisabledModes(
+                    value
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .map(|value| value.as_str().unwrap().to_owned())
+                        .collect(),
+                ),
+                "accelerationEnabled" => {
+                    ScrollWheelObservation::Acceleration(value.as_bool().unwrap())
+                }
+                "smartReelEnabled" => ScrollWheelObservation::SmartReel(value.as_bool().unwrap()),
+                "accelerationLevel" => {
+                    ScrollWheelObservation::AccelerationLevel(value.as_u64().unwrap() as u8)
+                }
+                "smartReelLevel" => {
+                    ScrollWheelObservation::SmartReelLevel(value.as_u64().unwrap() as u8)
+                }
+                _ => unreachable!(),
+            };
+            editor.record_observation(observation, cx);
+        }
+    }
+
+    #[::core::prelude::v1::test]
+    fn mouse_scroll_current_get_controls_use_device_values_and_never_durable_defaults() {
+        let draft = json!({"scrollMode":"FreeSpin", "disabledModes":[],
+            "accelerationEnabled":true, "accelerationLevel":4,
+            "smartReelEnabled":false, "smartReelLevel":4});
+        let readings = vec![
+            (
+                ScrollReadKind::ThreeMode,
+                ScrollReadOutcome::Observed(ScrollValue::ThreeMode(ScrollMode::MicroTactile)),
+            ),
+            (
+                ScrollReadKind::EnabledModes,
+                ScrollReadOutcome::Observed(ScrollValue::EnabledModes(
+                    razer_device::mouse_scroll::EnabledScrollModes::new(5).unwrap(),
+                )),
+            ),
+            (
+                ScrollReadKind::VirtualAcceleration,
+                ScrollReadOutcome::Observed(ScrollValue::VirtualAcceleration(false)),
+            ),
+            (
+                ScrollReadKind::VirtualAccelerationLevel,
+                ScrollReadOutcome::Observed(ScrollValue::VirtualAccelerationLevel(7)),
+            ),
+            (
+                ScrollReadKind::SmartReel,
+                ScrollReadOutcome::Observed(ScrollValue::SmartReel(true)),
+            ),
+            (
+                ScrollReadKind::SmartReelThreshold,
+                ScrollReadOutcome::Observed(ScrollValue::SmartReelThreshold(8)),
+            ),
+        ];
+        let editing = BTreeSet::new();
+        for (field, expected) in [
+            ("scrollMode", json!("MicroTactile")),
+            ("disabledModes", json!(["FreeSpin"])),
+            ("accelerationEnabled", json!(false)),
+            ("accelerationLevel", json!(7)),
+            ("smartReelEnabled", json!(true)),
+            ("smartReelLevel", json!(8)),
+        ] {
+            assert_eq!(
+                control_value(&draft, &editing, &readings, 1., 8., field),
+                Some(expected)
+            );
+            assert_eq!(control_value(&draft, &editing, &[], 1., 8., field), None);
+        }
+        assert_eq!(draft["accelerationLevel"], 4);
+    }
+
+    #[::core::prelude::v1::test]
+    fn mouse_scroll_unknown_failed_disconnected_and_out_of_range_controls_do_not_fall_back() {
+        let draft = json!({"accelerationEnabled":true,"accelerationLevel":4});
+        for outcome in [
+            ScrollReadOutcome::Unknown { raw: 7 },
+            ScrollReadOutcome::Failed {
+                message: "timeout".into(),
+            },
+        ] {
+            assert_eq!(
+                control_value(
+                    &draft,
+                    &BTreeSet::new(),
+                    &[(ScrollReadKind::VirtualAcceleration, outcome)],
+                    1.,
+                    8.,
+                    "accelerationEnabled"
+                ),
+                None
+            );
+        }
+        assert_eq!(
+            control_value(&draft, &BTreeSet::new(), &[], 1., 8., "accelerationEnabled"),
+            None
+        );
+        let readings = [(
+            ScrollReadKind::VirtualAccelerationLevel,
+            ScrollReadOutcome::Observed(ScrollValue::VirtualAccelerationLevel(255)),
+        )];
+        assert_eq!(
+            control_value(
+                &draft,
+                &BTreeSet::new(),
+                &readings,
+                1.,
+                8.,
+                "accelerationLevel"
+            ),
+            None
+        );
+        assert_eq!(measured_read_state(&readings, 1., 8.), ReadState::Unknown);
+        let source_max = [(
+            ScrollReadKind::VirtualAccelerationLevel,
+            ScrollReadOutcome::Observed(ScrollValue::VirtualAccelerationLevel(8)),
+        )];
+        assert_eq!(
+            measured_read_state(&source_max, 1., 8.),
+            ReadState::Observed
+        );
+        assert_eq!(
+            control_value(
+                &draft,
+                &BTreeSet::new(),
+                &source_max,
+                1.,
+                8.,
+                "accelerationLevel"
+            ),
+            Some(json!(8))
+        );
+    }
+
+    #[::core::prelude::v1::test]
+    fn mouse_scroll_read_and_write_completion_preserve_newer_edits_and_release_settled_drafts() {
+        use razer_device::mouse_scroll::{ScrollChange, Submission};
+        let draft = json!({"accelerationEnabled":true,"accelerationLevel":7});
+        let mut editing =
+            BTreeSet::from(["accelerationEnabled".into(), "accelerationLevel".into()]);
+        let readings = [(
+            ScrollReadKind::VirtualAccelerationLevel,
+            ScrollReadOutcome::Observed(ScrollValue::VirtualAccelerationLevel(2)),
+        )];
+        settle_edits(&draft, &mut editing, &Submission::read_current());
+        assert_eq!(
+            control_value(&draft, &editing, &readings, 1., 8., "accelerationLevel"),
+            Some(json!(7))
+        );
+        settle_edits(
+            &draft,
+            &mut editing,
+            &Submission::new(
+                vec![ScrollChange::VirtualAccelerationLevel(3)],
+                Default::default(),
+            ),
+        );
+        assert!(editing.contains("accelerationLevel"));
+        settle_edits(
+            &draft,
+            &mut editing,
+            &Submission::new(
+                vec![ScrollChange::VirtualAccelerationLevel(7)],
+                Default::default(),
+            ),
+        );
+        assert!(!editing.contains("accelerationLevel"));
+        assert!(editing.contains("accelerationEnabled"));
+        assert_eq!(
+            control_value(&draft, &editing, &readings, 1., 8., "accelerationLevel"),
+            Some(json!(2))
+        );
+        assert_eq!(draft["accelerationLevel"], 7);
+    }
 
     #[::core::prelude::v1::test]
     fn mouse_scroll_readback_projection_uses_actual_current_profile_values() {
@@ -1043,6 +1525,7 @@ mod tests {
             let mut owner = None;
             let handle = cx.open_window(size(px(1000.), px(1100.)), |window, cx| {
                 let editor = cx.new(|cx| ScrollWheelEditor::new(spec, window, cx));
+                editor.update(cx, source_fixture_observations);
                 owner = Some(editor.clone());
                 Root::new(editor, window, cx)
             });
@@ -1108,6 +1591,7 @@ mod tests {
         cx.open_window(size(px(1000.), px(900.)), |window, cx| {
             let editor = cx.new(|cx| ScrollWheelEditor::new(spec, window, cx));
             editor.update(cx, |editor, cx| {
+                source_fixture_observations(editor, cx);
                 editor.sync_sliders(window, cx);
                 assert_eq!(
                     editor.sliders[&Feature::Acceleration]

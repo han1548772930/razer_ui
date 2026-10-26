@@ -69,6 +69,28 @@ impl MouseScrollCapability {
         self.mode_v2
     }
 
+    pub fn read_order(&self) -> &'static [ScrollReadKind] {
+        use ScrollReadKind::*;
+        match (self.mode_v2, self.levels) {
+            (true, _) => &[
+                EnabledModes,
+                ThreeMode,
+                SmartReel,
+                SmartReelThreshold,
+                VirtualAcceleration,
+                VirtualAccelerationLevel,
+            ],
+            (false, true) => &[
+                LegacyMode,
+                SmartReel,
+                SmartReelThreshold,
+                VirtualAcceleration,
+                VirtualAccelerationLevel,
+            ],
+            (false, false) => &[LegacyMode, SmartReel, VirtualAcceleration],
+        }
+    }
+
     fn command(&self, kind: ScrollReadKind, write: bool) -> Result<[u8; 3]> {
         let (bytes, class, id) = match kind {
             ScrollReadKind::LegacyMode => {
@@ -189,6 +211,66 @@ pub enum ScrollValue {
     SmartReelThreshold(u8),
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ScrollReadOutcome {
+    Observed(ScrollValue),
+    Unknown { raw: u8 },
+    Failed { message: String },
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct ScrollReading {
+    pub kind: ScrollReadKind,
+    pub outcome: ScrollReadOutcome,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct ScrollSnapshot {
+    pub readings: Vec<ScrollReading>,
+}
+
+impl ScrollSnapshot {
+    pub fn validate_for(&self, product_id: u32) -> Result<()> {
+        let cap = capability(product_id).context("Scroll observation product is absent")?;
+        ensure!(
+            self.readings.len() == cap.read_order().len(),
+            "Scroll observation count differs"
+        );
+        for (reading, kind) in self.readings.iter().zip(cap.read_order()) {
+            ensure!(reading.kind == *kind, "Scroll observation order differs");
+            match &reading.outcome {
+                ScrollReadOutcome::Observed(value) => {
+                    ensure!(value.kind() == *kind, "Scroll observation kind differs");
+                    ensure!(
+                        parse(&[1, value.raw()], 1, *kind)? == *value,
+                        "Scroll observation value differs"
+                    );
+                }
+                ScrollReadOutcome::Unknown { raw } => {
+                    ensure!(
+                        parse(&[1, *raw], 1, *kind).is_err(),
+                        "A known scroll value was classified as unknown"
+                    );
+                }
+                ScrollReadOutcome::Failed { message } => {
+                    ensure!(!message.is_empty(), "Scroll read failure has no cause");
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub fn is_complete(&self) -> bool {
+        !self.readings.is_empty()
+            && self
+                .readings
+                .iter()
+                .all(|reading| matches!(reading.outcome, ScrollReadOutcome::Observed(_)))
+    }
+}
+
 impl ScrollValue {
     fn kind(self) -> ScrollReadKind {
         match self {
@@ -227,7 +309,7 @@ pub enum ScrollChange {
 }
 
 impl ScrollChange {
-    fn values(self) -> Result<Vec<ScrollValue>> {
+    pub fn values(self) -> Result<Vec<ScrollValue>> {
         Ok(match self {
             Self::LegacyMode(mode) => {
                 ensure!(
@@ -278,6 +360,12 @@ pub struct Submission {
     /// session. A profile's draft slot list cannot stand in for that inventory.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     profile_guid: Option<String>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    observe_current: bool,
+}
+
+fn is_false(value: &bool) -> bool {
+    !value
 }
 
 impl Submission {
@@ -286,7 +374,27 @@ impl Submission {
             changes,
             profiles,
             profile_guid: None,
+            observe_current: false,
         }
+    }
+
+    /// Observe the active hardware profile without saving or restoring local settings.
+    pub fn read_current() -> Self {
+        Self {
+            changes: Vec::new(),
+            profiles: ScrollProfileObservation::default(),
+            profile_guid: None,
+            observe_current: true,
+        }
+    }
+
+    pub fn is_read(&self) -> bool {
+        self.observe_current && self.changes.is_empty()
+    }
+
+    pub fn with_current_observation(mut self) -> Self {
+        self.observe_current = true;
+        self
     }
 
     pub fn for_profile(
@@ -301,6 +409,7 @@ impl Submission {
                 ..Default::default()
             },
             profile_guid: Some(guid),
+            observe_current: false,
         }
     }
 
@@ -352,9 +461,15 @@ impl Submission {
     pub fn validate(&self, product_id: u32) -> Result<()> {
         let cap = capability(product_id).context("Current mouse scroll capability is absent")?;
         ensure!(
-            !self.changes.is_empty() && self.changes.len() <= 5,
+            (!self.changes.is_empty() || self.observe_current) && self.changes.len() <= 5,
             "Scroll task list is empty or oversized"
         );
+        if self.is_read() {
+            ensure!(
+                self.profile_guid.is_none() && self.profiles == ScrollProfileObservation::default(),
+                "Current scroll observation cannot carry a local profile association"
+            );
+        }
         if let Some(guid) = &self.profile_guid {
             ensure!(!guid.is_empty(), "Scroll active profile GUID is empty");
             ensure!(
@@ -386,6 +501,8 @@ pub struct SubmissionReport {
     pub reports: Vec<ScrollWriteReport>,
     #[serde(default)]
     pub errors: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub current: Option<ScrollSnapshot>,
 }
 
 impl SubmissionReport {
@@ -393,6 +510,17 @@ impl SubmissionReport {
     /// whether every requested write was acknowledged and read back.
     pub fn validate_for(&self, product_id: u32) -> Result<()> {
         self.requested.validate(product_id)?;
+        if let Some(current) = &self.current {
+            ensure!(
+                self.requested.observe_current,
+                "Unrequested current scroll observation"
+            );
+            current.validate_for(product_id)?;
+        }
+        ensure!(
+            !self.requested.is_read() || self.current.is_some(),
+            "Current scroll observation is absent"
+        );
         ensure!(
             self.reports.len() == self.requested.changes.len(),
             "Scroll report task count differs from its submission"
@@ -461,7 +589,31 @@ impl SubmissionReport {
     /// Confirm every value, hardware profile and source mutation order. A valid
     /// report for a different source task cannot confirm this submission.
     pub fn verified_for(&self, product_id: u32) -> bool {
-        if self.validate_for(product_id).is_err() || !self.errors.is_empty() {
+        if self.requested.is_read()
+            || self.validate_for(product_id).is_err()
+            || !self.errors.is_empty()
+            || self.requested.observe_current
+                && !self
+                    .current
+                    .as_ref()
+                    .is_some_and(ScrollSnapshot::is_complete)
+        {
+            return false;
+        }
+        if self.requested.observe_current
+            && !self.current.as_ref().is_some_and(|current| {
+                self.requested.changes.iter().all(|change| {
+                    change.values().is_ok_and(|values| {
+                        values.into_iter().all(|value| {
+                            current.readings.iter().any(|reading| {
+                                reading.kind == value.kind()
+                                    && reading.outcome == ScrollReadOutcome::Observed(value)
+                            })
+                        })
+                    })
+                })
+            })
+        {
             return false;
         }
         let Some(cap) = capability(product_id) else {
@@ -706,12 +858,65 @@ impl<'a> MouseScroll<'a> {
                 }
             }
         }
+        let current = if submission.observe_current {
+            Some(self.read_current(&mut next, &validate)?)
+        } else {
+            None
+        };
         Ok(SubmissionReport {
             requested: submission.clone(),
             onboard_profiles,
             reports,
             errors,
+            current,
         })
+    }
+
+    pub fn read_current(
+        &self,
+        mut next: impl FnMut() -> Result<u8>,
+        validate: impl Fn() -> Result<()>,
+    ) -> Result<ScrollSnapshot> {
+        let mut readings = Vec::new();
+        // Observe the same active profile targeted by the source restore tasks.
+        // These GETs never copy local profile fields into the hardware.
+        for kind in self.cap.read_order() {
+            validate()?;
+            let raw = (|| -> Result<_> {
+                let command = self.cap.command(*kind, false)?;
+                let data = exchange(
+                    self.device,
+                    self.transport,
+                    command,
+                    &[1],
+                    next()?,
+                    &validate,
+                )?;
+                ensure!(
+                    data.len() >= 2 && data[0] == 1,
+                    "Current mouse scroll response is truncated or belongs to another profile"
+                );
+                Ok(data[1])
+            })();
+            let outcome = match raw {
+                Ok(raw) => match parse(&[1, raw], 1, *kind) {
+                    Ok(value) => ScrollReadOutcome::Observed(value),
+                    Err(_) => ScrollReadOutcome::Unknown { raw },
+                },
+                Err(error) => {
+                    validate()?;
+                    ScrollReadOutcome::Failed {
+                        message: format!("{error:#}"),
+                    }
+                }
+            };
+            readings.push(ScrollReading {
+                kind: *kind,
+                outcome,
+            });
+        }
+        validate()?;
+        Ok(ScrollSnapshot { readings })
     }
 
     pub fn read(

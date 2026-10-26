@@ -22,6 +22,9 @@ impl MouseScrollRequested {
     pub fn submission(&self) -> &Submission {
         &self.submission
     }
+    pub fn is_read(&self) -> bool {
+        self.submission.is_read()
+    }
     pub fn profile(&self) -> &Value {
         &self.profile
     }
@@ -243,6 +246,15 @@ fn restore_changes(product_id: u32, wheel: &Value) -> anyhow::Result<Vec<ScrollC
     Ok(changes)
 }
 
+fn initialization_changes(
+    product_id: u32,
+    restored: Option<&Value>,
+) -> anyhow::Result<Option<Vec<ScrollChange>>> {
+    restored
+        .map(|wheel| restore_changes(product_id, wheel))
+        .transpose()
+}
+
 impl MouseProductWorkspace {
     pub fn initialize_mouse_scroll_profile(
         &mut self,
@@ -252,6 +264,9 @@ impl MouseProductWorkspace {
     ) {
         let Some(key) = key else {
             self.scroll_task.cancel();
+            if let Some(editor) = &self.scroll_editor {
+                editor.update(cx, |editor, cx| editor.disconnect(cx));
+            }
             return;
         };
         let Some(spec) = scroll_wheel::source_spec(self.spec.product_id) else {
@@ -280,10 +295,26 @@ impl MouseProductWorkspace {
             // predecessor still owns the writer slot until real cleanup.
             self.scroll_task.cancel();
         }
-        let changes = match restore_changes(self.spec.product_id, &self.draft[&spec.profile_key]) {
-            Ok(changes) => changes,
+        // The current source iterates the actual active profile's own keys.
+        // A synthesized page default is never a profile restore instruction.
+        let restored = self
+            .scroll_editor
+            .as_ref()
+            .and_then(|editor| editor.read(cx).restored().cloned());
+        let changes = initialization_changes(self.spec.product_id, restored.as_ref());
+        self.scroll_task.initialized = Some(initialization);
+        if let Some(editor) = &self.scroll_editor {
+            editor.update(cx, |editor, cx| editor.start_read(cx));
+        }
+        let changes = match changes {
+            Ok(Some(changes)) => changes,
             Err(error) => {
                 eprintln!("[mouse-scroll] Invalid restored wheel settings: {error:#}");
+                self.accept_scroll_submission(Submission::read_current(), 0, cx);
+                return;
+            }
+            Ok(None) => {
+                self.accept_scroll_submission(Submission::read_current(), 0, cx);
                 return;
             }
         };
@@ -293,7 +324,6 @@ impl MouseProductWorkspace {
                 editor.update(cx, |editor, cx| editor.restore_source_mode(*selected, cx));
             }
         }
-        self.scroll_task.initialized = Some(initialization);
         // Stored values already belong to this profile. Persist one atomic
         // snapshot with the same number of source version increments, then
         // execute its ordered independent tasks through the existing queue.
@@ -306,15 +336,13 @@ impl MouseProductWorkspace {
         self.enqueue_scroll_for_profile(changes, guid, source_events, cx);
     }
 
-    pub(super) fn submit_scroll_edit(&mut self, previous: &Value, cx: &mut Context<Self>) {
-        let Some(spec) = scroll_wheel::source_spec(self.spec.product_id) else {
-            return;
-        };
-        let Some(changes) = changes(
-            self.spec.product_id,
-            previous,
-            &self.draft[&spec.profile_key],
-        ) else {
+    pub(super) fn submit_scroll_edit(
+        &mut self,
+        previous: &Value,
+        wheel: &Value,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(changes) = changes(self.spec.product_id, previous, wheel) else {
             return;
         };
         if changes.is_empty() {
@@ -322,13 +350,14 @@ impl MouseProductWorkspace {
         }
         // Current UI `fe` owns its 300ms scroll-mode debounce. Other controls
         // retain their immediate switch / slider-release dispatch semantics.
-        if previous.get("scrollMode") != self.draft[&spec.profile_key].get("scrollMode")
-            && previous.get("disabledModes") == self.draft[&spec.profile_key].get("disabledModes")
+        if previous.get("scrollMode") != wheel.get("scrollMode")
+            && previous.get("disabledModes") == wheel.get("disabledModes")
         {
             let Some(scope) = self.mouse_polling_scope(cx) else {
                 return;
             };
             let previous = previous.clone();
+            let wheel = wheel.clone();
             self.scroll_task.mode_debounce = Some(cx.spawn(async move |owner, cx| {
                 cx.background_executor()
                     .timer(std::time::Duration::from_millis(300))
@@ -337,14 +366,8 @@ impl MouseProductWorkspace {
                     if owner.mouse_polling_scope(cx) != Some(scope) {
                         return;
                     }
-                    let Some(spec) = scroll_wheel::source_spec(owner.spec.product_id) else {
-                        return;
-                    };
-                    let Some(changes) = changes_for_mode(
-                        owner.spec.product_id,
-                        &previous,
-                        &owner.draft[&spec.profile_key],
-                    ) else {
+                    let Some(changes) = changes_for_mode(owner.spec.product_id, &previous, &wheel)
+                    else {
                         return;
                     };
                     owner.enqueue_scroll(changes, cx);
@@ -381,9 +404,6 @@ impl MouseProductWorkspace {
         if changes.is_empty() || self.scroll_task.closed {
             return;
         }
-        let Some(scope) = self.mouse_polling_scope(cx) else {
-            return;
-        };
         let selected = self
             .draft
             .get("obmSlotId")
@@ -391,9 +411,25 @@ impl MouseProductWorkspace {
             .and_then(|slots| slots.first())
             .and_then(Value::as_u64)
             .and_then(|slot| u8::try_from(slot).ok());
-        let mut submission = Submission::for_profile(changes, guid.to_owned(), selected);
+        let submission =
+            Submission::for_profile(changes, guid.to_owned(), selected).with_current_observation();
+        self.accept_scroll_submission(submission, source_events, cx);
+    }
+
+    fn accept_scroll_submission(
+        &mut self,
+        mut submission: Submission,
+        source_events: u8,
+        cx: &mut Context<Self>,
+    ) {
+        if self.scroll_task.closed {
+            return;
+        }
+        let Some(scope) = self.mouse_polling_scope(cx) else {
+            return;
+        };
         if let Some(previous) = self.scroll_task.queued.take() {
-            if previous.scope == scope {
+            if previous.scope == scope && !submission.is_read() && !previous.is_read() {
                 let mut pending = previous.submission.changes.clone();
                 merge(&mut pending, &submission.changes);
                 submission.changes = pending;
@@ -404,14 +440,27 @@ impl MouseProductWorkspace {
             return;
         }
         self.scroll_task.sequence = self.scroll_task.sequence.wrapping_add(1);
+        let read = submission.is_read();
+        let mut profile = self.draft.clone();
+        if let Some(spec) = scroll_wheel::source_spec(self.spec.product_id) {
+            for change in &submission.changes {
+                let Ok(values) = change.values() else {
+                    return;
+                };
+                for value in values {
+                    let (field, value) = scroll_wheel::observation_value(value);
+                    profile[&spec.profile_key][field] = value;
+                }
+            }
+        }
         let request = MouseScrollRequested {
             scope,
             sequence: self.scroll_task.sequence,
             submission,
-            profile: self.draft.clone(),
+            profile,
             source_events,
             valid: Arc::new(AtomicBool::new(true)),
-            saved: Arc::new(AtomicBool::new(false)),
+            saved: Arc::new(AtomicBool::new(read)),
             device_started: Arc::new(AtomicBool::new(false)),
         };
         if self.scroll_task.pending.is_some() {
@@ -457,13 +506,16 @@ impl MouseProductWorkspace {
         cx: &mut Context<Self>,
     ) {
         if self.mouse_scroll_request_matches(request, cx)
-            && let Some(report) = report.filter(|report| {
-                report.requested == request.submission
-                    && report.validate_for(self.spec.product_id).is_ok()
-            })
             && let Some(editor) = &self.scroll_editor
         {
-            editor.update(cx, |editor, cx| editor.record_submission(report, cx));
+            let report = report.filter(|report| {
+                report.requested == request.submission
+                    && report.validate_for(self.spec.product_id).is_ok()
+            });
+            editor.update(cx, |editor, cx| match report {
+                Some(report) => editor.record_submission(report, cx),
+                None => editor.read_failed(cx),
+            });
         }
         self.finish_mouse_scroll_cleanup(request, cleanup_succeeded, cx);
     }
@@ -514,6 +566,26 @@ fn changes_for_mode(product: u32, previous: &Value, wheel: &Value) -> Option<Vec
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[::core::prelude::v1::test]
+    fn source_restore_requires_an_actual_wheel_field_and_never_substitutes_page_defaults() {
+        for product_id in [153, 170, 203, 204, 214, 226, 45066] {
+            assert!(initialization_changes(product_id, None).unwrap().is_none());
+            for invalid in [Value::Null, json!({}), json!({"scrollMode":"Tactile"})] {
+                assert!(initialization_changes(product_id, Some(&invalid)).is_err());
+            }
+            let actual = json!({"scrollMode":"FreeSpin", "smartReelEnabled":true,
+                "accelerationEnabled":false});
+            let changes = initialization_changes(product_id, Some(&actual))
+                .unwrap()
+                .unwrap();
+            assert!(changes.contains(&ScrollChange::SmartReel(true)));
+            assert!(changes.contains(&ScrollChange::VirtualAcceleration(false)));
+            assert!(!changes.iter().any(|change| matches!(
+                change,
+                ScrollChange::VirtualAccelerationLevel(_) | ScrollChange::SmartReelThreshold(_)
+            )));
+        }
+    }
     #[::core::prelude::v1::test]
     fn v2_disabling_the_selected_mode_keeps_mask_before_resolved_mode() {
         let before = json!({"scrollMode":"FreeSpin","disabledModes":[]});

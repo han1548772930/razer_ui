@@ -11,6 +11,7 @@ impl SourceProductWorkspace {
             return;
         }
         self.exiting = true;
+        self.invalidate_controller_initialization(cx);
         self.invalidate_keyboard_profile_inventory(false);
         self.receiver_profile_selection.borrow_mut().prepare_exit();
         if matches!(self.device.product_id, 164 | 241)
@@ -35,6 +36,9 @@ impl SourceProductWorkspace {
             FamilyBody::Audio(body) => body.update(cx, |body, cx| {
                 body.prepare_exit(cx);
             }),
+            FamilyBody::Gamepad(body) => body.update(cx, |body, cx| {
+                body.prepare_controller_sleep_exit(cx);
+            }),
             _ => {}
         }
     }
@@ -58,6 +62,7 @@ impl SourceProductWorkspace {
             return;
         }
         self.exiting = false;
+        self.controller_initialization.resume_after_canceled_exit();
         self.receiver_profile_selection.borrow_mut().cancel_exit();
         if matches!(self.device.product_id, 164 | 241)
             && let FamilyBody::Controls(body) = &self.body
@@ -71,6 +76,12 @@ impl SourceProductWorkspace {
             }),
             FamilyBody::Keyboard(body) => body.update(cx, |body, _| {
                 body.set_legacy_mapping_connection(None);
+            }),
+            FamilyBody::Gamepad(body) => body.update(cx, |body, cx| {
+                body.resume_controller_sleep_exit(
+                    self.device.dashboard.connection_observation.is_some(),
+                    cx,
+                );
             }),
             _ => {}
         }

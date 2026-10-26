@@ -609,6 +609,7 @@ impl AppShell {
         self.sync_mouse_runtime_artwork(window, cx);
         self.sync_controller_inputs(cx);
         self.sync_controller_lighting_owners(self.receiver_devices_complete, cx);
+        self.sync_marci_lighting_owners(self.receiver_devices_complete, cx);
         self.sync_receiver_lighting_owners(self.receiver_devices_complete, cx);
         self.sync_hanbo_cooler_connections(cx);
         self.sync_hyperpolling_receivers(window, cx);
@@ -997,6 +998,8 @@ impl AppShell {
         // The basic query worker has completed; do not compete with its retained
         // path lock during discovery's first/second phase handshake.
         self.initialize_current_mouse_profiles(cx);
+        self.sync_controller_sleep_recording(cx);
+        self.initialize_controller_roots(cx);
         self.initialize_mouse_scroll_profiles(cx);
         self.request_initial_dpi_stage_reads(cx);
         self.sync_known_devices(cx);

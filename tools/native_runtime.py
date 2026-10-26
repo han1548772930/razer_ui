@@ -1,12 +1,13 @@
 """Compare independent Rust observations with audited local native exports.
 
-Validation only reads bytes. Target execution is confined to the disposable
-worker used by replay_get_trace; no JavaScript or N-API entry point is called.
+Validation only reads bytes. Target execution is confined to disposable
+comparison workers; no JavaScript or N-API entry point is called.
 Domain decoding remains with the Rust protocol owners.
 """
 from __future__ import annotations
 
 import ctypes
+from datetime import datetime, timezone
 import hashlib
 import json
 import math
@@ -67,6 +68,569 @@ _APPS_FUNCTIONS = (
     "1dcb6", "1dd2c", "1df10", "1df22", "1df8c", "1e190", "1e1a2", "1e220", "1e232", "1e2b4",
     "8920", "8b90", "8da0", "9010",
 )
+
+_LIGHTING_SHA256 = "cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa"
+_LIGHTING_INPUT = f".analysis/inputs/host-current/blobs/{_LIGHTING_SHA256}/RzLightingEngineApi_v4.0.55.0.dll"
+_LIGHTING_JS = ".analysis/inputs/frontend/synapse-lighting-engine-current/raw/apps.razer.com/synapse/lighting-engine/static/js/main.a383ea9e.js"
+_LIGHTING_JS_SHA256 = "c82c7074e5da8abcffbff95f23a6b962c1e14b04586715b9d4b7a6f11fe9e6d2"
+_LIGHTING_MANIFESTS = (
+    (".analysis/inputs/host-current/blobs/347be6a819372010ebfd04c4ed6436f8f795b91e761dcee1e84c8e0764d7d422/installer-manifest.json",
+     "https://apps.razer.com/background-manager/installer-manifest.json",
+     "347be6a819372010ebfd04c4ed6436f8f795b91e761dcee1e84c8e0764d7d422"),
+    (".analysis/inputs/host-current/blobs/47feea84a40638fbe9f5091a896d878251f2593d39921c89fb26dd589f75f4f8/manifest-1.0.136.json",
+     "https://apps.razer.com/background-manager/manifests/manifest-1.0.136.json",
+     "47feea84a40638fbe9f5091a896d878251f2593d39921c89fb26dd589f75f4f8"),
+)
+_LIGHTING_EXPORTS = {
+    "SetOperatingMode": ("0x32d00", "void(int32)"),
+    "PollEvents": ("0x32d90", "malloc char*(void)"),
+    "RzLightingApi": ("0x33490", "malloc char*(const char*)"),
+    "RzLightingApiNoReturn": ("0x33b60", "void(const char*)"),
+    "GetDLLVersion": ("0x33cf0", "malloc char*(void)"),
+    "FreeMalloc": ("0x340c0", "void(void*)"),
+    "SetNodeFFIEvent": ("0x340d0", "bool(void (*)(const char*))"),
+}
+_LIGHTING_FUNCTIONS = (
+    "32d00", "32d90", "33490", "33b60", "33cf0", "340c0", "340d0",
+    "33600", "33300", "1fd90", "1f2b0", "323d0", "32330", "40420", "40a70",
+    "20300", "20c50", "20e10", "21190", "21270", "214e0", "21ac0", "24330",
+    "24cd0", "24e30", "24ef0", "24f80", "2a5c0", "2b20", "2960", "2cf0", "30b0",
+    "47080", "4d5b0", "45230", "4b2e0", "4b6c0", "4c8f0", "4c620", "4cd40",
+    "4cfd0", "4d290", "4b470", "419c0", "41be0", "41b20", "52c50", "52df0",
+    "52600", "521e0", "66b40", "66d60", "66f20", "691a0", "692e0",
+    "10cb8c", "10ca64", "1830", "18b0", "43630", "43660",
+    "45170", "50cb0", "47670", "4d720", "48f70", "48f60", "4d760", "50d50",
+    "56f0", "4b7c0", "4a740", "4a910", "476e0", "4b910", "4ad90", "4beb0", "4bdc0",
+    "48fe0", "4dd00", "49050", "4f0d0", "49060", "4f390", "49070", "4f690",
+    "49080", "4fa40", "490a0", "4fb40", "49030", "4f200", "48270",
+    "7bc0", "7bd0", "7be0", "7bf0", "7c00",
+    "1f940", "1fc10", "2a8f0", "2aa10", "490c0", "473c0", "50d10", "50cd0",
+    "4d690", "48b10", "4fcf0", "42250",
+)
+
+
+def verify_lighting_source(root):
+    """Verify the public JSON ABI and selected complete software call chains."""
+    root = Path(root)
+    raw = (root / _LIGHTING_INPUT).read_bytes()
+    if len(raw) != 2153672 or hashlib.sha256(raw).hexdigest() != _LIGHTING_SHA256:
+        raise ValueError("Lighting DLL bytes differ from the current official capture")
+    acquisition_path = ".analysis/inputs/host-current/acquisition.json"
+    acquisition_raw = (root / acquisition_path).read_bytes()
+    acquisition = json.loads(acquisition_raw)
+    rows = [row for row in acquisition["files"] if row.get("path") == _LIGHTING_INPUT]
+    url = "https://app-assets.razer.com/files/synapse/LightingEngine/v4.0.55.0/RzLightingEngineApi_v4.0.55.0.dll"
+    if len(rows) != 1:
+        raise ValueError("Lighting official acquisition identity is ambiguous")
+    row = rows[0]
+    declaration = row["declaration"]
+    if (row["url"] != url or row["final_url"] != url or row["http_status"] != 200
+            or row["sha256"] != _LIGHTING_SHA256 or row["bytes"] != len(raw)
+            or declaration["resourceVersion"] != "4.0.55.0"
+            or declaration["sha256"].lower() != _LIGHTING_SHA256
+            or declaration["size"] != len(raw)):
+        raise ValueError("Lighting official declaration differs from acquired bytes")
+    manifests, manifest_values = [], []
+    for path, manifest_url, expected_sha in _LIGHTING_MANIFESTS:
+        encoded = (root / path).read_bytes()
+        records = [record for record in acquisition["files"] if record.get("path") == path]
+        if (hashlib.sha256(encoded).hexdigest() != expected_sha or len(records) != 1
+                or records[0]["url"] != manifest_url or records[0]["http_status"] != 200
+                or records[0]["sha256"] != expected_sha or records[0]["bytes"] != len(encoded)):
+            raise ValueError("Lighting release manifest identity differs")
+        manifests.append({"path": path, "url": manifest_url, "bytes": len(encoded), "sha256": expected_sha})
+        manifest_values.append(json.loads(encoded))
+    if manifest_values[0]["latest"]["url"] != "manifest-1.0.136.json":
+        raise ValueError("Lighting stable release points at another resource manifest")
+    declarations = []
+
+    def find_resource(value):
+        if isinstance(value, dict):
+            if value.get("resourceName") == "LightingEngineDLL":
+                declarations.append(value)
+            for nested in value.values():
+                find_resource(nested)
+        elif isinstance(value, list):
+            for nested in value:
+                find_resource(nested)
+
+    find_resource(manifest_values[1]["resources"])
+    if declarations != [declaration]:
+        raise ValueError("Lighting resource manifest declaration differs from acquisition")
+    pe = inspect_pe(raw)
+    versions = pe["version_resources"]
+    if (pe["architecture"] != "x64" or pe["unresolved"] or pe.get("delay_imports")
+            or len(versions) != 1 or versions[0]["tree"].get("file_version") != "4.0.55.0"
+            or versions[0]["tree"].get("product_version") != "4.0.55.0"):
+        raise ValueError("Lighting version, architecture or dependency parsing is incomplete")
+    exports = {name: entry for entry in pe["exports"] for name in entry["names"]}
+    for name, (rva, _) in _LIGHTING_EXPORTS.items():
+        if exports.get(name, {}).get("rva") != rva or "forwarder" in exports[name]:
+            raise ValueError("Lighting export differs from audited ABI: " + name)
+    capture_path = f".analysis/results/native/{_LIGHTING_SHA256}/capture.json"
+    capture_raw = (root / capture_path).read_bytes()
+    capture = json.loads(capture_raw)
+    if (capture["input_sha256"] != _LIGHTING_SHA256 or capture["input_bytes"] != len(raw)
+            or capture["image_base"] != pe["image_base"]):
+        raise ValueError("Lighting capture identity differs")
+    indexed = {entry["path"]: entry for entry in capture["functions"]}
+    functions = []
+    for rva in _LIGHTING_FUNCTIONS:
+        relative = "functions/" + rva + ".json"
+        path = Path(capture_path).parent / relative
+        encoded = (root / path).read_bytes()
+        if hashlib.sha256(encoded).hexdigest() != indexed[relative]["sha256"]:
+            raise ValueError("Lighting captured function identity differs: " + rva)
+        function = json.loads(encoded)
+        if not (function.get("pseudocode") or {}).get("lines") or not function.get("assembly"):
+            raise ValueError("Lighting complete function body is missing: " + rva)
+        chunks = []
+        for chunk in function["chunks"]:
+            start, end = int(chunk["start"], 16), int(chunk["end"], 16)
+            position = start - int(pe["image_base"], 16)
+            sections = [s for s in pe["sections"] if s["rva"] <= position
+                        and position + end - start <= s["rva"] + s["bytes"]]
+            if len(sections) != 1:
+                raise ValueError("Lighting function chunk has no unique raw section")
+            offset = sections[0]["file_offset"] + position - sections[0]["rva"]
+            actual = raw[offset:offset + end - start]
+            if actual.hex() != chunk["raw_hex"] or hashlib.sha256(actual).hexdigest() != chunk["sha256"]:
+                raise ValueError("Lighting function chunk differs: " + rva)
+            chunks.append({key: chunk[key] for key in ("start", "end", "sha256")})
+        functions.append({"path": path.as_posix(), "sha256": indexed[relative]["sha256"],
+                          "rva": function["rva"], "chunks": chunks})
+    virtual_calls = []
+    for table, slot, target in (
+        (0x1998c8, 56, 0x56f0), (0x1998c8, 88, 0x2cf0), (0x1998c8, 96, 0x30b0),
+        (0x1a8478, 16, 0x47670), (0x1a8478, 24, 0x48f70),
+        (0x1a83c8, 80, 0x476e0), (0x1a83c8, 96, 0x48270),
+        (0x1a89a8, 8, 0x4b7c0), (0x1a89a8, 24, 0x4beb0),
+        (0x1998c8, 8, 0x7bc0), (0x1998c8, 16, 0x7bd0),
+        (0x1998c8, 24, 0x7be0), (0x1998c8, 32, 0x7bf0), (0x1998c8, 40, 0x7c00),
+    ):
+        position = table + slot
+        section = next(s for s in pe["sections"] if s["rva"] <= position
+                       and position + 8 <= s["rva"] + s["bytes"])
+        offset = section["file_offset"] + position - section["rva"]
+        encoded = raw[offset:offset + 8]
+        if struct.unpack("<Q", encoded)[0] != int(pe["image_base"], 16) + target:
+            raise ValueError("Lighting software virtual call target differs")
+        virtual_calls.append({"table_rva": hex(table), "slot": slot, "target_rva": hex(target),
+                              "raw_hex": encoded.hex(), "sha256": hashlib.sha256(encoded).hexdigest()})
+    js_raw = (root / _LIGHTING_JS).read_bytes()
+    js_receipt_path = ".analysis/inputs/frontend/synapse-lighting-engine-current/acquisition.json"
+    js_rows = [r for r in json.loads((root / js_receipt_path).read_bytes())["files"]
+               if r.get("path") == _LIGHTING_JS]
+    if (len(js_rows) != 1 or js_rows[0]["http_status"] != 200
+            or len(js_raw) != js_rows[0]["bytes"]
+            or hashlib.sha256(js_raw).hexdigest() != js_rows[0]["sha256"]
+            or hashlib.sha256(js_raw).hexdigest() != _LIGHTING_JS_SHA256):
+        raise ValueError("Lighting frontend ABI source identity differs")
+    return {"input": _LIGHTING_INPUT, "sha256": _LIGHTING_SHA256, "bytes": len(raw),
+            "acquisition": {"path": acquisition_path, "sha256": hashlib.sha256(acquisition_raw).hexdigest(), "url": url},
+            "release_manifests": manifests,
+            "capture": {"path": capture_path, "sha256": hashlib.sha256(capture_raw).hexdigest(),
+                        "ida_version": capture["ida_version"], "hexrays_version": capture["hexrays_version"]},
+            "frontend": {"path": _LIGHTING_JS, "sha256": hashlib.sha256(js_raw).hexdigest()},
+            "architecture": pe["architecture"], "version_resources": versions,
+            "imports": [entry["library"] for entry in pe["imports"]],
+            "dynamic_system_imports": ["mfplat.dll"], "functions": functions,
+            "virtual_calls": virtual_calls,
+            "abi": {name: {"rva": rva, "signature": abi} for name, (rva, abi) in _LIGHTING_EXPORTS.items()},
+            "software_creation": "config selects CDeviceAccess geometry, not PID discovery; CDevice init only queries the selected access object's in-memory dimensions and allocates an unsubmitted threadpool work item; add-device registers engine ownership and copies geometry/maps, position only resizes software layout; CDeviceAccess transport slots 8..40 return E_FAIL",
+            "sampling": "Action 50 preview=1 sets fade denominator=1 and suppresses CDevice output; fixed stationary nonblack scenarios wait only for all nine initialized-zero pixels to publish, independently of Rust expected values; source buffer then remains constant",
+            "cleanup": "disable waits for engine timer callbacks; destroy engine/device; terminate; stop operating timer and unregister callback. Native CoInitialize and MFStartup are retained to isolated process exit; no manual unload"}
+
+
+def _lighting_geometry():
+    return {"Version": 2, "VID": 5426, "PID": 3942, "EID": 0, "Layout": 0,
+            "MatrixMaxRow": 3, "MatrixMaxCol": 3, "DeviceMaxRow": 3, "DeviceMaxCol": 3,
+            "LedWidth": 40, "LedHeight": 40, "LedWidthOffset": 0, "LedHeightOffset": 0,
+            "MaxRegion": 0, "RegionMaxRow": 0, "RegionMaxCol": 0,
+            "LedMatrix": [{"MatrixPos": [r, c], "DevicePos": [r, c]} for r in range(3) for c in range(3)],
+            "LedInputMap": []}
+
+
+def _lighting_scenarios():
+    return [("static", {"effect": 6, "EffectParam": {"Color": 0x332211}}),
+            ("wheel_stationary", {"effect": 13, "EffectParam": {
+                "Mode": 2048, "Speed": 0.0, "Cycles": -1, "CenterRow": 1, "CenterCol": 1,
+                "ColorStops": [{"Stop": 0, "Color": 0x0000ff}, {"Stop": 100, "Color": 0xff0000}]}})]
+
+
+def _lighting_snapshot(value):
+    if not isinstance(value, dict) or value.get("schema_version") != 1 or not isinstance(value.get("scenarios"), list):
+        raise ValueError("Rust lighting snapshot schema differs")
+    if len(value["scenarios"]) != 2:
+        raise ValueError("Rust lighting snapshot must contain both fixed scenarios")
+    for row, (name, effect) in zip(value["scenarios"], _lighting_scenarios(), strict=True):
+        if (not isinstance(row, dict) or row.get("name") != name or row.get("geometry") != _lighting_geometry()
+                or row.get("effect") != effect or row.get("epoch_seconds") != 0
+                or row.get("cleanup") != {"engine_destroyed": True, "device_destroyed": True, "terminated": True}):
+            raise ValueError("Rust lighting snapshot differs from audited software-only scenario")
+        frame = row.get("stable_packed_colorref")
+        if not isinstance(frame, list) or len(frame) != 9 or any(type(v) is not int or not 0 <= v <= 0xffffff for v in frame):
+            raise ValueError("Rust lighting snapshot frame is incomplete")
+        ticks = row.get("ticks")
+        if (not isinstance(ticks, list) or any(not isinstance(tick, dict) for tick in ticks)
+                or [tick.get("logical_ms") for tick in ticks] != list(range(0, 4001, 40))):
+            raise ValueError("Rust lighting logical timeline is incomplete")
+        for tick in ticks:
+            frames = tick.get("frames")
+            if not isinstance(frames, list) or len(frames) > 1:
+                raise ValueError("Rust lighting tick frame count differs")
+            for emitted in frames:
+                pixels = emitted.get("packed_colorref") if isinstance(emitted, dict) else None
+                if (not isinstance(emitted, dict) or type(emitted.get("device_handle")) is not int or emitted["device_handle"] <= 0
+                        or not isinstance(pixels, list) or len(pixels) != 9
+                        or any(type(v) is not int or not 0 <= v <= 0xffffff for v in pixels)):
+                    raise ValueError("Rust lighting tick frame is incomplete")
+    return value
+
+
+def _lighting_session(library, emit, *, ready_timeout=5):
+    """Only public JSON exports and fixed in-memory geometry; no device I/O."""
+    for name in ("GetDLLVersion", "PollEvents"):
+        getattr(library, name).argtypes, getattr(library, name).restype = [], ctypes.c_void_p
+    library.RzLightingApi.argtypes, library.RzLightingApi.restype = [ctypes.c_char_p], ctypes.c_void_p
+    library.RzLightingApiNoReturn.argtypes, library.RzLightingApiNoReturn.restype = [ctypes.c_char_p], None
+    library.FreeMalloc.argtypes, library.FreeMalloc.restype = [ctypes.c_void_p], None
+    library.SetOperatingMode.argtypes, library.SetOperatingMode.restype = [ctypes.c_int32], None
+    library.SetNodeFFIEvent.argtypes, library.SetNodeFFIEvent.restype = [ctypes.c_void_p], ctypes.c_bool
+    events, errors, scenarios = [], [], []
+
+    def record(event):
+        events.append(event)
+        emit(event)
+
+    def receive(pointer):
+        try:
+            record({"operation": "callback", "raw": ctypes.string_at(pointer).decode("utf-8")})
+        except Exception as error:
+            errors.append("Callback copy failed: " + str(error))
+
+    callback = ctypes.CFUNCTYPE(None, ctypes.c_void_p)(receive)
+    _SIMPLE_WORKER_OWNERS.append((library, callback))
+
+    def owned(function, *arguments):
+        pointer = function(*arguments)
+        if not pointer:
+            raise ValueError("Lighting export returned a null owned string")
+        try:
+            return ctypes.string_at(pointer).decode("utf-8")
+        finally:
+            library.FreeMalloc(pointer)
+
+    def api(action, expected=0, **arguments):
+        request = {"Action": action, **arguments}
+        encoded = json.dumps(request, separators=(",", ":")).encode("utf-8")
+        raw = owned(library.RzLightingApi, encoded)
+        result = json.loads(raw)
+        record({"operation": "api", "request": request, "raw": raw, "result": result})
+        if type(result.get("Status")) is not int or result["Status"] != expected:
+            raise ValueError("Lighting action status differs: " + str(action))
+        return result
+
+    def cleanup(action, **arguments):
+        try:
+            api(action, **arguments)
+            return True
+        except Exception as error:
+            errors.append(f"Cleanup action {action}: {error}")
+            return False
+
+    try:
+        version = owned(library.GetDLLVersion)
+        record({"operation": "GetDLLVersion", "raw": version})
+        if version != "4.0.55.0":
+            raise ValueError("Executed lighting version differs from source version")
+        if not library.SetNodeFFIEvent(ctypes.cast(callback, ctypes.c_void_p)):
+            raise ValueError("Lighting callback registration failed")
+        library.SetOperatingMode(1)
+        record({"operation": "SetOperatingMode", "mode": 1, "returns": "void"})
+        record({"operation": "PollEvents", "raw": owned(library.PollEvents)})
+        for name, effect in _lighting_scenarios():
+            device = engine = None
+            result = {"name": name, "frame": None, "cleanup": {}}
+            scenarios.append(result)
+            try:
+                device = api(1, config=_lighting_geometry())["device_handle"]
+                engine = api(3, fps=25, type="")["engine_handle"]
+                if type(device) is not int or type(engine) is not int or device <= 0 or engine <= 0:
+                    raise ValueError("Lighting software handle is invalid")
+                api(17, engine_handle=engine, device_handle=device, region=0, orientation=0)
+                api(19, engine_handle=engine, device_handle=device, region=0, row=0, col=0,
+                    layer=0, check_overlapping=True)
+                api(33, engine_handle=engine, **effect)
+                api(50, engine_handle=engine, enable=1)
+                reset = {"Action": 51, "engine_handle": engine}
+                library.RzLightingApiNoReturn(json.dumps(reset).encode("utf-8"))
+                record({"operation": "RzLightingApiNoReturn", "request": reset, "returns": "void"})
+                api(51, engine_handle=engine)
+                api(49, engine_handle=engine, enable=1, device_handle=0, region=0, clearFrame=0)
+                deadline = time.monotonic() + ready_timeout
+                # No expected-frame match or wall-time approximation selects a
+                # sample. The fixed inputs produce a constant nonblack frame;
+                # initialized zero pixels distinguish incomplete publication.
+                while True:
+                    frame = api(52, engine_handle=engine, device_handle=device, region=0).get("frame")
+                    if not isinstance(frame, list) or len(frame) != 9 or any(type(v) is not int or not 0 <= v <= 0xffffff for v in frame):
+                        raise ValueError("Lighting frame shape differs")
+                    if all(frame):
+                        result["frame"] = frame
+                        break
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError("Lighting full stationary frame was not published")
+                    # Yield between observations; only the published pixel
+                    # state, never elapsed time, admits a comparison sample.
+                    time.sleep(0.005)
+                api(49, engine_handle=engine, enable=0, device_handle=0, region=0, clearFrame=0)
+                result["disabled_frame"] = api(52, expected=0x80004005,
+                    engine_handle=engine, device_handle=device, region=0)
+            except Exception as error:
+                result["error"] = f"{type(error).__name__}: {error}"
+            finally:
+                if type(engine) is int and engine > 0:
+                    result["cleanup"]["disable"] = cleanup(49, engine_handle=engine, enable=0,
+                        device_handle=0, region=0, clearFrame=0)
+                    result["cleanup"]["destroy_engine"] = cleanup(4, engine_handle=engine)
+                if type(device) is int and device > 0:
+                    result["cleanup"]["destroy_device"] = cleanup(2, device_handle=device)
+        record({"operation": "PollEvents", "raw": owned(library.PollEvents)})
+    except Exception as error:
+        errors.append(f"{type(error).__name__}: {error}")
+    finally:
+        terminated = cleanup(65520)
+        try:
+            library.SetOperatingMode(0)
+            record({"operation": "SetOperatingMode", "mode": 0, "returns": "void"})
+        except Exception as error:
+            errors.append("Stop operating timer: " + str(error))
+        try:
+            if not library.SetNodeFFIEvent(None):
+                raise ValueError("Callback unregister returned false")
+            record({"operation": "SetNodeFFIEvent", "registered": False})
+        except Exception as error:
+            errors.append("Callback unregister: " + str(error))
+    return {"scenarios": scenarios, "errors": errors, "terminated": terminated,
+            "events": events, "module_and_callback_retained_until_process_exit": True,
+            "native_com_and_media_foundation_cleanup":
+                "matching shutdown exports not found in the audited lifecycle; owners remain until isolated process exit"}
+
+
+def _lighting_system_modules(kernel):
+    process = kernel.GetCurrentProcess()
+    modules = (ctypes.c_void_p * 4096)()
+    needed = ctypes.c_uint32()
+    if not kernel.K32EnumProcessModules(process, modules, ctypes.sizeof(modules), ctypes.byref(needed)):
+        raise ctypes.WinError(ctypes.get_last_error())
+    if needed.value > ctypes.sizeof(modules):
+        raise ValueError("Loaded module inventory exceeded its complete buffer")
+    result = set()
+    for module in modules[:needed.value // ctypes.sizeof(ctypes.c_void_p)]:
+        buffer = ctypes.create_unicode_buffer(32768)
+        count = kernel.K32GetModuleFileNameExW(process, module, buffer, len(buffer))
+        if count == 0 or count >= len(buffer):
+            raise ValueError("Loaded module path is incomplete")
+        result.add(Path(buffer.value).resolve(strict=True))
+    return result
+
+
+def _lighting_worker_main(root):
+    def emit(value):
+        print("RAZER_LIGHTING_NATIVE_EVENT " + json.dumps(value, ensure_ascii=True), flush=True)
+
+    try:
+        if sys.platform != "win32" or ctypes.sizeof(ctypes.c_void_p) != 8:
+            raise ValueError("Lighting comparison requires Windows x64 Python")
+        root = Path(root).resolve(strict=True)
+        evidence = verify_lighting_source(root)
+        kernel = ctypes.WinDLL("kernel32.dll", use_last_error=True, winmode=0x800)
+        for name, arguments, result in (
+            ("GetCurrentProcess", [], ctypes.c_void_p),
+            ("GetSystemDirectoryW", [ctypes.c_wchar_p, ctypes.c_uint32], ctypes.c_uint32),
+            ("SetDefaultDllDirectories", [ctypes.c_uint32], ctypes.c_bool),
+            ("K32EnumProcessModules", [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint32)], ctypes.c_bool),
+            ("K32GetModuleFileNameExW", [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_wchar_p, ctypes.c_uint32], ctypes.c_uint32),
+        ):
+            getattr(kernel, name).argtypes, getattr(kernel, name).restype = arguments, result
+        directory = ctypes.create_unicode_buffer(32768)
+        count = kernel.GetSystemDirectoryW(directory, len(directory))
+        if count == 0 or count >= len(directory):
+            raise ValueError("System DLL directory is unavailable")
+        system = Path(directory.value).resolve(strict=True)
+        if not kernel.SetDefaultDllDirectories(0x800):
+            raise ctypes.WinError(ctypes.get_last_error())
+
+        def identity(path):
+            raw = path.read_bytes()
+            pe = inspect_pe(raw)
+            if pe["architecture"] != "x64" or pe["unresolved"]:
+                raise ValueError("Loaded system dependency architecture or PE closure is incomplete")
+            return {"path": str(path), "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest(),
+                    "architecture": pe["architecture"], "version_resources": pe["version_resources"],
+                    "imports": [entry["library"] for entry in pe["imports"]],
+                    "delay_imports": [entry["library"] for entry in pe.get("delay_imports", [])],
+                    "unresolved": pe["unresolved"]}
+
+        dependencies = []
+        for name in evidence["imports"] + evidence["dynamic_system_imports"]:
+            if Path(name).name != name:
+                raise ValueError("Lighting dependency contains a path")
+            path = (system / name).resolve(strict=True)
+            if path.parent != system:
+                raise ValueError("Lighting dependency escaped System32")
+            dependencies.append(identity(path))
+        baseline = _lighting_system_modules(kernel)
+        names = {name.casefold() for name in evidence["imports"] + evidence["dynamic_system_imports"]}
+        if any(module.name.casefold() in names and module.parent != system for module in baseline):
+            raise ValueError("A lighting dependency name is already mapped outside System32")
+        emit({"operation": "dependencies_verified", "direct_and_dynamic": dependencies,
+              "search": "LOAD_LIBRARY_SEARCH_SYSTEM32; absolute target path"})
+        path = (root / evidence["input"]).resolve(strict=True)
+        library = ctypes.CDLL(str(path), winmode=0x800)
+        _SIMPLE_WORKER_OWNERS.append(library)
+        emit({"operation": "loaded", "sha256": evidence["sha256"]})
+        result = _lighting_session(library, emit)
+        inventory = _lighting_system_modules(kernel)
+        for module in sorted(inventory - baseline):
+            if module != path and module.parent != system:
+                raise ValueError("Lighting loaded a dependency outside System32: " + module.name)
+        loaded = [identity(module) for module in sorted(inventory) if module == path or module.parent == system]
+        for dependency in dependencies:
+            if identity(Path(dependency["path"])) != dependency:
+                raise ValueError("System dependency changed during comparison")
+        result["dependencies"] = {"direct_and_dynamic": dependencies, "loaded_system_module_closure": loaded,
+                                  "unexpected_non_system_modules": False}
+        print("RAZER_LIGHTING_NATIVE_RESULT " + json.dumps(result, ensure_ascii=True), flush=True)
+        return 0
+    except Exception as error:
+        emit({"operation": "error", "error": f"{type(error).__name__}: {error}"})
+        return 1
+
+
+def _lighting_input_identity(root, input_owner):
+    identities = {row["path"]: row for row in input_owner(include_asset_pack=False)}
+    for relative in ("tools/native_runtime.py", "tools/workspace.py", "tools/host.py",
+                     "tools/test_native_runtime.py", "tools/test_workspace.py"):
+        raw = (root / relative).read_bytes()
+        identities[relative] = {"path": relative, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+    return [identities[key] for key in sorted(identities)]
+
+
+def _lighting_build_environment(environment):
+    """Pin compiler options without publishing their potentially private values."""
+    names = {"RUSTFLAGS", "CARGO_ENCODED_RUSTFLAGS", "CARGO_BUILD_RUSTFLAGS",
+             "RUSTDOCFLAGS", "CARGO_ENCODED_RUSTDOCFLAGS", "CARGO_BUILD_RUSTDOCFLAGS",
+             "RUSTC", "RUSTDOC", "RUSTC_WRAPPER", "RUSTC_WORKSPACE_WRAPPER",
+             "CARGO_BUILD_RUSTC", "CARGO_BUILD_RUSTC_WRAPPER", "CARGO_BUILD_RUSTC_WORKSPACE_WRAPPER",
+             "RUSTUP_TOOLCHAIN", "RUSTUP_HOME", "CARGO_HOME", "CARGO_BUILD_TARGET", "CARGO_TARGET_DIR"}
+    names.update(name for name in environment if re.fullmatch(r"CARGO_TARGET_[A-Z0-9_]+_RUSTFLAGS", name))
+    result = {}
+    for name in sorted(names):
+        if name in environment:
+            raw = environment[name].encode("utf-8")
+            result[name] = {"present": True, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+        else:
+            result[name] = {"present": False}
+    return result
+
+
+def compare_local_lighting(root, input_owner, *, publish=None):
+    """Explicit isolated stationary software output comparison, without devices."""
+    command = ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib",
+               "lighting_engine::renderer::tests::explicit_native_lighting_snapshots", "--",
+               "--ignored", "--exact", "--nocapture", "--test-threads=1"]
+    worker = [sys.executable, "-I", str(Path(__file__).resolve()), "--lighting-worker", str(root)]
+    receipt = {"schema_version": 1, "evidence": None, "rust_inputs": [], "build_environment": {},
+               "command": command, "original_command": worker, "runs": {}, "passed": False,
+               "status": "preparing", "phase": "source_verification", "cancelled": False,
+               "scope": "Static and stationary Wheel exact opacity=1 software frames through public JSON exports; no physical device output",
+               "unverified": ["Fade timing", "Dynamic effect timing", "Other effects and parameter branches",
+                              "Physical device, service and UI output", "Cancellation during a native call"]}
+    try:
+        root = Path(root).resolve(strict=True)
+        worker[-1] = str(root)
+        evidence = receipt["evidence"] = verify_lighting_source(root)
+        receipt["phase"] = "input_identity"
+        inputs = receipt["rust_inputs"] = _lighting_input_identity(root, input_owner)
+        environment = os.environ.copy()
+        receipt["build_environment"] = _lighting_build_environment(environment)
+        runs = receipt["runs"]
+
+        def run(name, argv, **options):
+            receipt["phase"] = name
+            return _run_service_version_test(argv, root, environment.copy(),
+                observe=lambda observation: runs.__setitem__(name, observation), **options)
+
+        runs["rust_before"] = run("rust_before", command)
+        before = _lighting_snapshot(_marked_result(runs["rust_before"], "RAZER_LIGHTING_RESULT"))
+        receipt["rust_before"] = before
+        runs["original"] = run("original", worker, timeout_seconds=45)
+        original = _marked_result(runs["original"], "RAZER_LIGHTING_NATIVE_RESULT")
+        receipt["original"] = original
+        runs["rust_after"] = run("rust_after", command)
+        after = _lighting_snapshot(_marked_result(runs["rust_after"], "RAZER_LIGHTING_RESULT"))
+        receipt["rust_after"] = after
+        receipt["phase"] = "comparison"
+        if (before != after or inputs != _lighting_input_identity(root, input_owner)
+                or evidence != verify_lighting_source(root)
+                or receipt["build_environment"] != _lighting_build_environment(os.environ.copy())):
+            raise ValueError("Comparison inputs or independent Rust output changed during execution")
+        if original["errors"] or not original["terminated"] or len(original["scenarios"]) != 2:
+            raise ValueError("Native session or cleanup failed")
+        comparisons = []
+        for actual, expected in zip(original["scenarios"], before["scenarios"], strict=True):
+            cleanup = actual.get("cleanup", {})
+            comparisons.append({"name": expected["name"], "rust": expected["stable_packed_colorref"],
+                "original": actual.get("frame"), "matched": actual.get("name") == expected["name"]
+                and actual.get("frame") == expected["stable_packed_colorref"]
+                and not actual.get("error") and set(cleanup) == {"disable", "destroy_engine", "destroy_device"}
+                and all(cleanup.values())})
+        receipt["comparisons"] = comparisons
+        receipt["passed"] = all(row["matched"] for row in comparisons)
+        receipt["status"] = "passed" if receipt["passed"] else "failed"
+        receipt["phase"] = "completed"
+    except Exception as error:
+        receipt["status"] = "failed"
+        receipt["error"] = f"{type(error).__name__}: {error}"
+    except BaseException as error:
+        receipt["status"] = "cancelled"
+        receipt["cancelled"] = True
+        receipt["error"] = f"{type(error).__name__}: {error}"
+        raise
+    finally:
+        receipt["recorded_at_utc"] = datetime.now(timezone.utc).isoformat()
+        if publish is not None:
+            publish(receipt)
+    return receipt
+
+
+def lighting_attempt_history(previous):
+    """Reject malformed existing evidence before starting another comparison."""
+    if previous is None:
+        attempts = []
+    elif not isinstance(previous, dict):
+        raise ValueError("Existing lighting receipt schema is unknown; refusing to overwrite")
+    elif previous.get("schema_version") == 2:
+        attempts = previous.get("attempts")
+        if (not isinstance(attempts, list) or not attempts
+                or previous.get("latest_attempt") != len(attempts) - 1
+                or any(not isinstance(row, dict) for row in attempts)):
+            raise ValueError("Existing lighting attempt receipt is incomplete; refusing to overwrite")
+    elif previous.get("schema_version") == 1 and "passed" in previous:
+        attempts = [previous]
+    else:
+        raise ValueError("Existing lighting receipt schema is unknown; refusing to overwrite")
+    return attempts
+
+
+def retain_lighting_attempt(previous, attempt):
+    """Keep failed raw observations in the single comparison receipt owner."""
+    attempts = [*lighting_attempt_history(previous), attempt]
+    return {"schema_version": 2, "latest_attempt": len(attempts) - 1,
+            "passed": attempt["passed"], "scope": attempt["scope"],
+            "recorded_at_utc": attempt["recorded_at_utc"], "attempts": attempts}
 
 
 def verify_simple_version_source(root, *, include_apps=False):
@@ -305,26 +869,59 @@ def compare_local_app_files(root):
             "scope": "Actual source DLL Initialize/GetUserApps/Shutdown callbacks compared with direct Rust current-file names/hashes; no writes, helpers or application windows"}
 
 
-def _run_service_version_test(command, root, environment):
+def _run_service_version_test(command, root, environment, *, timeout_seconds=180, observe=None):
     process = subprocess.Popen(command, cwd=root, env=environment, stdout=subprocess.PIPE,
         stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace",
         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    timed_out = False
-    termination = None
+    observation = {"exit_code": None, "stdout": "", "stderr": "", "timed_out": False,
+                   "worker_waited": False, "forced_tree_cleanup": None}
+
+    def terminate_tree():
+        try:
+            result = subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                capture_output=True, text=True, errors="replace", timeout=15)
+            return {"exit_code": result.returncode, "stdout": result.stdout, "stderr": result.stderr}
+        except (OSError, subprocess.TimeoutExpired) as error:
+            return {"exit_code": None, "error": f"{type(error).__name__}: {error}"}
+        finally:
+            if process.poll() is None:
+                process.kill()
+
+    def retain_partial(error):
+        for name in ("stdout", "stderr"):
+            value = getattr(error, name, None)
+            if value is not None:
+                observation[name] = value.decode("utf-8", errors="replace") if isinstance(value, bytes) else value
+
+    def drain():
+        try:
+            observation["stdout"], observation["stderr"] = process.communicate(timeout=15)
+        except (OSError, subprocess.TimeoutExpired) as error:
+            retain_partial(error)
+            observation["output_cleanup_error"] = f"{type(error).__name__}: {error}"
+
     try:
-        stdout, stderr = process.communicate(timeout=180)
-    except subprocess.TimeoutExpired:
-        timed_out = True
-        # The command may own a test child; terminate and wait for its entire
-        # read-only comparison tree before returning a timeout receipt.
-        termination = subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
-            capture_output=True, text=True, errors="replace", timeout=15)
-        stdout, stderr = process.communicate(timeout=15)
-    process.wait()
-    return {"exit_code": process.returncode, "stdout": stdout, "stderr": stderr,
-            "timed_out": timed_out, "worker_waited": True,
-            "forced_tree_cleanup": None if termination is None else {
-                "exit_code": termination.returncode, "stdout": termination.stdout, "stderr": termination.stderr}}
+        try:
+            observation["stdout"], observation["stderr"] = process.communicate(timeout=timeout_seconds)
+        except subprocess.TimeoutExpired as error:
+            observation["timed_out"] = True
+            retain_partial(error)
+            observation["forced_tree_cleanup"] = terminate_tree()
+            drain()
+        except BaseException as error:
+            observation["interruption"] = type(error).__name__
+            observation["forced_tree_cleanup"] = terminate_tree()
+            drain()
+            raise
+    finally:
+        try:
+            process.wait()
+            observation["worker_waited"] = True
+        finally:
+            observation["exit_code"] = process.returncode
+            if observe is not None:
+                observe(observation)
+    return observation
 
 
 # Callbacks and the mapped module remain alive until the isolated process exits,
@@ -833,6 +1430,11 @@ def replay_get_trace(trace, dll_path, timeout_seconds=20):
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 3 and sys.argv[1] == "--lighting-worker":
+        status = _lighting_worker_main(sys.argv[2])
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(status)
     if len(sys.argv) == 4 and sys.argv[1] == "--simple-worker":
         # Avoid Python finalization releasing callback objects while native
         # threads can still return through them after a failed cleanup.

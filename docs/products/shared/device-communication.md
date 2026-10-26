@@ -185,3 +185,25 @@ reportIDs 的每个 key 先解析 signed int，再截为低 uint8；每个 prese
 设置结构分别保留字段值与 presence bits。加载默认安全描述符执行 `flags = 2`，会清除 DeviceType、Characteristics 和 Exclusive 的存在位，因此该分支即使仍留有注册表数字，也按入口参数创建。默认 SDDL 解析又设置 DACL-defaulted；后续读取会明确丢弃这种描述符，再走默认 SDDL 路径。这些内核安全配置的缺值语义不适用于产品设备设置的失败回退或默认值写回。
 
 三架构还有同一条条件释放缺口：Security 捕获出非空分配后，安全信息验证在所有权转入 settings 前失败，退出链只释放仍为空的 settings 指针。收据保留精确分支和地址；独立 Rust 实现须按项目所有权约束释放资源，同时保留该原版行为差异。当前只完成静态字节和上述语义核对，未执行驱动、安装、设备写入或实际功能对照。
+
+### 嵌入归属后的三个 x86 实参契约
+
+历史父库失败 `0xcda9e/0xcf9c6/0xd01a5` 已分别映射到嵌入 x86 驱动的 `0x139e/0x56c6/0x5ea5`。归属证明与[本次调用者复核](../../../.analysis/results/native-bulk/camera-0e06-identity-verification.json)分别保留：前者证明实际文件和指令架构，后者核对完整函数、实参准备、实际访问、结果消费者及释放。基础捕获中的缺类型、`WCHAR` 参数和错误参数名原样保留，不能直接拿这些反编译推断声明作为可执行 ABI。
+
+| 子入口 | 从真实汇编核定的输入与返回 | 实际消费者和失败边界 |
+| --- | --- | --- |
+| `0x139e` | `stdcall`，四个 4 B 栈槽，`retn 0x10`；依次为低 16 位端口、未读取的 drive selector、低 8 位命令、512 B 输出地址；EAX 为 NTSTATUS | `0x1cea` 先保存端口 `+6` 的原字节，准备设备，再以 `0xec` 调用；仅当返回 `0xc0000002` 时改用 `0xa1` 重试。所有普通出口恢复该原字节并返回最后状态。 |
+| `0x56c6` | `stdcall`，三个 4 B 栈槽，`retn 0x0c`；GUID 指针、DriverObject 指针、20 B creation-settings 输出；EAX 为 NTSTATUS | `0x5144` 压入完整栈对象地址，成功后才检查 settings 的 presence bits。输出布局为 flags `+0`、DeviceType `+4`、拥有的 SD 指针 `+8`、Characteristics `+12`、Exclusive `+16`。新建类分支后来把第三个入参所在的栈槽改作 UTF-16 `"1"` 临时缓冲；这不表示传入指针曾被截成 `WCHAR`。 |
+| `0x5ea5` | `stdcall`，三个 4 B 栈槽，`retn 0x0c`；8 B UNICODE_STRING 指针、32 位转换 flags、SD 指针的输出地址；EAX 为 NTSTATUS | `0x5144` 传 flags `1` 和真实指针输出地址；仅在状态非负时把 SD 交给 settings，退出由 settings 的释放链负责。 |
+
+`0x139e` 向端口 `+7` 写命令并等待 100 µs；第一次等待失败、第二次等待失败或普通错误返回 `0xc00000a3`。错误寄存器有 bit 2 且签名为 `0xeb14` 时才返回 `0xc0000002`，供上述唯一重试条件使用。成功路径从数据端口读 256 个 16 位字，最后一次等待的返回没有参与成功判定。外层输出从记录 `+3` 开始，实际写入 `[3,515)`，派发器成功时的 Information 为 516；末尾额外字节没有被该读取填充，不能补称已观测值。
+
+`0x56c6` 先清空完整 settings，再打开／创建 GUID 类键；已有键读取 Properties，Properties 不存在时返回成功且保留未设置的 presence bits。新建键按 Class、NoDisplayClass、NoUseClass 顺序写入，关闭已取得的句柄，并返回首个失败或最后状态；没有回滚此前成功的注册表写入。GUID 指针所在的入参栈槽随后被复用为 disposition 输出，和第三个栈槽的 UTF-16 复用一起解释了旧类型推断的冲突。
+
+`0x5ea5` 的 UNICODE_STRING 字段为 `Length:u16 +0`、`MaximumLength:u16 +2`、`Buffer:ptr32 +4`。仅在 `MaximumLength == Length + 2` 且 `Buffer[Length/2] == 0` 时借用原缓冲；否则以 `Length + 2` 分配 PagedPool 临时串、复制 Length 字节并补 NUL，解析成功和失败都释放临时串。分配失败清空 SD 输出并返回 `0xc000009a`；解析器也先清输出，失败时释放自己的 DACL／SD 分配。原函数没有另加偶数字节长度、空指针或调用方容量校验；这些输入的实际平台异常结果未执行验证。
+
+### 两处可变参数转发的结果消费者
+
+[精确 IAT 转发证明](../../../.analysis/results/reverse-pending/review-sources/9bd12d141163e04dd7dacffc101c05187b55a9a931a8c165b2f489bfc0fbed8c.json)中的 x86 `0x240a` 跳到 `ntoskrnl.exe!_snwprintf`，唯一调用者 `0x5373` 传入 40 个 UTF-16 单元的栈缓冲、Count 39、固定 GUID 格式及 11 个提升后的字段，随后统一清理 56 B 实参。调用后的第一条指令清 EAX，另在 `Dest[38]` 强制写 NUL，再将字符串交给实际类键创建／打开函数；格式化返回从未被当作注册表成功。当前复核核实全部字段的读取宽度、大小写和调用后路径，没有执行内核 provider。
+
+Mixer x86 的 `0x92541` 跳到 `ntoskrnl.exe!DbgPrint`。已逐处复核 26 个完整调用者中的 37 次调用及后继控制流：返回 NTSTATUS 的路径保留原状态或显式设置状态；日志后继续计算、清理和事件通知的路径使用各自结果。两处只定义 AL 的辅助返回保留 8 位载体边界，不把 EAX 高位推断为有意义的返回值。`ResetRTStream` 的结果来自真正的 reset 方法，`SetRTStream` 在字段写入后显式返回零；错误日志本身不构成恢复、写回或完成确认。这些消费者已接回上述现有收据，实际 IAT 运行时目标和 provider 的执行结果仍未验证。

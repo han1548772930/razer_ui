@@ -67,6 +67,7 @@ pub(super) struct PortableRuntime {
     foreground_monitor: razer_platform::foreground_monitor::ForegroundMonitor,
     controller_calibration: super::controller_calibration::Controller,
     controller_lighting: super::controller_lighting::Controller,
+    marci_lighting: super::marci_lighting::Controller,
     keyboard_submission: super::keyboard_submission_controller::Controller,
     keyboard_wristrest: super::keyboard_wristrest_controller::Controller,
     mouse_runtime_artwork: super::mouse_runtime_artwork_controller::Controller,
@@ -96,6 +97,7 @@ impl PortableRuntime {
         self.thx.shutdown(&mut cleanup);
         self.controller_calibration.shutdown(&mut cleanup);
         self.controller_lighting.shutdown(&mut cleanup);
+        self.marci_lighting.shutdown(&mut cleanup);
         self.keyboard_submission.shutdown(&mut cleanup);
         self.keyboard_wristrest.shutdown(&mut cleanup);
         self.mouse_runtime_artwork.shutdown(&mut cleanup);
@@ -536,6 +538,14 @@ impl PortableRuntime {
                 super::controller_triggers::execute(&node, product_id, &trigger_operation),
             ServiceRequest::ControllerLighting { node, product_id, lighting_operation } =>
                 self.controller_lighting.execute(&node, product_id, &lighting_operation),
+            ServiceRequest::MarciLighting { device_container_id, owner_id, lighting_operation } =>
+                self.marci_lighting.execute(&device_container_id, &owner_id, lighting_operation),
+            ServiceRequest::ControllerSleep { node, product_id, sleep_operation } =>
+                super::controller_sleep::execute(&node, product_id, &sleep_operation),
+            ServiceRequest::ControllerSocd { node, product_id, socd_operation } =>
+                super::controller_socd::execute(&node, product_id, socd_operation),
+            ServiceRequest::ControllerInitialization { node, product_id, plan } =>
+                super::controller_initialization::execute(&node, product_id, &plan),
             ServiceRequest::ControllerTriggerCalibrationStart { operation_id, node, product_id, part_id } =>
                 self.controller_calibration.start(operation_id, node, product_id, part_id),
             ServiceRequest::ControllerTriggerCalibrationPoll { operation_id } =>

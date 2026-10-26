@@ -93,7 +93,10 @@ pub struct AppPreferences {
     #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub source_product_preferences: std::collections::BTreeMap<u32, String>,
     pub language: String,
-    pub notifications: bool,
+    /// Retired workspace key, retained only until storage migrates it to the
+    /// shared displayNotifications preference. It has no runtime consumer.
+    #[serde(rename = "notifications", skip_serializing_if = "Option::is_none")]
+    pub legacy_notifications: Option<bool>,
     pub recommendations: bool,
     pub ignored_categories: Vec<String>,
     pub ignored_products: Vec<String>,
@@ -116,7 +119,7 @@ impl Default for AppPreferences {
             windows_login_warning_hide: None,
             source_product_preferences: Default::default(),
             language: "zh-CN".into(),
-            notifications: true,
+            legacy_notifications: None,
             recommendations: true,
             ignored_categories: vec![],
             ignored_products: vec![],

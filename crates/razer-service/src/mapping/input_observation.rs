@@ -71,12 +71,15 @@ mod tests {
             Session::start_input_with(Target::new(679, "input-container".into()), || Ok(mock))
                 .unwrap();
         cleanup.recv_timeout(TIMEOUT).unwrap();
-        let replies = session.drain();
-        assert!(matches!(replies.first(), Some(Reply::Ready)));
+        // Transport release precedes the worker's terminal reply publication.
+        assert!(matches!(session.0.receive_for_test(), Reply::Ready));
         assert!(
-            matches!(&replies[1], Reply::Event(event) if event.time_tick() == 55 && event.input().kind == InputKind::Keyboard { scancode:56,flag:3 })
+            matches!(session.0.receive_for_test(), Reply::Event(event) if event.time_tick() == 55 && event.input().kind == InputKind::Keyboard { scancode:56,flag:3 })
         );
-        assert!(matches!(&replies[2], Reply::Failed(error) if error.contains("identity changed")));
+        assert!(
+            matches!(session.0.receive_for_test(), Reply::Failed(error) if error.contains("identity changed"))
+        );
+        assert!(session.drain().is_empty());
         assert!(session.stop().unwrap_err().contains("identity changed"));
         let trace = trace.lock().unwrap();
         assert!(matches!(

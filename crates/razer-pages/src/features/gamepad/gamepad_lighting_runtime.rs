@@ -271,12 +271,17 @@ impl GamepadProductWorkspace {
         self.emit_next_lighting(cx);
     }
     fn emit_next_lighting(&mut self, cx: &mut Context<Self>) {
+        if !self.controller_initialization_ready {
+            return;
+        }
         if let Some(request) = self.lighting_runtime.next() {
             cx.emit(request);
         }
     }
     pub fn request_controller_lighting(&mut self, cx: &mut Context<Self>) {
-        if self.lighting_runtime.initialized
+        if !self.controller_initialization_ready
+            || self.spec.product_id == 2636 && !self.controller_initialization_lighting_observed
+            || self.lighting_runtime.initialized
             || razer_device::controller_lighting::capability(self.spec.product_id).is_none()
         {
             return;

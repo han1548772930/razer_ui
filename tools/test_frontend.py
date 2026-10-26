@@ -836,12 +836,12 @@ class FrozenFrontendAcquisitionTests(unittest.TestCase):
 
 
 class FrontendRuntimeClosureTests(unittest.TestCase):
-    def source(self, root, *, include_asset=True, optional_declared=False):
+    def source(self, root, *, include_asset=True, optional_declared=False, css_owner=b""):
         folder = root / ".analysis/inputs/frontend/runtime-current/raw"
         folder.mkdir(parents=True)
         entry = "https://apps.razer.com/synapse/example/"
         raw = (b'function runtime(x){return x;}runtime.u=e=>"static/"+({1:"one"}[e]||e)+"."+{1:"hash"}[e]+".js";'
-               b'runtime.p="./";function unrelated(runtime){runtime.p="https://other.example/";}const record={};record.u=[];')
+               + css_owner + b'runtime.p="./";function unrelated(runtime){runtime.p="https://other.example/";}const record={};record.u=[];')
         path = folder / "main.js"
         path.write_bytes(raw)
         main = {"path": path.relative_to(root).as_posix(), "bytes": len(raw), "sha256": analysis.sha(path), "url": entry + "main.js"}
@@ -871,6 +871,44 @@ class FrontendRuntimeClosureTests(unittest.TestCase):
             self.assertEqual(result["unavailable_source_maps"], 1)
             self.assertEqual(len(result["unavailable_undeclared_probes"]), 1)
             self.assertEqual({owner["property"] for owner in runtime["owners"]}, {"u", "p"})
+
+    def test_empty_css_owner_preserves_binding_and_complete_body_without_inventing_assets(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            with patch.object(analysis, "ROOT", root):
+                source = self.source(root, css_owner=b'runtime.miniCssF=e=>{};')
+                result = frontend._frontend_runtime_closure(source, host.HostLocalAudit())
+            self.assertEqual(result["status"], "verified")
+            runtime = result["runtimes"][0]
+            owner = next(owner for owner in runtime["owners"] if owner["property"] == "miniCssF")
+            self.assertEqual(owner["body"], "runtime.miniCssF=e=>{}")
+            self.assertEqual(owner["disposition"], "complete_empty_css_filename_owner")
+            self.assertEqual(len(runtime["assets"]), 1)
+            self.assertEqual(runtime["assets"][0]["property"], "u")
+
+    def test_css_owner_with_any_statement_remains_unresolved(self):
+        for body in (b'{load()}', b'{return "static/style.css"}', b'{;}', b'{/* incomplete */}'):
+            with self.subTest(body=body), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary).resolve()
+                with patch.object(analysis, "ROOT", root):
+                    source = self.source(root, css_owner=b'runtime.miniCssF=e=>' + body + b';')
+                    result = frontend._frontend_runtime_closure(source, host.HostLocalAudit())
+                self.assertEqual(result["status"], "unresolved")
+                self.assertIn("runtime_literal_grammar_unresolved", [row["kind"] for row in result["failures"]])
+
+    def test_empty_javascript_owner_still_requires_a_complete_filename_table(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            with patch.object(analysis, "ROOT", root):
+                source = self.source(root)
+                original = source["acquired"]["files"][0]
+                path = root / original["path"]
+                raw = b'function runtime(x){return x;}runtime.u=e=>{};runtime.p="./";'
+                path.write_bytes(raw)
+                original.update(bytes=len(raw), sha256=analysis.sha(path))
+                result = frontend._frontend_runtime_closure(source, host.HostLocalAudit())
+            self.assertEqual(result["status"], "unresolved")
+            self.assertIn("runtime_literal_grammar_unresolved", [row["kind"] for row in result["failures"]])
 
     def test_missing_literal_asset_remains_unresolved(self):
         with tempfile.TemporaryDirectory() as temporary:

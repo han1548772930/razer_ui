@@ -45,6 +45,16 @@ pub(crate) mod controller_feature;
 pub mod controller_input;
 #[path = "gamepad/controller_lighting.rs"]
 pub mod controller_lighting;
+#[path = "gamepad/controller_sleep.rs"]
+pub mod controller_sleep;
+#[path = "gamepad/controller_initialization.rs"]
+pub mod controller_initialization;
+#[path = "gamepad/controller_socd.rs"]
+pub mod controller_socd;
+#[path = "gamepad/controller_profile.rs"]
+pub mod controller_profile;
+#[path = "gamepad/controller_mapping.rs"]
+pub mod controller_mapping;
 #[path = "gamepad/controller_triggers.rs"]
 pub mod controller_triggers;
 #[path = "identity/device_identity.rs"]
@@ -138,6 +148,8 @@ pub mod leviathan;
 pub mod lighting_driver;
 #[path = "lighting/lighting_engine.rs"]
 pub mod lighting_engine;
+#[path = "lighting/marci_lighting.rs"]
+pub mod marci_lighting;
 #[path = "mapping/macro_engine.rs"]
 pub mod macro_engine;
 #[path = "mapping/macro_runtime.rs"]

@@ -2720,6 +2720,81 @@ class HostLocalAudit:
                 "unresolved_acquisition": acquired.get("unresolved", []),
                 "failed_acquisition": [row for row in acquired["files"] if not row.get("path")]}, originals
 
+    def bounded_observation_history(self, acquired, identity):
+        """Verify appended provider references without expanding the HTTP observation."""
+        extensions = []
+        while acquired.get("dependency_repairs"):
+            repairs = acquired["dependency_repairs"]
+            if not isinstance(repairs, list) or not isinstance(repairs[-1], dict):
+                raise ValueError("Bounded observation has invalid dependency repair history")
+            repair = repairs[-1]
+            predecessor = repair.get("previous_acquisition", {})
+            digest = predecessor.get("sha256", "")
+            if (not re.fullmatch(r"[a-f0-9]{64}", digest)
+                    or predecessor.get("path") != ".analysis/results/reverse-pending/review-sources/" + digest + ".json"
+                    or type(predecessor.get("bytes")) is not int):
+                raise ValueError("Bounded observation requires its immutable predecessor identity")
+            previous = json.loads(self.artifact(self.a.ROOT / predecessor["path"], predecessor))
+            immutable = lambda value: {key: item for key, item in value.items()
+                                       if key not in {"files", "edges", "dependency_repairs"}}
+            if (previous.get("dependency_repairs", []) != repairs[:-1]
+                    or immutable(acquired) != immutable(previous)
+                    or acquired.get("files", [])[:len(previous.get("files", []))] != previous.get("files")
+                    or acquired.get("edges", [])[:len(previous.get("edges", []))] != previous.get("edges", [])
+                    or repair.get("target_execution") is not False
+                    or repair.get("copied_originals") != 0
+                    or repair.get("repeated_factory_capture") is not False):
+                raise ValueError("Dependency repair changed the bounded observation or its original owners")
+            provider_identity, capture_identity = repair.get("provider_acquisition", {}), repair.get("provider_capture", {})
+            if any(not isinstance(claim, dict) or type(claim.get("bytes")) is not int
+                   or claim["bytes"] < 0 or not re.fullmatch(r"[a-f0-9]{64}", claim.get("sha256", ""))
+                   for claim in (provider_identity, capture_identity)):
+                raise ValueError("Dependency provider requires complete byte identities")
+            provider_path = provider_identity.get("path", "")
+            provider_directory = Path(provider_path).parent.as_posix()
+            if (not re.fullmatch(r"\.analysis/inputs/frontend/[a-z0-9-]+/acquisition\.json", provider_path)
+                    or capture_identity.get("path") != ".analysis/results/frontend/" + Path(provider_directory).name + "/analysis.json"):
+                raise ValueError("Dependency provider is outside its frontend acquisition and capture owners")
+            provider = json.loads(self.artifact(self.a.ROOT / provider_path, provider_identity))
+            capture = json.loads(self.artifact(self.a.ROOT / capture_identity["path"], capture_identity))
+            parsed = urllib.parse.urlsplit(provider.get("entry_url", ""))
+            if (provider.get("target_execution") is not False
+                    or provider.get("source_current_during_acquisition") is not True
+                    or parsed.scheme != "https" or parsed.netloc != "apps.razer.com"
+                    or capture.get("input") != provider_directory
+                    or capture.get("input_bytes_unchanged") is not True
+                    or capture.get("target_execution") is not False):
+                raise ValueError("Dependency provider has no verified static acquisition and capture")
+            provider_files = {row["url"]: row for row in provider["files"]}
+            captured = {row["path"]: row for row in capture["original_inputs"]}
+            additions = acquired["files"][len(previous["files"]):]
+            declared = repair.get("added_originals")
+            if (len(provider_files) != len(provider["files"]) or not additions
+                    or not isinstance(declared, list) or len(declared) != len(additions)
+                    or len({row["url"] for row in additions}) != len(additions)):
+                raise ValueError("Dependency repair does not enumerate its exact additional originals")
+            for row, claim in zip(additions, declared):
+                proof = row.get("retained_dependency", {})
+                original = provider_files.get(row["url"])
+                captured_original = captured.get(row["path"], {})
+                if (proof.get("acquisition") != provider_identity or proof.get("capture") != capture_identity
+                        or original != {key: value for key, value in row.items() if key != "retained_dependency"}
+                        or any(row.get(key) != claim.get(key) for key in ("url", "path", "bytes", "sha256"))
+                        or any(row.get(key) != captured_original.get(key) for key in ("path", "bytes", "sha256"))):
+                    raise ValueError("Additional dependency differs from its actual provider or capture")
+                self.read(row)
+            edges = acquired.get("edges", [])[len(previous.get("edges", [])):]
+            if (len(edges) != len(additions) or {edge.get("to") for edge in edges} != {row["url"] for row in additions}
+                    or any(edge.get("retained_provider") != provider_identity for edge in edges)):
+                raise ValueError("Dependency repair edges differ from the additional originals")
+            extensions.append({"acquisition": identity, "previous_acquisition": predecessor,
+                               "provider_acquisition": provider_identity, "provider_capture": capture_identity,
+                               "additional_originals_verified": len(additions), "additional_http_rounds_claimed": 0})
+            acquired, identity = previous, predecessor
+        if not isinstance(acquired.get("dependency_repairs", []), list):
+            raise ValueError("Bounded observation has invalid dependency repair history")
+        return acquired, identity, list(reversed(extensions))
+
     def observed_sources(self, name, entry_url):
         """Verify bounded HTTP observations without claiming a full deployment closure."""
         receipt = self.a.ROOT / ".analysis/inputs/frontend" / name / "acquisition.json"
@@ -2732,6 +2807,15 @@ class HostLocalAudit:
         if len(receipt_rows) != 1:
             raise ValueError("Bounded source observation receipt is absent from the input index")
         self.artifact(receipt, receipt_rows[0])
+        current_acquisition = self.artifacts[self.a.rel(receipt)]
+        if (len({row.get("url") for row in acquired["files"]}) != len(acquired["files"])
+                or len({row.get("path") for row in acquired["files"]}) != len(acquired["files"])):
+            raise ValueError("Bounded source observation repeats an identity")
+        for row in acquired["files"]:
+            matches = [item for item in indexed if item["path"] == row.get("path")]
+            if len(matches) != 1 or any(matches[0].get(key) != row.get(key) for key in ("bytes", "sha256")):
+                raise ValueError("Observed original differs from the input index: " + str(row.get("path")))
+        acquired, observation_identity, extensions = self.bounded_observation_history(acquired, current_acquisition)
         originals, verified, urls, paths, request_count = [], [], set(), set(), 0
         observations = acquired["http_observations"]
         stability = acquired["stability"]
@@ -2781,7 +2865,8 @@ class HostLocalAudit:
                 raise ValueError("Observed changed-source claim contains identical bytes")
             differences.append({"url": row["url"], "current": self.sources[current["path"]],
                                 "previous": self.sources[old["path"]], "same_bytes": False})
-        return {"name": name, "acquisition": self.artifacts[self.a.rel(receipt)],
+        return {"name": name, "acquisition": current_acquisition,
+                "bounded_http_acquisition": observation_identity, "retained_dependency_extensions": extensions,
                 "scope": acquired["scope"], "observations": verified,
                 "http_observations_verified": len(observations), "retained_differences": differences,
                 "full_dependency_closure": False, "target_execution": False}, originals
@@ -5907,6 +5992,142 @@ def audit_product_chroma_observation(args):
         raise ValueError("Product Chroma source observation query remains unresolved")
 
 
+def collect_chroma_dashboard_launch(audit, host_originals):
+    """Join the current Chroma hidden-start/restore page to URL-keyed host storage."""
+    source_set, originals = audit.source_set("chroma-app-dashboard-current")
+    names = ("main.e5fe7086.js", "332.780bf0e1.chunk.js")
+    files = [source for source in originals if Path(source["path"]).name in names]
+    if len(files) != len(names):
+        raise ValueError("Current Chroma launch originals are absent or ambiguous")
+    main = next(source for source in files if Path(source["path"]).name == names[0])
+    chunk = next(source for source in files if Path(source["path"]).name == names[1])
+    selected, exports, bindings = {}, {}, {}
+
+    def binding(role, source, name, reference):
+        result = audit.binding("chroma_launch_" + role, source, name, reference)
+        if result["resolution"] != "declaration":
+            raise ValueError("Current Chroma launch has an unresolved binding: " + role)
+        selected[role], bindings[role] = result["owner_id"], result
+        return audit.tree(source).root_node.descendant_for_byte_range(result["start_byte"], result["end_byte"] - 1)
+
+    def export(role, module, name):
+        result = audit.webpack_export("chroma_launch_" + role, files, module, name)
+        exports[role] = result
+        selected[role] = result["binding"]["owner_id"]
+        result_binding = result["binding"]
+        return audit.tree(result["original"]).root_node.descendant_for_byte_range(
+            result_binding["start_byte"], result_binding["end_byte"] - 1)
+
+    selected["entry_mount"] = audit.retain("chroma_launch_entry_mount", main,
+        "Promise.all([T.e(7714),T.e(3874),T.e(332)])", {"arrow_function"})[0]
+    export("entry_export", 11078, "default")
+    binding("language_wrapper", chunk, "Ne", 332540)
+    page = binding("page_class", chunk, "ge", 332000)
+    binding("install_gate", chunk, "Ce", 330800)
+    binding("hidden_flag", chunk, "De", 330800)
+    binding("auto_start_query", chunk, "Se", 328470)
+    binding("force_hidden_query", chunk, "Ie", 328470)
+    for name in ("handleAppHiddenStart", "handleOnUserRestoreWindow", "componentDidMount", "render"):
+        _, selected[name] = audit.callable_member("chroma_launch_" + name, chunk, page, name)
+    descriptors = export("hidden_descriptors", 60336, "Oc")
+    for name in ("l", "d"):
+        binding("descriptor_" + name, chunk, name, descriptors.start_byte)
+    for role, module, name in (("tab_helper", 87893, "A"), ("tab_manager", 28648, "A"),
+                              ("visualizer_key", 69937, "XrU"), ("host_facade", 37226, "A")):
+        export(role, module, name)
+    tab_helper = audit.owners[selected["tab_helper"]]
+    tab_root = audit.tree(chunk).root_node.descendant_for_byte_range(tab_helper["byte_start"], tab_helper["byte_end"] - 1)
+    _, selected["getTabInfo"] = audit.callable_member("chroma_launch_getTabInfo", chunk, tab_root, "getTabInfo")
+    manager = audit.owners[selected["tab_manager"]]
+    manager_root = audit.tree(chunk).root_node.descendant_for_byte_range(manager["byte_start"], manager["byte_end"] - 1)
+    _, selected["forceOpenHiddenTab"] = audit.callable_member(
+        "chroma_launch_forceOpenHiddenTab", chunk, manager_root, "forceOpenHiddenTab")
+    facade = binding("facade_class", main, "R", exports["host_facade"]["binding"]["start_byte"])
+    for name in ("callElectronAction", "getWindowStorageItem", "setWindowStorageItem", "getWindowServiceClients"):
+        _, selected[name] = audit.callable_member("chroma_launch_" + name, main, facade, name)
+    for role, relative, name in (("host_storage", "modules/window_storage/index.js", "callFunction"),):
+        source = host_originals["electron/" + relative]
+        _, selected[role] = audit.callable_member("chroma_launch_" + role, source, audit.tree(source).root_node, name)
+    preload = host_originals["electron/preload.js"]
+    for role, name in (("preload_response", "response"), ("preload_invoke", "doElectronAction")):
+        _, selected[role] = audit.callable_member("chroma_launch_" + role, preload, audit.tree(preload).root_node, name)
+    selected["preload_pagehide"] = audit.retain("chroma_launch_preload_pagehide", preload,
+        'window.addEventListener("pagehide",', {"call_expression"})[0]
+    dispatch = host_originals["electron/main.js"]
+    selected["host_dispatch"] = audit.retain("chroma_launch_host_dispatch", dispatch,
+        'n.handle("electronAction",', {"call_expression"})[0]
+    report = {"source_set": source_set, "selected": selected, "exports": exports, "bindings": bindings,
+        "semantics": {
+            "hidden_start": "Only autoStart=1 together with forceHidden=1 initializes hidden. The page requests background-manager and notification-manager through the shared lock-based hidden-tab helper.",
+            "visualizer": "Hidden start reads the saved synapseAudioVisualizerProfiles visualizerState and the actual window-client list. It opens the existing local Visualizer URL only when no matching tab was found and the saved state is truthy; this is not a device getter or confirmed engine start.",
+            "restore": "visibleChange with isVisible, changeActiveTab for chroma-app, focus with isFocus and USER_CLICK_DESKTOP_ICON request restore. An empty status array or no value.windowName containing chroma-app returns before unhiding. The selected URL row with installing status blocks only the running publication; the page still clears its hidden state afterwards. A rejected initial storage await occurs before the try block and does not reach that clear.",
+            "storage_result": "The Chroma facade forwards through preload electronAction into URL-keyed WindowStorage. GET returns JSON rows for truthy values; SET returns the previous value and emits change events. hidden/running publication is not awaited, and neither state acknowledges installation, a native worker or device settings.",
+            "cleanup": "The hidden-tab helper removes its create listener on existing-tab, create-event and ten-second timeout paths; a rejection is caught and does not itself remove that listener. ge has no componentWillUnmount and discards the tab-message disposer and internal desktop-icon listener. Preload pagehide separately removes IPC listeners. Ce has an empty-dependency effect with an initial-hidden early return; prop changes alone do not re-run that same effect instance.",
+        }, "selected_static_semantics_reviewed": True, "source_chain_complete": False,
+        "target_execution": False, "actual_dll_comparison": "unverified",
+        "rust_independent_implementation": "unverified", "ui_backend_wiring": "unverified",
+        "runtime_acceptance": "unverified"}
+    verify_chroma_dashboard_launch(audit, report)
+    return report
+
+
+def verify_chroma_dashboard_launch(audit, report):
+    """Reject excerpts, rebinding and completion claims in this bounded launch review."""
+    expected = {
+        "entry_mount": "90bb700a7c06df95da413d2b8592dca7b95a47d627311d907ed090c09471b004",
+        "entry_export": "3e7168b4a7489a6085678ac64f33f103ff5174dd6ed1c53d3590d536fecc70c9",
+        "language_wrapper": "0a419718135e75aae77bde3b97acf626b4188958f774f61425e8232e473a9659",
+        "page_class": "983bc2cd93cd7d3e2e6c4b716c75b700bd47536cfaf903e924cc070682f67424",
+        "install_gate": "d02559d05d6e8ee433c86be089a7ea5f3cef14cab17fa1f3f9da22f139b79d57",
+        "hidden_flag": "d0b3de235a33b37bdfec246ff7fe740bde2154da06d2aac9fc0cd1f4d1295bbd",
+        "auto_start_query": "e21d4f06b3e5e23091547225d33dc1eeebc82a1ed018b7820d3185491428950c",
+        "force_hidden_query": "55052080e983a72c53af3f88ccf8af2cada106419a3ee78253726afc21e50c41",
+        "handleAppHiddenStart": "f6280cb5ba130011efe3fdeb47644a6d86d731dd2d7bd9fabf65ea8acca6683c",
+        "handleOnUserRestoreWindow": "19d8bebafa851f64a4225e0723d7f99545ee8d4d113f77a4aa5ffdbef74ada3f",
+        "componentDidMount": "4693d5af9b21ec39f3a8235122ceccc239beae3745c765e9608decd83ea4bef2",
+        "render": "8e1134be5717f27e97c086dd9de0f6d8ad89c04a4f4b34388f417e539e445f5c",
+        "hidden_descriptors": "09432d6a907d22a7fe1a25ab15f99b499960f59eff020f2883f62220f9334fa7",
+        "descriptor_l": "1fcd8384d350ecef99fb9474c3c2a1aa43ca32ac9078f23a94081502c469d861",
+        "descriptor_d": "8153f14f20c32c0cc7e1f517defe9e7d8db3f37e9cecc96cac5ed4be6946d024",
+        "tab_helper": "d4daa416e3334ba7830aa2a3c8072e21355a45ea84498189e5bd80fb357b84e0",
+        "tab_manager": "a50bbcd29b830060cda00fa3dc79dc6e046ebd2cbec2140df28ce114d1eeba9f",
+        "visualizer_key": "12b2fdc1b4416a640dfe071be5a099d6eab1404e3b9e855d9a8ab634527cf8ff",
+        "host_facade": "36cd8884b96cfd032ef9f934a2b5d9359da011d51cd9755f893950619aeb7daa",
+        "getTabInfo": "4fdcd08552a441db5bd7c81a004452412fddfe4a01bcb8ac76b9f3c5909a1fd9",
+        "forceOpenHiddenTab": "165a7f37534e09db9986a12cb69502354aecc107943c47e4f150483d9fb683fd",
+        "facade_class": "d6e10a5078465bac01dad844aa811adf32f27bf415ebe93d9005bedcfad1bb67",
+        "callElectronAction": "45e13eebe85b3e1b0b1723e8cdebd1f9a4c1fabcaaca6eb30e56dd9b9c3dbf40",
+        "getWindowStorageItem": "8105476f22d349a6616ee930234afd07b7ec64be28ee1c472df7e9db30d31fe0",
+        "setWindowStorageItem": "3b258a0b1c4fbc27177a6a6afe75d7a3c76b5748a7eff9af8ed1e84a8e915a00",
+        "getWindowServiceClients": "b2e0b776878264e4a1bd36f3c44fac7eefa9434d86932c24aa30d945ab0fce15",
+        "host_storage": "529bd8409fabb820ba0912a3dad9639cad0e0fa12f0e9f6d991844bb1295e793",
+        "preload_response": "6c93d17865da59776ca87e9cb74e80c06fda9c6501e87219f18463af863666a4",
+        "preload_invoke": "476db09d6e320b1519ae4ce21a92490ec363d073fbadda68b1a80b9f79149e59",
+        "preload_pagehide": "4217c07812b24a6f26920870473590b42a4dbdce1c61331198f7c0c451c40213",
+        "host_dispatch": "a957dbbaa2759162a1bc25601bcc5937e0b8ae5ab01041170cc088a022650b4d",
+    }
+    if (report.get("source_chain_complete") is not False or report.get("target_execution") is not False
+            or report.get("selected_static_semantics_reviewed") is not True
+            or any(report.get(name) != "unverified" for name in ("actual_dll_comparison",
+                "rust_independent_implementation", "ui_backend_wiring", "runtime_acceptance"))):
+        raise ValueError("Chroma launch review promotes static evidence to runtime acceptance")
+    for role, owner_id in report["selected"].items():
+        owner = audit.owners[owner_id]
+        verify_profiles_owner(audit, owner)
+        if role in expected and owner["body_sha256"] != expected[role]:
+            raise ValueError("Chroma launch complete owner identity differs: " + role)
+    if set(expected) != report["selected"].keys():
+        raise ValueError("Chroma launch review omits a required result or state owner")
+    if set(report["exports"]) != {"entry_export", "hidden_descriptors", "tab_helper", "tab_manager",
+                                  "visualizer_key", "host_facade"}:
+        raise ValueError("Chroma launch export graph is incomplete")
+    for role, exported in report["exports"].items():
+        if report["selected"].get(role) != exported["binding"]["owner_id"]:
+            raise ValueError("Chroma launch export was rebound: " + role)
+    return {"selected_owners": len(report["selected"]), "target_execution": False,
+            "runtime_acceptance": "unverified"}
+
+
 def audit_host_window_lifecycle(args):
     """Retain actual host window, storage, suspend and shutdown owners."""
     audit = HostLocalAudit()
@@ -5991,6 +6212,7 @@ def audit_host_window_lifecycle(args):
                 role = relative + ":" + name
                 _, owner = audit.callable_member(role, source, audit.tree(source).root_node, name)
                 report["selected"][role] = [owner]
+        report["chroma_dashboard_launch"] = collect_chroma_dashboard_launch(audit, originals)
         native, lineage = verified_host_native(audit,
             "win-unpacked/resources/app.asar.unpacked/node_modules/"
             "node-rz-ble-endpoint-detection/build/Release/detection.node")

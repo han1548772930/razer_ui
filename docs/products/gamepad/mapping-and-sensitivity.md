@@ -4,15 +4,19 @@
 
 ## 配置档的真实来源与重连
 
-以当前 2636 的完整导入所有者说明共享流程：`.analysis/inputs/frontend/gamepad-mw-2636-current/raw/apps.razer.com/synapse/products/2636/mw/main.f0ca95429464cd09cbdb.js`，模块 11365，bytes `[1271752,1282718)`；`Z`、`X`、`oe` 分别在 `[1279486,1279943)`、`[1279944,1280537)`、`[1280816,1282717)`。
+当前 2636 的完整导入所有者位于 `.analysis/inputs/frontend/gamepad-mw-2636-current/raw/apps.razer.com/synapse/products/2636/mw/main.f0ca95429464cd09cbdb.js`，模块 11365，bytes `[1271752,1282718)`；`Z [1279480,1279946)`、`oe [1280816,1282718)`。2676 对应当前原件为 `.analysis/inputs/frontend/gamepad-mw-2676-current/raw/apps.razer.com/synapse/products/2676/mw/main.1a6971221454393778e3.js`，同模块 `[1279467,1290523)`，`Z [1287222,1287688)`、`oe [1288558,1290523)`。原件来源、实际字节身份和版本见 [2636 MW 获取收据](../../../.analysis/inputs/frontend/gamepad-mw-2636-current/acquisition.json) 与 [2676 MW 获取收据](../../../.analysis/inputs/frontend/gamepad-mw-2676-current/acquisition.json)，并与 `.analysis/inputs.json` 核对。以下初始化结论以这两款原件为已核对范围，不由共享名称扩展到其余产品。
 
-`oe` 有一次初始化 guard。先取本机 document，创建工作的 document；按其**实际字段顺序**读取全局功能，再执行 `DY`，随后顺序取得设备 profile ID list → active profile ID → profile names → number of profiles。槽对照函数将设备结果与本地集合匹配；找不到该设备槽时，源码创建一个有新 GUID 的 profile，并使用设备返回的名称和 `obmSlotId`。遍历真实 ID 时更新 active profile，再读取该 profile 实际存在的功能字段。
+`oe` 在进入时即设置一次初始化 guard，随后读取或创建工作的本机 document；按其 **Object.keys 实际字段顺序**处理根字段，再执行 `DY`。2636 根分发表只有 `powerSaving`，新 document 的 `audioHapticIntensity` 仅产生未知功能警告；2676 根分发表支持 `powerSaving` 和 `controllerMode`，新 document 也按这一字段顺序读取。已有 document 缺少某字段时不会合成该字段的 getter。2676 的 `controllerMode` 经模块 38063 `[1364694,1366483)` 的 `getUsbDeviceEnumerate` 实读 0/1/2，分别投影 HID/Xbox/Xinput；未知值及失败保持失败，不能跳过这一阶段声称根导入完整。
+
+`DY` 首次初始化引擎的实际设备 I/O 顺序是 **getButtonIDList → getProfileIDList → getActiveProfileID → getNumberOfProfiles → 按每个真实 ID 读取 getProfileNameStructure**，2636 引擎 `init [2504404,2505517)`、2676 `[2558675,2559788)`。2636 的实际导出 `DY` 为 `T [2515148,2515949)`，2676 为 `A [2569410,2570211)`。上层 `11365.Z` 在 `DY` 返回后访问 ID、active、names、count 是已有引擎缓存的投影，不能当成新的 HID 次序。名称读取按 UTF-16 处理 80 字节的 64+16 块，最多三轮，并在临时调整等待后恢复；2636 完整方法 `[2507687,2509510)`、2676 `[2561958,2563781)`。
+
+槽对照函数将设备结果与本地集合匹配；找不到该设备槽时，源码创建一个有新 GUID 的 profile，并使用设备返回的名称和 `obmSlotId`。遍历真实 ID 时更新 active profile，再按该 profile 的实际字段顺序读取功能。导入结束依次保存 document、记录序列号对应 active GUID、更新运行时 metadata 与 `obmData/initCompleted`，最后经 `50350.pH` 发布。
 
 字段分发表包括 brightness、quickEffects、mappings、pollingRate/pollingRateWireless、analog circularity、D-pad diagonals、digital/analog actuation、deadzone、sensitivity、haptic/audio haptic 和硬件 lighting effects；是否执行由当前 profile 的字段与挂载 feature 决定。`name/guid/obmSlotId/switchOffLighting` 不作为设备功能 getter。仅 `switchOffLighting` 和符合键身份、模式、输出类型条件的 `keyboardGroup.keyGroup` 从既有本机配置保留。最后依次保存 profile/document、记录序列号对应 active GUID、更新运行时信息并向 UI 发布。
 
 源码的每个字段 getter 错误会被其循环捕获、记录并继续其他字段；整个 `oe` 返回不代表每个字段读取成功。源码还在缺本机 document 时构造默认 document，这个对象是读取工作的容器，不能把它的默认字段报告为设备实读。
 
-启动所有者是同一 main 的模块 43001：`dn` bytes `[1625087,1625700)`，先检查本机数据，仅在没有数据且注册 `loadProfileDataFromDevice` 时进入导入。连接事件处理 `hn` bytes `[1650465,1650673)` 先调用设备导入，再向 GenericFeatureManager 发布 DeviceConnected，最后执行后续连接处理；该调用仍受 `oe` 的 guard 限制，guard 保持时直接返回，不代表每次重连均重新读取所有槽。device reset 另外清除导入 guard，再重新读取；重连不是向设备写入旧配置的通用授权。
+2636 的启动所有者是模块 43001 的 `dn [1625087,1625700)`，2676 实际是模块 62885 的 `gn [1669824,1670437)`：先检查本机 document，仅在整个 document 不存在且注册 `loadProfileDataFromDevice` 时进入导入，已有 document 单独缺 `powerSaving` 不会因此启动导入。连接事件处理分别为 `hn [1650465,1650673)`、`On [1696514,1696722)`，先调用设备导入，再向 GenericFeatureManager 发布 DeviceConnected，最后执行 runtime 同步。`oe` 失败也不会自动清除 guard，普通重连不能据此声称重新读取所有槽；reset 的明确入口清除导入 guard，但不会自动清除 `DY` 自己的引擎初始化 guard。
 
 映射 getter 由模块 11365 的 `f.getDataFromDevice` → `obmEngine.getAllButtonAssignmentInfo(slot)` → `y` 处理。`y` 与产品 `DEFAULTMAPPINGS` 比较 input ID、输入/输出类型与 controller assignment，仅保留与默认不同的映射。默认映射表不是设备返回；保留本机 keyGroup 也不是设备读回。修改由具体 ON_SET/ON_CHANGE 任务进入 feature queue、存储和真实 setter，不应把普通本机 profile 编辑描述成设备 OBM 写入确认。
 
@@ -27,7 +31,7 @@
 | Sensitivity | `sensitivityValues:[{controllerId,value}]` | 档位 `0,10,20,30,40,50,60,70,80,90,100`；setter 传真实值 |
 | Circularity | `standard` / `circular` | FW 值分别 0/1；写入左右两个 control ID；getter 路径以左侧值更新共享选项 |
 | Polling | 有线与无线字段独立 | 2647/2676 的挂载配置明确同步两字段；其他产品不能套用该规则；PlayStation、无线菜单有自己的档位 |
-| D-pad | diagonals 与 SOCD 是两种 feature | 2684/4133/4144 的 SOCD `initFromDevice:true`；4115 为 false，不能在启动时补一个猜测的 getter |
+| D-pad | diagonals 与 SOCD 是两种 feature | 2676/2684/4133/4144 的 SOCD `initFromDevice:true`；4115 为 false，2636 当前根没有挂载该 generic feature，不能仅因底层同名方法而启用 |
 
 八款双摇杆产品的两个档位数组已直接核对各自当前 UI 原件：2629 `main.000315e2.js` bytes 7526386/7526410；2636 `main.d624c214.js` 7469578/7469602；2647 `main.7aa41341.js` 7431184/7431208；2650 `main.257d35dd.js` 7390526/7390550；2676 `main.5ee115d4.js` 7599408/7624376；4133 `main.d34fa647.js` 7556926/7556950；4144 `main.a5c50629.js` 7501285/7501309。各原件的完整目录均为 `.analysis/inputs/frontend/gamepad-<PID>-current/raw/apps.razer.com/synapse/products/<PID>/ui/static/js/`。2684 对应 `8169.3cf63c70.chunk.js` bytes 497479/522272，路径见家族入口。
 
@@ -113,13 +117,13 @@
 
 2636 CSS 的 alert `[451577,451871)` 宽402px、padding/gap20px；标题 `[451871,452047)` 16px；说明 `[459040,459171)` 最大宽360px，展开 `[459613,459815)` 最大高200px、height/opacity分别250/200ms。Rust保留这些尺寸与独立height/opacity/箭头动画，并关闭Escape/backdrop取消；仍需检查每款实际级联、页面坐标、文案、资源、焦点、重复触发、Continue后再次低值、离页与重新挂载。状态或尺寸局部对应不构成窗口1:1验收。
 
-### Power：页面的分钟参数与写入缺口
+### Power：分钟参数、独立设备确认与生命周期
 
 当前Power必须与熄灯策略区分。2636实际组件`dm → Am [7359971,7360964)`、2676的`bm → wm [7628260,7629255)`均以`noSwitch:true`挂载，并从当前`powerReducer.powerSaving`读状态。有效档位来自2636模块22127的`h [627906,627923)`、2676模块14160的`N [442910,442927)`，均为`[5,15,30,45,60]`；组件直接显示该数字，说明`CONTROLLER_POWER_SAVING_DESC`明确为“设备在待机以下时间(分钟)后将关机”。不能误用组件内未生效的fallback`[1,3,5,10,15]`。
 
-Rust `power()`从`spec.power_minutes`生成选项，当前独立SQLite目录库与维护输入也均保存`[5,15,30,45,60]`，却经`power_saving_label`按秒格式化，呈现5/15/30/45秒和1分钟，与上述实际页面不同。现有`power_saving_labels_follow_the_source_rule`测试只证明该helper的规则，不能证明本产品调用者的单位正确；必须用当前实际挂载的手柄分钟语义独立验证。
+Rust `power()`从独立SQLite目录库中的`spec.power_minutes`生成`[5,15,30,45,60]`，`power_saving_label`按实际挂载组件原样显示分钟数字；说明文案提供单位。选项不再经过其它秒值控件的格式化规则。[分钟档位测试](../../../crates/razer-pages/src/features/gamepad/gamepad_sleep_tests.rs)同时核对两款实际产品目录和独立期望标签。
 
-Power选择写`/controller/power/powerSaving/value → choice → write → GamepadProductChanged`，没有设备休眠setter、实际读取或确认请求。官方按钮另外调用`en.IS/Qa.IS({IdleMinute:e})`；它是统计上报，项目排除该联网行为。真正的本机休眠链由同一次点击的`dispatch(Em/Bm(...))`进入以下消费者。
+Power选择经类型化`ControllerSleepRequested`进入独立保存与设备队列；本地设备根字段`controller_power_saving`、待提交草稿和真实秒值观察分别持有。官方按钮另外调用`en.IS/Qa.IS({IdleMinute:e})`；它是统计上报，项目排除该联网行为。真正的本机休眠链由同一次点击的`dispatch(Em/Bm(...))`进入以下消费者。
 
 #### 2636/2676 的实际休眠链
 
@@ -152,18 +156,76 @@ bootstrap的实际适配选择分别为2636 `rzDevice25Sage`（三个等待均10
 
 #### 初读、结果消费者与取消
 
-初始导入仍按本页前述`11365.Rt`顺序：在profile读取之前，按root字段顺序处理全局`powerSaving`。其getter owner为2636 `I [1273773,1274328)`、2676 `h [1281488,1282043)`，选择已注册`getPowerSaving:Q`。`Q`真实GET秒值，SUCCESS时`round(timeToSleep/60)`，并从结果值形成isEnabled；查询异常返回未定义，外层记FAIL。该wrapper还构造初始`{value:5,isEnabled:true}`，工作document也可能包含旧值；这些分支和缓存均不得称为设备实读，不构成读取失败后写入默认值的授权。`_yk`是独立的读取投影入口，与用户`h4K`请求分开。
+初始导入仍按本页前述`11365.Rt`顺序：在profile读取之前，按root字段顺序处理全局`powerSaving`。其getter owner为2636 `I [1273773,1274328)`、2676 `h [1281488,1282043)`，选择已注册`getPowerSaving:Q`。`Q`真实GET秒值，SUCCESS时`round(timeToSleep/60)`，并从结果值形成isEnabled；查询异常返回未定义，外层记FAIL。该wrapper还构造初始`{value:5,isEnabled:true}`，工作document也可能包含旧值；这些分支和缓存均不得称为设备实读，不构成读取失败后写入默认值的授权。getter成功先修改工作document；虽然其对象声明了`updateUI → _yk`方法，`11365`导入循环没有调用该方法，不能据此声称GET当场执行了UI投影。
+
+真正的连接后根字段消费者在2636 `An [1650674,1651999)` → `Sn [1651999,1653444)`，2676为`Cn [1696723,1698048)` → `Mn`。先刷新宏独占与device locks，再读取根document、按字段顺序处理；`powerSaving`分支先经`_yk`投影UI，再派发`ON_SET_POWER_SAVING`，来源为`LOCALSTORAGE`，最后进入profile apply。`83789.w`及其guard的完整范围为2636 `[2225612,2226832)`、2676 `[2276226,2277446)`：未录宏时`LOCALSTORAGE`只获得deviceAccess，其余UI/runtime/device来源同时获得storage与deviceAccess；录宏时`LOCALSTORAGE`直接忽略，其余来源仅storage。这条恢复链会进入前述真实SET与独立GET，不能把初始化概括成提前读取一次；例如实读301秒投影成5分钟后，源码恢复提交300秒并要求GET严格等于300。导入guard保留时runtime仍可能从本机根值进入恢复，不能把旧缓存称为本次实读；Rust接入必须保留当前读取出处、连接代次和恢复来源，读取失败、缺值、未知值或wrapper默认均不得触发默认覆盖。
 
 `IvY`将completed/skipped与error分别派为`MW_UPDATE_POWER_SAVING_VALUE_UI_ACTION_DEVICE`或storage来源的对应事件，随后发post-process结束事件。UI的`ce/Oe/Se`分别维护本机结果、设备结果和动作清理；2636完整范围`[6795617,6796830)`，2676`[7043084,7044297)`。错误进入`errorActions`，这些消费者本身不回滚已经optimistic更新的`powerSaving`，也不把GET确认值再次当用户动作提交。skipped只表示被较新任务替代，不能标为该请求执行过真实SET。
 
 两款当前`81988 [553,10730)`队列保留current/pending/cancelling所有者：skippable取最新待执行项并跳过、释放其余pending；运行任务cancel发abort，等任务settle后调用结果回调、调度后续和dispose；pending取消直接发送`value:null,error:"canceled"`。Power组件没有Cancel按钮或卸载时恢复原值的动作，abort只在runner的SET前后检查，不能撤销已传输的SET，且该runner未在GET返回后再检查abort。另有须实际对照的源异常边界：`IvY`的error分支直接取`a.value.params`，而pending取消及等锁AbortError会传`value:null`；不能把该链描述为所有取消均已可靠清理。应用实现与对照测试须分别记录任务取消、真实设备当前值和资源释放结果，不能自行新增默认值覆盖或伪造回滚成功。
 
-当前Rust只有前述草稿`Changed`，没有这条休眠Read/Set请求、秒值读回观察、设备失败或取消回执消费者。已有其它产品的Power IPC、手柄trigger确认或本机熄灯owner均不能补足该入口；应按实际产品端序与来源建立类型化休眠操作和独立观测，再把上述当前UI动作及失败/取消状态完整接上。
+#### Rust独立实现与观察边界
+
+[页面runtime](../../../crates/razer-pages/src/features/gamepad/gamepad_sleep_runtime.rs) → `WorkspaceEvent::ControllerSleepRequested` → [Shell owner](../../../crates/razer-shell/src/shell/gamepad/controller_sleep.rs) → 当前唯一HID collection → [类型化IPC](../../../crates/razer-ipc/src/controller_sleep.rs) → [服务适配](../../../crates/razer-service/src/runtime/controller_sleep.rs) → [独立Rust协议](../../../crates/razer-device/src/gamepad/controller_sleep.rs)构成生产链。服务核对VID、当前逻辑/物理产品、interface、descriptor中的91字节report、连接身份和期限；每次真实传输前后重新核实collection。协议使用前述实际产品端序，SET异常保留后继续独立GET，以原始秒值严格判定确认或差异，不以UI四舍五入相同、setter成功或本地文件写入成功替代。
+
+每次用户选择立即产生独立存储意图，不等待活动设备操作结束。统一writer先保存捕获的设备根设置；成功后才允许进入`NORMAL_SKIPPABLE`设备队列。活动任务保留，新成功保存的待执行任务替换旧pending；被替换项的本地保存仍有独立结果，不称为已执行SET。宏录制占用时保留存储、禁止设备访问；提交和存储完成时再次核实占用状态。旧profile中的`controller.power.powerSaving`只在产品、形状和值域合法且各profile无冲突时迁入设备根字段；profile快照不重复保存该字段。
+
+真实观察保留`Unobserved/Reading/Observed/Failed/Disconnected`状态和完整`u16`秒值；页面使用现有本地化词条与语义status呈现读取中、失败、断开及未观测。未列出的分钟或非整分钟秒值明确显示实际秒值，不选造默认档位。读取失败不触发SET，不自动忙循环重试；明确离开再进入Power允许重新GET，仍在途的读取不重复提交。
+
+[页面外初始化所有者](../../../crates/razer-shell/src/shell/gamepad/controller_initialization.rs) 通过[连接与文档所有者](../../../crates/razer-pages/src/features/workspace/source_workspace/controller_initialization.rs)、[类型化 IPC](../../../crates/razer-ipc/src/controller_initialization.rs) 和[独立协议](../../../crates/razer-device/src/gamepad/controller_initialization.rs) 持有连接代次、完整路由、字段计划和真实结果。根字段按实际文档键序生成；仅无文档时选择原件根字段读取计划，既有文档缺字段不补读。`serde_json` 在页面边界显式启用 `preserve_order`。2636 先按 connect 链真实读取 dock probe `[4,0,147]`，再进入根字段：Power、2676 mode `[1,0,211]`，随后 Button ID `[80,2,132]`、Profile ID `[80,5,129]`、Active `[1,5,132]`、Count `[1,5,128]` 和按真实 ID 的 Name `[80,5,136]`；名称最多三轮、每轮 64+16 字节，扩大 OUT/IN 与 IN 等待，OUT 等待保持原值，后续字段恢复正常等待。空/截断/矛盾目录失败，不产生 slot1 或空名称假成功。
+
+当前 owner 按计划字段顺序独立读取数字/模拟触发器、圆度、死区、灵敏度、D-pad、haptic、2636 brightness/硬件灯光和轮询；单字段失败保留具体失败，并继续后续字段。结果经真实槽匹配本机稳定 GUID、真实名称和 active；已有文档在途被编辑时拒绝替换，断开、退出及 owner 替换取消 guard，迟到结果不能发布。正式保存使用共享 writer 的版本冲突与所有者检查；保存成功后才投影当前真实 Power 读数，并按宏占用规则发 `LOCALSTORAGE` 恢复 SET/独立 GET。301 秒保留为初读事实，投影5分钟的恢复请求确认300秒；缺值、失败、未知模式、默认容器和旧本机值不授权恢复。Trigger/Lighting/Chroma/Power 页内请求等待该链；初始灯光自动应用还要求当前 profile 的 brightness 和硬件 effect 均有真实观察，读取失败不能写其默认值。
+
+轮询与映射原值由 [controller_profile](../../../crates/razer-device/src/gamepad/controller_profile.rs) 读取。2636 挂载 profile period `[2,0,142]`，code `1/2/3/4/5/8/10` 对应 `1000/500/333/250/200/125/100 Hz`；2676 明确挂载 high-speed `[2,0,192]`，code `1/2/4/8/16/32/64` 对应 `8000/4000/2000/1000/500/250/125 Hz`，未知 code 保留原值及 `None`，不采用 JS 的100/8000回退。每个真实 Button ID 的 normal-mode `[80,2,140]` 保留 slot/button/mode/function/dataSize/五字节原值及逐项失败、取消前缀。协议与枚举位置分别是2636 module14397@895919、82929@901137、assignment decoder@999583、engine detail@2513420、g2@2491377、polling getter@2542437、OBM mount@2664899；2676对应900386、905604、1004806、2567691、2545620、high-speed mount@2722718。
+
+轮询的结果消费者也按原件分支处理：2676 `controllerDevice.config [2721836,2721972)` 明确 `syncWiredAndWirelessPollingRate:true`，`Bs/m [1292659,1292915)` 将同次实读同时写入两字段。2636 `Bs/E [1284854,1285110)` 则依真实 `isDongle` 选择字段；其 connect `z [2524527,2524861)` 在没有独立 dongleId 时仍会执行 `getDockExtendedFirmwareVersion` 探测，不能由同 PID 或无 peer 推定 wired。Rust 在根读取前通过实际 `[4,0,147]`、无 payload 的 Feature 应答观测；只有匹配 transaction/class/id、完整91字节report、状态2才形成 `ConnectionProbeObservation`。成功即证明 dongle，空/短的成功 payload 不强造版本号；至少4字节时另保留可选版本。该真实结果驱动2636 polling 的 wireless 字段，wired 字段保持独立。失败/取消保留错误与未知连接分类，不能采用 JS catch 的 false 当作已确认 wired，也不据猜测改任一字段。
+
+映射导入由 [controller_mapping](../../../crates/razer-device/src/gamepad/controller_mapping.rs) 的具名领域类型实现：真实 input ID、generic HID、修饰键顺序、扩展键、鼠标／媒体／电源／配置档／灵敏度／控制器／Razer key／Windows shortcut／2676 Perfect180 均按当前 module 10511→4442→58701 转换。两款 module 58701 字节完全相同，共用一个所有者；其 126 个 KeyInput 的 HID 与身份已逐项核对。该表不能直接使用现有 app-engine DATA_0 代替：后者缺 HID 103/144/145/231，79..82 还存在 DPAD 身份记录，当前手柄则是 KEY_*_ARROW，并具有 Extended_00。这里不把其他产品表的别名或缺项当作当前手柄协议。
+
+module 11365 的 DEFAULTMAPPINGS 过滤精确保留产品差异：2636 默认只有 M1..M6；2676 另有 SHARE_BUTTON keyboardGroup，源码只比较非控制器默认的输入／输出类型，因此 SHARE 的键值与修饰键不同也会被省略。仅在 inputID、isHyperShift、outputType 与 keyboard key 全部匹配时复制本机 keyGroup；不复制旧 modifiers、turbo 或任意旧映射扩展。profile 外部扩展及 switchOffLighting 继续保留。源 engine 每键 catch 后返回部分数组，导入据此替换本地 mappings 缓存；逐键原始读取和具名转换失败分别保留在连接结果及 mapping_projections，空缺键不被标为设备默认。取消或旧代次不能发布。宏目录不存在时按源保留空 id，且明确标为未解析；未知 HID、零周期 turbo 以及该产品没有转换器的 function 保留具体失败，不补默认映射。
+
+importer 的一次调用标记由工作区所有者跨连接保留，进入即设置，失败和连接取消不会自动清除；重新创建工作区才具有新的模块生命周期。引擎目录完成事实独立保留，不能冒充重连后的新观察。启动 dn/gn 仅在 document 不存在时导入；连接 hn/On 在注册 loadProfileDataFromDevice 后直接调用 Rt，由 importer guard 去重，不可把启动阶段的 document 条件套到全部连接路径。2676 module 12601 的 taskMakerResetDevice（main byte 2714213 附近）在真实 setDeviceReset 后调用 11365.ho，只清 importer，不清 engine guard。Rust 手柄 reset、reset 后引擎目录复用、完整 profile apply 与 Customize 映射／polling 用户写入仍未完成，不能由本轮导入转换宣称整个根 gap 或产品完成。
+
+当前设备配置档列表按真实槽目录重建。2636／2676 的 module 31759.eL（main byte 1337217／1369018）仅按 profileIDList 顺序创建新默认工作容器，按旧 obmSlotId 匹配并复用 source GUID；11365 随后调用 52448.setProfiles（1281575／1289380）替换当前序列号的列表，不合并目录外的旧槽。其他序列号的 profileData 和设备根扩展不在这个替换范围。逐槽读取枚举的是重建后当前默认容器的 getter 顺序，因此初始化计划不使用旧 profile 的键序或旧字段缺失推定跳过读取。容器默认字段仍不是设备实测状态，真实失败继续独立保留。
+
+Rust 以当前 Device 的真实目录顺序原子构建新列表并保留匹配的 source GUID；旧 profile 的一个 GUID 对应多个槽时，各槽继续保留该 GUID，内部 Profile.id 则采用稳定槽身份区分。旧 obmSlotId 中首个仍存在的槽保留原内部 ID，其余槽由原 ID 和真实槽号派生；目录重排及再次导入保持稳定。活动配置档按真实 active slot 选择内部 ID，页面选择、修改和保存均按这个 ID 定位，source GUID 不充当列表下标。取消、目录缺槽、非法槽字段及冲突必须在替换前失败，保留原列表。
+
+2636 dock probe 的当前完整来源链是 mount `[2665606,2665685)` 的 `isWireless:true`、factory `z [2523895,2524861)`、`isDongle` 消费 `[2514917,2515138)`、87969 getter `[1045319,1045536)`、12844 `Qp/x [887007,887236)`、14397 `mf/K [898293,898359)`，以及 encoder `[1032513,1032972)`、response reader `[1034207,1037249)`、sendCommand `[1037249,1041468)`。当前 `Sage` → 98773 → 87969 继承闭包没有 dock/sendCommand override；原件实际 bytes/SHA 与既有 acquisition 匹配，不由同族其他产品推导。
+
+设备连接guard和本机存储guard分离：连接变化拒绝旧设备结果并丢弃旧设备pending，但保留已授权的存储完成责任；准备退出关闭新设备任务并取消旧连接请求，取消退出只重新GET，不恢复默认值或撤销已发送SET。离开Power本身不发送回滚。
+
+Shell分别记录业务观察、匹配的服务teardown回执、最终进程/pipe释放和历史清理错误。`ServiceClient::is_stopped()`只表示停止接收请求；真正的`ShutdownConfirmation`只能由匹配Shutdown请求ID且`stopped:true`的响应产生，随后OS或pipe失败也不丢失token。后台owner仍调用`finish_termination()`，在Shutdown后及每次termination后重新取得typed token；真实句柄未释放时保留同一client继续释放。只有token存在、进程退出及pipe线程join全部真实完成、后台任务结束，才移除owner并释放页面队列。未实际获得client的提交前取消或spawn失败不要求不存在的服务回执。
+
+没有token时，即便OS资源已经释放，`CleanupState`仍保留未确认entry并阻止同一资源的新操作及退出；此时不忙重试已经没有句柄的进程。barrier比较workspace、逻辑/物理PID、container和统一device-task Scope；同一path补全serial/manufacturer等信息、或同container从未解析route变成完整collection，均不能绕过旧失败。同一资源的阻断与结果发布身份分别判断，发布仍严格核对完整retained node；别的container、物理产品和已明确不同的collection可独立继续。服务token已经存在而OS释放稍后成功时允许继续，历史错误保留在诊断与收据中，不把既往错误永远当成未完成释放，也不把资源释放当成设备写入确认。
 
 [controller_power.rs](../../../crates/razer-shell/src/shell/gamepad/controller_power.rs) 实际读取的是`profile.switchOffLighting/brightness`并观察显示器/idle事件，交给lighting owner执行亮度熄灭/恢复。该链已有生命周期和实际灯光命令，不消费Power的`powerSaving.value`，不能作为本页设备休眠已完成的证明。
 
+## 2676 SOCD 连接读取与即时写入
+
+2676 当前根在 MW main byte 2723004 挂载 `controllerDPadSOCD/initFromDevice:true`。module 62885 的连接 On（1696514）先 await 已注册的 `loadProfileDataFromDevice`，再 await generic manager 的 DeviceConnected，最后恢复其余 runtime。module 1457 的 onDeviceEvent（1399719）依次 await feature 连接回调并 await Pf 保存。Rust 的 importer 首段只有真实目录、profile 与根字段完成本机保存后才进入连接 phase；2676 每次连接 generation 单独读取 SOCD，再保存并放行 runtime。11365 importer 的 once guard 跨重连保留，10511 engine 目录也是独立缓存事实；复用该目录不标成新实测，也不重复整套 importer。
+
+module 84470（1378063）的 initDataFromDevice 原样遍历 engine.profileIDList，为每个 wire slot 查找首个 `Fk(profile)==wireId` 的本机 profile，仅在匹配后 GET。10511.Fk（2570408）的 controllerDevice 分支把**已存在的**首个 obmSlotId 0 转为协议槽 1；本项目拒绝缺失槽号，保留 source slot 与 wire slot 的区别。连接匹配集合使用 Fk 结果，但 engine 原始目录 0 不转成 1，也不会凭目录 0 给 source slot 0 发送 SOCD GET。多个 profile 映射同一 wire slot 时只有源码 find 的首个 profile 消费该观察。GET 的 `[2,12,155]`／payload `[wireSlot]` 返回原始 option，未知 u8、失败和未观测分别保留，不采用原版失败/未知回 neutral 的回退。
+
+首次 importer 的 profile 字段读取同样使用 Fk，目录和名称始终使用原始目录槽。2676 的 getDataFromDevice 闭包逐项为：11365 mapping（1279936）与 brightness（1282425）；19485 polling／wireless（1291986）；70784 lightingEffects（1360310）；84392 digital（1345387）；33710 analog（1296612）；69005 circularity（1298736）；91564 deadzone（1343766）；90707 ignoreDiagonals（1342430）；59785 sensitivity（1376946）；11365 haptic wrapper 转47442（1347719）。2636 的10511（2503776）也将 controllerDevice 中已存在的0映射为1。共享 `controller_profile::wire_slot` 统一这两款已核分支；外层 ProfileObservation.slot、目录、名称与本机 obmSlotId 保留 source0，Polling／Mapping／Lighting 的原始应答身份保留 wire1，并按该 wire 身份校验，不能把实报1改写成0。两款的完整当前字段序列均有独立固定帧测试；audioHapticIntensity 的当前 wrapper 无GET，未新增虚构命令。
+
+UI `main.5ee115d4.js` iL（7536074）及 Customize 挂载（7548709）明确传入 `hideNoSocd:true`，未传 isArcadeController；可见 radio 顺序为 neutral、first、last，没有 Apply/Cancel。标题、帮助、说明分别为 `SOCD_SETTINGS`、`DPAD_SOCD_TOOLTIP`、`DPAD_SOCD_SETTINGS_DESC`，每项保留当前 `*_SOCD_DESC`。锁定 GPUI Kit 的 Base Radio 持有真实选中、焦点及键盘行为，页面按原 CSS `.socd-settings-container` 的左边距、上边距和说明字号呈现。radio 当前值只取本连接 typed GET 或明确的用户草稿，旧持久化值不冒充实测；草稿、已保存偏好、GET 观察与 SET 应答各有独立状态。
+
+UI SET reducer（7115231）先乐观更新 value，再发送 `ON_SET_CONTROLLER_DPAD_SOCD`；MW 1457.taskMakerHandler（1402037）按 `updateStorage(active profile) → version → await Pf → updateUI → LOCAL_STORAGE completed → NORMAL_SKIPPABLE device task` 执行。Rust 的 source owner 绑定稳定 profile ID、source slot 和连接 generation，Shell 使用最新 saved snapshot 仅投影该 profile 的两个 SOCD 字段并经统一 writer 原子保存，保留其他 profile、根字段、并发已保存更改和未知扩展。保存失败不提交设备任务；仅保存、宏占用、取消与设备成功不能混为一谈。device queue 保留正在运行的任务，只跳过较旧 pending；profile／连接／退出变化取消旧 guard，迟到结果不能覆盖新 owner。持久化后的 SET 失败或取消不回滚已保存偏好。
+
+明确的用户草稿、实际应答及失败诊断按完整 profile／source slot／generation 保存，切档往返仍能呈现本连接的用户动作，不能重新选回旧GET，也不能把同槽另一个profile的应答当成当前profile成功；重连清理该动作状态，再由新连接读数建立实测。每次保存仍独立排空，较旧保存失败不得替换较新用户动作状态；切档后返回同profile也不恢复已取消的设备guard，存储完成只更新真实保存事实，不自动重新提交旧SET。
+
+同一设备的前一个服务尚在清理时，Shell 保留新请求及等待任务，计入退出排空；真实清理释放后重新核对完整 route、请求身份与宏占用，再提交 SET。等待期间切档、断开或退出会取消旧请求，不能因普通清理占用提前消费已保存的最新动作。磁盘原子提交与当前连接所有者分别记录；提交后连接变化只阻止旧设备请求，不将已经成功的文件写入误报为保存失败。
+
+准备退出会取消初始化读取并清除当前观察，取消退出则重新开放同一连接的读取门；不重置 importer once、不伪造新的物理连接、不恢复旧观察。Shell 在退出取消后的 workspace 恢复完成后立即重新调度初始化；2676 重新执行真实 generic GET、保存完成再开放 SOCD，2636 恢复各 feature 原有读取。未完成首次导入保存时仍不能跨过保存门，也不因退出取消向设备发送本地默认值。
+
+MW 84470.execute 再次读取 active profile，再经 Fk 发 SET，存在原版迟到任务跨 profile 的风险；Rust 将动作绑定到点击时真实 profile。`2620.4dda40775797696f3bf0.js` setter（16580）构造 `[wireSlot,option]`，命令 `[2,12,27]`；mode 映射 neutral0、last1、first2、none3、absoluteUp4。当前物理分支为 wired 2676/2677、wireless 2680/2681、VID5426、interface1；SagePC bootstrap（2720868）使用 report10、91 bytes 和 OUT／OUT_IN／IN 各30ms。独立 Rust 编码复用现有 Protocol25 传输，按 transaction／class／command 和 SUCCESS 状态确认并保留原始 ACK payload。源 setter 不核 ACK option 等值，也没有 SET 后 getter，因此本项目不增加 GET，不把 ACK 伪装成新的 GET 观察。
+
+原版 1457.taskRunnerSetDevice（1405540）即使 execute 返回 false 也标 completed；generic 动态通知名与当前 UI 的 D_PAD_DIRECTIONS 通知分支也不一致。Rust 根据真实应答、传输异常与取消保留结果，不以 UI completed 日志代替成功。Shell 复用既有独占 ServiceClient、完整 route 身份、请求 guard 与统一 device-task scope；服务响应经 typed IPC 校验后才能发布结果。匹配 ShutdownConfirmation、最终进程／pipe 释放和历史清理错误分开保存，真实释放未完成时保留同一 cleanup owner，继续阻止同资源新任务，不能仅因拿到 SET 应答就放开清理屏障。
+
+证据原件沿用当前 acquisition：`.analysis/inputs/frontend/gamepad-mw-2676-current/acquisition.json`（MW main、2620、SagePC）和 `.analysis/inputs/frontend/gamepad-2676-current/acquisition.json`（UI JS/CSS）。完整项目相对路径、实际 bytes/SHA 与依赖闭包由统一 inputs/gaps 校验维护；没有复制整套分析原件、创建逐问题脚本或临时分析数据库。本链真实设备 SET、实际 DLL 功能对照以及窗口／焦点／像素运行时验收均未执行，保持未验证。
+
 ## 验证与未验证范围
 
-自动化必须覆盖每款实际页面/固件/传输及其映射类别、取消保存、polling有线/无线、active槽、触发器顺序、slider preview、死区重复警告/prev基线、clutch、失败、旧连接和清理。Power另覆盖分钟到秒、2636小端/2676大端、实际getter初读、setter异常后的GET、读回差异、宏录制只存储、skipped/pending取消、SET后取消及GET中取消；设备值与草稿不能相互冒充。已有 [页面纯测试](../../../crates/razer-pages/src/features/gamepad/gamepad_products_tests.rs)、[协议测试](../../../crates/razer-device/src/gamepad/controller_triggers_tests.rs)、[IPC测试](../../../crates/razer-ipc/src/controller_trigger_tests.rs) 及runtime内用例仅覆盖其明确行为；官方预期必须独立于Rust编码器。
+自动化必须覆盖每款实际页面/固件/传输及其映射类别、取消保存、polling有线/无线、active槽、触发器顺序、slider preview、死区重复警告/prev基线、clutch、失败、旧连接和清理。Power的[页面纯测试](../../../crates/razer-pages/src/features/gamepad/gamepad_sleep_tests.rs)、[协议测试](../../../crates/razer-device/src/gamepad/controller_sleep_tests.rs)、[IPC测试](../../../crates/razer-ipc/src/controller_sleep.rs)及[Shell清理测试](../../../crates/razer-shell/src/shell/gamepad/controller_sleep.rs)覆盖分钟到秒、2636小端/2676大端、初读失败不写默认值、setter异常后GET、原始秒值差异、宏录制只存储、独立存储及pending合并、旧连接、SET前后取消、GET中取消、明确重新进入重读、可见状态与真实清理失败保留及重试。新增 `controller_initialization` 纯/模拟用例覆盖根/真实目录/字段顺序、64+16名称与等待恢复、空目录、单项失败继续、根读取失败不写默认、取消前缀、IPC身份及计划伪造、陈旧连接、301→5→300恢复、宏占用和真实终态到控制字段的消费者。清理负矩阵分别检查服务token和OS释放四种组合、未获得client、已有token但reap暂时失败、无token且已释放不忙重试、相同/不同owner，以及None/Some route解析和同path元数据富化不能绕过barrier。预期协议字节独立于Rust编码器；这些纯/模拟用例不能替代实际DLL和设备对照，也未证明完整映射转换、全部初始化/恢复分支及整个产品完成。
 
-本轮仅核对静态原件、AST边界、Rust生产caller、只读目录值与文档引用，没有重跑Cargo测试，没有执行厂商JS、主应用、helper或设备操作。实际DLL/设备功能结果按 [verification.md](../../../.agents/rules/verification.md) 逐项保存相同输入、双方原始输出、状态/应答、差异、原值恢复和释放收据；本轮没有新增该收据。真实写回、窗口/焦点/像素及不可执行的设备分支保持未验证，不能由现有模拟通过扩大到整个页面或产品。
+Cargo静态检查与纯测试由统一验证入口执行，其结果只覆盖对应版本与用例；没有执行厂商JS、主应用、无关helper或设备操作。实际DLL/设备功能结果按 [verification.md](../../../.agents/rules/verification.md) 逐项保存相同输入、双方原始输出、状态/应答、差异、原值恢复和释放收据；当前未新增该收据。真实写回、窗口/焦点/像素及不可执行的设备分支保持未验证，不能由静态检查或模拟通过扩大到整个页面或产品。

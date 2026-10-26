@@ -130,7 +130,7 @@ impl Executor {
                 sequence::Poll::Actions(actions) => {
                     let mut errors = Vec::new();
                     for action in actions {
-                        if let Err(error) = self.direct.action(action) {
+                        if let Err(error) = self.direct.sequence_action(action) {
                             errors.push(format!("{error:#}"));
                         }
                     }

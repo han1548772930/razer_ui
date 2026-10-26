@@ -171,6 +171,17 @@ impl AppShell {
                     }
                     if current {
                         shell.status = match &completion.result {
+                            Ok(report) if operation.request.is_read() => {
+                                if report
+                                    .current
+                                    .as_ref()
+                                    .is_some_and(|current| current.is_complete())
+                                {
+                                    "滚轮设备状态已读取。".into()
+                                } else {
+                                    "滚轮设备状态未全部读取；失败及未知值已保留。".into()
+                                }
+                            }
                             Ok(report) if report.verified_for(operation.route.product_id()) => {
                                 "滚轮设置已保存，设备写入及读回已确认。".into()
                             }

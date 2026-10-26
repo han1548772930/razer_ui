@@ -41,6 +41,10 @@ pub(super) enum ProductSave {
     MousePhilips(mouse_philips::PhilipsSave),
     ControllerTrigger(ControllerTriggerSave),
     ControllerLighting(ControllerLightingSave),
+    MarciLighting(marci_lighting::LocalSave),
+    ControllerSleep(controller_sleep::ControllerSleepSave),
+    ControllerSocd(controller_socd::LocalSave),
+    ControllerInitialization(controller_initialization::LocalSave),
     ControllerChroma(ControllerChromaSave),
     SeirenEq(seiren_eq::SeirenEqSave),
     MouseProfile(MouseLegacyProfileSave),
@@ -71,6 +75,10 @@ impl ProductSave {
             Self::MousePhilips(save) => save.owner(),
             Self::ControllerTrigger(save) => save.owner(),
             Self::ControllerLighting(save) => save.owner(),
+            Self::MarciLighting(save) => save.owner(),
+            Self::ControllerSleep(save) => save.owner(),
+            Self::ControllerSocd(save) => save.owner(),
+            Self::ControllerInitialization(save) => save.owner(),
             Self::ControllerChroma(save) => save.owner(),
             Self::SeirenEq(save) => save.owner(),
             Self::MouseProfile(save) => (&save.identity, save.workspace.downgrade()),
@@ -179,6 +187,7 @@ impl AppShell {
         self.resume_mapping_observations();
         razer_state::ui_preferences::cancel_exit(cx);
         razer_state::chroma_settings::cancel_exit(cx);
+        razer_pages::features::screen_color::cancel_exit(cx);
         self.help_system_info.resume_after_cancelled_exit();
         self.runtime
             .update(cx, |runtime, cx| runtime.cancel_exit(cx));
@@ -208,6 +217,7 @@ impl AppShell {
                             workspace.cancel_exit(active, window, cx)
                         });
                     }
+                    shell.initialize_controller_roots(cx);
                     #[cfg(target_os = "windows")]
                     razer_tray::native::show(window);
                 });
@@ -224,6 +234,36 @@ impl AppShell {
         cx: &App,
     ) -> PreparedSave {
         let device_draft = match &product {
+            Some(ProductSave::MarciLighting(local)) => {
+                let baseline = self
+                    .devices
+                    .iter()
+                    .map(|owner| owner.read(cx).saved_snapshot(cx))
+                    .collect::<Vec<_>>();
+                let mut proposed = baseline.clone();
+                if let Some(target) = proposed
+                    .iter_mut()
+                    .find(|device| device.workspace_identity() == local.owner().0)
+                {
+                    *target = local.snapshot().clone();
+                }
+                Some(store::DeviceSaveDraft::new(baseline, proposed))
+            }
+            Some(ProductSave::ControllerInitialization(import)) => {
+                let baseline = self
+                    .devices
+                    .iter()
+                    .map(|owner| owner.read(cx).saved_snapshot(cx))
+                    .collect::<Vec<_>>();
+                let mut proposed = baseline.clone();
+                if let Some(target) = proposed
+                    .iter_mut()
+                    .find(|device| device.workspace_identity() == import.owner().0)
+                {
+                    *target = import.snapshot().clone();
+                }
+                Some(store::DeviceSaveDraft::new(baseline, proposed))
+            }
             Some(ProductSave::KeyboardLocalProfiles(local)) => {
                 let baseline = self
                     .devices
@@ -309,6 +349,9 @@ impl AppShell {
         save: &mut PreparedSave,
         cx: &App,
     ) -> Result<(), String> {
+        if let Some(ProductSave::ControllerInitialization(import)) = &save.product {
+            import.validate(cx)?;
+        }
         let latest = self
             .devices
             .iter()
@@ -445,6 +488,18 @@ impl AppShell {
             }
             ProductSave::ControllerLighting(lighting) => {
                 self.finish_controller_lighting_save(lighting, succeeded, window, cx)
+            }
+            ProductSave::MarciLighting(lighting) => {
+                self.finish_marci_lighting_save(lighting, succeeded, cx)
+            }
+            ProductSave::ControllerSleep(sleep) => {
+                self.finish_controller_sleep_save(sleep, succeeded, window, cx)
+            }
+            ProductSave::ControllerSocd(socd) => {
+                self.finish_controller_socd_save(socd, succeeded, cx)
+            }
+            ProductSave::ControllerInitialization(import) => {
+                self.finish_controller_initialization_save(import, succeeded, cx)
             }
             ProductSave::ControllerChroma(chroma) => {
                 self.finish_controller_chroma_save(chroma, succeeded, window, cx)

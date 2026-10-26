@@ -1425,6 +1425,7 @@ fn submission_confirmation_requires_the_exact_profiles_values_and_source_order()
         onboard_profiles: None,
         reports: vec![ScrollWriteReport { steps }],
         errors: Vec::new(),
+        current: None,
     };
     assert!(original.verified_for(226));
     assert!(!original.verified_for(204));
@@ -1510,6 +1511,7 @@ fn mouse_scroll_partial_validation_preserves_missing_and_mismatching_typed_obser
             },
         ],
         errors: vec!["first task failed".into()],
+        current: None,
     };
     assert!(original.validate_for(170).is_ok());
     assert!(!original.verified_for(170));
@@ -1752,4 +1754,186 @@ fn profile_guid_requests_reject_fabricated_associations_and_empty_identity_befor
     request.profile_guid = Some("actual-profile".into());
     request.profiles.matching_obm_profile_ids = vec![7];
     assert!(request.validate(226).is_err());
+}
+
+fn current_read_cases(product_id: u32) -> Vec<([u8; 3], u8)> {
+    // Independent command declarations and value bytes from the pinned fixture.
+    let mut cases = if product_id == 226 {
+        vec![([2, 21, 139], 5), ([2, 2, 176], 2)]
+    } else {
+        vec![([2, 2, 148], 0)]
+    };
+    cases.push(([80, 2, 151], 1));
+    if !matches!(product_id, 153 | 170) {
+        cases.push(([2, 2, 163], 8));
+    }
+    cases.push(([2, 2, 150], 0));
+    if !matches!(product_id, 153 | 170) {
+        cases.push(([2, 2, 162], 2));
+    }
+    cases
+}
+
+fn append_current_read(steps: &mut Vec<Step>, product_id: u32, transaction: &mut u8) {
+    for (header, raw) in current_read_cases(product_id) {
+        steps.push(send(header, &[1], *transaction));
+        steps.push(receive(header, &[1, raw], *transaction, 2));
+        *transaction += 1;
+    }
+}
+
+#[test]
+fn current_scroll_get_covers_every_product_without_a_setter_or_local_profile_inventory() {
+    for product_id in [153, 170, 203, 204, 214, 226, 45066] {
+        let mut steps = Vec::new();
+        append_current_read(&mut steps, product_id, &mut 1);
+        let device = Transport::new(steps);
+        let request = Submission::read_current();
+        let report = MouseScroll::new(&device, &current_cap(product_id))
+            .unwrap()
+            .submit(&request, transactions(), || Ok(()))
+            .unwrap();
+        assert!(report.validate_for(product_id).is_ok());
+        assert!(report.reports.is_empty());
+        assert!(report.onboard_profiles.is_none());
+        assert!(report.current.as_ref().unwrap().is_complete());
+        assert!(
+            !report.verified_for(product_id),
+            "a GET is never a verified write"
+        );
+        assert_eq!(device.sent.get(), current_read_cases(product_id).len());
+        assert_eq!(device.reads.get(), current_read_cases(product_id).len());
+        device.finish();
+    }
+}
+
+#[test]
+fn current_scroll_get_preserves_partial_failure_unknown_raw_and_later_independent_values() {
+    let mut steps = Vec::new();
+    for (index, (header, raw)) in current_read_cases(203).into_iter().enumerate() {
+        let transaction = index as u8 + 1;
+        steps.push(send(header, &[1], transaction));
+        steps.push(receive(
+            header,
+            &[1, if index == 1 { 7 } else { raw }],
+            transaction,
+            if index == 0 { 3 } else { 2 },
+        ));
+    }
+    let device = Transport::new(steps);
+    let report = MouseScroll::new(&device, &current_cap(203))
+        .unwrap()
+        .submit(&Submission::read_current(), transactions(), || Ok(()))
+        .unwrap();
+    report.validate_for(203).unwrap();
+    let snapshot = report.current.unwrap();
+    assert!(matches!(
+        snapshot.readings[0].outcome,
+        ScrollReadOutcome::Failed { .. }
+    ));
+    assert_eq!(
+        snapshot.readings[1].outcome,
+        ScrollReadOutcome::Unknown { raw: 7 }
+    );
+    assert_eq!(
+        snapshot.readings[2].outcome,
+        ScrollReadOutcome::Observed(ScrollValue::SmartReelThreshold(8))
+    );
+    assert_eq!(
+        snapshot.readings[4].outcome,
+        ScrollReadOutcome::Observed(ScrollValue::VirtualAccelerationLevel(2))
+    );
+    assert!(!snapshot.is_complete());
+    device.finish();
+}
+
+#[test]
+fn current_scroll_get_cancellation_stops_before_another_request_and_never_returns_a_snapshot() {
+    let header = [2, 2, 148];
+    let device = Transport::new([send(header, &[1], 1), receive(header, &[1, 0], 1, 2)]);
+    let error = MouseScroll::new(&device, &current_cap(203))
+        .unwrap()
+        .submit(&Submission::read_current(), transactions(), || {
+            ensure!(device.reads.get() == 0, "connection generation changed");
+            Ok(())
+        })
+        .unwrap_err();
+    assert!(format!("{error:#}").contains("connection generation changed"));
+    assert_eq!(device.sent.get(), 1);
+    device.finish();
+}
+
+#[test]
+fn current_scroll_snapshot_rejects_forged_shape_kind_and_known_values_marked_unknown() {
+    let mut steps = Vec::new();
+    append_current_read(&mut steps, 226, &mut 1);
+    let device = Transport::new(steps);
+    let original = MouseScroll::new(&device, &current_cap(226))
+        .unwrap()
+        .submit(&Submission::read_current(), transactions(), || Ok(()))
+        .unwrap();
+    for failure in 0..5 {
+        let mut report = original.clone();
+        let snapshot = report.current.as_mut().unwrap();
+        match failure {
+            0 => {
+                snapshot.readings.pop();
+            }
+            1 => {
+                snapshot.readings.swap(0, 1);
+            }
+            2 => {
+                snapshot.readings[0].outcome = ScrollReadOutcome::Unknown { raw: 7 };
+            }
+            3 => {
+                snapshot.readings[0].outcome =
+                    ScrollReadOutcome::Observed(ScrollValue::SmartReel(false));
+            }
+            4 => {
+                snapshot.readings[0].outcome = ScrollReadOutcome::Failed {
+                    message: String::new(),
+                };
+            }
+            _ => unreachable!(),
+        }
+        assert!(report.validate_for(226).is_err());
+    }
+    assert!(original.validate_for(170).is_err());
+    let mut missing = original;
+    missing.current = None;
+    assert!(missing.validate_for(226).is_err());
+    let mut read = Submission::read_current();
+    read.profiles.selected_obm_profile_id = Some(3);
+    assert!(read.validate(226).is_err());
+    assert!(
+        Submission::new(Vec::new(), Default::default())
+            .validate(226)
+            .is_err()
+    );
+    device.finish();
+}
+
+#[test]
+fn final_current_scroll_get_difference_invalidates_earlier_write_confirmation() {
+    let mut steps = single_change_script([2, 2, 22], [2, 2, 150], &[1], 1);
+    append_current_read(&mut steps, 203, &mut 3);
+    let device = Transport::new(steps);
+    let requested = Submission::new(
+        vec![ScrollChange::VirtualAcceleration(true)],
+        Default::default(),
+    )
+    .with_current_observation();
+    let report = MouseScroll::new(&device, &current_cap(203))
+        .unwrap()
+        .submit(&requested, transactions(), || Ok(()))
+        .unwrap();
+    report.validate_for(203).unwrap();
+    assert!(report.reports[0].verified());
+    assert!(report.current.as_ref().unwrap().is_complete());
+    assert!(!report.verified_for(203));
+    assert_eq!(
+        report.current.unwrap().readings[3].outcome,
+        ScrollReadOutcome::Observed(ScrollValue::VirtualAcceleration(false))
+    );
+    device.finish();
 }

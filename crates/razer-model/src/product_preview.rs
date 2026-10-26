@@ -67,6 +67,7 @@ pub fn registered_preview(pid: u32) -> Option<Device> {
         dashboard: Default::default(),
         sub_devices: None,
         source_device_settings: None,
+        controller_power_saving: None,
         serial_number: format!("PREVIEW-{pid}"),
         product_id: pid,
         real_product_id: pid,

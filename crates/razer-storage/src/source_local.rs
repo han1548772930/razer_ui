@@ -38,7 +38,10 @@ fn entries(path: &Path) -> anyhow::Result<Entries> {
     )
 }
 pub fn path() -> anyhow::Result<std::path::PathBuf> {
-    Ok(crate::store_path()?.with_file_name("source-local-storage.json"))
+    Ok(beside_workspace(&crate::store_path()?))
+}
+pub(crate) fn beside_workspace(workspace: &Path) -> std::path::PathBuf {
+    workspace.with_file_name("source-local-storage.json")
 }
 /// Original helper get(key) calls JSON.parse(localStorage.getItem(key)).
 pub fn get(path: &Path, key: &str) -> anyhow::Result<Option<Value>> {

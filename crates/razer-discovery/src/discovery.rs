@@ -155,6 +155,7 @@ impl ObservedDevice {
             },
             sub_devices: None,
             source_device_settings: None,
+            controller_power_saving: None,
             serial_number: self.serial,
             product_id: self.product_id,
             real_product_id: self.real_product_id,

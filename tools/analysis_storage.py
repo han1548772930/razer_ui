@@ -1,6 +1,6 @@
 """Compact retained analysis files without changing their logical bytes or paths."""
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 import ctypes
 from ctypes import wintypes
 import hashlib
@@ -15,18 +15,34 @@ import analysis as a
 PLAN = ".analysis/results/storage-compaction.json"
 DATASETS = {"segments.json", "imports.json", "strings.json", "entrypoints.json",
             "names.json", "local_types.json", "structures.json", "all-functions.c", "all-functions.asm"}
+FUNCTION_INDEXES = {"functions": "functions", "partition-helpers": "partition_helpers",
+                    "shared-tail-helpers": "shared_tail_helpers", "boundary-helpers": "boundary_helpers",
+                    "entry-partition-helpers": "entry_partition_helpers", "context-helpers": "context_helpers",
+                    "preanalysis": "decompiler_prepasses"}
 
 
-def native_dataset(name):
-    if not isinstance(name, str):
-        raise ValueError("Compaction target must be a project-relative dataset path")
+def native_function_parts(parts):
+    if (len(parts) not in (6, 8) or parts[:3] != (".analysis", "results", "native")
+            or not re.fullmatch(r"[0-9a-f]{64}", parts[3])
+            or parts[-2] not in FUNCTION_INDEXES
+            or not re.fullmatch(r"(?:0|[1-9a-f][0-9a-f]{0,15})\.json", parts[-1])):
+        return False
+    return (len(parts) == 6 and parts[-2] == "functions"
+            or len(parts) == 8 and parts[4] == "supplements" and a.native_supplement_attempt_name(parts[5]))
+
+
+def native_supplement_manifest_parts(parts):
+    return (len(parts) == 7 and parts[:3] == (".analysis", "results", "native")
+            and re.fullmatch(r"[0-9a-f]{64}", parts[3]) is not None
+            and parts[4] == "supplements" and a.native_supplement_attempt_name(parts[5])
+            and parts[6] == "capture.json")
+
+
+def fixed_evidence_path(name):
     parts = Path(name).parts
-    native = (len(parts) == 5 and parts[:3] == (".analysis", "results", "native")
-              and re.fullmatch(r"[0-9a-f]{64}", parts[3]) and parts[4] in DATASETS)
-    review = (len(parts) == 5 and parts[:4] == (".analysis", "results", "reverse-pending", "review-sources")
-              and re.fullmatch(r"[0-9a-f]{64}\.json", parts[4]))
-    if (Path(name).is_absolute() or not (native or review) or Path(name).as_posix() != name):
-        raise ValueError("Compaction target is outside the retained native dataset scope")
+    if (Path(name).is_absolute() or Path(name).as_posix() != name
+            or parts[:2] != (".analysis", "results") or ".." in parts):
+        raise ValueError("Compaction evidence is outside its fixed results path")
     root = a.ROOT.resolve(strict=True)
     path = root.joinpath(*parts)
     current = root
@@ -37,6 +53,21 @@ def native_dataset(name):
     if a._resolved_path_identity(path.resolve(strict=True)) != a._resolved_path_identity(path):
         raise ValueError("Compaction target resolved outside its fixed dataset path")
     return path
+
+
+def native_dataset(name):
+    if not isinstance(name, str):
+        raise ValueError("Compaction target must be a project-relative dataset path")
+    parts = Path(name).parts
+    native = (len(parts) == 5 and parts[:3] == (".analysis", "results", "native")
+              and re.fullmatch(r"[0-9a-f]{64}", parts[3]) and parts[4] in DATASETS)
+    review = (len(parts) == 5 and parts[:4] == (".analysis", "results", "reverse-pending", "review-sources")
+              and re.fullmatch(r"[0-9a-f]{64}\.json", parts[4]))
+    if (Path(name).is_absolute() or not (native or review or native_function_parts(parts)
+            or native_supplement_manifest_parts(parts))
+            or Path(name).as_posix() != name):
+        raise ValueError("Compaction target is outside the retained native dataset scope")
+    return fixed_evidence_path(name)
 
 
 class FileInfo(ctypes.Structure):
@@ -165,7 +196,104 @@ def verify_snapshot(actual, expected):
         raise ValueError("Retained dataset changed after the compaction plan")
 
 
-def expected_output(path):
+def receipt_json(path, stack):
+    path = fixed_evidence_path(a.rel(path))
+    file = stack.enter_context(open_dataset(path))
+    before = file.info()
+    raw = file.read_bytes()
+    verify_snapshot(file.info(), before)
+    return json.loads(raw), {"path": a.rel(path), "bytes": len(raw),
+                             "sha256": hashlib.sha256(raw).hexdigest()}
+
+
+def function_output(path, stack, owned_manifest=None):
+    """Bind one explicit function to its retained index and ended analyzer session."""
+    from reverse_pending import process_alive
+
+    parts = Path(a.rel(path)).parts
+    manifest_file = native_supplement_manifest_parts(parts)
+    output = path.parent if manifest_file else path.parent.parent
+    result = a.ROOT.joinpath(*parts[:4])
+    if owned_manifest is not None:
+        if not manifest_file or owned_manifest.path != path:
+            raise ValueError("Compaction manifest handle belongs to another target")
+        before = owned_manifest.info()
+        raw = owned_manifest.read_bytes()
+        verify_snapshot(owned_manifest.info(), before)
+        capture = json.loads(raw)
+        record = {"path": a.rel(path), "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+    else:
+        capture, record = receipt_json(output / "capture.json", stack)
+    session_name = "batch-session.json" if len(parts) == 6 else "session.json"
+    session, session_record = receipt_json(output / session_name, stack)
+    plan, plan_record = receipt_json(output / "plan.json", stack)
+    if (capture.get("schema_version") != 1 or capture.get("input_sha256") != parts[3]
+            or plan.get("sha256") != parts[3] or plan.get("output") != a.rel(output)
+            or capture.get("input") != plan.get("input")
+            or any(row.get("target_execution") is not False for row in (capture, session))
+            or ("target_execution" in plan and plan["target_execution"] is not False)
+            or any(row.get("real_device_operations") is not False for row in (capture, session))):
+        raise ValueError("Function compaction capture, plan or session has a different static original")
+    if (not isinstance(session.get("finished_at_utc"), str) or not session["finished_at_utc"]
+            or not isinstance(session.get("started_at_utc"), str) or not session["started_at_utc"]
+            or type(session.get("exit_code")) is not int or type(session.get("passed")) is not bool
+            or type(session.get("pid")) is not int or session["pid"] <= 0
+            or process_alive(session["pid"]) is not False
+            or session.get("state", "finished") not in ("finished", "failed")
+            or ("process_released" in session and session["process_released"] is not True)):
+        raise ValueError("Function compaction requires a terminal released analyzer session")
+    if session["passed"] and (session["exit_code"] != 0 or capture.get("capture_complete") is not True):
+        raise ValueError("Function compaction session contradicts its capture outcome")
+    base_record = None
+    if len(parts) == 8 or manifest_file:
+        if plan.get("target_execution") is not False or plan.get("real_device_operations") is not False:
+            raise ValueError("Function supplement plan is not explicitly static")
+        if "-" in parts[5] and plan.get("analysis_request") is None:
+            raise ValueError("Version-1 supplement attempt requires its immutable source-bound request")
+        a.verify_native_supplement_request(plan, session)
+        if (plan.get("attempt_id", parts[5]) != parts[5]
+                or plan.get("function_selection") != capture.get("function_selection")):
+            raise ValueError("Function supplement differs from its exact attempt plan")
+        base, base_record = receipt_json(result / "capture.json", stack)
+        expected_base = {key: base_record[key] for key in ("path", "sha256")}
+        if (base.get("input_sha256") != parts[3] or base.get("capture_complete") is not True
+                or capture.get("base_capture") != expected_base or plan.get("base_capture") != expected_base):
+            raise ValueError("Function supplement base capture identity changed")
+    if manifest_file:
+        return {"path": "capture.json", "bytes": record["bytes"], "sha256": record["sha256"]}, {
+            **record, "scope": "explicit_native_supplement_manifest", "artifact_group": "capture-manifest",
+            "capture_complete": capture.get("capture_complete") is True,
+            "session": session_record, "plan": plan_record, "base_capture": base_record,
+            "session_passed": session["passed"], "session_exit_code": session["exit_code"]}
+    group = path.parent.name
+    index = FUNCTION_INDEXES[group]
+    records = capture.get(index)
+    if not isinstance(records, list):
+        raise ValueError("Function compaction requires an explicit native capture function index")
+    if group == "preanalysis":
+        records = [{"rva": row.get("rva"), **{key: row.get("capture", {}).get(key)
+                    for key in ("path", "bytes", "sha256")}}
+                   for row in records if isinstance(row, dict) and isinstance(row.get("capture"), dict)]
+    relative = group + "/" + path.name
+    rva = "0x" + path.stem
+    matches = [row for row in records if isinstance(row, dict)
+               and (row.get("path") == relative or row.get("rva") == rva)]
+    if (len(matches) != 1 or matches[0].get("path") != relative or matches[0].get("rva") != rva
+            or not re.fullmatch(r"[0-9a-f]{64}", str(matches[0].get("sha256", "")))
+            or ("bytes" in matches[0] and (type(matches[0]["bytes"]) is not int or matches[0]["bytes"] < 0))):
+        raise ValueError("Function is not uniquely SHA-bound by its exact native capture index")
+    return matches[0], {**record, "scope": "explicit_native_function",
+        "artifact_group": group, "capture_index": index,
+        "capture_complete": capture.get("capture_complete") is True,
+        "session": session_record, "plan": plan_record,
+        "session_passed": session["passed"], "session_exit_code": session["exit_code"],
+        **({"base_capture": base_record} if base_record else {})}
+
+
+def expected_output(path, stack, owned_manifest=None):
+    if (native_function_parts(Path(a.rel(path)).parts)
+            or native_supplement_manifest_parts(Path(a.rel(path)).parts)):
+        return function_output(path, stack, owned_manifest)
     if path.parent.name == "review-sources":
         # Immutable review filenames bind the complete logical byte stream.
         expected = {"path": path.name, "bytes": path.stat().st_size, "sha256": path.stem}
@@ -174,11 +302,7 @@ def expected_output(path):
     capture_path = path.parent / "capture.json"
     # An unfinished capture is still retained evidence. Compression changes no
     # logical bytes and must not promote its acquisition or semantic status.
-    with open_dataset(capture_path) as file:
-        info = file.info()
-        raw = file.read_bytes()
-        verify_snapshot(file.info(), info)
-    capture = json.loads(raw)
+    capture, record = receipt_json(capture_path, stack)
     if capture.get("schema_version") != 1 or capture.get("input_sha256") != path.parent.name:
         raise ValueError("Compaction requires the native capture for this exact original")
     matches = [row for row in capture.get("outputs", []) if row.get("path") == path.name]
@@ -188,18 +312,19 @@ def expected_output(path):
     if expected is not None and (not re.fullmatch(r"[0-9a-f]{64}", str(expected.get("sha256", "")))
             or type(expected.get("bytes")) is not int or expected["bytes"] < 0):
         raise ValueError("Retained capture output byte identity is malformed")
-    return expected, {"path": a.rel(capture_path), "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest(),
-                      "capture_complete": capture.get("capture_complete") is True}
+    return expected, {**record, "capture_complete": capture.get("capture_complete") is True}
 
 
 def plan_file(name):
     path = native_dataset(name)
-    expected, capture = expected_output(path)
-    with open_dataset(path) as file:
-        info = file.info()
-        digest = file.sha256()
-        verify_snapshot(file.info(), info)
-    if expected is not None and (digest != expected["sha256"] or info["bytes"] != expected["bytes"]):
+    with ExitStack() as stack:
+        expected, capture = expected_output(path, stack)
+        with open_dataset(path) as file:
+            info = file.info()
+            digest = file.sha256()
+            verify_snapshot(file.info(), info)
+    if expected is not None and (digest != expected["sha256"]
+            or ("bytes" in expected and info["bytes"] != expected["bytes"])):
         raise ValueError("Retained dataset differs from its complete capture")
     return {"path": name, **info, "sha256": digest, "capture": capture,
             "capture_output_identity_available": expected is not None}
@@ -207,12 +332,17 @@ def plan_file(name):
 
 def apply_file(row):
     path = native_dataset(row["path"])
-    expected, capture = expected_output(path)
-    if (capture != row["capture"] or (expected is not None and
-            (expected["sha256"] != row["sha256"] or expected["bytes"] != row["bytes"]))
-            or (expected is not None) != row["capture_output_identity_available"]):
-        raise ValueError("Native capture differs from the reviewed compaction plan")
-    with open_dataset(path, writable=True) as file:
+    with ExitStack() as stack:
+        manifest_file = native_supplement_manifest_parts(Path(a.rel(path)).parts)
+        file = stack.enter_context(open_dataset(path, writable=True)) if manifest_file else None
+        expected, capture = expected_output(path, stack, file)
+        if (capture != row["capture"] or (expected is not None and
+                (expected["sha256"] != row["sha256"]
+                 or ("bytes" in expected and expected["bytes"] != row["bytes"])))
+                or (expected is not None) != row["capture_output_identity_available"]):
+            raise ValueError("Native capture differs from the reviewed compaction plan")
+        if file is None:
+            file = stack.enter_context(open_dataset(path, writable=True))
         before = file.info()
         verify_snapshot(before, row)
         if file.sha256() != row["sha256"]:
@@ -296,18 +426,27 @@ def run(args):
     if type(args.minimum_mib) is not int or args.minimum_mib < 1:
         raise ValueError("Compaction minimum file size must be positive")
     reviews = getattr(args, "review_receipt", None) or []
-    if args.apply and reviews:
+    functions = getattr(args, "function_receipt", None) or []
+    if args.apply and (reviews or functions):
         raise ValueError("Compaction apply takes its complete scope only from the unchanged reviewed plan")
-    if len(reviews) != len(set(reviews)):
-        raise ValueError("Compaction review receipt list contains duplicates")
+    if len(reviews + functions) != len(set(reviews + functions)):
+        raise ValueError("Compaction explicit receipt list contains duplicates")
     for name in reviews:
         target = native_dataset(name)
         if target.parent.name != "review-sources":
             raise ValueError("Explicit review compaction requires a SHA-named immutable native review")
+    for name in functions:
+        target = native_dataset(name)
+        if (not native_function_parts(Path(a.rel(target)).parts)
+                and not native_supplement_manifest_parts(Path(a.rel(target)).parts)):
+            raise ValueError("Explicit function compaction requires a canonical indexed native function or supplement manifest")
     plan_path = report_path(args.plan)
-    with a.index_lock(a.ROOT / ".analysis/storage-compaction.lock"):
+    with a.index_lock(a.ROOT / ".analysis/storage-compaction.lock"), ExitStack() as ownership:
         if args.apply:
-            raw = plan_path.read_bytes()
+            plan_file_handle = ownership.enter_context(open_dataset(plan_path))
+            plan_snapshot = plan_file_handle.info()
+            raw = plan_file_handle.read_bytes()
+            verify_snapshot(plan_file_handle.info(), plan_snapshot)
             report = reviewed_plan(raw, args.plan_sha256)
             jobs = report["files"]
             output = report_path(a.rel(plan_path.with_name(plan_path.stem + "-apply.json")))
@@ -337,9 +476,10 @@ def run(args):
                                 and not getattr(status, "st_file_attributes", 0) & 0x800):
                             jobs.append(a.rel(path))
             jobs.extend(name for name in reviews if name not in jobs)
+            jobs.extend(name for name in functions if name not in jobs)
             report = {"schema_version": 1, "mode": "plan", "recorded_at_utc": a.stamp(),
                 "minimum_mib": args.minimum_mib, "workers": args.workers, "files": [], "failures": [],
-                "scope": "NTFS transparent compression of retained root native datasets and explicitly selected SHA-named static reviews; logical bytes, paths and capture completion status retained",
+                "scope": "NTFS transparent compression of retained root native datasets, explicitly selected SHA-named static reviews and indexed native functions from terminal analyzer sessions; logical bytes, paths and capture completion status retained",
                 "target_execution": False, "deletes_files": False}
             operation = plan_file
         # Persist the full operation scope before any filesystem metadata change.

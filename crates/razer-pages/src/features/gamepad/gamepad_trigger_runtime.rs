@@ -308,6 +308,9 @@ fn project_thumbstick_profile(
 
 impl GamepadProductWorkspace {
     pub fn observe_controller_connection(&mut self, connected: bool, cx: &mut Context<Self>) {
+        if matches!(self.spec.product_id, 2636 | 2676) {
+            self.controller_initialization_ready = false;
+        }
         self.trigger_runtime.invalidate();
         self.lighting_runtime.invalidate();
         self.chroma_runtime.invalidate();
@@ -378,11 +381,17 @@ impl GamepadProductWorkspace {
         self.emit_next_trigger(cx);
     }
     fn emit_next_trigger(&mut self, cx: &mut Context<Self>) {
+        if !self.controller_initialization_ready {
+            return;
+        }
         if let Some(request) = self.trigger_runtime.next() {
             cx.emit(request);
         }
     }
     pub(super) fn request_trigger_read(&mut self, cx: &mut Context<Self>) {
+        if !self.controller_initialization_ready {
+            return;
+        }
         if self.page == "THUMBSTICKS" {
             if !self.trigger_runtime.thumbsticks_read_requested {
                 self.trigger_runtime.thumbsticks_read_requested = true;

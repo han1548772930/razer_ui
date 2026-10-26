@@ -201,7 +201,7 @@ pub struct ObservedEffect {
     pub color_bytes: Vec<u8>,
 }
 impl ObservedEffect {
-    fn parse(data: &[u8]) -> anyhow::Result<Self> {
+    pub(crate) fn parse(data: &[u8]) -> anyhow::Result<Self> {
         ensure!(data.len() >= 6, "Truncated controller lighting observation");
         ensure!(
             usize::from(data[5]) * 3 <= data.len() - 6,

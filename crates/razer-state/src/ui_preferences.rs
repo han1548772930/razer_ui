@@ -71,15 +71,17 @@ pub struct Snapshot {
     load: LoadStatus,
     save: SaveStatus,
     persisted_value: Option<bool>,
+    read_generation: u64,
 }
 impl Snapshot {
     fn new(flag: Flag) -> Self {
         Self {
-            value: flag.default_value(),
+            value: flag.initial_value(),
             revision: 0,
             load: LoadStatus::NotRequested,
             save: SaveStatus::Unchanged,
             persisted_value: None,
+            read_generation: 0,
         }
     }
     pub fn ready(&self) -> bool {
@@ -104,6 +106,9 @@ impl Snapshot {
 
 #[derive(Clone, Copy)]
 enum Operation {
+    PollNotifications {
+        generation: u64,
+    },
     Read {
         flag: Flag,
         revision: u64,
@@ -120,6 +125,13 @@ impl Operation {
         // A storage panic must release the accepted request and leave the
         // worker able to drain subsequent writes and report the failure.
         match self {
+            Self::PollNotifications { generation } => Completed::PollNotifications {
+                generation,
+                result: guarded(|| {
+                    razer_storage::notification_preferences::raw_value()
+                        .map_err(|error| format!("{error:#}"))
+                }),
+            },
             Self::Read {
                 flag,
                 revision,
@@ -159,6 +171,10 @@ struct Work {
     accepted: AcceptedIo,
 }
 enum Completed {
+    PollNotifications {
+        generation: u64,
+        result: Result<Option<String>, String>,
+    },
     Read {
         flag: Flag,
         revision: u64,
@@ -175,15 +191,27 @@ enum Completed {
 impl Completed {
     fn flag(&self) -> Flag {
         match self {
+            Self::PollNotifications { .. } => Flag::DisplayNotifications,
             Self::Read { flag, .. } | Self::Write { flag, .. } => *flag,
         }
     }
     fn error(&self) -> Option<&str> {
         match self {
+            Self::PollNotifications { result, .. } => result.as_ref().err().map(String::as_str),
             Self::Read { result, .. } => result.as_ref().err().map(String::as_str),
             Self::Write { result, .. } => result.as_ref().err().map(String::as_str),
         }
     }
+}
+
+#[derive(Default)]
+struct NotificationWatch {
+    active: bool,
+    generation: u64,
+    baseline: Option<Option<String>>,
+    pending: bool,
+    failed: bool,
+    initial_read: bool,
 }
 
 struct Core {
@@ -192,7 +220,7 @@ struct Core {
     write_errors: BTreeMap<Flag, String>,
     pending_writes: usize,
     closing: bool,
-    read_generation: u64,
+    notification_watch: NotificationWatch,
 }
 impl Default for Core {
     fn default() -> Self {
@@ -205,11 +233,42 @@ impl Default for Core {
             write_errors: BTreeMap::new(),
             pending_writes: 0,
             closing: false,
-            read_generation: 0,
+            notification_watch: NotificationWatch::default(),
         }
     }
 }
 impl Core {
+    fn observe_notifications(&mut self) {
+        if self.closing || self.notification_watch.active {
+            return;
+        }
+        let watch = &mut self.notification_watch;
+        watch.active = true;
+        watch.generation = watch.generation.wrapping_add(1);
+        watch.baseline = None;
+        watch.failed = false;
+        watch.initial_read = true;
+        watch.pending = false;
+        self.invalidate_reads(Flag::DisplayNotifications);
+        self.flags
+            .get_mut(&Flag::DisplayNotifications)
+            .expect("known UI preference")
+            .load = LoadStatus::NotRequested;
+        self.poll_notifications();
+    }
+    fn poll_notifications(&mut self) {
+        let watch = &mut self.notification_watch;
+        if self.closing || !watch.active || watch.pending {
+            return;
+        }
+        watch.pending = true;
+        self.queue.push_back(Work {
+            operation: Operation::PollNotifications {
+                generation: watch.generation,
+            },
+            accepted: AcceptedIo::new(),
+        });
+    }
     fn load(&mut self, flag: Flag) {
         let state = self.flags.get_mut(&flag).expect("known UI preference");
         if self.closing || !matches!(state.load, LoadStatus::NotRequested | LoadStatus::Failed(_)) {
@@ -220,7 +279,7 @@ impl Core {
             operation: Operation::Read {
                 flag,
                 revision: state.revision,
-                generation: self.read_generation,
+                generation: state.read_generation,
             },
             accepted: AcceptedIo::new(),
         });
@@ -247,6 +306,45 @@ impl Core {
     }
     fn complete(&mut self, completion: Completed) -> Option<PersistenceFinished> {
         match completion {
+            Completed::PollNotifications { generation, result } => {
+                let watch = &mut self.notification_watch;
+                if self.closing || !watch.active || generation != watch.generation {
+                    return None;
+                }
+                watch.pending = false;
+                match result {
+                    Ok(raw) => {
+                        let recovering = std::mem::take(&mut watch.failed);
+                        let initial_read = std::mem::take(&mut watch.initial_read);
+                        if watch.baseline.as_ref() != Some(&raw)
+                            || recovering
+                            || initial_read
+                            || matches!(
+                                self.flags[&Flag::DisplayNotifications].load,
+                                LoadStatus::NotRequested
+                            )
+                        {
+                            watch.baseline = Some(raw);
+                            // A changed key invalidates older observations; accepted
+                            // user writes keep their position ahead of this reread.
+                            self.invalidate_reads(Flag::DisplayNotifications);
+                            self.flags
+                                .get_mut(&Flag::DisplayNotifications)
+                                .expect("known UI preference")
+                                .load = LoadStatus::NotRequested;
+                            self.load(Flag::DisplayNotifications);
+                        }
+                    }
+                    Err(error) => {
+                        watch.failed = true;
+                        self.flags
+                            .get_mut(&Flag::DisplayNotifications)
+                            .expect("known UI preference")
+                            .load = LoadStatus::Failed(error);
+                    }
+                }
+                None
+            }
             Completed::Read {
                 flag,
                 revision,
@@ -254,17 +352,22 @@ impl Core {
                 result,
             } => {
                 let state = self.flags.get_mut(&flag).expect("known UI preference");
-                if self.closing || generation != self.read_generation {
+                if self.closing || generation != state.read_generation {
                     return None;
                 }
                 match result {
                     Ok(observation) => {
                         state.persisted_value = observation.value();
-                        if state.revision == revision {
+                        let current = state.revision == revision;
+                        if current {
                             state.value =
                                 observation.value().unwrap_or_else(|| flag.default_value());
                         }
                         state.load = LoadStatus::Observed(observation);
+                        if current && flag.publish_on_observe() {
+                            let value = state.value;
+                            self.set(flag, value);
+                        }
                     }
                     Err(error) => state.load = LoadStatus::Failed(error),
                 }
@@ -287,6 +390,11 @@ impl Core {
                     Ok(()) => {
                         state.persisted_value = Some(value);
                         self.write_errors.remove(&flag);
+                        if flag == Flag::DisplayNotifications && self.notification_watch.active {
+                            // localStorage does not notify the document performing
+                            // its own write. A later external value still differs.
+                            self.notification_watch.baseline = Some(Some(value.to_string()));
+                        }
                     }
                     Err(error) => {
                         self.write_errors.insert(flag, error.clone());
@@ -324,20 +432,47 @@ impl Core {
     }
     fn begin_exit(&mut self) {
         self.closing = true;
-        self.read_generation = self.read_generation.wrapping_add(1);
+        self.notification_watch.generation = self.notification_watch.generation.wrapping_add(1);
+        self.notification_watch.pending = false;
         self.queue
             .retain(|work| matches!(work.operation, Operation::Write { .. }));
         for state in self.flags.values_mut() {
+            state.read_generation = state.read_generation.wrapping_add(1);
             if matches!(state.load, LoadStatus::Loading) {
                 state.load = LoadStatus::Cancelled;
             }
         }
+    }
+    fn cancel_observation(&mut self, flag: Flag) {
+        self.invalidate_reads(flag);
+        if flag == Flag::DisplayNotifications {
+            self.notification_watch.active = false;
+            self.notification_watch.generation = self.notification_watch.generation.wrapping_add(1);
+            self.notification_watch.pending = false;
+            if matches!(self.flags[&flag].load, LoadStatus::Cancelled) {
+                self.flags.get_mut(&flag).expect("known UI preference").load =
+                    LoadStatus::NotRequested;
+            }
+            self.queue
+                .retain(|work| !matches!(work.operation, Operation::PollNotifications { .. }));
+        }
+    }
+    fn invalidate_reads(&mut self, flag: Flag) {
+        let state = self.flags.get_mut(&flag).expect("known UI preference");
+        state.read_generation = state.read_generation.wrapping_add(1);
+        if matches!(state.load, LoadStatus::Loading) {
+            state.load = LoadStatus::NotRequested;
+        }
+        self.queue.retain(|work| {
+            !matches!(work.operation, Operation::Read { flag: pending, .. } if pending == flag)
+        });
     }
     fn cancel_exit(&mut self) {
         if !self.closing {
             return;
         }
         self.closing = false;
+        self.poll_notifications();
         for flag in Flag::ALL {
             if matches!(self.flags[&flag].load, LoadStatus::Cancelled) {
                 self.flags.get_mut(&flag).expect("known UI preference").load =
@@ -354,6 +489,7 @@ impl Global for Shared {}
 pub struct UiPreferences {
     core: Core,
     worker: Option<Task<()>>,
+    notification_watcher: Option<Task<()>>,
 }
 impl EventEmitter<PersistenceFinished> for UiPreferences {}
 impl UiPreferences {
@@ -362,6 +498,7 @@ impl UiPreferences {
             let owner = cx.new(|_| Self {
                 core: Core::default(),
                 worker: None,
+                notification_watcher: None,
             });
             cx.set_global(Shared(owner));
         }
@@ -395,6 +532,34 @@ impl UiPreferences {
         self.start_worker(cx);
         cx.notify();
     }
+    /// A real page mount/storage event re-reads through the same serialized
+    /// owner. Pending writes stay ahead of this observation in the queue.
+    pub fn reload(&mut self, flag: Flag, cx: &mut Context<Self>) {
+        let state = self.core.flags.get_mut(&flag).expect("known UI preference");
+        if !matches!(state.load, LoadStatus::Loading) {
+            state.load = LoadStatus::NotRequested;
+        }
+        self.load(flag, cx);
+    }
+    /// The settings component's same-key storage listener lives only while
+    /// mounted. File polling is serialized with its actual reads and writes.
+    pub fn observe_notifications(&mut self, cx: &mut Context<Self>) {
+        self.core.observe_notifications();
+        self.start_worker(cx);
+        self.start_notification_watcher(cx);
+        cx.notify();
+    }
+    /// Unmount cancels unpublished observations, while accepted writes remain
+    /// owned by the shared worker through their actual persistence result.
+    pub fn cancel_observation(&mut self, flag: Flag, cx: &mut Context<Self>) {
+        self.core.cancel_observation(flag);
+        if flag == Flag::DisplayNotifications {
+            // This task owns only a timer. In-flight file calls remain owned
+            // by worker/AcceptedIo until their actual completion.
+            self.notification_watcher = None;
+        }
+        cx.notify();
+    }
     pub fn set(&mut self, flag: Flag, value: bool, cx: &mut Context<Self>) {
         self.core.set(flag, value);
         self.start_worker(cx);
@@ -421,18 +586,57 @@ impl UiPreferences {
                     .background_executor()
                     .spawn(async move { (operation.run(), accepted) })
                     .await;
-                if let Some(error) = completed.error() {
-                    eprintln!("UI preference {:?}: {error}", completed.flag());
-                }
                 let _ = this.update(cx, |this, cx| {
+                    let previous = matches!(completed, Completed::PollNotifications { .. })
+                        .then(|| this.core.flags[&Flag::DisplayNotifications].clone());
+                    let failure = completed
+                        .error()
+                        .map(|error| (completed.flag(), error.to_owned()));
                     if let Some(finished) = this.core.complete(completed) {
                         cx.emit(finished);
                     }
-                    cx.notify();
+                    if previous.as_ref() != Some(&this.core.flags[&Flag::DisplayNotifications]) {
+                        if let Some((flag, error)) = failure {
+                            eprintln!("UI preference {flag:?}: {error}");
+                        }
+                        cx.notify();
+                    }
                     cx.defer(move |_| drop(accepted));
                 });
             }
             let _ = this.update(cx, |this, _| this.worker = None);
+        }));
+    }
+    fn start_notification_watcher(&mut self, cx: &mut Context<Self>) {
+        if self.notification_watcher.is_some()
+            || self.core.closing
+            || !self.core.notification_watch.active
+        {
+            return;
+        }
+        let generation = self.core.notification_watch.generation;
+        self.notification_watcher = Some(cx.spawn(async move |this, cx| {
+            loop {
+                // Notifications can be missed or coalesced by file replacement.
+                // Rechecking the one mounted key also handles atomic publication.
+                cx.background_executor()
+                    .timer(std::time::Duration::from_millis(250))
+                    .await;
+                let running = this.update(cx, |this, cx| {
+                    if this.core.closing
+                        || !this.core.notification_watch.active
+                        || this.core.notification_watch.generation != generation
+                    {
+                        return false;
+                    }
+                    this.core.poll_notifications();
+                    this.start_worker(cx);
+                    true
+                });
+                if !matches!(running, Ok(true)) {
+                    break;
+                }
+            }
         }));
     }
 }
@@ -443,6 +647,7 @@ pub fn begin_exit(cx: &mut App) {
     let owner = UiPreferences::shared(cx);
     owner.update(cx, |owner, cx| {
         owner.core.begin_exit();
+        owner.notification_watcher = None;
         cx.notify();
     });
 }
@@ -454,6 +659,7 @@ pub fn cancel_exit(cx: &mut App) {
     owner.update(cx, |owner, cx| {
         owner.core.cancel_exit();
         owner.start_worker(cx);
+        owner.start_notification_watcher(cx);
         cx.notify();
     });
 }

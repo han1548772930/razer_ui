@@ -29,6 +29,8 @@ UNRESOLVED_REPORT = ".analysis/results/reverse-pending/unresolved-current.json"
 DOC = "docs/re/native-bulk-reverse.md"
 BEGIN = "<!-- reverse-pending:begin -->"
 END = "<!-- reverse-pending:end -->"
+CURRENT_BEGIN = "<!-- reverse-pending-current:begin -->"
+CURRENT_END = "<!-- reverse-pending-current:end -->"
 INPUT_PREFIXES = (".analysis/inputs/official-native-current/",
                   ".analysis/inputs/host-current/", ".analysis/inputs/installed-current/")
 
@@ -58,12 +60,50 @@ def execute_process_task(task, previous=None):
     return {**_process_batch.execute(task), "worker_pid": os.getpid()}
 
 
-def retained_task_artifact_valid(record, task, field=None):
+def retained_task_artifact_valid(record, task, field=None, supplement_owner=None):
     if valid(record):
         return True
+    if "bytes" not in record:
+        try:
+            path = a.resolve(record["path"], ".analysis")
+            if path.is_file() and a.sha(path) == record["sha256"]:
+                return True
+        except (OSError, KeyError, ValueError, TypeError):
+            pass
     name = record.get("path", "")
     digest = task.get("sha256")
-    if (field != "source_database" or re.fullmatch(r"[0-9a-f]{64}", str(digest)) is None
+    source_fields = {
+        "validator_source": {"tools/native_source_correspondence.py", "tools/native_ia64_contracts.py",
+                             "tools/native_import_forwarders.py", "tools/native_attempt_history.py"},
+        "boundary_validator": {"tools/native_boundaries.py"},
+        "callsite_type_validator": {"tools/native_callsites.py"},
+        "type_owner_validator": {"tools/native_callsites.py"},
+        "failed_validator_record": {"tools/native_callsites.py"},
+        "capture_tool": {"tools/ida/supplement.py"},
+    }
+    if name in source_fields.get(field, ()):
+        try:
+            for path in (a.resolve(name, "tools"), a.ROOT / ".analysis/results/reverse-pending/tool-sources" /
+                         (str(record["sha256"]) + ".py")):
+                if (path.is_file() and ("bytes" not in record or path.stat().st_size == record["bytes"])
+                        and a.sha(path) == record["sha256"]):
+                    return True
+            return False
+        except (OSError, KeyError, ValueError, TypeError):
+            return False
+    if (field == "capture" and supplement_owner is not None and name.startswith("preanalysis/")
+            and re.fullmatch(r"\.analysis/results/native/" + re.escape(str(digest))
+                             + r"/supplements/[0-9a-f]{16}(?:-[0-9a-f]{16})?", supplement_owner)):
+        try:
+            path = a.resolve(supplement_owner + "/" + name, supplement_owner)
+            return path.is_file() and path.stat().st_size == record["bytes"] and a.sha(path) == record["sha256"]
+        except (OSError, KeyError, ValueError, TypeError):
+            return False
+    if (field in {"proof", "receipt"} and re.fullmatch(r"[0-9a-f]{64}", str(digest))
+            and name == ".analysis/results/native/" + digest + "/embedded-function-attribution.json"):
+        import native_embedded
+        return native_embedded.retained_attribution_reference_valid(a, record, digest)
+    if (field not in {"source_database", "source_database_after"} or re.fullmatch(r"[0-9a-f]{64}", str(digest)) is None
             or not name.startswith(".work/native/" + digest + "/")
             or Path(name).suffix.lower() not in {".i64", ".idb"}):
         return False
@@ -74,17 +114,40 @@ def retained_task_artifact_valid(record, task, field=None):
         return False
 
 
-def check_retained_task(task):
+def check_retained_task(task, *, historical_sources=None):
     """Recheck every retained nested byte identity before resuming a task list."""
-    def check_records(value, field=None):
+    def check_records(value, field=None, supplement_owner=None):
         if isinstance(value, dict):
-            if {"path", "bytes", "sha256"}.issubset(value) and not retained_task_artifact_valid(value, task, field):
-                raise ValueError("Retained queue artifact changed: " + value["path"])
+            for key in ("receipt", "replacement_supplement"):
+                receipt = value.get(key)
+                if (isinstance(receipt, dict) and re.fullmatch(r"\.analysis/results/native/" + re.escape(
+                        str(task.get("sha256"))) + r"/supplements/[0-9a-f]{16}(?:-[0-9a-f]{16})?/capture\.json",
+                        str(receipt.get("path"))) and valid(receipt)):
+                    supplement_owner = receipt["path"].rsplit("/", 1)[0]
+            if {"path", "sha256"}.issubset(value) and not retained_task_artifact_valid(
+                    value, task, field, supplement_owner):
+                if (field == "capture_tool" and task.get("kind") == "native"
+                        and set(value) == {"path", "sha256"} and value["path"] == "tools/ida/supplement.py"
+                        and re.fullmatch(r"[0-9a-f]{64}", str(value["sha256"]))):
+                    if historical_sources is not None:
+                        historical_sources.append({"task_id": task["id"], "reference": value,
+                            "source_bytes_verified": False,
+                            "scope": "Historical analyzer source identity; retained machine artifacts are checked independently"})
+                else:
+                    raise ValueError("Retained queue artifact changed: " + str(value["path"]))
             for name, child in value.items():
-                check_records(child, name)
+                if (name == "failed_validator_record" and value.get("failed_validator_source", False) is None
+                        and value.get("failed_validator_source_bytes_verified") is False):
+                    # The ended diagnostic explicitly records unavailable historical source, not a live dependency.
+                    if (not isinstance(child, dict) or child.get("path") != "tools/native_callsites.py"
+                            or type(child.get("bytes")) is not int or child["bytes"] <= 0
+                            or re.fullmatch(r"[0-9a-f]{64}", str(child.get("sha256"))) is None):
+                        raise ValueError("Unavailable failed validator has no exact historical identity")
+                    continue
+                check_records(child, name, supplement_owner)
         elif isinstance(value, list):
             for child in value:
-                check_records(child)
+                check_records(child, supplement_owner=supplement_owner)
 
     for key in ("resolution", "receipt"):
         if key in task:
@@ -142,6 +205,48 @@ def frozen_result_reference(record):
     if not valid(retained):
         raise ValueError("Frozen task result bytes are unavailable: " + record["path"])
     return retained
+
+
+def frozen_frontend_result(review):
+    """Keep historical failures distinct from a verified current source closure."""
+    historical = review.get("status")
+    if (historical not in {"passed", "unresolved"} or review.get("semantics_complete") is not False
+            or review.get("verification_only") is not True or review.get("target_execution") is not False
+            or review.get("changed_during_query") != []
+            or not isinstance(review.get("failures"), list)
+            or historical == "passed" and (review["failures"] or review.get("current_failures") != [])):
+        raise ValueError("Frontend recheck must preserve its explicit static scope and stable evidence")
+    result = {"status": historical, "historical_status": historical, "closure_status": historical,
+              "semantic_review": "required"}
+    replacement = review.get("replacement_resolution")
+    if replacement is None or replacement.get("status") != "verified":
+        return result
+    if (replacement.get("resolution_method") != "verified_current_official_source_replacement"
+            or replacement.get("historical_failures_preserved") is not True
+            or replacement.get("original_task_passed") is not (historical == "passed")
+            or replacement.get("failures") != [] or replacement.get("source_maps_recovered") is not False
+            or replacement.get("semantics_complete") is not False
+            or replacement.get("runtime_acceptance") != "unverified"):
+        raise ValueError("Frontend replacement cannot erase historical failures or extend its verified scope")
+    closures = replacement.get("current_source_closures")
+    if not isinstance(closures, list) or not closures:
+        raise ValueError("Frontend replacement has no complete current source closure")
+    for source in closures:
+        closure = source.get("runtime_closure", {})
+        recovery = source.get("recovery")
+        if (source.get("complete_originals_and_ast") is not True or source.get("capture") is None
+                or not isinstance(recovery, dict) or recovery.get("missing_factories") != []
+                or recovery.get("scan_failures") != [] or closure.get("status") != "verified"
+                or closure.get("failures") != [] or closure.get("source_maps_recovered") is not False
+                or closure.get("target_execution") is not False):
+            raise ValueError("Frontend replacement source, AST, factory recovery or runtime dependencies remain incomplete")
+    cache = replacement.get("cache_extra_coverage")
+    if cache is not None and (cache.get("status") != "verified" or cache.get("failures") != []
+            or type(cache.get("cached_extra_urls")) is not int
+            or cache.get("cached_extra_urls") != cache.get("verified_extra_urls")):
+        raise ValueError("Frontend replacement does not cover all historical cache extras")
+    return {**result, "status": "passed", "closure_status": "passed",
+            "resolution_method": replacement["resolution_method"]}
 
 
 def valid(row):
@@ -456,7 +561,7 @@ def active_native_sessions(directory):
             continue
         data = json.loads(path.read_bytes())
         if not data.get("finished_at_utc"):
-            alive = process_alive(data.get("pid"))
+            alive = process_alive(data.get("pid") or data.get("coordinator_pid"))
             if alive is not False:
                 rows.append({"session": identity(path), "pid": data.get("pid"),
                              "process_state": "running" if alive else "unknown"})
@@ -579,11 +684,51 @@ def load_native_reviews(specs):
             if shared_tails:
                 merge_options["shared_tail_specs"] = shared_specs
             if fresh_inlines:
-                merge_options["fresh_inline_rvas"] = [row["rva"] for row in fresh_inlines]
+                if any(row.get("inline_scope") not in {None, "reviewed_nested_register_leaf"} for row in fresh_inlines):
+                    raise ValueError("Native fresh inline review has an unknown explicit scope")
+                merge_options["fresh_inline_rvas"] = [row["rva"] for row in fresh_inlines
+                    if row.get("inline_scope") != "reviewed_nested_register_leaf"]
+                merge_options["fresh_inline_register_leaf_rvas"] = [row["rva"] for row in fresh_inlines
+                    if row.get("inline_scope") == "reviewed_nested_register_leaf"]
             if "reanalyze_type_owners" in plan:
                 merge_options["reanalyze_type_owners"] = plan["reanalyze_type_owners"]
             if "propagate_direct_calls" in plan:
                 merge_options["propagate_direct_calls"] = plan["propagate_direct_calls"]
+            if "decompiler_prepass_rvas" in plan:
+                prepasses = plan["decompiler_prepass_rvas"]
+                if (not isinstance(prepasses, list) or not prepasses or len(prepasses) > 256
+                        or any(not isinstance(rva, str) or not re.fullmatch(r"0x[0-9a-f]+", rva) for rva in prepasses)
+                        or len(set(prepasses)) != len(prepasses)):
+                    raise ValueError("Native prepass review requires exact unique selected RVAs")
+                merge_options["decompiler_prepass_rvas"] = prepasses
+            if "boundary_reviews" in plan:
+                boundaries = plan["boundary_reviews"]
+                if (not isinstance(boundaries, list) or not boundaries or len(boundaries) > 256
+                        or any(not isinstance(spec, str) or not spec.strip() for spec in boundaries)
+                        or len(set(boundaries)) != len(boundaries)):
+                    raise ValueError("Native boundary review requires unique explicit evidence references")
+                merge_options["boundary_reviews"] = boundaries
+            if "instruction_reviews" in plan:
+                instructions = plan["instruction_reviews"]
+                if (not isinstance(instructions, list) or not instructions or len(instructions) > 256
+                        or any(not isinstance(spec, str) or not spec.strip() for spec in instructions)
+                        or len(set(instructions)) != len(instructions)):
+                    raise ValueError("Native instruction review requires unique explicit evidence references")
+                merge_options["instruction_reviews"] = instructions
+            if "frame_reviews" in plan:
+                frames = plan["frame_reviews"]
+                if (not isinstance(frames, list) or not frames or len(frames) > 64
+                        or any(not isinstance(spec, str) or not spec.strip() for spec in frames)
+                        or len(set(frames)) != len(frames)):
+                    raise ValueError("Native CPU frame review requires unique explicit evidence references")
+                merge_options["frame_reviews"] = frames
+            if "switch_reviews" in plan:
+                switches = plan["switch_reviews"]
+                if (not isinstance(switches, list) or not switches or len(switches) > 64
+                        or any(not isinstance(spec, str) or not spec.strip() for spec in switches)
+                        or len(set(switches)) != len(switches)):
+                    raise ValueError("Native switch review requires unique explicit complete-table references")
+                merge_options["switch_reviews"] = switches
             observation_options = {}
             if "static_observation" in plan:
                 plan_pointer = pointer + ("/" + str(plan_index) if isinstance(value, list) else "")
@@ -745,33 +890,48 @@ class Batch:
                if review.get("function_partitions") else {}),
             **({"shared_tail_specs": native_shared_tail_specifications(review["function_shared_tails"])}
                if review.get("function_shared_tails") else {}),
-            **({"fresh_inline_rvas": [row["rva"] for row in review["function_fresh_inlines"]]}
+            **({"fresh_inline_rvas": [row["rva"] for row in review["function_fresh_inlines"]
+                                      if row.get("inline_scope") != "reviewed_nested_register_leaf"],
+                "fresh_inline_register_leaf_rvas": [row["rva"] for row in review["function_fresh_inlines"]
+                                                    if row.get("inline_scope") == "reviewed_nested_register_leaf"]}
                if review.get("function_fresh_inlines") else {}),
             observation_evidence=review.get("observation_evidence_spec"),
             reanalyze_type_owners=review.get("reanalyze_type_owners", False),
-            propagate_direct_calls=review.get("propagate_direct_calls", False))
+            propagate_direct_calls=review.get("propagate_direct_calls", False),
+            boundary_reviews=review.get("boundary_reviews", ()), instruction_reviews=review.get("instruction_reviews", ()),
+            decompiler_prepass_rvas=review.get("decompiler_prepass_rvas", ()),
+            frame_reviews=review.get("frame_reviews", ()), switch_reviews=review.get("switch_reviews", ()))
         selection_id = hashlib.sha256(json.dumps(selection, sort_keys=True).encode()).hexdigest()[:16]
-        output = a.ROOT / ".analysis/results/native" / capture["input_sha256"] / "supplements" / selection_id
-        session_path, plan_path = output / "session.json", output / "plan.json"
-        if not session_path.is_file():
-            return None
-        session = json.loads(session_path.read_bytes())
-        if not session.get("finished_at_utc"):
-            return None
-        plan = json.loads(plan_path.read_bytes())
-        if (type(session.get("exit_code")) is not int or plan.get("function_selection") != selection
-                or plan.get("input") != a.rel(source) or plan.get("sha256") != capture["input_sha256"]
-                or plan.get("base_capture") != {"path": review["source_capture"]["path"], "sha256": review["source_capture"]["sha256"]}
-                or session.get("database") != plan.get("database")):
-            raise ValueError("Completed supplemental attempt differs from its exact retained plan")
-        database = plan["source_database"]
-        if a.sha(a.resolve(database["path"], ".work/native")) != database["sha256"]:
-            raise ValueError("Retained source database changed before completed-attempt adoption")
-        record = {"session": identity(session_path), "plan": identity(plan_path), "exit_code": session["exit_code"]}
-        capture_path = output / "capture.json"
-        if capture_path.is_file():
-            record["capture"] = identity(capture_path)
-        return record
+        directory = a.ROOT / ".analysis/results/native" / capture["input_sha256"] / "supplements"
+        legacy = directory / selection_id
+        candidates = []
+        for session_path in directory.glob("*/session.json"):
+            output, plan_path = session_path.parent, session_path.parent / "plan.json"
+            session = json.loads(session_path.read_bytes())
+            if not session.get("finished_at_utc"):
+                continue
+            if not plan_path.is_file():
+                if session.get("selection") == selection or output == legacy:
+                    raise ValueError("Completed supplemental attempt omitted its exact retained plan")
+                continue
+            plan = json.loads(plan_path.read_bytes())
+            if plan.get("function_selection") != selection and output != legacy:
+                continue
+            if (type(session.get("exit_code")) is not int or plan.get("function_selection") != selection
+                    or plan.get("input") != a.rel(source) or plan.get("sha256") != capture["input_sha256"]
+                    or plan.get("base_capture") != {"path": review["source_capture"]["path"], "sha256": review["source_capture"]["sha256"]}
+                    or session.get("database") != plan.get("database")):
+                raise ValueError("Completed supplemental attempt differs from its exact retained plan")
+            a.verify_native_supplement_request(plan, session)
+            database = plan["source_database"]
+            if a.sha(a.resolve(database["path"], ".work/native")) != database["sha256"]:
+                raise ValueError("Retained source database changed before completed-attempt adoption")
+            record = {"session": identity(session_path), "plan": identity(plan_path), "exit_code": session["exit_code"]}
+            capture_path = output / "capture.json"
+            if capture_path.is_file():
+                record["capture"] = identity(capture_path)
+            candidates.append((session_path.stat().st_mtime_ns, session_path.as_posix(), record))
+        return max(candidates)[2] if candidates else None
 
     def discover(self):
         tasks, native = [], {}
@@ -843,10 +1003,9 @@ class Batch:
                 if self.recheck_mode and task["kind"] == "frontend":
                     import frontend
                     review = frontend.recheck_frozen_frontend(task)
-                    if review.get("status") not in {"passed", "unresolved"} or review.get("semantics_complete") is not False:
-                        raise ValueError("Frontend recheck must preserve its explicit static scope")
-                    result = {"status": review["status"], "receipt": retain_review_json(review),
-                              "semantic_review": "required"}
+                    if review.get("task_id") != task["id"]:
+                        raise ValueError("Frontend recheck belongs to another frozen task")
+                    result = {**frozen_frontend_result(review), "receipt": retain_review_json(review)}
                 else:
                     result = self.native(task) if task["kind"] == "native" else self.frontend(task)
             except Exception as error:
@@ -937,6 +1096,16 @@ class Batch:
                         arguments.append("--reanalyze-type-owners")
                     if review.get("propagate_direct_calls"):
                         arguments.append("--propagate-direct-calls")
+                    for boundary in review.get("boundary_reviews", []):
+                        arguments.extend(["--boundary-review", boundary])
+                    for instruction in review.get("instruction_reviews", []):
+                        arguments.extend(["--instruction-review", instruction])
+                    for rva in review.get("decompiler_prepass_rvas", []):
+                        arguments.extend(["--decompiler-prepass-rva", rva])
+                    for frame in review.get("frame_reviews", []):
+                        arguments.extend(["--frame-review", frame])
+                    for switch in review.get("switch_reviews", []):
+                        arguments.extend(["--switch-review", switch])
                     for row in review.get("function_merges", []):
                         arguments.extend(["--merge-functions", row["owner_rva"] + "=" + ",".join(row["member_rvas"])])
                     for row in review.get("function_outlines", []):
@@ -946,7 +1115,9 @@ class Batch:
                     for specification in native_shared_tail_specifications(review.get("function_shared_tails", [])):
                         arguments.extend(["--share-function-tail", specification])
                     for row in review.get("function_fresh_inlines", []):
-                        arguments.extend(["--fresh-inline-function-rva", row["rva"]])
+                        arguments.extend(["--fresh-inline-register-leaf-rva" if
+                            row.get("inline_scope") == "reviewed_nested_register_leaf" else
+                            "--fresh-inline-function-rva", row["rva"]])
                     if review["type_evidence"]:
                         arguments.extend(["--type-evidence", review["type_evidence"]])
                     if review.get("observation_evidence_spec"):
@@ -1184,6 +1355,272 @@ class Batch:
             a.save(path, ledger)
 
 
+def frozen_failure_tasks(baseline):
+    """Validate the entire frozen identity set before selecting its failed subset."""
+    if (not isinstance(baseline, dict) or baseline.get("schema_version") != 1
+            or not baseline.get("finished_at_utc") or not isinstance(baseline.get("tasks"), list)):
+        raise ValueError("Unresolved recheck requires a completed frozen baseline")
+    tasks, identities = baseline["tasks"], set()
+    for task in tasks:
+        if (not isinstance(task, dict) or not isinstance(task.get("id"), str) or not task["id"]
+                or task["id"] in identities or task.get("kind") not in {"native", "frontend"}
+                or not isinstance(task.get("input"), str) or not task["input"]
+                or task.get("status") not in {"passed", "unresolved", "failed"}):
+            raise ValueError("Frozen baseline tasks must have unique completed identities and known kinds")
+        identities.add(task["id"])
+    summary = baseline.get("summary")
+    expected = {"tasks": len(tasks), "by_status": dict(Counter(task["status"] for task in tasks)),
+                "by_kind": dict(Counter(task["kind"] for task in tasks)),
+                "queue_finished": True, "semantics_complete": False}
+    if summary is not None and (not isinstance(summary, dict)
+            or any(summary.get(key) != value for key, value in expected.items())):
+        raise ValueError("Frozen baseline summary differs from its complete task identities")
+    return {task["id"]: task for task in tasks if task["status"] in {"unresolved", "failed"}}
+
+
+def verify_unresolved_task_result(task, frozen):
+    """Derive static status from the exact result body, never from row counters alone."""
+    field = "resolution" if task["kind"] == "native" else "receipt"
+    other = "receipt" if field == "resolution" else "resolution"
+    if other in task:
+        raise ValueError("Current unresolved task has evidence from another result kind")
+    reference = task.get(field)
+    if reference is None and task["status"] != "passed":
+        return
+    if not isinstance(reference, dict) or not valid(reference):
+        raise ValueError("Current unresolved task lost its exact static result")
+    result = json.loads(a.resolve(reference["path"], ".analysis/results").read_bytes())
+    if not isinstance(result, dict):
+        raise ValueError("Current unresolved static result must be an object")
+    if task["kind"] == "frontend":
+        historical = result.get("historical_receipt")
+        acquisition = result.get("current_acquisition")
+        if (result.get("task_id") != frozen["id"] or not isinstance(historical, dict)
+                or not isinstance(task.get("historical_result"), dict)
+                or any(historical.get(key) != task["historical_result"].get(key) for key in ("bytes", "sha256"))
+                or not isinstance(acquisition, dict)
+                or acquisition.get("path") != frozen["input"] + "/acquisition.json"):
+            raise ValueError("Current frontend result belongs to another frozen task or source")
+        expected = frozen_frontend_result(result)
+        if any(task.get(key) != expected.get(key) for key in
+               ("status", "historical_status", "closure_status", "semantic_review", "resolution_method")):
+            raise ValueError("Current frontend task status differs from its verified source closure")
+        return
+    original = result.get("input")
+    if (not isinstance(original, dict) or original.get("path") != frozen["input"]
+            or original.get("sha256") != frozen.get("sha256")
+            or result.get("verified_base_capture") != frozen.get("base_capture")
+            or result.get("base_capture") != frozen.get("base_capture")
+            or result.get("original_identity_rechecked") is not True
+            or result.get("verification_only") is not True
+            or result.get("target_execution") is not False or result.get("semantics_complete") is not False):
+        raise ValueError("Current native result differs from its frozen input or static scope")
+    for counter, failures in (("resolved", "resolved_failures"), ("remaining", "remaining_failures"),
+                              ("verification_errors", "verification_failures")):
+        if (not isinstance(result.get(failures), list) or type(task.get(counter)) is not int
+                or task[counter] != len(result[failures])):
+            raise ValueError("Current native task counters differ from its result body")
+    conflicts = ("conflicting_function_rvas", "conflicting_functions", "conflicting_contexts")
+    if (not isinstance(result.get("conflicting_function_rvas"), list)
+            or any(not isinstance(result.get(key), dict) for key in conflicts[1:])):
+        raise ValueError("Current native result has no explicit conflict coverage")
+    unresolved = result["remaining_failures"] or result["verification_failures"] or any(result[key] for key in conflicts)
+    if task["status"] != ("unresolved" if unresolved else "passed"):
+        raise ValueError("Current native task status differs from its failures or conflicts")
+
+
+def verified_unresolved_projection(report):
+    """Verify the current increment and project it over unchanged frozen statuses."""
+    if not isinstance(report, dict) or not valid(report.get("baseline")):
+        raise ValueError("Current unresolved projection requires exact retained baseline bytes")
+    baseline = json.loads(a.resolve(report["baseline"]["path"], ".analysis/results").read_bytes())
+    frozen = frozen_failure_tasks(baseline)
+    historical_sources = []
+    current = verified_unresolved_rows(report, report["baseline"], frozen, set(), historical_sources=historical_sources)
+    statuses = {task["id"]: task["status"] for task in baseline["tasks"]}
+    statuses.update({identifier: task["status"] for identifier, task in current.items()})
+    return {"baseline": report["baseline"], "current_increment": report["source_review"],
+        "baseline_tasks": len(statuses),
+        "baseline_by_status": dict(Counter(task["status"] for task in baseline["tasks"])),
+        "increment": report["summary"], "projected_by_status": dict(Counter(statuses.values())),
+        "projection_scope": "Frozen baseline statuses overlaid only by the verified unresolved increment",
+        "baseline_passed_revalidated": False, "semantics_complete": False,
+        "historical_capture_tool_sources_unverified": historical_sources,
+        "target_execution": False, "official_dll_comparison": "not_executed",
+        "real_device_acceptance": "not_executed"}
+
+
+def verify_current_unresolved():
+    """Read-only verification for the workspace maintenance entry."""
+    report = json.loads((a.ROOT / UNRESOLVED_REPORT).read_bytes())
+    baseline = identity(a.ROOT / REPORT)
+    if any(report.get("baseline", {}).get(key) != baseline[key] for key in ("bytes", "sha256")):
+        raise ValueError("Current unresolved projection does not belong to the retained queue baseline")
+    return verified_unresolved_projection(report)
+
+
+def publish_unresolved_gaps(report):
+    """Overlay current static checks on frozen failures under the queue's owner."""
+    verified_unresolved_projection(report)
+    _write_unresolved_gaps(report)
+
+
+def _write_unresolved_gaps(report):
+    reference, baseline_reference = report["source_review"], report["baseline"]
+    baseline = json.loads(a.resolve(baseline_reference["path"], ".analysis/results").read_bytes())
+    frozen = frozen_failure_tasks(baseline)
+    current = {task["baseline_task_id"]: task for task in report["tasks"]}
+    rows = []
+    for identifier, task in sorted(frozen.items()):
+        result = current.get(identifier)
+        if result and result["status"] == "passed":
+            continue
+        rows.append({"kind": "reverse_pending_task_unresolved", "task_id": identifier,
+            "input": task["input"], "status": result["status"] if result else "not_rechecked",
+            "evidence": UNRESOLVED_REPORT, "baseline": baseline_reference,
+            "current_increment": reference,
+            "result": {key: result[key] for key in ("resolution", "receipt", "error", "remaining",
+                       "verification_errors") if key in result} if result else {},
+            "scope": "Current static recheck; historical acquisition findings keep their independent owners"})
+    rows.append({"kind": "semantic_and_runtime_acceptance_pending", "evidence": UNRESOLVED_REPORT,
+        "baseline": baseline_reference, "current_increment": reference,
+        "scope": "Static checks do not establish complete product semantics, Rust, UI wiring or actual DLL/device comparison"})
+    path = a.ROOT / ".analysis/results/gaps.json"
+    with a.index_lock(a.ROOT / ".analysis/results/gaps.lock"):
+        ledger = json.loads(path.read_bytes()) if path.is_file() else {"schema_version": 1, "owners": {}}
+        ledger.setdefault("owners", {})["tools/reverse_pending.py"] = rows
+        a.save(path, ledger)
+
+
+def publish_unresolved_document(report):
+    """Keep the completed baseline and current static increment visibly distinct."""
+    if not (a.ROOT / DOC).is_file():
+        return
+    projection = verified_unresolved_projection(report)
+    _write_unresolved_document(report, projection["baseline_tasks"])
+
+
+def _write_unresolved_document(report, baseline_tasks):
+    document = a.ROOT / DOC
+    if not document.is_file():
+        return
+    summary = report["summary"]
+    text = (CURRENT_BEGIN + "\n## 未决项当前复核\n\n"
+        + "冻结基线的 " + str(summary["baseline_failures"]) + " 项未决已复核 " + str(summary["rechecked"])
+        + " 项；当前状态：`" + json.dumps(summary["by_status"], ensure_ascii=False, sort_keys=True)
+        + "`，尚未复核 " + str(summary["not_rechecked"]) + " 项。以[当前统一收据](../../"
+        + UNRESOLVED_REPORT + ")及其不可变 `source_review` 为准；上面的 " + str(baseline_tasks)
+        + " 项收据保留原完成事实。\n\n"
+        + "静态通过可来自完整反编译、原始函数上下文、精确导入跳转或独立核验的来源汇编／架构契约，"
+        + "每项保留具体依据和原始分析器失败。静态语义、Rust 独立实现、UI／后端接线、模拟验证和实际 DLL／设备验收分别记录；"
+        + "本轮复核不提升后几项的完成状态。\n" + CURRENT_END)
+    raw = document.read_text(encoding="utf-8")
+    if CURRENT_BEGIN in raw or CURRENT_END in raw:
+        if raw.count(CURRENT_BEGIN) != 1 or raw.count(CURRENT_END) != 1:
+            raise ValueError("Current static document markers are incomplete or duplicated")
+        start, stop = raw.index(CURRENT_BEGIN), raw.index(CURRENT_END) + len(CURRENT_END)
+        if stop <= start:
+            raise ValueError("Current static document markers are reversed")
+        raw = raw[:start] + text + raw[stop:]
+    else:
+        raw = raw.rstrip() + "\n\n" + text + "\n"
+    document.write_text(raw, encoding="utf-8")
+
+
+def verified_unresolved_rows(previous, baseline_reference, available, selected_ids, *, historical_sources=None):
+    """Import only unchanged, retained results belonging to the exact frozen tasks."""
+    if previous is None:
+        return {}
+    if not isinstance(previous, dict):
+        raise ValueError("Current unresolved increment must be an object")
+    reference = previous.get("source_review")
+    if (not isinstance(reference, dict) or not valid(reference)
+            or reference.get("path") != ".analysis/results/reverse-pending/review-sources/"
+               + str(reference.get("sha256")) + ".json"):
+        raise ValueError("Current unresolved increment retained source changed")
+    retained = json.loads(a.resolve(reference["path"], ".analysis/results").read_bytes())
+    if retained != {key: value for key, value in previous.items() if key != "source_review"}:
+        raise ValueError("Current unresolved increment differs from its retained source")
+    if (previous.get("schema_version") != 1
+            or previous.get("kind") != "frozen_unresolved_static_increment"
+            or previous.get("baseline") != baseline_reference
+            or previous.get("baseline_failure_count") != len(available)
+            or previous.get("semantics_complete") is not False
+            or previous.get("target_execution") is not False
+            or previous.get("official_dll_comparison") != "not_executed"
+            or previous.get("real_device_acceptance") != "not_executed"
+            or not previous.get("finished_at_utc")):
+        raise ValueError("Current unresolved increment has a different baseline or static scope")
+    history, seen = previous, {reference["sha256"]}
+    while "previous_increment" in history:
+        predecessor = history["previous_increment"]
+        if (not isinstance(predecessor, dict) or not valid(predecessor)
+                or predecessor.get("sha256") in seen or predecessor.get("path") !=
+                   ".analysis/results/reverse-pending/review-sources/" + str(predecessor.get("sha256")) + ".json"):
+            raise ValueError("Current unresolved increment history lost its exact retained predecessor")
+        seen.add(predecessor["sha256"])
+        history = json.loads(a.resolve(predecessor["path"], ".analysis/results").read_bytes())
+        if (not isinstance(history, dict) or history.get("schema_version") != 1
+                or history.get("kind") != "frozen_unresolved_static_increment"
+                or history.get("baseline") != baseline_reference
+                or history.get("baseline_failure_count") != len(available)
+                or history.get("semantics_complete") is not False
+                or history.get("target_execution") is not False
+                or history.get("official_dll_comparison") != "not_executed"
+                or history.get("real_device_acceptance") != "not_executed"):
+            raise ValueError("Current unresolved increment history changed its frozen baseline or static scope")
+    tool, tool_reference = previous.get("tool"), previous.get("tool_reference")
+    if (not isinstance(tool, dict) or tool.get("path") != "tools/reverse_pending.py"
+            or not isinstance(tool_reference, dict) or not valid(tool_reference)
+            or tool_reference.get("path") != ".analysis/results/reverse-pending/tool-sources/"
+               + str(tool.get("sha256")) + ".py"
+            or any(tool.get(key) != tool_reference.get(key) for key in ("bytes", "sha256"))):
+        raise ValueError("Current unresolved increment has no exact retained tool source")
+    tasks = previous.get("tasks")
+    if not isinstance(tasks, list):
+        raise ValueError("Current unresolved increment tasks must be a list")
+    rows = {}
+    for task in tasks:
+        if not isinstance(task, dict) or not isinstance(task.get("baseline_task_id"), str):
+            raise ValueError("Current unresolved increment task identity is malformed")
+        identifier = task["baseline_task_id"]
+        if identifier in rows or identifier not in available:
+            raise ValueError("Current unresolved increment has duplicate or foreign tasks")
+        frozen = available[identifier]
+        if any(task.get(key) != frozen.get(key) for key in ("kind", "input", "sha256")):
+            raise ValueError("Current unresolved increment task differs from its frozen identity")
+        historical = frozen.get("resolution", frozen.get("receipt"))
+        original = task.get("historical_result")
+        if (historical is not None and (not isinstance(original, dict) or not valid(original)
+                or any(original.get(key) != historical.get(key) for key in ("bytes", "sha256")))
+                or historical is None and original is not None):
+            raise ValueError("Current unresolved increment historical result differs from the frozen task")
+        if task.get("status") not in {"passed", "unresolved", "failed"} or not task.get("finished_at_utc"):
+            raise ValueError("Current unresolved increment task has no completed static result")
+        if task["status"] == "passed":
+            field = "resolution" if task["kind"] == "native" else "receipt"
+            if not isinstance(task.get(field), dict) or task.get("remaining", 0) != 0 \
+                    or task.get("verification_errors", 0) != 0:
+                raise ValueError("Current unresolved increment passed task has no complete static evidence")
+        if identifier in selected_ids:
+            for field in ("resolution", "receipt"):
+                if field in task and (not isinstance(task[field], dict) or not valid(task[field])):
+                    raise ValueError("Selected unresolved task lost its retained previous result")
+        else:
+            check_retained_task({**task, "id": identifier}, historical_sources=historical_sources)
+        verify_unresolved_task_result(task, frozen)
+        rows[identifier] = task
+    summary = {"baseline_failures": len(available), "rechecked": len(rows),
+               "by_status": dict(Counter(task["status"] for task in rows.values())),
+               "not_rechecked": len(available) - len(rows), "semantics_complete": False}
+    selected = previous.get("selected_task_ids")
+    if (previous.get("summary") != summary or not isinstance(selected, list)
+            or any(not isinstance(identifier, str) or identifier not in rows for identifier in selected)
+            or len(set(selected)) != len(selected) or not selected):
+        raise ValueError("Current unresolved increment summary or selection differs from its frozen tasks")
+    return {identifier: task for identifier, task in rows.items() if identifier not in selected_ids}
+
+
 def recheck_unresolved(args):
     """Recheck only explicit frozen failures, publishing a separate current increment."""
     if any(getattr(args, name, False) for name in ("resume", "resume_reason", "native_review")):
@@ -1194,11 +1631,9 @@ def recheck_unresolved(args):
     baseline_path = a.ROOT / REPORT
     baseline_raw = baseline_path.read_bytes()
     baseline = json.loads(baseline_raw)
-    if baseline.get("schema_version") != 1 or not baseline.get("finished_at_utc"):
-        raise ValueError("Unresolved recheck requires a completed frozen baseline")
-    candidates = [task for task in baseline["tasks"] if task.get("status") in {"unresolved", "failed"}]
-    available = {task["id"]: task for task in candidates}
-    if len(available) != len(candidates) or not available:
+    available = frozen_failure_tasks(baseline)
+    candidates = list(available.values())
+    if not available:
         raise ValueError("Frozen failures must have unique task identities")
     identifiers = getattr(args, "task_id", None)
     if identifiers is not None:
@@ -1232,16 +1667,14 @@ def recheck_unresolved(args):
     tool_source = identity(tool_path)
     destination = a.ROOT / UNRESOLVED_REPORT
     previous = json.loads(destination.read_bytes()) if destination.is_file() else None
-    if previous and previous.get("baseline") != baseline_reference:
-        raise ValueError("Current unresolved increment belongs to a different frozen baseline")
-    rows = {row["baseline_task_id"]: row for row in previous.get("tasks", [])} if previous else {}
-    if set(rows) - available.keys():
-        raise ValueError("Current unresolved increment contains a foreign task")
+    rows = verified_unresolved_rows(previous, baseline_reference, available, {task["id"] for task in candidates})
     report = {"schema_version": 1, "kind": "frozen_unresolved_static_increment", "baseline": baseline_reference,
               "baseline_failure_count": len(available), "selected_task_ids": [task["id"] for task in candidates],
               "started_at_utc": a.stamp(), "tool": batch.tool, "tool_reference": tool_source,
               "target_execution": False, "semantics_complete": False,
               "official_dll_comparison": "not_executed", "real_device_acceptance": "not_executed"}
+    if previous is not None:
+        report["previous_increment"] = previous["source_review"]
 
     def publish():
         if baseline_path.read_bytes() != baseline_raw or identity(Path(__file__)) != batch.tool:
@@ -1252,7 +1685,11 @@ def recheck_unresolved(args):
                              "by_status": dict(counts), "not_rechecked": len(available) - len(rows),
                              "semantics_complete": False}
         reference = retain_review_json(report)
-        a.save(destination, {**report, "source_review": reference})
+        published = {**report, "source_review": reference}
+        projection = verified_unresolved_projection(published)
+        a.save(destination, published)
+        _write_unresolved_gaps(published)
+        _write_unresolved_document(published, projection["baseline_tasks"])
 
     with batch.process_pool() if batch.process_workers else ThreadPoolExecutor(max_workers=batch.workers) as pool:
         futures = {pool.submit(execute_process_task if batch.process_workers else batch.execute, task): task

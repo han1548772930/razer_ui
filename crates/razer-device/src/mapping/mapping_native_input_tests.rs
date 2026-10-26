@@ -593,6 +593,55 @@ fn empty_input_execution_is_not_a_driver_acknowledgement() {
 }
 
 #[test]
+fn endpoint_failure_never_runs_the_sequence_os_callback() {
+    for consumer in [InputConsumer::Endpoint, InputConsumer::Sequence] {
+        let mut driver = MockDriver {
+            submit_results: [Err(driver_error(DriverOperation::Submit))].into(),
+            ..Default::default()
+        };
+        let mut os = MockOs::default();
+        let execution = consumer.submit(&mut driver, &mut os, &[ordinary_key()], Duration::ZERO);
+        assert_eq!(driver.submissions.len(), 1);
+        assert!(!execution.driver_confirmed());
+        assert!(!execution.primary_requests_confirmed());
+        assert_eq!(
+            os.inputs.len(),
+            usize::from(consumer == InputConsumer::Sequence)
+        );
+        assert_eq!(
+            execution.reports[0].os_fallback.is_some(),
+            consumer == InputConsumer::Sequence
+        );
+    }
+}
+
+#[test]
+fn only_sequence_final_failure_owns_os_fallback_and_pending_never_does() {
+    for consumer in [InputConsumer::Endpoint, InputConsumer::Sequence] {
+        let mut driver = MockDriver::default();
+        let mut os = MockOs::default();
+        let mut execution =
+            consumer.submit(&mut driver, &mut os, &[ordinary_key()], Duration::ZERO);
+        assert!(execution.is_pending());
+        assert!(os.inputs.is_empty());
+        consumer.poll(&mut execution, &mut driver, &mut os, Duration::ZERO);
+        assert!(os.inputs.is_empty());
+        driver
+            .poll_results
+            .push_back(Ok(CompletionPoll::Completed(Err(driver_error(
+                DriverOperation::Complete,
+            )))));
+        consumer.poll(&mut execution, &mut driver, &mut os, Duration::ZERO);
+        assert!(!execution.is_pending());
+        assert!(!execution.driver_confirmed());
+        let expected = usize::from(consumer == InputConsumer::Sequence);
+        assert_eq!(os.inputs.len(), expected);
+        consumer.poll(&mut execution, &mut driver, &mut os, Duration::ZERO);
+        assert_eq!(os.inputs.len(), expected, "a callback only runs once");
+    }
+}
+
+#[test]
 fn os_keyboard_flags_match_scancode_extended_and_release_bits_only() {
     for flag in [0, 1, 2, 3, 4, 5, 6, 7, 0xfff8, 0xffff] {
         let plan = plan_os_input(NativeInput::Keyboard(KeyboardInput {

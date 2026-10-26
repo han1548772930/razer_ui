@@ -14,6 +14,32 @@ import host
 from test_host import pe_fixture
 
 
+class FrontendReferenceGapTests(unittest.TestCase):
+    def test_bounded_observation_url_edges_keep_their_declared_missing_originals(self):
+        url = "https://apps.razer.com/catalog.json"
+        edge = {"from": "https://apps.razer.com/main.js", "url": url, "role": "explicit source URL"}
+        result = families.frontend_reference_gaps({"files": [{"url": url}], "edges": [edge]})
+        self.assertEqual(result["declared_non_map_missing"], [{"url": url, "declared_by": [edge]}])
+        self.assertEqual(result["unattributed_non_map_missing"], [])
+        self.assertFalse(result["all_declared_non_map_references_retained"])
+
+    def test_mixed_manifest_and_observation_edges_preserve_debug_map_boundaries(self):
+        result = families.frontend_reference_gaps({
+            "files": [{"url": "https://apps.razer.com/catalog.json", "path": "retained.json"},
+                      {"url": "https://apps.razer.com/main.js.map"}],
+            "edges": [{"url": "https://apps.razer.com/catalog.json"},
+                      {"to": "https://apps.razer.com/main.js.map"}],
+            "unresolved": [{"kind": "dependency_closure_outside_observation"}]})
+        self.assertEqual(result["declared_source_maps_missing"], 1)
+        self.assertTrue(result["all_declared_non_map_references_retained"])
+        self.assertEqual(result["unresolved_by_kind"], {"dependency_closure_outside_observation": 1})
+
+    def test_ambiguous_or_missing_edge_targets_are_rejected(self):
+        for edge in ({}, {"url": None}, {"to": ""}, {"to": "first", "url": "second"}):
+            with self.subTest(edge=edge), self.assertRaisesRegex(ValueError, "unique target URL"):
+                families.frontend_reference_gaps({"files": [], "edges": [edge]})
+
+
 class PromiseParameterBindingTests(unittest.TestCase):
     def setUp(self):
         self.parser = host.HostLocalAudit().parser

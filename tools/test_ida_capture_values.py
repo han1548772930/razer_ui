@@ -163,6 +163,133 @@ class TypedCaptureValuesTests(unittest.TestCase):
                                  and call.args[0].attr == "location" for call in calls), name)
 
 
+class PhysicalTbyteRegisterTests(unittest.TestCase):
+    def fixture(self, issue=None):
+        register, physical = 713, 45
+
+        class Type:
+            def __str__(self): return "_TBYTE"
+            def is_float(self): return issue == "float32"
+            def is_floating(self): return issue != "not_float"
+            def is_tbyte(self): return issue != "not_tbyte"
+            def get_size(self):
+                if issue == "type_error": raise ValueError("SDK type unavailable")
+                return 8 if issue == "type_width" else 10
+
+        class Operand:
+            def make_reg(self, value, width):
+                self.r = value + (issue == "operand_register")
+                self.size = width - (issue == "operand_width")
+            def is_reg(self, value, width):
+                return issue != "not_exact" and self.r == value and self.size == width
+            def is_cc(self): return issue == "condition"
+            def is_bit_reg(self): return issue == "bit"
+            def is_kreg(self): return issue == "operand_kernel"
+
+        def mapped(value, width):
+            self.assertEqual(value, register)
+            if issue == "mapping_error": raise ValueError("SDK mapping unavailable")
+            return (4 if issue == "original_width_mapping" else -1) if width == 10 else (
+                -1 if issue == "missing_identity_mapping" else physical)
+
+        def parse(info, name):
+            info.reg = physical + (issue == "parsed_register")
+            info.size = 8 if issue == "capacity" else 10
+            return issue != "parse"
+
+        sdk = SimpleNamespace(mop_t=Operand, is_kreg=lambda value: issue == "kernel",
+            get_temp_regs=lambda: SimpleNamespace(has_all=lambda value, width: issue == "temporary"),
+            mreg2reg=mapped, reg2mreg=lambda value: register + (issue == "identity_roundtrip"))
+        processor = SimpleNamespace(get_reg_name=lambda value, width: "" if issue == "name" else "physical_float",
+            reg_info_t=SimpleNamespace, parse_reg_name=parse,
+            ph_get_tbyte_size=lambda: 8 if issue == "tbyte" else 10)
+        location = Location("register", register, 1 if issue == "offset" else 0)
+        observed = VALUES.argument_location(location, "hexrays_microregisters")
+        return observed, Type(), sdk, processor, location
+
+    def test_physical_proof_requires_each_independent_sdk_fact_and_keeps_ten_bytes(self):
+        issues = (None, "not_float", "not_tbyte", "float32", "type_width", "type_error", "operand_register", "operand_width", "not_exact",
+                  "condition", "bit", "operand_kernel", "kernel", "temporary", "original_width_mapping",
+                  "mapping_error", "missing_identity_mapping", "parsed_register", "capacity", "parse",
+                  "identity_roundtrip", "name", "tbyte", "offset")
+        for issue in issues:
+            with self.subTest(issue=issue):
+                observed, typ, sdk, processor, _ = self.fixture(issue)
+                proof = VALUES.physical_tbyte_register_proof(observed, 10, typ, sdk, processor)
+                self.assertEqual(proof["complete"], issue is None)
+                self.assertEqual(proof["width"], 10)
+                self.assertEqual(proof["identity_width"], 8)
+                self.assertTrue(proof["identity_mapping_only"])
+                self.assertEqual(json.loads(json.dumps(proof)), proof)
+        for width in (1, 2, 4, 8, 12, 16):
+            observed, typ, sdk, processor, _ = self.fixture()
+            self.assertIsNone(VALUES.physical_tbyte_register_proof(observed, width, typ, sdk, processor))
+
+    def capture(self, issue=None):
+        observed, typ, sdk, processor, location = self.fixture(issue)
+        first, second = Location("register", 45, 0), Location("register", 44, 0)
+        first.off, first.size, second.off, second.size = 0, 8, 8, 2
+        if issue == "split_processor": first.payload = (44, 0)
+        if issue == "split_width": second.size = 1
+        if issue == "split_offset": second.off = 9
+        converted = Location("scattered", first, second)
+        back_first = Location("register", 713, 0)
+        back_first.off, back_first.size = 0, 10
+        if issue == "back_register": back_first.payload = (714, 0)
+        if issue == "back_width": back_first.size = 8
+        returned = Location("scattered", back_first)
+        if issue == "back_split":
+            back_second = Location("register", 705, 0)
+            back_first.size, back_second.off, back_second.size = 8, 8, 2
+            returned = Location("scattered", back_first, back_second)
+        if issue == "back_unknown": returned = Location("none")
+
+        def vd2ida(value, width):
+            if issue == "conversion_error": raise ValueError("SDK conversion unavailable")
+            self.assertEqual(width, 10)
+            return converted
+
+        mba = SimpleNamespace(entry_ea=0x10001000, vd2idaloc=vd2ida,
+                              idaloc2vd=lambda value, width: returned)
+        variable = SimpleNamespace(name="value", type=lambda: typ, is_arg_var=True, width=10,
+                                   defea=0x10001000, defblk=0, location=location)
+        cfunc = SimpleNamespace(mba=mba, get_lvars=lambda: [variable], get_stkoff_delta=lambda: 0)
+        sdk.print_vdloc = lambda value, width: "different_micro_float_name"
+        return VALUES.local_variables(cfunc, sdk, processor)
+
+    def test_independent_proof_preserves_failed_scattered_conversion_and_actual_back_coordinates(self):
+        result = self.capture()
+        self.assertTrue(result["locals_capture"]["complete"])
+        local = result["locals"][0]
+        self.assertEqual(local["width"], 10)
+        self.assertNotIn("virtual_register_proof", local)
+        conversion = local["ida_location_conversion"]
+        self.assertEqual(conversion["status"], "physical_register_verified")
+        self.assertNotIn("roundtrip_matches", conversion)
+        original = conversion["original_conversion"]
+        self.assertFalse(original["complete"] or original["roundtrip_matches"])
+        self.assertEqual(original["status"], "api_returned")
+        self.assertEqual([(part["register"], part["argument_offset"], part["size"])
+                          for part in original["location"]["parts"]], [(45, 0, 8), (44, 8, 2)])
+        self.assertEqual(original["roundtrip_location"]["part_count"], 1)
+        self.assertEqual([(part["register"], part["argument_offset"], part["size"])
+                         for part in original["roundtrip_location"]["parts"]], [(713, 0, 10)])
+        proof = local["physical_register_proof"]
+        self.assertFalse(proof["type_is_float"])
+        self.assertTrue(proof["type_is_floating"] and proof["type_is_tbyte"])
+        self.assertEqual(proof["processor_name"], "physical_float")
+        self.assertNotEqual(proof["processor_name"], local["location"]["text"])
+
+    def test_unverified_type_capacity_mapping_or_original_conversion_cannot_use_independent_proof(self):
+        for issue in ("type_width", "not_float", "not_tbyte", "float32", "capacity", "identity_roundtrip", "offset", "back_unknown",
+                      "parse", "conversion_error", "mapping_error", "missing_identity_mapping",
+                      "split_processor", "split_width", "split_offset", "back_register", "back_width", "back_split"):
+            with self.subTest(issue=issue):
+                result = self.capture(issue)
+                self.assertFalse(result["locals_capture"]["complete"])
+                self.assertFalse(result["locals"][0]["ida_location_conversion"]["complete"])
+
+
 class LocalNamespaceDiagnosticTests(unittest.TestCase):
     def fixture(self, *, fail_mapping=False):
         source = SOURCE.with_name("supplement.py")
@@ -238,6 +365,100 @@ class LocalNamespaceDiagnosticTests(unittest.TestCase):
                 value = VALUES.local_variables(cfunc, sdk)
                 self.assertFalse(value["locals_capture"]["complete"])
                 self.assertFalse(value["locals"][0]["ida_location_conversion"]["complete"])
+
+    def test_codegen_temporary_requires_full_sdk_membership_and_no_processor_mapping(self):
+        for failure in (None, "not_member", "processor_mapping", "empty_name", "membership_failure"):
+            with self.subTest(failure=failure):
+                _, cfunc, sdk, variable = self.fixture()
+                variable.location = Location("register", 192, 0)
+                variable.width = 8
+                sdk.is_kreg = lambda register: False
+                sdk.get_mreg_name = lambda register, width: "" if failure == "empty_name" else "rtt"
+                sdk.mreg2reg = lambda register, width: 9 if failure == "processor_mapping" else -1
+
+                def membership(register, width):
+                    self.assertEqual((register, width), (192, 8))
+                    if failure == "membership_failure": raise ValueError("SDK unavailable")
+                    return failure != "not_member"
+
+                sdk.get_temp_regs = lambda: SimpleNamespace(has_all=membership)
+                value = VALUES.local_variables(cfunc, sdk)
+                self.assertEqual(value["locals_capture"]["complete"], failure is None)
+                observed = value["locals"][0]
+                if failure is None:
+                    proof = observed["virtual_register_proof"]
+                    self.assertFalse(proof["is_kernel_register"])
+                    self.assertTrue(proof["is_codegen_temporary"])
+                    self.assertEqual(proof["temporary_api"], "ida_hexrays.get_temp_regs")
+                    self.assertEqual(proof["membership_api"], "mlist_t.has_all")
+                    self.assertEqual(proof["processor_register"], -1)
+                    self.assertEqual(observed["ida_location_conversion"], {"status": "not_applicable",
+                        "complete": True, "reason": "sdk_temporary_register_has_no_processor_location"})
+                else:
+                    self.assertFalse(observed["ida_location_conversion"]["complete"])
+
+    def test_status_bits_require_live_operand_predicates_and_never_fake_cpu_roundtrips(self):
+        for failure in (None, "not_bit", "processor", "readback", "width", "offset", "empty_name", "predicate"):
+            with self.subTest(failure=failure):
+                _, cfunc, sdk, variable = self.fixture()
+                sdk.is_kreg = lambda register: False
+                sdk.get_temp_regs = lambda: SimpleNamespace(has_all=lambda register, width: False)
+                sdk.mreg2reg = lambda register, width: 7 if failure == "processor" else -1
+                sdk.get_mreg_name = lambda register, width: "" if failure == "empty_name" else "c0"
+                if failure == "width": variable.width = 2
+                if failure == "offset": variable.location = Location("register", 181, 1)
+
+                class Operand:
+                    def make_reg(self, register, width):
+                        self.r, self.size = (register + (failure == "readback")), width
+                    def is_reg(self, register, width): return self.r == register and self.size == width
+                    def is_cc(self): return False
+                    def is_bit_reg(self):
+                        if failure == "predicate": raise RuntimeError("SDK unavailable")
+                        return failure != "not_bit"
+
+                sdk.mop_t = Operand
+                result = VALUES.local_variables(cfunc, sdk)
+                self.assertEqual(result["locals_capture"]["complete"], failure is None)
+                local = result["locals"][0]
+                if failure is None:
+                    proof = local["virtual_register_proof"]
+                    self.assertTrue(proof["is_bit_register"] and proof["operand_is_exact_register"])
+                    self.assertFalse(proof["is_condition_code"] or proof["is_kernel_register"]
+                                     or proof["is_codegen_temporary"])
+                    self.assertEqual((proof["operand_register"], proof["operand_width"]), (181, 1))
+                    self.assertEqual(local["ida_location_conversion"], {"status": "not_applicable", "complete": True,
+                        "reason": "sdk_bit_register_has_no_processor_location"})
+                else:
+                    self.assertFalse(local["ida_location_conversion"]["complete"])
+
+    def test_processor_mapped_condition_flags_keep_the_actual_cpu_roundtrip(self):
+        for register, processor_register in [(0, 35), (1, 36)]:
+            with self.subTest(register=register):
+                _, cfunc, sdk, variable = self.fixture()
+                variable.location = Location("register", register, 0)
+                sdk.is_kreg = lambda reg: False
+                sdk.get_temp_regs = lambda: SimpleNamespace(has_all=lambda reg, width: False)
+                sdk.mreg2reg = lambda reg, width: processor_register
+
+                class Operand:
+                    def make_reg(self, reg, width): self.r, self.size = reg, width
+                    def is_reg(self, reg, width): return self.r == reg and self.size == width
+                    def is_cc(self): return True
+                    def is_bit_reg(self): return True
+
+                sdk.mop_t = Operand
+                cfunc.mba.vd2idaloc = lambda location, width: Location("register", processor_register, 0)
+                cfunc.mba.idaloc2vd = lambda location, width: Location("register", register, 0)
+                result = VALUES.local_variables(cfunc, sdk)
+                local = result["locals"][0]
+                self.assertTrue(result["locals_capture"]["complete"])
+                self.assertNotIn("virtual_register_proof", local)
+                conversion = local["ida_location_conversion"]
+                self.assertTrue(conversion["complete"] and conversion["roundtrip_matches"])
+                self.assertEqual(conversion["status"], "api_returned")
+                self.assertEqual(conversion["location"]["register_namespace"], "ida_processor_registers")
+                self.assertEqual(conversion["location"]["register"], processor_register)
 
     def test_inline_definition_uses_sdk_block_and_mapped_original_function(self):
         observe, cfunc, sdk, variable = self.fixture()

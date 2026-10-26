@@ -12,6 +12,11 @@ pub(in crate::runtime) trait EngineAdapter {
     fn enable(&mut self, engine: u32, enable: bool) -> anyhow::Result<()>;
     fn input(&mut self, device: u32) -> anyhow::Result<()>;
     fn frames(&mut self) -> anyhow::Result<Vec<EngineFrame>>;
+    fn screen_status(
+        &self,
+    ) -> Option<razer_device::lighting_engine::renderer::ScreenCaptureStatus> {
+        None
+    }
     fn discard_frames_for(&mut self, _device: u32) -> anyhow::Result<()> {
         self.frames().map(|_| ())
     }
@@ -77,6 +82,11 @@ impl<E: EngineAdapter> EngineAdapter for SharedEngine<E> {
         let frames = runtime.engine.frames()?;
         runtime.frames.extend(frames);
         Ok(std::mem::take(&mut runtime.frames))
+    }
+    fn screen_status(
+        &self,
+    ) -> Option<razer_device::lighting_engine::renderer::ScreenCaptureStatus> {
+        self.0.borrow().engine.screen_status()
     }
     fn discard_frames_for(&mut self, device: u32) -> anyhow::Result<()> {
         let mut runtime = self.0.borrow_mut();
@@ -407,6 +417,11 @@ impl EngineAdapter for super::lighting_engine::Engine {
     }
     fn frames(&mut self) -> anyhow::Result<Vec<EngineFrame>> {
         Self::frames(self)
+    }
+    fn screen_status(
+        &self,
+    ) -> Option<razer_device::lighting_engine::renderer::ScreenCaptureStatus> {
+        Self::screen_status(self)
     }
     fn destroy_engine(&mut self, e: u32) -> anyhow::Result<()> {
         Self::destroy_engine(self, e)

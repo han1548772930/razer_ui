@@ -421,6 +421,48 @@ pub struct NativeInputExecution {
     pub reports: Vec<InputReportExecution>,
 }
 
+/// These source consumers have different native failure callbacks. An
+/// ordinary endpoint completion never runs Sequence's 0xA3910 OS fallback.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InputConsumer {
+    Endpoint,
+    Sequence,
+}
+impl InputConsumer {
+    pub fn submit(
+        self,
+        driver: &mut impl MappingOutputTransport,
+        os: &mut impl OsInputTransport,
+        inputs: &[NativeInput],
+        wait: Duration,
+    ) -> NativeInputExecution {
+        let mut execution = NativeInputExecution::submit(driver, inputs, wait);
+        self.complete_callbacks(&mut execution, os);
+        execution
+    }
+
+    pub fn poll(
+        self,
+        execution: &mut NativeInputExecution,
+        driver: &mut impl MappingOutputTransport,
+        os: &mut impl OsInputTransport,
+        wait: Duration,
+    ) {
+        execution.poll(driver, wait);
+        self.complete_callbacks(execution, os);
+    }
+
+    fn complete_callbacks(
+        self,
+        execution: &mut NativeInputExecution,
+        os: &mut impl OsInputTransport,
+    ) {
+        if self == Self::Sequence {
+            execution.fallback_failed_primaries(os);
+        }
+    }
+}
+
 impl NativeInputExecution {
     /// Submit in caller order, with the native E1 continuation immediately
     /// after queue acceptance of its primary. Every result remains visible.

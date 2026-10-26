@@ -1,7 +1,7 @@
 //! Source engine 0x4c8f0/0x4cfd0 and container 0x521e0/0x52600/0x52df0.
 //! One clock-driven owner holds devices and effect instances; its output stays
 //! a software frame until the caller's HID transport acknowledgement.
-use super::{FRAME_MILLIS, Renderer};
+use super::{FRAME_MILLIS, Renderer, ScreenObservation, ScreenRequest};
 use crate::lighting_engine::{EngineEffect, EngineFrame, LedConfiguration, LedInputType};
 use anyhow::{Context as _, ensure};
 use std::collections::BTreeMap;
@@ -173,8 +173,8 @@ impl Engine {
             .context("Lighting device was destroyed")?
             .config;
         let mut source = effect.clone();
-        // 0x67830 converts the source's 40-unit center into the engine grid.
-        if source.effect == 19 {
+        // 0x67830 / 0x66b40 convert the source's 40-unit center into the grid.
+        if matches!(source.effect, 13 | 19) {
             let width = if config.led_width == 0 {
                 40
             } else {
@@ -186,9 +186,15 @@ impl Engine {
                 u32::from(config.led_height)
             };
             if let Some(value) = source.parameters.center_col.as_mut() {
+                if source.effect == 13 && *value >= 256 {
+                    *value = 0;
+                }
                 *value = 40 * *value / width;
             }
             if let Some(value) = source.parameters.center_row.as_mut() {
+                if source.effect == 13 && *value >= 256 {
+                    *value = 0;
+                }
                 *value = 40 * *value / height;
             }
         }
@@ -312,6 +318,52 @@ impl Engine {
         now: u64,
         audio: [Option<f32>; 2],
     ) -> anyhow::Result<Vec<EngineFrame>> {
+        self.frames_with_screen(now, audio, &BTreeMap::new())
+    }
+    pub fn has_ambient(&self) -> bool {
+        self.engines.values().any(|instance| {
+            instance
+                .effects
+                .iter()
+                .any(|effect| effect.renderer.screen_request().is_some())
+        })
+    }
+    pub fn ambient_effect_handles(&self) -> Vec<u32> {
+        self.engines
+            .values()
+            .flat_map(|instance| {
+                instance
+                    .effects
+                    .iter()
+                    .filter(|effect| effect.renderer.screen_request().is_some())
+                    .map(|effect| effect.id)
+            })
+            .collect()
+    }
+    pub fn screen_requests(&self, now: u64) -> Vec<(u32, ScreenRequest)> {
+        self.engines
+            .values()
+            .filter(|instance| instance.next_tick.is_some_and(|at| now >= at))
+            .flat_map(|instance| {
+                instance
+                    .effects
+                    .iter()
+                    .filter(|effect| effect.fade != Fade::Remove)
+                    .filter_map(|effect| {
+                        effect
+                            .renderer
+                            .screen_request()
+                            .map(|request| (effect.id, request))
+                    })
+            })
+            .collect()
+    }
+    pub fn frames_with_screen(
+        &mut self,
+        now: u64,
+        audio: [Option<f32>; 2],
+        screen: &BTreeMap<u32, ScreenObservation>,
+    ) -> anyhow::Result<Vec<EngineFrame>> {
         let mut frames = Vec::new();
         for instance in self.engines.values_mut() {
             if !instance.next_tick.is_some_and(|at| now >= at) {
@@ -334,7 +386,12 @@ impl Engine {
                     .renderer
                     .audio_flow()
                     .and_then(|flow| audio[usize::from(flow)]);
-                effect.renderer.render(&mut matrix, effect.opacity, peak)?;
+                effect.renderer.render_with_screen(
+                    &mut matrix,
+                    effect.opacity,
+                    peak,
+                    screen.get(&effect.id),
+                )?;
             }
             let changed = matrix != instance.previous;
             let emit = if changed {

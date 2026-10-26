@@ -5,7 +5,7 @@ use anyhow::{Context as _, ensure};
 use std::{
     collections::VecDeque,
     sync::{
-        Arc, Mutex, Weak,
+        Arc, Condvar, Mutex, Weak,
         atomic::{AtomicBool, Ordering},
     },
     thread,
@@ -71,12 +71,127 @@ pub(crate) enum Completion {
     Canceled,
 }
 
-static CURRENT: Mutex<Option<Weak<AtomicBool>>> = Mutex::new(None);
-static NATIVE_OWNER: Mutex<()> = Mutex::new(());
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub struct ScreenColorRequestId(u64);
 
-pub struct ScreenColorPicker {
+#[derive(Default)]
+struct JoinState {
+    thread: Option<thread::JoinHandle<ScreenColorEvent>>,
+    result: Option<ScreenColorEvent>,
+}
+
+struct Session {
+    id: ScreenColorRequestId,
     canceled: Arc<AtomicBool>,
     events: Arc<Mutex<Events>>,
+    join: Mutex<JoinState>,
+    completed: Condvar,
+}
+
+#[derive(Default)]
+struct Owners {
+    closing: bool,
+    sequence: u64,
+    current: Weak<Session>,
+    sessions: Vec<Arc<Session>>,
+}
+
+static OWNERS: Mutex<Owners> = Mutex::new(Owners {
+    closing: false,
+    sequence: 0,
+    current: Weak::new(),
+    sessions: Vec::new(),
+});
+
+/// Retains an accepted native thread until a background owner actually joins it.
+/// Dropping a ticket never drops the registry's native thread handle.
+pub struct ScreenColorCompletion(Arc<Session>);
+
+impl ScreenColorCompletion {
+    pub fn id(&self) -> ScreenColorRequestId {
+        self.0.id
+    }
+
+    /// Blocking completion confirmation; call only on a background executor.
+    /// Concurrent waiters share one join and the same post-cleanup result.
+    pub fn wait(self) -> ScreenColorEvent {
+        let session = &self.0;
+        let mut state = session
+            .join
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        let handle = loop {
+            if let Some(result) = &state.result {
+                return result.clone();
+            }
+            if let Some(handle) = state.thread.take() {
+                break handle;
+            }
+            state = session
+                .completed
+                .wait(state)
+                .unwrap_or_else(|error| error.into_inner());
+        };
+        drop(state);
+        let mut result = handle.join().unwrap_or_else(|_| {
+            ScreenColorEvent::Failed("Screen color worker panicked during thread shutdown".into())
+        });
+        if result == ScreenColorEvent::Done && session.canceled.load(Ordering::Acquire) {
+            result = ScreenColorEvent::Canceled;
+        }
+        session
+            .events
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .push(result.clone());
+        session
+            .join
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .result = Some(result.clone());
+        session.completed.notify_all();
+        OWNERS
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .sessions
+            .retain(|owner| owner.id != session.id);
+        result
+    }
+}
+
+/// Includes queued, canceled, dropped and joining native requests.
+pub fn active_workers() -> usize {
+    OWNERS
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+        .sessions
+        .len()
+}
+
+/// Stop admission, cancel every accepted request, and return completion tickets
+/// for the application's retained background owner, including orphaned pages.
+pub fn begin_exit() -> Vec<ScreenColorCompletion> {
+    let mut owners = OWNERS.lock().unwrap_or_else(|error| error.into_inner());
+    owners.closing = true;
+    owners
+        .sessions
+        .iter()
+        .map(|session| {
+            session.canceled.store(true, Ordering::Release);
+            ScreenColorCompletion(session.clone())
+        })
+        .collect()
+}
+
+pub fn cancel_exit() {
+    OWNERS
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+        .closing = false;
+}
+
+pub struct ScreenColorPicker {
+    session: Arc<Session>,
 }
 
 impl ScreenColorPicker {
@@ -99,50 +214,71 @@ impl ScreenColorPicker {
     ) -> anyhow::Result<Self> {
         let canceled = Arc::new(AtomicBool::new(false));
         let events = Arc::new(Mutex::new(Events::default()));
-        let mut current = CURRENT
+        let mut owners = OWNERS
             .lock()
             .map_err(|_| anyhow::anyhow!("Screen color ownership state was poisoned"))?;
-        if let Some(previous) = current.as_ref().and_then(Weak::upgrade) {
-            previous.store(true, Ordering::Release);
-        }
+        ensure!(!owners.closing, "Screen color sampling is shutting down");
+        owners.sequence = owners
+            .sequence
+            .checked_add(1)
+            .context("Screen color request ID exhausted")?;
+        let previous = owners.current.upgrade().map(|session| {
+            session.canceled.store(true, Ordering::Release);
+            ScreenColorCompletion(session)
+        });
+        let session = Arc::new(Session {
+            id: ScreenColorRequestId(owners.sequence),
+            canceled: canceled.clone(),
+            events: events.clone(),
+            join: Mutex::new(JoinState::default()),
+            completed: Condvar::new(),
+        });
         let worker = Worker {
             canceled: canceled.clone(),
             events: events.clone(),
         };
-        thread::Builder::new()
+        let handle = thread::Builder::new()
             .name("screen-color-picker".into())
             .spawn(move || {
+                // The current source closes and joins the predecessor before
+                // constructing a replacement window and its native resources.
+                if let Some(previous) = previous {
+                    previous.wait();
+                }
                 let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    // Replacement waits here, after the old owner has canceled.
-                    // The old window/DC/cursor cleanup precedes releasing this lock.
-                    let _owner = NATIVE_OWNER.lock().map_err(|_| {
-                        anyhow::anyhow!("Screen color native ownership was poisoned")
-                    })?;
                     if worker.canceled() {
                         return Ok(Completion::Canceled);
                     }
                     run(&worker)
                 }));
-                let event = match outcome {
+                match outcome {
                     Ok(Ok(_)) if worker.canceled() => ScreenColorEvent::Canceled,
                     Ok(Ok(Completion::Done)) => ScreenColorEvent::Done,
                     Ok(Ok(Completion::Canceled)) => ScreenColorEvent::Canceled,
                     Ok(Err(error)) => ScreenColorEvent::Failed(format!("{error:#}")),
                     Err(_) => ScreenColorEvent::Failed("Screen color worker panicked".into()),
-                };
-                if let Ok(mut events) = worker.events.lock() {
-                    events.push(event);
                 }
             })
             .context("Create screen color worker")?;
-        *current = Some(Arc::downgrade(&canceled));
-        Ok(Self { canceled, events })
+        session
+            .join
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .thread = Some(handle);
+        owners.current = Arc::downgrade(&session);
+        owners.sessions.push(session.clone());
+        Ok(Self { session })
+    }
+
+    pub fn completion(&self) -> ScreenColorCompletion {
+        ScreenColorCompletion(self.session.clone())
     }
 
     /// Reads only the worker's memory queue. Consecutive undelivered colors are
     /// coalesced so a paused UI cannot accumulate unbounded mouse-move events.
     pub fn drain(&self) -> anyhow::Result<Vec<ScreenColorEvent>> {
         Ok(self
+            .session
             .events
             .lock()
             .map_err(|_| anyhow::anyhow!("Screen color event buffer was poisoned"))?
@@ -152,7 +288,7 @@ impl ScreenColorPicker {
     }
 
     pub fn cancel(&mut self) {
-        self.canceled.store(true, Ordering::Release);
+        self.session.canceled.store(true, Ordering::Release);
     }
 }
 

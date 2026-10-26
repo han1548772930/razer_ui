@@ -286,6 +286,8 @@ Sequence 嵌套由 `0x8f5e0` 在父上下文保留子 GUID／cursor：子未完�
 
 Sequence 的实际输入发送是 `0x85ea8 → 0x10f582 → 0x1186c0 → 0x112c60`，最后一个目标已核实为 DriverImpl vtable `0x2f0990` 的 +96 槽。驱动线程缺失回调 false；`0x114850` 在实际 I/O completion 的 status=0 时交付 true，经 `0x110b5a → 0x115da0 → 0x118840` 返回调用线程。`0xa3910` 仅在这一驱动发送回调 false 时尝试系统 SendInput，fallback 结果不再返回 Sequence cursor；`0x85ea8` 自己缺少 driver owner 时只记录日志。不能据此给所有普通键盘执行失败添加同样的回退。
 
+Rust 的 `InputConsumer::Endpoint/Sequence` 已将这两个 callback 分支分开：普通 endpoint 保留真实驱动失败，不调用 Sequence 的系统发送；Sequence 的按下／补释放直接发送，不经过普通 KeyboardExecutor 的重复计时器。缺 driver owner 或发送失败作为独立诊断消费，不改写 cursor 的推进结果；系统发送收据也不升级为驱动应答。普通键盘排队 bool、所有异步时序、实际 OS 效果与 DLL 对照仍需独立验收，不能由这项修正推定整条宏链完成。
+
 ## 分阶段数据、执行与取消
 
 分阶段数据使用 `0x107a24` 的独立 owner／线程；查找 `0x5ce40 → 0xf7066` 读取 synapsePhasedMacros。`0x107bd0 → 0x107d30 → 0x1080b2` 构造候选 map，核对唯一 GUID、appEngine／hash 以及 pressEvents、holdEvents、releaseEvents 数组；相同 GUID／hash 复用旧对象，变更重新核对。候选全部成功才在锁内替换活动 map 并通知消费者。发布 map 的 ACK 早于这条解析结果，不代表新数据已生效。

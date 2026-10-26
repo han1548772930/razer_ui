@@ -73,6 +73,23 @@ struct Wave {
     speed: Option<Level>,
 }
 #[derive(Default, Deserialize)]
+struct Wheel {
+    direction: Option<u8>,
+}
+#[derive(Default, Deserialize)]
+struct Ambient {
+    screen: Option<AmbientScreen>,
+}
+#[derive(Clone, Copy, Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum AmbientScreen {
+    Full,
+    Left,
+    Top,
+    Right,
+    Bottom,
+}
+#[derive(Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Audio {
     color_boost: Option<f64>,
@@ -106,6 +123,98 @@ fn color(source: Option<SourceColor>) -> u32 {
 }
 
 impl QuickEffect {
+    /// Modules 6394 and 5459 preserve the current settings when a product maps
+    /// an unsupported software effect to its manifest hardware exit default.
+    pub(crate) fn hardware_effect_as(
+        &self,
+        source_id: u16,
+    ) -> anyhow::Result<crate::lighting_driver::HardwareQuickEffect> {
+        use crate::lighting_driver::{HardwareEffect, HardwareQuickEffect};
+        let rgb = |value: u32| [(value >> 16) as u8, (value >> 8) as u8, value as u8];
+        let mut target = HardwareQuickEffect {
+            effect: HardwareEffect::Off,
+            flags: 0,
+            rate: 0,
+            colors: Vec::new(),
+        };
+        target.effect = match source_id {
+            1 => {
+                let colors: Colors = self.settings()?;
+                if let Some(value) = colors.color1.and_then(SourceColor::rgb).filter(|v| *v != 0) {
+                    target.colors.push(rgb(value));
+                }
+                HardwareEffect::Static
+            }
+            2 | 7 => {
+                let settings: TimedColors = self.settings()?;
+                let Colors {
+                    color1,
+                    color2,
+                    is_random,
+                } = settings.colors;
+                if is_random {
+                    target.flags = 3;
+                } else {
+                    let (first, second) =
+                        if source_id == 2 && matches!(color1, Some(SourceColor::None)) {
+                            (color2, None)
+                        } else {
+                            (color1, color2)
+                        };
+                    target
+                        .colors
+                        .push(rgb(first.and_then(SourceColor::rgb).unwrap_or(0)));
+                    if let Some(second) = second.and_then(SourceColor::rgb).filter(|v| *v != 0) {
+                        target.colors.push(rgb(second));
+                    }
+                    target.flags = target.colors.len() as u8;
+                }
+                if source_id == 7 {
+                    target.rate = settings.duration.map_or(0, |level| level.0);
+                    HardwareEffect::Starlite
+                } else {
+                    HardwareEffect::Breathing
+                }
+            }
+            3 => HardwareEffect::Spectrum,
+            4 => {
+                let settings: Wave = self.settings()?;
+                target.flags = if settings.direction == Some(1) { 2 } else { 1 };
+                target.rate = match settings.speed.map(|v| v.0) {
+                    Some(1) => 75,
+                    Some(3) => 15,
+                    _ => 40,
+                };
+                HardwareEffect::Wave
+            }
+            5 => {
+                let settings: TimedColors = self.settings()?;
+                target.colors.push(rgb(settings
+                    .colors
+                    .color1
+                    .and_then(SourceColor::rgb)
+                    .unwrap_or(0)));
+                target.rate = settings.duration.map_or(3, |level| level.0);
+                HardwareEffect::Reactive
+            }
+            6 => {
+                let settings: Colors = self.settings()?;
+                target
+                    .colors
+                    .push(rgb(settings.color1.and_then(SourceColor::rgb).unwrap_or(0)));
+                target.rate = 40;
+                HardwareEffect::BasicRipple
+            }
+            8 => {
+                target.rate = 90;
+                target.colors.push([255, 0, 0]);
+                HardwareEffect::Fire
+            }
+            _ => anyhow::bail!("Hardware exit effect is outside the product's mounted contract"),
+        };
+        Ok(target)
+    }
+
     fn settings<T: DeserializeOwned + Default>(&self) -> anyhow::Result<T> {
         self.selected_effect_setting
             .as_ref()
@@ -116,9 +225,11 @@ impl QuickEffect {
             .unwrap_or_else(|| Ok(T::default()))
     }
 
-    /// Follow 6394 ACCESSORY conversion, 8905 presets and 2578/2198 native
-    /// expansion. An absent source setting stays absent; UI defaults apply
-    /// only when the source UI explicitly chooses a new effect.
+    /// Follow shared 6394 conversion, 8905 presets and 2578/2198 native
+    /// expansion using the dock matrix center. Product owners separately
+    /// validate their mounted choices; converter support is not a capability.
+    /// An absent source setting stays absent; UI defaults apply only when
+    /// the source UI explicitly chooses a new effect.
     pub fn engine_effect(&self) -> anyhow::Result<EngineEffect> {
         self.engine_effect_with_center(1, 2)
     }
@@ -288,6 +399,48 @@ impl QuickEffect {
                 parameters.automatic = Some(0);
                 parameters.flow = Some(settings.flow.unwrap_or(0));
                 12
+            }
+            11 => {
+                use crate::lighting_engine::ScreenRect;
+                let settings: Ambient = self.settings()?;
+                let mut rect = ScreenRect::FULL;
+                match settings.screen {
+                    Some(AmbientScreen::Left) => rect.right = 6553,
+                    Some(AmbientScreen::Top) => rect.bottom = 6553,
+                    Some(AmbientScreen::Right) => rect.left = 58981,
+                    Some(AmbientScreen::Bottom) => rect.top = 58981,
+                    Some(AmbientScreen::Full) | None => {}
+                }
+                parameters.screen_rect = Some(rect);
+                parameters.blur = Some(1.);
+                11
+            }
+            13 => {
+                let settings: Wheel = self.settings()?;
+                ensure!(
+                    settings
+                        .direction
+                        .is_none_or(|direction| matches!(direction, 1 | 2)),
+                    "Wheel direction exceeds the mounted source choices"
+                );
+                parameters.mode = Some(if settings.direction == Some(2) { 2048 } else { 1024 });
+                parameters.color_stops = Some(stops([
+                    (0, 16718079),
+                    (18, 16715792),
+                    (28, 16744448),
+                    (35, 15728384),
+                    (42, 14679808),
+                    (49, 65280),
+                    (52, 65535),
+                    (64, 1595647),
+                    (77, 1595647),
+                    (100, 16718079),
+                ]));
+                parameters.speed = Some(360.);
+                parameters.cycles = Some(-1);
+                parameters.center_col = Some(center_col);
+                parameters.center_row = Some(center_row);
+                13
             }
             19 => {
                 let settings: Tidal = self.settings()?;

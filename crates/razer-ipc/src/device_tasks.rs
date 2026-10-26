@@ -190,6 +190,15 @@ impl ServiceRequest {
             }));
         }
         let collection = match self {
+            Self::ControllerSleep {
+                node, product_id, ..
+            }
+            | Self::ControllerInitialization {
+                node, product_id, ..
+            }
+            | Self::ControllerSocd {
+                node, product_id, ..
+            } => Some((*product_id, node)),
             Self::HidNodeMouseBrightness {
                 node,
                 product_id,
@@ -288,6 +297,31 @@ impl ServiceRequest {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn controller_sleep_wire_keeps_minutes_and_uses_the_same_collection_lease_for_read_and_set() {
+        let bytes = br#"{"operation":"controller_sleep","node":{"path":[255,0,34,92,128],"vendor_id":5426,"product_id":2676,"usage_page":65280,"usage":1,"interface_number":1,"release_number":4660,"serial_number":null,"manufacturer":null,"product":null},"product_id":2676,"sleep_operation":{"kind":"set","power_saving":{"value":15,"isEnabled":true}}}"#;
+        let request: ServiceRequest = serde_json::from_slice(bytes).unwrap();
+        assert_eq!(serde_json::to_vec(&request).unwrap(), bytes);
+        let ServiceRequest::ControllerSleep {
+            ref node,
+            ref sleep_operation,
+            ..
+        } = request
+        else {
+            panic!("Controller sleep wire kind changed");
+        };
+        assert_eq!(sleep_operation.setting().unwrap().value, 15);
+        let scope = Scope::collection(2676, node);
+        assert_eq!(
+            request.synchronous_device_task().unwrap(),
+            Some(scope.clone())
+        );
+        let mut read: serde_json::Value = serde_json::from_slice(bytes).unwrap();
+        read["sleep_operation"] = serde_json::json!({"kind":"read"});
+        let read: ServiceRequest = serde_json::from_value(read).unwrap();
+        assert_eq!(read.synchronous_device_task().unwrap(), Some(scope));
+    }
 
     #[test]
     fn mouse_rotation_ble_ipc_uses_logical_container_scope_only_for_setter() {

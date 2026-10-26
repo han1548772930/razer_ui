@@ -327,6 +327,9 @@ def _frontend_runtime_closure(source, audit):
                     if function.type != "arrow_function" or parameter is None or parameter.type != "identifier":
                         raise ValueError("Runtime filename owner has an unverified parameter boundary")
                     body = function.child_by_field_name("body")
+                    if prop == "miniCssF" and "u" in members and body.type == "statement_block" and not body.named_children:
+                        owners[-1]["disposition"] = "complete_empty_css_filename_owner"
+                        continue
                     keys = set()
                     for value in nodes(body):
                         if value.type == "object":
@@ -469,6 +472,104 @@ def _cache_current_replacement(source, comparison, audit):
             "same_bytes": sum(row["same_bytes"] for row in verified), "comparisons": verified, "failures": failures}
 
 
+def _lighting_sku_manifest_review(source, audit):
+    """Recheck the reviewed current SKU candidate consumers without executing JS."""
+    acquired, files = source["acquired"], source["files"]
+    entry = "https://apps.razer.com/synapse/lighting-engine/"
+    main_url = entry + "static/js/main.a383ea9e.js"
+    main = files.get(main_url)
+    deployed = [row for row in source["deployment"]["sources"] if row["url"] == main_url]
+    if (acquired.get("entry_url") != entry or acquired.get("source_current_during_acquisition") is not True
+            or main is None or main.get("sha256") != "c82c7074e5da8abcffbff95f23a6b962c1e14b04586715b9d4b7a6f11fe9e6d2"
+            or len(deployed) != 1 or deployed[0].get("identity_verified") is not True):
+        raise ValueError("Reviewed lighting SKU consumers are not the current declared engine original")
+    exports = {name: audit.webpack_export("lighting_sku_" + name, [main], module, export)
+               for name, module, export in (("device_info", 8199, "default"), ("manager", 5954, "h"),
+                                             ("primary_pid", 6191, "IS"))}
+    tree = audit.tree(main)
+    roots = {}
+    for name, exported in exports.items():
+        owner = audit.owners[exported["complete_factory_owner"]]
+        roots[name] = tree.root_node.descendant_for_byte_range(owner["byte_start"], owner["byte_end"] - 1)
+    reviewed = (
+        ("device_info", "configure", "2e44101c99b39b3c98971ce364aed0277a2e46a80c0f83e94b50f3c668ec1a88"),
+        ("device_info", "getEditionIdFromSKU", "8c25d4447c44a290f1750b934bb40f2991b228de122434a7db1cab9ff6d49058"),
+        ("device_info", "getManifestData", "6e00e1ef3307431fd25f7389b5d8ba585f3ec552648157c0907b15d6b0d13d91"),
+        ("device_info", "fetchManifestFromURL", "d5f86f4f8a972f48a9307a6432aebed6424888cb3cca3e54fabe9dc1da2b883a"),
+        ("device_info", "getManifestDataFromIndexedDB", "7a8e5ca408774342917f192725bcc246f1579057563219dae38a6d8abc68dc4d"),
+        ("device_info", "writeManifestToIndexedDB", "f9ec7cb2d355c2246cc13d525ecd83db2ce5a88d2df1113da6bda618c0cf7588"),
+        ("manager", "onDeviceInfoReady", "a125672b228ca4efaabe17174ebc510bb4ada0270d0020998d8beb2adacecdba"),
+        ("manager", "createNewDeviceInfo", "315d7efb3d187e76b48dee5d2a87f7053c251eea5fbecb08d0a8b65d45bfb842"),
+        ("manager", "getEditionWhenPowerOn", "18f49598dc2684a262d4a146c3d5ab4c52b0802cac97d4916644563aa824e778"),
+    )
+    consumers = {}
+    for group, name, digest in reviewed:
+        _, owner_id = audit.callable_member("lighting_sku_" + name, main, roots[group], name)
+        owner = audit.owners[owner_id]
+        if owner["body_sha256"] != digest:
+            raise ValueError("Complete reviewed lighting SKU consumer differs: " + name)
+        consumers[name] = owner
+    selector = exports["primary_pid"]["binding"]
+    if selector["sha256"] != "0a2b896e24c9888588721c582a85ae54e0568d68c82da5cedf70ed1870234753":
+        raise ValueError("Complete reviewed lighting primary PID selector differs")
+    catalog = files["https://apps.razer.com/synapse/dashboard/AvailableDevices.json"]
+    devices = json.loads(audit.read(catalog))
+    if not isinstance(devices, list) or any(not isinstance(row, dict) for row in devices):
+        raise ValueError("Current lighting PID selector input is not a device catalog")
+    products, candidate_urls = [], set()
+    for pid in (736, 737):
+        primary = pid
+        for row in devices:
+            if row.get("productId") == pid:
+                break
+            if row.get("dongleId") == pid or row.get("bleId") == pid:
+                primary = row["productId"]
+                break
+        if primary != pid:
+            raise ValueError("Current SKU product uses another actual primary PID")
+        prefix = f"https://apps.razer.com/synapse/products/{primary}/mw/"
+        manifest = files[prefix + f"lighting-manifests/DeviceManifest_{pid}_0.json"]
+        value = json.loads(audit.read(manifest))
+        if (value.get("productId") != pid or value.get("hasSKUVirtualEditionId") is not True
+                or value.get("skuVirtualEditionIdList") != [{"M": 129}]):
+            raise ValueError("Current edition zero manifest does not establish the reviewed SKU branch")
+        candidates = []
+        for edition, base, role in ((0, entry + "manifest/", "conditional_engine_candidate_after_middleware_failure"),
+                                   (129, entry + "manifest/", "conditional_engine_candidate_after_middleware_failure"),
+                                   (129, prefix + "lighting-manifests/", "sku_primary_candidate_before_explicit_edition_zero_path")):
+            url = base + f"DeviceManifest_{pid}_{edition}.json"
+            original = files[url]
+            observations = [row for row in acquired["http_observations"] if row["url"] == url]
+            if (original.get("path") or len(observations) != 2
+                    or {row.get("phase") for row in observations} != {"before", "after"}
+                    or any(row.get("http_status") != 404 for row in observations)):
+                raise ValueError("Reviewed unavailable lighting candidate has different acquisition facts")
+            candidate_urls.add(url)
+            candidates.append({"url": url, "edition": edition, "role": role,
+                               "unavailable_original": original, "http_observations": observations})
+        products.append({"product_id": pid, "actual_primary_pid": primary,
+                         "edition_zero_original": {key: manifest[key] for key in ("path", "bytes", "sha256")},
+                         "sku_virtual_editions": value["skuVirtualEditionIdList"], "candidates": candidates})
+    failures = [row for row in acquired["unresolved"] if row.get("url") in candidate_urls]
+    if len(failures) != 6 or {row["url"] for row in failures} != candidate_urls:
+        raise ValueError("Original lighting candidate diagnostics are incomplete")
+    return {"status": "verified_bounded_candidate_semantics", "products": products, "exports": exports,
+        "complete_consumers": consumers, "primary_pid_selector": selector,
+        "catalog_original": {key: catalog[key] for key in ("path", "bytes", "sha256")},
+        "historical_candidate_failures_preserved": failures,
+        "selection_order": ["middleware_requested_edition", "engine_requested_edition_if_middleware_empty",
+            "indexeddb_requested_instance_edition_and_version_selection", "cache_storage_engine_url_if_no_network_manifest_and_no_indexeddb_manifest",
+            "configure_explicit_edition_zero_if_requested_edition_nonzero_and_no_manifest"],
+        "sku_selection": {"metadata": "systemSKU", "minimum_length_exclusive": 12, "character_index": 11,
+                          "character": "M", "virtual_edition": 129, "nonmatching_result": 0},
+        "ready_gate": "Successful getEditionWhenPowerOn with non-null edition/layout; SKU branch recreates only for changed truthy SKU edition",
+        "edition_zero_assignment": "configure sets instance editionId=0 after its explicit edition-zero lookup; no acquired edition129 content is fabricated",
+        "remaining_boundaries": ["Actual device edition/layout and host systemSKU were not queried",
+            "IndexedDB and CacheStorage contents and their runtime selection were not inspected",
+            "Only editions 0 and 129 for products 736 and 737 are reviewed; no complete product or dependency-closure claim"],
+        "source_dependency_closure_verified": False, "semantics_complete": False, "target_execution": False}
+
+
 def recheck_frozen_frontend(task):
     """Recheck one frozen task; scope corrections never erase historical failures."""
     import analysis as a
@@ -594,6 +695,8 @@ def recheck_frozen_frontend(task):
                        "current_source_closures": closures, "cache_extra_coverage": cache_coverage,
                        "failures": replacement_failures, "source_maps_recovered": False,
                        "semantics_complete": False, "runtime_acceptance": "unverified"}
+    candidate_branch_review = (_lighting_sku_manifest_review(checked, audit)
+                               if input_dir.name == "lighting-sku-736-737-current" else None)
     changed = audit.final_snapshot()
     if changed:
         raise ValueError("Frontend evidence changed during frozen recheck: " + ", ".join(changed))
@@ -603,7 +706,7 @@ def recheck_frozen_frontend(task):
             "acquisition_changed_since_frozen_task": checked["acquisition"]["sha256"] != task["acquisition"]["sha256"],
             "source_scope": scope_report, "source_verification": summaries,
             "failure_dispositions": dispositions, "failures": remaining,
-            "replacement_resolution": replacement,
+            "replacement_resolution": replacement, "candidate_branch_review": candidate_branch_review,
             "current_failures": checked["current_failures"], "remaining_boundaries": boundaries,
             "verified_artifacts": len(audit.artifacts), "changed_during_query": changed,
             "verification_only": True, "target_execution": False, "semantics_complete": False,

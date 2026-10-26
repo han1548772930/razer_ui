@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import ctypes
 import hashlib
 import io
 import json
@@ -732,6 +733,431 @@ class ProcessDeadlineTests(unittest.TestCase):
         self.assertEqual(len(execute.call_args.args[0]), 64)
         loader.assert_called_once_with(source["path"])
         self.assertEqual(json.loads(output.getvalue().splitlines()[-1])["event"], "result")
+
+
+class LightingComparisonTests(unittest.TestCase):
+    def test_single_receipt_retains_failed_raw_results_differences_and_cleanup(self):
+        failed = {"schema_version": 1, "passed": False, "scope": "software frames",
+                  "recorded_at_utc": "first", "runs": {"original": {"stdout": "raw native failure"}},
+                  "comparisons": [{"matched": False, "original": [2], "rust": [1]}],
+                  "original": {"errors": ["cleanup failed"], "cleanup": {"disabled": False}}}
+        passed = {"schema_version": 1, "passed": True, "scope": "software frames",
+                  "recorded_at_utc": "second", "runs": {"original": {"stdout": "raw native output"}}}
+        previous = copy.deepcopy(failed)
+        retained = native.retain_lighting_attempt(previous, passed)
+        self.assertEqual(retained["attempts"], [failed, passed])
+        self.assertEqual(previous, failed)
+        again = native.retain_lighting_attempt(retained, failed)
+        self.assertEqual(again["attempts"], [failed, passed, failed])
+        self.assertFalse(again["passed"])
+        self.assertEqual(again["latest_attempt"], 2)
+        self.assertEqual(native.retain_lighting_attempt(None, failed)["attempts"], [failed])
+        for malformed in ([], {"schema_version": 999}, {"schema_version": 2, "attempts": []},
+                          {"schema_version": 2, "attempts": [failed], "latest_attempt": 5}):
+            with self.subTest(previous=malformed), self.assertRaisesRegex(ValueError, "refusing to overwrite"):
+                native.retain_lighting_attempt(malformed, passed)
+
+    def test_source_requires_acquisition_full_function_chunks_and_virtual_targets(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            raw = bytearray(2153672)
+            raw[16:19] = b"abc"
+            for table, slot, target in (
+                (0x1998c8, 56, 0x56f0), (0x1998c8, 88, 0x2cf0), (0x1998c8, 96, 0x30b0),
+                (0x1a8478, 16, 0x47670), (0x1a8478, 24, 0x48f70),
+                (0x1a83c8, 80, 0x476e0), (0x1a83c8, 96, 0x48270),
+                (0x1a89a8, 8, 0x4b7c0), (0x1a89a8, 24, 0x4beb0),
+                (0x1998c8, 8, 0x7bc0), (0x1998c8, 16, 0x7bd0),
+                (0x1998c8, 24, 0x7be0), (0x1998c8, 32, 0x7bf0), (0x1998c8, 40, 0x7c00),
+            ):
+                struct.pack_into("<Q", raw, table + slot, 0x180000000 + target)
+            digest = hashlib.sha256(raw).hexdigest()
+            (root / "source.dll").write_bytes(raw)
+            (root / "source.js").write_bytes(b"verified frontend ABI")
+            frontend_sha = hashlib.sha256(b"verified frontend ABI").hexdigest()
+            url = "https://app-assets.razer.com/files/synapse/LightingEngine/v4.0.55.0/RzLightingEngineApi_v4.0.55.0.dll"
+            acquisition = root / ".analysis/inputs/host-current/acquisition.json"
+            acquisition.parent.mkdir(parents=True)
+            row = {"path": "source.dll", "url": url, "final_url": url, "http_status": 200,
+                   "sha256": digest, "bytes": len(raw), "declaration": {
+                       "resourceVersion": "4.0.55.0", "sha256": digest, "size": len(raw)}}
+            acquisition.write_text(json.dumps({"files": [row]}), encoding="utf-8")
+            manifests = []
+            manifest_rows = []
+            for path, value in (("release.json", {"latest": {"url": "manifest-1.0.136.json"}}),
+                                ("resources.json", {"resources": [row["declaration"] | {"resourceName": "LightingEngineDLL"}]})):
+                encoded = json.dumps(value).encode("utf-8")
+                (root / path).write_bytes(encoded)
+                digest_value = hashlib.sha256(encoded).hexdigest()
+                manifest_url = "https://apps.razer.com/" + path
+                manifests.append((path, manifest_url, digest_value))
+                manifest_rows.append({"path": path, "url": manifest_url, "http_status": 200,
+                                      "bytes": len(encoded), "sha256": digest_value})
+            row["declaration"]["resourceName"] = "LightingEngineDLL"
+            acquisition.write_text(json.dumps({"files": [row, *manifest_rows]}), encoding="utf-8")
+            frontend = root / ".analysis/inputs/frontend/synapse-lighting-engine-current/acquisition.json"
+            frontend.parent.mkdir(parents=True)
+            frontend.write_text(json.dumps({"files": [{"path": "source.js", "http_status": 200,
+                "sha256": frontend_sha, "bytes": len(b"verified frontend ABI")}]}), encoding="utf-8")
+            directory = root / f".analysis/results/native/{digest}"
+            (directory / "functions").mkdir(parents=True)
+            function = {"rva": "0x10", "pseudocode": {"lines": [{"text": "complete"}]},
+                        "assembly": ["complete"], "chunks": [{"start": "0x180000010",
+                        "end": "0x180000013", "raw_hex": "616263",
+                        "sha256": hashlib.sha256(b"abc").hexdigest()}]}
+
+            def publish():
+                encoded = json.dumps(function).encode("utf-8")
+                (directory / "functions/10.json").write_bytes(encoded)
+                (directory / "capture.json").write_text(json.dumps({"input_sha256": digest,
+                    "input_bytes": len(raw), "image_base": "0x180000000", "ida_version": "test",
+                    "hexrays_version": "test", "functions": [{"path": "functions/10.json",
+                    "sha256": hashlib.sha256(encoded).hexdigest()}]}), encoding="utf-8")
+
+            publish()
+            pe = {"architecture": "x64", "unresolved": [], "delay_imports": [], "imports": [],
+                  "image_base": "0x180000000", "sections": [{"rva": 0, "file_offset": 0, "bytes": len(raw)}],
+                  "version_resources": [{"tree": {"file_version": "4.0.55.0", "product_version": "4.0.55.0"}}],
+                  "exports": [{"names": [name], "rva": value[0]} for name, value in native._LIGHTING_EXPORTS.items()]}
+            with patch.object(native, "_LIGHTING_INPUT", "source.dll"), \
+                    patch.object(native, "_LIGHTING_SHA256", digest), \
+                    patch.object(native, "_LIGHTING_JS", "source.js"), \
+                    patch.object(native, "_LIGHTING_JS_SHA256", frontend_sha), \
+                    patch.object(native, "_LIGHTING_MANIFESTS", tuple(manifests)), \
+                    patch.object(native, "_LIGHTING_FUNCTIONS", ("10",)), \
+                    patch.object(native, "inspect_pe", return_value=pe):
+                self.assertEqual(len(native.verify_lighting_source(root)["virtual_calls"]), 14)
+                function["chunks"][0]["raw_hex"] = "616264"
+                publish()
+                with self.assertRaisesRegex(ValueError, "chunk differs"):
+                    native.verify_lighting_source(root)
+                function["chunks"][0]["raw_hex"] = "616263"
+                function["pseudocode"]["lines"] = []
+                publish()
+                with self.assertRaisesRegex(ValueError, "body is missing"):
+                    native.verify_lighting_source(root)
+                row["declaration"]["resourceVersion"] = "older"
+                acquisition.write_text(json.dumps({"files": [row]}), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "declaration differs"):
+                    native.verify_lighting_source(root)
+
+    class Export:
+        def __init__(self, call):
+            self.call = call
+
+        def __call__(self, *arguments):
+            return self.call(*arguments)
+
+    class Library:
+        def __init__(self, *, fail_action=None, incomplete=False, invalid_json=False):
+            self.calls, self.buffers, self.freed = [], {}, []
+            self.fail_action, self.incomplete, self.invalid_json = fail_action, incomplete, invalid_json
+            self.enabled = False
+            self.frame_reads = 0
+            export = LightingComparisonTests.Export
+            self.GetDLLVersion = export(lambda: self.allocate("4.0.55.0"))
+            self.PollEvents = export(lambda: self.allocate("[]"))
+            self.RzLightingApi = export(self.api)
+            self.RzLightingApiNoReturn = export(lambda raw: self.calls.append(json.loads(raw)))
+            self.FreeMalloc = export(self.free)
+            self.SetOperatingMode = export(lambda mode: self.calls.append(("mode", mode)))
+            self.SetNodeFFIEvent = export(lambda pointer: self.calls.append(("callback", bool(pointer))) or True)
+
+        def allocate(self, value):
+            buffer = ctypes.create_string_buffer(value.encode("utf-8"))
+            pointer = ctypes.addressof(buffer)
+            self.buffers[pointer] = buffer
+            return pointer
+
+        def free(self, pointer):
+            if pointer not in self.buffers:
+                raise AssertionError("Unknown or already freed native string")
+            self.freed.append(pointer)
+            del self.buffers[pointer]
+
+        def api(self, raw):
+            request = json.loads(raw)
+            self.calls.append(request)
+            action = request["Action"]
+            result = {"Status": 0}
+            if action == self.fail_action:
+                result["Status"] = 0x80004005
+            elif action == 1:
+                result["device_handle"] = 1
+            elif action == 3:
+                result["engine_handle"] = 1
+            elif action == 49:
+                self.enabled = bool(request["enable"])
+            elif action == 52:
+                if self.enabled:
+                    self.frame_reads += 1
+                    result["frame"] = [0] * 9 if self.incomplete or self.frame_reads == 1 else [0x123456] * 9
+                else:
+                    result["Status"] = 0x80004005
+            if self.invalid_json and action == 33:
+                return self.allocate("invalid native JSON")
+            return self.allocate(json.dumps(result))
+
+    def session(self, library, **arguments):
+        with patch.object(native.time, "sleep"):
+            return native._lighting_session(library, lambda row: None, **arguments)
+
+    def test_public_json_only_no_device_clear_and_exact_cleanup_order(self):
+        library = self.Library()
+        result = self.session(library)
+        self.assertEqual(result["errors"], [])
+        self.assertTrue(result["terminated"])
+        self.assertEqual([row["name"] for row in result["scenarios"]], ["static", "wheel_stationary"])
+        self.assertTrue(all(row["frame"] == [0x123456] * 9 for row in result["scenarios"]))
+        actions = [row for row in library.calls if isinstance(row, dict)]
+        self.assertTrue(all(row["clearFrame"] == 0 for row in actions if row["Action"] == 49))
+        self.assertEqual([row["Action"] for row in actions][-4:], [49, 4, 2, 65520])
+        self.assertEqual(library.calls[-2:], [("mode", 0), ("callback", False)])
+        self.assertFalse(library.buffers)
+        self.assertIsNone(library.RzLightingApiNoReturn.restype)
+        self.assertIsNone(library.SetOperatingMode.restype)
+        self.assertEqual(library.RzLightingApi.restype, ctypes.c_void_p)
+
+    def test_failed_or_malformed_result_still_frees_strings_and_destroys_owners(self):
+        for arguments in ({"fail_action": 33}, {"invalid_json": True}):
+            with self.subTest(arguments=arguments):
+                library = self.Library(**arguments)
+                result = self.session(library)
+                self.assertTrue(result["terminated"])
+                self.assertTrue(all("error" in row for row in result["scenarios"]))
+                self.assertTrue(all(all(row["cleanup"].values()) for row in result["scenarios"]))
+                self.assertFalse(library.buffers)
+                self.assertEqual(library.calls[-1], ("callback", False))
+
+    def test_cleanup_failure_is_retained_and_other_cleanup_continues(self):
+        library = self.Library(fail_action=4)
+        result = self.session(library)
+        self.assertTrue(any("Cleanup action 4" in message for message in result["errors"]))
+        self.assertTrue(all(row["cleanup"]["destroy_device"] for row in result["scenarios"]))
+        self.assertFalse(library.buffers)
+        self.assertEqual(library.calls[-1], ("callback", False))
+
+    def test_incomplete_publication_is_a_timeout_not_an_expected_value_retry(self):
+        library = self.Library(incomplete=True)
+        result = self.session(library, ready_timeout=0)
+        self.assertTrue(all(row["frame"] is None and "TimeoutError" in row["error"] for row in result["scenarios"]))
+        self.assertTrue(result["terminated"])
+        self.assertFalse(library.buffers)
+
+    def snapshot(self):
+        return {"schema_version": 1, "scenarios": [{"name": name,
+            "geometry": native._lighting_geometry(), "effect": effect, "epoch_seconds": 0,
+            "cleanup": {"engine_destroyed": True, "device_destroyed": True, "terminated": True},
+            "stable_packed_colorref": [1] * 9,
+            "ticks": [{"logical_ms": milliseconds, "frames": []} for milliseconds in range(0, 4001, 40)]}
+            for name, effect in native._lighting_scenarios()]}
+
+    def test_snapshot_rejects_arbitrary_native_actions_geometry_and_missing_timeline(self):
+        original = self.snapshot()
+        self.assertEqual(native._lighting_snapshot(original), original)
+        for field in ("effect", "geometry", "ticks", "stable_packed_colorref", "cleanup"):
+            value = copy.deepcopy(original)
+            value["scenarios"][0][field] = {}
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                native._lighting_snapshot(value)
+
+    def test_comparison_requires_actual_frames_exact_equality_and_unchanged_inputs(self):
+        snapshot = self.snapshot()
+        original = {"errors": [], "terminated": True, "scenarios": [{"name": row["name"],
+            "frame": row["stable_packed_colorref"], "cleanup": {
+                "disable": True, "destroy_engine": True, "destroy_device": True}}
+            for row in snapshot["scenarios"]]}
+
+        def run_result(marker, value):
+            return {"exit_code": 0, "timed_out": False,
+                    "stdout": marker + " " + json.dumps(value), "stderr": "", "worker_waited": True}
+
+        for scenario in ("equal", "different", "inputs_changed", "cleanup_failed"):
+            value = copy.deepcopy(original)
+            if scenario == "different":
+                value["scenarios"][0]["frame"][0] = 2
+            if scenario == "cleanup_failed":
+                value["scenarios"][0]["cleanup"]["destroy_engine"] = False
+            runs = [run_result("RAZER_LIGHTING_RESULT", snapshot),
+                    run_result("RAZER_LIGHTING_NATIVE_RESULT", value),
+                    run_result("RAZER_LIGHTING_RESULT", snapshot)]
+            identities = [[], [{"changed": True}]] if scenario == "inputs_changed" else [[], []]
+            with self.subTest(scenario=scenario), \
+                    patch.object(native, "verify_lighting_source", return_value={"sha256": "audited"}), \
+                    patch.object(native, "_lighting_input_identity", side_effect=identities), \
+                    patch.object(native, "_run_service_version_test", side_effect=runs):
+                receipt = native.compare_local_lighting(Path("."), lambda **kwargs: [])
+            self.assertEqual(receipt["passed"], scenario == "equal")
+            self.assertEqual(len(receipt["runs"]), 3)
+            if scenario == "different":
+                self.assertEqual(receipt["comparisons"][0]["original"][0], 2)
+                self.assertFalse(receipt["comparisons"][0]["matched"])
+
+    def test_preflight_failures_publish_a_failed_attempt_without_executing_a_process(self):
+        for phase in ("source_verification", "input_identity"):
+            published = []
+            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as directory, \
+                    patch.object(native, "verify_lighting_source",
+                                 side_effect=ValueError("invalid source") if phase == "source_verification" else None,
+                                 return_value={"sha256": "audited"}), \
+                    patch.object(native, "_lighting_input_identity",
+                                 side_effect=OSError("unreadable input") if phase == "input_identity" else None,
+                                 return_value=[]), \
+                    patch.object(native, "_run_service_version_test") as execute:
+                receipt = native.compare_local_lighting(Path(directory), lambda **kwargs: [],
+                    publish=lambda value: published.append(copy.deepcopy(value)))
+            self.assertEqual(published, [receipt])
+            self.assertEqual(receipt["status"], "failed")
+            self.assertEqual(receipt["phase"], phase)
+            self.assertFalse(receipt["passed"])
+            self.assertFalse(receipt["cancelled"])
+            self.assertTrue(receipt["recorded_at_utc"])
+            self.assertEqual(receipt["runs"], {})
+            execute.assert_not_called()
+
+    def test_each_interrupted_phase_publishes_partial_output_before_propagating_cancellation(self):
+        snapshot = self.snapshot()
+        original = {"errors": [], "terminated": True, "scenarios": []}
+        values = [("RAZER_LIGHTING_RESULT", snapshot), ("RAZER_LIGHTING_NATIVE_RESULT", original),
+                  ("RAZER_LIGHTING_RESULT", snapshot)]
+        names = ("rust_before", "original", "rust_after")
+        for interrupted_index in range(3):
+            for interruption in (KeyboardInterrupt, SystemExit):
+                published, calls = [], []
+                partial = {"exit_code": -1, "stdout": "partial native observation", "stderr": "worker error",
+                           "timed_out": False, "worker_waited": True,
+                           "forced_tree_cleanup": {"exit_code": 0}, "interruption": interruption.__name__}
+
+                def execute(command, root, environment, *, observe, **options):
+                    index = len(calls)
+                    calls.append(command)
+                    if index == interrupted_index:
+                        observe(copy.deepcopy(partial))
+                        raise interruption()
+                    marker, value = values[index]
+                    return {"exit_code": 0, "stdout": marker + " " + json.dumps(value), "stderr": "",
+                            "timed_out": False, "worker_waited": True}
+
+                with self.subTest(phase=names[interrupted_index], interruption=interruption.__name__), \
+                        patch.object(native, "verify_lighting_source", return_value={"sha256": "audited"}), \
+                        patch.object(native, "_lighting_input_identity", return_value=[]), \
+                        patch.object(native, "_run_service_version_test", side_effect=execute):
+                    with self.assertRaises(interruption):
+                        native.compare_local_lighting(Path("."), lambda **kwargs: [],
+                            publish=lambda value: published.append(copy.deepcopy(value)))
+                self.assertEqual(len(published), 1)
+                receipt = published[0]
+                self.assertEqual(receipt["phase"], names[interrupted_index])
+                self.assertEqual(receipt["status"], "cancelled")
+                self.assertTrue(receipt["cancelled"])
+                self.assertFalse(receipt["passed"])
+                self.assertEqual(receipt["runs"][names[interrupted_index]], partial)
+                self.assertEqual(len(calls), interrupted_index + 1)
+
+    def test_build_environment_pins_absent_empty_and_changed_flags_without_disclosing_values(self):
+        environment = {"RUSTFLAGS": "--cfg private_test_value", "CARGO_ENCODED_RUSTFLAGS": "",
+                       "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUSTFLAGS": "--cfg target_value",
+                       "RUSTC_WRAPPER": "private/compiler-wrapper", "UNRELATED_TOKEN": "not a build input"}
+        identity = native._lighting_build_environment(environment)
+        self.assertFalse(identity["CARGO_BUILD_RUSTFLAGS"]["present"])
+        self.assertEqual(identity["CARGO_ENCODED_RUSTFLAGS"], {
+            "present": True, "bytes": 0, "sha256": hashlib.sha256(b"").hexdigest()})
+        self.assertNotIn("UNRELATED_TOKEN", identity)
+        self.assertNotIn("private_test_value", json.dumps(identity))
+        self.assertNotIn("private/compiler-wrapper", json.dumps(identity))
+        for name in environment.keys() - {"UNRELATED_TOKEN"}:
+            changed = dict(environment, **{name: environment[name] + " changed"})
+            self.assertNotEqual(identity, native._lighting_build_environment(changed))
+        changed = dict(environment)
+        del changed["CARGO_ENCODED_RUSTFLAGS"]
+        self.assertNotEqual(identity, native._lighting_build_environment(changed))
+
+    def test_all_children_share_the_pinned_environment_and_changed_flags_reject_the_attempt(self):
+        snapshot = self.snapshot()
+        original = {"errors": [], "terminated": True, "scenarios": []}
+        values = [("RAZER_LIGHTING_RESULT", snapshot), ("RAZER_LIGHTING_NATIVE_RESULT", original),
+                  ("RAZER_LIGHTING_RESULT", snapshot)]
+        environments = []
+
+        def execute(command, root, environment, **options):
+            index = len(environments)
+            environments.append(environment)
+            native.os.environ["RUSTFLAGS"] = "--cfg changed_during_comparison"
+            marker, value = values[index]
+            return {"exit_code": 0, "stdout": marker + " " + json.dumps(value), "stderr": "",
+                    "timed_out": False, "worker_waited": True}
+
+        with patch.dict(native.os.environ, {"RUSTFLAGS": "--cfg original"}, clear=True), \
+                patch.object(native, "verify_lighting_source", return_value={"sha256": "audited"}), \
+                patch.object(native, "_lighting_input_identity", return_value=[]), \
+                patch.object(native, "_run_service_version_test", side_effect=execute):
+            receipt = native.compare_local_lighting(Path("."), lambda **kwargs: [])
+        self.assertFalse(receipt["passed"])
+        self.assertEqual(receipt["status"], "failed")
+        self.assertIn("inputs", receipt["error"])
+        self.assertEqual(environments, [{"RUSTFLAGS": "--cfg original"}] * 3)
+        self.assertIsNot(environments[0], environments[1])
+
+    def test_taskkill_timeout_still_kills_and_waits_for_the_owned_process(self):
+        from unittest.mock import Mock
+        process = Mock(pid=12345, returncode=1)
+        process.communicate.side_effect = [subprocess.TimeoutExpired("comparison", 1), ("partial", "")]
+        process.poll.return_value = None
+        with patch.object(native.subprocess, "Popen", return_value=process), \
+                patch.object(native.subprocess, "run", side_effect=subprocess.TimeoutExpired("taskkill", 15)):
+            receipt = native._run_service_version_test(["pure-comparison"], Path("."), {})
+        self.assertTrue(receipt["timed_out"])
+        self.assertIn("TimeoutExpired", receipt["forced_tree_cleanup"]["error"])
+        process.kill.assert_called_once()
+        process.wait.assert_called_once()
+
+    def test_parent_cancellation_terminates_and_waits_for_comparison_tree(self):
+        from unittest.mock import Mock
+        process = Mock(pid=12345, returncode=1)
+        process.communicate.side_effect = [KeyboardInterrupt(), ("partial", "")]
+        process.poll.return_value = None
+        observations, order = [], []
+        process.wait.side_effect = lambda: order.append("wait")
+
+        def observe(value):
+            order.append("observe")
+            observations.append(copy.deepcopy(value))
+
+        with patch.object(native.subprocess, "Popen", return_value=process), \
+                patch.object(native.subprocess, "run") as kill, self.assertRaises(KeyboardInterrupt):
+            native._run_service_version_test(["pure-comparison"], Path("."), {}, observe=observe)
+        self.assertEqual(kill.call_args.args[0], ["taskkill", "/PID", "12345", "/T", "/F"])
+        process.kill.assert_called_once()
+        process.wait.assert_called_once()
+        self.assertEqual(order, ["wait", "observe"])
+        self.assertEqual(observations[0]["stdout"], "partial")
+        self.assertEqual(observations[0]["interruption"], "KeyboardInterrupt")
+        self.assertTrue(observations[0]["worker_waited"])
+
+    def test_failed_cleanup_drain_preserves_partial_bytes_and_real_wait_status(self):
+        from unittest.mock import Mock
+        for interrupted in (False, True):
+            process = Mock(pid=12345, returncode=1)
+            initial = KeyboardInterrupt() if interrupted else subprocess.TimeoutExpired("comparison", 1)
+            process.communicate.side_effect = [initial,
+                subprocess.TimeoutExpired("drain", 15, output=b"last partial output", stderr=b"partial error")]
+            process.poll.return_value = None
+            observations = []
+            with self.subTest(interrupted=interrupted), \
+                    patch.object(native.subprocess, "Popen", return_value=process), \
+                    patch.object(native.subprocess, "run"):
+                if interrupted:
+                    with self.assertRaises(KeyboardInterrupt):
+                        native._run_service_version_test(["pure-comparison"], Path("."), {}, observe=observations.append)
+                else:
+                    native._run_service_version_test(["pure-comparison"], Path("."), {}, observe=observations.append)
+            self.assertEqual(len(observations), 1)
+            self.assertEqual(observations[0]["stdout"], "last partial output")
+            self.assertEqual(observations[0]["stderr"], "partial error")
+            self.assertEqual(observations[0]["timed_out"], not interrupted)
+            self.assertTrue(observations[0]["worker_waited"])
+            self.assertIn("TimeoutExpired", observations[0]["output_cleanup_error"])
+            process.wait.assert_called_once()
 
 
 if __name__ == "__main__":

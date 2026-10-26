@@ -46,6 +46,10 @@ windows = { version = "=0.61.3", features = [
   "Win32_Security",
   "Win32_Graphics_Dxgi",
   "Win32_Graphics_Dxgi_Common",
+  "Win32_Graphics_Direct3D",
+  "Win32_Graphics_Direct3D11",
+  "Win32_Graphics_Direct3D9",
+  "Win32_Graphics_Gdi",
 ] }
 windows-future = "=0.2.1"
 windows-sys = { workspace = true, features = [

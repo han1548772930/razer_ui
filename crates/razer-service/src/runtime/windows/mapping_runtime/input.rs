@@ -3,8 +3,8 @@ use anyhow::{Result, ensure};
 use razer_device::{
     macro_runtime::{Keyboard, MovementMode},
     mapping_native_input::{
-        InputReportOrigin, KeyboardInput, MouseInput, NativeInput, NativeInputExecution,
-        OsInputExecution, encode_mouse,
+        InputConsumer, InputReportOrigin, KeyboardInput, MouseInput, NativeInput,
+        NativeInputExecution, OsInputExecution, encode_mouse,
     },
     mapping_native_output::{CompletionPoll, MappingOutputTransport, ReportDelivery},
 };
@@ -126,6 +126,27 @@ impl Input {
     }
 
     pub fn send(&mut self, input: NativeInput) -> Result<()> {
+        self.send_to(input, InputConsumer::Endpoint)
+    }
+
+    pub fn sequence(&mut self, input: NativeInput) {
+        // 85EA8 has no OS branch without its driver owner. Its void callback
+        // does not return either transport's result to the Sequence cursor.
+        let result = if self.driver.is_none() {
+            Err(anyhow::anyhow!("Sequence input has no driver owner"))
+        } else {
+            self.send_to(input, InputConsumer::Sequence)
+        };
+        if let Err(error) = result {
+            if self.operation_errors.len() < 64 {
+                self.operation_errors
+                    .push(format!("Sequence input: {error:#}"));
+            }
+            log::warn!("Sequence input: {error:#}");
+        }
+    }
+
+    fn send_to(&mut self, input: NativeInput, consumer: InputConsumer) -> Result<()> {
         let release = release_identity(input);
         if let Some((identity, true, _)) = release {
             // Each source break is attempted once. A failed break is retained
@@ -134,19 +155,14 @@ impl Input {
         }
         let mut os = WindowsOsInputTransport;
         let accepted = if let Some(driver) = &mut self.driver {
-            let mut execution = NativeInputExecution::submit_with_os_fallback(
-                driver,
-                &mut os,
-                &[input],
-                Duration::ZERO,
-            );
+            let mut execution = consumer.submit(driver, &mut os, &[input], Duration::ZERO);
             let mut cancelled = false;
             while execution.is_pending() {
                 if !cancelled && self.cancellable && self.cancellation.is_cancelled() {
                     execution.cancel_pending(driver, Duration::ZERO);
                     cancelled = true;
                 }
-                execution.poll_with_os_fallback(driver, &mut os, Duration::from_millis(5));
+                consumer.poll(&mut execution, driver, &mut os, Duration::from_millis(5));
             }
             let accepted = execution.reports.iter().all(|report| {
                 report.delivery == ReportDelivery::Completed

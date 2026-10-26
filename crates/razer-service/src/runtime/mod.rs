@@ -7,6 +7,11 @@ mod camera_controller;
 mod controller_calibration;
 #[path = "controller_lighting.rs"]
 mod controller_lighting;
+#[path = "controller_sleep.rs"]
+mod controller_sleep;
+#[path = "controller_initialization.rs"]
+mod controller_initialization;
+mod controller_socd;
 #[path = "controller_triggers.rs"]
 mod controller_triggers;
 mod feature_submission;
@@ -18,6 +23,7 @@ mod leviathan_events;
 #[cfg(windows)]
 mod lighting_engine;
 mod lighting_engine_session;
+mod marci_lighting;
 #[path = "mouse_indicator_led_controller.rs"]
 mod mouse_indicator_led_controller;
 mod mouse_philips_controller;
@@ -221,6 +227,10 @@ pub fn run_worker() -> i32 {
             | ServiceRequest::HidNodeReports { .. }
             | ServiceRequest::ControllerTriggers { .. }
             | ServiceRequest::ControllerLighting { .. }
+            | ServiceRequest::MarciLighting { .. }
+            | ServiceRequest::ControllerSleep { .. }
+            | ServiceRequest::ControllerSocd { .. }
+            | ServiceRequest::ControllerInitialization { .. }
             | ServiceRequest::ControllerTriggerCalibrationStart { .. }
             | ServiceRequest::ControllerTriggerCalibrationPoll { .. }
             | ServiceRequest::ControllerTriggerCalibrationCancel { .. }

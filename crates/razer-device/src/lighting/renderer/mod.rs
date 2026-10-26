@@ -5,9 +5,12 @@ use super::{ColorStop, EngineEffect};
 use anyhow::{Context as _, ensure};
 use std::collections::BTreeMap;
 
+mod ambient;
 mod engine;
 mod spatial;
 mod stochastic;
+mod wheel;
+pub use ambient::{ScreenBackend, ScreenCaptureStatus, ScreenObservation, ScreenRequest};
 pub use engine::Engine;
 
 #[cfg(test)]
@@ -169,6 +172,8 @@ enum Effect {
         flow: bool,
     },
     Tidal(spatial::Tidal),
+    Wheel(wheel::Wheel),
+    Ambient(ambient::Ambient),
 }
 
 /// One effect instance advances once per engine tick. RGB output is composited
@@ -202,16 +207,20 @@ impl Renderer {
             match source.effect {
                 2 => matches!(mode, 0 | 2 | 1024 | 2048),
                 3 => mode == 4128,
-                4 | 6 | 8 | 12 => mode == 0,
+                4 | 6 | 8 | 11 | 12 => mode == 0,
                 5 | 7 => matches!(mode, 0 | 1),
                 19 => matches!(mode, 2 | 3),
+                13 => matches!(mode, 1024 | 2048),
                 _ => false,
             },
             "Lighting mode is outside the current mounted effect contract"
         );
         ensure!(
-            p.speed
-                .is_none_or(|v| v.is_finite() && (0.0..=100.0).contains(&v)),
+            p.speed.is_none_or(|v| {
+                v.is_finite()
+                    && (0.0..=if source.effect == 13 { 360_000.0 } else { 100.0 }).contains(&v)
+                    && (source.effect != 13 || v.fract() == 0.)
+            }),
             "Lighting speed is invalid"
         );
         ensure!(cycles_valid(p.cycles), "Lighting cycle count is invalid");
@@ -303,6 +312,8 @@ impl Renderer {
                 }
             }
             19 => Effect::Tidal(spatial::Tidal::new(p, rows, columns, &mut random)?),
+            13 => Effect::Wheel(wheel::Wheel::new(p)?),
+            11 => Effect::Ambient(ambient::Ambient::new(p, rows, columns)?),
             _ => anyhow::bail!(
                 "Lighting effect {} is outside the mounted local effect contract",
                 source.effect
@@ -321,11 +332,18 @@ impl Renderer {
             _ => None,
         }
     }
+    pub fn screen_request(&self) -> Option<ScreenRequest> {
+        match &self.effect {
+            Effect::Ambient(ambient) => Some(ambient.request()),
+            _ => None,
+        }
+    }
     pub fn reset(&mut self) -> anyhow::Result<()> {
         match &mut self.effect {
             Effect::Uniform { sequence, .. } => sequence.cursor = 0,
             Effect::Wave(wave) => wave.reset(),
             Effect::Tidal(tidal) => tidal.reset()?,
+            Effect::Wheel(wheel) => wheel.reset(),
             _ => {}
         }
         Ok(())
@@ -349,6 +367,15 @@ impl Renderer {
         destination: &mut [[u8; 3]],
         opacity: f32,
         audio_peak: Option<f32>,
+    ) -> anyhow::Result<()> {
+        self.render_with_screen(destination, opacity, audio_peak, None)
+    }
+    pub fn render_with_screen(
+        &mut self,
+        destination: &mut [[u8; 3]],
+        opacity: f32,
+        audio_peak: Option<f32>,
+        screen: Option<&ScreenObservation>,
     ) -> anyhow::Result<()> {
         ensure!(
             destination.len() == self.rows * self.columns,
@@ -392,6 +419,10 @@ impl Renderer {
             Effect::Stars(stars) => stars.render(&mut pixels)?,
             Effect::Fire(fire) => fire.render(&mut pixels),
             Effect::Tidal(tidal) => tidal.render(&mut pixels, self.rows, self.columns)?,
+            Effect::Wheel(wheel) => wheel.render(&mut pixels, self.columns),
+            Effect::Ambient(ambient) => {
+                ambient.render(&mut pixels, self.rows, self.columns, screen)?
+            }
             Effect::Audio {
                 values,
                 peak,

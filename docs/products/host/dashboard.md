@@ -102,6 +102,30 @@ CSS 规则确认了以下可见状态和尺寸：
 
 Chroma 的 Studio、Connect、Sensa 和 Visualizer 行为分别见 [Chroma Studio](chroma-studio.md)、[Chroma Connect](chroma-connect.md)、[Sensa](sensa.md)、[Visualizer](visualizer.md)。这些模块的设备任务和退出恢复不归普通 Dashboard 卡片拥有。
 
+### Chroma Dashboard 的隐藏启动与恢复
+
+Chroma Dashboard 使用自己的挂载根，不能继承上面的 Synapse Dashboard 生命周期。当前 `main.e5fe7086.js` 的完整启动回调 `[551412,551634)` 加载 chunks 7714／3874／332，再取模块 `11078.default` 并挂 `windowName:"chroma-app"`。导出包装 `pe`、语言连接层 `Ne` 和真实页面类 `ge` 都在 `332.780bf0e1.chunk.js` 内。`ge` 的初始 `isStartHidden` 仅在 URL 的 `autoStart`、`forceHidden` **同时等于字符串 `"1"`** 时为真，缺少任一个条件都不属于这条隐藏启动分支。
+
+`componentDidMount` 先请求共享管理器打开 background-manager 和 notification-manager，再更新语言并调用隐藏启动处理；前两个异步打开请求没有在这里等待。共享 `forceOpenHiddenTab` 按窗口名取得 navigator lock：已有窗口时移除 create 监听；否则打开指定本机 URL，等待匹配的 create 事件或十秒超时，两条路径都移除监听。异常分支仅记录错误，没有独立的监听移除，不能把锁回调结束写成全部资源释放或后台启动成功。
+
+隐藏启动按 `getTabInfo("audio-visualizer")` 查询窗口集合，再读本机 `synapseAudioVisualizerProfiles.visualizerState`。未找到窗口且保存的状态为 truthy 时才调用 `window.open("/synapse/audio-visualizer/",...,"policy=3,tab_visible=1,")`，随后投递本窗口的 `dependent-app-status:{windowName:window.name,status:"hidden"}`。`getTabInfo` 查询或解析异常会记录后返回 null，因此一次打开请求也不能证明先前确实没有窗口；本机 Visualizer 状态不是设备 GET，打开 URL 也不是灯光引擎确认。
+
+恢复入口包括 `visibleChange` 且 `isVisible`、`changeActiveTab` 且目标为 `chroma-app`、`focus` 且 `isFocus`，以及内部 `USER_CLICK_DESKTOP_ICON` 事件。`handleOnUserRestoreWindow` 先 await `getWindowStorageItem("dependent-app-status")`，然后才进入 try：返回空数组，或所有 `value.windowName` 都不包含 `chroma-app`，会直接返回，连本窗口隐藏状态也不清除。否则按行的 URL 字段 `windowName` 查 `/chroma-app/dashboard`，仅当该行解析后的 value 为 `status:"installing"` 时跳过 `running` 发布；这时仍会在 try 后清除 `isStartHidden`。初次 await 被拒绝发生在 try 外，不能按内部 JSON 解析错误的处理推断其结果。
+
+这里的 `dependent-app-status` 经 Chroma facade → preload `doElectronAction` → main `electronAction` → `WindowStorage.callFunction`。主机按发送者 URL 保存独立 Map；GET 返回含 truthy 值的 `{value,windowName:URL}` JSON 数组，SET 返回**写入前的旧值**并向符合条件的其他窗口发事件。页面对 hidden／running 的 SET 都不等待，因此两个标记只表示窗口协调意图，不能证明安装完成、持久化完成、原生 worker 存活或设备设置写回。
+
+`ge` 没有 `componentWillUnmount`；`handleAppHiddenStart` 丢弃了 `response("tab-message",...)` 的 disposer，内部 desktop-icon 监听也没有在该类中注销。preload 的 pagehide 会另行移除 tab-message 等 IPC 监听，不能据此声称页面类自身已经配对释放。安装包装 `Ce` 的 effect 使用空依赖数组，初次隐藏时直接返回；同一个已挂载实例只改变 `isStartHidden` 不会重新运行该 effect，外层是否重新挂载须由它自己的完整消费者决定。
+
+本链完整证据写入现有 [host local-audit](../../../.analysis/results/host-current/local-audit.json) 的 `window_lifecycle.chroma_dashboard_launch`，保留 31 个选定完整 AST 所有者、跨 chunk 导出／绑定及真实 host GET／SET／IPC／pagehide 所有者。原件身份为：
+
+| 原件 | 实际字节与 SHA-256 | 完整关键所有者区间 |
+| --- | --- | --- |
+| [main.e5fe7086.js](../../../.analysis/inputs/frontend/chroma-app-dashboard-current/raw/apps.razer.com/chroma-app/dashboard/static/js/main.e5fe7086.js) | 552,739；`2479098971305d7e9a8fe3b9a820d0da306a9082b14e9277b3784431f9888dec` | 启动 `[551412,551634)`；GET `[57009,57276)`；SET `[56475,56756)` |
+| [332.780bf0e1.chunk.js](../../../.analysis/inputs/frontend/chroma-app-dashboard-current/raw/apps.razer.com/chroma-app/dashboard/static/js/332.780bf0e1.chunk.js) | 1,944,306；`33fe6d03703de15d089e86f8ca012e3dc5c7443eec979bf45d10b6f032b86b8c` | 页面类 `[328818,331676)`；隐藏处理 `[329664,330329)`；恢复 `[328871,329663)`；共享隐藏窗口 `[712777,713419)` |
+| [WindowStorage](../../../.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/modules/window_storage/index.js) | 2,985；`6a10c8daeaa5a5bfe87f136d666e37c5915a6d62b10bf2e07d6e7f1a86a1f4a7` | `callFunction` `[312,2834)` |
+
+这条本机启动／恢复链的 7 个纯静态测试会拒绝错误 owner 重绑定、截断函数、篡改发布值、删除结果／清理 owner，以及把静态结果提升为设备或运行验收。没有执行厂商 JavaScript、应用窗口、DLL 或设备；整套 Chroma Dashboard 的卡片和产品语义仍不能由这条有界链路外推。
+
 ## 当前页面与 Rust 接线核对
 
 页面的固定几何须与行为一起保留。当前实际加载的 55 样式中，`.dashboard` 常规上限为 1220 px、最小宽为 620 px，`.reflow` 上限 2460 px；1279 px 及以下上限变为 910 px、正文两侧 inset 为 30 px，600 px 及以下上限为 290 px。组件写入的 `width:unset` 又覆盖 1260 px 断点的 `width:min-content`，不能孤立翻译一条 CSS。分组上下 margin 为 10 px，内容与标题相距 10 px、卡片间距 20 px，标题为 14 px。普通卡片 padding 为 `10px 20px 9px`、圆角 5 px、底色 `#111`；无设备卡片保留虚线轮廓。普通／选中／悬停、loading 组的 `visibility:hidden`、折叠的位移／max-height／overflow、拖动层次是独立状态。依据为 [55.4e8559cb.chunk.css](../../../.analysis/inputs/frontend/synapse-dashboard-current/raw/apps.razer.com/synapse/dashboard/static/css/55.4e8559cb.chunk.css) 的分组／断点 `[182467,186278)` 及实际 `.box-item`／`.box-no-device` selector，未将同包 Gamer Room 或未挂载配对窗口的样式混入普通卡片。

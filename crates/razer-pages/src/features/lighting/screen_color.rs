@@ -1,13 +1,105 @@
 //! Retained screen-picker lifetime shared by the two original color editors.
 use gpui_kit::*;
-use razer_platform::screen_color::{ScreenColorEvent, ScreenColorPicker};
+use razer_platform::screen_color::{
+    ScreenColorCompletion, ScreenColorEvent, ScreenColorPicker, ScreenColorRequestId,
+};
 use std::{
-    sync::atomic::{AtomicU64, Ordering},
+    collections::BTreeMap,
+    sync::atomic::{AtomicU64, AtomicUsize, Ordering},
     time::Duration,
 };
 
 const CURSOR: &str = "synapse/screen-color-picker.cur";
 static REQUEST_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+static ACTIVE_COMPLETIONS: AtomicUsize = AtomicUsize::new(0);
+
+struct AcceptedCompletion;
+impl AcceptedCompletion {
+    fn new() -> Self {
+        ACTIVE_COMPLETIONS.fetch_add(1, Ordering::AcqRel);
+        Self
+    }
+}
+impl Drop for AcceptedCompletion {
+    fn drop(&mut self) {
+        ACTIVE_COMPLETIONS.fetch_sub(1, Ordering::AcqRel);
+    }
+}
+
+pub fn exit_pending() -> bool {
+    razer_platform::screen_color::active_workers() > 0
+        || ACTIVE_COMPLETIONS.load(Ordering::Acquire) > 0
+}
+
+#[derive(Default)]
+struct NativeWorkers {
+    tasks: BTreeMap<ScreenColorRequestId, Task<()>>,
+    closing: bool,
+}
+struct SharedWorkers(Entity<NativeWorkers>);
+impl Global for SharedWorkers {}
+
+impl NativeWorkers {
+    fn shared(cx: &mut App) -> Entity<Self> {
+        if !cx.has_global::<SharedWorkers>() {
+            let owner = cx.new(|cx| {
+                cx.on_app_quit(|owner: &mut Self, cx| {
+                    owner.begin_exit(cx);
+                    let tasks = std::mem::take(&mut owner.tasks);
+                    async move {
+                        for task in tasks.into_values() {
+                            task.await;
+                        }
+                    }
+                })
+                .detach();
+                Self::default()
+            });
+            cx.set_global(SharedWorkers(owner));
+        }
+        cx.global::<SharedWorkers>().0.clone()
+    }
+
+    fn begin_exit(&mut self, cx: &mut Context<Self>) {
+        self.closing = true;
+        REQUEST_SEQUENCE.fetch_add(1, Ordering::AcqRel);
+        for completion in razer_platform::screen_color::begin_exit() {
+            self.retain(completion, cx);
+        }
+    }
+
+    fn retain(&mut self, completion: ScreenColorCompletion, cx: &mut Context<Self>) {
+        let id = completion.id();
+        if self.tasks.contains_key(&id) {
+            return;
+        }
+        let accepted = AcceptedCompletion::new();
+        let task = cx.spawn(async move |owner, cx| {
+            let event = cx.background_spawn(async move { completion.wait() }).await;
+            if let ScreenColorEvent::Failed(error) = event {
+                // This owner outlives the originating page, so cancellation
+                // and page release cannot discard a native cleanup failure.
+                eprintln!("Screen color completion: {error}");
+            }
+            let _ = owner.update(cx, |owner, _| {
+                owner.tasks.remove(&id);
+            });
+            drop(accepted);
+        });
+        self.tasks.insert(id, task);
+    }
+}
+
+/// Invalidate page callbacks, stop native admission, and retain every accepted
+/// thread's real join through the application's background exit drain.
+pub fn begin_exit(cx: &mut App) {
+    NativeWorkers::shared(cx).update(cx, NativeWorkers::begin_exit);
+}
+
+pub fn cancel_exit(cx: &mut App) {
+    razer_platform::screen_color::cancel_exit();
+    NativeWorkers::shared(cx).update(cx, |owner, _| owner.closing = false);
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum ScreenColorUpdateKind {
@@ -68,12 +160,17 @@ impl ScreenColorCapture {
         self.active = false;
         self.task = None;
         if let Some(mut picker) = self.picker.take() {
+            // Its join task belongs to NativeWorkers, not this page poller.
+            // Cancellation does not remove that retained completion owner.
             picker.cancel();
         }
     }
 
     pub(super) fn start(&mut self, cx: &mut Context<Self>) {
         self.cancel();
+        if NativeWorkers::shared(cx).read(cx).closing {
+            return;
+        }
         self.request_sequence = REQUEST_SEQUENCE
             .fetch_add(1, Ordering::AcqRel)
             .wrapping_add(1);
@@ -126,7 +223,12 @@ impl ScreenColorCapture {
             // Disk, credentials, HTTP and native screen I/O have worker owners.
             match cx.asset_source().load(CURSOR) {
                 Ok(Some(bytes)) => match ScreenColorPicker::start(bytes.into_owned()) {
-                    Ok(picker) => self.picker = Some(picker),
+                    Ok(picker) => {
+                        let completion = picker.completion();
+                        NativeWorkers::shared(cx)
+                            .update(cx, |owner, cx| owner.retain(completion, cx));
+                        self.picker = Some(picker);
+                    }
                     Err(error) => self.fail(format!("{error:#}")),
                 },
                 Ok(None) => self.fail(format!("Missing cursor resource {CURSOR}")),

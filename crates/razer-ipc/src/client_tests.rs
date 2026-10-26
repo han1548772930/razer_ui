@@ -40,6 +40,7 @@ fn simulated_client(bytes: Vec<u8>) -> (ServiceClient, Receiver<Vec<u8>>) {
             timeout: Duration::ZERO,
             next_id: 1,
             stopped: false,
+            shutdown_confirmation: None,
             philips_measurement_started: false,
             request_guard: None,
         },
@@ -464,6 +465,9 @@ fn shutdown_rejects_missing_negative_and_wrongly_typed_cleanup_receipts() {
     ] {
         let (mut client, pending) = simulated_client(reply(1, Some(data), None, false));
         assert!(client.request(ServiceRequest::Shutdown).is_err());
+        assert!(client.shutdown_confirmation().is_none());
+        client.finish_termination().unwrap();
+        assert!(client.shutdown_confirmation().is_none());
         assert_closed(&mut client, &pending);
     }
 }
@@ -476,6 +480,7 @@ fn shutdown_preserves_cleanup_extension_fields() {
     });
     let (mut client, pending) = simulated_client(reply(1, Some(receipt.clone()), None, false));
     assert_eq!(client.request(ServiceRequest::Shutdown).unwrap(), receipt);
+    assert_eq!(client.shutdown_confirmation().unwrap().request_id(), 1);
     assert_closed(&mut client, &pending);
 }
 
@@ -507,11 +512,39 @@ fn shutdown_joins_both_pipe_workers_and_reports_all_cleanup_failures() {
     let text = format!("{error:#}");
     assert!(text.contains("simulated input flush failure"));
     assert!(text.contains("simulated output read failure"));
+    let confirmation = client.shutdown_confirmation().unwrap();
+    assert_eq!(confirmation.request_id(), 1);
     assert!(input_finished.load(Ordering::Acquire));
     assert!(output_finished.load(Ordering::Acquire));
     assert!(client.input_worker.is_none());
     assert!(client.output_worker.is_none());
+    client.finish_termination().unwrap();
+    assert_eq!(client.shutdown_confirmation(), Some(confirmation));
     assert_closed(&mut client, &pending);
+}
+
+#[test]
+fn service_rejection_and_wrong_reply_cannot_become_shutdown_confirmation_after_process_release() {
+    for bytes in [
+        reply(1, None, Some("native owner restoration failed"), false),
+        reply(2, Some(serde_json::json!({"stopped":true})), None, false),
+        reply(
+            1,
+            Some(serde_json::json!({"stopped":true})),
+            Some("contradictory"),
+            false,
+        ),
+        reply(1, None, None, false),
+    ] {
+        let (mut client, pending) = simulated_client(bytes);
+        assert!(client.shutdown_confirmation().is_none());
+        assert!(client.request(ServiceRequest::Shutdown).is_err());
+        assert!(client.shutdown_confirmation().is_none());
+        client.finish_termination().unwrap();
+        assert!(client.is_stopped());
+        assert!(client.shutdown_confirmation().is_none());
+        assert_closed(&mut client, &pending);
+    }
 }
 
 #[test]
@@ -618,10 +651,12 @@ fn finish_termination_retries_stopped_cleanup_without_a_native_shutdown_receipt(
     assert!(client.input_worker.is_none());
     assert!(client.output_worker.is_none());
     assert!(client.is_stopped());
+    assert!(client.shutdown_confirmation().is_none());
 
     client.finish_termination().unwrap();
     client.finish_termination().unwrap();
     assert!(client.request(ServiceRequest::Shutdown).is_err());
+    assert!(client.shutdown_confirmation().is_none());
 }
 
 #[test]

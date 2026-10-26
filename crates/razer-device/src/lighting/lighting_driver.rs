@@ -8,7 +8,7 @@ use anyhow::{Result, bail};
 
 /// Current engine module 1306 NEW_CHROMA_EFFECT_ID. Hardware commands carry
 /// this namespace; native software-engine effect handles use separate IDs.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 #[repr(u8)]
 pub enum HardwareEffect {
     Off = 0,
@@ -29,6 +29,37 @@ pub enum HardwareEffect {
 impl HardwareEffect {
     pub const fn code(self) -> u8 {
         self as u8
+    }
+}
+
+/// Result of the current UI-to-hardware converter and helper expansion.
+/// Hardware colors retain RGB byte order; software COLORREF uses a separate
+/// conversion boundary.
+#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
+pub struct HardwareQuickEffect {
+    pub effect: HardwareEffect,
+    pub flags: u8,
+    pub rate: u8,
+    pub colors: Vec<[u8; 3]>,
+}
+impl HardwareQuickEffect {
+    pub fn protocol25_payload(&self, profile_id: u8, region_id: u8) -> Result<Vec<u8>> {
+        anyhow::ensure!(
+            self.colors.len() <= 24,
+            "Hardware color payload exceeds Protocol25"
+        );
+        let mut payload = vec![
+            profile_id,
+            region_id,
+            self.effect.code(),
+            self.flags,
+            self.rate,
+            self.colors.len() as u8,
+        ];
+        for color in &self.colors {
+            payload.extend(color);
+        }
+        Ok(payload)
     }
 }
 

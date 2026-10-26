@@ -471,7 +471,11 @@ def frontend_reference_gaps(data):
     """Keep unavailable debug maps, exploratory probes and declared assets separate."""
     declared = {}
     for edge in data.get("edges", []):
-        declared.setdefault(edge["to"], []).append(edge)
+        target = edge.get("to", edge.get("url"))
+        if (not isinstance(target, str) or not target
+                or "to" in edge and "url" in edge and edge["to"] != edge["url"]):
+            raise ValueError("Frontend reference edge has no unique target URL")
+        declared.setdefault(target, []).append(edge)
     probes = {row["url"] for row in data.get("probes", []) if row.get("declared") is False}
     counts = Counter()
     missing, speculative, unknown = [], [], []

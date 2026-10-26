@@ -57,6 +57,18 @@ pub struct AnalogTrigger {
     is_active: bool,
 }
 impl AnalogTrigger {
+    pub(crate) fn validate(&self) -> anyhow::Result<()> {
+        Self::new(
+            self.controller_id,
+            self.start_range,
+            self.end_range,
+            self.is_active,
+        )
+        .map(|_| ())
+    }
+    pub(crate) fn controller_id(&self) -> u8 {
+        self.controller_id
+    }
     pub fn new(
         controller_id: u8,
         start_range: u8,
@@ -89,6 +101,18 @@ pub struct DigitalTrigger {
     is_active: bool,
 }
 impl DigitalTrigger {
+    pub(crate) fn validate(&self) -> anyhow::Result<()> {
+        Self::new(
+            self.controller_id,
+            self.actuation_point,
+            self.is_rapid_trigger,
+            self.is_active,
+        )
+        .map(|_| ())
+    }
+    pub(crate) fn controller_id(&self) -> u8 {
+        self.controller_id
+    }
     pub fn new(
         controller_id: u8,
         actuation_point: u8,
@@ -215,6 +239,12 @@ pub struct ThumbstickValue {
     value: u16,
 }
 impl ThumbstickValue {
+    pub(crate) fn validate(&self) -> anyhow::Result<()> {
+        Self::new(self.controller_id, self.value).map(|_| ())
+    }
+    pub(crate) fn controller_id(&self) -> u8 {
+        self.controller_id
+    }
     pub fn new(controller_id: u8, value: u16) -> anyhow::Result<Self> {
         ensure!(
             matches!(controller_id, 1 | 2),

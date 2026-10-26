@@ -31,6 +31,7 @@ import ida_nalt
 import ida_segment
 import ida_typeinf
 import ida_ua
+import ida_xref
 import idaapi
 import idautils
 import idc
@@ -52,6 +53,90 @@ def _static_diagnostic_error(record, stage, error):
         record["diagnostic_errors_truncated"] = True
     if len(message) > 2048:
         record["diagnostic_errors_truncated"] = True
+
+
+def native_frame_layout_diagnostics(function):
+    """Observe exact SDK frame members without changing their types or offsets."""
+    result = {"schema_version": 1, "status": "unobserved", "members": [],
+              "target_execution": False, "frame_modified": False}
+    try:
+        result["native_function"] = {key: int(getattr(function, key)) for key in
+            ("start_ea", "end_ea", "flags", "frame", "frsize", "frregs", "argsize", "fpd")}
+        result["return_address_bytes"] = int(ida_frame.get_frame_retsize(function))
+        result["full_frame_bytes"] = int(ida_frame.get_frame_size(function))
+        result["parts"] = {name: int(getattr(ida_frame, "frame_off_" + name)(function))
+                           for name in ("lvars", "savregs", "retaddr", "args")}
+        frame = ida_typeinf.tinfo_t()
+        if not ida_frame.get_func_frame(frame, function):
+            result["status"] = "sdk_returned_no_frame"
+            return result
+        result["type"] = str(frame)
+        members = ida_typeinf.udt_type_data_t()
+        if not frame.get_udt_details(members):
+            raise ValueError("SDK frame does not expose complete UDT member details")
+        result["layout"] = {key: int(getattr(members, key)) for key in
+                            ("total_size", "unpadded_size", "effalign", "taudt_bits", "version", "sda", "pack")}
+        result["layout"]["is_union"] = bool(members.is_union)
+        result["member_count"] = len(members)
+        if len(members) > 4096:
+            raise ValueError("SDK frame member observations exceed the explicit 4096-member bound")
+        for index, member in enumerate(members):
+            result["members"].append({"index": index, "offset_bits": int(member.offset),
+                "size_bits": int(member.size), "name": str(member.name), "comment": str(member.cmt),
+                "type": str(member.type), "type_bytes": int(member.type.get_size()),
+                "effective_alignment": int(member.effalign), "attributes": int(member.tafld_bits),
+                "member_tid": int(frame.get_udm_tid(index)), "return_address": bool(member.is_retaddr()),
+                "saved_registers": bool(member.is_savregs()), "special_member": bool(member.is_special_member()),
+                "bitfield": bool(member.is_bitfield()), "gap": bool(member.is_gap()),
+                "from_type_library": bool(member.is_by_til())})
+        result["member_references"] = []
+        for member in result["members"]:
+            references = ida_frame.xreflist_t()
+            ida_frame.build_stkvar_xrefs(references, function, member["offset_bits"] // 8,
+                                       (member["offset_bits"] + member["size_bits"] + 7) // 8)
+            result["member_references"].append({"member_index": member["index"],
+                "offset_bits": member["offset_bits"], "size_bits": member["size_bits"],
+                "references": [{"address": hex(int(reference.ea)), "operand": int(reference.opnum),
+                                "xref_type": int(reference.type)} for reference in references]})
+        result["memory_operands"] = []
+        items = list(idautils.FuncItems(function.start_ea))
+        if len(items) > 262144:
+            raise ValueError("SDK frame operand observations exceed the explicit 262144-item bound")
+        for ea in items:
+            flags = ida_bytes.get_full_flags(ea)
+            if not ida_bytes.is_code(flags):
+                continue
+            instruction = ida_ua.insn_t()
+            size = int(ida_ua.decode_insn(instruction, ea))
+            if size <= 0:
+                raise ValueError("SDK could not freshly decode an original frame-reference instruction")
+            for index, operand in enumerate(instruction.ops):
+                if operand.type == ida_ua.o_void:
+                    break
+                if operand.type not in (ida_ua.o_mem, ida_ua.o_phrase, ida_ua.o_displ):
+                    continue
+                record = {"address": hex(int(ea)), "operand": index,
+                    "instruction_bytes": ida_bytes.get_bytes(ea, size).hex(),
+                    "instruction_text": ida_lines.tag_remove(idc.generate_disasm_line(ea, 0) or ""),
+                    "operand_text": ida_lines.tag_remove(ida_ua.print_operand(ea, index) or ""),
+                    "decoded_size": size, "mnemonic": str(instruction.get_canon_mnem()),
+                    "dtype_bytes": int(ida_ua.get_dtype_size(operand.dtype)),
+                    "stack_operand": bool(ida_bytes.is_stkvar(flags, index)),
+                    "spd_before": int(ida_frame.get_spd(function, ea)),
+                    "effective_spd": int(ida_frame.get_effective_spd(function, ea)),
+                    "sp_change_point_delta": int(ida_frame.get_sp_delta(function, ea)),
+                    "decoded_operand": {key: int(getattr(operand, key)) for key in
+                        ("type", "dtype", "reg", "phrase", "value", "addr", "specval",
+                         "specflag1", "specflag2", "specflag3", "specflag4")}}
+                if record["stack_operand"]:
+                    record["frame_offset"] = int(ida_frame.calc_stkvar_struc_offset(function, instruction, index))
+                result["memory_operands"].append(record)
+        result["references_complete"] = True
+        result["status"] = "api_returned"
+    except Exception as error:
+        result["status"] = "diagnostic_error"
+        _static_diagnostic_error(result, "native_frame_layout", error)
+    return result
 
 
 def local_namespace_diagnostics(cfunc):
@@ -1057,6 +1142,90 @@ class FreshInlineController(ida_hexrays.Hexrays_Hooks):
         self.target_ea, self.base, self.helpers, self.audit = int(target_ea), int(base), helpers, audit
         self.active = False
         self.entered = False
+        self.pending_inline = None
+
+    def inlined_func(self, cdg, blk, mbr, i1, i2):
+        pending = self.pending_inline
+        if not self.active or pending is None or int(cdg.mba.entry_ea) != self.target_ea:
+            return 0
+        try:
+            function = mbr.pfn
+            if function is None or int(function.start_ea) != pending["helper_ea"]:
+                return 0
+            first, stop = int(i1), int(i2)
+            if int(blk) != pending["source_block"] or not 0 <= first < stop <= int(cdg.mba.qty):
+                raise ValueError("SDK inserted blocks differ from the active fresh inline request")
+            pending["events"].append({
+                "api": "Hexrays_Hooks.inlined_func", "mba_entry_ea": hex(int(cdg.mba.entry_ea)),
+                "source_block": int(blk), "helper_ea": hex(int(function.start_ea)),
+                "inserted_block_interval": [first, stop]})
+        except Exception as error:
+            pending["errors"].append((type(error).__name__ + ": " + str(error))[:2048])
+        return 0
+
+    def _call_tails(self, mba):
+        tails = []
+        for index in range(int(mba.qty)):
+            block = mba.get_mblock(index)
+            tail = block.tail
+            if (tail is not None and int(tail.opcode) == ida_hexrays.m_call
+                    and int(tail.l.t) == ida_hexrays.mop_v):
+                tails.append((int(block.serial), int(tail.ea), int(tail.l.g)))
+        return tails
+
+    def _inline(self, cdg, decomp_flags, helper, row, sdk_call_ea, capture_interval=False):
+        original_ea = self.base + int(row["callsite_rva"], 16)
+        helper_ea = self.base + int(helper["rva"], 16)
+        if (ida_bytes.get_bytes(original_ea, 5) or b"").hex() != row["raw_hex"]:
+            raise ValueError("Fresh inline original direct CALL bytes changed")
+        function = ida_funcs.get_func(helper_ea)
+        if (function is None or int(function.start_ea) != helper_ea
+                or not function.flags & ida_funcs.FUNC_OUTLINE):
+            raise ValueError("Fresh inline helper lost its exact outlined boundary")
+        chunks = []
+        for first, stop in sorted(idautils.Chunks(helper_ea)):
+            code = ida_bytes.get_bytes(first, stop - first)
+            if code is None:
+                raise ValueError("Fresh inline helper bytes are unavailable")
+            chunks.append({"start": hex(first), "end": hex(stop), "raw_hex": code.hex(),
+                           "sha256": hashlib.sha256(code).hexdigest()})
+        if chunks != helper["expected_chunks"]:
+            raise ValueError("Fresh inline helper chunks differ from the complete reviewed function")
+        matches = [serial for serial, ea, target in self._call_tails(cdg.mba)
+                   if ea == sdk_call_ea and target == helper_ea]
+        if len(matches) != 1:
+            raise ValueError("Fresh inline direct CALL block is absent or ambiguous")
+        row["block_serial_before"] = matches[0]
+        if helper.get("inline_scope") == "reviewed_nested_register_leaf":
+            if helper.get("flag_names") != ["INLINE_DONTCOPY"]:
+                raise ValueError("Fresh inline register leaf has different SDK flags")
+            flags = int(ida_hexrays.INLINE_DONTCOPY)
+        else:
+            if helper.get("inline_scope") is not None or helper.get("flag_names") != ["INLINE_EXTFRAME", "INLINE_DONTCOPY"]:
+                raise ValueError("Fresh inline helper has an unreviewed SDK scope")
+            flags = int(ida_hexrays.INLINE_EXTFRAME) | int(ida_hexrays.INLINE_DONTCOPY)
+        row["inline_flags"] = flags
+        ranges = ida_hexrays.mba_ranges_t()
+        ranges.pfn = function
+        if self.pending_inline is not None:
+            raise ValueError("A fresh inline SDK request is already active")
+        pending = {"helper_ea": helper_ea, "source_block": matches[0], "events": [], "errors": []}
+        self.pending_inline = pending if capture_interval else None
+        try:
+            result = int(cdg.mba.inline_func(cdg, matches[0], ranges, int(decomp_flags), flags))
+        finally:
+            self.pending_inline = None
+        row["result_code"] = result
+        if result != ida_hexrays.MERR_OK:
+            row["status"] = "sdk_error"
+            self.audit["errors"].append("SDK fresh inlining returned " + str(result))
+            return result
+        if capture_interval:
+            if pending["errors"] or len(pending["events"]) != 1:
+                raise ValueError("SDK fresh inline lacks one exact inserted-block callback")
+            row["new_block_scope"] = pending["events"][0]
+        row["status"] = "inlined"
+        return 0
 
     def begin_inlining(self, cdg, decomp_flags):
         if not self.active or int(cdg.mba.entry_ea) != self.target_ea:
@@ -1065,53 +1234,58 @@ class FreshInlineController(ida_hexrays.Hexrays_Hooks):
             if self.entered:
                 raise ValueError("Fresh inline phase repeated for the selected parent")
             self.entered = True
+            work = []
             for helper in self.helpers:
                 for expected in helper["callsites"]:
-                    if self.base + int(expected["parent_rva"], 16) != self.target_ea:
+                    if self.base + int(expected.get("owner_rva", expected["parent_rva"]), 16) != self.target_ea:
                         continue
-                    call_ea = self.base + int(expected["callsite_rva"], 16)
-                    helper_ea = self.base + int(helper["rva"], 16)
-                    if (ida_bytes.get_bytes(call_ea, 5) or b"").hex() != expected["raw_hex"]:
-                        raise ValueError("Fresh inline original direct CALL bytes changed")
-                    function = ida_funcs.get_func(helper_ea)
-                    if (function is None or int(function.start_ea) != helper_ea
-                            or not function.flags & ida_funcs.FUNC_OUTLINE):
-                        raise ValueError("Fresh inline helper lost its exact outlined boundary")
-                    chunks = []
-                    for first, stop in sorted(idautils.Chunks(helper_ea)):
-                        code = ida_bytes.get_bytes(first, stop - first)
-                        if code is None:
-                            raise ValueError("Fresh inline helper bytes are unavailable")
-                        chunks.append({"start": hex(first), "end": hex(stop), "raw_hex": code.hex(),
-                                       "sha256": hashlib.sha256(code).hexdigest()})
-                    if chunks != helper["expected_chunks"]:
-                        raise ValueError("Fresh inline helper chunks differ from the complete reviewed function")
-                    mba = cdg.mba
-                    matches = []
-                    for index in range(int(mba.qty)):
-                        block = mba.get_mblock(index)
-                        tail = block.tail
-                        if tail is not None and int(tail.ea) == call_ea:
-                            if (int(tail.opcode) != ida_hexrays.m_call or int(tail.l.t) != ida_hexrays.mop_v
-                                    or int(tail.l.g) != helper_ea):
-                                raise ValueError("Fresh inline block is not the reviewed original direct CALL")
-                            matches.append(int(block.serial))
-                    if len(matches) != 1:
-                        raise ValueError("Fresh inline direct CALL block is absent or ambiguous")
-                    row = {**expected, "block_serial_before": matches[0],
-                           "flag_names": list(helper["flag_names"]), "status": "requested"}
+                    row = {**expected, "flag_names": list(helper["flag_names"]), "status": "requested"}
                     self.audit["calls"].append(row)
-                    flags = int(ida_hexrays.INLINE_EXTFRAME) | int(ida_hexrays.INLINE_DONTCOPY)
-                    row["inline_flags"] = flags
-                    ranges = ida_hexrays.mba_ranges_t()
-                    ranges.pfn = function
-                    result = int(mba.inline_func(cdg, matches[0], ranges, int(decomp_flags), flags))
-                    row["result_code"] = result
+                    work.append((helper, row))
+            for helper, row in work:
+                if helper.get("inline_scope") == "reviewed_nested_register_leaf":
+                    continue
+                original_ea = self.base + int(row["callsite_rva"], 16)
+                outer = {key: row[key] for key in ("parent_rva", "parent_function", "callsite_rva", "target_rva", "raw_hex")}
+                nested_work = []
+                for leaf, nested in work:
+                    if leaf.get("inline_scope") != "reviewed_nested_register_leaf":
+                        continue
+                    path = nested.get("call_path")
+                    if (not isinstance(path, list) or len(path) != 2
+                            or nested.get("owner_rva") != hex(self.target_ea - self.base)):
+                        raise ValueError("Fresh inline register leaf lacks an exact original owner CALL path")
+                    if path[0] != outer:
+                        continue
+                    inner = {key: nested[key] for key in ("parent_rva", "parent_function", "callsite_rva", "target_rva", "raw_hex")}
+                    if (path[1] != inner or inner["parent_rva"] != outer["target_rva"]
+                            or nested["status"] != "requested"):
+                        raise ValueError("Fresh inline nested CALL path differs or repeats an existing clone")
+                    nested_work.append((leaf, nested))
+                if len(nested_work) > 1:
+                    raise ValueError("Fresh outer CALL has multiple nested leaf requests without stable block scopes")
+                result = self._inline(cdg, decomp_flags, helper, row, original_ea,
+                                      capture_interval=bool(nested_work))
+                if result:
+                    return result
+                for leaf, nested in nested_work:
+                    scope = row["new_block_scope"]
+                    first, stop = scope["inserted_block_interval"]
+                    leaf_ea = self.base + int(leaf["rva"], 16)
+                    expected_ea = self.base + int(nested["callsite_rva"], 16)
+                    matches = [(serial, ea) for serial, ea, target in self._call_tails(cdg.mba)
+                               if first <= serial < stop and target == leaf_ea
+                               and int(cdg.mba.map_fict_ea(ea)) == expected_ea]
+                    if len(matches) != 1:
+                        raise ValueError("Fresh inline nested original CALL has no unique SDK inserted block")
+                    serial, sdk_ea = matches[0]
+                    nested.update(sdk_call_ea=hex(sdk_ea), mapped_original_call_ea=hex(expected_ea),
+                                  mapping_api="mba_t.map_fict_ea", mapping_status="api_returned",
+                                  fictitious_call=sdk_ea != expected_ea,
+                                  source_inline_scope=dict(scope), sdk_block_serial=serial)
+                    result = self._inline(cdg, decomp_flags, leaf, nested, sdk_ea)
                     if result != ida_hexrays.MERR_OK:
-                        row["status"] = "sdk_error"
-                        self.audit["errors"].append("SDK fresh inlining returned " + str(result))
                         return result
-                    row["status"] = "inlined"
             return 0
         except Exception as error:
             self.audit["errors"].append((type(error).__name__ + ": " + str(error))[:2048])
@@ -1139,12 +1313,89 @@ def decompile_with_fresh_inlines(ea, failure, diagnostics, helpers, base, audit)
         except Exception as error:
             audit["errors"].append((type(error).__name__ + ": " + str(error))[:2048])
     expected = [call for helper in helpers for call in helper["callsites"]
-                if base + int(call["parent_rva"], 16) == ea]
+                if base + int(call.get("owner_rva", call["parent_rva"]), 16) == ea]
     audit["complete"] = bool(audit["hook_registered"] and audit["hook_unregistered"] and controller.entered
                              and not audit["errors"] and len(audit["calls"]) == len(expected)
                              and all(row["status"] == "inlined" for row in audit["calls"]))
     if not audit["complete"]:
         raise ValueError("Fresh inline SDK operation or hook cleanup is incomplete")
+    return result
+
+
+def decompile_with_optimizer_properties(ea, failure, diagnostics, request, base, audit, sdk):
+    """Own exact public optimizer-property changes separately from observed decompilation."""
+    import native_boundaries
+    audit.update(request=request, hook_registered=False, hook_unregistered=False, complete=False,
+        errors=[], passes=[], stages=[], optimizer_properties_changed=True, target_execution=False,
+        base_database_modified=False, machine_bytes_modified=False, opcode_ea_operands_modified=False,
+        manual_stack_or_frame_modified=False,
+        original_state_before=native_boundaries.optimizer_original_states(request, sdk))
+    class Controller(ida_hexrays.Hexrays_Hooks):
+        active = False
+        def observe(self, phase, mba):
+            if self.active and int(mba.entry_ea) == ea:
+                audit["stages"].append({"phase": phase,
+                    "snapshot": native_boundaries.optimizer_snapshot(mba, base, sdk)})
+            return 0
+        def microcode(self, mba):
+            try:
+                return self.observe("generated", mba)
+            except Exception as error:
+                audit["errors"].append({"phase": "generated", "error": traceback.format_exc()})
+            return 0
+        def preoptimized(self, mba):
+            if not self.active or int(mba.entry_ea) != ea:
+                return 0
+            try:
+                row = {}
+                audit["passes"].append(row)
+                native_boundaries.apply_optimizer_properties(request, mba, base, sdk,
+                    lambda value: row.update(value))
+            except Exception:
+                audit["errors"].append({"phase": "preoptimized", "error": traceback.format_exc()})
+            return 0
+        def locopt(self, mba):
+            try:
+                return self.observe("locopt", mba)
+            except Exception:
+                audit["errors"].append({"phase": "locopt", "error": traceback.format_exc()})
+            return 0
+        def calls_done(self, mba):
+            try:
+                return self.observe("calls_done", mba)
+            except Exception:
+                audit["errors"].append({"phase": "calls_done", "error": traceback.format_exc()})
+            return 0
+        def glbopt(self, mba):
+            try:
+                return self.observe("glbopt", mba)
+            except Exception:
+                audit["errors"].append({"phase": "glbopt", "error": traceback.format_exc()})
+            return 0
+    controller, result = Controller(), None
+    try:
+        audit["hook_registered"] = bool(controller.hook())
+        controller.active = audit["hook_registered"]
+        if not controller.active:
+            raise ValueError("Hex-Rays rejected exact optimizer property hooks")
+        result = decompile_with_diagnostics(ea, failure, diagnostics)
+        if result is not None:
+            audit["stages"].append({"phase": "final_mba",
+                "snapshot": native_boundaries.optimizer_snapshot(result.mba, base, sdk)})
+    finally:
+        controller.active = False
+        try:
+            audit["hook_unregistered"] = bool(controller.unhook())
+        except Exception:
+            audit["errors"].append({"phase": "unhook", "error": traceback.format_exc()})
+        audit["original_state_after"] = native_boundaries.optimizer_original_states(request, sdk)
+    audit["complete"] = bool(result is not None and audit["hook_registered"] and audit["hook_unregistered"]
+        and not audit["errors"] and len(audit["passes"]) == 1
+        and audit["original_state_before"] == audit["original_state_after"])
+    if not audit["complete"]:
+        raise ValueError("Exact optimizer property derivation or cleanup is incomplete")
+    native_boundaries.verify_optimizer_property_pass(request, audit["passes"][0])
+    native_boundaries.verify_optimizer_stages(audit, hex(ea - base))
     return result
 
 
@@ -1286,6 +1537,176 @@ def apply_shared_function_tail(shared, base, file_bytes):
             "applied_owners": applied, "base_database_modified": False}
 
 
+
+class RecursiveZeroShadowAbi(ida_idp.IDP_Hooks):
+    """Expose only the reviewed internal usercall's actual zero-byte home area."""
+    def __init__(self):
+        super().__init__()
+        self.active = False
+        self.queries = 0
+
+    def ev_get_stkarg_area_info(self, out, cc):
+        if self.active and (int(cc) & ida_typeinf.CM_CC_MASK) == ida_typeinf.CM_CC_SPECIAL:
+            self.queries += 1
+            out.stkarg_offset = 0
+            out.shadow_size = 0
+            out.linkage_area = 0
+            return 1
+        return 0
+
+
+class RecursiveFallthroughObserver(ida_hexrays.Hexrays_Hooks):
+    """Inline the original root flow with shared frame ownership and observe real calls."""
+    def __init__(self, request, base, audit):
+        super().__init__()
+        self.request, self.audit = request, audit
+        self.root = base + int(request["root_rva"], 16)
+        self.core = base + int(request["core_rva"], 16)
+        self.active = False
+        self.entered = False
+        self.calls_done_seen = False
+        self.pending = None
+
+    def error(self, stage, exception):
+        self.audit["errors"].append({"stage": stage,
+            "error": type(exception).__name__ + ": " + str(exception)})
+
+    def begin_inlining(self, cdg, decomp_flags):
+        if not self.active or int(cdg.mba.entry_ea) != self.root:
+            return 0
+        try:
+            if self.entered:
+                raise ValueError("Recursive root inline phase repeated")
+            self.entered = True
+            matches = []
+            for index in range(int(cdg.mba.qty)):
+                tail = cdg.mba.get_mblock(index).tail
+                if (tail is not None and tail.opcode == ida_hexrays.m_goto
+                        and tail.l.t == ida_hexrays.mop_v and int(tail.l.g) == self.core):
+                    matches.append((index, int(tail.ea)))
+            if len(matches) != 1 or matches[0][1] != self.core - 1:
+                raise ValueError("Recursive root lost its exact original SDK fallthrough edge")
+            function = ida_funcs.get_func(self.core)
+            if function is None or int(function.start_ea) != self.core:
+                raise ValueError("Recursive core no longer has its independent physical function")
+            ranges = ida_hexrays.mba_ranges_t()
+            ranges.pfn = function
+            self.pending = matches[0][0]
+            inline = {"root_ea": hex(self.root), "core_ea": hex(self.core),
+                "edge_ea": hex(matches[0][1]), "source_block": matches[0][0],
+                "flag_names": ["INLINE_DONTCOPY"]}
+            self.audit["sdk_inline"] = inline
+            try:
+                inline["return_code"] = int(cdg.mba.inline_func(cdg, matches[0][0], ranges,
+                    int(decomp_flags), ida_hexrays.INLINE_DONTCOPY))
+            finally:
+                self.pending = None
+            return inline["return_code"]
+        except Exception as error:
+            self.error("begin_inlining", error)
+            return ida_hexrays.MERR_CANCELED
+
+    def inlined_func(self, cdg, block, ranges, first, stop):
+        if not self.active or int(cdg.mba.entry_ea) != self.root or self.pending is None:
+            return 0
+        try:
+            if (int(block) != self.pending or ranges.pfn is None
+                    or int(ranges.pfn.start_ea) != self.core
+                    or not 0 <= int(first) < int(stop) <= int(cdg.mba.qty)
+                    or "inserted_block_interval" in self.audit["sdk_inline"]):
+                raise ValueError("Recursive root SDK inserted blocks differ or repeat")
+            self.audit["sdk_inline"]["inserted_block_interval"] = [int(first), int(stop)]
+        except Exception as error:
+            self.error("inlined_func", error)
+        return 0
+
+    def callinfo_built(self, block):
+        if not self.active or int(block.mba.entry_ea) != self.root:
+            return 0
+        try:
+            tail = block.tail
+            call = tail if tail.opcode == ida_hexrays.m_call else (
+                tail.l.d if tail.l.t == ida_hexrays.mop_d else None)
+            if call is None or call.opcode != ida_hexrays.m_call or call.d.t != ida_hexrays.mop_f:
+                raise ValueError("Recursive root callback omitted its actual SDK call information")
+            info = call.d.f
+            self.audit["recursive_calls"].append({"ea": hex(int(call.ea)), "callee": hex(int(info.callee)),
+                "cc": int(info.cc), "stkargs_top": int(info.stkargs_top),
+                "call_spd": int(info.call_spd), "root_shadow_size": int(block.mba.shadow_args),
+                "return_registers": str(info.return_regs.dstr()), "spoiled": str(info.spoiled.dstr()),
+                "declaration": str(info.get_type()),
+                "arguments": [{"name": str(arg.name), "type": str(arg.type), "value": str(arg.dstr()),
+                    "location": capture_values.argument_location(arg.argloc, "ida_processor_registers")}
+                    for arg in info.args]})
+        except Exception as error:
+            self.error("callinfo_built", error)
+        return 0
+
+    def calls_done(self, mba):
+        if not self.active or int(mba.entry_ea) != self.root:
+            return 0
+        try:
+            if self.calls_done_seen:
+                raise ValueError("Recursive root call-completion callback repeated")
+            self.calls_done_seen = True
+            wanted = self.request["proof"]["saved_r10_instructions"]
+            stores = {row["push_ea"]: [] for row in wanted}
+            loads = {row["pop_ea"]: [] for row in wanted}
+            for index in range(int(mba.qty)):
+                instruction = mba.get_mblock(index).head
+                while instruction is not None:
+                    address = hex(int(instruction.ea))
+                    if address in stores:
+                        if (instruction.opcode != ida_hexrays.m_mov or instruction.l.t != ida_hexrays.mop_r
+                                or instruction.d.t != ida_hexrays.mop_S):
+                            raise ValueError("Original R10 push was not retained as an SDK stack write")
+                        stores[address].append({"ea": address, "opcode": int(instruction.opcode),
+                            "source_register": ida_hexrays.get_mreg_name(instruction.l.r, instruction.l.size),
+                            "stack_offset": int(instruction.d.s.off), "size": int(instruction.d.size),
+                            "text": str(instruction.dstr())})
+                    if address in loads:
+                        if (instruction.opcode != ida_hexrays.m_mov or instruction.l.t != ida_hexrays.mop_S
+                                or instruction.d.t != ida_hexrays.mop_r):
+                            raise ValueError("Original R10 pop was not retained as an SDK stack read")
+                        loads[address].append({"ea": address, "opcode": int(instruction.opcode),
+                            "destination_register": ida_hexrays.get_mreg_name(instruction.d.r, instruction.d.size),
+                            "stack_offset": int(instruction.l.s.off), "size": int(instruction.l.size),
+                            "text": str(instruction.dstr())})
+                    instruction = instruction.next
+            for pair in wanted:
+                writes, reads = stores[pair["push_ea"]], loads[pair["pop_ea"]]
+                if len(writes) != 1 or len(reads) != 1:
+                    raise ValueError("Recursive root omitted or duplicated an original R10 stack value")
+                self.audit["saved_r10_pairs"].append({**pair, "store": writes[0], "load": reads[0]})
+        except Exception as error:
+            self.error("calls_done", error)
+        return 0
+
+
+def decompile_recursive_context(ea, failure, diagnostics, request, base, audit):
+    """Keep the original machine body and observe every real recursive call and stack save."""
+    observer = RecursiveFallthroughObserver(request, base, audit)
+    audit["hook_registered"] = bool(observer.hook())
+    observer.active = audit["hook_registered"]
+    if not observer.active:
+        raise ValueError("Hex-Rays rejected the recursive root observer")
+    cfunc = None
+    try:
+        cfunc = ida_hexrays.decompile(ea, failure)
+        if cfunc is not None:
+            audit["warnings"] = [{"ea": hex(int(warning.ea)), "id": int(warning.id),
+                                  "text": str(warning.text)} for warning in cfunc.get_warnings()]
+        return cfunc
+    finally:
+        observer.active = False
+        audit["hook_unregistered"] = bool(observer.unhook())
+        diagnostics.update(schema_version=1, mode="complete_recursive_root_context",
+            diagnostics_complete=bool(cfunc is not None and observer.entered and observer.calls_done_seen
+                and audit["hook_registered"] and audit["hook_unregistered"] and not audit["errors"]),
+            diagnostic_error_count=len(audit["errors"]),
+            decompile_outcome="returned_cfunc" if cfunc is not None else "returned_none")
+
+
 def capture():
     root = Path(__file__).resolve().parents[2]
     plan_path = Path(os.environ["RAZER_IDA_SUPPLEMENT_PLAN"]).resolve()
@@ -1325,7 +1746,8 @@ def capture():
         recoveries = selection["type_recoveries"]
         notes = (recoveries or selection.get("import_type_recoveries", [])
                  or selection.get("function_merges", []) or selection.get("function_outlines", [])
-                 or selection.get("function_partitions", []) or selection.get("function_shared_tails", []))
+                 or selection.get("function_partitions", []) or selection.get("function_shared_tails", [])
+                 or selection.get("decompiler_prepasses", []))
         partition_options = {"partition_specs": [row["owner_rva"] + "=" + ",".join(
             helper["rva"] + ":" + hex(int(helper["expected_end"], 16) - base)
             for helper in row["helpers"]) for row in selection["function_partitions"]
@@ -1333,7 +1755,12 @@ def capture():
         if selection.get("function_shared_tails"):
             partition_options["shared_tail_specs"] = selection["function_shared_tails"]
         if selection.get("function_fresh_inlines"):
-            partition_options["fresh_inline_rvas"] = [row["rva"] for row in selection["function_fresh_inlines"]]
+            partition_options["fresh_inline_rvas"] = [row["rva"] for row in selection["function_fresh_inlines"]
+                if row.get("inline_scope") != "reviewed_nested_register_leaf"]
+            leaves = [row["rva"] for row in selection["function_fresh_inlines"]
+                      if row.get("inline_scope") == "reviewed_nested_register_leaf"]
+            if leaves:
+                partition_options["fresh_inline_register_leaf_rvas"] = leaves
         if "static_observation" in selection:
             review_source = selection["static_observation"]["review_source"]
             partition_options["observation_evidence"] = review_source["path"] + "#" + review_source["pointer"]
@@ -1344,10 +1771,40 @@ def capture():
             partition_options["reanalyze_type_owners"] = True
         if "direct_call_type_propagations" in selection:
             partition_options["propagate_direct_calls"] = True
+        if selection.get("function_boundary_recoveries"):
+            partition_options["boundary_reviews"] = [row["review_source"]["path"] + "#"
+                + row["review_source"]["pointer"] for row in selection["function_boundary_recoveries"]]
+        if selection.get("x86_entry_partitions"):
+            partition_options["boundary_reviews"] = [row["review_source"]["path"] + "#"
+                + row["review_source"]["pointer"] for row in selection["x86_entry_partitions"]]
+        if selection.get("instruction_boundary_recoveries"):
+            partition_options["instruction_reviews"] = [row["review_source"]["path"] + "#"
+                + row["review_source"]["pointer"] for row in selection["instruction_boundary_recoveries"]]
+        if selection.get("decompiler_prepasses") and not selection.get("x86_entry_partitions"):
+            partition_options["decompiler_prepass_rvas"] = [int(row["rva"], 16)
+                for row in selection["decompiler_prepasses"]]
+        if selection.get("frame_rebuilds"):
+            partition_options["frame_reviews"] = [row["review_source"]["path"] + "#"
+                + row["review_source"]["pointer"] for row in selection["frame_rebuilds"]]
+        if selection.get("derived_stack_points"):
+            partition_options["stack_reviews"] = [row["review_source"]["path"] + "#"
+                + row["review_source"]["pointer"] for row in selection["derived_stack_points"]]
+        if selection.get("switch_metadata_recoveries"):
+            partition_options["switch_reviews"] = [row["review_source"]["path"] + "#"
+                + row["review_source"]["pointer"] for row in selection["switch_metadata_recoveries"]]
+        if selection.get("shared_tail_contexts"):
+            partition_options["shared_tail_context_reviews"] = [row["review_source"]["path"] + "#"
+                + row["review_source"]["pointer"] for row in selection["shared_tail_contexts"]]
+        if selection.get("optimizer_properties"):
+            partition_options["optimizer_property_reviews"] = [row["review_source"]["path"] + "#"
+                + row["review_source"]["pointer"] for row in selection["optimizer_properties"]]
+        if selection.get("recursive_fallthrough_contexts"):
+            partition_options["recursive_context_reviews"] = [row["review_source"]["path"] + "#"
+                + row["review_source"]["pointer"] for row in selection["recursive_fallthrough_contexts"]]
         actual = analysis.native_function_selection(raw, json.loads(base_capture.read_bytes()),
             [int(row["rva"], 16) for row in selection["targets"]],
             [row["rva"] + "=" + row["declaration"] for row in recoveries],
-            notes[0]["assembly_evidence"] if notes else None,
+            notes[0].get("assembly_evidence", notes[0].get("reason")) if notes else None,
             selection.get("decompiler_limits", {}).get("max_function_kib"),
             [row["rva"] + "=" + row["declaration"] for row in selection.get("import_type_recoveries", [])],
             [row["owner_rva"] + "=" + ",".join(row["member_rvas"]) for row in selection.get("function_merges", [])],
@@ -1386,10 +1843,24 @@ def capture():
                 "target_execution": False, "real_device_operations": False,
                 "semantic_audit": "pending", "implementation_acceptance": "pending"}
     manifest["typed_value_serializer"] = capture_values.source_identity(root)
-    if selection.get("callsite_type_recoveries") or selection.get("type_owner_reanalysis"):
+    if (selection.get("callsite_type_recoveries") or selection.get("type_owner_reanalysis")
+            or selection.get("switch_metadata_recoveries")):
         import native_callsites
         manifest["callsite_type_validator"] = native_callsites.source_identity(root)
         manifest["callsite_type_recoveries"] = []
+        manifest["switch_metadata_recoveries"] = []
+    if (selection.get("function_boundary_recoveries") or selection.get("x86_entry_partitions") or selection.get("instruction_boundary_recoveries")
+            or selection.get("function_merges") or selection.get("decompiler_prepasses") or selection.get("frame_rebuilds")
+            or selection.get("derived_stack_points") or selection.get("shared_tail_contexts")
+            or selection.get("optimizer_properties") or selection.get("recursive_fallthrough_contexts")):
+        import native_boundaries
+        manifest["boundary_validator"] = native_boundaries.source_identity(root)
+        manifest["function_boundary_recoveries"], manifest["boundary_helpers"] = [], []
+        manifest["instruction_boundary_recoveries"] = []
+        manifest["frame_rebuilds"] = []
+        manifest["derived_stack_points"] = []
+        manifest["x86_entry_partition_recoveries"], manifest["entry_partition_helpers"] = [], []
+        manifest["recursive_context_recoveries"], manifest["context_helpers"] = [], []
 
     def save(path, value):
         def portable(item):
@@ -1452,6 +1923,7 @@ def capture():
         return target, length
 
     captured = {}
+    recursive_active = {}
 
     def forwarding_thunk(ea):
         # This compiler thunk appears as an actual vtable slot. It forwards the
@@ -1478,9 +1950,11 @@ def capture():
 
     shared_owner_rvas = {owner["rva"] for row in selection.get("function_shared_tails", []) for owner in row["owners"]}
 
-    def export(ea, assembly_only=False, helper_kind="partition_helpers"):
+    def export_plain(ea, assembly_only=False, helper_kind="partition_helpers", prepass=None):
         rva = hex(ea - base)
-        destination = output / helper_kind.replace("_", "-") if assembly_only else functions
+        destination = (output / "preanalysis" if prepass is not None else
+                       output / helper_kind.replace("_", "-")
+                       if assembly_only or helper_kind == "entry_partition_helpers" else functions)
         destination.mkdir(exist_ok=True)
         existing = plan["existing_functions"].get(rva) if table else None
         if existing:
@@ -1605,6 +2079,14 @@ def capture():
         row["basic_blocks"] = [{"id": block.id, "start": hex(block.start_ea), "end": hex(block.end_ea),
                                 "predecessors": [x.id for x in block.preds()],
                                 "successors": [x.id for x in block.succs()]} for block in ida_gdl.FlowChart(func)]
+        if selection.get("static_observation"):
+            row["native_frame_layout_before_decompile"] = native_frame_layout_diagnostics(func)
+        if prepass is not None:
+            sdk = SimpleNamespace(root=root, funcs=ida_funcs, utils=idautils, bytes=ida_bytes,
+                                  nalt=ida_nalt, types=ida_typeinf, frame=ida_frame)
+            row["decompiler_prepass"] = {**prepass, "before": native_boundaries.prepass_snapshot(prepass, sdk),
+                "manual_stack_points_modified": False, "manual_frames_modified": False,
+                "instructions_patched": False, "base_database_modified": False, "target_execution": False}
         if not assembly_only:
             failure = None
             try:
@@ -1612,7 +2094,17 @@ def capture():
                 row["type_before_decompile"] = idc.get_type(ea)
                 row["hexrays_diagnostics"] = {}
                 fresh = selection.get("function_fresh_inlines", [])
-                if any(call["parent_rva"] == rva for helper in fresh for call in helper["callsites"]):
+                if rva in recursive_active:
+                    request, audit = recursive_active[rva]
+                    cfunc = decompile_recursive_context(ea, failure, row["hexrays_diagnostics"],
+                        request, base, audit)
+                elif selection.get("optimizer_properties"):
+                    row["optimizer_property_audit"] = {}
+                    sdk = SimpleNamespace(root=root, funcs=ida_funcs, utils=idautils, bytes=ida_bytes,
+                        nalt=ida_nalt, types=ida_typeinf, frame=ida_frame, hexrays=ida_hexrays)
+                    cfunc = decompile_with_optimizer_properties(ea, failure, row["hexrays_diagnostics"],
+                        selection["optimizer_properties"][0], base, row["optimizer_property_audit"], sdk)
+                elif any(call["parent_rva"] == rva for helper in fresh for call in helper["callsites"]):
                     row["fresh_inline_audit"] = {}
                     cfunc = decompile_with_fresh_inlines(ea, failure, row["hexrays_diagnostics"],
                                                         fresh, base, row["fresh_inline_audit"])
@@ -1623,7 +2115,7 @@ def capture():
                 row["pseudocode"] = {"entry": hex(cfunc.entry_ea), "lines": [
                     {"line": index, "text": ida_lines.tag_remove(line.line)}
                     for index, line in enumerate(cfunc.get_pseudocode())]}
-                row["pseudocode"].update(capture_values.local_variables(cfunc, ida_hexrays))
+                row["pseudocode"].update(capture_values.local_variables(cfunc, ida_hexrays, ida_idp))
                 row["hexrays_diagnostics"]["local_namespaces"] = local_namespace_diagnostics(cfunc)
             except Exception:
                 error = {"rva": rva, "stage": "hexrays", "error": traceback.format_exc()}
@@ -1642,17 +2134,114 @@ def capture():
             row["capture_stages"].update(type_before_decompile="before_decompile",
                 type_after_decompile="after_pseudocode_and_typed_locals",
                 assembly_after_decompile="after_pseudocode_and_typed_locals")
+            if selection.get("static_observation"):
+                row["native_frame_layout_after_decompile"] = native_frame_layout_diagnostics(ida_funcs.get_func(ea))
+        if prepass is not None:
+            row["decompiler_prepass"]["after"] = native_boundaries.prepass_snapshot(prepass, sdk)
+            native_boundaries.verify_prepass(analysis, prepass, row)
         for decoded_thunk in manifest["decoded_thunks"]:
             if decoded_thunk["rva"] == rva:
                 decoded_thunk["database_function_created"] = True
                 decoded_thunk["pseudocode_captured"] = row["pseudocode"] is not None
         path = destination / (rva[2:] + ".json")
         save(path, row)
-        manifest[helper_kind if assembly_only else "functions"].append({"address": hex(ea), "rva": rva, "name": row["name"],
+        if prepass is not None:
+            manifest.setdefault("decompiler_prepasses", []).append({**prepass, "capture": {
+                "path": path.relative_to(output).as_posix(), "bytes": path.stat().st_size,
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}})
+            ida_hexrays.clear_cached_cfuncs()
+            return row
+        manifest[helper_kind if assembly_only or helper_kind == "entry_partition_helpers" else "functions"].append({"address": hex(ea), "rva": rva, "name": row["name"],
             "path": path.relative_to(output).as_posix(), "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
             "assembly_captured": True, "pseudocode_captured": row["pseudocode"] is not None})
         captured[rva] = (path, assembly_only)
         ida_hexrays.clear_cached_cfuncs()
+        return row
+
+    def export(ea, assembly_only=False, helper_kind="partition_helpers", prepass=None):
+        recursive = [request for request in selection.get("recursive_fallthrough_contexts", [])
+                     if request["root_rva"] == hex(ea - base)]
+        if recursive:
+            if len(recursive) != 1 or assembly_only or prepass is not None:
+                raise ValueError("Recursive context requires one complete physical root export")
+            request, audit = recursive[0], {"request": recursive[0], "complete": False,
+                "hook_registered": False, "hook_unregistered": False, "abi_hook_registered": False,
+                "abi_hook_unregistered": False, "type_cache_computed_under_abi_hook": False,
+                "recursive_calls": [], "saved_r10_pairs": [], "warnings": None, "errors": [],
+                "target_execution": False, "manual_stack_points_modified": False,
+                "manual_frames_modified": False, "instructions_patched": False, "microcode_modified": False}
+            sdk = SimpleNamespace(root=root, funcs=ida_funcs, utils=idautils, bytes=ida_bytes,
+                nalt=ida_nalt, types=ida_typeinf, frame=ida_frame)
+            bodies = [json.loads(native_boundaries._read_identity(root, request[key]))
+                      for key in ("root_function", "core_function")]
+            abi = RecursiveZeroShadowAbi()
+            try:
+                audit["abi_hook_registered"] = bool(abi.hook())
+                abi.active = audit["abi_hook_registered"]
+                if not abi.active:
+                    raise ValueError("IDA rejected the reviewed zero-shadow internal ABI hook")
+                audit["before"] = [native_boundaries._snapshot(body, sdk) for body in bodies]
+                for body, declaration in zip(bodies, (request["proof"]["root_abi_declaration"],
+                                                     request["proof"]["recursive_abi_declaration"])):
+                    typ = ida_typeinf.tinfo_t()
+                    if (not ida_typeinf.parse_decl(typ, None, declaration, ida_typeinf.PT_SIL)
+                            or not ida_typeinf.apply_tinfo(int(body["address"], 16), typ, ida_typeinf.TINFO_DEFINITE)):
+                        raise ValueError("IDA rejected a byte-proven recursive context function type")
+                if not ida_auto.auto_wait():
+                    raise ValueError("Recursive context type analysis was canceled")
+                typ, details = ida_typeinf.tinfo_t(), ida_typeinf.func_type_data_t()
+                if not ida_nalt.get_tinfo(typ, int(bodies[1]["address"], 16)) or not typ.get_func_details(details):
+                    raise ValueError("Recursive core SDK type readback is unavailable")
+                audit["core_type_readback"] = {"declaration": str(typ), "cc": int(details.cc),
+                    "stack_argument_bytes": int(details.stkargs),
+                    "return_location": capture_values.argument_location(details.retloc, "ida_processor_registers"),
+                    "arguments": [{"name": str(arg.name), "type": str(arg.type),
+                        "location": capture_values.argument_location(arg.argloc, "ida_processor_registers")}
+                        for arg in details]}
+                audit["type_cache_computed_under_abi_hook"] = bool(abi.active and abi.queries)
+                ida_hexrays.clear_cached_cfuncs()
+                recursive_active[request["root_rva"]] = (request, audit)
+                try:
+                    row = export_plain(ea)
+                    export_plain(int(bodies[1]["address"], 16), assembly_only=True, helper_kind="context_helpers")
+                finally:
+                    recursive_active.pop(request["root_rva"], None)
+                def artifact(path):
+                    data = path.read_bytes()
+                    return {"path": analysis.rel(path), "bytes": len(data),
+                            "sha256": hashlib.sha256(data).hexdigest()}
+                audit["root_capture"] = artifact(functions / (request["root_rva"][2:] + ".json"))
+                audit["core_capture"] = artifact(output / "context-helpers" / (request["core_rva"][2:] + ".json"))
+                audit["after"] = [native_boundaries._snapshot(body, sdk) for body in bodies]
+                audit["complete"] = bool(row["pseudocode"] is not None and not audit["errors"]
+                    and audit["warnings"] == [] and audit["hook_unregistered"])
+            finally:
+                abi.active = False
+                audit["abi_hook_unregistered"] = bool(abi.unhook())
+                audit["abi_area_queries"] = abi.queries
+                manifest["recursive_context_recoveries"].append(audit)
+                save(output / "capture.json", manifest)
+            native_boundaries.verify_recursive_contexts(analysis, [request], [audit])
+            return row
+        contexts = [row for row in selection.get("shared_tail_contexts", [])
+                    if row["owner_rva"] == hex(ea - base)]
+        if not contexts:
+            return export_plain(ea, assembly_only, helper_kind, prepass)
+        if len(contexts) != 1 or assembly_only or prepass is not None:
+            raise ValueError("Existing-tail context requires one complete original typed owner export")
+        request, audit = contexts[0], {}
+        sdk = SimpleNamespace(root=root, funcs=ida_funcs, utils=idautils, bytes=ida_bytes,
+            nalt=ida_nalt, types=ida_typeinf, frame=ida_frame, auto=ida_auto, hexrays=ida_hexrays)
+        try:
+            with native_boundaries.shared_tail_context(request, base, sdk, audit):
+                row = export_plain(ea, assembly_only, helper_kind, prepass)
+                path = functions / (hex(ea - base)[2:] + ".json")
+                audit["capture"] = {"path": analysis.rel(path), "bytes": path.stat().st_size,
+                                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+        finally:
+            manifest.setdefault("shared_tail_context_recoveries", []).append(audit)
+            save(output / "capture.json", manifest)
+        native_boundaries.verify_shared_tail_contexts(analysis, [request], [audit])
         return row
 
     for shared in selection.get("function_shared_tails", []):
@@ -1855,7 +2444,8 @@ def capture():
         previous = idc.get_type(ea)
         typ = ida_typeinf.tinfo_t()
         if not ida_typeinf.parse_decl(typ, None, recovery["declaration"], ida_typeinf.PT_SIL) or not typ.is_func():
-            raise ValueError("Explicit recovery declaration is not a valid function type")
+            raise ValueError("Explicit recovery declaration is not a valid function type at " + recovery["rva"]
+                             + ": " + recovery["declaration"])
         if not ida_typeinf.apply_tinfo(ea, typ, ida_typeinf.TINFO_DEFINITE):
             raise ValueError("IDA rejected the explicit recovered function type")
         ida_hexrays.clear_cached_cfuncs()
@@ -1865,6 +2455,25 @@ def capture():
         manifest["type_recoveries"].append({**recovery, "address": hex(ea), "previous_type": previous,
             "applied_type": str(applied), "assembly_evidence_reference": retained,
             "base_database_modified": False})
+
+    if selection.get("function_merges"):
+        sdk = SimpleNamespace(root=root, funcs=ida_funcs, utils=idautils, bytes=ida_bytes,
+                              auto=ida_auto, frame=ida_frame, types=ida_typeinf, nalt=ida_nalt)
+        manifest["function_merge_automatic_reanalysis"] = native_boundaries.reanalyze_merges(
+            selection["function_merges"], base, sdk)
+        native_boundaries.verify_merge_reanalysis(analysis, selection["function_merges"],
+                                                 manifest["function_merge_automatic_reanalysis"])
+        ida_hexrays.clear_cached_cfuncs()
+
+    if selection.get("switch_metadata_recoveries"):
+        sdk = SimpleNamespace(root=root, funcs=ida_funcs, utils=idautils, bytes=ida_bytes,
+            frame=ida_frame, types=ida_typeinf, nalt=ida_nalt, api=idaapi, idp=ida_idp,
+            ua=ida_ua, xref=ida_xref, hexrays=ida_hexrays)
+        manifest["switch_metadata_recoveries"] = [native_callsites.apply_switch(row, base, sdk)
+            for row in selection["switch_metadata_recoveries"]]
+        native_callsites.verify_switches(analysis, selection["switch_metadata_recoveries"],
+                                        manifest["switch_metadata_recoveries"])
+        ida_hexrays.clear_cached_cfuncs()
 
     if selection.get("callsite_type_recoveries"):
         sdk = SimpleNamespace(bytes=ida_bytes, types=ida_typeinf, nalt=ida_nalt)
@@ -1891,6 +2500,86 @@ def capture():
     selected_rvas = {row["rva"] for row in selection["targets"]}
     for rva in sorted(shared_owner_rvas - selected_rvas, key=lambda value: int(value, 16)):
         export(base + int(rva, 16), assembly_only=True, helper_kind="shared_tail_helpers")
+
+    if selection.get("function_boundary_recoveries"):
+        sdk = SimpleNamespace(root=root, funcs=ida_funcs, utils=idautils, bytes=ida_bytes, ua=ida_ua,
+                              auto=ida_auto, nalt=ida_nalt, types=ida_typeinf, frame=ida_frame)
+        for recovery in selection["function_boundary_recoveries"]:
+            manifest["function_boundary_recoveries"].append(native_boundaries.apply(recovery, base, sdk))
+        native_boundaries.verify_applied(analysis, selection["function_boundary_recoveries"],
+                                        manifest["function_boundary_recoveries"])
+        ida_hexrays.clear_cached_cfuncs()
+        for recovery in selection["function_boundary_recoveries"]:
+            export(base + int(recovery["helper"]["rva"], 16), assembly_only=True, helper_kind="boundary_helpers")
+        save(output / "capture.json", manifest)
+
+    if selection.get("x86_entry_partitions"):
+        sdk = SimpleNamespace(root=root, funcs=ida_funcs, utils=idautils, bytes=ida_bytes,
+                              auto=ida_auto, nalt=ida_nalt, types=ida_typeinf, frame=ida_frame)
+        for request in selection["x86_entry_partitions"]:
+            def checkpoint(row):
+                records = manifest["x86_entry_partition_recoveries"]
+                if not records or records[-1] is not row:
+                    records.append(row)
+                save(output / "capture.json", manifest)
+            native_boundaries.apply_entry_partition(request, base, sdk, checkpoint)
+        native_boundaries.verify_entry_partitions(analysis, selection["x86_entry_partitions"],
+                                                 manifest["x86_entry_partition_recoveries"])
+        ida_hexrays.clear_cached_cfuncs()
+
+    if selection.get("instruction_boundary_recoveries"):
+        sdk = SimpleNamespace(root=root, funcs=ida_funcs, utils=idautils, bytes=ida_bytes, ua=ida_ua,
+                              auto=ida_auto, nalt=ida_nalt, types=ida_typeinf, frame=ida_frame,
+                              idc=idc, api=idaapi)
+        for recovery in selection["instruction_boundary_recoveries"]:
+            manifest["instruction_boundary_recoveries"].append(native_boundaries.apply_instructions(recovery, base, sdk))
+        native_boundaries.verify_instructions(analysis, selection["instruction_boundary_recoveries"],
+                                             manifest["instruction_boundary_recoveries"])
+        ida_hexrays.clear_cached_cfuncs()
+        save(output / "capture.json", manifest)
+
+    if selection.get("frame_rebuilds"):
+        sdk = SimpleNamespace(root=root, funcs=ida_funcs, utils=idautils, bytes=ida_bytes,
+                              auto=ida_auto, nalt=ida_nalt, types=ida_typeinf, frame=ida_frame,
+                              idp=ida_idp, frame_layout=native_frame_layout_diagnostics)
+        for requested in selection["frame_rebuilds"]:
+            def checkpoint(row):
+                records = manifest["frame_rebuilds"]
+                if not records or records[-1] is not row:
+                    records.append(row)
+                save(output / "capture.json", manifest)
+            native_boundaries.apply_frame_rebuild(requested, base, sdk, checkpoint)
+        native_boundaries.verify_frame_rebuilds(analysis, selection["frame_rebuilds"], manifest["frame_rebuilds"])
+        ida_hexrays.clear_cached_cfuncs()
+
+    if selection.get("derived_stack_points"):
+        sdk = SimpleNamespace(root=root, funcs=ida_funcs, utils=idautils, bytes=ida_bytes,
+                              frame=ida_frame, types=ida_typeinf, nalt=ida_nalt)
+        for requested in selection["derived_stack_points"]:
+            def checkpoint(row):
+                records = manifest["derived_stack_points"]
+                if not records or records[-1] is not row:
+                    records.append(row)
+                save(output / "capture.json", manifest)
+            native_boundaries.apply_stack_point(requested, base, sdk, checkpoint)
+        native_boundaries.verify_stack_points(analysis, selection["derived_stack_points"],
+                                             manifest["derived_stack_points"])
+        ida_hexrays.clear_cached_cfuncs()
+
+    for prepass in selection.get("decompiler_prepasses", []):
+        export(base + int(prepass["rva"], 16), prepass=prepass)
+        save(output / "capture.json", manifest)
+    if selection.get("decompiler_prepasses"):
+        native_boundaries.verify_prepasses(analysis, selection["decompiler_prepasses"],
+                                          manifest.get("decompiler_prepasses", []), output)
+
+    for request in selection.get("x86_entry_partitions", []):
+        for piece in request["pieces"][1:]:
+            export(base + int(piece["rva"], 16), helper_kind="entry_partition_helpers")
+        save(output / "capture.json", manifest)
+    if selection.get("x86_entry_partitions"):
+        native_boundaries.verify_entry_helpers(analysis, raw, selection["x86_entry_partitions"],
+                                               manifest["entry_partition_helpers"], output)
 
     for target in selection["targets"]:
         identity = {"slot_rva": target["slot_rva"]} if "slot_rva" in target else {"requested_rva": target["rva"]}
@@ -1934,9 +2623,16 @@ def capture():
     manifest["base_database_unchanged"] = bool(plan.get("source_database"))
     if capture_values.source_identity(root) != manifest["typed_value_serializer"]:
         raise ValueError("Typed capture serializer identity changed during supplemental analysis")
-    if selection.get("callsite_type_recoveries") or selection.get("type_owner_reanalysis"):
+    if (selection.get("callsite_type_recoveries") or selection.get("type_owner_reanalysis")
+            or selection.get("switch_metadata_recoveries")):
         if native_callsites.source_identity(root) != manifest["callsite_type_validator"]:
             raise ValueError("Callsite type validator changed during supplemental analysis")
+    if (selection.get("function_boundary_recoveries") or selection.get("x86_entry_partitions") or selection.get("instruction_boundary_recoveries")
+            or selection.get("function_merges") or selection.get("decompiler_prepasses") or selection.get("frame_rebuilds")
+            or selection.get("derived_stack_points") or selection.get("shared_tail_contexts")
+            or selection.get("optimizer_properties") or selection.get("recursive_fallthrough_contexts")):
+        if native_boundaries.source_identity(root) != manifest["boundary_validator"]:
+            raise ValueError("Boundary validator changed during supplemental analysis")
     save(output / "capture.json", manifest)
     return manifest
 

@@ -362,6 +362,10 @@ pub struct Device {
     /// Local mirror of source device settings, independent of profile selection.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source_device_settings: Option<serde_json::Value>,
+    /// Local controller sleep preference; current hardware observations belong
+    /// to the connection owner and are never serialized here.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub controller_power_saving: Option<razer_device::controller_sleep::PowerSaving>,
     pub serial_number: String,
     /// 设备模块的 productId（USB PID 十进制）——即设备页面的 URL 段。
     pub product_id: u32,

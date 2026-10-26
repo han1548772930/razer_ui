@@ -265,6 +265,28 @@ pub struct EffectParameters {
     pub center_col: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub center_row: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub screen_rect: Option<ScreenRect>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub blur: Option<f32>,
+}
+
+/// The native screen-capture boundary uses 65535 units per screen axis.
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct ScreenRect {
+    pub left: u16,
+    pub top: u16,
+    pub right: u16,
+    pub bottom: u16,
+}
+impl ScreenRect {
+    pub const FULL: Self = Self {
+        left: 0,
+        top: 0,
+        right: u16::MAX,
+        bottom: u16::MAX,
+    };
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]

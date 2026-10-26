@@ -33,6 +33,9 @@ class PendingQueueTests(unittest.TestCase):
         selection_id = hashlib.sha256(json.dumps(selection, sort_keys=True).encode()).hexdigest()[:16]
         output = previous.with_name(selection_id)
         previous.rename(output)
+        plan = json.loads((output / "plan.json").read_bytes())
+        plan["function_selection"] = selection
+        write(output / "plan.json", plan)
         source = root / capture["input"]
         write(root / ".analysis/inputs.json", {"inputs": [{"path": capture["input"],
               "sha256": capture["input_sha256"], "bytes": capture["input_bytes"]}]})
@@ -51,9 +54,12 @@ class PendingQueueTests(unittest.TestCase):
         analyzer = root / "static-tools/idat.exe"
         analyzer.parent.mkdir()
         analyzer.write_bytes(b"inert analyzer fixture; never executed")
-        tool = root / "tools/ida/supplement.py"
-        tool.parent.mkdir(parents=True)
-        tool.write_bytes(b"inert capture tool fixture; never executed")
+        for filename in ("analysis.py", "workspace.py", "reverse_pending.py", "host.py", "native_adjudication.py",
+                         "native_boundaries.py", "native_callsites.py", "ida/supplement.py", "ida/capture.py",
+                         "ida/capture_io.py", "ida/capture_values.py"):
+            tool = root / "tools" / filename
+            tool.parent.mkdir(parents=True, exist_ok=True)
+            tool.write_bytes(b"inert tool fixture; never executed: " + filename.encode())
         args = argparse.Namespace(input=capture["input"], function_rva=[0x1000], function_type=[],
             type_evidence=None, max_function_kib=None, pointer_table_rva=None, pointer_count=None,
             ida_root=str(analyzer.parent), no_refresh_gaps=True, recover_interrupted=True)
@@ -138,13 +144,15 @@ class PendingQueueTests(unittest.TestCase):
                 database_before = database.read_bytes()
                 process = MagicMock(pid=912)
 
-                def finish():
-                    (output / "capture.json").write_text('{"capture_complete":true}', encoding="utf-8")
-                    return 0
-
-                process.wait.side_effect = finish
+                def launch(command, *, env, **kwargs):
+                    plan = json.loads(Path(env["RAZER_IDA_SUPPLEMENT_PLAN"]).read_bytes())
+                    def finish():
+                        (root / plan["output"] / "capture.json").write_text('{"capture_complete":true}', encoding="utf-8")
+                        return 0
+                    process.wait.side_effect = finish
+                    return process
                 with patch.object(queue, "process_alive", return_value=False) as alive, \
-                     patch.object(analysis.subprocess, "Popen", return_value=process) as start, \
+                     patch.object(analysis.subprocess, "Popen", side_effect=launch) as start, \
                      patch.object(analysis, "refresh_gaps") as refresh:
                     result = analysis.supplement_native(args)
                 alive.assert_called_once_with(712)
@@ -152,23 +160,22 @@ class PendingQueueTests(unittest.TestCase):
                 refresh.assert_not_called()
                 self.assertTrue(result["passed"])
                 self.assertEqual(database.read_bytes(), database_before)
-                self.assertEqual(len(result["previous_attempts"]), 2)
-                self.assertFalse(result["previous_attempts"][0]["passed"])
-                prior = result["previous_attempts"][1]
+                self.assertEqual(len(result["previous_attempts"]), 1)
+                prior = result["previous_attempts"][0]
                 recovery = prior["interruption_recovery"]
                 self.assertTrue(recovery["process_confirmed_absent"])
                 self.assertIsNone(recovery["exit_code"])
                 session_bytes = retained[output / "session.json"]
                 self.assertEqual(recovery["original_session_sha256"], hashlib.sha256(session_bytes).hexdigest())
                 self.assertEqual(base64.b64decode(recovery["original_session_raw_base64"]), session_bytes)
-                self.assertEqual(len(prior["retained_outputs"]), 4)
-                for record in prior["retained_outputs"]:
-                    original = retained[root / record["path_at_attempt"]]
-                    self.assertEqual(record["bytes"], len(original))
-                    self.assertEqual(record["sha256"], hashlib.sha256(original).hexdigest())
-                    self.assertEqual(base64.b64decode(record["raw_base64"]), original)
-                saved = json.loads((output / "session.json").read_bytes())
+                self.assertEqual(prior["session"], queue.identity(output / "session.json"))
+                for path, raw in retained.items():
+                    self.assertEqual(path.read_bytes(), raw)
+                fresh_output = output.with_name(result["attempt_id"])
+                self.assertNotEqual(fresh_output, output)
+                saved = json.loads((fresh_output / "session.json").read_bytes())
                 self.assertEqual(saved["previous_attempts"], result["previous_attempts"])
+                analysis.verify_native_supplement_request(json.loads((fresh_output / "plan.json").read_bytes()), saved)
 
     def test_interrupted_supplement_active_or_unqueryable_process_preserves_all_evidence(self):
         for state in (True, None):
@@ -186,6 +193,184 @@ class PendingQueueTests(unittest.TestCase):
                     self.assertEqual(database.read_bytes(), original_database)
                     for path, raw in retained.items():
                         self.assertEqual(path.read_bytes(), raw)
+
+    def test_repeated_supplement_uses_independent_directories_without_replacing_formal_functions(self):
+        with tempfile.TemporaryDirectory() as directory, redirect_stdout(io.StringIO()):
+            root = Path(directory)
+            with patch.object(analysis, "ROOT", root):
+                args, output, database, retained = self.supplement_fixture(root)
+                analysis.save(output / "session.json", {"pid": 712, "finished_at_utc": "prior actual end", "exit_code": 1})
+                retained[output / "session.json"] = (output / "session.json").read_bytes()
+                attempts = []
+                def launch(command, *, cwd, env, **kwargs):
+                    plan = json.loads(Path(env["RAZER_IDA_SUPPLEMENT_PLAN"]).read_bytes())
+                    attempts.append(plan)
+                    process = MagicMock(pid=912)
+                    def finish():
+                        folder = root / plan["output"]
+                        analysis.save(folder / "capture.json", {"capture_complete": True})
+                        function = folder / "functions/1000.json"
+                        function.parent.mkdir()
+                        function.write_bytes(b"complete formal function " + plan["attempt_id"].encode())
+                        (root / plan["database"]["path"]).write_bytes(b"ended private IDB " + plan["attempt_id"].encode())
+                        return 0
+                    process.wait.side_effect = finish
+                    return process
+                with patch.object(analysis.subprocess, "Popen", side_effect=launch):
+                    first = analysis.supplement_native(args)
+                    first_folder = root / attempts[0]["output"]
+                    first_bytes = {p: p.read_bytes() for p in first_folder.rglob("*") if p.is_file()}
+                    first_database = root / attempts[0]["database"]["path"]
+                    first_bytes[first_database] = first_database.read_bytes()
+                    second = analysis.supplement_native(args)
+                self.assertNotEqual(first["attempt_id"], second["attempt_id"])
+                self.assertEqual(first["request_sha256"], second["request_sha256"])
+                self.assertNotEqual(attempts[0]["database"]["path"], attempts[1]["database"]["path"])
+                for path, raw in {**retained, **first_bytes}.items():
+                    self.assertEqual(path.read_bytes(), raw)
+                self.assertEqual(database.read_bytes(), b"inert retained IDB; never opened")
+                self.assertIn(queue.identity(first_folder / "session.json"),
+                              [row["session"] for row in second["previous_attempts"]])
+
+    def test_supplement_request_changes_with_every_tool_base_evidence_and_actual_analyzer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with patch.object(analysis, "ROOT", root):
+                args, output, database, _ = self.supplement_fixture(root)
+                source = root / args.input
+                capture = output.parent.parent / "capture.json"
+                selection = json.loads((output / "plan.json").read_bytes())["function_selection"]
+                analyzer = Path(args.ida_root) / "idat.exe"
+                def request():
+                    return analysis.native_supplement_request(source, capture, database, "function_selection", selection, analyzer)
+                original = request()
+                original_digest = analysis.native_supplement_request_sha256(original)
+                paths = [root / row["path"] for row in original["tool_sources"].values()]
+                for path in [source, capture, database, analyzer, *paths]:
+                    with self.subTest(path=path):
+                        raw = path.read_bytes()
+                        path.write_bytes(raw + b"actual different source identity")
+                        changed = request()
+                        self.assertNotEqual(analysis.native_supplement_request_sha256(changed), original_digest)
+                        path.write_bytes(raw)
+                selection["test_distinct_reviewed_option"] = True
+                self.assertNotEqual(analysis.native_supplement_request_sha256(request()), original_digest)
+                for row in original["tool_sources"].values():
+                    self.assertEqual(queue.identity(root / row["snapshot"]["path"]), row["snapshot"])
+
+    def test_reserved_supplement_process_cannot_be_started_twice_while_first_launch_is_pending(self):
+        with tempfile.TemporaryDirectory() as directory, redirect_stdout(io.StringIO()):
+            root = Path(directory)
+            with patch.object(analysis, "ROOT", root):
+                args, output, _, _ = self.supplement_fixture(root)
+                analysis.save(output / "session.json", {"pid": 712, "finished_at_utc": "prior actual end", "exit_code": 1})
+                process = MagicMock(pid=912)
+                reservations = []
+                def launch(command, *, env, **kwargs):
+                    plan = json.loads(Path(env["RAZER_IDA_SUPPLEMENT_PLAN"]).read_bytes())
+                    reserved = json.loads((root / plan["output"] / "session.json").read_bytes())
+                    reservations.append(reserved)
+                    self.assertEqual(reserved["state"], "reserved")
+                    self.assertIsNone(reserved["pid"])
+                    with patch.object(queue, "process_alive", return_value=True) as alive:
+                        with self.assertRaisesRegex(ValueError, "still running"):
+                            analysis.supplement_native(args)
+                        alive.assert_called_once_with(reserved["coordinator_pid"])
+                    process.wait.side_effect = lambda: 1
+                    return process
+                with patch.object(analysis.subprocess, "Popen", side_effect=launch) as start:
+                    result = analysis.supplement_native(args)
+                start.assert_called_once()
+                self.assertEqual(len(reservations), 1)
+                self.assertFalse(result["passed"])
+
+    def test_supplement_cancellation_releases_process_and_preserves_original_attempt(self):
+        with tempfile.TemporaryDirectory() as directory, redirect_stdout(io.StringIO()):
+            root = Path(directory)
+            with patch.object(analysis, "ROOT", root):
+                args, output, database, retained = self.supplement_fixture(root)
+                analysis.save(output / "session.json", {"pid": 712, "finished_at_utc": "prior actual end", "exit_code": 1})
+                retained[output / "session.json"] = (output / "session.json").read_bytes()
+                process = MagicMock(pid=912)
+                process.wait.side_effect = [KeyboardInterrupt(), 143]
+                with patch.object(analysis.subprocess, "Popen", return_value=process):
+                    with self.assertRaises(KeyboardInterrupt):
+                        analysis.supplement_native(args)
+                process.terminate.assert_called_once()
+                process.kill.assert_not_called()
+                fresh = next(p for p in output.parent.glob("*/session.json") if p.parent != output)
+                session = json.loads(fresh.read_bytes())
+                self.assertEqual(session["state"], "cancelled")
+                self.assertEqual(session["exit_code"], 143)
+                self.assertTrue(session["process_released"])
+                self.assertIn("finished_at_utc", session)
+                self.assertFalse(session["passed"])
+                self.assertIn("unified", session["retained_private_database"]["reason"])
+                for path, raw in retained.items():
+                    self.assertEqual(path.read_bytes(), raw)
+                self.assertEqual(database.read_bytes(), b"inert retained IDB; never opened")
+
+    def test_supplement_tool_change_during_analyzer_run_records_failure(self):
+        with tempfile.TemporaryDirectory() as directory, redirect_stdout(io.StringIO()):
+            root = Path(directory)
+            with patch.object(analysis, "ROOT", root):
+                args, output, _, retained = self.supplement_fixture(root)
+                process = MagicMock(pid=912)
+                def finish():
+                    (root / "tools/ida/capture_values.py").write_bytes(b"changed actual serializer")
+                    return 0
+                process.wait.side_effect = finish
+                with patch.object(queue, "process_alive", return_value=False), \
+                     patch.object(analysis.subprocess, "Popen", return_value=process):
+                    with self.assertRaisesRegex(ValueError, "tool changed"):
+                        analysis.supplement_native(args)
+                fresh = next(p for p in output.parent.glob("*/session.json") if p.parent != output)
+                session = json.loads(fresh.read_bytes())
+                self.assertEqual(session["state"], "failed")
+                self.assertFalse(session["passed"])
+                self.assertTrue(session["process_released"])
+                self.assertIn("finished_at_utc", session)
+                for path, raw in retained.items():
+                    self.assertEqual(path.read_bytes(), raw)
+
+    def test_completed_review_attempt_finds_source_bound_nonce_attempt_without_legacy_selection_path(self):
+        batch = queue.Batch(2, "IDA", resume=True)
+        with tempfile.TemporaryDirectory() as directory, redirect_stdout(io.StringIO()):
+            root = Path(directory)
+            with patch.object(analysis, "ROOT", root):
+                args, old_output, _, _ = self.supplement_fixture(root)
+                args.max_function_kib = 1024
+                plans = []
+                def launch(command, *, env, **kwargs):
+                    plan = json.loads(Path(env["RAZER_IDA_SUPPLEMENT_PLAN"]).read_bytes())
+                    plans.append(plan)
+                    process = MagicMock(pid=912)
+                    def finish():
+                        analysis.save(root / plan["output"] / "capture.json", {"capture_complete": True})
+                        return 0
+                    process.wait.side_effect = finish
+                    return process
+                with patch.object(analysis.subprocess, "Popen", side_effect=launch):
+                    analysis.supplement_native(args)
+                source = root / args.input
+                capture_path = old_output.parent.parent / "capture.json"
+                capture = json.loads(capture_path.read_bytes())
+                review = {"function_rvas": ["0x1000"], "type_recoveries": [], "type_evidence": "",
+                          "source_capture": queue.identity(capture_path)}
+                adopted = batch.completed_review_attempt(source, capture, review)
+                self.assertEqual(adopted["plan"], queue.identity(root / plans[0]["output"] / "plan.json"))
+                self.assertEqual(adopted["exit_code"], 0)
+                self.assertNotEqual(Path(adopted["session"]["path"]).parent, old_output)
+                removed = deepcopy(plans[0])
+                removed.pop("analysis_request")
+                analysis.save(root / removed["output"] / "plan.json", removed)
+                with self.assertRaisesRegex(ValueError, "lost its source-bound request"):
+                    batch.completed_review_attempt(source, capture, review)
+                tampered = deepcopy(plans[0])
+                tampered["attempt_nonce"] = "f" * 32
+                analysis.save(root / tampered["output"] / "plan.json", tampered)
+                with self.assertRaisesRegex(ValueError, "immutable attempt identity"):
+                    batch.completed_review_attempt(source, capture, review)
 
     def test_interrupted_supplement_requires_explicit_recovery_even_if_process_may_be_absent(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1553,10 +1738,11 @@ class SharedTailDatabaseTests(unittest.TestCase):
             source = Path(queue.__file__).with_name("ida") / "supplement.py"
             capture = next(node for node in ast.parse(source.read_text(encoding="utf-8")).body
                            if isinstance(node, ast.FunctionDef) and node.name == "capture")
-            export = next(node for node in capture.body if isinstance(node, ast.FunctionDef) and node.name == "export")
+            exports = [node for node in capture.body
+                       if isinstance(node, ast.FunctionDef) and node.name in ("export_plain", "export")]
             namespace = {"base": 0x140000000, "output": output, "functions": output / "functions", "table": None,
-                         "captured": {"0x1000": (helper, True)}, "json": json}
-            exec(compile(ast.Module(body=[export], type_ignores=[]), str(source), "exec"), namespace)
+                         "captured": {"0x1000": (helper, True)}, "json": json, "selection": {}}
+            exec(compile(ast.Module(body=exports, type_ignores=[]), str(source), "exec"), namespace)
             self.assertEqual(namespace["export"](0x140001000, assembly_only=True, helper_kind="shared_tail_helpers"),
                              {"rva": "0x1000", "pseudocode": None})
             with self.assertRaisesRegex(ValueError, "assembly-only helper"):
@@ -2953,7 +3139,7 @@ class StaticMicrocodeObservationTests(unittest.TestCase):
                 namespace = {**fixture.namespace, "base": 0x140000000, "root": root, "output": output,
                     "capture_values": SimpleNamespace(local_variables=typed_values["local_variables"]),
                     "functions": output / "functions", "manifest": manifest, "captured": {}, "table": None,
-                    "shared_owner_rvas": set(), "selection": {}, "hashlib": hashlib, "json": json, "traceback": traceback,
+                    "shared_owner_rvas": set(), "recursive_active": {}, "selection": {}, "hashlib": hashlib, "json": json, "traceback": traceback,
                     "file_bytes": lambda rva, size: b"\x90\xc3"[:size], "save": lambda path, row: path.write_text(json.dumps(row)),
                     "ida_funcs": SimpleNamespace(get_func=lambda address: func, get_func_name=lambda address: "fixture",
                                                  get_func_cmt=lambda function, repeatable: None),
@@ -2964,8 +3150,9 @@ class StaticMicrocodeObservationTests(unittest.TestCase):
                     "idc": SimpleNamespace(get_type=lambda address: None), "ida_lines": SimpleNamespace(tag_remove=lambda text: text)}
                 capture = next(node for node in ast.parse(fixture.source.read_text(encoding="utf-8")).body
                                if isinstance(node, ast.FunctionDef) and node.name == "capture")
-                export = next(node for node in capture.body if isinstance(node, ast.FunctionDef) and node.name == "export")
-                exec(compile(ast.Module(body=[export], type_ignores=[]), str(fixture.source), "exec"), namespace)
+                exports = [node for node in capture.body
+                           if isinstance(node, ast.FunctionDef) and node.name in ("export_plain", "export")]
+                exec(compile(ast.Module(body=exports, type_ignores=[]), str(fixture.source), "exec"), namespace)
                 row = namespace["export"](ea)
                 self.assertEqual(row["hexrays_diagnostics"]["hook_registered"], False)
                 self.assertEqual(manifest["functions"][0]["pseudocode_captured"], success)
@@ -3119,7 +3306,7 @@ class FreshInlineControllerTests(unittest.TestCase):
         self.assertEqual(fixture.lifecycle, ["hook", "unhook"])
         self.assertFalse(fixture.registered)
         self.assertFalse(fixture.instances[0].active)
-        self.assertEqual(set(fixture.instances[0].__dict__), {"target_ea", "base", "helpers", "audit", "active", "entered"})
+        self.assertEqual(set(fixture.instances[0].__dict__), {"target_ea", "base", "helpers", "audit", "active", "entered", "pending_inline"})
         json.dumps(audit)
 
     def test_missing_wrong_or_changed_original_call_never_invokes_sdk(self):
@@ -3153,6 +3340,106 @@ class FreshInlineControllerTests(unittest.TestCase):
                 before = list(fixture.sdk_calls)
                 fixture.instances[0].begin_inlining(fixture.cdg, 0x80)
                 self.assertEqual(fixture.sdk_calls, before)
+
+    def test_nested_register_leaf_uses_each_new_sdk_clone_and_preserves_original_paths(self):
+        for address_mode, issue in [(mode, issue) for mode in ("original", "fictitious")
+                                   for issue in (None, "wrong_mapping", "ambiguous_clone", "missing_clone",
+                                                 "wrong_path", "sdk_leaf_error", "missing_scope_callback",
+                                                 "wrong_scope_source", "wrong_scope_helper", "empty_scope",
+                                                 "clone_outside_scope", "duplicate_scope_callback")]:
+            with self.subTest(address_mode=address_mode, issue=issue):
+                fixture = self.fixture()
+                code = bytes.fromhex("e87b000000c3")
+                leaf_code = bytes.fromhex("31c0c3")
+                leaf_ea = fixture.base + 0x1080
+                leaf_function = SimpleNamespace(start_ea=leaf_ea, flags=0x40000)
+                outer_helper = fixture.reviewed[0]
+                outer_helper["expected_chunks"] = [{"start": hex(fixture.helper),
+                    "end": hex(fixture.helper + len(code)), "raw_hex": code.hex(),
+                    "sha256": hashlib.sha256(code).hexdigest()}]
+                inner = {"parent_rva": "0x1000", "callsite_rva": "0x1000", "target_rva": "0x1080",
+                         "raw_hex": "e87b000000", "parent_function": {"path": "helper", "bytes": 6,
+                                                                       "sha256": "b" * 64}}
+                leaf = {"rva": "0x1080", "inline_scope": "reviewed_nested_register_leaf",
+                    "flag_names": ["INLINE_DONTCOPY"], "expected_chunks": [{"start": hex(leaf_ea),
+                        "end": hex(leaf_ea + len(leaf_code)), "raw_hex": leaf_code.hex(),
+                        "sha256": hashlib.sha256(leaf_code).hexdigest()}],
+                    "callsites": [{**inner, "owner_rva": "0x1040", "call_path": [dict(outer), dict(inner)]}
+                                  for outer in outer_helper["callsites"]]}
+                fixture.reviewed.append(leaf)
+                if issue == "wrong_path": leaf["callsites"][0]["call_path"][1]["raw_hex"] = "e87a000000"
+                originals = {fixture.parent: bytes.fromhex("e8bbffffff"),
+                             fixture.parent + 6: bytes.fromhex("e8b5ffffff"), fixture.helper: code,
+                             leaf_ea: leaf_code}
+                fixture.namespace["ida_bytes"].get_bytes = lambda ea, size: originals[ea][:size]
+                fixture.namespace["ida_funcs"].get_func = lambda ea: leaf_function if ea == leaf_ea else fixture.function
+                fixture.namespace["idautils"].Chunks = lambda ea: [(ea, ea + (3 if ea == leaf_ea else 6))]
+                clone_map, operations = {}, []
+
+                def inline(cdg, serial, ranges, flags, inline_flags):
+                    block = fixture.blocks[serial]
+                    tail = block.tail
+                    operations.append((tail.ea, inline_flags))
+                    tail.opcode = 0
+                    if ranges.pfn is fixture.function:
+                        self.assertEqual(inline_flags, 3)
+                        fixture.blocks.reverse()
+                        first = len(fixture.blocks)
+                        if issue != "missing_clone":
+                            for _ in range(2 if issue == "ambiguous_clone" else 1):
+                                fict = 0xf100000000000000 + len(clone_map)
+                                call_ea = fict if address_mode == "fictitious" else fixture.helper
+                                clone_map[call_ea] = fixture.helper + (1 if issue == "wrong_mapping" else 0)
+                                fixture.blocks.append(SimpleNamespace(serial=0, tail=SimpleNamespace(
+                                    ea=call_ea, opcode=17, l=SimpleNamespace(t=6, g=leaf_ea))))
+                        if issue in ("missing_clone", "clone_outside_scope"):
+                            first = len(fixture.blocks)
+                            fixture.blocks.append(SimpleNamespace(serial=0, tail=SimpleNamespace(
+                                ea=fixture.parent + 1, opcode=0, l=SimpleNamespace(t=6, g=0))))
+                        for index, row in enumerate(fixture.blocks): row.serial = index
+                        fixture.mba.qty = len(fixture.blocks)
+                        if issue != "missing_scope_callback":
+                            scope_source = serial + (1 if issue == "wrong_scope_source" else 0)
+                            scope_ranges = SimpleNamespace(pfn=leaf_function if issue == "wrong_scope_helper"
+                                                          else fixture.function)
+                            stop = first if issue == "empty_scope" else len(fixture.blocks)
+                            for _ in range(2 if issue == "duplicate_scope_callback" else 1):
+                                fixture.instances[-1].inlined_func(cdg, scope_source, scope_ranges, first, stop)
+                    else:
+                        self.assertIs(ranges.pfn, leaf_function)
+                        self.assertEqual(inline_flags, 2)
+                        if issue == "sdk_leaf_error": return -12
+                        fixture.blocks.reverse()
+                    for index, row in enumerate(fixture.blocks): row.serial = index
+                    fixture.mba.qty = len(fixture.blocks)
+                    return 0
+
+                fixture.mba.inline_func = inline
+                fixture.mba.map_fict_ea = lambda ea: clone_map.get(ea, ea)
+                audit = {}
+                if issue:
+                    with self.assertRaisesRegex(ValueError, "incomplete"):
+                        fixture.observe(fixture.parent, object(), {}, fixture.reviewed, fixture.base, audit)
+                    self.assertFalse(audit["complete"])
+                else:
+                    self.assertIs(fixture.observe(fixture.parent, object(), {}, fixture.reviewed, fixture.base, audit),
+                                  fixture.token)
+                    self.assertEqual([flags for _, flags in operations], [3, 2, 3, 2])
+                    nested = audit["calls"][2:]
+                    self.assertEqual([row["mapped_original_call_ea"] for row in nested], [hex(fixture.helper)] * 2)
+                    self.assertEqual(len({row["sdk_call_ea"] for row in nested}),
+                                     2 if address_mode == "fictitious" else 1)
+                    self.assertTrue(all(row["mapping_api"] == "mba_t.map_fict_ea"
+                                        and row["fictitious_call"] == (address_mode == "fictitious") for row in nested))
+                    for row in nested:
+                        scope = row["source_inline_scope"]
+                        self.assertEqual(scope["api"], "Hexrays_Hooks.inlined_func")
+                        self.assertEqual(scope["helper_ea"], hex(fixture.helper))
+                        first, stop = scope["inserted_block_interval"]
+                        self.assertTrue(first <= row["sdk_block_serial"] < stop)
+                    self.assertTrue(audit["complete"])
+                self.assertTrue(audit["hook_unregistered"])
+                self.assertFalse(fixture.instances[0].active)
 
 
 class ProcessWorkerTests(unittest.TestCase):
@@ -3232,11 +3519,130 @@ class QueueReceiptRetentionTests(unittest.TestCase):
         record = queue.identity(path)
         task = {"id": "one", "sha256": digest}
         self.assertTrue(queue.retained_task_artifact_valid(record, task, "source_database"))
+        self.assertTrue(queue.retained_task_artifact_valid(record, task, "source_database_after"))
         for owner, field in (("b" * 64, "source_database"), (digest, "unrecognized_scratch"), (None, "source_database")):
             with self.subTest(owner=owner, field=field):
                 self.assertFalse(queue.retained_task_artifact_valid(record, {"sha256": owner}, field))
         path.write_bytes(b"changed private database")
         self.assertFalse(queue.retained_task_artifact_valid(record, task, "source_database"))
+
+    def test_declared_validator_source_accepts_only_exact_live_or_retained_owner_bytes(self):
+        path = self.root / "tools/native_source_correspondence.py"
+        path.parent.mkdir(parents=True)
+        path.write_bytes(b"inert validator source")
+        record = queue.identity(path)
+        self.assertTrue(queue.retained_task_artifact_valid(record, {}, "validator_source"))
+        self.assertFalse(queue.retained_task_artifact_valid(record, {}, "unrecognized_tool"))
+        path.write_bytes(b"changed source")
+        self.assertFalse(queue.retained_task_artifact_valid(record, {}, "validator_source"))
+        snapshot = self.root / ".analysis/results/reverse-pending/tool-sources" / (record["sha256"] + ".py")
+        snapshot.parent.mkdir(parents=True)
+        snapshot.write_bytes(b"inert validator source")
+        self.assertTrue(queue.retained_task_artifact_valid(record, {}, "validator_source"))
+        snapshot.write_bytes(b"changed archive")
+        self.assertFalse(queue.retained_task_artifact_valid(record, {}, "validator_source"))
+
+    def test_embedded_attribution_history_requires_its_exact_owner_and_proof_field(self):
+        import native_embedded
+        digest = "a" * 64
+        record = {"path": ".analysis/results/native/" + digest + "/embedded-function-attribution.json",
+                  "bytes": 42, "sha256": "b" * 64}
+        with patch.object(native_embedded, "retained_attribution_reference_valid", return_value=True) as verify:
+            for field in ("proof", "receipt"):
+                self.assertTrue(queue.retained_task_artifact_valid(record, {"sha256": digest}, field))
+                verify.assert_called_with(analysis, record, digest)
+            verify.reset_mock()
+            for owner, field, candidate in (("c" * 64, "proof", record), (digest, "other", record),
+                    (digest, "proof", {**record, "path": record["path"].replace("embedded-function", "other-function")})):
+                self.assertFalse(queue.retained_task_artifact_valid(candidate, {"sha256": owner}, field))
+            verify.assert_not_called()
+        with patch.object(native_embedded, "retained_attribution_reference_valid", return_value=False):
+            self.assertFalse(queue.retained_task_artifact_valid(record, {"sha256": digest}, "proof"))
+
+    def test_relative_preanalysis_capture_requires_its_exact_native_supplement_scope(self):
+        digest = "a" * 64
+        owner = ".analysis/results/native/" + digest + "/supplements/" + "b" * 16
+        path = self.root / owner / "preanalysis/1000.json"
+        path.parent.mkdir(parents=True)
+        path.write_bytes(b"inert complete preanalysis")
+        record = {**queue.identity(path), "path": "preanalysis/1000.json"}
+        task = {"sha256": digest}
+        self.assertTrue(queue.retained_task_artifact_valid(record, task, "capture", owner))
+        for field, scope, candidate in (("capture", None, record), ("unrecognized", owner, record),
+                ("capture", owner.replace(digest, "c" * 64), record),
+                ("capture", owner, {**record, "path": "preanalysis/../../outside.json"}),
+                ("capture", owner, {**record, "sha256": "0" * 64})):
+            self.assertFalse(queue.retained_task_artifact_valid(candidate, task, field, scope))
+
+    def test_explicitly_unavailable_failed_source_stays_historical_without_a_live_source_claim(self):
+        for issue in (None, "claimed_verified", "wrong_owner", "missing_identity", "missing_boundary"):
+            with self.subTest(issue=issue):
+                result = {"failed_validator_source": None, "failed_validator_source_bytes_verified": False,
+                    "failed_validator_record": {"path": "tools/native_callsites.py", "bytes": 41282, "sha256": "a" * 64}}
+                if issue == "claimed_verified": result["failed_validator_source_bytes_verified"] = True
+                elif issue == "wrong_owner": result["failed_validator_record"]["path"] = "tools/other.py"
+                elif issue == "missing_identity": result["failed_validator_record"].pop("sha256")
+                elif issue == "missing_boundary": result.pop("failed_validator_source")
+                path = self.root / ".analysis/results/ended-source-diagnostic.json"
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(result), encoding="utf-8")
+                task = {"id": "one", "resolution": queue.identity(path)}
+                if issue is None:
+                    self.assertEqual(queue.check_retained_task(task), "one")
+                else:
+                    with self.assertRaises(ValueError): queue.check_retained_task(task)
+
+    def test_hash_only_function_reference_still_requires_the_actual_bytes(self):
+        source = self.root / ".analysis/results/native/function.json"
+        source.parent.mkdir(parents=True)
+        source.write_bytes(b'{"machine":"complete retained body"}')
+        reference = queue.identity(source)
+        reference.pop("bytes")
+        receipt = queue.retain_review_json({"complete_function": reference})
+        task = {"id": "one", "kind": "native", "resolution": receipt}
+        self.assertEqual(queue.check_retained_task(task), "one")
+        source.write_bytes(b'{"machine":"changed"}')
+        with self.assertRaisesRegex(ValueError, "Retained queue artifact changed"):
+            queue.check_retained_task(task)
+        source.unlink()
+        with self.assertRaisesRegex(ValueError, "Retained queue artifact changed"):
+            queue.check_retained_task(task)
+
+    def test_historical_capture_tool_metadata_has_an_explicit_and_narrow_unverified_scope(self):
+        reference = {"path": "tools/ida/supplement.py", "sha256": "a" * 64}
+        for issue in (None, "function", "different_tool", "bytes", "bad_hash", "frontend", "other_fields"):
+            with self.subTest(issue=issue):
+                record = deepcopy(reference)
+                field, kind = "capture_tool", "native"
+                if issue == "function": field = "complete_function"
+                elif issue == "different_tool": record["path"] = "tools/ida/capture.py"
+                elif issue == "bytes": record["bytes"] = 42
+                elif issue == "bad_hash": record["sha256"] = "bad"
+                elif issue == "frontend": kind = "frontend"
+                elif issue == "other_fields": record["pseudocode_captured"] = True
+                receipt = queue.retain_review_json({field: record})
+                task = {"id": "one", "kind": kind, "resolution": receipt}
+                missing = []
+                if issue is None:
+                    self.assertEqual(queue.check_retained_task(task, historical_sources=missing), "one")
+                    self.assertEqual(missing[0]["reference"], reference)
+                    self.assertFalse(missing[0]["source_bytes_verified"])
+                else:
+                    with self.assertRaisesRegex(ValueError, "Retained queue artifact changed"):
+                        queue.check_retained_task(task, historical_sources=missing)
+
+    def test_hash_only_capture_tool_uses_exact_retained_source_when_available(self):
+        source = b"inert historical supplement tool"
+        digest = hashlib.sha256(source).hexdigest()
+        path = self.root / ".analysis/results/reverse-pending/tool-sources" / (digest + ".py")
+        path.parent.mkdir(parents=True)
+        path.write_bytes(source)
+        reference = {"path": "tools/ida/supplement.py", "sha256": digest}
+        receipt = queue.retain_review_json({"capture_tool": reference})
+        missing = []
+        self.assertEqual(queue.check_retained_task({"id": "one", "kind": "native", "resolution": receipt},
+                                                  historical_sources=missing), "one")
+        self.assertEqual(missing, [])
 
     def test_legacy_nested_history_never_recursively_inflates_the_active_report(self):
         original = {"tasks": [{"id": "retained-completion", "status": "passed", "finished_at_utc": "exact"}],
@@ -3488,6 +3894,73 @@ class FrontendSourceClassificationTests(unittest.TestCase):
 
 
 class FrozenUnresolvedIncrementTests(unittest.TestCase):
+    def replacement_review(self):
+        return {"status": "unresolved", "verification_only": True, "target_execution": False,
+                "semantics_complete": False, "changed_during_query": [],
+                "failures": [{"kind": "historical_404_preserved"}],
+                "replacement_resolution": {"status": "verified",
+                    "resolution_method": "verified_current_official_source_replacement",
+                    "historical_failures_preserved": True, "original_task_passed": False,
+                    "failures": [], "source_maps_recovered": False, "semantics_complete": False,
+                    "runtime_acceptance": "unverified", "cache_extra_coverage": None,
+                    "current_source_closures": [{"complete_originals_and_ast": True,
+                        "capture": {"manifest": "verified-by-source-owner"},
+                        "recovery": {"missing_factories": [], "scan_failures": []},
+                        "runtime_closure": {"status": "verified", "failures": [],
+                            "source_maps_recovered": False, "target_execution": False}}]}}
+
+    def test_current_source_replacement_keeps_historical_failure_and_separate_closure(self):
+        review = self.replacement_review()
+        original = deepcopy(review)
+        result = queue.frozen_frontend_result(review)
+        self.assertEqual(result["status"], "passed")
+        self.assertEqual(result["closure_status"], "passed")
+        self.assertEqual(result["historical_status"], "unresolved")
+        self.assertEqual(result["resolution_method"], "verified_current_official_source_replacement")
+        self.assertEqual(review, original)
+
+    def test_replacement_requires_stable_complete_evidence_without_scope_promotion(self):
+        changes = [
+            (("target_execution",), True), (("changed_during_query",), ["changed.js"]),
+            (("semantics_complete",), True),
+            (("replacement_resolution", "resolution_method"), "assumed_same_product"),
+            (("replacement_resolution", "historical_failures_preserved"), False),
+            (("replacement_resolution", "original_task_passed"), True),
+            (("replacement_resolution", "failures"), [{"missing": "asset"}]),
+            (("replacement_resolution", "source_maps_recovered"), True),
+            (("replacement_resolution", "semantics_complete"), True),
+            (("replacement_resolution", "runtime_acceptance"), "passed"),
+            (("replacement_resolution", "current_source_closures"), []),
+            (("replacement_resolution", "current_source_closures", 0, "complete_originals_and_ast"), False),
+            (("replacement_resolution", "current_source_closures", 0, "capture"), None),
+            (("replacement_resolution", "current_source_closures", 0, "recovery", "missing_factories"), ["42"]),
+            (("replacement_resolution", "current_source_closures", 0, "recovery", "scan_failures"), ["parse"]),
+            (("replacement_resolution", "current_source_closures", 0, "runtime_closure", "status"), "unresolved"),
+            (("replacement_resolution", "current_source_closures", 0, "runtime_closure", "failures"), ["asset"]),
+            (("replacement_resolution", "current_source_closures", 0, "runtime_closure", "source_maps_recovered"), True),
+            (("replacement_resolution", "current_source_closures", 0, "runtime_closure", "target_execution"), True),
+            (("replacement_resolution", "cache_extra_coverage"), {"status": "verified", "failures": [],
+                "cached_extra_urls": 2, "verified_extra_urls": 1}),
+        ]
+        for path, value in changes:
+            with self.subTest(path=path):
+                review = self.replacement_review()
+                owner = review
+                for key in path[:-1]:
+                    owner = owner[key]
+                owner[path[-1]] = value
+                with self.assertRaises(ValueError):
+                    queue.frozen_frontend_result(review)
+
+    def test_unverified_replacement_cannot_promote_historical_failure(self):
+        for replacement in (None, {"status": "unresolved", "failures": ["missing"]}):
+            with self.subTest(replacement=replacement):
+                review = self.replacement_review()
+                review["replacement_resolution"] = replacement
+                result = queue.frozen_frontend_result(review)
+                self.assertEqual(result["status"], "unresolved")
+                self.assertNotIn("resolution_method", result)
+
     def fixture(self, root):
         tool = root / "tools/reverse_pending.py"
         tool.parent.mkdir(parents=True)
@@ -3504,9 +3977,23 @@ class FrozenUnresolvedIncrementTests(unittest.TestCase):
                   "receipt": record, "status": "passed"}]
         baseline = root / queue.REPORT
         baseline.write_text(json.dumps({"schema_version": 1, "finished_at_utc": "frozen end", "tasks": tasks}), encoding="utf-8")
+        for task in tasks:
+            acquisition = root / task["input"] / "acquisition.json"
+            acquisition.parent.mkdir(parents=True)
+            acquisition.write_bytes(b'{"official":"synthetic source closure"}')
         args = SimpleNamespace(workers=2, ida_root="IDA", process_workers=False,
                                task_id=None, native_only=False, recheck_unresolved=True)
         return tool, historical, baseline, args
+
+    def result(self, root, task, *, evidence=None):
+        review = {"task_id": task["id"], "status": "passed", "verification_only": True,
+                  "target_execution": False, "semantics_complete": False,
+                  "changed_during_query": [], "failures": [], "current_failures": [],
+                  "historical_receipt": queue.frozen_result_reference(task["receipt"]),
+                  "current_acquisition": queue.identity(root / task["input"] / "acquisition.json")}
+        if evidence is not None:
+            review["evidence"] = evidence
+        return {**queue.frozen_frontend_result(review), "receipt": queue.retain_review_json(review)}
 
     def test_only_frozen_failures_run_and_original_queue_and_results_stay_exact(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
@@ -3519,7 +4006,7 @@ class FrozenUnresolvedIncrementTests(unittest.TestCase):
                 self.assertTrue(batch.recheck_mode)
                 self.assertTrue(batch.verify_only)
                 called.append(task["id"])
-                return {"status": "passed", "receipt": queue.retain_review_json({"case": task["id"]})}
+                return self.result(root, task)
 
             with patch.object(queue, "__file__", str(tool)), patch.object(queue.Batch, "execute", execute), redirect_stdout(io.StringIO()):
                 report = queue.recheck_unresolved(args)
@@ -3543,6 +4030,161 @@ class FrozenUnresolvedIncrementTests(unittest.TestCase):
                         queue.recheck_unresolved(args)
                 execute.assert_not_called()
                 self.assertFalse((root / queue.UNRESOLVED_REPORT).exists())
+
+    def test_increment_import_rejects_tampering_before_rechecking_a_different_task(self):
+        issues = ("unretained_edit", "retained_missing", "retained_changed", "duplicate", "foreign",
+                  "input", "kind", "sha256", "history", "scope", "summary", "selection",
+                  "tool", "tasks_type", "row_type", "missing_evidence", "unfinished", "nested",
+                  "history_reference", "history_baseline", "history_scope", "history_path", "source_path")
+        for issue in issues:
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory, \
+                    patch.object(analysis, "ROOT", Path(directory)):
+                root = Path(directory)
+                tool, _, baseline, args = self.fixture(root)
+                source = root / ".analysis/results/current-source.json"
+                source.write_bytes(b'{"official":"current"}')
+                with patch.object(queue, "__file__", str(tool)), \
+                        patch.object(queue.Batch, "execute", autospec=True,
+                                     side_effect=lambda batch, task: self.result(root, task, evidence=queue.identity(source))), \
+                        redirect_stdout(io.StringIO()):
+                    queue.recheck_unresolved(args)
+                current = root / queue.UNRESOLVED_REPORT
+                report = json.loads(current.read_bytes())
+                row = report["tasks"][1]
+                if issue == "unretained_edit":
+                    row["input"] = ".analysis/inputs/frontend/other"
+                elif issue == "retained_missing":
+                    (root / report["source_review"]["path"]).unlink()
+                elif issue == "retained_changed":
+                    (root / report["source_review"]["path"]).write_bytes(b'{"changed":true}')
+                elif issue == "duplicate":
+                    report["tasks"].append(deepcopy(row))
+                elif issue == "foreign":
+                    row["baseline_task_id"] = "foreign"
+                elif issue == "input":
+                    row["input"] = ".analysis/inputs/frontend/other"
+                elif issue == "kind":
+                    row["kind"] = "native"
+                elif issue == "sha256":
+                    row["sha256"] = "a" * 64
+                elif issue == "history":
+                    row["historical_result"] = queue.retain_review_json({"different": "history"})
+                elif issue == "scope":
+                    report["semantics_complete"] = True
+                elif issue == "summary":
+                    report["summary"]["rechecked"] = 99
+                elif issue == "selection":
+                    report["selected_task_ids"] = ["one", "one"]
+                elif issue == "tool":
+                    report["tool"]["sha256"] = "a" * 64
+                elif issue == "tasks_type":
+                    report["tasks"] = {}
+                elif issue == "row_type":
+                    report["tasks"][1] = []
+                elif issue == "missing_evidence":
+                    del row["receipt"]
+                elif issue == "unfinished":
+                    del row["finished_at_utc"]
+                elif issue == "nested":
+                    source.write_bytes(b'{"official":"changed"}')
+                elif issue.startswith("history_"):
+                    predecessor = {key: value for key, value in report.items() if key != "source_review"}
+                    if issue == "history_reference":
+                        reference = queue.retain_review_json(predecessor)
+                        (root / reference["path"]).write_bytes(b'{"changed":true}')
+                    else:
+                        if issue == "history_baseline": predecessor["baseline"] = {}
+                        elif issue == "history_scope": predecessor["target_execution"] = True
+                        reference = queue.retain_review_json(predecessor)
+                    if issue == "history_path":
+                        copy = root / ".analysis/results/non-addressed-history.json"
+                        copy.write_bytes((root / reference["path"]).read_bytes())
+                        reference = queue.identity(copy)
+                    report["previous_increment"] = reference
+                if issue not in {"unretained_edit", "retained_missing", "retained_changed", "nested"}:
+                    report["source_review"] = queue.retain_review_json(
+                        {key: value for key, value in report.items() if key != "source_review"})
+                if issue == "source_path":
+                    copy = root / ".analysis/results/non-addressed-current.json"
+                    copy.write_bytes((root / report["source_review"]["path"]).read_bytes())
+                    report["source_review"] = queue.identity(copy)
+                current.write_text(json.dumps(report), encoding="utf-8")
+                original_current, original_baseline = current.read_bytes(), baseline.read_bytes()
+                args.task_id = ["one"]
+                with patch.object(queue, "__file__", str(tool)), \
+                        patch.object(queue.Batch, "execute") as execute:
+                    with self.assertRaises(ValueError):
+                        queue.recheck_unresolved(args)
+                execute.assert_not_called()
+                self.assertEqual(current.read_bytes(), original_current)
+                self.assertEqual(baseline.read_bytes(), original_baseline)
+
+    def test_increment_import_accepts_partial_results_from_a_retained_older_tool(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            tool, _, baseline, args = self.fixture(root)
+            args.task_id = ["one"]
+            original = baseline.read_bytes()
+            with patch.object(queue, "__file__", str(tool)), \
+                    patch.object(queue.Batch, "execute", autospec=True,
+                                 side_effect=lambda batch, task: self.result(root, task)), \
+                    redirect_stdout(io.StringIO()):
+                first = queue.recheck_unresolved(args)
+                first_row = deepcopy(first["tasks"][0])
+                tool.write_bytes(tool.read_bytes() + b"\n")
+                args.task_id = ["two"]
+                second = queue.recheck_unresolved(args)
+            self.assertEqual(second["tasks"][0], first_row)
+            self.assertEqual(second["summary"]["by_status"], {"passed": 2})
+            self.assertNotEqual(first["tool"]["sha256"], second["tool"]["sha256"])
+            self.assertTrue(queue.valid(first["tool_reference"]))
+            self.assertTrue(queue.valid(second["tool_reference"]))
+            self.assertEqual(baseline.read_bytes(), original)
+
+    def test_selected_rebind_is_recomputed_without_carrying_its_old_passed_status(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            tool, _, baseline, args = self.fixture(root)
+            source = root / ".analysis/results/selected-binding.json"
+            source.write_bytes(b'{"binding":"previous"}')
+            old_source = queue.identity(source)
+            with patch.object(queue, "__file__", str(tool)), \
+                    patch.object(queue.Batch, "execute", side_effect=lambda batch, task: self.result(root, task,
+                        evidence=old_source if task["id"] == "one" else None), autospec=True), \
+                    redirect_stdout(io.StringIO()):
+                first = queue.recheck_unresolved(args)
+            preserved = queue.retain_review_json(raw=source.read_bytes())
+            source.write_text(json.dumps({"binding": "current", "previous_binding_snapshot": preserved}), encoding="utf-8")
+            selected = json.loads(baseline.read_bytes())["tasks"][0]
+            new_result = self.result(root, selected, evidence=queue.identity(source))
+            new_evidence = new_result["receipt"]
+            original = baseline.read_bytes()
+            seen = []
+
+            def execute(batch, task):
+                seen.append(task["id"])
+                self.assertEqual(task["id"], "one")
+                return new_result
+
+            args.task_id = ["one"]
+            with patch.object(queue, "__file__", str(tool)), \
+                    patch.object(queue.Batch, "execute", execute), redirect_stdout(io.StringIO()):
+                second = queue.recheck_unresolved(args)
+            self.assertEqual(seen, ["one"])
+            first_reference = queue.retain_review_json(first)
+            self.assertEqual(second["previous_increment"], first_reference)
+            self.assertTrue(queue.valid(first_reference))
+            self.assertTrue(queue.valid(preserved))
+            self.assertEqual(second["tasks"][0]["receipt"], new_evidence)
+            self.assertEqual(second["tasks"][1], first["tasks"][1])
+            self.assertEqual(baseline.read_bytes(), original)
+
+            with patch.object(queue, "__file__", str(tool)), \
+                    patch.object(queue.Batch, "execute", return_value={"status": "unresolved", "remaining": 1}), \
+                    redirect_stdout(io.StringIO()):
+                third = queue.recheck_unresolved(args)
+            self.assertEqual(third["summary"]["by_status"], {"unresolved": 1, "passed": 1})
+            self.assertNotIn("receipt", third["tasks"][0])
 
     def test_mutable_historical_owner_requires_exact_retained_original_bytes(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
@@ -3619,6 +4261,238 @@ class FrozenUnresolvedIncrementTests(unittest.TestCase):
             self.assertEqual(report["summary"]["by_status"], {"unresolved": 2})
             self.assertFalse(report["semantics_complete"])
             self.assertEqual(report["official_dll_comparison"], "not_executed")
+
+    def test_current_gaps_replace_frozen_statuses_and_preserve_acquisition_owners(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            tool, _, baseline, args = self.fixture(root)
+            original = baseline.read_bytes()
+            gap_path = root / ".analysis/results/gaps.json"
+            acquisition = [{"kind": "fetch_failure", "url": "https://example.invalid/original.map"}]
+            gap_path.write_text(json.dumps({"schema_version": 1, "owners": {
+                "original-acquisition": acquisition,
+                "tools/reverse_pending.py": [{"kind": "old_frozen_failure"}]}}), encoding="utf-8")
+            args.task_id = ["one"]
+            with patch.object(queue, "__file__", str(tool)), \
+                 patch.object(queue.Batch, "execute", autospec=True,
+                              side_effect=lambda batch, task: self.result(root, task)), \
+                 redirect_stdout(io.StringIO()):
+                queue.recheck_unresolved(args)
+            ledger = json.loads(gap_path.read_bytes())
+            self.assertEqual(ledger["owners"]["original-acquisition"], acquisition)
+            rows = ledger["owners"]["tools/reverse_pending.py"]
+            unresolved = [row for row in rows if row["kind"] == "reverse_pending_task_unresolved"]
+            self.assertEqual([(row["task_id"], row["status"]) for row in unresolved], [("two", "not_rechecked")])
+            self.assertEqual(unresolved[0]["baseline"]["sha256"], hashlib.sha256(original).hexdigest())
+            self.assertTrue(queue.valid(unresolved[0]["current_increment"]))
+            self.assertTrue(any(row["kind"] == "semantic_and_runtime_acceptance_pending" for row in rows))
+            args.task_id = ["two"]
+            with patch.object(queue, "__file__", str(tool)), \
+                 patch.object(queue.Batch, "execute", return_value={"status": "unresolved", "remaining": 3}), \
+                 redirect_stdout(io.StringIO()):
+                queue.recheck_unresolved(args)
+            ledger = json.loads(gap_path.read_bytes())
+            unresolved = [row for row in ledger["owners"]["tools/reverse_pending.py"]
+                          if row["kind"] == "reverse_pending_task_unresolved"]
+            self.assertEqual([(row["task_id"], row["status"], row["result"]["remaining"])
+                              for row in unresolved], [("two", "unresolved", 3)])
+            self.assertEqual(ledger["owners"]["original-acquisition"], acquisition)
+            self.assertEqual(baseline.read_bytes(), original)
+
+    def test_current_document_preserves_frozen_baseline_and_replaces_only_current_scope(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            tool, _, _, args = self.fixture(root)
+            document = root / queue.DOC
+            document.parent.mkdir(parents=True)
+            original = "Frozen completed baseline: 61 unresolved.\n"
+            document.write_text(original, encoding="utf-8")
+            with patch.object(queue, "__file__", str(tool)), \
+                 patch.object(queue.Batch, "execute", return_value={"status": "unresolved"}), \
+                 redirect_stdout(io.StringIO()):
+                queue.recheck_unresolved(args)
+            with patch.object(queue, "__file__", str(tool)), \
+                 patch.object(queue.Batch, "execute", autospec=True,
+                              side_effect=lambda batch, task: self.result(root, task)), \
+                 redirect_stdout(io.StringIO()):
+                queue.recheck_unresolved(args)
+            updated = document.read_text(encoding="utf-8")
+            self.assertTrue(updated.startswith(original))
+            self.assertEqual(updated.count(queue.CURRENT_BEGIN), 1)
+            self.assertIn('"passed": 2', updated)
+            self.assertNotIn('"unresolved": 2', updated)
+            self.assertIn("上面的 3 项收据保留原完成事实", updated)
+            self.assertIn("Rust", updated)
+
+    def test_projection_counts_exact_frozen_identities_and_keeps_unchecked_baseline_scope(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            tool, _, _, args = self.fixture(root)
+            args.task_id = ["one"]
+            with patch.object(queue, "__file__", str(tool)), \
+                 patch.object(queue.Batch, "execute", autospec=True,
+                              side_effect=lambda batch, task: self.result(root, task)), \
+                 redirect_stdout(io.StringIO()):
+                queue.recheck_unresolved(args)
+            projection = queue.verify_current_unresolved()
+            self.assertEqual(projection["baseline_tasks"], 3)
+            self.assertEqual(projection["baseline_by_status"], {"unresolved": 2, "passed": 1})
+            self.assertEqual(projection["projected_by_status"], {"passed": 2, "unresolved": 1})
+            self.assertEqual(projection["increment"]["not_rechecked"], 1)
+            self.assertFalse(projection["baseline_passed_revalidated"])
+            self.assertFalse(projection["semantics_complete"])
+            self.assertEqual(projection["official_dll_comparison"], "not_executed")
+
+    def test_projection_rejects_frontend_status_or_source_forgery_before_changing_gaps(self):
+        issues = ("kind", "input", "summary", "status", "remaining", "semantic_review", "task_id",
+                  "source", "history", "body_status", "body_failures", "scope", "changed_payload",
+                  "selected_without_result", "missing_finished", "nested_hash_only")
+        for issue in issues:
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory, \
+                 patch.object(analysis, "ROOT", Path(directory)):
+                root = Path(directory)
+                tool, _, _, args = self.fixture(root)
+                source = root / ".analysis/results/function.json"
+                source.write_bytes(b'{"observed":"original body"}')
+                identity = queue.identity(source)
+                identity.pop("bytes")
+                with patch.object(queue, "__file__", str(tool)), \
+                     patch.object(queue.Batch, "execute", autospec=True,
+                                  side_effect=lambda batch, task: self.result(root, task, evidence=identity)), \
+                     redirect_stdout(io.StringIO()):
+                    queue.recheck_unresolved(args)
+                current = root / queue.UNRESOLVED_REPORT
+                report = json.loads(current.read_bytes())
+                row = report["tasks"][0]
+                review = json.loads((root / row["receipt"]["path"]).read_bytes())
+                gap_path = root / ".analysis/results/gaps.json"
+                gap_bytes, current_bytes = gap_path.read_bytes(), current.read_bytes()
+                if issue == "kind": row["kind"] = "native"
+                elif issue == "input": row["input"] = ".analysis/inputs/frontend/foreign"
+                elif issue == "summary": report["summary"]["rechecked"] = 99
+                elif issue == "status":
+                    row["status"] = "unresolved"
+                    report["summary"]["by_status"] = {"unresolved": 1, "passed": 1}
+                elif issue == "remaining": row["remaining"] = 1
+                elif issue == "semantic_review": row["semantic_review"] = "complete"
+                elif issue == "task_id": review["task_id"] = "two"
+                elif issue == "source":
+                    review["current_acquisition"] = queue.identity(root / ".analysis/inputs/frontend/two/acquisition.json")
+                elif issue == "history": review["historical_receipt"] = queue.retain_review_json({"unrelated": "history"})
+                elif issue == "body_status":
+                    review.update(status="unresolved", failures=[{"missing": "factory"}])
+                elif issue == "body_failures": review["current_failures"] = [{"missing": "factory"}]
+                elif issue == "scope": review["semantics_complete"] = True
+                elif issue == "changed_payload": review["changed_during_query"] = ["changed.js"]
+                elif issue == "selected_without_result":
+                    report["tasks"] = report["tasks"][:1]
+                    report["selected_task_ids"] = ["two"]
+                    report["summary"].update(rechecked=1, by_status={"passed": 1}, not_rechecked=1)
+                elif issue == "missing_finished": report.pop("finished_at_utc")
+                elif issue == "nested_hash_only": source.write_bytes(b'{"observed":"changed body"}')
+                if issue in {"task_id", "source", "history", "body_status", "body_failures", "scope", "changed_payload"}:
+                    row["receipt"] = queue.retain_review_json(review)
+                report["source_review"] = queue.retain_review_json(
+                    {key: value for key, value in report.items() if key != "source_review"})
+                with self.assertRaises(ValueError):
+                    queue.publish_unresolved_gaps(report)
+                self.assertEqual(gap_path.read_bytes(), gap_bytes)
+                self.assertEqual(current.read_bytes(), current_bytes)
+
+    def test_new_passed_result_is_checked_before_current_or_gap_publication(self):
+        for bad in ({"status": "passed"}, {"status": "passed", "receipt": None},
+                    {"status": "passed", "remaining": 2}):
+            with self.subTest(result=bad), tempfile.TemporaryDirectory() as directory, \
+                 patch.object(analysis, "ROOT", Path(directory)):
+                root = Path(directory)
+                tool, _, _, args = self.fixture(root)
+                with patch.object(queue, "__file__", str(tool)), \
+                     patch.object(queue.Batch, "execute", return_value=bad), redirect_stdout(io.StringIO()):
+                    with self.assertRaises(ValueError):
+                        queue.recheck_unresolved(args)
+                self.assertFalse((root / queue.UNRESOLVED_REPORT).exists())
+                self.assertFalse((root / ".analysis/results/gaps.json").exists())
+
+    def test_frozen_baseline_rejects_collisions_across_passed_and_unresolved_rows(self):
+        for issue in ("duplicate", "summary", "kind", "unfinished"):
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory, \
+                 patch.object(analysis, "ROOT", Path(directory)):
+                root = Path(directory)
+                tool, _, baseline, args = self.fixture(root)
+                data = json.loads(baseline.read_bytes())
+                if issue == "duplicate": data["tasks"][-1]["id"] = "one"
+                elif issue == "summary": data["summary"] = {"tasks": 950, "by_status": {"passed": 950}}
+                elif issue == "kind": data["tasks"][-1]["kind"] = "foreign"
+                else: data.pop("finished_at_utc")
+                baseline.write_text(json.dumps(data), encoding="utf-8")
+                with patch.object(queue, "__file__", str(tool)), patch.object(queue.Batch, "execute") as execute:
+                    with self.assertRaises(ValueError):
+                        queue.recheck_unresolved(args)
+                execute.assert_not_called()
+
+    def test_native_projection_checks_failures_conflicts_counters_and_original_identity(self):
+        issues = (None, "remaining", "verification", "conflicting_function_rvas", "conflicting_functions",
+                  "conflicting_contexts", "counter", "missing_failures", "scope", "source", "base_capture")
+        for issue in issues:
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory, \
+                 patch.object(analysis, "ROOT", Path(directory)):
+                root = Path(directory)
+                helper = NativeReviewQueueTests()
+                fixture = helper.fixture(root)
+                frozen = {"id": "native-one", "kind": "native", "status": "unresolved",
+                          "input": fixture["original"]["path"], "sha256": fixture["original"]["sha256"],
+                          "base_capture": queue.identity(fixture["folder"] / "capture.json")}
+                result = {"base_capture": frozen["base_capture"], "verified_base_capture": frozen["base_capture"],
+                          "input": fixture["original"], "original_identity_rechecked": True,
+                          "verification_only": True, "target_execution": False, "semantics_complete": False,
+                          "resolved_failures": [{"stage": "1000:hexrays"}], "remaining_failures": [],
+                          "verification_failures": [], "conflicting_function_rvas": [],
+                          "conflicting_functions": {}, "conflicting_contexts": {}}
+                task = {"baseline_task_id": frozen["id"], "kind": "native", "status": "passed",
+                        "remaining": 0, "verification_errors": 0, "resolved": 1}
+                if issue == "remaining": result["remaining_failures"] = [{"stage": "1000:hexrays"}]
+                elif issue == "verification": result["verification_failures"] = [{"error": "invalid body"}]
+                elif issue == "conflicting_function_rvas": result[issue] = ["0x1000"]
+                elif issue in {"conflicting_functions", "conflicting_contexts"}: result[issue] = {"0x1000": {"unverified": True}}
+                elif issue == "counter": task["resolved"] = 2
+                elif issue == "missing_failures": result.pop("remaining_failures")
+                elif issue == "scope": result["semantics_complete"] = True
+                elif issue == "source": result["input"] = {**fixture["original"], "path": ".analysis/inputs/other.dll"}
+                elif issue == "base_capture": result["base_capture"] = queue.retain_review_json({"foreign": "capture"})
+                task["resolution"] = queue.retain_review_json(result)
+                if issue is None:
+                    queue.verify_unresolved_task_result(task, frozen)
+                else:
+                    with self.assertRaises(ValueError):
+                        queue.verify_unresolved_task_result(task, frozen)
+
+    def test_gap_publication_rejects_report_or_reference_tampering_without_overwriting_owner(self):
+        for issue in ("report", "retained", "baseline", "foreign", "duplicate", "semantics"):
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory, \
+                 patch.object(analysis, "ROOT", Path(directory)):
+                root = Path(directory)
+                tool, _, _, args = self.fixture(root)
+                with patch.object(queue, "__file__", str(tool)), \
+                     patch.object(queue.Batch, "execute", return_value={"status": "unresolved"}), \
+                     redirect_stdout(io.StringIO()):
+                    queue.recheck_unresolved(args)
+                gap_path = root / ".analysis/results/gaps.json"
+                gap_bytes = gap_path.read_bytes()
+                report = json.loads((root / queue.UNRESOLVED_REPORT).read_bytes())
+                if issue == "report":
+                    report["tasks"][0]["status"] = "passed"
+                elif issue in {"retained", "baseline"}:
+                    key = "source_review" if issue == "retained" else "baseline"
+                    (root / report[key]["path"]).write_bytes(b'{"tampered":true}')
+                else:
+                    if issue == "foreign": report["tasks"][0]["baseline_task_id"] = "foreign"
+                    elif issue == "duplicate": report["tasks"].append(deepcopy(report["tasks"][0]))
+                    else: report["semantics_complete"] = True
+                    report["source_review"] = queue.retain_review_json(
+                        {key: value for key, value in report.items() if key != "source_review"})
+                with self.assertRaises(ValueError):
+                    queue.publish_unresolved_gaps(report)
+                self.assertEqual(gap_path.read_bytes(), gap_bytes)
 
 
 if __name__ == "__main__":

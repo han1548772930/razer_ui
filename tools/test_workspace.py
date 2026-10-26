@@ -221,6 +221,26 @@ class LocalizationCatalogTests(unittest.TestCase):
 
 
 class HardwareInstallationInputTests(unittest.TestCase):
+    def test_cargo_config_and_toolchain_creation_changes_and_removal_change_the_input_closure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "Cargo.toml").write_bytes(b"manifest")
+            (root / "Cargo.lock").write_bytes(b"lock")
+            with mock.patch.object(workspace, "ROOT", root):
+                baseline = workspace.rust_inputs()
+                for name in (".cargo/config", ".cargo/config.toml", "rust-toolchain", "rust-toolchain.toml"):
+                    with self.subTest(name=name):
+                        configuration = root / name
+                        configuration.parent.mkdir(parents=True, exist_ok=True)
+                        configuration.write_bytes(b"before")
+                        before = {row["path"]: row for row in workspace.rust_inputs()}
+                        self.assertIn(name, before)
+                        configuration.write_bytes(b"after!")
+                        after = {row["path"]: row for row in workspace.rust_inputs()}
+                        self.assertNotEqual(before[name]["sha256"], after[name]["sha256"])
+                        configuration.unlink()
+                        self.assertEqual(workspace.rust_inputs(), baseline)
+
     def test_generated_driver_constants_track_policy_payload_and_build_script(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -253,6 +273,69 @@ class HardwareInstallationInputTests(unittest.TestCase):
                 owner.write_text(source.replace("hardware_driver_installation.rs", "other.rs"), encoding="utf-8")
                 with self.assertRaisesRegex(ValueError, "new build-output audit"):
                     workspace.rust_inputs()
+
+
+class LightingComparisonPublicationTests(unittest.TestCase):
+    def test_preflight_failure_and_parent_cancellation_append_to_the_unique_receipt(self):
+        import analysis
+        import native_runtime
+        previous = {"schema_version": 1, "passed": True, "scope": "previous software frames",
+                    "recorded_at_utc": "before", "runs": {"original": {"stdout": "retained native output"}}}
+        for cancelled in (False, True):
+            with self.subTest(cancelled=cancelled), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                path = root / ".analysis/results/lighting-runtime-comparison.json"
+                path.parent.mkdir(parents=True)
+                path.write_text(json.dumps(previous), encoding="utf-8")
+                partial = {"exit_code": -1, "stdout": "partial output before cancellation", "stderr": "",
+                           "timed_out": False, "worker_waited": True, "forced_tree_cleanup": {"exit_code": 0}}
+
+                def execute(command, root, environment, *, observe, **options):
+                    observe(copy.deepcopy(partial))
+                    raise KeyboardInterrupt()
+
+                with mock.patch.object(workspace, "ROOT", root), mock.patch.object(analysis, "ROOT", root), \
+                        mock.patch.object(native_runtime, "verify_lighting_source",
+                            side_effect=None if cancelled else ValueError("invalid official input"),
+                            return_value={"sha256": "audited"}), \
+                        mock.patch.object(native_runtime, "_lighting_input_identity", return_value=[]), \
+                        mock.patch.object(native_runtime, "_run_service_version_test", side_effect=execute) as run, \
+                        mock.patch("sys.stdout", new=io.StringIO()):
+                    if cancelled:
+                        with self.assertRaises(KeyboardInterrupt):
+                            workspace.compare_local_lighting()
+                    else:
+                        self.assertEqual(workspace.compare_local_lighting(), 1)
+                        run.assert_not_called()
+                retained = json.loads(path.read_bytes())
+                self.assertEqual(retained["schema_version"], 2)
+                self.assertEqual(retained["latest_attempt"], 1)
+                self.assertEqual(len(retained["attempts"]), 2)
+                self.assertEqual(retained["attempts"][0], previous)
+                self.assertFalse(retained["passed"])
+                latest = retained["attempts"][1]
+                self.assertEqual(latest["status"], "cancelled" if cancelled else "failed")
+                self.assertEqual(latest["cancelled"], cancelled)
+                if cancelled:
+                    self.assertEqual(latest["runs"]["rust_before"], partial)
+                self.assertFalse(list(path.parent.glob("*.tmp")))
+
+    def test_malformed_previous_receipt_blocks_execution_without_overwriting_evidence(self):
+        import analysis
+        import native_runtime
+        for document in ([], {"schema_version": 2, "attempts": []}):
+            with self.subTest(document=document), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                path = root / ".analysis/results/lighting-runtime-comparison.json"
+                path.parent.mkdir(parents=True)
+                original = json.dumps(document).encode("utf-8")
+                path.write_bytes(original)
+                with mock.patch.object(workspace, "ROOT", root), mock.patch.object(analysis, "ROOT", root), \
+                        mock.patch.object(native_runtime, "compare_local_lighting") as compare:
+                    with self.assertRaisesRegex(ValueError, "refusing to overwrite"):
+                        workspace.compare_local_lighting()
+                    compare.assert_not_called()
+                self.assertEqual(path.read_bytes(), original)
 
 
 class ArchitectureBoundaryTests(unittest.TestCase):
@@ -4341,6 +4424,67 @@ class PlannedScratchCleanupTests(unittest.TestCase):
         with mock.patch("builtins.print"):
             return workspace.clean(apply=path.relative_to(self.root).as_posix(), plan_sha256=workspace.digest(path))
 
+    def formal_capture_fixture(self):
+        source = self.root / ".analysis/inputs/original.dll"
+        source.parent.mkdir(parents=True)
+        source.write_bytes(b"current original native input")
+        sha = workspace.digest(source)
+        for directory in (self.target.parents[1], self.result.parents[1]):
+            self.assertTrue(directory.resolve().is_relative_to(self.root))
+            directory.rename(directory.with_name(sha))
+        self.name = ".work/native/" + sha + "/supplements/" + "b" * 16
+        self.target = self.root / self.name
+        self.batch = self.target.parents[1] / "batch/library.dll.i64"
+        self.result = self.root / ".analysis/results/native" / sha / "supplements" / ("b" * 16)
+        output = self.result.relative_to(self.root).as_posix()
+        base = self.write(self.result.parents[1] / "capture.json", {"retained": "base native capture"})
+        source_database = {"path": self.batch.relative_to(self.root).as_posix(), "sha256": workspace.digest(self.batch)}
+        base_capture = {"path": base.relative_to(self.root).as_posix(), "sha256": workspace.digest(base)}
+        database = {"path": self.name + "/library.dll.i64", "sha256": source_database["sha256"]}
+        self.write(self.result / "plan.json", {"input": source.relative_to(self.root).as_posix(),
+            "input_bytes": source.stat().st_size, "sha256": sha, "output": output, "database": database,
+            "source_database": source_database, "base_capture": base_capture, "target_execution": False})
+        self.write(self.result / "session.json", {"pid": 123, "coordinator_pid": 124, "state": "finished",
+            "passed": True, "exit_code": 0, "process_released": True, "source_identity_rechecked": True,
+            "started_at_utc": "2000-01-01T00:00:00+00:00", "finished_at_utc": "2000-01-01T00:00:03+00:00",
+            "target_execution": False, "database": database})
+        self.write(self.result / "capture.json", {"capture_complete": True, "all_pseudocode_captured": True,
+            "target_execution": False, "base_capture_unchanged": True, "base_database_unchanged": True,
+            "input": source.relative_to(self.root).as_posix(), "input_sha256": sha, "database": database,
+            "source_database": source_database, "base_capture": base_capture,
+            "started_at_utc": "2000-01-01T00:00:01+00:00", "finished_at_utc": "2000-01-01T00:00:02+00:00"})
+
+        def retain(raw, suffix):
+            name = ".analysis/results/reverse-pending/review-sources/" + hashlib.sha256(raw).hexdigest() + suffix
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(raw)
+            return {"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+
+        lines = [{"pid": 123, "result": output, "log": self.name + "/ida.log"},
+                 {"session": output + "/session.json", "passed": True}]
+        stdout = retain(("\n".join(json.dumps(row) for row in lines) + "\n").encode(), ".txt")
+        self.formal_document = {"schema_version": 1, "review_kind": "frozen_unresolved_formal_static_capture_execution",
+            "target_execution": False, "source_guard_unchanged": True, "all_capture_clis_succeeded": True,
+            "preflight_batch": retain(b'{"preflight":"retained"}', ".json"),
+            "coordinator_source": retain(b"# retained capture coordinator\n", ".py"),
+            "jobs": [{"input_sha256": sha, "exit_code": 0, "capture_cli_succeeded": True, "stderr": None,
+                "stdout": stdout, "stdout_json_lines": lines, "argv": ["python", "tools/workspace.py",
+                "supplement-native", "--input", source.relative_to(self.root).as_posix()]}]}
+        self.formal_path = None
+        self.publish_formal_document(self.formal_document)
+        absent = mock.patch("reverse_pending.coordinator_instance_absence", return_value={"confirmed_absent": True})
+        self.formal_absence = absent.start()
+        self.addCleanup(absent.stop)
+
+    def publish_formal_document(self, document):
+        if self.formal_path is not None:
+            self.formal_path.unlink()
+        raw = json.dumps(document).encode()
+        self.formal_path = self.root / ".analysis/results/reverse-pending/review-sources" / (
+            hashlib.sha256(raw).hexdigest() + ".json")
+        self.formal_path.write_bytes(raw)
+
     def test_default_is_a_reviewable_plan_and_never_erases_scratch(self):
         protected = self.root / ".work/reverse-pending/frozen-review.json"
         self.write(protected, {"proof": "retained"})
@@ -4349,6 +4493,71 @@ class PlannedScratchCleanupTests(unittest.TestCase):
         self.assertEqual(report["candidates"][0]["path"], self.name)
         self.assertTrue(self.target.is_dir() and self.batch.is_file() and protected.is_file())
         self.assertTrue((self.result / "capture.json").is_file())
+
+    def test_ended_attempt_own_private_database_inventory_does_not_prevent_unified_cleanup(self):
+        path = self.result / "session.json"
+        session = json.loads(path.read_bytes())
+        session["retained_private_database"] = {"path": self.name + "/library.dll.i64",
+            "bytes": 29, "sha256": "f" * 64,
+            "reason": "Retain until formal evidence validation and unified dependency-aware cleanup"}
+        self.write(path, session)
+        self.assertEqual(len(self.plan()["candidates"]), 1)
+
+    def test_version_one_attempt_name_requires_exact_source_bound_plan_and_session(self):
+        import analysis
+        from copy import deepcopy
+        helper = __import__("test_reverse_pending").PendingQueueTests()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with mock.patch.object(analysis, "ROOT", root), mock.patch.object(workspace, "ROOT", root):
+                args, old_output, database, _ = helper.supplement_fixture(root)
+                source = root / args.input
+                capture_path = old_output.parent.parent / "capture.json"
+                selection = json.loads((old_output / "plan.json").read_bytes())["function_selection"]
+                request = analysis.native_supplement_request(source, capture_path, database, "function_selection",
+                    selection, Path(args.ida_root) / "idat.exe")
+                digest = analysis.native_supplement_request_sha256(request)
+                attempt = digest[:16] + "-" + "c" * 16
+                output = old_output.with_name(attempt)
+                scratch = database.parent.parent / "supplements" / attempt
+                scratch.mkdir()
+                (scratch / database.name).write_bytes(b"ended private database")
+                plan = {"analysis_request": request, "request_sha256": digest, "attempt_id": attempt,
+                    "input": request["input"]["path"], "input_bytes": request["input"]["bytes"],
+                    "sha256": request["input"]["sha256"], "output": output.relative_to(root).as_posix(),
+                    "base_capture": {k: request["base_capture"][k] for k in ("path", "sha256")},
+                    "source_database": {k: request["source_database"][k] for k in ("path", "sha256")},
+                    "function_selection": selection}
+                session = {"attempt_id": attempt, "request_sha256": digest, "tool_sources": request["tool_sources"],
+                    "analyzer": request["analyzer"]["installation_path"], "analyzer_sha256": request["analyzer"]["sha256"],
+                    "passed": True, "source_identity_rechecked": True, "exit_code": 0,
+                    "finished_at_utc": "2000-01-01T00:00:00+00:00"}
+                self.write(output / "plan.json", plan)
+                self.write(output / "session.json", session)
+                self.write(output / "capture.json", {"capture_complete": True, "all_pseudocode_captured": True,
+                    "target_execution": False})
+                self.assertTrue(workspace._clean_supplement_attempt(output))
+                candidates, _ = workspace._clean_candidates()
+                self.assertIn(scratch.relative_to(root).as_posix(), [row["path"] for row in candidates])
+                for issue in ("missing_binding", "changed_request", "wrong_output", "wrong_session", "changed_snapshot"):
+                    with self.subTest(issue=issue):
+                        bad_plan, bad_session = deepcopy(plan), deepcopy(session)
+                        if issue == "missing_binding": bad_plan.pop("analysis_request")
+                        if issue == "changed_request": bad_plan["analysis_request"]["selection"]["test_unreviewed"] = True
+                        if issue == "wrong_output": bad_plan["output"] += "unowned"
+                        if issue == "wrong_session": bad_session["request_sha256"] = "f" * 64
+                        snapshot = root / request["tool_sources"]["serializer"]["snapshot"]["path"]
+                        raw = snapshot.read_bytes()
+                        if issue == "changed_snapshot": snapshot.write_bytes(raw + b"unreviewed")
+                        self.write(output / "plan.json", bad_plan)
+                        self.write(output / "session.json", bad_session)
+                        self.assertFalse(workspace._clean_supplement_attempt(output))
+                        candidates, _ = workspace._clean_candidates()
+                        self.assertNotIn(scratch.relative_to(root).as_posix(), [row["path"] for row in candidates])
+                        snapshot.write_bytes(raw)
+                self.write(output / "plan.json", plan)
+                self.write(output / "session.json", session)
+                self.assertTrue(workspace._clean_supplement_attempt(output))
 
     def test_frozen_review_dependency_is_preserved_even_alongside_historical_inventory(self):
         self.write(self.root / ".analysis/results/reverse-pending/review-sources/frozen.json",
@@ -4593,6 +4802,136 @@ class PlannedScratchCleanupTests(unittest.TestCase):
         with mock.patch("reverse_pending.coordinator_instance_absence", return_value={"confirmed_absent": False}):
             self.assertFalse(self.plan()["candidates"])
 
+    def test_frozen_structured_stdout_release_binds_every_retained_source_before_deletion(self):
+        self.formal_capture_fixture()
+        report = self.plan()
+        self.assertEqual(len(report["candidates"]), 1)
+        basis = {row["path"] for row in report["candidates"][0]["basis"]}
+        self.assertTrue({self.formal_path.relative_to(self.root).as_posix(),
+                         self.formal_document["jobs"][0]["stdout"]["path"],
+                         self.formal_document["preflight_batch"]["path"],
+                         self.formal_document["coordinator_source"]["path"],
+                         self.batch.relative_to(self.root).as_posix(), ".analysis/inputs/original.dll",
+                         self.result.parents[1].relative_to(self.root).as_posix() + "/capture.json"}.issubset(basis))
+        self.assertEqual({call.args[0]["pid"] for call in self.formal_absence.call_args_list}, {123, 124})
+        self.apply()
+        self.assertFalse(self.target.exists())
+        self.assertTrue(self.batch.is_file() and self.formal_path.is_file())
+        self.assertTrue((self.result / "capture.json").is_file())
+
+    def test_structured_stdout_is_not_globally_historical_or_a_filename_based_exemption(self):
+        self.formal_capture_fixture()
+        raw = self.formal_path.read_bytes()
+        self.formal_path.unlink()
+        path = self.root / ".analysis/results/unbound-structured.json"
+        self.write(path, {"jobs": self.formal_document["jobs"]})
+        self.assertFalse(self.plan()["candidates"])
+        path.write_bytes(raw)
+        self.assertFalse(self.plan()["candidates"])
+
+    def test_frozen_structured_stdout_rejects_failed_unbound_or_forged_cli_receipts(self):
+        self.formal_capture_fixture()
+        for issue in ("failed_batch", "failed_job", "false_success", "stderr", "wrong_input", "wrong_cli",
+                      "duplicate_input", "wrong_pid", "wrong_log", "extra_launch_field", "extra_line",
+                      "wrong_session", "stdout_mismatch", "unbound_stdout", "wrong_kind", "target_execution"):
+            with self.subTest(issue=issue):
+                value = copy.deepcopy(self.formal_document)
+                job = value["jobs"][0]
+                if issue == "failed_batch": value["all_capture_clis_succeeded"] = False
+                if issue == "failed_job": job["exit_code"] = 1
+                if issue == "false_success": job["capture_cli_succeeded"] = False
+                if issue == "stderr": job["stderr"] = {"path": "unreviewed"}
+                if issue == "wrong_input": job["input_sha256"] = "f" * 64
+                if issue == "wrong_cli": job["argv"][2] = "an-unrelated-command"
+                if issue == "duplicate_input": job["argv"].extend(["--input", "another-input"])
+                if issue == "wrong_pid": job["stdout_json_lines"][0]["pid"] = 999
+                if issue == "wrong_log": job["stdout_json_lines"][0]["log"] = self.name + "/library.dll.i64"
+                if issue == "extra_launch_field": job["stdout_json_lines"][0]["source_database"] = self.name
+                if issue == "extra_line": job["stdout_json_lines"].append({"pending": self.name})
+                if issue == "wrong_session": job["stdout_json_lines"][1]["session"] += ".forged"
+                if issue == "stdout_mismatch": job["stdout"]["sha256"] = "f" * 64
+                if issue == "unbound_stdout": job["stdout"] = json.dumps(job["stdout_json_lines"])
+                if issue == "wrong_kind": value["review_kind"] = "unknown_receipt"
+                if issue == "target_execution": value["target_execution"] = True
+                self.publish_formal_document(value)
+                self.assertFalse(self.plan()["candidates"])
+
+    def test_frozen_structured_stdout_requires_ended_analyzer_and_cli_instances_and_complete_capture(self):
+        self.formal_capture_fixture()
+        originals = {name: (self.result / name).read_bytes() for name in ("session.json", "capture.json", "plan.json")}
+        for issue in ("unfinished", "failed", "unreleased", "unknown_source", "missing_cli_pid", "future",
+                      "wrong_order", "partial_capture", "changed_base", "private_source", "unbound_input"):
+            with self.subTest(issue=issue):
+                values = {name: json.loads(raw) for name, raw in originals.items()}
+                session, capture, plan = (values[name] for name in ("session.json", "capture.json", "plan.json"))
+                if issue == "unfinished": session["state"] = "running"
+                if issue == "failed": session["passed"] = False
+                if issue == "unreleased": session["process_released"] = False
+                if issue == "unknown_source": session["source_identity_rechecked"] = False
+                if issue == "missing_cli_pid": session.pop("coordinator_pid")
+                if issue == "future": session["finished_at_utc"] = "2100-01-01T00:00:00+00:00"
+                if issue == "wrong_order": capture["finished_at_utc"] = "2000-01-01T00:00:04+00:00"
+                if issue == "partial_capture": capture["all_pseudocode_captured"] = False
+                if issue == "changed_base": capture["base_capture_unchanged"] = False
+                if issue == "private_source":
+                    plan["source_database"]["path"] = self.name + "/library.dll.i64"
+                    capture["source_database"] = plan["source_database"]
+                if issue == "unbound_input": plan["input_bytes"] += 1
+                for name, value in values.items(): self.write(self.result / name, value)
+                self.assertFalse(self.plan()["candidates"])
+        for name, raw in originals.items(): (self.result / name).write_bytes(raw)
+        for active_pid in (123, 124):
+            with self.subTest(active_pid=active_pid), mock.patch("reverse_pending.coordinator_instance_absence",
+                    side_effect=lambda process: {"confirmed_absent": process["pid"] != active_pid}):
+                self.assertFalse(self.plan()["candidates"])
+        with mock.patch("reverse_pending.coordinator_instance_absence", return_value={}):
+            self.assertFalse(self.plan()["candidates"])
+
+    def test_frozen_structured_stdout_keeps_real_source_and_recovery_dependencies_in_same_job(self):
+        self.formal_capture_fixture()
+        for field in ("source_database", "recovery_database", "required_log"):
+            with self.subTest(field=field):
+                value = copy.deepcopy(self.formal_document)
+                value["jobs"][0][field] = {"path": self.name + "/library.dll.i64"}
+                self.publish_formal_document(value)
+                self.assertFalse(self.plan()["candidates"])
+
+    def test_frozen_structured_stdout_plan_binds_changed_evidence_and_cannot_omit_its_basis(self):
+        self.formal_capture_fixture()
+        targets = [self.formal_path, self.root / self.formal_document["jobs"][0]["stdout"]["path"],
+                   self.root / self.formal_document["preflight_batch"]["path"],
+                   self.root / self.formal_document["coordinator_source"]["path"],
+                   self.batch, self.root / ".analysis/inputs/original.dll"]
+        for target in targets:
+            with self.subTest(target=target):
+                self.plan()
+                raw = target.read_bytes()
+                target.write_bytes(raw + b" ")
+                with mock.patch.object(workspace, "_clean_delete_group") as delete, self.assertRaisesRegex(ValueError, "changed"):
+                    self.apply()
+                delete.assert_not_called()
+                target.write_bytes(raw)
+        report = self.plan()
+        report["candidates"][0]["basis"] = [row for row in report["candidates"][0]["basis"]
+            if row["path"] != self.formal_document["jobs"][0]["stdout"]["path"]]
+        self.write(self.plan_path, report)
+        with mock.patch.object(workspace, "_clean_delete_group") as delete, self.assertRaisesRegex(ValueError, "guards changed"):
+            self.apply()
+        delete.assert_not_called()
+
+    def test_frozen_structured_stdout_new_dependencies_and_live_instances_reject_apply(self):
+        self.formal_capture_fixture()
+        self.plan()
+        with mock.patch("reverse_pending.coordinator_instance_absence", return_value={"confirmed_absent": False}), \
+                mock.patch.object(workspace, "_clean_delete_group") as delete, self.assertRaisesRegex(ValueError, "guards changed"):
+            self.apply()
+        delete.assert_not_called()
+        reference = self.root / ".analysis/results/new-source-review.json"
+        self.write(reference, {"source_database": {"path": self.name + "/library.dll.i64"}})
+        with mock.patch.object(workspace, "_clean_delete_group") as delete, self.assertRaisesRegex(ValueError, "guards changed"):
+            self.apply()
+        delete.assert_not_called()
+
     def test_own_previous_attempt_inventory_does_not_hide_its_source_dependencies(self):
         path = self.result / "session.json"
         session = json.loads(path.read_bytes())
@@ -4633,6 +4972,63 @@ class PlannedScratchCleanupTests(unittest.TestCase):
             self.apply()
         delete.assert_not_called()
         self.assertEqual(path.read_bytes(), b"previous partial cleanup fact")
+
+
+class ReversePendingProjectionVerificationTests(unittest.TestCase):
+    def setUp(self):
+        import analysis
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name).resolve()
+        for module in (workspace, analysis):
+            patcher = mock.patch.object(module, "ROOT", self.root)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def fixture(self):
+        import reverse_pending
+        from test_reverse_pending import FrozenUnresolvedIncrementTests
+        helper = FrozenUnresolvedIncrementTests()
+        tool, _, baseline, args = helper.fixture(self.root)
+        with mock.patch.object(reverse_pending, "__file__", str(tool)), \
+             mock.patch.object(reverse_pending.Batch, "execute", autospec=True,
+                               side_effect=lambda batch, task: helper.result(self.root, task)), \
+             mock.patch("sys.stdout", new_callable=io.StringIO):
+            reverse_pending.recheck_unresolved(args)
+        return reverse_pending, baseline
+
+    def test_workspace_verification_includes_strict_current_projection_with_static_scope(self):
+        self.fixture()
+        result = workspace.verify_results({"inputs": []})
+        projection = result["reverse_pending_current"]
+        self.assertEqual(projection["baseline_tasks"], 3)
+        self.assertEqual(projection["projected_by_status"], {"passed": 3})
+        self.assertEqual(projection["increment"]["rechecked"], 2)
+        self.assertFalse(projection["baseline_passed_revalidated"])
+        self.assertFalse(projection["semantics_complete"])
+
+    def test_workspace_verification_rejects_result_body_forgery_and_baseline_replacement(self):
+        queue, baseline = self.fixture()
+        current = self.root / queue.UNRESOLVED_REPORT
+        original = current.read_bytes()
+        report = json.loads(original)
+        receipt = report["tasks"][0]["receipt"]
+        body = json.loads((self.root / receipt["path"]).read_bytes())
+        body["current_failures"] = [{"kind": "missing factory"}]
+        report["tasks"][0]["receipt"] = queue.retain_review_json(body)
+        report["source_review"] = queue.retain_review_json(
+            {key: value for key, value in report.items() if key != "source_review"})
+        current.write_text(json.dumps(report), encoding="utf-8")
+        with self.assertRaises(ValueError):
+            workspace.verify_results({"inputs": []})
+        current.write_bytes(original)
+        baseline.write_bytes(b'{"different":"baseline"}')
+        with self.assertRaisesRegex(ValueError, "queue baseline"):
+            workspace.verify_results({"inputs": []})
+
+    def test_workspace_without_an_increment_does_not_invent_a_completed_projection(self):
+        result = workspace.verify_results({"inputs": []})
+        self.assertNotIn("reverse_pending_current", result)
 
 
 if __name__ == "__main__":

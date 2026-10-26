@@ -40,18 +40,31 @@ pub(crate) fn exchange_with_in_limit<T: FeatureTransport + ?Sized>(
     wait: &mut impl FnMut(Duration) -> anyhow::Result<()>,
     max_retry_in: u8,
 ) -> anyhow::Result<Vec<u8>> {
+    exchange_with_timing(transport, request, delay, delay, delay, wait, max_retry_in)
+}
+
+/// Profile-name reads temporarily extend only OUT/IN and subsequent IN waits.
+pub(crate) fn exchange_with_timing<T: FeatureTransport + ?Sized>(
+    transport: &T,
+    request: &[u8; 91],
+    out_delay: Duration,
+    out_in_delay: Duration,
+    in_delay: Duration,
+    wait: &mut impl FnMut(Duration) -> anyhow::Result<()>,
+    max_retry_in: u8,
+) -> anyhow::Result<Vec<u8>> {
     ensure!(max_retry_in > 0, "Controller reply retry count is zero");
     let mut error = String::from("No controller Feature reply");
     for _ in 0..20 {
-        wait(delay)?;
+        wait(out_delay)?;
         if let Err(e) = transport.send_feature_at_collection_max(request) {
             error = e.to_string();
             continue;
         }
-        wait(delay)?;
+        wait(out_in_delay)?;
         for retry in 0..max_retry_in {
             if retry != 0 {
-                wait(delay)?;
+                wait(in_delay)?;
             }
             let mut response = [0; 91];
             response[0] = request[0];

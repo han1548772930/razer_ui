@@ -9,7 +9,7 @@ use razer_device::{
     macro_runtime::{Event, Keyboard, KeyboardExecutor},
     mapping_native_analog::NativeAnalogOutput,
     mapping_native_digital::NativeDigitalOutput,
-    mapping_native_input::NativeInput,
+    mapping_native_input::{KeyboardInput, NativeInput},
     mapping_native_lookup::InputIdentity,
     mapping_native_output::{CompletionPoll, DriverInputReport, MappingOutputTransport},
 };
@@ -69,7 +69,7 @@ impl Direct {
         self.gamepad_observation.control(control, sink)
     }
     pub fn poll(&mut self) -> Vec<String> {
-        let mut errors = Vec::new();
+        let mut errors = std::mem::take(&mut self.input.operation_errors);
         if self.gamepad_observation.next_deadline().is_some() {
             match razer_platform::event_clock::tick() {
                 Ok(tick) => self.gamepad_observation.poll(tick),
@@ -104,11 +104,23 @@ impl Direct {
         self.cleanup = cleanup;
         self.input.cancellable = !cleanup;
     }
-    pub fn action(&mut self, action: razer_device::macro_runtime::Action) -> Result<()> {
+    pub fn sequence_action(&mut self, action: razer_device::macro_runtime::Action) -> Result<()> {
         use razer_device::macro_runtime::Action;
         match action {
-            Action::Keyboard(key) => self.keyboard(key, false),
-            Action::Mouse(mouse) => self.native(NativeInput::Mouse(mouse.input())),
+            Action::Keyboard(key) => {
+                self.input.sequence(NativeInput::Keyboard(KeyboardInput {
+                    unit_id: key.unit.unwrap_or(0),
+                    scancode: key.scancode,
+                    flag: key.flag,
+                    modifiers: key.modifiers,
+                    reserved: 0,
+                }));
+                Ok(())
+            }
+            Action::Mouse(mouse) => {
+                self.input.sequence(NativeInput::Mouse(mouse.input()));
+                Ok(())
+            }
             Action::MouseMove {
                 mode,
                 x,

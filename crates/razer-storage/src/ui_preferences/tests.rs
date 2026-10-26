@@ -75,6 +75,9 @@ fn legacy_calibration_mount_initializes_its_source_true_value() {
 #[test]
 fn existing_legacy_flags_migrate_once_and_current_values_win() {
     for flag in Flag::ALL {
+        if flag == Flag::DisplayNotifications {
+            continue;
+        }
         let temp = Temp::new();
         std::fs::write(temp.legacy(flag), "false").unwrap();
         assert_eq!(

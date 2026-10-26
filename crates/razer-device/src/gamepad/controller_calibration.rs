@@ -145,7 +145,7 @@ pub struct TriggerCalibrationSession {
     step: TriggerStep,
     active: bool,
     valid: bool,
-    measurement: Option<TriggerMeasurement>,
+    movement: Option<TriggerMovement>,
     previous: Option<f64>,
     stable_polls: u64,
     travelled: bool,
@@ -155,9 +155,36 @@ pub struct TriggerCalibrationSession {
     progress: TriggerCalibrationProgress,
 }
 
-struct TriggerMeasurement {
-    resting: f64,
-    value: f64,
+#[derive(Clone, Copy)]
+enum RestingTriggerValue {
+    Observed(f64),
+    SourceRangeMaximum,
+}
+
+#[derive(Clone, Copy)]
+enum TriggerMovementValue {
+    Observed(f64),
+    ResetResting,
+}
+
+struct TriggerMovement {
+    resting: RestingTriggerValue,
+    value: TriggerMovementValue,
+}
+impl TriggerMovement {
+    fn resting(&self, range_maximum: f64) -> f64 {
+        match self.resting {
+            RestingTriggerValue::Observed(value) => value,
+            RestingTriggerValue::SourceRangeMaximum => range_maximum,
+        }
+    }
+
+    fn value(&self, range_maximum: f64) -> f64 {
+        match self.value {
+            TriggerMovementValue::Observed(value) => value,
+            TriggerMovementValue::ResetResting => self.resting(range_maximum),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -190,7 +217,7 @@ impl TriggerCalibrationSession {
             step: TriggerStep::None,
             active: false,
             valid: false,
-            measurement: None,
+            movement: None,
             previous: None,
             stable_polls: 0,
             travelled: false,
@@ -242,40 +269,40 @@ impl TriggerCalibrationSession {
                     * self.product.params.trigger.trigger_max,
             )
     }
-    fn prepare(&mut self, step: TriggerStep, resting: f64, value: f64) {
+    fn prepare(&mut self, step: TriggerStep, resting: RestingTriggerValue, value: Option<f64>) {
         self.step = step;
         self.valid = false;
         self.previous = None;
         self.stable_polls = 0;
         self.travelled = false;
         self.returned = false;
-        self.measurement = Some(TriggerMeasurement { resting, value });
+        self.movement = Some(TriggerMovement {
+            resting,
+            value: match value {
+                Some(value) => TriggerMovementValue::Observed(value),
+                None => TriggerMovementValue::ResetResting,
+            },
+        });
         self.progress = TriggerCalibrationProgress { step, valid: false };
     }
     /// Source start makes two distinct raw queries: first captures resting,
-    /// second initializes the Press step. Both values must be actual observations;
-    /// a failed query cannot seed a calibration range or hold timer.
+    /// second initializes Press movement. Its wrapper returns no value on raw
+    /// query failure. Only this start baseline uses Range.max; prepare retains
+    /// reset movement when its separate query is unavailable or out of range.
     pub fn start(&mut self, transport: &mut dyn TriggerCalibrationTransport) -> anyhow::Result<()> {
         self.stop();
-        let result = (|| {
-            let resting = self.read_value(transport.raw_analog_input())?;
-            let value = self.read_value(transport.raw_analog_input())?;
-            self.active = true;
-            self.prepare(TriggerStep::Press, resting, value);
-            Ok(())
-        })();
-        if result.is_err() {
-            self.fail();
-        }
-        result
+        let resting = match self.read_value(transport.raw_analog_input()) {
+            Some(value) => RestingTriggerValue::Observed(value),
+            None => RestingTriggerValue::SourceRangeMaximum,
+        };
+        let value = self.read_value(transport.raw_analog_input());
+        self.active = true;
+        self.prepare(TriggerStep::Press, resting, value);
+        Ok(())
     }
-    fn read_value(&self, raw: anyhow::Result<RawAnalogInput>) -> anyhow::Result<f64> {
-        let value = raw.context("Trigger ADC read failed")?.trigger(self.part);
-        ensure!(
-            self.valid_value(value),
-            "Trigger ADC value is outside the source range"
-        );
-        Ok(value)
+    fn read_value(&self, raw: anyhow::Result<RawAnalogInput>) -> Option<f64> {
+        let value = raw.ok()?.trigger(self.part);
+        self.valid_value(value).then_some(value)
     }
     fn fail(&mut self) {
         self.progress = TriggerCalibrationProgress {
@@ -288,7 +315,7 @@ impl TriggerCalibrationSession {
         self.active = false;
         self.step = TriggerStep::None;
         self.valid = false;
-        self.measurement = None;
+        self.movement = None;
         self.previous = None;
         self.stable_polls = 0;
         self.travelled = false;
@@ -296,34 +323,36 @@ impl TriggerCalibrationSession {
         self.sample_min = None;
         self.sample_max = None;
     }
-    /// Only the current successful ADC read can validate a hold. Failure removes
-    /// the measurement and terminates the operation through its error state.
+    /// Source polling skips movement/stability assignment on an unavailable or
+    /// invalid query, then still validates the retained movement. A previously
+    /// valid hold therefore survives that skipped poll; hold sampling itself
+    /// continues to require five valid actual reads.
     pub fn poll(&mut self, raw: anyhow::Result<RawAnalogInput>) -> anyhow::Result<HoldChange> {
         if !self.active || !matches!(self.step, TriggerStep::Press | TriggerStep::Release) {
             return Ok(HoldChange::Unchanged);
         }
-        let value = match self.read_value(raw) {
-            Ok(value) => value,
-            Err(error) => {
-                self.fail();
-                return Err(error);
-            }
-        };
         let resting = self
-            .measurement
+            .movement
             .as_ref()
-            .context("Trigger resting observation is missing")?
-            .resting;
-        if self
-            .previous
-            .is_some_and(|previous| (value - previous).abs() <= self.headroom(resting) * 0.01)
-        {
-            self.stable_polls = self.stable_polls.saturating_add(1);
-        } else {
-            self.stable_polls = 0;
+            .context("Trigger movement state is missing")?
+            .resting(self.product.params.range.max);
+        if let Some(value) = self.read_value(raw) {
+            if self
+                .previous
+                .is_some_and(|previous| (value - previous).abs() <= self.headroom(resting) * 0.01)
+            {
+                self.stable_polls = self.stable_polls.saturating_add(1);
+            } else {
+                self.stable_polls = 0;
+            }
+            self.previous = Some(value);
+            self.movement.as_mut().unwrap().value = TriggerMovementValue::Observed(value);
         }
-        self.previous = Some(value);
-        self.measurement = Some(TriggerMeasurement { resting, value });
+        let value = self
+            .movement
+            .as_ref()
+            .unwrap()
+            .value(self.product.params.range.max);
         let previous_valid = self.valid;
         self.valid = match self.step {
             TriggerStep::Press => {
@@ -348,9 +377,11 @@ impl TriggerCalibrationSession {
     }
     /// Exact source {x:0,y:0,t} storage percentage. No elapsed-time value.
     pub fn movement_percentage(&self) -> Option<f64> {
-        let measurement = self.measurement.as_ref()?;
-        let value = (self.release_threshold(measurement.resting) - measurement.value)
-            / (self.release_threshold(measurement.resting) - self.press_threshold())
+        let movement = self.movement.as_ref()?;
+        let resting = movement.resting(self.product.params.range.max);
+        let value = (self.release_threshold(resting)
+            - movement.value(self.product.params.range.max))
+            / (self.release_threshold(resting) - self.press_threshold())
             * 100.;
         value
             .is_finite()
@@ -429,11 +460,11 @@ impl TriggerCalibrationSession {
         let sample = js_round(sum / 5.);
         if self.step == TriggerStep::Press {
             self.sample_min = Some(sample);
-            let initial = self.read_value(transport.raw_analog_input())?;
+            let initial = self.read_value(transport.raw_analog_input());
             let resting = self
-                .measurement
+                .movement
                 .as_ref()
-                .context("Trigger resting observation is missing")?
+                .context("Trigger movement state is missing")?
                 .resting;
             self.prepare(TriggerStep::Release, resting, initial);
             return Ok(());

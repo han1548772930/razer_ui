@@ -16,6 +16,7 @@ use razer_i18n as i18n;
 use razer_pages::features::Choice;
 use razer_state::AppPreferences;
 use razer_state::LANGUAGES;
+use razer_state::ui_preferences::{Flag, LoadStatus, SaveStatus, UiPreferences};
 use razer_widgets::surface;
 use razer_widgets::theme;
 
@@ -132,6 +133,7 @@ pub struct SettingsPage {
     startup_editor: razer_state::LocalStartupDraft,
     tutorial_reset: bool,
     storage_error: Option<String>,
+    notification_preferences: Entity<UiPreferences>,
     dynamic_lighting_supported: bool,
     dynamic_lighting_mode: bool,
     dynamic_lighting_switching: bool,
@@ -205,6 +207,7 @@ impl SettingsPage {
             state.set_selected_value(&values.language, window, cx)
         });
         let dynamic_lighting_mode = saved.dynamic_lighting_draft.unwrap_or(false);
+        let notification_preferences = UiPreferences::shared(cx);
         let mut this = Self {
             saved,
             startup_editor: values.startup_draft.unwrap_or_default(),
@@ -215,11 +218,16 @@ impl SettingsPage {
             startup_observed: None,
             tutorial_reset: false,
             storage_error: None,
+            notification_preferences,
             dynamic_lighting_supported: razer_platform::system::supports_dynamic_lighting(),
             dynamic_lighting_mode,
             dynamic_lighting_switching: false,
             subscriptions: vec![],
         };
+        this.subscriptions
+            .push(cx.observe(&this.notification_preferences, |_, _, cx| {
+                cx.notify();
+            }));
         this.subscriptions.push(cx.subscribe_in(
             &this.language,
             window,
@@ -239,6 +247,10 @@ impl SettingsPage {
     }
 
     fn select_page(&mut self, page: Page, window: &mut Window, cx: &mut Context<Self>) {
+        let mount_notifications = page == Page::Synapse && self.page != page;
+        if self.page == Page::Synapse && page != self.page {
+            self.deactivate_notifications(cx);
+        }
         if page == Page::Products && self.products.is_none() {
             // The local catalog visits every product family. It belongs to this
             // optional page, not first-window initialization. Retain it after
@@ -257,11 +269,71 @@ impl SettingsPage {
             self.products = Some(products);
         }
         self.page = page;
+        if mount_notifications {
+            self.activate_notifications(cx);
+        }
         cx.notify();
     }
     fn changed(&mut self, cx: &mut Context<Self>) {
         cx.emit(SettingsEvent::Changed);
         cx.notify();
+    }
+    /// The notification component mounts with the Synapse settings page;
+    /// constructing the retained page does not initialize or rewrite storage.
+    pub fn activate_notifications(&mut self, cx: &mut Context<Self>) {
+        if self.page != Page::Synapse {
+            return;
+        }
+        self.notification_preferences.update(cx, |owner, cx| {
+            owner.observe_notifications(cx);
+        });
+    }
+    pub fn deactivate_notifications(&mut self, cx: &mut Context<Self>) {
+        self.notification_preferences.update(cx, |owner, cx| {
+            owner.cancel_observation(Flag::DisplayNotifications, cx);
+        });
+    }
+    pub fn notifications_enabled(&self, cx: &App) -> bool {
+        self.notification_preferences
+            .read(cx)
+            .snapshot(Flag::DisplayNotifications)
+            .value()
+    }
+    fn notifications_available(&self, cx: &App) -> bool {
+        let owner = self.notification_preferences.read(cx);
+        !owner.closing()
+            && matches!(
+                owner.snapshot(Flag::DisplayNotifications).load_status(),
+                LoadStatus::Observed(_)
+            )
+    }
+    fn toggle_notifications(&mut self, cx: &mut Context<Self>) {
+        if !self.notifications_available(cx) {
+            return;
+        }
+        let enabled = !self.notifications_enabled(cx);
+        self.notification_preferences.update(cx, |owner, cx| {
+            owner.set(Flag::DisplayNotifications, enabled, cx);
+        });
+    }
+    fn persistence_error(&self, cx: &App) -> Option<String> {
+        let snapshot = self
+            .notification_preferences
+            .read(cx)
+            .snapshot(Flag::DisplayNotifications);
+        let notification_error = match snapshot.load_status() {
+            LoadStatus::Failed(error) => Some(error.as_str()),
+            _ => match snapshot.save_status() {
+                SaveStatus::Failed { error, .. } => Some(error.as_str()),
+                _ => None,
+            },
+        };
+        match (&self.storage_error, notification_error) {
+            (Some(error), Some(notification)) => Some(format!("{error}\n{notification}")),
+            (Some(error), None) => Some(error.clone()),
+            (None, Some(error)) => Some(error.into()),
+            (None, None) => None,
+        }
     }
     /// Called only with an actual host query/readback. It updates the source
     /// editor without emitting a user command or turning a query into a save.
@@ -529,15 +601,14 @@ impl SettingsPage {
                                     settings_check(
                                         "settings-notifications",
                                         i18n::t("DISPLAY_NOTIFICATIONS"),
-                                        self.values.notifications,
-                                        false,
+                                        self.notifications_enabled(cx),
+                                        !self.notifications_available(cx),
                                         window,
                                         cx,
                                     )
                                     .on_click(cx.listener(
                                         |this, _, _, cx| {
-                                            this.values.notifications = !this.values.notifications;
-                                            this.changed(cx);
+                                            this.toggle_notifications(cx);
                                         },
                                     )),
                                 )
@@ -942,7 +1013,7 @@ impl Render for SettingsPage {
                     )
                     .into_any_element()
             })
-            .when_some(self.storage_error.clone(), |this, error| {
+            .when_some(self.persistence_error(cx), |this, error| {
                 this.child(
                     div()
                         .px_4()

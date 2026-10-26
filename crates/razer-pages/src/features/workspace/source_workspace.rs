@@ -46,6 +46,12 @@ mod keyboard_local_profiles;
 mod keyboard_mapping;
 #[path = "source_workspace/keyboard_profile_inventory.rs"]
 mod keyboard_profile_inventory;
+#[path = "source_workspace/controller_initialization.rs"]
+mod controller_initialization;
+pub use controller_initialization::ControllerInitializationRequested;
+#[path = "source_workspace/controller_socd.rs"]
+mod controller_socd;
+pub use controller_socd::ControllerSocdRequested;
 #[path = "source_workspace/keyboard_profile_mutations.rs"]
 mod keyboard_profile_mutations;
 #[path = "source_workspace/lifecycle.rs"]
@@ -138,6 +144,8 @@ pub struct SourceProductWorkspace {
     mapping_reconnect: mapping_reconnect::State,
     keyboard_latest_ble: bool,
     keyboard_profile_inventory: keyboard_profile_inventory::Owner,
+    controller_initialization: controller_initialization::Owner,
+    controller_socd: controller_socd::Owner,
     page: Option<ProductPageId>,
     page_history: Vec<ProductPageId>,
     page_history_index: usize,
@@ -1008,6 +1016,7 @@ impl SourceProductWorkspace {
         if connection_changed {
             self.mapping_connection_generation = self.mapping_connection_generation.wrapping_add(1);
             self.invalidate_keyboard_profile_inventory(observation.is_some());
+            self.invalidate_controller_initialization(cx);
             self.receiver_profile_selection.borrow_mut().invalidate();
             self.cancel_profile_transfer_requests();
             self.cancel_keyboard_brightness_connection(cx);
@@ -1019,7 +1028,8 @@ impl SourceProductWorkspace {
             }
             if let FamilyBody::Gamepad(body) = &self.body {
                 body.update(cx, |body, cx| {
-                    body.observe_controller_connection(observation.is_some(), cx)
+                    body.observe_controller_connection(observation.is_some(), cx);
+                    body.observe_controller_sleep_connection(observation.is_some(), cx);
                 });
             }
             if let FamilyBody::Mouse(body) = &self.body {
@@ -1868,6 +1878,33 @@ impl SourceProductWorkspace {
         cx: &App,
     ) -> bool {
         matches!(&self.body, FamilyBody::Gamepad(body) if body.read(cx).controller_trigger_request_matches(request))
+    }
+    pub fn controller_sleep_request_matches(
+        &self,
+        request: &super::gamepad_products::ControllerSleepRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, FamilyBody::Gamepad(body) if body.read(cx).controller_sleep_request_matches(request))
+    }
+    pub fn finish_controller_sleep(
+        &mut self,
+        request: &super::gamepad_products::ControllerSleepRequested,
+        observed: Option<razer_device::controller_sleep::SleepResult>,
+        error: Option<String>,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Gamepad(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_controller_sleep(request, observed, error, cx)
+            });
+        }
+    }
+    pub fn observe_controller_sleep_recording(&mut self, recording: bool, cx: &mut Context<Self>) {
+        if let FamilyBody::Gamepad(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_controller_sleep_recording(recording, cx)
+            });
+        }
     }
     pub fn controller_lighting_request_matches(
         &self,
@@ -3394,6 +3431,7 @@ impl SourceProductWorkspace {
             subscriptions.push(cx.subscribe(
                 &body,
                 |this: &mut Self, body, _: &super::gamepad_products::GamepadProductChanged, cx| {
+                    this.device.controller_power_saving = body.read(cx).controller_power_saving();
                     this.capture(body.read(cx).snapshot(), cx);
                 },
             ));
@@ -3437,11 +3475,31 @@ impl SourceProductWorkspace {
             subscriptions.push(cx.subscribe(
                 &body,
                 |this: &mut Self,
+                 _,
+                 request: &super::gamepad_products::ControllerSleepRequested,
+                 cx| {
+                    if request.requires_persistence()
+                        && let Some(setting) = request.setting()
+                    {
+                        this.device.controller_power_saving = Some(setting);
+                    }
+                    cx.emit(WorkspaceEvent::ControllerSleepRequested(request.clone()));
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |this: &mut Self,
                  body,
                  request: &super::gamepad_products::ControllerChromaRequested,
                  cx| {
                     this.capture(body.read(cx).snapshot(), cx);
                     cx.emit(WorkspaceEvent::ControllerChromaRequested(request.clone()));
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |this: &mut Self, _, intent: &super::gamepad_products::ControllerSocdEdited, cx| {
+                    this.edit_controller_socd(intent.0, cx);
                 },
             ));
             FamilyBody::Gamepad(body)
@@ -3917,6 +3975,8 @@ impl SourceProductWorkspace {
             mapping_reconnect: Default::default(),
             keyboard_latest_ble: false,
             keyboard_profile_inventory: Default::default(),
+            controller_initialization: Default::default(),
+            controller_socd: Default::default(),
             device,
             page,
             page_history: page.into_iter().collect(),
@@ -4303,6 +4363,7 @@ impl SourceProductWorkspace {
     }
     pub fn dirty(&self) -> bool {
         self.device.source_device_settings != self.saved.source_device_settings
+            || self.device.controller_power_saving != self.saved.controller_power_saving
             || self.device.active_profile != self.saved.active_profile
             || self.device.profiles.len() != self.saved.profiles.len()
             || self
@@ -4361,6 +4422,10 @@ impl SourceProductWorkspace {
         cx.notify();
     }
     fn capture(&mut self, mut value: Value, cx: &mut Context<Self>) {
+        let previous_marci = (self.device.product_id == 3942).then(|| {
+            self.device.active_profile_obj().and_then(|profile| profile.source_settings.as_ref())
+                .and_then(|settings| settings.pointer("/profile/quickEffects")).cloned()
+        }).flatten();
         seiren_local_settings::capture(
             self.device.product_id,
             &mut self.device.source_device_settings,
@@ -4389,6 +4454,18 @@ impl SourceProductWorkspace {
             p.source_settings = Some(value);
         }
         self.sync_mouse_profile_selection();
+        if self.device.product_id == 3942 {
+            let current = self.device.active_profile_obj().and_then(|profile| profile.source_settings.as_ref())
+                .and_then(|settings| settings.pointer("/profile/quickEffects"));
+            if current != previous_marci.as_ref() {
+                if let Some(current) = current {
+                    match razer_device::receiver_lighting::QuickEffect::parse(current) {
+                        Ok(effect) => cx.emit(WorkspaceEvent::MarciLightingRequested(effect)),
+                        Err(error) => eprintln!("[Marci lighting request] {error:#}"),
+                    }
+                }
+            }
+        }
         cx.emit(WorkspaceEvent::Changed);
         cx.notify();
     }
@@ -4513,6 +4590,7 @@ impl SourceProductWorkspace {
             self.device.source_device_settings.as_ref(),
             &mut value,
         );
+        self.sync_controller_socd(cx);
         match &self.body {
             FamilyBody::Mouse(e) => {
                 let dpi = (!preserve_current_dpi_observation).then(|| {
@@ -4535,7 +4613,11 @@ impl SourceProductWorkspace {
                 });
             }
             FamilyBody::Gamepad(e) => {
-                e.update(cx, |v, cx| v.restore(value.as_ref(), window, cx));
+                e.update(cx, |v, cx| {
+                    v.restore(value.as_ref(), window, cx);
+                    v.restore_controller_sleep(self.device.controller_power_saving, cx);
+                    v.observe_controller_socd(self.controller_socd_for_active(), cx);
+                });
             }
             FamilyBody::Controls(e) => {
                 e.update(cx, |v, cx| {

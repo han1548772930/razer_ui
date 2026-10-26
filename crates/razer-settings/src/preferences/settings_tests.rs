@@ -291,21 +291,19 @@ fn settings_changes_emit_immediately_and_preserve_edits_during_persistence(
         window.render_frame(cx);
         assert!(window.try_find("settings-save").is_none());
         assert!(window.try_find("settings-discard").is_none());
-        window.click("settings-notifications", cx);
+        page.update(cx, |page, cx| page.tutorial_seen(true, cx));
     })
     .unwrap();
     cx.run_until_parked();
     assert_eq!(changes.get(), 1);
     let captured = cx.update(|cx| page.read(cx).snapshot());
-    assert!(!captured.notifications);
+    assert!(captured.gamer_room_tutorial_seen);
     cx.update_window(handle.into(), |_, window, cx| {
-        window.click("settings-notifications", cx);
-        page.update(cx, |page, cx| page.tutorial_seen(true, cx));
+        page.update(cx, |page, cx| page.tutorial_seen(false, cx));
         page.update(cx, |page, cx| page.dashboard_tutorial_seen(true, cx));
         page.update(cx, |page, cx| page.mark_saved(captured, cx));
         let latest = page.read(cx).snapshot();
-        assert!(latest.notifications);
-        assert!(latest.gamer_room_tutorial_seen);
+        assert!(!latest.gamer_room_tutorial_seen);
         assert!(latest.dashboard_tutorial_seen);
         assert!(
             page.read(cx).dirty(),

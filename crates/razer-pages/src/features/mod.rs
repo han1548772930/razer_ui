@@ -36,7 +36,7 @@ pub mod macro_inputs;
 pub mod macro_library;
 pub use razer_model::module_service;
 #[path = "lighting/screen_color.rs"]
-mod screen_color;
+pub mod screen_color;
 #[path = "mouse/dpi/sensitivity.rs"]
 mod sensitivity;
 pub use razer_model::settings;
@@ -72,6 +72,8 @@ pub use source_controls::{
     RipsawMonitoringRequested,
 };
 pub use source_workspace::ReceiverProfileSelectionRequested;
+pub use source_workspace::ControllerInitializationRequested;
+pub use source_workspace::ControllerSocdRequested;
 #[path = "gamepad/mod.rs"]
 pub mod gamepad_products;
 #[path = "keyboard/mod.rs"]

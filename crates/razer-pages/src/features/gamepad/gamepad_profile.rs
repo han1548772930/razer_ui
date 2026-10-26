@@ -78,6 +78,8 @@ struct Features {
     controller_sensitivity: Option<Sensitivity>,
     controller_analog_circularity: Option<Circularity>,
     controller_lighting_effects: Option<super::lighting_state::ControllerLightingSettings>,
+    #[serde(rename = "controllerDPadSOCD")]
+    controller_dpad_socd: Option<razer_device::controller_initialization::SocdMode>,
     quick_effects: Option<super::quick_lighting_state::QuickLightingSettings>,
 }
 
@@ -189,6 +191,10 @@ pub(super) fn restore_features(
             features.controller_lighting_effects.is_some(),
         ),
         ("quickEffects", features.quick_effects.is_some()),
+        (
+            "controllerDPadSOCD",
+            features.controller_dpad_socd.is_some(),
+        ),
     ] {
         if present {
             // Keep file extension fields and list order at this boundary.

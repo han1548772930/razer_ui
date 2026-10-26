@@ -32,6 +32,8 @@ V2 完整方法位置：start `[1305238,1306254)`，next `[1306254,1306549)`，p
 
 start 先查询 restingTriggerValue；有效时使用实读值，缺失或越界时源码明确使用 `Range.max` 作为这次计算基线。2676 `start [1327169,1327767)` 与查询 wrapper `s [1339352,1339509)` 一起说明该错误分支：wrapper 捕获查询异常并返回未定义。该计算基线不是设备实测结果，更不是通用默认写回授权。按压阈值为 `18% × TriggerMax`；释放阈值为 `restingValue - min(1% × travelHeadroom,11% × TriggerMax)`。值需达阈值且连续至少五个稳定采样；相邻变化不超过 travelHeadroom 的 1% 才累计稳定次数。满足后按压保持 2000 ms、释放保持 3000 ms，再各取五次真实采样、间隔 10 ms 求平均。有效性变为 false 时取消 hold timer，不能只等计时器结束便宣告有效。
 
+第二次初读属于 `prepareNextStep [1328693,1329743)`：先将 movement 重置到 resting，再发独立查询；缺失、非有限数或越界时保留 reset movement，不重新套用 `Range.max`。普通 `getUserMovementPoints [1330318,1331138)` 则跳过无效查询的 movement/stability 赋值，继续按保留值验证有效性，因此不能仅因一次跳过的 poll 取消已有有效 hold。最终五次 hold 采样独立要求每次真实查询有效；其中任意一次失败都进入采样失败，不能复用 baseline 或上一条 movement。2684 的完整对应模块 36840 位于其当前 MW main `[1323068,1338374)`，上述阶段语义相同，产品阈值仍分别取各自 descriptor。
+
 计算最终范围时，按压样本减去 `5% × TriggerMax`、释放样本加 `2% × TriggerMax`，源码随后 round/abs。范围要求有限数、min>Range.min、max<Range.max、min 小于本侧 PressThreshold、max 大于 ReleaseThreshold、宽度>300。2676 左侧 500/1490、右侧 600/1600；2684 左侧 400/1400、右侧 500/1500，不能合并成一套阈值。
 
 `writeAndVerifyTriggerCalibration` 先验证并真实 SET，再 GET 同部件的 `getAnalogInputCalibrationDataAll`，逐一比较 min/max，并重新验证范围。读回失败、差异和传输失败各返回明确错误；只有读回相符才发 Step_3_Trigger_Complete。该确认链区别于 2636 V2 的普通完成路径。失败和 stop/reset 清采样、hold/update/user-movement timer 及预览 window storage；33 ms 节流坐标仅服务动画，不充当 ADC 或写回确认。
@@ -52,7 +54,7 @@ start 先查询 restingTriggerValue；有效时使用实读值，缺失或越界
 
 生命周期持有 device/engine/effect handle 与输入 bridge。暂停只是停效果/帧发布，不等于销毁 device；恢复重新激活当前 owner；退出执行源码的 spectrum 恢复，再移除效果、释放设备/引擎与通知/COM 资源。旧 generation 帧不得投给新连接。native `RzLightingEngineApi_v4.0.55.0.dll` 在此是分析对象：完整动作分发 RVA 0x1fd90、create device 0x20300、destroy device 0x20c50、add effect 0x21ac0、输入事件 0x27d60、terminate 0x2a5c0 的伪代码与交叉引用由 `native_engine` 记录；不得把它的生产调用描述成独立 Rust 实现。
 
-来源与验证边界：[2636 UI/MW 收据](../../../.analysis/inputs/frontend/gamepad-mw-2636-current/acquisition.json)、[4115 UI 收据](../../../.analysis/inputs/frontend/gamepad-4115-current/acquisition.json)、[4115 MW 收据](../../../.analysis/inputs/frontend/gamepad-mw-4115-current/acquisition.json)。本页只陈述静态源码行为与证据，未运行应用、厂商 JS、校准或灯光写入测试。
+来源与验证边界：[2636 UI/MW 收据](../../../.analysis/inputs/frontend/gamepad-mw-2636-current/acquisition.json)、[2676 MW 收据](../../../.analysis/inputs/frontend/gamepad-mw-2676-current/acquisition.json)、[2684 MW 收据](../../../.analysis/inputs/frontend/gamepad-mw-2684-current/acquisition.json)、[4115 UI 收据](../../../.analysis/inputs/frontend/gamepad-4115-current/acquisition.json)、[4115 MW 收据](../../../.analysis/inputs/frontend/gamepad-mw-4115-current/acquisition.json)。静态源码、Rust 纯测试与实际功能对照分别记录；应用、厂商 JS、真实校准和灯光写入均未在此执行。
 
 ## 实际挂载页面与 Rust 调用方
 
@@ -83,12 +85,18 @@ start 先查询 restingTriggerValue；有效时使用实读值，缺失或越界
 
 读回失败或差异由`sample_and_advance → fail`保留Error progress；service将操作发布为failed，并分别记录`device_write_attempted/device_write_verified`，不能因SET已发送便确认完成。Shell先消费实际progress，再将terminal failed交`finish_trigger_calibration_submission(Err)`；页面的`finish_submission`停止视觉任务、清除移动并保存submission_error，不自行生成Complete。取消在实际传输前后及等待期间核对，SET已发生时仅标记attempted而非伪造恢复原值；关闭popup、Stop与设备写回确认是不同结果。
 
-Stop仍有清理错误传递缺口：Shell的session持有`JoinHandle<()>`，worker把`run`（包括其服务Shutdown请求）的错误只投递旧观察channel；`retire`移除旧pump后，Stop的完成路径只将线程join panic映射为错误，不能通过该回执传递`run`返回的服务清理错误。等待worker退出的结构确实存在，缺少的是清理失败向当前Stop调用方的完整传递；不得把join成功扩大为全部设备/服务清理确认。
+Shell worker 持有独立的业务结果与清理收据。Cancel 与 Shutdown 的错误分别保留；旧 pump 被移除或观察 channel 关闭后，worker join 仍向当前 Stop、后续 owner 和退出链传递真实清理结果及历史诊断。业务失败但清理确认的请求允许重试；清理未确认时不会仅凭线程退出允许同设备重新开始。
+
+清理 owner 同时包含 workspace 身份、实际设备任务 scope 与 physical PID。Stop 只收当前 workspace 的 worker；快速 Stop 后 Start 仍在后台等待同一实际设备的清理收据，不会绕过已移交 Stop task 的前任。其他设备不继承该屏障；同 generation 但不同 owner 的迟到观察也会被拒绝。重复 Stop 合并前任 task；退出开始即保留每个 owner 的 completion，后台继续拥有真实 worker 和清理 task。退出失败导致取消退出时，失败收据仍在 Shell，不能因排空退出队列而使新 Start 绕过。
+
+每条已创建 ServiceClient 的路径都显式执行 `finish_termination`，包含 resolve 失败和正常协议结束。服务清理确认、最终 OS／管道释放和历史诊断是三个独立事实。`ShutdownConfirmation` 仅由匹配请求 ID、单一 data/error 结果且 `stopped:true` 的真实服务回执产生；ServiceClient 在继续回收进程和 join 管道前保存它。关闭请求接纳、`is_stopped`、进程退出和 `finish_termination` 成功均不能替代该回执。
+
+释放失败时校准 worker 继续持有实际 client，在后台重试已核实的终止链，完成真实释放后才结束。已收到匹配 ShutdownConfirmation 且最终 OS／管道释放成功时，收据保留先前 Cancel、Shutdown 调用及 OS 回收的异常诊断，并允许同 owner 重新开始；临时异常不会再被当作永久未释放。缺少真实服务回执时，即使 OS 已退出仍保持清理未确认并阻断。历史诊断随 worker／Stop 收据传递，在收据领取和退出时记录到现有日志；它们不会把业务失败改成成功，也不会冒充设备校准、原值恢复或新的设备实测。
 
 仍有明确适用范围与差异：
 
 - 服务 `verify_product` 当前仅接纳 2676/2677、2684/2685 的已核实有线物理身份并拒绝 dongle/BLE；interface、Report10 与长度继续以实际观察核实，不能扩展为无线校准已实现。
-- 官方2676 `start/prepareNextStep/getUserMovementPoints` 对缺失或越界样本分别使用上述计算基线、保持 reset 后 movement，或跳过本次赋值后继续有效性计算；Rust `start/read_value/poll` 对此类读取直接失败并 stop。该失败行为存在差异，需按完整 wrapper 与官方实际结果逐项比较，不能以更严格的测试预期宣称相同，也不能据此增加无依据的通用回退。
+- Rust `start/prepare/poll` 分别实现上述阶段语义，内部类型区分实读 resting、源码 Range.max 计算基线、实际 movement 与 reset movement。Release 的初读缺失仍须重新建立稳定性并完成五次有效采样；Stop 或采样取消清除半截样本，重新开始只使用新查询。这些分支的纯测试不能替代官方实际结果逐项对照，也不能作为其他功能通用回退的授权。
 - [焦点 owner](../../../crates/razer-shell/src/shell/gamepad/controller_calibration_focus.rs) 将真实 tab/window 状态交给扳机 popup，首次 inactive 不关闭，曾 active 后失活才关闭；摇杆 popup 的缺失后台、采样失败、旧部件、取消期间 SET/GET 和窗口释放仍需分别验收。
 
 ### 灯光：已有后台 owner 与未完成的读取核对
@@ -99,10 +107,14 @@ Stop仍有清理错误传递缺口：Shell的session持有`JoinHandle<()>`，wor
 
 4115 色板与 Chroma 配置经 [controller_chroma](../../../crates/razer-shell/src/shell/gamepad/controller_chroma.rs) 独立保存、刷新和观察；服务 [lighting_engine](../../../crates/razer-service/src/runtime/lighting_engine.rs) 当前调用共享 Rust renderer，HID 帧提交位于 [controller_software_lighting](../../../crates/razer-device/src/gamepad/controller_software_lighting.rs)。两段 OUT 的提交结果与效果/亮度应答不同，没有每帧 IN/ACK；退出恢复 spectrum、停止帧、释放效果/设备/引擎及输入订阅分别确认。页面切换不应被误读为整个持续效果 owner 已销毁。
 
-[controller_power](../../../crates/razer-shell/src/shell/gamepad/controller_power.rs) 读取 `profile.switchOffLighting/brightness`，观察显示器和 idle 事件后向 retained lighting owner 应用熄灯策略；它不是 Power 页的设备休眠 setter，后者见 [映射与电源边界](mapping-and-sensitivity.md#power页面的分钟参数与写入缺口)。
+[controller_power](../../../crates/razer-shell/src/shell/gamepad/controller_power.rs) 读取 `profile.switchOffLighting/brightness`，观察显示器和 idle 事件后向 retained lighting owner 应用熄灯策略；它不是 Power 页的设备休眠 setter，后者见 [映射与电源边界](mapping-and-sensitivity.md#power分钟参数独立设备确认与生命周期)。
 
 ## 自动化与实际 DLL 对照边界
 
-当前 [校准页面测试](../../../crates/razer-pages/src/features/gamepad/gamepad_calibration_tests.rs)、[V3 计算测试](../../../crates/razer-device/src/gamepad/controller_calibration_tests.rs)、[灯光协议测试](../../../crates/razer-device/src/gamepad/controller_lighting_tests.rs)、[帧提交测试](../../../crates/razer-device/src/gamepad/controller_software_lighting_tests.rs) 及各 runtime/owner 内测试只覆盖其明确用例。本文补充仅执行静态 AST、字节身份、Rust caller 与文档引用检查，未重新运行这些测试；测试注入 observation 不代表生产接线已补齐。
+当前 [校准页面测试](../../../crates/razer-pages/src/features/gamepad/gamepad_calibration_tests.rs)、[V3 计算测试](../../../crates/razer-device/src/gamepad/controller_calibration_tests.rs)、[Shell 校准 owner 测试](../../../crates/razer-shell/src/shell/gamepad/controller_calibration.rs)、[IPC client 测试](../../../crates/razer-ipc/src/client_tests.rs)、[Shutdown 回执测试](../../../crates/razer-ipc/src/worker_shutdown.rs)、[灯光协议测试](../../../crates/razer-device/src/gamepad/controller_lighting_tests.rs)、[帧提交测试](../../../crates/razer-device/src/gamepad/controller_software_lighting_tests.rs) 及各 runtime/owner 内测试只覆盖其明确用例。V3 session 当前有 9 项纯测试，Shell 校准有 15 项模拟 IPC、线程与 completion 测试；实际执行与通过状态以统一验证收据为准，未执行项不能据测试存在而记为通过。测试注入 observation 不代表生产接线已补齐。
+
+`start_uses_only_its_source_range_baseline_and_prepare_retains_reset_movement`、`unavailable_poll_keeps_source_movement_and_stability_without_starting_a_new_hold`、`missing_release_prepare_read_retains_reset_baseline_but_requires_fresh_stability_and_samples` 和 `cancellation_during_sampling_clears_partial_samples_and_restart_uses_only_new_reads` 对应阶段读取与取消边界。Shell 的 `start_after_stop_waits_for_the_exact_cleanup_receipt_and_preserves_its_failure`、`canceled_exit_retains_each_actual_owner_receipt_and_clean_owners_can_retry`、`retained_exit_receipt_waits_asynchronously_and_wakes_on_actual_completion` 与 `termination_failures_keep_the_actual_resource_owner_until_reaping_succeeds` 覆盖清理屏障、退出取消、异步完成通知和真实所有者保留；均不执行官方 helper、DLL 或真实设备。
+
+IPC 的 `shutdown_joins_both_pipe_workers_and_reports_all_cleanup_failures` 验证匹配回执已确认后，管道错误仍返回且 confirmation 不丢；`service_rejection_and_wrong_reply_cannot_become_shutdown_confirmation_after_process_release` 与 `shutdown_confirmation_requires_the_exact_successful_service_reply` 拒绝服务错误、错 ID、缺字段、矛盾结果和非 true 回执。Shell 的 `final_process_release_cannot_replace_a_missing_service_teardown_confirmation` 证明最终进程释放不会补造原生服务确认；终止重试用例同时要求实际资源所有者保留到释放、保留两次历史异常，并在成功收据后允许后续请求。
 
 每个产品/部件/传输分别覆盖正常、无效读数、部分初始化、真实移动、hold失效、SET/GET差异、未知回应、旧连接、取消/清理失败；灯光另覆盖色板、取屏色取消、效果切换、无 ACK 帧、暂停/恢复和退出恢复。预期来自当前官方原件或独立采集，实际 DLL/设备对照依 [verification.md](../../../.agents/rules/verification.md) 保存双方输入/原始结果、差异、原值恢复与释放收据。无法完整恢复校准数据或灯光状态时不得开始写入。本轮未执行官方 DLL、设备校准、应用或窗口验收，以上运行时与实际功能对照均保持未验证。

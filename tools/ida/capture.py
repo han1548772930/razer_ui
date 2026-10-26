@@ -39,6 +39,84 @@ def write_json(path, value):
     temporary.replace(path)
 
 
+def microregister_predicates(hexrays, registers, processor=None):
+    """Observe SDK register facts using independent operands, without editing microcode."""
+    if (not isinstance(registers, list) or not registers or len(registers) > 256
+            or any(not isinstance(row, dict) or set(row) != {"register", "width"}
+                   or type(row["register"]) is not int or not 0 <= row["register"] < 2**31
+                   or type(row["width"]) is not int or not 0 < row["width"] <= 64
+                   for row in registers)
+            or len({(row["register"], row["width"]) for row in registers}) != len(registers)):
+        raise ValueError("Microregister observation requires unique bounded register/width pairs")
+    result = {"schema_version": 1, "register_namespace": "hexrays_microregisters",
+              "microcode_modified": False, "observations": [], "complete": True}
+    for row in registers:
+        register, width = row["register"], row["width"]
+        observed = {**row, "status": "api_returned", "complete": True, "apis": {}}
+        result["observations"].append(observed)
+
+        def read(name, api, call):
+            observed["apis"][name] = api
+            try:
+                observed[name] = call()
+                return observed[name]
+            except Exception as error:
+                observed.update(status="diagnostic_error", complete=False)
+                observed.setdefault("errors", []).append({"stage": name,
+                    "error": (type(error).__name__ + ": " + str(error))[:2048]})
+                return None
+
+        def operand():
+            value = hexrays.mop_t()
+            value.make_reg(register, width)
+            return value
+
+        value = read("operand", "ida_hexrays.mop_t.make_reg", operand)
+        if value is not None:
+            # A SWIG owner never escapes this observation; only exact readback facts do.
+            del observed["operand"]
+            checked = read("operand_readback", "mop_t.t/r/size; mop_t.is_reg", lambda: {
+                "kind": int(value.t), "register": int(value.r), "width": int(value.size),
+                "is_reg": bool(value.is_reg(register, width))})
+            if (checked is not None and checked != {"kind": int(hexrays.mop_r),
+                    "register": register, "width": width, "is_reg": True}):
+                observed.update(status="diagnostic_error", complete=False)
+                observed.setdefault("errors", []).append({"stage": "operand_readback",
+                    "error": "SDK operand differs from the exact requested register and width"})
+            read("is_condition_code", "mop_t.is_cc", lambda: bool(value.is_cc()))
+            read("is_bit_register", "mop_t.is_bit_reg", lambda: bool(value.is_bit_reg()))
+            read("is_kernel_register", "mop_t.is_kreg", lambda: bool(value.is_kreg()))
+        physical = read("processor_register", "ida_hexrays.mreg2reg",
+                        lambda: int(hexrays.mreg2reg(register, width)))
+        if physical is not None and physical >= 0:
+            returned = read("roundtrip_microregister", "ida_hexrays.reg2mreg",
+                            lambda: int(hexrays.reg2mreg(physical)))
+            if returned is not None:
+                observed["direct_register_roundtrip_matches"] = returned == register
+            if processor is not None:
+                physical_name = read("processor_name", "ida_idp.get_reg_name",
+                                     lambda: processor.get_reg_name(physical, width))
+                if physical_name is not None:
+                    def register_info():
+                        info = processor.reg_info_t()
+                        parsed = bool(processor.parse_reg_name(info, physical_name))
+                        return {"parsed": parsed,
+                                "register": int(info.reg) if parsed else None,
+                                "bytes": int(info.size) if parsed else None}
+
+                    read("processor_register_info", "ida_idp.parse_reg_name; reg_info_t.reg/size",
+                         register_info)
+                read("processor_tbyte_bytes", "ida_idp.ph_get_tbyte_size",
+                     lambda: int(processor.ph_get_tbyte_size()))
+        read("name", "ida_hexrays.get_mreg_name", lambda: hexrays.get_mreg_name(register, width))
+        read("global_is_kernel_register", "ida_hexrays.is_kreg", lambda: bool(hexrays.is_kreg(register)))
+        read("temporary_register_full_range", "ida_hexrays.get_temp_regs; mlist_t.has_all",
+             lambda: bool(hexrays.get_temp_regs().has_all(register, width)))
+        if not observed["complete"]:
+            result["complete"] = False
+    return result
+
+
 def capture_exception_regions(plan):
     """Decode exact original IA64 exception regions without creating functions."""
     root = Path(__file__).resolve().parents[2]
@@ -152,7 +230,7 @@ def capture_exception_regions(plan):
         "function_discovery_complete": False, "pseudocode_captured": False,
         "decompilation_attempted": False, "functions_created": False,
         "target_execution": False, "real_device_operations": False,
-        "boundary": "Read-only instruction decoding of original exception regions, including fragments; no function ownership, unwind semantics, ABI or product behavior is inferred"}
+        "boundary": "Read-only instruction decoding and exact existing alignment-item observation of original exception regions; alignment bytes are not counted as decoded instructions. No function ownership, unwind semantics, ABI or product behavior is inferred"}
     for region in selection["directory"]["regions"]:
         begin, end = base + int(region["begin_rva"], 0), base + int(region["end_rva"], 0)
         original = raw[region["file_offset"]:region["file_offset"] + end - begin]
@@ -160,10 +238,34 @@ def capture_exception_regions(plan):
         if loaded is None or bytes(loaded) != original or hashlib.sha256(original).hexdigest() != region["sha256"]:
             raise ValueError("Exception-region database bytes differ from original PE bytes")
         row = {**region, "address": hex(begin), "end": hex(end), "raw_hex": original.hex(),
-            "assembly": [], "undecoded_ranges": [], "decoded_bytes": 0,
+            "assembly": [], "alignment_items": [], "alignment_bytes": 0,
+            "undecoded_ranges": [], "decoded_bytes": 0,
             "undecoded_bytes": 0, "decode_complete": False}
         cursor = begin
         while cursor < end:
+            flags = ida_bytes.get_full_flags(cursor)
+            if ida_bytes.is_align(flags) and ida_bytes.is_head(flags) and not ida_bytes.is_code(flags):
+                item_head, item_end = ida_bytes.get_item_head(cursor), ida_bytes.get_item_end(cursor)
+                if (item_head == cursor and begin <= cursor < item_end <= end
+                        and cursor % 16 == 0 and item_end % 16 == 0
+                        and all(ida_bytes.get_item_head(ea) == cursor
+                            and ida_bytes.get_item_end(ea) == item_end
+                            and ida_bytes.is_tail(ida_bytes.get_full_flags(ea))
+                            and not ida_bytes.is_code(ida_bytes.get_full_flags(ea))
+                            for ea in range(cursor + 1, item_end))):
+                    alignment_raw = original[cursor - begin:item_end - begin]
+                    row["alignment_items"].append({"start_rva": hex(cursor - base),
+                        "end_rva": hex(item_end - base), "bytes": item_end - cursor,
+                        "raw_hex": alignment_raw.hex(), "sha256": hashlib.sha256(alignment_raw).hexdigest(),
+                        "classification": "existing_idb_alignment_item",
+                        "idb_disassembly": ida_lines.tag_remove(idc.generate_disasm_line(cursor, 0) or ""),
+                        "instruction_semantics_inferred": False,
+                        "xrefs_to": [{"from": hex(x.frm), "to": hex(x.to), "type": int(x.type),
+                            "code": bool(x.iscode), "user": bool(x.user)}
+                            for ea in range(cursor, item_end) for x in idautils.XrefsTo(ea, 0)]})
+                    row["alignment_bytes"] += item_end - cursor
+                    cursor = item_end
+                    continue
             insn = ida_ua.insn_t()
             size = int(ida_ua.decode_insn(insn, cursor))
             if size <= 0 or cursor + size > end:
@@ -202,12 +304,15 @@ def capture_exception_regions(plan):
             row["decoded_bytes"] += size
             cursor += size
         row["decode_complete"] = row["decoded_bytes"] == end - begin and not row["undecoded_ranges"]
+        row["coverage_complete"] = (row["decoded_bytes"] + row["alignment_bytes"] == end - begin
+                                    and not row["undecoded_ranges"])
         path = bodies / (region["begin_rva"][2:] + ".json")
         write_json(path, row)
         manifest["regions"].append({"begin_rva": region["begin_rva"], "end_rva": region["end_rva"],
             "path": path.relative_to(output).as_posix(), "sha256": file_sha256(path),
             "decoded_bytes": row["decoded_bytes"], "undecoded_bytes": row["undecoded_bytes"],
-            "decode_complete": row["decode_complete"]})
+            "alignment_bytes": row["alignment_bytes"], "decode_complete": row["decode_complete"],
+            "coverage_complete": row["coverage_complete"]})
     for identity in identities:
         try:
             verify_identity(identity)
@@ -227,7 +332,8 @@ def capture_exception_regions(plan):
         "rows": before}
     manifest["source_database_unchanged"] = True
     manifest["base_capture_unchanged"] = True
-    manifest["capture_complete"] = not manifest["failures"] and all(row["decode_complete"] for row in manifest["regions"])
+    manifest["instruction_decode_complete"] = all(row["decode_complete"] for row in manifest["regions"])
+    manifest["capture_complete"] = not manifest["failures"] and all(row["coverage_complete"] for row in manifest["regions"])
     manifest["finished_at_utc"] = datetime.now(timezone.utc).isoformat()
     write_json(output / "capture.json", manifest)
     return manifest
@@ -485,7 +591,7 @@ def capture(round_number=0):
             result = {"entry": hex(cfunc.entry_ea), "lines": [
                 {"line": i, "text": ida_lines.tag_remove(s.line)}
                 for i, s in enumerate(cfunc.get_pseudocode())]}
-            result.update(capture_values.local_variables(cfunc, ida_hexrays))
+            result.update(capture_values.local_variables(cfunc, ida_hexrays, ida_idp))
             return result
         before = len(manifest["failures"])
         if not hexrays_available:

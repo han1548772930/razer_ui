@@ -70,3 +70,28 @@ fn mouse_scroll_wire_preserves_receiver_profile_and_mode_mask_identity() {
         actual_submission.validate(product_id).unwrap();
     }
 }
+
+#[test]
+fn mouse_scroll_read_wire_keeps_observation_separate_from_profile_mutations() {
+    let submission = Submission::read_current();
+    let wire = serde_json::to_value(&submission).unwrap();
+    assert_eq!(wire["observe_current"], true);
+    assert_eq!(wire["changes"], json!([]));
+    assert!(wire.get("profile_guid").is_none());
+    let restored: Submission = serde_json::from_value(wire).unwrap();
+    assert!(restored.is_read());
+    for product_id in [153, 170, 203, 204, 214, 226, 45066] {
+        restored.validate(product_id).unwrap();
+    }
+    let legacy: Submission = serde_json::from_value(json!({
+        "changes":[{"SmartReel":true}],
+        "profiles":{"selected_obm_profile_id":null,"first_matching_obm_slot_id":null,"matching_obm_profile_ids":[]}
+    })).unwrap();
+    assert!(!legacy.is_read());
+    assert!(legacy.validate(170).is_ok());
+    let empty_legacy: Submission = serde_json::from_value(json!({
+        "changes":[],
+        "profiles":{"selected_obm_profile_id":null,"first_matching_obm_slot_id":null,"matching_obm_profile_ids":[]}
+    })).unwrap();
+    assert!(empty_legacy.validate(170).is_err());
+}

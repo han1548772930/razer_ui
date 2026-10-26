@@ -4,6 +4,19 @@ use super::{AppShell, Location, chroma_window::ChromaWindow, profile_migration, 
 use gpui_kit::*;
 use razer_app_pages::chroma_settings::{ChromaSettings, SettingsAction};
 
+impl Location {
+    pub(super) fn synapse_settings_mount_change(&self, next: &Self) -> Option<bool> {
+        let owns_settings = |location: &Self| {
+            matches!(
+                location,
+                Self::Main(razer_pages::nav::Tab::Setting) | Self::ProductSettings(false)
+            )
+        };
+        let mounted = owns_settings(next);
+        (owns_settings(self) != mounted).then_some(mounted)
+    }
+}
+
 #[derive(Default)]
 pub(super) struct ProductSettingsState {
     chroma: Option<Entity<ChromaSettings>>,

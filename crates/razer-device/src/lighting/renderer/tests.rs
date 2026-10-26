@@ -20,6 +20,169 @@ fn quick(id: u16, settings: serde_json::Value) -> EngineEffect {
 }
 
 #[test]
+#[ignore = "explicit pure Rust snapshot for tools/workspace.py lighting DLL comparison"]
+fn explicit_native_lighting_snapshots() {
+    use crate::lighting_engine::{LedConfiguration, LedMapping};
+    use serde_json::json;
+    let geometry = LedConfiguration {
+        version: 2,
+        vendor_id: 5426,
+        product_id: 3942,
+        edition: 0,
+        layout: 0,
+        matrix_max_row: 3,
+        matrix_max_col: 3,
+        device_max_row: 3,
+        device_max_col: 3,
+        led_width: 40,
+        led_height: 40,
+        led_width_offset: 0,
+        led_height_offset: 0,
+        max_region: 0,
+        region_max_row: 0,
+        region_max_col: 0,
+        led_matrix: (0..3)
+            .flat_map(|row| {
+                (0..3).map(move |col| LedMapping {
+                    matrix_pos: [row, col],
+                    device_pos: [row, col],
+                })
+            })
+            .collect(),
+        led_regions: Vec::new(),
+        led_input_map: Vec::new(),
+    };
+    let mut scenarios = Vec::new();
+    for (name, effect) in [
+        (
+            "static",
+            EngineEffect {
+                effect: 6,
+                parameters: EffectParameters {
+                    color: Some(0x332211),
+                    ..Default::default()
+                },
+            },
+        ),
+        ("wheel_stationary", wheel(2048, 0., -1)),
+    ] {
+        let mut stable = render(&effect, 3, 3);
+        let stable_packed_colorref = frame(&mut stable, 9, None)
+            .into_iter()
+            .map(|[r, g, b]| u32::from_le_bytes([r, g, b, 0]))
+            .collect::<Vec<_>>();
+        let mut engine = Engine::new(0);
+        let device = engine.create_device(&geometry).unwrap();
+        let instance = engine.create_engine().unwrap();
+        engine.add_device(instance, device).unwrap();
+        engine.add_effect(instance, &effect).unwrap();
+        engine.enable(instance, true, 0).unwrap();
+        let mut ticks = Vec::new();
+        for logical_ms in (0..=4000).step_by(40) {
+            let frames = engine
+                .frames(logical_ms, [None; 2])
+                .unwrap()
+                .into_iter()
+                .map(|frame| {
+                    json!({
+                        "device_handle": frame.device_handle,
+                        "packed_colorref": frame.frame.chunks_exact(3)
+                            .map(|rgb| u32::from_le_bytes([rgb[0],rgb[1],rgb[2],0]))
+                            .collect::<Vec<_>>()
+                    })
+                })
+                .collect::<Vec<_>>();
+            ticks.push(json!({"logical_ms":logical_ms,"frames":frames}));
+        }
+        engine.enable(instance, false, 4040).unwrap();
+        engine.destroy_engine(instance).unwrap();
+        engine.destroy_device(device).unwrap();
+        engine.terminate();
+        scenarios.push(json!({"name":name,"geometry":geometry,"effect":effect,
+            "epoch_seconds":0,"ticks":ticks,"stable_packed_colorref":stable_packed_colorref,
+            "cleanup":{"engine_destroyed":true,"device_destroyed":true,"terminated":true}}));
+    }
+    println!(
+        "RAZER_LIGHTING_RESULT {}",
+        json!({"schema_version":1,"scenarios":scenarios})
+    );
+}
+
+fn wheel(mode: u32, speed: f64, cycles: i32) -> EngineEffect {
+    EngineEffect {
+        effect: 13,
+        parameters: EffectParameters {
+            mode: Some(mode),
+            speed: Some(speed),
+            cycles: Some(cycles),
+            center_row: Some(1),
+            center_col: Some(1),
+            color_stops: Some(vec![
+                ColorStop {
+                    stop: 0,
+                    color: 0x0000ff,
+                },
+                ColorStop {
+                    stop: 100,
+                    color: 0xff0000,
+                },
+            ]),
+            ..Default::default()
+        },
+    }
+}
+
+#[test]
+fn wheel_native_angles_use_row_then_column_and_a_1024_entry_gradient() {
+    // 0x66d60/0x66f20 cardinal and diagonal angles select indices
+    // [128,256,384,0,512,512,896,768,640]. 0x692e0 truncates f32 channels.
+    let mut renderer = render(&wheel(2048, 360., -1), 3, 3);
+    assert_eq!(
+        frame(&mut renderer, 9, None),
+        [
+            [223, 0, 31],
+            [191, 0, 63],
+            [159, 0, 95],
+            [255, 0, 0],
+            [127, 0, 127],
+            [127, 0, 127],
+            [31, 0, 223],
+            [63, 0, 191],
+            [95, 0, 159],
+        ]
+    );
+}
+
+#[test]
+fn wheel_direction_preserves_phase_truncation_period_and_cursor_reset() {
+    let mut clockwise = render(&wheel(1024, 360., -1), 3, 3);
+    let mut counterclockwise = render(&wheel(2048, 360., -1), 3, 3);
+    let first = frame(&mut clockwise, 9, None);
+    assert_eq!(first, frame(&mut counterclockwise, 9, None));
+    // Speed 360 yields 25 steps. Opposite modes truncate phases 983 and 40,
+    // producing indices 471 and 552 at the right-hand cardinal position.
+    assert_eq!(frame(&mut clockwise, 9, None)[5], [137, 0, 117]);
+    assert_eq!(frame(&mut counterclockwise, 9, None)[5], [117, 0, 137]);
+    clockwise.reset().unwrap();
+    assert_eq!(frame(&mut clockwise, 9, None), first);
+    for _ in 1..25 {
+        frame(&mut clockwise, 9, None);
+    }
+    assert_eq!(frame(&mut clockwise, 9, None), first);
+    let mut finite = render(&wheel(2048, 360., 1), 3, 3);
+    for _ in 0..25 {
+        assert!(frame(&mut finite, 9, None).iter().any(|p| *p != [0; 3]));
+    }
+    assert_eq!(frame(&mut finite, 9, None), [[0; 3]; 9]);
+    finite.reset().unwrap();
+    assert_eq!(frame(&mut finite, 9, None), [[0; 3]; 9]);
+    let mut stationary = render(&wheel(2048, 0., 1), 3, 3);
+    for _ in 0..50 {
+        assert_eq!(frame(&mut stationary, 9, None), first);
+    }
+}
+
+#[test]
 fn gradient_uses_both_segment_endpoints_and_native_truncation() {
     let values = gradient(
         &[

@@ -115,6 +115,11 @@ pub(super) fn seiren_audio_playback(
 }
 #[path = "controller_calibration_identity.rs"]
 mod controller_calibration_identity;
+#[path = "marci_identity.rs"]
+mod marci_identity;
+pub(in crate::runtime) fn marci_channels(container: &str) -> anyhow::Result<marci_identity::Channels> {
+    marci_identity::resolve(container)
+}
 #[path = "controller_input.rs"]
 mod controller_input;
 #[path = "device_reads.rs"]
@@ -434,6 +439,10 @@ impl NativeRuntime {
             | ServiceRequest::HidNodeReceiverDockMode { .. }
             | ServiceRequest::ControllerTriggers { .. }
             | ServiceRequest::ControllerLighting { .. }
+            | ServiceRequest::MarciLighting { .. }
+            | ServiceRequest::ControllerSleep { .. }
+            | ServiceRequest::ControllerSocd { .. }
+            | ServiceRequest::ControllerInitialization { .. }
             | ServiceRequest::ControllerTriggerCalibrationStart { .. }
             | ServiceRequest::ControllerTriggerCalibrationPoll { .. }
             | ServiceRequest::ControllerTriggerCalibrationCancel { .. } => {

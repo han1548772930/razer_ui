@@ -138,9 +138,17 @@ mod tests {
 
     fn device() -> Device {
         let mut device = razer_model::product_preview::registered_preview(226).unwrap();
-        device.profiles[0].source_settings = Some(json!({"guid":"source-guid","name":"Original",
-            "scrollWheel":{"scrollMode":"Tactile","smartReelEnabled":false},"pollingRate":1000,
-            "unknown":{"retained":true}}));
+        device.active_profile = "scroll-profile".into();
+        device.profiles = vec![razer_model::model::Profile {
+            id: device.active_profile.clone(),
+            guid: "source-guid".into(),
+            name: "Original".into(),
+            settings: None,
+            source_settings: Some(json!({"guid":"source-guid","name":"Original",
+                "scrollWheel":{"scrollMode":"Tactile","smartReelEnabled":false},"pollingRate":1000,
+                "unknown":{"retained":true}})),
+            dpi_stages: None,
+        }];
         device.source_device_settings = Some(
             json!({"version":7,"deviceMetadatas":{"serial":{"activeProfileGuid":"source-guid"}}}),
         );
@@ -329,7 +337,7 @@ mod tests {
 
 impl AppShell {
     pub(super) fn initialize_mouse_scroll_profiles(&mut self, cx: &mut Context<Self>) {
-        if self.close_requested || self.storage_error.is_some() {
+        if self.close_requested {
             return;
         }
         for workspace in &self.devices {
@@ -390,6 +398,10 @@ impl AppShell {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if request.is_read() {
+            self.submit_mouse_scroll(workspace, request, window.window_handle(), cx);
+            return;
+        }
         if self.storage_error.is_some()
             || !self.devices.contains(&workspace)
             || !workspace.read(cx).mouse_scroll_save_matches(&request, cx)
@@ -460,7 +472,11 @@ impl AppShell {
         let Some(route) =
             unique_route(&self.device_observations, workspace.read(cx).device(cx)).cloned()
         else {
-            self.status = "滚轮设置已保存；尚无唯一的鼠标或接收器连接，设备未写入。".into();
+            self.status = if request.is_read() {
+                "滚轮状态未读取：尚无唯一的鼠标或接收器连接。".into()
+            } else {
+                "滚轮设置已保存；尚无唯一的鼠标或接收器连接，设备未写入。".into()
+            };
             workspace.update(cx, |workspace, cx| {
                 workspace.finish_mouse_scroll(&request, cx)
             });

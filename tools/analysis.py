@@ -2502,7 +2502,21 @@ def native_observation_evidence(specification):
 
 def native_function_fresh_inlines(raw, capture, selection, specifications, evidence, pe):
     """Bind fresh SDK inlining to complete helpers and original direct CALLs."""
-    values = [int(value, 0) if isinstance(value, str) else value for value in specifications]
+    leaf_scope = "reviewed_nested_register_leaf"
+    values, leaf_values = [], set()
+    for specification in specifications:
+        value = specification
+        if isinstance(value, dict):
+            if (set(value) != {"rva", "inline_scope", "flag_names"}
+                    or value.get("inline_scope") != leaf_scope
+                    or value.get("flag_names") != ["INLINE_DONTCOPY"]):
+                raise ValueError("Fresh inline leaf requires an explicit register-only SDK scope")
+            value = value["rva"]
+            value = int(value, 0) if isinstance(value, str) else value
+            if type(value) is not int:
+                raise ValueError("Fresh inline leaf requires an exact retained RVA")
+            leaf_values.add(value)
+        values.append(int(value, 0) if isinstance(value, str) else value)
     if (pe["architecture"] not in {"x86", "x64"} or not evidence or not evidence.strip()
             or not values or len(values) > 256 or len(set(values)) != len(values)
             or any(type(value) is not int or value < 0 for value in values)):
@@ -2532,38 +2546,59 @@ def native_function_fresh_inlines(raw, capture, selection, specifications, evide
         at = sections[0]["file_offset"] + first - base - sections[0]["rva"]
         return raw[at:at + stop - first]
 
-    calls = {hex(value): [] for value in values}
+    calls = {hex(value): [] for value in values if value not in leaf_values}
     parent_bodies = []
-    for target in selection["targets"]:
-        record = existing[target["rva"]]
+
+    def original_body(rva):
+        if rva not in existing:
+            raise ValueError("Fresh inline function is absent from its complete original capture")
+        record = existing[rva]
         body, identity = retained_body(record)
-        if (record.get("assembly_captured") is not True or body.get("rva") != target["rva"]
-                or body.get("address") != target["address"] or not body.get("chunks") or not body.get("assembly")):
+        if (record.get("assembly_captured") is not True or body.get("rva") != rva
+                or body.get("address") != hex(base + int(rva, 16))
+                or not body.get("chunks") or not body.get("assembly")):
             raise ValueError("Fresh inline parent lacks complete retained assembly")
         for chunk in body["chunks"]:
             code = original_code(int(chunk["start"], 16), int(chunk["end"], 16))
             if code.hex() != chunk["raw_hex"] or hashlib.sha256(code).hexdigest() != chunk["sha256"]:
                 raise ValueError("Fresh inline parent chunks differ from original PE bytes")
-        parent_bodies.append(body)
         for instruction in body["assembly"]:
             at, code = int(instruction["address"], 16), bytes.fromhex(instruction["bytes"])
             if (not code or original_code(at, at + len(code)) != code
-                    or not any(int(c["start"], 16) <= at < at + len(code) <= int(c["end"], 16) for c in body["chunks"])):
+                    or not any(int(c["start"], 16) <= at < at + len(code) <= int(c["end"], 16)
+                               for c in body["chunks"])):
                 raise ValueError("Fresh inline parent instruction differs from complete original chunks")
+        return body, identity
+
+    def original_calls(body, identity, destinations):
+        found = []
+        for instruction in body["assembly"]:
+            at, code = int(instruction["address"], 16), bytes.fromhex(instruction["bytes"])
             if len(code) != 5 or code[0] != 0xe8:
                 continue
             destination = at + 5 + int.from_bytes(code[1:], "little", signed=True)
             rva = hex(destination - base)
-            if rva not in calls:
+            if rva not in destinations:
                 continue
             edges = [x for x in instruction.get("xrefs_from", []) if x.get("code") and x.get("type") in {16, 17}]
             if len(edges) != 1 or edges[0].get("to") != hex(destination) or edges[0].get("from") != hex(at):
                 raise ValueError("Fresh inline direct CALL lacks its exact retained code edge")
-            calls[rva].append({"parent_rva": target["rva"], "parent_function": identity,
-                              "callsite_rva": hex(at - base), "target_rva": rva, "raw_hex": code.hex()})
+            found.append({"parent_rva": body["rva"], "parent_function": identity,
+                          "callsite_rva": hex(at - base), "target_rva": rva, "raw_hex": code.hex()})
+        return found
+
+    for target in selection["targets"]:
+        body, identity = original_body(target["rva"])
+        if body["address"] != target["address"]:
+            raise ValueError("Fresh inline parent differs from its selected original address")
+        parent_bodies.append(body)
+        for call in original_calls(body, identity, calls):
+            calls[call["target_rva"]].append(call)
     plans = []
     for value in values:
         rva = hex(value)
+        if value in leaf_values:
+            continue
         if not calls[rva] or len(calls[rva]) > 256:
             raise ValueError("Fresh inline helper requires a bounded original direct CALL in selected parents")
         helper = helpers[rva]
@@ -2578,13 +2613,52 @@ def native_function_fresh_inlines(raw, capture, selection, specifications, evide
         plans.append({"rva": rva, "source_function": identity, "expected_chunks": helper["expected_chunks"],
                       "callsites": calls[rva], "flag_names": ["INLINE_EXTFRAME", "INLINE_DONTCOPY"],
                       "assembly_evidence": evidence.strip()})
+    for value in values:
+        if value not in leaf_values:
+            continue
+        rva = hex(value)
+        body, identity = original_body(rva)
+        if (pe["architecture"] != "x64" or len(body["assembly"]) > 256
+                or any(not isinstance(item.get("text"), str) or not item["text"].strip()
+                       or re.search(r"\b(?:r(?:sp|bp)|e(?:sp|bp)|push\w*|pop\w*|enter|leave|call\w*)\b",
+                                    item["text"], re.IGNORECASE)
+                       or re.search(r"\bret(?:n|f)?\s+\S", item["text"], re.IGNORECASE)
+                       for item in body["assembly"])
+                or not any(re.fullmatch(r"\s*ret(?:n)?\s*", item["text"], re.IGNORECASE)
+                           for item in body["assembly"])):
+            raise ValueError("Fresh inline register leaf requires reviewed complete code without a stack frame or nested CALL")
+        nested_calls, nested_parents = [], []
+        for parent in plans:
+            parent_body, parent_identity = original_body(parent["rva"])
+            edges = original_calls(parent_body, parent_identity, {rva})
+            if not edges:
+                continue
+            nested_parents.append(parent_body)
+            for outer in parent["callsites"]:
+                for inner in edges:
+                    nested_calls.append({**inner, "owner_rva": outer["parent_rva"],
+                                         "call_path": [dict(outer), dict(inner)]})
+        if not nested_calls or len(nested_calls) > 256:
+            raise ValueError("Fresh inline register leaf lacks a bounded explicitly reviewed outer helper CALL path")
+        expected_edges = {int(call["callsite_rva"], 16) + base for call in nested_calls}
+        retained_edges = {int(edge["from"], 16) for edge in body.get("xrefs_to_entry", [])
+                          if edge.get("code") and edge.get("type") in {16, 17}
+                          and any(any(int(chunk["start"], 16) <= int(edge["from"], 16) < int(chunk["end"], 16)
+                                      for chunk in parent["chunks"]) for parent in nested_parents)}
+        if retained_edges != expected_edges:
+            raise ValueError("Fresh inline register leaf and its original parent CALL edges disagree")
+        plans.append({"rva": rva, "source_function": identity, "expected_chunks": helpers[rva]["expected_chunks"],
+                      "callsites": nested_calls, "inline_scope": leaf_scope, "flag_names": ["INLINE_DONTCOPY"],
+                      "assembly_evidence": evidence.strip()})
     return plans
 
 
 def native_function_selection(raw, capture, function_rvas, type_specs=(), type_note=None, max_function_kib=None,
                               import_specs=(), merge_specs=(), outline_rvas=(), partition_specs=(), shared_tail_specs=(),
                               observation_evidence=None, fresh_inline_rvas=(), callsite_reviews=(), reanalyze_type_owners=False,
-                              propagate_direct_calls=False):
+                              propagate_direct_calls=False, boundary_reviews=(), instruction_reviews=(),
+                              fresh_inline_register_leaf_rvas=(), decompiler_prepass_rvas=(), frame_reviews=(), switch_reviews=(), stack_reviews=(),
+                              shared_tail_context_reviews=(), optimizer_property_reviews=(), recursive_context_reviews=()):
     """Select retained boundaries and explicit, assembly-reviewed type repairs."""
     from host import inspect_pe
 
@@ -2623,12 +2697,56 @@ def native_function_selection(raw, capture, function_rvas, type_specs=(), type_n
                         "file_offset": section["file_offset"] + rva - section["rva"]})
     selection = {"mode": "retained_function_reanalysis", "image_base": hex(base), "architecture": pe["architecture"],
                  "targets": targets, "type_recoveries": types}
+    if recursive_context_reviews:
+        if (type_specs or import_specs or merge_specs or outline_rvas or partition_specs or shared_tail_specs
+                or observation_evidence or fresh_inline_rvas or callsite_reviews or reanalyze_type_owners
+                or propagate_direct_calls or boundary_reviews or instruction_reviews
+                or fresh_inline_register_leaf_rvas or decompiler_prepass_rvas or frame_reviews
+                or switch_reviews or stack_reviews or shared_tail_context_reviews or optimizer_property_reviews):
+            raise ValueError("Recursive root contexts require a separate exact reviewed supplement")
+        import native_boundaries
+        selection["recursive_fallthrough_contexts"] = native_boundaries.select_recursive_contexts(
+            sys.modules[__name__], raw, capture, function_rvas, recursive_context_reviews)
+    if shared_tail_context_reviews:
+        if (import_specs or merge_specs or outline_rvas or partition_specs or shared_tail_specs
+                or fresh_inline_rvas or callsite_reviews or reanalyze_type_owners or propagate_direct_calls
+                or boundary_reviews or instruction_reviews or fresh_inline_register_leaf_rvas
+                or decompiler_prepass_rvas or frame_reviews or switch_reviews or stack_reviews):
+            raise ValueError("Existing shared-tail context requires its own exact typed supplement")
+        import native_boundaries
+        selection["shared_tail_contexts"] = native_boundaries.select_shared_tail_contexts(
+            sys.modules[__name__], raw, capture, function_rvas, shared_tail_context_reviews, types)
     if observation_evidence is not None:
         selection["static_observation"] = native_observation_evidence(observation_evidence)
     if max_function_kib is not None:
         if type(max_function_kib) is not int or not 64 <= max_function_kib <= 1024:
             raise ValueError("Decompiler function size limit must be an integer from 64 to 1024 KiB")
         selection["decompiler_limits"] = {"max_function_kib": max_function_kib}
+    if boundary_reviews:
+        if (type_specs or import_specs or merge_specs or partition_specs or shared_tail_specs
+                or fresh_inline_rvas or callsite_reviews or reanalyze_type_owners or propagate_direct_calls
+                or instruction_reviews or fresh_inline_register_leaf_rvas or decompiler_prepass_rvas
+                or frame_reviews or switch_reviews or stack_reviews or observation_evidence):
+            raise ValueError("Exception-backed boundary recovery requires a separate supplement without ABI or inline repairs")
+        import native_boundaries
+        if pe["architecture"] == "x86":
+            selection["x86_entry_partitions"] = native_boundaries.select_entry_partitions(
+                sys.modules[__name__], raw, capture, function_rvas, boundary_reviews, outline_rvas)
+            selection["decompiler_prepasses"] = native_boundaries.entry_partition_prepasses(
+                sys.modules[__name__], raw, capture, function_rvas, selection["x86_entry_partitions"])
+        else:
+            if outline_rvas:
+                raise ValueError("Exception-backed boundary recovery requires a separate supplement without outlined helpers")
+            selection["function_boundary_recoveries"] = native_boundaries.select(
+                sys.modules[__name__], raw, capture, function_rvas, boundary_reviews)
+    if instruction_reviews:
+        if (type_specs or import_specs or merge_specs or outline_rvas or partition_specs or shared_tail_specs
+                or fresh_inline_rvas or callsite_reviews or reanalyze_type_owners or propagate_direct_calls
+                or fresh_inline_register_leaf_rvas):
+            raise ValueError("Original instruction recovery requires a separate supplement without ABI or boundary repairs")
+        import native_boundaries
+        selection["instruction_boundary_recoveries"] = native_boundaries.select_instructions(
+            sys.modules[__name__], raw, capture, function_rvas, instruction_reviews)
     if import_specs:
         selection["import_type_recoveries"] = native_import_type_recoveries(raw, import_specs, type_note)
         selection["import_thunks"] = native_import_thunks(raw, capture, selection["import_type_recoveries"], pe)
@@ -2650,11 +2768,14 @@ def native_function_selection(raw, capture, function_rvas, type_specs=(), type_n
         if merge_specs or outline_rvas or type_specs or import_specs:
             raise ValueError("Function partitions require a separate reviewed supplement without ABI or boundary repairs")
         selection["function_partitions"] = native_function_partitions(raw, capture, function_rvas, partition_specs, type_note, pe)
-    if fresh_inline_rvas:
+    if fresh_inline_rvas or fresh_inline_register_leaf_rvas:
         selection["function_fresh_inlines"] = native_function_fresh_inlines(
-            raw, capture, selection, fresh_inline_rvas, type_note, pe)
+            raw, capture, selection, [*fresh_inline_rvas,
+                *({"rva": hex(int(value, 0) if isinstance(value, str) else value),
+                   "inline_scope": "reviewed_nested_register_leaf", "flag_names": ["INLINE_DONTCOPY"]}
+                  for value in fresh_inline_register_leaf_rvas)], type_note, pe)
     if callsite_reviews:
-        if merge_specs or outline_rvas or partition_specs or shared_tail_specs or fresh_inline_rvas:
+        if merge_specs or outline_rvas or partition_specs or shared_tail_specs or fresh_inline_rvas or fresh_inline_register_leaf_rvas:
             raise ValueError("Resolved callsite types require a separate supplement without boundary or inline changes")
         import native_callsites
         selection["callsite_type_recoveries"] = native_callsites.select(
@@ -2665,7 +2786,7 @@ def native_function_selection(raw, capture, function_rvas, type_specs=(), type_n
         raise ValueError("Direct call type propagation requires explicit type-owner reanalysis")
     if reanalyze_type_owners:
         if (not (types or import_specs) or merge_specs or outline_rvas or partition_specs
-                or shared_tail_specs or fresh_inline_rvas or callsite_reviews):
+                or shared_tail_specs or fresh_inline_rvas or callsite_reviews or fresh_inline_register_leaf_rvas):
             raise ValueError("Automatic type-owner reanalysis requires separate exact type repairs without boundary changes")
         import native_adjudication
         owners = []
@@ -2685,7 +2806,152 @@ def native_function_selection(raw, capture, function_rvas, type_specs=(), type_n
             import native_callsites
             selection["direct_call_type_propagations"] = native_callsites.select_direct(
                 sys.modules[__name__], raw, capture, owners, types)
+    if frame_reviews:
+        if (boundary_reviews or instruction_reviews or merge_specs or outline_rvas or partition_specs
+                or shared_tail_specs or fresh_inline_rvas or callsite_reviews or fresh_inline_register_leaf_rvas
+                or observation_evidence is None):
+            raise ValueError("CPU frame reconstruction requires complete explicit observation without boundary or inline changes")
+        import native_boundaries
+        selection["frame_rebuilds"] = native_boundaries.select_frame_rebuilds(
+            sys.modules[__name__], raw, capture, function_rvas, frame_reviews)
+    if stack_reviews:
+        if (boundary_reviews or instruction_reviews or merge_specs or outline_rvas or partition_specs
+                or shared_tail_specs or fresh_inline_rvas or fresh_inline_register_leaf_rvas
+                or callsite_reviews or frame_reviews or switch_reviews):
+            raise ValueError("Derived stack points require separate complete owners without boundary changes")
+        import native_boundaries
+        selection["derived_stack_points"] = native_boundaries.select_stack_points(
+            sys.modules[__name__], raw, capture, function_rvas, stack_reviews)
+    if switch_reviews:
+        if (type_specs or import_specs or boundary_reviews or instruction_reviews or merge_specs or outline_rvas
+                or partition_specs or shared_tail_specs or fresh_inline_rvas or callsite_reviews
+                or fresh_inline_register_leaf_rvas or reanalyze_type_owners or propagate_direct_calls
+                or frame_reviews):
+            raise ValueError("Switch metadata recovery requires a separate supplement without ABI, boundary or frame changes")
+        import native_callsites
+        selection["switch_metadata_recoveries"] = native_callsites.select_switches(
+            sys.modules[__name__], raw, capture, function_rvas, switch_reviews)
+    if decompiler_prepass_rvas:
+        if boundary_reviews:
+            raise ValueError("Decompiler prepass cannot change a selected owner's exception-backed boundary")
+        prepass_rvas = [int(value, 0) if isinstance(value, str) else value for value in decompiler_prepass_rvas]
+        changed_rvas = ({int(value, 16) for merge in selection.get("function_merges", [])
+                         for value in merge["member_rvas"]}
+            | {int(owner["rva"], 16) for shared in selection.get("function_shared_tails", []) for owner in shared["owners"]}
+            | {int(helper["rva"], 16) for key in ("function_outlines", "function_fresh_inlines")
+               for helper in selection.get(key, [])})
+        if changed_rvas.intersection(prepass_rvas):
+            raise ValueError("Decompiler prepass cannot change a selected owner's original boundary")
+        import native_boundaries
+        selection["decompiler_prepasses"] = native_boundaries.select_prepasses(
+            sys.modules[__name__], raw, capture, function_rvas, prepass_rvas, type_note,
+            selection.get("function_partitions", ()), selection.get("instruction_boundary_recoveries", ()))
+    if optimizer_property_reviews:
+        if (import_specs or merge_specs or partition_specs or observation_evidence
+                or fresh_inline_rvas or callsite_reviews or reanalyze_type_owners or propagate_direct_calls
+                or boundary_reviews or instruction_reviews or fresh_inline_register_leaf_rvas or frame_reviews
+                or switch_reviews or stack_reviews or shared_tail_context_reviews or not outline_rvas):
+            raise ValueError("Optimizer properties require exact outlined helpers and independently validated type/shared-tail context")
+        import native_boundaries
+        selection["optimizer_properties"] = native_boundaries.select_optimizer_properties(
+            sys.modules[__name__], raw, capture, function_rvas, optimizer_property_reviews,
+            selection["function_outlines"], selection.get("function_shared_tails", ()), selection["type_recoveries"])
     return selection
+
+
+def native_supplement_request(source, capture_path, database, selection_key, selection, executable):
+    """Bind a new private attempt to exact sources, analyzer and immutable evidence."""
+    import tempfile
+
+    def identity(path):
+        return {"path": rel(path), "bytes": path.stat().st_size, "sha256": sha(path)}
+
+    sources = {}
+    for name, filename in {
+        "orchestrator": "tools/analysis.py", "entry": "tools/workspace.py",
+        "queue": "tools/reverse_pending.py", "supplement": "tools/ida/supplement.py",
+        "capture": "tools/ida/capture.py", "capture_support": "tools/ida/capture_io.py",
+        "serializer": "tools/ida/capture_values.py", "parser": "tools/host.py",
+        "adjudication": "tools/native_adjudication.py", "boundaries": "tools/native_boundaries.py",
+        "callsites": "tools/native_callsites.py",
+    }.items():
+        path = ROOT / filename
+        raw = path.read_bytes()
+        digest = hashlib.sha256(raw).hexdigest()
+        snapshot = ROOT / ".analysis/results/reverse-pending/tool-sources" / (digest + ".py")
+        snapshot.parent.mkdir(parents=True, exist_ok=True)
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(prefix=".source-", suffix=".tmp", dir=snapshot.parent, delete=False) as stream:
+                temporary = Path(stream.name)
+                stream.write(raw)
+                stream.flush()
+                os.fsync(stream.fileno())
+            try:
+                os.link(temporary, snapshot)
+            except FileExistsError:
+                if snapshot.read_bytes() != raw:
+                    raise ValueError("Retained supplement tool source changed")
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
+        sources[name] = {"path": filename, "bytes": len(raw), "sha256": digest,
+                         "snapshot": identity(snapshot)}
+    return {"schema_version": 1, "input": identity(source), "base_capture": identity(capture_path),
+            "source_database": identity(database), "selection_key": selection_key, "selection": selection,
+            "tool_sources": sources, "analyzer": {"installation_path": executable.name,
+                "bytes": executable.stat().st_size, "sha256": sha(executable)}}
+
+
+def native_supplement_request_sha256(request):
+    return hashlib.sha256(json.dumps(request, sort_keys=True).encode()).hexdigest()
+
+
+def native_supplement_attempt_name(name):
+    """Recognize canonical attempt names and the source-bound version-1 format."""
+    return isinstance(name, str) and re.fullmatch(r"[0-9a-f]{16}(?:-[0-9a-f]{16})?", name) is not None
+
+
+def verify_native_supplement_request(plan, session, *, root=None):
+    """Validate immutable attempt bindings while preserving legacy formal captures."""
+    request = plan.get("analysis_request")
+    if request is None:
+        if any(key in plan or key in session for key in ("request_sha256", "attempt_id", "attempt_nonce", "tool_sources")):
+            raise ValueError("Native supplement immutable attempt identity lost its source-bound request")
+        return
+    root = ROOT if root is None else root
+    digest = native_supplement_request_sha256(request)
+    attempt = plan.get("attempt_id")
+    nonce = plan.get("attempt_nonce")
+    if nonce is None:
+        valid_attempt = isinstance(attempt, str) and re.fullmatch(digest[:16] + r"-[0-9a-f]{16}", attempt) is not None
+    else:
+        valid_attempt = (isinstance(nonce, str) and re.fullmatch(r"[0-9a-f]{32}", nonce) is not None
+            and session.get("attempt_nonce") == nonce
+            and attempt == hashlib.sha256((digest + nonce).encode()).hexdigest()[:16])
+    if (request.get("schema_version") != 1 or plan.get("request_sha256") != digest
+            or not valid_attempt
+            or Path(plan["output"]).name != attempt or session.get("attempt_id") != attempt
+            or session.get("request_sha256") != digest
+            or plan.get(request.get("selection_key")) != request.get("selection")
+            or request.get("input") != {"path": plan.get("input"), "bytes": plan.get("input_bytes"),
+                                        "sha256": plan.get("sha256")}
+            or any({key: request[field][key] for key in ("path", "sha256")} != plan.get(field)
+                   for field in ("base_capture", "source_database"))
+            or session.get("tool_sources") != request.get("tool_sources")
+            or session.get("analyzer") != request["analyzer"]["installation_path"]
+            or session.get("analyzer_sha256") != request["analyzer"]["sha256"]):
+        raise ValueError("Native supplement immutable attempt identity differs")
+    for record in request["tool_sources"].values():
+        snapshot = record["snapshot"]
+        path = (root / snapshot["path"]).resolve()
+        boundary = (root / ".analysis/results/reverse-pending/tool-sources").resolve()
+        if (not path.is_relative_to(boundary) or path == boundary
+                or path.stat().st_size != record["bytes"] or sha(path) != record["sha256"]
+                or snapshot["bytes"] != record["bytes"] or snapshot["sha256"] != record["sha256"]):
+            raise ValueError("Native supplement retained tool snapshot changed")
+    if session.get("passed") and session.get("source_identity_rechecked") is not True:
+        raise ValueError("Native supplement did not recheck its exact source identities")
 
 
 def supplement_native(args):
@@ -2714,7 +2980,12 @@ def supplement_native(args):
             getattr(args, "partition_functions", None) or (), getattr(args, "share_function_tail", None) or (),
             getattr(args, "observation_evidence", None), getattr(args, "fresh_inline_function_rva", None) or (),
             getattr(args, "callsite_type_review", None) or (), getattr(args, "reanalyze_type_owners", False),
-            getattr(args, "propagate_direct_calls", False))
+            getattr(args, "propagate_direct_calls", False), getattr(args, "boundary_review", None) or (),
+            getattr(args, "instruction_review", None) or (), getattr(args, "fresh_inline_register_leaf_rva", None) or (),
+            getattr(args, "decompiler_prepass_rva", None) or (), getattr(args, "frame_review", None) or (),
+            getattr(args, "switch_review", None) or (), getattr(args, "stack_review", None) or (),
+            getattr(args, "shared_tail_context_review", None) or (), getattr(args, "optimizer_property_review", None) or (),
+            getattr(args, "recursive_context_review", None) or ())
         observation = selection.get("static_observation")
         if observation and sha(ROOT / "tools/ida/supplement.py") != observation["observer_source"]["sha256"]:
             raise ValueError("Static observation tool differs from its reviewed source")
@@ -2728,6 +2999,16 @@ def supplement_native(args):
                 or getattr(args, "observation_evidence", None) or getattr(args, "fresh_inline_function_rva", None)
                 or getattr(args, "reanalyze_type_owners", False)
                 or getattr(args, "propagate_direct_calls", False)
+                or getattr(args, "boundary_review", None)
+                or getattr(args, "instruction_review", None)
+                or getattr(args, "fresh_inline_register_leaf_rva", None)
+                or getattr(args, "decompiler_prepass_rva", None)
+                or getattr(args, "frame_review", None)
+                or getattr(args, "switch_review", None)
+                or getattr(args, "stack_review", None)
+                or getattr(args, "shared_tail_context_review", None)
+                or getattr(args, "optimizer_property_review", None)
+                or getattr(args, "recursive_context_review", None)
                 or getattr(args, "callsite_type_review", None)):
             raise ValueError("Function type recovery requires explicit function reanalysis")
         if args.pointer_table_rva is None or args.pointer_count is None:
@@ -2744,51 +3025,66 @@ def supplement_native(args):
     database = ROOT / ".work/native" / row["sha256"] / "batch" / (source.name + ".i64")
     if not database.is_file():
         raise ValueError("Retained private full-capture IDB is unavailable")
-    selection_id = hashlib.sha256(json.dumps(selection, sort_keys=True).encode()).hexdigest()[:16]
-    output = result / "supplements" / selection_id
-    scratch = ROOT / ".work/native" / row["sha256"] / "supplements" / selection_id
-    output.mkdir(parents=True, exist_ok=True)
-    scratch.mkdir(parents=True, exist_ok=True)
-    previous_attempts = []
-    session_path = output / "session.json"
-    if session_path.is_file():
-        prior = json.loads(session_path.read_bytes())
-        if not prior.get("finished_at_utc"):
-            if not getattr(args, "recover_interrupted", False):
-                raise ValueError("Previous supplemental session has not finished; inspect it before rerunning")
-            from reverse_pending import process_alive
-            if process_alive(prior.get("pid")) is not False:
-                raise ValueError("Interrupted supplement process is still running or cannot be verified absent")
-            original_session = session_path.read_bytes()
-            prior["interruption_recovery"] = {
-                "observed_inactive_at_utc": stamp(), "process_confirmed_absent": True,
-                "original_session_sha256": hashlib.sha256(original_session).hexdigest(),
-                "original_session_raw_base64": base64.b64encode(original_session).decode(),
-                "finished_at_utc": None, "exit_code": None}
-        previous_attempts = prior.pop("previous_attempts", [])
-        prior["retained_outputs"] = []
-        for path in (output / "plan.json", output / "capture.json", scratch / "ida.log", scratch / "process.log"):
-            if path.is_file():
-                retained = path.read_bytes()
-                prior["retained_outputs"].append({"path_at_attempt": rel(path), "bytes": len(retained),
-                    "sha256": hashlib.sha256(retained).hexdigest(), "raw_base64": base64.b64encode(retained).decode()})
-        previous_attempts.append(prior)
-    private_database = scratch / database.name
-    shutil.copyfile(database, private_database)
-    if sha(database) != sha(private_database):
-        raise ValueError("Private supplemental database copy differs")
-    plan = {"schema_version": 1, "input": rel(source), "sha256": row["sha256"],
-            "input_bytes": row["bytes"], "output": rel(output), "acquisition_binding": row,
-            "database": {"path": rel(private_database), "sha256": sha(private_database)},
-            "source_database": {"path": rel(database), "sha256": sha(database)},
-            "base_capture": {"path": rel(capture_path), "sha256": sha(capture_path)},
-            selection_key: selection, "existing_functions": existing,
-            "target_execution": False, "real_device_operations": False}
-    save(output / "plan.json", plan)
     executable = next((Path(args.ida_root) / name for name in ("idat64.exe", "idat.exe")
                        if (Path(args.ida_root) / name).is_file()), None)
     if executable is None:
         raise ValueError("Static IDA executable is unavailable")
+    request = native_supplement_request(source, capture_path, database, selection_key, selection, executable)
+    request_sha256 = native_supplement_request_sha256(request)
+    attempt_nonce = uuid.uuid4().hex
+    attempt_id = hashlib.sha256((request_sha256 + attempt_nonce).encode()).hexdigest()[:16]
+    output = result / "supplements" / attempt_id
+    scratch = ROOT / ".work/native" / row["sha256"] / "supplements" / attempt_id
+    private_database = scratch / database.name
+    session_path = output / "session.json"
+    previous_attempts = []
+    with index_lock(scratch.parent / ".reservation.lock"):
+        for prior_path in sorted((result / "supplements").glob("*/session.json")):
+            prior_plan = prior_path.parent / "plan.json"
+            if not prior_plan.is_file():
+                prior_data = json.loads(prior_path.read_bytes())
+                if prior_data.get("selection") != selection:
+                    continue
+            elif json.loads(prior_plan.read_bytes()).get(selection_key) != selection:
+                continue
+            original_session = prior_path.read_bytes()
+            prior = json.loads(original_session)
+            record = {"session": {"path": rel(prior_path), "bytes": len(original_session),
+                                   "sha256": hashlib.sha256(original_session).hexdigest()}}
+            if not prior.get("finished_at_utc"):
+                if not getattr(args, "recover_interrupted", False):
+                    raise ValueError("Previous supplemental session has not finished; inspect it before rerunning")
+                from reverse_pending import process_alive
+                if process_alive(prior.get("pid") or prior.get("coordinator_pid")) is not False:
+                    raise ValueError("Interrupted supplement process is still running or cannot be verified absent")
+                record["interruption_recovery"] = {
+                    "observed_inactive_at_utc": stamp(), "process_confirmed_absent": True,
+                    "original_session_sha256": hashlib.sha256(original_session).hexdigest(),
+                    "original_session_raw_base64": base64.b64encode(original_session).decode(),
+                    "finished_at_utc": None, "exit_code": None}
+            previous_attempts.append(record)
+        output.mkdir(parents=True, exist_ok=False)
+        scratch.mkdir(parents=True, exist_ok=False)
+        session = {"pid": None, "coordinator_pid": os.getpid(), "started_at_utc": stamp(),
+            "state": "reserved", "selection": selection, "attempt_id": attempt_id, "attempt_nonce": attempt_nonce,
+            "request_sha256": request_sha256, "analyzer": executable.name,
+            "analyzer_sha256": request["analyzer"]["sha256"], "tool_sources": request["tool_sources"],
+            "capture_tool": {"path": "tools/ida/supplement.py",
+                             "sha256": request["tool_sources"]["supplement"]["sha256"]},
+            "previous_attempts": previous_attempts, "passed": False, "exit_code": None,
+            "target_execution": False, "real_device_operations": False}
+        save(session_path, session)
+
+    def verify_sources():
+        records = [request["input"], request["base_capture"], request["source_database"],
+                   *request["tool_sources"].values(), *existing.values()]
+        for record in records:
+            path = ROOT / record["path"]
+            if sha(path) != record["sha256"] or ("bytes" in record and path.stat().st_size != record["bytes"]):
+                raise ValueError("Native supplement input or tool changed during its attempt: " + record["path"])
+        if sha(executable) != request["analyzer"]["sha256"] or executable.stat().st_size != request["analyzer"]["bytes"]:
+            raise ValueError("Native supplement analyzer changed during its attempt")
+
     env = os.environ.copy()
     env["IDAUSR"] = str(ROOT / "tools/ida/idausr")
     env.pop("RAZER_IDA_CAPTURE_PLAN", None)
@@ -2801,27 +3097,68 @@ def supplement_native(args):
         startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         startup.wShowWindow = 0
         options = {"startupinfo": startup, "creationflags": subprocess.CREATE_NO_WINDOW}
-    with (scratch / "process.log").open("wb") as log:
-        proc = subprocess.Popen(command, cwd=scratch, env=env, stdout=log,
-                                stderr=subprocess.STDOUT, **options)
-    session = {"pid": proc.pid, "started_at_utc": stamp(), "analyzer": executable.name,
-               "analyzer_sha256": sha(executable), "database": plan["database"],
-               "capture_tool": {"path": "tools/ida/supplement.py", "sha256": sha(ROOT / "tools/ida/supplement.py")},
-               "previous_attempts": previous_attempts,
-               "argv": [executable.name, "-A", "-Opdb:off", "-L" + rel(scratch / "ida.log"),
-                        "-Stools/ida/supplement.py", rel(private_database)],
-               "target_execution": False, "real_device_operations": False}
-    save(output / "session.json", session)
-    print(json.dumps({"pid": proc.pid, "result": rel(output), "log": rel(scratch / "ida.log")}), flush=True)
-    session["exit_code"] = proc.wait()
-    session["finished_at_utc"] = stamp()
-    manifest_path = output / "capture.json"
-    session["passed"] = (session["exit_code"] == 0 and manifest_path.is_file()
-                         and json.loads(manifest_path.read_bytes()).get("capture_complete", False))
-    save(output / "session.json", session)
+    proc = None
+    try:
+        verify_sources()
+        with database.open("rb") as original, private_database.open("xb") as private:
+            shutil.copyfileobj(original, private)
+        if sha(private_database) != request["source_database"]["sha256"]:
+            raise ValueError("Private supplemental database copy differs")
+        plan = {"schema_version": 1, "input": rel(source), "sha256": row["sha256"],
+            "input_bytes": row["bytes"], "output": rel(output), "acquisition_binding": row,
+            "database": {"path": rel(private_database), "sha256": sha(private_database)},
+            "source_database": {key: request["source_database"][key] for key in ("path", "sha256")},
+            "base_capture": {key: request["base_capture"][key] for key in ("path", "sha256")},
+            "analysis_request": request, "request_sha256": request_sha256, "attempt_id": attempt_id,
+            "attempt_nonce": attempt_nonce,
+            selection_key: selection, "existing_functions": existing,
+            "target_execution": False, "real_device_operations": False}
+        save(output / "plan.json", plan)
+        session["database"] = plan["database"]
+        session["argv"] = [executable.name, "-A", "-Opdb:off", "-L" + rel(scratch / "ida.log"),
+                           "-Stools/ida/supplement.py", rel(private_database)]
+        verify_sources()
+        with (scratch / "process.log").open("xb") as log:
+            proc = subprocess.Popen(command, cwd=scratch, env=env, stdout=log,
+                                    stderr=subprocess.STDOUT, **options)
+        session.update(pid=proc.pid, state="running")
+        save(session_path, session)
+        print(json.dumps({"pid": proc.pid, "result": rel(output), "log": rel(scratch / "ida.log")}), flush=True)
+        session["exit_code"] = proc.wait()
+        session["process_released"] = True
+        verify_sources()
+        session["source_identity_rechecked"] = True
+        manifest_path = output / "capture.json"
+        session["passed"] = (session["exit_code"] == 0 and manifest_path.is_file()
+                             and json.loads(manifest_path.read_bytes()).get("capture_complete", False))
+        session["state"] = "finished"
+    except BaseException as error:
+        session.update(state="cancelled" if isinstance(error, (KeyboardInterrupt, SystemExit)) else "failed",
+                       error=type(error).__name__ + ": " + str(error), passed=False)
+        raise
+    finally:
+        if proc is not None and session["exit_code"] is None:
+            try:
+                proc.terminate()
+                try:
+                    session["exit_code"] = proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    session["exit_code"] = proc.wait(timeout=10)
+                session["process_released"] = True
+            except BaseException as error:
+                session.update(state="cleanup_failed", cleanup_error=type(error).__name__ + ": " + str(error),
+                               process_released=False, passed=False)
+        if proc is None or session.get("process_released") is True:
+            session["finished_at_utc"] = stamp()
+        if private_database.is_file():
+            session["retained_private_database"] = {"path": rel(private_database),
+                "bytes": private_database.stat().st_size, "sha256": sha(private_database),
+                "reason": "Retain until formal evidence validation and unified dependency-aware cleanup"}
+        save(session_path, session)
     if not getattr(args, "no_refresh_gaps", False):
         refresh_gaps()
-    print(json.dumps({"session": rel(output / "session.json"), "passed": session["passed"]}), flush=True)
+    print(json.dumps({"session": rel(session_path), "passed": session["passed"]}), flush=True)
     return session
 
 
@@ -2848,6 +3185,43 @@ def verify_native_typed_serializer(manifest):
     return {"path": rel(retained), "bytes": len(raw), "sha256": record["sha256"]}
 
 
+def verify_nested_inline_mapping(selection, owner_rva, expected, actual_call, actual_calls):
+    """Bind a nested CALL to the SDK's exact newly inserted outer block range."""
+    base = int(selection["image_base"], 16)
+    call_ea = actual_call.get("sdk_call_ea")
+    original = hex(base + int(expected["callsite_rva"], 16))
+    if (actual_call.get("mapping_api") != "mba_t.map_fict_ea"
+            or actual_call.get("mapping_status") != "api_returned"
+            or not isinstance(call_ea, str) or not re.fullmatch(r"0x[0-9a-f]+", call_ea)
+            or hex(int(call_ea, 16)) != call_ea or actual_call.get("mapped_original_call_ea") != original
+            or type(actual_call.get("fictitious_call")) is not bool
+            or actual_call["fictitious_call"] != (call_ea != original)):
+        raise ValueError("Native nested inline omitted its exact SDK instruction mapping")
+    path = expected.get("call_path")
+    if not isinstance(path, list) or len(path) != 2:
+        raise ValueError("Native nested inline lacks its complete original CALL path")
+    outer = path[0]
+    parents = [call for call in actual_calls if all(call.get(key) == value for key, value in outer.items())]
+    if len(parents) != 1:
+        raise ValueError("Native nested inline lacks a unique reviewed outer CALL operation")
+    parent = parents[0]
+    scope = actual_call.get("source_inline_scope")
+    if (not isinstance(scope, dict) or scope != parent.get("new_block_scope")
+            or set(scope) != {"api", "mba_entry_ea", "source_block", "helper_ea", "inserted_block_interval"}
+            or scope.get("api") != "Hexrays_Hooks.inlined_func"
+            or scope.get("mba_entry_ea") != hex(base + int(owner_rva, 16))
+            or type(scope.get("source_block")) is not int or scope["source_block"] < 0
+            or scope["source_block"] != parent.get("block_serial_before")
+            or scope.get("helper_ea") != hex(base + int(outer["target_rva"], 16))):
+        raise ValueError("Native nested inline differs from its exact SDK outer insertion scope")
+    interval = scope.get("inserted_block_interval")
+    block = actual_call.get("sdk_block_serial")
+    if (not isinstance(interval, list) or len(interval) != 2 or any(type(value) is not int for value in interval)
+            or not 0 <= interval[0] < interval[1] or type(block) is not int
+            or not interval[0] <= block < interval[1] or actual_call.get("block_serial_before") != block):
+        raise ValueError("Native nested inline CALL is outside the SDK's exact inserted block range")
+
+
 def native_reanalysis_resolution(result, capture=None, *, adjudication_record=None, attempt_adjudication_record=None):
     """Verify retained-function supplements and separate recovered decompilations."""
     capture_path = result / "capture.json"
@@ -2856,9 +3230,16 @@ def native_reanalysis_resolution(result, capture=None, *, adjudication_record=No
                                    "sha256": sha(capture_path)},
                   "supplements": [], "resolved_failures": [], "remaining_failures": list(capture["failures"]),
                   "verification_failures": [], "complete_functions": {}, "conflicting_function_rvas": [],
-                  "conflicting_functions": {}, "target_execution": False}
+                  "conflicting_functions": {}, "complete_contexts": {}, "conflicting_contexts": {},
+                  "target_execution": False}
     candidates = sorted((result / "supplements").glob("*/capture.json"))
     if not candidates:
+        import native_embedded
+        native_embedded.apply_resolution(sys.modules[__name__], result, resolution, capture)
+        import native_import_forwarders
+        native_import_forwarders.apply_resolution(sys.modules[__name__], result, resolution, capture)
+        import native_static_reviews
+        native_static_reviews.apply_resolution(sys.modules[__name__], result, resolution, capture)
         return resolution
     original = resolve(capture["input"], ".analysis/inputs")
     raw = None
@@ -2879,24 +3260,28 @@ def native_reanalysis_resolution(result, capture=None, *, adjudication_record=No
             selection = supplement.get("function_selection")
             if selection is None:
                 continue
+            import native_adjudication
+            finalized = native_adjudication.finalized_export(sys.modules[__name__], result, path)
             if (supplement.get("input_sha256") != capture["input_sha256"]
                     or supplement.get("base_capture") != {"path": rel(capture_path), "sha256": sha(capture_path)}
-                    or supplement.get("capture_complete") is not True
-                    or supplement.get("all_pseudocode_captured") is not True or supplement.get("failures")
+                    or (not finalized and supplement.get("capture_complete") is not True)
+                    or (not finalized and supplement.get("all_pseudocode_captured") is not True) or supplement.get("failures")
                     or supplement.get("database_integrity", {}).get("verified") is not True
-                    or supplement.get("base_capture_unchanged") is not True
-                    or supplement.get("base_database_unchanged") is not True
+                    or (not finalized and supplement.get("base_capture_unchanged") is not True)
+                    or (not finalized and supplement.get("base_database_unchanged") is not True)
                     or supplement.get("target_execution") is not False):
                 raise ValueError("Native function supplement is incomplete, changed or lacks static integrity evidence")
             session_path = path.parent / "session.json"
             session = json.loads(session_path.read_bytes())
-            if session.get("passed") is not True or session.get("exit_code") != 0 or session.get("capture_tool") != supplement.get("capture_tool"):
+            if ((not finalized and (session.get("passed") is not True or session.get("exit_code") != 0))
+                    or session.get("capture_tool") != supplement.get("capture_tool")):
                 raise ValueError("Native supplement does not have a matching successful analyzer session")
             verify_native_typed_serializer(supplement)
             plan = json.loads((path.parent / "plan.json").read_bytes())
             if (plan.get("function_selection") != selection or plan.get("base_capture") != supplement["base_capture"]
                     or plan.get("source_database") != supplement.get("source_database")):
                 raise ValueError("Native supplement differs from its exact static analysis plan")
+            verify_native_supplement_request(plan, session)
             if raw is None:
                 raw = original.read_bytes()
                 if hashlib.sha256(raw).hexdigest() != capture["input_sha256"] or len(raw) != capture["input_bytes"]:
@@ -2909,10 +3294,19 @@ def native_reanalysis_resolution(result, capture=None, *, adjudication_record=No
             shared_tails = selection.get("function_shared_tails", [])
             fresh_inlines = selection.get("function_fresh_inlines", [])
             callsite_types = selection.get("callsite_type_recoveries", [])
-            shared_notes = recoveries or imports or merges or outlines or partitions or shared_tails
+            boundary_recoveries = selection.get("function_boundary_recoveries", [])
+            entry_partitions = selection.get("x86_entry_partitions", [])
+            instruction_recoveries = selection.get("instruction_boundary_recoveries", [])
+            prepasses = selection.get("decompiler_prepasses", [])
+            frame_rebuilds = selection.get("frame_rebuilds", [])
+            derived_stack_plans = selection.get("derived_stack_points", [])
+            switch_recoveries = selection.get("switch_metadata_recoveries", [])
+            tail_contexts = selection.get("shared_tail_contexts", [])
+            recursive_contexts = selection.get("recursive_fallthrough_contexts", [])
+            shared_notes = recoveries or imports or merges or outlines or partitions or shared_tails or prepasses
             actual = native_function_selection(raw, capture, [int(row["rva"], 16) for row in selection["targets"]],
                 [row["rva"] + "=" + row["declaration"] for row in recoveries],
-                shared_notes[0]["assembly_evidence"] if shared_notes else None,
+                shared_notes[0].get("assembly_evidence", shared_notes[0].get("reason")) if shared_notes else None,
                 selection.get("decompiler_limits", {}).get("max_function_kib"),
                 [row["rva"] + "=" + row["declaration"] for row in imports],
                 [row["owner_rva"] + "=" + ",".join(row["member_rvas"]) for row in merges],
@@ -2924,13 +3318,69 @@ def native_reanalysis_resolution(result, capture=None, *, adjudication_record=No
                 (selection["static_observation"]["review_source"]["path"] + "#"
                  + selection["static_observation"]["review_source"]["pointer"])
                 if "static_observation" in selection else None,
-                fresh_inline_rvas=[row["rva"] for row in fresh_inlines],
+                fresh_inline_rvas=[row["rva"] for row in fresh_inlines
+                                   if row.get("inline_scope") != "reviewed_nested_register_leaf"],
+                fresh_inline_register_leaf_rvas=[row["rva"] for row in fresh_inlines
+                                                 if row.get("inline_scope") == "reviewed_nested_register_leaf"],
                 callsite_reviews=[row["review_source"]["path"] + "#" + row["review_source"]["pointer"]
                                   for row in callsite_types],
                 reanalyze_type_owners=bool(selection.get("type_owner_reanalysis")),
-                propagate_direct_calls="direct_call_type_propagations" in selection)
+                propagate_direct_calls="direct_call_type_propagations" in selection,
+                boundary_reviews=[row["review_source"]["path"] + "#" + row["review_source"]["pointer"]
+                                  for row in [*boundary_recoveries, *entry_partitions]],
+                instruction_reviews=[row["review_source"]["path"] + "#" + row["review_source"]["pointer"]
+                                     for row in instruction_recoveries],
+                decompiler_prepass_rvas=[row["rva"] for row in prepasses] if not entry_partitions else (),
+                frame_reviews=[row["review_source"]["path"] + "#" + row["review_source"]["pointer"]
+                               for row in frame_rebuilds],
+                switch_reviews=[row["review_source"]["path"] + "#" + row["review_source"]["pointer"]
+                                 for row in switch_recoveries],
+                stack_reviews=[row["review_source"]["path"] + "#" + row["review_source"]["pointer"]
+                               for row in derived_stack_plans],
+                shared_tail_context_reviews=[row["review_source"]["path"] + "#" + row["review_source"]["pointer"]
+                                             for row in tail_contexts],
+                optimizer_property_reviews=[row["review_source"]["path"] + "#" + row["review_source"]["pointer"]
+                                            for row in selection.get("optimizer_properties", [])],
+                recursive_context_reviews=[row["review_source"]["path"] + "#" + row["review_source"]["pointer"]
+                                           for row in recursive_contexts])
             if actual != selection:
                 raise ValueError("Native supplement selection no longer matches the original bytes")
+            if tail_contexts:
+                import native_boundaries
+                native_boundaries.retain_source(sys.modules[__name__], supplement.get("boundary_validator"))
+                native_boundaries.verify_shared_tail_contexts(sys.modules[__name__], tail_contexts,
+                    supplement.get("shared_tail_context_recoveries"))
+                for context in supplement["shared_tail_context_recoveries"]:
+                    record = next((row for row in supplement["functions"]
+                                   if row["rva"] == context["request"]["owner_rva"]), None)
+                    if (record is None or context.get("capture") != {
+                            "path": rel(path.parent / record["path"]),
+                            "bytes": (path.parent / record["path"]).stat().st_size,
+                            "sha256": record["sha256"]}):
+                        raise ValueError("Native shared-tail context differs from its exact owner capture")
+            elif supplement.get("shared_tail_context_recoveries"):
+                raise ValueError("Native supplement has unselected existing-tail context changes")
+            if derived_stack_plans:
+                import native_boundaries
+                native_boundaries.retain_source(sys.modules[__name__], supplement.get("boundary_validator"))
+                native_boundaries.verify_stack_points(sys.modules[__name__], derived_stack_plans,
+                                                     supplement.get("derived_stack_points"))
+            elif supplement.get("derived_stack_points"):
+                raise ValueError("Native supplement has unselected derived stack operations")
+            if frame_rebuilds:
+                import native_boundaries
+                native_boundaries.retain_source(sys.modules[__name__], supplement.get("boundary_validator"))
+                native_boundaries.verify_frame_rebuilds(sys.modules[__name__], frame_rebuilds,
+                                                       supplement.get("frame_rebuilds"))
+            elif supplement.get("frame_rebuilds"):
+                raise ValueError("Native supplement contains an unreviewed CPU frame reconstruction")
+            if switch_recoveries:
+                import native_callsites
+                native_callsites.retain_source(sys.modules[__name__], supplement.get("callsite_type_validator"))
+                native_callsites.verify_switches(sys.modules[__name__], switch_recoveries,
+                                                supplement.get("switch_metadata_recoveries"))
+            elif supplement.get("switch_metadata_recoveries"):
+                raise ValueError("Native supplement contains an unreviewed switch metadata recovery")
             observation = selection.get("static_observation")
             if observation and supplement.get("capture_tool", {}).get("sha256") != observation["observer_source"]["sha256"]:
                 raise ValueError("Native supplement did not use its reviewed static observer")
@@ -2965,6 +3415,54 @@ def native_reanalysis_resolution(result, capture=None, *, adjudication_record=No
                 raise ValueError("Native supplement contains unreviewed type-owner reanalysis")
             elif supplement.get("direct_call_type_propagations"):
                 raise ValueError("Native supplement contains unreviewed direct call type propagation")
+            boundary_baselines, verified_boundary_helpers = {}, []
+            entry_baselines, verified_entry_helpers = {}, []
+            if entry_partitions:
+                import native_boundaries
+                native_boundaries.retain_source(sys.modules[__name__], supplement.get("boundary_validator"))
+                native_boundaries.verify_entry_partitions(sys.modules[__name__], entry_partitions,
+                    supplement.get("x86_entry_partition_recoveries"))
+                entry_baselines = {row["owner_rva"]: native_boundaries.entry_partition_bodies(
+                    sys.modules[__name__], row)[0] for row in entry_partitions}
+                verified_entry_helpers = native_boundaries.verify_entry_helpers(sys.modules[__name__], raw,
+                    entry_partitions, supplement.get("entry_partition_helpers"), path.parent)
+            elif supplement.get("x86_entry_partition_recoveries") or supplement.get("entry_partition_helpers"):
+                raise ValueError("Native supplement contains unreviewed x86 entry partitions")
+            if boundary_recoveries:
+                import native_boundaries
+                native_boundaries.retain_source(sys.modules[__name__], supplement.get("boundary_validator"))
+                native_boundaries.verify_applied(sys.modules[__name__], boundary_recoveries,
+                                                supplement.get("function_boundary_recoveries"))
+                boundary_baselines = {owner["owner_rva"]: native_boundaries.owner_body(
+                    sys.modules[__name__], row, owner["owner_rva"])
+                    for row in boundary_recoveries for owner in row["shared_owners"]}
+                helpers = {row["helper"]["rva"]: native_boundaries.helper_body(row) for row in boundary_recoveries}
+                records = supplement.get("boundary_helpers", [])
+                if (len(records) != len(helpers) or {row.get("rva") for row in records} != set(helpers)):
+                    raise ValueError("Native boundary recovery omitted complete helper assembly")
+                for row in records:
+                    record = {**row, "path": rel(path.parent / row["path"])}
+                    body = checked(ROOT / record["path"], record)
+                    baseline = helpers[row["rva"]]
+                    if (row.get("assembly_captured") is not True or row.get("pseudocode_captured") is not False
+                            or body.get("pseudocode") is not None
+                            or any(body.get(key) != baseline.get(key) for key in ("address", "rva", "end", "chunks"))
+                            or [(ins["address"], ins["bytes"]) for ins in body.get("assembly", [])]
+                            != [(ins["address"], ins["bytes"]) for ins in baseline.get("assembly", [])]):
+                        raise ValueError("Native recovered helper omits original instructions or differs from its complete exception chain")
+                    verified_boundary_helpers.append(record)
+            elif supplement.get("function_boundary_recoveries") or supplement.get("boundary_helpers"):
+                raise ValueError("Native supplement contains unreviewed function boundary changes")
+            instruction_baselines = {}
+            if instruction_recoveries:
+                import native_boundaries
+                native_boundaries.retain_source(sys.modules[__name__], supplement.get("boundary_validator"))
+                native_boundaries.verify_instructions(sys.modules[__name__], instruction_recoveries,
+                                                     supplement.get("instruction_boundary_recoveries"))
+                instruction_baselines = {row["owner_rva"]: native_boundaries.instruction_body(
+                    sys.modules[__name__], row) for row in instruction_recoveries}
+            elif supplement.get("instruction_boundary_recoveries"):
+                raise ValueError("Native supplement contains unreviewed instruction decoding changes")
             if (len(supplement["functions"]) != len(selection["targets"])
                     or {row["rva"] for row in supplement["functions"]} != {row["rva"] for row in selection["targets"]}):
                 raise ValueError("Native supplement omitted selected function boundaries")
@@ -2994,6 +3492,20 @@ def native_reanalysis_resolution(result, capture=None, *, adjudication_record=No
                            or applied.get("applied_chunks") != requested["expected_chunks"]
                            for applied, requested in zip(applied_merges, merges))):
                 raise ValueError("Native supplement did not retain the exact reviewed function merges")
+            if "function_merge_automatic_reanalysis" in supplement:
+                if not merges:
+                    raise ValueError("Native supplement contains unreviewed merged-owner reanalysis")
+                import native_boundaries
+                native_boundaries.retain_source(sys.modules[__name__], supplement.get("boundary_validator"))
+                native_boundaries.verify_merge_reanalysis(sys.modules[__name__], merges,
+                                                         supplement["function_merge_automatic_reanalysis"])
+            if prepasses:
+                import native_boundaries
+                native_boundaries.retain_source(sys.modules[__name__], supplement.get("boundary_validator"))
+                native_boundaries.verify_prepasses(sys.modules[__name__], prepasses,
+                                                   supplement.get("decompiler_prepasses"), path.parent)
+            elif "decompiler_prepasses" in supplement:
+                raise ValueError("Native supplement contains an unreviewed decompiler prepass")
             merged_baselines = {merge["owner_rva"]: native_function_merge_body(merge) for merge in merges}
             shared_baselines, shared_helpers = {}, {}
             for shared in shared_tails:
@@ -3153,6 +3665,9 @@ def native_reanalysis_resolution(result, capture=None, *, adjudication_record=No
                 if base_record is None:
                     raise ValueError("Native reanalysis introduced a boundary absent from its base capture")
                 baseline = (shared_baselines[row["rva"]] if row["rva"] in shared_baselines
+                            else entry_baselines[row["rva"]] if row["rva"] in entry_baselines
+                            else boundary_baselines[row["rva"]] if row["rva"] in boundary_baselines
+                            else instruction_baselines[row["rva"]] if row["rva"] in instruction_baselines
                             else partitioned_baselines[row["rva"]] if row["rva"] in partitioned_baselines
                             else merged_baselines[row["rva"]] if row["rva"] in merged_baselines
                             else checked(result / base_record["path"], base_record))
@@ -3167,8 +3682,8 @@ def native_reanalysis_resolution(result, capture=None, *, adjudication_record=No
                         or [(item["address"], item.get("xrefs_from"), item.get("xrefs_to")) for item in body["assembly"]]
                         != [(item["address"], item.get("xrefs_from"), item.get("xrefs_to")) for item in baseline["assembly"]]):
                     raise ValueError("Native supplemental shared owner flags or references differ from original assembly")
-                expected_calls = [call for helper in fresh_inlines for call in helper["callsites"]
-                                  if call["parent_rva"] == row["rva"]]
+                expected_calls = [(call, helper) for helper in fresh_inlines for call in helper["callsites"]
+                                  if call.get("owner_rva", call["parent_rva"]) == row["rva"]]
                 if expected_calls:
                     audit = body.get("fresh_inline_audit", {})
                     dontcopy, external = audit.get("dontcopy_flag"), audit.get("external_frame_flag")
@@ -3181,23 +3696,65 @@ def native_reanalysis_resolution(result, capture=None, *, adjudication_record=No
                             or dontcopy == external or len(audit.get("calls", [])) != len(expected_calls)):
                         raise ValueError("Native fresh inlining lacks its complete SDK operation and cleanup audit")
                     actual_calls = audit["calls"]
-                    if any(any(actual.get(key) != value for key, value in expected.items())
-                           or actual.get("result_code") != 0 or actual.get("status") != "inlined"
-                           or actual.get("inline_flags") != dontcopy | external
-                           or actual.get("flag_names") != ["INLINE_EXTFRAME", "INLINE_DONTCOPY"]
-                           for actual, expected in zip(actual_calls, expected_calls)):
-                        raise ValueError("Native fresh inline SDK calls differ from the exact reviewed callsites")
+                    for actual_call, (expected, helper) in zip(actual_calls, expected_calls):
+                        nested = helper.get("inline_scope") == "reviewed_nested_register_leaf"
+                        names = ["INLINE_DONTCOPY"] if nested else ["INLINE_EXTFRAME", "INLINE_DONTCOPY"]
+                        if (any(actual_call.get(key) != value for key, value in expected.items())
+                                or actual_call.get("result_code") != 0 or actual_call.get("status") != "inlined"
+                                or actual_call.get("inline_flags") != (dontcopy if nested else dontcopy | external)
+                                or actual_call.get("flag_names") != names):
+                            raise ValueError("Native fresh inline SDK calls differ from the exact reviewed callsites")
+                        if nested:
+                            verify_nested_inline_mapping(selection, row["rva"], expected, actual_call, actual_calls)
+                if selection.get("optimizer_properties"):
+                    import native_boundaries
+                    native_boundaries.retain_source(sys.modules[__name__], supplement.get("boundary_validator"))
+                    native_boundaries.verify_optimizer_properties(selection["optimizer_properties"], body)
+                elif "optimizer_property_audit" in body:
+                    raise ValueError("Native supplement contains unreviewed optimizer property changes")
                 verified[row["rva"]] = {"capture": record, **body}
+            import native_adjudication
+            if recursive_contexts:
+                import native_boundaries
+                native_boundaries.retain_source(sys.modules[__name__], supplement.get("boundary_validator"))
+            verified_contexts = native_adjudication.recursive_context_coverage(
+                sys.modules[__name__], raw, capture, supplement, path.parent)
             receipt = {"path": rel(path), "bytes": path.stat().st_size, "sha256": sha(path)}
             summary = {"receipt": receipt,
+                **({"independent_export_finalization": finalized} if finalized else {}),
                 "session": {"path": rel(session_path), "bytes": session_path.stat().st_size, "sha256": sha(session_path)},
                 "ida_version": supplement["ida_version"], "hexrays_version": supplement["hexrays_version"],
                 "type_recoveries": supplement["type_recoveries"], "functions": list(verified),
+                **({"recursive_context_recoveries": supplement["recursive_context_recoveries"],
+                    "complete_contexts": verified_contexts, "boundary_validator": supplement["boundary_validator"]}
+                   if recursive_contexts else {}),
                 **({"type_owner_automatic_reanalysis": supplement["type_owner_automatic_reanalysis"],
                     "type_owner_validator": supplement["callsite_type_validator"]}
                    if selection.get("type_owner_reanalysis") else {}),
                 **({"callsite_type_recoveries": supplement["callsite_type_recoveries"]} if callsite_types else {}),
+                **({"function_boundary_recoveries": supplement["function_boundary_recoveries"],
+                    "boundary_helpers": verified_boundary_helpers} if boundary_recoveries else {}),
+                **({"x86_entry_partition_recoveries": supplement["x86_entry_partition_recoveries"],
+                    "entry_partition_helpers": verified_entry_helpers,
+                    "boundary_validator": supplement["boundary_validator"]} if entry_partitions else {}),
+                **({"instruction_boundary_recoveries": supplement["instruction_boundary_recoveries"]}
+                   if instruction_recoveries else {}),
                 **({"function_merge_recoveries": applied_merges} if merges else {}),
+                **({"function_merge_automatic_reanalysis": supplement["function_merge_automatic_reanalysis"],
+                    "boundary_validator": supplement["boundary_validator"]}
+                   if "function_merge_automatic_reanalysis" in supplement else {}),
+                **({"decompiler_prepasses": supplement["decompiler_prepasses"],
+                    "boundary_validator": supplement["boundary_validator"]} if prepasses else {}),
+                **({"optimizer_properties": selection["optimizer_properties"],
+                    "boundary_validator": supplement["boundary_validator"]} if selection.get("optimizer_properties") else {}),
+                **({"frame_rebuilds": supplement["frame_rebuilds"],
+                    "boundary_validator": supplement["boundary_validator"]} if frame_rebuilds else {}),
+                **({"derived_stack_points": supplement["derived_stack_points"],
+                    "boundary_validator": supplement["boundary_validator"]} if derived_stack_plans else {}),
+                **({"shared_tail_context_recoveries": supplement["shared_tail_context_recoveries"],
+                    "boundary_validator": supplement["boundary_validator"]} if tail_contexts else {}),
+                **({"switch_metadata_recoveries": supplement["switch_metadata_recoveries"],
+                    "callsite_type_validator": supplement["callsite_type_validator"]} if switch_recoveries else {}),
                 **({"function_outline_recoveries": applied_outlines} if outlines else {}),
                 **({"function_shared_tail_recoveries": applied_shared,
                     "shared_tail_helpers": verified_shared_helpers} if shared_tails else {}),
@@ -3208,6 +3765,18 @@ def native_reanalysis_resolution(result, capture=None, *, adjudication_record=No
                 "error": str(error).replace(str(ROOT), "<project>")})
             continue
         resolution["supplements"].append(summary)
+        for core_rva, context in verified_contexts.items():
+            context = {**context, "supplement": receipt}
+            previous = resolution["complete_contexts"].get(core_rva)
+            if core_rva in resolution["conflicting_contexts"] or previous is not None and previous != context:
+                if core_rva not in resolution["conflicting_contexts"]:
+                    resolution["conflicting_contexts"][core_rva] = [previous]
+                resolution["conflicting_contexts"][core_rva].append(context)
+                resolution["complete_contexts"].pop(core_rva, None)
+                resolution["verification_failures"].append({"supplement": rel(path), "function_rva": core_rva,
+                    "error": "Native recursive contexts conflict for " + core_rva})
+                continue
+            resolution["complete_contexts"][core_rva] = context
         for rva, body in verified.items():
             record = body["capture"]
             verified_candidates[rva].append({"capture": record, "body": {key: value for key, value in body.items()
@@ -3246,9 +3815,20 @@ def native_reanalysis_resolution(result, capture=None, *, adjudication_record=No
         if rva in resolution["complete_functions"]:
             resolution["resolved_failures"].append({"original_failure": failure, "function_rva": rva,
                 "supplement": function_sources[rva], "complete_function": resolution["complete_functions"][rva]["capture"]})
+        elif rva in resolution["complete_contexts"]:
+            context = resolution["complete_contexts"][rva]
+            resolution["resolved_failures"].append({"original_failure": failure, "function_rva": rva,
+                "resolved_by": "verified_original_root_context", "supplement": context["supplement"],
+                "complete_context": context})
         else:
             resolution["remaining_failures"].append(failure)
+    import native_import_forwarders
+    native_import_forwarders.apply_resolution(sys.modules[__name__], result, resolution, capture)
+    import native_static_reviews
+    native_static_reviews.apply_resolution(sys.modules[__name__], result, resolution, capture)
     native_adjudication.apply_attempts(sys.modules[__name__], result, resolution, attempt_adjudication_record)
+    import native_embedded
+    native_embedded.apply_resolution(sys.modules[__name__], result, resolution, capture)
     return resolution
 
 
@@ -6998,6 +7578,24 @@ def add_commands(parsers):
     adjudication.add_argument("--input", required=True)
     adjudication.add_argument("--review", required=True)
     adjudication.add_argument("--review-sha256", required=True)
+    finalization = parsers.add_parser("finalize-native", help="Independently validate completed static exports after an exact serializer guard failure, retaining the failed session unchanged")
+    finalization.add_argument("--input", required=True)
+    finalization.add_argument("--review", required=True)
+    finalization.add_argument("--review-sha256", required=True)
+    attribution = parsers.add_parser("audit-native-attribution", help="Verify original embedded PE function attribution without altering raw parent or child captures")
+    attribution.add_argument("--review", required=True)
+    attribution.add_argument("--output")
+    attribution.add_argument("--previous-audit-sha256", help="Explicit exact predecessor for a complete input-index revalidation; preserve the old audit")
+    for command, description in (("bind-native-import-forwarders", "Bind exact independently verified original import-jump semantics"),
+                                 ("bind-native-static-review", "Bind independently verified source or architecture contracts while retaining decompiler failures")):
+        binding = parsers.add_parser(command, help=description)
+        binding.add_argument("--input", required=True)
+        binding.add_argument("--review", required=True)
+        binding.add_argument("--review-sha256", required=True)
+        if command == "bind-native-static-review":
+            import native_static_reviews
+            binding.add_argument("--kind", choices=native_static_reviews.KINDS, required=True)
+            binding.add_argument("--previous-binding-sha256", help="Exact current binding SHA when retaining and replacing a reviewed static contract")
     arithmetic = parsers.add_parser("verify-native-arithmetic", help="Purely interpret a reviewed native arithmetic request without executing a target DLL")
     arithmetic.add_argument("--request", required=True)
     arithmetic.add_argument("--request-sha256", required=True)
@@ -7007,6 +7605,7 @@ def add_commands(parsers):
     compaction.add_argument("--minimum-mib", type=int, default=100)
     compaction.add_argument("--workers", type=int, default=8)
     compaction.add_argument("--review-receipt", action="append", help="Also compact this exact SHA-named immutable native review receipt; repeat for independent receipts")
+    compaction.add_argument("--function-receipt", action="append", help="Also compact this exact canonical native function JSON, SHA-bound by its capture index and terminal analyzer session; repeat for independent functions")
     compaction.add_argument("--apply", action="store_true")
     compaction.add_argument("--plan-sha256", help="Exact SHA-256 of the independently reviewed dry-run plan")
     reference = parsers.add_parser("audit-reference", help="Verify every tracked byte and workspace dependency in a pinned architecture reference")
@@ -7058,9 +7657,19 @@ def add_commands(parsers):
     supplement.add_argument("--function-rva", type=lambda value: int(value, 0), action="append",
                             help="Reanalyze this exact retained function boundary; repeat for callers and callees")
     supplement.add_argument("--function-type", action="append", help="Explicit RVA=C function declaration backed by the complete retained assembly")
+    supplement.add_argument("--decompiler-prepass-rva", action="append", type=lambda value: int(value, 0),
+                            help="Explicit unchanged retained owner for one complete audited static derivation before final capture")
     supplement.add_argument("--import-type", action="append", help="Explicit normal-IAT RVA=C function-pointer declaration backed by import bytes and reviewed ABI evidence")
     supplement.add_argument("--reanalyze-type-owners", action="store_true", help="Invalidate only derived stack-analysis readiness and request processor reanalysis for exact selected owners after reviewed function/import type repairs")
     supplement.add_argument("--propagate-direct-calls", action="store_true", help="Explicitly propagate reviewed function types to byte-verified original E8 callsites before type-owner reanalysis")
+    supplement.add_argument("--boundary-review", action="append", help="Exact reviewed original x64 PE exception-chain or x86 CI/stack/context entry recovery JSON[#pointer]; preserves all owner and helper bytes")
+    supplement.add_argument("--instruction-review", action="append", help="Exact reviewed control-flow target and original E8 near-call decode JSON[#pointer]; preserves original PE bytes and function chunks")
+    supplement.add_argument("--frame-review", action="append", help="Exact complete corrupt frame and machine-reference review JSON[#pointer]; CPU rebuilds only its private frame without supplied frame/SP values")
+    supplement.add_argument("--stack-review", action="append", help="Exact complete ARM64 allocation/probe review JSON[#pointer]; derives a missing automatic stack point from original machine bytes")
+    supplement.add_argument("--shared-tail-context-review", action="append", help="Exact existing x86 EH shared-tail parent/ABI review JSON[#pointer]; scopes CPU derivation and capture to its real owner and restores the original primary")
+    supplement.add_argument("--switch-review", action="append", help="Exact original exhaustive masked signed32 jump-table review JSON#pointer; repairs only private-IDB switch metadata")
+    supplement.add_argument("--optimizer-property-review", action="append", help="Exact original x64 outlined ADCX/ADOX and MULX review JSON[#pointer]; public DONT_PROP only on complete SDK def-use-proven generated closures")
+    supplement.add_argument("--recursive-context-review", action="append", help="Exact original x64 root fallthrough and separate recursive core review JSON[#pointer]; shared SDK frame with all physical CALLs and RETs retained")
     supplement.add_argument("--merge-functions", action="append",
                             help="Explicit reviewed OWNER=RVA,RVA,... merge of adjacent complete retained functions")
     supplement.add_argument("--outline-function-rva", action="append", type=lambda v: int(v, 0),
@@ -7071,6 +7680,8 @@ def add_commands(parsers):
                             help="Reviewed PRIMARY=START:END:OWNER,OWNER[:inline|:retain] exact shared function tail")
     supplement.add_argument("--fresh-inline-function-rva", action="append", type=lambda value: int(value, 0),
                             help="Fresh SDK inline of an already reviewed outlined helper with its own frame; bypass reused inline copies")
+    supplement.add_argument("--fresh-inline-register-leaf-rva", action="append", type=lambda value: int(value, 0),
+                            help="Explicit complete register-only leaf nested in a reviewed fresh helper; exact SDK fictitious mapping, no external frame flag")
     supplement.add_argument("--type-evidence", help="Explain the argument/register/return evidence for explicit type recovery")
     supplement.add_argument("--observation-evidence",
                             help="Retained JSON review#pointer with a new static observation reason and exact observer source identity")
@@ -7115,6 +7726,12 @@ def add_commands(parsers):
 
 
 def run(args):
+    if args.command in {"bind-native-import-forwarders", "bind-native-static-review"}:
+        import native_static_reviews
+        return native_static_reviews.publish_operation(sys.modules[__name__], args)
+    if args.command == "audit-native-attribution":
+        import native_embedded
+        return native_embedded.audit_function_attribution(args)
     if args.command == "acquire-frozen-frontend-sources":
         import frontend
         return frontend.acquire_frozen_frontend_sources(args)
@@ -7124,6 +7741,9 @@ def run(args):
     if args.command == "adjudicate-native":
         import native_adjudication
         return native_adjudication.run(sys.modules[__name__], args)
+    if args.command == "finalize-native":
+        import native_adjudication
+        return native_adjudication.finalize(sys.modules[__name__], args)
     if args.command == "compact-analysis":
         import analysis_storage
         return analysis_storage.run(args)

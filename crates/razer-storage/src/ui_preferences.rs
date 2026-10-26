@@ -9,18 +9,29 @@ pub enum Flag {
     MagneticCalibrationSkipPrompt,
     HueTutorial,
     ArmoryIntroduction,
+    DisplayNotifications,
 }
 
 impl Flag {
-    pub const ALL: [Self; 4] = [
+    pub const ALL: [Self; 5] = [
         Self::KeyboardCalibrationIntro,
         Self::MagneticCalibrationSkipPrompt,
         Self::HueTutorial,
         Self::ArmoryIntroduction,
+        Self::DisplayNotifications,
     ];
 
     pub const fn default_value(self) -> bool {
         !matches!(self, Self::MagneticCalibrationSkipPrompt)
+    }
+
+    pub const fn initial_value(self) -> bool {
+        // 720 notification component starts unchecked, then reads on mount.
+        !matches!(self, Self::DisplayNotifications) && self.default_value()
+    }
+
+    pub const fn publish_on_observe(self) -> bool {
+        matches!(self, Self::DisplayNotifications)
     }
 
     fn key(self) -> &'static str {
@@ -29,6 +40,7 @@ impl Flag {
             Self::MagneticCalibrationSkipPrompt => "MagneticSwitchCalibrationPrompt",
             Self::HueTutorial => "isShowTutorialHue",
             Self::ArmoryIntroduction => "isShowArmoryIntroductionBanner",
+            Self::DisplayNotifications => crate::notification_preferences::DISPLAY_KEY,
         }
     }
 
@@ -98,12 +110,17 @@ fn insert_missing(path: &Path, flag: Flag, value: bool) -> anyhow::Result<bool> 
     })
 }
 
-fn load_at(path: &Path, flag: Flag) -> anyhow::Result<Observation> {
+pub(crate) fn load_at(path: &Path, flag: Flag) -> anyhow::Result<Observation> {
     if let Some(value) = read_current(path, flag)? {
         return Ok(Observation {
             value: Some(value),
             origin: Origin::Current,
         });
+    }
+    if flag == Flag::DisplayNotifications {
+        // Only the workspace's retired explicit choice migrates for this key.
+        // The retained state owner runs the source writer after observation.
+        return Ok(Observation::missing());
     }
     let legacy = path.with_file_name(format!("{}.json", flag.key()));
     let previous = crate::read_document(&legacy, |text| {
@@ -128,6 +145,9 @@ fn load_at(path: &Path, flag: Flag) -> anyhow::Result<Observation> {
 }
 
 fn save_at(path: &Path, flag: Flag, value: bool) -> anyhow::Result<()> {
+    if flag == Flag::DisplayNotifications {
+        return crate::notification_preferences::save_at(path, value);
+    }
     crate::source_local::update(path, flag.key(), |previous| {
         if let Some(previous) = previous {
             validate(previous, flag)?;

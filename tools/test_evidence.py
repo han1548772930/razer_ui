@@ -1187,6 +1187,7 @@ class NativeCaptureCapabilityTests(unittest.TestCase):
             "ida_ida": SimpleNamespace(validate_idb=MagicMock(return_value=0), VLD_SILENT=0,
                                        inf_get_procname=MagicMock(return_value=processor)),
             "ida_kernwin": SimpleNamespace(get_kernel_version=lambda: "synthetic-ida"), "ida_hexrays": sdk,
+            "ida_idp": SimpleNamespace(),
             "ida_loader": SimpleNamespace(get_path=lambda kind: str(database), PATH_TYPE_IDB=0, DBFL_COMP=0,
                                           save_database=MagicMock(return_value=True)),
             "ida_nalt": SimpleNamespace(retrieve_input_file_sha256=lambda: bytes.fromhex(digest),
@@ -1413,6 +1414,11 @@ class NativeExceptionRegionCaptureTests(unittest.TestCase):
         sdk["ida_kernwin"].get_kernel_version = lambda: "fake-static-ida"
         sdk["ida_bytes"].get_bytes = MagicMock(side_effect=get_bytes)
         sdk["ida_bytes"].is_code = lambda flags: flags == 1
+        sdk["ida_bytes"].is_align = lambda flags: flags == 3
+        sdk["ida_bytes"].is_head = lambda flags: flags in (1, 3)
+        sdk["ida_bytes"].is_tail = lambda flags: flags == 2
+        sdk["ida_bytes"].get_item_head = lambda ea: ea
+        sdk["ida_bytes"].get_item_end = lambda ea: ea + 1
         sdk["ida_bytes"].get_full_flags = lambda ea: 1
         sdk["ida_ua"].insn_t = instruction
         sdk["ida_ua"].decode_insn = MagicMock(side_effect=decode)
@@ -1516,6 +1522,78 @@ class NativeExceptionRegionCaptureTests(unittest.TestCase):
         spans += [(int(gap["start_rva"], 0), bytes.fromhex(gap["raw_hex"]))]
         self.assertEqual(b"".join(raw for _, raw in sorted(spans)), bytes(range(128)))
         self.assertTrue(manifest["function_chunks_unchanged"])
+
+    def test_exact_existing_alignment_item_is_retained_without_claiming_instruction_decoding(self):
+        fixture = self.fixture()
+        sdk = fixture["namespace"]["ida_bytes"]
+        base = fixture["namespace"]["idaapi"].get_imagebase()
+        start = base + 0x1120
+        stop = start + 16
+        sdk.get_full_flags = lambda ea: 3 if ea == start else 2 if start < ea < stop else 1
+        sdk.get_item_head = lambda ea: start if start <= ea < stop else ea
+        sdk.get_item_end = lambda ea: stop if start <= ea < stop else ea + 1
+        fixture["namespace"]["idc"].generate_disasm_line = lambda ea, flags: ".align 5" if ea == start else "instruction"
+        edge = SimpleNamespace(frm=start - 4, to=start + 6, type=19, iscode=True, user=False)
+        fixture["namespace"]["idautils"].XrefsTo = lambda ea, flags: [edge] if ea == start + 6 else []
+        manifest = fixture["run"](fixture["plan"])
+        self.assertTrue(manifest["capture_complete"])
+        self.assertFalse(manifest["instruction_decode_complete"])
+        self.assertEqual(sum(row["alignment_bytes"] for row in manifest["regions"]), 16)
+        self.assertEqual(sum(row["decoded_bytes"] for row in manifest["regions"]), 176)
+        self.assertEqual(sum(row["undecoded_bytes"] for row in manifest["regions"]), 0)
+        row = json.loads((fixture["output"] / manifest["regions"][0]["path"]).read_bytes())
+        self.assertTrue(row["coverage_complete"])
+        self.assertFalse(row["decode_complete"])
+        self.assertFalse(manifest["pseudocode_captured"])
+        item = row["alignment_items"][0]
+        self.assertEqual(bytes.fromhex(item["raw_hex"]), bytes(range(0x20, 0x30)))
+        self.assertEqual(item["sha256"], hashlib.sha256(bytes(range(0x20, 0x30))).hexdigest())
+        self.assertEqual(item["classification"], "existing_idb_alignment_item")
+        self.assertFalse(item["instruction_semantics_inferred"])
+        self.assertEqual(item["xrefs_to"], [{"from": hex(start - 4), "to": hex(start + 6),
+                                          "type": 19, "code": True, "user": False}])
+        decoded_addresses = {int(call.args[1]) for call in fixture["namespace"]["ida_ua"].decode_insn.call_args_list}
+        self.assertTrue(decoded_addresses.isdisjoint(range(start, stop)))
+        spans = [(int(insn["rva"], 0), bytes.fromhex(insn["bytes"])) for insn in row["assembly"]]
+        spans += [(int(item["start_rva"], 0), bytes.fromhex(item["raw_hex"]))]
+        self.assertEqual(b"".join(raw for _, raw in sorted(spans)), bytes(range(128)))
+
+    def test_inexact_alignment_metadata_cannot_hide_a_failed_instruction_slot(self):
+        for changed in ("head", "end", "unaligned_end", "outside_region", "code", "tail", "tail_owner", "tail_end"):
+            with self.subTest(changed=changed):
+                fixture = self.fixture()
+                sdk = fixture["namespace"]["ida_bytes"]
+                base = fixture["namespace"]["idaapi"].get_imagebase()
+                start, stop = base + 0x1120, base + 0x1130
+                sdk.get_full_flags = lambda ea: 3 if ea == start else 2 if start < ea < stop else 1
+                sdk.get_item_head = lambda ea: start if start <= ea < stop else ea
+                sdk.get_item_end = lambda ea: stop if start <= ea < stop else ea + 1
+                if changed == "head":
+                    sdk.get_item_head = lambda ea: start - 16
+                elif changed == "end":
+                    sdk.get_item_end = lambda ea: start
+                elif changed == "unaligned_end":
+                    sdk.get_item_end = lambda ea: stop - 1
+                elif changed == "outside_region":
+                    sdk.get_item_end = lambda ea: base + 0x1190
+                elif changed == "code":
+                    sdk.is_code = lambda flags: flags in (1, 3)
+                elif changed == "tail":
+                    sdk.is_tail = lambda flags: False
+                elif changed == "tail_owner":
+                    sdk.get_item_head = lambda ea: start + 1 if ea == start + 7 else start
+                elif changed == "tail_end":
+                    sdk.get_item_end = lambda ea: stop + 16 if ea == start + 7 else stop
+                original_decode = fixture["decode"]
+                fixture["namespace"]["ida_ua"].decode_insn.side_effect = (
+                    lambda insn, ea: 0 if ea == start + 6 else original_decode(insn, ea))
+                manifest = fixture["run"](fixture["plan"])
+                self.assertFalse(manifest["capture_complete"])
+                self.assertEqual(sum(row["alignment_bytes"] for row in manifest["regions"]), 0)
+                self.assertEqual(sum(row["undecoded_bytes"] for row in manifest["regions"]), 10)
+                row = json.loads((fixture["output"] / manifest["regions"][0]["path"]).read_bytes())
+                self.assertEqual(row["alignment_items"], [])
+                self.assertEqual(row["undecoded_ranges"][0]["raw_hex"], bytes(range(0x26, 0x30)).hex())
 
     def test_changed_original_loaded_bytes_tool_and_base_evidence_are_rejected(self):
         for changed in ("original", "loaded", "capture_tool", "parser_tool", "base_capture", "source_database", "selection"):
@@ -3079,6 +3157,47 @@ class NativeSupplementTests(unittest.TestCase):
         self.assertEqual(result["type_recoveries"][0]["declaration"], declaration)
         self.assertIn("no stack argument", result["type_recoveries"][0]["assembly_evidence"])
 
+    def test_exception_boundary_review_routes_exact_evidence_and_rejects_mixed_repairs(self):
+        import native_boundaries
+        capture = {"functions": [{"rva": "0x1000", "address": "0x140001000"}]}
+        references = [".analysis/results/review.json#/helper"]
+        reviewed = [{"owner_rva": "0x1000", "verified_complete_original_chain": True}]
+        with patch.object(native_boundaries, "select", return_value=reviewed) as select:
+            result = analysis.native_function_selection(bytes(self.fixture()), capture, [0x1000],
+                                                        boundary_reviews=references)
+        self.assertEqual(result["function_boundary_recoveries"], reviewed)
+        select.assert_called_once_with(analysis, bytes(self.fixture()), capture, [0x1000], references)
+        for extra in ({"type_specs": ["0x1000=void reviewed();"], "type_note": "original bytes"},
+                      {"import_specs": ["0x2020=void (*call)(void);"]}, {"merge_specs": ["0x1000=0x1005"]},
+                      {"outline_rvas": [0x1000]}, {"partition_specs": ["0x1000=0x1005:0x1006"]},
+                      {"shared_tail_specs": ["review"]}, {"fresh_inline_rvas": [0x1000]},
+                      {"callsite_reviews": references}, {"reanalyze_type_owners": True},
+                      {"propagate_direct_calls": True}):
+            with self.subTest(extra=extra), patch.object(native_boundaries, "select") as select:
+                with self.assertRaisesRegex(ValueError, "separate supplement"):
+                    analysis.native_function_selection(bytes(self.fixture()), capture, [0x1000],
+                                                        boundary_reviews=references, **extra)
+                select.assert_not_called()
+
+    def test_original_instruction_review_is_explicit_separate_and_reconstructed_by_its_owner(self):
+        import native_boundaries
+        capture = {"functions": [{"rva": "0x1000", "address": "0x140001000"}]}
+        references = [".analysis/results/review.json#/instruction"]
+        reviewed = [{"owner_rva": "0x1000", "instruction": {"bytes": "e800000000"}}]
+        with patch.object(native_boundaries, "select_instructions", return_value=reviewed) as select:
+            selected = analysis.native_function_selection(bytes(self.fixture()), capture, [0x1000],
+                                                           instruction_reviews=references)
+        self.assertEqual(selected["instruction_boundary_recoveries"], reviewed)
+        select.assert_called_once_with(analysis, bytes(self.fixture()), capture, [0x1000], references)
+        for extra in ({"type_specs": ["0x1000=void reviewed();"], "type_note": "complete assembly"},
+                      {"boundary_reviews": references}, {"partition_specs": ["0x1000=0x1005:0x1006"]},
+                      {"callsite_reviews": references}, {"reanalyze_type_owners": True}):
+            with self.subTest(extra=extra), patch.object(native_boundaries, "select_instructions") as select:
+                with self.assertRaisesRegex(ValueError, "separate supplement"):
+                    analysis.native_function_selection(bytes(self.fixture()), capture, [0x1000],
+                                                        instruction_reviews=references, **extra)
+                select.assert_not_called()
+
     def test_function_reanalysis_rejects_interior_entries_data_and_unreviewed_types(self):
         capture = {"functions": [{"rva": "0x1000", "address": "0x140001000"},
                                  {"rva": "0x2000", "address": "0x140002000"}]}
@@ -3779,6 +3898,80 @@ class NativeSupplementTests(unittest.TestCase):
                     self.assertEqual([c["callsite_rva"] for c in helper["callsites"]], ["0x1040", "0x1046"])
                     self.assertEqual([c["raw_hex"] for c in helper["callsites"]], ["e8bbffffff", "e8b5ffffff"])
                     self.assertEqual((result / "capture.json").read_bytes(), before)
+
+    def test_nested_register_leaf_selection_binds_each_original_outer_and_inner_call(self):
+        for issue in (None, "stack_frame", "nested_call", "unoutlined_leaf", "missing_outer",
+                      "leaf_edge", "wrong_flags", "duplicate_leaf"):
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+                root = Path(directory)
+                raw, result, capture, write = self.fresh_inline_fixture(root)
+                data = bytearray(raw)
+                data[0x200:0x206] = bytes.fromhex("e87b000000c3")
+                leaf_code = bytes.fromhex("31c0c3")
+                if issue == "stack_frame": leaf_code = bytes.fromhex("554889e5c9c3")
+                elif issue == "nested_call": leaf_code = bytes.fromhex("e87bffffffc3")
+                data[0x280:0x280 + len(leaf_code)] = leaf_code
+                raw = bytes(data)
+                destination = root / ".analysis/results/native" / hashlib.sha256(raw).hexdigest()
+                destination.mkdir(parents=True)
+                base = 0x140000000
+                inner_edge = {"from": hex(base + 0x1000), "to": hex(base + 0x1080),
+                              "type": 17, "code": True, "user": False}
+                for record in capture["functions"]:
+                    body = json.loads((result / record["path"]).read_bytes())
+                    if record["rva"] == "0x1000":
+                        body["chunks"][0].update(raw_hex="e87b000000c3",
+                            sha256=hashlib.sha256(bytes.fromhex("e87b000000c3")).hexdigest())
+                        body["assembly"] = [{"address": hex(base + 0x1000), "rva": "0x1000",
+                            "bytes": "e87b000000", "text": "call nested_leaf", "xrefs_from": [inner_edge],
+                            "xrefs_to": body["xrefs_to_entry"]}, {"address": hex(base + 0x1005),
+                            "rva": "0x1005", "bytes": "c3", "text": "retn", "xrefs_from": [], "xrefs_to": []}]
+                    identity = write(destination / record["path"], body)
+                    record.update(bytes=identity["bytes"], sha256=identity["sha256"])
+                texts = (["xor eax, eax", "retn"] if issue not in {"stack_frame", "nested_call"}
+                         else ["push rbp", "mov rbp, rsp", "leave", "retn"] if issue == "stack_frame"
+                         else ["call another", "retn"])
+                codes = (["31c0", "c3"] if issue not in {"stack_frame", "nested_call"}
+                         else ["55", "4889e5", "c9", "c3"] if issue == "stack_frame"
+                         else ["e87bffffff", "c3"])
+                at, instructions = base + 0x1080, []
+                for text, code in zip(texts, codes):
+                    instructions.append({"address": hex(at), "rva": hex(at - base), "bytes": code,
+                        "text": text, "xrefs_from": [], "xrefs_to": []})
+                    at += len(bytes.fromhex(code))
+                body = {"address": hex(base + 0x1080), "rva": "0x1080", "end": hex(at), "flags": 0,
+                    "chunks": [{"start": hex(base + 0x1080), "end": hex(at), "raw_hex": leaf_code.hex(),
+                                "sha256": hashlib.sha256(leaf_code).hexdigest()}], "assembly": instructions,
+                    "xrefs_to_entry": [] if issue == "leaf_edge" else [inner_edge], "pseudocode": None}
+                identity = write(destination / "functions/1080.json", body)
+                capture["functions"].append({**identity, "path": "functions/1080.json", "rva": "0x1080",
+                    "address": body["address"], "assembly_captured": True, "pseudocode_captured": False})
+                capture.update(input_sha256=hashlib.sha256(raw).hexdigest(), input_bytes=len(raw))
+                (root / capture["input"]).write_bytes(raw)
+                write(destination / "capture.json", capture)
+                leaf = {"rva": "0x1080", "inline_scope": "reviewed_nested_register_leaf",
+                        "flag_names": ["INLINE_DONTCOPY"]}
+                if issue == "wrong_flags": leaf["flag_names"] = ["INLINE_EXTFRAME", "INLINE_DONTCOPY"]
+                specs = ([] if issue == "missing_outer" else [0x1000]) + [leaf]
+                if issue == "duplicate_leaf": specs.append(dict(leaf))
+                outlines = [0x1000] + ([] if issue == "unoutlined_leaf" else [0x1080])
+                pe = analysis.native_function_selection(raw, capture, [0x1040], type_note="complete register leaf review",
+                                                        outline_rvas=outlines)
+                from host import inspect_pe
+                if issue:
+                    with self.assertRaises(ValueError):
+                        analysis.native_function_fresh_inlines(raw, capture, pe, specs,
+                                                              "complete register leaf review", inspect_pe(raw))
+                else:
+                    plans = analysis.native_function_fresh_inlines(raw, capture, pe, specs,
+                                                                  "complete register leaf review", inspect_pe(raw))
+                    self.assertEqual(len(plans), 2)
+                    self.assertEqual(plans[1]["flag_names"], ["INLINE_DONTCOPY"])
+                    self.assertEqual([row["owner_rva"] for row in plans[1]["callsites"]], ["0x1040"] * 2)
+                    self.assertEqual([row["call_path"][0]["callsite_rva"] for row in plans[1]["callsites"]],
+                                     ["0x1040", "0x1046"])
+                    self.assertEqual([row["call_path"][1]["callsite_rva"] for row in plans[1]["callsites"]],
+                                     ["0x1000"] * 2)
 
     def test_fresh_inline_resolution_rejects_incomplete_sdk_calls_and_cleanup(self):
         for issue in (None, "missing_audit", "cleanup", "flags", "omitted_call", "wrong_call", "sdk_error", "pseudocode"):
@@ -6961,7 +7154,10 @@ def run():
     for module in ("test_rust_data", "test_typed_tables", "test_windows_installer", "test_workspace",
                    "test_resource_scope", "test_asset_release", "test_host", "test_native_runtime", "test_families",
                    "test_reverse_pending", "test_ida_capture_values", "test_analysis_storage",
-                   "test_native_adjudication", "test_native_callsites"):
+                    "test_native_adjudication", "test_native_callsites", "test_ida_capture",
+                    "test_native_attempt_history", "test_native_boundaries", "test_native_embedded",
+                    "test_native_ia64_contracts", "test_native_import_forwarders",
+                    "test_native_source_correspondence", "test_native_static_reviews", "test_frontend"):
         suite.addTests(unittest.defaultTestLoader.loadTestsFromName(module))
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     path = analysis.ROOT / ".analysis/results/tool-verification.json"
@@ -6984,7 +7180,15 @@ def run():
                                       "tools/test_ida_capture_values.py", "tools/analysis_storage.py",
                                       "tools/test_analysis_storage.py", "tools/native_adjudication.py",
                                       "tools/test_native_adjudication.py", "tools/native_callsites.py",
-                                      "tools/test_native_callsites.py")],
+                                       "tools/test_native_callsites.py", "tools/test_ida_capture.py",
+                                       "tools/native_attempt_history.py", "tools/test_native_attempt_history.py",
+                                       "tools/native_boundaries.py", "tools/test_native_boundaries.py",
+                                       "tools/native_embedded.py", "tools/test_native_embedded.py",
+                                       "tools/native_ia64_contracts.py", "tools/test_native_ia64_contracts.py",
+                                       "tools/native_import_forwarders.py", "tools/test_native_import_forwarders.py",
+                                       "tools/native_source_correspondence.py", "tools/test_native_source_correspondence.py",
+                                       "tools/native_static_reviews.py", "tools/test_native_static_reviews.py",
+                                       "tools/test_frontend.py")],
               "target_execution": False, "real_device_operations": False}
     analysis.save(path, report)
     return 0 if result.wasSuccessful() else 1

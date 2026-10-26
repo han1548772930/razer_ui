@@ -52,7 +52,11 @@ IDA 路径：`E:/IDA`（9.1）、`D:/ida/IDA Pro 8.3`（8.3）。GPUI 技能读�
 python tools/workspace.py validate-rust --suite current-dpi-protocol --suite current-polling-protocol --suite current-power-protocol
 ```
 
-官方 DLL 对照维护器使用 Windows x64 Python 标准库 `ctypes`、`unittest` 和项目内 PE 检查模块；不执行 JavaScript／N-API 初始化。其纯测试使用 `python -m unittest discover -s tools -p test_native_runtime.py`，不加载真实官方 DLL 或打开设备。实际功能对照继续使用 `compare-local-service-version`、`compare-local-app-files`、`validate-connected-devices` 与 `compare-connected-hid` 的已核实分支；新增功能须补齐对应入口和收据，不能由现有 HID 重放替代业务比较。
+官方 DLL 对照维护器使用 Windows x64 Python 标准库 `ctypes`、`unittest` 和项目内 PE 检查模块；不执行 JavaScript／N-API 初始化。其纯测试使用 `python -m unittest discover -s tools -p test_native_runtime.py`，不加载真实官方 DLL 或打开设备。实际功能对照使用 `compare-local-service-version`、`compare-local-app-files`、`compare-local-lighting`、`validate-connected-devices` 与 `compare-connected-hid` 的已核实分支；新增功能须补齐对应入口和收据，不能由现有 HID 重放替代业务比较。
+
+`compare-local-lighting` 核对当前官方声明、原件 SHA／PE／ABI、110 个完整函数与 14 个 vtable 原字节后，以隔离进程执行公开 JSON 接口的固定软件场景。系统依赖限定并核实 System32，目标模块与 callback 保留到进程退出；停止和销毁失败、超时、取消及真实进程等待均保留。当前已实际比较 Static 与静止 Wheel 的九像素输出，独立 Rust 前后快照一致且与原版逐值相同；Fade、动态效果、其他参数、物理设备和应用窗口不在该结果范围。唯一[灯光对照收据](../../.analysis/results/lighting-runtime-comparison.json)保留每次尝试、完整输入身份、原始调用与结果、差异及清理，不丢弃失败记录。
+
+该入口也将来源校验失败和父进程取消追加到同一收据，取消先完成子进程等待并保留已取得的输出，再向调用方传播。输入身份覆盖工作区 Cargo／工具链配置；三次运行共用冻结环境副本，编译参数与 wrapper 环境只保留存在性、长度及 SHA，结束后复核，避免公开配置值。
 
 cargo-fuzz 0.13.2 已安装，配套独立 nightly 工具链为 `rustc 1.101.0-nightly (19833af72 2026-10-20)`，包含 `rust-src`；工作区默认工具链仍为 1.99.0。安装与版本核验命令如下，不设置默认工具链或工作区 override：
 
@@ -170,6 +174,16 @@ CAB 候选另静态解析完整 CFHEADER／reserve、CFFOLDER、CFFILE 和 CFDAT
 该模式要求实际 `ia64l`、`ia` processor、64 位与小端状态一致，并核对运行中的入口、capture／support／parser、processor DLL、IDA 内核、IDAPython 及所用 SDK 模块文件。原始工具字节按摘要保留于同一原件的 `tool-sources/`，计划、会话和结果绑定这些快照并在导出前后复核；基础 IDB 的实际身份参与 selection，变化后生成独立尝试，已有输出不可覆盖。此路径不修补 SP／ABI、不调用反编译器；只有函数／chunks 快照未变且自动分析保持关闭，才记录未创建函数和导出完成。基础 IDB、capture 和历史失败保持原字节。当前 71 个异常区域与既有 chunks 的独立覆盖核对保留 9 个区域、1,872 字节缺口；异常表可能描述拆分片段，完整解码不证明独立函数边界、unwind 语义或函数发现闭合，缺失区间和后续语义工作统一进入 gaps。
 
 解码器返回 0 时保留确切未解码范围，再从下一个 16 字节 bundle 继续；游标推进不计为成功解码。当前补充尝试覆盖 71 个区域、34,736 个原字节，实际解码 34,676 字节，6 处各 10 字节仍失败。经已索引的官方指令手册逐位核对，这六个原 bundle 均为 template 0C，三个 41 位 slot 均为 0x8000000，分别表示 nop.m／nop.f／nop.i 0；该独立语义证明不改写 IDA 失败收据、不创建函数，也不提升 66 个原函数的伪代码或发现闭包状态。`reconcile-source-index --instruction-manual` 校验官方 HTTPS 来源、版本元数据、PDF 头、长度及完整字节摘要后登记手册，产品不依赖此分析输入。
+
+IA64 的[静态契约审阅](../../.analysis/results/reverse-pending/review-sources/657105e758f6702691d1f4156168e987cbaac8e9963438647fcc107a57b0ffb8.json)另由 `tools/native_ia64_contracts.py` 逐项核验 66 个既有函数、91 个 chunks、71 个异常区间及 66 份 unwind 流；独立核对导入、重定位、描述符、固定表、完整可执行虚拟字节与额外复制函数。原始 66 条反编译失败、96 字节对齐内容及函数发现的原捕获边界完整保留；手工契约、反编译能力及匹配平台实际执行分别记录。
+
+`bind-native-static-review --kind source-assembly` 通过 `tools/native_source_correspondence.py` 静态调用已核验的 `ml64`，独立解析 COFF 符号与 REL32 重定位，将 28 个 AVX512 owner／helper 的重组装字节与原 DLL 对应；[语义审阅](../../.analysis/results/reverse-pending/review-sources/a669e5958f5aacaf4d7ea8936b93807d5969be8482c26277f5eca160a04e4051.json)另保留 ABI、实际消费者、36 个计算分支、16 个后处理分支及 FMA 源操作数顺序。汇编器临时目录在成功、失败和取消时释放，来源一致不产生伪造 cfunc 或实际 DLL 执行结果。
+
+`bind-native-import-forwarders` 仅接受[精确原始 IAT 跳转证明](../../.analysis/results/reverse-pending/review-sources/9bd12d141163e04dd7dacffc101c05187b55a9a931a8c165b2f489bfc0fbed8c.json)，核对完整六字节机器码、导入槽、变参类型及全部互反调用引用。旧尝试中的类型别名须有独立的 Windows ABI 原件与静态编译证明；捕获中断须覆盖全部原目标、完整 chunks、原错误与退出会话后才能登记历史核销。绑定由显式输入与 review SHA 选择，替换保留旧字节快照；统一[当前复核](../../.analysis/results/reverse-pending/unresolved-current.json)分开记录完整反编译、原函数上下文、机器跳转及静态契约，不提升 Rust、UI 或实际设备验收状态。
+
+`audit-native-attribution --previous-audit-sha256` 仅在完整重新核验后更新输入索引绑定，保留旧审计全文和当前父子输入的完整索引行；函数映射、原始失败及其他证据不得变化。旧索引没有保留的完整行不能追溯宣称一致。历史引用须属于当前审计逐项核验的前序链，孤立同名快照不构成有效依据。
+
+`reverse-pending --recheck-unresolved` 导入既有结果前核对不可变正文、冻结任务身份、唯一性、工具快照、统计与历史增量链。沿用项核对全部嵌套证据；本轮选定项先移除旧通过状态，再重新计算，允许有完整历史原件的正式绑定更新。缺失、损坏或跨任务结果不能被重新封存为通过。
 
 `assembly_captured=true` 只表示记录了分析器枚举的指令项，不能直接证明它们覆盖原始函数块每个字节。须将所有指令区间与 chunks 核对，分别保留指令覆盖、原始字节覆盖和 Hex-Rays 失败；块内未被枚举的范围不能凭空解释为指令或补成伪代码。现有完整 raw chunks 可用于继续定点逆向，原捕获失败不改写为成功。模块级批处理成功、全函数枚举和业务语义闭合也分别记录。
 

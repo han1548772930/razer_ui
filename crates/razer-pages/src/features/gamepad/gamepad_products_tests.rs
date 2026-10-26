@@ -20,27 +20,10 @@ fn trigger_range_tip_preserves_intrinsic_single_line_width_inside_zero_width_anc
 }
 
 #[::core::prelude::v1::test]
-fn power_saving_labels_follow_the_source_rule() {
-    // Source `GR`: `item.value >= 60 ? ra.pHP : ra.yvH` with
-    // `data.value = item.value >= 60 ? item.value / 60 : item.value`; the two aliases
-    // resolve to `MIN` ("{{value}} min.") and `SEC` ("{{value}} sec."). The mapping is
-    // asserted against the same templates so the test does not depend on the active
-    // locale; the English rendering is pinned separately below.
-    assert_eq!(power_saving_label(30), razer_i18n::t_value("SEC", 30));
-    assert_eq!(power_saving_label(59), razer_i18n::t_value("SEC", 59));
-    assert_eq!(power_saving_label(60), razer_i18n::t_value("MIN", 1));
-    assert_eq!(power_saving_label(300), razer_i18n::t_value("MIN", 5));
-    assert_eq!(power_saving_label(3600), razer_i18n::t_value("MIN", 60));
-    if razer_i18n::locale().starts_with("en") {
-        assert_eq!(power_saving_label(30), "30 sec.");
-        assert_eq!(power_saving_label(300), "5 min.");
-    }
-    for value in [5, 15, 30, 45, 60, 300] {
-        let label = power_saving_label(value);
-        assert!(!label.contains("{{value}}"), "{label}");
-        assert_ne!(label, "MIN");
-        assert_ne!(label, "SEC");
-        assert!(!label.contains("MINUTES"));
+fn power_saving_labels_follow_the_mounted_controller_minute_options() {
+    // Current Am/wm print the number; their adjacent description supplies minutes.
+    for (value, label) in [(5, "5"), (15, "15"), (30, "30"), (45, "45"), (60, "60")] {
+        assert_eq!(power_saving_label(value), label);
     }
 }
 

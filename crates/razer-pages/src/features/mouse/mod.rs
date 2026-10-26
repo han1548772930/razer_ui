@@ -533,13 +533,16 @@ impl MouseProductWorkspace {
             let editor = cx.new(|cx| scroll_wheel::ScrollWheelEditor::new(wheel_spec, window, cx));
             this.subscriptions.push(cx.subscribe(
                 &editor,
-                move |this, editor, _: &scroll_wheel::Changed, cx| {
+                move |this, editor, change: &scroll_wheel::Changed, cx| {
                     let value = editor.read(cx).snapshot();
                     let fields = editor.read(cx).local_fields();
-                    let previous = this.draft[&wheel_spec.profile_key].clone();
+                    let mut previous = change.wheel.clone();
+                    for field in &change.fields {
+                        previous.as_object_mut().unwrap().remove(*field);
+                    }
                     this.draft[&wheel_spec.profile_key] = value;
                     this.draft[scroll_wheel::LOCAL_FIELDS] = fields;
-                    this.submit_scroll_edit(&previous, cx);
+                    this.submit_scroll_edit(&previous, &change.wheel, cx);
                     cx.emit(MouseProductChanged);
                     cx.notify();
                 },

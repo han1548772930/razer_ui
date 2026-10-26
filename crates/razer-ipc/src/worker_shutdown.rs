@@ -7,11 +7,53 @@ use std::{
     time::{Duration, Instant},
 };
 
+/// A matching successful service teardown reply. Process exit and pipe joins
+/// are separate facts and never construct this receipt.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ShutdownConfirmation {
+    request_id: u64,
+}
+impl ShutdownConfirmation {
+    pub fn request_id(self) -> u64 {
+        self.request_id
+    }
+}
+
+pub(super) fn confirm(
+    response: &ResponseEnvelope,
+    shutdown_id: u64,
+) -> anyhow::Result<ShutdownConfirmation> {
+    ensure!(response.id == shutdown_id, "设备服务清理回执序号不匹配");
+    ensure!(
+        response.data.is_some() != response.error.is_some(),
+        "设备服务清理回执状态无效"
+    );
+    if let Some(error) = &response.error {
+        anyhow::bail!("设备服务恢复失败：{error}");
+    }
+    #[derive(Deserialize)]
+    struct Receipt {
+        stopped: bool,
+    }
+    let receipt: Receipt = serde_json::from_value(
+        response
+            .data
+            .as_ref()
+            .context("设备服务清理回执为空")?
+            .clone(),
+    )
+    .context("设备服务清理回执格式无效")?;
+    ensure!(receipt.stopped, "设备服务未确认清理完成");
+    Ok(ShutdownConfirmation {
+        request_id: shutdown_id,
+    })
+}
+
 pub(super) fn drain(
     responses: &Receiver<anyhow::Result<ResponseEnvelope>>,
     shutdown_id: u64,
     timeout: Duration,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<ShutdownConfirmation> {
     let deadline = Instant::now() + timeout;
     let mut late_response = false;
     loop {
@@ -28,22 +70,7 @@ pub(super) fn drain(
             late_response = true;
             continue;
         }
-        ensure!(
-            response.data.is_some() != response.error.is_some(),
-            "设备服务清理回执状态无效"
-        );
-        if let Some(error) = response.error {
-            anyhow::bail!("设备服务恢复失败：{error}");
-        }
-        #[derive(Deserialize)]
-        struct Receipt {
-            stopped: bool,
-        }
-        let receipt: Receipt =
-            serde_json::from_value(response.data.context("设备服务清理回执为空")?)
-                .context("设备服务清理回执格式无效")?;
-        ensure!(receipt.stopped, "设备服务未确认清理完成");
-        return Ok(());
+        return confirm(&response, shutdown_id);
     }
 }
 
@@ -80,7 +107,10 @@ mod tests {
                 None,
             ))
             .unwrap();
-        drain(&receiver, 42, Duration::ZERO).unwrap();
+        assert_eq!(
+            drain(&receiver, 42, Duration::ZERO).unwrap().request_id(),
+            42
+        );
         assert!(receiver.try_recv().is_err());
     }
     #[test]
@@ -151,6 +181,31 @@ mod tests {
                 ))
                 .unwrap();
             assert!(drain(&receiver, 42, Duration::ZERO).is_err());
+        }
+    }
+
+    #[test]
+    fn shutdown_confirmation_requires_the_exact_successful_service_reply() {
+        let success = response(
+            42,
+            Some(serde_json::json!({"stopped":true,"extension":7})),
+            None,
+        )
+        .unwrap();
+        assert_eq!(confirm(&success, 42).unwrap().request_id(), 42);
+        assert!(confirm(&success, 41).is_err());
+        for (data, error) in [
+            (Some(serde_json::json!({"stopped":false})), None),
+            (Some(serde_json::json!({"stopped":"true"})), None),
+            (Some(serde_json::json!({})), None),
+            (None, None),
+            (None, Some("actual owner teardown failed")),
+            (
+                Some(serde_json::json!({"stopped":true})),
+                Some("contradictory"),
+            ),
+        ] {
+            assert!(confirm(&response(42, data, error).unwrap(), 42).is_err());
         }
     }
 }
