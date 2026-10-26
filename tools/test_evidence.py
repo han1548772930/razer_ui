@@ -25,6 +25,38 @@ import frontend
 
 
 class FrontendModuleRecoveryTests(unittest.TestCase):
+    def test_capture_passes_every_js_and_mjs_original_to_the_static_analyzer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_dir = root / ".analysis/inputs/frontend/app-current"
+            records = []
+            for name, raw in (("main.js", b"const main=1"),
+                              ("index.mjs", b"export const moduleValue=2"),
+                              ("settings.json", b'{"value":3}')):
+                target = input_dir / "raw/apps.razer.com/example" / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(raw)
+                records.append({"url": "https://apps.razer.com/example/" + name,
+                    "path": target.relative_to(root).as_posix(), "bytes": len(raw),
+                    "sha256": hashlib.sha256(raw).hexdigest()})
+            (input_dir / "acquisition.json").write_text(json.dumps({"files": records}), encoding="utf-8")
+            tool = root / "static-analyzer.exe"
+            tool.write_bytes(b"inert analyzer identity; never executed")
+            args = argparse.Namespace(input=input_dir.relative_to(root).as_posix(), no_refresh_gaps=True)
+            with patch.object(analysis, "ROOT", root), patch.object(analysis, "wakaru", return_value=tool), \
+                 patch.object(analysis.subprocess, "run", return_value=SimpleNamespace(returncode=0)) as run, \
+                 patch.object(frontend, "recover_frontend", return_value=[]), redirect_stdout(io.StringIO()):
+                analysis.analyze_frontend(args, refresh_ledger=False)
+            actual = json.loads((root / ".analysis/results/frontend/app-current/analysis.json").read_bytes())
+            self.assertEqual(actual["original_js_inputs"], [row["path"] for row in records[:2]])
+            self.assertEqual(actual["original_inputs"], [{key: row[key] for key in ("path", "bytes", "sha256")}
+                                                       for row in records])
+            self.assertEqual(run.call_count, 1)
+            argv = run.call_args.args[0]
+            self.assertTrue(any(name.endswith("index.mjs") for name in argv))
+            self.assertFalse(any(name.endswith("settings.json") for name in argv))
+            self.assertTrue(actual["input_bytes_unchanged"])
+
     def test_frontend_recovery_always_uses_bounded_thread_pool(self):
         source = inspect.getsource(frontend.recover_frontend)
         self.assertIn("getattr(args, \"workers\", 2)", source)
@@ -268,6 +300,19 @@ class SemanticQueryGapTests(unittest.TestCase):
         self.assertEqual([row["product_id"] for row in rows], [691, 746])
         self.assertEqual(rows[0]["pointer"], "/products/0/child~1with~0name/failures")
         self.assertTrue(all(row["evidence"] == "receipt.json" for row in rows))
+
+    def test_mapping_remaining_closure_preserves_every_finding_and_its_owner_pointer(self):
+        data = {"keypad_mapping": {"remaining_closure": ["setter reply", {"event": "profile changed"}]},
+                "mapping_descriptors": {"native/with~branch": {"remaining_closure": ["save confirmation"]}}}
+        rows = analysis.semantic_query_gaps(data, "receipt.json")
+        self.assertEqual([row["finding"] for row in rows],
+                         ["setter reply", {"event": "profile changed"}, "save confirmation"])
+        self.assertEqual([row["pointer"] for row in rows], ["/keypad_mapping/remaining_closure",
+            "/keypad_mapping/remaining_closure", "/mapping_descriptors/native~1with~0branch/remaining_closure"])
+        self.assertTrue(all(row["kind"] == "semantic_query_chain_unresolved"
+                            and row["evidence"] == "receipt.json" for row in rows))
+        self.assertEqual(analysis.semantic_query_gaps({"keypad_mapping": {"remaining_closure": []},
+            "mapping_descriptors": {"remaining_closure": []}}, "receipt.json"), [])
 
     def test_host_queries_reach_the_shared_ledger_without_promoting_static_capture(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
@@ -2961,6 +3006,12 @@ class CorpusLineageTests(unittest.TestCase):
 
 
 class NativeSupplementTests(unittest.TestCase):
+    @staticmethod
+    def typed_fixture(body):
+        body["type"] = body["type_before_decompile"] = body["type_after_decompile"] = "void __cdecl()"
+        body["assembly_after_decompile"] = json.loads(json.dumps(body["assembly"]))
+        body["pseudocode"]["locals_capture"] = {"complete": True, "mba_entry_ea": body["address"]}
+
     def test_member_dispatch_thunk_requires_all_three_exact_x64_instructions(self):
         # mov rax,[rcx+8]; mov rcx,[rcx+24]; jmp rax.
         raw = bytes.fromhex("488b4108488b491848ffe0")
@@ -3197,6 +3248,7 @@ class NativeSupplementTests(unittest.TestCase):
         for body in (primary, secondary):
             body["flags"] = 0x40000 if inline else 0
         primary["pseudocode"] = {"lines": [{"line": 0, "text": "int recovered(void) { return 0; }"}], "locals": []}
+        self.typed_fixture(primary)
         function = write(output / "functions/1000.json", primary)
         function.update(path="functions/1000.json", rva="0x1000", address=primary["address"],
                         assembly_captured=True, pseudocode_captured=True)
@@ -3589,6 +3641,7 @@ class NativeSupplementTests(unittest.TestCase):
         baselines = analysis.native_function_partition_bodies(partition)
         body = baselines["owner"]
         body["pseudocode"] = {"lines": [{"text": "void owner() { /* recovered original operations */ }"}], "locals": []}
+        self.typed_fixture(body)
         supplemental = result / "supplements/partitioned"
         record = write(supplemental / "functions/1000.json", body)
         record.update(path="functions/1000.json", rva="0x1000", address=body["address"], assembly_captured=True, pseudocode_captured=True)
@@ -3738,6 +3791,7 @@ class NativeSupplementTests(unittest.TestCase):
                 output = result / "supplements/fresh"
                 body = json.loads((result / "functions/1040.json").read_bytes())
                 body["pseudocode"] = {"lines": [{"text": "return;"}], "locals": []}
+                self.typed_fixture(body)
                 audit = {"hook_registered": True, "hook_unregistered": True, "complete": True, "errors": [],
                          "dontcopy_flag": 2, "external_frame_flag": 1, "target_execution": False, "base_database_modified": False,
                          "calls": [{**call, "result_code": 0, "status": "inlined", "inline_flags": 3,
@@ -3815,6 +3869,7 @@ class NativeSupplementTests(unittest.TestCase):
                     output = result / "supplements/outline"
                     body = json.loads((result / capture["functions"][0]["path"]).read_bytes())
                     body["pseudocode"] = {"lines": [{"line": 0, "text": "void caller() {}"}], "locals": []}
+                    self.typed_fixture(body)
                     record = write(output / "functions/1000.json", body)
                     record.update(path="functions/1000.json", rva="0x1000", address=body["address"],
                                   assembly_captured=True, pseudocode_captured=True)
@@ -3929,6 +3984,7 @@ class NativeSupplementTests(unittest.TestCase):
         merge = selected["function_merges"][0]
         body = analysis.native_function_merge_body(merge)
         body["pseudocode"] = {"lines": [{"text": "void recovered() {}"}], "locals": []}
+        self.typed_fixture(body)
         supplemental = result / "supplements/merged"
         recovered = write(supplemental / "functions/1000.json", body)
         recovered.update(path="functions/1000.json", rva="0x1000", address="0x140001000",
@@ -4025,6 +4081,7 @@ class NativeSupplementTests(unittest.TestCase):
         capture_ref = write(result / "capture.json", capture)
         selection = analysis.native_function_selection(raw, capture, [0x1000])
         body["pseudocode"] = {"lines": [{"line": 0, "text": "void recovered() {}"}], "locals": []}
+        self.typed_fixture(body)
         recovered = write(supplemental / "functions/1000.json", body)
         recovered.update(path="functions/1000.json", rva="0x1000", address="0x140001000",
                          assembly_captured=True, pseudocode_captured=True)
@@ -4123,6 +4180,7 @@ class NativeSupplementTests(unittest.TestCase):
         else:
             duplicate["pseudocode"]["lines"][0]["text"] = "void recovered() { different_effect(); }"
         independent = {**second_base, "pseudocode": {"lines": [{"line": 0, "text": "void independent() {}"}], "locals": []}}
+        self.typed_fixture(independent)
         functions = []
         for body in ([duplicate, independent] if conflict_first else [independent, duplicate]):
             record = write(output / ("functions/" + body["rva"][2:] + ".json"), body)
@@ -4284,6 +4342,7 @@ class NativeSupplementTests(unittest.TestCase):
                         supplemental = result / "supplements/selected"
                         body = bodies[0]
                         body["pseudocode"] = {"lines": [{"line": 0, "text": "return imported();"}], "locals": []}
+                        self.typed_fixture(body)
                         recovered = write(supplemental / "functions/1000.json", body)
                         recovered.update(path="functions/1000.json", rva="0x1000", address=body["address"],
                                          assembly_captured=True, pseudocode_captured=True)
@@ -4385,6 +4444,47 @@ class NativeSupplementTests(unittest.TestCase):
                     self.assertFalse(rejected["resolved_failures"])
                     self.assertFalse(rejected["complete_functions"])
                     self.assertEqual((result / "capture.json").read_bytes(), baseline_bytes)
+
+    def test_unadjudicated_recovery_requires_complete_live_types_and_original_instruction_snapshot(self):
+        cases = (None, "metadata_missing", "metadata_incomplete", "mba_entry", "location_proxy",
+                 "local_incomplete", "location_incomplete", "namespace", "conversion",
+                 "stack_roundtrip", "missing_type", "type_before", "assembly_snapshot")
+        for issue in cases:
+            with self.subTest(issue=issue), tempfile.TemporaryDirectory() as directory, \
+                    patch.object(analysis, "ROOT", Path(directory)):
+                result, output, capture, supplement, body, write = self.reanalysis_fixture(Path(directory))
+                body["pseudocode"]["locals"] = [{"complete": True, "width": 4,
+                    "location": {"complete": True, "status": "observed", "kind": "stack",
+                                 "register_namespace": "hexrays_microregisters"},
+                    "ida_location_conversion": {"complete": True, "roundtrip_matches": True},
+                    "stack_coordinate_conversion": {"complete": True, "roundtrip_matches": True}}]
+                local = body["pseudocode"]["locals"][0]
+                if issue == "metadata_missing": del body["pseudocode"]["locals_capture"]
+                elif issue == "metadata_incomplete": body["pseudocode"]["locals_capture"]["complete"] = False
+                elif issue == "mba_entry": body["pseudocode"]["locals_capture"]["mba_entry_ea"] = "0x140001001"
+                elif issue == "location_proxy": local["location"] = "<vdloc_t proxy>"
+                elif issue == "local_incomplete": local["complete"] = False
+                elif issue == "location_incomplete": local["location"]["complete"] = False
+                elif issue == "namespace": local["location"]["register_namespace"] = "processor_registers"
+                elif issue == "conversion": local["ida_location_conversion"]["roundtrip_matches"] = False
+                elif issue == "stack_roundtrip": local["stack_coordinate_conversion"]["roundtrip_matches"] = False
+                elif issue == "missing_type": del body["type_after_decompile"]
+                elif issue == "type_before": body["type_before_decompile"] = "int invented(void)"
+                elif issue == "assembly_snapshot": body["assembly_after_decompile"] = []
+                record = write(output / "functions/1000.json", body)
+                supplement["functions"][0]["sha256"] = record["sha256"]
+                write(output / "capture.json", supplement)
+                baseline_before = (result / "capture.json").read_bytes()
+                function_before = (output / "functions/1000.json").read_bytes()
+                resolved = analysis.native_reanalysis_resolution(result)
+                self.assertEqual(bool(resolved["complete_functions"]), issue is None)
+                self.assertEqual(bool(resolved["resolved_failures"]), issue is None)
+                self.assertEqual(bool(resolved["verification_failures"]), issue is not None)
+                if issue:
+                    self.assertEqual(resolved["remaining_failures"], capture["failures"])
+                    self.assertEqual(resolved["verification_failures"][0]["function_rva"], "0x1000")
+                self.assertEqual((result / "capture.json").read_bytes(), baseline_before)
+                self.assertEqual((output / "functions/1000.json").read_bytes(), function_before)
 
     def test_reanalysis_changed_or_incomplete_evidence_does_not_hide_original_failure(self):
         for issue in ["changed_original", "changed_base", "changed_body", "incomplete_locals", "changed_instruction",
@@ -5497,6 +5597,48 @@ class JavascriptBindingTests(unittest.TestCase):
         raw = b'function f(){if(ok){var data="outer"} {const data="inner";inside(data)}outside(data)}'
         self.assertEqual(self.binding(raw, "data", b'inside(data)')["body"], 'data="inner"')
         self.assertEqual(self.binding(raw, "data", b'outside(data)')["body"], 'data="outer"')
+
+    def test_iteration_lexical_bindings_shadow_factory_require_only_inside_the_loop(self):
+        for declaration in (b"const", b"let"):
+            for operator in (b"in", b"of"):
+                raw = (b'(m,e,o)=>{for(' + declaration + b' o ' + operator
+                       + b' values)o(1);outside(o)}')
+                with self.subTest(declaration=declaration, operator=operator):
+                    found = self.binding(raw, "o", b'o(1)')
+                    self.assertEqual(found["resolution"], "iteration_requires_value_analysis")
+                    self.assertEqual(found["scope"]["syntax"], "for_in_statement")
+                    self.assertEqual(found["body"].encode(), raw[found["start_byte"]:found["end_byte"]])
+                    self.assertEqual(self.binding(raw, "o", b'outside(o)')["resolution"],
+                                     "parameter_requires_caller_analysis")
+
+    def test_iteration_var_binding_belongs_to_the_enclosing_function(self):
+        raw = b'const value="outer";function f(){for(var value of items){inside(value)}outside(value)}after(value)'
+        for marker in (b'inside(value)', b'outside(value)'):
+            found = self.binding(raw, "value", marker)
+            self.assertEqual(found["resolution"], "iteration_requires_value_analysis")
+            self.assertEqual(found["scope"]["syntax"], "function_declaration")
+        self.assertEqual(self.binding(raw, "value", b'after(value)')["body"], 'value="outer"')
+
+    def test_iteration_assignment_does_not_declare_a_lexical_binding(self):
+        raw = b'const value="outer";function f(){for(value of items){inside(value)}}'
+        self.assertEqual(self.binding(raw, "value", b'inside(value)')["body"], 'value="outer"')
+
+    def test_iteration_destructuring_indexes_only_bound_names(self):
+        raw = (b'const key="outer-key",fallback="outer-fallback";'
+               b'function f(){for(const {[key]:o,nested:[x,...rest],val=fallback} of items)'
+               b'{inside(o,x,rest,val,key,fallback)}}')
+        for name in ("o", "x", "rest", "val"):
+            self.assertEqual(self.binding(raw, name, b'inside(')["resolution"],
+                             "iteration_requires_value_analysis")
+        for name in ("key", "fallback"):
+            self.assertEqual(self.binding(raw, name, b'inside(')["resolution"], "declaration")
+
+    def test_await_iteration_and_nested_closures_keep_the_iteration_owner(self):
+        raw = b'async function f(o){for await(const o of items){const closure=()=>inside(o)}outside(o)}'
+        self.assertEqual(self.binding(raw, "o", b'inside(o)')["resolution"],
+                         "iteration_requires_value_analysis")
+        self.assertEqual(self.binding(raw, "o", b'outside(o)')["resolution"],
+                         "parameter_requires_caller_analysis")
 
 
 class GamepadLightingTreeTests(unittest.TestCase):
@@ -6818,7 +6960,8 @@ def run():
     suite = unittest.defaultTestLoader.loadTestsFromModule(__import__(__name__))
     for module in ("test_rust_data", "test_typed_tables", "test_windows_installer", "test_workspace",
                    "test_resource_scope", "test_asset_release", "test_host", "test_native_runtime", "test_families",
-                   "test_reverse_pending", "test_ida_capture_values", "test_analysis_storage"):
+                   "test_reverse_pending", "test_ida_capture_values", "test_analysis_storage",
+                   "test_native_adjudication", "test_native_callsites"):
         suite.addTests(unittest.defaultTestLoader.loadTestsFromName(module))
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     path = analysis.ROOT / ".analysis/results/tool-verification.json"
@@ -6839,7 +6982,9 @@ def run():
                                       "tools/ida/capture.py", "tools/ida/capture_io.py", "tools/ida/capture_values.py",
                                       "tools/reverse_pending.py", "tools/test_reverse_pending.py",
                                       "tools/test_ida_capture_values.py", "tools/analysis_storage.py",
-                                      "tools/test_analysis_storage.py")],
+                                      "tools/test_analysis_storage.py", "tools/native_adjudication.py",
+                                      "tools/test_native_adjudication.py", "tools/native_callsites.py",
+                                      "tools/test_native_callsites.py")],
               "target_execution": False, "real_device_operations": False}
     analysis.save(path, report)
     return 0 if result.wasSuccessful() else 1

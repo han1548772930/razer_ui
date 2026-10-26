@@ -81,8 +81,9 @@ class TypedCaptureValuesTests(unittest.TestCase):
         self.assertEqual(value["status"], "truncated")
         self.assertEqual(value["reason"], "location_depth_limit")
 
-    def locals(self, *, mismatch=False, conversion_error=False):
-        stack = Location("stack", 40)
+    def locals(self, *, mismatch=False, conversion_error=False, stack_offset=40,
+               stack_delta=32, mba_stack_error=False):
+        stack = Location("stack", stack_offset)
         reg = Location("register", 8, 0)
         variables = [SimpleNamespace(name=name, type=lambda typ=typ: typ, is_arg_var=argument,
                                      width=width, defea=0x10001234, defblk=0, location=loc)
@@ -95,11 +96,17 @@ class TypedCaptureValuesTests(unittest.TestCase):
                 raise ValueError("coordinate conversion unavailable")
             return location
 
+        def mba_stack(offset):
+            if mba_stack_error:
+                raise ValueError("MBA stack mapping unavailable")
+            return max(0, offset - stack_delta)
+
         mba = SimpleNamespace(entry_ea=0x10001000, vd2idaloc=vd2ida,
             idaloc2vd=lambda location, width: Location("stack", 44) if mismatch else location,
-            stkoff_vd2ida=lambda offset: offset - 32, stkoff_ida2vd=lambda offset: offset + 32)
-        cfunc = SimpleNamespace(mba=mba, get_lvars=lambda: variables, get_stkoff_delta=lambda: 32)
-        sdk = SimpleNamespace(print_vdloc=lambda location, width: "stack:28.8" if location is stack else "eax.4")
+            stkoff_vd2ida=mba_stack, stkoff_ida2vd=lambda offset: offset + stack_delta)
+        cfunc = SimpleNamespace(mba=mba, get_lvars=lambda: variables, get_stkoff_delta=lambda: stack_delta)
+        sdk = SimpleNamespace(print_vdloc=lambda location, width: "stack:28.8" if location is stack else "eax.4",
+                              is_kreg=lambda reg: False)
         return VALUES.local_variables(cfunc, sdk)
 
     def test_local_values_retain_real_coordinates_and_verified_roundtrips(self):
@@ -113,7 +120,29 @@ class TypedCaptureValuesTests(unittest.TestCase):
         self.assertFalse(saved["argument"])
         self.assertTrue(error["argument"])
         self.assertEqual(error["location"]["register"], 8)
+        self.assertEqual(result["locals_capture"]["schema_version"], 2)
         self.assertEqual(json.loads(json.dumps(result)), result)
+
+    def test_cfunc_frame_coordinates_keep_negative_offsets_and_separate_mba_observations(self):
+        result = self.locals(stack_offset=4, stack_delta=72)
+        self.assertTrue(result["locals_capture"]["complete"])
+        saved = result["locals"][0]
+        conversion = saved["stack_coordinate_conversion"]
+        self.assertEqual(conversion["coordinate_namespace"], "ida_frame_offsets")
+        self.assertEqual(conversion["conversion_api"], "cfunc_t.get_stkoff_delta")
+        self.assertEqual(conversion["ida_offset"], -68)
+        self.assertEqual(conversion["roundtrip_decompiler_offset"], 4)
+        self.assertEqual(conversion["cfunc_stack_offset_delta"], 72)
+        self.assertFalse(saved["mba_stack_coordinate_observation"]["roundtrip_matches"])
+        self.assertFalse(saved["mba_stack_coordinate_observation"]["used_for_cfunc_frame_conversion"])
+
+    def test_unavailable_mba_mapping_does_not_replace_documented_cfunc_coordinates(self):
+        result = self.locals(stack_offset=4, stack_delta=72, mba_stack_error=True)
+        self.assertTrue(result["locals_capture"]["complete"])
+        saved = result["locals"][0]
+        self.assertEqual(saved["stack_coordinate_conversion"]["ida_offset"], -68)
+        self.assertEqual(saved["mba_stack_coordinate_observation"]["status"], "diagnostic_error")
+        self.assertFalse(saved["mba_stack_coordinate_observation"]["complete"])
 
     def test_failed_or_mismatched_conversion_cannot_be_reported_complete(self):
         for options in ({"mismatch": True}, {"conversion_error": True}):
@@ -132,6 +161,109 @@ class TypedCaptureValuesTests(unittest.TestCase):
             self.assertFalse(any(ast.unparse(call.func) == "str" and call.args
                                  and isinstance(call.args[0], ast.Attribute)
                                  and call.args[0].attr == "location" for call in calls), name)
+
+
+class LocalNamespaceDiagnosticTests(unittest.TestCase):
+    def fixture(self, *, fail_mapping=False):
+        source = SOURCE.with_name("supplement.py")
+        definitions = [node for node in ast.parse(source.read_text(encoding="utf-8")).body
+                       if isinstance(node, ast.FunctionDef)
+                       and node.name in {"_static_diagnostic_error", "local_namespace_diagnostics"}]
+        block = SimpleNamespace(serial=3, flags=0x30,
+                                head=SimpleNamespace(ea=0xF0000010), tail=SimpleNamespace(ea=0xF0000014))
+        variable = SimpleNamespace(name="status_c0", width=1, defea=0xF0000010, defblk=3,
+                                   location=Location("register", 181, 0), type=lambda: "bool",
+                                   is_arg_var=False)
+
+        def cpu_mapping(reg, width):
+            if fail_mapping:
+                raise ValueError("SDK mapping unavailable")
+            return -1
+
+        def vd2ida(location, width):
+            return Location("none")
+
+        def ida2vd(location, width):
+            raise RuntimeError("INTERR: 51111")
+
+        sdk = SimpleNamespace(MBL_INLINED=0x10, MBL_EXTFRAME=0x20, get_mreg_name=lambda r, w: "c0",
+                              mreg2reg=cpu_mapping, is_kreg=lambda r: True,
+                              get_temp_regs=lambda: SimpleNamespace(has=lambda r: False),
+                              print_vdloc=lambda location, width: "c0.1")
+        mba = SimpleNamespace(entry_ea=0x10001000, qty=5,
+                              map_fict_ea=lambda ea: 0x10002000 + (ea - 0xF0000010),
+                              get_mblock=lambda number: block, vd2idaloc=vd2ida, idaloc2vd=ida2vd)
+        owner = SimpleNamespace(start_ea=0x10002000, end_ea=0x10002050, flags=0)
+        namespace = {"capture_values": VALUES, "ida_hexrays": sdk,
+                     "idaapi": SimpleNamespace(BADADDR=0xFFFFFFFF),
+                     "ida_funcs": SimpleNamespace(get_func=lambda ea: owner)}
+        exec(compile(ast.Module(body=definitions, type_ignores=[]), str(source), "exec"), namespace)
+        cfunc = SimpleNamespace(mba=mba, get_lvars=lambda: [variable], get_stkoff_delta=lambda: 136)
+        return namespace["local_namespace_diagnostics"], cfunc, sdk, variable
+
+    def test_sdk_kernel_register_keeps_its_namespace_and_has_no_processor_conversion(self):
+        observe, cfunc, sdk, variable = self.fixture()
+        before = VALUES.local_variables(cfunc, sdk)
+        result = observe(cfunc)
+        after = VALUES.local_variables(cfunc, sdk)
+        self.assertEqual(before, after)
+        self.assertTrue(after["locals_capture"]["complete"])
+        proof = after["locals"][0]["virtual_register_proof"]
+        self.assertTrue(proof["complete"] and proof["is_kernel_register"])
+        self.assertEqual((proof["register"], proof["register_offset"], proof["width"], proof["name"]),
+                         (181, 0, 1, "c0"))
+        self.assertEqual(proof["processor_register"], -1)
+        self.assertEqual(after["locals"][0]["ida_location_conversion"], {
+            "status": "not_applicable", "complete": True,
+            "reason": "sdk_kernel_register_has_no_processor_location"})
+        self.assertTrue(result["diagnostics_complete"])
+        mapped = result["locals"][0]["register_observations"][0]
+        self.assertEqual(mapped["namespace"], "hexrays_microregisters")
+        self.assertEqual(mapped["processor_register"], {"status": "api_returned", "value": -1,
+                                                       "maps_to_processor_register": False})
+        self.assertTrue(mapped["kernel_register"]["value"])
+        self.assertFalse(mapped["temporary_register"]["value"])
+        self.assertEqual(json.loads(json.dumps(result)), result)
+
+    def test_kernel_claim_requires_complete_sdk_identity_and_cannot_hide_unknown_cpu_locations(self):
+        for failure in ("not_kernel", "processor_mismatch", "missing_name", "mapping_failure"):
+            with self.subTest(failure=failure):
+                _, cfunc, sdk, _ = self.fixture(fail_mapping=failure == "mapping_failure")
+                if failure == "not_kernel":
+                    sdk.is_kreg = lambda reg: False
+                elif failure == "processor_mismatch":
+                    sdk.mreg2reg = lambda reg, width: 8
+                elif failure == "missing_name":
+                    sdk.get_mreg_name = lambda reg, width: ""
+                value = VALUES.local_variables(cfunc, sdk)
+                self.assertFalse(value["locals_capture"]["complete"])
+                self.assertFalse(value["locals"][0]["ida_location_conversion"]["complete"])
+
+    def test_inline_definition_uses_sdk_block_and_mapped_original_function(self):
+        observe, cfunc, sdk, variable = self.fixture()
+        result = observe(cfunc)
+        saved = result["locals"][0]
+        self.assertEqual(saved["definition_address"]["definition_ea"], "0xf0000010")
+        self.assertEqual(saved["definition_address"]["api_mapped_ea"], "0x10002000")
+        self.assertEqual(saved["definition_address"]["mapped_function_owner"]["start_ea"], "0x10002000")
+        block = saved["definition_block_observation"]
+        self.assertEqual(block["serial"], 3)
+        self.assertTrue(block["inlined"] and block["external_frame"])
+        self.assertEqual(block["tail"]["api_mapped_ea"], "0x10002004")
+        self.assertEqual(result["cfunc_stack_offset_delta"], 136)
+
+    def test_mapping_failure_preserves_other_observations_and_out_of_range_block(self):
+        observe, cfunc, sdk, variable = self.fixture(fail_mapping=True)
+        variable.defblk = -1
+        result = observe(cfunc)
+        self.assertFalse(result["diagnostics_complete"])
+        saved = result["locals"][0]
+        self.assertEqual(saved["definition_block_observation"]["status"], "unobserved")
+        mapped = saved["register_observations"][0]
+        self.assertEqual(mapped["processor_register"]["status"], "diagnostic_error")
+        self.assertEqual(mapped["name"]["value"], "c0")
+        self.assertTrue(mapped["kernel_register"]["value"])
+        self.assertIn("SDK mapping unavailable", mapped["processor_register"]["diagnostic_errors"][0]["error"])
 
 
 if __name__ == "__main__":

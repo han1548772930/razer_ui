@@ -108,6 +108,47 @@ worker 析构置 stop、唤醒 condition，存在非当前线程时无限 join �
 
 事件专用设备另由 `hidHardwareEvents` 按 vendor/product/container/usage/usagePage 筛选且要求唯一命中，打开独立 HID 并登记 error/data；数据发往 mappingEngine 已登记 URL，按配置补 reportId。unregister 移除监听、close 并删记录，未命中也返回 true；该返回没有提供在途 callback 排空确认。
 
+## 共享映射 descriptor 的存储、发布与事件分类
+
+[完整共享链审阅](../../../.analysis/results/reverse-pending/review-sources/21fe84d134926df8d0aecdcd5bbc215e298bd2a4709a9a964d7e344624b27960.json)复用当前 `mapping_engine.dll` 捕获，核对 106 个完整函数、11,395 条指令、七张虚表和三个宿主完整字段。所有保留函数块、指令及数据区均逐字节对照原 PE；查询入口为 `python -X utf8 tools/workspace.py audit-host-local --query mapping-descriptors`，正式字段为[宿主审阅](../../../.analysis/results/host-current/local-audit.json)的 `mapping_descriptors`。这些地址适用于该收据绑定的当前原件，不能按 DLL 文件名泛化到其他版本。
+
+`localStorageSetItem(0x20920)` 拒绝空 key／value，经引擎主虚表槽 32 到 `0x2fa0 → 0x3160 → 0xd46ec → 0xd4900`，在存储服务线程更新 map。新 key 通知 added；值字节相同不通知；变化时同时携带新旧值通知 changed。源线程收到的 bool/string 回调只表示存储操作结果，没有包含 descriptor 解析、映射发布或设备应答。`0x20680` 还要求全局启用位仍置位才调用回调。宿主三个字段将 FFI 回调保留在 `cbMap`，Promise 完成后才删除；此源码没有为关停后被抑制的回调补发取消或成功结果。
+
+存储观察者使用输入对象的主虚表。基类、USB、BLE、external、OS hook 五种构造器都将 added／changed 槽 8／16 指向 `0x65cc0`，删除槽 24 指向 `0x662b0`，清空槽 32 指向 `0x66590`。`0xb1640` 在锁内重核当前登记 token 后才分派排队通知。硬件事件使用对象 `+128` 的另一张虚表；即使共用 `0x6a470` 跳板，也不能把主表删除槽误接为硬件事件函数。
+
+身份来自 native `0xdb630` 的物理设备字段：vendorId 为 `+32` 的 u16，productId 为 `+34` 的 u16，editionId 为 `+36` 的 u32，serialNumber 和 containerId 分别在 `+88/+112`。`0x780b0` 按以下顺序先登记再异步读取，条件为空的键不登记：
+
+| 顺序 | 实际键 |
+| --- | --- |
+| 1 | 有 containerId 时 `synapse_PID_containerId` |
+| 2 | 有 serialNumber 时 `synapse_PID_editionId_serialNumber` |
+| 3 | `synapse_PID_editionId` |
+| 4 | `synapse_PID` |
+
+`0x555b0` 只将成功且非空的读值存入缓存；最后一个 base-key 回调排后续初始化。`0x78be0` 按缓存树顺序尝试，首个 `SetData` 成功即停止。后续 added／changed 则先更新缓存，再比较 incoming key 与当前发布 key，字节字典序较小时跳过，否则仅将非空值交给 `SetData`。不能自行改为“键越具体始终优先”。`DeviceData` 自身的 parser 不从 descriptor 的 vendorId／productId／category 决定订阅身份，前端逻辑 productId 与 native key 中的物理 PID 必须分开核对。
+
+`0xe3f1e` 将解析结果放在 candidate `+48`，与 published `+56` 分离。version 与三个 bool 的读取失败被官方调用方忽略，保留 candidate 构造值；reportIDs 缺失或非 object 同样跳过。defaultMappings object、activeProfile string 和 profiles array 则是必要结构，其映射和 analog 分支继续调用各自 parser。这些内部解析初值不是设备读值，也不允许据此向设备写默认配置。
+
+reportIDs 的每个 key 先解析 signed int，再截为低 uint8；每个 present value 必须是 JSON string。九项名称表的前八项对应 class 0–7，第九项 hardwareEventReportID、未知名称及没有匹配的 reportID 均为 class 8。class 0–2 另更新 candidate 的 special selector。USB 的 reportID 取自 `raw[bluetoothLE]`；分类读取的是 published 中的 report map，class 8 进入已保留的硬件事件路径。名称数量、数字或缓存内容不能单独证明设备能力和发布成功。
+
+`SetData(0xe3c90)` 要求引擎 ready 且完整解析成功，但即使返回 true，也只有 change byte `+65` 的 bit 0 置位才加锁、更新生效 key 并把 candidate 移入 published。reportIDs 单独变化不设置该位；default/profile hash、active selection 和 analog 变化要沿实际所有者核对。解析失败保留旧 published 指针；下面的共享 Profile 副作用仍须单独处理，不能据此认定状态完全不变。删除当前生效 key 才清 DeviceData 并按剩余缓存顺序寻找首个成功值；删除其他 key 不替换当前发布值。全清空则清缓存及 DeviceData 后刷新。
+
+[默认与配置档 hash 复用增量](../../../.analysis/results/reverse-pending/review-sources/4b228a4f2121c88570c573c8e45db32823696fe18c67b86f387df4308038b5c1.json)核对另外 18 个完整函数、2,133 条指令及 MD5 初始状态，引用基线中的七个完整 parser 所有者，不重复复制。`0xe72fa` 要求 defaultMappings 为 object，但其中 appEngine 缺失或类型不符时跳过该子解析并返回成功；存在 object 时则必须有 string hash。hash 与已发布默认映射相同会直接共享旧映射，不重验传入 payload；首次或变化时才执行 `0xe8518 → 0xe871e`，成功后设置 change byte。
+
+`0xe75a0` 要求 profiles 为 array，逐个检查已访问元素的 object 类型与 string guid，只解析首个匹配 activeProfile 的条目，后续 inactive 条目不继续验证。无匹配不会给 candidate 的 Profile 槽赋值；匹配条目没有 appEngine object 时可接受新建的空 Profile。存在 appEngine 时要求 string hash，gamemode 读取失败则使用本次局部 false。
+
+相同 profile hash 的行为有共享状态副作用：`0xe7e86` 直接改已发布 `Profile+152` 的 gamemode，再把同一引用放入 candidate；随后跳过 hash 校验和映射重析，也不设置 descriptor change byte。该修改发生在后续 descriptor 校验之前，因此后续失败也不能视为回滚。不同 hash 则先校验，再给新 Profile 赋 hash／gamemode，并解析 profile 专有的可选 actuations／rapidTriggers／snaptaps 和必需 mappings；只有成功才置 change byte。此处是本地解析与引用状态，不是设备写入或读回。
+
+[gamemode 实际消费者增量](../../../.analysis/results/reverse-pending/review-sources/0a7c96095dbcbd6eddbeffc3679f1b68088ad9ac77f2632d4d3b91628f813c54.json)另核五个完整函数、560 条指令。有效 getter `0xe5a36` 读取 published descriptor 的独立 byte `+140`，它由 parser 从 Profile `+152` 复制；因此相同 hash 时只改共享 Profile，不会同步更新当前生效的 gamemode 缓存。`0x8eb70` 比较该 getter 与自身 byte `+800`，先更新本地观察标记和原子字节，再经 `0xc438a → 0xc45b0 → 0xc0e76` 排设备模式服务通知。服务找不到 identity 时只日志，不创建设备；命中时修改登记记录的 byte `+48` 并通知观察者，相同状态的检查只影响日志。这些服务状态与通知仍不代表硬件写回，后续接收者和实际产品消费者继续独立核对。
+
+`0xe8518` 复制 appEngine object，去掉 hash 与 gamemode，经原生 JSON writer 序列化，再由 `0x1b3a30 → 0x1f3600/0x1f3710/0x251cc0` 计算 MD5；16 字节摘要经 hex 编码与 ASCII 小写转换后逐字节比较传入 hash，传入字符串没有另做大小写归一化。相同存储 hash 分支完全绕过此校验。JSON writer 的精确顺序、数字与字符串编码，以及所有 input／output 类型分支仍需继续闭合，不能假定任意 JSON 序列化库等价。
+
+[观察者生命周期增量](../../../.analysis/results/reverse-pending/review-sources/e494e365791a35f4cd40e077f25dfab10b8f1e105c6b2288cb9654ed8cca5f15.json)另核对 19 个完整函数和 1,236 条指令，不复制上述 106 个函数。USB、BLE、external 与 OS hook 析构均到 `0x656ca`；它先恢复 input 基类虚表，再向设备线程排 `0x65c90`。此时该调用读取主表槽 72，实际目标为 `0x77f00` 空操作，不能解释为派生设备恢复或写入确认。
+
+`0x656ca → 0x1b8670` 先请求所属线程停止，经 `QuitWhenIdle` 结束循环，有线程句柄时无限等待并关闭，随后才释放所属字段。最终 `0x547e0` 尾跳 `0xd3c70 → 0xd3d1e`，在服务锁下快照各 key 的观察者列表，再由 `0xb0ab0 → 0xb1ebc` 逐列表移除此 identity；先前排队的通知还会被 `0xb1640` 的登记 token 检查拒绝。注销本身没有独立的在途回调排空应答。服务析构 `0xd3ef2` 核对调用线程、清全局服务指针、停止并等待存储线程，再销毁观察者和字符串容器；全局已清后才析构的观察者跳过服务移除。
+
+本节闭合存储通知、身份、报告分类、发布门禁及上述观察者和所属线程的边界。每个产品实际 publisher／合并结果、全部 mapping parser 与执行器、各引擎／设备关停发起方、外部生产者及逐请求取消／恢复仍需接回完整调用方；Rust 独立实现、UI／后台接线、官方实际功能与真实设备对照保持各自状态。
+
 ## 独立实现与验证边界
 
 本文完成上述当前原件的静态语义与具体间接目标核对，没有增加 Rust 传输或设备功能，没有执行厂商 JS、官方模块、设备操作或应用。通用 USB 包、BLE endpoint 和全部产品协议不能由这两份模块的阅读完成推定；宿主退出上层及 BLE 停止入口继续回查[窗口生命周期](../host/window-lifecycle.md)。
@@ -134,3 +175,13 @@ worker 析构置 stop、唤醒 condition，存在非当前线程时无限 join �
 无论该条件分支是否执行，函数随后均调用 `WppAutoLogTrace`：依次传递原首参数、8 位等级、原 token、第五个入参、16 位消息编号及零。IDA 将控制区全局命名为 `DeviceObject`，该名字本身不证明它是当前连接设备对象；本函数中的位图和等级过滤也不能用来推断设备能力、连接状态或某次 HID 写入成功。条件 sink 的实际目标、全部调用方和产品 I/O 链仍需各自追踪，这 46 处辅助函数不能充当 46 项设备功能完成。
 
 此处独立测试预期是 token 高低位的分解、`t=0` 的回绕、bit 0/31、等级阈值等于／低于输入等级、16 位消息编号截断，以及条件 sink 被跳过时仍进入 AutoLog 的调用顺序。未执行官方驱动、DLL、Rust 行为测试或真实设备对照，不据原字节一致性提升这些验收状态。
+
+## 三架构驱动的安全设备创建与注册表顺序
+
+[完整静态审阅](../../../.analysis/results/reverse-pending/review-sources/ce3a65e7b4e221f2f360278c40bdc026361416c5f9d0e75624aabf01a05bed0b.json)保留 x86、x64、IA64 的 35 项 IOCTL 分支及安全设备创建链；[统一接线收据](../../../.analysis/results/native-bulk/camera-0e06-identity-verification.json)另行记录 110 个完整辅助函数、6,698 条指令的独立原 PE 字节复核。缓存的 `IoCreateDeviceSecure` 存在时直接转发九个原参数；缺失时才进入内置兼容路径。IA64 使用函数描述符，不能把描述符地址当代码入口。`IoValidateDeviceIoControlAccess` 仅在初始化中查找并缓存，当前完整派发器没有调用它，不能据此推导每项 IOCTL 已校验访问或输入长度。
+
+兼容路径先清空输出设备指针，按 ClassGuid 读取或创建类设置，再在缺少可用 Security 时解析 `D:P(A;;GA;;;SY)(A;;GA;;;BA)`。所需的注册表写入先于 `IoCreateDevice`；Class、NoDisplayClass、NoUseClass 和 Properties\\Security 的先前成功写入不会因后续失败回滚。创建成功后才根据安全描述符计算访问掩码、打开实际设备、设置安全性并关闭临时句柄；安全设置失败会删除刚创建的设备，只有完整成功才发布输出指针。
+
+设置结构分别保留字段值与 presence bits。加载默认安全描述符执行 `flags = 2`，会清除 DeviceType、Characteristics 和 Exclusive 的存在位，因此该分支即使仍留有注册表数字，也按入口参数创建。默认 SDDL 解析又设置 DACL-defaulted；后续读取会明确丢弃这种描述符，再走默认 SDDL 路径。这些内核安全配置的缺值语义不适用于产品设备设置的失败回退或默认值写回。
+
+三架构还有同一条条件释放缺口：Security 捕获出非空分配后，安全信息验证在所有权转入 settings 前失败，退出链只释放仍为空的 settings 指针。收据保留精确分支和地址；独立 Rust 实现须按项目所有权约束释放资源，同时保留该原版行为差异。当前只完成静态字节和上述语义核对，未执行驱动、安装、设备写入或实际功能对照。

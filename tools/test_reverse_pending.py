@@ -417,7 +417,9 @@ class PendingQueueTests(unittest.TestCase):
                 result = batch.run()
             command.assert_not_called()
             previous = result["previous_static_run"]
-            self.assertEqual(base64.b64decode(previous["raw_base64"]), previous_raw)
+            with patch.object(analysis, "ROOT", root):
+                self.assertEqual(queue.read_retained_receipt(previous["raw_receipt"]), previous_raw)
+            self.assertNotIn("raw_base64", previous)
             self.assertEqual(previous["sha256"], hashlib.sha256(previous_raw).hexdigest())
             self.assertEqual(tool_snapshot.read_bytes(), previous_tool)
             self.assertEqual(previous["tool_source"]["sha256"], digest)
@@ -1346,6 +1348,7 @@ class QueueResumeTests(unittest.TestCase):
              redirect_stdout(io.StringIO()):
             root = Path(directory)
             batch, _, previous, raw = self.fixture(root)
+            batch.resume_reason = "controlled shutdown to externalize recursive receipt retention"
             completed = deepcopy(previous["tasks"][0])
             with patch.object(batch, "discover") as discover, \
                  patch.object(batch, "execute", return_value={"status": "unresolved", "resolved": 0,
@@ -1358,9 +1361,11 @@ class QueueResumeTests(unittest.TestCase):
             self.assertEqual(result["started_at_utc"], previous["started_at_utc"])
             self.assertEqual(result["scratch_cleanup"], previous["scratch_cleanup"])
             retained = result["interrupted_static_run"]
-            self.assertEqual(base64.b64decode(retained["raw_base64"]), raw)
+            self.assertEqual(queue.read_retained_receipt(retained["raw_receipt"]), raw)
+            self.assertNotIn("raw_base64", retained)
             self.assertEqual(retained["sha256"], hashlib.sha256(raw).hexdigest())
             self.assertIsNone(retained["exit_code"])
+            self.assertEqual(retained["reason"], batch.resume_reason)
             self.assertIsNone(retained["coordinator_process_confirmed_absent"])
             self.assertEqual(retained["completed_task_ids"], [completed["id"]])
             self.assertEqual(result["summary"]["by_status"], {"unresolved": 2})
@@ -1371,7 +1376,7 @@ class QueueResumeTests(unittest.TestCase):
             self.assertNotIn("--native-review", document)
 
     def test_resume_rejects_changed_frozen_inputs_and_results_without_publishing(self):
-        for subject in ("original", "capture", "review", "evidence", "result", "nested_artifact", "workflow"):
+        for subject in ("original", "capture", "review", "evidence", "workflow"):
             with self.subTest(subject=subject), tempfile.TemporaryDirectory() as directory, \
                  patch.object(analysis, "ROOT", Path(directory)):
                 root = Path(directory)
@@ -1389,6 +1394,29 @@ class QueueResumeTests(unittest.TestCase):
                 execute.assert_not_called()
                 command.assert_not_called()
                 self.assertEqual((root / queue.REPORT).read_bytes(), raw)
+
+    def test_changed_completion_requeues_only_that_task_and_keeps_original_failure_facts(self):
+        for subject in ("result", "nested_artifact"):
+            with self.subTest(subject=subject), tempfile.TemporaryDirectory() as directory, \
+                 patch.object(analysis, "ROOT", Path(directory)), redirect_stdout(io.StringIO()):
+                root = Path(directory)
+                batch, _, previous, raw = self.fixture(root)
+                original_completed = deepcopy(previous["tasks"][0])
+                target = (root / original_completed["resolution"]["path"] if subject == "result" else
+                          root / ".analysis/results/retained-extra.json")
+                target.write_bytes(target.read_bytes() + b" ")
+                with patch.object(batch, "execute", return_value={"status": "unresolved", "resolved": 0,
+                         "remaining": 1, "verification_errors": 1}) as execute:
+                    result = batch.run()
+                self.assertEqual(execute.call_count, 2)
+                self.assertEqual({call.args[0]["id"] for call in execute.call_args_list},
+                                 {task["id"] for task in previous["tasks"]})
+                failure, = result["resume_revalidation_failures"]
+                self.assertEqual(failure["previous_completion"], original_completed)
+                self.assertFalse(failure["verified"])
+                self.assertIn("changed", failure["error"])
+                self.assertEqual(queue.read_retained_receipt(result["interrupted_static_run"]["raw_receipt"]), raw)
+                self.assertTrue(all(task["status"] == "unresolved" for task in result["tasks"]))
 
     def test_resume_rejects_task_identity_scope_and_completion_tampering(self):
         for issue in ("id", "ida_root", "finished", "pending_completion", "missing_completion"):
@@ -1880,7 +1908,8 @@ class StaticMicrocodeObservationTests(unittest.TestCase):
                          is_indirect_jump_insn=lambda instruction: instruction.is_indirect_jump),
                      "idautils": SimpleNamespace(Chunks=lambda ea: iter(chunks[ea]),
                          Heads=lambda start, stop: (ea for ea in sorted(original_instructions) if start <= ea < stop))}
-        names = {"_static_diagnostic_error", "_FrozenInsnVisitor", "StaticMicrocodeTrace", "decompile_with_diagnostics"}
+        names = {"_static_diagnostic_error", "_FrozenInsnVisitor", "StaticMicrocodeTrace", "decompile_with_diagnostics",
+                 "local_namespace_diagnostics"}
         definitions = [node for node in ast.parse(source.read_text(encoding="utf-8")).body
                        if isinstance(node, (ast.ClassDef, ast.FunctionDef)) and node.name in names]
         self.assertEqual({node.name for node in definitions}, names)
@@ -3175,6 +3204,421 @@ class ProcessWorkerTests(unittest.TestCase):
             batch.return_value.run.return_value = {"tasks": []}
             queue.run(args)
         batch.assert_called_once_with(2, "IDA", False, resume=True, process_workers=True)
+
+
+class QueueReceiptRetentionTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name).resolve()
+        self.root_patch = patch.object(analysis, "ROOT", self.root)
+        self.root_patch.start()
+        self.addCleanup(self.root_patch.stop)
+
+    def test_exact_bytes_and_unknown_fields_survive_lossless_reference_storage(self):
+        raw = b'{"unknown-extension":{"bytes":"\\u0000"},"failures":["kept"]}\r\n\t '
+        record = queue.retain_receipt_bytes(raw)
+        self.assertEqual(queue.read_retained_receipt(record), raw)
+        self.assertEqual(record["sha256"], hashlib.sha256(raw).hexdigest())
+        self.assertEqual(record["bytes"], len(raw))
+        self.assertLess(len(json.dumps(record)), 800)
+        self.assertEqual(list((self.root / ".analysis/results/reverse-pending/review-sources").glob("*.tmp")), [])
+
+    def test_declared_source_database_uses_its_exact_native_owner_boundary(self):
+        digest = "a" * 64
+        path = self.root / ".work/native" / digest / "batch/source.i64"
+        path.parent.mkdir(parents=True)
+        path.write_bytes(b"retained source database; never opened")
+        record = queue.identity(path)
+        task = {"id": "one", "sha256": digest}
+        self.assertTrue(queue.retained_task_artifact_valid(record, task, "source_database"))
+        for owner, field in (("b" * 64, "source_database"), (digest, "unrecognized_scratch"), (None, "source_database")):
+            with self.subTest(owner=owner, field=field):
+                self.assertFalse(queue.retained_task_artifact_valid(record, {"sha256": owner}, field))
+        path.write_bytes(b"changed private database")
+        self.assertFalse(queue.retained_task_artifact_valid(record, task, "source_database"))
+
+    def test_legacy_nested_history_never_recursively_inflates_the_active_report(self):
+        original = {"tasks": [{"id": "retained-completion", "status": "passed", "finished_at_utc": "exact"}],
+                    "unrecognized_future_field": [1, 2, 3]}
+        raw = json.dumps(original, indent=1).encode() + b"\r\n"
+        for _ in range(8):
+            raw = json.dumps({"previous_static_run": {"sha256": hashlib.sha256(raw).hexdigest(),
+                "raw_base64": base64.b64encode(raw).decode()}, "tasks": original["tasks"]}, indent=2).encode()
+        report = {"previous_static_run": {"sha256": hashlib.sha256(raw).hexdigest(),
+            "raw_base64": base64.b64encode(raw).decode(), "unknown_metadata": {"kept": True}},
+            "tasks": deepcopy(original["tasks"]), "scratch_cleanup": {"retained": 7}}
+        queue.externalize_report_history(report)
+        self.assertEqual(queue.read_retained_receipt(report["previous_static_run"]["raw_receipt"]), raw)
+        self.assertEqual(report["previous_static_run"]["unknown_metadata"], {"kept": True})
+        self.assertEqual(report["tasks"], original["tasks"])
+        self.assertEqual(report["scratch_cleanup"], {"retained": 7})
+        sizes = []
+        for _ in range(5):
+            current = json.dumps(report).encode()
+            report = {"previous_static_run": {"sha256": hashlib.sha256(current).hexdigest(),
+                      "raw_receipt": queue.retain_receipt_bytes(current)}, "tasks": deepcopy(original["tasks"])}
+            sizes.append(len(json.dumps(report)))
+        self.assertLess(max(sizes) - min(sizes), 20)
+        self.assertNotIn("raw_base64", report["previous_static_run"])
+
+    def test_wrong_legacy_digest_and_invalid_base64_preserve_record_and_remove_only_owned_temp(self):
+        for encoded in (base64.b64encode(b"different original").decode(), "!!!!"):
+            report = {"interrupted_static_run": {"sha256": "0" * 64, "raw_base64": encoded}}
+            before = deepcopy(report)
+            with self.subTest(encoded=encoded), self.assertRaises(ValueError):
+                queue.externalize_report_history(report)
+            self.assertEqual(report, before)
+        directory = self.root / ".analysis/results/reverse-pending/review-sources"
+        self.assertEqual(list(directory.glob("*")), [])
+
+    def test_existing_corrupt_receipt_is_rejected_without_overwriting_it(self):
+        raw = b'{"completed":true}'
+        record = queue.retain_receipt_bytes(raw)
+        target = self.root / record["artifact"]["path"]
+        target.write_bytes(b"corrupt retained gzip; preserve for diagnosis")
+        corrupt = target.read_bytes()
+        with self.assertRaises((OSError, ValueError)):
+            queue.retain_receipt_bytes(raw)
+        self.assertEqual(target.read_bytes(), corrupt)
+        self.assertEqual(list(target.parent.glob("*.tmp")), [])
+
+    def test_physical_and_logical_identities_are_both_required(self):
+        record = queue.retain_receipt_bytes(b"complete bytes\x00\xff")
+        for subject in ("physical", "logical_bytes", "logical_sha", "path"):
+            changed = deepcopy(record)
+            if subject == "physical":
+                changed["artifact"]["sha256"] = "0" * 64
+            elif subject == "logical_bytes":
+                changed["bytes"] += 1
+            elif subject == "logical_sha":
+                changed["sha256"] = "0" * 64
+            else:
+                changed["artifact"]["path"] = ".analysis/results/other.json.gz"
+            with self.subTest(subject=subject), self.assertRaises(ValueError):
+                queue.read_retained_receipt(changed)
+
+    def test_same_receipt_reuses_the_exact_existing_compressed_artifact(self):
+        raw = b"same full receipt" * 100
+        first = queue.retain_receipt_bytes(raw)
+        second = queue.retain_receipt_bytes(raw)
+        self.assertEqual(first, second)
+        self.assertEqual(len(list((self.root / ".analysis/results/reverse-pending/review-sources").iterdir())), 1)
+
+    def test_resume_reason_must_be_nonempty_and_specific_to_resume(self):
+        source = self.root / "tools/reverse_pending.py"
+        source.parent.mkdir(parents=True)
+        source.write_bytes(Path(queue.__file__).read_bytes())
+        with patch.object(queue, "__file__", str(source)):
+            for resume, reason in ((False, "controlled shutdown"), (True, ""), (True, "  "), (True, 42)):
+                with self.subTest(resume=resume, reason=reason), self.assertRaisesRegex(ValueError, "resume reason"):
+                    queue.Batch(2, "IDA", resume=resume, resume_reason=reason)
+            batch = queue.Batch(2, "IDA", resume=True, resume_reason="controlled static queue shutdown")
+            self.assertEqual(batch.resume_reason, "controlled static queue shutdown")
+
+    def test_same_pid_with_different_os_creation_is_another_process(self):
+        session = {"pid": 4232, "process_creation": {"filetime_100ns": 111000, "precision_100ns": 1}}
+        with patch.object(queue, "process_alive", return_value=None), \
+             patch.object(queue, "process_creation_time", return_value={"filetime_100ns": 222000, "precision_100ns": 10}):
+            result = queue.coordinator_instance_absence(session)
+        self.assertTrue(result["confirmed_absent"])
+        self.assertEqual(result["reason"], "pid_reused_different_os_creation")
+
+    def test_live_or_unknown_same_creation_and_missing_identity_block_resume(self):
+        session = {"pid": 4232, "process_creation": {"filetime_100ns": 111001, "precision_100ns": 1}}
+        for alive, creation in ((True, {"filetime_100ns": 111000, "precision_100ns": 10}),
+                                (None, {"filetime_100ns": 111001, "precision_100ns": 1}), (None, None)):
+            with self.subTest(alive=alive, creation=creation), \
+                 patch.object(queue, "process_alive", return_value=alive), \
+                 patch.object(queue, "process_creation_time", return_value=creation):
+                self.assertFalse(queue.coordinator_instance_absence(session)["confirmed_absent"])
+
+    def test_legacy_session_requires_actual_creation_strictly_after_its_queue_start(self):
+        session = {"pid": 4232, "started_at_utc": "2026-10-26T11:13:15+00:00"}
+        delta = queue.datetime(2026, 10, 26, 11, 13, 15, tzinfo=queue.timezone.utc) - \
+                queue.datetime(1601, 1, 1, tzinfo=queue.timezone.utc)
+        boundary = (delta.days * 86400 + delta.seconds) * 10_000_000
+        for offset, expected in ((-1, False), (0, False), (1, True), (60_000_000, True)):
+            with self.subTest(offset=offset), patch.object(queue, "process_alive", return_value=None), \
+                 patch.object(queue, "process_creation_time", return_value={"filetime_100ns": boundary + offset,
+                                                                           "precision_100ns": 1}):
+                self.assertEqual(queue.coordinator_instance_absence(session)["confirmed_absent"], expected)
+
+    def test_malformed_legacy_timestamp_cannot_identify_an_exited_process(self):
+        for timestamp in ("invalid", "2026-10-26T11:13:15", None):
+            with self.subTest(timestamp=timestamp), patch.object(queue, "process_alive", return_value=None), \
+                 patch.object(queue, "process_creation_time", return_value={"filetime_100ns": 999999999999999999}):
+                self.assertFalse(queue.coordinator_instance_absence({"pid": 4232,
+                    "started_at_utc": timestamp})["confirmed_absent"])
+
+
+class FrontendSourceClassificationTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name).resolve()
+        self.root_patch = patch.object(analysis, "ROOT", self.root)
+        self.root_patch.start()
+        self.addCleanup(self.root_patch.stop)
+        self.input = ".analysis/inputs/frontend/installer-current"
+        self.base = "https://apps.razer.com/install/"
+        self.payload = b"inert installer fixture; never executed"
+        self.digest = hashlib.sha256(self.payload).hexdigest()
+        self.rows = []
+        self.entry = self.original("installer-manifest.json", json.dumps({
+            "baseURL": "install/manifests", "latest": {"version": "1", "url": "manifest-1.json"},
+            "archive": []}).encode())
+        self.manifest = self.original("manifests/manifest-1.json", json.dumps({"resources": [{
+            "resourceVersion": "1", "url": self.base + "installer.exe", "size": len(self.payload),
+            "sha256": self.digest.upper()}]}).encode())
+        self.package = self.original("installer.exe", self.payload)
+        self.probe = {"url": self.base + "asset-manifest.json", "error": "HTTP Error 404: Not Found"}
+        self.rows.append(self.probe)
+        self.acquired = {"entry_url": self.entry["url"], "source_current_during_acquisition": True,
+            "files": self.rows, "edges": [{"from": self.entry["url"], "to": self.manifest["url"],
+                                          "kind": "explicit-retained-manifest"}],
+            "stability": [{"url": self.entry["url"], "before_sha256": self.entry["sha256"],
+                           "after_sha256": self.entry["sha256"], "unchanged": True}],
+            "probes": [{"url": self.probe["url"], "declared": False}], "unresolved": []}
+        self.deployment = {"entry_is_html": False, "sources": [], "failures": []}
+
+    def original(self, suffix, raw):
+        path = self.root / self.input / "raw" / suffix
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(raw)
+        row = {"url": self.base + suffix, "path": path.relative_to(self.root).as_posix(),
+               "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+        self.rows.append(row)
+        return row
+
+    def classify(self):
+        return queue.classify_non_javascript_source_set(self.acquired, self.deployment)
+
+    def test_verified_json_manifest_is_explicitly_non_javascript_and_keeps_probe_failure(self):
+        result = self.classify()
+        self.assertEqual(result["verification"], "passed")
+        self.assertEqual(result["kind"], "non_javascript")
+        self.assertEqual(result["javascript_recovery"], "not_applicable")
+        self.assertEqual(result["unavailable_probes"], [self.probe])
+        self.assertEqual(len(result["declared_dependencies"]), 2)
+        self.assertEqual(result["declared_dependencies"][1]["expected_sha256"], self.digest)
+
+    def test_missing_or_damaged_declared_package_keeps_classification_failed(self):
+        (self.root / self.package["path"]).unlink()
+        result = self.classify()
+        self.assertEqual(result["verification"], "failed")
+        self.assertTrue(any("resource bytes are unavailable" in row.get("error", "") for row in result["failures"]))
+
+    def test_exact_declared_package_can_reuse_a_verified_official_original(self):
+        self.rows.remove(self.package)
+        receipt = self.root / ".analysis/inputs/host-current/acquisition.json"
+        analysis.save(receipt, {"files": [{**self.package,
+            "url": "https://manifest-assets.razersynapse.com/same-package.exe"}]})
+        result = self.classify()
+        self.assertEqual(result["verification"], "passed")
+        resource = result["declared_dependencies"][1]
+        self.assertEqual(resource["source_acquisition"], queue.identity(receipt))
+        self.assertNotEqual(resource["declared_url"], resource["acquired_url"])
+        self.assertEqual(resource["verification"], "exact_manifest_size_and_sha256_match")
+
+    def test_additional_dependency_or_unstable_entry_cannot_be_ignored(self):
+        for mutation in ("edge", "stability", "html", "unresolved"):
+            with self.subTest(mutation=mutation):
+                original = deepcopy(self.acquired)
+                deployment = deepcopy(self.deployment)
+                if mutation == "edge":
+                    self.acquired["edges"].append({"from": self.entry["url"], "to": self.base + "missing.js"})
+                elif mutation == "stability":
+                    self.acquired["stability"][0]["after_sha256"] = "0" * 64
+                elif mutation == "html":
+                    self.deployment["entry_is_html"] = True
+                else:
+                    self.acquired["unresolved"] = [{"to": self.base + "missing.css"}]
+                self.assertEqual(self.classify()["verification"], "failed")
+                self.acquired, self.deployment = original, deployment
+
+    def test_json_corruption_and_unknown_schema_do_not_become_not_applicable_success(self):
+        path = self.root / self.entry["path"]
+        for raw in (b"not JSON", b'{"entrypoints":["missing.js"]}'):
+            with self.subTest(raw=raw):
+                path.write_bytes(raw)
+                self.entry.update(bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest())
+                self.acquired["stability"][0].update(before_sha256=self.entry["sha256"], after_sha256=self.entry["sha256"])
+                self.assertEqual(self.classify()["verification"], "failed")
+
+    def frontend(self, recovery, deployment):
+        import evidence
+        import frontend
+        path = self.root / self.input / "acquisition.json"
+        analysis.save(path, self.acquired)
+        evidence_tool = self.root / "tools/evidence.py"
+        evidence_tool.parent.mkdir(parents=True)
+        evidence_tool.write_bytes(b"inert parser identity")
+        queue_tool = self.root / "tools/reverse_pending.py"
+        queue_tool.write_bytes(Path(queue.__file__).read_bytes())
+        with patch.object(queue, "__file__", str(queue_tool)):
+            batch = queue.Batch(2, "IDA", verify_only=True)
+        with patch.object(analysis, "wakaru", return_value=self.root / "not-executed.exe"), \
+             patch.object(frontend, "recover_source_set", return_value={"status": recovery}), \
+             patch.object(evidence, "frontend_deployment_sources", return_value=deployment), \
+             patch.object(evidence, "__file__", str(evidence_tool)), \
+             patch.object(evidence, "ui_tree", return_value={"parse_passed": True, "owners": [], "elements": []}) as parse, \
+             patch.object(queue.importlib.metadata, "version", return_value="parser-fixture"):
+            result = batch.frontend({"id": "frontend-fixture", "input": self.input})
+        return result, json.loads((self.root / result["receipt"]["path"]).read_bytes()), parse
+
+    def test_queue_records_non_javascript_recovery_as_not_applicable(self):
+        result, receipt, parse = self.frontend("no_javascript_originals", self.deployment)
+        self.assertEqual(result["status"], "passed")
+        self.assertEqual(receipt["recovery"]["status"], "not_applicable")
+        self.assertEqual(receipt["recovery"]["original_status"], "no_javascript_originals")
+        self.assertFalse(receipt["semantics_complete"])
+        parse.assert_not_called()
+
+    def test_queue_parses_mjs_sources_in_the_same_ast_pipeline(self):
+        source = self.original("config.mjs", b"export const version=1")
+        deployment = {"entry_is_html": False, "failures": [], "sources": [{
+            "url": source["url"], "identity_verified": True,
+            "original": {key: source[key] for key in ("path", "bytes", "sha256")}}]}
+        result, receipt, parse = self.frontend("reused_verified_recovery", deployment)
+        self.assertEqual(result["status"], "passed")
+        self.assertEqual(result["bundles"], 1)
+        self.assertEqual(receipt["bundles"][0]["input"]["path"], source["path"])
+        parse.assert_called_once_with(b"export const version=1")
+
+
+class FrozenUnresolvedIncrementTests(unittest.TestCase):
+    def fixture(self, root):
+        tool = root / "tools/reverse_pending.py"
+        tool.parent.mkdir(parents=True)
+        tool.write_bytes(Path(queue.__file__).read_bytes())
+        historical = root / ".analysis/results/reverse-pending/verified-frontend/one.json"
+        historical.parent.mkdir(parents=True)
+        historical.write_bytes(b'{"failures":[{"kind":"original_missing"}]}\n')
+        record = queue.identity(historical)
+        tasks = [{"id": "one", "kind": "frontend", "input": ".analysis/inputs/frontend/one",
+                  "receipt": record, "status": "unresolved"},
+                 {"id": "two", "kind": "frontend", "input": ".analysis/inputs/frontend/two",
+                  "receipt": record, "status": "unresolved"},
+                 {"id": "already-passed", "kind": "frontend", "input": ".analysis/inputs/frontend/three",
+                  "receipt": record, "status": "passed"}]
+        baseline = root / queue.REPORT
+        baseline.write_text(json.dumps({"schema_version": 1, "finished_at_utc": "frozen end", "tasks": tasks}), encoding="utf-8")
+        args = SimpleNamespace(workers=2, ida_root="IDA", process_workers=False,
+                               task_id=None, native_only=False, recheck_unresolved=True)
+        return tool, historical, baseline, args
+
+    def test_only_frozen_failures_run_and_original_queue_and_results_stay_exact(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            tool, historical, baseline, args = self.fixture(root)
+            originals = {path: path.read_bytes() for path in (historical, baseline)}
+            called = []
+
+            def execute(batch, task):
+                self.assertTrue(batch.recheck_mode)
+                self.assertTrue(batch.verify_only)
+                called.append(task["id"])
+                return {"status": "passed", "receipt": queue.retain_review_json({"case": task["id"]})}
+
+            with patch.object(queue, "__file__", str(tool)), patch.object(queue.Batch, "execute", execute), redirect_stdout(io.StringIO()):
+                report = queue.recheck_unresolved(args)
+            self.assertCountEqual(called, ["one", "two"])
+            self.assertEqual(report["summary"], {"baseline_failures": 2, "rechecked": 2,
+                "by_status": {"passed": 2}, "not_rechecked": 0, "semantics_complete": False})
+            self.assertFalse(report["target_execution"])
+            for path, raw in originals.items():
+                self.assertEqual(path.read_bytes(), raw)
+            self.assertEqual(json.loads((root / queue.UNRESOLVED_REPORT).read_bytes())["baseline"]["sha256"],
+                             hashlib.sha256(originals[baseline]).hexdigest())
+
+    def test_foreign_duplicate_passed_and_empty_selections_fail_before_any_worker(self):
+        for selected in (["absent"], ["already-passed"], ["one", "one"], []):
+            with self.subTest(selected=selected), tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+                root = Path(directory)
+                tool, _, _, args = self.fixture(root)
+                args.task_id = selected
+                with patch.object(queue, "__file__", str(tool)), patch.object(queue.Batch, "execute") as execute:
+                    with self.assertRaisesRegex(ValueError, "task IDs"):
+                        queue.recheck_unresolved(args)
+                execute.assert_not_called()
+                self.assertFalse((root / queue.UNRESOLVED_REPORT).exists())
+
+    def test_mutable_historical_owner_requires_exact_retained_original_bytes(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            tool, historical, _, args = self.fixture(root)
+            raw = historical.read_bytes()
+            record = queue.identity(historical)
+            retained = queue.retain_review_json(raw=raw)
+            historical.write_bytes(b'{"different":"current owner"}')
+            self.assertEqual(queue.frozen_result_reference(record), retained)
+            (root / retained["path"]).write_bytes(b'{"damaged":true}')
+            with patch.object(queue, "__file__", str(tool)), patch.object(queue.Batch, "execute") as execute:
+                with self.assertRaisesRegex(ValueError, "Frozen task result bytes"):
+                    queue.recheck_unresolved(args)
+            execute.assert_not_called()
+
+    def test_changed_baseline_during_worker_cannot_publish_an_increment(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            tool, _, baseline, args = self.fixture(root)
+            args.task_id = ["one"]
+
+            def execute(batch, task):
+                baseline.write_bytes(b'{"tampered":true}')
+                return {"status": "passed"}
+
+            with patch.object(queue, "__file__", str(tool)), patch.object(queue.Batch, "execute", execute), redirect_stdout(io.StringIO()):
+                with self.assertRaisesRegex(ValueError, "baseline or recheck source changed"):
+                    queue.recheck_unresolved(args)
+            self.assertFalse((root / queue.UNRESOLVED_REPORT).exists())
+
+    def test_native_recheck_never_overwrites_earlier_verified_result_or_runs_ida(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            helper = NativeReviewQueueTests()
+            fixture = helper.fixture(root)
+            batch = helper.batch(root, verify_only=True)
+            batch.recheck_mode = True
+            previous = root / ".analysis/results/reverse-pending/verified-native" / (fixture["original"]["sha256"] + ".json")
+            previous.parent.mkdir(parents=True)
+            previous.write_bytes(b'{"original":"frozen verification result"}')
+            raw = previous.read_bytes()
+            resolution = helper.resolution(remaining=False)
+            with patch.object(queue, "active_native_sessions", return_value=[]), \
+                 patch.object(analysis, "verify_native_capture", return_value=(fixture["capture"], queue.identity(fixture["folder"] / "capture.json"))), \
+                 patch.object(analysis, "native_reanalysis_resolution", return_value=resolution), \
+                 patch.object(batch, "command") as command:
+                result = batch.native({"id": "native-one", "input": fixture["original"]["path"], "sha256": fixture["original"]["sha256"]})
+            self.assertEqual(result["status"], "passed")
+            self.assertIn("/review-sources/", result["resolution"]["path"])
+            self.assertTrue(queue.valid(result["resolution"]))
+            self.assertEqual(previous.read_bytes(), raw)
+            command.assert_not_called()
+
+    def test_review_retention_rejects_corruption_and_cleans_owned_temp(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            record = queue.retain_review_json({"complete": [1, 2, {"unknown_field": "retained"}]})
+            path = root / record["path"]
+            path.write_bytes(b'{"bad":true}')
+            with self.assertRaisesRegex(ValueError, "review bytes changed"):
+                queue.retain_review_json({"complete": [1, 2, {"unknown_field": "retained"}]})
+            self.assertEqual(path.read_bytes(), b'{"bad":true}')
+            self.assertEqual(list(path.parent.glob(".review-*.tmp")), [])
+
+    def test_failed_static_checks_stay_unresolved_without_upgrading_semantics(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            tool, _, _, args = self.fixture(root)
+            with patch.object(queue, "__file__", str(tool)), \
+                 patch.object(queue.Batch, "execute", return_value={"status": "unresolved", "remaining": 7}), \
+                 redirect_stdout(io.StringIO()):
+                report = queue.recheck_unresolved(args)
+            self.assertEqual(report["summary"]["by_status"], {"unresolved": 2})
+            self.assertFalse(report["semantics_complete"])
+            self.assertEqual(report["official_dll_comparison"], "not_executed")
 
 
 if __name__ == "__main__":

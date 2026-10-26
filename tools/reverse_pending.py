@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 from collections import Counter
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, wait, FIRST_COMPLETED
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed, wait, FIRST_COMPLETED
+from datetime import datetime, timezone
 import base64
 import ctypes
+import gzip
 import hashlib
 import importlib.metadata
 import json
@@ -16,12 +18,14 @@ import subprocess
 import sys
 import threading
 import time
+import tempfile
 from types import SimpleNamespace
 import urllib.parse
 
 import analysis as a
 
 REPORT = ".analysis/results/reverse-pending.json"
+UNRESOLVED_REPORT = ".analysis/results/reverse-pending/unresolved-current.json"
 DOC = "docs/re/native-bulk-reverse.md"
 BEGIN = "<!-- reverse-pending:begin -->"
 END = "<!-- reverse-pending:end -->"
@@ -31,7 +35,7 @@ INPUT_PREFIXES = (".analysis/inputs/official-native-current/",
 _process_batch = None
 
 
-def initialize_process_worker(root, ida_root, verify_only, native_only, resume, tool_sha256):
+def initialize_process_worker(root, ida_root, verify_only, native_only, resume, tool_sha256, recheck_mode=False):
     """Give static workers their own parser state and no publishing authority."""
     global _process_batch
     a.ROOT = Path(root)
@@ -40,6 +44,7 @@ def initialize_process_worker(root, ida_root, verify_only, native_only, resume, 
     batch.native_only, batch.resume = native_only, resume
     batch.frontend_locks, batch.lock = {}, threading.Lock()
     batch.previous_native = {}
+    batch.recheck_mode = recheck_mode
     batch.worker_tool_sha256 = tool_sha256
     _process_batch = batch
 
@@ -53,14 +58,30 @@ def execute_process_task(task, previous=None):
     return {**_process_batch.execute(task), "worker_pid": os.getpid()}
 
 
+def retained_task_artifact_valid(record, task, field=None):
+    if valid(record):
+        return True
+    name = record.get("path", "")
+    digest = task.get("sha256")
+    if (field != "source_database" or re.fullmatch(r"[0-9a-f]{64}", str(digest)) is None
+            or not name.startswith(".work/native/" + digest + "/")
+            or Path(name).suffix.lower() not in {".i64", ".idb"}):
+        return False
+    try:
+        path = a.resolve(name, ".work/native/" + digest)
+        return path.is_file() and path.stat().st_size == record["bytes"] and a.sha(path) == record["sha256"]
+    except (OSError, KeyError, ValueError, TypeError):
+        return False
+
+
 def check_retained_task(task):
     """Recheck every retained nested byte identity before resuming a task list."""
-    def check_records(value):
+    def check_records(value, field=None):
         if isinstance(value, dict):
-            if {"path", "bytes", "sha256"}.issubset(value) and not valid(value):
+            if {"path", "bytes", "sha256"}.issubset(value) and not retained_task_artifact_valid(value, task, field):
                 raise ValueError("Retained queue artifact changed: " + value["path"])
-            for child in value.values():
-                check_records(child)
+            for name, child in value.items():
+                check_records(child, name)
         elif isinstance(value, list):
             for child in value:
                 check_records(child)
@@ -74,9 +95,53 @@ def check_retained_task(task):
     return task["id"]
 
 
+def inspect_retained_completion(task):
+    try:
+        check_retained_task(task)
+        return {"task_id": task["id"], "verified": True}
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        return {"task_id": task["id"], "verified": False, "error": str(error)}
+
+
 def identity(path):
     raw = path.read_bytes()
     return {"path": a.rel(path), "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+
+
+def retain_review_json(value=None, *, raw=None):
+    """Atomically retain complete review bytes without replacing earlier receipts."""
+    if raw is None:
+        raw = (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+    json.loads(raw)
+    digest = hashlib.sha256(raw).hexdigest()
+    destination = a.ROOT / ".analysis/results/reverse-pending/review-sources" / (digest + ".json")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(prefix=".review-", suffix=".tmp", dir=destination.parent, delete=False) as file:
+            temporary = Path(file.name)
+            file.write(raw)
+            file.flush()
+            os.fsync(file.fileno())
+        try:
+            os.link(temporary, destination)
+        except FileExistsError:
+            if destination.read_bytes() != raw:
+                raise ValueError("Retained static review bytes changed")
+        return {"path": a.rel(destination), "bytes": len(raw), "sha256": digest}
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def frozen_result_reference(record):
+    """Locate an exact historical result after its mutable query owner advances."""
+    if valid(record):
+        return record
+    retained = {**record, "path": ".analysis/results/reverse-pending/review-sources/" + record["sha256"] + ".json"}
+    if not valid(retained):
+        raise ValueError("Frozen task result bytes are unavailable: " + record["path"])
+    return retained
 
 
 def valid(row):
@@ -85,6 +150,197 @@ def valid(row):
         return path.is_file() and path.stat().st_size == row["bytes"] and a.sha(path) == row["sha256"]
     except (OSError, KeyError, ValueError, TypeError):
         return False
+
+
+def read_retained_receipt(reference, *, materialize=True):
+    """Verify physical gzip bytes and the complete uncompressed receipt."""
+    if (re.fullmatch(r"[0-9a-f]{64}", str(reference.get("sha256"))) is None
+            or type(reference.get("bytes")) is not int or reference["bytes"] < 0):
+        raise ValueError("Retained queue receipt logical identity is malformed")
+    stored = reference["artifact"]
+    expected_path = ".analysis/results/reverse-pending/review-sources/" + reference["sha256"] + ".json.gz"
+    if reference.get("encoding") != "gzip" or stored.get("path") != expected_path or not valid(stored):
+        raise ValueError("Retained queue receipt physical identity differs")
+    digest, count, chunks = hashlib.sha256(), 0, [] if materialize else None
+    with gzip.open(a.resolve(stored["path"], ".analysis/results"), "rb") as stream:
+        while block := stream.read(4 * 1024 * 1024):
+            digest.update(block)
+            count += len(block)
+            if chunks is not None:
+                chunks.append(block)
+    if count != reference["bytes"] or digest.hexdigest() != reference["sha256"]:
+        raise ValueError("Retained queue receipt logical identity differs")
+    return b"".join(chunks) if chunks is not None else None
+
+
+def retain_receipt_chunks(chunks, expected_sha256, expected_bytes=None):
+    """Publish one lossless content-addressed predecessor without embedding it."""
+    if re.fullmatch(r"[0-9a-f]{64}", str(expected_sha256)) is None:
+        raise ValueError("Retained queue receipt needs a valid logical SHA-256")
+    destination = a.ROOT / ".analysis/results/reverse-pending/review-sources" / (expected_sha256 + ".json.gz")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        digest, count = hashlib.sha256(), 0
+        with tempfile.NamedTemporaryFile(prefix=".receipt-", suffix=".tmp", dir=destination.parent, delete=False) as file:
+            temporary = Path(file.name)
+            with gzip.GzipFile(filename="", mode="wb", fileobj=file, mtime=0, compresslevel=6) as compressed:
+                for block in chunks:
+                    digest.update(block)
+                    count += len(block)
+                    compressed.write(block)
+        if digest.hexdigest() != expected_sha256 or expected_bytes is not None and count != expected_bytes:
+            raise ValueError("Queue receipt source identity differs before retention")
+        reference = {"sha256": expected_sha256, "bytes": count, "encoding": "gzip",
+                     "artifact": {"path": a.rel(destination), "bytes": temporary.stat().st_size,
+                                  "sha256": a.sha(temporary)}}
+        with gzip.open(temporary, "rb") as stream:
+            verified, verified_bytes = hashlib.sha256(), 0
+            while block := stream.read(4 * 1024 * 1024):
+                verified.update(block)
+                verified_bytes += len(block)
+        if verified.hexdigest() != expected_sha256 or verified_bytes != count:
+            raise ValueError("Compressed queue receipt did not preserve complete source bytes")
+        try:
+            os.link(temporary, destination)
+        except FileExistsError:
+            reference["artifact"] = identity(destination)
+        read_retained_receipt(reference, materialize=False)
+        return reference
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def retain_receipt_bytes(raw):
+    view = memoryview(raw)
+    return retain_receipt_chunks((view[start:start + 4 * 1024 * 1024]
+                                 for start in range(0, len(view), 4 * 1024 * 1024)),
+                                hashlib.sha256(raw).hexdigest(), len(raw))
+
+
+def externalize_report_history(report):
+    """Retain every legacy history byte while removing recursive inline copies."""
+    for name in ("previous_static_run", "interrupted_static_run"):
+        record = report.get(name)
+        if not isinstance(record, dict):
+            continue
+        if "raw_base64" in record:
+            encoded = record["raw_base64"]
+            if not isinstance(encoded, str) or len(encoded) % 4:
+                raise ValueError("Legacy queue receipt history has invalid base64")
+            chunks = (base64.b64decode(encoded[start:start + 4 * 1024 * 1024], validate=True)
+                      for start in range(0, len(encoded), 4 * 1024 * 1024))
+            reference = retain_receipt_chunks(chunks, record["sha256"])
+            record["raw_receipt"] = reference
+            del record["raw_base64"]
+        elif "raw_receipt" in record:
+            read_retained_receipt(record["raw_receipt"], materialize=False)
+    return report
+
+
+def classify_non_javascript_source_set(acquired, deployment):
+    """Verify JSON installer metadata independently of JavaScript recovery."""
+    result = {"kind": "non_javascript", "source_format": "installer_manifest_json",
+              "javascript_recovery": "not_applicable", "verification": "failed",
+              "originals": [], "declared_dependencies": [], "unavailable_probes": [], "failures": []}
+    failures = result["failures"]
+    rows = {row.get("url"): row for row in acquired.get("files", [])}
+    entry = acquired.get("entry_url")
+    probes = {row.get("url") for row in acquired.get("probes", []) if row.get("declared") is False}
+    result["unavailable_probes"] = [row for row in acquired.get("files", [])
+                                     if not row.get("path") and row.get("url") in probes]
+    if deployment.get("entry_is_html") is not False or acquired.get("source_current_during_acquisition") is not True:
+        failures.append({"kind": "non_javascript_entry_or_stability_unverified"})
+    if deployment.get("failures"):
+        failures.append({"kind": "non_javascript_deployment_failed", "failures": deployment["failures"]})
+    entry_row = rows.get(entry, {})
+    stable = any(row.get("url") == entry and row.get("unchanged") is True
+                 and row.get("before_sha256") == entry_row.get("sha256")
+                 and row.get("after_sha256") == entry_row.get("sha256")
+                 for row in acquired.get("stability", []))
+    if not stable:
+        failures.append({"kind": "non_javascript_entry_stability_identity_unverified"})
+    for row in rows.values():
+        if row.get("path") and (not row["path"].startswith(".analysis/inputs/") or not valid(row)):
+            failures.append({"kind": "non_javascript_original_identity_unverified", "url": row.get("url")})
+
+    def document(url):
+        row = rows.get(url, {})
+        if not row.get("path") or not row["path"].startswith(".analysis/inputs/") or not valid(row):
+            raise ValueError("Declared JSON original is unavailable: " + str(url))
+        value = json.loads(a.resolve(row["path"], ".analysis/inputs").read_bytes())
+        if not isinstance(value, dict):
+            raise ValueError("Installer JSON original is not an object: " + str(url))
+        result["originals"].append({"url": url, **{key: row[key] for key in ("path", "bytes", "sha256")}})
+        return value
+
+    retained_resources = None
+
+    def resource_original(resource):
+        nonlocal retained_resources
+        url, size, digest = resource.get("url"), resource.get("size"), resource.get("sha256")
+        if (not isinstance(url, str) or not url.startswith("https://") or type(size) is not int or size < 0
+                or not isinstance(digest, str) or re.fullmatch(r"[0-9a-fA-F]{64}", digest) is None):
+            raise ValueError("Declared installer resource lacks a valid URL, size or SHA-256")
+        digest = digest.lower()
+        candidates = [(rows[url], None)] if url in rows else []
+        if retained_resources is None:
+            retained_resources = []
+            for name, field in (("host-current", "files"), ("official-native-current", "resources")):
+                receipt = a.ROOT / ".analysis/inputs" / name / "acquisition.json"
+                if receipt.is_file():
+                    data = json.loads(receipt.read_bytes())
+                    receipt_identity = identity(receipt)
+                    retained_resources.extend((row, receipt_identity) for row in data.get(field, [])
+                                              if row.get("path") and row.get("url", "").startswith("https://"))
+        candidates.extend(retained_resources)
+        match = next(((row, owner) for row, owner in candidates
+                      if row.get("bytes") == size and str(row.get("sha256", "")).lower() == digest
+                      and row.get("path", "").startswith(".analysis/inputs/") and valid(row)), None)
+        if match is None:
+            raise ValueError("Declared installer resource bytes are unavailable: " + url)
+        row, owner = match
+        result["declared_dependencies"].append({"declared_url": url, "expected_bytes": size,
+            "expected_sha256": digest, "retained_original": {key: row[key] for key in ("path", "bytes", "sha256")},
+            "acquired_url": row.get("url"), "source_acquisition": owner,
+            "verification": "exact_manifest_size_and_sha256_match", "target_execution": False})
+
+    try:
+        root = document(entry)
+        if (not isinstance(root.get("baseURL"), str) or not root["baseURL"]
+                or not isinstance(root.get("latest"), dict) or not isinstance(root.get("archive"), list)):
+            raise ValueError("JSON-only input has no verified installer-manifest schema")
+        base = a.artifact_url("https://" + urllib.parse.urlsplit(entry).netloc + "/", root["baseURL"].rstrip("/") + "/")
+        if base is None:
+            raise ValueError("Installer manifest base URL is invalid")
+        for release in [root["latest"], *root["archive"]]:
+            if (not isinstance(release, dict) or not isinstance(release.get("url"), str)
+                    or not isinstance(release.get("version"), str) or not release["version"]):
+                raise ValueError("Installer manifest release identity is invalid")
+            target = a.artifact_url(base, release["url"])
+            manifest = document(target)
+            resources = manifest.get("resources")
+            if not isinstance(resources, list) or not resources:
+                raise ValueError("Installer resource declarations are incomplete")
+            result["declared_dependencies"].append({"declared_url": target,
+                "declared_version": release["version"], "original": result["originals"][-1]})
+            for resource in resources:
+                if not isinstance(resource, dict) or resource.get("resourceVersion") != release["version"]:
+                    raise ValueError("Installer resource version differs from its declared release")
+                resource_original(resource)
+        referenced = {row["declared_url"] for row in result["declared_dependencies"]}
+        for edge in acquired.get("edges", []):
+            if edge.get("from") in {row["url"] for row in result["originals"]} and edge.get("to") not in referenced:
+                raise ValueError("Additional installer dependency requires verification: " + str(edge.get("to")))
+        if acquired.get("unresolved"):
+            failures.append({"kind": "non_javascript_acquisition_references_unresolved",
+                             "references": acquired["unresolved"]})
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        failures.append({"kind": "non_javascript_schema_or_dependency_failed", "error": str(error)})
+    if not failures:
+        result["verification"] = "passed"
+    return result
 
 
 def process_alive(pid):
@@ -115,6 +371,76 @@ def process_alive(pid):
         return code.value == 259 if kernel.GetExitCodeProcess(handle, ctypes.byref(code)) else None
     finally:
         kernel.CloseHandle(handle)
+
+
+def process_creation_time(pid):
+    """Read the OS process creation identity, including protected-process metadata."""
+    if type(pid) is not int or pid <= 0 or os.name != "nt":
+        return None
+    from ctypes import wintypes
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel.OpenProcess.restype = wintypes.HANDLE
+    kernel.GetProcessTimes.argtypes = [wintypes.HANDLE, *(ctypes.POINTER(wintypes.FILETIME),) * 4]
+    kernel.GetProcessTimes.restype = wintypes.BOOL
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel.CloseHandle.restype = wintypes.BOOL
+    handle = kernel.OpenProcess(0x1000, False, pid)
+    if handle:
+        try:
+            times = [wintypes.FILETIME() for _ in range(4)]
+            if kernel.GetProcessTimes(handle, *(ctypes.byref(value) for value in times)):
+                return {"filetime_100ns": times[0].dwHighDateTime << 32 | times[0].dwLowDateTime,
+                        "precision_100ns": 1, "source": "GetProcessTimes"}
+        finally:
+            kernel.CloseHandle(handle)
+    script = ("$item = Get-CimInstance Win32_Process -Filter 'ProcessId = " + str(pid) +
+              "' -ErrorAction Stop; if ($null -ne $item -and $null -ne $item.CreationDate) "
+              "{ $item.CreationDate.ToUniversalTime().ToFileTimeUtc() }")
+    try:
+        completed = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
+            capture_output=True, text=True, encoding="utf-8", timeout=15, check=False,
+            creationflags=subprocess.CREATE_NO_WINDOW)
+        value = completed.stdout.strip()
+        if completed.returncode == 0 and re.fullmatch(r"[0-9]{15,19}", value):
+            return {"filetime_100ns": int(value), "precision_100ns": 10, "source": "Win32_Process.CreationDate"}
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return None
+
+
+def coordinator_instance_absence(session):
+    """Distinguish an exited coordinator from another process reusing its PID."""
+    pid = session.get("pid")
+    state = process_alive(pid)
+    if state is False:
+        return {"confirmed_absent": True, "reason": "pid_not_running", "pid": pid}
+    observed = process_creation_time(pid)
+    result = {"confirmed_absent": False, "reason": "process_identity_unverified", "pid": pid,
+              "observed_creation": observed, "process_state": state}
+    if observed is None:
+        return result
+    retained = session.get("process_creation")
+    if isinstance(retained, dict) and type(retained.get("filetime_100ns")) is int:
+        left, right = retained["filetime_100ns"], observed["filetime_100ns"]
+        precision = max(retained.get("precision_100ns", 1), observed.get("precision_100ns", 1))
+        if left // precision != right // precision:
+            result.update(confirmed_absent=True, reason="pid_reused_different_os_creation", retained_creation=retained)
+        else:
+            result["reason"] = "same_os_process_instance_still_present"
+        return result
+    try:
+        started = datetime.fromisoformat(session["started_at_utc"])
+        if started.tzinfo is None:
+            return result
+        delta = started.astimezone(timezone.utc) - datetime(1601, 1, 1, tzinfo=timezone.utc)
+        boundary = (delta.days * 86400 + delta.seconds) * 10_000_000 + delta.microseconds * 10
+        if observed["filetime_100ns"] >= boundary + observed.get("precision_100ns", 1):
+            result.update(confirmed_absent=True, reason="pid_reused_creation_after_recorded_queue_start",
+                          retained_queue_started_at_utc=session["started_at_utc"])
+    except (KeyError, TypeError, ValueError):
+        pass
+    return result
 
 
 def task_id(kind, inputs, options):
@@ -254,6 +580,10 @@ def load_native_reviews(specs):
                 merge_options["shared_tail_specs"] = shared_specs
             if fresh_inlines:
                 merge_options["fresh_inline_rvas"] = [row["rva"] for row in fresh_inlines]
+            if "reanalyze_type_owners" in plan:
+                merge_options["reanalyze_type_owners"] = plan["reanalyze_type_owners"]
+            if "propagate_direct_calls" in plan:
+                merge_options["propagate_direct_calls"] = plan["propagate_direct_calls"]
             observation_options = {}
             if "static_observation" in plan:
                 plan_pointer = pointer + ("/" + str(plan_index) if isinstance(value, list) else "")
@@ -276,16 +606,20 @@ def load_native_reviews(specs):
 
 class Batch:
     def __init__(self, workers, ida_root, verify_only=False, native_only=False, review_paths=(), resume=False,
-                 process_workers=False):
+                 process_workers=False, resume_reason=None):
         if type(workers) is not int or not 2 <= workers <= min(32, os.cpu_count() or 2):
             raise ValueError("Workers must be an integer from two to the available CPU limit (maximum 32)")
         if resume and (verify_only or native_only or review_paths):
             raise ValueError("Resume inherits the retained scope and reviews; do not combine it with scope options")
+        if resume_reason is not None and (not resume or not isinstance(resume_reason, str) or not resume_reason.strip()):
+            raise ValueError("A nonempty resume reason requires resume mode")
         self.workers, self.ida_root = workers, ida_root
         if type(process_workers) is not bool:
             raise ValueError("Process-worker mode must be a boolean")
         self.process_workers = process_workers
+        self.recheck_mode = False
         self.resume = resume
+        self.resume_reason = resume_reason
         self.verify_only = verify_only
         self.native_only, self.review_paths = native_only, tuple(review_paths)
         self.reviews = load_native_reviews(self.review_paths)
@@ -304,7 +638,7 @@ class Batch:
     def process_pool(self):
         return ProcessPoolExecutor(max_workers=self.workers, mp_context=multiprocessing.get_context("spawn"),
             initializer=initialize_process_worker,
-            initargs=(str(a.ROOT), self.ida_root, self.verify_only, self.native_only, self.resume, self.tool["sha256"]),
+            initargs=(str(a.ROOT), self.ida_root, self.verify_only, self.native_only, self.resume, self.tool["sha256"], self.recheck_mode),
             max_tasks_per_child=8)
 
     def resume_tasks(self):
@@ -314,7 +648,8 @@ class Batch:
         if previous.get("schema_version") != 1 or previous.get("finished_at_utc"):
             raise ValueError("Resume requires a supported unfinished static queue")
         session = previous.get("queue_session")
-        if session and process_alive(session.get("pid")) is not False:
+        coordinator_guard = coordinator_instance_absence(session) if session else None
+        if session and not coordinator_guard["confirmed_absent"]:
             raise ValueError("Previous queue process is still running or cannot be verified absent")
         workflow_tool = previous.get("task_identity_tool", previous["tool"])
         snapshot = a.ROOT / ".analysis/results/reverse-pending/tool-sources" / (workflow_tool["sha256"] + ".py")
@@ -357,21 +692,38 @@ class Batch:
                 raise ValueError("Retained queue task has an unsupported status or missing completion timestamp")
         if self.process_workers and completed:
             with self.process_pool() as pool:
-                for _ in pool.map(check_retained_task, completed):
-                    pass
+                completion_checks = list(pool.map(inspect_retained_completion, completed))
         else:
-            for task in completed:
-                check_retained_task(task)
+            completion_checks = [inspect_retained_completion(task) for task in completed]
+        completion_by_id = {task["id"]: task for task in completed}
+        invalidated = []
+        for checked in completion_checks:
+            if checked["verified"]:
+                continue
+            task = completion_by_id[checked["task_id"]]
+            invalidated.append({**checked, "previous_completion": dict(task),
+                "action": "only_this_task_requeued_for_strict_verification", "target_execution": False})
+            frozen_keys = {"id", "kind", "input", "sha256", "base_capture", "review", "acquisition"}
+            frozen = {key: value for key, value in task.items() if key in frozen_keys}
+            task.clear()
+            task.update(frozen, status="pending")
+            scheduled.append(task)
         retained_source = self.report["tool_source"]
-        self.report = previous
+        retained_receipt = retain_receipt_bytes(previous_raw)
+        self.report = externalize_report_history(previous)
+        if invalidated:
+            self.report.setdefault("resume_revalidation_failures", []).extend(invalidated)
         self.report["interrupted_static_run"] = {
             "sha256": hashlib.sha256(previous_raw).hexdigest(),
-            "raw_base64": base64.b64encode(previous_raw).decode(),
+            "raw_receipt": retained_receipt,
             "observed_at_utc": a.stamp(), "exit_code": None,
             "coordinator_process_confirmed_absent": True if session else None,
+            "coordinator_instance_verification": coordinator_guard,
             "legacy_coordinator_guard": None if session else "exclusive_queue_lock; no legacy coordinator PID was recorded",
             "completed_task_ids": [task["id"] for task in tasks if task not in scheduled],
             "scheduled_task_ids": [task["id"] for task in scheduled]}
+        if self.resume_reason is not None:
+            self.report["interrupted_static_run"]["reason"] = self.resume_reason
         self.report.update({"tool": self.tool, "tool_source": retained_source,
                             "task_identity_tool": workflow_tool, "workers": self.workers})
         self.verify_only = previous.get("verification_only", False)
@@ -395,7 +747,9 @@ class Batch:
                if review.get("function_shared_tails") else {}),
             **({"fresh_inline_rvas": [row["rva"] for row in review["function_fresh_inlines"]]}
                if review.get("function_fresh_inlines") else {}),
-            observation_evidence=review.get("observation_evidence_spec"))
+            observation_evidence=review.get("observation_evidence_spec"),
+            reanalyze_type_owners=review.get("reanalyze_type_owners", False),
+            propagate_direct_calls=review.get("propagate_direct_calls", False))
         selection_id = hashlib.sha256(json.dumps(selection, sort_keys=True).encode()).hexdigest()[:16]
         output = a.ROOT / ".analysis/results/native" / capture["input_sha256"] / "supplements" / selection_id
         session_path, plan_path = output / "session.json", output / "plan.json"
@@ -486,7 +840,15 @@ class Batch:
     def execute(self, task):
         with a.index_lock(a.ROOT / ".work/reverse-pending/locks" / (task["id"] + ".lock")):
             try:
-                result = self.native(task) if task["kind"] == "native" else self.frontend(task)
+                if self.recheck_mode and task["kind"] == "frontend":
+                    import frontend
+                    review = frontend.recheck_frozen_frontend(task)
+                    if review.get("status") not in {"passed", "unresolved"} or review.get("semantics_complete") is not False:
+                        raise ValueError("Frontend recheck must preserve its explicit static scope")
+                    result = {"status": review["status"], "receipt": retain_review_json(review),
+                              "semantic_review": "required"}
+                else:
+                    result = self.native(task) if task["kind"] == "native" else self.frontend(task)
             except Exception as error:
                 result = {"status": "failed", "error": str(error).replace(str(a.ROOT), "<project>")}
             return result
@@ -571,6 +933,10 @@ class Batch:
                         arguments.extend(["--function-type", row["rva"] + "=" + row["declaration"]])
                     for row in review.get("import_type_recoveries", []):
                         arguments.extend(["--import-type", row["rva"] + "=" + row["declaration"]])
+                    if review.get("reanalyze_type_owners"):
+                        arguments.append("--reanalyze-type-owners")
+                    if review.get("propagate_direct_calls"):
+                        arguments.append("--propagate-direct-calls")
                     for row in review.get("function_merges", []):
                         arguments.extend(["--merge-functions", row["owner_rva"] + "=" + ",".join(row["member_rvas"])])
                     for row in review.get("function_outlines", []):
@@ -600,9 +966,13 @@ class Batch:
                             "target_execution": False, "semantics_complete": False})
             if completed_attempt:
                 compact["completed_attempt_reused"] = completed_attempt
-            a.save(receipt, compact)
+            if self.recheck_mode:
+                result_reference = retain_review_json(compact)
+            else:
+                a.save(receipt, compact)
+                result_reference = identity(receipt)
             return {"status": "unresolved" if resolution["remaining_failures"] or resolution["verification_failures"] else "passed",
-                    "resolution": identity(receipt), "commands": commands,
+                    "resolution": result_reference, "commands": commands,
                     "selected_function_rvas": selected, "original_failed_function_rvas": rvas,
                     "resolved": len(resolution["resolved_failures"]),
                     "remaining": len(resolution["remaining_failures"]), "verification_errors": len(resolution["verification_failures"]),
@@ -614,7 +984,7 @@ class Batch:
         import families
         path = a.resolve(task["input"], ".analysis/inputs") / "acquisition.json"
         acquired = json.loads(path.read_bytes())
-        relevant = {".js", ".css", ".html"}
+        relevant = {".js", ".mjs", ".css", ".html"}
         missing = [row for row in acquired.get("files", [])
                    if Path(urllib.parse.urlsplit(row.get("url", "")).path).suffix.lower() in relevant
                    and ("error" in row or ("path" in row and not families.valid(row)))]
@@ -628,15 +998,23 @@ class Batch:
             acquired = json.loads(path.read_bytes())
         recovery = frontend.recover_source_set(path, a.wakaru())
         deployment = evidence.frontend_deployment_sources(acquired)
+        classification = None
+        if recovery["status"] == "no_javascript_originals":
+            classification = classify_non_javascript_source_set(acquired, deployment)
+            if classification["verification"] == "passed":
+                recovery = {**recovery, "original_status": recovery["status"], "status": "not_applicable",
+                            "source_kind": "non_javascript"}
         parsers = {name: importlib.metadata.version(name) for name in ("tree-sitter", "tree-sitter-javascript")}
         tool = identity(Path(evidence.__file__))
         bundles, failures = [], list(deployment["failures"])
+        if classification is not None:
+            failures.extend(classification["failures"])
         for source in deployment["sources"]:
             if not source["identity_verified"]:
                 failures.append({"kind": "source_identity_unverified", "source": source})
                 continue
             original = source["original"]
-            if Path(urllib.parse.urlsplit(source["url"]).path).suffix.lower() != ".js":
+            if Path(urllib.parse.urlsplit(source["url"]).path).suffix.lower() not in {".js", ".mjs"}:
                 continue
             digest = original["sha256"]
             with self.lock:
@@ -660,6 +1038,7 @@ class Batch:
         folder = "verified-frontend" if self.verify_only else "frontend"
         receipt = a.ROOT / ".analysis/results/reverse-pending" / folder / (path.parent.name + ".json")
         result = {"acquisition": identity(path), "recovery": recovery, "deployment": deployment,
+                  "source_classification": classification,
                   "bundles": bundles, "repair_failures": repairs, "failures": failures,
                   "verification_only": self.verify_only,
                   "target_execution": False, "semantics_complete": False, "mount_tree_complete": False}
@@ -729,7 +1108,7 @@ class Batch:
                 raise ValueError("Previous static queue must finish before strict verification")
             self.report["previous_static_run"] = {
                 "sha256": hashlib.sha256(previous_raw).hexdigest(),
-                "raw_base64": base64.b64encode(previous_raw).decode(),
+                "raw_receipt": retain_receipt_bytes(previous_raw),
                 "tool": previous["tool"], "summary": previous["summary"]}
             snapshot = a.ROOT / ".analysis/results/reverse-pending/tool-sources" / (previous["tool"]["sha256"] + ".py")
             if snapshot.is_file():
@@ -749,7 +1128,8 @@ class Batch:
                     "remaining": sum(row["remaining"] for row in self.report["native_scope"].values())}
         self.report["configuration"] = {"ida_root": self.ida_root, "max_function_kib": 1024,
             "worker_isolation": "spawned_process" if self.process_workers else "thread"}
-        self.report["queue_session"] = {"pid": os.getpid(), "started_at_utc": a.stamp()}
+        self.report["queue_session"] = {"pid": os.getpid(), "started_at_utc": a.stamp(),
+                                        "process_creation": process_creation_time(os.getpid())}
         if self.resume:
             self.publish()
         else:
@@ -804,8 +1184,103 @@ class Batch:
             a.save(path, ledger)
 
 
+def recheck_unresolved(args):
+    """Recheck only explicit frozen failures, publishing a separate current increment."""
+    if any(getattr(args, name, False) for name in ("resume", "resume_reason", "native_review")):
+        raise ValueError("Unresolved recheck is a static increment, separate from resumed analyzer work")
+    batch = Batch(args.workers, args.ida_root, verify_only=True,
+                  process_workers=getattr(args, "process_workers", False))
+    batch.recheck_mode = True
+    baseline_path = a.ROOT / REPORT
+    baseline_raw = baseline_path.read_bytes()
+    baseline = json.loads(baseline_raw)
+    if baseline.get("schema_version") != 1 or not baseline.get("finished_at_utc"):
+        raise ValueError("Unresolved recheck requires a completed frozen baseline")
+    candidates = [task for task in baseline["tasks"] if task.get("status") in {"unresolved", "failed"}]
+    available = {task["id"]: task for task in candidates}
+    if len(available) != len(candidates) or not available:
+        raise ValueError("Frozen failures must have unique task identities")
+    identifiers = getattr(args, "task_id", None)
+    if identifiers is not None:
+        if not identifiers or len(set(identifiers)) != len(identifiers) or set(identifiers) - available.keys():
+            raise ValueError("Recheck task IDs must uniquely select existing frozen failures")
+        candidates = [available[key] for key in identifiers]
+    if getattr(args, "native_only", False):
+        candidates = [task for task in candidates if task["kind"] == "native"]
+    if not candidates:
+        raise ValueError("Unresolved recheck selection is empty")
+    for task in candidates:
+        if task["kind"] == "native":
+            source = a.resolve(task["input"], ".analysis/inputs")
+            if a.sha(source) != task["sha256"] or not valid(task["base_capture"]):
+                raise ValueError("Frozen native input or base capture changed")
+        elif task["kind"] != "frontend":
+            raise ValueError("Unknown frozen failure kind")
+        record = task.get("resolution", task.get("receipt"))
+        if record:
+            frozen_result_reference(record)
+    baseline_reference = retain_review_json(raw=baseline_raw)
+    tool_path = a.ROOT / ".analysis/results/reverse-pending/tool-sources" / (batch.tool["sha256"] + ".py")
+    tool_raw = Path(__file__).read_bytes()
+    tool_path.parent.mkdir(parents=True, exist_ok=True)
+    if tool_path.is_file():
+        if tool_path.read_bytes() != tool_raw:
+            raise ValueError("Retained recheck tool source changed")
+    else:
+        with tool_path.open("xb") as stream:
+            stream.write(tool_raw)
+    tool_source = identity(tool_path)
+    destination = a.ROOT / UNRESOLVED_REPORT
+    previous = json.loads(destination.read_bytes()) if destination.is_file() else None
+    if previous and previous.get("baseline") != baseline_reference:
+        raise ValueError("Current unresolved increment belongs to a different frozen baseline")
+    rows = {row["baseline_task_id"]: row for row in previous.get("tasks", [])} if previous else {}
+    if set(rows) - available.keys():
+        raise ValueError("Current unresolved increment contains a foreign task")
+    report = {"schema_version": 1, "kind": "frozen_unresolved_static_increment", "baseline": baseline_reference,
+              "baseline_failure_count": len(available), "selected_task_ids": [task["id"] for task in candidates],
+              "started_at_utc": a.stamp(), "tool": batch.tool, "tool_reference": tool_source,
+              "target_execution": False, "semantics_complete": False,
+              "official_dll_comparison": "not_executed", "real_device_acceptance": "not_executed"}
+
+    def publish():
+        if baseline_path.read_bytes() != baseline_raw or identity(Path(__file__)) != batch.tool:
+            raise ValueError("Frozen baseline or recheck source changed during verification")
+        report["tasks"] = [rows[key] for key in sorted(rows)]
+        counts = Counter(row["status"] for row in report["tasks"])
+        report["summary"] = {"baseline_failures": len(available), "rechecked": len(rows),
+                             "by_status": dict(counts), "not_rechecked": len(available) - len(rows),
+                             "semantics_complete": False}
+        reference = retain_review_json(report)
+        a.save(destination, {**report, "source_review": reference})
+
+    with batch.process_pool() if batch.process_workers else ThreadPoolExecutor(max_workers=batch.workers) as pool:
+        futures = {pool.submit(execute_process_task if batch.process_workers else batch.execute, task): task
+                   for task in candidates}
+        for future in as_completed(futures):
+            task = futures[future]
+            result = future.result()
+            record = task.get("resolution", task.get("receipt"))
+            rows[task["id"]] = {"baseline_task_id": task["id"], "kind": task["kind"], "input": task["input"],
+                **({"sha256": task["sha256"]} if "sha256" in task else {}),
+                "historical_result": frozen_result_reference(record) if record else None,
+                **result, "finished_at_utc": a.stamp()}
+            print(json.dumps({"task": task["id"], "kind": task["kind"], "status": result["status"]}), flush=True)
+    report["finished_at_utc"] = a.stamp()
+    publish()
+    print(json.dumps({"receipt": UNRESOLVED_REPORT, **report["summary"]}), flush=True)
+    return report
+
+
 def run(args):
     with a.index_lock(a.ROOT / ".analysis/reverse-pending.lock"):
+        if getattr(args, "recheck_unresolved", False):
+            report = recheck_unresolved(args)
+            if any(task["status"] != "passed" for task in report["tasks"]):
+                raise SystemExit(1)
+            return report
+        if getattr(args, "task_id", None):
+            raise ValueError("Task selection requires --recheck-unresolved")
         options = {}
         if getattr(args, "native_only", False) or getattr(args, "native_review", None):
             options = {"native_only": getattr(args, "native_only", False),
@@ -814,6 +1289,8 @@ def run(args):
             options["resume"] = True
         if getattr(args, "process_workers", False):
             options["process_workers"] = True
+        if getattr(args, "resume_reason", None) is not None:
+            options["resume_reason"] = args.resume_reason
         report = Batch(args.workers, args.ida_root, getattr(args, "verify_only", False), **options).run()
         if any(task["status"] != "passed" for task in report["tasks"]):
             raise SystemExit(1)

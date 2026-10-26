@@ -15,6 +15,7 @@ from pathlib import Path
 import sys
 import traceback
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 import ida_auto
 import ida_bytes
@@ -51,6 +52,97 @@ def _static_diagnostic_error(record, stage, error):
         record["diagnostic_errors_truncated"] = True
     if len(message) > 2048:
         record["diagnostic_errors_truncated"] = True
+
+
+def local_namespace_diagnostics(cfunc):
+    """Observe SDK register/frame namespaces without repairing local locations."""
+    result = {"schema_version": 1, "diagnostics_complete": True, "locals": [],
+              "target_execution": False, "local_capture_result_unchanged": True}
+
+    def error(record, stage, exception):
+        result["diagnostics_complete"] = False
+        _static_diagnostic_error(record, stage, exception)
+
+    def address(mba, ea):
+        value = {"definition_ea": hex(ea), "status": "unobserved"}
+        try:
+            mapped = int(mba.map_fict_ea(ea))
+            value.update(api_mapped_ea=hex(mapped),
+                         status="badaddr" if mapped == idaapi.BADADDR else "api_returned")
+            if mapped != idaapi.BADADDR:
+                owner = ida_funcs.get_func(mapped)
+                value["mapped_function_owner"] = (None if owner is None else
+                    {"start_ea": hex(int(owner.start_ea)), "end_ea": hex(int(owner.end_ea)),
+                     "flags": int(owner.flags)})
+        except Exception as exception:
+            value["status"] = "diagnostic_error"
+            error(value, "definition_address_mapping", exception)
+        return value
+
+    def register(number, width):
+        value = {"namespace": "hexrays_microregisters", "register": number, "width": width}
+        for key, api in (("name", lambda: ida_hexrays.get_mreg_name(number, width)),
+                         ("processor_register", lambda: int(ida_hexrays.mreg2reg(number, width))),
+                         ("kernel_register", lambda: bool(ida_hexrays.is_kreg(number))),
+                         ("temporary_register", lambda: bool(ida_hexrays.get_temp_regs().has(number)))):
+            observation = {"status": "unobserved"}
+            value[key] = observation
+            try:
+                observed = api()
+                if key == "name" and not isinstance(observed, str):
+                    raise TypeError("SDK microregister formatter did not return text")
+                observation.update(status="api_returned", value=observed)
+                if key == "processor_register":
+                    observation["maps_to_processor_register"] = observed != -1
+            except Exception as exception:
+                observation["status"] = "diagnostic_error"
+                error(observation, "microregister." + key, exception)
+        return value
+
+    def location_registers(location, width):
+        kind = location.get("kind")
+        if kind in ("register", "register_relative"):
+            return [register(location["register"], width)]
+        if kind == "register_pair":
+            return [register(location[key], width) for key in ("register", "second_register")]
+        if kind == "scattered":
+            return [item for part in location.get("parts", [])
+                    for item in location_registers(part, part["size"])]
+        return []
+
+    try:
+        mba = cfunc.mba
+        result.update(mba_entry_ea=hex(int(mba.entry_ea)),
+                      cfunc_stack_offset_delta=int(cfunc.get_stkoff_delta()),
+                      mba_block_count=int(mba.qty))
+        for index, variable in enumerate(cfunc.get_lvars()):
+            value = {"index": index}
+            result["locals"].append(value)
+            try:
+                width, block_number = int(variable.width), int(variable.defblk)
+                value.update(name=str(variable.name), width=width, definition_block=block_number)
+                value["definition_address"] = address(mba, int(variable.defea))
+                location = capture_values.argument_location(variable.location, "hexrays_microregisters")
+                value["location"] = location
+                value["register_observations"] = location_registers(location, width)
+                if 0 <= block_number < result["mba_block_count"]:
+                    block = mba.get_mblock(block_number)
+                    flags = int(block.flags)
+                    definition = {"status": "api_returned", "serial": int(block.serial), "flags": flags,
+                                  "inlined": bool(flags & ida_hexrays.MBL_INLINED),
+                                  "external_frame": bool(flags & ida_hexrays.MBL_EXTFRAME)}
+                    value["definition_block_observation"] = definition
+                    for key in ("head", "tail"):
+                        instruction = getattr(block, key)
+                        definition[key] = None if instruction is None else address(mba, int(instruction.ea))
+                else:
+                    value["definition_block_observation"] = {"status": "unobserved",
+                        "reason": "sdk_definition_block_outside_current_mba"}
+            except Exception as exception:
+                error(value, "local_namespace", exception)
+    except Exception as exception:
+        error(result, "local_namespace_owner", exception)
+    return result
 
 
 class _FrozenInsnVisitor(ida_hexrays.minsn_visitor_t):
@@ -1245,6 +1337,13 @@ def capture():
         if "static_observation" in selection:
             review_source = selection["static_observation"]["review_source"]
             partition_options["observation_evidence"] = review_source["path"] + "#" + review_source["pointer"]
+        if selection.get("callsite_type_recoveries"):
+            partition_options["callsite_reviews"] = [row["review_source"]["path"] + "#"
+                + row["review_source"]["pointer"] for row in selection["callsite_type_recoveries"]]
+        if selection.get("type_owner_reanalysis"):
+            partition_options["reanalyze_type_owners"] = True
+        if "direct_call_type_propagations" in selection:
+            partition_options["propagate_direct_calls"] = True
         actual = analysis.native_function_selection(raw, json.loads(base_capture.read_bytes()),
             [int(row["rva"], 16) for row in selection["targets"]],
             [row["rva"] + "=" + row["declaration"] for row in recoveries],
@@ -1287,6 +1386,10 @@ def capture():
                 "target_execution": False, "real_device_operations": False,
                 "semantic_audit": "pending", "implementation_acceptance": "pending"}
     manifest["typed_value_serializer"] = capture_values.source_identity(root)
+    if selection.get("callsite_type_recoveries") or selection.get("type_owner_reanalysis"):
+        import native_callsites
+        manifest["callsite_type_validator"] = native_callsites.source_identity(root)
+        manifest["callsite_type_recoveries"] = []
 
     def save(path, value):
         def portable(item):
@@ -1521,6 +1624,7 @@ def capture():
                     {"line": index, "text": ida_lines.tag_remove(line.line)}
                     for index, line in enumerate(cfunc.get_pseudocode())]}
                 row["pseudocode"].update(capture_values.local_variables(cfunc, ida_hexrays))
+                row["hexrays_diagnostics"]["local_namespaces"] = local_namespace_diagnostics(cfunc)
             except Exception:
                 error = {"rva": rva, "stage": "hexrays", "error": traceback.format_exc()}
                 if failure is not None:
@@ -1762,6 +1866,28 @@ def capture():
             "applied_type": str(applied), "assembly_evidence_reference": retained,
             "base_database_modified": False})
 
+    if selection.get("callsite_type_recoveries"):
+        sdk = SimpleNamespace(bytes=ida_bytes, types=ida_typeinf, nalt=ida_nalt)
+        for recovery in selection["callsite_type_recoveries"]:
+            manifest["callsite_type_recoveries"].append(native_callsites.apply(recovery, base, sdk))
+        native_callsites.verify_applied(selection["callsite_type_recoveries"], manifest["callsite_type_recoveries"])
+        sdk.root, sdk.funcs, sdk.utils = root, ida_funcs, idautils
+        sdk.auto, sdk.frame = ida_auto, ida_frame
+        manifest["callsite_automatic_reanalysis"] = native_callsites.reanalyze_owners(
+            selection["callsite_type_recoveries"], base, sdk)
+        ida_hexrays.clear_cached_cfuncs()
+
+    if selection.get("type_owner_reanalysis"):
+        sdk = SimpleNamespace(root=root, funcs=ida_funcs, utils=idautils, bytes=ida_bytes,
+                              auto=ida_auto, frame=ida_frame, types=ida_typeinf, nalt=ida_nalt)
+        direct = selection.get("direct_call_type_propagations", [])
+        if direct:
+            manifest["direct_call_type_propagations"] = [native_callsites.apply_direct(row, base, sdk) for row in direct]
+            native_callsites.verify_direct_applied(direct, manifest["direct_call_type_propagations"])
+        manifest["type_owner_automatic_reanalysis"] = native_callsites.reanalyze_owners(
+            selection["type_owner_reanalysis"], base, sdk)
+        ida_hexrays.clear_cached_cfuncs()
+
     selected_rvas = {row["rva"] for row in selection["targets"]}
     for rva in sorted(shared_owner_rvas - selected_rvas, key=lambda value: int(value, 16)):
         export(base + int(rva, 16), assembly_only=True, helper_kind="shared_tail_helpers")
@@ -1808,6 +1934,9 @@ def capture():
     manifest["base_database_unchanged"] = bool(plan.get("source_database"))
     if capture_values.source_identity(root) != manifest["typed_value_serializer"]:
         raise ValueError("Typed capture serializer identity changed during supplemental analysis")
+    if selection.get("callsite_type_recoveries") or selection.get("type_owner_reanalysis"):
+        if native_callsites.source_identity(root) != manifest["callsite_type_validator"]:
+            raise ValueError("Callsite type validator changed during supplemental analysis")
     save(output / "capture.json", manifest)
     return manifest
 

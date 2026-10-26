@@ -47,6 +47,18 @@ Customize 的主任务是选择产品图上的实际输入，编辑普通层或 
 
 747 原始 controller report 是恰好 15 字节、首字节为 0 的数据。module47561 按五组无符号小端数减 32768 解码，按 `Math.round(axis / 32767 * 1000)` 归一化，MW41243 经 15 ms leading/trailing throttle 发送 `MW_UPDATE_GAMEPAD_TESTER_VALUES`；当前 UI reducer 直接保留六字段 payload。页面直接使用千分单位坐标，不能复用 679 的计算后 gamepad output 观察器或另一个 controller action 的乘 1000 消费者。静态消费链、Rust 模拟传输和真实设备／原版 DLL 对照分别验收。
 
+747 的 [OBM 与 Fe 完整依赖审阅](../../../.analysis/results/reverse-pending/review-sources/696c378d2a44c84dfdeb8da295e0658836b8a0d1fec0845cf54c93eec7d7f4c1.json)保留 191 个完整 owner，覆盖 24 个 OBM、105 个 Fe 传递依赖工厂和真实传输消费者。`setSingleKeyAssignment` 的命令常量为 `[80,2,13]`，但当前调用明确传 `packetSizeSet=10`，最终报头长度为 10，只传 profile、key、mode、fnId、fnDataSize 和五个数据字节；`thresholdL/H` 进入请求缓存，未由此命令发往设备。`setTargetObmKeymap` 的 `[1,2,55]` 先被 await，其布尔返回未被调用方检查，传输异常仍会先拒绝；单键命令仅在 SUCCESS 后更新缓存，使用请求字段，不消费 JSON echo，也没有附加 GET、目标槽恢复或覆盖整链的事务锁。缓存更新不能作为阈值已写入或设备读回的证据。
+
+Fe 按 `isHyperShift===false/true` 精确筛选，缺字段不等于普通层；Hypershift 八向生成要求对应 cardinal 和两条 diagonal 都存在。BUTTONS 模式默认读取 `outputFlag=2`，生成键盘 flag 2/3，顺序 up、left、right、down；DIRECTIONAL 模式明确选择原始 `flag=0`，生成 flag 0/1，cardinal 顺序 up、right、left、down，普通层 diagonal 默认 Home、PageUp、End、PageDown。普通 joystick axes/raxes 的松开输出强制 `[0,0,0]`，不能合并这两套 flag 或以数组下标替代输入身份。
+
+共享原生消费者见 [host-current/local-audit.json](../../../.analysis/results/host-current/local-audit.json) 的 `keypad_mapping`，复核入口为 `python -X utf8 tools/workspace.py audit-host-local --query keypad-mapping`。当前 `mapping_engine.dll` 的 78 个完整函数、9,958 条指令与相关 vtable、字符串表逐字节核对原 PE。`0xee98a` 只接受 analogStick 的 left/right/up/down 和 flag 0/1，`0xfc400` 的完整身份包含 flag，`0xfc560` 的无状态身份省略 flag。可选 threshold 经 `0xebef2` 检查为有符号 16 位的 1..32766；字段缺失保留构造/reset 的 20000，这是原生对象初值，不能作为设备实测或首次连接写入依据。
+
+这条原生输入链与上述 15 字节 UI report 分开：`0x79e9e` 从 report 第 1 字节起读取 `[id,大端 i16]` 三元组，ID 0 结束；251/252 走 `0x7eb92`。幅值按无符号 16 位计算以覆盖 -32768，达到 threshold 才激活。held 状态只按轴 ID 保存：首次插入发送 make，低于阈值删除才发送 break，持续超阈值或直接变号不另发边沿。251 正值是 right、其余 left，252 正值是 up、其余 down；break 也按当前 sample（包括 0）的符号选方向，原件没有保存上一方向来替换它。
+
+`0xf2243` 要求非空 dpad 数组，每项 output 必需，input 经 optional-object guard，缺失或非对象可进入无条件映射。`0xff48c` 保留列表顺序，`0x861ca` 按当前 active input 快照逐项匹配并在首个命中处停止；joystick/Xbox 输出进入聚合，其余输出复制映射再分发。joystick id 仅为 button、axes、raxes、pov，运行时 button 范围 1..24；xyz 恰好三个 JSON 整数，超过上界截到 127，低于 -127 截到 -128，-127 本身保留。解析的 button 字段与 `0x100ae0` 序列化的 value 字段存在实际不对称，必须按真实边界处理。
+
+`0x1011f4/0x10132c` 维护 button 字节计数与按无状态输入身份替换的轴贡献，零贡献删除；每轴合并最强负值和正值，-128/+127 的组合另加 1 回到 0。`0x872c6` 只修改已存在状态，`0xaf2ae` 将真正 changed 的字段排入驱动队列再发布。队列接受不代表传输 ACK；deferred pair 的全部状态分支、独立 Rust 实现及实际 DLL／设备对照仍须分别验收。
+
 主窗口 `JU` 挂载 Customize 连接器 `Gh`。Factory Default 仍能打开标签页，但 `fh` 只挂产品图和工厂档说明；普通活动档才挂 `Ph/mh`。宏窗口也复用静态/可编辑选择，且设置 `displayMode:"macro"`。身份与启动顺序见 [profiles.md](profiles.md)。
 
 `mh` 持有当前被映射键的 DOM anchor、保存提示状态、下一动作回调、丢弃动作回调、按键映射视图，以及重新寻找 DOM anchor 的 timeout。真正的输出编辑值和保存回调属于懒加载编辑器；父页面通过 `setSaveRef` 取得它，不能把父组件自己的提示状态当成全部映射内容。

@@ -118,11 +118,34 @@ native 的 SET → flash save → reboot 三步链见下文。独立测试必须
 
 ## Windows 属性页和原生返回边界
 
-原生属性页通过 base filter 查询 COM 页面接口与 IUnknown，在独立线程建立临时宿主窗并调用 OleCreatePropertyFrame。结束时释放页 CLSID 内存、窗体和 COM 引用、恢复线程 DPI 上下文，最后带 containerId 发布 `displayCameraPropertiesDialogClosed`。关闭方法发送 WM_CLOSE、处理线程 join；显示/关闭导出的固定真返回只表示入口执行，不证明窗口已实际出现或属性已保存。
+属性页的静态增量见 [`70dcb7e0…`](../../../.analysis/results/reverse-pending/review-sources/70dcb7e0ddce72ce37c75ab4939e43c5620caa55984d1efee870ce7e22eec14f.json)：七款产品、145 个完整原件 AST 切片和六份不同 DLL 的 64 个完整函数引用。每个切片重新核对原件字节、SHA 和实际 AST 边界；函数重新核对 PE 导出、函数边界与全部捕获 chunk。正文存储复用完整原件及捕获，增量为 288,045 字节，不复制整套报告，不修改旧 review。
 
-3595/3596 当前 GenericCamera 1.0.35.0 的属性链 RVA 包含 `0x4cc90`（属性页）、`0x4cf70`（线程）、`0x4d130`（关闭）、`0x3e130`（事件），暴露入口为 `0x5ec10/0x5ecf0`。该事件在 UI 中清除“属性页打开”状态，不能显示保存成功。base ISP 链在互斥内核对实例仍存在，经 IKsTopologyInfo 节点发送、间隔 10 ms 读响应；设备删除、HRESULT 失败和 ISP busy/parameter/preview 错误保留各自失败。3596 的 DNR 写入需要先查询伴随参数，再写本值，不能只迁移可见滑块。
+### 打开、关闭通知与读取消费者
 
-原生版本不能混用：3594 manifest 指向 GenericCamera **1.0.36.1**，3595/3596 为 **1.0.35.0**。当前前端、包装器与原生调度的联合证据见 [摄像头分析](../../../.analysis/results/frontend/accessories-camera-local-pages-audit.json)；原生完整捕获和追加核验见下文。原捕获中的两处 UTF 转换反编译失败已经通过原汇编支持的类型恢复补齐，原捕获保留不变；这不表示所有摄像头功能已经实现或经设备验证。
+3594/3595/3596 的 Image 页实际点击 Windows 链接后，广播 `SET_SHOW_CAMERA_ADVANCED_SETTINGS` 并立即把 reducer 的 `IS_WINDOWS_UVC_SETTINGS_OPEN` 置真。MW 经当前事件 owner 排入 `NORMAL_SKIPPABLE`、`imageSetting` 任务；3594 内联 task maker，3595/3596 经 module 30525 的 `FVj`。module 85191 的 `F8l` 只在开始前检查 abort，随后等待 `showSettingsPage()`；false 返回被忽略，异常仅打印后仍置 `completed`，`OKH` 完成消费者仅打印日志。因此排队完成不能证明窗口出现、设置成功或取消已传到属性线程。
+
+实际包装器在 `isInit` 为真时调用 `DisplayCameraPropertiesDialog(container)`，否则返回 false。两个 GenericCamera 版本的显示与关闭导出在缺少匹配实例时也固定返回 1。属性线程依次查询 `ISpecifyPropertyPages`（IID `b196b28b-bab4-101a-b69c-00aa00341d07`）和 `IUnknown`（IID `00000000-0000-0000-c000-000000000046`），调用 `GetPages(+0x18)` 和 `OleCreatePropertyFrame`。这两个调用的 HRESULT 都没有进入原版结果消费者；页数组未在调用前初始化。第二次 QI 失败会直接返回，未走第一次已取得页接口的 Release。早退也没有发送关闭事件，不能把打开布尔量清理、COM 释放与原版固定真返回视作同一确认。
+
+所有六份 DLL 的关闭事件只构造 `event:"displayCameraPropertiesDialogClosed"` 和 `containerId`，不包含 Apply/Cancel、HRESULT、变化字段或保存结果。自然返回与主动关闭都可能产生同名事件；原版主动关闭在 HWND 非空、active 为真时，先发事件，再清 active、发送 WM_CLOSE、销毁窗口及 join。因此消费者收到事件不保证释放链已经结束，也不能由该事件还原用户按了 Apply、OK 或 Cancel。
+
+MW 的同 container 监听依次等待 module 87887 的 `db`、`yp`，然后广播 `MW_SET_CURRENT_CAMERA_SETTINGS` 和 `MW_SET_IS_CAMERA_ADVANCED_SETTINGS_OPEN:false`。`db` 首先并发读 brightness/contrast/saturation/white balance；高级分支再并发读 zoom/pan/tilt/focus/exposure/low-light/anti-flicker。它只更新这些标准属性缓存，扩展曝光分支还固定把缓存 exposureValue 置 0，没有顺带读取全部 ISP 属性。`yp` 则只对实际 `rzCamKiyoX` 类读取 zoom，并在已有 camera 配置时写入当前 profile；对现代 Kimberly 包装器不执行该写入。两者内部捕获错误后正常结束，外层仍可能广播旧缓存或部分缓存并清打开状态。原版的 `Number(value||0)` 也必须与读取失败区分，不能成为本地实现的实测零值。
+
+现代 reducer 把缓存发布为 `currentCameraSettings`，保留在产品根的差异 owner 比较它与当前 profile，按差异打开 CAMERA/SYNAPSE 选择层。两项选择经实际字段动作提交被选值，500 ms 后请求 `reloadAdvancedCameraSettingsCache`；它们不是 Windows 属性框的 Apply/Cancel，也没有由这一步隐式确认 flash save。预览 owner 没有以 `isWindowsUVCSettingsOpen` 为依赖的停流/重启 effect；该布尔量进入编辑禁用判定。旧款 Image owner 则注册 `changeActiveTab → closeCameraAdvancedSettings()`，该 effect 没有返回监听释放函数。不能把不同产品的 tab 切换和媒体停止统一处理。
+
+### 各原件的线程与窗口释放差异
+
+| 产品 / 原件 | 属性 frame / 启动线程 / 关闭 join / 事件 RVA | 实际窗口与 COM 行为 |
+| --- | --- | --- |
+| 3587 / 0E03 1.0.16.1 | `4a660 / 4a950 / 4aa70 / 43200` | `Button/Locator` HWND 存在实例 `+200`，线程对在 `+472`；frame 正常尾部释放两个 COM 接口，但没有释放 `GetPages` 数组，也没有销毁宿主窗口；关闭入口另行销毁并 join |
+| 3589 / 0E05 1.0.15.1 | `4a770 / 4aa50 / 4ab70 / 43360` | 同类 `+200` HWND 与 `+472` 线程对；正常 frame 同样不释放页数组、不中止宿主窗口 |
+| 3590 / 0E06 1.0.13.1 | `4a230 / 4a520 / 4a640 / 430c0` | 同类 HWND 与线程布局；close 先清 HWND，再清标题，最后 join，不能仅按其他版本的伪代码地址套用 |
+| 3592 / 0E08 1.0.16.0 | `4aa50 / 4aec0 / 4afe0 / 41df0` | shared SRW lock 检查 filter；属性线程自行 `CoInitializeEx(STA)`，接受 `RPC_E_CHANGED_MODE`，只对本次 S_OK/S_FALSE 配对 `CoUninitialize`。HWND 存在 `+8`，正常 frame 销毁并清零；未见页数组释放；线程对在 `+488` |
+| 3594 / GenericCamera 1.0.36.1 | `4cd30 / 4d010 / 4d1d0 / 3e1a0` | 局部 `STATIC/Host` HWND；正常返回释放页数组、宿主窗和 COM 接口、恢复 DPI；线程对在 `+544` |
+| 3595/3596 / GenericCamera 1.0.35.0 | `4cc90 / 4cf70 / 4d130 / 3e130` | 同类局部宿主窗与释放序列；分别由 `5ec10/5ecf0` 导出进入。3594 的对应导出为 `5efd0/5f0b0` |
+
+GenericCamera 两版 frame 的完整汇编都只把 `CreateWindowExW` 返回值留在局部寄存器，未赋给 close 检查的实例 `+8`；正常尾部反而把 `+8` 清零。close 的 HWND 为空分支直接等待已有属性线程，不发送 WM_CLOSE。它与旧款/Ultra 实际保存 HWND 的链条不同；所选属性线程入口与 frame 也没有 COM 初始化/反初始化调用，不能借用标准属性 worker 的 COM 初始化证明该线程有 apartment。以上是原版静态行为；实际窗口、跨线程关闭和错误释放仍须执行受控对照，不能宣称已经通过。
+
+包装器 terminate 先移除本实例事件监听，再调用 DeviceTerminate 并清 `isInit`；destroy/beforeunload 不等待异步 terminate。GenericCamera 的原生断开先 close/join，再 Release filter 和停止 worker，随后再次 close、移除实例并释放引用。显示线程在 active 尚未置真时的重复打开、早退不发关闭事件、close 等待在途 modal，以及重连时旧异步读取都应分别测试；不能只移除 UI 订阅就报告线程已结束或设置已恢复。显示/关闭导出、标准 getter、ISP ACK 与媒体 track 各有自己的成功、取消和释放边界。
 
 ## GenericCamera 原件、版本与虚表
 
@@ -211,6 +234,10 @@ COM Set 使用 vtable `+0x20`，auto=true 传 flag 1，false 传 2；HRESULT 非
 
 `IKsControl::KsProperty` 的 ABI 是 **六个参数**：接口、32 字节 KSP_NODE、header 长度 32、八字节输入或应答、payload 长度 8、返回长度指针。x64 原汇编明确在 RCX/RDX/R8/R9 和调用前栈 `+0x20/+0x28` 准备这些参数；base 伪代码中看似只有四个参数是类型推断损失，不能据此建立 FFI。SET flags=`0x10000002`，随后 Sleep 10 ms，再用 GET flags=`0x10000001` 取应答，初始 response[0] 为 `ff`。base 即使 SET 失败也继续 GET，最终依据 GET/status 决定结果；Pro 的设备移除检查只记录日志后仍继续该次 native 调用，X 则退出。这些差异必须保留在原版观察记录中，不能自行补成统一提前失败或统一回滚。
 
+两版三种传输均以 GET HRESULT **恰好为 0** 和应答状态 0 判成功，未额外检查返回长度；非零状态立即结束该次交换，没有对 busy 的通用重试。base/X 在 GET HRESULT 非零时可继续下一节点；取得节点接口后遇到设备移除则直接跳出，没有经过该节点的 Release，外层拓扑接口仍在正常尾部释放。Pro 固定节点的创建 HRESULT 与节点指针未受后续独立检查，移除检测也不阻止此次虚调用。正常路径释放不能掩盖这些错误分支；Rust 必须把原版结果观察与自身句柄释放分别验证。
+
+当前三个现代产品的完整 module 85191 还显示了结果消费差异。DNR runner 顺序写 selector 2（2D）、selector 1（3D），第一项返回 false 仍调用第二项；两项结果保留在 `apiResult`，完成消费者却只检查 `status:"completed"`。Save runner 调用 `saveUVCExtCmdToFlash`，完成消费者检查 completed 与返回布尔量，但无论结果先广播 `SET_HAS_VIDEO_RESTART:true`；HDR 同样先广播重启，再检查两个返回值的合取。它们都只在 runner 开始时检查 abort，没有把取消信号传入 COM/ISP、10 ms 等待或后续命令，也没有通用原值恢复和独立属性读回。需要保留 UI 既有的乐观顺序，同时禁止把 completed、预览重启或成功日志当作设备写回确认。
+
 下表描述 **1.0.35.0 base 目标**的八字节 payload，未列字节为 0；下标从 0 开始，`BE32` 是四字节大端。控制报文的输出字段和应答成功与否须分别检查；写函数复制输入或某个应答字段不等于额外读回了整个设置。
 
 | 功能 | 请求及结果 |
@@ -278,7 +305,7 @@ MIC 已用 `observation: Option<[u8;2]>` 区分读取收据，但当前 scope �
 
 ### 当前 camera-local-pages 与 camera-source-review 收据
 
-当前联合审计收据 [`accessories-camera-local-pages-audit.json`](../../../.analysis/results/frontend/accessories-camera-local-pages-audit.json) 的 SHA-256 为 `05bc74fc0b7a4e5aa49dfe370c612a7edf57968050f144ebde3626861a5e525e`，覆盖 3594、3595、3596 三个当前入口、219 个完整 owner；三份页面层 `failures` 与 `unresolved_chains` 为空，但这只表示已选静态 owner 查询收束，不表示整页验收。3594 记录 51 个 owner、27 个控件比较和 20 条本地链；3595/3596 共享 1.0.35.0 原生捕获，各记录 2,817 个完整函数并保留 `0x870c0` 的 Hex-Rays 失败。3594 使用 1.0.36.1 捕获的 2,825 个完整函数并保留 `0x87ad0` 失败；两处均有独立补查收据，原始失败不能从基准收据中删除。
+当前联合审计收据 [`accessories-camera-local-pages-audit.json`](../../../.analysis/results/frontend/accessories-camera-local-pages-audit.json) 的 SHA-256 为 `703b8b65f535c6780d2239f3bd4869098bea354194bfb4b4583983ad6cdf7d55`，现代产品部分覆盖 3594、3595、3596 三个当前入口、219 个完整 owner，旧款选择与标准属性增量由其中 `legacy_selection` 独立引用；三份页面层 `failures` 与 `unresolved_chains` 为空，但这只表示已选静态 owner 查询收束，不表示整页验收。3594 记录 51 个 owner、27 个控件比较和 20 条本地链；3595/3596 共享 1.0.35.0 原生捕获，各记录 2,817 个完整函数并保留 `0x870c0` 的 Hex-Rays 失败。3594 使用 1.0.36.1 捕获的 2,825 个完整函数并保留 `0x87ad0` 失败；两处均有独立补查收据，原始失败不能从基准收据中删除。
 
 3595 与 3596 收据仍各保留同一条剩余边界：完整的 Image/Camera/Processing 展示、产品/固件分支和快捷键行为需要产品级整页核对，已核的 footer、processing、native vtable 和 source cache 不能提升为整页完成。当前静态结果明确了输入、页面 owner、协议分支、Rust 接线和失败/取消/释放观察；官方 DLL 的逐功能结果、真实设备应答/读回、写入恢复以及窗口与媒体验收仍为 `Unverified`，不可由捕获成功或模拟传输一致替代。
 
@@ -307,9 +334,9 @@ MIC 已用 `observation: Option<[u8;2]>` 区分读取收据，但当前 scope �
 
 ### 摄像头生命周期、列表与属性窗口
 
-- `StartCamera`／`StopCamera` 的两个版本 owner 分别覆盖 RVA `0x58870/0x58940` 与 `0x58a10/0x58ae0`；它们围绕容器、采集 track 和停止路径管理本地资源，返回值不能替代帧读回或设备确认。
+- `StartCamera`／`StopCamera` 的两个版本 owner 分别覆盖 RVA `0x58870/0x58940` 与 `0x58a10/0x58ae0`；它们仅确认精确 container 的已初始化实例是否存在。采集流和 track 由独立媒体 owner 管理，返回值不代表开始或停止了采集。
 - `EnumerateCameraList` 先枚举 DevicePath 与属性，再经过过滤 helper `0x5eb70`／`0x5ef30`；列表返回 1 只说明该枚举分支的状态，不能推断摄像头已打开。对应函数的原始捕获位于两个 capture 目录的 `functions/5eb70.json`、`functions/5ef30.json`。
-- `DisplayCameraPropertiesDialog` 通过 base filter owner RVA `0x4cf70` 检查 `m_baseFilter == nullptr`，属性页关闭使用 `WM_CLOSE`；COM 属性框架、窗口句柄和失败清理必须与 `CloseCameraPropertiesDialog` 分开测试。其余属性入口覆盖 `0x5ec10/0x5ecf0`、`0x5efd0/0x5f0b0`，不能只记录打开入口而省略关闭路径。
+- `DisplayCameraPropertiesDialog` 的线程 launcher 是 RVA `0x4cf70`，属性 frame 是 `0x4cc90`，关闭/join 是 `0x4d130`。launcher 对缺失 filter 调用恢复 owner 后重新检查；close 是否发送 WM_CLOSE 取决于实例 HWND，不能从函数名推定。导出覆盖 `0x5ec10/0x5ecf0`、`0x5efd0/0x5f0b0`，完整版本差异和清理边界见上方属性页段。
 
 本段只确认原件字节、函数身份、输入校验和静态调用边界；没有执行 DLL、应用、摄像头或媒体采集，也没有确认真实设备帧、属性写回、读回、取消、恢复或完整释放。独立 Rust 实现仍需按已核 ABI 和每个产品分支实现，并以显式对照入口记录官方 DLL 与 Rust 的输入、输出、错误、读回和清理差异。
 

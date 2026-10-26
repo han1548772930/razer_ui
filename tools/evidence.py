@@ -185,7 +185,7 @@ def frontend_status(graph, directory):
                       original_identities_verified=all(graph.nodes.get(row["path"], {}).get("status") == "verified"
                                                        for row in files if "path" in row))
     if captured:
-        result.update(js_inputs=sum(row.get("path", "").endswith(".js") for row in captured.get("original_inputs", [])),
+        result.update(js_inputs=sum(Path(row.get("path", "")).suffix.lower() in {".js", ".mjs"} for row in captured.get("original_inputs", [])),
                       generated_files=len(captured.get("outputs", [])),
                       failed_capture_stages=[row.get("stage") for row in captured.get("commands", []) if row.get("exit_code")],
                       original_inputs_unchanged=captured.get("original_inputs_unchanged", captured.get("input_bytes_unchanged")))
@@ -545,6 +545,27 @@ class JavascriptBindings:
                         if candidate.type in {"identifier", "shorthand_property_identifier_pattern"}:
                             definitions.setdefault(key(target), []).append((candidate.text.decode("utf-8"), node, "destructuring_requires_value_analysis"))
                         descendants.extend(candidate.named_children)
+            elif node.type == "for_in_statement":
+                kind = node.child_by_field_name("kind")
+                binding = node.child_by_field_name("left")
+                if kind is None or kind.type not in {"const", "let", "var"} or binding is None:
+                    continue
+                # The grammar places these declarations directly in `left`.
+                # Iteration values require analysis of the actual collection.
+                target = owner(node, function_scoped=True) if kind.type == "var" else node
+                descendants = [binding]
+                while descendants:
+                    candidate = descendants.pop()
+                    if candidate.type in {"identifier", "shorthand_property_identifier_pattern"}:
+                        definitions.setdefault(key(target), []).append((
+                            candidate.text.decode("utf-8"), node, "iteration_requires_value_analysis"))
+                    elif candidate.type in {"pair_pattern", "assignment_pattern", "object_assignment_pattern"}:
+                        nested = candidate.child_by_field_name(
+                            "value" if candidate.type == "pair_pattern" else "left")
+                        if nested is not None:
+                            descendants.append(nested)
+                    elif candidate.type in {"object_pattern", "array_pattern", "rest_pattern"}:
+                        descendants.extend(candidate.named_children)
             elif node.type in {"function_declaration", "class_declaration"}:
                 binding = node.child_by_field_name("name")
                 if binding is not None:
@@ -688,6 +709,165 @@ def ui_tree(raw):
             "failures": [], "mount_semantics": "Static occurrences; lexical owners/branches captured, dynamic binding requires semantic audit"}
 
 
+def installed_frontend_provenance(input_dir, official_input, audit):
+    """Verify cached bodies and compare snapshots without promoting cache scope."""
+    import frontend
+    input_dir = a.resolve(str(input_dir), ".analysis/inputs/frontend")
+    official_input = a.resolve(str(official_input), ".analysis/inputs/frontend")
+    acquired_path = input_dir / "acquisition.json"
+    acquired = json.loads(audit.artifact(acquired_path))
+    if (acquired.get("source") != ".analysis/inputs/installed-current/acquisition.json"
+            or acquired.get("source_current_during_acquisition") is not False
+            or acquired.get("target_execution") is not False or acquired.get("entry_url") is not None):
+        raise ValueError("Installed frontend provenance is not a bounded cache snapshot")
+    source_path = a.ROOT / acquired["source"]
+    source = json.loads(audit.artifact(source_path))
+    if source.get("target_execution") is not False or source.get("source_current_during_acquisition") is not False:
+        raise ValueError("Installed source receipt does not establish a static cache snapshot")
+    groups = [row for row in source["frontend_groups"] if row["input"] == a.rel(input_dir)]
+    if len(groups) != 1 or groups[0]["files"] != len(acquired["files"]) or groups[0]["conflicts"] != 0:
+        raise ValueError("Installed frontend group differs from its original acquisition")
+    resource_keys = ("container", "body_offset", "body_bytes", "sha256", "canonical_url")
+    resources = {}
+    for row in source["resources"]:
+        resources.setdefault(tuple(row[key] for key in resource_keys), []).append(row)
+    containers = {row["path"]: row for row in source["files"]}
+    verified, urls = [], set()
+    for row in acquired["files"]:
+        parsed = urllib.parse.urlsplit(row["canonical_url"])
+        if (parsed.scheme != "https" or parsed.netloc not in {"apps.razer.com", "app-assets.razer.com"}
+                or parsed.query or parsed.fragment or row["url"] != row["canonical_url"]
+                or row["url"] in urls or row.get("cache_crc_verified") is not True
+                or row.get("deployment_current_verified") is not False):
+            raise ValueError("Installed cached resource has an invalid source identity")
+        urls.add(row["url"])
+        matches = resources.get(tuple(row[key] for key in resource_keys), [])
+        matches = [item for item in matches if item["url"] == row["cached_url"]
+                   and item["container_sha256"] == row["container_sha256"]]
+        if len(matches) != 1:
+            raise ValueError("Cached frontend body has no unique installed-resource origin")
+        origin = matches[0]
+        body, retained = audit.read(row), audit.read(origin)
+        container = containers[row["container"]]
+        if container["sha256"] != row["container_sha256"] or origin.get("cache_crc_verified") is not True:
+            raise ValueError("Cached frontend container identity or original CRC receipt differs")
+        raw = audit.read(container)
+        offset, length = row["body_offset"], row["body_bytes"]
+        if (type(offset) is not int or type(length) is not int or offset < 0 or length != len(body)
+                or offset + length > len(raw) or raw[offset:offset + length] != body or body != retained):
+            raise ValueError("Cached frontend response bytes differ from the actual container slice")
+        verified.append(row)
+    official_path = official_input / "acquisition.json"
+    official = json.loads(audit.artifact(official_path))
+    selected = frontend.current_source_selection(official["entry_url"], audit, candidates=[official_path])
+    official_files = {row["url"]: row for row in official["files"] if row.get("path")}
+    same, extra, different, manifests = 0, 0, [], []
+    for cached in verified:
+        current = official_files.get(cached["url"])
+        if current is None:
+            extra += 1
+            continue
+        equal = all(cached[key] == current[key] for key in ("bytes", "sha256"))
+        if equal:
+            same += 1
+        else:
+            different.append({"url": cached["url"],
+                "cached": {key: cached[key] for key in ("path", "bytes", "sha256")},
+                "official": {key: current[key] for key in ("path", "bytes", "sha256")}})
+        if Path(urllib.parse.urlsplit(cached["url"]).path).name in {"index.html", "manifest.json", "installer-manifest.json"}:
+            manifests.append({"url": cached["url"], "same_bytes": equal,
+                              "cached_sha256": cached["sha256"], "official_sha256": current["sha256"]})
+    return {"scope": "installed_official_cache_snapshot; not_a_live_deployment",
+            "cache_acquisition": audit.artifacts[a.rel(acquired_path)],
+            "installed_acquisition": audit.artifacts[a.rel(source_path)],
+            "official_acquisition": selected["acquisition"], "official_source_set": selected["name"],
+            "cache_bodies_verified": len(verified), "cache_containers_verified": len({row["container"] for row in verified}),
+            "same_url_and_bytes": same, "cached_without_official_counterpart": extra,
+            "different_bytes": different, "entry_and_manifest_comparisons": manifests,
+            "original_crc_receipts_verified": True, "crc_recomputed_by_this_review": False,
+            "cache_promoted_to_current_deployment": False, "target_execution": False}
+
+
+def host_frontend_entry_provenance(audit):
+    """Trace the actual dashboard route through byte-verified host originals."""
+    acquisition_path = a.ROOT / ".analysis/inputs/host-current/acquisition.json"
+    inspection_path = a.ROOT / ".analysis/results/host-current/inspection.json"
+    capture_path = a.ROOT / ".analysis/results/host-current/javascript/capture.json"
+    acquired = json.loads(audit.artifact(acquisition_path))
+    inspection = json.loads(audit.artifact(inspection_path))
+    capture = json.loads(audit.artifact(capture_path))
+    packages = [row for row in acquired["files"] if row.get("kind") == "official_stable_host_package"
+                and row.get("declaration", {}).get("name") == "Razer App Engine"]
+    if (len(packages) != 1 or acquired.get("target_execution") is not False
+            or capture.get("input_bytes_unchanged") is not True or capture.get("target_execution") is not False):
+        raise ValueError("Host route has no unique static official App Engine provenance")
+    package = packages[0]
+    audit.read(package)
+    containers = [row for row in inspection["containers"] if row["input"] == package["path"]
+                  and row["sha256"] == package["sha256"]]
+    if (len(containers) != 1 or containers[0].get("retained_outputs_verified") is not True
+            or containers[0].get("input_bytes_unchanged") is not True):
+        raise ValueError("Host route package extraction identity is not verified")
+    archives = [row for row in containers[0]["files"] if row["path"].endswith("/resources/app.asar")]
+    if len(archives) != 1:
+        raise ValueError("Host route package has no unique ASAR original")
+    archive = archives[0]
+    archive_raw = audit.read(archive)
+    sources = {}
+    for relative in ("electron/main.js", "electron/constants.js", "electron/lib/getAppHost.js"):
+        rows = [row for row in capture["inputs"] if row["path"].endswith("/" + relative)]
+        if len(rows) != 1:
+            raise ValueError("Host route original is absent or ambiguous: " + relative)
+        row = rows[0]
+        if (row.get("container_sha256") != archive["sha256"] or row.get("unpacked") is not False
+                or row.get("integrity_verified") is not True
+                or row["container"] not in archive.get("verified_installed_aliases", [])):
+            raise ValueError("Host route ASAR alias does not match the official package")
+        raw = audit.read(row)
+        offset = row["offset"]
+        if type(offset) is not int or offset < 0 or archive_raw[offset:offset + len(raw)] != raw:
+            raise ValueError("Host route original differs from the official ASAR byte slice")
+        sources[relative] = row
+    main, constants, resolver = (sources[name] for name in
+        ("electron/main.js", "electron/constants.js", "electron/lib/getAppHost.js"))
+    owners = {}
+    for role, source, needle, kinds in (
+            ("host_default_official_origin", main, 'Re="https://apps.razer.com"', {"variable_declarator"}),
+            ("host_origin_initialization", main, '{gAppHost:ze,appHostCmdline:je}=I(Me,Re)', {"variable_declarator"}),
+            ("host_route_constants_import", main, '{razerAppPathEnum:R,', {"variable_declarator"}),
+            ("host_origin_resolver_import", main, '{getAppHost:I}', {"variable_declarator"}),
+            ("host_actual_window_consumer_import", main, 'createWindow:$o', {"variable_declarator"}),
+            ("host_dashboard_path", constants, 'SYNAPSE_PATH:"/synapse/dashboard"', {"pair"}),
+            ("host_complete_application_host_resolver", resolver, 'module.exports.getAppHost=', {"assignment_expression"}),
+            ("host_complete_app_launcher", main, 'n=`${ze}${R.SYNAPSE_PATH}/`', {"function_declaration"}),
+            ("host_dashboard_launch_branch", main, 'n=`${ze}${R.SYNAPSE_PATH}/`', {"switch_case"}),
+            ("host_actual_window_creation_call", main, '$o(n,e,i)', {"call_expression"})):
+        owners[role] = audit.retain(role, source, needle, kinds)
+    main_raw = audit.read(main)
+    bindings = {name: audit.binding("host_route_lexical_binding_" + name, main, name, main_raw.index(needle))
+                for name, needle in (("R", b"R.SYNAPSE_PATH"), ("I", b"I(Me,Re)"), ("$o", b"$o(n,e,i)"))}
+    if any(row["resolution"] != "destructuring_requires_value_analysis" for row in bindings.values()):
+        raise ValueError("Host route imports changed their actual lexical bindings")
+    installer = [row for row in acquired["files"]
+                 if row.get("url") == "https://apps.razer.com/synapse/dashboard/installer-manifest.json"]
+    if len(installer) != 1:
+        raise ValueError("Host dashboard installer manifest is absent or ambiguous")
+    installer_document = json.loads(audit.read(installer[0]))
+    return {"entry_url": "https://apps.razer.com/synapse/dashboard/",
+            "scope": "default_official_origin_with_actual_synapse_launcher; command_line_host_overrides_are_separate",
+            "acquisition": audit.artifacts[a.rel(acquisition_path)],
+            "inspection": audit.artifacts[a.rel(inspection_path)], "javascript_capture": audit.artifacts[a.rel(capture_path)],
+            "package": {key: package[key] for key in ("path", "bytes", "sha256")},
+            "package_version": package["declaration"]["version"],
+            "official_asar": {key: archive[key] for key in ("path", "bytes", "sha256")},
+            "source_originals": [{key: row[key] for key in ("path", "bytes", "sha256")} for row in sources.values()],
+            "owner_ids": owners, "owners": [row for row in audit.owners.values()
+                if any(row["id"] in ids for ids in owners.values())], "lexical_import_bindings": bindings,
+            "host_installer_manifest": {"original": {key: installer[0][key] for key in ("path", "bytes", "sha256")},
+                                        "document": installer_document},
+            "root_route_is_actual_entry": False, "target_execution": False}
+
+
 def frontend_deployment_sources(acquired):
     """Separate actual HTML includes from manifest candidates and retained files.
 
@@ -695,6 +875,19 @@ def frontend_deployment_sources(acquired):
     an old main bundle retained beside the current deployment must not acquire
     current-source status merely because its bytes still match its old receipt.
     """
+    if (acquired.get("entry_url") is None
+            and acquired.get("source") == ".analysis/inputs/installed-current/acquisition.json"):
+        return {"entry_url": None, "entry_response_url": None, "entry_is_html": False,
+                "entry_original": None, "manifests": [], "sources": [],
+                "failures": [{"kind": "installed_cache_current_deployment_unverified",
+                              "source": acquired["source"]}],
+                "inline_scripts": [], "inlined_manifest_entrypoints": [], "inline_entrypoint_comparisons": [],
+                "retained_without_current_reference": [{"url": row.get("url"), "path": row["path"],
+                    "status": "installed_cache_snapshot_requires_official_source_comparison"}
+                    for row in acquired.get("files", []) if row.get("path")
+                    and Path(urllib.parse.urlsplit(row.get("url", "")).path).suffix.lower() in {".js", ".mjs", ".css"}],
+                "unresolved_acquisition_references": acquired.get("unresolved", []),
+                "source_semantics_complete": False, "target_execution": False}
     files = {}
     failures, selected, originals = [], {}, {}
     for item in acquired.get("files", []):
@@ -723,7 +916,7 @@ def frontend_deployment_sources(acquired):
             return None
 
     def select(url, role, owner, literal):
-        if not url or Path(urllib.parse.urlsplit(url).path).suffix.lower() not in {".js", ".css"}:
+        if not url or Path(urllib.parse.urlsplit(url).path).suffix.lower() not in {".js", ".mjs", ".css"}:
             return
         if url not in selected:
             selected[url] = {"url": url, "references": []}
@@ -772,18 +965,54 @@ def frontend_deployment_sources(acquired):
 
     entry = acquired.get("entry_url")
     entry_raw = read(entry)
+    entry_media = files.get(entry, {}).get("content_type", "").split(";", 1)[0].strip().lower()
+    entry_is_html = entry_raw is not None and (entry_media in {"text/html", "application/xhtml+xml"}
+        or Path(urllib.parse.urlsplit(entry or "").path).suffix.lower() in {".html", ".htm"}
+        or re.match(rb"\s*(?:\xef\xbb\xbf)?\s*<(?:!doctype\s+html|html|head|body|script|link|meta|base|title|div|noscript|style)(?:\s|/?>)", entry_raw, re.I) is not None)
     entry_response = a.artifact_url(entry or "", files.get(entry, {}).get("final_url", entry or ""))
     if (entry_response is None or urllib.parse.urlsplit(entry_response).netloc != urllib.parse.urlsplit(entry or "").netloc):
         failures.append({"kind": "deployment_entry_redirect_outside_origin", "url": entry,
                          "final_url": files.get(entry, {}).get("final_url")})
         entry_response = entry
     parsed = EntryReferences(entry_raw.decode("utf-8") if entry_raw is not None else "")
-    if entry_raw is not None:
+    if entry_is_html:
         parsed.feed(parsed.text)
         base = urllib.parse.urljoin(entry_response, parsed.base) if parsed.base else entry_response
         for literal, role in parsed.includes:
             select(a.artifact_url(base, literal), role, entry, literal)
-    manifests = []
+    manifests, inline_entrypoints, inline_comparisons, inline_audit = [], [], [], None
+
+    def inlined_entrypoint(target):
+        nonlocal inline_audit
+        if Path(urllib.parse.urlsplit(target or "").path).suffix.lower() != ".js":
+            return False
+        raw = read(target, required=False)
+        if raw is None:
+            return False
+        import frontend
+        from host import HostLocalAudit
+        for inline in parsed.inline:
+            attributes = inline["attributes"]
+            if (attributes.get("type", "").strip().lower() not in {"", "text/javascript", "application/javascript"}
+                    or "nomodule" in attributes):
+                continue
+            if inline_audit is None:
+                inline_audit = HostLocalAudit()
+            compared = frontend.inline_script_equivalence(raw, inline["body"].encode("utf-8"), inline_audit.parser)
+            inline_comparisons.append({"url": target, "original": originals[target],
+                "entry_original": originals[entry], "inline_start_byte": inline["start_byte"],
+                "inline_end_byte": inline["end_byte"], "inline_sha256": inline["sha256"],
+                "parser_versions": inline_audit.parser_versions, **compared})
+            if not compared["equivalent"]:
+                continue
+            proof = {"url": target, "original": originals[target], "entry_original": originals[entry],
+                "inline_start_byte": inline["start_byte"], "inline_end_byte": inline["end_byte"],
+                "inline_sha256": inline["sha256"], "attributes": attributes,
+                "parser_versions": inline_audit.parser_versions, **compared}
+            inline_entrypoints.append(proof)
+            select(target, "manifest_entrypoint_inlined_equivalent", entry, inline["sha256"])
+            return True
+        return False
     for filename in ("asset-manifest.json", "webpackManifest.json"):
         url = urllib.parse.urljoin(entry_response or "", filename)
         raw = read(url, required=False)
@@ -811,8 +1040,8 @@ def frontend_deployment_sources(acquired):
                     continue
                 target = a.artifact_url(url, literal)
                 select(target, "manifest_entrypoint_declaration", url, literal)
-                if target in selected and not any(ref["role"] in {"html_script_include", "html_stylesheet_include"}
-                                                  for ref in selected[target]["references"]):
+                if entry_is_html and target in selected and not any(ref["role"] in {"html_script_include", "html_stylesheet_include"}
+                                                  for ref in selected[target]["references"]) and not inlined_entrypoint(target):
                     failures.append({"kind": "manifest_entrypoint_missing_from_html", "url": target})
         except (ValueError, TypeError) as error:
             failures.append({"kind": "deployment_manifest_invalid", "url": url, "error": str(error)})
@@ -839,6 +1068,7 @@ def frontend_deployment_sources(acquired):
         item["original"] = originals.get(url)
         roles = {ref["role"] for ref in item["references"]}
         item["deployment_role"] = ("html_include" if roles & {"html_script_include", "html_stylesheet_include"}
+                                   else "inline_equivalent_original" if "manifest_entrypoint_inlined_equivalent" in roles
                                    else "conditional_or_declared_candidate")
         item["react_mount_semantics"] = "requires_complete_component_and_caller_audit"
     stable = acquired.get("source_current_during_acquisition") is True
@@ -852,13 +1082,15 @@ def frontend_deployment_sources(acquired):
             failures.append({"kind": "deployment_stability_identity_mismatch", "url": claim.get("url")})
     if parsed.active_inline is not None:
         failures.append({"kind": "unterminated_inline_script", "url": entry})
-    return {"entry_url": entry, "entry_response_url": entry_response,
+    return {"entry_url": entry, "entry_response_url": entry_response, "entry_is_html": entry_is_html,
             "entry_original": originals.get(entry), "manifests": manifests,
             "sources": list(selected.values()), "failures": failures, "inline_scripts": parsed.inline,
+            "inlined_manifest_entrypoints": inline_entrypoints,
+            "inline_entrypoint_comparisons": inline_comparisons,
             "retained_without_current_reference": [{"url": url, "path": item["path"],
                 "status": "not_current_implementation_evidence"} for url, item in files.items()
                 if item.get("path") and url not in selected
-                and Path(urllib.parse.urlsplit(url).path).suffix.lower() in {".js", ".css"}],
+                and Path(urllib.parse.urlsplit(url).path).suffix.lower() in {".js", ".mjs", ".css"}],
             "unresolved_acquisition_references": acquired.get("unresolved", []),
             "source_semantics_complete": False, "target_execution": False}
 

@@ -30,6 +30,32 @@ PID158 中间件 `30525.bt` 读取当前配置，并按 `viewIndex` 和当前侧
 
 Chroma 相关映射还有实际事件差异：PID70／158 的 CycleUpChromaEffect 消费者选择 previous，CycleDownChromaEffect 选择 next；跨设备切换配置的目标消费者会按条件执行导航和关联 Chroma 选择，可能形成两次有序本地变更；这不是高级灯光帧已写入的确认。
 
+## 五款接收器的描述符发布与存储观察
+
+PID158、192、194、211、222 的实际 `PreSetLocalStorage`／`PostSetLocalStorage`、publisher、双设备合并及主机调用方，集中登记在[当前五款审阅](../../../.analysis/results/frontend/mouse-main-audit.json)的 `receiver_legacy.mapping_descriptor_contract`。[不可变源码审阅](../../../.analysis/results/reverse-pending/review-sources/e63e78b8e726ac3bb8706e4cfaefae244ff5055f65dabe8ae02e19a651b539fa.json)保留 255 个完整 owner 与 76 个完整 factory 引用，并绑定[共享原生描述符审阅](../../../.analysis/results/reverse-pending/review-sources/21fe84d134926df8d0aecdcd5bbc215e298bd2a4709a9a964d7e344624b27960.json)。两者复用完整捕获；共享 chunk 中存在其他分支，不表示实际启用。
+
+| PID | 无线物理身份 | 当前 `isDualLinkDevice` | PreSet 可读取的描述符导出 |
+| --- | --- | --- | --- |
+| 158 | dongle 159 | false | `REPORTIDS`：4 为按键，5 为硬件事件 |
+| 192 | dongle 193 | true | 无 `REPORTIDS`／`BLE_REPORTIDS`，保留文档已有 map |
+| 194 | dongle 195 | false | 无 `REPORTIDS`／`BLE_REPORTIDS`，保留文档已有 map |
+| 211 | dongle 212、BLE 213 | true | BLE 的 `BLE_REPORTIDS` 只保留按键 4；其他连接保留已有 map |
+| 222 | dongle 223 | true | 无 `REPORTIDS`／`BLE_REPORTIDS`，保留文档已有 map |
+
+五款官方初始本地文档模板都是 `version=1`、`vendorId=5426`、逻辑产品 PID、`category=MOUSE`，初始 map 为按键 4／硬件事件 5。这是本地文档的初始内容，不能据此判断硬件首次初始化或设备实测值。`FIRMWARE_REPORT_IDS` 即使导出也不被这个 PreSet hook 读取；PID211 的 BLE 分支另外选择 Protocol30。
+
+PostSet 按实际运行设备的 NONE／MASTER／SLAVE 角色分流：NONE 直接发布，只有 Mika 才先合并；MASTER 合并后发布；SLAVE 不在此 hook 发布。这五款当前 feature 输入都不选择 Mika。合并复制 master 文档，只有 slave 配置和序列号条件满足时才覆盖 slave map，最后设置 slave 按键 report ID；普通分支的 master／slave report ID 为 4／8，unit ID 为 0／43981。合并后的逻辑 `document.productId` 与运行对象中的物理 `rzDevice.device.productId` 必须分别保留。
+
+publisher 的抑制条件是 `controllerDevice`。只有启用 `useMappingEngine.config.setMappingEngineLocalStorage`、未选择该 feature，且默认 appEngine hash、activeProfile、profiles 数量／GUID／hash／gamemode，或存在的 analogData hash 改变时才发起存储。`reportIDs` 单独变化不触发发布。hash 的当前算法复制对象、排除顶层 `hash`／`gamemode`、稳定排序 JSON 对象键、转义 `<`，然后计算 UTF-8 MD5；数组保持顺序。
+
+缓存先更新，之后才等待 `localStorageSetItem`。该返回布尔值被丢弃，失败没有缓存回滚；因此一次 false 之后，同样内容的下一次调用可能被缓存门禁抑制。PostSet 也没有等待或返回所创建的 NONE／MASTER Promise。这些是源码的完成语义，不能把本地 completed 当作原生解析、活动映射或硬件写回成功。
+
+真实 key 是 `synapse_<rzDevice.device.productId，缺失时取 DeviceInfo.productId>_<CONTAINER_ID>`。后续链为当前产品桥接器 → `apiElectron.doMappingEngineAction` → `mappingEngineAction` IPC → 实际 `FFIMappingEngine` singleton → Windows `callDLL` → `localStorageSetItem`。原生层用发现时的物理 productId／editionId／serialNumber／containerId 选择订阅 key，`DeviceData` 不从文档的 vendorId／productId／category 推导设备身份。存储成功只证明存储操作；原生 SetData 解析成功后，还须满足 change bit 才替换已发布对象，`reportIDs` 独改同样不会置该位。
+
+master 存储观察还要求 `isDualLinkDevice`、物理 PID 在 `[dongleId, bleId].filter(Boolean)` 中，且初始化器核对实际 PID 等于 dongleId。因此当前只有 192／211／222 的各自 dongle 分支能到达；158／194 以及 211 的 BLE 分支不据此启动 master observer。该分支先处理已有 slave 文档，再监听 `/^synapse_\d+$/` 的窗口 storage 事件，读取 master、合并、转换并调用同一 publisher。序列号的 window-storage 服务回调在取得序列号后移除自身；匿名 `window` storage listener 没有保留移除句柄，不能称所有观察已经完成注销。
+
+复核入口为 `python -X utf8 tools/workspace.py audit-family-function --family mouse --function main --query mouse-receiver-mapping`。本范围查清描述符生产、身份、门禁与观察调用方；全部映射执行器、独立 Rust、UI／后台接线和实际官方 DLL／设备对照仍分别保持未验证。
+
 ## 面板退出与释放
 
 `clear` 清除 active button、收起面板、清 changed 状态；若当前输入为 AnalogInput，另向中间件发送停止相关输入观察的消息。componentWillUnmount 移除 window click、resize、capture scroll listener，断开 observer 并更新显示值。`saveAll`／`discardAll` 是共享事件源，不能把 DOM listener 移除概括为所有事件源已解绑。

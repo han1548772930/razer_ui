@@ -21,9 +21,11 @@ def native_dataset(name):
     if not isinstance(name, str):
         raise ValueError("Compaction target must be a project-relative dataset path")
     parts = Path(name).parts
-    if (Path(name).is_absolute() or len(parts) != 5 or parts[:3] != (".analysis", "results", "native")
-            or not re.fullmatch(r"[0-9a-f]{64}", parts[3])
-            or parts[4] not in DATASETS or Path(name).as_posix() != name):
+    native = (len(parts) == 5 and parts[:3] == (".analysis", "results", "native")
+              and re.fullmatch(r"[0-9a-f]{64}", parts[3]) and parts[4] in DATASETS)
+    review = (len(parts) == 5 and parts[:4] == (".analysis", "results", "reverse-pending", "review-sources")
+              and re.fullmatch(r"[0-9a-f]{64}\.json", parts[4]))
+    if (Path(name).is_absolute() or not (native or review) or Path(name).as_posix() != name):
         raise ValueError("Compaction target is outside the retained native dataset scope")
     root = a.ROOT.resolve(strict=True)
     path = root.joinpath(*parts)
@@ -164,6 +166,11 @@ def verify_snapshot(actual, expected):
 
 
 def expected_output(path):
+    if path.parent.name == "review-sources":
+        # Immutable review filenames bind the complete logical byte stream.
+        expected = {"path": path.name, "bytes": path.stat().st_size, "sha256": path.stem}
+        return expected, {"path": a.rel(path), "bytes": expected["bytes"], "sha256": path.stem,
+                          "capture_complete": None, "scope": "immutable_native_static_review"}
     capture_path = path.parent / "capture.json"
     # An unfinished capture is still retained evidence. Compression changes no
     # logical bytes and must not promote its acquisition or semantic status.
@@ -288,6 +295,15 @@ def run(args):
         raise ValueError("Compaction workers exceed the available bounded CPU count")
     if type(args.minimum_mib) is not int or args.minimum_mib < 1:
         raise ValueError("Compaction minimum file size must be positive")
+    reviews = getattr(args, "review_receipt", None) or []
+    if args.apply and reviews:
+        raise ValueError("Compaction apply takes its complete scope only from the unchanged reviewed plan")
+    if len(reviews) != len(set(reviews)):
+        raise ValueError("Compaction review receipt list contains duplicates")
+    for name in reviews:
+        target = native_dataset(name)
+        if target.parent.name != "review-sources":
+            raise ValueError("Explicit review compaction requires a SHA-named immutable native review")
     plan_path = report_path(args.plan)
     with a.index_lock(a.ROOT / ".analysis/storage-compaction.lock"):
         if args.apply:
@@ -320,9 +336,10 @@ def run(args):
                         if (status.st_size >= args.minimum_mib * 1024 * 1024
                                 and not getattr(status, "st_file_attributes", 0) & 0x800):
                             jobs.append(a.rel(path))
+            jobs.extend(name for name in reviews if name not in jobs)
             report = {"schema_version": 1, "mode": "plan", "recorded_at_utc": a.stamp(),
                 "minimum_mib": args.minimum_mib, "workers": args.workers, "files": [], "failures": [],
-                "scope": "NTFS transparent compression of retained root native datasets; logical bytes, paths and capture completion status retained",
+                "scope": "NTFS transparent compression of retained root native datasets and explicitly selected SHA-named static reviews; logical bytes, paths and capture completion status retained",
                 "target_execution": False, "deletes_files": False}
             operation = plan_file
         # Persist the full operation scope before any filesystem metadata change.

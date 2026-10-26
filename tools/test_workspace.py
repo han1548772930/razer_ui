@@ -4393,6 +4393,44 @@ class PlannedScratchCleanupTests(unittest.TestCase):
             self.write(path, dict(original, **change))
             self.assertFalse(self.plan()["candidates"])
 
+    def test_ended_capture_with_explicit_parser_failures_remains_available_for_analysis(self):
+        path = self.result / "capture.json"
+        capture = json.loads(path.read_bytes())
+        self.write(path, dict(capture, all_pseudocode_captured=False))
+        self.assertFalse(self.plan()["candidates"])
+
+    def test_only_a_finished_queue_with_absent_coordinator_releases_its_time_boundary(self):
+        queue_path = self.root / ".analysis/results/reverse-pending.json"
+        session = {"pid": 123, "started_at_utc": "1999-01-01T00:00:00+00:00"}
+        for issue in (None, "unfinished", "active", "unknown", "legacy", "future", "nested_finished"):
+            with self.subTest(issue=issue):
+                queue = {"started_at_utc": "1999-01-01T00:00:00+00:00",
+                         "finished_at_utc": "2001-01-01T00:00:00+00:00", "queue_session": session}
+                if issue in {"unfinished", "nested_finished"}: queue.pop("finished_at_utc")
+                if issue == "nested_finished": queue["previous"] = {"finished_at_utc": "2001-01-01T00:00:00+00:00"}
+                if issue == "legacy": queue.pop("queue_session")
+                if issue == "future": queue["finished_at_utc"] = "2100-01-01T00:00:00+00:00"
+                self.write(queue_path, queue)
+                state = {"confirmed_absent": issue not in {"active", "unknown"}}
+                with mock.patch("reverse_pending.coordinator_instance_absence", return_value=state):
+                    candidates, retained = workspace._clean_candidates()
+                self.assertEqual(bool(candidates), issue is None)
+                if issue is not None: self.assertEqual(retained[0]["reason"], "current_run_supplement")
+
+    def test_finished_queue_does_not_bypass_new_references_or_active_analyzer(self):
+        self.write(self.root / ".analysis/results/reverse-pending.json", {
+            "started_at_utc": "1999-01-01T00:00:00+00:00",
+            "finished_at_utc": "2001-01-01T00:00:00+00:00", "queue_session": {"pid": 123}})
+        with mock.patch("reverse_pending.coordinator_instance_absence", return_value={"confirmed_absent": True}):
+            self.assertEqual(len(self.plan()["candidates"]), 1)
+            self.write(self.root / ".analysis/results/current-review.json", {"source_database": {
+                "path": self.name + "/library.dll.i64"}})
+            self.assertFalse(self.plan()["candidates"])
+            (self.root / ".analysis/results/current-review.json").unlink()
+            with mock.patch.object(workspace, "_scratch_processes", return_value=(
+                    [{"pid": 456, "command_line": str(self.target / "library.dll.i64")}], [])):
+                self.assertFalse(self.plan()["candidates"])
+
     def test_process_inspection_failure_fails_closed(self):
         with mock.patch.object(workspace, "_scratch_processes", return_value=([], ["unavailable"])):
             report = self.plan()
@@ -4455,7 +4493,21 @@ class PlannedScratchCleanupTests(unittest.TestCase):
         receipt = self.apply()
         self.assertFalse(self.target.exists())
         self.assertEqual(receipt["removed"][0]["files"], 2)
+        removed = receipt["removed"][0]
+        self.assertEqual(removed["allocated_after"], 0)
+        self.assertEqual(removed["bytes_reclaimed"], removed["allocated_before"])
+        self.assertGreaterEqual(removed["allocated_before"], 0)
         self.assertTrue(self.batch.is_file() and (self.result / "capture.json").is_file())
+
+    def test_hard_linked_scratch_cannot_claim_released_allocation_or_be_deleted(self):
+        import os
+        alias = self.root / ".work/retained-alias.i64"
+        os.link(self.target / "library.dll.i64", alias)
+        self.plan()
+        with self.assertRaisesRegex(ValueError, "hard links"):
+            self.apply()
+        self.assertTrue(alias.is_file() and (self.target / "library.dll.i64").is_file())
+        self.assertTrue((self.target / "ida.log").is_file())
 
     def test_actual_exclusive_file_occupation_prevents_group_deletion(self):
         self.plan()
@@ -4480,6 +4532,77 @@ class PlannedScratchCleanupTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "reservation"):
             self.apply()
         self.assertTrue(self.target.is_dir())
+
+    def test_ended_capture_batch_releases_only_historical_job_paths(self):
+        batch = {"started_at_utc": "1999-01-01T00:00:00+00:00",
+                 "finished_at_utc": "2001-01-01T00:00:00+00:00", "target_execution": False,
+                 "coordinator_pid": 100, "jobs": [{"sha256": "a" * 64, "status": "passed",
+                 "exit_code": 0, "finished_at_utc": "2000-01-01T00:00:00+00:00", "maintenance_pid": 101,
+                 "scratch": self.name, "argv": [self.name + "/library.dll.i64"], "log": self.name + "/ida.log",
+                 "source_database": {"path": self.batch.relative_to(self.root).as_posix()}}]}
+        path = self.root / ".work/reverse-pending/encoding-capture-batch.json"
+        self.write(path, batch)
+        with mock.patch("reverse_pending.coordinator_instance_absence", return_value={"confirmed_absent": True}):
+            self.assertEqual(len(self.plan()["candidates"]), 1)
+            batch["jobs"][0]["source_database"]["path"] = self.name + "/library.dll.i64"
+            self.write(path, batch)
+            self.assertFalse(self.plan()["candidates"])
+
+    def test_capture_batch_cannot_release_active_unknown_unfinished_or_invalid_processes(self):
+        original = {"started_at_utc": "1999-01-01T00:00:00+00:00",
+                    "finished_at_utc": "2001-01-01T00:00:00+00:00", "target_execution": False,
+                    "coordinator_pid": 100, "jobs": [{"sha256": "a" * 64, "status": "passed",
+                    "exit_code": 0, "finished_at_utc": "2000-01-01T00:00:00+00:00", "cli_pid": 101}]}
+        path = self.root / ".work/reverse-pending/encoding-capture-batch.json"
+        for issue in ("active", "unknown", "unfinished", "failure", "future", "missing_pid", "release_flag"):
+            with self.subTest(issue=issue):
+                batch = json.loads(json.dumps(original))
+                if issue == "unfinished": batch.pop("finished_at_utc")
+                if issue == "failure": batch["jobs"][0]["exit_code"] = 1
+                if issue == "future": batch["finished_at_utc"] = "2100-01-01T00:00:00+00:00"
+                if issue == "missing_pid": batch["jobs"][0].pop("cli_pid")
+                if issue == "release_flag":
+                    batch.pop("finished_at_utc")
+                    batch["cleanup_released"] = True
+                self.write(path, batch)
+                with mock.patch("reverse_pending.coordinator_instance_absence", return_value={
+                        "confirmed_absent": issue not in {"active", "unknown"}}):
+                    report = self.plan()
+                self.assertFalse(report["candidates"])
+                self.assertEqual(report["retained"][0]["reason"], "reserved_analysis_family")
+
+    def test_exact_exited_native_stdout_is_history_but_no_other_log_text_is_ignored(self):
+        result = self.result.relative_to(self.root).as_posix()
+        launch = {"pid": 123, "result": result, "log": self.name + "/ida.log"}
+        completion = {"session": result + "/session.json", "passed": True}
+        stdout = json.dumps(launch) + "\n" + json.dumps(completion) + "\n"
+        path = self.root / ".analysis/results/frozen-operations.json"
+        with mock.patch("reverse_pending.coordinator_instance_absence", return_value={"confirmed_absent": True}):
+            self.write(path, {"operations": [{"stdout": stdout}]})
+            self.assertEqual(len(self.plan()["candidates"]), 1)
+            for changed in (stdout + "another unverified output", stdout.replace('"passed": true', '"passed": false'),
+                            stdout.replace('"pid": 123', '"pid": 124'),
+                            stdout.replace('/ida.log', '/library.dll.i64')):
+                with self.subTest(changed=changed):
+                    self.write(path, {"operations": [{"stdout": changed}]})
+                    self.assertFalse(self.plan()["candidates"])
+            self.write(path, {"operations": [{"stdout": stdout}], "source_database": {
+                "path": self.name + "/library.dll.i64"}})
+            self.assertFalse(self.plan()["candidates"])
+        self.write(path, {"operations": [{"stdout": stdout}]})
+        with mock.patch("reverse_pending.coordinator_instance_absence", return_value={"confirmed_absent": False}):
+            self.assertFalse(self.plan()["candidates"])
+
+    def test_own_previous_attempt_inventory_does_not_hide_its_source_dependencies(self):
+        path = self.result / "session.json"
+        session = json.loads(path.read_bytes())
+        session["previous_attempts"] = [{"database": {"path": self.name + "/library.dll.i64"},
+                                         "argv": [self.name + "/ida.log"]}]
+        self.write(path, session)
+        self.assertEqual(len(self.plan()["candidates"]), 1)
+        session["previous_attempts"][0]["source_database"] = {"path": self.name + "/library.dll.i64"}
+        self.write(path, session)
+        self.assertFalse(self.plan()["candidates"])
 
     def test_plan_never_overwrites_a_retained_receipt_or_an_unrelated_result(self):
         path = self.root / ".analysis/results/scratch-cleanup-plan.json"

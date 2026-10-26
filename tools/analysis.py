@@ -614,7 +614,8 @@ def semantic_query_gaps(value, evidence, pointer="", product_id=None):
     """Preserve acquisition, analyzer and semantic findings as separate claims."""
     kinds = {"failures": "semantic_query_failure", "unresolved": "semantic_query_chain_unresolved",
              "unresolved_chains": "semantic_query_chain_unresolved",
-              "remaining_chains": "semantic_query_chain_unresolved",
+             "remaining_chains": "semantic_query_chain_unresolved",
+             "remaining_closure": "semantic_query_chain_unresolved",
              "remaining_local_chains": "semantic_query_chain_unresolved",
              "failed_acquisition": "acquisition_query_failure",
              "unresolved_acquisition": "acquisition_query_reference_unresolved",
@@ -759,7 +760,7 @@ def _refresh_gaps():
         chunk_dir = ROOT / ".analysis/results/frontend" / receipt.parent.name / "chunk-references"
         reported_urls = {row.get("url") for row in rows if row.get("kind") == "chunk_enumeration_unavailable"}
         for original in data["files"]:
-            if "path" not in original or Path(urllib.parse.urlsplit(original["url"]).path).suffix != ".js":
+            if "path" not in original or Path(urllib.parse.urlsplit(original["url"]).path).suffix.lower() not in {".js", ".mjs"}:
                 continue
             identifier = hashlib.sha256(original["url"].encode()).hexdigest()[:24]
             report = chunk_dir / (identifier + ".json")
@@ -2582,7 +2583,8 @@ def native_function_fresh_inlines(raw, capture, selection, specifications, evide
 
 def native_function_selection(raw, capture, function_rvas, type_specs=(), type_note=None, max_function_kib=None,
                               import_specs=(), merge_specs=(), outline_rvas=(), partition_specs=(), shared_tail_specs=(),
-                              observation_evidence=None, fresh_inline_rvas=()):
+                              observation_evidence=None, fresh_inline_rvas=(), callsite_reviews=(), reanalyze_type_owners=False,
+                              propagate_direct_calls=False):
     """Select retained boundaries and explicit, assembly-reviewed type repairs."""
     from host import inspect_pe
 
@@ -2651,6 +2653,38 @@ def native_function_selection(raw, capture, function_rvas, type_specs=(), type_n
     if fresh_inline_rvas:
         selection["function_fresh_inlines"] = native_function_fresh_inlines(
             raw, capture, selection, fresh_inline_rvas, type_note, pe)
+    if callsite_reviews:
+        if merge_specs or outline_rvas or partition_specs or shared_tail_specs or fresh_inline_rvas:
+            raise ValueError("Resolved callsite types require a separate supplement without boundary or inline changes")
+        import native_callsites
+        selection["callsite_type_recoveries"] = native_callsites.select(
+            sys.modules[__name__], raw, capture, function_rvas, callsite_reviews)
+    if type(reanalyze_type_owners) is not bool:
+        raise ValueError("Automatic type-owner reanalysis must be an explicit boolean")
+    if type(propagate_direct_calls) is not bool or (propagate_direct_calls and not reanalyze_type_owners):
+        raise ValueError("Direct call type propagation requires explicit type-owner reanalysis")
+    if reanalyze_type_owners:
+        if (not (types or import_specs) or merge_specs or outline_rvas or partition_specs
+                or shared_tail_specs or fresh_inline_rvas or callsite_reviews):
+            raise ValueError("Automatic type-owner reanalysis requires separate exact type repairs without boundary changes")
+        import native_adjudication
+        owners = []
+        result = ROOT / ".analysis/results/native" / hashlib.sha256(raw).hexdigest()
+        for rva in function_rvas:
+            record = existing[rva]
+            path = resolve(rel(result / record["path"]), rel(result))
+            body_raw = path.read_bytes()
+            if hashlib.sha256(body_raw).hexdigest() != record["sha256"]:
+                raise ValueError("Automatic type-owner reanalysis source function changed")
+            body = json.loads(body_raw)
+            native_adjudication.original_machine(raw, body)
+            owners.append({"owner_rva": hex(rva), "owner_function": {"path": rel(path),
+                "bytes": len(body_raw), "sha256": record["sha256"]}})
+        selection["type_owner_reanalysis"] = owners
+        if propagate_direct_calls:
+            import native_callsites
+            selection["direct_call_type_propagations"] = native_callsites.select_direct(
+                sys.modules[__name__], raw, capture, owners, types)
     return selection
 
 
@@ -2678,7 +2712,9 @@ def supplement_native(args):
             getattr(args, "max_function_kib", None), getattr(args, "import_type", None) or (),
             getattr(args, "merge_functions", None) or (), getattr(args, "outline_function_rva", None) or (),
             getattr(args, "partition_functions", None) or (), getattr(args, "share_function_tail", None) or (),
-            getattr(args, "observation_evidence", None), getattr(args, "fresh_inline_function_rva", None) or ())
+            getattr(args, "observation_evidence", None), getattr(args, "fresh_inline_function_rva", None) or (),
+            getattr(args, "callsite_type_review", None) or (), getattr(args, "reanalyze_type_owners", False),
+            getattr(args, "propagate_direct_calls", False))
         observation = selection.get("static_observation")
         if observation and sha(ROOT / "tools/ida/supplement.py") != observation["observer_source"]["sha256"]:
             raise ValueError("Static observation tool differs from its reviewed source")
@@ -2689,7 +2725,10 @@ def supplement_native(args):
         if (getattr(args, "function_type", None) or getattr(args, "import_type", None) or getattr(args, "type_evidence", None)
                 or getattr(args, "merge_functions", None) or getattr(args, "outline_function_rva", None)
                 or getattr(args, "partition_functions", None) or getattr(args, "share_function_tail", None)
-                or getattr(args, "observation_evidence", None) or getattr(args, "fresh_inline_function_rva", None)):
+                or getattr(args, "observation_evidence", None) or getattr(args, "fresh_inline_function_rva", None)
+                or getattr(args, "reanalyze_type_owners", False)
+                or getattr(args, "propagate_direct_calls", False)
+                or getattr(args, "callsite_type_review", None)):
             raise ValueError("Function type recovery requires explicit function reanalysis")
         if args.pointer_table_rva is None or args.pointer_count is None:
             raise ValueError("Pointer-table selection requires its RVA and count")
@@ -2809,7 +2848,7 @@ def verify_native_typed_serializer(manifest):
     return {"path": rel(retained), "bytes": len(raw), "sha256": record["sha256"]}
 
 
-def native_reanalysis_resolution(result, capture=None):
+def native_reanalysis_resolution(result, capture=None, *, adjudication_record=None, attempt_adjudication_record=None):
     """Verify retained-function supplements and separate recovered decompilations."""
     capture_path = result / "capture.json"
     capture = capture if capture is not None else json.loads(capture_path.read_bytes())
@@ -2825,6 +2864,7 @@ def native_reanalysis_resolution(result, capture=None):
     raw = None
     base_functions = {row["rva"]: row for row in capture["functions"]}
     function_sources = {}
+    verified_candidates = defaultdict(list)
 
     def checked(path, record):
         path = resolve(rel(path), rel(result))
@@ -2868,6 +2908,7 @@ def native_reanalysis_resolution(result, capture=None):
             partitions = selection.get("function_partitions", [])
             shared_tails = selection.get("function_shared_tails", [])
             fresh_inlines = selection.get("function_fresh_inlines", [])
+            callsite_types = selection.get("callsite_type_recoveries", [])
             shared_notes = recoveries or imports or merges or outlines or partitions or shared_tails
             actual = native_function_selection(raw, capture, [int(row["rva"], 16) for row in selection["targets"]],
                 [row["rva"] + "=" + row["declaration"] for row in recoveries],
@@ -2883,7 +2924,11 @@ def native_reanalysis_resolution(result, capture=None):
                 (selection["static_observation"]["review_source"]["path"] + "#"
                  + selection["static_observation"]["review_source"]["pointer"])
                 if "static_observation" in selection else None,
-                fresh_inline_rvas=[row["rva"] for row in fresh_inlines])
+                fresh_inline_rvas=[row["rva"] for row in fresh_inlines],
+                callsite_reviews=[row["review_source"]["path"] + "#" + row["review_source"]["pointer"]
+                                  for row in callsite_types],
+                reanalyze_type_owners=bool(selection.get("type_owner_reanalysis")),
+                propagate_direct_calls="direct_call_type_propagations" in selection)
             if actual != selection:
                 raise ValueError("Native supplement selection no longer matches the original bytes")
             observation = selection.get("static_observation")
@@ -2898,6 +2943,28 @@ def native_reanalysis_resolution(result, capture=None):
                     raise ValueError("Native shared-tail source database changed or is unavailable")
             if "decompiler_limits" in selection and supplement.get("applied_decompiler_limits") != selection["decompiler_limits"]:
                 raise ValueError("Native supplement did not apply its exact decompiler size limit")
+            if callsite_types:
+                import native_callsites
+                native_callsites.retain_source(sys.modules[__name__], supplement.get("callsite_type_validator"))
+                native_callsites.verify_applied(callsite_types, supplement.get("callsite_type_recoveries"))
+                if "callsite_automatic_reanalysis" in supplement:
+                    native_callsites.verify_reanalysis(sys.modules[__name__], callsite_types,
+                                                       supplement["callsite_automatic_reanalysis"])
+            elif supplement.get("callsite_type_recoveries"):
+                raise ValueError("Native supplement contains unreviewed callsite type changes")
+            if selection.get("type_owner_reanalysis"):
+                import native_callsites
+                native_callsites.retain_source(sys.modules[__name__], supplement.get("callsite_type_validator"))
+                native_callsites.verify_reanalysis(sys.modules[__name__], selection["type_owner_reanalysis"],
+                                                   supplement.get("type_owner_automatic_reanalysis"))
+                if any(not row.get("analysis_invalidation") for row in supplement["type_owner_automatic_reanalysis"]):
+                    raise ValueError("Type-owner reanalysis omitted explicit derived-stack invalidation")
+                direct = selection.get("direct_call_type_propagations", [])
+                native_callsites.verify_direct_applied(direct, supplement.get("direct_call_type_propagations", []))
+            elif "type_owner_automatic_reanalysis" in supplement:
+                raise ValueError("Native supplement contains unreviewed type-owner reanalysis")
+            elif supplement.get("direct_call_type_propagations"):
+                raise ValueError("Native supplement contains unreviewed direct call type propagation")
             if (len(supplement["functions"]) != len(selection["targets"])
                     or {row["rva"] for row in supplement["functions"]} != {row["rva"] for row in selection["targets"]}):
                 raise ValueError("Native supplement omitted selected function boundaries")
@@ -3126,6 +3193,10 @@ def native_reanalysis_resolution(result, capture=None):
                 "session": {"path": rel(session_path), "bytes": session_path.stat().st_size, "sha256": sha(session_path)},
                 "ida_version": supplement["ida_version"], "hexrays_version": supplement["hexrays_version"],
                 "type_recoveries": supplement["type_recoveries"], "functions": list(verified),
+                **({"type_owner_automatic_reanalysis": supplement["type_owner_automatic_reanalysis"],
+                    "type_owner_validator": supplement["callsite_type_validator"]}
+                   if selection.get("type_owner_reanalysis") else {}),
+                **({"callsite_type_recoveries": supplement["callsite_type_recoveries"]} if callsite_types else {}),
                 **({"function_merge_recoveries": applied_merges} if merges else {}),
                 **({"function_outline_recoveries": applied_outlines} if outlines else {}),
                 **({"function_shared_tail_recoveries": applied_shared,
@@ -3139,6 +3210,8 @@ def native_reanalysis_resolution(result, capture=None):
         resolution["supplements"].append(summary)
         for rva, body in verified.items():
             record = body["capture"]
+            verified_candidates[rva].append({"capture": record, "body": {key: value for key, value in body.items()
+                                             if key != "capture"}, "supplement": receipt})
             conflict = resolution["conflicting_functions"].get(rva)
             previous = resolution["complete_functions"].get(rva)
             retained = conflict["retained_function"] if conflict else previous["capture"] if previous else None
@@ -3154,6 +3227,17 @@ def native_reanalysis_resolution(result, capture=None):
             elif retained is None:
                 resolution["complete_functions"][rva] = body
                 function_sources[rva] = receipt
+    import native_adjudication
+    function_sources.update(native_adjudication.apply(sys.modules[__name__], result, resolution,
+                                                     verified_candidates, adjudication_record))
+    for rva, body in list(resolution["complete_functions"].items()):
+        try:
+            native_adjudication._typed_function(body)
+        except (ValueError, KeyError, TypeError) as error:
+            resolution["verification_failures"].append({"supplement": function_sources[rva]["path"],
+                "function_rva": rva, "error": str(error)})
+            del resolution["complete_functions"][rva]
+            del function_sources[rva]
     resolution["conflicting_function_rvas"] = sorted(resolution["conflicting_functions"], key=lambda rva: int(rva, 16))
     resolution["remaining_failures"] = []
     for failure in capture["failures"]:
@@ -3164,6 +3248,7 @@ def native_reanalysis_resolution(result, capture=None):
                 "supplement": function_sources[rva], "complete_function": resolution["complete_functions"][rva]["capture"]})
         else:
             resolution["remaining_failures"].append(failure)
+    native_adjudication.apply_attempts(sys.modules[__name__], result, resolution, attempt_adjudication_record)
     return resolution
 
 
@@ -3638,7 +3723,7 @@ def fetch_frontend(args, *, refresh_ledger=True):
         # Independent JS parses use a bounded pool; traversal and receipt
         # publication still run in one owner. No vendor code is executed.
         javascript = [url for url in batch if "path" in rows[url]
-                      and Path(urllib.parse.urlsplit(url).path).suffix.lower() == ".js"
+                      and Path(urllib.parse.urlsplit(url).path).suffix.lower() in {".js", ".mjs"}
                       and rows[url].get("content_type", "").split(";", 1)[0].lower() != "text/html"]
         def enumerate_url(url):
             identifier = hashlib.sha256(url.encode()).hexdigest()[:24]
@@ -3666,7 +3751,7 @@ def fetch_frontend(args, *, refresh_ledger=True):
             # at the URL suffix silently skipped their actual HTML includes.
             if url_path.endswith("/") or row.get("content_type", "").split(";", 1)[0].lower() == "text/html":
                 suffix = ".html"
-            if suffix not in {".js", ".css", ".json", ".html"}:
+            if suffix not in {".js", ".mjs", ".css", ".json", ".html"}:
                 continue
             text = path.read_text(encoding="utf-8-sig", errors="strict")
             if suffix == ".html":
@@ -3756,7 +3841,7 @@ def fetch_frontend(args, *, refresh_ledger=True):
                                 else:
                                     unknown.append({"kind": "chunk_public_path_unresolved", "url": url,
                                                     "public_path": public, "reference": ref})
-            if suffix in {".css", ".js"}:
+            if suffix in {".css", ".js", ".mjs"}:
                 for ref in re.findall(r'sourceMappingURL=([^\s*]+)', text):
                     enqueue(reference_url, ref, "source-map", owner=url)
         save(acquisition, {"schema_version": 1, "entry_url": entry, "recorded_at_utc": stamp(),
@@ -4234,7 +4319,8 @@ def analyze_frontend(args, *, refresh_ledger=True):
                 raise ValueError("Recovery output escaped product directory")
             if generated_tree.exists():
                 shutil.rmtree(generated_tree)
-    inputs = [ROOT / r["path"] for r in records if Path(urllib.parse.urlsplit(r["url"]).path).suffix == ".js"]
+    inputs = [ROOT / r["path"] for r in records
+              if Path(urllib.parse.urlsplit(r["url"]).path).suffix.lower() in {".js", ".mjs"}]
     commands = []
     def command(label, argv, cwd=ROOT):
         stdout = output / (label+".stdout.txt")
@@ -4249,13 +4335,14 @@ def analyze_frontend(args, *, refresh_ledger=True):
         return row
     # Keep every JS explicit: Wakaru's directory scanner skips ordinary scripts.
     # Relative arguments avoid Windows' command-line limit without omitting them.
-    unpack_cwd = input_dir / "raw"
+    retained_input_root = frontend.input_root(input_dir, inputs)
+    unpack_cwd = retained_input_root
     unpack_args = [str(tool), *(os.path.relpath(p, unpack_cwd) for p in inputs),
                    "--unpack", "--level", "minimal", "--provenance",
                    "--emit-source-map", "--diagnostics", "--json", "-o", str(unpacked)]
     if os.name == "nt" and len(subprocess.list2cmdline(unpack_args)) >= 32000:
         unpack_cwd = Path(os.path.commonpath([path.parent for path in inputs]))
-        if not unpack_cwd.is_relative_to(input_dir / "raw"):
+        if not unpack_cwd.is_relative_to(retained_input_root):
             raise ValueError("Frontend input common directory escaped retained originals")
         unpack_args = [str(tool), *(os.path.relpath(path, unpack_cwd) for path in inputs),
                        "--unpack", "--level", "minimal", "--provenance",
@@ -4264,7 +4351,7 @@ def analyze_frontend(args, *, refresh_ledger=True):
             raise ValueError("Complete explicit Wakaru input list still exceeds Windows command-line limit")
     command("unpack", unpack_args, cwd=unpack_cwd)
     if unpacked.exists():
-        command("validate", [str(tool), "debug", "validate", str(unpacked), "--input", str(input_dir / "raw"), "--json"])
+        command("validate", [str(tool), "debug", "validate", str(unpacked), "--input", str(retained_input_root), "--json"])
     map_inputs = [r for r in records if r["url"].endswith(".map")]
     maps = []
 
@@ -6901,13 +6988,25 @@ def add_commands(parsers):
     pending.add_argument("--process-workers", action="store_true", help="Run independent static tasks in bounded spawned processes to use multiple CPU cores")
     pending.add_argument("--ida-root", default=os.environ.get("RAZER_IDA_ROOT", "E:/IDA"))
     pending.add_argument("--resume", action="store_true", help="Continue the exact unfinished queue, preserving completed tasks and all interrupted evidence")
+    pending.add_argument("--resume-reason", help="Record the explicit reason for resuming an interrupted queue after reviewed maintenance changes; requires --resume")
     pending.add_argument("--verify-only", action="store_true", help="Strictly recheck a finished static queue without starting IDA or network repair")
     pending.add_argument("--native-only", action="store_true", help="Review remaining native failures without repeating unchanged analyzer attempts or frontend work")
     pending.add_argument("--native-review", action="append", help="Explicit assembly-reviewed plan in a retained receipt: project-relative.json#JSON-pointer; repeat for independent modules")
+    pending.add_argument("--recheck-unresolved", action="store_true", help="Strictly recheck only frozen unresolved tasks into a separate immutable increment, preserving the completed baseline")
+    pending.add_argument("--task-id", action="append", help="Select an exact frozen unresolved task for incremental recheck; repeat as needed")
+    adjudication = parsers.add_parser("adjudicate-native", help="Publish an explicit SHA-bound review of every complete native function alternative without altering raw evidence")
+    adjudication.add_argument("--input", required=True)
+    adjudication.add_argument("--review", required=True)
+    adjudication.add_argument("--review-sha256", required=True)
+    arithmetic = parsers.add_parser("verify-native-arithmetic", help="Purely interpret a reviewed native arithmetic request without executing a target DLL")
+    arithmetic.add_argument("--request", required=True)
+    arithmetic.add_argument("--request-sha256", required=True)
+    arithmetic.add_argument("--workers", type=int, choices=range(1, 17), default=4)
     compaction = parsers.add_parser("compact-analysis", help="Plan or apply transparent NTFS compression while retaining native evidence logical bytes and hashes")
     compaction.add_argument("--plan", default=".analysis/results/storage-compaction.json")
     compaction.add_argument("--minimum-mib", type=int, default=100)
     compaction.add_argument("--workers", type=int, default=8)
+    compaction.add_argument("--review-receipt", action="append", help="Also compact this exact SHA-named immutable native review receipt; repeat for independent receipts")
     compaction.add_argument("--apply", action="store_true")
     compaction.add_argument("--plan-sha256", help="Exact SHA-256 of the independently reviewed dry-run plan")
     reference = parsers.add_parser("audit-reference", help="Verify every tracked byte and workspace dependency in a pinned architecture reference")
@@ -6960,6 +7059,8 @@ def add_commands(parsers):
                             help="Reanalyze this exact retained function boundary; repeat for callers and callees")
     supplement.add_argument("--function-type", action="append", help="Explicit RVA=C function declaration backed by the complete retained assembly")
     supplement.add_argument("--import-type", action="append", help="Explicit normal-IAT RVA=C function-pointer declaration backed by import bytes and reviewed ABI evidence")
+    supplement.add_argument("--reanalyze-type-owners", action="store_true", help="Invalidate only derived stack-analysis readiness and request processor reanalysis for exact selected owners after reviewed function/import type repairs")
+    supplement.add_argument("--propagate-direct-calls", action="store_true", help="Explicitly propagate reviewed function types to byte-verified original E8 callsites before type-owner reanalysis")
     supplement.add_argument("--merge-functions", action="append",
                             help="Explicit reviewed OWNER=RVA,RVA,... merge of adjacent complete retained functions")
     supplement.add_argument("--outline-function-rva", action="append", type=lambda v: int(v, 0),
@@ -6973,6 +7074,8 @@ def add_commands(parsers):
     supplement.add_argument("--type-evidence", help="Explain the argument/register/return evidence for explicit type recovery")
     supplement.add_argument("--observation-evidence",
                             help="Retained JSON review#pointer with a new static observation reason and exact observer source identity")
+    supplement.add_argument("--callsite-type-review", action="append",
+                            help="Exact retained JSON#pointer proving an indirect CALL, original vtable slot, object binding and callee ABI")
     supplement.add_argument("--max-function-kib", type=int,
                             help="Record and apply a per-process Hex-Rays function size limit, 64 to 1024 KiB")
     supplement.add_argument("--recover-interrupted", action="store_true",
@@ -6988,6 +7091,9 @@ def add_commands(parsers):
     fetch.add_argument("--no-refresh-gaps", action="store_true", help="Leave gap reconciliation to the caller after concurrent analyses finish")
     fetch.add_argument("--manifest-url", dest="seed_urls", action="append",
                        help="Additional product manifest verified by the acquisition caller")
+    frozen_sources = parsers.add_parser("acquire-frozen-frontend-sources",
+        help="Acquire only exact official dependency URLs missing from the frozen unresolved frontend tasks")
+    frozen_sources.add_argument("--workers", type=int, choices=range(2, 17), default=8)
     apps = parsers.add_parser("acquire-host-apps", help="Follow literal current host window descriptors and acquire their complete static references")
     apps.add_argument("--source-set", action="append", help="Start from a selected retained stable host app namespace; repeat for several")
     apps.add_argument("--stage", choices=["report", "acquire", "analyze", "all"], default="all")
@@ -7009,6 +7115,15 @@ def add_commands(parsers):
 
 
 def run(args):
+    if args.command == "acquire-frozen-frontend-sources":
+        import frontend
+        return frontend.acquire_frozen_frontend_sources(args)
+    if args.command == "verify-native-arithmetic":
+        import native_arithmetic
+        return native_arithmetic.run(sys.modules[__name__], args)
+    if args.command == "adjudicate-native":
+        import native_adjudication
+        return native_adjudication.run(sys.modules[__name__], args)
     if args.command == "compact-analysis":
         import analysis_storage
         return analysis_storage.run(args)

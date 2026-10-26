@@ -1,4 +1,5 @@
 """Pure source-owner and semantic-boundary tests for family audits."""
+import copy
 import hashlib
 from pathlib import Path
 import struct
@@ -7,9 +8,107 @@ import unittest
 from unittest.mock import patch
 
 import analysis
+import evidence
 import families
 import host
 from test_host import pe_fixture
+
+
+class PromiseParameterBindingTests(unittest.TestCase):
+    def setUp(self):
+        self.parser = host.HostLocalAudit().parser
+
+    def test_executor_shadow_does_not_consume_the_outer_wire_argument(self):
+        source = (b'class Transport { write(output,input,bytes,silent,guid,noData) {'
+            b'return new Promise(async(noData,reject)=>{output.write(bytes,silent);'
+            b'input.on("read",()=>{console.log(guid);noData(true)});});}}')
+        result = families.javascript_promise_parameter_uses(source, self.parser, 'write')
+        self.assertEqual([item['name'] for item in result['method_parameters']],
+                         ['output', 'input', 'bytes', 'silent', 'guid', 'noData'])
+        no_data = result['method_parameters'][5]
+        self.assertTrue(no_data['shadowed_by_executor_parameter'])
+        self.assertEqual(no_data['references_in_executor'], [])
+        self.assertTrue(result['executor_parameters'][0]['shadowed_outer_name_references'])
+        self.assertTrue(all(item['references_in_executor'] for item in result['method_parameters'][:5]))
+
+    def test_renamed_executor_preserves_actual_outer_argument_references(self):
+        source = (b'class Transport { write(payload,noData) {'
+            b'return new Promise((resolve,reject)=>{resolve(noData?[]:payload)});}}')
+        result = families.javascript_promise_parameter_uses(source, self.parser, 'write')
+        self.assertTrue(result['method_parameters'][1]['references_in_executor'])
+        self.assertFalse(result['method_parameters'][1]['shadowed_by_executor_parameter'])
+
+    def test_nested_same_name_parameter_is_a_separate_scope(self):
+        source = (b'class Transport { write(payload) {'
+            b'return new Promise((resolve,reject)=>{const later=(payload)=>resolve(payload);'
+            b'later(7);});}}')
+        result = families.javascript_promise_parameter_uses(source, self.parser, 'write')
+        self.assertEqual(result['method_parameters'][0]['references_in_executor'], [])
+
+    def test_indirect_executor_duplicate_method_and_default_parameters_require_review(self):
+        for source in (
+            b'class Transport { write(payload){return new Promise(executor)}}',
+            b'class Transport { write(payload){return new Promise((resolve)=>resolve(payload))}'
+            b'write(other){return new Promise((resolve)=>resolve(other))}}',
+            b'class Transport { write(payload=0){return new Promise((resolve)=>resolve(payload))}}',
+            b'class Transport { write(payload){const other=1;return new Promise((resolve)=>resolve(payload))}}',
+        ):
+            with self.subTest(source=source), self.assertRaises(ValueError):
+                families.javascript_promise_parameter_uses(source, self.parser, 'write')
+
+
+class CameraLifecycleOwnerTests(unittest.TestCase):
+    def setUp(self):
+        self.audit = host.HostLocalAudit()
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.root_patch = patch.object(analysis, "ROOT", self.root)
+        self.root_patch.start()
+        self.addCleanup(self.root_patch.stop)
+        self.raw = b'const open=()=>{return device.showSettingsPage()};'
+        self.path = self.root / '.analysis/inputs/camera/fixture.js'
+        self.path.parent.mkdir(parents=True)
+        self.path.write_bytes(self.raw)
+        self.source = {'path': '.analysis/inputs/camera/fixture.js', 'bytes': len(self.raw),
+                       'sha256': hashlib.sha256(self.raw).hexdigest()}
+        node = self.audit.tree(self.source).root_node.named_children[0].named_children[0]
+        self.owner = {'original': self.source, 'byte_start': node.start_byte, 'byte_end': node.end_byte,
+                      'syntax': node.type, 'body': node.text.decode(),
+                      'body_sha256': hashlib.sha256(node.text).hexdigest()}
+
+    def test_whole_owner_is_reconstructible_without_duplicate_body(self):
+        result = families.camera_lifecycle_owner(self.audit, self.owner)
+        body = self.path.read_bytes()[result['byte_start']:result['byte_end']]
+        self.assertEqual(hashlib.sha256(body).hexdigest(), result['body_sha256'])
+        self.assertEqual(result['syntax'], 'variable_declarator')
+        self.assertNotIn('body', result)
+        self.assertEqual(result['body_storage'], 'complete_verified_original_slice')
+
+    def test_modified_body_and_partial_or_wrong_syntax_owner_are_rejected(self):
+        owner = copy.deepcopy(self.owner)
+        owner['body'] = 'open=()=>true'
+        with self.assertRaisesRegex(ValueError, 'differs'):
+            families.camera_lifecycle_owner(self.audit, owner)
+        for change in ({'byte_start': -1}, {'byte_end': len(self.raw) + 1}, {'syntax': 'function_expression'}):
+            owner = {**self.owner, **change}
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                families.camera_lifecycle_owner(self.audit, owner)
+        owner = copy.deepcopy(self.owner)
+        owner['byte_start'] += 1
+        fragment = self.raw[owner['byte_start']:owner['byte_end']]
+        owner.update(body=fragment.decode(), body_sha256=hashlib.sha256(fragment).hexdigest())
+        with self.assertRaisesRegex(ValueError, 'complete original AST'):
+            families.camera_lifecycle_owner(self.audit, owner)
+
+    def test_changed_original_and_outside_input_path_are_rejected(self):
+        self.path.write_bytes(self.raw.replace(b'device', b'cached'))
+        with self.assertRaisesRegex(ValueError, 'identity differs'):
+            families.camera_lifecycle_owner(host.HostLocalAudit(), self.owner)
+        owner = copy.deepcopy(self.owner)
+        owner['original']['path'] = '.work/camera.js'
+        with self.assertRaisesRegex(ValueError, 'outside current inputs'):
+            families.camera_lifecycle_owner(host.HostLocalAudit(), owner)
 
 
 class NativeDescriptorWireTests(unittest.TestCase):
@@ -394,6 +493,555 @@ class MouseIdleInitializationTests(unittest.TestCase):
         path.write_bytes(raw.replace(b"getTimeToSleep", b"getCachedTimeToSleep"))
         with self.assertRaisesRegex(ValueError, "differs"):
             families.mouse_idle_initialization_source(self.audit, [original])
+
+
+class FrontendSemanticMergeTests(unittest.TestCase):
+    def receiver_mapping_fixture(self):
+        reference = {"path": "review.json", "bytes": 10, "sha256": "a" * 64}
+        base = {"path": "base.json", "bytes": 20, "sha256": "b" * 64}
+        original = {"path": "official.js", "bytes": 1, "sha256": "c" * 64}
+        owner = {"original": original, "byte_start": 0, "byte_end": 1, "body": "x", "body_sha256": "d" * 64}
+        required = {"PreSetLocalStorage", "PostSetLocalStorage", "publisher", "merger", "localStorageSetItem",
+            "callMappingEngineAction", "isElectronApp", "initialization_owner", "derived_feature_owner", "default_module_owner",
+            "initial_document_factory", "runtime_identity_parameters"}
+        observed = {"slave_storage_changed", "storage_listener_registration", "slave_storage_observer_startup",
+            "serial_window_storage_listener", "serial_ready_republish"}
+        products, reviewed = [], []
+        for pid in families.LEGACY_RECEIVER_MAPPING_PRODUCTS:
+            identity = {"productId": pid, "dongleId": pid + 1, "bleId": 213 if pid == 211 else None}
+            branches = [{"physical_product_id": pid, "parser": "PROTOCOL25"}]
+            dual = pid in {192, 211, 222}
+            runtime = {"identity": identity, "physical_branches": branches,
+                "gates": {"isDualLinkDevice": {"value": dual}, "isMikaDevice": {"value": False}}}
+            publication = {"storage_hooks": {field: "owner" for field in ("PreSetLocalStorage", "PostSetLocalStorage")},
+                "post_storage_callers": [{"complete_owner": "owner"}], "semantics": {"publication": "previous"}}
+            products.append({"product_id": pid, "runtime_acceptance": "unverified", "remaining": "preserve",
+                "duallink_protocol": {"runtime_selection": runtime, "event_selection_and_publication": publication}})
+            reviewed.append({"product_id": pid, "runtime_identity": identity, "physical_branches": branches,
+                "base_selection_review": base, "target_execution": False, "whole_page_complete": False,
+                "source_branch_selection_complete": True, "runtime_acceptance": "unverified", "remaining_local_chains": ["executors"],
+                "suppression_gate": {"feature": "controllerDevice", "active_at_current_source_startup": False, "owner": "owner"},
+                "hash": {"implementation_owner": "owner"}, "chain_owners": {field: "owner" for field in required},
+                "slave_storage_observers": {field: "owner" for field in observed},
+                "master_observer_feature_gate": dual, "mika_observer_feature_gate": False,
+                "wireless_physical_ids": [value for field in ("dongleId", "bleId") if (value := identity[field])],
+                "initial_descriptor": {"owner": "owner", "version": 1, "vendorId": 5426, "productId": pid,
+                    "category": "MOUSE", "reportIDs": {"4": "razerKeyReportID", "5": "hardwareEventReportID"}},
+                "master_observer_callers": [{"owner": "owner", "gates": [{"owner": "owner"}, {"owner": "owner"}]}],
+                "change_gate": {"report_ids_independent_trigger": False, "storage_boolean_result_consumed": False,
+                    "cache_rollback_on_storage_failure": False, "cache_updated_before_storage_await": True},
+                "semantics": {"publisher": "controllerDevice is the actual gate"}})
+        document = {"receiver_legacy": {"runtime_selection_review": base, "products": products,
+            "complete_owners": {"owner": copy.deepcopy(owner)}, "host_native": {"preserve": True},
+            "generated_descriptors": [{"path": "current.rs"}]}, "sibling_query": {"preserve": True}}
+        review = {"kind": "current_legacy_receiver_mapping_descriptor_review", "products": reviewed,
+            "base_selection_review": base, "host_descriptor_review": copy.deepcopy(families.MAPPING_DESCRIPTOR_HOST_REVIEW),
+            "host_native_original": {"sha256": "e" * 64}, "host_sources": {}, "host_owners": {}, "source_sets": [],
+            "complete_owners": {"owner": owner}, "target_execution": False, "whole_page_complete": False,
+            "actual_dll_comparison": "unverified", "independent_execution_connected": False}
+        return document, review, reference
+
+    def test_receiver_mapping_increment_preserves_siblings_and_completion_boundaries(self):
+        document, review, reference = self.receiver_mapping_fixture()
+        original = copy.deepcopy(document)
+        result = families.merge_frontend_semantic_review(document, review, reference)
+        self.assertEqual(result["products"], [158, 192, 194, 211, 222])
+        for key in ("host_native", "generated_descriptors", "runtime_selection_review", "complete_owners"):
+            self.assertEqual(document["receiver_legacy"][key], original["receiver_legacy"][key])
+        self.assertEqual(document["sibling_query"], original["sibling_query"])
+        contract = document["receiver_legacy"]["mapping_descriptor_contract"]
+        for field in ("runtime_acceptance", "rust_implementation", "ui_backend_wiring", "actual_dll_comparison"):
+            self.assertEqual(contract[field], "unverified")
+        self.assertFalse(contract["whole_page_complete"])
+        self.assertFalse(contract["target_execution"])
+        for row in document["receiver_legacy"]["products"]:
+            self.assertEqual(row["remaining"], "preserve")
+            self.assertEqual(row["duallink_protocol"]["event_selection_and_publication"]["semantics"]["publication"],
+                             "controllerDevice is the actual gate")
+        first = copy.deepcopy(document)
+        families.merge_frontend_semantic_review(document, review, reference)
+        self.assertEqual(document, first)
+
+    def test_receiver_mapping_rejects_stale_identity_partial_join_and_false_verification(self):
+        mutations = [
+            lambda r: r["products"].pop(),
+            lambda r: r["products"].append(copy.deepcopy(r["products"][0])),
+            lambda r: r["base_selection_review"].update(sha256="0" * 64),
+            lambda r: r["host_descriptor_review"].update(sha256="0" * 64),
+            lambda r: r.update(target_execution=True),
+            lambda r: r.update(whole_page_complete=True),
+            lambda r: r.update(actual_dll_comparison="verified"),
+            lambda r: r.update(independent_execution_connected=True),
+            lambda r: r["products"][0]["runtime_identity"].update(productId=159),
+            lambda r: r["products"][0]["physical_branches"][0].update(parser="PROTOCOL30"),
+            lambda r: r["products"][0]["suppression_gate"].update(feature="recording"),
+            lambda r: r["products"][0]["suppression_gate"].update(active_at_current_source_startup=True),
+            lambda r: r["products"][0]["change_gate"].update(report_ids_independent_trigger=True),
+            lambda r: r["products"][0]["change_gate"].update(cache_updated_before_storage_await=False),
+            lambda r: r["products"][0]["change_gate"].update(storage_boolean_result_consumed=True),
+            lambda r: r["products"][0]["change_gate"].update(cache_rollback_on_storage_failure=True),
+            lambda r: r["products"][0]["slave_storage_observers"].pop("serial_ready_republish"),
+            lambda r: r["products"][0]["chain_owners"].pop("runtime_identity_parameters"),
+            lambda r: r["products"][0].update(master_observer_feature_gate=True),
+            lambda r: r["products"][0].update(mika_observer_feature_gate=True),
+            lambda r: r["products"][0].update(wireless_physical_ids=[158]),
+            lambda r: r["products"][0]["initial_descriptor"]["reportIDs"].pop("5"),
+            lambda r: r["products"][0]["master_observer_callers"][0]["gates"].pop(),
+            lambda r: r["products"][0]["hash"].update(implementation_owner="missing"),
+        ]
+        for index, mutate in enumerate(mutations):
+            with self.subTest(case=index):
+                document, review, reference = self.receiver_mapping_fixture()
+                # Input identity sharing is convenient for fixtures; mutation must
+                # affect the incoming review alone so stale joins remain observable.
+                review = copy.deepcopy(review)
+                mutate(review)
+                with self.assertRaises(ValueError):
+                    families.merge_frontend_semantic_review(document, review, reference)
+
+    def test_receiver_mapping_rejects_conflicting_owner_or_newer_review(self):
+        document, review, reference = self.receiver_mapping_fixture()
+        document["receiver_legacy"]["complete_owners"]["owner"]["body"] = "different"
+        with self.assertRaisesRegex(ValueError, "retained original owner"):
+            families.merge_frontend_semantic_review(document, review, reference)
+        document, review, reference = self.receiver_mapping_fixture()
+        document["receiver_legacy"]["mapping_descriptor_contract"] = {"review_source": {"sha256": "0" * 64}}
+        with self.assertRaisesRegex(ValueError, "newer retained review"):
+            families.merge_frontend_semantic_review(document, review, reference)
+
+    def test_receiver_mapping_replacement_requires_the_observed_previous_reference(self):
+        document, review, reference = self.receiver_mapping_fixture()
+        prior = {"path": "previous.json", "bytes": 30, "sha256": "f" * 64}
+        document["receiver_legacy"]["mapping_descriptor_contract"] = {"review_source": copy.deepcopy(prior)}
+        original = copy.deepcopy(document)
+        with self.assertRaisesRegex(ValueError, "newer retained review"):
+            families.merge_frontend_semantic_review(document, review, reference,
+                expected_previous_review={"path": "stale.json", "bytes": 30, "sha256": "0" * 64})
+        self.assertEqual(document, original)
+        families.merge_frontend_semantic_review(document, review, reference, expected_previous_review=prior)
+        self.assertEqual(document["receiver_legacy"]["mapping_descriptor_contract"]["review_source"], reference)
+
+    def camera_fixture(self):
+        reference = {"path": "review.json", "bytes": 10, "sha256": "a" * 64}
+        document = {"products": [{"product_id": pid, "failure": "retained"} for pid in (3594, 3595, 3596)],
+            "complete_owners": {"new_camera": {"body": "complete"}},
+            "source_review": {"runtime_acceptance": "unverified", "products": [3594, 3595, 3596]}}
+        products = []
+        required = ("selected_adapter_loader", "adapter_init", "adapter_terminate", "read_standard_settings",
+                    "task_focus", "task_image", "camera_dispatch", "profile_camera_restore", "ui_mounted_product")
+        for pid in families.CAMERA_LEGACY_PRODUCTS:
+            products.append({"product_id": pid, "selection": {"device_type": families.CAMERA_LEGACY_TYPES[pid],
+                "dll": {"name": "RzNativeDLL" + str(pid), "onDllLoaded": "startCamera"},
+                "camera_config": {"isAdvancedCamera": True} if pid == 3592 else {}},
+                "ui_gates": {"supports_hdr": pid == 3589, "supports_field_of_view": pid == 3589,
+                    "advanced_pages": pid == 3592},
+                "chain_owners": {name: "owner" for name in required},
+                "adapter_members": {"init": {"owner": "owner"}},
+                "source_branch_selection_complete": True, "target_execution": False, "whole_page_complete": False,
+                "remaining_local_chains": ["Rust/device comparison and exact UI acceptance remain unverified"],
+                "native": {"resource": {"resourceName": "RzNativeDLL" + str(pid), "sha256": "B" * 64, "size": 100},
+                           "original": {"sha256": "b" * 64, "bytes": 100}}})
+        review = {"kind": "current_legacy_camera_selection_review", "products": products,
+            "complete_owners": {"owner": {}}, "source_sets": [], "verified_artifacts": [],
+            "target_execution": False, "whole_page_complete": False}
+        return document, review, reference
+
+    def test_legacy_camera_increment_preserves_newer_camera_audits_and_runtime_boundaries(self):
+        document, review, reference = self.camera_fixture()
+        before = copy.deepcopy(document)
+        result = families.merge_frontend_semantic_review(document, review, reference)
+        self.assertEqual(result["products"], [3587, 3589, 3590, 3592])
+        for key in before:
+            self.assertEqual(document[key], before[key])
+        selected = document["legacy_selection"]
+        self.assertFalse(selected["whole_page_complete"])
+        self.assertEqual(selected["official_dll_comparison"], "not_executed")
+        self.assertEqual(selected["rust_implementation"], "unverified")
+        self.assertEqual(selected["ui_backend_wiring"], "unverified")
+        self.assertEqual(selected["runtime_acceptance"], "unverified")
+        first = copy.deepcopy(document)
+        families.merge_frontend_semantic_review(document, review, reference)
+        self.assertEqual(document, first)
+        selected["native_property_contract"] = {"status": "retained", "review_source": {"sha256": "d" * 64}}
+        document["legacy_selection"]["native_property_contract"] = copy.deepcopy(selected["native_property_contract"])
+        families.merge_frontend_semantic_review(document, review, reference)
+        self.assertEqual(document["legacy_selection"]["native_property_contract"], selected["native_property_contract"])
+
+    def native_camera_fixture(self):
+        document, base_review, base_reference = self.camera_fixture()
+        for product in base_review["products"]:
+            product["native"]["resource"]["resourceVersion"] = "current"
+        families.merge_frontend_semantic_review(document, base_review, base_reference)
+        names = {prefix + name for prefix in ("Get", "Set") for name in
+                 ("Brightness", "CameraFocus", "Contrast", "Saturation", "WhiteBalance")}
+        functions = {name: {"input_chunks_verified": True} for name in names | {
+            "container_lookup", "video_get", "video_set", "camera_get", "camera_set",
+            "async_camera_set", "async_camera_get", "async_video_set", "async_video_get"}}
+        products = []
+        for row in base_review["products"]:
+            pid = row["product_id"]
+            selected_functions = copy.deepcopy(functions)
+            for i in range((27 if pid == 3592 else 25) - len(selected_functions)):
+                selected_functions["callback_" + str(i)] = {"input_chunks_verified": True}
+            products.append({"product_id": pid, "original": copy.deepcopy(row["native"]["original"]),
+                "resource_version": "current", "base_selection_review": base_reference,
+                "target_execution": False, "whole_native_semantics": "unverified", "official_dll_comparison": "not_executed",
+                "actual_exports": [{"name": name} for name in sorted(names)],
+                "actual_callback_slots": [{}] * (8 if pid == 3592 else 4), "functions": selected_functions,
+                "interfaces": [{"interface": name, "actual_pe_bytes_verified": True} for name in
+                               ("IAMCameraControl", "IAMVideoProcAmp")]})
+        review = {"kind": "current_legacy_camera_native_property_review", "base_selection_review": base_reference,
+            "products": products, "scope": ["Brightness", "CameraFocus", "Contrast", "Saturation", "WhiteBalance"],
+            "complete_owners": {}, "target_execution": False, "whole_page_complete": False}
+        reference = {"path": "native-review.json", "sha256": "e" * 64, "bytes": 100}
+        return document, review, reference
+
+    def test_native_camera_property_merge_keeps_complete_frontend_review_and_separate_completion_dimensions(self):
+        document, review, reference = self.native_camera_fixture()
+        before = copy.deepcopy(document)
+        result = families.merge_frontend_semantic_review(document, review, reference)
+        self.assertEqual(result["complete_native_functions"], 102)
+        for key in ("products", "complete_owners", "source_review"):
+            self.assertEqual(document[key], before[key])
+        for key in before["legacy_selection"]:
+            self.assertEqual(document["legacy_selection"][key], before["legacy_selection"][key])
+        section = document["legacy_selection"]["native_property_contract"]
+        self.assertEqual(section["official_dll_comparison"], "not_executed")
+        self.assertEqual(section["rust_implementation"], "unverified")
+        self.assertFalse(section["whole_page_complete"])
+        first = copy.deepcopy(document)
+        families.merge_frontend_semantic_review(document, review, reference)
+        self.assertEqual(document, first)
+
+    def test_native_camera_property_scope_originals_slots_exports_and_completeness_are_validated_before_mutation(self):
+        for mode in ("product", "base", "scope", "original", "version", "row_base", "runtime", "whole_native",
+                     "comparison", "function", "chunks", "slot", "export", "interface", "guid", "newer_review"):
+            document, review, reference = self.native_camera_fixture()
+            row = review["products"][0]
+            if mode == "product":
+                review["products"].pop()
+            elif mode == "base":
+                review["base_selection_review"] = {"sha256": "c" * 64}
+            elif mode == "scope":
+                review["scope"].pop()
+            elif mode == "original":
+                row["original"]["sha256"] = "c" * 64
+            elif mode == "version":
+                row["resource_version"] = "other"
+            elif mode == "row_base":
+                row["base_selection_review"] = {"sha256": "c" * 64}
+            elif mode == "runtime":
+                row["target_execution"] = True
+            elif mode == "whole_native":
+                row["whole_native_semantics"] = "complete"
+            elif mode == "comparison":
+                row["official_dll_comparison"] = "passed"
+            elif mode == "function":
+                row["functions"].pop("camera_get")
+            elif mode == "chunks":
+                row["functions"]["camera_get"]["input_chunks_verified"] = False
+            elif mode == "slot":
+                row["actual_callback_slots"].pop()
+            elif mode == "export":
+                row["actual_exports"][0]["name"] = "OtherExport"
+            elif mode == "interface":
+                row["interfaces"].pop()
+            elif mode == "guid":
+                row["interfaces"][0]["actual_pe_bytes_verified"] = False
+            else:
+                document["legacy_selection"]["native_property_contract"] = {"review_source": {"sha256": "c" * 64}}
+            before = copy.deepcopy(document)
+            with self.subTest(mode=mode), self.assertRaises(ValueError):
+                families.merge_frontend_semantic_review(document, review, reference)
+            self.assertEqual(document, before)
+
+    def test_legacy_camera_rejects_cross_product_native_or_ui_selection_and_partial_owner_sets_before_mutation(self):
+        for mode in ("product", "duplicate", "type", "dll", "advanced", "hdr", "fov", "owner", "missing_chain",
+                     "native_name", "native_sha", "native_bytes", "row_runtime", "row_page", "global_runtime",
+                     "global_page", "no_remaining", "newer_review"):
+            document, review, reference = self.camera_fixture()
+            row = review["products"][0]
+            if mode == "product":
+                review["products"].pop()
+            elif mode == "duplicate":
+                review["products"].append(copy.deepcopy(row))
+            elif mode == "type":
+                row["selection"]["device_type"] = "rzCamKiyoProUltra"
+            elif mode == "dll":
+                row["selection"]["dll"]["name"] = "RzNativeDLL3592"
+            elif mode == "advanced":
+                row["selection"]["camera_config"]["isAdvancedCamera"] = True
+            elif mode in ("hdr", "fov"):
+                row["ui_gates"]["supports_hdr" if mode == "hdr" else "supports_field_of_view"] = True
+            elif mode == "owner":
+                review["complete_owners"].clear()
+            elif mode == "missing_chain":
+                row["chain_owners"].pop("task_focus")
+            elif mode == "native_name":
+                row["native"]["resource"]["resourceName"] = "RzNativeDLL3592"
+            elif mode == "native_sha":
+                row["native"]["original"]["sha256"] = "c" * 64
+            elif mode == "native_bytes":
+                row["native"]["original"]["bytes"] = 99
+            elif mode == "row_runtime":
+                row["target_execution"] = True
+            elif mode == "row_page":
+                row["whole_page_complete"] = True
+            elif mode == "global_runtime":
+                review["target_execution"] = True
+            elif mode == "global_page":
+                review["whole_page_complete"] = True
+            elif mode == "no_remaining":
+                row["remaining_local_chains"].clear()
+            else:
+                document["legacy_selection"] = {"review_source": {"sha256": "c" * 64}}
+            before = copy.deepcopy(document)
+            with self.subTest(mode=mode), self.assertRaises(ValueError):
+                families.merge_frontend_semantic_review(document, review, reference)
+            self.assertEqual(document, before)
+
+    def gamepad_fixture(self):
+        reference = {"path": "review.json", "bytes": 10, "sha256": "a" * 64}
+        previous = "Current2676 shared notification/OBM calls into extended-static helper require full indirect dispatch resolution despite the unmounted Lighting page; presence of helper bodies is not a capability proof"
+        products, reviewed = [], []
+        for pid in families.GAMEPAD_LIGHTING_SELECTION_PRODUCTS:
+            products.append({"product_id": pid, "unresolved_chains": [previous, "independent runtime requirement"],
+                "source_chain_complete": False, "whole_page_complete": False, "runtime_acceptance": "unverified"})
+            lighting = pid in {2636, 4115}
+            reviewed.append({"product_id": pid, "identity": {"productId": pid},
+                "source_branch_selection_complete": True, "target_execution": False,
+                "remaining_local_chains": ["independent runtime requirement"],
+                "controller_config": {"supportsLighting": lighting}, "ui_lighting_mounted": lighting,
+                "default_profile_fields": {"controllerLightingEffects": "{}"} if pid == 2636 else {},
+                "obm": {"reads_controller_lighting": pid == 2636, "semantics": "actual fields only"},
+                "notification_resolution": "actual parser event categories", "bootstrap_owner": "owner",
+                "chain_owners": {"11365": "owner"}, "ui_mount_owners": ["owner"]})
+        document = {"sibling_audit": {"status": "retained"}, "gamepad_lighting": {
+            "products": products, "native_engine": {"status": "retained"},
+            "complete_module_bodies": {"existing": "complete"}, "runtime_acceptance": "unverified"}}
+        review = {"kind": "current_gamepad_lighting_selection_review", "complete_owners": {"owner": {}},
+            "products": reviewed, "source_sets": [], "semantics": {}, "verified_artifacts": []}
+        return document, review, reference
+
+    def test_gamepad_increment_closes_only_selected_source_gap_and_keeps_native_runtime_boundaries(self):
+        document, review, reference = self.gamepad_fixture()
+        before = copy.deepcopy(document)
+        families.merge_frontend_semantic_review(document, review, reference)
+        section = document["gamepad_lighting"]
+        self.assertEqual(document["sibling_audit"], before["sibling_audit"])
+        for field in ("native_engine", "complete_module_bodies", "runtime_acceptance"):
+            self.assertEqual(section[field], before["gamepad_lighting"][field])
+        for original, product in zip(before["gamepad_lighting"]["products"], section["products"]):
+            self.assertEqual(product["unresolved_chains"], ["independent runtime requirement"]
+                             if product["product_id"] == 2676 else original["unresolved_chains"])
+            self.assertFalse(product["source_chain_complete"])
+            self.assertFalse(product["whole_page_complete"])
+            self.assertEqual(product["runtime_acceptance"], "unverified")
+        merged = copy.deepcopy(document)
+        families.merge_frontend_semantic_review(document, review, reference)
+        self.assertEqual(document, merged)
+
+    def test_gamepad_missing_product_owner_conflicting_gate_or_newer_review_fails_before_mutation(self):
+        for mode in ("product", "owner", "lighting", "profile", "identity", "newer_review"):
+            document, review, reference = self.gamepad_fixture()
+            if mode == "product":
+                review["products"].pop()
+            elif mode == "owner":
+                review["complete_owners"].clear()
+            elif mode == "lighting":
+                review["products"][0]["ui_lighting_mounted"] = True
+            elif mode == "profile":
+                review["products"][0]["obm"]["reads_controller_lighting"] = True
+            elif mode == "identity":
+                review["products"][0]["identity"]["productId"] = 999
+            else:
+                document["gamepad_lighting"]["branch_selection"] = {"review_source": {"sha256": "b" * 64}}
+            before = copy.deepcopy(document)
+            with self.subTest(mode=mode), self.assertRaises(ValueError):
+                families.merge_frontend_semantic_review(document, review, reference)
+            self.assertEqual(document, before)
+
+    def receiver_fixture(self):
+        reference = {"path": "review.json", "bytes": 10, "sha256": "a" * 64}
+        previous = "Runtime feature injection, actual adapter identity and parser overrides must be joined to each source product/version/host initialization branch; retained alternate modules alone do not establish a live selection"
+        products = [{"product_id": pid, "unresolved_chains": [previous, "separate native requirement"],
+            "source_chain_complete": False, "whole_page_complete": False, "runtime_acceptance": "unverified",
+            "duallink_protocol": {"complete_owners": [], "unresolved_chains": [previous, "separate native requirement"],
+                "source_chain_complete": False, "whole_page_complete": False, "runtime_acceptance": "unverified"}}
+            for pid in (158, 192, 194, 211, 222)]
+        document = {"sibling_audit": {"status": "retained"}, "receiver_legacy": {"products": products,
+            "complete_owners": {}, "resource_preparation": {"prepared": True},
+            "generated_descriptors": [{"path": "descriptor.rs", "sha256": "b" * 64}]}}
+        review = {"kind": "current_legacy_receiver_runtime_selection_review", "complete_owners": {},
+            "products": [{"product_id": pid, "runtime_selection": {"identity": {"productId": pid},
+                "source_branch_selection_complete": True, "target_execution": False},
+                "selected_chain_owners": {}, "remaining_local_chains": ["native and final UI still required"]}
+                for pid in (158, 192, 194, 211, 222)]}
+        return document, review, reference
+
+    def test_receiver_increment_preserves_preparation_siblings_and_unrelated_gaps(self):
+        document, review, reference = self.receiver_fixture()
+        before = copy.deepcopy(document)
+        families.merge_frontend_semantic_review(document, review, reference)
+        self.assertEqual(document['sibling_audit'], before['sibling_audit'])
+        for field in ('resource_preparation', 'generated_descriptors'):
+            self.assertEqual(document['receiver_legacy'][field], before['receiver_legacy'][field])
+        for product in document['receiver_legacy']['products']:
+            for branch in (product, product['duallink_protocol']):
+                self.assertEqual(branch['unresolved_chains'], ['separate native requirement', 'native and final UI still required'])
+                self.assertTrue(branch['source_branch_selection_complete'])
+                self.assertFalse(branch['source_chain_complete'])
+                self.assertFalse(branch['whole_page_complete'])
+                self.assertEqual(branch['runtime_acceptance'], 'unverified')
+        merged = copy.deepcopy(document)
+        families.merge_frontend_semantic_review(document, review, reference)
+        self.assertEqual(document, merged)
+
+    def test_incomplete_product_set_and_conflicting_current_selection_fail_before_mutation(self):
+        for mode in ('missing_product', 'conflict'):
+            document, review, reference = self.receiver_fixture()
+            if mode == 'missing_product':
+                review['products'].pop()
+            else:
+                document['receiver_legacy']['products'][0]['duallink_protocol']['runtime_selection'] = {'newer': True}
+            before = copy.deepcopy(document)
+            with self.subTest(mode=mode), self.assertRaises(ValueError):
+                families.merge_frontend_semantic_review(document, review, reference)
+            self.assertEqual(document, before)
+
+    def test_keypad_increment_keeps_existing_owners_and_runtime_boundaries(self):
+        document = {'other_query': {'retained': True}, 'queries': {'gamepad_tester': {
+            'complete_owners': [], 'verified_artifacts': [], 'whole_page_complete': False,
+            'runtime_acceptance': 'unverified', 'keypad_747_review': {'direction_mode_write_and_obm': 'incomplete',
+                'rust_input_stream': 'implemented_with_pure_simulated_tests', 'font_pixel_acceptance': 'unverified'}}}}
+        review = {'kind': 'current_747_direction_obm_semantic_review', 'product_id': 747,
+            'target_execution': False, 'whole_page_complete': False, 'complete_owners': {},
+            'semantics': {'payload': 'actual selected packet size10'}, 'remaining_local_chains': ['native consumer']}
+        reference = {'path': 'review.json', 'bytes': 12, 'sha256': 'a' * 64}
+        families.merge_frontend_semantic_review(document, review, reference)
+        query = document['queries']['gamepad_tester']
+        self.assertEqual(query['keypad_747_review']['rust_input_stream'], 'implemented_with_pure_simulated_tests')
+        self.assertEqual(query['keypad_747_review']['font_pixel_acceptance'], 'unverified')
+        self.assertEqual(query['runtime_acceptance'], 'unverified')
+        self.assertFalse(query['whole_page_complete'])
+        self.assertEqual(document['other_query'], {'retained': True})
+        self.assertEqual(query['verified_artifacts'], [reference])
+        merged = copy.deepcopy(document)
+        families.merge_frontend_semantic_review(document, review, reference)
+        self.assertEqual(document, merged)
+
+    def test_receiver_resource_rebinding_preserves_runtime_evidence_and_rejects_changed_outputs(self):
+        document, _, reference = self.receiver_fixture()
+        before = copy.deepcopy(document)
+        current = [{'path': 'current.rs', 'bytes': 20, 'sha256': 'c' * 64}]
+        review = {'kind': 'current_legacy_receiver_resource_owner_review', 'complete_owners': {},
+            'product_ids': [158, 192, 194, 211, 222],
+            'superseded_descriptor_receipts': copy.deepcopy(document['receiver_legacy']['generated_descriptors']),
+            'generated_descriptors': current, 'generated_descriptor_owners': [{'storage': 'rust', 'reader': 'current'}]}
+        families.merge_frontend_semantic_review(document, review, reference)
+        self.assertEqual(document['receiver_legacy']['generated_descriptors'], current)
+        for field in ('products', 'complete_owners', 'resource_preparation'):
+            self.assertEqual(document['receiver_legacy'][field], before['receiver_legacy'][field])
+        self.assertEqual(document['sibling_audit'], before['sibling_audit'])
+        merged = copy.deepcopy(document)
+        families.merge_frontend_semantic_review(document, review, reference)
+        self.assertEqual(document, merged)
+        document['receiver_legacy']['generated_descriptors'] = [{'newer': True}]
+        with self.assertRaisesRegex(ValueError, 'changed'):
+            families.merge_frontend_semantic_review(document, review, reference)
+
+
+class WebpackStaticDependencyTests(unittest.TestCase):
+    def inspect(self, source):
+        raw = source.encode()
+        parser = host.HostLocalAudit().parser
+        tree = parser.parse(raw)
+        self.assertFalse(tree.root_node.has_error)
+        pending, modules = [tree.root_node], []
+        while pending:
+            node = pending.pop()
+            if node.type in {"pair", "method_definition"}:
+                name = node.child_by_field_name("key" if node.type == "pair" else "name")
+                if name is not None and name.text == b"100":
+                    modules.append(node)
+            pending.extend(node.named_children)
+        self.assertEqual(len(modules), 1)
+        return families.javascript_factory_static_imports(modules[0], evidence.JavascriptBindings(raw, tree))
+
+    def test_exact_require_parameter_and_nested_shadow_are_distinct(self):
+        self.assertEqual(self.inspect('({100(module,exports,load){const one=load(7),two=load(3);'
+            'load.d(exports,{one:()=>one});function inner(load){load(99)};load(7)}})'), [3, 7])
+
+    def test_commonjs_pair_and_factory_without_require_are_supported(self):
+        self.assertEqual(self.inspect('({100:function(module,exports,load){module.exports=load(42)}})'), [42])
+        self.assertEqual(self.inspect('({100(module){module.exports=42}})'), [])
+
+    def test_for_of_lexical_binding_does_not_escape_or_import_from_outer_require(self):
+        self.assertEqual(self.inspect('({100(module,exports,load){for(const load of values){load(99)}'
+            'for(let load in values){load(98)}load(3)}})'), [3])
+
+    def test_dynamic_identity_or_parameter_reassignment_fails(self):
+        for expression in ('load(variable)', 'load(7,8)', 'load=other;load(7)', 'load++;load(7)',
+                           'const indirect=load;indirect(7)', 'module.exports=load'):
+            with self.subTest(expression=expression), self.assertRaises(ValueError):
+                self.inspect('({100(module,exports,load){' + expression + '}})')
+
+
+class ReceiverBootstrapFeatureTests(unittest.TestCase):
+    def setUp(self):
+        self.parser = host.HostLocalAudit().parser
+
+    def inspect(self, body, declaration='const injector=require(95414);'):
+        return families.legacy_receiver_bootstrap_features(
+            ('(()=>{' + declaration + body + '})()').encode(), self.parser, 95414, 'default')
+
+    def test_namespace_import_and_actual_product_gate_are_preserved(self):
+        result = self.inspect('injector.default.useFeature("rzDeviceType","rzDevice25",{isDualLinkDevice:!0});'
+            'injector.default.useFeature("isBattery","yes",{shouldQueryBatteryStatus:!0});')
+        self.assertEqual(result['protocol25_config'], {'isDualLinkDevice': True})
+        self.assertEqual(result['feature_names'], ['rzDeviceType', 'isBattery'])
+        self.assertEqual(result['registrations'][0]['singleton_import']['body'], 'injector=require(95414)')
+        self.assertNotIn('canPairMultipleDevices', result['feature_names'])
+
+    def test_absent_gate_is_distinct_from_enabled_gate(self):
+        result = self.inspect('injector.default.useFeature("rzDeviceType","rzDevice25");')
+        self.assertEqual(result['protocol25_config'], {})
+
+    def test_generic_bootstrap_preserves_actual_controller_variant_and_ordered_config(self):
+        raw = ('(()=>{const injector=load(47973);'
+            'injector.A.useFeature("rzDeviceType","rzDevice25SagePC",{reportId:10});'
+            'injector.A.useFeature("hardwareEvent","config",{hardwareEventParserType:"PROTOCOL25_CONTROLLER_RECORDID05"});'
+            'injector.A.useFeature("controllerDevice","config",{supportsLighting:!1});})()').encode()
+        result = families.javascript_bootstrap_features(raw, self.parser, 47973, 'A')
+        self.assertEqual(result['feature_names'], ['rzDeviceType', 'hardwareEvent', 'controllerDevice'])
+        self.assertEqual(result['registrations'][0]['variant'], 'rzDevice25SagePC')
+        self.assertEqual(result['registrations'][0]['arguments'][2], '{reportId:10}')
+        self.assertNotIn('protocol25_config', result)
+        with self.assertRaisesRegex(ValueError, 'module'):
+            families.javascript_bootstrap_features(raw.replace(b'load(47973)', b'load(99)'), self.parser, 47973, 'A')
+
+    def test_wrong_namespace_export_module_and_shadowing_fail(self):
+        for body, declaration in (
+            ('injector.A.useFeature("rzDeviceType","rzDevice25");', 'const injector=require(95414);'),
+            ('injector.default.useFeature("rzDeviceType","rzDevice25");', 'const injector=require(99);'),
+            ('(function(injector){injector.default.useFeature("rzDeviceType","rzDevice25")})(other);',
+             'const injector=require(95414);'),
+        ):
+            with self.subTest(body=body), self.assertRaises(ValueError):
+                self.inspect(body, declaration)
+
+    def test_namespace_reassignment_and_dynamic_or_duplicate_features_fail(self):
+        for body in (
+            'injector=other;injector.default.useFeature("rzDeviceType","rzDevice25");',
+            'injector.default.useFeature(name,"rzDevice25");',
+            'injector.default.useFeature("rzDeviceType",variant);',
+            'injector.default.useFeature("rzDeviceType","rzDevice25");injector.default.useFeature("rzDeviceType","other");',
+            'injector.default.useFeature("rzDeviceType","rzDevice25",{isDualLinkDevice:runtime});',
+            'injector.default.useFeature("rzDeviceType","rzDevice25",{...runtime});',
+            'injector.default.useFeature("rzDeviceType","rzDevice25",{isDualLinkDevice:!0,isDualLinkDevice:!1});',
+        ):
+            with self.subTest(body=body), self.assertRaises(ValueError):
+                self.inspect(body, 'let injector=require(95414);')
 
 
 if __name__ == "__main__":

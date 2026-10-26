@@ -134,6 +134,31 @@ FFIPreloadMain 的普通退出 Map 按 channel 保存 API 名；设备／关机�
 
 基准唯一的 UTF 辅助函数失败 `0x1b2a8` 已依据其完整寄存器、尾调用和被调函数汇编恢复类型；[独立 supplement](../../../.analysis/results/native/d5c680965d558be4381aee898ba9c451b4c4e50bd78dc4a67579487eead93f13/supplements/71c2cd4583fc0dc8/capture.json)保留 7 个完整函数、0 失败，基准捕获与数据库未变，完整性问题为 0。它只解决反编译缺口，不能提升为 BLE 协议、全 DLL 语义或真实设备验收完成。
 
+## BLE GATT 传输、应答和异步所有权
+
+真正的 BLE 数据通道为 `node-ble-rz` 的 Windows `NobleWinrt`，与上述 endpoint 发现模块分别持有状态。[本轮原生增量](../../../.analysis/results/reverse-pending/review-sources/8a351f232cf87da580bf03fa53c14845f3f14e155564ffcba27c51509610f74b.json)核对宿主 4.0.827 官方包、安装别名及 SHA-256 为 `196568febfb06c495a28e9206d18363db3474e9c7acd949ce041d437159cc8a2` 的 `binding.node`，复用其 [3130 个函数的完整捕获](../../../.analysis/results/native/196568febfb06c495a28e9206d18363db3474e9c7acd949ce041d437159cc8a2/capture.json)，逐原件字节核验所选 93 个完整函数、23 个虚表入口、两个真实导出及三个接口 IID；增量仅保存引用，没有复制完整函数正文。以下地址均为该文件 RVA。基准反编译失败仍保留于原收据，函数捕获数不代表整个模块的语义或实现已完成。
+
+`lib/win/bindings.js` 通过 `node-gyp-build` 取得 `NobleWinrt`。当前 `build/Release` 同时保留 `binding.node` 和另一个无 PE 导出的 `noble.node`；加载器对 `readdirSync` 的 `.node` 过滤结果取首项，没有显式排序，还支持环境覆盖和 prebuild 分支。因此可以证明 `binding.node` 的实际类和入口，不能仅按文件名字典序断言所有环境必选它。真实导出 `0x18510` 返回 N-API 版本 8；`0x18520` 经 `0x18380` 导出 18 个成员的类，仅在 COM 尚未初始化时初始化 MTA。构造对象与 `init` 分开：`init` 才创建 BLEManager 并保存 JS receiver／emit 持久引用；重复 init 的完整所有者没有释放已有 manager。
+
+| 所有者 | 已核原件行为与结果边界 |
+| --- | --- |
+| 参数边界 `0x15690`／`0x159a0`／`0x15db0` | read 为外设标识与两个 UUID；write 再收 Buffer 和布尔值；notify 再收布尔值。原生参数没有请求 guid、超时、取消或连接代次；内部 bool 不作为同步成功结果返回给 JS |
+| 查找 `0x28720` → `0x27480`／`0x280a0` | 按外设、服务、特征查询缓存；缺失时异步获取指定 UUID，cache mode 为 0，完成时检查 AsyncStatus 与连接字节，再取首个结果。连接字节不能拒绝旧连接代次的结果 |
+| 写入 `0x43d90` → `0x44270` | JS Buffer 复制为原生 vector，再深拷贝进查找闭包；DataWriter 写入并 detach IBuffer，进入 `IGattCharacteristic3.WriteValueWithResultAndOptionAsync`。复制／析构入口核实 vector 生命周期；完成闭包保留的是裸 manager 指针和复制的身份字符串 |
+| 写完成 `0x446f0`／异常 `0x89318` | Completed 与其他 AsyncStatus 都发送相同的 `write(peripheral,service,characteristic)`；失败仅另记日志。找不到设备和写异常也可发送该事件。没有 GetResults 或 GattWriteResult.Status 核验，所以 write 事件不是 GATT 成功或业务应答 |
+| 读取 `0x43550` → `0x438a0` | `ReadValueWithCacheModeAsync` 使用 cache mode 1；完成后 GetResults，非零通信状态记录日志但仍尝试提取 Value，存在数据则发 `read(...,Buffer,false)`。失败／空值没有对应的带类型 JS 错误结果 |
+| 通知 `0x44bb0` → `0x45460` | 支持 Indicate 位 `0x20` 时写 CCCD=2，否则为 1；关闭为 0。使用带结果的 CCCD API，但完成消费者只判断 AsyncStatus，未读取 GATT 写结果。开启后注册 ValueChanged，并按完整身份保存 token；已开启／已关闭分支可直接发 notify 事件 |
+| 通知数据 `0x45920` → `0x528a0`／`0x543e0` | 提取实际服务／特征 UUID 和 IBuffer，复制为 vector、队列闭包及新 JS Buffer，发送 `read(...,Buffer,true)`；数据不借用原临时 IBuffer。协议应答的匹配由上层策略负责 |
+| 关闭订阅 `0x32310` | 显式 notify(false) 先按完整身份调用 remove_ValueChanged(token)，删除记录，再异步写 CCCD=0；注销调用本身不确认 CCCD 写入成功 |
+| 断开 `0x3f1d0`／`0x3f4f0` | 显式断开与 OS 断开清服务／特征缓存、连接事件 token，并丢弃通知 token 记录；此处没有逐项 remove_ValueChanged。发布的 disconnect 仅有外设标识，没有失败原因；OS 分支还移除外设 Map。断开事件不取消或确认各在途业务请求 |
+| 清理 `0x17240`／`0x173b0` | 立即析构、释放 manager 并清空包装器指针；重复调用产生 TypeError。包装器 finalizer 的虚方法为空，包装器析构只处理引用，不能以垃圾回收替代显式 manager 清理 |
+
+原生的 write、notify 和 read 事件均不携带请求 ID 或连接代次。上层按特征身份接收到完成事件，再处理协议通知，必须分别核实两层结果；不能将 JS 的无错误 callback、发送结束或 CCCD 异步操作结束当作设备设置已确认。
+
+[上层 JS 完整调用链](../../../.analysis/results/reverse-pending/review-sources/328fa8a84bd909ee4dba270bb2830ac9916cb58b3050fd4a8db8ac9174fe6e64.json)的 `host_ble_transport` 复核 13 份宿主原件和 35 个完整所有者，覆盖 MW → preload → IPC → BLE 路由 → protocol30 → characteristic → Windows binding。实际调用传七个参数，protocol30 只声明六个；第六个 `noResponseData` 又被 Promise executor 的参数遮蔽，第七个 options 没有消费者。guid 只用于日志，不能充当请求或会话匹配。协议写的 500 ms 定时器在通知订阅完成及发送后才启动，读取回调先清除它，再判断通知和事务；无关数据可能留下未完成且没有计时器的请求。仅含 8 字节头的 withoutResponse 分支也没有完成 Promise。断开仅请求底层断开并立即返回，上层 disconnect 事件不清除这些请求监听器，也不结算在途请求。这些原版行为必须与原生完成事件分开记录，不能用原生事件补造业务成功。
+
+Emit 拥有互斥队列、`uv_async_t` 和持久引用。最后一个共享 Emit 所有者的 `0x533b0` 只置关闭标记并唤醒事件循环；`0x4fde0` 将队列移入局部所有者，逐项开关 N-API scope、构造参数并调用 JS，排空后才 `uv_close`；关闭回调 `0x502c0` 释放剩余队列、持久引用和内存。此延后关闭没有等待仍持裸 manager 指针的 WinRT 完成回调；所选读写、通知与 manager 清理所有者未提供 IAsyncInfo Cancel、在途 join 或拒绝旧代次的屏障，不能把 cleanUp 返回写成全部传输／回调已排空。这是静态行为核对，相关竞态与实际释放结果尚未运行验收。
+
 ## 实现与验证边界
 
 本查询完成的是上述宿主原件的字节核对和具体语义阅读；没有运行厂商 JS、应用窗口、官方 DLL 或设备，也没有因这份文档新增 Rust 功能。独立 Rust 实现、全部产品接线、官方实际功能对照和运行时验收不能由该查询通过推导。

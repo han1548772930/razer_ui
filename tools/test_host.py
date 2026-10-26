@@ -20,7 +20,324 @@ from host import (HostLocalAudit, add_commands, audit_host_local,
                   inspect_host, inspect_pe, inspect_embedded_pe_ranges, pe_cursor_groups, pe_resource_entries,
                   setup_factory_static_extraction, native_ascii_pointer_table,
                   receiver_hardware_dispatch_proof, native_pseudocode_failures, lighting_catalog_projection,
-                  native_exception_region_coverage)
+                  native_exception_region_coverage, collect_keypad_mapping_static, keypad_mapping_constants,
+                  collect_mapping_descriptors_static, mapping_descriptor_proof,
+                  MAPPING_DESCRIPTOR_LIFECYCLE_FUNCTIONS, mapping_descriptor_lifecycle_proof,
+                  MAPPING_DESCRIPTOR_PARSER_FUNCTIONS, mapping_descriptor_parser_proof,
+                  collect_mapping_descriptor_gamemode)
+
+
+class KeypadMappingStaticTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import analysis
+        if not (analysis.ROOT / ".analysis/inputs/host-current/acquisition.json").is_file():
+            raise unittest.SkipTest("Current official host inputs are unavailable")
+        audit = HostLocalAudit()
+        cls.report = collect_keypad_mapping_static(audit)
+        cls.raw = audit.read(cls.report["provenance"]["original"])
+
+    def test_current_complete_consumers_and_dispatch_are_byte_verified(self):
+        constants = self.report["verified_constants"]
+        self.assertEqual(constants["axis_names"], ["left", "right", "up", "down", "invalid"])
+        self.assertEqual(constants["joystick_ids"], ["button", "axes", "raxes", "pov"])
+        self.assertGreaterEqual(constants["functions_verified"], 78)
+        self.assertGreater(constants["instructions_verified"], 9000)
+        self.assertFalse(self.report["target_execution"])
+        self.assertFalse(self.report["source_chain_complete"])
+        self.assertEqual(self.report["actual_dll_comparison"], "unverified")
+
+    def test_missing_deferred_release_owner_cannot_pass(self):
+        retained = dict(self.report["native"])
+        retained["complete_functions"] = [row for row in retained["complete_functions"]
+            if row["capture"]["rva"] != "0x100ed0"]
+        with self.assertRaisesRegex(ValueError, "virtual dispatch"):
+            keypad_mapping_constants(self.raw, retained)
+
+    def test_instruction_edit_cannot_reuse_original_machine_code(self):
+        retained = copy.deepcopy(self.report["native"])
+        function = next(row["capture"] for row in retained["complete_functions"]
+            if row["capture"]["rva"] == "0x7eb92")
+        next(row for row in function["assembly"] if row["rva"] == "0x7ebe5")["bytes"] = "b8214e0000"
+        with self.assertRaisesRegex(ValueError, "instruction differs"):
+            keypad_mapping_constants(self.raw, retained)
+
+    def test_changed_virtual_pointer_is_rejected_even_with_rehashed_region(self):
+        retained = copy.deepcopy(self.report["native"])
+        region = next(row for row in retained["verified_data_regions"] if row["role"] == "analog_stick_input")
+        body = bytearray.fromhex(region["raw_hex"])
+        body[0] ^= 1
+        region["raw_hex"] = body.hex()
+        region["sha256"] = hashlib.sha256(body).hexdigest()
+        with self.assertRaisesRegex(ValueError, "data region differs"):
+            keypad_mapping_constants(self.raw, retained)
+
+    def test_shared_mapping_query_reaches_the_maintained_cli(self):
+        parser = argparse.ArgumentParser()
+        add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-host-local", "--query", "keypad-mapping"])
+        with patch("host.audit_host_keypad_mapping", return_value="receipt") as collect:
+            self.assertEqual(audit_host_local(args), "receipt")
+            collect.assert_called_once_with(args)
+
+
+class MappingDescriptorStaticTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import analysis
+        if not (analysis.ROOT / ".analysis/inputs/host-current/acquisition.json").is_file():
+            raise unittest.SkipTest("Current official host inputs are unavailable")
+        audit = HostLocalAudit()
+        cls.report = collect_mapping_descriptors_static(audit)
+        cls.raw = audit.read(cls.report["provenance"]["original"])
+        cls.lifecycle = audit.native_slice(cls.report["provenance"]["original"], (), depth=0,
+            rvas=MAPPING_DESCRIPTOR_LIFECYCLE_FUNCTIONS,
+            regions=({"role": "input_base_lifetime_vtable", "rva": 0x2e5a18, "bytes": 80},))
+        cls.parser_reuse = audit.native_slice(cls.report["provenance"]["original"], (), depth=0,
+            rvas=MAPPING_DESCRIPTOR_PARSER_FUNCTIONS,
+            regions=({"role": "mapping_descriptor_md5_initial_state", "rva": 0x2f3740, "bytes": 16},))
+
+    def test_actual_primary_observers_and_report_classes_are_verified(self):
+        proof = self.report["verified_contract"]
+        tables = {row["role"]: row for row in proof["dispatch"]}
+        for role in ("input_base", "usb", "ble", "external", "os_hook"):
+            self.assertEqual([row["rva"] for row in tables[role + "_storage_vtable"]["targets"]][1:],
+                ["0x65cc0", "0x65cc0", "0x662b0", "0x66590"])
+        self.assertEqual([row["class"] for row in proof["report_names"]], list(range(9)))
+        self.assertEqual(proof["report_names"][8]["name"], "hardwareEventReportID")
+        self.assertEqual(proof["default_report_class"], 8)
+        self.assertEqual(proof["report_id_key_bits"], 8)
+        self.assertEqual(len(self.report["host_owners"]), 3)
+        self.assertFalse(self.report["target_execution"])
+        self.assertFalse(self.report["source_chain_complete"])
+        self.assertEqual(self.report["actual_dll_comparison"], "unverified")
+
+    def test_missing_publication_owner_cannot_pass_from_storage_success(self):
+        retained = dict(self.report["native"])
+        retained["complete_functions"] = [row for row in retained["complete_functions"]
+            if row["capture"]["rva"] != "0xe3c90"]
+        with self.assertRaisesRegex(ValueError, "virtual dispatch"):
+            mapping_descriptor_proof(self.raw, retained)
+
+    def test_omitted_change_gate_cannot_claim_a_complete_publication(self):
+        retained = copy.deepcopy(self.report["native"])
+        function = next(row["capture"] for row in retained["complete_functions"]
+            if row["capture"]["rva"] == "0xe3c90")
+        function["assembly"] = [row for row in function["assembly"] if row["rva"] != "0xe3cfc"]
+        with self.assertRaisesRegex(ValueError, "ready_parse_changed_flag_then_publish"):
+            mapping_descriptor_proof(self.raw, retained)
+
+    def test_changed_low_byte_conversion_cannot_reuse_official_bytes(self):
+        retained = copy.deepcopy(self.report["native"])
+        function = next(row["capture"] for row in retained["complete_functions"]
+            if row["capture"]["rva"] == "0xe7080")
+        next(row for row in function["assembly"] if row["rva"] == "0xe71d4")["bytes"] = "8b44246c"
+        with self.assertRaisesRegex(ValueError, "instruction differs"):
+            mapping_descriptor_proof(self.raw, retained)
+
+    def test_rehashed_observer_table_cannot_replace_primary_this_dispatch(self):
+        retained = copy.deepcopy(self.report["native"])
+        region = next(row for row in retained["verified_data_regions"] if row["role"] == "usb_storage_vtable")
+        body = bytearray.fromhex(region["raw_hex"])
+        body[8] ^= 1
+        region["raw_hex"], region["sha256"] = body.hex(), hashlib.sha256(body).hexdigest()
+        with self.assertRaisesRegex(ValueError, "data region differs"):
+            mapping_descriptor_proof(self.raw, retained)
+
+    def test_primary_constructor_cannot_omit_this_assignment(self):
+        retained = copy.deepcopy(self.report["native"])
+        function = next(row["capture"] for row in retained["complete_functions"]
+            if row["capture"]["rva"] == "0xa89f0")
+        function["assembly"] = [row for row in function["assembly"] if row["rva"] != "0xa8a4c"]
+        with self.assertRaisesRegex(ValueError, "storage observer this or constructor"):
+            mapping_descriptor_proof(self.raw, retained)
+
+    def test_mapping_descriptor_query_reaches_the_maintained_cli(self):
+        parser = argparse.ArgumentParser()
+        add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-host-local", "--query", "mapping-descriptors"])
+        with patch("host.audit_host_mapping_descriptors", return_value="receipt") as collect:
+            self.assertEqual(audit_host_local(args), "receipt")
+            collect.assert_called_once_with(args)
+
+    def test_destructor_queued_base_slot_is_a_noop_not_device_confirmation(self):
+        proof = mapping_descriptor_lifecycle_proof(self.raw, self.lifecycle)
+        self.assertEqual(proof["functions_verified"], 19)
+        self.assertEqual(proof["input_base_slot72_target_rva"], "0x77f00")
+
+    def test_lifecycle_cannot_omit_owned_thread_join(self):
+        retained = dict(self.lifecycle)
+        retained["complete_functions"] = [row for row in retained["complete_functions"]
+            if row["capture"]["rva"] != "0x1a9710"]
+        with self.assertRaisesRegex(ValueError, "complete owners differ"):
+            mapping_descriptor_lifecycle_proof(self.raw, retained)
+
+    def test_lifecycle_cannot_remove_unregister_tail(self):
+        retained = copy.deepcopy(self.lifecycle)
+        function = next(row["capture"] for row in retained["complete_functions"]
+            if row["capture"]["rva"] == "0x547e0")
+        function["assembly"] = [row for row in function["assembly"] if row["rva"] != "0x54894"]
+        with self.assertRaisesRegex(ValueError, "reviewed instruction differs"):
+            mapping_descriptor_lifecycle_proof(self.raw, retained)
+
+    def test_equal_profile_hash_retains_the_shared_gamemode_mutation(self):
+        proof = mapping_descriptor_parser_proof(self.raw, self.report["native"], self.parser_reuse)
+        self.assertTrue(proof["same_hash_profile_shared_mutation"])
+        self.assertFalse(proof["same_hash_rechecks_mapping_payload"])
+        self.assertEqual(proof["additional_functions_verified"], 18)
+
+    def test_equal_hash_branch_cannot_omit_the_shared_object_write(self):
+        baseline = copy.deepcopy(self.report["native"])
+        function = next(row["capture"] for row in baseline["complete_functions"]
+            if row["capture"]["rva"] == "0xe75a0")
+        function["assembly"] = [row for row in function["assembly"] if row["rva"] != "0xe7e86"]
+        with self.assertRaisesRegex(ValueError, "same_hash_mutates_shared_gamemode"):
+            mapping_descriptor_parser_proof(self.raw, baseline, self.parser_reuse)
+
+    def test_profile_reuse_cannot_be_treated_as_validated_new_payload(self):
+        baseline = copy.deepcopy(self.report["native"])
+        function = next(row["capture"] for row in baseline["complete_functions"]
+            if row["capture"]["rva"] == "0xe75a0")
+        function["assembly"] = [row for row in function["assembly"] if row["rva"] != "0xe7ef5"]
+        with self.assertRaisesRegex(ValueError, "same_hash_mutates_shared_gamemode"):
+            mapping_descriptor_parser_proof(self.raw, baseline, self.parser_reuse)
+
+    def test_rehashed_md5_state_must_still_match_the_actual_pe(self):
+        retained = copy.deepcopy(self.parser_reuse)
+        region = retained["verified_data_regions"][0]
+        body = bytearray.fromhex(region["raw_hex"])
+        body[0] ^= 1
+        region["raw_hex"], region["sha256"] = body.hex(), hashlib.sha256(body).hexdigest()
+        with self.assertRaisesRegex(ValueError, "data region differs"):
+            mapping_descriptor_parser_proof(self.raw, self.report["native"], retained)
+
+    def gamemode_fixture(self):
+        audit = HostLocalAudit()
+        directory = audit.a.ROOT / ".analysis/results/reverse-pending/review-sources"
+        baseline = audit.families.identity(directory / "21fe84d134926df8d0aecdcd5bbc215e298bd2a4709a9a964d7e344624b27960.json")
+        parser = audit.families.identity(directory / "4b228a4f2121c88570c573c8e45db32823696fe18c67b86f387df4308038b5c1.json")
+        retained = audit.native_slice(self.report["provenance"]["original"], (), depth=0,
+            rvas=(0xe5a36, 0x8eb70, 0xc438a, 0xc45b0, 0xc0e76))
+        return audit, baseline, parser, retained
+
+    def test_effective_gamemode_consumer_keeps_all_service_owners(self):
+        audit, baseline, parser, retained = self.gamemode_fixture()
+        with patch.object(audit, "native_slice", return_value=retained):
+            report = collect_mapping_descriptor_gamemode(audit, baseline, parser)
+        self.assertEqual(report["verified_contract"]["additional_functions_verified"], 5)
+        self.assertFalse(report["target_execution"])
+        self.assertFalse(report["source_chain_complete"])
+
+    def test_mode_service_omission_cannot_pass_from_the_cached_getter(self):
+        audit, baseline, parser, retained = self.gamemode_fixture()
+        retained["complete_functions"] = [row for row in retained["complete_functions"]
+            if row["capture"]["rva"] != "0xc45b0"]
+        with patch.object(audit, "native_slice", return_value=retained):
+            with self.assertRaisesRegex(ValueError, "complete owners differ"):
+                collect_mapping_descriptor_gamemode(audit, baseline, parser)
+
+    def test_effective_gamemode_cannot_drop_the_published_cache_read(self):
+        audit, baseline, parser, retained = self.gamemode_fixture()
+        function = next(row["capture"] for row in retained["complete_functions"]
+            if row["capture"]["rva"] == "0xe5a36")
+        function["assembly"] = [row for row in function["assembly"] if row["rva"] != "0xe5a54"]
+        with patch.object(audit, "native_slice", return_value=retained):
+            with self.assertRaisesRegex(ValueError, "gamemode consumer instruction differs"):
+                collect_mapping_descriptor_gamemode(audit, baseline, parser)
+
+
+class FrontendCaptureModuleTests(unittest.TestCase):
+    def fixture(self):
+        import analysis
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name).resolve()
+        audit = HostLocalAudit()
+        replacement = patch.object(analysis, "ROOT", root)
+        replacement.start()
+        self.addCleanup(replacement.stop)
+
+        def write(name, body):
+            path = root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(body)
+            return {"path": name, "bytes": len(body), "sha256": hashlib.sha256(body).hexdigest()}
+
+        name = "module-fixture-current"
+        originals = [write(".analysis/inputs/frontend/" + name + "/" + file, body)
+            for file, body in (("main.js", b"const main=1;"), ("manifest.mjs", b"export default {};"),
+                              ("shared.MJS", b"export const shared=2;"), ("main.css", b"body{}"))]
+        output = write(".analysis/results/frontend/" + name + "/modules.json", b"[]")
+        tool = write("tools/analyzers/wakaru-1.0.0/wakaru.exe", b"inert fixture; never executed")
+        capture = {"input": ".analysis/inputs/frontend/" + name, "original_inputs": originals,
+            "original_js_inputs": [row["path"] for row in originals[:3]], "outputs": [output],
+            "tool": {"version": "1.0.0", "sha256": tool["sha256"]}, "commands": []}
+        manifest = root / ".analysis/results/frontend" / name / "analysis.json"
+        manifest.write_text(json.dumps(capture), encoding="utf-8")
+        return audit, name, originals, capture, manifest
+
+    def test_es_modules_are_part_of_the_exact_capture_input_set(self):
+        audit, name, originals, _, _ = self.fixture()
+        receipt = audit.frontend_capture(name, originals)
+        self.assertTrue(receipt["successful_full_capture"])
+        self.assertEqual(receipt["originals_verified"], 4)
+
+    def test_omitted_es_module_remains_a_capture_failure(self):
+        audit, name, originals, capture, manifest = self.fixture()
+        capture["original_js_inputs"].pop()
+        manifest.write_text(json.dumps(capture), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "JavaScript input list differs"):
+            audit.frontend_capture(name, originals)
+
+    def test_repeated_es_module_or_stylesheet_cannot_satisfy_the_input_set(self):
+        for replacement in ("duplicate", "stylesheet"):
+            with self.subTest(replacement=replacement):
+                audit, name, originals, capture, manifest = self.fixture()
+                capture["original_js_inputs"].append(originals[1 if replacement == "duplicate" else 3]["path"])
+                manifest.write_text(json.dumps(capture), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "JavaScript input list differs"):
+                    audit.frontend_capture(name, originals)
+
+    def shared_recipe_fixture(self):
+        audit, name, originals, capture, manifest = self.fixture()
+        body = b"retained static recovery recipe; never executed"
+        digest = hashlib.sha256(body).hexdigest()
+        target = audit.a.ROOT / ".analysis/results/frontend/recovery-tools" / (digest + ".py")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(body)
+        output = {"path": audit.a.rel(target), "bytes": len(body), "sha256": digest}
+        recipe = {"path": output["path"], "sha256": digest, "parser_versions": {"tree-sitter": "fixture"}}
+        capture["module_recovery"] = {"recipe": recipe}
+        capture["outputs"].append(output)
+        manifest.write_text(json.dumps(capture), encoding="utf-8")
+        return audit, name, originals, capture, manifest
+
+    def test_exact_hash_addressed_recovery_recipe_is_a_verified_shared_output(self):
+        audit, name, originals, _, _ = self.shared_recipe_fixture()
+        self.assertEqual(audit.frontend_capture(name, originals)["outputs_verified"], 2)
+
+    def test_shared_recipe_cannot_authorize_an_unrelated_output(self):
+        audit, name, originals, capture, manifest = self.shared_recipe_fixture()
+        capture["outputs"][-1]["path"] = ".analysis/results/frontend/recovery-tools/unrelated.py"
+        manifest.write_text(json.dumps(capture), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "output boundary"):
+            audit.frontend_capture(name, originals)
+
+    def test_shared_recipe_must_bind_the_output_hash_and_actual_bytes(self):
+        for change in ("declared_hash", "actual_bytes", "missing_output", "missing_parser"):
+            with self.subTest(change=change):
+                audit, name, originals, capture, manifest = self.shared_recipe_fixture()
+                if change == "declared_hash":
+                    capture["outputs"][-1]["sha256"] = "0" * 64
+                elif change == "actual_bytes":
+                    (audit.a.ROOT / capture["outputs"][-1]["path"]).write_bytes(b"changed recipe")
+                elif change == "missing_output":
+                    capture["outputs"].pop()
+                else:
+                    capture["module_recovery"]["recipe"]["parser_versions"] = {}
+                manifest.write_text(json.dumps(capture), encoding="utf-8")
+                with self.assertRaises(ValueError):
+                    audit.frontend_capture(name, originals)
 
 
 class ProfilesOwnerReceiptTests(unittest.TestCase):

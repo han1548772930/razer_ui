@@ -114,8 +114,28 @@ CSS 加载顺序见 [EQ 页面](playback-and-eq.md#seiren-实际-eq-页面与当
 - TUSBAUDIO_OpenDeviceByIndex／TUSBAUDIO_OpenDeviceByChannelIdString 先校验输出指针并把句柄清零，再检查已枚举列表、索引/通道字符串，分配设备对象、打开内部句柄并登记 map。已看到的错误分支包括非法参数 -301989823、未初始化 -301989776、越界 -301989817、分配失败 -301989856、登记失败 -301989855；通道查找的 1168 分支映射为 -301989759。这些是静态错误映射，不是现场设备返回值。
 - TUSBAUDIO_CloseDevice（x64 966 0x1930、x64 078 0x1950、x86 0x1730）在锁内验证句柄和 map 槽，清除槽、解除设备对象、调用虚表清理与析构；陈旧/无效句柄静态返回 -301989816。TUSBAUDIO_UnregisterPnpNotification 清回调字段并注销内部通知，但未看到“设备已经停止”或硬件确认。
 - 音量入口的静态请求布局已经闭合到共享异步 I/O helper：SetVolume（x64 966 0x2350、x64 078 0x2370、x86 0x1bf0）提交 12 字节输入，含两个通道/参数、16 位音量值和保留字段；IOCTL 为 0x8088225C。GetVolume（x64 966 0x2000、x64 078 0x2020、x86 0x1a80）将输出清零后以 12 字节请求/响应调用 0x80882258，再写回结果。SetMute/GetMute、SetDspProperty/GetDspProperty 共享同类 wrapper 和设备锁，但各属性的完整字段、协议应答与读回仍需独立回放核对，不能由导出存在推定完成。
-- 共享 helper 使用 DeviceIoControl、OVERLAPPED 和事件；ERROR_IO_PENDING (997) 进入最多 1,000 ms 的 WaitForSingleObject/GetOverlappedResult 路径，超时或中止调用 CancelIo，最终非零状态静态映射到 -301989885。这是等待/取消代码路径，不代表传输成功或设备确认。
+- 共享 helper 使用 DeviceIoControl、OVERLAPPED 和事件；ERROR_IO_PENDING (997) 进入 WaitForSingleObject/GetOverlappedResult 路径。下面三份 x86 原件的无限等待按每轮 1,000 ms 继续，不是总计最多等待 1,000 ms；取消后也须等待真实终态。各版本的等待参数、错误映射和释放分别核对，不能由 helper 返回推定设备设置已读回。
 - TUSBAUDIO_RegisterDeviceNotification/ReadDeviceNotification 通过同一设备 helper；DFU 入口包含 StartDfuDownload（x64 966 0x2380、x64 078 0x23a0、x86 0x1c00）、Upload、Revert、Status 和 EndDfuProc，字符串表含 TUsbAudio_DFU_Event_%s 与多种 TSTATUS_*。LoadFirmwareImageFromBuffer/File、GetFirmwareImage 和 UnloadFirmwareImage 形成内存映像生命周期；x64 卸载清理指针和大小，x86 0x1c70 释放 unk_100414B0 并清零大小后返回 0。未执行刷写、回滚、传输读回或恢复。
+
+### x86 峰值计：衰减输入、两次写入与取消完成
+
+[完整语义收据](../../../.analysis/results/reverse-pending/review-sources/2638a562a5435e0ae2bbb26244f3eb7bdc458f64f283202b4e5e6a32b3b520ce.json) 核对了 Seiren V3 Chroma、Seiren V3 Mini 和 Stream Controller 三份 x86 原件。它们的 `TUSBAUDIO_EnablePeakMeters` 导出 `0x1750` 均转到 `0xac80`，通过 `__libm_sse2_pow_precise 0x1a4b0` 的备用分支进入仍然反编译失败的 `__pow_default 0x21c04`。该链是实际设备请求的系数生成，不只是孤立的数学辅助函数；不能从三份 x86 结果推定前述 x64 分支已核对。
+
+导出将全局 critical section 放入 ECX，栈上依次保留 32 位 device handle、config 指针、config count 和衰减参数 `n`，内部以 `ret 0x10` 清栈。入口要求 config 指针及 count 非零、handle 非零、低 16 位 map 槽有效、完整 handle 身份匹配且设备对象存在；`n` 没有额外钳位。每条 config 占 20 字节，但具体字段含义及 `n` 的时间单位尚无保留的外部调用方／头文件证明，不能将其自行命名为毫秒。
+
+整数前导逐条执行原始 `MUL/ADC/SBB/SHRD`，对全部 uint32 输入的代数证书证明计数为 `3072*n`。浮点顺序仍必须保留：计数经 `__ultod3` 转 binary64，再 `CVTSD2SS` 转 binary32，先计算 `-6.0f/count`，再除 `20.0f`，转回 binary64 后调用 `pow(10.0, exponent)`，最后以 `CVTSD2SS` 产生四字节系数。不能合并为一次实数表达式再仅作最终舍入。`n=0` 且除零异常被屏蔽时，首个除法产生 `0xff800000`，原比较分支直接使用正零 `0x00000000`，跳过 pow；未屏蔽异常的实际行为仍需对照。
+
+[位级前导收据](../../../.analysis/results/reverse-pending/review-sources/5473857472a5c9f0d25c7cdeedbf50e20ec69388087ccc473e4f5f07d688cf27.json) 复用各自原 PE 和完整函数，覆盖三份输入、504 个参数及四种舍入方向，共 6,048 项通过、零失败。期望通过精确有理数及相邻浮点区间独立核对，包括零、小整数、二次幂邻域、uint32 上界和固定种子样本。它没有执行 CPU 的 pow，不能证明最终超越函数结果、异常旗标、FTZ／DAZ 或真实设备系数。
+
+`0xac80` 的写入顺序和结果必须分别保存：
+
+1. `0xae06` 以 IOCTL `0x80882218` 写入四字节系数，无输出缓冲，timeout 为 `0xffffffff`；非零结果立即退出。
+2. 第一条返回零后重新检查设备内部句柄，`0xae36` 再以 `0x8088221c` 发送原 config 指针，长度是 `low32(20*count)`，同样无输出缓冲并使用无限 timeout。原函数没有长度乘法溢出检查。
+3. 外层返回第二条结果；没有回滚第一条、串联 getter 或设备读回。第一条成功、第二条失败是部分写入，不能标为整组已启用。参数错误、无效 handle 和缺失内部句柄分别保留原始错误位 `0xee000041/0xee000048/0xee000033`。
+
+disable 导出 `0x1740 → 0xa870` 发送 `0x80882220`，不恢复系数；getter `0x19f0 → 0xd940` 发送 `0x80882224`，输入／输出长度分别为 `20*count`／`8*count`，enable 不调用它。不能把关闭请求当作已恢复初值，也不能将该 getter 的存在虚构为 enable 的自动确认。
+
+共享 I/O owner `0x3cf0`、wait `0x6740` 和 event 准备 `0x4810` 已对完整原指令核对。外层 map 锁覆盖两条请求；内层设备锁保护保留的 OVERLAPPED（对象 `+0x18`）、error（`+0x2c`）、bytes（`+0x30`）和 event（`+0x38`）。pending 997 在无限等待中按 1,000 ms 的 WAIT_TIMEOUT 循环，事件后用 `GetOverlappedResult(false)` 更新结果。需要取消时先 `CancelIo`，随后在保存结果仍为 997 时继续等待并查询，直到终态；终态取消映射为 `0xee000003`。`CancelIo` 的返回本身不是完成。请求终态／准备失败后释放内锁，每条正常出口释放外锁，SEH 路径析构 lock guard；event 属于设备对象并被复用，enable 不关闭它。
 
 ### 迁移和验证边界
 
@@ -149,12 +169,54 @@ CSS 加载顺序见 [EQ 页面](playback-and-eq.md#seiren-实际-eq-页面与当
 
 原件 [RzAudioUtil_v1.0.1.1.dll](../../../.analysis/inputs/official-native-current/blobs/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/RzAudioUtil_v1.0.1.1.dll) 为 x64 PE，706,248 字节，SHA-256 012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11，Image Base 0x180000000。IDA 捕获 [capture.json](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/capture.json) SHA-256 92ed9a6f9651fb6c67ece87ed97667b4c885f23d8fd173eca97d720500608b2d，2,339 个函数、1 个 Hex-Rays 失败（0x1800673a3，call analysis code -12），导出 9 个入口。
 
-- [GetDLLVersion 0x5030](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/5030.json) 把版本格式化为 1.0.1.1，以 DLL 内部分配器返回字符串；调用者应以 [FreeMalloc 0x4e80](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/4e80.json) 释放非空指针。SetNodeFFIEvent 只登记节点事件入口并返回 1，捕获未证明回调何时触发或由谁 join。
-- [Dispatch 0x51f0](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/51f0.json) 解析 JSON 请求的 cmdClass 字段并要求它是 string；未知类别构造 error，已识别 handler 以返回码非负时标记 status: success，否则标记 status: error，最后序列化 response 并返回新分配的 C 字符串。类型错误、JSON 异常和 handler 错误在静态代码中均有独立分支，不能把返回指针非空当作业务成功。
-- [dispatchMediaPlayer 0x37240](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/37240.json) 从 command 字段分派至少 Open、Close、IsMediaReady、CloseVideoWindow 以及其余媒体 lambda；[dispatchMediaRecorder 0x1620](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/1620.json) 当前直接返回 0。捕获字符串还包含 device or resource busy、resource unavailable try again、not connected、protocol error、文件 reopen/flush/write 失败和播放错误文本，说明错误映射存在，但没有从该 DLL 单独闭合到设备读回。
-- Dispatch 的 response 还会写入 status 和 handler 返回的 result，并通过日志记录 req -> resp；分配、异常清理和字符串生命周期由 nlohmann JSON/内部 malloc 路径管理。Rust 端需要把输入类型错误、未知 cmdClass、handler 错误、空结果和释放分别建模。
+### 请求、应答与命令表
 
-本批未执行媒体设备、音频会话、官方 DLL 或服务；Hex-Rays 的一个失败函数保持原始失败收据，未用猜测伪代码补齐。真实播放/录音、取消、恢复、读回和释放仍为 Unverified。
+[GetDLLVersion 0x5030](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/5030.json) 返回版本 1.0.1.1；版本和 Dispatch 输出字符串均通过 DLL 内部分配器产生，由 [FreeMalloc 0x4e80](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/4e80.json) 释放非空指针。[SetNodeFFIEvent 0x4e90](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/4e90.json) 只加锁、解锁、记录 `SetNodeFFIEvent.` 并返回 1；真实指令没有读取或保存传入回调，不能据此认定已注册节点通知。
+
+[全局构造 0x1000](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/1000.json) 仅登记 `MediaPlayer` 和 `MediaRecorder` 两个 `cmdClass`。[Dispatch 0x51f0](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/51f0.json) 要求 `cmdClass` 是字符串；未知类写 `error: "Unknown cmdClass"`。正常完成的 handler 以有符号 HRESULT 非负／负决定 `status: "success"`／`"error"`，序列化 handler 已填充的输出；Dispatch 自身不添加数值 `result` 字段。`std::exception` 路径只调用 [0x4f70](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/4f70.json) 记日志，再返回当时保存的输出指针；解析和类型转换阶段抛出时该指针仍为 null，不保证有异常 JSON。分配失败也可能返回 null。
+
+[dispatchMediaPlayer 0x37240](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/37240.json) 要求字符串 `command`，在播放器 mutex 下查表；未知命令写 `Unknown command` 并返回 `0x80070057`。命令返回失败且没有现成 `error` 时，以 `0x37130` 的 HRESULT 文本补入错误。下表完整覆盖本版本 13 个登记项；虚表第三个 QWORD 是 invoke，RVA 均以该 PE 为基准。`cmdData.handle` 的提取 [0x38160](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/38160.json) 在请求／`cmdData` 不是 object 或缺字段时返回 0；初始分配句柄为 1，未找到句柄写 `Invalid handle` 并返回 `0x80070057`。
+
+| command | lambda / 虚表 RVA | invoke → 主体 RVA | 输入、状态与真实调用 |
+| --- | --- | --- | --- |
+| Open | 3 / `0x8d010` | `0x3e7b0` → [0x38370](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/38370.json) | 必需字符串 `cmdData.url`，可选布尔 `autoPlay`（默认 true）、`loop`（默认 false）及数值 `hwnd`；创建 callback 和 MFPlay 播放器，异步创建媒体项；成功后登记并返回 `response.handle`。 |
+| Close | 4 / `0x8cf58` | [0x3e660](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/3e660.json) | 按 handle 移除节点，Shutdown、Release、清空底层指针，释放 callback 和 map 节点；不检查 Shutdown 返回，随后返回 0。 |
+| IsMediaReady | 5 / `0x8d140` | `0x3e620` → [0x39470](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/39470.json) | 读取 callback 的 ready 字节（对象 `+27`），按两层 initializer-list 写 `response: [[bool]]` 并返回 0；没有同步查询底层准备状态。 |
+| Play | 6 / `0x8ceb0` | [0x3e4f0](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/3e4f0.json) | 按 handle 调底层 COM 虚表 `+24`，返回实际 HRESULT。 |
+| Pause | 7 / `0x8d198` | [0x3e3d0](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/3e3d0.json) | 按 handle 调底层 COM 虚表 `+32`，返回实际 HRESULT。 |
+| Stop | 8 / `0x8cee8` | [0x3e2b0](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/3e2b0.json) | 按 handle 调底层 COM 虚表 `+40`，返回实际 HRESULT。 |
+| Rewind | 9 / `0x8d108` | [0x3e190](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/3e190.json) | 底层指针存在时 SetPosition(0)，忽略该结果，然后固定返回 `0x80004005`；不能按名称假定它成功。 |
+| SetPosition | 10 / `0x8ce78` | `0x3e150` → [0x39640](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/39640.json) | 必需数值 `cmdData.position`，转换秒到 100 ns tick 后调用 COM `+56`，返回 HRESULT；未见范围钳制。 |
+| GetDuration | 11 / `0x8d0d0` | `0x3e110` → [0x39b30](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/39b30.json) | 调 COM `+72`，成功读取 64 位 tick，除以 10,000,000 写 `response.duration`；底层失败仍用 0 构造应答并返回 0。 |
+| GetPosition | 12 / `0x8cfc8` | `0x3e0d0` → [0x39de0](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/39de0.json) | 调 COM `+64`，以相同换算写 `response.position`；底层失败仍用 0 构造应答并返回 0。 |
+| CreateVideoWindow | 13 / `0x8cf20` | `0x3e080` → [0x3a090](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/3a090.json) | 读取可选窗口参数，RegisterClassW / CreateWindowExW，成功返回 `response.hwnd`，失败映射 Win32 错误。 |
+| CloseVideoWindow | 14 / `0x8d070` | `0x3e040` → [0x3b210](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/3b210.json) | 必需数值 `cmdData.hwnd`，有效窗口才 DestroyWindow；空／无效 HWND 返回 S_FALSE（1），仍填 `response.closed: true`。 |
+| SetVideoWindowPosition | 15 / `0x8cf90` | `0x3e000` → [0x3b860](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/3b860.json) | 必需 `cmdData.hwnd`，可选 x/y（0）、width/height（800/600）、flags（64）；有效窗口才 SetWindowPos，空／无效 HWND 返回 S_FALSE（1）。 |
+
+[dispatchMediaRecorder 0x1620](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/1620.json) 只有 `return 0`，因此此类请求可得到 `status: success`，却未执行录音；不能把该 DLL 的类登记当作 PCM 录音能力实现。
+
+### 异步状态、数值和窗口分支
+
+Open 缺 url 返回 `Missing url in cmdData`；窄字符串转宽字符串失败返回 `Failed to convert url to wstring`。它依次调用 `MFPCreateMediaPlayer(NULL, FALSE, 1, callback, hwnd, out)` 和底层 `+112` 的异步媒体项创建，只有 HRESULT 非负才将 40 字节 callback 放入 handle map；失败会 Shutdown、Release、清指针和 free。Open 成功只证明创建请求已接受，ready 仍由后续事件更新。URL 是官方外部输入，不能从此入口推断产品需要远程媒体。
+
+时间转换以指令为准：[0x3c3c0](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/3c3c0.json) 的 `mulsd` 后是 `cvttsd2si rax`，将完整 64 位 tick 放到 `PROPVARIANT +8`，`vt=20`（VT_I8），不是伪代码显示的 32 位 int。两个 getter 同样用 `cmovns rbx, qword ptr [...]` 和 `cvtsi2sd ..., rbx` 读取完整 64 位数，再 PropVariantClear；未校验返回 vt，负 HRESULT 被其 0 值应答掩盖，Rust 观测状态不能仅凭应答中的 0 推断设备实测成功。句柄数值 helper `0x3cce0` 接受 signed/unsigned/float，按 64 位读取／转换；32 位 helper `0x3cbd0` 和 `0x3cf10` 还接受 bool、整数低 32 位及浮点截断，不能从日志的 `type must be number` 推断它们拒绝布尔值。
+
+CreateVideoWindow 默认标题 `Media Playback`、style 282001408、x/y `0x80000000`、800×600；可选字段为 `dwStyle,x,y,width,height,windowName,parentWindow`。`parentWindow` 是窗口标题字符串，经转换后用 FindWindowExW 查找；找到父窗口时 x/y 加父窗口屏幕坐标，非正宽高取父窗口尺寸。参数解析的 catch(...) 保留之前已解析的部分和剩余默认值。窗口类为 `MFPlayVideoWindow`，WndProc 为 DefWindowProcW，类已存在的错误 1410 被接受；本链没有媒体专属窗口事件泵或窗口销毁等待。两个关闭／定位接口的 S_FALSE 会被顶层标为 success，`closed: true` 不能证明本次确实销毁了窗口。
+
+### 回调、释放与跨调用寿命
+
+callback 虚表 RVA `0x8d048` 四槽经原 PE 确认为 `0x370f0`（QISearch）、`0x37110`（InterlockedIncrement）、`0x37120`（InterlockedDecrement）和 [OnMediaPlayerEvent 0x3c460](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/3c460.json)。Release 只递减引用计数，没有计数归零时自毁；对象释放由 map／局部 owner 执行。
+
+- 事件 HRESULT 为负只格式化 `Playback error` 并记日志，没有调用节点事件回调。
+- 事件 5 先以媒体项虚表 `+80` 查询视频标记，成功才写对象 `+26` 并调用播放器 `+128` 设媒体项。
+- 事件 6 写 ready=true；autoPlay=true 时继续 Play。Stop/Pause 不在该回调中清除 ready。
+- 事件 11 且 loop=true 时，只对 SetPosition(0) 检查底层指针，随后无条件调用 Play；回调不核验这两个结果。
+
+[局部 owner 0x3c720](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/3c720.json) 与 Close 均按 Shutdown → Release → 清指针 → free 释放。播放器 map 的进程退出链为 [0x11f0](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/11f0.json) → atexit [0x7a5d0](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/7a5d0.json) → [0x3d810](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/3d810.json)，递归释放每个存活播放器及树节点，最后释放哨兵。静态链未证明 callback 与 Close 共享 mutex、注销后等待在途 callback 或恢复播放位置，不能把 Shutdown 的调用存在当成已验证无竞态。
+
+命令表还保存了首次 dispatch 栈的借用地址：`0x37240` 一次初始化时将 `&v116`（HRESULT）等局部地址放进静态 std::function，例如 Stop 的 `0x3764a/0x37652` 与 `0x3766a/0x37672`。复制 helper [0x3e3a0](../../../.analysis/results/native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/functions/3e3a0.json) 按原值复制指针，消费者 `0x3e2b0` 再通过 `capture+24` 写 HRESULT；其他使用该捕获的命令也存在同类链。每次 dispatch 仍以本次 invoke 返回值更新自己的 HRESULT，因此这里证明的是跨调用／跨线程的过期栈引用风险，不能据静态证据断言每次返回都必错或必然崩溃。
+
+全捕获独立 PE 映射核验通过：2,339 函数的 2,378 个唯一 chunk、487,000 个 chunk 字节和 128,749 个唯一指令均匹配原件；另逐项核对 13 张命令虚表和 callback 四槽。该核验只证明静态捕获字节一致，67370 函数的 Hex-Rays 失败仍保留；上述语义不代表全部编译器／日志辅助函数已人工闭合。本批没有创建临时数据库、克隆或中间文件。Rust 独立媒体实现、产品调用方、UI 接线和实际 DLL／音频会话／窗口／设备对照均未由本节证明完成；真实播放／录音、取消、恢复、读回、回调静止与释放结果保持 **Unverified**。
 
 ## RzNative_0542_v1.0.25.0：Camy 麦克风 HID/TUSBAUDIO 链（2026-10-24 四线程静态捕获）
 
@@ -297,7 +359,7 @@ double __usercall recovered@<st0>(
     double original_argument@<^8.8>);
 ```
 
-`_TBYTE` 明确保留 FSTP 之前的 10 字节浮点输入；返回类型 double 对应实际 FLD qword。显式栈位置、全部栈参数同时显式定位、首个栈参数偏移为零及 `_TBYTE` 类型的分析器语法依据，来自本机已保留的 [IDA 9.1 帮助获取收据](../../../.analysis/inputs/platform-abi-current/ida-9.1/acquisition.json) 及其 `1361.html/1492.html`。该帮助只证明分析器语法说明，厂商物理契约另由完整调用方／被调方 PE 字节证明；尚未实际验证这些候选能被 parser 接受、应用或恢复反编译，不计入已恢复条数。
+`_TBYTE` 明确保留 FSTP 之前的 10 字节浮点输入；返回类型 double 对应实际 FLD qword。显式栈位置、全部栈参数同时显式定位、首个栈参数偏移为零及 `_TBYTE` 类型的分析器语法依据，来自本机已保留的 [IDA 9.1 帮助获取收据](../../../.analysis/inputs/platform-abi-current/ida-9.1/acquisition.json) 及其 `1361.html/1492.html`。该帮助只证明分析器语法说明，厂商物理契约另由完整调用方／被调方 PE 字节证明；parser、类型应用和反编译恢复以各自实际补查收据为准，物理契约核对不计入恢复通过。
 
 | 计划 | 原件 SHA-256 前缀 | 单／双参数入口 RVA | 当前原始失败数 |
 |---|---|---|---:|
@@ -319,7 +381,25 @@ double __usercall recovered@<st0>(
 
 15 个单／双入口的完整指令序列仅将 `E8 rel32` 的四字节 displacement 归零后，各自具有同一个规范化哈希；原始 SHA、原字节和各自实际 CALL 目标仍分别保留。THX `0x13883d` 与另一支持模块的 `0x157a5d` 虽已有伪代码，也作为真实传入调用方完整核对；既有伪代码警告不因此变成语义正确的证据。本组未执行官方 DLL、Rust 差分或真实设备功能，相关维度保持 Unverified。
 
-65 条同形算术汇编失败分属 13 个保留模块，其中 12 个产品模块共用五套调用方形状，另一支持模块为重定位后的对应形状。`0x23380/0x22a20/0x23de0/0x24740` 使用调用方 RSP 工作区、非标准寄存器输入及多个寄存器输出；后两类还跨入共用尾部。仅声明普通 `fastcall`、丢弃多寄存器输出，或重复原先只提高大小上限的失败补查，均不能算恢复。函数运行时入口须按 `.pdata` 的 BeginRVA／展开信息核准；入口前有 13 字节保存指令及 fallthrough，不能据此判定运行时入口或保留边界错误。该组仍保留为复杂契约未决，不与上述已恢复的 14 条混算。
+#### x87 运算、真实消费者与剩余限制
+
+[完整复核](../../../.analysis/results/reverse-pending/review-sources/2638a562a5435e0ae2bbb26244f3eb7bdc458f64f283202b4e5e6a32b3b520ce.json) 沿上面的物理契约继续核对四个实际模块、11 个原始失败及 120 份完整原函数字节。三份 Seiren／Stream 原件的失败 RVA 为 `0x21c04/0x27fe9/0x28d68`，hidapi 为 `0x11818/0x12eb5`。峰值计的 pow 消费者见前节；四份模块的 `__CIlog10` 则进入 `__acrt_fltout → binary64 暂存 → ceil → 整数转换`，属于十进制格式化，不能标成另一条麦克风电平 getter。hidapi 的 dispatcher／log10／格式化调用点分别为 `0x117c0/0x11818/0xe82a`，另三份分别为 `0x28d10/0x28d68/0x246ea`。
+
+log10 明确加载 `0x027f` 控制字，即 53 位精度、就近舍入并屏蔽六类异常，再执行 `FLDLG2/FYL2X`。pow 保存原控制字；`__load_CW` 保留原精度位 `0x0300`、强制就近舍入并以 `|0x7f` 屏蔽异常，不能统一当成始终使用 `0x027f`。log10 的共享 math-exit 在保存控制字 bit `0x20` 为 1 且状态字 PE 为 1 时进入错误类别 8；pow 的 range-exit 则在该保存位为 0 且 PE 为 1 时进入，原始 `JZ/JNZ` 方向相反。±1536 缩放、DBL_MIN／MAX、有符号零／无穷及 NaN／指数奇偶分支分别保留，不能由普通实数 pow 公式覆盖。
+
+共享错误入口先将 ST0 以 `FSTP qword` 存入异常记录 `+0x18`；`__87except/__handle_exc`、必要时的 `RaiseException` 及已安装的 user matherr 均可能影响结果或异常行为，随后才 `FLD qword` 返回。domain 使用 errno 33，pole／overflow 使用 34；原控制字的恢复也属于结果链。不能只比较进入 helper 时的 ST0，或把两个原始 double 和继承的 frame 改写成任意普通 C ABI。
+
+[分析器位置复核](../../../.analysis/results/reverse-pending/review-sources/6854cbf1cbf7865f3158c5641b2685e9ce2726cab953dcccb8f7b5fc4cf366bc.json) 中的 c0／c2／c3、指令局部 rt0 和外部继承 frame 的坐标限制仍保留；本批 typed 恢复为零，没有手改 SP、伪造位置或放宽 BADLOC／坐标往返。6,048 项通过只覆盖峰值计的整数和 IEEE 前导。`FYL2X/F2XM1` 的真实 CPU 近似位值、异常旗标、未屏蔽 trap、pow 最终四字节和设备写入尚未实际执行；Python double、理想对数或任意容差不能代替官方 DLL 对照。
+
+[七模块逐函数复核](../../../.analysis/results/reverse-pending/review-sources/a8dfe69d7fc908746e085c7a54f3c52a957fde4caab1372d021f765f90344ee6.json) 另加入 SHA 前缀为 `5767380e/591fa1a4/20d182f8` 的 Pro API、Chroma API 与 Pro ASIO 原件。前两份对应 `0x23334/0x29839/0x2a988`，ASIO 对应 `0x1dab4/0x23fc9/0x25118`，与前四模块合计 20 个原始失败函数。每个完整候选和原始函数均已重新对照各自 PE；机器字节与 chunk 不变，但所有候选仍有不完整的 typed 坐标，不能因生成伪代码或分析器正常退出而计为严格恢复。收据分别保留普通解析器当时的选择结果与严格 typed 核验错误，两者不得混用。
+
+ASIO 的完整原始 CFG 包含 48 个 block，其中 42 个可由 `0x1dab4` 到达；实际 `CALL 0x1db4d → 0x23e80` 可达，`CALL 0x23fa9 → 0x23e97` 位于该入口不可达的共用错误半尾。[最小补查](../../../.analysis/results/reverse-pending/review-sources/50e4354a2636268a120f71cf3f9042548eb9a5a998b74c6586808510065163bf.json) 仅请求重新内联可达的 helper，保留两个原始 helper 入口、完整 parent 和旧取消记录。该请求已完成，pow 仍有 local-allocation／positive-SP 警告、rt0／c3 的 INTERR 51111 及外部 frame 的 scalar 坐标往返失败，未新增通过项。
+
+#### 共享 Montgomery 算术的独立解释边界
+
+[共享算术复核](../../../.analysis/results/reverse-pending/review-sources/5365af43eadad4bdfd75f6be500772264d77e32025bdd28e688a46ee95175c6a.json) 覆盖 12 份 THX、libcrypto 和两份 simple_service，共 15 个已核原件。174 份完整函数、每个模块真实调用者的七实参、5-bit index、CPU 分支、`.pdata`／unwind 和异常 handler 均分别对原 PE 核对；复用唯一 474 案例来源，逐模块执行八个完整捕获函数，共 7,110 项全部通过、179,393,148 条解释步骤。独立整数期望逐次核对五次平方及最终乘法的非规范化中间值、RAX、RSP 和八个非易失寄存器，没有用取模相等或容差替代精确结果。
+
+`0x23380/0x22a20/0x23de0/0x24740` 等片段使用调用方 RSP 工作区、非标准寄存器输入和多个寄存器输出，并跨入共用尾部。THX／libcrypto 优化片段保留入口缺少 13 字节保存前导，service 对应片段缺少前 38 字节；原 PE 的 `.pdata` 本身也从中间开始。前导已由原始字节和 generic prologue 核对，但没有补进解释执行或据此虚构可直接公开调用的 ABI。仅声明普通 `fastcall`、丢弃多寄存器输出或再次提高反编译大小上限，都不能恢复该契约。原始 call-analysis、too-complex 和 INTERR 50531 失败均保留；OS 实际 unwind、官方 DLL 功能结果、Rust 实现与设备／服务验收仍未验证。
 
 以上均为静态分析与反编译补查边界；上述字符查找、USB、KernelTraceControl 和 THX 分配异常四组合计恢复 33 条原始失败，实际结果由[统一收据](../../../.analysis/results/reverse-pending.json)及对应 `reviewed-native` 记录保留。x87 批组的 39 条候选仍不计入恢复。没有执行官方 DLL 功能结果对照、真实设备写入／读回或 Rust 差分验收。
 

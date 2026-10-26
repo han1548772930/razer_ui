@@ -2235,7 +2235,7 @@ def extract_asar():
 
 def add_commands(parsers):
     local = parsers.add_parser("audit-host-local", help="Trace current local host UI, storage, service and native source chains without executing targets")
-    local.add_argument("--query", required=True, choices=["dynamic-lighting", "macro-recorder", "screen-color", "help-system-info", "product-chroma-observation", "window-lifecycle", "profiles"])
+    local.add_argument("--query", required=True, choices=["dynamic-lighting", "macro-recorder", "screen-color", "help-system-info", "product-chroma-observation", "window-lifecycle", "profiles", "keypad-mapping", "mapping-descriptors"])
     local.add_argument("--verify-only", action="store_true", help="Independently verify the retained profiles source receipt without collecting or publishing it")
     installed = parsers.add_parser("acquire-installed", help="Read-only snapshot of installed Razer files and public official Service Worker resources")
     installed.add_argument("--app-engine-root", required=True)
@@ -2805,14 +2805,27 @@ class HostLocalAudit:
                 raise ValueError("Frontend capture does not cover current deployment bytes: " + row["path"])
         declared_js = capture["original_js_inputs"]
         if len(set(declared_js)) != len(declared_js) or set(declared_js) != {
-                row["path"] for row in originals.values() if Path(row["path"]).suffix == ".js"}:
+                row["path"] for row in originals.values() if Path(row["path"]).suffix.lower() in {".js", ".mjs"}}:
             raise ValueError("Frontend capture JavaScript input list differs from retained originals")
+        recipe = capture.get("module_recovery", {}).get("recipe")
+        shared_recipe = None
+        if recipe and not recipe["path"].startswith(directory):
+            if (not re.fullmatch(r"[a-f0-9]{64}", recipe.get("sha256", ""))
+                    or recipe["path"] != ".analysis/results/frontend/recovery-tools/" + recipe["sha256"] + ".py"
+                    or not isinstance(recipe.get("parser_versions"), dict) or not recipe["parser_versions"]):
+                raise ValueError("Frontend capture shared recovery recipe identity differs")
+            shared_recipe = recipe
         outputs = set()
         for row in capture["outputs"]:
-            if not row["path"].startswith(directory) or row["path"] in outputs:
+            is_shared_recipe = shared_recipe is not None and row["path"] == shared_recipe["path"]
+            if is_shared_recipe and row["sha256"] != shared_recipe["sha256"]:
+                raise ValueError("Frontend capture shared recovery recipe output differs")
+            if (not row["path"].startswith(directory) and not is_shared_recipe) or row["path"] in outputs:
                 raise ValueError("Frontend capture output boundary is absent or repeated")
             self.artifact(self.a.ROOT / row["path"], row)
             outputs.add(row["path"])
+        if shared_recipe is not None and shared_recipe["path"] not in outputs:
+            raise ValueError("Frontend capture shared recovery recipe has no verified output")
         if not outputs:
             raise ValueError("Frontend full capture has no retained output")
         version = capture["tool"]["version"]
@@ -3893,6 +3906,572 @@ def retain_mapping_execution_dependencies(audit):
         "target_execution": False, "runtime_acceptance": "unverified"}
 
 
+KEYPAD_MAPPING_TABLES = (
+    ("analog_stick_input", 0x2ed2a8, (0xa8dd0, 0x1007c0, 0xfc1d0, 0xfc1e0,
+        0xfc230, 0xfc290, 0xfb7a0, 0xfc400, 0xfc560, 0xfc6a0, 0xfc6b0, 0xfc6c0, 0xfc6d0)),
+    ("dpad_output", 0x2ee338, (0xff390, 0x52530, 0xff3a0, 0xff3f0, 0xfcf70, 0xfd050, 0xff650)),
+    ("joystick_output", 0x2ee608, (0x1009d0, 0x52530, 0x1009e0, 0x1009f0, 0x100a60, 0x100ae0, 0xe2b10)),
+    ("joystick_state", 0x2ee6e8, (0x100dd0, 0x52530, 0x100de0, 0x100e20, 0x100ed0, 0x100f30, 0x101790)),
+    ("input_device_mapping_delegate", 0x2e5a78, (0x55680, 0x665e0, 0x66870, 0x66d10, 0x69530)),
+)
+
+
+def verify_retained_native_pe(raw, retained, label):
+    """Bind complete retained owners and data to their file-backed PE bytes."""
+    pe = inspect_pe(raw)
+    base = int(pe["image_base"], 16)
+    if base != int(retained["image_base"], 16):
+        raise ValueError(label + " image base differs")
+
+    def actual(rva, size):
+        section = next((row for row in pe["sections"] if row["rva"] <= rva
+            and rva + size <= row["rva"] + row["bytes"]), None)
+        if section is None or size <= 0:
+            raise ValueError(label + " evidence is outside file-backed PE sections")
+        offset = section["file_offset"] + rva - section["rva"]
+        body = raw[offset:offset + size]
+        if len(body) != size:
+            raise ValueError(label + " evidence exceeds the PE file")
+        return body
+
+    functions, instruction_count = {}, 0
+    for row in retained["complete_functions"]:
+        function = row["capture"]
+        rva = int(function["rva"], 16)
+        if rva in functions or int(function["address"], 16) != base + rva:
+            raise ValueError(label + " function identity is repeated or inconsistent")
+        if not function["chunks"] or not function["assembly"]:
+            raise ValueError(label + " complete machine-code owner is absent")
+        if not function["pseudocode"].get("lines"):
+            raise ValueError(label + " complete pseudocode is absent")
+        for chunk in function["chunks"]:
+            body = bytes.fromhex(chunk["raw_hex"])
+            start, end = int(chunk["start"], 16), int(chunk["end"], 16)
+            if (end - start != len(body) or actual(start - base, len(body)) != body
+                    or hashlib.sha256(body).hexdigest() != chunk["sha256"]):
+                raise ValueError(label + " function chunk differs from PE bytes")
+        for instruction in function["assembly"]:
+            body = bytes.fromhex(instruction["bytes"])
+            address = int(instruction["address"], 16)
+            if (address - base != int(instruction["rva"], 16)
+                    or not any(int(chunk["start"], 16) <= address
+                        and address + len(body) <= int(chunk["end"], 16) for chunk in function["chunks"])
+                    or actual(address - base, len(body)) != body):
+                raise ValueError(label + " instruction differs from PE bytes or owner")
+        functions[rva] = function
+        instruction_count += len(function["assembly"])
+
+    regions = {}
+    for row in retained["verified_data_regions"]:
+        body = bytes.fromhex(row["raw_hex"])
+        if (row["role"] in regions or len(body) != row["bytes"]
+                or actual(int(row["rva"], 16), len(body)) != body
+                or hashlib.sha256(body).hexdigest() != row["sha256"]):
+            raise ValueError(label + " data region differs from PE bytes")
+        regions[row["role"]] = body
+    return base, functions, regions, instruction_count, actual
+
+
+def keypad_mapping_constants(raw, retained):
+    """Bind reviewed dispatch and arithmetic to full captures and actual PE bytes."""
+    base, functions, regions, instruction_count, actual = verify_retained_native_pe(raw, retained, "Keypad mapping")
+    dispatch = []
+    for role, rva, targets in KEYPAD_MAPPING_TABLES:
+        body = regions[role]
+        values = tuple(value - base for value, in struct.iter_unpack("<Q", body))
+        if values != targets or any(target not in functions for target in targets):
+            raise ValueError("Keypad mapping virtual dispatch differs: " + role)
+        dispatch.append({"role": role, "rva": hex(rva),
+            "targets": [{"slot_bytes": slot * 8, "rva": hex(target)} for slot, target in enumerate(values)]})
+
+    def strings(role, expected):
+        values = []
+        for pointer, in struct.iter_unpack("<Q", regions[role]):
+            rva = pointer - base
+            value = bytearray()
+            for offset in range(64):
+                byte = actual(rva + offset, 1)[0]
+                if byte == 0:
+                    break
+                value.append(byte)
+            else:
+                raise ValueError("Keypad mapping string is unterminated")
+            values.append(value.decode("ascii"))
+        if tuple(values) != expected:
+            raise ValueError("Keypad mapping string table differs: " + role)
+        return values
+
+    axes = strings("analog_stick_axis_names", ("left", "right", "up", "down", "invalid"))
+    joystick = strings("joystick_id_names", ("button", "axes", "raxes", "pov"))
+    proofs = (
+        (0x7eb92, ((0x7ebe5, "b8204e0000"), (0x7ebf5, "66f7d9"),
+            (0x7ebfc, "0fb7d9"), (0x7ec0b, "39dd"), (0x7ec0d, "766d"),
+            (0x7ecf7, "80f203"), (0x7ecff, "41b001"), (0x7ed12, "4531c0")),
+            "The native threshold fallback is 20000; signed int16 magnitude uses unsigned16, including -32768. Equality activates. Make/break axis is derived from the current sample sign."),
+        (0xf27ed, ((0xf28c6, "83f87f"), (0xf28cb, "b87f000000"),
+            (0xf28d0, "83f881"), (0xf28d5, "b880ffffff")),
+            "Joystick xyz clamps values >=127 to127 and values <-127 to-128; -127 is retained. This asymmetric lower branch is not a conventional -127 clamp."),
+        (0xfc6d6, ((0xfc6d6, "885138"), (0xfc6d9, "44884139")),
+            "AnalogStick stores axis at byte56 and flag at byte57."),
+    )
+    verified = []
+    for owner, rows, semantics in proofs:
+        instructions = {int(item["rva"], 16): item for item in functions[owner]["assembly"]}
+        if any(instructions.get(rva, {}).get("bytes") != body for rva, body in rows):
+            raise ValueError("Keypad mapping reviewed arithmetic differs: " + hex(owner))
+        verified.append({"owner_rva": hex(owner), "instructions": [instructions[rva] for rva, _ in rows],
+            "semantics": semantics})
+    return {"dispatch": dispatch, "axis_names": axes, "joystick_ids": joystick,
+        "instruction_proofs": verified, "functions_verified": len(functions),
+        "instructions_verified": instruction_count,
+        "verification_scope": "All retained chunk and instruction bytes equal the official PE; mnemonic/operand interpretation uses the retained IDA capture, without an independent x86 decoder"}
+
+
+def collect_keypad_mapping_static(audit):
+    original, provenance = verified_host_native(audit, "CommonDLL/mapping_engine.dll")
+    functions = (0x64e8c, 0x79e9e, 0x7eb92, 0xa4a36, 0xa4d6a, 0xe64e0,
+        0xe381e, 0xe383a, 0xebef2, 0xee98a, 0xee0f1, 0xee5a1, 0xef470,
+        0xfa90e, 0xfa54c, 0xfbc50, 0xfc6d6, 0xf2243, 0xf5027, 0xff48c,
+        0xff5ae, 0xff676, 0x861ca, 0x87b6e, 0x88914, 0x88872, 0x87b02,
+        0x88e20, 0x872c6, 0xf27ed, 0x100910, 0x100d0e, 0x100d1e,
+        0x1011f4, 0x10132c, 0xaf2ae, 0x797a8, 0xad38c,
+        0x677ba, 0x69728, 0x68d0c)
+    retained = audit.native_slice(original, (), depth=0,
+        rvas=tuple(sorted(set(functions) | {value for _, _, values in KEYPAD_MAPPING_TABLES for value in values})),
+        regions=tuple({"role": role, "rva": rva, "bytes": len(values) * 8}
+            for role, rva, values in KEYPAD_MAPPING_TABLES) + (
+                {"role": "analog_stick_axis_names", "rva": 0x2edaa0, "bytes": 40},
+                {"role": "joystick_id_names", "rva": 0x2ee640, "bytes": 32}))
+    if retained["failures"] or retained["decompiler_failures"]:
+        raise ValueError("Keypad mapping complete native owners remain unavailable")
+    constants = keypad_mapping_constants(audit.read(original), retained)
+    return {"schema_version": 1, "scope": "Current shared keypad mapping native consumers; product747 frontend and OBM are separate source joins",
+        "provenance": provenance, "native": retained, "verified_constants": constants,
+        "semantics": {
+            "input_parser": "ee98a accepts exact axis strings left/right/up/down with enum0/1/2/3 and uint8 flag0/1. It allocates type3, then writes bytes56/57. fc400 identity contains type,axis,flag; fc560 stateless identity omits flag. vtable+72/+80 identify make/break.",
+            "threshold": "Optional analogStick.threshold is parsed by ebef2 as signed16 and must be1..32766. Missing analogStick leaves the native AnalogStick constructor/reset default20000; this is a native mapping threshold, not a device read or permission to write device defaults.",
+            "input_samples": "79e9e parses report triples starting at byte1: inputID plus signed big-endian16 value, stopping on inputID0. When mapping is enabled, IDs251/252 reach7eb92 unless already excluded by the active-input tree; absent previously held entries reach7eb92 with0. Other IDs use ordinary analog-key handling.",
+            "edge_state": "7eb92 compares unsigned magnitude with abs(threshold), including equality. It tracks held state by axis inputID alone: repeated above-threshold values and direct sign reversal do not emit another edge. Only insertion emits flag0; only removal below threshold emits flag1. ID251 maps positive to right and nonpositive to left; ID252 maps positive to up and nonpositive to down. The break axis uses the current sample sign, including zero; no previous-sign substitution is present.",
+            "mapping_delegate": "Constructor64e8c installs the +120 subobject table2e5a78. Slots24/32 resolve to66d10/69530. Break lookup uses the active map and stateless identity; make lookup follows live priority, then the normal mapped-key path.69530 checks677ba, dispatches69728 then68d0c and otherwise797a8; native acceptance is distinct from final output delivery.",
+            "dpad_parser": "f2243 requires a nonempty dpad array of objects. Each may have a parsable input; missing or nonobject input is treated as no condition by the exact optional EB468 guard. output is required and parsed with restricted f5027. Any element failure fails the candidate. ff48c retains list order and indexes outputs by input stateless identity, using an empty identity for unconditional entries.",
+            "dpad_execution": "861ca snapshots active inputs under the owning lock, walks source dpad order and skips conditional entries absent from that snapshot. First matching candidate stops the search; it does not execute every candidate. Joystick19 and Xbox41 use aggregated controller state; other outputs clone the mapped key, substitute output and re-enter ad38c. The input make/break predicates control the pending dpad pair and release/re-selection chain88914/87b6e; lookup/allocation failure does not prove a successful output.",
+            "joystick_parser": "f27ed selects exact id button/axes/raxes/pov. Button requires uint32 button plus uint8 flag0/1; runtime1011f4 applies only buttons1..24. Three-axis branches require exactly three JSON integers and clamp upper127/lower-128 as shown by the exact instruction proof.100ae0 serializes a button under value although the parser expects button; this source asymmetry is retained.",
+            "joystick_aggregation": "872c6 mutates the live joystick state only when present.1011f4 maintains byte counters for buttons and keyed contributions for axes/raxes/pov.10132c removes the previous contribution for the same stateless input, inserts only a nonzero vector, then sums each axis strongest negative and positive values; the -128/+127 pair explicitly adjusts to0. af2ae sends changed button/axis fields through the driver queue and publishes via the actual controller consumer. Queueing is not transport ACK.",
+            "failure_cleanup": "The retained native owners release reference-counted mappings, inputs, controller snapshots and owned strings on their explicit paths. No new device command, rollback, cancellation acknowledgment or hardware readback is inferred. Full device shutdown and all downstream executors remain separate lifecycles."},
+        "remaining_closure": [
+            "Join product747 Fe mapping compiler and OBM command/ACK owners to these native consumers",
+            "Finish every dpad deferred pair branch, mode-priority branch and native output executor for every product and transport",
+            "Independent Rust implementation, production integration, official actual-function comparison and real-device/window acceptance"],
+        "source_chain_complete": False, "target_execution": False, "actual_dll_comparison": "unverified",
+        "independent_execution_connected": False, "runtime_acceptance": "unverified"}
+
+
+def audit_host_keypad_mapping(args):
+    audit = HostLocalAudit()
+    report = collect_keypad_mapping_static(audit)
+    report.update(recorded_at_utc=audit.a.stamp(), tool=audit.families.identity(Path(__file__)),
+        complete_originals=list(audit.sources.values()), verified_artifacts=list(audit.artifacts.values()))
+    changed = audit.final_snapshot()
+    if changed:
+        raise ValueError("Keypad mapping inputs changed during query: " + ", ".join(changed))
+    publish_host_static_query(report, audit.a.ROOT / ".analysis/results/host-current/local-audit.json", audit.a, "keypad_mapping")
+    print(json.dumps({"query": args.query, "functions": report["verified_constants"]["functions_verified"],
+        "instructions": report["verified_constants"]["instructions_verified"], "target_execution": False,
+        "actual_dll_comparison": "unverified"}), flush=True)
+
+
+MAPPING_DESCRIPTOR_OBSERVERS = (
+    ("input_base", 0x64e8c, 0x64edb, 0x2e5a18, 0x55680),
+    ("usb", 0xa89f0, 0xa8a45, 0x2e7d88, 0xa92a0),
+    ("ble", 0x52158, 0x521ad, 0x2e3f28, 0x54000),
+    ("external", 0x6319c, 0x631f1, 0x2e55b8, 0x64b90),
+    ("os_hook", 0xa6b74, 0xa6bc9, 0x2e78a8, 0xa8930),
+)
+
+MAPPING_DESCRIPTOR_TABLES = (
+    ("engine_storage_vtable", 0x2df010, (0x1b380, 0x1350, 0x2090, 0x2cc0, 0x2fa0, 0x3220, 0x3490)),
+    ("device_data_vtable", 0x2ec2e8, (0x52530, 0xe3c90, 0xe5930, 0xe59d0, 0xe90c0)),
+) + tuple((role + "_storage_vtable", table, (destructor, 0x65cc0, 0x65cc0, 0x662b0, 0x66590))
+    for role, _, _, table, destructor in MAPPING_DESCRIPTOR_OBSERVERS)
+
+MAPPING_DESCRIPTOR_REPORT_NAMES = (
+    "analogKeyboardReportID", "analogKeyboardV2ReportID", "analogKeypadReportID",
+    "controlPodReportID", "coolingPadReportID", "razerEventReportID", "razerKeyReportID",
+    "streamControllerReportID", "hardwareEventReportID",
+)
+
+
+def mapping_descriptor_proof(raw, retained):
+    """Resolve storage observers, publication gates and report classes from PE bytes."""
+    base, functions, regions, instruction_count, actual = verify_retained_native_pe(raw, retained, "Mapping descriptor")
+    region_rows = {row["role"]: row for row in retained["verified_data_regions"]}
+    dispatch = []
+    for role, rva, targets in MAPPING_DESCRIPTOR_TABLES:
+        row, body = region_rows.get(role), regions.get(role, b"")
+        if (row is None or int(row["rva"], 16) != rva or len(body) != len(targets) * 8
+                or tuple(value - base for value, in struct.iter_unpack("<Q", body)) != targets
+                or any(target not in functions for target in targets)):
+            raise ValueError("Mapping descriptor virtual dispatch differs: " + role)
+        dispatch.append({"role": role, "rva": hex(rva), "targets": [
+            {"slot_bytes": slot * 8, "rva": hex(target)} for slot, target in enumerate(targets)]})
+
+    def instructions(owner):
+        if owner not in functions:
+            raise ValueError("Mapping descriptor reviewed owner is absent: " + hex(owner))
+        return {int(row["rva"], 16): row for row in functions[owner]["assembly"]}
+
+    constructors = []
+    for role, owner, lea, table in (("engine", 0x1060, 0x106d, 0x2df010),
+            ("device_data", 0xe3b10, 0xe3b1f, 0x2ec2e8)):
+        rows = instructions(owner)
+        encoded = bytes.fromhex(rows.get(lea, {}).get("bytes", ""))
+        if (len(encoded) != 7 or encoded[:3] != b"\x48\x8d\x05"
+                or lea + 7 + struct.unpack_from("<i", encoded, 3)[0] != table
+                or rows.get(lea + 7, {}).get("bytes") != "488901"):
+            raise ValueError("Mapping descriptor primary constructor differs: " + role)
+        constructors.append({"role": role, "owner_rva": hex(owner), "vtable_rva": hex(table),
+            "this_offset": 0, "instructions": [rows[lea], rows[lea + 7]]})
+    for role, owner, lea, table, _ in MAPPING_DESCRIPTOR_OBSERVERS:
+        rows = instructions(owner)
+        encoded = bytes.fromhex(rows.get(lea, {}).get("bytes", ""))
+        if (len(encoded) != 7 or encoded[:3] != b"\x48\x8d\x05"
+                or lea + 7 + struct.unpack_from("<i", encoded, 3)[0] != table
+                or rows.get(lea + 7, {}).get("bytes") != "488906"):
+            raise ValueError("Mapping descriptor storage observer this or constructor differs: " + role)
+        constructors.append({"role": role, "owner_rva": hex(owner), "vtable_rva": hex(table),
+            "this_offset": 0, "instructions": [rows[lea], rows[lea + 7]]})
+
+    names_row = region_rows.get("report_class_names")
+    if names_row is None or int(names_row["rva"], 16) != 0x2ec310 or len(regions.get("report_class_names", b"")) != 72:
+        raise ValueError("Mapping descriptor report-name table identity differs")
+    names = []
+    for pointer, in struct.iter_unpack("<Q", regions["report_class_names"]):
+        value, rva = bytearray(), pointer - base
+        for offset in range(64):
+            byte = actual(rva + offset, 1)[0]
+            if not byte:
+                break
+            value.append(byte)
+        else:
+            raise ValueError("Mapping descriptor report name is unterminated")
+        names.append({"table_index": len(names), "class": min(len(names), 8),
+            "rva": hex(rva), "name": value.decode("ascii"),
+            "bytes": len(value) + 1, "raw_hex": (value + b"\0").hex()})
+    if tuple(row["name"] for row in names) != MAPPING_DESCRIPTOR_REPORT_NAMES:
+        raise ValueError("Mapping descriptor report-name values differ")
+
+    proofs = (
+        (0xb0ed0, ((0xb0ed0, "488b01"), (0xb0ed3, "488b4008")), "added_observer_slot8"),
+        (0xb0fb0, ((0xb0fb0, "488b01"), (0xb0fb3, "488b4010")), "changed_observer_slot16"),
+        (0x6a470, ((0x6a470, "488b01"), (0x6a473, "488b4018")), "deleted_observer_slot24"),
+        (0x8dc00, ((0x8dc00, "488b01"), (0x8dc03, "488b4020")), "clear_observer_slot32"),
+        (0x65cc0, ((0x65d2d, "488b4018"), (0x65d54, "0f88f9010000"),
+            (0x65d98, "488b4008")), "current_key_compare_and_set_data"),
+        (0xe3c90, ((0xe3cc4, "488b4038"), (0xe3ce7, "e832020000"),
+            (0xe3cee, "0f8403020000"), (0xe3cf4, "418a442441"), (0xe3cfc, "a801"),
+            (0xe3d23, "498b542430"), (0xe3d28, "49c744243000000000"),
+            (0xe3d31, "e86c1c0000")), "ready_parse_changed_flag_then_publish"),
+        (0xe7080, ((0xe71b2, "80792004"), (0xe71d4, "8a44246c"),
+            (0xe71d8, "8844243f"), (0xe7215, "44897814")), "report_id_string_and_uint8_key"),
+        (0xe3bc8, ((0xe3c60, "4183ff08"), (0xe3c64, "be08000000"),
+            (0xe3c69, "410f42f7")), "eight_special_classes_else_hardware8"),
+        (0xe5b6c, ((0xe5b99, "be08000000"), (0xe5ba2, "488b4f38"),
+            (0xe5bbd, "4883c120"), (0xe5bd6, "8b7014")), "classifier_reads_published_report_map"),
+        (0xdb630, ((0xdb72c, "4c8d4622"), (0xdb74d, "4c8d4624")), "physical_pid_and_edition_id_fields"),
+    )
+    verified = []
+    for owner, expected, role in proofs:
+        rows = instructions(owner)
+        if any(rows.get(rva, {}).get("bytes") != body for rva, body in expected):
+            raise ValueError("Mapping descriptor reviewed instruction differs: " + role)
+        verified.append({"role": role, "owner_rva": hex(owner),
+            "instructions": [rows[rva] for rva, _ in expected]})
+    return {"dispatch": dispatch, "constructors": constructors, "report_names": names,
+        "default_report_class": 8, "report_id_key_bits": 8,
+        "instruction_proofs": verified, "functions_verified": len(functions),
+        "instructions_verified": instruction_count,
+        "verification_scope": "All retained chunks, instructions and data equal the official PE. Reviewed machine-code branches and constructor writes bind the interpretation; no target execution or independent x86 decoder."}
+
+
+def collect_mapping_descriptors_static(audit):
+    original, provenance = verified_host_native(audit, "CommonDLL/mapping_engine.dll")
+    functions = (
+        0x1000, 0x1060, 0x1e454, 0x20680, 0x20920, 0x20f00, 0x21460,
+        0x3160, 0x33d0, 0x3650, 0xd42d8, 0xd46ec, 0xd4900, 0xd4b72,
+        0xd4d60, 0xd4fb4, 0xd51b0, 0xd52d2, 0xd539c, 0xd545a, 0xd5518,
+        0xd565c, 0xd570c, 0xd58f4, 0xd0030, 0xce9ec, 0xd6c60,
+        0x5546c, 0x55484, 0x555b0, 0xd3ff2, 0xb07d8, 0xb1640, 0xb1b90,
+        0xb1e3a, 0xb1fb0, 0xc21b0, 0xb0ed0, 0xb0fb0, 0x6a470, 0x8dc00,
+        0x549e0, 0x54a50, 0x54a60, 0x5597d, 0x65cc0, 0x662b0, 0x66590,
+        0xdb630, 0x77f10, 0x780b0, 0x78790, 0x78be0, 0xaa588,
+        0xe3b10, 0xe3b6c, 0xe3c90, 0xe3f1e, 0xe3878, 0xe59a2,
+        0xe7080, 0xe3bc8, 0xe5b6c, 0xe5a74, 0xe72fa, 0xe75a0,
+        0xeb468, 0xeb32e, 0xeb3cb, 0xeb281, 0xdb930, 0xeb505, 0xebef2,
+        0x1b4af0, 0x1b4940, 0x1b48a0, 0x1b49e0, 0x1b43d0, 0x1bfd50,
+        0xa8de0, 0x53c70, 0x64a60, 0x549d0, 0x7f43e,
+    )
+    retained = audit.native_slice(original, ("localStorageGetItem", "localStorageSetItem",
+        "localStorageDeleteItem", "localStorageDeleteAllItems"), depth=0,
+        rvas=tuple(sorted(set(functions)
+            | {value for _, _, values in MAPPING_DESCRIPTOR_TABLES for value in values}
+            | {owner for _, owner, _, _, _ in MAPPING_DESCRIPTOR_OBSERVERS})),
+        regions=tuple({"role": role, "rva": rva, "bytes": len(values) * 8}
+            for role, rva, values in MAPPING_DESCRIPTOR_TABLES) + (
+                {"role": "report_class_names", "rva": 0x2ec310, "bytes": 72},))
+    if retained["failures"] or retained["decompiler_failures"]:
+        raise ValueError("Mapping descriptor complete native owners remain unavailable")
+    proof = mapping_descriptor_proof(audit.read(original), retained)
+    sources = verified_host_owners(audit, ("electron/modules/mapping_engine/win/index.js",))
+    source = sources["electron/modules/mapping_engine/win/index.js"]["original"]
+    owners = {}
+    for name in ("localStorageSetItem", "localStorageDeleteItem", "localStorageDeleteAllItems"):
+        _, owners[name] = audit.callable_member("mapping_descriptor_host_" + name,
+            source, audit.tree(source).root_node, name)
+        body = audit.owners[owners[name]]["body"]
+        if any(token not in body for token in ("if(!this.isInit)", 'e.Callback("void",["bool","string"]',
+                "this.cbMap.set(", "this.cbMap.delete(", "this.libFFI[")):
+            raise ValueError("Mapping descriptor host callback ownership differs: " + name)
+    return {"schema_version": 1,
+        "scope": "Current shared descriptor storage, identity, report classification and publication gates; complete product callers and all mapping executors are separate joins",
+        "provenance": provenance, "native": retained, "verified_contract": proof,
+        "host_sources": sources, "host_owners": owners, "complete_host_owners": audit.owners,
+        "semantics": {
+            "storage_set": "20920 rejects empty key/value and uses the engine primary slot32/2fa0.3160 -> d46ec queues d4900 on the storage-service thread. A missing key is inserted and notified; equal bytes do not notify; changed bytes replace the old value and queue both values. Completion reports storage success on the origin runner, not parse/publication or hardware acknowledgment.",
+            "completion_lifetime": "20680 invokes the retained bool/string callback only while global394748 bit0 remains set. Host fields gate isInit, retain the FFI callback in cbMap until the Promise completes, and remove it afterward. If native shutdown suppresses the callback, this source does not supply a cancellation completion or successful fallback.",
+            "observer_dispatch": "5546c -> d3ff2 -> b07d8 registers the unadjusted input object with a token. Added d539c/ce9ec/b0ed0 calls primary slot8; changed d52d2/d570c/b0fb0 calls slot16. All five concrete primary tables resolve both to65cc0. b1640 checks the current registration token under its owning lock before dispatching queued work. Hardware callback subobject+128 is a different table, even where6a470 is shared.",
+            "physical_identity": "db630 parses vendorId at+32(u16), productId at+34(u16), editionId at+36(u32), serialNumber at+88 and containerId at+112.780b0 registers then reads synapse_PID_container when present, synapse_PID_edition_serial when present, synapse_PID_edition, then synapse_PID. PID is the native physical device identity, not a guessed displayed model.",
+            "initial_read": "77f10 queues780b0 to the device runner.55484 -> d42d8 performs asyncGet;555b0 caches only a successful nonempty value at input+80. The final base-key callback78790 schedules initialization.78be0 creates DeviceData and walks the ordered cache until the first successful SetData. These reads do not initialize hardware from local defaults.",
+            "update_selection": "65cc0 updates the cache first via549e0, obtains the published key, and compares incoming bytes using5597d. An incoming key smaller than the current key is skipped; a nonempty value otherwise reaches SetData. This is the actual lexical comparison and initial ordered traversal, not an invented specificity priority.",
+            "candidate_parse": "e3f1e resets change bytes64/65 and creates a separate candidate at+48. version(int32) and dualLinked/bluetoothLE/turnOffAnalogToKey(bool) reads are optional: ignored getter failure leaves the candidate constructor values. reportIDs is processed only for an object; absent or nonobject is ignored by eb468/1b4af0. defaultMappings object, activeProfile string and profiles array are required; analogData/analogStick and mapping parsers have their own branches. These internal parser defaults are not observed device values.",
+            "report_ids": "e7080 parses reportIDs property names through signed-int conversion1bfd50, then stores only the low uint8 key. Each present value must be JSON string type4. The nine name table has special classes0..7; hardwareEventReportID and unknown strings both classify8. A missing reportID also classifies8. Classes0..2 additionally update the candidate special selector at+144; no capability is inferred from count or integer value.",
+            "publication": "e3c90 requires the engine ready gate and successful full FormatData. It returns true on successful parse even if change byte65 bit0 is clear. Only a set bit locks+72, updates key+24 and moves candidate+48 into published+56.65cc0 refreshes viaaa588 only on that same change bit. reportIDs alone does not set it; default/profile hashes, active selection and analog changes must be followed through their actual owners. Parse failure preserves the old published object.",
+            "classification": "e5b6c reads the published+56 report map at+32 and defaults to class8. USB a8de0 obtains the reportID from raw[bluetoothLE]; BLE53c70 and the other concrete input branches remain separately retained. Class8 reaches the existing hardware event path7f43e. A cached candidate or storage success cannot change the live classifier by itself.",
+            "deletion": "d545a/ce9ec binds6a470 on the primary object, so slot24 resolves to662b0. It removes the cached key, clears live DeviceData only when deleting the current key, then tries remaining cache entries in order until SetData succeeds. d5518/d58f4 binds8dc00, primary slot32/66590, which clears cache and DeviceData then refreshes. DeviceData slot16/e5930 clears its key and published data; destructors and reference releases are retained without claiming all engine shutdown paths closed."},
+        "remaining_closure": [
+            "Join every actual product publisher and merged descriptor to physical identity, hash gates, active mapping and transport consumers",
+            "Finish all default/profile mapping parsers and executors, notification unregister and full engine stop/cancel/drain lifecycles",
+            "Independent Rust implementation, production/UI integration and official actual-function/device acceptance"],
+        "source_chain_complete": False, "target_execution": False, "actual_dll_comparison": "unverified",
+        "independent_execution_connected": False, "runtime_acceptance": "unverified"}
+
+
+def freeze_host_static_review(report, a):
+    """Retain one deterministic, content-addressed complete static review."""
+    import os
+    frozen = (json.dumps(report, ensure_ascii=False, indent=2) + "\n").replace("\n", os.linesep).encode("utf-8")
+    digest = hashlib.sha256(frozen).hexdigest()
+    path = a.ROOT / ".analysis/results/reverse-pending/review-sources" / (digest + ".json")
+    if path.exists():
+        if path.read_bytes() != frozen:
+            raise ValueError("Host frozen review collides with different retained bytes")
+    else:
+        a.save(path, report)
+        if path.read_bytes() != frozen:
+            raise ValueError("Host frozen review serialization differs")
+    return {"path": a.rel(path), "bytes": len(frozen), "sha256": digest}
+
+
+MAPPING_DESCRIPTOR_LIFECYCLE_FUNCTIONS = (0xa8c2c, 0x52394, 0x633d8, 0xa6db8, 0x656ca, 0x547e0,
+    0xd3c70, 0xd3d1e, 0xb0ab0, 0xb1ebc, 0xb1f26, 0xd3ef2,
+    0x1b8670, 0x1b88e0, 0x1a9710, 0x1b8a20, 0x200430, 0x65c90, 0x77f00)
+
+
+def mapping_descriptor_lifecycle_proof(raw, retained):
+    base, functions, regions, instruction_count, _ = verify_retained_native_pe(raw, retained, "Mapping observer lifecycle")
+    if set(MAPPING_DESCRIPTOR_LIFECYCLE_FUNCTIONS) != set(functions):
+        raise ValueError("Mapping observer lifecycle complete owners differ")
+    table = regions["input_base_lifetime_vtable"]
+    if len(table) != 80 or struct.unpack_from("<Q", table, 72)[0] - base != 0x77f00:
+        raise ValueError("Mapping observer lifecycle destructor slot72 differs")
+    proof = []
+    for owner, expected in (
+        (0x65c90, ((0x65c90, "488b01"), (0x65c93, "488b4048"))),
+        (0x547e0, ((0x54894, "e9d7f30700"),)),
+        (0xd3c70, ((0xd3ccb, "e84e000000"),)),
+        (0xb0ab0, ((0xb0af0, "e8c7130000"),)),
+        (0x1b8670, ((0x1b86a3, "e86810ffff"),)),
+        (0xd3ef2, ((0xd3f2a, "48c7054b082c0000000000"), (0xd3f39, "e832470e00"))),
+    ):
+        rows = {int(row["rva"], 16): row for row in functions[owner]["assembly"]}
+        if any(rows.get(rva, {}).get("bytes") != encoded for rva, encoded in expected):
+            raise ValueError("Mapping observer lifecycle reviewed instruction differs: " + hex(owner))
+        proof.append({"owner_rva": hex(owner), "instructions": [rows[rva] for rva, _ in expected]})
+    return {"functions_verified": len(functions), "instructions_verified": instruction_count,
+        "input_base_slot72_target_rva": "0x77f00", "instruction_proofs": proof}
+
+
+def collect_mapping_descriptor_lifecycle(audit, source_review):
+    """Join observer destruction and its thread stop to the existing descriptor review."""
+    baseline = json.loads(audit.artifact(audit.a.ROOT / source_review["path"], source_review))
+    original, provenance = verified_host_native(audit, "CommonDLL/mapping_engine.dll")
+    if baseline["provenance"]["original"] != original:
+        raise ValueError("Mapping observer lifecycle belongs to another descriptor input")
+    retained = audit.native_slice(original, (), depth=0, rvas=MAPPING_DESCRIPTOR_LIFECYCLE_FUNCTIONS,
+        regions=({"role": "input_base_lifetime_vtable", "rva": 0x2e5a18, "bytes": 80},))
+    if retained["failures"] or retained["decompiler_failures"]:
+        raise ValueError("Mapping observer lifecycle complete owners remain unavailable")
+    proof = mapping_descriptor_lifecycle_proof(audit.read(original), retained)
+    return {"schema_version": 1, "scope": "Shared descriptor observer destruction and owned-thread stop boundaries",
+        "descriptor_review": source_review, "provenance": provenance, "native": retained,
+        "verified_contract": proof,
+        "semantics": {
+            "concrete_destructors": "USB a8c2c, BLE52394, external633d8 and OS-hooka6db8 all reach common656ca after restoring their own tables; OS-hook separately releases its owned pointer+1936.656ca then installs base input tables before posting65c90 to its owned device runner.65c90 reads primary slot72, now77f00, a no-op thunk; this queued call is not a derived restore or hardware confirmation.",
+            "device_runner": "656ca calls1b8670 on the owned thread before freeing mapping/callback/container fields.1b8670 holds the thread lock, calls StopSoon1b88e0, joins with1a9710 when a handle exists, and resets its handle/stopping byte.1b8a20 reaches RunLoop::QuitWhenIdle200430; its actual thread guard or re-post is retained. Join waits INFINITE and closes the handle; unexpected wait results go through the native assertion path. No per-request hardware ACK is inferred.",
+            "unregister": "After owned fields and references are released,547e0 ends with d3c70 on the same primary object. d3c70 installs Observer's base table, leases global394780 if present, then d3d1e snapshots all key-specific observer lists under the service lock. For each list b0ab0 removes this identity via b1ebc under that list's lock. Baseline b1640 rejects a later queued callback if the registration is absent or its token changed; unregister itself does not expose a separate drain acknowledgment.",
+            "service_destroy": "d3ef2 checks its caller runner affinity, clears global394780, stops/joins its storage thread, then destroys observer lists and stored strings and releases caller/thread owners. An observer destroyed after the global is cleared skips service removal. Service teardown, connection stop and all external producers remain separate owners."},
+        "remaining_closure": ["Verify every engine/device shutdown initiator, all external producers and per-request cancellation/restore consumers",
+            "Independent Rust ownership, integration and official actual-function/device comparisons"],
+        "source_chain_complete": False, "target_execution": False, "actual_dll_comparison": "unverified",
+        "cleanup": {"temporary_files_retained": [], "private_databases_created": []}}
+
+
+MAPPING_DESCRIPTOR_PARSER_FUNCTIONS = (0xe5bf6, 0xe2f94, 0xe8518, 0xe871e, 0xe8888,
+    0x1b3a30, 0x1f3600, 0x1f3710, 0x251cc0, 0x1c0030, 0x1bcb40, 0x1bcb80,
+    0x1c9d80, 0x1c9dd0, 0x109b12, 0x109c08, 0xfb6ac, 0xfa828)
+
+
+def mapping_descriptor_parser_proof(raw, baseline, retained):
+    _, old, _, _, _ = verify_retained_native_pe(raw, baseline, "Mapping descriptor parser baseline")
+    _, new, regions, instruction_count, _ = verify_retained_native_pe(raw, retained, "Mapping descriptor parser")
+    required = (0xe3f1e, 0xe72fa, 0xe75a0, 0xeb468, 0xeb32e, 0xeb3cb, 0xeb281)
+    if any(rva not in old for rva in required) or set(new) != set(MAPPING_DESCRIPTOR_PARSER_FUNCTIONS):
+        raise ValueError("Mapping descriptor parser complete owners differ")
+    if regions.get("mapping_descriptor_md5_initial_state") != bytes.fromhex("0123456789abcdeffedcba9876543210"):
+        raise ValueError("Mapping descriptor parser MD5 initial state differs")
+    functions = {**old, **new}
+    proofs = []
+    for owner, expected, role in (
+        (0xe72fa, ((0xe7342, "e821410000"), (0xe7366, "e8fd400000"),
+            (0xe7477, "e89c100000"), (0xe7515, "864641"),
+            (0xe7567, "e88c59f7ff"), (0xe759b, "e97cffffff")), "default_hash_reuses_old_mapping_without_change_bit"),
+        (0xe75a0, ((0xe79be, "e8a53a0000"), (0xe79c5, "0f84d8050000"),
+            (0xe79f0, "41c60000"), (0xe7a03, "e879380000"),
+            (0xe7e86, "888198000000"), (0xe7eb9, "e83a50f7ff"),
+            (0xe7ebe, "31ed"), (0xe7ef5, "0f84f9040000"),
+            (0xe7f08, "e80b060000"), (0xe7f9f, "41864641")), "same_hash_mutates_shared_gamemode_and_skips_reparse"),
+        (0xe8518, ((0xe8561, "e83ac00c00"), (0xe8587, "e824cb0c00"),
+            (0xe85ad, "e8feca0c00"), (0xe85e0, "e89b170e00"),
+            (0xe861d, "e80eb40c00")), "hash_removes_hash_and_gamemode_before_serialization"),
+    ):
+        rows = {int(row["rva"], 16): row for row in functions[owner]["assembly"]}
+        if any(rows.get(rva, {}).get("bytes") != body for rva, body in expected):
+            raise ValueError("Mapping descriptor parser reviewed instruction differs: " + role)
+        proofs.append({"role": role, "owner_rva": hex(owner),
+            "instructions": [rows[rva] for rva, _ in expected]})
+    return {"additional_functions_verified": len(new), "additional_instructions_verified": instruction_count,
+        "baseline_owner_rvas": [hex(rva) for rva in required], "instruction_proofs": proofs,
+        "same_hash_profile_shared_mutation": True, "same_hash_rechecks_mapping_payload": False,
+        "hash_format": "lowercase hexadecimal MD5 of the native serialized object without hash/gamemode",
+        "serialization_boundary": "Exact JSON writer ordering, number and string formatting remain separately auditable; no generic JSON serializer equivalence is inferred"}
+
+
+def collect_mapping_descriptor_parser(audit, source_review):
+    baseline = json.loads(audit.artifact(audit.a.ROOT / source_review["path"], source_review))
+    original, provenance = verified_host_native(audit, "CommonDLL/mapping_engine.dll")
+    if baseline["provenance"]["original"] != original:
+        raise ValueError("Mapping descriptor parser belongs to another descriptor input")
+    retained = audit.native_slice(original, (), depth=0, rvas=MAPPING_DESCRIPTOR_PARSER_FUNCTIONS,
+        regions=({"role": "mapping_descriptor_md5_initial_state", "rva": 0x2f3740, "bytes": 16},))
+    if retained["failures"] or retained["decompiler_failures"]:
+        raise ValueError("Mapping descriptor parser complete owners remain unavailable")
+    proof = mapping_descriptor_parser_proof(audit.read(original), baseline["native"], retained)
+    return {"schema_version": 1, "scope": "Default/profile hash reuse, shared gamemode mutation and hash-validation dispatch",
+        "descriptor_review": source_review, "provenance": provenance, "native": retained,
+        "verified_contract": proof,
+        "baseline_owners": [row["artifact"] for row in baseline["native"]["complete_functions"]
+            if int(row["capture"]["rva"], 16) in {int(rva, 16) for rva in proof["baseline_owner_rvas"]}],
+        "semantics": {
+            "default_mapping": "e72fa requires defaultMappings object. Its appEngine is optional: absent or wrong-type skips that subparser successfully. A present object requires string hash. Under the DeviceData lock e5bf6 leases the published default map; identical hash strings reuse that reference without validating the incoming payload or setting change byte65. A changed/first hash must pass e8518 then e871e before change byte65 is set. A fresh candidate default set is not an observed device configuration.",
+            "profile_selection": "e75a0 requires profiles array and allocates/reset a Profile. It validates each visited element as object with string guid, skips unequal guids, and stops at the first activeProfile match. It does not validate every later inactive profile. No match returns parser success without publishing an active profile. A matching profile without an appEngine object accepts the new empty Profile; a present appEngine requires string hash and treats a missing/wrong-type gamemode as false.",
+            "shared_profile": "The candidate and published descriptor hold reference-counted Profile objects. On an equal active profile appEngine hash, e7e86 writes the parsed gamemode directly to the existing published Profile+152, then e7eb9 shares it with candidate+24. e7ebe clears the reparse flag and e7ef5 bypasses hash validation and mapping parsing, without setting descriptor change byte65. This shared-object mutation occurs before later descriptor validation; a retained published pointer on parse failure does not imply immutable contents.",
+            "changed_profile": "On a different/first hash, e8518 validates first, then the new Profile receives gamemode/hash and e871e parses optional profile-only actuations/rapidTriggers/snaptaps plus required mappings. Only successful parsing sets descriptor change byte65 at e7f9f. These paths do not issue a device command or provide a hardware acknowledgment.",
+            "hash_validator": "e8518 copies the appEngine object, removes hash and gamemode, serializes through1c9d80/1c9dd0, and computes1b3a30. That helper uses1f3600/1f3710/251cc0 with the retained standard MD5 initial state and complete 64-round body;1c0030 hex-encodes16 digest bytes and1bcb40/1bcb80 lowercases ASCII. The supplied hash is compared byte-for-byte; differing case is not normalized on the supplied string. Equal stored hash bypasses this validator entirely."},
+        "remaining_closure": ["Close exact native JSON writer ordering/escaping/number behavior and every input/output mapping parser/executor branch",
+            "Join shared gamemode consumers, complete descriptor failure/cancellation lifetimes and all applicable product publishers",
+            "Independent Rust implementation, UI/backend integration and actual official-function/device comparisons"],
+        "source_chain_complete": False, "target_execution": False, "actual_dll_comparison": "unverified",
+        "cleanup": {"temporary_files_retained": [], "private_databases_created": []}}
+
+
+def collect_mapping_descriptor_gamemode(audit, source_review, parser_review):
+    baseline = json.loads(audit.artifact(audit.a.ROOT / source_review["path"], source_review))
+    audit.artifact(audit.a.ROOT / parser_review["path"], parser_review)
+    original = baseline["provenance"]["original"]
+    retained = audit.native_slice(original, (), depth=0, rvas=(0xe5a36, 0x8eb70, 0xc438a, 0xc45b0, 0xc0e76))
+    if retained["failures"] or retained["decompiler_failures"]:
+        raise ValueError("Mapping gamemode consumer complete owners remain unavailable")
+    _, functions, _, instructions, _ = verify_retained_native_pe(audit.read(original), retained, "Mapping gamemode consumer")
+    if set(functions) != {0xe5a36, 0x8eb70, 0xc438a, 0xc45b0, 0xc0e76}:
+        raise ValueError("Mapping gamemode consumer complete owners differ")
+    _, old, _, _, _ = verify_retained_native_pe(audit.read(original), baseline["native"], "Mapping gamemode baseline")
+    proofs = []
+    for owner, rows, expected in ((0xe3f1e, old, ((0xe4c77, "8a8098000000"), (0xe4c80, "88818c000000"))),
+            (0xe5a36, functions, ((0xe5a4b, "488b4738"), (0xe5a54, "80b88c00000000"))),
+            (0x8eb70, functions, ((0x8eba1, "e8906e0500"), (0x8ebcb, "868720030000"), (0x8ec28, "e85d570300")))):
+        assembly = {int(row["rva"], 16): row for row in rows[owner]["assembly"]}
+        if any(assembly.get(rva, {}).get("bytes") != body for rva, body in expected):
+            raise ValueError("Mapping gamemode consumer instruction differs: " + hex(owner))
+        proofs.append({"owner_rva": hex(owner), "instructions": [assembly[rva] for rva, _ in expected]})
+    return {"schema_version": 1, "descriptor_review": source_review, "parser_review": parser_review,
+        "scope": "Shared Profile gamemode versus published descriptor cache and its device-mode caller",
+        "native": retained, "verified_contract": {"additional_functions_verified": len(functions),
+            "additional_instructions_verified": instructions, "instruction_proofs": proofs},
+        "semantics": "e3f1e copies Profile+152 into candidate descriptor+140 at e4c77/e4c80. The effective getter e5a36 locks DeviceData and reads published+56 -> byte140, not the shared Profile byte. Thus an equal-hash Profile mutation alone does not update the effective published gamemode cache; a later accepted candidate can copy it.8eb70 compares that getter with its own observed byte800, marks byte801 and atomically updates800 before queuing c438a NotifyGamemodeStatusOnAnyThread. Its c45b0 task calls c0e76 on the device-mode service and separately posts completion to the origin runner. c0e76 looks up the actual identity; a miss logs without creating a device. A hit writes byte48 of the registered mode record and invokes c13d8 to notify observers, including the equal-state case (its check only changes logging). That service notification is not a hardware write/readback, and its complete downstream event/observer consumers remain separate.",
+        "remaining_closure": ["Close all device-mode service event recipients, descriptor refresh callers and applicable product consumers"],
+        "source_chain_complete": False, "target_execution": False, "actual_dll_comparison": "unverified",
+        "cleanup": {"temporary_files_retained": [], "private_databases_created": []}}
+
+
+def audit_host_mapping_descriptors(args):
+    audit = HostLocalAudit()
+    report = collect_mapping_descriptors_static(audit)
+    report.update(complete_originals=list(audit.sources.values()), verified_artifacts=list(audit.artifacts.values()),
+        cleanup={"temporary_files_retained": [], "private_databases_created": [],
+            "capture_policy": "Reused complete byte-verified native and host captures; no recapture or temporary copies"})
+    changed = audit.final_snapshot()
+    if changed:
+        raise ValueError("Mapping descriptor inputs changed during query: " + ", ".join(changed))
+    source_review = freeze_host_static_review(report, audit.a)
+    lifecycle = collect_mapping_descriptor_lifecycle(audit, source_review)
+    lifecycle["verified_artifacts"] = list(audit.artifacts.values())
+    changed = audit.final_snapshot()
+    if changed:
+        raise ValueError("Mapping observer inputs changed during query: " + ", ".join(changed))
+    lifecycle_review = freeze_host_static_review(lifecycle, audit.a)
+    parser = collect_mapping_descriptor_parser(audit, source_review)
+    parser["verified_artifacts"] = list(audit.artifacts.values())
+    changed = audit.final_snapshot()
+    if changed:
+        raise ValueError("Mapping parser inputs changed during query: " + ", ".join(changed))
+    parser_review = freeze_host_static_review(parser, audit.a)
+    gamemode = collect_mapping_descriptor_gamemode(audit, source_review, parser_review)
+    gamemode["verified_artifacts"] = list(audit.artifacts.values())
+    changed = audit.final_snapshot()
+    if changed:
+        raise ValueError("Mapping gamemode inputs changed during query: " + ", ".join(changed))
+    gamemode_review = freeze_host_static_review(gamemode, audit.a)
+    report.update(recorded_at_utc=audit.a.stamp(), tool=audit.families.identity(Path(__file__)),
+        source_review=source_review, observer_lifecycle={key: value for key, value in lifecycle.items()
+            if key not in {"native", "verified_artifacts"}})
+    report["observer_lifecycle"]["source_review"] = lifecycle_review
+    report["parser_reuse"] = {key: value for key, value in parser.items()
+        if key not in {"native", "verified_artifacts"}}
+    report["parser_reuse"]["source_review"] = parser_review
+    report["gamemode_consumer"] = {key: value for key, value in gamemode.items()
+        if key not in {"native", "verified_artifacts"}}
+    report["gamemode_consumer"]["source_review"] = gamemode_review
+    published = {**report, "native": {"complete_evidence": report["source_review"], "pointer": "/native",
+        "original": report["provenance"]["original"], "image_base": report["native"]["image_base"],
+        "functions_verified": report["verified_contract"]["functions_verified"],
+        "instructions_verified": report["verified_contract"]["instructions_verified"],
+        "full_function_records_in_review": True, "target_execution": False}}
+    publish_host_static_query(published, audit.a.ROOT / ".analysis/results/host-current/local-audit.json",
+        audit.a, "mapping_descriptors")
+    print(json.dumps({"query": args.query, "functions": report["verified_contract"]["functions_verified"],
+        "instructions": report["verified_contract"]["instructions_verified"], "source_review": report["source_review"], "target_execution": False,
+        "actual_dll_comparison": "unverified"}), flush=True)
+
+
 def retain_mapping_global_mode(audit):
     """Retain the live mode service, its query, producers and owned cleanup."""
     original, provenance = verified_host_native(audit, "CommonDLL/mapping_engine.dll")
@@ -4737,6 +5316,7 @@ def audit_host_macro_recorder(args):
 
 
 def audit_host_screen_color(args):
+    import frontend
     audit = HostLocalAudit()
     a, families = audit.a, audit.families
     report = {"recorded_at_utc": a.stamp(), "tool": families.identity(Path(__file__)),
@@ -4744,16 +5324,23 @@ def audit_host_screen_color(args):
               "source_chain_complete": False, "product_code_modified": False,
               "target_execution": False, "real_device_operations": False, "runtime_acceptance": "unverified"}
     try:
-        for name in ("tools/host.py", "tools/evidence.py", "tools/families.py", "tools/analysis.py"):
+        for name in ("tools/host.py", "tools/evidence.py", "tools/families.py", "tools/analysis.py", "tools/frontend.py"):
             audit.artifact(a.ROOT / name)
         mouse_set, mouse_files = audit.source_set("mouse-70-current")
-        studio_set, studio_files = audit.source_set("synapse-chroma-studio-current")
-        report["source_sets"] = [mouse_set, studio_set]
-        report["reused_complete_captures"] = [audit.frontend_capture(name, files) for name, files in (
-            ("mouse-70-current", mouse_files), ("synapse-chroma-studio-current", studio_files))]
+        studio_selection = frontend.current_source_selection("https://apps.razer.com/synapse/chroma-studio/", audit,
+            candidates=[".analysis/inputs/frontend/" + name + "/acquisition.json" for name in (
+                "synapse-chroma-studio-current", "synapse-chroma-studio-build-2609080829-current")])
+        studio_files = studio_selection["originals"]
+        report["source_sets"] = [mouse_set, {"name": studio_selection["name"],
+            "acquisition": studio_selection["acquisition"], "deployment": studio_selection["deployment"]}]
+        report["studio_source_selection"] = {key: value for key, value in studio_selection.items()
+            if key not in {"originals", "capture", "deployment"}}
+        report["reused_complete_captures"] = [audit.frontend_capture("mouse-70-current", mouse_files)]
+        if studio_selection["capture"] is not None:
+            report["reused_complete_captures"].append(studio_selection["capture"])
 
         def source(files, needle):
-            matches = [row for row in files if Path(row["path"]).suffix == ".js" and needle.encode() in audit.read(row)]
+            matches = [row for row in files if Path(row["path"]).suffix.lower() in {".js", ".mjs"} and needle.encode() in audit.read(row)]
             if len(matches) != 1:
                 raise ValueError("Screen color source owner is absent or ambiguous: " + needle)
             return matches[0]
@@ -4873,10 +5460,7 @@ def audit_host_screen_color(args):
     report["snapshot_stable"] = not report["changed_during_query"]
     report["failures"].extend("Audit artifact changed during query: " + name for name in report["changed_during_query"])
     destination = a.ROOT / ".analysis/results/host-current/local-audit.json"
-    with a.index_lock(destination.with_suffix(".lock")):
-        previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
-        previous["screen_color"] = report
-        a.save(destination, previous)
+    publish_host_static_query(report, destination, a, "screen_color")
     print(json.dumps({"receipt": a.rel(destination), "query": args.query,
                       "complete_source_owners": len(audit.owners), "failures": report["failures"]}), flush=True)
     if report["failures"]:
@@ -5820,23 +6404,27 @@ def verify_profiles_static_receipt(report, audit=None):
         "source_sets": 2, "target_execution": False, "runtime_acceptance": "unverified"}
 
 
-def publish_profiles_static(report, destination, a):
+def publish_host_static_query(report, destination, a, query):
     """Update only this query while recording canonical identities of older fields."""
     def identity(value):
         return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
             separators=(",", ":")).encode("utf-8")).hexdigest()
     with a.index_lock(destination.with_suffix(".lock")):
         previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
-        preserved = {key: identity(value) for key, value in previous.items() if key != "profiles"}
+        preserved = {key: identity(value) for key, value in previous.items() if key != query}
         report["preserved_top_level_canonical_sha256"] = preserved
-        previous["profiles"] = report
+        previous[query] = report
         a.save(destination, previous)
         del previous
         persisted = json.loads(destination.read_bytes())
-        if ({key: identity(value) for key, value in persisted.items() if key != "profiles"} != preserved
-                or persisted["profiles"] != report):
-            raise ValueError("Profiles publication changed an unrelated top-level field")
+        if ({key: identity(value) for key, value in persisted.items() if key != query} != preserved
+                or persisted[query] != report):
+            raise ValueError("Host query publication changed an unrelated top-level field")
     return preserved
+
+
+def publish_profiles_static(report, destination, a):
+    return publish_host_static_query(report, destination, a, "profiles")
 
 
 def audit_host_profiles(args):
@@ -6069,6 +6657,10 @@ def audit_host_local(args):
         raise ValueError("Host-local --verify-only currently applies only to the profiles query")
     if args.query == "profiles":
         return audit_host_profiles(args)
+    if args.query == "keypad-mapping":
+        return audit_host_keypad_mapping(args)
+    if args.query == "mapping-descriptors":
+        return audit_host_mapping_descriptors(args)
     if args.query == "window-lifecycle":
         return audit_host_window_lifecycle(args)
     if args.query == "product-chroma-observation":

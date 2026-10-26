@@ -25,7 +25,8 @@ Power 的实际挂载顺序如下。其余键盘没有当前 Power 导航，不�
 
 | 产品 | 实际内容 |
 | --- | --- |
-| 574、585、600、602、631、658、664、697、2595 | `dimLighting`，然后数值型 `powerSavingValue` |
+| 574、2595 | `dimLighting`，然后数值型 `powerSavingValue` |
+| 585、600、602、631、658、664、697 | `dimLighting`，然后 `{isEnabled,value}` 型 `powerSaving` |
 | 708、716、724、727 | 左侧 dimKeyboardLighting、显式 title/tips/description 的低功耗说明；右侧 powerSaving |
 | 717 | 同样左右布局，低功耗说明不传上述自定义文本参数 |
 | 756 | 左侧 dimKeyboardLighting、FN + Backspace 低功耗说明；右侧 powerSaving |
@@ -104,6 +105,20 @@ dim maker `Sy` 保存全局 dimLighting/version 后排 runner；powerSaving make
 | 旧数值 sleep runner `oi` | `setTimeToSleep(60*minutes)` 后检查取消，再 `getTimeToSleep` 严格比较秒数；不符抛出 `data not match` |
 
 dim/power 新 runner 在 adapter 后检查取消并写 memory cache，但上述 adapter 吞异常，outer completed 不能升级为严格硬件确认。选中的 rzDevice25 `setTimeToDim` wrapper 仅接收 profile/enabled/seconds/brightness 四个参数；adapter 额外传 batteryId 不证明该 wrapper 把它编码进协议。
+
+这九款的实际 UI → action/reducer → maker → runner/callback → adapter → 产品物理传输选择，已在 [统一 Power 审查](../../../.analysis/results/reverse-pending/review-sources/328fa8a84bd909ee4dba270bb2830ac9916cb58b3050fd4a8db8ac9174fe6e64.json) 保留 735 个完整原件所有者及各产品的具体引用。七款对象型组件挂载时调用的 `loadPowerSavingFromDevice` 是空 thunk，不能把这一调用写成实际 GET；其 task maker 则确实读取 adapter，再按来源、single-profile 条件决定是否采用读值。只有 574、2595 的数值型 setter runner 做写后严格秒数比较。各 maker 先保存本机文档、更新 version 与 UI 动作，再提交硬件任务，顺序不代表设备已确认，也没有由失败自动回滚的依据。
+
+### 九款无线 Power 的 BLE 数据与异步边界
+
+真实连接工厂先用当前物理 `bleId` 选择 `rzDevice30`；USB dongle 只有在当前产品的 Mika/DualLink 条件成立时使用对应子类。BLE 的秒数按低字节、高字节排列，与本页 756 的 Protocol25 Power 大端字段不同；`rzDevice30._createDataSend` 构造八字节头：transaction、三字节小端长度、class、command、profile、selector，后接 payload。不能从共享方法名称推断同一报文布局。
+
+`rzBLE.send` 经过 preload 的 `doBleDeviceAction` 和主机 `rzBleDeviceAction`，再按 MAC → peripheral → service/characteristic 选择写入与通知对象。主机向 strategy 传入七个参数；`protocol30.write` 声明六个参数，而第六个 `noResponseData` 在 Promise executor 中被同名 resolve 参数遮蔽，实际没有被消费。第五个 GUID 只作日志上下文，不能用作请求或连接代次关联；`withoutResponse` 是独立的第四个参数。
+
+Windows 分支把八字节头与二十字节 payload 分片逐个写出，没有逐片等待 native write callback。普通回复由 notify characteristic 的 `read` 事件拼接：首包只核 transaction 和 status=2，以头部 LE24 长度收集后续字节，没有 class/id 或 checksum 比较；续包是无请求标记的数据。`sendCommand` 先按二十字节头切片，长度不符时再尝试八字节头布局，两种切片不能合并成固定响应头。遇到明确失败、BUSY、timeout 与本机错误的重试路径继续由当前产品完整 owner 决定。
+
+500 ms 命令计时器在 `notifyAsync(true)` 完成后才建立。`read` callback 一进入就清除此计时器，之后才检查是否为 notification、transaction 是否匹配；被忽略的消息不会重新启动计时器。因此缺失 notify callback，或到达无关/非通知数据，都可能使 Promise 保持未完成。另一路 `protocol30.read` 也先清除其 5000 ms 计时器再检查 notification/ready。八字节及以下的 `withoutResponse` 写入没有 resolve，只有长帧分片分支会立即设置本地完成；这些源码行为没有被写成硬件成功。
+
+`Characteristic.write/notify` 用同一 characteristic 上的 `once` 关联回调，随后调用 `callback(null)`；`Noble.onWrite` 不提供原生错误，notify 的 state 也被该 callback 丢弃。回调没有请求 ID、取消或超时，同对象的多个等待者可能消费同一事件。`protocol30.disconnect` 请求断开后立即返回 true；`Noble.onDisconnect` 只更新 peripheral 状态并发事件，主机删除自己的缓存也不等于清除所有 characteristic 监听器、排空 native 操作或恢复设备原值。上述完整 35 个主机/JS 所有者与参数作用域证明在统一审查的 `host_ble_transport`；原生 GATT 结果、通知 token 和管理器释放另按实际原生收据核验。
 
 ## 756 Rust 恢复 worker 的读写与结算边界
 

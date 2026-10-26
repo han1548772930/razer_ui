@@ -22,6 +22,11 @@ class StorageBoundaryTests(unittest.TestCase):
                      prefix + "/supplements/strings.json", prefix + "/unknown.json", None):
             with self.subTest(name=name), self.assertRaises(ValueError):
                 storage.native_dataset(name)
+        for name in (".analysis/results/reverse-pending/review-sources/review.json",
+                     ".analysis/results/reverse-pending/review-sources/" + "a" * 64 + ".py",
+                     ".analysis/results/reverse-pending/" + "a" * 64 + ".json"):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                storage.native_dataset(name)
 
     def test_report_cannot_overwrite_evidence_or_follow_links(self):
         for name in (".analysis/results/native/" + "a" * 64 + "/strings.json",
@@ -89,6 +94,46 @@ class NtfsEvidenceCompactionTests(unittest.TestCase):
         with storage.open_dataset(self.dataset) as file:
             storage.verify_snapshot(file.info(), row)
             self.assertTrue(file.info()["compressed"])
+
+    def test_explicit_immutable_review_keeps_its_path_hash_and_complete_logical_bytes(self):
+        digest = hashlib.sha256(self.content).hexdigest()
+        name = ".analysis/results/reverse-pending/review-sources/" + digest + ".json"
+        review = self.root / name
+        review.parent.mkdir(parents=True)
+        review.write_bytes(self.content)
+        row = storage.plan_file(name)
+        self.assertIsNone(row["capture"]["capture_complete"])
+        self.assertEqual(row["capture"]["scope"], "immutable_native_static_review")
+        result = storage.apply_file(row)
+        self.assertEqual(review.read_bytes(), self.content)
+        self.assertEqual(review.name, digest + ".json")
+        self.assertTrue(result["logical_bytes_unchanged"])
+        self.assertGreater(result["bytes_reclaimed"], 0)
+        forged = review.with_name("b" * 64 + ".json")
+        forged.write_bytes(self.content)
+        with self.assertRaisesRegex(ValueError, "differs"):
+            storage.plan_file(forged.relative_to(self.root).as_posix())
+
+    def test_review_scope_is_opt_in_and_apply_uses_only_the_frozen_plan(self):
+        digest = hashlib.sha256(self.content).hexdigest()
+        name = ".analysis/results/reverse-pending/review-sources/" + digest + ".json"
+        review = self.root / name
+        review.parent.mkdir(parents=True)
+        review.write_bytes(self.content)
+        args = argparse.Namespace(command="compact-analysis", workers=2, minimum_mib=1000,
+            plan=storage.PLAN, apply=False, plan_sha256=None, review_receipt=[name])
+        with redirect_stdout(io.StringIO()):
+            report = analysis.run(args)
+        self.assertEqual([r["path"] for r in report["files"]], [name])
+        args.apply, args.plan_sha256 = True, analysis.sha(self.root / storage.PLAN)
+        with self.assertRaisesRegex(ValueError, "unchanged reviewed plan"):
+            analysis.run(args)
+        args.review_receipt = []
+        with redirect_stdout(io.StringIO()):
+            result = analysis.run(args)
+        self.assertEqual(result["summary"]["files"], 1)
+        self.assertEqual(review.read_bytes(), self.content)
+        self.assertFalse(getattr(self.dataset.stat(), "st_file_attributes", 0) & 0x800)
 
     def test_unfinished_capture_retains_its_status_without_inventing_output_identity(self):
         self.manifest.pop("capture_complete")

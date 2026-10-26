@@ -5519,17 +5519,52 @@ def _clean_tree(name):
             "directories": sorted(directories), "bytes": sum(row["bytes"] for row in files)}
 
 
+def _clean_capture_batch_ended(record, cutoff):
+    """Release blanket reservations only after every recorded process has exited."""
+    try:
+        from reverse_pending import coordinator_instance_absence
+        started = datetime.fromisoformat(record["started_at_utc"])
+        finished = datetime.fromisoformat(record["finished_at_utc"])
+        jobs = record["jobs"]
+        if (record.get("target_execution") is not False or started.tzinfo is None
+                or finished.tzinfo is None or not started.timestamp() <= finished.timestamp() < cutoff
+                or not isinstance(jobs, list) or not jobs):
+            return False
+        processes = [{"pid": record["coordinator_pid"], "started_at_utc": record["started_at_utc"]}]
+        for job in jobs:
+            ended = datetime.fromisoformat(job["finished_at_utc"])
+            if (job.get("status") not in {"passed", "finished"} or job.get("exit_code") != 0
+                    or ended.tzinfo is None or not started <= ended <= finished):
+                return False
+            pid = job.get("cli_pid", job.get("maintenance_pid"))
+            if type(pid) is not int or pid <= 0:
+                return False
+            processes.append({"pid": pid, "started_at_utc": job.get("started_at_utc", record["started_at_utc"])})
+        return all(type(session["pid"]) is int and session["pid"] > 0
+                   and coordinator_instance_absence(session).get("confirmed_absent") is True for session in processes)
+    except (KeyError, TypeError, ValueError):
+        return False
+
+
 def _clean_candidates(before=None):
     cutoff = datetime.now(timezone.utc).timestamp() if before is None else before
     queue = ROOT / ".analysis/results/reverse-pending.json"
     if queue.is_file():
-        # The coordinator owns this receipt; current-run scratch is always retained.
-        with queue.open("rb") as stream:
-            prefix = stream.read(65536).decode("utf-8")
-        started = re.search(r'"started_at_utc"\s*:\s*"([^"\\]+)"', prefix)
-        if not started:
+        # An unfinished or still-owned queue protects every current-run copy.
+        current = json.loads(queue.read_bytes())
+        started = current.get("started_at_utc")
+        if not isinstance(started, str):
             raise ValueError("Current queue start is unavailable; scratch cleanup cannot establish an age boundary")
-        cutoff = min(cutoff, datetime.fromisoformat(started[1]).timestamp())
+        started_at = datetime.fromisoformat(started).timestamp()
+        ended = False
+        finished, session = current.get("finished_at_utc"), current.get("queue_session")
+        if isinstance(finished, str) and isinstance(session, dict):
+            from reverse_pending import coordinator_instance_absence
+            finished_at = datetime.fromisoformat(finished).timestamp()
+            if started_at <= finished_at <= cutoff:
+                ended = coordinator_instance_absence(session).get("confirmed_absent") is True
+        if not ended:
+            cutoff = min(cutoff, started_at)
     candidates, retained = [], []
     reserved = {}
     reservations = ROOT / ".work/reverse-pending"
@@ -5537,7 +5572,7 @@ def _clean_candidates(before=None):
         if _scratch_link(manifest):
             raise ValueError("Analyzer reservation is a reparse point")
         record = json.loads(manifest.read_bytes())
-        if record.get("cleanup_released") is True:
+        if _clean_capture_batch_ended(record, cutoff):
             continue
         for job in record.get("jobs", []):
             identity = job.get("sha256")
@@ -5568,6 +5603,7 @@ def _clean_candidates(before=None):
             session, capture = [json.loads(path.read_bytes()) for path in basis[:2]]
             if (not session.get("finished_at_utc") or session.get("passed") is not True
                     or session.get("exit_code") != 0 or capture.get("capture_complete") is not True
+                    or capture.get("all_pseudocode_captured") is False
                     or capture.get("target_execution") is not False):
                 retained.append({"path": name, "reason": "unfinished_failed_or_unreviewed_supplement"})
                 continue
@@ -5602,7 +5638,42 @@ def _clean_candidates(before=None):
     return candidates, retained
 
 
-def _clean_json_dependencies(value, *, own_receipt=False, field=None):
+def _clean_historical_native_stdout(value):
+    """Recognize exact ended launch/completion records, never arbitrary log text."""
+    if not isinstance(value, str):
+        return False
+    try:
+        lines = [json.loads(line) for line in value.splitlines() if line.strip()]
+        if (len(lines) != 2 or set(lines[0]) != {"pid", "result", "log"}
+                or set(lines[1]) != {"session", "passed"} or lines[1]["passed"] is not True):
+            return False
+        launch, completion = lines
+        result = launch["result"]
+        if not isinstance(result, str) or not re.fullmatch(
+                r"\.analysis/results/native/[a-f0-9]{64}/supplements/[a-f0-9]{16}", result):
+            return False
+        scratch = result.replace(".analysis/results/native/", ".work/native/", 1)
+        if launch["log"] != scratch + "/ida.log" or completion["session"] != result + "/session.json":
+            return False
+        session_path = safe(ROOT / completion["session"])
+        capture_path = safe(ROOT / result / "capture.json")
+        if _scratch_link(session_path) or _scratch_link(capture_path):
+            return False
+        session = json.loads(session_path.read_bytes())
+        capture = json.loads(capture_path.read_bytes())
+        ended = datetime.fromisoformat(session["finished_at_utc"])
+        if (session.get("pid") != launch["pid"] or session.get("passed") is not True
+                or session.get("exit_code") != 0 or capture.get("capture_complete") is not True
+                or capture.get("target_execution") is not False or ended.tzinfo is None
+                or ended.timestamp() >= datetime.now(timezone.utc).timestamp()):
+            return False
+        from reverse_pending import coordinator_instance_absence
+        return coordinator_instance_absence(session).get("confirmed_absent") is True
+    except (KeyError, TypeError, ValueError, OSError):
+        return False
+
+
+def _clean_json_dependencies(value, *, own_receipt=False, field=None, ended_batch=False, historical_job=False):
     """Keep dependency fields while excluding explicitly historical inventory facts."""
     if isinstance(value, dict):
         if value.get("mode") in {"scratch_cleanup_plan", "scratch_cleanup_apply"}:
@@ -5610,10 +5681,16 @@ def _clean_json_dependencies(value, *, own_receipt=False, field=None):
         for key, child in value.items():
             if key == "scratch_cleanup" or own_receipt and key in {"database", "argv"}:
                 continue
-            yield from _clean_json_dependencies(child, own_receipt=False, field=key)
+            if historical_job and key in {"scratch", "argv", "command", "log"}:
+                continue
+            if key == "stdout" and _clean_historical_native_stdout(child):
+                continue
+            yield from _clean_json_dependencies(child, own_receipt=own_receipt and key == "previous_attempts",
+                                                field=key, historical_job=ended_batch and key == "jobs")
     elif isinstance(value, list):
         for child in value:
-            yield from _clean_json_dependencies(child, field=field)
+            yield from _clean_json_dependencies(child, field=field, own_receipt=own_receipt,
+                                                historical_job=historical_job)
     elif isinstance(value, str):
         yield value
 
@@ -5777,7 +5854,11 @@ def _clean_references(candidates, *, exclude=()):
             continue
         for name in matched_names:
             row = names[name]
-            strings = (_clean_json_dependencies(document, own_receipt=filename in row["owner_receipts"])
+            ended_batch = (isinstance(document, dict)
+                           and re.fullmatch(r"\.work/reverse-pending/[^/]+-capture-batch\.json", filename)
+                           and _clean_capture_batch_ended(document, datetime.now(timezone.utc).timestamp()))
+            strings = (_clean_json_dependencies(document, own_receipt=filename in row["owner_receipts"],
+                                                 ended_batch=ended_batch)
                        if document is not None else [raw.decode("utf-8")])
             if any(_clean_dependency_mentions(name, value) for value in strings):
                 references.setdefault(name, []).append(filename)
@@ -5824,6 +5905,7 @@ def _clean_delete_group(row):
     """Hold each exact file exclusively until the complete group is validated."""
     import ctypes
     from ctypes import wintypes
+    from analysis_storage import FileInfo, CompressionInfo
     api = ctypes.WinDLL("kernel32", use_last_error=True)
     api.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID,
                                wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
@@ -5831,8 +5913,10 @@ def _clean_delete_group(row):
     api.ReadFile.argtypes = [wintypes.HANDLE, wintypes.LPVOID, wintypes.DWORD,
                             ctypes.POINTER(wintypes.DWORD), wintypes.LPVOID]
     api.SetFileInformationByHandle.argtypes = [wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD]
+    api.GetFileInformationByHandle.argtypes = [wintypes.HANDLE, ctypes.POINTER(FileInfo)]
+    api.GetFileInformationByHandleEx.argtypes = [wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD]
     api.CloseHandle.argtypes = [wintypes.HANDLE]
-    handles, directory_handles, marked, failure = [], [], [], None
+    handles, directory_handles, allocations, marked, failure = [], [], [], [], None
     try:
         ancestors = set()
         for name in row["tree"]["directories"]:
@@ -5867,14 +5951,21 @@ def _clean_delete_group(row):
                 length += count.value
             if length != expected["bytes"] or checksum.hexdigest() != expected["sha256"]:
                 raise ValueError("Cleanup bytes changed before exclusive deletion")
+            info, compressed = FileInfo(), CompressionInfo()
+            if (not api.GetFileInformationByHandle(handle, ctypes.byref(info))
+                    or not api.GetFileInformationByHandleEx(handle, 8, ctypes.byref(compressed), ctypes.sizeof(compressed))):
+                raise ctypes.WinError(ctypes.get_last_error())
+            if info.links != 1 or compressed.allocated < 0:
+                raise ValueError("Cleanup target has additional hard links or invalid allocation")
+            allocations.append(compressed.allocated)
         active, errors = _clean_process_guard([row])
         if active or errors:
             raise ValueError("Cleanup activity guard changed before deletion")
-        for handle, expected in zip(handles, row["tree"]["files"]):
+        for handle, expected, allocated in zip(handles, row["tree"]["files"], allocations):
             disposition = wintypes.DWORD(0x11)  # DELETE | IGNORE_READONLY_ATTRIBUTE, including Git pack files.
             if not api.SetFileInformationByHandle(handle, 21, ctypes.byref(disposition), ctypes.sizeof(disposition)):
                 raise ctypes.WinError(ctypes.get_last_error())
-            marked.append(expected)
+            marked.append({**expected, "allocated_bytes": allocated})
     except (OSError, ValueError) as error:
         failure = error
     finally:
@@ -5890,6 +5981,9 @@ def _clean_delete_group(row):
     if failure is not None:
         failure.cleanup_removed = [item for item in marked if not (ROOT / item["path"]).exists()]
         raise failure
+    if (ROOT / row["path"]).exists() or any((ROOT / item["path"]).exists() for item in marked):
+        raise ValueError("Cleanup target still exists after exclusive deletion")
+    return {"allocated_before": sum(allocations), "allocated_after": 0, "bytes_reclaimed": sum(allocations)}
 
 
 def _clean_receipt_path(name, *, applied=False):
@@ -5960,20 +6054,22 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
             _clean_create_receipt(receipt_path, receipt)
             for row in rows:
                 try:
-                    _clean_delete_group(row)
+                    allocation = _clean_delete_group(row)
                     receipt["removed"].append({"path": row["path"], "bytes": row["tree"]["bytes"],
-                                               "files": len(row["tree"]["files"])})
+                                               "files": len(row["tree"]["files"]), **(allocation or {})})
                 except (OSError, ValueError) as error:
                     partial = getattr(error, "cleanup_removed", [])
                     receipt["failures"].append({"path": row["path"], "reason": str(error),
-                        "partial_removed_files": partial, "partial_removed_bytes": sum(item["bytes"] for item in partial)})
+                        "partial_removed_files": partial, "partial_removed_bytes": sum(item["bytes"] for item in partial),
+                        "partial_removed_allocated_bytes": sum(item.get("allocated_bytes", 0) for item in partial)})
                     write_json(receipt_path, receipt)
                     raise
                 write_json(receipt_path, receipt)
             receipt["status"] = "completed"
             write_json(receipt_path, receipt)
             print(json.dumps({"receipt": relative(receipt_path), "removed": len(receipt["removed"]),
-                              "bytes": sum(row["bytes"] for row in receipt["removed"])}), flush=True)
+                              "bytes": sum(row["bytes"] for row in receipt["removed"]),
+                              "bytes_reclaimed": sum(row.get("bytes_reclaimed", 0) for row in receipt["removed"])}), flush=True)
             return receipt
     if plan_sha256:
         raise ValueError("--plan-sha256 requires --apply")
@@ -5998,7 +6094,9 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
               "protected": [".analysis/inputs", ".analysis/results", ".work/native/*/batch",
                             ".work/native/*/batch/invalid-database", ".work/reverse-pending"],
               "reference_scope": "all maintained text owners and JSON receipts, including frozen reviews; raw original bodies excluded",
-              "historical_fields": ["scratch_cleanup", "ended supplement owner's database and argv"],
+              "historical_fields": ["scratch_cleanup", "ended supplement owner's database and argv",
+                                    "exited capture-batch job scratch/argv/command/log",
+                                    "verified exited native launch/completion stdout"],
               "guard_failures": errors + process_errors, "candidates": eligible, "retained": retained,
               "candidate_bytes": sum(row["tree"]["bytes"] for row in eligible)}
     _clean_create_receipt(destination, report)
