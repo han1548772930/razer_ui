@@ -2635,6 +2635,72 @@ def native_pseudocode_failures(retained, failures, image_base=0):
     return result
 
 
+def verify_single_request_dependency_repair(audit, acquired, identity, previous, predecessor, repair, acquisition_owner):
+    """Verify extra HTTP originals while retaining the original two-round scope."""
+    from datetime import datetime
+
+    if set(repair) != {"previous_acquisition", "recorded_at_utc", "requested_urls",
+                       "target_execution", "successful_originals"}:
+        raise ValueError("Single-request repair has an ambiguous acquisition schema")
+
+    def timestamp(value):
+        if not isinstance(value, str):
+            raise ValueError("Single-request repair requires an explicit acquisition time")
+        result = datetime.fromisoformat(value)
+        if result.tzinfo is None:
+            raise ValueError("Single-request repair acquisition time has no timezone")
+        return result
+
+    recorded = timestamp(repair["recorded_at_utc"])
+    finished = timestamp(previous.get("finished_at_utc"))
+    if recorded <= finished:
+        raise ValueError("Single-request repair predates its bounded observation")
+    if acquired.get("edges", []) != previous.get("edges", []):
+        raise ValueError("Single-request repair changed the original observation edges")
+    additions = acquired["files"][len(previous["files"]):]
+    requested, declared = repair["requested_urls"], repair["successful_originals"]
+    if (not isinstance(requested, list) or not requested
+            or any(not isinstance(url, str) for url in requested)
+            or len(set(requested)) != len(requested)
+            or not isinstance(declared, list) or len(declared) != len(additions)
+            or requested != [row.get("url") for row in additions]):
+        raise ValueError("Single-request repair does not enumerate its exact additional originals")
+    directory = Path(acquisition_owner).parent.as_posix()
+    if not re.fullmatch(r"\.analysis/inputs/frontend/[a-z0-9-]+", directory):
+        raise ValueError("Single-request repair is outside its frontend acquisition owner")
+    requests = []
+    for row, claim in zip(additions, declared):
+        parsed = urllib.parse.urlsplit(row["url"])
+        headers = row.get("headers")
+        acquired_at = timestamp(row.get("acquired_at_utc"))
+        if (parsed.scheme != "https" or parsed.netloc != "apps.razer.com"
+                or not parsed.path.startswith("/") or parsed.query or parsed.fragment
+                or row.get("path") != directory + "/raw/apps.razer.com" + parsed.path
+                or row.get("final_url") != row["url"]
+                or type(row.get("http_status")) is not int or row["http_status"] != 200
+                or type(row.get("bytes")) is not int or row["bytes"] <= 0
+                or not re.fullmatch(r"[a-f0-9]{64}", str(row.get("sha256")))
+                or not isinstance(headers, dict) or not isinstance(headers.get("Content-Length"), str)
+                or not re.fullmatch(r"[0-9]+", headers["Content-Length"])
+                or int(headers["Content-Length"]) != row["bytes"]
+                or not isinstance(row.get("content_type"), str) or not row["content_type"]
+                or headers.get("Content-Type") != row["content_type"]
+                or not finished < acquired_at <= recorded
+                or not isinstance(claim, dict) or set(claim) != {"url", "path", "bytes", "sha256"}
+                or any(row.get(key) != claim[key] for key in claim)
+                or "retained_dependency" in row
+                or "redirects" in row and row["redirects"] != []):
+            raise ValueError("Single-request dependency differs from its official HTTP and byte identity")
+        audit.read(row)
+        requests.append({**claim, "acquired_at_utc": row["acquired_at_utc"],
+                         "redirect_chain_recorded": "redirects" in row})
+    return {"acquisition": identity, "previous_acquisition": predecessor,
+            "dependency_extension_kind": "single_http_request",
+            "additional_originals_verified": len(additions), "http_requests": requests,
+            "additional_http_requests_recorded": len(additions), "additional_http_rounds_claimed": 0,
+            "dependency_stability_verified": False, "full_dependency_closure": False}
+
+
 class HostLocalAudit:
     """Reusable byte-verified source/function store for local host chain audits."""
     def __init__(self):
@@ -2721,8 +2787,9 @@ class HostLocalAudit:
                 "failed_acquisition": [row for row in acquired["files"] if not row.get("path")]}, originals
 
     def bounded_observation_history(self, acquired, identity):
-        """Verify appended provider references without expanding the HTTP observation."""
+        """Verify appended dependencies without expanding the HTTP observation."""
         extensions = []
+        acquisition_owner = identity["path"]
         while acquired.get("dependency_repairs"):
             repairs = acquired["dependency_repairs"]
             if not isinstance(repairs, list) or not isinstance(repairs[-1], dict):
@@ -2741,9 +2808,14 @@ class HostLocalAudit:
                     or immutable(acquired) != immutable(previous)
                     or acquired.get("files", [])[:len(previous.get("files", []))] != previous.get("files")
                     or acquired.get("edges", [])[:len(previous.get("edges", []))] != previous.get("edges", [])
-                    or repair.get("target_execution") is not False
-                    or repair.get("copied_originals") != 0
-                    or repair.get("repeated_factory_capture") is not False):
+                    or repair.get("target_execution") is not False):
+                raise ValueError("Dependency repair changed the bounded observation or its original owners")
+            if "successful_originals" in repair:
+                extensions.append(verify_single_request_dependency_repair(
+                    self, acquired, identity, previous, predecessor, repair, acquisition_owner))
+                acquired, identity = previous, predecessor
+                continue
+            if repair.get("copied_originals") != 0 or repair.get("repeated_factory_capture") is not False:
                 raise ValueError("Dependency repair changed the bounded observation or its original owners")
             provider_identity, capture_identity = repair.get("provider_acquisition", {}), repair.get("provider_capture", {})
             if any(not isinstance(claim, dict) or type(claim.get("bytes")) is not int
@@ -2784,8 +2856,19 @@ class HostLocalAudit:
                     raise ValueError("Additional dependency differs from its actual provider or capture")
                 self.read(row)
             edges = acquired.get("edges", [])[len(previous.get("edges", [])):]
-            if (len(edges) != len(additions) or {edge.get("to") for edge in edges} != {row["url"] for row in additions}
-                    or any(edge.get("retained_provider") != provider_identity for edge in edges)):
+            import evidence
+            for row in previous["files"]:
+                if row.get("path"):
+                    self.read(row)
+            prior_deployment = evidence.frontend_deployment_sources(previous)
+            repaired_deployment = evidence.frontend_deployment_sources(acquired)
+            addition_urls = {row["url"] for row in additions}
+            expected_edges = [{**reference, "to": source["url"], "retained_provider": provider_identity}
+                              for source in prior_deployment["sources"] if source["url"] in addition_urls
+                              for reference in source["references"]]
+            if (edges != expected_edges or {edge["to"] for edge in expected_edges} != addition_urls
+                    or repair.get("previous_deployment_failures") != prior_deployment["failures"]
+                    or repair.get("deployment_failures_after_repair") != repaired_deployment["failures"]):
                 raise ValueError("Dependency repair edges differ from the additional originals")
             extensions.append({"acquisition": identity, "previous_acquisition": predecessor,
                                "provider_acquisition": provider_identity, "provider_capture": capture_identity,
@@ -5390,10 +5473,7 @@ def audit_host_macro_recorder(args):
     report["snapshot_stable"] = not report["changed_during_query"]
     report["failures"].extend("Audit artifact changed during query: " + name for name in report["changed_during_query"])
     destination = a.ROOT / ".analysis/results/host-current/local-audit.json"
-    with a.index_lock(destination.with_suffix(".lock")):
-        previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
-        previous[args.query.replace("-", "_")] = report
-        a.save(destination, previous)
+    publish_host_static_query(report, destination, a, args.query.replace("-", "_"))
     print(json.dumps({"receipt": a.rel(destination), "query": args.query,
                       "complete_source_owners": len(audit.owners), "failures": report["failures"]}), flush=True)
     if report["failures"]:
@@ -5995,12 +6075,15 @@ def audit_product_chroma_observation(args):
 def collect_chroma_dashboard_launch(audit, host_originals):
     """Join the current Chroma hidden-start/restore page to URL-keyed host storage."""
     source_set, originals = audit.source_set("chroma-app-dashboard-current")
-    names = ("main.e5fe7086.js", "332.780bf0e1.chunk.js")
+    names = ("main.e5fe7086.js", "332.780bf0e1.chunk.js", "3874.4172ec87.chunk.js",
+             "4461.7a5efde4.chunk.js", "6883.53d122e0.chunk.js")
     files = [source for source in originals if Path(source["path"]).name in names]
     if len(files) != len(names):
         raise ValueError("Current Chroma launch originals are absent or ambiguous")
     main = next(source for source in files if Path(source["path"]).name == names[0])
     chunk = next(source for source in files if Path(source["path"]).name == names[1])
+    installer = next(source for source in files if Path(source["path"]).name == names[3])
+    content = next(source for source in files if Path(source["path"]).name == names[4])
     selected, exports, bindings = {}, {}, {}
 
     def binding(role, source, name, reference):
@@ -6010,8 +6093,8 @@ def collect_chroma_dashboard_launch(audit, host_originals):
         selected[role], bindings[role] = result["owner_id"], result
         return audit.tree(source).root_node.descendant_for_byte_range(result["start_byte"], result["end_byte"] - 1)
 
-    def export(role, module, name):
-        result = audit.webpack_export("chroma_launch_" + role, files, module, name)
+    def export(role, module, name, *, sources=None):
+        result = audit.webpack_export("chroma_launch_" + role, files if sources is None else sources, module, name)
         exports[role] = result
         selected[role] = result["binding"]["owner_id"]
         result_binding = result["binding"]
@@ -6029,6 +6112,33 @@ def collect_chroma_dashboard_launch(audit, host_originals):
     binding("force_hidden_query", chunk, "Ie", 328470)
     for name in ("handleAppHiddenStart", "handleOnUserRestoreWindow", "componentDidMount", "render"):
         _, selected[name] = audit.callable_member("chroma_launch_" + name, chunk, page, name)
+    for role, name in (("error_boundary_connect", "B"), ("error_boundary", "F"),
+                       ("user_gate_connect", "z"), ("user_gate_class", "x"),
+                       ("page_store_namespace", "o"), ("lazy_namespace", "de")):
+        binding(role, chunk, name, 331400)
+    export("store_export", 58837, "A")
+    for role, name, reference in (("store_constructor", "ut", 1371540),
+                                  ("root_reducers", "dt", 1371478),
+                                  ("user_initial", "X", 1369800),
+                                  ("store_redux_namespace", "a", 1371478),
+                                  ("installer_initial", "Ve", 1359450),
+                                  ("installer_reducer", "Ke", 1369400),
+                                  ("installer_phase_namespace", "ke", 1359450)):
+        binding(role, chunk, name, reference)
+    for role, module, name in (("create_store", 17863, "y$"), ("combine_reducers", 17863, "HY"),
+                              ("lazy_component", 13545, "kg"),
+                              ("installer_phase_type", 19581, "TM"),
+                              ("installation_wrapper", 34461, "default"),
+                              ("content_export", 23322, "default")):
+        export(role, module, name)
+    binding("installation_ui", installer, "x", 24700)
+    binding("installer_events_namespace", installer, "U", 15590)
+    # This route requests chunk 4461. Another retained, unrequested chunk has
+    # the same module number; keep the reviewed factory's actual source owner.
+    export("installer_events", 20682, "A", sources=[installer])
+    for role, name in (("content_wrapper", "ja"), ("content_page", "ka"),
+                       ("content_window_listener", "Pa")):
+        binding(role, content, name, 157900)
     descriptors = export("hidden_descriptors", 60336, "Oc")
     for name in ("l", "d"):
         binding("descriptor_" + name, chunk, name, descriptors.start_byte)
@@ -6057,18 +6167,52 @@ def collect_chroma_dashboard_launch(audit, host_originals):
     selected["host_dispatch"] = audit.retain("chroma_launch_host_dispatch", dispatch,
         'n.handle("electronAction",', {"call_expression"})[0]
     report = {"source_set": source_set, "selected": selected, "exports": exports, "bindings": bindings,
+        "mount_boundaries": chroma_dashboard_mount_boundaries(),
         "semantics": {
             "hidden_start": "Only autoStart=1 together with forceHidden=1 initializes hidden. The page requests background-manager and notification-manager through the shared lock-based hidden-tab helper.",
             "visualizer": "Hidden start reads the saved synapseAudioVisualizerProfiles visualizerState and the actual window-client list. It opens the existing local Visualizer URL only when no matching tab was found and the saved state is truthy; this is not a device getter or confirmed engine start.",
             "restore": "visibleChange with isVisible, changeActiveTab for chroma-app, focus with isFocus and USER_CLICK_DESKTOP_ICON request restore. An empty status array or no value.windowName containing chroma-app returns before unhiding. The selected URL row with installing status blocks only the running publication; the page still clears its hidden state afterwards. A rejected initial storage await occurs before the try block and does not reach that clear.",
             "storage_result": "The Chroma facade forwards through preload electronAction into URL-keyed WindowStorage. GET returns JSON rows for truthy values; SET returns the previous value and emits change events. hidden/running publication is not awaited, and neither state acknowledges installation, a native worker or device settings.",
             "cleanup": "The hidden-tab helper removes its create listener on existing-tab, create-event and ten-second timeout paths; a rejection is caught and does not itself remove that listener. ge has no componentWillUnmount and discards the tab-message disposer and internal desktop-icon listener. Preload pagehide separately removes IPC listeners. Ce has an empty-dependency effect with an initial-hidden early return; prop changes alone do not re-run that same effect instance.",
+            "mount_identity": "The store starts with an empty user.item. The connected x renders span/renderView only while user.id is truthy; shouldLogin false-to-true only calls the account adapter. ge supplies no changing React key. If Ce first mounts after hidden has cleared it requests the installation wrapper. If Ce already mounted while hidden and user.id stays truthy, clearing hidden preserves that instance and does not restart its empty-dependency effect. A user-gate unmount/remount, error boundary or whole-page recreation is a separate path, not a guaranteed restore effect. Account behavior is retained source context and is excluded from this local-first product.",
+            "installation_consumer": "The requested installation wrapper begins with showInstallation=true, checks Chroma and then background-manager and returns the actual page children only after showInstallation becomes false. WindowStorage installer-status events and initial first-row reads feed the phase reducer. Changed restart-required/skipped/completed values map to completed; the initial read normalizes only skipped/completed. These are coordinator states, not a device readback or verified installation result. Online installation/update orchestration is excluded from the product.",
+            "lazy_consumer": "The actual lazy component depends on the lazy callback, returns its selected default export after resolution and records errors separately. Its effect cleanup only clears state; it does not cancel the promise or reject stale completions. The mounted content is module 23322's connected ja(ka), not the installation wrapper itself.",
+            "content_cleanup": "ka removes dependent-app-status and its storage listener on unmount. Its exitApp response disposer and anonymous DOM listeners are not retained or removed there. The ja hook registers window-list-change and schedules a delayed close update without a returned cleanup. These selected source paths do not establish full callback release.",
         }, "selected_static_semantics_reviewed": True, "source_chain_complete": False,
         "target_execution": False, "actual_dll_comparison": "unverified",
         "rust_independent_implementation": "unverified", "ui_backend_wiring": "unverified",
         "runtime_acceptance": "unverified"}
     verify_chroma_dashboard_launch(audit, report)
     return report
+
+
+def chroma_dashboard_mount_boundaries():
+    """Keep conditional mount facts separate from execution or installation results."""
+    return {
+        "initial_user_has_id": False,
+        "gate_renders_when": "truthy_user_id",
+        "hidden_state_rekeys_gate": False,
+        "should_login_update": "account_call_without_explicit_remount",
+        "install_effect_dependencies": [],
+        "hidden_install_effect": "clear_component_and_return_before_chunk_request",
+        "restore_existing_instance_restarts_install_effect": False,
+        "first_visible_mount": "request_install_wrapper",
+        "installation_children": "show_installation_false_only",
+        "installer_phase_source": "window_storage_event_or_initial_first_row",
+        "changed_completed_statuses": ["restart-required", "skipped", "completed"],
+        "initial_completed_statuses": ["skipped", "completed"],
+        "installer_removed_events_ignored": True,
+        "installer_listener_cleanup": "off_windowstorageevent",
+        "installer_initial_read_canceled_on_cleanup": False,
+        "lazy_effect_dependencies": ["lazy"],
+        "lazy_cleanup_cancels_inflight": False,
+        "content_removes_status_and_storage_listener": True,
+        "content_retains_exit_response_disposer": False,
+        "content_removes_anonymous_dom_listeners": False,
+        "window_list_hook_returns_cleanup": False,
+        "account_and_online_orchestration_in_product": False,
+        "runtime_behavior_executed": False,
+    }
 
 
 def verify_chroma_dashboard_launch(audit, report):
@@ -6086,6 +6230,32 @@ def verify_chroma_dashboard_launch(audit, report):
         "handleOnUserRestoreWindow": "19d8bebafa851f64a4225e0723d7f99545ee8d4d113f77a4aa5ffdbef74ada3f",
         "componentDidMount": "4693d5af9b21ec39f3a8235122ceccc239beae3745c765e9608decd83ea4bef2",
         "render": "8e1134be5717f27e97c086dd9de0f6d8ad89c04a4f4b34388f417e539e445f5c",
+        "error_boundary_connect": "882e2d0fdd8f07aa5921ed03912812917bfe181e53c583da52932c10a8031c9d",
+        "error_boundary": "bfa7ee47bfde991f797113675fb4c5467579359b846ce04ba7b92d72bf5161a3",
+        "user_gate_connect": "e727f0a266c2edd28fe58993c08b16164b7e6269be70b55f70b692878a7e7add",
+        "user_gate_class": "919ba3e6788cf8e7c41582def84edb3c2473b9868a50e52ddc37853f3ce2516b",
+        "page_store_namespace": "6327795ada65d88fbfb571701107b8d6facd37b09a8e053cce269af8a4504000",
+        "lazy_namespace": "a408b201acf5ab6d2b967e161b0b2e8ffc463381b8d0817434fe20c6c4f364e6",
+        "store_export": "8f3fec43b3011aaa48ba6e48b971566b176448f79f370af632c75c271bfc2161",
+        "store_constructor": "9dd0f7f15660ce2e14679361684113dc76e6feed5d33f11f1aa77c8661681b4e",
+        "root_reducers": "074eb3f01dcf2bfc5960ec25773c5b44f4a7ecd6e69e0da92a7b894e69174f81",
+        "user_initial": "7645d8a9f4d7205005d015da03e6306d228abbb3d03a9b2d8e176866660f7a15",
+        "store_redux_namespace": "33df9910a0eff2179b16a6eb92e105d4c727d4e2e7ec9ef464d06daf583a6874",
+        "installer_initial": "9bc8afae24b5df3f5110aee6b87ab76c9a89dc436846b699c94da973570f1b37",
+        "installer_reducer": "961fb6c8e8ba5c3c72edb6c6d20c8482fc8373b6e2014af2227b4484174520c5",
+        "installer_phase_namespace": "b6d5929922fd7318e303167a4899965c1b215c8cb8315c556eeeb487396f8c92",
+        "create_store": "0e66109999fa1b1850f9ea1178039eea8b704867367a83f52db519c63543bde1",
+        "combine_reducers": "aff5de3cb64692738ca43e38ddbdead42d8c48dbe77dca74659705c9e9eeef82",
+        "lazy_component": "606968eb228724c1516f536fc014f5868855fcc12749bbbee2b2a722f882b834",
+        "installer_phase_type": "284eb2840501f6251ff96194a9ce1eb6bd3c3db48bd1f31421e8f7b54395731d",
+        "installation_wrapper": "f896cd9085f739c58002889fcce44e2ef5a56ad781f23cf017da5a108e23d8df",
+        "content_export": "65d73f9b5d6d9905dfe866cc5c03fa9dde7a3cc04f73a33451f8c35428a83dce",
+        "installation_ui": "f9f84e019b6fad5cf7fb38875de5b7e88eddf74ddb3044ca26f2271ea1d966a7",
+        "installer_events_namespace": "006577f984062fd2817ff155f838dea71baee89ab56a8250fccbdab257ce5bb7",
+        "installer_events": "cf892ca6447446952db2c8753ec12e77f4dcf380f4a8114508e0b92ab328c787",
+        "content_wrapper": "f243f3af3a650eab1deaf9bd192cc5d6c6c554d42e2738c6e1384ce2f0ee855b",
+        "content_page": "cbbee310fba736f979853450fc47979008405b9fa730d7cfe12f63dfebd76b2d",
+        "content_window_listener": "7aaf746bc5a0688af936430fe396e2500926425d5ec64856e5b40ed7e5a55456",
         "hidden_descriptors": "09432d6a907d22a7fe1a25ab15f99b499960f59eff020f2883f62220f9334fa7",
         "descriptor_l": "1fcd8384d350ecef99fb9474c3c2a1aa43ca32ac9078f23a94081502c469d861",
         "descriptor_d": "8153f14f20c32c0cc7e1f517defe9e7d8db3f37e9cecc96cac5ed4be6946d024",
@@ -6118,12 +6288,45 @@ def verify_chroma_dashboard_launch(audit, report):
             raise ValueError("Chroma launch complete owner identity differs: " + role)
     if set(expected) != report["selected"].keys():
         raise ValueError("Chroma launch review omits a required result or state owner")
-    if set(report["exports"]) != {"entry_export", "hidden_descriptors", "tab_helper", "tab_manager",
-                                  "visualizer_key", "host_facade"}:
+    expected_exports = {
+        "entry_export": (11078, "default"), "hidden_descriptors": (60336, "Oc"),
+        "tab_helper": (87893, "A"), "tab_manager": (28648, "A"),
+        "visualizer_key": (69937, "XrU"), "host_facade": (37226, "A"),
+        "store_export": (58837, "A"), "create_store": (17863, "y$"),
+        "combine_reducers": (17863, "HY"), "lazy_component": (13545, "kg"),
+        "installer_phase_type": (19581, "TM"), "installation_wrapper": (34461, "default"),
+        "installer_events": (20682, "A"), "content_export": (23322, "default"),
+    }
+    if set(report["exports"]) != expected_exports.keys():
         raise ValueError("Chroma launch export graph is incomplete")
     for role, exported in report["exports"].items():
         if report["selected"].get(role) != exported["binding"]["owner_id"]:
             raise ValueError("Chroma launch export was rebound: " + role)
+        if (exported["module_id"], exported["export"]) != expected_exports[role]:
+            raise ValueError("Chroma launch export relation differs: " + role)
+        actual = audit.webpack_export("chroma_launch_verify_" + role, [exported["original"]],
+                                      exported["module_id"], exported["export"])
+        if actual != exported:
+            raise ValueError("Chroma launch export relation differs: " + role)
+    expected_bindings = {
+        "language_wrapper", "page_class", "install_gate", "hidden_flag", "auto_start_query",
+        "force_hidden_query", "error_boundary_connect", "error_boundary", "user_gate_connect",
+        "user_gate_class", "page_store_namespace", "lazy_namespace", "store_constructor",
+        "root_reducers", "user_initial", "store_redux_namespace", "installer_initial",
+        "installer_reducer", "installer_phase_namespace", "installation_ui", "installer_events_namespace",
+        "content_wrapper", "content_page", "content_window_listener", "descriptor_l", "descriptor_d", "facade_class",
+    }
+    if set(report["bindings"]) != expected_bindings:
+        raise ValueError("Chroma launch lexical binding graph is incomplete")
+    for role, reference in report["bindings"].items():
+        original = audit.owners[report["selected"][role]]["original"]
+        actual = audit.binding("chroma_launch_verify_" + role, original,
+                               reference["name"], reference["reference_byte"])
+        if reference != actual or reference["owner_id"] != report["selected"][role]:
+            raise ValueError("Chroma launch lexical binding was rebound: " + role)
+    if json.dumps(report.get("mount_boundaries"), sort_keys=True) != json.dumps(
+            chroma_dashboard_mount_boundaries(), sort_keys=True):
+        raise ValueError("Chroma launch conditional mount or cleanup boundary differs")
     return {"selected_owners": len(report["selected"]), "target_execution": False,
             "runtime_acceptance": "unverified"}
 
@@ -6634,6 +6837,33 @@ def publish_host_static_query(report, destination, a, query):
     with a.index_lock(destination.with_suffix(".lock")):
         previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
         preserved = {key: identity(value) for key, value in previous.items() if key != query}
+        failed = previous.get(query)
+        reference = failed.get("previous_failed_query") if isinstance(failed, dict) else None
+        seen = set()
+        while reference is not None:
+            import reverse_pending
+            if (not reverse_pending.valid(reference) or reference["sha256"] in seen
+                    or reference["path"] != ".analysis/results/reverse-pending/review-sources/"
+                    + reference["sha256"] + ".json"):
+                raise ValueError("Host query lost its retained previous failure")
+            seen.add(reference["sha256"])
+            snapshot = json.loads(a.resolve(reference["path"], ".analysis/results").read_bytes())
+            original = snapshot.get("report", {})
+            if (snapshot.get("kind") != "failed_host_static_query" or snapshot.get("query") != query
+                    or snapshot.get("target_execution") is not False or not isinstance(original, dict)
+                    or not isinstance(original.get("failures"), list) or not original["failures"]):
+                raise ValueError("Host query previous failure belongs to another query or scope")
+            reference = original.get("previous_failed_query")
+        if isinstance(failed, dict) and isinstance(failed.get("failures"), list) and failed["failures"]:
+            import reverse_pending
+            retained = reverse_pending.retain_review_json({
+                "schema_version": 1, "kind": "failed_host_static_query",
+                "query": query, "report": failed,
+                "target_execution": False,
+                "scope": "Complete previous failed query; no successful source or runtime result is implied"})
+            report["previous_failed_query"] = retained
+        elif isinstance(failed, dict) and "previous_failed_query" in failed:
+            report["previous_failed_query"] = failed["previous_failed_query"]
         report["preserved_top_level_canonical_sha256"] = preserved
         previous[query] = report
         a.save(destination, previous)
@@ -6797,6 +7027,33 @@ def audit_iot_reconnect(audit):
             "actual_dll_comparison": "unverified"}
 
 
+def verify_reviewed_frontend_acquisition(audit, reference, indexed):
+    """Bind a review to current bytes or its proven immutable acquisition scope."""
+    name = reference.get("path", "")
+    if (not re.fullmatch(r"\.analysis/inputs/frontend/[a-z0-9-]+/acquisition\.json", name)
+            or type(reference.get("bytes")) is not int or reference["bytes"] < 0
+            or not re.fullmatch(r"[a-f0-9]{64}", str(reference.get("sha256")))):
+        raise ValueError("Reviewed frontend acquisition has no exact maintained identity")
+    current_index = indexed.get(name)
+    if not isinstance(current_index, dict) or any(key not in current_index for key in ("bytes", "sha256")):
+        raise ValueError("Reviewed frontend acquisition is absent from the current input index")
+    raw = audit.artifact(audit.a.ROOT / name, current_index)
+    current = audit.artifacts[name]
+    if all(reference[key] == current[key] for key in ("bytes", "sha256")):
+        return {"reviewed_acquisition": reference, "current_acquisition": current, "relation": "unchanged"}
+    acquired = json.loads(raw)
+    if acquired.get("target_execution") is not False or acquired.get("source_current_during_acquisition") is not True:
+        raise ValueError("Reviewed frontend acquisition has no verified current static source")
+    _, _, extensions = audit.bounded_observation_history(acquired, current)
+    predecessors = [extension["previous_acquisition"] for extension in extensions
+                    if all(extension["previous_acquisition"][key] == reference[key] for key in ("bytes", "sha256"))]
+    if len(predecessors) != 1:
+        raise ValueError("Reviewed acquisition is not a verified immutable predecessor of its current owner")
+    return {"reviewed_acquisition": reference, "current_acquisition": current,
+            "relation": "verified_immutable_predecessor", "retained_acquisition": predecessors[0],
+            "dependency_extensions": extensions, "historical_scope_preserved": True}
+
+
 def audit_deviceinfo_value_sources(audit, main, manifests):
     """Recheck reviewed value sources against complete ASTs and retained manifests."""
     path = audit.a.ROOT / ".analysis/results/frontend/synapse-lighting-engine-current/deviceinfo-value-sources.json"
@@ -6811,8 +7068,8 @@ def audit_deviceinfo_value_sources(audit, main, manifests):
         if any(row[key] != original[key] for key in ("bytes", "sha256")):
             raise ValueError("DeviceInfo value source differs from current indexed bytes")
         sources[row["path"]] = original
-    for row in retained["acquisitions"]:
-        audit.artifact(audit.a.ROOT / row["path"], row)
+    acquisition_relations = [verify_reviewed_frontend_acquisition(audit, row, indexed)
+                             for row in retained["acquisitions"]]
     owners = {}
     for row in retained["owners"]:
         original = sources[row["source"]]
@@ -6869,6 +7126,7 @@ def audit_deviceinfo_value_sources(audit, main, manifests):
         if counts != row["occurrences"]:
             raise ValueError("DeviceInfo keyword scan does not match retained source bytes")
     return {"analysis": audit.artifacts[audit.a.rel(path)], "owner_ids": owners,
+            "acquisition_relations": acquisition_relations,
             "classes": retained["classes"], "manifest_projection": projection,
             "findings": retained["findings"], "remaining": retained["unresolved"],
             "target_execution": False, "actual_dll_comparison": "unverified"}
@@ -7704,10 +7962,7 @@ def audit_host_local(args):
     report["snapshot_stable"] = not report["changed_during_query"]
     report["failures"].extend("Audit artifact changed during query: " + name for name in report["changed_during_query"])
     destination = a.ROOT / ".analysis/results/host-current/local-audit.json"
-    with a.index_lock(destination.with_suffix(".lock")):
-        previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
-        previous[args.query.replace("-", "_")] = report
-        a.save(destination, previous)
+    publish_host_static_query(report, destination, a, args.query.replace("-", "_"))
     print(json.dumps({"receipt": a.rel(destination), "query": args.query,
                       "complete_source_owners": len(audit.owners), "failures": report["failures"]}), flush=True)
     if report["failures"]:

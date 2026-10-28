@@ -127,6 +127,27 @@ MW 状态机的 `ON_SET_KEYMAPPING` 按 obmReady 决定动作集合：都可有 
 
 本机文档递增 version，通过 `Pf(document,false)` 保存，再投影 runtime window storage。随后发布清理过内部字段的宏映射和真实保存后的 UI mappings。正常发出 taskMaker completed；异常发 error，并在 finally 清 spinner。该完成发生在下面板载队列入队之前，不能替代板载回执。
 
+## 678／688 的映射编译与 Gamepad Tester
+
+这两款使用各自当前部署的 `analogV3` 非固件映射链。正式证据统一保留在 [gamepad_tester 查询](../../../.analysis/results/frontend/keyboard-mw-audit.json)的 `products[].non_firmware_mapping_review`，包含实际启动分块、完整模块依赖、映射事务、编译函数、事件回调和 UI 消费者；Rust 尚未接通的消费者与这组已核对的官方语义分别记录。
+
+| PID | 当前 MW 原件与完整 owner 字节范围 |
+| --- | --- |
+| 678 | [6737.b4bf391c075aa0879a1d.js](../../../.analysis/inputs/frontend/keyboard-mw-678-current/raw/apps.razer.com/synapse/products/678/mw/6737.b4bf391c075aa0879a1d.js)：`42124.tB → Ot [1374188,1381127)`；`42124.yH → rt [1347244,1350084)`；`14486` Events `[1071655,1072234)`、注销 `[1072429,1072729)`、回放 `[1066002,1066398)` |
+| 688 | [6737.9be565ca0f83234feb88.js](../../../.analysis/inputs/frontend/keyboard-mw-688-current/raw/apps.razer.com/synapse/products/688/mw/6737.9be565ca0f83234feb88.js)：`42124.tB → Lt [1369720,1374859)`；`42124.yH → ut [1342229,1345091)`；`14486` Events `[1059248,1059831)`、注销 `[1060028,1060330)`、回放 `[1053572,1053972)` |
+
+两款实际入口都等待 `2291`、`6737`、`1364`，随后加载 `16737`；`1364` 由入口分块表指向各自的 `onLoad`。`32226` 实际转出 `69183.RzAppEngineMapping_default`。沿这四个已选分块逐一核对，每款均有 107 个唯一的静态依赖；未选 worker／其他分块中的相同模块 ID 不参与这条调用链。各原件 SHA-256、完整 owner 的边界与正文 SHA-256 随查询保留，没有执行厂商 JavaScript。
+
+`ON_SET_KEYMAPPING` 先按状态机确定本机保存、AppEngine 和 OBM 动作，再进入各自 `tB`。事务从新的 mapping 中查找 `AnalogInput` 的 `controllerGroup.controllerAssignment`，只匹配 `52418.$T` 的十种模拟扳机／摇杆方向。非固件模式且 analogV3 生效时，有匹配项就先注销、再注册 Events；无匹配项只注销。数字按钮和仅有 `joystickGroup` 的映射不满足这个注册条件。注册参数为 `50`；两款实际 `DeviceInfo` 没有开启 8k 分支，不能把参数解释成每 50 个物理报告必然产生一次回调。
+
+两款均明确启用双字节 actuation。编译器分别调用 `2291` 中的普通映射与模拟映射算法，保留普通层／Hypershift、双段输出、键盘／鼠标组合、模拟控制器与 DKS 分支，再形成 `mappings`、`actuations`、`rapidTriggers` 和完整 hash。678 的模拟集合／逐映射 owner 为 `[48969,49912)`／`[51144,53279)`；688 对应 `[49088,50033)`／`[51287,53424)`。Turbo 文档的三次循环仅由 `RzLockableStorageError` 驱动，不能扩展为任意传输重试。事务保存递增版本、发布 runtime 文档与 UI 后，才发本机 completed 并安排 OBM；本机落盘或此 completed 都不是 HID 写回确认。
+
+`14486` 注册前查询实际注册状态，已经注册则返回；只有 native 注册返回 true 才附加 `xboxGamepadEvent`。注销先查询，再执行 native 注销；只有其返回 true 才解除当前回调，false 分支保留警告，不能当作已经释放。事件只消费匹配当前产品 ID 的输出 JSON。单样本立即发布；数组逐项解析、每项间隔 5 ms。新 callback 会替换旧 token，使旧数组在下一检查点停止；空数组不制造零样本。当前注销函数没有清 token 或取消已开始的数组回放，JSON 解析也没有同一 `finally` 清理，必须保留这些实际边界。
+
+678 的实际 UI class `[8119801,8129284)` 和 reducer `[7467339,7473717)` 来自 [main.f78f0dcf.js](../../../.analysis/inputs/frontend/keyboard-678-current/raw/apps.razer.com/synapse/products/678/ui/static/js/main.f78f0dcf.js)；688 对应 `[7747789,7753565)` 和 `[7247462,7253840)`，来自 [main.e09fd702.js](../../../.analysis/inputs/frontend/keyboard-688-current/raw/apps.razer.com/synapse/products/688/ui/static/js/main.e09fd702.js)。两款在非 macro 显示模式挂 Tester，读取独立 `customizeReducer.gamepadTester` 的六个模拟输出值。实际挂载 class 没有 in-view `IntersectionObserver` 或 `toggleXboxRegistration` 调用；共享 action 和 interval5 方法存在，不代表这两款页面启用了现代产品的可见性注册链。678 的 class 卸载只移除 resize，未显式移除已注册的容器 scroll；688 该 class 没有对应 mount/unmount 方法。
+
+这组观察表示映射输出，不能冒充物理控制器读回、设备已确认设置或保存草稿。维护工具的六个纯测试覆盖非固件／其他编译分支、注册与注销失败门禁、旧回放、现代可见性分支拒收、过早 completed、证据冲突和增量发布保留既有 679／747 证据。它们不执行官方 DLL，也不证明这两款独立 Rust 编译器、页面消费者或设备对照已经完成。
+
 ## 板载同步、返回值与取消
 
 允许 updateObm、不是特殊 keypad 分支且不是 select-all 时，`Lt` 将同步任务入队。`zt` `[821845,822621)` 找活动 GUID 实际占用的板载槽，并额外纳入槽 1，计算删去映射的默认恢复项、宏增删、板载可保存输出、actuation/Rapid Trigger 批次，以及 Mod Tap 更新。

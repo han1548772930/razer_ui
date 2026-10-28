@@ -13,7 +13,7 @@ import uuid
 from pathlib import Path
 from unittest.mock import patch
 
-from host import (HostLocalAudit, add_commands, audit_host_local,
+from host import (HostLocalAudit, add_commands, audit_host_local, publish_host_static_query,
                   collect_profiles_static, publish_profiles_static,
                   verify_profiles_owner, verify_profiles_static_receipt,
                   help_system_mount_layout, help_system_native_declaration, help_system_report_constants,
@@ -429,6 +429,76 @@ class ProfilesPublicationTests(unittest.TestCase):
                     publish_profiles_static({"query": "profiles"}, destination, analysis)
 
 
+class HostStaticQueryFailureHistoryTests(unittest.TestCase):
+    def fixture(self, root):
+        destination = root / ".analysis/results/host-current/local-audit.json"
+        destination.parent.mkdir(parents=True)
+        prior = {"failures": ["actual source identity differs"], "target_execution": False,
+                 "complete_source_owners": [{"body": "complete retained failure evidence"}]}
+        document = {"schema_version": 1, "dynamic_lighting": prior,
+                    "window_lifecycle": {"state": [2, 1]}}
+        destination.write_text(json.dumps(document), encoding="utf-8")
+        return destination, document
+
+    def test_success_preserves_complete_failed_query_and_keeps_its_history(self):
+        import analysis
+        import reverse_pending
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            destination, before = self.fixture(Path(directory))
+            result = {"failures": [], "target_execution": False}
+            publish_host_static_query(result, destination, analysis, "dynamic_lighting")
+            reference = result["previous_failed_query"]
+            self.assertTrue(reverse_pending.valid(reference))
+            snapshot = json.loads((Path(directory) / reference["path"]).read_bytes())
+            self.assertEqual(snapshot["report"], before["dynamic_lighting"])
+            self.assertEqual(snapshot["query"], "dynamic_lighting")
+            self.assertFalse(snapshot["target_execution"])
+            after = json.loads(destination.read_bytes())
+            self.assertEqual(after["window_lifecycle"], before["window_lifecycle"])
+            next_result = {"failures": [], "target_execution": False}
+            publish_host_static_query(next_result, destination, analysis, "dynamic_lighting")
+            self.assertEqual(next_result["previous_failed_query"], reference)
+            self.assertEqual(len(list((Path(directory) / Path(reference["path"]).parent).glob("*.json"))), 1)
+
+    def test_failure_snapshot_publication_error_preserves_current_receipt(self):
+        import analysis
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            destination, _ = self.fixture(Path(directory))
+            before = destination.read_bytes()
+            with patch("reverse_pending.retain_review_json", side_effect=OSError("cannot retain failure")):
+                with self.assertRaisesRegex(OSError, "cannot retain"):
+                    publish_host_static_query({"failures": []}, destination, analysis, "dynamic_lighting")
+            self.assertEqual(destination.read_bytes(), before)
+
+    def test_changed_failure_reference_blocks_successful_republication(self):
+        import analysis
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            destination, _ = self.fixture(Path(directory))
+            result = {"failures": [], "target_execution": False}
+            publish_host_static_query(result, destination, analysis, "dynamic_lighting")
+            snapshot = Path(directory) / result["previous_failed_query"]["path"]
+            snapshot.write_bytes(snapshot.read_bytes() + b" ")
+            before = destination.read_bytes()
+            with self.assertRaisesRegex(ValueError, "lost its retained"):
+                publish_host_static_query({"failures": []}, destination, analysis, "dynamic_lighting")
+            self.assertEqual(destination.read_bytes(), before)
+
+    def test_another_query_failure_cannot_be_adopted_as_this_query_history(self):
+        import analysis
+        import reverse_pending
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            destination, document = self.fixture(Path(directory))
+            reference = reverse_pending.retain_review_json({"kind": "failed_host_static_query",
+                "query": "profiles", "target_execution": False,
+                "report": document["dynamic_lighting"]})
+            document["dynamic_lighting"] = {"failures": [], "previous_failed_query": reference}
+            destination.write_text(json.dumps(document), encoding="utf-8")
+            before = destination.read_bytes()
+            with self.assertRaisesRegex(ValueError, "another query or scope"):
+                publish_host_static_query({"failures": []}, destination, analysis, "dynamic_lighting")
+            self.assertEqual(destination.read_bytes(), before)
+
+
 class ProfilesCurrentStaticReceiptTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -629,12 +699,23 @@ class BoundedSourceObservationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "artifact identity differs"):
             audit.observed_sources("observation-current", url)
 
-    def extended_fixture(self, mutate=None, *, stale_index=False):
+    def extended_fixture(self, mutate=None, *, stale_index=False, multiple_edges=False):
+        import evidence
         audit, url, original = self.fixture()
         root = audit.a.ROOT
         receipt = original.parents[2] / "acquisition.json"
-        previous_raw = receipt.read_bytes()
-        previous = json.loads(previous_raw)
+        previous = json.loads(receipt.read_bytes())
+        dependency_url = "https://apps.razer.com/dependency.js"
+        if multiple_edges:
+            raw = b'<link rel="preload" href="/dependency.js"><script src="/dependency.js"></script>'
+            original.write_bytes(raw)
+            claim = {"bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest(), "content_type": "text/html"}
+            previous["files"][0].update(claim)
+            for row in previous["http_observations"]:
+                row.update(claim)
+            previous["stability"][0].update(before_sha256=claim["sha256"], after_sha256=claim["sha256"])
+        previous["edges"] = [{"from": url, "to": dependency_url, "kind": "script", "literal": "dependency.js"}]
+        previous_raw = json.dumps(previous).encode()
 
         def retain(path, value):
             raw = json.dumps(value).encode()
@@ -649,9 +730,10 @@ class BoundedSourceObservationTests(unittest.TestCase):
         predecessor_path = root / predecessor["path"]
         predecessor_path.parent.mkdir(parents=True)
         predecessor_path.write_bytes(previous_raw)
-        addition = {**previous["files"][0], "url": "https://apps.razer.com/dependency.js",
-                    "final_url": "https://apps.razer.com/dependency.js",
-                    "path": ".analysis/inputs/frontend/provider-current/raw/dependency.js"}
+        addition = {**previous["files"][0], "url": dependency_url,
+                    "final_url": dependency_url,
+                    "path": ".analysis/inputs/frontend/provider-current/raw/dependency.js",
+                    "bytes": 2, "sha256": hashlib.sha256(b"[]").hexdigest()}
         target = root / addition["path"]
         target.parent.mkdir(parents=True)
         target.write_bytes(b"[]")
@@ -664,16 +746,22 @@ class BoundedSourceObservationTests(unittest.TestCase):
             "commands": [{"stage": "validate", "exit_code": 1}]})
         current = copy.deepcopy(previous)
         current["files"].append({**addition, "retained_dependency": {"acquisition": provider, "capture": capture}})
-        current["edges"] = [{"to": addition["url"], "retained_provider": provider}]
+        prior_deployment = evidence.frontend_deployment_sources(previous)
+        current["edges"].extend({**reference, "to": source["url"], "retained_provider": provider}
+                                for source in prior_deployment["sources"] if source["url"] == addition["url"]
+                                for reference in source["references"])
         current["dependency_repairs"] = [{"previous_acquisition": predecessor,
             "provider_acquisition": provider, "provider_capture": capture,
             "target_execution": False, "copied_originals": 0, "repeated_factory_capture": False,
-            "added_originals": [{key: addition[key] for key in ("url", "path", "bytes", "sha256")}]}]
+            "added_originals": [{key: addition[key] for key in ("url", "path", "bytes", "sha256")}],
+            "previous_deployment_failures": evidence.frontend_deployment_sources(previous)["failures"],
+            "deployment_failures_after_repair": evidence.frontend_deployment_sources(current)["failures"]}]
         if mutate:
             mutate(current)
         identity = retain(receipt.relative_to(root).as_posix(), current)
         index_path = root / ".analysis/inputs.json"
         indexed = json.loads(index_path.read_bytes())
+        indexed["inputs"][0] = {key: previous["files"][0][key] for key in ("path", "bytes", "sha256")}
         if not stale_index:
             indexed["inputs"][-1] = identity
         indexed["inputs"].append({key: addition[key] for key in ("path", "bytes", "sha256")})
@@ -701,6 +789,21 @@ class BoundedSourceObservationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "artifact identity differs"):
             audit.observed_sources("observation-current", url)
 
+    def test_one_original_preserves_both_actual_preload_and_script_references(self):
+        audit, url, _, current, _, _ = self.extended_fixture(multiple_edges=True)
+        self.assertEqual([edge["role"] for edge in current["edges"][1:]],
+                         ["html_preload_candidate", "html_script_include"])
+        result, originals = audit.observed_sources("observation-current", url)
+        self.assertEqual(result["retained_dependency_extensions"][0]["additional_originals_verified"], 1)
+        self.assertEqual(len(originals), 1)
+        self.assertEqual(audit.final_snapshot(), [])
+        for change in (lambda d: d["edges"].pop(),
+                       lambda d: d["edges"].reverse(),
+                       lambda d: d["edges"][-1].update(role="html_preload_candidate")):
+            with self.subTest(change=change):
+                audit, url, _, _, _, _ = self.extended_fixture(change, multiple_edges=True)
+                with self.assertRaisesRegex(ValueError, "edges differ|original owners"):
+                    audit.observed_sources("observation-current", url)
     def test_repair_cannot_rewrite_observation_or_substitute_provider_ownership(self):
         changes = (
             lambda d: d["http_observations"][0].update(bytes=3),
@@ -709,7 +812,11 @@ class BoundedSourceObservationTests(unittest.TestCase):
             lambda d: d["dependency_repairs"][0]["added_originals"].clear(),
             lambda d: d["dependency_repairs"][0].update(target_execution=True),
             lambda d: d["dependency_repairs"][0].update(copied_originals=1),
-            lambda d: d["edges"][0].update(to="https://apps.razer.com/unrelated.js"),
+            lambda d: d["edges"][-1].update(to="https://apps.razer.com/unrelated.js"),
+            lambda d: d["edges"][-1].update(role="html_script_include"),
+            lambda d: d["edges"][-1].update(literal="unrelated.js"),
+            lambda d: d["edges"].append(copy.deepcopy(d["edges"][-1])),
+            lambda d: d["dependency_repairs"][0]["previous_deployment_failures"].clear(),
             lambda d: d["files"][1].update(url=d["files"][0]["url"]),
         )
         for change in changes:
@@ -717,6 +824,191 @@ class BoundedSourceObservationTests(unittest.TestCase):
                 audit, url, _, _, _, _ = self.extended_fixture(change)
                 with self.assertRaises(ValueError):
                     audit.observed_sources("observation-current", url)
+
+
+class ReviewedAcquisitionIdentityTests(unittest.TestCase):
+    def fixture(self):
+        fixtures = BoundedSourceObservationTests("test_provider_extension_keeps_the_exact_bounded_http_observation")
+        self.addCleanup(fixtures.doCleanups)
+        audit, _, receipt, current, _, retain = fixtures.extended_fixture()
+        indexed = {row["path"]: row for row in json.loads(
+            (audit.a.ROOT / ".analysis/inputs.json").read_bytes())["inputs"]}
+        reference = {**current["dependency_repairs"][0]["previous_acquisition"],
+                     "path": receipt.relative_to(audit.a.ROOT).as_posix()}
+        return audit, receipt, current, indexed, reference, retain
+
+    def test_reviewed_scope_remains_its_exact_immutable_predecessor(self):
+        from host import verify_reviewed_frontend_acquisition
+        audit, receipt, _, indexed, reference, _ = self.fixture()
+        original = copy.deepcopy(reference)
+        raw = receipt.read_bytes()
+        result = verify_reviewed_frontend_acquisition(audit, reference, indexed)
+        self.assertEqual(result["relation"], "verified_immutable_predecessor")
+        self.assertTrue(result["historical_scope_preserved"])
+        self.assertEqual(result["reviewed_acquisition"], original)
+        self.assertNotEqual(result["retained_acquisition"]["path"], reference["path"])
+        self.assertEqual(result["retained_acquisition"]["sha256"], reference["sha256"])
+        self.assertEqual(receipt.read_bytes(), raw)
+        self.assertEqual(reference, original)
+        self.assertEqual(audit.final_snapshot(), [])
+
+    def test_unchanged_review_requires_the_current_index_and_bytes(self):
+        from host import verify_reviewed_frontend_acquisition
+        audit, receipt, _, indexed, reference, _ = self.fixture()
+        current = indexed[reference["path"]]
+        result = verify_reviewed_frontend_acquisition(audit, current, indexed)
+        self.assertEqual(result["relation"], "unchanged")
+        receipt.write_bytes(receipt.read_bytes() + b" ")
+        with self.assertRaisesRegex(ValueError, "artifact identity differs"):
+            verify_reviewed_frontend_acquisition(audit, current, indexed)
+
+    def test_valid_but_unrelated_snapshot_cannot_become_the_reviewed_scope(self):
+        from host import verify_reviewed_frontend_acquisition
+        audit, _, _, indexed, reference, retain = self.fixture()
+        raw = b'{"entry_url":"https://apps.razer.com/unrelated"}'
+        digest = hashlib.sha256(raw).hexdigest()
+        unrelated = retain(".analysis/results/reverse-pending/review-sources/" + digest + ".json", json.loads(raw))
+        with self.assertRaisesRegex(ValueError, "not a verified immutable predecessor"):
+            verify_reviewed_frontend_acquisition(audit, {**unrelated, "path": reference["path"]}, indexed)
+
+    def test_missing_or_stale_index_and_changed_predecessor_are_rejected(self):
+        from host import verify_reviewed_frontend_acquisition
+        for mutation in ("missing", "stale", "changed_predecessor"):
+            with self.subTest(mutation=mutation):
+                audit, _, current, indexed, reference, _ = self.fixture()
+                if mutation == "missing":
+                    indexed.pop(reference["path"])
+                elif mutation == "stale":
+                    indexed[reference["path"]] = reference
+                else:
+                    path = audit.a.ROOT / current["dependency_repairs"][0]["previous_acquisition"]["path"]
+                    path.write_bytes(path.read_bytes() + b" ")
+                with self.assertRaises(ValueError):
+                    verify_reviewed_frontend_acquisition(audit, reference, indexed)
+
+    def test_changed_repair_and_non_acquisition_owners_are_rejected(self):
+        from host import verify_reviewed_frontend_acquisition
+        audit, receipt, current, indexed, reference, retain = self.fixture()
+        current["dependency_repairs"][0]["copied_originals"] = 1
+        indexed[reference["path"]] = retain(reference["path"], current)
+        with self.assertRaisesRegex(ValueError, "original owners"):
+            verify_reviewed_frontend_acquisition(audit, reference, indexed)
+        for changed in ({**reference, "path": "tools/host.py"},
+                        {**reference, "bytes": True}, {**reference, "sha256": "not-a-digest"}):
+            with self.subTest(changed=changed), self.assertRaisesRegex(ValueError, "exact maintained identity"):
+                verify_reviewed_frontend_acquisition(audit, changed, indexed)
+
+
+class SingleRequestDependencyRepairTests(unittest.TestCase):
+    def fixture(self, mutate=None, *, stale_index=False):
+        import analysis
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name).resolve()
+        patched = patch.object(analysis, "ROOT", root)
+        patched.start()
+        self.addCleanup(patched.stop)
+        directory = ".analysis/inputs/frontend/single-request-current/"
+        url = "https://apps.razer.com/catalog.json"
+
+        def write(path, raw):
+            target = root / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(raw)
+            return {"path": path, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+
+        original = write(directory + "raw/apps.razer.com/catalog.json", b"[]")
+        http = {**original, "url": url, "final_url": url, "redirects": [], "http_status": 200,
+                "acquired_at_utc": "2026-10-22T11:00:00Z"}
+        previous = {"entry_url": url, "scope": "bounded observation", "target_execution": False,
+            "source_current_during_acquisition": True, "finished_at_utc": "2026-10-22T11:01:00Z",
+            "files": [http], "http_observations": [{**http, "phase": "before"}, {**http, "phase": "after"}],
+            "stability": [{"url": url, "before_sha256": original["sha256"],
+                           "after_sha256": original["sha256"], "unchanged": True}]}
+        raw = json.dumps(previous).encode()
+        digest = hashlib.sha256(raw).hexdigest()
+        predecessor = write(".analysis/results/reverse-pending/review-sources/" + digest + ".json", raw)
+        addition = {**write(directory + "raw/apps.razer.com/dependency.js", b"const value=7;"),
+                    "url": "https://apps.razer.com/dependency.js", "final_url": "https://apps.razer.com/dependency.js",
+                    "http_status": 200, "content_type": "text/javascript",
+                    "headers": {"Content-Type": "text/javascript", "Content-Length": "14"},
+                    "acquired_at_utc": "2026-10-26T11:02:49.500000Z"}
+        current = copy.deepcopy(previous)
+        current["files"].append(addition)
+        current["dependency_repairs"] = [{"previous_acquisition": predecessor,
+            "recorded_at_utc": "2026-10-26T11:02:49.900000Z", "target_execution": False,
+            "requested_urls": [addition["url"]],
+            "successful_originals": [{key: addition[key] for key in ("url", "path", "bytes", "sha256")}]}]
+        if mutate:
+            mutate(current)
+        identity = write(directory + "acquisition.json", json.dumps(current).encode())
+        indexed = [original, {key: addition[key] for key in ("path", "bytes", "sha256")},
+                   {**(predecessor if stale_index else identity), "path": identity["path"]}]
+        write(".analysis/inputs.json", json.dumps({"inputs": indexed}).encode())
+        audit = HostLocalAudit.__new__(HostLocalAudit)
+        audit.a, audit.artifacts, audit.sources, audit.raw = analysis, {}, {}, {}
+        return audit, url, root / identity["path"], current, root / addition["path"]
+
+    def test_single_http_request_does_not_expand_the_two_round_observation(self):
+        audit, url, _, _, _ = self.fixture()
+        result, originals = audit.observed_sources("single-request-current", url)
+        self.assertEqual(len(originals), 1)
+        self.assertEqual(result["http_observations_verified"], 2)
+        extension = result["retained_dependency_extensions"][0]
+        self.assertEqual(extension["dependency_extension_kind"], "single_http_request")
+        self.assertEqual(extension["additional_http_requests_recorded"], 1)
+        self.assertEqual(extension["additional_http_rounds_claimed"], 0)
+        self.assertFalse(extension["dependency_stability_verified"])
+        self.assertFalse(extension["full_dependency_closure"])
+        self.assertFalse(extension["http_requests"][0]["redirect_chain_recorded"])
+        self.assertEqual(audit.final_snapshot(), [])
+
+    def test_stale_index_and_changed_new_bytes_are_still_rejected(self):
+        audit, url, _, _, _ = self.fixture(stale_index=True)
+        with self.assertRaisesRegex(ValueError, "artifact identity differs"):
+            audit.observed_sources("single-request-current", url)
+        audit, url, _, _, target = self.fixture()
+        target.write_bytes(b"const value=8;")
+        with self.assertRaisesRegex(ValueError, "artifact identity differs"):
+            audit.observed_sources("single-request-current", url)
+
+    def test_successful_list_cannot_change_original_http_or_repair_scope(self):
+        changes = (
+            lambda d: d["files"][0].update(http_status=404),
+            lambda d: d["http_observations"][0].update(phase="single"),
+            lambda d: d["dependency_repairs"][0]["successful_originals"].clear(),
+            lambda d: d["dependency_repairs"][0]["requested_urls"].append(d["files"][1]["url"]),
+            lambda d: d["dependency_repairs"][0].update(provider_capture={}),
+            lambda d: d["dependency_repairs"][0].update(target_execution=True),
+            lambda d: d.update(edges=[{"to": d["files"][1]["url"]}]),
+            lambda d: d["dependency_repairs"][0]["previous_acquisition"].update(bytes=1),
+        )
+        for change in changes:
+            with self.subTest(change=change):
+                audit, url, _, _, _ = self.fixture(change)
+                with self.assertRaises(ValueError):
+                    audit.observed_sources("single-request-current", url)
+
+    def test_additional_http_identity_requires_official_url_exact_path_length_and_time(self):
+        changes = (
+            lambda d: d["files"][1].update(url="http://apps.razer.com/dependency.js"),
+            lambda d: d["files"][1].update(final_url="https://apps.razer.com/other.js"),
+            lambda d: d["files"][1].update(path=d["files"][0]["path"]),
+            lambda d: d["files"][1].update(http_status=404),
+            lambda d: d["files"][1].update(redirects=[{"status": 302}]),
+            lambda d: d["files"][1]["headers"].update({"Content-Length": "13"}),
+            lambda d: d["files"][1]["headers"].pop("Content-Length"),
+            lambda d: d["files"][1]["headers"].update({"Content-Type": "text/html"}),
+            lambda d: d["files"][1].update(acquired_at_utc="2026-10-26T11:02:49.500000"),
+            lambda d: d["files"][1].update(acquired_at_utc="2026-10-26T11:02:50Z"),
+            lambda d: d["dependency_repairs"][0].update(recorded_at_utc="2026-10-22T10:00:00Z"),
+            lambda d: d["files"][1].update(retained_dependency={}),
+        )
+        for change in changes:
+            with self.subTest(change=change):
+                audit, url, _, _, _ = self.fixture(change)
+                with self.assertRaises(ValueError):
+                    audit.observed_sources("single-request-current", url)
 
 
 class LightingCatalogProjectionTests(unittest.TestCase):
@@ -1448,13 +1740,14 @@ class ChromaDashboardLaunchTests(unittest.TestCase):
 
     def test_current_mount_reaches_page_restore_and_real_host_result_owners(self):
         result = verify_chroma_dashboard_launch(self.audit, self.report)
-        self.assertEqual(result["selected_owners"], 31)
+        self.assertEqual(result["selected_owners"], 57)
         self.assertFalse(result["target_execution"])
         self.assertEqual(result["runtime_acceptance"], "unverified")
         self.assertEqual(self.audit.final_snapshot(), [])
 
     def test_restore_and_hidden_start_cannot_be_rebound_to_another_complete_owner(self):
-        for role in ("handleOnUserRestoreWindow", "handleAppHiddenStart", "host_storage", "entry_mount"):
+        for role in ("handleOnUserRestoreWindow", "handleAppHiddenStart", "host_storage", "entry_mount",
+                     "user_gate_class", "installation_wrapper", "lazy_component", "content_page"):
             with self.subTest(role=role):
                 changed = copy.deepcopy(self.report)
                 changed["selected"][role] = changed["selected"]["render"]
@@ -1468,7 +1761,8 @@ class ChromaDashboardLaunchTests(unittest.TestCase):
             verify_chroma_dashboard_launch(self.audit, changed)
 
     def test_missing_host_result_and_cleanup_owners_are_rejected(self):
-        for role in ("host_storage", "preload_invoke", "preload_pagehide", "getTabInfo"):
+        for role in ("host_storage", "preload_invoke", "preload_pagehide", "getTabInfo",
+                     "user_initial", "root_reducers", "installer_events", "content_window_listener"):
             with self.subTest(role=role):
                 changed = copy.deepcopy(self.report)
                 del changed["selected"][role]
@@ -1507,6 +1801,79 @@ class ChromaDashboardLaunchTests(unittest.TestCase):
                 changed[name] = value
                 with self.assertRaisesRegex(ValueError, "promotes static evidence"):
                     verify_chroma_dashboard_launch(self.audit, changed)
+
+    def test_outer_gate_distinguishes_first_visible_mount_from_an_existing_hidden_instance(self):
+        owners = {role: self.audit.owners[owner]["body"] for role, owner in self.report["selected"].items()}
+        self.assertEqual(owners["user_initial"], "X={item:{},isLoggedIn:!1}")
+        self.assertIn("user:e.user.item", owners["user_gate_connect"])
+        self.assertIn('render(){return this.props.user.id?(0,v.jsx)("span",{children:this.props.renderView()}):null}',
+                      owners["user_gate_class"])
+        self.assertIn("componentDidUpdate(e){!1===e.shouldLogin&&this.props.shouldLogin!==e.shouldLogin&&",
+                      owners["user_gate_class"])
+        self.assertNotIn("key:", owners["render"])
+        self.assertIn("if(t)return", owners["install_gate"])
+        self.assertIn('n.e(4461).then(n.bind(n,34461))', owners["install_gate"])
+        self.assertIn("},[])", owners["install_gate"])
+        self.assertFalse(self.report["mount_boundaries"]["restore_existing_instance_restarts_install_effect"])
+
+    def test_lexical_aliases_cannot_rebind_the_gate_installer_or_actual_page(self):
+        for role, name in (("user_gate_class", "ge"), ("installation_ui", "Y"), ("content_page", "Pa")):
+            with self.subTest(role=role):
+                changed = copy.deepcopy(self.report)
+                changed["bindings"][role]["name"] = name
+                with self.assertRaisesRegex(ValueError, "lexical binding was rebound"):
+                    verify_chroma_dashboard_launch(self.audit, changed)
+        changed = copy.deepcopy(self.report)
+        changed["exports"]["installation_wrapper"]["module_id"] = 23322
+        with self.assertRaisesRegex(ValueError, "export relation differs"):
+            verify_chroma_dashboard_launch(self.audit, changed)
+
+    def test_hidden_key_effect_dependencies_children_and_release_claims_cannot_be_promoted(self):
+        for field, value in (
+                ("initial_user_has_id", True), ("hidden_state_rekeys_gate", True),
+                ("install_effect_dependencies", ["isStartHidden"]),
+                ("restore_existing_instance_restarts_install_effect", True),
+                ("installation_children", "always"), ("initial_completed_statuses", ["restart-required", "skipped", "completed"]),
+                ("installer_removed_events_ignored", False), ("installer_initial_read_canceled_on_cleanup", True),
+                ("lazy_effect_dependencies", []), ("lazy_cleanup_cancels_inflight", True),
+                ("content_retains_exit_response_disposer", True), ("window_list_hook_returns_cleanup", True),
+                ("account_and_online_orchestration_in_product", True), ("runtime_behavior_executed", True),
+                ("runtime_behavior_executed", 0)):
+            with self.subTest(field=field, value=value):
+                changed = copy.deepcopy(self.report)
+                changed["mount_boundaries"][field] = value
+                with self.assertRaisesRegex(ValueError, "conditional mount or cleanup boundary differs"):
+                    verify_chroma_dashboard_launch(self.audit, changed)
+
+    def test_installer_state_and_actual_children_keep_their_separate_consumers(self):
+        owners = {role: self.audit.owners[owner]["body"] for role, owner in self.report["selected"].items()}
+        self.assertIn("[o,i]=(0,s.useState)(!0)", owners["installation_wrapper"])
+        self.assertTrue(owners["installation_wrapper"].endswith(":e.children})"))
+        self.assertIn('s({type:i.TM,payload:"completed"})', owners["installer_events"])
+        self.assertIn('["restart-required","skipped","completed"].includes(n)', owners["installer_events"])
+        self.assertIn('("skipped"!==o&&"completed"!==o||(o="completed")', owners["installer_events"])
+        self.assertIn('if("removed"===l)return', owners["installer_events"])
+        self.assertIn('()=>{l.A.off("windowstorageevent",n)}', owners["installer_events"])
+        self.assertIn("(ja(ka))", owners["content_export"])
+        self.assertIn("return Pa(),(0,d.jsx)(e,{...t})", owners["content_wrapper"])
+
+    def test_lazy_cleanup_does_not_replace_actual_content_or_window_subscription_cleanup(self):
+        owners = {role: self.audit.owners[owner]["body"] for role, owner in self.report["selected"].items()}
+        self.assertIn("()=>{c(null),d(null)}),[t])", owners["lazy_component"])
+        self.assertIn('componentWillUnmount(){ee.A.removeWindowStorageItem("dependent-app-status"),'
+                      'window.removeEventListener("storage",this.checkStorageChanges)}', owners["content_page"])
+        self.assertIn('response("exitApp",', owners["content_page"])
+        self.assertIn('response("window-list-change",', owners["content_window_listener"])
+        self.assertNotIn("return()=>", owners["content_window_listener"])
+        self.assertFalse(self.report["mount_boundaries"]["content_removes_anonymous_dom_listeners"])
+
+    def test_another_retained_duplicate_installer_module_is_not_the_requested_source_owner(self):
+        source = next(row for name, row in self.audit.sources.items() if name.endswith("/4234.c5514adb.chunk.js"))
+        changed = copy.deepcopy(self.report)
+        changed["exports"]["installer_events"] = self.audit.webpack_export(
+            "different_installer_factory", [source], 20682, "A")
+        with self.assertRaisesRegex(ValueError, "export was rebound"):
+            verify_chroma_dashboard_launch(self.audit, changed)
 
 
 class SetupFactoryExtractionTests(unittest.TestCase):

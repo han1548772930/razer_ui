@@ -340,6 +340,10 @@ capture 完整只表示静态函数和原始字节收据可复核；伪代码失
 
 当前 61 项分为 49 项原生与 12 项前端静态复核。原生的 373 条原始失败分别由 296 份完整函数、3 份完整上下文、2 项精确导入转发、69 项静态汇编／架构契约及 3 项嵌入 PE 归属核对闭合。前端 4 项直接通过，8 项以已核验的当前官方来源替换闭合，保留历史缺失与失败；这不表示取得了缺失 source map。全部任务的 `semantics_complete` 及前端 `mount_tree_complete` 仍为 false，完整产品语义和挂载树不能由本批队列状态推定。
 
+当前复核从每份结果正文重新推导状态、计数和冲突，核对冻结的任务、输入及函数引用后才发布缺项状态；仅有 `path`／`sha256` 的引用也逐字节重验。修复后的统一入口已使用 16 个进程重新发布全部 61 项，结果全部通过；历史 889 项通过状态未在这次增量中重新执行。八处历史 `capture_tool` 只保留旧源码身份且缺少对应字节快照，单列为来源字节未验证，不能冒充当前工具或函数证据已恢复。
+
+原生[具体消费者审阅](../../.analysis/results/native-bulk/camera-0e06-identity-verification.json)另核清三个嵌入 x86 函数的实参、输出结构和释放，以及 `_snwprintf`／`DbgPrint` 的全部 38 个调用点与返回值消费者。43 个完整函数、5,377 条指令和 16,367 字节均与实际原 PE 匹配；三个映射的归属证明已按当前来源索引重新核验，旧证明和原失败记录继续保留。日志提供者返回值、业务状态、字符串终止和设备应答分别判断，不能由日志调用返回推导业务成功，见[设备通信](../products/shared/device-communication.md)。
+
 8 项前端替换的原捕获仍记录 `successful_full_capture: false` 和原校验失败；本批通过依据为当前完整原件、AST、无缺失的模块恢复及已核对的字面量 webpack 文件名依赖闭包，不提升为原捕获校验全部通过。
 
 这 12 项的 `semantic_review: required` 是静态队列保留的独立语义边界，不代表下面已有专项从未读取过。继续逆向时按当前来源复用对应所有者，只补未覆盖的调用链；不重做整套捕获，也不将某个专题的结论外推到整个应用或产品。
@@ -347,7 +351,7 @@ capture 完整只表示静态函数和原始字节收据可复核；伪代码失
 | 原任务源集 | 当前语义来源 | 已有语义所有者与剩余边界 |
 | --- | --- | --- |
 | `synapse-device-catalog-current` | 同名源集 | [动态照明目录选择](../products/shared/dynamic-lighting.md#实际设备目录primarypid-顺序与页面资源)及 `local-audit.dynamic_lighting.lighting_catalog` 已核 335 行／334 个 primary PID、按原序 first-match 的标量身份选择、manifest／SVG／Cache API 消费者。收据中的 1 项 `dependency_closure_outside_observation` 限定 15 URL 的观察范围，并非缺少一个原件；完整应用与动态缓存仍不能据此算闭合。 |
-| `installed-chroma-dashboard` | `chroma-app-dashboard-current` | [Dashboard](../products/host/dashboard.md)与[窗口生命周期](../products/host/window-lifecycle.md)的本机入口连读；当前来源替换证明字节／AST 与文件名依赖，不证明全部 Chroma Dashboard 卡片、安装状态、窗口动作及结果消费者均已闭合。 |
+| `installed-chroma-dashboard` | `chroma-app-dashboard-current` | [隐藏启动与恢复](../products/host/dashboard.md#chroma-dashboard-的隐藏启动与恢复)连接真实根、可见性事件、URL 存储、条件挂载、安装状态消费者及实际内容页；57 个选定完整所有者明确首次挂载与隐藏实例复用的不同结果。卡片的其余功能、Rust 生产接线和实际窗口／设备结果仍分别核验。 |
 | `mouse-162-identity-current` | 同名源集及逐项引用的 162／163 原件 | [162 身份专项](../products/mouse/products/162.md)及 `identity-audit.json` 已核目录、DeviceInfo、后台准入和 UI／MW 路由，162 不能当 163 硬件别名。该身份结论不覆盖两个部署的全部功能、真实 USB、Rust 迁移或设备对照。 |
 | `installed-product-190-mw` | `mouse-mw-190-current` | [Performance](../products/mouse/performance.md)、[高级灵敏度](../products/mouse/advanced-sensitivity.md)、[映射](../products/mouse/customize.md)及 `mouse-mw-audit.json` 保存本机 profile、DPI 预读／写回／比较、Matcher、动态采样和取消所有者；其余页面／版本／固件分支、生产消费者与实际 DLL／设备结果分别核对。 |
 | `installed-product-190-ui` | `mouse-190-current` | [190 当前页面树](../products/mouse/products/190.md)按六项实际导航分别接功能文档；[Performance 实际挂载与状态](../products/mouse/performance.md#pid190-的实际页面与-rust-对照)已区分草稿与读回。结构页的直接组件定位不等于全部嵌套弹层、焦点、状态及像素验收。 |
@@ -361,10 +365,24 @@ capture 完整只表示静态函数和原始字节收据可复核；伪代码失
 
 表中链接是现有证据的语义入口，当前任务收据和具体专题仍各自保留原范围。源码获取、静态语义、Rust 独立实现、UI／后台接线与纯／模拟测试／实际对照不能通过修改这个队列表互相提升。
 
+后续语义逆向按四路持续补充真实消费者，复用已有完整捕获，没有重复建立分析数据库。键盘 [678／688 映射与 tester](../products/keyboard/customize.md)分别核对实际编译依赖、事务、回放 token 与注销行为；鼠标 [七款共用输入监控](../products/mouse/advanced-sensitivity.md)查明空身份错误在宿主被丢弃，并核对身份构造、缓存和跨模块句柄释放，主 EXE 的四个选定完整函数不提升为全库捕获完成；音频 [1442 通知与线程异常](../products/audio/playback-and-eq.md#virtualizerfir-的-client-产品与版本分支)核实同线程重入错误与 noexcept 终止，未将局部解锁写成成功恢复；配件 [3893 Hanbo](../products/accessories/lighting-and-cooling.md#3893-hanbo-风扇水泵和温度)核实 `isHardwareOutdated=false` 仅为 UI 初值，实际轮询没有该观测。各链都保留 Rust、页面／后台接线与真实功能对照的独立未验证状态。
+
+[3942 VAD 退出与所有权](../products/audio/playback-and-eq.md#3942-vad-线程退出与资源所有权)另有独立正式片：44 个完整函数、2,116 条指令、9,151 字节原始代码、4 个 runtime 根及 24 个 FH4 状态均重读核验，95 个篡改反例被拒绝。无限等待返回零实际跳过 data-event 关闭；worker 的失败返回也被 bridge 丢弃。该片明确更正并引用旧报告的过宽断言，保留旧原件和冻结核验；不把局部原生资源缺口外推为已观测到全局泄漏或实际运行结果。
+
+该 VAD 片连接内核事件创建、注册、信号、IRP 消费者及释放。统一 `--native-vad-kernel-batch capture/check` 对 1442／3942 两份当前驱动批量核验，各自保留 manifest、包提取链、服务 worker 与事件名；每份驱动选定的 14 个完整函数、1,303 条指令及 5,932 字节原始块逐项相同，5 字节未枚举区域也保留原样。服务端 `CreateEventW`／`DeviceIoControl` 的实际导入及事件名字节分别核验，不将代码相同当作包身份或事件名相同。正式[整批事件节点](../../.analysis/results/frontend/audio-surround-audit.json#/native_vad_kernel_event_batch)复用现有完整函数引用，95 个批量篡改反例全部拒绝；OS 对象生命周期、取消、卸载竞争与实际驱动执行保持未验证。
+
+[006A 安装选择](../products/keyboard/firmware.md#pid-006a-驱动链)通过统一 `driver-install-selection` 查询批量核对 334 份已保留资源 manifest，并按同一容器字节确定当前使用者为鼠标目录产品 106。新静态捕获的安装器 93 个函数与既有 System 插件 58 个函数全部按原始指令／PE 核对，选择链分别引用 11／24 个完整函数；11 个篡改反例全部拒绝。`kernel32.dll` 文件版本高 DWORD 的有符号比较决定 KMDF 1.9／1.15 分支，保留失败时的实际原版控制流和插件反编译警告。两支写出的驱动同名，静态解压的 `_1` 后缀不代表雷云版本；完整来源获取、实际安装、驱动读回及独立 Rust 仍未验证。
+
+[鼠标省电任务缓存](../products/mouse/advanced-sensitivity.md#省电任务缓存与整批源码复核)通过同一 `mouse-receiver-polling` 调用完成现有 76 份中间件来源的整批采集及独立原件重读：145 份按字节身份去重的脚本、278 份完整所有者正文及 619 个来源位置，失败和输入变化均为零。默认值函数、启动覆盖、缓存初始化、任务的 `timerTick/value/version` 及 SET／GET／取消顺序分别关联，保留 182／190 的初始化差异及 URL 级宿主内存缓存消费者。正式[整批节点](../../.analysis/results/frontend/mouse-mw-audit.json#/queries/mouse-receiver-polling/power_task_memory_batch)复用原 182 深审计，9 项定向测试覆盖来源互换、缺失字段、默认值与覆盖混淆、缓存冒充设备确认、原件篡改及去重。捆包函数存在不等于 76 款产品均挂载该能力；实际 UI／运行时功能选择、Rust 任务缓存接线及 DLL／设备对照仍未验证。
+
+[02B4 请求生命周期](../products/keyboard/firmware.md)另按实际 KMDF 1.15 绑定核对物理／虚拟队列、父设备、定时器和请求完成。正式 `keyboard-driver-request-lifecycle` 查询引用 17 个选定完整函数，并独立复核全部 123 个函数、31,400 字节原始代码与 7,402 条指令，9 个篡改反例被拒绝；产品目录身份 691 与硬件 PID 692 分开记录。14 份版本固定的官方平台原件及 25 个声明经统一 `reconcile-source-index --platform-contract` 发布，完整字节、声明行 SHA、许可证与固定 commit URL 均已核验；它们只解释 OS ABI 与框架所有权，不提供 Razer 协议证据。转交队列成功后框架可取消请求，与驱动未调用 `MarkCancelable` 不矛盾；父对象删除也不能当作已观测到所有在途回调结束。原生嵌入归属证明已针对新增来源索引重新核验，前序证明保留。
+
 [原生补查清理收据](../../.analysis/results/scratch-cleanup-native-bulk-closure-verified-plan-applied.json)记录实际删除 17 个临时目录、51 个文件，释放 2,767,838,051 字节；[静态复核后清理收据](../../.analysis/results/scratch-cleanup-unresolved61-post-audit-plan-applied.json)另记录实际删除 117 个目录、351 个文件，释放 7,376,279,993 字节，两批失败均为零。计划 SHA、执行范围和已删除路径均已重新核对，合计实际释放 10,144,118,044 字节。119 份原生补查保留依据在删除后重新核验，包含 16 份源数据库及 16 份原始输入。未完成、未审或仍有实际引用的内容继续保留；清理后的全部 61 项已用 16 个进程重新计算并通过，嵌套证据引用的逻辑字节和 SHA 也独立重验通过。
 
-统一 `verify-analysis-tools` 入口已覆盖新增的归属审计、架构契约、来源汇编、历史尝试、导入转发及前端闭包检查；当前[验证收据](../../.analysis/results/tool-verification.json)记录 1,352 项通过、失败和错误均为零，并保留工具与测试的输入身份。736／737 的完整配置消费者已单独核实 edition 129 到 0 的显式选择及缓存顺序；6 个候选路径的 404 原始观察继续保留，不冒充取得了 edition 129 内容、查询了设备或验证了动态缓存与完整产品语义。
+统一 `verify-analysis-tools` 入口已覆盖归属审计、架构契约、来源汇编、历史尝试、导入转发、前端闭包、严格状态投影、历史来源关系、平台契约及产品消费者；当前[验证收据](../../.analysis/results/tool-verification.json)记录 1,491 项实际执行并通过，失败、错误和跳过均为零，54 份工具与测试输入的执行前后快照及当前字节全部匹配。输入变化、消失、空套件、全部跳过及中断均不能发布通过。736／737 的完整配置消费者已单独核实 edition 129 到 0 的显式选择及缓存顺序；6 个候选路径的 404 原始观察继续保留，不冒充取得了 edition 129 内容、查询了设备或验证了动态缓存与完整产品语义。
 
-当前[统一 Rust 验证收据](../../.analysis/validation.json)记录 40 组检查通过、2,489 次纯／模拟测试执行通过，验证期间输入未变化；其中包括工作区全目标编译、手柄连接探测与根导入、3942 帧与退出效果、宏输入消费者、通知偏好和屏幕取色释放链。另有 2 项需显式读取安装配置的既有测试保持忽略。具体实现与仍未闭合的语义分别见[手柄](../products/gamepad/mapping-and-sensitivity.md)、[灯光](../products/shared/dynamic-lighting.md)、[宏](../products/shared/macros.md)、[通知](../products/host/settings.md)及[取色](../products/shared/color-picker.md)，对应原有 gap 已更新；这份收据没有执行本轮官方 DLL 功能对照、真实设备操作或应用窗口验收。
+目录、协议选择、736／737、162 身份和 IoT 重连五份来源收据的增补历史已接回统一索引；713 份已索引前端获取收据的实际字节全部匹配。复用 provider 的依赖逐份核对原件、完整捕获与真实引用边；IoT 新增的四份单次 HTTP 获取明确不具备两轮稳定性证明。DeviceInfo 的 69 份来源中，67 份保持当前身份，2 份通过严格增补链核对不可变旧来源，原分析正文与 235 份 manifest 范围不变。正式灯光查询的 722 个完整所有者和窗口查询的 197 个完整所有者均无查询失败、输入变化或目标执行；[统一宿主收据](../../.analysis/results/host-current/local-audit.json)同时保留两次发布失败的完整前序引用。
 
-[本轮清理收据](../../.analysis/results/scratch-cleanup-current-implementation-plan-applied.json)已核对计划 SHA 并执行：新增可删候选为 0，实际删除和释放字节均为 0。188 个有引用、未完成或缺少完成依据的分析目录继续按各自原因保护；测试临时目录已由统一验证入口释放，不将此前两批已释放空间重复计入本轮。
+当前[统一 Rust 验证收据](../../.analysis/validation.json)记录 44 组检查通过、2,559 次纯／模拟测试执行通过；1,818 份输入和 44 份日志的当前实际字节与收据全部匹配，未因本批静态工具修改重复运行 Cargo。其中包括工作区全目标编译、手柄连接探测与根导入、3942 帧与退出效果、宏输入消费者、通知偏好和屏幕取色释放链；3 项测试保持忽略。具体实现与仍未闭合的语义分别见[手柄](../products/gamepad/mapping-and-sensitivity.md)、[灯光](../products/shared/dynamic-lighting.md)、[宏](../products/shared/macros.md)、[通知](../products/host/settings.md)及[取色](../products/shared/color-picker.md)，对应原有 gap 已更新；这份收据没有执行本批官方 DLL 功能对照、真实设备操作或应用窗口验收。
+
+[当前整批清理收据](../../.analysis/results/scratch-cleanup-product-batch-continuation-plan-applied.json)已核对计划 SHA 并实际执行，状态为完成、失败为零：可删候选、实际删除和释放字节均为 0。188 个分析目录分别因正式引用、未完成、缺少完成依据或未知文件身份继续保护。006A 安装器新建的基础分析数据库及其输入副本属于正式 93 函数捕获的断点依赖，位于受保护的 `.work/native/*/batch`；没有创建失去用途的补查数据库或克隆，测试临时目录已释放。[前批无损压缩收据](../../.analysis/results/storage-compaction-host-lineage-plan-apply.json)记录两份必要失败前序的实际占用减少 12,214,704 字节，22,307,248 逻辑字节、路径和 SHA 全部不变，失败为零；不将此前已释放空间重复计入当前批次。

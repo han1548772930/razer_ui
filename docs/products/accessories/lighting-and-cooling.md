@@ -78,6 +78,8 @@ Hue 实际有 HOME 与灯具页面，不能由共享 Help 模块或曾经遗漏�
 
 MW [6259.e34ab9ddf1b145a67b62.js](../../../.analysis/inputs/frontend/accessories-mw-3893-current/raw/apps.razer.com/synapse/products/3893/mw/6259.e34ab9ddf1b145a67b62.js) 内真实风扇→水泵读取 `[535245, 535534)`，服务轮询所有者 `[855309, 856161)`：风扇/水泵 5000 ms，系统温度 1000 ms。设备 setup 就启动系统监测，不以内部 Performance/Lighting tab 为所有权边界。产品 tab 观察 debounce 400 ms 发 start/stop，但服务 dispatcher 只消费 start；失焦不保证停止 getter。
 
+`isHardwareOutdated` 来自 UI `BC` 的本地初值 `false`，不是固件查询结果。完整 MW 模块 48290 的状态只有七个温度、转速字段，风扇/水泵与系统监测两处回调各合并自己的字段；状态的六处引用没有传出可修改的别名，也没有写入这个标记。MW 67061 与 UI 3254 的 `B8N` 都解析为 `MW_UPDATE_DEVICE_RUNTIMEDATA`；UI `FC` 把 payload 合并到既有 runtimeData，缺少标记时保留原值，显式外部 payload 则仍可覆盖。当前官方轮询链没有固件版本比较或“硬件过旧”观测，不能把初值当作已确认兼容。该边界及独立原件/AST 复核保存在 [Hanbo 正式查询](../../../.analysis/results/frontend/accessories-main-audit.json) 的 `hardware_outdated_flow`，不据此排除任意外部通道注入。
+
 设备 edition=0 只禁用 ARGB port 2147483651；Pump=2、Fan=1 的热管理仍激活。runtime/profile 的端口顺序以 Pump、Fan 开头，UI 左右排列不能当作协议发送顺序。风扇按端口名称 `Fans` 选择，其他热端口走水泵方法。预设 Quiet/Normal/Performance 分别为 mode/speed 1/20、2/50、3/80；高级模式用各自曲线。
 
 [Elsa 协议](../../../.analysis/inputs/frontend/accessories-mw-3893-current/raw/apps.razer.com/synapse/products/3893/mw/rzDeviceElsa.5a3710c37a030a35aebe.js) 的水泵读取 `[16744, 17447)` 从响应取 connected、set mode、actual mode、温度、RPM 和 duty；风扇读取 `[19154, 19759)` 另有 channel/detected，字段位置不同。setter 发送 mode/speed/0。风扇 7 点与水泵 5 点分别补尾端 100/100 到协议 9 点，再按真实 profile/长度写入，不能直接发送 UI 数组。

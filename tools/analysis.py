@@ -574,9 +574,12 @@ def extract_native_packages(args):
         refresh_gaps()
 
 
-def refresh_gaps():
+def refresh_gaps(owners=None):
     """Reconcile retained receipts without rerunning analyzers or target code."""
     with index_lock():
+        if owners is not None:
+            with index_lock(ROOT / ".analysis/gaps.lock"):
+                return refresh_selected_gaps(owners)
         return _refresh_gaps()
 
 
@@ -626,14 +629,95 @@ def semantic_query_gaps(value, evidence, pointer="", product_id=None):
         for key, child in value.items():
             location = pointer + "/" + key.replace("~", "~0").replace("/", "~1")
             if key in kinds and isinstance(child, list):
-                rows.extend({"kind": kinds[key], "evidence": evidence, "pointer": location,
-                             "product_id": product_id, "finding": finding} for finding in child)
+                for finding in child:
+                    kind = kinds[key]
+                    if (key == "failures" and isinstance(finding, dict)
+                            and isinstance(finding.get("stage"), str)
+                            and re.fullmatch(r"(?:[0-9a-f]+:)?hexrays", finding["stage"])
+                            and isinstance(finding.get("error"), str) and finding["error"]):
+                        kind = "analyzer_query_failure"
+                    rows.append({"kind": kind, "evidence": evidence, "pointer": location,
+                                 "product_id": product_id, "finding": finding})
             else:
                 rows.extend(semantic_query_gaps(child, evidence, location, product_id))
     elif isinstance(value, list):
         for index, child in enumerate(value):
             rows.extend(semantic_query_gaps(child, evidence, pointer + "/" + str(index), product_id))
     return rows
+
+
+def semantic_result_gaps(data, evidence):
+    rows = semantic_query_gaps(data, evidence)
+    if evidence == ".analysis/results/host-current/local-audit.json":
+        for query, report in data.items():
+            if isinstance(report, dict) and report.get("source_chain_complete") is False:
+                rows.append({"kind": "host_local_source_chain_pending", "evidence": evidence,
+                             "pointer": "/" + query.replace("~", "~0").replace("/", "~1"),
+                             "scope": "Retained complete owners do not establish every native target and consumer"})
+        rows.append({"kind": "host_implementation_acceptance_pending", "evidence": evidence,
+                     "scope": "Static host queries do not establish complete Rust/UI wiring, actual DLL comparisons or runtime acceptance"})
+    else:
+        rows.append({"kind": "page_implementation_acceptance_pending", "evidence": evidence,
+                     "scope": "semantic queries are separate from each full UI/backend checklist and runtime acceptance"})
+    return rows
+
+
+def native_capture_gaps(data, receipt):
+    resolved = native_reanalysis_resolution(receipt.parent, data)
+    rows = [{"kind": "native_capture_failure", "evidence": rel(receipt), **row}
+            for row in resolved["remaining_failures"]]
+    rows.extend({"kind": "native_supplement_verification_failure", "evidence": rel(receipt), **row}
+                for row in resolved["verification_failures"])
+    if not data.get("capture_complete"):
+        rows.append({"kind": "native_capture_incomplete", "evidence": rel(receipt)})
+    if data.get("semantic_audit") != "complete":
+        rows.append({"kind": "semantic_audit_pending", "scope": "ABI, selectors, transport, responses and lifecycle"})
+    if data.get("implementation_acceptance") != "complete":
+        rows.append({"kind": "implementation_acceptance_pending", "scope": "Rust protocol/service/UI chains"})
+    return rows
+
+
+def refresh_selected_gaps(owners):
+    """Publish only explicitly selected semantic or native capture owners."""
+    if not owners or len(owners) != len(set(owners)):
+        raise ValueError("Selected gap owners must be a nonempty unique list")
+    selected = []
+    for name in owners:
+        path = resolve(name, ".analysis/results")
+        relative = rel(path)
+        if relative != name:
+            raise ValueError("Gap owner requires its canonical project-relative path")
+        semantic = (path.parent == (ROOT / ".analysis/results/frontend").resolve()
+                    and path.name.endswith("-audit.json")
+                    and not path.name.endswith("-shared-page-layout-audit.json"))
+        native = bool(re.fullmatch(r"\.analysis/results/native/[0-9a-f]{64}/capture\.json", relative))
+        if not semantic and not native and relative != ".analysis/results/host-current/local-audit.json":
+            raise ValueError("Selected gap owner is not a semantic audit or native capture: " + name)
+        selected.append((path, native))
+
+    def read_owner(item):
+        path, native = item
+        raw = path.read_bytes()
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            raise ValueError("Gap owner must contain a result object: " + rel(path))
+        rows = native_capture_gaps(data, path) if native else semantic_result_gaps(data, rel(path))
+        return rel(path), rows, {"path": rel(path), "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, max(2, len(selected)))) as pool:
+        updates = list(pool.map(read_owner, selected))
+    path = ROOT / ".analysis/results/gaps.json"
+    ledger = json.loads(path.read_bytes())
+    for name, rows, source in updates:
+        current = (ROOT / name).read_bytes()
+        if len(current) != source["bytes"] or hashlib.sha256(current).hexdigest() != source["sha256"]:
+            raise ValueError("Selected gap source changed during reconciliation: " + name)
+    ledger["owners"].update({name: rows for name, rows, _ in updates})
+    ledger["derived_owners"] = sorted(set(ledger.get("derived_owners", [])) | set(owners))
+    ledger["updated_at_utc"] = stamp()
+    ledger["selected_refresh"] = {"sources": [source for _, _, source in updates], "target_execution": False}
+    save(path, ledger)
+    return ledger
 
 
 def typed_maintenance_gaps(registry):
@@ -824,27 +908,14 @@ def _refresh_gaps():
         if shared_layout:
             data = {key: value for key, value in data.items() if key != "products"}
 
-        rows.extend(semantic_query_gaps(data, rel(receipt)))
-        if not shared_layout:
-            rows.append({"kind": "page_implementation_acceptance_pending", "evidence": rel(receipt),
-                         "scope": "semantic queries are separate from each full UI/backend checklist and runtime acceptance"})
+        rows.extend(semantic_query_gaps(data, rel(receipt)) if shared_layout else
+                    semantic_result_gaps(data, rel(receipt)))
         derived[rel(receipt)] = rows
     captures = {}
     for receipt in sorted((ROOT / ".analysis/results/native").glob("*/capture.json")):
         data = json.loads(receipt.read_bytes())
         captures[data["input_sha256"]] = data
-        resolved = native_reanalysis_resolution(receipt.parent, data)
-        rows = [{"kind": "native_capture_failure", "evidence": rel(receipt), **row}
-                for row in resolved["remaining_failures"]]
-        rows.extend({"kind": "native_supplement_verification_failure", "evidence": rel(receipt), **row}
-                    for row in resolved["verification_failures"])
-        if not data.get("capture_complete"):
-            rows.append({"kind": "native_capture_incomplete", "evidence": rel(receipt)})
-        if data.get("semantic_audit") != "complete":
-            rows.append({"kind": "semantic_audit_pending", "scope": "ABI, selectors, transport, responses and lifecycle"})
-        if data.get("implementation_acceptance") != "complete":
-            rows.append({"kind": "implementation_acceptance_pending", "scope": "Rust protocol/service/UI chains"})
-        derived[rel(receipt)] = rows
+        derived[rel(receipt)] = native_capture_gaps(data, receipt)
     for receipt in sorted((ROOT / ".analysis/results/native").glob("*/exception-regions/*/capture.json")):
         data = json.loads(receipt.read_bytes())
         rows = [{"kind": "native_exception_region_decode_failure", "evidence": rel(receipt), **row}
@@ -1059,15 +1130,7 @@ def _refresh_gaps():
     host_local = ROOT / ".analysis/results/host-current/local-audit.json"
     if host_local.is_file():
         data = json.loads(host_local.read_bytes())
-        rows = semantic_query_gaps(data, rel(host_local))
-        for query, report in data.items():
-            if isinstance(report, dict) and report.get("source_chain_complete") is False:
-                rows.append({"kind": "host_local_source_chain_pending", "evidence": rel(host_local),
-                             "pointer": "/" + query.replace("~", "~0").replace("/", "~1"),
-                             "scope": "Retained complete owners do not establish every native target and consumer"})
-        rows.append({"kind": "host_implementation_acceptance_pending", "evidence": rel(host_local),
-                     "scope": "Static host queries do not establish complete Rust/UI wiring, actual DLL comparisons or runtime acceptance"})
-        derived[rel(host_local)] = rows
+        derived[rel(host_local)] = semantic_result_gaps(data, rel(host_local))
     for owner in ledger.get("derived_owners", []):
         ledger["owners"].pop(owner, None)
     ledger["owners"].update(derived)
@@ -7540,13 +7603,106 @@ def publish_instruction_manual(receipt_path):
     return {"receipt": receipt_row["path"], "documents": len(rows)}
 
 
+def publish_platform_contract(receipt_path):
+    """Verify pinned official OS contracts without importing product semantics."""
+    receipt_path = resolve(rel(receipt_path), ".analysis/inputs/platform-abi-current")
+    raw = receipt_path.read_bytes()
+    receipt = json.loads(raw)
+    version = receipt.get("version", "")
+    if (receipt.get("schema_version") != 1 or receipt.get("target_execution") is not False or
+            not isinstance(receipt.get("scope"), str) or not receipt["scope"].strip() or
+            not isinstance(version, str) or not re.fullmatch(r"KMDF [0-9]+\.[0-9]+", version) or
+            not isinstance(receipt.get("repositories"), list) or not receipt["repositories"] or
+            not isinstance(receipt.get("files"), list) or not receipt["files"]):
+        raise ValueError("Platform contract requires a complete static acquisition and ABI version")
+    allowed = {"https://github.com/microsoft/Windows-Driver-Frameworks",
+               "https://github.com/MicrosoftDocs/windows-driver-docs-ddi"}
+    repositories = {}
+    for row in receipt["repositories"]:
+        name = row.get("repository")
+        if (name not in allowed or name in repositories or
+                not re.fullmatch(r"[a-f0-9]{40}", row.get("commit", "")) or
+                not isinstance(row.get("license_paths"), list) or not row["license_paths"]):
+            raise ValueError("Platform contract repository is not a unique pinned official source")
+        repositories[name] = row
+    rows, names, retained_members, declarations = [], set(), set(), 0
+    members_by_path = {}
+    for member in receipt["files"]:
+        source = resolve(member["path"], ".analysis/inputs/platform-abi-current")
+        repository = repositories.get(member.get("repository"))
+        repo_path = member.get("repository_path", "")
+        parts = repo_path.split("/") if isinstance(repo_path, str) else []
+        if (repository is None or member.get("commit") != repository["commit"] or
+                not parts or any(part in {"", ".", ".."} or "\\" in part or ":" in part for part in parts) or
+                not source.is_relative_to(receipt_path.parent) or source == receipt_path or
+                member["path"] in names or member.get("http_status") != 200 or
+                not isinstance(member.get("version"), str) or not member["version"].strip()):
+            raise ValueError("Platform contract member has invalid ownership, version or HTTP provenance")
+        if member.get("license_paths", repository["license_paths"]) != repository["license_paths"]:
+            raise ValueError("Platform contract member license ownership differs from its repository")
+        repo_suffix = member["repository"].removeprefix("https://github.com/")
+        expected_url = "https://raw.githubusercontent.com/" + repo_suffix + "/" + repository["commit"] + "/" + repo_path
+        if member.get("url") != expected_url or member.get("final_url") != expected_url:
+            raise ValueError("Platform contract must retain its exact commit-pinned official raw URL")
+        if (member["repository"].endswith("Windows-Driver-Frameworks") and source.suffix.lower() == ".h" and
+                "/kmdf/" + version.removeprefix("KMDF ") + "/" not in "/" + repo_path):
+            raise ValueError("Platform contract header does not belong to the declared KMDF ABI")
+        content = source.read_bytes()
+        if (type(member.get("bytes")) is not int or len(content) != member["bytes"] or not content or
+                hashlib.sha256(content).hexdigest() != member.get("sha256")):
+            raise ValueError("Platform contract source differs from its complete original bytes")
+        lines = content.decode("utf-8-sig").splitlines()
+        raw_lines = content.splitlines(keepends=True)
+        claims = member.get("declarations", [])
+        if not isinstance(claims, list):
+            raise ValueError("Platform contract declarations must preserve source line ranges")
+        for claim in claims:
+            first, last = claim.get("line_start"), claim.get("line_end")
+            if (type(first) is not int or type(last) is not int or not 1 <= first <= last <= len(lines) or
+                    not isinstance(claim.get("symbol"), str) or not claim["symbol"].strip() or
+                    claim["symbol"] not in "\n".join(lines[first - 1:last]) or
+                    not isinstance(claim.get("claim"), str) or not claim["claim"].strip()):
+                raise ValueError("Platform contract declaration is not bound to its actual source lines")
+            if ("sha256" in claim and hashlib.sha256(b"".join(raw_lines[first - 1:last])).hexdigest()
+                    != claim["sha256"]):
+                raise ValueError("Platform contract declaration byte identity changed")
+            declarations += 1
+        names.add(member["path"])
+        member_key = (member["repository"], repo_path)
+        if member_key in retained_members:
+            raise ValueError("Platform contract duplicates a retained repository member")
+        retained_members.add(member_key)
+        members_by_path[member["path"]] = member
+        rows.append({key: member[key] for key in ("path", "bytes", "sha256", "url", "final_url",
+                                                  "repository", "commit", "repository_path", "version")}
+                    | {"kind": "official_platform_contract_source"})
+    for name, repository in repositories.items():
+        for license_path in repository["license_paths"]:
+            license_member = members_by_path.get(license_path, {})
+            license_name = Path(license_member.get("repository_path", "")).name
+            if (license_member.get("repository") != name or
+                    not re.fullmatch(r"LICENSE(?:[-.][A-Za-z0-9_.-]+)?", license_name)):
+                raise ValueError("Platform contract omits a declared source license")
+    if not declarations:
+        raise ValueError("Platform contract contains no source-bound ABI declarations")
+    receipt_row = {"path": rel(receipt_path), "bytes": len(raw),
+                   "sha256": hashlib.sha256(raw).hexdigest(), "kind": "acquisition_receipt"}
+    index_files([*rows, receipt_row], publication={"owner": "tools/analysis.py", "receipt": receipt_row["path"],
+        "reason": "Reconcile pinned official OS ABI and lifecycle contract sources with complete byte identities",
+        "verification": {"method": "official_repository_commit_raw_url_bytes_sha256_license_and_declaration_lines",
+            "files": len(rows), "declarations": declarations, "version": version, "network_requests": False,
+            "scope": "Platform ABI and lifecycle only; not Razer protocol evidence or runtime acceptance"}})
+    return {"receipt": receipt_row["path"], "files": len(rows), "declarations": declarations}
+
+
 def reconcile_source_index(args):
     """Reconcile only inputs validated by their actual acquisition/publication owners."""
     import families
     import asset_release
     instruction_manuals = getattr(args, "instruction_manual", None) or []
-    if not args.frontend and not args.publication and not instruction_manuals:
-        raise ValueError("Source reconciliation requires explicit frontend, resource publication or instruction manual receipts")
+    platform_contracts = getattr(args, "platform_contract", None) or []
+    if not args.frontend and not args.publication and not instruction_manuals and not platform_contracts:
+        raise ValueError("Source reconciliation requires explicit acquisition or publication receipts")
     for name in args.frontend or []:
         families.publish_frontend_acquisition(resolve(name, ".analysis/inputs/frontend"),
             reason="Reconcile retained supplemental frontend acquisition after complete byte, deployment-root, manifest and stability verification")
@@ -7555,8 +7711,10 @@ def reconcile_source_index(args):
             reason="Reconcile targeted resource publication after source-receipt, pinned resource and alias verification")
     for name in instruction_manuals:
         publish_instruction_manual(resolve(name, ".analysis/inputs/platform-abi-current"))
+    for name in platform_contracts:
+        publish_platform_contract(resolve(name, ".analysis/inputs/platform-abi-current"))
     print(json.dumps({"frontend_receipts": args.frontend or [], "publication_manifests": args.publication or [],
-                      "instruction_manuals": instruction_manuals,
+                      "instruction_manuals": instruction_manuals, "platform_contracts": platform_contracts,
                       "network_requests": False, "target_execution": False, "passed": True}), flush=True)
 
 
@@ -7616,6 +7774,8 @@ def add_commands(parsers):
     reference.add_argument("--retained-snapshot", action="store_true", help="Revalidate a previously complete detached snapshot against its original Git blob and SHA-256 receipt; no new upstream currentness claim")
     reconcile = parsers.add_parser("reconcile-source-index", help="Verify retained source receipts through their owners before publishing complete input identities")
     reconcile.add_argument("--frontend", action="append", help="Explicit frontend acquisition receipt; repeat for multiple source sets")
+    reconcile.add_argument("--platform-contract", action="append",
+                           help="Explicit pinned official OS ABI/lifecycle acquisition; verify complete sources and declaration lines offline")
     reconcile.add_argument("--publication", action="append", help="Explicit targeted resource publication manifest; validates pinned source and alias identities without network")
     reconcile.add_argument("--instruction-manual", action="append", help="Explicit retained official architecture PDF acquisition receipt; verifies its origin, revision and complete bytes without network")
     parsers.add_parser("configure-ida", help="Regenerate direct IDA MCP configuration and plugin")
@@ -7624,7 +7784,9 @@ def add_commands(parsers):
     probe.add_argument("--function", required=True)
     inventory = parsers.add_parser("inspect-corpus", help="Verify original bytes and classify native/CLR binaries, aliases, imports, exports and versions")
     inventory.add_argument("--no-refresh-gaps", action="store_true")
-    parsers.add_parser("refresh-gaps", help="Reconcile acquisition, graph and native failures from existing receipts")
+    gaps = parsers.add_parser("refresh-gaps", help="Reconcile acquisition, graph and native failures from existing receipts")
+    gaps.add_argument("--owner", action="append",
+                      help="Refresh only this canonical semantic audit or native capture owner; repeat to reconcile a batch")
     acquisition = parsers.add_parser("acquire-native", help="Verify production device manifests and acquire all declared resources without execution")
     acquisition.add_argument("--manifest-url", action="append", help="Explicit official device manifest URL; repeat to acquire multiple products when retained receipts are unavailable")
     acquisition.add_argument("--include-host-app-resources", action="store_true", help="Also acquire resources declared by actual stable official host app HTML manifests")
@@ -7757,7 +7919,8 @@ def run(args):
      "configure-ida": lambda _: configure_ida(), "inspect-corpus": inspect_corpus,
      "extract-native-packages": extract_native_packages,
      "probe-ida": probe_ida,
-     "refresh-gaps": lambda _: print(json.dumps({"owners": len(refresh_gaps()["owners"])}), flush=True),
+     "refresh-gaps": lambda args: print(json.dumps({"owners": len(refresh_gaps(getattr(args, "owner", None))["owners"]),
+         "selected_owners": getattr(args, "owner", None)}), flush=True),
      "acquire-native": acquire_native, "capture-corpus": capture_corpus,
      "capture-native": capture_native, "supplement-native": supplement_native,
      "audit-native-chain": audit_native_chain, "fetch-frontend": fetch_frontend,

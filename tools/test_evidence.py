@@ -285,11 +285,34 @@ class SemanticQueryGapTests(unittest.TestCase):
             "unresolved_chains": ["required local setter is absent"]}]}}}
         rows = analysis.semantic_query_gaps(data, "audit.json")
         self.assertEqual([row["kind"] for row in rows], ["acquisition_query_failure",
-            "acquisition_query_reference_unresolved", "analyzer_query_failure", "semantic_query_failure",
+            "acquisition_query_reference_unresolved", "analyzer_query_failure", "analyzer_query_failure",
             "semantic_query_chain_unresolved"])
         self.assertTrue(all(row["product_id"] == 740 for row in rows))
         self.assertEqual(rows[3]["finding"]["stage"], "hexrays")
         self.assertTrue(rows[3]["pointer"].endswith("/native/failures"))
+
+    def test_historical_decompiler_failures_keep_their_actual_capture_owner(self):
+        native = {"stage": "30888:hexrays", "error": "call analysis failed", "traceback": "complete error"}
+        supplement = {"rva": "0x30888", "stage": "hexrays", "error": "complete traceback"}
+        data = {"product_id": 190, "capture_states": {
+            "base": {"failures": [native]}, "previous_failed_supplement": {"failures": [supplement]}}}
+        rows = analysis.semantic_query_gaps(data, "current.json")
+        self.assertEqual([row["kind"] for row in rows], ["analyzer_query_failure"] * 2)
+        self.assertEqual([row["finding"] for row in rows], [native, supplement])
+        self.assertEqual([row["pointer"] for row in rows],
+                         ["/capture_states/base/failures", "/capture_states/previous_failed_supplement/failures"])
+        self.assertTrue(all(row["product_id"] == 190 and row["evidence"] == "current.json" for row in rows))
+
+    def test_unknown_failures_and_semantic_conditions_are_not_reclassified_from_error_words(self):
+        findings = ["Hex-Rays result consumer is missing", {"stage": "contract", "error": "hexrays"},
+            {"stage": "not-hexrays", "error": "call analysis failed"},
+            {"stage": "30888:hexrays"}, {"stage": "hexrays", "error": ""},
+            {"stage": 3, "error": "hexrays"}]
+        rows = analysis.semantic_query_gaps({"failures": findings,
+            "unresolved_chains": ["Original hexrays failure still needs a result consumer"]}, "audit.json")
+        self.assertEqual([row["kind"] for row in rows],
+                         ["semantic_query_failure"] * len(findings) + ["semantic_query_chain_unresolved"])
+        self.assertEqual([row["finding"] for row in rows[:len(findings)]], findings)
 
     def test_nested_products_and_json_pointer_escaping_keep_the_actual_owner(self):
         rows = analysis.semantic_query_gaps({"products": [{"product_id": 691,
@@ -7149,22 +7172,205 @@ class RustValidationTests(unittest.TestCase):
             self.assertIn("no_tests_executed", receipt["commands"][0]["errors"])
 
 
-def run():
-    suite = unittest.defaultTestLoader.loadTestsFromModule(__import__(__name__))
-    for module in ("test_rust_data", "test_typed_tables", "test_windows_installer", "test_workspace",
-                   "test_resource_scope", "test_asset_release", "test_host", "test_native_runtime", "test_families",
-                   "test_reverse_pending", "test_ida_capture_values", "test_analysis_storage",
-                    "test_native_adjudication", "test_native_callsites", "test_ida_capture",
-                    "test_native_attempt_history", "test_native_boundaries", "test_native_embedded",
-                    "test_native_ia64_contracts", "test_native_import_forwarders",
-                    "test_native_source_correspondence", "test_native_static_reviews", "test_frontend"):
-        suite.addTests(unittest.defaultTestLoader.loadTestsFromName(module))
-    result = unittest.TextTestRunner(verbosity=2).run(suite)
-    path = analysis.ROOT / ".analysis/results/tool-verification.json"
-    report = {"schema_version": 1, "recorded_at_utc": analysis.stamp(), "tests_run": result.testsRun,
-              "failures": len(result.failures), "errors": len(result.errors), "passed": result.wasSuccessful(),
-              "inputs": [{"path": name, "sha256": analysis.sha(analysis.ROOT / name)}
-                         for name in ("tools/evidence.py", "tools/test_evidence.py", "tools/analysis.py", "tools/frontend.py",
+class PlatformContractPublicationTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        root_patch = patch.object(analysis, "ROOT", self.root)
+        root_patch.start()
+        self.addCleanup(root_patch.stop)
+        self.directory = self.root / ".analysis/inputs/platform-abi-current/wdf"
+        self.directory.mkdir(parents=True)
+        self.receipt = self.directory / "acquisition.json"
+        self.repository = "https://github.com/microsoft/Windows-Driver-Frameworks"
+        self.commit = "b" * 40
+        self.document = {"schema_version": 1, "scope": "OS queue ownership and KMDF ABI only",
+            "version": "KMDF 1.15", "target_execution": False,
+            "repositories": [{"repository": self.repository, "commit": self.commit,
+                "license_paths": [(self.directory / "LICENSE").relative_to(self.root).as_posix()]}],
+            "files": []}
+        for name, repository_path, raw, claims in [
+            ("wdfrequest.h", "src/publicinc/wdf/kmdf/1.15/wdfrequest.h",
+             b"WdfRequestForwardToIoQueue\nWdfObjectDelete\n", [
+                 {"symbol": "WdfRequestForwardToIoQueue", "line_start": 1, "line_end": 1,
+                  "claim": "The declared request forwarding API"}]),
+            ("LICENSE", "LICENSE", b"Retained official license fixture\n", []),
+        ]:
+            path = self.directory / name
+            path.write_bytes(raw)
+            url = "https://raw.githubusercontent.com/microsoft/Windows-Driver-Frameworks/" + self.commit + "/" + repository_path
+            self.document["files"].append({"path": path.relative_to(self.root).as_posix(), "bytes": len(raw),
+                "sha256": hashlib.sha256(raw).hexdigest(), "repository": self.repository, "commit": self.commit,
+                "repository_path": repository_path, "url": url, "final_url": url, "http_status": 200,
+                "version": "KMDF 1.15", "declarations": claims})
+        self.index = self.root / ".analysis/inputs.json"
+        self.unrelated = {"path": ".analysis/inputs/unrelated", "bytes": 1, "sha256": "d" * 64}
+        analysis.save(self.index, {"schema_version": 1, "inputs": [self.unrelated]})
+
+    def publish(self, document=None):
+        analysis.save(self.receipt, self.document if document is None else document)
+        return analysis.publish_platform_contract(self.receipt)
+
+    def test_pinned_sources_declaration_lines_and_license_publish_once(self):
+        result = self.publish()
+        self.assertEqual((result["files"], result["declarations"]), (2, 1))
+        document = json.loads(self.index.read_bytes())
+        self.assertIn(self.unrelated, document["inputs"])
+        self.assertEqual(len(document["inputs"]), 4)
+        verification = document["source_publications"][0]["verification"]
+        self.assertFalse(verification["network_requests"])
+        self.assertIn("not Razer protocol evidence", verification["scope"])
+        previous = self.index.read_bytes()
+        self.publish()
+        self.assertEqual(self.index.read_bytes(), previous)
+
+    def test_other_origin_floating_commit_redirect_and_wrong_abi_fail(self):
+        for field, value in [("url", "https://example.com/source.h"),
+                             ("url", self.document["files"][0]["url"].replace(self.commit, "main")),
+                             ("final_url", "https://example.com/redirect.h"),
+                             ("commit", "c" * 40), ("repository_path", "src/kmdf/1.17/wdfrequest.h")]:
+            candidate = json.loads(json.dumps(self.document))
+            candidate["files"][0][field] = value
+            with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+                self.publish(candidate)
+
+    def test_claim_text_bounds_and_actual_source_bytes_are_checked(self):
+        for field, value in [("symbol", "InventedFunction"), ("line_start", 2),
+                             ("line_end", 30), ("line_start", True), ("claim", ""), ("sha256", "0" * 64)]:
+            candidate = json.loads(json.dumps(self.document))
+            candidate["files"][0]["declarations"][0][field] = value
+            with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+                self.publish(candidate)
+        source = self.directory / "wdfrequest.h"
+        source.write_bytes(source.read_bytes().replace(b"Forward", b"Missing"))
+        with self.assertRaisesRegex(ValueError, "original bytes"):
+            self.publish()
+
+    def test_missing_license_duplicate_member_and_unknown_repository_fail(self):
+        missing = json.loads(json.dumps(self.document))
+        missing["files"].pop()
+        repeated = json.loads(json.dumps(self.document))
+        repeated["files"].append(repeated["files"][0])
+        unknown = json.loads(json.dumps(self.document))
+        unknown["repositories"][0]["repository"] = "https://github.com/example/Windows-Driver-Frameworks"
+        false_license = json.loads(json.dumps(self.document))
+        false_license["repositories"][0]["license_paths"] = [false_license["files"][0]["path"]]
+        for candidate in (missing, repeated, unknown, false_license):
+            with self.subTest(candidate=candidate), self.assertRaises(ValueError):
+                self.publish(candidate)
+
+    def test_outside_acquisition_directory_and_execution_promotion_fail(self):
+        outside = self.directory.parent / "outside.h"
+        outside.write_bytes((self.directory / "wdfrequest.h").read_bytes())
+        candidate = json.loads(json.dumps(self.document))
+        candidate["files"][0]["path"] = outside.relative_to(self.root).as_posix()
+        with self.assertRaises(ValueError):
+            self.publish(candidate)
+        candidate = json.loads(json.dumps(self.document))
+        candidate["target_execution"] = True
+        with self.assertRaises(ValueError):
+            self.publish(candidate)
+
+    def test_unified_reconcile_routes_explicit_platform_receipt(self):
+        analysis.save(self.receipt, self.document)
+        arguments = SimpleNamespace(frontend=None, publication=None, instruction_manual=None,
+            platform_contract=[self.receipt.relative_to(self.root).as_posix()])
+        with redirect_stdout(io.StringIO()) as output:
+            analysis.reconcile_source_index(arguments)
+        report = json.loads(output.getvalue())
+        self.assertEqual(report["platform_contracts"], arguments.platform_contract)
+        self.assertTrue(report["passed"])
+        self.assertFalse(report["target_execution"])
+
+
+class SelectedGapRefreshTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        self.patch = patch.object(analysis, "ROOT", self.root)
+        self.patch.start()
+        self.addCleanup(self.patch.stop)
+        self.path = self.root / ".analysis/results/gaps.json"
+        self.owner = ".analysis/results/frontend/mouse-mw-audit.json"
+        self.host = ".analysis/results/host-current/local-audit.json"
+        self.native = ".analysis/results/native/"+"a"*64+"/capture.json"
+        self.other = {"rows": [{"kind": "preserved", "finding": "unrelated failure"}]}
+        analysis.save(self.path, {"owners": {"unrelated": self.other, self.owner: [{"kind": "old"}]},
+                                 "derived_owners": ["unrelated", self.owner], "manual": {"keep": True}})
+
+    def test_batch_refresh_preserves_unrelated_owners_and_all_failure_boundaries(self):
+        analysis.save(self.root / self.owner, {"queries": {"power": {"product_id": 182,
+            "failures": [{"stage": "cafe:hexrays", "error": "retained failure"}],
+            "unresolved_chains": ["unconfirmed real transport"]}}})
+        analysis.save(self.root / self.host, {"window/lifecycle": {"source_chain_complete": False,
+            "failures": ["actual query failure"]}})
+        analysis.save(self.root / self.native, {"capture_complete": False})
+        resolution = {"remaining_failures": [{"rva": "0x1000", "error": "retained decompile failure"}],
+                      "verification_failures": [{"reason": "unresolved conflict"}]}
+        with patch.object(analysis, "native_reanalysis_resolution", return_value=resolution):
+            ledger = analysis.refresh_gaps([self.owner, self.host, self.native])
+        self.assertEqual(ledger["owners"]["unrelated"], self.other)
+        self.assertEqual(ledger["manual"], {"keep": True})
+        self.assertEqual([row["kind"] for row in ledger["owners"][self.owner]],
+                         ["analyzer_query_failure", "semantic_query_chain_unresolved", "page_implementation_acceptance_pending"])
+        self.assertEqual(ledger["owners"][self.owner][0]["product_id"], 182)
+        self.assertEqual(ledger["owners"][self.host][1]["pointer"], "/window~1lifecycle")
+        self.assertEqual([row["kind"] for row in ledger["owners"][self.native]],
+                         ["native_capture_failure", "native_supplement_verification_failure", "native_capture_incomplete",
+                          "semantic_audit_pending", "implementation_acceptance_pending"])
+        self.assertEqual({row["path"] for row in ledger["selected_refresh"]["sources"]},
+                         {self.owner, self.host, self.native})
+        self.assertFalse(ledger["selected_refresh"]["target_execution"])
+        self.assertEqual(set(ledger["derived_owners"]), {"unrelated", self.owner, self.host, self.native})
+
+    def test_changed_source_refuses_publication_without_touching_existing_ledger(self):
+        analysis.save(self.root / self.owner, {"queries": {"power": {"failures": []}}})
+        previous = self.path.read_bytes()
+        derive = analysis.semantic_result_gaps
+        def change(data, name):
+            rows = derive(data, name)
+            analysis.save(self.root / name, {"queries": {"power": {"failures": ["late failure"]}}})
+            return rows
+        with patch.object(analysis, "semantic_result_gaps", side_effect=change):
+            with self.assertRaisesRegex(ValueError, "changed during"):
+                analysis.refresh_gaps([self.owner])
+        self.assertEqual(self.path.read_bytes(), previous)
+
+    def test_invalid_ambiguous_and_outside_owner_paths_never_change_the_ledger(self):
+        previous = self.path.read_bytes()
+        for owners in ([], [self.owner, self.owner], ["../outside.json"],
+                       [".analysis/inputs/acquisition.json"],
+                       [".analysis/results/frontend/mouse-shared-page-layout-audit.json"],
+                       [".analysis/results/frontend/../frontend/mouse-mw-audit.json"]):
+            with self.subTest(owners=owners), self.assertRaises(ValueError):
+                analysis.refresh_gaps(owners)
+            self.assertEqual(self.path.read_bytes(), previous)
+
+    def test_malformed_or_missing_owner_never_publishes_partial_batch(self):
+        analysis.save(self.root / self.owner, [])
+        analysis.save(self.root / self.host, {"window": {"failures": []}})
+        previous = self.path.read_bytes()
+        with self.assertRaisesRegex(ValueError, "result object"):
+            analysis.refresh_gaps([self.host, self.owner])
+        self.assertEqual(self.path.read_bytes(), previous)
+        (self.root / self.owner).unlink()
+        with self.assertRaises(FileNotFoundError):
+            analysis.refresh_gaps([self.host, self.owner])
+        self.assertEqual(self.path.read_bytes(), previous)
+
+    def test_cli_routes_all_explicit_owners_to_single_shared_refresh(self):
+        parser = argparse.ArgumentParser()
+        analysis.add_commands(parser.add_subparsers(dest="command"))
+        args = parser.parse_args(["refresh-gaps", "--owner", self.owner, "--owner", self.host])
+        with patch.object(analysis, "refresh_gaps", return_value={"owners": {}}) as refresh, \
+             redirect_stdout(io.StringIO()):
+            analysis.run(args)
+        refresh.assert_called_once_with([self.owner, self.host])
+
+
+VERIFICATION_INPUT_NAMES = ("tools/evidence.py", "tools/test_evidence.py", "tools/analysis.py", "tools/frontend.py",
                                       "tools/host.py", "tools/families.py", "tools/workspace.py",
                                       "tools/asset_release.py", "tools/asset-release.json",
                                       "tools/rust_data.py", "tools/catalog_data.py", "tools/resource_database.py",
@@ -7188,7 +7394,137 @@ def run():
                                        "tools/native_import_forwarders.py", "tools/test_native_import_forwarders.py",
                                        "tools/native_source_correspondence.py", "tools/test_native_source_correspondence.py",
                                        "tools/native_static_reviews.py", "tools/test_native_static_reviews.py",
-                                       "tools/test_frontend.py")],
-              "target_execution": False, "real_device_operations": False}
-    analysis.save(path, report)
-    return 0 if result.wasSuccessful() else 1
+                                       "tools/test_frontend.py")
+
+
+def verification_input_snapshot():
+    rows = []
+    for name in VERIFICATION_INPUT_NAMES:
+        try:
+            raw = (analysis.ROOT / name).read_bytes()
+        except OSError as error:
+            rows.append({"path": name, "sha256": None, "error": str(error)})
+        else:
+            rows.append({"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
+    return rows
+
+
+def run_verified_suite(suite, inputs, *, runner=None):
+    result, interrupted = None, None
+    try:
+        result = (runner or unittest.TextTestRunner(verbosity=2)).run(suite)
+    except BaseException as error:
+        interrupted = {"type": type(error).__name__, "message": str(error)}
+        raise
+    finally:
+        final_inputs = verification_input_snapshot()
+        before, after = ({row["path"]: row for row in snapshot} for snapshot in (inputs, final_inputs))
+        changed = [{"path": name, "before": before.get(name), "after": after.get(name)}
+                   for name in sorted(before.keys() | after.keys()) if before.get(name) != after.get(name)]
+        complete = bool(inputs) and all(row.get("sha256") for row in inputs+final_inputs)
+        executed = result.testsRun-len(result.skipped) if result is not None else 0
+        passed = bool(result is not None and result.wasSuccessful() and executed > 0 and complete and not changed)
+        report = {"schema_version": 1, "recorded_at_utc": analysis.stamp(),
+                  "tests_run": result.testsRun if result is not None else 0, "executed_tests": executed,
+                  "failures": len(result.failures) if result is not None else 0,
+                  "errors": len(result.errors) if result is not None else 0,
+                  "skipped": len(result.skipped) if result is not None else 0,
+                  "passed": passed, "inputs": inputs, "final_inputs": final_inputs,
+                  "input_changes": changed, "snapshot_stable": complete and not changed,
+                  "interrupted": interrupted, "target_execution": False, "real_device_operations": False}
+        analysis.save(analysis.ROOT / ".analysis/results/tool-verification.json", report)
+    return 0 if passed else 1
+
+
+class ToolVerificationSnapshotTests(unittest.TestCase):
+    def verify(self, action=None, *, empty=False):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "tools/owned.py"
+            source.parent.mkdir()
+            source.write_bytes(b"original source bytes")
+            with patch.object(analysis, "ROOT", root), \
+                 patch.object(sys.modules[__name__], "VERIFICATION_INPUT_NAMES", ("tools/owned.py",)):
+                inputs = verification_input_snapshot()
+                suite = unittest.TestSuite([] if empty else [unittest.FunctionTestCase(lambda: action(source) if action else None)])
+                status = run_verified_suite(suite, inputs, runner=unittest.TextTestRunner(stream=io.StringIO()))
+                report = json.loads((root / ".analysis/results/tool-verification.json").read_bytes())
+            return status, report
+
+    def test_stable_executed_test_preserves_both_exact_input_snapshots(self):
+        status, report = self.verify()
+        self.assertEqual(status, 0)
+        self.assertTrue(report["passed"])
+        self.assertTrue(report["snapshot_stable"])
+        self.assertEqual(report["tests_run"], 1)
+        self.assertEqual(report["executed_tests"], 1)
+        self.assertEqual(report["inputs"], report["final_inputs"])
+        self.assertEqual(report["input_changes"], [])
+        self.assertIsNone(report["interrupted"])
+        self.assertFalse(report["target_execution"])
+
+    def test_passing_test_cannot_publish_changed_source_as_tested_input(self):
+        status, report = self.verify(lambda source: source.write_bytes(b"changed source bytes"))
+        self.assertEqual(status, 1)
+        self.assertFalse(report["passed"])
+        self.assertFalse(report["snapshot_stable"])
+        self.assertEqual(report["failures"], 0)
+        self.assertEqual(report["input_changes"][0]["before"], report["inputs"][0])
+        self.assertEqual(report["input_changes"][0]["after"], report["final_inputs"][0])
+        self.assertNotEqual(report["inputs"][0]["sha256"], report["final_inputs"][0]["sha256"])
+
+    def test_missing_final_input_retains_failure_instead_of_old_success(self):
+        status, report = self.verify(lambda source: source.unlink())
+        self.assertEqual(status, 1)
+        self.assertFalse(report["passed"])
+        self.assertFalse(report["snapshot_stable"])
+        self.assertIsNone(report["final_inputs"][0]["sha256"])
+        self.assertTrue(report["final_inputs"][0]["error"])
+
+    def test_failed_tests_and_zero_executed_tests_never_pass(self):
+        def fail(source):
+            raise AssertionError("independent failure")
+
+        def skip(source):
+            raise unittest.SkipTest("explicit execution boundary")
+
+        for action, empty in ((fail, False), (skip, False), (None, True)):
+            with self.subTest(action=action, empty=empty):
+                status, report = self.verify(action, empty=empty)
+                self.assertEqual(status, 1)
+                self.assertFalse(report["passed"])
+                self.assertTrue(report["snapshot_stable"])
+                self.assertEqual(report["failures"], 1 if action is fail else 0)
+                self.assertEqual(report["executed_tests"], 1 if action is fail else 0)
+
+    def test_interruption_replaces_previous_success_and_propagates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "owned.py"
+            source.write_bytes(b"stable")
+            with patch.object(analysis, "ROOT", root), \
+                 patch.object(sys.modules[__name__], "VERIFICATION_INPUT_NAMES", ("owned.py",)):
+                path = root / ".analysis/results/tool-verification.json"
+                analysis.save(path, {"passed": True})
+                runner = MagicMock()
+                runner.run.side_effect = KeyboardInterrupt("cancelled")
+                with self.assertRaises(KeyboardInterrupt):
+                    run_verified_suite(unittest.TestSuite(), verification_input_snapshot(), runner=runner)
+                report = json.loads(path.read_bytes())
+            self.assertFalse(report["passed"])
+            self.assertEqual(report["interrupted"]["type"], "KeyboardInterrupt")
+            self.assertEqual(report["tests_run"], 0)
+
+
+def run():
+    inputs = verification_input_snapshot()
+    suite = unittest.defaultTestLoader.loadTestsFromModule(__import__(__name__))
+    for module in ("test_rust_data", "test_typed_tables", "test_windows_installer", "test_workspace",
+                   "test_resource_scope", "test_asset_release", "test_host", "test_native_runtime", "test_families",
+                   "test_reverse_pending", "test_ida_capture_values", "test_analysis_storage",
+                    "test_native_adjudication", "test_native_callsites", "test_ida_capture",
+                    "test_native_attempt_history", "test_native_boundaries", "test_native_embedded",
+                    "test_native_ia64_contracts", "test_native_import_forwarders",
+                    "test_native_source_correspondence", "test_native_static_reviews", "test_frontend"):
+        suite.addTests(unittest.defaultTestLoader.loadTestsFromName(module))
+    return run_verified_suite(suite, inputs)

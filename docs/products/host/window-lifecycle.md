@@ -6,7 +6,7 @@
 
 当前稳定宿主为 4.0.827；获取来源、实际字节身份和本轮部署复核见[宿主收据](../../../.analysis/inputs/host-current/acquisition.json)及[元数据复核](../../../.analysis/inputs/host-current/metadata-recheck.json)。原始文件位于[官方 ASAR 静态提取目录](../../../.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/)。以下区间均为原始 UTF-8 字节的半开区间，不引用恢复代码的字符偏移。
 
-`python tools/workspace.py audit-host-local --query window-lifecycle` 核对原件、packed ASAR 中的实际成员字节、官方包别名及包来源，保留 25 份完整 JS 文件和 117 个去重 AST 所有者，并核对 BLE endpoint 原件及 16 个完整原生函数，结果写入[统一宿主查询](../../../.analysis/results/host-current/local-audit.json)的 `window_lifecycle`。这些所有者包含完整文件和具体函数，数量不是已完成的产品功能数。当前查询无解析／字节校验失败，但 `source_chain_complete=false`，原生释放、全部页面消费者和运行时验收分别保留未验证状态。
+`python tools/workspace.py audit-host-local --query window-lifecycle` 核对原件、packed ASAR 中的实际成员字节、官方包别名及包来源，复核 25 份宿主 JS 和 Chroma Dashboard 当前来源，共 124 份原件、197 个去重 AST 所有者，并核对 BLE endpoint 原件及 16 个完整原生函数，结果写入[统一宿主查询](../../../.analysis/results/host-current/local-audit.json)的 `window_lifecycle`。其中 `chroma_dashboard_launch` 保存 57 个选定完整所有者，连接隐藏启动、窗口恢复、URL 存储、条件挂载、安装状态与真实内容消费者。当前查询无解析／字节校验失败，输入前后未变；所有者数量不是已完成的产品功能数，`source_chain_complete=false` 继续保留原生释放、全部页面消费者和运行时验收的独立边界。
 
 | 原始文件 | 完整行为所有者与字节区间 |
 | --- | --- |
@@ -33,6 +33,8 @@
 主机的 focus 动作先寻找命名窗口或页签所属窗口，再请求活动页切换；存在 `subTab` 时向实际页签发送 `focusSubTab`。公共 `focusWindow` 对休眠的整窗执行重建，对休眠页签先移除休眠登记并 `reInit`；普通路径按 `willShow` 决定 show、restore 和 focus，再广播 `appFocus`。广播和重建请求不提供页面已初始化或设备读取已完成的确认。
 
 窗口打开处理先解析 URL、`frameName` 和 feature。已存在且仍存活的同名目标复用其焦点链；policy 3 的 `attachToWindow`、policy 5／7／8 的独立窗口路径不能合成一个窗口分支。设备窗口身份和 Dashboard 的 PID／container 导航需要共同核对，见[Dashboard](dashboard.md)。
+
+Chroma Dashboard 的隐藏启动仅在 `autoStart=1` 与 `forceHidden=1` 同时成立时启用。其窗口事件和桌面图标恢复请求继续读取 URL 存储中的 `dependent-app-status`，按实际记录决定发布 `running` 和清除页面隐藏状态；空记录、安装中记录及异步拒绝具有不同结果。外层实际按 `user.id` 决定是否挂载安装门禁，而 hidden 变化没有重建 key：恢复前尚未挂载和已经以 hidden=true 挂载的实例，具有不同 effect 结果。这个账号条件只作为官方原始挂载依据，本地优先产品移除账号路径。安装协调包装另消费 WindowStorage phase，只有自己的显示门禁解除后才返回真正 Dashboard；其状态不证明安装或设备成功。完整分支、实际 children、Visualizer 条件开启、共享隐藏窗口监听和页面释放边界见[Chroma Dashboard 隐藏启动与恢复](dashboard.md#chroma-dashboard-的隐藏启动与恢复)。
 
 [固件共享窗口专项](../../../.analysis/results/frontend/synapse-update-fw-current/page-interactions.json)进一步连接真实调用方：SDK 的 activation 经通用 `doElectronAction` 保留 subTab／willShow，main 进入 focus／页签激活／可选 focusSubTab。新页 policy=3 沿 Tab 的 window-open handler、common.createNewTab、TabUI、preload 的 tabEvent 到 TabManager 创建实际 Tab 并 init；已有页切换则发布 activeTabChanged。所选页签关闭路径核对允许关闭／force-focus，按可用分支等待 beforeunload 并发布带 frameName 的 tabClosed；固件迁移指示器消费该事件，但该通知不确认文件迁移、设备恢复或 DLL 释放。设置／迁移的具体焦点订阅和未配对资源分别见[设置](settings.md)与[配置迁移](profile-migration.md)。
 

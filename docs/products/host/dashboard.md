@@ -114,17 +114,28 @@ Chroma Dashboard 使用自己的挂载根，不能继承上面的 Synapse Dashbo
 
 这里的 `dependent-app-status` 经 Chroma facade → preload `doElectronAction` → main `electronAction` → `WindowStorage.callFunction`。主机按发送者 URL 保存独立 Map；GET 返回含 truthy 值的 `{value,windowName:URL}` JSON 数组，SET 返回**写入前的旧值**并向符合条件的其他窗口发事件。页面对 hidden／running 的 SET 都不等待，因此两个标记只表示窗口协调意图，不能证明安装完成、持久化完成、原生 worker 存活或设备设置写回。
 
-`ge` 没有 `componentWillUnmount`；`handleAppHiddenStart` 丢弃了 `response("tab-message",...)` 的 disposer，内部 desktop-icon 监听也没有在该类中注销。preload 的 pagehide 会另行移除 tab-message 等 IPC 监听，不能据此声称页面类自身已经配对释放。安装包装 `Ce` 的 effect 使用空依赖数组，初次隐藏时直接返回；同一个已挂载实例只改变 `isStartHidden` 不会重新运行该 effect，外层是否重新挂载须由它自己的完整消费者决定。
+`ge` 没有 `componentWillUnmount`；`handleAppHiddenStart` 丢弃了 `response("tab-message",...)` 的 disposer，内部 desktop-icon 监听也没有在该类中注销。preload 的 pagehide 会另行移除 tab-message 等 IPC 监听，不能据此声称页面类自身已经配对释放。
 
-本链完整证据写入现有 [host local-audit](../../../.analysis/results/host-current/local-audit.json) 的 `window_lifecycle.chroma_dashboard_launch`，保留 31 个选定完整 AST 所有者、跨 chunk 导出／绑定及真实 host GET／SET／IPC／pagehide 所有者。原件身份为：
+安装包装的真实挂载链是 `pe → Provider(store) → Ne → ge → B(F) → z(x) → span → Ce`。`z` 读取 `store.user.item`；`x.render` 仅在 `user.id` 为 truthy 时调用 `renderView()`，否则返回 null。当前 store 的用户初值为 `{item:{},isLoggedIn:false}`；`userGet` 对应 action 将其替换为实际 payload，退出 action 才恢复此初值。`ge` 的这条树没有随 `isStartHidden` 改变的 key；`x.componentDidUpdate` 在 `shouldLogin:false→true` 时只调用账号适配器，没有显式卸载／重建 `Ce`。
+
+因此，`Ce` 的空依赖 effect 必须按实际先后顺序解释。若隐藏期间 `user.id` 始终为假，`Ce` 尚未挂载；恢复清除 hidden、之后 `user.id` 首次为真时，新实例会请求安装包装模块 `34461`。若隐藏期间已有 truthy `user.id`，`Ce` 会以 hidden=true 首次挂载并在 effect 中清空组件后早退；此后保持同一用户门禁与组件身份，仅清除 hidden 不会重跑该 effect。用户门禁先返回 null 后重新出现、错误边界切树或整页重建才属于其他挂载路径，恢复事件本身不保证发生这些路径。这是当前完整源码的条件结果，没有执行实际窗口来断言每次隐藏启动都会出现同一现象。账号门禁只保留原版挂载来源，本项目继续按本地优先范围移除账号和登录行为。
+
+`Ce` 请求的 `34461.default` 是安装协调包装 `Y`，并非真正 Dashboard。它初始 `showInstallation=true`，先检查 Chroma，再按结果检查 background-manager；此状态为 false 后才返回传入的 children，并另行投递 `dependent-app-status:running`。phase 的生产链是安装 UI `x` → 所选 `4461` 原件中的 `20682.A` hook → WindowStorage 初始读取／事件 → `installerStatus` reducer。事件中的值变化为 `restart-required`、`skipped`、`completed` 时均映为 completed；初始第一条记录只把 skipped／completed 规范成 completed，不能把两条路径合并。removed 事件被忽略；hook 卸载会注销自己的 `windowstorageevent` 监听，但已发出的初始 Promise 没有取消屏障。phase=completed、Service Worker 的 activated 检查和 running 发布都是各自消费者条件，不确认文件完整、设备初始化或原生释放。源码中的联网更新／安装编排保留为来源上下文，属于本产品排除范围。
+
+真正 children 继续经 `13545.kg` 的异步组件加载 chunks 7122／6883，取 `23322.default → connect(ja(ka))`。异步组件的 effect 依赖实际 lazy 回调；清理只清空本地组件和错误状态，不取消 Promise 或拒绝旧完成结果。`ka.componentWillUnmount` 移除 `dependent-app-status` 与自己的 storage 监听；它丢弃的 exitApp disposer、匿名 DOM 监听，以及 `ja → Pa` 的 window-list-change 订阅和 600 ms 延后关闭更新没有在这些完整所有者中配对释放。页面已移除、状态已清空和全部回调已停止仍须分别验证。
+
+本链完整证据写入现有 [host local-audit](../../../.analysis/results/host-current/local-audit.json) 的 `window_lifecycle.chroma_dashboard_launch`，保留 57 个选定完整 AST 所有者、跨 chunk 导出／词法绑定及真实 host GET／SET／IPC／pagehide 所有者。原件身份为：
 
 | 原件 | 实际字节与 SHA-256 | 完整关键所有者区间 |
 | --- | --- | --- |
 | [main.e5fe7086.js](../../../.analysis/inputs/frontend/chroma-app-dashboard-current/raw/apps.razer.com/chroma-app/dashboard/static/js/main.e5fe7086.js) | 552,739；`2479098971305d7e9a8fe3b9a820d0da306a9082b14e9277b3784431f9888dec` | 启动 `[551412,551634)`；GET `[57009,57276)`；SET `[56475,56756)` |
-| [332.780bf0e1.chunk.js](../../../.analysis/inputs/frontend/chroma-app-dashboard-current/raw/apps.razer.com/chroma-app/dashboard/static/js/332.780bf0e1.chunk.js) | 1,944,306；`33fe6d03703de15d089e86f8ca012e3dc5c7443eec979bf45d10b6f032b86b8c` | 页面类 `[328818,331676)`；隐藏处理 `[329664,330329)`；恢复 `[328871,329663)`；共享隐藏窗口 `[712777,713419)` |
+| [332.780bf0e1.chunk.js](../../../.analysis/inputs/frontend/chroma-app-dashboard-current/raw/apps.razer.com/chroma-app/dashboard/static/js/332.780bf0e1.chunk.js) | 1,944,306；`33fe6d03703de15d089e86f8ca012e3dc5c7443eec979bf45d10b6f032b86b8c` | 页面类 `[328818,331676)`；用户门禁 `[326057,326958)`；安装门禁 `[328537,328817)`；用户初态 `[1347751,1347776)`；完整 reducer `[1369352,1371458)` |
+| [3874.4172ec87.chunk.js](../../../.analysis/inputs/frontend/chroma-app-dashboard-current/raw/apps.razer.com/chroma-app/dashboard/static/js/3874.4172ec87.chunk.js) | 6,606；`848075eeb40b4a0aca9eb95e16d2d23c2024d1bc0b7a4a838af74bf8911e60ec` | store 创建 `[2519,3776)`；reducer 组合 `[3776,4410)` |
+| [4461.7a5efde4.chunk.js](../../../.analysis/inputs/frontend/chroma-app-dashboard-current/raw/apps.razer.com/chroma-app/dashboard/static/js/4461.7a5efde4.chunk.js) | 26,673；`ce7f0b7af360a64242945bfcecad3e96a33b397aa1f61862fa5cd67f73c79d2b` | 安装协调包装 `[22482,24743)`；实际安装 UI `[15583,20989)`；状态 hook `[4176,6355)` |
+| [6883.53d122e0.chunk.js](../../../.analysis/inputs/frontend/chroma-app-dashboard-current/raw/apps.razer.com/chroma-app/dashboard/static/js/6883.53d122e0.chunk.js) | 240,263；`60ff51dfc51d4e1c90edf4c295eaedce0bea60c44c271d8d4ac5f75598167cfb` | 实际页面类 `[152772,157740)`；window-list hook `[152168,152662)`；导出连接器 `[157746,157924)` |
 | [WindowStorage](../../../.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/modules/window_storage/index.js) | 2,985；`6a10c8daeaa5a5bfe87f136d666e37c5915a6d62b10bf2e07d6e7f1a86a1f4a7` | `callFunction` `[312,2834)` |
 
-这条本机启动／恢复链的 7 个纯静态测试会拒绝错误 owner 重绑定、截断函数、篡改发布值、删除结果／清理 owner，以及把静态结果提升为设备或运行验收。没有执行厂商 JavaScript、应用窗口、DLL 或设备；整套 Chroma Dashboard 的卡片和产品语义仍不能由这条有界链路外推。
+这条本机启动／恢复链的纯静态测试会拒绝错误 owner／导出／词法绑定、截断函数、篡改发布值、删除结果／清理 owner，以及改写门禁、key、effect 依赖、实际 children 和释放边界。所选安装 hook 与另一保留 chunk 中重复编号的模块分别绑定原件，不能用相同模块编号替换来源。没有执行厂商 JavaScript、应用窗口、DLL 或设备；整套 Chroma Dashboard 的卡片和产品语义仍不能由这条有界链路外推。
 
 ## 当前页面与 Rust 接线核对
 

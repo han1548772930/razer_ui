@@ -1513,8 +1513,14 @@ def audit_family_function(args):
     """Reuse full Wakaru captures while checking original/capture byte identities."""
     if getattr(args, "semantic_review", None) or getattr(args, "semantic_review_sha256", None):
         return publish_frontend_semantic_review(args)
-    if getattr(args, "native_client_branches", None) and getattr(args, "query", None) != "audio-surround":
-        raise ValueError("Native client branch capture/check requires the audio-surround query")
+    if any(getattr(args, name, None) for name in
+           ("native_client_branches", "native_virtualizer_fir", "native_vad_lifecycle")) and \
+            getattr(args, "query", None) != "audio-surround":
+        raise ValueError("Native audio continuation requires the audio-surround query")
+    if getattr(args, "native_driver_lifecycle", None) and getattr(args, "query", None) != "keyboard-driver-request-lifecycle":
+        raise ValueError("Native keyboard lifecycle mode requires the keyboard-driver-request-lifecycle query")
+    if getattr(args, "native_install_selection", None) and getattr(args, "query", None) != "driver-install-selection":
+        raise ValueError("Native install selection mode requires the driver-install-selection query")
     if getattr(args, "receipt_only", False) and getattr(args, "query", None) not in ("mouse-customize", "mouse-dpi-backend", "mapping-engine", "audio-seiren-eq"):
         raise ValueError("Receipt-only refresh is supported for mouse-customize, mouse-dpi-backend, mapping-engine and audio-seiren-eq")
     if getattr(args, "query", None) == "mouse-dpi":
@@ -1557,6 +1563,10 @@ def audit_family_function(args):
         return audit_keyboard_analog_keys(args)
     if getattr(args, "query", None) == "keyboard-gamepad-tester":
         return audit_keyboard_gamepad_tester(args)
+    if getattr(args, "query", None) == "keyboard-driver-request-lifecycle":
+        return audit_keyboard_driver_request_lifecycle(args)
+    if getattr(args, "query", None) == "driver-install-selection":
+        return audit_driver_install_selection(args)
     if getattr(args, "query", None) == "keyboard-local-controls":
         return audit_keyboard_local_controls(args)
     if getattr(args, "query", None) == "keyboard-local-profile-adoption":
@@ -1579,6 +1589,8 @@ def audit_family_function(args):
         return audit_receiver_local_runtime(args)
     if getattr(args, "query", None) == "mouse-dpi-matcher":
         return audit_mouse_dpi_matcher(args)
+    if getattr(args, "query", None) == "mouse-input-monitoring":
+        return audit_mouse_input_monitoring(args)
     if getattr(args, "query", None) == "mouse-dynamic-sensitivity":
         return audit_mouse_dynamic_sensitivity(args)
     if getattr(args, "query", None) == "mouse-rotation":
@@ -8177,7 +8189,13 @@ def audio_virtualizer_fir_selections():
                             0x1f3b0, 0x3a9d0, 0x61c90, 0x61eb0, 0x620d0, 0x1fb00,
                             0x1fd30, 0x3c7b0, 0x51500, 0x51490, 0x51420),
         "normal_release_and_repeated_fields": (0x2f170, 0x93620, 0x947b0, 0x219060, 0x77c20,
-                            0x143e0, 0xbd6d0, 0xb8f40, 0xb9210, 0xb8c50, 0xba1e0),
+                            0x143e0, 0xbd6d0, 0xb8f40, 0xb9210, 0xb8c50, 0xba1e0, 0x22ad0),
+        "fir_callback_mutex_and_exception_boundary": (0x1540, 0x219000, 0x1935f8, 0x1937fc,
+                            0x19382c, 0x19388c, 0x19329c, 0x1932d8, 0x227d0,
+                            0x196138, 0x1961b4, 0x196c38, 0x197714, 0x19ba94, 0x19b59c),
+        "fir_notification_worker_exception_boundary": (0x18a0, 0x2192c0, 0x77d00, 0x78380,
+                            0x87cd0, 0x15de0, 0x21d20, 0x19a950, 0x199a90, 0x1a83a4,
+                            0x1b205c, 0x1b1f2c),
     }
     service = {
         "typed_request_and_reply": (0x2853c0, 0x295f80, 0x296270, 0x296460, 0x296750, 0x296940, 0x296c30),
@@ -8222,6 +8240,184 @@ def audio_proto_descriptor_fields(raw):
             raise ValueError("Unsupported descriptor wire type")
         fields.append((number, wire, value))
     return fields
+
+
+def audio_x64_unwind_record(read, rva, ancestors=()):
+    """Decode one original x64 unwind record, retaining every chained record."""
+    import struct
+    check = audio_native_evidence_check
+    check(rva not in ancestors and len(ancestors) < 8, "Cyclic or excessive x64 unwind chain")
+    header = read(rva, 4)
+    version, flags, codes = header[0] & 7, header[0] >> 3, header[2]
+    check(version == 1 and flags <= 7 and not (flags & 4 and flags & 3),
+          "Unsupported x64 unwind version or flags")
+    tail = rva+4+2*((codes+1) & ~1)
+    end = tail+(12 if flags & 4 else 8 if flags & 3 else 0)
+    result = {"rva": hex(rva), "version": version, "flags": flags, "prolog_bytes": header[1],
+              "unwind_codes": codes, "frame": header[3], "raw_hex": read(rva, end-rva).hex()}
+    if flags & 4:
+        begin, finish, parent = struct.unpack("<III", read(tail, 12))
+        check(begin < finish, "Invalid chained runtime-function bounds")
+        result["chain"] = {"begin_rva": hex(begin), "end_rva": hex(finish),
+                           "unwind": audio_x64_unwind_record(read, parent, (*ancestors, rva))}
+    elif flags & 3:
+        handler, data = struct.unpack("<II", read(tail, 8))
+        result.update(handler_rva=hex(handler), handler_data_rva=hex(tail+4),
+                      handler_data_u32=data)
+    return result
+
+
+def audio_fh4_unsigned(read, rva, table):
+    """Read the bounded integer form consumed by this PE's FH4 decoder."""
+    check = audio_native_evidence_check
+    check(len(table) == 32, "FH4 integer table is incomplete")
+    kind = read(rva, 1)[0] & 15
+    delta = int.from_bytes(table[kind:kind+1], "little", signed=True)
+    count, shift = -delta, table[16+kind]
+    check(1 <= count <= 5 and shift <= 31, "Invalid FH4 integer table entry")
+    end = rva+count
+    return int.from_bytes(read(end-4, 4), "little") >> shift, end
+
+
+def audio_fir_client_boundary_metadata(raw, read):
+    """Retain exact callback exception records and the notification unwind action."""
+    import struct
+    check = audio_native_evidence_check
+    coff = struct.unpack_from("<I", raw, 0x3c)[0]
+    optional = coff+24
+    check(struct.unpack_from("<H", raw, coff+20)[0] >= 144 and len(raw) >= optional+144,
+          "PE exception directory is truncated")
+    directory, size = struct.unpack_from("<II", raw, optional+112+24)
+    check(size > 0 and size % 12 == 0, "Invalid PE exception directory")
+    ranges = (("registration", 0x29d76c, 3), ("direct_setter", 0x29d7d8, 1),
+              ("notification", 0x29d7e4, 1))
+    runtime = {}
+    regions = []
+    def region(role, rva, length):
+        value = read(rva, length)
+        regions.append({"role": role, "rva": hex(rva), "bytes": length,
+                        "file_offset": read.file_offset(rva, length), "raw_hex": value.hex(),
+                        "sha256": hashlib.sha256(value).hexdigest()})
+        return value
+    for role, rva, count in ranges:
+        check(directory <= rva and rva+count*12 <= directory+size and (rva-directory) % 12 == 0,
+              "Selected callback record is outside the actual exception directory")
+        encoded = region(role+"_runtime_functions", rva, count*12)
+        runtime[role] = []
+        for index in range(count):
+            begin, end, unwind = struct.unpack_from("<III", encoded, index*12)
+            check(begin < end, "Invalid callback runtime-function bounds")
+            runtime[role].append({"begin_rva": hex(begin), "end_rva": hex(end),
+                                 "unwind": audio_x64_unwind_record(read, unwind)})
+    table = region("fh4_integer_table", 0x22d008, 32)
+    region("lock_error_codes", 0x22b9a8, 28)
+    region("lock_error_messages", 0x22b970, 56)
+    region("reentry_error_message", 0x22b9c8, 24)
+    info_rva = runtime["notification"][0]["unwind"]["handler_data_u32"]
+    check(info_rva == 0x25ec2c, "Notification FuncInfo pointer differs")
+    header = read(info_rva, 1)[0]
+    check(header == 0x28, "Notification FH4 header differs")
+    unwind, ipmap = struct.unpack("<II", region("notification_funcinfo", info_rva, 9)[1:])
+    count, position = audio_fh4_unsigned(read, unwind, table)
+    check(count == 1, "Notification has a different unwind state count")
+    entry_start = position
+    encoded, position = audio_fh4_unsigned(read, position, table)
+    check(encoded & 3 == 1, "Notification unwind action is not an inline-object guard")
+    action = int.from_bytes(read(position, 4), "little"); position += 4
+    offset, position = audio_fh4_unsigned(read, position, table)
+    region("notification_unwind_map", unwind, position-unwind)
+    count, position = audio_fh4_unsigned(read, ipmap, table)
+    check(count == 2, "Notification has a different IP-to-state count")
+    pc, ip_states = 0, []
+    for _ in range(count):
+        delta, position = audio_fh4_unsigned(read, position, table)
+        state, position = audio_fh4_unsigned(read, position, table)
+        pc += delta
+        ip_states.append({"ip_rva": hex(0x1fb00+pc), "state": state-1})
+    region("notification_ip_map", ipmap, position-ipmap)
+    return {"runtime_functions": runtime, "data_regions": regions,
+            "notification_fh4": {"funcinfo_rva": hex(info_rva), "header": header,
+                "try_block_map_present": False, "unwind_map_rva": hex(unwind),
+                "unwind_entry_rva": hex(entry_start), "next_byte_offset": encoded >> 2,
+                "action_kind": encoded & 3, "action_rva": hex(action), "object_offset": offset,
+                "ip_to_state": ip_states}}
+
+
+def audio_fir_fh4_scope(read, info_rva, root):
+    """Read the selected no-catch FH4 scopes using the PE's own integer table."""
+    import struct
+    check = audio_native_evidence_check
+    table = read(0x22d008, 32)
+    header = read(info_rva, 1)[0]
+    check(header in (0x28, 0x60), "Selected notification scope has an unreviewed FH4 header")
+    position = info_rva+1
+    data, entries = [], []
+    def region(role, start, length):
+        raw = read(start, length)
+        data.append({"role": role, "rva": hex(start), "bytes": length,
+                     "file_offset": read.file_offset(start, length), "raw_hex": raw.hex(),
+                     "sha256": hashlib.sha256(raw).hexdigest()})
+    if header & 8:
+        unwind = struct.unpack("<I", read(position, 4))[0]; position += 4
+        count, current = audio_fh4_unsigned(read, unwind, table)
+        check(count == 1, "Notification scope has unreviewed unwind states")
+        for _ in range(count):
+            start = current
+            encoded, current = audio_fh4_unsigned(read, current, table)
+            kind = encoded & 3
+            check(kind == 1, "Notification scope has an unreviewed action kind")
+            action = struct.unpack("<I", read(current, 4))[0]; current += 4
+            offset, current = audio_fh4_unsigned(read, current, table)
+            entries.append({"rva": hex(start), "next_byte_offset": encoded >> 2,
+                            "kind": kind, "action_rva": hex(action), "object_offset": offset})
+        region("unwind_map", unwind, current-unwind)
+    ipmap = struct.unpack("<I", read(position, 4))[0]; position += 4
+    region("funcinfo", info_rva, position-info_rva)
+    count, position = audio_fh4_unsigned(read, ipmap, table)
+    check(1 <= count <= 8, "Notification IP-to-state map is unbounded or empty")
+    pc, states = root, []
+    for _ in range(count):
+        delta, position = audio_fh4_unsigned(read, position, table)
+        state, position = audio_fh4_unsigned(read, position, table)
+        pc += delta
+        check(root <= pc < root+0x1000 and -1 <= state-1 < len(entries),
+              "Notification IP-to-state record is outside its selected scope")
+        states.append({"ip_rva": hex(pc), "state": state-1})
+    region("ip_to_state_map", ipmap, position-ipmap)
+    return {"root_rva": hex(root), "header": header, "noexcept": bool(header & 0x40),
+            "try_block_map_present": False, "unwind_entries": entries, "ip_to_state": states,
+            "data_regions": data}
+
+
+def collect_audio_fir_worker_boundary(read):
+    """Capture only the existing notification worker's explicit owner/EH slice."""
+    import struct
+    roots = [("rear_notification", 0x2a0340), ("side_notification", 0x2a034c),
+             ("front_notification", 0x2a0358), ("observer_dispatch", 0x2a11a4),
+             ("queue_worker", 0x2a13b4), ("thread_bridge", 0x2a1840), ("state_destructor", 0x2a1318)]
+    rows = []
+    for role, rva in roots:
+        raw = read(rva, 12)
+        begin, end, unwind = struct.unpack("<III", raw)
+        record = audio_x64_unwind_record(read, unwind)
+        rows.append({"role": role, "runtime_entry_rva": hex(rva), "runtime_raw_hex": raw.hex(),
+                     "begin_rva": hex(begin), "end_rva": hex(end), "unwind": record,
+                     "scope": audio_fir_fh4_scope(read, record["handler_data_u32"], begin)})
+    return {"runtime_functions": rows,
+        "contract": {
+            "second_mutex_rva": "0x298730", "second_mutex_initial_type": 2,
+            "thread_owner": "StateManager constructor 0x77d00 stores owner/function 0x78380 and starts CRT thread bridge 0x87cd0",
+            "dispatch_chain": "queue worker -> 0x73a50 observer map -> Front/Side/Rear notification -> 0x1fb00 callback collection",
+            "queue_lock": "queue mutex +128 is unlocked before invoking the callable; stop exits only when queue is empty",
+            "observer_guard": "0x73a50 FH4 unwind action 0x21d20 releases the exclusive observer SRW lock",
+            "notification_guard": "three dispatch functions use 0x227d0 to release second callback mutex on applicable C++ unwind",
+            "queue_guard": "0x78380 has only callable cleanup via 0x15de0; no local catch, retry, cancellation acknowledgement or success conversion",
+            "thread_bridge_noexcept": "0x87cd0 FH4 header 0x60; escaping applicable C++ exception enters terminate handler then abort",
+            "state_destructor_noexcept": "0x77c20 FH4 header 0x60; self-join/join failure cannot be reported as successful cleanup",
+            "termination_order": "noexcept may terminate during exception search before local unwind actions; guard presence does not guarantee cleanup before termination",
+            "normal_thread_exit": "only after worker returns, bridge broadcasts condition-at-thread-exit, frees thread parameter and returns zero",
+            "scope": "exact static thread/guard/noexcept boundary; actual callback scheduling, failure injection and cleanup execution are unverified"},
+        "target_execution": False, "actual_dll_comparison": "unverified"}
 
 
 def collect_audio_virtualizer_fir_1442():
@@ -8270,6 +8466,23 @@ def collect_audio_virtualizer_fir_1442():
             ("path", "bytes", "sha256", "url", "version", "build_version", "git_metadata")},
         "resources": {name: {key: row[key] for key in resource_keys} for name, row in resources.items()},
         "service_lineage": lineage, "native": native,
+        "client_notification_worker_boundary": collect_audio_fir_worker_boundary(read),
+        "client_width_and_callback_boundary": {
+            "metadata": audio_fir_client_boundary_metadata(raw, read),
+            "mutex_rva": "0x298680", "mutex_initial_type": 2, "same_thread_lock_result": 3,
+            "lock_error": "std::system_error via _Throw_C_error(3) -> _Throw_Cpp_error(0), code 16, device or resource busy",
+            "direct_setter_and_registration_throw": "no C++ unlock guard; an exception escaping the callback bypasses the normal unlock",
+            "notification_throw": "FH4 state 0 invokes lock_guard destructor, unlocks, and propagates; no local catch or success conversion",
+            "reentrant_setter": "local state mutation precedes callback mutex acquisition; reentry may mutate and enqueue before lock error",
+            "json_length_output": "uint32 low bits of size_t length before capacity comparison; unchanged on early return 4 or 1",
+            "json_copy_predicate": "positive int32 capacity > signed int32 low length; copy and NUL offset use full size_t length",
+            "json_extreme_width": "low32 >= 0x80000000 or low32 == 0 passes every positive capacity for nonempty size_t length; no upper-width rejection",
+            "fir_label_copy": "min(size_t(sign_extend_i32(capacity)-1), name.size()); append NUL at copied length",
+            "fir_label_nonpositive_capacity": "with accessible state and valid pointers, capacity <= 0 copies the full name plus NUL; no capacity rejection",
+            "fir_label_capacity_one": "copies zero name bytes and writes NUL at offset zero",
+            "fir_label_unknown_or_missing": "owner present returns zero without touching label/count when selector or typed state is absent",
+            "scope": "exact static instruction and C++ unwind boundary; extreme allocations, callback exception execution and scheduling are unverified",
+            "target_execution": False, "actual_dll_comparison": "unverified"},
         "virtualizer_config_descriptor": {"rva": "0x241176", "bytes": len(descriptor),
             "raw_hex": descriptor.hex(), "sha256": hashlib.sha256(descriptor).hexdigest()},
         "contract": {
@@ -8294,9 +8507,9 @@ def collect_audio_virtualizer_fir_1442():
             "cancellation": "no per-operation cancellation token or acknowledgement channel in these public setters"},
         "unresolved": [
             "Complete service observer registration-to-audio-worker locking and PCM processing closure",
-            "All exception/unwind funclets, callback throw/reentrancy, shutdown races and cancellation during IPC",
+            "Remaining exception/unwind funclets, callback execution, shutdown races and cancellation during IPC",
             "Service persistence/default restoration and every firmware/transport/platform branch for this exact build",
-            "Extreme-width JSON strings and undersized/negative internal FIR-label capacities",
+            "Actual execution of extreme-width JSON strings and nonpositive internal FIR-label capacities; static width/copy/return boundary is captured",
             "Runtime scheduling may deliver further callback notifications before or after the immediate setter callback",
             "Pure Rust independent implementation, page/backend integration, actual DLL comparison and device/DSP acceptance"],
         "scope": "Exact 1442 client and manifest-bound service subset; local copies, IPC state acknowledgement and DSP configuration are separate results",
@@ -8368,6 +8581,174 @@ def audio_native_evidence_functions(evidence, roles):
     return bodies, read, counters
 
 
+def verify_audio_fir_client_boundary(boundary, bodies, read, raw):
+    """Independently bind reviewed width/lock claims to actual instructions and EH data."""
+    import struct
+    check = audio_native_evidence_check
+    metadata = boundary["metadata"]
+    expected_contract = {
+        "mutex_rva": "0x298680", "mutex_initial_type": 2, "same_thread_lock_result": 3,
+        "lock_error": "std::system_error via _Throw_C_error(3) -> _Throw_Cpp_error(0), code 16, device or resource busy",
+        "direct_setter_and_registration_throw": "no C++ unlock guard; an exception escaping the callback bypasses the normal unlock",
+        "notification_throw": "FH4 state 0 invokes lock_guard destructor, unlocks, and propagates; no local catch or success conversion",
+        "reentrant_setter": "local state mutation precedes callback mutex acquisition; reentry may mutate and enqueue before lock error",
+        "json_length_output": "uint32 low bits of size_t length before capacity comparison; unchanged on early return 4 or 1",
+        "json_copy_predicate": "positive int32 capacity > signed int32 low length; copy and NUL offset use full size_t length",
+        "json_extreme_width": "low32 >= 0x80000000 or low32 == 0 passes every positive capacity for nonempty size_t length; no upper-width rejection",
+        "fir_label_copy": "min(size_t(sign_extend_i32(capacity)-1), name.size()); append NUL at copied length",
+        "fir_label_nonpositive_capacity": "with accessible state and valid pointers, capacity <= 0 copies the full name plus NUL; no capacity rejection",
+        "fir_label_capacity_one": "copies zero name bytes and writes NUL at offset zero",
+        "fir_label_unknown_or_missing": "owner present returns zero without touching label/count when selector or typed state is absent",
+        "scope": "exact static instruction and C++ unwind boundary; extreme allocations, callback exception execution and scheduling are unverified",
+        "target_execution": False, "actual_dll_comparison": "unverified"}
+    check({key: value for key, value in boundary.items() if key != "metadata"} == expected_contract,
+          "Reviewed FIR client width or callback contract differs")
+    selections = {
+        "registration": (0x29d76c, [(0x1f3b0, 0x1f3f7, 0x25eb84),
+                                  (0x1f3f7, 0x1f557, 0x25eb98), (0x1f557, 0x1f581, 0x25ebb8)]),
+        "direct_setter": (0x29d7d8, [(0x1fa50, 0x1fae9, 0x25c0b4)]),
+        "notification": (0x29d7e4, [(0x1fb00, 0x1fd21, 0x25ec08)])}
+    coff = struct.unpack_from("<I", raw, 0x3c)[0]
+    optional = coff+24
+    check(struct.unpack_from("<H", raw, coff+20)[0] >= 144 and len(raw) >= optional+144,
+          "PE exception directory is truncated")
+    directory, size = struct.unpack_from("<II", raw, optional+136)
+    check(size > 0 and size % 12 == 0, "Invalid actual PE exception directory")
+    check(set(metadata) == {"runtime_functions", "data_regions", "notification_fh4"} and
+          set(metadata["runtime_functions"]) == set(selections), "Callback exception selection differs")
+    for role, (rva, entries) in selections.items():
+        check(directory <= rva and rva+len(entries)*12 <= directory+size and (rva-directory) % 12 == 0,
+              "Callback runtime record is outside the actual PE exception directory")
+        check(read(rva, len(entries)*12) == b"".join(struct.pack("<III", *entry) for entry in entries),
+              "Actual callback runtime-function entries differ")
+        expected = [{"begin_rva": hex(begin), "end_rva": hex(end),
+                     "unwind": audio_x64_unwind_record(read, unwind)} for begin, end, unwind in entries]
+        check(metadata["runtime_functions"][role] == expected, "Callback chained unwind record differs")
+    runtime = metadata["runtime_functions"]
+    check(runtime["direct_setter"][0]["unwind"]["flags"] == 0 and
+          runtime["registration"][0]["unwind"]["handler_rva"] == "0x196138" and
+          runtime["notification"][0]["unwind"]["handler_rva"] == "0x1961b4",
+          "Callback C++ handler distinction differs")
+    regions = [(role+"_runtime_functions", rva, 12*len(entries))
+               for role, (rva, entries) in selections.items()]
+    regions += [("fh4_integer_table", 0x22d008, 32), ("lock_error_codes", 0x22b9a8, 28),
+                ("lock_error_messages", 0x22b970, 56), ("reentry_error_message", 0x22b9c8, 24),
+                ("notification_funcinfo", 0x25ec2c, 9), ("notification_unwind_map", 0x25df15, 7),
+                ("notification_ip_map", 0x25ec35, 6)]
+    check(len(metadata["data_regions"]) == len(regions), "Callback data-region closure differs")
+    for item, (role, rva, length) in zip(metadata["data_regions"], regions):
+        value = read(rva, length)
+        check(item == {"role": role, "rva": hex(rva), "bytes": length,
+                       "file_offset": read.file_offset(rva, length), "raw_hex": value.hex(),
+                       "sha256": hashlib.sha256(value).hexdigest()}, "Callback original data region differs")
+    check(read(0x25ec2c, 9).hex() == "2815df250035ec2500" and
+          read(0x25df15, 7).hex() == "020ad027020040" and read(0x25ec35, 6).hex() == "04e402ed0500" and
+          read(0x22d008, 32).hex() == "fffefffdfffefffcfffefffdfffefffb1912190b191219041912190b19121900" and
+          read(0x22b9a8, 4) == b"\x10\0\0\0" and
+          int.from_bytes(read(0x22b970, 8), "little") == 0x18022b9c8 and
+          read(0x22b9c8, 24) == b"device or resource busy\0", "Actual FH4 or lock-error data differs")
+    check(metadata["notification_fh4"] == {
+        "funcinfo_rva": "0x25ec2c", "header": 0x28, "try_block_map_present": False,
+        "unwind_map_rva": "0x25df15", "unwind_entry_rva": "0x25df16", "next_byte_offset": 1,
+        "action_kind": 1, "action_rva": "0x227d0", "object_offset": 32,
+        "ip_to_state": [{"ip_rva": "0x1fb72", "state": 0}, {"ip_rva": "0x1fced", "state": -1}]},
+        "Notification C++ unwind action or covered callback range differs")
+    patterns = {0x1540: [(0x1544, "ba02000000"), (0x1549, "488d0d30712900")],
+        0x1fa50: [(0x1fabb, "41ffd2"), (0x1fac5, "e8c23d1700")],
+        0x1f5f0: [(0x1f737, "41893e"), (0x1f73a, "3bef"), (0x1f73c, "7f42"),
+                 (0x1f78b, "4c8bc7"), (0x1f7a1, "42c6043f00")],
+        0x61c90: [(0x61cf5, "486308"), (0x61cf8, "48ffc9"), (0x61cff, "483bcf"),
+                 (0x61d02, "480f42f9"), (0x61d26, "c6040700")],
+        0x61eb0: [(0x61f15, "486308"), (0x61f18, "48ffc9"), (0x61f22, "480f42f9")],
+        0x620d0: [(0x62135, "486308"), (0x62138, "48ffc9"), (0x62142, "480f42f9")]}
+    for root, instructions in patterns.items():
+        by_rva = {int(item["rva"], 0): item for item in bodies[root]["assembly"]}
+        check(all(by_rva[rva]["bytes"] == encoded and read(rva, len(bytes.fromhex(encoded))).hex() == encoded
+                  for rva, encoded in instructions), "Actual signed width or callback instruction differs")
+    return {"runtime_function_entries": 5, "client_data_regions": len(regions),
+            "notification_unwind_states": 1, "signed_width_instruction_anchors": sum(map(len, patterns.values()))}
+
+
+def verify_audio_fir_worker_boundary(boundary, bodies, read):
+    """Independently re-read worker EH and reject promoted cleanup/runtime claims."""
+    import struct
+    check = audio_native_evidence_check
+    expected_contract = {
+        "second_mutex_rva": "0x298730", "second_mutex_initial_type": 2,
+        "thread_owner": "StateManager constructor 0x77d00 stores owner/function 0x78380 and starts CRT thread bridge 0x87cd0",
+        "dispatch_chain": "queue worker -> 0x73a50 observer map -> Front/Side/Rear notification -> 0x1fb00 callback collection",
+        "queue_lock": "queue mutex +128 is unlocked before invoking the callable; stop exits only when queue is empty",
+        "observer_guard": "0x73a50 FH4 unwind action 0x21d20 releases the exclusive observer SRW lock",
+        "notification_guard": "three dispatch functions use 0x227d0 to release second callback mutex on applicable C++ unwind",
+        "queue_guard": "0x78380 has only callable cleanup via 0x15de0; no local catch, retry, cancellation acknowledgement or success conversion",
+        "thread_bridge_noexcept": "0x87cd0 FH4 header 0x60; escaping applicable C++ exception enters terminate handler then abort",
+        "state_destructor_noexcept": "0x77c20 FH4 header 0x60; self-join/join failure cannot be reported as successful cleanup",
+        "termination_order": "noexcept may terminate during exception search before local unwind actions; guard presence does not guarantee cleanup before termination",
+        "normal_thread_exit": "only after worker returns, bridge broadcasts condition-at-thread-exit, frees thread parameter and returns zero",
+        "scope": "exact static thread/guard/noexcept boundary; actual callback scheduling, failure injection and cleanup execution are unverified"}
+    check(set(boundary) == {"runtime_functions", "contract", "target_execution", "actual_dll_comparison"} and
+          boundary["contract"] == expected_contract and boundary["target_execution"] is False and
+          boundary["actual_dll_comparison"] == "unverified", "Notification worker contract or execution boundary differs")
+    roots = [("rear_notification", 0x2a0340, 0x51420, 0x5146e, 0x263db4, 0x263dc4, 0x227d0, 64,
+              [(0x51456, 0), (0x51468, -1)]),
+             ("side_notification", 0x2a034c, 0x51490, 0x514de, 0x263db4, 0x263dc4, 0x227d0, 64,
+              [(0x514c6, 0), (0x514d8, -1)]),
+             ("front_notification", 0x2a0358, 0x51500, 0x5154b, 0x263dd4, 0x263de4, 0x227d0, 64,
+              [(0x51533, 0), (0x51545, -1)]),
+             ("observer_dispatch", 0x2a11a4, 0x73a50, 0x73afb, 0x265294, 0x2652b0, 0x21d20, 32,
+              [(0x73ad5, 0)]),
+             ("queue_worker", 0x2a13b4, 0x78380, 0x78556, 0x265874, 0x265894, 0x15de0, 32,
+              [(0x784ce, 0), (0x7852e, -1), (0x78548, 0)]),
+             ("thread_bridge", 0x2a1840, 0x87cd0, 0x87cf9, 0x2666e4, 0x2666f4, None, None,
+              [(0x87cdc, -1)]),
+             ("state_destructor", 0x2a1318, 0x77c20, 0x77cff, 0x265788, 0x26579c, None, None,
+              [(0x77cee, -1)])]
+    check(len(boundary["runtime_functions"]) == len(roots), "Notification worker root closure differs")
+    regions = set()
+    for row, (role, rva, begin, end, unwind, info, action, offset, states) in zip(boundary["runtime_functions"], roots):
+        raw = read(rva, 12)
+        check(raw == struct.pack("<III", begin, end, unwind), "Actual worker runtime-function differs")
+        record = audio_x64_unwind_record(read, unwind)
+        check(record["handler_rva"] in ("0x1961b4", "0x197714") and record["handler_data_u32"] == info,
+              "Worker C++ exception handler binding differs")
+        scope = audio_fir_fh4_scope(read, info, begin)
+        check(row == {"role": role, "runtime_entry_rva": hex(rva), "runtime_raw_hex": raw.hex(),
+                      "begin_rva": hex(begin), "end_rva": hex(end), "unwind": record, "scope": scope},
+              "Worker exception records differ from actual original PE")
+        check(scope["header"] == (0x28 if action is not None else 0x60) and
+              scope["noexcept"] is (action is None) and scope["try_block_map_present"] is False and
+              scope["ip_to_state"] == [{"ip_rva": hex(ip), "state": state} for ip, state in states],
+              "Worker noexcept/catch/state distinction differs")
+        check(len(scope["unwind_entries"]) == (1 if action is not None else 0) and
+              (action is None or all(scope["unwind_entries"][0][key] == value for key, value in
+                {"next_byte_offset": 1, "kind": 1, "action_rva": hex(action), "object_offset": offset}.items())),
+              "Worker resource guard differs")
+        regions.update((item["rva"], item["bytes"], item["sha256"]) for item in scope["data_regions"])
+    def text(rva):
+        return "\n".join(row["text"] for row in bodies[rva]["pseudocode"]["lines"])
+    anchors = {0x18a0: ("Mtx_init_in_situ((_Mtx_t)&unk_180298730, 2)",),
+        0x77d00: ("v7[1] = sub_180078380", "beginthreadex(0, 0, StartAddress, v7"),
+        0x78380: ("a1 + 296", "Mtx_unlock((_Mtx_t)(a1 + 128))", "*(_QWORD *)v16 + 16LL"),
+        0x87cd0: ("a1[1](*a1)", "Cnd_do_broadcast_at_thread_exit()", "free_base(a1)"),
+        0x21d20: ("ReleaseSRWLockExclusive(*a1)",),
+        0x15de0: ("*(_QWORD *)(a1 + 56)", "+ 32LL", "*(_QWORD *)(a1 + 56) = 0"),
+        0x19a950: ("(*(_BYTE *)a5 & 0x40) != 0", "FindHandler<__FrameHandler4>"),
+        0x199a90: ("(*(_BYTE *)a5 & 0x40) != 0", "!__FrameHandler4::ExecutionInCatch", "sub_1801A83A4"),
+        0x1a83a4: ("v0();", "abort();"),
+        0x1b205c: ("CreateThread(", "unknown_libname_513"),
+        0x1b1f2c: ("lpThreadParameter", "endthreadex(v3)")}
+    check(all(all(anchor in text(rva) for anchor in values) for rva, values in anchors.items()),
+          "Notification worker/CRT owner semantics differ")
+    def direct(source, target):
+        return any(len(value := bytes.fromhex(row["bytes"])) == 5 and value[0] in (0xe8, 0xe9) and
+                   int(row["rva"], 0)+5+int.from_bytes(value[1:], "little", signed=True) == target
+                   for row in bodies[source]["assembly"])
+    check(direct(0x77d00, 0x1b205c) and direct(0x197714, 0x19a950) and direct(0x199a90, 0x1a83a4),
+          "Actual notification worker or noexcept termination call differs")
+    return {"worker_runtime_function_entries": 7, "worker_fh4_scopes": 7,
+            "worker_unique_data_regions": len(regions), "worker_noexcept_roots": 2}
+
+
 def verify_audio_virtualizer_fir_1442(document):
     """Independently inspect original bytes, full records, lineage and reviewed claims."""
     check, original = audio_native_evidence_check, audio_native_evidence_original
@@ -8424,6 +8805,10 @@ def verify_audio_virtualizer_fir_1442(document):
     for name, roles in audio_virtualizer_fir_selections().items():
         bodies[name], readers[name], observed = audio_native_evidence_functions(document["native"][name], roles)
         counts.update(observed)
+    counts.update(verify_audio_fir_client_boundary(document["client_width_and_callback_boundary"],
+        bodies["client"], readers["client"], original(document["native"]["client"]["input"])))
+    counts.update(verify_audio_fir_worker_boundary(document["client_notification_worker_boundary"],
+        bodies["client"], readers["client"]))
     def text(name, rva):
         return "\n".join(line["text"] for line in bodies[name][rva]["pseudocode"]["lines"])
     def calls(name, source, target):
@@ -8480,6 +8865,17 @@ def verify_audio_virtualizer_fir_1442(document):
         ("client", 0x77c20): ("*(_BYTE *)(a1 + 296) = 1;", "Thrd_join", "Cnd_signal"),
         ("service", 0x2cbb20): ("v19 == v20 && !(v19 % 2)", "v19 / 2", "Bad Virtualizer FIR size", "using default filters"),
         ("service", 0x2d8d90): ("a2 + 408) != 2", "v4 <= 0", "a1 + 528", "a1 + 808", "a1 + 1088", "a1 + 1368")}
+    semantic_anchors.update({
+        ("client", 0x1540): ("Mtx_init_in_situ((_Mtx_t)&unk_180298680, 2)",),
+        ("client", 0x1935f8): ("v6 + 1 <= 1", "(*(_DWORD *)a1 & 0x100) == 0", "return 3;"),
+        ("client", 0x19382c): ("mtx_do_lock(a1, 0)",),
+        ("client", 0x19329c): ("std::_Throw_Cpp_error(0)",),
+        ("client", 0x1932d8): ("dword_18022B9A8[v1]", "off_18022B970[v1]", "throw (std::system_error *)"),
+        ("client", 0x196138): ("_GSHandlerCheckCommon", "return 1;"),
+        ("client", 0x1961b4): ("_CxxFrameHandler4",),
+        ("client", 0x196c38): ("(v5 & 8) != 0", "(v5 & 0x10) != 0", "byte_18022D008"),
+        ("client", 0x19ba94): ("v6 & 3", "v6 >> 2", "v7 == 1 || v7 == 2"),
+        ("client", 0x227d0): ("Mtx_unlock(*a1)",)})
     for (name, rva), anchors in semantic_anchors.items():
         check(all(anchor in text(name, rva) for anchor in anchors), "Reviewed semantic anchor differs")
     expected_contract = {
@@ -8505,9 +8901,9 @@ def verify_audio_virtualizer_fir_1442(document):
     check(document["scope"] == "Exact 1442 client and manifest-bound service subset; local copies, IPC state acknowledgement and DSP configuration are separate results"
           and document["unresolved"] == [
               "Complete service observer registration-to-audio-worker locking and PCM processing closure",
-              "All exception/unwind funclets, callback throw/reentrancy, shutdown races and cancellation during IPC",
+              "Remaining exception/unwind funclets, callback execution, shutdown races and cancellation during IPC",
               "Service persistence/default restoration and every firmware/transport/platform branch for this exact build",
-              "Extreme-width JSON strings and undersized/negative internal FIR-label capacities",
+              "Actual execution of extreme-width JSON strings and nonpositive internal FIR-label capacities; static width/copy/return boundary is captured",
               "Runtime scheduling may deliver further callback notifications before or after the immediate setter callback",
               "Pure Rust independent implementation, page/backend integration, actual DLL comparison and device/DSP acceptance"],
           "Partial semantic closure boundary differs")
@@ -8572,9 +8968,59 @@ def negative_audio_virtualizer_fir_1442(document):
         ("device_claim", ("device_dsp_acceptance",), "passed"),
         ("static_counter", ("verification", "complete_functions"), 102),
     ]
+    boundary = ("client_width_and_callback_boundary",)
+    metadata = (*boundary, "metadata")
+    changes += [
+        ("callback_mutex_type", (*boundary, "mutex_initial_type"), 0x102),
+        ("callback_reentry_success", (*boundary, "same_thread_lock_result"), 0),
+        ("callback_reentry_deadlock_invention", (*boundary, "lock_error"), "waits forever"),
+        ("callback_throw_cleanup_promotion", (*boundary, "direct_setter_and_registration_throw"), "always unlocks"),
+        ("callback_notification_catch_invention", (*boundary, "notification_throw"), "swallows callback exceptions"),
+        ("reentry_rollback_invention", (*boundary, "reentrant_setter"), "lock error rolls back the local state"),
+        ("json_length_untruncated", (*boundary, "json_length_output"), "full uint64 length"),
+        ("json_unsigned_capacity_compare", (*boundary, "json_copy_predicate"), "capacity > unsigned full length"),
+        ("json_width_rejection_invention", (*boundary, "json_extreme_width"), "lengths over INT_MAX are rejected"),
+        ("label_unsigned_capacity_invention", (*boundary, "fir_label_copy"), "uint32 capacity minus one"),
+        ("label_nonpositive_rejection_invention", (*boundary, "fir_label_nonpositive_capacity"), "returns 4"),
+        ("label_one_capacity_copy_invention", (*boundary, "fir_label_capacity_one"), "copies the first name byte"),
+        ("label_missing_state_clears_output", (*boundary, "fir_label_unknown_or_missing"), "clears every output"),
+        ("callback_noexcept_invention", (*metadata, "notification_fh4", "header"), 0x68),
+        ("callback_try_map_invention", (*metadata, "notification_fh4", "try_block_map_present"), True),
+        ("callback_unwind_action", (*metadata, "notification_fh4", "action_rva"), "0x219000"),
+        ("callback_unwind_scope", (*metadata, "notification_fh4", "ip_to_state", 0, "ip_rva"), "0x1fced"),
+        ("callback_direct_setter_flags", (*metadata, "runtime_functions", "direct_setter", 0, "unwind", "flags"), 3),
+        ("callback_registration_chain", (*metadata, "runtime_functions", "registration", 1, "unwind", "chain", "unwind", "handler_rva"), "0x1961b4"),
+        ("callback_data_identity", (*metadata, "data_regions", 0, "sha256"), "0"*64),
+        ("callback_data_closure", (*metadata, "data_regions"), []),
+        ("callback_runtime_execution_claim", (*boundary, "target_execution"), True),
+        ("callback_dll_comparison_claim", (*boundary, "actual_dll_comparison"), "passed"),
+    ]
+    worker = ("client_notification_worker_boundary",)
+    roots = (*worker, "runtime_functions")
+    contract = (*worker, "contract")
+    changes += [
+        ("worker_mutex_type", (*contract, "second_mutex_initial_type"), 0x102),
+        ("worker_local_retry_invention", (*contract, "queue_guard"), "catches callback exceptions and retries"),
+        ("worker_cleanup_before_termination", (*contract, "termination_order"), "all local guards always run before terminate"),
+        ("worker_noexcept_success_invention", (*contract, "thread_bridge_noexcept"), "returns zero after callback throws"),
+        ("worker_destructor_success_invention", (*contract, "state_destructor_noexcept"), "join failure still completes cleanup"),
+        ("worker_early_parameter_free", (*contract, "normal_thread_exit"), "thread parameter freed before worker callback"),
+        ("worker_drop_root", roots, document["client_notification_worker_boundary"]["runtime_functions"][:-1]),
+        ("worker_changed_runtime_entry", (*roots, 0, "runtime_raw_hex"), "00"*12),
+        ("worker_replaced_unwind_handler", (*roots, 3, "unwind", "handler_rva"), "0x196138"),
+        ("worker_replaced_guard_action", (*roots, 3, "scope", "unwind_entries", 0, "action_rva"), "0x227d0"),
+        ("worker_changed_callback_scope", (*roots, 0, "scope", "ip_to_state", 0, "state"), -1),
+        ("worker_cpp_catch_invention", (*roots, 4, "scope", "try_block_map_present"), True),
+        ("worker_noexcept_bit_removed", (*roots, 5, "scope", "noexcept"), False),
+        ("worker_noexcept_header_removed", (*roots, 5, "scope", "header"), 0x20),
+        ("worker_execution_promotion", (*worker, "target_execution"), True),
+        ("worker_dll_comparison_promotion", (*worker, "actual_dll_comparison"), "passed"),
+    ]
     results = []
     with patch(__name__ + ".collect_audio_virtualizer_fir_1442", side_effect=AssertionError("collector disabled")), \
-         patch(__name__ + ".verify_native_functions", side_effect=AssertionError("native collector helper disabled")):
+         patch(__name__ + ".verify_native_functions", side_effect=AssertionError("native collector helper disabled")), \
+         patch(__name__ + ".audio_fir_client_boundary_metadata", side_effect=AssertionError("metadata collector disabled")), \
+         patch(__name__ + ".collect_audio_fir_worker_boundary", side_effect=AssertionError("worker collector disabled")):
         verify_audio_virtualizer_fir_1442(document)
         for name, keys, replacement in changes:
             changed = deepcopy(document)
@@ -8589,7 +9035,8 @@ def negative_audio_virtualizer_fir_1442(document):
             else:
                 raise ValueError("Altered FIR evidence was accepted: " + name)
     return {"passed": True, "count": len(results), "collector_disabled": True,
-        "native_collector_helper_disabled": True, "cases": results, "target_execution": False}
+        "native_collector_helper_disabled": True, "metadata_collector_disabled": True,
+        "worker_collector_disabled": True, "cases": results, "target_execution": False}
 
 
 def audit_audio_virtualizer_fir_1442(args):
@@ -8621,6 +9068,1058 @@ def audit_audio_virtualizer_fir_1442(args):
         print(json.dumps(negative_audio_virtualizer_fir_1442(document[name])), flush=True)
 
 
+def audio_vad_lifecycle_selections():
+    """Keep only the VAD owner, its unwind actions and the reviewed CRT boundary."""
+    groups = {
+        "upstream_owner": "82010 824c0 824e0 826b0 828e0 833f0 503e0 abf80 21d338",
+        "constructor_unwind_action": ("2f2bd0 2f2be0 2f2bfc 2f2c0c 2f2c1f 2f2c32 2f2c45 "
+            "2f2c58 2f2c6b 2f2c7e 2f2c91 2f2cb0 2f2cc0 2f2cd3 2f2cf0 4fcc0 9000 a5a0 85ae0"),
+        "resource_guard_consumer": "cd40 d3f0 c5b0 6c80 5c310 bc70 85710 85700 9070",
+        "exception_decoder_and_consumer": "220990 221ca4 2211c8 225018 224158 221eb8 234b48",
+    }
+    return {int(rva, 16): role for role, rvas in groups.items() for rva in rvas.split()}
+
+
+def audio_vad_fh4_scope(read, info_rva, root):
+    """Decode this service's bounded no-catch scopes, including parent byte offsets."""
+    import struct
+    check = audio_native_evidence_check
+    table = read(0x323b18, 32)
+    header = read(info_rva, 1)[0]
+    check(header in (0x28, 0x60, 0x68), "Unreviewed VAD FH4 header")
+    position, regions, entries = info_rva+1, [], []
+    def region(role, start, length):
+        raw = read(start, length)
+        regions.append({"role": role, "rva": hex(start), "bytes": length,
+            "file_offset": read.file_offset(start, length), "raw_hex": raw.hex(),
+            "sha256": hashlib.sha256(raw).hexdigest()})
+    if header & 8:
+        unwind = struct.unpack("<I", read(position, 4))[0]; position += 4
+        count, current = audio_fh4_unsigned(read, unwind, table)
+        check(0 < count <= 64, "Unbounded or empty VAD unwind map")
+        offsets = {current-1: -1}
+        for state in range(count):
+            start = current
+            encoded, current = audio_fh4_unsigned(read, current, table)
+            kind, back = encoded & 3, encoded >> 2
+            check(back > 0 and start-back in offsets, "VAD unwind parent is not an earlier entry")
+            entry = {"state": state, "rva": hex(start), "kind": kind,
+                "back_bytes": back, "next_state": offsets[start-back]}
+            if kind:
+                entry["action_rva"] = hex(struct.unpack("<I", read(current, 4))[0]); current += 4
+            if kind in (1, 2):
+                entry["object_offset"], current = audio_fh4_unsigned(read, current, table)
+            entries.append(entry); offsets[start] = state
+        region("unwind_map", unwind, current-unwind)
+    ipmap = struct.unpack("<I", read(position, 4))[0]; position += 4
+    region("funcinfo", info_rva, position-info_rva)
+    count, current = audio_fh4_unsigned(read, ipmap, table)
+    check(0 < count <= 64, "Unbounded or empty VAD IP map")
+    pc, states = root, []
+    for index in range(count):
+        delta, current = audio_fh4_unsigned(read, current, table)
+        state, current = audio_fh4_unsigned(read, current, table)
+        pc += delta
+        check(root <= pc < root+0x100000 and (index == 0 or delta > 0) and
+              -1 <= state-1 < len(entries), "VAD IP/state is outside its selected scope")
+        states.append({"ip_rva": hex(pc), "state": state-1})
+    region("ip_to_state_map", ipmap, current-ipmap)
+    return {"root_rva": hex(root), "funcinfo_rva": hex(info_rva), "header": header,
+        "noexcept": bool(header & 0x40), "try_block_map_present": False,
+        "unwind_entries": entries, "ip_to_state": states, "data_regions": regions}
+
+
+def collect_audio_vad_lifecycle_metadata(raw, read):
+    """Retain only four owner/worker runtime records and their actual FH4 maps."""
+    import struct
+    rows = []
+    for role, entry in (("thread_bridge", 0x4238cc), ("constructor", 0x425060),
+                        ("destructor", 0x425078), ("worker", 0x42512c)):
+        value = read(entry, 12)
+        begin, end, unwind = struct.unpack("<III", value)
+        record = audio_x64_unwind_record(read, unwind)
+        extra = read(unwind+len(bytes.fromhex(record["raw_hex"])), 4).hex() \
+            if record["handler_rva"] == "0x220990" else ""
+        rows.append({"role": role, "runtime_entry_rva": hex(entry), "raw_hex": value.hex(),
+            "begin_rva": hex(begin), "end_rva": hex(end), "unwind": record,
+            "gs_handler_extra_hex": extra,
+            "scope": audio_vad_fh4_scope(read, record["handler_data_u32"], begin)})
+    return {"runtime_functions": rows,
+        "fh4_integer_table": {"rva": "0x323b18", "raw_hex": read(0x323b18, 32).hex()},
+        "selected_original_restore_names": {name: {
+            "ascii_nul_present": name.encode("ascii")+b"\0" in raw,
+            "utf16le_nul_present": name.encode("utf-16le")+b"\0\0" in raw}
+            for name in ("VirtualUnlock", "timeEndPeriod", "AvRevertMmThreadCharacteristics")}}
+
+
+def audio_vad_lifecycle_contract():
+    """Reviewed static semantics; these statements never assert execution or leakage."""
+    return {
+        "worker_entry": "constructor stores {this,0x833f0}; bridge 0x503e0 invokes member +8 before freeing the thread parameter",
+        "normal_thread_exit": "bridge discards the worker DWORD result, broadcasts thread-exit conditions, frees its parameter and returns zero; worker error return is not a confirmed successful operation",
+        "initialization": "VirtualLock(+368,0x3c018), shutdown CreateEventW and data CreateEventW results are unchecked; initialization is not an observed device state",
+        "driver_open": "CreateFileW result stored at +246176; open flag +246424 follows INVALID_HANDLE_VALUE; failed open retries after 100ms unless shutdown poll returns zero",
+        "scheduling": "worker resolves AvSetMmThreadCharacteristicsA(Pro Audio) and AvSetMmThreadPriority(handle,1), then calls timeBeginPeriod(1); no reviewed release guard retains the MMCSS handle",
+        "first_wait": "100ms wait only clears availability +246440 on WAIT_TIMEOUT, then always performs the infinite wait",
+        "blocking_stop": "infinite wait result zero jumps 0x83796 -> 0x83ddb, bypassing data-event CloseHandle at 0x83dd5",
+        "blocking_wait_failure": "every nonzero infinite wait result, including WAIT_FAILED, reaches ResetEvent and sets availability +246440 to one; it is not proof of valid driver data",
+        "poll_close": "initial and post-frame zero-time shutdown polls close the data event on any result other than WAIT_TIMEOUT, including WAIT_FAILED; CloseHandle return is ignored",
+        "event_ioctl_failure": "event IOCTL false jumps 0x836f4 -> 0x83ddb without data-event close",
+        "frame_or_flush_failure": "flush/frame IOCTL false or positive flags with bit0 set reach 0x83e24 mutex unlock then 0x83ddb without data-event close",
+        "worker_unwind": "three states: temporary string via 0xcd40, processing mutex via 0xc5b0 and terminate action via 0x221eb8; no local catch or handle/timer/MMCSS restoration action",
+        "constructor_unwind": "21 states release initialized containers, mutexes, thread holder, DSP/ring/resampler and temporaries; no driver/shutdown handle or page-lock restoration action",
+        "post_launch_constructor_exception": "thread-holder cleanup 0x6c80 terminates when its thread id remains nonzero; the selected constructor has no stop/join recovery guard",
+        "destructor_order": "SetEvent shutdown, join, conditionally disable, destroy resampler/ring/DSP; SetEvent bool ignored; no driver/shutdown CloseHandle or VirtualUnlock in selected owner chain",
+        "join_result": "join waits infinitely, queries exit code and closes thread handle; first failure returns 4; destructor throws on nonzero join result and clears its thread pair only after success",
+        "noexcept_boundary": "bridge and upstream destructor FH4 header 0x60; applicable escaping C++ exception may terminate during search before local unwind guards run",
+        "driver_disable": "void 0x828e0 logs failed DeviceIoControl; return does not confirm disabled stream or restored settings",
+        "scope": "exact 3942 service build and selected owner/CRT static chain; absent restore imports/names do not prove project-wide leakage or operating-system behavior",
+        "full_semantic_closure": False,
+    }
+
+
+def audio_vad_kernel_event_selections():
+    """Select the event owner, its two producers and the explicit unload wrappers."""
+    return {0x12d0: "ioctl_dispatch", 0x1740: "event_registration_work_item",
+        0x4160: "locked_event_signal", 0x2ab0: "bytes_received_producer",
+        0x2d50: "packet_received_producer", 0x43b0: "content_gated_ring_write",
+        0x105e0: "content_rights_gate", 0x12000: "driver_initialization",
+        0xb350: "driver_event_unload", 0x492c: "wdf_entry_wrapper",
+        0x4a90: "wdf_unload_wrapper", 0x4a80: "wdf_cleanup_wrapper",
+        0x48c8: "wdf_unbind", 0x4d10: "wdf_class_unbind"}
+
+
+def audio_vad_kernel_import_slots(raw, read, *, selected_slots=None):
+    """Read bounded PE32+ named import slots directly from the retained file bytes."""
+    import struct
+    check = audio_native_evidence_check
+    optional = struct.unpack_from("<I", raw, 0x3c)[0]+24
+    start, size = struct.unpack_from("<II", raw, optional+120)
+    check(start > 0 and 20 <= size <= 65536, "VAD kernel import directory is invalid")
+    def string(rva):
+        value = bytearray()
+        for index in range(512):
+            item = read(rva+index, 1)
+            if item == b"\0":
+                return value.decode("ascii")
+            value.extend(item)
+        raise ValueError("VAD kernel import string is unbounded")
+    slots = {}
+    for offset in range(0, size-19, 20):
+        lookup, stamp, forward, name, first = struct.unpack("<IIIII", read(start+offset, 20))
+        if not any((lookup, stamp, forward, name, first)):
+            check(selected_slots is None or set(slots) == set(selected_slots), "Selected VAD import slots are absent")
+            return slots
+        check(lookup > 0 and name > 0 and first > 0, "VAD kernel import descriptor is incomplete")
+        library = string(name)
+        for index in range(4096):
+            entry = int.from_bytes(read(lookup+8*index, 8), "little")
+            if not entry:
+                break
+            slot = hex(first+8*index)
+            if selected_slots is not None and slot not in selected_slots:
+                continue
+            check(not entry & (1 << 63), "Unreviewed ordinal VAD kernel import")
+            check(slot not in slots, "Overlapping VAD kernel import slots")
+            slots[slot] = {"library": library, "name": string(entry+2)}
+        else:
+            raise ValueError("VAD kernel import lookup table is unbounded")
+    raise ValueError("VAD kernel import descriptors lack a terminator")
+
+
+def audio_vad_kernel_direct_calls(bodies, read, target):
+    """Decode direct E8 destinations without treating printed xrefs as call evidence."""
+    import struct
+    calls = []
+    for owner, body in sorted(bodies.items()):
+        for row in body["assembly"]:
+            encoded = bytes.fromhex(row["bytes"])
+            if len(encoded) == 5 and encoded[0] == 0xe8:
+                rva = int(row["rva"], 0)
+                audio_native_evidence_check(read(rva, 5) == encoded, "VAD direct call bytes differ")
+                if rva+5+struct.unpack("<i", encoded[1:])[0] == target:
+                    calls.append({"function_rva": hex(owner), "instruction_rva": hex(rva)})
+    return calls
+
+
+def audio_vad_kernel_build_specs():
+    """Keep the two reviewed package identities separate from their shared code."""
+    return {
+        1442: {"driver_sha256": "d10d856d5c5db517c6377e795c5fff0f472987c1160da30370b491635e6326f9",
+            "service_sha256": "169bef9718b1b9c32ad4bc1072baec51b6dd85b293ea834e292b939b28f3d82b",
+            "service_path": ".analysis/inputs/official-native-current/extracted/6fb0db93b540b4ea30597a768521d347bc08a128e47c433e6b3e41962e3d1a57/output/Release/clio_x/usb_driver/razer_clio_x_routing_service.exe",
+            "event_suffix": "clio_x", "package_sha256": "7194d447ad240abbf3f83a32499c62cf14294d5ee24843717ac9076935d64835",
+            "package_bytes": 27749520, "resource_version": "1.2.0.51", "lineage_edges": 7,
+            "service_event": {"worker_rva": "0x2ac980", "name_lea_rva": "0x2acc39", "create_call_rva": "0x2acc49",
+                "ioctl_code_rva": "0x2acc70", "ioctl_call_rva": "0x2acc7c", "zero_input_rvas": ["0x2acc6a", "0x2acc6d"]}},
+        3942: {"driver_sha256": "5c729216c87b9aa747dac71d8b682d3cfb56daa28bd33f3f376f6de0dd161027",
+            "service_sha256": "af4fcfb594afeb7e678d4cbe3cf7f41556252a31f7f839b567f2cea855033b82",
+            "service_path": ".analysis/inputs/official-native-current/extracted/724b36dc13ea7b51b8f58abc88997b518b01564824d92f9c1720b64906c22a2f/output/Release/soma_pro/usb_driver/razer_soma_pro_routing_service.exe",
+            "event_suffix": "soma_pro", "package_sha256": "29dd4c6936ea66e7b3162273b5eb20dd139d45304ca0b5c353622c2ed9889f6a",
+            "package_bytes": 27145424, "resource_version": "1.2.1.59", "lineage_edges": 6,
+            "service_event": {"worker_rva": "0x833f0", "name_lea_rva": "0x836a9", "create_call_rva": "0x836b9",
+                "ioctl_code_rva": "0x836e0", "ioctl_call_rva": "0x836ec", "zero_input_rvas": ["0x836da", "0x836dd"]}},
+    }
+
+
+def audio_vad_kernel_event_contract(product_id=3942):
+    """Keep kernel references, user handles and work-item completion separate."""
+    suffix = audio_vad_kernel_build_specs()[product_id]["event_suffix"]
+    return {
+        "event_identity": f"service Global\\ThxVad_{suffix}_DataAvailableEvent and kernel \\BaseNamedObjects\\ThxVad_{suffix}_DataAvailableEvent name the shared data event; service shutdown event is separate",
+        "registration_input": "IOCTL 0xcf54600b queues a 16-byte {work_item,IRP} context without reading a supplied event handle or input buffer",
+        "registration_checks": "under P+392 spinlock, both kernel handle P+408 and object P+400 must be zero; release lock, create named notification event, reacquire lock and repeat both checks",
+        "registration_winner": "store kernel handle and object, add one ObfReferenceObject reference, then release spinlock",
+        "registration_loser": "release spinlock before ZwClose of the newly returned handle; retain existing pair and do not add or remove an extra object reference",
+        "registration_success": "null P, preexisting either member and IoCreateNotificationEvent failure still complete IRP with status zero and Information zero; successful IOCTL does not prove an event exists",
+        "work_item_completion": "normal callback completes IRP first, then frees work item and WORK-tagged context; null context returns, null IRP only frees the work item and context",
+        "allocation_failure": "event IoAllocateWorkItem failure jumps directly to status 0xc000009a completion without writing Information; context failure frees work item and clears Information before the same status",
+        "pending_and_cancel": "dispatcher marks stack Control bit0, status 0x103 and Information zero before queueing DelayedWorkQueue; selected dispatch/callback have no IRP Cancel/CancelIrql/CancelRoutine access or cancel acknowledgement",
+        "signal": "under the same P+392 lock, read P+400; nonnull object receives KeSetEvent(increment=0,wait=false); kernel handle is not used for signaling",
+        "bytes_producer": "OnBytesReceived calls ring write for each wrapped byte range and signals once only when input byte count is nonzero",
+        "packet_producer": "OnPacketReceived checks stream+128, calls ring write and then signals without checking copied frames or rejecting zero byte count",
+        "content_gate": "ring writer returns when P+416 is zero; SetContentId writes that gate from first rights DWORD == zero even after the preceding content-update HRESULT fails",
+        "signal_confirmation": "event signal and service availability do not establish nonzero copied frames, successful DSP processing or an observed device setting",
+        "unload_installation": "driver initialization saves PortCls-installed DriverUnload in 0x9cc0 and installs 0xb350; WDF globals+48 selects wrapper 0x4a90 with saved unload 0x9fc0, else flags bit1 may replace WDF cleanup pointer with 0x4a80",
+        "unload_order": "0xb350 invokes saved PortCls unload then conditional WDF cleanup; under event lock dereference object and zero it, release lock, close and zero kernel handle, free P and zero global, then delete symbolic link and device",
+        "unload_wrapper": "0x4a90 invokes saved unload unless null or self, then 0x48c8 performs class unbind followed by WdfVersionUnbind; alternate 0x4a80 invokes the same unbind chain",
+        "external_lifetime_boundary": "selected code has no explicit work-item counter/wait; PortCls/WDF teardown, class callbacks and OS object lifetime are external boundaries, so absence here proves neither missing rundown nor a race or leak",
+        "scope": f"exact current {product_id} driver static event chain; all scheduling, IRP cancellation, unload races and actual driver execution remain unverified",
+        "full_semantic_closure": False,
+    }
+
+
+def collect_audio_vad_kernel_event(service_path, service_lineage, *, product_id=3942, references_only=False):
+    """Reuse the sibling driver capture and its already retained package ancestry."""
+    path = a.ROOT / Path(service_path).parent.parent / "vad_driver/thx_vad.sys"
+    native = verify_native_functions(identity(path), audio_vad_kernel_event_selections())
+    raw = path.read_bytes()
+    _, read, _ = audio_native_evidence_pe(raw)
+    root = a.ROOT / ".analysis/results/native" / native["input"]["sha256"]
+    source = identity(root / "structures.json")
+    types = json.loads((root / "structures.json").read_bytes())
+    layouts = {name: next(row["members"] for row in types if row["name"] == name)
+               for name in ("_IRP", "_IO_STACK_LOCATION")}
+    name = "\\BaseNamedObjects\\ThxVad_" + audio_vad_kernel_build_specs()[product_id]["event_suffix"] + "_DataAvailableEvent"
+    bodies = {int(row["capture"]["rva"], 0): row["capture"] for row in native["complete_selected_functions"]}
+    wanted = {"KeReleaseSpinLock", "ExAllocatePoolWithTag", "ExFreePoolWithTag", "IofCompleteRequest",
+        "IoCreateNotificationEvent", "IoAllocateWorkItem", "IoFreeWorkItem", "IoQueueWorkItem",
+        "ObfReferenceObject", "ObfDereferenceObject", "KeAcquireSpinLockRaiseToDpc", "KeSetEvent", "ZwClose"}
+    if references_only:
+        native = deepcopy(native)
+        native["selected_body_storage"] = "retained_function_artifacts"
+        for row in native["complete_selected_functions"]:
+            del row["capture"]
+    return {"native": native, "driver_edge": {"child": native["input"],
+            "parent": service_lineage[0]["parent"], "kind": "static_extracted_native_input",
+            "inspection": service_lineage[0]["inspection"]},
+        "layout": {"global_pointer_rva": "0x9d70", "spinlock_offset": 392,
+            "object_offset": 400, "kernel_handle_offset": 408, "content_gate_offset": 416},
+        "event_name": {"rva": "0x55c0", "value": name,
+            "raw_hex": read(0x55c0, len(name.encode("utf-16le"))+2).hex()},
+        "type_layout": {"source": source, "members": layouts},
+        "kernel_import_slots": {key: row for key, row in audio_vad_kernel_import_slots(raw, read).items()
+                                if row["name"] in wanted},
+        "signal_callers": audio_vad_kernel_direct_calls(bodies, read, 0x4160),
+        "contract": audio_vad_kernel_event_contract(product_id), "target_execution": False,
+        "actual_driver_comparison": "unverified", "cancellation_and_unload_races": "unverified"}
+
+
+def audio_vad_kernel_native_evidence(native):
+    """Reopen referenced complete bodies without retaining duplicate captures."""
+    if "selected_body_storage" not in native:
+        return native
+    audio_native_evidence_check(native["selected_body_storage"] == "retained_function_artifacts",
+                                "VAD kernel function storage differs")
+    selected = deepcopy(native)
+    del selected["selected_body_storage"]
+    for item in selected["complete_selected_functions"]:
+        audio_native_evidence_check("capture" not in item, "VAD kernel body duplicates its retained artifact")
+        item["capture"] = json.loads(audio_native_evidence_original(item["artifact"]))
+    return selected
+
+
+def verify_audio_vad_kernel_event(document, service_lineage, *, product_id=3942):
+    """Independently reopen the driver, import table, complete functions and package edge."""
+    import struct
+    check, original = audio_native_evidence_check, audio_native_evidence_original
+    spec = audio_vad_kernel_build_specs()[product_id]
+    native, edge = audio_vad_kernel_native_evidence(document["native"]), document["driver_edge"]
+    check(native["input"]["sha256"] == spec["driver_sha256"],
+          "VAD kernel driver identity differs")
+    check(edge == {"child": native["input"], "parent": service_lineage[0]["parent"],
+        "kind": "static_extracted_native_input", "inspection": service_lineage[0]["inspection"]},
+        "VAD driver does not join the verified service package ancestry")
+    original(edge["parent"])
+    receipt = json.loads(original(edge["inspection"]))
+    check(receipt["container"] == edge["parent"] and receipt["extracted"] is True and
+          receipt["listing_exit_code"] == receipt["extraction_exit_code"] == 0 and
+          receipt["input_bytes_unchanged"] is True and any(
+              all(row[key] == value for key, value in native["input"].items()) for row in receipt["files"]),
+          "VAD driver extraction does not bind its actual bytes")
+    bodies, read, counts = audio_native_evidence_functions(native, audio_vad_kernel_event_selections())
+    raw = original(native["input"])
+    check(not native["verified_exports"] and not native["verified_indirect_slots"], "Unexpected VAD driver export/slot")
+    check(document["layout"] == {"global_pointer_rva": "0x9d70", "spinlock_offset": 392,
+        "object_offset": 400, "kernel_handle_offset": 408, "content_gate_offset": 416}, "VAD event field ownership differs")
+    check(0x1786+7+struct.unpack("<i", read(0x1789, 4))[0] == 0x9d70, "VAD actual global pointer target differs")
+    name = "\\BaseNamedObjects\\ThxVad_" + spec["event_suffix"] + "_DataAvailableEvent"
+    encoded = name.encode("utf-16le")+b"\0\0"
+    check(document["event_name"] == {"rva": "0x55c0", "value": name, "raw_hex": encoded.hex()} and
+          read(0x55c0, len(encoded)) == encoded, "VAD kernel data-event name differs")
+    slots = {"0x6040": "KeReleaseSpinLock", "0x6048": "ExAllocatePoolWithTag", "0x6050": "ExFreePoolWithTag",
+        "0x6060": "IofCompleteRequest", "0x6070": "IoCreateNotificationEvent", "0x6090": "IoAllocateWorkItem",
+        "0x6098": "IoFreeWorkItem", "0x60a0": "IoQueueWorkItem", "0x60c0": "ObfReferenceObject",
+        "0x60c8": "ObfDereferenceObject", "0x60d0": "KeAcquireSpinLockRaiseToDpc", "0x6130": "KeSetEvent",
+        "0x6198": "ZwClose"}
+    actual_slots = audio_vad_kernel_import_slots(raw, read)
+    expected_slots = {rva: {"library": "ntoskrnl.exe", "name": value} for rva, value in slots.items()}
+    check(document["kernel_import_slots"] == expected_slots and
+          all(actual_slots.get(key) == row for key, row in expected_slots.items()), "VAD actual kernel import slots differ")
+    layout = document["type_layout"]
+    capture = json.loads(original(native["capture_receipt"]))
+    source = layout["source"]
+    check(any(row["path"] == "structures.json" and row["bytes"] == source["bytes"] and
+          row["sha256"] == source["sha256"] for row in capture["outputs"]) and
+          source["path"] == str(Path(native["capture_receipt"]["path"]).parent / "structures.json").replace("\\", "/"),
+          "VAD IRP type layout is not bound to the retained driver capture")
+    types = json.loads(original(source))
+    expected_types = {name: next(row["members"] for row in types if row["name"] == name)
+                      for name in ("_IRP", "_IO_STACK_LOCATION")}
+    check(layout["members"] == expected_types, "VAD IRP type members differ")
+    members = {row["name"]: (row["offset"], row["bytes"]) for row in expected_types["_IRP"]}
+    check(all(members[key] == value for key, value in {"IoStatus": (48, 16), "Cancel": (68, 1),
+        "CancelIrql": (69, 1), "CancelRoutine": (104, 8), "Tail": (120, 88)}.items()) and
+        {row["name"]: (row["offset"], row["bytes"]) for row in expected_types["_IO_STACK_LOCATION"]}["Control"] == (3, 1),
+        "VAD pending/cancellation structure offsets differ")
+    anchors = {
+        0x12d0: {0x130c: "3d0b6054cf", 0x1311: "0f8433020000", 0x154a: "ff15404b0000",
+            0x1556: "0f84ab010000", 0x155c: "ba10000000", 0x156c: "ff15d64a0000",
+            0x1586: "0f84f1fdffff", 0x158c: "488930", 0x158f: "488d15aa010000",
+            0x1596: "48895808", 0x159a: "41b801000000", 0x15aa: "80480301",
+            0x15ae: "c7433003010000", 0x15b5: "48897b38", 0x15b9: "ff15e14a0000",
+            0x1380: "ff15124d0000", 0x1703: "48897b38", 0x1709: "c743309a0000c0"},
+        0x1740: {0x1743: "0f8470010000", 0x175d: "7522", 0x1786: "488b1de3850000",
+            0x179a: "0f84d5000000", 0x17b5: "4883bb9801000000", 0x17bd: "0f85a1000000",
+            0x17c3: "4883bb9001000000", 0x17cb: "0f8593000000", 0x17d7: "ff1563480000",
+            0x17dd: "488d15dc3d0000", 0x17f9: "ff1571480000", 0x1805: "7469",
+            0x180a: "ff15c0480000", 0x1810: "4883bb9801000000", 0x181c: "752c",
+            0x181e: "4883bb9001000000", 0x1826: "7522", 0x182d: "48898b98010000",
+            0x1837: "4c89bb90010000", 0x183e: "ff157c480000", 0x1851: "ff15e9470000",
+            0x185c: "ff1536490000", 0x187c: "894530", 0x187f: "48894538",
+            0x1883: "ff15d7470000", 0x188c: "ff1506480000", 0x189a: "ff15b0470000"},
+        0x4160: {0x4172: "4881c188010000", 0x4179: "ff15511f0000", 0x417f: "488b8b90010000",
+            0x418c: "740b", 0x4193: "ff15971f0000", 0x41b3: "48ff25861e0000"},
+        0x2ab0: {0x2b0a: "0f844e010000", 0x2c2b: "e880170000", 0x2c49: "e812150000"},
+        0x2d50: {0x2da3: "4439b380000000", 0x2daa: "0f85a8000000", 0x2e69: "e842150000", 0x2e75: "e8e6120000"},
+        0x43b0: {0x43b9: "80b9a001000000", 0x43c6: "0f8423030000"},
+        0x105e0: {0x10635: "7906", 0x1063d: "488b152c97ffff", 0x10649: "837d0000", 0x10650: "888aa0010000"},
+        0x12000: {0x12227: "ff15d33fffff", 0x12266: "488987e0000000", 0x1235d: "4889055c79ffff", 0x1236b: "48894768"},
+        0xb350: {0xb35d: "488b055ce9ffff", 0xb373: "ff15a7aeffff", 0xb388: "488b05f9ebffff",
+            0xb38f: "ff158baeffff", 0xb3b8: "ff1512adffff", 0xb3cd: "ff15f5acffff",
+            0xb3d3: "4889ab90010000", 0xb3e5: "ff1555acffff", 0xb401: "ff1591adffff",
+            0xb407: "4889ab98010000", 0xb41a: "ff1530acffff", 0xb420: "48892d49e9ffff"},
+        0x492c: {0x4a40: "40386830", 0x4a4f: "4889056a550000", 0x4a5d: "48894768",
+            0x4a66: "a802", 0x4a71: "48890510550000"},
+        0x4a90: {0x4a94: "488b0525550000", 0x4aaa: "7405", 0x4ab1: "e812feffff"},
+        0x4a80: {0x4a84: "e83ffeffff"}, 0x48c8: {0x48d3: "e838040000", 0x48ed: "e8f1060000"},
+    }
+    for function, values in anchors.items():
+        instructions = {int(row["rva"], 0): row for row in bodies[function]["assembly"]}
+        for rva, encoded in values.items():
+            check(instructions[rva]["bytes"] == encoded and read(rva, len(bytes.fromhex(encoded))).hex() == encoded,
+                  "VAD kernel event instruction anchor differs")
+    expected_calls = [{"function_rva": "0x2ab0", "instruction_rva": "0x2c49"},
+                      {"function_rva": "0x2d50", "instruction_rva": "0x2e75"}]
+    check(document["signal_callers"] == audio_vad_kernel_direct_calls(bodies, read, 0x4160) == expected_calls,
+          "VAD signal consumer chain differs")
+    for function, register in ((0x12d0, "rbx"), (0x1740, "rbp")):
+        for row in bodies[function]["assembly"]:
+            check(not any("["+register+offset+"]" in row["text"] for offset in ("+44h", "+45h", "+68h")),
+                  "Selected VAD IRP cancel-field access inventory differs")
+    check(document["contract"] == audio_vad_kernel_event_contract(product_id), "VAD kernel ownership or completion contract differs")
+    check(document["target_execution"] is False and document["actual_driver_comparison"] == "unverified" and
+          document["cancellation_and_unload_races"] == "unverified", "VAD kernel static proof was promoted to execution")
+    return {**dict(counts), "unenumerated_bytes": counts["raw_chunk_bytes"]-counts["enumerated_instruction_bytes"],
+        "instruction_anchors": sum(len(values) for values in anchors.values()), "named_kernel_imports": len(slots),
+        "signal_callers": len(expected_calls), "driver_acquisition_edges": 1,
+        "target_execution": False, "actual_driver_comparison": "unverified"}
+
+
+def collect_audio_vad_kernel_opcode_comparison(bodies):
+    """Compare every instruction and unenumerated chunk byte in both selected builds."""
+    check = audio_native_evidence_check
+    check(set(bodies) == {1442, 3942}, "VAD kernel opcode comparison requires both reviewed builds")
+    rows = []
+    for rva, role in audio_vad_kernel_event_selections().items():
+        left, right = bodies[1442][rva], bodies[3942][rva]
+        instructions = lambda body: [(row["rva"], row["bytes"]) for row in body["assembly"]]
+        chunks = lambda body: [(row["start"], row["end"], row["raw_hex"]) for row in body["chunks"]]
+        check(instructions(left) == instructions(right), "VAD kernel selected opcode sequence differs")
+        check(chunks(left) == chunks(right), "VAD kernel selected raw chunks differ")
+        rows.append({"function_rva": hex(rva), "role": role, "instructions": len(left["assembly"]),
+            "instruction_bytes": sum(len(bytes.fromhex(row["bytes"])) for row in left["assembly"]),
+            "raw_chunk_bytes": sum(len(bytes.fromhex(row["raw_hex"])) for row in left["chunks"]),
+            "instruction_rvas_and_bytes_equal": True, "raw_chunks_equal": True})
+    return {"products": [1442, 3942], "comparison": "every_instruction_rva_and_raw_bytes",
+        "functions": rows, "event_names_compared_separately": True, "target_execution": False}
+
+
+def collect_audio_vad_service_event_binding(service, product_id):
+    """Reference the existing service worker that opens its product's named event."""
+    import struct
+    spec = audio_vad_kernel_build_specs()[product_id]
+    binding = spec["service_event"]
+    native = verify_native_functions(service, {int(binding["worker_rva"], 0): "service_data_event_ioctl_owner"})
+    native["selected_body_storage"] = "retained_function_artifacts"
+    for row in native["complete_selected_functions"]:
+        del row["capture"]
+    _, read, _ = audio_native_evidence_pe((a.ROOT / service["path"]).read_bytes())
+    lea = int(binding["name_lea_rva"], 0)
+    name_rva = lea+7+struct.unpack("<i", read(lea+3, 4))[0]
+    name = "Global\\ThxVad_" + spec["event_suffix"] + "_DataAvailableEvent"
+    return {"native": native, "binding": binding,
+        "event_name": {"rva": hex(name_rva), "value": name,
+            "raw_hex": read(name_rva, len(name.encode("utf-16le"))+2).hex()}}
+
+
+def verify_audio_vad_service_event_binding(document, service, product_id):
+    """Bind CreateEventW and the zero-input event IOCTL to the actual service instructions."""
+    import struct
+    check = audio_native_evidence_check
+    spec = audio_vad_kernel_build_specs()[product_id]
+    binding = spec["service_event"]
+    check(document["binding"] == binding and document["native"]["input"] == service and
+        document["native"].get("selected_body_storage") == "retained_function_artifacts",
+        "VAD service event owner or reference storage differs")
+    native = audio_vad_kernel_native_evidence(document["native"])
+    bodies, read, counts = audio_native_evidence_functions(native,
+        {int(binding["worker_rva"], 0): "service_data_event_ioctl_owner"})
+    body = bodies[int(binding["worker_rva"], 0)]
+    instructions = {int(row["rva"], 0): bytes.fromhex(row["bytes"]) for row in body["assembly"]}
+    lea = int(binding["name_lea_rva"], 0)
+    encoded = instructions[lea]
+    check(len(encoded) == 7 and encoded[:3] == b"\x4c\x8d\x0d", "VAD service named-event argument differs")
+    name_rva = lea+7+struct.unpack("<i", encoded[3:])[0]
+    name = "Global\\ThxVad_" + spec["event_suffix"] + "_DataAvailableEvent"
+    encoded_name = name.encode("utf-16le")+b"\0\0"
+    check(document["event_name"] == {"rva": hex(name_rva), "value": name, "raw_hex": encoded_name.hex()} and
+        read(name_rva, len(encoded_name)) == encoded_name, "VAD service event-name bytes differ")
+    expected_imports = {}
+    for field, name in (("create_call_rva", "CreateEventW"), ("ioctl_call_rva", "DeviceIoControl")):
+        rva = int(binding[field], 0)
+        encoded = instructions[rva]
+        check(len(encoded) == 6 and encoded[:2] == b"\xff\x15", "VAD service event import call differs")
+        slot = rva+6+struct.unpack("<i", encoded[2:])[0]
+        expected_imports[hex(slot)] = name
+    slots = audio_vad_kernel_import_slots(audio_native_evidence_original(service), read,
+        selected_slots=set(expected_imports))
+    check(all(slots[key]["name"] == name for key, name in expected_imports.items()),
+        "VAD service actual event import differs")
+    create = int(binding["create_call_rva"], 0)
+    check(instructions[create-9] == bytes.fromhex("4533c0") and
+        instructions[create-6] == bytes.fromhex("418d5001") and
+        instructions[create-2] == bytes.fromhex("33c9") and
+        instructions[int(binding["ioctl_code_rva"], 0)] == bytes.fromhex("ba0b6054cf") and
+        [instructions[int(value, 0)] for value in binding["zero_input_rvas"]] ==
+            [bytes.fromhex("4533c9"), bytes.fromhex("4533c0")],
+        "VAD service CreateEventW flags or event-IOCTL input differs")
+    return {"complete_functions": counts["complete_functions"], "event_name_rva": hex(name_rva),
+        "actual_imports": ["CreateEventW", "DeviceIoControl"], "input_handle_supplied": False}
+
+
+def collect_audio_vad_kernel_event_batch():
+    """Reuse the two exact package branches and reference their existing complete captures."""
+    source = a.ROOT / ".analysis/inputs/official-native-current/acquisition.json"
+    acquisition = json.loads(source.read_bytes())
+    inputs = {row["path"]: row for row in json.loads((a.ROOT / ".analysis/inputs.json").read_bytes())["inputs"]}
+    products, bodies = [], {}
+    for product_id, spec in audio_vad_kernel_build_specs().items():
+        manifest = next(row for row in acquisition["manifests"]
+            if row["url"] == f"https://apps.razer.com/synapse/products/{product_id}/mw/manifest.json")
+        package = next(row for row in acquisition["resources"] if row.get("sha256") == spec["package_sha256"])
+        lineage, current = [], inputs[spec["service_path"]]
+        while current["sha256"] != package["sha256"]:
+            parent = inputs[current["container"]]
+            edge = {"child": {key: current[key] for key in ("path", "bytes", "sha256")},
+                "parent": {key: parent[key] for key in ("path", "bytes", "sha256")}, "kind": current["kind"]}
+            if current["kind"] == "static_embedded_native_input":
+                edge["container_offset"] = current["container_offset"]
+            else:
+                edge["inspection"] = identity(a.ROOT / ".analysis/results/native-packages" / parent["sha256"] / "inspection.json")
+            lineage.append(edge)
+            current = parent
+            if len(lineage) > 12:
+                raise ValueError("VAD kernel package lineage is cyclic or unbounded")
+        kernel = collect_audio_vad_kernel_event(spec["service_path"], lineage,
+            product_id=product_id, references_only=True)
+        native = audio_vad_kernel_native_evidence(kernel["native"])
+        bodies[product_id], _, _ = audio_native_evidence_functions(native, audio_vad_kernel_event_selections())
+        service = identity(a.ROOT / spec["service_path"])
+        products.append({"product_id": product_id,
+            "manifest": {key: manifest[key] for key in ("path", "bytes", "sha256", "url", "version", "build_version", "git_metadata")},
+            "package": {key: package[key] for key in ("path", "bytes", "sha256", "url", "status", "declared_sha256", "declared_bytes", "manifests")},
+            "service": service, "service_lineage": lineage, "kernel_event": kernel,
+            "service_event_binding": collect_audio_vad_service_event_binding(service, product_id)})
+    return {"schema_version": 1, "tool": identity(Path(__file__)), "acquisition": identity(source),
+        "products": products, "shared_code": collect_audio_vad_kernel_opcode_comparison(bodies),
+        "scope": "exact current 1442 and 3942 driver event owners; equal selected code does not merge package or event identities",
+        "unresolved": ["PortCls/WDF/class teardown and OS object lifetime remain external boundaries",
+            "Scheduling, IRP cancellation, unload races, failure injection and actual driver execution remain unverified",
+            "Other driver functions, products, firmware, transports, independent Rust and UI/backend integration remain outside this selected closure"],
+        "target_execution": False, "actual_driver_comparison": "unverified", "runtime_acceptance": "unverified"}
+
+
+def verify_audio_vad_kernel_package_branch(row, acquisition):
+    """Bind a driver branch to its own current manifest through every actual package edge."""
+    check, original = audio_native_evidence_check, audio_native_evidence_original
+    product_id = row["product_id"]
+    spec = audio_vad_kernel_build_specs()[product_id]
+    manifest, package, service = row["manifest"], row["package"], row["service"]
+    check(manifest["url"] == f"https://apps.razer.com/synapse/products/{product_id}/mw/manifest.json" and
+        any(all(item.get(key) == value for key, value in manifest.items()) for item in acquisition["manifests"]),
+        "VAD kernel manifest product or source identity differs")
+    declarations = json.loads(original(manifest))["resourceManifest"]["resources"]
+    check(package["sha256"] == package["declared_sha256"].lower() == spec["package_sha256"] and
+        package["bytes"] == package["declared_bytes"] == spec["package_bytes"] and package["status"] == "verified" and
+        any(all(item.get(key) == value for key, value in package.items()) for item in acquisition["resources"]) and
+        any(item["resourceName"] == f"THXVAD{product_id}" and item["resourceVersion"] == spec["resource_version"] and
+            item["sha256"].lower() == spec["package_sha256"] and item["size"] == spec["package_bytes"] and
+            item["url"] == package["url"] for item in declarations), "VAD kernel package declaration differs")
+    original(package)
+    check(service["path"] == spec["service_path"] and service["sha256"] == spec["service_sha256"] and
+        len(row["service_lineage"]) == spec["lineage_edges"], "VAD kernel service or lineage scope differs")
+    child = service
+    for edge in row["service_lineage"]:
+        check(edge["child"] == child, "Disconnected VAD kernel package edge")
+        value, parent = original(child), original(edge["parent"])
+        if edge["kind"] == "static_embedded_native_input":
+            offset = edge["container_offset"]
+            check(type(offset) is int and offset >= 0 and parent[offset:offset+len(value)] == value,
+                "VAD kernel embedded package bytes differ")
+        else:
+            check(edge["kind"] == "static_extracted_native_input", "Unknown VAD kernel package edge")
+            receipt = json.loads(original(edge["inspection"]))
+            check(receipt["container"] == edge["parent"] and receipt["extracted"] is True and
+                receipt["listing_exit_code"] == receipt["extraction_exit_code"] == 0 and
+                receipt["input_bytes_unchanged"] is True and any(
+                    all(item.get(key) == item_value for key, item_value in child.items()) for item in receipt["files"]),
+                "VAD kernel extraction receipt differs")
+        child = edge["parent"]
+    check(child == {key: package[key] for key in ("path", "bytes", "sha256")},
+        "VAD kernel package lineage does not reach its declared resource")
+
+
+def verify_audio_vad_kernel_event_batch(document):
+    """Independently reopen both package branches, function artifacts and original PE bytes."""
+    check, original = audio_native_evidence_check, audio_native_evidence_original
+    check(document["schema_version"] == 1 and document["target_execution"] is False and
+        document["actual_driver_comparison"] == document["runtime_acceptance"] == "unverified",
+        "VAD kernel batch static evidence was promoted to execution")
+    check([row["product_id"] for row in document["products"]] == [1442, 3942],
+        "VAD kernel batch must contain both exact ordered product branches")
+    check(document["tool"] == identity(Path(__file__)), "VAD kernel batch tool identity changed")
+    acquisition = json.loads(original(document["acquisition"]))
+    check(acquisition["source_current_during_acquisition"] is True, "VAD kernel batch source is not stable")
+    bodies, results = {}, []
+    for row in document["products"]:
+        product_id = row["product_id"]
+        verify_audio_vad_kernel_package_branch(row, acquisition)
+        native = row["kernel_event"]["native"]
+        check(native.get("selected_body_storage") == "retained_function_artifacts",
+            "VAD kernel batch must reference existing complete function artifacts")
+        verified = verify_audio_vad_kernel_event(row["kernel_event"], row["service_lineage"], product_id=product_id)
+        service_event = verify_audio_vad_service_event_binding(row["service_event_binding"], row["service"], product_id)
+        bodies[product_id], _, _ = audio_native_evidence_functions(
+            audio_vad_kernel_native_evidence(native), audio_vad_kernel_event_selections())
+        results.append({"product_id": product_id, "service_acquisition_edges": len(row["service_lineage"]),
+            "service_event_binding": service_event, **verified})
+    shared = document["shared_code"]
+    check(shared["products"] == [1442, 3942] and shared["comparison"] == "every_instruction_rva_and_raw_bytes" and
+        shared["event_names_compared_separately"] is True and shared["target_execution"] is False,
+        "VAD kernel shared-code comparison scope differs")
+    expected = []
+    for rva, role in audio_vad_kernel_event_selections().items():
+        left, right = bodies[1442][rva], bodies[3942][rva]
+        left_ops = [(item["rva"], bytes.fromhex(item["bytes"])) for item in left["assembly"]]
+        right_ops = [(item["rva"], bytes.fromhex(item["bytes"])) for item in right["assembly"]]
+        check(left_ops == right_ops, "VAD kernel original per-instruction sequences differ")
+        left_chunks = [(item["start"], item["end"], bytes.fromhex(item["raw_hex"])) for item in left["chunks"]]
+        right_chunks = [(item["start"], item["end"], bytes.fromhex(item["raw_hex"])) for item in right["chunks"]]
+        check(left_chunks == right_chunks, "VAD kernel original raw chunk sequences differ")
+        expected.append({"function_rva": hex(rva), "role": role, "instructions": len(left_ops),
+            "instruction_bytes": sum(len(value) for _, value in left_ops),
+            "raw_chunk_bytes": sum(len(value) for _, _, value in left_chunks),
+            "instruction_rvas_and_bytes_equal": True, "raw_chunks_equal": True})
+    check(shared["functions"] == expected, "VAD kernel stored shared-code evidence differs")
+    check(document["scope"] == "exact current 1442 and 3942 driver event owners; equal selected code does not merge package or event identities" and
+        document["unresolved"] == ["PortCls/WDF/class teardown and OS object lifetime remain external boundaries",
+            "Scheduling, IRP cancellation, unload races, failure injection and actual driver execution remain unverified",
+            "Other driver functions, products, firmware, transports, independent Rust and UI/backend integration remain outside this selected closure"],
+        "VAD kernel batch unresolved lifetime boundary differs")
+    result = {"passed": True, "products": [1442, 3942], "builds": results,
+        "shared_functions": len(expected), "shared_instructions": sum(row["instructions"] for row in expected),
+        "shared_instruction_bytes": sum(row["instruction_bytes"] for row in expected),
+        "shared_raw_chunk_bytes": sum(row["raw_chunk_bytes"] for row in expected),
+        "target_execution": False, "actual_driver_comparison": "unverified"}
+    if "verification" in document:
+        check(document["verification"] == result, "VAD kernel stored batch counters differ")
+    return result
+
+
+def negative_audio_vad_kernel_event_batch(document):
+    """Reject omitted builds, swapped event identities and unsupported runtime claims."""
+    from unittest.mock import patch
+    changes = [
+        ("missing_build", ("products",), document["products"][:1]),
+        ("duplicate_build", ("products",), [document["products"][0]]*2),
+        ("reordered_builds", ("products",), document["products"][::-1]),
+        ("unreviewed_1392", ("products", 0, "product_id"), 1392),
+        ("unstable_acquisition", ("acquisition", "sha256"), "0"*64),
+        ("execution_promoted", ("target_execution",), True),
+        ("driver_acceptance_promoted", ("actual_driver_comparison",), "passed"),
+        ("runtime_acceptance_promoted", ("runtime_acceptance",), "passed"),
+        ("unresolved_removed", ("unresolved",), []),
+        ("shared_scope_changed", ("shared_code", "products"), [1442, 1392]),
+        ("shared_name_identity_merged", ("shared_code", "event_names_compared_separately"), False),
+        ("shared_function_removed", ("shared_code", "functions"), document["shared_code"]["functions"][1:]),
+        ("shared_instruction_count_changed", ("shared_code", "functions", 0, "instructions"), 1),
+        ("shared_raw_equality_invented", ("shared_code", "functions", 0, "raw_chunks_equal"), False),
+        ("stored_counter_changed", ("verification", "shared_instructions"), 1),
+    ]
+    for index, row in enumerate(document["products"]):
+        root = ("products", index)
+        kernel = (*root, "kernel_event")
+        native = (*kernel, "native")
+        selected = row["kernel_event"]["native"]["complete_selected_functions"]
+        changes.extend([
+            (f"{index}_wrong_manifest", (*root, "manifest", "url"), "https://apps.razer.com/synapse/products/1392/mw/manifest.json"),
+            (f"{index}_wrong_package", (*root, "package", "declared_sha256"), "0"*64),
+            (f"{index}_wrong_service", (*root, "service", "sha256"), "0"*64),
+            (f"{index}_wrong_service_event_owner", (*root, "service_event_binding", "binding", "worker_rva"), "0x1000"),
+            (f"{index}_wrong_service_event_name", (*root, "service_event_binding", "event_name", "value"), "other product event"),
+            (f"{index}_wrong_service_event_bytes", (*root, "service_event_binding", "event_name", "raw_hex"), "0000"),
+            (f"{index}_wrong_service_worker_artifact", (*root, "service_event_binding", "native", "complete_selected_functions", 0, "artifact", "sha256"), "0"*64),
+            (f"{index}_missing_lineage", (*root, "service_lineage"), row["service_lineage"][:-1]),
+            (f"{index}_cross_package_driver", (*kernel, "driver_edge", "parent", "sha256"), "0"*64),
+            (f"{index}_wrong_driver", (*native, "input", "sha256"), "0"*64),
+            (f"{index}_missing_function", (*native, "complete_selected_functions"), selected[1:]),
+            (f"{index}_wrong_function_artifact", (*native, "complete_selected_functions", 0, "artifact", "sha256"), "0"*64),
+            (f"{index}_duplicated_function_body", (*native, "complete_selected_functions", 0, "capture"), {}),
+            (f"{index}_unreviewed_storage", (*native, "selected_body_storage"), "inline_json"),
+            (f"{index}_swapped_event_name", (*kernel, "event_name"), document["products"][1-index]["kernel_event"]["event_name"]),
+            (f"{index}_wrong_import", (*kernel, "kernel_import_slots", "0x6070", "name"), "KeSetEvent"),
+            (f"{index}_missing_signal", (*kernel, "signal_callers"), []),
+            (f"{index}_handle_object_swapped", (*kernel, "layout", "object_offset"), 408),
+            (f"{index}_irp_layout_removed", (*kernel, "type_layout", "members", "_IRP"), []),
+            (f"{index}_races_promoted", (*kernel, "cancellation_and_unload_races"), "passed"),
+        ])
+        for key, value in row["kernel_event"]["contract"].items():
+            changes.append((f"{index}_contract_{key}", (*kernel, "contract", key),
+                True if value is False else "unproved shared driver success"))
+    results = []
+    with patch(__name__+".collect_audio_vad_kernel_event_batch", side_effect=AssertionError("batch collector disabled")), \
+         patch(__name__+".collect_audio_vad_kernel_event", side_effect=AssertionError("kernel collector disabled")), \
+         patch(__name__+".collect_audio_vad_service_event_binding", side_effect=AssertionError("service collector disabled")), \
+         patch(__name__+".collect_audio_vad_kernel_opcode_comparison", side_effect=AssertionError("comparison collector disabled")), \
+         patch(__name__+".verify_native_functions", side_effect=AssertionError("native collector disabled")):
+        verify_audio_vad_kernel_event_batch(document)
+        for name, keys, replacement in changes:
+            changed = deepcopy(document)
+            owner = changed
+            for key in keys[:-1]:
+                owner = owner[key]
+            owner[keys[-1]] = replacement
+            try:
+                verify_audio_vad_kernel_event_batch(changed)
+            except (ValueError, KeyError, TypeError, IndexError) as error:
+                results.append({"case": name, "rejected": True, "reason": str(error)})
+            else:
+                raise ValueError("Altered VAD kernel batch was accepted: "+name)
+    return {"passed": True, "count": len(results), "batch_collector_disabled": True,
+        "kernel_collector_disabled": True, "comparison_collector_disabled": True,
+        "service_collector_disabled": True, "native_collector_disabled": True, "cases": results, "target_execution": False}
+
+
+def audit_audio_vad_kernel_event_batch(args):
+    """Publish the complete reviewed two-build batch as one preserved Surround field."""
+    if args.family != "audio" or args.function != "mw" or getattr(args, "product", None):
+        raise ValueError("VAD kernel batch requires audio/mw and both exact reviewed builds")
+    path = a.ROOT / ".analysis/results/frontend/audio-surround-audit.json"
+    name, mode = "native_vad_kernel_event_batch", args.native_vad_kernel_batch
+    if mode == "capture":
+        selected = collect_audio_vad_kernel_event_batch()
+        selected["verification"] = verify_audio_vad_kernel_event_batch(selected)
+        selected["negative_cases"] = negative_audio_vad_kernel_event_batch(selected)
+        with a.index_lock():
+            document = json.loads(path.read_bytes())
+            previous = {key: value for key, value in document.items() if key != name}
+            document[name] = selected
+            a.save(path, document)
+            saved = json.loads(path.read_bytes())
+            if {key: value for key, value in saved.items() if key != name} != previous:
+                raise ValueError("VAD kernel batch altered another Surround field")
+        print(json.dumps({"receipt": a.rel(path), "field": name, **selected["verification"]}), flush=True)
+    else:
+        selected = json.loads(path.read_bytes())[name]
+        result = (verify_audio_vad_kernel_event_batch(selected) if mode == "check"
+                  else negative_audio_vad_kernel_event_batch(selected))
+        print(json.dumps(result), flush=True)
+
+
+def collect_audio_vad_lifecycle_3942():
+    """Reuse the complete current capture without reproducing the routing report."""
+    source = a.ROOT / ".analysis/inputs/official-native-current/acquisition.json"
+    acquisition = json.loads(source.read_bytes())
+    manifest = next(row for row in acquisition["manifests"]
+        if row["url"] == "https://apps.razer.com/synapse/products/3942/mw/manifest.json")
+    package = next(row for row in acquisition["resources"] if row.get("sha256") ==
+        "29dd4c6936ea66e7b3162273b5eb20dd139d45304ca0b5c353622c2ed9889f6a")
+    rows = {row["path"]: row for row in json.loads((a.ROOT / ".analysis/inputs.json").read_bytes())["inputs"]}
+    service_path = (".analysis/inputs/official-native-current/extracted/"
+        "724b36dc13ea7b51b8f58abc88997b518b01564824d92f9c1720b64906c22a2f/"
+        "output/Release/soma_pro/usb_driver/razer_soma_pro_routing_service.exe")
+    lineage, current = [], rows[service_path]
+    while current["sha256"] != package["sha256"]:
+        parent = rows[current["container"]]
+        edge = {"child": {key: current[key] for key in ("path", "bytes", "sha256")},
+                "parent": {key: parent[key] for key in ("path", "bytes", "sha256")}, "kind": current["kind"]}
+        if current["kind"] == "static_embedded_native_input":
+            edge["container_offset"] = current["container_offset"]
+        else:
+            edge["inspection"] = identity(a.ROOT / ".analysis/results/native-packages" / parent["sha256"] / "inspection.json")
+        lineage.append(edge); current = parent
+        if len(lineage) > 12:
+            raise ValueError("VAD acquisition lineage is cyclic or unbounded")
+    original = identity(a.ROOT / service_path)
+    native = verify_native_functions(original, audio_vad_lifecycle_selections())
+    raw = (a.ROOT / service_path).read_bytes()
+    _, read, _ = audio_native_evidence_pe(raw)
+    return {"schema_version": 1, "tool": identity(Path(__file__)), "product_id": 3942,
+        "acquisition": identity(source),
+        "manifest": {key: manifest[key] for key in
+            ("path", "bytes", "sha256", "url", "version", "build_version", "git_metadata")},
+        "package": {key: package[key] for key in
+            ("path", "bytes", "sha256", "url", "status", "declared_sha256", "declared_bytes", "manifests")},
+        "service_lineage": lineage, "native": native,
+        "metadata": collect_audio_vad_lifecycle_metadata(raw, read),
+        "kernel_event": collect_audio_vad_kernel_event(service_path, lineage),
+        "contract": audio_vad_lifecycle_contract(),
+        "supersedes": {
+            "source_path": ".analysis/results/native/af4fcfb594afeb7e678d4cbe3cf7f41556252a31f7f839b567f2cea855033b82/routing-semantics.json",
+            "source_pointer": "/vad_upstream_and_driver/semantics/stop/data_event",
+            "prior_claim": "normal worker path closes event; event/frame/flush failure early returns can bypass that close",
+            "status": "superseded_by_selected_original_byte_and_fh4_review",
+            "replacement": "Only initial/post-frame shutdown polling paths close the data event; infinite-wait stop, event/frame/flush errors and fatal-frame exits bypass that call; no selected FH4 handle-release action exists",
+            "binding_rvas": ["0x836f4", "0x8371c", "0x83796", "0x839a0", "0x83a04", "0x83dcc", "0x83dd5", "0x83e2e"],
+        },
+        "unresolved": ["Actual wait/error injection, resource restoration and shutdown races have not executed",
+            "All constructor callees, SEH/foreign exceptions, allocation failures and OS lifetime behavior remain outside this selected closure",
+            "Remaining driver/PortCls, PCM/DSP, products, firmware, transports and platforms require their own semantic evidence",
+            "Independent Rust implementation, UI/backend wiring, official functional comparison and device acceptance remain unverified"],
+        "target_execution": False, "rust_implementation": "unverified", "ui_backend_wiring": "unverified",
+        "actual_dll_comparison": "unverified", "device_dsp_acceptance": "unverified"}
+
+
+def verify_audio_vad_lifecycle_3942(document):
+    """Reopen official originals and independently bind every lifecycle assertion."""
+    import struct
+    check, original = audio_native_evidence_check, audio_native_evidence_original
+    check(document["schema_version"] == 1 and document["product_id"] == 3942 and
+          document["target_execution"] is False, "VAD product or execution boundary differs")
+    for key in ("rust_implementation", "ui_backend_wiring", "actual_dll_comparison", "device_dsp_acceptance"):
+        check(document[key] == "unverified", "VAD static evidence was promoted to runtime acceptance")
+    acquisition = json.loads(original(document["acquisition"]))
+    check(acquisition["source_current_during_acquisition"] is True, "Current VAD acquisition is unstable")
+    manifest, package = document["manifest"], document["package"]
+    check(manifest["url"] == "https://apps.razer.com/synapse/products/3942/mw/manifest.json" and
+          any(all(row[key] == value for key, value in manifest.items()) for row in acquisition["manifests"]),
+          "Current 3942 manifest differs")
+    declaration = json.loads(original(manifest))["resourceManifest"]["resources"]
+    digest = "29dd4c6936ea66e7b3162273b5eb20dd139d45304ca0b5c353622c2ed9889f6a"
+    check(package["sha256"] == package["declared_sha256"].lower() == digest and
+          package["bytes"] == package["declared_bytes"] == 27145424 and package["status"] == "verified" and
+          any(all(key in row and row[key] == value for key, value in package.items())
+              for row in acquisition["resources"]) and
+          any(row.get("sha256", "").lower() == digest and row["url"] == package["url"] and
+              row["size"] == package["bytes"] and row["resourceName"] == "THXVAD3942" and
+              row["resourceVersion"] == "1.2.1.59" for row in declaration), "VAD package declaration differs")
+    original(package)
+    child = document["native"]["input"]
+    check(child["sha256"] == "af4fcfb594afeb7e678d4cbe3cf7f41556252a31f7f839b567f2cea855033b82" and
+          len(document["service_lineage"]) == 6, "Current VAD service or lineage length differs")
+    for edge in document["service_lineage"]:
+        check(edge["child"] == child, "Disconnected VAD acquisition edge")
+        value, parent = original(child), original(edge["parent"])
+        if edge["kind"] == "static_embedded_native_input":
+            offset = edge["container_offset"]
+            check(type(offset) is int and offset >= 0 and parent[offset:offset+len(value)] == value,
+                  "VAD embedded ancestor differs from original bytes")
+        else:
+            check(edge["kind"] == "static_extracted_native_input", "Unknown VAD acquisition edge")
+            receipt = json.loads(original(edge["inspection"]))
+            check(receipt["container"] == edge["parent"] and receipt["extracted"] is True and
+                  receipt["listing_exit_code"] == receipt["extraction_exit_code"] == 0 and
+                  receipt["input_bytes_unchanged"] is True and
+                  any(all(row[key] == value for key, value in child.items()) for row in receipt["files"]),
+                  "VAD extraction receipt does not bind child and parent")
+        child = edge["parent"]
+    check(child == {key: package[key] for key in ("path", "bytes", "sha256")}, "VAD lineage does not reach package")
+    native = document["native"]
+    check(not native["verified_exports"] and not native["verified_indirect_slots"], "Unexpected VAD exports or slots")
+    bodies, read, counts = audio_native_evidence_functions(native, audio_vad_lifecycle_selections())
+    raw = original(native["input"])
+    optional = struct.unpack_from("<I", raw, 0x3c)[0]+24
+    directory, length = struct.unpack_from("<II", raw, optional+136)
+    check(length > 0 and length % 12 == 0, "VAD exception directory is invalid")
+    metadata = document["metadata"]
+    check(metadata["fh4_integer_table"] == {"rva": "0x323b18", "raw_hex":
+        "fffefffdfffefffcfffefffdfffefffb1912190b191219041912190b19121900"} and
+        read(0x323b18, 32).hex() == metadata["fh4_integer_table"]["raw_hex"], "VAD FH4 integer table differs")
+    expected_roots = (("thread_bridge", 0x4238cc, 0x503e0, 0x50409, 0x3a2e38, 0x60),
+        ("constructor", 0x425060, 0x82010, 0x824b8, 0x3a5300, 0x28),
+        ("destructor", 0x425078, 0x824e0, 0x826a7, 0x3a53a8, 0x60),
+        ("worker", 0x42512c, 0x833f0, 0x83e9b, 0x3a5584, 0x28))
+    check(len(metadata["runtime_functions"]) == 4, "VAD runtime root selection differs")
+    scopes = {}
+    for row, (role, entry, begin, end, info, header) in zip(metadata["runtime_functions"], expected_roots):
+        check(directory <= entry and entry+12 <= directory+length and (entry-directory) % 12 == 0,
+              "VAD runtime record is outside actual exception directory")
+        encoded = read(entry, 12)
+        actual_begin, actual_end, unwind = struct.unpack("<III", encoded)
+        record = audio_x64_unwind_record(read, unwind)
+        check((actual_begin, actual_end) == (begin, end) and row["role"] == role and
+              row["runtime_entry_rva"] == hex(entry) and row["raw_hex"] == encoded.hex() and
+              row["begin_rva"] == hex(begin) and row["end_rva"] == hex(end) and
+              row["unwind"] == record and record["handler_data_u32"] == info and
+              record["handler_rva"] == ("0x220990" if role in ("constructor", "worker") else "0x221ca4"),
+              "VAD runtime/handler binding differs")
+        extra = read(unwind+len(bytes.fromhex(record["raw_hex"])), 4).hex() \
+            if record["handler_rva"] == "0x220990" else ""
+        check(row["gs_handler_extra_hex"] == extra, "VAD GS handler data differs")
+        scope = audio_vad_fh4_scope(read, info, begin)
+        check(row["scope"] == scope and scope["header"] == header, "VAD decoded FH4 scope differs")
+        for region in scope["data_regions"]:
+            check(read(int(region["rva"], 0), region["bytes"]).hex() == region["raw_hex"], "VAD scope data differs")
+        scopes[role] = scope
+    expected_actions = [
+        (3, 0x2f2bd0, None), (3, 0x2f2be0, None), (2, 0x9000, 112), (3, 0x2f2bfc, None),
+        (3, 0x2f2c0c, None), (3, 0x2f2c1f, None), (3, 0x2f2c32, None), (3, 0x2f2c45, None),
+        (3, 0x2f2c58, None), (3, 0x2f2c6b, None), (3, 0x2f2c7e, None), (3, 0x2f2c91, None),
+        (2, 0x85ae0, 80), (3, 0x2f2cb0, None), (3, 0x2f2cc0, None), (3, 0x2f2cd3, None),
+        (3, 0x2f2cf0, None), (2, 0xa5a0, 120), (3, 0x221eb8, None),
+        (3, 0x2f2cf0, None), (1, 0x4fcc0, 120)]
+    actual_actions = lambda scope: [(row["kind"], int(row["action_rva"], 0), row.get("object_offset"))
+                                     for row in scope["unwind_entries"]]
+    check(actual_actions(scopes["constructor"]) == expected_actions and
+          actual_actions(scopes["worker"]) == [(1, 0xcd40, 440), (1, 0xc5b0, 88), (3, 0x221eb8, None)] and
+          not scopes["destructor"]["unwind_entries"] and not scopes["thread_bridge"]["unwind_entries"],
+          "VAD cleanup action/owner selection differs")
+    check(scopes["worker"]["ip_to_state"] == [{"ip_rva": hex(ip), "state": state} for ip, state in
+          ((0x834ef, 0), (0x8353c, -1), (0x837ec, 1), (0x83cd8, 2), (0x83d3e, 1),
+           (0x83dae, -1), (0x83e30, 1), (0x83e51, -1), (0x83e59, 1))], "VAD worker guard coverage differs")
+    restore_names = ("VirtualUnlock", "timeEndPeriod", "AvRevertMmThreadCharacteristics")
+    check(set(metadata["selected_original_restore_names"]) == set(restore_names), "VAD restore-name scope differs")
+    for name in restore_names:
+        check(metadata["selected_original_restore_names"][name] == {
+            "ascii_nul_present": False, "utf16le_nul_present": False} and
+            name.encode("ascii")+b"\0" not in raw and name.encode("utf-16le")+b"\0\0" not in raw,
+            "VAD selected-original restore name absence differs")
+    anchors = {
+        0x82010: {0x82387: "ff15b3cd2700", 0x823a9: "ff15e1cd2700", 0x823af: "488983a0c20300",
+            0x823c3: "488d0d26100000", 0x823e3: "4c8d05f6dffcff", 0x823ee: "e8b5401b00",
+            0x82411: "0f118398000000"},
+        0x824e0: {0x824f4: "ff1586cc2700", 0x82527: "e80cae1900", 0x8252e: "0f8568010000"},
+        0x503e0: {0x503ec: "ff5308", 0x503ef: "e88cdb1c00", 0x503fc: "e83ff71c00", 0x50401: "33c0"},
+        0x833f0: {0x83513: "ffd7", 0x83539: "ffd0", 0x8354d: "ff1545c12700", 0x83577: "ff15bbbb2700",
+            0x8357d: "488983a0c10300", 0x835ad: "0f8428080000", 0x836b9: "ff15d1ba2700",
+            0x836f4: "0f84e1060000", 0x8371c: "0f85b0060000", 0x83764: "ff153eba2700",
+            0x8376a: "3d02010000", 0x8378e: "ff1514ba2700", 0x83794: "85c0",
+            0x83796: "0f843f060000", 0x8379f: "ff15cbb92700", 0x837aa: "8683a8c20300",
+            0x839a0: "0f847e040000", 0x83a04: "0f841a040000", 0x83a12: "7e08", 0x83a14: "a801",
+            0x83a16: "0f8508040000", 0x83dcc: "0f847ef9ffff",
+            0x83dd5: "ff159db32700", 0x83ddb: "488b8d40010000", 0x83e29: "e8be941900",
+            0x83e2e: "ebab"},
+        0x21d338: {0x21d351: "ff1509220e00", 0x21d364: "ff15fe210e00", 0x21d37c: "ff15f61d0e00"},
+        0x224158: {0x224588: "41f60640", 0x224647: "e8fc040100"},
+    }
+    for function, assertions in anchors.items():
+        instructions = {int(row["rva"], 0): row for row in bodies[function]["assembly"]}
+        for rva, encoded in assertions.items():
+            check(rva in instructions and instructions[rva]["bytes"] == encoded and
+                  read(rva, len(bytes.fromhex(encoded))).hex() == encoded, "VAD lifecycle instruction anchor differs")
+    text = lambda rva: "\n".join(row["text"] for row in bodies[rva]["pseudocode"]["lines"])
+    for rva, required in {
+        0xc5b0: ("Mtx_unlock(*a1)",), 0xcd40: ("sub_14000D3F0",),
+        0x6c80: ("*(_DWORD *)(a1 + 8)", "sub_140234B48"),
+        0x221eb8: ("sub_140234B48",), 0x234b48: ("abort();",),
+        0x2f2c0c: ("sub_140006C80", "+ 152LL"),
+        0x828e0: ("0xCF546017", "GetLastError", "disableVAD"),
+        0x224158: ("(*(_BYTE *)a5 & 0x40) != 0", "__FrameHandler4::ExecutionInCatch", "sub_140234B48"),
+    }.items():
+        check(all(value in text(rva) for value in required), "VAD guard/consumer semantic anchor differs")
+    worker_closes = [row for row in bodies[0x833f0]["assembly"] if "cs:CloseHandle" in row["text"]]
+    check(len(worker_closes) == 1 and worker_closes[0]["rva"] == "0x83dd5" and
+          "CloseHandle" not in text(0x824e0) and "CloseHandle" not in text(0x82010),
+          "VAD selected handle-release inventory differs")
+    check(document["contract"] == audio_vad_lifecycle_contract(), "Reviewed VAD lifecycle contract differs")
+    check(document["unresolved"] == [
+        "Actual wait/error injection, resource restoration and shutdown races have not executed",
+        "All constructor callees, SEH/foreign exceptions, allocation failures and OS lifetime behavior remain outside this selected closure",
+        "Remaining driver/PortCls, PCM/DSP, products, firmware, transports and platforms require their own semantic evidence",
+        "Independent Rust implementation, UI/backend wiring, official functional comparison and device acceptance remain unverified"],
+        "VAD partial closure boundary differs")
+    supersedes = document["supersedes"]
+    check(supersedes == {
+        "source_path": ".analysis/results/native/af4fcfb594afeb7e678d4cbe3cf7f41556252a31f7f839b567f2cea855033b82/routing-semantics.json",
+        "source_pointer": "/vad_upstream_and_driver/semantics/stop/data_event",
+        "prior_claim": "normal worker path closes event; event/frame/flush failure early returns can bypass that close",
+        "status": "superseded_by_selected_original_byte_and_fh4_review",
+        "replacement": "Only initial/post-frame shutdown polling paths close the data event; infinite-wait stop, event/frame/flush errors and fatal-frame exits bypass that call; no selected FH4 handle-release action exists",
+        "binding_rvas": ["0x836f4", "0x8371c", "0x83796", "0x839a0", "0x83a04", "0x83dcc", "0x83dd5", "0x83e2e"],
+    }, "VAD superseded assertion or corrected branch scope differs")
+    prior = json.loads((a.ROOT / supersedes["source_path"]).read_bytes())["vad_upstream_and_driver"]
+    check(prior["original"] == native["input"] and
+          prior["semantics"]["stop"]["data_event"] == supersedes["prior_claim"],
+          "VAD correction does not bind the retained earlier assertion and exact original")
+    kernel = verify_audio_vad_kernel_event(document["kernel_event"], document["service_lineage"])
+    verified = {"passed": True, "product_id": 3942, **dict(counts),
+        "unenumerated_bytes": counts["raw_chunk_bytes"]-counts["enumerated_instruction_bytes"],
+        "runtime_functions": 4, "fh4_unwind_states": 24,
+        "fh4_data_regions": sum(len(scope["data_regions"]) for scope in scopes.values()),
+        "instruction_anchors": sum(len(rows) for rows in anchors.values()),
+        "acquisition_edges": len(document["service_lineage"]), "kernel_event": kernel,
+        "target_execution": False, "actual_dll_comparison": "unverified"}
+    if "verification" in document:
+        check(document["verification"] == verified, "Stored VAD verification counters differ")
+    return verified
+
+
+def negative_audio_vad_lifecycle_3942(document):
+    """Reject altered bytes, ownership and cleanup claims while collectors cannot run."""
+    from unittest.mock import patch
+    path = ("native", "complete_selected_functions")
+    functions = document["native"]["complete_selected_functions"]
+    worker = next(index for index, row in enumerate(functions) if row["capture"]["rva"] == "0x833f0")
+    root = ("metadata", "runtime_functions")
+    changes = [
+        ("cross_product", ("product_id",), 1442),
+        ("wrong_manifest", ("manifest", "url"), "https://apps.razer.com/synapse/products/1442/mw/manifest.json"),
+        ("wrong_package", ("package", "declared_sha256"), "0"*64),
+        ("wrong_service", ("native", "input", "sha256"), "0"*64),
+        ("missing_lineage", ("service_lineage",), document["service_lineage"][:-1]),
+        ("embedded_offset", ("service_lineage", 4, "container_offset"), 0),
+        ("missing_function", path, functions[1:]),
+        ("wrong_function_owner", (*path, worker, "role"), "verified runtime cleanup"),
+        ("altered_pseudocode", (*path, worker, "capture", "pseudocode", "lines"), []),
+        ("altered_instruction", (*path, worker, "capture", "assembly", 0, "bytes"), "c3"),
+        ("altered_chunk", (*path, worker, "capture", "chunks", 0, "raw_hex"), "c3"),
+        ("capture_identity", ("native", "capture_receipt", "sha256"), "0"*64),
+        ("missing_runtime_root", root, document["metadata"]["runtime_functions"][:-1]),
+        ("changed_runtime_entry", (*root, 3, "raw_hex"), "00"*12),
+        ("changed_handler", (*root, 3, "unwind", "handler_rva"), "0x221ca4"),
+        ("changed_gs_data", (*root, 3, "gs_handler_extra_hex"), "ffffffff"),
+        ("invented_local_catch", (*root, 3, "scope", "try_block_map_present"), True),
+        ("worker_guard_retargeted", (*root, 3, "scope", "unwind_entries", 1, "action_rva"), "0x21d338"),
+        ("worker_guard_wrong_parent", (*root, 3, "scope", "unwind_entries", 1, "next_state"), 0),
+        ("worker_guard_wrong_ip", (*root, 3, "scope", "ip_to_state", 2, "ip_rva"), "0x837df"),
+        ("constructor_guard_omitted", (*root, 1, "scope", "unwind_entries"), []),
+        ("destructor_noexcept_removed", (*root, 2, "scope", "header"), 0x20),
+        ("thread_noexcept_removed", (*root, 0, "scope", "noexcept"), False),
+        ("fh4_raw_bytes_changed", (*root, 1, "scope", "data_regions", 0, "raw_hex"), "00"),
+        ("fh4_table_changed", ("metadata", "fh4_integer_table", "raw_hex"), "00"*32),
+        ("restore_name_fact_changed", ("metadata", "selected_original_restore_names", "timeEndPeriod", "ascii_nul_present"), True),
+        ("superseded_claim_changed", ("supersedes", "prior_claim"), "all shutdown paths close event"),
+        ("superseded_pointer_changed", ("supersedes", "source_pointer"), "/semantics/stop/data_event"),
+        ("superseded_scope_changed", ("supersedes", "binding_rvas"), []),
+        ("correction_promoted_to_execution", ("supersedes", "status"), "runtime_leak_proven"),
+        ("drop_open_boundaries", ("unresolved",), []),
+        ("counter_changed", ("verification", "fh4_unwind_states"), 25),
+        ("execution_promoted", ("target_execution",), True),
+        ("dll_comparison_promoted", ("actual_dll_comparison",), "passed"),
+        ("device_acceptance_promoted", ("device_dsp_acceptance",), "passed"),
+    ]
+    for key, value in document["contract"].items():
+        changes.append(("contract_"+key, ("contract", key), True if value is False else "unproved cleanup success"))
+    kernel = document["kernel_event"]
+    path = ("kernel_event", "native", "complete_selected_functions")
+    selected = kernel["native"]["complete_selected_functions"]
+    registration = next(index for index, row in enumerate(selected) if row["capture"]["rva"] == "0x1740")
+    changes.extend([
+        ("kernel_driver_identity", ("kernel_event", "native", "input", "sha256"), "0"*64),
+        ("kernel_driver_package_edge", ("kernel_event", "driver_edge", "parent", "sha256"), "0"*64),
+        ("kernel_missing_function", path, selected[1:]),
+        ("kernel_wrong_owner", (*path, registration, "role"), "service shutdown owner"),
+        ("kernel_changed_instruction", (*path, registration, "capture", "assembly", 0, "bytes"), "c3"),
+        ("kernel_changed_chunk", (*path, registration, "capture", "chunks", 0, "raw_hex"), "c3"),
+        ("kernel_changed_pseudocode", (*path, registration, "capture", "pseudocode", "lines"), []),
+        ("kernel_object_handle_swapped", ("kernel_event", "layout", "object_offset"), 408),
+        ("kernel_global_pointer_changed", ("kernel_event", "layout", "global_pointer_rva"), "0x9c70"),
+        ("kernel_event_name_changed", ("kernel_event", "event_name", "value"), "service shutdown event"),
+        ("kernel_event_name_bytes_changed", ("kernel_event", "event_name", "raw_hex"), "0000"),
+        ("kernel_import_slot_retargeted", ("kernel_event", "kernel_import_slots", "0x6070", "name"), "KeSetEvent"),
+        ("kernel_irp_layout_removed", ("kernel_event", "type_layout", "members", "_IRP"), []),
+        ("kernel_type_identity_changed", ("kernel_event", "type_layout", "source", "sha256"), "0"*64),
+        ("kernel_signal_producer_removed", ("kernel_event", "signal_callers"), kernel["signal_callers"][:1]),
+        ("kernel_signal_consumer_changed", ("kernel_event", "signal_callers", 0, "instruction_rva"), "0x2e75"),
+        ("kernel_execution_promoted", ("kernel_event", "target_execution"), True),
+        ("kernel_comparison_promoted", ("kernel_event", "actual_driver_comparison"), "passed"),
+        ("kernel_race_acceptance_promoted", ("kernel_event", "cancellation_and_unload_races"), "passed"),
+        ("kernel_verification_count_changed", ("verification", "kernel_event", "signal_callers"), 3),
+    ])
+    for key, value in kernel["contract"].items():
+        changes.append(("kernel_contract_"+key, ("kernel_event", "contract", key),
+                        True if value is False else "unproved kernel success and release"))
+    results = []
+    with patch(__name__+".collect_audio_vad_lifecycle_3942", side_effect=AssertionError("collector disabled")), \
+         patch(__name__+".verify_native_functions", side_effect=AssertionError("native collector disabled")), \
+         patch(__name__+".collect_audio_vad_lifecycle_metadata", side_effect=AssertionError("metadata collector disabled")), \
+         patch(__name__+".collect_audio_vad_kernel_event", side_effect=AssertionError("kernel collector disabled")):
+        verify_audio_vad_lifecycle_3942(document)
+        for name, keys, replacement in changes:
+            changed = deepcopy(document)
+            owner = changed
+            for key in keys[:-1]:
+                owner = owner[key]
+            owner[keys[-1]] = replacement
+            try:
+                verify_audio_vad_lifecycle_3942(changed)
+            except (ValueError, KeyError, TypeError, IndexError) as error:
+                results.append({"case": name, "rejected": True, "reason": str(error)})
+            else:
+                raise ValueError("Altered VAD lifecycle evidence was accepted: "+name)
+    return {"passed": True, "count": len(results), "collector_disabled": True,
+        "native_collector_disabled": True, "metadata_collector_disabled": True, "kernel_collector_disabled": True,
+        "cases": results, "target_execution": False}
+
+
+def audit_audio_vad_lifecycle_3942(args):
+    """Publish only the exact 3942 continuation and its bounded earlier-claim correction."""
+    if args.family != "audio" or getattr(args, "product", None):
+        raise ValueError("VAD lifecycle continuation requires the retained 3942 service branch")
+    path = a.ROOT / ".analysis/results/frontend/audio-surround-audit.json"
+    document = json.loads(path.read_bytes())
+    name, mode = "native_vad_lifecycle_3942", args.native_vad_lifecycle
+    canonical = lambda value: hashlib.sha256(json.dumps(value, ensure_ascii=False,
+        sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    before = canonical({key: value for key, value in document.items() if key != name})
+    if mode == "capture":
+        selected = collect_audio_vad_lifecycle_3942()
+        selected["verification"] = verify_audio_vad_lifecycle_3942(selected)
+        selected["negative_cases"] = negative_audio_vad_lifecycle_3942(selected)
+        document[name] = selected
+        a.save(path, document)
+        saved = json.loads(path.read_bytes())
+        if canonical({key: value for key, value in saved.items() if key != name}) != before:
+            raise ValueError("VAD continuation changed another Surround field")
+        print(json.dumps({"receipt": a.rel(path), "field": name,
+            "preserved_other_fields_sha256": before, **selected["verification"]}), flush=True)
+    elif mode == "check":
+        print(json.dumps(verify_audio_vad_lifecycle_3942(document[name])), flush=True)
+    else:
+        print(json.dumps(negative_audio_vad_lifecycle_3942(document[name])), flush=True)
+
+
 def audit_audio_surround(args):
     """Retain mounted Clio Surround pages and complete local MW task owners."""
     import importlib.metadata
@@ -8635,6 +10134,10 @@ def audit_audio_surround(args):
         return audit_audio_native_client_boundaries(args)
     if getattr(args, "native_virtualizer_fir", None):
         return audit_audio_virtualizer_fir_1442(args)
+    if getattr(args, "native_vad_lifecycle", None):
+        return audit_audio_vad_lifecycle_3942(args)
+    if getattr(args, "native_vad_kernel_batch", None):
+        return audit_audio_vad_kernel_event_batch(args)
     parser = Parser(Language(tree_sitter_javascript.language()))
     products = args.product or [1392, 1442, 3942]
     rows = []
@@ -8814,7 +10317,8 @@ def audit_audio_surround(args):
     destination = a.ROOT / ".analysis/results/frontend/audio-surround-audit.json"
     if destination.is_file():
         previous = json.loads(destination.read_bytes())
-        for name in ("native_client_branch_boundaries", "native_virtualizer_fir_1442"):
+        for name in ("native_client_branch_boundaries", "native_virtualizer_fir_1442", "native_vad_lifecycle_3942",
+                     "native_vad_kernel_event_batch"):
             if name in previous:
                 result[name] = previous[name]
     a.save(destination, result)
@@ -17111,6 +18615,815 @@ def audit_mouse_dpi_matcher(args):
         "direct_dependencies": len(dependencies), "target_execution": False}), flush=True)
 
 
+def mouse_input_error_native_roles():
+    """Bound the actual Raw Input error route and its two invalidation checks."""
+    return {
+        0xd0f40: "message_window_creation_failure", 0xd1220: "wm_create_registration_failure",
+        0xd1640: "window_callback_dispatch", 0xdfa06: "allocator_liveness_check",
+        0xd35b0: "raw_handler_error_post", 0xd29b6: "owned_error_code_and_string_capture",
+        0xd2950: "once_error_callback_delivery", 0xce0f0: "mouse_error_callback_binding",
+        0xcbcd0: "mouse_owner_construction", 0xd2af0: "raw_handler_callback_fields",
+        0xb721a: "weak_service_callback_capture", 0xcf320: "weak_service_error_dispatch",
+        0x540c0: "service_weak_reference", 0x544da: "weak_service_pointer_access",
+        0x1c6790: "weak_reference_validity", 0x1c67b0: "weak_reference_creation",
+        0x1c68e0: "weak_factory_invalidation", 0x212ec0: "weak_flag_invalidation",
+        0xcc030: "service_destruction", 0xcc350: "error_json_serialization",
+        0xcec1a: "error_observer_queue", 0x519fc: "observer_owned_error_capture",
+        0xd0450: "observer_error_dispatch", 0xb1df2: "observer_service_capture",
+        0xb1c3e: "observer_pending_task_capture", 0xb1b90: "observer_pending_task_dispatch",
+        0xb1640: "observer_registration_generation_check", 0xb1e3a: "observer_shared_callback",
+        0x6a470: "observer_error_virtual_slot", 0x19000: "engine_error_empty_device_identity",
+        0x18f3e: "engine_bound_event_dispatch", 0x50120: "public_event_callback_binding",
+        0x519c0: "public_event_callback_dispatch", 0x500e0: "three_argument_event_abi",
+        0x1cb410: "once_callback_capture_header", 0x1cb4a0: "retained_callback_reference",
+        0x1cb550: "retained_callback_release", 0xcb100: "start_acknowledgement_after_queueing",
+    }
+
+
+def mouse_input_error_semantics():
+    return {
+        "native_device_info_json": "", "native_event_type": 2,
+        "native_error_fields": ["errorCode", "errorString"],
+        "host_identity_parse_failure": "log_then_no_renderer_send",
+        "native_error_reaches_product_mw": False,
+        "start_ack_proves_registration": False,
+        "allocator_check_is_cancellation_token": False,
+        "weak_service_and_observer_registration_checks_are_distinct": True,
+        "mw_callbacks_have_native_error_branch": False,
+        "cleanup_guarantees_all_queued_callbacks_drained": False,
+    }
+
+
+def mouse_input_error_host_ast(parser, raw):
+    """Check the complete host callback's parse/catch/truthy-send structure."""
+    tree = parser.parse(raw)
+    if tree.root_node.has_error:
+        raise ValueError("Input-monitor host callback has invalid JavaScript syntax")
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+    nodes = list(walk(tree.root_node))
+    if not any(node.type == "field_definition" and
+               node.child_by_field_name("property").text == b"createCbInputMonitoringEvent" for node in nodes):
+        raise ValueError("Input-monitor host callback is not the complete class field")
+    functions = [node for node in nodes if node.type == "function_expression" and
+                 node.child_by_field_name("parameters").text == b"(e,t,s)"]
+    if len(functions) != 1:
+        raise ValueError("Input-monitor host callback ABI parameters changed")
+    function = functions[0]
+    local = list(walk(function))
+    tries = [node for node in local if node.type == "try_statement" and
+             b"JSON.parse(e)" in node.child_by_field_name("body").text]
+    if len(tries) != 1:
+        raise ValueError("Input-monitor identity JSON parse is absent or ambiguous")
+    catches = [node for node in tries[0].named_children if node.type == "catch_clause"]
+    if (len(catches) != 1 or b"console.log" not in catches[0].text or
+            b"send(" in catches[0].text or b"return" in catches[0].text):
+        raise ValueError("Input-monitor identity parse catch changed")
+    gates = [node for node in local if node.type == "if_statement" and
+             node.child_by_field_name("condition").text == b"(n)" and
+             b'e.send("inputMonitoringEvent"' in node.child_by_field_name("consequence").text]
+    if (len(gates) != 1 or gates[0].child_by_field_name("alternative") is not None or
+            gates[0].start_byte < tries[0].end_byte):
+        raise ValueError("Input-monitor renderer send is no longer gated by parsed identity")
+    sends = [node for node in local if node.type == "call_expression" and
+             node.child_by_field_name("function").text == b"e.send"]
+    if len(sends) != 1 or not gates[0].start_byte <= sends[0].start_byte < gates[0].end_byte:
+        raise ValueError("Input-monitor callback has an ungated or additional renderer send")
+    if any(node.type == "assignment_expression" and node.child_by_field_name("left").text == b"n" and
+           node.text != b"n=JSON.parse(e)" for node in local):
+        raise ValueError("Input-monitor callback adds an identity fallback")
+    return {"parse_argument": "deviceInfoJson", "parse_catch": "log_only",
+            "send_gate": "parsed_identity_truthy", "native_empty_identity_forwarded": False}
+
+
+def verify_mouse_input_error_consumer(document):
+    """Re-read PE, complete captures and AST owners without calling collection."""
+    import host
+    audit = host.HostLocalAudit()
+    def check(condition, message):
+        if not condition:
+            raise ValueError("Input-monitor error evidence: " + message)
+    check(document.get("schema_version") == 1 and document.get("target_execution") is False,
+          "static execution boundary changed")
+    for field in ("rust_implementation", "ui_backend_wiring", "official_dll_comparison", "runtime_acceptance"):
+        check(document.get(field) == "unverified", "acceptance was promoted: " + field)
+    check(document.get("semantics") == mouse_input_error_semantics(), "error/ACK/cancellation meaning changed")
+    check(document.get("baseline_recomputed") is False, "old full-monitor baseline was promoted")
+    native = document["native"]
+    raw = audit.read(native["input"])
+    pe = host.inspect_pe(raw)
+    base = int(pe["image_base"], 0)
+    check(base == 0x180000000 and native["input"]["sha256"] ==
+          "6eabdfdedf797e042738b630d827c06f7a45dbe560ebaec96c66698f88f3320a", "native input changed")
+    def pe_bytes(rva, size):
+        sections = [part for part in pe["sections"] if part["rva"] <= rva and
+                    rva + size <= part["rva"] + part["bytes"]]
+        check(size > 0 and len(sections) == 1, "native span lacks unique file backing")
+        start = sections[0]["file_offset"] + rva - sections[0]["rva"]
+        result = raw[start:start + size]
+        check(len(result) == size, "native span was truncated")
+        return result
+    capture = json.loads(audit.artifact(a.ROOT / native["capture_receipt"]["path"], native["capture_receipt"]))
+    check(capture["input_sha256"] == native["input"]["sha256"] and
+          capture["input_bytes"] == len(raw) and capture["capture_complete"], "native capture lineage changed")
+    entries = {int(row["rva"], 0): row for row in capture["functions"]}
+    functions, counts = {}, Counter()
+    roles = mouse_input_error_native_roles()
+    check([(int(row["rva"], 0), row["role"]) for row in native["functions"]] == sorted(roles.items()),
+          "bounded function selection changed")
+    for row in native["functions"]:
+        rva = int(row["rva"], 0)
+        body_raw = audit.artifact(a.ROOT / row["artifact"]["path"], row["artifact"])
+        body = json.loads(body_raw)
+        check(entries[rva]["sha256"] == row["artifact"]["sha256"] and body["rva"] == row["rva"] and
+              int(body["address"], 0) == base + rva and row["artifact"]["path"].endswith(entries[rva]["path"]),
+              "complete function/capture binding changed")
+        check(row["failures"] == entries[rva]["new_failures"] and row["pseudocode_captured"] ==
+              entries[rva]["pseudocode_captured"], "decompiler status was hidden")
+        for chunk in body["chunks"]:
+            first, end = int(chunk["start"], 0), int(chunk["end"], 0)
+            actual = pe_bytes(first - base, end - first)
+            check(actual.hex() == chunk["raw_hex"] and hashlib.sha256(actual).hexdigest() == chunk["sha256"],
+                  "function chunk differs from original")
+            counts["raw_chunk_bytes"] += len(actual)
+        for insn in body["assembly"]:
+            encoded = bytes.fromhex(insn["bytes"])
+            check(encoded == pe_bytes(int(insn["rva"], 0), len(encoded)), "instruction differs from original")
+            counts["instructions"] += 1
+            counts["instruction_bytes"] += len(encoded)
+        functions[rva] = body
+    def pseudo(rva):
+        return "\n".join(line["text"] for line in (functions[rva].get("pseudocode") or {}).get("lines", []))
+    for rva, pins in {
+        0xd35b0: ["sub_1800D29B6", "sub_1800D2950", "a1 + 88", "sub_1801B94E0"],
+        0xd29b6: ["a1 + 32", "a1 + 40", "a1 + 48", "sub_18019C1B8"],
+        0xd2950: ["*(unsigned int *)(a1 + 40)", "*(_QWORD *)(a1 + 32) = 0", "a1 + 48"],
+        0xce0f0: ["v12 = sub_1800CC350", "sub_1800CF320"],
+        0xcf320: ["sub_1801C6790(a1 + 40)", "*(_QWORD *)(a1 + 48)", "sub_1800544DA"],
+        0xcc030: ["sub_1801C68E0(a1 + 19)"],
+        0xcc350: ['"errorCode"', '"errorString"', "sub_1800CEC1A", "sub_18006A470"],
+        0xb1640: ["*(_QWORD *)(v11 + 32) == *(_QWORD *)(a3 + 48)", "sub_1800B1E3A"],
+        0x19000: ["v3 = 0", "v4 = 0", "2u, a2"],
+        0xd1220: ['"failed to register input handler"', "GetLastError()"],
+        0xd0f40: ['"failed to create window"', "GetLastError()"],
+    }.items():
+        check(all(pin in pseudo(rva) for pin in pins), "native semantic pins changed at " + hex(rva))
+    # These exact instructions distinguish the real target and three ABI arguments.
+    byte_pins = {0xd1669: "4c8b15", 0xd1681: "49ffe2", 0x6a470: "488b01",
+                 0x6a473: "488b4018", 0x19028: "0f57c0", 0x1903e: "41b802000000",
+                 0x5010e: "4889d1", 0x50111: "4489c2", 0x50114: "4d89c8"}
+    for rva, prefix in byte_pins.items():
+        check(pe_bytes(rva, len(bytes.fromhex(prefix))).hex() == prefix, "native ABI instruction changed")
+    check(native["observer_slot"] == {"vtable_rva": "0x2df4b0", "slot_byte_offset": 24,
+          "target_rva": "0x19000"} and int.from_bytes(pe_bytes(0x2df4c8, 8), "little") == base + 0x19000,
+          "error observer virtual target changed")
+    host_source = document["host"]["source"]
+    source_raw = audit.read(host_source)
+    owner_map = {}
+    for owner in document["complete_owners"]:
+        original = owner["original"]
+        value = audit.read(original)
+        start, end = owner["byte_start"], owner["byte_end"]
+        body = value[start:end]
+        check(body.decode("utf-8") == owner["body"] and hashlib.sha256(body).hexdigest() ==
+              owner["body_sha256"] and owner["id"] == original["sha256"] + ":" + str(start) + ":" + str(end),
+              "complete AST owner bytes changed")
+        node = audit.tree(original).root_node.descendant_for_byte_range(start, end - 1)
+        while node is not None and (node.start_byte != start or node.end_byte != end):
+            node = node.parent
+        check(node is not None and node.type == owner["syntax"], "complete AST owner boundary changed")
+        check(owner["id"] not in owner_map, "duplicate AST owner")
+        owner_map[owner["id"]] = owner
+    host_owner = owner_map[document["host"]["callback_owner"]]
+    check(host_owner["original"] == host_source and host_owner["body"].encode() in source_raw,
+          "host callback source binding changed")
+    projection = mouse_input_error_host_ast(audit.parser, b"class Host{" + host_owner["body"].encode() + b"}")
+    check(document["host"]["ast_projection"] == projection, "host error projection changed")
+    check([row["product_id"] for row in document["products"]] == [190, 192, 196, 222, 226, 229, 239],
+          "product branch coverage changed")
+    for row in document["products"]:
+        pid = row["product_id"]
+        acquired = json.loads(audit.artifact(a.ROOT / row["acquisition"]["path"], row["acquisition"]))
+        check(acquired["source_current_during_acquisition"] is True and any(
+              all(item.get(key) == row["source"][key] for key in ("path", "bytes", "sha256"))
+              for item in acquired["files"]), "product source acquisition lineage changed")
+        factory = owner_map[row["factory_owner"]]["body"]
+        manager = owner_map[row["manager_owner"]]["body"]
+        callback = owner_map[row["dynamic_callback_owner"]]["body"]
+        command = owner_map[row["command_owner"]]["body"]
+        expected = (14786, 43605) if pid == 226 else (32807, 9367)
+        check(row["module_ids"] == list(expected) and factory.startswith(str(expected[0])) and
+              manager.startswith(str(expected[1])), "actual middleware module selection changed")
+        check(all(owner_map[row[key]]["original"] == row["source"] for key in
+                  ("factory_owner", "manager_owner", "dynamic_callback_owner", "command_owner")),
+              "middleware owner moved to another product")
+        check('response("inputMonitoringEvent"' in manager and 'this.emit("inputMonitoringEvent",e)' in manager,
+              "actual middleware event forwarder changed")
+        check(all(word not in factory for word in ("inputMonitoringEventType", "errorCode", "errorString")) and
+              "e.jsonEvent" in callback and ".forEach" in callback and
+              "startMouseInputMonitoring()" in command and "stopMouseInputMonitoring()" in command,
+              "middleware callbacks gained an error branch or changed array consumption")
+        check(row["native_error_branch"] is False and row["native_error_reachable_from_current_host"] is False,
+              "middleware native-error delivery was fabricated")
+        counts["product_branches"] += 1
+    counts["complete_functions"] = len(functions)
+    counts["complete_ast_owners"] = len(owner_map)
+    check(document["summary"] == dict(counts), "bounded evidence counters changed")
+    check(not audit.final_snapshot(), "original changed during independent verification")
+    return {**dict(counts), "independent_verification": "passed", "collector_invoked": False,
+            "target_execution": False, "official_dll_comparison": "unverified"}
+
+
+def negative_mouse_input_error_consumer(document):
+    """Reject altered identities, completion claims and callback boundaries."""
+    mutations = [
+        ("empty_device_identity_replaced", lambda value: value["semantics"].update(native_device_info_json="{}")),
+        ("error_event_type_replaced", lambda value: value["semantics"].update(native_event_type=1)),
+        ("start_ack_promoted_to_registration", lambda value: value["semantics"].update(start_ack_proves_registration=True)),
+        ("allocator_promoted_to_cancellation", lambda value: value["semantics"].update(allocator_check_is_cancellation_token=True)),
+        ("error_delivery_fabricated", lambda value: value["semantics"].update(native_error_reaches_product_mw=True)),
+        ("full_baseline_recheck_fabricated", lambda value: value.update(baseline_recomputed=True)),
+        ("target_execution_promoted", lambda value: value.update(target_execution=True)),
+        ("official_dll_acceptance_promoted", lambda value: value.update(official_dll_comparison="passed")),
+        ("native_function_omitted", lambda value: value["native"]["functions"].pop()),
+        ("observer_slot_conflated", lambda value: value["native"]["observer_slot"].update(slot_byte_offset=16)),
+        ("native_artifact_identity_changed", lambda value: value["native"]["functions"][0]["artifact"].update(sha256="0" * 64)),
+        ("bounded_counter_changed", lambda value: value["summary"].update(product_branches=8)),
+        ("product_branch_omitted", lambda value: value["products"].pop()),
+        ("mw_error_branch_fabricated", lambda value: value["products"][0].update(native_error_branch=True)),
+        ("host_parse_catch_removed", lambda value: value["complete_owners"][0].update(body="class Host{}")),
+    ]
+    rejected = []
+    for name, mutate in mutations:
+        value = deepcopy(document)
+        mutate(value)
+        try:
+            verify_mouse_input_error_consumer(value)
+        except (ValueError, KeyError, OSError):
+            rejected.append({"case": name, "rejected": True})
+        else:
+            raise ValueError("Input-monitor error verifier accepted negative case: " + name)
+    return {"cases": rejected, "negative_cases": len(rejected), "all_rejected": True, "target_execution": False}
+
+
+def mouse_input_identity_native_roles():
+    """Bound Raw Input identity acquisition, cached publication and removal."""
+    return {
+        0xd1220: "raw_window_device_change_dispatch", 0xd046c: "raw_handle_device_path",
+        0xd09ec: "wide_device_path_view", 0x1aa3f0: "device_path_ascii_lowercase_bridge",
+        0x1aa430: "device_path_ascii_lowercase", 0xd30c0: "raw_device_add_once",
+        0xd213e: "raw_handle_path_cache_insertion", 0xd2532: "owned_device_path_capture",
+        0xd24d0: "queued_device_path_delivery", 0xd32b0: "first_input_device_add_and_event_order",
+        0xd31c0: "raw_handle_removal", 0xd2af0: "raw_handler_callback_ownership",
+        0xce0f0: "service_identity_callback_binding", 0xcf230: "weak_identity_callback_dispatch",
+        0xcc9e0: "setupapi_hid_device_identity", 0xce84e: "hid_identity_open_retry",
+        0xce904: "hid_handle_replacement", 0xcf650: "hid_handle_release_dispatch",
+        0xce952: "setupapi_device_set_release", 0x1a7850: "braced_uppercase_guid_format",
+        0x1a9fb0: "guid_utf8_conversion_bridge", 0x1a9fd0: "wide_to_utf8_conversion",
+        0x19da5c: "bounded_path_identity_substring", 0x19e234: "path_identity_stoul",
+        0xdadaa: "cached_device_info_creation", 0xdb630: "device_info_json_cache_and_fields",
+        0xdb9ec: "uncached_device_info_json_fields", 0xdadee: "cached_identity_json_publication",
+        0xcf67e: "service_path_identity_cache_insertion", 0xce280: "known_identity_event_gate",
+        0xcc8c0: "removed_identity_flush_and_erase", 0xce4d0: "stop_identity_flush_and_clear",
+        0x1a7cf0: "hid_close_virtual_dispatch", 0x1ef7e0: "engine_host_verifier_lookup",
+        0x1efa60: "engine_verifier_singleton", 0x1ef8e0: "engine_verifier_virtual_table",
+        0x1efc70: "engine_verifier_close_slot", 0x1ef9c0: "engine_closehandle_and_failure_check",
+        0x1cf0d0: "engine_failed_close_check_construction", 0x1cf280: "engine_fatal_check_release",
+    }
+
+
+def mouse_input_identity_host_native_roles():
+    return {0x231e3e0: "host_exported_handle_verifier", 0x231e520: "host_verifier_singleton",
+        0x231e440: "host_verifier_virtual_table", 0x4e67d30: "host_closehandle_and_failure_check"}
+
+
+def mouse_input_identity_semantics():
+    return {
+        "raw_path": {"name_units_range": [1, 4096], "normalization": "ascii_A_Z_to_a_z_only",
+            "raw_cache_key": "hDevice", "service_cache_key": "normalized_wide_device_path",
+            "add_callback": "only_after_new_raw_handle_cache_insertion",
+            "input_order": "queue_device_add_before_input_for_a_previously_unknown_handle",
+            "identity_failure": "no_service_identity_insert_then_drop_events_for_that_path",
+            "automatic_per_sample_identity_retry": False},
+        "container": {"property_guid": "8c7ed206-3f8a-4827-b3ab-ae9e1faefc6c", "property_id": 2,
+            "property_type": 13, "buffer_bytes": 16, "setupapi_flags": 18,
+            "interface_guid": "4d1e55b2-f16f-11cf-88cb-001111000030", "interface_index": 0,
+            "guid_equals_container_id": True, "format": "braced_uppercase_guid"},
+        "hid": {"first_open": {"access": 3221225472, "share": 3, "creation": 3, "flags": 1073741824},
+            "retry_only_when": "invalid_handle_and_ERROR_ACCESS_DENIED",
+            "retry_open": {"access": 0, "share": 1, "creation": 3, "flags": 1073741824},
+            "attributes_failure": "drop_identity_without_path_id_fallback",
+            "attributes_zero_id_guard": False,
+            "descriptions": ["manufacturerName", "productName", "serialNumber"],
+            "description_read_failure": "empty_string_in_native_identity",
+            "path_ids_only_when": "identity_open_helper_returns_an_invalid_handle",
+            "path_id_parser": "find_vid_or_pid_then_skip_four_units_and_stoul_base16_on_at_most_four_units",
+            "path_id_all_digits_consumed_check": False, "path_id_zero_guard": True,
+            "path_id_parser_local_catch": False, "vendor_filter": None},
+        "native_json_fields": ["guid", "vendorId", "productId", "manufacturerName", "productName",
+            "serialNumber", "containerId"],
+        "cached_json": "nonempty_original_identity_json_is_reused_by_DADEE",
+        "host_identity_projection": {"containerId": "n?.containerId", "productId": "n?.productId",
+            "vendorId": "n?.vendorId", "usbInstanceId": "n?.usbInstanceId"},
+        "native_assigns_usb_instance_id": False,
+        "host_drops_native_fields": ["guid", "manufacturerName", "productName", "serialNumber"],
+        "cleanup": {"device_removal": "flush_known_identity_pending_batch_then_erase_path_identity",
+            "stop": "flush_known_identity_batches_then_clear_identity_and_pending_maps",
+            "hid_handle": "current_host_export_and_engine_fallback_verifier_slots_both_resolve_CloseHandle",
+            "closehandle_failure": "fatal_check_not_a_recoverable_stop_acknowledgement",
+            "verifier_selection": "prefer_actual_main_executable_GetHandleVerifier_export_else_engine_fallback",
+            "device_set": "CE952_calls_SetupDiDestroyDeviceInfoList"},
+        "rust_static_differences": {"raw_name_maximum": 32768,
+            "open": "single_zero_access_share_read_write_without_OVERLAPPED",
+            "attributes_zero_id_guard": True, "path_id_all_hex_digits_required": True,
+            "path_id_exact_four_units_required": True,
+            "identity_failure": "sample_retries_observe_while_service_path_cache_is_absent",
+            "omitted_native_description_fields_change_host_projection": False},
+        "unexpanded_helper_calls_remain": True, "whole_monitor_semantics_complete": False,
+        "host_executable_capture_complete": False,
+        "host_capture_scope": "four_complete_selected_functions_from_a_partial_manifest",
+    }
+
+
+def mouse_input_identity_host_projection(parser, body):
+    """Read actual renderer payload pairs from the complete host callback AST."""
+    tree = parser.parse(b"class Host{" + body.encode() + b"}")
+    if tree.root_node.has_error:
+        raise ValueError("Input-monitor identity callback syntax changed")
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+    sends = [node for node in walk(tree.root_node) if node.type == "call_expression" and
+             node.child_by_field_name("function").text == b"e.send"]
+    if len(sends) != 1:
+        raise ValueError("Input-monitor identity renderer send is absent or ambiguous")
+    args = sends[0].child_by_field_name("arguments").named_children
+    if len(args) != 2 or args[0].text != b'"inputMonitoringEvent"' or args[1].type != "object":
+        raise ValueError("Input-monitor identity renderer payload changed")
+    pairs = {}
+    for node in args[1].named_children:
+        if node.type != "pair":
+            raise ValueError("Input-monitor identity payload has a spread or shorthand")
+        key, value = node.child_by_field_name("key").text.decode(), node.child_by_field_name("value").text.decode()
+        if key in pairs:
+            raise ValueError("Input-monitor identity payload repeats a field")
+        pairs[key] = value
+    expected = {**mouse_input_identity_semantics()["host_identity_projection"],
+                "inputMonitoringEventType": "t", "jsonEvent": "s"}
+    if pairs != expected:
+        raise ValueError("Input-monitor identity projection differs from the actual host consumer")
+    return pairs
+
+
+def mouse_input_identity_rust_sources():
+    return {
+        "crates/razer-platform/src/platform/windows/mouse_monitor.rs": ["device_path"],
+        "crates/razer-service/src/runtime/windows/mouse/input_monitoring/identity.rs": ["path_ids", "observe"],
+        "crates/razer-service/src/runtime/windows/mouse/input_monitoring.rs": ["sample"],
+    }
+
+
+def mouse_input_identity_instruction_gaps(functions):
+    """Keep file-backed bytes without an enumerated instruction explicit."""
+    result = []
+    for function in functions:
+        covered = set()
+        for insn in function["assembly"]:
+            start = int(insn["address"], 0)
+            covered.update(range(start, start + len(bytes.fromhex(insn["bytes"]))))
+        for chunk in function["chunks"]:
+            start = int(chunk["start"], 0)
+            raw = bytes.fromhex(chunk["raw_hex"])
+            offset = 0
+            while offset < len(raw):
+                if start + offset in covered:
+                    offset += 1
+                    continue
+                first = offset
+                while offset < len(raw) and start + offset not in covered:
+                    offset += 1
+                body = raw[first:offset]
+                result.append({"function_rva": function["rva"],
+                    "rva": hex(start + first - int(function["address"], 0) + int(function["rva"], 0)),
+                    "bytes": len(body), "raw_hex": body.hex(), "sha256": hashlib.sha256(body).hexdigest(),
+                    "meaning": "file_backed_without_retained_instruction_not_assumed_executed_or_padding"})
+    return result
+
+
+def mouse_input_identity_read_native(audit, native, provenance, suffix, roles, expected_regions, exports=None):
+    """Bind compact capture references to independently read acquisition and PE bytes."""
+    import host
+    def check(condition, message):
+        if not condition:
+            raise ValueError("Input-monitor identity native evidence: " + message)
+    original, actual_provenance = host.verified_host_native(audit, suffix)
+    original = {key: original[key] for key in ("path", "bytes", "sha256")}
+    check(native["input"] == original and provenance == actual_provenance, "acquisition lineage changed")
+    manifest = json.loads(audit.artifact(a.ROOT / native["capture_receipt"]["path"]))
+    check(identity(a.ROOT / native["capture_receipt"]["path"]) == native["capture_receipt"] and
+          manifest["input_sha256"] == original["sha256"] and manifest["input_bytes"] == original["bytes"] and
+          manifest["image_base"] == native["image_base"], "capture lineage changed")
+    if suffix == "CommonDLL/mapping_engine.dll":
+        check(manifest.get("capture_complete") is True, "complete engine capture is no longer complete")
+    else:
+        scope = {"capture_complete": manifest.get("capture_complete") is True,
+            "manifest_capture_complete": manifest.get("capture_complete"),
+            "functions_total": manifest["functions_total"], "functions_captured": manifest["functions_captured"],
+            "manifest_function_records": len(manifest["functions"]), "manifest_failures": len(manifest["failures"]),
+            "selection_complete": True, "whole_executable_semantics_complete": False}
+        check(native["capture_scope"] == scope and scope["capture_complete"] is False and
+              scope["functions_total"] == 528370 and scope["functions_captured"] == 157000,
+              "partial host capture boundary was changed or promoted")
+        check(native["strict_whole_capture_rejection"] == {
+            "helper": "verify_native_functions", "result": "rejected",
+            "reason": "Native capture identity, boundaries or completeness differ",
+            "scope": "whole_executable_capture_not_complete"}, "strict-helper failure was hidden")
+    indexed = {int(row["rva"], 0): row for row in manifest["functions"]}
+    retained = {"image_base": native["image_base"], "complete_functions": [],
+                "verified_data_regions": native["data_regions"]}
+    counts = Counter()
+    check(len(native["functions"]) == len(roles) and
+          {int(row["rva"], 0): row["role"] for row in native["functions"]} == roles,
+          "bounded function selection changed")
+    for row in native["functions"]:
+        entry = indexed[int(row["rva"], 0)]
+        value = audit.artifact(a.ROOT / row["artifact"]["path"])
+        check(identity(a.ROOT / row["artifact"]["path"]) == row["artifact"] and
+              row["artifact"]["path"].endswith("/" + entry["path"]) and
+              row["artifact"]["sha256"] == entry["sha256"], "complete capture identity changed")
+        function = json.loads(value)
+        check(function["rva"] == row["rva"] and entry["pseudocode_captured"] and
+              not entry["new_failures"], "complete pseudocode or unresolved failures changed")
+        if suffix != "CommonDLL/mapping_engine.dll":
+            check(row["assembly_captured"] is entry["assembly_captured"] is True and
+                  row["pseudocode_captured"] is entry["pseudocode_captured"] is True and
+                  row["new_failures"] == entry["new_failures"] == 0,
+                  "partial-host selected function capture state changed")
+        retained["complete_functions"].append({"capture": function})
+        counts["raw_chunk_bytes"] += sum(len(bytes.fromhex(chunk["raw_hex"])) for chunk in function["chunks"])
+        counts["instruction_bytes"] += sum(len(bytes.fromhex(insn["bytes"])) for insn in function["assembly"])
+    raw = audit.read(original)
+    _, functions, regions, instructions, _ = host.verify_retained_native_pe(raw, retained, "Input-monitor identity")
+    gaps = mouse_input_identity_instruction_gaps(functions.values())
+    check(native["raw_instruction_gaps"] == gaps, "unassigned raw instruction bytes were changed or hidden")
+    check(set(regions) == set(expected_regions), "identity data region coverage changed")
+    for row in native["data_regions"]:
+        rva, expected = expected_regions[row["role"]]
+        check(int(row["rva"], 0) == rva and regions[row["role"]] == bytes.fromhex(expected),
+              "container property, HID GUID, identity literal or verifier slot changed")
+    pe = host.inspect_pe(raw)
+    for name, rva in (exports or {}).items():
+        actual_exports = [row for row in pe.get("exports", []) if name in row.get("names", [])]
+        check(len(actual_exports) == 1 and int(actual_exports[0]["rva"], 0) == rva and
+              actual_exports[0].get("forwarder") is None, "actual main executable export changed")
+    counts.update(instructions=instructions, complete_functions=len(functions), data_regions=len(regions),
+        data_region_bytes=sum(len(value) for value in regions.values()),
+        instruction_gap_bytes=sum(row["bytes"] for row in gaps), instruction_gap_regions=len(gaps))
+    return functions, counts
+
+
+def verify_mouse_input_identity_consumer(document, source_document):
+    """Independently read originals, existing captures and reused source owners."""
+    import host
+    import resource_scope
+    audit = host.HostLocalAudit()
+    def check(condition, message):
+        if not condition:
+            raise ValueError("Input-monitor identity evidence: " + message)
+    check(document.get("schema_version") == 1 and document.get("target_execution") is False,
+          "static boundary changed")
+    check(document.get("semantics") == mouse_input_identity_semantics(), "identity meaning changed")
+    check(document.get("baseline_recomputed") is False, "old complete-monitor baseline was promoted")
+    for key in ("rust_implementation", "ui_backend_wiring", "official_dll_comparison", "runtime_acceptance"):
+        check(document.get(key) == "unverified", "acceptance was promoted: " + key)
+    verify_mouse_input_error_consumer(source_document)
+    check(document["reused_sources"] == {"query": "queries.shared_input_monitoring.error_consumer_extension",
+          "host_callback_owner": source_document["host"]["callback_owner"],
+          "product_ids": [row["product_id"] for row in source_document["products"]],
+          "complete_owner_ids": [row["id"] for row in source_document["complete_owners"]]},
+          "reused source identity or product coverage changed")
+    callback = next(row for row in source_document["complete_owners"]
+                    if row["id"] == document["reused_sources"]["host_callback_owner"])
+    check(document["host_projection"] == mouse_input_identity_host_projection(audit.parser, callback["body"]),
+          "host identity field projection changed")
+    expected_regions = {"container_property": (0x2e9a38, "06d27e8c8a3f2748b3abae9e1faefc6c02000000"),
+        "hid_interface_guid": (0x2e9a4c, "b2551e4d6ff1cf1188cb001111000030"),
+        "path_vid_literal": (0x2e9d24, "7600690064000000"), "path_pid_literal": (0x2e9d2c, "7000690064000000"),
+        "engine_verifier_close_slot": (0x3393b0, "70fc1e8001000000")}
+    functions, counts = mouse_input_identity_read_native(audit, document["native"], document["provenance"],
+        "CommonDLL/mapping_engine.dll", mouse_input_identity_native_roles(), expected_regions)
+    host_functions, host_counts = mouse_input_identity_read_native(audit, document["handle_verifier_host"]["native"],
+        document["handle_verifier_host"]["provenance"], "win-unpacked/RazerAppEngine.exe",
+        mouse_input_identity_host_native_roles(), {"host_verifier_close_slot": (0xae32790, "307de64401000000")},
+        {"GetHandleVerifier": 0x231e3e0})
+    counts.update(host_counts)
+    texts = {rva: "\n".join(line["text"] for line in function["pseudocode"]["lines"])
+             for rva, function in functions.items()}
+    tokens = {
+        0xd046c: ["pcbSize - 4097 <= 0xFFFFEFFF", "sub_1801AA3F0(&v35)", "GetRawInputDeviceInfoW"],
+        0x1aa430: ["v9 = v8 + 32;", "(unsigned __int16)(v8 - 65) >= 0x1Au"],
+        0xd30c0: ["if ( v7[8] )", "sub_1800D046C(a2", "OnDeviceAdded"],
+        0xce0f0: ["v3 = sub_1800CC9E0;", "sub_1800CF230"],
+        0xce84e: ["CreateFileW(v4, 0xC0000000, 3u, 0, 3u, 0x40000000u, 0)",
+            "GetLastError() == 5", "CreateFileW((LPCWSTR)v2, 0, 1u, 0, 3u, 0x40000000u, 0)"],
+        0xcc9e0: ["SetupDiEnumDeviceInterfaces(v5, &DeviceInfoData, &InterfaceClassGuid, 0,", "DeviceInterfaceDetailDataSize[0] != 13",
+            "HidD_GetAttributes(HidDeviceObject, &Attributes)", "HidD_GetProductString", "HidD_GetSerialNumberString",
+            "HidD_GetManufacturerString", "(v73 >> 1) + 4, 4", "(v122 >> 1) + 4, 4", "sub_18019E234(v154, 0, 16)"],
+        0x19e234: ['"stoul"', "if ( (char *)v16[0] == a1 )", "if ( a2 )", "std::invalid_argument"],
+        0xdb630: ["sub_1800DBC24(a1 + 136, a2)", '"containerId"'],
+        0xdadee: ["if ( !v5 )", "sub_1800DB9EC(a1)", "a1 + 136"],
+        0xce280: ["sub_1800CF37E(a1 + 32", "if ( v17 )", "sub_1800DADEE"],
+        0xce4d0: ["sub_1800CF5AE(a1 + 32)", "sub_1800CF5FA(v2)"],
+        0xce952: ["SetupDiDestroyDeviceInfoList(v3)"],
+        0x1ef7e0: ['GetProcAddress(ModuleHandleW, "GetHandleVerifier")', "ProcAddress == GetHandleVerifier", "v3 = ProcAddress()"],
+        0x1efa60: ["sub_1801EF8E0(a1, a2)", "qword_180398EE8 = a1"],
+        0x1ef8e0: ["*(_QWORD *)a1 = off_1803393B0"],
+        0x1efc70: ["sub_1801EF9C0(a2)"],
+        0x1ef9c0: ["if ( !CloseHandle(a1) )", '"CloseHandle failed"', "sub_1801CF280(&v4)"],
+        0x1cf0d0: ["*(_DWORD *)(a3 + 16), 3)", '"Check failed: "'],
+        0x1cf280: ["if ( v2 == 3 )", "BUG()"],
+    }
+    for rva, expected in tokens.items():
+        check(all(token in texts[rva] for token in expected), "native semantic anchor changed at " + hex(rva))
+    close_dispatch = {int(row["rva"], 0): row["bytes"] for row in functions[0x1a7cf0]["assembly"]}
+    for rva, expected in ((0x1a7cfd, "488b08"), (0x1a7d00, "4c8b01"), (0x1a7d0d, "4889f2"),
+                          (0x1a7d10, "4c89c0"), (0x1a7d18, "49ffe1")):
+        check(close_dispatch.get(rva) == expected, "handle close argument or first virtual slot changed")
+    host_tokens = {0x231e3e0: ['GetProcAddress(ModuleHandleW, "GetHandleVerifier")', "ProcAddress == GetHandleVerifier"],
+        0x231e520: ["sub_14231E440((__int64)a1, a2)", "qword_14CE80868 = (__int64)a1"],
+        0x231e440: ["*(_QWORD *)a1 = &off_14AE32790"],
+        0x4e67d30: ["if ( !CloseHandle(a2) )", "else if ( !CloseHandle(a2) )", "BUG()"]}
+    for rva, expected in host_tokens.items():
+        text = "\n".join(row["text"] for row in host_functions[rva]["pseudocode"]["lines"])
+        check(all(token in text for token in expected), "host verifier semantic anchor changed at " + hex(rva))
+    native_fields = re.findall(r'v\d+\[0\] = "([A-Za-z]+)";', texts[0xcc9e0])
+    check(native_fields == document["semantics"]["native_json_fields"], "actual native identity fields changed")
+    check("usbInstanceId" not in texts[0xcc9e0] and "0x1532" not in texts[0xcc9e0],
+          "native USB instance assignment or vendor filter was inferred")
+    rust = resource_scope.parser(a.ROOT)
+    expected_rust = mouse_input_identity_rust_sources()
+    check({row["original"]["path"]: [item["name"] for item in row["functions"]]
+           for row in document["rust_sources"]} == expected_rust, "Rust source review coverage changed")
+    for source in document["rust_sources"]:
+        original = source["original"]
+        source_raw = (a.ROOT / original["path"]).read_bytes()
+        check(identity(a.ROOT / original["path"]) == original, "Rust reviewed source identity changed")
+        tree = rust.parse(source_raw)
+        check(not tree.root_node.has_error, "Rust reviewed source no longer parses")
+        def walk(node):
+            yield node
+            for child in node.named_children:
+                yield from walk(child)
+        for item in source["functions"]:
+            matches = [node for node in walk(tree.root_node) if node.type == "function_item" and
+                       node.child_by_field_name("name").text.decode() == item["name"]]
+            check(len(matches) == 1 and matches[0].start_byte == item["byte_start"] and
+                  matches[0].end_byte == item["byte_end"] and
+                  hashlib.sha256(matches[0].text).hexdigest() == item["body_sha256"],
+                  "Rust complete function owner changed")
+    counts.update(native_binary_inputs=2, product_branches=7,
+        reused_complete_ast_owners=len(source_document["complete_owners"]), rust_source_files=len(document["rust_sources"]),
+        rust_complete_functions=sum(len(row["functions"]) for row in document["rust_sources"]))
+    check(document["summary"] == dict(counts), "bounded identity counters changed")
+    check(not audit.final_snapshot(), "identity original changed during independent verification")
+    return {**dict(counts), "independent_verification": "passed", "collector_invoked": False,
+            "target_execution": False, "official_dll_comparison": "unverified"}
+
+
+def collect_mouse_input_identity_native(original, roles, data_spans, exports=None, *, partial_host=False):
+    """Retain complete native owners by reference without copying their bodies."""
+    import host
+    if partial_host:
+        original = {key: original[key] for key in ("path", "bytes", "sha256")}
+        capture_path = a.ROOT / ".analysis/results/native" / original["sha256"] / "capture.json"
+        manifest = json.loads(capture_path.read_bytes())
+        indexed = {int(row["rva"], 0): row for row in manifest["functions"]}
+        selected = []
+        for rva, role in sorted(roles.items()):
+            entry = indexed[rva]
+            path = capture_path.parent / entry["path"]
+            artifact = identity(path)
+            if artifact["sha256"] != entry["sha256"] or not entry["assembly_captured"] or not entry["pseudocode_captured"] or entry["new_failures"]:
+                raise ValueError("Input-monitor host selected function is not a complete clean capture")
+            selected.append({"role": role, "artifact": artifact, "capture": json.loads(path.read_bytes()),
+                "assembly_captured": entry["assembly_captured"], "pseudocode_captured": entry["pseudocode_captured"],
+                "new_failures": entry["new_failures"]})
+        native = {"input": original, "capture_receipt": identity(capture_path),
+            **{key: manifest[key] for key in ("image_base", "ida_version", "hexrays_version")},
+            "capture_scope": {"capture_complete": manifest.get("capture_complete") is True,
+                "manifest_capture_complete": manifest.get("capture_complete"),
+                "functions_total": manifest["functions_total"], "functions_captured": manifest["functions_captured"],
+                "manifest_function_records": len(manifest["functions"]), "manifest_failures": len(manifest["failures"]),
+                "selection_complete": True, "whole_executable_semantics_complete": False},
+            "strict_whole_capture_rejection": {"helper": "verify_native_functions", "result": "rejected",
+                "reason": "Native capture identity, boundaries or completeness differ",
+                "scope": "whole_executable_capture_not_complete"}}
+    else:
+        evidence = verify_native_functions(original, roles, exports=exports)
+        native = {key: evidence[key] for key in ("input", "capture_receipt", "image_base", "ida_version", "hexrays_version")}
+        selected = evidence["complete_selected_functions"]
+    native["functions"] = [{"role": row["role"], "rva": row["capture"]["rva"], "artifact": row["artifact"]}
+                           for row in selected]
+    if partial_host:
+        for row, source in zip(native["functions"], selected):
+            row.update({key: source[key] for key in ("assembly_captured", "pseudocode_captured", "new_failures")})
+    native["raw_instruction_gaps"] = mouse_input_identity_instruction_gaps(
+        row["capture"] for row in selected)
+    raw = (a.ROOT / original["path"]).read_bytes()
+    pe = host.inspect_pe(raw)
+    native["data_regions"] = []
+    for role, rva, size in data_spans:
+        section = next(row for row in pe["sections"] if row["rva"] <= rva and rva + size <= row["rva"] + row["bytes"])
+        offset = section["file_offset"] + rva - section["rva"]
+        body = raw[offset:offset + size]
+        native["data_regions"].append({"role": role, "rva": hex(rva), "bytes": size,
+            "raw_hex": body.hex(), "sha256": hashlib.sha256(body).hexdigest()})
+    return native, selected
+
+
+def collect_mouse_input_identity_consumer(original, provenance, source_document):
+    """Retain native identity and actual host release consumers without duplicate bodies."""
+    import host
+    import resource_scope
+    native, selected = collect_mouse_input_identity_native(original, mouse_input_identity_native_roles(), (
+        ("container_property", 0x2e9a38, 20), ("hid_interface_guid", 0x2e9a4c, 16),
+        ("path_vid_literal", 0x2e9d24, 8), ("path_pid_literal", 0x2e9d2c, 8),
+        ("engine_verifier_close_slot", 0x3393b0, 8)))
+    audit = host.HostLocalAudit()
+    host_original, host_provenance = host.verified_host_native(audit, "win-unpacked/RazerAppEngine.exe")
+    host_native, host_selected = collect_mouse_input_identity_native(host_original, mouse_input_identity_host_native_roles(),
+        (("host_verifier_close_slot", 0xae32790, 8),), {"GetHandleVerifier": 0x231e3e0}, partial_host=True)
+    rust_sources = []
+    parser = resource_scope.parser(a.ROOT)
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+    for path, names in mouse_input_identity_rust_sources().items():
+        source = a.ROOT / path
+        tree = parser.parse(source.read_bytes())
+        if tree.root_node.has_error:
+            raise ValueError("Input-monitor identity Rust source has invalid syntax")
+        functions = []
+        for name in names:
+            matches = [node for node in walk(tree.root_node) if node.type == "function_item" and
+                       node.child_by_field_name("name").text.decode() == name]
+            if len(matches) != 1:
+                raise ValueError("Input-monitor identity Rust owner is absent or ambiguous")
+            node = matches[0]
+            functions.append({"name": name, "byte_start": node.start_byte, "byte_end": node.end_byte,
+                "body_sha256": hashlib.sha256(node.text).hexdigest()})
+        rust_sources.append({"original": identity(source), "functions": functions})
+    counts = Counter()
+    for row in selected + host_selected:
+        counts["raw_chunk_bytes"] += sum(len(bytes.fromhex(chunk["raw_hex"])) for chunk in row["capture"]["chunks"])
+        counts["instruction_bytes"] += sum(len(bytes.fromhex(insn["bytes"])) for insn in row["capture"]["assembly"])
+        counts["instructions"] += len(row["capture"]["assembly"])
+    data_regions = native["data_regions"] + host_native["data_regions"]
+    gaps = native["raw_instruction_gaps"] + host_native["raw_instruction_gaps"]
+    counts.update(native_binary_inputs=2, complete_functions=len(selected) + len(host_selected), data_regions=len(data_regions),
+        data_region_bytes=sum(row["bytes"] for row in data_regions), product_branches=7,
+        instruction_gap_bytes=sum(row["bytes"] for row in gaps), instruction_gap_regions=len(gaps),
+        reused_complete_ast_owners=len(source_document["complete_owners"]), rust_source_files=len(rust_sources),
+        rust_complete_functions=sum(len(row["functions"]) for row in rust_sources))
+    callback = next(row for row in source_document["complete_owners"] if row["id"] == source_document["host"]["callback_owner"])
+    document = {"schema_version": 1, "recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)),
+        "kind": "bounded_input_monitoring_identity_consumer", "native": native, "provenance": provenance,
+        "handle_verifier_host": {"native": host_native, "provenance": host_provenance},
+        "reused_sources": {"query": "queries.shared_input_monitoring.error_consumer_extension",
+            "host_callback_owner": source_document["host"]["callback_owner"],
+            "product_ids": [row["product_id"] for row in source_document["products"]],
+            "complete_owner_ids": [row["id"] for row in source_document["complete_owners"]]},
+        "host_projection": mouse_input_identity_host_projection(audit.parser, callback["body"]),
+        "rust_sources": rust_sources, "semantics": mouse_input_identity_semantics(), "summary": dict(counts),
+        "baseline_recomputed": False, "target_execution": False, "rust_implementation": "unverified",
+        "ui_backend_wiring": "unverified", "official_dll_comparison": "unverified", "runtime_acceptance": "unverified"}
+    document["independent_verification"] = verify_mouse_input_identity_consumer(document, source_document)
+    mutations = [
+        ("native_container_value_changed", lambda value: value["semantics"]["container"].update(guid_equals_container_id=False)),
+        ("host_guid_forwarding_inferred", lambda value: value["host_projection"].update(guid="n?.guid")),
+        ("identity_retry_inferred", lambda value: value["semantics"]["raw_path"].update(automatic_per_sample_identity_retry=True)),
+        ("attributes_failure_fallback_inferred", lambda value: value["semantics"]["hid"].update(attributes_failure="parse_path_ids")),
+        ("strict_hex_parser_inferred", lambda value: value["semantics"]["hid"].update(path_id_all_digits_consumed_check=True)),
+        ("descriptions_marked_required_downstream", lambda value: value["semantics"]["rust_static_differences"].update(omitted_native_description_fields_change_host_projection=True)),
+        ("native_capture_omitted", lambda value: value["native"]["functions"].pop()),
+        ("container_property_bytes_changed", lambda value: value["native"]["data_regions"][0].update(raw_hex="00" * 20)),
+        ("host_verifier_evidence_omitted", lambda value: value["handle_verifier_host"]["native"]["functions"].pop()),
+        ("host_verifier_slot_replaced", lambda value: value["handle_verifier_host"]["native"]["data_regions"][0].update(raw_hex="00" * 8)),
+        ("partial_host_capture_promoted", lambda value: value["handle_verifier_host"]["native"]["capture_scope"].update(capture_complete=True)),
+        ("strict_capture_rejection_removed", lambda value: value["handle_verifier_host"]["native"].pop("strict_whole_capture_rejection")),
+        ("unassigned_instruction_bytes_hidden", lambda value: value["native"]["raw_instruction_gaps"].clear()),
+        ("rust_function_boundary_changed", lambda value: value["rust_sources"][0]["functions"][0].update(byte_end=0)),
+        ("product_coverage_omitted", lambda value: value["reused_sources"]["product_ids"].pop()),
+        ("old_baseline_promoted", lambda value: value.update(baseline_recomputed=True)),
+        ("official_dll_comparison_promoted", lambda value: value.update(official_dll_comparison="passed")),
+    ]
+    rejected = []
+    for name, mutate in mutations:
+        value = deepcopy(document)
+        mutate(value)
+        try:
+            verify_mouse_input_identity_consumer(value, source_document)
+        except (ValueError, KeyError, OSError):
+            rejected.append({"case": name, "rejected": True})
+        else:
+            raise ValueError("Input-monitor identity verifier accepted negative case: " + name)
+    document["negative_tests"] = {"cases": rejected, "negative_cases": len(rejected), "all_rejected": True,
+                                  "target_execution": False}
+    return document
+
+
+def audit_mouse_input_monitoring(args):
+    """Extend shared monitoring with actual error and device-identity consumers."""
+    import host
+    ids = [190, 192, 196, 222, 226, 229, 239]
+    if args.family != "mouse" or args.function != "mw" or getattr(args, "product", None) not in (None, [], ids):
+        raise ValueError("mouse-input-monitoring requires the seven current middleware branches")
+    audit = host.HostLocalAudit()
+    original, provenance = host.verified_host_native(audit, "CommonDLL/mapping_engine.dll")
+    evidence = verify_native_functions(original, mouse_input_error_native_roles())
+    native = {key: evidence[key] for key in ("input", "capture_receipt", "image_base", "ida_version", "hexrays_version")}
+    native["functions"] = [{"role": row["role"], "rva": row["capture"]["rva"],
+        "artifact": row["artifact"], "failures": row["failures"],
+        "pseudocode_captured": row["pseudocode_captured"]} for row in evidence["complete_selected_functions"]]
+    native["observer_slot"] = {"vtable_rva": "0x2df4b0", "slot_byte_offset": 24, "target_rva": "0x19000"}
+    host_source = host.verified_host_owners(audit, ["electron/modules/mapping_engine/win/index.js"])[
+        "electron/modules/mapping_engine/win/index.js"]["original"]
+    host_source = {key: host_source[key] for key in ("path", "bytes", "sha256")}
+    callback = audit.retain_class_field("input_monitor_error_host_callback", host_source, "createCbInputMonitoringEvent")
+    callback = callback[0] if isinstance(callback, list) else callback
+    host_part = {"source": host_source, "callback_owner": callback,
+        "ast_projection": mouse_input_error_host_ast(audit.parser,
+            b"class Host{" + audit.owners[callback]["body"].encode() + b"}")}
+    products = []
+    for pid in ids:
+        source_set, files = audit.source_set(f"mouse-mw-{pid}-current")
+        modules = (14786, 43605) if pid == 226 else (32807, 9367)
+        selected = {}
+        for source in files:
+            if not source["path"].endswith(".js"):
+                continue
+            for module in keyboard_source_modules(audit.read(source).decode("utf-8")):
+                if module["module_id"] in modules:
+                    if module["module_id"] in selected:
+                        raise ValueError("Input-monitor middleware module is ambiguous")
+                    node = audit.tree(source).root_node.descendant_for_byte_range(module["byte_start"], module["byte_end"] - 1)
+                    while node is not None and (node.start_byte != module["byte_start"] or node.end_byte != module["byte_end"]):
+                        node = node.parent
+                    if node is None:
+                        raise ValueError("Input-monitor middleware module lacks a complete AST owner")
+                    owner = audit.retain_range(f"pid_{pid}_input_monitor_error_module", source,
+                                              node.start_byte, node.end_byte, node.type)
+                    selected[module["module_id"]] = (source, owner)
+        if set(selected) != set(modules) or selected[modules[0]][0] != selected[modules[1]][0]:
+            raise ValueError("Input-monitor factory and actual event manager are unresolved")
+        source, factory = selected[modules[0]]
+        anchor = ("F=e=>D(void 0,void 0,void 0,function*(){const t=(0,c.uK)(e.jsonEvent)" if pid == 226 else
+                  ("z" if pid == 229 else "V") + "=e=>A(void 0,void 0,void 0,(function*(){const t=(0,c.Sl)(e.jsonEvent)")
+        dynamic = audit.retain(f"pid_{pid}_input_monitor_dynamic_error_consumer", source,
+                              anchor, {"variable_declarator"})[0]
+        command = audit.retain(f"pid_{pid}_input_monitor_command_error_consumer", source,
+                              'case T.V.START:' if pid != 226 else 'case T.v.START:', {"variable_declarator"})[0]
+        products.append({"product_id": pid, "acquisition": source_set["acquisition"],
+            "deployment_failures": source_set["deployment"]["failures"],
+            "source": {key: source[key] for key in ("path", "bytes", "sha256")}, "module_ids": list(modules),
+            "factory_owner": factory, "manager_owner": selected[modules[1]][1],
+            "dynamic_callback_owner": dynamic, "command_owner": command,
+            "native_error_branch": False, "native_error_reachable_from_current_host": False})
+    counts = Counter()
+    for row in evidence["complete_selected_functions"]:
+        counts["raw_chunk_bytes"] += sum(int(chunk["end"], 0) - int(chunk["start"], 0)
+                                         for chunk in row["capture"]["chunks"])
+        counts["instructions"] += len(row["capture"]["assembly"])
+        counts["instruction_bytes"] += sum(len(bytes.fromhex(insn["bytes"])) for insn in row["capture"]["assembly"])
+    counts.update(product_branches=len(products), complete_functions=len(native["functions"]), complete_ast_owners=len(audit.owners))
+    document = {"schema_version": 1, "recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)),
+        "kind": "bounded_input_monitoring_error_consumer", "native": native, "provenance": provenance,
+        "host": host_part, "products": products, "complete_owners": list(audit.owners.values()),
+        "semantics": mouse_input_error_semantics(), "summary": dict(counts), "baseline_recomputed": False,
+        "target_execution": False, "rust_implementation": "unverified", "ui_backend_wiring": "unverified",
+        "official_dll_comparison": "unverified", "runtime_acceptance": "unverified"}
+    if audit.final_snapshot():
+        raise ValueError("Input-monitor error original changed during collection")
+    document["independent_verification"] = verify_mouse_input_error_consumer(document)
+    document["negative_tests"] = negative_mouse_input_error_consumer(document)
+    identity_document = collect_mouse_input_identity_consumer(original, provenance, document)
+    path = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    with a.index_lock():
+        report = json.loads(path.read_bytes())
+        report["queries"]["shared_input_monitoring"]["error_consumer_extension"] = document
+        report["queries"]["shared_input_monitoring"]["identity_consumer_extension"] = identity_document
+        a.save(path, report)
+    print(json.dumps({"receipt": a.rel(path), "query": "shared_input_monitoring.error_consumer_extension",
+                      **document["independent_verification"]}), flush=True)
+    print(json.dumps({"receipt": a.rel(path), "query": "shared_input_monitoring.identity_consumer_extension",
+                      **identity_document["independent_verification"]}), flush=True)
+    return document
+
+
 def source_set_source(files, member):
     """Select one verified source by an exact uncommon current member name."""
     found = [source for source in files if source["path"].endswith(".js")
@@ -19042,14 +21355,380 @@ def mouse_idle_initialization_source(audit, files):
     }
 
 
+def mouse_receiver_power_task_facts(raw, parser):
+    """Read complete power-task owners and their AST facts from one source."""
+    tree = parser.parse(raw)
+    if tree.root_node.has_error:
+        raise ValueError("Mouse power task source has JavaScript grammar errors")
+    def walk(root):
+        pending = [root]
+        while pending:
+            node = pending.pop()
+            yield node
+            pending.extend(reversed(node.named_children))
+    def fields(node):
+        return {pair.child_by_field_name("key").text.decode(): pair.child_by_field_name("value")
+                for pair in node.named_children if pair.type == "pair"}
+    def ancestors(node):
+        while node is not None:
+            yield node
+            node = node.parent
+    def callable_owner(node, minimum=0):
+        for item in ancestors(node):
+            value = item.child_by_field_name("value") if item.type == "variable_declarator" else item
+            if value is None or value.type not in {"function_declaration", "function_expression", "arrow_function"}:
+                continue
+            params = value.child_by_field_name("parameters")
+            count = len(params.named_children) if params is not None else int(value.child_by_field_name("parameter") is not None)
+            parent = item.parent
+            while parent is not None and parent.type == "parenthesized_expression":
+                parent = parent.parent
+            if count >= minimum and (item.type in {"variable_declarator", "function_declaration"}
+                                     or parent is not None and parent.type in {"arguments", "call_expression"}):
+                return item
+        raise ValueError("Complete mouse power task callable is absent")
+    owners = {}
+    def retain(role, node):
+        key = hashlib.sha256(node.text).hexdigest()
+        value = owners.setdefault(key, {"body_sha256": key, "syntax": node.type,
+            "byte_start": node.start_byte, "byte_end": node.end_byte,
+            "body": node.text.decode(), "roles": []})
+        if role not in value["roles"]:
+            value["roles"].append(role)
+        return key
+    result = {"makers": [], "runners": [], "initializers": [], "runtime_caches": [],
+              "bootstraps": [], "feature_defaults": [], "feature_overrides": [], "dispatchers": [], "bridges": []}
+    seen = set()
+    for node in walk(tree.root_node):
+        if node.type == "object":
+            pairs = fields(node)
+            runtime = pairs.get("runtimeData")
+            if runtime is not None and runtime.type == "object":
+                values = fields(runtime)
+                if "productId" in values and "setupStatus" in values:
+                    identity = {key: values[key].text.decode() for key in
+                                ("productId", "hasBattery", "isExternalBatt", "setupStatus") if key in values}
+                    result["runtime_caches"].append({"owner": retain("initial_runtime_cache", node), "fields": identity})
+        if node.type == "assignment_expression":
+            left, right = node.child_by_field_name("left"), node.child_by_field_name("right")
+            if left is None or right is None or left.type != "member_expression":
+                continue
+            prop = left.child_by_field_name("property").text
+            if prop in {b"taskMakerPowerSavingValueMemoryStorageCache", b"taskRunnerPowerSavingValueMemoryStorageCache"} \
+                    and right.type == "object":
+                owner = callable_owner(node)
+                result["initializers"].append({"owner": retain("power_task_initializer", owner),
+                    "field": prop.decode(), "initial_value": right.text.decode(),
+                    "assignment_byte_start": node.start_byte})
+            if prop in {b"setMemoryStorageItem", b"callElectronAction"} and right.type in {"arrow_function", "function_expression"}:
+                if prop == b"setMemoryStorageItem" or b"electronAction" in right.text or b"apiElectron" in right.text:
+                    result["bridges"].append({"owner": retain("memory_storage_api_bridge", node), "member": prop.decode()})
+        if node.type == "call_expression":
+            function = node.child_by_field_name("function")
+            arguments = node.child_by_field_name("arguments")
+            if function is not None and function.type == "member_expression" and arguments is not None:
+                prop = function.child_by_field_name("property").text
+                values = arguments.named_children
+                if prop == b"injectData" and values and values[0].text in {b'"initMemoryStorageCache"', b"'initMemoryStorageCache'"}:
+                    result["bootstraps"].append({"owner": retain("bootstrap_cache_registration", callable_owner(node)),
+                        "injected_initializer": values[1].text.decode() if len(values) == 2 else None})
+                if prop == b"useFeature" and values and values[0].text in {b'"isBattery"', b"'isBattery'"}:
+                    result["feature_overrides"].append({"owner": retain("bootstrap_battery_feature_override", callable_owner(node)),
+                        "call": node.text.decode(), "arguments": [value.text.decode() for value in values]})
+        if node.type not in {"string", "property_identifier"}:
+            continue
+        literal = node.text
+        if literal in {b'"taskMakerSetPowerSavingValue"', b"'taskMakerSetPowerSavingValue'"}:
+            owner = callable_owner(node, 5)
+            key = ("maker", owner.start_byte, owner.end_byte)
+            if key not in seen:
+                seen.add(key)
+                calls = []
+                for item in walk(owner):
+                    if item.type != "call_expression":
+                        continue
+                    target = item.child_by_field_name("function")
+                    if target is not None and target.type == "member_expression" and target.child_by_field_name("property").text in {
+                            b"enqueueTask", b"setMemoryStorageItem", b"nextVersion"}:
+                        calls.append({"member": target.child_by_field_name("property").text.decode(),
+                                      "expression": item.text.decode()})
+                result["makers"].append({"owner": retain("power_task_maker", owner), "calls": calls,
+                    "memory_assignments": [item.text.decode() for item in walk(owner) if item.type == "assignment_expression"
+                                           and any(token in item.text for token in (b".timerTick=", b".value="))],
+                    "profile_write_conditions": [item.child_by_field_name("condition").text.decode()
+                        for item in walk(owner) if item.type == "if_statement" and b"alwaysReadPowerSavingFromDevice" in item.child_by_field_name("condition").text]})
+        if literal == b"powerSavingValue":
+            pair = node.parent
+            if pair is None or pair.type != "pair" or pair.parent is None or pair.parent.type != "object":
+                continue
+            try:
+                owner = callable_owner(node, 4)
+            except ValueError:
+                continue
+            if b".setTimeToSleep(" not in owner.text or b".getTimeToSleep(" not in owner.text:
+                continue
+            key = ("runner", owner.start_byte, owner.end_byte)
+            if key in seen:
+                continue
+            seen.add(key)
+            events = []
+            for item in walk(owner):
+                if item.type == "call_expression":
+                    target = item.child_by_field_name("function")
+                    if target is not None and target.type == "member_expression":
+                        name = target.child_by_field_name("property").text.decode()
+                        if name in {"setTimeToSleep", "getTimeToSleep", "setMemoryStorageItem", "now"}:
+                            events.append({"kind": "call", "member": name, "expression": item.text.decode(),
+                                           "relative_byte_start": item.start_byte - owner.start_byte})
+                if item.type == "throw_statement" or item.type == "assignment_expression" and any(
+                        value in item.text for value in (b".status=", b".currValue=", b".lastModifiedDate=",
+                                                        b"taskRunnerPowerSavingValueMemoryStorageCache")):
+                    events.append({"kind": item.type, "expression": item.text.decode(),
+                                   "relative_byte_start": item.start_byte - owner.start_byte})
+            result["runners"].append({"owner": retain("power_task_set_readback_cache", owner),
+                "events": sorted(events, key=lambda item: item["relative_byte_start"]),
+                "readback_conditions": [item.child_by_field_name("condition").text.decode()
+                    for item in walk(owner) if item.type == "if_statement" and b"data not match" in item.text],
+                "single_profile_override": [item.text.decode() for item in walk(owner)
+                                            if item.type == "binary_expression" and b"singleProfileDevice&&" in item.text]})
+        if literal == b"alwaysReadPowerSavingFromDevice":
+            for item in ancestors(node):
+                if item.type in {"arrow_function", "function_expression", "function_declaration"}:
+                    if b".runtimeData.hasBattery" not in item.text:
+                        break
+                    key = retain("runtime_battery_feature_defaults", item)
+                    if key not in result["feature_defaults"]:
+                        result["feature_defaults"].append(key)
+                    break
+        if literal in {b'"ON_SET_POWER_SAVING_VALUE"', b"'ON_SET_POWER_SAVING_VALUE'"}:
+            case = next((item for item in ancestors(node) if item.type == "switch_case"), None)
+            if case is not None and b".timerTick" in case.text and b"version:" in case.text:
+                key = retain("power_event_timer_value_version_consumer", case)
+                if key not in result["dispatchers"]:
+                    result["dispatchers"].append(key)
+    result["owners"] = list(owners.values())
+    return result
+
+
+def collect_mouse_receiver_power_task_batch(products=None):
+    """Audit existing mouse deployments once and associate shared owner bytes."""
+    from host import HostLocalAudit
+    import evidence
+    audit = HostLocalAudit()
+    audit.artifact(Path(__file__))
+    index = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))["inputs"]
+    indexed = {row["path"]: row for row in index}
+    receipts = {int(match[1]): path for path in (a.ROOT / ".analysis/inputs/frontend").glob("mouse-mw-*-current/acquisition.json")
+                if (match := re.fullmatch(r"mouse-mw-(\d+)-current", path.parent.name))}
+    selected = sorted(receipts) if not products else sorted(set(products))
+    if not selected or any(type(pid) is not int or pid <= 0 or pid not in receipts for pid in selected):
+        raise ValueError("Mouse power batch product lacks an existing current middleware acquisition")
+    rows, owners, facts_by_sha, source_instances = [], {}, {}, {}
+    for pid in selected:
+        path = receipts[pid]
+        if a.rel(path) not in indexed:
+            raise ValueError("Mouse power batch acquisition is absent from the current input index")
+        acquired = json.loads(audit.artifact(path, indexed[a.rel(path)]))
+        row = {"endpoint_product_id": pid, "acquisition": audit.artifacts[a.rel(path)],
+               "source_facts": [], "failures": [], "runtime_acceptance": "unverified"}
+        rows.append(row)
+        try:
+            if acquired.get("entry_url") != f"https://apps.razer.com/synapse/products/{pid}/mw/index.html" \
+                    or acquired.get("source_current_during_acquisition") is not True or acquired.get("target_execution") is not False:
+                raise ValueError("Mouse power batch current deployment identity is unverified")
+            deployment = evidence.frontend_deployment_sources(acquired)
+            row["deployment_failures"] = deployment["failures"]
+            capture_path = a.ROOT / f".analysis/results/frontend/mouse-mw-{pid}-current/analysis.json"
+            capture = json.loads(audit.artifact(capture_path))
+            if capture.get("target_execution") is not False or capture.get("input_bytes_unchanged") is not True:
+                raise ValueError("Mouse power batch capture does not retain an unchanged static input")
+            captured = {item["path"]: item for item in capture["original_inputs"]}
+            row["capture"] = audit.artifacts[a.rel(capture_path)]
+            row["capture_failures"] = [item for item in capture["commands"] if item.get("exit_code")]
+            files = [entry["original"] for entry in deployment["sources"]
+                     if entry["identity_verified"] and entry["original"]["path"].endswith(".js")]
+            for source in files:
+                claimed = indexed.get(source["path"])
+                if claimed is None or any(claimed[key] != source[key] for key in ("bytes", "sha256")):
+                    raise ValueError("Mouse power batch original is not indexed: " + source["path"])
+                raw = audit.read(source)
+                if not any(token in raw for token in (b"taskMakerSetPowerSavingValue", b"initMemoryStorageCache",
+                                                       b"setMemoryStorageItem=", b"setMemoryStorageItem(e")):
+                    continue
+                if source["path"] not in captured or any(captured[source["path"]][key] != source[key] for key in ("bytes", "sha256")):
+                    raise ValueError("Mouse power batch selected original differs from complete capture")
+                digest = source["sha256"]
+                source_instances.setdefault(digest, {})[source["path"]] = audit.sources[source["path"]]
+                if digest not in facts_by_sha:
+                    facts = mouse_receiver_power_task_facts(raw, audit.parser)
+                    for owner in facts.pop("owners"):
+                        owner_id = owner["body_sha256"]
+                        body = owners.setdefault(owner_id, {"body_sha256": owner_id, "body": owner["body"],
+                                                            "syntax": owner["syntax"], "instances": []})
+                        body["instances"].append({"source_sha256": digest, "byte_start": owner["byte_start"],
+                                                  "byte_end": owner["byte_end"], "roles": owner["roles"]})
+                    facts_by_sha[digest] = facts
+                row["source_facts"].append(digest)
+            if not row["source_facts"]:
+                raise ValueError("Mouse power batch current deployment has no retained task source owners")
+            row["source_facts"] = sorted(set(row["source_facts"]))
+            runtime = [entry for digest in row["source_facts"] for entry in facts_by_sha[digest]["runtime_caches"]]
+            row["runtime_cache_declarations"] = runtime
+            row["task_chain"] = {key: [entry for digest in row["source_facts"] for entry in facts_by_sha[digest][key]]
+                                 for key in ("makers", "runners", "initializers", "bootstraps", "feature_defaults", "feature_overrides", "dispatchers", "bridges")}
+            row["task_chain"] = {key: list(dict.fromkeys(json.dumps(entry, sort_keys=True) for entry in entries))
+                                 for key, entries in row["task_chain"].items()}
+            row["task_chain"] = {key: [json.loads(entry) for entry in entries] for key, entries in row["task_chain"].items()}
+            row["scope"] = "Current declared middleware task/cache owners; bundled helpers and initial runtime flags alone do not prove a mounted UI action or device capability"
+        except (OSError, ValueError, KeyError) as error:
+            row["failures"].append(str(error))
+    host_members = {item["path"]: item for item in index if item["path"].startswith(".analysis/inputs/host-current/asar/")}
+    candidates = [item for name, item in host_members.items() if name.endswith("/electron/modules/memory_storage/index.js")]
+    if len(candidates) != 1:
+        raise ValueError("Mouse power batch host MemoryStorage owner is absent or ambiguous")
+    host_source = candidates[0]
+    host_raw = audit.read(host_source)
+    host_tree = audit.parser.parse(host_raw)
+    if host_tree.root_node.has_error:
+        raise ValueError("Mouse power batch host MemoryStorage AST failed")
+    host_owner = {"original": audit.sources[host_source["path"]], "body": host_raw.decode(),
+                  "contract": {"cache_domain": "in_process_by_url", "set_return": "previous_value",
+                      "get_return": "json_rows_of_truthy_values_across_urls", "event_sender_receives_event": False,
+                      "clear_scope": "sender_url", "device_confirmation": False}}
+    document = {"schema_version": 1, "recorded_at_utc": a.stamp(), "tool": audit.artifacts[a.rel(Path(__file__))],
+        "kind": "current_mouse_power_task_memory_batch", "candidate_products": sorted(receipts),
+        "selected_products": selected, "products": rows, "source_facts": facts_by_sha,
+        "source_instances": {key: list(value.values()) for key, value in source_instances.items()},
+        "complete_owners": list(owners.values()), "host_memory_storage": host_owner,
+        "verified_artifacts": list(audit.artifacts.values()), "source_snapshot_changed": audit.final_snapshot(),
+        "target_execution": False, "real_device_operations": False, "official_dll_comparison": "unverified",
+        "rust_implementation_acceptance": "unverified", "runtime_acceptance": "unverified",
+        "unresolved_chains": ["Per-product mounted UI and runtime feature selection require their complete consumers; this batch preserves initializer and branch differences rather than treating bundled task functions as active device capabilities",
+                              "The independent Rust task-memory producer/consumer and real device/DLL comparison remain separate from this static source batch"]}
+    document["summary"] = {"products": len(rows), "unique_script_facts": len(facts_by_sha),
+        "complete_owner_bodies": len(owners), "owner_instances": sum(len(item["instances"]) for item in owners.values()),
+        "failures": sum(bool(row["failures"]) for row in rows), "source_snapshot_changed": len(document["source_snapshot_changed"])}
+    return document
+
+
+def verify_mouse_receiver_power_task_batch(document):
+    """Re-read source instances and AST facts without invoking the collector."""
+    from host import HostLocalAudit
+    import evidence
+    audit = HostLocalAudit()
+    if any(document.get(key) is not False for key in ("target_execution", "real_device_operations")) \
+            or any(document.get(key) != "unverified" for key in
+                   ("official_dll_comparison", "rust_implementation_acceptance", "runtime_acceptance")):
+        raise ValueError("Mouse power batch cannot promote source verification to runtime acceptance")
+    if document.get("source_snapshot_changed") or not document.get("selected_products"):
+        raise ValueError("Mouse power batch has a changed or empty source snapshot")
+    for source in document["verified_artifacts"]:
+        audit.artifact(a.ROOT / source["path"], source)
+    actual_owners = {}
+    for digest, instances in document["source_instances"].items():
+        if not instances:
+            raise ValueError("Mouse power batch source has no original instance")
+        for source in instances:
+            if source["sha256"] != digest:
+                raise ValueError("Mouse power batch source instance identity differs")
+            raw = audit.read(source)
+        facts = mouse_receiver_power_task_facts(raw, audit.parser)
+        for owner in facts.pop("owners"):
+            entry = actual_owners.setdefault(owner["body_sha256"], {"body_sha256": owner["body_sha256"],
+                "body": owner["body"], "syntax": owner["syntax"], "instances": []})
+            entry["instances"].append({"source_sha256": digest, "byte_start": owner["byte_start"],
+                "byte_end": owner["byte_end"], "roles": owner["roles"]})
+        if facts != document["source_facts"][digest]:
+            raise ValueError("Mouse power batch facts differ from original AST")
+    if list(actual_owners.values()) != document["complete_owners"]:
+        raise ValueError("Mouse power batch complete owner bytes or boundaries differ")
+    rows = document["products"]
+    candidates = sorted(int(match[1]) for path in (a.ROOT / ".analysis/inputs/frontend").glob("mouse-mw-*-current/acquisition.json")
+                        if (match := re.fullmatch(r"mouse-mw-(\d+)-current", path.parent.name)))
+    if document["candidate_products"] != candidates or any(pid not in candidates for pid in document["selected_products"]):
+        raise ValueError("Mouse power batch candidate endpoint set differs")
+    if [row["endpoint_product_id"] for row in rows] != document["selected_products"]:
+        raise ValueError("Mouse power batch product selection differs")
+    for row in rows:
+        if row.get("failures"):
+            raise ValueError("Mouse power batch retains failed selected product: " + str(row["endpoint_product_id"]))
+        acquisition = row["acquisition"]
+        expected_path = f'.analysis/inputs/frontend/mouse-mw-{row["endpoint_product_id"]}-current/acquisition.json'
+        if acquisition["path"] != expected_path:
+            raise ValueError("Mouse power batch product acquisition belongs to another endpoint")
+        acquired = json.loads(audit.artifact(a.ROOT / acquisition["path"], acquisition))
+        deployment = evidence.frontend_deployment_sources(acquired)
+        declared = []
+        for entry in deployment["sources"]:
+            if not entry["identity_verified"] or not entry["original"]["path"].endswith(".js"):
+                continue
+            source = entry["original"]
+            raw = audit.read(source)
+            if any(token in raw for token in (b"taskMakerSetPowerSavingValue", b"initMemoryStorageCache",
+                                              b"setMemoryStorageItem=", b"setMemoryStorageItem(e")):
+                declared.append(source["sha256"])
+                if source not in document["source_instances"].get(source["sha256"], []):
+                    raise ValueError("Mouse power batch omitted an actual product source instance")
+        if sorted(set(declared)) != row["source_facts"] or deployment["failures"] != row["deployment_failures"]:
+            raise ValueError("Mouse power batch product sources differ from its current deployment")
+        expected = {key: [entry for digest in row["source_facts"] for entry in document["source_facts"][digest][key]]
+                    for key in row["task_chain"]}
+        expected = {key: [json.loads(item) for item in dict.fromkeys(json.dumps(entry, sort_keys=True) for entry in entries)]
+                    for key, entries in expected.items()}
+        if expected != row["task_chain"] or row["runtime_cache_declarations"] != [
+                entry for digest in row["source_facts"] for entry in document["source_facts"][digest]["runtime_caches"]]:
+            raise ValueError("Mouse power batch product consumer differs from selected source facts")
+    memory = document["host_memory_storage"]
+    if audit.read(memory["original"]).decode() != memory["body"] or any(token not in memory["body"] for token in (
+            "this.memoryStorageMap=new Map", 'case"setMemoryStorageItem"', 'case"getMemoryStorageItem"', 'case"clearMemoryStorage"')):
+        raise ValueError("Mouse power batch host memory consumer differs")
+    if memory["contract"] != {"cache_domain": "in_process_by_url", "set_return": "previous_value",
+            "get_return": "json_rows_of_truthy_values_across_urls", "event_sender_receives_event": False,
+            "clear_scope": "sender_url", "device_confirmation": False}:
+        raise ValueError("Mouse power batch host cache cannot be promoted to a device acknowledgement")
+    expected_summary = {"products": len(rows), "unique_script_facts": len(document["source_facts"]),
+        "complete_owner_bodies": len(actual_owners), "owner_instances": sum(len(item["instances"]) for item in actual_owners.values()),
+        "failures": 0, "source_snapshot_changed": 0}
+    if expected_summary != document["summary"] or audit.final_snapshot():
+        raise ValueError("Mouse power batch summary or final snapshot differs")
+    return {**expected_summary, "independent_verification": "passed", "collector_invoked": False,
+            "target_execution": False, "official_dll_comparison": "unverified"}
+
+
 def audit_mouse_receiver_polling(args):
+    if args.family != "mouse" or args.function != "mw":
+        raise ValueError("Mouse receiver polling requires the mouse middleware family")
+    products = getattr(args, "product", None)
+    path = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    existing = json.loads(path.read_bytes()) if path.is_file() else {}
+    prior = existing.get("queries", {}).get("mouse-receiver-polling", {})
+    if products == [182] or (not products or 182 in products) and not any(
+            row.get("product_id") == 182 for row in prior.get("products", [])):
+        audit_mouse_receiver_polling_device(args)
+    batch = collect_mouse_receiver_power_task_batch(products)
+    try:
+        batch["independent_verification"] = verify_mouse_receiver_power_task_batch(batch)
+    except ValueError as error:
+        batch["verification_failure"] = str(error)
+    with a.index_lock():
+        report = json.loads(path.read_bytes())
+        query = report.setdefault("queries", {}).setdefault("mouse-receiver-polling", {})
+        query["power_task_memory_batch"] = batch
+        a.save(path, report)
+    print(json.dumps({"receipt": a.rel(path), "query": "mouse-receiver-polling.power_task_memory_batch",
+                      **batch["summary"], "verification_failure": batch.get("verification_failure")}), flush=True)
+    if batch.get("verification_failure"):
+        raise ValueError("Mouse power task batch source verification failed")
+
+
+def audit_mouse_receiver_polling_device(args):
     """Bind PID182 receiver reads to current middleware, host and native bytes."""
     import importlib.metadata
     import platform
     import sys
     sys.path.insert(0, str(a.ROOT / "tools/analyzers/python-static"))
-    if args.family != "mouse" or args.function != "mw" or set(args.product or [182]) != {182}:
-        raise ValueError("mouse-receiver-polling currently audits the complete PID182 middleware caller")
+    if args.family != "mouse" or args.function != "mw":
+        raise ValueError("Mouse receiver device slice requires mouse middleware")
     report_path = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
     row = {"product_id": 182, "original_inputs": [], "complete_bodies": {},
            "failures": [], "unresolved_chains": [], "runtime_acceptance": "unverified"}
@@ -24748,6 +27427,181 @@ def hanbo_page_source_review(audit, ui, css, roles, ui_set):
             "equivalence": equivalence, "scope": "Pure rotated-label outline tests; not a product runtime resource"}]}
 
 
+def hanbo_runtime_flag_ast(parser, defaults, reducer, service, event_binding):
+    """Bound the current flag to its actual initializer and payload writers."""
+    import evidence
+
+    def parse(raw, wrapper):
+        raw = raw.encode("utf-8") if isinstance(raw, str) else raw
+        tree = parser.parse(wrapper[0] + raw + wrapper[1])
+        if tree.root_node.has_error:
+            raise ValueError("Hanbo runtime flag owner has invalid JavaScript")
+        return tree
+
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+
+    def fields(node):
+        if node is None or node.type != "object":
+            raise ValueError("Hanbo runtime payload is not a static object")
+        result = {}
+        for pair in node.named_children:
+            if pair.type != "pair":
+                raise ValueError("Hanbo runtime payload has a spread or dynamic field")
+            key, value = pair.child_by_field_name("key"), pair.child_by_field_name("value")
+            if key.type != "property_identifier" or key.text.decode() in result:
+                raise ValueError("Hanbo runtime payload has duplicate or computed fields")
+            result[key.text.decode()] = value
+        return result
+
+    default_tree = parse(defaults, (b"const ", b";"))
+    default_declarations = [node for node in walk(default_tree.root_node) if node.type == "variable_declarator"]
+    if len(default_declarations) != 1:
+        raise ValueError("Hanbo UI runtime initializer is ambiguous")
+    initial = fields(default_declarations[0].child_by_field_name("value"))
+    if list(initial) != ["runtimeData"]:
+        raise ValueError("Hanbo UI runtime initializer changed")
+    ui_fields = fields(initial["runtimeData"])
+    expected_fields = ["cpuTemp", "cpuSpeed", "fanSpeed", "pumpSpeed", "liquidTemp", "gpuTemp", "gpuSpeed"]
+    if (list(ui_fields) != expected_fields + ["isHardwareOutdated"] or
+            any(ui_fields[key].text != b"0" for key in expected_fields) or
+            ui_fields["isHardwareOutdated"].text != b"!1"):
+        raise ValueError("Hanbo hardware flag is no longer the local false initializer")
+
+    reducer_tree = parse(reducer, (b"const ", b";"))
+    reducer_nodes = list(walk(reducer_tree.root_node))
+    reducer_expected = (
+        b'FC=(e,E)=>{if(null!==e&&void 0!==e||(e=BC),E.type===se.B8N){'
+        b'const a=(0,g.A)((0,g.A)({},e.runtimeData),E.payload);'
+        b'return(0,g.A)((0,g.A)({},e),{},{runtimeData:a})}return e}')
+    declarations = [node for node in reducer_nodes if node.type == "variable_declarator" and
+                    node.child_by_field_name("name").text == b"FC"]
+    if len(declarations) != 1 or declarations[0].text != reducer_expected:
+        raise ValueError("Hanbo runtime merge/default/other-action behavior changed")
+
+    service_raw = service.encode("utf-8") if isinstance(service, str) else service
+    wrapped = b"({" + service_raw + b"})"
+    tree = parse(service_raw, (b"({", b"})"))
+    nodes = list(walk(tree.root_node))
+    dependency_names = {}
+    for name, expected in ((b"o", b"o=n(67061)"), (b"a", b"a=n(47399)")):
+        imports = [node for node in nodes if node.type == "variable_declarator" and
+                   node.child_by_field_name("name").text == name and node.text == expected]
+        if len(imports) != 1:
+            raise ValueError("Hanbo runtime event or broadcast dependency changed")
+        dependency_names[name] = imports[0].child_by_field_name("name")
+    declarations = [node for node in nodes if node.type == "variable_declarator" and
+                    node.child_by_field_name("name").text == b"c"]
+    if len(declarations) != 1:
+        raise ValueError("Hanbo runtime state declaration is absent or shadowed")
+    state = declarations[0]
+    state_fields = fields(state.child_by_field_name("value"))
+    if list(state_fields) != expected_fields:
+        raise ValueError("Hanbo service adds or removes a runtime field")
+    expected_values = [b'"0"', b'"0"', b"0", b"0", b"0", b'"0"', b'"0"']
+    if [state_fields[key].text for key in expected_fields] != expected_values:
+        raise ValueError("Hanbo service initial values changed")
+    bindings = evidence.JavascriptBindings(wrapped, tree)
+    state_name = state.child_by_field_name("name")
+    references = [node for node in nodes if node.type == "identifier" and node.text == b"c"]
+    if any(bindings.resolve("c", node.start_byte).get("start_byte") != state_name.start_byte
+           for node in references):
+        raise ValueError("Hanbo runtime state has an unresolved or shadowed reference")
+    allowed = {state_name.start_byte}
+    assignments = [node for node in nodes if node.type == "assignment_expression" and
+                   node.child_by_field_name("left").text == b"c"]
+    projections = []
+    for assignment in assignments:
+        right = assignment.child_by_field_name("right")
+        if right.type != "call_expression" or right.child_by_field_name("function").text != b"Object.assign":
+            raise ValueError("Hanbo runtime assignment is not the observed closed merge")
+        args = right.child_by_field_name("arguments").named_children
+        if len(args) != 2 or args[0].type != "call_expression":
+            raise ValueError("Hanbo runtime assignment has an external state source")
+        nested = args[0]
+        previous = nested.child_by_field_name("arguments").named_children
+        if (nested.child_by_field_name("function").text != b"Object.assign" or len(previous) != 2 or
+                previous[0].text != b"{}" or previous[1].type != "identifier" or previous[1].text != b"c"):
+            raise ValueError("Hanbo runtime assignment does not preserve its own prior state")
+        projection = fields(args[1])
+        projections.append({key: value.text.decode() for key, value in projection.items()})
+        allowed.update((assignment.child_by_field_name("left").start_byte, previous[1].start_byte))
+    expected_projections = [
+        {"fanSpeed": "e", "pumpSpeed": "t", "liquidTemp": "n"},
+        {"cpuTemp": "null==e?void 0:e.toFixed(1)", "cpuSpeed": "a",
+         "gpuTemp": "null==n?void 0:n.toFixed(1)", "gpuSpeed": "l"}]
+    if projections != expected_projections:
+        raise ValueError("Hanbo runtime callback projections changed")
+    emitters = [node for node in nodes if node.type == "variable_declarator" and
+                node.child_by_field_name("name").text == b"v"]
+    if (len(emitters) != 1 or
+            emitters[0].text != b'v=()=>{(0,a.a)({type:o.B8N,payload:c},!1)}'):
+        raise ValueError("Hanbo runtime emitter changes the event or payload")
+    for node in walk(emitters[0]):
+        if node.type == "identifier" and node.text in dependency_names:
+            if (bindings.resolve(node.text.decode(), node.start_byte).get("start_byte") !=
+                    dependency_names[node.text].start_byte):
+                raise ValueError("Hanbo runtime emitter dependency is shadowed")
+    payload = next(node for node in walk(emitters[0]) if node.type == "pair" and
+                   node.child_by_field_name("key").text == b"payload")
+    allowed.add(payload.child_by_field_name("value").start_byte)
+    if {node.start_byte for node in references} != allowed:
+        raise ValueError("Hanbo runtime state escapes through an unreviewed reference")
+    event_tree = parse(event_binding, (b"const ", b";"))
+    event_nodes = [node for node in walk(event_tree.root_node) if node.type == "variable_declarator"]
+    if len(event_nodes) != 1 or event_nodes[0].child_by_field_name("value").text != b'"MW_UPDATE_DEVICE_RUNTIMEDATA"':
+        raise ValueError("Hanbo runtime event identity changed")
+    return {"ui_initial_hardware_outdated": False, "ui_initial_value_is_device_observation": False,
+        "service_runtime_fields": expected_fields, "service_callback_projections": projections,
+        "service_state_reference_count": len(references), "service_flag_producer_present": False,
+        "event": "MW_UPDATE_DEVICE_RUNTIMEDATA", "missing_payload_flag_preserves_prior_value": True,
+        "external_payload_flag_would_be_merged": True, "firmware_comparison_in_selected_flow": False,
+        "hardware_outdated_observation": "unobserved", "target_execution": False}
+
+
+def verify_hanbo_runtime_flag(document):
+    """Re-read exact AST owners independently of the runtime-flow collector."""
+    import host
+    audit = host.HostLocalAudit()
+    flow = document["hardware_outdated_flow"]
+    if (flow.get("schema_version") != 1 or flow.get("target_execution") is not False or
+            flow.get("runtime_acceptance") != "unverified"):
+        raise ValueError("Hanbo runtime flag acceptance boundary changed")
+    expected = {"ui_defaults": document["roles"]["ui_runtime_defaults"][0],
+        "ui_reducer": document["roles"]["ui_runtime_reducer"][0],
+        "mw_service": document["complete_modules"]["48290"],
+        "mw_event": document["roles"]["mw_runtime_event_identity"][0],
+        "ui_event": document["roles"]["ui_runtime_event_identity"][0],
+        "ui_event_namespace": document["roles"]["ui_runtime_event_namespace"][0]}
+    if flow.get("owners") != expected:
+        raise ValueError("Hanbo runtime flag owner selection changed")
+    bodies = {}
+    for role, key in expected.items():
+        owner = document["complete_owners"][key]
+        raw = audit.read(owner["original"])
+        fragment = raw[owner["byte_start"]:owner["byte_end"]]
+        if (fragment.decode("utf-8") != owner["body"] or
+                hashlib.sha256(fragment).hexdigest() != owner["body_sha256"]):
+            raise ValueError("Hanbo runtime flag owner differs from original bytes")
+        tree = audit.tree(owner["original"])
+        node = tree.root_node.descendant_for_byte_range(owner["byte_start"], owner["byte_end"] - 1)
+        while node is not None and (node.start_byte, node.end_byte) != (owner["byte_start"], owner["byte_end"]):
+            node = node.parent
+        if node is None or node.type != owner["syntax"]:
+            raise ValueError("Hanbo runtime flag owner has no exact complete AST boundary")
+        bodies[role] = fragment
+    actual = hanbo_runtime_flag_ast(audit.parser, bodies["ui_defaults"], bodies["ui_reducer"],
+                                   bodies["mw_service"], bodies["mw_event"])
+    if (bodies["ui_event"] != b'mt="MW_UPDATE_DEVICE_RUNTIMEDATA"' or
+            bodies["ui_event_namespace"] != b"se=a(3254)"):
+        raise ValueError("Hanbo UI and middleware runtime event identities differ")
+    if flow.get("contract") != actual or audit.final_snapshot():
+        raise ValueError("Hanbo runtime flag contract or original snapshot changed")
+    return actual
+
+
 def audit_hanbo_local_runtime(args):
     """Keep current mounted Hanbo controls and their actual local transports."""
     import host
@@ -24943,6 +27797,20 @@ def audit_hanbo_local_runtime(args):
             power_feature_search.append({"original": audit.sources.get(source["path"], source),
                 "usesExternalPowerSupply_occurrences": audit.read(source).count(b"usesExternalPowerSupply"),
                 "hasFanPowerStatus_occurrences": audit.read(source).count(b"hasFanPowerStatus")})
+    event = audit.webpack_export("mw_runtime_event_identity", mw_files, 67061, "B8N")
+    roles["mw_runtime_event_identity"] = [event["binding"]["owner_id"]]
+    ui_event = audit.webpack_export("ui_runtime_event_identity", ui_files, 3254, "B8N")
+    roles["ui_runtime_event_identity"] = [ui_event["binding"]["owner_id"]]
+    ui_event_namespace = audit.binding("ui_runtime_event_namespace", ui, "se",
+                                       audit.owners[roles["ui_runtime_reducer"][0]]["byte_start"])
+    roles["ui_runtime_event_namespace"] = [ui_event_namespace["owner_id"]]
+    flag_owners = {"ui_defaults": roles["ui_runtime_defaults"][0],
+        "ui_reducer": roles["ui_runtime_reducer"][0], "mw_service": modules["48290"],
+        "mw_event": roles["mw_runtime_event_identity"][0], "ui_event": roles["ui_runtime_event_identity"][0],
+        "ui_event_namespace": roles["ui_runtime_event_namespace"][0]}
+    flag_bodies = {name: audit.owners[key]["body"] for name, key in flag_owners.items()}
+    flag_contract = hanbo_runtime_flag_ast(audit.parser, flag_bodies["ui_defaults"], flag_bodies["ui_reducer"],
+                                          flag_bodies["mw_service"], flag_bodies["mw_event"])
     presentation = hanbo_page_source_review(audit, ui, css, roles, ui_set)
     changed = audit.final_snapshot()
     if not all(valid(row) for row in presentation['source_review']['rust_implementation']['inputs']
@@ -24959,10 +27827,13 @@ def audit_hanbo_local_runtime(args):
         "native_installation": native_inventory,
         "native_hidden_window_identity": window_identity,
         "hardware_outdated_producer_search": hardware_producer_search,
+        "hardware_outdated_flow": {"schema_version": 1, "owners": flag_owners,
+            "contract": flag_contract, "target_execution": False, "runtime_acceptance": "unverified"},
         "power_feature_search": power_feature_search,
         "verified_artifacts": list(audit.artifacts.values()),
         "semantics": {
             "mounted_tree": "xg mounts fg, left Yg and right Kg. fg consumes elsaReducer.runtimeData; BC supplies source UI initial zero values and FC merges B8N payloads. yg owns curve pointer state and both full fan/pump branches remain retained.",
+            "hardware_outdated": "UI BC initializes isHardwareOutdated=false locally. The complete48290 service owns seven numeric/string runtime fields, two closed callback merges and six references to its state; neither callback emits this flag. Its B8N event resolves through MW67061 and UI3254 to MW_UPDATE_DEVICE_RUNTIMEDATA. FC merges incoming payload over prior runtimeData, so a missing flag retains its prior value and an explicit external flag would be accepted. The selected official polling flow contains no firmware comparison or observed hardware-outdated result; the initial false is not device evidence. This bounds the actual initializer and consumers without asserting that arbitrary external channel injection is impossible.",
             "polling": "48290 owns a repeating 5000ms fan/pump query. 34244 A awaits getFanControllerInfo then getPumpControllerFunctionalityInfo and publishes rpm/rpm/temperature.toFixed(1). Its VO system monitor start uses y=1000ms and no requested-type list, producing native mask0. The callback merges CPU/GPU temperatures and clocks then writes changed temperatures through getCPUGPUTemperature. Service stop unregisters and terminates via 29346.",
             "monitor_lifecycle": "90012 setup calls 87887.GJ for rzDeviceElsa; that complete Hanbo initializer reads device information, disables the unavailable edition port and starts 48290 rzSystemMon independently of UI visibility. The UI product root registers OH tab observation, debounced 400ms: first active product tab sends startService(getSpeedOfFanAndPumpTimer), while inactive sends stopService. The complete 48290 dispatcher deliberately only handles startService, so source loss of focus does not stop this getter after activation. Changing the internal Performance/Lighting tab does not independently own these services. Cleanup 90012 En stops rzSystemMon; connection-owner Rust cleanup must also release retained periodic work.",
             "profile_restore": "30525 Zt changes active profile only when its storage flag r is true, advances version, awaits Pf, refreshes UI qw, computes new-profile versus prior-profile diff and invokes 90012 IF/Mn with that diff. Jt profile reset similarly requires its storage flag and invokes IF without a diff after save and refresh. Yt delete requires its local flag a and more than one profile; it picks supplied r if still present, otherwise first remaining, then saves, refreshes and invokes IF with the new-active versus old-active diff. Dn connected setup loads local cache, refreshes UI, awaits Pf without clearing isDefault, then invokes Mn unless both external/fan power states are defined and either is false. Mn always appends ports to profile diff field selection when the active profile has ports. With a diff that has no ports field, all active thermal ports still dispatch. Only an actual n.ports row diff restricts a port's fields: source ~,+,- markers select row fields unless isActive is true, removed rows are skipped, and unmarked rows select no fields. No generic lighting-only suppression is inferred.",
@@ -24980,14 +27851,15 @@ def audit_hanbo_local_runtime(args):
             "system_monitor_native": "RzSystemCommon Initialize owns the hidden message thread, pipe receiver and buffer. TimerFunc sends GetAllHardwareInfo JSON to the fixed local named pipe; the server passes a nlohmann JSON object pointer to RzSystemService and frees its malloc C-string response. Common's receiver assembles complete messages, parses CPUInfo/GPUInfo and updates typed-mask caches. Callback timer flattens cur/min/max values and adds container event, dllName RzSystemCommon and dllFunc HardwareMonitorCallback. Host FFI decodes a void(string) callback as JSON. Missing numeric observations are null, not zero.",
             "system_monitor_cleanup": "Product 29346 unregisters its container then calls JS terminate, whose DeviceTerminate native body only logs. Unregister removes callback ownership and kills both timers only when no containers remain. Native Common Terminate separately posts WM_DESTROY and closes its hidden-window thread handle without joining that thread; it joins only its separate pipe receiver, then closes pipe and frees its buffer. WndProc675a0 WM_DESTROY kills both timers and posts WM_QUIT. Rust retains the callback and library until an independently retained OS window-thread handle confirms exit, then unregisters the verified process-owned class before library release. Initialize unregisters a different source class name, which does not prove repeat-initialization cleanup. RzDLLService unload dispatch calls each loaded DLL Terminate before FreeLibrary. CloseAPPServer is an explicit server-wide operation and is not inferred from product stop."},
         "unresolved_chains": ["Current external CPUID1.3.7.6 acquisition, selector initialization and SDK virtual sensor getters are verified; complete actual CPU/GPU creation/update driver branches and independent Rust monitoring implementation remain required",
-                              "No acquired current 3893 MW JavaScript contains isHardwareOutdated; its true producer remains unresolved rather than invented",
                               "Source write66/accepted-count65 behavior requires explicit transport semantics and remains without real-device acceptance"],
         "target_execution": False, "inputs_unchanged": True, "whole_page_complete": False,
         "runtime_acceptance": "unverified", **presentation}
+    verify_hanbo_runtime_flag(result)
     output = a.ROOT / ".analysis/results/frontend/accessories-main-audit.json"
-    document = json.loads(output.read_bytes()) if output.is_file() else {"schema_version": 1}
-    document.setdefault("queries", {})["hanbo-local-runtime"] = result
-    a.save(output, document)
+    with a.index_lock():
+        document = json.loads(output.read_bytes()) if output.is_file() else {"schema_version": 1}
+        document.setdefault("queries", {})["hanbo-local-runtime"] = result
+        a.save(output, document)
     print(json.dumps({"receipt": a.rel(output), "query": "hanbo-local-runtime",
         "complete_owners": len(audit.owners), "native_functions": len(native["complete_selected_functions"]),
         "inputs_unchanged": True, "target_execution": False}), flush=True)
@@ -25478,22 +28350,1072 @@ def audit_runtime_setup(args):
     a.save(catalog_path, [policies[pid] for pid in sorted(policies)])
 
 
+def keyboard_gamepad_compiler_contract(transaction, compiler, registration, unregister, callback, ui_class):
+    """Check the retained non-FW producer and its distinct observation lifecycle."""
+    compact = lambda body: re.sub(r"\s+", "", body)
+    transaction, compiler, registration, unregister, callback, ui_class = map(compact,
+        (transaction, compiler, registration, unregister, callback, ui_class))
+    required = {
+        "mapping registration": (transaction, ("DeviceInfo.isFWAnalogMapping||", ".analogV3", ".XC)()", ".Y$)()")),
+        "document commit": (transaction, (".version=", ".Pf)(", ".qw)(", 'status:"completed"', 'status:"error"', "finally{")),
+        "compiler": (compiler, ("generateAnalogMappings(", "generateAppEngineMappings(", "JSON.stringify(", ".actuations=", ".rapidTriggers=", ".hash=", "RzLockableStorageError", "while(", "<3")),
+        "registration": (registration, ("isXboxGamepadEventRegistered(", "=50", "PollingRateSkipMap", "registerXboxGamepadEvent(", '.on("xboxGamepadEvent",')),
+        "unregister": (unregister, ("isXboxGamepadEventRegistered(", "unregisterXboxGamepadEvent(", '.off("xboxGamepadEvent",', 'console.warn("Failedtounregister')),
+        "callback": (callback, ("DeviceInfo.productId", "Array.isArray(", "JSON.parse(e.jsonEvent)", "O!==t", "setTimeout(", ",5)")),
+    }
+    for role, (body, tokens) in required.items():
+        if any(token not in body for token in tokens):
+            raise ValueError("Non-FW keyboard gamepad " + role + " source contract differs")
+    if (transaction.index(".XC)()") > transaction.index(".Y$)()")
+            or unregister.index("unregisterXboxGamepadEvent(") > unregister.index('.off("xboxGamepadEvent",')
+            or "O=null" in unregister):
+        raise ValueError("Non-FW keyboard gamepad registration/release order differs")
+    if (not re.search(r'registerXboxGamepadEvent\([^;]+\)\)\?[\w$.]+\.on\("xboxGamepadEvent",', registration)
+            or not re.search(r'unregisterXboxGamepadEvent\([^;]+\)\)\?[\w$.]+\.off\("xboxGamepadEvent",', unregister)
+            or not transaction.index(".Pf)(") < transaction.index('status:"completed"') < transaction.index("enqueueTask(")):
+        raise ValueError("Non-FW keyboard gamepad status/commit consumer changed")
+    if "toggleXboxRegistration" in ui_class or "IntersectionObserver" in ui_class:
+        raise ValueError("Non-FW keyboard tester now requires an independent in-view lifecycle review")
+    return {"source_chain": "current_mapping_document_and_tester_consumers_verified",
+        "mapping_mode": "analogV3_non_firmware", "events_requested_skip": 50,
+        "assignment_source": "MW52418.$T_ten_analog_controller_assignments",
+        "compiler_outputs": ["mappings", "actuations", "rapidTriggers", "hash"],
+        "turbo_storage_conflict_attempts": 3,
+        "registration": "unregister then register Events only when matching AnalogInput assignments and analogV3 are present",
+        "registration_failure": "false registration does not attach the callback; false unregister does not detach it",
+        "callback_playback_ms": 5, "new_callback_replaces_old_playback": True,
+        "unregister_cancels_started_playback": False, "ui_in_view_interval5_mounted": False,
+        "document_commit_is_device_confirmation": False, "callback_is_device_readback": False,
+        "target_execution": False, "runtime_acceptance": "unverified"}
+
+
+def keyboard_non_firmware_gamepad_sources(audit, pid, ui_files, mw_files, tester):
+    """Join each selected compiler to its actual UI consumer and source imports."""
+    import evidence
+    ui = next(source for source in ui_files if Path(source["path"]).name.startswith("main."))
+    entry = next(source for source in mw_files if Path(source["path"]).name.startswith("main."))
+    loader = re.findall(rb'Promise\.all\(\[([\w$]+)\.e\(2291\),\1\.e\(6737\),\1\.e\(1364\)\]\)'
+                        rb'\.then\(\1\.bind\(\1,16737\)\)', audit.read(entry))
+    if len(loader) != 1:
+        raise ValueError("Non-FW keyboard mapping startup chunk selection differs")
+    selected = []
+    if b'1364:"onLoad"' not in audit.read(entry):
+        raise ValueError("Non-FW keyboard startup chunk1364 no longer resolves to onLoad")
+    for prefix in ("main", "2291", "6737", "onLoad"):
+        matches = [source for source in mw_files if Path(source["path"]).name.startswith(prefix + ".")
+                   and source["path"].endswith(".js")]
+        if len(matches) != 1:
+            raise ValueError("Non-FW keyboard selected startup chunk is absent or ambiguous: " + prefix)
+        selected.append(matches[0])
+    modules, bindings = {}, {}
+    for source in selected:
+        pending = [audit.tree(source).root_node]
+        while pending:
+            node = pending.pop()
+            if node.type in {"pair", "method_definition"}:
+                name = node.child_by_field_name("key" if node.type == "pair" else "name")
+                value = node.child_by_field_name("value") if node.type == "pair" else node
+                if name is not None and name.type == "number" and value is not None and value.type in {
+                        "method_definition", "arrow_function", "function_expression"}:
+                    modules.setdefault(javascript_integer_literal(name.text.decode()), []).append((source, node))
+                    continue
+            pending.extend(node.named_children)
+    dependencies, pending = {}, [32226]
+    while pending:
+        mid = pending.pop()
+        if str(mid) in dependencies:
+            continue
+        matches = modules.get(mid, [])
+        if len(matches) != 1:
+            raise ValueError("Non-FW keyboard compiler dependency is absent or ambiguous: " + str(mid))
+        source, node = matches[0]
+        if source["path"] not in bindings:
+            bindings[source["path"]] = evidence.JavascriptBindings(audit.read(source), audit.tree(source))
+        imports = javascript_factory_static_imports(node, bindings[source["path"]])
+        owner = audit.retain_range("gamepad_compiler_dependency_" + str(mid), source,
+                                   node.start_byte, node.end_byte, node.type)
+        dependencies[str(mid)] = {"complete_owner": owner, "static_imports": imports}
+        pending.extend(imports)
+    wrapper = audit.owners[dependencies["32226"]["complete_owner"]]["body"]
+    if not re.search(r'var ([\w$]+)=[\w$]+\(69183\);', wrapper) or "t.A=n.RzAppEngineMapping_default" not in wrapper:
+        raise ValueError("Non-FW keyboard compiler wrapper selects a different factory")
+    exports = {role: audit.webpack_export("gamepad_" + str(pid) + "_" + role, selected, mid, exported)
+        for role, mid, exported in (("transaction", 42124, "tB"), ("compiler", 42124, "yH"),
+            ("register_events", 14486, "Y$"), ("register_interval", 14486, "q6"),
+            ("unregister", 14486, "XC"), ("assignment_filter", 52418, "$T"),
+            ("device_info", 26061 if pid == 678 else 69427, "DeviceInfo"))}
+    source = exports["compiler"]["original"]
+    owners = {role: value["binding"]["owner_id"] for role, value in exports.items()}
+    device = exports["device_info"]["binding"]
+    device_source = exports["device_info"]["original"]
+    declaration = audit.tree(device_source).root_node.descendant_for_byte_range(device["start_byte"], device["end_byte"] - 1)
+    value = declaration.child_by_field_name("value")
+    if value is None or value.type != "object":
+        raise ValueError("Non-FW keyboard DeviceInfo is no longer a direct object")
+    fields = {pair.child_by_field_name("key").text.decode(): pair.child_by_field_name("value").text.decode()
+              for pair in value.named_children if pair.type == "pair"}
+    if (fields.get("productId") != str(pid) or fields.get("useTwoBytesActuation") != "!0"
+            or fields.get("isFWAnalogMapping") not in (None, "!1")
+            or fields.get("is8kAnalogDevice") not in (None, "!1")):
+        raise ValueError("Non-FW keyboard actual product/mapping/registration metadata differs")
+    for role, anchor, kinds in (
+            ("callback", "O=t;const i=JSON.parse(e.jsonEvent)", {"variable_declarator"}),
+            ("mapping_dispatch", 'case"ON_SET_KEYMAPPING":', {"switch_case"}),
+            ("mapping_state_guard", "ON_SET_KEYMAPPING:[", {"pair"}),
+            ("visibility_toggle", "toggleXboxRegistration(e)", {"variable_declarator", "method_definition"}),
+            ("two_byte_setup", "DeviceInfo.useTwoBytesActuation&&", {"function_declaration"})):
+        owners[role] = audit.retain("gamepad_" + str(pid) + "_" + role, source, anchor, kinds, unique=False)
+    feature = [item for item in selected if b'useFeature("analogV3","yes",{})' in audit.read(item)]
+    if len(feature) != 1:
+        raise ValueError("Non-FW keyboard analogV3 startup owner is absent or ambiguous")
+    owners["analog_v3_setup"] = audit.retain("gamepad_" + str(pid) + "_analog_v3_setup", feature[0],
+        'useFeature("analogV3","yes",{})', {"function_declaration", "arrow_function", "method_definition"})
+    tester_owner = audit.owners[tester[0]]
+    raw = audit.read(ui)
+    node = audit.tree(ui).root_node.descendant_for_byte_range(tester_owner["byte_start"], tester_owner["byte_end"] - 1)
+    name = node.child_by_field_name("name")
+    hits = list(re.finditer(rb'jsx\)\(' + re.escape(name.text) + rb',', raw))
+    if len(hits) != 1:
+        raise ValueError("Non-FW keyboard tester actual render consumer is absent or ambiguous")
+    node = audit.tree(ui).root_node.descendant_for_byte_range(hits[0].start(), hits[0].end() - 1)
+    while node is not None and node.type not in {"class_declaration", "class"}:
+        node = node.parent
+    if node is None:
+        raise ValueError("Non-FW keyboard tester owning class is absent")
+    owners["ui_class"] = audit.retain_range("gamepad_" + str(pid) + "_actual_ui_class", ui,
+                                             node.start_byte, node.end_byte, node.type)
+    owners["ui_lifecycle"] = {}
+    for child in node.child_by_field_name("body").named_children:
+        name = child.child_by_field_name("name") if child.type == "method_definition" else None
+        if name is not None and name.text in {b"componentDidMount", b"componentDidUpdate", b"componentWillUnmount", b"render"}:
+            owners["ui_lifecycle"][name.text.decode()] = audit.retain_range("gamepad_" + str(pid) + "_" + name.text.decode(),
+                ui, child.start_byte, child.end_byte, child.type)
+    owners["ui_reducer"] = audit.retain("gamepad_" + str(pid) + "_ui_reducer", ui,
+        "gamepadTester:t.payload", {"variable_declarator"})
+    for role, anchor in (("analog_collection", "this.generateAnalogMappings="),
+                         ("analog_mapping", "this.generateAppEngineAnalogMappings="),
+                         ("ordinary_mapping", "this.generateAppEngineMappings="),
+                         ("two_byte_enable", "this.enableUseTwoBytesActuation=")):
+        candidates = [item for item in selected if anchor.encode() in audit.read(item)]
+        if len(candidates) != 1:
+            raise ValueError("Non-FW keyboard mapping algorithm owner is absent or ambiguous: " + role)
+        owners[role] = audit.retain("gamepad_" + str(pid) + "_" + role, candidates[0], anchor, {"assignment_expression"})
+    contract = keyboard_gamepad_compiler_contract(*(audit.owners[owners[role]]["body"]
+        for role in ("transaction", "compiler", "register_events", "unregister")),
+        audit.owners[owners["callback"][0]]["body"], audit.owners[owners["ui_class"]]["body"])
+    return {"exports": exports, "owners": owners, "compiler_static_dependencies": dependencies,
+        "device_metadata": {"product_id": pid, "use_two_bytes_actuation": True,
+            "firmware_mapping_property": fields.get("isFWAnalogMapping", "absent"),
+            "is_8k_property": fields.get("is8kAnalogDevice", "absent"),
+            "analog_generation_property": fields.get("AnalogGenVersion", "absent")},
+        "selected_startup_chunks": selected, "semantics": contract,
+        "rust_consumer": "incomplete", "target_execution": False, "runtime_acceptance": "unverified"}
+
+
+def driver_install_nsis_chunk(raw, offset, end, *, maximum_output=8 * 1024 * 1024):
+    """Decode one file-backed non-solid LZMA record without executing its VM."""
+    import lzma
+    import struct
+    if not 0 <= offset <= end - 4 <= len(raw) - 4 or maximum_output <= 0:
+        raise ValueError("Driver NSIS chunk has invalid file bounds")
+    field = struct.unpack_from("<I", raw, offset)[0]
+    size = field & 0x7fffffff
+    if not 0 < size <= end - offset - 4:
+        raise ValueError("Driver NSIS chunk exceeds its container")
+    body = raw[offset + 4:offset + 4 + size]
+    if field & 0x80000000:
+        if len(body) <= 5 or body[0] >= 225:
+            raise ValueError("Driver NSIS LZMA properties are invalid")
+        value, dictionary = body[0], struct.unpack_from("<I", body, 1)[0]
+        if not 4096 <= dictionary <= 64 * 1024 * 1024:
+            raise ValueError("Driver NSIS LZMA dictionary is unbounded")
+        filters = [{"id": lzma.FILTER_LZMA1, "dict_size": dictionary,
+                    "lc": value % 9, "lp": value // 9 % 5, "pb": value // 45}]
+        try:
+            decoder = lzma.LZMADecompressor(format=lzma.FORMAT_RAW, filters=filters)
+            value = decoder.decompress(body[5:], max_length=maximum_output + 1)
+        except lzma.LZMAError as error:
+            raise ValueError("Driver NSIS LZMA stream is invalid") from error
+        if len(value) > maximum_output or not decoder.eof or decoder.unused_data:
+            raise ValueError("Driver NSIS LZMA stream is incomplete, oversized or has trailing bytes")
+    else:
+        value = body
+        if len(value) > maximum_output:
+            raise ValueError("Driver NSIS uncompressed record is oversized")
+    return value, {"file_offset": offset, "packed_bytes": size + 4, "bytes": len(value),
+        "sha256": hashlib.sha256(value).hexdigest(), "compressed": bool(field & 0x80000000)}
+
+
+def driver_install_nsis_header(raw, offset):
+    """Read the observed ANSI, non-solid NSIS entry/string tables with bounds."""
+    import struct
+    if not 0 <= offset <= len(raw) - 32:
+        raise ValueError("Driver NSIS firstheader is outside the file")
+    fields = struct.unpack_from("<7I", raw, offset)
+    if fields[1:5] != (0xdeadbeef, 0x6c6c754e, 0x74666f73, 0x74736e49):
+        raise ValueError("Driver NSIS firstheader signature differs")
+    logical, following = fields[5:7]
+    if not 68 <= logical <= 1024 * 1024 or not 32 <= following <= len(raw) - offset:
+        raise ValueError("Driver NSIS header/container lengths are invalid")
+    header, record = driver_install_nsis_chunk(raw, offset + 28, offset + following,
+                                              maximum_output=1024 * 1024)
+    if len(header) != logical:
+        raise ValueError("Driver NSIS header logical length differs")
+    blocks = [struct.unpack_from("<II", header, 4 + index * 8) for index in range(8)]
+    nonzero = [start for start, count in blocks if start]
+    if nonzero != sorted(nonzero) or any(not 68 <= start <= len(header) for start in nonzero):
+        raise ValueError("Driver NSIS block offsets are unordered or outside the header")
+    entries, count = blocks[2]
+    strings = blocks[3][0]
+    string_end = next((start for start, _ in blocks[4:] if start), len(header))
+    if not 0 < count <= 32768 or entries + count * 28 != strings or not strings < string_end <= len(header):
+        raise ValueError("Driver NSIS entry/string boundary is invalid")
+    result = {"firstheader_offset": offset, "firstheader_fields": list(fields),
+        "header_record": record, "header_bytes": len(header), "header_sha256": hashlib.sha256(header).hexdigest(),
+        "entry_offset": entries, "entry_count": count, "string_offset": strings,
+        "string_bytes": string_end - strings, "data_offset": offset + 28 + record["packed_bytes"],
+        "container_end": offset + following,
+        "entries": [list(struct.unpack_from("<7i", header, entries + index * 28)) for index in range(count)]}
+    return result, header[strings:string_end]
+
+
+def driver_install_nsis_string(strings, offset):
+    """Keep NSIS variable, shell and language tokens instead of dropping them."""
+    if type(offset) is not int or not 0 <= offset < len(strings):
+        raise ValueError("Driver NSIS string offset is outside its table")
+    tokens, literal, cursor = [], bytearray(), offset
+    def flush():
+        if literal:
+            try:
+                value = literal.decode("ascii")
+            except UnicodeDecodeError as error:
+                raise ValueError("Driver NSIS string requires an independently reviewed code page") from error
+            tokens.append({"kind": "literal", "value": value})
+            literal.clear()
+    while cursor < len(strings):
+        code = strings[cursor]
+        cursor += 1
+        if code == 0:
+            flush()
+            return tokens
+        if code in (1, 2, 3):
+            flush()
+            if cursor + 2 > len(strings) or not all(strings[cursor:cursor + 2]):
+                raise ValueError("Driver NSIS string has a truncated encoded token")
+            lo, hi = strings[cursor:cursor + 2]
+            tokens.append({"kind": {1: "language", 2: "shell", 3: "variable"}[code],
+                           "index": (lo & 127) | ((hi & 127) << 7), "encoded": [lo, hi]})
+            cursor += 2
+        elif code == 4:
+            if cursor >= len(strings) or strings[cursor] == 0:
+                raise ValueError("Driver NSIS string has a truncated escape")
+            literal.append(strings[cursor])
+            cursor += 1
+        else:
+            literal.append(code)
+    raise ValueError("Driver NSIS string is unterminated")
+
+
+def driver_install_selection_semantics():
+    return {"product_id": 106, "catalog_family": "mouse", "hardware_pid": 106,
+        "package_version": "0.1.0.0", "version_source": "$WINDIR\\System32\\kernel32.dll file version",
+        "version_high_dword_variable": 10, "version_mask_destination_variable": 32,
+        "version_mask": "0xffffffff", "comparison": "signed_i32", "threshold": "0x000a0000",
+        "equal_or_greater": "universal", "less": "legacy",
+        "version_query_failure_selects": "legacy", "version_query_failure_is_success": False,
+        "architecture_probe": "IsWow64Process(GetCurrentProcess())", "architecture_result_variable": 37,
+        "zero_architecture_result_skips_dpinst": True, "payload_architecture": "amd64",
+        "native_machine_architecture_is_explicitly_checked": False,
+        "branch_original_filename": "RzDev_006a.sys", "legacy_retained_filename": "RzDev_006a_1.sys",
+        "legacy_suffix_origin": "7-Zip -aou collision preservation",
+        "synapse3_path_proves_source_generation": False, "installed_branch_is_observed": False,
+        "driver_install_exit_proves_device_ack": False}
+
+
+def driver_install_selection_snapshot(raw):
+    """Resolve the current 006A selection from its complete compiled entries."""
+    import host
+    pe = host.inspect_pe(raw)
+    if pe["architecture"] != "x86" or pe["image_base"] != "0x400000":
+        raise ValueError("Driver selection requires the reviewed x86 NSIS interpreter")
+    overlay = max(section["file_offset"] + section["bytes"] for section in pe["sections"])
+    header, strings = driver_install_nsis_header(raw, overlay)
+    entries = header["entries"]
+    def entry(index, expected):
+        if index >= len(entries) or entries[index] != expected:
+            raise ValueError("Driver NSIS selected instruction differs: " + str(index))
+    for index, value in {33: [43, 10, 11, 360, 0, 0, 0],
+            34: [29, 32, 386, 390, 5, 0, 0], 38: [28, 432, 436, 0, 57, 0, 0],
+            55: [2, 77, 0, 0, 0, 0, 0], 87: [5, 160, 0, 0, 0, 0, 0],
+            90: [31, 1023, 0, 0, 0, 0, 0], 91: [44, 1008, 1056, 0, 0, 1, 0],
+            95: [31, 1061, 0, 0, -1, -1, -37], 96: [44, 1008, 1056, 0, 0, 1, -37],
+            97: [31, 37, 1, 0, 0, 0, 0], 98: [26, 1095, 119, 152, 0, 0, 0]}.items():
+        entry(index, value)
+    expected_strings = {360: [{"kind": "shell", "index": 4644, "encoded": [36, 36]},
+                              {"kind": "literal", "value": "\\System32\\kernel32.dll"}],
+        386: [{"kind": "variable", "index": 10, "encoded": [138, 128]}],
+        390: [{"kind": "literal", "value": "0xFFFFFFFF"}],
+        432: [{"kind": "variable", "index": 32, "encoded": [160, 128]}],
+        436: [{"kind": "literal", "value": "0x000A0000"}],
+         1008: [{"kind": "variable", "index": 26, "encoded": [154, 128]},
+                {"kind": "literal", "value": "\\System.dll"}],
+        1023: [{"kind": "literal", "value": "kernel32::GetCurrentProcess()p.s"}],
+         1056: [{"kind": "literal", "value": "Call"}],
+        1061: [{"kind": "literal", "value": "kernel32::IsWow64Process(ps,*i0s)"}],
+        1095: [{"kind": "variable", "index": 37, "encoded": [165, 128]}],
+        119: [{"kind": "literal", "value": "0"}]}
+    for offset, value in expected_strings.items():
+        if driver_install_nsis_string(strings, offset) != value:
+            raise ValueError("Driver NSIS selected string differs: " + str(offset))
+    branches = []
+    for name, begin, end, driver_offset, version, count in (
+            ("universal", 39, 55, 932124, [1, 15, 0], 444),
+            ("legacy", 56, 76, 995333, [1, 9, 7600], 396)):
+        output, files = None, []
+        for index in range(begin, end):
+            row = entries[index]
+            if row[0] == 11 and row[2:] == [1, 0, 0, 0, 0]:
+                output = driver_install_nsis_string(strings, row[1])
+            elif row[0] == 20 and row[1] == 83886224 and output:
+                value, block = driver_install_nsis_chunk(raw, header["data_offset"] + row[3], header["container_end"])
+                filename = driver_install_nsis_string(strings, row[2])
+                if len(filename) != 1 or filename[0]["kind"] != "literal" or \
+                        any(char in filename[0]["value"] for char in "/\\:"):
+                    raise ValueError("Driver NSIS extraction filename is not a bounded literal")
+                files.append({"entry": index, "output_directory": output, "filename": filename[0]["value"],
+                              "data_relative_offset": row[3], "block": block})
+            else:
+                raise ValueError("Driver NSIS extraction branch contains an unreviewed instruction")
+        drivers = [row for row in files if row["filename"] == "RzDev_006a.sys"]
+        if len(drivers) != 4 or any(row["data_relative_offset"] != driver_offset for row in drivers):
+            raise ValueError("Driver NSIS branch driver references differ")
+        branches.append({"name": name, "entry_range": [begin, end - 1], "binding_version": version,
+                         "binding_function_count": count, "files": files})
+    section = next(section for section in pe["sections"] if section["name"] == ".text")
+    return {"header": {key: value for key, value in header.items() if key != "entries"},
+        "selected_entries": [{"index": index, "values": entries[index]} for index in
+                             sorted({33, 34, 38, 55, 87, 90, 91, 95, 96, 97, 98})],
+        "selected_strings": [{"offset": offset, "tokens": driver_install_nsis_string(strings, offset)}
+                             for offset in sorted(expected_strings)], "branches": branches,
+        "interpreter_code": {"rva": hex(section["rva"]), "bytes": section["bytes"],
+            "sha256": hashlib.sha256(raw[section["file_offset"]:section["file_offset"] + section["bytes"]]).hexdigest()}}
+
+
+def driver_install_selection_roles():
+    return {0x136d: "indirect_jump_target", 0x1389: "entry_dispatch_and_positive_target_minus_one",
+        0x1434: "opcode_dispatch", 0x2aac: "numeric_operand", 0x2ace: "string_operand",
+        0x2f33: "non_solid_file_record", 0x5daf: "ansi_variable_and_shell_expansion",
+        0x5d04: "numeric_string_parser", 0x5ceb: "signed_integer_to_string",
+        0x60b8: "system_library_lookup", 0x6126: "version_api_lookup"}
+
+
+def driver_install_selection_plugin_roles():
+    return {0x123b: "stack_pop", 0x1266: "stack_push", 0x12fe: "numeric_input",
+        0x15a4: "named_api_lookup", 0x16bd: "exported_call_owner", 0x1a5d: "complete_call_signature_parser",
+        0x21b0: "by_reference_allocation", 0x21fa: "input_marshalling", 0x23a0: "by_reference_release",
+        0x23da: "output_marshalling", 0x27e8: "complete_indirect_call_bridge",
+        **{rva: "call_bridge_field_" + hex(rva) for rva in
+           (0x2761, 0x2767, 0x2775, 0x2783, 0x2791, 0x2797, 0x27a3,
+            0x27ae, 0x27b4, 0x27b8, 0x27bc, 0x27c0, 0x27d0)}}
+
+
+def driver_install_selection_branch(version_high):
+    """Interpret the reviewed signed IntCmp; None denotes failed version data."""
+    if version_high is not None and (type(version_high) is not int or not 0 <= version_high <= 0xffffffff):
+        raise ValueError("Driver selection version must be an observed u32 or absent")
+    value = 0 if version_high is None else version_high
+    signed = value if value < 0x80000000 else value - 0x100000000
+    return {"version_high": version_high, "signed_value": signed,
+            "selected_branch": "legacy" if signed < 0x000a0000 else "universal",
+            "first_extraction_entry": 56 if signed < 0x000a0000 else 39,
+            "version_observed": version_high is not None}
+
+
+def driver_install_selection_manifests(audit, acquisition, package):
+    """Join all retained manifest declarations before selecting a shared binary."""
+    retained, selected, seen = [], [], set()
+    for row in acquisition["manifests"]:
+        if row.get("http_status") != 200 or not row.get("path"):
+            raise ValueError("Driver install selection manifest scope contains an unavailable input")
+        if row["url"] in seen:
+            raise ValueError("Driver install selection manifest scope repeats an endpoint")
+        seen.add(row["url"])
+        raw = audit.artifact(a.ROOT / row["path"], row)
+        original = {"path": row["path"], "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+        retained.append({"url": row["url"], **original})
+        manifest = json.loads(raw)
+        for resource in manifest.get("resourceManifest", {}).get("resources", []):
+            if resource["sha256"].lower() != package:
+                continue
+            match = re.fullmatch(r'https://apps\.razer\.com/synapse/products/(\d+)/mw/manifest\.json', row["url"])
+            if not match or type(resource["size"]) is not int or resource["size"] != 2824776:
+                raise ValueError("Driver install selection manifest identity or declared length differs")
+            selected.append({"product_id": int(match[1]), "manifest": original, "url": row["url"],
+                "resource_name": resource["resourceName"], "resource_version": resource["resourceVersion"],
+                "resource_url": resource["url"], "action": resource["action"],
+                "sha256": package, "bytes": resource["size"]})
+    return {"all_retained_manifests": sorted(retained, key=lambda row: row["url"]),
+        "shared_binary_consumers": sorted(selected, key=lambda row: (row["product_id"], row["resource_name"])),
+        "manifest_endpoint_count": acquisition["manifest_endpoint_count"],
+        "acquisition_complete": acquisition["complete"],
+        "all_declared_resources_verified": acquisition["all_declared_resources_verified"]}
+
+
+def driver_install_selection_native_reference(original, roles):
+    native = verify_native_functions(original, roles)
+    return {"input": original, "capture_receipt": native["capture_receipt"],
+        "functions": [{"role": row["role"], "rva": row["capture"]["rva"], "artifact": row["artifact"],
+            "pseudocode_sha256": hashlib.sha256("\n".join(line["text"] for line in
+                row["capture"]["pseudocode"]["lines"]).encode()).hexdigest()}
+            for row in native["complete_selected_functions"]]}
+
+
+def driver_install_selection_verify_native(audit, native, roles):
+    """Read complete captures and original bytes without using collection helpers."""
+    import host
+    raw = audit.artifact(a.ROOT / native["input"]["path"], native["input"])
+    pe = host.inspect_pe(raw)
+    if pe["architecture"] != "x86":
+        raise ValueError("Driver install selection requires exact x86 native evidence")
+    base = int(pe["image_base"], 0)
+    def read(rva, length):
+        spans = [part["file_offset"] + rva - part["rva"] for part in pe["sections"]
+                 if part["rva"] <= rva and rva + length <= part["rva"] + part["bytes"]]
+        if length <= 0 or len(spans) != 1 or not 0 <= spans[0] <= len(raw) - length:
+            raise ValueError("Driver install selection PE range lacks unique complete backing")
+        return raw[spans[0]:spans[0] + length]
+    receipt = native["capture_receipt"]
+    capture = json.loads(audit.artifact(a.ROOT / receipt["path"], receipt))
+    if (capture["input_sha256"] != native["input"]["sha256"] or capture["input_bytes"] != len(raw)
+            or int(capture["image_base"], 0) != base or capture["capture_complete"] is not True
+            or capture["functions_captured"] != capture["functions_total"]
+            or capture["functions_captured"] != len(capture["functions"]) or capture["failures"]
+            or capture.get("target_execution") is not False):
+        raise ValueError("Driver install selection full native capture identity or failures differ")
+    selected = {int(row["rva"], 0): row for row in native["functions"]}
+    if len(selected) != len(native["functions"]) or set(selected) != set(roles):
+        raise ValueError("Driver install selection native owners differ")
+    bodies, counters, seen = {}, Counter(), set()
+    for entry in capture["functions"]:
+        rva = int(entry["rva"], 0)
+        if rva in seen:
+            raise ValueError("Driver install selection capture repeats a native owner")
+        seen.add(rva)
+        path = a.resolve(a.rel(Path(a.ROOT / receipt["path"]).parent / entry["path"]), ".analysis/results/native")
+        data = audit.artifact(path, {"path": a.rel(path), "sha256": entry["sha256"]})
+        body = json.loads(data)
+        if (body["rva"] != entry["rva"] or body["address"] != entry["address"] or body["name"] != entry["name"]
+                or int(body["address"], 0) != base + rva or not body["chunks"]):
+            raise ValueError("Driver install selection complete native owner identity differs")
+        for chunk in body["chunks"]:
+            value = read(int(chunk["start"], 0) - base, int(chunk["end"], 0) - int(chunk["start"], 0))
+            if value.hex() != chunk["raw_hex"] or hashlib.sha256(value).hexdigest() != chunk["sha256"]:
+                raise ValueError("Driver install selection function chunk differs from PE")
+            counters["chunk_bytes"] += len(value)
+        for instruction in body["assembly"]:
+            value = bytes.fromhex(instruction["bytes"])
+            if value != read(int(instruction["rva"], 0), len(value)):
+                raise ValueError("Driver install selection instruction differs from PE")
+            counters["instructions"] += 1
+        if rva in selected:
+            text = "\n".join(line["text"] for line in body["pseudocode"]["lines"])
+            expected = {"role": roles[rva], "rva": entry["rva"], "artifact":
+                {"path": a.rel(path), "bytes": len(data), "sha256": entry["sha256"]},
+                "pseudocode_sha256": hashlib.sha256(text.encode()).hexdigest()}
+            if selected[rva] != expected or not entry["pseudocode_captured"] or entry["new_failures"]:
+                raise ValueError("Driver install selection selected complete body differs")
+            bodies[rva] = body
+    return raw, pe, read, bodies, {"all_functions": len(seen), "selected_functions": len(bodies), **counters}
+
+
+def verify_driver_install_selection(document):
+    import host
+    audit = host.HostLocalAudit()
+    def check(condition, message):
+        if not condition:
+            raise ValueError("Driver install selection: " + message)
+    def artifact(row):
+        return audit.artifact(a.ROOT / row["path"], row)
+    package = "302b4ab125e11ce18c42e21e009b11753af3ec5478ac339585e108350a69134b"
+    check(document.get("schema_version") == 1 and document.get("target_execution") is False,
+          "static execution boundary differs")
+    check(document.get("semantics") == driver_install_selection_semantics(), "reviewed selection semantics differ")
+    check(document.get("catalog_family") == "mouse" and document.get("product_ids") == [106],
+          "hardware PID or keyboard interface substituted for catalog identity")
+    for field in ("rust_implementation", "ui_backend_wiring", "official_dll_comparison", "runtime_acceptance"):
+        check(document.get(field) == "unverified", "acceptance promoted: " + field)
+    artifact(document["tool"])
+    acquired = json.loads(artifact(document["acquisition"]))
+    check(acquired["source_current_during_acquisition"] is True and acquired["target_execution"] is False,
+          "source acquisition identity differs")
+    scope = driver_install_selection_manifests(audit, acquired, package)
+    check(document["manifest_scope"] == scope and len(scope["all_retained_manifests"]) == 334,
+          "complete retained manifest scan or source limitations changed")
+    check([row["product_id"] for row in scope["shared_binary_consumers"]] == [106],
+          "shared binary consumers require independent review")
+    inspection = json.loads(artifact(document["package_inspection"]))
+    native = document["native"]
+    check(inspection["container"] == native["installer"]["input"] and inspection["extracted"] is True
+          and inspection["target_execution"] is False and inspection["input_bytes_unchanged"] is True,
+          "package extraction lineage differs")
+    check(native["installer"]["input"]["sha256"] == package, "installer input branch differs")
+    raw, pe, read, bodies, installer_counts = driver_install_selection_verify_native(
+        audit, native["installer"], driver_install_selection_roles())
+    snapshot = driver_install_selection_snapshot(raw)
+    check(document["selection"] == snapshot, "compiled entries, strings or extracted branch bytes differ")
+    plugin_raw, plugin_pe, _, plugin_bodies, plugin_counts = driver_install_selection_verify_native(
+        audit, native["system_plugin"], driver_install_selection_plugin_roles())
+    check(any(row["names"] == ["Call"] and row["rva"] == "0x16bd" for row in plugin_pe["exports"]),
+          "actual System Call export differs")
+    overlay = max(section["file_offset"] + section["bytes"] for section in pe["sections"])
+    header, strings = driver_install_nsis_header(raw, overlay)
+    plugin_entry = header["entries"][88]
+    check(plugin_entry == [20, 83886225, 1008, 2773433, -1, -1, -37], "System plugin extraction entry differs")
+    plugin, _ = driver_install_nsis_chunk(raw, header["data_offset"] + plugin_entry[3], header["container_end"])
+    check(plugin == plugin_raw, "System plugin does not match installer record")
+    for branch in snapshot["branches"]:
+        driver_files = [row for row in branch["files"] if row["filename"] == "RzDev_006a.sys"]
+        driver = native[branch["name"] + "_driver"]
+        value = artifact(driver)
+        check(all(row["block"]["sha256"] == driver["sha256"] and row["block"]["bytes"] == len(value)
+                  for row in driver_files), "selected driver differs from complete extraction records")
+        matching = [row for row in inspection["files"] if row["path"] == driver["path"]]
+        check(len(matching) == 1 and all(matching[0][key] == driver[key] for key in ("path", "bytes", "sha256")),
+              "retained driver member identity differs")
+        import struct
+        binding = struct.pack("<IIII", *branch["binding_version"], branch["binding_function_count"])
+        location = value.find(binding)
+        check(value.count(binding) == 1 and location >= 16 and
+              struct.unpack_from("<I", value, location - 16)[0] == 48,
+              "selected driver's actual WDF binding differs")
+    text = {rva: "\n".join(row["text"] for row in body["pseudocode"]["lines"]) for rva, body in bodies.items()}
+    for rva, pins in {0x1389: ["a1 = v4 - 1", "++a1"],
+            0x1434: ["v47 >= (int)v48", "v47 > (int)v48", "v51 = v49 & v50", "*v4 = 0", "*v5 = 0",
+                     "sub_406126(8)", "sub_406126(9)", "sub_406126(10)", "*((_DWORD *)hWnd + 2)"],
+            0x5daf: ["GetWindowsDirectoryA", "v10 == 36", "1024 * v8"],
+            0x6126: ["off_409240[2 * a1]", "GetProcAddress"]}.items():
+        check(all(pin in text[rva] for pin in pins), "reviewed complete interpreter owner differs: " + hex(rva))
+    import struct
+    names = []
+    for index in (8, 9, 10):
+        dll, symbol = struct.unpack("<II", read(0x9240 + 8 * index, 8))
+        def cstring(address):
+            result = bytearray()
+            while len(result) < 128:
+                value = read(address - 0x400000 + len(result), 1)
+                if value == b"\0":
+                    return result.decode("ascii")
+                result.extend(value)
+            raise ValueError("Driver selection API name exceeds reviewed boundary")
+        names.append([cstring(dll), cstring(symbol)])
+    check(names == [["VERSION", "GetFileVersionInfoSizeA"], ["VERSION", "GetFileVersionInfoA"],
+                    ["VERSION", "VerQueryValueA"]], "version API pointer table differs")
+    plugin_text = {rva: "\n".join(row["text"] for row in body["pseudocode"]["lines"])
+                   for rva, body in plugin_bodies.items()}
+    check(all(pin in plugin_text[0x1a5d] for pin in ("case '*':", "case 'p':", "case 's':", "v11 = -1;"))
+          and "sub_1000123B()" in plugin_text[0x21fa] and "sub_10001266(v1)" in plugin_text[0x23da],
+          "System pointer/output-stack semantics differ")
+    warning = "positive sp value has been detected"
+    check(warning in plugin_text[0x27e8] and document["decompiler_limits"] ==
+          {"system_call_bridge_rva": "0x27e8", "positive_stack_warning_retained": True,
+           "assembly_and_raw_bytes_verified": True, "dynamic_abi_execution": "unverified"},
+          "native bridge decompiler limitation was hidden")
+    check(document["boundary_cases"] == [driver_install_selection_branch(value) for value in
+          (None, 0x00060003, 0x0009ffff, 0x000a0000, 0x000a0001, 0x7fffffff, 0x80000000, 0xffffffff)],
+          "signed threshold or failed-version boundary changed")
+    check(not audit.final_snapshot(), "inputs changed during independent verification")
+    return {"status": "verified_static", "installer": installer_counts, "system_plugin": plugin_counts,
+        "manifest_endpoints": len(scope["all_retained_manifests"]), "catalog_products": [106],
+        "target_execution": False, "runtime_acceptance": "unverified"}
+
+
+def collect_driver_install_selection():
+    import host
+    package = "302b4ab125e11ce18c42e21e009b11753af3ec5478ac339585e108350a69134b"
+    root = a.ROOT / ".analysis/inputs/official-native-current"
+    audit = host.HostLocalAudit()
+    acquisition = identity(root / "acquisition.json")
+    acquired = json.loads(audit.artifact(a.ROOT / acquisition["path"], acquisition))
+    inspection = identity(a.ROOT / ".analysis/results/native-packages" / package / "inspection.json")
+    package_document = json.loads(audit.artifact(a.ROOT / inspection["path"], inspection))
+    installer = package_document["container"]
+    extracted = root / "extracted" / package
+    document = {"schema_version": 1, "scope": "current 006A shared binary OS/version/payload selection only",
+        "catalog_family": "mouse", "product_ids": [106], "tool": identity(Path(__file__)),
+        "acquisition": acquisition, "package_inspection": inspection,
+        "manifest_scope": driver_install_selection_manifests(audit, acquired, package),
+        "selection": driver_install_selection_snapshot((a.ROOT / installer["path"]).read_bytes()),
+        "semantics": driver_install_selection_semantics(),
+        "native": {"installer": driver_install_selection_native_reference(installer, driver_install_selection_roles()),
+            "system_plugin": driver_install_selection_native_reference(identity(extracted / "$PLUGINSDIR/System.dll"),
+                driver_install_selection_plugin_roles()),
+            "universal_driver": identity(extracted / "Drivers/x64/KB/RzDev_006a.sys"),
+            "legacy_driver": identity(extracted / "Drivers/x64/KB/RzDev_006a_1.sys")},
+        "decompiler_limits": {"system_call_bridge_rva": "0x27e8", "positive_stack_warning_retained": True,
+            "assembly_and_raw_bytes_verified": True, "dynamic_abi_execution": "unverified"},
+        "boundary_cases": [driver_install_selection_branch(value) for value in
+            (None, 0x00060003, 0x0009ffff, 0x000a0000, 0x000a0001, 0x7fffffff, 0x80000000, 0xffffffff)],
+        "unresolved_chains": ["Actual native OS architecture, installed driver selection, DPInst execution, device readback, restoration and uninstall remain unverified; this static selector does not prove an installed branch or device success"],
+        "rust_implementation": "unverified", "ui_backend_wiring": "unverified",
+        "official_dll_comparison": "unverified", "runtime_acceptance": "unverified", "target_execution": False}
+    document["verification"] = verify_driver_install_selection(document)
+    return document
+
+
+def negative_driver_install_selection(document):
+    from copy import deepcopy
+    from unittest.mock import patch
+    with patch(__name__ + ".collect_driver_install_selection", side_effect=AssertionError("collector disabled")), \
+         patch(__name__ + ".driver_install_selection_native_reference", side_effect=AssertionError("native collector disabled")), \
+         patch(__name__ + ".verify_native_functions", side_effect=AssertionError("native helper disabled")):
+        verify_driver_install_selection(document)
+        mutations = (("catalog_identity", lambda value: value.update(catalog_family="keyboard")),
+            ("threshold", lambda value: value["semantics"].update(threshold="0x00060000")),
+            ("unsigned_comparison", lambda value: value["semantics"].update(comparison="unsigned_i32")),
+            ("positive_jump_target", lambda value: value["selection"]["selected_entries"][2]["values"].__setitem__(4, 56)),
+            ("wrong_driver_file", lambda value: value["native"].__setitem__("legacy_driver", value["native"]["universal_driver"])),
+            ("compressed_block", lambda value: value["selection"]["branches"][0]["files"][0]["block"].update(sha256="0" * 64)),
+            ("omitted_manifest", lambda value: value["manifest_scope"]["all_retained_manifests"].pop()),
+            ("hidden_source_failure", lambda value: value["manifest_scope"].update(acquisition_complete=True)),
+            ("native_owner_omitted", lambda value: value["native"]["installer"]["functions"].pop()),
+            ("bridge_warning_hidden", lambda value: value["decompiler_limits"].update(positive_stack_warning_retained=False)),
+            ("runtime_promoted", lambda value: value.update(runtime_acceptance="verified")))
+        rejected = []
+        for name, mutate in mutations:
+            candidate = deepcopy(document)
+            mutate(candidate)
+            try:
+                verify_driver_install_selection(candidate)
+            except (ValueError, KeyError) as error:
+                rejected.append({"case": name, "rejected": True, "reason": str(error)})
+            else:
+                raise ValueError("Driver installation negative control was accepted: " + name)
+        return {"negative_controls": rejected, "target_execution": False}
+
+
+def audit_driver_install_selection(args):
+    if args.family != "mouse" or args.function != "mw" or getattr(args, "product", None) not in (None, [106]):
+        raise ValueError("driver-install-selection batches every current consumer of the 006A binary; catalog family is mouse")
+    mode = getattr(args, "native_install_selection", None) or "capture"
+    path = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    if mode in ("check", "negative"):
+        document = json.loads(path.read_bytes())["queries"]["driver_install_selection"]
+        result = verify_driver_install_selection(document) if mode == "check" else negative_driver_install_selection(document)
+    elif mode == "capture":
+        document = collect_driver_install_selection()
+        document["negative_verification"] = negative_driver_install_selection(document)
+        with a.index_lock():
+            report = json.loads(path.read_bytes())
+            report.setdefault("queries", {})["driver_install_selection"] = document
+            a.save(path, report)
+        result = {"receipt": a.rel(path), "query": "driver_install_selection", "verification": document["verification"]}
+    else:
+        raise ValueError("Unknown driver install selection mode")
+    print(json.dumps(result), flush=True)
+    return result
+
+
+def keyboard_driver_lifecycle_roles():
+    return {0xd000: "driver_add", 0x527c: "physical_device_creation", 0x46cc: "physical_context_constructor",
+        0x41a0: "physical_cleanup_callback", 0x58a8: "physical_association_gate", 0x2010: "physical_cleanup",
+        0x2054: "local_target_close_and_delete", 0x5624: "association_removal", 0x27e0: "queue_and_timer_creation",
+        0x3914: "physical_read_forward", 0x2750: "physical_report_producer", 0x4140: "timer_parent_context",
+        0x2650: "physical_read_retrieve_and_complete", 0x5f74: "virtual_pdo_and_queue_creation",
+        0x6b60: "virtual_read_forward", 0x4944: "separate_control_pdo_creation", 0x1fc0: "separate_control_cleanup"}
+
+
+def keyboard_driver_lifecycle_semantics():
+    return {"product_id": 691, "hardware_pid": 692, "physical_cleanup_callback_rva": "0x41a0",
+        "physical_cleanup_rva": "0x2010", "control_cleanup_rva": "0x1fc0",
+        "physical_manual_queue_context_offset": 1720, "virtual_manual_queue_context_offset": 16,
+        "timer_context_offset": 1712, "timer_due_100ns": -10000, "timer_period_ms": 0,
+        "timer_automatic_serialization": False, "manual_queue_power_managed": False,
+        "timer_is_request_timeout": False, "physical_manual_queue_creation_status_checked": False,
+        "framework_owns_successfully_forwarded_request": True,
+        "driver_retains_forwarded_request_pointer": False, "retrieved_request_completed_synchronously": True,
+        "request_retrieval_rvas": ["0x2650"], "virtual_queue_has_captured_sample_consumer": False,
+        "queue_and_timer_deleted_with_parent": True, "cleanup_return_proves_callbacks_drained": False,
+        "queue_completion_is_device_confirmation": False}
+
+
+def keyboard_driver_abi_bytes(raw):
+    """Decode the x64 binding and cleanup target from file-backed PE bytes."""
+    import struct
+    def require(condition, message):
+        if not condition:
+            raise ValueError("Keyboard driver ABI: " + message)
+    require(len(raw) >= 0x40 and raw[:2] == b"MZ", "missing DOS header")
+    coff = struct.unpack_from("<I", raw, 0x3c)[0]
+    require(coff + 24 <= len(raw) and raw[coff:coff + 4] == b"PE\0\0", "invalid PE header")
+    machine, count = struct.unpack_from("<HH", raw, coff + 4)
+    optional, length = coff + 24, struct.unpack_from("<H", raw, coff + 20)[0]
+    require(machine == 0x8664 and length >= 112 and optional + length + count * 40 <= len(raw),
+            "expected complete x64 PE headers")
+    require(struct.unpack_from("<H", raw, optional)[0] == 0x20b, "expected PE32+")
+    base = struct.unpack_from("<Q", raw, optional + 24)[0]
+    require(base == 0x140000000, "image base differs")
+    sections = [struct.unpack_from("<IIII", raw, optional + length + i * 40 + 8) for i in range(count)]
+    def read(rva, size):
+        spans = [offset + rva - va for vs, va, length, offset in sections
+                 if va <= rva and rva + size <= va + length]
+        require(size > 0 and len(spans) == 1 and 0 <= spans[0] <= len(raw) - size,
+                "span lacks unique complete file backing")
+        return raw[spans[0]:spans[0] + size]
+    binding = read(0xb0d0, 48)
+    require(struct.unpack_from("<I", binding)[0] == 48 and
+            struct.unpack_from("<IIII", binding, 16) == (1, 15, 0, 444), "KMDF 1.15 binding differs")
+    require(struct.unpack_from("<Q", binding, 32)[0] == base + 0xb3f8, "function table owner differs")
+    cleanup = read(0x9250, 8)
+    require(struct.unpack("<Q", cleanup)[0] == base + 0x2010, "physical cleanup virtual target differs")
+    return {"image_base": hex(base), "binding_rva": "0xb0d0", "version": [1, 15, 0],
+            "function_count": 444, "function_table_rva": "0xb3f8", "binding_raw_hex": binding.hex(),
+            "cleanup_slot_rva": "0x9250", "cleanup_target_rva": "0x2010", "cleanup_raw_hex": cleanup.hex()}, read
+
+
+def verify_keyboard_driver_request_lifecycle(document):
+    """Re-read source lineage, all raw functions and platform ABI independently."""
+    import host
+    audit = host.HostLocalAudit()
+    def check(condition, message):
+        if not condition:
+            raise ValueError("Keyboard driver lifecycle: " + message)
+    def artifact(row):
+        return audit.artifact(a.ROOT / row["path"], row)
+    check(document.get("schema_version") == 1 and document.get("target_execution") is False,
+          "static boundary changed")
+    check(document.get("semantics") == keyboard_driver_lifecycle_semantics(), "request/parent semantics changed")
+    check(document.get("product_id") == 691 and document.get("hardware_pid") == 692, "product and hardware PID mixed")
+    for field in ("rust_implementation", "ui_backend_wiring", "official_dll_comparison", "runtime_acceptance"):
+        check(document.get(field) == "unverified", "acceptance was promoted: " + field)
+    artifact(document["tool"])
+    provenance = document["provenance"]
+    acquired = json.loads(artifact(provenance["acquisition"]))
+    check(acquired.get("source_current_during_acquisition") is True and acquired.get("target_execution") is False,
+          "native source acquisition is not current and static")
+    manifests = [row for row in acquired["manifests"] if row.get("url") ==
+                 "https://apps.razer.com/synapse/products/691/mw/manifest.json"]
+    check(len(manifests) == 1 and all(manifests[0][key] == provenance["manifest"][key]
+          for key in ("path", "bytes", "sha256")), "official product manifest lineage changed")
+    manifest = json.loads(artifact(provenance["manifest"]))
+    resources = [row for row in manifest["resourceManifest"]["resources"]
+                 if row["resourceName"] == "NormalDriver_PID02b4Drv"]
+    check(len(resources) == 1 and resources[0]["resourceVersion"] == "23.0.0.0" and
+          resources[0]["sha256"].lower() == provenance["container"]["sha256"] and
+          resources[0]["size"] == provenance["container"]["bytes"], "driver resource differs from manifest")
+    artifact(provenance["container"])
+    inspection = json.loads(artifact(provenance["package_inspection"]))
+    native = document["native"]
+    check(inspection["container"] == provenance["container"] and inspection.get("extracted") is True and
+          inspection.get("input_bytes_unchanged") is True and inspection.get("target_execution") is False,
+          "driver extraction lineage changed")
+    members = [row for row in inspection["files"] if row["path"] == native["input"]["path"]]
+    check(len(members) == 1 and all(members[0][key] == native["input"][key] for key in ("path", "bytes", "sha256"))
+          and members[0]["container_sha256"] == provenance["container"]["sha256"], "driver member changed")
+    raw = artifact(native["input"])
+    check(native["input"]["sha256"] == "de33422e04960735e09df34c2f96dc9db9cc7d04c57f0df56726cfbe0ab239d0",
+          "driver branch requires independent review")
+    abi, read = keyboard_driver_abi_bytes(raw)
+    check(document["abi"] == abi, "retained binding or cleanup bytes differ")
+    capture = json.loads(artifact(native["capture_receipt"]))
+    check(capture["input_sha256"] == native["input"]["sha256"] and capture["input_bytes"] == len(raw)
+          and capture["capture_complete"] is True and capture["functions_captured"] == 123
+          and capture["functions_total"] == 123 and capture["target_execution"] is False and not capture["failures"],
+          "full capture identity or failures changed")
+    check(len({entry["rva"] for entry in capture["functions"]}) == 123, "full capture repeats function identities")
+    roles, functions, retrievers, counts = keyboard_driver_lifecycle_roles(), {}, [], Counter()
+    selected = {int(row["rva"], 0): row for row in native["functions"]}
+    check(len(selected) == len(native["functions"]) and set(selected) == set(roles), "selected owners changed")
+    for entry in capture["functions"]:
+        rva = int(entry["rva"], 0)
+        path = str(Path(native["capture_receipt"]["path"]).parent / entry["path"]).replace("\\", "/")
+        claim = {"path": path, "sha256": entry["sha256"]}
+        body_raw = artifact(claim)
+        body = json.loads(body_raw)
+        check(body["rva"] == entry["rva"] and body["address"] == entry["address"]
+              and body["name"] == entry["name"] and body["chunks"], "complete function boundary changed")
+        for chunk in body["chunks"]:
+            start, end = int(chunk["start"], 0), int(chunk["end"], 0)
+            value = read(start - 0x140000000, end - start)
+            check(value.hex() == chunk["raw_hex"] and hashlib.sha256(value).hexdigest() == chunk["sha256"],
+                  "function raw chunk differs from original PE")
+            counts["chunk_bytes"] += len(value)
+        for instruction in body["assembly"]:
+            value = bytes.fromhex(instruction["bytes"])
+            check(value == read(int(instruction["rva"], 0), len(value)), "instruction differs from original PE")
+            counts["instructions"] += 1
+        text = "\n".join(line["text"] for line in body["pseudocode"]["lines"])
+        if re.search(r'qword_14000B3F8\s*\+\s*1264\)', text):
+            retrievers.append(hex(rva))
+        if rva in selected:
+            row = selected[rva]
+            check(row["role"] == roles[rva] and row["artifact"] ==
+                  {"path": path, "bytes": len(body_raw), "sha256": entry["sha256"]}
+                  and row["pseudocode_sha256"] == hashlib.sha256(text.encode()).hexdigest()
+                  and row["failures"] == entry["new_failures"] and not row["failures"]
+                  and row["pseudocode_captured"] is True and entry["pseudocode_captured"] is True,
+                  "selected complete owner identity or decompiler status differs")
+            functions[rva] = text
+    check(len(capture["functions"]) == 123 and retrievers == ["0x2650"], "captured retrieval consumer changed")
+    pins = {0xd000: ["sub_14000527C"], 0x527c: ["v10 = sub_1400041A0", "v15 = off_14000B018", "sub_1400046CC"],
+        0x46cc: ["*a1 = off_140009248"], 0x41a0: ["sub_1400058A8", "off_14000B018", "+ 8LL))(v3)"],
+        0x2010: ["sub_140005624", "sub_140002054", "a1[4] = 0"],
+        0x2054: ["a1[140] = 0", "+ 1360)", "+ 1664)"], 0x27e0: ["v36 = 96", "v37 = 3", "a1 + 1720", "v22 = *(_QWORD *)(a1 + 32)", "v34 = v22", "a1 + 1712", "v40 = (__int64)sub_140004140", "LODWORD(v41) = 0", "BYTE4(v41) = 0"],
+        0x3914: ["-10000", "+ 2248)", "a1 + 1720", "+ 2104)"],
+        0x2650: ["a1 + 1720", "+ 1264)", "+ 2160)", "+ 2120)", "*(_BYTE *)(a1 + 1728) = 0"],
+        0x4140: ["+ 2568)", "off_14000B018", "sub_140002650"],
+        0x5f74: ["v43 = v30", "v59 = 3", "v17 + 16", "v59 = 0x200000002LL"],
+        0x6b60: ["case 0xB000Bu:", "*(_QWORD *)(v10 + 16)", "+ 2248)"]}
+    for rva, required in pins.items():
+        check(all(pin in functions[rva] for pin in required), "source lifecycle owner contract differs: " + hex(rva))
+    check(document["platform_contract"]["path"] ==
+          ".analysis/inputs/platform-abi-current/wdf-kmdf-1.15/acquisition.json", "platform contract owner changed")
+    platform = json.loads(artifact(document["platform_contract"]))
+    check(platform["version"] == "KMDF 1.15" and platform["target_execution"] is False,
+          "platform ABI version changed")
+    declarations = 0
+    for row in platform["files"]:
+        value = artifact(row)
+        if row["path"].endswith("/headers/wdffuncenum.h"):
+            text = value.decode("utf-8-sig")
+            for name, index in {"WdfDeviceCreate": 75, "WdfIoQueueCreate": 152,
+                    "WdfIoQueueRetrieveNextRequest": 158, "WdfRequestForwardToIoQueue": 281,
+                    "WdfRequestComplete": 263, "WdfRequestCompleteWithInformation": 265,
+                    "WdfRequestRetrieveOutputBuffer": 270, "WdfTimerCreate": 318,
+                    "WdfTimerStart": 319, "WdfTimerGetParentObject": 321}.items():
+                check(re.search(r'\b' + name + r'TableIndex\s*=\s*' + str(index) + r'\s*,', text),
+                      "platform function table index changed: " + name)
+        lines = value.decode("utf-8-sig").splitlines(keepends=True)
+        for declaration in row["declarations"]:
+            start, end = declaration["line_start"], declaration["line_end"]
+            check(1 <= start <= end <= len(lines) and hashlib.sha256("".join(lines[start - 1:end]).encode()).hexdigest()
+                  == declaration["sha256"], "platform declaration bytes changed")
+            declarations += 1
+    check(declarations == 25, "platform declaration coverage changed")
+    if audit.final_snapshot():
+        raise ValueError("Keyboard driver lifecycle evidence changed during verification")
+    return {"status": "verified_static", "all_functions": 123, "selected_functions": len(functions),
+            "request_retrievers": retrievers, "platform_declarations": declarations, **counts,
+            "target_execution": False, "runtime_acceptance": "unverified"}
+
+
+def collect_keyboard_driver_request_lifecycle():
+    package = "cd5c94cbe4cdb3a873671a8e328ac1c5ad3df3af266353b2359f7e5c48c4034f"
+    original = identity(a.ROOT / ".analysis/inputs/official-native-current/extracted" / package / "Drivers/x64/KB/RzDev_02b4.sys")
+    capture = verify_native_functions(original, keyboard_driver_lifecycle_roles())
+    functions = []
+    for row in capture["complete_selected_functions"]:
+        text = "\n".join(line["text"] for line in row["capture"]["pseudocode"]["lines"])
+        functions.append({"role": row["role"], "rva": row["capture"]["rva"], "artifact": row["artifact"],
+            "pseudocode_sha256": hashlib.sha256(text.encode()).hexdigest(), "failures": row["failures"],
+            "pseudocode_captured": row["pseudocode_captured"]})
+    document = {"schema_version": 1, "product_id": 691, "hardware_pid": 692,
+        "scope": "02b4 physical/virtual queued READ, KMDF binding, parent deletion and cleanup only",
+        "tool": identity(Path(__file__)), "semantics": keyboard_driver_lifecycle_semantics(),
+        "provenance": {"acquisition": identity(a.ROOT / ".analysis/inputs/official-native-current/acquisition.json"),
+            "manifest": identity(a.ROOT / ".analysis/inputs/official-native-current/manifests/5a4be4dd242682b12825839af3b3440903975f5c1631597de39f5f2b49733421/manifest.json"),
+            "container": identity(a.ROOT / ".analysis/inputs/official-native-current/blobs" / package / "PID02b4Drv_v23.0.0.0.exe"),
+            "package_inspection": identity(a.ROOT / ".analysis/results/native-packages" / package / "inspection.json")},
+        "native": {"input": original, "capture_receipt": capture["capture_receipt"], "functions": functions},
+        "platform_contract": identity(a.ROOT / ".analysis/inputs/platform-abi-current/wdf-kmdf-1.15/acquisition.json"),
+        "abi": keyboard_driver_abi_bytes((a.ROOT / original["path"]).read_bytes())[0],
+        "rust_implementation": "unverified", "ui_backend_wiring": "unverified", "official_dll_comparison": "unverified",
+        "runtime_acceptance": "unverified", "target_execution": False}
+    document["verification"] = verify_keyboard_driver_request_lifecycle(document)
+    return document
+
+
+def negative_keyboard_driver_request_lifecycle(document):
+    import copy
+    verify_keyboard_driver_request_lifecycle(document)
+    mutations = (("hardware_pid_as_product", lambda value: value.update(product_id=692)),
+        ("control_cleanup_as_physical_owner", lambda value: value["semantics"].update(physical_cleanup_rva="0x1fc0")),
+        ("virtual_queue_as_sample_consumer", lambda value: value["semantics"].update(virtual_queue_has_captured_sample_consumer=True)),
+        ("timer_as_timeout", lambda value: value["semantics"].update(timer_is_request_timeout=True)),
+        ("parent_cleanup_wrong_slot", lambda value: value["abi"].update(cleanup_target_rva="0x1fc0")),
+        ("selected_owner_omitted", lambda value: value["native"]["functions"].pop()),
+        ("owner_body_identity_changed", lambda value: value["native"]["functions"][0].update(pseudocode_sha256="0" * 64)),
+        ("binding_version_changed", lambda value: value["abi"].update(version=[1, 33, 0])),
+        ("runtime_promoted", lambda value: value.update(runtime_acceptance="verified")))
+    failures = []
+    for name, mutate in mutations:
+        candidate = copy.deepcopy(document)
+        mutate(candidate)
+        try:
+            verify_keyboard_driver_request_lifecycle(candidate)
+        except ValueError as error:
+            failures.append({"case": name, "rejected": True, "reason": str(error)})
+        else:
+            raise ValueError("Keyboard driver negative control was accepted: " + name)
+    return {"negative_controls": failures, "target_execution": False}
+
+
+def audit_keyboard_driver_request_lifecycle(args):
+    if args.family != "keyboard" or args.function != "mw" or getattr(args, "product", None) not in (None, [691]):
+        raise ValueError("keyboard-driver-request-lifecycle selects product 691; hardware PID 692 is not a product alias")
+    mode = getattr(args, "native_driver_lifecycle", None) or "capture"
+    if mode not in {"capture", "check", "negative"}:
+        raise ValueError("Unknown keyboard driver lifecycle audit mode")
+    path = a.ROOT / ".analysis/results/frontend/keyboard-mw-audit.json"
+    if mode in ("check", "negative"):
+        query = json.loads(path.read_bytes())["queries"]["driver_request_lifecycle"]
+        result = (verify_keyboard_driver_request_lifecycle(query) if mode == "check" else
+                  negative_keyboard_driver_request_lifecycle(query))
+        print(json.dumps(result), flush=True)
+        return result
+    result = collect_keyboard_driver_request_lifecycle()
+    result["negative_verification"] = negative_keyboard_driver_request_lifecycle(result)
+    with a.index_lock():
+        report = json.loads(path.read_bytes())
+        report.setdefault("queries", {})["driver_request_lifecycle"] = result
+        a.save(path, report)
+    print(json.dumps({"receipt": a.rel(path), "query": "driver_request_lifecycle",
+        "selected_functions": len(result["native"]["functions"]), "verification": result["verification"]}), flush=True)
+    return result
+
+
+def keyboard_gamepad_metadata_revalidation(audit, query, result):
+    """Revalidate selected unchanged originals before renewing capture metadata."""
+    import copy
+    selected = {row["product_id"] for row in result.get("products", [])}
+    names = {f"keyboard-{middle}{pid}-current" for pid in selected for middle in ("", "mw-")}
+    if not selected or selected - {678, 688}:
+        raise ValueError("Keyboard metadata renewal is outside selected non-FW products")
+    old_sets = {row["name"]: row for row in query.get("source_sets", [])}
+    new_sets = {row["name"]: row for row in result.get("source_sets", [])}
+    if set(new_sets) != names or len(new_sets) != len(result.get("source_sets", [])):
+        raise ValueError("Keyboard metadata renewal includes a nonselected source set")
+    old_artifacts = {row["path"]: row for row in query.get("verified_artifacts", [])}
+    new_artifacts = {row["path"]: row for row in result.get("verified_artifacts", [])}
+    differences = {path for path in old_artifacts.keys() & new_artifacts.keys()
+                   if old_artifacts[path] != new_artifacts[path]}
+    metadata = {row[field]["path"]: (name, field) for name, row in new_sets.items()
+                for field in ("acquisition", "capture") if row.get(field)}
+    if not differences or differences - metadata.keys():
+        raise ValueError("Keyboard metadata renewal cannot replace original bytes")
+    reviews, verified_paths = [], set()
+    for name in sorted({metadata[path][0] for path in differences}):
+        previous = old_sets.get(name)
+        current = new_sets[name]
+        if previous is None:
+            raise ValueError("Keyboard metadata renewal has no exact predecessor source set")
+        actual, originals = audit.source_set(name)
+        if actual != current:
+            raise ValueError("Keyboard metadata renewal differs from verified current acquisition")
+        mutable = {"acquisition", "capture", "capture_failures", "deployment"}
+        if ({key: value for key, value in previous.items() if key not in mutable}
+                != {key: value for key, value in current.items() if key not in mutable}):
+            raise ValueError("Keyboard metadata renewal changed acquisition observations")
+        deployment = current["deployment"]
+        if any(deployment.get(key) != value for key, value in previous["deployment"].items()):
+            raise ValueError("Keyboard metadata renewal changed predecessor original deployment")
+        additions = set(deployment) - previous["deployment"].keys()
+        if additions - {"entry_is_html", "inlined_manifest_entrypoints", "inline_entrypoint_comparisons"}:
+            raise ValueError("Keyboard metadata renewal has unreviewed deployment additions")
+        if ("entry_is_html" in additions and deployment["entry_is_html"] is not True
+                or any(deployment[key] != [] for key in additions - {"entry_is_html"})):
+            raise ValueError("Keyboard metadata renewal added an unreviewed inline entrypoint")
+        original_paths = {row["path"] for row in originals}
+        for item in previous["deployment"]["sources"]:
+            if item.get("identity_verified"):
+                audit.read(item["original"])
+                original_paths.add(item["original"]["path"])
+        owners = []
+        for owner in query.get("complete_owners", []):
+            if owner.get("original", {}).get("path") not in original_paths:
+                continue
+            audit.read(owner["original"])
+            owner_id = audit.retain_range("gamepad_predecessor_revalidation", owner["original"],
+                owner["byte_start"], owner["byte_end"], owner["syntax"])
+            actual_owner = audit.owners[owner_id]
+            if ({key: value for key, value in actual_owner.items() if key != "roles"}
+                    != {key: value for key, value in owner.items() if key != "roles"}):
+                raise ValueError("Keyboard metadata renewal changed predecessor complete owner")
+            owners.append(owner_id)
+        capture = audit.frontend_capture(name, originals)
+        if capture["manifest"] != current["capture"]:
+            raise ValueError("Keyboard metadata renewal capture has a different source owner")
+        transitions = []
+        for field in ("acquisition", "capture"):
+            old, new = previous[field], current[field]
+            if old != new:
+                if (old_artifacts.get(old["path"]) != old or new_artifacts.get(new["path"]) != new
+                        or old["path"] != new["path"]):
+                    raise ValueError("Keyboard metadata renewal has inconsistent predecessor identity")
+                transitions.append({"field": field, "previous": old, "current": new})
+                verified_paths.add(new["path"])
+        canonical = json.dumps(previous, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+        reviews.append({"source_set": name, "previous_source_set_sha256": hashlib.sha256(canonical).hexdigest(),
+            "metadata_transitions": transitions, "previous_capture_failures": copy.deepcopy(previous["capture_failures"]),
+            "current_capture": capture, "previous_complete_owners_revalidated": owners,
+            "deployment_originals_unchanged": True, "target_execution": False})
+    if verified_paths != differences:
+        raise ValueError("Keyboard metadata renewal did not cover every metadata difference")
+    if audit.final_snapshot():
+        raise ValueError("Keyboard metadata renewal evidence changed during verification")
+    return {"selected_products": sorted(selected), "strict_publication_rejection": {
+        "error": "Keyboard gamepad verified artifact identity changed", "rejected_paths": sorted(differences),
+        "document_written": False}, "source_sets": reviews, "target_execution": False}
+
+
+def merge_keyboard_gamepad_tester_query(document, result, audit=None):
+    """Publish selected product evidence while preserving other retained reviews."""
+    import copy
+    merged = copy.deepcopy(document)
+    query = merged.setdefault("queries", {}).setdefault("gamepad_tester", {})
+    old_artifacts = {row["path"]: row for row in query.get("verified_artifacts", [])}
+    differences = {row["path"] for row in result.get("verified_artifacts", [])
+                   if row["path"] in old_artifacts and row != old_artifacts[row["path"]]}
+    renewal = None
+    if differences:
+        if audit is None:
+            raise ValueError("Keyboard gamepad verified artifact identity changed")
+        renewal = keyboard_gamepad_metadata_revalidation(audit, query, result)
+    for field, key in (("products", "product_id"), ("source_sets", "name"),
+                       ("complete_owners", "id"), ("verified_artifacts", "path")):
+        old, new = query.get(field, []), result.get(field, [])
+        if len({row[key] for row in old}) != len(old) or len({row[key] for row in new}) != len(new):
+            raise ValueError("Keyboard gamepad query repeats " + field + " identities")
+        indexed = {row[key]: row for row in old}
+        for row in copy.deepcopy(new):
+            previous = indexed.get(row[key])
+            if previous is not None and field == "complete_owners":
+                if {k: v for k, v in previous.items() if k != "roles"} != {k: v for k, v in row.items() if k != "roles"}:
+                    raise ValueError("Keyboard gamepad complete owner identity changed")
+                row["roles"] = list(dict.fromkeys([*previous.get("roles", []), *row.get("roles", [])]))
+            elif previous is not None and field == "verified_artifacts" and previous != row and row[key] not in differences:
+                raise ValueError("Keyboard gamepad verified artifact identity changed")
+            indexed[row[key]] = row
+        query[field] = list(indexed.values())
+    for key, value in result.items():
+        if key not in {"products", "source_sets", "complete_owners", "verified_artifacts"}:
+            query[key] = copy.deepcopy(value)
+    if renewal is not None:
+        query["non_firmware_metadata_revalidation"] = renewal
+    document.clear()
+    document.update(merged)
+    return document["queries"]["gamepad_tester"]
+
+
 def audit_keyboard_gamepad_tester(args):
     """Retain actual tester consumers separately from output/FW implementation."""
     import host
-    if args.family != "keyboard" or args.function != "mw" or args.product not in (None, [679]):
-        raise ValueError("keyboard-gamepad-tester requires current keyboard middleware (implemented PID679)")
+    if (args.family != "keyboard" or args.function != "mw"
+            or args.product is not None and (not args.product or len(set(args.product)) != len(args.product)
+                                             or set(args.product) - {678, 679, 688})):
+        raise ValueError("keyboard-gamepad-tester requires current keyboard middleware (select 678/679/688)")
     audit = host.HostLocalAudit()
-    products = [678, 679, 688, 719, 720, 721, 728, 740, 741, 742, 746, 756]
+    products = args.product or [678, 679, 688, 719, 720, 721, 728, 740, 741, 742, 746, 756]
     branches, sets, selected = [], [], {}
     for pid in products:
         row = {"product_id": pid, "owners": {}, "rust_consumer": "implemented" if pid == 679 else "incomplete"}
+        product_files = {}
         for layer in ("ui", "mw"):
             name = f"keyboard-{'mw-' if layer == 'mw' else ''}{pid}-current"
             source_set, files = audit.source_set(name)
             if source_set["deployment"]["failures"]:
                 raise ValueError("Gamepad tester current source selection failed: " + name)
             sets.append(source_set)
+            product_files[layer] = files
             if pid == 679:
                 selected[layer] = files
                 row[layer + "_capture"] = audit.frontend_capture(name, files)
@@ -25515,11 +29437,30 @@ def audit_keyboard_gamepad_tester(args):
                     raise ValueError("Gamepad tester middleware entry is unresolved")
                 row["middleware_main"] = main[0]
                 row["firmware_analog_mapping"] = b'isFWAnalogMapping:!0' in audit.read(main[0])
+        if pid in (678, 688):
+            row["non_firmware_mapping_review"] = keyboard_non_firmware_gamepad_sources(audit, pid,
+                product_files["ui"], product_files["mw"], row["owners"]["tester"])
         row["remaining_local_chains"] = (["Real device output delivery and actual tester window acceptance remain unverified"] if pid == 679 else [
             "Firmware-controller input and in-view interval5 lifecycle require independent wiring"
             if row["firmware_analog_mapping"] else
-            "This product still requires its mapping document compiler/owner and tester wiring"])
+            "Independent Rust mapping document compiler and tester wiring, tests, actual DLL/device output and UI acceptance remain incomplete"])
         branches.append(row)
+    if 679 not in products:
+        changed = audit.final_snapshot()
+        if changed:
+            raise ValueError("Gamepad tester evidence changed during audit: " + str(changed))
+        result = {"non_firmware_collector": identity(Path(__file__)), "parser_versions": audit.parser_versions,
+            "products": branches, "source_sets": sets, "complete_owners": list(audit.owners.values()),
+            "verified_artifacts": list(audit.artifacts.values()), "target_execution": False,
+            "runtime_acceptance": "unverified", "whole_page_complete": False}
+        path = a.ROOT / ".analysis/results/frontend/keyboard-mw-audit.json"
+        with a.index_lock():
+            document = json.loads(path.read_bytes())
+            merge_keyboard_gamepad_tester_query(document, result, audit)
+            a.save(path, document)
+        print(json.dumps({"receipt": a.rel(path), "query": "gamepad_tester", "products": products,
+                          "complete_owners": len(audit.owners), "target_execution": False}), flush=True)
+        return result
     files = selected["mw"]
     exports = {name: audit.webpack_export("gamepad_" + name, files, 14486, export)
                for name, export in (("register_events", "Y$"), ("register_interval", "q6"), ("unregister", "XC"))}
@@ -25559,7 +29500,7 @@ def audit_keyboard_gamepad_tester(args):
     path = a.ROOT / ".analysis/results/frontend/keyboard-mw-audit.json"
     with a.index_lock():
         document = json.loads(path.read_bytes()) if path.is_file() else {"schema_version": 1}
-        document.setdefault("queries", {})["gamepad_tester"] = result
+        merge_keyboard_gamepad_tester_query(document, result)
         a.save(path, document)
     print(json.dumps({"receipt": a.rel(path), "query": "gamepad_tester", "products": products,
                       "complete_owners": len(audit.owners), "target_execution": False}), flush=True)
@@ -25582,9 +29523,13 @@ def add_commands(parsers):
     audit.add_argument("--product", type=int, action="append")
     audit.add_argument("--workers", type=int, choices=range(2, 17), default=4,
                        help="bounded worker threads for independent product audits")
-    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-local-profile-schema", "mouse-dpi-matcher", "mouse-dynamic-sensitivity", "mouse-rotation", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-receiver-mapping", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-gamepad-tester", "keyboard-local-controls", "keyboard-local-profile-adoption", "keyboard-wireless-power", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "gamepad-lighting-selection", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-local-profiles", "hue-profile-actions", "accessory-text-inputs", "audio-preset-inputs", "chroma-text-inputs", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "camera-legacy-selection", "camera-legacy-native-properties", "camera-properties-lifecycle", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
+    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-local-profile-schema", "mouse-dpi-matcher", "mouse-input-monitoring", "mouse-dynamic-sensitivity", "mouse-rotation", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-receiver-mapping", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-gamepad-tester", "keyboard-driver-request-lifecycle", "driver-install-selection", "keyboard-local-controls", "keyboard-local-profile-adoption", "keyboard-wireless-power", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "gamepad-lighting-selection", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-local-profiles", "hue-profile-actions", "accessory-text-inputs", "audio-preset-inputs", "chroma-text-inputs", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "camera-legacy-selection", "camera-legacy-native-properties", "camera-properties-lifecycle", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
     audit.add_argument("--prepare", action="store_true", help="Prepare verified current artwork resources through the shared workflow")
     audit.add_argument("--receipt-only", action="store_true", help="Refresh supported mouse or mapping-engine evidence without rewriting runtime descriptors")
+    audit.add_argument("--native-driver-lifecycle", choices=["capture", "check", "negative"],
+                       help="Capture or independently verify product 691 driver request ownership; hardware PID 692 is not an alias")
+    audit.add_argument("--native-install-selection", choices=["capture", "check", "negative"],
+                       help="Recheck all current manifest consumers of the shared 006A installer without execution")
     audit.add_argument("--semantic-review", help="Incrementally publish a hash-addressed reviewed frontend slice into its existing canonical audit")
     audit.add_argument("--semantic-review-sha256", help="Exact SHA-256 of the complete independently reviewed semantic slice")
     audio_native = audit.add_mutually_exclusive_group()
@@ -25592,6 +29537,10 @@ def add_commands(parsers):
                               help="Update or independently verify only the audio-surround native client branch field")
     audio_native.add_argument("--native-virtualizer-fir", choices=["capture", "check", "negative"],
                               help="Update or independently verify only the active 1442 audio-surround FIR continuation field")
+    audio_native.add_argument("--native-vad-lifecycle", choices=["capture", "check", "negative"],
+                              help="Update or independently verify the retained 3942 VAD thread and resource lifecycle slice")
+    audio_native.add_argument("--native-vad-kernel-batch", choices=["capture", "check", "negative"],
+                              help="Verify both exact 1442/3942 kernel event builds and their distinct package/event identities in one batch")
     parser = parsers.add_parser("acquire-family", help=__doc__)
     parser.add_argument("--family", required=True, choices=[*FAMILY_CANDIDATES, "all"])
     parser.add_argument("--layer", choices=["ui", "mw", "both"], default="ui")

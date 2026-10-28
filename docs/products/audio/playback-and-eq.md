@@ -272,13 +272,13 @@ Time Alignment 控件为 -100 至 +100、步长 1，标签是毫秒；native wra
 
 三份当前 FFI 配置均为逐字节相同的 67＋4 分组，未绑定这 102 项 CTC／Virtualizer／Spatial／Bass API；所选 wrapper 也没有这些同名导出。1392 wrapper 缺少第二组四个 Monitor 导出，完整 `initElectron` 在配置结果为 false 时会移除该组重试；不能把第二组的缺失直接写作整份初始化必然失败，也不能将存在于 client 的未绑定导出补成页面功能。原件中实际使用的 combo、音量与 EQ 链继续按各自调用方追踪。
 
-1442 的 [完整 JSON getter](../../../.analysis/results/native/b84535e588da1582ef1938b41d58d272baf88f37d9b76db1a89d970aa6c66802/functions/1f5f0.json)先检查目标 buffer、长度输出指针及正容量，无效时返回 4；实例 gate 阻断、无 owner、未知 selector 或空 JSON 走返回 1。取得非空 JSON 后先输出不含终止符的长度；在正 int32 可表示的长度范围内，只有容量严格大于该长度才复制并追加 NUL、返回 0，容量等于长度也返回 5 且不复制。实际指令以低 32 位输出长度并作有符号容量比较，复制仍使用完整 size_t，超大字符串的宽度边界须另测。该结果是所选 client 的读取契约，不能提升为硬件观测。FIR 的内部返回及回调也不能直接充当 DSP／设备 ACK。
+1442 的 [完整 JSON getter](../../../.analysis/results/native/b84535e588da1582ef1938b41d58d272baf88f37d9b76db1a89d970aa6c66802/functions/1f5f0.json)先检查目标 buffer、长度输出指针及正容量，无效时返回 4；实例 gate 阻断、无 owner、未知 selector 或空 JSON 走返回 1。取得非空 JSON 后先输出不含终止符的长度；在正 int32 可表示的长度范围内，只有容量严格大于该长度才复制并追加 NUL、返回 0，容量等于长度也返回 5 且不复制。实际指令以低 32 位输出长度并作有符号容量比较，复制仍使用完整 size_t，下面单独记录极端宽度的静态谓词；实际超大分配结果尚未执行。该结果是所选 client 的读取契约，不能提升为硬件观测。FIR 的内部返回及回调也不能直接充当 DSP／设备 ACK。
 
 3942 的上述 [FIR setter](../../../.analysis/results/native/9779234a43451b4500d4a4fe51a6b9e5750924ffb7facf499ce7a071cf7cc336/functions/20b40.json)、[JSON setter](../../../.analysis/results/native/9779234a43451b4500d4a4fe51a6b9e5750924ffb7facf499ce7a071cf7cc336/functions/20c40.json)与 [JSON getter](../../../.analysis/results/native/9779234a43451b4500d4a4fe51a6b9e5750924ffb7facf499ce7a071cf7cc336/functions/20240.json)没有处理调用参数、填充 getter 输出或调用 FIR 结果回调。这只界定这些导出的正常返回路径，不取消下文六支服务状态、默认 FIR、数据库与通知链，也不证明整个 client、服务或所有 DSP 均无实现。本节未执行官方 DLL；三款实际结果、初始化、错误与完整释放仍须分别对照。
 
 #### 1442 的活动 FIR、IPC 状态与 DSP 配置边界
 
-[1442 活动链收据](../../../.analysis/results/frontend/audio-surround-audit.json#/native_virtualizer_fir_1442)单独绑定该产品当前 manifest、client 和服务包；服务原件经过七层实际提取／嵌入关系追到 manifest 声明的包。复用两份完整静态捕获，在 client 9,731 个、服务 14,088 个函数中选取 79＋26 个完整函数继续分析；本片共 14,427 条指令、61,540 字节 raw chunks、9 个实际虚表槽和 44 条直接调用／跳转绑定，70 字节保留为未枚举范围。禁用 collector 与原生收集助手后的独立复核通过，43 个原件、来源、函数、虚表与语义篡改反例全部被拒绝。另有 33 个维护工具纯测试通过，新增测试仅验证描述符解析和 PE 字节范围；这些数量均不表示 FIR 功能或实际 DLL 对照通过，也不与其他切片直接相加。
+[1442 活动链收据](../../../.analysis/results/frontend/audio-surround-audit.json#/native_virtualizer_fir_1442)单独绑定该产品当前 manifest、client 和服务包；服务原件经过七层实际提取／嵌入关系追到 manifest 声明的包。复用两份完整静态捕获，在 client 9,731 个、服务 14,088 个函数中选取 107＋26 个完整函数继续分析；本片共 15,944 条指令、67,472 字节 raw chunks、9 个实际虚表槽和 44 条直接调用／跳转绑定，91 字节保留为未枚举范围。禁用 collector、原生收集助手与新增元数据／worker collector 后的独立复核通过，82 个原件、来源、函数、虚表、宽度及回调异常篡改反例全部被拒绝。新增八项纯测试核对无 C++ handler、GS handler、链式 unwind、FH4 整数、worker guard／noexcept 与异常数据拒错；这些数量均不表示 FIR 功能或实际 DLL 对照通过，也不与其他切片直接相加。
 
 FIR setter 的 [内部实现 `0x3c0e0`](../../../.analysis/results/native/b84535e588da1582ef1938b41d58d272baf88f37d9b76db1a89d970aa6c66802/functions/3c0e0.json)接收 selector、NUL 结尾的名称、左右 f32 数组指针及各自的有符号元素数。名称只是复制到配置中的元数据，所选链没有按名称读取 FIR 文件。空名称指针、空数组指针、非正长度或左右长度不同返回 4；实例 shutdown gate、无 owner 或未知 selector 返回 1。selector 0／1／2 分别更新 `GLOBAL` 的 Front／Side／Rear：深拷贝名称和两个数组，设置 changed，再将类型与 ID 的副本入队。不能把元素数当字节数。public setter 的伪代码将第三参误标为 `int`，实际汇编保留 R8 指针并传入内部 64 位参数；该伪原型不能直接用于执行 DLL，对照前仍须核实完整 ABI。
 
@@ -306,6 +306,40 @@ FIR setter 的 [内部实现 `0x3c0e0`](../../../.analysis/results/native/b84535
 服务 dispatcher `0x2853c0` 的三支 Virtualizer 请求进入各自 typed state 修改与回复函数。六个正常／初始化消费者分别读取 Front／Side／Rear 配置，调用 [解析器 `0x2cbb20`](../../../.analysis/results/native/169bef9718b1b9c32ad4bc1072baec51b6dd85b293ea834e292b939b28f3d82b/functions/2cbb20.json)，再调用 [DSP 配置器 `0x2d8d90`](../../../.analysis/results/native/169bef9718b1b9c32ad4bc1072baec51b6dd85b293ea834e292b939b28f3d82b/functions/2d8d90.json)。解析器最多转换六组 correction biquad，采样率为 48 kHz，仅对非零、等长且偶数的左右 FIR 拆半；缺数组时日志写 `using default filters`，这里只证明保留构造结果。配置器要求两行和正长度，按变化配置四个 FIR processor 与六组 biquad，可能返回 false；所选六个消费者均不使用该 bool。因此 client 本地复制、服务 committed state、DSP 配置接受与最终 PCM／设备效果必须分别保存，服务状态回复不能冒充 DSP 成功。
 
 正常清理已追到字符串／数组的状态所有权、排队 lambda 释放复制 ID、shutdown gate 与共享引用释放，以及队列 stop、signal、join 后销毁 map／mutex。公开 setter 未提供逐操作取消令牌或取消确认通道。下面继续记录同一 1442 服务 build 的 observer、音频 worker 与 PCM 消费者；这些静态结果不扩展上述收据的功能验证范围。
+
+##### 1442 client 的长度宽度、回调重入与异常解锁
+
+此段使用同一 client SHA 的完整函数及原 PE 数据，接入既有[活动链收据的独立边界](../../../.analysis/results/frontend/audio-surround-audit.json#/native_virtualizer_fir_1442/client_width_and_callback_boundary)。原有函数与新增的 mutex／CRT／FH4 所有者均完整保留；元数据单独核对注册的三条 runtime-function、直接 setter 与通知各一条，以及十个数据区。静态指令、异常 guard 和返回条件与实际分配、回调执行及 DSP 验收分开记录。
+
+令 `S` 为非空 JSON 的完整 size_t 字节数，`C` 为已通过 `C > 0` 检查的 int32 容量。`0x1f737` 先将 `S` 的低 32 位写入长度输出；`0x1f73a → 0x1f73c` 以**有符号** `C > int32(S mod 2^32)` 决定复制，`0x1f78b` 的复制长度与 `0x1f7a1` 的终止符偏移仍为完整 `S`。早期返回 4／1 不写长度；容量不足返回 5 时长度已经更新，但目标正文不复制。所选函数没有检查 `S <= INT_MAX`，不能将以下边界解释为明确的超长拒绝：
+
+| `S`／容量边界 | 取得非空 JSON 后的静态路径 |
+| --- | --- |
+| `0 < S <= INT_MAX`，`C == S` | 返回 5；长度输出为 `S`，不复制正文 |
+| `S == 0x80000000`，任意正 `C` | 有符号比较通过，尝试复制完整 `S` 并在偏移 `S` 写 NUL |
+| `S == 0xffffffff`，任意正 `C` | 长度输出为 `0xffffffff`；比较按 `-1` 通过，复制仍用完整 `S` |
+| `S == 0x100000000`，任意正 `C` | 长度输出为 0；`S` 非空，因此继续尝试完整复制 |
+| `S == 0x100000001`，`C == 1／2` | 分别返回 5／进入完整复制分支，不能用截断长度分配目标 |
+
+内部 FIR 标签读取也没有通用容量校验。[`0x3a9d0`](../../../.analysis/results/native/b84535e588da1582ef1938b41d58d272baf88f37d9b76db1a89d970aa6c66802/functions/3a9d0.json)只检查标签指针，随后三支 [`0x61c90`](../../../.analysis/results/native/b84535e588da1582ef1938b41d58d272baf88f37d9b76db1a89d970aa6c66802/functions/61c90.json)／`0x61eb0`／`0x620d0` 先 `movsxd` 容量、做 64 位减一，再以 `cmovb` 取无符号较小值。已有 typed state、有效指针且复制成功时，实际复制长度为 `min(name.size(), size_t(int64(C)-1))`；`C == 1` 只在目标起始写 NUL，`C <= 0` 的无符号上界反而很大，会复制完整标签再写 NUL。它不返回“容量不足”；未知 selector 或缺 typed state 仍可返回 0，且不改标签／计数。公开注册与通知的实际调用点分别固定传 1,024／256，直接 setter 回调则借用调用者原名称指针。上述非正容量分支属于内部契约，不能据此宣称现有公开调用必然触发越界；本轮未执行这些异常输入。
+
+回调的共享 mutex 位于 client RVA `0x298680`。[构造 `0x1540`](../../../.analysis/results/native/b84535e588da1582ef1938b41d58d272baf88f37d9b76db1a89d970aa6c66802/functions/1540.json)明确以 type=2 调用 `0x1937fc`；[`_Mtx_lock → mtx_do_lock`，`0x19382c → 0x1935f8`](../../../.analysis/results/native/b84535e588da1582ef1938b41d58d272baf88f37d9b76db1a89d970aa6c66802/functions/1935f8.json)在同线程再次取得该 mutex 时恢复递归计数并返回 3。调用方继而经 `0x19329c → 0x1932d8` 抛 `std::system_error`，原错误表的第 0 项为 code 16、`device or resource busy`。因此回调中重入同一注册／注销入口不会被当作成功注销；重入 FIR setter 则可能已完成本地配置复制与排队，之后才在取回调锁时抛异常，不能补称自动撤销该修改。
+
+三条回调入口的异常清理不同。直接 FIR setter `0x1fa50` 的 runtime-function 指向 `0x25c0b4`，UNWIND_INFO flags=0，没有本函数的 C++ unlock action；注册 `0x1f3b0` 的三条范围经 `0x25eb84／0x25eb98／0x25ebb8` 链到 `0x196138`，后者仅为 GS cookie handler。因此异常从其回调／锁内分配越出时，所核函数不会执行正常路径末尾的 `_Mtx_unlock`，也不把异常转换成返回 0。
+
+通知 `0x1fb00` 则经 `0x25ec08 → 0x1961b4 → 0x197714` 进入 FH4。FuncInfo `0x25ec2c` 的 header=`0x28`，没有 TryBlockMap；唯一 unwind state 的 action 为 `0x227d0`，作用于 frame+32 保存的 lock guard，进入 `Mtx_unlock(*guard)`。IP map 在 `0x1fb72` 至 `0x1fced` 的各个回调调用处保持 state 0。它提供适用 C++ unwind 时的解锁 action，却没有本地吞掉异常并继续通知的 catch；外层 noexcept 的搜索阶段终止仍可能阻止实际展开，不能仅凭 guard 存在承诺一定完成释放。下面继续界定实际队列外层；SEH、回调自身捕获／再次进入、跨线程交错及实际执行结果仍需各自验证，本段不将静态异常路径提升为运行安全或已发生崩溃。
+
+##### 1442 client 通知队列的异常消费者
+
+[通知 worker 边界](../../../.analysis/results/frontend/audio-surround-audit.json#/native_virtualizer_fir_1442/client_notification_worker_boundary)沿同一 client 继续绑定七条 runtime-function、七个 FH4 根与各自完整函数。`StateManager` 构造 [`0x77d00`](../../../.analysis/results/native/b84535e588da1582ef1938b41d58d272baf88f37d9b76db1a89d970aa6c66802/functions/77d00.json)将 owner 与 `0x78380` 放入线程参数，经 `_beginthreadex` 交给桥 [`0x87cd0`](../../../.analysis/results/native/b84535e588da1582ef1938b41d58d272baf88f37d9b76db1a89d970aa6c66802/functions/87cd0.json)。后者先调用参数中的 worker；只有正常返回后才广播 thread-exit condition、释放该参数并返回零。不能将正常尾部释放写成回调异常时也已执行。
+
+[`0x78380`](../../../.analysis/results/native/b84535e588da1582ef1938b41d58d272baf88f37d9b76db1a89d970aa6c66802/functions/78380.json)在 +128 mutex 下等待、移走队头 callable，再解锁并 invoke；stop 置位后仍等队列为空才退出。它的 FuncInfo=`0x265894`、header=`0x28`，唯一 unwind action `0x15de0` 释放局部 callable，没有 TryBlockMap、业务重试或把失败转成成功的消费者。队列 lambda `0x73a50` 在 +80 的 observer SRW 独占锁内枚举并调用 observer，FH4 action `0x21d20` 负责适用展开时的解锁。所核 worker 并未在 observer 调用前释放此 SRW 锁。
+
+Front／Side／Rear 的 `0x51500／0x51490／0x51420` 又在第二把 mutex `0x298730` 内调用 `0x1fb00`。构造 `0x18a0` 同样明确使用 type=2；三支的单一 FH4 action 均为 `0x227d0`，作用于 frame+64 的 guard。它们释放的是第二把 mutex，`0x1fb00` 的 frame+32 guard 则释放 `0x298680`，不能将两层回调锁或 observer SRW 锁合并成一把。七份 IP-to-state 表保留每个真实调用点的状态，未根据伪代码中的 lock/unlock 文本猜测异常范围。
+
+线程桥 `0x87cd0` 的 FuncInfo=`0x2666f4`、header=`0x60`，没有 UnwindMap／TryBlockMap。该 build 的实际 `0x197714 → 0x19a950 → 0x199a90` 消费 NoExcept 的 `0x40` 位；适用 C++ 异常越出该边界且不在本地 catch 时进入 [`0x1a83a4`](../../../.analysis/results/native/b84535e588da1582ef1938b41d58d272baf88f37d9b76db1a89d970aa6c66802/functions/1a83a4.json)，调用已装的终止处理器并进入 abort。该判断发生在异常搜索路径，因此前述 mutex／SRW／callable guard 的存在**不保证终止前一定执行全部 unwind**，不能报告“解锁后 worker 自动继续”。此结果也不代表任何真实 callback 已经抛出异常或发生崩溃。
+
+正常停止仍进入 `0x77c20`：置 +296 stop、signal +208，检查 self-join 与 `Thrd_join` 结果，成功后才继续销毁线程、队列及状态。它自身的 FuncInfo=`0x26579c`、header=`0x60`，因此 self-join／join 失败抛出的异常不能被记成成功停止或完整清理。实际回调调度、失败注入、跨线程取消／重连、SEH、进程终止时的资源结果与 DLL／设备功能对照仍未执行；静态闭合仅限上述明确所有者与异常消费者。
 
 ##### 1442 的 observer、PCM 顺序与配置切换
 
@@ -659,7 +693,35 @@ get-frame `0xcf54600c` 接收 4 字节输入，输出 245,784 字节：24 字节
 
 GlobalEQ 的实际 prepare 槽 `0x16d90` 是 no-op，处理槽 `0x856d0 → 0x88cf0` 另行消费动态 filters。重采样为八个独立单通道 SOXR 对象，capacity 按 `target/input × max(block,7680)+32`，recipe=3、flags=`0xA`、phase=50、passband=0.881、stopband=1.089；运行参数为 threads=1、DFT 8／8、coef_size_kbytes=400、flags=0。处理错误仅记录日志并继续其余通道，返回最后通道的 output count，不校验通道间一致，也不返回内部 ring 实际夹限后的数量。环境、分派与预热由下节独立切片继续核对。
 
-正常 upstream 析构先发停止 event、join，再 disable 和销毁重采样／ring／DSP；driver unload 与 stream destructor 的 event、timer、DPC 和 buffer 清理有独立路径。服务 event／frame／flush 失败的提前返回可能绕过 worker 正常 CloseHandle；完整 driver handle、shutdown event、VirtualUnlock 和调度注册恢复尚未闭合，不能从正常析构推断全部失败均释放。
+正常 upstream 析构先发停止 event、join，再 disable 和销毁重采样／ring／DSP；driver unload 与 stream destructor 的 event、timer、DPC 和 buffer 清理有独立路径。数据 event 的关闭取决于具体停止分支：阻塞等待收到停止信号也会绕过 CloseHandle，详见下节的原件字节与 FH4 核对；不能从析构先 join 推断所有退出路径均释放。
+
+### 3942 VAD 线程退出与资源所有权
+
+`native_vad_lifecycle_3942` 独立切片位于 [Surround 正式报告](../../../.analysis/results/frontend/audio-surround-audit.json)。服务部分复用当前 3942 完整捕获：44 个完整函数、2,116 条指令、9,151 字节 raw chunks（18 字节未枚举为指令）、4 个 runtime-function 记录、24 个 FH4 unwind states、10 个 FH4 数据区与 45 处指令锚点；同字段的 `kernel_event` 继续绑定共包驱动事件链，见下节。六层官方包来源逐字节绑定到服务原件，驱动另有一条同包 child edge；95 个篡改反例在禁用 service、metadata、kernel collector 及 native collector 后均被拒绝。该片与 1442 FIR 片使用不同产品与原件，不互相扩大完成度。
+
+worker `0x833f0` 先作一次 100 ms wait，仅在 `WAIT_TIMEOUT` 时将 availability `+246440` 清零，然后仍作无限 wait。无限 wait 返回零时，`0x83796 → 0x83ddb` 直接进入返回段，跳过 `0x83dd5` 的 data-event CloseHandle；非零返回，包括 `WAIT_FAILED`，进入 ResetEvent 并把 availability 设为一，不能据此当作真实 driver data 已就绪。只有初始／每帧后的零超时 shutdown poll 返回非 `WAIT_TIMEOUT` 时经过 CloseHandle，其返回值也未检查。event IOCTL 失败直接返回；flush／frame IOCTL 失败及正 flags 的 bit0 分支仅先 unlock，再跳过关闭调用返回。
+
+worker FH4 `0x3a5584` 的三个状态分别处理临时字符串（`0xcd40`）、处理 mutex（`0xc5b0`）和终止保护（`0x221eb8`）；没有局部 catch 或 handle、timer、MMCSS 恢复动作。构造器的 21 个状态覆盖已初始化的容器、mutex、thread holder、DSP／ring／resampler 和临时对象；线程启动后若构造继续抛异常，thread holder `0x6c80` 在 thread id 非零时终止，没有本片可见的 stop／join 恢复 guard。bridge `0x503e0` 与析构器 `0x824e0` 的 FH4 header 均为 `0x60`；适用 C++ 异常逃逸时可在搜索阶段终止，不能保证先执行局部 guard。普通 worker 返回值则被 bridge 丢弃，广播与参数释放后固定返回零，不代表失败的 IOCTL 成功。
+
+VirtualLock、shutdown／data CreateEventW 的返回均未检查；MMCSS handle 只保留在 worker 局部，随后调用 `timeBeginPeriod(1)`。所选 owner 和异常动作没有 driver handle／shutdown event 关闭或 page-lock 恢复；当前服务原件中也没有 `VirtualUnlock`、`timeEndPeriod`、`AvRevertMmThreadCharacteristics` 的具名符号字节。该静态边界不能外推为整个项目或 OS 实际泄漏。正式片的 `supersedes` 明确引用并更正既有 `vad_upstream_and_driver` 中“normal worker path closes event”的过宽断言，保留旧捕获与冻结校验原件；没有放宽旧校验。真实等待／失败注入、恢复与竞争、独立 Rust、UI 接线和实际 DLL／设备对照仍未验证。
+
+### 3942 内核事件注册、信号与卸载
+
+`native_vad_lifecycle_3942.kernel_event` 复开当前 `thx_vad.sys` 原件与既有捕获，核对 14 个完整函数、1,303 条指令、5,932 字节 raw chunks（5 字节未枚举为指令）、91 处锚点、从实际 PE 导入表重解的 13 个内核 API 槽及两个 signal 调用方。驱动全局 `P` 在 RVA `0x9d70`；对象内 `+392` 是 spinlock、`+400` 是 event object、`+408` 是 kernel HANDLE，三者分别绑定实际指令。服务的 user HANDLE 和 shutdown event 不属于这两个内核成员。
+
+event IOCTL `0xcf54600b` 不传入用户 HANDLE；dispatch 分配 work item 与 16 字节 `{work_item, IRP}` 上下文，标记 pending 后排入 DelayedWorkQueue。worker `0x1740` 在锁内确认 object 与 HANDLE 都为空，解锁后按 `\BaseNamedObjects\ThxVad_soma_pro_DataAvailableEvent` 创建／打开事件，再加锁复查。赢家写入两成员并增加一次 object reference；竞败者先解锁再 ZwClose 新 HANDLE，不覆盖旧值，也不增减额外 object reference。任一成员已存在、全局为空或创建失败仍完成 status=0／Information=0，因此 IOCTL 成功不证明事件注册成功。
+
+正常 callback 先完成 IRP，再释放 work item 和 WORK-tag context；context 为空直接返回，IRP 为空只释放两项资源。event 分支的 work-item 分配失败直接走 `0x1707`，写 `0xc000009a` 而不改 Information；context 分配失败会先释放 work item，再清 Information 后完成相同错误。当前 dispatch／callback 未访问 IRP 的 Cancel、CancelIrql 或 CancelRoutine，也没有本片可见的取消确认。此边界不能据此省略独立实现的取消与释放。
+
+signal `0x4160` 在同一把锁内读取 event object，非空时调用 KeSetEvent；不用 kernel HANDLE 发信号。bytes producer `0x2ab0` 仅在输入字节数非零时写 ring 后 signal；packet producer `0x2d50` 只检查 stream `+128`，即使输入零字节或 ring writer 因内容权限 gate `P+416=0` 直接返回，仍会 signal。SetContentId 也会在此前 HRESULT 失败后更新 gate。因此事件、服务 availability、实际 copied frames 和 DSP 成功必须分别建模。
+
+初始化保存 PortCls 的 DriverUnload 后安装 `0xb350`；WDF 条件分支可再包装为 `0x4a90`，保存原 unload 后调用它，再执行 class unbind 和 WdfVersionUnbind。`0xb350` 先调用保存的 PortCls unload 和适用 WDF cleanup，再在锁内 dereference 并清 event object，解锁后关闭并清 kernel HANDLE，最后释放并清全局 `P`、删除 symbolic link 与 device。所选代码没有显式 work-item 计数／等待；PortCls、WDF、class callbacks 与 OS 对象释放仍是外部边界，不能据此断言缺少 rundown、存在竞争或已实际泄漏。实际 driver 执行、取消／卸载竞争、独立 Rust 与真实设备验收均未验证。
+
+### 1442／3942 内核事件的整批复核
+
+[整批收据 `native_vad_kernel_event_batch`](../../../.analysis/results/frontend/audio-surround-audit.json#/native_vad_kernel_event_batch)一次校验当前两份同类驱动。两产品各自绑定官方 manifest、声明的 THXVAD 包、七层／六层服务来源及同包驱动提取关系；每份驱动的上述 14 个完整函数、1,303 条指令和 5,932 字节 raw chunks 逐项相同，包含未枚举为指令的 5 字节。独立核验重新读取两份 PE、完整函数原件、13 个实际内核导入槽与类型布局，逐条比较 RVA、opcode 和原始 chunk，保留每个 build 的独立身份与确认边界；统计中的共享代码只计一份。
+
+服务边界另以既有完整 worker 的引用核对：1442 的 `0x2ac980` 与 3942 的 `0x833f0` 分别把 `Global\\ThxVad_clio_x_DataAvailableEvent`／`Global\\ThxVad_soma_pro_DataAvailableEvent` 送入实际 `CreateEventW` 导入，随后以空输入发送 `0xcf54600b`。事件名称的实际 UTF-16 字节和 RIP 相对参数来源分别校验，服务仅保留所选完整函数的 artifact 引用，驱动同样复用既有完整捕获。该批限定这两份当前原件；1392、其余函数、OS 生命周期、实际取消／卸载竞争、独立 Rust 和设备／服务对照继续单独核验。
 
 ### 重采样分派、环境、预热与 FIFO
 

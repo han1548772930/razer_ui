@@ -131,9 +131,27 @@ UI 的 closePopUp 检查 `.calibrationState.state`，采样中发 CANCEL，其�
 
 官方主机将 start／stop 请求交给映射引擎。原生 START 从 `0x4f7b0` 经 engine queue、monitor queue 到 `0xcb100`；service 的 void 启动调用创建 owner 并排入另一 UI 线程的 `0xd0f40` 后，monitor queue 即排入 `{result:true,reason:""}`。逻辑 started 位为 InputMonitorImpl＋41，实际 Raw Input 注册位为 handler＋96，两者不是同一个状态。窗口创建和注册失败另发 error 事件，不会改写已经发出的启动 ACK。重复 START 返回 false／`already started`，未启动 STOP 返回 false／`has not started`；缺 engine thread、monitor thread 或 service 各有独立 reason。
 
+这条原生 error 事件还要经过实际主机消费者。窗口创建失败的 `0xd0f40`、WM_CREATE 注册失败的 `0xd1220` 都经 handler 的错误槽 `0xd35b0` 排入 monitor runner；`0xd29b6` 复制错误码和完整原因字符串，`0xd2950` 在交付前取走一次性 callback，再传入该副本。service 的 `0xcc350` 生成 `{"errorCode":…,"errorString":…}`，`0xcec1a` 为每个 observer 排队，实际错误虚槽由原 PE 的 `0x2df4b0+24` 指向 engine `0x19000`。该 engine 方法明确构造**空字符串**作为 deviceInfoJson，以 eventType=2 和上述错误 JSON 调用 `0x18f3e → 0x519c0 → 0x500e0`，没有给错误事件补当前鼠标身份。
+
+当前主机完整 `createCbInputMonitoringEvent` 先执行 `JSON.parse(deviceInfoJson)`，catch 只记日志；随后只有解析结果为真值才遍历并 `send("inputMonitoringEvent",…)`。因此这两个已核实的原生错误路径传入空字符串时，身份解析失败，**错误事件没有转发到七款产品的 MW**。七份实际 manager 仅把收到的同名消息原样 emit，动态 callback 直接解析 jsonEvent 并调用数组 `forEach`；完整监控 factory 没有按 eventType／errorCode／errorString 消费该原生错误的分支。不能把“DLL 创建了 error JSON”写成页面已收到失败，也不能用可能先到达的 START=true 宣称 Raw Input 已注册。此结论针对当前完整静态调用链，未执行厂商 JS、DLL 或错误注入。
+
+释放时存在两种真正的失效检查：`0xcf320 → 0x1c6790` 核 service weak flag 和 owner 指针，service 析构 `0xcc030 → 0x1c68e0 → 0x212ec0` 先使其失效；排入 observer runner 的 `0xb1640` 另核当前登记 token 与捕获序号相同后才执行。前者防止访问已释放 service，后者拒绝移除／重新登记后的旧通知，均不能证明所有 runner 已排空。窗口 callback 跳板 `0xd1640` 中的 `0xdfa06` 是 allocator 存活检查，后面仍直接转发 `0xd1220`；它不是取消 token，也没有据此建立 STOP 后回调绝不再运行的保证。
+
 实际输入使用 message-only HWND 和 Raw Input，注册鼠标 usagePage=1／usage=2、flags=`0x2100`。相对移动量取 RAWINPUT＋36／＋40 的有符号 i32；事件 JSON 中 timeTick 为微秒十进制字符串，时钟为 QPC 换算或毫秒 fallback×1000。普通批次仅在距上次发布严格大于 100000 微秒时 flush，首次只建立基线；button 类型另有立即 flush。两次 GetRawInputData 读取失败只日志并丢弃该次输入，没有在这些分支追加监控 error 事件。原生事件回调在 Win64 消费 `(deviceInfoJson,int32 eventType,jsonEvent)` 三个参数，类型为 keyboard=0／mouse=1／error=2；主机 FFI 多声明的第四个 ulonglong 未被 JS consumer 使用，不能解释为逐项 timeTick。
 
 普通 STOP 的 `0xce4d0` 先排入已知设备的 pending 最后批次，清除 device＋32／pending＋72，保留 last-publication-tick＋112，然后释放输入 owner 并排入 UI 注销／窗口销毁。普通 START 复用 service，没有清除该时间历史；device removal 的 `0xcc8c0` 则先清整个＋112，再处理移除设备。UI 注销 flags=1／target=null，即使注销 API 返回失败也清 handler 注册位，STOP ACK 不据此变为失败。ACK 只说明这些任务已排入队列，未证明 UI 清理完成、所有回调送达或线程 join；完整 engine shutdown 才另走等待线程退出与 CloseHandle 链。当前 JS 不提供“每次 RESET 已终止 native thread”的证据。Rust 等待自身 RawInput 线程结束的清理结果须独立对照，不能与官方普通 STOP 的完成边界混为一项。
+
+### Raw Input 身份获取与实际投影
+
+Raw Input 设备身份有两层缓存。`0xd046c` 用 hDevice 查询设备路径，名字长度仅接受 1 至 4096 个 UTF-16 单元；`0x1aa3f0 → 0x1aa430` 只把 ASCII A–Z 转为小写。`0xd30c0` 先把 hDevice／路径插入 raw-handler 缓存，仅新插入时排入 OnDeviceAdded；`0xd32b0` 首次收到未知 hDevice 的输入时，先排入这次设备新增，再排入输入。service 的 `0xcc9e0` 另以规范化路径建立身份缓存。若身份获取失败，raw-handler 缓存仍可能已存在；`0xce280` 查不到 service 身份就丢弃该路径的输入，没有每个 sample 自动重试身份获取的分支。
+
+`0xcc9e0` 的 SetupAPI 使用 HID interface GUID、flags=`0x12` 和 interface index=0。原 PE `0x2e9a38` 的 20 字节明确为 `DEVPKEY_Device_ContainerId`（GUID=`8c7ed206-3f8a-4827-b3ab-ae9e1faefc6c`、property id=2），读取 16 字节且要求 property type=13。`0x1a7850` 把该 GUID 格式化为带大括号的大写字符串，同一值同时写入原生 `guid` 与 `containerId`；不能从路径、PID 或事件先后顺序推定 containerId。
+
+身份 HID 打开由 `0xce84e` 控制：先请求读写访问、share read/write、OPEN_EXISTING 和 OVERLAPPED；只有无效 handle 且错误为 ACCESS_DENIED 才用零访问、share read 和相同 OVERLAPPED 再试。最终无法打开时才走路径 VID／PID 解析；打开成功但 `HidD_GetAttributes` 失败不会回退解析路径。路径分支查找 `vid`／`pid`，从各自起点加 4 取最多 4 个 UTF-16 单元，再用 base=16 的 `std::stoul`，仅检查转换后非零，没有消费完整子串的检查；无转换／越界的异常在此完整函数内没有 catch。属性读取成功分支没有另加 VID／PID 非零门禁。产品、序列号和厂商字符串读取失败分别保留空字符串。
+
+原生 JSON 实际含 7 个字段：`guid`、`vendorId`、`productId`、`manufacturerName`、`productName`、`serialNumber`、`containerId`。`0xdadaa → 0xdb630` 缓存原 JSON；`0xdadee` 在缓存非空时直接复用它。完整 host callback 只将 `containerId`、`productId`、`vendorId`、`usbInstanceId` 投影给 renderer，另传 eventType 和 jsonEvent；此原生构造没有赋值 usbInstanceId，三个描述字符串和 guid 均不进入这条 renderer 消息。Rust 未保留这些被丢弃的字段本身不构成下游功能缺失。当前 Rust 的设备名上限、单次零访问 open 参数、属性零值检查、严格四位十六进制解析，以及身份失败后的逐 sample 重试，仍与上述原生分支不同，不能按相同 PID／containerId 宣称整条身份链已一致。
+
+移除与 STOP 均先使用已知身份排入最后批次，再删除／清空 service 身份缓存；这仍受普通 STOP 的队列完成边界限制。SetupAPI set 由 `0xce952` 实际调用 `SetupDiDestroyDeviceInfoList`。HID handle 的 `0xcf650 → 0x1a7cf0` 通过 `GetHandleVerifier` 取得对象并调用真实虚表首槽。该 DLL 优先查主 EXE 的同名导出；当前 RazerAppEngine 原 PE 确实导出 `GetHandleVerifier@0x231e3e0`，其对象虚表 `0xae32790` 首槽指向 `0x4e67d30`，启用／未启用 verifier 两分支都实际调用 CloseHandle，失败进入 fatal check。DLL 自建 fallback 的虚表 `0x3393b0` 首槽为 `0x1efc70 → 0x1ef9c0`，同样核 CloseHandle 的返回；`0x1cf0d0` 建立 severity=3 的失败检查，`0x1cf280` 进入 fatal 分支。此处闭合当前两份原件的 handle 释放目标，不提升普通 STOP 的线程／队列完成保证。
 
 ### 可独立复核的测试边界
 
@@ -151,8 +169,21 @@ UI 的 closePopUp 检查 `.calibrationState.state`，采样中发 CANCEL，其�
 | USB／226 BLE、SET 成功但 GET 不符、读回短表、取消发生于 SET 后 | 比较实际字节序、长度、逐行比较范围、应答／GET 和终止顺序；普通表和 OBM 槽位分别断言 |
 | 启动／停止返回 false、锁失败、timeout、CANCEL、窗口关闭和卸载 | 保留原版缺少 STOP／timer 清理的分支与 Rust 自身清理结果；不得把两者的 idle 状态作为清理一致的证据 |
 | START ACK 后窗口／注册失败、普通 STOP 后再 START、移除设备 | 分别比较逻辑 started、实际注册位、error 事件、保留／清除的 tick 历史、最终批排队和实际清理；不能把 ACK 当作 OS 完成或 join |
+| 原生 error 的空身份、service 析构、observer 移除后重订阅 | 核空字符串身份导致主机 parse catch 后不发送、错误码／原因副本、weak flag 与登记 token 两层检查；allocator 检查不能替代取消，原生 error JSON 不能当作 MW 已收到 |
+| Raw Input 路径长度边界、ASCII 大小写、属性读取失败后持续移动 | 区分 hDevice 与 service 路径两层缓存；核 4096 长度上限、失败后的丢弃／重试及重连边界，不能以 Rust 重新查询成功冒充原版已重查 |
+| HID 初次 ACCESS_DENIED、其他 open 错误、属性失败、部分描述字符串失败 | 分别保留两次 open 参数、仅 open 失败可走的路径 ID 分支及原生 7 字段；实际 host 仅投影 4 个身份字段，描述字符串缺失不能直接判为下游缺项 |
 
 官方没有对 DPI 比值计算额外做正有限数校验；Rust `dpi_matcher::Session` 有相应校验。零主距离、非有限结果与越界 DPI 必须记录两边各自的输出和拒绝边界，不能靠预先过滤输入消除这一差异。
+
+## 省电任务缓存与整批源码复核
+
+`audit-family-function --family mouse --function mw --query mouse-receiver-polling` 在原查询的 `power_task_memory_batch` 中一次复核全部已保留的鼠标 MW 获取收据。当前部署引用先与原件、输入索引和完整捕获身份核对；相同脚本只解析一次，相同完整 owner 正文只保存一份，产品与各原件字节区间分别关联。历史 PID182 的协议／原生深审计保留，不将其物理身份或读写分支扩展给其他产品。
+
+PID182 的省电任务 maker 位于当前 `6259.98d162c59be4fff20fa2.js` 的完整模块 30525。`pn` 分别接收 timerTick、来源、请求值、本地保存权限、设备访问权限和版本；`alwaysReadPowerSavingFromDevice=true` 时不更新配置档的省电值与版本，仍在 host API 存在时记录 taskMaker 的 timerTick／value。设备任务由队列另行执行，maker 的 completed 不能作为设备已写入的依据。模块 85191 的 `Rt` 先 SET、检查取消、GET 并比较实际返回值；只有匹配后才记录 taskRunner 的请求值、时间与版本并提交整个内存缓存。单配置设备保留原单位分支，不能统一乘 60。
+
+缓存初始化属于产品入口的真实分支。182 注入的 initializer 包含 maker 和 runner 的 power-saving 缓存；190 的自定义 initializer 没有这两个字段。两款初始 runtime cache 都声明 hasBattery，但这不能使 190 自动获得 182 的缓存结构，也不能由通用 chunk 内存在 runner 推定对应页面动作已挂载。runtimeData.hasBattery 派生的 feature 默认与 bootstrap 的显式 useFeature 覆盖分别保留其完整所有者，不能因为它们同处外层入口函数而混用。批量结果保留缺失字段和不同 initializer，未观测字段不填默认值。
+
+host 消费者是 `.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/modules/memory_storage/index.js` 的完整类。其 Map 按 URL 分层保存，SET 返回原值；GET 汇集各 URL 中为真值的条目并返回 JSON，事件排除发送方，clear 只移除发送方 URL。这是进程内任务缓存，既不是持久化设备设置，也不是设备写回确认。Rust 的任务缓存接线、各产品实际挂载 UI／运行时 feature 选择和真实 DLL／设备对照仍分别验收。
 
 ## 当前 Rust 生产链与未完成项
 
@@ -187,6 +218,8 @@ tick 类型同样属于协议语义：原生批次把 `timeTick` 序列化为十
 - 分支追溯：`.analysis/results/frontend/mouse-mw-audit.json` 的 `queries.dynamic_sensitivity.products`／`ui_products`、`queries.rotation.products`、`queries.dpi_matcher.complete_owners`／`source_semantics`，含其余 PID、BLE、固件、锁与主机 ABI 原件定位。
 - 实时速度 callback 的完整 AST 区间由 `queries.dynamic_sensitivity.products[*].monitor_callback` 关联当前原件：190 `[1145946,1146377)`、192／196 各自原件的 `[1146149,1146580)`、222 `[1145936,1146367)`、226 `[1139320,1139784)`、229 `[1105123,1105554)`、239 `[1148419,1148850)`。七份原始字节、完整 AST 边界及 body 摘要分别重核；同偏移不能合并为同一来源。
 - 共享输入监控专项位于同一报告的 `queries.shared_input_monitoring`：保留 151 个完整原生函数、153 个 raw chunk／39740 字节、11 张实际 PE 指针表、122 条 unwind 记录、165 个完整前端 AST owner、14 份源码集和 4 份 Rust 源码的 37 个完整函数。原 PE、捕获指令与边、源码哈希及 AST 边界独立重读核验；禁用 collector 后的 verifier 通过，91 项篡改负例全部拒绝。12 组速度模型区分 Number 合成输入与原生兼容字符串输入，另保留 Matcher unary+／到达顺序反例；这些不构成已执行的 Rust 或官方 DLL 功能对照。1156 条未展开直接边和 18 条间接／导入调用仍明确保留。
+- 错误消费者增量由 `python -X utf8 tools/workspace.py audit-family-function --family mouse --function mw --query mouse-input-monitoring` 维护，接在同一专项的 `error_consumer_extension`。原生完整函数继续引用上述 mapping_engine 原捕获，主机 callback 为 `.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/modules/mapping_engine/win/index.js` 的 `[157471,158220)`；七款各自完整 factory、manager、callback 和 START／STOP owner 按当前获取收据与 AST 原字节复核。该增量只核这条错误／释放消费者，不重算旧 151 函数或 1156／18 边基线，也不提升 Rust、窗口或实际 DLL／设备验收。
+- 同一维护入口的 `identity_consumer_extension` 独立保留两份原件的 44 个完整原生函数引用与 6 个实际 PE 常量／虚表槽，复用错误增量的 29 个完整 host／MW AST owner，另核 3 份 Rust 源码中的 4 个完整函数。主 EXE 原件及其获取收据由 `handle_verifier_host` 关联；其全库捕获仅有 157000／528370 函数，`capture_complete=false`，本增量只对其中上述 4 个完整函数逐指令绑定原 PE，保留严格全库 helper 拒绝该原件的事实和原 manifest 的全部失败。通用全库 helper 未放宽；正文不重复复制伪代码或前端 owner，计数只表示本增量的复核范围。未重算旧全局捕获与未展开边，Rust、UI／后端、实际 DLL／设备验收仍分别未验证。
 
 Matcher 追加复核使用各自 `mouse-mw-<PID>-current/raw/apps.razer.com/synapse/products/<PID>/mw/` 下的原件。下表为完整 owner 的 UTF-8 半开字节范围，不能将不同产品的相同模块号当作同一原件：
 
