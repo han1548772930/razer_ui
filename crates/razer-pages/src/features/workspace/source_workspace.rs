@@ -24,6 +24,8 @@ use serde_json::Value;
 mod accessory;
 #[path = "source_workspace/audio_mixer_local_settings.rs"]
 mod audio_mixer_local_settings;
+#[path = "source_workspace/controller_initialization.rs"]
+mod controller_initialization;
 #[path = "source_workspace/help_camo.rs"]
 mod help_camo;
 #[path = "source_workspace/help_owner.rs"]
@@ -46,8 +48,6 @@ mod keyboard_local_profiles;
 mod keyboard_mapping;
 #[path = "source_workspace/keyboard_profile_inventory.rs"]
 mod keyboard_profile_inventory;
-#[path = "source_workspace/controller_initialization.rs"]
-mod controller_initialization;
 pub use controller_initialization::ControllerInitializationRequested;
 #[path = "source_workspace/controller_socd.rs"]
 mod controller_socd;
@@ -663,6 +663,13 @@ impl SourceProductWorkspace {
     ) -> bool {
         matches!(&self.body, FamilyBody::Mouse(body) if body.read(cx).mouse_dynamic_scope_is_current(request))
     }
+    pub fn mouse_dynamic_connection_is_current(
+        &self,
+        connection: super::mouse_products::MouseDynamicConnection,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, FamilyBody::Mouse(body) if body.read(cx).mouse_dynamic_connection_is_current(connection))
+    }
     pub fn mouse_rotation_scope_is_current(
         &self,
         request: &super::mouse_products::MouseRotationRequested,
@@ -713,21 +720,14 @@ impl SourceProductWorkspace {
     }
     pub fn observe_mouse_dynamic_speed(
         &mut self,
-        request: &super::mouse_products::MouseDynamicRequested,
+        connection: super::mouse_products::MouseDynamicConnection,
         speed: f64,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         if let FamilyBody::Mouse(body) = &self.body {
             body.update(cx, |body, cx| {
-                if request.guard().load(std::sync::atomic::Ordering::Acquire) {
-                    body.observe_mouse_dynamic(
-                        request.scope(),
-                        super::mouse_products::MouseDynamicObservation::MouseSpeed(speed),
-                        window,
-                        cx,
-                    );
-                }
+                body.observe_mouse_dynamic_speed(connection, speed, window, cx);
             });
         }
     }
@@ -4422,10 +4422,15 @@ impl SourceProductWorkspace {
         cx.notify();
     }
     fn capture(&mut self, mut value: Value, cx: &mut Context<Self>) {
-        let previous_marci = (self.device.product_id == 3942).then(|| {
-            self.device.active_profile_obj().and_then(|profile| profile.source_settings.as_ref())
-                .and_then(|settings| settings.pointer("/profile/quickEffects")).cloned()
-        }).flatten();
+        let previous_marci = (self.device.product_id == 3942)
+            .then(|| {
+                self.device
+                    .active_profile_obj()
+                    .and_then(|profile| profile.source_settings.as_ref())
+                    .and_then(|settings| settings.pointer("/profile/quickEffects"))
+                    .cloned()
+            })
+            .flatten();
         seiren_local_settings::capture(
             self.device.product_id,
             &mut self.device.source_device_settings,
@@ -4455,7 +4460,10 @@ impl SourceProductWorkspace {
         }
         self.sync_mouse_profile_selection();
         if self.device.product_id == 3942 {
-            let current = self.device.active_profile_obj().and_then(|profile| profile.source_settings.as_ref())
+            let current = self
+                .device
+                .active_profile_obj()
+                .and_then(|profile| profile.source_settings.as_ref())
                 .and_then(|settings| settings.pointer("/profile/quickEffects"));
             if current != previous_marci.as_ref() {
                 if let Some(current) = current {
@@ -5109,9 +5117,10 @@ impl SourceProductWorkspace {
         };
         if page.role() == ProductPageRole::Help {
             match &self.body {
-                FamilyBody::Mouse(body) => {
-                    body.update(cx, |body, cx| body.dismiss_editors(window, cx))
-                }
+                FamilyBody::Mouse(body) => body.update(cx, |body, cx| {
+                    body.stop_dynamic_monitor(cx);
+                    body.set_page("HELP", window, cx);
+                }),
                 FamilyBody::Keyboard(body) => body.update(cx, |body, cx| {
                     body.source_history_page_bypass(page.kind().key(), window, cx);
                     body.leave_snap_tap(window, cx);

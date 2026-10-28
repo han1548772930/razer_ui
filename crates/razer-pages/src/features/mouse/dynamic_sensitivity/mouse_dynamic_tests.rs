@@ -1,4 +1,177 @@
+use super::requests::{Lifecycle, Requests};
 use super::*;
+
+#[::core::prelude::v1::test]
+fn mouse_dynamic_monitor_navigation_is_product_specific() {
+    for product_id in [190, 192, 196, 222, 229, 239] {
+        assert!(monitor_should_run(
+            product_id,
+            true,
+            "ADVANCED",
+            true,
+            Some(true),
+            true,
+        ));
+        assert!(!monitor_should_run(
+            product_id,
+            true,
+            "TAB_PERFORMANCE",
+            true,
+            Some(true),
+            true,
+        ));
+    }
+    assert!(monitor_should_run(
+        226,
+        true,
+        "TAB_PERFORMANCE",
+        true,
+        Some(true),
+        true,
+    ));
+    assert!(monitor_should_run(226, true, "ADVANCED", true, None, true,));
+    assert!(!monitor_should_run(
+        226,
+        true,
+        "TAB_PERFORMANCE",
+        true,
+        Some(false),
+        true,
+    ));
+    assert!(!monitor_should_run(
+        226,
+        false,
+        "TAB_PERFORMANCE",
+        true,
+        Some(true),
+        true,
+    ));
+    assert!(!monitor_should_run(
+        226,
+        true,
+        "HELP",
+        true,
+        Some(true),
+        true,
+    ));
+}
+
+#[::core::prelude::v1::test]
+fn mouse_dynamic_monitor_command_does_not_restart_an_existing_226_monitor() {
+    assert_eq!(monitor_command(true, true), None);
+    assert_eq!(monitor_command(false, true), Some(false));
+    assert_eq!(monitor_command(true, false), Some(true));
+}
+
+#[::core::prelude::v1::test]
+fn mouse_dynamic_speed_boundary_retains_infinity_for_the_source_chart_clipping() {
+    let grid = Grid {
+        gap_x: 15.,
+        gap_y: 0.25,
+        start_y: 1.,
+    };
+    let value = observed_mouse_speed(f64::INFINITY).unwrap();
+    assert!(value.is_infinite());
+    let projected = grid.pixel(CurvePoint { x: value, y: 0. })[0];
+    assert_eq!(projected.min(1080.), 1080.);
+    for value in [0., 5., 50000.] {
+        assert_eq!(observed_mouse_speed(value), Some(value));
+    }
+    for value in [f64::NAN, f64::NEG_INFINITY, -1.] {
+        assert!(observed_mouse_speed(value).is_none());
+    }
+}
+
+fn lifecycle_request(lifecycle: &mut Lifecycle, command: &'static str) -> MouseDynamicRequested {
+    let mut request = request(command, json!({}));
+    request.scope = lifecycle.scope();
+    request.request_id = lifecycle.requests.begin(command);
+    request.edit_revision = lifecycle.requests.edit_revision;
+    request.guard = if command == "DYNAMIC_SENSITIVITY_UI_COMMAND" {
+        lifecycle.monitor_guard.clone()
+    } else {
+        lifecycle.guard.clone()
+    };
+    request
+}
+
+#[::core::prelude::v1::test]
+fn mouse_dynamic_speed_stop_and_profile_changes_keep_the_source_expiry() {
+    for product_id in [190, 192, 196, 222, 226, 229, 239] {
+        let mut lifecycle = Lifecycle::new(EntityId::from(product_id));
+        lifecycle.monitor_guard = Arc::new(AtomicBool::new(true));
+        let connection = lifecycle.scope().connection();
+        let expiry = lifecycle.observe_speed(connection, 27.).unwrap();
+        let stop = lifecycle_request(&mut lifecycle, "DYNAMIC_SENSITIVITY_UI_COMMAND");
+        assert!(
+            lifecycle
+                .complete(&stop, MouseDynamicCompletion::Monitoring(false))
+                .is_some()
+        );
+        assert_eq!(lifecycle.speed(), 27.);
+        lifecycle.restore_profile();
+        assert_eq!(lifecycle.speed(), 27.);
+        assert!(lifecycle.expire_speed(expiry));
+        assert_eq!(lifecycle.speed(), 0.);
+    }
+}
+
+#[::core::prelude::v1::test]
+fn mouse_dynamic_profile_change_preserves_capture_but_invalidates_device_requests() {
+    let mut lifecycle = Lifecycle::new(EntityId::from(1));
+    lifecycle.monitor_guard = Arc::new(AtomicBool::new(true));
+    lifecycle.monitor_requested = true;
+    let monitoring = lifecycle_request(&mut lifecycle, "DYNAMIC_SENSITIVITY_UI_COMMAND");
+    let reading = lifecycle_request(&mut lifecycle, "READ_DYNAMIC_SENSITIVITY");
+    let connection = lifecycle.scope().connection();
+    let expiry = lifecycle.observe_speed(connection, 31.).unwrap();
+    lifecycle.restore_profile();
+    assert!(lifecycle.monitor_requested);
+    assert!(monitoring.guard().load(Ordering::Acquire));
+    assert!(lifecycle.request_is_current(&monitoring));
+    assert!(!lifecycle.request_is_current(&reading));
+    assert!(!reading.guard().load(Ordering::Acquire));
+    assert!(
+        lifecycle
+            .complete(
+                &reading,
+                MouseDynamicCompletion::Device(reading_report(0, 0))
+            )
+            .is_none()
+    );
+    assert!(
+        lifecycle
+            .complete(&monitoring, MouseDynamicCompletion::Monitoring(true))
+            .is_some()
+    );
+    assert_eq!(lifecycle.speed(), 31.);
+    assert!(lifecycle.expire_speed(expiry));
+    assert_eq!(lifecycle.speed(), 0.);
+    assert_eq!(lifecycle.requests.enabled(), None);
+}
+
+#[::core::prelude::v1::test]
+fn mouse_dynamic_speed_rejects_other_owners_replaced_connections_and_old_expiry() {
+    let mut lifecycle = Lifecycle::new(EntityId::from(1));
+    let old = lifecycle.scope().connection();
+    let old_expiry = lifecycle.observe_speed(old, 41.).unwrap();
+    let replacement_expiry = lifecycle.observe_speed(old, 43.).unwrap();
+    assert!(!lifecycle.expire_speed(old_expiry));
+    assert_eq!(lifecycle.speed(), 43.);
+    let foreign = Lifecycle::new(EntityId::from(2)).scope().connection();
+    assert!(lifecycle.observe_speed(foreign, 99.).is_none());
+    assert_eq!(lifecycle.speed(), 43.);
+    lifecycle.invalidate_connection();
+    assert_eq!(lifecycle.speed(), 0.);
+    assert!(lifecycle.observe_speed(old, 99.).is_none());
+    let current = lifecycle.scope().connection();
+    let expiry = lifecycle.observe_speed(current, 47.).unwrap();
+    assert!(!lifecycle.expire_speed(replacement_expiry));
+    assert_eq!(lifecycle.speed(), 47.);
+    assert!(lifecycle.expire_speed(expiry));
+    assert_eq!(lifecycle.speed(), 0.);
+}
+
 fn request(command: &'static str, payload: Value) -> MouseDynamicRequested {
     MouseDynamicRequested {
         request_id: 1,
@@ -101,6 +274,14 @@ fn mouse_dynamic_monitor_retirement_preserves_writes_across_repeated_mounts() {
         assert_eq!(requests.pending.len(), 1);
     }
     assert!(requests.complete(&write, MouseDynamicCompletion::Cancelled));
+    assert!(requests.pending.is_empty());
+}
+
+#[::core::prelude::v1::test]
+fn mouse_dynamic_observer_attach_completion_retires_only_the_attach_request() {
+    let mut requests = Requests::default();
+    let attach = begin(&mut requests, "DYNAMIC_SENSITIVITY_UI_COMMAND");
+    assert!(requests.complete(&attach, MouseDynamicCompletion::ObserverAttached));
     assert!(requests.pending.is_empty());
 }
 

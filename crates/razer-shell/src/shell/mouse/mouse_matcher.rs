@@ -252,7 +252,7 @@ impl AppShell {
                     workspace.update(cx, |workspace, cx| {
                         workspace.observe_mouse_matcher(
                             request.scope(),
-                            MatcherObservation::Calibration(state["payload"].clone()),
+                            MatcherObservation::Calibration(state),
                             window,
                             cx,
                         )
@@ -491,35 +491,15 @@ impl AppShell {
                 }
             }
             Update::Response(response) => {
-                #[derive(serde::Deserialize)]
-                #[serde(tag = "type", content = "payload")]
-                enum Response {
-                    #[serde(rename = "MW_SET_DPI_MATCHER_STATE")]
-                    Calibration(Value),
-                    #[serde(rename = "MW_SET_SENSITIVITY_PROFILE_TO_UI")]
-                    Profiles(Profiles),
-                }
-                #[derive(serde::Deserialize)]
-                #[serde(rename_all = "camelCase")]
-                struct Profiles {
-                    sensitivity_matcher: Library,
-                    selected_sensitivity_matcher: Option<String>,
-                }
-                #[derive(serde::Deserialize)]
-                struct Library {
-                    profiles: Vec<Value>,
-                }
-                let observation = match serde_json::from_value::<Response>(response) {
-                    Ok(Response::Calibration(value)) => MatcherObservation::Calibration(value),
-                    Ok(Response::Profiles(value)) => MatcherObservation::Profiles {
-                        profiles: value.sensitivity_matcher.profiles,
-                        selected: value.selected_sensitivity_matcher.unwrap_or_default(),
-                    },
-                    Err(error) => {
-                        workspace.update(cx, |workspace, cx| {
-                            workspace.reject_mouse_matcher(scope, format!("{error:#}"), cx)
-                        });
-                        return;
+                let observation = match response {
+                    razer_service::dpi_matcher::Response::Calibration(value) => {
+                        MatcherObservation::Calibration(value)
+                    }
+                    razer_service::dpi_matcher::Response::Profiles(value) => {
+                        MatcherObservation::Profiles {
+                            profiles: value.profiles().to_vec(),
+                            selected: value.selected().unwrap_or("").to_owned(),
+                        }
                     }
                 };
                 self.publish_mouse_matcher_observation(owner, observation, window, cx);

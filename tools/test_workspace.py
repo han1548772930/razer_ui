@@ -347,6 +347,34 @@ class ArchitectureBoundaryTests(unittest.TestCase):
     def inspect(self, source, owner):
         return workspace.inspect_architecture_source(source.encode(), owner=owner, rust_parser=self.rust_parser)
 
+    def test_source_profile_names_share_one_owner_across_device_and_storage(self):
+        canonical = 'crates/razer-device/src/source_string.rs'
+        callers = {
+            'crates/razer-device/src/mouse/dpi_matcher_storage.rs': 'confirmation_name',
+            'crates/razer-device/src/mouse/mouse_philips/configuration.rs': 'prepare',
+            'crates/razer-storage/src/host_local_profile/initialization.rs': 'prepare',
+            'crates/razer-storage/src/receiver/receiver_reset.rs': 'unique_name',
+            'crates/razer-storage/src/receiver/receiver_indicator.rs': 'ensure_cache',
+        }
+        for owner, name in callers.items():
+            prefix = 'crate' if owner.startswith('crates/razer-device/') else 'razer_device'
+            delegated = f'{prefix}::source_string::unique_profile_name(base, exists);'
+            for body in ('for suffix in 1..=100 { name = suffix; }',
+                         delegated + 'for suffix in 1..=100 { name = suffix; }'):
+                self.assertIn('source_profile_name_bypasses_shared_owner',
+                              [row['kind'] for row in self.inspect(f'fn {name}() {{ {body} }}', owner)])
+            self.assertFalse(self.inspect(f'fn {name}() {{ {delegated} }}', owner))
+            self.assertFalse(self.inspect(f'use {prefix}::source_string::unique_profile_name as choose; '
+                                         f'fn {name}() {{ choose(base, exists); }}', owner))
+            self.assertFalse(self.inspect('fn unrelated() { for n in 1..=100 { sample(n); } }', owner))
+            self.assertFalse(workspace.inspect_architecture_source((workspace.ROOT / owner).read_bytes(),
+                             owner=owner, rust_parser=self.rust_parser))
+        self.assertFalse(self.inspect('pub fn unique_profile_name() {}', canonical))
+        other = 'crates/razer-model/src/profile.rs'
+        self.assertEqual(self.inspect('fn unique_profile_name() {}', other)[0]['kind'],
+                         'duplicate_source_profile_name_owner')
+        self.assertFalse(self.inspect('#[cfg(test)] mod tests { fn unique_profile_name() {} }', other))
+
     def test_workspace_constructors_preserve_missing_profiles_and_selection(self):
         owners = (
             'crates/razer-pages/src/features/workspace/workspace.rs',

@@ -458,17 +458,11 @@ impl MeasurementSave {
         let profiles = stored.calibration.profiles.get_or_insert_with(Vec::new);
         let name = match &self.destination {
             MeasurementDestination::Custom => {
-                let mut candidate = "MOUSE MAT".to_owned();
-                for index in 1..=100 {
-                    if !profiles.iter().any(|profile| {
-                        profile.extensions.get("name").and_then(Value::as_str)
-                            == Some(candidate.as_str())
-                    }) {
-                        break;
-                    }
-                    candidate = format!("MOUSE MAT {index}");
-                }
-                candidate
+                crate::source_string::unique_profile_name("MOUSE MAT", |candidate| {
+                    profiles.iter().any(|profile| {
+                        profile.extensions.get("name").and_then(Value::as_str) == Some(candidate)
+                    })
+                })
             }
             MeasurementDestination::Preset { name, .. } => name.clone(),
         };

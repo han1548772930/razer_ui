@@ -26,6 +26,90 @@ pub struct PairingCache {
     secondary: Option<u16>,
 }
 
+/// Read-only identities from the ordered local pairing observation. They do
+/// not establish a live hardware binding or a successful device query.
+#[derive(Default)]
+pub struct PairingSnapshot {
+    records: Vec<PairingRecord>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PairedDeviceIdentity {
+    product_id: Option<u32>,
+}
+impl PairedDeviceIdentity {
+    pub fn product_id(self) -> Option<u32> {
+        self.product_id
+    }
+}
+
+fn matches_input_monitoring_master<'a>(
+    records: impl Iterator<Item = &'a PairingRecord>,
+    product_id: u32,
+    container: &str,
+) -> anyhow::Result<bool> {
+    for record in records {
+        let master = record.master.require("input monitoring master")?;
+        if master
+            .dongle_id
+            .get()
+            .is_some_and(|id| u32::from(*id) == product_id)
+            && record
+                .device_container_id
+                .get()
+                .is_some_and(|id| id == container)
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+impl PairingSnapshot {
+    pub fn from_value(value: &Value) -> anyhow::Result<Self> {
+        let records = match value {
+            Value::Array(_) => serde_json::from_value(value.clone())?,
+            Value::Object(_) => {
+                let records: OrderedRecords = serde_json::from_value(value.clone())?;
+                records
+                    .order
+                    .iter()
+                    .map(|key| records.records[key].clone())
+                    .collect()
+            }
+            _ => anyhow::bail!("Pairing observation must be an object or ordered array"),
+        };
+        Ok(Self { records })
+    }
+
+    pub fn has_input_monitoring_master(
+        &self,
+        product_id: u32,
+        container: &str,
+    ) -> anyhow::Result<bool> {
+        matches_input_monitoring_master(self.records.iter(), product_id, container)
+    }
+
+    pub fn paired_device_for_master(
+        &self,
+        product_id: u32,
+    ) -> anyhow::Result<Option<PairedDeviceIdentity>> {
+        for record in &self.records {
+            let master = record.master.require("paired device master")?;
+            if master
+                .product_id
+                .get()
+                .is_some_and(|id| u32::from(*id) == product_id)
+            {
+                return Ok(Some(PairedDeviceIdentity {
+                    product_id: record.product_id.get().copied(),
+                }));
+            }
+        }
+        Ok(None)
+    }
+}
+
 // JS Object.values visits non-index keys in insertion order. serde_json's
 // default Map sorts keys, which changes UZ/J's first matching role decision.
 #[derive(Default)]
@@ -116,6 +200,18 @@ fn master(receiver_pid: u16) -> anyhow::Result<&'static PairingMaster> {
 }
 
 impl PairingCache {
+    pub fn has_input_monitoring_master(
+        &self,
+        product_id: u32,
+        container: &str,
+    ) -> anyhow::Result<bool> {
+        matches_input_monitoring_master(
+            self.order.iter().map(|key| &self.records[key]),
+            product_id,
+            container,
+        )
+    }
+
     pub fn load(path: &Path) -> anyhow::Result<Self> {
         let previous = super::read_document(path, |text| {
             Ok(serde_json::from_str::<OrderedRecords>(text)?)
@@ -313,6 +409,117 @@ pub fn local_path() -> anyhow::Result<std::path::PathBuf> {
 mod tests {
     use super::*;
     const OWNER: &str = "{11111111-2222-3333-4444-555555555555}";
+
+    #[test]
+    fn input_monitoring_pairing_uses_master_radio_and_exact_page_container() {
+        let rows = serde_json::json!([
+            {"productId":192,"dongleId":193,"deviceContainerId":OWNER,"master":{"productId":164,"dongleId":165}},
+            {"productId":190,"dongleId":191,"deviceContainerId":"other","master":{"productId":241,"dongleId":242}},
+            {"deviceContainerId":null,"master":{"dongleId":179}}
+        ]);
+        let snapshot = PairingSnapshot::from_value(&rows).unwrap();
+        assert!(snapshot.has_input_monitoring_master(165, OWNER).unwrap());
+        for (product_id, container) in [
+            (164, OWNER),
+            (193, OWNER),
+            (242, OWNER),
+            (179, OWNER),
+            (165, "other"),
+        ] {
+            assert!(
+                !snapshot
+                    .has_input_monitoring_master(product_id, container)
+                    .unwrap()
+            );
+        }
+        let case = PairingSnapshot::from_value(&serde_json::json!([
+            {"deviceContainerId":"AbC","master":{"dongleId":165}}
+        ]))
+        .unwrap();
+        assert!(case.has_input_monitoring_master(165, "AbC").unwrap());
+        assert!(!case.has_input_monitoring_master(165, "abc").unwrap());
+        assert_eq!(
+            snapshot
+                .paired_device_for_master(164)
+                .unwrap()
+                .unwrap()
+                .product_id(),
+            Some(192)
+        );
+        assert_eq!(
+            snapshot
+                .paired_device_for_master(241)
+                .unwrap()
+                .unwrap()
+                .product_id(),
+            Some(190)
+        );
+        assert_eq!(snapshot.paired_device_for_master(179).unwrap(), None);
+    }
+
+    #[test]
+    fn pairing_snapshot_accepts_ordered_shell_arrays_and_legacy_objects_without_defaults() {
+        for value in [
+            serde_json::json!([{"productId":226,"deviceContainerId":OWNER,"master":{"productId":164,"dongleId":165}}]),
+            serde_json::json!({"binding":{"productId":226,"deviceContainerId":OWNER,"master":{"productId":164,"dongleId":165}}}),
+        ] {
+            let snapshot = PairingSnapshot::from_value(&value).unwrap();
+            assert!(snapshot.has_input_monitoring_master(165, OWNER).unwrap());
+            assert_eq!(
+                snapshot
+                    .paired_device_for_master(164)
+                    .unwrap()
+                    .unwrap()
+                    .product_id(),
+                Some(226)
+            );
+        }
+        let ordered = PairingSnapshot::from_value(&serde_json::json!([
+            {"productId":null,"master":{"productId":164}},
+            {"productId":226,"master":{"productId":164}}
+        ]))
+        .unwrap();
+        assert_eq!(
+            ordered
+                .paired_device_for_master(164)
+                .unwrap()
+                .unwrap()
+                .product_id(),
+            None
+        );
+        for value in [
+            serde_json::json!(null),
+            serde_json::json!(true),
+            serde_json::json!([{"master":{"dongleId":"165"}}]),
+        ] {
+            assert!(PairingSnapshot::from_value(&value).is_err());
+        }
+    }
+
+    #[test]
+    fn input_monitoring_pairing_failures_preserve_source_find_order() {
+        for incomplete in [json!({"master":null}), json!({})] {
+            let valid = json!({"productId":192,"deviceContainerId":OWNER,"master":{"productId":164,"dongleId":165}});
+            let first = PairingSnapshot::from_value(&json!([incomplete, valid])).unwrap();
+            assert!(first.has_input_monitoring_master(165, OWNER).is_err());
+            assert!(first.paired_device_for_master(164).is_err());
+            let last = PairingSnapshot::from_value(&json!([valid, incomplete])).unwrap();
+            assert!(last.has_input_monitoring_master(165, OWNER).unwrap());
+            assert_eq!(
+                last.paired_device_for_master(164)
+                    .unwrap()
+                    .unwrap()
+                    .product_id(),
+                Some(192)
+            );
+        }
+        let mut cache = PairingCache::default();
+        cache.add_confirmed(164, 192, 193, "MOUSE", OWNER).unwrap();
+        assert!(cache.has_input_monitoring_master(164, OWNER).unwrap());
+        assert!(!cache.has_input_monitoring_master(193, OWNER).unwrap());
+        cache.remove_confirmed(193, OWNER).unwrap();
+        assert!(!cache.has_input_monitoring_master(164, OWNER).unwrap());
+    }
 
     #[test]
     fn typed_records_preserve_extensions_nulls_and_absence() {

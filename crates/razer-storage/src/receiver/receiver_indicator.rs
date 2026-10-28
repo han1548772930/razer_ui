@@ -173,13 +173,11 @@ pub fn ensure_cache(
             .iter()
             .any(|profile| profile["guid"].as_str() == Some(&guid))
         {
-            let mut name = base.clone();
-            for suffix in 1..=100 {
-                if !profiles.iter().any(|p| p["name"].as_str() == Some(&name)) {
-                    break;
-                }
-                name = format!("{base} {suffix}");
-            }
+            let name = razer_device::source_string::unique_profile_name(&base, |candidate| {
+                profiles
+                    .iter()
+                    .any(|profile| profile["name"].as_str() == Some(candidate))
+            });
             profile["name"] = json!(name);
             profiles.push(profile);
         }

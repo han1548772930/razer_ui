@@ -1,7 +1,7 @@
 use super::*;
 
-fn device() -> Device {
-    let mut device = crate::test_devices::with_profile(190);
+fn device_for(product_id: u32) -> Device {
+    let mut device = crate::test_devices::with_profile(product_id);
     device.active_profile = device.profiles[0].id.clone();
     device.profiles[0].source_settings = Some(json!({
         "guid": device.profiles[0].guid,
@@ -10,6 +10,10 @@ fn device() -> Device {
     }));
     device.source_device_settings = Some(json!({"version":7,"deviceExtension":"keep"}));
     device
+}
+
+fn device() -> Device {
+    device_for(190)
 }
 
 fn mutation(device: &Device) -> Mutation {
@@ -87,4 +91,24 @@ fn mouse_matcher_save_preserves_observed_null_fields_as_distinct_from_absent_fie
         device.profiles[0].source_settings.as_ref().unwrap()["selectedSensitivityMatcher"],
         "measured"
     );
+}
+
+#[test]
+fn mouse_matcher_source_and_mutation_retain_each_audited_product_identity() {
+    for product_id in [190, 192, 222, 226, 229, 239] {
+        let mut device = device_for(product_id);
+        let mutation = mutation(&device);
+        mutation.apply(&mut device).unwrap();
+        assert_eq!(device.product_id, product_id);
+    }
+}
+
+#[test]
+fn mouse_matcher_mutation_rejects_a_different_audited_product() {
+    let source = device_for(190);
+    let mutation = mutation(&source);
+    let mut replacement = device_for(192);
+    let before = serde_json::to_value(&replacement).unwrap();
+    assert!(mutation.apply(&mut replacement).is_err());
+    assert_eq!(serde_json::to_value(replacement).unwrap(), before);
 }

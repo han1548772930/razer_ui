@@ -1,5 +1,6 @@
-//! PID190 matcher document projection at the source/storage boundary. Applying
-//! a matcher mutation cannot replace another profile or unrelated settings.
+//! Audited mouse Matcher document projection at the source/storage boundary.
+//! Applying a matcher mutation cannot replace another product, profile or
+//! unrelated settings.
 use crate::model::Device;
 use anyhow::{Context as _, ensure};
 use serde::Deserialize;
@@ -13,6 +14,7 @@ fn present_field<'de, D: serde::Deserializer<'de>>(
 
 #[derive(Clone, Debug)]
 pub struct Mutation {
+    product_id: u32,
     device_identity: String,
     profile_id: String,
     profile_guid: String,
@@ -26,6 +28,7 @@ pub struct Mutation {
 
 #[derive(Clone, Debug)]
 pub struct SourceRecord {
+    product_id: u32,
     device_identity: String,
     profile_id: String,
     document: Value,
@@ -38,10 +41,7 @@ impl SourceRecord {
 }
 
 pub fn source_record(device: &Device) -> anyhow::Result<SourceRecord> {
-    ensure!(
-        device.product_id == razer_device::dpi_matcher::PRODUCT_ID,
-        "Matcher source is not PID190"
-    );
+    let product = razer_device::dpi_matcher::Product::new(device.product_id)?;
     let mut root = device
         .source_device_settings
         .clone()
@@ -94,6 +94,7 @@ pub fn source_record(device: &Device) -> anyhow::Result<SourceRecord> {
     fields.insert("activeProfile".into(), json!(active.guid));
     fields.insert("profiles".into(), json!(profiles));
     Ok(SourceRecord {
+        product_id: product.product_id(),
         device_identity: device.workspace_identity(),
         profile_id: active.id.clone(),
         document: root,
@@ -143,6 +144,7 @@ impl Mutation {
             "Matcher library has no profiles"
         );
         Ok(Self {
+            product_id: observed.product_id,
             device_identity: observed.device_identity.clone(),
             profile_id: observed.profile_id.clone(),
             profile_guid: before.active_profile,
@@ -156,8 +158,9 @@ impl Mutation {
     }
 
     pub fn apply(&self, device: &mut Device) -> anyhow::Result<()> {
+        let product = razer_device::dpi_matcher::Product::new(device.product_id)?;
         ensure!(
-            device.product_id == razer_device::dpi_matcher::PRODUCT_ID,
+            product.product_id() == self.product_id,
             "Matcher save belongs to another product"
         );
         ensure!(

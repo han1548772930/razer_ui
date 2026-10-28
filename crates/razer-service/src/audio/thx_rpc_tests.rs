@@ -161,10 +161,9 @@ async fn fake_server(
         }
     });
     // accept polls the server connection and flushes DATA/trailers. The client
-    // closes its owned duplex after unary completes, ending this loop.
-    while let Some(incoming) = connection.accept().await {
+    // closes its owned duplex after unary completes.
+    if let Some(incoming) = connection.accept().await {
         assert!(incoming.is_err(), "Unexpected retry/duplicate THX request");
-        break;
     }
     // Cancellation may leave a deliberately pending fake handler.
     if !handler.is_finished() {

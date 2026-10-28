@@ -68,13 +68,14 @@ mod tests {
         );
         assert!(
             monitor
-                .stop(|_| Ok(json!({"owner_guid":"old-owner","monitoring":false})))
+                .stop(|_| Ok(json!({"owner_guid":"old-owner","monitoring":false,
+                    "events":[],"more":false})))
                 .is_err()
         );
         assert!(monitor.possibly_started());
         monitor.stop(|request| {
             assert!(matches!(request, ServiceRequest::MouseInputMonitoringStop { owner_guid } if owner_guid == "matcher-owner"));
-            Ok(json!({"owner_guid":"matcher-owner","monitoring":false}))
+            Ok(json!({"owner_guid":"matcher-owner","monitoring":false,"events":[],"more":false}))
         }).unwrap();
         assert!(!monitor.possibly_started());
         monitor
@@ -86,7 +87,7 @@ mod tests {
     fn dpi_matcher_monitor_rejects_stale_polls_and_incomplete_event_streams() {
         let mut monitor = InputMonitor::new("matcher-owner".into());
         monitor
-            .start(|_| Ok(json!({"owner_guid":"matcher-owner","monitoring":true})))
+            .start(|_| Ok(json!({"owner_guid":"matcher-owner","result":true,"reason":""})))
             .unwrap();
         for receipt in [
             json!({"owner_guid":"old-owner","events":[],"failure":null}),
@@ -96,12 +97,38 @@ mod tests {
             assert!(monitor.possibly_started());
         }
         monitor
-            .stop(|_| Ok(json!({"owner_guid":"matcher-owner","monitoring":false})))
+            .stop(|_| {
+                Ok(json!({"owner_guid":"matcher-owner","monitoring":false,
+                "events":[],"more":false}))
+            })
             .unwrap();
         assert!(
             monitor
                 .events(|_| panic!("closed monitor must not poll"))
                 .is_err()
         );
+    }
+
+    #[test]
+    fn dpi_matcher_detached_observer_drains_final_pages_without_restarting_or_polling() {
+        let mut monitor = InputMonitor::new("matcher-owner".into());
+        monitor
+            .start(|_| Ok(json!({"owner_guid":"matcher-owner","result":true,"reason":""})))
+            .unwrap();
+        let mut stops = 0;
+        monitor
+            .stop(|request| {
+                assert!(matches!(request,
+                    ServiceRequest::MouseInputMonitoringStop { owner_guid } if owner_guid == "matcher-owner"));
+                stops += 1;
+                Ok(json!({"owner_guid":"matcher-owner","monitoring":false,
+                    "events":[{"containerId":"actual","productId":190,"vendorId":5426,
+                        "usbInstanceId":null,"inputMonitoringEventType":1,
+                        "jsonEvent":r#"[{"timeTick":"88","data":"{\"type\":\"mouseMove\",\"x\":600,\"y\":900}"}]"#}],
+                    "more":stops == 1}))
+            })
+            .unwrap();
+        assert_eq!(stops, 2);
+        assert!(!monitor.possibly_started());
     }
 }

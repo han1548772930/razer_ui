@@ -4,59 +4,155 @@ use anyhow::{Context as _, ensure};
 use serde::{Deserialize, Serialize};
 
 pub const MAX_CALLBACK_BYTES: usize = 1024 * 1024;
+pub const MAX_BATCH_EVENTS: usize = 128;
+pub const MAX_BATCH_BYTES: usize = 3 * 1024 * 1024;
 
 /// One client's native input-monitor lifetime. A lost START acknowledgement
 /// retains the STOP obligation until that same owner's stop is acknowledged.
 pub struct Session {
     owner: String,
-    possibly_started: bool,
+    phase: CapturePhase,
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CapturePhase {
+    Idle,
+    StartPending,
+    Capturing,
+    StopPending,
 }
 impl Session {
     pub fn new(owner: String) -> anyhow::Result<Self> {
         ensure!(!owner.is_empty(), "Input monitor owner is empty");
         Ok(Self {
             owner,
-            possibly_started: false,
+            phase: CapturePhase::Idle,
         })
     }
     pub fn possibly_started(&self) -> bool {
-        self.possibly_started
+        self.phase != CapturePhase::Idle
     }
     pub fn start(
         &mut self,
-        mut request: impl FnMut(crate::ServiceRequest) -> anyhow::Result<serde_json::Value>,
+        request: impl FnMut(crate::ServiceRequest) -> anyhow::Result<serde_json::Value>,
     ) -> anyhow::Result<()> {
         ensure!(
-            !self.possibly_started,
+            self.phase == CapturePhase::Idle,
             "Input monitor still requires stop acknowledgement"
         );
-        self.possibly_started = true;
-        let receipt: Receipt =
+        self.phase = CapturePhase::StartPending;
+        let acknowledgement = self.request_start(request)?;
+        match acknowledgement.validate(&self.owner)? {
+            StartStatus::Started => {
+                self.phase = CapturePhase::Capturing;
+                Ok(())
+            }
+            StartStatus::AlreadyStarted => anyhow::bail!(
+                "Input monitor START was rejected: {}",
+                acknowledgement.reason()
+            ),
+        }
+    }
+
+    /// Repeats the source START on the same confirmed capture. Its negative
+    /// acknowledgement is returned intact and does not release the STOP duty.
+    pub fn repeat_start(
+        &mut self,
+        request: impl FnMut(crate::ServiceRequest) -> anyhow::Result<serde_json::Value>,
+    ) -> anyhow::Result<StartAcknowledgement> {
+        ensure!(
+            self.phase == CapturePhase::Capturing,
+            "Input monitor has no confirmed active START to repeat"
+        );
+        self.request_start(request)
+    }
+
+    fn request_start(
+        &self,
+        mut request: impl FnMut(crate::ServiceRequest) -> anyhow::Result<serde_json::Value>,
+    ) -> anyhow::Result<StartAcknowledgement> {
+        let acknowledgement: StartAcknowledgement =
             serde_json::from_value(request(crate::ServiceRequest::MouseInputMonitoringStart {
                 owner_guid: self.owner.clone(),
-            })?)?;
-        receipt.validate(&self.owner, true)
+            })?)
+            .context("Invalid input monitor start acknowledgement")?;
+        acknowledgement.validate(&self.owner)?;
+        Ok(acknowledgement)
     }
+    /// Stops after this client's observer has been removed. Final callbacks
+    /// still cross the transport and are validated, but have no consumer here.
     pub fn stop(
         &mut self,
-        mut request: impl FnMut(crate::ServiceRequest) -> anyhow::Result<serde_json::Value>,
+        request: impl FnMut(crate::ServiceRequest) -> anyhow::Result<serde_json::Value>,
     ) -> anyhow::Result<()> {
-        if self.possibly_started {
-            let receipt: Receipt = serde_json::from_value(request(
-                crate::ServiceRequest::MouseInputMonitoringStop {
-                    owner_guid: self.owner.clone(),
-                },
-            )?)?;
-            receipt.validate(&self.owner, false)?;
-            self.possibly_started = false;
+        self.stop_with(request, |_| Ok(()))
+    }
+
+    /// Retains the same native STOP obligation until all final callback pages
+    /// are received. Continuation pages drain the stopped owner without another
+    /// native STOP. Observer failures do not abandon the remaining pages.
+    pub fn stop_with(
+        &mut self,
+        mut request: impl FnMut(crate::ServiceRequest) -> anyhow::Result<serde_json::Value>,
+        mut observe: impl FnMut(Vec<InputEvent>) -> anyhow::Result<()>,
+    ) -> anyhow::Result<()> {
+        let mut failures = Vec::new();
+        if self.possibly_started() {
+            self.phase = CapturePhase::StopPending;
         }
+        while self.possibly_started() {
+            let received = (|| {
+                let receipt: StopReceipt = serde_json::from_value(request(
+                    crate::ServiceRequest::MouseInputMonitoringStop {
+                        owner_guid: self.owner.clone(),
+                    },
+                )?)
+                .context("Invalid input monitor stop receipt")?;
+                receipt.acknowledgement.validate(&self.owner, false)?;
+                ensure!(
+                    !receipt.more || !receipt.events.is_empty(),
+                    "Input monitor stop continuation made no progress"
+                );
+                Ok(receipt)
+            })();
+            let receipt = match received {
+                Ok(receipt) => receipt,
+                Err(error) => {
+                    failures.push(format!("{error:#}"));
+                    break;
+                }
+            };
+            self.phase = if receipt.more {
+                CapturePhase::StopPending
+            } else {
+                CapturePhase::Idle
+            };
+            let result = validate_events(&receipt.events).and_then(|()| {
+                if let Some(failure) = receipt.failure {
+                    anyhow::bail!("{failure}");
+                }
+                if failures.is_empty() && !receipt.events.is_empty() {
+                    observe(receipt.events)?;
+                }
+                Ok(())
+            });
+            if let Err(error) = result {
+                let error = format!("{error:#}");
+                if !failures.contains(&error) {
+                    failures.push(error);
+                }
+            }
+        }
+        ensure!(failures.is_empty(), "{}", failures.join("; "));
         Ok(())
     }
     pub fn poll(
         &self,
         mut request: impl FnMut(crate::ServiceRequest) -> anyhow::Result<serde_json::Value>,
     ) -> anyhow::Result<Vec<InputEvent>> {
-        ensure!(self.possibly_started, "Input monitor is not started");
+        ensure!(
+            self.phase == CapturePhase::Capturing,
+            "Input monitor has no confirmed active START"
+        );
         let poll: Poll =
             serde_json::from_value(request(crate::ServiceRequest::MouseInputMonitoringPoll {
                 owner_guid: self.owner.clone(),
@@ -175,6 +271,122 @@ impl Receipt {
     }
 }
 
+/// The native START callback has the same result/reason shape as the current
+/// host wrapper. A false result is an observed negative acknowledgement, not a
+/// successful start. `owner_guid` remains part of this local IPC boundary so
+/// a stale response cannot be accepted by another session.
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct StartAcknowledgement {
+    owner_guid: String,
+    result: bool,
+    reason: String,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StartStatus {
+    Started,
+    AlreadyStarted,
+}
+
+impl StartAcknowledgement {
+    pub fn started(owner_guid: String) -> Self {
+        Self {
+            owner_guid,
+            result: true,
+            reason: String::new(),
+        }
+    }
+
+    pub fn rejected(owner_guid: String, reason: impl Into<String>) -> Self {
+        Self {
+            owner_guid,
+            result: false,
+            reason: reason.into(),
+        }
+    }
+
+    pub fn validate(&self, owner: &str) -> anyhow::Result<StartStatus> {
+        ensure!(
+            !owner.is_empty() && self.owner_guid == owner,
+            "Input monitor START acknowledgement belongs to another owner"
+        );
+        if self.result {
+            ensure!(
+                self.reason.is_empty(),
+                "Input monitor START succeeded with an error reason"
+            );
+            return Ok(StartStatus::Started);
+        }
+        ensure!(
+            !self.reason.is_empty(),
+            "Input monitor START failed without a reason"
+        );
+        if self.reason == "already started" {
+            Ok(StartStatus::AlreadyStarted)
+        } else {
+            anyhow::bail!("Input monitor START failed: {}", self.reason)
+        }
+    }
+
+    pub fn result(&self) -> bool {
+        self.result
+    }
+
+    pub fn reason(&self) -> &str {
+        &self.reason
+    }
+}
+
+/// A page of callbacks retained after the native thread has stopped. `more`
+/// keeps this IPC owner reserved until its final page has been handed off.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct StopReceipt {
+    #[serde(flatten)]
+    acknowledgement: Receipt,
+    events: Vec<InputEvent>,
+    more: bool,
+    failure: Option<String>,
+}
+
+impl StopReceipt {
+    pub fn new(
+        owner_guid: String,
+        events: Vec<InputEvent>,
+        more: bool,
+        failure: Option<String>,
+    ) -> Self {
+        Self {
+            acknowledgement: Receipt::new(owner_guid, false),
+            events,
+            more,
+            failure,
+        }
+    }
+
+    pub fn has_more(&self) -> bool {
+        self.more
+    }
+
+    pub fn failure(&self) -> Option<&str> {
+        self.failure.as_deref()
+    }
+}
+
+fn validate_events(events: &[InputEvent]) -> anyhow::Result<()> {
+    ensure!(
+        events.len() <= MAX_BATCH_EVENTS,
+        "Input monitor poll exceeds its batch limit"
+    );
+    for event in events {
+        event.validate()?;
+    }
+    ensure!(
+        serde_json::to_vec(events)?.len() <= MAX_BATCH_BYTES,
+        "Input monitor batch exceeds IPC capacity"
+    );
+    Ok(())
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Poll {
     owner_guid: String,
@@ -199,13 +411,7 @@ impl Poll {
         if let Some(failure) = self.failure {
             anyhow::bail!("{failure}");
         }
-        ensure!(
-            self.events.len() <= 128,
-            "Input monitor poll exceeds its batch limit"
-        );
-        for event in &self.events {
-            event.validate()?;
-        }
+        validate_events(&self.events)?;
         Ok(self.events)
     }
 }

@@ -3,14 +3,17 @@
 use super::*;
 use razer_discovery::{direct, discovery::ObservedDevice};
 use razer_pages::features::mouse_products::{
-    MouseDynamicAction, MouseDynamicCompletion, MouseDynamicRequested,
+    MouseDynamicAction, MouseDynamicCompletion, MouseDynamicConnection, MouseDynamicRequested,
 };
-use razer_service::mouse_dynamic::{self as service, Completion, Outcome, Update};
+use razer_service::mouse_dynamic::{self as service, Completion, Outcome};
 use std::sync::{Arc, Mutex, atomic::Ordering};
 
 #[path = "mouse_dynamic_save.rs"]
 mod save;
 pub(super) use save::LocalSave;
+#[path = "mouse_dynamic_history.rs"]
+mod history;
+use history::HistoryOwner;
 
 #[derive(Clone, Copy)]
 enum Admission {
@@ -45,6 +48,11 @@ struct Operation {
     request: MouseDynamicRequested,
     route: ObservedDevice,
     revision: u64,
+    control: Option<service::MonitorControl>,
+    delivery: Task<()>,
+}
+struct PendingStart {
+    request: MouseDynamicRequested,
     delivery: Task<()>,
 }
 #[derive(Default)]
@@ -53,8 +61,17 @@ pub(super) struct State {
     next_id: u64,
     operations: BTreeMap<Key, Operation>,
     queued: BTreeMap<Key, Queued>,
+    histories: BTreeMap<u64, HistoryOwner>,
+    starts: BTreeMap<u64, PendingStart>,
 }
 impl State {
+    fn allocate_id(&mut self) -> u64 {
+        self.next_id = self
+            .next_id
+            .checked_add(1)
+            .expect("Dynamic operation identity exhausted");
+        self.next_id
+    }
     fn resume_after_exit(&mut self) {
         if !self.pending() {
             self.stopped = false;
@@ -75,13 +92,22 @@ impl State {
         for queued in std::mem::take(&mut self.queued).into_values() {
             queued.request.guard().store(false, Ordering::Release);
         }
-        std::mem::take(&mut self.operations)
+        let mut deliveries = std::mem::take(&mut self.operations)
             .into_values()
             .map(|operation| {
                 operation.request.guard().store(false, Ordering::Release);
                 operation.delivery
             })
-            .collect()
+            .collect::<Vec<_>>();
+        for start in std::mem::take(&mut self.starts).into_values() {
+            start.request.guard().store(false, Ordering::Release);
+            deliveries.push(start.delivery);
+        }
+        for history in std::mem::take(&mut self.histories).into_values() {
+            history.input.close();
+            deliveries.push(history.delivery);
+        }
+        deliveries
     }
 }
 impl Drop for State {
@@ -89,13 +115,18 @@ impl Drop for State {
         for operation in self.operations.values() {
             operation.request.guard().store(false, Ordering::Release);
         }
+        for history in self.histories.values() {
+            history.input.close();
+        }
+        for start in self.starts.values() {
+            start.request.guard().store(false, Ordering::Release);
+        }
     }
 }
 
 #[derive(Default)]
 struct Mailbox {
     started: bool,
-    speed: Option<f64>,
     completion: Option<Completion>,
 }
 
@@ -183,6 +214,11 @@ impl AppShell {
         observations: &[ObservedDevice],
         cx: &App,
     ) {
+        for history in self.mouse_dynamic.histories.values() {
+            if !history.matches(self, observations, cx) {
+                history.input.close();
+            }
+        }
         for (key, operation) in &self.mouse_dynamic.operations {
             if !operation.matches(self, key, observations, cx) {
                 operation.request.guard().store(false, Ordering::Release);
@@ -303,6 +339,23 @@ impl AppShell {
             route: route.clone(),
             window,
         };
+        if matches!(action, MouseDynamicAction::Monitor(false)) {
+            self.unregister_mouse_dynamic_observer(&queued, cx);
+        }
+        if route.product_id() == 226
+            && matches!(action, MouseDynamicAction::Monitor(true))
+            && self
+                .mouse_dynamic
+                .operations
+                .get(&key)
+                .is_some_and(|operation| {
+                    operation.request.guard().load(Ordering::Acquire)
+                        && operation.matches(self, &key, &self.device_observations, cx)
+                })
+        {
+            self.repeat_mouse_dynamic_start(key, queued, cx);
+            return;
+        }
         if let Some(operation) = self.mouse_dynamic.operations.get(&key) {
             if key.monitor {
                 operation.request.guard().store(false, Ordering::Release);
@@ -327,6 +380,76 @@ impl AppShell {
         } else {
             self.start_mouse_dynamic(key, queued, cx);
         }
+    }
+    fn repeat_mouse_dynamic_start(&mut self, key: Key, queued: Queued, cx: &mut Context<Self>) {
+        // Source j registers F before awaiting the raw START result. Neither a
+        // negative acknowledgement nor an RPC failure removes that listener.
+        let reply =
+            self.register_mouse_dynamic_observer(&queued, cx)
+                .and_then(|()| {
+                    let operation =
+                        self.mouse_dynamic.operations.get(&key).ok_or_else(|| {
+                            anyhow::anyhow!("Dynamic capture is no longer retained")
+                        })?;
+                    let control = operation
+                        .control
+                        .as_ref()
+                        .ok_or_else(|| anyhow::anyhow!("Dynamic capture has no START control"))?;
+                    Ok((operation.id, control.request_start()?))
+                });
+        let (capture_id, reply) = match reply {
+            Ok(reply) => reply,
+            Err(error) => {
+                self.finish_mouse_dynamic(
+                    &queued.workspace,
+                    &queued.request,
+                    MouseDynamicCompletion::Failed(format!("{error:#}")),
+                    cx,
+                );
+                return;
+            }
+        };
+        let id = self.mouse_dynamic.allocate_id();
+        let request = queued.request.clone();
+        let workspace = queued.workspace.downgrade();
+        let delivery = cx.spawn(async move |shell, cx| {
+            let acknowledgement = reply.receive().await;
+            let _ = shell.update(cx, |shell, cx| {
+                if shell.mouse_dynamic.starts.remove(&id).is_none() {
+                    return;
+                }
+                let current = shell
+                    .mouse_dynamic
+                    .operations
+                    .get(&key)
+                    .is_some_and(|operation| {
+                        operation.id == capture_id
+                            && operation.matches(shell, &key, &shell.device_observations, cx)
+                    });
+                let Some(workspace) = workspace.upgrade().filter(|workspace| {
+                    current
+                        && workspace
+                            .read(cx)
+                            .mouse_dynamic_request_is_current(&request, cx)
+                }) else {
+                    return;
+                };
+                let completion = match acknowledgement {
+                    // j ignores the raw result boolean. Retire this registration
+                    // without publishing another Monitoring(true) success.
+                    Ok(_) => MouseDynamicCompletion::ObserverAttached,
+                    Err(error) => MouseDynamicCompletion::Failed(error),
+                };
+                shell.finish_mouse_dynamic(&workspace, &request, completion, cx);
+            });
+        });
+        self.mouse_dynamic.starts.insert(
+            id,
+            PendingStart {
+                request: queued.request,
+                delivery,
+            },
+        );
     }
     fn start_mouse_dynamic(&mut self, key: Key, queued: Queued, cx: &mut Context<Self>) {
         if !current(
@@ -359,24 +482,39 @@ impl AppShell {
                 return;
             }
         };
-        self.mouse_dynamic.next_id = self
-            .mouse_dynamic
-            .next_id
-            .checked_add(1)
-            .expect("Dynamic operation identity exhausted");
-        let id = self.mouse_dynamic.next_id;
+        let history = if matches!(action, MouseDynamicAction::Monitor(true)) {
+            match self.mouse_dynamic_history(&queued, cx) {
+                Ok(history) => Some(history),
+                Err(error) => {
+                    self.finish_mouse_dynamic(
+                        &queued.workspace,
+                        &queued.request,
+                        MouseDynamicCompletion::Failed(format!("{error:#}")),
+                        cx,
+                    );
+                    return;
+                }
+            }
+        } else {
+            None
+        };
+        let id = self.mouse_dynamic.allocate_id();
+        let (control, capture) = match history {
+            Some(history) => {
+                let (control, commands) = service::monitor_requests();
+                (Some(control), Some((history, commands)))
+            }
+            None => (None, None),
+        };
         let mailbox = Arc::new(Mutex::new(Mailbox::default()));
         let output = mailbox.clone();
         let route = queued.route.clone();
         let guard = queued.request.guard();
         let worker = cx.background_spawn(async move {
-            let completion = if matches!(action, MouseDynamicAction::Monitor(true)) {
-                service::monitor(route, guard, |update| {
+            let completion = if let Some((history, commands)) = capture {
+                service::monitor(route, guard, history, commands, || {
                     let mut mailbox = output.lock().unwrap_or_else(|error| error.into_inner());
-                    match update {
-                        Update::MonitoringStarted => mailbox.started = true,
-                        Update::Speed(speed) => mailbox.speed = Some(speed),
-                    }
+                    mailbox.started = true;
                 })
             } else {
                 service::device(
@@ -396,7 +534,6 @@ impl AppShell {
         let delivery_key = key.clone();
         let delivery_request = queued.request.clone();
         let delivery_owner = queued.workspace.downgrade();
-        let window = queued.window;
         let delivery = cx.spawn(async move |shell, cx| {
             let completion = loop {
                 cx.background_executor()
@@ -435,18 +572,6 @@ impl AppShell {
                             MouseDynamicCompletion::Monitoring(true),
                             cx,
                         );
-                    }
-                    if let Some(speed) = batch.speed {
-                        let _ = window.update(cx, |_, window, cx| {
-                            workspace.update(cx, |workspace, cx| {
-                                workspace.observe_mouse_dynamic_speed(
-                                    &delivery_request,
-                                    speed,
-                                    window,
-                                    cx,
-                                );
-                            })
-                        });
                     }
                 });
                 if let Some(completion) = batch.completion {
@@ -538,6 +663,7 @@ impl AppShell {
                 request: queued.request,
                 route: queued.route,
                 revision: queued.revision,
+                control,
                 delivery,
             },
         );

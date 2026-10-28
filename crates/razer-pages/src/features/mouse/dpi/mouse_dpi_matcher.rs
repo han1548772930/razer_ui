@@ -11,6 +11,7 @@ use gpui_kit::{
     prelude::FluentBuilder as _,
     *,
 };
+use razer_device::dpi_matcher::Phase;
 use razer_i18n::t;
 use razer_widgets::{scroll::SourceScrollable as _, surface};
 use serde_json::Value;
@@ -396,12 +397,12 @@ impl MouseDpiMatcher {
     }
     fn step_content(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let phase = self.state.phase();
-        if !matches!(phase, Some("ready" | "calibrating" | "error" | "completed")) {
+        if phase == Phase::Idle {
             return div().into_any_element();
         }
         let desc = match phase {
-            Some("ready") => "SENSITIVITY_MATCHER_ACTION_DESC_1",
-            Some("completed") => "SENSITIVITY_MATCHER_ACTION_DESC_3",
+            Phase::Ready => "SENSITIVITY_MATCHER_ACTION_DESC_1",
+            Phase::Completed => "SENSITIVITY_MATCHER_ACTION_DESC_3",
             _ => "SENSITIVITY_MATCHER_ACTION_DESC_2",
         };
         // The source uses block children (READY adds one unstyled div), not
@@ -421,7 +422,7 @@ impl MouseDpiMatcher {
             .h(surface::css(150.))
             .mt(surface::css(70.))
             .mx_auto();
-        if phase == Some("completed") {
+        if phase == Phase::Completed {
             artwork = artwork.justify_center().child(
                 img("synapse/mouse-matcher-190/completed.svg")
                     .w(surface::css(136.))
@@ -433,7 +434,7 @@ impl MouseDpiMatcher {
                     .w(surface::css(150.))
                     .h(surface::css(136.)),
             );
-            if phase == Some("ready") {
+            if phase == Phase::Ready {
                 artwork = artwork.child(dotted(80.).mx_auto()).child(
                     img("synapse/mouse-matcher-190/synapse.svg")
                         .w(surface::css(158.))
@@ -450,7 +451,7 @@ impl MouseDpiMatcher {
             }
         }
         content = content.child(artwork);
-        if matches!(phase, Some("calibrating" | "error")) {
+        if matches!(phase, Phase::Calibrating | Phase::Error) {
             let progress = gpui_kit::base::motion::transition(
                 (
                     ElementId::from(("matcher190-progress", cx.entity_id())),
@@ -477,7 +478,7 @@ impl MouseDpiMatcher {
                     ),
             );
         }
-        if phase == Some("completed") {
+        if phase == Phase::Completed {
             content = content
                 .child(
                     div()
@@ -711,7 +712,7 @@ impl MouseDpiMatcher {
                                 h_flex()
                                     // .extra-style !important overrides inline120
                                     // when dS renders the completed state.
-                                    .mt(surface::css(if self.state.phase() == Some("completed") {
+                                    .mt(surface::css(if self.state.phase() == Phase::Completed {
                                         50.
                                     } else {
                                         120.
@@ -740,7 +741,7 @@ impl MouseDpiMatcher {
                                             "APPLY",
                                             0x44d62c,
                                             0x000000,
-                                            self.state.phase() != Some("completed"),
+                                            self.state.phase() != Phase::Completed,
                                         )
                                         .on_click(
                                             cx.listener(|this, _, _, cx| {
@@ -758,7 +759,7 @@ impl MouseDpiMatcher {
                 this.emit(actions, cx);
                 cx.notify();
             }))
-            .children((self.state.phase() == Some("error")).then(|| {
+            .children((self.state.phase() == Phase::Error).then(|| {
                 razer_assets::deferred_resource(self.warning(window, cx)).with_priority(999)
             }))
             // dS.componentDidMount applies overflow:auto to the popup itself.
@@ -974,12 +975,11 @@ fn dotted(width: f32) -> Div {
                 .bg(rgb(0x707070))
         }))
 }
-fn dpi_table(current: &Value, new: &Value, window: &Window) -> Div {
+fn dpi_table(current: Option<f64>, new: f64, window: &Window) -> Div {
     let labels = [t("CURRENT_DPI"), t("NEW_DPI")];
-    let values = [current, new].map(|value| match value {
-        Value::Null => String::new(),
-        Value::String(value) => value.clone(),
-        _ => value.to_string(),
+    let values = [current, Some(new)].map(|value| {
+        // The initial reducer omits currentDpi; React renders that child empty.
+        value.map_or_else(String::new, razer_device::source_string::number_text)
     });
     // dS uses a nowrap HTML table with two shared columns, not independently
     // justified rows. Account for UA 2px border spacing and 1px td padding.

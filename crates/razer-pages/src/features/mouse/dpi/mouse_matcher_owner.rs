@@ -1,4 +1,5 @@
-//! PID190 uS -> NS ownership; current AS/dS reducers and service observations.
+//! Audited Matcher uS -> NS ownership; current AS/dS reducers and service
+//! observations.
 //! UI drafts and transport failures are kept apart from device acknowledgements.
 use super::*;
 use crate::features::mouse_dpi_matcher::{MatcherAction, MatcherObservation, MouseDpiMatcher};
@@ -9,6 +10,7 @@ use razer_model::model::Device;
 /// back into retained drafts. Device observations and unrelated edits stay owned
 /// by their existing page state.
 pub(in crate::features) struct SavedMatcherProfiles {
+    product_id: u32,
     device_identity: String,
     profile_id: String,
     profile_guid: String,
@@ -17,10 +19,8 @@ pub(in crate::features) struct SavedMatcherProfiles {
 }
 impl SavedMatcherProfiles {
     pub(in crate::features) fn from_device(device: &Device) -> anyhow::Result<Self> {
-        ensure!(
-            device.product_id == razer_device::dpi_matcher::PRODUCT_ID,
-            "Matcher saved profiles belong to another product"
-        );
+        let product = razer_device::dpi_matcher::Product::new(device.product_id)
+            .context("Matcher saved profiles belong to an unaudited product")?;
         let profile = device
             .profiles
             .iter()
@@ -58,6 +58,7 @@ impl SavedMatcherProfiles {
             })
             .transpose()?;
         Ok(Self {
+            product_id: product.product_id(),
             device_identity: device.workspace_identity(),
             profile_id: profile.id.clone(),
             profile_guid: profile.guid.clone(),
@@ -67,8 +68,11 @@ impl SavedMatcherProfiles {
     }
 
     pub(in crate::features) fn apply_to_device(&self, device: &mut Device) -> anyhow::Result<()> {
+        let product = razer_device::dpi_matcher::Product::new(device.product_id)
+            .context("Matcher saved device belongs to an unaudited product")?;
         ensure!(
-            device.workspace_identity() == self.device_identity
+            product.product_id() == self.product_id
+                && device.workspace_identity() == self.device_identity
                 && device.active_profile == self.profile_id,
             "Matcher saved device or active profile changed"
         );
@@ -164,9 +168,9 @@ impl EventEmitter<MouseMatcherRequest> for MouseProductWorkspace {}
 
 impl MouseProductWorkspace {
     pub(super) fn prepare_matcher(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        // Other callers are inventoried in mouse-matcher-mount-current-source.json;
-        // their distinct component internals have not yet passed equivalence review.
-        if self.spec.product_id != 190 {
+        // This view implements PID190 dS/AS. Sampling/storage support for other
+        // products does not establish their popup, menu or resource lifecycle.
+        if self.spec.product_id != razer_device::dpi_matcher::PRODUCT_ID {
             return;
         }
         let matcher = cx.new(|cx| MouseDpiMatcher::new(window, cx));
@@ -363,7 +367,7 @@ mod tests {
         MatcherAction, MatcherCommand, MatcherObservation, MatcherState,
     };
     use gpui_kit::EntityId;
-    use razer_model::model::Device;
+    use razer_model::model::{Device, Profile};
     use serde_json::{Value, json};
     use std::sync::{
         Arc,
@@ -403,9 +407,17 @@ mod tests {
         assert_ne!(scope, same_count_other_owner);
     }
 
-    fn saved_device() -> Device {
-        let mut device = razer_model::product_preview::registered_preview(190).unwrap();
-        device.active_profile = device.profiles[0].id.clone();
+    fn saved_device_for(product_id: u32) -> Device {
+        let mut device = razer_model::product_preview::registered_preview(product_id).unwrap();
+        device.active_profile = "test-profile".into();
+        device.profiles = vec![Profile {
+            id: device.active_profile.clone(),
+            guid: device.active_profile.clone(),
+            name: "Test profile".into(),
+            source_settings: None,
+            settings: None,
+            dpi_stages: None,
+        }];
         device.profiles[0].source_settings = Some(json!({
             "guid":device.profiles[0].guid,
             "selectedSensitivityMatcher":"old",
@@ -419,6 +431,10 @@ mod tests {
             "sensitivityMatcher":{"profiles":[{"guid":"old","name":"Previous","dpi":{"x":800,"y":800}}],"libraryExtension":"keep"}
         }));
         device
+    }
+
+    fn saved_device() -> Device {
+        saved_device_for(190)
     }
 
     fn commit(device: &mut Device, mutation: razer_device::dpi_matcher_storage::Mutation) {
@@ -557,12 +573,13 @@ mod tests {
     fn matcher_exit_saved_profiles_reject_replaced_owners_and_invalid_records_without_fallback() {
         let saved = saved_device();
         let projection = SavedMatcherProfiles::from_device(&saved).unwrap();
-        for change in 0..4 {
+        for change in 0..5 {
             let mut live = saved.clone();
             match change {
                 0 => live.device_container_id = "replacement-device".into(),
                 1 => live.active_profile = "replacement-profile".into(),
                 2 => live.profiles[0].guid = "replacement-guid".into(),
+                3 => live.product_id = 192,
                 _ => live.source_device_settings = Some(Value::Null),
             }
             let unchanged = serde_json::to_value(&live).unwrap();
@@ -578,5 +595,16 @@ mod tests {
         saved.profiles[0].source_settings.as_mut().unwrap()["selectedSensitivityMatcher"] =
             Value::Null;
         assert!(SavedMatcherProfiles::from_device(&saved).is_err());
+    }
+
+    #[test]
+    fn matcher_saved_profiles_accept_each_audited_product_without_fallback() {
+        for product_id in [190, 192, 222, 226, 229, 239] {
+            let saved = saved_device_for(product_id);
+            let projection = SavedMatcherProfiles::from_device(&saved).unwrap();
+            let mut live = saved.clone();
+            projection.apply_to_device(&mut live).unwrap();
+            assert_eq!(live.product_id, product_id);
+        }
     }
 }

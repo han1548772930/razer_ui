@@ -3,11 +3,31 @@
 use anyhow::{Context as _, ensure};
 use serde_json::{Value, json};
 
+#[cfg(test)]
+#[path = "dpi_matcher_storage_tests.rs"]
+mod tests;
+
 pub struct Mutation {
     pub data: Value,
     /// Separate ON_STAGES_CHANGE chain, executed before matcher persistence.
     pub dpi_stages: Option<Value>,
-    pub response: Value,
+    pub response: ProfileUpdate,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ProfileUpdate {
+    profiles: Vec<Value>,
+    selected: Option<String>,
+}
+
+impl ProfileUpdate {
+    pub fn profiles(&self) -> &[Value] {
+        &self.profiles
+    }
+
+    pub fn selected(&self) -> Option<&str> {
+        self.selected.as_deref()
+    }
 }
 fn active_index(data: &Value) -> anyhow::Result<usize> {
     let active = data["activeProfile"]
@@ -58,14 +78,17 @@ fn finish(
         )
     };
     data["version"] = json!(crate::mapping_submission::next_source_version(previous)?);
-    let mut payload = json!({"sensitivityMatcher":matcher});
-    if let Some(selected) = selected {
-        payload["selectedSensitivityMatcher"] = json!(selected);
-    }
+    let profiles = matcher["profiles"]
+        .as_array()
+        .context("invalid matcher response profiles")?
+        .clone();
     Ok(Mutation {
         data,
         dpi_stages,
-        response: json!({"type":"MW_SET_SENSITIVITY_PROFILE_TO_UI","payload":payload}),
+        response: ProfileUpdate {
+            profiles,
+            selected: selected.map(str::to_owned),
+        },
     })
 }
 fn replace_stage(profile: &Value, dpi: &Value) -> anyhow::Result<Option<Value>> {
@@ -106,8 +129,8 @@ pub fn select(data: &Value, guid: &str) -> anyhow::Result<Mutation> {
     )
 }
 /// Native computer/device name and UUID must be actual caller observations.
-/// Source W$ returns the locale object unchanged because strict equality with
-/// distinct object names cannot match. Do not invent a flattened display name.
+/// Source W$/AM suffix string names through 100 attempts. Locale objects stay
+/// unchanged because strict equality with distinct object names cannot match.
 pub fn confirm(data: &Value, dpi: f64, guid: &str, name: Value) -> anyhow::Result<Mutation> {
     ensure!(dpi.is_finite() && dpi > 0., "invalid measured DPI");
     ensure!(!guid.is_empty(), "missing generated UUID");
@@ -121,6 +144,10 @@ pub fn confirm(data: &Value, dpi: f64, guid: &str, name: Value) -> anyhow::Resul
         !rows.iter().any(|p| p["guid"] == guid),
         "UUID already exists"
     );
+    let name = confirmation_name(&rows, name);
+    // Math.round produces an integer Number. Preserve JSON.stringify's numeric
+    // spelling at this file/unsigned-stage boundary instead of emitting `.0`.
+    let dpi: serde_json::Number = serde_json::from_str(&crate::ecmascript_number::to_string(dpi)?)?;
     let dpi = json!({"x":dpi,"y":dpi,"independent":false,"visible":true});
     let stages = replace_stage(&data["profiles"][index], &dpi)?;
     rows.push(json!({"guid":guid,"dpi":dpi,"name":name}));
@@ -131,6 +158,17 @@ pub fn confirm(data: &Value, dpi: f64, guid: &str, name: Value) -> anyhow::Resul
         Some(guid),
         stages,
     )
+}
+
+fn confirmation_name(rows: &[Value], name: Value) -> Value {
+    let Some(base) = name.as_str() else {
+        return name;
+    };
+    let candidate = crate::source_string::unique_profile_name(base, |candidate| {
+        rows.iter()
+            .any(|row| row["name"].as_str() == Some(candidate))
+    });
+    json!(candidate)
 }
 pub fn delete(data: &Value, guid: &str) -> anyhow::Result<Mutation> {
     let index = active_index(data)?;

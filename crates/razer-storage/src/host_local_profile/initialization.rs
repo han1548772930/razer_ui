@@ -39,18 +39,12 @@ impl SerialInitializationPlan {
             "serial initialization requires a UUID v4"
         );
         let base = format!("{}-Default", context.computer_name);
-        let mut name = base.clone();
-        // Source AM/W$ probes the base and suffixes 1..99, then returns 100.
-        for suffix in 1..=100 {
-            if !source
+        let name = razer_device::source_string::unique_profile_name(&base, |candidate| {
+            source
                 .profiles()
                 .iter()
-                .any(|profile| profile.name() == name)
-            {
-                break;
-            }
-            name = format!("{base} {suffix}");
-        }
+                .any(|profile| profile.name() == candidate)
+        });
         let profile = razer_device::mouse_current_profile::new_profile(
             source.product_id(),
             context.edition_id,

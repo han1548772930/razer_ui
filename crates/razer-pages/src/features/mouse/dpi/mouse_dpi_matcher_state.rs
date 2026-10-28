@@ -1,4 +1,5 @@
 //! Current PID190 dS/AS state and action projection; no service/device simulation.
+use razer_device::dpi_matcher::{Calibration, Phase};
 use serde_json::{Value, json};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -46,7 +47,7 @@ pub enum MatcherReducerError {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum MatcherObservation {
-    Calibration(Value),
+    Calibration(Calibration),
     Profiles {
         profiles: Vec<Value>,
         selected: String,
@@ -83,7 +84,7 @@ impl ProfileItem {
 
 #[derive(Debug, Clone)]
 pub struct MatcherState {
-    calibration: Value,
+    calibration: Calibration,
     profiles: Vec<Value>,
     selected: String,
     stages: Vec<Value>,
@@ -101,7 +102,7 @@ pub struct MatcherState {
 impl Default for MatcherState {
     fn default() -> Self {
         Self {
-            calibration: json!({"state":"idle","process":0,"newDpi":0}),
+            calibration: Calibration::default(),
             // Current rt is a local UI placeholder with a fresh v4 UUID and
             // null DPI. It is not an observed device or a calibrated profile.
             profiles: vec![
@@ -123,8 +124,8 @@ impl Default for MatcherState {
     }
 }
 impl MatcherState {
-    pub fn phase(&self) -> Option<&str> {
-        self.calibration["state"].as_str()
+    pub fn phase(&self) -> Phase {
+        self.calibration.phase()
     }
     pub fn popup(&self) -> bool {
         self.popup
@@ -142,20 +143,20 @@ impl MatcherState {
         &self.selected
     }
     pub fn process(&self) -> f32 {
-        self.calibration["process"].as_f64().unwrap_or(0.) as f32
+        self.calibration.process() as f32
     }
-    pub fn current_dpi(&self) -> &Value {
-        &self.calibration["currentDpi"]
+    pub fn current_dpi(&self) -> Option<f64> {
+        self.calibration.current_dpi()
     }
-    pub fn new_dpi(&self) -> &Value {
-        &self.calibration["newDpi"]
+    pub fn new_dpi(&self) -> f64 {
+        self.calibration.new_dpi()
     }
     pub fn step_active(&self, step: usize) -> bool {
         matches!(
             (step, self.phase()),
-            (1, Some("ready" | "calibrating" | "completed"))
-                | (2, Some("calibrating" | "completed"))
-                | (3, Some("completed"))
+            (1, Phase::Ready | Phase::Calibrating | Phase::Completed)
+                | (2, Phase::Calibrating | Phase::Completed)
+                | (3, Phase::Completed)
         )
     }
     pub fn mount(&mut self) -> Vec<MatcherAction> {
@@ -219,15 +220,13 @@ impl MatcherState {
     }
     pub fn observe(&mut self, observation: MatcherObservation) -> Vec<MatcherAction> {
         let changed = match &observation {
-            MatcherObservation::Calibration(value) => {
-                value.get("state") != self.calibration.get("state")
-            }
+            MatcherObservation::Calibration(value) => value.phase() != self.calibration.phase(),
             _ => false,
         };
         self.observe_unmounted(observation);
-        if changed && self.phase() != Some("ready") {
+        if changed && self.phase() != Phase::Ready {
             self.popup = true;
-            let first_error = self.phase() == Some("error") && !self.first_load;
+            let first_error = self.phase() == Phase::Error && !self.first_load;
             // React setState is asynchronous in this handler: the error
             // comparison sees the previous firstLoad before it becomes 1.
             self.first_load = true;
@@ -275,7 +274,7 @@ impl MatcherState {
         self.popup = false;
         self.start_listener = false;
         vec![MatcherAction::Command(
-            if self.phase() == Some("calibrating") {
+            if self.phase() == Phase::Calibrating {
                 MatcherCommand::Cancel
             } else {
                 MatcherCommand::Reset
@@ -284,19 +283,16 @@ impl MatcherState {
     }
     pub fn cancel(&mut self) -> Vec<MatcherAction> {
         self.start_listener = true;
-        // Literal dS.cancel compares the entire prop to a string, unlike close.
-        if self.calibration == "calibrating" {
-            vec![MatcherAction::Command(MatcherCommand::Cancel)]
-        } else {
-            self.close()
-        }
+        // Every middleware producer sends an object. dS.cancel compares that
+        // entire prop to a string, so its object path always calls close().
+        self.close()
     }
     pub fn reset(&mut self) -> Vec<MatcherAction> {
         self.open();
         vec![MatcherAction::Command(MatcherCommand::Reset)]
     }
     pub fn apply(&mut self) -> Vec<MatcherAction> {
-        if self.phase() != Some("completed") {
+        if self.phase() != Phase::Completed {
             return vec![];
         }
         self.popup = false;
@@ -464,8 +460,13 @@ fn truthy(value: &Value) -> bool {
 mod tests {
     use super::*;
     include!("mouse_dpi_matcher_state_tests.rs");
+
+    fn observation(phase: Phase) -> MatcherObservation {
+        MatcherObservation::Calibration(Calibration::new(phase, 0., 800., 0.))
+    }
+
     #[::core::prelude::v1::test]
-    fn start_is_one_click_after_open_and_close_preserves_object_comparison() {
+    fn matcher_start_is_one_click_after_open_and_cancel_uses_the_object_path() {
         let mut state = MatcherState::default();
         state.open();
         assert!(state.window_click(true).is_empty());
@@ -474,47 +475,35 @@ mod tests {
             vec![MatcherAction::Command(MatcherCommand::Start)]
         );
         assert!(state.window_click(false).is_empty());
-        state.observe(MatcherObservation::Calibration(
-            json!({"state":"calibrating"}),
-        ));
+        state.observe(observation(Phase::Calibrating));
         assert_eq!(
             state.cancel(),
             vec![MatcherAction::Command(MatcherCommand::Cancel)]
         );
         assert!(!state.popup());
-        state.observe(MatcherObservation::Calibration(json!("calibrating")));
-        state.open();
-        assert_eq!(
-            state.cancel(),
-            vec![MatcherAction::Command(MatcherCommand::Cancel)]
-        );
-        assert!(state.popup());
+        assert!(state.window_click(false).is_empty());
     }
     #[::core::prelude::v1::test]
-    fn first_error_closes_but_later_error_renders_and_apply_requires_completion() {
+    fn matcher_first_error_closes_but_later_error_renders_and_apply_requires_completion() {
         let mut state = MatcherState::default();
         assert_eq!(
-            state.observe(MatcherObservation::Calibration(json!({"state":"error"}))),
+            state.observe(observation(Phase::Error)),
             vec![MatcherAction::Command(MatcherCommand::Reset)]
         );
         assert!(!state.popup());
-        state.observe(MatcherObservation::Calibration(json!({"state":"ready"})));
-        state.observe(MatcherObservation::Calibration(
-            json!({"state":"calibrating"}),
-        ));
-        state.observe(MatcherObservation::Calibration(json!({"state":"error"})));
+        state.observe(observation(Phase::Ready));
+        state.observe(observation(Phase::Calibrating));
+        state.observe(observation(Phase::Error));
         assert!(state.popup());
         assert!(state.apply().is_empty());
-        state.observe(MatcherObservation::Calibration(
-            json!({"state":"completed"}),
-        ));
+        state.observe(observation(Phase::Completed));
         assert_eq!(
             state.apply(),
             vec![MatcherAction::Command(MatcherCommand::Confirm)]
         );
     }
     #[::core::prelude::v1::test]
-    fn dataset_select_and_rename_use_real_source_values() {
+    fn matcher_dataset_select_and_rename_use_real_source_values() {
         let mut state = MatcherState::default();
         state.observe(MatcherObservation::Profiles {
             profiles: vec![

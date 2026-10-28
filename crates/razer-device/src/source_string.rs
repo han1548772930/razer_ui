@@ -2,6 +2,36 @@
 
 use std::cmp::Ordering;
 
+/// Number children use ECMAScript String(number), including non-finite values.
+pub fn number_text(value: f64) -> String {
+    if value.is_nan() {
+        "NaN".into()
+    } else if value == f64::INFINITY {
+        "Infinity".into()
+    } else if value == f64::NEG_INFINITY {
+        "-Infinity".into()
+    } else {
+        crate::ecmascript_number::to_string(value).expect("finite ECMAScript number")
+    }
+}
+
+/// Current AM/W$ probes the base and suffixes 1..99, then returns suffix 100
+/// even if it collides. `Keymap` starts at suffix 1. The caller supplies the
+/// source's strict string-name equality without flattening locale objects.
+pub fn unique_profile_name(base: &str, mut exists: impl FnMut(&str) -> bool) -> String {
+    let mut candidate = base.to_owned();
+    for suffix in 1..=100 {
+        if base == "Keymap" {
+            candidate = format!("{base} {suffix}");
+        }
+        if !exists(&candidate) {
+            return candidate;
+        }
+        candidate = format!("{base} {suffix}");
+    }
+    candidate
+}
+
 /// The current profile helper compares individual UTF-16 code units, grouping
 /// its explicit ASCII punctuation before digits and the remaining characters.
 /// Its `localeCompare` receives no locale argument; the host supplies one.
@@ -97,8 +127,46 @@ pub fn trim(value: &str) -> &str {
 
 #[cfg(test)]
 mod tests {
-    use super::{ProfileNameOrder, is_whitespace, trim};
+    use super::{ProfileNameOrder, is_whitespace, number_text, trim, unique_profile_name};
     use std::cmp::Ordering;
+
+    #[test]
+    fn number_children_keep_source_integer_exponent_and_nonfinite_spelling() {
+        for (value, expected) in [
+            (400., "400"),
+            (0., "0"),
+            (-0., "0"),
+            (1e20, "100000000000000000000"),
+            (1e21, "1e+21"),
+            (1e-6, "0.000001"),
+            (1e-7, "1e-7"),
+            (f64::NAN, "NaN"),
+            (f64::INFINITY, "Infinity"),
+            (f64::NEG_INFINITY, "-Infinity"),
+        ] {
+            assert_eq!(number_text(value), expected);
+        }
+    }
+
+    #[test]
+    fn profile_name_collision_probes_stop_at_the_source_limit() {
+        for base in ["Mouse", "Keymap"] {
+            let mut probes = Vec::new();
+            let name = unique_profile_name(base, |candidate| {
+                probes.push(candidate.to_owned());
+                true
+            });
+            assert_eq!(name, format!("{base} 100"));
+            assert_eq!(probes.len(), 100);
+            if base == "Keymap" {
+                assert_eq!(probes[0], "Keymap 1");
+                assert_eq!(probes[99], "Keymap 100");
+            } else {
+                assert_eq!(probes[0], "Mouse");
+                assert_eq!(probes[99], "Mouse 99");
+            }
+        }
+    }
 
     #[test]
     fn profile_names_keep_source_character_groups_and_lexical_digits() {

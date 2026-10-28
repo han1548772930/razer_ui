@@ -1,6 +1,153 @@
 //! Device observations and explicit edits have separate lifetimes.
-use super::{MouseDynamicCompletion, MouseDynamicRequested, Reading, Setting};
-use std::{collections::BTreeMap, sync::atomic::Ordering};
+use super::{
+    MouseDynamicCompletion, MouseDynamicConnection, MouseDynamicRequested, MouseDynamicScope,
+    Reading, Setting,
+};
+use gpui_kit::EntityId;
+use std::{
+    collections::BTreeMap,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+};
+
+pub(super) struct Lifecycle {
+    scope: MouseDynamicScope,
+    pub(super) requests: Requests,
+    pub(super) guard: Arc<AtomicBool>,
+    pub(super) monitor_guard: Arc<AtomicBool>,
+    pub(super) monitor_requested: bool,
+    mouse_speed: f64,
+    speed_revision: u64,
+}
+#[derive(Clone, Copy)]
+pub(super) struct SpeedExpiry {
+    connection: MouseDynamicConnection,
+    revision: u64,
+}
+pub(super) struct CompletionEffect {
+    pub(super) refresh: bool,
+    pub(super) diagnostic: Option<String>,
+}
+impl Lifecycle {
+    pub(super) fn new(owner: EntityId) -> Self {
+        Self {
+            scope: MouseDynamicScope {
+                owner,
+                profile_epoch: 0,
+                connection_epoch: 0,
+            },
+            requests: Requests::default(),
+            guard: Arc::new(AtomicBool::new(true)),
+            monitor_guard: Arc::new(AtomicBool::new(false)),
+            monitor_requested: false,
+            mouse_speed: 0.,
+            speed_revision: 0,
+        }
+    }
+    pub(super) fn scope(&self) -> MouseDynamicScope {
+        self.scope
+    }
+    pub(super) fn connection_is_current(&self, connection: MouseDynamicConnection) -> bool {
+        self.scope.connection() == connection
+    }
+    pub(super) fn scope_is_current(&self, request: &MouseDynamicRequested) -> bool {
+        (if request.command == "DYNAMIC_SENSITIVITY_UI_COMMAND" {
+            self.connection_is_current(request.scope.connection())
+        } else {
+            self.scope == request.scope
+        }) && request.guard.load(Ordering::Acquire)
+    }
+    pub(super) fn request_is_current(&self, request: &MouseDynamicRequested) -> bool {
+        self.scope_is_current(request) && self.requests.current(request)
+    }
+    pub(super) fn complete(
+        &mut self,
+        request: &MouseDynamicRequested,
+        completion: MouseDynamicCompletion,
+    ) -> Option<CompletionEffect> {
+        if !self.request_is_current(request) {
+            return None;
+        }
+        let current_edit = request.edit_revision == self.requests.edit_revision;
+        let refresh = request.command == "ON_SET_DYNAMIC_SENSITIVITY"
+            && current_edit
+            && matches!(&completion, MouseDynamicCompletion::Device(_));
+        self.requests.complete(request, completion);
+        let diagnostic = current_edit
+            .then(|| self.failure().map(str::to_owned))
+            .flatten();
+        Some(CompletionEffect {
+            refresh,
+            diagnostic,
+        })
+    }
+    pub(super) fn failure(&self) -> Option<&str> {
+        match &self.requests.observation {
+            Observation::Failed(error) => Some(error),
+            _ => self.requests.last_failure.as_deref(),
+        }
+    }
+    pub(super) fn restore_profile(&mut self) {
+        self.guard.store(false, Ordering::Release);
+        self.guard = Arc::new(AtomicBool::new(true));
+        self.scope.profile_epoch = self
+            .scope
+            .profile_epoch
+            .checked_add(1)
+            .expect("Dynamic profile identity exhausted");
+        let connected = !matches!(self.requests.observation, Observation::Disconnected);
+        self.requests.reset_profile_observation(connected);
+    }
+    pub(super) fn invalidate_connection(&mut self) {
+        self.guard.store(false, Ordering::Release);
+        self.monitor_guard.store(false, Ordering::Release);
+        self.guard = Arc::new(AtomicBool::new(true));
+        self.monitor_requested = false;
+        self.scope.connection_epoch = self
+            .scope
+            .connection_epoch
+            .checked_add(1)
+            .expect("Dynamic connection identity exhausted");
+        self.requests.reset_observation(true);
+        self.clear_speed();
+    }
+    pub(super) fn speed(&self) -> f64 {
+        self.mouse_speed
+    }
+    pub(super) fn observe_speed(
+        &mut self,
+        connection: MouseDynamicConnection,
+        speed: f64,
+    ) -> Option<SpeedExpiry> {
+        if !self.connection_is_current(connection) {
+            return None;
+        }
+        let speed = super::observed_mouse_speed(speed)?;
+        self.clear_speed();
+        self.mouse_speed = speed;
+        Some(SpeedExpiry {
+            connection,
+            revision: self.speed_revision,
+        })
+    }
+    pub(super) fn expire_speed(&mut self, expiry: SpeedExpiry) -> bool {
+        if !self.connection_is_current(expiry.connection) || expiry.revision != self.speed_revision
+        {
+            return false;
+        }
+        self.clear_speed();
+        true
+    }
+    pub(super) fn clear_speed(&mut self) {
+        self.mouse_speed = 0.;
+        self.speed_revision = self
+            .speed_revision
+            .checked_add(1)
+            .expect("Dynamic speed expiry identity exhausted");
+    }
+}
 
 #[derive(Default)]
 pub(super) enum Observation {
@@ -45,13 +192,20 @@ impl Requests {
         })
     }
     pub(super) fn reset_observation(&mut self, connected: bool) {
+        self.reset(connected, false);
+    }
+    pub(super) fn reset_profile_observation(&mut self, connected: bool) {
+        self.reset(connected, true);
+    }
+    fn reset(&mut self, connected: bool, keep_monitoring: bool) {
         self.observation = if connected {
             Observation::Unobserved
         } else {
             Observation::Disconnected
         };
         self.edit = None;
-        self.pending.clear();
+        self.pending
+            .retain(|_, command| keep_monitoring && *command == "DYNAMIC_SENSITIVITY_UI_COMMAND");
         self.latest_mutation = None;
         self.loading = false;
         self.last_failure = None;
@@ -169,7 +323,7 @@ impl Requests {
                     self.loading = false;
                 }
             }
-            MouseDynamicCompletion::Monitoring(_) => {}
+            MouseDynamicCompletion::Monitoring(_) | MouseDynamicCompletion::ObserverAttached => {}
         }
         true
     }

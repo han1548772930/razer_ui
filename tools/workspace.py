@@ -377,6 +377,14 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
     profile_codec = "crates/razer-device/src/profile_transfer.rs"
     matcher_shell = "crates/razer-shell/src/shell/mouse/mouse_matcher.rs"
     matcher_worker = "crates/razer-service/src/mouse/dpi_matcher_worker.rs"
+    profile_name_owner = "crates/razer-device/src/source_string.rs"
+    profile_name_consumers = {
+        "crates/razer-device/src/mouse/dpi_matcher_storage.rs": "confirmation_name",
+        "crates/razer-device/src/mouse/mouse_philips/configuration.rs": "prepare",
+        "crates/razer-storage/src/host_local_profile/initialization.rs": "prepare",
+        "crates/razer-storage/src/receiver/receiver_reset.rs": "unique_name",
+        "crates/razer-storage/src/receiver/receiver_indicator.rs": "ensure_cache",
+    }
     receiver_save = "crates/razer-shell/src/shell/receiver/receiver_profile_save.rs"
     chroma_shell = "crates/razer-shell/src/shell.rs"
     chroma_service = "crates/razer-service/src/lighting/chroma_connect.rs"
@@ -1054,6 +1062,20 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                         break
         if node.type == "function_item":
             name = text(node.child_by_field_name("name"))
+            if not in_test(node):
+                if name == "unique_profile_name" and owner != profile_name_owner:
+                    fail(node, "duplicate_source_profile_name_owner", profile_name_owner)
+                if profile_name_consumers.get(owner) == name:
+                    delegated = any(resolved_call(parts) in {
+                        ("crate", "source_string", "unique_profile_name"),
+                        ("razer_device", "source_string", "unique_profile_name"),
+                    } for parts, _ in calls(node))
+                    local_loop = any(child.type == "for_expression" and any(
+                        nested.type == "range_expression" and any(
+                            literal.type == "integer_literal" and text(literal) == "100"
+                            for literal in walk(nested)) for nested in walk(child)) for child in walk(node))
+                    if not delegated or local_loop:
+                        fail(node, "source_profile_name_bypasses_shared_owner", profile_name_owner)
             parent = node.parent.parent if node.parent is not None and node.parent.parent is not None else None
             free_function = parent is None or parent.type != "impl_item"
             implementation = text(parent.child_by_field_name("type")) if not free_function else ""
@@ -10898,6 +10920,7 @@ def rust_validation_commands():
         ("mouse-matcher-model", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "--lib", "mouse_matcher"]),
         ("mouse-matcher-revision", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "matcher_durable_version"]),
         ("mouse-matcher-exit-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "matcher_exit_"]),
+        ("mouse-matcher-page", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "matcher_"]),
         ("profile-notification-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "profile_switch_notification::tests"]),
         ("computer-name-platform", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "computer_name_tests"]),
         ("controller-trigger-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "controller_trigger"]),
@@ -11001,6 +11024,7 @@ def rust_validation_commands():
         ("mouse-dynamic-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mouse_dynamic"]),
         ("mouse-dynamic-routing", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "direct::mouse_dynamic::tests"]),
         ("mouse-dynamic-page", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "features::mouse_products::dynamic::"]),
+        ("mouse-advanced-page", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "features::mouse_products::advanced::"]),
         ("runtime-diagnostics", ["cargo", "test", "--locked", "--offline", "-p", "razer-app", "--lib", "diagnostics::runtime::tests"]),
         ("product-arguments", ["cargo", "test", "--locked", "--offline", "-p", "razer-app", "--lib", "arguments::tests"]),
         ("service-runtime", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "runtime::"]),

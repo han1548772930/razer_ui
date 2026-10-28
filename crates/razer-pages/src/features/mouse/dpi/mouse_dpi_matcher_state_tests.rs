@@ -1,6 +1,6 @@
 // Pure state projections: no middleware, device, application or vendor code.
 #[::core::prelude::v1::test]
-fn initial_none_profile_is_a_local_uuid_placeholder_and_not_observed_dpi() {
+fn matcher_initial_none_profile_is_a_local_uuid_placeholder_and_not_observed_dpi() {
     let state = MatcherState::default();
     let placeholder = &state.profiles[0];
     let guid = uuid::Uuid::parse_str(placeholder["guid"].as_str().unwrap()).unwrap();
@@ -16,7 +16,7 @@ fn initial_none_profile_is_a_local_uuid_placeholder_and_not_observed_dpi() {
 }
 
 #[::core::prelude::v1::test]
-fn failed_source_name_sort_cannot_mutate_or_submit_a_renamed_library() {
+fn matcher_failed_source_name_sort_cannot_mutate_or_submit_a_renamed_library() {
     let mut state = MatcherState::default();
     state.observe_unmounted(MatcherObservation::Profiles {
         profiles: vec![
@@ -34,7 +34,7 @@ fn failed_source_name_sort_cannot_mutate_or_submit_a_renamed_library() {
 }
 
 #[::core::prelude::v1::test]
-fn rename_uses_stable_uppercase_utf16_order_before_projecting_submission() {
+fn matcher_rename_uses_stable_uppercase_utf16_order_before_projecting_submission() {
     let mut state = MatcherState::default();
     state.observe_unmounted(MatcherObservation::Profiles {
         profiles: vec![
@@ -76,7 +76,7 @@ fn rename_uses_stable_uppercase_utf16_order_before_projecting_submission() {
 }
 
 #[::core::prelude::v1::test]
-fn rename_trims_ecmascript_whitespace_and_checks_original_names_strictly() {
+fn matcher_rename_trims_ecmascript_whitespace_and_checks_original_names_strictly() {
     let mut state = MatcherState::default();
     state.observe_unmounted(MatcherObservation::Profiles {
         profiles: vec![
@@ -107,7 +107,7 @@ fn rename_trims_ecmascript_whitespace_and_checks_original_names_strictly() {
 }
 
 #[::core::prelude::v1::test]
-fn device_product_name_requires_localized_properties_and_keeps_profile_fallback() {
+fn matcher_device_product_name_requires_localized_properties_and_keeps_profile_fallback() {
     let mut state = MatcherState::default();
     state.observe_unmounted(MatcherObservation::Language("ZH-CN".into()));
     state.observe_unmounted(MatcherObservation::Profiles {
@@ -134,15 +134,15 @@ fn device_product_name_requires_localized_properties_and_keeps_profile_fallback(
 }
 
 #[::core::prelude::v1::test]
-fn unmounted_observations_do_not_run_update_lifecycle_or_consume_first_error() {
+fn matcher_unmounted_observations_do_not_run_update_lifecycle_or_consume_first_error() {
     let mut state = MatcherState::default();
-    for phase in ["calibrating", "completed", "error"] {
+    for phase in [Phase::Calibrating, Phase::Completed, Phase::Error] {
         assert!(
             state
-                .observe_unmounted(MatcherObservation::Calibration(json!({"state":phase})))
+                .observe_unmounted(observation(phase))
                 .is_empty()
         );
-        assert_eq!(state.phase(), Some(phase));
+        assert_eq!(state.phase(), phase);
         assert!(!state.popup());
         assert!(!state.first_load);
     }
@@ -153,27 +153,27 @@ fn unmounted_observations_do_not_run_update_lifecycle_or_consume_first_error() {
     // Mounting does not retroactively run componentDidUpdate for existing props.
     assert!(
         state
-            .observe(MatcherObservation::Calibration(json!({"state":"error"})))
+            .observe(observation(Phase::Error))
             .is_empty()
     );
     assert!(!state.popup());
-    state.observe(MatcherObservation::Calibration(json!({"state":"ready"})));
+    state.observe(observation(Phase::Ready));
     assert_eq!(
-        state.observe(MatcherObservation::Calibration(json!({"state":"error"}))),
+        state.observe(observation(Phase::Error)),
         vec![MatcherAction::Command(MatcherCommand::Reset)]
     );
     assert!(!state.popup());
     assert!(state.first_load);
     state.open();
     state.unmount();
-    state.observe_unmounted(MatcherObservation::Calibration(json!({"state":"ready"})));
+    state.observe_unmounted(observation(Phase::Ready));
     assert!(state.popup()); // Redux popup state survives component destruction.
     assert!(!state.first_load);
     assert!(state.window_click(false).is_empty());
 }
 
 #[::core::prelude::v1::test]
-fn selection_updates_only_local_reducer_state_and_commands_never_acknowledge() {
+fn matcher_selection_updates_only_local_reducer_state_and_commands_never_acknowledge() {
     let mut state = MatcherState::default();
     state.observe_unmounted(MatcherObservation::Profiles {
         profiles: vec![
@@ -187,7 +187,7 @@ fn selection_updates_only_local_reducer_state_and_commands_never_acknowledge() {
         active: 2,
     });
     state.observe_unmounted(MatcherObservation::Calibration(
-        json!({"state":"completed","currentDpi":400,"newDpi":900}),
+        Calibration::new(Phase::Completed, 99., 400., 900.),
     ));
     let actions = state.choose("real");
     assert_eq!(state.selected(), "none");
@@ -202,7 +202,7 @@ fn selection_updates_only_local_reducer_state_and_commands_never_acknowledge() {
     );
     assert_eq!(state.profiles.len(), 1);
     let profiles = state.profile_payload();
-    let calibration = state.calibration.clone();
+    let calibration = state.calibration;
     let stages = state.stages.clone();
     for command in [
         MatcherCommand::GetState,
@@ -220,5 +220,24 @@ fn selection_updates_only_local_reducer_state_and_commands_never_acknowledge() {
         assert_eq!(state.calibration, calibration);
         assert_eq!(state.stages, stages);
     }
-    assert_eq!(state.phase(), Some("completed"));
+    assert_eq!(state.phase(), Phase::Completed);
+}
+
+#[::core::prelude::v1::test]
+fn matcher_calibration_snapshots_preserve_initial_absence_and_numeric_children() {
+    let mut state = MatcherState::default();
+    assert_eq!(state.phase(), Phase::Idle);
+    assert_eq!(state.current_dpi(), None);
+    assert_eq!(state.new_dpi(), 0.);
+    assert_eq!(state.process(), 0.);
+    for (new_dpi, text) in [(400., "400"), (f64::NAN, "NaN"), (f64::INFINITY, "Infinity")] {
+        state.observe(MatcherObservation::Calibration(Calibration::new(
+            Phase::Completed, 99., 800., new_dpi,
+        )));
+        assert_eq!(state.current_dpi(), Some(800.));
+        assert_eq!(razer_device::source_string::number_text(state.new_dpi()), text);
+        assert_eq!(state.phase(), Phase::Completed);
+        assert_eq!(state.process(), 99.);
+        assert_eq!(state.apply(), [MatcherAction::Command(MatcherCommand::Confirm)]);
+    }
 }

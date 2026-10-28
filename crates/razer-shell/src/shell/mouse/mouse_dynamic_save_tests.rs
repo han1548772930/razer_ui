@@ -1,10 +1,24 @@
 use super::*;
 use serde_json::json;
 
+fn local_device(product_id: u32) -> Device {
+    let mut device = razer_model::product_preview::registered_preview(product_id).unwrap();
+    device.active_profile = "test-profile".into();
+    device.profiles = vec![razer_model::model::Profile {
+        id: device.active_profile.clone(),
+        guid: device.active_profile.clone(),
+        name: "Test profile".into(),
+        settings: None,
+        source_settings: None,
+        dpi_stages: None,
+    }];
+    device
+}
+
 #[::core::prelude::v1::test]
 fn mouse_dynamic_queued_save_preserves_other_features_and_advances_current_source_version() {
     for product_id in razer_device::mouse_dynamic::PRODUCTS {
-        let mut device = razer_model::product_preview::registered_preview(*product_id).unwrap();
+        let mut device = local_device(*product_id);
         let profile_id = device.profiles[0].id.clone();
         device.profiles[0].source_settings =
             Some(json!({"pollingRate":8000,"dpiStages":{"active":4},"extra":{"preserve":true}}));
@@ -25,7 +39,7 @@ fn mouse_dynamic_queued_save_preserves_other_features_and_advances_current_sourc
 }
 #[::core::prelude::v1::test]
 fn mouse_dynamic_save_rejects_removed_profile_invalid_version_without_partial_mutation() {
-    let mut device = razer_model::product_preview::registered_preview(190).unwrap();
+    let mut device = local_device(190);
     let profile_id = device.profiles[0].id.clone();
     for (id, profile, root, value) in [
         ("removed", json!({}), json!({"version":3}), json!({})),
@@ -58,7 +72,7 @@ fn mouse_dynamic_save_rejects_removed_profile_invalid_version_without_partial_mu
 }
 #[::core::prelude::v1::test]
 fn mouse_dynamic_save_uses_source_first_and_wrapped_53_bit_versions() {
-    let mut device = razer_model::product_preview::registered_preview(226).unwrap();
+    let mut device = local_device(226);
     let profile_id = device.profiles[0].id.clone();
     device.source_device_settings = None;
     merge(&mut device, &profile_id, &json!({})).unwrap();

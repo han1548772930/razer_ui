@@ -8,7 +8,9 @@ mod identity;
 mod tests;
 use super::NativeRuntime;
 use anyhow::{Result, ensure};
-use razer_ipc::mouse_input_monitoring::{InputEvent, Poll, Receipt};
+use razer_ipc::mouse_input_monitoring::{
+    InputEvent, MAX_BATCH_BYTES, MAX_BATCH_EVENTS, Poll, StartAcknowledgement, StopReceipt,
+};
 use razer_platform::mouse_monitor::{Event, MouseMonitor, Sample};
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -65,11 +67,33 @@ pub(super) struct State {
     input: MouseMonitor,
     devices: BTreeMap<String, Device>,
     pending: VecDeque<InputEvent>,
-    failure: Option<String>,
+    stopping: bool,
+    stopped_events: Option<VecDeque<Event>>,
+    failures: Vec<String>,
 }
 impl State {
     pub(super) fn owner(&self) -> Option<String> {
         self.owner.clone()
+    }
+    fn start_with(
+        &mut self,
+        owner: String,
+        start: impl FnOnce(&mut MouseMonitor) -> Result<()>,
+    ) -> Result<StartAcknowledgement> {
+        ensure!(!owner.is_empty(), "Input monitor owner is empty");
+        if self.owner.is_some() {
+            self.check_owner(&owner)?;
+            ensure!(
+                !self.stopping,
+                "Input monitor is draining its final callbacks"
+            );
+            // CB100 returns this negative acknowledgement without restarting
+            // the native runner or clearing any pending device movement.
+            return Ok(StartAcknowledgement::rejected(owner, "already started"));
+        }
+        start(&mut self.input)?;
+        self.owner = Some(owner.clone());
+        Ok(StartAcknowledgement::started(owner))
     }
     fn check_owner(&self, owner: &str) -> Result<()> {
         ensure!(
@@ -141,12 +165,27 @@ impl State {
     }
     fn accept(&mut self, events: Vec<Event>) -> Result<()> {
         for event in events {
-            match event {
-                Event::Input(sample) => self.sample(sample, identity::observe)?,
-                Event::Removed(path) => self.removed(&path)?,
-            }
+            self.accept_one(event, identity::observe)?;
         }
         Ok(())
+    }
+    fn accept_one(
+        &mut self,
+        event: Event,
+        observe: impl FnOnce(&str) -> Result<identity::Identity>,
+    ) -> Result<()> {
+        match event {
+            Event::Input(sample) => self.sample(sample, observe),
+            Event::Removed(path) => self.removed(&path),
+        }
+    }
+    fn record_failure(&mut self, failure: String) {
+        if !self.failures.contains(&failure) {
+            self.failures.push(failure);
+        }
+    }
+    fn failure(&self) -> Option<String> {
+        (!self.failures.is_empty()).then(|| self.failures.join("; "))
     }
     fn collect(&mut self) -> Result<()> {
         let events = self.input.events()?;
@@ -154,39 +193,125 @@ impl State {
     }
     fn poll(&mut self, owner: &str) -> Result<Poll> {
         self.check_owner(owner)?;
+        ensure!(
+            !self.stopping,
+            "Input monitor is draining its final callbacks"
+        );
         if let Err(error) = self.collect() {
-            self.failure.get_or_insert_with(|| format!("{error:#}"));
+            self.record_failure(format!("{error:#}"));
         }
         let mut events = Vec::new();
-        let mut bytes = 0;
-        while events.len() < 128 {
+        let mut bytes = 2;
+        while events.len() < MAX_BATCH_EVENTS {
             let Some(event) = self.pending.front() else {
                 break;
             };
             let encoded = serde_json::to_vec(event)?.len();
             ensure!(
-                encoded < 3 * 1024 * 1024,
+                encoded + 2 <= MAX_BATCH_BYTES,
                 "Input monitor event exceeds IPC capacity"
             );
-            if bytes + encoded > 3 * 1024 * 1024 {
+            let added = encoded + usize::from(!events.is_empty());
+            if bytes + added > MAX_BATCH_BYTES {
                 break;
             }
-            bytes += encoded;
+            bytes += added;
             events.push(self.pending.pop_front().unwrap());
         }
-        Ok(Poll::new(owner.into(), events, self.failure.clone()))
+        Ok(Poll::new(owner.into(), events, self.failure()))
+    }
+    fn stop_with(
+        &mut self,
+        owner: &str,
+        stop: impl FnOnce(&mut MouseMonitor) -> Result<Vec<Event>>,
+        mut observe: impl FnMut(&str) -> Result<identity::Identity>,
+    ) -> Result<StopReceipt> {
+        self.check_owner(owner)?;
+        self.stopping = true;
+        if self.stopped_events.is_none() {
+            // The same owner remains reserved while final callbacks cross IPC.
+            // A continuation must not stop or join the native thread again.
+            self.stopped_events = Some(stop(&mut self.input)?.into());
+        }
+        let mut events = Vec::new();
+        let mut bytes = 2;
+        while events.len() < MAX_BATCH_EVENTS {
+            if let Some(event) = self.pending.front() {
+                let encoded = serde_json::to_vec(event)?.len();
+                if encoded + 2 > MAX_BATCH_BYTES {
+                    self.record_failure("Final input monitor event exceeds IPC capacity".into());
+                    self.pending.pop_front();
+                    continue;
+                }
+                let added = encoded + usize::from(!events.is_empty());
+                if bytes + added > MAX_BATCH_BYTES {
+                    break;
+                }
+                bytes += added;
+                events.push(self.pending.pop_front().unwrap());
+                continue;
+            }
+            if let Some(event) = self.stopped_events.as_mut().unwrap().pop_front() {
+                if let Err(error) = self.accept_one(event, &mut observe) {
+                    self.record_failure(format!("Drain monitor: {error:#}"));
+                }
+                continue;
+            }
+            if let Some(path) = self.devices.keys().next().cloned() {
+                if let Err(error) = self.removed(&path) {
+                    self.record_failure(format!("Flush monitor: {error:#}"));
+                    self.devices.remove(&path);
+                }
+                continue;
+            }
+            break;
+        }
+        let more = !self.pending.is_empty()
+            || !self.stopped_events.as_ref().unwrap().is_empty()
+            || !self.devices.is_empty();
+        let receipt = StopReceipt::new(owner.into(), events, more, self.failure());
+        if !more {
+            *self = Self::default();
+        }
+        Ok(receipt)
+    }
+    fn shutdown_with(
+        &mut self,
+        mut stop: impl FnMut(&mut MouseMonitor) -> Result<Vec<Event>>,
+        mut observe: impl FnMut(&str) -> Result<identity::Identity>,
+    ) -> Result<()> {
+        let Some(owner) = self.owner() else {
+            return Ok(());
+        };
+        let mut failures = Vec::new();
+        while self.owner.is_some() {
+            match self.stop_with(&owner, &mut stop, &mut observe) {
+                Ok(receipt) => {
+                    if let Some(failure) = receipt.failure() {
+                        failures.push(failure.to_owned());
+                    }
+                }
+                Err(error) => {
+                    failures.push(format!("{error:#}"));
+                    break;
+                }
+            }
+        }
+        ensure!(failures.is_empty(), "{}", failures.join("; "));
+        Ok(())
+    }
+    pub(super) fn shutdown(&mut self) -> Result<()> {
+        // Service shutdown detaches all observers, but still drains each page
+        // and preserves final capture/flush errors before releasing the owner.
+        self.shutdown_with(MouseMonitor::stop, identity::observe)
     }
 }
 impl NativeRuntime {
     pub(super) fn start_mouse_input_monitoring(&mut self, owner: String) -> Result<Value> {
-        ensure!(!owner.is_empty(), "Input monitor owner is empty");
-        ensure!(
-            self.mouse_input_monitoring.owner.is_none(),
-            "Input monitor is already owned"
-        );
-        self.mouse_input_monitoring.owner = Some(owner.clone());
-        self.mouse_input_monitoring.input.start()?;
-        Ok(serde_json::to_value(Receipt::new(owner, true))?)
+        Ok(serde_json::to_value(
+            self.mouse_input_monitoring
+                .start_with(owner, MouseMonitor::start)?,
+        )?)
     }
     pub(super) fn poll_mouse_input_monitoring(&mut self, owner: &str) -> Result<Value> {
         Ok(serde_json::to_value(
@@ -194,26 +319,9 @@ impl NativeRuntime {
         )?)
     }
     pub(super) fn stop_mouse_input_monitoring(&mut self, owner: &str) -> Result<Value> {
-        self.mouse_input_monitoring.check_owner(owner)?;
-        let stopped = self.mouse_input_monitoring.input.stop();
-        let collected = stopped.and_then(|events| self.mouse_input_monitoring.accept(events));
-        let paths = self
-            .mouse_input_monitoring
-            .devices
-            .keys()
-            .cloned()
-            .collect::<Vec<_>>();
-        let mut errors = Vec::new();
-        if let Err(error) = collected {
-            errors.push(format!("Drain monitor: {error:#}"));
-        }
-        for path in paths {
-            if let Err(error) = self.mouse_input_monitoring.removed(&path) {
-                errors.push(format!("Flush monitor: {error:#}"));
-            }
-        }
-        ensure!(errors.is_empty(), "{}", errors.join("; "));
-        self.mouse_input_monitoring = State::default();
-        Ok(serde_json::to_value(Receipt::new(owner.into(), false))?)
+        Ok(serde_json::to_value(
+            self.mouse_input_monitoring
+                .stop_with(owner, MouseMonitor::stop, identity::observe)?,
+        )?)
     }
 }

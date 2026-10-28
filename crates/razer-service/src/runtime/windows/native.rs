@@ -117,7 +117,9 @@ pub(super) fn seiren_audio_playback(
 mod controller_calibration_identity;
 #[path = "marci_identity.rs"]
 mod marci_identity;
-pub(in crate::runtime) fn marci_channels(container: &str) -> anyhow::Result<marci_identity::Channels> {
+pub(in crate::runtime) fn marci_channels(
+    container: &str,
+) -> anyhow::Result<marci_identity::Channels> {
     marci_identity::resolve(container)
 }
 #[path = "controller_input.rs"]
@@ -710,10 +712,8 @@ impl NativeRuntime {
                         errors.push(format!("Receiver lighting cleanup failed: {error:#}"));
                     }
                 }
-                if let Some(owner) = self.mouse_input_monitoring.owner() {
-                    if let Err(error) = self.stop_mouse_input_monitoring(&owner) {
-                        errors.push(format!("Mouse input monitor cleanup failed: {error:#}"));
-                    }
+                if let Err(error) = self.mouse_input_monitoring.shutdown() {
+                    errors.push(format!("Mouse input monitor cleanup failed: {error:#}"));
                 }
                 self.mixer_hardware = None;
                 if let Some(meter) = self.mixer_meter.as_mut() {

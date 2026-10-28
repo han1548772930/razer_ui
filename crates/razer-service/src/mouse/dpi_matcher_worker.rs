@@ -1,6 +1,6 @@
 //! Retained Matcher worker. GUI owners exchange snapshots and durable-save
 //! receipts; all input capture, service calls and waits stay on this thread.
-use super::{Backend, Controller};
+use super::{Backend, Controller, Response};
 use anyhow::{Context as _, ensure};
 use razer_device::{
     dpi_matcher::{InputBatch, State},
@@ -8,6 +8,7 @@ use razer_device::{
 };
 use razer_discovery::{direct, discovery::ObservedDevice};
 use razer_ipc::{ServiceClient, ServiceRequest};
+use razer_storage::receiver_pairing::PairingSnapshot;
 use serde_json::{Value, json};
 use std::{
     collections::VecDeque,
@@ -35,6 +36,23 @@ pub enum Command {
     DeleteAllProfiles,
     Select(String),
     UpdateProfiles(Value),
+}
+
+pub(super) fn stage_draft(
+    stages: &Value,
+) -> anyhow::Result<razer_device::mouse_dpi_stages::DpiStagesDraft> {
+    #[derive(serde::Deserialize)]
+    struct Stages {
+        stages: Vec<razer_device::mouse_dpi_stages::DpiStage>,
+        active: usize,
+        enable: bool,
+    }
+    let stages: Stages = serde_json::from_value(stages.clone())?;
+    Ok(razer_device::mouse_dpi_stages::DpiStagesDraft {
+        enabled: stages.enable,
+        active_stage: stages.active,
+        stages: stages.stages,
+    })
 }
 
 impl Command {
@@ -90,7 +108,7 @@ pub enum Update {
         mutation: razer_model::mouse_matcher::Mutation,
         reply: Sender<Result<(), String>>,
     },
-    Response(Value),
+    Response(Response),
     StageDraft(Value),
     Failure(String),
 }
@@ -131,21 +149,7 @@ impl ConnectedDevice {
 pub struct Options {
     route: ObservedDevice,
     connected: Vec<ConnectedDevice>,
-    pairing_records: Vec<PairingIdentity>,
-}
-
-#[derive(Clone, Debug, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct PairingIdentity {
-    product_id: u32,
-    device_container_id: String,
-    master: MasterIdentity,
-}
-#[derive(Clone, Debug, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct MasterIdentity {
-    product_id: u32,
-    dongle_id: u32,
+    pairing_records: PairingSnapshot,
 }
 
 impl Options {
@@ -154,19 +158,15 @@ impl Options {
         connected: Vec<ConnectedDevice>,
         pairing: Option<&Value>,
     ) -> anyhow::Result<Self> {
+        let product = razer_device::dpi_matcher::Product::new(route.product_id())?;
         ensure!(
-            route.product_id() == 190 && direct::mouse_current_dpi::available(&route),
-            "Matcher has no current PID190 DPI route"
+            direct::mouse_current_dpi::available(&route),
+            "Matcher has no current DPI route for logical PID{}",
+            product.product_id()
         );
         let pairing_records = match pairing {
-            Some(value) => value
-                .as_object()
-                .context("Matcher pairing records is not an object")?
-                .values()
-                .cloned()
-                .map(serde_json::from_value)
-                .collect::<Result<Vec<_>, _>>()?,
-            None => vec![],
+            Some(value) => PairingSnapshot::from_value(value)?,
+            None => PairingSnapshot::default(),
         };
         Ok(Self {
             route,
@@ -175,44 +175,56 @@ impl Options {
         })
     }
 
-    fn is_initial_main(&self, product_id: u32) -> bool {
-        let Some(cap) = razer_device::mouse_current_dpi::capability(190) else {
-            return false;
-        };
-        product_id == cap.wired_pid()
-            || cap.dongle_pid() == Some(product_id)
-            || self.pairing_records.iter().any(|record| {
-                record.master.dongle_id == product_id
-                    && record.device_container_id == self.route.container()
-            })
+    fn is_initial_main(&self, product_id: u32) -> anyhow::Result<bool> {
+        let product = razer_device::dpi_matcher::Product::new(self.route.product_id())?;
+        Ok(product.accepts_initial_main_product(product_id)
+            || self
+                .pairing_records
+                .has_input_monitoring_master(product_id, self.route.container())?)
     }
 
     fn confirmation_name(&self, container: &str) -> anyhow::Result<Value> {
-        let mut device = self
-            .connected
-            .iter()
-            .find(|device| device.container_id == container);
-        if let Some(source) =
-            device.filter(|device| matches!(device.product_id, 179 | 164) || device.keyboard)
-        {
-            if let Some(record) = self
-                .pairing_records
+        reference_name(
+            razer_device::dpi_matcher::Product::new(self.route.product_id())?,
+            &self.connected,
+            &self.pairing_records,
+            container,
+            razer_platform::system::computer_name,
+        )
+    }
+}
+
+fn reference_name(
+    product: razer_device::dpi_matcher::Product,
+    connected: &[ConnectedDevice],
+    pairing: &PairingSnapshot,
+    container: &str,
+    computer: impl FnOnce() -> anyhow::Result<String>,
+) -> anyhow::Result<Value> {
+    let mut device = connected
+        .iter()
+        .find(|device| device.container_id == container);
+    if let Some(source) = device.filter(|device| {
+        matches!(device.product_id, 179 | 164)
+            || device.keyboard
+            || product.is_dual_link_reference(device.product_id)
+    }) {
+        if let Some(paired) = pairing.paired_device_for_master(source.product_id)? {
+            device = connected
                 .iter()
-                .find(|record| record.master.product_id == source.product_id)
-            {
-                device = self
-                    .connected
-                    .iter()
-                    .find(|device| device.product_id == record.product_id);
-            }
+                .find(|device| Some(device.product_id) == paired.product_id());
         }
-        let computer = razer_platform::system::computer_name()?;
-        let english = device
-            .and_then(|device| device.english_name.as_deref())
-            .unwrap_or(&computer);
-        let chinese = device
-            .and_then(|device| device.chinese_name.as_deref())
-            .unwrap_or(english);
+    }
+    let computer = computer()?;
+    let english = device
+        .and_then(|device| device.english_name.as_deref())
+        .unwrap_or(&computer);
+    let chinese = device
+        .and_then(|device| device.chinese_name.as_deref())
+        .unwrap_or(english);
+    if product.product_id() == 226 {
+        Ok(json!(english))
+    } else {
         // 32807 returns this locale object through W$ without flattening it.
         Ok(json!({"en":english,"zh-cn":chinese}))
     }
@@ -610,20 +622,9 @@ impl Backend for NativeBackend<'_> {
     }
 
     fn submit_dpi_stages(&mut self, stages: &Value) -> anyhow::Result<()> {
-        #[derive(serde::Deserialize)]
-        struct Stages {
-            stages: Vec<razer_device::mouse_dpi_stages::DpiStage>,
-            active: usize,
-            enable: bool,
-        }
         self.check()?;
         self.emit(Update::StageDraft(stages.clone()))?;
-        let stages: Stages = serde_json::from_value(stages.clone())?;
-        let draft = razer_device::mouse_dpi_stages::DpiStagesDraft {
-            enabled: stages.enable,
-            active_stage: stages.active,
-            stages: stages.stages,
-        };
+        let draft = stage_draft(stages)?;
         let change = DpiChange {
             stages: Some(draft),
             active: None,
@@ -688,7 +689,10 @@ fn run(
         lifecycle: None,
         device_task: None,
     };
-    let mut controller = Controller::default();
+    let mut controller = Controller::new(
+        razer_device::dpi_matcher::Product::new(options.route.product_id())
+            .expect("Matcher options validate their logical product"),
+    );
     let mut commands = CommandQueue {
         receiver: commands,
         deferred: VecDeque::new(),
@@ -758,26 +762,28 @@ fn run(
                         backend.release_matcher_locks()?;
                     }
                     if starting {
-                        backend.emit(Update::Response(controller.response()))?;
+                        backend.emit(Update::Response(Response::Calibration(
+                            controller.response(),
+                        )))?;
                     }
                 }
             }
             if !closing.load(Ordering::Acquire) && controller.state() == State::Calibrating {
                 for batch in backend.events()? {
-                    let initial_is_main = options.is_initial_main(batch.product_id);
+                    let initial_is_main = options.is_initial_main(batch.product_id)?;
                     let response = controller.ingest(
                         batch,
                         initial_is_main,
                         elapsed_ms(started),
                         &mut backend,
                     )?;
-                    backend.emit(Update::Response(response))?;
+                    backend.emit(Update::Response(Response::Calibration(response)))?;
                     if controller.state() != State::Calibrating {
                         break;
                     }
                 }
                 if let Some(response) = controller.tick(elapsed_ms(started), &mut backend)? {
-                    backend.emit(Update::Response(response))?;
+                    backend.emit(Update::Response(Response::Calibration(response)))?;
                 }
             }
         }
@@ -806,6 +812,147 @@ fn elapsed_ms(started: Instant) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn named_device(product_id: u32, container: &str, name: &str) -> ConnectedDevice {
+        ConnectedDevice {
+            product_id,
+            container_id: container.into(),
+            keyboard: false,
+            english_name: Some(name.into()),
+            chinese_name: Some(format!("{name} localized")),
+        }
+    }
+
+    #[test]
+    fn dpi_matcher_reference_names_preserve_each_products_source_value_shape() {
+        let connected = [named_device(70, "reference", "Mouse")];
+        for pid in [190, 192, 222, 226, 229, 239] {
+            let product = razer_device::dpi_matcher::Product::new(pid).unwrap();
+            let pairing = PairingSnapshot::default();
+            let name = reference_name(product, &connected, &pairing, "reference", || {
+                Ok("Host".into())
+            })
+            .unwrap();
+            let missing =
+                reference_name(
+                    product,
+                    &connected,
+                    &pairing,
+                    "absent",
+                    || Ok("Host".into()),
+                )
+                .unwrap();
+            if pid == 226 {
+                assert_eq!(name, json!("Mouse"));
+                assert_eq!(missing, json!("Host"));
+            } else {
+                assert_eq!(name, json!({"en":"Mouse","zh-cn":"Mouse localized"}));
+                assert_eq!(missing, json!({"en":"Host","zh-cn":"Host"}));
+            }
+        }
+    }
+
+    #[test]
+    fn dpi_matcher_reference_pairing_uses_first_match_and_pid226_refresh_branch() {
+        for pid in [190, 192, 222, 226, 229, 239] {
+            let product = razer_device::dpi_matcher::Product::new(pid).unwrap();
+            for (master, keyboard) in [
+                (179, false),
+                (164, false),
+                (241, false),
+                (700, true),
+                (70, false),
+            ] {
+                let mut source = named_device(master, "reference", "Master");
+                source.keyboard = keyboard;
+                let connected = [
+                    source,
+                    named_device(71, "first", "First"),
+                    named_device(80, "second", "Second"),
+                ];
+                let pairing = PairingSnapshot::from_value(&json!([
+                    {"productId":71,"master":{"productId":master}},
+                    {"productId":80,"master":{"productId":master}}
+                ]))
+                .unwrap();
+                let name = reference_name(product, &connected, &pairing, "reference", || {
+                    Ok("Host".into())
+                })
+                .unwrap();
+                let paired =
+                    matches!(master, 179 | 164) || keyboard || (pid == 226 && master == 241);
+                let expected = if paired { "First" } else { "Master" };
+                if pid == 226 {
+                    assert_eq!(name, json!(expected));
+                } else {
+                    assert_eq!(
+                        name,
+                        json!({"en":expected,"zh-cn":format!("{expected} localized")})
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn dpi_matcher_reference_missing_peer_uses_observed_host_and_missing_master_is_error() {
+        let connected = [named_device(179, "reference", "Master")];
+        for pid in [190, 192, 222, 226, 229, 239] {
+            let product = razer_device::dpi_matcher::Product::new(pid).unwrap();
+            let pairing =
+                PairingSnapshot::from_value(&json!([{"productId":70,"master":{"productId":179}}]))
+                    .unwrap();
+            let name = reference_name(product, &connected, &pairing, "reference", || {
+                Ok("Host".into())
+            })
+            .unwrap();
+            if pid == 226 {
+                assert_eq!(name, json!("Host"));
+            } else {
+                assert_eq!(name, json!({"en":"Host","zh-cn":"Host"}));
+            }
+            let invalid = PairingSnapshot::from_value(&json!([{"productId":70}])).unwrap();
+            assert!(
+                reference_name(product, &connected, &invalid, "reference", || panic!(
+                    "invalid pairing must precede the host query"
+                ))
+                .is_err()
+            );
+        }
+    }
+
+    #[test]
+    fn dpi_matcher_pairing_snapshot_cannot_admit_an_unsupported_receiver_route() {
+        const OWNER: &str = "{11111111-2222-3333-4444-555555555555}";
+        let projection = razer_discovery::discovery::project_receiver_query(
+            164,
+            OWNER,
+            &json!({
+                "query":"receiver_wireless_status_v2", "vendor_id":5426,
+                "product_id":164, "claim_interface":0, "report_bytes":91,
+                "path":"observed-hid-collection", "device_instance_id":"observed-device-instance",
+                "device_container_id":OWNER, "device_count":1,
+                "devices":[{"product_id":191,"status":1}]
+            }),
+        )
+        .unwrap();
+        let [route] = projection.devices() else {
+            panic!("one current audited Matcher peer expected")
+        };
+        assert_eq!(route.product_id(), 190);
+        for pairing in [
+            json!([{"productId":190,"deviceContainerId":OWNER,"master":{"productId":164,"dongleId":164}}]),
+            json!({"binding":{"productId":190,"deviceContainerId":OWNER,"master":{"productId":164,"dongleId":164}}}),
+        ] {
+            assert!(
+                PairingSnapshot::from_value(&pairing)
+                    .unwrap()
+                    .has_input_monitoring_master(164, OWNER)
+                    .unwrap()
+            );
+            assert!(Options::new(route.clone(), vec![], Some(&pairing)).is_err());
+        }
+    }
 
     #[test]
     fn dpi_matcher_exit_drains_only_accepted_commands_and_does_not_restart_capture() {

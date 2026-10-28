@@ -16,15 +16,11 @@ pub use snapshot::{ReceiverBrightness, ReceiverProfileRevision, ReceiverProfileS
 pub(crate) const MAX_SAFE_INTEGER: u64 = (1_u64 << 53) - 1;
 
 fn unique_name(profiles: &[ProfileData], base: String) -> String {
-    let mut name = base.clone();
-    // Original W$: at most 100 probes; the final suffix may already exist.
-    for suffix in 1..=100 {
-        if !profiles.iter().any(|p| p.name.get() == Some(&name)) {
-            break;
-        }
-        name = format!("{base} {suffix}");
-    }
-    name
+    razer_device::source_string::unique_profile_name(&base, |candidate| {
+        profiles
+            .iter()
+            .any(|profile| profile.name.get().is_some_and(|name| name == candidate))
+    })
 }
 
 fn valid_guid(guid: &str) -> bool {

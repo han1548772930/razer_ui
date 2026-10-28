@@ -118,6 +118,8 @@ mod mapping_default_current;
 #[path = "mapping/mouse_mapping_prerequisite_current.rs"]
 mod mapping_prerequisite_current;
 pub use button_state_current::DeriveError as MouseButtonStateError;
+#[path = "dynamic_sensitivity/mouse_advanced.rs"]
+mod advanced;
 #[path = "dynamic_sensitivity/mouse_dynamic.rs"]
 mod dynamic;
 #[path = "mouse_haptic.rs"]
@@ -140,8 +142,8 @@ mod rotation;
 #[path = "mouse_rotation_state.rs"]
 mod rotation_state;
 pub use dynamic::{
-    MouseDynamicAction, MouseDynamicCompletion, MouseDynamicObservation, MouseDynamicRequested,
-    MouseDynamicScope, MouseDynamicTutorialChanged,
+    MouseDynamicAction, MouseDynamicCompletion, MouseDynamicConnection, MouseDynamicObservation,
+    MouseDynamicRequested, MouseDynamicScope, MouseDynamicTutorialChanged,
 };
 pub use rotation_state::{MouseRotationCompletion, MouseRotationRequested, MouseRotationSource};
 #[path = "scrolling/mouse_scroll_options.rs"]
@@ -565,6 +567,7 @@ impl MouseProductWorkspace {
 
     pub fn set_page(&mut self, key: &str, window: &mut Window, cx: &mut Context<Self>) {
         if self.page != key {
+            let was_dynamic_monitoring = self.dynamic_monitor_requested();
             self.dismiss_editors(window, cx);
             if self.page == "TAB_LIGHTING" {
                 self.reset_mouse_lighting_session(cx);
@@ -588,7 +591,10 @@ impl MouseProductWorkspace {
                     self.rotation_resources.request(cx);
                 }
                 self.request_dynamic_read(cx);
-                self.dynamic_ui_command(cx);
+            }
+            self.dynamic_ui_command(cx);
+            if key == "ADVANCED" && self.spec.product_id == 226 && was_dynamic_monitoring {
+                self.register_dynamic_observer(cx);
             }
             self.set_current_customize_input(None, false);
             if key != "TAB_CUSTOMIZE" {
@@ -637,8 +643,8 @@ impl MouseProductWorkspace {
                 self.dismiss_editors(window, cx);
             } else if self.page == "ADVANCED" {
                 self.request_dynamic_read(cx);
-                self.dynamic_ui_command(cx);
             }
+            self.dynamic_ui_command(cx);
             if active && self.page == "TAB_PERFORMANCE" {
                 self.request_current_dpi_read(cx);
             }
@@ -2175,86 +2181,79 @@ impl MouseProductWorkspace {
         }
     }
 
-    fn advanced(&self, cx: &Context<Self>) -> AnyElement {
-        let mut body = v_flex();
-        let mut panels = surface::page_columns();
-        if self.spec.dynamic {
-            body = body.child(self.dynamic_panel(cx));
-        }
-        if self.spec.rotation {
-            panels = panels.child(surface::page_column(
-                surface::panel_with_title_switch(
-                    t("ROTATION"),
-                    surface::SynapseSwitch::new("mouse-rotation-enabled")
-                        .accessibility_label(t("ROTATION"))
-                        .checked(self.rotation_enabled())
-                        .disabled(!self.rotation_editable())
-                        .on_change(cx.listener(|this, enabled: &bool, _, cx| {
-                            if this.rotation_editable() {
-                                this.write("/rotation/isEnabled", json!(*enabled), cx);
-                            }
-                        })),
-                    surface::help_control("mouse-rotation-help", t("ROTATION_TOOLTIP")),
-                    cx,
-                )
-                .relative()
-                .h(surface::css(380.))
-                // Local scope keeps the source's self-contained explanation;
-                // ROTATION_DESC also directs the user to an online angle tool.
-                .child(surface::note(t("ROTATION_TOOLTIP"), cx))
-                .child(
-                    div()
+    fn rotation_panel(&self, cx: &Context<Self>) -> AnyElement {
+        surface::panel_with_title_switch(
+            t("ROTATION"),
+            surface::SynapseSwitch::new("mouse-rotation-enabled")
+                .accessibility_label(t("ROTATION"))
+                .checked(self.rotation_enabled())
+                .disabled(!self.rotation_editable())
+                .on_change(cx.listener(|this, enabled: &bool, _, cx| {
+                    if this.rotation_editable() {
+                        this.write("/rotation/isEnabled", json!(*enabled), cx);
+                    }
+                })),
+            surface::help_control("mouse-rotation-help", t("ROTATION_TOOLTIP")),
+            cx,
+        )
+        .w(surface::css(surface::WIDGET_WIDTH))
+        .min_w(surface::css(surface::WIDGET_WIDTH))
+        .max_w(surface::css(surface::WIDGET_WIDTH))
+        .mx_auto()
+        .relative()
+        .h(surface::css(380.))
+        // Local scope keeps the source's self-contained explanation;
+        // ROTATION_DESC also directs the user to an online angle tool.
+        .child(surface::note(t("ROTATION_TOOLTIP"), cx))
+        .child(
+            div()
+                .absolute()
+                .left(surface::css(217.5))
+                .top(surface::css(119.5))
+                .size(surface::css(165.))
+                .opacity(if self.rotation_enabled() && self.rotation_editable() {
+                    1.
+                } else {
+                    0.3
+                })
+                .child(rotation::cross().size_full()),
+        )
+        .children(
+            self.rotation_resources
+                .image(self.rotation_degrees() as i32)
+                .map(|image| {
+                    img(image)
                         .absolute()
-                        .left(surface::css(217.5))
-                        .top(surface::css(119.5))
-                        .size(surface::css(165.))
+                        .left(surface::css(209.5))
+                        .top(surface::css(112.))
+                        .size(surface::css(180.))
                         .opacity(if self.rotation_enabled() && self.rotation_editable() {
                             1.
                         } else {
                             0.3
                         })
-                        .child(rotation::cross().size_full()),
-                )
-                .children(
-                    self.rotation_resources
-                        .image(self.rotation_degrees() as i32)
-                        .map(|image| {
-                            img(image)
-                                .absolute()
-                                .left(surface::css(209.5))
-                                .top(surface::css(112.))
-                                .size(surface::css(180.))
-                                .opacity(if self.rotation_enabled() && self.rotation_editable() {
-                                    1.
-                                } else {
-                                    0.3
-                                })
-                        }),
-                )
-                .child(
-                    div()
-                        .absolute()
-                        .left(surface::css(40.))
-                        .right(surface::css(40.))
-                        .top(surface::css(287.))
-                        .child(rotation::RotationRange {
-                            state: self.sliders["/rotation/value"].clone(),
-                            enabled: self.rotation_enabled() && self.rotation_editable(),
-                        }),
-                )
-                .child(
-                    div()
-                        .absolute()
-                        .left(surface::css(297.))
-                        .top(surface::css(341.))
-                        .child(format!("{}°", self.rotation_degrees())),
-                )
-                .children(
-                    (!self.advanced_enabled()).then(|| surface::note(t("FW_UPDATE_REQUIRED"), cx)),
-                ),
-            ));
-        }
-        body.child(panels).into_any_element()
+                }),
+        )
+        .child(
+            div()
+                .absolute()
+                .left(surface::css(40.))
+                .right(surface::css(40.))
+                .top(surface::css(287.))
+                .child(rotation::RotationRange {
+                    state: self.sliders["/rotation/value"].clone(),
+                    enabled: self.rotation_enabled() && self.rotation_editable(),
+                }),
+        )
+        .child(
+            div()
+                .absolute()
+                .left(surface::css(297.))
+                .top(surface::css(341.))
+                .child(format!("{}°", self.rotation_degrees())),
+        )
+        .children((!self.advanced_enabled()).then(|| surface::note(t("FW_UPDATE_REQUIRED"), cx)))
+        .into_any_element()
     }
 
     fn cancel_scroll_custom(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -2600,7 +2599,7 @@ impl Render for MouseProductWorkspace {
             "TAB_LIGHTING" => self.lighting(false, window, cx),
             "TAB_CALIBRATION" => self.calibration(window, cx),
             "TAB_SCROLLING" => self.scrolling(window, cx),
-            "ADVANCED" => self.advanced(cx),
+            "ADVANCED" => self.advanced(window, cx),
             "TAB_CUSTOMIZE" => self.customize(window, cx),
             _ => div().into_any_element(),
         };

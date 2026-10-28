@@ -2,7 +2,7 @@
 
 本目录覆盖当前产品注册中的全部 75 个鼠标 PID。设备名称保留官方原文；产品定义、页面挂载和实际消费者分别核实，不能因为 bundle 含有某个共享组件或词条就判定产品拥有该功能。每份原件读取均核对 acquisition 的实际字节与 SHA-256，没有执行厂商 JavaScript。
 
-功能入口：[自定义映射](customize.md)、[DPI 与性能](performance.md)、[动态灵敏度与旋转](advanced-sensitivity.md)、[Perfect180](perfect180.md)、[校准](calibration.md)、[滚轮](scroll-wheel.md)、[灯光与电源](lighting-power.md)。详细挂载见各 PID 页面。
+功能入口：[自定义映射（含 Perfect180 入口）](customize.md)、[DPI 与性能](performance.md)、[动态灵敏度与旋转](advanced-sensitivity.md)、[校准](calibration.md)、[滚轮](scroll-wheel.md)、[灯光与电源](lighting-power.md)。详细挂载见各 PID 页面。
 
 另有 [当前 162 独立入口](products/162.md)：该 URL 的 DeviceInfo.productId 为 163，设备名为 Razer Cobra。它是当前官方入口别名，保留其独立原件与参数；不把它计为注册表之外的另一款 162 硬件。
 

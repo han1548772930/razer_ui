@@ -3,8 +3,8 @@
 //! No vendor DLL is loaded by this helper and unsupported input capture errors.
 use anyhow::{Context as _, ensure};
 use razer_device::{
-    dpi_matcher::{InputBatch, Session, State},
-    dpi_matcher_storage::{self, Mutation},
+    dpi_matcher::{Calibration, InputBatch, Product, Session, State},
+    dpi_matcher_storage::{self, Mutation, ProfileUpdate},
 };
 use serde_json::Value;
 
@@ -33,6 +33,12 @@ pub trait Backend {
     ) -> anyhow::Result<(String, Value)>;
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum Response {
+    Calibration(Calibration),
+    Profiles(ProfileUpdate),
+}
+
 #[derive(Default)]
 pub struct Controller {
     session: Session,
@@ -40,7 +46,15 @@ pub struct Controller {
     locked: bool,
 }
 impl Controller {
-    pub fn response(&self) -> Value {
+    pub fn new(product: Product) -> Self {
+        Self {
+            session: Session::new(product),
+            monitoring: false,
+            locked: false,
+        }
+    }
+
+    pub fn response(&self) -> Calibration {
         self.session.response()
     }
     pub fn command(
@@ -48,9 +62,9 @@ impl Controller {
         command: &str,
         payload: Option<&Value>,
         backend: &mut impl Backend,
-    ) -> anyhow::Result<Vec<Value>> {
+    ) -> anyhow::Result<Vec<Response>> {
         match command {
-            "GET_STATE" => Ok(vec![self.response()]),
+            "GET_STATE" => Ok(vec![Response::Calibration(self.response())]),
             "START" => {
                 let data = backend.read_source_data()?;
                 let active = data["activeProfile"]
@@ -83,12 +97,12 @@ impl Controller {
                 }
                 self.locked = true;
                 self.session.acquired_lock()?;
-                Ok(vec![self.response()])
+                Ok(vec![Response::Calibration(self.response())])
             }
             "CANCEL" | "RESET" => {
                 self.cleanup(backend)?;
                 self.session.reset();
-                Ok(vec![self.response()])
+                Ok(vec![Response::Calibration(self.response())])
             }
             "CONFIRM" => {
                 let measured = self
@@ -124,7 +138,11 @@ impl Controller {
         }
     }
     /// Separate UI action; submit real stages before matcher storage response.
-    pub fn select(&mut self, guid: &str, backend: &mut impl Backend) -> anyhow::Result<Vec<Value>> {
+    pub fn select(
+        &mut self,
+        guid: &str,
+        backend: &mut impl Backend,
+    ) -> anyhow::Result<Vec<Response>> {
         let data = backend.read_source_data()?;
         self.persist(dpi_matcher_storage::select(&data, guid)?, backend)
     }
@@ -132,7 +150,7 @@ impl Controller {
         &mut self,
         payload: &Value,
         backend: &mut impl Backend,
-    ) -> anyhow::Result<Vec<Value>> {
+    ) -> anyhow::Result<Vec<Response>> {
         let data = backend.read_source_data()?;
         self.persist(dpi_matcher_storage::update(&data, payload)?, backend)
     }
@@ -140,13 +158,13 @@ impl Controller {
         &mut self,
         mutation: Mutation,
         backend: &mut impl Backend,
-    ) -> anyhow::Result<Vec<Value>> {
+    ) -> anyhow::Result<Vec<Response>> {
         if let Some(stages) = &mutation.dpi_stages {
             backend.submit_dpi_stages(stages)?;
         }
         backend.persist_source_data(&mutation.data)?;
         // Only actual successful submission and storage emits the source response.
-        Ok(vec![mutation.response])
+        Ok(vec![Response::Profiles(mutation.response)])
     }
     pub fn ingest(
         &mut self,
@@ -154,10 +172,17 @@ impl Controller {
         initial_is_main: bool,
         received_ms: u64,
         backend: &mut impl Backend,
-    ) -> anyhow::Result<Value> {
+    ) -> anyhow::Result<Calibration> {
         ensure!(self.monitoring, "input monitor is unavailable");
         match self.session.ingest(batch, initial_is_main, received_ms) {
-            Ok(true) => self.cleanup(backend)?,
+            Ok(true) => {
+                backend.stop_input_monitoring()?;
+                self.monitoring = false;
+                let completion = self.session.complete_after_stop();
+                let cleanup = self.cleanup(backend);
+                completion?;
+                cleanup?;
+            }
             Ok(false) => {}
             Err(error) => {
                 self.session.fail();
@@ -171,7 +196,7 @@ impl Controller {
         &mut self,
         now_ms: u64,
         backend: &mut impl Backend,
-    ) -> anyhow::Result<Option<Value>> {
+    ) -> anyhow::Result<Option<Calibration>> {
         if self.session.check_timeout(now_ms) {
             self.cleanup(backend)?;
             return Ok(Some(self.response()));
