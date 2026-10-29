@@ -11,6 +11,8 @@ use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, sync::OnceLock, time::Duration};
 
 pub const PRODUCT_ID: u32 = 190;
+#[path = "mouse_current_dpi_ble.rs"]
+pub mod ble;
 #[cfg(test)]
 #[path = "mouse_current_dpi_tests.rs"]
 mod tests;
@@ -683,6 +685,9 @@ pub fn validate_change_for(product_id: u32, change: &DpiChange) -> anyhow::Resul
 pub struct Acknowledgement {
     pub command: [u8; 3],
     pub transaction: u8,
+    /// Protocol30 request profile; the transport does not report a profile echo.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub profile: Option<u8>,
     pub response_bytes: usize,
     pub data: Vec<u8>,
 }
@@ -759,6 +764,7 @@ fn exchange(
                     return Ok(Acknowledgement {
                         command,
                         transaction,
+                        profile: None,
                         response_bytes: count,
                         data: incoming[9..9 + count].to_vec(),
                     });

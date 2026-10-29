@@ -536,6 +536,9 @@ impl NativeRuntime {
             ServiceRequest::BleMouseCurrentPower { target, change } => {
                 device_reads::mouse_current_power_ble(&target, &change)
             }
+            ServiceRequest::BleMouseCurrentDpi { target, change } => {
+                device_reads::mouse_current_dpi_ble(&target, change.as_ref())
+            }
             ServiceRequest::BleMouseRotation { target, change } => {
                 device_reads::mouse_rotation_ble(&target, change.as_ref())
             }

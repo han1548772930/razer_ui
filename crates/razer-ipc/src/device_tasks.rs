@@ -158,6 +158,24 @@ impl ServiceRequest {
                 Target::WindowsContainer { target } => Scope::target(target)?,
             }));
         }
+        if let Self::BleMouseCurrentDpi {
+            target,
+            change: Some(change),
+        } = self
+        {
+            anyhow::ensure!(
+                razer_device::mouse_current_dpi::ble::accepts(
+                    target.product_id,
+                    target.physical_product_id
+                ),
+                "Current DPI BLE mutation scope has another physical factory"
+            );
+            razer_device::mouse_current_dpi::validate_change_for(target.product_id, change)?;
+            return Ok(Some(Scope::container(
+                target.product_id,
+                &target.device_container_id,
+            )?));
+        }
         if let Self::BleMouseRotation {
             target,
             change: Some(_),
@@ -321,6 +339,43 @@ mod tests {
         read["sleep_operation"] = serde_json::json!({"kind":"read"});
         let read: ServiceRequest = serde_json::from_value(read).unwrap();
         assert_eq!(read.synchronous_device_task().unwrap(), Some(scope));
+    }
+
+    #[test]
+    fn current_dpi_ble_ipc_keeps_wire_identity_and_guards_only_its_mutation_scope() {
+        let bytes = br#"{"operation":"ble_mouse_current_dpi","target":{"product_id":226,"physical_product_id":228,"device_container_id":"b63bfcb4-c1ee-4b2b-83f3-90fc06229af0","hid_path":"hid-ble-dpi","device_instance_id":"HID-INSTANCE","parent_instance_id":"BTHLEDevice-INSTANCE","mac_address":177789161760246},"change":{"stages":null,"active":{"x":800,"y":850},"profile_guid":null,"initialize":false}}"#;
+        let request: ServiceRequest = serde_json::from_slice(bytes).unwrap();
+        assert_eq!(serde_json::to_vec(&request).unwrap(), bytes);
+        assert_eq!(
+            request.synchronous_device_task().unwrap(),
+            Some(Scope::container(226, "b63bfcb4-c1ee-4b2b-83f3-90fc06229af0").unwrap())
+        );
+        let value: serde_json::Value = serde_json::from_slice(bytes).unwrap();
+        let mut read = value.clone();
+        read["change"] = serde_json::Value::Null;
+        assert!(
+            serde_json::from_value::<ServiceRequest>(read)
+                .unwrap()
+                .synchronous_device_task()
+                .unwrap()
+                .is_none()
+        );
+        for (path, replacement) in [
+            ("/target/physical_product_id", serde_json::json!(227)),
+            ("/target/product_id", serde_json::json!(190)),
+            ("/change/active/x", serde_json::json!(0)),
+            ("/change/active/y", serde_json::json!(50001)),
+        ] {
+            let mut other = value.clone();
+            *other.pointer_mut(path).unwrap() = replacement;
+            assert!(
+                serde_json::from_value::<ServiceRequest>(other)
+                    .unwrap()
+                    .synchronous_device_task()
+                    .is_err(),
+                "{path}"
+            );
+        }
     }
 
     #[test]

@@ -3813,6 +3813,59 @@ class RustValidationBoundaryTests(unittest.TestCase):
             self.assertEqual(receipt["commands"][0]["excluded_test_filters"], ["image_cache::tests"])
             self.assertIn("headless window", receipt["commands"][0]["test_scope"])
 
+    def test_current_dpi_ble_suites_keep_pure_filters_and_release_owned_temporary_files(self):
+        expected = {
+            'current-dpi-ble-protocol': ('razer-device', 'mouse_current_dpi::ble::tests'),
+            'current-dpi-ble-ipc': ('razer-ipc', 'device_tasks::tests::current_dpi_ble'),
+            'current-dpi-ble-discovery': ('razer-discovery', 'discovery::tests::current_dpi_ble'),
+            'current-dpi-ble-service': ('razer-service', 'current_dpi_ble_'),
+        }
+        for executed_tests in (1, 0):
+            with self.subTest(executed_tests=executed_tests), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+
+                def completed(command, **kwargs):
+                    temporary = Path(kwargs['env']['TEMP'])
+                    self.assertEqual({kwargs['env'][key] for key in ('TEMP', 'TMP', 'TMPDIR')},
+                                     {str(temporary)})
+                    self.assertTrue(temporary.is_dir())
+                    fixture = temporary / 'fixture' / 'nested.txt'
+                    fixture.parent.mkdir()
+                    fixture.write_bytes(b'pure simulated transport fixture')
+                    kwargs['stdout'].write(
+                        f'test result: ok. {executed_tests} passed; 0 failed; 0 ignored\n'.encode())
+                    return mock.Mock(returncode=0)
+
+                with mock.patch.object(workspace, 'ROOT', root), \
+                        mock.patch.object(workspace, 'rust_inputs', return_value=[]), \
+                        mock.patch.object(workspace.subprocess, 'run', side_effect=completed) as runner, \
+                        mock.patch.object(workspace, 'write_json') as write_receipt, \
+                        mock.patch('sys.stdout', new=io.StringIO()):
+                    if executed_tests:
+                        workspace.validate_rust(selected_suites=list(expected))
+                    else:
+                        with self.assertRaisesRegex(ValueError, 'Validation failed'):
+                            workspace.validate_rust(selected_suites=list(expected))
+
+                commands = [call.args[0] for call in runner.call_args_list]
+                self.assertCountEqual(commands, [
+                    ['cargo', 'test', '--locked', '--offline', '-p', package, '--lib', selected_filter]
+                    for package, selected_filter in expected.values()
+                ])
+                receipt = write_receipt.call_args.args[1]
+                self.assertEqual(receipt['passed'], bool(executed_tests))
+                self.assertFalse(receipt['all_configured_suites'])
+                self.assertFalse(receipt['target_execution'])
+                self.assertFalse(receipt['real_device_operations'])
+                for row in receipt['commands']:
+                    self.assertEqual(row['executed_tests'], executed_tests)
+                    self.assertEqual(row['errors'], [] if executed_tests else ['no_tests_executed'])
+                    self.assertFalse((root / row['temporary_directory']).exists())
+                ledger = json.loads((root / workspace.VERIFICATION_TEMP_LEDGER).read_bytes())
+                self.assertEqual(len(ledger['records']), len(expected))
+                self.assertTrue(all(row['status'] == 'released' for row in ledger['records']))
+                self.assertFalse(list((root / 'target/verification-temp').iterdir()))
+
     def test_calibration_and_restore_suites_cover_measurement_and_retained_owners(self):
         expected = {
             'mouse-philips-protocol': ('razer-device', 'mouse_philips::'),

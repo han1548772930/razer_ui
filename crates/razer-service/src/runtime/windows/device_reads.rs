@@ -157,6 +157,8 @@ pub(super) fn leviathan(
     leviathan_adapter::request(target, operation)
 }
 pub(super) use seiren_eq_adapter::State as SeirenAudio;
+#[path = "mouse/mouse_current_dpi_ble.rs"]
+mod mouse_current_dpi_ble_adapter;
 #[path = "mouse/mouse_current_power_ble.rs"]
 mod mouse_current_power_ble_adapter;
 #[path = "mouse/mouse_rotation_ble.rs"]
@@ -186,6 +188,13 @@ pub(super) fn mouse_current_power_ble(
     change: &razer_device::mouse_current_power::Change,
 ) -> anyhow::Result<Value> {
     mouse_current_power_ble_adapter::request(target, change)
+}
+
+pub(super) fn mouse_current_dpi_ble(
+    target: &razer_device::mouse_runtime_artwork::WindowsBleTarget,
+    change: Option<&razer_device::mouse_current_dpi::DpiChange>,
+) -> anyhow::Result<Value> {
+    mouse_current_dpi_ble_adapter::request(target, change)
 }
 
 pub(super) fn mouse_rotation_ble(

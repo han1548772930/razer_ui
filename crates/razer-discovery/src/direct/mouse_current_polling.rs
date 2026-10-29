@@ -5,7 +5,7 @@ use razer_device::mouse_current_polling::{self as polling, Change, Observation, 
 pub fn available(observed: &ObservedDevice) -> bool {
     observed.product_id() == polling::PRODUCT_ID
         && observed.peer_product_id().is_none()
-        && super::mouse_current_dpi::available(observed)
+        && super::mouse_current_dpi::feature_available(observed)
 }
 
 pub fn request(

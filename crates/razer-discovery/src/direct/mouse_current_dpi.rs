@@ -2,6 +2,15 @@ use super::*;
 use razer_device::mouse_current_dpi::{self as dpi, DpiChange, DpiReport};
 
 pub fn available(observed: &ObservedDevice) -> bool {
+    if observed.transport() == Some(crate::discovery::ObservedTransport::Ble) {
+        return cfg!(windows)
+            && observed.peer_product_id().is_none()
+            && dpi::ble::accepts(observed.product_id(), observed.physical_product_id());
+    }
+    feature_available(observed)
+}
+
+pub(super) fn feature_available(observed: &ObservedDevice) -> bool {
     if observed.peer_product_id().is_some() {
         return receiver_session(observed).is_ok();
     }
@@ -59,6 +68,20 @@ pub(super) fn request_with(
     if let Some(change) = &change {
         dpi::validate_change_for(observed.product_id(), change)?;
     }
+    if observed.transport() == Some(crate::discovery::ObservedTransport::Ble) {
+        #[cfg(windows)]
+        {
+            return request_ble_with(
+                observed.product_id(),
+                observed.physical_product_id(),
+                observed.container(),
+                change,
+                &mut request,
+            );
+        }
+        #[cfg(not(windows))]
+        anyhow::bail!("Current DPI BLE requires its platform GATT adapter");
+    }
     if observed.peer_product_id().is_some() {
         let session = receiver_session(observed)?;
         let target = super::receiver_settings::resolve(observed, &session, &mut request)?;
@@ -92,6 +115,31 @@ pub(super) fn request_with(
     } else {
         resolve_with(observed, &mut request)?.mouse_current_dpi_with(change, &mut request)
     }
+}
+
+#[cfg(any(windows, test))]
+fn request_ble_with(
+    product_id: u32,
+    physical_product_id: u32,
+    container: &str,
+    change: Option<DpiChange>,
+    request: &mut impl FnMut(ServiceRequest) -> anyhow::Result<Value>,
+) -> anyhow::Result<DpiReport> {
+    ensure!(
+        dpi::ble::accepts(product_id, physical_product_id),
+        "Current DPI BLE request has another physical factory"
+    );
+    if let Some(change) = &change {
+        dpi::validate_change_for(product_id, change)?;
+    }
+    let observation = request(ServiceRequest::HidDevices)?;
+    let target =
+        dpi::ble::target_from_hid(product_id, physical_product_id, container, &observation)?;
+    let reply = request(ServiceRequest::BleMouseCurrentDpi {
+        target: target.clone(),
+        change: change.clone(),
+    })?;
+    decode_ble_reply(&target, &reply, change)
 }
 
 /// Admit only the actual wired/ordinary-dongle branch of each current factory.
@@ -203,21 +251,145 @@ fn decode_reply(
     change: Option<DpiChange>,
 ) -> anyhow::Result<DpiReport> {
     let source = dpi::capability(product_id).context("DPI source capability is absent")?;
+    #[derive(serde::Deserialize)]
+    struct Reply {
+        source_class: String,
+        profile_scope: String,
+        report: DpiReport,
+    }
+    let reply: Reply = serde_json::from_value(reply.clone())?;
     ensure!(
-        reply["source_class"] == source.transport().source_class
-            && reply["profile_scope"] == "stage_1_active_0",
+        reply.source_class == source.transport().source_class
+            && reply.profile_scope == "stage_1_active_0",
         "Current mouse DPI reply source or profile scope differs"
     );
-    let report: DpiReport = serde_json::from_value(reply["report"].clone())?;
+    validate_report(product_id, reply.report, change, ReplyTransport::Feature)
+}
+
+#[cfg(any(windows, test))]
+fn decode_ble_reply(
+    target: &razer_device::mouse_runtime_artwork::WindowsBleTarget,
+    reply: &Value,
+    change: Option<DpiChange>,
+) -> anyhow::Result<DpiReport> {
+    #[derive(serde::Deserialize)]
+    struct Reply {
+        target: razer_device::mouse_runtime_artwork::WindowsBleTarget,
+        source_class: String,
+        transport: String,
+        profile_scope: String,
+        connection_edition: dpi::Acknowledgement,
+        report: DpiReport,
+    }
+    ensure!(
+        dpi::ble::accepts(target.product_id, target.physical_product_id),
+        "Current DPI BLE source factory differs"
+    );
+    let reply: Reply = serde_json::from_value(reply.clone())?;
+    ensure!(
+        reply.target == *target
+            && reply.source_class == "rzDevice30"
+            && reply.transport == "windows_gatt"
+            && reply.profile_scope == "stage_1_active_0",
+        "Current DPI BLE reply identity/transport/profile differs"
+    );
+    let edition = reply.connection_edition;
+    ensure!(
+        edition.command == dpi::ble::EDITION
+            && edition.profile == Some(0)
+            && edition.transaction < 31
+            && edition.response_bytes == edition.data.len()
+            && (3..=65535).contains(&edition.data.len()),
+        "Current DPI BLE connection edition is absent or differs"
+    );
+    ensure!(
+        reply.report.stage_level.is_none()
+            && reply.report.serial_number.is_none()
+            && reply.report.initialization_mode_error.is_none(),
+        "Current DPI BLE reply contains unrelated device operations"
+    );
+    dpi::ble::validate_readings(&reply.report)?;
+    if let Some(change) = &change {
+        ensure!(
+            reply.report.profile_slots.is_empty() && reply.report.profile_slot_writes.is_empty()
+                || change.stages.is_some()
+                    && change
+                        .profile_guid
+                        .as_ref()
+                        .is_some_and(|guid| !guid.is_empty()),
+            "Current DPI BLE profile synchronization has no requested stage or profile"
+        );
+        let expected_slots = dpi_profile_slots(change, &reply.report);
+        ensure!(
+            reply.report.write_errors.stages().is_some()
+                || reply.report.profile_slot_writes.len() == expected_slots.len(),
+            "Current DPI BLE profile synchronization omits observed matching slots"
+        );
+        for (index, write) in reply.report.profile_slot_writes.iter().enumerate() {
+            ensure!(
+                expected_slots.get(index).copied() == Some(write.slot_id)
+                    && (write.error.is_some()
+                        || write.before.as_ref().is_some_and(|before| {
+                            before.profile_id == write.slot_id
+                                && if write.was_equal {
+                                    write.acknowledged.is_none()
+                                } else {
+                                    write.acknowledged.as_ref().is_some_and(|ack| {
+                                        ack.response_bytes == ack.raw_data.len()
+                                            && ack.response_bytes <= 65535
+                                    })
+                                }
+                        })),
+                "Current DPI BLE profile write has another slot or absent delivery"
+            );
+            ensure!(
+                write.error.is_none() || reply.report.write_errors.stages().is_some(),
+                "Current DPI BLE profile synchronization failure claims stage success"
+            );
+        }
+    }
+    validate_report(target.product_id, reply.report, change, ReplyTransport::Ble)
+}
+
+#[cfg(any(windows, test))]
+fn dpi_profile_slots(change: &DpiChange, report: &DpiReport) -> Vec<u8> {
+    change.profile_guid.as_ref().map_or_else(Vec::new, |guid| {
+        razer_device::mouse_dpi_stages::select_profile_slots(guid, &report.profile_slots)
+            .into_iter()
+            .map(|slot| slot.slot_id)
+            .collect()
+    })
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ReplyTransport {
+    Feature,
+    Ble,
+}
+
+fn validate_report(
+    product_id: u32,
+    report: DpiReport,
+    change: Option<DpiChange>,
+    transport: ReplyTransport,
+) -> anyhow::Result<DpiReport> {
+    let source = dpi::capability(product_id).context("DPI source capability is absent")?;
     ensure!(
         report.requested == change
             && report.verified == (report.read_errors.is_empty() && report.write_errors.is_empty())
-            && report
-                .acknowledgements
-                .iter()
-                .all(|ack| ack.transaction < 31
+            && report.acknowledgements.iter().all(|ack| {
+                ack.transaction < 31
                     && ack.response_bytes == ack.data.len()
-                    && ack.response_bytes <= 80),
+                    && if transport == ReplyTransport::Ble {
+                        ack.response_bytes <= 65535
+                            && matches!(
+                                (ack.command, ack.profile),
+                                ([255, 11, 4], Some(1)) | ([6, 11, 1], Some(0))
+                            )
+                    } else {
+                        ack.profile.is_none() && ack.response_bytes <= 80
+                    }
+            }),
         "Current mouse DPI reply does not confirm its exact request"
     );
     if let Some(change) = &change {
@@ -246,7 +418,13 @@ fn decode_reply(
         }
         ensure!(
             (change.stages.is_some() || report.write_errors.stages().is_none())
-                && (change.active.is_some() || report.write_errors.active().is_none()),
+                && (change.active.is_some() || report.write_errors.active().is_none())
+                && (transport != ReplyTransport::Ble
+                    || report.acknowledgements.iter().all(|ack| match ack.profile {
+                        Some(1) => change.stages.is_some(),
+                        Some(0) => change.active.is_some(),
+                        _ => false,
+                    })),
             "DPI reply contains a failure for an unrequested write task"
         );
         if let Some(stages) = &change.stages {
@@ -264,7 +442,11 @@ fn decode_reply(
                 ensure!(
                     report.write_errors.stages().is_some()
                         || (report.acknowledgements.iter().any(|ack| {
-                            ack.command == [3 + 7 * packed.number_of_active_stages, 4, 6]
+                            if transport == ReplyTransport::Ble {
+                                ack.command == [255, 11, 4] && ack.profile == Some(1)
+                            } else {
+                                ack.command == [3 + 7 * packed.number_of_active_stages, 4, 6]
+                            }
                         }) && report
                             .stages
                             .as_ref()
@@ -308,6 +490,196 @@ fn decode_reply(
 mod tests {
     use super::*;
     use serde_json::json;
+
+    fn ble_reply() -> (razer_device::mouse_runtime_artwork::WindowsBleTarget, Value) {
+        let container = "{01234567-89AB-CDEF-0123-456789ABCDEF}";
+        let observation = json!({"complete":true,"interfaces":[{
+            "path":r"\\?\hid#dpi#ble",
+            "device_container_id":container,"device_instance_id":r"HID\BLE_MOUSE\DPI",
+            "parent_instance_id":r"BTHLEDevice\_VID&021532_PID&00E4_REV&0100_A1B2C3D4E5F6",
+            "vendor_id":0x1532,"product_id":228
+        }]});
+        let target = dpi::ble::target_from_hid(226, 228, container, &observation).unwrap();
+        let reply = json!({
+            "target":target,"source_class":"rzDevice30","transport":"windows_gatt",
+            "profile_scope":"stage_1_active_0",
+            "connection_edition":{"command":[0,1,134],"profile":0,"transaction":0,
+                "response_bytes":3,"data":[1,2,3]},
+            "report":{"requested":null,"active":{"x":900,"y":950},"verified":true,
+                "acknowledgements":[],
+                "stages":{"profile_id":1,"active_stage":9,"number_of_active_stages":7,
+                    "records":[{"index":1,"x":400,"y":500,"z":0},
+                        {"index":0,"x":0,"y":0,"z":0}],"response_bytes":16}}
+        });
+        (target, reply)
+    }
+
+    #[test]
+    fn current_dpi_ble_reply_requires_its_current_physical_owner_and_connection_edition() {
+        let (target, reply) = ble_reply();
+        let actual = decode_ble_reply(&target, &reply, None).unwrap();
+        assert_eq!(actual.active, Some(dpi::DpiPair { x: 900, y: 950 }));
+        assert_eq!(actual.stages.unwrap().records[0].x, 400);
+        for (path, value) in [
+            ("/target/physical_product_id", json!(227)),
+            ("/target/product_id", json!(190)),
+            ("/target/device_instance_id", json!("stale-instance")),
+            ("/target/mac_address", json!(1)),
+            ("/source_class", json!("rzDevice25")),
+            ("/transport", json!("hid_feature")),
+            ("/profile_scope", json!("profile_0")),
+            ("/connection_edition/command", json!([0, 11, 129])),
+            ("/connection_edition/profile", json!(1)),
+            ("/connection_edition/transaction", json!(31)),
+            ("/connection_edition/response_bytes", json!(2)),
+            ("/connection_edition/data", json!([1, 2])),
+            ("/connection_edition", Value::Null),
+            ("/report/active/x", json!(0)),
+            ("/report/active/y", json!(50001)),
+            ("/report/stages/response_bytes", json!(1)),
+        ] {
+            let mut invalid = reply.clone();
+            *invalid.pointer_mut(path).unwrap() = value;
+            assert!(decode_ble_reply(&target, &invalid, None).is_err(), "{path}");
+        }
+    }
+
+    #[test]
+    fn current_dpi_ble_dispatch_resolves_the_live_hid_owner_before_the_exact_task() {
+        let (target, reply) = ble_reply();
+        let observation = json!({"complete":true,"interfaces":[{
+            "path":target.hid_path,"device_container_id":target.device_container_id,
+            "device_instance_id":target.device_instance_id,
+            "parent_instance_id":target.parent_instance_id,"vendor_id":0x1532,"product_id":228
+        }]});
+        let mut calls = Vec::new();
+        let report = request_ble_with(
+            226,
+            228,
+            &target.device_container_id,
+            None,
+            &mut |request| {
+                calls.push(request.clone());
+                match request {
+                    ServiceRequest::HidDevices => Ok(observation.clone()),
+                    ServiceRequest::BleMouseCurrentDpi {
+                        target: selected,
+                        change: None,
+                    } => {
+                        assert_eq!(selected, target);
+                        Ok(reply.clone())
+                    }
+                    _ => panic!("BLE DPI must not use a HID Feature Report request"),
+                }
+            },
+        )
+        .unwrap();
+        assert!(report.verified);
+        assert_eq!(calls.len(), 2);
+        for observation in [
+            json!({"complete":true,"interfaces":[]}),
+            json!({"complete":false,"interfaces":[]}),
+        ] {
+            let mut calls = 0;
+            assert!(
+                request_ble_with(
+                    226,
+                    228,
+                    &target.device_container_id,
+                    None,
+                    &mut |request| {
+                        calls += 1;
+                        assert!(matches!(request, ServiceRequest::HidDevices));
+                        Ok(observation.clone())
+                    },
+                )
+                .is_err()
+            );
+            assert_eq!(calls, 1);
+        }
+        assert!(
+            request_ble_with(
+                226,
+                227,
+                &target.device_container_id,
+                None,
+                &mut |_| panic!("Wrong physical identity must stop before enumeration")
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn current_dpi_ble_stage_write_requires_the_ble_setter_profile_and_actual_getter() {
+        let (target, mut reply) = ble_reply();
+        let change = DpiChange {
+            stages: Some(dpi::SourceStages::new(
+                true,
+                1,
+                vec![dpi::SourceStage::new(
+                    Some(400u16.into()),
+                    Some(500u16.into()),
+                    Some(true),
+                    Some(false),
+                )],
+            )),
+            active: None,
+            profile_guid: None,
+            initialize: false,
+        };
+        reply["report"]["requested"] = json!(change);
+        reply["report"]["active"] = Value::Null;
+        reply["report"]["acknowledgements"] = json!([
+            {"command":[255,11,4],"profile":1,"transaction":1,"response_bytes":0,"data":[]}
+        ]);
+        assert!(
+            decode_ble_reply(&target, &reply, Some(change.clone()))
+                .unwrap()
+                .verified
+        );
+        for (path, value) in [
+            ("/report/acknowledgements/0/command", json!([10, 4, 6])),
+            ("/report/acknowledgements/0/profile", json!(0)),
+            ("/report/acknowledgements/0/profile", Value::Null),
+            ("/report/acknowledgements/0/transaction", json!(31)),
+            ("/report/acknowledgements", json!([])),
+            ("/report/stages/records/0/x", json!(401)),
+            ("/report/requested/stages/active_stage", json!(2)),
+        ] {
+            let mut invalid = reply.clone();
+            *invalid.pointer_mut(path).unwrap() = value;
+            assert!(
+                decode_ble_reply(&target, &invalid, Some(change.clone())).is_err(),
+                "{path}"
+            );
+        }
+        reply["report"]["stages"]["records"][0]["x"] = json!(401);
+        reply["report"]["write_errors"] = json!({"stages":"readback differs","active":null});
+        reply["report"]["verified"] = json!(false);
+        let failed = decode_ble_reply(&target, &reply, Some(change.clone())).unwrap();
+        assert!(!failed.verified);
+        assert_eq!(failed.stages.unwrap().records[0].x, 401);
+        reply["source_class"] = json!("rzDevice25");
+        assert!(decode_reply(226, &reply, Some(change)).is_err());
+    }
+
+    #[test]
+    fn current_dpi_ble_partial_read_preserves_observed_axes_without_a_success_claim() {
+        let (target, mut reply) = ble_reply();
+        reply["report"]["stages"] = Value::Null;
+        reply["report"]["read_errors"] =
+            json!({"stages":"device rejected stage getter","active":null});
+        reply["report"]["verified"] = json!(false);
+        let actual = decode_ble_reply(&target, &reply, None).unwrap();
+        assert_eq!(actual.active, Some(dpi::DpiPair { x: 900, y: 950 }));
+        assert!(actual.stages.is_none());
+        assert!(!actual.verified);
+        reply["report"]["verified"] = json!(true);
+        assert!(decode_ble_reply(&target, &reply, None).is_err());
+        reply["report"]["verified"] = json!(false);
+        reply["report"]["read_errors"]["stages"] = Value::Null;
+        assert!(decode_ble_reply(&target, &reply, None).is_err());
+    }
 
     #[test]
     fn stage_confirmation_requires_its_setter_ack_and_uses_the_source_record_consumer() {

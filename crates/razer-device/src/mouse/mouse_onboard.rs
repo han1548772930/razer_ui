@@ -205,7 +205,7 @@ fn guid_bytes(value: &str) -> Result<[u8; 16]> {
     Ok(result)
 }
 
-fn guid_text(bytes: &[u8]) -> String {
+pub(crate) fn guid_text(bytes: &[u8]) -> String {
     let mut guid: [u8; 16] = bytes.try_into().expect("16 source GUID bytes");
     guid[..4].reverse();
     guid[4..6].reverse();

@@ -5,7 +5,7 @@ use razer_device::mouse_scroll::{self as scroll, Submission, SubmissionReport};
 
 pub fn available(observed: &ObservedDevice) -> bool {
     scroll::capability(observed.product_id()).is_some()
-        && super::mouse_current_dpi::available(observed)
+        && super::mouse_current_dpi::feature_available(observed)
 }
 
 pub fn request(

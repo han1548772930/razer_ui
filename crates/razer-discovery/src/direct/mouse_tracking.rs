@@ -23,7 +23,7 @@ struct Shutdown {
 
 pub fn available(observed: &ObservedDevice) -> bool {
     tracking::capability(observed.product_id()).is_some()
-        && super::mouse_current_dpi::available(observed)
+        && super::mouse_current_dpi::feature_available(observed)
 }
 
 pub fn request(

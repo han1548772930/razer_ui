@@ -279,6 +279,10 @@ pub enum ServiceRequest {
         target: razer_device::mouse_runtime_artwork::WindowsBleTarget,
         change: razer_device::mouse_current_power::Change,
     },
+    BleMouseCurrentDpi {
+        target: razer_device::mouse_runtime_artwork::WindowsBleTarget,
+        change: Option<razer_device::mouse_current_dpi::DpiChange>,
+    },
     BleMouseRotation {
         target: razer_device::mouse_runtime_artwork::WindowsBleTarget,
         change: Option<razer_device::mouse_rotation::Setting>,
@@ -1397,6 +1401,10 @@ impl ServiceClient {
                     change: Some(_),
                     ..
                 }
+                | ServiceRequest::BleMouseCurrentDpi {
+                    change: Some(_),
+                    ..
+                }
                 | ServiceRequest::HidNodeMouseDynamic {
                     change: Some(_),
                     ..
@@ -1545,6 +1553,7 @@ impl ServiceClient {
                     ..
                 }
                 | ServiceRequest::DeviceMouseCurrentDpi { change: None, .. }
+                | ServiceRequest::BleMouseCurrentDpi { change: None, .. }
                 | ServiceRequest::HidNodeMouseDynamic { change: None, .. }
                 | ServiceRequest::DeviceMouseDynamic { change: None, .. }
                 | ServiceRequest::HidNodeMouseRotation { change: None, .. }

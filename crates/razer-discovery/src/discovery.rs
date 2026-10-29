@@ -895,6 +895,44 @@ mod tests {
     }
 
     #[test]
+    fn current_dpi_ble_availability_keeps_feature_only_settings_on_their_own_routes() {
+        let mut observed = ObservedDevice {
+            product_id: 226,
+            real_product_id: 228,
+            container: "{01234567-89AB-CDEF-0123-456789ABCDEF}".into(),
+            serial: String::new(),
+            use_ble: true,
+            transport: Some(ObservedTransport::Ble),
+            connection: DeviceConnectionObservation::HidPresent,
+            physical_product_id: 228,
+            peer_product_id: None,
+            read_values: None,
+            keyboard_metadata: None,
+            keyboard_serial: None,
+            hid_node: None,
+        };
+        use crate::direct;
+        assert_eq!(
+            direct::mouse_current_dpi::available(&observed),
+            cfg!(windows)
+        );
+        assert_eq!(direct::mouse_rotation::available(&observed), cfg!(windows));
+        assert!(!direct::mouse_current_polling::available(&observed));
+        assert!(!direct::mouse_brightness::available(&observed));
+        assert!(!direct::mouse_dynamic::available(&observed));
+        assert!(!direct::mouse_tracking::available(&observed));
+        assert!(!direct::mouse_scroll::available(&observed));
+        observed.physical_product_id = 227;
+        assert!(!direct::mouse_current_dpi::available(&observed));
+        observed.physical_product_id = 228;
+        observed.peer_product_id = Some(227);
+        assert!(!direct::mouse_current_dpi::available(&observed));
+        observed.peer_product_id = None;
+        observed.product_id = 190;
+        assert!(!direct::mouse_current_dpi::available(&observed));
+    }
+
+    #[test]
     fn discovered_devices_have_localized_source_names_without_preview_metadata() {
         let observed = ObservedDevice {
             product_id: 182,

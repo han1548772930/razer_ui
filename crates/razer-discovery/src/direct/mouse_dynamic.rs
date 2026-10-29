@@ -5,7 +5,7 @@ use razer_device::mouse_dynamic::{self as dynamic, Report, Setting};
 
 pub fn available(observed: &ObservedDevice) -> bool {
     dynamic::capability(observed.product_id()).is_some()
-        && super::mouse_current_dpi::available(observed)
+        && super::mouse_current_dpi::feature_available(observed)
 }
 
 pub fn request(

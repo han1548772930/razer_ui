@@ -311,6 +311,7 @@ fn source_stage_bytes_use_bitwise_wrapping_without_changing_strict_getter_expect
         &Acknowledgement {
             command: [80, 4, 134],
             transaction: 1,
+            profile: None,
             response_bytes: 45,
             data: vec![
                 1, 1, 5, 1, 0, 0, 255, 255, 0, 0, 2, 0, 0, 0, 1, 0, 0, 3, 0, 1, 255, 255, 0, 0, 4,
@@ -409,6 +410,7 @@ fn six_source_runners_compare_raw_record_prefixes_with_the_current_length_bounda
         let ack = |data: Vec<u8>| Acknowledgement {
             command: [80, 4, 134],
             transaction: 1,
+            profile: None,
             response_bytes: data.len(),
             data,
         };

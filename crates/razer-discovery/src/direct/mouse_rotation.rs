@@ -9,7 +9,7 @@ pub fn available(observed: &ObservedDevice) -> bool {
         && observed.peer_product_id().is_none()
         && rotation::ble::accepts(observed.product_id(), observed.physical_product_id());
     ble || rotation::capability(observed.product_id()).is_some()
-        && super::mouse_current_dpi::available(observed)
+        && super::mouse_current_dpi::feature_available(observed)
 }
 
 pub fn request(
