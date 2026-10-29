@@ -1,5 +1,41 @@
 use super::*;
 use crate::keyboard_control_test_transport::{Mock, assert_report_integrity, reply, sequence};
+
+#[test]
+fn release_failure_keeps_calibration_ack_and_reports_restore_failure_truthfully() {
+    let device = Mock::new([reply(&[0xd3]), reply(&[0xe4])]);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);
+    let report = execute(&probe, &cap(), &Operation::Bottom(31), sequence(), &|| {
+        Ok(())
+    })
+    .unwrap();
+    assert!(!report.completed);
+    assert!(!report.verified_top);
+    assert!(
+        report
+            .error
+            .as_ref()
+            .unwrap()
+            .contains("simulated explicit release failed")
+    );
+    assert_eq!(report.exchanges.len(), 2);
+    assert_eq!(report.exchanges[0].command, [2, 0, 4]);
+    assert_eq!(report.exchanges[0].payload, [2, 0]);
+    assert_eq!(report.exchanges[0].acknowledgement, Some(vec![0xd3]));
+    assert!(report.exchanges[0].error.is_some());
+    assert_eq!(report.exchanges[1].command, [2, 0, 4]);
+    assert_eq!(report.exchanges[1].payload, [3, 0]);
+    assert_eq!(report.exchanges[1].acknowledgement, Some(vec![0xe4]));
+    assert!(report.exchanges[1].error.is_some());
+    assert_eq!(
+        report.messages[0].payload,
+        json!({"status":"stop","isSuccess":false})
+    );
+    assert_eq!(report.messages[1].payload, false);
+    let sent = device.sent();
+    assert_eq!(sent.len(), 2);
+    assert!(sent.iter().all(|packet| packet[7..9] == [0, 4]));
+}
 fn cap() -> DeviceReadCapability {
     let mut cap = capability(740).unwrap();
     cap.sleep_between_out_ms = 0;

@@ -259,24 +259,103 @@ fn disabling_highpass_and_deesser_writes_zero_without_inventing_a_getter() {
 fn canceled_device_response_stops_the_next_band_even_when_source_ignores_stage_results() {
     let mut device = Simulated::new(vec![vec![0; 11], vec![1, 16]]);
     device.cancel_after = Some(1);
+    let error = execute(
+        1422,
+        &device,
+        &cap(1422),
+        &Change::Preset(preset()),
+        next(),
+        || {
+            ensure!(
+                !device.canceled.load(Ordering::Acquire),
+                "Canceled simulated EQ task"
+            );
+            Ok(())
+        },
+    )
+    .unwrap_err();
+    let progress = &error.downcast_ref::<ExecutionFailure>().unwrap().progress;
+    assert!(progress.setter_sent());
+    assert!(!progress.confirmed());
+    assert_eq!(progress.stages().len(), 1);
+    assert!(progress.stages()[0].response().is_none());
     assert!(
-        execute(
-            1422,
-            &device,
-            &cap(1422),
-            &Change::Preset(preset()),
-            next(),
-            || {
-                ensure!(
-                    !device.canceled.load(Ordering::Acquire),
-                    "Canceled simulated EQ task"
-                );
-                Ok(())
-            }
-        )
-        .is_err()
+        progress.stages()[0]
+            .error()
+            .unwrap()
+            .contains("Canceled simulated EQ task")
     );
     assert_eq!(device.sent().len(), 1);
+    assert_eq!(device.replies.lock().unwrap().len(), 1);
+}
+
+#[test]
+fn seiren_parsed_setter_ack_survives_release_failure_without_the_next_preset_stage() {
+    let acknowledged = vec![0x71; 11];
+    let device = Simulated::new(vec![acknowledged.clone(), vec![1, 16]]);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);
+    let error = execute(
+        1422,
+        &probe,
+        &cap(1422),
+        &Change::Preset(preset()),
+        next(),
+        || Ok(()),
+    )
+    .unwrap_err();
+    assert_eq!(
+        error.root_cause().to_string(),
+        "simulated explicit release failed"
+    );
+    let progress = &error.downcast_ref::<ExecutionFailure>().unwrap().progress;
+    assert!(progress.setter_sent());
+    assert!(!progress.confirmed());
+    assert!(!progress.source_result());
+    assert_eq!(progress.stages().len(), 1);
+    assert_eq!(
+        progress.stages()[0].response(),
+        Some(acknowledged.as_slice())
+    );
+    assert!(progress.stages()[0].error().is_some());
+    assert_eq!(device.sent().len(), 1);
+    assert_eq!(device.replies.lock().unwrap().len(), 1);
+}
+
+#[test]
+fn seiren_owner_loss_after_release_keeps_the_ack_but_stops_the_next_stage() {
+    let acknowledged = vec![0x72; 11];
+    let device = Simulated::new(vec![acknowledged.clone(), vec![1, 16]]);
+    let cancel = || device.canceled.store(true, Ordering::Release);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::with_on_finish(&device, &cancel);
+    let error = execute(
+        1446,
+        &probe,
+        &cap(1446),
+        &Change::Preset(preset()),
+        next(),
+        || {
+            ensure!(
+                !device.canceled.load(Ordering::Acquire),
+                "owner replaced after release"
+            );
+            Ok(())
+        },
+    )
+    .unwrap_err();
+    assert_eq!(
+        error.root_cause().to_string(),
+        "owner replaced after release"
+    );
+    let progress = &error.downcast_ref::<ExecutionFailure>().unwrap().progress;
+    assert_eq!(progress.stages().len(), 1);
+    assert_eq!(
+        progress.stages()[0].response(),
+        Some(acknowledged.as_slice())
+    );
+    assert!(progress.setter_sent());
+    assert!(!progress.confirmed());
+    assert_eq!(device.sent().len(), 1);
+    assert_eq!(device.replies.lock().unwrap().len(), 1);
 }
 #[test]
 fn invalid_ui_ranges_do_not_submit_a_packet() {

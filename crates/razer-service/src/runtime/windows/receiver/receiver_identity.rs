@@ -26,7 +26,7 @@ pub(super) fn read(path: &str, container: &str) -> anyhow::Result<Value> {
     let feature = before["feature_report_bytes"]
         .as_u64()
         .context("Missing actual Feature length")? as usize;
-    let device = super::hid_transport::open(path, feature)?;
+    let device = super::hid_transport::open_validated(path, feature, std::rc::Rc::new(&validate))?;
     validate()?;
     let transaction = super::receiver::next_transaction(path, container, cap)?;
     let serial = razer_device::receiver_identity::read_serial(&device, cap, transaction, validate)?;

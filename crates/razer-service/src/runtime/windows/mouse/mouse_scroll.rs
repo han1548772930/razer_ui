@@ -47,7 +47,7 @@ pub(super) fn request(target: &DeviceReadTarget, submission: &Submission) -> any
         bytes == cap.report_bytes,
         "Scroll Feature Report size differs"
     );
-    let device = hid_transport::open(&target.path, bytes)?;
+    let device = hid_transport::open_validated(&target.path, bytes, std::rc::Rc::new(&validate))?;
     let mut next = || transaction(target, &cap);
     if identity.is_dongle {
         factory::verify_wireless_online_for(target.product_id, &device, next()?, &validate)?;

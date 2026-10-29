@@ -25,6 +25,19 @@ pub struct MouseMonitor {
     owner: Option<crate::platform::windows::mouse_monitor::Owner>,
 }
 impl MouseMonitor {
+    pub fn cleanup_pending(&self) -> bool {
+        #[cfg(windows)]
+        {
+            self.owner
+                .as_ref()
+                .is_some_and(|owner| owner.cleanup_pending())
+        }
+        #[cfg(not(windows))]
+        {
+            false
+        }
+    }
+
     pub fn start(&mut self) -> anyhow::Result<()> {
         #[cfg(windows)]
         {

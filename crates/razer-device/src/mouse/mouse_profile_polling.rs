@@ -252,7 +252,11 @@ impl<'a> MouseProfilePolling<'a> {
             &mut || attempted.set(true),
         );
         report.attempted = attempted.get();
-        report.acknowledgment_data = response.map_err(|error| ProfilePollingWriteFailure {
+        if let Some(data) = crate::feature_exchange::acknowledged_reply(&response) {
+            report.acknowledgment_received = true;
+            report.acknowledgment_data = data.to_vec();
+        }
+        response.map_err(|error| ProfilePollingWriteFailure {
             phase: if cancelled.get() {
                 ProfilePollingFailurePhase::Cancelled
             } else {
@@ -261,7 +265,6 @@ impl<'a> MouseProfilePolling<'a> {
             progress: report.clone(),
             error,
         })?;
-        report.acknowledgment_received = true;
         if let Err(error) = validate() {
             return Err(ProfilePollingWriteFailure {
                 phase: ProfilePollingFailurePhase::Cancelled,

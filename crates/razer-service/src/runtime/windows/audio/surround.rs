@@ -56,6 +56,17 @@ pub(crate) struct State {
     sessions: BTreeMap<String, Owned>,
 }
 impl State {
+    pub(crate) fn shutdown(&mut self) -> Result<()> {
+        let mut errors = Vec::new();
+        for (identity, mut owned) in std::mem::take(&mut self.sessions) {
+            if let Err(error) = owned.session.close() {
+                errors.push(format!("{identity}: {error:#}"));
+            }
+        }
+        anyhow::ensure!(errors.is_empty(), "{}", errors.join("; "));
+        Ok(())
+    }
+
     fn key(identity: &Identity) -> String {
         identity.container_id().to_ascii_lowercase()
     }

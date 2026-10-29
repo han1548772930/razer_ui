@@ -29,6 +29,20 @@ pub(super) struct Controller {
 }
 
 impl Controller {
+    pub(super) fn shutdown(&mut self) -> anyhow::Result<Option<Value>> {
+        let Some(mut operation) = self.active.take() else {
+            return Ok(None);
+        };
+        operation.canceled.store(true, Ordering::Release);
+        if let Some(worker) = operation.thread.take() {
+            let result = worker
+                .join()
+                .map_err(|_| anyhow::anyhow!("Receiver pairing cleanup worker panicked"))?;
+            return result.map(Some).map_err(anyhow::Error::msg);
+        }
+        operation.result.transpose().map_err(anyhow::Error::msg)
+    }
+
     pub(super) fn start(
         &mut self,
         id: String,
@@ -192,7 +206,6 @@ fn post_pair_metadata(
             .as_u64()
             .and_then(|n| usize::try_from(n).ok())
             .context("元数据 Feature 长度无效")?;
-        let metadata_device = hid_transport::open(path, bytes)?;
         let metadata_validate = || {
             validate()?;
             let current = metadata_target(
@@ -203,6 +216,8 @@ fn post_pair_metadata(
             ensure!(current == target, "配对后的元数据物理接口已变化");
             Ok(())
         };
+        let metadata_device =
+            hid_transport::open_validated(path, bytes, std::rc::Rc::new(&metadata_validate))?;
         let mut session = Session::new(&metadata_device, events, cap)?;
         let (edition, edition_error) = match session.get_edition(&metadata_validate) {
             Ok(reading) => (Some(reading), None),
@@ -269,7 +284,7 @@ fn execute(
         .as_u64()
         .and_then(|value| usize::try_from(value).ok())
         .context("缺少实际 Feature 长度")?;
-    let device = hid_transport::open(path, feature_bytes)?;
+    let device = hid_transport::open_validated(path, feature_bytes, std::rc::Rc::new(&validate))?;
     let mut events = receiver_events::Events::new(query_cap.product_id, container);
     let mut session = Session::new(&device, &mut events, &cap)?;
     let deadline = started + OPERATION_BUDGET;

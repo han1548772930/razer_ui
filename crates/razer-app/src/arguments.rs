@@ -25,10 +25,20 @@ pub(super) fn validate(arguments: &[String]) -> Result<(), String> {
             Err("Hardware driver installation must be invoked alone, without application or worker arguments".into())
         };
     }
+    if arguments
+        .iter()
+        .skip(1)
+        .any(|argument| matches!(argument.as_str(), "--hid-broker" | "--service-worker"))
+    {
+        return if arguments.len() == 2 {
+            Ok(())
+        } else {
+            Err("A headless service entrypoint must be invoked alone".into())
+        };
+    }
     let mut arguments = arguments.iter().skip(1);
     while let Some(argument) = arguments.next() {
         match argument.as_str() {
-            "--service-worker" => {}
             "--lang" => {
                 if arguments
                     .next()
@@ -64,6 +74,10 @@ mod tests {
     fn accepts_product_launch_and_installed_startup_arguments() {
         assert!(check(&[]).is_ok());
         assert!(check(&["--service-worker"]).is_ok());
+        assert!(check(&["--hid-broker"]).is_ok());
+        assert!(check(&["--hid-broker", "--service-worker"]).is_err());
+        assert!(check(&["--hid-broker", "--lang", "zh-CN"]).is_err());
+        assert!(check(&["--hid-broker", "--hid-broker"]).is_err());
         assert!(check(&["--lang", "zh-CN"]).is_ok());
         assert!(
             check(&[

@@ -3,7 +3,7 @@
 use crate::backend::{FeatureTransport, ReportLengths};
 use anyhow::{Context as _, bail, ensure};
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, sync::OnceLock, thread, time::Duration};
+use std::{cell::RefCell, collections::BTreeMap, sync::OnceLock, thread, time::Duration};
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -336,11 +336,20 @@ pub fn read_driver_route(
     let index = driver_index(route)?;
     validate()?;
     let bytes = device.read_matrix()?;
-    validate()?;
-    matrix_value(&bytes, index)
+    let value = matrix_value(&bytes, index);
+    validate().map_err(|error| match &value {
+        Ok(enabled) => error.context(DriverCompletionFailure {
+            completed: DriverCompletion::RouteRead {
+                route: route.clone(),
+                enabled: *enabled,
+            },
+        }),
+        Err(_) => error,
+    })?;
+    value
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct MatrixWriteResult {
     pub requested: bool,
     pub previous: bool,
@@ -366,14 +375,24 @@ pub fn write_driver_route(
     device
         .write_matrix(&bytes)
         .context("矩阵设置传输失败；未获得驱动完成结果")?;
-    validate().context("矩阵传输已完成，但身份或期限发生变化")?;
-    // Source 0xDA46 -> 0xDA4C -> 0xDA84 continues enumeration after
-    // successful IOCTL; it does not issue a post-write matrix getter.
-    Ok(MatrixWriteResult {
+    let result = MatrixWriteResult {
         requested: enabled,
         previous,
         transport_completed: true,
-    })
+    };
+    validate()
+        .context("矩阵传输已完成，但身份或期限发生变化")
+        .map_err(|error| {
+            error.context(DriverCompletionFailure {
+                completed: DriverCompletion::RouteWrite {
+                    route: route.clone(),
+                    result: result.clone(),
+                },
+            })
+        })?;
+    // Source 0xDA46 -> 0xDA4C -> 0xDA84 continues enumeration after
+    // successful IOCTL; it does not issue a post-write matrix getter.
+    Ok(result)
 }
 
 /// The reset IOCTL completes without returning the audio engine's state.
@@ -406,7 +425,7 @@ impl<'de> Deserialize<'de> for StreamResetConfirmation {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[non_exhaustive]
 pub struct StreamsResetResult {
     pub completed_indices: Vec<u32>,
@@ -414,6 +433,46 @@ pub struct StreamsResetResult {
     pub source_sequence_completed: bool,
     pub confirmation: StreamResetConfirmation,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(tag = "operation", rename_all = "snake_case")]
+pub enum DriverCompletion {
+    RouteRead {
+        route: MixerRoute,
+        enabled: bool,
+    },
+    RouteWrite {
+        route: MixerRoute,
+        result: MatrixWriteResult,
+    },
+    StreamsReset {
+        result: StreamsResetResult,
+    },
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct DriverCompletionFailure {
+    pub completed: DriverCompletion,
+}
+
+impl std::fmt::Display for DriverCompletionFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Mixer driver result retained after final owner or release failure")
+    }
+}
+impl std::error::Error for DriverCompletionFailure {}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct StreamsResetFailure {
+    pub progress: StreamsResetResult,
+}
+
+impl std::fmt::Display for StreamsResetFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Mixer stream reset stopped; actual IOCTL results retained")
+    }
+}
+impl std::error::Error for StreamsResetFailure {}
 
 pub const STREAM_RESET_PROPERTY: &str = "RazerT2ResetStream";
 
@@ -423,25 +482,33 @@ pub fn restart_streams(
 ) -> anyhow::Result<StreamsResetResult> {
     let mut completed = Vec::new();
     let mut return_codes = Vec::new();
-    for &index in &driver_spec().stream_indices {
-        validate().with_context(|| format!("流重置停止；已完成索引 {completed:?}"))?;
-        let code = device.reset_stream(index).with_context(|| {
-            format!("流 {index} 重置未确认；已完成 {completed:?}，当前流可能已重置")
-        })?;
-        return_codes.push((index, code));
-        if code == 0 {
-            completed.push(index);
+    let result: anyhow::Result<()> = (|| {
+        for &index in &driver_spec().stream_indices {
+            validate().with_context(|| format!("流重置停止；已完成索引 {completed:?}"))?;
+            let code = device.reset_stream(index).with_context(|| {
+                format!("流 {index} 重置未确认；已完成 {completed:?}，当前流可能已重置")
+            })?;
+            return_codes.push((index, code));
+            if code == 0 {
+                completed.push(index);
+            }
+            // Source restartAudioDriver parses each FFI JSON response but never
+            // branches on its native code; a failed native call does not skip 0..8.
+            validate()
+                .with_context(|| format!("流重置后身份或期限变化；已完成索引 {completed:?}"))?;
         }
-        // Source restartAudioDriver parses each FFI JSON response but never
-        // branches on its native code; a failed native call does not skip 0..8.
-        validate().with_context(|| format!("流重置后身份或期限变化；已完成索引 {completed:?}"))?;
-    }
-    Ok(StreamsResetResult {
+        Ok(())
+    })();
+    let progress = StreamsResetResult {
         completed_indices: completed,
         return_codes,
-        source_sequence_completed: true,
+        source_sequence_completed: result.is_ok(),
         confirmation: StreamResetConfirmation::IoctlCompletion,
-    })
+    };
+    match result {
+        Ok(()) => Ok(progress),
+        Err(error) => Err(error.context(StreamsResetFailure { progress })),
+    }
 }
 
 #[derive(Deserialize, Serialize)]
@@ -603,7 +670,34 @@ pub struct MixerSession<'a> {
     device: &'a dyn FeatureTransport,
     lengths: ReportLengths,
     validate: &'a dyn Fn() -> anyhow::Result<()>,
+    progress: Option<&'a RefCell<MixerExchangeProgress>>,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct MixerOutputTransfer {
+    pub report: Vec<u8>,
+    pub completed: bool,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct MixerExchangeProgress {
+    pub outputs: Vec<MixerOutputTransfer>,
+    /// Inputs accepted by the report ID, length and current-owner checks.
+    pub inputs: Vec<Vec<u8>>,
+}
+
+#[derive(Debug)]
+pub struct MixerExchangeFailure {
+    pub progress: MixerExchangeProgress,
+}
+
+impl std::fmt::Display for MixerExchangeFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Mixer exchange failed; actual report progress retained")
+    }
+}
+
+impl std::error::Error for MixerExchangeFailure {}
 
 impl<'a> MixerSession<'a> {
     pub fn new(
@@ -616,6 +710,7 @@ impl<'a> MixerSession<'a> {
             device,
             lengths,
             validate,
+            progress: None,
         })
     }
 
@@ -651,8 +746,27 @@ impl<'a> MixerSession<'a> {
         if let Some(value) = value {
             report[5..9].copy_from_slice(&value.to_be_bytes());
         }
-        self.device.write_output(&report)?;
+        self.submit_output(&report)?;
         (self.validate)()
+    }
+
+    fn submit_output(&self, report: &[u8]) -> anyhow::Result<()> {
+        let index = self.progress.map(|progress| {
+            let mut progress = progress.borrow_mut();
+            let index = progress.outputs.len();
+            progress.outputs.push(MixerOutputTransfer {
+                report: report.to_vec(),
+                completed: false,
+            });
+            index
+        });
+        let result = self.device.write_output(report);
+        if result.is_ok() {
+            if let (Some(progress), Some(index)) = (self.progress, index) {
+                progress.borrow_mut().outputs[index].completed = true;
+            }
+        }
+        result
     }
 
     fn query(&self, command: u32) -> anyhow::Result<u32> {
@@ -671,6 +785,12 @@ impl<'a> MixerSession<'a> {
             "DSP Input Report 的 ID 或实际长度不匹配"
         );
         (self.validate)()?;
+        if let Some(progress) = self.progress {
+            progress
+                .borrow_mut()
+                .inputs
+                .push(reply[..received].to_vec());
+        }
         Ok(u32::from_le_bytes(
             reply[1..5].try_into().expect("checked report length"),
         ))
@@ -694,6 +814,12 @@ impl<'a> MixerSession<'a> {
             "16 位 Input Report 的 ID 或实际长度不匹配"
         );
         (self.validate)()?;
+        if let Some(progress) = self.progress {
+            progress
+                .borrow_mut()
+                .inputs
+                .push(reply[..received].to_vec());
+        }
         Ok(u16::from_le_bytes(
             reply[1..3].try_into().expect("checked report length"),
         ))
@@ -713,7 +839,7 @@ impl<'a> MixerSession<'a> {
         report[0] = id;
         report[1..5].copy_from_slice(&command.to_be_bytes());
         report[5..7].copy_from_slice(&value.to_be_bytes());
-        self.device.write_output(&report)?;
+        self.submit_output(&report)?;
         (self.validate)()
     }
 
@@ -734,6 +860,35 @@ impl<'a> MixerSession<'a> {
     }
 
     pub fn read(&self, target: &MixerTarget) -> anyhow::Result<MixerValue> {
+        self.exchange(|session| session.read_inner(target))
+    }
+
+    fn exchange<R>(
+        &self,
+        operation: impl FnOnce(&MixerSession<'_>) -> anyhow::Result<R>,
+    ) -> anyhow::Result<R> {
+        let progress = RefCell::new(MixerExchangeProgress::default());
+        let result = crate::feature_exchange::with_validated_exchange(
+            self.device,
+            crate::backend::ExchangeOptions::plain(),
+            self.validate,
+            |device, _| {
+                operation(&MixerSession {
+                    device,
+                    lengths: self.lengths.clone(),
+                    validate: self.validate,
+                    progress: Some(&progress),
+                })
+            },
+        );
+        result.map_err(|error| {
+            error.context(MixerExchangeFailure {
+                progress: progress.into_inner(),
+            })
+        })
+    }
+
+    fn read_inner(&self, target: &MixerTarget) -> anyhow::Result<MixerValue> {
         let (prop, command) = property(target)?;
         self.validate_reports(prop)?;
         let initial = self.query_property(prop, command)?;
@@ -824,6 +979,14 @@ impl<'a> MixerSession<'a> {
         target: &MixerTarget,
         requested: &MixerValue,
     ) -> anyhow::Result<MixerWriteResult> {
+        self.exchange(|session| session.apply_inner(target, requested))
+    }
+
+    fn apply_inner(
+        &self,
+        target: &MixerTarget,
+        requested: &MixerValue,
+    ) -> anyhow::Result<MixerWriteResult> {
         let (prop, command) = property(target)?;
         validate_value(prop, requested)?;
         if let MixerValue::Scalar { value } = requested {
@@ -908,7 +1071,7 @@ impl<'a> MixerSession<'a> {
                 (MixerControl::MagicVoiceEnabled, 2),
                 (MixerControl::EchoReverbEnabled, 12),
             ] {
-                let observed = self.read(&MixerTarget {
+                let observed = self.read_inner(&MixerTarget {
                     control,
                     band: None,
                     channel: MixerChannel::Both,
@@ -947,7 +1110,7 @@ impl<'a> MixerSession<'a> {
                 (MixerControl::EchoReverbEnabled, 12),
             ] {
                 if matches!(
-                    self.read(&MixerTarget {
+                    self.read_inner(&MixerTarget {
                         control,
                         band: None,
                         channel: MixerChannel::Both
@@ -980,10 +1143,108 @@ impl<'a> MixerSession<'a> {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct MixerWriteResult {
     pub requested: MixerValue,
     pub transport_completed: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct MixerObservationFailure {
+    pub target: MixerTarget,
+    pub value: MixerValue,
+}
+
+impl std::fmt::Display for MixerObservationFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Mixer value read before final owner validation failed")
+    }
+}
+impl std::error::Error for MixerObservationFailure {}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct MixerSubmissionFailure {
+    pub target: MixerTarget,
+    pub result: MixerWriteResult,
+}
+
+impl std::fmt::Display for MixerSubmissionFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .write_str("Mixer setting transport completed before final owner validation failed")
+    }
+}
+impl std::error::Error for MixerSubmissionFailure {}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct MicEqReceipt {
+    pub requested_bands: [i32; 10],
+    pub results: Vec<MixerWriteResult>,
+    pub completed_bands: Vec<usize>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct MicEqFailure {
+    pub progress: MicEqReceipt,
+    pub failed_exchange: Option<MixerExchangeProgress>,
+}
+
+impl std::fmt::Display for MicEqFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Mixer mic EQ stopped; completed steps and actual exchange retained")
+    }
+}
+impl std::error::Error for MicEqFailure {}
+
+pub fn submit_mic_eq(
+    session: &MixerSession<'_>,
+    bands: [i32; 10],
+    validate: &impl Fn() -> anyhow::Result<()>,
+) -> anyhow::Result<MicEqReceipt> {
+    let values = mic_eq_values(&bands)?;
+    let mut progress = MicEqReceipt {
+        requested_bands: bands,
+        results: Vec::new(),
+        completed_bands: Vec::new(),
+    };
+    let result = (|| {
+        let target = MixerTarget {
+            control: MixerControl::PageEqEnabled,
+            band: None,
+            channel: MixerChannel::Both,
+        };
+        progress.results.push(
+            session
+                .apply(&target, &MixerValue::Boolean { enabled: true })
+                .context("Mic EQ enable transport did not complete; no EQ band submitted")?,
+        );
+        for (index, value) in values.iter().enumerate() {
+            let target = MixerTarget {
+                control: MixerControl::EqBand,
+                band: Some(index as u8),
+                channel: MixerChannel::Both,
+            };
+            let result = session.apply(&target, value).with_context(|| format!(
+                "Mic EQ band {index} transport did not complete; enable completed, submitted bands {:?}; no rollback or later band submitted",
+                progress.completed_bands
+            ))?;
+            progress.results.push(result);
+            progress.completed_bands.push(index);
+        }
+        validate().context("Mic EQ reports submitted; final collection identity was not confirmed")
+    })();
+    match result {
+        Ok(()) => Ok(progress),
+        Err(error) => {
+            let failed_exchange = error
+                .downcast_ref::<MixerExchangeFailure>()
+                .map(|failure| failure.progress.clone());
+            Err(error.context(MicEqFailure {
+                progress,
+                failed_exchange,
+            }))
+        }
+    }
 }
 
 fn select(prop: &Property, initial: u32) -> anyhow::Result<u32> {
@@ -1216,6 +1477,75 @@ mod tests {
     }
 
     #[test]
+    fn driver_route_actual_result_survives_owner_loss_without_another_ioctl() {
+        let route = MixerRoute {
+            input: 1,
+            output: 1,
+        };
+        let device = MatrixMock::new();
+        let error = write_driver_route(&device, &route, true, || {
+            ensure!(
+                device.writes.lock().unwrap().is_empty(),
+                "driver owner changed after write"
+            );
+            Ok(())
+        })
+        .unwrap_err();
+        let failure = error.downcast_ref::<DriverCompletionFailure>().unwrap();
+        let DriverCompletion::RouteWrite { result, .. } = &failure.completed else {
+            panic!("missing driver write result")
+        };
+        assert!(result.requested && result.transport_completed);
+        assert_eq!(device.writes.lock().unwrap().len(), 1);
+        assert_eq!(*device.reads.lock().unwrap(), 1);
+        assert_eq!(
+            error.root_cause().to_string(),
+            "driver owner changed after write"
+        );
+
+        let device = MatrixMock::new();
+        let error = read_driver_route(&device, &route, || {
+            ensure!(
+                *device.reads.lock().unwrap() == 0,
+                "driver owner changed after read"
+            );
+            Ok(())
+        })
+        .unwrap_err();
+        assert!(matches!(
+            error
+                .downcast_ref::<DriverCompletionFailure>()
+                .unwrap()
+                .completed,
+            DriverCompletion::RouteRead { enabled: false, .. }
+        ));
+        assert_eq!(*device.reads.lock().unwrap(), 1);
+        assert!(device.writes.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn stream_reset_cancel_after_ioctl_retains_actual_codes_and_stops_source_sequence() {
+        let device = MatrixMock::new();
+        let error = restart_streams(&device, || {
+            ensure!(
+                device.resets.lock().unwrap().len() < 3,
+                "stream reset owner expired"
+            );
+            Ok(())
+        })
+        .unwrap_err();
+        let progress = &error
+            .downcast_ref::<StreamsResetFailure>()
+            .unwrap()
+            .progress;
+        assert_eq!(progress.completed_indices, [0, 1, 2]);
+        assert_eq!(progress.return_codes, [(0, 0), (1, 0), (2, 0)]);
+        assert!(!progress.source_sequence_completed);
+        assert_eq!(*device.resets.lock().unwrap(), [0, 1, 2]);
+        assert_eq!(error.root_cause().to_string(), "stream reset owner expired");
+    }
+
+    #[test]
     fn source_driver_rejects_hid_routes_and_preserves_reset_sequence() {
         let hid_route = MixerRoute {
             input: 0,
@@ -1278,7 +1608,14 @@ mod tests {
             indices: Mutex::new(Vec::new()),
             exception: true,
         };
-        assert!(restart_streams(&mock, || Ok(())).is_err());
+        let error = restart_streams(&mock, || Ok(())).unwrap_err();
+        let progress = &error
+            .downcast_ref::<StreamsResetFailure>()
+            .unwrap()
+            .progress;
+        assert_eq!(progress.completed_indices, [0]);
+        assert_eq!(progress.return_codes, [(0, 0), (1, 0x10001)]);
+        assert!(!progress.source_sequence_completed);
         assert_eq!(*mock.indices.lock().unwrap(), vec![0, 1, 2]);
     }
 
@@ -1418,6 +1755,71 @@ mod tests {
         }
     }
 
+    #[test]
+    fn mic_eq_partial_failure_retains_completed_bands_and_stops_before_later_output() {
+        let mut device = ReportMock::new(Vec::new());
+        device.fail_output = Some(4);
+        let validate = || Ok(());
+        let session = MixerSession::new(&device, &validate).unwrap();
+        let error = submit_mic_eq(&session, [0; 10], &validate).unwrap_err();
+        let failure = error.downcast_ref::<MicEqFailure>().unwrap();
+        assert_eq!(failure.progress.completed_bands, [0, 1]);
+        assert_eq!(failure.progress.results.len(), 3);
+        assert!(
+            failure
+                .progress
+                .results
+                .iter()
+                .all(|r| r.transport_completed)
+        );
+        let exchange = failure.failed_exchange.as_ref().unwrap();
+        assert_eq!(exchange.outputs.len(), 1);
+        assert!(!exchange.outputs[0].completed);
+        assert!(exchange.inputs.is_empty());
+        assert_eq!(device.outputs().len(), 4);
+        assert_eq!(error.root_cause().to_string(), "mock Output failure");
+    }
+
+    #[test]
+    fn mic_eq_release_failure_stops_before_first_band_and_retains_sent_enable() {
+        let device = ReportMock::new(Vec::new());
+        let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);
+        let validate = || Ok(());
+        let session = MixerSession::new(&probe, &validate).unwrap();
+        let error = submit_mic_eq(&session, [0; 10], &validate).unwrap_err();
+        let failure = error.downcast_ref::<MicEqFailure>().unwrap();
+        assert!(failure.progress.results.is_empty());
+        assert!(failure.progress.completed_bands.is_empty());
+        let exchange = failure.failed_exchange.as_ref().unwrap();
+        assert_eq!(exchange.outputs.len(), 1);
+        assert!(exchange.outputs[0].completed);
+        assert_eq!(device.outputs().len(), 1);
+        assert_eq!(
+            error.root_cause().to_string(),
+            "simulated explicit release failed"
+        );
+    }
+
+    #[test]
+    fn mic_eq_final_owner_loss_retains_all_eleven_completed_transfers_as_error() {
+        let device = ReportMock::new(Vec::new());
+        let validate = || Ok(());
+        let session = MixerSession::new(&device, &validate).unwrap();
+        let error = submit_mic_eq(&session, [0; 10], &|| {
+            anyhow::bail!("EQ final owner expired")
+        })
+        .unwrap_err();
+        let failure = error.downcast_ref::<MicEqFailure>().unwrap();
+        assert_eq!(
+            failure.progress.completed_bands,
+            (0..10).collect::<Vec<_>>()
+        );
+        assert_eq!(failure.progress.results.len(), 11);
+        assert!(failure.failed_exchange.is_none());
+        assert_eq!(device.outputs().len(), 11);
+        assert_eq!(error.root_cause().to_string(), "EQ final owner expired");
+    }
+
     fn wire(id: u8, command: u32, payload: &[u8]) -> Vec<u8> {
         let mut report = vec![id];
         report.extend_from_slice(&command.to_be_bytes());
@@ -1445,6 +1847,88 @@ mod tests {
             ]
         );
         assert!(mock.replies.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn mixer_completed_output_is_retained_when_explicit_release_fails() {
+        let mock = ReportMock::new(vec![]);
+        let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&mock);
+        let validate = || Ok(());
+        let eq = MixerTarget {
+            band: Some(2),
+            ..target(MixerControl::EqBand)
+        };
+        let error = MixerSession::new(&probe, &validate)
+            .unwrap()
+            .apply(
+                &eq,
+                &MixerValue::EqBand {
+                    data: 0x61234,
+                    gain: -4,
+                },
+            )
+            .err()
+            .unwrap();
+        assert_eq!(
+            error.root_cause().to_string(),
+            "simulated explicit release failed"
+        );
+        let progress = &error
+            .downcast_ref::<MixerExchangeFailure>()
+            .unwrap()
+            .progress;
+        assert_eq!(progress.outputs.len(), 1);
+        assert!(progress.outputs[0].completed);
+        assert_eq!(
+            progress.outputs[0].report,
+            wire(19, 0x5ffc0078, &[0, 0x3c, 0x24, 0x69])
+        );
+        assert!(progress.inputs.is_empty());
+        assert_eq!(mock.outputs(), vec![progress.outputs[0].report.clone()]);
+    }
+
+    #[test]
+    fn mixer_decoded_input_survives_release_failure_but_during_get_cancellation_does_not() {
+        let mock = ReportMock::new(vec![reply32(0x12345678)]);
+        let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&mock);
+        let validate = || Ok(());
+        let error = MixerSession::new(&probe, &validate)
+            .unwrap()
+            .read(&target(MixerControl::DspFirmware))
+            .unwrap_err();
+        let progress = &error
+            .downcast_ref::<MixerExchangeFailure>()
+            .unwrap()
+            .progress;
+        assert_eq!(progress.inputs, vec![vec![18, 0x78, 0x56, 0x34, 0x12]]);
+        assert_eq!(progress.outputs.len(), 1);
+        assert!(progress.outputs[0].completed);
+        assert_eq!(
+            error.root_cause().to_string(),
+            "simulated explicit release failed"
+        );
+
+        let mock = ReportMock::new(vec![reply32(0x12345678)]);
+        let validate = || {
+            ensure!(
+                !mock.replies.lock().unwrap().is_empty(),
+                "canceled during Mixer GET"
+            );
+            Ok(())
+        };
+        let error = MixerSession::new(&mock, &validate)
+            .unwrap()
+            .read(&target(MixerControl::DspFirmware))
+            .unwrap_err();
+        let progress = &error
+            .downcast_ref::<MixerExchangeFailure>()
+            .unwrap()
+            .progress;
+        assert!(progress.inputs.is_empty());
+        assert_eq!(progress.outputs.len(), 1);
+        assert!(progress.outputs[0].completed);
+        assert_eq!(mock.outputs().len(), 1);
+        assert_eq!(error.root_cause().to_string(), "canceled during Mixer GET");
     }
 
     #[test]

@@ -4,7 +4,6 @@
 use super::{KeyboardRead, ServiceRequest};
 use anyhow::{Context as _, bail, ensure};
 use razer_device::audio_mixer::{MatrixRoute, MixerRoute, MixerSession, MixerTarget, MixerValue};
-use razer_device::backend::HidBackend;
 use razer_device::backend::HidNode;
 use razer_device::device_identity;
 use razer_device::device_identity::IdentityLookup;
@@ -60,6 +59,7 @@ use std::{
 
 #[derive(Default)]
 pub(super) struct PortableRuntime {
+    cleanup: PortableCleanup,
     latest_keyboard_events: keyboard_latest_restore::EventsState,
     transactions: HashMap<String, u8>,
     audio_notifications: crate::audio_notification::AudioNotifications,
@@ -80,6 +80,14 @@ pub(super) struct PortableRuntime {
     thx: super::thx_controller::Controller,
 }
 
+#[derive(Default)]
+struct PortableCleanup {
+    joined: super::shutdown::OwnerCleanup,
+    keyboard_events: super::shutdown::OwnerCleanup,
+    audio_notifications: super::shutdown::OwnerCleanup,
+    foreground_monitor: super::shutdown::OwnerCleanup,
+}
+
 impl Drop for PortableRuntime {
     fn drop(&mut self) {
         // EOF, malformed IPC and fatal native errors still cancel and join
@@ -89,28 +97,63 @@ impl Drop for PortableRuntime {
 }
 
 impl PortableRuntime {
-    pub(in crate::runtime) fn shutdown(&mut self) -> super::shutdown::Cleanup {
-        let mut cleanup = super::shutdown::Cleanup::default();
-        cleanup.record("mouse_tracking_cleanup", self.mouse_tracking.shutdown());
-        cleanup.record("mouse_philips_cleanup", self.mouse_philips.shutdown());
-        self.camera.shutdown(&mut cleanup);
-        self.thx.shutdown(&mut cleanup);
-        self.controller_calibration.shutdown(&mut cleanup);
-        self.controller_lighting.shutdown(&mut cleanup);
-        self.marci_lighting.shutdown(&mut cleanup);
-        self.keyboard_submission.shutdown(&mut cleanup);
-        self.keyboard_wristrest.shutdown(&mut cleanup);
-        self.mouse_runtime_artwork.shutdown(&mut cleanup);
-        self.mouse_indicator_led.shutdown(&mut cleanup);
-        self.leviathan_events.shutdown(&mut cleanup);
-        self.seiren_audio_capture.shutdown(&mut cleanup);
-        cleanup.record(
-            "latest_keyboard_events",
-            self.latest_keyboard_events.shutdown(),
+    #[cfg(test)]
+    pub(in crate::runtime) fn simulated_pending_events(
+        &mut self,
+        events: Box<dyn razer_device::receiver_pairing::HardwareEvents>,
+    ) {
+        self.latest_keyboard_events = keyboard_latest_restore::simulated_events_state(
+            events,
+            json!({"observed_owner": "simulated"}),
         );
-        cleanup.record("audio_notifications", self.audio_notifications.shutdown());
-        cleanup.record("audio_router", self.audio_router.shutdown());
-        cleanup.record("foreground_monitor", self.foreground_monitor.shutdown());
+    }
+
+    pub(in crate::runtime) fn shutdown(&mut self) -> super::shutdown::Cleanup {
+        let mut cleanup = self.cleanup.joined.run(|| {
+            let mut cleanup = super::shutdown::Cleanup::default();
+            cleanup.record_submission("mouse_tracking_cleanup", self.mouse_tracking.shutdown());
+            cleanup.record_submission("mouse_philips_cleanup", self.mouse_philips.shutdown());
+            self.camera.shutdown(&mut cleanup);
+            self.thx.shutdown(&mut cleanup);
+            self.controller_calibration.shutdown(&mut cleanup);
+            self.controller_lighting.shutdown(&mut cleanup);
+            self.marci_lighting.shutdown(&mut cleanup);
+            self.keyboard_submission.shutdown(&mut cleanup);
+            self.keyboard_wristrest.shutdown(&mut cleanup);
+            self.mouse_runtime_artwork.shutdown(&mut cleanup);
+            self.mouse_indicator_led.shutdown(&mut cleanup);
+            self.leviathan_events.shutdown(&mut cleanup);
+            self.seiren_audio_capture.shutdown(&mut cleanup);
+            cleanup.record("audio_router", self.audio_router.shutdown());
+            cleanup
+        });
+        cleanup.merge(self.cleanup.keyboard_events.run(|| {
+            let mut cleanup = super::shutdown::Cleanup::default();
+            cleanup.record(
+                "latest_keyboard_events",
+                self.latest_keyboard_events.shutdown(),
+            );
+            if self.latest_keyboard_events.cleanup_pending() {
+                cleanup.retain_resources();
+            }
+            cleanup
+        }));
+        cleanup.merge(self.cleanup.audio_notifications.run(|| {
+            let mut cleanup = super::shutdown::Cleanup::default();
+            cleanup.record("audio_notifications", self.audio_notifications.shutdown());
+            if self.audio_notifications.cleanup_pending() {
+                cleanup.retain_resources();
+            }
+            cleanup
+        }));
+        cleanup.merge(self.cleanup.foreground_monitor.run(|| {
+            let mut cleanup = super::shutdown::Cleanup::default();
+            cleanup.record("foreground_monitor", self.foreground_monitor.shutdown());
+            if self.foreground_monitor.cleanup_pending() {
+                cleanup.retain_resources();
+            }
+            cleanup
+        }));
         cleanup
     }
 
@@ -226,7 +269,8 @@ impl PortableRuntime {
             Self::revalidate(node)
         };
         validate()?;
-        let device = with_backend(|backend| backend.open(node))?;
+        let device =
+            with_backend(|backend| backend.open_validated(node, std::rc::Rc::new(&validate)))?;
         ensure!(
             device.report_lengths()?.feature.values().max().copied() == Some(cap.report_bytes),
             "Receiver Feature collection length differs from the current source"
@@ -275,7 +319,8 @@ impl PortableRuntime {
             Self::revalidate(node)
         };
         validate()?;
-        let device = with_backend(|backend| backend.open(node))?;
+        let device =
+            with_backend(|backend| backend.open_validated(node, std::rc::Rc::new(&validate)))?;
         ensure!(
             device.report_lengths()?.feature.values().max().copied() == Some(cap.report_bytes),
             "Receiver Feature collection length differs from source"
@@ -337,8 +382,8 @@ impl PortableRuntime {
             Self::revalidate(node)
         };
         validate()?;
-        // The portable backend holds its OS lock for this handle's lifetime.
-        let device = with_backend(|backend| backend.open(node))?;
+        let device =
+            with_backend(|backend| backend.open_validated(node, std::rc::Rc::new(&validate)))?;
         let lengths = device.report_lengths()?;
         ensure!(
             lengths.feature.values().max().copied() == Some(cap.report_bytes),
@@ -388,7 +433,8 @@ impl PortableRuntime {
             Self::revalidate(node)
         };
         validate()?;
-        let device = with_backend(|backend| backend.open(node))?;
+        let device =
+            with_backend(|backend| backend.open_validated(node, std::rc::Rc::new(&validate)))?;
         let lengths = device.report_lengths()?;
         ensure!(
             !lengths.output.is_empty() && !lengths.input.is_empty(),
@@ -660,7 +706,8 @@ impl PortableRuntime {
             }
             ServiceRequest::HidNodeReports { node } => {
                 Self::revalidate(&node)?;
-                let device = with_backend(|backend| backend.open(&node))?;
+                let validate = || Self::revalidate(&node);
+                let device = with_backend(|backend| backend.open_validated(&node, std::rc::Rc::new(&validate)))?;
                 let reports = device.report_lengths()?;
                 Self::revalidate(&node)?;
                 Ok(json!({"node":node,"reports":reports,
@@ -729,7 +776,8 @@ impl PortableRuntime {
                 }
                 let started = Instant::now();
                 let deadline = || deadline(started);
-                let device = with_backend(|backend| backend.open(&node))?;
+                let validate_open = || { deadline()?; Self::revalidate(&node) };
+                let device = with_backend(|backend| backend.open_validated(&node, std::rc::Rc::new(&validate_open)))?;
                 Self::revalidate(&node)?;
                 let transaction = self.transaction(
                     &node,
@@ -904,7 +952,8 @@ impl PortableRuntime {
                     "写入入口只接受已核实的直接设备，不接受接收器或 BLE 路由"
                 );
                 let started = Instant::now();
-                let device = with_backend(|backend| backend.open(&node))?;
+                let validate_open = || { deadline(started)?; Self::revalidate(&node) };
+                let device = with_backend(|backend| backend.open_validated(&node, std::rc::Rc::new(&validate_open)))?;
                 let result = razer_device::device_writes::apply(
                     device.as_ref(),
                     cap,
@@ -950,7 +999,8 @@ impl PortableRuntime {
                     "Dock mode collection differs from the current factory interface");
                 Self::revalidate(&node)?;
                 let started = Instant::now();
-                let device = with_backend(|backend| backend.open(&node))?;
+                let validate_open = || { deadline(started)?; Self::revalidate(&node) };
+                let device = with_backend(|backend| backend.open_validated(&node, std::rc::Rc::new(&validate_open)))?;
                 ensure!(device.report_lengths()?.feature.values().max().copied() == Some(cap.report_bytes),
                     "Dock mode Feature descriptor differs");
                 let transaction = self.transaction(&node, &cap.source_class, cap.transaction_prefix, cap.transaction_modulus)?;
@@ -966,6 +1016,10 @@ impl PortableRuntime {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "portable_cleanup_tests.rs"]
+pub(super) mod cleanup_tests;
 
 impl PortableRuntime {
     fn dpi_stages(
@@ -1007,8 +1061,8 @@ impl PortableRuntime {
             Self::revalidate(node)
         };
         validate()?;
-        // Retain the same open collection and process lock across set and get.
-        let device = with_backend(|backend| backend.open(node))?;
+        let device =
+            with_backend(|backend| backend.open_validated(node, std::rc::Rc::new(&validate)))?;
         ensure!(
             device.report_lengths()?.feature.values().max().copied() == Some(cap.report_bytes),
             "DPI stage observed Feature Report size does not match current source"
@@ -1127,7 +1181,8 @@ impl PortableRuntime {
             Self::revalidate(node)
         };
         validate()?;
-        let device = with_backend(|backend| backend.open(node))?;
+        let device =
+            with_backend(|backend| backend.open_validated(node, std::rc::Rc::new(&validate)))?;
         ensure!(
             device.report_lengths()?.feature.values().max().copied() == Some(cap.report_bytes),
             "Keyboard metadata Feature descriptor differs from source"
@@ -1247,7 +1302,8 @@ impl PortableRuntime {
             Self::revalidate(node)
         };
         validate()?;
-        let device = with_backend(|backend| backend.open(node))?;
+        let device =
+            with_backend(|backend| backend.open_validated(node, std::rc::Rc::new(&validate)))?;
         ensure!(
             device.report_lengths()?.feature.values().max().copied() == Some(cap.report_bytes),
             "键盘亮度接口实际 Feature Report 长度不匹配"
@@ -1345,7 +1401,6 @@ fn mixer_local_request(
     }
     PortableRuntime::revalidate(&node)?;
     let started = Instant::now();
-    let device = with_backend(|backend| backend.open(&node))?;
     let validate = || {
         ensure!(
             started.elapsed() < Duration::from_secs(20),
@@ -1353,6 +1408,8 @@ fn mixer_local_request(
         );
         PortableRuntime::revalidate(&node)
     };
+    let device =
+        with_backend(|backend| backend.open_validated(&node, std::rc::Rc::new(&validate)))?;
     let control = |report: &[u8]| {
         #[cfg(windows)]
         {
@@ -1416,7 +1473,7 @@ fn mixer_eq_request(node: HidNode, product_id: u32, bands: [i32; 10]) -> anyhow:
         razer_device::audio_mixer::accepts(product_id, node.vendor_id, node.product_id),
         "Mic EQ HID collection does not match the current product source"
     );
-    let values = mic_eq_values(&bands)?;
+    mic_eq_values(&bands)?;
     let started = Instant::now();
     let validate = || {
         ensure!(
@@ -1426,7 +1483,8 @@ fn mixer_eq_request(node: HidNode, product_id: u32, bands: [i32; 10]) -> anyhow:
         PortableRuntime::revalidate(&node)
     };
     validate()?;
-    let device = with_backend(|backend| backend.open(&node))?;
+    let device =
+        with_backend(|backend| backend.open_validated(&node, std::rc::Rc::new(&validate)))?;
     let target = MixerTarget {
         control: MixerControl::PageEqEnabled,
         band: None,
@@ -1434,31 +1492,13 @@ fn mixer_eq_request(node: HidNode, product_id: u32, bands: [i32; 10]) -> anyhow:
     };
     let lengths = device.report_lengths()?;
     validate_report_lengths(&target, &lengths)?;
+    let source_property = razer_device::audio_mixer::source_property(&target)?;
     let session = MixerSession::new(device.as_ref(), &validate)?;
-    let mut results = Vec::new();
-    results.push(
-        session
-            .apply(&target, &MixerValue::Boolean { enabled: true })
-            .context("Mic EQ enable transport did not complete; no EQ band submitted")?,
-    );
-    let mut completed = Vec::<usize>::new();
-    for (index, value) in values.iter().enumerate() {
-        let target = MixerTarget {
-            control: MixerControl::EqBand,
-            band: Some(index as u8),
-            channel: MixerChannel::Both,
-        };
-        let result = session.apply(&target, value).with_context(|| format!(
-            "Mic EQ band {index} transport did not complete; enable completed, submitted bands {completed:?}; no rollback or later band submitted"
-        ))?;
-        results.push(result);
-        completed.push(index);
-    }
-    validate().context("Mic EQ reports submitted; final collection identity was not confirmed")?;
+    let receipt = razer_device::audio_mixer::submit_mic_eq(&session, bands, &validate)?;
     Ok(
-        json!({"node":node,"product_id":product_id,"target":target,"bands":bands,"results":results,
-        "source_property":razer_device::audio_mixer::source_property(&target)?,
-        "completed_bands":completed,"identity_scope":"hid_collection"}),
+        json!({"node":node,"product_id":product_id,"target":target,"bands":bands,"results":receipt.results,
+        "source_property":source_property,
+        "completed_bands":receipt.completed_bands,"identity_scope":"hid_collection"}),
     )
 }
 
@@ -1474,9 +1514,6 @@ fn mixer_request(
     );
     PortableRuntime::revalidate(&node)?;
     let started = Instant::now();
-    let device = with_backend(|backend| backend.open(&node))?;
-    // A retained path/collection lock covers all selector and query
-    // reports. No second device, endpoint ID, receiver or DLL is guessed.
     let validate = || {
         ensure!(
             started.elapsed() < Duration::from_secs(20),
@@ -1484,16 +1521,32 @@ fn mixer_request(
         );
         PortableRuntime::revalidate(&node)
     };
+    let device =
+        with_backend(|backend| backend.open_validated(&node, std::rc::Rc::new(&validate)))?;
+    let source_property = razer_device::audio_mixer::source_property(&target)?;
     let session = MixerSession::new(device.as_ref(), &validate)?;
     let result = if let Some(value) = value {
-        serde_json::to_value(session.apply(&target, &value)?)?
+        let result = session.apply(&target, &value)?;
+        validate().map_err(|error| {
+            error.context(razer_device::audio_mixer::MixerSubmissionFailure {
+                target: target.clone(),
+                result: result.clone(),
+            })
+        })?;
+        serde_json::to_value(result)?
     } else {
-        serde_json::to_value(session.read(&target)?)?
+        let value = session.read(&target)?;
+        validate().map_err(|error| {
+            error.context(razer_device::audio_mixer::MixerObservationFailure {
+                target: target.clone(),
+                value: value.clone(),
+            })
+        })?;
+        serde_json::to_value(value)?
     };
-    validate()?;
     Ok(
         json!({"node":node,"product_id":product_id,"target":target,"result":result,
-        "source_property":razer_device::audio_mixer::source_property(&target)?,
+        "source_property":source_property,
         "source_limits":razer_device::audio_mixer::mic_monitor_limits(),
         "endpoint_limits":razer_device::audio_mixer::endpoint_limits(),
         "identity_scope":"hid_collection","transport_metadata":device.metadata(),

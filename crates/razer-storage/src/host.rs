@@ -440,7 +440,7 @@ fn same_map_key(left: &Value, right: &Value) -> bool {
     }
 }
 
-fn js_truthy(value: &Value) -> bool {
+pub(crate) fn js_truthy(value: &Value) -> bool {
     match value {
         Value::Null => false,
         Value::Bool(v) => *v,

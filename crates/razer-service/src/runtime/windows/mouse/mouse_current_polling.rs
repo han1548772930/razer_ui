@@ -40,7 +40,8 @@ pub(super) fn request(
         before["feature_report_bytes"] == cap.report_bytes,
         "Polling Feature report length differs"
     );
-    let device = hid_transport::open(&target.path, cap.report_bytes)?;
+    let device =
+        hid_transport::open_validated(&target.path, cap.report_bytes, std::rc::Rc::new(&validate))?;
     let mut next = || transaction(target, &cap);
     if identity.is_dongle {
         razer_device::mouse_current_dpi::verify_wireless_online_for(

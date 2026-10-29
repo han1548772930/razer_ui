@@ -136,6 +136,7 @@ mod performance_layout;
 #[path = "mouse_properties.rs"]
 mod properties;
 pub(in crate::features) use matcher_owner::SavedMatcherProfiles;
+pub(in crate::features) use matcher_owner::device_fields as matcher_device_fields;
 pub use matcher_owner::{MouseMatcherRequest, MouseMatcherScope};
 #[path = "mouse_rotation.rs"]
 mod rotation;
@@ -446,6 +447,15 @@ impl MouseProductWorkspace {
             });
         }
         self.dynamic_state.refresh_locale(window, cx);
+        if let Some(matcher) = &self.matcher {
+            matcher.update(cx, |matcher, cx| {
+                matcher.observe(
+                    super::mouse_dpi_matcher::MatcherObservation::Language(razer_i18n::locale()),
+                    window,
+                    cx,
+                );
+            });
+        }
         self.reload_mouse_inter_70(window, cx);
         cx.notify();
     }
@@ -1700,23 +1710,38 @@ impl MouseProductWorkspace {
             .into_any_element()
     }
 
+    fn performance_matcher_and_properties(
+        &self,
+        mut left: Div,
+        mut right: Div,
+        cx: &Context<Self>,
+    ) -> (Div, Div) {
+        if let Some(spec) = matcher_owner::source_spec(self.spec.product_id) {
+            match spec.column() {
+                matcher_owner::MatcherColumn::Left => left = left.children(self.matcher.clone()),
+                matcher_owner::MatcherColumn::Right => right = right.children(self.matcher.clone()),
+            }
+        }
+        if let Some(properties) = properties::source_spec(self.spec.product_id) {
+            if properties.in_left_column() {
+                left = left.child(self.mouse_properties(cx));
+            } else {
+                right = right.child(self.mouse_properties(cx));
+            }
+        }
+        (left, right)
+    }
+
     fn performance(&self, cx: &Context<Self>) -> AnyElement {
         if dpi_rows::source_spec(self.spec.product_id).is_some() {
-            let mut left = self.source_widget_column().child(self.dpi_rows(cx));
+            let left = self.source_widget_column().child(self.dpi_rows(cx));
             let mut right = self.source_widget_column();
             if super::mouse_polling::source_spec(self.spec.product_id).is_none()
                 || self.source_polling_visible()
             {
                 right = right.child(self.polling(cx));
             }
-            if let Some(properties) = properties::source_spec(self.spec.product_id) {
-                if properties.in_left_column() {
-                    left = left.child(self.mouse_properties(cx));
-                } else {
-                    right = right.child(self.mouse_properties(cx));
-                }
-            }
-            right = right.children(self.matcher.clone());
+            let (left, mut right) = self.performance_matcher_and_properties(left, right, cx);
             if self.spec.performance_power {
                 right = right.child(self.power(cx));
             }
@@ -1781,16 +1806,9 @@ impl MouseProductWorkspace {
                 ));
             }
         }
-        let mut left = self.source_widget_column().child(sensitivity);
-        let mut right = self.source_widget_column().child(self.polling(cx));
-        if let Some(properties) = properties::source_spec(self.spec.product_id) {
-            if properties.in_left_column() {
-                left = left.child(self.mouse_properties(cx));
-            } else {
-                right = right.child(self.mouse_properties(cx));
-            }
-        }
-        right = right.children(self.matcher.clone());
+        let left = self.source_widget_column().child(sensitivity);
+        let right = self.source_widget_column().child(self.polling(cx));
+        let (left, mut right) = self.performance_matcher_and_properties(left, right, cx);
         if self.spec.performance_power {
             right = right.child(self.power(cx));
         }

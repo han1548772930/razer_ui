@@ -106,6 +106,28 @@ fn next(prefix: u8) -> impl FnMut() -> anyhow::Result<u8> {
 }
 
 #[test]
+fn finish_failure_keeps_the_decoded_power_ack_and_prevents_the_readback() {
+    let device = Simulated::new(vec![vec![7, 8]]);
+    let leased = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);
+    let error = execute(
+        117,
+        &leased,
+        &transport(117),
+        &Change::PowerSaving(7),
+        next(0),
+        || Ok(()),
+    )
+    .unwrap_err();
+    let progress = &error.downcast_ref::<WriteFailure>().unwrap().progress;
+    assert!(progress.setter_sent);
+    assert_eq!(progress.acknowledgements.len(), 1);
+    assert_eq!(progress.acknowledgements[0].data, [7, 8]);
+    assert!(progress.time_to_sleep.is_none());
+    assert!(error.to_string().contains("release failed"));
+    assert_eq!(device.sent().len(), 1);
+}
+
+#[test]
 fn always_read_initialization_only_gets_actual_seconds_without_a_setter() {
     let device = Simulated::new(vec![vec![0, 75]]);
     let report = execute(

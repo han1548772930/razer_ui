@@ -63,6 +63,7 @@ impl WorkerDiagnostics {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn record_stdout(&self, bytes: &[u8]) -> anyhow::Result<()> {
         self.stdout
             .lock()
@@ -85,7 +86,7 @@ impl WorkerDiagnostics {
         if diagnostic.is_empty() {
             error
         } else {
-            anyhow::anyhow!("{error:#}\n设备服务诊断（有界尾部）:{diagnostic}")
+            error.context(format!("设备服务诊断（有界尾部）:{diagnostic}"))
         }
     }
 }

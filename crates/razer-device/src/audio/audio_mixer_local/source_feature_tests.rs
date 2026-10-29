@@ -8,10 +8,13 @@ use std::{
 enum Step {
     Send(Vec<u8>),
     SendError(Vec<u8>),
+    SendTerminalError(Vec<u8>),
     Get { selector: u8, bytes: Vec<u8> },
     GetError { selector: u8 },
+    GetTerminalError { selector: u8 },
     Output(Vec<u8>),
     OutputError(Vec<u8>),
+    OutputTerminalError(Vec<u8>),
     Input { selector: u8, bytes: Vec<u8> },
     InputError { selector: u8 },
 }
@@ -57,6 +60,12 @@ impl FeatureTransport for Transport {
                 assert_eq!(report, expected);
                 anyhow::bail!("Simulated Feature OUT failure")
             }
+            Some(Step::SendTerminalError(expected)) => {
+                assert_eq!(report, expected);
+                Err(crate::backend::finalization_failure(anyhow::anyhow!(
+                    "simulated inner release failed"
+                )))
+            }
             _ => panic!("Unexpected source SET"),
         }
     }
@@ -79,6 +88,12 @@ impl FeatureTransport for Transport {
                 assert_eq!(report[0], selector);
                 anyhow::bail!("Simulated Feature I/O failure")
             }
+            Step::GetTerminalError { selector } => {
+                assert_eq!(report[0], selector);
+                Err(crate::backend::finalization_failure(anyhow::anyhow!(
+                    "simulated inner release failed"
+                )))
+            }
             _ => panic!("Expected Feature GET"),
         }
     }
@@ -93,6 +108,12 @@ impl FeatureTransport for Transport {
             Some(Step::OutputError(expected)) => {
                 assert_eq!(report, expected);
                 anyhow::bail!("Simulated Output failure")
+            }
+            Some(Step::OutputTerminalError(expected)) => {
+                assert_eq!(report, expected);
+                Err(crate::backend::finalization_failure(anyhow::anyhow!(
+                    "simulated inner release failed"
+                )))
             }
             _ => panic!("Unexpected source Output"),
         }
@@ -148,6 +169,211 @@ fn execute_command(io: &Transport, command: Command) -> anyhow::Result<Receipt> 
     execute(io, &command, &|| Ok(()), &|_| {
         panic!("Feature source task must not issue an unrelated control output")
     })
+}
+
+#[test]
+fn source_retry_stops_on_terminal_send_and_receive_release_failures() {
+    let outgoing = packet(&[7, 0, 0, 0, 0, 0, 0, 2, 12, 0, 112, 0, 20, 5, 0]);
+    for steps in [
+        vec![Step::SendTerminalError(outgoing.clone())],
+        vec![Step::Send(outgoing), Step::GetTerminalError { selector: 7 }],
+    ] {
+        let io = Transport::new(steps);
+        let error = execute_command(&io, Command::Bleep { enabled: true }).unwrap_err();
+        assert!(crate::backend::exchange_finalization_failed(&error));
+        assert_eq!(io.sends.get(), 1);
+        assert_eq!(
+            error.root_cause().to_string(),
+            "simulated inner release failed"
+        );
+        io.finish();
+    }
+}
+
+#[test]
+fn query_then_failed_setter_preserves_actual_query_in_standalone_and_group_diagnostics() {
+    for (command, query_prefix, write_prefix) in [
+        (
+            Command::AnalogGain {
+                key: "optical".into(),
+                value: -4.,
+            },
+            vec![4, 95, 252, 0, 44],
+            vec![19, 95, 252, 0, 44, 0, 61, 4, 4],
+        ),
+        (
+            Command::AnalogMute {
+                key: "playbackMixReducer".into(),
+                enabled: true,
+            },
+            vec![4, 24, 0, 192, 6],
+            vec![3, 24, 0, 192, 6, 0, 0],
+        ),
+    ] {
+        for grouped in [false, true] {
+            let io = Transport::new([
+                Step::Output(output_packet(&query_prefix)),
+                Step::Input {
+                    selector: 18,
+                    bytes: vec![18, 17, 29, 61],
+                },
+                Step::OutputTerminalError(output_packet(&write_prefix)),
+            ]);
+            let error = if grouped {
+                execute_group(
+                    &io,
+                    &[command.clone(), Command::MicSetup { mode: 3 }],
+                    &|| Ok(()),
+                    &|_| panic!("later group command must not run"),
+                )
+                .unwrap_err()
+            } else {
+                execute_command(&io, command.clone()).unwrap_err()
+            };
+            let failure = error.downcast_ref::<CommandBatchFailure>().unwrap();
+            assert_eq!(failure.query_data.as_deref(), Some(&[17, 29, 61][..]));
+            assert!(failure.receipts.is_empty());
+            let transfer = failure.transfer.as_ref().unwrap();
+            assert_eq!(transfer.sends_attempted, 1);
+            assert_eq!(transfer.sends_completed, 0);
+            assert!(crate::backend::exchange_finalization_failed(&error));
+            assert_eq!(io.sends.get(), 2);
+            io.finish();
+        }
+    }
+}
+
+#[test]
+fn command_group_preserves_prior_receipt_and_canceled_transfer_without_later_command() {
+    let io = Transport::new([
+        Step::Output(output_packet(&[3, 24, 0, 192, 16, 16, 16])),
+        Step::Output(output_packet(&[3, 24, 0, 192, 148, 196, 192])),
+    ]);
+    let commands = [
+        Command::InputMicGain { value: 0. },
+        Command::InputMicMute { enabled: true },
+        Command::MicSetup { mode: 3 },
+    ];
+    let error = execute_group(
+        &io,
+        &commands,
+        &|| {
+            ensure!(
+                io.sends.get() < 2,
+                "group owner canceled after second Output"
+            );
+            Ok(())
+        },
+        &|_| panic!("later control command must not run"),
+    )
+    .unwrap_err();
+    let failure = error.downcast_ref::<CommandBatchFailure>().unwrap();
+    assert_eq!(failure.receipts.len(), 1);
+    assert!(failure.receipts[0].transport_completed);
+    assert!(matches!(
+        failure.failed_command,
+        Command::InputMicMute { enabled: true }
+    ));
+    let transfer = failure.transfer.as_ref().unwrap();
+    assert_eq!(transfer.sends_completed, 1);
+    assert_eq!(transfer.sends_attempted, 1);
+    assert!(transfer.input.is_none());
+    assert_eq!(io.sends.get(), 2);
+    assert_eq!(
+        error.root_cause().to_string(),
+        "group owner canceled after second Output"
+    );
+    io.finish();
+}
+
+#[test]
+fn completed_source_send_survives_release_failure_without_a_fabricated_reply() {
+    let command = Command::InputMicGain { value: 40. };
+    let expected = output_packet(&[3, 24, 0, 192, 16, 69, 69]);
+    let io = Transport::new([Step::Output(expected.clone())]);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&io);
+    let error = execute(&probe, &command, &|| Ok(()), &|_| {
+        panic!("unexpected control")
+    })
+    .unwrap_err();
+    let progress = &error.downcast_ref::<TransferFailure>().unwrap().progress;
+    assert!(matches!(progress.channel, ReportChannel::Output));
+    assert_eq!(progress.report, expected);
+    assert_eq!((progress.sends_attempted, progress.sends_completed), (1, 1));
+    assert!(progress.input.is_none());
+    assert_eq!(
+        error.root_cause().to_string(),
+        "simulated explicit release failed"
+    );
+    assert_eq!(io.sends.get(), 1);
+    io.finish();
+}
+
+#[test]
+fn completed_source_command_remains_diagnostic_when_final_owner_check_fails() {
+    let io = Transport::new([Step::Output(output_packet(&[3, 24, 0, 192, 16, 69, 69]))]);
+    let stale = Cell::new(false);
+    let replace = || stale.set(true);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::with_on_finish(&io, &replace);
+    let error = execute(
+        &probe,
+        &Command::InputMicGain { value: 40. },
+        &|| {
+            ensure!(!stale.get(), "source command owner replaced after release");
+            Ok(())
+        },
+        &|_| panic!("unexpected control"),
+    )
+    .unwrap_err();
+    let completed = &error.downcast_ref::<CommandFailure>().unwrap().completed;
+    assert!(completed.transport_completed);
+    assert!(completed.response.is_null());
+    assert!(completed.profile_updates.is_empty());
+    assert_eq!(
+        error.root_cause().to_string(),
+        "source command owner replaced after release"
+    );
+    assert_eq!(io.sends.get(), 1);
+    io.finish();
+}
+
+#[test]
+fn bounded_source_input_survives_release_failure_but_during_get_cancel_keeps_only_send() {
+    let input = vec![0x7f, 12, 34];
+    for during_get in [false, true] {
+        let io = Transport::new([
+            Step::Output(output_packet(&[10, 5])),
+            Step::Input {
+                selector: 18,
+                bytes: input.clone(),
+            },
+        ]);
+        let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&io);
+        let validate = || {
+            ensure!(
+                !during_get || !io.steps.borrow().is_empty(),
+                "canceled during source Input"
+            );
+            Ok(())
+        };
+        let error = reports::output(&probe, &[10, 5], Some(18), &validate).unwrap_err();
+        let progress = &error.downcast_ref::<TransferFailure>().unwrap().progress;
+        assert_eq!((progress.sends_attempted, progress.sends_completed), (1, 1));
+        assert_eq!(
+            progress.input.as_deref(),
+            (!during_get).then_some(input.as_slice())
+        );
+        assert_eq!(
+            error.root_cause().to_string(),
+            if during_get {
+                "canceled during source Input"
+            } else {
+                "simulated explicit release failed"
+            }
+        );
+        assert_eq!(io.sends.get(), 1);
+        io.finish();
+    }
 }
 
 #[test]

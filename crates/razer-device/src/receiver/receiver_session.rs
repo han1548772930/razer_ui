@@ -6,7 +6,7 @@ use crate::{
     receiver_capabilities::{self, ReceiverCapability},
 };
 use anyhow::{Context as _, ensure};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 pub struct ReceiverSession {
     transport: DeviceReadCapability,
@@ -21,6 +21,21 @@ pub struct Observation<T> {
     pub reading: T,
     pub receiver_before: Vec<(u16, u8)>,
     pub receiver_after: Vec<(u16, u8)>,
+}
+
+/// A completed inner operation remains historical evidence if its receiver
+/// association cannot be confirmed afterwards. It is never a current result.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ReceiverObservationFailure<T> {
+    pub reading: T,
+    pub receiver_before: Vec<(u16, u8)>,
+    pub receiver_after: Option<Vec<(u16, u8)>>,
+}
+
+impl<T> std::fmt::Display for ReceiverObservationFailure<T> {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Receiver association was not confirmed after the operation")
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -179,6 +194,7 @@ impl ReceiverSession {
         operation: impl FnOnce(&mut N, &V) -> anyhow::Result<T>,
     ) -> anyhow::Result<Observation<T>>
     where
+        T: Send + Sync + 'static,
         N: FnMut() -> anyhow::Result<u8>,
         V: Fn() -> anyhow::Result<()>,
     {
@@ -196,6 +212,7 @@ impl ReceiverSession {
         mut record: impl FnMut(PeerObservationPhase, &[(u16, u8)]),
     ) -> anyhow::Result<Observation<T>>
     where
+        T: Send + Sync + 'static,
         N: FnMut() -> anyhow::Result<u8>,
         V: Fn() -> anyhow::Result<()>,
     {
@@ -206,11 +223,30 @@ impl ReceiverSession {
         self.validate_peer(&before)?;
         validate()?;
         let reading = operation(&mut next, &validate)?;
-        validate()?;
-        let after = crate::device_query::read_receiver(device, &self.receiver, next()?, &validate)?;
-        record(PeerObservationPhase::After, &after);
-        self.validate_peer(&after)?;
-        validate()?;
+        let mut receiver_after = None;
+        let after = (|| {
+            validate()?;
+            let after =
+                crate::device_query::read_receiver(device, &self.receiver, next()?, &validate)?;
+            record(PeerObservationPhase::After, &after);
+            receiver_after = Some(after.clone());
+            self.validate_peer(&after)?;
+            validate()?;
+            Ok(after)
+        })();
+        let after = match after {
+            Ok(after) => after,
+            Err(error) => {
+                return Err(anyhow::Error::context(
+                    error,
+                    ReceiverObservationFailure {
+                        reading,
+                        receiver_before: before,
+                        receiver_after,
+                    },
+                ));
+            }
+        };
         Ok(Observation {
             reading,
             receiver_before: before,

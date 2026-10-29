@@ -68,7 +68,8 @@ fn both_current_products_set_minutes_as_seconds_then_read_independently() {
             reply(selector, 1, 0x83, 2, &payload),
         ]);
         let mut delays = vec![];
-        let result = SleepProtocol::new(&io, capability(pid).unwrap(), |wait| {
+        let probe = crate::feature_exchange::tests::ExchangeProbe::new(&io);
+        let result = SleepProtocol::new(&probe, capability(pid).unwrap(), |wait| {
             delays.push(wait);
             Ok(())
         })
@@ -85,10 +86,27 @@ fn both_current_products_set_minutes_as_seconds_then_read_independently() {
         assert_eq!(&sent[1][6..11], &[2, 7, 0x83, 0, 0]);
         assert_eq!(sent[0][2], 0);
         assert_eq!(sent[1][2], 1);
+        assert_eq!(
+            probe.timings(),
+            vec![
+                crate::backend::ExchangeTiming::MutexOut {
+                    interval: Duration::from_millis(delay)
+                };
+                2
+            ]
+        );
         for bytes in sent.iter() {
             assert_eq!(bytes[89], bytes[3..89].iter().fold(0, |a, b| a ^ b));
         }
-        assert_eq!(delays, vec![Duration::from_millis(delay); 4]);
+        assert_eq!(
+            delays,
+            [
+                Duration::ZERO,
+                Duration::from_millis(delay),
+                Duration::ZERO,
+                Duration::from_millis(delay)
+            ]
+        );
     }
 }
 

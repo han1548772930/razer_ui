@@ -194,7 +194,9 @@ fn collection_monitor(
             validate: &dyn Fn() -> anyhow::Result<()>,
         ) -> anyhow::Result<u8> {
             validate()?;
-            let device = with_backend(|backend| backend.open(self.node))?;
+            let device = with_backend(|backend| {
+                backend.open_validated(self.node, std::rc::Rc::new(validate))
+            })?;
             ensure!(
                 device.report_lengths()?.feature.get(&0) == Some(&91),
                 "Mouse artwork Feature Report size differs"

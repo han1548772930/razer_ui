@@ -3,6 +3,34 @@ use mapping_control::{Observation, Operation, Target};
 use razer_model::{macro_library::MacroLibraryFile, shortcuts::Compiler};
 
 #[test]
+fn final_scope_failure_after_real_macro_join_is_terminal_and_remains_an_error() {
+    use crate::mapping::owner::Backend as _;
+    let mut backend = Backend::<super::super::executor::Executor>::new(|_| {
+        panic!("Cleanup must not create a device executor")
+    });
+    let scope = Uuid::new_v4();
+    backend.acquire(scope).unwrap();
+    let macros = backend.core.macros.clone();
+    assert!(
+        std::thread::spawn(move || {
+            let _guard = macros.lock().unwrap();
+            panic!("Macro owner became poisoned before shutdown");
+        })
+        .join()
+        .is_err()
+    );
+    assert!(
+        backend
+            .release(scope)
+            .unwrap_err()
+            .to_string()
+            .contains("poisoned")
+    );
+    assert!(!backend.release_cleanup_pending(scope));
+    assert!(!backend.core.scopes.contains(&scope));
+}
+
+#[test]
 fn poisoned_macro_owner_is_still_drained_by_backend_shutdown() {
     use crate::mapping::owner::Backend as _;
     let mut backend = Backend::<super::super::executor::Executor>::new(|_| {

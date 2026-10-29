@@ -139,13 +139,16 @@ impl Session {
             .recv()
             .context("Marie event worker stopped before responding")?
     }
-    fn stop(&mut self) -> Result<()> {
+    pub(super) fn stop(&mut self) -> Result<()> {
         self.stopping.store(true, Ordering::Release);
-        let worker = self
-            .worker
-            .get_mut()
-            .map_err(|_| anyhow::anyhow!("Marie worker owner poisoned"))?
-            .take();
+        let mut errors = Vec::new();
+        let worker = match self.worker.get_mut() {
+            Ok(worker) => worker.take(),
+            Err(poisoned) => {
+                errors.push("Marie worker owner poisoned".to_owned());
+                poisoned.into_inner().take()
+            }
+        };
         if let Some(worker) = worker {
             let (reply, receiver) = mpsc::sync_channel(1);
             let sent = worker.sender.send(Command::Stop(reply));
@@ -157,12 +160,14 @@ impl Session {
             } else {
                 Err(anyhow::anyhow!("Marie worker already exited"))
             };
-            worker
-                .join
-                .join()
-                .map_err(|_| anyhow::anyhow!("Marie worker panicked during cleanup"))?;
-            result?;
+            if worker.join.join().is_err() {
+                errors.push("Marie worker panicked during cleanup".to_owned());
+            }
+            if let Err(error) = result {
+                errors.push(format!("{error:#}"));
+            }
         }
+        ensure!(errors.is_empty(), "{}", errors.join("; "));
         Ok(())
     }
 }

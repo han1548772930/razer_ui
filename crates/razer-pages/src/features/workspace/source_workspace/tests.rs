@@ -6,6 +6,72 @@ use gpui_kit::{AppContext, TestAppContext, px, size};
 use serde_json::json;
 
 #[::core::prelude::v1::test]
+fn matcher_library_migration_keeps_device_scope_and_profile_local_selection_for_all_products() {
+    for product_id in [190, 192, 222, 226, 229, 239] {
+        let mut device = razer_model::product_preview::registered_preview(product_id).unwrap();
+        let active = razer_model::model::Profile {
+            id: "active".into(),
+            guid: "active-guid".into(),
+            name: "Active profile".into(),
+            source_settings: Some(json!({
+                "sensitivityMatcher":{"profiles":[{"guid":"active-matcher"}],"extension":"keep"},
+                "selectedSensitivityMatcher":"active-matcher",
+                "profileExtension":7
+            })),
+            settings: None,
+            dpi_stages: None,
+        };
+        let mut inactive = active.clone();
+        inactive.id = "inactive".into();
+        inactive.source_settings = Some(json!({
+            "_supplement":{"sensitivityMatcher":{"profiles":[{"guid":"inactive-matcher"}]},"unrelated":1},
+            "selectedSensitivityMatcher":"inactive-matcher"
+        }));
+        device.profiles = vec![inactive, active];
+        device.active_profile = "active".into();
+        device.source_device_settings = Some(json!({"version":7,"deviceExtension":true}));
+        SourceProductWorkspace::migrate_device_settings(&mut device);
+        let root = device.source_device_settings.as_ref().unwrap();
+        assert_eq!(
+            root["sensitivityMatcher"]["profiles"][0]["guid"],
+            "active-matcher"
+        );
+        assert_eq!(root["sensitivityMatcher"]["extension"], "keep");
+        assert_eq!(root["deviceExtension"], true);
+        assert_eq!(root["version"], 7);
+        assert!(device.profiles.iter().all(|profile| {
+            let source = profile.source_settings.as_ref().unwrap();
+            source.get("sensitivityMatcher").is_none()
+                && source["_supplement"].get("sensitivityMatcher").is_none()
+        }));
+        assert_eq!(
+            device.profiles[0].source_settings.as_ref().unwrap()["selectedSensitivityMatcher"],
+            "inactive-matcher"
+        );
+        assert_eq!(
+            device.profiles[0].source_settings.as_ref().unwrap()["_supplement"]["unrelated"],
+            1
+        );
+        assert_eq!(
+            device.profiles[1].source_settings.as_ref().unwrap()["selectedSensitivityMatcher"],
+            "active-matcher"
+        );
+        assert_eq!(
+            device.profiles[1].source_settings.as_ref().unwrap()["profileExtension"],
+            7
+        );
+
+        device.profiles[1].source_settings.as_mut().unwrap()["sensitivityMatcher"] =
+            json!({"profiles":[{"guid":"older-profile-copy"}]});
+        SourceProductWorkspace::migrate_device_settings(&mut device);
+        assert_eq!(
+            device.source_device_settings.as_ref().unwrap()["sensitivityMatcher"]["profiles"][0]["guid"],
+            "active-matcher"
+        );
+    }
+}
+
+#[::core::prelude::v1::test]
 fn active_keyboard_factory_profile_follows_selected_identity_after_library_replacement() {
     use super::keyboard_local_profiles::active_keyboard_factory_profile;
     use razer_model::model::Profile;

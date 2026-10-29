@@ -461,6 +461,9 @@ impl<'a> MouseBrightness<'a> {
                     }
                 }
                 Err(error) => {
+                    if crate::backend::exchange_finalization_failed(&error) {
+                        return Err(error);
+                    }
                     // Cancellation/session loss must never become fallback I/O.
                     validate()?;
                     (
@@ -521,7 +524,7 @@ impl<'a> MouseBrightness<'a> {
                 next_transaction().map_err(|error| (BrightnessFailurePhase::Write, error))?;
             validate().map_err(|error| (BrightnessFailurePhase::Cancelled, error))?;
             step.write_attempted = true;
-            let data = exchange(
+            let response = exchange(
                 self.device,
                 self.transport,
                 SET,
@@ -532,15 +535,20 @@ impl<'a> MouseBrightness<'a> {
                 ],
                 transaction,
                 validate,
-            )
-            .map_err(|error| (BrightnessFailurePhase::Write, error))?;
-            step.acknowledgment_received = true;
-            if !data.is_empty() {
-                step.acknowledged = Some(
-                    parse_brightness(&data, step.profile_id, step.requested_region_id)
-                        .map_err(|error| (BrightnessFailurePhase::Write, error))?,
-                );
+            );
+            if let Some(data) = crate::feature_exchange::acknowledged_reply(&response) {
+                step.acknowledgment_received = true;
+                if !data.is_empty() {
+                    match parse_brightness(data, step.profile_id, step.requested_region_id) {
+                        Ok(value) => step.acknowledged = Some(value),
+                        Err(error) => {
+                            response.map_err(|error| (BrightnessFailurePhase::Write, error))?;
+                            return Err((BrightnessFailurePhase::Write, error));
+                        }
+                    }
+                }
             }
+            response.map_err(|error| (BrightnessFailurePhase::Write, error))?;
         }
         step.source_completed = true;
         Ok(())
@@ -612,7 +620,10 @@ impl<'a> MouseBrightness<'a> {
                         error: cancelled.context(error),
                     });
                 }
-                if scope == BrightnessScope::Active || phase == BrightnessFailurePhase::Cancelled {
+                if scope == BrightnessScope::Active
+                    || phase == BrightnessFailurePhase::Cancelled
+                    || crate::backend::exchange_finalization_failed(&error)
+                {
                     return Err(BrightnessWriteFailure {
                         phase,
                         progress,

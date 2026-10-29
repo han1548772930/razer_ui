@@ -931,18 +931,19 @@ pub fn submit(
                     });
                     let step = receipt.submissions.last_mut().unwrap();
                     let transaction = next()?;
-                    step.acknowledgement = Some(
-                        feature_exchange::exchange_with_report_data_size_observing_send(
-                            device,
-                            &cap.device_read_capability(),
-                            step.command,
-                            &step.payload,
-                            transaction,
-                            2,
-                            &guard,
-                            &mut || step.attempted = true,
-                        )?,
+                    let result = feature_exchange::exchange_with_report_data_size_observing_send(
+                        device,
+                        &cap.device_read_capability(),
+                        step.command,
+                        &step.payload,
+                        transaction,
+                        2,
+                        &guard,
+                        &mut || step.attempted = true,
                     );
+                    step.acknowledgement =
+                        feature_exchange::acknowledged_reply(&result).map(<[u8]>::to_vec);
+                    result?;
                 }
                 Intent::CustomGamingCombinations { .. }
                 | Intent::SnapTap { .. }
@@ -968,7 +969,11 @@ pub fn submit(
     } = &receipt.intent
     {
         let mapping = (**mapping).clone();
-        if validate(product_id, &receipt.intent).is_ok() {
+        let finalization_failed = result
+            .as_ref()
+            .err()
+            .is_some_and(crate::backend::exchange_finalization_failed);
+        if !finalization_failed && validate(product_id, &receipt.intent).is_ok() {
             match guard() {
                 Ok(()) => {
                     let followup_next: &mut dyn FnMut() -> anyhow::Result<u8> = &mut next;
@@ -1046,18 +1051,18 @@ fn assignment_step(
     });
     let transaction = next()?;
     let step = receipt.submissions.last_mut().unwrap();
-    step.acknowledgement = Some(
-        feature_exchange::exchange_with_report_data_size_observing_send(
-            device,
-            &cap.device_read_capability(),
-            step.command,
-            &step.payload,
-            transaction,
-            10,
-            guard,
-            &mut || step.attempted = true,
-        )?,
+    let result = feature_exchange::exchange_with_report_data_size_observing_send(
+        device,
+        &cap.device_read_capability(),
+        step.command,
+        &step.payload,
+        transaction,
+        10,
+        guard,
+        &mut || step.attempted = true,
     );
+    step.acknowledgement = feature_exchange::acknowledged_reply(&result).map(<[u8]>::to_vec);
+    result?;
     Ok(())
 }
 
@@ -1183,18 +1188,18 @@ fn scalar_step(
     });
     let transaction = next()?;
     let step = receipt.submissions.last_mut().unwrap();
-    step.acknowledgement = Some(
-        feature_exchange::exchange_with_report_data_size_observing_send(
-            device,
-            &cap.device_read_capability(),
-            command,
-            &step.payload,
-            transaction,
-            command[0],
-            guard,
-            &mut || step.attempted = true,
-        )?,
+    let result = feature_exchange::exchange_with_report_data_size_observing_send(
+        device,
+        &cap.device_read_capability(),
+        command,
+        &step.payload,
+        transaction,
+        command[0],
+        guard,
+        &mut || step.attempted = true,
     );
+    step.acknowledgement = feature_exchange::acknowledged_reply(&result).map(<[u8]>::to_vec);
+    result?;
     Ok(())
 }
 

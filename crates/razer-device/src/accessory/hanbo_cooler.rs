@@ -596,51 +596,90 @@ fn exchange_packet(
     validate: &mut dyn FnMut() -> Result<()>,
     wait: &mut dyn FnMut(std::time::Duration),
 ) -> Result<[u8; INPUT_LENGTH]> {
-    let mut last_error = String::from("no input response");
-    for _ in 0..OUTPUT_ATTEMPTS {
-        validate()?;
-        let count = transport
-            .write_output_counted(report)
-            .context("Hanbo Output Report 发送失败")?;
-        validate()?;
-        if count != EXPECTED_OUTPUT_COUNT {
-            last_error = format!(
-                "native write returned {count} bytes; source requires {EXPECTED_OUTPUT_COUNT}"
-            );
-            continue;
-        }
-        wait(std::time::Duration::from_millis(OUTPUT_INPUT_DELAY_MS));
-        for attempt in 0..INPUT_ATTEMPTS {
-            if attempt > 0 {
-                wait(std::time::Duration::from_millis(INPUT_RETRY_DELAY_MS));
+    let validation = std::cell::RefCell::new(validate);
+    let validate = || validation.borrow_mut()();
+    validate()?;
+    let lease = transport.begin_exchange_validated(
+        crate::backend::ExchangeOptions::plain(),
+        std::rc::Rc::new(&validate),
+    )?;
+    let result = (|| {
+        let transport = lease.transport();
+        let mut last_error = String::from("no input response");
+        for _ in 0..OUTPUT_ATTEMPTS {
+            validate()?;
+            let count = transport
+                .write_output_counted(report)
+                .context("Hanbo Output Report 发送失败")?;
+            validate()?;
+            if count != EXPECTED_OUTPUT_COUNT {
+                last_error = format!(
+                    "native write returned {count} bytes; source requires {EXPECTED_OUTPUT_COUNT}"
+                );
+                continue;
             }
-            validate()?;
-            let mut input = [0u8; INPUT_LENGTH + 1];
-            let received = transport.read_interrupt(&mut input, INPUT_TIMEOUT_MS);
-            validate()?;
-            let count = match received {
-                Ok(count) => count,
-                Err(error) => {
-                    last_error = format!("Hanbo Input Report 读取失败: {error:#}");
-                    break;
+            wait(std::time::Duration::from_millis(OUTPUT_INPUT_DELAY_MS));
+            for attempt in 0..INPUT_ATTEMPTS {
+                if attempt > 0 {
+                    wait(std::time::Duration::from_millis(INPUT_RETRY_DELAY_MS));
                 }
-            };
-            if count == INPUT_LENGTH && matching_packet(&input[..count], reply_header) {
-                let mut packet = [0u8; INPUT_LENGTH];
-                packet.copy_from_slice(&input[..INPUT_LENGTH]);
-                return Ok(packet);
+                validate()?;
+                let mut input = [0u8; INPUT_LENGTH + 1];
+                let received = transport.read_interrupt(&mut input, INPUT_TIMEOUT_MS);
+                validate()?;
+                let count = match received {
+                    Ok(count) => count,
+                    Err(error) => {
+                        last_error = format!("Hanbo Input Report 读取失败: {error:#}");
+                        break;
+                    }
+                };
+                if count == INPUT_LENGTH && matching_packet(&input[..count], reply_header) {
+                    let mut packet = [0u8; INPUT_LENGTH];
+                    packet.copy_from_slice(&input[..INPUT_LENGTH]);
+                    return Ok(packet);
+                }
+                last_error = if count == INPUT_LENGTH {
+                    format!("invalid response header {:?}", &input[..2])
+                } else {
+                    format!("invalid input count {count}; source requires {INPUT_LENGTH}")
+                };
             }
-            last_error = if count == INPUT_LENGTH {
-                format!("invalid response header {:?}", &input[..2])
-            } else {
-                format!("invalid input count {count}; source requires {INPUT_LENGTH}")
-            };
         }
+        bail!(
+            "Hanbo command {:?} received no matching reply: {last_error}",
+            &report[1..3]
+        )
+    })();
+    let current = validate();
+    match result {
+        Ok(packet) => match crate::feature_exchange::finish_if_current(lease, Ok(()), current) {
+            Ok(()) => Ok(packet),
+            Err(error) => Err(error.context(CompletedHanboInput {
+                command: [report[1], report[2]],
+                packet: packet.to_vec(),
+            })),
+        },
+        Err(error) => crate::feature_exchange::finish_if_current(lease, Err(error), current),
     }
-    bail!(
-        "Hanbo command {:?} received no matching reply: {last_error}",
-        &report[1..3]
-    )
+}
+
+/// A matched Input packet is diagnostic evidence. A setter still requires the
+/// separate status-1 check, and getters retain their own payload decoders.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CompletedHanboInput {
+    pub command: [u8; 2],
+    pub packet: Vec<u8>,
+}
+
+impl std::fmt::Display for CompletedHanboInput {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            formatter,
+            "Hanbo Input matched for {:?} before exchange finalization failed",
+            self.command
+        )
+    }
 }
 
 #[cfg(test)]

@@ -39,7 +39,7 @@ pub(super) fn request(
         .as_u64()
         .and_then(|n| usize::try_from(n).ok())
         .context("Uma Feature length is unavailable")?;
-    let device = hid_transport::open(path, maximum)?;
+    let device = hid_transport::open_validated(path, maximum, std::rc::Rc::new(&validate))?;
     validate()?;
     let reading = uma::execute(&device, cap, command, transaction, &validate)?;
     let instance = before["device_instance_id"]

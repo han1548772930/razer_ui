@@ -131,6 +131,10 @@ impl ReceiverLock {
         }
         let owned = Self(handle);
         validate()?;
+        // A failed BLE teardown retains its actual operations and handles.
+        // Reap them under this container's lease before admitting any new I/O.
+        super::device_reads::cleanup_ble_container(container)?;
+        validate()?;
         Ok(owned)
     }
 }
@@ -308,7 +312,7 @@ pub(super) fn dock_mode(path: &str, device_container_id: &str) -> anyhow::Result
         .as_u64()
         .and_then(|count| usize::try_from(count).ok())
         .context("Dock mode target lacks its Feature Report length")?;
-    let device = transport::open(path, bytes)?;
+    let device = transport::open_validated(path, bytes, std::rc::Rc::new(&guard))?;
     guard()?;
     let transaction = next_transaction(path, device_container_id, selected)?;
     let data =
@@ -355,7 +359,11 @@ pub(super) fn query(
         .as_u64()
         .and_then(|count| usize::try_from(count).ok())
         .context("缺少接收器实际 Feature Report 长度")?;
-    let device = transport::open(path, feature_bytes)?;
+    let device = transport::open_validated(
+        path,
+        feature_bytes,
+        std::rc::Rc::new(|| revalidate().map(|_| ())),
+    )?;
     revalidate()?;
     let transaction = next_transaction(path, device_container_id, &selected)?;
     let devices =

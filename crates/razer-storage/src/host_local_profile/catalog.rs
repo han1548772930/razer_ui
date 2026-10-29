@@ -207,7 +207,7 @@ struct Document {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
-enum ReportKind {
+pub(super) enum ReportKind {
     #[serde(rename = "razerKeyReportID")]
     RazerKey,
     #[serde(rename = "hardwareEventReportID")]

@@ -1,9 +1,171 @@
 //! Source-derived 90-byte Razer packet exchange plus the HID report ID.
 //! Product-specific callers must gate commands and decode the returned payload.
 //! The caller owns the observed collection, transaction counter and session lock.
-use crate::{backend::FeatureTransport, device_reads::DeviceReadCapability};
+use crate::{
+    backend::{ExchangeLease, ExchangeOptions, FeatureTransport},
+    device_reads::DeviceReadCapability,
+};
 use anyhow::{Context as _, ensure};
 use std::time::Duration;
+
+/// These exact factories have current source evidence for the navigator lock
+/// family. Other factories keep collection admission without claiming its key.
+pub(crate) fn with_protocol25_scope(
+    options: ExchangeOptions,
+    source_class: &str,
+) -> ExchangeOptions {
+    use crate::backend::{Protocol25Topology, SourceCommandScope};
+    let topology = match source_class {
+        "rzDevice25" => Protocol25Topology::Normal,
+        "rzDevice25DualLinkMouse" | "rzDevice25DualLinkKeyboard" => Protocol25Topology::DualLink,
+        _ => return options,
+    };
+    options.with_source_scope(SourceCommandScope::Protocol25 { topology })
+}
+
+/// Keep one admitted collection operation across all of its protocol retries.
+/// The source releases its HID mutex in finally, including protocol errors.
+/// Canceled or stale owners are rejected by the retained lease's finish path.
+pub(crate) fn with_exchange<T: FeatureTransport + ?Sized, R>(
+    transport: &T,
+    options: ExchangeOptions,
+    operation: impl FnOnce(&dyn FeatureTransport, &dyn ExchangeLease) -> anyhow::Result<R>,
+) -> anyhow::Result<R> {
+    let lease = transport.begin_exchange(options)?;
+    let result = operation(lease.transport(), lease.as_ref());
+    crate::backend::finish_exchange(lease, result)
+}
+
+pub(crate) fn finish_if_current<R>(
+    lease: Box<dyn ExchangeLease + '_>,
+    result: anyhow::Result<R>,
+    current: anyhow::Result<()>,
+) -> anyhow::Result<R> {
+    match current {
+        Ok(()) => crate::backend::finish_exchange(lease, result),
+        Err(validation) => {
+            drop(lease);
+            Err(crate::backend::finalization_failure(match result {
+                Ok(_) => validation,
+                Err(error) => error.context(format!(
+                    "HID exchange owner is no longer current: {validation:#}"
+                )),
+            }))
+        }
+    }
+}
+
+pub(crate) fn with_validated_exchange<T: FeatureTransport + ?Sized, R>(
+    transport: &T,
+    options: ExchangeOptions,
+    validate: &dyn Fn() -> anyhow::Result<()>,
+    operation: impl FnOnce(&dyn FeatureTransport, &dyn ExchangeLease) -> anyhow::Result<R>,
+) -> anyhow::Result<R> {
+    validate()?;
+    let lease = transport.begin_exchange_validated(options, std::rc::Rc::new(validate))?;
+    let result = operation(lease.transport(), lease.as_ref());
+    finish_if_current(lease, result, validate())
+}
+
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+pub struct CompletedFeatureExchange {
+    command: [u8; 3],
+    transaction: u8,
+    data: Vec<u8>,
+}
+
+impl CompletedFeatureExchange {
+    pub fn from_error(error: &anyhow::Error) -> Option<&Self> {
+        error.downcast_ref()
+    }
+
+    pub fn command(&self) -> [u8; 3] {
+        self.command
+    }
+
+    pub fn transaction(&self) -> u8 {
+        self.transaction
+    }
+
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
+}
+
+impl std::fmt::Display for CompletedFeatureExchange {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            formatter,
+            "Feature response decoded for command {:?}, transaction {}; exchange finalization failed",
+            self.command, self.transaction
+        )
+    }
+}
+
+/// Retain a protocol-validated response as diagnostic evidence when the final
+/// owner check or release fails. Such evidence does not authorize publishing
+/// state to the current connection or continuing the command sequence.
+pub(crate) fn acknowledged_reply(result: &anyhow::Result<Vec<u8>>) -> Option<&[u8]> {
+    match result {
+        Ok(data) => Some(data),
+        Err(error) => acknowledged_error(error),
+    }
+}
+
+pub(crate) fn acknowledged_error(error: &anyhow::Error) -> Option<&[u8]> {
+    error
+        .downcast_ref::<CompletedFeatureExchange>()
+        .map(|completed| completed.data.as_slice())
+}
+
+/// The operation must return only after its transport guard, transaction,
+/// status and payload-length checks have accepted the response.
+pub(crate) fn with_validated_feature_reply<T: FeatureTransport + ?Sized>(
+    transport: &T,
+    options: ExchangeOptions,
+    command: [u8; 3],
+    transaction: u8,
+    validate: &dyn Fn() -> anyhow::Result<()>,
+    operation: impl FnOnce(&dyn FeatureTransport, &dyn ExchangeLease) -> anyhow::Result<Vec<u8>>,
+) -> anyhow::Result<Vec<u8>> {
+    validate()?;
+    let lease = transport.begin_exchange_validated(options, std::rc::Rc::new(validate))?;
+    let result = operation(lease.transport(), lease.as_ref());
+    let current = validate();
+    finish_feature_reply(lease, result, current, command, transaction)
+}
+
+pub(crate) fn with_feature_reply<T: FeatureTransport + ?Sized>(
+    transport: &T,
+    options: ExchangeOptions,
+    command: [u8; 3],
+    transaction: u8,
+    operation: impl FnOnce(&dyn FeatureTransport, &dyn ExchangeLease) -> anyhow::Result<Vec<u8>>,
+) -> anyhow::Result<Vec<u8>> {
+    let lease = transport.begin_exchange(options)?;
+    let result = operation(lease.transport(), lease.as_ref());
+    finish_feature_reply(lease, result, Ok(()), command, transaction)
+}
+
+fn finish_feature_reply(
+    lease: Box<dyn ExchangeLease + '_>,
+    result: anyhow::Result<Vec<u8>>,
+    current: anyhow::Result<()>,
+    command: [u8; 3],
+    transaction: u8,
+) -> anyhow::Result<Vec<u8>> {
+    match result {
+        Ok(data) => match finish_if_current(lease, Ok(()), current) {
+            Ok(()) => Ok(data),
+            Err(error) => Err(error.context(CompletedFeatureExchange {
+                command,
+                transaction,
+                data,
+            })),
+        },
+        Err(error) => finish_if_current(lease, Err(error), current),
+    }
+}
 
 pub(crate) fn exchange(
     device: &dyn FeatureTransport,
@@ -115,61 +277,82 @@ fn exchange_inner(
     }
     outgoing[9..9 + payload.len()].copy_from_slice(payload);
     outgoing[89] = outgoing[3..89].iter().fold(0, |sum, byte| sum ^ byte);
-    let mut last_error = "No Feature response received".to_owned();
-    for _ in 0..cap.max_retry_out {
-        std::thread::sleep(Duration::from_millis(cap.sleep_between_out_ms));
-        validate()?;
-        observe_send();
-        let sent = device.send_feature_at_collection_max(&outgoing);
-        validate()?;
-        if let Err(error) = sent {
-            last_error = format!("{error:#}");
-            continue;
-        }
-        std::thread::sleep(Duration::from_millis(cap.sleep_between_out_in_ms));
-        for attempt in 0..cap.max_retry_in {
-            if attempt > 0 {
-                std::thread::sleep(Duration::from_millis(cap.sleep_between_in_ms));
-            }
-            validate()?;
-            let mut incoming = [0u8; 91];
-            incoming[0] = get_report_id;
-            let received = device.get_feature_at_collection_max(&mut incoming);
-            validate()?;
-            let count = match received {
-                Ok(count) => count,
-                Err(error) => {
+    with_validated_feature_reply(
+        device,
+        with_protocol25_scope(
+            ExchangeOptions::mutex_out(Duration::from_millis(cap.sleep_between_out_ms)),
+            &cap.source_class,
+        ),
+        command,
+        transaction,
+        validate,
+        |device, lease| {
+            let mut last_error = "No Feature response received".to_owned();
+            for out_attempt in 0..cap.max_retry_out {
+                validate()?;
+                observe_send();
+                let sent = device.send_feature_at_collection_max(&outgoing);
+                validate()?;
+                if let Err(error) = sent {
                     last_error = format!("{error:#}");
-                    break;
-                }
-            };
-            ensure!(count == incoming.len(), "Feature response is truncated");
-            // The original host slices off the returned prefix without checking
-            // it against the request's interface/report selector.
-            let packet = &incoming[1..];
-            if packet[1] != transaction || packet[6..8] != command[1..] {
-                last_error = "Feature response transaction or command does not match".into();
-                break;
-            }
-            match packet[0] {
-                1 => {
-                    last_error = "Device is busy".into();
                     continue;
                 }
-                2 => {}
-                0 | 3 | 4 => {
-                    last_error = format!("Feature response status {}", packet[0]);
-                    break;
+                std::thread::sleep(Duration::from_millis(cap.sleep_between_out_in_ms));
+                for attempt in 0..cap.max_retry_in {
+                    if attempt > 0 {
+                        std::thread::sleep(Duration::from_millis(cap.sleep_between_in_ms));
+                    }
+                    validate()?;
+                    let mut incoming = [0u8; 91];
+                    incoming[0] = get_report_id;
+                    let received = device.get_feature_at_collection_max(&mut incoming);
+                    validate()?;
+                    let count = match received {
+                        Ok(count) => count,
+                        Err(error) => {
+                            last_error = format!("{error:#}");
+                            break;
+                        }
+                    };
+                    ensure!(count == incoming.len(), "Feature response is truncated");
+                    // The original host slices off the returned prefix without checking
+                    // it against the request's interface/report selector.
+                    let packet = &incoming[1..];
+                    if packet[1] != transaction || packet[6..8] != command[1..] {
+                        last_error =
+                            "Feature response transaction or command does not match".into();
+                        break;
+                    }
+                    match packet[0] {
+                        1 => {
+                            last_error = "Device is busy".into();
+                            continue;
+                        }
+                        2 => {}
+                        0 | 3 | 4 => {
+                            last_error = format!("Feature response status {}", packet[0]);
+                            break;
+                        }
+                        state => anyhow::bail!(
+                            "Feature command is unsupported or returned status {state}"
+                        ),
+                    }
+                    let length = usize::from(packet[5]);
+                    ensure!(
+                        length <= 80,
+                        "Feature response data exceeds the packet buffer"
+                    );
+                    return Ok(packet[8..8 + length].to_vec());
                 }
-                state => anyhow::bail!("Feature command is unsupported or returned status {state}"),
+                if out_attempt + 1 < cap.max_retry_out {
+                    lease.retry_release()?;
+                }
             }
-            let length = usize::from(packet[5]);
-            ensure!(
-                length <= 80,
-                "Feature response data exceeds the packet buffer"
-            );
-            return Ok(packet[8..8 + length].to_vec());
-        }
-    }
-    Err(anyhow::anyhow!(last_error)).context("Source Feature command retries exhausted")
+            Err(anyhow::anyhow!(last_error)).context("Source Feature command retries exhausted")
+        },
+    )
 }
+
+#[cfg(test)]
+#[path = "feature_exchange_tests.rs"]
+pub(crate) mod tests;

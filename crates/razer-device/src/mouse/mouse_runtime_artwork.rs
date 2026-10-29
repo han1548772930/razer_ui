@@ -585,6 +585,30 @@ pub fn ble_query_frame(transaction: u8) -> [u8; 8] {
     ]
 }
 
+const BLE_COMMAND_HEADER_LENGTH: usize = 8;
+const BLE_COMMAND_DATA_LENGTH: usize = 20;
+
+/// Protocol30 dispatches the header separately, then bare data fragments in
+/// order. The callback returns after dispatch; GATT completion is asynchronous.
+pub fn write_ble_command(
+    frame: &[u8],
+    validate: &dyn Fn() -> anyhow::Result<()>,
+    mut write: impl FnMut(&[u8]) -> anyhow::Result<()>,
+) -> anyhow::Result<()> {
+    ensure!(
+        frame.len() >= BLE_COMMAND_HEADER_LENGTH && frame[0] < 31,
+        "Protocol30 command header/transaction differs"
+    );
+    let (header, data) = frame.split_at(BLE_COMMAND_HEADER_LENGTH);
+    validate()?;
+    write(header)?;
+    for fragment in data.chunks(BLE_COMMAND_DATA_LENGTH) {
+        validate()?;
+        write(fragment)?;
+    }
+    Ok(())
+}
+
 /// Current host Protocol30 strategy receives a header notification followed by
 /// bare data fragments. Byte7 is the response status; it is not a HID report.
 #[derive(Debug)]
@@ -621,7 +645,10 @@ impl BleResponse {
             if packet.first() != Some(&self.transaction) {
                 return Ok(None);
             }
-            ensure!(packet.len() >= 8, "Protocol30 response header is truncated");
+            ensure!(
+                packet.len() >= BLE_COMMAND_HEADER_LENGTH,
+                "Protocol30 response header is truncated"
+            );
             if packet[7] != 2 {
                 return Err(BleCommandStatus(packet[7]).into());
             }
@@ -646,7 +673,7 @@ impl BleResponse {
         // actual eight-byte boundary when the declared length does not match.
         let length = usize::from(full[1]) | usize::from(full[2]) << 8 | usize::from(full[3]) << 16;
         let offset = if length > 0 && full.len().saturating_sub(20) != length {
-            8
+            BLE_COMMAND_HEADER_LENGTH
         } else {
             20.min(full.len())
         };
@@ -658,6 +685,10 @@ impl BleResponse {
         Ok(Some(payload))
     }
 }
+
+#[cfg(test)]
+#[path = "mouse_runtime_artwork_ble_tests.rs"]
+mod ble_transfer_tests;
 
 #[cfg(test)]
 mod tests {

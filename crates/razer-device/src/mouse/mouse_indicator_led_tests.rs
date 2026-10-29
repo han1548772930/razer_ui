@@ -90,6 +90,28 @@ fn next() -> impl FnMut() -> anyhow::Result<u8> {
 }
 
 #[test]
+fn finish_failure_retains_the_led_ack_without_confirming_a_configuration_or_quality() {
+    let device = Simulated::new([Reply::Data(2, vec![7, 8])]);
+    let leased = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);
+    let report = execute(
+        239,
+        &leased,
+        &cap(239),
+        &Change::SetRaw(vec![0, 1, 2]),
+        next(),
+        || Ok(()),
+    )
+    .unwrap();
+    assert!(report.error.as_deref().unwrap().contains("release failed"));
+    assert!(report.setter_attempted && report.setter_sent && report.setter_acknowledged);
+    assert_eq!(report.acknowledgements.len(), 1);
+    assert_eq!(report.acknowledgements[0].data, [7, 8]);
+    assert!(report.configuration.is_none() && report.quality.is_none());
+    assert!(report.source_quality_update.is_none());
+    assert_eq!(device.sent.borrow().len(), 1);
+}
+
+#[test]
 fn configuration_roundtrip_sorts_source_indexes_and_rejects_invalid_profiles() {
     let configuration: Configuration = serde_json::from_value(serde_json::json!([
         {"index":2,"ledStatus":4},{"index":0,"ledStatus":0},{"index":1,"ledStatus":2}]))

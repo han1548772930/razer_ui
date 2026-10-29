@@ -416,12 +416,12 @@ impl<'a> MouseStorage<'a> {
             validate,
             &mut || step.attempted = true,
         );
+        if let Some(data) = crate::feature_exchange::acknowledged_reply(&value) {
+            step.reply_received = true;
+            step.response = data.to_vec();
+        }
         match value {
-            Ok(value) => {
-                step.reply_received = true;
-                step.response = value.clone();
-                Ok(value)
-            }
+            Ok(value) => Ok(value),
             Err(error) => {
                 step.error = Some(format!("{error:#}"));
                 Err(error)

@@ -331,8 +331,11 @@ fn marci_worker_cancellation_after_transfer_restores_without_reusing_cancellatio
     let (result, status, calls) = exercise(Faults::default());
     assert!(result.unwrap_err().is::<Canceled>());
     assert_eq!(status.frames_submitted, 1);
+    assert_eq!(status.last_output.as_ref().unwrap().transferred_bytes, 781);
+    assert!(status.last_output.as_ref().unwrap().complete);
     assert!(status.normal_mode_confirmed && status.exit_effect_confirmed);
-    assert!(status.cleanup_errors.is_empty());
+    assert_eq!(status.cleanup_errors.len(), 1);
+    assert!(status.cleanup_errors[0].contains("HID exchange release failed"));
     assert_exit_order(&calls);
 }
 

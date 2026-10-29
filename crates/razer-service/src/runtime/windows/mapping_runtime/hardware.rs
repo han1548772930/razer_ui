@@ -525,6 +525,10 @@ impl Owner {
             .collect())
     }
 
+    pub(super) fn cleanup_pending(&self) -> bool {
+        self.worker.is_some()
+    }
+
     pub fn shutdown(&mut self) -> Result<()> {
         let Some(worker) = self.worker.take() else {
             return self

@@ -121,6 +121,39 @@ fn stage_draft() -> crate::mouse_dpi_stages::DpiStagesDraft {
 }
 
 #[test]
+fn final_peer_failure_retains_the_idle_ack_and_readback_as_failed_request_diagnostics() {
+    let transport = Transport::new([
+        online(),
+        Reply::Data(vec![7, 8]),
+        Reply::Data(vec![0, 120]),
+        Reply::Data(vec![1, 0, 0, 183]),
+    ]);
+    let error = route_for(183, DeviceReadKind::Idle)
+        .apply_idle(&transport, 120, transactions(), || Ok(()))
+        .err()
+        .expect("a changed peer cannot publish the completed task as current");
+    let progress = error
+        .downcast_ref::<ObservationFailure<crate::device_writes::DeviceWriteResult>>()
+        .unwrap();
+    assert_eq!(progress.receiver_before, [(183, 1)]);
+    assert_eq!(
+        progress.receiver_after.as_deref(),
+        Some([(183, 0)].as_slice())
+    );
+    assert_eq!(progress.reading.acknowledged.as_ref().unwrap().data, [7, 8]);
+    assert!(matches!(
+        progress.reading.observed,
+        Some(DeviceReadValue::Idle { raw_time: 120 })
+    ));
+    assert_eq!(transport.outputs.borrow().len(), 4);
+    assert!(transport.inputs.borrow().is_empty());
+    let diagnostic = serde_json::to_vec(progress).unwrap();
+    let restored: ObservationFailure<crate::device_writes::DeviceWriteResult> =
+        serde_json::from_slice(&diagnostic).unwrap();
+    assert_eq!(restored.reading.acknowledged, progress.reading.acknowledged);
+}
+
+#[test]
 fn receiver_dpi_stage_get_uses_profile_one_and_preserves_nonzero_report_ids() {
     for physical in [183, 164, 179, 241] {
         let transport = Transport::new([online(), Reply::Data(stage_data()), online()]);

@@ -45,7 +45,8 @@ pub(super) fn request(target: &DeviceReadTarget, change: &Change) -> anyhow::Res
             bytes == cap.report_bytes,
             "Power Feature Report size differs"
         );
-        let device = hid_transport::open(&target.path, bytes)?;
+        let device =
+            hid_transport::open_validated(&target.path, bytes, std::rc::Rc::new(&validate))?;
         let mut next = || transaction(target, &cap);
         if relay.is_none() {
             let IdentityLookup::Unique(identity) =

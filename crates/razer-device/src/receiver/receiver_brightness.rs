@@ -103,10 +103,26 @@ pub fn apply(
         error: None,
     };
     let result = (|| -> anyhow::Result<()> {
-        let acknowledged = parse(&exchange(device, cap, SET, &[PROFILE, REGION, raw],
-            next_transaction()?, &validate, &mut progress)
-            .context("Receiver brightness write may have reached the device; no acknowledgement confirmed")?)?;
-        submission.acknowledged = Some(acknowledged);
+        let reply = exchange(
+            device,
+            cap,
+            SET,
+            &[PROFILE, REGION, raw],
+            next_transaction()?,
+            &validate,
+            &mut progress,
+        );
+        let parsed = progress
+            .acknowledged_reply
+            .as_deref()
+            .map(parse)
+            .transpose();
+        if let Ok(Some(acknowledged)) = &parsed {
+            submission.acknowledged = Some(acknowledged.clone());
+        }
+        reply.context("Receiver brightness write exchange failed; inspect acknowledgement diagnostics before reading again")?;
+        submission.acknowledged =
+            Some(parsed?.context("Receiver brightness returned no accepted reply")?);
         // Current TaskRunner awaits setBrightness and then publishes requested
         // brightness. It does not issue a second getter or compare its value.
         submission.source_completed = true;

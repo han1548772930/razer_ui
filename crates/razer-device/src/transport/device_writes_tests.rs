@@ -84,6 +84,66 @@ fn step(header: [u8; 3], payload: &[u8], reply: Option<&[u8]>) -> Step {
 }
 
 #[test]
+fn setter_finish_failure_preserves_raw_or_parsed_ack_without_starting_readback() {
+    for dpi in [false, true] {
+        let device = if dpi {
+            Transport::new([
+                step([7, 4, 133], &[0], Some(&[0, 3, 32, 3, 32, 0, 0])),
+                step(
+                    [7, 4, 5],
+                    &[0, 6, 64, 12, 128, 0, 0],
+                    Some(&[0, 6, 64, 12, 128, 0, 0]),
+                ),
+            ])
+        } else {
+            Transport::new([step([2, 7, 3], &[0, 120], Some(&[7, 8]))])
+        };
+        let finish = || {
+            let sent = device.sent.borrow();
+            anyhow::ensure!(
+                sent.last().unwrap()[8] >= 128,
+                "simulated setter release failed"
+            );
+            Ok(())
+        };
+        let leased =
+            crate::feature_exchange::tests::ExchangeProbe::with_finish_check(&device, &finish);
+        let setting = if dpi {
+            DeviceWriteSetting::Dpi { x: 1600, y: 3200 }
+        } else {
+            DeviceWriteSetting::Idle { raw_time: 120 }
+        };
+        let mut transaction = 0;
+        let error = apply(
+            &leased,
+            &cap(),
+            &setting,
+            || {
+                transaction += 1;
+                Ok(transaction)
+            },
+            || Ok(()),
+        )
+        .unwrap_err();
+        let progress = error.downcast_ref::<DeviceWriteFailure>().unwrap();
+        assert_eq!(progress.requested, setting);
+        assert!(progress.observed.is_none());
+        if dpi {
+            assert!(matches!(
+                progress.setter_reply,
+                Some(DeviceReadValue::Dpi { x: 1600, y: 3200 })
+            ));
+            assert!(progress.acknowledged.is_none());
+        } else {
+            assert_eq!(progress.acknowledged.as_ref().unwrap().data, [7, 8]);
+        }
+        assert!(crate::backend::exchange_finalization_failed(&error));
+        assert_eq!(device.sent.borrow().len(), if dpi { 2 } else { 1 });
+        assert!(device.steps.borrow().is_empty());
+    }
+}
+
+#[test]
 fn source_dpi_write_requires_getter_setter_ack_and_separate_matching_readback() {
     let device = Transport::new([
         step([7, 4, 133], &[0], Some(&[0, 3, 32, 3, 32, 0, 0])),
@@ -308,16 +368,14 @@ fn unsupported_dpi_polling_and_cancelled_routes_never_send_a_setter() {
         assert!(device.sent.borrow().is_empty());
     }
     let device = Transport::new([step([2, 0, 142], &[1], Some(&[1, 8]))]);
-    let validation = Cell::new(0);
     let result = apply(
         &device,
         &cap(),
         &DeviceWriteSetting::Polling { hz: 1000 },
         || Ok(1),
         || {
-            validation.set(validation.get() + 1);
             anyhow::ensure!(
-                validation.get() < 5,
+                device.reads.get() == 0,
                 "scope cancelled after previous observation"
             );
             Ok(())

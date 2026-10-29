@@ -1,7 +1,7 @@
 //! Cancellable analog task worker. Polling remains responsive while HID is busy.
 use anyhow::{Context as _, ensure};
 use razer_device::{
-    backend::{HidBackend, HidNode},
+    backend::HidNode,
     device_identity::{self, IdentityLookup},
     keyboard_submission::{self, Intent, Target},
 };
@@ -168,7 +168,7 @@ fn collection(
         Ok(())
     };
     guard()?;
-    let device = with_backend(|backend| backend.open(node))?;
+    let device = with_backend(|backend| backend.open_validated(node, std::rc::Rc::new(&guard)))?;
     let mut sequence = 0;
     let receipt = keyboard_submission::submit(
         device.as_ref(),

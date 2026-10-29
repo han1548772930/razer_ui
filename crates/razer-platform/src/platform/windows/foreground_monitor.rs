@@ -321,6 +321,7 @@ pub(crate) struct Listener {
     subscribers: Arc<Mutex<BTreeSet<String>>>,
     failures: Arc<Mutex<Vec<String>>>,
     pending: BTreeMap<String, Vec<ForegroundWindow>>,
+    terminal_failure: Option<String>,
 }
 
 impl Listener {
@@ -447,6 +448,7 @@ impl Listener {
                 subscribers,
                 failures,
                 pending: BTreeMap::new(),
+                terminal_failure: None,
             }),
             Err(error) => {
                 let _ = worker.join();
@@ -498,28 +500,114 @@ impl Listener {
     }
 
     pub(crate) fn stop(&mut self) -> Result<()> {
-        let Some(worker) = self.worker.as_ref() else {
-            return Ok(());
-        };
-        if !worker.is_finished() {
+        self.stop_with(|window| {
             ensure!(
-                unsafe { PostMessageW(self.window as Window, 0x12, 0, 0) } != 0,
+                unsafe { PostMessageW(window as Window, 0x12, 0, 0) } != 0,
                 "foreground stop PostMessageW failed: {}",
                 unsafe { GetLastError() }
             );
+            Ok(())
+        })
+    }
+
+    pub(crate) fn cleanup_pending(&self) -> bool {
+        self.worker.is_some()
+    }
+
+    fn stop_with(&mut self, post_stop: impl FnOnce(usize) -> Result<()>) -> Result<()> {
+        let Some(worker) = self.worker.as_ref() else {
+            return match &self.terminal_failure {
+                Some(error) => Err(anyhow::anyhow!("{error}")),
+                None => Ok(()),
+            };
+        };
+        if !worker.is_finished() {
+            post_stop(self.window)?;
         }
         if let Some(worker) = self.worker.take() {
-            worker
-                .join()
-                .map_err(|_| anyhow::anyhow!("foreground monitor thread panicked"))?;
+            if worker.join().is_err() {
+                self.terminal_failure = Some("foreground monitor thread panicked".to_owned());
+            }
         }
         self.window = 0;
-        Ok(())
+        let failures = self
+            .failures
+            .lock()
+            .map_err(|_| anyhow::anyhow!("foreground cleanup diagnostics poisoned"))?;
+        if !failures.is_empty() {
+            let failure = failures.join("; ");
+            self.terminal_failure = Some(match self.terminal_failure.take() {
+                Some(previous) => format!("{previous}; {failure}"),
+                None => failure,
+            });
+        }
+        match &self.terminal_failure {
+            Some(error) => Err(anyhow::anyhow!("{error}")),
+            None => Ok(()),
+        }
     }
 }
 
 impl Drop for Listener {
     fn drop(&mut self) {
         let _ = self.stop();
+    }
+}
+
+#[cfg(test)]
+mod cleanup_tests {
+    use super::*;
+
+    fn listener(worker: JoinHandle<()>) -> Listener {
+        Listener {
+            window: 17,
+            worker: Some(worker),
+            events: Arc::new(Mutex::new(VecDeque::new())),
+            subscribers: Arc::new(Mutex::new(BTreeSet::new())),
+            failures: Arc::new(Mutex::new(Vec::new())),
+            pending: BTreeMap::new(),
+            terminal_failure: None,
+        }
+    }
+
+    #[test]
+    fn failed_stop_message_retains_the_same_worker_until_retry_joins() {
+        let (release, released) = mpsc::channel();
+        let worker = thread::spawn(move || {
+            released.recv().unwrap();
+        });
+        let mut owner = listener(worker);
+        assert!(
+            owner
+                .stop_with(|_| anyhow::bail!("post stop failed"))
+                .is_err()
+        );
+        assert!(owner.cleanup_pending());
+        assert_eq!(owner.window, 17);
+        owner
+            .stop_with(|_| {
+                release.send(()).unwrap();
+                Ok(())
+            })
+            .unwrap();
+        assert!(!owner.cleanup_pending());
+        assert_eq!(owner.window, 0);
+        owner
+            .stop_with(|_| panic!("joined worker cannot receive another message"))
+            .unwrap();
+    }
+
+    #[test]
+    fn joined_worker_panic_stays_failed_after_the_worker_is_gone() {
+        let mut owner = listener(thread::spawn(|| {
+            panic!("simulated foreground cleanup panic")
+        }));
+        let error = owner.stop_with(|_| Ok(())).unwrap_err();
+        assert!(error.to_string().contains("thread panicked"));
+        assert!(!owner.cleanup_pending());
+        let repeated = owner
+            .stop_with(|_| panic!("the worker is already joined"))
+            .unwrap_err();
+        assert_eq!(repeated.to_string(), error.to_string());
     }
 }

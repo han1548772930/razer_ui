@@ -138,6 +138,10 @@ impl Owner {
             }
         }
     }
+    pub(crate) fn cleanup_pending(&self) -> bool {
+        self.worker.is_some()
+    }
+
     pub(crate) fn shutdown(&mut self) -> Result<()> {
         if let Some(worker) = self.worker.take() {
             let _ = self.stop.send(());

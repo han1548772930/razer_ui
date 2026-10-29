@@ -62,6 +62,11 @@ impl PeerHid {
             self.support.claim_interface
         };
         Channel {
+            source_scope: (self.support.rz_device_name == PeerDeviceFactory::RzDevice25).then_some(
+                crate::backend::SourceCommandScope::Protocol25 {
+                    topology: crate::backend::Protocol25Topology::Normal,
+                },
+            ),
             report_id: outgoing,
             get_report_id: self.support.claim_interface,
             transaction_prefix: if self.support.rz_device_name
@@ -133,6 +138,9 @@ impl PeerHid {
                         edition: data[1],
                         firmware: data[2],
                     });
+                }
+                Err(error) if crate::backend::exchange_finalization_failed(&error) => {
+                    return Err(error);
                 }
                 Err(error) => last = Some(error),
             }
@@ -243,25 +251,38 @@ impl PeerHid {
             "Peer native frame identity or geometry differs"
         );
         let mut submitted = 0;
-        for row in 0..rows {
-            let mut payload = vec![0, frame.region_id, row, 0, columns - 1];
-            let start = usize::from(row) * usize::from(columns) * 3;
-            payload.extend_from_slice(&frame.frame[start..start + usize::from(columns) * 3]);
-            // setChromaFrame's checkUSBTransferIn defaults false. A successful
-            // write is a submission receipt, not a fabricated Feature ACK.
-            let transaction = self.next(false);
-            let mut report = [0u8; 91];
-            report[0] = self.channel(false).report_id;
-            report[2] = transaction;
-            report[6..9].copy_from_slice(&[payload.len() as u8, 15, 3]);
-            report[9..9 + payload.len()].copy_from_slice(&payload);
-            report[89] = report[3..89].iter().fold(0, |sum, byte| sum ^ byte);
-            validate()?;
-            device.send_feature_at_collection_max(&report)?;
-            validate()?;
-            submitted += 1;
-        }
-        Ok(submitted)
+        crate::feature_exchange::with_validated_exchange(
+            device,
+            crate::backend::ExchangeOptions::batch(),
+            validate,
+            |device, _| {
+                for row in 0..rows {
+                    let mut payload = vec![0, frame.region_id, row, 0, columns - 1];
+                    let start = usize::from(row) * usize::from(columns) * 3;
+                    payload
+                        .extend_from_slice(&frame.frame[start..start + usize::from(columns) * 3]);
+                    // setChromaFrame's checkUSBTransferIn defaults false. A successful
+                    // write is a submission receipt, not a fabricated Feature ACK.
+                    let transaction = self.next(false);
+                    let mut report = [0u8; 91];
+                    report[0] = self.channel(false).report_id;
+                    report[2] = transaction;
+                    report[6..9].copy_from_slice(&[payload.len() as u8, 15, 3]);
+                    report[9..9 + payload.len()].copy_from_slice(&payload);
+                    report[89] = report[3..89].iter().fold(0, |sum, byte| sum ^ byte);
+                    validate()?;
+                    device.send_feature_at_collection_max(&report)?;
+                    submitted += 1;
+                    validate()?;
+                }
+                Ok(submitted)
+            },
+        )
+        .map_err(|error| {
+            error.context(crate::ReceiverFrameSubmissionFailure {
+                reports_submitted: submitted,
+            })
+        })
     }
 }
 

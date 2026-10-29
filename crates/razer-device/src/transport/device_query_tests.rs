@@ -1,10 +1,7 @@
 //! Current sendCommand/_getUSBTransferInResult retry paths, exercised without HID.
 use super::*;
 use crate::device_reads::{DeviceReadKind, DeviceReadValue};
-use std::{
-    cell::{Cell, RefCell},
-    collections::VecDeque,
-};
+use std::{cell::RefCell, collections::VecDeque};
 
 enum Input {
     Status(u8),
@@ -118,14 +115,47 @@ fn truncated_report_cannot_be_promoted_to_success_or_retried_as_complete() {
 fn validation_failure_after_input_discards_value() {
     let (cap, command) = battery_cap();
     let transport = Transport::new([Input::Status(2)]);
-    let validations = Cell::new(0);
     let result = read_device(&transport, &cap, &command, 7, || {
-        validations.set(validations.get() + 1);
-        anyhow::ensure!(validations.get() < 3, "route disappeared after IN");
+        anyhow::ensure!(
+            !transport.inputs.borrow().is_empty(),
+            "route disappeared after IN"
+        );
         Ok(())
     });
+    assert!(completed_reading(&result).is_none());
+    assert_eq!(
+        result.unwrap_err().root_cause().to_string(),
+        "route disappeared after IN"
+    );
+    assert_eq!(transport.outputs.borrow().len(), 1);
+    assert!(transport.inputs.borrow().is_empty());
+}
+
+#[test]
+fn a_release_error_retains_a_decoded_reply_only_as_failure_diagnostics() {
+    let (cap, command) = battery_cap();
+    let transport = Transport::new([Input::Status(2)]);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&transport);
+    let result = read_device(&probe, &cap, &command, 7, || Ok(()));
     assert!(result.is_err());
-    assert_eq!(validations.get(), 3);
+    assert!(matches!(
+        completed_reading(&result),
+        Some(DeviceReadValue::Battery { percent: 100 })
+    ));
+    assert!(format!("{:#}", result.unwrap_err()).contains("simulated explicit release failed"));
+    assert_eq!(transport.outputs.borrow().len(), 1);
+    assert!(transport.inputs.borrow().is_empty());
+}
+
+#[test]
+fn a_release_error_cannot_turn_a_truncated_reply_into_decoded_evidence() {
+    let (cap, command) = battery_cap();
+    let transport = Transport::new([Input::Short]);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&transport);
+    let result = read_device(&probe, &cap, &command, 7, || Ok(()));
+    assert!(result.is_err());
+    assert!(completed_reading(&result).is_none());
+    assert_eq!(transport.outputs.borrow().len(), 1);
     assert!(transport.inputs.borrow().is_empty());
 }
 

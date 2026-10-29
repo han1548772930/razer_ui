@@ -54,51 +54,62 @@ pub(crate) fn exchange_with_timing<T: FeatureTransport + ?Sized>(
     max_retry_in: u8,
 ) -> anyhow::Result<Vec<u8>> {
     ensure!(max_retry_in > 0, "Controller reply retry count is zero");
-    let mut error = String::from("No controller Feature reply");
-    for _ in 0..20 {
-        wait(out_delay)?;
-        if let Err(e) = transport.send_feature_at_collection_max(request) {
-            error = e.to_string();
-            continue;
-        }
-        wait(out_in_delay)?;
-        for retry in 0..max_retry_in {
-            if retry != 0 {
-                wait(in_delay)?;
-            }
-            let mut response = [0; 91];
-            response[0] = request[0];
-            let count = match transport.get_feature_at_collection_max(&mut response) {
-                Ok(count) => count,
-                Err(e) => {
+    crate::feature_exchange::with_feature_reply(
+        transport,
+        crate::backend::ExchangeOptions::mutex_out(out_delay),
+        [request[6], request[7], request[8]],
+        request[2],
+        |transport, lease| {
+            let mut error = String::from("No controller Feature reply");
+            for out_attempt in 0..20 {
+                wait(Duration::ZERO)?;
+                if let Err(e) = transport.send_feature_at_collection_max(request) {
                     error = e.to_string();
-                    break;
+                    continue;
                 }
-            };
-            ensure!(
-                count == response.len(),
-                "Truncated controller Feature report"
-            );
-            // UsbRzDeviceAction removes the returned Report ID before the
-            // current middleware checks transaction/class/command.
-            if response[2] != request[2] || response[7..9] != request[7..9] {
-                error = "Stale controller response".into();
-                break;
+                wait(out_in_delay)?;
+                for retry in 0..max_retry_in {
+                    if retry != 0 {
+                        wait(in_delay)?;
+                    }
+                    let mut response = [0; 91];
+                    response[0] = request[0];
+                    let count = match transport.get_feature_at_collection_max(&mut response) {
+                        Ok(count) => count,
+                        Err(e) => {
+                            error = e.to_string();
+                            break;
+                        }
+                    };
+                    ensure!(
+                        count == response.len(),
+                        "Truncated controller Feature report"
+                    );
+                    // UsbRzDeviceAction removes the returned Report ID before the
+                    // current middleware checks transaction/class/command.
+                    if response[2] != request[2] || response[7..9] != request[7..9] {
+                        error = "Stale controller response".into();
+                        break;
+                    }
+                    match response[1] {
+                        0 | 3 | 4 => {
+                            error = format!("Controller retry status {}", response[1]);
+                            break;
+                        }
+                        1 => error = "Controller busy".into(),
+                        2 => {
+                            let size = usize::from(response[6]);
+                            ensure!(size <= 80, "Invalid controller response payload length");
+                            return Ok(response[9..9 + size].to_vec());
+                        }
+                        status => bail!("Controller command rejected with status {status}"),
+                    }
+                }
+                if out_attempt + 1 < 20 {
+                    lease.retry_release()?;
+                }
             }
-            match response[1] {
-                0 | 3 | 4 => {
-                    error = format!("Controller retry status {}", response[1]);
-                    break;
-                }
-                1 => error = "Controller busy".into(),
-                2 => {
-                    let size = usize::from(response[6]);
-                    ensure!(size <= 80, "Invalid controller response payload length");
-                    return Ok(response[9..9 + size].to_vec());
-                }
-                status => bail!("Controller command rejected with status {status}"),
-            }
-        }
-    }
-    bail!("Controller Feature retries exhausted: {error}")
+            bail!("Controller Feature retries exhausted: {error}")
+        },
+    )
 }

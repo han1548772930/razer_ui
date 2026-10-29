@@ -1,5 +1,6 @@
 //! Source-confirmed local profile selection. The Chromium store is only read;
 //! imported settings retain provenance and are never device observations.
+pub mod ble226;
 mod catalog;
 mod initialization;
 mod leveldb;
@@ -202,7 +203,7 @@ pub fn stages_without_host(device: &Device) -> Result<Option<DpiStagesDraft>> {
         .map(|entry| entry.stages.clone()))
 }
 pub fn owns_field(field: &str) -> bool {
-    field == OWNERSHIP_KEY
+    field == OWNERSHIP_KEY || ble226::owns_field(field)
 }
 pub fn accept_saved(device: &mut Device, previous: &Device, snapshot: &Device) -> Result<()> {
     let value = |device: &Device| {

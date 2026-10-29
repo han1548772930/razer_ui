@@ -23,7 +23,7 @@ import threading
 # Python's isolated worker excludes the script directory from its import path.
 if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-from host import inspect_pe
+from host import host_release_metadata, inspect_pe, verified_host_release_receipt
 
 
 SOURCE_SHA256 = "f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f"
@@ -73,14 +73,6 @@ _LIGHTING_SHA256 = "cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b7
 _LIGHTING_INPUT = f".analysis/inputs/host-current/blobs/{_LIGHTING_SHA256}/RzLightingEngineApi_v4.0.55.0.dll"
 _LIGHTING_JS = ".analysis/inputs/frontend/synapse-lighting-engine-current/raw/apps.razer.com/synapse/lighting-engine/static/js/main.a383ea9e.js"
 _LIGHTING_JS_SHA256 = "c82c7074e5da8abcffbff95f23a6b962c1e14b04586715b9d4b7a6f11fe9e6d2"
-_LIGHTING_MANIFESTS = (
-    (".analysis/inputs/host-current/blobs/347be6a819372010ebfd04c4ed6436f8f795b91e761dcee1e84c8e0764d7d422/installer-manifest.json",
-     "https://apps.razer.com/background-manager/installer-manifest.json",
-     "347be6a819372010ebfd04c4ed6436f8f795b91e761dcee1e84c8e0764d7d422"),
-    (".analysis/inputs/host-current/blobs/47feea84a40638fbe9f5091a896d878251f2593d39921c89fb26dd589f75f4f8/manifest-1.0.136.json",
-     "https://apps.razer.com/background-manager/manifests/manifest-1.0.136.json",
-     "47feea84a40638fbe9f5091a896d878251f2593d39921c89fb26dd589f75f4f8"),
-)
 _LIGHTING_EXPORTS = {
     "SetOperatingMode": ("0x32d00", "void(int32)"),
     "PollEvents": ("0x32d90", "malloc char*(void)"),
@@ -109,54 +101,61 @@ _LIGHTING_FUNCTIONS = (
 )
 
 
+def _lighting_release_evidence(root, raw):
+    """Bind audited DLL bytes to the verified current stable declaration closure."""
+    import analysis
+    if Path(root).resolve(strict=True) != analysis.ROOT.resolve(strict=True):
+        raise ValueError("Lighting source and release evidence require the same workspace root")
+    metadata = host_release_metadata()
+    release = verified_host_release_receipt(metadata=metadata)
+    url = "https://app-assets.razer.com/files/synapse/LightingEngine/v4.0.55.0/RzLightingEngineApi_v4.0.55.0.dll"
+    declarations = [entry for entry in metadata["declarations"]
+                    if entry["declaration"].get("resourceName") == "LightingEngineDLL"]
+    if len(declarations) != 1:
+        raise ValueError("Current stable release has no unique LightingEngineDLL declaration")
+    selected = declarations[0]
+    declaration = selected["declaration"]
+    artifacts = [entry for entry in release["files"] if entry["url"] == selected["url"]]
+    if len(artifacts) != 1:
+        raise ValueError("Current lighting acquisition identity is ambiguous")
+    artifact = artifacts[0]
+    if (selected["url"] != url or selected["algorithm"] != "sha256"
+            or declaration["url"] != url or declaration["resourceVersion"] != "4.0.55.0"
+            or declaration["sha256"].lower() != _LIGHTING_SHA256
+            or declaration["size"] != len(raw) or hashlib.sha256(raw).hexdigest() != _LIGHTING_SHA256
+            or artifact["path"] != _LIGHTING_INPUT or artifact["sha256"] != _LIGHTING_SHA256
+            or artifact["bytes"] != len(raw) or artifact["authorities"] != selected["authorities"]):
+        raise ValueError("Current lighting declaration differs from the audited DLL bytes")
+    identity_fields = ("url", "final_url", "http_status", "kind", "path", "bytes", "sha256")
+    acquired = release.get("metadata_files", [])
+    acquired_identities = {row["url"]: {key: row[key] for key in identity_fields} for row in acquired}
+    current_identities = {row["url"]: {key: row[key] for key in identity_fields}
+                          for row in metadata["metadata_files"]}
+    if len(acquired_identities) != len(acquired) or acquired_identities != current_identities:
+        raise ValueError("Lighting acquisition metadata file identities differ from current deployment samples")
+    authority_urls = {value for authority in selected["authorities"] for value in authority.values()}
+    manifests = [{key: row[key] for key in ("path", "url", "bytes", "sha256")}
+                 for row in metadata["active_metadata_files"] if row["url"] in authority_urls]
+    return {"acquisition": {**release["receipt"], "url": url}, "release_manifests": manifests,
+            "current_release": {"version": release["version"], "acquisition": release["receipt"],
+                "metadata_audit": metadata["metadata_receipt"], "metadata_snapshot": release["metadata_snapshot"],
+                "metadata_audited_at_utc": metadata["metadata"]["finished_at_utc"],
+                "acquisition_finished_at_utc": release["finished_at_utc"],
+                "metadata_files": metadata["metadata_files"], "metadata_revalidation": release["metadata_revalidation"],
+                "verified_dependencies": release["verified_dependencies"], "declaration": declaration,
+                "authorities": selected["authorities"], "artifact": artifact,
+                "source_current_during_acquisition": release["source_current_during_acquisition"],
+                "deployment_metadata_stable": metadata["metadata"]["deployment_metadata_stable"],
+                "currentness": "Retained two-sample deployment audit and acquisition-end revalidation; no HTTP performed by this comparison"}}
+
+
 def verify_lighting_source(root):
-    """Verify the public JSON ABI and selected complete software call chains."""
+    """Verify the current public JSON ABI and selected complete software call chains."""
     root = Path(root)
     raw = (root / _LIGHTING_INPUT).read_bytes()
     if len(raw) != 2153672 or hashlib.sha256(raw).hexdigest() != _LIGHTING_SHA256:
         raise ValueError("Lighting DLL bytes differ from the current official capture")
-    acquisition_path = ".analysis/inputs/host-current/acquisition.json"
-    acquisition_raw = (root / acquisition_path).read_bytes()
-    acquisition = json.loads(acquisition_raw)
-    rows = [row for row in acquisition["files"] if row.get("path") == _LIGHTING_INPUT]
-    url = "https://app-assets.razer.com/files/synapse/LightingEngine/v4.0.55.0/RzLightingEngineApi_v4.0.55.0.dll"
-    if len(rows) != 1:
-        raise ValueError("Lighting official acquisition identity is ambiguous")
-    row = rows[0]
-    declaration = row["declaration"]
-    if (row["url"] != url or row["final_url"] != url or row["http_status"] != 200
-            or row["sha256"] != _LIGHTING_SHA256 or row["bytes"] != len(raw)
-            or declaration["resourceVersion"] != "4.0.55.0"
-            or declaration["sha256"].lower() != _LIGHTING_SHA256
-            or declaration["size"] != len(raw)):
-        raise ValueError("Lighting official declaration differs from acquired bytes")
-    manifests, manifest_values = [], []
-    for path, manifest_url, expected_sha in _LIGHTING_MANIFESTS:
-        encoded = (root / path).read_bytes()
-        records = [record for record in acquisition["files"] if record.get("path") == path]
-        if (hashlib.sha256(encoded).hexdigest() != expected_sha or len(records) != 1
-                or records[0]["url"] != manifest_url or records[0]["http_status"] != 200
-                or records[0]["sha256"] != expected_sha or records[0]["bytes"] != len(encoded)):
-            raise ValueError("Lighting release manifest identity differs")
-        manifests.append({"path": path, "url": manifest_url, "bytes": len(encoded), "sha256": expected_sha})
-        manifest_values.append(json.loads(encoded))
-    if manifest_values[0]["latest"]["url"] != "manifest-1.0.136.json":
-        raise ValueError("Lighting stable release points at another resource manifest")
-    declarations = []
-
-    def find_resource(value):
-        if isinstance(value, dict):
-            if value.get("resourceName") == "LightingEngineDLL":
-                declarations.append(value)
-            for nested in value.values():
-                find_resource(nested)
-        elif isinstance(value, list):
-            for nested in value:
-                find_resource(nested)
-
-    find_resource(manifest_values[1]["resources"])
-    if declarations != [declaration]:
-        raise ValueError("Lighting resource manifest declaration differs from acquisition")
+    release_evidence = _lighting_release_evidence(root, raw)
     pe = inspect_pe(raw)
     versions = pe["version_resources"]
     if (pe["architecture"] != "x64" or pe["unresolved"] or pe.get("delay_imports")
@@ -227,8 +226,7 @@ def verify_lighting_source(root):
             or hashlib.sha256(js_raw).hexdigest() != _LIGHTING_JS_SHA256):
         raise ValueError("Lighting frontend ABI source identity differs")
     return {"input": _LIGHTING_INPUT, "sha256": _LIGHTING_SHA256, "bytes": len(raw),
-            "acquisition": {"path": acquisition_path, "sha256": hashlib.sha256(acquisition_raw).hexdigest(), "url": url},
-            "release_manifests": manifests,
+            **release_evidence,
             "capture": {"path": capture_path, "sha256": hashlib.sha256(capture_raw).hexdigest(),
                         "ida_version": capture["ida_version"], "hexrays_version": capture["hexrays_version"]},
             "frontend": {"path": _LIGHTING_JS, "sha256": hashlib.sha256(js_raw).hexdigest()},
@@ -511,7 +509,7 @@ def _lighting_worker_main(root):
 
 def _lighting_input_identity(root, input_owner):
     identities = {row["path"]: row for row in input_owner(include_asset_pack=False)}
-    for relative in ("tools/native_runtime.py", "tools/workspace.py", "tools/host.py",
+    for relative in ("tools/native_runtime.py", "tools/workspace.py", "tools/host.py", "tools/analysis.py",
                      "tools/test_native_runtime.py", "tools/test_workspace.py"):
         raw = (root / relative).read_bytes()
         identities[relative] = {"path": relative, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}

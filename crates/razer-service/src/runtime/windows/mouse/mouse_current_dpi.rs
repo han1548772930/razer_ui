@@ -49,7 +49,8 @@ pub(super) fn request(
         feature_bytes == cap.report_bytes,
         "Current mouse DPI observed Feature Report size differs"
     );
-    let device = hid_transport::open(&target.path, feature_bytes)?;
+    let device =
+        hid_transport::open_validated(&target.path, feature_bytes, std::rc::Rc::new(&validate))?;
     let mut next = || transaction(target, &cap);
     if identity.is_dongle {
         dpi::verify_wireless_online_for(target.product_id, &device, next()?, &validate)?;

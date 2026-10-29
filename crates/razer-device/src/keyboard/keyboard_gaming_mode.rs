@@ -166,16 +166,17 @@ fn apply_with_cap(
     })()
     .map_err(|error| failure(IndicatorFailurePhase::Prepare, report.clone(), error))?;
     report.attempted = true;
-    let data = keyboard_settings::exchange(
+    let result = keyboard_settings::exchange(
         device,
         cap,
         SET_LED,
         &[LED_CLASS, GAME_MODE_LED, u8::from(enabled)],
         sequence,
         validate,
-    )
-    .map_err(|error| failure(IndicatorFailurePhase::Write, report.clone(), error))?;
-    report.acknowledgment_data = Some(data);
+    );
+    report.acknowledgment_data =
+        crate::feature_exchange::acknowledged_reply(&result).map(<[u8]>::to_vec);
+    result.map_err(|error| failure(IndicatorFailurePhase::Write, report.clone(), error))?;
     validate().map_err(|error| failure(IndicatorFailurePhase::Write, report.clone(), error))?;
     if confirm_with_readback {
         let observed = next_sequence()

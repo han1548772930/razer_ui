@@ -32,7 +32,11 @@ pub(super) fn request(target: &DeviceReadTarget, change: &Change) -> anyhow::Res
             before["feature_report_bytes"] == cap.report_bytes,
             "Single LED Feature size differs"
         );
-        let device = hid_transport::open(&target.path, cap.report_bytes)?;
+        let device = hid_transport::open_validated(
+            &target.path,
+            cap.report_bytes,
+            std::rc::Rc::new(&validate),
+        )?;
         indicator::execute(&device, cap, change, || transaction(target, cap), &validate)?
     };
     validate()?;

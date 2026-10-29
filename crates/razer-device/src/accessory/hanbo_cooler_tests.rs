@@ -270,6 +270,20 @@ fn telemetry_reads_fan_then_pump_and_publishes_one_complete_sample() {
 }
 
 #[test]
+fn a_matched_input_is_retained_when_release_fails_but_is_never_a_complete_telemetry_sample() {
+    let transport = FakeTransport::new([Ok(fan_packet()), Ok(pump_packet())]);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&transport);
+    let error = read_telemetry_with_wait(&probe, || Ok(()), |_| {}).unwrap_err();
+    let completed = error.downcast_ref::<CompletedHanboInput>().unwrap();
+    assert_eq!(completed.command, [32, 1]);
+    assert_eq!(completed.packet, fan_packet());
+    assert_eq!(transport.writes.borrow().len(), 1);
+    assert_eq!(transport.reads.get(), 1);
+    assert_eq!(transport.inputs.borrow().len(), 1);
+    assert!(crate::backend::exchange_finalization_failed(&error));
+}
+
+#[test]
 fn full_66_byte_native_write_is_not_the_source_65_byte_success() {
     let transport = FakeTransport::new([Ok(fan_packet()), Ok(pump_packet())]);
     transport.counts.borrow_mut().extend([Ok(66); 20]);
@@ -390,7 +404,10 @@ fn cancellation_after_native_write_prevents_the_input_read() {
         |_| {},
     )
     .unwrap_err();
-    assert_eq!(error.to_string(), "replaced after native write");
+    assert_eq!(
+        error.root_cause().to_string(),
+        "replaced after native write"
+    );
     assert_eq!(transport.writes.borrow().len(), 1);
     assert_eq!(transport.reads.get(), 0);
 }
@@ -407,7 +424,7 @@ fn cancellation_after_fan_read_prevents_the_pump_query() {
         |_| {},
     )
     .unwrap_err();
-    assert_eq!(error.to_string(), "replaced after fan query");
+    assert_eq!(error.root_cause().to_string(), "replaced after fan query");
     assert_eq!(transport.writes.borrow().len(), 1);
     assert_eq!(transport.reads.get(), 1);
 }
@@ -415,16 +432,22 @@ fn cancellation_after_fan_read_prevents_the_pump_query() {
 #[test]
 fn cancellation_after_pump_read_rejects_the_late_complete_sample() {
     let transport = FakeTransport::new([Ok(fan_packet()), Ok(pump_packet())]);
+    let mut boundaries = Vec::new();
     let error = read_telemetry_with_wait(
         &transport,
         || {
+            boundaries.push((transport.writes.borrow().len(), transport.reads.get()));
             ensure!(transport.reads.get() < 2, "replaced after pump query");
             Ok(())
         },
         |_| {},
     )
     .unwrap_err();
-    assert_eq!(error.to_string(), "replaced after pump query");
+    assert_eq!(error.root_cause().to_string(), "replaced after pump query");
+    assert!(boundaries.contains(&(1, 0)));
+    assert!(boundaries.contains(&(1, 1)));
+    assert!(boundaries.contains(&(2, 1)));
+    assert_eq!(boundaries.last(), Some(&(2, 2)));
     assert_eq!(transport.writes.borrow().len(), 2);
     assert_eq!(transport.reads.get(), 2);
 }

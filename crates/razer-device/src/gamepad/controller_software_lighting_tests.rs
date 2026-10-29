@@ -201,15 +201,32 @@ fn failed_frame_chunk_retries_twenty_times_continues_and_retains_partial_submiss
         reject_first_chunk: true,
         ..Default::default()
     };
-    let sent = SoftwareHid::new(&io)
+    let probe = crate::feature_exchange::tests::ExchangeProbe::new(&io);
+    let sent = SoftwareHid::new(&probe)
         .send_frame(&rendered_frame(), 7, &mut |_| Ok(()))
         .unwrap();
     assert_eq!(io.attempts.borrow().len(), 21);
+    assert_eq!(probe.timings(), [crate::backend::ExchangeTiming::Batch]);
     assert_eq!(sent.reports_submitted, 1);
     assert!(!sent.complete);
     assert!(sent.interruption.is_none());
     assert_eq!(sent.errors, ["Simulated first chunk failure"]);
     assert_eq!(io.attempts.borrow().last().unwrap()[12], 25);
+}
+
+#[test]
+fn frame_release_failure_preserves_transferred_reports_and_returns_an_error() {
+    let io = FrameIo::default();
+    let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&io);
+    let error = SoftwareHid::new(&probe)
+        .send_frame(&rendered_frame(), 7, &mut |_| Ok(()))
+        .unwrap_err();
+    let progress = error.downcast_ref::<FrameSubmissionFailure>().unwrap();
+    assert_eq!(progress.reports_submitted, 2);
+    assert!(progress.errors.is_empty());
+    assert!(progress.interruption.is_none());
+    assert!(crate::backend::exchange_finalization_failed(&error));
+    assert_eq!(io.attempts.borrow().len(), 2);
 }
 
 #[test]

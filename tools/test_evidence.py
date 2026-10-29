@@ -2604,6 +2604,42 @@ class HostRecheckGapTests(unittest.TestCase):
         self.assertEqual(analysis.host_recheck_gaps("bootstrap", {"inputs": []})[0]["kind"],
                          "host_bootstrap_recheck_pending")
 
+    def test_release_gap_owners_keep_acquisition_failures_and_all_remaining_dimensions(self):
+        name = ".analysis/inputs/host-current/releases/4.0.896/acquisition.json"
+        for complete in (False, True):
+            with self.subTest(complete=complete):
+                data = {"version": "4.0.896", "complete": complete, "host_package_closure_complete": False,
+                        "failures": [] if complete else [{"stage": "download", "error": "canceled"}]}
+                raw = json.dumps(data).encode()
+                self.source(name, raw)
+                index = {"missing_current_roots": [], "inputs": [{"path": name, "bytes": len(raw),
+                    "sha256": hashlib.sha256(raw).hexdigest(), "kind": "official_host_release_acquisition"}]}
+                self.source(".analysis/inputs.json", json.dumps(index).encode())
+                ledger = {"schema_version": 1, "owners": {"manual-owner": [{"kind": "preserved"}]}}
+                self.source(".analysis/results/gaps.json", json.dumps(ledger).encode())
+                result = analysis._refresh_gaps()
+                rows = result["owners"][name]
+                kinds = {row["kind"] for row in rows}
+                self.assertEqual("host_acquisition_failure" in kinds, not complete)
+                self.assertEqual("host_release_acquisition_incomplete" in kinds, not complete)
+                self.assertIn("host_package_closure_pending", kinds)
+                self.assertIn("host_release_semantics_and_acceptance_pending", kinds)
+                self.assertEqual(result["owners"]["manual-owner"], [{"kind": "preserved"}])
+                self.assertIn(name, result["derived_owners"])
+
+    def test_changed_release_gap_receipt_cannot_replace_the_valid_ledger(self):
+        name = ".analysis/inputs/host-current/releases/4.0.896/acquisition.json"
+        raw = b'{"complete":true,"failures":[]}'
+        self.source(name, raw)
+        self.source(".analysis/inputs.json", json.dumps({"missing_current_roots": [], "inputs": [{
+            "path": name, "bytes": len(raw), "sha256": "0" * 64,
+            "kind": "official_host_release_acquisition"}]}).encode())
+        previous = b'{"schema_version":1,"owners":{"existing":[{"kind":"preserved"}]}}'
+        self.source(".analysis/results/gaps.json", previous)
+        with self.assertRaisesRegex(ValueError, "differs from its indexed identity"):
+            analysis._refresh_gaps()
+        self.assertEqual((self.root / ".analysis/results/gaps.json").read_bytes(), previous)
+
 
 class AcquisitionBatchTests(unittest.TestCase):
     def test_host_native_manifests_require_actual_html_indexed_bytes_and_stability(self):
@@ -3001,6 +3037,167 @@ class CorpusLineageTests(unittest.TestCase):
         self.assertFalse(result["roots"])
         self.assertEqual(groups[0]["current_version_provenance"]["status"], "unresolved")
         self.assertTrue(any(row["kind"] == "current_host_acquisition_unverified" for row in result["failures"]))
+
+    def release_fixture(self):
+        import base64
+        unused_bundle, unused_packed, unused_unpacked, previous = self.host_fixture()
+        package = self.artifact(".analysis/inputs/host-current/blobs/current-package.exe", b"MZ current host package",
+            kind="official_host_artifact", url="https://app-assets.razer.com/current-package.exe")
+        prior_release = next(row for row in previous["files"] if row.get("kind") == "official_host_release_manifest")
+        manifest = self.artifact(".analysis/inputs/host-current/blobs/current-resources.json", json.dumps({
+            "resources": [{"url": package["url"], "size": package["bytes"], "sha256": package["sha256"],
+                           "integrity": "sha256-" + base64.b64encode(bytes.fromhex(package["sha256"])).decode()}]
+        }).encode(), kind="official_host_resource_manifest", url="https://apps.razer.com/host/releases/current.json")
+        metadata = {"finished_at_utc": "synthetic", "failures": [], "files": [manifest, prior_release],
+                    "stability": [{"url": row["url"], "unchanged": True,
+                                   "before_sha256": row["sha256"], "after_sha256": row["sha256"]}
+                                  for row in (manifest, prior_release)]}
+        self.receipt(".analysis/inputs/host-current/metadata-recheck.json", metadata, indexed=True)
+        snapshot = self.receipt(".analysis/inputs/host-current/releases/4.0.896/metadata-recheck.json", metadata, indexed=True)
+        acquired = {"files": [package], "complete": True, "failures": [], "verified_dependencies": [],
+                    "metadata_snapshot": {key: snapshot[key] for key in ("path", "bytes", "sha256")}}
+        claim = self.receipt(".analysis/inputs/host-current/releases/4.0.896/acquisition.json", acquired, indexed=True)
+        acquired["receipt"] = {key: claim[key] for key in ("path", "bytes", "sha256")}
+        return package, acquired
+
+    def test_current_release_receipt_seeds_new_bytes_without_overwriting_or_requiring_legacy_acquisition(self):
+        for legacy_present in (True, False):
+            with self.subTest(legacy_present=legacy_present):
+                package, acquired = self.release_fixture()
+                legacy = self.root / ".analysis/inputs/host-current/acquisition.json"
+                before = legacy.read_bytes()
+                if not legacy_present:
+                    legacy.unlink()
+                groups = [self.group(package)]
+                with patch.object(host, "host_release_metadata", return_value={"verified_dependencies": []}), \
+                     patch.object(host, "verified_host_release_receipt", return_value=acquired):
+                    result = analysis.corpus_current_lineage({"inputs": self.rows}, groups)
+                self.assertFalse(result["failures"])
+                self.assertTrue(result["retained_pe_provenance_complete"])
+                self.assertEqual(result["roots"][0]["artifact"]["path"], package["path"])
+                self.assertIn(acquired["receipt"], result["receipts"])
+                if legacy_present:
+                    self.assertEqual(legacy.read_bytes(), before)
+                else:
+                    self.assertFalse(legacy.exists())
+
+    def test_rejected_current_metadata_cannot_seed_legacy_artifacts_or_attempt_a_new_release(self):
+        bundle, unused_packed, unused_unpacked, previous = self.host_fixture()
+        self.receipt(".analysis/inputs/host-current/metadata-recheck.json", previous, indexed=True)
+        groups = [self.group(bundle)]
+        with patch.object(host, "host_release_metadata", side_effect=ValueError("actual samples disagree")), \
+             patch.object(host, "verified_host_release_receipt") as release:
+            result = analysis.corpus_current_lineage({"inputs": self.rows}, groups)
+        release.assert_not_called()
+        self.assertFalse(result["roots"])
+        self.assertFalse(result["retained_pe_provenance_complete"])
+        self.assertTrue(any(row["kind"] == "current_host_acquisition_unverified" for row in result["failures"]))
+
+    def test_helper_only_metadata_dependencies_remain_in_the_final_snapshot(self):
+        package, acquired = self.release_fixture()
+        dependency = self.artifact(".analysis/inputs/host-current/releases/baseline.json", b'{"baseline":true}')
+        acquired["verified_dependencies"] = [dependency]
+        actual_sha = analysis.sha
+
+        def changed_after_package_hash(path):
+            result = actual_sha(path)
+            if path == self.root / package["path"]:
+                target = self.root / dependency["path"]
+                before = target.stat()
+                os.utime(target, ns=(before.st_atime_ns, before.st_mtime_ns + 10_000_000))
+            return result
+
+        groups = [self.group(package)]
+        with patch.object(host, "host_release_metadata", return_value={"verified_dependencies": [dependency]}), \
+             patch.object(host, "verified_host_release_receipt", return_value=acquired), \
+             patch.object(analysis, "sha", side_effect=changed_after_package_hash):
+            result = analysis.corpus_current_lineage({"inputs": self.rows}, groups)
+        self.assertFalse(result["snapshot_unchanged"])
+        self.assertIn(dependency["path"], result["changed_during_audit"])
+        self.assertFalse(result["retained_pe_provenance_complete"])
+        self.assertEqual(groups[0]["current_version_provenance"]["status"], "snapshot_changed")
+
+    def test_rejected_changed_or_undeclared_release_bytes_do_not_become_current(self):
+        for issue in ("rejected", "changed_receipt", "changed_metadata", "undeclared", "changed_artifact"):
+            with self.subTest(issue=issue):
+                package, acquired = self.release_fixture()
+                if issue == "changed_receipt":
+                    acquired["receipt"]["sha256"] = "0" * 64
+                elif issue == "changed_metadata":
+                    acquired["metadata_snapshot"]["sha256"] = "0" * 64
+                elif issue == "undeclared":
+                    path = self.root / acquired["receipt"]["path"]
+                    body = json.loads(path.read_bytes())
+                    body["files"][0]["url"] = "https://app-assets.razer.com/undeclared.exe"
+                    claim = self.receipt(acquired["receipt"]["path"], body, indexed=True)
+                    acquired["receipt"] = {key: claim[key] for key in ("path", "bytes", "sha256")}
+                elif issue == "changed_artifact":
+                    (self.root / package["path"]).write_bytes(b"changed current host bytes")
+                groups = [self.group(package)]
+                with patch.object(host, "host_release_metadata", return_value={"verified_dependencies": []}), \
+                     patch.object(host, "verified_host_release_receipt", return_value=acquired,
+                                  side_effect=ValueError("current metadata declaration differs") if issue == "rejected" else None):
+                    result = analysis.corpus_current_lineage({"inputs": self.rows}, groups)
+                self.assertFalse(result["retained_pe_provenance_complete"])
+                self.assertFalse(result["roots"])
+                if issue != "undeclared":
+                    self.assertTrue(result["failures"])
+
+    def test_release_extractions_use_each_exact_receipt_and_keep_global_inspection_intact(self):
+        bundle, unused_packed, unused_unpacked, unused_host = self.host_fixture()
+        global_path = ".analysis/results/host-current/inspection.json"
+        self.receipt(global_path, {"containers": []})
+        before = (self.root / global_path).read_bytes()
+        leaves, identities = [], []
+        for number in (1, 2):
+            leaf = self.artifact(f".analysis/inputs/host-current/extracted/leaf-{number}.dll",
+                f"MZ release leaf {number}".encode(), kind="static_extracted_host_input",
+                container=bundle["path"], container_sha256=bundle["sha256"])
+            name = f".analysis/results/host-current/releases/4.0.{number}/{bundle['sha256']}/inspection.json"
+            self.receipt(name, {"containers": [{"input_record": bundle, "sha256": bundle["sha256"],
+                "extracted": True, "list_exit_code": 0, "extraction_exit_code": 0,
+                "input_bytes_unchanged": True, "files": [dict(leaf)]}]})
+            raw = (self.root / name).read_bytes()
+            identity = {"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+            leaf["extraction_receipt"] = identity
+            leaves.append(leaf)
+            identities.append(identity)
+        groups = [self.group(leaf) for leaf in leaves]
+        result = analysis.corpus_current_lineage({"inputs": self.rows}, groups)
+        self.assertTrue(result["retained_pe_provenance_complete"])
+        self.assertTrue(all(row["current_version_provenance"]["root_ids"] for row in groups))
+        self.assertEqual([edge["receipt"] for edge in result["container_edges"] if edge["child"]["path"] in
+                          {leaf["path"] for leaf in leaves}], identities)
+        self.assertEqual((self.root / global_path).read_bytes(), before)
+
+    def test_release_extraction_proof_rejects_wrong_identity_ambiguous_containers_and_failed_outputs(self):
+        for issue in ("hash", "bytes", "missing", "outside_owner", "duplicate", "partial", "wrong_output"):
+            with self.subTest(issue=issue):
+                bundle, unused_packed, unused_unpacked, unused_host = self.host_fixture()
+                leaf = self.artifact(".analysis/inputs/host-current/extracted/release-leaf.dll", b"MZ release leaf",
+                    kind="static_extracted_host_input", container=bundle["path"], container_sha256=bundle["sha256"])
+                record = {"input_record": bundle, "sha256": bundle["sha256"], "extracted": True,
+                          "list_exit_code": 0, "extraction_exit_code": 2 if issue == "partial" else 0,
+                          "input_bytes_unchanged": True, "files": [] if issue == "wrong_output" else [dict(leaf)]}
+                name = f".analysis/results/host-current/releases/4.0.896/{bundle['sha256']}/inspection.json"
+                self.receipt(name, {"containers": [record, record] if issue == "duplicate" else [record]})
+                raw = (self.root / name).read_bytes()
+                identity = {"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+                if issue == "hash":
+                    identity["sha256"] = "0" * 64
+                elif issue == "bytes":
+                    identity["bytes"] += 1
+                elif issue == "missing":
+                    (self.root / name).unlink()
+                elif issue == "outside_owner":
+                    identity["path"] = ".analysis/results/other/inspection.json"
+                    self.source(identity["path"], raw)
+                leaf["extraction_receipt"] = identity
+                groups = [self.group(leaf)]
+                result = analysis.corpus_current_lineage({"inputs": self.rows}, groups)
+                self.assertFalse(result["retained_pe_provenance_complete"])
+                self.assertFalse(groups[0]["current_version_provenance"]["root_ids"])
+                self.assertTrue(any(row["kind"] == "current_container_edge_unverified" for row in result["failures"]))
 
     def test_production_discovery_host_packages_use_the_actual_source_md5_contract(self):
         for valid in (False, True):

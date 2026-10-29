@@ -1,4 +1,4 @@
-//! Current PID190 Performance uS -> NS/dS and SS/AS. Local view state and
+//! Current mounted Performance Matcher panels and popups. Local view state and
 //! observed service state stay separate; emitted actions are never fake replies.
 use gpui_kit::{
     base::{Button as BaseButton, ElementExt as _},
@@ -11,7 +11,7 @@ use gpui_kit::{
     prelude::FluentBuilder as _,
     *,
 };
-use razer_device::dpi_matcher::Phase;
+use razer_device::dpi_matcher::{Phase, Product};
 use razer_device::{dpi_matcher_storage::Library, mouse_current_dpi::SourceStage};
 use razer_i18n::t;
 use razer_widgets::{scroll::SourceScrollable as _, surface};
@@ -34,6 +34,8 @@ impl SelectItem for ProfileItem {
 }
 
 pub struct MouseDpiMatcher {
+    product: Product,
+    collapse_widget_margins: bool,
     state: MatcherState,
     initial_library: Library,
     selector: Entity<SelectState<Vec<ProfileItem>>>,
@@ -47,7 +49,12 @@ pub struct MouseDpiMatcher {
 }
 impl EventEmitter<MatcherAction> for MouseDpiMatcher {}
 impl MouseDpiMatcher {
-    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        product: Product,
+        collapse_widget_margins: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let mut state = MatcherState::default();
         state.observe_unmounted(MatcherObservation::Language(razer_i18n::locale()));
         let (items, index) = state.dataset(&t("NONE"));
@@ -86,6 +93,8 @@ impl MouseDpiMatcher {
                 }
             });
         Self {
+            product,
+            collapse_widget_margins,
             state,
             initial_library,
             selector,
@@ -97,6 +106,14 @@ impl MouseDpiMatcher {
             calibrate_bounds: Rc::new(Cell::new(Bounds::default())),
             _subscriptions: vec![select_subscription, rename_subscription],
         }
+    }
+
+    fn element_id(&self, role: &'static str) -> ElementId {
+        SharedString::from(format!(
+            "mouse-matcher-{}-{role}",
+            self.product.product_id()
+        ))
+        .into()
     }
     /// Invoke after the owner subscribes, only while the actual Performance
     /// component is mounted. Constructor/render do not emit GET_STATE.
@@ -244,7 +261,7 @@ impl MouseDpiMatcher {
                 .mx(surface::css(10.))
                 .into_any_element()
         };
-        let mut dots = BaseButton::new("matcher190-profile-actions")
+        let mut dots = BaseButton::new(self.element_id("profile-actions"))
             .accessibility_label(t("MORE"))
             .disabled(sentinel)
             .styles(|styles| styles.disabled(|style| style.opacity(0.3)))
@@ -273,56 +290,57 @@ impl MouseDpiMatcher {
                 cx.notify();
             }));
         if self.state.actions_open() {
-            let menu =
-                v_flex()
-                    .absolute()
-                    .top(surface::css(26.))
-                    .left(surface::css(-1.))
-                    .min_w(surface::css(76.))
-                    .py(surface::css(2.5))
-                    .border_1()
-                    .border_color(rgb(0x5d5d5d))
-                    .bg(rgb(0x000000))
-                    .child(
-                        menu_button("matcher190-rename", "RENAME").on_click(cx.listener(
-                            |this, _, window, cx| {
-                                cx.stop_propagation();
-                                this.begin_rename(window, cx);
-                            },
-                        )),
-                    )
-                    .child(
-                        div()
-                            .h(surface::css(1.))
-                            .mx(surface::css(6.))
-                            .mr(surface::css(11.))
-                            .my(surface::css(2.5))
-                            .bg(rgb(0x5d5d5d)),
-                    )
-                    .child(
-                        menu_button("matcher190-delete", "DELETE").on_click(cx.listener(
-                            |this, _, _, cx| {
-                                cx.stop_propagation();
-                                let actions = this.state.delete_profile();
-                                this.emit(actions, cx);
-                                cx.notify();
-                            },
-                        )),
-                    )
-                    .child(menu_button("matcher190-delete-all", "DELETE_ALL").on_click(
-                        cx.listener(|this, _, _, cx| {
+            let menu = v_flex()
+                .absolute()
+                .top(surface::css(26.))
+                .left(surface::css(-1.))
+                .min_w(surface::css(76.))
+                .py(surface::css(2.5))
+                .border_1()
+                .border_color(rgb(0x5d5d5d))
+                .bg(rgb(0x000000))
+                .child(
+                    menu_button(self.element_id("rename"), "RENAME").on_click(cx.listener(
+                        |this, _, window, cx| {
+                            cx.stop_propagation();
+                            this.begin_rename(window, cx);
+                        },
+                    )),
+                )
+                .child(
+                    div()
+                        .h(surface::css(1.))
+                        .mx(surface::css(6.))
+                        .mr(surface::css(11.))
+                        .my(surface::css(2.5))
+                        .bg(rgb(0x5d5d5d)),
+                )
+                .child(
+                    menu_button(self.element_id("delete"), "DELETE").on_click(cx.listener(
+                        |this, _, _, cx| {
+                            cx.stop_propagation();
+                            let actions = this.state.delete_profile();
+                            this.emit(actions, cx);
+                            cx.notify();
+                        },
+                    )),
+                )
+                .child(
+                    menu_button(self.element_id("delete-all"), "DELETE_ALL").on_click(cx.listener(
+                        |this, _, _, cx| {
                             cx.stop_propagation();
                             this.state.open_delete_all();
                             cx.notify();
-                        }),
-                    ))
-                    .on_mouse_up_out(
-                        MouseButton::Left,
-                        cx.listener(|this, _, _, cx| {
-                            this.state.document_click(false);
-                            cx.notify();
-                        }),
-                    );
+                        },
+                    )),
+                )
+                .on_mouse_up_out(
+                    MouseButton::Left,
+                    cx.listener(|this, _, _, cx| {
+                        this.state.document_click(false);
+                        cx.notify();
+                    }),
+                );
             dots = dots.child(razer_assets::deferred_resource(menu).with_priority(111));
         }
         h_flex()
@@ -368,15 +386,20 @@ impl MouseDpiMatcher {
                 h_flex()
                     .gap(surface::css(10.))
                     .child(
-                        delete_button("matcher190-delete-all-cancel", "CANCEL", 0x707070, 0xffffff)
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.state.close_delete_all();
-                                cx.notify();
-                            })),
+                        delete_button(
+                            self.element_id("delete-all-cancel"),
+                            "CANCEL",
+                            0x707070,
+                            0xffffff,
+                        )
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.state.close_delete_all();
+                            cx.notify();
+                        })),
                     )
                     .child(
                         delete_button(
-                            "matcher190-delete-all-confirm",
+                            self.element_id("delete-all-confirm"),
                             "DELETE",
                             0xfd4949,
                             0x111111,
@@ -455,10 +478,7 @@ impl MouseDpiMatcher {
         content = content.child(artwork);
         if matches!(phase, Phase::Calibrating | Phase::Error) {
             let progress = gpui_kit::base::motion::transition(
-                (
-                    ElementId::from(("matcher190-progress", cx.entity_id())),
-                    "width",
-                ),
+                (self.element_id("progress"), "width"),
                 self.state.process(),
                 gpui_kit::base::motion::Transition::new(Duration::from_millis(500))
                     .easing(gpui_kit::base::motion::Easing::Ease),
@@ -499,7 +519,7 @@ impl MouseDpiMatcher {
                     window,
                 ))
                 .child(
-                    BaseButton::new("matcher190-reset")
+                    BaseButton::new(self.element_id("reset"))
                         .accessibility_label(t("RESET_PROFILE"))
                         .mx_auto()
                         .mt(surface::css(20.))
@@ -566,7 +586,7 @@ impl MouseDpiMatcher {
                             .gap(surface::css(5.))
                             .child(
                                 warning_button(
-                                    "matcher190-error-cancel",
+                                    self.element_id("error-cancel"),
                                     "CANCEL",
                                     0x707070,
                                     0xffffff,
@@ -583,7 +603,7 @@ impl MouseDpiMatcher {
                             )
                             .child(
                                 warning_button(
-                                    "matcher190-error-retry",
+                                    self.element_id("error-retry"),
                                     "RETRY",
                                     0x44d62c,
                                     0x222222,
@@ -643,7 +663,7 @@ impl MouseDpiMatcher {
                 children
             }));
         let popup = div()
-            .id("matcher190-popup")
+            .id(self.element_id("popup"))
             .relative()
             .w(surface::css(800.))
             .min_w(surface::css(546.))
@@ -666,7 +686,7 @@ impl MouseDpiMatcher {
                     .text_color(rgb(0x999999))
                     .child(t("SENSITIVITY_MATCHER").to_uppercase())
                     .child(
-                        BaseButton::new("matcher190-close")
+                        BaseButton::new(self.element_id("close"))
                             .accessibility_label(t("CLOSE"))
                             .absolute()
                             .right_0()
@@ -690,7 +710,7 @@ impl MouseDpiMatcher {
             )
             .child(
                 div()
-                    .id("matcher190-popup-body")
+                    .id(self.element_id("popup-body"))
                     .min_h(surface::css(569.))
                     .max_h(body_max_height)
                     .pt(surface::css(20.))
@@ -722,7 +742,7 @@ impl MouseDpiMatcher {
                                     .justify_center()
                                     .child(
                                         footer_button(
-                                            "matcher190-cancel",
+                                            self.element_id("cancel"),
                                             "CANCEL",
                                             0x707070,
                                             0xffffff,
@@ -739,7 +759,7 @@ impl MouseDpiMatcher {
                                     )
                                     .child(
                                         footer_button(
-                                            "matcher190-apply",
+                                            self.element_id("apply"),
                                             "APPLY",
                                             0x44d62c,
                                             0x000000,
@@ -770,7 +790,7 @@ impl MouseDpiMatcher {
             .scrollable_both()
             .track_scroll(&self.popup_scroll);
         let backdrop = div()
-            .id("matcher190-backdrop")
+            .id(self.element_id("backdrop"))
             .w(viewport.width)
             .h(viewport.height)
             .bg(rgba(0x00000080))
@@ -797,10 +817,11 @@ impl Render for MouseDpiMatcher {
         let bounds = self.calibrate_bounds.clone();
         surface::panel_with_help(
             t("SENSITIVITY_MATCHER"),
-            surface::help_control("matcher190-help", t("SENSITIVITY_MATCHER_TOOLTIP")),
+            surface::help_control(self.element_id("help"), t("SENSITIVITY_MATCHER_TOOLTIP")),
             cx,
         )
-        .id("matcher190-panel")
+        .when(self.collapse_widget_margins, |panel| panel.mb_0())
+        .id(self.element_id("panel"))
         .child(t("SENSITIVITY_MATCHER_DESC"))
         .child(
             div()
@@ -808,7 +829,7 @@ impl Render for MouseDpiMatcher {
                 .flex_wrap()
                 .relative()
                 .child(
-                    BaseButton::new("matcher190-calibrate")
+                    BaseButton::new(self.element_id("calibrate"))
                         .accessibility_label(t("CALIBRATE"))
                         .mt(surface::css(5.))
                         .h(surface::css(28.))
@@ -859,7 +880,7 @@ impl Render for MouseDpiMatcher {
         }))
     }
 }
-fn menu_button(id: &'static str, key: &str) -> BaseButton {
+fn menu_button(id: impl Into<ElementId>, key: &str) -> BaseButton {
     BaseButton::new(id)
         .accessibility_label(t(key))
         .h(surface::css(19.))
@@ -873,7 +894,12 @@ fn menu_button(id: &'static str, key: &str) -> BaseButton {
         .hover(|style| style.bg(rgb(0x1a1a1a)))
         .child(t(key))
 }
-fn delete_button(id: &'static str, key: &str, background: u32, foreground: u32) -> BaseButton {
+fn delete_button(
+    id: impl Into<ElementId>,
+    key: &str,
+    background: u32,
+    foreground: u32,
+) -> BaseButton {
     BaseButton::new(id)
         .accessibility_label(t(key))
         .h(surface::css(27.))
@@ -892,7 +918,7 @@ fn delete_button(id: &'static str, key: &str, background: u32, foreground: u32) 
 // The source's three action groups have different selectors and box metrics.
 // Keep those distinctions instead of normalizing them through one button.
 fn footer_button(
-    id: &'static str,
+    id: impl Into<ElementId>,
     key: &str,
     background: u32,
     foreground: u32,
@@ -926,7 +952,7 @@ fn footer_button(
         .child(t(key).to_uppercase())
 }
 fn warning_button(
-    id: &'static str,
+    id: impl Into<ElementId>,
     key: &str,
     background: u32,
     foreground: u32,

@@ -3,6 +3,16 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
+#[path = "exchange_lease.rs"]
+mod exchange_lease;
+pub(crate) use exchange_lease::finalization_failure;
+pub use exchange_lease::{
+    ExchangeFinalizationFailure, ExchangeLease, ExchangeOptions, ExchangeTiming,
+    ExchangeValidation, Protocol25Topology, SourceCommandScope, checked_exchange,
+    checked_exchange_observing_send, checked_exchange_owned, exchange_finalization_failed,
+    finish_exchange,
+};
+
 /// Descriptor-observed byte lengths, including the API's Report ID byte.
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct ReportLengths {
@@ -34,12 +44,74 @@ pub trait InterruptTransport {
 
 pub trait HidBackend {
     fn open_interrupt(&mut self, node: &HidNode) -> anyhow::Result<Box<dyn InterruptTransport>>;
+
+    /// Interrupt owners use the same caller-only cancellation boundary while
+    /// their native initialization remains retained until its terminal return.
+    fn open_interrupt_validated(
+        &mut self,
+        node: &HidNode,
+        validate: ExchangeValidation<'_>,
+    ) -> anyhow::Result<Box<dyn InterruptTransport>> {
+        validate()?;
+        let result = self.open_interrupt(node);
+        match (result, validate()) {
+            (Ok(transport), Ok(())) => Ok(transport),
+            (Err(error), Ok(())) | (Ok(_), Err(error)) => Err(error),
+            (Err(error), Err(validation)) => Err(error.context(format!(
+                "HID interrupt open validation also failed: {validation:#}"
+            ))),
+        }
+    }
     fn enumerate(&mut self) -> anyhow::Result<Vec<HidNode>>;
     /// Only opens a uniquely re-observed collection. Never opens the first VID/PID.
     fn open(&mut self, node: &HidNode) -> anyhow::Result<Box<dyn FeatureTransport>>;
+
+    /// Validation stays on the caller's thread. A pooled backend also checks
+    /// it while waiting for a native owner, whose actual I/O may outlive cancellation.
+    fn open_validated(
+        &mut self,
+        node: &HidNode,
+        validate: ExchangeValidation<'_>,
+    ) -> anyhow::Result<Box<dyn FeatureTransport>> {
+        validate()?;
+        let result = self.open(node);
+        match (result, validate()) {
+            (Ok(transport), Ok(())) => Ok(transport),
+            (Err(error), Ok(())) | (Ok(_), Err(error)) => Err(error),
+            (Err(error), Err(validation)) => {
+                Err(error.context(format!("HID open validation also failed: {validation:#}")))
+            }
+        }
+    }
 }
 
 pub trait FeatureTransport {
+    /// Hold a complete OUT/GET/retry operation. Independent transports already
+    /// own an exclusive handle; broker proxies override this with their queue.
+    fn begin_exchange(
+        &self,
+        options: ExchangeOptions,
+    ) -> anyhow::Result<Box<dyn ExchangeLease + '_>> {
+        exchange_lease::already_exclusive(self, options)
+    }
+
+    /// Keep the caller's identity/cancellation validation active while waiting
+    /// for admission and across every packet, retry and explicit release.
+    fn begin_exchange_validated<'a>(
+        &'a self,
+        options: ExchangeOptions,
+        validate: ExchangeValidation<'a>,
+    ) -> anyhow::Result<Box<dyn ExchangeLease + 'a>> {
+        validate()?;
+        let inner = self.begin_exchange(options)?;
+        Ok(checked_exchange_owned(
+            inner,
+            validate,
+            std::rc::Rc::new(|| Ok(())),
+            None,
+        ))
+    }
+
     /// The collection re-observed when this handle was opened. None carries no
     /// hardware identity; simulated transports may supply an explicit test node.
     fn hid_node(&self) -> Option<&HidNode> {

@@ -296,6 +296,28 @@ fn exchange(
     transaction: u8,
     validate: &impl Fn() -> anyhow::Result<()>,
 ) -> anyhow::Result<WireResponse> {
+    exchange_observing(
+        device,
+        cap,
+        command,
+        payload,
+        packet_size,
+        transaction,
+        validate,
+        &mut |_| {},
+    )
+}
+
+fn exchange_observing(
+    device: &dyn FeatureTransport,
+    cap: &MouseDpiStagesCapability,
+    command: [u8; 3],
+    payload: &[u8],
+    packet_size: u8,
+    transaction: u8,
+    validate: &impl Fn() -> anyhow::Result<()>,
+    acknowledged: &mut dyn FnMut(&WireResponse),
+) -> anyhow::Result<WireResponse> {
     let source = super::device_reads::capability(cap.product_id)
         .context("DPI stage product has no current source transport")?;
     let transport = &cap.transport;
@@ -335,65 +357,82 @@ fn exchange(
     outgoing[6] = packet_size;
     outgoing[9..9 + payload.len()].copy_from_slice(payload);
     outgoing[89] = outgoing[3..89].iter().fold(0, |sum, byte| sum ^ byte);
-    let mut last_error = "No DPI stage response received".to_owned();
-    for _ in 0..transport.max_retry_out {
-        std::thread::sleep(Duration::from_millis(transport.sleep_between_out_ms));
-        validate()?;
-        let sent = device.send_feature_at_collection_max(&outgoing);
-        validate()?;
-        if let Err(error) = sent {
-            last_error = format!("{error:#}");
-            continue;
-        }
-        std::thread::sleep(Duration::from_millis(transport.sleep_between_out_in_ms));
-        for attempt in 0..transport.max_retry_in {
-            if attempt > 0 {
-                std::thread::sleep(Duration::from_millis(transport.sleep_between_in_ms));
-            }
-            validate()?;
-            let mut incoming = vec![0; transport.report_bytes];
-            incoming[0] = transport.get_report_id_for_transport(device)?;
-            let received = device.get_feature_at_collection_max(&mut incoming);
-            validate()?;
-            let count = match received {
-                Ok(count) => count,
-                Err(error) => {
+    crate::feature_exchange::with_validated_exchange(
+        device,
+        crate::feature_exchange::with_protocol25_scope(
+            crate::backend::ExchangeOptions::mutex_out(Duration::from_millis(
+                transport.sleep_between_out_ms,
+            )),
+            &transport.source_class,
+        ),
+        validate,
+        |device, lease| {
+            let mut last_error = "No DPI stage response received".to_owned();
+            for out_attempt in 0..transport.max_retry_out {
+                validate()?;
+                let sent = device.send_feature_at_collection_max(&outgoing);
+                validate()?;
+                if let Err(error) = sent {
                     last_error = format!("{error:#}");
-                    break;
-                }
-            };
-            ensure!(count == 91, "DPI stage response report is truncated");
-            let packet = &incoming[1..];
-            if packet[1] != transaction || packet[6..8] != command[1..] {
-                last_error = "DPI stage response transaction or command does not match".into();
-                break;
-            }
-            match packet[0] {
-                1 => {
-                    last_error = "DPI stage device is busy".into();
                     continue;
                 }
-                2 => {}
-                0 | 3 | 4 => {
-                    last_error = format!("DPI stage response status {}", packet[0]);
-                    break;
+                std::thread::sleep(Duration::from_millis(transport.sleep_between_out_in_ms));
+                for attempt in 0..transport.max_retry_in {
+                    if attempt > 0 {
+                        std::thread::sleep(Duration::from_millis(transport.sleep_between_in_ms));
+                    }
+                    validate()?;
+                    let mut incoming = vec![0; transport.report_bytes];
+                    incoming[0] = transport.get_report_id_for_transport(device)?;
+                    let received = device.get_feature_at_collection_max(&mut incoming);
+                    validate()?;
+                    let count = match received {
+                        Ok(count) => count,
+                        Err(error) => {
+                            last_error = format!("{error:#}");
+                            break;
+                        }
+                    };
+                    ensure!(count == 91, "DPI stage response report is truncated");
+                    let packet = &incoming[1..];
+                    if packet[1] != transaction || packet[6..8] != command[1..] {
+                        last_error =
+                            "DPI stage response transaction or command does not match".into();
+                        break;
+                    }
+                    match packet[0] {
+                        1 => {
+                            last_error = "DPI stage device is busy".into();
+                            continue;
+                        }
+                        2 => {}
+                        0 | 3 | 4 => {
+                            last_error = format!("DPI stage response status {}", packet[0]);
+                            break;
+                        }
+                        state => anyhow::bail!(
+                            "DPI stage command is unsupported or returned unknown status {state}"
+                        ),
+                    }
+                    let len = usize::from(packet[5]);
+                    ensure!(
+                        len <= 80,
+                        "DPI stage response data exceeds the protocol buffer"
+                    );
+                    let response = WireResponse {
+                        data: packet[8..88].to_vec(),
+                        response_bytes: len,
+                    };
+                    acknowledged(&response);
+                    return Ok(response);
                 }
-                state => anyhow::bail!(
-                    "DPI stage command is unsupported or returned unknown status {state}"
-                ),
+                if out_attempt + 1 < transport.max_retry_out {
+                    lease.retry_release()?;
+                }
             }
-            let len = usize::from(packet[5]);
-            ensure!(
-                len <= 80,
-                "DPI stage response data exceeds the protocol buffer"
-            );
-            return Ok(WireResponse {
-                data: packet[8..88].to_vec(),
-                response_bytes: len,
-            });
-        }
-    }
-    anyhow::bail!("DPI stage command retries failed: {last_error}")
+            anyhow::bail!("DPI stage command retries failed: {last_error}")
+        },
+    )
 }
 
 fn read_profile(
@@ -443,7 +482,8 @@ fn set_profile(
         data.extend_from_slice(&row.y.to_be_bytes());
         data.extend_from_slice(&row.z.to_be_bytes());
     }
-    let response = exchange(
+    let mut completed = None;
+    let response = exchange_observing(
         device,
         cap,
         cap.set_command,
@@ -451,7 +491,17 @@ fn set_profile(
         data.len() as u8,
         next_transaction()?,
         validate,
-    )?;
+        &mut |response| {
+            completed = Some(DpiStagesAcknowledgement {
+                response_bytes: response.response_bytes,
+                raw_data: response.data.clone(),
+            });
+        },
+    );
+    let response = response.map_err(|error| match completed {
+        Some(acknowledged) => error.context(acknowledged),
+        None => error,
+    })?;
     // Original Xe/Mt ignore setter jsonData; status/transaction/command prove
     // acknowledgement. Only the subsequent getter confirms the stage table.
     Ok(DpiStagesAcknowledgement {
@@ -485,7 +535,37 @@ pub struct DpiStagesAcknowledgement {
     pub raw_data: Vec<u8>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+impl std::fmt::Display for DpiStagesAcknowledgement {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("DPI stage response was acknowledged before the task failed")
+    }
+}
+
+pub(crate) fn completed_acknowledgement(
+    result: &anyhow::Result<DpiStagesAcknowledgement>,
+) -> Option<&DpiStagesAcknowledgement> {
+    match result {
+        Ok(acknowledged) => Some(acknowledged),
+        Err(error) => error.downcast_ref::<DpiStagesAcknowledgement>(),
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct DpiStagesWriteFailure {
+    pub requested: DpiStagesDraft,
+    pub packed: PackedDpiStages,
+    pub acknowledged: Option<DpiStagesAcknowledgement>,
+    pub observed: Option<DpiStagesReading>,
+}
+
+impl std::fmt::Display for DpiStagesWriteFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .write_str("DPI stage write did not complete; partial responses are diagnostic only")
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct DpiStagesWriteResult {
     pub requested: DpiStagesDraft,
     pub packed: PackedDpiStages,
@@ -504,38 +584,52 @@ pub fn apply_current(
     mut next_transaction: impl FnMut() -> anyhow::Result<u8>,
     validate: impl Fn() -> anyhow::Result<()>,
 ) -> anyhow::Result<DpiStagesWriteResult> {
-    let packed = pack(cap, draft)?;
-    validate()?;
-    let acknowledged = set_profile(
-        device,
-        cap,
-        cap.active_profile,
-        &packed,
-        &mut next_transaction,
-        &validate,
-    )
-    .context("DPI stage write is unconfirmed; the device may have accepted it, read it again")?;
-    validate().context("DPI stage session changed after write; final state is unconfirmed")?;
-    let observed = read_profile(
-        device,
-        cap,
-        cap.active_profile,
-        &mut next_transaction,
-        &validate,
-    )
-    .context("DPI stage write was acknowledged but readback failed; final state is unconfirmed")?;
-    ensure!(
-        same_table(&packed, &observed),
-        "DPI stage readback does not match the requested table"
-    );
-    validate()?;
-    Ok(DpiStagesWriteResult {
+    let mut progress = DpiStagesWriteFailure {
         requested: draft.clone(),
-        packed,
-        acknowledged,
-        observed,
-        verified: true,
-    })
+        packed: pack(cap, draft)?,
+        acknowledged: None,
+        observed: None,
+    };
+    let result = (|| -> anyhow::Result<DpiStagesWriteResult> {
+        validate()?;
+        let response = set_profile(
+            device,
+            cap,
+            cap.active_profile,
+            &progress.packed,
+            &mut next_transaction,
+            &validate,
+        );
+        progress.acknowledged = completed_acknowledgement(&response).cloned();
+        let acknowledged = response.context(
+            "DPI stage write is unconfirmed; the device may have accepted it, read it again",
+        )?;
+        validate().context("DPI stage session changed after write; final state is unconfirmed")?;
+        let observed = read_profile(
+            device,
+            cap,
+            cap.active_profile,
+            &mut next_transaction,
+            &validate,
+        )
+        .context(
+            "DPI stage write was acknowledged but readback failed; final state is unconfirmed",
+        )?;
+        progress.observed = Some(observed.clone());
+        ensure!(
+            same_table(&progress.packed, &observed),
+            "DPI stage readback does not match the requested table"
+        );
+        validate()?;
+        Ok(DpiStagesWriteResult {
+            requested: progress.requested.clone(),
+            packed: progress.packed.clone(),
+            acknowledged,
+            observed,
+            verified: true,
+        })
+    })();
+    result.map_err(|error| error.context(progress))
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -598,39 +692,119 @@ pub(crate) fn synchronize_profile_slots_with<C>(
     observed_slots: &[ObservedProfileSlot],
     context: &mut C,
     validate: &impl Fn() -> anyhow::Result<()>,
+    read: impl FnMut(&mut C, u8) -> anyhow::Result<DpiStagesReading>,
+    same: impl Fn(&DpiStagesReading) -> bool,
+    write: impl FnMut(&mut C, u8) -> anyhow::Result<DpiStagesAcknowledgement>,
+) -> anyhow::Result<Vec<DpiSlotWriteResult>> {
+    let ids: Vec<_> = select_profile_slots(active_guid, observed_slots)
+        .into_iter()
+        .map(|slot| slot.slot_id)
+        .collect();
+    let progress = synchronize_profile_slot_ids_with(&ids, context, validate, read, same, write);
+    if let Some(error) = progress.finalization {
+        return Err(error.context(DpiSlotSynchronizationFailure {
+            writes: progress.writes,
+        }));
+    }
+    if let Some(error) = progress.interrupted {
+        return Err(
+            anyhow::anyhow!(error).context(DpiSlotSynchronizationFailure {
+                writes: progress.writes,
+            }),
+        );
+    }
+    Ok(progress.writes)
+}
+
+pub(crate) struct DpiSlotSynchronization {
+    pub writes: Vec<DpiSlotWriteResult>,
+    pub interrupted: Option<String>,
+    finalization: Option<anyhow::Error>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct DpiSlotSynchronizationFailure {
+    pub writes: Vec<DpiSlotWriteResult>,
+}
+
+impl std::fmt::Display for DpiSlotSynchronizationFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("DPI profile synchronization stopped before completion")
+    }
+}
+
+/// Retain completed getter/setter outcomes when cancellation stops the next
+/// slot. The owner decides whether to publish the partial diagnostic report.
+pub(crate) fn synchronize_profile_slot_ids_with<C>(
+    ids: &[u8],
+    context: &mut C,
+    validate: &impl Fn() -> anyhow::Result<()>,
     mut read: impl FnMut(&mut C, u8) -> anyhow::Result<DpiStagesReading>,
     same: impl Fn(&DpiStagesReading) -> bool,
     mut write: impl FnMut(&mut C, u8) -> anyhow::Result<DpiStagesAcknowledgement>,
-) -> anyhow::Result<Vec<DpiSlotWriteResult>> {
-    let mut results = Vec::new();
-    for slot in select_profile_slots(active_guid, observed_slots) {
-        validate()?;
+) -> DpiSlotSynchronization {
+    let mut progress = DpiSlotSynchronization {
+        writes: vec![],
+        interrupted: None,
+        finalization: None,
+    };
+    for &slot_id in ids {
+        if let Err(error) = validate() {
+            progress.interrupted = Some(format!("{error:#}"));
+            break;
+        }
         let mut result = DpiSlotWriteResult {
-            slot_id: slot.slot_id,
+            slot_id,
             was_equal: false,
             before: None,
             acknowledged: None,
             error: None,
         };
-        match read(context, slot.slot_id) {
-            Err(error) => result.error = Some(format!("{error:#}")),
+        match read(context, slot_id) {
+            Err(error) => {
+                result.error = Some(format!("{error:#}"));
+                if crate::backend::exchange_finalization_failed(&error) {
+                    progress.interrupted = Some(format!("{error:#}"));
+                    progress.finalization = Some(error);
+                }
+            }
             Ok(before) => {
                 result.was_equal = same(&before);
                 result.before = Some(before);
                 if !result.was_equal {
-                    validate()?;
-                    match write(context, slot.slot_id) {
-                        Ok(ack) => result.acknowledged = Some(ack),
-                        Err(error) => result.error = Some(format!("{error:#}")),
+                    match validate() {
+                        Ok(()) => match write(context, slot_id) {
+                            Ok(ack) => result.acknowledged = Some(ack),
+                            Err(error) => {
+                                result.acknowledged =
+                                    error.downcast_ref::<DpiStagesAcknowledgement>().cloned();
+                                result.error = Some(format!("{error:#}"));
+                                if crate::backend::exchange_finalization_failed(&error) {
+                                    progress.interrupted = Some(format!("{error:#}"));
+                                    progress.finalization = Some(error);
+                                }
+                            }
+                        },
+                        Err(error) => {
+                            let error = format!("{error:#}");
+                            result.error = Some(error.clone());
+                            progress.interrupted = Some(error);
+                        }
                     }
                 }
             }
         }
         // Cancellation/identity loss must prevent subsequent slot writes.
-        validate()?;
-        results.push(result);
+        progress.writes.push(result);
+        if progress.interrupted.is_some() {
+            break;
+        }
+        if let Err(error) = validate() {
+            progress.interrupted = Some(format!("{error:#}"));
+            break;
+        }
     }
-    Ok(results)
+    progress
 }
 
 #[cfg(test)]
@@ -783,6 +957,26 @@ mod tests {
             data,
             declared_len: None,
         }
+    }
+
+    #[test]
+    fn finish_failure_keeps_the_dpi_stage_ack_without_readback_or_later_slots() {
+        let transport = MockTransport::new([reply(vec![7, 8])]);
+        let leased = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&transport);
+        let mut cap = cap().clone();
+        cap.transport.sleep_between_out_ms = 0;
+        cap.transport.sleep_between_out_in_ms = 0;
+        cap.transport.sleep_between_in_ms = 0;
+        let requested = draft(true, 1, &[(800, 800, true, false)]);
+        let error = apply_current(&leased, &cap, &requested, transaction_sequence(), || Ok(()))
+            .unwrap_err();
+        let progress = error.downcast_ref::<DpiStagesWriteFailure>().unwrap();
+        let acknowledged = progress.acknowledged.as_ref().unwrap();
+        assert_eq!(acknowledged.response_bytes, 2);
+        assert_eq!(&acknowledged.raw_data[..2], &[7, 8]);
+        assert!(progress.observed.is_none());
+        assert_eq!(transport.sent().len(), 1);
+        assert!(crate::backend::exchange_finalization_failed(&error));
     }
 
     #[test]

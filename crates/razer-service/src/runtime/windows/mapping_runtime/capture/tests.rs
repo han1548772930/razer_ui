@@ -7,6 +7,7 @@ use std::collections::BTreeSet;
 struct Input {
     mode: Option<Mode>,
     prepared: bool,
+    terminal_shutdown_failure: bool,
 }
 impl InputRecorder for Input {
     fn prepare(&mut self) -> Result<()> {
@@ -33,7 +34,14 @@ impl InputRecorder for Input {
     }
     fn shutdown(&mut self) -> Result<()> {
         self.prepared = false;
+        ensure!(
+            !self.terminal_shutdown_failure,
+            "Recorder hook cleanup failed after release"
+        );
         Ok(())
+    }
+    fn cleanup_pending(&self) -> bool {
+        self.prepared
     }
 }
 #[derive(Default)]
@@ -101,6 +109,36 @@ fn request(
     host: &mut Controls,
 ) -> Result<Value> {
     state.handle(scope, &request, host).unwrap()
+}
+
+#[test]
+fn recorder_terminal_cleanup_failure_releases_scope_for_the_next_recorder() {
+    let mut state = State::<Input>::default();
+    let mut host = Controls::default();
+    let scope = Uuid::new_v4();
+    request(
+        &mut state,
+        scope,
+        ServiceRequest::PrepareOtfmRecorder,
+        &mut host,
+    )
+    .unwrap();
+    state
+        .recorder
+        .as_mut()
+        .unwrap()
+        .input_mut()
+        .terminal_shutdown_failure = true;
+    assert!(state.release(scope, &mut host).is_err());
+    assert!(!state.cleanup_pending(scope));
+    assert!(state.recorder.is_none());
+    request(
+        &mut state,
+        Uuid::new_v4(),
+        ServiceRequest::PrepareOtfmRecorder,
+        &mut host,
+    )
+    .unwrap();
 }
 
 #[test]

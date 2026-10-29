@@ -1,8 +1,5 @@
 use super::*;
-use std::{
-    cell::{Cell, RefCell},
-    collections::VecDeque,
-};
+use std::{cell::RefCell, collections::VecDeque};
 
 struct Transport {
     replies: RefCell<VecDeque<anyhow::Result<Vec<u8>>>>,
@@ -174,18 +171,13 @@ fn hyperpolling_receiver_cancellation_stops_before_io_and_preserves_uncertain_se
     );
     assert!(device.sent.borrow().is_empty());
     let device = transport(vec![reply(2, 224, 7, 16, &[3])]);
-    let checks = Cell::new(0);
     let Reading::Submitted(report) = execute(
         &device,
         &cap(),
         Command::SetIndicator { status: 3 },
         224,
         &|| {
-            let n = checks.get() + 1;
-            checks.set(n);
-            if n == 3 {
-                anyhow::bail!("canceled after send");
-            }
+            anyhow::ensure!(device.sent.borrow().is_empty(), "canceled after send");
             Ok(())
         },
     )
@@ -194,6 +186,9 @@ fn hyperpolling_receiver_cancellation_stops_before_io_and_preserves_uncertain_se
     };
     assert!(report.write_attempted && report.write_sent && !report.acknowledged);
     assert!(report.error.unwrap().contains("canceled after send"));
+    assert_eq!(device.sent.borrow().len(), 1);
+    assert!(device.get_selectors.borrow().is_empty());
+    assert_eq!(device.replies.borrow().len(), 1);
 }
 
 #[test]

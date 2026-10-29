@@ -1,6 +1,7 @@
 use super::*;
 use crate::backend::FeatureTransport;
 use crate::device_reads::DeviceReadCapability;
+use crate::feature_exchange::tests::ExchangeProbe;
 use std::{
     cell::{Cell, RefCell},
     collections::VecDeque,
@@ -480,17 +481,46 @@ fn invalid_transaction_and_cancellation_at_presend_do_not_mark_attempted() {
     assert!(!failure.device_state_may_have_changed());
     transport.finish();
 
-    let calls = Cell::new(0);
+    let canceled = Cell::new(false);
     let failure = MouseButtonMapping::new(&transport, &cap(170))
         .unwrap()
-        .apply(target, ButtonAction::Disabled, false, txs(), || {
-            calls.set(calls.get() + 1);
-            anyhow::ensure!(calls.get() != 2, "cancel at pre-send guard");
-            Ok(())
-        })
+        .apply(
+            target,
+            ButtonAction::Disabled,
+            false,
+            || {
+                canceled.set(true);
+                Ok(1)
+            },
+            || {
+                anyhow::ensure!(!canceled.get(), "cancel at pre-send guard");
+                Ok(())
+            },
+        )
         .expect_err("pre-send cancellation must preserve unattempted state");
     assert_eq!(failure.phase, ButtonFailurePhase::Cancelled);
     assert!(!failure.device_state_may_have_changed());
+    transport.finish();
+}
+
+#[test]
+fn finish_failure_retains_the_button_ack_without_source_completion_or_readback() {
+    let target = target();
+    let transport = Transport::new([
+        send([10, 2, 12], &disabled_payload(target), 1),
+        receive([10, 2, 12], &[0x42, 0x53], 1),
+    ]);
+    let device = ExchangeProbe::failing_finish(&transport);
+    let failure = MouseButtonMapping::new(&device, &cap(170))
+        .unwrap()
+        .apply(target, ButtonAction::Disabled, true, txs(), || Ok(()))
+        .unwrap_err();
+    assert_eq!(failure.phase, ButtonFailurePhase::Write);
+    assert!(failure.progress.steps[0].acknowledgment_received);
+    assert_eq!(failure.progress.steps[0].acknowledgment_data, [0x42, 0x53]);
+    assert!(failure.progress.steps[0].observed.is_none());
+    assert!(!failure.progress.source_completed);
+    assert!(!failure.progress.verified());
     transport.finish();
 }
 
@@ -501,12 +531,13 @@ fn cancellation_after_ack_retains_ack_and_stops_before_readback() {
         send([10, 2, 12], &disabled_payload(target), 1),
         receive([10, 2, 12], &[0x42, 0x53], 1),
     ]);
-    let calls = Cell::new(0);
-    let failure = MouseButtonMapping::new(&transport, &cap(170))
+    let canceled = Cell::new(false);
+    let after_ack = || canceled.set(true);
+    let device = ExchangeProbe::with_on_finish(&transport, &after_ack);
+    let failure = MouseButtonMapping::new(&device, &cap(170))
         .unwrap()
         .apply(target, ButtonAction::Disabled, true, txs(), || {
-            calls.set(calls.get() + 1);
-            anyhow::ensure!(calls.get() != 6, "cancel after ACK");
+            anyhow::ensure!(!canceled.get(), "cancel after ACK");
             Ok(())
         })
         .expect_err("cancel after ACK must not issue a GET");

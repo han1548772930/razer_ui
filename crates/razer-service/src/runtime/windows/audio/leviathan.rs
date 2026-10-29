@@ -88,7 +88,7 @@ pub(super) fn request(target: &DeviceReadTarget, operation: Operation) -> anyhow
             before["feature_report_bytes"] == 65,
             "Noa Feature collection length differs"
         );
-        let device = hid_transport::open(&target.path, 65)?;
+        let device = hid_transport::open_validated(&target.path, 65, std::rc::Rc::new(&validate))?;
         leviathan::execute(
             &device,
             cap,
@@ -97,7 +97,11 @@ pub(super) fn request(target: &DeviceReadTarget, operation: Operation) -> anyhow
             &validate,
         )?
     };
-    validate()?;
+    validate().map_err(|error| {
+        error.context(leviathan::ExecutionFailure {
+            progress: report.clone(),
+        })
+    })?;
     Ok(
         json!({"target":target,"report":report,"source_class":cap.source_class,"setting_scope":"sound"}),
     )

@@ -168,7 +168,10 @@ fn hanbo_startup_cancellation_rejects_an_already_returned_information_packet() {
         },
         |_| {},
     );
-    assert_eq!(result.unwrap_err().to_string(), "startup owner changed");
+    assert_eq!(
+        result.unwrap_err().root_cause().to_string(),
+        "startup owner changed"
+    );
     assert_eq!(transport.writes.borrow().len(), 1);
     assert_eq!(transport.reads.get(), 1);
 }

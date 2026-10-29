@@ -567,4 +567,16 @@ fn shutdown_keeps_final_capture_failure_visible_after_draining_all_pages() {
     );
     assert!(state.owner().is_none());
     assert!(state.pending.is_empty() && state.devices.is_empty());
+    assert!(!state.cleanup_pending());
+    let repeated = state
+        .shutdown_with(
+            |_| panic!("the released native owner must not be stopped again"),
+            |_| unreachable!(),
+        )
+        .unwrap_err();
+    assert!(
+        repeated
+            .to_string()
+            .contains("final identity failed during shutdown")
+    );
 }

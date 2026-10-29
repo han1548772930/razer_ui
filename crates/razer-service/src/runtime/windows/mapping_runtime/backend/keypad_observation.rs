@@ -8,6 +8,7 @@ pub(super) trait Input {
     fn validate(&self) -> Result<()>;
     fn inputs(&mut self) -> Result<Vec<Result<hardware::Packet, String>>>;
     fn shutdown(&mut self) -> Result<()>;
+    fn cleanup_pending(&self) -> bool;
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
@@ -85,6 +86,9 @@ impl Input for HardwareInput {
     }
     fn shutdown(&mut self) -> Result<()> {
         self.input.shutdown()
+    }
+    fn cleanup_pending(&self) -> bool {
+        self.input.cleanup_pending()
     }
 }
 
@@ -176,6 +180,15 @@ impl State {
     }
 }
 impl<I: Input> State<I> {
+    pub(super) fn cleanup_pending(&self, scope: Uuid) -> bool {
+        self.observers.values().any(|observer| {
+            observer.scope == scope
+                && self
+                    .owners
+                    .get(&observer.caller)
+                    .is_some_and(|owner| owner.input.cleanup_pending())
+        })
+    }
     fn start_with(
         &mut self,
         scope: Uuid,
@@ -303,17 +316,23 @@ impl<I: Input> State<I> {
         ensure!(observer.scope == scope, "Keypad observer scope changed");
         observer.stopping = true;
         let caller = observer.caller;
+        let mut cleanup = Ok(());
         if !self
             .observers
             .iter()
             .any(|(other_id, other)| other_id != id && other.caller == caller)
         {
             if let Some(owner) = self.owners.get_mut(&caller) {
-                owner.input.shutdown()?;
+                cleanup = owner.input.shutdown();
+                if owner.input.cleanup_pending() {
+                    cleanup?;
+                    anyhow::bail!("Keypad input cleanup retained its hardware owner");
+                }
             }
             self.owners.remove(&caller);
         }
         self.observers.remove(id);
+        cleanup?;
         Ok(serde_json::to_value(Receipt::new(id.into(), false))?)
     }
     pub(super) fn release(&mut self, scope: Uuid) -> Result<()> {
@@ -333,15 +352,24 @@ impl<I: Input> State<I> {
     }
     pub(super) fn shutdown(&mut self) -> Result<()> {
         let mut errors = Vec::new();
-        for owner in self.owners.values_mut() {
-            if let Err(error) = owner.input.shutdown() {
+        let mut retired = BTreeSet::new();
+        for observer in self.observers.values_mut() {
+            observer.stopping = true;
+        }
+        for (caller, owner) in &mut self.owners {
+            let cleanup = owner.input.shutdown();
+            if !owner.input.cleanup_pending() {
+                retired.insert(*caller);
+            } else if cleanup.is_ok() {
+                errors.push("Keypad input cleanup retained its hardware owner".into());
+            }
+            if let Err(error) = cleanup {
                 errors.push(format!("{error:#}"));
             }
         }
-        if errors.is_empty() {
-            self.owners.clear();
-            self.observers.clear();
-        }
+        self.owners.retain(|caller, _| !retired.contains(caller));
+        self.observers
+            .retain(|_, observer| !retired.contains(&observer.caller));
         ensure!(errors.is_empty(), "{}", errors.join("; "));
         Ok(())
     }
@@ -356,6 +384,7 @@ mod tests {
         frames: Vec<Result<hardware::Packet, String>>,
         closes: Arc<AtomicUsize>,
         cleanup_failure: bool,
+        terminal_cleanup_failure: bool,
         changed: bool,
     }
     impl Input for MockInput {
@@ -368,8 +397,14 @@ mod tests {
         }
         fn shutdown(&mut self) -> Result<()> {
             self.closes.fetch_add(1, Ordering::SeqCst);
-            ensure!(!self.cleanup_failure, "cleanup failed");
+            ensure!(
+                !self.cleanup_failure && !self.terminal_cleanup_failure,
+                "cleanup failed"
+            );
             Ok(())
+        }
+        fn cleanup_pending(&self) -> bool {
+            self.cleanup_failure || self.closes.load(Ordering::SeqCst) == 0
         }
     }
     fn packet(x: u16, generation: u64, tick: u64) -> hardware::Packet {
@@ -515,6 +550,7 @@ mod tests {
             .unwrap();
         assert!(state.stop(Uuid::new_v4(), &id).is_err());
         assert!(state.stop(scope, &id).is_err());
+        assert!(state.cleanup_pending(scope));
         assert!(
             state
                 .start_with(
@@ -535,6 +571,124 @@ mod tests {
             .cleanup_failure = false;
         state.stop(scope, &id).unwrap();
         assert!(state.owners.is_empty());
+        assert!(!state.cleanup_pending(scope));
+    }
+    #[test]
+    fn keypad_terminal_cleanup_failure_retires_metadata_and_allows_a_fresh_session() {
+        for shutdown_all in [false, true] {
+            let mut state = State::<MockInput>::default();
+            let scope = Uuid::new_v4();
+            let id = Uuid::new_v4().to_string();
+            let target = Target::new(747, "container".into());
+            let closes = Arc::new(AtomicUsize::new(0));
+            let count = closes.clone();
+            state
+                .start_with(scope, target.clone(), id.clone(), |_| {
+                    Ok(MockInput {
+                        closes,
+                        terminal_cleanup_failure: true,
+                        ..Default::default()
+                    })
+                })
+                .unwrap();
+            let error = if shutdown_all {
+                state.shutdown().unwrap_err()
+            } else {
+                state.stop(scope, &id).unwrap_err()
+            };
+            assert!(error.to_string().contains("cleanup failed"));
+            assert_eq!(count.load(Ordering::SeqCst), 1);
+            assert!(!state.cleanup_pending(scope));
+            assert!(state.owners.is_empty());
+            assert!(state.observers.is_empty());
+
+            let successor_scope = Uuid::new_v4();
+            let successor_id = Uuid::new_v4().to_string();
+            let successor_closes = Arc::new(AtomicUsize::new(0));
+            let successor_count = successor_closes.clone();
+            state
+                .start_with(successor_scope, target, successor_id.clone(), |_| {
+                    Ok(MockInput {
+                        closes: successor_closes,
+                        ..Default::default()
+                    })
+                })
+                .unwrap();
+            state.stop(scope, &id).unwrap();
+            assert_eq!(successor_count.load(Ordering::SeqCst), 0);
+            assert!(state.cleanup_pending(successor_scope));
+            state.release(successor_scope).unwrap();
+            assert_eq!(successor_count.load(Ordering::SeqCst), 1);
+            assert_eq!(count.load(Ordering::SeqCst), 1);
+        }
+    }
+    #[test]
+    fn keypad_shutdown_retires_terminal_owners_and_retries_only_retained_hardware() {
+        let mut state = State::<MockInput>::default();
+        let scope = Uuid::new_v4();
+        let terminal_id = Uuid::new_v4().to_string();
+        let pending_id = Uuid::new_v4().to_string();
+        let terminal_closes = Arc::new(AtomicUsize::new(0));
+        let terminal_count = terminal_closes.clone();
+        let pending_closes = Arc::new(AtomicUsize::new(0));
+        let pending_count = pending_closes.clone();
+        state
+            .start_with(
+                scope,
+                Target::new(747, "terminal".into()),
+                terminal_id.clone(),
+                |_| {
+                    Ok(MockInput {
+                        closes: terminal_closes,
+                        terminal_cleanup_failure: true,
+                        ..Default::default()
+                    })
+                },
+            )
+            .unwrap();
+        let pending_target = Target::new(747, "pending".into());
+        state
+            .start_with(scope, pending_target.clone(), pending_id.clone(), |_| {
+                Ok(MockInput {
+                    closes: pending_closes,
+                    cleanup_failure: true,
+                    ..Default::default()
+                })
+            })
+            .unwrap();
+
+        assert!(state.shutdown().is_err());
+        assert_eq!(terminal_count.load(Ordering::SeqCst), 1);
+        assert_eq!(pending_count.load(Ordering::SeqCst), 1);
+        assert!(!state.observers.contains_key(&terminal_id));
+        assert!(state.observers.contains_key(&pending_id));
+        assert_eq!(state.owners.len(), 1);
+        assert!(state.cleanup_pending(scope));
+        assert!(state.deliveries(scope, &pending_id).is_err());
+        assert!(
+            state
+                .start_with(
+                    Uuid::new_v4(),
+                    pending_target,
+                    Uuid::new_v4().to_string(),
+                    |_| panic!("retained input cannot be replaced")
+                )
+                .is_err()
+        );
+
+        state
+            .owners
+            .values_mut()
+            .next()
+            .unwrap()
+            .input
+            .cleanup_failure = false;
+        state.shutdown().unwrap();
+        assert_eq!(terminal_count.load(Ordering::SeqCst), 1);
+        assert_eq!(pending_count.load(Ordering::SeqCst), 2);
+        assert!(state.owners.is_empty());
+        assert!(state.observers.is_empty());
+        assert!(!state.cleanup_pending(scope));
     }
     #[test]
     fn keypad_stopped_generation_cannot_replay_after_new_read_session() {

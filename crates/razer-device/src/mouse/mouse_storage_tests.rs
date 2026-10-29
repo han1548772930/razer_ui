@@ -423,6 +423,34 @@ fn bounds() -> StorageReadBounds {
 }
 
 #[test]
+fn finish_failure_keeps_the_storage_mutation_reply_and_does_not_confirm_completion() {
+    let device = Device::new(170);
+    let leased = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);
+    let transport = cap(170);
+    let storage = MouseStorage::new(&leased, &transport).unwrap();
+    let mut steps = Vec::new();
+    let error = storage
+        .io(
+            "create profile",
+            [1, 5, 2],
+            &[3],
+            1,
+            true,
+            &mut steps,
+            &mut txs(),
+            &|| Ok(()),
+        )
+        .unwrap_err();
+    assert_eq!(steps.len(), 1);
+    assert!(steps[0].attempted && steps[0].reply_received);
+    assert!(steps[0].response.is_empty());
+    assert!(steps[0].error.is_some());
+    assert!(crate::backend::exchange_finalization_failed(&error));
+    assert_eq!(device.reports.borrow().len(), 1);
+    assert_eq!(device.reads.get(), 1);
+}
+
+#[test]
 fn all_four_products_compact_and_independently_restore_exact_observed_fields() {
     for product in [170, 204, 226, 45066] {
         let device = Device::new(product);

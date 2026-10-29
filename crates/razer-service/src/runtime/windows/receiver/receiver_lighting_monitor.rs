@@ -96,7 +96,11 @@ impl Peer {
             candidate.validate()
         };
         let _lock = receiver::ReceiverLock::acquire(&candidate.container, &guard)?;
-        let device = hid_transport::open(&candidate.path, candidate.bytes)?;
+        let device = hid_transport::open_validated(
+            &candidate.path,
+            candidate.bytes,
+            std::rc::Rc::new(&guard),
+        )?;
         let peer_check = || -> anyhow::Result<()> {
             if candidate.relay {
                 let peers = razer_device::device_query::read_receiver(
@@ -749,7 +753,11 @@ impl Monitor {
             candidate.validate()
         };
         let _lock = receiver::ReceiverLock::acquire(&candidate.container, &guard)?;
-        let device = hid_transport::open(&peer.candidate.path, peer.candidate.bytes)?;
+        let device = hid_transport::open_validated(
+            &peer.candidate.path,
+            peer.candidate.bytes,
+            std::rc::Rc::new(&guard),
+        )?;
         let submitted = peer
             .io
             .as_mut()

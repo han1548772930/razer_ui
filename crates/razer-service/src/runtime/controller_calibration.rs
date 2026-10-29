@@ -2,7 +2,7 @@
 //! writes and readback. No vendor DLL, synthetic movement or completion timer.
 use anyhow::{Context as _, ensure};
 use razer_device::{
-    backend::{FeatureTransport, HidBackend, HidNode},
+    backend::{FeatureTransport, HidNode},
     controller_calibration::{
         HoldChange, TriggerCalibrationSession, TriggerCalibrationTransport, TriggerPart,
         TriggerStep,
@@ -216,6 +216,48 @@ struct CheckedTransport<'a> {
     write_attempted: &'a AtomicBool,
 }
 impl FeatureTransport for CheckedTransport<'_> {
+    fn begin_exchange(
+        &self,
+        options: razer_device::backend::ExchangeOptions,
+    ) -> anyhow::Result<Box<dyn razer_device::backend::ExchangeLease + '_>> {
+        (self.validate)()?;
+        let attempted = self.write_attempted;
+        Ok(razer_device::backend::checked_exchange_observing_send(
+            self.inner
+                .begin_exchange_validated(options, std::rc::Rc::new(self.validate))?,
+            self.validate,
+            self.validate,
+            None,
+            move |report| {
+                if report.get(7..9) == Some(&[12, 25]) {
+                    attempted.store(true, Ordering::Release);
+                }
+            },
+        ))
+    }
+    fn begin_exchange_validated<'a>(
+        &'a self,
+        options: razer_device::backend::ExchangeOptions,
+        validate: razer_device::backend::ExchangeValidation<'a>,
+    ) -> anyhow::Result<Box<dyn razer_device::backend::ExchangeLease + 'a>> {
+        let own = self.validate;
+        let combined = std::rc::Rc::new(move || {
+            own()?;
+            validate()
+        });
+        let attempted = self.write_attempted;
+        Ok(razer_device::backend::checked_exchange_observing_send(
+            self.inner.begin_exchange_validated(options, combined)?,
+            self.validate,
+            self.validate,
+            None,
+            move |report| {
+                if report.get(7..9) == Some(&[12, 25]) {
+                    attempted.store(true, Ordering::Release);
+                }
+            },
+        ))
+    }
     fn hid_node(&self) -> Option<&HidNode> {
         self.inner.hid_node()
     }
@@ -293,9 +335,9 @@ fn execute(
         Ok(())
     };
     validate()?;
-    // NativeBackend opens this exact re-observed collection and holds its
-    // OS file lock across all polling, sampling, write and verification calls.
-    let device = with_backend(|backend| backend.open(node))?;
+    // Each complete Feature command enters the retained collection's queue;
+    // sampling and recovery keep their own identity and cancellation guards.
+    let device = with_backend(|backend| backend.open_validated(node, std::rc::Rc::new(&validate)))?;
     ensure!(
         device.report_lengths()?.feature.get(&10) == Some(&91),
         "实际 HID descriptor 的 Report10/长度与 SagePC 源不符"

@@ -8,11 +8,16 @@ pub(super) struct EventsState {
 }
 impl EventsState {
     pub(super) fn shutdown(&mut self) -> anyhow::Result<()> {
-        self.target = None;
-        if let Some(mut events) = self.events.take() {
+        if let Some(events) = self.events.as_mut() {
             events.finish()?;
         }
+        self.events = None;
+        self.target = None;
         Ok(())
+    }
+
+    pub(super) fn cleanup_pending(&self) -> bool {
+        self.events.is_some()
     }
 }
 impl Drop for EventsState {
@@ -22,6 +27,17 @@ impl Drop for EventsState {
                 eprintln!("keyboard756 event cleanup: {error:#}");
             }
         }
+    }
+}
+
+#[cfg(test)]
+pub(super) fn simulated_events_state(
+    events: Box<dyn HardwareEvents>,
+    target: Value,
+) -> EventsState {
+    EventsState {
+        target: Some(target),
+        events: Some(events),
     }
 }
 struct CollectionEvents {
@@ -138,7 +154,9 @@ impl PortableRuntime {
                     Self::revalidate(node)
                 };
                 validate()?;
-                let device = with_backend(|backend| backend.open(node))?;
+                let device = with_backend(|backend| {
+                    backend.open_validated(node, std::rc::Rc::new(&validate))
+                })?;
                 ensure!(
                     device.report_lengths()?.feature.values().max().copied()
                         == Some(cap.report_bytes),

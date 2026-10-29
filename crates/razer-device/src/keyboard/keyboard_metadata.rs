@@ -294,7 +294,6 @@ mod tests {
     use crate::keyboard_control_test_transport::{
         Mock, assert_report_integrity, assert_report_integrity_with_id, reply, sequence,
     };
-    use std::cell::Cell;
 
     fn cap() -> DeviceReadCapability {
         let mut cap = capability(529).unwrap().clone();
@@ -354,10 +353,8 @@ mod tests {
         assert!(error.is_err());
         assert!(device.sent().is_empty());
         let device = Mock::new([reply(&[8, 1, 0])]);
-        let calls = Cell::new(0);
         let guard = || {
-            calls.set(calls.get() + 1);
-            ensure!(calls.get() < 3, "canceled after send");
+            ensure!(device.sent().is_empty(), "canceled after send");
             Ok(())
         };
         assert!(read(&device, &cap(), sequence(), &guard).is_err());

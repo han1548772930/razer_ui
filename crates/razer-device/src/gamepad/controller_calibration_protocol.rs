@@ -107,47 +107,56 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
         let transaction = self.transaction;
         self.transaction = (self.transaction + 1) % 31;
         let report = feature_report(command, transaction)?;
-        let mut last_error = String::from("No calibration response");
-        for _ in 0..20 {
-            // Host sendFeatureReport provides the source OUT delay. The Rust
-            // adapter supplies that same delay here through the wait callback.
-            (self.wait)(Duration::from_millis(30))?;
-            if let Err(error) = self.transport.send_feature_at_collection_max(&report) {
-                last_error = error.to_string();
-                continue;
-            }
-            (self.wait)(Duration::from_millis(30))?;
-            for retry in 0..10 {
-                if retry > 0 {
-                    (self.wait)(Duration::from_millis(30))?;
-                }
-                let mut incoming = [0; 91];
-                incoming[0] = 10;
-                let length = match self.transport.get_feature_at_collection_max(&mut incoming) {
-                    Ok(length) => length,
-                    Err(error) => {
+        crate::feature_exchange::with_feature_reply(
+            self.transport,
+            crate::backend::ExchangeOptions::mutex_out(Duration::from_millis(30)),
+            command.header(),
+            transaction,
+            |transport, lease| {
+                let mut last_error = String::from("No calibration response");
+                for out_attempt in 0..20 {
+                    (self.wait)(Duration::ZERO)?;
+                    if let Err(error) = transport.send_feature_at_collection_max(&report) {
                         last_error = error.to_string();
-                        break;
+                        continue;
                     }
-                };
-                ensure!(
-                    length == incoming.len(),
-                    "SagePC calibration response length mismatch"
-                );
-                match decode_feature(&incoming, command, transaction)? {
-                    CalibrationReply::Busy => last_error = "Device busy".into(),
-                    CalibrationReply::Resend => {
-                        last_error = "Calibration response requires resend".into();
-                        break;
+                    (self.wait)(Duration::from_millis(30))?;
+                    for retry in 0..10 {
+                        if retry > 0 {
+                            (self.wait)(Duration::from_millis(30))?;
+                        }
+                        let mut incoming = [0; 91];
+                        incoming[0] = 10;
+                        let length = match transport.get_feature_at_collection_max(&mut incoming) {
+                            Ok(length) => length,
+                            Err(error) => {
+                                last_error = error.to_string();
+                                break;
+                            }
+                        };
+                        ensure!(
+                            length == incoming.len(),
+                            "SagePC calibration response length mismatch"
+                        );
+                        match decode_feature(&incoming, command, transaction)? {
+                            CalibrationReply::Busy => last_error = "Device busy".into(),
+                            CalibrationReply::Resend => {
+                                last_error = "Calibration response requires resend".into();
+                                break;
+                            }
+                            CalibrationReply::Rejected(status) => {
+                                bail!("Calibration command rejected with status {status}")
+                            }
+                            CalibrationReply::Data(data) => return Ok(data),
+                        }
                     }
-                    CalibrationReply::Rejected(status) => {
-                        bail!("Calibration command rejected with status {status}")
+                    if out_attempt + 1 < 20 {
+                        lease.retry_release()?;
                     }
-                    CalibrationReply::Data(data) => return Ok(data),
                 }
-            }
-        }
-        bail!("Calibration retries exhausted: {last_error}")
+                bail!("Calibration retries exhausted: {last_error}")
+            },
+        )
     }
 }
 impl<T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
@@ -282,6 +291,31 @@ mod tests {
         assert!(report[10..38].iter().all(|b| *b == 0));
         assert_eq!(&report[6..9], &[51, 12, 25]);
     }
+
+    #[test]
+    fn calibration_setter_release_failure_preserves_its_actual_reply() {
+        let mut accepted = vec![0; 91];
+        accepted[0] = 10;
+        accepted[1] = 2;
+        accepted[6..10].copy_from_slice(&[1, 12, 25, 0x51]);
+        let io = Transport {
+            sends: RefCell::new(vec![]),
+            responses: RefCell::new([accepted].into()),
+        };
+        let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&io);
+        let error = CalibrationProtocolSession::new(&probe, |_| Ok(()))
+            .set_trigger_calibration(
+                TriggerPart::Left,
+                TriggerCalibrationRange { min: 7, max: 1023 },
+            )
+            .unwrap_err();
+        let completed = crate::CompletedFeatureExchange::from_error(&error).unwrap();
+        assert_eq!(completed.command(), [51, 12, 25]);
+        assert_eq!(completed.data(), [0x51]);
+        assert!(crate::backend::exchange_finalization_failed(&error));
+        assert_eq!(io.sends.borrow().len(), 1);
+        assert!(io.responses.borrow().is_empty());
+    }
     #[test]
     fn busy_mismatch_rejection_and_actual_data_are_distinct() {
         let command = CalibrationCommand::GetRange(TriggerPart::Left);
@@ -325,7 +359,8 @@ mod tests {
             ),
         };
         let mut waits = vec![];
-        let mut session = CalibrationProtocolSession::new(&io, |delay| {
+        let probe = crate::feature_exchange::tests::ExchangeProbe::new(&io);
+        let mut session = CalibrationProtocolSession::new(&probe, |delay| {
             waits.push(delay);
             Ok(())
         });
@@ -336,7 +371,22 @@ mod tests {
         let sends = io.sends.borrow();
         assert_eq!(sends.len(), 2);
         assert_eq!(sends[0], sends[1]);
-        assert_eq!(waits, vec![Duration::from_millis(30); 5]);
+        assert_eq!(
+            probe.timings(),
+            [crate::backend::ExchangeTiming::MutexOut {
+                interval: Duration::from_millis(30)
+            }]
+        );
+        assert_eq!(
+            waits,
+            [
+                Duration::ZERO,
+                Duration::from_millis(30),
+                Duration::from_millis(30),
+                Duration::ZERO,
+                Duration::from_millis(30)
+            ]
+        );
     }
     #[test]
     fn unsupported_command_is_not_retried_and_truncated_data_is_not_padded() {

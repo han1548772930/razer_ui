@@ -1,6 +1,7 @@
 //! Source-pinned byte fixtures run the production executor with strict synthetic
 //! Feature I/O. Every required exchange must be consumed; no hardware is opened.
 use super::*;
+use crate::feature_exchange::tests::ExchangeProbe;
 use std::{
     cell::{Cell, RefCell},
     collections::VecDeque,
@@ -986,24 +987,54 @@ fn cancellation_before_submission_allocates_nothing_and_does_not_report_a_write(
 }
 
 #[test]
+fn finish_failure_keeps_the_scroll_ack_and_echo_without_following_profile_or_getter() {
+    let device = Transport::new([
+        send([2, 2, 0x16], &[1, 1], 1),
+        receive([2, 2, 0x16], &[1, 1], 1, 2),
+    ]);
+    let leased = ExchangeProbe::failing_finish(&device);
+    let transport = cap(170);
+    let failure = MouseScroll::new(&leased, &transport)
+        .unwrap()
+        .apply(
+            ScrollChange::VirtualAcceleration(true),
+            &observed(),
+            transactions(),
+            || Ok(()),
+        )
+        .unwrap_err();
+    assert_eq!(failure.phase, ScrollFailurePhase::Write);
+    assert_eq!(failure.failed_step, Some(0));
+    assert_eq!(failure.progress.steps.len(), 1);
+    assert!(failure.progress.steps[0].acknowledgment_received);
+    assert_eq!(
+        failure.progress.steps[0].acknowledged,
+        Some(ScrollValue::VirtualAcceleration(true))
+    );
+    assert!(failure.progress.steps[0].observed.is_none());
+    assert!(!failure.progress.verified());
+    assert_eq!(device.sent.get(), 1);
+    device.finish();
+}
+
+#[test]
 fn cancellation_after_a_completed_ack_stops_before_the_next_profile_and_keeps_the_ack() {
     let device = Transport::new([
         send([2, 2, 0x16], &[1, 1], 1),
         receive([2, 2, 0x16], &[1, 1], 1, 2),
     ]);
-    let calls = Cell::new(0);
+    let canceled = Cell::new(false);
+    let after_ack = || canceled.set(true);
+    let leased = ExchangeProbe::with_on_finish(&device, &after_ack);
     let transport = cap(170);
-    let failure = MouseScroll::new(&device, &transport)
+    let failure = MouseScroll::new(&leased, &transport)
         .unwrap()
         .apply(
             ScrollChange::VirtualAcceleration(true),
             &observed(),
             transactions(),
             || {
-                // First validate after IN completes remains valid; cancellation is
-                // observed before the next mutation is recorded or allocated.
-                calls.set(calls.get() + 1);
-                ensure!(calls.get() <= 6, "Canceled after completed ACK");
+                ensure!(!canceled.get(), "Canceled after completed ACK");
                 Ok(())
             },
         )

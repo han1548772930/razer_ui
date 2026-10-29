@@ -15,6 +15,7 @@ pub(crate) trait InputRecorder: Default {
     fn mode(&self) -> Result<Option<Mode>>;
     fn stop(&mut self) -> Result<()>;
     fn events(&self) -> Result<Events>;
+    fn cleanup_pending(&self) -> bool;
     fn shutdown(&mut self) -> Result<()>;
 }
 impl InputRecorder for MacroRecorder {
@@ -36,6 +37,9 @@ impl InputRecorder for MacroRecorder {
     fn shutdown(&mut self) -> Result<()> {
         MacroRecorder::shutdown(self)
     }
+    fn cleanup_pending(&self) -> bool {
+        MacroRecorder::cleanup_pending(self)
+    }
 }
 
 pub(super) struct Recorder<R> {
@@ -46,6 +50,16 @@ pub(super) struct Recorder<R> {
     shortcuts_suspended: bool,
 }
 impl<R: InputRecorder> Recorder<R> {
+    #[cfg(test)]
+    pub(super) fn input_mut(&mut self) -> &mut R {
+        &mut self.input
+    }
+
+    pub(super) fn cleanup_pending(&self, scope: Uuid) -> bool {
+        self.scope == scope
+            && (self.input.cleanup_pending() || self.mappings_suspended || self.shortcuts_suspended)
+    }
+
     fn start(&mut self, mode: Mode) -> Result<Value> {
         ensure!(
             self.registered && self.input.mode()?.is_none(),
@@ -262,6 +276,9 @@ impl<R: InputRecorder> State<R> {
             match recorder.input.shutdown() {
                 Ok(()) => recorder.registered = false,
                 Err(error) => errors.push(format!("Release recorder hooks: {error:#}")),
+            }
+            if !recorder.input.cleanup_pending() {
+                recorder.registered = false;
             }
         }
         if !recorder.registered && !recorder.mappings_suspended && !recorder.shortcuts_suspended {

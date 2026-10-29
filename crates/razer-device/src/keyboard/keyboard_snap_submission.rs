@@ -76,7 +76,7 @@ fn exchange(
         acknowledgement: None,
     });
     let step = receipt.submissions.last_mut().unwrap();
-    let data = feature_exchange::exchange_with_report_data_size_observing_send(
+    let result = feature_exchange::exchange_with_report_data_size_observing_send(
         device,
         &cap.device_read_capability(),
         command,
@@ -85,9 +85,9 @@ fn exchange(
         command[0],
         guard,
         &mut || step.attempted = true,
-    )?;
-    step.acknowledgement = Some(data.clone());
-    Ok(data)
+    );
+    step.acknowledgement = feature_exchange::acknowledged_reply(&result).map(<[u8]>::to_vec);
+    result
 }
 
 pub(super) fn submit(

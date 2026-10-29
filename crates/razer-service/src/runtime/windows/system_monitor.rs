@@ -4,9 +4,9 @@ use anyhow::{Context as _, ensure};
 use razer_device::system_monitor::{self, MonitorObservation, SystemSample};
 use std::{
     collections::VecDeque,
-    sync::{Arc, Mutex, mpsc},
+    sync::{Arc, Condvar, Mutex},
     thread::JoinHandle,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 const MAX_POLL_SAMPLES: usize = 256;
@@ -102,32 +102,188 @@ fn observed(value: anyhow::Result<f64>, label: &str, diagnostics: &mut Vec<Strin
         }
     }
 }
-fn run(
-    mut source: impl Source,
-    queue: Arc<Mutex<Queue>>,
-    stop: mpsc::Receiver<()>,
+/// SystemCommon's two SetTimer registrations retain their phase and coalesce
+/// late ticks. Missed ticks do not create additional reads or callbacks.
+struct Timer {
     interval: Duration,
-) -> anyhow::Result<()> {
-    let sampling = (|| {
+    next: Instant,
+}
+impl Timer {
+    fn new(started_at: Instant, interval: Duration) -> Self {
+        assert!(!interval.is_zero());
+        Self {
+            interval,
+            next: started_at + interval,
+        }
+    }
+    fn tick(&mut self, now: Instant) -> bool {
+        if now < self.next {
+            return false;
+        }
+        let remainder = now.duration_since(self.next).as_nanos() % self.interval.as_nanos();
+        let remainder = Duration::new(
+            (remainder / 1_000_000_000) as u64,
+            (remainder % 1_000_000_000) as u32,
+        );
+        self.next = now + (self.interval - remainder);
+        true
+    }
+}
+struct Publication {
+    timer: Timer,
+    last: Instant,
+}
+impl Publication {
+    fn new(registered_at: Instant, interval: Duration) -> Self {
+        Self {
+            timer: Timer::new(registered_at, interval),
+            last: registered_at,
+        }
+    }
+    fn tick(&mut self, now: Instant, frame: Option<&SystemSample>) -> Option<SystemSample> {
+        // SystemCommon 0x67850 requires both the registration interval and an
+        // observed hardware frame; registration alone never supplies a value.
+        if !self.timer.tick(now) || now.duration_since(self.last) < self.timer.interval {
+            return None;
+        }
+        let frame = frame?.clone();
+        self.last = now;
+        Some(frame)
+    }
+}
+#[derive(Default)]
+struct Stream {
+    stopping: bool,
+    source_finished: bool,
+    latest: Option<SystemSample>,
+    diagnostics: VecDeque<String>,
+}
+#[derive(Default)]
+struct Control {
+    stream: Mutex<Stream>,
+    wake: Condvar,
+}
+impl Control {
+    fn stop(&self) {
+        self.stream
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .stopping = true;
+        self.wake.notify_all();
+    }
+    fn source_finished(&self) {
+        self.stream
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .source_finished = true;
+        self.wake.notify_all();
+    }
+    fn wait_until(&self, deadline: Instant) -> anyhow::Result<bool> {
+        let mut stream = self
+            .stream
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Hardware monitor control is poisoned"))?;
         loop {
-            match stop.try_recv() {
-                Ok(()) | Err(mpsc::TryRecvError::Disconnected) => break,
-                Err(mpsc::TryRecvError::Empty) => {}
+            if stream.stopping || stream.source_finished {
+                return Ok(false);
+            }
+            let wait = deadline.saturating_duration_since(Instant::now());
+            if wait.is_zero() {
+                return Ok(true);
+            }
+            stream = self
+                .wake
+                .wait_timeout(stream, wait)
+                .map_err(|_| anyhow::anyhow!("Hardware monitor control is poisoned"))?
+                .0;
+        }
+    }
+    fn observe(&self, sample: SystemSample, diagnostics: Vec<String>) -> anyhow::Result<bool> {
+        let mut stream = self
+            .stream
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Hardware monitor control is poisoned"))?;
+        if stream.stopping {
+            return Ok(false);
+        }
+        sample.validate()?;
+        stream.latest = Some(sample);
+        for diagnostic in diagnostics {
+            if stream.diagnostics.len() == MAX_PENDING_SAMPLES {
+                stream.diagnostics.pop_front();
+            }
+            stream.diagnostics.push_back(diagnostic);
+        }
+        Ok(true)
+    }
+    fn publish(
+        &self,
+        publication: &mut Publication,
+        now: Instant,
+        queue: &Mutex<Queue>,
+    ) -> anyhow::Result<bool> {
+        let mut stream = self
+            .stream
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Hardware monitor control is poisoned"))?;
+        if stream.stopping || stream.source_finished {
+            return Ok(false);
+        }
+        let Some(sample) = publication.tick(now, stream.latest.as_ref()) else {
+            return Ok(false);
+        };
+        // Admission and queue publication share the cancellation lock. A read
+        // finishing after unregister cannot become another callback.
+        queue
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Hardware monitor queue is poisoned"))?
+            .push(sample, stream.diagnostics.drain(..).collect());
+        Ok(true)
+    }
+}
+struct SourceCompletion(Arc<Control>);
+impl Drop for SourceCompletion {
+    fn drop(&mut self) {
+        self.0.source_finished();
+    }
+}
+fn sample_source<S: Source>(
+    factory: impl FnOnce() -> S,
+    control: &Control,
+    mut timer: Timer,
+) -> anyhow::Result<()> {
+    if !control.wait_until(timer.next)? {
+        return Ok(());
+    }
+    timer.tick(Instant::now());
+    // RzDLLService 0x2fb50 initializes the sensor source while handling the
+    // first Timer2 request, before invoking that request's GetAllHardwareInfo.
+    let mut source = factory();
+    let sampling = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        loop {
+            if !control.wait_until(Instant::now())? {
+                break;
             }
             let (sample, diagnostics) = source.sample();
-            sample.validate()?;
-            queue
-                .lock()
-                .map_err(|_| anyhow::anyhow!("Hardware monitor queue is poisoned"))?
-                .push(sample, diagnostics);
-            match stop.recv_timeout(interval) {
-                Ok(()) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
-                Err(mpsc::RecvTimeoutError::Timeout) => {}
+            if !control.observe(sample, diagnostics)? {
+                break;
             }
+            // Common 0x6c440 suppresses pending-request ticks until response or
+            // timeout. Completed reads resume on the existing timer phase.
+            timer.tick(Instant::now());
+            if !control.wait_until(timer.next)? {
+                break;
+            }
+            timer.tick(Instant::now());
         }
         Ok(())
-    })();
-    match (sampling, source.close()) {
+    }))
+    .map_err(|_| anyhow::anyhow!("Hardware sensor sampling panicked"))
+    .and_then(|result| result);
+    let cleanup = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| source.close()))
+        .map_err(|_| anyhow::anyhow!("Hardware sensor cleanup panicked"))
+        .and_then(|result| result);
+    match (sampling, cleanup) {
         (result, Ok(())) => result,
         (Ok(()), Err(error)) => Err(error),
         (Err(error), Err(cleanup)) => {
@@ -135,10 +291,42 @@ fn run(
         }
     }
 }
+fn run<S: Source + 'static>(
+    factory: impl FnOnce() -> S + Send + 'static,
+    queue: Arc<Mutex<Queue>>,
+    control: Arc<Control>,
+    sampling: Timer,
+    mut publication: Publication,
+) -> anyhow::Result<()> {
+    let worker_control = control.clone();
+    let worker = std::thread::Builder::new()
+        .name("hardware-sensors".into())
+        .spawn(move || {
+            let _completion = SourceCompletion(worker_control.clone());
+            sample_source(factory, &worker_control, sampling)
+        })?;
+    let publishing: anyhow::Result<()> = (|| {
+        while control.wait_until(publication.timer.next)? {
+            control.publish(&mut publication, Instant::now(), &queue)?;
+        }
+        Ok(())
+    })();
+    control.stop();
+    let sampling = worker
+        .join()
+        .map_err(|_| anyhow::anyhow!("Hardware sensor worker panicked"))
+        .and_then(|result| result);
+    match (publishing, sampling) {
+        (result, Ok(())) | (Ok(()), result) => result,
+        (Err(error), Err(cleanup)) => {
+            Err(error.context(format!("Hardware sensor cleanup also failed: {cleanup:#}")))
+        }
+    }
+}
 struct Session {
     owner_guid: String,
     queue: Arc<Mutex<Queue>>,
-    stop: Option<mpsc::Sender<()>>,
+    control: Arc<Control>,
     thread: Option<JoinHandle<anyhow::Result<()>>>,
     terminal_error: Option<String>,
 }
@@ -151,9 +339,7 @@ impl Session {
             .drain(&self.owner_guid, limit))
     }
     fn shutdown(&mut self) -> anyhow::Result<()> {
-        if let Some(stop) = self.stop.take() {
-            let _ = stop.send(());
-        }
+        self.control.stop();
         if let Some(thread) = self.thread.take() {
             let result = thread
                 .join()
@@ -183,6 +369,12 @@ pub(super) struct State {
     active: Option<Session>,
 }
 impl State {
+    pub(super) fn cleanup_pending(&self) -> bool {
+        self.active
+            .as_ref()
+            .is_some_and(|session| session.thread.is_some())
+    }
+
     fn start(
         &mut self,
         owner_guid: String,
@@ -201,22 +393,29 @@ impl State {
         #[cfg(target_arch = "x86_64")]
         {
             let queue = Arc::new(Mutex::new(Queue::default()));
-            let (stop, receiver) = mpsc::channel();
+            let control = Arc::new(Control::default());
+            let interval = Duration::from_millis(system_monitor::CALLBACK_INTERVAL_MS as u64);
+            // Common 0x6cb70 establishes Timer2 during client initialization;
+            // 0x6d360 separately records the subscription's callback interval.
+            let sampling = Timer::new(Instant::now(), interval);
+            let publication = Publication::new(Instant::now(), interval);
             let worker_queue = queue.clone();
+            let worker_control = control.clone();
             let thread = std::thread::Builder::new()
                 .name("hardware-monitor".into())
                 .spawn(move || {
                     run(
-                        razer_platform::hardware_monitor::Monitor::new(),
+                        razer_platform::hardware_monitor::Monitor::new,
                         worker_queue,
-                        receiver,
-                        Duration::from_millis(system_monitor::CALLBACK_INTERVAL_MS as u64),
+                        worker_control,
+                        sampling,
+                        publication,
                     )
                 })?;
             self.active = Some(Session {
                 owner_guid: owner_guid.clone(),
                 queue,
-                stop: Some(stop),
+                control,
                 thread: Some(thread),
                 terminal_error: None,
             });

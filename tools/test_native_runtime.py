@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import copy
 import ctypes
+from contextlib import contextmanager, redirect_stdout
 import hashlib
 import io
 import json
@@ -14,6 +15,7 @@ import unittest
 from unittest.mock import patch
 
 import native_runtime as native
+import test_host as host_fixtures
 from test_host import pe_fixture
 
 
@@ -736,6 +738,145 @@ class ProcessDeadlineTests(unittest.TestCase):
 
 
 class LightingComparisonTests(unittest.TestCase):
+    def replace_metadata_document(self, fixture, url, document):
+        raw = json.dumps(document).encode()
+        fixture.responses[url] = raw
+        samples = [row for row in fixture.metadata["files"] if row["url"] == url]
+        kind = samples[0]["kind"] if samples else "official_host_resource_manifest"
+        row = fixture.blob(url, raw, kind)
+        row.update(final_url=url, http_status=200)
+        if samples:
+            for sample in samples:
+                sample.update(row)
+        else:
+            fixture.metadata["files"].extend([{**row, "acquired_at_utc": f"2026-10-29T17:00:0{n}+00:00"}
+                                               for n in (0, 1)])
+        fixture.metadata["stability"] = [item for item in fixture.metadata["stability"] if item["url"] != url]
+        fixture.metadata["stability"].append({"url": url, "before_sha256": row["sha256"],
+                                               "after_sha256": row["sha256"], "unchanged": True})
+        fixture.save_metadata()
+
+    @contextmanager
+    def current_release_fixture(self):
+        fixture = host_fixtures.HostReleaseAcquisitionTests()
+        try:
+            fixture.setUp()
+            url = "https://app-assets.razer.com/files/synapse/LightingEngine/v4.0.55.0/RzLightingEngineApi_v4.0.55.0.dll"
+            raw = fixture.resource_bytes["Shared"]
+            fixture.responses[url] = raw
+            manifest_url = "https://apps.razer.com/background-manager/manifests/manifest-1.0.139.json"
+            manifest = json.loads(fixture.responses[manifest_url])
+            manifest["resources"][0].update(resourceName="LightingEngineDLL", resourceVersion="4.0.55.0", url=url)
+            self.replace_metadata_document(fixture, manifest_url, manifest)
+            with redirect_stdout(io.StringIO()):
+                release = fixture.acquire()
+            artifact = next(row for row in release["files"] if row["url"] == url)
+            with patch.object(native, "_LIGHTING_INPUT", artifact["path"]), \
+                    patch.object(native, "_LIGHTING_SHA256", artifact["sha256"]):
+                yield fixture, raw, release
+        finally:
+            self.assertTrue(fixture.doCleanups())
+            if hasattr(fixture, "root"):
+                self.assertFalse(fixture.root.exists())
+
+    def replace_release_document(self, fixture, document):
+        fixture.write(fixture.release_name, json.dumps(document).encode(), kind="official_host_release_acquisition")
+        fixture.save_index()
+
+    def test_current_release_binds_actual_stable_samples_complete_declaration_and_same_dll(self):
+        with self.current_release_fixture() as (fixture, raw, release):
+            evidence = native._lighting_release_evidence(fixture.root, raw)
+            current = evidence["current_release"]
+            artifact = next(row for row in release["files"] if row["declaration"].get("resourceName") == "LightingEngineDLL")
+            self.assertEqual(current["version"], "4.0.896")
+            self.assertEqual(current["acquisition"]["path"], fixture.release_name)
+            self.assertEqual(current["artifact"], artifact)
+            self.assertEqual(current["declaration"], artifact["declaration"])
+            self.assertIn(current["metadata_snapshot"], current["verified_dependencies"])
+            self.assertEqual(len(current["metadata_revalidation"]), 6)
+            self.assertTrue(current["source_current_during_acquisition"])
+            self.assertTrue(current["deployment_metadata_stable"])
+            self.assertEqual({row["url"] for row in evidence["release_manifests"]},
+                {"https://apps.razer.com/background-manager/installer-manifest.json",
+                 "https://apps.razer.com/background-manager/manifests/manifest-1.0.139.json"})
+            with self.assertRaisesRegex(ValueError, "audited DLL bytes"):
+                native._lighting_release_evidence(fixture.root, b"same length wrong DLL!!")
+
+    def test_current_release_requires_actual_acquisition_snapshot_sample_and_artifact_bytes(self):
+        for scenario in ("acquisition", "snapshot", "sample", "changed_sample", "changed_artifact"):
+            with self.subTest(scenario=scenario), self.current_release_fixture() as (fixture, raw, release):
+                name = {"acquisition": fixture.release_name, "snapshot": release["metadata_snapshot"]["path"],
+                        "sample": fixture.metadata["files"][0]["path"],
+                        "changed_sample": fixture.metadata["files"][0]["path"],
+                        "changed_artifact": native._LIGHTING_INPUT}[scenario]
+                path = fixture.root / name
+                if scenario.startswith("changed_"):
+                    path.write_bytes(b"changed retained bytes")
+                else:
+                    path.unlink()
+                with self.assertRaises((ValueError, FileNotFoundError)):
+                    native._lighting_release_evidence(fixture.root, raw)
+
+    def test_current_release_rejects_untrusted_receipt_and_false_current_during_claims(self):
+        for scenario in ("source_kind", "current_during", "metadata_files", "authority"):
+            with self.subTest(scenario=scenario), self.current_release_fixture() as (fixture, raw, release):
+                if scenario == "source_kind":
+                    next(row for row in fixture.index["inputs"] if row["path"] == fixture.release_name)["kind"] = "untrusted"
+                    fixture.save_index()
+                else:
+                    if scenario == "current_during":
+                        release["source_current_during_acquisition"] = False
+                    elif scenario == "metadata_files":
+                        release["metadata_files"][0]["final_url"] = "https://untrusted.invalid/manifest.json"
+                    else:
+                        next(row for row in release["files"] if row["path"] == native._LIGHTING_INPUT)["authorities"] = []
+                    self.replace_release_document(fixture, release)
+                with self.assertRaises(ValueError):
+                    native._lighting_release_evidence(fixture.root, raw)
+
+    def test_current_release_rejects_wrong_source_and_incomplete_actual_sampling(self):
+        for scenario in ("requested_url", "final_url", "missing_sample", "stability_flag"):
+            with self.subTest(scenario=scenario), self.current_release_fixture() as (fixture, raw, _):
+                if scenario == "requested_url":
+                    fixture.metadata["files"][0]["url"] = "https://untrusted.invalid/installer-manifest.json"
+                elif scenario == "final_url":
+                    fixture.metadata["files"][0]["final_url"] = "http://apps.razer.com/installer-manifest.json"
+                elif scenario == "missing_sample":
+                    fixture.metadata["files"].pop()
+                else:
+                    fixture.metadata["deployment_metadata_stable"] = False
+                fixture.save_metadata()
+                with self.assertRaises(ValueError):
+                    native._lighting_release_evidence(fixture.root, raw)
+
+    def test_current_release_cannot_reuse_same_sha_when_latest_points_to_another_manifest(self):
+        with self.current_release_fixture() as (fixture, raw, _):
+            installer_url = "https://apps.razer.com/background-manager/installer-manifest.json"
+            installer = json.loads(fixture.responses[installer_url])
+            installer["latest"] = {"version": "1.0.140", "url": "manifest-1.0.140.json"}
+            resource = json.loads(fixture.responses["https://apps.razer.com/background-manager/manifests/manifest-1.0.139.json"])
+            self.replace_metadata_document(fixture,
+                "https://apps.razer.com/background-manager/manifests/manifest-1.0.140.json", resource)
+            self.replace_metadata_document(fixture, installer_url, installer)
+            with self.assertRaisesRegex(ValueError, "declarations differ from current stable metadata"):
+                native._lighting_release_evidence(fixture.root, raw)
+
+    def test_current_release_requires_complete_declaration_even_with_identical_dll_sha(self):
+        with self.current_release_fixture() as (fixture, raw, _):
+            url = "https://apps.razer.com/background-manager/manifests/manifest-1.0.139.json"
+            resource = json.loads(fixture.responses[url])
+            resource["resources"][0]["restartRequired"] = True
+            self.replace_metadata_document(fixture, url, resource)
+            with self.assertRaisesRegex(ValueError, "declarations differ from current stable metadata"):
+                native._lighting_release_evidence(fixture.root, raw)
+
+    def test_current_release_never_reads_another_workspace_root(self):
+        with self.current_release_fixture() as (fixture, raw, _):
+            other = fixture.root / "other"
+            other.mkdir()
+            with self.assertRaisesRegex(ValueError, "same workspace root"):
+                native._lighting_release_evidence(other, raw)
+
     def test_single_receipt_retains_failed_raw_results_differences_and_cleanup(self):
         failed = {"schema_version": 1, "passed": False, "scope": "software frames",
                   "recorded_at_utc": "first", "runs": {"original": {"stdout": "raw native failure"}},
@@ -757,7 +898,7 @@ class LightingComparisonTests(unittest.TestCase):
             with self.subTest(previous=malformed), self.assertRaisesRegex(ValueError, "refusing to overwrite"):
                 native.retain_lighting_attempt(malformed, passed)
 
-    def test_source_requires_acquisition_full_function_chunks_and_virtual_targets(self):
+    def test_full_abi_capture_requires_complete_function_chunks_virtual_targets_and_pe_version(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             raw = bytearray(2153672)
@@ -775,26 +916,6 @@ class LightingComparisonTests(unittest.TestCase):
             (root / "source.dll").write_bytes(raw)
             (root / "source.js").write_bytes(b"verified frontend ABI")
             frontend_sha = hashlib.sha256(b"verified frontend ABI").hexdigest()
-            url = "https://app-assets.razer.com/files/synapse/LightingEngine/v4.0.55.0/RzLightingEngineApi_v4.0.55.0.dll"
-            acquisition = root / ".analysis/inputs/host-current/acquisition.json"
-            acquisition.parent.mkdir(parents=True)
-            row = {"path": "source.dll", "url": url, "final_url": url, "http_status": 200,
-                   "sha256": digest, "bytes": len(raw), "declaration": {
-                       "resourceVersion": "4.0.55.0", "sha256": digest, "size": len(raw)}}
-            acquisition.write_text(json.dumps({"files": [row]}), encoding="utf-8")
-            manifests = []
-            manifest_rows = []
-            for path, value in (("release.json", {"latest": {"url": "manifest-1.0.136.json"}}),
-                                ("resources.json", {"resources": [row["declaration"] | {"resourceName": "LightingEngineDLL"}]})):
-                encoded = json.dumps(value).encode("utf-8")
-                (root / path).write_bytes(encoded)
-                digest_value = hashlib.sha256(encoded).hexdigest()
-                manifest_url = "https://apps.razer.com/" + path
-                manifests.append((path, manifest_url, digest_value))
-                manifest_rows.append({"path": path, "url": manifest_url, "http_status": 200,
-                                      "bytes": len(encoded), "sha256": digest_value})
-            row["declaration"]["resourceName"] = "LightingEngineDLL"
-            acquisition.write_text(json.dumps({"files": [row, *manifest_rows]}), encoding="utf-8")
             frontend = root / ".analysis/inputs/frontend/synapse-lighting-engine-current/acquisition.json"
             frontend.parent.mkdir(parents=True)
             frontend.write_text(json.dumps({"files": [{"path": "source.js", "http_status": 200,
@@ -823,10 +944,12 @@ class LightingComparisonTests(unittest.TestCase):
                     patch.object(native, "_LIGHTING_SHA256", digest), \
                     patch.object(native, "_LIGHTING_JS", "source.js"), \
                     patch.object(native, "_LIGHTING_JS_SHA256", frontend_sha), \
-                    patch.object(native, "_LIGHTING_MANIFESTS", tuple(manifests)), \
+                    patch.object(native, "_lighting_release_evidence", return_value={"current_release": {"version": "verified"}}), \
                     patch.object(native, "_LIGHTING_FUNCTIONS", ("10",)), \
                     patch.object(native, "inspect_pe", return_value=pe):
-                self.assertEqual(len(native.verify_lighting_source(root)["virtual_calls"]), 14)
+                result = native.verify_lighting_source(root)
+                self.assertEqual(len(result["virtual_calls"]), 14)
+                self.assertEqual(result["current_release"], {"version": "verified"})
                 function["chunks"][0]["raw_hex"] = "616264"
                 publish()
                 with self.assertRaisesRegex(ValueError, "chunk differs"):
@@ -836,9 +959,10 @@ class LightingComparisonTests(unittest.TestCase):
                 publish()
                 with self.assertRaisesRegex(ValueError, "body is missing"):
                     native.verify_lighting_source(root)
-                row["declaration"]["resourceVersion"] = "older"
-                acquisition.write_text(json.dumps({"files": [row]}), encoding="utf-8")
-                with self.assertRaisesRegex(ValueError, "declaration differs"):
+                function["pseudocode"]["lines"] = [{"text": "complete"}]
+                publish()
+                pe["version_resources"][0]["tree"]["file_version"] = "older"
+                with self.assertRaisesRegex(ValueError, "version, architecture or dependency"):
                     native.verify_lighting_source(root)
 
     class Export:

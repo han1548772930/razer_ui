@@ -185,7 +185,11 @@ impl Session {
                         .and_then(|connection| connection.exchange(command, &mut || sent = true));
                     self.commands.push(CommandReport {
                         command,
-                        acknowledged: result.as_ref().ok().cloned(),
+                        acknowledged: match &result {
+                            Ok(data) => Some(data.clone()),
+                            Err(error) => razer_device::CompletedFeatureExchange::from_error(error)
+                                .map(|completed| completed.data().to_vec()),
+                        },
                         command_may_have_reached_device: sent,
                         error: result.as_ref().err().map(|e| format!("{e:#}")),
                     });
@@ -258,6 +262,12 @@ pub(super) struct State {
     session: Option<Session>,
 }
 impl State {
+    pub(super) fn cleanup_pending(&self, scope: Uuid) -> bool {
+        self.session
+            .as_ref()
+            .is_some_and(|session| session.scope == scope && !session.released())
+    }
+
     pub fn handle(
         &mut self,
         scope: Uuid,

@@ -5,7 +5,7 @@ use super::hid::DriverInterface as Interface;
 use anyhow::{Context as _, ensure};
 use razer_device::{
     audio_mixer::{self, MixerDriverTransport, MixerRoute},
-    backend::{HidBackend, HidNode},
+    backend::HidNode,
 };
 use razer_hid::with_backend;
 use serde_json::{Value, json};
@@ -215,7 +215,10 @@ impl MixerDriverTransport for StreamDriver<'_> {
 fn request(
     node: HidNode,
     product_id: u32,
-    perform: impl FnOnce(&Interface, &dyn Fn() -> anyhow::Result<()>) -> anyhow::Result<Value>,
+    perform: impl FnOnce(
+        &Interface,
+        &dyn Fn() -> anyhow::Result<()>,
+    ) -> anyhow::Result<audio_mixer::DriverCompletion>,
 ) -> anyhow::Result<Value> {
     let started = Instant::now();
     let before = observe_node(&node, product_id)?;
@@ -223,8 +226,6 @@ fn request(
         .as_str()
         .context("Mixer 容器缺失")?;
     let selected = select_interface(container)?;
-    // Same portable path lock as DSP operations; driver handle is also exclusive.
-    let _hid_lock = with_backend(|b| b.open(&node))?;
     let validate = || {
         ensure!(
             started.elapsed() < Duration::from_secs(20),
@@ -241,8 +242,40 @@ fn request(
         Ok(())
     };
     validate()?;
-    let result = perform(&selected, &validate)?;
-    validate()?;
+    let device =
+        with_backend(|backend| backend.open_validated(&node, std::rc::Rc::new(&validate)))?;
+    // Driver RMW and verification share the DSP collection's admission scope.
+    let lease = razer_device::backend::checked_exchange(
+        device.begin_exchange_validated(
+            razer_device::backend::ExchangeOptions::plain(),
+            std::rc::Rc::new(&validate),
+        )?,
+        &validate,
+        &validate,
+        None,
+    );
+    let operation = perform(&selected, &validate);
+    let completed = operation.as_ref().ok().cloned();
+    let result =
+        razer_device::backend::finish_exchange(lease, operation).map_err(
+            |error| match completed {
+                Some(completed) => {
+                    error.context(audio_mixer::DriverCompletionFailure { completed })
+                }
+                None => error,
+            },
+        )?;
+    let result = match result {
+        audio_mixer::DriverCompletion::RouteRead { route, enabled } => {
+            json!({"route":route,"value":{"enabled":enabled},"source_property":"RazerT2MixerSettingControl"})
+        }
+        audio_mixer::DriverCompletion::RouteWrite { route, result } => {
+            json!({"route":route,"value":result,"source_property":"RazerT2MixerSettingControl"})
+        }
+        audio_mixer::DriverCompletion::StreamsReset { result } => {
+            json!({"reset":result,"source_property":audio_mixer::STREAM_RESET_PROPERTY})
+        }
+    };
     Ok(json!({"node":node,"product_id":product_id,"result":result,
         "device_container_id":container,"driver_instance_id":selected.instance,
         "transport":"windows_scoped_driver_ioctl","vendor_dll_loaded":false,
@@ -265,22 +298,27 @@ pub(super) fn route(
     );
     request(node, product_id, |interface, validate| {
         let driver = Driver::open(interface, 0)?;
-        let result = if let Some(enabled) = enabled {
-            serde_json::to_value(audio_mixer::write_driver_route(
-                &driver, &route, enabled, validate,
-            )?)?
+        if let Some(enabled) = enabled {
+            let result = audio_mixer::write_driver_route(&driver, &route, enabled, validate)?;
+            Ok(audio_mixer::DriverCompletion::RouteWrite {
+                route: route.clone(),
+                result,
+            })
         } else {
-            json!({"enabled":audio_mixer::read_driver_route(&driver, &route, validate)?})
-        };
-        Ok(json!({"route":route,"value":result,"source_property":"RazerT2MixerSettingControl"}))
+            let enabled = audio_mixer::read_driver_route(&driver, &route, validate)?;
+            Ok(audio_mixer::DriverCompletion::RouteRead {
+                route: route.clone(),
+                enabled,
+            })
+        }
     })
 }
 
 pub(super) fn restart(node: HidNode, product_id: u32) -> anyhow::Result<Value> {
     request(node, product_id, |interface, validate| {
         let driver = StreamDriver(interface);
-        Ok(
-            json!({"reset":audio_mixer::restart_streams(&driver, validate)?,"source_property":audio_mixer::STREAM_RESET_PROPERTY}),
-        )
+        Ok(audio_mixer::DriverCompletion::StreamsReset {
+            result: audio_mixer::restart_streams(&driver, validate)?,
+        })
     })
 }

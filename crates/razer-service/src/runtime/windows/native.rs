@@ -3,6 +3,19 @@ use super::ServiceRequest;
 use anyhow::{Context as _, bail};
 use razer_device::backend::HidNode;
 use serde_json::{Value, json};
+pub(super) fn broker_collection_metadata(node: &HidNode) -> anyhow::Result<Value> {
+    let path = std::str::from_utf8(&node.path)?;
+    hid::enumerate_collection(node.vendor_id, node.product_id, path)
+}
+
+pub(super) fn shutdown_ble_cleanup() -> anyhow::Result<()> {
+    device_reads::shutdown_ble_cleanup()
+}
+
+pub(super) fn ble_cleanup_pending_count() -> usize {
+    device_reads::ble_cleanup_pending_count()
+}
+
 pub(super) fn leviathan_event_source(
     target: &razer_device::leviathan::EventTarget,
 ) -> anyhow::Result<Box<dyn razer_device::receiver_pairing::HardwareEvents>> {
@@ -194,6 +207,7 @@ pub(super) fn controller_feature_node_proof(
     controller_calibration_identity::proof(node, claim_interface)
 }
 pub(super) struct NativeRuntime {
+    cleanup: NativeCleanup,
     mapping_scope: Option<crate::mapping::Client>,
     app_files: user_app_files::Events,
     receiver_pairing: receiver_pairing::Controller,
@@ -208,9 +222,21 @@ pub(super) struct NativeRuntime {
     surround: surround_adapter::State,
 }
 
+#[derive(Default)]
+struct NativeCleanup {
+    joined: crate::runtime::shutdown::OwnerCleanup,
+    receiver_lighting: crate::runtime::shutdown::OwnerCleanup,
+    mouse_input_monitoring: crate::runtime::shutdown::OwnerCleanup,
+    mixer_meter: crate::runtime::shutdown::OwnerCleanup,
+    system_monitor: crate::runtime::shutdown::OwnerCleanup,
+    controller_input: crate::runtime::shutdown::OwnerCleanup,
+    mapping_scope: crate::runtime::shutdown::OwnerCleanup,
+}
+
 impl NativeRuntime {
     pub(super) fn new() -> Self {
         Self {
+            cleanup: NativeCleanup::default(),
             mapping_scope: None,
             app_files: user_app_files::Events::default(),
             receiver_pairing: receiver_pairing::Controller::default(),
@@ -224,6 +250,89 @@ impl NativeRuntime {
             system_monitor: system_monitor::State::default(),
             surround: surround_adapter::State::default(),
         }
+    }
+
+    pub(super) fn shutdown_cleanup(&mut self) -> crate::runtime::shutdown::Cleanup {
+        use crate::runtime::shutdown::Cleanup;
+        let mut cleanup = self.cleanup.joined.run(|| {
+            let mut cleanup = Cleanup::default();
+            cleanup.record("receiver_pairing", self.receiver_pairing.shutdown());
+            cleanup.record("receiver_reconnect", self.receiver_reconnect.shutdown());
+            cleanup.record("seiren_audio", self.seiren_audio.shutdown());
+            cleanup.record("surround", self.surround.shutdown());
+            cleanup
+        });
+        cleanup.merge(self.cleanup.receiver_lighting.run(|| {
+            let mut cleanup = Cleanup::default();
+            let result = self.receiver_lighting.shutdown();
+            if let Ok(Some(status)) = &result {
+                if !status.restoration_complete() || !status.software.cleanup_errors.is_empty() {
+                    cleanup.fail(
+                        "receiver_lighting",
+                        format!(
+                            "Receiver lighting restoration or cleanup was not confirmed: {:?}",
+                            status.software
+                        ),
+                    );
+                }
+            }
+            cleanup.record("receiver_lighting", result);
+            if self.receiver_lighting.cleanup_pending() {
+                cleanup.retain_resources();
+            }
+            cleanup
+        }));
+        cleanup.merge(self.cleanup.mouse_input_monitoring.run_result(
+            "mouse_input_monitoring",
+            || {
+                let result = self.mouse_input_monitoring.shutdown();
+                (result, self.mouse_input_monitoring.cleanup_pending())
+            },
+        ));
+        self.mixer_hardware = None;
+        cleanup.merge(self.cleanup.mixer_meter.run_result("mixer_meter", || {
+            let result = match self.mixer_meter.as_mut() {
+                Some(meter) => meter.stop(),
+                None => Ok(()),
+            };
+            if result.is_ok() {
+                self.mixer_meter = None;
+            }
+            (result, self.mixer_meter.is_some())
+        }));
+        cleanup.merge(
+            self.cleanup
+                .system_monitor
+                .run_result("system_monitor", || {
+                    let result = self.system_monitor.shutdown();
+                    (result, self.system_monitor.cleanup_pending())
+                }),
+        );
+        cleanup.merge(
+            self.cleanup
+                .controller_input
+                .run_result("controller_input", || {
+                    let result = self.controller_input.shutdown();
+                    (result, self.controller_input.cleanup_pending())
+                }),
+        );
+        cleanup.merge(self.cleanup.mapping_scope.run_result("mapping_scope", || {
+            let result = match self.mapping_scope.as_mut() {
+                Some(scope) => scope.request(ServiceRequest::Shutdown),
+                None => Ok(json!({"stopped":true})),
+            };
+            if result.is_ok()
+                || self
+                    .mapping_scope
+                    .as_ref()
+                    .is_some_and(|scope| scope.is_stopped())
+            {
+                self.mapping_scope = None;
+            }
+            (result, self.mapping_scope.is_some())
+        }));
+        self.app_files.clear();
+        cleanup
     }
 
     fn mapping_request(&mut self, request: ServiceRequest) -> anyhow::Result<Value> {
@@ -536,9 +645,17 @@ impl NativeRuntime {
             ServiceRequest::BleMouseCurrentPower { target, change } => {
                 device_reads::mouse_current_power_ble(&target, &change)
             }
-            ServiceRequest::BleMouseCurrentDpi { target, change } => {
-                device_reads::mouse_current_dpi_ble(&target, change.as_ref())
-            }
+            ServiceRequest::BleMouseCurrentDpi {
+                target,
+                change,
+                context,
+                cancellation,
+            } => device_reads::mouse_current_dpi_ble(
+                &target,
+                change.as_ref(),
+                context.as_ref(),
+                cancellation.as_ref(),
+            ),
             ServiceRequest::BleMouseRotation { target, change } => {
                 device_reads::mouse_rotation_ble(&target, change.as_ref())
             }
@@ -664,13 +781,22 @@ impl NativeRuntime {
                 Ok(json!({"stopped":true}))
             }
             ServiceRequest::AudioMixerHardwareInfo { node } => {
-                use razer_device::backend::HidBackend;
                 anyhow::ensure!(
                     razer_device::audio_mixer::accepts(1342, node.vendor_id, node.product_id),
                     "Mixer hardware collection identity invalid"
                 );
+                let before = mixer_driver::observe_node(&node, 1342)?;
+                let validate = || {
+                    let current = mixer_driver::observe_node(&node, 1342)?;
+                    anyhow::ensure!(
+                        current["device_instance_id"] == before["device_instance_id"]
+                            && current["device_container_id"] == before["device_container_id"],
+                        "Mixer hardware information owner changed"
+                    );
+                    Ok(())
+                };
                 let snapshot = razer_hid::with_backend(|backend| {
-                    let device = backend.open(&node)?;
+                    let device = backend.open_validated(&node, std::rc::Rc::new(&validate))?;
                     razer_device::audio_mixer_hardware::read_initial(device.as_ref())
                 })?;
                 Ok(json!({"node":node,"product_id":1342,"initial":snapshot}))
@@ -698,57 +824,12 @@ impl NativeRuntime {
                 Ok(json!({"capture_stopped":true}))
             }
             ServiceRequest::Shutdown => {
-                let mut errors = Vec::new();
-                match self.receiver_lighting.shutdown() {
-                    Ok(Some(status)) => {
-                        if !status.restoration_complete()
-                            || !status.software.cleanup_errors.is_empty()
-                        {
-                            errors.push(format!(
-                                "Receiver lighting restoration or cleanup was not confirmed: {:?}",
-                                status.software
-                            ));
-                        }
-                    }
-                    Ok(None) => {}
-                    Err(error) => {
-                        errors.push(format!("Receiver lighting cleanup failed: {error:#}"));
-                    }
+                let response = self.shutdown_cleanup().progress(0).into_response();
+                match (response.data, response.error) {
+                    (Some(data), None) => Ok(data),
+                    (_, Some(error)) => Err(anyhow::anyhow!("{error}")),
+                    _ => Err(anyhow::anyhow!("Native cleanup did not return an outcome")),
                 }
-                if let Err(error) = self.mouse_input_monitoring.shutdown() {
-                    errors.push(format!("Mouse input monitor cleanup failed: {error:#}"));
-                }
-                self.mixer_hardware = None;
-                if let Some(meter) = self.mixer_meter.as_mut() {
-                    match meter.stop() {
-                        Ok(()) => self.mixer_meter = None,
-                        Err(error) => errors.push(format!("Mixer meter cleanup failed: {error:#}")),
-                    }
-                }
-                let system_monitor_cleanup = match self.system_monitor.shutdown() {
-                    Ok(observation) => observation,
-                    Err(error) => {
-                        errors.push(format!("System monitor cleanup failed: {error:#}"));
-                        None
-                    }
-                };
-                if let Some(owner) = self.controller_input.owner() {
-                    if let Err(error) = self.stop_controller_input(&owner) {
-                        errors.push(format!("Controller input cleanup failed: {error:#}"));
-                    }
-                }
-                if let Some(scope) = self.mapping_scope.as_mut() {
-                    if let Err(error) = scope.request(ServiceRequest::Shutdown) {
-                        errors.push(format!("Mapping scope cleanup failed: {error:#}"));
-                    } else {
-                        self.mapping_scope = None;
-                    }
-                }
-                self.app_files.clear();
-                if !errors.is_empty() {
-                    bail!("{}", errors.join("；"));
-                }
-                Ok(json!({"stopped": true, "system_monitor_cleanup": system_monitor_cleanup}))
             }
         }
     }

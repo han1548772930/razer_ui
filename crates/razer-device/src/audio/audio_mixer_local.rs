@@ -12,6 +12,7 @@ use serde_json::{Value, json};
 pub mod lighting;
 #[path = "audio_mixer_local/reports.rs"]
 mod reports;
+pub use reports::{ReportChannel, TransferFailure, TransferProgress};
 #[cfg(test)]
 #[path = "audio_mixer_local/source_feature_tests.rs"]
 mod source_feature_tests;
@@ -83,6 +84,95 @@ pub struct Receipt {
     /// Explicit Yi local-storage assignments after the native channel send.
     /// These are not source UI dispatches or device readbacks.
     pub profile_updates: Vec<(String, Value)>,
+}
+
+#[derive(Debug)]
+pub struct CommandFailure {
+    /// Completed source command retained as diagnostics after owner loss.
+    pub completed: Receipt,
+}
+
+impl std::fmt::Display for CommandFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Mixer source command completed; final owner validation failed")
+    }
+}
+
+impl std::error::Error for CommandFailure {}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CommandBatchFailure {
+    pub receipts: Vec<Receipt>,
+    pub failed_command: Command,
+    pub transfer: Option<TransferProgress>,
+    pub exchange: Option<crate::audio_mixer::MixerExchangeProgress>,
+    pub completed: Option<Receipt>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub query_data: Option<Vec<u8>>,
+}
+
+impl CommandBatchFailure {
+    pub fn retain(
+        error: anyhow::Error,
+        receipts: Vec<Receipt>,
+        failed_command: Command,
+        query_data: Option<Vec<u8>>,
+    ) -> anyhow::Error {
+        let transfer = error
+            .downcast_ref::<TransferFailure>()
+            .map(|failure| failure.progress.clone());
+        let exchange = error
+            .downcast_ref::<crate::audio_mixer::MixerExchangeFailure>()
+            .map(|failure| failure.progress.clone());
+        let completed = error
+            .downcast_ref::<CommandFailure>()
+            .map(|failure| failure.completed.clone());
+        let query_data = query_data.or_else(|| {
+            error
+                .downcast_ref::<Self>()
+                .and_then(|failure| failure.query_data.clone())
+        });
+        error.context(Self {
+            receipts,
+            failed_command,
+            transfer,
+            exchange,
+            completed,
+            query_data,
+        })
+    }
+}
+
+impl std::fmt::Display for CommandBatchFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(
+            "Mixer command group stopped; actual preceding receipts and failed exchange retained",
+        )
+    }
+}
+impl std::error::Error for CommandBatchFailure {}
+
+pub fn execute_group(
+    device: &dyn FeatureTransport,
+    commands: &[Command],
+    validate: &impl Fn() -> anyhow::Result<()>,
+    control: &impl Fn(&[u8]) -> anyhow::Result<()>,
+) -> anyhow::Result<Vec<Receipt>> {
+    let mut receipts = Vec::new();
+    for command in commands {
+        match execute(device, command, validate, control) {
+            Ok(receipt) => receipts.push(receipt),
+            Err(error) => {
+                return Err(CommandBatchFailure::retain(
+                    error,
+                    receipts,
+                    command.clone(),
+                    None,
+                ));
+            }
+        }
+    }
+    Ok(receipts)
 }
 
 #[derive(Clone, Default)]
@@ -564,8 +654,7 @@ pub fn execute(
                 serde_json::to_value(MixerSession::new(device, validate)?.apply(target, value)?)?;
         }
     }
-    validate()?;
-    Ok(Receipt {
+    let receipt = Receipt {
         command: command.clone(),
         transport_completed: true,
         response,
@@ -575,7 +664,13 @@ pub fn execute(
             } => profile_updates.clone(),
             _ => Vec::new(),
         },
-    })
+    };
+    validate().map_err(|error| {
+        error.context(CommandFailure {
+            completed: receipt.clone(),
+        })
+    })?;
+    Ok(receipt)
 }
 
 #[cfg(test)]

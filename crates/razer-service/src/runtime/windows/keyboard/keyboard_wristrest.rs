@@ -2,7 +2,7 @@
 use super::{current_target, hid, hid_transport, receiver, transaction, verify_routing};
 use anyhow::{Context as _, ensure};
 use razer_device::{
-    backend::{HidBackend, HidNode},
+    backend::HidNode,
     device_reads::DeviceReadTarget,
     keyboard_wristrest::{self as wristrest, Target, Update},
 };
@@ -108,7 +108,11 @@ pub(super) fn run(
         validate()?;
         let _lock = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
         validate()?;
-        let device = hid_transport::open(&target.path, cap.report_bytes)?;
+        let device = hid_transport::open_validated(
+            &target.path,
+            cap.report_bytes,
+            std::rc::Rc::new(&validate),
+        )?;
         wristrest::query(&device, transaction(&target, cap)?, &validate)
     };
     // Current mapping_engine selects every collection with this real

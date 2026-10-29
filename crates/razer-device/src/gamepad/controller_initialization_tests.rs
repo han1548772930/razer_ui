@@ -505,8 +505,9 @@ fn controller_initialization_profile_names_use_two_chunks_and_restore_normal_del
     steps.push(step([80, 5, 136], &[9, 0, 64, 0, 0], &second));
     steps.push(step([3, 12, 146], &[9, 1], &[9, 1, 0]));
     let io = Transport::new(4, steps);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::new(&io);
     let waits = RefCell::new(Vec::new());
-    let result = InitializationProtocol::new(&io, 2636, |delay| {
+    let result = InitializationProtocol::new(&probe, 2636, |delay| {
         waits.borrow_mut().push(delay.as_millis());
         Ok(())
     })
@@ -525,9 +526,16 @@ fn controller_initialization_profile_names_use_two_chunks_and_restore_normal_del
     );
     assert_eq!(
         *waits.borrow(),
-        [
-            10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 10, 20, 10, 10
-        ]
+        [0, 10, 0, 10, 0, 10, 0, 10, 0, 10, 0, 20, 0, 20, 0, 10]
+    );
+    assert_eq!(
+        probe.timings(),
+        vec![
+            crate::backend::ExchangeTiming::MutexOut {
+                interval: std::time::Duration::from_millis(10),
+            };
+            8
+        ],
     );
     io.finished();
 }

@@ -27,6 +27,8 @@ pub struct Observation<T = DeviceReadValue> {
     pub receiver_after: Vec<(u16, u8)>,
 }
 
+pub type ObservationFailure<T> = crate::receiver_session::ReceiverObservationFailure<T>;
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum PollingPreRead {
@@ -51,6 +53,23 @@ pub struct PollingWriteResult {
     pub observed_hz: u32,
     pub acknowledgement: Option<Vec<u8>>,
     pub changed: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct PollingWriteFailure {
+    pub requested_hz: u32,
+    pub effective_hz: u32,
+    pub previous: Option<PollingPreRead>,
+    pub acknowledgement: Option<Vec<u8>>,
+    pub observed_hz: Option<u32>,
+}
+
+impl std::fmt::Display for PollingWriteFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(
+            "Receiver polling write did not complete; partial replies are diagnostic only",
+        )
+    }
 }
 
 impl ReceiverRead {
@@ -176,7 +195,14 @@ impl ReceiverRead {
             .polling_codes
             .get(&format!("RATE_{effective_hz}Hz"))
             .context("Polling setter has no source code for this rate")?;
-        self.observe(device, next_transaction, validate, |next, validate| {
+        let mut progress = PollingWriteFailure {
+            requested_hz: hz,
+            effective_hz,
+            previous: None,
+            acknowledgement: None,
+            observed_hz: None,
+        };
+        let result = self.observe(device, next_transaction, validate, |next, validate| {
             let get = |transaction| -> anyhow::Result<u32> {
                 match device_query::read_device(
                     device,
@@ -194,14 +220,21 @@ impl ReceiverRead {
             // prerequisite. Keep that failure separate from an observed rate.
             let previous = match get(next()?) {
                 Ok(hz) => PollingPreRead::Observed { hz },
-                Err(error) => PollingPreRead::Failed {
-                    message: format!("{error:#}"),
-                },
+                Err(error) => {
+                    if crate::backend::exchange_finalization_failed(&error) {
+                        return Err(error);
+                    }
+                    PollingPreRead::Failed {
+                        message: format!("{error:#}"),
+                    }
+                }
             };
+            progress.previous = Some(previous.clone());
             // A caught native getter failure cannot revive a canceled scope
             // or authorize a setter against a replaced physical device.
             validate()?;
             if previous.hz() == Some(effective_hz) {
+                progress.observed_hz = Some(effective_hz);
                 return Ok(PollingWriteResult {
                     requested_hz: hz,
                     effective_hz,
@@ -211,16 +244,20 @@ impl ReceiverRead {
                     changed: false,
                 });
             }
-            let acknowledgement = crate::feature_exchange::exchange(
+            let response = crate::feature_exchange::exchange(
                 device,
                 &self.transport,
                 if high_speed { [2, 0, 64] } else { [2, 0, 14] },
                 &[1, code],
                 next()?,
                 validate,
-            )?;
+            );
+            progress.acknowledgement =
+                crate::feature_exchange::acknowledged_reply(&response).map(<[u8]>::to_vec);
+            let acknowledgement = response?;
             validate()?;
             let observed_hz = get(next()?)?;
+            progress.observed_hz = Some(observed_hz);
             ensure!(
                 observed_hz == effective_hz,
                 "Polling setter acknowledged but getter differs"
@@ -234,6 +271,10 @@ impl ReceiverRead {
                 acknowledgement: Some(acknowledgement),
                 changed: true,
             })
+        });
+        result.map_err(|error| {
+            let message = error.to_string();
+            error.context(progress).context(message)
         })
     }
 
@@ -328,6 +369,7 @@ impl ReceiverRead {
         operation: impl FnOnce(&mut N, &V) -> anyhow::Result<T>,
     ) -> anyhow::Result<Observation<T>>
     where
+        T: Send + Sync + 'static,
         N: FnMut() -> anyhow::Result<u8>,
         V: Fn() -> anyhow::Result<()>,
     {
@@ -336,10 +378,32 @@ impl ReceiverRead {
             device_query::read_receiver(device, &self.receiver, next_transaction()?, &validate)?;
         validate_peer(&receiver_before)?;
         let reading = operation(&mut next_transaction, &validate)?;
-        let receiver_after =
-            device_query::read_receiver(device, &self.receiver, next_transaction()?, &validate)?;
-        validate_peer(&receiver_after)?;
-        validate()?;
+        let mut after = None;
+        let result = (|| -> anyhow::Result<Vec<(u16, u8)>> {
+            let receiver_after = device_query::read_receiver(
+                device,
+                &self.receiver,
+                next_transaction()?,
+                &validate,
+            )?;
+            after = Some(receiver_after.clone());
+            validate_peer(&receiver_after)?;
+            validate()?;
+            Ok(receiver_after)
+        })();
+        let receiver_after = match result {
+            Ok(receiver_after) => receiver_after,
+            Err(error) => {
+                let message = error.to_string();
+                return Err(error
+                    .context(ObservationFailure {
+                        reading,
+                        receiver_before,
+                        receiver_after: after,
+                    })
+                    .context(message));
+            }
+        };
         Ok(Observation {
             reading,
             receiver_before,

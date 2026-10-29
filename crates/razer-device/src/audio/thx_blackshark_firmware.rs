@@ -570,12 +570,11 @@ impl BlackSharkFirmwareSession {
             }
         };
         let expected = progress.command.expected_response();
-        let check = |validate: &mut dyn FnMut(&BlackSharkFirmwareIdentity) -> Result<()>| {
-            validate(&self.identity)
-        };
+        let validation = std::cell::RefCell::new(validate);
+        let check = || validation.borrow_mut()(&self.identity);
         // Fixed full interval is conservative when the caller has already
         // waited; no wall-clock dependency is introduced into shared logic.
-        if let Err(error) = check(validate) {
+        if let Err(error) = check() {
             progress.fail(Validation, error);
             return progress;
         }
@@ -583,7 +582,7 @@ impl BlackSharkFirmwareSession {
             progress.fail(Scheduling, error);
             return progress;
         }
-        if let Err(error) = check(validate) {
+        if let Err(error) = check() {
             progress.fail(Validation, error);
             return progress;
         }
@@ -592,99 +591,138 @@ impl BlackSharkFirmwareSession {
         } else {
             30
         };
-        for _ in 0..BLACKSHARK_OUTPUT_ATTEMPTS {
-            if let Err(error) = check(validate) {
-                progress.fail(Validation, error);
-                return progress;
-            }
-            let mut attempt = BlackSharkFirmwareAttempt {
-                output: report.to_vec(),
-                output_attempted: true,
-                ..Default::default()
-            };
-            let result = self.transport.write_output(&report);
-            attempt.output_completed = result.is_ok();
-            progress.attempts.push(attempt);
-            if let Err(error) = result {
+        let lease = match self.transport.begin_exchange_validated(
+            crate::backend::ExchangeOptions::plain(),
+            std::rc::Rc::new(&check),
+        ) {
+            Ok(lease) => lease,
+            Err(error) => {
                 progress.fail(Transport, error);
                 return progress;
             }
-            if let Err(error) = check(validate) {
-                progress.fail(Validation, error);
-                return progress;
-            }
-            if let Err(error) = wait(delay) {
-                progress.fail(Scheduling, error);
-                return progress;
-            }
-            for input_ordinal in 0..BLACKSHARK_INPUT_BUDGET {
-                if let Err(error) = check(validate) {
+        };
+        let mut progress = (|| {
+            let transport = lease.transport();
+            for _ in 0..BLACKSHARK_OUTPUT_ATTEMPTS {
+                if let Err(error) = check() {
                     progress.fail(Validation, error);
                     return progress;
                 }
-                if input_ordinal > 0 {
-                    // Rust also spaces invalid-nonempty reads; source only
-                    // applies this delay once an empty read reduced its counter.
-                    if let Err(error) = wait(delay) {
-                        progress.fail(Scheduling, error);
-                        return progress;
-                    }
-                    if let Err(error) = check(validate) {
+                let mut attempt = BlackSharkFirmwareAttempt {
+                    output: report.to_vec(),
+                    output_attempted: true,
+                    ..Default::default()
+                };
+                let result = transport.write_output(&report);
+                attempt.output_completed = result.is_ok();
+                progress.attempts.push(attempt);
+                if let Err(error) = result {
+                    progress.fail(Transport, error);
+                    return progress;
+                }
+                if let Err(error) = check() {
+                    progress.fail(Validation, error);
+                    return progress;
+                }
+                if let Err(error) = wait(delay) {
+                    progress.fail(Scheduling, error);
+                    return progress;
+                }
+                for input_ordinal in 0..BLACKSHARK_INPUT_BUDGET {
+                    if let Err(error) = check() {
                         progress.fail(Validation, error);
                         return progress;
                     }
-                }
-                let mut input = [0u8; BLACKSHARK_REPORT_BYTES];
-                let count = match self
-                    .transport
-                    .read_interrupt(&mut input, BLACKSHARK_INPUT_TIMEOUT_MS)
-                {
-                    Ok(count) if count <= input.len() => count,
-                    Ok(count) => {
-                        progress.fail(
-                            Transport,
-                            format!("BlackShark backend returned impossible byte count {count}"),
-                        );
+                    if input_ordinal > 0 {
+                        // Rust also spaces invalid-nonempty reads; source only
+                        // applies this delay once an empty read reduced its counter.
+                        if let Err(error) = wait(delay) {
+                            progress.fail(Scheduling, error);
+                            return progress;
+                        }
+                        if let Err(error) = check() {
+                            progress.fail(Validation, error);
+                            return progress;
+                        }
+                    }
+                    let mut input = [0u8; BLACKSHARK_REPORT_BYTES];
+                    let count =
+                        match transport.read_interrupt(&mut input, BLACKSHARK_INPUT_TIMEOUT_MS) {
+                            Ok(count) if count <= input.len() => count,
+                            Ok(count) => {
+                                progress.fail(
+                                    Transport,
+                                    format!(
+                                        "BlackShark backend returned impossible byte count {count}"
+                                    ),
+                                );
+                                return progress;
+                            }
+                            Err(error) => {
+                                progress.fail(Transport, error);
+                                return progress;
+                            }
+                        };
+                    let attempt = progress.attempts.last_mut().expect("attempt was pushed");
+                    attempt.inputs.push(input[..count].to_vec());
+                    let decoded = decode_blackshark_general_reply(&input[..count], expected);
+                    if let Ok(reply) = &decoded {
+                        attempt.reply = Some(reply.clone());
+                    }
+                    // Decode first to preserve a physical acknowledgement even if
+                    // cancellation or identity changed while the read was pending.
+                    if let Err(error) = check() {
+                        progress.fail(Validation, error);
                         return progress;
                     }
-                    Err(error) => {
-                        progress.fail(Transport, error);
-                        return progress;
+                    match decoded {
+                        Ok(reply) if reply.source_success() => {
+                            progress.completed = true;
+                            return progress;
+                        }
+                        Ok(_) => break,
+                        Err(error) => attempt.rejected_inputs.push(error.to_string()),
                     }
-                };
-                let attempt = progress.attempts.last_mut().expect("attempt was pushed");
-                attempt.inputs.push(input[..count].to_vec());
-                let decoded = decode_blackshark_general_reply(&input[..count], expected);
-                if let Ok(reply) = &decoded {
-                    attempt.reply = Some(reply.clone());
-                }
-                // Decode first to preserve a physical acknowledgement even if
-                // cancellation or identity changed while the read was pending.
-                if let Err(error) = check(validate) {
-                    progress.fail(Validation, error);
-                    return progress;
-                }
-                match decoded {
-                    Ok(reply) if reply.source_success() => {
-                        progress.completed = true;
-                        return progress;
-                    }
-                    Ok(_) => break,
-                    Err(error) => attempt.rejected_inputs.push(error.to_string()),
                 }
             }
-        }
-        if let Some(reply) = progress.reply() {
-            let status = reply.status;
-            progress.fail(
-                DeviceRejected,
-                format!("BlackShark firmware reply status {status} after three output attempts"),
-            );
-        } else {
-            progress.fail(
-                InputExhausted,
-                "BlackShark input budget exhausted after three output attempts",
-            );
+            if let Some(reply) = progress.reply() {
+                let status = reply.status;
+                progress.fail(
+                    DeviceRejected,
+                    format!(
+                        "BlackShark firmware reply status {status} after three output attempts"
+                    ),
+                );
+            } else {
+                progress.fail(
+                    InputExhausted,
+                    "BlackShark input budget exhausted after three output attempts",
+                );
+            }
+            progress
+        })();
+        let released = match check() {
+            Ok(()) => lease.finish(),
+            Err(error) => {
+                drop(lease);
+                if let Some(failure) = &mut progress.failure {
+                    failure.message.push_str(&format!(
+                        "; HID exchange owner validation also failed: {error:#}"
+                    ));
+                } else {
+                    progress.fail(Validation, error);
+                }
+                return progress;
+            }
+        };
+        if let Err(error) = released {
+            if let Some(failure) = &mut progress.failure {
+                failure
+                    .message
+                    .push_str(&format!("; HID exchange release also failed: {error:#}"));
+            } else {
+                progress.fail(Transport, error);
+            }
         }
         progress
     }

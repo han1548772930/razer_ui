@@ -55,7 +55,8 @@ pub(super) fn request(
         before["feature_report_bytes"] == cap.report_bytes,
         "Tracking Feature Report size differs"
     );
-    let device = hid_transport::open(&target.path, cap.report_bytes)?;
+    let device =
+        hid_transport::open_validated(&target.path, cap.report_bytes, std::rc::Rc::new(&validate))?;
     Ok(tracking::submit(
         &device,
         cap,

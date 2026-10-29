@@ -230,7 +230,7 @@ pub fn apply(
             )
         })?;
         let sent = std::cell::Cell::new(false);
-        let payload = feature_exchange::exchange_with_report_data_size_observing_send(
+        let response = feature_exchange::exchange_with_report_data_size_observing_send(
             device,
             cap,
             command.header,
@@ -239,8 +239,14 @@ pub fn apply(
             command.header[0],
             &validate,
             &mut || sent.set(true),
-        )
-        .map_err(|error| {
+        );
+        if let Some(payload) = feature_exchange::acknowledged_reply(&response) {
+            acknowledgements.push(Acknowledgement {
+                step: command.step,
+                payload: payload.to_vec(),
+            });
+        }
+        response.map_err(|error| {
             failure(
                 FailurePhase::Command,
                 Some(command.step),
@@ -249,10 +255,6 @@ pub fn apply(
                 error,
             )
         })?;
-        acknowledgements.push(Acknowledgement {
-            step: command.step,
-            payload,
-        });
         validate().map_err(|error| {
             failure(
                 FailurePhase::AfterAcknowledgement,
@@ -278,14 +280,30 @@ pub fn submit(
     mut next_transaction: impl FnMut() -> Result<u8>,
     validate: impl Fn() -> Result<()>,
 ) -> SubmissionReport {
-    let initialization_error = crate::mouse_legacy_polling::initialize_driver_mode(
+    let initialization = crate::mouse_legacy_polling::initialize_driver_mode(
         device,
         cap,
         &mut next_transaction,
         &validate,
-    )
-    .err()
-    .map(|error| format!("{error:#}"));
+    );
+    if let Err(error) = &initialization
+        && crate::backend::exchange_finalization_failed(error)
+    {
+        return SubmissionReport {
+            requested: setting,
+            transport_source_class: cap.source_class.clone(),
+            initialization_error: Some(format!("{error:#}")),
+            outcome: Err(WriteFailure {
+                requested: setting,
+                phase: FailurePhase::Prepare,
+                step: None,
+                acknowledgements: vec![],
+                command_may_have_reached_device: false,
+                error: format!("{error:#}"),
+            }),
+        };
+    }
+    let initialization_error = initialization.err().map(|error| format!("{error:#}"));
     SubmissionReport {
         requested: setting,
         transport_source_class: cap.source_class.clone(),

@@ -1,5 +1,139 @@
 use super::*;
 use crate::keyboard_control_test_transport::{Mock, assert_report_integrity_with_id, reply};
+
+#[test]
+fn release_failure_retains_the_current_chunk_and_stops_all_write_families() {
+    let operations = [
+        Operation::Actuation {
+            slot: 1,
+            points: (1..=16)
+                .map(|key_id| ActuationPoint {
+                    key_id,
+                    threshold_high: 256,
+                    threshold_low: 19656,
+                })
+                .collect(),
+        },
+        Operation::WriteProfileMetadata(ProfileMetadata {
+            slot_id: 1,
+            guid: "af06d371-861f-4b98-8d78-bfaef5cfdebf".into(),
+            name: String::new(),
+            owner: String::new(),
+            key_mapping_hash: [1, 2, 3, 4, 5, 6],
+        }),
+        Operation::Setting(Setting::BottomDeadzone { slot: 1, value: 12 }),
+    ];
+    for operation in operations {
+        let device = Mock::new([reply(&[0xd3])]);
+        let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);
+        let error = execute_hid(&probe, &cap(), &operation, sequence(), &|| Ok(())).unwrap_err();
+        let chunks = failed_write(&error).unwrap();
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0].offset, 0);
+        assert_eq!(chunks[0].acknowledgement, Some(vec![0xd3]));
+        assert!(
+            chunks[0]
+                .error
+                .as_ref()
+                .unwrap()
+                .contains("simulated explicit release failed")
+        );
+        assert!(
+            !Reply::Write {
+                chunks: chunks.to_vec()
+            }
+            .acknowledged()
+        );
+        assert!(format!("{error:#}").contains("simulated explicit release failed"));
+        assert_eq!(device.sent().len(), 1);
+    }
+}
+
+#[test]
+fn protocol_rejection_and_release_failure_retains_no_ack_and_stops_later_chunks() {
+    let mut rejected = reply(&[0xd3]);
+    rejected.status = 5;
+    let device = Mock::new([rejected]);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);
+    let error = execute_hid(
+        &probe,
+        &cap(),
+        &Operation::Actuation {
+            slot: 1,
+            points: (1..=16)
+                .map(|key_id| ActuationPoint {
+                    key_id,
+                    threshold_high: 256,
+                    threshold_low: 19656,
+                })
+                .collect(),
+        },
+        sequence(),
+        &|| Ok(()),
+    )
+    .unwrap_err();
+    let chunks = failed_write(&error).unwrap();
+    assert_eq!(chunks.len(), 1);
+    assert!(chunks[0].acknowledgement.is_none());
+    assert!(
+        chunks[0]
+            .error
+            .as_ref()
+            .unwrap()
+            .contains("simulated explicit release failed")
+    );
+    assert_eq!(device.sent().len(), 1);
+}
+
+#[test]
+fn cancellation_after_a_chunk_ack_preserves_it_before_stopping_later_chunks() {
+    let device = Mock::new([reply(&[0xd3])]);
+    let canceled = std::cell::Cell::new(false);
+    let on_finish = || canceled.set(true);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::with_on_finish(&device, &on_finish);
+    let error = execute_hid(
+        &probe,
+        &cap(),
+        &Operation::RapidTrigger {
+            slot: 1,
+            keys: (1..=14)
+                .map(|key_id| RapidTriggerKey {
+                    key_id,
+                    enabled: 1,
+                    up_sensitivity: 512,
+                    down_sensitivity: 1024,
+                })
+                .collect(),
+        },
+        sequence(),
+        &|| {
+            ensure!(
+                !canceled.get(),
+                "canceled after current chunk acknowledgement"
+            );
+            Ok(())
+        },
+    )
+    .unwrap_err();
+    let chunks = failed_write(&error).unwrap();
+    assert_eq!(chunks.len(), 1);
+    assert_eq!(chunks[0].count, 13);
+    assert_eq!(chunks[0].acknowledgement, Some(vec![0xd3]));
+    assert!(
+        chunks[0]
+            .error
+            .as_ref()
+            .unwrap()
+            .contains("canceled after current chunk acknowledgement")
+    );
+    assert!(
+        !Reply::Write {
+            chunks: chunks.to_vec()
+        }
+        .acknowledged()
+    );
+    assert_eq!(device.sent().len(), 1);
+}
 // Current rzDevice25DualLinkKeyboard._getTransactionId returns 128 | counter,
 // with counter cycling through 0..30 (756 MW, adapter PID757).
 fn sequence() -> impl FnMut() -> anyhow::Result<u8> {

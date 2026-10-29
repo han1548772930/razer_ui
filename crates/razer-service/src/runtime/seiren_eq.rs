@@ -35,7 +35,8 @@ impl PortableRuntime {
             Self::revalidate(node)
         };
         validate()?;
-        let device = with_backend(|backend| backend.open(node))?;
+        let device =
+            with_backend(|backend| backend.open_validated(node, std::rc::Rc::new(&validate)))?;
         ensure!(
             device.report_lengths()?.feature.get(&0) == Some(&91),
             "Seiren EQ Feature Report size differs"
@@ -49,7 +50,11 @@ impl PortableRuntime {
             )
         };
         let report = eq::execute(product_id, device.as_ref(), cap, change, next, &validate)?;
-        validate()?;
+        validate().map_err(|error| {
+            error.context(eq::ExecutionFailure {
+                progress: report.clone(),
+            })
+        })?;
         Ok(
             json!({"node":node,"product_id":product_id,"report":report,"setting_scope":"seiren_eq_profile",
             "source_class":cap.source_class,"transport_metadata":device.metadata(),"identity_scope":"hid_collection"}),

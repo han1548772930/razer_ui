@@ -209,18 +209,35 @@ pub struct DeviceWriteAck {
     pub data: Vec<u8>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct DeviceWriteResult {
     pub requested: DeviceWriteSetting,
     /// Some source tasks continue after an initial getter failure. None means
     /// no value was observed; it is never represented as a fabricated zero.
     pub previous: Option<DeviceReadValue>,
     pub observed: Option<DeviceReadValue>,
-    /// Present for source tasks whose completion contract is the setter ACK.
+    /// A matching setter response, independent of the later getter observation.
     pub acknowledged: Option<DeviceWriteAck>,
     pub changed: bool,
     /// True only for an actual, matching getter observation.
     pub verified: bool,
+}
+
+/// Historical progress of one failed request, never a current device snapshot.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct DeviceWriteFailure {
+    pub requested: DeviceWriteSetting,
+    pub previous: Option<DeviceReadValue>,
+    pub acknowledged: Option<DeviceWriteAck>,
+    /// A source setter's parsed reply, separate from the independent getter.
+    pub setter_reply: Option<DeviceReadValue>,
+    pub observed: Option<DeviceReadValue>,
+}
+
+impl std::fmt::Display for DeviceWriteFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Device write did not complete; partial responses are diagnostic only")
+    }
 }
 
 /// Execute the source task on one retained route/lock. Current182's
@@ -301,46 +318,69 @@ pub fn apply(
             verified: true,
         });
     }
-    validate()?;
-    let acknowledged = if read_cap.product_id == 182
-        && matches!(
-            setting,
-            DeviceWriteSetting::Polling { .. } | DeviceWriteSetting::Idle { .. }
-        ) {
-        // Current182 85191.ot validates setter status and then calls gN; the
-        // setProfilePollingRate response is not a getProfilePollingRate value.
-        // 85191.Rt likewise compares only the subsequent getTimeToSleep.
-        // The idle setter's first data byte is time, not a profile selector.
-        Some(DeviceWriteAck {
-            command: setter.command,
-            data: crate::feature_exchange::exchange(
+    let mut progress = DeviceWriteFailure {
+        requested: setting.clone(),
+        previous,
+        acknowledged: None,
+        setter_reply: None,
+        observed: None,
+    };
+    let result = (|| -> anyhow::Result<()> {
+        validate()?;
+        if read_cap.product_id == 182
+            && matches!(
+                setting,
+                DeviceWriteSetting::Polling { .. } | DeviceWriteSetting::Idle { .. }
+            )
+        {
+            // Current182 85191.ot validates setter status and then calls gN; the
+            // setProfilePollingRate response is not a getProfilePollingRate value.
+            // 85191.Rt likewise compares only the subsequent getTimeToSleep.
+            // The idle setter's first data byte is time, not a profile selector.
+            let response = crate::feature_exchange::exchange(
                 device,
                 read_cap,
                 setter.command,
                 &setter.payload,
                 next_transaction()?,
                 &validate,
-            )?,
-        })
-    } else {
-        device_query::read_device(device, read_cap, &setter, next_transaction()?, &validate)
-            .context("未能确认写入应答；设备可能已经接受设置，请先重新读取")?;
-        None
-    };
-    validate().context("写入应答后设备身份或期限变化，未确认最终设置")?;
-    let observed =
-        device_query::read_device(device, read_cap, getter, next_transaction()?, &validate)
-            .context("已收到写入应答，但重新读取失败，未确认最终设置")?;
-    ensure!(
-        setting.matches_value(&observed),
-        "设备回读与请求设置不符，写入结果未确认"
-    );
-    validate().context("回读后设备身份或期限变化，写入结果未确认")?;
+            );
+            if let Some(data) = crate::feature_exchange::acknowledged_reply(&response) {
+                progress.acknowledged = Some(DeviceWriteAck {
+                    command: setter.command,
+                    data: data.to_vec(),
+                });
+            }
+            response?;
+        } else {
+            let response = device_query::read_device(
+                device,
+                read_cap,
+                &setter,
+                next_transaction()?,
+                &validate,
+            );
+            progress.setter_reply = device_query::completed_reading(&response).cloned();
+            response.context("未能确认写入应答；设备可能已经接受设置，请先重新读取")?;
+        }
+        validate().context("写入应答后设备身份或期限变化，未确认最终设置")?;
+        let observed =
+            device_query::read_device(device, read_cap, getter, next_transaction()?, &validate)
+                .context("已收到写入应答，但重新读取失败，未确认最终设置")?;
+        let matches = setting.matches_value(&observed);
+        progress.observed = Some(observed);
+        ensure!(matches, "设备回读与请求设置不符，写入结果未确认");
+        validate().context("回读后设备身份或期限变化，写入结果未确认")
+    })();
+    if let Err(error) = result {
+        let message = error.to_string();
+        return Err(error.context(progress).context(message));
+    }
     Ok(DeviceWriteResult {
-        requested: setting.clone(),
-        previous,
-        observed: Some(observed),
-        acknowledged,
+        requested: progress.requested,
+        previous: progress.previous,
+        observed: progress.observed,
+        acknowledged: progress.acknowledged,
         changed: true,
         verified: true,
     })

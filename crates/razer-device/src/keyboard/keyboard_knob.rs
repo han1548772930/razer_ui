@@ -526,7 +526,7 @@ fn apply_with_cap(
         for mode in configuration {
             mode.encode(&mut payload);
         }
-        let data = feature_exchange::exchange_with_report_data_size_observing_send(
+        let result = feature_exchange::exchange_with_report_data_size_observing_send(
             device,
             &cap.transport,
             SET_CONFIG,
@@ -541,9 +541,11 @@ fn apply_with_cap(
                 report.configuration.attempted = true;
                 report.configuration.send_attempts += 1;
             },
-        )
-        .map_err(|error| fail(KnobFailurePhase::ConfigurationWrite, report.clone(), error))?;
-        report.configuration.acknowledgment_data = Some(data);
+        );
+        report.configuration.acknowledgment_data =
+            feature_exchange::acknowledged_reply(&result).map(<[u8]>::to_vec);
+        result
+            .map_err(|error| fail(KnobFailurePhase::ConfigurationWrite, report.clone(), error))?;
     }
 
     if let Some(current_mode) = current_mode {
@@ -557,7 +559,7 @@ fn apply_with_cap(
             current_mode.green,
             current_mode.blue,
         ];
-        let data = feature_exchange::exchange_with_report_data_size_observing_send(
+        let result = feature_exchange::exchange_with_report_data_size_observing_send(
             device,
             &cap.transport,
             SET_CURRENT,
@@ -572,9 +574,10 @@ fn apply_with_cap(
                 report.current_mode.attempted = true;
                 report.current_mode.send_attempts += 1;
             },
-        )
-        .map_err(|error| fail(KnobFailurePhase::CurrentModeWrite, report.clone(), error))?;
-        report.current_mode.acknowledgment_data = Some(data);
+        );
+        report.current_mode.acknowledgment_data =
+            feature_exchange::acknowledged_reply(&result).map(<[u8]>::to_vec);
+        result.map_err(|error| fail(KnobFailurePhase::CurrentModeWrite, report.clone(), error))?;
     }
     let final_write_phase = if current_mode.is_some() {
         KnobFailurePhase::CurrentModeWrite

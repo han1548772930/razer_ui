@@ -4,11 +4,11 @@ use super::{mixer_driver, mixer_endpoint, mixer_meter};
 use anyhow::{Context as _, ensure};
 use razer_device::{
     audio_mixer::{MixerChannel, MixerControl, MixerSession, MixerTarget, MixerValue},
-    audio_mixer_local::lighting::{self, Action},
-    backend::{HidBackend, HidNode},
+    audio_mixer_local::lighting,
+    backend::HidNode,
 };
 use razer_hid::with_backend;
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::time::{Duration, Instant};
 
 pub(super) fn sample(node: &HidNode, sources: [u8; 4]) -> anyhow::Result<Value> {
@@ -37,7 +37,7 @@ pub(super) fn sample(node: &HidNode, sources: [u8; 4]) -> anyhow::Result<Value> 
         Ok(())
     };
     let mut raw = [None; 7];
-    let device = with_backend(|backend| backend.open(node))?;
+    let device = with_backend(|backend| backend.open_validated(node, std::rc::Rc::new(&validate)))?;
     let session = MixerSession::new(device.as_ref(), &validate)?;
     for source in sources {
         if raw[source as usize].is_some() {
@@ -78,23 +78,12 @@ pub(super) fn sample(node: &HidNode, sources: [u8; 4]) -> anyhow::Result<Value> 
         );
         raw[source as usize] = Some(peak);
     }
-    let peaks =
-        sources.map(|source| (raw[source as usize].expect("sampled source") * 100.).trunc() as u8);
-    let report = lighting::reports(&Action::MeterFrame { peaks })?
-        .remove(0)
-        .0;
-    let mut last = None;
-    for _ in 0..10 {
-        std::thread::sleep(Duration::from_millis(10));
-        validate()?;
-        match device.send_feature(&report) {
-            Ok(()) => {
-                return Ok(
-                    json!({"sources":sources,"peaks":peaks,"raw_peak":raw,"device_container_id":container,"feature_written":true}),
-                );
-            }
-            Err(error) => last = Some(error),
-        }
-    }
-    Err(last.context("Mixer lighting send was not attempted")?)
+    serde_json::to_value(lighting::submit_sample(
+        device.as_ref(),
+        sources,
+        raw,
+        container.to_owned(),
+        &validate,
+    )?)
+    .map_err(Into::into)
 }

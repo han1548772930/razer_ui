@@ -96,6 +96,23 @@ pub struct FrameSubmission {
     pub interruption: Option<anyhow::Error>,
 }
 
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
+pub struct FrameSubmissionFailure {
+    pub reports_submitted: u8,
+    pub errors: Vec<String>,
+    pub interruption: Option<String>,
+}
+
+impl std::fmt::Display for FrameSubmissionFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            formatter,
+            "Controller lighting exchange failed after submitting {} reports",
+            self.reports_submitted
+        )
+    }
+}
+
 pub struct SoftwareHid<'a, T: crate::backend::FeatureTransport + ?Sized> {
     transport: &'a T,
     transaction: u8,
@@ -148,35 +165,57 @@ impl<'a, T: crate::backend::FeatureTransport + ?Sized> SoftwareHid<'a, T> {
         wait: &mut impl FnMut(std::time::Duration) -> anyhow::Result<()>,
     ) -> anyhow::Result<FrameSubmission> {
         let reports = frame_reports(frame, device_handle, &mut self.transaction)?;
-        let mut result = FrameSubmission::default();
-        for report in reports {
-            let mut submitted = false;
-            let mut error = String::new();
-            for _ in 0..20 {
-                if let Err(e) = wait(std::time::Duration::from_millis(5)) {
-                    result.interruption = Some(e);
-                    return Ok(result);
-                }
-                match self.transport.send_feature_at_collection_max(&report) {
-                    Ok(()) => {
-                        submitted = true;
-                        result.reports_submitted += 1;
-                        result.complete = result.reports_submitted == 2;
-                        break;
+        let mut submission = None;
+        let completed = crate::feature_exchange::with_exchange(
+            self.transport,
+            crate::backend::ExchangeOptions::batch(),
+            |transport, _| {
+                let mut result = FrameSubmission::default();
+                for report in reports {
+                    let mut submitted = false;
+                    let mut error = String::new();
+                    for _ in 0..20 {
+                        if let Err(e) = wait(std::time::Duration::from_millis(5)) {
+                            result.interruption = Some(e);
+                            submission = Some(result);
+                            return Ok(());
+                        }
+                        match transport.send_feature_at_collection_max(&report) {
+                            Ok(()) => {
+                                submitted = true;
+                                result.reports_submitted += 1;
+                                result.complete = result.reports_submitted == 2;
+                                break;
+                            }
+                            Err(e) => error = format!("{e:#}"),
+                        }
                     }
-                    Err(e) => error = format!("{e:#}"),
+                    if !submitted {
+                        result.errors.push(error);
+                    }
+                    if let Err(e) = wait(std::time::Duration::from_millis(1)) {
+                        result.interruption = Some(e);
+                        submission = Some(result);
+                        return Ok(());
+                    }
                 }
-            }
-            if !submitted {
-                result.errors.push(error);
-            }
-            if let Err(e) = wait(std::time::Duration::from_millis(1)) {
-                result.interruption = Some(e);
-                return Ok(result);
-            }
+                result.complete = result.reports_submitted == 2;
+                submission = Some(result);
+                Ok(())
+            },
+        );
+        if let Err(error) = completed {
+            return Err(match submission {
+                Some(progress) => error.context(FrameSubmissionFailure {
+                    reports_submitted: progress.reports_submitted,
+                    errors: progress.errors,
+                    interruption: progress.interruption.map(|error| format!("{error:#}")),
+                }),
+                None => error,
+            });
         }
-        result.complete = result.reports_submitted == 2;
-        Ok(result)
+        submission
+            .ok_or_else(|| anyhow::anyhow!("Controller frame exchange returned no submission"))
     }
 }
 

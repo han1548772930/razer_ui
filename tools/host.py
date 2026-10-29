@@ -15,6 +15,7 @@ import threading
 import types
 import urllib.parse
 import urllib.request
+import uuid
 import io
 import lzma
 import zipfile
@@ -1398,8 +1399,428 @@ def recheck_host_bootstrap(fetch, results):
     return report
 
 
+def _host_indexed_bytes(claim, indexed):
+    import analysis as a
+    name = claim.get("path", "")
+    if (not isinstance(name, str) or not name.startswith(".analysis/inputs/")
+            or Path(name).is_absolute() or ".." in Path(name).parts):
+        raise ValueError("Host source requires a retained project-relative input")
+    path = a.resolve(name, ".analysis/inputs")
+    if (a.ROOT / name).is_symlink():
+        raise ValueError("Host source cannot follow a symbolic link")
+    row = indexed.get(name)
+    if row is None or any(row.get(key) != claim.get(key) for key in ("bytes", "sha256")):
+        raise ValueError("Host source differs from its indexed identity: " + name)
+    before = path.stat()
+    raw = path.read_bytes()
+    after = path.stat()
+    if ((before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns)
+            or type(claim.get("bytes")) is not int or len(raw) != claim["bytes"]
+            or hashlib.sha256(raw).hexdigest() != claim.get("sha256")):
+        raise ValueError("Host source byte identity differs: " + name)
+    return raw
+
+
+def _host_official_url(url):
+    parsed = urllib.parse.urlsplit(url)
+    if (parsed.scheme != "https" or parsed.netloc not in OFFICIAL or parsed.fragment
+            or parsed.username or parsed.password):
+        raise ValueError("Host declaration is not an official HTTPS URL")
+    return parsed
+
+
+def _publish_host_bytes(path, raw, cancel_event=None):
+    """Publish one immutable byte identity and always release the owned staging file."""
+    import analysis as a
+    digest = hashlib.sha256(raw).hexdigest()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        if path.stat().st_size != len(raw) or a.sha(path) != digest:
+            raise ValueError("Existing host evidence differs from its immutable byte identity")
+        return
+    temporary = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
+    try:
+        with temporary.open("xb") as stream:
+            stream.write(raw)
+            stream.flush()
+            os.fsync(stream.fileno())
+        if cancel_event is not None and cancel_event.is_set():
+            raise concurrent.futures.CancelledError()
+        try:
+            os.link(temporary, path)
+        except FileExistsError:
+            if path.stat().st_size != len(raw) or a.sha(path) != digest:
+                raise ValueError("Concurrent host evidence differs from its immutable byte identity")
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _host_release_declaration(raw, declaration, algorithm):
+    sha = hashlib.sha256(raw).hexdigest()
+    if algorithm == "sha256":
+        size, digest = declaration.get("size"), declaration.get("sha256", "").lower()
+        integrity = "sha256-" + base64.b64encode(bytes.fromhex(digest)).decode() if re.fullmatch(r"[0-9a-f]{64}", digest) else None
+        if (type(size) is not int or size <= 0 or integrity is None
+                or declaration.get("integrity") != integrity or len(raw) != size or sha != digest):
+            raise ValueError("Host resource differs from its length/SHA-256/integrity declaration")
+        return {"sha256": sha, "bytes": len(raw)}
+    if algorithm == "md5":
+        size, digest = declaration.get("file_size"), declaration.get("download_file_checksum", "").lower()
+        md5 = hashlib.md5(raw).hexdigest()
+        if (type(size) is not int or size <= 0 or not re.fullmatch(r"[0-9a-f]{32}", digest)
+                or len(raw) != size or md5 != digest):
+            raise ValueError("Host package differs from its length/MD5 declaration")
+        return {"sha256": sha, "bytes": len(raw), "md5": md5}
+    raise ValueError("Unknown host declaration checksum algorithm")
+
+
+def host_release_metadata(index=None, *, name=".analysis/inputs/host-current/metadata-recheck.json"):
+    """Verify actual deployment samples and derive their current declaration closure."""
+    import analysis as a
+    index = index if index is not None else json.loads((a.ROOT / ".analysis/inputs.json").read_bytes())
+    indexed = {row["path"]: row for row in index["inputs"]}
+    if len(indexed) != len(index["inputs"]):
+        raise ValueError("Duplicate indexed host source path")
+    claim = indexed.get(name)
+    if claim is None:
+        raise FileNotFoundError(name)
+    raw = _host_indexed_bytes(claim, indexed)
+    metadata = json.loads(raw)
+    if (metadata.get("metadata_only") is not True or metadata.get("target_execution") is not False
+            or metadata.get("real_device_operations") is not False or metadata.get("failures")
+            or not metadata.get("finished_at_utc") or metadata.get("deployment_metadata_stable") is not True):
+        raise ValueError("Host deployment metadata did not finish a static stable audit")
+    baseline = metadata["baseline"]
+    baseline_row = indexed.get(baseline["path"])
+    if baseline_row is None or baseline_row["sha256"] != baseline["sha256"]:
+        raise ValueError("Host metadata baseline is not its indexed original")
+    _host_indexed_bytes(baseline_row, indexed)
+    samples, documents = {}, {}
+    for sample in metadata.get("files", []):
+        _host_official_url(sample["url"])
+        _host_official_url(sample["final_url"])
+        if sample.get("http_status") != 200:
+            raise ValueError("Host metadata sample is not an HTTPS success")
+        data = _host_indexed_bytes(sample, indexed)
+        samples.setdefault(sample["url"], []).append(sample)
+        documents[sample["url"]] = json.loads(data)
+    stability = {row["url"]: row for row in metadata.get("stability", [])}
+    if len(stability) != len(metadata.get("stability", [])) or set(stability) != set(samples):
+        raise ValueError("Host metadata stability does not cover every actual endpoint")
+    for url, pair in samples.items():
+        check = stability[url]
+        if (len(pair) != 2 or any(pair[0].get(key) != pair[1].get(key) for key in ("kind", "bytes", "sha256", "final_url"))
+                or check.get("unchanged") is not True or check.get("before_sha256") != pair[0]["sha256"]
+                or check.get("after_sha256") != pair[1]["sha256"]):
+            raise ValueError("Host metadata lacks two actual matching stability samples")
+    latest = {url: pair[-1] for url, pair in samples.items()}
+    declarations, active_urls = {}, []
+
+    def required(url, kind):
+        row = latest.get(url)
+        if row is None or row.get("kind") != kind:
+            raise ValueError("Host metadata declaration closure is incomplete: " + url)
+        if url not in active_urls:
+            active_urls.append(url)
+        return documents[url]
+
+    def declare(url, declaration, algorithm, authority):
+        _host_official_url(url)
+        if algorithm == "sha256":
+            digest = declaration.get("sha256", "").lower()
+            if (type(declaration.get("size")) is not int or declaration["size"] <= 0
+                    or not re.fullmatch(r"[0-9a-f]{64}", digest)
+                    or declaration.get("integrity") != "sha256-" + base64.b64encode(bytes.fromhex(digest)).decode()):
+                raise ValueError("Host resource declaration has invalid length/SHA-256/integrity")
+        elif (type(declaration.get("file_size")) is not int or declaration["file_size"] <= 0
+                or not re.fullmatch(r"[0-9a-fA-F]{32}", declaration.get("download_file_checksum", ""))):
+            raise ValueError("Host package declaration has invalid length/MD5")
+        entry = {"url": url, "algorithm": algorithm, "declaration": declaration,
+                 "kind": "official_stable_host_package" if algorithm == "md5" else "official_host_artifact"}
+        if url in declarations:
+            if any(declarations[url][key] != entry[key] for key in ("algorithm", "declaration", "kind")):
+                raise ValueError("Conflicting host declarations for one official URL")
+        else:
+            declarations[url] = {**entry, "authorities": []}
+        if authority not in declarations[url]["authorities"]:
+            declarations[url]["authorities"].append(authority)
+
+    for location in ("background-manager", "synapse/dashboard"):
+        url = "https://apps.razer.com/" + location + "/installer-manifest.json"
+        body = required(url, "official_host_release_manifest")
+        selected = "https://apps.razer.com/" + body["baseURL"].strip("/") + "/" + body["latest"]["url"]
+        if not _host_official_url(selected).path.endswith(".json"):
+            raise ValueError("Host resource manifest is not an official JSON endpoint")
+        manifest = required(selected, "official_host_resource_manifest")
+        if not isinstance(manifest.get("resources"), list) or not manifest["resources"]:
+            raise ValueError("Host resource manifest has no declared resources")
+        for declaration in manifest["resources"]:
+            declare(declaration["url"], declaration, "sha256", {"release_manifest": url, "manifest": selected})
+    discovery_url = "https://discovery3.razerapi.com/api/v1/endpoints"
+    discovery = required(discovery_url, "official_host_discovery")
+    production = [row for row in discovery["data"]["items"] if row["name"] == "prod"]
+    if len(production) != 1 or not re.fullmatch(r"[A-Za-z0-9]+", production[0]["hash"]):
+        raise ValueError("Host production discovery is ambiguous or invalid")
+    query = urllib.parse.urlencode({"os": "WINDOWS", "osver": "11", "arch": "64", "mfr": "Generic-MFR",
+                                  "model": "Generic-MDL0", "sku": "Generic-SKU", "l": "en-US"})
+    release_url = "https://manifest3.razerapi.com/api/v1/releases/" + production[0]["hash"] + "/tags/prod/products?" + query
+    release = required(release_url, "official_host_product_release")
+    products = [row for row in release["data"]["items"] if row["name"] in {"Anne", "Chroma"}]
+    versions = {row["version"] for row in products}
+    if (len(products) != 2 or {row["name"] for row in products} != {"Anne", "Chroma"}
+            or len(versions) != 1 or products != metadata.get("stable_products")):
+        raise ValueError("Host stable product versions do not match actual current metadata")
+    version = next(iter(versions))
+    if not re.fullmatch(r"[0-9]+(?:\.[0-9]+){2,3}", version):
+        raise ValueError("Host release version is not a safe numeric identity")
+    package_names = set()
+    for product in products:
+        for declaration in product["modules"]:
+            package_names.add(declaration["name"])
+            declare(declaration["download_url"], declaration, "md5", {"discovery": discovery_url,
+                    "manifest": release_url, "product": product["name"], "version": product["version"]})
+    packages = [row for row in declarations.values() if row["algorithm"] == "md5"]
+    if package_names != {"Razer App Engine", "Razer Synapse", "Razer Chroma"} or len(packages) != 3:
+        raise ValueError("Host stable release package closure differs from its three declared modules")
+    return {"version": version, "metadata_receipt": {key: claim[key] for key in ("path", "bytes", "sha256")},
+            "metadata": metadata, "metadata_files": [latest[url] for url in sorted(latest)],
+            "active_metadata_files": [latest[url] for url in active_urls], "stable_products": products,
+            "declarations": list(declarations.values()),
+            "verified_dependencies": [{key: row[key] for key in ("path", "bytes", "sha256")}
+                                      for row in {row["path"]: row for row in [claim, baseline_row, *latest.values()]}.values()]}
+
+
+def verified_host_release_receipt(name=None, *, index=None, metadata=None):
+    """Read a complete indexed release only when its declarations remain current."""
+    import analysis as a
+    index = index if index is not None else json.loads((a.ROOT / ".analysis/inputs.json").read_bytes())
+    indexed = {row["path"]: row for row in index["inputs"]}
+    metadata = metadata if metadata is not None else host_release_metadata(index)
+    expected = f".analysis/inputs/host-current/releases/{metadata['version']}/acquisition.json"
+    name = name or expected
+    if name != expected:
+        raise ValueError("Host release receipt does not select the current stable version")
+    claim = indexed.get(name)
+    if claim is None:
+        if not (a.ROOT / name).exists():
+            raise FileNotFoundError(name)
+        raise ValueError("Host release acquisition is not indexed")
+    if claim.get("kind") != "official_host_release_acquisition":
+        raise ValueError("Host release acquisition has no version-owned source kind")
+    try:
+        document = json.loads(_host_indexed_bytes(claim, indexed))
+    except FileNotFoundError as error:
+        raise ValueError("Indexed host release receipt is missing") from error
+    if (document.get("version") != metadata["version"] or document.get("complete") is not True
+            or document.get("target_execution") is not False or document.get("real_device_operations") is not False
+            or document.get("failures") or document.get("cancelled") or not document.get("finished_at_utc")
+            or document.get("source_current_during_acquisition") is not True):
+        raise ValueError("Host release acquisition did not complete successfully")
+    try:
+        snapshot = host_release_metadata(index, name=document["metadata_snapshot"]["path"])
+    except FileNotFoundError as error:
+        raise ValueError("Host release metadata snapshot is missing") from error
+    if (snapshot["metadata_receipt"] != document["metadata_snapshot"]
+            or snapshot["version"] != metadata["version"] or snapshot["declarations"] != metadata["declarations"]
+            or document.get("declarations") != metadata["declarations"]):
+        raise ValueError("Host release declarations differ from current stable metadata")
+    revalidation = {row["url"]: row for row in document.get("metadata_revalidation", [])}
+    if len(revalidation) != len(document.get("metadata_revalidation", [])) or set(revalidation) != {
+            row["url"] for row in snapshot["active_metadata_files"]}:
+        raise ValueError("Host release has no complete final deployment revalidation")
+    for sample in snapshot["active_metadata_files"]:
+        after = revalidation[sample["url"]]
+        _host_official_url(after["final_url"])
+        if (after.get("http_status") != 200 or after.get("unchanged") is not True
+                or after.get("bytes") != sample["bytes"] or after.get("sha256") != sample["sha256"]):
+            raise ValueError("Host deployment changed while acquiring the release")
+        try:
+            _host_indexed_bytes(after, indexed)
+        except FileNotFoundError as error:
+            raise ValueError("Host release deployment revalidation bytes are missing") from error
+    artifacts = {row["url"]: row for row in document.get("files", [])}
+    if len(artifacts) != len(document.get("files", [])) or set(artifacts) != {row["url"] for row in metadata["declarations"]}:
+        raise ValueError("Host release artifact closure is incomplete or duplicated")
+    for entry in metadata["declarations"]:
+        artifact = artifacts[entry["url"]]
+        if (artifact.get("declaration") != entry["declaration"] or artifact.get("kind") != entry["kind"]
+                or artifact.get("manifest_identity_verified") is not True):
+            raise ValueError("Host release artifact has no matching actual declaration")
+        try:
+            _host_release_declaration(_host_indexed_bytes(artifact, indexed), entry["declaration"], entry["algorithm"])
+        except FileNotFoundError as error:
+            raise ValueError("Host release artifact is missing") from error
+    dependencies = {row["path"]: row for row in [*metadata["verified_dependencies"], *snapshot["verified_dependencies"],
+                    *({key: row[key] for key in ("path", "bytes", "sha256")} for row in revalidation.values())]}
+    return {**document, "receipt": {key: claim[key] for key in ("path", "bytes", "sha256")},
+            "verified_dependencies": list(dependencies.values())}
+
+
+def acquire_host_release(fetch, workers=4):
+    """Acquire only missing actual declaration bytes and retain version-owned provenance."""
+    import analysis as a
+    if type(workers) is not int or not 2 <= workers <= 16:
+        raise ValueError("Host release workers must be between two and sixteen")
+    index = json.loads((a.ROOT / ".analysis/inputs.json").read_bytes())
+    indexed = {row["path"]: row for row in index["inputs"]}
+    context = host_release_metadata(index)
+    folder = a.ROOT / ".analysis/inputs/host-current/releases" / context["version"]
+    receipt = folder / "acquisition.json"
+    snapshot = folder / "metadata-recheck.json"
+    snapshot_raw = _host_indexed_bytes(context["metadata_receipt"], indexed)
+    snapshot_row = {"path": a.rel(snapshot), "bytes": len(snapshot_raw),
+                    "sha256": hashlib.sha256(snapshot_raw).hexdigest(), "kind": "deployment_metadata_recheck"}
+    if receipt.exists():
+        existing = indexed.get(a.rel(receipt))
+        if existing is None:
+            raise ValueError("Existing host release receipt is not indexed")
+        previous = json.loads(_host_indexed_bytes(existing, indexed))
+        if previous.get("declarations") != context["declarations"]:
+            raise ValueError("Existing host release declarations changed; retained receipt preserved")
+        if previous.get("complete") is True:
+            verified = verified_host_release_receipt(index=index, metadata=context)
+            print(json.dumps({"receipt": verified["receipt"]["path"], "version": context["version"],
+                              "complete": True, "downloaded": 0, "reused": len(verified["files"])}), flush=True)
+            return verified
+    else:
+        previous = None
+    folder.mkdir(parents=True, exist_ok=True)
+    if snapshot.exists():
+        snapshot_claim = indexed.get(a.rel(snapshot))
+        if snapshot_claim is None:
+            raise ValueError("Existing host metadata snapshot is not indexed")
+        retained = host_release_metadata(index, name=a.rel(snapshot))
+        if retained["declarations"] != context["declarations"]:
+            raise ValueError("Existing host metadata snapshot declarations changed")
+        snapshot_row = dict(snapshot_claim)
+    else:
+        _publish_host_bytes(snapshot, snapshot_raw)
+        a.index_files([snapshot_row])
+    report = {"schema_version": 1, "started_at_utc": a.stamp(), "version": context["version"],
+              "metadata_audit": context["metadata_receipt"],
+              "metadata_snapshot": {key: snapshot_row[key] for key in ("path", "bytes", "sha256")},
+              "metadata_files": context["metadata_files"], "declarations": context["declarations"],
+              "stable_products": context["stable_products"], "files": [], "failures": [],
+              "metadata_revalidation": [], "source_current_during_acquisition": False,
+              "target_execution": False, "real_device_operations": False, "complete": False,
+              "host_package_closure_complete": False, "cancelled": False,
+              "scope": "Current stable host package/resource bytes; static extraction, semantic analysis, Rust implementation and runtime acceptance remain separate",
+              "tool": {"path": "tools/host.py", "sha256": a.sha(Path(__file__))}}
+    if previous is not None:
+        report["previous_attempts"] = list(previous.get("previous_attempts", [])) + [
+            {key: previous[key] for key in ("started_at_utc", "finished_at_utc", "failures", "cancelled") if key in previous}]
+    cancelled = threading.Event()
+    futures, recorded = {}, set()
+    pool = None
+
+    def record(entry, artifact):
+        artifact = {**artifact, "declaration": entry["declaration"], "authorities": entry["authorities"],
+                    "manifest_identity_verified": True}
+        report["files"].append(artifact)
+
+    def download(entry):
+        if cancelled.is_set():
+            raise concurrent.futures.CancelledError()
+        raw, artifact = fetch(entry["url"], kind=entry["kind"], release_declaration=entry, cancel_event=cancelled)
+        identity = _host_release_declaration(raw, entry["declaration"], entry["algorithm"])
+        return {**artifact, **identity, "acquisition": "downloaded"}
+
+    try:
+        pending = []
+        by_sha, by_package_size = {}, {}
+        for row in index["inputs"]:
+            if row["path"].startswith(".analysis/inputs/host-current/"):
+                by_sha.setdefault(row["sha256"], []).append(row)
+                if row.get("kind") == "official_stable_host_package":
+                    by_package_size.setdefault(row["bytes"], []).append(row)
+        for entry in context["declarations"]:
+            declaration = entry["declaration"]
+            candidates = (by_sha.get(declaration["sha256"].lower(), []) if entry["algorithm"] == "sha256"
+                          else by_package_size.get(declaration["file_size"], []))
+            artifact = None
+            for candidate in candidates:
+                raw = _host_indexed_bytes(candidate, indexed)
+                try:
+                    identity = _host_release_declaration(raw, declaration, entry["algorithm"])
+                except ValueError:
+                    if entry["algorithm"] != "md5":
+                        raise
+                    continue
+                artifact = {**candidate, **identity, "url": entry["url"], "kind": entry["kind"],
+                            "acquisition": "reused_verified_bytes", "reused_indexed_input": candidate}
+                break
+            if artifact is None:
+                pending.append(entry)
+            else:
+                record(entry, artifact)
+        pool = concurrent.futures.ThreadPoolExecutor(max_workers=workers)
+        futures = {pool.submit(download, entry): entry for entry in pending}
+        for future in concurrent.futures.as_completed(futures):
+            entry = futures[future]
+            recorded.add(future)
+            try:
+                record(entry, future.result())
+                print(json.dumps({"host_release": context["version"], "files": len(report["files"]),
+                                  "total": len(context["declarations"]), "url": entry["url"]}), flush=True)
+            except Exception as error:
+                report["failures"].append({"stage": "artifact", "url": entry["url"],
+                                           "error_kind": type(error).__name__, "error": str(error)})
+        for before in context["active_metadata_files"]:
+            try:
+                raw, after = fetch(before["url"], kind=before["kind"], cancel_event=cancelled)
+                if not isinstance(json.loads(raw), dict):
+                    raise ValueError("Host final deployment response is not a JSON object")
+                after["unchanged"] = after["sha256"] == before["sha256"] and after["bytes"] == before["bytes"]
+                report["metadata_revalidation"].append(after)
+                if not after["unchanged"]:
+                    raise ValueError("Host deployment metadata changed during release acquisition")
+            except Exception as error:
+                report["failures"].append({"stage": "deployment_revalidation", "url": before["url"],
+                                           "error_kind": type(error).__name__, "error": str(error)})
+        latest = host_release_metadata()
+        if latest["version"] != context["version"] or latest["declarations"] != context["declarations"]:
+            raise ValueError("Current indexed host deployment changed during release acquisition")
+        report["source_current_during_acquisition"] = (len(report["metadata_revalidation"]) == len(context["active_metadata_files"])
+            and all(row["unchanged"] for row in report["metadata_revalidation"]))
+    except BaseException as error:
+        cancelled.set()
+        report["cancelled"] = isinstance(error, (KeyboardInterrupt, concurrent.futures.CancelledError))
+        report["failures"].append({"stage": "acquisition", "error_kind": type(error).__name__, "error": str(error)})
+        raise
+    finally:
+        if pool is not None:
+            pool.shutdown(wait=True, cancel_futures=True)
+            for future, entry in futures.items():
+                if future in recorded or future.cancelled():
+                    continue
+                try:
+                    record(entry, future.result())
+                except BaseException as error:
+                    report["failures"].append({"stage": "artifact", "url": entry["url"],
+                                               "error_kind": type(error).__name__, "error": str(error)})
+        report["finished_at_utc"] = a.stamp()
+        report["files"].sort(key=lambda row: row["url"])
+        report["complete"] = (not report["failures"] and not report["cancelled"]
+                              and len(report["files"]) == len(context["declarations"]))
+        a.save(receipt, report)
+        a.index_files([{key: row[key] for key in ("path", "bytes", "sha256", "kind", "url")}
+                       for row in [*report["files"], *report["metadata_revalidation"]]] + [
+                          {"path": a.rel(receipt), "bytes": receipt.stat().st_size,
+                           "sha256": a.sha(receipt), "kind": "official_host_release_acquisition"}])
+    print(json.dumps({"receipt": a.rel(receipt), "version": context["version"], "complete": report["complete"],
+                      "downloaded": sum(row["acquisition"] == "downloaded" for row in report["files"]),
+                      "reused": sum(row["acquisition"] == "reused_verified_bytes" for row in report["files"]),
+                      "failures": len(report["failures"])}), flush=True)
+    if not report["complete"]:
+        raise SystemExit(1)
+    return report
+
+
 def acquire_host(args):
     import analysis as a
+    if getattr(args, "release_only", False) and any(getattr(args, name, False)
+            for name in ("metadata_only", "release", "extract", "inspect", "revalidate_bootstrap", "repair_metadata_index")):
+        raise ValueError("Release-only acquisition requires its separate indexed metadata audit and static inspection")
     if getattr(args, "repair_metadata_index", False):
         if any(getattr(args, name, False) for name in ("metadata_only", "release", "extract", "inspect", "revalidate_bootstrap")):
             raise ValueError("Metadata index repair is local-only and cannot be combined with acquisition options")
@@ -1424,7 +1845,7 @@ def acquire_host(args):
 
     opener = urllib.request.build_opener(OfficialRedirect)
 
-    def fetch(url, expected=None, kind="official_host_artifact"):
+    def fetch(url, expected=None, kind="official_host_artifact", *, release_declaration=None, cancel_event=None):
         p = urllib.parse.urlsplit(url)
         if p.scheme != "https" or p.netloc not in OFFICIAL:
             raise ValueError("Nonofficial input URL: " + url)
@@ -1440,11 +1861,12 @@ def acquire_host(args):
                    "headers": dict(response.headers), "request_headers": headers, "acquired_at_utc": a.stamp(),
                    "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest(), "kind": kind}
         if expected:
-            if len(raw) != expected["size"] or row["sha256"] != expected["sha256"].lower():
-                raise ValueError("Resource byte identity differs from manifest: " + url)
-            if expected.get("integrity") != "sha256-" + base64.b64encode(bytes.fromhex(row["sha256"])).decode():
-                raise ValueError("Resource integrity differs: " + url)
+            _host_release_declaration(raw, expected, "sha256")
             row["declaration"] = expected
+        if release_declaration is not None:
+            _host_release_declaration(raw, release_declaration["declaration"], release_declaration["algorithm"])
+        if cancel_event is not None and cancel_event.is_set():
+            raise concurrent.futures.CancelledError()
         advertised = row["headers"].get("x-amz-meta-checksum-sha256") or row["headers"].get("x-amz-meta-sha256")
         if advertised and advertised.lower() != row["sha256"]:
             raise ValueError("Server SHA-256 header differs: " + url)
@@ -1452,17 +1874,14 @@ def acquire_host(args):
         if re.search(r'[\\:*?"<>|]', filename):
             raise ValueError("Unsafe resource filename")
         path = output / "blobs" / row["sha256"] / filename
-        path.parent.mkdir(parents=True, exist_ok=True)
-        if path.is_file():
-            if path.stat().st_size != len(raw) or a.sha(path) != row["sha256"]:
-                raise ValueError("Existing host evidence blob differs from its content address")
-        else:
-            path.write_bytes(raw)
+        _publish_host_bytes(path, raw, cancel_event)
         row["path"] = a.rel(path)
         return raw, row
 
     if getattr(args, "metadata_only", False):
         return recheck_host_metadata(fetch, results)
+    if getattr(args, "release_only", False):
+        return acquire_host_release(fetch, getattr(args, "workers", 4))
     if getattr(args, "revalidate_bootstrap", False):
         return recheck_host_bootstrap(fetch, results)
 
@@ -1849,13 +2268,23 @@ def setup_factory_static_extraction(raw):
 
 def inspect_host(args):
     if getattr(args, "repair_extraction", False):
+        if getattr(args, "acquisition", None):
+            raise ValueError("Version-owned inspection cannot use the legacy extraction repair mode")
         return repair_host_extraction(args)
     workers = getattr(args, "workers", 4)
     if type(workers) is not int or not 2 <= workers <= 16:
         raise ValueError("Host inspection workers must be between two and sixteen")
     import analysis as a
-    receipt_path = a.ROOT / ".analysis/inputs/host-current/acquisition.json"
-    receipt = json.loads(receipt_path.read_bytes())
+    release_name = getattr(args, "acquisition", None)
+    if release_name:
+        receipt = verified_host_release_receipt(release_name)
+        receipt_path = a.ROOT / receipt["receipt"]["path"]
+        results = a.ROOT / ".analysis/results/host-current/releases" / receipt["version"]
+    else:
+        receipt_path = a.ROOT / ".analysis/inputs/host-current/acquisition.json"
+        receipt = json.loads(receipt_path.read_bytes())
+        results = a.ROOT / ".analysis/results/host-current"
+    results.mkdir(parents=True, exist_ok=True)
     indexed = json.loads((a.ROOT / ".analysis/inputs.json").read_bytes())
     installed_by_identity = {}
     for artifact in indexed["inputs"]:
@@ -1868,15 +2297,52 @@ def inspect_host(args):
         row = next((row for row in indexed["inputs"] if row["path"] == original_relative), None)
         if row is None or original.stat().st_size != row["bytes"] or a.sha(original) != row["sha256"]:
             raise ValueError("Nested host container is not a verified indexed original")
+        if release_name:
+            current, seen = row, set()
+            sources = {artifact["path"]: artifact for artifact in receipt["files"]}
+            by_name = {artifact["path"]: artifact for artifact in indexed["inputs"]}
+            while current["path"] not in sources:
+                if current["path"] in seen or current.get("kind") != "static_extracted_host_input":
+                    raise ValueError("Selected host container does not belong to the current release acquisition")
+                seen.add(current["path"])
+                parent = by_name.get(current.get("container"))
+                proof = current.get("extraction_receipt", {})
+                if (parent is None or parent["sha256"] != current.get("container_sha256")
+                        or not proof.get("path", "").startswith(f".analysis/results/host-current/releases/{receipt['version']}/")):
+                    raise ValueError("Nested host container has no version-owned extraction provenance")
+                proof_path = a.resolve(proof["path"], ".analysis/results/host-current")
+                proof_raw = proof_path.read_bytes()
+                if len(proof_raw) != proof["bytes"] or hashlib.sha256(proof_raw).hexdigest() != proof["sha256"]:
+                    raise ValueError("Nested host container extraction receipt identity changed")
+                containers = json.loads(proof_raw).get("containers", [])
+                if len(containers) != 1:
+                    raise ValueError("Nested host container extraction receipt is ambiguous")
+                owner = containers[0]
+                if (owner.get("sha256") != parent["sha256"] or owner.get("input") != parent["path"]
+                        or owner.get("extracted") is not True or owner.get("input_bytes_unchanged") is not True
+                        or owner.get("extraction_exit_code") != 0 or not any(all(artifact.get(key) == current.get(key)
+                            for key in ("path", "bytes", "sha256")) for artifact in owner.get("files", []))):
+                    raise ValueError("Nested host container is not bound to a complete parent extraction")
+                _host_indexed_bytes(parent, by_name)
+                current = parent
+            if any(current.get(key) != sources[current["path"]].get(key) for key in ("bytes", "sha256")):
+                raise ValueError("Host container ancestry differs from the current release artifact")
         if original.suffix.lower() not in {".exe", ".msix", ".zip", ".7z", ".msi"}:
             raise ValueError("Expected a statically extractable host evidence container")
         rows = [row]
     else:
         rows = receipt["files"]
-    results = a.ROOT / ".analysis/results/host-current"
     previous_path = results / "inspection.json"
     previous = json.loads(previous_path.read_bytes()) if previous_path.is_file() else {}
     previous_containers = {x["sha256"]: x for x in previous.get("containers", [])}
+    legacy_path = a.ROOT / ".analysis/results/host-current/inspection.json"
+    legacy = None
+    legacy_identity = None
+    if release_name and legacy_path.is_file():
+        legacy_raw = legacy_path.read_bytes()
+        legacy = json.loads(legacy_raw)
+        legacy_identity = {"path": a.rel(legacy_path), "bytes": len(legacy_raw),
+                           "sha256": hashlib.sha256(legacy_raw).hexdigest()}
     tool = Path(getattr(args, "seven_zip", "C:/Program Files/7-Zip/7z.exe"))
     if not tool.is_file():
         raise ValueError("7-Zip static extractor is unavailable")
@@ -1904,6 +2370,83 @@ def inspect_host(args):
                     inno_artifact = prepare_inno_analyzer()
         return inno_artifact
 
+    def dependency(claim):
+        boundary = ".analysis/inputs/host-current" if claim["path"].startswith(".analysis/inputs/") else ".analysis/results/host-current"
+        path = a.resolve(claim["path"], boundary)
+        if (a.ROOT / claim["path"]).is_symlink() or path.is_junction():
+            raise ValueError("Host extraction dependency cannot be a reparse path")
+        before = path.stat()
+        digest = a.sha(path)
+        after = path.stat()
+        if (type(claim.get("bytes")) is not int or before.st_size != claim["bytes"] or digest != claim.get("sha256")
+                or (before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns)):
+            raise ValueError("Retained release extraction byte identity changed")
+        return {key: claim[key] for key in ("path", "bytes", "sha256")}
+
+    def retained_record(row, document, identity, *, require_indexed):
+        records = [record for record in document.get("containers", []) if record.get("sha256") == row["sha256"]]
+        if len(records) != 1 or not require_indexed and len(document.get("containers", [])) != 1:
+            raise ValueError("Retained release container has an ambiguous extraction receipt")
+        record = records[0]
+        integrity = record.get("retained_archive_integrity", {})
+        complete = (record.get("extraction_exit_code") == 0 or integrity.get("exit_code") == 0
+                    and integrity.get("input_bytes_unchanged") is True
+                    and all(integrity.get("input", {}).get(key) == row.get(key) for key in ("bytes", "sha256"))
+                    and len(integrity.get("outputs", [])) == 2)
+        if (record.get("extracted") is not True or record.get("input_bytes_unchanged") is not True
+                or not complete or not record.get("files")):
+            raise ValueError("Retained release container has no complete static extraction")
+        if record.get("inno_setup") and (record["inno_setup"].get("list_exit_code") != 0
+                or record["inno_setup"].get("archive_entry_closure", {}).get("complete") is not True):
+            raise ValueError("Retained release Inno extraction has no complete entry closure")
+        if record.get("setup_factory") and (record["setup_factory"].get("complete") is not True
+                or record["setup_factory"].get("archive_entry_closure", {}).get("complete") is not True):
+            raise ValueError("Retained release Setup Factory extraction has no complete entry closure")
+        by_name = {artifact["path"]: artifact for artifact in indexed["inputs"]}
+        original = by_name.get(record.get("input"))
+        if original is None or any(original.get(key) != row.get(key) for key in ("bytes", "sha256")):
+            raise ValueError("Retained extraction source is not the same indexed original bytes")
+        declared_source = record.get("input_record", {})
+        if any(declared_source.get(key) != original.get(key) for key in ("path", "bytes", "sha256")):
+            raise ValueError("Retained extraction receipt does not bind its actual indexed source")
+        dependencies = [dependency(identity), dependency(original), dependency(row)]
+        destination = a.ROOT / ".analysis/inputs/host-current/extracted" / row["sha256"]
+        actual_files = set()
+        for path in destination.rglob("*"):
+            if path.is_symlink() or path.is_junction() or not path.resolve().is_relative_to(destination.resolve()):
+                raise ValueError("Retained release extraction escaped its directory")
+            if path.is_file():
+                actual_files.add(a.rel(path))
+        if actual_files != {artifact["path"] for artifact in record["files"]}:
+            raise ValueError("Retained release extraction file set changed")
+        for artifact in record["files"]:
+            if (artifact.get("container") != original["path"] or artifact.get("container_sha256") != original["sha256"]
+                    or artifact.get("kind") != "static_extracted_host_input"):
+                raise ValueError("Retained extraction output does not bind its actual parent")
+            if require_indexed and (artifact["path"] not in by_name or any(
+                    by_name[artifact["path"]].get(key) != artifact[key] for key in ("bytes", "sha256"))):
+                raise ValueError("Retained legacy extraction output is not its indexed original")
+            dependencies.append(dependency(artifact))
+        for artifact in record.get("reconstructed_outputs", []):
+            dependencies.append(dependency(artifact))
+        prefix = str(Path(record["listing"]).parent).replace("\\", "/") + "/"
+        outputs = [artifact for artifact in document.get("outputs", []) if artifact["path"].startswith(prefix)]
+        if record["listing"] not in {artifact["path"] for artifact in outputs}:
+            raise ValueError("Retained extraction listing has no actual output identity")
+        for artifact in outputs + integrity.get("outputs", []):
+            dependencies.append(dependency(artifact))
+        if integrity:
+            dependencies.append(dependency(integrity["input"]))
+        return dict(record), outputs, dependencies
+
+    def publish_record(row, record, outputs):
+        proof_path = results / row["sha256"] / "inspection.json"
+        proof = {"schema_version": 1, "recorded_at_utc": a.stamp(), "target_execution": False,
+                 "acquisition": receipt["receipt"], "tool": report["tool"], "containers": [record], "outputs": outputs}
+        proof_raw = (json.dumps(proof, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+        _publish_host_bytes(proof_path, proof_raw)
+        return {"path": a.rel(proof_path), "bytes": len(proof_raw), "sha256": hashlib.sha256(proof_raw).hexdigest()}
+
     def inspect_row(row):
         row_extracted_rows = []
         path = a.ROOT / row["path"]
@@ -1911,6 +2454,26 @@ def inspect_host(args):
             raise ValueError("Changed host input: " + row["path"])
         out = results / row["sha256"]
         out.mkdir(parents=True, exist_ok=True)
+        proof_path = out / "inspection.json"
+        if release_name and proof_path.exists():
+            proof_raw = proof_path.read_bytes()
+            proof = {"path": a.rel(proof_path), "bytes": len(proof_raw), "sha256": hashlib.sha256(proof_raw).hexdigest()}
+            record, _, dependencies = retained_record(row, json.loads(proof_raw), proof, require_indexed=False)
+            reused = record.get("reused_extraction_receipt")
+            if reused:
+                dependencies.append(dependency(reused))
+            return row["sha256"], record, [{**artifact, "extraction_receipt": proof} for artifact in record["files"]], dependencies
+        if release_name and legacy and any(record.get("sha256") == row["sha256"] and record.get("extracted") is True
+                                          for record in legacy.get("containers", [])):
+            record, outputs, dependencies = retained_record(row, legacy, legacy_identity, require_indexed=True)
+            record["reused_extraction_receipt"] = legacy_identity
+            record["retained_outputs_verified"] = True
+            proof = publish_record(row, record, outputs)
+            dependencies.append(dependency(proof))
+            return row["sha256"], record, [{**artifact, "extraction_receipt": proof} for artifact in record["files"]], dependencies
+        destination = a.ROOT / ".analysis/inputs/host-current/extracted" / row["sha256"]
+        if release_name and destination.is_dir() and any(destination.iterdir()):
+            raise ValueError("Existing extraction has no successful receipt; inspect partial output: " + a.rel(destination))
         listing = subprocess.run([str(tool), "l", "-slt", str(path)], capture_output=True, check=False)
         (out / "listing.txt").write_bytes(listing.stdout)
         (out / "listing.stderr.txt").write_bytes(listing.stderr)
@@ -2081,29 +2644,128 @@ def inspect_host(args):
         elif getattr(args, "extract", False):
             record["extraction_status"] = "no supported embedded archive detected; PE sections alone do not prove payload extraction"
         record["input_record"] = row
-        return row["sha256"], record, row_extracted_rows
+        if (getattr(args, "extract", False) and supported and record.get("extracted") is not True):
+            raise ValueError("Host archive extraction did not complete; partial output retained: " + a.rel(destination))
+        if release_name and record.get("extracted"):
+            outputs = [{"path": a.rel(path), "bytes": path.stat().st_size, "sha256": a.sha(path)}
+                       for path in sorted(out.glob("*.txt"))]
+            identity = publish_record(row, record, outputs)
+            row_extracted_rows = [{**artifact, "extraction_receipt": identity} for artifact in row_extracted_rows]
+        dependencies = [dependency(row), *(dependency(artifact) for artifact in record.get("files", [])),
+                        *(dependency(artifact) for artifact in record.get("reconstructed_outputs", []))]
+        if release_name and record.get("extracted"):
+            dependencies.extend([dependency(identity), *(dependency(artifact) for artifact in outputs)])
+        return row["sha256"], record, row_extracted_rows, dependencies
 
     containers = dict(previous_containers)
-    extracted_rows = []
+    extracted_rows, dependencies = {}, {}
+    failures, observed = [], []
+    completed, handled = {}, set()
+    cancelled = False
     unique_rows = sorted({row["sha256"]: row for row in rows
                           if Path(row["path"]).suffix.lower() in {".exe", ".msix", ".zip", ".7z", ".msi"}}.values(),
                          key=lambda item: item["sha256"])
-    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
-        for key, record, extracted in pool.map(inspect_row, unique_rows):
+    def failure(row, error):
+        destination = a.ROOT / ".analysis/inputs/host-current/extracted" / row["sha256"]
+        partial = []
+        if destination.is_dir():
+            for path in sorted(destination.rglob("*")):
+                if path.is_symlink() or path.is_junction() or not path.resolve().is_relative_to(destination.resolve()):
+                    partial.append({"path": path.relative_to(a.ROOT).as_posix(), "state": "reparse_path_retained"})
+                elif path.is_file():
+                    try:
+                        partial.append({"path": a.rel(path), "bytes": path.stat().st_size, "sha256": a.sha(path),
+                                        "source_bytes_verified": False})
+                    except OSError as inspection_error:
+                        partial.append({"path": path.relative_to(a.ROOT).as_posix(),
+                                        "state": "unreadable_partial_output", "error_kind": type(inspection_error).__name__})
+        failures.append({"input": {key: row[key] for key in ("path", "bytes", "sha256")},
+                         "error_kind": type(error).__name__, "error": str(error),
+                         "extraction_directory": a.rel(destination), "partial_outputs": partial,
+                         "partial_outputs_retained": True, "extracted": False})
+
+    def collect(future, row):
+        handled.add(future)
+        if future.cancelled():
+            failure(row, concurrent.futures.CancelledError())
+            return
+        try:
+            key, record, extracted, verified = future.result()
+            completed[key] = (record, extracted, verified)
+        except BaseException as error:
+            failure(row, error)
+            if not isinstance(error, Exception):
+                raise
+
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=workers)
+    futures = {}
+    try:
+        for row in unique_rows:
+            futures[pool.submit(inspect_row, row)] = row
+        for future in concurrent.futures.as_completed(futures):
+            collect(future, futures[future])
+    except BaseException as error:
+        cancelled = isinstance(error, (KeyboardInterrupt, concurrent.futures.CancelledError))
+        failures.append({"stage": "batch", "error_kind": type(error).__name__, "error": str(error),
+                         "partial_outputs_retained": True})
+        raise
+    finally:
+        pool.shutdown(wait=True, cancel_futures=True)
+        submitted = {row["sha256"] for row in futures.values()}
+        for row in unique_rows:
+            if row["sha256"] not in submitted:
+                failure(row, concurrent.futures.CancelledError("Batch stopped before this input was submitted"))
+        for future, row in futures.items():
+            if future in handled:
+                continue
+            try:
+                collect(future, row)
+            except BaseException:
+                pass
+        for key, (record, extracted, verified) in completed.items():
+            try:
+                for claim in verified:
+                    dependency(claim)
+            except Exception as error:
+                row = futures[next(future for future, candidate in futures.items() if candidate["sha256"] == key)]
+                failure(row, error)
+                continue
             containers[key] = record
-            extracted_rows.extend(extracted)
-    report["containers"] = [containers[key] for key in sorted(containers)]
-    report["outputs"] = [{"path": a.rel(p), "bytes": p.stat().st_size, "sha256": a.sha(p)}
-                         for p in sorted(results.rglob("*.txt"))]
-    a.save(results / "inspection.json", report)
-    if extracted_rows:
-        a.index_files(extracted_rows)
-    if getattr(args, "extract", False) and not selected:
+            observed.append(key)
+            for artifact in extracted:
+                extracted_rows[artifact["path"]] = artifact
+            for claim in verified:
+                dependencies[claim["path"]] = claim
+        report["finished_at_utc"] = a.stamp()
+        report["containers"] = [containers[key] for key in sorted(containers)]
+        report["requested_inputs"] = [{key: row[key] for key in ("path", "bytes", "sha256")} for row in unique_rows]
+        report["observed_inputs"] = sorted(observed)
+        report["failures"] = failures
+        report["cancelled"] = cancelled
+        report["complete"] = (not failures and not cancelled and len(observed) == len(unique_rows))
+        report["verified_dependencies"] = list(dependencies.values())
+        report["outputs"] = [{"path": a.rel(p), "bytes": p.stat().st_size, "sha256": a.sha(p)}
+                             for p in sorted(results.rglob("*.txt"))]
+        report["previous_failures"] = list(previous.get("previous_failures", [])) + list(previous.get("failures", []))
+        report["index_publication_complete"] = not extracted_rows
+        a.save(results / "inspection.json", report)
+        if extracted_rows:
+            try:
+                a.index_files(extracted_rows.values())
+                report["index_publication_complete"] = True
+            except Exception as error:
+                report["complete"] = False
+                failures.append({"stage": "index_publication", "error_kind": type(error).__name__, "error": str(error)})
+            a.save(results / "inspection.json", report)
+    print(json.dumps({"inspection": a.rel(results / "inspection.json"), "containers": len(report["containers"]),
+                      "observed": len(observed), "failures": len(failures), "complete": report["complete"]}), flush=True)
+    if failures:
+        raise ValueError("; ".join(row["error"] or row["error_kind"] for row in failures))
+    if getattr(args, "extract", False) and not selected and not release_name:
         extract_asar()
-    print(json.dumps({"inspection": a.rel(results / "inspection.json"), "containers": len(report["containers"])}), flush=True)
 
 
-def extract_asar():
+def extract_asar(selected=None):
     """Read Electron ASAR Pickle header/byte spans; no JS is evaluated.
 
     Layout and unpacked semantics follow electron/asar src/disk.ts
@@ -2111,7 +2773,14 @@ def extract_asar():
     """
     import analysis as a
     indexed = json.loads((a.ROOT / ".analysis/inputs.json").read_bytes())
-    for row in indexed["inputs"]:
+    rows = indexed["inputs"]
+    if selected is not None:
+        source = a.resolve(selected, ".analysis/inputs/host-current/extracted")
+        name = a.rel(source)
+        rows = [row for row in rows if row["path"] == name]
+        if len(rows) != 1 or not name.endswith(".asar") or rows[0].get("kind") != "static_extracted_host_input":
+            raise ValueError("Selected ASAR is not an exact indexed static host extraction")
+    for row in rows:
         if not row["path"].startswith((".analysis/inputs/host-current/extracted/",
                                        ".analysis/inputs/installed-current/files/app-engine/")) or not row["path"].endswith(".asar"):
             continue
@@ -2140,6 +2809,23 @@ def extract_asar():
                 a.save(index_path, index)
         results = a.ROOT / ".analysis/results/host-current/asar" / row["sha256"]
         results.mkdir(parents=True, exist_ok=True)
+        retained_path = results / "capture.json"
+        if selected is not None and retained_path.exists():
+            retained = json.loads(retained_path.read_bytes())
+            if (retained.get("input") != row["path"] or retained.get("input_sha256") != row["sha256"]
+                    or retained.get("input_bytes") != row["bytes"] or retained.get("complete") is not True
+                    or retained.get("unresolved")):
+                raise ValueError("Selected ASAR has no complete retained extraction")
+            actual_index = {item["path"]: item for item in indexed["inputs"]}
+            for artifact in retained.get("files", []):
+                _host_indexed_bytes(artifact, actual_index)
+            for artifact in retained.get("outputs", []):
+                local = a.resolve(artifact["path"], ".analysis/results/host-current/asar")
+                if local.stat().st_size != artifact["bytes"] or a.sha(local) != artifact["sha256"]:
+                    raise ValueError("Retained selected ASAR output identity changed")
+            print(json.dumps({"asar": row["path"], "extracted_files": len(retained["files"]),
+                              "unresolved": 0, "retained_outputs_verified": True}), flush=True)
+            continue
         (results / "header.json").write_bytes(header_raw)
         capture = {"schema_version": 1, "recorded_at_utc": a.stamp(), "input": row["path"], "input_sha256": row["sha256"],
                    "input_bytes": row["bytes"], "header_bytes": header_length, "payload_offset": 8 + header_length,
@@ -2247,6 +2933,7 @@ def add_commands(parsers):
     fetch.add_argument("--seven-zip", default="C:/Program Files/7-Zip/7z.exe")
     fetch.add_argument("--extract", action="store_true", help="Statically extract supported ZIP/NSIS/7z payloads; never run installer actions")
     fetch.add_argument("--release", action="store_true", help="Follow statically verified production discovery to Synapse/Chroma host packages")
+    fetch.add_argument("--release-only", action="store_true", help="Acquire missing current stable package/resource bytes from the indexed metadata audit into a version-owned receipt")
     fetch.add_argument("--metadata-only", action="store_true", help="Recheck retained official deployment JSON and current manifest references without package downloads")
     fetch.add_argument("--revalidate-bootstrap", action="store_true", help="Double-fetch the current official download page and bootstrap as inert evidence without executing it")
     fetch.add_argument("--repair-metadata-index", action="store_true", help="Preserve and relocate a wrongly indexed metadata receipt into inputs without network access")
@@ -2254,6 +2941,7 @@ def add_commands(parsers):
                        help="bounded worker threads for independent host container inspections")
     inspect = parsers.add_parser("inspect-host", help="Statically list verified host evidence containers")
     inspect.add_argument("--input", help="Inspect one verified nested host archive while retaining prior container receipts")
+    inspect.add_argument("--acquisition", help="Select a verified current version-owned acquisition and preserve legacy inspection receipts")
     inspect.add_argument("--seven-zip", default="C:/Program Files/7-Zip/7z.exe")
     inspect.add_argument("--extract", action="store_true", help="Statically extract supported payloads")
     inspect.add_argument("--repair-extraction", action="store_true", help="Fresh static extraction with exact retained-byte checks before restoring missing originals")
@@ -2268,6 +2956,7 @@ def add_commands(parsers):
                          help="Capture all Razer version-resource assemblies first, or include every retained CLR dependency")
     analyze.add_argument("--workers", type=int, choices=range(2, 17), default=4,
                          help="bounded worker threads for independent managed assembly captures")
+    analyze.add_argument("--input", help="Extract this exact indexed ASAR only; requires --extract-asar-only")
 
 
 def analyze_host(args):
@@ -2283,10 +2972,12 @@ def analyze_host(args):
                 return Path("\\\\?\\UNC\\" + value[2:] if value.startswith("\\\\") else "\\\\?\\" + value)
         return path
 
+    if getattr(args, "input", None) is not None and not getattr(args, "extract_asar_only", False):
+        raise ValueError("An exact host input requires --extract-asar-only")
     if getattr(args, "resolve_managed_dependencies", False):
         return resolve_managed_dependencies(workers=getattr(args, "workers", 4))
     if getattr(args, "extract_asar_only", False):
-        return extract_asar()
+        return extract_asar(getattr(args, "input", None))
     if getattr(args, "javascript_only", False):
         return analyze_host_javascript()
     workers = getattr(args, "workers", 4)

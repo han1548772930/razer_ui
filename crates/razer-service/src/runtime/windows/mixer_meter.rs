@@ -5,7 +5,7 @@ use crate::audio_util::windows::{Com, endpoint_container, router_friendly_name};
 use anyhow::{Context as _, ensure};
 use razer_device::{
     audio_mixer::{MixerChannel, MixerControl, MixerSession, MixerTarget, MixerValue},
-    backend::{HidBackend, HidNode},
+    backend::HidNode,
 };
 use razer_hid::with_backend;
 use serde_json::{Value, json};
@@ -308,7 +308,8 @@ impl Meter {
         let mut result = self.identity();
         let mut raw = serde_json::Map::new();
         {
-            let device = with_backend(|backend| backend.open(node))?;
+            let device =
+                with_backend(|backend| backend.open_validated(node, std::rc::Rc::new(&validate)))?;
             let session = MixerSession::new(device.as_ref(), &validate)?;
             for (name, control) in [
                 ("mic", MixerControl::MicrophonePeak),

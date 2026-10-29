@@ -315,7 +315,7 @@ pub fn apply(
             )
         })?;
         let sent = std::cell::Cell::new(false);
-        let payload = feature_exchange::exchange_with_report_data_size_observing_send(
+        let response = feature_exchange::exchange_with_report_data_size_observing_send(
             device,
             cap,
             command.header,
@@ -324,8 +324,14 @@ pub fn apply(
             command.header[0],
             &validate,
             &mut || sent.set(true),
-        )
-        .map_err(|e| {
+        );
+        if let Some(payload) = feature_exchange::acknowledged_reply(&response) {
+            acknowledgements.push(TrackingAcknowledgement {
+                step: command.step,
+                payload: payload.to_vec(),
+            });
+        }
+        response.map_err(|e| {
             failure(
                 TrackingFailurePhase::Command,
                 Some(command.step),
@@ -334,10 +340,6 @@ pub fn apply(
                 e,
             )
         })?;
-        acknowledgements.push(TrackingAcknowledgement {
-            step: command.step,
-            payload,
-        });
         validate().map_err(|e| {
             failure(
                 TrackingFailurePhase::AfterAcknowledgement,

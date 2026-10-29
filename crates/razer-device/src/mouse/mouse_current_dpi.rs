@@ -700,6 +700,26 @@ fn exchange(
     transaction: u8,
     validate: &impl Fn() -> anyhow::Result<()>,
 ) -> anyhow::Result<Acknowledgement> {
+    exchange_observing(
+        device,
+        cap,
+        command,
+        data,
+        transaction,
+        validate,
+        &mut |_| {},
+    )
+}
+
+fn exchange_observing(
+    device: &dyn FeatureTransport,
+    cap: &Capability,
+    command: [u8; 3],
+    data: &[u8],
+    transaction: u8,
+    validate: &impl Fn() -> anyhow::Result<()>,
+    acknowledged: &mut dyn FnMut(&Acknowledgement),
+) -> anyhow::Result<Acknowledgement> {
     let (transport, transaction) = cap.transport().for_exchange(device, transaction)?;
     ensure!(
         transaction & 31 < transport.transaction_modulus
@@ -716,68 +736,83 @@ fn exchange(
     outgoing[9..9 + data.len()].copy_from_slice(data);
     outgoing[89] = outgoing[3..89].iter().fold(0, |sum, byte| sum ^ byte);
     let cap = transport.as_ref();
-    let mut last = "No DPI response".to_owned();
-    for _ in 0..cap.max_retry_out {
-        validate()?;
-        std::thread::sleep(Duration::from_millis(cap.sleep_between_out_ms));
-        validate()?;
-        let sent = device.send_feature_at_collection_max(&outgoing);
-        validate()?;
-        if let Err(error) = sent {
-            last = format!("{error:#}");
-            continue;
-        }
-        std::thread::sleep(Duration::from_millis(cap.sleep_between_out_in_ms));
-        for attempt in 0..cap.max_retry_in {
-            if attempt > 0 {
-                std::thread::sleep(Duration::from_millis(cap.sleep_between_in_ms));
-            }
-            validate()?;
-            let mut incoming = [0; 91];
-            // for_exchange already selected the exact physical factory (or
-            // retained the explicitly bound master) before framing this call.
-            incoming[0] = cap.get_report_id();
-            let received = device.get_feature_at_collection_max(&mut incoming);
-            validate()?;
-            let received = match received {
-                Ok(value) => value,
-                Err(error) => {
+    crate::feature_exchange::with_validated_exchange(
+        device,
+        crate::feature_exchange::with_protocol25_scope(
+            crate::backend::ExchangeOptions::mutex_out(Duration::from_millis(
+                cap.sleep_between_out_ms,
+            )),
+            &cap.source_class,
+        ),
+        validate,
+        |device, lease| {
+            let mut last = "No DPI response".to_owned();
+            for out_attempt in 0..cap.max_retry_out {
+                validate()?;
+                let sent = device.send_feature_at_collection_max(&outgoing);
+                validate()?;
+                if let Err(error) = sent {
                     last = format!("{error:#}");
-                    break;
+                    continue;
                 }
-            };
-            ensure!(
-                received == incoming.len(),
-                "DPI response report length differs"
-            );
-            if incoming[2] != transaction || incoming[7..9] != command[1..] {
-                last = "DPI response transaction or command differs".into();
-                break;
+                std::thread::sleep(Duration::from_millis(cap.sleep_between_out_in_ms));
+                for attempt in 0..cap.max_retry_in {
+                    if attempt > 0 {
+                        std::thread::sleep(Duration::from_millis(cap.sleep_between_in_ms));
+                    }
+                    validate()?;
+                    let mut incoming = [0; 91];
+                    // for_exchange already selected the exact physical factory (or
+                    // retained the explicitly bound master) before framing this call.
+                    incoming[0] = cap.get_report_id();
+                    let received = device.get_feature_at_collection_max(&mut incoming);
+                    validate()?;
+                    let received = match received {
+                        Ok(value) => value,
+                        Err(error) => {
+                            last = format!("{error:#}");
+                            break;
+                        }
+                    };
+                    ensure!(
+                        received == incoming.len(),
+                        "DPI response report length differs"
+                    );
+                    if incoming[2] != transaction || incoming[7..9] != command[1..] {
+                        last = "DPI response transaction or command differs".into();
+                        break;
+                    }
+                    match incoming[1] {
+                        1 => {
+                            last = "DPI device remains busy".into();
+                        }
+                        2 => {
+                            let count = usize::from(incoming[6]);
+                            ensure!(count <= 80, "DPI response payload is truncated");
+                            let acknowledgement = Acknowledgement {
+                                command,
+                                transaction,
+                                profile: None,
+                                response_bytes: count,
+                                data: incoming[9..9 + count].to_vec(),
+                            };
+                            acknowledged(&acknowledgement);
+                            return Ok(acknowledgement);
+                        }
+                        0 | 3 | 4 => {
+                            last = format!("DPI response status {}", incoming[1]);
+                            break;
+                        }
+                        status => anyhow::bail!("DPI command rejected with device status {status}"),
+                    }
+                }
+                if out_attempt + 1 < cap.max_retry_out {
+                    lease.retry_release()?;
+                }
             }
-            match incoming[1] {
-                1 => {
-                    last = "DPI device remains busy".into();
-                }
-                2 => {
-                    let count = usize::from(incoming[6]);
-                    ensure!(count <= 80, "DPI response payload is truncated");
-                    return Ok(Acknowledgement {
-                        command,
-                        transaction,
-                        profile: None,
-                        response_bytes: count,
-                        data: incoming[9..9 + count].to_vec(),
-                    });
-                }
-                0 | 3 | 4 => {
-                    last = format!("DPI response status {}", incoming[1]);
-                    break;
-                }
-                status => anyhow::bail!("DPI command rejected with device status {status}"),
-            }
-        }
-    }
-    anyhow::bail!("DPI command exhausted source retries: {last}")
+            anyhow::bail!("DPI command exhausted source retries: {last}")
+        },
+    )
 }
 
 /// PID191 is the source's ordinary rzDevice25 dongle, not a dual-link relay.
@@ -970,14 +1005,25 @@ fn synchronize_ordinary_profile_slots(
         |before| same_profile_records(table, before),
         |next, slot| {
             let payload = stage_payload(table, slot);
-            let ack = exchange(
+            let mut completed = None;
+            let response = exchange_observing(
                 device,
                 cap,
                 [payload.len() as u8, 4, 6],
                 &payload,
                 next()?,
                 validate,
-            )?;
+                &mut |ack| {
+                    completed = Some(crate::mouse_dpi_stages::DpiStagesAcknowledgement {
+                        response_bytes: ack.response_bytes,
+                        raw_data: ack.data.clone(),
+                    });
+                },
+            );
+            let ack = response.map_err(|error| match completed {
+                Some(acknowledged) => error.context(acknowledged),
+                None => error,
+            })?;
             Ok(crate::mouse_dpi_stages::DpiStagesAcknowledgement {
                 response_bytes: ack.response_bytes,
                 raw_data: ack.data,
@@ -1035,6 +1081,18 @@ pub struct DpiReport {
     #[serde(default)]
     pub write_errors: DpiTaskErrors,
     pub verified: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct WriteFailure {
+    /// The original request's progress is diagnostic after scope loss.
+    pub progress: DpiReport,
+}
+
+impl std::fmt::Display for WriteFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Mouse DPI task did not complete")
+    }
 }
 
 /// Cancellation and identity/deadline checks surround every feature transfer.
@@ -1121,233 +1179,273 @@ fn execute_with_capability(
         write_errors: DpiTaskErrors::default(),
         verified: false,
     };
-    if (product_id == 182 && change.is_some_and(|change| change.initialize))
-        || product_id == 190 && change.is_some_and(DpiChange::is_identity_read)
-    {
-        let serial = crate::feature_exchange::exchange(
-            device,
-            cap.transport(),
-            [22, 0, 130],
-            &[],
-            next()?,
-            &validate,
-        )?;
-        // Current12844.u retains every printable ASCII byte, including spaces.
-        let serial: String = serial
-            .iter()
-            .copied()
-            .filter(|byte| (32..127).contains(byte))
-            .map(char::from)
-            .collect();
-        ensure!(
-            !serial.is_empty(),
-            "PID{product_id} initialization has no queried device serial number"
-        );
-        report.serial_number = Some(serial);
-        if change.is_some_and(DpiChange::is_identity_read) {
-            validate()?;
-            report.verified = true;
-            return Ok(report);
-        }
-        // 90012.gn -> 87887.Y ->70035.xZ=[3,0]. Y catches a mode
-        // failure; it does not pretend success or prevent later profile tasks.
-        let mode = (|| -> anyhow::Result<()> {
-            let current = crate::feature_exchange::exchange(
+    let result = (|| -> anyhow::Result<()> {
+        if (product_id == 182 && change.is_some_and(|change| change.initialize))
+            || product_id == 190 && change.is_some_and(DpiChange::is_identity_read)
+        {
+            let serial = crate::feature_exchange::exchange(
                 device,
                 cap.transport(),
-                [2, 0, 132],
+                [22, 0, 130],
                 &[],
                 next()?,
                 &validate,
             )?;
-            ensure!(current.len() >= 2, "PID182 mode getter is truncated");
-            if current[..2] != [3, 0] {
-                crate::feature_exchange::exchange(
+            // Current12844.u retains every printable ASCII byte, including spaces.
+            let serial: String = serial
+                .iter()
+                .copied()
+                .filter(|byte| (32..127).contains(byte))
+                .map(char::from)
+                .collect();
+            ensure!(
+                !serial.is_empty(),
+                "PID{product_id} initialization has no queried device serial number"
+            );
+            report.serial_number = Some(serial);
+            if change.is_some_and(DpiChange::is_identity_read) {
+                validate()?;
+                report.verified = true;
+                return Ok(());
+            }
+            // 90012.gn -> 87887.Y ->70035.xZ=[3,0]. Y catches a mode
+            // failure; it does not pretend success or prevent later profile tasks.
+            let mode = (|| -> anyhow::Result<()> {
+                let current = crate::feature_exchange::exchange(
                     device,
                     cap.transport(),
-                    [2, 0, 4],
-                    &[3, 0],
+                    [2, 0, 132],
+                    &[],
                     next()?,
                     &validate,
                 )?;
-            }
-            Ok(())
-        })();
-        if let Err(error) = mode {
-            report.initialization_mode_error = Some(format!("{error:#}"));
-        }
-        validate()?;
-    }
-    if change.is_none() || change.is_some_and(|change| change.stages.is_some()) {
-        let stage_result = (|| -> anyhow::Result<()> {
-            let packed = change
-                .and_then(|change| change.stages.as_ref())
-                .map(|draft| pack_for(product_id, draft))
-                .transpose()?;
-            if cap.stage_level_only {
-                if let Some(packed) = &packed {
-                    let stage = packed
-                        .active_stage
-                        .checked_sub(1)
-                        .and_then(|index| packed.records.get(usize::from(index)))
-                        .context("Source selected DPI stage has no numeric X/Y values")?;
-                    let mut payload = vec![1];
-                    payload.extend_from_slice(&stage.x.map_or(0, SourceNumber::word).to_be_bytes());
-                    payload.extend_from_slice(&stage.y.map_or(0, SourceNumber::word).to_be_bytes());
-                    payload.extend_from_slice(&[0, 0]);
-                    let ack = exchange(device, cap, [7, 4, 5], &payload, next()?, &validate)?;
-                    if ack.data.len() >= 7 {
-                        report.stage_level = Some(level_reading(cap, 1, &ack)?);
-                    }
-                    report.acknowledgements.push(ack);
-                } else {
-                    report.stage_level = Some(level_reading(
-                        cap,
-                        1,
-                        &exchange(device, cap, [7, 4, 133], &[1], next()?, &validate)?,
-                    )?);
+                ensure!(current.len() >= 2, "PID182 mode getter is truncated");
+                if current[..2] != [3, 0] {
+                    crate::feature_exchange::exchange(
+                        device,
+                        cap.transport(),
+                        [2, 0, 4],
+                        &[3, 0],
+                        next()?,
+                        &validate,
+                    )?;
                 }
-                return Ok(());
+                Ok(())
+            })();
+            if let Err(error) = mode {
+                if crate::backend::exchange_finalization_failed(&error) {
+                    return Err(error);
+                }
+                report.initialization_mode_error = Some(format!("{error:#}"));
             }
-            if let Some(packed) = &packed {
-                let payload = stage_payload(packed, 1);
-                report.acknowledgements.push(exchange(
-                    device,
-                    cap,
-                    [payload.len() as u8, 4, 6],
-                    &payload,
-                    next()?,
-                    &validate,
-                )?);
-            }
-            let observed = stage_reading(
-                &exchange(device, cap, [80, 4, 134], &[1], next()?, &validate)?,
-                1,
-            )?;
-            report.stages = Some(observed);
-            if let Some(packed) = &packed {
-                ensure!(
-                    same_stages(packed, report.stages.as_ref().expect("actual stage getter")),
-                    "DPI stage setter acknowledged but readback differs"
-                );
-            }
-            if matches!(product_id, 182 | 190)
-                && let Some(change) = change
-                && let (Some(guid), Some(draft)) = (&change.profile_guid, &change.stages)
-            {
-                ensure!(
-                    !guid.is_empty(),
-                    "PID{product_id} active profile GUID is empty"
-                );
-                report.profile_slots = crate::mouse_onboard::read_profile_associations(
-                    device,
-                    cap.transport(),
-                    &mut next,
-                    &validate,
-                )?
-                .into_iter()
-                .map(|slot| crate::mouse_dpi_stages::ObservedProfileSlot {
-                    slot_id: slot.profile_id,
-                    guid: slot.guid,
-                })
-                .collect();
-                report.profile_slot_writes = if product_id == 182 {
-                    let mut stages_cap = crate::mouse_dpi_stages::capability(182)
-                        .context("PID182 stage capability absent")?
-                        .clone();
-                    stages_cap.transport = cap.transport().clone();
-                    crate::mouse_dpi_stages::synchronize_profile_slots(
-                        device,
-                        &stages_cap,
-                        guid,
-                        &report.profile_slots,
-                        &editor_draft_for(product_id, draft)?,
-                        &mut next,
-                        &validate,
-                    )?
-                } else {
-                    synchronize_ordinary_profile_slots(
-                        device,
-                        cap,
-                        guid,
-                        &report.profile_slots,
-                        packed
-                            .as_ref()
-                            .context("DPI stage task has no packed table")?,
-                        &mut next,
-                        &validate,
-                    )?
-                };
-                let failures: Vec<_> = report
-                    .profile_slot_writes
-                    .iter()
-                    .filter_map(|slot| slot.error.as_deref())
-                    .collect();
-                ensure!(
-                    failures.is_empty(),
-                    "PID{product_id} OBM stage synchronization failed: {}",
-                    failures.join("; ")
-                );
-            }
-            Ok(())
-        })();
-        if let Err(error) = stage_result {
-            if change.is_none() {
-                report.read_errors.stages = Some(format!("{error:#}"));
-            } else {
-                report.write_errors.stages = Some(format!("{error:#}"));
-            }
+            validate()?;
         }
-        // Stage and current X/Y are independent source tasks. Device rejection
-        // does not discard the other task; scope cancellation stops both.
-        validate()?;
-    }
-    if change.is_none() || change.is_some_and(|change| change.active.is_some()) {
-        let active_result = (|| -> anyhow::Result<()> {
-            let mut observed = level_reading(
-                cap,
-                0,
-                &exchange(device, cap, [7, 4, 133], &[0], next()?, &validate)?,
-            )?;
-            if let Some(wanted) = change.and_then(|change| change.active) {
-                if observed != wanted {
-                    let mut payload = vec![0];
-                    payload.extend_from_slice(&wanted.x.to_be_bytes());
-                    payload.extend_from_slice(&wanted.y.to_be_bytes());
-                    payload.extend_from_slice(&[0, 0]);
-                    report.acknowledgements.push(exchange(
+        if change.is_none() || change.is_some_and(|change| change.stages.is_some()) {
+            let stage_result = (|| -> anyhow::Result<()> {
+                let packed = change
+                    .and_then(|change| change.stages.as_ref())
+                    .map(|draft| pack_for(product_id, draft))
+                    .transpose()?;
+                if cap.stage_level_only {
+                    if let Some(packed) = &packed {
+                        let stage = packed
+                            .active_stage
+                            .checked_sub(1)
+                            .and_then(|index| packed.records.get(usize::from(index)))
+                            .context("Source selected DPI stage has no numeric X/Y values")?;
+                        let mut payload = vec![1];
+                        payload.extend_from_slice(
+                            &stage.x.map_or(0, SourceNumber::word).to_be_bytes(),
+                        );
+                        payload.extend_from_slice(
+                            &stage.y.map_or(0, SourceNumber::word).to_be_bytes(),
+                        );
+                        payload.extend_from_slice(&[0, 0]);
+                        let ack = exchange_observing(
+                            device,
+                            cap,
+                            [7, 4, 5],
+                            &payload,
+                            next()?,
+                            &validate,
+                            &mut |ack| report.acknowledgements.push(ack.clone()),
+                        )?;
+                        if ack.data.len() >= 7 {
+                            report.stage_level = Some(level_reading(cap, 1, &ack)?);
+                        }
+                    } else {
+                        report.stage_level = Some(level_reading(
+                            cap,
+                            1,
+                            &exchange(device, cap, [7, 4, 133], &[1], next()?, &validate)?,
+                        )?);
+                    }
+                    return Ok(());
+                }
+                if let Some(packed) = &packed {
+                    let payload = stage_payload(packed, 1);
+                    exchange_observing(
                         device,
                         cap,
-                        [7, 4, 5],
+                        [payload.len() as u8, 4, 6],
                         &payload,
                         next()?,
                         &validate,
-                    )?);
-                    observed = level_reading(
-                        cap,
-                        0,
-                        &exchange(device, cap, [7, 4, 133], &[0], next()?, &validate)?,
+                        &mut |ack| report.acknowledgements.push(ack.clone()),
                     )?;
                 }
-                report.active = Some(observed);
-                ensure!(
-                    report.active == Some(wanted),
-                    "Active DPI setter acknowledged but readback differs"
-                );
+                let observed = stage_reading(
+                    &exchange(device, cap, [80, 4, 134], &[1], next()?, &validate)?,
+                    1,
+                )?;
+                report.stages = Some(observed);
+                if let Some(packed) = &packed {
+                    ensure!(
+                        same_stages(packed, report.stages.as_ref().expect("actual stage getter")),
+                        "DPI stage setter acknowledged but readback differs"
+                    );
+                }
+                if matches!(product_id, 182 | 190)
+                    && let Some(change) = change
+                    && let (Some(guid), Some(draft)) = (&change.profile_guid, &change.stages)
+                {
+                    ensure!(
+                        !guid.is_empty(),
+                        "PID{product_id} active profile GUID is empty"
+                    );
+                    report.profile_slots = crate::mouse_onboard::read_profile_associations(
+                        device,
+                        cap.transport(),
+                        &mut next,
+                        &validate,
+                    )?
+                    .into_iter()
+                    .map(|slot| crate::mouse_dpi_stages::ObservedProfileSlot {
+                        slot_id: slot.profile_id,
+                        guid: slot.guid,
+                    })
+                    .collect();
+                    let slot_writes = if product_id == 182 {
+                        let mut stages_cap = crate::mouse_dpi_stages::capability(182)
+                            .context("PID182 stage capability absent")?
+                            .clone();
+                        stages_cap.transport = cap.transport().clone();
+                        crate::mouse_dpi_stages::synchronize_profile_slots(
+                            device,
+                            &stages_cap,
+                            guid,
+                            &report.profile_slots,
+                            &editor_draft_for(product_id, draft)?,
+                            &mut next,
+                            &validate,
+                        )
+                    } else {
+                        synchronize_ordinary_profile_slots(
+                            device,
+                            cap,
+                            guid,
+                            &report.profile_slots,
+                            packed
+                                .as_ref()
+                                .context("DPI stage task has no packed table")?,
+                            &mut next,
+                            &validate,
+                        )
+                    };
+                    if let Err(error) = &slot_writes
+                    && let Some(progress) = error.downcast_ref::<
+                        crate::mouse_dpi_stages::DpiSlotSynchronizationFailure,
+                    >()
+                {
+                    report.profile_slot_writes = progress.writes.clone();
+                }
+                    report.profile_slot_writes = slot_writes?;
+                    let failures: Vec<_> = report
+                        .profile_slot_writes
+                        .iter()
+                        .filter_map(|slot| slot.error.as_deref())
+                        .collect();
+                    ensure!(
+                        failures.is_empty(),
+                        "PID{product_id} OBM stage synchronization failed: {}",
+                        failures.join("; ")
+                    );
+                }
+                Ok(())
+            })();
+            if let Err(error) = stage_result {
+                if crate::backend::exchange_finalization_failed(&error) {
+                    return Err(error);
+                }
+                if change.is_none() {
+                    report.read_errors.stages = Some(format!("{error:#}"));
+                } else {
+                    report.write_errors.stages = Some(format!("{error:#}"));
+                }
             }
-            report.active = Some(observed);
-            Ok(())
-        })();
-        if let Err(error) = active_result {
-            if change.is_none() {
-                report.read_errors.active = Some(format!("{error:#}"));
-            } else {
-                report.write_errors.active = Some(format!("{error:#}"));
+            // Stage and current X/Y are independent source tasks. Device rejection
+            // does not discard the other task; scope cancellation stops both.
+            validate()?;
+        }
+        if change.is_none() || change.is_some_and(|change| change.active.is_some()) {
+            let active_result = (|| -> anyhow::Result<()> {
+                let mut observed = level_reading(
+                    cap,
+                    0,
+                    &exchange(device, cap, [7, 4, 133], &[0], next()?, &validate)?,
+                )?;
+                if let Some(wanted) = change.and_then(|change| change.active) {
+                    if observed != wanted {
+                        let mut payload = vec![0];
+                        payload.extend_from_slice(&wanted.x.to_be_bytes());
+                        payload.extend_from_slice(&wanted.y.to_be_bytes());
+                        payload.extend_from_slice(&[0, 0]);
+                        exchange_observing(
+                            device,
+                            cap,
+                            [7, 4, 5],
+                            &payload,
+                            next()?,
+                            &validate,
+                            &mut |ack| report.acknowledgements.push(ack.clone()),
+                        )?;
+                        observed = level_reading(
+                            cap,
+                            0,
+                            &exchange(device, cap, [7, 4, 133], &[0], next()?, &validate)?,
+                        )?;
+                    }
+                    report.active = Some(observed);
+                    ensure!(
+                        report.active == Some(wanted),
+                        "Active DPI setter acknowledged but readback differs"
+                    );
+                }
+                report.active = Some(observed);
+                Ok(())
+            })();
+            if let Err(error) = active_result {
+                if crate::backend::exchange_finalization_failed(&error) {
+                    return Err(error);
+                }
+                if change.is_none() {
+                    report.read_errors.active = Some(format!("{error:#}"));
+                } else {
+                    report.write_errors.active = Some(format!("{error:#}"));
+                }
             }
         }
+        validate()?;
+        report.verified = report.read_errors.is_empty() && report.write_errors.is_empty();
+        Ok(())
+    })();
+    if let Err(error) = result {
+        report.verified = false;
+        let message = error.to_string();
+        return Err(error
+            .context(WriteFailure { progress: report })
+            .context(message));
     }
-    validate()?;
-    report.verified = report.read_errors.is_empty() && report.write_errors.is_empty();
     Ok(report)
 }
 

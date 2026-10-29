@@ -197,9 +197,17 @@ fn matcher_profiles_normalize_duplicate_keys_and_request_one_independent_save() 
                 {"guid":"none-a","name":"None"},
                 {"guid":"none-b","name":"None"}
             ]
-        })).unwrap();
-        let observation = MatcherObservation::Profiles { library: input, selected: "duplicate".into() };
-        let actions = if mounted { state.observe(observation) } else { state.observe_unmounted(observation) };
+        }))
+        .unwrap();
+        let observation = MatcherObservation::Profiles {
+            library: input,
+            selected: "duplicate".into(),
+        };
+        let actions = if mounted {
+            state.observe(observation)
+        } else {
+            state.observe_unmounted(observation)
+        };
         assert_eq!(
             state.library().file_value(),
             json!({
@@ -217,7 +225,10 @@ fn matcher_profiles_normalize_duplicate_keys_and_request_one_independent_save() 
         assert_eq!(state.selected(), "duplicate");
         assert_eq!(actions, [MatcherAction::NormalizeProfiles]);
         let normalized = state.library().clone();
-        let echo = MatcherObservation::Profiles { library: normalized.clone(), selected: "duplicate".into() };
+        let echo = MatcherObservation::Profiles {
+            library: normalized.clone(),
+            selected: "duplicate".into(),
+        };
         assert!(state.observe_unmounted(echo).is_empty());
         assert_eq!(state.library(), &normalized);
     }
@@ -235,9 +246,16 @@ fn matcher_selection_filters_english_none_without_using_the_first_translation() 
         ]),
         selected: "real".into(),
     });
-    state.apply_local_action(&MatcherAction::SelectProfile("real".into())).unwrap();
+    state
+        .apply_local_action(&MatcherAction::SelectProfile("real".into()))
+        .unwrap();
     assert_eq!(
-        state.library().profiles().iter().map(MatcherProfile::guid).collect::<Vec<_>>(),
+        state
+            .library()
+            .profiles()
+            .iter()
+            .map(MatcherProfile::guid)
+            .collect::<Vec<_>>(),
         ["other-locale-none", "real"]
     );
 }
@@ -342,8 +360,42 @@ fn matcher_device_product_name_only_fills_an_empty_profile_label() {
     assert_eq!(selected, 0);
     assert_eq!(
         items.iter().map(ProfileItem::name).collect::<Vec<_>>(),
-        ["Profile A", "Profile B", "Local C", "Profile D", "English device", "Local device"]
+        [
+            "Profile A",
+            "Profile B",
+            "Local C",
+            "Profile D",
+            "English device",
+            "Local device"
+        ]
     );
+}
+
+#[::core::prelude::v1::test]
+fn matcher_language_changes_keep_profile_identity_and_local_drafts() {
+    let mut state = MatcherState::default();
+    state.observe_unmounted(MatcherObservation::Profiles {
+        library: library(vec![
+            json!({"guid":"first","name":{"en":"First","zh-cn":"第一个"}}),
+            json!({"guid":"selected","name":{"en":"Selected","zh-cn":"选中的"}}),
+        ]),
+        selected: "selected".into(),
+    });
+    let before = state.profile_update();
+    state.open();
+    for (language, expected) in [("ZH-CN", "选中的"), ("en", "Selected")] {
+        assert!(
+            state
+                .observe(MatcherObservation::Language(language.into()))
+                .is_empty()
+        );
+        let (items, selected) = state.dataset("None");
+        assert_eq!(items[selected].guid(), "selected");
+        assert_eq!(items[selected].name(), expected);
+        assert_eq!(state.profile_update(), before);
+        assert!(state.popup());
+        assert!(state.start_listener);
+    }
 }
 
 #[::core::prelude::v1::test]

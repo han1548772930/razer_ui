@@ -5,7 +5,7 @@ use crate::{
 };
 use anyhow::{Result, ensure};
 use razer_device::{
-    backend::{HidBackend, HidNode},
+    backend::HidNode,
     thx_blackshark_firmware::{
         BlackSharkFirmwareConnection, BlackSharkFirmwareIdentity, BlackSharkFirmwareSession,
         blackshark_firmware_route,
@@ -186,7 +186,10 @@ pub fn open(
             scope.generation,
         )?;
         validate_live(&identity, &cancellation)?;
-        let transport = razer_hid::with_backend(|backend| backend.open(&identity.node))?;
+        let validate_open = || validate_live(&identity, &cancellation);
+        let transport = razer_hid::with_backend(|backend| {
+            backend.open_validated(&identity.node, std::rc::Rc::new(&validate_open))
+        })?;
         let session = BlackSharkFirmwareSession::new(identity, transport)?;
         let check_cancel = cancellation.clone();
         let wait_cancel = cancellation.clone();

@@ -505,6 +505,18 @@ pub struct SubmissionReport {
     pub current: Option<ScrollSnapshot>,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SubmissionFailure {
+    /// Partial tasks from this request; never a current device snapshot.
+    pub progress: SubmissionReport,
+}
+
+impl std::fmt::Display for SubmissionFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Mouse scroll submission did not complete")
+    }
+}
+
 impl SubmissionReport {
     /// Validate task association and typed partial progress independently from
     /// whether every requested write was acknowledged and read back.
@@ -817,59 +829,74 @@ impl<'a> MouseScroll<'a> {
         let mut reports = Vec::new();
         let mut errors = Vec::new();
         let mut onboard_profiles = None;
-        if submission
-            .changes
-            .iter()
-            .any(|change| submission.needs_observation(self.transport.product_id, *change))
-        {
-            match crate::mouse_onboard::read_profile_associations(
-                self.device,
-                self.transport,
-                &mut next,
-                &validate,
-            ) {
-                Ok(profiles) => onboard_profiles = Some(profiles),
-                Err(error) => {
-                    errors.push(format!("OBM profile observation: {error:#}"));
-                    validate()?;
+        let mut current = None;
+        let result = (|| -> Result<()> {
+            if submission
+                .changes
+                .iter()
+                .any(|change| submission.needs_observation(self.transport.product_id, *change))
+            {
+                match crate::mouse_onboard::read_profile_associations(
+                    self.device,
+                    self.transport,
+                    &mut next,
+                    &validate,
+                ) {
+                    Ok(profiles) => onboard_profiles = Some(profiles),
+                    Err(error) => {
+                        if crate::backend::exchange_finalization_failed(&error) {
+                            return Err(error);
+                        }
+                        errors.push(format!("OBM profile observation: {error:#}"));
+                        validate()?;
+                    }
                 }
             }
-        }
-        let resolved =
-            submission.resolve_profiles(self.transport.product_id, onboard_profiles.as_deref());
-        for (index, change) in submission.changes.iter().enumerate() {
-            validate()?;
-            let profiles = match &resolved {
-                Ok(profiles) => profiles,
-                Err(_) if submission.needs_observation(self.transport.product_id, *change) => {
-                    reports.push(ScrollWriteReport::default());
-                    continue;
-                }
-                Err(_) => &submission.profiles,
-            };
-            match self.apply(*change, profiles, &mut next, &validate) {
-                Ok(report) => reports.push(report),
-                Err(failure) => {
-                    errors.push(format!("task {index} ({change:?}): {failure:#}"));
-                    reports.push(failure.progress);
-                    // Source feature tasks are independent. Device rejection
-                    // does not discard later edits; cancellation stops them.
-                    validate()?;
+            let resolved =
+                submission.resolve_profiles(self.transport.product_id, onboard_profiles.as_deref());
+            for (index, change) in submission.changes.iter().enumerate() {
+                validate()?;
+                let profiles = match &resolved {
+                    Ok(profiles) => profiles,
+                    Err(_) if submission.needs_observation(self.transport.product_id, *change) => {
+                        reports.push(ScrollWriteReport::default());
+                        continue;
+                    }
+                    Err(_) => &submission.profiles,
+                };
+                match self.apply(*change, profiles, &mut next, &validate) {
+                    Ok(report) => reports.push(report),
+                    Err(failure) => {
+                        errors.push(format!("task {index} ({change:?}): {failure:#}"));
+                        reports.push(failure.progress);
+                        if crate::backend::exchange_finalization_failed(&failure.error) {
+                            return Err(failure.error);
+                        }
+                        // Source feature tasks are independent. Device rejection
+                        // does not discard later edits; cancellation stops them.
+                        validate()?;
+                    }
                 }
             }
-        }
-        let current = if submission.observe_current {
-            Some(self.read_current(&mut next, &validate)?)
-        } else {
-            None
-        };
-        Ok(SubmissionReport {
+            if submission.observe_current {
+                current = Some(self.read_current(&mut next, &validate)?);
+            }
+            Ok(())
+        })();
+        let report = SubmissionReport {
             requested: submission.clone(),
             onboard_profiles,
             reports,
             errors,
             current,
-        })
+        };
+        if let Err(error) = result {
+            let message = error.to_string();
+            return Err(error
+                .context(SubmissionFailure { progress: report })
+                .context(message));
+        }
+        Ok(report)
     }
 
     pub fn read_current(
@@ -904,6 +931,9 @@ impl<'a> MouseScroll<'a> {
                     Err(_) => ScrollReadOutcome::Unknown { raw },
                 },
                 Err(error) => {
+                    if crate::backend::exchange_finalization_failed(&error) {
+                        return Err(error);
+                    }
                     validate()?;
                     ScrollReadOutcome::Failed {
                         message: format!("{error:#}"),
@@ -984,23 +1014,27 @@ impl<'a> MouseScroll<'a> {
                 });
                 let result = (|| -> Result<_> {
                     let command = self.cap.command(requested.kind(), true)?;
-                    let data = exchange(
+                    let response = exchange(
                         self.device,
                         self.transport,
                         command,
                         &[profile_id, requested.raw()],
                         next_transaction()?,
                         &validate,
-                    )?;
-                    progress.steps[index].acknowledgment_received = true;
+                    );
                     // Source setters report SUCCESS without requiring an echo;
                     // level parsers explicitly allow packetSizeReturned == 0.
                     // Preserve an available echo separately from the later read.
-                    if !data.is_empty() {
-                        progress.steps[index].acknowledged =
-                            Some(parse(&data, profile_id, requested.kind())?);
+                    if let Some(data) = crate::feature_exchange::acknowledged_reply(&response) {
+                        progress.steps[index].acknowledgment_received = true;
+                        if !data.is_empty() {
+                            match parse(data, profile_id, requested.kind()) {
+                                Ok(value) => progress.steps[index].acknowledged = Some(value),
+                                Err(error) => return response.and(Err(error)),
+                            }
+                        }
                     }
-                    Ok(())
+                    response.map(|_| ())
                 })();
                 if let Err(error) = result {
                     return Err(ScrollWriteFailure {

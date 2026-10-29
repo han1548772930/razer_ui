@@ -106,6 +106,35 @@ fn original_write_stops_after_setter_response_without_an_extra_getter() {
 }
 
 #[test]
+fn setter_release_failure_retains_its_ack_without_completing_the_source_task() {
+    let device = transport(vec![reply(224, 132, 0), reply(225, 4, 127)]);
+    let finish_check = || {
+        ensure!(
+            device.sent.borrow().last().unwrap()[8] != 4,
+            "simulated setter release failure"
+        );
+        Ok(())
+    };
+    let probe =
+        crate::feature_exchange::tests::ExchangeProbe::with_finish_check(&device, &finish_check);
+    let result = apply(&probe, &capability(), 50, transactions(), || Ok(())).unwrap();
+    assert!(!result.source_completed);
+    assert!(result.write_attempted && result.write_sent);
+    assert_eq!(result.acknowledged.as_ref().unwrap().raw_value, 127);
+    assert!(result.observed.is_none());
+    assert!(
+        result
+            .error
+            .as_deref()
+            .unwrap()
+            .contains("setter release failure")
+    );
+    assert_eq!(device.sent.borrow().len(), 2);
+    assert_eq!(device.get_selectors.borrow().len(), 2);
+    assert!(device.responses.borrow().is_empty());
+}
+
+#[test]
 fn source_task_does_not_add_a_requested_value_comparison_to_setter_response() {
     let device = transport(vec![reply(224, 132, 0), reply(225, 4, 127)]);
     let result = apply(&device, &capability(), 100, transactions(), || Ok(())).unwrap();

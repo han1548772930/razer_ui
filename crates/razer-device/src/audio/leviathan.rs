@@ -133,6 +133,19 @@ pub struct Report {
     pub previous_input: Option<u8>,
 }
 
+#[derive(Debug)]
+pub struct ExecutionFailure {
+    pub progress: Report,
+}
+
+impl std::fmt::Display for ExecutionFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Noa execution failed; actual acknowledgements retained")
+    }
+}
+
+impl std::error::Error for ExecutionFailure {}
+
 fn exchange(
     device: &dyn FeatureTransport,
     cap: &DeviceReadCapability,
@@ -140,7 +153,8 @@ fn exchange(
     data: &[u8],
     transaction: u8,
     validate: &impl Fn() -> anyhow::Result<()>,
-) -> anyhow::Result<Acknowledgement> {
+    sent: &mut bool,
+) -> anyhow::Result<Vec<u8>> {
     ensure!(
         cap.report_bytes == 65
             && cap.report_id == 8
@@ -157,51 +171,57 @@ fn exchange(
     // Parent checksum XORs body[2..88]. Bytes outside the shorter typed array
     // coerce to zero in JavaScript; body[62] is still zero when it is computed.
     outgoing[63] = outgoing[3..63].iter().fold(0, |sum, byte| sum ^ byte);
-    let mut last = "No Noa response".to_owned();
-    for _ in 0..cap.max_retry_out {
-        validate()?;
-        if let Err(error) = device.send_feature_at_collection_max(&outgoing) {
-            last = format!("{error:#}");
-            continue;
-        }
-        std::thread::sleep(Duration::from_millis(cap.sleep_between_out_in_ms));
-        for attempt in 0..cap.max_retry_in {
-            if attempt > 0 {
-                std::thread::sleep(Duration::from_millis(cap.sleep_between_in_ms));
-            }
-            validate()?;
-            let mut incoming = [0; 65];
-            incoming[0] = 8;
-            let count = device
-                .get_feature_at_collection_max(&mut incoming)
-                .context("Noa GET failed after SET; device state is not confirmed")?;
-            validate()?;
-            ensure!(count == 65, "Noa response length differs");
-            if incoming[2] != transaction || incoming[7..9] != command[1..] {
-                last = "Noa transaction/command mismatch".into();
-                break;
-            }
-            match incoming[1] {
-                2 => {
-                    let size = usize::from(incoming[6]);
-                    ensure!(size <= 54, "Noa response payload is truncated");
-                    return Ok(Acknowledgement {
-                        command,
-                        transaction,
-                        data: incoming[9..9 + size].to_vec(),
-                    });
+    crate::feature_exchange::with_validated_feature_reply(
+        device,
+        crate::backend::ExchangeOptions::plain(),
+        command,
+        transaction,
+        validate,
+        |device, _| {
+            let mut last = "No Noa response".to_owned();
+            for _ in 0..cap.max_retry_out {
+                validate()?;
+                if let Err(error) = device.send_feature_at_collection_max(&outgoing) {
+                    last = format!("{error:#}");
+                    continue;
                 }
-                0 | 3 => {
-                    last = format!("Noa response status {}", incoming[1]);
-                    break;
+                *sent = true;
+                std::thread::sleep(Duration::from_millis(cap.sleep_between_out_in_ms));
+                for attempt in 0..cap.max_retry_in {
+                    if attempt > 0 {
+                        std::thread::sleep(Duration::from_millis(cap.sleep_between_in_ms));
+                    }
+                    validate()?;
+                    let mut incoming = [0; 65];
+                    incoming[0] = 8;
+                    let count = device
+                        .get_feature_at_collection_max(&mut incoming)
+                        .context("Noa GET failed after SET; device state is not confirmed")?;
+                    validate()?;
+                    ensure!(count == 65, "Noa response length differs");
+                    if incoming[2] != transaction || incoming[7..9] != command[1..] {
+                        last = "Noa transaction/command mismatch".into();
+                        break;
+                    }
+                    match incoming[1] {
+                        2 => {
+                            let size = usize::from(incoming[6]);
+                            ensure!(size <= 54, "Noa response payload is truncated");
+                            return Ok(incoming[9..9 + size].to_vec());
+                        }
+                        0 | 3 => {
+                            last = format!("Noa response status {}", incoming[1]);
+                            break;
+                        }
+                        // The Noa override keeps GET retrying on timeout as well as busy.
+                        1 | 4 => last = format!("Noa response status {}", incoming[1]),
+                        status => anyhow::bail!("Noa terminal response status {status}"),
+                    }
                 }
-                // The Noa override keeps GET retrying on timeout as well as busy.
-                1 | 4 => last = format!("Noa response status {}", incoming[1]),
-                status => anyhow::bail!("Noa terminal response status {status}"),
             }
-        }
-    }
-    anyhow::bail!("Noa retry budget exhausted: {last}")
+            anyhow::bail!("Noa retry budget exhausted: {last}")
+        },
+    )
 }
 
 pub fn execute(
@@ -219,47 +239,53 @@ pub fn execute(
         headphone_connected: None,
         previous_input: None,
     };
-    let mut command = |header, data: &[u8]| exchange(device, cap, header, data, next()?, &validate);
-    match operation {
-        Operation::ReadIo => {
-            let ack = command([5, 8, 139], &[])?;
-            ensure!(ack.data.len() >= 3, "Noa audio I/O response is truncated");
-            report.headphone_connected = Some(ack.data[0] == 1);
-            report.acknowledgements.push(ack);
+    let mut command = |report: &mut Report, header, data: &[u8], setter: bool| {
+        let transaction = next()?;
+        let mut sent = false;
+        let result = exchange(device, cap, header, data, transaction, &validate, &mut sent);
+        report.setter_sent |= setter && sent;
+        if let Some(data) = crate::feature_exchange::acknowledged_reply(&result) {
+            report.acknowledgements.push(Acknowledgement {
+                command: header,
+                transaction,
+                data: data.to_vec(),
+            });
         }
-        Operation::Bluetooth => {
-            let read = command([2, 8, 138], &[0, 0])?;
-            let previous = *read
-                .data
-                .get(1)
-                .context("Noa input-source response is truncated")?;
-            report.previous_input = Some(previous);
-            report.acknowledgements.push(read);
-            if previous != 3 {
-                report.setter_sent = true;
-                report.acknowledgements.push(command([2, 8, 10], &[0, 3])?);
+        result
+    };
+    let result: anyhow::Result<()> = (|| {
+        match operation {
+            Operation::ReadIo => {
+                let data = command(&mut report, [5, 8, 139], &[], false)?;
+                ensure!(data.len() >= 3, "Noa audio I/O response is truncated");
+                report.headphone_connected = Some(data[0] == 1);
+            }
+            Operation::Bluetooth => {
+                let data = command(&mut report, [2, 8, 138], &[0, 0], false)?;
+                let previous = *data
+                    .get(1)
+                    .context("Noa input-source response is truncated")?;
+                report.previous_input = Some(previous);
+                if previous != 3 {
+                    command(&mut report, [2, 8, 10], &[0, 3], true)?;
+                }
+            }
+            Operation::Bass(level) => {
+                command(&mut report, [2, 8, 7], &[1, level], true)?;
+            }
+            Operation::Output { headset } => {
+                command(&mut report, [2, 8, 17], &[1, u8::from(headset)], true)?;
+            }
+            Operation::Mode(mode) => {
+                command(&mut report, [2, 8, 16], &[0, mode], true)?;
             }
         }
-        Operation::Bass(level) => {
-            report.setter_sent = true;
-            report
-                .acknowledgements
-                .push(command([2, 8, 7], &[1, level])?);
-        }
-        Operation::Output { headset } => {
-            report.setter_sent = true;
-            report
-                .acknowledgements
-                .push(command([2, 8, 17], &[1, u8::from(headset)])?);
-        }
-        Operation::Mode(mode) => {
-            report.setter_sent = true;
-            report
-                .acknowledgements
-                .push(command([2, 8, 16], &[0, mode])?);
-        }
+        validate()
+    })();
+    match result {
+        Ok(()) => Ok(report),
+        Err(error) => Err(error.context(ExecutionFailure { progress: report })),
     }
-    Ok(report)
 }
 
 #[cfg(test)]

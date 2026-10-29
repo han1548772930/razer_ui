@@ -1511,6 +1511,19 @@ impl ProductWorkspace {
             });
         }
     }
+    pub fn finish_current_dpi_outcome(
+        &mut self,
+        request: &super::mouse_products::MouseCurrentDpiRequested,
+        observed: Option<razer_device::mouse_current_dpi::DpiReport>,
+        error: Option<String>,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_current_dpi_outcome(request, observed, error, cx)
+            });
+        }
+    }
     pub fn accept_current_dpi_local_profile(
         &mut self,
         request: &super::mouse_products::MouseCurrentDpiRequested,
@@ -1522,6 +1535,21 @@ impl ProductWorkspace {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| {
                 body.accept_current_dpi_local_profile(request, baseline, serial, result, cx)
+            });
+        }
+    }
+    pub fn accept_current_dpi_ble_catalog(
+        &mut self,
+        request: &super::mouse_products::MouseCurrentDpiRequested,
+        baseline: &Device,
+        serial: &str,
+        catalog: &razer_storage::host_local_profile::ble226::Catalog,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.accept_current_dpi_ble_catalog(request, baseline, serial, catalog, window, cx)
             });
         }
     }

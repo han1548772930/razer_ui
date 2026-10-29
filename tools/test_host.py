@@ -2,18 +2,23 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import concurrent.futures
 import copy
 import hashlib
 import json
 import struct
 import subprocess
 import tempfile
+import threading
 import unittest
 import uuid
 from pathlib import Path
 from unittest.mock import patch
 
 from host import (HostLocalAudit, add_commands, audit_host_local, publish_host_static_query,
+                  acquire_host, acquire_host_release, host_release_metadata, verified_host_release_receipt,
+                  extract_asar, _host_release_declaration, _publish_host_bytes,
                   collect_profiles_static, publish_profiles_static,
                   verify_profiles_owner, verify_profiles_static_receipt,
                   help_system_mount_layout, help_system_native_declaration, help_system_report_constants,
@@ -1874,6 +1879,525 @@ class ChromaDashboardLaunchTests(unittest.TestCase):
             "different_installer_factory", [source], 20682, "A")
         with self.assertRaisesRegex(ValueError, "export was rebound"):
             verify_chroma_dashboard_launch(self.audit, changed)
+
+
+class HostReleaseAcquisitionTests(unittest.TestCase):
+    def setUp(self):
+        import analysis
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name).resolve()
+        self.root_patch = patch.object(analysis, "ROOT", self.root)
+        self.root_patch.start()
+        self.addCleanup(self.root_patch.stop)
+        self.index = {"inputs": []}
+        self.responses, self.calls = {}, []
+        self.calls_lock = threading.Lock()
+        self.version = "4.0.896"
+        self.release_name = ".analysis/inputs/host-current/releases/4.0.896/acquisition.json"
+        self.original_acquisition = b'{"files": [], "retained": "historical host evidence"}\n'
+        self.original_inspection = b'{"containers": [], "retained": "historical static evidence"}\n'
+        baseline = self.write(".analysis/inputs/host-current/acquisition.json", self.original_acquisition,
+                              kind="acquisition_receipt")
+        legacy_result = self.root / ".analysis/results/host-current/inspection.json"
+        legacy_result.parent.mkdir(parents=True)
+        legacy_result.write_bytes(self.original_inspection)
+        self.package_bytes = {name: b"MZ current package " + name.encode() for name in
+                              ("Razer App Engine", "Razer Synapse", "Razer Chroma")}
+        self.resource_bytes = {"Shared": b"current shared resource", "Launcher": b"current launcher resource"}
+        self.declarations = {}
+        modules = {}
+        for name, raw in self.package_bytes.items():
+            url = "https://manifest-assets.razersynapse.com/" + name.replace(" ", "") + "-4.0.896.exe"
+            declaration = {"name": name, "version": self.version, "download_url": url,
+                           "file_size": len(raw), "download_file_checksum": hashlib.md5(raw).hexdigest()}
+            modules[name] = declaration
+            self.responses[url] = raw
+            self.declarations[url] = declaration
+        products = [{"name": "Anne", "version": self.version,
+                     "modules": [modules["Razer App Engine"], modules["Razer Synapse"]]},
+                    {"name": "Chroma", "version": self.version,
+                     "modules": [modules["Razer App Engine"], modules["Razer Chroma"]]}]
+        documents = []
+        for location, resource in (("background-manager", "Shared"), ("synapse/dashboard", "Launcher")):
+            url = "https://app-assets.razer.com/" + resource + ".dll"
+            raw = self.resource_bytes[resource]
+            digest = hashlib.sha256(raw).hexdigest()
+            declaration = {"resourceName": resource, "resourceVersion": "1.0.0.0", "url": url,
+                           "size": len(raw), "sha256": digest.upper(),
+                           "integrity": "sha256-" + base64.b64encode(bytes.fromhex(digest)).decode()}
+            self.responses[url] = raw
+            self.declarations[url] = declaration
+            documents.extend([
+                ("https://apps.razer.com/" + location + "/installer-manifest.json",
+                 "official_host_release_manifest", {"baseURL": location + "/manifests",
+                     "latest": {"version": "1.0.139", "url": "manifest-1.0.139.json"}}),
+                ("https://apps.razer.com/" + location + "/manifests/manifest-1.0.139.json",
+                 "official_host_resource_manifest", {"resources": [declaration]})])
+        discovery = "https://discovery3.razerapi.com/api/v1/endpoints"
+        release_url = ("https://manifest3.razerapi.com/api/v1/releases/NewProd/tags/prod/products?"
+                       "os=WINDOWS&osver=11&arch=64&mfr=Generic-MFR&model=Generic-MDL0&sku=Generic-SKU&l=en-US")
+        documents.extend([(discovery, "official_host_discovery", {"data": {"items": [{"name": "prod", "hash": "NewProd"}]}}),
+                          (release_url, "official_host_product_release", {"data": {"items": products}}),
+                          ("https://apps.razer.com/background-manager/manifests/manifest-1.0.136.json",
+                           "official_host_resource_manifest", {"resources": [{"retained": "previous manifest"}]}),
+                          (release_url.replace("NewProd", "OldProd"), "official_host_product_release",
+                           {"data": {"items": products}})])
+        files, stability = [], []
+        for url, kind, document in documents:
+            raw = json.dumps(document).encode()
+            self.responses[url] = raw
+            row = self.blob(url, raw, kind)
+            row.update(final_url=url, http_status=200)
+            files.extend([{**row, "acquired_at_utc": "2026-10-29T17:00:00+00:00"},
+                          {**row, "acquired_at_utc": "2026-10-29T17:00:01+00:00"}])
+            stability.append({"url": url, "before_sha256": row["sha256"],
+                              "after_sha256": row["sha256"], "unchanged": True})
+        self.metadata = {"schema_version": 1, "metadata_only": True, "target_execution": False,
+                         "real_device_operations": False, "deployment_metadata_stable": True, "failures": [],
+                         "finished_at_utc": "2026-10-29T17:00:02+00:00", "files": files, "stability": stability,
+                         "baseline": {key: baseline[key] for key in ("path", "sha256")}, "stable_products": products}
+        self.save_metadata()
+        self.blob("https://old.razer.invalid/previous-app-engine.exe", self.package_bytes["Razer App Engine"],
+                  "official_stable_host_package")
+        self.blob("https://app-assets.razer.com/old-shared-url.dll", self.resource_bytes["Shared"], "official_host_artifact")
+        self.save_index()
+
+    def write(self, name, raw, **extra):
+        path = self.root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(raw)
+        row = {"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest(), **extra}
+        self.index["inputs"] = [item for item in self.index["inputs"] if item["path"] != name] + [row]
+        return row
+
+    def blob(self, url, raw, kind):
+        digest = hashlib.sha256(raw).hexdigest()
+        filename = url.split("?", 1)[0].rsplit("/", 1)[-1]
+        return self.write(".analysis/inputs/host-current/blobs/" + digest + "/" + filename,
+                          raw, kind=kind, url=url)
+
+    def save_index(self):
+        path = self.root / ".analysis/inputs.json"
+        path.write_text(json.dumps(self.index), encoding="utf-8")
+
+    def save_metadata(self):
+        self.write(".analysis/inputs/host-current/metadata-recheck.json", json.dumps(self.metadata).encode(),
+                   kind="deployment_metadata_recheck")
+        self.save_index()
+
+    def fetch(self, url, expected=None, kind="official_host_artifact", *, release_declaration=None, cancel_event=None):
+        with self.calls_lock:
+            self.calls.append(url)
+        if cancel_event is not None and cancel_event.is_set():
+            raise concurrent.futures.CancelledError()
+        raw = self.responses[url]
+        if release_declaration is not None:
+            _host_release_declaration(raw, release_declaration["declaration"], release_declaration["algorithm"])
+        row = self.blob(url, raw, kind)
+        row.update(final_url=url, http_status=200)
+        return raw, row
+
+    def acquire(self):
+        result = acquire_host_release(self.fetch, workers=2)
+        self.index = json.loads((self.root / ".analysis/inputs.json").read_bytes())
+        return result
+
+    def test_current_metadata_requires_every_actual_sample_and_derives_current_closure(self):
+        result = host_release_metadata()
+        self.assertEqual(result["version"], "4.0.896")
+        self.assertEqual(len(result["metadata_files"]), 8)
+        self.assertEqual(len(result["active_metadata_files"]), 6)
+        self.assertEqual(len(result["declarations"]), 5)
+        self.metadata["files"].pop()
+        self.save_metadata()
+        with self.assertRaisesRegex(ValueError, "two actual"):
+            host_release_metadata()
+
+    def test_source_sample_cannot_be_forged_by_a_stability_flag(self):
+        self.metadata["files"][0]["sha256"] = "0" * 64
+        self.save_metadata()
+        with self.assertRaisesRegex(ValueError, "indexed identity"):
+            host_release_metadata()
+
+    def test_shared_package_and_resource_reuse_by_verified_bytes_and_complete_release_is_idempotent(self):
+        result = self.acquire()
+        self.assertTrue(result["complete"])
+        self.assertTrue(result["source_current_during_acquisition"])
+        self.assertFalse(result["host_package_closure_complete"])
+        self.assertEqual(sum(row["acquisition"] == "downloaded" for row in result["files"]), 3)
+        self.assertEqual(sum(row["acquisition"] == "reused_verified_bytes" for row in result["files"]), 2)
+        self.assertEqual(len(self.calls), 9)
+        self.assertEqual((self.root / ".analysis/inputs/host-current/acquisition.json").read_bytes(), self.original_acquisition)
+        self.assertEqual((self.root / ".analysis/results/host-current/inspection.json").read_bytes(), self.original_inspection)
+        verified = verified_host_release_receipt()
+        self.assertEqual(verified["receipt"]["path"], self.release_name)
+        self.assertIn(verified["metadata_snapshot"], verified["verified_dependencies"])
+        frozen = (self.root / self.release_name).read_bytes()
+        with patch("host.concurrent.futures.ThreadPoolExecutor", side_effect=AssertionError("No new work for complete bytes")):
+            self.acquire()
+        self.assertEqual(len(self.calls), 9)
+        self.assertEqual((self.root / self.release_name).read_bytes(), frozen)
+
+    def test_reuse_cannot_accept_same_url_with_a_changed_checksum(self):
+        url = next(url for url, row in self.declarations.items() if row.get("name") == "Razer Synapse")
+        old = b"MZ previous Synapse".ljust(len(self.responses[url]), b"x")
+        self.blob(url, old, "official_stable_host_package")
+        self.save_index()
+        result = self.acquire()
+        artifact = next(row for row in result["files"] if row["url"] == url)
+        self.assertEqual(artifact["acquisition"], "downloaded")
+        self.assertEqual(artifact["md5"], hashlib.md5(self.responses[url]).hexdigest())
+
+    def test_corrupt_retained_sha_input_fails_without_downloading_a_replacement(self):
+        row = next(row for row in self.index["inputs"] if row.get("url") == "https://app-assets.razer.com/old-shared-url.dll")
+        (self.root / row["path"]).write_bytes(b"tampered")
+        with self.assertRaisesRegex(ValueError, "byte identity"):
+            self.acquire()
+        report = json.loads((self.root / self.release_name).read_bytes())
+        self.assertFalse(report["complete"])
+        self.assertEqual(self.calls, [])
+
+    def test_download_error_keeps_failure_and_rejects_partial_current_release(self):
+        url = next(url for url, row in self.declarations.items() if row.get("name") == "Razer Synapse")
+        self.responses[url] = b"MZ wrong bytes"
+        with self.assertRaises(SystemExit):
+            self.acquire()
+        report = json.loads((self.root / self.release_name).read_bytes())
+        self.assertFalse(report["complete"])
+        self.assertTrue(any(row.get("url") == url for row in report["failures"]))
+        with self.assertRaisesRegex(ValueError, "did not complete"):
+            verified_host_release_receipt()
+
+    def test_deployment_change_during_download_never_publishes_current_complete(self):
+        url = "https://discovery3.razerapi.com/api/v1/endpoints"
+        self.responses[url] = b'{"data":{"items":[{"name":"prod","hash":"Different"}]}}'
+        with self.assertRaises(SystemExit):
+            self.acquire()
+        report = json.loads((self.root / self.release_name).read_bytes())
+        self.assertFalse(report["complete"])
+        self.assertTrue(any(row["stage"] == "deployment_revalidation" for row in report["failures"]))
+
+    def test_cancel_records_failure_and_joins_owned_workers(self):
+        original = self.fetch
+
+        def interrupt(url, **kwargs):
+            if kwargs.get("release_declaration"):
+                raise KeyboardInterrupt()
+            return original(url, **kwargs)
+
+        with self.assertRaises(KeyboardInterrupt):
+            acquire_host_release(interrupt, workers=2)
+        report = json.loads((self.root / self.release_name).read_bytes())
+        self.assertTrue(report["cancelled"])
+        self.assertFalse(report["complete"])
+        self.assertTrue(report["failures"])
+        self.assertFalse(list(self.root.rglob("*.tmp")))
+
+    def test_missing_snapshot_is_a_failure_after_a_release_receipt_exists(self):
+        self.acquire()
+        snapshot = self.root / ".analysis/inputs/host-current/releases/4.0.896/metadata-recheck.json"
+        snapshot.unlink()
+        with self.assertRaisesRegex(ValueError, "snapshot is missing"):
+            verified_host_release_receipt()
+
+    def test_current_declarations_cannot_be_replaced_by_an_older_version_receipt(self):
+        self.acquire()
+        with self.assertRaisesRegex(ValueError, "current stable version"):
+            verified_host_release_receipt(".analysis/inputs/host-current/releases/4.0.827/acquisition.json")
+
+    def test_owned_atomic_publication_releases_staging_after_failure_and_cancel(self):
+        target = self.root / ".analysis/inputs/host-current/blobs/test/payload.dll"
+        with patch("host.os.link", side_effect=OSError("publish failure")):
+            with self.assertRaisesRegex(OSError, "publish failure"):
+                _publish_host_bytes(target, b"original bytes")
+        self.assertFalse(target.exists())
+        self.assertFalse(list(target.parent.glob("*.tmp")))
+        cancelled = threading.Event()
+        cancelled.set()
+        with self.assertRaises(concurrent.futures.CancelledError):
+            _publish_host_bytes(target, b"original bytes", cancelled)
+        self.assertFalse(target.exists())
+        self.assertFalse(list(target.parent.glob("*.tmp")))
+
+    def test_release_inspection_preserves_legacy_proofs_and_indexes_immutable_container_receipts(self):
+        self.acquire()
+        release = verified_host_release_receipt()
+        source = next(row for row in release["files"] if row["declaration"].get("name") == "Razer App Engine")
+        analyzer = self.root / "7z.exe"
+        analyzer.write_bytes(b"static analyzer")
+        analyzer.with_name("7z.dll").write_bytes(b"static analyzer library")
+        args = argparse.Namespace(acquisition=self.release_name, input=source["path"], seven_zip=str(analyzer), extract=True)
+
+        def run(argv, **_):
+            self.assertIn(argv[1], ("i", "l"))
+            return subprocess.CompletedProcess(argv, 0 if argv[1] == "i" else 2,
+                b"7-Zip fixture\n" if argv[1] == "i" else b"Type = PE\n", b"")
+
+        with patch("host.subprocess.run", side_effect=run), \
+                patch("host.setup_factory_static_extraction", return_value=SetupFactoryExtractionTests.decoded()):
+            inspect_host(args)
+            index = json.loads((self.root / ".analysis/inputs.json").read_bytes())
+            outputs = [row for row in index["inputs"] if row.get("container_sha256") == source["sha256"]]
+            self.assertEqual(len(outputs), 4)
+            proof = outputs[0]["extraction_receipt"]
+            self.assertTrue(all(row["extraction_receipt"] == proof for row in outputs))
+            self.assertIn("/releases/4.0.896/", proof["path"])
+            frozen = (self.root / proof["path"]).read_bytes()
+            self.assertEqual(hashlib.sha256(frozen).hexdigest(), proof["sha256"])
+            inspect_host(args)
+            self.assertEqual((self.root / proof["path"]).read_bytes(), frozen)
+            nested = next(row for row in outputs if row["path"].endswith("engine/irsetup.exe"))
+            inspect_host(argparse.Namespace(**{**vars(args), "input": nested["path"]}))
+            foreign = self.write(".analysis/inputs/host-current/foreign.exe", b"MZ unrelated package",
+                                 kind="official_stable_host_package")
+            self.index = json.loads((self.root / ".analysis/inputs.json").read_bytes())
+            self.index["inputs"].append(foreign)
+            self.save_index()
+            with self.assertRaisesRegex(ValueError, "does not belong"):
+                inspect_host(argparse.Namespace(**{**vars(args), "input": foreign["path"]}))
+            (self.root / outputs[0]["path"]).write_bytes(b"corrupt output")
+            with self.assertRaisesRegex(ValueError, "byte identity changed"):
+                inspect_host(args)
+        self.assertEqual((self.root / ".analysis/results/host-current/inspection.json").read_bytes(), self.original_inspection)
+        self.assertEqual((self.root / ".analysis/inputs/host-current/acquisition.json").read_bytes(), self.original_acquisition)
+
+    def test_exact_asar_extraction_reuses_its_capture_and_never_touches_other_archives(self):
+        payload = b"static original host module"
+        digest = hashlib.sha256(payload).hexdigest()
+        header = json.dumps({"files": {"entry.js": {"size": len(payload), "offset": "0",
+            "integrity": {"algorithm": "SHA256", "hash": digest, "blockSize": len(payload), "blocks": [digest]}}}}).encode()
+        raw = struct.pack("<IIII", 4, len(header) + 8, len(header) + 4, len(header)) + header + payload
+        sha = hashlib.sha256(raw).hexdigest()
+        name = ".analysis/inputs/host-current/extracted/" + sha + "/resources/app.asar"
+        self.write(name, raw, kind="static_extracted_host_input")
+        self.save_index()
+        unrelated = self.root / ".analysis/results/host-current/asar/retained/capture.json"
+        unrelated.parent.mkdir(parents=True)
+        unrelated.write_bytes(b"previous exact analysis receipt")
+        extract_asar(name)
+        capture = self.root / ".analysis/results/host-current/asar" / sha / "capture.json"
+        frozen = capture.read_bytes()
+        extract_asar(name)
+        self.assertEqual(capture.read_bytes(), frozen)
+        self.assertEqual(unrelated.read_bytes(), b"previous exact analysis receipt")
+        self.assertEqual((self.root / ".analysis/inputs/host-current/asar" / sha[:12] / "entry.js").read_bytes(), payload)
+        with self.assertRaisesRegex(ValueError, "exact indexed"):
+            extract_asar(".analysis/inputs/host-current/extracted/missing.asar")
+
+    def test_release_inspection_reuses_a_complete_legacy_owner_without_reextracting_or_rewriting_it(self):
+        self.acquire()
+        source = next(row for row in verified_host_release_receipt()["files"]
+                      if row["declaration"].get("name") == "Razer App Engine")
+        analyzer = self.root / "7z.exe"
+        analyzer.write_bytes(b"static analyzer")
+        analyzer.with_name("7z.dll").write_bytes(b"static analyzer library")
+
+        def run(argv, **_):
+            return subprocess.CompletedProcess(argv, 0 if argv[1] == "i" else 2,
+                b"7-Zip fixture\n" if argv[1] == "i" else b"Type = PE\n", b"")
+
+        with patch("host.subprocess.run", side_effect=run), \
+                patch("host.setup_factory_static_extraction", return_value=SetupFactoryExtractionTests.decoded()):
+            inspect_host(argparse.Namespace(input=source["path"], seven_zip=str(analyzer), extract=True))
+        legacy = self.root / ".analysis/results/host-current/inspection.json"
+        frozen = legacy.read_bytes()
+        release_args = argparse.Namespace(acquisition=self.release_name, input=source["path"], seven_zip=str(analyzer), extract=True)
+        with patch("host.subprocess.run", side_effect=lambda argv, **_: subprocess.CompletedProcess(argv, 0, b"7-Zip fixture\n", b"")) as process:
+            inspect_host(release_args)
+        self.assertEqual([call.args[0][1] for call in process.call_args_list], ["i"])
+        self.assertEqual(legacy.read_bytes(), frozen)
+        proof = self.root / ".analysis/results/host-current/releases/4.0.896" / source["sha256"] / "inspection.json"
+        record = json.loads(proof.read_bytes())["containers"][0]
+        self.assertEqual(record["reused_extraction_receipt"]["sha256"], hashlib.sha256(frozen).hexdigest())
+        summary = json.loads((proof.parents[1] / "inspection.json").read_bytes())
+        self.assertIn(record["reused_extraction_receipt"], summary["verified_dependencies"])
+        (self.root / record["files"][0]["path"]).write_bytes(b"corrupt retained bytes")
+        with self.assertRaisesRegex(ValueError, "byte identity changed"), \
+                patch("host.subprocess.run", return_value=subprocess.CompletedProcess([], 0, b"7-Zip fixture\n", b"")):
+            inspect_host(release_args)
+        self.assertEqual(legacy.read_bytes(), frozen)
+
+    def test_batch_inspection_keeps_successful_leaf_index_and_partial_failure_owners(self):
+        self.acquire()
+        release = verified_host_release_receipt()
+        failed = next(row for row in release["files"] if row["declaration"].get("name") == "Razer Synapse")
+        analyzer = self.root / "7z.exe"
+        analyzer.write_bytes(b"static analyzer")
+        analyzer.with_name("7z.dll").write_bytes(b"static analyzer library")
+
+        def run(argv, **_):
+            return subprocess.CompletedProcess(argv, 0 if argv[1] == "i" else 2,
+                b"7-Zip fixture\n" if argv[1] == "i" else b"Type = PE\n", b"")
+
+        def decode(raw):
+            if raw == self.package_bytes["Razer Synapse"]:
+                target = self.root / ".analysis/inputs/host-current/extracted" / failed["sha256"] / "partial.bin"
+                target.parent.mkdir(parents=True)
+                target.write_bytes(b"unverified partial payload")
+                raise ValueError("synthetic complete decode failure")
+            return SetupFactoryExtractionTests.decoded()
+
+        args = argparse.Namespace(acquisition=self.release_name, seven_zip=str(analyzer), extract=True)
+        with patch("host.subprocess.run", side_effect=run), patch("host.setup_factory_static_extraction", side_effect=decode):
+            with self.assertRaisesRegex(ValueError, "synthetic complete decode failure"):
+                inspect_host(args)
+        base = self.root / ".analysis/results/host-current/releases/4.0.896"
+        summary = json.loads((base / "inspection.json").read_bytes())
+        self.assertFalse(summary["complete"])
+        self.assertTrue(summary["index_publication_complete"])
+        self.assertEqual(len(summary["containers"]), 2)
+        self.assertEqual(len(summary["failures"]), 1)
+        self.assertEqual(summary["failures"][0]["partial_outputs"][0]["sha256"], hashlib.sha256(b"unverified partial payload").hexdigest())
+        index = json.loads((self.root / ".analysis/inputs.json").read_bytes())
+        extracted = [row for row in index["inputs"] if row.get("kind") == "static_extracted_host_input"]
+        self.assertEqual(len(extracted), 8)
+        self.assertFalse(any(row.get("container_sha256") == failed["sha256"] for row in extracted))
+        snapshots = {path.as_posix(): path.read_bytes() for path in base.glob("*/inspection.json")}
+        with patch("host.subprocess.run", side_effect=run), \
+                patch("host.setup_factory_static_extraction", side_effect=AssertionError("Completed leaves must be reused")):
+            for artifact in release["files"]:
+                if artifact["declaration"].get("name") in {"Razer App Engine", "Razer Chroma"}:
+                    inspect_host(argparse.Namespace(**{**vars(args), "input": artifact["path"]}))
+        for name, frozen in snapshots.items():
+            self.assertEqual(Path(name).read_bytes(), frozen)
+        self.assertEqual((self.root / ".analysis/results/host-current/inspection.json").read_bytes(), self.original_inspection)
+
+    def test_batch_cancel_joins_success_and_records_every_requested_row(self):
+        self.acquire()
+        analyzer = self.root / "7z.exe"
+        analyzer.write_bytes(b"static analyzer")
+        analyzer.with_name("7z.dll").write_bytes(b"static analyzer library")
+        def run(argv, **_):
+            return subprocess.CompletedProcess(argv, 0 if argv[1] == "i" else 2,
+                b"7-Zip fixture\n" if argv[1] == "i" else b"Type = PE\n", b"")
+
+        def decode(raw):
+            if raw == self.package_bytes["Razer Synapse"]:
+                raise KeyboardInterrupt()
+            return SetupFactoryExtractionTests.decoded()
+
+        with patch("host.subprocess.run", side_effect=run), patch("host.setup_factory_static_extraction", side_effect=decode):
+            with self.assertRaises(KeyboardInterrupt):
+                inspect_host(argparse.Namespace(acquisition=self.release_name, seven_zip=str(analyzer), extract=True))
+        summary = json.loads((self.root / ".analysis/results/host-current/releases/4.0.896/inspection.json").read_bytes())
+        self.assertTrue(summary["cancelled"])
+        self.assertFalse(summary["complete"])
+        self.assertTrue(summary["index_publication_complete"])
+        attempted = {row["sha256"] for row in summary["requested_inputs"]}
+        observed = set(summary["observed_inputs"])
+        rejected = {row["input"]["sha256"] for row in summary["failures"] if "input" in row}
+        self.assertEqual(attempted, observed | rejected)
+        for proof in (self.root / ".analysis/results/host-current/releases/4.0.896").glob("*/inspection.json"):
+            for artifact in json.loads(proof.read_bytes())["containers"][0]["files"]:
+                current = json.loads((self.root / ".analysis/inputs.json").read_bytes())
+                self.assertTrue(any(row["path"] == artifact["path"] for row in current["inputs"]))
+
+    def test_legacy_dependency_change_before_final_publication_rejects_its_successful_leaf(self):
+        self.acquire()
+        source = next(row for row in verified_host_release_receipt()["files"]
+                      if row["declaration"].get("name") == "Razer App Engine")
+        name = ".analysis/inputs/host-current/extracted/" + source["sha256"] + "/one.bin"
+        artifact = self.write(name, b"retained complete payload", kind="static_extracted_host_input",
+                              container=source["path"], container_sha256=source["sha256"])
+        self.save_index()
+        listing = self.root / ".analysis/results/host-current" / source["sha256"] / "listing.txt"
+        listing.parent.mkdir(parents=True)
+        listing.write_bytes(b"exact static listing")
+        output = {"path": listing.relative_to(self.root).as_posix(), "bytes": listing.stat().st_size,
+                  "sha256": hashlib.sha256(listing.read_bytes()).hexdigest()}
+        record = {"input": source["path"], "sha256": source["sha256"], "input_record": source,
+                  "extracted": True, "input_bytes_unchanged": True, "extraction_exit_code": 0,
+                  "list_exit_code": 0, "listing": output["path"], "files": [artifact]}
+        legacy = self.root / ".analysis/results/host-current/inspection.json"
+        legacy_raw = json.dumps({"containers": [record], "outputs": [output]}).encode()
+        legacy.write_bytes(legacy_raw)
+        analyzer = self.root / "7z.exe"
+        analyzer.write_bytes(b"static analyzer")
+        analyzer.with_name("7z.dll").write_bytes(b"static analyzer library")
+
+        def publish(path, raw, cancel_event=None):
+            _publish_host_bytes(path, raw, cancel_event)
+            if path.name == "inspection.json":
+                legacy.write_bytes(legacy_raw + b" ")
+
+        with patch("host.subprocess.run", return_value=subprocess.CompletedProcess([], 0, b"7-Zip fixture\n", b"")), \
+                patch("host._publish_host_bytes", side_effect=publish):
+            with self.assertRaisesRegex(ValueError, "byte identity changed"):
+                inspect_host(argparse.Namespace(acquisition=self.release_name, input=source["path"],
+                                                seven_zip=str(analyzer), extract=True))
+        summary = json.loads((self.root / ".analysis/results/host-current/releases/4.0.896/inspection.json").read_bytes())
+        self.assertFalse(summary["complete"])
+        self.assertEqual(summary["observed_inputs"], [])
+        self.assertEqual(len(summary["failures"]), 1)
+        index = json.loads((self.root / ".analysis/inputs.json").read_bytes())
+        retained = next(row for row in index["inputs"] if row["path"] == artifact["path"])
+        self.assertNotIn("extraction_receipt", retained)
+
+    def test_legacy_plain_pe_observation_is_not_a_complete_extraction_and_partial_outputs_remain_rejected(self):
+        self.acquire()
+        source = next(row for row in verified_host_release_receipt()["files"]
+                      if row["declaration"].get("name") == "Razer App Engine")
+        legacy = self.root / ".analysis/results/host-current/inspection.json"
+        old = {"input": source["path"], "sha256": source["sha256"], "input_record": source,
+               "extracted": False, "list_exit_code": 0, "formats": ["PE"],
+               "extraction_status": "no supported embedded archive detected; PE sections alone do not prove payload extraction"}
+        frozen = json.dumps({"containers": [old], "outputs": []}).encode()
+        legacy.write_bytes(frozen)
+        analyzer = self.root / "7z.exe"
+        analyzer.write_bytes(b"static analyzer")
+        analyzer.with_name("7z.dll").write_bytes(b"static analyzer library")
+        args = argparse.Namespace(acquisition=self.release_name, input=source["path"], seven_zip=str(analyzer), extract=True)
+
+        def run(argv, **_):
+            self.assertIn(argv[1], ("i", "l"))
+            return subprocess.CompletedProcess(argv, 0, b"7-Zip fixture\n" if argv[1] == "i" else b"Type = PE\n", b"")
+
+        summary_path = self.root / ".analysis/results/host-current/releases/4.0.896/inspection.json"
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
+        original_failures = [{"input": {key: source[key] for key in ("path", "bytes", "sha256")},
+                              "error_kind": "ValueError", "error": "retained first complete-extraction rejection"}]
+        summary_path.write_text(json.dumps({"containers": [], "failures": original_failures}), encoding="utf-8")
+        with patch("host.subprocess.run", side_effect=run) as process, \
+                patch("host.setup_factory_static_extraction", return_value=None):
+            inspect_host(args)
+            summary = json.loads(summary_path.read_bytes())
+            self.assertEqual(summary["failures"], [])
+            self.assertEqual(summary["previous_failures"], original_failures)
+            record = summary["containers"][0]
+            self.assertFalse(record["extracted"])
+            self.assertIn("no supported embedded archive", record["extraction_status"])
+            self.assertNotIn("reused_extraction_receipt", record)
+            self.assertEqual([call.args[0][1] for call in process.call_args_list], ["i", "l"])
+        destination = self.root / ".analysis/inputs/host-current/extracted" / source["sha256"]
+        destination.mkdir(parents=True)
+        partial = destination / "unverified.bin"
+        partial.write_bytes(b"preexisting unverified partial bytes")
+        with patch("host.subprocess.run", side_effect=run) as process:
+            with self.assertRaisesRegex(ValueError, "no successful receipt"):
+                inspect_host(args)
+            self.assertEqual([call.args[0][1] for call in process.call_args_list], ["i"])
+        rejected = json.loads(summary_path.read_bytes())
+        self.assertFalse(rejected["complete"])
+        self.assertEqual(len(rejected["failures"]), 1)
+        self.assertEqual(rejected["previous_failures"], original_failures)
+        self.assertEqual(rejected["failures"][0]["partial_outputs"][0]["sha256"],
+                         hashlib.sha256(partial.read_bytes()).hexdigest())
+        self.assertEqual(legacy.read_bytes(), frozen)
+        index = json.loads((self.root / ".analysis/inputs.json").read_bytes())
+        self.assertFalse(any(row["path"] == partial.relative_to(self.root).as_posix() for row in index["inputs"]))
+
+    def test_cli_selects_separate_acquisition_and_exact_asar(self):
+        parser = argparse.ArgumentParser()
+        add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["acquire-host", "--release-only", "--workers", "2"])
+        self.assertTrue(args.release_only)
+        args = parser.parse_args(["inspect-host", "--acquisition", self.release_name, "--input", "fixture.exe", "--extract"])
+        self.assertEqual(args.acquisition, self.release_name)
+        args = parser.parse_args(["analyze-host", "--extract-asar-only", "--input", "fixture.asar"])
+        self.assertEqual(args.input, "fixture.asar")
+        with self.assertRaisesRegex(ValueError, "separate indexed metadata"):
+            acquire_host(argparse.Namespace(release_only=True, release=True))
 
 
 class SetupFactoryExtractionTests(unittest.TestCase):

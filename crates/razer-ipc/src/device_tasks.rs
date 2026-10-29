@@ -160,7 +160,9 @@ impl ServiceRequest {
         }
         if let Self::BleMouseCurrentDpi {
             target,
-            change: Some(change),
+            change,
+            context,
+            ..
         } = self
         {
             anyhow::ensure!(
@@ -170,11 +172,24 @@ impl ServiceRequest {
                 ),
                 "Current DPI BLE mutation scope has another physical factory"
             );
-            razer_device::mouse_current_dpi::validate_change_for(target.product_id, change)?;
-            return Ok(Some(Scope::container(
-                target.product_id,
-                &target.device_container_id,
-            )?));
+            if let Some(change) = change {
+                razer_device::mouse_current_dpi::validate_change_for(target.product_id, change)?;
+            }
+            if let Some(context) = context {
+                context.validate_request(target, change.as_ref())?;
+            }
+            return if change.is_some()
+                || context
+                    .as_ref()
+                    .is_some_and(|context| context.initializes())
+            {
+                Ok(Some(Scope::container(
+                    target.product_id,
+                    &target.device_container_id,
+                )?))
+            } else {
+                Ok(None)
+            };
         }
         if let Self::BleMouseRotation {
             target,

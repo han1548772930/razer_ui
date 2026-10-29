@@ -97,6 +97,24 @@ fn receiver_lighting_native_frame_keeps_linker_registration_and_has_no_feature_g
 }
 
 #[test]
+fn frame_release_failure_retains_actual_submission_without_fabricating_an_ack() {
+    let transport = Transport::default();
+    let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&transport);
+    let capability = capability(164);
+    let mut lighting = LightingHid::new(&capability).unwrap();
+    let error = lighting
+        .send_frame(&probe, &frame(), 19, &|| Ok(()))
+        .unwrap_err();
+    let progress = error
+        .downcast_ref::<crate::ReceiverFrameSubmissionFailure>()
+        .unwrap();
+    assert_eq!(progress.reports_submitted, 1);
+    assert!(crate::backend::exchange_finalization_failed(&error));
+    assert_eq!(transport.reports.borrow().len(), 1);
+    assert_eq!(transport.reads.get(), 0);
+}
+
+#[test]
 fn receiver_lighting_rejects_stale_native_handles_and_geometry_before_any_write() {
     let transport = Transport::default();
     let capability = capability(241);

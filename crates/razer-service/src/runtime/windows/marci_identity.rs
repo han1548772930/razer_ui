@@ -1,7 +1,7 @@
 //! SetupAPI binds Marci's two collections to one observed physical container.
 use super::{hid, receiver};
 use anyhow::{Context as _, ensure};
-use razer_device::backend::{HidBackend, HidNode};
+use razer_device::backend::HidNode;
 use razer_device::marci_lighting::{validate_control_node, validate_output_node};
 use razer_hid::with_backend;
 use serde::Deserialize;

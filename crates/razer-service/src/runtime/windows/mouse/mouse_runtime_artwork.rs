@@ -3,7 +3,7 @@
 use super::{current_target, hid, hid_transport, receiver, transaction};
 use anyhow::{Context as _, ensure};
 use razer_device::{
-    backend::{HidBackend, HidNode},
+    backend::HidNode,
     device_reads::DeviceReadTarget,
     mouse_runtime_artwork::{self as artwork, Query, Source, Target, Transport, Update},
 };
@@ -145,7 +145,11 @@ pub(super) fn run(
             check()?;
             let _lock = receiver::ReceiverLock::acquire(&self.target.device_container_id, &check)?;
             check()?;
-            let device = hid_transport::open(&self.target.path, self.cap.report_bytes)?;
+            let device = hid_transport::open_validated(
+                &self.target.path,
+                self.cap.report_bytes,
+                std::rc::Rc::new(&check),
+            )?;
             artwork::query_hid(
                 &device,
                 self.cap,

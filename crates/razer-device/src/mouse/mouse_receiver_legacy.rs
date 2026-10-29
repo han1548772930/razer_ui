@@ -91,6 +91,17 @@ pub struct Report {
     pub serial_bytes: Option<Vec<u8>>,
     pub bindings: Option<Vec<(u16, u8)>>,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct WriteFailure {
+    pub progress: Report,
+}
+
+impl std::fmt::Display for WriteFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Mouse receiver task did not complete")
+    }
+}
 impl Report {
     pub fn serial_number(&self) -> anyhow::Result<String> {
         let bytes = self
@@ -138,53 +149,59 @@ pub fn execute(
         "Single receiver LED transport identity differs"
     );
     let mut report = Report::default();
-    match change {
-        Change::Read => {
-            let data = feature_exchange::exchange(device, cap, GET, &[0], next()?, validate)?;
-            report.queried_status = data.first().copied();
+    let result = (|| -> anyhow::Result<()> {
+        match change {
+            Change::Read => {
+                let data = feature_exchange::exchange(device, cap, GET, &[0], next()?, validate)?;
+                report.queried_status = data.first().copied();
+            }
+            Change::Set(status) => {
+                // The actual protocol wrapper writes Uint8Array[0] without an
+                // enum guard. Truthy unknown values from initialization survive.
+                report.requested_status = Some(*status);
+                let response =
+                    feature_exchange::exchange(device, cap, SET, &[*status], next()?, validate);
+                report.acknowledgement =
+                    feature_exchange::acknowledged_reply(&response).map(<[u8]>::to_vec);
+                response?;
+            }
+            Change::ReadSerial => {
+                report.serial_bytes = Some(feature_exchange::exchange(
+                    device,
+                    cap,
+                    SERIAL,
+                    &[],
+                    next()?,
+                    validate,
+                )?);
+            }
+            Change::ReadBindings => {
+                let data =
+                    feature_exchange::exchange(device, cap, BINDINGS, &[], next()?, validate)?;
+                let count = usize::from(data.first().copied().unwrap_or(0));
+                ensure!(
+                    count == 0 || data.len() >= 1 + count * 3,
+                    "Binding getter has a truncated status/PID record"
+                );
+                // Current84816.J preserves zero IDs, duplicates and every status;
+                // the UI caller filters only 65535 and its own dongle ID later.
+                report.bindings = Some(
+                    data.get(1..1 + count * 3)
+                        .unwrap_or_default()
+                        .chunks_exact(3)
+                        .map(|row| (u16::from_be_bytes([row[1], row[2]]), row[0]))
+                        .collect(),
+                );
+            }
         }
-        Change::Set(status) => {
-            // The actual protocol wrapper writes Uint8Array[0] without an
-            // enum guard. Truthy unknown values from initialization survive.
-            report.requested_status = Some(*status);
-            report.acknowledgement = Some(feature_exchange::exchange(
-                device,
-                cap,
-                SET,
-                &[*status],
-                next()?,
-                validate,
-            )?);
-        }
-        Change::ReadSerial => {
-            report.serial_bytes = Some(feature_exchange::exchange(
-                device,
-                cap,
-                SERIAL,
-                &[],
-                next()?,
-                validate,
-            )?);
-        }
-        Change::ReadBindings => {
-            let data = feature_exchange::exchange(device, cap, BINDINGS, &[], next()?, validate)?;
-            let count = usize::from(data.first().copied().unwrap_or(0));
-            ensure!(
-                count == 0 || data.len() >= 1 + count * 3,
-                "Binding getter has a truncated status/PID record"
-            );
-            // Current84816.J preserves zero IDs, duplicates and every status;
-            // the UI caller filters only 65535 and its own dongle ID later.
-            report.bindings = Some(
-                data.get(1..1 + count * 3)
-                    .unwrap_or_default()
-                    .chunks_exact(3)
-                    .map(|row| (u16::from_be_bytes([row[1], row[2]]), row[0]))
-                    .collect(),
-            );
-        }
+        validate()
+    })();
+    if let Err(error) = result {
+        let message = error.to_string();
+        return Err(error
+            .context(WriteFailure { progress: report })
+            .context(message));
     }
-    validate()?;
     Ok(report)
 }
 

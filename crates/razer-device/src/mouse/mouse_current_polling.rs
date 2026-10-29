@@ -102,7 +102,7 @@ impl Change {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Report {
     change: Change,
     runtime: DeviceWriteResult,
@@ -124,7 +124,7 @@ impl Report {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct SlotWrite {
     profile_id: u8,
     previous_hz: Option<u32>,
@@ -139,6 +139,29 @@ impl SlotWrite {
     }
     pub fn acknowledgment(&self) -> Option<&DeviceWriteAck> {
         self.acknowledgment.as_ref()
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct RequestFailure {
+    /// Results belong to the failed request's identity, not a new connection.
+    pub progress: Report,
+}
+
+impl std::fmt::Display for RequestFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Mouse polling request did not complete")
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SlotWriteFailure {
+    pub writes: Vec<SlotWrite>,
+}
+
+impl std::fmt::Display for SlotWriteFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Mouse polling profile synchronization did not complete")
     }
 }
 
@@ -157,20 +180,34 @@ pub fn request(
         profile_slots: Vec::new(),
         slot_writes: Vec::new(),
     };
-    if let Some(guid) = change.profile_guid() {
-        report.profile_slots =
-            crate::mouse_onboard::read_profile_associations(device, cap, &mut next, &validate)?;
-        report.slot_writes = synchronize_slots(
-            device,
-            cap,
-            guid,
-            &report.profile_slots,
-            change.hz,
-            &mut next,
-            &validate,
-        )?;
+    let result = (|| -> anyhow::Result<()> {
+        if let Some(guid) = change.profile_guid() {
+            report.profile_slots =
+                crate::mouse_onboard::read_profile_associations(device, cap, &mut next, &validate)?;
+            let slot_writes = synchronize_slots(
+                device,
+                cap,
+                guid,
+                &report.profile_slots,
+                change.hz,
+                &mut next,
+                &validate,
+            );
+            if let Err(error) = &slot_writes
+                && let Some(progress) = error.downcast_ref::<SlotWriteFailure>()
+            {
+                report.slot_writes = progress.writes.clone();
+            }
+            report.slot_writes = slot_writes?;
+        }
+        validate()
+    })();
+    if let Err(error) = result {
+        let message = error.to_string();
+        return Err(error
+            .context(RequestFailure { progress: report })
+            .context(message));
     }
-    validate()?;
     Ok(report)
 }
 
@@ -187,30 +224,48 @@ fn synchronize_slots(
 ) -> anyhow::Result<Vec<SlotWrite>> {
     let code = rate_code(hz)?;
     let mut writes = Vec::new();
-    for slot in slots.iter().filter(|slot| slot.guid == guid) {
-        validate()?;
-        let previous = read_profile(device, cap, slot.profile_id, next, validate).ok();
-        validate()?;
-        let previous_hz = previous.and_then(Observation::hz);
-        let acknowledgment = if previous_hz == Some(hz) {
-            None
-        } else {
-            let data = crate::feature_exchange::exchange(
-                device,
-                cap,
-                SET,
-                &[slot.profile_id, code],
-                next()?,
-                validate,
-            )?;
-            Some(DeviceWriteAck { command: SET, data })
-        };
-        validate()?;
-        writes.push(SlotWrite {
-            profile_id: slot.profile_id,
-            previous_hz,
-            acknowledgment,
-        });
+    let result = (|| -> anyhow::Result<()> {
+        for slot in slots.iter().filter(|slot| slot.guid == guid) {
+            validate()?;
+            let previous = match read_profile(device, cap, slot.profile_id, next, validate) {
+                Ok(previous) => Some(previous),
+                Err(error) if crate::backend::exchange_finalization_failed(&error) => {
+                    return Err(error);
+                }
+                Err(_) => None,
+            };
+            validate()?;
+            let previous_hz = previous.and_then(Observation::hz);
+            writes.push(SlotWrite {
+                profile_id: slot.profile_id,
+                previous_hz,
+                acknowledgment: None,
+            });
+            if previous_hz != Some(hz) {
+                let response = crate::feature_exchange::exchange(
+                    device,
+                    cap,
+                    SET,
+                    &[slot.profile_id, code],
+                    next()?,
+                    validate,
+                );
+                writes.last_mut().unwrap().acknowledgment =
+                    crate::feature_exchange::acknowledged_reply(&response).map(|data| {
+                        DeviceWriteAck {
+                            command: SET,
+                            data: data.to_vec(),
+                        }
+                    });
+                response?;
+            }
+            validate()?;
+        }
+        Ok(())
+    })();
+    if let Err(error) = result {
+        let message = error.to_string();
+        return Err(error.context(SlotWriteFailure { writes }).context(message));
     }
     Ok(writes)
 }
@@ -279,10 +334,13 @@ pub fn apply(
     validate()?;
     // 96204.be catches a failed getter and returns zero to ot's comparison.
     // Missing observations remain explicit; a cancellation still stops SET.
-    let previous = read(device, cap, &mut next, &validate)
-        .ok()
-        .and_then(Observation::hz)
-        .map(|hz| crate::device_reads::DeviceReadValue::Polling { hz });
+    let previous = match read(device, cap, &mut next, &validate) {
+        Ok(previous) => Some(previous),
+        Err(error) if crate::backend::exchange_finalization_failed(&error) => return Err(error),
+        Err(_) => None,
+    }
+    .and_then(Observation::hz)
+    .map(|hz| crate::device_reads::DeviceReadValue::Polling { hz });
     validate()?;
     if previous
         .as_ref()
@@ -297,25 +355,46 @@ pub fn apply(
             verified: true,
         });
     }
-    let data = crate::feature_exchange::exchange(device, cap, SET, &[1, code], next()?, &validate)?;
-    validate()?;
-    let reading = read(device, cap, &mut next, &validate)
-        .context("Polling SET acknowledged, but independent GET failed")?;
-    let observed = crate::device_reads::DeviceReadValue::Polling {
-        hz: reading
-            .hz()
-            .with_context(|| format!("Polling SET acknowledged, but GET returned {reading:?}"))?,
-    };
-    validate()?;
-    ensure!(
-        setting.matches_value(&observed),
-        "Polling readback differs from the requested rate"
-    );
-    Ok(DeviceWriteResult {
+    let mut progress = crate::device_writes::DeviceWriteFailure {
         requested: setting,
         previous,
-        observed: Some(observed),
-        acknowledged: Some(DeviceWriteAck { command: SET, data }),
+        acknowledged: None,
+        setter_reply: None,
+        observed: None,
+    };
+    let result = (|| -> anyhow::Result<()> {
+        let response =
+            crate::feature_exchange::exchange(device, cap, SET, &[1, code], next()?, &validate);
+        if let Some(data) = crate::feature_exchange::acknowledged_reply(&response) {
+            progress.acknowledged = Some(DeviceWriteAck {
+                command: SET,
+                data: data.to_vec(),
+            });
+        }
+        response?;
+        validate()?;
+        let reading = read(device, cap, &mut next, &validate)
+            .context("Polling SET acknowledged, but independent GET failed")?;
+        let observed = crate::device_reads::DeviceReadValue::Polling {
+            hz: reading.hz().with_context(|| {
+                format!("Polling SET acknowledged, but GET returned {reading:?}")
+            })?,
+        };
+        let matches = progress.requested.matches_value(&observed);
+        progress.observed = Some(observed);
+        validate()?;
+        ensure!(matches, "Polling readback differs from the requested rate");
+        Ok(())
+    })();
+    if let Err(error) = result {
+        let message = error.to_string();
+        return Err(error.context(progress).context(message));
+    }
+    Ok(DeviceWriteResult {
+        requested: progress.requested,
+        previous: progress.previous,
+        observed: progress.observed,
+        acknowledged: progress.acknowledged,
         changed: true,
         verified: true,
     })

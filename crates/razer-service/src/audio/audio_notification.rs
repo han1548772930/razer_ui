@@ -23,6 +23,17 @@ impl Default for AudioNotifications {
 }
 
 impl AudioNotifications {
+    pub(crate) fn cleanup_pending(&self) -> bool {
+        #[cfg(windows)]
+        {
+            self.registration.is_some()
+        }
+        #[cfg(not(windows))]
+        {
+            false
+        }
+    }
+
     pub fn shutdown(&mut self) -> anyhow::Result<()> {
         #[cfg(windows)]
         if let Some(registration) = &mut self.registration {

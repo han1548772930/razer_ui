@@ -26,7 +26,11 @@ pub(super) fn request(target: &DeviceReadTarget, operation: &Operation) -> anyho
             before["feature_report_bytes"] == cap.report_bytes,
             "Calibration Feature size differs"
         );
-        let device = hid_transport::open(&target.path, cap.report_bytes)?;
+        let device = hid_transport::open_validated(
+            &target.path,
+            cap.report_bytes,
+            std::rc::Rc::new(&validate),
+        )?;
         calibration::execute(
             &device,
             &cap,

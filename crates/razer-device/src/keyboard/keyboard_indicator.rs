@@ -29,6 +29,23 @@ pub struct Report {
     pub requested_status: Option<u8>,
     pub setter_acknowledgement: Option<Vec<u8>>,
 }
+
+#[derive(Debug)]
+struct FailedReport(Report);
+
+impl std::fmt::Display for FailedReport {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Keyboard indicator operation failed with retained transport evidence")
+    }
+}
+
+/// Partial transport evidence is diagnostic and never a successful change.
+pub fn failed_report(error: &anyhow::Error) -> Option<&Report> {
+    error
+        .downcast_ref::<FailedReport>()
+        .map(|failure| &failure.0)
+}
+
 pub fn capability(product_id: u32, physical: u32) -> anyhow::Result<DeviceReadCapability> {
     ensure!(
         product_id == PRODUCT_ID && physical == RECEIVER_ID,
@@ -71,16 +88,12 @@ pub fn execute(
     };
     if let Some(status) = status {
         report.requested_status = Some(status);
-        report.setter_acknowledgement = Some(feature_exchange::exchange(
-            device,
-            cap,
-            SET,
-            &[status],
-            next()?,
-            validate,
-        )?);
+        let result = feature_exchange::exchange(device, cap, SET, &[status], next()?, validate);
+        report.setter_acknowledgement =
+            feature_exchange::acknowledged_reply(&result).map(<[u8]>::to_vec);
+        result.map_err(|error| error.context(FailedReport(report.clone())))?;
     }
-    validate()?;
+    validate().map_err(|error| error.context(FailedReport(report.clone())))?;
     Ok(report)
 }
 

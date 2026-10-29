@@ -38,11 +38,29 @@ pub(super) struct State {
     registration: Option<Registration>,
 }
 impl State {
+    pub(super) fn cleanup_pending(&self) -> bool {
+        self.registration
+            .as_ref()
+            .is_some_and(|registration| registration.worker.is_some())
+    }
+
+    pub(super) fn shutdown(&mut self) -> Result<Option<Value>> {
+        let Some(mut row) = self.registration.take() else {
+            return Ok(None);
+        };
+        row.stop.store(true, Ordering::Release);
+        if let Some(worker) = row.worker.take() {
+            worker
+                .join()
+                .map_err(|_| anyhow::anyhow!("Controller input worker panicked"))??;
+        }
+        Ok(Some(
+            json!({"stopped":true,"owner_guid":row.owner,"product_id":row.product,"device_info":row.info}),
+        ))
+    }
+
     pub(super) fn new() -> Self {
         Self::default()
-    }
-    pub(super) fn owner(&self) -> Option<String> {
-        self.registration.as_ref().map(|row| row.owner.clone())
     }
     fn registration(&self, owner: &str) -> Result<&Registration> {
         let row = self

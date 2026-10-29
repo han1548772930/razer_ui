@@ -2,6 +2,207 @@ use super::*;
 use std::{cell::Cell, sync::Mutex};
 
 const GUID: &str = "11223344-5566-7788-99aa-bbccddeeff12";
+
+#[test]
+fn release_failure_keeps_submission_ack_and_stops_remaining_writes() {
+    let cases = [
+        (
+            740,
+            Intent::MappingChanges {
+                assignments: vec![PreparedAssignment::Button(ButtonAssignment {
+                    key_id: 31,
+                    mode: 0,
+                    function_id: 2,
+                    data_size: 2,
+                    data: [0, 4, 0, 0, 0],
+                })],
+                points: vec![],
+                keys: vec![],
+                macro_sync: None,
+                single_key_snap_tap: None,
+            },
+            [2, 13],
+        ),
+        (
+            742,
+            Intent::BottomDeadzone {
+                value: "stable".into(),
+            },
+            [2, 40],
+        ),
+        (
+            742,
+            Intent::ContinuousRapidTrigger { enabled: true },
+            [2, 32],
+        ),
+        (
+            742,
+            Intent::CustomGamingCombinations {
+                settings: serde_json::json!({"combos":[
+                    {"id":1,"enabled":true,"key1":"KEY_A","key2":""}
+                ]}),
+            },
+            [0, 93],
+        ),
+        (
+            746,
+            Intent::SingleKeySnapTap {
+                settings: SingleKeySnapTap {
+                    enabled: true,
+                    keys: vec![[18, 22]],
+                },
+                global: true,
+            },
+            [2, 44],
+        ),
+        (
+            740,
+            Intent::InterruptKeys {
+                settings: InterruptSettings::parse(&serde_json::json!({
+                    "isEnabled":true,"interruptionKey":"any","interrupts":["KEY_ANY"]
+                }))
+                .unwrap(),
+                mapping: Some(Box::new(Intent::MappingChanges {
+                    assignments: vec![PreparedAssignment::Button(ButtonAssignment {
+                        key_id: 31,
+                        mode: 0,
+                        function_id: 2,
+                        data_size: 2,
+                        data: [0, 4, 0, 0, 0],
+                    })],
+                    points: vec![],
+                    keys: vec![],
+                    macro_sync: None,
+                    single_key_snap_tap: None,
+                })),
+            },
+            [2, 45],
+        ),
+    ];
+    for (product, intent, command) in cases {
+        let mock = Mock {
+            sent: Mutex::new(vec![]),
+            fail_slot: None,
+        };
+        let finish_check = || {
+            let sent = mock.sent.lock().unwrap();
+            ensure!(
+                sent.last().unwrap()[7..9] != command,
+                "simulated setter release failed"
+            );
+            Ok(())
+        };
+        let probe =
+            crate::feature_exchange::tests::ExchangeProbe::with_finish_check(&mock, &finish_check);
+        let failure = submit(&probe, product, GUID, intent, sequence(), || Ok(())).unwrap_err();
+        assert!(!failure.receipt.completed);
+        assert!(failure.receipt.mapping_followup.is_none());
+        assert_eq!(failure.receipt.submissions.len(), 1);
+        let step = &failure.receipt.submissions[0];
+        assert_eq!(step.command[1..], command);
+        assert!(step.attempted);
+        assert_eq!(step.acknowledgement, Some(vec![]));
+        assert!(format!("{:#}", failure.error).contains("simulated setter release failed"));
+        let sent = mock.sent.lock().unwrap();
+        assert_eq!(sent.last().unwrap()[7..9], command);
+        assert_eq!(
+            sent.iter().filter(|packet| packet[7..9] == command).count(),
+            1
+        );
+    }
+}
+
+#[test]
+fn rejected_interrupt_with_failed_release_never_starts_its_mapping_followup() {
+    let mock = Mock {
+        sent: Mutex::new(vec![]),
+        fail_slot: Some(1),
+    };
+    let finish_check = || {
+        ensure!(
+            mock.sent.lock().unwrap().last().unwrap()[7..9] != [2, 45],
+            "simulated rejected interrupt release failed"
+        );
+        Ok(())
+    };
+    let probe =
+        crate::feature_exchange::tests::ExchangeProbe::with_finish_check(&mock, &finish_check);
+    let failure = submit(
+        &probe,
+        740,
+        GUID,
+        Intent::InterruptKeys {
+            settings: InterruptSettings::parse(&serde_json::json!({
+                "isEnabled":true,"interruptionKey":"any","interrupts":["KEY_ANY"]
+            }))
+            .unwrap(),
+            mapping: Some(Box::new(Intent::MappingChanges {
+                assignments: vec![PreparedAssignment::Button(ButtonAssignment {
+                    key_id: 31,
+                    mode: 0,
+                    function_id: 2,
+                    data_size: 2,
+                    data: [0, 4, 0, 0, 0],
+                })],
+                points: vec![],
+                keys: vec![],
+                macro_sync: None,
+                single_key_snap_tap: None,
+            })),
+        },
+        sequence(),
+        || Ok(()),
+    )
+    .unwrap_err();
+    assert!(!failure.receipt.completed);
+    assert!(failure.receipt.mapping_followup.is_none());
+    assert_eq!(failure.receipt.submissions.len(), 1);
+    assert!(failure.receipt.submissions[0].attempted);
+    assert!(failure.receipt.submissions[0].acknowledgement.is_none());
+    assert!(format!("{:#}", failure.error).contains("simulated rejected interrupt release failed"));
+    let sent = mock.sent.lock().unwrap();
+    assert_eq!(sent.last().unwrap()[7..9], [2, 45]);
+    assert!(sent.iter().all(|packet| packet[7..9] != [2, 13]));
+}
+
+#[test]
+fn snap_setter_release_failure_keeps_getter_and_setter_receipts_without_later_io() {
+    let mock = SnapMock::new([0, 31, 33]);
+    let finish_check = || {
+        let sent = mock.base.sent.lock().unwrap();
+        ensure!(
+            sent.last().unwrap()[7..9] != [2, 33],
+            "simulated snap setter release failed"
+        );
+        Ok(())
+    };
+    let probe =
+        crate::feature_exchange::tests::ExchangeProbe::with_finish_check(&mock, &finish_check);
+    let failure = submit(
+        &probe,
+        679,
+        GUID,
+        intent(679, &snap_message()).unwrap(),
+        sequence(),
+        || Ok(()),
+    )
+    .unwrap_err();
+    assert!(!failure.receipt.completed);
+    assert_eq!(failure.receipt.submissions.len(), 2);
+    assert_eq!(
+        failure.receipt.submissions[0].acknowledgement,
+        Some(vec![3, 0, 31, 33])
+    );
+    assert_eq!(failure.receipt.submissions[1].acknowledgement, Some(vec![]));
+    assert!(failure.receipt.submissions[1].attempted);
+    assert!(format!("{:#}", failure.error).contains("simulated snap setter release failed"));
+    let sent = mock.base.sent.lock().unwrap();
+    assert_eq!(sent.last().unwrap()[7..9], [2, 33]);
+    assert_eq!(
+        sent.iter().filter(|packet| packet[7..9] == [2, 33]).count(),
+        1
+    );
+}
 struct Mock {
     sent: Mutex<Vec<Vec<u8>>>,
     fail_slot: Option<u8>,

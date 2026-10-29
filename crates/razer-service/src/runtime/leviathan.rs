@@ -24,7 +24,8 @@ impl PortableRuntime {
             Self::revalidate(node)
         };
         validate()?;
-        let device = with_backend(|backend| backend.open(node))?;
+        let device =
+            with_backend(|backend| backend.open_validated(node, std::rc::Rc::new(&validate)))?;
         ensure!(
             device.report_lengths()?.feature.values().max().copied() == Some(65),
             "Noa Feature collection length differs"
@@ -36,7 +37,11 @@ impl PortableRuntime {
             || self.transaction(node, &cap.source_class, 0, 31),
             &validate,
         )?;
-        validate()?;
+        validate().map_err(|error| {
+            error.context(leviathan::ExecutionFailure {
+                progress: report.clone(),
+            })
+        })?;
         Ok(
             json!({"node":node,"product_id":1352,"report":report,"source_class":cap.source_class,"setting_scope":"sound"}),
         )

@@ -70,8 +70,13 @@ pub(super) struct State {
     stopping: bool,
     stopped_events: Option<VecDeque<Event>>,
     failures: Vec<String>,
+    terminal_shutdown_failure: Option<String>,
 }
 impl State {
+    pub(super) fn cleanup_pending(&self) -> bool {
+        self.input.cleanup_pending()
+    }
+
     pub(super) fn owner(&self) -> Option<String> {
         self.owner.clone()
     }
@@ -280,6 +285,9 @@ impl State {
         mut stop: impl FnMut(&mut MouseMonitor) -> Result<Vec<Event>>,
         mut observe: impl FnMut(&str) -> Result<identity::Identity>,
     ) -> Result<()> {
+        if let Some(error) = &self.terminal_shutdown_failure {
+            anyhow::bail!("{error}");
+        }
         let Some(owner) = self.owner() else {
             return Ok(());
         };
@@ -297,7 +305,13 @@ impl State {
                 }
             }
         }
-        ensure!(failures.is_empty(), "{}", failures.join("; "));
+        if !failures.is_empty() {
+            let failure = failures.join("; ");
+            if !self.cleanup_pending() {
+                self.terminal_shutdown_failure = Some(failure.clone());
+            }
+            anyhow::bail!("{failure}");
+        }
         Ok(())
     }
     pub(super) fn shutdown(&mut self) -> Result<()> {

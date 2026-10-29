@@ -111,6 +111,23 @@ pub struct OutputReceipt {
     pub transferred_bytes: usize,
     pub complete: bool,
 }
+
+#[derive(Debug)]
+pub struct OutputReleaseFailure {
+    pub receipt: OutputReceipt,
+}
+
+impl std::fmt::Display for OutputReleaseFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            formatter,
+            "Marci Output transferred {} of {} bytes; HID exchange release failed",
+            self.receipt.transferred_bytes, self.receipt.submitted_bytes
+        )
+    }
+}
+
+impl std::error::Error for OutputReleaseFailure {}
 /// The counted Output path reports actual platform completion. No device ACK
 /// exists on this channel. Official HID.node's immediate-success -1 branch is
 /// retained as a comparison difference, not invented by this Rust adapter.
@@ -127,16 +144,27 @@ pub fn submit_javascript_frame(
         transport.report_lengths()?.output.values().max().copied() == Some(OUTPUT_BYTES),
         "Marci Output descriptor does not expose 781 bytes"
     );
-    let count = transport.write_output_counted(&frame.javascript_report())?;
-    ensure!(
-        count <= OUTPUT_BYTES,
-        "Marci Output returned an excessive byte count"
-    );
-    Ok(OutputReceipt {
-        submitted_bytes: OUTPUT_BYTES,
-        transferred_bytes: count,
-        complete: count == OUTPUT_BYTES,
-    })
+    let lease = transport.begin_exchange(crate::backend::ExchangeOptions::plain())?;
+    let result = (|| {
+        let transport = lease.transport();
+        let count = transport.write_output_counted(&frame.javascript_report())?;
+        ensure!(
+            count <= OUTPUT_BYTES,
+            "Marci Output returned an excessive byte count"
+        );
+        Ok(OutputReceipt {
+            submitted_bytes: OUTPUT_BYTES,
+            transferred_bytes: count,
+            complete: count == OUTPUT_BYTES,
+        })
+    })();
+    match result {
+        Ok(receipt) => match lease.finish() {
+            Ok(()) => Ok(receipt),
+            Err(error) => Err(error.context(OutputReleaseFailure { receipt })),
+        },
+        Err(error) => crate::backend::finish_exchange(lease, Err(error)),
+    }
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -318,64 +346,74 @@ impl Control {
             "Marci Feature descriptor differs from 91 bytes"
         );
         let request = self.request(command, payload)?;
-        let mut error = String::from("No Marci control response");
-        for _ in 0..20 {
-            wait(Duration::ZERO)?;
-            if let Err(failure) = transport.send_feature_at_collection_max(&request) {
-                error = format!("{failure:#}");
-                continue;
-            }
-            wait(Duration::from_millis(40))?;
-            let mut resend = false;
-            for attempt in 0..30 {
-                if attempt > 0 {
-                    wait(Duration::from_millis(5))?;
-                }
-                let mut response = [0; 91];
-                response[0] = 16;
-                let count = match transport.get_feature_at_collection_max(&mut response) {
-                    Ok(n) => n,
-                    Err(failure) => {
+        wait(Duration::ZERO)?;
+        crate::feature_exchange::with_feature_reply(
+            transport,
+            crate::backend::ExchangeOptions::plain(),
+            command,
+            request[2],
+            |transport, _| {
+                let mut error = String::from("No Marci control response");
+                for _ in 0..20 {
+                    wait(Duration::ZERO)?;
+                    if let Err(failure) = transport.send_feature_at_collection_max(&request) {
                         error = format!("{failure:#}");
+                        continue;
+                    }
+                    wait(Duration::from_millis(40))?;
+                    let mut resend = false;
+                    for attempt in 0..30 {
+                        if attempt > 0 {
+                            wait(Duration::from_millis(5))?;
+                        }
+                        let mut response = [0; 91];
+                        response[0] = 16;
+                        let count = match transport.get_feature_at_collection_max(&mut response) {
+                            Ok(n) => n,
+                            Err(failure) => {
+                                error = format!("{failure:#}");
+                                break;
+                            }
+                        };
+                        ensure!(count == 91, "Marci control response is truncated");
+                        if response[2] != request[2] || response[7] != request[7] {
+                            error = "Marci response transaction/class differs".into();
+                            resend = true;
+                            break;
+                        }
+                        if response[8] != request[8] {
+                            error = "Marci response command differs".into();
+                            resend = true;
+                            continue;
+                        }
+                        match response[1] {
+                            2 => {
+                                ensure!(
+                                    response[6] <= 80,
+                                    "Marci response payload exceeds the report"
+                                );
+                                return Ok(response[9..9 + usize::from(response[6])].to_vec());
+                            }
+                            1 | 4 => {
+                                error =
+                                    format!("Marci control busy/timeout status {}", response[1]);
+                                resend = true;
+                            }
+                            0 | 3 => {
+                                error = format!("Marci control retry status {}", response[1]);
+                                resend = true;
+                                break;
+                            }
+                            status => bail!("Marci control rejected with status {status}"),
+                        }
+                    }
+                    if !resend {
                         break;
                     }
-                };
-                ensure!(count == 91, "Marci control response is truncated");
-                if response[2] != request[2] || response[7] != request[7] {
-                    error = "Marci response transaction/class differs".into();
-                    resend = true;
-                    break;
                 }
-                if response[8] != request[8] {
-                    error = "Marci response command differs".into();
-                    resend = true;
-                    continue;
-                }
-                match response[1] {
-                    2 => {
-                        ensure!(
-                            response[6] <= 80,
-                            "Marci response payload exceeds the report"
-                        );
-                        return Ok(response[9..9 + usize::from(response[6])].to_vec());
-                    }
-                    1 | 4 => {
-                        error = format!("Marci control busy/timeout status {}", response[1]);
-                        resend = true;
-                    }
-                    0 | 3 => {
-                        error = format!("Marci control retry status {}", response[1]);
-                        resend = true;
-                        break;
-                    }
-                    status => bail!("Marci control rejected with status {status}"),
-                }
-            }
-            if !resend {
-                break;
-            }
-        }
-        bail!("Marci control was not confirmed: {error}")
+                bail!("Marci control was not confirmed: {error}")
+            },
+        )
     }
     pub fn firmware(
         &mut self,

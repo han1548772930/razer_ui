@@ -262,6 +262,7 @@ fn camera_ipc_partial_failure_is_finished_without_success_or_persistence() {
         ..Default::default()
     });
     let envelope = ResponseEnvelope {
+        diagnostics: None,
         id: 23,
         data: Some(serde_json::to_value(&status).unwrap()),
         error: None,
@@ -490,6 +491,7 @@ fn camera_family_processing_ipc_preserves_queried_companion_and_partial_write_re
             ..Default::default()
         });
         let envelope = ResponseEnvelope {
+            diagnostics: None,
             id: 93,
             data: Some(serde_json::to_value(&status).unwrap()),
             error: None,

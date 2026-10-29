@@ -806,6 +806,76 @@ class ArchitectureBoundaryTests(unittest.TestCase):
         self.assertFalse(self.inspect('fn unrelated() { local::Library::new(); }',
                                       'crates/razer-storage/src/other.rs'))
 
+    def test_current_dpi_and_matcher_owners_reject_vendor_loading_and_keep_system_paths(self):
+        owners = (
+            'crates/razer-device/src/mouse/mouse_current_dpi.rs',
+            'crates/razer-device/src/mouse/mouse_current_dpi_ble.rs',
+            'crates/razer-device/src/mouse/mouse_current_dpi_ble_initialization.rs',
+            'crates/razer-device/src/mouse/mouse_onboard.rs',
+            'crates/razer-device/src/mouse/dpi_matcher.rs',
+            'crates/razer-device/src/mouse/dpi_matcher_storage.rs',
+            'crates/razer-discovery/src/direct/mouse_current_dpi.rs',
+            'crates/razer-ipc/src/device_tasks.rs',
+            'crates/razer-ipc/src/mouse_current_dpi_ble.rs',
+            'crates/razer-ipc/src/request_cancellation.rs',
+            'crates/razer-storage/src/host_local_profile/ble226.rs',
+            'crates/razer-service/src/runtime/windows/mouse/mouse_current_dpi_ble.rs',
+            'crates/razer-service/src/mouse/dpi_matcher.rs',
+            'crates/razer-service/src/mouse/dpi_matcher_worker.rs',
+            'crates/razer-service/src/mouse/dpi_matcher_input.rs',
+            'crates/razer-shell/src/shell/mouse/mouse_current_dpi.rs',
+            'crates/razer-shell/src/shell/mouse/mouse_current_dpi_runtime.rs',
+            'crates/razer-shell/src/shell/mouse/mouse_current_dpi_worker.rs',
+            'crates/razer-shell/src/shell/mouse/mouse_matcher.rs',
+            'crates/razer-pages/src/features/mouse/dpi/mouse_current_dpi.rs',
+            'crates/razer-pages/src/features/mouse/dpi/mouse_current_dpi_observation.rs',
+            'crates/razer-pages/src/features/mouse/dpi/mouse_matcher_owner.rs',
+            'crates/razer-pages/src/features/mouse/dpi/mouse_dpi_matcher.rs',
+            'crates/razer-pages/src/features/mouse/dpi/mouse_dpi_matcher_state.rs',
+        )
+        for owner in owners:
+            for source in (
+                'use crate::dll::EngineLibrary;',
+                'use crate::dll as backend; fn query() { backend::EngineLibrary::load(path); }',
+                'use super::native_read as backend; fn query() { backend::getter(args); }',
+                'use libloading::{Library as Backend}; fn query() { Backend::new(path); }',
+                'use razer_catalog::native_library as catalog; fn query() { catalog::describe(kind); }',
+                'use razer_platform::native_paths as paths; fn query() { paths::EnginePaths::discover(); }',
+                'use source::PathRule as Rule; fn query() { Rule::CommonDll(name); }',
+                'use source::EngineLibrary as Backend; fn query() { Backend::load(path); }',
+            ):
+                with self.subTest(owner=owner, source=source):
+                    self.assertIn('independent_dpi_uses_vendor_loader',
+                                  [row['kind'] for row in self.inspect(source, owner)])
+                    self.assertIn('independent_dpi_uses_vendor_loader',
+                                  [row['kind'] for row in self.inspect('#[cfg(test)] mod tests { ' + source + ' }', owner)])
+            self.assertFalse(self.inspect(
+                'use windows::Win32::Devices::HumanInterfaceDevice::HidD_GetAttributes; '
+                'fn query() { let name = "EngineLibrary PathRule::CommonDll libloading"; }', owner))
+            self.assertFalse(self.inspect('fn query() { local::Library::new(); }', owner))
+        worker = 'crates/razer-shell/src/shell/mouse/mouse_current_dpi_worker.rs'
+        self.assertFalse(self.inspect('use razer_platform::native_paths as paths; '
+                                     'fn query() { paths::host_local_storage_directory(); }', worker))
+        self.assertFalse(self.inspect('use libloading::Library; fn query() { Library::new(path); }',
+                                      'crates/razer-platform/src/unrelated.rs'))
+
+    def test_ble_current_dpi_foundations_keep_system_and_storage_io_in_their_owners(self):
+        sources = {
+            'crates/razer-ipc/src/request_cancellation.rs':
+                'use windows_sys::Win32::System::Threading::{CreateEventW, OpenEventW, SetEvent}; '
+                'fn query() { CreateEventW(args); OpenEventW(args); SetEvent(handle); }',
+            'crates/razer-storage/src/host_local_profile/ble226.rs':
+                'fn read() { super::leveldb::read(root, key); }',
+        }
+        for owner, source in sources.items():
+            with self.subTest(owner=owner):
+                self.assertFalse(self.inspect(source, owner))
+                self.assertFalse(workspace.inspect_architecture_source((workspace.ROOT / owner).read_bytes(),
+                                 owner=owner, rust_parser=self.rust_parser))
+        for owner in ('crates/razer-ipc/src/other.rs',
+                      'crates/razer-storage/src/host_local_profile/other.rs'):
+            self.assertFalse(self.inspect('use libloading::Library; fn read() { Library::new(path); }', owner))
+
     def test_product_protocol_does_not_expose_generic_vendor_execution(self):
         self.assertEqual(self.inspect('pub enum ServiceRequest { NativeLibrarySnapshot { library: String } }',
             'crates/razer-ipc/src/lib.rs')[0]['kind'], 'product_protocol_exposes_vendor_analysis')
@@ -883,6 +953,7 @@ class ArchitectureBoundaryTests(unittest.TestCase):
             'crates/razer-shell/src/shell/mouse/mouse_current_dpi.rs',
             'crates/razer-shell/src/shell/mouse/mouse_current_dpi_runtime.rs',
             'crates/razer-pages/src/features/mouse/dpi/mouse_current_dpi.rs',
+            'crates/razer-pages/src/features/mouse/dpi/mouse_current_dpi_observation.rs',
         )
         worker = 'crates/razer-shell/src/shell/mouse/mouse_current_dpi_worker.rs'
         for owner in owners:
@@ -909,6 +980,110 @@ class ArchitectureBoundaryTests(unittest.TestCase):
             self.assertFalse(self.inspect('fn start() { let message = messages.join(", "); cx.emit(intent); }', owner))
         self.assertFalse(self.inspect('fn start() { ServiceClient::spawn(); }',
                                      'crates/razer-shell/src/shell/mouse/unrelated.rs'))
+
+    def test_matcher_gui_uses_retained_service_workers_without_owning_device_io(self):
+        owners = (
+            'crates/razer-shell/src/shell/mouse/mouse_matcher.rs',
+            'crates/razer-pages/src/features/mouse/dpi/mouse_matcher_owner.rs',
+            'crates/razer-pages/src/features/mouse/dpi/mouse_dpi_matcher.rs',
+            'crates/razer-pages/src/features/mouse/dpi/mouse_dpi_matcher_state.rs',
+        )
+        worker = 'crates/razer-service/src/mouse/dpi_matcher_worker.rs'
+        for owner in owners:
+            for source in (
+                'use razer_ipc::ServiceClient as Client; fn start() { Client::spawn(); }',
+                'use razer_discovery::direct::mouse_current_dpi::request as read; '
+                'fn start() { read(client, route, change); }',
+                'use std::thread::{Builder as Worker}; fn start() { Worker::new(); }',
+            ):
+                with self.subTest(owner=owner, source=source):
+                    rows = self.inspect(source, owner)
+                    self.assertEqual([row['kind'] for row in rows], ['mouse_matcher_gui_owns_device_io'])
+                    self.assertEqual(rows[0]['expected_owner'], worker)
+                    self.assertFalse(self.inspect(source, worker))
+                    self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + source + ' }', owner))
+            for source, kind in (
+                ('fn start() { task.detach(); }', 'mouse_matcher_gui_detaches_or_waits_for_native_work'),
+                ('fn start() { worker.join(); }', 'mouse_matcher_gui_detaches_or_waits_for_native_work'),
+                ('fn current() { self.discovery_revision == old }', 'mouse_matcher_uses_global_discovery_revision'),
+            ):
+                with self.subTest(owner=owner, source=source):
+                    self.assertEqual([row['kind'] for row in self.inspect(source, owner)], [kind])
+            self.assertFalse(self.inspect('use razer_service::dpi_matcher::worker::Handle; '
+                                         'fn start() { Handle::spawn(options); messages.join(", "); }', owner))
+        self.assertFalse(self.inspect('fn start() { ServiceClient::spawn(); }',
+                                      'crates/razer-shell/src/shell/mouse/unrelated.rs'))
+
+    def test_shared_mouse_roots_limit_dpi_and_matcher_checks_to_their_feature_functions(self):
+        scopes = (
+            ('crates/razer-pages/src/features/mouse/mod.rs', 'performance_matcher_and_properties', 'mouse_matcher'),
+            ('crates/razer-pages/src/features/mouse/mod.rs', 'performance', 'mouse_matcher'),
+            ('crates/razer-pages/src/features/mouse/mod.rs', 'refresh_locale', 'mouse_matcher'),
+            ('crates/razer-pages/src/features/workspace/source_workspace.rs',
+             'initialize_current_mouse_profile', 'mouse_dpi'),
+            ('crates/razer-pages/src/features/workspace/source_workspace.rs',
+             'accept_current_dpi_ble_catalog', 'mouse_dpi'),
+            ('crates/razer-pages/src/features/workspace/product_workspace.rs',
+             'accept_current_dpi_ble_catalog', 'mouse_dpi'),
+        )
+        for owner, function, prefix in scopes:
+            with self.subTest(owner=owner, function=function):
+                source = 'use razer_ipc::ServiceClient as Client; fn ' + function + '() { Client::spawn(); }'
+                self.assertEqual([row['kind'] for row in self.inspect(source, owner)],
+                                 [prefix + '_gui_owns_device_io'])
+                self.assertFalse(self.inspect(source.replace(function, 'unrelated_feature'), owner))
+                self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + source + ' }', owner))
+                loader = 'use libloading::Library as Backend; fn ' + function + '() { Backend::new(path); }'
+                self.assertIn('independent_dpi_uses_vendor_loader',
+                              [row['kind'] for row in self.inspect(loader, owner)])
+                self.assertIn('independent_dpi_uses_vendor_loader',
+                              [row['kind'] for row in self.inspect('#[cfg(test)] mod tests { ' + loader + ' }', owner)])
+                self.assertFalse(self.inspect(loader.replace(function, 'unrelated_feature'), owner))
+        for owner in {owner for owner, _, _ in scopes}:
+            self.assertFalse(workspace.inspect_architecture_source((workspace.ROOT / owner).read_bytes(),
+                             owner=owner, rust_parser=self.rust_parser))
+
+    def test_ble_catalog_consumers_delegate_io_and_keep_pure_catalog_projection(self):
+        scopes = (
+            ('crates/razer-pages/src/features/workspace/source_workspace.rs',
+             'accept_current_dpi_ble_catalog'),
+            ('crates/razer-pages/src/features/workspace/product_workspace.rs',
+             'accept_current_dpi_ble_catalog'),
+            ('crates/razer-pages/src/features/mouse/dpi/mouse_current_dpi.rs', 'observe'),
+            ('crates/razer-pages/src/features/mouse/dpi/mouse_matcher_owner.rs', 'observe'),
+        )
+        for owner, function in scopes:
+            prefix = 'mouse_matcher' if 'mouse_matcher_owner' in owner else 'mouse_dpi'
+            for imports, call in (
+                ('', 'razer_discovery::direct::mouse_current_dpi::request_with_context(client, route, change, context)'),
+                ('use razer_discovery::direct::mouse_current_dpi::request_with_context as request;',
+                 'request(client, route, change, context)'),
+                ('use razer_storage::host_local_profile::ble226 as catalog;', 'catalog::read(root, serial)'),
+                ('use razer_storage::host_local_profile::ble226::read as read;', 'read(root, serial)'),
+            ):
+                source = imports + ' fn ' + function + '() { ' + call + '; }'
+                with self.subTest(owner=owner, function=function, call=call):
+                    rows = self.inspect(source, owner)
+                    self.assertEqual([row['kind'] for row in rows], [prefix + '_gui_owns_device_io'])
+                    self.assertEqual(rows[0]['expected_owner'],
+                                     'crates/razer-service/src/mouse/dpi_matcher_worker.rs'
+                                     if prefix == 'mouse_matcher' else
+                                     'crates/razer-shell/src/shell/mouse/mouse_current_dpi_worker.rs')
+                    self.assertFalse(self.inspect('#[cfg(test)] mod tests { ' + source + ' }', owner))
+                    if 'workspace/' in owner:
+                        self.assertFalse(self.inspect(source.replace(function, 'unrelated_feature'), owner))
+            for call, kind in (
+                ('task.detach()', 'gui_detaches_or_waits_for_native_work'),
+                ('worker.join()', 'gui_detaches_or_waits_for_native_work'),
+                ('self.discovery_revision', 'uses_global_discovery_revision'),
+            ):
+                source = 'fn ' + function + '() { ' + call + '; }'
+                with self.subTest(owner=owner, function=function, call=call):
+                    self.assertEqual([row['kind'] for row in self.inspect(source, owner)], [prefix + '_' + kind])
+            source = ('use razer_storage::host_local_profile::ble226 as catalog; fn ' + function
+                      + '() { catalog::from_device(device, serial, owner); snapshot.import(device); '
+                        'let text = "ble226::read request_with_context EngineLibrary"; }')
+            self.assertFalse(self.inspect(source, owner))
 
     def test_current_dpi_dispatch_and_route_use_their_retained_owners(self):
         owner = 'crates/razer-shell/src/shell/mouse/mouse_current_dpi.rs'
@@ -1501,6 +1676,9 @@ class ArchitectureBoundaryTests(unittest.TestCase):
         ]
         source = 'impl MouseProductWorkspace { fn retains_mouse_matcher_scope() -> bool { ' + ' && '.join(conditions) + ' } }'
         self.assertFalse(self.inspect(source, owner))
+        formatted = source.replace('&self.matcher_valid)', '&self.matcher_valid, /* retained UI guard */)') \
+                          .replace('&self.matcher_normalization.valid)', '&self.matcher_normalization.valid,)')
+        self.assertFalse(self.inspect(formatted, owner))
         for condition in conditions:
             with self.subTest(condition=condition):
                 self.assertEqual(self.inspect(source.replace(condition, 'true'), owner)[0]['kind'],
@@ -1512,6 +1690,8 @@ class ArchitectureBoundaryTests(unittest.TestCase):
                 self.assertEqual(self.inspect(source.replace(original, changed), owner)[0]['kind'],
                                  'matcher_retention_loses_domain_or_owner_epoch')
         self.assertFalse(self.inspect(source.replace('impl MouseProductWorkspace', 'impl Unrelated'), owner))
+        self.assertFalse(workspace.inspect_architecture_source((workspace.ROOT / owner).read_bytes(),
+                         owner=owner, rust_parser=self.rust_parser))
 
     def test_receiver_and_matcher_rebase_validate_owner_before_applying_the_mutation(self):
         rows = [('crates/razer-shell/src/shell/mouse/mouse_matcher.rs',
@@ -2427,27 +2607,76 @@ class ArchitectureBoundaryTests(unittest.TestCase):
 
     def test_device_observation_worker_is_retained_joined_and_closes_delivery_without_waiting_on_ui(self):
         owner = 'crates/razer-platform/src/observation/device_changes.rs'
-        source = ('struct DeviceChangeMonitor { stop: Option<Sender<()>>, worker: Option<JoinHandle<Result<(),String>>> } '
-                  'impl DeviceChangeMonitor { fn start_worker() { let worker = Builder::new().spawn(run)?; '
+        source = ('struct DeviceChangeMonitor { stop: Option<mpsc::SyncSender<()>>, worker: Option<JoinHandle<Result<(),String>>> } '
+                  'impl DeviceChangeMonitor { fn start_worker() { let (stop,stopped) = mpsc::sync_channel(1); let worker = Builder::new().spawn(run)?; '
                   'Ok(Self { stop: Some(stop), worker: Some(worker) }) } '
-                  'fn shutdown(mut self) { self.stop.take(); self.worker.take().unwrap().join()? } } '
-                  'impl Drop for DeviceChangeMonitor { fn drop(&mut self) { self.stop.take(); } } '
+                  'fn shutdown(mut self) { self.signal_stop(); self.worker.take().unwrap().join()? } '
+                  'fn signal_stop(&mut self) { if let Some(stop) = self.stop.take() { let _ = stop.try_send(()); } } } '
+                  'impl Drop for DeviceChangeMonitor { fn drop(&mut self) { self.signal_stop(); } } '
                   'impl Drop for EventDelivery { fn drop(&mut self) { self.0.close(); } } '
-                  'fn wait_for_stop() { let _ = events.force_send(DeviceChange::Ready); let _ = stopped.recv(); }')
+                  'fn wait_for_stop() { events.ready(); let _ = stopped.recv(); }')
         self.assertFalse(self.inspect(source, owner))
         changes = {
             'device_observer_has_no_retained_worker': source.replace('Option<JoinHandle<Result<(),String>>>', 'bool'),
             'device_observer_discards_worker_handle': source.replace('worker: Some(worker)', 'worker: None'),
-            'device_observer_shutdown_does_not_stop_then_join': source.replace('self.stop.take(); self.worker', 'self.worker'),
+            'device_observer_shutdown_does_not_stop_then_join': source.replace('self.signal_stop(); self.worker', 'self.worker'),
             'device_observer_drop_waits_for_native_teardown_on_ui': source.replace(
-                'fn drop(&mut self) { self.stop.take();', 'fn drop(&mut self) { self.worker.take().unwrap().join(); self.stop.take();'),
+                'fn drop(&mut self) { self.signal_stop();', 'fn drop(&mut self) { self.worker.take().unwrap().join(); self.signal_stop();'),
             'device_observer_delivery_outlives_its_worker': source.replace('self.0.close();', ''),
-            'device_observer_stop_waits_for_ui_to_drain_queue': source.replace('events.force_send(', 'events.send_blocking('),
+            'device_observer_stop_waits_for_ui_to_drain_queue': source.replace('events.ready();', 'events.send_blocking(DeviceChange::Ready);'),
+            'device_observer_stop_uses_delivery_queue_or_blocks': source.replace('stop.try_send(())', 'stop.send(())'),
         }
         for expected, changed in changes.items():
             with self.subTest(kind=expected):
                 self.assertEqual(self.inspect(changed, owner)[0]['kind'], expected)
+        for changed in (source.replace('mpsc::SyncSender', 'async_channel::Sender'),
+                        source.replace('worker.take().unwrap().join()', 'worker.take().unwrap().is_finished()'),
+                        source.replace('mpsc::sync_channel(1)', 'mpsc::sync_channel(8)'),
+                        source.replace('stopped.recv()', 'events.recv()'),
+                        source.replace('events.ready(); let _ = stopped.recv();', 'let _ = stopped.recv(); events.ready();')):
+            self.assertTrue(self.inspect(changed, owner))
         self.assertFalse(self.inspect('impl Unrelated { fn shutdown() { worker.join(); } }', owner))
+
+    def test_device_observer_join_delegation_checks_the_real_owner_and_retains_pending_workers(self):
+        owner = 'crates/razer-platform/src/observation/device_changes.rs'
+        helper = ('fn join_worker(&mut self) -> Result<(), String> { match self.worker.take() { '
+                  'Some(worker) => worker.join().map_err(|_| error)?, None => Ok(()) } } ')
+        pending = ('fn try_shutdown(&mut self) -> Result<bool, String> { self.signal_stop(); '
+                   'if !self.is_finished() { return Ok(false); } self.join_worker()?; Ok(true) } ')
+        source = ('impl DeviceChangeMonitor { '
+                  'fn shutdown(mut self) -> Result<(), String> { self.signal_stop(); self.join_worker() } '
+                  + pending
+                  + 'fn is_finished(&self) -> bool { self.worker.as_ref().is_none_or(JoinHandle::is_finished) } '
+                  + helper
+                  + 'fn signal_stop(&mut self) { if let Some(stop) = self.stop.take() { let _ = stop.try_send(()); } } } '
+                  'impl Drop for DeviceChangeMonitor { fn drop(&mut self) { self.signal_stop(); } }')
+        self.assertFalse(self.inspect(source, owner))
+        self.assertFalse(workspace.inspect_architecture_source((workspace.ROOT / owner).read_bytes(),
+                         owner=owner, rust_parser=self.rust_parser))
+        shutdown_kind = 'device_observer_shutdown_does_not_stop_then_join'
+        cases = [
+            (shutdown_kind, source.replace('self.signal_stop(); self.join_worker()', 'self.join_worker(); self.signal_stop()')),
+            (shutdown_kind, source.replace('self.signal_stop(); self.join_worker()', 'self.join_worker()')),
+            (shutdown_kind, source.replace('self.signal_stop(); self.join_worker()', 'self.signal_stop(); other.join_worker()')),
+            (shutdown_kind, source.replace('self.signal_stop(); self.join_worker()', 'self.signal_stop(); if ready { self.join_worker() }')),
+            (shutdown_kind, source.replace('self.signal_stop(); self.join_worker()', 'self.signal_stop(); return Ok(()); self.join_worker()')),
+            (shutdown_kind, source.replace(helper, 'fn join_worker(&mut self) { Ok(()) } ')),
+            (shutdown_kind, source.replace(helper, '') + 'impl Other { ' + helper + ' }'),
+            (shutdown_kind, source.replace('match self.worker.take()', 'return Ok(()); match self.worker.take()')),
+            (shutdown_kind, source.replace('match self.worker.take()', 'match self.other.take()')),
+            (shutdown_kind, source.replace('worker.join()', 'other.join()')),
+            (shutdown_kind, source.replace('worker.join()', 'worker.is_finished()')),
+            (shutdown_kind, source.replace('worker.join()', '(|| worker.join())()')),
+            ('device_observer_try_shutdown_discards_pending_worker', source.replace('if !self.is_finished() { return Ok(false); } ', '')),
+            ('device_observer_try_shutdown_discards_pending_worker', source.replace('self.worker.as_ref()', 'self.worker.take()')),
+            ('device_observer_drop_does_not_signal_stop', source.replace('fn drop(&mut self) { self.signal_stop();', 'fn drop(&mut self) {')),
+            ('device_observer_drop_waits_for_native_teardown_on_ui', source.replace(
+                'fn drop(&mut self) { self.signal_stop();', 'fn drop(&mut self) { self.signal_stop(); self.join_worker();')),
+        ]
+        for kind, changed in cases:
+            with self.subTest(kind=kind, source=changed):
+                self.assertIn(kind, [row['kind'] for row in self.inspect(changed, owner)])
+        self.assertFalse(self.inspect('impl Unrelated { fn shutdown() { self.join_worker(); } }', owner))
 
     def test_discovery_observer_retirement_and_final_cleanup_keep_the_join_owner_and_disconnect_intent(self):
         owner = 'crates/razer-settings/src/runtime_page.rs'
@@ -2531,20 +2760,49 @@ class ArchitectureBoundaryTests(unittest.TestCase):
 
     def test_ipc_process_and_pipe_workers_keep_one_owner_until_exit_and_join(self):
         owner = 'crates/razer-ipc/src/lib.rs'
-        declaration = ('struct ServiceClient { child: Option<Child>, requests: Option<Sender<Vec<u8>>>, '
-                       'input_worker: Option<JoinHandle<anyhow::Result<()>>>, output_worker: Option<JoinHandle<anyhow::Result<()>>>, '
-                       'diagnostic_worker: Option<JoinHandle<anyhow::Result<()>>> }')
+        declaration = ('struct ServiceClient { broker: Option<hid_broker::BrokerClient>, '
+                       '#[cfg(test)] child: Option<Child>, #[cfg(test)] requests: Option<Sender<Vec<u8>>>, '
+                       '#[cfg(test)] input_worker: Option<JoinHandle<anyhow::Result<()>>>, '
+                       '#[cfg(test)] output_worker: Option<JoinHandle<anyhow::Result<()>>>, '
+                       '#[cfg(test)] diagnostic_worker: Option<JoinHandle<anyhow::Result<()>>> }')
         self.assertFalse(self.inspect(declaration, owner))
         self.assertEqual(self.inspect(declaration.replace('input_worker: Option<JoinHandle<anyhow::Result<()>>>', 'input_worker: bool'), owner)[0]['kind'],
                          'ipc_client_discards_owned_process_or_pipe_workers')
-        shutdown = ('impl ServiceClient { fn finish_process() { self.requests.take(); self.stopped = true; self.job.take(); '
+        shutdown = ('impl ServiceClient { #[cfg(test)] fn finish_simulated_process() { self.requests.take(); self.stopped = true; '
                     'reap_child(&mut self.child)?; let input = join_pipe(self.input_worker.take(),"input"); '
                     'let output = join_pipe(self.output_worker.take(),"output"); '
                     'let diagnostics = join_pipe(self.diagnostic_worker.take(),"diagnostics"); '
                     'combine_cleanup([input,output,diagnostics]) } }')
         self.assertFalse(self.inspect(shutdown, owner))
+        guarded = shutdown.replace('self.requests.take();',
+            'let cancellation = self.cancel_request(); self.requests.take();').replace(
+                'reap_child(&mut self.child)?;',
+                'if let Err(error) = reap_child(&mut self.child) { return Err(with_cleanup_error(error, cancellation)); }').replace(
+                    'combine_cleanup([input,output,diagnostics])', 'combine_cleanup([cancellation,input,output,diagnostics])')
+        self.assertFalse(self.inspect(guarded, owner))
+        for changed in (
+                guarded.replace('return Err(with_cleanup_error(error, cancellation));', ''),
+                guarded.replace('return Err(with_cleanup_error(error, cancellation));', 'return Ok(());'),
+                guarded.replace('return Err(with_cleanup_error(error, cancellation));', 'return Err(error);'),
+                guarded.replace('with_cleanup_error(error, cancellation)', 'with_cleanup_error(other, cancellation)'),
+                guarded.replace('let cancellation = self.cancel_request();', 'let cancellation = Ok(());'),
+                guarded.replace('combine_cleanup([cancellation,input,output,diagnostics])', 'combine_cleanup([input,output,diagnostics])'),
+                guarded.replace('return Err(with_cleanup_error(error, cancellation));',
+                                'self.child.take(); return Err(with_cleanup_error(error, cancellation));'),
+                guarded.replace('return Err(with_cleanup_error(error, cancellation));',
+                                'join_pipe(self.input_worker.take(),"input"); return Err(with_cleanup_error(error, cancellation));'),
+                guarded.replace('return Err(with_cleanup_error(error, cancellation));',
+                                'Err(with_cleanup_error(error, cancellation));'),
+                guarded.replace('self.requests.take();', 'self.requests.take(); self.child.take();'),
+                guarded.replace('if let Err(error) = reap_child(&mut self.child)',
+                                'if let Ok(error) = reap_child(&mut self.child)'),
+                guarded.replace('if let Err(error) = reap_child(&mut self.child) { return Err(with_cleanup_error(error, cancellation)); }',
+                                'if ready { if let Err(error) = reap_child(&mut self.child) { return Err(with_cleanup_error(error, cancellation)); } }'),
+        ):
+            with self.subTest(changed=changed):
+                self.assertEqual(self.inspect(changed, owner)[0]['kind'],
+                                 'ipc_cleanup_does_not_preserve_owner_until_reap_and_pipe_joins')
         for changed in (shutdown.replace('self.requests.take();', ''), shutdown.replace('self.stopped = true;', ''),
-                        shutdown.replace('self.job.take();', ''),
                         shutdown.replace('self.stopped = true;', '').replace('reap_child(&mut self.child)?;',
                             'reap_child(&mut self.child)?; self.stopped = true;'),
                         shutdown.replace('join_pipe(self.input_worker.take(),"input");', 'join_pipe(self.input_worker.take(),"input")?;'),
@@ -2557,7 +2815,7 @@ class ArchitectureBoundaryTests(unittest.TestCase):
                         shutdown.replace('combine_cleanup([input,output,diagnostics])', 'combine_cleanup([input,output])'),
                         shutdown.replace('combine_cleanup([input,output,diagnostics])', 'input')):
             self.assertEqual(self.inspect(changed, owner)[0]['kind'], 'ipc_cleanup_does_not_preserve_owner_until_reap_and_pipe_joins')
-        graceful = ('impl ServiceClient { fn stop() { self.stopped = true; '
+        graceful = ('impl ServiceClient { #[cfg(test)] fn stop_simulated() { self.stopped = true; '
                     'let cleanup = worker_shutdown::drain(&self.responses, id, timeout); '
                     'let process = self.finish_process(); combine_cleanup([cleanup, process]) } }')
         self.assertFalse(self.inspect(graceful, owner))
@@ -2571,7 +2829,7 @@ class ArchitectureBoundaryTests(unittest.TestCase):
         self.assertFalse(self.inspect(destructor, owner))
         self.assertEqual(self.inspect(destructor.replace('if let Err(error) = self.stop()', 'if !self.stopped'), owner)[0]['kind'],
                          'ipc_drop_skips_unfinished_cleanup_after_admission_closed')
-        reaping = 'fn reap_child() { if let Some(child) = child.as_mut() { terminate_child(child)?; } child.take(); Ok(()) }'
+        reaping = '#[cfg(test)] fn reap_child() { if let Some(child) = child.as_mut() { terminate_child(child)?; } child.take(); Ok(()) }'
         self.assertFalse(self.inspect(reaping, owner))
         self.assertEqual(self.inspect(reaping.replace('terminate_child(child)?', 'terminate_child(child)'), owner)[0]['kind'],
                          'ipc_reap_discards_unconfirmed_process_owner')
@@ -2582,6 +2840,104 @@ class ArchitectureBoundaryTests(unittest.TestCase):
                     'use std::thread::spawn as run; fn cleanup() { run(reap); }'):
             self.assertEqual(self.inspect(bad, owner)[0]['kind'], 'ipc_thread_has_no_retained_pipe_owner')
         self.assertFalse(self.inspect('fn unrelated() { Command::new(program).spawn(); }', owner))
+
+    def test_ipc_production_clients_connect_without_owning_the_shared_process(self):
+        owner = 'crates/razer-ipc/src/lib.rs'
+        source = ('impl ServiceClient { fn spawn_with_program() { '
+                  'let broker = hid_broker::BrokerClient::connect(&endpoint, None, timeout)?; '
+                  'Ok(Self::from_broker(broker)) } }')
+        self.assertFalse(self.inspect(source, owner))
+        alias = source.replace('impl ServiceClient', 'use hid_broker::BrokerClient as Session; impl ServiceClient').replace(
+            'hid_broker::BrokerClient::connect', 'Session::connect')
+        self.assertFalse(self.inspect(alias, owner))
+        for changed in (source.replace('BrokerClient::connect', 'BrokerClient::new'),
+                        source.replace('Self::from_broker(broker)', 'Self::empty()'),
+                        source.replace('let broker', 'Command::new(program).spawn(); let broker'),
+                        source.replace('let broker', 'job.assign(child); let broker'),
+                        source.replace('let broker', 'hid_broker::connect_or_start(exe, timeout); let broker')):
+            self.assertIn('ipc_client_bootstraps_or_bypasses_shared_broker',
+                          [row['kind'] for row in self.inspect(changed, owner)])
+        for name in ('stop', 'finish_process'):
+            source = ('impl ServiceClient { fn ' + name + '() { '
+                      'if self.broker.is_some() { return self.close_broker_session(); } } }')
+            self.assertFalse(self.inspect(source, owner))
+            for changed in (source.replace('is_some()', 'is_none()'),
+                            source.replace('self.close_broker_session()', 'Ok(())'),
+                            source.replace('return self.close_broker_session();', 'return Ok(());')):
+                self.assertIn('ipc_stop_skips_shared_session_cleanup',
+                              [row['kind'] for row in self.inspect(changed, owner)])
+        for name in ('stop_simulated', 'finish_simulated_process', 'reap_child', 'join_pipe'):
+            self.assertIn('ipc_legacy_process_path_is_available_in_production',
+                          [row['kind'] for row in self.inspect('fn ' + name + '() {}', owner)])
+
+    def test_ipc_broker_cleanup_preserves_the_connection_until_its_real_confirmation(self):
+        owner = 'crates/razer-ipc/src/lib.rs'
+        source = ('impl ServiceClient { fn close_broker_session() { self.stopped = true; '
+                  'let cancellation = self.cancel_request(); let close = self.broker.as_mut()?.close_session(); '
+                  'match close { Ok(receipt) => { let confirmation = worker_shutdown::confirm_session_close(&receipt,id)?; '
+                  'self.shutdown_confirmation = Some(confirmation); self.broker.take(); cancellation }, '
+                  'Err(error) => Err(with_cleanup_error(error,cancellation)) } } }')
+        self.assertFalse(self.inspect(source, owner))
+        for changed in (source.replace('self.stopped = true;', ''),
+                        source.replace('self.cancel_request()', 'Ok(())'),
+                        source.replace('self.broker.as_mut()?.close_session()', 'Ok(receipt)'),
+                        source.replace('worker_shutdown::confirm_session_close(&receipt,id)?', 'fake_confirmation'),
+                        source.replace('worker_shutdown::confirm_session_close(&receipt,id)?', 'worker_shutdown::confirm_session_close(&receipt,id)'),
+                        source.replace('self.shutdown_confirmation = Some(confirmation);', ''),
+                        source.replace('self.broker.take();', ''),
+                        source.replace('self.broker.take();', '').replace('match close', 'self.broker.take(); match close'),
+                        source.replace('Err(error) => Err', 'Err(error) => { self.broker.take(); Err').replace(
+                            'with_cleanup_error(error,cancellation)) }', 'with_cleanup_error(error,cancellation)) } }')):
+            self.assertIn('ipc_stop_releases_session_without_confirmed_cleanup',
+                          [row['kind'] for row in self.inspect(changed, owner)])
+
+    def test_broker_root_lifetime_is_independent_of_sessions_and_legacy_forwarding(self):
+        client = 'crates/razer-ipc/src/hid_broker/client.rs'
+        bootstrap = 'crates/razer-ipc/src/hid_broker/bootstrap.rs'
+        forwarding = 'crates/razer-service/src/runtime/mod.rs'
+        self.assertFalse(self.inspect('fn close_session() { let receipt = reader.read().await?; receipt.validate()?; }', client))
+        for bad in ('fn close_session() { child.kill(); reader.read(); receipt.validate(); }',
+                    'fn drop() { WorkerJob::new(); }', 'fn connect() { Command::new(exe).spawn(); }'):
+            self.assertIn('shared_broker_session_controls_process_lifetime',
+                          [row['kind'] for row in self.inspect(bad, client)])
+        self.assertIn('shared_broker_close_has_no_real_cleanup_receipt',
+                      [row['kind'] for row in self.inspect('fn close_session() { Ok(()) }', client)])
+        for name in ('start', 'finish', 'drop'):
+            self.assertFalse(self.inspect('fn ' + name + '() { child.try_wait(); }', bootstrap))
+            for operation in ('child.kill();', 'job.assign(child);', 'WorkerJob::new();'):
+                self.assertIn('shared_broker_process_is_owned_by_a_client_kill_job',
+                              [row['kind'] for row in self.inspect('fn ' + name + '() { ' + operation + ' }', bootstrap)])
+        source = ('fn run_worker() { let mut client = razer_ipc::hid_broker::BrokerClient::connect(endpoint,None,timeout)?; '
+                  'client.request(envelope,cancel,timeout)?; client.close_session()?.validate()?; }')
+        self.assertFalse(self.inspect(source, forwarding))
+        for changed in (source.replace('client.request(envelope,cancel,timeout)?;', ''),
+                        source.replace('client.close_session()?.validate()?;', ''),
+                        source.replace('let mut client', 'NativeBackend::new(); let mut client')):
+            self.assertIn('legacy_stdio_worker_bypasses_shared_broker',
+                          [row['kind'] for row in self.inspect(changed, forwarding)])
+        self.assertFalse(self.inspect('fn unrelated() { NativeBackend::new(); }', forwarding))
+        for owner in (client, bootstrap, forwarding, 'crates/razer-ipc/src/lib.rs'):
+            self.assertFalse(workspace.inspect_architecture_source((workspace.ROOT / owner).read_bytes(),
+                             owner=owner, rust_parser=self.rust_parser), owner)
+
+    def test_broker_listener_keeps_exclusive_endpoint_until_native_owners_are_drained(self):
+        owner = 'crates/razer-service/src/runtime/hid_broker/server.rs'
+        source = ('fn run_listener() { if !session_available(sessions.len()) { drop(connected); continue; } '
+                  'prepare_listener_shutdown(); drop(listener); }')
+        self.assertFalse(self.inspect(source, owner))
+        for changed in (source.replace('prepare_listener_shutdown();', ''),
+                        source.replace('prepare_listener_shutdown(); drop(listener);', 'drop(listener); prepare_listener_shutdown();')):
+            self.assertIn('shared_broker_listener_released_before_native_owners_drained',
+                          [row['kind'] for row in self.inspect(changed, owner)])
+        for changed in (source.replace('!session_available', 'session_available'),
+                        source.replace('session_available(sessions.len())', 'false')):
+            self.assertIn('shared_broker_session_admission_is_unbounded',
+                          [row['kind'] for row in self.inspect(changed, owner)])
+        self.assertFalse(self.inspect('fn prepare_listener_shutdown() { super::prepare_shutdown(); }', owner))
+        self.assertIn('shared_broker_native_shutdown_is_not_drained',
+                      [row['kind'] for row in self.inspect('fn prepare_listener_shutdown() { Ok(()) }', owner)])
+        self.assertFalse(workspace.inspect_architecture_source((workspace.ROOT / owner).read_bytes(),
+                         owner=owner, rust_parser=self.rust_parser))
 
     def test_auxiliary_save_storage_failure_reopens_exit_admission(self):
         owner = 'crates/razer-shell/src/shell.rs'
@@ -3512,6 +3868,45 @@ class RustTestScopeTests(unittest.TestCase):
         return workspace.rust_test_scope(['cargo', 'test', '--locked', '-p', package, *arguments],
                                          {} if inventories is None else inventories)
 
+    def test_current_dpi_ble_filters_separate_initialization_and_cover_both_ipc_owners(self):
+        commands = dict(workspace.rust_validation_commands())
+        self.crate('''
+mod mouse_current_dpi { mod ble {
+    mod tests { #[test] fn ordinary_command() {} }
+    mod initialization { mod tests { #[test] fn observed_initialization() {} } }
+}}
+''', package='razer-device')
+        scope = workspace.rust_test_scope(commands['current-dpi-ble-initialization'], {})
+        self.assertEqual(scope['targets'][0]['selected_tests'], [
+            'mouse_current_dpi::ble::initialization::tests::observed_initialization'])
+        scope = workspace.rust_test_scope(commands['current-dpi-ble-protocol'], {})
+        self.assertEqual(scope['targets'][0]['selected_tests'], [
+            'mouse_current_dpi::ble::tests::ordinary_command'])
+        source = '''
+mod device_tasks { mod tests {
+    #[test] fn current_dpi_ble_scope() {}
+    #[test] fn unrelated_scope() {}
+}}
+mod mouse_current_dpi_ble { mod tests { #[test] fn typed_context() {} } }
+'''
+        self.crate(source, package='razer-ipc')
+        scope = workspace.rust_test_scope(commands['current-dpi-ble-ipc'], {})
+        self.assertEqual(scope['targets'][0]['selected_tests'], [
+            'device_tasks::tests::current_dpi_ble_scope',
+            'mouse_current_dpi_ble::tests::typed_context'])
+        (self.root / 'crates/razer-ipc/src/lib.rs').write_text(source + '''
+mod mouse_current_dpi_ble_window {
+    #[gpui_kit::test] fn visual(cx: &mut TestAppContext) { cx.open_window(); }
+}
+''', encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'prohibited window tests'):
+            workspace.rust_test_scope(commands['current-dpi-ble-ipc'], {})
+        (self.root / 'crates/razer-device/src/lib.rs').write_text(
+            'mod mouse_current_dpi { mod ble { mod tests { #[test] fn ordinary_command() {} } } }',
+            encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'no current tests'):
+            workspace.rust_test_scope(commands['current-dpi-ble-initialization'], {})
+
     def test_broad_scroll_filter_rejects_windows_and_module_filter_keeps_both_pure_tests(self):
         self.crate('''
 mod scroll_wheel { mod tests {
@@ -3793,6 +4188,191 @@ class RustValidationBoundaryTests(unittest.TestCase):
         scope.start()
         self.addCleanup(scope.stop)
 
+    def test_failed_workspace_check_blocks_suites_without_changing_the_requested_selection(self):
+        commands = [
+            ('first', ['cargo', 'test', '--locked', '--lib', 'first::tests']),
+            ('workspace', ['cargo', 'check', '--locked', '--workspace', '--all-targets']),
+            ('second', ['cargo', 'test', '--locked', '--lib', 'second::tests']),
+        ]
+        overrides = ['--config', 'build.jobs=1']
+
+        def completed(command, **kwargs):
+            self.assertEqual(command[1], 'check')
+            kwargs['stdout'].write(b'error: workspace compilation failed\n')
+            return mock.Mock(returncode=101)
+
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.object(workspace, 'ROOT', Path(directory)), \
+                mock.patch.object(workspace, 'rust_inputs', return_value=[]), \
+                mock.patch.object(workspace, 'rust_validation_commands', return_value=commands), \
+                mock.patch.object(workspace, 'verification_environment', side_effect=lambda _: nullcontext((None, None))) as environment, \
+                mock.patch.object(workspace.subprocess, 'run', side_effect=completed) as runner, \
+                mock.patch.object(workspace, 'write_json') as write_receipt, \
+                mock.patch('sys.stdout', new=io.StringIO()):
+            with self.assertRaisesRegex(ValueError, 'Validation failed'):
+                workspace.validate_rust(selected_suites=['second', 'workspace', 'first'],
+                                        cargo_config=['build.jobs=1'])
+            runner.assert_called_once()
+            environment.assert_called_once_with('workspace')
+            receipt = write_receipt.call_args.args[1]
+            self.assertFalse(receipt['passed'])
+            self.assertTrue(receipt['inputs_unchanged'])
+            self.assertFalse(receipt['all_configured_suites'])
+            self.assertEqual(receipt['suite_selection'], ['workspace', 'first', 'second'])
+            self.assertEqual(len(receipt['commands']), 1)
+            failure = receipt['commands'][0]
+            self.assertEqual(failure['name'], 'workspace')
+            self.assertEqual(failure['exit_code'], 101)
+            self.assertEqual(failure['errors'], ['command_failed'])
+            self.assertFalse(failure['passed'])
+            self.assertEqual((Path(directory) / failure['log']).read_text(),
+                             'error: workspace compilation failed\n')
+            self.assertEqual(receipt['unexecuted_suites'], [
+                {'name': name, 'argv': command[:2] + overrides + command[2:],
+                 'reason': 'blocked_by_workspace_check_failed'}
+                for name, command in (commands[0], commands[2])
+            ])
+
+    def test_successful_workspace_check_continues_suites_and_preserves_later_failures(self):
+        commands = [
+            ('first', ['cargo', 'test', '--locked', '--lib', 'first::tests']),
+            ('workspace', ['cargo', 'check', '--locked', '--workspace', '--all-targets']),
+            ('second', ['cargo', 'test', '--locked', '--lib', 'second::tests']),
+        ]
+
+        def completed(command, **kwargs):
+            if command[1] == 'check':
+                return mock.Mock(returncode=0)
+            failed = command[-1] == 'first::tests'
+            kwargs['stdout'].write(
+                b'test result: FAILED. 0 passed; 1 failed; 0 ignored\n' if failed else
+                b'test result: ok. 1 passed; 0 failed; 0 ignored\n')
+            return mock.Mock(returncode=101 if failed else 0)
+
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.object(workspace, 'ROOT', Path(directory)), \
+                mock.patch.object(workspace, 'rust_inputs', return_value=[]), \
+                mock.patch.object(workspace, 'rust_validation_commands', return_value=commands), \
+                mock.patch.object(workspace, 'verification_environment', side_effect=lambda _: nullcontext((None, None))), \
+                mock.patch.object(workspace.subprocess, 'run', side_effect=completed) as runner, \
+                mock.patch.object(workspace, 'write_json') as write_receipt, \
+                mock.patch('sys.stdout', new=io.StringIO()):
+            with self.assertRaisesRegex(ValueError, 'Validation failed'):
+                workspace.validate_rust()
+            self.assertEqual(runner.call_count, 3)
+            receipt = write_receipt.call_args.args[1]
+            self.assertFalse(receipt['passed'])
+            self.assertTrue(receipt['all_configured_suites'])
+            self.assertEqual(receipt['suite_selection'], ['workspace', 'first', 'second'])
+            self.assertEqual([row['name'] for row in receipt['commands']],
+                             receipt['suite_selection'])
+            self.assertEqual([row['passed'] for row in receipt['commands']], [True, False, True])
+            self.assertEqual(receipt['unexecuted_suites'], [])
+
+    def test_revalidation_preserves_failed_receipt_and_its_exact_log_bytes(self):
+        failure_log = b'error: first workspace compilation failed\n'
+        success_log = b'workspace compilation completed\n'
+        outputs = iter([(101, failure_log), (0, success_log)])
+
+        def completed(command, **kwargs):
+            status, raw = next(outputs)
+            kwargs['stdout'].write(raw)
+            return mock.Mock(returncode=status)
+
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.object(workspace, 'ROOT', Path(directory)), \
+                mock.patch.object(workspace, 'rust_inputs', return_value=[]), \
+                mock.patch.object(workspace, 'rust_validation_commands', return_value=[
+                    ('workspace', ['cargo', 'check', '--locked', '--workspace', '--all-targets'])]), \
+                mock.patch.object(workspace, 'verification_environment', side_effect=lambda _: nullcontext((None, None))), \
+                mock.patch.object(workspace.subprocess, 'run', side_effect=completed) as runner, \
+                mock.patch('sys.stdout', new=io.StringIO()):
+            root = Path(directory)
+            path = root / '.analysis/validation.json'
+            with self.assertRaisesRegex(ValueError, 'Validation failed'):
+                workspace.validate_rust()
+            failed_bytes = path.read_bytes()
+            failed = json.loads(failed_bytes)
+            failed_row = failed['commands'][0]
+            self.assertFalse(failed['passed'])
+            self.assertEqual(failed_row['log_sha256'], hashlib.sha256(failure_log).hexdigest())
+            self.assertEqual(failed_row['log_bytes'], len(failure_log))
+            self.assertEqual(Path(failed_row['log']).name, failed_row['log_sha256'] + '.txt')
+
+            workspace.validate_rust()
+            successful = json.loads(path.read_bytes())
+            self.assertTrue(successful['passed'])
+            previous = successful['previous_receipt']
+            self.assertEqual(previous['sha256'], hashlib.sha256(failed_bytes).hexdigest())
+            self.assertEqual(previous['bytes'], len(failed_bytes))
+            self.assertEqual(Path(previous['path']).name, previous['sha256'] + '.json')
+            self.assertEqual((root / previous['path']).read_bytes(), failed_bytes)
+            self.assertEqual((root / failed_row['log']).read_bytes(), failure_log)
+            self.assertEqual((root / successful['commands'][0]['log']).read_bytes(), success_log)
+            self.assertNotEqual(successful['commands'][0]['log'], failed_row['log'])
+            self.assertFalse((root / '.analysis/verification/workspace.txt').exists())
+            self.assertFalse(list((root / '.analysis/verification').glob('*.tmp')))
+            self.assertEqual(runner.call_count, 2)
+
+    def test_validation_never_overwrites_conflicting_content_addressed_logs_or_receipts(self):
+        log_bytes = b'workspace compilation completed\n'
+        previous_bytes = b'{"schema_version":1,"passed":false,"commands":[]}\n'
+        for suffix, raw in (('.txt', log_bytes), ('.json', previous_bytes)):
+            with self.subTest(suffix=suffix), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                path = root / '.analysis/validation.json'
+                path.parent.mkdir()
+                path.write_bytes(previous_bytes)
+                conflict = root / '.analysis/verification' / (hashlib.sha256(raw).hexdigest() + suffix)
+                conflict.parent.mkdir()
+                conflict.write_bytes(b'different retained evidence bytes')
+
+                def completed(command, **kwargs):
+                    kwargs['stdout'].write(log_bytes)
+                    return mock.Mock(returncode=0)
+
+                with mock.patch.object(workspace, 'ROOT', root), \
+                        mock.patch.object(workspace, 'rust_inputs', return_value=[]), \
+                        mock.patch.object(workspace, 'rust_validation_commands', return_value=[
+                            ('workspace', ['cargo', 'check', '--locked', '--workspace', '--all-targets'])]), \
+                        mock.patch.object(workspace, 'verification_environment', side_effect=lambda _: nullcontext((None, None))), \
+                        mock.patch.object(workspace.subprocess, 'run', side_effect=completed) as runner, \
+                        mock.patch('sys.stdout', new=io.StringIO()):
+                    with self.assertRaisesRegex(ValueError, 'identity differs'):
+                        workspace.validate_rust()
+                self.assertEqual(path.read_bytes(), previous_bytes)
+                self.assertEqual(conflict.read_bytes(), b'different retained evidence bytes')
+                self.assertFalse(list(conflict.parent.glob('*.tmp')))
+                runner.assert_called_once()
+
+    def test_interrupted_validation_preserves_its_partial_log_and_previous_receipt(self):
+        log_bytes = b'partial compiler output before cancellation\n'
+        previous_bytes = b'{"schema_version":1,"passed":false,"commands":[]}\n'
+
+        def interrupted(command, **kwargs):
+            kwargs['stdout'].write(log_bytes)
+            raise KeyboardInterrupt('cancelled verification')
+
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.object(workspace, 'ROOT', Path(directory)), \
+                mock.patch.object(workspace, 'rust_inputs', return_value=[]), \
+                mock.patch.object(workspace, 'rust_validation_commands', return_value=[
+                    ('workspace', ['cargo', 'check', '--locked', '--workspace', '--all-targets'])]), \
+                mock.patch.object(workspace, 'verification_environment', side_effect=lambda _: nullcontext((None, None))), \
+                mock.patch.object(workspace.subprocess, 'run', side_effect=interrupted) as runner, \
+                mock.patch('sys.stdout', new=io.StringIO()):
+            root = Path(directory)
+            path = root / '.analysis/validation.json'
+            path.parent.mkdir()
+            path.write_bytes(previous_bytes)
+            with self.assertRaises(KeyboardInterrupt):
+                workspace.validate_rust()
+            self.assertEqual(path.read_bytes(), previous_bytes)
+            logs = list((root / '.analysis/verification').iterdir())
+            self.assertEqual([log.name for log in logs], [hashlib.sha256(log_bytes).hexdigest() + '.txt'])
+            self.assertEqual(logs[0].read_bytes(), log_bytes)
+            runner.assert_called_once()
+
     def test_assets_suite_excludes_window_tests_and_records_the_scope(self):
         def completed(command, **kwargs):
             kwargs["stdout"].write(b"test result: ok. 8 passed; 0 failed; 0 ignored\n")
@@ -3816,7 +4396,8 @@ class RustValidationBoundaryTests(unittest.TestCase):
     def test_current_dpi_ble_suites_keep_pure_filters_and_release_owned_temporary_files(self):
         expected = {
             'current-dpi-ble-protocol': ('razer-device', 'mouse_current_dpi::ble::tests'),
-            'current-dpi-ble-ipc': ('razer-ipc', 'device_tasks::tests::current_dpi_ble'),
+            'current-dpi-ble-initialization': ('razer-device', 'mouse_current_dpi::ble::initialization::tests'),
+            'current-dpi-ble-ipc': ('razer-ipc', 'current_dpi_ble'),
             'current-dpi-ble-discovery': ('razer-discovery', 'discovery::tests::current_dpi_ble'),
             'current-dpi-ble-service': ('razer-service', 'current_dpi_ble_'),
         }
@@ -4365,12 +4946,15 @@ class MappingCapabilityProjectionTests(unittest.TestCase):
 class ModuleServiceArtworkTests(unittest.TestCase):
     def source(self):
         return ('const label="原件";const modules={44442:(e,t,n)=>{'
+            'n.d(t,{default:()=>ae});'
             'const h=n.p+"static/media/installation_cover_placeholder.c5d354c7.avif";'
             'const w=(0,r.connect)(e=>e)(e=>{const [A,j]=(0,i.useState)(!1),'
             '[M,I]=(0,i.useState)(!1),O=()=>I(!0);return A?(0,b.jsx)("img",'
             '{className:"item-description-image",src:M?h:n.detail.srcImage,onError:O}):null});'
             'const H=e=>e.items.map(item=>(0,b.jsx)(w,{item}));'
-            'const ae=(0,r.connect)(e=>e)(e=>{const v=e=>({...e,srcImage:"thumbnail"});return v(e)});'
+            'const ae=(0,r.connect)(e=>e)(e=>{const v=e=>{let image={};'
+            'image.srcImage=`/synapse/products/${e.productId}/ui/${e.productId}_${e.editionId}/PluginImages/${e.productId}_${e.editionId}_${e.layoutId}_dashboard1x.png`;'
+            'return image};return v(e)});'
             '}};').encode()
 
     def test_complete_row_proof_preserves_original_utf8_boundaries_and_sticky_error_state(self):
@@ -4390,6 +4974,83 @@ class ModuleServiceArtworkTests(unittest.TestCase):
                          (b"[M,I]=(0,i.useState)(!1)", b"[M,I]=(0,i.useState)(!0)")):
             with self.subTest(change=new), self.assertRaises(ValueError):
                 workspace.module_service_artwork_projection(self.source().replace(old, new))
+
+    def deployment(self, script_hash="98da235d"):
+        declared = {"files": {"static/js/6505." + script_hash + ".chunk.js": "./static/js/6505." + script_hash + ".chunk.js",
+                              "static/css/6505.9782778c.chunk.css": "./static/css/6505.9782778c.chunk.css",
+                              "App.js": "./static/js/App.70b4a4e6.chunk.js"}}
+        main = ('r.u=e=>"static/js/"+({8180:"App"}[e]||e)+"."+{6505:"' + script_hash
+                + '",8180:"70b4a4e6"}[e]+".chunk.js";'
+                  'r.miniCssF=e=>"static/css/"+({8180:"App"}[e]||e)+"."+{6505:"9782778c"}[e]+".chunk.css";'
+                  'r.p="/synapse/dashboard/";Promise.all([r.e(55),r.e(8180)]).then(r.bind(r,35378));').encode()
+        app = b'(self.webpack=self.webpack||[]).push([[8180],{35378:(e,t,a)=>{const row={lazy:()=>a.e(6505).then(a.bind(a,44442))};}}]);'
+        script = self.source().replace(b'const modules={', b'(self.webpack=self.webpack||[]).push([[6505],{').replace(b'}};', b'}}]);')
+        return declared, main, app, script
+
+    def test_current_and_retained_chunk_hashes_bind_the_actual_complete_lazy_chain(self):
+        for digest in ("98da235d", "8b539cb0"):
+            args = self.deployment(digest)
+            proof = workspace.module_service_deployment_projection(*args)
+            self.assertEqual(proof['declared']['js'], 'static/js/6505.' + digest + '.chunk.js')
+            for key, capture in proof.items():
+                if isinstance(capture, dict) and 'body' in capture:
+                    self.assertEqual(hashlib.sha256(capture['body'].encode()).hexdigest(), capture['body_sha256'], key)
+            self.assertFalse(proof['target_execution'])
+        declared, main, app, script = self.deployment()
+        # A nested dependency owns its own same-spelled runtime identifier.
+        main = b'(()=>{r.p="";})();' + main.replace(b'r.p="/synapse/dashboard/"', b'r.p="./"')
+        proof = workspace.module_service_deployment_projection(declared, main, app, script)
+        self.assertEqual(proof['public_path']['body'], 'r.p="./"')
+
+    def test_deployment_rejects_missing_duplicate_changed_or_unmounted_chunks(self):
+        declared, main, app, script = self.deployment()
+        for replacement in (
+                {},
+                {**declared['files'], 'static/js/6505.deadbeef.chunk.js': './static/js/6505.deadbeef.chunk.js'},
+                {k: v for k, v in declared['files'].items() if not k.startswith('static/css/')},
+                {**declared['files'], 'static/js/6505.98da235d.chunk.js': '../6505.98da235d.chunk.js'},
+                {**declared['files'], 'App.js': './static/js/Other.70b4a4e6.chunk.js'},
+        ):
+            with self.subTest(files=replacement), self.assertRaises(ValueError):
+                workspace.module_service_deployment_projection({'files': replacement}, main, app, script)
+        for index, old, new in (
+                (1, b'6505:"98da235d"', b'6505:"00000000"'),
+                (1, b'6505:"9782778c"', b'6505:"00000000"'),
+                (1, b'6505:"98da235d"', b'6505:dynamic'),
+                (1, b'6505:"98da235d"', b'6505:"98da235d",6505:"98da235d"'),
+                (1, b'r.e(8180)', b'r.e(8181)'),
+                (1, b'r.bind(r,35378)', b'r.bind(r,35379)'),
+                (1, b'/synapse/dashboard/', b'/other/'),
+                (1, b'r.p="/synapse/dashboard/";', b'r.p="/synapse/dashboard/";r.p="/synapse/dashboard/";'),
+                (2, b'[[8180]', b'[[8181]'),
+                (2, b'a.e(6505)', b'a.e(6506)'),
+                (2, b'a.bind(a,44442)', b'a.bind(a,44443)'),
+                (2, b'a.e(6505).then(a.bind(a,44442))', b'a.e(6505).then(other.bind(other,44442))'),
+                (2, b'const row=', b'const duplicate={lazy:()=>a.e(6505).then(a.bind(a,44442))};const row='),
+                (3, b'[[6505]', b'[[6506]'),
+                (3, b'44442:', b'44443:'),
+        ):
+            args = [declared, main, app, script]
+            args[index] = args[index].replace(old, new)
+            with self.subTest(index=index, new=new), self.assertRaises(ValueError):
+                workspace.module_service_deployment_projection(*args)
+
+    def test_projection_follows_default_and_device_image_structure_across_minifier_names(self):
+        renamed = self.source().replace(b'()=>ae', b'()=>re').replace(b'const ae=', b'const re=').replace(
+            b'const v=', b'const f=').replace(b'return v(e)', b'return f(e)')
+        proof = workspace.module_service_artwork_projection(renamed)
+        self.assertTrue(proof['complete_observer']['body'].startswith('re='))
+        self.assertTrue(proof['complete_device_projection']['body'].startswith('f='))
+        for old, new in (
+                (b'n.d(t,{default:()=>re});', b''),
+                (b'default:()=>re', b'default:()=>missing'),
+                (b'default:()=>re', b'default:()=>re,default:()=>re'),
+                (b'const f=', b'const duplicate=e=>{let image={};image.srcImage=`/synapse/products/${e.productId}/ui/${e.productId}_${e.editionId}/PluginImages/${e.productId}_${e.editionId}_${e.layoutId}_dashboard1x.png`;return image};const f='),
+                (b'${e.layoutId}', b'${e.editionId}'),
+                (b'return f(e)', b'return e'),
+        ):
+            with self.subTest(new=new), self.assertRaises(ValueError):
+                workspace.module_service_artwork_projection(renamed.replace(old, new))
 
 
 class KeyboardArtworkVerificationTests(unittest.TestCase):
@@ -5313,6 +5974,338 @@ class VerificationTemporaryOwnershipTests(unittest.TestCase):
         path = ReadOnlyPath()
         self.assertEqual(workspace.digest(path), hashlib.sha256(b"immutable bytes").hexdigest())
         self.assertEqual(path.mode, "rb")
+
+
+class UploadCloneCleanupTests(unittest.TestCase):
+    def setUp(self):
+        import asset_release
+        import subprocess
+        self.asset_release = asset_release
+        self.subprocess = subprocess
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name).resolve()
+        for patch in (mock.patch.object(workspace, "ROOT", self.root),
+                      mock.patch.object(workspace, "_scratch_processes", return_value=([], []))):
+            patch.start()
+            self.addCleanup(patch.stop)
+        payload = b"retained pinned resource bytes"
+        self.resource_sha = hashlib.sha256(payload).hexdigest()
+        self.resource_name = "assets/synapse/shared/products/" + self.resource_sha + ".png"
+        groups = [{"name": "shared", "requires": [], "files": [
+            {"path": self.resource_name, "bytes": len(payload), "sha256": self.resource_sha}]}]
+        source_sha = asset_release.content_hash({"groups": groups, "git_files": []})
+        self.lock = {"schema_version": 2, "format": "files", "tag": "assets-" + source_sha[:20],
+                     "source_sha256": source_sha, "groups": groups, "git_files": [],
+                     "storage": {"provider": "huggingface", "repository": "local-owner/resources", "revision": None}}
+        self.name = ".work/asset-releases/uploads/" + self.lock["tag"] + "-fixture"
+        self.clone = self.root / self.name
+        self.clone.mkdir(parents=True)
+        path = self.clone / self.resource_name
+        path.parent.mkdir(parents=True)
+        path.write_bytes(payload)
+        self.resource = path
+        (self.clone / "release-index.json").write_bytes(asset_release.encoded(asset_release.published_manifest(self.lock)))
+        (self.clone / ".gitattributes").write_bytes(b"")
+        (self.clone / "README.md").write_bytes(b"Pinned resource fixture\n")
+        self.git("init", "--initial-branch=main")
+        self.git("remote", "add", "origin", "https://huggingface.co/datasets/local-owner/resources")
+        self.git("add", "--", ".")
+        self.git("commit", "-m", self.lock["tag"])
+        self.revision = self.git("rev-parse", "HEAD").decode("ascii").strip()
+        self.git("update-ref", "refs/remotes/origin/main", self.revision)
+        self.lock["storage"]["revision"] = self.revision
+        self.lock_path = self.write("tools/asset-release.json", self.lock)
+        self.tool = self.root / "tools/asset_release.py"
+        self.tool.write_bytes(b"maintained resource verification owner\n")
+        self.receipt_path = self.root / ".analysis/results/asset-release-update.json"
+        self.receipt = {"schema_version": 1, "recorded_at_utc": "2000-01-01T00:00:00+00:00",
+            "target_execution": False, "repository": "local-owner/resources", "base_revision": self.revision,
+            "status": "prepared", "remote_publication": False,
+            "tool": {"path": "tools/asset_release.py", "sha256": workspace.digest(self.tool)},
+            "read_only_remote_preflight": {"recorded_at_utc": "2000-01-01T00:00:00+00:00",
+                "repository": "local-owner/resources", "pinned_base_revision": self.revision,
+                "observed_main_revision": self.revision, "main_equals_pinned_base": True,
+                "pinned_tree_files": 4, "main_tree_files": 4,
+                "remote_manifest_sha256": workspace.digest(self.clone / "release-index.json"),
+                "only_git_refs_tree_metadata_and_manifest_read": True,
+                "media_downloaded": False, "remote_write": False, "target_execution": False}}
+        self.save_receipt()
+        self.prepared = self.root / ".analysis/inputs/prepared-resources/retained.webp"
+        self.prepared.parent.mkdir(parents=True)
+        self.prepared.write_bytes(b"separate publication payload")
+
+    def git(self, *args):
+        environment = dict(os.environ, GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull,
+                           GIT_TERMINAL_PROMPT="0", GIT_NO_LAZY_FETCH="1")
+        return self.subprocess.run(["git", "--no-optional-locks", "-c", "core.autocrlf=false",
+            "-c", "core.fsmonitor=false", "-c", "user.name=Resource fixture",
+            "-c", "user.email=fixture@local.invalid", *args], cwd=self.clone,
+            env=environment, capture_output=True, check=True).stdout
+
+    def write(self, name, value):
+        path = self.root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(json.dumps(value).encode("utf-8"))
+        return path
+
+    def save_receipt(self):
+        self.write(self.receipt_path.relative_to(self.root).as_posix(), self.receipt)
+
+    def plan(self):
+        with mock.patch("builtins.print"):
+            report = workspace.clean()
+        self.plan_path = max((self.root / ".analysis/results").glob("scratch-cleanup-*-plan.json"),
+                             key=lambda path: path.stat().st_mtime_ns)
+        return report
+
+    def apply(self):
+        with mock.patch("builtins.print"):
+            return workspace.clean(apply=self.plan_path.relative_to(self.root).as_posix(),
+                                   plan_sha256=workspace.digest(self.plan_path))
+
+    def test_completed_pinned_clone_binds_rebuild_evidence_and_never_uses_network(self):
+        with mock.patch("urllib.request.urlopen", side_effect=AssertionError("No cleanup network")):
+            report = self.plan()
+        self.assertEqual(len(report["candidates"]), 1)
+        row = report["candidates"][0]
+        self.assertEqual(row["owner_receipts"], ["tools/asset-release.json", ".analysis/results/asset-release-update.json"])
+        self.assertTrue({"tools/asset-release.json", "tools/asset_release.py",
+                         ".analysis/results/asset-release-update.json", self.name + "/release-index.json",
+                         self.name + "/.git/config"} <= {item["path"] for item in row["basis"]})
+        self.assertEqual(row["rebuild_evidence"]["revision"], self.revision)
+        self.assertFalse(row["rebuild_evidence"]["network_access"])
+        with mock.patch.object(workspace, "_clean_delete_group", return_value={"bytes_reclaimed": 0}) as delete:
+            self.apply()
+        delete.assert_called_once()
+        self.assertTrue(self.prepared.is_file())
+
+    def test_url_name_age_and_clean_git_alone_never_establish_completion(self):
+        self.receipt_path.unlink()
+        rows, retained = workspace._clean_candidates()
+        self.assertFalse(rows)
+        self.assertEqual(retained[0]["reason"], "upload_completion_or_rebuild_unverified")
+        self.assertTrue(self.clone.exists())
+
+    def test_verified_publication_receipt_must_cover_the_same_complete_pinned_release(self):
+        self.receipt.pop("read_only_remote_preflight")
+        self.receipt.update(status="published_and_verified", remote_publication=True, revision=self.revision,
+            verification={"passed": True, "repository": "local-owner/resources", "revision": self.revision,
+                          "source_files_verified": 1, "retained_files_present": 0, "remote_manifest_present": True})
+        self.save_receipt()
+        self.assertEqual(workspace._clean_upload_evidence(self.clone)["rebuild_evidence"]["proof_kind"],
+                         "published_and_verified")
+        self.receipt["verification"]["source_files_verified"] = 0
+        self.save_receipt()
+        self.assertFalse(workspace._clean_candidates()[0])
+
+    def test_current_verification_checkout_and_formal_prepared_dependencies_are_retained(self):
+        self.receipt["verification_checkout"] = self.name
+        self.save_receipt()
+        self.assertFalse(self.plan()["candidates"])
+        self.receipt.pop("verification_checkout")
+        self.save_receipt()
+        self.write(".analysis/inputs/prepared-resources/surround-publication.json",
+                   {"source": {"path": self.name + "/" + self.resource_name}})
+        self.assertFalse(self.plan()["candidates"])
+        self.assertTrue(self.prepared.is_file())
+
+    def test_incomplete_wrong_revision_manifest_owner_or_future_receipt_fail_closed(self):
+        original = copy.deepcopy(self.receipt)
+        changes = [("missing", lambda r: r.pop("read_only_remote_preflight")),
+            ("revision", lambda r: r["read_only_remote_preflight"].update(observed_main_revision="f" * 40)),
+            ("manifest", lambda r: r["read_only_remote_preflight"].update(remote_manifest_sha256="f" * 64)),
+            ("owner", lambda r: r["tool"].update(sha256="f" * 64)),
+            ("count", lambda r: r["read_only_remote_preflight"].update(main_tree_files=3)),
+            ("future", lambda r: r["read_only_remote_preflight"].update(recorded_at_utc="2100-01-01T00:00:00+00:00"))]
+        for issue, mutate in changes:
+            with self.subTest(issue=issue):
+                self.receipt = copy.deepcopy(original)
+                mutate(self.receipt)
+                self.save_receipt()
+                self.assertFalse(workspace._clean_candidates()[0])
+
+    def test_dirty_untracked_staged_and_extra_refs_are_not_disposable(self):
+        raw = self.resource.read_bytes()
+        self.resource.write_bytes(b"unpublished modification")
+        with self.assertRaises(ValueError): workspace._clean_upload_evidence(self.clone)
+        self.resource.write_bytes(raw)
+        extra = self.clone / "unpublished.webp"
+        extra.write_bytes(b"unique payload")
+        with self.assertRaises(ValueError): workspace._clean_upload_evidence(self.clone)
+        extra.unlink()
+        self.resource.write_bytes(b"staged modification")
+        self.git("add", "--", self.resource_name)
+        self.resource.write_bytes(raw)
+        with self.assertRaises(ValueError): workspace._clean_upload_evidence(self.clone)
+        self.git("reset", "--mixed", "HEAD")
+        self.git("update-ref", "refs/heads/unpublished", self.revision)
+        with self.assertRaises(ValueError): workspace._clean_upload_evidence(self.clone)
+
+    def test_unreachable_objects_partial_transfers_and_unknown_lfs_payloads_are_retained(self):
+        directory = self.clone / ".git/lfs/tmp"
+        directory.mkdir(parents=True)
+        partial = directory / "partial"
+        partial.write_bytes(b"not published")
+        with self.assertRaises(ValueError): workspace._clean_upload_evidence(self.clone)
+        partial.unlink()
+        unique = b"unpublished LFS payload"
+        sha = hashlib.sha256(unique).hexdigest()
+        payload = self.clone / ".git/lfs/objects" / sha[:2] / sha[2:4] / sha
+        payload.parent.mkdir(parents=True)
+        payload.write_bytes(unique)
+        with self.assertRaises(ValueError): workspace._clean_upload_evidence(self.clone)
+        payload.unlink()
+        self.git("hash-object", "-w", str(self.prepared))
+        with self.assertRaisesRegex(ValueError, "unreachable"):
+            workspace._clean_upload_evidence(self.clone)
+
+    def test_unknown_git_metadata_and_changed_manifest_cannot_hide_unique_payloads(self):
+        extra = self.clone / ".git/unpublished.bin"
+        extra.write_bytes(b"unique local content")
+        with self.assertRaises(ValueError): workspace._clean_upload_evidence(self.clone)
+        extra.unlink()
+        (self.clone / "release-index.json").write_bytes(b"unpublished manifest")
+        with self.assertRaises(ValueError): workspace._clean_upload_evidence(self.clone)
+
+    def test_inherited_git_redirects_are_isolated_and_repository_worktree_redirect_is_rejected(self):
+        redirected = {"GIT_DIR": "missing-repository", "GIT_WORK_TREE": "missing-worktree",
+            "GIT_COMMON_DIR": "missing-common", "GIT_OBJECT_DIRECTORY": "missing-objects",
+            "GIT_ALTERNATE_OBJECT_DIRECTORIES": "missing-alternates", "GIT_NAMESPACE": "foreign",
+            "GIT_CONFIG_PARAMETERS": "invalid injected parameters", "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": "core.worktree", "GIT_CONFIG_VALUE_0": "missing-worktree"}
+        with mock.patch.dict(os.environ, redirected):
+            self.assertEqual(workspace._clean_upload_evidence(self.clone)["rebuild_evidence"]["revision"], self.revision)
+        self.git("config", "core.worktree", str(self.root / "other-worktree"))
+        with self.assertRaises(ValueError): workspace._clean_upload_evidence(self.clone)
+
+    def test_known_hydrated_lfs_and_pointer_worktree_are_verified_against_the_same_lock(self):
+        raw = self.resource.read_bytes()
+        pointer = ("version https://git-lfs.github.com/spec/v1\n"
+                   f"oid sha256:{self.resource_sha}\nsize {len(raw)}\n").encode()
+        self.resource.write_bytes(pointer)
+        self.git("add", "--", self.resource_name)
+        self.git("commit", "-m", "pointer resource")
+        revision = self.git("rev-parse", "HEAD").decode().strip()
+        self.git("update-ref", "refs/remotes/origin/main", revision)
+        self.lock["storage"]["revision"] = revision
+        self.write("tools/asset-release.json", self.lock)
+        self.receipt["base_revision"] = revision
+        self.receipt["read_only_remote_preflight"].update(pinned_base_revision=revision, observed_main_revision=revision)
+        self.save_receipt()
+        workspace._clean_upload_evidence(self.clone)
+        payload = self.clone / ".git/lfs/objects" / self.resource_sha[:2] / self.resource_sha[2:4] / self.resource_sha
+        payload.parent.mkdir(parents=True)
+        payload.write_bytes(raw)
+        self.resource.write_bytes(raw)
+        row = workspace._clean_upload_evidence(self.clone)
+        self.assertEqual(row["rebuild_evidence"]["local_lfs_payloads"][0]["sha256"], self.resource_sha)
+        payload.write_bytes(b"corrupt")
+        with self.assertRaises(ValueError): workspace._clean_upload_evidence(self.clone)
+
+    def test_receipt_or_lock_changes_and_legacy_plan_omission_prevent_apply(self):
+        self.plan()
+        self.receipt["unrelated_but_changed_receipt"] = True
+        self.save_receipt()
+        with self.assertRaises(ValueError), mock.patch.object(workspace, "_clean_delete_group") as delete:
+            self.apply()
+        delete.assert_not_called()
+        report = self.plan()
+        report["candidates"][0].pop("rebuild_evidence")
+        self.plan_path.write_bytes(json.dumps(report).encode())
+        with self.assertRaises(ValueError), mock.patch.object(workspace, "_clean_delete_group") as delete:
+            self.apply()
+        delete.assert_not_called()
+        self.plan()
+        self.lock["storage"]["revision"] = "f" * 40
+        self.write("tools/asset-release.json", self.lock)
+        with self.assertRaises(ValueError), mock.patch.object(workspace, "_clean_delete_group") as delete:
+            self.apply()
+        delete.assert_not_called()
+        self.assertTrue(self.clone.exists() and self.prepared.exists())
+
+    def test_new_formal_dependency_after_plan_blocks_deletion_without_changing_the_clone(self):
+        self.plan()
+        self.write(".analysis/inputs/prepared-resources/retained-publication.json",
+                   {"source": {"path": self.name + "/" + self.resource_name}})
+        with self.assertRaises(ValueError), mock.patch.object(workspace, "_clean_delete_group") as delete:
+            self.apply()
+        delete.assert_not_called()
+        self.assertTrue(self.clone.exists() and self.prepared.exists())
+
+    def assert_final_guard_rejects(self, mutate):
+        import ctypes
+        report = self.plan()
+        row = report["candidates"][0]
+        originals = {item["path"]: (self.root / item["path"]).read_bytes() for item in row["tree"]["files"]}
+        guard = workspace._clean_group_final_guard
+        api = ctypes.WinDLL("kernel32", use_last_error=True)
+
+        def introduce_after_handles(owned, identities):
+            self.assertEqual(owned["path"], self.name)
+            mutate(owned, identities)
+            return guard(owned, identities)
+
+        with mock.patch.object(workspace, "_clean_group_final_guard", side_effect=introduce_after_handles), \
+                mock.patch("ctypes.WinDLL", return_value=api), \
+                mock.patch.object(api, "SetFileInformationByHandle", wraps=api.SetFileInformationByHandle) as dispose:
+            with self.assertRaises(ValueError):
+                self.apply()
+        dispose.assert_not_called()
+        for name, raw in originals.items():
+            self.assertEqual((self.root / name).read_bytes(), raw)
+        receipt = json.loads(self.plan_path.with_name(self.plan_path.stem + "-applied.json").read_bytes())
+        self.assertEqual(receipt["removed"], [])
+        self.assertEqual(len(receipt["failures"]), 1)
+        self.assertEqual(receipt["failures"][0]["partial_removed_files"], [])
+
+    @unittest.skipUnless(os.name == "nt", "Windows held-handle deletion barrier")
+    def test_new_index_lock_after_exclusive_handles_prevents_every_file_disposition(self):
+        child = self.clone / ".git/index.lock"
+        self.assert_final_guard_rejects(lambda *_: child.write_bytes(b"active git transaction"))
+        self.assertEqual(child.read_bytes(), b"active git transaction")
+
+    @unittest.skipUnless(os.name == "nt", "Windows held-handle deletion barrier")
+    def test_new_untracked_payload_after_exclusive_handles_prevents_every_file_disposition(self):
+        child = self.clone / "unpublished.webp"
+        self.assert_final_guard_rejects(lambda *_: child.write_bytes(b"new unpublished resource"))
+        self.assertEqual(child.read_bytes(), b"new unpublished resource")
+
+    @unittest.skipUnless(os.name == "nt", "Windows held-handle deletion barrier")
+    def test_new_lfs_transfer_after_exclusive_handles_prevents_every_file_disposition(self):
+        child = self.clone / ".git/lfs/tmp/active-transfer"
+        def create(*_):
+            child.parent.mkdir(parents=True)
+            child.write_bytes(b"active LFS transfer")
+        self.assert_final_guard_rejects(create)
+        self.assertEqual(child.read_bytes(), b"active LFS transfer")
+
+    @unittest.skipUnless(os.name == "nt", "Windows held-handle deletion barrier")
+    def test_external_relative_cwd_git_after_exclusive_handles_prevents_every_file_disposition(self):
+        process = {"pid": os.getpid() + 100000, "executable": "git.exe", "command_line": "git add -- asset.png"}
+        def running(*_):
+            workspace._scratch_processes.return_value = ([process], [])
+        self.assert_final_guard_rejects(running)
+
+    @unittest.skipUnless(os.name == "nt", "Windows held-handle deletion barrier")
+    def test_directory_identity_mismatch_at_final_guard_prevents_every_file_disposition(self):
+        def changed(_, identities):
+            device, inode, modified = identities[self.name]
+            identities[self.name] = (device, inode + 1, modified)
+        self.assert_final_guard_rejects(changed)
+
+    def test_upload_process_inventory_blocks_git_without_an_absolute_repository_argument(self):
+        for process in [
+                {"pid": os.getpid() + 1, "command_line": '"C:/Program Files/Git/cmd/git.exe" status'},
+                {"pid": os.getpid() + 1, "executable": "git-lfs.exe", "command_line": ""},
+                {"pid": os.getpid() + 1, "executable": "git-remote-https.exe", "command_line": "git-remote-https origin"}]:
+            with self.subTest(process=process), mock.patch.object(workspace, "_scratch_processes", return_value=([process], [])):
+                active, errors = workspace._clean_process_guard([{"path": self.name, "kind": "old_asset_upload_clone"}])
+                self.assertEqual(active, {self.name: [process["pid"]]})
+                self.assertEqual(errors, [])
+        with mock.patch.object(workspace, "_scratch_processes", return_value=([
+                {"pid": os.getpid() + 1, "executable": "python.exe", "command_line": "python inspect_git.py"}], [])):
+            self.assertEqual(workspace._clean_process_guard([{"path": self.name, "kind": "old_asset_upload_clone"}]), ({}, []))
 
 
 class PlannedScratchCleanupTests(unittest.TestCase):

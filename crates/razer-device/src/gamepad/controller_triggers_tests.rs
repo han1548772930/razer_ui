@@ -74,6 +74,30 @@ fn every_controller_uses_source_report_selector_and_discards_the_returned_prefix
         assert!(io.replies.borrow().is_empty());
     }
 }
+
+#[test]
+fn a_setter_release_error_keeps_its_ack_and_does_not_write_the_second_side() {
+    let mut accepted = vec![0; 91];
+    accepted[1] = 2;
+    accepted[6..11].copy_from_slice(&[2, 12, 18, 1, 1]);
+    let io = Transport {
+        sends: RefCell::new(vec![]),
+        replies: RefCell::new([accepted].into()),
+    };
+    let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&io);
+    let error = TriggerProtocol::new(&probe, capability(4133).unwrap(), |_| Ok(()))
+        .execute(&TriggerOperation::Circularity {
+            profile_slot: 1,
+            circular: true,
+        })
+        .unwrap_err();
+    let completed = crate::CompletedFeatureExchange::from_error(&error).unwrap();
+    assert_eq!(completed.command(), [3, 12, 18]);
+    assert_eq!(completed.data(), [1, 1]);
+    assert!(crate::backend::exchange_finalization_failed(&error));
+    assert_eq!(io.sends.borrow().len(), 1);
+    assert!(io.replies.borrow().is_empty());
+}
 #[test]
 fn digital_write_sets_mode_before_value_and_skips_inactive_side() {
     let mode = Command::SetMode(3, 2, 1);
@@ -83,6 +107,7 @@ fn digital_write_sets_mode_before_value_and_skips_inactive_side() {
         replies: RefCell::new([reply(mode, 4, 0, 2, &[]), reply(value, 4, 1, 2, &[])].into()),
     };
     let mut delays = vec![];
+    let probe = crate::feature_exchange::tests::ExchangeProbe::new(&io);
     let operation = TriggerOperation::Digital {
         profile_slot: 3,
         settings: vec![
@@ -90,7 +115,7 @@ fn digital_write_sets_mode_before_value_and_skips_inactive_side() {
             DigitalTrigger::new(2, 18, true, true).unwrap(),
         ],
     };
-    let result = TriggerProtocol::new(&io, capability(4133).unwrap(), |delay| {
+    let result = TriggerProtocol::new(&probe, capability(4133).unwrap(), |delay| {
         delays.push(delay);
         Ok(())
     })
@@ -104,7 +129,24 @@ fn digital_write_sets_mode_before_value_and_skips_inactive_side() {
     assert_eq!(sends.len(), 2);
     assert_eq!(&sends[0][6..12], &[3, 12, 21, 3, 2, 1]);
     assert_eq!(&sends[1][6..13], &[4, 12, 22, 3, 2, 18, 1]);
-    assert_eq!(delays, vec![Duration::from_millis(10); 4]);
+    assert_eq!(
+        probe.timings(),
+        vec![
+            crate::backend::ExchangeTiming::MutexOut {
+                interval: Duration::from_millis(10)
+            };
+            2
+        ]
+    );
+    assert_eq!(
+        delays,
+        [
+            Duration::ZERO,
+            Duration::from_millis(10),
+            Duration::ZERO,
+            Duration::from_millis(10)
+        ]
+    );
 }
 #[test]
 fn analog_write_preserves_all_active_entries_in_order_and_same_retry_transaction() {

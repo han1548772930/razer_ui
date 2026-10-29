@@ -175,6 +175,19 @@ pub struct Report {
     pub dim_before: Option<Vec<u8>>,
     pub setter_sent: bool,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct WriteFailure {
+    /// Responses from the failed request; never a current device snapshot.
+    pub progress: Report,
+}
+
+impl std::fmt::Display for WriteFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Mouse power task did not complete")
+    }
+}
+
 fn exchange(
     device: &dyn FeatureTransport,
     cap: &DeviceReadCapability,
@@ -182,6 +195,26 @@ fn exchange(
     data: &[u8],
     transaction: u8,
     validate: &impl Fn() -> anyhow::Result<()>,
+) -> anyhow::Result<Acknowledgement> {
+    exchange_observing(
+        device,
+        cap,
+        command,
+        data,
+        transaction,
+        validate,
+        &mut |_| {},
+    )
+}
+
+fn exchange_observing(
+    device: &dyn FeatureTransport,
+    cap: &DeviceReadCapability,
+    command: [u8; 3],
+    data: &[u8],
+    transaction: u8,
+    validate: &impl Fn() -> anyhow::Result<()>,
+    acknowledged: &mut dyn FnMut(&Acknowledgement),
 ) -> anyhow::Result<Acknowledgement> {
     ensure!(
         cap.report_bytes == 91
@@ -197,57 +230,72 @@ fn exchange(
     outgoing[6..9].copy_from_slice(&command);
     outgoing[9..9 + data.len()].copy_from_slice(data);
     outgoing[89] = outgoing[3..89].iter().fold(0, |sum, byte| sum ^ byte);
-    let mut last = "No power response".to_owned();
-    for _ in 0..cap.max_retry_out {
-        validate()?;
-        std::thread::sleep(Duration::from_millis(cap.sleep_between_out_ms));
-        validate()?;
-        if let Err(error) = device.send_feature_at_collection_max(&outgoing) {
-            last = format!("{error:#}");
-            continue;
-        }
-        std::thread::sleep(Duration::from_millis(cap.sleep_between_out_in_ms));
-        for attempt in 0..cap.max_retry_in {
-            if attempt > 0 {
-                std::thread::sleep(Duration::from_millis(cap.sleep_between_in_ms));
-            }
-            validate()?;
-            let mut incoming = [0; 91];
-            incoming[0] = cap.get_report_id_for_transport(device)?;
-            let received = device.get_feature_at_collection_max(&mut incoming);
-            validate()?;
-            let count = match received {
-                Ok(count) => count,
-                Err(error) => {
+    crate::feature_exchange::with_validated_exchange(
+        device,
+        crate::feature_exchange::with_protocol25_scope(
+            crate::backend::ExchangeOptions::mutex_out(Duration::from_millis(
+                cap.sleep_between_out_ms,
+            )),
+            &cap.source_class,
+        ),
+        validate,
+        |device, lease| {
+            let mut last = "No power response".to_owned();
+            for out_attempt in 0..cap.max_retry_out {
+                validate()?;
+                if let Err(error) = device.send_feature_at_collection_max(&outgoing) {
                     last = format!("{error:#}");
-                    break;
+                    continue;
                 }
-            };
-            ensure!(count == 91, "Power response length differs");
-            if incoming[2] != transaction || incoming[7..9] != command[1..] {
-                last = "Power response transaction/command differs".into();
-                break;
+                std::thread::sleep(Duration::from_millis(cap.sleep_between_out_in_ms));
+                for attempt in 0..cap.max_retry_in {
+                    if attempt > 0 {
+                        std::thread::sleep(Duration::from_millis(cap.sleep_between_in_ms));
+                    }
+                    validate()?;
+                    let mut incoming = [0; 91];
+                    incoming[0] = cap.get_report_id_for_transport(device)?;
+                    let received = device.get_feature_at_collection_max(&mut incoming);
+                    validate()?;
+                    let count = match received {
+                        Ok(count) => count,
+                        Err(error) => {
+                            last = format!("{error:#}");
+                            break;
+                        }
+                    };
+                    ensure!(count == 91, "Power response length differs");
+                    if incoming[2] != transaction || incoming[7..9] != command[1..] {
+                        last = "Power response transaction/command differs".into();
+                        break;
+                    }
+                    match incoming[1] {
+                        1 => last = "Power device remains busy".into(),
+                        2 => {
+                            let size = usize::from(incoming[6]);
+                            ensure!(size <= 80, "Power response is truncated");
+                            let acknowledgement = Acknowledgement {
+                                command,
+                                transaction,
+                                data: incoming[9..9 + size].to_vec(),
+                            };
+                            acknowledged(&acknowledgement);
+                            return Ok(acknowledgement);
+                        }
+                        0 | 3 | 4 => {
+                            last = format!("Power response status {}", incoming[1]);
+                            break;
+                        }
+                        status => anyhow::bail!("Power command rejected with status {status}"),
+                    }
+                }
+                if out_attempt + 1 < cap.max_retry_out {
+                    lease.retry_release()?;
+                }
             }
-            match incoming[1] {
-                1 => last = "Power device remains busy".into(),
-                2 => {
-                    let size = usize::from(incoming[6]);
-                    ensure!(size <= 80, "Power response is truncated");
-                    return Ok(Acknowledgement {
-                        command,
-                        transaction,
-                        data: incoming[9..9 + size].to_vec(),
-                    });
-                }
-                0 | 3 | 4 => {
-                    last = format!("Power response status {}", incoming[1]);
-                    break;
-                }
-                status => anyhow::bail!("Power command rejected with status {status}"),
-            }
-        }
-    }
-    anyhow::bail!("Current power source retries exhausted: {last}")
+            anyhow::bail!("Current power source retries exhausted: {last}")
+        },
+    )
 }
 pub fn verify_wireless_online(
     device: &dyn FeatureTransport,
@@ -280,113 +328,133 @@ pub fn execute(
         dim_before: None,
         setter_sent: false,
     };
-    match *change {
-        Change::ReadPowerSaving => {
-            let reply = exchange(device, cap, [2, 7, 131], &[0, 0], next()?, &validate)?;
-            ensure!(
-                reply.data.len() >= 2,
-                "Time-to-sleep initialization response is truncated"
-            );
-            report.time_to_sleep = Some(u16::from_be_bytes([reply.data[0], reply.data[1]]));
-            report.acknowledgements.push(reply);
-        }
-        Change::PowerSaving(value) => {
-            let seconds = if source.single_profile_seconds {
-                value
-            } else {
-                value
-                    .checked_mul(60)
-                    .context("Power saving seconds overflow")?
-            };
-            report.acknowledgements.push(exchange(
-                device,
-                cap,
-                [2, 7, 3],
-                &seconds.to_be_bytes(),
-                next()?,
-                &validate,
-            )?);
-            report.setter_sent = true;
-            let reply = exchange(device, cap, [2, 7, 131], &[0, 0], next()?, &validate)?;
-            ensure!(reply.data.len() >= 2, "Time-to-sleep readback is truncated");
-            let actual = u16::from_be_bytes([reply.data[0], reply.data[1]]);
-            report.time_to_sleep = Some(actual);
-            report.acknowledgements.push(reply);
-            ensure!(
-                actual == seconds,
-                "Power saving source task readback does not match"
-            );
-        }
-        Change::LowPower(percent) | Change::LowBattery(percent) => {
-            // Source lowBatteryEffects and lowPowerMode both select aLH's
-            // setCriticalLevel/getCriticalLevel runner; do not invent LED writes.
-            let raw = (u16::from(percent) * 255).div_ceil(100) as u8;
-            report.acknowledgements.push(exchange(
-                device,
-                cap,
-                [1, 7, 1],
-                &[raw],
-                next()?,
-                &validate,
-            )?);
-            report.setter_sent = true;
-            let reply = exchange(device, cap, [1, 7, 129], &[0], next()?, &validate)?;
-            let raw = *reply
-                .data
-                .first()
-                .context("Critical-level readback is truncated")?;
-            let actual = (u16::from(raw) * 100 / 255) as u8;
-            report.critical_percent = Some(actual);
-            report.acknowledgements.push(reply);
-            ensure!(
-                actual == percent,
-                "Critical-level source task readback does not match"
-            );
-        }
-        Change::DimLighting { enabled, minutes } => {
-            let before = exchange(
-                device,
-                cap,
-                [5, 7, 139],
-                &[0, 0, 0, 0, 0],
-                next()?,
-                &validate,
-            )?;
-            ensure!(
-                before.data.len() >= 5 && before.data[0] == 0,
-                "Dim getter response is truncated or belongs to another profile"
-            );
-            let seconds = u16::from(minutes) * 60;
-            let differs = u16::from_be_bytes([before.data[2], before.data[3]]) != seconds
-                || (before.data[1] == 1) != enabled;
-            report.dim_before = Some(before.data.clone());
-            report.acknowledgements.push(before);
-            if differs {
-                let [hi, lo] = seconds.to_be_bytes();
-                report.acknowledgements.push(exchange(
+    let result = (|| -> anyhow::Result<()> {
+        match *change {
+            Change::ReadPowerSaving => {
+                let reply = exchange(device, cap, [2, 7, 131], &[0, 0], next()?, &validate)?;
+                ensure!(
+                    reply.data.len() >= 2,
+                    "Time-to-sleep initialization response is truncated"
+                );
+                report.time_to_sleep = Some(u16::from_be_bytes([reply.data[0], reply.data[1]]));
+                report.acknowledgements.push(reply);
+            }
+            Change::PowerSaving(value) => {
+                let seconds = if source.single_profile_seconds {
+                    value
+                } else {
+                    value
+                        .checked_mul(60)
+                        .context("Power saving seconds overflow")?
+                };
+                exchange_observing(
                     device,
                     cap,
-                    [5, 7, 11],
-                    &[0, u8::from(enabled), hi, lo, 20],
+                    [2, 7, 3],
+                    &seconds.to_be_bytes(),
                     next()?,
                     &validate,
-                )?);
-                report.setter_sent = true;
+                    &mut |ack| {
+                        report.acknowledgements.push(ack.clone());
+                        report.setter_sent = true;
+                    },
+                )?;
+                let reply = exchange(device, cap, [2, 7, 131], &[0, 0], next()?, &validate)?;
+                ensure!(reply.data.len() >= 2, "Time-to-sleep readback is truncated");
+                let actual = u16::from_be_bytes([reply.data[0], reply.data[1]]);
+                report.time_to_sleep = Some(actual);
+                report.acknowledgements.push(reply);
+                ensure!(
+                    actual == seconds,
+                    "Power saving source task readback does not match"
+                );
+            }
+            Change::LowPower(percent) | Change::LowBattery(percent) => {
+                // Source lowBatteryEffects and lowPowerMode both select aLH's
+                // setCriticalLevel/getCriticalLevel runner; do not invent LED writes.
+                let raw = (u16::from(percent) * 255).div_ceil(100) as u8;
+                exchange_observing(
+                    device,
+                    cap,
+                    [1, 7, 1],
+                    &[raw],
+                    next()?,
+                    &validate,
+                    &mut |ack| {
+                        report.acknowledgements.push(ack.clone());
+                        report.setter_sent = true;
+                    },
+                )?;
+                let reply = exchange(device, cap, [1, 7, 129], &[0], next()?, &validate)?;
+                let raw = *reply
+                    .data
+                    .first()
+                    .context("Critical-level readback is truncated")?;
+                let actual = (u16::from(raw) * 100 / 255) as u8;
+                report.critical_percent = Some(actual);
+                report.acknowledgements.push(reply);
+                ensure!(
+                    actual == percent,
+                    "Critical-level source task readback does not match"
+                );
+            }
+            Change::DimLighting { enabled, minutes } => {
+                let before = exchange(
+                    device,
+                    cap,
+                    [5, 7, 139],
+                    &[0, 0, 0, 0, 0],
+                    next()?,
+                    &validate,
+                )?;
+                ensure!(
+                    before.data.len() >= 5 && before.data[0] == 0,
+                    "Dim getter response is truncated or belongs to another profile"
+                );
+                let seconds = u16::from(minutes) * 60;
+                let differs = u16::from_be_bytes([before.data[2], before.data[3]]) != seconds
+                    || (before.data[1] == 1) != enabled;
+                report.dim_before = Some(before.data.clone());
+                report.acknowledgements.push(before);
+                if differs {
+                    let [hi, lo] = seconds.to_be_bytes();
+                    exchange_observing(
+                        device,
+                        cap,
+                        [5, 7, 11],
+                        &[0, u8::from(enabled), hi, lo, 20],
+                        next()?,
+                        &validate,
+                        &mut |ack| {
+                            report.acknowledgements.push(ack.clone());
+                            report.setter_sent = true;
+                        },
+                    )?;
+                }
+            }
+            Change::BatteryType(value) => {
+                exchange_observing(
+                    device,
+                    cap,
+                    [1, 7, 20],
+                    &[value],
+                    next()?,
+                    &validate,
+                    &mut |ack| {
+                        report.acknowledgements.push(ack.clone());
+                        report.setter_sent = true;
+                    },
+                )?;
             }
         }
-        Change::BatteryType(value) => {
-            report.acknowledgements.push(exchange(
-                device,
-                cap,
-                [1, 7, 20],
-                &[value],
-                next()?,
-                &validate,
-            )?);
-            report.setter_sent = true;
-        }
+        validate()
+    })();
+    if let Err(error) = result {
+        let message = error.to_string();
+        return Err(error
+            .context(WriteFailure { progress: report })
+            .context(message));
     }
-    validate()?;
     Ok(report)
 }
 

@@ -430,6 +430,28 @@ fn exchange(
     validate: &impl Fn() -> anyhow::Result<()>,
     progress: &mut (bool, bool),
 ) -> anyhow::Result<Acknowledgement> {
+    exchange_observing(
+        device,
+        cap,
+        command,
+        payload,
+        transaction,
+        validate,
+        progress,
+        &mut |_| {},
+    )
+}
+
+fn exchange_observing(
+    device: &dyn FeatureTransport,
+    cap: &DeviceReadCapability,
+    command: [u8; 3],
+    payload: &[u8],
+    transaction: u8,
+    validate: &impl Fn() -> anyhow::Result<()>,
+    progress: &mut (bool, bool),
+    acknowledged: &mut dyn FnMut(&Acknowledgement),
+) -> anyhow::Result<Acknowledgement> {
     ensure!(
         cap.report_id == 0
             && cap.report_bytes == 91
@@ -449,85 +471,101 @@ fn exchange(
     outgoing[9..9 + payload.len()].copy_from_slice(payload);
     outgoing[89] = outgoing[3..89].iter().fold(0, |sum, byte| sum ^ byte);
     let mut last = String::from("No receiver LED response");
-    for _ in 0..cap.max_retry_out {
-        validate()?;
-        std::thread::sleep(Duration::from_millis(cap.sleep_between_out_ms));
-        validate()?;
-        progress.0 = true;
-        if let Err(error) = device.send_feature_at_collection_max(&outgoing) {
-            validate()?;
-            last = format!("Receiver LED send failed; delivery is not confirmed: {error:#}");
-            continue;
-        }
-        progress.1 = true;
-        validate()?;
-        std::thread::sleep(Duration::from_millis(cap.sleep_between_out_in_ms));
-        let mut resend = false;
-        for attempt in 0..cap.max_retry_in {
-            if attempt > 0 {
-                std::thread::sleep(Duration::from_millis(cap.sleep_between_in_ms));
-            }
-            validate()?;
-            let mut incoming = [0u8; 91];
-            // UsbRzDeviceAction preserves SEND reportId=0 with ??, but GET's
-            // truthiness fallback selects claimInterface when reportId is zero.
-            incoming[0] = if cap.report_id != 0 {
-                cap.report_id
-            } else {
-                cap.claim_interface
-            };
-            let received = device.get_feature_at_collection_max(&mut incoming);
-            validate()?;
-            let count = match received {
-                Ok(count) => count,
-                Err(_) => {
-                    incoming.fill(0);
-                    incoming.len()
-                }
-            };
-            ensure!(
-                count <= incoming.len(),
-                "Receiver LED reply exceeds its buffer"
-            );
-            if count < 9 {
-                last = "Receiver LED reply has no complete header".into();
-                resend = true;
-                break;
-            }
-            if incoming[2] != transaction || incoming[7..9] != command[1..] {
-                last = "Receiver LED response transaction/command differs".into();
-                resend = true;
-                break;
-            }
-            match incoming[1] {
-                1 => {
-                    last = "Receiver is busy".into();
-                    resend = true;
+    crate::feature_exchange::with_validated_exchange(
+        device,
+        crate::feature_exchange::with_protocol25_scope(
+            crate::backend::ExchangeOptions::mutex_out(Duration::from_millis(
+                cap.sleep_between_out_ms,
+            )),
+            &cap.source_class,
+        ),
+        validate,
+        |device, lease| {
+            for out_attempt in 0..cap.max_retry_out {
+                validate()?;
+                progress.0 = true;
+                if let Err(error) = device.send_feature_at_collection_max(&outgoing) {
+                    validate()?;
+                    last =
+                        format!("Receiver LED send failed; delivery is not confirmed: {error:#}");
                     continue;
                 }
-                0 | 3 | 4 => {
-                    last = format!("Receiver LED status {}", incoming[1]);
-                    resend = true;
+                progress.1 = true;
+                validate()?;
+                std::thread::sleep(Duration::from_millis(cap.sleep_between_out_in_ms));
+                let mut resend = false;
+                for attempt in 0..cap.max_retry_in {
+                    if attempt > 0 {
+                        std::thread::sleep(Duration::from_millis(cap.sleep_between_in_ms));
+                    }
+                    validate()?;
+                    let mut incoming = [0u8; 91];
+                    // UsbRzDeviceAction preserves SEND reportId=0 with ??, but GET's
+                    // truthiness fallback selects claimInterface when reportId is zero.
+                    incoming[0] = if cap.report_id != 0 {
+                        cap.report_id
+                    } else {
+                        cap.claim_interface
+                    };
+                    let received = device.get_feature_at_collection_max(&mut incoming);
+                    validate()?;
+                    let count = match received {
+                        Ok(count) => count,
+                        Err(_) => {
+                            incoming.fill(0);
+                            incoming.len()
+                        }
+                    };
+                    ensure!(
+                        count <= incoming.len(),
+                        "Receiver LED reply exceeds its buffer"
+                    );
+                    if count < 9 {
+                        last = "Receiver LED reply has no complete header".into();
+                        resend = true;
+                        break;
+                    }
+                    if incoming[2] != transaction || incoming[7..9] != command[1..] {
+                        last = "Receiver LED response transaction/command differs".into();
+                        resend = true;
+                        break;
+                    }
+                    match incoming[1] {
+                        1 => {
+                            last = "Receiver is busy".into();
+                            resend = true;
+                            continue;
+                        }
+                        0 | 3 | 4 => {
+                            last = format!("Receiver LED status {}", incoming[1]);
+                            resend = true;
+                            break;
+                        }
+                        2 => {
+                            let end = (9 + usize::from(incoming[6])).min(count);
+                            let acknowledgement = Acknowledgement {
+                                command,
+                                transaction,
+                                data: incoming[9..end].to_vec(),
+                            };
+                            acknowledged(&acknowledgement);
+                            return Ok(acknowledgement);
+                        }
+                        other => anyhow::bail!(
+                            "Receiver LED command returned unsupported/unknown status {other}"
+                        ),
+                    }
+                }
+                if !resend {
                     break;
                 }
-                2 => {
-                    let end = (9 + usize::from(incoming[6])).min(count);
-                    return Ok(Acknowledgement {
-                        command,
-                        transaction,
-                        data: incoming[9..end].to_vec(),
-                    });
+                if out_attempt + 1 < cap.max_retry_out {
+                    lease.retry_release()?;
                 }
-                other => anyhow::bail!(
-                    "Receiver LED command returned unsupported/unknown status {other}"
-                ),
             }
-        }
-        if !resend {
-            break;
-        }
-    }
-    anyhow::bail!("Receiver LED retry failed: {last}")
+            anyhow::bail!("Receiver LED retry failed: {last}")
+        },
+    )
 }
 
 pub fn execute(
@@ -569,7 +607,7 @@ pub fn execute(
             _ => None,
         };
         if let Some(bytes) = bytes {
-            let ack = exchange(
+            exchange_observing(
                 device,
                 cap,
                 SET_CONFIGURATION,
@@ -577,9 +615,11 @@ pub fn execute(
                 next()?,
                 &validate,
                 &mut setter_progress,
+                &mut |ack| {
+                    report.acknowledgements.push(ack.clone());
+                    report.setter_acknowledged = true;
+                },
             )?;
-            report.acknowledgements.push(ack);
-            report.setter_acknowledged = true;
         }
         if matches!(change, Change::ReadConfiguration) {
             let ack = exchange(

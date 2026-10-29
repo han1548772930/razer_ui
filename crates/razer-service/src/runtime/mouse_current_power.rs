@@ -42,7 +42,8 @@ impl PortableRuntime {
             Self::revalidate(node)
         };
         validate()?;
-        let device = with_backend(|backend| backend.open(node))?;
+        let device =
+            with_backend(|backend| backend.open_validated(node, std::rc::Rc::new(&validate)))?;
         ensure!(
             device.report_lengths()?.feature.values().max().copied() == Some(cap.report_bytes),
             "Power Feature Report size differs"

@@ -3,12 +3,13 @@
 //! 当前架构、来源和验证边界见 `docs/README.md`。
 //!
 //! UI 编辑使用本地草稿；启动及 USB/HID 拓扑变化会触发后台设备发现。
-//! 经当前源核实的原生查询在隔离 worker 中执行，结果通过观察事件进入 UI。
+//! 经当前源核实的原生查询由共享本地服务执行，结果通过观察事件进入 UI。
 //! 接口存在不等于设备配置已读取；历史快照和静态能力不能冒充当前读值。
 //! 执行限制和仅限维护工具的原厂对比测试见 AGENTS.md。
 
 mod arguments;
 mod diagnostics;
+mod service_runtime;
 
 use razer_assets as resources;
 use razer_i18n as i18n;
@@ -43,6 +44,9 @@ pub fn run() -> std::process::ExitCode {
                 std::process::ExitCode::FAILURE
             }
         };
+    }
+    if args.iter().any(|arg| arg == "--hid-broker") {
+        return std::process::ExitCode::from(backend::runtime::run_hid_broker() as u8);
     }
     if args.iter().any(|arg| arg == "--service-worker") {
         return std::process::ExitCode::from(backend::runtime::run_worker() as u8);
@@ -104,6 +108,13 @@ pub fn run() -> std::process::ExitCode {
         Ok(runtime) => runtime,
         Err(error) => {
             log::error!("资源服务无法创建：{error:#}");
+            return std::process::ExitCode::FAILURE;
+        }
+    };
+    let _service_runtime = match service_runtime::Runtime::start() {
+        Ok(runtime) => runtime,
+        Err(error) => {
+            log::error!("设备服务无法创建：{error:#}");
             return std::process::ExitCode::FAILURE;
         }
     };

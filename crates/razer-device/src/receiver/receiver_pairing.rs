@@ -614,59 +614,83 @@ impl<'a> Session<'a> {
         outgoing[6..9].copy_from_slice(&command);
         outgoing[9..9 + payload.len()].copy_from_slice(payload);
         outgoing[89] = outgoing[3..89].iter().fold(0, |sum, byte| sum ^ byte);
-        let mut last_error = "没有收到设备应答".to_owned();
-        for _ in 0..transport.max_retry_out {
-            validate()?;
-            std::thread::sleep(Duration::from_millis(transport.sleep_between_out_ms));
-            validate()?;
-            if let Err(e) = self.device.send_feature_at_collection_max(&outgoing) {
-                return Err(e);
-            }
-            validate()?;
-            std::thread::sleep(Duration::from_millis(transport.sleep_between_out_in_ms));
-            let mut resend_out_command = false;
-            for attempt in 0..transport.max_retry_in {
-                if attempt > 0 {
-                    std::thread::sleep(Duration::from_millis(transport.sleep_between_in_ms));
-                }
-                validate()?;
-                let mut incoming = vec![0; 91];
-                incoming[0] = if report_id == 0 { claim_interface } else { report_id };
-                let count = match self.device.get_feature_at_collection_max(&mut incoming) {
-                    Ok(n) => n,
-                    Err(e) if resend_out_command => {
-                        last_error = format!("{e:#}");
-                        break;
+        crate::feature_exchange::with_validated_feature_reply(
+            self.device,
+            crate::feature_exchange::with_protocol25_scope(
+                crate::backend::ExchangeOptions::mutex_out(Duration::from_millis(
+                    transport.sleep_between_out_ms,
+                )),
+                if metadata {
+                    self.cap
+                        .metadata_source_class
+                        .as_deref()
+                        .unwrap_or(&transport.source_class)
+                } else {
+                    &transport.source_class
+                },
+            ),
+            command,
+            transaction,
+            validate,
+            |device, lease| {
+                let mut last_error = "没有收到设备应答".to_owned();
+                for out_attempt in 0..transport.max_retry_out {
+                    validate()?;
+                    if let Err(e) = device.send_feature_at_collection_max(&outgoing) {
+                        return Err(e);
                     }
-                    Err(e) => return Err(e),
-                };
-                validate()?;
-                ensure!(
-                    (9..=incoming.len()).contains(&count),
-                    "配对命令应答长度不匹配"
-                );
-                if incoming[2] != transaction || incoming[7..9] != command[1..] {
-                    last_error = "配对命令或事务应答不匹配".into();
-                    break;
-                }
-                match incoming[1] {
-                    1 => {
-                        last_error = "设备忙".into();
-                        resend_out_command = true;
-                        continue;
+                    validate()?;
+                    std::thread::sleep(Duration::from_millis(transport.sleep_between_out_in_ms));
+                    let mut resend_out_command = false;
+                    for attempt in 0..transport.max_retry_in {
+                        if attempt > 0 {
+                            std::thread::sleep(Duration::from_millis(
+                                transport.sleep_between_in_ms,
+                            ));
+                        }
+                        validate()?;
+                        let mut incoming = vec![0; 91];
+                        incoming[0] = if report_id == 0 { claim_interface } else { report_id };
+                        let count = match device.get_feature_at_collection_max(&mut incoming) {
+                            Ok(n) => n,
+                            Err(e) if resend_out_command => {
+                                last_error = format!("{e:#}");
+                                break;
+                            }
+                            Err(e) => return Err(e),
+                        };
+                        validate()?;
+                        ensure!(
+                            (9..=incoming.len()).contains(&count),
+                            "配对命令应答长度不匹配"
+                        );
+                        if incoming[2] != transaction || incoming[7..9] != command[1..] {
+                            last_error = "配对命令或事务应答不匹配".into();
+                            break;
+                        }
+                        match incoming[1] {
+                            1 => {
+                                last_error = "设备忙".into();
+                                resend_out_command = true;
+                                continue;
+                            }
+                            2 => {}
+                            0 | 3 | 4 => {
+                                last_error = format!("设备应答状态 {}", incoming[1]);
+                                break;
+                            }
+                            status => anyhow::bail!("配对命令不支持或状态未知 {status}"),
+                        }
+                        let length = usize::from(incoming[6]);
+                        return Ok(incoming[9..(9 + length).min(count)].to_vec());
                     }
-                    2 => {}
-                    0 | 3 | 4 => {
-                        last_error = format!("设备应答状态 {}", incoming[1]);
-                        break;
+                    if out_attempt + 1 < transport.max_retry_out {
+                        lease.retry_release()?;
                     }
-                    status => anyhow::bail!("配对命令不支持或状态未知 {status}"),
                 }
-                let length = usize::from(incoming[6]);
-                return Ok(incoming[9..(9 + length).min(count)].to_vec());
-            }
-        }
-        anyhow::bail!("配对命令失败：{last_error}")
+                anyhow::bail!("配对命令失败：{last_error}")
+            },
+        )
     }
 
     /// Source `getEdition` retries the [3,0,134] helper up to three times with
@@ -684,6 +708,9 @@ impl<'a> Session<'a> {
                         edition_id: data[1],
                         firmware_id: data.get(2).copied(),
                     });
+                }
+                Err(error) if crate::backend::exchange_finalization_failed(&error) => {
+                    return Err(error);
                 }
                 Err(error) if attempt < 2 => {
                     std::thread::sleep(Duration::from_millis(100));
@@ -1076,6 +1103,36 @@ mod tests {
         assert_eq!(sent[0][0], 2);
         assert_eq!(sent[0][2], 0);
         assert_eq!(&sent[0][6..9], &[3, 0, 134]);
+    }
+
+    #[test]
+    fn edition_release_failure_is_not_retried_or_replaced_by_a_later_success() {
+        let cap = cap(164, "MOUSE");
+        let device = Mock::new(&[&[6, 128, 2], &[6, 128, 2]]);
+        let first = std::cell::Cell::new(true);
+        let finish_check = || {
+            ensure!(
+                !first.replace(false),
+                "simulated first edition release failure"
+            );
+            Ok(())
+        };
+        let probe = crate::feature_exchange::tests::ExchangeProbe::with_finish_check(
+            &device,
+            &finish_check,
+        );
+        let mut events = Events::new(&[]);
+        let error = Session::new(&probe, &mut events, &cap)
+            .unwrap()
+            .get_edition(|| Ok(()))
+            .unwrap_err();
+        let completed = crate::CompletedFeatureExchange::from_error(&error).unwrap();
+        assert_eq!(completed.command(), [3, 0, 134]);
+        assert_eq!(completed.data(), [6, 128, 2]);
+        assert!(crate::backend::exchange_finalization_failed(&error));
+        assert_eq!(device.sent.lock().unwrap().len(), 1);
+        assert_eq!(device.replies.lock().unwrap().len(), 1);
+        assert!(!events.began && !events.ended);
     }
 
     #[test]

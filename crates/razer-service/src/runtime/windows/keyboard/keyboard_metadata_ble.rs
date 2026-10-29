@@ -75,6 +75,9 @@ pub(super) fn request(target: &WindowsBleTarget, serial: bool) -> anyhow::Result
                 break;
             }
             Err(error) => {
+                if !gatt::connection_retryable(&error) {
+                    return Err(error);
+                }
                 validate()?;
                 last_error = Some(error);
                 pause(Duration::from_millis(150), &validate)?;

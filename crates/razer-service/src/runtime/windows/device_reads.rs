@@ -165,6 +165,18 @@ mod mouse_current_power_ble_adapter;
 mod mouse_rotation_ble_adapter;
 #[path = "mouse/mouse_runtime_artwork.rs"]
 mod mouse_runtime_artwork_adapter;
+pub(super) fn cleanup_ble_container(container: &str) -> anyhow::Result<()> {
+    mouse_runtime_artwork_adapter::ble::cleanup_container(container)
+}
+
+pub(super) fn shutdown_ble_cleanup() -> anyhow::Result<()> {
+    mouse_runtime_artwork_adapter::ble::shutdown_cleanup()
+}
+
+pub(super) fn ble_cleanup_pending_count() -> usize {
+    mouse_runtime_artwork_adapter::ble::cleanup_pending_count()
+}
+
 pub(super) fn mouse_current_power(
     target: &DeviceReadTarget,
     change: &razer_device::mouse_current_power::Change,
@@ -193,8 +205,10 @@ pub(super) fn mouse_current_power_ble(
 pub(super) fn mouse_current_dpi_ble(
     target: &razer_device::mouse_runtime_artwork::WindowsBleTarget,
     change: Option<&razer_device::mouse_current_dpi::DpiChange>,
+    context: Option<&razer_ipc::mouse_current_dpi_ble::Context>,
+    cancellation: Option<&razer_ipc::request_cancellation::Token>,
 ) -> anyhow::Result<Value> {
-    mouse_current_dpi_ble_adapter::request(target, change)
+    mouse_current_dpi_ble_adapter::request(target, change, context, cancellation)
 }
 
 pub(super) fn mouse_rotation_ble(
@@ -406,7 +420,11 @@ pub(super) fn query(target: &DeviceReadTarget, kind: DeviceReadKind) -> anyhow::
             .as_u64()
             .and_then(|count| usize::try_from(count).ok())
             .context("缺少实际 Feature Report 长度")?;
-        let device = hid_transport::open(&target.path, feature_bytes)?;
+        let device = hid_transport::open_validated(
+            &target.path,
+            feature_bytes,
+            std::rc::Rc::new(&deadline),
+        )?;
         ensure!(
             current_target(target, cap)?["device_instance_id"] == before["device_instance_id"],
             "打开设备期间实例发生变化"
@@ -474,7 +492,8 @@ fn with_mouse_receiver(
         feature_bytes == cap.report_bytes,
         "接收器鼠标 Feature Report 长度不符合当前源码"
     );
-    let device = hid_transport::open(&target.path, feature_bytes)?;
+    let device =
+        hid_transport::open_validated(&target.path, feature_bytes, std::rc::Rc::new(&validate))?;
     // Status and mouse GET share this retained physical handle and lock. Do not
     // query via receiver::query here: that would reacquire the same OS lock and
     // select the master's own transaction namespace instead of the mouse's.
@@ -562,7 +581,8 @@ pub(super) fn write(
         .as_u64()
         .and_then(|count| usize::try_from(count).ok())
         .context("写入目标缺少实际 Feature Report 长度")?;
-    let device = hid_transport::open(&target.path, feature_bytes)?;
+    let device =
+        hid_transport::open_validated(&target.path, feature_bytes, std::rc::Rc::new(&validate))?;
     let result =
         device_writes::apply(&device, cap, setting, || transaction(target, cap), validate)?;
     Ok(
@@ -685,7 +705,8 @@ pub(super) fn keyboard_metadata(
         feature_bytes == cap.report_bytes,
         "Keyboard metadata Feature descriptor differs from source"
     );
-    let device = hid_transport::open(&target.path, feature_bytes)?;
+    let device =
+        hid_transport::open_validated(&target.path, feature_bytes, std::rc::Rc::new(&validate))?;
     let observe_peer = relay
         || (matches!(query, KeyboardRead::ProfileInventory) && target.peer_product_id.is_some());
     if observe_peer {
@@ -784,7 +805,8 @@ fn receiver_setting(
         feature_bytes == cap.report_bytes,
         "Receiver Feature size differs from source"
     );
-    let device = hid_transport::open(&target.path, feature_bytes)?;
+    let device =
+        hid_transport::open_validated(&target.path, feature_bytes, std::rc::Rc::new(&validate))?;
     let mut response = setting.execute(
         &session,
         &device,
@@ -839,7 +861,8 @@ pub(super) fn keyboard_brightness(
         feature_bytes == cap.report_bytes,
         "键盘亮度接口实际 Feature Report 长度不匹配"
     );
-    let device = hid_transport::open(&target.path, feature_bytes)?;
+    let device =
+        hid_transport::open_validated(&target.path, feature_bytes, std::rc::Rc::new(&validate))?;
     validate()?;
     let mut response = json!({"target":target,"source_class":settings.source_class,
         "transport_metadata":device.metadata()});
@@ -899,7 +922,8 @@ pub(super) fn keyboard_submission(
         .as_u64()
         .context("Keyboard descriptor has no Feature report size")?
         as usize;
-    let device = hid_transport::open(&target.path, feature_bytes)?;
+    let device =
+        hid_transport::open_validated(&target.path, feature_bytes, std::rc::Rc::new(&guard))?;
     let receipt = keyboard_submission::submit(
         &device,
         target.product_id,
@@ -944,7 +968,8 @@ pub(super) fn keyboard_gaming_indicator(
         feature_bytes == cap.report_bytes,
         "Gaming LED feature report size differs"
     );
-    let device = hid_transport::open(&target.path, feature_bytes)?;
+    let device =
+        hid_transport::open_validated(&target.path, feature_bytes, std::rc::Rc::new(&validate))?;
     let report = razer_device::keyboard_gaming_mode::apply(
         &device,
         target.product_id,
@@ -1037,7 +1062,8 @@ pub(super) fn dpi_stages(
         feature_bytes == cap.report_bytes,
         "DPI stage observed report size does not match current source"
     );
-    let device = hid_transport::open(&target.path, feature_bytes)?;
+    let device =
+        hid_transport::open_validated(&target.path, feature_bytes, std::rc::Rc::new(&validate))?;
     validate()?;
     let mut response = json!({"target":target,"source_class":settings.source_class,
         "transport_source_class":cap.source_class,"transport_metadata":device.metadata(),

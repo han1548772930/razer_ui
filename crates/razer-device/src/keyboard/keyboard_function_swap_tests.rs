@@ -4,6 +4,29 @@ use crate::keyboard_control_test_transport::{
 };
 use std::cell::Cell;
 
+#[test]
+fn release_failure_retains_the_setter_ack_and_never_starts_readback() {
+    let device = Mock::new([reply(&[0xd3])]);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);
+    let failure = apply_with_cap(
+        &probe,
+        &cap(),
+        FunctionKeyPrimary::Function,
+        true,
+        &mut sequence(),
+        &|| Ok(()),
+    )
+    .unwrap_err();
+    assert_eq!(failure.phase, SwapFailurePhase::Write);
+    assert!(failure.report.attempted);
+    assert_eq!(failure.report.send_attempts, 1);
+    assert_eq!(failure.report.acknowledgment_data, Some(vec![0xd3]));
+    assert!(failure.report.observed.is_none());
+    assert!(!failure.report.verified());
+    assert!(format!("{:#}", failure.error).contains("simulated explicit release failed"));
+    assert_eq!(device.sent().len(), 1);
+}
+
 fn cap() -> KeyboardSettingsCapability {
     let mut cap = capability(717).unwrap().clone();
     cap.transport.max_retry_in = 1;
@@ -273,16 +296,17 @@ fn cancellation_before_send_and_after_ack_preserves_actual_progress() {
     assert!(!error.report.attempted);
     assert!(device.sent().is_empty());
     let device = Mock::new([reply(&[])]);
-    let validations = Cell::new(0);
+    let completed = Cell::new(false);
+    let on_finish = || completed.set(true);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::with_on_finish(&device, &on_finish);
     let error = apply_with_cap(
-        &device,
+        &probe,
         &cap(),
         FunctionKeyPrimary::Function,
         true,
         &mut sequence(),
         &|| {
-            validations.set(validations.get() + 1);
-            ensure!(validations.get() < 6, "cancel after ACK");
+            ensure!(!completed.get(), "cancel after ACK");
             Ok(())
         },
     )

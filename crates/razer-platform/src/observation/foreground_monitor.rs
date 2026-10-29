@@ -68,6 +68,19 @@ pub struct ForegroundMonitor {
 }
 
 impl ForegroundMonitor {
+    pub fn cleanup_pending(&self) -> bool {
+        #[cfg(windows)]
+        {
+            self.listener
+                .as_ref()
+                .is_some_and(|listener| listener.cleanup_pending())
+        }
+        #[cfg(not(windows))]
+        {
+            false
+        }
+    }
+
     pub fn shutdown(&mut self) -> anyhow::Result<()> {
         #[cfg(windows)]
         if let Some(listener) = &mut self.listener {

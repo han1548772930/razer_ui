@@ -336,6 +336,38 @@ fn cancellation_after_receiver_or_set_ack_stops_later_io() {
 }
 
 #[test]
+fn a_changed_receiver_association_keeps_completed_write_evidence_only_as_failure_diagnostics() {
+    let session = fast(ReceiverSession::keyboard(600, 625, 625).unwrap());
+    let cap = brightness(&session);
+    let device = Transport::new([
+        peer(625, 1),
+        vec![1, 0, 127],
+        vec![1, 0, 0, 0, 0],
+        vec![1, 1, 127],
+        peer(625, 0),
+    ]);
+    let error = session
+        .observe(
+            &device,
+            next(&session),
+            || Ok(()),
+            |next, guard| crate::keyboard_settings::apply(&device, &cap, 50, next, guard),
+        )
+        .err()
+        .expect("the current peer was not confirmed");
+    let progress = error.downcast_ref::<ReceiverObservationFailure<crate::keyboard_settings::KeyboardBrightnessWriteResult>>().unwrap();
+    assert_eq!(progress.reading.acknowledged.raw_value, 127);
+    assert_eq!(progress.reading.observed.raw_value, 127);
+    assert_eq!(progress.receiver_before, [(625, 1)]);
+    assert_eq!(
+        progress.receiver_after.as_deref(),
+        Some([(625, 0)].as_slice())
+    );
+    assert_eq!(device.sent.borrow().len(), 5);
+    assert_eq!(device.reads.get(), 5);
+}
+
+#[test]
 fn dpi_own_and_shared_receiver_keep_mouse_namespace() {
     for physical in [227, 241] {
         let session = fast(ReceiverSession::mouse(226, physical, 227).unwrap());

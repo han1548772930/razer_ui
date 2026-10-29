@@ -137,6 +137,18 @@ pub struct Report {
     pub write_failure: Option<String>,
     pub read_failure: Option<String>,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct WriteFailure {
+    pub progress: Report,
+}
+
+impl std::fmt::Display for WriteFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Mouse dynamic sensitivity task did not complete")
+    }
+}
+
 impl Report {
     pub fn source_acknowledged(&self) -> bool {
         self.requested.as_ref().is_some_and(|setting| {
@@ -286,6 +298,13 @@ pub fn execute(
             Err(failure) => {
                 report.write_failure = Some(failure.to_string());
                 report.writes = Some(failure.report);
+                if crate::backend::exchange_finalization_failed(&failure.error) {
+                    let message = failure.error.to_string();
+                    return Err(failure
+                        .error
+                        .context(WriteFailure { progress: report })
+                        .context(message));
+                }
             }
         }
     }

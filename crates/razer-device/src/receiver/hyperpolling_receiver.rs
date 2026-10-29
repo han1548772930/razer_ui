@@ -180,6 +180,7 @@ fn channel(cap: &ReceiverCapability) -> anyhow::Result<Channel> {
         "Uma capability differs from its mounted factory"
     );
     Ok(Channel {
+        source_scope: None,
         report_id: 0,
         get_report_id: 0,
         transaction_prefix: 224,
@@ -239,9 +240,9 @@ pub fn execute(
             write_attempted: progress.attempted,
             write_sent: progress.sent,
             acknowledged: progress.acknowledged,
-            response_status: result
+            response_status: progress
+                .acknowledged_reply
                 .as_ref()
-                .ok()
                 .and_then(|bytes| bytes.first().copied()),
             error: result.err().map(|error| format!("{error:#}")),
         }));

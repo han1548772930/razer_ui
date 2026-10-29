@@ -720,6 +720,15 @@ fn cancellation_before_and_during_io_preserves_attempts_and_observed_ack() {
     );
     assert!(!result.succeeded());
     assert!(result.acknowledged());
+    assert_eq!(result.attempts[0].inputs, [reply(0x9e, 2, &[1])]);
+    assert!(
+        result
+            .failure
+            .as_ref()
+            .unwrap()
+            .message
+            .contains("HID exchange owner validation also failed")
+    );
     assert_eq!(
         result.failure.unwrap().kind,
         BlackSharkFirmwareFailureKind::Validation

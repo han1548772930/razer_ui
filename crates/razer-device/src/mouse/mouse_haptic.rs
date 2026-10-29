@@ -1028,19 +1028,24 @@ impl<'a> MouseHaptic<'a> {
                 observed: None,
             });
             let result = (|| -> Result<()> {
-                let data = exchange(
+                let response = exchange(
                     self.device,
                     self.transport,
                     step.query.command(true)?,
                     &step.payload,
                     next_transaction()?,
                     &validate,
-                )?;
-                progress.steps[index].acknowledgment_received = true;
-                if !data.is_empty() {
-                    progress.steps[index].acknowledged = Some(parse(step.query, &data)?);
+                );
+                if let Some(data) = crate::feature_exchange::acknowledged_reply(&response) {
+                    progress.steps[index].acknowledgment_received = true;
+                    if !data.is_empty() {
+                        match parse(step.query, data) {
+                            Ok(value) => progress.steps[index].acknowledged = Some(value),
+                            Err(error) => return response.and(Err(error)),
+                        }
+                    }
                 }
-                Ok(())
+                response.map(|_| ())
             })();
             if let Err(e) = result {
                 return Err(fail(HapticFailurePhase::Write, progress, Some(index), e));

@@ -20,6 +20,17 @@ pub(crate) struct State {
     sessions: BTreeMap<String, OwnedSession>,
 }
 impl State {
+    pub(crate) fn shutdown(&mut self) -> anyhow::Result<()> {
+        let mut errors = Vec::new();
+        for (identity, mut owned) in std::mem::take(&mut self.sessions) {
+            if let Err(error) = owned.session.stop() {
+                errors.push(format!("{identity}: {error:#}"));
+            }
+        }
+        ensure!(errors.is_empty(), "{}", errors.join("; "));
+        Ok(())
+    }
+
     fn key(target: &DeviceReadTarget) -> String {
         format!("{}:{}", target.product_id, target.device_container_id)
     }
@@ -107,7 +118,11 @@ impl State {
         let _lock = receiver::ReceiverLock::acquire(&target.device_container_id, &validate)?;
         let report =
             eq::execute_native_in_session(target.product_id, &owned.session, change, &validate)?;
-        self.current(target)?;
+        self.current(target).map_err(|error| {
+            error.context(eq::ExecutionFailure {
+                progress: report.clone(),
+            })
+        })?;
         Ok(
             json!({"target":target,"source_class":eq::capability(target.product_id).unwrap().source_class,"report":report,"setting_scope":"seiren_eq_profile","elapsed_ms":started.elapsed().as_millis() as u64}),
         )
@@ -216,7 +231,8 @@ pub(super) fn request(target: &DeviceReadTarget, change: &Change) -> anyhow::Res
                 audio_session::Session::open(target.product_id, &target.device_container_id)?;
             eq::execute_native(target.product_id, &device, change, &validate)?
         } else {
-            let device = hid_transport::open(&target.path, bytes)?;
+            let device =
+                hid_transport::open_validated(&target.path, bytes, std::rc::Rc::new(&validate))?;
             eq::execute(
                 target.product_id,
                 &device,
@@ -227,7 +243,11 @@ pub(super) fn request(target: &DeviceReadTarget, change: &Change) -> anyhow::Res
             )?
         }
     };
-    validate()?;
+    validate().map_err(|error| {
+        error.context(eq::ExecutionFailure {
+            progress: report.clone(),
+        })
+    })?;
     Ok(
         json!({"target":target,"source_class":cap.source_class,"report":report,"setting_scope":"seiren_eq_profile",
         "elapsed_ms":started.elapsed().as_millis() as u64}),

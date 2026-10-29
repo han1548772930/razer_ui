@@ -197,11 +197,25 @@ host 消费者是 `.analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/modu
 | --- | --- | --- |
 | 动态灵敏度 | Pages `dynamic_sensitivity/mouse_dynamic.rs` → Shell `mouse_dynamic.rs`／`mouse_dynamic_save.rs` → Service `mouse/mouse_dynamic.rs` → Device `mouse_dynamic`／`mouse_sensor` → Feature HID 与接收器适配 | 七个 PID 有产品能力及真实命令链；保存先提交当前配置档与版本，随后派发设备工作。曲线作者点、250 个 Float32 值、设备观测和提交结果分别持有；不能仅以产品能力表宣称全部固件／传输分支完成 |
 | 旋转 | Pages `mouse_rotation_state.rs` → Shell `mouse_rotation.rs`／`mouse_rotation_save.rs` → direct sensor、PID226 BLE 或 `mapping_runtime/backend/rotation.rs` | 有真实 HID／GATT 应答与旧固件映射路径；映射路径继续到 Rust driver owner 和 `mapping_native_session.rs` 的 `CreateFileA`／`DeviceIoControl`，该链没有把官方业务 DLL 作为后端 |
-| 灵敏度匹配 | Pages `dpi/mouse_matcher_owner.rs` → Shell `mouse_matcher.rs` → Service `dpi_matcher_worker.rs`／`dpi_matcher_input.rs` → DPI 传输与本地存储 | 核心、存储和 Service worker 选择六个审计逻辑产品；生产页面保留 PID190 挂载边界，其余五款弹层、菜单和资源生命周期仍待接线。当前路由须通过对应 DPI capability，226 BLE 228 传输未接通 |
+| 灵敏度匹配 | Pages `dpi/mouse_matcher_owner.rs` → Shell `mouse_matcher.rs` → Service `dpi_matcher_worker.rs`／`dpi_matcher_input.rs` → DPI 传输与本地存储 | 六个审计逻辑产品已接入生产性能页、共享 Matcher owner、记录和配置档投影；190／192／222／226 位于右栏，229／239 位于左栏。226／BLE228 已接入独立 Rust GATT 的当前 DPI／OBM DPI 子链；完整产品分支与实际运行验收仍分别核对 |
 
-匹配器的产品限制分别由 Pages `prepare_matcher` 和 Service worker 的路由／选项构造持有。Rust `Product` 明确选择 190、192、222、226、229、239 六个逻辑产品；`Options::confirmation_name` 按新部署统一生成 `{en, zh-cn}`，六款都识别 241 双连接参考。生产页面仍只挂载 PID190 的 dS／AS：226 的 popup 生命周期和239 的菜单样式必须按其新 UI 原件继续核对，不能用共享采样器证明这些 UI 等价。实际路由须通过对应的当前 DPI capability，226 的 BLE 228 DPI 传输仍未接通。
+匹配器的产品限制分别由 Pages `prepare_matcher` 和 Service worker 的路由／选项构造持有。Rust `Product` 明确选择 190、192、222、226、229、239 六个逻辑产品；`Options::confirmation_name` 按新部署统一生成 `{en, zh-cn}`，六款都识别 241 双连接参考。`source_spec` 决定各产品的实际挂载、栏位与弹层分支；性能页的两条 DPI 呈现路径共用 `performance_matcher_and_properties`，226 的 Matcher 保持在系统鼠标属性之前。226 popup 按当前 lazy9439 核对，239 的两个菜单按当前 portal 语义接入；这些局部核对不代表 Dropdown／Input 全部源码或六款所有动作已整体验收。语言变化进入 Matcher 的 Language 观察，保存与恢复通过 `matcher_device_fields` 为六款投影同一领域字段。八个既有 `synapse/mouse-matcher-190/…` 资源 alias 继续供这些页面按需请求，不因挂载扩展重建目录库；窗口几何、像素、焦点与键盘验收仍未验证。
 
 Matcher 核心 `Session` 接收经过校验的逻辑产品，六款按新部署共同优先使用已保留的主／参考容器；重置和超时保留所属产品身份。物理接收器、BLE PID 或未审计产品不能作为逻辑产品选择器。worker、配置档变更和保存投影保留完整产品、设备、配置档及连接身份；跨产品或旧所有者结果不能修改当前草稿。六款核心覆盖与纯测试不等于六款运行时功能已完成。
+
+226／BLE228 的当前 DPI 路由只接受 Windows 的实际 BLE HID 目标，不为其他能力扩大可用范围。[类型化 IPC](../../../crates/razer-ipc/src/mouse_current_dpi_ble.rs) 将读取身份、初始化和使用同连接已观察槽位分为 `ReadIdentity`、`Initialize`、`Cached`；[Service GATT owner](../../../crates/razer-service/src/runtime/windows/mouse/mouse_current_dpi_ble.rs) 持有 COM apartment、按容器独占的锁和连接，先 GET edition `[0,1,134]`，再执行对应操作。响应保留实际长度；profile 是请求头参数，不伪造设备回显。当前 DPI GET／SET 使用 `[0,11,129]`／`[6,11,1]`、profile 0，档位 GET／SET 使用 `[0,11,132]`／`[255,11,4]`、profile 1。
+
+[Shell DPI worker](../../../crates/razer-shell/src/shell/mouse/mouse_current_dpi_worker.rs) 在没有同连接槽位缓存时先通过 `[0,1,131]` 读取真实序列号，再选取该序列号对应的 `deviceMetadatas.activeProfileGuid` 与实际有序本地配置档。[类型化本地配置读取器](../../../crates/razer-storage/src/host_local_profile/ble226.rs) 在外部 JSON 边界完整执行 schema 0–12 至 13 的全部逐步迁移；缺失或 null schema 按源码从 0 开始，13 不迁移，未来版本、错误类型和迁移失败保持错误。随后立即校验产品、edition、report IDs、GUID、档位及 Chromium／LevelDB 修订身份；原始值 SHA、sequence、扩展字段、身份和顺序分别保留。先核对已保存的同序列号配置，无适用输入时才读取实际主机文档。文档损坏和读取失败不创建默认值；缺少主机目录、当前键不存在与 `NeedsSerialInitialization` 不能作为设备为空的依据。返回的 `Catalog` 仅在原请求、连接、序列号和原始草稿基线仍有效时完整导入，本地配置与设备实测状态分别持有。
+
+226 首次配置链尚未完成。当前官方顺序是连接 edition 握手 → 真实 serial → 配置阶段再次读取 edition → 构造或迁移本地文档并完成保存 → 建立或读取 profile-stack 并完成同步保存 → 完整 OBM `It`。已有文档的全部 1–13 迁移已在读取边界实现；官方完整默认构造、文档持久化、profile-stack 初始化与完整 `It` 仍未接入，不能用只读查询替代这些必要步骤。两次 edition 读取分别属于不同阶段，未知值不能用 edition 0 填充。真实 serial 对应的 metadata 缺失、空 GUID、已有有效 GUID与悬空 GUID分别处理，只有源码规定的初始化分支可创建本地配置。
+
+profile-stack 的 `34791.tf` 保留全部本地 owner 分区，仅当前分区缺失时由当前 serial GUID 和有序关联游戏建立；`8507.set` 实际同步调用 `localStorage.setItem`，同步异常会传播。普通 UI 切换更新 base，系统 runtime 切换与设备导航不更新 base；游戏 start／stop／前台切换的门禁、通知顺序及 same-GUID 判断不同于现有键盘链。这些消费者与真实设备任务尚未接入226，完整来源区间、保存／释放边界和后续实现项集中保留在统一 gaps。
+
+[BLE DPI 初始化](../../../crates/razer-device/src/mouse/mouse_current_dpi_ble_initialization.rs) 先读取真实 OBM inventory，再按原顺序读取除首项外的身份，最后逐槽读取 level／stages；level 失败时不伪造 stages。同步使用原始 GUID／owner 和当前 slot 1 条件选择槽位，仅在相应本地 DPI 字段存在且与实际读取有差异时发送 SET，保留逐槽应答、部分失败与取消。供后续编辑查询的投影关联另行持有，不得反过来替代初始化的原始身份。此处只实现 `loadProfilesFromDevice` 的 DPI 切片；完整宏、滚轮、亮度、轮询率、映射及其他 BLE 初始化链仍独立核对，不能将这段 DPI 顺序说成完整设备初始化。
+
+初始化的 `completed` 表示适用的 DPI 任务完成，不等于 OBM 槽位已独立写后读回；setter ACK、普通 DPI 读回、初始化进度及本地持久化分别保留。Shell 按页面实体、实际物理目标、连接 owner 和非零 generation 保存槽位关联；连接替换清空缓存并拒绝旧结果。只有初始化完成且通信清理成功才发布关联，初始化失败清除关联。同连接的 OBM 已完成而后续 DPI GET 失败或不完整时，`PendingBleCatalog` 保留首次真实 serial、catalog 及原始草稿基线，后续 `Cached` 请求只有在实际 DPI 读取确认后才可投影；失败不自动重试或重置基线，窗口缺失与延迟投影确认不会提前丢弃待投影值。连接、配置或草稿变化使其失效。Service 正常、失败和取消收尾均调用连接释放；释放失败随操作错误返回，不能发布成功。IPC 取消事件先通知真实服务停止后续操作，再等待实际应答与清理；取消后的 BLE 应答只保留为诊断。进程退出尚未确认时，进程与管道仍归原 owner，确认退出后逐一 join。
+
+统一验证分别记录各纯／模拟套件的实际 Rust 输入快照、执行数量、过滤范围、日志 SHA 和未执行项；不同快照或重叠过滤器不能合计为唯一用例数。六产品 Matcher、BLE 当前 DPI、逐步迁移和待投影 catalog 的结果连接到统一 gaps，设备实测、草稿和本地持久化分别验收。窗口测试未运行，显式维护用的已安装主机读取不作为纯测试通过。官方实际 DLL、真实设备、写后恢复与释放对照及窗口验收仍未验证。
 
 确认名称的来源选择与命名分开核对：先按参考容器查找设备，179／164／241 和键盘分支按首个配对记录解析，再读取实际主机名。未找到对应在线条目时使用此次主机名观察，配对格式错误则返回失败。`dpi_matcher_storage::confirm` 先按新源码投影英文名称，再调用 `source_string::unique_profile_name` 执行 AM／W$ 的严格字符串比较，并保留中文对应后缀与其他名称扩展字段。序列号初始化、接收器初始化／恢复和鼠标垫校准共用字符串候选算法，各自调用方保留自己的输入投影。定向测试核对去重、大小写、编号空缺、最终编号仍重复，以及 CONFIRM 先清空采样再独立保存两项任务的失败语义；保存失败不伪造持久化或设备成功，也不回滚已经保存的另一项任务。这些是纯／模拟验证。
 
@@ -209,13 +223,13 @@ Matcher 核心 `Session` 接收经过校验的逻辑产品，六款按新部署�
 
 六款的 `k/w` 在每次消费最多 100 条记录后继续调度；下次执行先计算并发布进度，再检查缓冲是否为空。Rust 核心按这个顺序迭代，最后不足 100 条的批次也进入进度计算，无需等下一次设备回调。独立样本核对 800 DPI 下移动 2000 得到 50%、205 条各移动 10 得到 51%，并保留超过阈值时的 99% 上限；缓冲为空时仍为 calibrating，不能提前计算或确认结果。服务测试另核对 GET_STATE 得到相同进度及取消后的实际 STOP／释放链。完整来源引用和首次失败断言保存在统一 gaps 的 `progress_publication_source_review`。
 
-校准观察现由核心 `Calibration`／`Phase` → Service `Response` → worker → Shell → Pages 直接传递类型化快照，不再借助 JSON 对象传递阶段与数值。初始 reducer 的 `currentDpi` 缺省由 `None` 保留，不冒充设备已读取的零值；页面数字复用 ECMAScript 文本规则，按 React 数字子项显示 `400`，不会显示 `400.0`。核心计算保留原件的负数、零、非有限值和反向样本语义；`SourceNumber` 在内部 IPC 中保留原始位值，文件投影才按 `JSON.stringify` 将非有限值变为 `null`。设备边界将有限值按当前协议截断为字节，并以原始 Number 与实际读回严格比较，NaN 不会伪装成确认成功。其余五款页面挂载、PID226 的完整 BLE 业务分支以及官方 DLL／设备与窗口验收继续分别保留未完成或未验证状态。
+校准观察现由核心 `Calibration`／`Phase` → Service `Response` → worker → Shell → Pages 直接传递类型化快照，不再借助 JSON 对象传递阶段与数值。初始 reducer 的 `currentDpi` 缺省由 `None` 保留，不冒充设备已读取的零值；页面数字复用 ECMAScript 文本规则，按 React 数字子项显示 `400`，不会显示 `400.0`。核心计算保留原件的负数、零、非有限值和反向样本语义；`SourceNumber` 在内部 IPC 中保留原始位值，文件投影才按 `JSON.stringify` 将非有限值变为 `null`。设备边界将有限值按当前协议截断为字节，并以原始 Number 与实际读回严格比较，NaN 不会伪装成确认成功。六款页面已接入共享 Matcher；PID226 的完整 BLE 业务分支以及官方 DLL／设备与窗口验收继续分别保留未完成或未验证状态。
 
 六款 START 的 `currentDpi` 是按序列号选定的本地活动配置档基线，此处没有硬件 DPI GET，不能将该值标成硬件实测。`dpiStages` 缺省或为 `null` 时才使用 `100`；活动档位缺失或为 `null` 报错，活动行的 X 缺失、为 `null`、零、NaN 或负零按原式使用 `100`，负数和 Infinity 保留。缓存、活动配置档读取失败以及畸形档位引发的错误不属于通用回退。可选 `storageOverrides` 与独立的启动／恢复设备读取链分别保留。
 
 190／192／222／226／229／239 的 `updateUI → postBCMsg` 已逐款核对：BroadcastChannel 直接发送原始 `msgData`，没有 `JSON.stringify`；190 已挂载的完成浮层直接将 `newDpi/currentDpi` 用作子项。六款的确认、档位打包和存储消费者也已静态核对：`structuredClone` 与任务数组保留原始 Number，USB setter 以位运算拆分高低字节，GET decoder 重组整数；非有限数在 `JSON.stringify` 的存储边界转换为 null，不能提前把中间件观察转换成 JSON null。
 
-六款保留快照的静态默认 feature 均为 `taskRunnerSetDPI:{setDpiStages:{}}`，没有 `setDpiLevel`；新部署 runner 中的两个 feature 分支分别保留。提前拒绝零值或越界值、先裁成 `u16` 再比较，都会改变原版路径；六款新 runner 共同保留返回数组长度边界和原始 Number 的严格比较。对应原件、完整 AST 范围与正文 SHA 由统一 gaps 的 `numeric_consumer_source_review` 连接。新部署根节点引用另一组文件，PID229 的新 MW 清单不再提供原 `6120.js` 键，已沿实际依赖追到 `6259` 中的 runner。完整源码依赖闭包仍未通过。其余五款 UI 挂载、226 BLE 和全部实际 DLL／设备／窗口验收分别保持未完成或未验证。
+六款保留快照的静态默认 feature 均为 `taskRunnerSetDPI:{setDpiStages:{}}`，没有 `setDpiLevel`；新部署 runner 中的两个 feature 分支分别保留。提前拒绝零值或越界值、先裁成 `u16` 再比较，都会改变原版路径；六款新 runner 共同保留返回数组长度边界和原始 Number 的严格比较。对应原件、完整 AST 范围与正文 SHA 由统一 gaps 的 `numeric_consumer_source_review` 连接。新部署根节点引用另一组文件，PID229 的新 MW 清单不再提供原 `6120.js` 键，已沿实际依赖追到 `6259` 中的 runner。完整源码依赖闭包仍未通过。六款 Matcher 挂载和226／BLE228 的当前 DPI 子链不能扩大为完整 BLE 功能完成；全部实际 DLL／设备／窗口验收仍未验证。
 
 常规 `Math.round` 结果在 Rust 中以 `f64` 持有，文件投影复用 ECMAScript 数字文本规则。Matcher 的 `SourceStages` 直接进入共享 DPI 命令和 `pack_for`；普通 u16 编辑器单独通过 `pack_editor_for` 校验范围。六款模拟确认测试核对测量值、其他档位、实际发送字节、ACK、GET 及严格比较失败，但不构成真实设备验收。原版档位任务先保存本地配置与版本，再派发设备任务；Rust 按同一顺序先发布并保存 typed stage，再把设备任务排入共享 DPI owner。设备任务的排队接收、实际 ACK、GET 读回和本地 Profiles 保存分别记录，不能把其中一项扩大为另一项。
 

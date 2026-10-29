@@ -373,8 +373,8 @@ mod rename_window_tests {
     use gpui_kit::prelude::*;
     use gpui_kit::test::TestWindowExt;
     use gpui_kit::{
-        AppContext as _, Context, Entity, FocusHandle, IntoElement, Render, Subscription,
-        TestAppContext, Window, WindowHandle, div, px, size,
+        Context, Entity, FocusHandle, IntoElement, Render, Subscription, TestAppContext, Window,
+        WindowHandle, div, px, size,
     };
     use std::{
         cell::{Cell, RefCell},

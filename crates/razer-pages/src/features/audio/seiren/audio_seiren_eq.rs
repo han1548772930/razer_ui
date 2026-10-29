@@ -5,8 +5,12 @@ use super::*;
 use gpui_kit::base::motion::{self, Easing, Presence, Transition};
 use gpui_kit::base::{Button as BaseButton, Popover, Select as BaseSelect};
 use gpui_kit::component::IndexPath;
-use razer_widgets::{source_text::SourceText, surface::css, synapse_select};
-use std::time::Duration;
+use razer_widgets::{
+    source_text::SourceText,
+    surface::css,
+    synapse_select::{self, PointerSelectPlacement, PointerSelectStyle, SelectOptionDecoration},
+};
+use std::{cell::Cell, rc::Rc, time::Duration};
 
 #[path = "audio_seiren_eq_theme.rs"]
 pub(super) mod colors;
@@ -41,6 +45,8 @@ pub(super) struct State {
     faders: Vec<Entity<SliderState>>,
     knobs: BTreeMap<String, Entity<SliderState>>,
     dial: Option<Entity<SelectState<Vec<Choice>>>>,
+    filter: Option<Entity<SelectState<Vec<Choice>>>>,
+    pub(super) wrapper_bounds: Rc<Cell<Bounds<Pixels>>>,
     subscriptions: Vec<Subscription>,
     monitor_preview: [Value; 3],
     monitor_observed: [Value; 3],
@@ -166,6 +172,13 @@ impl State {
 
 fn supported(pid: u32) -> bool {
     matches!(pid, 1422 | 1446)
+}
+
+fn filter_choices() -> Vec<Choice> {
+    model::FILTERS
+        .into_iter()
+        .map(|kind| Choice::new(kind, kind))
+        .collect()
 }
 
 #[cfg(test)]
@@ -443,16 +456,18 @@ impl AudioProductWorkspace {
         if !supported(self.spec.product_id) {
             return;
         }
-        self.seiren_eq.filter_focus = Some(cx.focus_handle());
-        self.seiren_eq.filter_menu_focus = Some(cx.focus_handle());
-        self.seiren_eq
-            .subscriptions
-            .push(cx.observe_window_activation(window, |this, window, cx| {
-                if !window.is_window_active() && this.seiren_eq.filter_open {
-                    this.seiren_eq.set_filter_open(false);
-                    cx.notify();
-                }
-            }));
+        if self.spec.product_id == 1446 {
+            self.seiren_eq.filter_focus = Some(cx.focus_handle());
+            self.seiren_eq.filter_menu_focus = Some(cx.focus_handle());
+            self.seiren_eq
+                .subscriptions
+                .push(cx.observe_window_activation(window, |this, window, cx| {
+                    if !window.is_window_active() && this.seiren_eq.filter_open {
+                        this.seiren_eq.set_filter_open(false);
+                        cx.notify();
+                    }
+                }));
+        }
         let properties = [
             ("frequency", 1000., (20., 20000., 1.), false, 5),
             ("q", 1., (0.3, 15., 0.1), true, 5),
@@ -610,6 +625,30 @@ impl AudioProductWorkspace {
                 },
             ));
             self.seiren_eq.dial = Some(dial);
+            let selected = self
+                .seiren_model()
+                .and_then(|model| {
+                    model
+                        .active()
+                        .and_then(|preset| preset.selected())
+                        .map(|band| band.kind.clone())
+                })
+                .and_then(|kind| model::FILTERS.iter().position(|value| *value == kind))
+                .map(IndexPath::new);
+            let filter = cx.new(|cx| SelectState::new(filter_choices(), selected, window, cx));
+            self.seiren_eq.subscriptions.push(cx.subscribe_in(
+                &filter,
+                window,
+                |this, _, event: &SelectEvent<Vec<Choice>>, window, cx| {
+                    if this.syncing {
+                        return;
+                    }
+                    if let SelectEvent::Confirm(Some(kind)) = event {
+                        this.seiren_confirm_filter(kind, window, cx);
+                    }
+                },
+            ));
+            self.seiren_eq.filter = Some(filter);
         }
         self.seiren_eq.committed_eq = self.draft["device"]["parametric"].clone();
         self.seiren_eq.effects_committed = self.draft["device"]["eqEffects"].clone();
@@ -690,6 +729,7 @@ impl AudioProductWorkspace {
         self.seiren_eq.hovered_effect = None;
         self.seiren_eq.pressed_effect = None;
         self.seiren_eq.filter_open = false;
+        self.seiren_eq.wrapper_bounds.set(Bounds::default());
         self.seiren_eq.peak_task = None;
         self.seiren_eq.sidetone_tooltip = None;
         self.seiren_eq.levels = [[0.; 2]; 2];
@@ -722,7 +762,15 @@ impl AudioProductWorkspace {
                         entity.update(cx, |entity, cx| entity.sync(value, disabled, window, cx));
                     }
                 }
-                self.seiren_eq.sync_filter(&band.kind);
+                if let Some(filter) = &self.seiren_eq.filter {
+                    if filter.read(cx).selected_value() != Some(&band.kind) {
+                        filter.update(cx, |filter, cx| {
+                            filter.set_selected_value(&band.kind, window, cx);
+                        });
+                    }
+                } else {
+                    self.seiren_eq.sync_filter(&band.kind);
+                }
             }
         }
         let agc = self.draft["device"]["micAgc"]["isEnabled"] == true;
@@ -1498,6 +1546,35 @@ impl AudioProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
+        if let Some(filter) = &self.seiren_eq.filter {
+            let images = model::data()
+                .filters
+                .iter()
+                .map(|filter| {
+                    (
+                        filter.kind.clone(),
+                        SelectOptionDecoration::new().content_image(
+                            filter.asset.clone(),
+                            filter.width,
+                            filter.height,
+                        ),
+                    )
+                })
+                .collect();
+            return synapse_select::select_pointer(filter)
+                .id("seiren-eq-filter-select")
+                .items(filter_choices())
+                .pointer_option_decorations(images)
+                .pointer_style(
+                    PointerSelectStyle::new()
+                        .trigger_height(css(35.))
+                        .row_height(css(32.)),
+                )
+                .pointer_placement(PointerSelectPlacement::ViewportBoundary)
+                .accessibility_label(label("aag"))
+                .w(css(96.))
+                .into_any_element();
+        }
         let Some(focus) = &self.seiren_eq.filter_focus else {
             return div().into_any_element();
         };
@@ -1719,7 +1796,9 @@ impl AudioProductWorkspace {
         select.child(popup).into_any_element()
     }
     fn seiren_confirm_filter(&mut self, kind: &str, window: &mut Window, cx: &mut Context<Self>) {
-        self.seiren_eq.set_filter_open(false);
+        if self.spec.product_id == 1446 {
+            self.seiren_eq.set_filter_open(false);
+        }
         if let Some(id) = self.seiren_model().and_then(|model| {
             model
                 .active()
@@ -1923,12 +2002,19 @@ impl AudioProductWorkspace {
                     .mt(css(10.))
                     .w(css(160.))
                     .child(
-                        synapse_select::select(dial)
+                        synapse_select::select_pointer(dial)
                             .items(vec![
                                 Choice::localized("0", model::data().labels["u1l"].clone()),
                                 Choice::localized("1", model::data().labels["E5g"].clone()),
                             ])
-                            .pl(css(30.))
+                            .pointer_style(
+                                PointerSelectStyle::new()
+                                    .text_insets(css(30.), css(30.))
+                                    .menu_padding_left(css(2.)),
+                            )
+                            .pointer_placement(PointerSelectPlacement::WrapperBoundary(
+                                self.seiren_eq.wrapper_bounds.clone(),
+                            ))
                             .accessibility_label(label("u1l")),
                     )
                     .child(

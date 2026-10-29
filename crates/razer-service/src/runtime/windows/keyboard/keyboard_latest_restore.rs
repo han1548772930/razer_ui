@@ -74,7 +74,11 @@ pub(super) fn request(target: &Target, operation: &Operation) -> anyhow::Result<
                     before["feature_report_bytes"] == cap.report_bytes,
                     "756 restore Feature length differs"
                 );
-                let device = hid_transport::open(&hid_target.path, cap.report_bytes)?;
+                let device = hid_transport::open_validated(
+                    &hid_target.path,
+                    cap.report_bytes,
+                    std::rc::Rc::new(&validate),
+                )?;
                 protocol::execute_hid(
                     &device,
                     cap,
@@ -125,6 +129,9 @@ pub(super) fn request(target: &Target, operation: &Operation) -> anyhow::Result<
                         break;
                     }
                     Err(error) => {
+                        if !gatt::connection_retryable(&error) {
+                            return Err(error);
+                        }
                         validate()?;
                         last_error = Some(error);
                     }

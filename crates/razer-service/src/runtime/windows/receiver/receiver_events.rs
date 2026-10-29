@@ -125,7 +125,7 @@ impl Events {
 }
 
 fn open_readers(
-    backend: &mut impl HidBackend,
+    backend: &mut (impl HidBackend + ?Sized),
     product_id: u16,
     selected: &[(String, String)],
 ) -> anyhow::Result<Vec<Box<dyn InterruptTransport>>> {

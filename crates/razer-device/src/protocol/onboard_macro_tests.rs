@@ -1214,3 +1214,122 @@ fn malformed_report_count_and_unsupported_status_fail_without_ack() {
         device.finish();
     }
 }
+
+#[test]
+fn macro_data_ack_survives_release_failure_without_the_next_block() {
+    let data = vec![0x31; 73];
+    let mut payload = vec![0, 7, 0, 0, 0, 0, 72];
+    payload.extend_from_slice(&data[..72]);
+    let acknowledgment = vec![0xa1, 0xb2];
+    let device = Transport::new([
+        send(SET_MEMORY, &payload, 1, 79),
+        reply(SET_MEMORY, &acknowledgment, 1),
+    ]);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);
+    let mut macros = OnboardMacro::for_mouse(&probe, &cap()).unwrap();
+    macros.write_transport = cap();
+    let mut report = MacroWriteReport {
+        macro_id: 7,
+        ..Default::default()
+    };
+    let error = macros
+        .write_data(7, &data, &mut txs(), &|| Ok(()), &mut report)
+        .unwrap_err();
+    assert_eq!(
+        error.root_cause().to_string(),
+        "simulated explicit release failed"
+    );
+    assert_eq!(report.steps.len(), 1);
+    assert!(report.steps[0].attempted);
+    assert!(report.steps[0].acknowledgment_received);
+    assert_eq!(report.steps[0].acknowledgment_data, acknowledgment);
+    assert!(
+        report.steps[0]
+            .error
+            .as_deref()
+            .unwrap()
+            .contains("simulated explicit release failed")
+    );
+    assert!(!report.verified());
+    device.finish();
+}
+
+#[test]
+fn macro_upload_failure_identifies_the_acknowledged_allocation_and_keeps_its_progress() {
+    let mut steps = Vec::new();
+    let mut tx = 1;
+    inventory_io(&mut steps, &mut tx, &[], 8192, 0);
+    let req = request(1);
+    let allocation = [0, 7, 0, 0, 0, 1];
+    steps.push(send(ALLOCATE, &allocation, tx, 6));
+    steps.push(reply(ALLOCATE, &[0xa7], tx));
+    let device = Transport::new(steps);
+    let finish_check = || {
+        ensure!(
+            !device.steps.borrow().is_empty(),
+            "allocation release failed"
+        );
+        Ok(())
+    };
+    let probe =
+        crate::feature_exchange::tests::ExchangeProbe::with_finish_check(&device, &finish_check);
+    let mut macros = OnboardMacro::for_mouse(&probe, &cap()).unwrap();
+    macros.write_transport = cap();
+    macros.metadata_write_transport = cap();
+    let failure = macros
+        .write_macro(7, &req, &mut txs(), &|| Ok(()))
+        .unwrap_err();
+    assert_eq!(failure.phase, MacroFailurePhase::Allocate);
+    assert_eq!(failure.failed_step, Some(0));
+    assert_eq!(failure.progress.steps.len(), 1);
+    assert!(failure.progress.steps[0].attempted);
+    assert!(failure.progress.steps[0].acknowledgment_received);
+    assert_eq!(failure.progress.steps[0].acknowledgment_data, [0xa7]);
+    assert!(failure.progress.inventory_before.is_some());
+    assert!(!failure.progress.verified());
+    assert!(failure.progress.storage_after.is_none());
+    assert_eq!(
+        failure.error().root_cause().to_string(),
+        "allocation release failed"
+    );
+    device.finish();
+}
+
+#[test]
+fn macro_data_cancellation_during_get_never_becomes_an_ack_or_sends_the_next_block() {
+    let data = vec![0x32; 73];
+    let mut payload = vec![0, 7, 0, 0, 0, 0, 72];
+    payload.extend_from_slice(&data[..72]);
+    let device = Transport::new([
+        send(SET_MEMORY, &payload, 1, 79),
+        reply(SET_MEMORY, &[0xa1, 0xb2], 1),
+    ]);
+    let mut macros = mouse_test(&device);
+    macros.write_transport = cap();
+    let mut report = MacroWriteReport {
+        macro_id: 7,
+        ..Default::default()
+    };
+    let error = macros
+        .write_data(
+            7,
+            &data,
+            &mut txs(),
+            &|| {
+                ensure!(
+                    !device.steps.borrow().is_empty(),
+                    "canceled during native GET"
+                );
+                Ok(())
+            },
+            &mut report,
+        )
+        .unwrap_err();
+    assert_eq!(error.root_cause().to_string(), "canceled during native GET");
+    assert_eq!(report.steps.len(), 1);
+    assert!(report.steps[0].attempted);
+    assert!(!report.steps[0].acknowledgment_received);
+    assert!(report.steps[0].acknowledgment_data.is_empty());
+    assert!(!report.verified());
+    device.finish();
+}

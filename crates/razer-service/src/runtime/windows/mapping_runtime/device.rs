@@ -652,6 +652,10 @@ impl Owner {
         self.cleanup_result = Some(result.clone());
         result.map_err(anyhow::Error::msg)
     }
+
+    pub(super) fn cleanup_pending(&self) -> bool {
+        self.worker.is_some()
+    }
 }
 impl Drop for Owner {
     fn drop(&mut self) {

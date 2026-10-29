@@ -7,10 +7,55 @@ use crate::features::mouse_dpi_matcher::{
 };
 use anyhow::{Context as _, ensure};
 use razer_device::{
+    dpi_matcher::Product,
     dpi_matcher_storage::{Library, ProfileUpdate},
     mouse_current_dpi::{SourceStage, SourceStages},
 };
 use razer_model::model::Device;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum MatcherColumn {
+    Left,
+    Right,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct MatcherUiSpec {
+    product: Product,
+    column: MatcherColumn,
+}
+
+impl MatcherUiSpec {
+    pub(super) fn product(self) -> Product {
+        self.product
+    }
+
+    pub(super) fn column(self) -> MatcherColumn {
+        self.column
+    }
+}
+
+/// Mounted Performance branches share the Matcher panel and popup, but retain
+/// their source column order. The PID226 Matcher precedes system properties.
+pub(super) fn source_spec(product_id: u32) -> Option<MatcherUiSpec> {
+    let column = match product_id {
+        190 | 192 | 222 | 226 => MatcherColumn::Right,
+        229 | 239 => MatcherColumn::Left,
+        _ => return None,
+    };
+    Some(MatcherUiSpec {
+        product: Product::new(product_id).expect("reviewed Matcher UI product"),
+        column,
+    })
+}
+
+pub(in crate::features) fn device_fields(product_id: u32) -> &'static [&'static str] {
+    if source_spec(product_id).is_some() {
+        &["sensitivityMatcher"]
+    } else {
+        &[]
+    }
+}
 
 /// Only the durable Matcher library and its profile-local selection are copied
 /// back into retained drafts. Device observations and unrelated edits stay owned
@@ -303,12 +348,12 @@ impl EventEmitter<MouseMatcherRequest> for MouseProductWorkspace {}
 
 impl MouseProductWorkspace {
     pub(super) fn prepare_matcher(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        // This view implements PID190 dS/AS. Sampling/storage support for other
-        // products does not establish their popup, menu or resource lifecycle.
-        if self.spec.product_id != razer_device::dpi_matcher::PRODUCT_ID {
+        let Some(spec) = source_spec(self.spec.product_id) else {
             return;
-        }
-        let matcher = cx.new(|cx| MouseDpiMatcher::new(window, cx));
+        };
+        let matcher = cx.new(|cx| {
+            MouseDpiMatcher::new(spec.product(), self.spec.block_widget_columns(), window, cx)
+        });
         self.subscriptions.push(cx.subscribe_in(
             &matcher,
             window,
@@ -644,7 +689,10 @@ impl MouseProductWorkspace {
 
 #[cfg(test)]
 mod tests {
-    use super::{MouseMatcherScope, NormalizationState, SavedMatcherProfiles, ScopeKind};
+    use super::{
+        MatcherColumn, MouseMatcherScope, NormalizationState, SavedMatcherProfiles, ScopeKind,
+        device_fields, source_spec,
+    };
     use crate::features::mouse_dpi_matcher::{
         MatcherAction, MatcherCommand, MatcherObservation, MatcherState,
     };
@@ -656,6 +704,27 @@ mod tests {
         Arc,
         atomic::{AtomicBool, Ordering},
     };
+
+    #[test]
+    fn matcher_ui_products_follow_the_mounted_source_columns_and_device_field_scope() {
+        for (product_id, column) in [
+            (190, MatcherColumn::Right),
+            (192, MatcherColumn::Right),
+            (222, MatcherColumn::Right),
+            (226, MatcherColumn::Right),
+            (229, MatcherColumn::Left),
+            (239, MatcherColumn::Left),
+        ] {
+            let spec = source_spec(product_id).unwrap();
+            assert_eq!(spec.product().product_id(), product_id);
+            assert_eq!(spec.column(), column);
+            assert_eq!(device_fields(product_id), ["sensitivityMatcher"]);
+        }
+        for product_id in [0, 70, 182, 191, 193, 223, 227, 228, 230, 240, 241] {
+            assert!(source_spec(product_id).is_none());
+            assert!(device_fields(product_id).is_empty());
+        }
+    }
 
     #[test]
     fn matcher_exit_unmount_keeps_admitted_identity_without_reopening_ui_scope() {

@@ -129,8 +129,66 @@ pub(super) struct Backend<E: device::Executor> {
     core: Core<E>,
     capture: capture::State,
     philips: philips::State,
+    pending_mapping_restores: BTreeSet<Uuid>,
+    pending_shortcut_restores: BTreeSet<Uuid>,
 }
 impl<E: device::Executor> Backend<E> {
+    fn scope_cleanup_pending(&self, scope: Uuid) -> bool {
+        let observer_pending = |caller| {
+            self.core
+                .devices
+                .values()
+                .any(|row| row.caller == caller && row.worker.cleanup_pending())
+        };
+        self.core.devices.values().any(|row| {
+            row.scope == scope
+                && (row.worker.cleanup_pending()
+                    || row
+                        .hardware
+                        .as_ref()
+                        .is_some_and(hardware::Owner::cleanup_pending))
+        }) || !self.core.connections.leases_for(scope).is_empty()
+            || self.core.rotations.values().any(|row| row.scope == scope)
+            || self
+                .core
+                .observers
+                .values()
+                .any(|row| row.scope == scope && observer_pending(row.caller))
+            || self
+                .core
+                .input_observers
+                .values()
+                .any(|row| row.scope == scope && observer_pending(row.caller))
+            || self
+                .core
+                .analog_observers
+                .values()
+                .any(|row| row.scope == scope && observer_pending(row.caller))
+            || self
+                .core
+                .gamepad_observers
+                .values()
+                .any(|row| row.scope == scope && observer_pending(row.caller))
+            || self.capture.cleanup_pending(scope)
+            || self.philips.cleanup_pending(scope)
+            || self.core.keypad_observation.cleanup_pending(scope)
+            || self
+                .core
+                .global
+                .as_ref()
+                .is_some_and(|global| global.scope == scope)
+            || (self.core.hotkeys.cleanup_pending()
+                && self
+                    .core
+                    .hotkey_scopes
+                    .values()
+                    .any(|scopes| scopes.contains(&scope)))
+            || self.core.mapping_suppression.contains(&scope)
+            || self.core.shortcut_suppression.contains(&scope)
+            || self.pending_mapping_restores.contains(&scope)
+            || self.pending_shortcut_restores.contains(&scope)
+    }
+
     pub fn new(factory: fn(ExecutionContext) -> Result<E>) -> Self {
         let (notification_sender, notifications) = mpsc::sync_channel(512);
         Self {
@@ -160,6 +218,8 @@ impl<E: device::Executor> Backend<E> {
             },
             capture: Default::default(),
             philips: Default::default(),
+            pending_mapping_restores: BTreeSet::new(),
+            pending_shortcut_restores: BTreeSet::new(),
         }
     }
 }
@@ -1194,7 +1254,14 @@ impl<E: device::Executor> crate::mapping::owner::Backend for Backend<E> {
         }
         for lease in self.core.connections.leases_for(scope) {
             if let Lease::Device { caller, .. } = &lease {
-                if self.core.devices.values().any(|row| row.caller == *caller) {
+                if self.core.devices.values().any(|row| {
+                    row.caller == *caller
+                        && (row.worker.cleanup_pending()
+                            || row
+                                .hardware
+                                .as_ref()
+                                .is_some_and(hardware::Owner::cleanup_pending))
+                }) {
                     continue;
                 }
             }
@@ -1213,23 +1280,48 @@ impl<E: device::Executor> crate::mapping::owner::Backend for Backend<E> {
                 errors.push(format!("{error:#}"));
             }
         }
-        if self.core.mapping_suppression.contains(&scope) {
+        if self.core.mapping_suppression.contains(&scope)
+            || self.pending_mapping_restores.contains(&scope)
+        {
+            self.pending_mapping_restores.insert(scope);
             match self.core.mapping(scope, true) {
                 Ok(reply) if !reply.result() => errors.push(reply.reason().into()),
                 Err(error) => errors.push(format!("{error:#}")),
-                _ => {}
+                _ => {
+                    self.pending_mapping_restores.remove(&scope);
+                }
             }
         }
-        if self.core.shortcut_suppression.contains(&scope) {
+        if self.core.shortcut_suppression.contains(&scope)
+            || self.pending_shortcut_restores.contains(&scope)
+        {
+            self.pending_shortcut_restores.insert(scope);
             match self.core.shortcuts(scope, true) {
                 Ok(reply) if !reply.result() => errors.push(reply.reason().into()),
                 Err(error) => errors.push(format!("{error:#}")),
-                _ => {}
+                _ => {
+                    self.pending_shortcut_restores.remove(&scope);
+                }
             }
         }
+        self.core.mode_subscribers.remove(&scope);
         if self.core.scopes.len() == 1 && self.core.scopes.contains(&scope) {
             if let Err(error) = self.shutdown() {
                 errors.push(format!("Mapping final scope cleanup: {error:#}"));
+            }
+            if self.core.devices.values().all(|row| {
+                !row.worker.cleanup_pending()
+                    && row
+                        .hardware
+                        .as_ref()
+                        .is_none_or(|hardware| !hardware.cleanup_pending())
+            }) && self.core.connections.leases_for(scope).is_empty()
+            {
+                self.core.global = None;
+                self.pending_mapping_restores.remove(&scope);
+                if !self.core.hotkeys.cleanup_pending() {
+                    self.pending_shortcut_restores.remove(&scope);
+                }
             }
             if errors.is_empty() {
                 *self
@@ -1239,11 +1331,31 @@ impl<E: device::Executor> crate::mapping::owner::Backend for Backend<E> {
                     .map_err(|_| anyhow::anyhow!("Mapping macro owner poisoned"))? = State::new();
             }
         }
+        if !self.scope_cleanup_pending(scope) {
+            self.core.devices.retain(|_, row| row.scope != scope);
+            self.core.observers.retain(|_, row| row.scope != scope);
+            self.core
+                .input_observers
+                .retain(|_, row| row.scope != scope);
+            self.core
+                .analog_observers
+                .retain(|_, row| row.scope != scope);
+            self.core
+                .gamepad_observers
+                .retain(|_, row| row.scope != scope);
+            self.core.hotkey_scopes.retain(|_, scopes| {
+                scopes.remove(&scope);
+                !scopes.is_empty()
+            });
+            self.core.hotkey_events.remove(&scope);
+            self.core.hotkey_failures.remove(&scope);
+            self.core.scopes.remove(&scope);
+        }
         ensure!(errors.is_empty(), "{}", errors.join("; "));
-        self.core.hotkey_events.remove(&scope);
-        self.core.hotkey_failures.remove(&scope);
-        self.core.scopes.remove(&scope);
         Ok(())
+    }
+    fn release_cleanup_pending(&self, scope: Uuid) -> bool {
+        self.scope_cleanup_pending(scope)
     }
     fn shutdown(&mut self) -> Result<()> {
         let mut errors = Vec::new();

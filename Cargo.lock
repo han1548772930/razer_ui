@@ -6100,11 +6100,13 @@ name = "razer-ipc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "md5",
  "razer-device",
  "razer-model",
  "razer-storage",
  "serde",
  "serde_json",
+ "tokio",
  "uuid",
  "windows-sys 0.61.2",
 ]

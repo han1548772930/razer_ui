@@ -2,6 +2,25 @@ use super::*;
 use serde_json::json;
 use std::{cell::Cell, collections::VecDeque, sync::Mutex};
 
+#[test]
+fn release_failure_retains_indicator_ack_without_readback_or_verification() {
+    for &product in AUDITED_INDICATOR_PRODUCTS {
+        let device = Mock::new([reply(&[0xd3])]);
+        let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);
+        let failure = apply_with_cap(&probe, &cap(product), true, true, &mut sequence(), &|| {
+            Ok(())
+        })
+        .unwrap_err();
+        assert_eq!(failure.phase, IndicatorFailurePhase::Write);
+        assert!(failure.report.attempted);
+        assert_eq!(failure.report.acknowledgment_data, Some(vec![0xd3]));
+        assert!(failure.report.observed.is_none());
+        assert!(!failure.report.verified());
+        assert!(format!("{:#}", failure.error).contains("simulated explicit release failed"));
+        assert_eq!(device.sent().len(), 1);
+    }
+}
+
 struct Reply {
     status: u8,
     data: Vec<u8>,
@@ -263,11 +282,11 @@ fn cancel_before_mutation_or_after_ack_stops_later_io_and_never_reports_verified
     assert!(!error.report.attempted);
     assert!(device.sent().is_empty());
     let device = Mock::new([reply(&[])]);
-    let validations = Cell::new(0);
-    let error = apply_with_cap(&device, &cap, true, true, &mut sequence(), &|| {
-        let count = validations.get() + 1;
-        validations.set(count);
-        ensure!(count < 6, "cancel after ACK");
+    let completed = Cell::new(false);
+    let on_finish = || completed.set(true);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::with_on_finish(&device, &on_finish);
+    let error = apply_with_cap(&probe, &cap, true, true, &mut sequence(), &|| {
+        ensure!(!completed.get(), "cancel after ACK");
         Ok(())
     })
     .unwrap_err();

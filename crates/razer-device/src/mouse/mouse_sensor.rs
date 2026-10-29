@@ -376,20 +376,22 @@ pub fn apply(
         ensure_transaction(cap, transaction)
             .map_err(|error| fail(SensorFailurePhase::Prepare, report.clone(), error))?;
         report.attempted_writes += 1;
-        let data = feature_exchange::exchange(
+        let response = feature_exchange::exchange(
             device,
             cap,
             request.command,
             &request.payload,
             transaction,
             &validate,
-        )
-        .map_err(|error| fail(SensorFailurePhase::Write, report.clone(), error))?;
-        report.acknowledgements.push(SensorAcknowledgement {
-            command: request.command,
-            payload: request.payload.clone(),
-            data,
-        });
+        );
+        if let Some(data) = feature_exchange::acknowledged_reply(&response) {
+            report.acknowledgements.push(SensorAcknowledgement {
+                command: request.command,
+                payload: request.payload.clone(),
+                data: data.to_vec(),
+            });
+        }
+        response.map_err(|error| fail(SensorFailurePhase::Write, report.clone(), error))?;
         if !request.wait_after.is_zero() {
             validate()
                 .and_then(|()| wait(request.wait_after))

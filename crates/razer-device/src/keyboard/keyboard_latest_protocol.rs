@@ -182,6 +182,64 @@ pub struct ChunkReceipt {
     pub error: Option<String>,
 }
 
+#[derive(Debug)]
+struct FailedWrite {
+    chunks: Vec<ChunkReceipt>,
+}
+
+impl std::fmt::Display for FailedWrite {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Keyboard write failed with retained chunk evidence")
+    }
+}
+
+/// Retained chunks describe partial transport progress, never a completed write.
+pub fn failed_write(error: &anyhow::Error) -> Option<&[ChunkReceipt]> {
+    error
+        .downcast_ref::<FailedWrite>()
+        .map(|failure| failure.chunks.as_slice())
+}
+
+fn write_failure(error: anyhow::Error, chunks: &[ChunkReceipt]) -> anyhow::Error {
+    error.context(FailedWrite {
+        chunks: chunks.to_vec(),
+    })
+}
+
+fn retain_chunk(
+    chunks: &mut Vec<ChunkReceipt>,
+    offset: usize,
+    count: usize,
+    result: anyhow::Result<Vec<u8>>,
+    validate: &impl Fn() -> anyhow::Result<()>,
+) -> anyhow::Result<()> {
+    let acknowledgement = feature_exchange::acknowledged_reply(&result).map(<[u8]>::to_vec);
+    chunks.push(ChunkReceipt {
+        offset,
+        count,
+        acknowledgement,
+        error: result.as_ref().err().map(|error| format!("{error:#}")),
+    });
+    let operation_error = match result {
+        Err(error) if crate::backend::exchange_finalization_failed(&error) => {
+            return Err(write_failure(error, chunks));
+        }
+        Err(error) => Some(error),
+        Ok(_) => None,
+    };
+    if let Err(validation) = validate() {
+        let error = match operation_error {
+            Some(error) => error.context(format!(
+                "Keyboard write owner is no longer current: {validation:#}"
+            )),
+            None => validation,
+        };
+        chunks.last_mut().unwrap().error = Some(format!("{error:#}"));
+        return Err(write_failure(error, chunks));
+    }
+    Ok(())
+}
+
 /// Current obmEngineKeyboard.getProfileNameStructure, including its UTF-8
 /// name field and the separate byte-string owner. This is actual readback.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -623,31 +681,19 @@ pub fn execute_hid(
                 &transport,
                 command,
                 &payload,
-                next()?,
+                next().map_err(|error| write_failure(error, &chunks))?,
                 payload.len() as u8,
                 validate,
             );
-            let (acknowledgement, error) = match result {
-                Ok(data) => (Some(data), None),
-                Err(error) => {
-                    validate()?;
-                    (None, Some(format!("{error:#}")))
-                }
-            };
-            let failed = error.is_some();
-            chunks.push(ChunkReceipt {
-                offset,
-                count,
-                acknowledgement,
-                error,
-            });
+            let failed = result.is_err();
+            retain_chunk(&mut chunks, offset, count, result, validate)?;
             // setProfileNameStructure's catch exits the chunk loop after the
             // first failure; unlike setMulti*, later metadata is not attempted.
             if failed {
                 break;
             }
         }
-        validate()?;
+        validate().map_err(|error| write_failure(error, &chunks))?;
         return Ok(Reply::Write { chunks });
     }
     match operation {
@@ -928,7 +974,7 @@ pub fn execute_hid(
             cap,
             command,
             &payload,
-            next()?,
+            next().map_err(|error| write_failure(error, &chunks))?,
             if matches!(
                 operation,
                 Operation::Setting(Setting::ButtonAssignment { .. })
@@ -939,22 +985,10 @@ pub fn execute_hid(
             },
             validate,
         );
-        let (acknowledgement, error) = match result {
-            Ok(data) => (Some(data), None),
-            Err(error) => {
-                validate()?;
-                (None, Some(format!("{error:#}")))
-            }
-        };
-        chunks.push(ChunkReceipt {
-            offset,
-            count,
-            acknowledgement,
-            error,
-        });
+        retain_chunk(&mut chunks, offset, count, result, validate)?;
         offset += count;
     }
-    validate()?;
+    validate().map_err(|error| write_failure(error, &chunks))?;
     Ok(Reply::Write { chunks })
 }
 

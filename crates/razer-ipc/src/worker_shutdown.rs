@@ -2,6 +2,7 @@
 use crate::ResponseEnvelope;
 use anyhow::{Context as _, ensure};
 use serde::Deserialize;
+#[cfg(test)]
 use std::{
     sync::mpsc::Receiver,
     time::{Duration, Instant},
@@ -12,8 +13,19 @@ use std::{
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ShutdownConfirmation {
     request_id: u64,
+    source: ConfirmationSource,
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ConfirmationSource {
+    ServiceResponse,
+    BrokerSession,
+}
+
 impl ShutdownConfirmation {
+    pub fn source(self) -> ConfirmationSource {
+        self.source
+    }
+
     pub fn request_id(self) -> u64 {
         self.request_id
     }
@@ -24,12 +36,12 @@ pub(super) fn confirm(
     shutdown_id: u64,
 ) -> anyhow::Result<ShutdownConfirmation> {
     ensure!(response.id == shutdown_id, "设备服务清理回执序号不匹配");
-    ensure!(
-        response.data.is_some() != response.error.is_some(),
-        "设备服务清理回执状态无效"
-    );
+    response.validate_outcome()?;
     if let Some(error) = &response.error {
-        anyhow::bail!("设备服务恢复失败：{error}");
+        return Err(crate::failure_diagnostics::retain(
+            anyhow::anyhow!("设备服务恢复失败：{error}"),
+            response.diagnostics.clone(),
+        ));
     }
     #[derive(Deserialize)]
     struct Receipt {
@@ -46,9 +58,22 @@ pub(super) fn confirm(
     ensure!(receipt.stopped, "设备服务未确认清理完成");
     Ok(ShutdownConfirmation {
         request_id: shutdown_id,
+        source: ConfirmationSource::ServiceResponse,
     })
 }
 
+pub(super) fn confirm_session_close(
+    receipt: &crate::hid_broker::CloseSessionReceipt,
+    local_close_id: u64,
+) -> anyhow::Result<ShutdownConfirmation> {
+    receipt.validate()?;
+    Ok(ShutdownConfirmation {
+        request_id: local_close_id,
+        source: ConfirmationSource::BrokerSession,
+    })
+}
+
+#[cfg(test)]
 pub(super) fn drain(
     responses: &Receiver<anyhow::Result<ResponseEnvelope>>,
     shutdown_id: u64,
@@ -84,6 +109,7 @@ mod tests {
         error: Option<&str>,
     ) -> anyhow::Result<ResponseEnvelope> {
         Ok(ResponseEnvelope {
+            diagnostics: None,
             id,
             data,
             error: error.map(str::to_owned),
@@ -207,5 +233,19 @@ mod tests {
         ] {
             assert!(confirm(&response(42, data, error).unwrap(), 42).is_err());
         }
+    }
+
+    #[test]
+    fn broker_confirmation_requires_release_and_successful_restoration() {
+        use crate::hid_broker::CloseSessionReceipt;
+        for receipt in [
+            CloseSessionReceipt::pending("native owner remains".to_owned()),
+            CloseSessionReceipt::restoration_failed("restore failed".to_owned()),
+        ] {
+            assert!(confirm_session_close(&receipt, 42).is_err());
+        }
+        let confirmation = confirm_session_close(&CloseSessionReceipt::confirmed(), 42).unwrap();
+        assert_eq!(confirmation.request_id(), 42);
+        assert_eq!(confirmation.source(), ConfirmationSource::BrokerSession);
     }
 }

@@ -315,7 +315,11 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
     dpi_runtime = "crates/razer-shell/src/shell/mouse/mouse_current_dpi_runtime.rs"
     dpi_worker = "crates/razer-shell/src/shell/mouse/mouse_current_dpi_worker.rs"
     dpi_page = "crates/razer-pages/src/features/mouse/dpi/mouse_current_dpi.rs"
-    dpi_gui = owner in {dpi_caller, dpi_runtime, dpi_page}
+    dpi_gui_owners = {dpi_caller, dpi_runtime, dpi_page,
+                      "crates/razer-pages/src/features/mouse/dpi/mouse_current_dpi_observation.rs"}
+    dpi_gui = owner in dpi_gui_owners
+    dpi_gui_io_targets = {("mouse_current_dpi", "request"), ("mouse_current_dpi", "request_with_context"),
+                          ("ble226", "read")}
     polling_caller = "crates/razer-shell/src/shell/mouse/mouse_polling_write.rs"
     polling_runtime = "crates/razer-shell/src/shell/mouse/mouse_polling_runtime.rs"
     polling_worker = "crates/razer-shell/src/shell/mouse/mouse_polling_worker.rs"
@@ -369,6 +373,11 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
     thx_lifecycle = "crates/razer-shell/src/shell/audio/thx_sound.rs"
     ipc_client = "crates/razer-ipc/src/lib.rs"
     ipc_pipe_workers = {"input_worker", "output_worker", "diagnostic_worker"}
+    ipc_bootstrap = "crates/razer-ipc/src/hid_broker/bootstrap.rs"
+    ipc_broker_client = "crates/razer-ipc/src/hid_broker/client.rs"
+    broker_service = "crates/razer-service/src/runtime/mod.rs"
+    broker_server = "crates/razer-service/src/runtime/hid_broker/server.rs"
+    legacy_ipc_functions = {"stop_simulated", "finish_simulated_process", "reap_child", "join_pipe", "forward_requests"}
     keyboard_lifecycle = "crates/razer-shell/src/shell/keyboard/keyboard_lifecycle.rs"
     retired_shortcuts = "crates/razer-storage/src/workspace/retired_shortcuts.rs"
     preference_state = "crates/razer-state/src/ui_preferences.rs"
@@ -380,6 +389,35 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
     matcher_shell = "crates/razer-shell/src/shell/mouse/mouse_matcher.rs"
     matcher_page = "crates/razer-pages/src/features/mouse/dpi/mouse_matcher_owner.rs"
     matcher_worker = "crates/razer-service/src/mouse/dpi_matcher_worker.rs"
+    matcher_gui_owners = {matcher_shell, matcher_page,
+        "crates/razer-pages/src/features/mouse/dpi/mouse_dpi_matcher.rs",
+        "crates/razer-pages/src/features/mouse/dpi/mouse_dpi_matcher_state.rs"}
+    shared_gui_scope = {
+        "crates/razer-pages/src/features/mouse/mod.rs": (
+            "mouse_matcher", matcher_shell, matcher_worker,
+            {"performance_matcher_and_properties", "performance", "refresh_locale"}),
+        "crates/razer-pages/src/features/workspace/source_workspace.rs": (
+            "mouse_dpi", dpi_runtime, dpi_worker,
+            {"initialize_current_mouse_profile", "accept_current_dpi_ble_catalog"}),
+        "crates/razer-pages/src/features/workspace/product_workspace.rs": (
+            "mouse_dpi", dpi_runtime, dpi_worker, {"accept_current_dpi_ble_catalog"}),
+    }.get(owner)
+    independent_dpi_owner = owner in dpi_gui_owners | matcher_gui_owners | {
+        dpi_worker, matcher_worker,
+        "crates/razer-device/src/mouse/mouse_current_dpi.rs",
+        "crates/razer-device/src/mouse/mouse_current_dpi_ble.rs",
+        "crates/razer-device/src/mouse/mouse_current_dpi_ble_initialization.rs",
+        "crates/razer-device/src/mouse/mouse_onboard.rs",
+        "crates/razer-device/src/mouse/dpi_matcher.rs",
+        "crates/razer-device/src/mouse/dpi_matcher_storage.rs",
+        "crates/razer-discovery/src/direct/mouse_current_dpi.rs",
+        "crates/razer-ipc/src/device_tasks.rs",
+        "crates/razer-ipc/src/mouse_current_dpi_ble.rs",
+        "crates/razer-ipc/src/request_cancellation.rs",
+        "crates/razer-storage/src/host_local_profile/ble226.rs",
+        "crates/razer-service/src/mouse/dpi_matcher.rs",
+        "crates/razer-service/src/mouse/dpi_matcher_input.rs",
+        "crates/razer-service/src/runtime/windows/mouse/mouse_current_dpi_ble.rs"}
     profile_name_owner = "crates/razer-device/src/source_string.rs"
     profile_name_consumers = {
         "crates/razer-device/src/mouse/dpi_matcher_storage.rs": "confirmation_name",
@@ -456,6 +494,20 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                         return True
                 sibling = sibling.prev_named_sibling
             node = node.parent
+        return False
+    def legacy_ipc_function(node):
+        function = node if node.type == "function_item" else next(
+            (parent for parent in ancestors(node) if parent.type == "function_item"), None)
+        return owner == ipc_client and function is not None and text(function.child_by_field_name("name")) in legacy_ipc_functions
+    def test_only_field(node):
+        if in_test(node):
+            return True
+        sibling = node.prev_named_sibling
+        while sibling is not None and sibling.type in {"attribute_item", "line_comment", "block_comment"}:
+            if sibling.type == "attribute_item" and "".join(text(sibling).split()) in {
+                    "#[cfg(all(test,windows))]", "#[cfg(all(windows,test))]"}:
+                return True
+            sibling = sibling.prev_named_sibling
         return False
     def called_methods(node):
         methods = {text(call.child_by_field_name("function").child_by_field_name("field")) for call in walk(node)
@@ -606,6 +658,26 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
             return []
         call = next(child for child in walk(parsed.root_node) if child.type == "call_expression")
         return call.child_by_field_name("arguments").named_children
+    def select_arm_nodes(node):
+        # Parse Rust bodies inside select!'s token tree without evaluating futures.
+        # Preserve original byte offsets so shared AST readers and diagnostics apply.
+        result = []
+        prefix = b"fn __architecture_select() "
+        for invocation in walk(node):
+            if invocation.type != "macro_invocation" or text(invocation.child_by_field_name("macro")).split("::")[-1] != "select":
+                continue
+            tokens = next((child for child in invocation.named_children if child.type == "token_tree"), None)
+            if tokens is None:
+                continue
+            for body in tokens.named_children:
+                if body.type != "token_tree" or not body.text.startswith(b"{") or body.start_byte < len(prefix):
+                    continue
+                parsed = rust_parser.parse(b" " * (body.start_byte - len(prefix)) + prefix + body.text)
+                if not parsed.root_node.has_error:
+                    function = next((child for child in parsed.root_node.named_children if child.type == "function_item"), None)
+                    if function is not None:
+                        result.extend(walk(function.child_by_field_name("body")))
+        return result
     def conjunction_terms(node):
         if node.type == "parenthesized_expression":
             return conjunction_terms(node.named_children[0])
@@ -614,6 +686,14 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
         return [node]
     def condition_atoms(node):
         return {"".join(text(term).split()) for term in conjunction_terms(node)}
+    def expression_shape(node):
+        children = [child for child in node.children if child.type not in {",", "line_comment", "block_comment"}]
+        return (node.type, tuple(expression_shape(child) for child in children)) if children else (node.type, node.text)
+    def parsed_expression_shape(source):
+        parsed = rust_parser.parse(b"fn __condition() { " + source.encode() + b" }")
+        if parsed.root_node.has_error:
+            raise ValueError("Invalid architecture condition expression")
+        return expression_shape(parsed.root_node.named_children[0].child_by_field_name("body").named_children[-1])
     def disjunction_terms(node):
         if node.type == "parenthesized_expression":
             return disjunction_terms(node.named_children[0])
@@ -657,6 +737,67 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
         return (node.type == "call_expression" and node.child_by_field_name("function").type == "field_expression"
                 and text(node.child_by_field_name("function").child_by_field_name("field")) == method
                 and self_field(node.child_by_field_name("function").child_by_field_name("value"), field))
+    def straight_statement(node, body):
+        transparent = {"call_expression", "field_expression", "try_expression", "parenthesized_expression",
+                       "expression_statement", "return_expression", "let_declaration"}
+        while node is not None and node.parent != body:
+            node = node.parent
+            if node is None or node.type not in transparent:
+                return None
+        return node
+    def observer_worker_joins(function):
+        body = function.child_by_field_name("body")
+        def retained_take(expression):
+            while expression is not None:
+                if method_on_field(expression, "take", "worker"):
+                    return expression
+                if expression.type in {"try_expression", "parenthesized_expression"}:
+                    expression = expression.named_children[0]
+                elif expression.type == "call_expression":
+                    method = expression.child_by_field_name("function")
+                    if method.type != "field_expression" or text(method.child_by_field_name("field")) not in {"unwrap", "expect"}:
+                        return None
+                    expression = method.child_by_field_name("value")
+                else:
+                    return None
+            return None
+        takes = [call for call in walk(body) if method_on_field(call, "take", "worker")]
+        if any(child.type in {"return_expression", "try_expression"}
+               and straight_statement(child, body) is not None and child.end_byte < take.start_byte
+               for take in takes for child in walk(body)):
+            return []
+        joins = [call for call in walk(body) if call.type == "call_expression"
+                 and call.child_by_field_name("function").type == "field_expression"
+                 and text(call.child_by_field_name("function").child_by_field_name("field")) == "join"]
+        joined = set()
+        for join in joins:
+            receiver = join.child_by_field_name("function").child_by_field_name("value")
+            take = retained_take(receiver)
+            if take is not None and straight_statement(join, body) is not None:
+                joined.add(take.id)
+                continue
+            if receiver.type != "identifier":
+                return []
+            declaration = next((item for item in body.named_children if item.type == "let_declaration"
+                and text(item.child_by_field_name("pattern")) == text(receiver)
+                and item.end_byte < join.start_byte), None)
+            take = retained_take(declaration.child_by_field_name("value")) if declaration is not None else None
+            if take is not None and straight_statement(join, body) is not None:
+                joined.add(take.id)
+                continue
+            arm = next((parent for parent in ancestors(join) if parent.type == "match_arm"), None)
+            match = arm.parent.parent if arm is not None else None
+            if match is None or match.type != "match_expression" or straight_statement(match, body) is None:
+                return []
+            take = retained_take(match.child_by_field_name("value"))
+            pattern = arm.child_by_field_name("pattern")
+            bindings = [item for item in walk(pattern) if item.type == "tuple_struct_pattern"
+                and resolved_call(text(item.child_by_field_name("type")).split("::")) == ("Some",)
+                and [text(child) for child in item.named_children[1:]] == [text(receiver)]]
+            if take is None or not bindings or straight_statement(join, arm) != arm.child_by_field_name("value"):
+                return []
+            joined.add(take.id)
+        return takes if joins and takes and joined == {take.id for take in takes} else []
     def legacy_mapping_field(node, field):
         return (node is not None and node.type == "field_expression"
                 and self_field(node.child_by_field_name("value"), "legacy_mapping")
@@ -676,6 +817,9 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
             if original in aliases and alias not in aliases:
                 aliases[alias], changed = aliases[original], True
     for node in walk(tree.root_node):
+        scoped_gui = shared_gui_scope is not None and any(
+            parent.type == "function_item" and text(parent.child_by_field_name("name")) in shared_gui_scope[3]
+            for parent in ancestors(node))
         if node.type == "macro_invocation" and text(node.child_by_field_name("macro")) == "include":
             token_tree = next(child for child in node.named_children if child.type == "token_tree")
             values = token_tree.named_children
@@ -697,18 +841,25 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                     ("crates/razer-resource-db/src/lib.rs", 'include!(concat!(env!("OUT_DIR"),"/installation.rs"))'),
                     ("crates/razer-platform/src/observation/hardware_driver.rs", 'include!(concat!(env!("OUT_DIR"),"/hardware_driver_installation.rs"))')}:
                 fail(node, "include_path_requires_resolution", "Explicit local include path or the installation constants generator")
-        if independent_help_report and node.type in {
+        if (independent_help_report or independent_dpi_owner or scoped_gui) and node.type in {
                 "use_declaration", "scoped_identifier", "scoped_type_identifier"}:
             paths = [path for _, path in imported_paths(node)] if node.type == "use_declaration" else [
                 resolved_call(text(node).split("::"))]
             for path in paths:
-                if path[:1] == ("libloading",) or path[:2] in {
+                vendor_loader = path[:1] == ("libloading",) or path[:2] in {
                         ("crate", "dll"), ("super", "dll"),
                         ("crate", "native_read"), ("super", "native_read"),
-                        ("razer_platform", "native_paths"), ("razer_catalog", "native_library")}:
-                    fail(node, "independent_help_report_uses_vendor_loader", help_report_owner)
+                        ("razer_catalog", "native_library")}
+                vendor_locator = (path[:2] == ("razer_platform", "native_paths")
+                                  and (independent_help_report or path[2:3] in {("EnginePaths",), ("PathRule",)}))
+                vendor_type = ((independent_dpi_owner or scoped_gui)
+                               and ("EngineLibrary" in path or path[-2:] == ("PathRule", "CommonDll")))
+                if vendor_loader or vendor_locator or vendor_type:
+                    fail(node, "independent_help_report_uses_vendor_loader" if independent_help_report
+                         else "independent_dpi_uses_vendor_loader",
+                         help_report_owner if independent_help_report else "Explicit tools/workspace.py comparisons")
                     break
-        if in_test(node):
+        if in_test(node) and not legacy_ipc_function(node):
             continue
         if node.type == "function_item" and owner.startswith("crates/") \
                 and text(node.child_by_field_name("name")) in configuration_path_accessors \
@@ -780,7 +931,12 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                         fail(node, "interaction_style_changes_display_between_draw_phases",
                              "Retained page interaction state selected before layout")
         if dpi_gui:
-            inspect_gui_operation(node, "mouse_dpi", dpi_runtime, dpi_worker, {("mouse_current_dpi", "request")})
+            inspect_gui_operation(node, "mouse_dpi", dpi_runtime, dpi_worker, dpi_gui_io_targets)
+        if owner in matcher_gui_owners:
+            inspect_gui_operation(node, "mouse_matcher", matcher_shell, matcher_worker,
+                                  dpi_gui_io_targets)
+        if scoped_gui:
+            inspect_gui_operation(node, *shared_gui_scope[:3], dpi_gui_io_targets)
         if owner == dpi_page and node.type == "function_item" \
                 and text(node.child_by_field_name("name")) == "initialize_connection" \
                 and any(parent.type == "impl_item" and text(parent.child_by_field_name("type")) == "State" for parent in ancestors(node)):
@@ -996,7 +1152,10 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                 worker = next((child.child_by_field_name("type") for child in body.named_children
                     if child.type == "field_declaration" and text(child.child_by_field_name("name")) == "worker"), None)
                 types = {resolved_call(text(child).split("::"))[-1] for child in walk(worker) if child.type == "type_identifier"} if worker else set()
-                if not {"stop", "worker"} <= fields or not {"Option", "JoinHandle"} <= types:
+                stop = next((child.child_by_field_name("type") for child in body.named_children
+                    if child.type == "field_declaration" and text(child.child_by_field_name("name")) == "stop"), None)
+                stop_types = {text(child).split("::")[-1] for child in walk(stop) if child.type == "type_identifier"} if stop else set()
+                if not {"stop", "worker"} <= fields or not {"Option", "JoinHandle"} <= types or not {"Option", "SyncSender"} <= stop_types:
                     fail(node, "device_observer_has_no_retained_worker", device_monitor + "::DeviceChangeMonitor")
             if owner == "crates/razer-shell/src/shell.rs" and name == "AppShell" and "thx_retired_owners" not in fields:
                 fail(node, "thx_spawn_failure_has_no_retained_owner", thx_lifecycle + "::RetiredOwner")
@@ -1017,6 +1176,16 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
             if owner == thx_lifecycle and name == "RetiredOwner" and fields != {"owner", "source_close"}:
                 fail(node, "thx_retirement_discards_owner_or_source_close", thx_lifecycle + "::RetiredOwner")
             if owner == ipc_client and name == "ServiceClient":
+                members = {text(child.child_by_field_name("name")): child for child in body.named_children
+                           if child.type == "field_declaration"}
+                broker = members.get("broker")
+                broker_types = {text(child).split("::")[-1] for child in walk(broker.child_by_field_name("type"))
+                                if child.type == "type_identifier"} if broker is not None else set()
+                if not {"Option", "BrokerClient"} <= broker_types:
+                    fail(node, "ipc_client_has_no_shared_broker_session", ipc_broker_client + "::BrokerClient")
+                if any(field in members and not test_only_field(members[field])
+                       for field in {"child", "job", "requests", "responses"} | ipc_pipe_workers):
+                    fail(node, "ipc_client_owns_production_process_or_pipe_workers", ipc_bootstrap + "::BrokerBootstrap")
                 retained = {}
                 for child in body.named_children:
                     if child.type == "field_declaration" and text(child.child_by_field_name("name")) in ipc_pipe_workers:
@@ -1155,12 +1324,12 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                     fail(node, "matcher_request_accepts_expired_or_unmounted_ui_scope", matcher_page + "::accepts_mouse_matcher_scope")
             if owner == matcher_page and implementation == "MouseProductWorkspace" and name == "retains_mouse_matcher_scope":
                 body = node.child_by_field_name("body")
-                terms = condition_atoms(body.named_children[-1]) if body.named_children else set()
+                terms = {expression_shape(term) for term in conjunction_terms(body.named_children[-1])} if body.named_children else set()
                 required = {"self.mouse_polling_scope(cx)==Some(scope.domain)",
-                    "self.matcher.as_ref().is_some_and(|matcher|matchscope.kind{"
+                    "self.matcher.as_ref().is_some_and(|matcher| match scope.kind {"
                     "ScopeKind::Ui=>scope.retained_by(matcher.entity_id(),self.matcher_epoch,&self.matcher_valid),"
                     "ScopeKind::Normalization=>scope.retained_by(matcher.entity_id(),self.matcher_normalization.epoch,&self.matcher_normalization.valid),})"}
-                if not required <= terms:
+                if not {parsed_expression_shape(source) for source in required} <= terms:
                     fail(node, "matcher_retention_loses_domain_or_owner_epoch", matcher_page + "::retains_mouse_matcher_scope")
             if owner == matcher_shell and name == "dispatch_mouse_matcher":
                 for call in walk(node):
@@ -1983,30 +2152,89 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
             name = text(node.child_by_field_name("name"))
             methods = called_methods(node)
             if implementation_type == "DeviceChangeMonitor":
+                owner_functions = {text(item.child_by_field_name("name")): item for declaration in declarations
+                    if declaration.type == "impl_item" and text(declaration.child_by_field_name("type")) == "DeviceChangeMonitor"
+                    for item in declaration.child_by_field_name("body").named_children
+                    if item.type == "function_item" and not in_test(item)}
+                def blocks_observer(function, seen=frozenset()):
+                    if function.id in seen:
+                        return False
+                    seen = seen | {function.id}
+                    return bool({"join", "lock", "recv"} & called_methods(function)) or any(
+                        call.type == "call_expression" and self_field(call.child_by_field_name("function"), method)
+                        and method in owner_functions and blocks_observer(owner_functions[method], seen)
+                        for method in called_methods(function) for call in walk(function))
                 if name == "start_worker":
                     retained = [field for child in walk(node) if child.type == "struct_expression"
                         and text(child.child_by_field_name("name")) == "Self"
                         for field in child.child_by_field_name("body").named_children if field.type == "field_initializer"
                         and text(field.child_by_field_name("field")) == "worker"
                         and any(resolved_call(parts) == ("Some",) for parts, _ in calls(field))]
-                    if not retained or "spawn" not in methods or "detach" in methods:
+                    stops = [call for parts, call in calls(node) if resolved_call(parts)[-2:] == ("mpsc", "sync_channel")
+                        and [text(argument) for argument in call.child_by_field_name("arguments").named_children] == ["1"]]
+                    if not retained or not stops or "spawn" not in methods or "detach" in methods:
                         fail(node, "device_observer_discards_worker_handle", device_monitor + "::DeviceChangeMonitor")
-                if name == "shutdown":
-                    stops = [call for call in walk(node) if method_on_field(call, "take", "stop")]
-                    joins = [call for call in walk(node) if call.type == "call_expression"
+                if name in {"shutdown", "try_shutdown"}:
+                    body = node.child_by_field_name("body")
+                    stops = [call for call in walk(node) if call.type == "call_expression"
+                        and self_field(call.child_by_field_name("function"), "signal_stop")
+                        and straight_statement(call, body) is not None]
+                    retained = observer_worker_joins(node)
+                    delegates = [call for call in walk(node) if call.type == "call_expression"
                         and call.child_by_field_name("function").type == "field_expression"
-                        and text(call.child_by_field_name("function").child_by_field_name("field")) == "join"]
-                    retained = [call for call in walk(node) if method_on_field(call, "take", "worker")]
-                    if (not stops or not joins or not retained
-                            or any(not any(stop.end_byte < take.start_byte and take.end_byte < join.end_byte
-                                for stop in stops for take in retained) for join in joins)):
+                        and self_field(call.child_by_field_name("function"), text(call.child_by_field_name("function").child_by_field_name("field")))
+                        and straight_statement(call, body) is not None
+                        and (helper := owner_functions.get(text(call.child_by_field_name("function").child_by_field_name("field")))) is not None
+                        and helper != node and observer_worker_joins(helper)]
+                    operations = retained or delegates
+                    unjoined = [call for call in walk(node) if method_on_field(call, "take", "worker") and call not in retained]
+                    if (not stops or not operations or unjoined
+                            or any(not any(stop.end_byte < operation.start_byte for stop in stops) for operation in operations)
+                            or any(child.type in {"return_expression", "try_expression"}
+                                and straight_statement(child, body) is not None and child.end_byte < operation.start_byte
+                                for operation in operations for child in walk(body))):
                         fail(node, "device_observer_shutdown_does_not_stop_then_join", device_monitor + "::DeviceChangeMonitor")
-                if name == "drop" and ("join" in methods or "lock" in methods or "recv" in methods):
-                    fail(node, "device_observer_drop_waits_for_native_teardown_on_ui", device_monitor + "::DeviceChangeMonitor")
+                    if name == "try_shutdown":
+                        guards = [branch for branch in body.named_children if branch.type == "expression_statement"
+                            for branch in branch.named_children if branch.type == "if_expression"
+                            and expression_shape(branch.child_by_field_name("condition")) == parsed_expression_shape("!self.is_finished()")
+                            and returning_branch(branch)
+                            and any(resolved_call(parts) == ("Ok",)
+                                and [text(argument) for argument in call.child_by_field_name("arguments").named_children] == ["false"]
+                                for parts, call in calls(branch.child_by_field_name("consequence")))]
+                        finished = owner_functions.get("is_finished")
+                        read_only = finished is not None and any(method_on_field(call, "as_ref", "worker") for call in walk(finished)) \
+                            and any(resolved_call(text(child).split("::"))[-2:] == ("JoinHandle", "is_finished")
+                                    for child in walk(finished) if child.type == "scoped_identifier") \
+                            and not any(method_on_field(call, "take", "worker") for call in walk(finished))
+                        if (not guards or not read_only or any(not any(
+                                stop.end_byte < guard.start_byte and guard.end_byte < operation.start_byte
+                                for stop in stops for guard in guards) for operation in operations)):
+                            fail(node, "device_observer_try_shutdown_discards_pending_worker", device_monitor + "::DeviceChangeMonitor")
+                if name == "signal_stop":
+                    takes = [call for call in walk(node) if method_on_field(call, "take", "stop")]
+                    sends = [call for call in walk(node) if call.type == "call_expression"
+                        and call.child_by_field_name("function").type == "field_expression"
+                        and text(call.child_by_field_name("function").child_by_field_name("field")) == "try_send"
+                        and text(call.child_by_field_name("function").child_by_field_name("value")) == "stop"]
+                    if not takes or not sends or {"send", "send_blocking", "recv", "join", "force_send"} & methods:
+                        fail(node, "device_observer_stop_uses_delivery_queue_or_blocks", device_monitor + "::DeviceChangeMonitor::signal_stop")
+                if name == "drop":
+                    if not any(call.type == "call_expression" and self_field(call.child_by_field_name("function"), "signal_stop")
+                               and straight_statement(call, node.child_by_field_name("body")) is not None for call in walk(node)):
+                        fail(node, "device_observer_drop_does_not_signal_stop", device_monitor + "::DeviceChangeMonitor")
+                    if blocks_observer(node):
+                        fail(node, "device_observer_drop_waits_for_native_teardown_on_ui", device_monitor + "::DeviceChangeMonitor")
             if implementation_type == "EventDelivery" and name == "drop" and "close" not in methods:
                 fail(node, "device_observer_delivery_outlives_its_worker", device_monitor + "::EventDelivery")
-            if name == "wait_for_stop" and ("force_send" not in methods or "send_blocking" in methods or "send" in methods):
-                fail(node, "device_observer_stop_waits_for_ui_to_drain_queue", device_monitor + "::wait_for_stop")
+            if name == "wait_for_stop":
+                ready = [call for call in walk(node) if call.type == "call_expression"
+                    and text(call.child_by_field_name("function")) == "events.ready"]
+                waits = [call for call in walk(node) if call.type == "call_expression"
+                    and text(call.child_by_field_name("function")) == "stopped.recv"]
+                if (not ready or not waits or {"send", "send_blocking", "force_send"} & methods
+                        or any(read.end_byte > wait.start_byte for read in ready for wait in waits)):
+                    fail(node, "device_observer_stop_waits_for_ui_to_drain_queue", device_monitor + "::wait_for_stop")
         if node.type == "function_item" and owner == thx_lifecycle:
             name = text(node.child_by_field_name("name"))
             if name == "retire_thx_owner":
@@ -2060,7 +2288,48 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
             implementation = node.parent.parent if node.parent is not None and node.parent.parent is not None else None
             implementation_type = text(implementation.child_by_field_name("type")) if implementation is not None and implementation.type == "impl_item" else None
             name = text(node.child_by_field_name("name"))
-            if implementation_type == "ServiceClient" and name == "stop":
+            if name in legacy_ipc_functions and not in_test(node):
+                fail(node, "ipc_legacy_process_path_is_available_in_production", ipc_bootstrap + "::BrokerBootstrap")
+            if implementation_type == "ServiceClient" and name == "spawn_with_program":
+                connections = [call for parts, call in calls(node)
+                               if resolved_call(parts)[-2:] == ("BrokerClient", "connect")]
+                factories = [call for parts, call in calls(node) if resolved_call(parts) == ("Self", "from_broker")]
+                forbidden = {"spawn", "assign", "kill", "terminate", "connect_or_start", "start"} & called_methods(node)
+                static_forbidden = any(resolved_call(parts)[-2:] in {
+                    ("BrokerBootstrap", "start"), ("WorkerJob", "new"), ("Command", "new")}
+                    or resolved_call(parts)[-1] == "connect_or_start" for parts, _ in calls(node))
+                if not connections or not factories or forbidden or static_forbidden:
+                    fail(node, "ipc_client_bootstraps_or_bypasses_shared_broker", ipc_bootstrap + "::BrokerBootstrap")
+            if implementation_type == "ServiceClient" and name in {"stop", "finish_process"}:
+                delegates = [branch for branch in walk(node) if branch.type == "if_expression"
+                    and any(method_on_field(call, "is_some", "broker") for call in walk(branch.child_by_field_name("condition")))
+                    and any(child.type == "return_expression" and "close_broker_session" in called_methods(child)
+                            for child in walk(branch.child_by_field_name("consequence")))]
+                if not delegates or {"kill", "terminate", "assign"} & called_methods(node):
+                    fail(node, "ipc_stop_skips_shared_session_cleanup", ipc_client + "::ServiceClient::close_broker_session")
+            if implementation_type == "ServiceClient" and name == "close_broker_session":
+                methods = called_methods(node)
+                closed = [child for child in walk(node) if child.type == "assignment_expression"
+                    and self_field(child.child_by_field_name("left"), "stopped") and text(child.child_by_field_name("right")) == "true"]
+                receipts = [call for parts, call in calls(node) if resolved_call(parts) == ("worker_shutdown", "confirm_session_close")
+                            and call.parent.type == "try_expression"]
+                closes = [call for call in walk(node) if call.type == "call_expression"
+                          and call.child_by_field_name("function").type == "field_expression"
+                          and text(call.child_by_field_name("function").child_by_field_name("field")) == "close_session"]
+                releases = [call for call in walk(node) if method_on_field(call, "take", "broker")]
+                confirmations = [child for child in walk(node) if child.type == "assignment_expression"
+                    and self_field(child.child_by_field_name("left"), "shutdown_confirmation")
+                    and any(resolved_call(parts) == ("Some",) for parts, _ in calls(child.child_by_field_name("right")))]
+                successful = [arm for arm in walk(node) if arm.type == "match_arm" and tuple_pattern(arm.child_by_field_name("pattern"), "Ok")]
+                if (not closed or not receipts or not closes or not releases or not confirmations
+                        or not {"cancel_request"} <= methods or {"kill", "terminate", "assign"} & methods
+                        or any(close.end_byte > operation.start_byte for close in closed for operation in closes)
+                        or any(not any(arm.start_byte <= release.start_byte < release.end_byte <= arm.end_byte
+                               and any(arm.start_byte <= receipt.start_byte and receipt.end_byte < release.start_byte for receipt in receipts)
+                               for arm in successful) for release in releases)
+                        or any(not any(receipt.end_byte < confirmation.start_byte for receipt in receipts) for confirmation in confirmations)):
+                    fail(node, "ipc_stop_releases_session_without_confirmed_cleanup", ipc_client + "::ServiceClient::close_broker_session")
+            if implementation_type == "ServiceClient" and name == "stop_simulated":
                 drains = [call for parts, call in calls(node) if resolved_call(parts) == ("worker_shutdown", "drain")]
                 releases = [call for call in walk(node) if call.type == "call_expression"
                     and self_field(call.child_by_field_name("function"), "finish_process")]
@@ -2073,13 +2342,61 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                         or any(drain.end_byte > release.start_byte for drain in drains for release in releases)
                         or any(release.end_byte > merge.start_byte for release in releases for merge in merged)):
                     fail(node, "ipc_stop_skips_graceful_owner_cleanup", ipc_client + "::ServiceClient::stop")
-            if implementation_type == "ServiceClient" and name == "finish_process":
+            if implementation_type == "ServiceClient" and name == "finish_simulated_process":
                 admission = [call for call in walk(node) if method_on_field(call, "take", "requests")]
-                jobs = [call for call in walk(node) if method_on_field(call, "take", "job")]
                 stopped = [child for child in walk(node) if child.type == "assignment_expression"
                     and self_field(child.child_by_field_name("left"), "stopped") and text(child.child_by_field_name("right")) == "true"]
+                def propagates_reap_failure(call):
+                    if call.parent.type == "try_expression":
+                        return True
+                    condition = call.parent
+                    branch = condition.parent if condition.type == "let_condition" else None
+                    if (branch is None or branch.type != "if_expression"
+                            or branch.child_by_field_name("condition") != condition
+                            or branch.child_by_field_name("alternative") is not None):
+                        return False
+                    container = branch.parent
+                    if container.type == "expression_statement":
+                        container = container.parent
+                    if container != node.child_by_field_name("body"):
+                        return False
+                    pattern = condition.child_by_field_name("pattern")
+                    if (pattern.type != "tuple_struct_pattern" or text(pattern.child_by_field_name("type")) != "Err"
+                            or len(pattern.named_children) != 2 or pattern.named_children[1].type != "identifier"):
+                        return False
+                    error = text(pattern.named_children[1])
+                    statements = [child for child in branch.child_by_field_name("consequence").named_children
+                                  if child.type not in {"line_comment", "block_comment"}]
+                    if len(statements) != 1:
+                        return False
+                    returned = statements[0]
+                    if returned.type == "expression_statement" and len(returned.named_children) == 1:
+                        returned = returned.named_children[0]
+                    if returned.type != "return_expression" or len(returned.named_children) != 1:
+                        return False
+                    result = returned.named_children[0]
+                    if result.type != "call_expression" or resolved_call(text(result.child_by_field_name("function")).split("::")) != ("Err",):
+                        return False
+                    arguments = result.child_by_field_name("arguments").named_children
+                    if len(arguments) != 1 or arguments[0].type != "call_expression":
+                        return False
+                    merge = arguments[0]
+                    merged_arguments = merge.child_by_field_name("arguments").named_children
+                    if (resolved_call(text(merge.child_by_field_name("function")).split("::")) != ("with_cleanup_error",)
+                            or len(merged_arguments) != 2 or text(merged_arguments[0]) != error
+                            or merged_arguments[1].type != "identifier"):
+                        return False
+                    cancellation = text(merged_arguments[1])
+                    retained = any(child.type == "let_declaration" and child.end_byte < call.start_byte
+                        and text(child.child_by_field_name("pattern")) == cancellation
+                        and child.child_by_field_name("value") is not None
+                        and child.child_by_field_name("value").type == "call_expression"
+                        and self_field(child.child_by_field_name("value").child_by_field_name("function"), "cancel_request")
+                        for child in node.child_by_field_name("body").named_children)
+                    return retained and any(cancellation in {text(child) for child in walk(merge.child_by_field_name("arguments"))
+                        if child.type == "identifier"} for parts, merge in calls(node) if resolved_call(parts) == ("combine_cleanup",))
                 reaped = [call for parts, call in calls(node) if resolved_call(parts) == ("reap_child",)
-                    and call.parent.type == "try_expression"
+                    and propagates_reap_failure(call)
                     and any("".join(text(argument).split()) == "&mutself.child"
                         for argument in call.child_by_field_name("arguments").named_children)]
                 joins = {field: [call for parts, call in calls(node) if resolved_call(parts) == ("join_pipe",)
@@ -2090,11 +2407,12 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                 joined_results = [join.parent.child_by_field_name("pattern")
                     if join.parent.type == "let_declaration" else None
                     for values in joins.values() for join in values]
-                if (not admission or not stopped or not jobs or not reaped or any(not value for value in joins.values()) or not merged
+                if (not admission or not stopped or not reaped or any(not value for value in joins.values()) or not merged
+                        or any(method_on_field(call, "take", "child") for call in walk(node))
                         or any(result is None or result.type != "identifier"
                             or not any(text(result) in {text(child) for child in walk(merge.child_by_field_name("arguments"))
                                 if child.type == "identifier"} for merge in merged) for result in joined_results)
-                        or any(start.end_byte > reap.start_byte for start in admission + stopped + jobs for reap in reaped)
+                        or any(start.end_byte > reap.start_byte for start in admission + stopped for reap in reaped)
                         or any(not any(reap.end_byte < join.start_byte for reap in reaped)
                             for values in joins.values() for join in values)
                         or any(not any(join.end_byte < merge.start_byte for merge in merged) for values in joins.values() for join in values)):
@@ -2113,6 +2431,44 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                     fail(node, "ipc_reap_discards_unconfirmed_process_owner", ipc_client + "::reap_child")
             if name == "join_pipe" and "join" not in called_methods(node):
                 fail(node, "ipc_pipe_completion_does_not_join_its_retained_worker", ipc_client + "::join_pipe")
+        if node.type == "function_item" and owner == broker_service and text(node.child_by_field_name("name")) == "run_worker":
+            methods = called_methods(node)
+            connections = any(resolved_call(parts)[-2:] == ("BrokerClient", "connect") for parts, _ in calls(node))
+            native = any(resolved_call(parts)[-2:] in {("NativeBackend", "new"), ("NativeRuntime", "new"), ("SessionRuntime", "new")}
+                         or "EngineLibrary" in resolved_call(parts) for parts, _ in calls(node))
+            if not connections or not {"request", "close_session", "validate"} <= methods or native:
+                fail(node, "legacy_stdio_worker_bypasses_shared_broker", ipc_broker_client + "::BrokerClient")
+        if node.type == "function_item" and owner == ipc_broker_client:
+            name = text(node.child_by_field_name("name"))
+            if name in {"connect", "request", "close_session", "drop"}:
+                forbidden = {"spawn", "kill", "terminate", "assign"} & called_methods(node)
+                if forbidden or any(resolved_call(parts)[-2:] in {("Command", "new"), ("WorkerJob", "new"), ("BrokerBootstrap", "start")}
+                                    for parts, _ in calls(node)):
+                    fail(node, "shared_broker_session_controls_process_lifetime", ipc_bootstrap + "::BrokerBootstrap")
+            if name == "close_session" and not {"validate", "read"} <= called_methods(node):
+                fail(node, "shared_broker_close_has_no_real_cleanup_receipt", ipc_broker_client + "::BrokerClient::close_session")
+        if node.type == "function_item" and owner == ipc_bootstrap:
+            name = text(node.child_by_field_name("name"))
+            if name in {"start", "finish", "drop"} and ({"kill", "terminate", "assign"} & called_methods(node)
+                    or any(resolved_call(parts)[-2:] == ("WorkerJob", "new") for parts, _ in calls(node))):
+                fail(node, "shared_broker_process_is_owned_by_a_client_kill_job", ipc_bootstrap + "::BrokerBootstrap")
+        if node.type == "function_item" and owner == broker_server:
+            name = text(node.child_by_field_name("name"))
+            if name == "run_listener":
+                prepares = [call for parts, call in calls(node) if resolved_call(parts) == ("prepare_listener_shutdown",)]
+                releases = [call for parts, call in calls(node) if resolved_call(parts) == ("drop",)
+                    and [text(argument) for argument in call.child_by_field_name("arguments").named_children] == ["listener"]]
+                admissions = [branch for branch in list(walk(node)) + select_arm_nodes(node) if branch.type == "if_expression"
+                    and branch.child_by_field_name("condition").type == "unary_expression"
+                    and text(branch.child_by_field_name("condition")).lstrip().startswith("!")
+                    and any(resolved_call(parts) == ("session_available",) for parts, _ in calls(branch.child_by_field_name("condition")))
+                    and any(child.type == "continue_expression" for child in walk(branch.child_by_field_name("consequence")))]
+                if not prepares or not releases or any(not any(prepare.end_byte < release.start_byte for prepare in prepares) for release in releases):
+                    fail(node, "shared_broker_listener_released_before_native_owners_drained", broker_server + "::prepare_listener_shutdown")
+                if not admissions:
+                    fail(node, "shared_broker_session_admission_is_unbounded", broker_server + "::session_available")
+            if name == "prepare_listener_shutdown" and not any(resolved_call(parts)[-1] == "prepare_shutdown" for parts, _ in calls(node)):
+                fail(node, "shared_broker_native_shutdown_is_not_drained", broker_service + "::hid_broker::prepare_shutdown")
         if node.type == "function_item" and owner == keyboard_lifecycle:
             name = text(node.child_by_field_name("name"))
             if name == "retire" and not any(resolved_call(parts) == ("drop",)
@@ -4152,6 +4508,171 @@ def finite_resource_domain(row):
         "basis": "Enumerated caller branches and bounded animation/state ranges from the captured Rust owner; independent of registered alias candidates"}
 
 
+def module_service_declared_artwork(declared):
+    """Resolve the one declared module-service chunk pair and application owner."""
+    files = declared.get("files")
+    if not isinstance(files, dict):
+        raise ValueError("Module service asset manifest has no file declarations")
+    selected = {}
+    for kind in ("js", "css"):
+        candidates = [(key, value) for key, value in files.items()
+                      if re.fullmatch(r"static/" + kind + r"/6505\.[0-9a-f]+\.chunk\." + kind, key)]
+        if len(candidates) != 1:
+            raise ValueError("Module service declared chunk is missing or ambiguous: " + kind)
+        key, value = candidates[0]
+        if not isinstance(value, str) or value.removeprefix("./") != key:
+            raise ValueError("Module service declared chunk points outside its canonical identity")
+        selected[kind] = key
+    app = files.get("App.js")
+    if not isinstance(app, str) or not re.fullmatch(r"(?:\./)?static/js/App\.[0-9a-f]+\.chunk\.js", app):
+        raise ValueError("Module service application chunk is not declared")
+    selected["app"] = app.removeprefix("./")
+    return selected
+
+
+def module_service_deployment_projection(declared, main_raw, app_raw, script_raw):
+    """Bind literal runtime paths and actual lazy consumers to factory 44442."""
+    sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    parser = Parser(Language(tree_sitter_javascript.language()))
+    selected = module_service_declared_artwork(declared)
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+    def one(nodes, role):
+        nodes = list(nodes)
+        if len(nodes) != 1:
+            raise ValueError("Module service deployment owner is missing or ambiguous: " + role)
+        return nodes[0]
+    def text(node):
+        return node.text.decode("utf-8") if node is not None else ""
+    def capture(node):
+        return {"byte_start": node.start_byte, "byte_end": node.end_byte,
+                "body": text(node), "body_sha256": hashlib.sha256(node.text).hexdigest()}
+    def function_owner(node):
+        parent = node.parent
+        while parent is not None and parent.type not in {"arrow_function", "function_expression", "function_declaration"}:
+            parent = parent.parent
+        return parent
+    def parse(raw):
+        tree = parser.parse(raw)
+        if tree.root_node.has_error:
+            raise ValueError("Module service deployment has a JavaScript AST error")
+        return tree.root_node
+    def property(node, name):
+        return node is not None and node.type == "member_expression" and text(node.child_by_field_name("property")) == name
+    def unwrap(node):
+        while node.type == "parenthesized_expression" and len(node.named_children) == 1:
+            node = node.named_children[0]
+        return node
+    def literal(node, parameter, identifier):
+        node = unwrap(node)
+        if node.type == "string":
+            return json.loads(text(node))
+        if node.type == "identifier" and text(node) == parameter:
+            return identifier
+        if node.type == "subscript_expression":
+            table = unwrap(node.child_by_field_name("object"))
+            index = node.child_by_field_name("index")
+            if table.type != "object" or index.type != "identifier" or text(index) != parameter:
+                raise ValueError("Module service chunk lookup is not a literal runtime table")
+            values = {}
+            for pair in table.named_children:
+                if pair.type != "pair" or pair.child_by_field_name("key").type != "number" \
+                        or pair.child_by_field_name("value").type != "string":
+                    raise ValueError("Module service chunk table contains an indirect entry")
+                key = text(pair.child_by_field_name("key"))
+                if not key.isdecimal() or key in values:
+                    raise ValueError("Module service chunk table identity is invalid or repeated")
+                values[key] = json.loads(text(pair.child_by_field_name("value")))
+            return values.get(str(identifier))
+        if node.type == "binary_expression":
+            left = literal(node.child_by_field_name("left"), parameter, identifier)
+            right = literal(node.child_by_field_name("right"), parameter, identifier)
+            operator = text(node.child_by_field_name("operator"))
+            if operator == "||":
+                return left or right
+            if operator == "+" and left is not None and right is not None and (isinstance(left, str) or isinstance(right, str)):
+                return str(left) + str(right)
+        raise ValueError("Module service runtime filename expression is unsupported")
+    main, app, script = parse(main_raw), parse(app_raw), parse(script_raw)
+    assignments = {}
+    for kind, field in (("js", "u"), ("css", "miniCssF")):
+        assignment = one((node for node in walk(main) if node.type == "assignment_expression"
+                          and property(node.child_by_field_name("left"), field)), field)
+        function = assignment.child_by_field_name("right")
+        parameter = function.child_by_field_name("parameter")
+        if function.type != "arrow_function" or parameter is None or parameter.type != "identifier":
+            raise ValueError("Module service runtime filename producer is not a literal arrow")
+        for identifier, expected in ((6505, selected[kind]), *(((8180, selected["app"]),) if kind == "js" else ())):
+            if literal(function.child_by_field_name("body"), text(parameter), identifier) != expected:
+                raise ValueError("Module service runtime filename differs from the current declaration")
+        assignments[kind] = assignment
+    runtime = text(assignments["js"].child_by_field_name("left").child_by_field_name("object"))
+    if text(assignments["css"].child_by_field_name("left").child_by_field_name("object")) != runtime:
+        raise ValueError("Module service runtime owners differ")
+    public = one((node for node in walk(main) if node.type == "assignment_expression"
+        and property(node.child_by_field_name("left"), "p")
+        and function_owner(node) == function_owner(assignments["js"])
+        and text(node.child_by_field_name("left").child_by_field_name("object")) == runtime), "public path")
+    if public.child_by_field_name("right").type != "string" or json.loads(text(public.child_by_field_name("right"))) not in {"./", "/synapse/dashboard/"}:
+        raise ValueError("Module service runtime public path differs")
+    def chunk_factory(root, chunk, module):
+        candidates = []
+        for call in walk(root):
+            if call.type != "call_expression" or not property(call.child_by_field_name("function"), "push"):
+                continue
+            args = call.child_by_field_name("arguments").named_children
+            if len(args) != 1 or args[0].type != "array":
+                continue
+            parts = args[0].named_children
+            if len(parts) < 2 or parts[0].type != "array" or [text(n) for n in parts[0].named_children] != [str(chunk)] or parts[1].type != "object":
+                continue
+            candidates.extend(node for node in parts[1].named_children if node.type == "pair"
+                              and text(node.child_by_field_name("key")) == str(module))
+        return one(candidates, str(chunk) + "/" + str(module))
+    def load_edge(root, chunk, module, loader):
+        candidates = []
+        for call in walk(root):
+            if call.type != "call_expression" or not property(call.child_by_field_name("function"), "then"):
+                continue
+            args = call.child_by_field_name("arguments").named_children
+            if len(args) != 1 or args[0].type != "call_expression" or not property(args[0].child_by_field_name("function"), "bind"):
+                continue
+            bind = args[0]
+            if text(bind.child_by_field_name("function").child_by_field_name("object")) != loader \
+                    or [text(n) for n in bind.child_by_field_name("arguments").named_children] != [loader, str(module)]:
+                continue
+            pending = call.child_by_field_name("function").child_by_field_name("object")
+            loads = [pending]
+            if pending.type == "call_expression" and text(pending.child_by_field_name("function")) == "Promise.all":
+                arguments = pending.child_by_field_name("arguments").named_children
+                loads = arguments[0].named_children if len(arguments) == 1 and arguments[0].type == "array" else []
+            if not loads or any(load.type != "call_expression" or not property(load.child_by_field_name("function"), "e")
+                    or text(load.child_by_field_name("function").child_by_field_name("object")) != loader
+                    or len(load.child_by_field_name("arguments").named_children) != 1
+                    or load.child_by_field_name("arguments").named_children[0].type != "number" for load in loads):
+                continue
+            if sum([text(n) for n in load.child_by_field_name("arguments").named_children] == [str(chunk)] for load in loads) == 1:
+                candidates.append(call)
+        return one(candidates, "lazy " + str(chunk) + "/" + str(module))
+    application = chunk_factory(app, 8180, 35378)
+    function = application.child_by_field_name("value")
+    parameters = function.child_by_field_name("parameters")
+    if function.type != "arrow_function" or parameters is None or len(parameters.named_children) != 3:
+        raise ValueError("Module service application factory signature differs")
+    app_loader = text(parameters.named_children[2])
+    return {"declared": selected, "main_javascript_loader": capture(assignments["js"]),
+            "main_stylesheet_loader": capture(assignments["css"]), "public_path": capture(public),
+            "mounted_application": capture(load_edge(main, 8180, 35378, runtime)),
+            "complete_application_factory": capture(application),
+            "mounted_module_service": capture(load_edge(application, 6505, 44442, app_loader)),
+            "complete_module_service_factory": capture(chunk_factory(script, 6505, 44442)),
+            "target_execution": False}
+
+
 def module_service_artwork_projection(raw):
     """Read the complete current More Information image owner without running JS."""
     sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
@@ -4242,11 +4763,40 @@ def module_service_artwork_projection(raw):
     if text(expanded.child_by_field_name("value")) != "(0,i.useState)(!1)":
         raise ValueError("Module service description mount initialization changed")
     group = declaration("H")
-    observer = declaration("ae")
+    parameters = factory.child_by_field_name("parameters")
+    if parameters is None or len(parameters.named_children) != 3:
+        raise ValueError("Module service factory signature differs")
+    exported, loader = (text(parameters.named_children[index]) for index in (1, 2))
+    exports = []
+    for node in walk(factory.child_by_field_name("body")):
+        if node.type != "call_expression" or text(node.child_by_field_name("function")) != loader + ".d":
+            continue
+        arguments = node.child_by_field_name("arguments").named_children
+        if len(arguments) != 2 or text(arguments[0]) != exported or arguments[1].type != "object":
+            continue
+        exports.extend(pair.child_by_field_name("value") for pair in arguments[1].named_children
+                       if pair.type == "pair" and text(pair.child_by_field_name("key")) == "default")
+    default = one(exports, "default export")
+    if default.type != "arrow_function" or default.child_by_field_name("body").type != "identifier":
+        raise ValueError("Module service default export is indirect")
+    observer = declaration(text(default.child_by_field_name("body")))
+    def device_projection(node):
+        if node.type != "variable_declarator" or node.child_by_field_name("value") is None \
+                or node.child_by_field_name("value").type != "arrow_function":
+            return False
+        assignments = [child for child in walk(node) if child.type == "assignment_expression"
+            and child.child_by_field_name("left").type == "member_expression"
+            and text(child.child_by_field_name("left").child_by_field_name("property")) == "srcImage"]
+        if len(assignments) != 1:
+            return False
+        return re.fullmatch(r'`/synapse/products/\$\{([A-Za-z_$][\w$]*)\.productId\}/ui/\$\{\1\.productId\}_\$\{\1\.editionId\}/PluginImages/\$\{\1\.productId\}_\$\{\1\.editionId\}_\$\{\1\.layoutId\}_dashboard1x\.png`',
+                            text(assignments[0].child_by_field_name("right"))) is not None
     projection = one((node for node in walk(observer) if node.type == "variable_declarator"
-        and text(node.child_by_field_name("name")) == "v"
-        and node.child_by_field_name("value") is not None
-        and node.child_by_field_name("value").type == "arrow_function"), "observed device projection")
+        and device_projection(node)), "observed device projection")
+    projection_name = text(projection.child_by_field_name("name"))
+    if not any(node.type == "call_expression" and text(node.child_by_field_name("function")) == projection_name
+               for node in walk(observer)):
+        raise ValueError("Module service device projection has no observer consumer")
     return {"fallback_source_path": "/synapse/dashboard/" + media,
         "detail_source": text(source.child_by_field_name("alternative")),
         "failure_lifetime": "Mounted w row; initialized false, set true only by onError, not reset by collapse or prop changes",
@@ -4297,14 +4847,14 @@ def prepare_module_service_artwork(*, check=False, manifest=None):
     main_url = analysis.artifact_url(asset_manifest["url"], declared_main)
     if (main_url not in mounted or declared_main.removeprefix("./") not in declared["entrypoints"]):
         raise ValueError("Module service main is not mounted by the stable current HTML")
-    main, _ = original(main_url)
-    for chunk in ("static/js/6505.8b539cb0.chunk.js", "static/css/6505.9782778c.chunk.css"):
-        if analysis.artifact_url(asset_manifest["url"], declared["files"].get(chunk, "")) != base + chunk:
-            raise ValueError("Module service original is not declared by the current deployment")
-    script, raw = original(base + "static/js/6505.8b539cb0.chunk.js")
+    main, main_raw = original(main_url)
+    chunks = module_service_declared_artwork(declared)
+    application, app_raw = original(base + chunks["app"])
+    script, raw = original(base + chunks["js"])
+    mounted_chain = module_service_deployment_projection(declared, main_raw, app_raw, raw)
     projection = module_service_artwork_projection(raw)
     fallback, _ = original("https://apps.razer.com" + projection["fallback_source_path"])
-    css, css_raw = original(base + "static/css/6505.9782778c.chunk.css")
+    css, css_raw = original(base + chunks["css"])
     selector = b".items .item-moreInfo.item-description .item-description-image"
     start = css_raw.find(selector + b"{")
     if start < 0 or css_raw.find(selector + b"{", start + 1) >= 0:
@@ -4346,6 +4896,7 @@ def prepare_module_service_artwork(*, check=False, manifest=None):
         raise ValueError("Module service source changed during artwork verification")
     report = {"original": script,
         "deployment": {"html": html, "asset_manifest": asset_manifest, "mounted_main": main,
+                       "mounted_application": application, "mounted_chain": mounted_chain,
                        "declared_description_chunks_verified": True},
         "css": {"original": css, "byte_start": start, "byte_end": end,
         "body": rule.decode("utf-8"), "body_sha256": hashlib.sha256(rule).hexdigest()},
@@ -5058,22 +5609,17 @@ def _frontend_revalidation_originals(acquisition, deployment, owner_names):
     return urls, retained
 
 
-def _frontend_revalidation_publish(raw, *, receipt=False, input_receipt=False, created_paths=None):
+def _publish_immutable_evidence(raw, *, directory, suffix="", created_paths=None):
     """Publish immutable bytes without replacing a racing writer's identity."""
     sha256 = hashlib.sha256(raw).hexdigest()
-    if receipt and input_receipt:
-        raise ValueError("A revalidation publication has one receipt owner")
-    directory = (".analysis/results/frontend-revalidation" if receipt else
-                 ".analysis/inputs/frontend-revalidation/receipts" if input_receipt else
-                 ".analysis/inputs/frontend-revalidation/blobs")
-    candidate = ROOT / directory / (sha256 + ".json" if receipt or input_receipt else sha256)
+    candidate = ROOT / directory / (sha256 + suffix)
     if candidate.is_symlink():
-        raise ValueError("Content-addressed revalidation output is a symbolic link")
+        raise ValueError("Content-addressed evidence output is a symbolic link")
     destination = safe(candidate)
     destination.parent.mkdir(parents=True, exist_ok=True)
     if destination.exists():
         if digest(destination) != sha256 or destination.read_bytes() != raw:
-            raise ValueError("Content-addressed revalidation output identity differs")
+            raise ValueError("Content-addressed evidence output identity differs")
         return {"path": relative(destination), "bytes": len(raw), "sha256": sha256}
     temporary = None
     try:
@@ -5083,12 +5629,12 @@ def _frontend_revalidation_publish(raw, *, receipt=False, input_receipt=False, c
             stream.flush()
             os.fsync(stream.fileno())
         if digest(temporary) != sha256:
-            raise ValueError("Revalidation blob digest changed before publication")
+            raise ValueError("Evidence blob digest changed before publication")
         try:
             os.link(temporary, destination)
         except FileExistsError:
             if destination.is_symlink() or destination.read_bytes() != raw:
-                raise ValueError("Content-addressed revalidation publication raced different bytes")
+                raise ValueError("Content-addressed evidence publication raced different bytes")
         return {"path": relative(destination), "bytes": len(raw), "sha256": sha256}
     finally:
         if temporary is not None:
@@ -5102,6 +5648,16 @@ def _frontend_revalidation_publish(raw, *, receipt=False, input_receipt=False, c
                     }
             finally:
                 temporary.unlink(missing_ok=True)
+
+
+def _frontend_revalidation_publish(raw, *, receipt=False, input_receipt=False, created_paths=None):
+    if receipt and input_receipt:
+        raise ValueError("A revalidation publication has one receipt owner")
+    directory = (".analysis/results/frontend-revalidation" if receipt else
+                 ".analysis/inputs/frontend-revalidation/receipts" if input_receipt else
+                 ".analysis/inputs/frontend-revalidation/blobs")
+    return _publish_immutable_evidence(raw, directory=directory,
+        suffix=".json" if receipt or input_receipt else "", created_paths=created_paths)
 
 
 def _frontend_revalidation_cleanup_owned(created_paths):
@@ -5757,7 +6313,7 @@ def _scratch_processes():
         return [], ["Process path inspection is implemented only for Windows"]
     command = ("[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); "
                "Get-CimInstance Win32_Process -ErrorAction Stop | "
-               "Select-Object ProcessId,CommandLine | ConvertTo-Json -Compress")
+               "Select-Object ProcessId,Name,CommandLine | ConvertTo-Json -Compress")
     try:
         result = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", command],
                                 capture_output=True, check=True, timeout=30,
@@ -5765,7 +6321,8 @@ def _scratch_processes():
         rows = json.loads(result.stdout.decode("utf-8-sig"))
         if not isinstance(rows, list) or not rows:
             raise ValueError("Process inventory is empty")
-        return [{"pid": row["ProcessId"], "command_line": row.get("CommandLine") or ""}
+        return [{"pid": row["ProcessId"], "executable": row.get("Name") or "",
+                 "command_line": row.get("CommandLine") or ""}
                 for row in rows], []
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         return [], ["Process inventory unavailable: " + type(error).__name__]
@@ -6029,7 +6586,195 @@ def _clean_supplement_attempt(directory):
     return True
 
 
+def _clean_upload_git(target, *arguments):
+    """Inspect local Git objects without filters, optional writes or lazy fetches."""
+    environment = {key: value for key, value in os.environ.items() if not key.upper().startswith("GIT_")}
+    environment.update(GIT_TERMINAL_PROMPT="0", GIT_NO_LAZY_FETCH="1", GIT_OPTIONAL_LOCKS="0",
+                       GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull)
+    options = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
+    result = subprocess.run(["git", "--no-optional-locks", "--no-replace-objects",
+                             "--git-dir=" + str(target / ".git"), "--work-tree=" + str(target),
+                             "-c", "core.fsmonitor=false", "-c", "protocol.allow=never", *arguments],
+                            cwd=target, env=environment, capture_output=True, timeout=120, **options)
+    if result.returncode:
+        raise ValueError("Upload clone Git identity or object verification failed")
+    return result.stdout
+
+
+def _clean_upload_evidence(target):
+    """Prove that every disposable clone payload belongs to a retained pinned release."""
+    import asset_release
+    import configparser
+
+    name = relative(_clean_path(relative(target)))
+    git_directory = target / ".git"
+    if not git_directory.is_dir():
+        raise ValueError("Upload clone has no standalone Git directory")
+    files = []
+    for directory, children, leaves in os.walk(target, followlinks=False):
+        for child in [Path(directory), *(Path(directory) / item for item in children + leaves)]:
+            _clean_path(relative(child))
+            if _scratch_link(child):
+                raise ValueError("Upload clone contains a link or reparse point")
+        files.extend(Path(directory) / item for item in leaves)
+    forbidden = ["commondir", "gitdir", "objects/info/alternates", "objects/info/http-alternates", "info/grafts"]
+    if any((git_directory / item).exists() for item in forbidden) or any(
+            path.name.endswith((".lock", ".promisor")) for path in files if path.is_relative_to(git_directory)):
+        raise ValueError("Upload clone has shared, active or incomplete Git objects")
+
+    basis = []
+    def bound(path):
+        identity, raw = _clean_history_file(_clean_file_identity(path), contents=True)
+        basis.append(identity)
+        return raw
+
+    lock_path = ROOT / asset_release.LOCK
+    lock = asset_release.validate_lock(json.loads(bound(lock_path)))
+    revision, repository = lock["storage"].get("revision"), lock["storage"]["repository"]
+    if not isinstance(revision, str) or not re.fullmatch(r"[a-f0-9]{40}", revision):
+        raise ValueError("Upload release has no immutable storage revision")
+    tool = ROOT / "tools/asset_release.py"
+    bound(tool)
+    receipt_path = ROOT / ".analysis/results/asset-release-update.json"
+    receipt = json.loads(bound(receipt_path))
+    if (not isinstance(receipt, dict) or receipt.get("schema_version") != 1
+            or receipt.get("target_execution") is not False or receipt.get("repository") != repository
+            or receipt.get("tool") != {"path": relative(tool), "sha256": digest(tool)}):
+        raise ValueError("Upload completion receipt does not belong to the current release owner")
+    if receipt.get("verification_checkout") == name:
+        raise ValueError("Upload clone remains the current verification checkout")
+    manifest = bound(target / "release-index.json")
+    if manifest != asset_release.encoded(asset_release.published_manifest(lock)):
+        raise ValueError("Upload manifest differs from the retained resource lock")
+    manifest_sha = hashlib.sha256(manifest).hexdigest()
+    rows = asset_release.rows_for(lock) + lock["git_files"]
+    expected = {row["path"]: row for row in rows}
+    expected_names = set(expected) | asset_release.META_FILES
+    completion = receipt.get("verification", {})
+    preflight = receipt.get("read_only_remote_preflight", {})
+    if (receipt.get("status") == "published_and_verified" and receipt.get("remote_publication") is True
+            and receipt.get("revision") == revision and isinstance(completion, dict)
+            and completion.get("passed") is True and completion.get("repository") == repository
+            and completion.get("revision") == revision
+            and completion.get("source_files_verified") == len(asset_release.rows_for(lock))
+            and completion.get("retained_files_present") == len(lock["git_files"])
+            and completion.get("remote_manifest_present") is True):
+        proof_kind, observed = "published_and_verified", receipt
+    elif (isinstance(preflight, dict) and preflight.get("repository") == repository
+            and receipt.get("base_revision") == revision
+            and preflight.get("pinned_base_revision") == revision
+            and preflight.get("observed_main_revision") == revision
+            and preflight.get("main_equals_pinned_base") is True
+            and preflight.get("pinned_tree_files") == len(expected_names)
+            and preflight.get("main_tree_files") == len(expected_names)
+            and preflight.get("remote_manifest_sha256") == manifest_sha
+            and preflight.get("only_git_refs_tree_metadata_and_manifest_read") is True
+            and preflight.get("media_downloaded") is False and preflight.get("remote_write") is False
+            and preflight.get("target_execution") is False):
+        proof_kind, observed = "pinned_readonly_remote_preflight", preflight
+    else:
+        raise ValueError("Upload clone has no matching completed or reproducible publication evidence")
+    recorded = datetime.fromisoformat(observed["recorded_at_utc"])
+    if recorded.tzinfo is None or recorded > datetime.now(timezone.utc):
+        raise ValueError("Upload publication evidence has no valid completion time")
+
+    config = configparser.ConfigParser(interpolation=None)
+    config.read_string(bound(git_directory / "config").decode("utf-8"))
+    if (config.get('remote "origin"', "url", fallback=None) != "https://huggingface.co/datasets/" + repository
+            or config.has_option("core", "worktree") or config.getboolean("core", "bare", fallback=False)
+            or config.has_option("extensions", "partialclone")
+            or config.has_section("extensions")
+            or any(config.get(section, "promisor", fallback="false").casefold() != "false"
+                   for section in config.sections() if section.startswith("remote "))):
+        raise ValueError("Upload origin or object ownership differs from the pinned resource repository")
+    head = _clean_upload_git(target, "rev-parse", "--verify", "HEAD").decode("ascii").strip()
+    refs = {}
+    for line in _clean_upload_git(target, "for-each-ref", "--format=%(refname) %(objectname)").decode("ascii").splitlines():
+        ref, commit = line.split()
+        refs[ref] = commit
+    allowed_refs = {"refs/heads/main", "refs/remotes/origin/main", "refs/remotes/origin/HEAD"}
+    if (head != revision or not {"refs/heads/main", "refs/remotes/origin/main"} <= refs.keys()
+            or not refs.keys() <= allowed_refs or any(commit != revision for commit in refs.values())):
+        raise ValueError("Upload clone contains unpublished, additional or replaced refs")
+    tree, index = {}, {}
+    for raw in _clean_upload_git(target, "ls-tree", "-rz", "--full-tree", "HEAD").split(b"\0"):
+        if not raw:
+            continue
+        metadata, raw_name = raw.split(b"\t", 1)
+        mode, kind, oid = metadata.decode("ascii").split()
+        path = raw_name.decode("utf-8")
+        if mode not in {"100644", "100755"} or kind != "blob" or path in tree:
+            raise ValueError("Upload tree contains unsupported or duplicate entries")
+        tree[path] = (mode, oid)
+    for raw in _clean_upload_git(target, "ls-files", "--stage", "-z").split(b"\0"):
+        if not raw:
+            continue
+        metadata, raw_name = raw.split(b"\t", 1)
+        mode, oid, stage = metadata.decode("ascii").split()
+        path = raw_name.decode("utf-8")
+        if stage != "0" or path in index:
+            raise ValueError("Upload index contains an unresolved conflict")
+        index[path] = (mode, oid)
+    worktree = {path.relative_to(target).as_posix() for path in files if not path.is_relative_to(git_directory)}
+    if set(tree) != expected_names or index != tree or worktree != expected_names:
+        raise ValueError("Upload clone contains staged, untracked or unowned resource files")
+    for path, (_, oid) in tree.items():
+        if path in expected:
+            asset_release.canonical(path)
+        raw = (target / path).read_bytes()
+        blob_oid = hashlib.sha1(b"blob " + str(len(raw)).encode("ascii") + b"\0" + raw).hexdigest()
+        row = expected.get(path)
+        if row:
+            pointer = ("version https://git-lfs.github.com/spec/v1\n"
+                       f"oid sha256:{row['sha256']}\nsize {row['bytes']}\n").encode("ascii")
+            pointer_oid = hashlib.sha1(b"blob " + str(len(pointer)).encode("ascii") + b"\0" + pointer).hexdigest()
+            payload = len(raw) == row["bytes"] and hashlib.sha256(raw).hexdigest() == row["sha256"]
+            if not (raw == pointer and blob_oid == oid or payload and oid in {blob_oid, pointer_oid}):
+                raise ValueError("Upload resource has unpublished or corrupt content")
+        elif blob_oid != oid:
+            raise ValueError("Upload metadata has uncommitted content")
+    if _clean_upload_git(target, "fsck", "--full", "--no-reflogs", "--unreachable", "--no-progress").strip():
+        raise ValueError("Upload clone contains unreachable unpublished Git objects")
+    payloads, locked_hashes = [], {row["sha256"]: row["bytes"] for row in rows}
+    hook_names = {"applypatch-msg", "pre-applypatch", "post-applypatch", "pre-commit", "pre-merge-commit",
+                  "prepare-commit-msg", "commit-msg", "post-commit", "pre-rebase", "post-checkout",
+                  "post-merge", "pre-push", "pre-receive", "update", "post-receive", "post-update",
+                  "push-to-checkout", "pre-auto-gc", "post-rewrite", "sendemail-validate", "fsmonitor-watchman"}
+    for path in files:
+        rel = path.relative_to(git_directory).as_posix() if path.is_relative_to(git_directory) else ""
+        if rel.startswith("lfs/objects/"):
+            parts = rel.split("/")
+            sha = parts[-1]
+            if (len(parts) != 5 or not re.fullmatch(r"[a-f0-9]{64}", sha)
+                    or parts[2:4] != [sha[:2], sha[2:4]] or sha not in locked_hashes
+                    or path.stat().st_size != locked_hashes[sha] or digest(path) != sha):
+                raise ValueError("Upload LFS cache contains an undeclared or corrupt payload")
+            payloads.append({"path": relative(path), "bytes": locked_hashes[sha], "sha256": sha})
+        elif rel.startswith("lfs/tmp/") and path.stat().st_size:
+            raise ValueError("Upload LFS transfer has an unpublished partial payload")
+        elif rel:
+            hook = rel.removeprefix("hooks/").removesuffix(".sample")
+            ordinary = (rel in {"HEAD", "config", "description", "index", "packed-refs", "shallow",
+                               "COMMIT_EDITMSG", "FETCH_HEAD", "ORIG_HEAD", "info/exclude"}
+                        or rel.startswith("hooks/") and hook in hook_names
+                        or rel in {"logs/HEAD", *("logs/" + ref for ref in refs), *refs}
+                        or re.fullmatch(r"objects/(?:[a-f0-9]{2}/[a-f0-9]{38}|pack/pack-[a-f0-9]{40}\.(?:pack|idx|rev|bitmap)|info/(?:packs|commit-graph))", rel)
+                        or rel.startswith("lfs/tmp/") and path.stat().st_size == 0)
+            if not ordinary:
+                raise ValueError("Upload Git metadata contains an unowned file")
+    for identity in basis:
+        if _clean_file_identity(ROOT / identity["path"]) != identity:
+            raise ValueError("Upload rebuild evidence changed during inspection")
+    return {"path": name, "kind": "old_asset_upload_clone",
+            "owner_receipts": [relative(lock_path), relative(receipt_path)], "basis": basis,
+            "rebuild_evidence": {"proof_kind": proof_kind, "repository": repository, "revision": revision,
+                                 "manifest_sha256": manifest_sha, "refs": refs, "tracked_files": len(tree),
+                                 "local_lfs_payloads": sorted(payloads, key=lambda item: item["path"]),
+                                 "worktree_clean": True, "unpublished_content": False, "network_access": False}}
+
+
 def _clean_candidates(before=None):
+    import configparser
     cutoff = datetime.now(timezone.utc).timestamp() if before is None else before
     queue = ROOT / ".analysis/results/reverse-pending.json"
     if queue.is_file():
@@ -6116,8 +6861,12 @@ def _clean_candidates(before=None):
         if target.stat().st_mtime >= cutoff:
             retained.append({"path": name, "reason": "current_run_upload"})
             continue
-        candidates.append({"path": name, "kind": "old_asset_upload_clone", "owner_receipts": [],
-                           "basis": [_clean_file_identity(config)]})
+        try:
+            candidates.append(_clean_upload_evidence(target))
+        except (OSError, ValueError, KeyError, TypeError, UnicodeError, configparser.Error,
+                subprocess.SubprocessError) as error:
+            retained.append({"path": name, "reason": "upload_completion_or_rebuild_unverified",
+                             "detail": str(error)})
     return candidates, retained
 
 
@@ -6523,11 +7272,16 @@ def _clean_process_guard(candidates):
         name = row["path"].casefold()
         for process in processes:
             command = process["command_line"].replace("\\", "/").casefold()
+            first = re.match(r'^\s*(?:"([^"]+)"|(\S+))', command)
+            executable = (process.get("executable") or (next((item for item in first.groups() if item), "")
+                                                       if first else "")).replace("\\", "/").rsplit("/", 1)[-1].casefold()
+            upload_git_active = (row.get("kind") == "old_asset_upload_clone" and process["pid"] != os.getpid()
+                                 and re.fullmatch(r"git(?:-[a-z0-9_-]+)?(?:\.exe)?", executable))
             verification_active = (row.get("kind") == "owned_empty_verification_temp" and process["pid"] != os.getpid()
                                    and (re.search(r"(?:^|[/\s\"])(?:cargo|rustc|ml64)(?:\.exe)?(?:[\s\"]|$)", command)
                                         or "workspace.py" in command and "validate-rust" in command
                                         or "test_evidence" in command or "native_source_correspondence" in command))
-            if name in command or verification_active:
+            if name in command or verification_active or upload_git_active:
                 references.setdefault(row["path"], []).append(process["pid"])
     return references, errors
 
@@ -6554,6 +7308,33 @@ def _clean_locks():
             stream.close()
 
 
+def _clean_group_final_guard(row, directory_identities):
+    """Recheck membership under the held handles; this is not a lock on new child creation."""
+    expected_files = {item["path"]: item for item in row["tree"]["files"]}
+    directories, files = set(), set()
+    for parent, children, leaves in os.walk(_clean_path(row["path"]), followlinks=False):
+        for path in [Path(parent), *(Path(parent) / name for name in children + leaves)]:
+            _clean_path(relative(path))
+            if _scratch_link(path):
+                raise ValueError("Cleanup membership contains a new link or reparse point")
+        directories.add(relative(Path(parent)))
+        files.update(relative(Path(parent) / name) for name in leaves)
+    if directories != set(row["tree"]["directories"]) or files != expected_files.keys():
+        raise ValueError("Cleanup membership changed before the first deletion")
+    for name in directories:
+        stat = _clean_path(name).stat()
+        if (stat.st_dev, stat.st_ino, stat.st_mtime_ns) != directory_identities[name]:
+            raise ValueError("Cleanup directory identity changed before the first deletion")
+    for name, expected in expected_files.items():
+        stat = _clean_path(name).stat()
+        if (stat.st_size, stat.st_mtime_ns, stat.st_ino, stat.st_dev) != tuple(
+                expected[key] for key in ("bytes", "mtime_ns", "inode", "device")):
+            raise ValueError("Cleanup file identity changed before the first deletion")
+    active, errors = _clean_process_guard([row])
+    if active or errors:
+        raise ValueError("Cleanup activity guard changed before deletion")
+
+
 def _clean_delete_group(row):
     """Hold each exact file exclusively until the complete group is validated."""
     import ctypes
@@ -6570,6 +7351,7 @@ def _clean_delete_group(row):
     api.GetFileInformationByHandleEx.argtypes = [wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD]
     api.CloseHandle.argtypes = [wintypes.HANDLE]
     handles, directory_handles, allocations, marked, failure = [], [], [], [], None
+    directory_identities = {}
     try:
         ancestors = set()
         for name in row["tree"]["directories"]:
@@ -6577,10 +7359,17 @@ def _clean_delete_group(row):
             ancestors.add(path)
             ancestors.update(parent for parent in path.parents if parent.is_relative_to(ROOT / ".work"))
         for path in sorted(ancestors, key=lambda value: len(value.parts)):
+            stat = path.stat()
+            identity = (stat.st_dev, stat.st_ino, stat.st_mtime_ns)
             handle = api.CreateFileW(str(path), 0x80, 1, None, 3, 0x02200000, None)
             if handle == ctypes.c_void_p(-1).value:
                 raise OSError(ctypes.get_last_error(), "exclusive_directory_guard_unavailable")
             directory_handles.append(handle)
+            after = path.stat()
+            if (after.st_dev, after.st_ino, after.st_mtime_ns) != identity:
+                raise ValueError("Cleanup directory changed while acquiring its handle")
+            if relative(path) in row["tree"]["directories"]:
+                directory_identities[relative(path)] = identity
             if _scratch_link(path):
                 raise ValueError("Cleanup directory changed to a reparse point")
         for expected in row["tree"]["files"]:
@@ -6611,9 +7400,7 @@ def _clean_delete_group(row):
             if info.links != 1 or compressed.allocated < 0:
                 raise ValueError("Cleanup target has additional hard links or invalid allocation")
             allocations.append(compressed.allocated)
-        active, errors = _clean_process_guard([row])
-        if active or errors:
-            raise ValueError("Cleanup activity guard changed before deletion")
+        _clean_group_final_guard(row, directory_identities)
         for handle, expected, allocated in zip(handles, row["tree"]["files"], allocations):
             disposition = wintypes.DWORD(0x11)  # DELETE | IGNORE_READONLY_ATTRIBUTE, including Git pack files.
             if not api.SetFileInformationByHandle(handle, 21, ctypes.byref(disposition), ctypes.sizeof(disposition)):
@@ -6703,6 +7490,12 @@ def clean(stale=False, *, before=None, dry_run=False, plan=None, apply=None, pla
                     raise ValueError("Cleanup target changed or escaped its owned scope")
                 if name not in current_names:
                     raise ValueError("Cleanup target acquired a current analysis reservation or lost completion ownership")
+                if row["kind"] == "old_asset_upload_clone":
+                    owner = current_names[name]
+                    if (row.get("rebuild_evidence") != owner.get("rebuild_evidence")
+                            or row.get("owner_receipts") != owner.get("owner_receipts")
+                            or not all(identity in row.get("basis", []) for identity in owner["basis"])):
+                        raise ValueError("Upload cleanup omitted or changed its completed rebuild evidence")
                 for basis in row["basis"]:
                     if _clean_file_identity(safe(ROOT / basis["path"])) != basis:
                         raise ValueError("Cleanup completion evidence changed after review")
@@ -11763,6 +12556,16 @@ def rust_validation_commands():
     """Current pure/mock suites, shared by execution and owner validation."""
     return [
         ("ipc-client", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "client_tests"]),
+        ("ipc-failure-diagnostics", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "failure_diagnostics::tests"]),
+        ("hid-broker", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "runtime::hid_broker"]),
+        ("session-cleanup", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "runtime::session::tests"]),
+        ("portable-cleanup", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "runtime::portable::cleanup_tests"]),
+        ("owner-cleanup", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "runtime::shutdown::tests"]),
+        ("foreground-cleanup", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "foreground_monitor::cleanup_tests"]),
+        ("hid-broker-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "hid_broker"]),
+        ("hid-exchange", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "feature_exchange::tests"]),
+        ("hid-backend-factory", ["cargo", "test", "--locked", "--offline", "-p", "razer-hid", "--lib", "tests"]),
+        ("device-topology", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "device_changes::tests"]),
         ("ipc-shutdown-receipts", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "worker_shutdown::tests"]),
         ("mouse-input-monitoring-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mouse_input_monitoring"]),
         ("device-task-locks", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "device_tasks"]),
@@ -11859,7 +12662,8 @@ def rust_validation_commands():
         ("current-dpi-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_current_dpi::tests"]),
         ("current-dpi-routing", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "direct::mouse_current_dpi::tests"]),
         ("current-dpi-ble-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_current_dpi::ble::tests"]),
-        ("current-dpi-ble-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "device_tasks::tests::current_dpi_ble"]),
+        ("current-dpi-ble-initialization", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_current_dpi::ble::initialization::tests"]),
+        ("current-dpi-ble-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "current_dpi_ble"]),
         ("current-dpi-ble-discovery", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "discovery::tests::current_dpi_ble"]),
         ("current-dpi-ble-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "current_dpi_ble_"]),
         ("current-polling-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_current_polling::tests"]),
@@ -12073,6 +12877,8 @@ def rust_validation_commands():
         ("mouse-runtime-artwork-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mouse_runtime_artwork_controller"]),
         ("mouse-runtime-artwork-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mouse_runtime_artwork"]),
         ("mouse-runtime-artwork-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "runtime_artwork_tests"]),
+        ("mouse-ble-protocol30-device", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "protocol30_"]),
+        ("mouse-ble-protocol30-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "protocol30_"]),
         ("mouse-current-power-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "current_power::tests"]),
         ("mouse-current-power-migration", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mouse_current_power_migration"]),
         ("mouse-connection-navigation", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mouse_connection_navigation"]),
@@ -12116,6 +12922,7 @@ def rust_validation_commands():
         ("receiver-discovery-projection", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "receiver_projection::tests"]),
         ("receiver-service-metadata", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "receiver_pairing::tests"]),
         ("receiver-query-lease", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "query_lease_"]),
+        ("service-shutdown-receipts", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "runtime::shutdown::tests"]),
         ("mapping-execution-completion", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping_runtime::lifecycle_tests"]),
         ("mapping-driver-session", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping_runtime::driver::tests"]),
         ("mapping-hardware-session", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping_runtime::hardware::tests"]),
@@ -12146,6 +12953,7 @@ def rust_validation_commands():
         ("camera-image-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "camera_image_state::tests"]),
         ("camera-exposure-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "camera_exposure_state::tests"]),
         ("source-slider", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "source_slider::tests"]),
+        ("source-select-pointer-placement", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "pointer_placement_tests"]),
         ("source-hypershift-tooltip", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "hypershift_geometry_tests"]),
         ("source-text-layout", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "source_check_text_preserves_max_content_width"]),
         ("source-text-tracking", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "source_text::tests"]),
@@ -12202,15 +13010,21 @@ def validate_rust(selected_suites=None, cargo_config=None):
     inventories = {}
     test_scopes = {name: rust_test_scope(command, inventories) for name, command in commands}
     results = []
-    for name, command in commands:
+    unexecuted_suites = []
+    for command_index, (name, command) in enumerate(commands):
         print(json.dumps({"checking": name, "argv": command}), flush=True)
-        log = destination / (name + ".txt")
         started = datetime.now(timezone.utc).isoformat()
-        with verification_environment(name) as (environment, temporary_directory):
-            with log.open("wb") as output:
-                completed = subprocess.run(command, cwd=ROOT, env=environment, stdout=output,
-                                           stderr=subprocess.STDOUT, check=False)
-        raw = log.read_text(encoding="utf-8", errors="replace")
+        with tempfile.TemporaryFile(dir=destination, mode="w+b") as output:
+            try:
+                with verification_environment(name) as (environment, temporary_directory):
+                    completed = subprocess.run(command, cwd=ROOT, env=environment, stdout=output,
+                                               stderr=subprocess.STDOUT, check=False)
+            finally:
+                output.flush()
+                output.seek(0)
+                log_bytes = output.read()
+                log = _publish_immutable_evidence(log_bytes, directory=".analysis/verification", suffix=".txt")
+        raw = log_bytes.decode("utf-8", errors="replace")
         warning_lines = re.findall(r"^warning(?:\[[^\]]+\])?:.*$", raw, re.MULTILINE)
         totals = re.findall(r"test result: (\w+)\. (\d+) passed; (\d+) failed; (\d+) ignored", raw)
         executed_tests = sum(int(passed) + int(failed) for _, passed, failed, _ in totals)
@@ -12223,7 +13037,8 @@ def validate_rust(selected_suites=None, cargo_config=None):
                "temporary_directory": temporary_directory,
                "temporary_directory_variables": ["TEMP", "TMP", "TMPDIR"],
                "finished_at_utc": datetime.now(timezone.utc).isoformat(),
-               "exit_code": completed.returncode, "log": relative(log), "log_sha256": digest(log),
+               "exit_code": completed.returncode, "log": log["path"], "log_sha256": log["sha256"],
+               "log_bytes": log["bytes"],
                "executed_tests": executed_tests, "errors": errors, "passed": not errors,
                "warning_count": len(warning_lines), "warning_lines": warning_lines,
                "excluded_test_filters": [command[index + 1] for index, part in enumerate(command[:-1]) if part == "--skip"],
@@ -12235,20 +13050,33 @@ def validate_rust(selected_suites=None, cargo_config=None):
             row["test_scope"] = "Pure codec, catalog and fixed-icon checks; image_cache::tests requires a real GPUI headless window and is excluded"
         results.append(row)
         print(json.dumps(row), flush=True)
+        if name == "workspace" and not row["passed"]:
+            unexecuted_suites = [
+                {"name": blocked_name, "argv": blocked_command,
+                 "reason": "blocked_by_workspace_check_failed"}
+                for blocked_name, blocked_command in commands[command_index + 1:]
+            ]
+            break
     unchanged = baseline == rust_inputs()
     receipt = {"schema_version": 1, "recorded_at_utc": datetime.now(timezone.utc).isoformat(),
                "inputs": baseline, "inputs_unchanged": unchanged, "commands": results,
                "suite_selection": [name for name, _ in commands],
+               "unexecuted_suites": unexecuted_suites,
                "all_configured_suites": selected_suites is None,
                "warning_count": sum(row["warning_count"] for row in results),
                "target_execution": False, "real_device_operations": False,
                "application_runtime_acceptance": "not performed",
-               "passed": unchanged and all(row["passed"] for row in results)}
+               "passed": unchanged and not unexecuted_suites and all(row["passed"] for row in results)}
     previous_path = ROOT / ".analysis/validation.json"
     import analysis
     with analysis.index_lock(previous_path.with_suffix(".lock")):
         if previous_path.exists():
-            previous = json.loads(previous_path.read_text(encoding="utf-8"))
+            previous_bytes = previous_path.read_bytes()
+            previous = json.loads(previous_bytes)
+            if not isinstance(previous, dict):
+                raise ValueError("Previous Rust validation receipt is not an object")
+            receipt["previous_receipt"] = _publish_immutable_evidence(
+                previous_bytes, directory=".analysis/verification", suffix=".json")
             if "local_runtime_checks" in previous:
                 receipt["local_runtime_checks"] = previous["local_runtime_checks"]
         write_json(previous_path, receipt)

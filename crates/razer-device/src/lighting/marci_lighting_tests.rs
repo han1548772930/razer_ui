@@ -172,6 +172,22 @@ fn marci_output_reports_actual_count_without_a_device_ack() {
 }
 
 #[test]
+fn marci_control_release_failure_keeps_the_matching_ack_without_a_successful_effect() {
+    let io = Fake::new(true);
+    io.reply(2, &[1, 3], None);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&io);
+    let error = Control::default()
+        .exchange(&probe, [2, 0, 4], &[3, 0], &mut |_| Ok(()))
+        .unwrap_err();
+    let completed = crate::CompletedFeatureExchange::from_error(&error).unwrap();
+    assert_eq!(completed.command(), [2, 0, 4]);
+    assert_eq!(completed.data(), [1, 3]);
+    assert!(crate::backend::exchange_finalization_failed(&error));
+    assert_eq!(io.sent.borrow().len(), 1);
+    assert_eq!(io.read_count.get(), 1);
+}
+
+#[test]
 fn marci_latest_frames_replace_per_handle_and_drop_gated_ticks() {
     let mut latest = LatestFrames::new(1, 100);
     latest.replace(1, frame(7, 1)).unwrap();
@@ -245,12 +261,20 @@ fn marci_control_busy_timeout_and_other_command_retry_in_before_resend_out() {
     hid.reply(2, &[1, 2, 3, 4], None);
     control
         .firmware(&hid, &mut |d| {
-            waits.push(d.as_millis());
+            if d.is_zero() {
+                // Admission and pre-send checks do not advance source time.
+                assert!(hid.sent.borrow().is_empty());
+                assert_eq!(hid.read_count.get(), 0);
+            } else {
+                waits.push((d.as_millis(), hid.sent.borrow().len(), hid.read_count.get()));
+            }
             Ok(())
         })
         .unwrap();
-    assert_eq!(waits, vec![0, 40, 5]);
+    assert_eq!(waits, [(40, 1, 0), (5, 1, 1)]);
     assert_eq!(hid.sent.borrow().len(), 1);
+    assert_eq!(hid.read_count.get(), 2);
+    assert!(hid.replies.borrow().is_empty());
     hid.reply(4, &[], None);
     hid.reply(2, &[1, 2, 3, 4], None);
     control.firmware(&hid, &mut |_| Ok(())).unwrap();

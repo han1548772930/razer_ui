@@ -75,6 +75,31 @@ impl FeatureTransport for Mock {
 }
 
 #[test]
+fn finish_failure_keeps_the_decoded_dpi_ack_and_stops_independent_following_tasks() {
+    let device = Mock::new(vec![reply(vec![7, 8])]);
+    let leased = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);
+    let mut cap = required(PRODUCT_ID).unwrap().clone();
+    cap.transport.sleep_between_out_ms = 0;
+    cap.transport.sleep_between_out_in_ms = 0;
+    cap.transport.sleep_between_in_ms = 0;
+    let change = DpiChange {
+        stages: Some(draft().into()),
+        active: Some(DpiPair { x: 800, y: 800 }),
+        profile_guid: None,
+        initialize: false,
+    };
+    let error =
+        execute_with_capability(&cap, &leased, Some(&change), next(), || Ok(())).unwrap_err();
+    let progress = &error.downcast_ref::<WriteFailure>().unwrap().progress;
+    assert_eq!(progress.acknowledgements.len(), 1);
+    assert_eq!(progress.acknowledgements[0].data, [7, 8]);
+    assert!(progress.stages.is_none() && progress.active.is_none());
+    assert!(!progress.verified);
+    assert_eq!(device.sent().len(), 1);
+    assert!(crate::backend::exchange_finalization_failed(&error));
+}
+
+#[test]
 fn profile_identity_read_finishes_before_mode_or_any_profile_task() {
     let request = DpiChange {
         stages: None,

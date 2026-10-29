@@ -3,7 +3,7 @@
 //! and re-observes collection identity before every transfer and retry.
 use anyhow::{Context as _, ensure};
 use razer_device::{
-    backend::{FeatureTransport, HidBackend, HidNode},
+    backend::{FeatureTransport, HidNode},
     controller_triggers::{TriggerOperation, TriggerProtocol, capability},
 };
 use razer_hid::with_backend;
@@ -54,7 +54,7 @@ pub(super) fn execute(
         Ok(())
     };
     validate()?;
-    let device = with_backend(|backend| backend.open(node))?;
+    let device = with_backend(|backend| backend.open_validated(node, std::rc::Rc::new(&validate)))?;
     ensure!(
         device.report_lengths()?.feature.get(&source.report_id()) == Some(&91),
         "Controller descriptor does not expose the source Feature report"
@@ -82,6 +82,31 @@ struct CheckedTransport<'a> {
     validate: &'a dyn Fn() -> anyhow::Result<()>,
 }
 impl FeatureTransport for CheckedTransport<'_> {
+    fn begin_exchange(
+        &self,
+        options: razer_device::backend::ExchangeOptions,
+    ) -> anyhow::Result<Box<dyn razer_device::backend::ExchangeLease + '_>> {
+        (self.validate)()?;
+        Ok(razer_device::backend::checked_exchange(
+            self.inner
+                .begin_exchange_validated(options, std::rc::Rc::new(self.validate))?,
+            self.validate,
+            self.validate,
+            None,
+        ))
+    }
+    fn begin_exchange_validated<'a>(
+        &'a self,
+        options: razer_device::backend::ExchangeOptions,
+        validate: razer_device::backend::ExchangeValidation<'a>,
+    ) -> anyhow::Result<Box<dyn razer_device::backend::ExchangeLease + 'a>> {
+        let own = self.validate;
+        let combined = std::rc::Rc::new(move || {
+            own()?;
+            validate()
+        });
+        self.inner.begin_exchange_validated(options, combined)
+    }
     fn hid_node(&self) -> Option<&HidNode> {
         self.inner.hid_node()
     }

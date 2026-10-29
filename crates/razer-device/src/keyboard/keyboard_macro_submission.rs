@@ -112,7 +112,7 @@ fn locked_macro_ids(
                     acknowledgement: None,
                 });
                 let step = receipt.submissions.last_mut().unwrap();
-                let response = feature_exchange::exchange_with_report_data_size_observing_send(
+                let result = feature_exchange::exchange_with_report_data_size_observing_send(
                     device,
                     &transport,
                     step.command,
@@ -121,8 +121,10 @@ fn locked_macro_ids(
                     step.payload.len() as u8,
                     guard,
                     &mut || step.attempted = true,
-                )?;
-                step.acknowledgement = Some(response.clone());
+                );
+                step.acknowledgement =
+                    feature_exchange::acknowledged_reply(&result).map(<[u8]>::to_vec);
+                let response = result?;
                 ensure!(
                     response.len() == 1 + 9 * keys.len() && response[0] == profile.profile_id,
                     "Locked profile assignment response has a wrong size/slot"

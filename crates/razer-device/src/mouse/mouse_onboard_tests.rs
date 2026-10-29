@@ -1,5 +1,6 @@
 //! Independent byte fixtures and mandatory synthetic Feature exchanges.
 use super::*;
+use crate::feature_exchange::tests::ExchangeProbe;
 use std::{
     cell::{Cell, RefCell},
     collections::VecDeque,
@@ -945,6 +946,30 @@ fn cancellation_before_first_io_has_no_mutation_or_transport_effects() {
 }
 
 #[test]
+fn finish_failure_keeps_the_onboard_mutation_ack_without_confirming_inventory() {
+    let t = Transport::new(exchange_steps([1, 5, 2], 1, &[3], &[7, 8], 1));
+    let c = cap(170);
+    let device = ExchangeProbe::failing_finish(&t);
+    let m = MouseOnboard::new(&device, &c).unwrap();
+    let mut progress = OnboardWriteReport::default();
+    let error = m
+        .mutate(
+            [1, 5, 2],
+            vec![3],
+            &mut progress,
+            &mut transactions(),
+            &|| Ok(()),
+        )
+        .unwrap_err();
+    assert_eq!(progress.steps.len(), 1);
+    assert!(progress.steps[0].acknowledgment_received);
+    assert_eq!(progress.steps[0].acknowledgment_data, [7, 8]);
+    assert!(crate::backend::exchange_finalization_failed(&error));
+    assert_eq!((t.sends.get(), t.reads.get()), (1, 1));
+    t.finish();
+}
+
+#[test]
 fn cancellation_after_create_ack_stops_before_first_block() {
     let mut steps = Vec::new();
     let mut tx = 0;
@@ -952,12 +977,16 @@ fn cancellation_after_create_ack_stops_before_first_block() {
     steps.extend(exchange_steps([1, 5, 2], 1, &[3], &[], next(&mut tx)));
     let t = Transport::new(steps);
     let c = cap(170);
-    let m = MouseOnboard::new(&t, &c).unwrap();
-    // Each operation has one caller validation plus four I/O validations.
-    let checks = Cell::new(0);
+    let canceled = Cell::new(false);
+    let after_create = || {
+        if t.reads.get() == 4 {
+            canceled.set(true);
+        }
+    };
+    let device = ExchangeProbe::with_on_finish(&t, &after_create);
+    let m = MouseOnboard::new(&device, &c).unwrap();
     let validate = || {
-        checks.set(checks.get() + 1);
-        ensure!(checks.get() <= 20, "Canceled");
+        ensure!(!canceled.get(), "Canceled");
         Ok(())
     };
     let error = m
@@ -968,6 +997,7 @@ fn cancellation_after_create_ack_stops_before_first_block() {
     assert_eq!(error.failed_step, None);
     assert!(error.progress.steps[0].acknowledgment_received);
     assert!(error.device_state_may_have_changed());
+    assert_eq!((t.sends.get(), t.reads.get()), (4, 4));
     t.finish();
 }
 
@@ -980,10 +1010,8 @@ fn canceled_reply_does_not_turn_into_a_setter_ack() {
     let t = Transport::new(steps);
     let c = cap(170);
     let m = MouseOnboard::new(&t, &c).unwrap();
-    let checks = Cell::new(0);
     let validate = || {
-        checks.set(checks.get() + 1);
-        ensure!(checks.get() < 20, "Canceled after reply");
+        ensure!(t.reads.get() < 4, "Canceled after reply");
         Ok(())
     };
     let error = m
@@ -993,6 +1021,7 @@ fn canceled_reply_does_not_turn_into_a_setter_ack() {
     assert_eq!(error.progress.steps.len(), 1);
     assert!(!error.progress.steps[0].acknowledgment_received);
     assert!(error.device_state_may_have_changed());
+    assert_eq!((t.sends.get(), t.reads.get()), (4, 4));
     t.finish();
 }
 

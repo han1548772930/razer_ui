@@ -2,7 +2,7 @@
 //! verified exit defaults are attempted and native handles have been released.
 use anyhow::{Context as _, ensure};
 use razer_device::{
-    backend::{HidBackend, HidNode},
+    backend::HidNode,
     controller_lighting::{
         LightingOperation, LightingProtocol, LightingResult, SoftwareEffect, SoftwarePhase,
         SoftwareStatus, capability,
@@ -373,14 +373,24 @@ fn run_checked(
         Ok(())
     };
     validate()?;
-    let device = with_backend(|backend| backend.open(node))?;
+    let restore_deadline = std::cell::Cell::new(None::<Instant>);
+    let validate_transfer = || {
+        if let Some(deadline) = restore_deadline.get() {
+            ensure!(Instant::now() < deadline, "Lighting restore timed out");
+        } else {
+            check_cancellation(canceled)?;
+        }
+        validate()
+    };
+    let device =
+        with_backend(|backend| backend.open_validated(node, std::rc::Rc::new(&validate_transfer)))?;
     ensure!(
         device.report_lengths()?.feature.get(&4) == Some(&91),
         "Kitsune descriptor lacks its source Feature channel"
     );
     let checked = super::CheckedTransport {
         inner: device.as_ref(),
-        validate: &validate,
+        validate: &validate_transfer,
     };
     let mut hid = SoftwareHid::new(&checked);
     let wait = |duration: Duration| -> anyhow::Result<()> {
@@ -477,12 +487,20 @@ fn run_checked(
                             });
                         }
                         let deadline = Instant::now() + Duration::from_secs(90);
+                        let operation_guard = || {
+                            ensure!(Instant::now() < deadline, "Lighting command timed out");
+                            validate_transfer()
+                        };
+                        let operation_transport = super::CheckedTransport {
+                            inner: &checked,
+                            validate: &operation_guard,
+                        };
                         let operation_wait = |duration| {
                             ensure!(Instant::now() < deadline, "Lighting command timed out");
                             wait(duration)
                         };
                         let mut result = LightingProtocol::new(
-                            &checked,
+                            &operation_transport,
                             capability(4115).unwrap(),
                             operation_wait,
                         )
@@ -545,6 +563,7 @@ fn run_checked(
     // Cancellation stops frame production; restoration still validates the
     // retained physical identity and must not target a newly attached device.
     let deadline = Instant::now() + Duration::from_secs(30);
+    restore_deadline.set(Some(deadline));
     let restore = hid.restore_on_exit(&mut |duration| {
         ensure!(Instant::now() < deadline, "Lighting restore timed out");
         validate()?;

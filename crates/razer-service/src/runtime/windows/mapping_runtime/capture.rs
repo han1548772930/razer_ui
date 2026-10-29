@@ -98,6 +98,16 @@ impl<R: InputRecorder> Default for State<R> {
 }
 
 impl<R: InputRecorder> State<R> {
+    pub(super) fn cleanup_pending(&self, scope: Uuid) -> bool {
+        self.capture
+            .as_ref()
+            .is_some_and(|capture| capture.scope == scope && capture.active())
+            || self
+                .recorder
+                .as_ref()
+                .is_some_and(|recorder| recorder.cleanup_pending(scope))
+    }
+
     pub fn handle(
         &mut self,
         scope: Uuid,

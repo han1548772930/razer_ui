@@ -3,13 +3,112 @@ use razer_ipc::ResponseEnvelope;
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(super) struct Cleanup {
     observations: Map<String, Value>,
     errors: Vec<String>,
+    resources_pending: bool,
+}
+
+pub(super) enum CleanupProgress {
+    Pending(ResponseEnvelope),
+    Released(ResponseEnvelope),
+}
+
+impl CleanupProgress {
+    pub(super) fn into_response(self) -> ResponseEnvelope {
+        match self {
+            Self::Pending(response) | Self::Released(response) => response,
+        }
+    }
+}
+
+/// Cache only terminal owner results. A failed release that still owns native
+/// resources must run again on the same owner before it can become terminal.
+#[derive(Default)]
+pub(super) struct OwnerCleanup {
+    terminal: Option<Cleanup>,
+    attempted: bool,
+    interrupted: bool,
+    failures: std::collections::BTreeSet<String>,
+}
+
+impl OwnerCleanup {
+    pub(super) fn run(&mut self, action: impl FnOnce() -> Cleanup) -> Cleanup {
+        if let Some(terminal) = &self.terminal {
+            return terminal.clone();
+        }
+        self.interrupted |= self.attempted;
+        self.attempted = true;
+        let mut cleanup = action();
+        self.attempted = false;
+        if self.interrupted {
+            cleanup.fail(
+                "owner cleanup",
+                "An earlier cleanup attempt panicked; its restoration result was not confirmed",
+            );
+        }
+        self.failures.extend(cleanup.errors.drain(..));
+        cleanup.errors.extend(self.failures.iter().cloned());
+        if cleanup.resources_released() {
+            self.terminal = Some(cleanup.clone());
+        }
+        cleanup
+    }
+
+    pub(super) fn run_result<T: Serialize>(
+        &mut self,
+        owner: &str,
+        action: impl FnOnce() -> (anyhow::Result<T>, bool),
+    ) -> Cleanup {
+        self.run(|| {
+            let (result, pending) = action();
+            let mut cleanup = Cleanup::default();
+            cleanup.record(owner, result);
+            if pending {
+                cleanup.retain_resources();
+            }
+            cleanup
+        })
+    }
 }
 
 impl Cleanup {
+    pub(super) fn resources_released(&self) -> bool {
+        !self.resources_pending
+    }
+
+    pub(super) fn retain_resources(&mut self) {
+        self.resources_pending = true;
+    }
+
+    pub(super) fn merge(&mut self, other: Self) {
+        self.observations.extend(other.observations);
+        self.errors.extend(other.errors);
+        self.resources_pending |= other.resources_pending;
+    }
+
+    pub(super) fn progress(mut self, id: u64) -> CleanupProgress {
+        let released = self.resources_released();
+        if !released && self.errors.is_empty() {
+            self.fail("native owners", "release is still pending");
+        }
+        let mut response = ResponseEnvelope {
+            diagnostics: None,
+            id,
+            data: Some(serde_json::json!({"stopped": released})),
+            error: None,
+            fatal: false,
+        };
+        self.apply(&mut response);
+        if released {
+            CleanupProgress::Released(response)
+        } else {
+            CleanupProgress::Pending(response)
+        }
+    }
+
+    #[cfg(test)]
     pub(super) fn succeeded(&self) -> bool {
         self.errors.is_empty()
     }
@@ -26,6 +125,29 @@ impl Cleanup {
             }
             Err(error) => self.errors.push(format!("{owner}: {error:#}")),
         }
+    }
+
+    pub(super) fn record_submission<
+        S: Serialize,
+        R: Serialize + super::feature_submission::WorkerReport,
+    >(
+        &mut self,
+        owner: &str,
+        result: anyhow::Result<Option<razer_device::feature_submission::Progress<S, R>>>,
+    ) {
+        if let Ok(Some(progress)) = &result {
+            if let Some(error) = &progress.error {
+                self.fail(owner, error);
+            }
+            if let Some(error) = progress
+                .report
+                .as_ref()
+                .and_then(|report| report.cleanup_error())
+            {
+                self.fail(owner, error);
+            }
+        }
+        self.record(owner, result);
     }
 
     pub(super) fn fail(&mut self, owner: &str, error: impl std::fmt::Display) {
@@ -61,12 +183,85 @@ impl Cleanup {
 mod tests {
     use super::*;
     #[test]
+    fn owner_cleanup_retries_retained_resources_then_caches_actual_release() {
+        let mut owner = OwnerCleanup::default();
+        let mut attempts = 0;
+        let pending = owner.run_result("notifications", || {
+            attempts += 1;
+            (Err::<(), _>(anyhow::anyhow!("unregister failed")), true)
+        });
+        assert!(!pending.resources_released());
+        assert!(!pending.succeeded());
+        let released = owner.run_result("notifications", || {
+            attempts += 1;
+            (Ok(()), false)
+        });
+        assert!(released.resources_released() && !released.succeeded());
+        assert!(
+            released
+                .errors
+                .iter()
+                .any(|error| error.contains("unregister failed"))
+        );
+        let cached = owner.run(|| panic!("a released owner cannot run cleanup again"));
+        assert!(cached.resources_released() && !cached.succeeded());
+        assert_eq!(attempts, 2);
+    }
+
+    #[test]
+    fn terminal_restoration_failure_remains_failed_without_repeating_the_consumed_owner() {
+        let mut owner = OwnerCleanup::default();
+        let first = owner.run_result("lighting", || {
+            (
+                Err::<(), _>(anyhow::anyhow!("restore readback failed after join")),
+                false,
+            )
+        });
+        assert!(first.resources_released());
+        let repeated = owner.run(|| panic!("the terminal owner has already been joined"));
+        for cleanup in [first, repeated] {
+            let CleanupProgress::Released(response) = cleanup.progress(91) else {
+                panic!("no live native owner remains");
+            };
+            assert!(response.data.is_none());
+            assert!(
+                response
+                    .error
+                    .unwrap()
+                    .contains("restore readback failed after join")
+            );
+        }
+    }
+
+    #[test]
+    fn interrupted_cleanup_keeps_the_unknown_restoration_result_after_retry_releases_resources() {
+        let mut owner = OwnerCleanup::default();
+        assert!(
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                owner.run(|| panic!("owner cleanup panicked after consuming its worker"));
+            }))
+            .is_err()
+        );
+        let cleanup = owner.run(Cleanup::default);
+        let CleanupProgress::Released(response) = cleanup.progress(92) else {
+            panic!("the retry released all native resources");
+        };
+        assert!(
+            response
+                .error
+                .unwrap()
+                .contains("earlier cleanup attempt panicked")
+        );
+    }
+
+    #[test]
     fn independent_failures_keep_native_error_and_completed_observations() {
         let mut cleanup = Cleanup::default();
         cleanup.record::<()>("tracking", Err(anyhow::anyhow!("tracking failed")));
         cleanup.record("wristrest", Ok(serde_json::json!({"released":true})));
         cleanup.record::<()>("audio", Err(anyhow::anyhow!("audio failed")));
         let mut reply = ResponseEnvelope {
+            diagnostics: None,
             id: 10,
             data: None,
             error: Some("native cleanup failed".into()),
@@ -94,6 +289,7 @@ mod tests {
             Ok(serde_json::json!({"operation":"actual-result"})),
         );
         let mut reply = ResponseEnvelope {
+            diagnostics: None,
             id: 11,
             data: Some(serde_json::json!({"stopped":true})),
             error: None,

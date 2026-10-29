@@ -49,7 +49,7 @@ pub(super) fn request(
         bytes == cap.report_bytes,
         "Dynamic Feature report length differs"
     );
-    let device = hid_transport::open(&target.path, bytes)?;
+    let device = hid_transport::open_validated(&target.path, bytes, std::rc::Rc::new(&validate))?;
     let mut next = || transaction(target, &cap);
     if identity.is_dongle {
         razer_device::mouse_current_dpi::verify_wireless_online_for(

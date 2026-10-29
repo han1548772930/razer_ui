@@ -250,6 +250,13 @@ impl MacroRecorder {
         #[cfg(not(windows))]
         anyhow::bail!("Macro input recording requires the Windows hook adapter")
     }
+    pub fn cleanup_pending(&self) -> bool {
+        #[cfg(windows)]
+        return self.owner.is_some();
+        #[cfg(not(windows))]
+        false
+    }
+
     pub fn shutdown(&mut self) -> anyhow::Result<()> {
         #[cfg(windows)]
         if let Some(mut owner) = self.owner.take() {

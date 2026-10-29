@@ -745,7 +745,11 @@ impl<'a> MouseButtonMapping<'a> {
             &mut || attempted.set(true),
         );
         report.steps[0].attempted = attempted.get();
-        let response = response.map_err(|error| ButtonWriteFailure {
+        if let Some(data) = crate::feature_exchange::acknowledged_reply(&response) {
+            report.steps[0].acknowledgment_received = true;
+            report.steps[0].acknowledgment_data = data.to_vec();
+        }
+        response.map_err(|error| ButtonWriteFailure {
             phase: if cancelled.get() {
                 ButtonFailurePhase::Cancelled
             } else {
@@ -755,8 +759,6 @@ impl<'a> MouseButtonMapping<'a> {
             failed_step: Some(0),
             error,
         })?;
-        report.steps[0].acknowledgment_received = true;
-        report.steps[0].acknowledgment_data = response;
         if let Err(error) = validate() {
             return Err(ButtonWriteFailure {
                 phase: ButtonFailurePhase::Cancelled,

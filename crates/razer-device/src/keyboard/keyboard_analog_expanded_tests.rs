@@ -2,6 +2,45 @@ use super::*;
 
 const EXPANDED_IDS: [u32; 10] = [719, 720, 721, 728, 740, 741, 742, 746, 747, 756];
 
+#[test]
+fn target_release_failure_retains_selection_ack_without_analog_get_or_set() {
+    let device = Mock::new([reply(&[0xd3])]);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);
+    let failure = read_scoped(
+        &probe,
+        &independent_cap_for(747),
+        actuation_query(),
+        sequence_from(0),
+        || Ok(()),
+    )
+    .unwrap_err();
+    assert_eq!(failure.phase, KeyboardAnalogReadFailurePhase::TargetKeymap);
+    assert_eq!(failure.target_keymap.acknowledgement.unwrap().data, [0xd3]);
+    assert!(format!("{:#}", failure.error).contains("simulated explicit release failed"));
+    assert_eq!(device.sent().len(), 1);
+
+    let device = Mock::new([reply(&[0xd3])]);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);
+    let failure = write(
+        &probe,
+        &independent_cap_for(747),
+        actuation_change(),
+        true,
+        sequence_from(0),
+        || Ok(()),
+    )
+    .unwrap_err();
+    assert_eq!(failure.phase, KeyboardAnalogFailurePhase::TargetKeymap);
+    assert_eq!(
+        failure.report.target_keymap.acknowledgement.unwrap().data,
+        [0xd3]
+    );
+    assert_eq!(failure.report.attempted_writes, 0);
+    assert!(failure.report.acknowledgements.is_empty());
+    assert!(failure.report.confirmations.is_empty());
+    assert_eq!(device.sent().len(), 1);
+}
+
 // Only the test build can implement the sealed trait. Start with a validated
 // real descriptor, then remove waiting/retry overhead for a simulated device.
 struct SimulatedCapability(AnalogCapabilityView);
@@ -674,15 +713,17 @@ fn cancellation_before_target_send_reports_no_device_mutation() {
 fn cancellation_after_target_ack_preserves_selection_without_analog_write() {
     for read_mode in [false, true] {
         let device = Mock::new([reply(&[2])]);
-        let calls = Cell::new(0);
+        let completed = Cell::new(false);
+        let on_finish = || completed.set(true);
+        let probe =
+            crate::feature_exchange::tests::ExchangeProbe::with_on_finish(&device, &on_finish);
         let validate = || {
-            calls.set(calls.get() + 1);
-            ensure!(calls.get() < 5, "Simulated cancellation after target ACK");
+            ensure!(!completed.get(), "Simulated cancellation after target ACK");
             Ok(())
         };
         if read_mode {
             let error = read_scoped(
-                &device,
+                &probe,
                 &independent_cap_for(747),
                 actuation_query(),
                 sequence_from(0),
@@ -694,7 +735,7 @@ fn cancellation_after_target_ack_preserves_selection_without_analog_write() {
             assert_eq!(error.target_keymap.acknowledgement.unwrap().data, [2]);
         } else {
             let error = write(
-                &device,
+                &probe,
                 &independent_cap_for(747),
                 actuation_change(),
                 true,
@@ -811,7 +852,6 @@ fn invalid_target_write_transaction_is_rejected_before_any_mutation() {
 #[test]
 fn cancellation_after_target_send_preserves_attempt_without_inventing_ack() {
     let device = Mock::new([]);
-    let calls = Cell::new(0);
     let error = write(
         &device,
         &independent_cap_for(747),
@@ -819,8 +859,10 @@ fn cancellation_after_target_send_preserves_attempt_without_inventing_ack() {
         false,
         sequence_from(0),
         || {
-            calls.set(calls.get() + 1);
-            ensure!(calls.get() < 2, "Simulated cancellation after target send");
+            ensure!(
+                device.sent().is_empty(),
+                "Simulated cancellation after target send"
+            );
             Ok(())
         },
     )

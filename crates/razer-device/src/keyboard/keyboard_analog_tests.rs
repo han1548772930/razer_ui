@@ -1,6 +1,34 @@
 use super::*;
 use std::{cell::Cell, collections::VecDeque, sync::Mutex};
 
+#[test]
+fn release_failure_retains_analog_ack_without_readback_or_later_chunks() {
+    let device = Mock::new([reply(&[0xd3])]);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);
+    let failure = write(
+        &probe,
+        &cap_for(678),
+        KeyboardAnalogChange::Actuation {
+            profile_id: 1,
+            points: (1..=16).map(point).collect(),
+        },
+        true,
+        sequence_from(0),
+        || Ok(()),
+    )
+    .unwrap_err();
+    assert_eq!(failure.phase, KeyboardAnalogFailurePhase::Write);
+    assert_eq!(failure.report.prepared_commands, 2);
+    assert_eq!(failure.report.attempted_writes, 1);
+    assert_eq!(failure.report.transport_send_attempts, 1);
+    assert_eq!(failure.report.acknowledgements.len(), 1);
+    assert_eq!(failure.report.acknowledgements[0].data, [0xd3]);
+    assert!(failure.report.confirmations.is_empty());
+    assert!(!failure.report.verified());
+    assert!(format!("{:#}", failure.error).contains("simulated explicit release failed"));
+    assert_eq!(device.sent().len(), 1);
+}
+
 struct Reply {
     status: u8,
     data: Vec<u8>,
@@ -810,7 +838,6 @@ fn cancelled_before_send_is_zero_attempt_while_cancelled_after_send_is_possible_
     .unwrap_err();
     assert!(!e.device_state_may_have_changed());
     assert!(device.sent().is_empty());
-    let calls = Cell::new(0);
     let e = write(
         &device,
         &cap_for(678),
@@ -818,8 +845,7 @@ fn cancelled_before_send_is_zero_attempt_while_cancelled_after_send_is_possible_
         false,
         sequence_from(0),
         || {
-            calls.set(calls.get() + 1);
-            ensure!(calls.get() < 2, "cancelled");
+            ensure!(device.sent().is_empty(), "cancelled after native send");
             Ok(())
         },
     )

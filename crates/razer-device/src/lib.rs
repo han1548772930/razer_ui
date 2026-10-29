@@ -79,6 +79,7 @@ pub mod dpi_matcher_storage;
 mod ecmascript_number;
 #[path = "transport/feature_exchange.rs"]
 mod feature_exchange;
+pub use feature_exchange::CompletedFeatureExchange;
 #[path = "transport/feature_submission.rs"]
 pub mod feature_submission;
 #[path = "accessory/hanbo_cooler.rs"]
@@ -264,6 +265,9 @@ pub mod receiver_catalog;
 pub mod receiver_dock_mode;
 #[path = "receiver/receiver_feature_channel.rs"]
 mod receiver_feature_channel;
+pub use receiver_feature_channel::{
+    ReceiverExchangeFailure, ReceiverFrameSubmissionFailure, WriteProgress as ReceiverWriteProgress,
+};
 #[path = "receiver/receiver_identity.rs"]
 pub mod receiver_identity;
 #[path = "receiver/receiver_lighting.rs"]

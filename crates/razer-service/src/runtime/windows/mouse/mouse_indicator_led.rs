@@ -1,6 +1,6 @@
 use super::*;
 use razer_device::{
-    backend::{HidBackend, HidNode},
+    backend::HidNode,
     mouse_indicator_led::{self as indicator, Change, Notification, Target},
 };
 use razer_hid::with_backend;
@@ -34,7 +34,11 @@ pub(super) fn request(target: &DeviceReadTarget, change: &Change) -> anyhow::Res
             before["feature_report_bytes"] == cap.report_bytes,
             "Receiver LED Feature size differs"
         );
-        let device = hid_transport::open(&target.path, cap.report_bytes)?;
+        let device = hid_transport::open_validated(
+            &target.path,
+            cap.report_bytes,
+            std::rc::Rc::new(&validate),
+        )?;
         indicator::execute(
             target.product_id,
             &device,

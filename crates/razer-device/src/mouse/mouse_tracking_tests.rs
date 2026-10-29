@@ -1,5 +1,6 @@
 //! Exact synthetic Feature reports exercise production code, never a device.
 use super::*;
+use crate::feature_exchange::tests::ExchangeProbe;
 use std::{
     cell::{Cell, RefCell},
     collections::VecDeque,
@@ -97,6 +98,19 @@ const ASYMMETRIC: TrackingSetting = TrackingSetting::Asymmetric {
     landing_distance: 2,
     lift_off_distance: 26,
 };
+
+#[test]
+fn finish_failure_keeps_the_current_tracking_response_and_prevents_later_writes() {
+    let device = Transport::new(exchange([3, 11, 3], &[0, 4, 1], 1, &[7, 8]));
+    let leased = ExchangeProbe::failing_finish(&device);
+    let failure = apply(&leased, &cap(170), SYMMETRIC, transactions(), || Ok(())).unwrap_err();
+    assert_eq!(failure.phase, TrackingFailurePhase::Command);
+    assert_eq!(failure.acknowledgements.len(), 1);
+    assert_eq!(failure.acknowledgements[0].payload, [7, 8]);
+    assert_eq!((device.sends.get(), device.reads.get()), (1, 1));
+    assert!(failure.error.contains("release failed"));
+    device.finish();
+}
 
 #[test]
 fn symmetric_uses_each_actual_products_sensor_state_before_lift_setting() {
@@ -205,10 +219,11 @@ fn second_command_failure_retains_first_ack_and_does_not_send_configuration() {
 #[test]
 fn cancellation_after_an_ack_keeps_it_and_stops_before_next_command() {
     let device = Transport::new(exchange([3, 11, 3], &[0, 4, 1], 1, &[0, 4, 1]));
-    let calls = Cell::new(0);
-    let error = apply(&device, &cap(204), ASYMMETRIC, transactions(), || {
-        calls.set(calls.get() + 1);
-        ensure!(calls.get() < 6, "Synthetic post-ACK cancellation");
+    let canceled = Cell::new(false);
+    let after_ack = || canceled.set(true);
+    let leased = ExchangeProbe::with_on_finish(&device, &after_ack);
+    let error = apply(&leased, &cap(204), ASYMMETRIC, transactions(), || {
+        ensure!(!canceled.get(), "Synthetic post-ACK cancellation");
         Ok(())
     })
     .unwrap_err();

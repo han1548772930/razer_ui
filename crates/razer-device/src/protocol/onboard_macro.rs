@@ -7,8 +7,12 @@
 //! reply is not treated as proof that the device committed the requested bytes.
 //! Local profile drafts and macro-editor JSON are outside this executor.
 use crate::{
-    backend::FeatureTransport, device_reads::DeviceReadCapability,
-    feature_exchange::exchange_with_report_data_size,
+    backend::FeatureTransport,
+    device_reads::DeviceReadCapability,
+    feature_exchange::{
+        acknowledged_reply, exchange_with_report_data_size,
+        exchange_with_report_data_size_observing_send,
+    },
 };
 use anyhow::{Context as _, Result, ensure};
 use serde::{Deserialize, Serialize};
@@ -212,13 +216,14 @@ pub struct MacroBlock {
     pub command: [u8; 3],
     pub report_data_size: u8,
     pub payload: Vec<u8>,
-    /// Entered a mutation exchange; a lost reply may follow a device write.
+    /// The mutation reached the transport; a lost reply may follow a write.
     pub attempted: bool,
     pub acknowledgment_received: bool,
     pub acknowledgment_data: Vec<u8>,
+    pub error: Option<String>,
 }
 
-#[derive(Clone, Debug, Default, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
 pub struct MacroWriteReport {
     pub macro_id: u16,
     pub storage_before: Option<MacroStorageInfo>,
@@ -641,12 +646,14 @@ impl<'a> OnboardMacro<'a> {
             command,
             report_data_size,
             payload,
-            attempted: true,
+            attempted: false,
             acknowledgment_received: false,
             acknowledgment_data: Vec::new(),
+            error: None,
         });
         let block = &mut report.steps[index];
-        let result = exchange_with_report_data_size(
+        let mut attempted = false;
+        let result = exchange_with_report_data_size_observing_send(
             self.device,
             transport,
             command,
@@ -654,11 +661,14 @@ impl<'a> OnboardMacro<'a> {
             transaction,
             report_data_size,
             validate,
+            &mut || attempted = true,
         );
-        if let Ok(data) = &result {
+        block.attempted = attempted;
+        if let Some(data) = acknowledged_reply(&result) {
             block.acknowledgment_received = true;
-            block.acknowledgment_data = data.clone();
+            block.acknowledgment_data = data.to_vec();
         }
+        block.error = result.as_ref().err().map(|error| format!("{error:#}"));
         result
     }
 
@@ -1323,10 +1333,7 @@ impl<'a> OnboardMacro<'a> {
             validate,
             &mut report,
         ) {
-            let failed_step = report
-                .steps
-                .iter()
-                .rposition(|step| !step.acknowledgment_received);
+            let failed_step = report.steps.iter().rposition(|step| step.error.is_some());
             return Err(Self::failure(
                 if validate().is_err() {
                     MacroFailurePhase::Cancelled
@@ -1341,10 +1348,7 @@ impl<'a> OnboardMacro<'a> {
         if let Err(error) =
             self.write_metadata(macro_id, &metadata, transactions, validate, &mut report)
         {
-            let failed_step = report
-                .steps
-                .iter()
-                .rposition(|step| !step.acknowledgment_received);
+            let failed_step = report.steps.iter().rposition(|step| step.error.is_some());
             return Err(Self::failure(
                 if validate().is_err() {
                     MacroFailurePhase::Cancelled
@@ -1357,10 +1361,7 @@ impl<'a> OnboardMacro<'a> {
             ));
         }
         if let Err(error) = self.write_data(macro_id, data, transactions, validate, &mut report) {
-            let failed_step = report
-                .steps
-                .iter()
-                .rposition(|step| !step.acknowledgment_received);
+            let failed_step = report.steps.iter().rposition(|step| step.error.is_some());
             return Err(Self::failure(
                 if validate().is_err() {
                     MacroFailurePhase::Cancelled
@@ -1494,10 +1495,7 @@ impl<'a> OnboardMacro<'a> {
             validate,
             &mut report,
         ) {
-            let failed_step = report
-                .steps
-                .iter()
-                .rposition(|step| !step.acknowledgment_received);
+            let failed_step = report.steps.iter().rposition(|step| step.error.is_some());
             return Err(Self::failure(
                 if validate().is_err() {
                     MacroFailurePhase::Cancelled

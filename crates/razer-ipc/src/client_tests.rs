@@ -4,6 +4,7 @@ use std::io::Cursor;
 
 fn reply(id: u64, data: Option<Value>, error: Option<&str>, fatal: bool) -> Vec<u8> {
     let response = ResponseEnvelope {
+        diagnostics: None,
         id,
         data,
         error: error.map(str::to_owned),
@@ -28,9 +29,9 @@ fn simulated_client(bytes: Vec<u8>) -> (ServiceClient, Receiver<Vec<u8>>) {
     let (requests, pending) = mpsc::channel();
     (
         ServiceClient {
+            broker: None,
+            broker_close_receipt: None,
             child: None,
-            #[cfg(windows)]
-            job: None,
             requests: Some(requests),
             responses,
             input_worker: None,
@@ -43,6 +44,7 @@ fn simulated_client(bytes: Vec<u8>) -> (ServiceClient, Receiver<Vec<u8>>) {
             shutdown_confirmation: None,
             philips_measurement_started: false,
             request_guard: None,
+            request_cancellation: None,
         },
         pending,
     )
@@ -52,8 +54,6 @@ fn assert_closed(client: &mut ServiceClient, pending: &Receiver<Vec<u8>>) {
     assert!(client.is_stopped());
     assert!(client.requests.is_none());
     assert!(client.child.is_none());
-    #[cfg(windows)]
-    assert!(client.job.is_none());
     // The initial request was sent, but a stopped connection cannot enqueue
     // another write or consume a later response from the same worker.
     assert!(pending.try_recv().is_ok());
@@ -65,6 +65,524 @@ fn assert_closed(client: &mut ServiceClient, pending: &Receiver<Vec<u8>>) {
         .request(ServiceRequest::KeyboardLayoutRead)
         .unwrap_err();
     assert!(error.to_string().contains("已停止"));
+}
+
+#[cfg(windows)]
+fn current_dpi_ble_request() -> ServiceRequest {
+    ServiceRequest::BleMouseCurrentDpi {
+        target: serde_json::from_value(serde_json::json!({
+            "product_id":226,"physical_product_id":228,"device_container_id":"cancel-container",
+            "hid_path":"cancel-hid","device_instance_id":"cancel-instance",
+            "parent_instance_id":"cancel-parent","mac_address":42
+        }))
+        .unwrap(),
+        change: None,
+        context: None,
+        cancellation: None,
+    }
+}
+
+#[cfg(windows)]
+fn current_dpi_ble_token(pending: &Receiver<Vec<u8>>) -> request_cancellation::Token {
+    let envelope: RequestEnvelope = serde_json::from_slice(&pending.recv().unwrap()).unwrap();
+    let ServiceRequest::BleMouseCurrentDpi {
+        cancellation: Some(token),
+        ..
+    } = envelope.request
+    else {
+        panic!("BLE DPI request has no owned cancellation identity")
+    };
+    token
+}
+
+#[cfg(windows)]
+fn current_dpi_ble_reader(pending: &Receiver<Vec<u8>>) -> request_cancellation::CancellationReader {
+    let reader =
+        request_cancellation::CancellationReader::open(&current_dpi_ble_token(pending)).unwrap();
+    reader.check().unwrap();
+    reader
+}
+
+#[cfg(windows)]
+fn current_dpi_ble_wait_for_cancellation(token: &request_cancellation::Token) {
+    use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
+    use windows_sys::Win32::{
+        Foundation::WAIT_OBJECT_0,
+        System::Threading::{OpenEventW, SYNCHRONIZATION_SYNCHRONIZE, WaitForSingleObject},
+    };
+    // Independently spell the installed event namespace to verify that the
+    // complete wire token identifies the event observed by the service.
+    let name: Vec<u16> = format!(
+        "Local\\RazerUi.BleMouseCurrentDpi.Cancel.{}\0",
+        String::from(token.clone())
+    )
+    .encode_utf16()
+    .collect();
+    // SAFETY: the terminated UTF-16 buffer remains live during OpenEventW.
+    let raw = unsafe { OpenEventW(SYNCHRONIZATION_SYNCHRONIZE, 0, name.as_ptr()) };
+    assert!(!raw.is_null());
+    // SAFETY: OpenEventW returned a new valid owned kernel handle.
+    let event = unsafe { OwnedHandle::from_raw_handle(raw) };
+    // SAFETY: the observation handle stays owned through this bounded wait.
+    assert_eq!(
+        unsafe { WaitForSingleObject(event.as_raw_handle(), 5000) },
+        WAIT_OBJECT_0
+    );
+}
+
+#[test]
+fn current_dpi_ble_typed_cancellation_reply_keeps_payload_through_error_context() {
+    let data = serde_json::json!({"acknowledged_slots":[9]});
+    let error = anyhow::Error::new(request_cancellation::CanceledBleReply {
+        data: data.clone(),
+        error: "operation canceled after a real acknowledgement".to_owned(),
+    })
+    .context("cleanup failure remains separate");
+    assert_eq!(
+        error
+            .downcast_ref::<request_cancellation::CanceledBleReply>()
+            .unwrap()
+            .data,
+        data
+    );
+    assert!(format!("{error:#}").contains("cleanup failure remains separate"));
+}
+
+#[cfg(windows)]
+#[test]
+fn current_dpi_ble_cancellation_retains_partial_reply_before_shutdown_and_handle_release() {
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+    for cleanup_fails in [false, true] {
+        let active = Arc::new(AtomicBool::new(true));
+        let (mut client, pending) = simulated_client(Vec::new());
+        client.set_request_guard(active.clone());
+        client
+            .diagnostics
+            .record_stdout(b"preserved service diagnostic")
+            .unwrap();
+        let (responses, receive) = mpsc::channel();
+        client.responses = receive;
+        let (finished, result) = mpsc::channel();
+        let data = serde_json::json!({"acknowledged_slots":[9],"unobserved_slots":[7]});
+        let actual = data.clone();
+        client.input_worker = Some(thread::spawn(move || {
+            let token = current_dpi_ble_token(&pending);
+            let reader = request_cancellation::CancellationReader::open(&token).unwrap();
+            reader.check().unwrap();
+            let mut events = vec!["admitted"];
+            active.store(false, Ordering::Release);
+            current_dpi_ble_wait_for_cancellation(&token);
+            assert!(reader.check().is_err());
+            events.push("canceled");
+            // A later guard value cannot revive a request already canceled.
+            active.store(true, Ordering::Release);
+            responses
+                .send(Ok(ResponseEnvelope {
+                    diagnostics: None,
+                    id: 1,
+                    data: Some(actual),
+                    error: None,
+                    fatal: false,
+                }))
+                .unwrap();
+            events.push("partial_reply");
+            let shutdown: RequestEnvelope =
+                serde_json::from_slice(&pending.recv().unwrap()).unwrap();
+            assert_eq!(shutdown.id, 2);
+            assert!(matches!(shutdown.request, ServiceRequest::Shutdown));
+            // The request owner retains the event through service teardown.
+            assert!(
+                request_cancellation::CancellationReader::open(&token)
+                    .unwrap()
+                    .check()
+                    .is_err()
+            );
+            events.push("shutdown");
+            responses
+                .send(Ok(ResponseEnvelope {
+                    diagnostics: None,
+                    id: 2,
+                    data: (!cleanup_fails).then(|| serde_json::json!({"stopped":true})),
+                    error: cleanup_fails.then(|| "injected cleanup failure".to_owned()),
+                    fatal: false,
+                }))
+                .unwrap();
+            finished.send((token, events)).unwrap();
+            Ok(())
+        }));
+        client.output_worker = Some(thread::spawn(|| Ok(())));
+        let error = client.request(current_dpi_ble_request()).unwrap_err();
+        let canceled = error
+            .downcast_ref::<request_cancellation::CanceledBleReply>()
+            .expect("a real canceled response must survive cleanup and diagnostics");
+        assert_eq!(canceled.data, data);
+        assert!(canceled.error.contains("已取消"));
+        assert!(canceled.error.contains("preserved service diagnostic"));
+        assert_eq!(
+            canceled.error.contains("injected cleanup failure"),
+            cleanup_fails
+        );
+        let (token, events) = result.recv().unwrap();
+        assert_eq!(
+            events,
+            ["admitted", "canceled", "partial_reply", "shutdown"]
+        );
+        assert!(request_cancellation::CancellationReader::open(&token).is_err());
+        assert!(client.request_cancellation.is_none());
+        assert!(client.input_worker.is_none() && client.output_worker.is_none());
+        assert!(client.is_stopped());
+        assert_eq!(client.shutdown_confirmation().is_some(), !cleanup_fails);
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn current_dpi_ble_canceled_failure_retains_diagnostics_without_creating_a_success_reply() {
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+    let active = Arc::new(AtomicBool::new(true));
+    let (mut client, pending) = simulated_client(Vec::new());
+    client.set_request_guard(active.clone());
+    let (responses, receive) = mpsc::channel();
+    client.responses = receive;
+    client.input_worker = Some(thread::spawn(move || {
+        let token = current_dpi_ble_token(&pending);
+        let reader = request_cancellation::CancellationReader::open(&token).unwrap();
+        reader.check().unwrap();
+        active.store(false, Ordering::Release);
+        current_dpi_ble_wait_for_cancellation(&token);
+        assert!(reader.check().is_err());
+        responses
+            .send(Ok(ResponseEnvelope {
+                id: 1,
+                data: None,
+                error: Some("release failed after measured input".to_owned()),
+                fatal: false,
+                diagnostics: Some(crate::failure_diagnostics::sample()),
+            }))
+            .unwrap();
+        let shutdown: RequestEnvelope = serde_json::from_slice(&pending.recv().unwrap()).unwrap();
+        assert_eq!(shutdown.id, 2);
+        assert!(matches!(shutdown.request, ServiceRequest::Shutdown));
+        responses
+            .send(Ok(ResponseEnvelope {
+                id: 2,
+                data: Some(serde_json::json!({"stopped": true})),
+                error: None,
+                fatal: false,
+                diagnostics: None,
+            }))
+            .unwrap();
+        Ok(())
+    }));
+    client.output_worker = Some(thread::spawn(|| Ok(())));
+    let error = client.request(current_dpi_ble_request()).unwrap_err();
+    assert!(
+        error
+            .downcast_ref::<request_cancellation::CanceledBleReply>()
+            .is_none()
+    );
+    let failure = error.downcast_ref::<ServiceFailure>().unwrap();
+    assert!(
+        failure
+            .message
+            .contains("release failed after measured input")
+    );
+    let FailureDiagnostics::MixerHardware(snapshot) = &failure.diagnostics else {
+        panic!("typed failure diagnostic was discarded")
+    };
+    assert_eq!(snapshot.sliders, [17, 29, 43, 61]);
+    assert!(client.is_stopped());
+    assert!(client.shutdown_confirmation().is_some());
+    assert!(client.request_cancellation.is_none());
+    assert!(client.input_worker.is_none() && client.output_worker.is_none());
+}
+
+#[cfg(windows)]
+#[test]
+fn current_dpi_ble_canceled_wrong_id_and_invalid_status_never_expose_a_partial_payload() {
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+    for response in [
+        ResponseEnvelope {
+            diagnostics: Some(crate::failure_diagnostics::sample()),
+            id: 88,
+            data: None,
+            error: Some("wrong request diagnostic".to_owned()),
+            fatal: false,
+        },
+        ResponseEnvelope {
+            diagnostics: Some(crate::failure_diagnostics::sample()),
+            id: 1,
+            data: Some(serde_json::json!({"forged_slots":[9]})),
+            error: Some("contradictory outcome".into()),
+            fatal: false,
+        },
+        ResponseEnvelope {
+            diagnostics: Some(crate::failure_diagnostics::sample()),
+            id: 1,
+            data: None,
+            error: None,
+            fatal: false,
+        },
+        ResponseEnvelope {
+            diagnostics: Some(crate::failure_diagnostics::sample()),
+            id: 1,
+            data: Some(serde_json::json!({"forged_slots":[9]})),
+            error: None,
+            fatal: false,
+        },
+    ] {
+        let active = Arc::new(AtomicBool::new(true));
+        let (mut client, pending) = simulated_client(Vec::new());
+        client.set_request_guard(active.clone());
+        let (responses, receive) = mpsc::channel();
+        client.responses = receive;
+        client.input_worker = Some(thread::spawn(move || {
+            let token = current_dpi_ble_token(&pending);
+            active.store(false, Ordering::Release);
+            current_dpi_ble_wait_for_cancellation(&token);
+            responses.send(Ok(response)).unwrap();
+            let shutdown: RequestEnvelope =
+                serde_json::from_slice(&pending.recv().unwrap()).unwrap();
+            assert_eq!(shutdown.id, 2);
+            assert!(matches!(shutdown.request, ServiceRequest::Shutdown));
+            responses
+                .send(Ok(ResponseEnvelope {
+                    diagnostics: None,
+                    id: 2,
+                    data: Some(serde_json::json!({"stopped":true})),
+                    error: None,
+                    fatal: false,
+                }))
+                .unwrap();
+            Ok(())
+        }));
+        client.output_worker = Some(thread::spawn(|| Ok(())));
+        let error = client.request(current_dpi_ble_request()).unwrap_err();
+        assert!(
+            error
+                .downcast_ref::<request_cancellation::CanceledBleReply>()
+                .is_none()
+        );
+        assert!(error.downcast_ref::<ServiceFailure>().is_none());
+        assert!(client.is_stopped());
+        assert!(client.shutdown_confirmation().is_some());
+        assert!(client.request_cancellation.is_none());
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn current_dpi_ble_cancellation_without_a_real_response_never_invents_payload_or_confirmation() {
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+    let active = Arc::new(AtomicBool::new(true));
+    let (mut client, pending) = simulated_client(Vec::new());
+    client.set_request_guard(active.clone());
+    let (responses, receive) = mpsc::channel();
+    client.responses = receive;
+    client.input_worker = Some(thread::spawn(move || {
+        let token = current_dpi_ble_token(&pending);
+        active.store(false, Ordering::Release);
+        current_dpi_ble_wait_for_cancellation(&token);
+        drop(responses);
+        let shutdown: RequestEnvelope = serde_json::from_slice(&pending.recv().unwrap()).unwrap();
+        assert!(matches!(shutdown.request, ServiceRequest::Shutdown));
+        Ok(())
+    }));
+    client.output_worker = Some(thread::spawn(|| Ok(())));
+    let error = client.request(current_dpi_ble_request()).unwrap_err();
+    assert!(
+        error
+            .downcast_ref::<request_cancellation::CanceledBleReply>()
+            .is_none()
+    );
+    assert!(client.is_stopped());
+    assert!(client.shutdown_confirmation().is_none());
+    assert!(client.request_cancellation.is_none());
+}
+
+#[cfg(windows)]
+#[test]
+fn current_dpi_ble_client_owns_cancellation_until_success_response() {
+    let (mut client, pending) = simulated_client(Vec::new());
+    let (responses, receive) = mpsc::channel();
+    client.responses = receive;
+    let worker = thread::spawn(move || {
+        let reader = current_dpi_ble_reader(&pending);
+        responses
+            .send(Ok(ResponseEnvelope {
+                diagnostics: None,
+                id: 1,
+                data: Some(serde_json::json!({"observed": 1700})),
+                error: None,
+                fatal: false,
+            }))
+            .unwrap();
+        reader
+    });
+    assert_eq!(
+        client.request(current_dpi_ble_request()).unwrap(),
+        serde_json::json!({"observed": 1700})
+    );
+    assert!(worker.join().unwrap().check().is_err());
+    assert!(client.request_cancellation.is_none());
+    assert!(!client.is_stopped());
+}
+
+#[cfg(windows)]
+#[test]
+fn current_dpi_ble_client_rejects_foreign_cancellation_without_signaling_it() {
+    let owner = request_cancellation::CancellationOwner::new().unwrap();
+    let reader = request_cancellation::CancellationReader::open(&owner.token()).unwrap();
+    let mut request = current_dpi_ble_request();
+    let ServiceRequest::BleMouseCurrentDpi { cancellation, .. } = &mut request else {
+        unreachable!()
+    };
+    *cancellation = Some(owner.token());
+    let (mut client, pending) = simulated_client(Vec::new());
+    assert!(client.request(request).is_err());
+    assert!(matches!(pending.try_recv(), Err(mpsc::TryRecvError::Empty)));
+    assert!(client.request_cancellation.is_none());
+    reader.check().unwrap();
+}
+
+#[cfg(windows)]
+#[test]
+fn current_dpi_ble_canceled_admission_never_enqueues_a_device_request() {
+    let (mut client, pending) = simulated_client(Vec::new());
+    client.set_request_guard(std::sync::Arc::new(std::sync::atomic::AtomicBool::new(
+        false,
+    )));
+    assert!(client.request(current_dpi_ble_request()).is_err());
+    assert!(matches!(
+        pending.try_recv(),
+        Err(mpsc::TryRecvError::Disconnected)
+    ));
+    assert!(client.request_cancellation.is_none());
+    assert!(client.is_stopped());
+}
+
+#[cfg(windows)]
+#[test]
+fn current_dpi_ble_scope_cancel_signals_before_closing_request_stream() {
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+    let active = Arc::new(AtomicBool::new(true));
+    let (mut client, pending) = simulated_client(Vec::new());
+    client.set_request_guard(active.clone());
+    let (responses, receive) = mpsc::channel();
+    client.responses = receive;
+    let worker = thread::spawn(move || {
+        let reader = current_dpi_ble_reader(&pending);
+        active.store(false, Ordering::Release);
+        // Wake the caller at delivery; it must recheck scope before publication.
+        let _ = responses.send(Ok(ResponseEnvelope {
+            diagnostics: None,
+            id: 1,
+            data: Some(serde_json::json!({"observed": 1900})),
+            error: None,
+            fatal: false,
+        }));
+        assert!(pending.recv().is_err());
+        assert!(reader.check().is_err());
+    });
+    assert!(client.request(current_dpi_ble_request()).is_err());
+    worker.join().unwrap();
+    assert!(client.is_stopped());
+    assert!(client.request_cancellation.is_none());
+}
+
+#[cfg(windows)]
+#[test]
+fn current_dpi_ble_transport_and_protocol_errors_signal_before_process_cleanup() {
+    for response in [
+        Err(anyhow::anyhow!("injected worker transport failure")),
+        Ok(ResponseEnvelope {
+            diagnostics: None,
+            id: 88,
+            data: Some(serde_json::json!({"observed": 2100})),
+            error: None,
+            fatal: false,
+        }),
+        Ok(ResponseEnvelope {
+            diagnostics: None,
+            id: 1,
+            data: Some(serde_json::json!({"observed": 2100})),
+            error: Some("contradictory outcome".to_owned()),
+            fatal: false,
+        }),
+    ] {
+        let (mut client, pending) = simulated_client(Vec::new());
+        let (responses, receive) = mpsc::channel();
+        client.responses = receive;
+        let worker = thread::spawn(move || {
+            let reader = current_dpi_ble_reader(&pending);
+            responses.send(response).unwrap();
+            assert!(pending.recv().is_err());
+            assert!(reader.check().is_err());
+        });
+        assert!(client.request(current_dpi_ble_request()).is_err());
+        worker.join().unwrap();
+        assert!(client.is_stopped());
+        assert!(client.request_cancellation.is_none());
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn current_dpi_ble_source_rejection_and_fatal_response_retire_the_request_owner() {
+    for fatal in [false, true] {
+        let (mut client, pending) = simulated_client(Vec::new());
+        let (responses, receive) = mpsc::channel();
+        client.responses = receive;
+        let worker = thread::spawn(move || {
+            let reader = current_dpi_ble_reader(&pending);
+            responses
+                .send(Ok(ResponseEnvelope {
+                    diagnostics: None,
+                    id: 1,
+                    data: None,
+                    error: Some("source rejected the requested operation".to_owned()),
+                    fatal,
+                }))
+                .unwrap();
+            reader
+        });
+        assert!(client.request(current_dpi_ble_request()).is_err());
+        assert!(worker.join().unwrap().check().is_err());
+        assert!(client.request_cancellation.is_none());
+        assert_eq!(client.is_stopped(), fatal);
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn current_dpi_ble_drop_signals_before_joining_owned_pipe_workers() {
+    let owner = request_cancellation::CancellationOwner::new().unwrap();
+    let reader = request_cancellation::CancellationReader::open(&owner.token()).unwrap();
+    let (mut client, pending) = simulated_client(Vec::new());
+    client.request_cancellation = Some(owner);
+    let (observed, receive) = mpsc::channel();
+    client.input_worker = Some(thread::spawn(move || {
+        assert!(pending.recv().is_err());
+        observed.send(reader.check().is_err()).unwrap();
+        Ok(())
+    }));
+    drop(client);
+    assert!(receive.recv().unwrap());
 }
 
 #[test]
@@ -813,4 +1331,345 @@ fn child_kill_acknowledgement_does_not_replace_wait_completion() {
     release.send(()).unwrap();
     owner.join().unwrap();
     assert!(finished.load(std::sync::atomic::Ordering::Acquire));
+}
+
+fn broker_client_with_server(
+    server: impl FnOnce(tokio::io::DuplexStream, hid_broker::SessionIdentity) + Send + 'static,
+) -> (ServiceClient, thread::JoinHandle<()>) {
+    use hid_broker::*;
+    let identity = SessionIdentity {
+        endpoint: EndpointId::try_from("0123456789abcdef0123456789abcdef".to_owned()).unwrap(),
+        instance: BrokerInstanceId::new(),
+        session: ClientSessionId::new(),
+    };
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let (client_stream, server_stream) = tokio::io::duplex(4096);
+    let server_identity = identity.clone();
+    let worker = thread::spawn(move || server(server_stream, server_identity));
+    let broker =
+        hid_broker::simulated_client(runtime, client_stream, identity, Duration::from_secs(2));
+    (ServiceClient::from_broker(broker), worker)
+}
+
+#[test]
+fn production_client_uses_matching_broker_response_and_session_cleanup() {
+    use hid_broker::*;
+    let (mut client, server) = broker_client_with_server(|mut stream, identity| {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let request: ClientFrame = hid_broker::read_frame(&mut stream).await.unwrap();
+                let ClientFrame::Request {
+                    request_id,
+                    envelope,
+                    ..
+                } = request
+                else {
+                    panic!("missing request")
+                };
+                assert!(matches!(
+                    envelope.request,
+                    ServiceRequest::KeyboardLayoutRead
+                ));
+                hid_broker::write_frame(
+                    &mut stream,
+                    &ServerFrame::Response {
+                        identity: identity.clone(),
+                        request_id,
+                        envelope: ResponseEnvelope {
+                            diagnostics: None,
+                            id: envelope.id,
+                            data: Some(serde_json::json!({"layout":37})),
+                            error: None,
+                            fatal: false,
+                        },
+                    },
+                )
+                .await
+                .unwrap();
+                let close: ClientFrame = hid_broker::read_frame(&mut stream).await.unwrap();
+                let ClientFrame::CloseSession { request_id, .. } = close else {
+                    panic!("missing close")
+                };
+                hid_broker::write_frame(
+                    &mut stream,
+                    &ServerFrame::SessionClosed {
+                        identity,
+                        request_id,
+                        receipt: CloseSessionReceipt::confirmed(),
+                    },
+                )
+                .await
+                .unwrap();
+            });
+    });
+    assert_eq!(
+        client.request(ServiceRequest::KeyboardLayoutRead).unwrap(),
+        serde_json::json!({"layout":37})
+    );
+    assert!(client.shutdown_confirmation().is_none());
+    client.finish_termination().unwrap();
+    assert!(client.is_stopped());
+    assert_eq!(
+        client.shutdown_confirmation().unwrap().source(),
+        ConfirmationSource::BrokerSession
+    );
+    assert!(client.broker.is_none());
+    server.join().unwrap();
+}
+
+#[test]
+fn production_failure_and_canceled_delivery_retain_typed_diagnostics_without_current_data() {
+    use hid_broker::*;
+    for cancel_delivery in [false, true] {
+        let active = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(true));
+        let server_active = active.clone();
+        let (mut client, server) = broker_client_with_server(move |mut stream, identity| {
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap()
+                .block_on(async {
+                    let request: ClientFrame = hid_broker::read_frame(&mut stream).await.unwrap();
+                    let ClientFrame::Request {
+                        request_id,
+                        envelope,
+                        ..
+                    } = request
+                    else {
+                        panic!("expected request")
+                    };
+                    if cancel_delivery {
+                        server_active.store(false, std::sync::atomic::Ordering::Release);
+                    }
+                    hid_broker::write_frame(
+                        &mut stream,
+                        &ServerFrame::Response {
+                            identity: identity.clone(),
+                            request_id,
+                            envelope: ResponseEnvelope {
+                                id: envelope.id,
+                                data: None,
+                                error: Some("restore failed after actual response".to_owned()),
+                                fatal: false,
+                                diagnostics: Some(crate::failure_diagnostics::sample()),
+                            },
+                        },
+                    )
+                    .await
+                    .unwrap();
+                    loop {
+                        let close: ClientFrame = hid_broker::read_frame(&mut stream).await.unwrap();
+                        match close {
+                            ClientFrame::Cancel { .. } => continue,
+                            ClientFrame::CloseSession { request_id, .. } => {
+                                hid_broker::write_frame(
+                                    &mut stream,
+                                    &ServerFrame::SessionClosed {
+                                        identity,
+                                        request_id,
+                                        receipt: CloseSessionReceipt::confirmed(),
+                                    },
+                                )
+                                .await
+                                .unwrap();
+                                break;
+                            }
+                            ClientFrame::Request { .. } => panic!("unexpected followup device I/O"),
+                        }
+                    }
+                });
+        });
+        client.set_request_guard(active);
+        let error = client
+            .request(ServiceRequest::KeyboardLayoutRead)
+            .unwrap_err();
+        let failure = error
+            .downcast_ref::<ServiceFailure>()
+            .expect("typed diagnostics lost at client");
+        let FailureDiagnostics::MixerHardware(snapshot) = &failure.diagnostics else {
+            panic!("unexpected diagnostic domain")
+        };
+        assert_eq!(snapshot.sliders, [17, 29, 43, 61]);
+        assert!(
+            failure
+                .message
+                .contains("restore failed after actual response")
+        );
+        assert_eq!(client.is_stopped(), cancel_delivery);
+        if !cancel_delivery {
+            client.finish_termination().unwrap();
+        }
+        server.join().unwrap();
+    }
+}
+
+#[test]
+fn broker_cleanup_failure_keeps_client_owner_until_successful_retry() {
+    use hid_broker::*;
+    let (mut client, server) = broker_client_with_server(|mut stream, identity| {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                for receipt in [
+                    CloseSessionReceipt::pending("restoration failed".to_owned()),
+                    CloseSessionReceipt::confirmed(),
+                ] {
+                    let close: ClientFrame = hid_broker::read_frame(&mut stream).await.unwrap();
+                    let ClientFrame::CloseSession { request_id, .. } = close else {
+                        panic!("expected close")
+                    };
+                    hid_broker::write_frame(
+                        &mut stream,
+                        &ServerFrame::SessionClosed {
+                            identity: identity.clone(),
+                            request_id,
+                            receipt,
+                        },
+                    )
+                    .await
+                    .unwrap();
+                }
+            });
+    });
+    assert!(
+        format!("{:#}", client.finish_termination().unwrap_err()).contains("restoration failed")
+    );
+    assert!(client.broker.is_some());
+    assert!(client.broker_close_receipt.is_none());
+    assert!(client.shutdown_confirmation().is_none());
+    client.finish_termination().unwrap();
+    assert!(client.broker.is_none());
+    assert!(client.shutdown_confirmation().is_some());
+    server.join().unwrap();
+}
+
+#[test]
+fn broker_released_restoration_error_drops_connection_and_retains_terminal_failure() {
+    use hid_broker::*;
+    let (mut client, server) = broker_client_with_server(|mut stream, identity| {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let close: ClientFrame = hid_broker::read_frame(&mut stream).await.unwrap();
+                let ClientFrame::CloseSession { request_id, .. } = close else {
+                    panic!("expected close")
+                };
+                hid_broker::write_frame(
+                    &mut stream,
+                    &ServerFrame::SessionClosed {
+                        identity,
+                        request_id,
+                        receipt: CloseSessionReceipt::restoration_failed(
+                            "restore failed after native release".to_owned(),
+                        ),
+                    },
+                )
+                .await
+                .unwrap();
+                use tokio::io::AsyncReadExt;
+                let mut byte = [0; 1];
+                assert_eq!(stream.read(&mut byte).await.unwrap(), 0);
+            });
+    });
+    let first_error = client.finish_termination().unwrap_err().to_string();
+    assert!(first_error.contains("restore failed after native release"));
+    assert!(client.is_stopped());
+    assert!(client.broker.is_none());
+    assert!(
+        client
+            .broker_close_receipt
+            .as_ref()
+            .unwrap()
+            .resources_released()
+    );
+    assert!(client.shutdown_confirmation().is_none());
+    assert_eq!(
+        client.finish_termination().unwrap_err().to_string(),
+        first_error
+    );
+    assert_eq!(
+        client.finish_process().unwrap_err().to_string(),
+        first_error
+    );
+    assert!(client.shutdown_confirmation().is_none());
+    server.join().unwrap();
+}
+
+#[test]
+fn production_scope_cancel_sends_cancel_and_drains_real_reply_before_cleanup() {
+    use hid_broker::*;
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+    let canceled = Arc::new(AtomicBool::new(false));
+    let signal = canceled.clone();
+    let (mut client, server) = broker_client_with_server(move |mut stream, identity| {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                let request: ClientFrame = hid_broker::read_frame(&mut stream).await.unwrap();
+                let ClientFrame::Request {
+                    request_id,
+                    envelope,
+                    ..
+                } = request
+                else {
+                    panic!("expected request")
+                };
+                signal.store(true, Ordering::Release);
+                let cancel: ClientFrame = hid_broker::read_frame(&mut stream).await.unwrap();
+                assert!(matches!(cancel,ClientFrame::Cancel{request_id:id,..} if id==request_id));
+                hid_broker::write_frame(
+                    &mut stream,
+                    &ServerFrame::Response {
+                        identity: identity.clone(),
+                        request_id,
+                        envelope: ResponseEnvelope {
+                            diagnostics: None,
+                            id: envelope.id,
+                            data: Some(serde_json::json!({"layout":73})),
+                            error: None,
+                            fatal: false,
+                        },
+                    },
+                )
+                .await
+                .unwrap();
+                let close: ClientFrame = hid_broker::read_frame(&mut stream).await.unwrap();
+                let ClientFrame::CloseSession { request_id, .. } = close else {
+                    panic!("expected close")
+                };
+                hid_broker::write_frame(
+                    &mut stream,
+                    &ServerFrame::SessionClosed {
+                        identity,
+                        request_id,
+                        receipt: CloseSessionReceipt::confirmed(),
+                    },
+                )
+                .await
+                .unwrap();
+            });
+    });
+    client.set_cancellation_guard(canceled);
+    let error = client
+        .request(ServiceRequest::KeyboardLayoutRead)
+        .unwrap_err();
+    assert!(format!("{error:#}").contains("旧响应未提交"));
+    assert!(client.shutdown_confirmation().is_some());
+    assert!(client.is_stopped());
+    server.join().unwrap();
 }

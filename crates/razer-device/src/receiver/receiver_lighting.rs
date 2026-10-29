@@ -446,39 +446,55 @@ impl LightingHid {
         struct Writer<'a, V> {
             transport: &'a dyn FeatureTransport,
             validate: &'a V,
+            submitted: &'a std::cell::Cell<u32>,
         }
         impl<V: Fn() -> anyhow::Result<()>> FrameWriter for Writer<'_, V> {
             fn write_report(&mut self, report: &[u8; 91]) -> anyhow::Result<()> {
                 (self.validate)()?;
                 self.transport.send_feature_at_collection_max(report)?;
+                self.submitted.set(self.submitted.get() + 1);
                 (self.validate)()
             }
             fn wait_between_rows(&mut self, _: u8) -> anyhow::Result<()> {
                 anyhow::bail!("Dock manifest contains one physical LED row")
             }
         }
-        self.frames
-            .write_frame(
-                Registration {
-                    category: 7,
-                    report_id: 0,
-                    row_delay_ms: 1,
-                },
-                RgbFrame {
-                    first_row: 0,
-                    last_row: 0,
-                    first_column: 0,
-                    last_column: 7,
-                    region_id: 0,
-                    profile_id: 0,
-                    rgb: &frame.frame,
-                },
-                &mut Writer {
-                    transport,
-                    validate,
-                },
-            )
-            .context("Dock native lighting frame was not submitted")
+        let submitted = std::cell::Cell::new(0);
+        crate::feature_exchange::with_validated_exchange(
+            transport,
+            crate::backend::ExchangeOptions::batch(),
+            validate,
+            |transport, _| {
+                self.frames
+                    .write_frame(
+                        Registration {
+                            category: 7,
+                            report_id: 0,
+                            row_delay_ms: 1,
+                        },
+                        RgbFrame {
+                            first_row: 0,
+                            last_row: 0,
+                            first_column: 0,
+                            last_column: 7,
+                            region_id: 0,
+                            profile_id: 0,
+                            rgb: &frame.frame,
+                        },
+                        &mut Writer {
+                            transport,
+                            validate,
+                            submitted: &submitted,
+                        },
+                    )
+                    .context("Dock native lighting frame was not submitted")
+            },
+        )
+        .map_err(|error| {
+            error.context(crate::ReceiverFrameSubmissionFailure {
+                reports_submitted: submitted.get(),
+            })
+        })
     }
 }
 

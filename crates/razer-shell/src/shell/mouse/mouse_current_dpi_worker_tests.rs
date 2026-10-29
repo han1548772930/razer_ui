@@ -14,6 +14,7 @@ struct Behavior {
     fail_shutdown: bool,
     fail_termination: bool,
     cancel_on_shutdown: bool,
+    retain_partial_ble: bool,
 }
 
 struct Scripted {
@@ -56,6 +57,13 @@ impl Transport for Scripted {
         self.calls.borrow_mut().push("terminate");
         ensure!(!self.behavior.fail_termination, "join failed");
         Ok(())
+    }
+    fn outcome(&self) -> Option<Outcome> {
+        self.behavior.retain_partial_ble.then(|| {
+            let mut outcome = Outcome::from_report(report());
+            outcome.error = Some("BLE request canceled after a real response".into());
+            outcome
+        })
     }
 }
 
@@ -171,6 +179,27 @@ fn shutdown_and_join_failures_remain_distinct_from_the_valid_observation() {
     let cleanup = completion.cleanup_error().unwrap();
     assert!(cleanup.contains("shutdown failed"));
     assert!(cleanup.contains("join failed"));
+    assert!(completion.result().is_err());
+    assert_eq!(
+        completion.actual_report().unwrap().active,
+        Some(DpiPair { x: 2000, y: 2000 })
+    );
+}
+
+#[test]
+fn canceled_ble_transport_keeps_its_validated_partial_report_without_success() {
+    let (completion, calls) = run(Behavior {
+        fail_execute: true,
+        retain_partial_ble: true,
+        ..Default::default()
+    });
+    assert_eq!(calls, ["execute", "shutdown", "terminate", "drop"]);
+    assert!(completion.result().is_err());
+    assert!(completion.cleanup_error().is_none());
+    assert_eq!(
+        completion.actual_report().unwrap().active,
+        Some(DpiPair { x: 2000, y: 2000 })
+    );
 }
 
 #[test]
@@ -226,4 +255,102 @@ fn service_creation_failure_is_not_a_device_read_or_cleanup_success() {
     assert!(completion.result.unwrap_err().contains("spawn failed"));
     assert!(completion.shutdown_error.is_none());
     assert!(completion.termination_error.is_none());
+}
+
+fn local_device() -> razer_model::model::Device {
+    use razer_model::model::Profile;
+    let mut device = razer_model::product_preview::registered_preview(226).unwrap();
+    device.serial_number = "actual-serial".into();
+    device.active_profile = "local-id".into();
+    device.source_device_settings = Some(serde_json::json!({
+        "deviceMetadatas":{"actual-serial":{"activeProfileGuid":"actual-local-guid"}}
+    }));
+    device.profiles.push(Profile {
+        id: "local-id".into(),
+        guid: "actual-local-guid".into(),
+        name: "Local".into(),
+        source_settings: Some(serde_json::json!({
+            "guid":"actual-local-guid","name":"Local","obmSlotId":[2],
+            "dpiStages":{"enable":true,"active":1,"stages":[{"x":1600,"y":1700}]}
+        })),
+        settings: None,
+        dpi_stages: None,
+    });
+    device
+}
+
+#[test]
+fn ble_initialization_uses_observed_serial_and_actual_ordered_source_profiles() {
+    let device = local_device();
+    let request = local_profiles_for_serial(&device, "actual-serial")
+        .unwrap()
+        .unwrap();
+    assert_eq!(request.owner, LOCAL_GUEST_OBM_OWNER);
+    assert_eq!(request.active_profile_guid, "actual-local-guid");
+    assert_eq!(request.profiles[0].obm_slot_ids, [2]);
+    assert_eq!(
+        request.profiles[0]
+            .dpi_stages
+            .as_ref()
+            .unwrap()
+            .active_stage(),
+        1
+    );
+    assert!(
+        local_profiles_for_serial(&device, "old-serial")
+            .unwrap()
+            .is_none()
+    );
+    let preview = razer_model::product_preview::registered_preview(226).unwrap();
+    assert!(
+        local_profiles_for_serial(&preview, "actual-serial")
+            .unwrap()
+            .is_none()
+    );
+}
+
+#[test]
+fn ble_missing_metadata_and_slot_associations_never_synthesize_dpi_defaults() {
+    let mut device = local_device();
+    device.source_device_settings = Some(serde_json::json!({}));
+    assert!(
+        local_profiles_for_serial(&device, "actual-serial")
+            .unwrap()
+            .is_none()
+    );
+    device.source_device_settings = local_device().source_device_settings;
+    device.profiles[0]
+        .source_settings
+        .as_mut()
+        .unwrap()
+        .as_object_mut()
+        .unwrap()
+        .remove("obmSlotId");
+    device.profiles[0]
+        .source_settings
+        .as_mut()
+        .unwrap()
+        .as_object_mut()
+        .unwrap()
+        .remove("dpiStages");
+    let request = local_profiles_for_serial(&device, "actual-serial")
+        .unwrap()
+        .unwrap();
+    assert!(request.profiles[0].obm_slot_ids.is_empty());
+    assert!(request.profiles[0].dpi_stages.is_none());
+    for (field, value) in [
+        ("obmSlotId", serde_json::json!(null)),
+        ("obmSlotId", serde_json::json!([0])),
+        ("dpiStages", serde_json::json!(null)),
+        ("guid", serde_json::json!("another-guid")),
+    ] {
+        let mut invalid = device.clone();
+        invalid.profiles[0].source_settings.as_mut().unwrap()[field] = value;
+        assert!(
+            local_profiles_for_serial(&invalid, "actual-serial").is_err(),
+            "{field}"
+        );
+    }
+    device.source_device_settings = Some(serde_json::json!({"deviceMetadatas":null}));
+    assert!(local_profiles_for_serial(&device, "actual-serial").is_err());
 }

@@ -29,7 +29,7 @@ pub(super) fn request(path: &str, container: &str, percent: Option<u8>) -> anyho
         .as_u64()
         .and_then(|value| usize::try_from(value).ok())
         .context("Receiver Feature length is unavailable")?;
-    let device = hid_transport::open(path, feature)?;
+    let device = hid_transport::open_validated(path, feature, std::rc::Rc::new(&validate))?;
     validate()?;
     let next = || receiver::next_transaction(path, container, cap);
     let result = match percent {

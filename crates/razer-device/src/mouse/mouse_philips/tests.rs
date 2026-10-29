@@ -1,4 +1,5 @@
 use super::*;
+use crate::feature_exchange::tests::ExchangeProbe;
 use serde_json::json;
 use std::{
     cell::{Cell, RefCell},
@@ -92,6 +93,19 @@ fn configured(surface: &str, lift: u8) -> ConfigChange {
         {"type":"preset","guid":"measured-surface","surfaceId":surface,"name":"My surface","extension":4}],
         "selectedProfileGuid":"measured-surface","liftOffRangeValue":lift})).unwrap()
 }
+#[test]
+fn finish_failure_keeps_the_philips_ack_and_stops_the_calibration_chain() {
+    let device = Transport::new(exchange([3, 11, 3], &[0, 5, 1], 1, 2));
+    let leased = ExchangeProbe::failing_finish(&device);
+    let failure = apply(&leased, &cap(), setting(), next(), || Ok(())).unwrap_err();
+    assert_eq!(failure.phase, FailurePhase::Command);
+    assert_eq!(failure.acknowledgements.len(), 1);
+    assert!(failure.acknowledgements[0].payload.is_empty());
+    assert_eq!(device.sends.get(), 1);
+    assert!(failure.error.contains("release failed"));
+    device.finish();
+}
+
 #[test]
 fn current_source_fixture_covers_all_fixed_surfaces_and_encoders() {
     let source: serde_json::Value = serde_json::from_str(include_str!(
@@ -209,10 +223,11 @@ fn failed_second_setter_retains_partial_ack_and_skips_threshold() {
 #[test]
 fn cancel_after_ack_preserves_it_without_sending_another_setter() {
     let device = Transport::new(exchange(SET_STATE, &[0, 5, 1], 1, 2));
-    let count = Cell::new(0);
-    let failure = apply(&device, &cap(), setting(), next(), || {
-        count.set(count.get() + 1);
-        ensure!(count.get() < 6, "Canceled after ACK");
+    let canceled = Cell::new(false);
+    let after_ack = || canceled.set(true);
+    let leased = ExchangeProbe::with_on_finish(&device, &after_ack);
+    let failure = apply(&leased, &cap(), setting(), next(), || {
+        ensure!(!canceled.get(), "Canceled after ACK");
         Ok(())
     })
     .unwrap_err();

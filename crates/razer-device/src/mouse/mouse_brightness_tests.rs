@@ -169,6 +169,36 @@ fn audit() -> serde_json::Value {
 }
 
 #[test]
+fn setter_finish_failure_retains_the_brightness_ack_and_stops_before_onboard_or_readback() {
+    let device = Transport::new([
+        send(GET, &[1, 4], 1),
+        receive(GET, &[1, 4, 0], 1, 2),
+        send(SET, &[1, 4, 84], 2),
+        receive(SET, &[1, 4, 84], 2, 2),
+    ]);
+    let finish = || {
+        ensure!(device.sent.get() < 2, "simulated setter release failed");
+        Ok(())
+    };
+    let leased = crate::feature_exchange::tests::ExchangeProbe::with_finish_check(&device, &finish);
+    let transport = cap(170);
+    let failure = MouseBrightness::new(&leased, &transport)
+        .unwrap()
+        .apply(change(33, 4), &profiles(&[3, 7]), transactions(), || Ok(()))
+        .unwrap_err();
+    assert_eq!(failure.phase, BrightnessFailurePhase::Write);
+    assert_eq!(failure.progress.steps.len(), 1);
+    let step = &failure.progress.steps[0];
+    assert!(step.acknowledgment_received);
+    assert_eq!(step.acknowledged.as_ref().unwrap().raw_value, 84);
+    assert!(!step.source_completed && step.observed.is_none());
+    assert!(!failure.progress.source_completed && !failure.progress.verified());
+    assert!(crate::backend::exchange_finalization_failed(&failure.error));
+    assert_eq!((device.sent.get(), device.reads.get()), (2, 2));
+    device.finish();
+}
+
+#[test]
 fn source_gates_and_typed_commands_match_current_receipts() {
     let evidence = audit();
     assert_eq!(evidence["schema_version"], 1);

@@ -178,7 +178,7 @@ fn apply_with_cap(
         keyboard_settings::wire_transaction(next_sequence()?)
     })()
     .map_err(|error| fail(SwapFailurePhase::Prepare, report.clone(), error))?;
-    let data = feature_exchange::exchange_with_report_data_size_observing_send(
+    let result = feature_exchange::exchange_with_report_data_size_observing_send(
         device,
         &cap.transport,
         SET,
@@ -190,10 +190,10 @@ fn apply_with_cap(
             report.attempted = true;
             report.send_attempts += 1;
         },
-    )
-    .map_err(|error| fail(SwapFailurePhase::Write, report.clone(), error))?;
+    );
     // Original setter constructs jsonData from the requested byte, not a GET.
-    report.acknowledgment_data = Some(data);
+    report.acknowledgment_data = feature_exchange::acknowledged_reply(&result).map(<[u8]>::to_vec);
+    result.map_err(|error| fail(SwapFailurePhase::Write, report.clone(), error))?;
     validate().map_err(|error| fail(SwapFailurePhase::Write, report.clone(), error))?;
     if confirm_with_readback {
         let observed = next_sequence()

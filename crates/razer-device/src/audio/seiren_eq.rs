@@ -421,6 +421,19 @@ impl Report {
     }
 }
 
+#[derive(Debug)]
+pub struct ExecutionFailure {
+    pub progress: Report,
+}
+
+impl std::fmt::Display for ExecutionFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Seiren EQ execution failed; actual stage progress retained")
+    }
+}
+
+impl std::error::Error for ExecutionFailure {}
+
 struct Executor<'a, N, V> {
     device: &'a dyn FeatureTransport,
     cap: &'a DeviceReadCapability,
@@ -448,8 +461,10 @@ impl<N: FnMut() -> anyhow::Result<u8>, V: Fn() -> anyhow::Result<()>> Executor<'
             command[0],
             &self.validate,
             &mut || sent = true,
-        )
-        .and_then(|data| {
+        );
+        let response = feature_exchange::acknowledged_reply(&reply).map(<[u8]>::to_vec);
+        let finalization_failed = reply.is_err() && response.is_some();
+        let reply = reply.and_then(|data| {
             ensure!(
                 data.len() >= min,
                 "Seiren EQ response is truncated for command {command:?}"
@@ -458,17 +473,24 @@ impl<N: FnMut() -> anyhow::Result<u8>, V: Fn() -> anyhow::Result<()>> Executor<'
         });
         // A cancellation/deadline/physical change always stops the task, even
         // when the source feature ignores a particular command's return value.
-        (self.validate)()?;
-        let response = reply.as_ref().ok().cloned();
+        let current = (self.validate)();
+        let halt = finalization_failed || current.is_err();
+        let reply = match (reply, current) {
+            (reply, Ok(())) => reply,
+            (Ok(_), Err(error)) => Err(error),
+            (Err(error), Err(validation)) => Err(error.context(format!(
+                "Seiren EQ owner validation also failed: {validation:#}"
+            ))),
+        };
         self.report.stages.push(Stage {
             command,
             transaction,
             setter,
             sent,
-            response: response.clone(),
-            error: reply.err().map(|error| format!("{error:#}")),
+            response,
+            error: reply.as_ref().err().map(|error| format!("{error:#}")),
         });
-        Ok(response)
+        if halt { reply.map(Some) } else { Ok(reply.ok()) }
     }
     fn current_profile(&mut self) -> anyhow::Result<Option<u8>> {
         let Some(data) = self.stage([2, 8, 130], &[0, 0], 2, false)? else {
@@ -544,93 +566,105 @@ pub fn execute(
             native_levels: None,
         },
     };
-    let result = match change {
-        Change::ReturnSwitch(enabled) => {
-            executor.stage([2, 8, 34], &[0, u8::from(*enabled)], 2, true)?;
-            // Marie_FW returns true after awaiting this call even for a
-            // negative firmware acknowledgement; keep that ACK separately.
-            true
-        }
-        Change::MicrophoneDsp { module, payload } => {
-            microphone_dsp::execute(&mut executor, *module, payload)?
-        }
-        Change::Band(band) => {
-            if let Some(profile) = executor.current_profile()? {
-                executor.band(profile, band)?
-            } else {
-                false
-            }
-        }
-        Change::VocalBass(effect) | Change::VocalExciter(effect) => {
-            if let Some(profile) = executor.current_profile()? {
-                executor.vocal(profile, effect, matches!(change, Change::VocalExciter(_)))?
-            } else {
-                false
-            }
-        }
-        Change::HighPass(effect) => {
-            executor.high_pass(effect)?;
-            true
-        }
-        Change::DeEsser(effect) => executor
-            .stage([2, 8, 30], &[1, effect.effective()], 0, true)?
-            .is_some(),
-        Change::MicAgc(enabled) => executor
-            .stage([3, 8, 22], &[1, 1, u8::from(*enabled)], 3, true)?
-            .is_some(),
-        Change::DialControl(value) => executor.stage([2, 8, 24], &[1, *value], 2, true)?.is_some(),
-        Change::RestoreDialControl(value) => {
-            // DialControlFeature.restoreDeviceData compares the current device
-            // value. A failed getter still attempts the source setter; retain
-            // the getter error independently from that setter's return value.
-            let observed = executor.stage([2, 8, 152], &[1, 0], 2, false)?;
-            if observed.as_ref().is_some_and(|data| data[1] == *value) {
+    let result: anyhow::Result<bool> = (|| {
+        let result = match change {
+            Change::ReturnSwitch(enabled) => {
+                executor.stage([2, 8, 34], &[0, u8::from(*enabled)], 2, true)?;
+                // Marie_FW returns true after awaiting this call even for a
+                // negative firmware acknowledgement; keep that ACK separately.
                 true
-            } else {
+            }
+            Change::MicrophoneDsp { module, payload } => {
+                microphone_dsp::execute(&mut executor, *module, payload)?
+            }
+            Change::Band(band) => {
+                if let Some(profile) = executor.current_profile()? {
+                    executor.band(profile, band)?
+                } else {
+                    false
+                }
+            }
+            Change::VocalBass(effect) | Change::VocalExciter(effect) => {
+                if let Some(profile) = executor.current_profile()? {
+                    executor.vocal(profile, effect, matches!(change, Change::VocalExciter(_)))?
+                } else {
+                    false
+                }
+            }
+            Change::HighPass(effect) => {
+                executor.high_pass(effect)?;
+                true
+            }
+            Change::DeEsser(effect) => executor
+                .stage([2, 8, 30], &[1, effect.effective()], 0, true)?
+                .is_some(),
+            Change::MicAgc(enabled) => executor
+                .stage([3, 8, 22], &[1, 1, u8::from(*enabled)], 3, true)?
+                .is_some(),
+            Change::DialControl(value) => {
                 executor.stage([2, 8, 24], &[1, *value], 2, true)?.is_some()
             }
-        }
-        Change::MicVolume(_)
-        | Change::HeadphonesVolume(_)
-        | Change::MonitorVolume(_)
-        | Change::ReadVolumes => {
-            anyhow::bail!("Seiren native audio task was sent to the HID executor")
-        }
-        Change::SamplingRate(_) => {
-            anyhow::bail!("Seiren native sampling task was sent to HID executor")
-        }
-        Change::Preset(preset) => {
-            let (id, profile) = preset_ids(&preset.eq_name)?;
-            executor.stage([11, 8, 33], &[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 11, true)?;
-            executor.stage([2, 8, 2], &[1, id], 2, true)?;
-            for band in &preset.parametric_eq_settings {
-                executor.band(profile, band)?;
+            Change::RestoreDialControl(value) => {
+                // DialControlFeature.restoreDeviceData compares the current device
+                // value. A failed getter still attempts the source setter; retain
+                // the getter error independently from that setter's return value.
+                let observed = executor.stage([2, 8, 152], &[1, 0], 2, false)?;
+                if observed.as_ref().is_some_and(|data| data[1] == *value) {
+                    true
+                } else {
+                    executor.stage([2, 8, 24], &[1, *value], 2, true)?.is_some()
+                }
             }
-            let bass = if let Some(effect) = &preset.vocal_bass {
-                executor.vocal(profile, effect, false)?
-            } else {
-                true
-            };
-            let exciter = if bass {
-                if let Some(effect) = &preset.vocal_exciter {
-                    executor.vocal(profile, effect, true)?
+            Change::MicVolume(_)
+            | Change::HeadphonesVolume(_)
+            | Change::MonitorVolume(_)
+            | Change::ReadVolumes => {
+                anyhow::bail!("Seiren native audio task was sent to the HID executor")
+            }
+            Change::SamplingRate(_) => {
+                anyhow::bail!("Seiren native sampling task was sent to HID executor")
+            }
+            Change::Preset(preset) => {
+                let (id, profile) = preset_ids(&preset.eq_name)?;
+                executor.stage([11, 8, 33], &[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 11, true)?;
+                executor.stage([2, 8, 2], &[1, id], 2, true)?;
+                for band in &preset.parametric_eq_settings {
+                    executor.band(profile, band)?;
+                }
+                let bass = if let Some(effect) = &preset.vocal_bass {
+                    executor.vocal(profile, effect, false)?
                 } else {
                     true
+                };
+                let exciter = if bass {
+                    if let Some(effect) = &preset.vocal_exciter {
+                        executor.vocal(profile, effect, true)?
+                    } else {
+                        true
+                    }
+                } else {
+                    false
+                };
+                if bass && exciter {
+                    executor.high_pass(&preset.high_pass_filter)?;
+                    true
+                } else {
+                    false
                 }
-            } else {
-                false
-            };
-            if bass && exciter {
-                executor.high_pass(&preset.high_pass_filter)?;
-                true
-            } else {
-                false
             }
+        };
+        (executor.validate)()?;
+        Ok(result)
+    })();
+    match result {
+        Ok(source_result) => {
+            executor.report.source_result = source_result;
+            Ok(executor.report)
         }
-    };
-    executor.report.source_result = result;
-    (executor.validate)()?;
-    Ok(executor.report)
+        Err(error) => Err(error.context(ExecutionFailure {
+            progress: executor.report,
+        })),
+    }
 }
 
 #[cfg(test)]

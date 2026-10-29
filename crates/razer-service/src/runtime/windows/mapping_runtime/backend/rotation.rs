@@ -197,8 +197,9 @@ impl<E: device::Executor> Core<E> {
         let closed = row.close();
         // A failed operation does not skip independent lease cleanup. close
         // has already drained kernel work before releasing the physical owner.
-        let released = self.connections.release(&Lease::Rotation { scope, guid });
-        if released.is_ok() {
+        let lease = Lease::Rotation { scope, guid };
+        let released = self.connections.release(&lease);
+        if !self.connections.leases_for(scope).contains(&lease) {
             self.rotations.remove(owner);
         }
         match (closed, released) {

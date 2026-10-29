@@ -363,7 +363,8 @@ mod tests {
 
     #[test]
     fn typed_mouse_source_preserves_every_interchange_field_and_numeric_kind() {
-        let value = serde_json::to_value(&*SOURCE).unwrap();
+        let mut value = serde_json::to_value(&*SOURCE).unwrap();
+        value.sort_all_objects();
         let encoded = serde_json::to_vec(&value).unwrap();
         assert_eq!(
             format!("{:x}", md5::compute(encoded)),

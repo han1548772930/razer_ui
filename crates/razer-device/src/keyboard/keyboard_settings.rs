@@ -196,13 +196,34 @@ pub struct KeyboardBrightness {
     pub percent: u8,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct KeyboardBrightnessWriteResult {
     pub requested_percent: u8,
     pub acknowledged: KeyboardBrightness,
     pub observed: KeyboardBrightness,
     /// Only true after a successful getter with the requested percentage.
     pub verified: bool,
+}
+
+/// Diagnostics from a failed write are independent of a current connection's
+/// confirmed brightness. Missing readback remains unobserved.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct KeyboardBrightnessWriteFailure {
+    pub requested_percent: u8,
+    pub acknowledged: Option<KeyboardBrightness>,
+    pub observed: Option<KeyboardBrightness>,
+}
+
+impl std::fmt::Display for KeyboardBrightnessWriteFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            formatter,
+            "Keyboard brightness write failed at {}%; acknowledgement={}, readback={}",
+            self.requested_percent,
+            self.acknowledged.is_some(),
+            self.observed.is_some()
+        )
+    }
 }
 
 /// Source setter's floor(percent / 100 * 255), with typed UI range validation.
@@ -296,56 +317,72 @@ pub(crate) fn exchange(
     outgoing[9..9 + payload.len()].copy_from_slice(payload);
     outgoing[89] = outgoing[3..89].iter().fold(0, |sum, byte| sum ^ byte);
     let mut last_error = "没有收到键盘亮度响应".to_owned();
-    for _ in 0..transport.max_retry_out {
-        std::thread::sleep(Duration::from_millis(transport.sleep_between_out_ms));
-        validate()?;
-        let sent = device.send_feature_at_collection_max(&outgoing);
-        validate()?;
-        if let Err(error) = sent {
-            last_error = format!("{error:#}");
-            continue;
-        }
-        std::thread::sleep(Duration::from_millis(transport.sleep_between_out_in_ms));
-        for attempt in 0..transport.max_retry_in {
-            if attempt > 0 {
-                std::thread::sleep(Duration::from_millis(transport.sleep_between_in_ms));
-            }
-            validate()?;
-            let mut incoming = vec![0; transport.report_bytes];
-            incoming[0] = transport.get_report_id_for_transport(device)?;
-            let received = device.get_feature_at_collection_max(&mut incoming);
-            validate()?;
-            let count = match received {
-                Ok(count) => count,
-                Err(error) => {
+    crate::feature_exchange::with_validated_feature_reply(
+        device,
+        crate::feature_exchange::with_protocol25_scope(
+            crate::backend::ExchangeOptions::mutex_out(Duration::from_millis(
+                transport.sleep_between_out_ms,
+            )),
+            &transport.source_class,
+        ),
+        command,
+        transaction,
+        validate,
+        |device, lease| {
+            for out_attempt in 0..transport.max_retry_out {
+                validate()?;
+                let sent = device.send_feature_at_collection_max(&outgoing);
+                validate()?;
+                if let Err(error) = sent {
                     last_error = format!("{error:#}");
-                    break;
-                }
-            };
-            ensure!(count == 91, "键盘亮度响应长度不匹配");
-            let packet = &incoming[1..];
-            if packet[1] != transaction || packet[6..8] != command[1..] {
-                last_error = "键盘亮度事务或命令不匹配".into();
-                break;
-            }
-            match packet[0] {
-                1 => {
-                    last_error = "键盘设备忙".into();
                     continue;
                 }
-                2 => {}
-                0 | 3 | 4 => {
-                    last_error = format!("键盘亮度响应状态 {}", packet[0]);
-                    break;
+                std::thread::sleep(Duration::from_millis(transport.sleep_between_out_in_ms));
+                for attempt in 0..transport.max_retry_in {
+                    if attempt > 0 {
+                        std::thread::sleep(Duration::from_millis(transport.sleep_between_in_ms));
+                    }
+                    validate()?;
+                    let mut incoming = vec![0; transport.report_bytes];
+                    incoming[0] = transport.get_report_id_for_transport(device)?;
+                    let received = device.get_feature_at_collection_max(&mut incoming);
+                    validate()?;
+                    let count = match received {
+                        Ok(count) => count,
+                        Err(error) => {
+                            last_error = format!("{error:#}");
+                            break;
+                        }
+                    };
+                    ensure!(count == 91, "键盘亮度响应长度不匹配");
+                    let packet = &incoming[1..];
+                    if packet[1] != transaction || packet[6..8] != command[1..] {
+                        last_error = "键盘亮度事务或命令不匹配".into();
+                        break;
+                    }
+                    match packet[0] {
+                        1 => {
+                            last_error = "键盘设备忙".into();
+                            continue;
+                        }
+                        2 => {}
+                        0 | 3 | 4 => {
+                            last_error = format!("键盘亮度响应状态 {}", packet[0]);
+                            break;
+                        }
+                        state => anyhow::bail!("键盘亮度命令不受支持或返回未知状态 {state}"),
+                    }
+                    let len = usize::from(packet[5]);
+                    ensure!(len <= 80, "键盘亮度响应数据长度超出协议");
+                    return Ok(packet[8..8 + len].to_vec());
                 }
-                state => anyhow::bail!("键盘亮度命令不受支持或返回未知状态 {state}"),
+                if out_attempt + 1 < transport.max_retry_out {
+                    lease.retry_release()?;
+                }
             }
-            let len = usize::from(packet[5]);
-            ensure!(len <= 80, "键盘亮度响应数据长度超出协议");
-            return Ok(packet[8..8 + len].to_vec());
-        }
-    }
-    anyhow::bail!("键盘亮度命令重试失败：{last_error}")
+            anyhow::bail!("键盘亮度命令重试失败：{last_error}")
+        },
+    )
 }
 
 /// Query the source's five-byte region records in device order.
@@ -443,6 +480,7 @@ fn read_at_profile(
         Ok(data) => parse_regions(&data)?
             .first()
             .map_or(cap.all_region, |record| record.region_id),
+        Err(error) if crate::backend::exchange_finalization_failed(&error) => return Err(error),
         Err(_) => cap.fallback_region,
     };
     let data = exchange(
@@ -472,31 +510,46 @@ pub fn apply(
     } else {
         encode_percent(percent)?
     };
-    validate()?;
-    let data = exchange(
-        device,
-        cap,
-        cap.set_command,
-        &[cap.active_profile, cap.all_region, raw],
-        next_transaction()?,
-        &validate,
-    )
-    .context("尚未确认键盘亮度写入应答；设备可能已接受，请重新读取")?;
-    let acknowledged = parse_device_brightness(&data, cap, cap.all_region)?;
-    validate().context("键盘亮度写入后会话或期限变化，尚未确认最终结果")?;
-    let observed = read(device, cap, &mut next_transaction, &validate)
-        .context("键盘亮度写入已应答，但回读失败，尚未确认最终结果")?;
-    ensure!(
-        observed.percent == percent,
-        "键盘亮度回读与请求不符，写入结果尚未确认"
-    );
-    validate()?;
-    Ok(KeyboardBrightnessWriteResult {
+    let mut failure = KeyboardBrightnessWriteFailure {
         requested_percent: percent,
-        acknowledged,
-        observed,
-        verified: true,
-    })
+        acknowledged: None,
+        observed: None,
+    };
+    let result = (|| {
+        validate()?;
+        let reply = exchange(
+            device,
+            cap,
+            cap.set_command,
+            &[cap.active_profile, cap.all_region, raw],
+            next_transaction()?,
+            &validate,
+        );
+        let parsed = crate::feature_exchange::acknowledged_reply(&reply)
+            .map(|data| parse_device_brightness(data, cap, cap.all_region))
+            .transpose();
+        if let Ok(Some(acknowledged)) = &parsed {
+            failure.acknowledged = Some(acknowledged.clone());
+        }
+        reply.context("键盘亮度写入交换未完成；设备可能已接受，请重新读取")?;
+        let acknowledged = parsed?.context("键盘亮度写入未返回已校验响应")?;
+        validate().context("键盘亮度写入后会话或期限变化，尚未确认最终结果")?;
+        let observed = read(device, cap, &mut next_transaction, &validate)
+            .context("键盘亮度写入已应答，但回读失败，尚未确认最终结果")?;
+        failure.observed = Some(observed.clone());
+        ensure!(
+            observed.percent == percent,
+            "键盘亮度回读与请求不符，写入结果尚未确认"
+        );
+        validate()?;
+        Ok(KeyboardBrightnessWriteResult {
+            requested_percent: percent,
+            acknowledged,
+            observed,
+            verified: true,
+        })
+    })();
+    result.map_err(|error: anyhow::Error| error.context(failure))
 }
 
 #[cfg(test)]
@@ -956,6 +1009,17 @@ mod tests {
     }
 
     #[test]
+    fn region_query_release_failure_stops_before_the_source_fallback_getter() {
+        let cap = cap();
+        let device = MockTransport::new([reply(&[5, 60, 1, 20, 6])]);
+        let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);
+        let error = read(&probe, &cap, transactions(&cap), || Ok(())).unwrap_err();
+        assert!(crate::backend::exchange_finalization_failed(&error));
+        assert_eq!(device.sent().len(), 1);
+        assert_eq!(device.collection_gets.get(), 1);
+    }
+
+    #[test]
     fn every_audited_keyboard_uses_its_actual_wired_factory_interface_and_packets() {
         for (pid, interface, slots) in [
             (600, 3, 4),
@@ -1164,16 +1228,52 @@ mod tests {
     fn cancellation_after_ack_stops_before_any_readback_or_success_result() {
         let cap = cap();
         let device = MockTransport::new([reply(&[1, 0, 127])]);
-        let validations = Cell::new(0);
-        assert!(
-            apply(&device, &cap, 50, transactions(&cap), || {
-                let count = validations.get() + 1;
-                validations.set(count);
-                ensure!(count < 6, "mock cancellation after ACK");
-                Ok(())
-            })
-            .is_err()
-        );
+        let canceled = Cell::new(false);
+        let cancel = || canceled.set(true);
+        let probe = crate::feature_exchange::tests::ExchangeProbe::with_on_finish(&device, &cancel);
+        let error = apply(&probe, &cap, 50, transactions(&cap), || {
+            ensure!(!canceled.get(), "mock cancellation after ACK");
+            Ok(())
+        })
+        .unwrap_err();
+        let failure = error
+            .downcast_ref::<KeyboardBrightnessWriteFailure>()
+            .unwrap();
+        assert_eq!(failure.acknowledged.as_ref().unwrap().raw_value, 127);
+        assert!(failure.observed.is_none());
         assert_eq!(device.sent().len(), 1);
+        assert_eq!(device.collection_gets.get(), 1);
+    }
+
+    #[test]
+    fn release_failure_retains_actual_brightness_ack_and_stops_before_readback() {
+        let cap = cap();
+        let device = MockTransport::new([reply(&[1, 0, 127])]);
+        let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);
+        let error = apply(&probe, &cap, 50, transactions(&cap), || Ok(())).unwrap_err();
+        assert!(format!("{error:#}").contains("simulated explicit release failed"));
+        let failure = error
+            .downcast_ref::<KeyboardBrightnessWriteFailure>()
+            .unwrap();
+        assert_eq!(failure.requested_percent, 50);
+        assert_eq!(failure.acknowledged.as_ref().unwrap().raw_value, 127);
+        assert!(failure.observed.is_none());
+        assert_eq!(device.sent().len(), 1);
+        assert_eq!(device.collection_gets.get(), 1);
+    }
+
+    #[test]
+    fn release_failure_does_not_promote_a_malformed_brightness_payload_to_acknowledged() {
+        let cap = cap();
+        let device = MockTransport::new([reply(&[1, 0])]);
+        let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);
+        let error = apply(&probe, &cap, 50, transactions(&cap), || Ok(())).unwrap_err();
+        let failure = error
+            .downcast_ref::<KeyboardBrightnessWriteFailure>()
+            .unwrap();
+        assert!(failure.acknowledged.is_none());
+        assert!(failure.observed.is_none());
+        assert_eq!(device.sent().len(), 1);
+        assert_eq!(device.collection_gets.get(), 1);
     }
 }

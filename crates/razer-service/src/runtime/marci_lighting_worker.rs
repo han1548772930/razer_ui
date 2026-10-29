@@ -5,10 +5,10 @@ use crate::runtime::{
     native,
 };
 use razer_device::{
-    backend::{FeatureTransport, HidBackend, HidNode, ReportLengths},
+    backend::{FeatureTransport, HidNode, ReportLengths},
     marci_lighting::{
-        Control, Frame, LatestFrames, exit_effect_for_quick, led_configuration,
-        manifest_exit_effect, submit_javascript_frame,
+        Control, Frame, LatestFrames, OutputReleaseFailure, exit_effect_for_quick,
+        led_configuration, manifest_exit_effect, submit_javascript_frame,
     },
 };
 use razer_hid::with_backend;
@@ -20,6 +20,36 @@ struct Checked<'a> {
     validate_after: &'a dyn Fn() -> anyhow::Result<()>,
 }
 impl FeatureTransport for Checked<'_> {
+    fn begin_exchange(
+        &self,
+        options: razer_device::backend::ExchangeOptions,
+    ) -> anyhow::Result<Box<dyn razer_device::backend::ExchangeLease + '_>> {
+        (self.validate)()?;
+        Ok(razer_device::backend::checked_exchange(
+            self.inner
+                .begin_exchange_validated(options, std::rc::Rc::new(self.validate))?,
+            self.validate,
+            self.validate_after,
+            None,
+        ))
+    }
+    fn begin_exchange_validated<'a>(
+        &'a self,
+        options: razer_device::backend::ExchangeOptions,
+        validate: razer_device::backend::ExchangeValidation<'a>,
+    ) -> anyhow::Result<Box<dyn razer_device::backend::ExchangeLease + 'a>> {
+        let own = self.validate;
+        let combined = std::rc::Rc::new(move || {
+            own()?;
+            validate()
+        });
+        Ok(razer_device::backend::checked_exchange(
+            self.inner.begin_exchange_validated(options, combined)?,
+            self.validate,
+            self.validate_after,
+            None,
+        ))
+    }
     fn hid_node(&self) -> Option<&HidNode> {
         self.inner.hid_node()
     }
@@ -111,9 +141,17 @@ fn run_owned(
     let channels = native::marci_channels(container)?;
     let validate_identity = || channels.validate(container);
     validate_identity()?;
-    let output = with_backend(|backend| backend.open(&channels.output))?;
+    let validate_open = || {
+        check(canceled)?;
+        validate_identity()
+    };
+    let output = with_backend(|backend| {
+        backend.open_validated(&channels.output, std::rc::Rc::new(&validate_open))
+    })?;
     update(status, |s| s.transports_released = false);
-    let control_transport = match with_backend(|backend| backend.open(&channels.control)) {
+    let control_transport = match with_backend(|backend| {
+        backend.open_validated(&channels.control, std::rc::Rc::new(&validate_open))
+    }) {
         Ok(transport) => transport,
         Err(error) => {
             drop(output);
@@ -218,6 +256,14 @@ fn run_connected<E: EngineAdapter>(
                         Some(anyhow::anyhow!("Marci Output connection probe was short"));
                 }
                 Err(error) => {
+                    if let Some(failure) = error.downcast_ref::<OutputReleaseFailure>() {
+                        update(status, |s| {
+                            s.connection_output = Some(failure.receipt.clone());
+                            s.cleanup_errors
+                                .push(format!("Output connection exchange: {error:#}"));
+                        });
+                        return Err(error);
+                    }
                     if error.is::<Canceled>() {
                         return Err(error);
                     }
@@ -313,7 +359,20 @@ fn run_connected<E: EngineAdapter>(
             let now = now_ms();
             for frame in latest.due(now) {
                 let frame = Frame::from_engine(&frame, device_handle)?;
-                let receipt = submit_javascript_frame(&checked_output, &frame)?;
+                let receipt = match submit_javascript_frame(&checked_output, &frame) {
+                    Ok(receipt) => receipt,
+                    Err(error) => {
+                        if let Some(failure) = error.downcast_ref::<OutputReleaseFailure>() {
+                            update(status, |s| {
+                                s.frames_submitted += 1;
+                                s.last_output = Some(failure.receipt.clone());
+                                s.cleanup_errors
+                                    .push(format!("Output frame exchange: {error:#}"));
+                            });
+                        }
+                        return Err(error);
+                    }
+                };
                 let complete = receipt.complete;
                 update(status, |s| {
                     s.frames_submitted += 1;

@@ -1,6 +1,7 @@
 //! Native audio controls backed by each product's current mounted source.
 //! The snapshot is a local draft: it never claims an audio driver acknowledgement.
 use super::Choice;
+use gpui_kit::base::ElementExt as _;
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::{
     ActiveTheme, Disableable, Selectable, Sizable,
@@ -2259,6 +2260,13 @@ impl Render for AudioProductWorkspace {
             .test_support()
             .child(
                 super::product_surface::body()
+                    .when(
+                        self.spec.product_id == 1422 && self.page == "TAB_EQ",
+                        |body| {
+                            let bounds = self.seiren_eq.wrapper_bounds.clone();
+                            body.on_prepaint(move |current, _, _| bounds.set(current))
+                        },
+                    )
                     .child(self.page_body(&self.page, false, window, cx))
                     .children(self.oled_home_dialog())
                     .children(self.mixer_dialog(window, cx)),

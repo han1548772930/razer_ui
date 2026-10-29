@@ -687,7 +687,7 @@ fn set_target_obm_keymap(
     validate: &impl Fn() -> anyhow::Result<()>,
     selection: &mut KeyboardAnalogTargetSelection,
 ) -> anyhow::Result<()> {
-    let data = feature_exchange::exchange_with_report_data_size_observing_send(
+    let result = feature_exchange::exchange_with_report_data_size_observing_send(
         device,
         &cap.transport,
         SET_TARGET_OBM_KEYMAP,
@@ -699,13 +699,15 @@ fn set_target_obm_keymap(
             selection.attempted = true;
             selection.transport_send_attempts += 1;
         },
-    )?;
-    selection.acknowledgement = Some(KeyboardAnalogAcknowledgement {
-        command: SET_TARGET_OBM_KEYMAP,
-        report_data_size: 1,
-        payload: vec![keymap_id],
-        data,
-    });
+    );
+    selection.acknowledgement =
+        feature_exchange::acknowledged_reply(&result).map(|data| KeyboardAnalogAcknowledgement {
+            command: SET_TARGET_OBM_KEYMAP,
+            report_data_size: 1,
+            payload: vec![keymap_id],
+            data: data.to_vec(),
+        });
+    result?;
     Ok(())
 }
 
@@ -1196,23 +1198,22 @@ pub fn write<C: KeyboardAnalogCapabilitySource>(
                 report.transport_send_attempts += 1;
             },
         );
-        let data = match ack {
-            Ok(data) => data,
-            Err(error) => {
-                return Err(KeyboardAnalogWriteFailure {
-                    phase: KeyboardAnalogFailurePhase::Write,
-                    report,
-                    error,
-                });
-            }
-        };
         let index = report.acknowledgements.len();
-        report.acknowledgements.push(KeyboardAnalogAcknowledgement {
-            command: r.request.command,
-            report_data_size: r.request.data_size,
-            payload: r.request.payload,
-            data,
-        });
+        if let Some(data) = feature_exchange::acknowledged_reply(&ack) {
+            report.acknowledgements.push(KeyboardAnalogAcknowledgement {
+                command: r.request.command,
+                report_data_size: r.request.data_size,
+                payload: r.request.payload,
+                data: data.to_vec(),
+            });
+        }
+        if let Err(error) = ack {
+            return Err(KeyboardAnalogWriteFailure {
+                phase: KeyboardAnalogFailurePhase::Write,
+                report,
+                error,
+            });
+        }
         if verify_readback {
             // The caller retains the lock throughout this operation. The
             // selected keymap covers all write chunks and their readbacks;

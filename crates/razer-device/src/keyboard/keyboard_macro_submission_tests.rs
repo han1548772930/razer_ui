@@ -13,6 +13,51 @@ const STANDBY_PROFILE: &str = "66778899-aabb-4ccd-8eef-112233445566";
 const LOCKED: &str = "44556677-8899-aabb-ccdd-eeff11223344";
 const ORPHAN: &str = "55667788-99aa-bbcc-ddee-ff1122334455";
 
+#[test]
+fn locked_assignment_release_failure_retains_raw_response_and_blocks_macro_mutations() {
+    let mut firmware = Firmware::new(4096);
+    firmware.foreign_profile = true;
+    firmware.saved(7, LOCKED);
+    firmware.saved(8, ORPHAN);
+    let finish_check = || {
+        ensure!(
+            firmware.sent.borrow().last().unwrap()[7..9] != [2, 158],
+            "simulated locked assignment release failed"
+        );
+        Ok(())
+    };
+    let probe =
+        crate::feature_exchange::tests::ExchangeProbe::with_finish_check(&firmware, &finish_check);
+    let failure = submit(
+        &probe,
+        740,
+        ACTIVE,
+        intent(context(false)),
+        transactions(),
+        || Ok(()),
+    )
+    .unwrap_err();
+    assert!(!failure.receipt.completed);
+    assert_eq!(failure.receipt.submissions.len(), 1);
+    let step = &failure.receipt.submissions[0];
+    assert_eq!(step.command, [80, 2, 158]);
+    assert!(step.attempted);
+    assert_eq!(
+        step.acknowledgement,
+        Some(vec![4, 31, 0, 3, 2, 0, 7, 0, 0, 0])
+    );
+    let progress = failure.receipt.macro_synchronization.as_ref().unwrap();
+    assert!(progress.locked_ids.is_empty());
+    assert!(progress.mutations.is_empty());
+    assert!(firmware.mutations().is_empty());
+    assert_eq!(
+        firmware.macros.borrow().keys().copied().collect::<Vec<_>>(),
+        [7, 8]
+    );
+    assert!(format!("{:#}", failure.error).contains("simulated locked assignment release failed"));
+    assert_eq!(firmware.sent.borrow().last().unwrap()[7..9], [2, 158]);
+}
+
 #[derive(Clone)]
 struct SavedMacro {
     metadata: [u8; 250],

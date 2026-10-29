@@ -23,6 +23,108 @@ pub enum Action {
     },
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Sample {
+    pub sources: [u8; 4],
+    pub peaks: [u8; 4],
+    pub raw_peak: [Option<f32>; 7],
+    pub device_container_id: String,
+    /// A completed source Feature send, not an independent device readback.
+    pub feature_written: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SampleFailure {
+    pub progress: Sample,
+    pub transfer: TransferProgress,
+}
+
+impl std::fmt::Display for SampleFailure {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("Mixer meter sample failed; actual peaks and Feature progress retained")
+    }
+}
+
+impl std::error::Error for SampleFailure {}
+
+/// Native RVA 0x368c0 truncates left-channel peaks; RVA 0x36ca0 sends a
+/// Feature7/64 frame, retrying native send failures ten times after 10 ms each.
+pub fn submit_sample(
+    device: &dyn FeatureTransport,
+    sources: [u8; 4],
+    raw_peak: [Option<f32>; 7],
+    device_container_id: String,
+    validate: &dyn Fn() -> anyhow::Result<()>,
+) -> anyhow::Result<Sample> {
+    ensure!(
+        sources.iter().all(|source| *source <= 6),
+        "Mixer fader input source outside enum"
+    );
+    let mut peaks = [0; 4];
+    for (index, source) in sources.iter().enumerate() {
+        let raw = raw_peak[usize::from(*source)].context("Mixer input peak was not observed")?;
+        ensure!(
+            raw.is_finite() && (0. ..=1.).contains(&raw),
+            "Mixer input peak outside source range"
+        );
+        peaks[index] = (raw * 100.).trunc() as u8;
+    }
+    let report = reports(&Action::MeterFrame { peaks })?.remove(0).0;
+    let mut progress = Sample {
+        sources,
+        peaks,
+        raw_peak,
+        device_container_id,
+        feature_written: false,
+    };
+    let mut transfer = TransferProgress {
+        channel: ReportChannel::Feature,
+        report: report.to_vec(),
+        sends_attempted: 0,
+        sends_completed: 0,
+        input: None,
+    };
+    let result = (|| {
+        validate()?;
+        let lease = crate::backend::checked_exchange(
+            device.begin_exchange_validated(
+                crate::backend::ExchangeOptions::plain(),
+                std::rc::Rc::new(validate),
+            )?,
+            validate,
+            validate,
+            None,
+        );
+        let result = (|| {
+            let mut last = None;
+            for _ in 0..10 {
+                std::thread::sleep(Duration::from_millis(10));
+                validate()?;
+                transfer.sends_attempted += 1;
+                match lease.transport().send_feature(&report) {
+                    Ok(()) => {
+                        transfer.sends_completed += 1;
+                        progress.feature_written = true;
+                        return Ok(());
+                    }
+                    Err(error) => {
+                        if crate::backend::exchange_finalization_failed(&error) {
+                            return Err(error);
+                        }
+                        last = Some(error);
+                    }
+                }
+            }
+            Err(last.context("Mixer lighting send was not attempted")?)
+        })();
+        crate::backend::finish_exchange(lease, result)
+    })();
+    match result {
+        Ok(()) => Ok(progress),
+        Err(error) => Err(error.context(SampleFailure { progress, transfer })),
+    }
+}
+
 pub fn handles(path: &str) -> bool {
     path == "/profile/brightness"
         || path == "/profile/quickEffects"

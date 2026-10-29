@@ -1,5 +1,6 @@
 //! Exact independent protocol fixtures with mandatory synthetic Feature I/O.
 use super::*;
+use crate::feature_exchange::tests::ExchangeProbe;
 use std::{
     cell::{Cell, RefCell},
     collections::VecDeque,
@@ -766,16 +767,17 @@ fn cancellation_after_actual_capacity_observation_prevents_the_first_custom_writ
         receive([6, 21, 133], &[0, 100, 0, 100, 0, 3], 1, 2),
     ]);
     let transport = cap(231);
-    let calls = Cell::new(0);
-    let failure = MouseHaptic::new(&device, &transport)
+    let canceled = Cell::new(false);
+    let after_capacity = || canceled.set(true);
+    let leased = ExchangeProbe::with_on_finish(&device, &after_capacity);
+    let failure = MouseHaptic::new(&leased, &transport)
         .unwrap()
         .apply(
             HapticChange::Custom(triangle()),
             &profiles(),
             transactions(),
             || {
-                calls.set(calls.get() + 1);
-                ensure!(calls.get() <= 6, "Canceled after capacity query");
+                ensure!(!canceled.get(), "Canceled after capacity query");
                 Ok(())
             },
         )
@@ -788,19 +790,42 @@ fn cancellation_after_actual_capacity_observation_prevents_the_first_custom_writ
 }
 
 #[test]
+fn finish_failure_retains_the_haptic_ack_without_starting_confirmation() {
+    let device = Transport::new([send([1, 21, 8], &[1], 1), receive([1, 21, 8], &[], 1, 2)]);
+    let transport = cap(231);
+    let leased = ExchangeProbe::failing_finish(&device);
+    let failure = MouseHaptic::new(&leased, &transport)
+        .unwrap()
+        .apply(
+            HapticChange::BrowserMode(true),
+            &profiles(),
+            transactions(),
+            || Ok(()),
+        )
+        .unwrap_err();
+    assert_eq!(failure.phase, HapticFailurePhase::Write);
+    assert_eq!(failure.failed_step, Some(0));
+    assert!(failure.progress.steps[0].acknowledgment_received);
+    assert!(failure.progress.steps[0].observed.is_none());
+    assert!(!failure.progress.verified());
+    device.finish();
+}
+
+#[test]
 fn cancellation_before_confirmation_keeps_the_completed_mutation_ack() {
     let device = Transport::new([send([1, 21, 8], &[1], 1), receive([1, 21, 8], &[], 1, 2)]);
     let transport = cap(231);
-    let calls = Cell::new(0);
-    let failure = MouseHaptic::new(&device, &transport)
+    let canceled = Cell::new(false);
+    let after_ack = || canceled.set(true);
+    let leased = ExchangeProbe::with_on_finish(&device, &after_ack);
+    let failure = MouseHaptic::new(&leased, &transport)
         .unwrap()
         .apply(
             HapticChange::BrowserMode(true),
             &profiles(),
             transactions(),
             || {
-                calls.set(calls.get() + 1);
-                ensure!(calls.get() <= 6, "Canceled before readback");
+                ensure!(!canceled.get(), "Canceled before readback");
                 Ok(())
             },
         )
@@ -984,16 +1009,17 @@ fn cancellation_after_completed_ack_keeps_it_and_stops_the_next_profile() {
         receive([9, 21, 7], &[], 1, 2),
     ]);
     let transport = cap(167);
-    let calls = Cell::new(0);
-    let f = MouseHaptic::new(&device, &transport)
+    let canceled = Cell::new(false);
+    let after_ack = || canceled.set(true);
+    let leased = ExchangeProbe::with_on_finish(&device, &after_ack);
+    let f = MouseHaptic::new(&leased, &transport)
         .unwrap()
         .apply(
             HapticChange::StageInformation(layout()),
             &profiles(),
             transactions(),
             || {
-                calls.set(calls.get() + 1);
-                ensure!(calls.get() <= 6, "Canceled after completed ACK");
+                ensure!(!canceled.get(), "Canceled after completed ACK");
                 Ok(())
             },
         )

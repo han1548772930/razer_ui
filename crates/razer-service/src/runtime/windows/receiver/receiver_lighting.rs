@@ -81,6 +81,10 @@ pub(super) struct Controller {
     job: Option<Job>,
 }
 impl Controller {
+    pub(super) fn cleanup_pending(&self) -> bool {
+        self.job.as_ref().is_some_and(|job| job.worker.is_some())
+    }
+
     pub(super) fn apply(
         &mut self,
         id: String,
@@ -285,7 +289,8 @@ fn run(
         if configuration.effect.source_id() != 14 {
             let acknowledgements = {
                 let _lock = receiver::ReceiverLock::acquire(container, &validate)?;
-                let device = hid_transport::open(path, bytes)?;
+                let device =
+                    hid_transport::open_validated(path, bytes, std::rc::Rc::new(&validate))?;
                 if let Ok(mut state) = status.lock() {
                     state.restoration = RestorationDisposition::AwaitingAcknowledgements;
                 }
@@ -345,7 +350,11 @@ fn run(
                     } else if next_configuration.effect.source_id() != 14 {
                         let acknowledgements = {
                             let _lock = receiver::ReceiverLock::acquire(container, &validate)?;
-                            let device = hid_transport::open(path, bytes)?;
+                            let device = hid_transport::open_validated(
+                                path,
+                                bytes,
+                                std::rc::Rc::new(&validate),
+                            )?;
                             if let Ok(mut state) = status.lock() {
                                 state.restoration =
                                     RestorationDisposition::AwaitingAcknowledgements;
@@ -401,7 +410,8 @@ fn run(
                 pending_deadline = Instant::now() + Duration::from_secs(30);
                 if !custom_selected {
                     let _lock = receiver::ReceiverLock::acquire(container, &validate)?;
-                    let device = hid_transport::open(path, bytes)?;
+                    let device =
+                        hid_transport::open_validated(path, bytes, std::rc::Rc::new(&validate))?;
                     if let Ok(mut state) = status.lock() {
                         state.restoration = RestorationDisposition::AwaitingAcknowledgements;
                     }
@@ -449,7 +459,11 @@ fn run(
                 let delivery = (|| -> anyhow::Result<u32> {
                     if dock_frame {
                         let _lock = receiver::ReceiverLock::acquire(container, &validate)?;
-                        let device = hid_transport::open(path, bytes)?;
+                        let device = hid_transport::open_validated(
+                            path,
+                            bytes,
+                            std::rc::Rc::new(&validate),
+                        )?;
                         lighting.send_frame(&device, &frame, frame.device_handle, &validate)?;
                         Ok(1)
                     } else {
@@ -515,7 +529,8 @@ fn run(
     if lighting.restoration_required() {
         let restore = (|| {
             let _lock = receiver::ReceiverLock::acquire(container, &validate_identity)?;
-            let device = hid_transport::open(path, bytes)?;
+            let device =
+                hid_transport::open_validated(path, bytes, std::rc::Rc::new(&validate_identity))?;
             lighting.restore_on_exit(
                 &device,
                 configuration.effect.source_id() == 14,

@@ -112,6 +112,30 @@ fn krakoff_mode_and_effect_use_both_namespaces_but_frame_only_dock() {
     assert_eq!(&last[6..9], &[56, 15, 3]);
     assert_eq!(&last[9..14], &[0, 0, 0, 0, 16]);
 }
+
+#[test]
+fn peer_frame_release_failure_keeps_a_submission_count_without_a_feature_reply() {
+    let mut peer = PeerHid::new(super::super::peer_support(221, 0).unwrap()).unwrap();
+    let io = fake(&[]);
+    let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&io);
+    let frame = EngineFrame {
+        device_handle: 7,
+        region_id: 0,
+        num_row: 1,
+        num_col: 17,
+        frame: vec![1; 51],
+    };
+    let error = peer
+        .send_frame(&probe, &frame, 7, 1, 17, &|| Ok(()))
+        .unwrap_err();
+    let progress = error
+        .downcast_ref::<crate::ReceiverFrameSubmissionFailure>()
+        .unwrap();
+    assert_eq!(progress.reports_submitted, 1);
+    assert!(crate::backend::exchange_finalization_failed(&error));
+    assert_eq!(io.sent.lock().unwrap().len(), 1);
+    assert!(io.statuses.lock().unwrap().is_empty());
+}
 #[test]
 fn edition_battery_and_dock_getters_require_real_payloads_and_source_prefixes() {
     let support = super::super::peer_support(227, 0).unwrap();
@@ -132,6 +156,33 @@ fn edition_battery_and_dock_getters_require_real_payloads_and_source_prefixes() 
     assert!(peer.battery(&fake(&[1, 255]), &|| Ok(())).is_err());
     assert!(peer.on_dock(&fake(&[1]), &|| Ok(())).unwrap());
     assert!(!peer.on_dock(&fake(&[2]), &|| Ok(())).unwrap());
+}
+
+#[test]
+fn edition_release_failure_stops_before_any_source_retry_and_preserves_reply_diagnostics() {
+    let mut peer = PeerHid::new(immediate_support(227, 0)).unwrap();
+    let io = fake(&[0, 128, 1]);
+    let first = std::cell::Cell::new(true);
+    let finish_check = || {
+        ensure!(
+            !first.replace(false),
+            "simulated first edition release failure"
+        );
+        Ok(())
+    };
+    let probe =
+        crate::feature_exchange::tests::ExchangeProbe::with_finish_check(&io, &finish_check);
+    let error = peer.edition(&probe, &|| Ok(())).unwrap_err();
+    let progress = error
+        .downcast_ref::<crate::ReceiverExchangeFailure>()
+        .unwrap();
+    assert_eq!(progress.command, [3, 0, 134]);
+    assert_eq!(
+        progress.progress.acknowledged_reply.as_deref(),
+        Some([0, 128, 1].as_slice())
+    );
+    assert!(crate::backend::exchange_finalization_failed(&error));
+    assert_eq!(io.sent.lock().unwrap().len(), 1);
 }
 #[test]
 fn white_manifest_uses_ordinary_sender_and_cancel_rejects_before_device_write() {

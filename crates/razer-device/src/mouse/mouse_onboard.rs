@@ -65,7 +65,7 @@ pub fn read_profile_associations(
     Ok(profiles)
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct OnboardInventory {
     pub max_profiles: u8,
     pub profile_count: u8,
@@ -92,7 +92,7 @@ pub struct OnboardIdentityBlock {
     pub data: Vec<u8>,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct OnboardIdentityObservation {
     pub profile_id: u8,
     pub guid: String,
@@ -253,7 +253,7 @@ pub fn encode_identity(product_id: u32, request: &OnboardIdentityRequest) -> Res
     Ok(result)
 }
 
-fn decode_identity(
+pub(crate) fn decode_identity(
     product_id: u32,
     profile: u8,
     raw: Vec<u8>,
@@ -499,7 +499,7 @@ impl<'a> MouseOnboard<'a> {
         } else {
             &self.transport
         };
-        let ack = exchange_with_report_data_size_observing_send(
+        let response = exchange_with_report_data_size_observing_send(
             self.device,
             transport,
             command,
@@ -508,9 +508,12 @@ impl<'a> MouseOnboard<'a> {
             data_size,
             validate,
             &mut || step.attempted = true,
-        )?;
-        step.acknowledgment_received = true;
-        step.acknowledgment_data = ack;
+        );
+        if let Some(data) = crate::feature_exchange::acknowledged_reply(&response) {
+            step.acknowledgment_received = true;
+            step.acknowledgment_data = data.to_vec();
+        }
+        response?;
         Ok(())
     }
 

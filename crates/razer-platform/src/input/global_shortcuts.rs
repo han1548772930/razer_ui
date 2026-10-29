@@ -54,6 +54,13 @@ pub struct GlobalShortcuts {
     listener: Option<crate::platform::windows::global_shortcuts::Listener>,
 }
 impl GlobalShortcuts {
+    pub fn cleanup_pending(&self) -> bool {
+        #[cfg(windows)]
+        return self.listener.is_some();
+        #[cfg(not(windows))]
+        false
+    }
+
     pub fn shutdown(&mut self) -> anyhow::Result<()> {
         #[cfg(windows)]
         if let Some(mut listener) = self.listener.take() {

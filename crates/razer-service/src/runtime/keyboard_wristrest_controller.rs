@@ -253,6 +253,7 @@ mod tests {
         let mut cleanup = crate::runtime::shutdown::Cleanup::default();
         controller.shutdown(&mut cleanup);
         let mut reply = razer_ipc::ResponseEnvelope {
+            diagnostics: None,
             id: 1,
             data: Some(json!({"stopped":true})),
             error: None,
@@ -270,6 +271,7 @@ mod tests {
         let mut cleanup = crate::runtime::shutdown::Cleanup::default();
         controller.shutdown(&mut cleanup);
         let mut reply = razer_ipc::ResponseEnvelope {
+            diagnostics: None,
             id: 2,
             data: Some(json!({"stopped":true})),
             error: None,
@@ -322,7 +324,7 @@ fn collection_initial(
         Ok(())
     };
     guard()?;
-    let device = with_backend(|backend| backend.open(node))?;
+    let device = with_backend(|backend| backend.open_validated(node, std::rc::Rc::new(&guard)))?;
     ensure!(
         device.report_lengths()?.feature.get(&0) == Some(&91),
         "Wristrest Feature Report size differs"

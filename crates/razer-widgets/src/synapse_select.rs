@@ -25,6 +25,7 @@ mod pointer;
 #[derive(Clone, Default, PartialEq)]
 pub struct SelectOptionDecoration {
     prefix_image: Option<OptionImage>,
+    content_image: Option<OptionImage>,
     tooltip_icon: Option<(SharedString, SharedString)>,
     separator_before: bool,
 }
@@ -51,6 +52,17 @@ impl SelectOptionDecoration {
         self
     }
 
+    /// Replace the option and selected text with the source's image content.
+    /// The item title remains the accessible name and its value remains the ID.
+    pub fn content_image(mut self, path: impl Into<SharedString>, width: f32, height: f32) -> Self {
+        self.content_image = Some(OptionImage {
+            path: path.into(),
+            width,
+            height,
+        });
+        self
+    }
+
     /// Only this icon owns the source preset tooltip; the option text does not.
     pub fn tooltip_icon(
         mut self,
@@ -65,6 +77,67 @@ impl SelectOptionDecoration {
         self.separator_before = before;
         self
     }
+}
+
+/// Source pointer-dropdown geometry, independent of committed selection.
+#[derive(Clone)]
+pub struct PointerSelectStyle {
+    trigger_height: Rems,
+    row_height: Rems,
+    text_inset: Rems,
+    text_trailing_inset: Rems,
+    menu_padding_left: Rems,
+}
+
+impl Default for PointerSelectStyle {
+    fn default() -> Self {
+        Self {
+            trigger_height: css(27.),
+            row_height: css(25.),
+            text_inset: css(5.),
+            text_trailing_inset: css(19.),
+            menu_padding_left: css(0.),
+        }
+    }
+}
+
+impl PointerSelectStyle {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn trigger_height(mut self, height: Rems) -> Self {
+        self.trigger_height = height;
+        self
+    }
+
+    pub fn row_height(mut self, height: Rems) -> Self {
+        self.row_height = height;
+        self
+    }
+
+    pub fn text_insets(mut self, leading: Rems, trailing: Rems) -> Self {
+        self.text_inset = leading;
+        self.text_trailing_inset = trailing;
+        self
+    }
+
+    pub fn menu_padding_left(mut self, padding: Rems) -> Self {
+        self.menu_padding_left = padding;
+        self
+    }
+}
+
+/// The verified source branch that decides the menu's vertical direction.
+#[derive(Clone, Default)]
+pub enum PointerSelectPlacement {
+    /// Mouse 190/229/239 flips only on viewport overflow.
+    #[default]
+    ViewportOverflow,
+    /// Audio 1422 also flips when its 25px-row estimate equals the viewport.
+    ViewportBoundary,
+    /// Audio 1422 reads the actual body wrapper, then checks window overflow.
+    WrapperBoundary(Rc<std::cell::Cell<Bounds<Pixels>>>),
 }
 
 #[derive(Clone, Copy, Default, PartialEq)]
@@ -107,6 +180,8 @@ pub fn select<I: SelectItem<Value = String> + 'static>(
         on_trigger_click: None,
         pointer_only: false,
         pointer_decorations: BTreeMap::new(),
+        pointer_style: PointerSelectStyle::default(),
+        pointer_placement: PointerSelectPlacement::default(),
         allow_one_item: false,
     }
 }
@@ -146,6 +221,8 @@ pub struct SynapseSelect<I: SelectItem<Value = String> + 'static> {
     on_trigger_click: Option<Rc<dyn Fn(&ClickEvent, &mut Window, &mut App)>>,
     pointer_only: bool,
     pointer_decorations: BTreeMap<String, SelectOptionDecoration>,
+    pointer_style: PointerSelectStyle,
+    pointer_placement: PointerSelectPlacement,
     allow_one_item: bool,
 }
 
@@ -170,6 +247,16 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelect<I> {
     ) -> Self {
         self.pointer_only = true;
         self.pointer_decorations = decorations;
+        self
+    }
+
+    pub fn pointer_style(mut self, style: PointerSelectStyle) -> Self {
+        self.pointer_style = style;
+        self
+    }
+
+    pub fn pointer_placement(mut self, placement: PointerSelectPlacement) -> Self {
+        self.pointer_placement = placement;
         self
     }
 
@@ -240,7 +327,10 @@ struct SynapseSelectView<I: SelectItem<Value = String> + 'static> {
     on_trigger_click: Option<Rc<dyn Fn(&ClickEvent, &mut Window, &mut App)>>,
     pointer_only: bool,
     pointer_decorations: BTreeMap<String, SelectOptionDecoration>,
+    pointer_style: PointerSelectStyle,
+    pointer_placement: PointerSelectPlacement,
     pointer_scroll: ScrollHandle,
+    pointer_position: Rc<std::cell::Cell<pointer::PointerPosition>>,
     allow_one_item: bool,
     pointer_bounds: Rc<std::cell::Cell<Bounds<Pixels>>>,
     open: bool,
@@ -308,7 +398,10 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
             on_trigger_click: None,
             pointer_only: false,
             pointer_decorations: BTreeMap::new(),
+            pointer_style: PointerSelectStyle::default(),
+            pointer_placement: PointerSelectPlacement::default(),
             pointer_scroll: ScrollHandle::new(),
+            pointer_position: Rc::new(std::cell::Cell::new(pointer::PointerPosition::default())),
             allow_one_item: false,
             pointer_bounds: Rc::new(std::cell::Cell::new(Bounds::default())),
             open: false,
@@ -328,7 +421,10 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
         self._popup_context = (self.presentation == Presentation::Alexa && open)
             .then(|| GlobalState::register_deferred_popover(cx));
         if open {
+            self.pointer_position
+                .set(self.pointer_position.get().begin_open());
             let selected = self.state.read(cx).selected_value().cloned();
+            let pointer_scroll = self.pointer_only.then(|| self.pointer_scroll.clone());
             self.list.update(cx, |list, cx| {
                 let index = list
                     .delegate()
@@ -338,6 +434,10 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
                     .map(IndexPath::new);
                 list.set_selected_index(index, window, cx);
                 list.scroll_to_selected_item(window, cx);
+                if let (Some(scroll), Some(index)) = (&pointer_scroll, index) {
+                    // Source scrollTo uses the selected row's mounted offset.
+                    scroll.scroll_to_top_of_item(index.row);
+                }
             });
             if self.presentation == Presentation::Alexa {
                 self.list.focus_handle(cx).focus(window, cx);
@@ -436,6 +536,8 @@ impl<I: SelectItem<Value = String> + 'static> RenderOnce for SynapseSelect<I> {
             view.on_trigger_click = self.on_trigger_click.clone();
             view.pointer_only = self.pointer_only;
             view.pointer_decorations = self.pointer_decorations;
+            view.pointer_style = self.pointer_style;
+            view.pointer_placement = self.pointer_placement;
             view.allow_one_item = self.allow_one_item;
             if self.disabled {
                 view.set_open(false, window, cx);
@@ -896,15 +998,18 @@ impl RenderOnce for OptionRow {
 
 #[cfg(test)]
 mod tests {
-    use super::{css, select, select_alexa};
+    use super::{
+        PointerSelectPlacement, PointerSelectStyle, SelectOptionDecoration, css, select,
+        select_alexa, select_pointer,
+    };
     use gpui_kit::component::{
         Disableable, IndexPath, Root,
         select::{SelectEvent, SelectState},
     };
     use gpui_kit::test::TestWindowExt as _;
     use gpui_kit::{
-        AppContext, Context, Entity, IntoElement, ParentElement, Render, Styled, Subscription,
-        TestAppContext, Window, div, px, size,
+        AppContext, Context, Entity, IntoElement, ParentElement, Render, ScrollDelta, Styled,
+        Subscription, TestAppContext, VisualTestContext, Window, div, point, px, size,
     };
 
     struct SelectFixture {
@@ -912,6 +1017,8 @@ mod tests {
         items: Vec<String>,
         disabled: bool,
         alexa: bool,
+        pointer: bool,
+        image_options: bool,
         confirmed: Vec<Option<String>>,
         _subscription: Subscription,
     }
@@ -932,6 +1039,8 @@ mod tests {
                 items,
                 disabled: false,
                 alexa: false,
+                pointer: false,
+                image_options: false,
                 confirmed: Vec::new(),
                 _subscription: subscription,
             }
@@ -955,10 +1064,39 @@ mod tests {
 
     impl Render for SelectFixture {
         fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-            let control = if self.alexa {
+            let control = if self.pointer {
+                select_pointer(&self.state).w(css(200.))
+            } else if self.alexa {
                 select_alexa(&self.state)
             } else {
                 select(&self.state).w(css(200.))
+            };
+            let control = if self.image_options {
+                control
+                    .pointer_option_decorations(
+                        self.items
+                            .iter()
+                            .map(|value| {
+                                (
+                                    value.clone(),
+                                    SelectOptionDecoration::new().content_image(
+                                        "synapse/expand.svg",
+                                        32.,
+                                        16.,
+                                    ),
+                                )
+                            })
+                            .collect(),
+                    )
+                    .pointer_style(
+                        PointerSelectStyle::new()
+                            .trigger_height(css(35.))
+                            .row_height(css(32.)),
+                    )
+                    .pointer_placement(PointerSelectPlacement::ViewportBoundary)
+                    .w(css(96.))
+            } else {
+                control
             };
             div().p_4().child(
                 control
@@ -968,6 +1106,234 @@ mod tests {
                     .disabled(self.disabled),
             )
         }
+    }
+
+    fn assert_pointer_option_in_view(window: &mut Window, option: &str) {
+        let viewport = window.find("source-pointer-options-clip").bounds();
+        let row = window
+            .find(format!("source-pointer-option-{option}"))
+            .bounds();
+        assert!(row.top() >= viewport.top());
+        assert!(row.bottom() <= viewport.bottom());
+    }
+
+    #[gpui_kit::test]
+    fn pointer_image_options_keep_domain_value_and_do_not_add_keyboard_selection(
+        cx: &mut TestAppContext,
+    ) {
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            cx.set_reduce_motion(true);
+        });
+        let mut fixture = None;
+        let handle = cx.open_window(size(px(600.), px(480.)), |window, cx| {
+            let view = cx.new(|cx| SelectFixture::new(window, cx));
+            view.update(cx, |view, cx| {
+                view.pointer = true;
+                view.image_options = true;
+                view.set_options(
+                    &["lowpass", "highpass", "peaking", "lowshelf", "highshelf"],
+                    "peaking",
+                    window,
+                    cx,
+                );
+            });
+            fixture = Some(view.clone());
+            Root::new(view, window, cx)
+        });
+        let fixture = fixture.unwrap();
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            window.click("source-pointer-trigger", cx);
+            let trigger = window.find("source-pointer-trigger").bounds();
+            let menu = window.find("source-pointer-options-clip").bounds();
+            assert_eq!(trigger.size.height, px(35.));
+            assert_eq!(menu.size.height, px(162.));
+            assert_eq!(menu.top(), trigger.bottom() + px(1.));
+            assert_eq!(
+                window
+                    .find("source-pointer-option-highpass")
+                    .bounds()
+                    .size
+                    .height,
+                px(32.),
+            );
+            window.press("down", cx);
+            window.press("enter", cx);
+            assert!(window.try_find("source-pointer-options-clip").is_some());
+            assert_eq!(
+                fixture
+                    .read(cx)
+                    .state
+                    .read(cx)
+                    .selected_value()
+                    .map(String::as_str),
+                Some("peaking"),
+            );
+            window.click("source-pointer-option-highpass", cx);
+        })
+        .unwrap();
+        cx.run_until_parked();
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            assert_eq!(
+                fixture.read(cx).confirmed,
+                vec![Some(String::from("highpass"))],
+            );
+            assert_eq!(
+                fixture
+                    .read(cx)
+                    .state
+                    .read(cx)
+                    .selected_value()
+                    .map(String::as_str),
+                Some("highpass"),
+            );
+            assert!(window.try_find("source-pointer-options-clip").is_none());
+            window.click("source-pointer-trigger", cx);
+            assert!(window.try_find("source-pointer-option-highpass").is_some());
+        })
+        .unwrap();
+    }
+
+    #[gpui_kit::test]
+    fn pointer_menu_scrolls_to_the_last_option_and_confirms_once(cx: &mut TestAppContext) {
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            cx.set_reduce_motion(true);
+        });
+        let mut fixture = None;
+        let handle = cx.open_window(size(px(420.), px(320.)), |window, cx| {
+            let view = cx.new(|cx| SelectFixture::new(window, cx));
+            view.update(cx, |view, _| view.pointer = true);
+            fixture = Some(view.clone());
+            Root::new(view, window, cx)
+        });
+        let fixture = fixture.unwrap();
+
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            let focused = window.focused(cx);
+            window.click("source-pointer-trigger", cx);
+            assert_eq!(window.focused(cx), focused);
+            let viewport = window.find("source-pointer-options-clip").bounds();
+            assert_eq!(viewport.size.height, px(180.));
+            assert_pointer_option_in_view(window, "Alpha");
+            assert!(
+                window
+                    .find("source-pointer-option-Choice 10")
+                    .bounds()
+                    .bottom()
+                    > viewport.bottom()
+            );
+            window.scroll(
+                "source-pointer-options-clip",
+                ScrollDelta::Pixels(point(px(0.), px(-900.))),
+                cx,
+            );
+            window.render_frame(cx);
+            assert_pointer_option_in_view(window, "Choice 10");
+            assert!(window.find("source-pointer-option-Alpha").bounds().top() < viewport.top());
+            window.click("source-pointer-option-Choice 10", cx);
+            assert_eq!(window.focused(cx), focused);
+        })
+        .unwrap();
+        cx.run_until_parked();
+
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            let owner = fixture.read(cx);
+            assert_eq!(
+                owner.state.read(cx).selected_value().map(String::as_str),
+                Some("Choice 10")
+            );
+            assert_eq!(owner.confirmed, [Some("Choice 10".into())]);
+            assert!(window.try_find("source-pointer-options-clip").is_none());
+        })
+        .unwrap();
+    }
+
+    #[gpui_kit::test]
+    fn pointer_menu_reveals_selected_rows_on_first_open_reopen_and_replacement(
+        cx: &mut TestAppContext,
+    ) {
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            cx.set_reduce_motion(true);
+        });
+        let mut fixture = None;
+        let handle = cx.open_window(size(px(420.), px(320.)), |window, cx| {
+            let view = cx.new(|cx| SelectFixture::new(window, cx));
+            view.update(cx, |view, cx| {
+                view.pointer = true;
+                view.state.update(cx, |state, cx| {
+                    state.set_selected_value(&"Choice 10".into(), window, cx);
+                });
+            });
+            fixture = Some(view.clone());
+            Root::new(view, window, cx)
+        });
+        let fixture = fixture.unwrap();
+
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            let focused = window.focused(cx);
+            window.click("source-pointer-trigger", cx);
+            assert_pointer_option_in_view(window, "Choice 10");
+            window.click("source-pointer-trigger", cx);
+            assert!(window.try_find("source-pointer-options-clip").is_none());
+            assert_eq!(window.focused(cx), focused);
+            window.click("source-pointer-trigger", cx);
+            assert_pointer_option_in_view(window, "Choice 10");
+            window.click("source-pointer-trigger", cx);
+            assert!(fixture.read(cx).confirmed.is_empty());
+
+            fixture.update(cx, |view, cx| {
+                let replacements = (1..=20)
+                    .map(|index| format!("Replacement {index}"))
+                    .collect::<Vec<_>>();
+                let items = replacements.iter().map(String::as_str).collect::<Vec<_>>();
+                view.set_options(&items, "Replacement 20", window, cx);
+            });
+            window.render_frame(cx);
+            window.click("source-pointer-trigger", cx);
+            assert_pointer_option_in_view(window, "Replacement 20");
+            assert!(window.try_find("source-pointer-option-Choice 10").is_none());
+            let viewport = window.find("source-pointer-options-clip").bounds();
+            assert!(
+                window
+                    .find("source-pointer-option-Replacement 1")
+                    .bounds()
+                    .top()
+                    < viewport.top()
+            );
+            assert_eq!(window.focused(cx), focused);
+            window.click("source-pointer-option-Replacement 20", cx);
+        })
+        .unwrap();
+        cx.run_until_parked();
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            assert_eq!(fixture.read(cx).confirmed, [Some("Replacement 20".into())]);
+            assert!(window.try_find("source-pointer-options-clip").is_none());
+            window.click("source-pointer-trigger", cx);
+            assert_pointer_option_in_view(window, "Replacement 20");
+        })
+        .unwrap();
+
+        VisualTestContext::from_window(handle.into(), cx).deactivate_window();
+        cx.run_until_parked();
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            assert!(window.try_find("source-pointer-options-clip").is_none());
+            let owner = fixture.read(cx);
+            assert_eq!(
+                owner.state.read(cx).selected_value().map(String::as_str),
+                Some("Replacement 20")
+            );
+            assert_eq!(owner.confirmed, [Some("Replacement 20".into())]);
+        })
+        .unwrap();
     }
 
     #[gpui_kit::test]

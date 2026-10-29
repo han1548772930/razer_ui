@@ -1,4 +1,5 @@
 use super::*;
+use crate::feature_exchange::tests::ExchangeProbe;
 use std::{
     cell::{Cell, RefCell},
     collections::VecDeque,
@@ -260,28 +261,55 @@ fn invalid_transaction_and_presend_cancel_are_unattempted() {
         .apply(3, 1000, true, || Ok(31), || Ok(()))
         .expect_err("invalid transaction");
     assert!(!failure.device_state_may_have_changed());
-    let calls = Cell::new(0);
+    let canceled = Cell::new(false);
     let failure = api
-        .apply(3, 1000, true, txs(), || {
-            calls.set(calls.get() + 1);
-            anyhow::ensure!(calls.get() != 2, "cancel before OUT");
-            Ok(())
-        })
+        .apply(
+            3,
+            1000,
+            true,
+            || {
+                canceled.set(true);
+                Ok(1)
+            },
+            || {
+                anyhow::ensure!(!canceled.get(), "cancel before OUT");
+                Ok(())
+            },
+        )
         .expect_err("cancel before send");
     assert_eq!(failure.phase, ProfilePollingFailurePhase::Cancelled);
     assert!(!failure.device_state_may_have_changed());
     transport.finish();
 }
 #[test]
+fn finish_failure_retains_the_actual_ack_without_source_completion_or_readback() {
+    let transport = Transport::new([send(SET, &[3, 1], 1), get(SET, &[9], 1)]);
+    let cap = cap(170);
+    let device = ExchangeProbe::failing_finish(&transport);
+    let failure = MouseProfilePolling::new(&device, &cap)
+        .unwrap()
+        .apply(3, 1000, true, txs(), || Ok(()))
+        .unwrap_err();
+    assert_eq!(failure.phase, ProfilePollingFailurePhase::Write);
+    assert!(failure.progress.acknowledgment_received);
+    assert_eq!(failure.progress.acknowledgment_data, [9]);
+    assert!(!failure.progress.source_completed);
+    assert!(failure.progress.observed.is_none());
+    assert!(!failure.progress.verified());
+    transport.finish();
+}
+
+#[test]
 fn cancellation_after_ack_preserves_ack_and_stops_get() {
     let transport = Transport::new([send(SET, &[3, 1], 1), get(SET, &[], 1)]);
     let cap = cap(170);
-    let calls = Cell::new(0);
-    let failure = MouseProfilePolling::new(&transport, &cap)
+    let canceled = Cell::new(false);
+    let after_ack = || canceled.set(true);
+    let device = ExchangeProbe::with_on_finish(&transport, &after_ack);
+    let failure = MouseProfilePolling::new(&device, &cap)
         .unwrap()
         .apply(3, 1000, true, txs(), || {
-            calls.set(calls.get() + 1);
-            anyhow::ensure!(calls.get() != 6, "cancel after ACK");
+            anyhow::ensure!(!canceled.get(), "cancel after ACK");
             Ok(())
         })
         .expect_err("cancel after ACK");

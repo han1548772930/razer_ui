@@ -1,4 +1,5 @@
 use super::*;
+use crate::feature_exchange::tests::ExchangeProbe;
 use std::{
     cell::{Cell, RefCell},
     collections::VecDeque,
@@ -682,22 +683,52 @@ fn failed_mode_write_stops_custom_chunks_and_keeps_completed_state_ack() {
 }
 
 #[test]
+fn finish_failure_keeps_the_current_ack_and_stops_the_remaining_sensor_commands() {
+    let device = Device::new([
+        outgoing([2, 11, 16], &[1, 1], 1),
+        incoming([2, 11, 16], &[7, 8], 1),
+    ]);
+    let leased = ExchangeProbe::failing_finish(&device);
+    let change = dynamic(true, AccelerationMode::Natural, vec![]);
+    let failure = apply(
+        &leased,
+        &cap(),
+        &change,
+        transactions(),
+        || Ok(()),
+        |_| Ok(()),
+    )
+    .unwrap_err();
+    assert_eq!(failure.phase, SensorFailurePhase::Write);
+    assert_eq!(failure.report.attempted_writes, 1);
+    assert_eq!(failure.report.acknowledgements.len(), 1);
+    assert_eq!(failure.report.acknowledgements[0].data, [7, 8]);
+    validate_setter_report(&change, &failure.report, true).unwrap();
+    assert!(failure.error.to_string().contains("release failed"));
+    assert_eq!((device.sent.get(), device.received.get()), (1, 1));
+    device.done();
+}
+
+#[test]
 fn cancellation_after_ack_or_during_reply_does_not_start_mode_or_getter() {
     for cancel_in_reply in [false, true] {
         let device = Device::new([
             outgoing([2, 11, 16], &[1, 1], 1),
             incoming([2, 11, 16], &[], 1),
         ]);
-        let validations = Cell::new(0);
+        let canceled = Cell::new(false);
+        let after_ack = || canceled.set(true);
+        let leased = ExchangeProbe::with_on_finish(&device, &after_ack);
         let failure = apply(
-            &device,
+            &leased,
             &cap(),
             &dynamic(true, AccelerationMode::Natural, vec![]),
             transactions(),
             || {
-                let i = validations.get() + 1;
-                validations.set(i);
-                ensure!(i < if cancel_in_reply { 5 } else { 6 }, "canceled");
+                ensure!(
+                    !canceled.get() && (!cancel_in_reply || device.received.get() == 0),
+                    "canceled"
+                );
                 Ok(())
             },
             |_| Ok(()),

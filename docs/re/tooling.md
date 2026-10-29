@@ -54,9 +54,9 @@ python tools/workspace.py validate-rust --suite current-dpi-protocol --suite cur
 
 普通 Rust 验证先以 AST 解析模块和字面量 item `include!`，保留实际源码、模块名、导入及局部窗口调用依赖，再筛选测试；被包含文件中的窗口用例同样在执行 Cargo 前拒绝。范围收据记录 `selected_tests`、来源数量和 `unresolved_includes`。动态路径、表达式 include、其他宏展开、类型解析和 cfg 求值仍受限，不将未解析项称为完整验证；实际执行数量与静态枚举分别核对。Matcher 的 8 项漏选测试已接回，当前页面套件实际执行与枚举均为 18 项。
 
-官方 DLL 对照维护器使用 Windows x64 Python 标准库 `ctypes`、`unittest` 和项目内 PE 检查模块；不执行 JavaScript／N-API 初始化。其纯测试使用 `python -m unittest discover -s tools -p test_native_runtime.py`，不加载真实官方 DLL 或打开设备。实际功能对照使用 `compare-local-service-version`、`compare-local-app-files`、`compare-local-lighting`、`validate-connected-devices` 与 `compare-connected-hid` 的已核实分支；新增功能须补齐对应入口和收据，不能由现有 HID 重放替代业务比较。
+官方 DLL 对照维护器使用 Windows x64 Python 标准库 ctypes、unittest 和项目内 PE 检查模块；不执行 JavaScript／N-API 初始化。纯测试通过统一 verify-analysis-tools 的输入快照与收据所有者执行；定向套件复用 test_evidence.run_verified_suite，并由 verification_environment 持有临时目录，不加载真实官方 DLL 或打开设备。实际功能对照使用 compare-local-service-version、compare-local-app-files、compare-local-lighting、validate-connected-devices 与 compare-connected-hid 的已核实分支；新增功能须补齐对应入口和收据，不能由现有 HID 重放替代业务比较。
 
-`compare-local-lighting` 核对当前官方声明、原件 SHA／PE／ABI、110 个完整函数与 14 个 vtable 原字节后，以隔离进程执行公开 JSON 接口的固定软件场景。系统依赖限定并核实 System32，目标模块与 callback 保留到进程退出；停止和销毁失败、超时、取消及真实进程等待均保留。当前已实际比较 Static 与静止 Wheel 的九像素输出，独立 Rust 前后快照一致且与原版逐值相同；Fade、动态效果、其他参数、物理设备和应用窗口不在该结果范围。唯一[灯光对照收据](../../.analysis/results/lighting-runtime-comparison.json)保留每次尝试、完整输入身份、原始调用与结果、差异及清理，不丢弃失败记录。
+compare-local-lighting 将已核实的原件 SHA／PE／ABI、110 个完整函数与 14 个 vtable 原字节绑定到 4.0.896 发布获取收据、完整资源声明及实际 metadata_files。稳定 latest 选择来自 10/29 的双采样部署审计和获取结束时的六端点复核；对照本身不联网，不把保留审计日期写成本次在线最新性。当前[灯光对照收据](../../.analysis/results/lighting-runtime-comparison.json)追加的 attempt 2（共三次，前两次完整保留）已实际执行公开 JSON 软件接口：Static 与静止 Wheel 各九像素逐值相同，1,839 项 Rust／工具输入固定，Rust 前后快照一致。三个隔离进程均正常退出并确认等待，无超时或清理错误；两场景 disable、销毁 engine/device、terminate、停止 timer 和注销 callback 均完成。11 项直接／动态系统依赖及 37 项已加载模块闭包按 System32 核验；module、callback 和已核实的 COM／MF 所有者保留到隔离进程退出。Fade、动态时序、其他参数、物理设备、窗口和原生调用中取消仍未验证；该局部实际一致不代表整个灯光功能完成。
 
 该入口也将来源校验失败和父进程取消追加到同一收据，取消先完成子进程等待并保留已取得的输出，再向调用方传播。输入身份覆盖工作区 Cargo／工具链配置；三次运行共用冻结环境副本，编译参数与 wrapper 环境只保留存在性、长度及 SHA，结束后复核，避免公开配置值。
 
@@ -111,11 +111,15 @@ Windows x64 的模糊目标构建还需匹配的 MSVC AddressSanitizer 运行库
 
 服务目录只快照 DLL／EXE／NODE 和明确的 `.deps.json`／`.runtimeconfig.json`。日志、数据库、运行配置和活动数据在读文件前排除。产品本地存储仍通过代码、部署清单、模拟数据完整分析，不将用户活动记录当实现证据。
 
-[官方 host 获取](../../.analysis/inputs/host-current/acquisition.json) 本轮取得 36 个文件；六个部署元数据端点前后实际摘要一致，Synapse／Chroma 稳定部署为 4.0.827。主包长度、MD5 和声明逐项核对，但 `host_package_closure_complete` 仍为 false。
+[当前官方 host 获取](../../.analysis/inputs/host-current/releases/4.0.896/acquisition.json)确认稳定版 4.0.896。28 项声明中下载 8 项、299,532,120 字节，核验复用 20 项、34,850,073 字节，六个端点前后稳定。[版本范围提取](../../.analysis/results/host-current/releases/4.0.896/inspection.json)完成 15 个容器并正式索引，无当前失败；4 个普通 PE 保持 `extracted=false`，不作为归档载荷完成。
 
-官方包静态解包原件与本机主 EXE、ASAR、mapping_engine.dll、simple_service.dll、HID.node 实际 SHA 一致。ASAR 为 `b2ce8c54dc5c991feef3a24e1880ced57ba88a0f40a687a5b082187ac0a1cca6`，静态提取 10,076 个文件，0 个提取未解项；这不消除源码图、外部资源或 ABI 未解项。
+[当前 ASAR 捕获](../../.analysis/results/host-current/asar/e7a524aca1771251ca4f851441a97cac1c33929891b291ed34deb7adfc1831ec/capture.json)对应 102,875,031 字节原件，完整提取 10,108 个文件、未决为零。六份当前原生捕获合计 16,000 个函数，全部汇编完整；BLE／HID 基础捕获各有 1 个伪代码失败，其原件与数据库保持不变。两份独立私有副本的显式类型补查取得完整伪代码并通过核验，私有副本已按正式清理收据释放。统一 gaps 按六个捕获所有者分别记录语义审计和实现验收 pending；静态捕获、补查成功不等于 Rust 或实际 DLL 功能完成。
 
-[host JavaScript 捕获](../../.analysis/results/host-current/javascript/capture.json) 保留 230 份 JS／CJS 和 693 个恢复产物。106 个引用 source map 未包含在包中；unpack 退出 0、validate 退出 1。原始文件是语义与字节证据，可读文件和合成 import／export 只辅助查询。
+[1422 部署复查](../../.analysis/results/frontend-revalidation/0de5320372280283bc23b259f7d8a33465e08da52447f9012de0d1c90f136cd6.json)记录 entry、asset-manifest、manifest 与共享 manifest.js 四项变化，旧 main 可访问不能证明它仍是当前挂载。[当前 1422 快照](../../.analysis/inputs/frontend/audio-1422-snapshot-ed4fa81d/acquisition.json)请求 534 项，取得 503 项、失败 31 项，保留 37 个未决引用；双采样稳定且获取期间来源当前，部署原件无失败。语义、实际挂载与完整依赖闭包继续逐项核对，不能从获取稳定推定已完成。
+
+已安装输入快照及其对应官方包的静态解包原件，与该快照中的主 EXE、ASAR、mapping_engine.dll、simple_service.dll、HID.node 实际 SHA 一致。该快照 ASAR 为 `b2ce8c54dc5c991feef3a24e1880ced57ba88a0f40a687a5b082187ac0a1cca6`，静态提取 10,076 个文件，0 个提取未解项；字节与提取核验仅适用于这份已安装输入快照，源码图、外部资源与 ABI 仍有未解项。4.0.896 的当前 `e7a524aca177…` 捕获按前述独立收据记录。
+
+[已安装输入快照对应的 host JavaScript 捕获](../../.analysis/results/host-current/javascript/capture.json)适用于上述 `b2ce8c54dc5c…` ASAR 及其对应官方包，保留 230 份 JS／CJS 和 693 个恢复产物。106 个引用 source map 未包含在包中；unpack 退出 0、validate 退出 1。原始文件是该快照的语义与字节证据，可读文件和合成 import／export 只辅助查询；当前 4.0.896 `e7a524aca177…` 的 JavaScript 语义和依赖闭包按其自身输入另行验收。
 
 `audit-host-local --query macro-recorder` 从当前 PID192／756 middleware、Macro 和 background-manager 原件保留完整 AST owners 与真实 UTF-8 byte 区间，并复核四套既有 Wakaru 捕获的全部原件、产物和分析器字节。完整捕获中的 validate 非零结果与获取缺失不升级为成功；统一 [local host 查询](../../.analysis/results/host-current/local-audit.json) 保留软件录制与 OTFM 写入／移除、PID756 非独占预触发与全局广播、background OTFM 全局锁与完整状态机、An 初始扫描与 q 事件字段差异、接收器缓存最后匹配、serialNumber 筛选及当前功能注入配置。JSON 记录不会补造 getHWModule；原生 transport、完整页面与真实运行验收仍未闭合。
 
@@ -503,6 +507,20 @@ Supplement 接收先验证整份计划、会话、完整输出、原件字节、
 
 统一 `verify-analysis-tools` 在加载测试套件前及执行结束后分别计算工具与测试输入的实际字节、长度和 SHA，收据保留两份快照及差异。输入变化或消失、零项执行、全部跳过及执行中断均不能发布通过；中断仍写入失败事实并向调用方传播。此检查的时间边界是测试套件加载前至执行结束，不提供实际 DLL、设备或窗口验收。
 
+host 获取与提取候选此前执行的 19 项定向纯测试及其完整输入快照继续保留，不能与新范围相加。当前灯光对照工具定向执行 LightingComparisonTests 共 22 项，失败、错误、跳过均为零，工具与测试输入前后稳定，所属临时目录已释放。新增反例核对当前发布实际字节、双采样缺失、来源错误、声明变化、同 SHA 但 latest 指向另一个 manifest，以及取消、失败和清理；该纯测试收据不代替另行实际执行的 DLL 对照。
+
+validate-rust 分别登记 BLE 当前 DPI、Protocol30 分片与发现清理、SystemMonitor、Seiren、接收器独占、关闭错误收据和下拉位置纯测试；过滤后必须实际执行非零测试，窗口测试仅编译。当前工作区全目标检查及 Protocol30 37 项模拟服务测试通过，1,833 项 Rust 输入保持一致；新增六项覆盖设备获取前的异步所有权。旧 31 项、包含 BLE26 的 81 项及失败批次保留各自完整收据和原始日志，不与 37 相加。warning-lines 包含编译汇总，不等于互不重复的警告数量。BLE 的实际 DLL、设备与窗口验收仍未验证；软件灯光的实际对照另按自己的局部范围记录。
+
+Protocol30 写入在全部分片 dispatch 后开始 500ms 响应预算；write、CCCD enable 及 Connection 内两条 discovery operation 的取消、终态与 Close 分开处理。Connection 先取得真实生命周期所有权，再启动 FromBluetoothAddressAsync；DeviceAcquisition 保留 typed operation、result_observed 和 sticky cleanup 状态，完成操作 Close 后才交给正常初始化。Close 失败保留已观测结果，不重复 GetResults；超时或取消后的 late Completed 只读取结果、收束 operation.Close 并释放结果，不注册 handler、初始化或发布新连接。Status、Cancel、GetResults、Close 的清理错误阻止同容器重连；retained registry 和后台关闭继续持有未终态操作。官方 Connect0x3e540／Completed0x3eb00 只在 AsyncStatus::Completed 时读取结果；Disconnect0x26e00 注销事件后由 0x2200 执行 IUnknown::Release，不能将其记作物理断开或 IAsyncInfo::Close。operation.Close、结果 IUnknown::Release 及父资源 Close 各自保留契约，未增加逐项 service.Close 或 late device.Close。
+
+USB 间隔依据当前主机 UsbRzDeviceAction 与 10/29 的 PID190 middleware、chunk6120；两份双采样复核收据分别覆盖部署根／UI 和显式 chunk，必需原件未变，可选 asset-manifest 缺失另行保留。PID191 是 PID190 的 dongle 分支。首次或充分空闲的 collection 无需固定再等 5ms，每次请求第六参数的 sleepTimeBetweenOut 覆盖值保留，包括显式零值。只有显式 release 且 sender URL 匹配才更新时间；tabDestroyed、timeout 和 batch finally 不更新。batch finally 只有 URL 匹配才释放，不匹配仅警告并保留锁。普通 Send／Get 和整个 Batch 正常返回才更新时间，异常返回不更新时间。batch 的 2ms OUT 间隔位于整个 native batch 调用之前，不能逐报告重复加入。主机 send 的 native 异常与 middleware IPC 异常会被各自 helper 吞为 undefined，不能孤立依据 sendCommand 外层 catch 将这些分支改为立即退出。共享 broker、精确拓扑、连接代次、原生 actor 和全部传输消费者的实现与纯／模拟验证分别登记；跨进程运行、原生 batch 内部语义、完整 sender 身份及实际 DLL／设备时序对照仍未验证。
+
+SystemMonitor 的当前 Hanbo 默认链遵循 Common 建立 Timer2 → Register 建立独立 Timer1 → Timer2 请求 → Service 首次 Initialize → GetAllHardwareInfo → 收帧 → 满足订阅门限后发布，并保留各时间锚。原生建窗存在异步调度边界，静态顺序和模拟结果不证明 OS 相位一致；多订阅较短共享周期与显式 interval setter 分支仍未实现。
+
+`audit-runtime-resources` 的 Current DPI／Matcher 检查覆盖其实际页面、Shell、协议、IPC、发现与服务所有者，公共页面入口仅检查所属组合函数，避免把无关功能算入此范围。规则检查 UI I/O、任务保留与清理、连接／配置身份及官方业务 DLL 加载入口；合法的系统 API、本地主机配置路径和独立通信 worker 不因此被禁止。Matcher scope 保留检查按 AST 参数顺序核对领域、页面与归一化代次及 guard，允许 rustfmt 尾逗号。该静态范围不代表全工作区厂商加载器已清零，也不提供完整类型或宏展开证明。
+
+模块服务图像检查从当前 deployment manifest 选择唯一 JS／CSS，通过完整 AST 核对主 runtime 的 chunk 名、公有路径、main → App → lazy6505／factory44442 挂载链，再沿实际 default export 与图像消费者验证样式和 fallback。历史 chunk 不在当前声明中时直接失败，不以保留文件的存在证明当前性。该检查已通过当前声明的 `6505.98da235d.chunk.js`，资源审计的其他闭包项仍须按自身收据验收。
+
 `refresh-gaps --owner <项目相对收据路径>` 可重复指定语义报告及 `native/<sha>/capture.json`，在同一有界批次重算选定所有者；省略参数仍执行原全量流程。两条路径共用缺项分类规则，保留分析器失败、未决链与实现／验收边界。发布前重读选定来源的实际字节；来源变化、路径逃逸、非规范路径或不适用的所有者均拒绝发布，其他所有者保持原样。当前来源身份记录在 `gaps.json` 的 `selected_refresh`，避免补查一个共享链就重扫整份语料。
 
 `extract-embedded-inputs --pe-review "项目相对收据.json#/指针"` 只提取显式审阅的完整 PE 文件范围，不扫描 MZ 命中来猜文件边界。指针选择单组或多组 `schema_version: 1`、`source_input` 和 `ranges`；每个范围提供安全文件名、精确 offset/bytes/SHA-256、machine、边界依据和证据文件身份。入口先核全部组的当前父输入索引、实际原件／证据字节和目标冲突，再核 DOS/PE 头、段、目录、证书及完整文件长度，全部通过后才登记子原件。IA64 函数描述符与零长度 GlobalPtr 具有单独的解析语义。原审阅字节和被更新的提取报告均按内容哈希保留引用，原失败不会因改用正确子架构而删除。独立子捕获继续使用 `capture-native`；分析器不具备相应处理器／反编译器时保留未验证，不加载驱动或执行安装链。
@@ -514,6 +532,12 @@ Supplement 接收先验证整份计划、会话、完整输出、原件字节、
 首批共核对 529 个候选，删除 526 个文件、26,397,115 字节（约 25.17 MiB），3 个候选因现有引用保留，保护检查无错误；删除后逐项确认均不存在，8,933 个原有受保护文件及输入／corpus 索引均仍在。清单在当前队列最终发布后合并至统一收据的 `scratch_cleanup`，合并前暂存于受保护的当前运行目录。`test_scratch_cleanup.py` 的 13 项测试中，11 项通过；2 项真实 symlink 创建因本机权限跳过，另有无需该权限的链接拒绝、目录逃逸及真实独占占用反例。`--stale` 保持上述有限范围。
 
 每轮逆向必须按 [AGENTS.md 第 7.1 节](../../AGENTS.md#71-每轮逆向的清理与体积控制必做) 收尾。默认 `python -X utf8 tools/workspace.py clean` 或显式 `--dry-run` 仅生成 `.analysis/results/scratch-cleanup-<UTC时间>-plan.json`，不再清空 `.work`。计划使用保留名称并独占创建，已有计划和 apply 收据不得覆盖。完成证据充分、无后续依赖的 supplement 私有副本和旧资源克隆由计划逐项列出；原始 batch 数据库、活跃／预留任务、当前 verification checkout 及正式引用保留。执行使用 `clean --apply <计划相对路径> --plan-sha256 <实际计划SHA>`，先获取队列与资源写入锁，再重新核对完整引用、预留、完成收据、实际文件身份、路径和占用；首次删除前持久化完整计划范围和身份。实际删除与失败记入统一收据；清理计划不代表已释放空间。
+
+旧上传克隆的清理还核对当前资源 lock、真实校验器、完整发布或固定版本只读预检收据、HEAD／refs、index／tree／worktree、LFS 实际对象与 Git 元数据；存在未发布对象、额外引用、未知文件或重建依据不足时保留。apply 在计划中的目录和文件句柄仍持有时，最后重新枚举完整树、核对目录和文件身份并盘点活动进程；任何外部 Git／Git LFS／Git remote 进程，包括相对工作目录命令，均会阻止上传克隆删除。新增锁、资源或传输文件会在首次删除前拒绝并写失败收据。最终重扫与进程盘点不等于原子禁止所有子项创建，目录句柄本身不提供这种保证。
+
+验证命令由 `verification_environment` 在启动前登记 `target/verification-temp` 子目录的实际身份、创建者 PID 与 OS 创建时间，并持有独立账本锁；`TEMP`／`TMP`／`TMPDIR` 仅指向该命令拥有的目录。正常、失败和取消路径均由创建者释放自己的目录及其中测试文件。进程意外退出后，统一 `clean` 只回收身份仍匹配、创建进程已确认退出的已登记空目录；apply 再核账本、引用、活动及子进程清单和 Windows 独占句柄。未登记、非空、被替换或进程状态未知的目录继续保留，不递归猜测删除。
+
+本轮[清理计划](../../.analysis/results/scratch-cleanup-20261030-ble-open-plan.json)与 [apply 收据](../../.analysis/results/scratch-cleanup-20261030-ble-open-plan-applied.json)均已核实：零候选、零删除、零新增释放，189 项保留，保护检查无错误。临时所有权账本的 57 项全部 released，登记路径均不存在，临时根目录为空；上轮释放的 302,739,266 字节只保留为历史事实。本轮 source-organization-plan 仅生成计划，25 个 package／1,755 个 Rust 文件的架构及资源范围检查通过，完整 1,833 项工作区输入与验证收据一致，零移动／改写／未决，未执行 apply。
 
 队列时间边界仅在顶层完成时间有效、协调进程实例已确认退出时释放；未完成、仍存活、身份未知或仅有嵌套旧完成字段时继续保护。capture-batch 的预留同样逐进程核实终态。已结束任务的历史 scratch／argv／command／log 字段可以与真实依赖区分，但 `source_database` 始终参与引用保护。历史 stdout 只有精确 launch／passed 格式与当前完整会话、capture 和实际退出相符时才解除旧日志路径的保护。伪代码明确未完整的现场仍保留；进程退出码为零不足以准许删除未决数据库。
 
@@ -527,4 +551,8 @@ Supplement 接收先验证整份计划、会话、完整输出、原件字节、
 
 既有[实际删除收据](../../.analysis/results/scratch-cleanup-plan-applied.json)确认 475 份已结束 supplement 私有副本和 9 份旧资源克隆全部移除，共 484 组目录、77,069 个文件、29,478,199,202 逻辑字节，失败为零；删除后逐项目录不存在，1,425 份正式完成收据 SHA 及输入索引保持一致，223 份源数据库仍在。[大型文件压缩](../../.analysis/results/storage-compaction-apply.json)与[中型文件压缩](../../.analysis/results/storage-compaction-medium-apply.json)分别处理 152／574 个文件，实际减少磁盘占用 40,930,720,539／11,801,813,522 字节，全部内容 SHA 保持不变。后续计划跳过已压缩文件；`test_analysis_storage.py` 的 16 项测试通过，包含真实 NTFS 压缩、计划与文件变化、占用、链接、收据防覆盖和提前持久化日志。1 MiB 阈值的[小型文件计划](../../.analysis/results/storage-compaction-small.json)仅完成校验，尚未执行，节省量不计入已执行结果。其他仍有依赖或尚缺释放依据的工作副本保持保留。
 
-[当前 Matcher 修复清理收据](../../.analysis/results/scratch-cleanup-20261028T235903174505Z-plan-applied.json)已核对新计划 SHA 并实际 apply，状态完成、失败为零；本次可删候选、实际删除和释放空间均为 0。188 个分析目录继续保留：136 个未完成、失败或未审，24 个身份未知或含链接，2 个缺少完成依据，26 个仍有正式引用或活动任务。验证临时目录已全部释放，未新建分析数据库、克隆或逐问题脚本；此前已删除或压缩的空间不重复计入本次结果。
+[当前资源克隆删除收据](../../.analysis/results/scratch-cleanup-20261029T175624886699Z-plan-applied.json)确认旧上传克隆已不存在，实际释放 146,659,798 字节。[原生补查清理收据](../../.analysis/results/scratch-cleanup-20261030-host896-plan-applied.json)确认两份结束的私有副本、6 个文件已删除，实际释放 22,050,521 字节，失败为零；六份基础数据库及真实 `source_database` 保留。
+
+[四份 strings 压缩](../../.analysis/results/storage-compaction-20261030-host896-apply.json)与[两份 bindings 压缩](../../.analysis/results/storage-compaction-20261030-host896-bindings-apply.json)保留 218,332,819 逻辑字节、原路径与 SHA，实际释放 134,028,947 字节。该组删除与压缩合计实际释放 **302,739,266 字节**，仅计资源克隆删除、host896 原生补查清理及上述两份压缩正式 apply 收据。
+
+对应主机 4.0.896 获取与补查收尾的[历史清理计划](../../.analysis/results/scratch-cleanup-20261030-host896-plan.json)中，189 条保留记录均有明确原因：136 条未完成、失败或未审；26 条未知或同步锁文件；2 条缺少完成依据；2 条上传重建未获证明；23 条仍有引用或活动依赖。两个 1 字节 `.reservation.lock` 是 `index_lock` 的稳定同步入口，OS 锁在 `finally` 释放并关闭句柄，文件按设计保留，文件存在不代表在途任务。

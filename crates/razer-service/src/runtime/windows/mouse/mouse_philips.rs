@@ -49,7 +49,11 @@ impl MeasurementConnection {
                 .context("Philips HID instance missing")?
                 .into(),
             _lock: lock,
-            device: hid_transport::open(&target.path, cap.report_bytes)?,
+            device: hid_transport::open_validated(
+                &target.path,
+                cap.report_bytes,
+                std::rc::Rc::new(&validate),
+            )?,
         };
         let initialization_error = razer_device::mouse_legacy_polling::initialize_driver_mode(
             &connection.device,
@@ -132,7 +136,8 @@ pub(super) fn request(
         before["feature_report_bytes"] == cap.report_bytes,
         "Philips calibration Feature length differs"
     );
-    let device = hid_transport::open(&target.path, cap.report_bytes)?;
+    let device =
+        hid_transport::open_validated(&target.path, cap.report_bytes, std::rc::Rc::new(&validate))?;
     Ok(philips::submit(
         &device,
         cap,

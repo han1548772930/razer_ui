@@ -173,16 +173,24 @@ pub fn apply_polling(
     // setupDevice awaits Y but does not treat its caught communication error
     // as an initialization success or a fatal polling error.
     if let Err(error) = initialize_driver_mode(device, cap, &mut next_transaction, &validate) {
+        if crate::backend::exchange_finalization_failed(&error) {
+            return Err(error);
+        }
         eprintln!("Legacy mouse driver-mode initialization failed: {error:#}");
     }
     validate()?;
     let previous =
-        crate::device_query::read_device(device, cap, getter, next_transaction()?, &validate)
-            .map_err(|error| {
+        match crate::device_query::read_device(device, cap, getter, next_transaction()?, &validate)
+        {
+            Ok(previous) => Some(previous),
+            Err(error) => {
+                if crate::backend::exchange_finalization_failed(&error) {
+                    return Err(error);
+                }
                 eprintln!("Legacy polling initial getter failed: {error:#}");
-                error
-            })
-            .ok();
+                None
+            }
+        };
     validate()?;
     // Source be catches getter failures and returns a comparison sentinel 0.
     // Keep the missing observation explicit while preserving the subsequent SET.
@@ -200,30 +208,53 @@ pub fn apply_polling(
             verified: true,
         });
     }
-    validate()?;
-    crate::feature_exchange::exchange(
-        device,
-        cap,
-        setter.command,
-        &setter.payload,
-        next_transaction()?,
-        &validate,
-    )
-    .context("Legacy polling write was not acknowledged; device state may have changed")?;
-    validate()?;
-    let observed =
-        crate::device_query::read_device(device, cap, getter, next_transaction()?, &validate)
-            .context("Legacy polling write acknowledged, but readback failed")?;
-    validate()?;
-    ensure!(
-        setting.matches_value(&observed),
-        "Legacy polling readback differs from the requested rate"
-    );
-    Ok(DeviceWriteResult {
+    let mut progress = crate::device_writes::DeviceWriteFailure {
         requested: setting,
         previous,
-        observed: Some(observed),
         acknowledged: None,
+        setter_reply: None,
+        observed: None,
+    };
+    let result = (|| -> Result<()> {
+        validate()?;
+        let response = crate::feature_exchange::exchange(
+            device,
+            cap,
+            setter.command,
+            &setter.payload,
+            next_transaction()?,
+            &validate,
+        );
+        if let Some(data) = crate::feature_exchange::acknowledged_reply(&response) {
+            progress.acknowledged = Some(crate::device_writes::DeviceWriteAck {
+                command: setter.command,
+                data: data.to_vec(),
+            });
+        }
+        response
+            .context("Legacy polling write was not acknowledged; device state may have changed")?;
+        validate()?;
+        let observed =
+            crate::device_query::read_device(device, cap, getter, next_transaction()?, &validate)
+                .context("Legacy polling write acknowledged, but readback failed")?;
+        let matches = progress.requested.matches_value(&observed);
+        progress.observed = Some(observed);
+        validate()?;
+        ensure!(
+            matches,
+            "Legacy polling readback differs from the requested rate"
+        );
+        Ok(())
+    })();
+    if let Err(error) = result {
+        let message = error.to_string();
+        return Err(error.context(progress).context(message));
+    }
+    Ok(DeviceWriteResult {
+        requested: progress.requested,
+        previous: progress.previous,
+        observed: progress.observed,
+        acknowledged: progress.acknowledged,
         changed: true,
         verified: true,
     })
@@ -249,27 +280,47 @@ pub fn apply_dpi(
     let setter = crate::device_writes::prepare(write_capability(), &requested)?;
     validate()?;
     if let Err(error) = initialize_driver_mode(device, cap, &mut next_transaction, &validate) {
+        if crate::backend::exchange_finalization_failed(&error) {
+            return Err(error);
+        }
         eprintln!("Legacy mouse driver-mode initialization failed: {error:#}");
     }
     validate()?;
-    let data = crate::feature_exchange::exchange(
-        device,
-        cap,
-        setter.command,
-        &setter.payload,
-        next_transaction()?,
-        &validate,
-    )
-    .context("Legacy DPI setter was not acknowledged; device state may have changed")?;
-    validate()?;
-    Ok(DeviceWriteResult {
+    let mut progress = crate::device_writes::DeviceWriteFailure {
         requested,
         previous: None,
+        acknowledged: None,
+        setter_reply: None,
         observed: None,
-        acknowledged: Some(crate::device_writes::DeviceWriteAck {
-            command: setter.command,
-            data,
-        }),
+    };
+    let result = (|| -> Result<()> {
+        let response = crate::feature_exchange::exchange(
+            device,
+            cap,
+            setter.command,
+            &setter.payload,
+            next_transaction()?,
+            &validate,
+        );
+        if let Some(data) = crate::feature_exchange::acknowledged_reply(&response) {
+            progress.acknowledged = Some(crate::device_writes::DeviceWriteAck {
+                command: setter.command,
+                data: data.to_vec(),
+            });
+        }
+        response
+            .context("Legacy DPI setter was not acknowledged; device state may have changed")?;
+        validate()
+    })();
+    if let Err(error) = result {
+        let message = error.to_string();
+        return Err(error.context(progress).context(message));
+    }
+    Ok(DeviceWriteResult {
+        requested: progress.requested,
+        previous: None,
+        observed: None,
+        acknowledged: progress.acknowledged,
         changed: true,
         verified: false,
     })

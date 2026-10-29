@@ -20,9 +20,20 @@ pub struct Message {
     pub action: String,
     pub payload: Value,
 }
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ExchangeReceipt {
+    pub command: [u8; 3],
+    pub payload: Vec<u8>,
+    pub acknowledgement: Option<Vec<u8>>,
+    pub error: Option<String>,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Report {
     pub messages: Vec<Message>,
+    #[serde(default)]
+    pub exchanges: Vec<ExchangeReceipt>,
     pub verified_top: bool,
     pub completed: bool,
     pub error: Option<String>,
@@ -129,12 +140,22 @@ pub fn execute(
     capability(cap.product_id)?;
     let mut report = Report {
         messages: vec![],
+        exchanges: vec![],
         verified_top: false,
         completed: false,
         error: None,
     };
     let mut send = |command, payload: &[u8]| {
-        feature_exchange::exchange(device, cap, command, payload, next()?, validate)
+        let result = next().and_then(|transaction| {
+            feature_exchange::exchange(device, cap, command, payload, transaction, validate)
+        });
+        report.exchanges.push(ExchangeReceipt {
+            command,
+            payload: payload.to_vec(),
+            acknowledgement: feature_exchange::acknowledged_reply(&result).map(<[u8]>::to_vec),
+            error: result.as_ref().err().map(|error| format!("{error:#}")),
+        });
+        result
     };
     let result = (|| -> anyhow::Result<bool> {
         match *operation {

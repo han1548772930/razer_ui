@@ -31,6 +31,19 @@ pub(super) struct Controller {
 }
 
 impl Controller {
+    pub(super) fn shutdown(&mut self) -> anyhow::Result<()> {
+        let Some(mut operation) = self.active.take() else {
+            return Ok(());
+        };
+        operation.canceled.store(true, Ordering::Release);
+        if let Some(worker) = operation.worker.take() {
+            worker
+                .join()
+                .map_err(|_| anyhow::anyhow!("Receiver reconnect cleanup worker panicked"))?;
+        }
+        Ok(())
+    }
+
     pub(super) fn start(
         &mut self,
         id: String,
@@ -208,21 +221,43 @@ impl Adapter for WindowsAdapter {
             .as_u64()
             .and_then(|n| usize::try_from(n).ok())
             .context("重连接口缺少 Feature 长度")?;
-        let device = hid_transport::open(path, bytes)?;
         self.check_owner()?;
-        device.send_feature(report)?;
+        let validate = || {
+            self.check_owner()?;
+            let (after, _) = receiver::select_target(
+                &hid::enumerate_collection(
+                    self.cap.transport.vendor_id,
+                    self.cap.product_id,
+                    path,
+                )?,
+                path,
+                &self.container,
+            )?;
+            ensure!(
+                after["device_instance_id"] == target["device_instance_id"],
+                "重连发送期间设备实例变化"
+            );
+            Ok(())
+        };
+        let device = hid_transport::open_validated(path, bytes, std::rc::Rc::new(&validate))?;
+        let options = razer_device::backend::ExchangeOptions::mutex_out(Duration::from_millis(
+            self.cap.transport.sleep_between_out_ms,
+        ))
+        .with_cancellation(self.canceled.clone());
+        let lease = razer_device::backend::checked_exchange(
+            razer_device::backend::FeatureTransport::begin_exchange_validated(
+                &device,
+                options,
+                std::rc::Rc::new(&validate),
+            )?,
+            &validate,
+            &validate,
+            None,
+        );
+        let result = lease.transport().send_feature(report);
+        razer_device::backend::finish_exchange(lease, result)?;
         // FeatureTransport checks a complete send. Source's host tests >0;
         // its current HID.node returns the original length on API success.
-        self.check_owner()?;
-        let (after, _) = receiver::select_target(
-            &hid::enumerate_collection(self.cap.transport.vendor_id, self.cap.product_id, path)?,
-            path,
-            &self.container,
-        )?;
-        ensure!(
-            after["device_instance_id"] == target["device_instance_id"],
-            "重连发送期间设备实例变化"
-        );
         self.target = Some(target.clone());
         self.handle = Some(device);
         Ok(())

@@ -31,7 +31,8 @@ impl PortableRuntime {
             Self::revalidate(node)
         };
         validate()?;
-        let device = with_backend(|backend| backend.open(node))?;
+        let device =
+            with_backend(|backend| backend.open_validated(node, std::rc::Rc::new(&validate)))?;
         ensure!(
             device.report_lengths()?.feature.get(&0) == Some(&91),
             "Receiver LED Feature size differs"

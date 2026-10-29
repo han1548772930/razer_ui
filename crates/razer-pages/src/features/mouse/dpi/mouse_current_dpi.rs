@@ -220,6 +220,37 @@ mod tests {
         }
     }
 
+    #[::core::prelude::v1::test]
+    fn current_dpi_catalog_226_import_survives_release_and_rejects_new_edits_or_scopes() {
+        let request = read(1, "actual-serial/profile");
+        let mut state = State::default();
+        state.install_connection(request.connection_key.clone(), Some(request.scope));
+        state.pending = Some(request.clone());
+        assert!(state.projection_current(&request));
+        assert!(state.release(&request));
+        assert!(!request.is_valid());
+        assert!(!state.projection_current(&request));
+        assert!(state.catalog_projection_current(&request, Some(request.scope)));
+        state.record_edit();
+        assert!(!state.catalog_projection_current(&request, Some(request.scope)));
+
+        for replacement in [
+            MousePollingScope::new(EntityId::from(9), 2, 3),
+            MousePollingScope::new(EntityId::from(1), 9, 3),
+            MousePollingScope::new(EntityId::from(1), 2, 9),
+        ] {
+            let mut state = State::default();
+            state.install_connection(request.connection_key.clone(), Some(replacement));
+            assert!(!state.catalog_projection_current(&request, Some(replacement)));
+            assert!(!state.catalog_projection_current(&request, Some(request.scope)));
+        }
+        let mut state = State::default();
+        state.install_connection(Some("another-route/profile".into()), Some(request.scope));
+        assert!(!state.catalog_projection_current(&request, Some(request.scope)));
+        state.cancel();
+        assert!(!state.catalog_projection_current(&request, None));
+    }
+
     fn matcher_stage_request(sequence: u64, connection: &str) -> MouseCurrentDpiRequested {
         let mut request = read(sequence, connection);
         request.read = false;
@@ -353,6 +384,83 @@ mod tests {
         owner.enqueue(request.clone());
         owner.confirm_temporary_restore(&request, true);
         assert!(!owner.temporary_restoration.required());
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_outcome_retains_actual_values_and_error_without_confirming_failed_cleanup() {
+        let mut owner = State::default();
+        let mut request = ordinary_stage_request(1, "receiver/profile");
+        request.selection = super::Selection::capture(190, &configured_stages());
+        owner.install_connection(request.connection_key.clone(), Some(request.scope));
+        owner.temporary_restoration.require();
+        request.restoration_ticket = owner.temporary_restoration.ticket();
+        owner.enqueue(request.clone());
+        let actual = super::DpiPair { x: 1800, y: 1900 };
+        let report = serde_json::from_value(serde_json::json!({
+            "requested":request.change(),"stages":null,"stage_level":actual,"active":actual,
+            "acknowledgements":[],"verified":true
+        }))
+        .unwrap();
+        let error = Some("worker shutdown failed");
+        assert!(!owner.finish_outcome(&request, Some(&report), error, true));
+        assert!(owner.temporary_restoration.required());
+        assert!(
+            owner
+                .observe_outcome(&request, Some(&report), error, false)
+                .is_some()
+        );
+        assert_eq!(owner.observed.current, Some(actual));
+        assert_eq!(owner.row_values[2], Some(actual));
+        assert_eq!(owner.read_error.as_deref(), error);
+        assert!(owner.release(&request));
+        assert!(
+            owner
+                .observe_outcome(&request, None, Some("stale error"), false)
+                .is_none()
+        );
+        assert_eq!(owner.observed.current, Some(actual));
+        assert_eq!(owner.read_error.as_deref(), error);
+
+        request.valid = Arc::new(AtomicBool::new(true));
+        request.sequence = 2;
+        owner.enqueue(request.clone());
+        assert!(owner.finish_outcome(&request, Some(&report), None, true));
+        assert!(!owner.temporary_restoration.required());
+        assert!(
+            owner
+                .observe_outcome(&request, Some(&report), None, false)
+                .is_some()
+        );
+        assert!(owner.read_error.is_none());
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_outcome_cleanup_failure_cannot_complete_source_initialization() {
+        for error in [None, Some("worker join failed")] {
+            let mut owner = State::default();
+            let scope = read(1, "physical-route/profile").scope;
+            let stages = configured_stages();
+            let request = owner
+                .initialize_connection(super::ProfileInitialization {
+                    connection_key: Some("physical-route/profile".into()),
+                    scope: Some(scope),
+                    profile_guid: "actual-profile-guid",
+                    selection: super::Selection::capture(182, &stages),
+                    stages: Some(stages),
+                    macro_recording: false,
+                })
+                .unwrap();
+            let report = serde_json::from_value(serde_json::json!({
+                "requested":request.change(),"stages":null,"active":null,
+                "acknowledgements":[],"verified":true
+            }))
+            .unwrap();
+            assert_eq!(
+                owner.finish_outcome(&request, Some(&report), error, true),
+                error.is_none()
+            );
+            assert_eq!(owner.initialization_key.is_some(), error.is_none());
+        }
     }
 
     #[::core::prelude::v1::test]
@@ -1414,9 +1522,21 @@ impl State {
     }
 
     fn projection_current(&self, request: &MouseCurrentDpiRequested) -> bool {
-        self.owns_completion(request)
-            && request.connection_key == self.connection_key
-            && request.edit_revision == self.edit_revision
+        self.owns_completion(request) && self.profile_revision_current(request)
+    }
+
+    fn profile_revision_current(&self, request: &MouseCurrentDpiRequested) -> bool {
+        request.connection_key == self.connection_key && request.edit_revision == self.edit_revision
+    }
+
+    fn catalog_projection_current(
+        &self,
+        request: &MouseCurrentDpiRequested,
+        scope: Option<MousePollingScope>,
+    ) -> bool {
+        scope == Some(request.scope)
+            && self.connection_scope == scope
+            && self.profile_revision_current(request)
     }
 
     fn accept_report(
@@ -1432,6 +1552,54 @@ impl State {
             .join("; ");
         self.read_error = (!errors.is_empty()).then_some(errors);
         self.observe_rows(request, updates)
+    }
+
+    fn finish_outcome(
+        &mut self,
+        request: &MouseCurrentDpiRequested,
+        observed: Option<&DpiReport>,
+        error: Option<&str>,
+        current: bool,
+    ) -> bool {
+        let verified = current && error.is_none() && observed.is_some_and(|report| report.verified);
+        self.finish_initialization(request, verified);
+        self.confirm_temporary_restore(request, verified);
+        verified
+    }
+
+    fn observe_outcome(
+        &mut self,
+        request: &MouseCurrentDpiRequested,
+        observed: Option<&DpiReport>,
+        error: Option<&str>,
+        temporary_clutch: bool,
+    ) -> Option<[RowUpdate; 5]> {
+        if !request.is_valid() || !self.owns_completion(request) {
+            return None;
+        }
+        let updates = if let Some(report) = observed {
+            self.accept_report(request, report)
+        } else if error.is_some() {
+            self.observed = Observation::default();
+            if temporary_clutch {
+                None
+            } else {
+                self.observe_rows(request, [RowUpdate::Unobserved; 5])
+            }
+        } else {
+            None
+        };
+        if let Some(error) = error {
+            match &mut self.read_error {
+                Some(existing) if existing.as_str() != error => {
+                    existing.push_str("; ");
+                    existing.push_str(error);
+                }
+                Some(_) => {}
+                None => self.read_error = Some(error.to_owned()),
+            }
+        }
+        updates
     }
 
     fn observe_rows(
@@ -1852,6 +2020,24 @@ impl MouseProductWorkspace {
         self.current_dpi_request_matches(request, cx)
             && self.current_dpi.projection_current(request)
     }
+    /// A catalog is imported after its worker has released the request. Scope,
+    /// route and edit revision remain authoritative after that release.
+    pub(crate) fn current_dpi_profile_projection_matches(
+        &self,
+        request: &MouseCurrentDpiRequested,
+        cx: &App,
+    ) -> bool {
+        self.current_dpi
+            .catalog_projection_current(request, self.mouse_polling_scope(cx))
+    }
+    pub(crate) fn set_current_dpi_local_profile_error(
+        &mut self,
+        error: Option<String>,
+        cx: &mut Context<Self>,
+    ) {
+        self.current_dpi.local_profile_error = error;
+        cx.notify();
+    }
     pub fn restore_current_dpi_local_profile(
         &mut self,
         result: Result<Option<DpiStagesDraft>, String>,
@@ -2192,13 +2378,14 @@ impl MouseProductWorkspace {
         observed: Option<DpiReport>,
         cx: &mut Context<Self>,
     ) {
-        self.accept_current_dpi_result(request, Ok(observed), cx);
+        self.finish_current_dpi_outcome(request, observed, None, cx);
     }
 
-    fn accept_current_dpi_result(
+    pub fn finish_current_dpi_outcome(
         &mut self,
         request: &MouseCurrentDpiRequested,
-        result: Result<Option<DpiReport>, String>,
+        observed: Option<DpiReport>,
+        error: Option<String>,
         cx: &mut Context<Self>,
     ) {
         if !self.current_dpi.owns_completion(request) {
@@ -2211,15 +2398,9 @@ impl MouseProductWorkspace {
                 .change
                 .as_ref()
                 .is_some_and(|change| change.active.is_some());
-        let initialized = current
-            && result
-                .as_ref()
-                .ok()
-                .and_then(Option::as_ref)
-                .is_some_and(|report| report.verified);
-        self.current_dpi.finish_initialization(request, initialized);
-        self.current_dpi
-            .confirm_temporary_restore(request, initialized);
+        let initialized =
+            self.current_dpi
+                .finish_outcome(request, observed.as_ref(), error.as_deref(), current);
         if request.cleanup
             && initialized
             && request.restoration_ticket == self.current_dpi.temporary_restoration.ticket()
@@ -2227,35 +2408,22 @@ impl MouseProductWorkspace {
             self.receiver_mapping.finish_dpi_restore();
         }
         if current {
-            match result {
-                Ok(Some(report)) => {
-                    let mut projection = request.clone();
-                    if !temporary_clutch
-                        && (projection.selection.is_none()
-                            || projection.is_read()
-                                && razer_storage::host_local_profile::supported(
-                                    self.spec.product_id,
-                                ))
-                        && self.current_dpi.projection_current(request)
-                    {
-                        projection.selection = self.current_dpi_selection();
-                    }
-                    if let Some(values) = self.current_dpi.accept_report(&projection, &report) {
-                        self.apply_current_dpi_observation(values, cx);
-                    }
-                }
-                Err(error) => {
-                    self.current_dpi.read_error = Some(error);
-                    self.current_dpi.observed = Observation::default();
-                    if !temporary_clutch
-                        && let Some(updates) = self
-                            .current_dpi
-                            .observe_rows(request, [RowUpdate::Unobserved; 5])
-                    {
-                        self.apply_current_dpi_observation(updates, cx);
-                    }
-                }
-                Ok(None) => {}
+            let mut projection = request.clone();
+            if !temporary_clutch
+                && (projection.selection.is_none()
+                    || projection.is_read()
+                        && razer_storage::host_local_profile::supported(self.spec.product_id))
+                && self.current_dpi.projection_current(request)
+            {
+                projection.selection = self.current_dpi_selection();
+            }
+            if let Some(values) = self.current_dpi.observe_outcome(
+                &projection,
+                observed.as_ref(),
+                error.as_deref(),
+                temporary_clutch,
+            ) {
+                self.apply_current_dpi_observation(values, cx);
             }
         }
         self.current_dpi.release(request);
@@ -2263,7 +2431,9 @@ impl MouseProductWorkspace {
         if let Some(next) = self.current_dpi.take_queued(scope) {
             cx.emit(next);
         }
-        self.start_current_dpi_refresh(cx);
+        if error.is_none() {
+            self.start_current_dpi_refresh(cx);
+        }
         cx.notify();
     }
 
@@ -2273,7 +2443,10 @@ impl MouseProductWorkspace {
         result: Result<DpiReport, String>,
         cx: &mut Context<Self>,
     ) {
-        self.accept_current_dpi_result(request, result.map(Some), cx);
+        match result {
+            Ok(report) => self.finish_current_dpi_outcome(request, Some(report), None, cx),
+            Err(error) => self.finish_current_dpi_outcome(request, None, Some(error), cx),
+        }
     }
 
     fn current_dpi_row_has_preview(&self, index: usize, cx: &App) -> bool {

@@ -63,7 +63,8 @@ fn controller_socd_set_encodes_each_option_and_does_not_read_back_or_compare_ack
         for payload in [vec![], vec![255, 254]] {
             let io = Transport::new([reply(2, 0, 27, &payload)]);
             let mut waits = Vec::new();
-            let result = SocdProtocol::new(&io, |wait| {
+            let probe = crate::feature_exchange::tests::ExchangeProbe::new(&io);
+            let result = SocdProtocol::new(&probe, |wait| {
                 waits.push(wait);
                 Ok(())
             })
@@ -79,9 +80,15 @@ fn controller_socd_set_encodes_each_option_and_does_not_read_back_or_compare_ack
             let sent = io.sent.borrow();
             assert_eq!(sent.len(), 1, "The source setter has no following GET");
             assert_eq!(sent[0][0], 10);
+            assert_eq!(
+                probe.timings(),
+                [crate::backend::ExchangeTiming::MutexOut {
+                    interval: Duration::from_millis(30)
+                }]
+            );
             assert_eq!(&sent[0][6..11], &[2, 12, 27, 7, option]);
             assert_eq!(sent[0][89], sent[0][3..89].iter().fold(0, |a, b| a ^ b));
-            assert_eq!(waits, [Duration::from_millis(30); 2]);
+            assert_eq!(waits, [Duration::ZERO, Duration::from_millis(30)]);
         }
     }
 }

@@ -1097,6 +1097,28 @@ def _refresh_gaps():
         derived[rel(host)] = rows
         for scope in ("bootstrap", "metadata"):
             derived[f".analysis/inputs/host-current/{scope}-recheck.json"] = host_recheck_gaps(scope, index)
+    for item in index["inputs"]:
+        if item.get("kind") != "official_host_release_acquisition":
+            continue
+        name = item["path"]
+        release_path = resolve(name, ".analysis/inputs/host-current/releases")
+        raw = release_path.read_bytes()
+        if len(raw) != item["bytes"] or hashlib.sha256(raw).hexdigest() != item["sha256"]:
+            raise ValueError("Host release acquisition differs from its indexed identity: " + name)
+        release = json.loads(raw)
+        rows = [{"kind": "host_acquisition_failure", "evidence": name, **failure}
+                for failure in release.get("failures", [])]
+        if release.get("complete") is not True:
+            rows.append({"kind": "host_release_acquisition_incomplete", "evidence": name,
+                         "version": release.get("version")})
+        if release.get("host_package_closure_complete") is not True:
+            rows.append({"kind": "host_package_closure_pending", "evidence": name,
+                         "version": release.get("version"),
+                         "scope": "Complete host JS/native packages, dependencies, installation and release lifecycle"})
+        rows.append({"kind": "host_release_semantics_and_acceptance_pending", "evidence": name,
+                     "version": release.get("version"),
+                     "scope": "Acquired declaration bytes alone do not establish current source semantics, independent Rust/UI implementation, actual DLL/device comparisons or runtime acceptance"})
+        derived[name] = rows
     managed = ROOT / ".analysis/results/host-current/managed/capture.json"
     if managed.is_file():
         data = json.loads(managed.read_bytes())
@@ -5713,14 +5735,18 @@ def corpus_current_lineage(index, groups, verified_stats=None):
             fail("current_host_bootstrap_unverified", input=bootstrap_name, error=str(exc))
 
     host_name = ".analysis/inputs/host-current/acquisition.json"
-    if (ROOT / host_name).is_file():
+    recheck_name = ".analysis/inputs/host-current/metadata-recheck.json"
+    if (ROOT / host_name).is_file() or (ROOT / recheck_name).is_file():
         try:
-            host = document(host_name)
-            recheck_name = ".analysis/inputs/host-current/metadata-recheck.json"
             current_name = recheck_name if (ROOT / recheck_name).is_file() else host_name
             current = document(current_name)
             if not current.get("finished_at_utc") or current.get("failures"):
                 raise ValueError("Latest host deployment metadata acquisition did not finish successfully")
+            from host import host_release_metadata
+            metadata_context = host_release_metadata(index) if current_name == recheck_name else None
+            if metadata_context is not None:
+                for dependency in metadata_context["verified_dependencies"]:
+                    original(dependency)
             metadata = {}
             from host import OFFICIAL
             for item in current.get("files", []):
@@ -5769,7 +5795,31 @@ def corpus_current_lineage(index, groups, verified_stats=None):
                                          "product": product["name"], "version": product["version"]}
                             for declared in product.get("modules", []):
                                 declarations[declared["download_url"]].append((declared, authority, "md5"))
-            for artifact in host.get("files", []):
+            acquisitions = []
+            if (ROOT / host_name).is_file():
+                acquisitions.append(document(host_name))
+            if current_name == recheck_name:
+                from host import verified_host_release_receipt
+                try:
+                    release = verified_host_release_receipt(index=index, metadata=metadata_context)
+                except FileNotFoundError:
+                    release = None
+                except (KeyError, TypeError, ValueError) as exc:
+                    fail("current_host_release_acquisition_unverified", input=current_name, error=str(exc))
+                    release = None
+                if release is not None:
+                    for dependency in release["verified_dependencies"]:
+                        original(dependency)
+                    identity = release["receipt"]
+                    acquired = document(identity["path"])
+                    if receipts[identity["path"]][0] != identity:
+                        raise ValueError("Host release acquisition changed after its current metadata verification")
+                    metadata_identity = release["metadata_snapshot"]
+                    document(metadata_identity["path"])
+                    if receipts[metadata_identity["path"]][0] != metadata_identity:
+                        raise ValueError("Host release metadata snapshot changed after its declaration verification")
+                    acquisitions.append(acquired)
+            for artifact in (item for acquisition in acquisitions for item in acquisition.get("files", [])):
                 for declared, authority, algorithm in declarations.get(artifact["url"], []):
                     try:
                         actual = original(artifact)
@@ -5810,10 +5860,9 @@ def corpus_current_lineage(index, groups, verified_stats=None):
     pending = deque(reachable)
     queued = set(pending)
     edges, checked_edges = [], {}
-    host_containers = None
+    host_containers = {}
 
     def edge(item):
-        nonlocal host_containers
         child = original(item)
         parent_row = originals.get(item["container"])
         if parent_row is None or parent_row["sha256"] != item["container_sha256"]:
@@ -5839,11 +5888,28 @@ def corpus_current_lineage(index, groups, verified_stats=None):
                 complete = (record.get("extracted") is True and record.get("listing_exit_code") == 0
                             and record.get("extraction_exit_code") == 0 and record.get("input_bytes_unchanged") is True)
             elif kind == "static_extracted_host_input":
-                name = ".analysis/results/host-current/inspection.json"
+                claim = item.get("extraction_receipt")
+                if claim is None:
+                    name = ".analysis/results/host-current/inspection.json"
+                else:
+                    if (not isinstance(claim, dict) or set(claim) != {"path", "bytes", "sha256"}
+                            or not isinstance(claim["path"], str)
+                            or type(claim["bytes"]) is not int or claim["bytes"] < 0
+                            or not isinstance(claim["sha256"], str)
+                            or not re.fullmatch(r"[a-f0-9]{64}", claim["sha256"])):
+                        raise ValueError("Host extraction receipt has no exact retained identity")
+                    name = claim["path"]
+                    resolve(name, ".analysis/results/host-current")
                 inspection = document(name)
-                if host_containers is None:
-                    host_containers = {row["sha256"]: row for row in inspection.get("containers", [])}
-                record = host_containers.get(parent["sha256"], {})
+                if claim is not None and receipts[name][0] != claim:
+                    raise ValueError("Host extraction receipt bytes differ from the retained identity")
+                if name not in host_containers:
+                    containers = inspection.get("containers", [])
+                    by_identity = {row["sha256"]: row for row in containers}
+                    if len(by_identity) != len(containers):
+                        raise ValueError("Host extraction receipt repeats a container identity")
+                    host_containers[name] = by_identity
+                record = host_containers[name].get(parent["sha256"], {})
                 container = record.get("input_record", {})
                 integrity = record.get("retained_archive_integrity", {})
                 static_verified = (record.get("extraction_exit_code") == 0 or

@@ -135,8 +135,39 @@ fn leviathan_bluetooth_reads_source_and_only_writes_on_change() {
 fn leviathan_cancellation_after_input_read_prevents_mutation() {
     let mut device = Simulated::new([(2, vec![0, 4])]);
     device.cancel_after_get = true;
-    assert!(device.execute(Operation::Bluetooth).is_err());
+    let error = device.execute(Operation::Bluetooth).unwrap_err();
+    let progress = &error.downcast_ref::<ExecutionFailure>().unwrap().progress;
+    assert!(progress.acknowledgements.is_empty());
+    assert!(!progress.setter_sent);
+    assert!(progress.previous_input.is_none());
     assert_eq!(device.sent.lock().unwrap().len(), 1);
+}
+
+#[test]
+fn leviathan_valid_ack_survives_finish_failure_and_stops_bluetooth_followup() {
+    for operation in [Operation::Bass(4), Operation::Bluetooth] {
+        let acknowledged = vec![0x51, 4];
+        let device = Simulated::new([(2, acknowledged.clone()), (2, vec![])]);
+        let probe = crate::feature_exchange::tests::ExchangeProbe::failing_finish(&device);
+        let mut cap = transport().clone();
+        cap.sleep_between_out_in_ms = 0;
+        cap.sleep_between_in_ms = 0;
+        let error = execute(&probe, &cap, operation, || Ok(0), || Ok(())).unwrap_err();
+        assert_eq!(
+            error.root_cause().to_string(),
+            "simulated explicit release failed"
+        );
+        let progress = &error.downcast_ref::<ExecutionFailure>().unwrap().progress;
+        assert_eq!(progress.acknowledgements.len(), 1);
+        assert_eq!(progress.acknowledgements[0].data, acknowledged);
+        assert_eq!(
+            progress.setter_sent,
+            matches!(operation, Operation::Bass(_))
+        );
+        assert!(progress.previous_input.is_none());
+        assert_eq!(device.sent.lock().unwrap().len(), 1);
+        assert_eq!(device.replies.lock().unwrap().len(), 1);
+    }
 }
 #[test]
 fn leviathan_bad_ranges_and_truncated_reads_never_fabricate_observations() {

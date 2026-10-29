@@ -1,9 +1,11 @@
 //! DPI requests retain their route, delivery and service cleanup independently
 //! of window lifetime or unrelated discovery refreshes.
 use super::*;
-use razer_device::mouse_current_dpi::DpiReport;
+use razer_device::mouse_current_dpi::{DpiReport, ble::initialization::ObservedSlots};
 use razer_discovery::{direct, discovery::ObservedDevice};
+use razer_pages::features::mouse_polling::MousePollingScope;
 use razer_pages::features::mouse_products::MouseCurrentDpiRequested;
+use razer_storage::host_local_profile::ble226::Catalog;
 use std::sync::{
     Arc,
     atomic::{AtomicUsize, Ordering},
@@ -20,6 +22,96 @@ struct Operation {
     local_profile_baseline: Device,
     window: AnyWindowHandle,
     delivery: Task<()>,
+    ble_generation: Option<u64>,
+}
+
+struct BleConnection {
+    workspace: WeakEntity<ProductWorkspace>,
+    identity: String,
+    route: ObservedDevice,
+    scope: MousePollingScope,
+    generation: u64,
+    slots: Option<ObservedSlots>,
+    pending_catalog: Option<PendingBleCatalog<Catalog>>,
+}
+
+#[derive(Clone)]
+struct PendingBleCatalog<T> {
+    serial: String,
+    catalog: T,
+    baseline: Device,
+    scope: MousePollingScope,
+}
+
+impl<T> PendingBleCatalog<T> {
+    fn matches(&self, device: &Device, scope: MousePollingScope) -> bool {
+        self.scope == scope
+            && (device.serial_number == self.serial
+                || device.serial_number == self.baseline.serial_number)
+            && razer_storage::workspace::ensure_local_profiles_unchanged(device, &self.baseline)
+                .is_ok()
+    }
+}
+
+fn discard_stale_ble_catalog<T>(
+    pending: &mut Option<PendingBleCatalog<T>>,
+    device: &Device,
+    scope: MousePollingScope,
+) {
+    if pending
+        .as_ref()
+        .is_some_and(|catalog| !catalog.matches(device, scope))
+    {
+        *pending = None;
+    }
+}
+
+fn catalog_for_verified_read<'a, T>(
+    pending: &'a mut Option<PendingBleCatalog<T>>,
+    incoming: Option<PendingBleCatalog<T>>,
+    device: &Device,
+    scope: MousePollingScope,
+    is_read: bool,
+    result: &Result<DpiReport, String>,
+) -> Option<&'a PendingBleCatalog<T>> {
+    discard_stale_ble_catalog(pending, device, scope);
+    if pending.is_none()
+        && let Some(incoming) = incoming.filter(|catalog| catalog.matches(device, scope))
+    {
+        *pending = Some(incoming);
+    }
+    // Projection is deferred into the window and has no acceptance receipt.
+    // Retain the original baseline until it changes or the connection retires.
+    if is_read && result.as_ref().is_ok_and(|report| report.verified) {
+        pending.as_ref()
+    } else {
+        None
+    }
+}
+
+fn current_ble_completion(
+    current: bool,
+    generation: u64,
+    scope: MousePollingScope,
+    request_generation: Option<u64>,
+    request_scope: MousePollingScope,
+) -> bool {
+    current && Some(generation) == request_generation && scope.same_device_connection(request_scope)
+}
+
+impl BleConnection {
+    fn matches(&self, shell: &AppShell, observations: &[ObservedDevice], cx: &App) -> bool {
+        let Some(workspace) = self.workspace.upgrade() else {
+            return false;
+        };
+        shell.devices.contains(&workspace)
+            && workspace.read(cx).identity(cx) == self.identity
+            && workspace
+                .read(cx)
+                .mouse_polling_scope(cx)
+                .is_some_and(|scope| self.scope.same_device_connection(scope))
+            && current_route(&self.route, observations, workspace.read(cx).device(cx))
+    }
 }
 
 impl Operation {
@@ -47,6 +139,8 @@ pub(super) struct State {
     next_id: u64,
     accepted: Arc<AtomicUsize>,
     operations: BTreeMap<u64, Operation>,
+    next_connection: u64,
+    ble_connections: BTreeMap<EntityId, BleConnection>,
 }
 
 struct Accepted(Arc<AtomicUsize>);
@@ -82,6 +176,7 @@ impl State {
 
     fn take_for_shutdown(&mut self) -> Vec<Task<()>> {
         self.stopped = true;
+        self.ble_connections.clear();
         std::mem::take(&mut self.operations)
             .into_values()
             .map(|operation| {
@@ -123,6 +218,28 @@ impl AppShell {
                 operation.request.guard().store(false, Ordering::Release);
             }
         }
+        let removed: Vec<_> = self
+            .mouse_dpi
+            .ble_connections
+            .iter()
+            .filter_map(|(owner, connection)| {
+                (!connection.matches(self, observations, cx)).then_some(*owner)
+            })
+            .collect();
+        for owner in removed {
+            self.mouse_dpi.ble_connections.remove(&owner);
+        }
+        for connection in self.mouse_dpi.ble_connections.values_mut() {
+            if let Some(workspace) = connection.workspace.upgrade()
+                && let Some(scope) = workspace.read(cx).mouse_polling_scope(cx)
+            {
+                discard_stale_ble_catalog(
+                    &mut connection.pending_catalog,
+                    workspace.read(cx).device(cx),
+                    scope,
+                );
+            }
+        }
     }
 
     pub(super) fn start_current_dpi_operation(
@@ -145,6 +262,56 @@ impl AppShell {
             return;
         };
         let identity = workspace.read(cx).identity(cx);
+        let ble_plan =
+            if route.transport() == Some(razer_discovery::discovery::ObservedTransport::Ble) {
+                let owner_id = workspace.entity_id();
+                let connection_matches =
+                    self.mouse_dpi
+                        .ble_connections
+                        .get(&owner_id)
+                        .is_some_and(|connection| {
+                            connection.matches(self, &self.device_observations, cx)
+                                && connection.scope.same_device_connection(request.scope())
+                        });
+                if !connection_matches {
+                    self.mouse_dpi.next_connection = self
+                        .mouse_dpi
+                        .next_connection
+                        .checked_add(1)
+                        .expect("DPI connection generation exhausted");
+                    self.mouse_dpi.ble_connections.insert(
+                        owner_id,
+                        BleConnection {
+                            workspace: workspace.downgrade(),
+                            identity: identity.clone(),
+                            route: route.clone(),
+                            scope: request.scope(),
+                            generation: self.mouse_dpi.next_connection,
+                            slots: None,
+                            pending_catalog: None,
+                        },
+                    );
+                }
+                let connection = self
+                    .mouse_dpi
+                    .ble_connections
+                    .get_mut(&owner_id)
+                    .expect("retained DPI BLE connection");
+                discard_stale_ble_catalog(
+                    &mut connection.pending_catalog,
+                    workspace.read(cx).device(cx),
+                    request.scope(),
+                );
+                Some(worker::BlePlan {
+                    connection_owner: format!("{owner_id:?}"),
+                    generation: connection.generation,
+                    cached: connection.slots.clone(),
+                    local: workspace.read(cx).saved_snapshot(cx),
+                })
+            } else {
+                None
+            };
+        let ble_generation = ble_plan.as_ref().map(|plan| plan.generation);
         let owner = workspace.downgrade();
         let worker_request = request.clone();
         let worker_route = route.clone();
@@ -154,7 +321,7 @@ impl AppShell {
             let completion = cx
                 .background_spawn(async move {
                     let _accepted = accepted;
-                    worker::run(worker_route, worker_request, serial)
+                    worker::run(worker_route, worker_request, serial, ble_plan)
                 })
                 .await;
             let _ = shell.update(cx, |shell, cx| {
@@ -165,18 +332,66 @@ impl AppShell {
                     return;
                 };
                 let current = operation.matches(shell, &shell.device_observations, cx);
+                let result = if current {
+                    completion.result()
+                } else {
+                    Err("DPI 设备连接或请求范围已改变".to_owned())
+                };
+                let mut projected_catalog = None;
+                if current
+                    && let Some(workspace) = operation.workspace.upgrade()
+                    && let Some(connection) = shell
+                        .mouse_dpi
+                        .ble_connections
+                        .get_mut(&workspace.entity_id())
+                    && current_ble_completion(
+                        current,
+                        connection.generation,
+                        connection.scope,
+                        operation.ble_generation,
+                        operation.request.scope(),
+                    )
+                {
+                    if let Some(slots) = completion.observed_slots() {
+                        connection.slots = Some(slots.clone());
+                    } else if completion.initialization_error().is_some() {
+                        connection.slots = None;
+                    }
+                    let incoming = completion.ble_catalog().and_then(|(serial, catalog)| {
+                        (serial == catalog.serial()).then(|| PendingBleCatalog {
+                            serial: serial.to_owned(),
+                            catalog: catalog.clone(),
+                            baseline: operation.local_profile_baseline.clone(),
+                            scope: operation.request.scope(),
+                        })
+                    });
+                    projected_catalog = catalog_for_verified_read(
+                        &mut connection.pending_catalog,
+                        incoming,
+                        workspace.read(cx).device(cx),
+                        operation.request.scope(),
+                        operation.request.is_read(),
+                        &result,
+                    )
+                    .cloned();
+                }
                 let exit_task_failed = operation.request.can_finish_during_exit()
-                    && (!current
-                        || !completion
-                            .result()
-                            .as_ref()
-                            .is_ok_and(|report| report.verified));
+                    && !result.as_ref().is_ok_and(|report| report.verified);
                 if let Some(workspace) = operation.workspace.upgrade() {
-                    let result = if current {
-                        completion.result()
-                    } else {
-                        Err("DPI 设备连接或请求范围已改变".to_owned())
-                    };
+                    if let Some(catalog) = projected_catalog {
+                        let _ = operation.window.update(cx, |_, window, cx| {
+                            workspace.update(cx, |workspace, cx| {
+                                workspace.accept_current_dpi_ble_catalog(
+                                    &operation.request,
+                                    &catalog.baseline,
+                                    &catalog.serial,
+                                    &catalog.catalog,
+                                    window,
+                                    cx,
+                                )
+                            });
+                        });
+                    }
                     workspace.update(cx, |workspace, cx| {
                         if current && let Some(profile) = completion.local_profile() {
                             workspace.accept_current_dpi_local_profile(
@@ -190,7 +405,12 @@ impl AppShell {
                                 cx,
                             );
                         }
-                        workspace.finish_current_dpi_result(&operation.request, result, cx)
+                        workspace.finish_current_dpi_outcome(
+                            &operation.request,
+                            current.then(|| completion.actual_report()).flatten(),
+                            result.err(),
+                            cx,
+                        )
                     });
                     if current {
                         let _ = operation.window.update(cx, |_, window, cx| {
@@ -224,6 +444,7 @@ impl AppShell {
                 local_profile_baseline,
                 window,
                 delivery,
+                ble_generation,
             },
         );
     }

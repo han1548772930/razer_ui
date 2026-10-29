@@ -1,21 +1,21 @@
-//! Shared worker wire contract and owned child-process client. No DLL or HID implementation.
+//! Service wire contract and shared broker sessions. No DLL or HID implementation.
 use anyhow::{Context as _, bail};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::{io::BufRead, time::Duration};
+#[cfg(test)]
 use std::{
-    io::{BufRead, BufReader, Write},
-    process::{Child, Command, Stdio},
+    io::{BufReader, Write},
+    process::Child,
     sync::mpsc::{self, Receiver, Sender},
     thread::{self, JoinHandle},
-    time::Duration,
 };
 
-#[cfg(windows)]
-#[path = "runtime_job.rs"]
-mod job;
 mod worker_diagnostics;
 mod worker_shutdown;
-pub use worker_shutdown::ShutdownConfirmation;
+pub use worker_shutdown::{ConfirmationSource, ShutdownConfirmation};
+mod failure_diagnostics;
+pub use failure_diagnostics::{FailureDiagnostics, ServiceFailure};
 
 pub const FRAME_PREFIX: &str = "RAZER_UI_SERVICE ";
 pub const MAX_FRAME_BYTES: usize = 4 * 1024 * 1024;
@@ -26,6 +26,7 @@ pub mod controller_socd;
 pub mod device_tasks;
 pub mod gamepad_observation;
 pub mod global_shortcut_capture;
+pub mod hid_broker;
 pub mod input_observation;
 pub mod keyboard_onboard_profiles;
 pub mod keyboard_profile_inventory;
@@ -33,8 +34,10 @@ pub mod keypad_observation;
 pub mod macro_recording;
 pub mod mapping_control;
 pub mod mapping_observation;
+pub mod mouse_current_dpi_ble;
 pub mod mouse_input_monitoring;
 pub mod mouse_rotation;
+pub mod request_cancellation;
 pub mod shortcuts;
 
 /// Serializes owners of the process-wide vendor input redirection lifecycle.
@@ -282,6 +285,10 @@ pub enum ServiceRequest {
     BleMouseCurrentDpi {
         target: razer_device::mouse_runtime_artwork::WindowsBleTarget,
         change: Option<razer_device::mouse_current_dpi::DpiChange>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        context: Option<mouse_current_dpi_ble::Context>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        cancellation: Option<request_cancellation::Token>,
     },
     BleMouseRotation {
         target: razer_device::mouse_runtime_artwork::WindowsBleTarget,
@@ -1047,9 +1054,36 @@ pub enum ServiceRequest {
     Shutdown,
 }
 
-/// Diagnostic CLI requests use the same bounded worker and cleanup as the UI.
+/// Installed headless executable, with the application's pre-GPUI entrypoint
+/// used by root-only development layouts.
+pub fn service_executable() -> anyhow::Result<std::path::PathBuf> {
+    let current = std::env::current_exe()?;
+    let sibling = current.with_file_name(if cfg!(windows) {
+        "razer_agent.exe"
+    } else {
+        "razer_agent"
+    });
+    Ok(if sibling.is_file() { sibling } else { current })
+}
+
+/// Diagnostic CLI requests use the same broker session and cleanup as the UI.
 /// This function is a runtime entrypoint, never a static verification command.
 pub fn isolated_request(request: ServiceRequest) -> anyhow::Result<Value> {
+    let executable = service_executable()?;
+    let (mut root_connection, _bootstrap) =
+        hid_broker::connect_or_start(&executable, Duration::from_secs(15))?;
+    let result = isolated_session_request(request);
+    let cleanup = root_connection
+        .close_session()
+        .and_then(|receipt| receipt.validate());
+    match (result, cleanup) {
+        (result, Ok(())) => result,
+        (Ok(_), Err(error)) => Err(error),
+        (Err(error), Err(cleanup)) => Err(with_cleanup_error(error, Err(cleanup))),
+    }
+}
+
+fn isolated_session_request(request: ServiceRequest) -> anyhow::Result<Value> {
     let mut client = ServiceClient::spawn()?;
     let result = client.request(request);
     let shutdown = if client.is_stopped() {
@@ -1079,18 +1113,44 @@ pub struct ResponseEnvelope {
     pub data: Option<Value>,
     pub error: Option<String>,
     pub fatal: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub diagnostics: Option<FailureDiagnostics>,
 }
 
-/// A single long-lived worker and its pipe threads. Construction, requests and
-/// destruction perform blocking I/O and belong to the caller's I/O worker.
+impl ResponseEnvelope {
+    pub fn validate_outcome(&self) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            self.data.is_some() != self.error.is_some(),
+            "设备服务响应状态无效，连接已关闭"
+        );
+        anyhow::ensure!(
+            !self.fatal || self.error.is_some(),
+            "Fatal service response has no error"
+        );
+        anyhow::ensure!(
+            self.diagnostics.is_none() || self.error.is_some(),
+            "Failure diagnostics require an error response"
+        );
+        Ok(())
+    }
+}
+
+/// A client session in the shared headless service. Blocking connection and
+/// cleanup belong to the caller's I/O worker; the session never owns the broker process.
 pub struct ServiceClient {
+    broker: Option<hid_broker::BrokerClient>,
+    broker_close_receipt: Option<hid_broker::CloseSessionReceipt>,
+    #[cfg(test)]
     child: Option<Child>,
-    #[cfg(windows)]
-    job: Option<job::WorkerJob>,
+    #[cfg(test)]
     requests: Option<Sender<Vec<u8>>>,
+    #[cfg(test)]
     responses: Receiver<anyhow::Result<ResponseEnvelope>>,
+    #[cfg(test)]
     input_worker: Option<JoinHandle<anyhow::Result<()>>>,
+    #[cfg(test)]
     output_worker: Option<JoinHandle<anyhow::Result<()>>>,
+    #[cfg(test)]
     diagnostic_worker: Option<JoinHandle<anyhow::Result<()>>>,
     diagnostics: worker_diagnostics::WorkerDiagnostics,
     timeout: Duration,
@@ -1099,8 +1159,10 @@ pub struct ServiceClient {
     shutdown_confirmation: Option<ShutdownConfirmation>,
     philips_measurement_started: bool,
     request_guard: Option<RequestGuard>,
+    request_cancellation: Option<request_cancellation::CancellationOwner>,
 }
 
+#[derive(Clone)]
 enum RequestGuard {
     Active(std::sync::Arc<std::sync::atomic::AtomicBool>),
     Canceled(std::sync::Arc<std::sync::atomic::AtomicBool>),
@@ -1125,118 +1187,42 @@ impl RequestGuard {
 
 impl ServiceClient {
     pub fn spawn() -> anyhow::Result<Self> {
-        let current = std::env::current_exe()?;
-        let sibling = current.with_file_name(if cfg!(windows) {
-            "razer_agent.exe"
-        } else {
-            "razer_agent"
-        });
-        // Distributions include the independent headless binary. Existing
-        // root-only development commands retain their pre-GPUI worker route.
-        let executable = if sibling.is_file() { sibling } else { current };
-        Self::spawn_with_program(&executable)
+        Self::spawn_with_program(&service_executable()?)
     }
 
-    /// Explicit child executable for hosts that package the agent separately.
-    /// No DLL/backend is initialized in the caller process.
+    /// Connect to an already bootstrapped installation owner. Application
+    /// composition starts the broker and retains its independent root lease.
     pub fn spawn_with_program(executable: &std::path::Path) -> anyhow::Result<Self> {
-        #[cfg(windows)]
-        let job = job::WorkerJob::new()?;
-        let mut command = Command::new(executable);
-        command
-            .arg("--service-worker")
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-        #[cfg(windows)]
-        {
-            use std::os::windows::process::CommandExt;
-            // CREATE_NO_WINDOW: do not expose a console for a background service.
-            command.creation_flags(0x0800_0000);
-        }
-        let child = command.spawn().context("无法启动设备服务子进程")?;
-        let (requests, pending) = mpsc::channel::<Vec<u8>>();
-        let (sender, responses) = mpsc::channel();
-        let mut client = Self {
-            child: Some(child),
-            #[cfg(windows)]
-            job: Some(job),
-            requests: Some(requests),
-            responses,
+        let endpoint = hid_broker::BrokerEndpoint::for_installation(executable)?;
+        let broker = hid_broker::BrokerClient::connect(&endpoint, None, Duration::from_secs(225))?;
+        Ok(Self::from_broker(broker))
+    }
+
+    fn from_broker(broker: hid_broker::BrokerClient) -> Self {
+        Self {
+            broker: Some(broker),
+            broker_close_receipt: None,
+            #[cfg(test)]
+            child: None,
+            #[cfg(test)]
+            requests: None,
+            #[cfg(test)]
+            responses: mpsc::channel().1,
+            #[cfg(test)]
             input_worker: None,
+            #[cfg(test)]
             output_worker: None,
+            #[cfg(test)]
             diagnostic_worker: None,
             diagnostics: worker_diagnostics::WorkerDiagnostics::default(),
-            // First registration can perform initialization, event registration,
-            // and registration itself (three bounded native callbacks).
             timeout: Duration::from_secs(15),
             next_id: 1,
             stopped: false,
             shutdown_confirmation: None,
             philips_measurement_started: false,
             request_guard: None,
-        };
-        #[cfg(windows)]
-        if let Err(error) = client
-            .job
-            .as_ref()
-            .expect("owned worker job")
-            .assign(client.child.as_ref().expect("owned worker process"))
-        {
-            return Err(client.stop_after_error(error));
+            request_cancellation: None,
         }
-        let child = client.child.as_mut().expect("owned worker process");
-        let (Some(stdin), Some(stdout), Some(stderr)) =
-            (child.stdin.take(), child.stdout.take(), child.stderr.take())
-        else {
-            return Err(client.stop_after_error(anyhow::anyhow!("设备服务通信管道不可用")));
-        };
-        let diagnostics = client.diagnostics.clone();
-        client.diagnostic_worker = Some(
-            match thread::Builder::new()
-                .name("razer-service-diagnostics".into())
-                .spawn(move || diagnostics.capture_stderr(stderr))
-            {
-                Ok(worker) => worker,
-                Err(error) => {
-                    return Err(client.stop_after_error(
-                        anyhow::Error::new(error).context("无法创建设备服务诊断线程"),
-                    ));
-                }
-            },
-        );
-        // Writing a pipe can block if startup hangs before the worker reads it.
-        // Keep it off the request thread so recv_timeout covers the full request.
-        client.input_worker = Some(
-            match thread::Builder::new()
-                .name("razer-service-input".into())
-                .spawn(move || forward_requests(stdin, pending))
-            {
-                Ok(worker) => worker,
-                Err(error) => {
-                    return Err(client.stop_after_error(
-                        anyhow::Error::new(error).context("无法创建设备服务输入线程"),
-                    ));
-                }
-            },
-        );
-        let diagnostics = client.diagnostics.clone();
-        client.output_worker = Some(
-            match thread::Builder::new()
-                .name("razer-service-output".into())
-                .spawn(move || {
-                    let mut reader = BufReader::new(stdout);
-                    forward_responses(&mut reader, sender, &diagnostics)
-                }) {
-                Ok(worker) => worker,
-                Err(error) => {
-                    return Err(client.stop_after_error(
-                        anyhow::Error::new(error).context("无法创建设备服务输出线程"),
-                    ));
-                }
-            },
-        );
-        Ok(client)
     }
 
     /// Request admission has closed. Any cleanup failure was returned to its
@@ -1252,16 +1238,14 @@ impl ServiceClient {
         self.shutdown_confirmation
     }
 
-    /// Confirm that the owned process has exited and all pipe workers joined.
-    /// This closes admission without acknowledging native service shutdown or
-    /// any in-flight device write. Unreaped handles remain owned on failure so
-    /// the caller's I/O worker can retry termination.
+    /// Close admission and confirm this session's real restoration and cleanup.
+    /// A timeout preserves its broker connection for a subsequent drain attempt.
     pub fn finish_termination(&mut self) -> anyhow::Result<()> {
         self.stop()
     }
 
-    /// An operation owns this worker exclusively. Invalidating its scope closes
-    /// admission and drains its shutdown before releasing the owned process. An
+    /// An operation owns this session. Invalidating its scope closes admission
+    /// and drains its cleanup before releasing the connection. An
     /// already submitted device command cannot be rolled back by cancellation.
     pub fn set_request_guard(&mut self, guard: std::sync::Arc<std::sync::atomic::AtomicBool>) {
         self.request_guard = Some(RequestGuard::Active(guard));
@@ -1292,7 +1276,44 @@ impl ServiceClient {
             .is_some_and(RequestGuard::canceled)
     }
 
-    pub fn request(&mut self, request: ServiceRequest) -> anyhow::Result<Value> {
+    pub fn request(&mut self, mut request: ServiceRequest) -> anyhow::Result<Value> {
+        if self.stopped {
+            bail!("设备服务已停止，请重新连接");
+        }
+        if let ServiceRequest::BleMouseCurrentDpi { cancellation, .. } = &mut request {
+            anyhow::ensure!(
+                cancellation.is_none(),
+                "BLE DPI 取消身份必须由当前服务请求所有者创建"
+            );
+            let owner = request_cancellation::CancellationOwner::new()?;
+            *cancellation = Some(owner.token());
+            self.request_cancellation = Some(owner);
+        }
+        let result = self.request_inner(request);
+        let result = match self.cancel_request() {
+            Ok(()) => result,
+            Err(cancellation) => {
+                let error = match result {
+                    Ok(_) => cancellation,
+                    Err(error) => error.context(format!("请求取消失败：{cancellation:#}")),
+                };
+                Err(self.stop_after_error(error))
+            }
+        };
+        // Retain the event through any stop/drain above. Drop signals again so
+        // a service reader cannot outlive its request owner as an active request.
+        self.request_cancellation.take();
+        result
+    }
+
+    fn cancel_request(&self) -> anyhow::Result<()> {
+        match &self.request_cancellation {
+            Some(owner) => owner.cancel(),
+            None => Ok(()),
+        }
+    }
+
+    fn request_inner(&mut self, request: ServiceRequest) -> anyhow::Result<Value> {
         if self.stopped {
             bail!("设备服务已停止，请重新连接");
         }
@@ -1351,260 +1372,271 @@ impl ServiceClient {
         self.philips_measurement_started |= philips_measurement;
         let writing_app_files =
             matches!(&request, ServiceRequest::UserAppFiles { command } if command.mutates_files());
-        let writing_device = matches!(
-            request,
-            ServiceRequest::DeviceWrite { .. }
-                | ServiceRequest::HyperpollingReceiver {
-                    command: razer_device::hyperpolling_receiver::Command::SetIndicator { .. }
-                        | razer_device::hyperpolling_receiver::Command::CancelScan,
-                    ..
-                }
-                | ServiceRequest::MouseTrackingStart { .. }
-                | ServiceRequest::MouseTrackingPoll { .. }
-                | ServiceRequest::MouseTrackingCancel { .. }
-                | ServiceRequest::MousePhilipsStart { .. }
-                | ServiceRequest::MousePhilipsPoll { .. }
-                | ServiceRequest::MousePhilipsCancel { .. }
-                | ServiceRequest::MousePhilipsMeasurementStart { .. }
-                | ServiceRequest::MousePhilipsMeasurementPoll { .. }
-                | ServiceRequest::MousePhilipsMeasurementCancel { .. }
-                | ServiceRequest::HidNodeMouseScroll { .. }
-                | ServiceRequest::DeviceMouseScroll { .. }
-                | ServiceRequest::HidNodeSeirenEq { .. }
-                | ServiceRequest::DeviceSeirenEq { .. }
-                | ServiceRequest::SeirenNativeOpen { .. }
-                | ServiceRequest::SeirenNativeCall { .. }
-                | ServiceRequest::SeirenNativeEvents { .. }
-                | ServiceRequest::SeirenNativeClose { .. }
-                | ServiceRequest::SurroundOpen { .. }
-                | ServiceRequest::SurroundChange { .. }
-                | ServiceRequest::SurroundClose { .. }
-                | ServiceRequest::ReceiverBrightnessWrite { .. }
-                | ServiceRequest::AudioRouteDevice { .. }
-                | ServiceRequest::AudioRoutingEnable { .. }
-                | ServiceRequest::AudioVolumeWrite { .. }
-                | ServiceRequest::HidNodeDpiStagesWrite { .. }
-                | ServiceRequest::HidNodeMouseReceiverDpiStages { draft: Some(_), .. }
-                | ServiceRequest::HidNodeMouseReceiverPolling { .. }
-                | ServiceRequest::HidNodeMouseReceiverIdle { .. }
-                | ServiceRequest::DeviceDpiStagesWrite { .. }
-                | ServiceRequest::HidNodeKeyboardBrightnessWrite { .. }
-                | ServiceRequest::HidNodeKeyboardReceiverBrightness {
-                    percent: Some(_),
-                    ..
-                }
-                | ServiceRequest::HidNodeMouseCurrentDpi {
-                    change: Some(_),
-                    ..
-                }
-                | ServiceRequest::DeviceMouseCurrentDpi {
-                    change: Some(_),
-                    ..
-                }
-                | ServiceRequest::BleMouseCurrentDpi {
-                    change: Some(_),
-                    ..
-                }
-                | ServiceRequest::HidNodeMouseDynamic {
-                    change: Some(_),
-                    ..
-                }
-                | ServiceRequest::DeviceMouseDynamic {
-                    change: Some(_),
-                    ..
-                }
-                | ServiceRequest::HidNodeMouseRotation {
-                    change: Some(_),
-                    ..
-                }
-                | ServiceRequest::DeviceMouseRotation {
-                    change: Some(_),
-                    ..
-                }
-                | ServiceRequest::BleMouseRotation {
-                    change: Some(_),
-                    ..
-                }
-                | ServiceRequest::HidNodeMouseCurrentPolling {
-                    change: Some(_),
-                    ..
-                }
-                | ServiceRequest::DeviceMouseCurrentPolling {
-                    change: Some(_),
-                    ..
-                }
-                | ServiceRequest::DeviceKeyboardBrightnessWrite { .. }
-                | ServiceRequest::MappingKeyboardGamingIndicator { .. }
-                | ServiceRequest::KeyboardIndicator { .. }
-                | ServiceRequest::KeyboardLatestRestore { .. }
-                | ServiceRequest::KeyboardLegacyCalibration { .. }
-                | ServiceRequest::MouseReceiverLegacy { .. }
-                | ServiceRequest::MappingDeviceStart { .. }
-                | ServiceRequest::MappingDevicePublish { .. }
-                | ServiceRequest::MappingRotationStart { .. }
-                | ServiceRequest::MappingRotationRequest { .. }
-                | ServiceRequest::MappingRotationPoll { .. }
-                | ServiceRequest::MappingRotationStop { .. }
-                | ServiceRequest::SetOtfmMappingsSuspended { .. }
-                | ServiceRequest::MacroRecorderGlobalState
-                | ServiceRequest::MacroRecorderStorageWrite { .. }
-                | ServiceRequest::StartMappingKeyCapture
-                | ServiceRequest::StartGlobalShortcutCapture
-                | ServiceRequest::StartKeyboardCalibrationCapture { .. }
-                | ServiceRequest::MappingKeyCaptureEvents
-                | ServiceRequest::GlobalShortcutCaptureEvents
-                | ServiceRequest::StopMappingKeyCapture
-                | ServiceRequest::StartShortcutCapture
-                | ServiceRequest::HidNodeWrite { .. }
-                | ServiceRequest::HidNodeHanboCooler { .. }
-                | ServiceRequest::HidNodeMixerWrite { .. }
-                | ServiceRequest::HidNodeMixerLocalWrite { .. }
-                | ServiceRequest::AudioMixerMeterStart { .. }
-                | ServiceRequest::AudioMixerMeterRead { .. }
-                | ServiceRequest::AudioMixerHardwareStart { .. }
-                | ServiceRequest::AudioMixerHardwareRead { .. }
-                | ServiceRequest::AudioMixerHardwareStop
-                | ServiceRequest::AudioMixerHardwareInfo { .. }
-                | ServiceRequest::AudioMixerMeterStop
-                | ServiceRequest::HidNodeMixerEqWrite { .. }
-                | ServiceRequest::HidNodeMixerRouteWrite { .. }
-                | ServiceRequest::HidNodeMixerRestartStreams { .. }
-        ) || matches!(
+        let initializing_ble_dpi = matches!(
             &request,
-            ServiceRequest::HidNodeMouseBrightness { submission, .. }
-                | ServiceRequest::DeviceMouseBrightness { submission, .. } if submission.is_write()
-        ) || matches!(
-            &request,
-            ServiceRequest::HidNodeMouseCurrentPower { change, .. }
-                | ServiceRequest::DeviceMouseCurrentPower { change, .. }
-                | ServiceRequest::BleMouseCurrentPower { change, .. }
-                if !matches!(change, razer_device::mouse_current_power::Change::ReadPowerSaving)
-        ) || matches!(
-            &request,
-            ServiceRequest::HidNodeMouseIndicatorLed { change, .. }
-                | ServiceRequest::DeviceMouseIndicatorLed { change, .. } if change.writes()
-        ) || matches!(
-            &request,
-            ServiceRequest::HidNodeLeviathan { command, .. } | ServiceRequest::DeviceLeviathan { command, .. } if !command.is_read()
+            ServiceRequest::BleMouseCurrentDpi { context: Some(context), .. }
+                if context.initializes()
         );
+        let writing_device = initializing_ble_dpi
+            || matches!(
+                request,
+                ServiceRequest::DeviceWrite { .. }
+                    | ServiceRequest::HyperpollingReceiver {
+                        command: razer_device::hyperpolling_receiver::Command::SetIndicator { .. }
+                            | razer_device::hyperpolling_receiver::Command::CancelScan,
+                        ..
+                    }
+                    | ServiceRequest::MouseTrackingStart { .. }
+                    | ServiceRequest::MouseTrackingPoll { .. }
+                    | ServiceRequest::MouseTrackingCancel { .. }
+                    | ServiceRequest::MousePhilipsStart { .. }
+                    | ServiceRequest::MousePhilipsPoll { .. }
+                    | ServiceRequest::MousePhilipsCancel { .. }
+                    | ServiceRequest::MousePhilipsMeasurementStart { .. }
+                    | ServiceRequest::MousePhilipsMeasurementPoll { .. }
+                    | ServiceRequest::MousePhilipsMeasurementCancel { .. }
+                    | ServiceRequest::HidNodeMouseScroll { .. }
+                    | ServiceRequest::DeviceMouseScroll { .. }
+                    | ServiceRequest::HidNodeSeirenEq { .. }
+                    | ServiceRequest::DeviceSeirenEq { .. }
+                    | ServiceRequest::SeirenNativeOpen { .. }
+                    | ServiceRequest::SeirenNativeCall { .. }
+                    | ServiceRequest::SeirenNativeEvents { .. }
+                    | ServiceRequest::SeirenNativeClose { .. }
+                    | ServiceRequest::SurroundOpen { .. }
+                    | ServiceRequest::SurroundChange { .. }
+                    | ServiceRequest::SurroundClose { .. }
+                    | ServiceRequest::ReceiverBrightnessWrite { .. }
+                    | ServiceRequest::AudioRouteDevice { .. }
+                    | ServiceRequest::AudioRoutingEnable { .. }
+                    | ServiceRequest::AudioVolumeWrite { .. }
+                    | ServiceRequest::HidNodeDpiStagesWrite { .. }
+                    | ServiceRequest::HidNodeMouseReceiverDpiStages { draft: Some(_), .. }
+                    | ServiceRequest::HidNodeMouseReceiverPolling { .. }
+                    | ServiceRequest::HidNodeMouseReceiverIdle { .. }
+                    | ServiceRequest::DeviceDpiStagesWrite { .. }
+                    | ServiceRequest::HidNodeKeyboardBrightnessWrite { .. }
+                    | ServiceRequest::HidNodeKeyboardReceiverBrightness {
+                        percent: Some(_),
+                        ..
+                    }
+                    | ServiceRequest::HidNodeMouseCurrentDpi {
+                        change: Some(_),
+                        ..
+                    }
+                    | ServiceRequest::DeviceMouseCurrentDpi {
+                        change: Some(_),
+                        ..
+                    }
+                    | ServiceRequest::BleMouseCurrentDpi {
+                        change: Some(_),
+                        ..
+                    }
+                    | ServiceRequest::HidNodeMouseDynamic {
+                        change: Some(_),
+                        ..
+                    }
+                    | ServiceRequest::DeviceMouseDynamic {
+                        change: Some(_),
+                        ..
+                    }
+                    | ServiceRequest::HidNodeMouseRotation {
+                        change: Some(_),
+                        ..
+                    }
+                    | ServiceRequest::DeviceMouseRotation {
+                        change: Some(_),
+                        ..
+                    }
+                    | ServiceRequest::BleMouseRotation {
+                        change: Some(_),
+                        ..
+                    }
+                    | ServiceRequest::HidNodeMouseCurrentPolling {
+                        change: Some(_),
+                        ..
+                    }
+                    | ServiceRequest::DeviceMouseCurrentPolling {
+                        change: Some(_),
+                        ..
+                    }
+                    | ServiceRequest::DeviceKeyboardBrightnessWrite { .. }
+                    | ServiceRequest::MappingKeyboardGamingIndicator { .. }
+                    | ServiceRequest::KeyboardIndicator { .. }
+                    | ServiceRequest::KeyboardLatestRestore { .. }
+                    | ServiceRequest::KeyboardLegacyCalibration { .. }
+                    | ServiceRequest::MouseReceiverLegacy { .. }
+                    | ServiceRequest::MappingDeviceStart { .. }
+                    | ServiceRequest::MappingDevicePublish { .. }
+                    | ServiceRequest::MappingRotationStart { .. }
+                    | ServiceRequest::MappingRotationRequest { .. }
+                    | ServiceRequest::MappingRotationPoll { .. }
+                    | ServiceRequest::MappingRotationStop { .. }
+                    | ServiceRequest::SetOtfmMappingsSuspended { .. }
+                    | ServiceRequest::MacroRecorderGlobalState
+                    | ServiceRequest::MacroRecorderStorageWrite { .. }
+                    | ServiceRequest::StartMappingKeyCapture
+                    | ServiceRequest::StartGlobalShortcutCapture
+                    | ServiceRequest::StartKeyboardCalibrationCapture { .. }
+                    | ServiceRequest::MappingKeyCaptureEvents
+                    | ServiceRequest::GlobalShortcutCaptureEvents
+                    | ServiceRequest::StopMappingKeyCapture
+                    | ServiceRequest::StartShortcutCapture
+                    | ServiceRequest::HidNodeWrite { .. }
+                    | ServiceRequest::HidNodeHanboCooler { .. }
+                    | ServiceRequest::HidNodeMixerWrite { .. }
+                    | ServiceRequest::HidNodeMixerLocalWrite { .. }
+                    | ServiceRequest::AudioMixerMeterStart { .. }
+                    | ServiceRequest::AudioMixerMeterRead { .. }
+                    | ServiceRequest::AudioMixerHardwareStart { .. }
+                    | ServiceRequest::AudioMixerHardwareRead { .. }
+                    | ServiceRequest::AudioMixerHardwareStop
+                    | ServiceRequest::AudioMixerHardwareInfo { .. }
+                    | ServiceRequest::AudioMixerMeterStop
+                    | ServiceRequest::HidNodeMixerEqWrite { .. }
+                    | ServiceRequest::HidNodeMixerRouteWrite { .. }
+                    | ServiceRequest::HidNodeMixerRestartStreams { .. }
+            )
+            || matches!(
+                &request,
+                ServiceRequest::HidNodeMouseBrightness { submission, .. }
+                    | ServiceRequest::DeviceMouseBrightness { submission, .. } if submission.is_write()
+            )
+            || matches!(
+                &request,
+                ServiceRequest::HidNodeMouseCurrentPower { change, .. }
+                    | ServiceRequest::DeviceMouseCurrentPower { change, .. }
+                    | ServiceRequest::BleMouseCurrentPower { change, .. }
+                    if !matches!(change, razer_device::mouse_current_power::Change::ReadPowerSaving)
+            )
+            || matches!(
+                &request,
+                ServiceRequest::HidNodeMouseIndicatorLed { change, .. }
+                    | ServiceRequest::DeviceMouseIndicatorLed { change, .. } if change.writes()
+            )
+            || matches!(
+                &request,
+                ServiceRequest::HidNodeLeviathan { command, .. } | ServiceRequest::DeviceLeviathan { command, .. } if !command.is_read()
+            );
         let reading_keyboard_inventory = matches!(
             request,
             ServiceRequest::KeyboardProfileInventoryRead { .. }
                 | ServiceRequest::KeyboardOnboardProfilesRead { .. }
         );
-        let reading_device = matches!(
-            request,
-            ServiceRequest::DeviceRead { .. }
-                | ServiceRequest::HyperpollingReceiver {
-                    command: razer_device::hyperpolling_receiver::Command::Serial
-                        | razer_device::hyperpolling_receiver::Command::Edition
-                        | razer_device::hyperpolling_receiver::Command::Indicator
-                        | razer_device::hyperpolling_receiver::Command::Bindings,
-                    ..
-                }
-                | ServiceRequest::SystemMonitorStart { .. }
-                | ServiceRequest::SystemMonitorPoll { .. }
-                | ServiceRequest::SystemMonitorStop { .. }
-                | ServiceRequest::HidNodeLeviathan {
-                    command: razer_device::leviathan::Operation::ReadIo,
-                    ..
-                }
-                | ServiceRequest::DeviceLeviathan {
-                    command: razer_device::leviathan::Operation::ReadIo,
-                    ..
-                }
-                | ServiceRequest::LeviathanEventsStart { .. }
-                | ServiceRequest::LeviathanEventsPoll { .. }
-                | ServiceRequest::LeviathanEventsStop { .. }
-                | ServiceRequest::MouseIndicatorLedStart { .. }
-                | ServiceRequest::MouseIndicatorLedPoll { .. }
-                | ServiceRequest::MouseIndicatorLedStop { .. }
-                | ServiceRequest::KeyboardWristrestStart { .. }
-                | ServiceRequest::KeyboardWristrestPoll { .. }
-                | ServiceRequest::KeyboardWristrestStop { .. }
-                | ServiceRequest::MouseRuntimeArtworkStart { .. }
-                | ServiceRequest::MouseRuntimeArtworkPoll { .. }
-                | ServiceRequest::MouseRuntimeArtworkStop { .. }
-                | ServiceRequest::ReceiverDockModeRead { .. }
-                | ServiceRequest::HidNodeReceiverDockMode { .. }
-                | ServiceRequest::HidNodeReceiverStatus { .. }
-                | ServiceRequest::HidNodeReceiverStatusForSource { .. }
-                | ServiceRequest::ReceiverBrightnessRead { .. }
-                | ServiceRequest::AudioRouterEvents
-                | ServiceRequest::AudioVolumeRead { .. }
-                | ServiceRequest::HidNodeDpiStagesRead { .. }
-                | ServiceRequest::HidNodeMouseReceiverDpiStages { draft: None, .. }
-                | ServiceRequest::DeviceDpiStagesRead { .. }
-                | ServiceRequest::HidNodeKeyboardBrightnessRead { .. }
-                | ServiceRequest::HidNodeKeyboardReceiverBrightness { percent: None, .. }
-                | ServiceRequest::HidNodeKeyboardMetadataRead { .. }
-                | ServiceRequest::KeyboardProfileInventoryRead { .. }
-                | ServiceRequest::KeyboardOnboardProfilesRead { .. }
-                | ServiceRequest::HidNodeKeyboardSerialRead { .. }
-                | ServiceRequest::HidNodeKeyboardRelayMetadataRead { .. }
-                | ServiceRequest::HidNodeKeyboardRelaySerialRead { .. }
-                | ServiceRequest::HidNodeMouseCurrentDpi { change: None, .. }
-                | ServiceRequest::HidNodeMouseBrightness {
-                    submission: razer_device::mouse_brightness::Submission::Read { .. },
-                    ..
-                }
-                | ServiceRequest::DeviceMouseBrightness {
-                    submission: razer_device::mouse_brightness::Submission::Read { .. },
-                    ..
-                }
-                | ServiceRequest::DeviceMouseCurrentDpi { change: None, .. }
-                | ServiceRequest::BleMouseCurrentDpi { change: None, .. }
-                | ServiceRequest::HidNodeMouseDynamic { change: None, .. }
-                | ServiceRequest::DeviceMouseDynamic { change: None, .. }
-                | ServiceRequest::HidNodeMouseRotation { change: None, .. }
-                | ServiceRequest::DeviceMouseRotation { change: None, .. }
-                | ServiceRequest::BleMouseRotation { change: None, .. }
-                | ServiceRequest::HidNodeMouseCurrentPower {
-                    change: razer_device::mouse_current_power::Change::ReadPowerSaving,
-                    ..
-                }
-                | ServiceRequest::DeviceMouseCurrentPower {
-                    change: razer_device::mouse_current_power::Change::ReadPowerSaving,
-                    ..
-                }
-                | ServiceRequest::BleMouseCurrentPower {
-                    change: razer_device::mouse_current_power::Change::ReadPowerSaving,
-                    ..
-                }
-                | ServiceRequest::DeviceKeyboardBrightnessRead { .. }
-                | ServiceRequest::DeviceKeyboardMetadataRead { .. }
-                | ServiceRequest::DeviceKeyboardSerialRead { .. }
-                | ServiceRequest::BleKeyboardMetadataRead { .. }
-                | ServiceRequest::BleKeyboardSerialRead { .. }
-                | ServiceRequest::AudioEndpoints { .. }
-                | ServiceRequest::AudioNotificationsEnable { .. }
-                | ServiceRequest::AudioNotificationsDrain
-                | ServiceRequest::ForegroundMonitorStart { .. }
-                | ServiceRequest::ForegroundMonitorStop { .. }
-                | ServiceRequest::ForegroundMonitorEvents { .. }
-                | ServiceRequest::HidNodeRead { .. }
-                | ServiceRequest::HidNodeHanboCoolerRead { .. }
-                | ServiceRequest::HidNodeHanboStartupRead { .. }
-                | ServiceRequest::HidNodeMouseReceiverRead { .. }
-                | ServiceRequest::HidNodeMouseIndicatorLed {
-                    change: razer_device::mouse_indicator_led::Change::ReadConfiguration
-                        | razer_device::mouse_indicator_led::Change::ReadConnectionQuality
-                        | razer_device::mouse_indicator_led::Change::ReadSerialNumber
-                        | razer_device::mouse_indicator_led::Change::ReadBatteryLevel
-                        | razer_device::mouse_indicator_led::Change::ReadChargingStatus,
-                    ..
-                }
-                | ServiceRequest::DeviceMouseIndicatorLed {
-                    change: razer_device::mouse_indicator_led::Change::ReadConfiguration
-                        | razer_device::mouse_indicator_led::Change::ReadConnectionQuality
-                        | razer_device::mouse_indicator_led::Change::ReadSerialNumber
-                        | razer_device::mouse_indicator_led::Change::ReadBatteryLevel
-                        | razer_device::mouse_indicator_led::Change::ReadChargingStatus,
-                    ..
-                }
-                | ServiceRequest::HidNodeMixerRead { .. }
-                | ServiceRequest::HidNodeMixerRouteRead { .. }
-        );
+        let reading_device = !initializing_ble_dpi
+            && matches!(
+                request,
+                ServiceRequest::DeviceRead { .. }
+                    | ServiceRequest::HyperpollingReceiver {
+                        command: razer_device::hyperpolling_receiver::Command::Serial
+                            | razer_device::hyperpolling_receiver::Command::Edition
+                            | razer_device::hyperpolling_receiver::Command::Indicator
+                            | razer_device::hyperpolling_receiver::Command::Bindings,
+                        ..
+                    }
+                    | ServiceRequest::SystemMonitorStart { .. }
+                    | ServiceRequest::SystemMonitorPoll { .. }
+                    | ServiceRequest::SystemMonitorStop { .. }
+                    | ServiceRequest::HidNodeLeviathan {
+                        command: razer_device::leviathan::Operation::ReadIo,
+                        ..
+                    }
+                    | ServiceRequest::DeviceLeviathan {
+                        command: razer_device::leviathan::Operation::ReadIo,
+                        ..
+                    }
+                    | ServiceRequest::LeviathanEventsStart { .. }
+                    | ServiceRequest::LeviathanEventsPoll { .. }
+                    | ServiceRequest::LeviathanEventsStop { .. }
+                    | ServiceRequest::MouseIndicatorLedStart { .. }
+                    | ServiceRequest::MouseIndicatorLedPoll { .. }
+                    | ServiceRequest::MouseIndicatorLedStop { .. }
+                    | ServiceRequest::KeyboardWristrestStart { .. }
+                    | ServiceRequest::KeyboardWristrestPoll { .. }
+                    | ServiceRequest::KeyboardWristrestStop { .. }
+                    | ServiceRequest::MouseRuntimeArtworkStart { .. }
+                    | ServiceRequest::MouseRuntimeArtworkPoll { .. }
+                    | ServiceRequest::MouseRuntimeArtworkStop { .. }
+                    | ServiceRequest::ReceiverDockModeRead { .. }
+                    | ServiceRequest::HidNodeReceiverDockMode { .. }
+                    | ServiceRequest::HidNodeReceiverStatus { .. }
+                    | ServiceRequest::HidNodeReceiverStatusForSource { .. }
+                    | ServiceRequest::ReceiverBrightnessRead { .. }
+                    | ServiceRequest::AudioRouterEvents
+                    | ServiceRequest::AudioVolumeRead { .. }
+                    | ServiceRequest::HidNodeDpiStagesRead { .. }
+                    | ServiceRequest::HidNodeMouseReceiverDpiStages { draft: None, .. }
+                    | ServiceRequest::DeviceDpiStagesRead { .. }
+                    | ServiceRequest::HidNodeKeyboardBrightnessRead { .. }
+                    | ServiceRequest::HidNodeKeyboardReceiverBrightness { percent: None, .. }
+                    | ServiceRequest::HidNodeKeyboardMetadataRead { .. }
+                    | ServiceRequest::KeyboardProfileInventoryRead { .. }
+                    | ServiceRequest::KeyboardOnboardProfilesRead { .. }
+                    | ServiceRequest::HidNodeKeyboardSerialRead { .. }
+                    | ServiceRequest::HidNodeKeyboardRelayMetadataRead { .. }
+                    | ServiceRequest::HidNodeKeyboardRelaySerialRead { .. }
+                    | ServiceRequest::HidNodeMouseCurrentDpi { change: None, .. }
+                    | ServiceRequest::HidNodeMouseBrightness {
+                        submission: razer_device::mouse_brightness::Submission::Read { .. },
+                        ..
+                    }
+                    | ServiceRequest::DeviceMouseBrightness {
+                        submission: razer_device::mouse_brightness::Submission::Read { .. },
+                        ..
+                    }
+                    | ServiceRequest::DeviceMouseCurrentDpi { change: None, .. }
+                    | ServiceRequest::BleMouseCurrentDpi { change: None, .. }
+                    | ServiceRequest::HidNodeMouseDynamic { change: None, .. }
+                    | ServiceRequest::DeviceMouseDynamic { change: None, .. }
+                    | ServiceRequest::HidNodeMouseRotation { change: None, .. }
+                    | ServiceRequest::DeviceMouseRotation { change: None, .. }
+                    | ServiceRequest::BleMouseRotation { change: None, .. }
+                    | ServiceRequest::HidNodeMouseCurrentPower {
+                        change: razer_device::mouse_current_power::Change::ReadPowerSaving,
+                        ..
+                    }
+                    | ServiceRequest::DeviceMouseCurrentPower {
+                        change: razer_device::mouse_current_power::Change::ReadPowerSaving,
+                        ..
+                    }
+                    | ServiceRequest::BleMouseCurrentPower {
+                        change: razer_device::mouse_current_power::Change::ReadPowerSaving,
+                        ..
+                    }
+                    | ServiceRequest::DeviceKeyboardBrightnessRead { .. }
+                    | ServiceRequest::DeviceKeyboardMetadataRead { .. }
+                    | ServiceRequest::DeviceKeyboardSerialRead { .. }
+                    | ServiceRequest::BleKeyboardMetadataRead { .. }
+                    | ServiceRequest::BleKeyboardSerialRead { .. }
+                    | ServiceRequest::AudioEndpoints { .. }
+                    | ServiceRequest::AudioNotificationsEnable { .. }
+                    | ServiceRequest::AudioNotificationsDrain
+                    | ServiceRequest::ForegroundMonitorStart { .. }
+                    | ServiceRequest::ForegroundMonitorStop { .. }
+                    | ServiceRequest::ForegroundMonitorEvents { .. }
+                    | ServiceRequest::HidNodeRead { .. }
+                    | ServiceRequest::HidNodeHanboCoolerRead { .. }
+                    | ServiceRequest::HidNodeHanboStartupRead { .. }
+                    | ServiceRequest::HidNodeMouseReceiverRead { .. }
+                    | ServiceRequest::HidNodeMouseIndicatorLed {
+                        change: razer_device::mouse_indicator_led::Change::ReadConfiguration
+                            | razer_device::mouse_indicator_led::Change::ReadConnectionQuality
+                            | razer_device::mouse_indicator_led::Change::ReadSerialNumber
+                            | razer_device::mouse_indicator_led::Change::ReadBatteryLevel
+                            | razer_device::mouse_indicator_led::Change::ReadChargingStatus,
+                        ..
+                    }
+                    | ServiceRequest::DeviceMouseIndicatorLed {
+                        change: razer_device::mouse_indicator_led::Change::ReadConfiguration
+                            | razer_device::mouse_indicator_led::Change::ReadConnectionQuality
+                            | razer_device::mouse_indicator_led::Change::ReadSerialNumber
+                            | razer_device::mouse_indicator_led::Change::ReadBatteryLevel
+                            | razer_device::mouse_indicator_led::Change::ReadChargingStatus,
+                        ..
+                    }
+                    | ServiceRequest::HidNodeMixerRead { .. }
+                    | ServiceRequest::HidNodeMixerRouteRead { .. }
+            );
         let marie_timeout = match &request {
             ServiceRequest::SeirenNativeOpen { .. } => {
                 Some(razer_device::seiren_eq::NativeOperation::DeviceInitialize.service_budget())
@@ -1617,24 +1649,32 @@ impl ServiceClient {
             _ => None,
         };
         let id = self.next_id;
-        self.next_id = self.next_id.wrapping_add(1);
-        let mut frame = serde_json::to_vec(&RequestEnvelope { id, request })?;
-        if frame.len() >= MAX_FRAME_BYTES {
-            bail!("设备服务请求过大");
-        }
-        frame.push(b'\n');
-        let write = self
-            .requests
-            .as_ref()
-            .context("设备服务已关闭")?
-            .send(frame);
-        if let Err(error) = write {
-            let error = anyhow::Error::new(error).context("设备服务连接中断");
-            return Err(self.stop_after_error(error));
+        self.next_id = self
+            .next_id
+            .checked_add(1)
+            .context("设备服务请求序号已耗尽")?;
+        let envelope = RequestEnvelope { id, request };
+        #[cfg(test)]
+        if self.broker.is_none() {
+            let mut frame = serde_json::to_vec(&envelope)?;
+            if frame.len() >= MAX_FRAME_BYTES {
+                bail!("设备服务请求过大");
+            }
+            frame.push(b'\n');
+            if let Err(error) = self
+                .requests
+                .as_ref()
+                .context("设备服务已关闭")?
+                .send(frame)
+            {
+                return Err(
+                    self.stop_after_error(anyhow::Error::new(error).context("设备服务连接中断"))
+                );
+            }
         }
         // Recorder setup can require initialize/register/callback/start, each
         // with its own bounded native completion. Other queries retain their
-        // existing timeout; a timeout still terminates this owned worker.
+        // existing timeout; expiry cancels this session and waits for cleanup.
         let timeout = if reading_keyboard_inventory {
             Duration::from_secs(125)
         } else if philips_measurement || (shutting_down && self.philips_measurement_started) {
@@ -1648,7 +1688,7 @@ impl ServiceClient {
             Duration::from_secs(45)
         } else if let Some(budget) = marie_timeout {
             // Endpoint reconstruction waits 60/30 seconds in the verified
-            // mode/sample-rate chain. Do not kill the session before its own
+            // mode/sample-rate chain. Retain the session until its own
             // bounded operation and cleanup can report their actual result.
             budget + Duration::from_secs(5)
         } else if controller_initialization {
@@ -1676,7 +1716,7 @@ impl ServiceClient {
         } else if writing_device || writing_app_files {
             // Retained route: pre-read, setter acknowledgement, then readback.
             // Keyboard brightness has a 20-second service confirmation deadline;
-            // the ordinary 15-second timeout must not kill its worker first.
+            // its confirmation budget must precede session cleanup.
             Duration::from_secs(30)
         } else if reading_device {
             // Relay reads bracket the device query with two bounded peer
@@ -1685,39 +1725,92 @@ impl ServiceClient {
         } else {
             self.timeout
         };
-        let received = if shutting_down || self.request_guard.is_none() {
-            self.responses
-                .recv_timeout(timeout)
-                .map_err(anyhow::Error::new)
-        } else {
-            let started = std::time::Instant::now();
-            loop {
-                if self.request_scope_canceled() {
-                    break Err(anyhow::anyhow!(
-                        "设备操作范围已取消；已发送的设置需重新读取确认"
-                    ));
-                }
-                let Some(remaining) = timeout.checked_sub(started.elapsed()) else {
-                    break Err(anyhow::anyhow!("设备服务确认超时"));
-                };
-                match self
-                    .responses
-                    .recv_timeout(remaining.min(Duration::from_millis(50)))
-                {
-                    Err(std::sync::mpsc::RecvTimeoutError::Timeout) => continue,
-                    response => break response.map_err(anyhow::Error::new),
-                }
+        if let Some(mut broker) = self.broker.take() {
+            let cancellation_failure = std::cell::RefCell::new(None);
+            let result = broker.request(
+                envelope,
+                &|| {
+                    let canceled = !shutting_down && self.request_scope_canceled();
+                    if canceled {
+                        if let Err(error) = self.cancel_request() {
+                            *cancellation_failure.borrow_mut() = Some(error);
+                        }
+                    }
+                    canceled
+                },
+                timeout,
+            );
+            self.broker = Some(broker);
+            if let Some(error) = cancellation_failure.into_inner() {
+                return Err(self.stop_after_error(error.context("无法通知设备请求取消")));
             }
-        };
-        let response = match received {
-            Ok(Ok(response)) => response,
-            Ok(Err(error)) => return Err(self.stop_after_error(error)),
-            Err(error) => {
-                let error = error.context("设备服务超时或已退出；连接已关闭");
-                return Err(self.stop_after_error(error));
-            }
-        };
-        self.complete_response(id, shutting_down, response)
+            return match result {
+                Ok(response) => self.complete_response(id, shutting_down, response),
+                Err(error) => match error.downcast::<hid_broker::CanceledRequest>() {
+                    Ok(canceled) => self.complete_response_with_cancellation(
+                        id,
+                        shutting_down,
+                        true,
+                        canceled.response,
+                    ),
+                    Err(error) => Err(self.stop_after_error(error)),
+                },
+            };
+        }
+        #[cfg(test)]
+        {
+            let mut canceled_ble = false;
+            let received = if shutting_down || self.request_guard.is_none() {
+                self.responses
+                    .recv_timeout(timeout)
+                    .map_err(anyhow::Error::new)
+            } else {
+                let started = std::time::Instant::now();
+                loop {
+                    if self.request_scope_canceled() {
+                        if self.request_cancellation.is_some() {
+                            if !canceled_ble {
+                                if let Err(error) = self.cancel_request() {
+                                    break Err(error);
+                                }
+                                canceled_ble = true;
+                            }
+                        } else {
+                            break Err(anyhow::anyhow!(
+                                "设备操作范围已取消；已发送的设置需重新读取确认"
+                            ));
+                        }
+                    }
+                    let Some(remaining) = timeout.checked_sub(started.elapsed()) else {
+                        break Err(anyhow::anyhow!("设备服务确认超时"));
+                    };
+                    match self
+                        .responses
+                        .recv_timeout(remaining.min(Duration::from_millis(50)))
+                    {
+                        Err(mpsc::RecvTimeoutError::Timeout) => continue,
+                        response => break response.map_err(anyhow::Error::new),
+                    }
+                }
+            };
+            let response = match received {
+                Ok(Ok(response)) => response,
+                Ok(Err(error)) => return Err(self.stop_after_error(error)),
+                Err(error) => {
+                    return Err(
+                        self.stop_after_error(error.context("设备服务超时或已退出；连接已关闭"))
+                    );
+                }
+            };
+            return self.complete_response_with_cancellation(
+                id,
+                shutting_down,
+                canceled_ble,
+                response,
+            );
+        }
+        #[cfg(not(test))]
+        Err(self.stop_after_error(anyhow::anyhow!("设备服务会话不可用")))
     }
 
     fn complete_response(
@@ -1726,22 +1819,50 @@ impl ServiceClient {
         shutting_down: bool,
         response: ResponseEnvelope,
     ) -> anyhow::Result<Value> {
+        self.complete_response_with_cancellation(id, shutting_down, false, response)
+    }
+
+    fn complete_response_with_cancellation(
+        &mut self,
+        id: u64,
+        shutting_down: bool,
+        canceled_ble: bool,
+        response: ResponseEnvelope,
+    ) -> anyhow::Result<Value> {
         if response.id != id {
             return Err(
                 self.stop_after_error(anyhow::anyhow!("设备服务响应序号不匹配，连接已关闭"))
             );
         }
+        if let Err(error) = response.validate_outcome() {
+            return Err(self.stop_after_error(error));
+        }
         // A reply can wake recv_timeout after the owner invalidated its scope.
         // Recheck at delivery so that receipt cannot become a current result.
         // Shutdown still runs for an expired scope; cancellation cannot undo an
         // already submitted device command or establish its present state.
-        if !shutting_down && self.request_scope_canceled() {
-            return Err(self.stop_after_error(anyhow::anyhow!(
-                "设备操作范围已取消；旧响应未提交，已发送的设置仍可能生效"
-            )));
-        }
-        if response.data.is_some() == response.error.is_some() {
-            return Err(self.stop_after_error(anyhow::anyhow!("设备服务响应状态无效，连接已关闭")));
+        if !shutting_down && (canceled_ble || self.request_scope_canceled()) {
+            if self.request_cancellation.is_some() {
+                let message = match response.error {
+                    Some(error) => format!("设备操作范围已取消；设备服务响应错误：{error}"),
+                    None => "设备操作范围已取消；真实响应仅保留为诊断，未提交设备状态".to_owned(),
+                };
+                let error = self.stop_after_error(anyhow::Error::msg(message));
+                let error = match response.data {
+                    Some(data) => anyhow::Error::new(request_cancellation::CanceledBleReply {
+                        data,
+                        error: format!("{error:#}"),
+                    }),
+                    None => error,
+                };
+                return Err(failure_diagnostics::retain(error, response.diagnostics));
+            }
+            let message = match response.error {
+                Some(error) => format!("设备操作范围已取消；设备服务响应错误：{error}"),
+                None => "设备操作范围已取消；旧响应未提交，已发送的设置仍可能生效".to_owned(),
+            };
+            let error = self.stop_after_error(anyhow::Error::msg(message));
+            return Err(failure_diagnostics::retain(error, response.diagnostics));
         }
         let confirmation = shutting_down.then(|| worker_shutdown::confirm(&response, id));
         if let Some(Ok(confirmation)) = &confirmation {
@@ -1753,9 +1874,9 @@ impl ServiceClient {
             Ok(())
         };
         if let Some(error) = response.error {
-            return Err(self
-                .diagnostics
-                .attach(with_cleanup_error(anyhow::Error::msg(error), stop)));
+            let error =
+                failure_diagnostics::retain(anyhow::Error::msg(error), response.diagnostics);
+            return Err(self.diagnostics.attach(with_cleanup_error(error, stop)));
         }
         if let Some(Err(error)) = confirmation {
             return Err(self.diagnostics.attach(with_cleanup_error(error, stop)));
@@ -1771,14 +1892,66 @@ impl ServiceClient {
     }
 
     fn stop(&mut self) -> anyhow::Result<()> {
+        if self.broker.is_some() || self.broker_close_receipt.is_some() {
+            return self.close_broker_session();
+        }
+        #[cfg(test)]
+        {
+            return self.stop_simulated();
+        }
+        #[cfg(not(test))]
+        {
+            self.stopped = true;
+            self.cancel_request()
+        }
+    }
+
+    fn close_broker_session(&mut self) -> anyhow::Result<()> {
+        self.stopped = true;
+        let cancellation = self.cancel_request();
+        if let Some(receipt) = &self.broker_close_receipt {
+            return match receipt.validate() {
+                Ok(()) => cancellation,
+                Err(error) => Err(with_cleanup_error(error, cancellation)),
+            };
+        }
+        let broker = self.broker.as_mut().context("设备服务会话不可用")?;
+        let close = broker.close_session();
+        if let Some(receipt) = broker.close_receipt().cloned() {
+            self.broker_close_receipt = Some(receipt);
+            self.broker.take();
+        }
+        match close {
+            Ok(receipt) => {
+                let close_id = self.next_id;
+                self.next_id = self
+                    .next_id
+                    .checked_add(1)
+                    .context("设备服务请求序号已耗尽")?;
+                let confirmation = worker_shutdown::confirm_session_close(&receipt, close_id)?;
+                if self.shutdown_confirmation.is_none() {
+                    self.shutdown_confirmation = Some(confirmation);
+                }
+                cancellation
+            }
+            Err(error) => Err(with_cleanup_error(error, cancellation)),
+        }
+    }
+
+    #[cfg(test)]
+    fn stop_simulated(&mut self) -> anyhow::Result<()> {
+        let cancellation = self.cancel_request();
         let request_shutdown = !self.stopped
-            && self.child.is_some()
+            && (self.child.is_some() || self.request_cancellation.is_some())
             && self.input_worker.is_some()
             && self.output_worker.is_some();
         self.stopped = true;
         let cleanup = if request_shutdown {
             let id = self.next_id;
-            self.next_id = self.next_id.wrapping_add(1);
+            self.next_id = self
+                .next_id
+                .checked_add(1)
+                .context("设备服务请求序号已耗尽")?;
             let result = (|| {
                 let mut frame = serde_json::to_vec(&RequestEnvelope {
                     id,
@@ -1813,28 +1986,44 @@ impl ServiceClient {
             Ok(())
         };
         let process = self.finish_process();
-        combine_cleanup([cleanup, process])
+        combine_cleanup([cancellation, cleanup, process])
     }
 
     fn finish_process(&mut self) -> anyhow::Result<()> {
+        if self.broker.is_some() || self.broker_close_receipt.is_some() {
+            return self.close_broker_session();
+        }
+        #[cfg(test)]
+        {
+            return self.finish_simulated_process();
+        }
+        #[cfg(not(test))]
+        {
+            self.stopped = true;
+            self.cancel_request()
+        }
+    }
+
+    #[cfg(test)]
+    fn finish_simulated_process(&mut self) -> anyhow::Result<()> {
+        let cancellation = self.cancel_request();
         self.requests.take();
         self.stopped = true;
-        // A shutdown reply is emitted only after owner teardown. Closing the
-        // job is a final process boundary, never proof of successful restoration.
-        #[cfg(windows)]
-        self.job.take();
         // If the OS cannot establish process exit, keep the process and pipe
         // handles with this owner so another cleanup attempt can inspect them.
-        reap_child(&mut self.child)?;
+        if let Err(error) = reap_child(&mut self.child) {
+            return Err(with_cleanup_error(error, cancellation));
+        }
         // Terminating the process unblocks pipe reads/writes. Every handle stays
         // owned through its join, including partial startup and request failure.
         let input = join_pipe(self.input_worker.take(), "输入");
         let output = join_pipe(self.output_worker.take(), "输出");
         let diagnostics = join_pipe(self.diagnostic_worker.take(), "诊断");
-        combine_cleanup([input, output, diagnostics])
+        combine_cleanup([cancellation, input, output, diagnostics])
     }
 }
 
+#[cfg(test)]
 fn forward_requests(mut writer: impl Write, pending: Receiver<Vec<u8>>) -> anyhow::Result<()> {
     while let Ok(frame) = pending.recv() {
         writer
@@ -1845,6 +2034,7 @@ fn forward_requests(mut writer: impl Write, pending: Receiver<Vec<u8>>) -> anyho
     Ok(())
 }
 
+#[cfg(test)]
 fn join_pipe(worker: Option<JoinHandle<anyhow::Result<()>>>, name: &str) -> anyhow::Result<()> {
     match worker {
         Some(worker) => worker
@@ -1854,6 +2044,7 @@ fn join_pipe(worker: Option<JoinHandle<anyhow::Result<()>>>, name: &str) -> anyh
     }
 }
 
+#[cfg(test)]
 fn combine_cleanup<const N: usize>(results: [anyhow::Result<()>; N]) -> anyhow::Result<()> {
     let errors = results
         .into_iter()
@@ -1870,6 +2061,7 @@ fn combine_cleanup<const N: usize>(results: [anyhow::Result<()>; N]) -> anyhow::
 /// Unprefixed vendor diagnostics may use a legacy code page. Once the worker
 /// emits our prefix, however, every byte belongs to the owned IPC protocol:
 /// decoding or framing failure is terminal, never a log line to skip.
+#[cfg(test)]
 fn forward_responses(
     reader: &mut impl BufRead,
     sender: Sender<anyhow::Result<ResponseEnvelope>>,
@@ -1917,7 +2109,10 @@ fn forward_responses(
 fn with_cleanup_error(error: anyhow::Error, cleanup: anyhow::Result<()>) -> anyhow::Error {
     match cleanup {
         Ok(()) => error,
-        Err(cleanup) => anyhow::anyhow!("{error:#}；关闭设备服务失败：{cleanup:#}"),
+        Err(cleanup) => {
+            let message = format!("{error:#}；关闭设备服务失败：{cleanup:#}");
+            error.context(message)
+        }
     }
 }
 
@@ -1930,12 +2125,14 @@ impl Drop for ServiceClient {
 }
 
 /// A test seam for owned-process cleanup; tests never launch a helper.
+#[cfg(test)]
 trait ChildProcess {
     fn exited(&mut self) -> std::io::Result<bool>;
     fn terminate(&mut self) -> std::io::Result<()>;
     fn wait_for_exit(&mut self) -> std::io::Result<()>;
 }
 
+#[cfg(test)]
 impl ChildProcess for Child {
     fn exited(&mut self) -> std::io::Result<bool> {
         self.try_wait().map(|status| status.is_some())
@@ -1952,6 +2149,7 @@ impl ChildProcess for Child {
 
 // This wait belongs to the same background owner as the request and pipe joins.
 // A successful kill alone does not prove that the child has exited or been reaped.
+#[cfg(test)]
 fn terminate_child(child: &mut impl ChildProcess) -> anyhow::Result<()> {
     let observed = child.exited();
     if matches!(observed, Ok(true)) {
@@ -1987,6 +2185,7 @@ fn terminate_child(child: &mut impl ChildProcess) -> anyhow::Result<()> {
     }
 }
 
+#[cfg(test)]
 fn reap_child(child: &mut Option<impl ChildProcess>) -> anyhow::Result<()> {
     if let Some(child) = child.as_mut() {
         terminate_child(child)?;

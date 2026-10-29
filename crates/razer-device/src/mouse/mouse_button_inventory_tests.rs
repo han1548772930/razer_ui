@@ -1,4 +1,5 @@
 use super::*;
+use crate::feature_exchange::tests::ExchangeProbe;
 use std::{
     cell::{Cell, RefCell},
     collections::VecDeque,
@@ -287,13 +288,14 @@ fn invalid_transactions_are_unattempted_and_never_replace_device_observations() 
 #[test]
 fn cancellation_retains_completed_read_and_stops_remaining_modes() {
     let transport = Transport::new(fixture(170, 2, None).into_iter().take(2));
-    let calls = Cell::new(0);
+    let canceled = Cell::new(false);
+    let after_read = || canceled.set(true);
+    let device = ExchangeProbe::with_on_finish(&transport, &after_read);
     let cap = cap(170);
-    let failure = MouseButtonInventory::new(&transport, &cap)
+    let failure = MouseButtonInventory::new(&device, &cap)
         .unwrap()
         .read_profile(2, txs(), || {
-            calls.set(calls.get() + 1);
-            anyhow::ensure!(calls.get() != 6, "cancel before next button");
+            anyhow::ensure!(!canceled.get(), "cancel before next button");
             Ok(())
         })
         .expect_err("cancel must stop later I/O");
